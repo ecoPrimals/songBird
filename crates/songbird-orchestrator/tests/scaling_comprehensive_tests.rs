@@ -4,7 +4,7 @@ use songbird_orchestrator::core::scaling::{AutoScaler, ScalingPolicy};
 use songbird_orchestrator::core::{HealthStatus, ScalingConfig};
 use songbird_types::{SongbirdError, SongbirdResult};
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_auto_scaler_creation() -> SongbirdResult<()> {
     let config = ScalingConfig::default();
     let scaler = AutoScaler::new(config);
@@ -12,7 +12,7 @@ async fn test_auto_scaler_creation() -> SongbirdResult<()> {
     Ok(())
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_auto_scaler_initialize() {
     let config = ScalingConfig::default();
     let mut scaler = AutoScaler::new(config);
@@ -20,7 +20,7 @@ async fn test_auto_scaler_initialize() {
     assert!(result.is_ok());
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_auto_scaler_start_stop() -> SongbirdResult<()> {
     let config = ScalingConfig::default();
     let mut scaler = AutoScaler::new(config);
@@ -33,7 +33,7 @@ async fn test_auto_scaler_start_stop() -> SongbirdResult<()> {
     Ok(())
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_auto_scaler_health_check() -> SongbirdResult<()> {
     let config = ScalingConfig::default();
     let scaler = AutoScaler::new(config);
@@ -151,7 +151,7 @@ fn test_scaling_policy_serialization() -> SongbirdResult<()> {
     Ok(())
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_auto_scaler_lifecycle() -> SongbirdResult<()> {
     let config = ScalingConfig::default();
     let mut scaler = AutoScaler::new(config);
@@ -172,7 +172,7 @@ async fn test_auto_scaler_lifecycle() -> SongbirdResult<()> {
     Ok(())
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_auto_scaler_with_scaling_disabled() -> SongbirdResult<()> {
     let config = ScalingConfig {
         enable_auto_scaling: false,
@@ -188,7 +188,7 @@ async fn test_auto_scaler_with_scaling_disabled() -> SongbirdResult<()> {
     Ok(())
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_auto_scaler_health_message() -> SongbirdResult<()> {
     let config = ScalingConfig::default();
     let scaler = AutoScaler::new(config);
@@ -230,7 +230,7 @@ fn test_scaling_policy_clone() -> SongbirdResult<()> {
     Ok(())
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_auto_scaler_operations_are_async() -> SongbirdResult<()> {
     let config = ScalingConfig::default();
     let mut scaler = AutoScaler::new(config);
@@ -271,7 +271,7 @@ fn test_scaling_config_reasonable_defaults() {
     assert!(config.max_instances >= config.min_instances * 2, "Max should be at least 2x min");
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_auto_scaler_with_custom_thresholds() {
     let config = ScalingConfig {
         enable_auto_scaling: true,
@@ -310,7 +310,7 @@ fn test_scaling_config_is_production_ready() {
     assert!(config.min_instances >= 1, "Should have at least one instance");
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_auto_scaler_multiple_lifecycle_cycles() {
     let config = ScalingConfig::default();
     let mut scaler = AutoScaler::new(config);

@@ -1,0 +1,37 @@
+# Root Documentation Structure - December 10, 2025
+
+## Essential Root Documents (12 files)
+
+Core Navigation:
+  00_START_HERE.md              - Main entry point and navigation hub
+  README.md                      - Project overview and quick start
+  STATUS.md                      - Current status and metrics
+  
+Operational:
+  DEPLOY.md                      - Deployment guide
+  CONFIGURATION_GUIDE.md         - Configuration reference
+  QUICK_START_PRODUCTION.md      - Quick start guide
+  
+Development:
+  CONTRIBUTING.md                - Contribution guidelines
+  KNOWN_ISSUES.md                - Known limitations
+  NEXT_STEPS_CHECKLIST.md        - Action items and roadmap
+  
+Indexes:
+  DOCUMENTATION_INDEX.md         - Documentation navigation
+  PROJECT_STATUS.md              - Detailed project status
+  CHANGELOG.md                   - Version history
+
+## Archived (24 session documents)
+  docs/archive/session-dec-10-2025/
+    - All evolution session reports
+    - Quality analyses
+    - Refactor plans
+    - See: docs/archive/session-dec-10-2025/README.md
+
+## Detailed Documentation
+  docs/guides/                   - How-to guides
+  docs/architecture/             - Architecture docs
+  specs/                         - 79 specifications
+
+## Status: ✅ CLEAN AND ORGANIZED

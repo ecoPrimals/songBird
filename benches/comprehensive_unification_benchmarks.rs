@@ -16,7 +16,11 @@ fn benchmark_config_creation(c: &mut Criterion) {
 fn benchmark_config_serialization(c: &mut Criterion) {
     let config = UnifiedSongbirdConfig::default();
     let _group = c.bench_function("unified_config_serialization", |b| {
-        b.iter(|| black_box(serde_json::to_string(&config).unwrap()));
+        b.iter(|| {
+            black_box(
+                serde_json::to_string(&config).expect("Serialization should succeed in benchmarks"),
+            )
+        });
     });
 }
 

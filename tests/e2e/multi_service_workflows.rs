@@ -276,12 +276,22 @@ async fn test_dynamic_provider_registration() -> SongbirdResult<()> {
     // Step 2: Register new provider dynamically
     harness.register_test_provider("test_capability", "new_provider").await?;
     
-    // Step 3: Wait for propagation
-    tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
+    // Step 3: Poll for propagation (no sleep, wait for actual condition)
+    let start = tokio::time::Instant::now();
+    let timeout = tokio::time::Duration::from_secs(2);
+    let mut interval = tokio::time::interval(tokio::time::Duration::from_millis(10));
     
-    // Step 4: Discover again
-    let after = harness.discover_capability("test_capability").await?;
-    assert!(after.len() >= initial_count);
+    let mut after = initial.clone();
+    while start.elapsed() < timeout {
+        after = harness.discover_capability("test_capability").await?;
+        if after.len() > initial_count {
+            break;
+        }
+        interval.tick().await;
+    }
+    
+    // Step 4: Verify new provider is discovered
+    assert!(after.len() > initial_count, "New provider should be discovered");
     
     Ok(())
 }
@@ -300,10 +310,22 @@ async fn test_provider_deregistration_workflow() -> SongbirdResult<()> {
     // Step 3: Deregister
     harness.deregister_provider("temp_provider").await?;
     
-    // Step 4: Verify deregistration
-    tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
-    let after = harness.discover_capability("temp_capability").await?;
-    assert!(after.iter().all(|p| p.id != "temp_provider"));
+    // Step 4: Poll for deregistration (no sleep, wait for actual condition)
+    let start = tokio::time::Instant::now();
+    let timeout = tokio::time::Duration::from_secs(2);
+    let mut interval = tokio::time::interval(tokio::time::Duration::from_millis(10));
+    
+    let mut deregistered = false;
+    while start.elapsed() < timeout {
+        let after = harness.discover_capability("temp_capability").await?;
+        if after.iter().all(|p| p.id != "temp_provider") {
+            deregistered = true;
+            break;
+        }
+        interval.tick().await;
+    }
+    
+    assert!(deregistered, "Provider should be deregistered");
     
     Ok(())
 }

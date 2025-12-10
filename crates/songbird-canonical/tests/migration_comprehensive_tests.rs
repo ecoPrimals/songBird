@@ -4,7 +4,7 @@
 //! system for converting existing code to canonical patterns.
 
 use songbird_canonical::migration::*;
-use songbird_types::{SongbirdError, SongbirdResult};
+use songbird_types::SongbirdResult;
 use std::path::Path;
 
 // ========== CanonicalMigrator Tests ==========
@@ -623,18 +623,19 @@ fn test_migration_change_types_comprehensive() {
 
 #[test]
 fn test_migrate_file_large_content() -> SongbirdResult<()> {
+    use songbird_types::SongbirdError;
+    use std::fmt::Write;
+
     let migrator = CanonicalMigrator::new();
 
     // Create large content with multiple patterns
     let mut content = String::new();
     for i in 0..100 {
-        use songbird_types::{SongbirdError, SongbirdResult};
-        use std::fmt::Write;
         writeln!(
             &mut content,
             "fn function_{i}() -> Result<T, SomeError> {{ service_error!(\"error\") }}"
         )
-        .ok_or_else(|| {
+        .map_err(|_| {
             SongbirdError::configuration("Missing performance configuration".to_string())
         })?;
     }

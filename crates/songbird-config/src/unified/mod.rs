@@ -1,23 +1,52 @@
-//! Unified Configuration System
+//! Unified Configuration System - DEPRECATED
 //!
-//! This module provides the canonical configuration system that replaces all
-//! fragmented configuration structs throughout the Songbird ecosystem.
+//! **DEPRECATED**: Use `crate::canonical::` module instead.
+//!
+//! This module is being phased out in favor of the fully consolidated
+//! canonical configuration system. All types have been moved to `canonical::`.
+//!
+//! Migration Guide:
+//! - `unified::core::*` → `canonical::core::*`
+//! - `unified::observability::*` → `canonical::observability::*`
 
+#[deprecated(
+    since = "0.2.0",
+    note = "Use `canonical::core::*` instead. This module is being phased out."
+)]
+#[allow(deprecated)]
 pub use core::*;
+
+#[deprecated(
+    since = "0.2.0",
+    note = "Use `canonical::federation::*` instead. This module is being phased out."
+)]
+#[allow(deprecated)]
 pub use federation::*;
-// pub use network::*; // ✅ REMOVED: Fully consolidated into canonical::network (Nov 9, 2025)
-// pub use security::*; // ARCHIVED: Moved to _archived_q2_2026/, use canonical::security instead
-// pub use discovery::*; // ✅ REMOVED: Fully consolidated into canonical::discovery (Nov 9, 2025)
-pub use observability::*;
 
-// Core modules
+// Re-export canonical observability with deprecation notice
+#[deprecated(
+    since = "0.2.0",
+    note = "Use `canonical::observability::UnifiedObservabilityConfig` instead. All types consolidated."
+)]
+pub use crate::canonical::observability::UnifiedObservabilityConfig;
+
+// Core modules - DEPRECATED, use canonical instead
+#[deprecated(since = "0.2.0", note = "Use `crate::canonical::core` instead")]
 pub mod core;
-pub mod federation;
-pub mod robustness; // Robustness configs (circuit breakers, load balancers, etc.)
-                    // pub mod network; // ✅ REMOVED: Fully consolidated into canonical::network (Nov 9, 2025)
-                    // pub mod security; // ARCHIVED: November 8, 2025 - Use canonical::security instead
-                    // pub mod discovery; // ✅ REMOVED: Fully consolidated into canonical::discovery (Nov 9, 2025)
-pub mod observability;
 
-// Re-export the main config type for convenience
+#[deprecated(since = "0.2.0", note = "Use `crate::canonical::federation` instead")]
+pub mod federation;
+
+#[deprecated(since = "0.2.0", note = "Use `crate::canonical::robustness` instead")]
+pub mod robustness;
+
+// Observability moved to canonical
+// Use: crate::canonical::observability instead
+
+// Re-export the main config type with deprecation notice
+#[deprecated(
+    since = "0.2.0",
+    note = "Use `crate::canonical::CanonicalSongbirdConfig` instead. Migration: `unified::core::SongbirdConfig` → `canonical::CanonicalSongbirdConfig`"
+)]
+#[allow(deprecated)]
 pub use core::SongbirdConfig;

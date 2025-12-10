@@ -312,7 +312,6 @@ fn test_service_type_debug() -> SongbirdResult<()> {
 
 #[test]
 fn test_service_type_hash() -> SongbirdResult<()> {
-    use songbird_types::{SongbirdError, SongbirdResult};
     use std::collections::HashSet;
 
     let mut set = HashSet::new();

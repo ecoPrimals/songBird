@@ -295,7 +295,8 @@ impl PathConfig {
             return PathBuf::from(runtime_dir);
         }
 
-        PathBuf::from(crate::config::constants::get_temp_dir())
+        // Use canonical constants get_temp_dir()
+        PathBuf::from(crate::canonical::constants::get_temp_dir())
     }
 
     /// Create all necessary directories

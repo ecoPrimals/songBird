@@ -1,13 +1,16 @@
 //! Tests for Canonical Environment Configuration
 //!
 //! Comprehensive tests for environment configuration structures
+//!
+//! **Concurrency**: All tests are concurrent-safe using `TestEnv` for isolation.
+//! No `#[serial]` annotations needed!
 
-use serial_test::serial;
 use songbird_test_utils::test_bind_address;
 use songbird_test_utils::test_discovery_port;
 use songbird_test_utils::test_federation_port;
 use songbird_test_utils::test_health_port;
 use songbird_test_utils::test_orchestrator_port;
+use songbird_test_utils::TestEnv;
 use songbird_types::config::environment::{
     CanonicalEnvironmentConfig, CapabilityEndpoints, DeploymentMode, DeprecationWarningsConfig,
     EnvironmentHealthCheckConfig, LegacyCompatibilityConfig, MemoryPoolConfig,
@@ -18,13 +21,9 @@ use std::collections::HashMap;
 use std::net::{IpAddr, Ipv4Addr};
 use std::time::Duration;
 
-#[test]
-#[serial]
+#[test] // ✅ NO #[serial]! Fully concurrent!
 fn test_canonical_environment_config_default() {
-    // Clear env vars to ensure clean test
-    std::env::remove_var("SONGBIRD_ENV");
-    std::env::remove_var("SONGBIRD_BIND_ADDRESS");
-
+    // Uses default environment (development mode)
     let config = CanonicalEnvironmentConfig::default();
 
     assert!(matches!(config.deployment_mode, DeploymentMode::Development));
@@ -47,66 +46,60 @@ fn test_deployment_mode_variants() {
     assert!(matches!(custom, DeploymentMode::Custom(_)));
 }
 
-#[test]
-#[serial]
+#[test] // ✅ NO #[serial]! Fully concurrent!
 fn test_deployment_mode_default_development() {
-    std::env::remove_var("SONGBIRD_ENV");
-    let mode = DeploymentMode::default();
+    let env = TestEnv::development();
+    let mode = DeploymentMode::from_env_map(env.as_map());
 
     assert!(matches!(mode, DeploymentMode::Development));
 }
 
-#[test]
-#[serial]
+#[test] // ✅ NO #[serial]! Fully concurrent!
 fn test_deployment_mode_from_env_production() {
-    std::env::set_var("SONGBIRD_ENV", "production");
-    let mode = DeploymentMode::default();
+    let env = TestEnv::production();
+    let mode = DeploymentMode::from_env_map(env.as_map());
 
     assert!(matches!(mode, DeploymentMode::Production));
-    std::env::remove_var("SONGBIRD_ENV");
+    // No cleanup needed - env is local!
 }
 
-#[test]
-#[serial]
+#[test] // ✅ NO #[serial]! Fully concurrent!
 fn test_deployment_mode_from_env_staging() {
-    std::env::set_var("SONGBIRD_ENV", "staging");
-    let mode = DeploymentMode::default();
+    let env = TestEnv::staging();
+    let mode = DeploymentMode::from_env_map(env.as_map());
 
     assert!(matches!(mode, DeploymentMode::Staging));
-    std::env::remove_var("SONGBIRD_ENV");
+    // No cleanup needed - env is local!
 }
 
-#[test]
-#[serial]
+#[test] // ✅ NO #[serial]! Fully concurrent!
 fn test_deployment_mode_from_env_testing() {
-    std::env::set_var("SONGBIRD_ENV", "testing");
-    let mode = DeploymentMode::default();
+    let env = TestEnv::testing();
+    let mode = DeploymentMode::from_env_map(env.as_map());
 
     assert!(matches!(mode, DeploymentMode::Testing));
-    std::env::remove_var("SONGBIRD_ENV");
+    // No cleanup needed - env is local!
 }
 
-#[test]
-#[serial]
+#[test] // ✅ NO #[serial]! Fully concurrent!
 fn test_deployment_mode_custom() {
-    std::env::set_var("SONGBIRD_ENV", "custom-env");
-    let mode = DeploymentMode::default();
+    let mut env = TestEnv::new();
+    env.set("SONGBIRD_ENV", "custom-env");
+
+    let mode = DeploymentMode::from_env_map(env.as_map());
 
     if let DeploymentMode::Custom(name) = mode {
         assert_eq!(name, "custom-env");
     } else {
         panic!("Expected Custom variant");
     }
-    std::env::remove_var("SONGBIRD_ENV");
+    // No cleanup needed - env is local!
 }
 
-#[test]
-#[serial]
+#[test] // ✅ NO #[serial]! Fully concurrent!
 fn test_resource_limits_default() {
-    std::env::remove_var("SONGBIRD_MAX_CONNECTIONS");
-    std::env::remove_var("SONGBIRD_MAX_MEMORY_MB");
-
-    let limits = ResourceLimits::default();
+    let env = TestEnv::new(); // Empty environment
+    let limits = ResourceLimits::from_env_map(env.as_map());
 
     assert_eq!(limits.max_connections, 1000);
     assert_eq!(limits.max_memory_mb, 2048);
@@ -116,30 +109,25 @@ fn test_resource_limits_default() {
     assert_eq!(limits.disk_space_gb, 100);
 }
 
-#[test]
-#[serial]
+#[test] // ✅ NO #[serial]! Fully concurrent!
 fn test_resource_limits_from_env() {
-    std::env::set_var("SONGBIRD_MAX_CONNECTIONS", "5000");
-    std::env::set_var("SONGBIRD_MAX_MEMORY_MB", "4096");
-    std::env::set_var("SONGBIRD_MAX_CPU_CORES", "8");
+    let mut env = TestEnv::new();
+    env.set("SONGBIRD_MAX_CONNECTIONS", "5000");
+    env.set("SONGBIRD_MAX_MEMORY_MB", "4096");
+    env.set("SONGBIRD_MAX_CPU_CORES", "8");
 
-    let limits = ResourceLimits::default();
+    let limits = ResourceLimits::from_env_map(env.as_map());
 
     assert_eq!(limits.max_connections, 5000);
     assert_eq!(limits.max_memory_mb, 4096);
     assert_eq!(limits.max_cpu_cores, 8);
-
-    std::env::remove_var("SONGBIRD_MAX_CONNECTIONS");
-    std::env::remove_var("SONGBIRD_MAX_MEMORY_MB");
-    std::env::remove_var("SONGBIRD_MAX_CPU_CORES");
+    // No cleanup needed - env is local!
 }
 
-#[test]
-#[serial]
+#[test] // ✅ NO #[serial]! Fully concurrent!
 fn test_memory_pool_config_default() {
-    std::env::remove_var("SONGBIRD_MEMORY_POOL_ENABLED");
-
-    let config = MemoryPoolConfig::default();
+    let env = TestEnv::new(); // Empty environment
+    let config = MemoryPoolConfig::from_env_map(env.as_map());
 
     assert!(config.enabled);
     assert_eq!(config.initial_size_mb, 64);
@@ -147,23 +135,20 @@ fn test_memory_pool_config_default() {
     assert_eq!(config.growth_increment_mb, 32);
 }
 
-#[test]
-#[serial]
+#[test] // ✅ NO #[serial]! Fully concurrent!
 fn test_memory_pool_config_disabled() {
-    std::env::set_var("SONGBIRD_MEMORY_POOL_ENABLED", "false");
-    let config = MemoryPoolConfig::default();
+    let mut env = TestEnv::new();
+    env.set("SONGBIRD_MEMORY_POOL_ENABLED", "false");
 
+    let config = MemoryPoolConfig::from_env_map(env.as_map());
     assert!(!config.enabled);
-    std::env::remove_var("SONGBIRD_MEMORY_POOL_ENABLED");
+    // No cleanup needed - env is local!
 }
 
-#[test]
-#[serial]
+#[test] // ✅ NO #[serial]! Fully concurrent!
 fn test_service_discovery_config_default() {
-    std::env::remove_var("SONGBIRD_AUTO_DISCOVERY");
-    std::env::remove_var("SONGBIRD_DISCOVERY_REFRESH_INTERVAL");
-
-    let config = ServiceDiscoveryConfig::default();
+    let env = TestEnv::new(); // Empty environment
+    let config = ServiceDiscoveryConfig::from_env_map(env.as_map());
 
     assert!(config.auto_discovery);
     assert_eq!(config.refresh_interval, Duration::from_secs(30));
@@ -171,19 +156,17 @@ fn test_service_discovery_config_default() {
     assert!(config.fallback_endpoints.is_empty());
 }
 
-#[test]
-#[serial]
+#[test] // ✅ NO #[serial]! Fully concurrent!
 fn test_service_discovery_config_from_env() {
-    std::env::set_var("SONGBIRD_AUTO_DISCOVERY", "false");
-    std::env::set_var("SONGBIRD_DISCOVERY_REFRESH_INTERVAL", "60");
+    let mut env = TestEnv::new();
+    env.set("SONGBIRD_AUTO_DISCOVERY", "false");
+    env.set("SONGBIRD_DISCOVERY_REFRESH_INTERVAL", "60");
 
-    let config = ServiceDiscoveryConfig::default();
+    let config = ServiceDiscoveryConfig::from_env_map(env.as_map());
 
     assert!(!config.auto_discovery);
     assert_eq!(config.refresh_interval, Duration::from_secs(60));
-
-    std::env::remove_var("SONGBIRD_AUTO_DISCOVERY");
-    std::env::remove_var("SONGBIRD_DISCOVERY_REFRESH_INTERVAL");
+    // No cleanup needed - env is local!
 }
 
 #[test]
@@ -197,14 +180,10 @@ fn test_environment_health_check_config_default() {
     assert_eq!(config.endpoint_path, "/health");
 }
 
-#[test]
-#[serial]
+#[test] // ✅ NO #[serial]! Fully concurrent!
 fn test_network_binding_config_default() {
-    std::env::remove_var("SONGBIRD_BIND_ADDRESS");
-    std::env::remove_var("SONGBIRD_PRODUCTION_BIND_ADDRESS");
-    std::env::remove_var("SONGBIRD_BIND_PORT");
-
-    let config = NetworkBindingConfig::default();
+    let env = TestEnv::new(); // Empty environment
+    let config = NetworkBindingConfig::from_env_map(env.as_map());
 
     assert_eq!(config.bind_address, IpAddr::V4(Ipv4Addr::UNSPECIFIED));
     assert_eq!(config.production_bind_address, IpAddr::V4(Ipv4Addr::LOCALHOST));
@@ -212,19 +191,17 @@ fn test_network_binding_config_default() {
     assert_eq!(config.interface_preferences.len(), 2);
 }
 
-#[test]
-#[serial]
+#[test] // ✅ NO #[serial]! Fully concurrent!
 fn test_network_binding_config_from_env() {
-    std::env::set_var("SONGBIRD_BIND_ADDRESS", test_bind_address());
-    std::env::set_var("SONGBIRD_BIND_PORT", "3000");
+    let mut env = TestEnv::new();
+    env.set("SONGBIRD_BIND_ADDRESS", &test_bind_address());
+    env.set("SONGBIRD_BIND_PORT", "3000");
 
-    let config = NetworkBindingConfig::default();
+    let config = NetworkBindingConfig::from_env_map(env.as_map());
 
     assert_eq!(config.bind_address, IpAddr::V4(Ipv4Addr::LOCALHOST));
     assert_eq!(config.bind_port, 3000);
-
-    std::env::remove_var("SONGBIRD_BIND_ADDRESS");
-    std::env::remove_var("SONGBIRD_BIND_PORT");
+    // No cleanup needed - env is local!
 }
 
 #[test]
@@ -238,13 +215,10 @@ fn test_port_range_default() {
     assert!(range.start < range.end);
 }
 
-#[test]
-#[serial]
+#[test] // ✅ NO #[serial]! Fully concurrent!
 fn test_capability_endpoints_default() {
-    std::env::remove_var("SONGBIRD_STORAGE_ENDPOINT");
-    std::env::remove_var("SONGBIRD_COMPUTE_ENDPOINT");
-
-    let endpoints = CapabilityEndpoints::default();
+    let env = TestEnv::new(); // Empty environment
+    let endpoints = CapabilityEndpoints::from_env_map(env.as_map());
 
     assert!(endpoints.storage.is_none());
     assert!(endpoints.compute.is_none());
@@ -254,55 +228,40 @@ fn test_capability_endpoints_default() {
     assert!(endpoints.custom.is_empty());
 }
 
-#[test]
-#[serial]
+#[test] // ✅ NO #[serial]! Fully concurrent!
 fn test_capability_endpoints_from_env() {
-    std::env::set_var(
-        "SONGBIRD_STORAGE_ENDPOINT",
-        format!("http://storage:{}", test_orchestrator_port()),
-    );
-    std::env::set_var(
-        "SONGBIRD_COMPUTE_ENDPOINT",
-        format!("http://compute:{}", test_discovery_port()),
-    );
+    let mut env = TestEnv::new();
+    env.set("SONGBIRD_STORAGE_ENDPOINT", &format!("http://storage:{}", test_orchestrator_port()));
+    env.set("SONGBIRD_COMPUTE_ENDPOINT", &format!("http://compute:{}", test_discovery_port()));
 
-    let endpoints = CapabilityEndpoints::default();
+    let endpoints = CapabilityEndpoints::from_env_map(env.as_map());
 
     assert_eq!(endpoints.storage, Some(format!("http://storage:{}", test_orchestrator_port())));
     assert_eq!(endpoints.compute, Some(format!("http://compute:{}", test_discovery_port())));
-
-    std::env::remove_var("SONGBIRD_STORAGE_ENDPOINT");
-    std::env::remove_var("SONGBIRD_COMPUTE_ENDPOINT");
+    // No cleanup needed - env is local!
 }
 
-#[test]
-#[serial]
+#[test] // ✅ NO #[serial]! Fully concurrent!
 fn test_legacy_compatibility_config_default() {
-    std::env::remove_var("SONGBIRD_ENABLE_LEGACY_NAMES");
-
-    let config = LegacyCompatibilityConfig::default();
+    let env = TestEnv::new(); // Empty environment
+    let config = LegacyCompatibilityConfig::from_env_map(env.as_map());
 
     assert!(config.enable_legacy_primal_names);
     assert!(config.legacy_endpoints.is_empty());
 }
 
-#[test]
-#[serial]
+#[test] // ✅ NO #[serial]! Fully concurrent!
 fn test_deprecation_warnings_config_default() {
-    std::env::remove_var("SONGBIRD_DEPRECATION_WARNINGS");
-
-    let config = DeprecationWarningsConfig::default();
+    let env = TestEnv::new(); // Empty environment
+    let config = DeprecationWarningsConfig::from_env_map(env.as_map());
 
     assert!(config.enabled);
     assert_eq!(config.log_level, "warn");
     assert!(config.suppress_warnings.is_empty());
 }
 
-#[test]
-#[serial]
+#[test] // ✅ NO #[serial]! Fully concurrent! (doesn't mutate global state)
 fn test_canonical_environment_get_capability_endpoint() {
-    std::env::remove_var("SONGBIRD_ENV");
-
     let mut config = CanonicalEnvironmentConfig::default();
     config.capability_endpoints.storage =
         Some(format!("http://storage:{}", test_orchestrator_port()));
@@ -319,11 +278,8 @@ fn test_canonical_environment_get_capability_endpoint() {
     assert_eq!(config.get_capability_endpoint("nonexistent"), None);
 }
 
-#[test]
-#[serial]
+#[test] // ✅ NO #[serial]! Fully concurrent! (doesn't mutate global state)
 fn test_canonical_environment_get_all_endpoints() {
-    std::env::remove_var("SONGBIRD_ENV");
-
     let mut config = CanonicalEnvironmentConfig::default();
     config.capability_endpoints.storage =
         Some(format!("http://storage:{}", test_orchestrator_port()));
@@ -342,11 +298,8 @@ fn test_canonical_environment_get_all_endpoints() {
     );
 }
 
-#[test]
-#[serial]
+#[test] // ✅ NO #[serial]! Fully concurrent! (doesn't mutate global state)
 fn test_canonical_environment_is_production() {
-    std::env::remove_var("SONGBIRD_ENV");
-
     let mut config = CanonicalEnvironmentConfig::default();
     assert!(!config.is_production());
 
@@ -354,20 +307,14 @@ fn test_canonical_environment_is_production() {
     assert!(config.is_production());
 }
 
-#[test]
-#[serial]
+#[test] // ✅ NO #[serial]! Fully concurrent! (doesn't mutate global state)
 fn test_canonical_environment_is_development() {
-    std::env::remove_var("SONGBIRD_ENV");
-
     let config = CanonicalEnvironmentConfig::default();
     assert!(config.is_development());
 }
 
-#[test]
-#[serial]
+#[test] // ✅ NO #[serial]! Fully concurrent! (doesn't mutate global state)
 fn test_canonical_environment_get_bind_address() {
-    std::env::remove_var("SONGBIRD_ENV");
-
     let mut config = CanonicalEnvironmentConfig::default();
 
     // Development mode should return localhost
@@ -399,22 +346,16 @@ fn test_resource_limits_serialization() -> SongbirdResult<()> {
     Ok(())
 }
 
-#[test]
-#[serial]
+#[test] // ✅ NO #[serial]! Fully concurrent! (doesn't mutate global state)
 fn test_canonical_environment_config_clone() {
-    std::env::remove_var("SONGBIRD_ENV");
-
     let config = CanonicalEnvironmentConfig::default();
     let cloned = config.clone();
 
     assert_eq!(config.resource_limits.max_connections, cloned.resource_limits.max_connections);
 }
 
-#[test]
-#[serial]
+#[test] // ✅ NO #[serial]! Fully concurrent! (doesn't mutate global state)
 fn test_canonical_environment_config_debug() {
-    std::env::remove_var("SONGBIRD_ENV");
-
     let config = CanonicalEnvironmentConfig::default();
     let debug_str = format!("{config:?}");
 
@@ -446,11 +387,8 @@ fn test_service_discovery_with_fallbacks() {
     assert_eq!(config.fallback_endpoints.len(), 2);
 }
 
-#[test]
-#[serial]
+#[test] // ✅ NO #[serial]! Fully concurrent! (doesn't mutate global state)
 fn test_environment_overrides() {
-    std::env::remove_var("SONGBIRD_ENV");
-
     let mut config = CanonicalEnvironmentConfig::default();
     config.environment_overrides.insert("KEY1".to_string(), "value1".to_string());
     config.environment_overrides.insert("KEY2".to_string(), "value2".to_string());

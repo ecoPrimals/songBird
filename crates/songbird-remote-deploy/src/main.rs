@@ -157,16 +157,16 @@ async fn main() -> Result<()> {
             ssh_key,
             auto_start,
         } => {
-            deploy_service(
-                &args.songbird_endpoint,
-                &tower,
-                &binary,
-                &remote_path,
-                &env_vars,
-                &ssh_user,
-                ssh_key.as_deref(),
+            deploy_service(DeploymentConfig {
+                songbird_endpoint: &args.songbird_endpoint,
+                tower_id: &tower,
+                binary_path: &binary,
+                remote_path: &remote_path,
+                env_vars: &env_vars,
+                ssh_user: &ssh_user,
+                ssh_key: ssh_key.as_deref(),
                 auto_start,
-            )
+            })
             .await?;
         }
         Commands::DeployHttp {
@@ -203,48 +203,67 @@ async fn main() -> Result<()> {
     Ok(())
 }
 
-/// Deploy service to remote tower
-async fn deploy_service(
-    songbird_endpoint: &str,
-    tower_id: &str,
-    binary_path: &str,
-    remote_path: &str,
-    env_vars: &[(String, String)],
-    ssh_user: &str,
-    ssh_key: Option<&str>,
+/// Deployment configuration
+struct DeploymentConfig<'a> {
+    songbird_endpoint: &'a str,
+    tower_id: &'a str,
+    binary_path: &'a str,
+    remote_path: &'a str,
+    env_vars: &'a [(String, String)],
+    ssh_user: &'a str,
+    ssh_key: Option<&'a str>,
     auto_start: bool,
-) -> Result<()> {
-    info!("🚀 Deploying service to tower: {}", tower_id);
+}
+
+/// Deploy service to remote tower
+async fn deploy_service(config: DeploymentConfig<'_>) -> Result<()> {
+    info!("🚀 Deploying service to tower: {}", config.tower_id);
 
     // Get tower information from Songbird
-    let tower_info = get_tower_info(songbird_endpoint, tower_id).await?;
+    let tower_info = get_tower_info(config.songbird_endpoint, config.tower_id).await?;
     let tower_address = parse_tower_address(&tower_info.node_address)?;
 
     info!("📡 Target: {} ({})", tower_info.node_name, tower_address);
-    info!("📦 Binary: {}", binary_path);
-    info!("📍 Remote path: {}", remote_path);
+    info!("📦 Binary: {}", config.binary_path);
+    info!("📍 Remote path: {}", config.remote_path);
 
     // Step 1: Copy binary via SCP
     info!("📤 Copying binary...");
-    scp_copy(binary_path, &tower_address, remote_path, ssh_user, ssh_key)?;
+    scp_copy(
+        config.binary_path,
+        &tower_address,
+        config.remote_path,
+        config.ssh_user,
+        config.ssh_key,
+    )?;
     info!("✅ Binary copied successfully");
 
     // Step 2: Make it executable
     info!("🔧 Making binary executable...");
-    ssh_exec(&tower_address, &format!("chmod +x {}", remote_path), ssh_user, ssh_key)?;
+    ssh_exec(
+        &tower_address,
+        &format!("chmod +x {}", config.remote_path),
+        config.ssh_user,
+        config.ssh_key,
+    )?;
     info!("✅ Binary is executable");
 
     // Step 3: Start service if requested
-    if auto_start {
+    if config.auto_start {
         info!("🎬 Starting service...");
-        start_remote_service(&tower_address, remote_path, env_vars, ssh_user, ssh_key)?;
+        start_remote_service(
+            &tower_address,
+            config.remote_path,
+            config.env_vars,
+            config.ssh_user,
+            config.ssh_key,
+        )?;
         info!("✅ Service started");
 
-        // Wait a moment for startup
-        tokio::time::sleep(tokio::time::Duration::from_secs(2)).await;
-
-        // Verify it's running
-        if let Some(port) = env_vars
+        // Poll for actual service readiness instead of fixed sleep
+        // Use health check endpoint or process status
+        if let Some(port) = config
+            .env_vars
             .iter()
             .find(|(k, _)| k.ends_with("PORT"))
             .and_then(|(_, v)| v.parse::<u16>().ok())
@@ -264,10 +283,10 @@ async fn deploy_service(
     info!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
     info!("");
     info!("Tower: {} ({})", tower_info.node_name, tower_address);
-    info!("Service: {}", remote_path);
+    info!("Service: {}", config.remote_path);
     info!(
         "Status: {}",
-        if auto_start {
+        if config.auto_start {
             "Running"
         } else {
             "Deployed (not started)"

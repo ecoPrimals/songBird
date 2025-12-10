@@ -350,7 +350,7 @@ pub enum ProviderType {
 }
 
 /// Primal type enumeration
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub enum PrimalType {
     Security,
     Storage,

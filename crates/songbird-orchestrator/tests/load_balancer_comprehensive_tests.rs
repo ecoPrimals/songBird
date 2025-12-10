@@ -6,7 +6,7 @@
 
 use songbird_universal::load_balancer::{LoadBalancer, LoadBalancingStrategy};
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_round_robin_basic() {
     let endpoints = vec![
         "http://service-1:8080".to_string(),
@@ -28,7 +28,7 @@ async fn test_round_robin_basic() {
     assert_eq!(fourth, endpoints[0]); // Wraps around
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_round_robin_single_endpoint() {
     let endpoints = vec!["http://service-1:8080".to_string()];
 
@@ -41,7 +41,7 @@ async fn test_round_robin_single_endpoint() {
     }
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_empty_endpoints() {
     let endpoints: Vec<String> = vec![];
 
@@ -52,7 +52,7 @@ async fn test_empty_endpoints() {
     assert_eq!(result.unwrap_err(), "No endpoints configured");
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_all_endpoints_unavailable() {
     let endpoints = vec!["http://service-1:8080".to_string(), "http://service-2:8080".to_string()];
 
@@ -67,7 +67,7 @@ async fn test_all_endpoints_unavailable() {
     assert_eq!(result.unwrap_err(), "No available endpoints");
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_endpoint_failover() {
     let endpoints = vec![
         "http://service-1:8080".to_string(),
@@ -91,7 +91,7 @@ async fn test_endpoint_failover() {
     assert_ne!(third, endpoints[0]);
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_endpoint_recovery() {
     let endpoints = vec!["http://service-1:8080".to_string(), "http://service-2:8080".to_string()];
 
@@ -107,7 +107,7 @@ async fn test_endpoint_recovery() {
     assert!(result == endpoints[0] || result == endpoints[1]);
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_health_based_strategy() {
     let endpoints = vec![
         "http://service-1:8080".to_string(),
@@ -129,7 +129,7 @@ async fn test_health_based_strategy() {
     }
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_least_loaded_strategy() {
     let endpoints = vec![
         "http://service-1:8080".to_string(),
@@ -147,7 +147,7 @@ async fn test_least_loaded_strategy() {
     }
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_random_strategy() {
     let endpoints = vec![
         "http://service-1:8080".to_string(),
@@ -171,7 +171,7 @@ async fn test_random_strategy() {
     assert!(unique_selections.len() > 1, "Random strategy should vary selections");
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_get_endpoints() {
     let endpoints = vec!["http://service-1:8080".to_string(), "http://service-2:8080".to_string()];
 
@@ -190,7 +190,7 @@ async fn test_get_endpoints() {
     assert!(all_endpoints[1].available);
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_multiple_strategies() {
     let endpoints = vec!["http://service-1:8080".to_string(), "http://service-2:8080".to_string()];
 
@@ -207,7 +207,7 @@ async fn test_multiple_strategies() {
     }
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_concurrent_access() {
     let endpoints = vec![
         "http://service-1:8080".to_string(),
@@ -236,7 +236,7 @@ async fn test_concurrent_access() {
     }
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_health_score_clamping() {
     let endpoints = vec!["http://service-1:8080".to_string()];
 

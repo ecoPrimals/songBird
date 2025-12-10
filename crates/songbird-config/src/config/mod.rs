@@ -184,10 +184,15 @@ impl SongbirdConfig {
 
     /// Enable a primal in the universal registry
     pub fn enable_primal(&mut self, primal_name: &str, endpoint: &str) {
+        #[allow(deprecated)]
         if self.primal_registry.is_none() {
-            self.primal_registry = Some(crate::canonical::primals::PrimalRegistry::default());
+            #[allow(deprecated)]
+            {
+                self.primal_registry = Some(crate::canonical::primals::PrimalRegistry::default());
+            }
         }
 
+        #[allow(deprecated)]
         if let Some(registry) = &mut self.primal_registry {
             let mut primal_config = crate::canonical::primals::PrimalConfiguration::new_template(
                 primal_name,
@@ -203,10 +208,13 @@ impl SongbirdConfig {
     /// Check if a primal is enabled
     #[must_use]
     pub fn is_primal_enabled(&self, primal_name: &str) -> bool {
-        self.primal_registry
+        #[allow(deprecated)]
+        let result = self
+            .primal_registry
             .as_ref()
             .and_then(|registry| registry.get_primal(primal_name))
-            .is_some_and(|primal| primal.enabled)
+            .is_some_and(|primal| primal.enabled);
+        result
     }
 
     /// Get primal configuration
@@ -215,11 +223,15 @@ impl SongbirdConfig {
         &self,
         primal_name: &str,
     ) -> Option<&crate::canonical::primals::PrimalConfiguration> {
-        self.primal_registry.as_ref().and_then(|registry| registry.get_primal(primal_name))
+        #[allow(deprecated)]
+        let result =
+            self.primal_registry.as_ref().and_then(|registry| registry.get_primal(primal_name));
+        result
     }
 
     /// Disable a primal
     pub fn disable_primal(&mut self, primal_name: &str) {
+        #[allow(deprecated)]
         if let Some(registry) = &mut self.primal_registry {
             if let Some(primal) = registry.primals.get_mut(primal_name) {
                 primal.enabled = false;
@@ -227,6 +239,7 @@ impl SongbirdConfig {
         }
     }
 
+    #[allow(deprecated)]
     /// Get all enabled primals
     #[must_use]
     pub fn get_enabled_primals(&self) -> Vec<&crate::canonical::primals::PrimalConfiguration> {

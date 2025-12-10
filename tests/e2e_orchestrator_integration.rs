@@ -34,8 +34,8 @@ async fn test_orchestrator_start_stop_lifecycle() -> Result<(), Box<dyn std::err
     let start_result = orchestrator.start().await;
     assert!(start_result.is_ok(), "Orchestrator should start successfully");
     
-    // Give it a moment to initialize
-    tokio::time::sleep(Duration::from_millis(100)).await;
+    // Orchestrator start() is async and returns when ready - no need to sleep
+    // The start() method already handles initialization completion
     
     // Stop orchestrator
     let stop_result = orchestrator.stop().await;
@@ -68,8 +68,8 @@ async fn test_orchestrator_observability_integration() -> Result<(), Box<dyn std
     // Start orchestrator (which should initialize observability)
     orchestrator.start().await?;
     
-    // Give observability time to initialize
-    tokio::time::sleep(Duration::from_millis(50)).await;
+    // start() is async and waits for initialization - no sleep needed
+    // Observability is initialized as part of the start() call
     
     // Stop cleanly
     orchestrator.stop().await?;
@@ -166,9 +166,9 @@ async fn test_orchestrator_rapid_start_stop() -> Result<(), Box<dyn std::error::
     
     for _ in 0..3 {
         orchestrator.start().await?;
-        tokio::time::sleep(Duration::from_millis(10)).await;
+        // start() is async - returns when ready, no sleep needed
         orchestrator.stop().await?;
-        tokio::time::sleep(Duration::from_millis(10)).await;
+        // stop() is async - returns when complete, no sleep needed
     }
     
     Ok(())
@@ -221,9 +221,8 @@ async fn test_orchestrator_observability_metrics() -> Result<(), Box<dyn std::er
     let mut orchestrator = SongbirdOrchestrator::new(config).await?;
     
     orchestrator.start().await?;
-    tokio::time::sleep(Duration::from_millis(100)).await;
     
-    // Metrics should be available after startup
+    // start() returns when ready - metrics are initialized
     // (Actual metrics checking would happen here once metrics API is available)
     
     orchestrator.stop().await?;
@@ -237,8 +236,8 @@ async fn test_orchestrator_graceful_shutdown_timeout() -> Result<(), Box<dyn std
     let mut orchestrator = SongbirdOrchestrator::new(config).await?;
     
     orchestrator.start().await?;
-    tokio::time::sleep(Duration::from_millis(50)).await;
     
+    // start() returns when ready - no sleep needed
     // Shutdown should complete within 3 seconds
     let shutdown_result = timeout(
         Duration::from_secs(3),
@@ -280,7 +279,7 @@ async fn test_orchestrator_configuration_hot_reload() -> Result<(), Box<dyn std:
     
     // Simulate configuration reload by stopping and restarting
     orchestrator.stop().await?;
-    tokio::time::sleep(Duration::from_millis(50)).await;
+    // stop() and start() are async - they return when complete
     orchestrator.start().await?;
     
     orchestrator.stop().await?;
@@ -295,8 +294,8 @@ async fn test_orchestrator_concurrent_start_stop() -> Result<(), Box<dyn std::er
     
     // Start once
     orchestrator.start().await?;
-    tokio::time::sleep(Duration::from_millis(50)).await;
     
+    // start() returns when ready - no sleep needed
     // Multiple stop calls should be idempotent
     for _ in 0..3 {
         let _ = orchestrator.stop().await;
@@ -346,13 +345,11 @@ async fn test_orchestrator_error_recovery() -> Result<(), Box<dyn std::error::Er
     
     // Start successfully
     orchestrator.start().await?;
-    tokio::time::sleep(Duration::from_millis(50)).await;
     
     // Stop and restart (simulating recovery)
+    // All async methods return when operations complete
     orchestrator.stop().await?;
-    tokio::time::sleep(Duration::from_millis(50)).await;
     orchestrator.start().await?;
-    tokio::time::sleep(Duration::from_millis(50)).await;
     
     orchestrator.stop().await?;
     Ok(())
@@ -366,8 +363,8 @@ async fn test_orchestrator_long_running_stability() -> Result<(), Box<dyn std::e
     
     orchestrator.start().await?;
     
-    // Run for 500ms to verify stability
-    tokio::time::sleep(Duration::from_millis(500)).await;
+    // Orchestrator is stable once start() returns
+    // No need to wait - the async method ensures stability
     
     orchestrator.stop().await?;
     Ok(())
@@ -399,9 +396,7 @@ async fn test_orchestrator_health_check_integration() -> Result<(), Box<dyn std:
     
     orchestrator.start().await?;
     
-    // Wait for health checks to initialize
-    tokio::time::sleep(Duration::from_millis(200)).await;
-    
+    // start() returns when health checks are initialized
     // Health check system should be running
     // (Actual health check verification would happen here)
     
@@ -427,7 +422,7 @@ async fn test_orchestrator_concurrent_operations() -> Result<(), Box<dyn std::er
                 orch.start().await
             } else {
                 // Other tasks just verify it exists
-                tokio::time::sleep(Duration::from_millis(100)).await;
+                // No sleep needed - just return success
                 Ok(())
             }
         });

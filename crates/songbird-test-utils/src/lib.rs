@@ -23,6 +23,7 @@ pub mod network_mocks;
 pub mod performance;
 pub mod performance_testing;
 pub mod service_fixtures;
+pub mod test_env;
 
 // Re-export core testing types (canonical pattern)
 pub use canonical_test_framework::{MockService, TestEnvironment};
@@ -49,3 +50,4 @@ pub use cli_helpers::*;
 pub use config_helpers::*;
 pub use network_fixtures::*;
 pub use service_fixtures::*;
+pub use test_env::*;

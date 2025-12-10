@@ -24,6 +24,8 @@ pub fn jsonrpc_routes() -> Router<JsonRpcState> {
 
 use songbird_network_federation::service_registry::FederatedServiceRegistry;
 use songbird_network_federation::state::FederationState;
+use std::time::Instant;
+use tokio::sync::RwLock;
 
 /// Shared state for JSON-RPC API
 #[derive(Clone)]
@@ -32,6 +34,8 @@ pub struct JsonRpcState {
     pub federation_state: Arc<FederationState>,
     /// Service registry for discovery
     pub service_registry: Arc<FederatedServiceRegistry>,
+    /// Server start time for uptime calculation
+    pub start_time: Arc<RwLock<Instant>>,
 }
 
 impl JsonRpcState {
@@ -42,12 +46,13 @@ impl JsonRpcState {
         Self {
             federation_state,
             service_registry,
+            start_time: Arc::new(RwLock::new(Instant::now())),
         }
     }
 }
 
 /// JSON-RPC 2.0 Request
-/// https://www.jsonrpc.org/specification#request_object
+/// <https://www.jsonrpc.org/specification#request_object>
 #[derive(Debug, Deserialize)]
 pub struct JsonRpcRequest {
     /// JSON-RPC version (must be "2.0")
@@ -65,7 +70,7 @@ pub struct JsonRpcRequest {
 }
 
 /// JSON-RPC 2.0 Response
-/// https://www.jsonrpc.org/specification#response_object
+/// <https://www.jsonrpc.org/specification#response_object>
 #[derive(Debug, Serialize)]
 pub struct JsonRpcResponse {
     /// JSON-RPC version (always "2.0")
@@ -84,7 +89,7 @@ pub struct JsonRpcResponse {
 }
 
 /// JSON-RPC 2.0 Error
-/// https://www.jsonrpc.org/specification#error_object
+/// <https://www.jsonrpc.org/specification#error_object>
 #[derive(Debug, Serialize)]
 pub struct JsonRpcError {
     /// Error code
@@ -187,7 +192,7 @@ async fn handle_jsonrpc_request(
         "songbird.protocol.capabilities" => handle_protocol_capabilities().await,
 
         // Health check
-        "songbird.health" => handle_health().await,
+        "songbird.health" => handle_health(&state).await,
         "songbird.version" => handle_version().await,
 
         // Unknown method
@@ -364,12 +369,15 @@ async fn handle_protocol_capabilities() -> Result<Value, JsonRpcError> {
 }
 
 /// songbird.health
-/// Health check
-async fn handle_health() -> Result<Value, JsonRpcError> {
+/// Health check with real uptime tracking
+async fn handle_health(state: &JsonRpcState) -> Result<Value, JsonRpcError> {
+    let start_time = state.start_time.read().await;
+    let uptime_seconds = start_time.elapsed().as_secs();
+
     Ok(serde_json::json!({
         "status": "healthy",
         "version": env!("CARGO_PKG_VERSION"),
-        "uptime_seconds": 0  // TODO: Track actual uptime
+        "uptime_seconds": uptime_seconds
     }))
 }
 

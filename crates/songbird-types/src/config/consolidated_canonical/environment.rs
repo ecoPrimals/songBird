@@ -11,12 +11,19 @@ use serde::{Deserialize, Serialize};
 // ============================================================================
 
 /// **CANONICAL**: Environment configuration
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct CanonicalEnvironmentConfig {
     /// Environment name
     pub name: String,
     /// Deployment mode
     pub deployment_mode: String,
+}
+
+impl CanonicalEnvironmentConfig {
+    /// Check if environment name is empty (compatibility helper)
+    pub fn is_empty(&self) -> bool {
+        self.name.is_empty()
+    }
 }
 
 impl Default for CanonicalEnvironmentConfig {

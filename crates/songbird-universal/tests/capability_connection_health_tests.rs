@@ -607,15 +607,16 @@ fn test_service_connections_with_metrics() -> SongbirdResult<()> {
     conn2.metrics.insert("latency_ms".to_string(), 150.0);
 
     // Healthy service should have lower latency
-    assert!(
-        conn1
-            .metrics
-            .get("latency_ms")
-            .or_else(|_| SongbirdError::configuration("Error"))?
-            < conn2.metrics.get("latency_ms").or_else(|_| SongbirdError::configuration(
-                "Missing performance configuration"
-            ))?
-    );
+    let latency1 = conn1
+        .metrics
+        .get("latency_ms")
+        .ok_or_else(|| SongbirdError::configuration("Missing latency metric for conn1"))?;
+    let latency2 = conn2
+        .metrics
+        .get("latency_ms")
+        .ok_or_else(|| SongbirdError::configuration("Missing latency metric for conn2"))?;
+
+    assert!(latency1 < latency2);
     Ok(())
 }
 

@@ -2,6 +2,8 @@
 
 #![allow(clippy::unused_self, clippy::match_same_arms, clippy::unused_async)]
 
+use chrono::{DateTime, Utc};
+use serde::{Deserialize, Serialize};
 use songbird_types::SafeEnv;
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -13,6 +15,17 @@ use super::error::CapabilityError;
 use super::registry::CapabilityRegistry;
 use super::types::{Capability, CapabilityResponse, DiscoveryConfig, PrimalType, QoSMetrics};
 use super::HEALTH_PATH;
+
+/// Federation event for tracking state changes
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct FederationEvent {
+    /// Event type
+    pub event_type: String,
+    /// Event data
+    pub data: String,
+    /// When the event occurred
+    pub timestamp: DateTime<Utc>,
+}
 
 /// Universal capability adapter that works with any primal
 #[derive(Debug, Clone)]
@@ -588,6 +601,68 @@ impl UniversalCapabilityAdapter {
             }
         }
     }
+
+    /// Get recent federation events
+    ///
+    /// # Errors
+    ///
+    /// Returns NotImplemented error - this feature is planned for future release
+    pub async fn get_recent_events(&self) -> Result<Vec<FederationEvent>, CapabilityError> {
+        Err(CapabilityError::NotImplemented(
+            "get_recent_events is not yet implemented for federation".to_string(),
+        ))
+    }
+
+    /// Verify state consistency across federation
+    ///
+    /// # Errors
+    ///
+    /// Returns NotImplemented error - this feature is planned for future release
+    pub async fn verify_state_consistency(&self) -> Result<bool, CapabilityError> {
+        Err(CapabilityError::NotImplemented(
+            "verify_state_consistency is not yet implemented for federation".to_string(),
+        ))
+    }
+
+    /// Mark a node as down in federation
+    ///
+    /// # Errors
+    ///
+    /// Returns NotImplemented error - this feature is planned for future release
+    pub async fn mark_node_down(&self, _node_id: &str) -> Result<(), CapabilityError> {
+        Err(CapabilityError::NotImplemented(
+            "mark_node_down is not yet implemented for federation".to_string(),
+        ))
+    }
+
+    /// Discover providers for a capability across federation
+    ///
+    /// # Errors
+    ///
+    /// Returns NotImplemented error - this feature is planned for future release
+    pub async fn discover_federated(
+        &self,
+        _capability: &str,
+    ) -> Result<Vec<String>, CapabilityError> {
+        Err(CapabilityError::NotImplemented(
+            "discover_federated is not yet implemented for federation".to_string(),
+        ))
+    }
+
+    /// Emit a federation event
+    ///
+    /// # Errors
+    ///
+    /// Returns NotImplemented error - this feature is planned for future release
+    pub async fn emit_federation_event(
+        &self,
+        _event_type: &str,
+        _data: &str,
+    ) -> Result<(), CapabilityError> {
+        Err(CapabilityError::NotImplemented(
+            "emit_federation_event is not yet implemented".to_string(),
+        ))
+    }
 }
 
 #[cfg(test)]
@@ -947,5 +1022,59 @@ mod tests {
         // Test partial matches
         assert!(adapter.primal_provides_capability("ai-ml-service", "ai"));
         assert!(adapter.primal_provides_capability("compute-cluster", "compute"));
+    }
+
+    // ============================================================================
+    // FEDERATION METHOD TESTS
+    // ============================================================================
+
+    #[tokio::test]
+    async fn test_emit_federation_event_not_implemented() {
+        let config = create_test_config();
+        let adapter = UniversalCapabilityAdapter::new(config);
+
+        let result = adapter.emit_federation_event("test_event", "test_data").await;
+        assert!(result.is_err());
+        assert!(matches!(result, Err(CapabilityError::NotImplemented(_))));
+    }
+
+    #[tokio::test]
+    async fn test_get_recent_events_not_implemented() {
+        let config = create_test_config();
+        let adapter = UniversalCapabilityAdapter::new(config);
+
+        let result = adapter.get_recent_events().await;
+        assert!(result.is_err());
+        assert!(matches!(result, Err(CapabilityError::NotImplemented(_))));
+    }
+
+    #[tokio::test]
+    async fn test_verify_state_consistency_not_implemented() {
+        let config = create_test_config();
+        let adapter = UniversalCapabilityAdapter::new(config);
+
+        let result = adapter.verify_state_consistency().await;
+        assert!(result.is_err());
+        assert!(matches!(result, Err(CapabilityError::NotImplemented(_))));
+    }
+
+    #[tokio::test]
+    async fn test_mark_node_down_not_implemented() {
+        let config = create_test_config();
+        let adapter = UniversalCapabilityAdapter::new(config);
+
+        let result = adapter.mark_node_down("test-node").await;
+        assert!(result.is_err());
+        assert!(matches!(result, Err(CapabilityError::NotImplemented(_))));
+    }
+
+    #[tokio::test]
+    async fn test_discover_federated_not_implemented() {
+        let config = create_test_config();
+        let adapter = UniversalCapabilityAdapter::new(config);
+
+        let result = adapter.discover_federated("compute").await;
+        assert!(result.is_err());
+        assert!(matches!(result, Err(CapabilityError::NotImplemented(_))));
     }
 }

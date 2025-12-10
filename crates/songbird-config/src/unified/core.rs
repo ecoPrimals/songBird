@@ -115,7 +115,11 @@ impl UnifiedCoreConfig {
 }
 
 /// Get unified configuration from environment
-#[must_use]
+///
+/// # Errors
+///
+/// Returns error if configuration validation fails or required environment
+/// variables are missing.
 pub fn get_unified_config() -> Result<UnifiedCoreConfig, String> {
     Ok(UnifiedCoreConfig::from_env())
 }

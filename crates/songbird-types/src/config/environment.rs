@@ -219,6 +219,29 @@ impl DeploymentMode {
             custom => Self::Custom(custom.to_string()),
         }
     }
+
+    /// Create deployment mode from environment variables (for testing)
+    ///
+    /// This allows passing a custom environment provider for testing without
+    /// using global `std::env`, enabling concurrent test execution.
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// use songbird_types::config::environment::DeploymentMode;
+    /// use std::collections::HashMap;
+    ///
+    /// let mut env = HashMap::new();
+    /// env.insert("SONGBIRD_ENV".to_string(), "production".to_string());
+    ///
+    /// let mode = DeploymentMode::from_env_map(&env);
+    /// assert!(matches!(mode, DeploymentMode::Production));
+    /// ```
+    #[must_use]
+    pub fn from_env_map(env: &std::collections::HashMap<String, String>) -> Self {
+        let env_str = env.get("SONGBIRD_ENV").map_or("development", String::as_str);
+        Self::from_env_string(env_str)
+    }
 }
 
 impl Default for DeploymentMode {
@@ -227,16 +250,69 @@ impl Default for DeploymentMode {
     }
 }
 
+impl ResourceLimits {
+    /// Create from environment map (for testing - concurrent safe)
+    #[must_use]
+    pub fn from_env_map(env: &std::collections::HashMap<String, String>) -> Self {
+        let max_connections =
+            env.get("SONGBIRD_MAX_CONNECTIONS").and_then(|s| s.parse::<u32>().ok()).unwrap_or(1000);
+        let max_memory_mb =
+            env.get("SONGBIRD_MAX_MEMORY_MB").and_then(|s| s.parse::<u64>().ok()).unwrap_or(2048);
+        let max_cpu_cores =
+            env.get("SONGBIRD_MAX_CPU_CORES").and_then(|s| s.parse::<u32>().ok()).unwrap_or(4);
+        let max_file_descriptors =
+            env.get("SONGBIRD_MAX_FDS").and_then(|s| s.parse::<u32>().ok()).unwrap_or(1024);
+        let max_threads =
+            env.get("SONGBIRD_MAX_THREADS").and_then(|s| s.parse::<u32>().ok()).unwrap_or(100);
+        let disk_space_gb =
+            env.get("SONGBIRD_MAX_DISK_GB").and_then(|s| s.parse::<u64>().ok()).unwrap_or(100);
+
+        Self {
+            max_connections,
+            max_memory_mb,
+            max_cpu_cores,
+            max_file_descriptors,
+            max_threads,
+            disk_space_gb,
+            memory_pool: MemoryPoolConfig::from_env_map(env),
+        }
+    }
+}
+
 impl Default for ResourceLimits {
     fn default() -> Self {
         Self {
-            max_connections: SafeEnv::get_usize("SONGBIRD_MAX_CONNECTIONS", 1000) as u32,
-            max_memory_mb: SafeEnv::get_usize("SONGBIRD_MAX_MEMORY_MB", 2048) as u64,
-            max_cpu_cores: SafeEnv::get_usize("SONGBIRD_MAX_CPU_CORES", 4) as u32,
-            max_file_descriptors: SafeEnv::get_usize("SONGBIRD_MAX_FDS", 1024) as u32,
-            max_threads: SafeEnv::get_usize("SONGBIRD_MAX_THREADS", 100) as u32,
-            disk_space_gb: SafeEnv::get_usize("SONGBIRD_MAX_DISK_GB", 100) as u64,
+            max_connections: u32::try_from(SafeEnv::get_usize("SONGBIRD_MAX_CONNECTIONS", 1000))
+                .unwrap_or(1000),
+            max_memory_mb: u64::try_from(SafeEnv::get_usize("SONGBIRD_MAX_MEMORY_MB", 2048))
+                .unwrap_or(2048),
+            max_cpu_cores: u32::try_from(SafeEnv::get_usize("SONGBIRD_MAX_CPU_CORES", 4))
+                .unwrap_or(4),
+            max_file_descriptors: u32::try_from(SafeEnv::get_usize("SONGBIRD_MAX_FDS", 1024))
+                .unwrap_or(1024),
+            max_threads: u32::try_from(SafeEnv::get_usize("SONGBIRD_MAX_THREADS", 100))
+                .unwrap_or(100),
+            disk_space_gb: u64::try_from(SafeEnv::get_usize("SONGBIRD_MAX_DISK_GB", 100))
+                .unwrap_or(100),
             memory_pool: MemoryPoolConfig::default(),
+        }
+    }
+}
+
+impl MemoryPoolConfig {
+    /// Create from environment map (for testing - concurrent safe)
+    #[must_use]
+    pub fn from_env_map(env: &std::collections::HashMap<String, String>) -> Self {
+        let enabled = env
+            .get("SONGBIRD_MEMORY_POOL_ENABLED")
+            .and_then(|s| s.parse::<bool>().ok())
+            .unwrap_or(true);
+
+        Self {
+            enabled,
+            initial_size_mb: 64,
+            max_size_mb: 512,
+            growth_increment_mb: 32,
         }
     }
 }
@@ -248,6 +324,27 @@ impl Default for MemoryPoolConfig {
             initial_size_mb: 64,
             max_size_mb: 512,
             growth_increment_mb: 32,
+        }
+    }
+}
+
+impl ServiceDiscoveryConfig {
+    /// Create from environment map (for testing - concurrent safe)
+    #[must_use]
+    pub fn from_env_map(env: &std::collections::HashMap<String, String>) -> Self {
+        let auto_discovery =
+            env.get("SONGBIRD_AUTO_DISCOVERY").and_then(|s| s.parse::<bool>().ok()).unwrap_or(true);
+        let refresh_interval = env
+            .get("SONGBIRD_DISCOVERY_REFRESH_INTERVAL")
+            .and_then(|s| s.parse::<u64>().ok())
+            .map_or(Duration::from_secs(30), Duration::from_secs);
+
+        Self {
+            auto_discovery,
+            refresh_interval,
+            discovery_timeout: Duration::from_secs(10),
+            fallback_endpoints: HashMap::new(),
+            health_checks: EnvironmentHealthCheckConfig::default(),
         }
     }
 }
@@ -275,6 +372,33 @@ impl Default for EnvironmentHealthCheckConfig {
             timeout: Duration::from_secs(5),
             max_retries: 3,
             endpoint_path: "/health".to_string(),
+        }
+    }
+}
+
+impl NetworkBindingConfig {
+    /// Create from environment map (for testing - concurrent safe)
+    #[must_use]
+    pub fn from_env_map(env: &std::collections::HashMap<String, String>) -> Self {
+        let bind_address = env
+            .get("SONGBIRD_BIND_ADDRESS")
+            .and_then(|s| s.parse::<std::net::IpAddr>().ok())
+            .unwrap_or(std::net::IpAddr::V4(std::net::Ipv4Addr::UNSPECIFIED));
+        let production_bind_address = env
+            .get("SONGBIRD_PRODUCTION_BIND_ADDRESS")
+            .and_then(|s| s.parse::<std::net::IpAddr>().ok())
+            .unwrap_or(std::net::IpAddr::V4(std::net::Ipv4Addr::LOCALHOST));
+        let bind_port = env
+            .get("SONGBIRD_BIND_PORT")
+            .and_then(|s| s.parse::<u16>().ok())
+            .unwrap_or(crate::constants::DEFAULT_PORT);
+
+        Self {
+            bind_address,
+            production_bind_address,
+            bind_port,
+            port_range: PortRange::default(),
+            interface_preferences: vec!["eth0".to_string(), "en0".to_string()],
         }
     }
 }
@@ -308,6 +432,21 @@ impl Default for PortRange {
     }
 }
 
+impl CapabilityEndpoints {
+    /// Create from environment map (for testing - concurrent safe)
+    #[must_use]
+    pub fn from_env_map(env: &std::collections::HashMap<String, String>) -> Self {
+        Self {
+            storage: env.get("SONGBIRD_STORAGE_ENDPOINT").cloned(),
+            compute: env.get("SONGBIRD_COMPUTE_ENDPOINT").cloned(),
+            ai: env.get("SONGBIRD_AI_ENDPOINT").cloned(),
+            security: env.get("SONGBIRD_SECURITY_ENDPOINT").cloned(),
+            orchestration: env.get("SONGBIRD_ORCHESTRATION_ENDPOINT").cloned(),
+            custom: HashMap::new(),
+        }
+    }
+}
+
 impl Default for CapabilityEndpoints {
     fn default() -> Self {
         Self {
@@ -321,12 +460,46 @@ impl Default for CapabilityEndpoints {
     }
 }
 
+impl LegacyCompatibilityConfig {
+    /// Create from environment map (for testing - concurrent safe)
+    #[must_use]
+    pub fn from_env_map(env: &std::collections::HashMap<String, String>) -> Self {
+        let enable_legacy_primal_names = env
+            .get("SONGBIRD_ENABLE_LEGACY_NAMES")
+            .and_then(|s| s.parse::<bool>().ok())
+            .unwrap_or(true);
+
+        Self {
+            enable_legacy_primal_names,
+            legacy_endpoints: HashMap::new(),
+            deprecation_warnings: DeprecationWarningsConfig::from_env_map(env),
+        }
+    }
+}
+
 impl Default for LegacyCompatibilityConfig {
     fn default() -> Self {
         Self {
             enable_legacy_primal_names: SafeEnv::get_bool("SONGBIRD_ENABLE_LEGACY_NAMES", true),
             legacy_endpoints: HashMap::new(),
             deprecation_warnings: DeprecationWarningsConfig::default(),
+        }
+    }
+}
+
+impl DeprecationWarningsConfig {
+    /// Create from environment map (for testing - concurrent safe)
+    #[must_use]
+    pub fn from_env_map(env: &std::collections::HashMap<String, String>) -> Self {
+        let enabled = env
+            .get("SONGBIRD_DEPRECATION_WARNINGS")
+            .and_then(|s| s.parse::<bool>().ok())
+            .unwrap_or(true);
+
+        Self {
+            enabled,
+            log_level: "warn".to_string(),
+            suppress_warnings: Vec::new(),
         }
     }
 }

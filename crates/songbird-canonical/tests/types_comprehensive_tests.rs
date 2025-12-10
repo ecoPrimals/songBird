@@ -59,7 +59,7 @@ fn test_service_id_clone() -> SongbirdResult<()> {
 fn test_service_id_serialization() -> Result<(), Box<dyn std::error::Error>> {
     let id = ServiceId::new("serialize-me");
     let json = serde_json::to_string(&id)
-        .map_err(|e| SongbirdError::configuration("Should serialize".to_string()))?;
+        .map_err(|_e| SongbirdError::configuration("Should serialize".to_string()))?;
     assert!(json.contains("serialize-me"));
     Ok(())
 }
@@ -68,7 +68,7 @@ fn test_service_id_serialization() -> Result<(), Box<dyn std::error::Error>> {
 fn test_service_id_deserialization() -> Result<(), Box<dyn std::error::Error>> {
     let json = r#""deserialized-service""#;
     let id: ServiceId = serde_json::from_str(json)
-        .map_err(|e| SongbirdError::configuration("Should deserialize".to_string()))?;
+        .map_err(|_e| SongbirdError::configuration("Should deserialize".to_string()))?;
     assert_eq!(id.as_str(), "deserialized-service");
     Ok(())
 }
@@ -133,7 +133,7 @@ fn test_endpoint_clone() -> SongbirdResult<()> {
 fn test_endpoint_serialization() -> Result<(), Box<dyn std::error::Error>> {
     let endpoint = Endpoint::new("wss", "ws.example.com", 8443);
     let json = serde_json::to_string(&endpoint)
-        .map_err(|e| SongbirdError::configuration("Should serialize".to_string()))?;
+        .map_err(|_e| SongbirdError::configuration("Should serialize".to_string()))?;
     assert!(json.contains("wss"));
     assert!(json.contains("ws.example.com"));
     assert!(json.contains("8443"));
@@ -144,7 +144,7 @@ fn test_endpoint_serialization() -> Result<(), Box<dyn std::error::Error>> {
 fn test_endpoint_deserialization() -> Result<(), Box<dyn std::error::Error>> {
     let json = r#"{"protocol":"https","host":"test.com","port":443,"path":null}"#;
     let endpoint: Endpoint = serde_json::from_str(json)
-        .map_err(|e| SongbirdError::configuration("Should deserialize".to_string()))?;
+        .map_err(|_e| SongbirdError::configuration("Should deserialize".to_string()))?;
     assert_eq!(endpoint.protocol, "https");
     assert_eq!(endpoint.host, "test.com");
     assert_eq!(endpoint.port, 443);
@@ -194,7 +194,7 @@ fn test_request_id_default() -> SongbirdResult<()> {
 fn test_request_id_serialization() -> Result<(), Box<dyn std::error::Error>> {
     let id = RequestId::new();
     let json = serde_json::to_string(&id)
-        .map_err(|e| SongbirdError::configuration("Should serialize".to_string()))?;
+        .map_err(|_e| SongbirdError::configuration("Should serialize".to_string()))?;
     assert!(!json.is_empty());
     Ok(())
 }
@@ -266,7 +266,7 @@ fn test_confidence_score_boundaries() -> SongbirdResult<()> {
 fn test_confidence_score_serialization() -> Result<(), Box<dyn std::error::Error>> {
     let score = ConfidenceScore::new(0.85);
     let json = serde_json::to_string(&score)
-        .map_err(|e| SongbirdError::configuration("Should serialize".to_string()))?;
+        .map_err(|_e| SongbirdError::configuration("Should serialize".to_string()))?;
     assert!(json.contains("0.85"));
     Ok(())
 }
@@ -334,7 +334,7 @@ fn test_suggested_action_serialization() -> Result<(), Box<dyn std::error::Error
         SuggestedAction::new("test", "Test action").with_parameter("param", json!("value"));
 
     let json = serde_json::to_string(&action)
-        .map_err(|e| SongbirdError::configuration("Should serialize".to_string()))?;
+        .map_err(|_e| SongbirdError::configuration("Should serialize".to_string()))?;
     assert!(json.contains("test"));
     assert!(json.contains("Test action"));
     Ok(())

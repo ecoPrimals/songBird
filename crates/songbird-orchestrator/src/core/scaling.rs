@@ -1,10 +1,12 @@
 //! # 📈 Auto Scaling
 //!
 //! **MODERN AUTO SCALING** ✅
+//! **ZERO-COPY OPTIMIZATION** (Dec 8, 2025)
 
 use super::{ComponentHealth, HealthStatus, ScalingConfig};
 use serde::{Deserialize, Serialize};
 use songbird_types::SongbirdResult;
+use std::sync::Arc;
 
 /// Scaling policy
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -65,7 +67,9 @@ impl AutoScaler {
     pub async fn health_check(&self) -> SongbirdResult<ComponentHealth> {
         Ok(ComponentHealth {
             status: HealthStatus::Healthy,
-            message: Some(format!("Auto-scaler managing {} instances", self.current_instances)),
+            message: Some(Arc::from(
+                format!("Auto-scaler managing {} instances", self.current_instances).as_str(),
+            )),
             last_check: Some(chrono::Utc::now().timestamp() as u64),
         })
     }

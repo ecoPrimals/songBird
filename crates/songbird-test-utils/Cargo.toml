@@ -14,6 +14,13 @@ categories = ["development-tools::testing"]
 [lints]
 workspace = true
 
+[features]
+default = []
+k8s = []
+docker = []
+mdns = []
+dns-sd = []
+
 [dependencies]
 tokio = { version = "1.0", features = ["full"] }
 tokio-test = "0.4"

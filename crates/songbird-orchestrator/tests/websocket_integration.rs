@@ -9,7 +9,7 @@ use serde_json::json;
 use std::time::Duration;
 use tokio_tungstenite::{connect_async, tungstenite::Message};
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 #[ignore] // Requires running server
 async fn test_websocket_connection() {
     // Connect to WebSocket server
@@ -33,7 +33,7 @@ async fn test_websocket_connection() {
     }
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 #[ignore] // Requires running server
 async fn test_ping_pong() {
     let url = "ws://localhost:8080/api/ws/ws";
@@ -63,7 +63,7 @@ async fn test_ping_pong() {
     let _ = write.close().await;
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 #[ignore] // Requires running server
 async fn test_query_status() {
     let url = "ws://localhost:8080/api/ws/ws";
@@ -94,7 +94,7 @@ async fn test_query_status() {
     let _ = write.close().await;
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 #[ignore] // Requires running server
 async fn test_query_services() {
     let url = "ws://localhost:8080/api/ws/ws";
@@ -124,7 +124,7 @@ async fn test_query_services() {
     let _ = write.close().await;
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 #[ignore] // Requires running server
 async fn test_subscription() {
     let url = "ws://localhost:8080/api/ws/ws";
@@ -153,7 +153,7 @@ async fn test_subscription() {
     let _ = write.close().await;
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 #[ignore] // Requires running server
 async fn test_unsubscribe() {
     let url = "ws://localhost:8080/api/ws/ws";
@@ -190,7 +190,7 @@ async fn test_unsubscribe() {
     let _ = write.close().await;
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 #[ignore] // Requires running server
 async fn test_invalid_message() {
     let url = "ws://localhost:8080/api/ws/ws";
@@ -215,7 +215,7 @@ async fn test_invalid_message() {
     let _ = write.close().await;
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 #[ignore] // Requires running server
 async fn test_binary_message_rejected() {
     let url = "ws://localhost:8080/api/ws/ws";
@@ -240,7 +240,7 @@ async fn test_binary_message_rejected() {
     let _ = write.close().await;
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 #[ignore] // Requires running server
 async fn test_multiple_clients() {
     let url = "ws://localhost:8080/api/ws/ws";
@@ -281,7 +281,7 @@ async fn test_multiple_clients() {
     let _ = write2.close().await;
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 #[ignore] // Requires running server
 async fn test_connection_close() {
     let url = "ws://localhost:8080/api/ws/ws";
@@ -301,13 +301,13 @@ async fn test_connection_close() {
 mod event_tests {
     use songbird_orchestrator::server::events::{Event, EventBroadcaster, EventType};
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_event_broadcaster_creation() {
         let broadcaster = EventBroadcaster::new();
         assert_eq!(broadcaster.subscriber_count().await, 0);
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_event_broadcaster_subscribe() {
         let broadcaster = EventBroadcaster::new();
 
@@ -318,7 +318,7 @@ mod event_tests {
         assert_eq!(broadcaster.subscriber_count().await, 1);
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_event_broadcaster_broadcast() {
         let broadcaster = EventBroadcaster::new();
 
@@ -339,7 +339,7 @@ mod event_tests {
         assert_eq!(received.event_type, "service_update");
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_event_broadcaster_unsubscribe() {
         let broadcaster = EventBroadcaster::new();
 
@@ -363,7 +363,7 @@ mod event_tests {
         assert_eq!(broadcaster.subscriber_count().await, 0);
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_event_type_conversion() {
         assert_eq!(EventType::ServiceUpdate.as_str(), "service_update");
         assert_eq!(EventType::HealthUpdate.as_str(), "health_update");

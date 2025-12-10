@@ -241,10 +241,10 @@ impl Default for NetworkDiscoveryConfig {
                     s.split(',').filter_map(|p| p.trim().parse().ok()).collect::<Vec<u16>>().into()
                 })
                 .unwrap_or_else(|| vec![8080, 8443, 9090, 3000]),
-            discovery_protocols: env::var("SONGBIRD_DISCOVERY_PROTOCOLS")
-                .ok()
-                .map(|s| s.split(',').map(|p| p.trim().to_string()).collect())
-                .unwrap_or_else(|| vec!["http".to_string(), "https".to_string()]),
+            discovery_protocols: env::var("SONGBIRD_DISCOVERY_PROTOCOLS").ok().map_or_else(
+                || vec!["http".to_string(), "https".to_string()],
+                |s| s.split(',').map(|p| p.trim().to_string()).collect(),
+            ),
         }
     }
 }

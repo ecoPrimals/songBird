@@ -58,12 +58,12 @@ fn test_canonical_serialization() -> Result<(), Box<dyn std::error::Error>> {
     // Test: Canonical types should serialize to JSON
     let service_id = ServiceId::new("my-service");
     let json = serde_json::to_string(&service_id)
-        .map_err(|e| SongbirdError::configuration("Should serialize".to_string()))?;
+        .map_err(|_| SongbirdError::configuration("Should serialize".to_string()))?;
     assert!(json.contains("my-service"));
 
     let endpoint = Endpoint::new("tcp", "192.168.1.1", 9000);
     let json = serde_json::to_string(&endpoint)
-        .map_err(|e| SongbirdError::configuration("Should serialize".to_string()))?;
+        .map_err(|_| SongbirdError::configuration("Should serialize".to_string()))?;
     assert!(json.contains("tcp"));
     assert!(json.contains("192.168.1.1"));
     assert!(json.contains("9000"));
@@ -75,12 +75,12 @@ fn test_canonical_deserialization() -> Result<(), Box<dyn std::error::Error>> {
     // Test: Canonical types should deserialize from JSON
     let json = r#""test-service""#;
     let service_id: ServiceId = serde_json::from_str(json)
-        .map_err(|e| SongbirdError::configuration("Should deserialize".to_string()))?;
+        .map_err(|_| SongbirdError::configuration("Should deserialize".to_string()))?;
     assert_eq!(service_id.as_str(), "test-service");
 
     let json = r#"{"protocol":"https","host":"example.com","port":443,"path":null}"#;
     let endpoint: Endpoint = serde_json::from_str(json)
-        .map_err(|e| SongbirdError::configuration("Should deserialize".to_string()))?;
+        .map_err(|_| SongbirdError::configuration("Should deserialize".to_string()))?;
     assert_eq!(endpoint.protocol, "https");
     assert_eq!(endpoint.host, "example.com");
     assert_eq!(endpoint.port, 443);

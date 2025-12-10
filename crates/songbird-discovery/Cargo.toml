@@ -14,10 +14,6 @@ categories = ["network-programming", "game-engines", "web-programming"]
 [lints]
 workspace = true
 
-[[example]]
-name = "vendor_agnostic_demo"
-path = "../../examples/vendor_agnostic_demo.rs"
-
 [dependencies]
 # Internal dependencies
 # songbird-security-errors = { path = "../songbird-security-errors" }  # REMOVED: Using unified errors from songbird-types

@@ -44,7 +44,7 @@ fn create_test_service(id: &str, name: &str, service_type: &str, port: u16) -> S
     }
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_service_query_creation() {
     let query = ServiceQuery {
         name: Some("test-service".to_string()),
@@ -63,7 +63,7 @@ async fn test_service_query_creation() {
     assert!(query.tags.is_empty());
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_service_query_with_capability() {
     let query = ServiceQuery {
         name: None,
@@ -81,7 +81,7 @@ async fn test_service_query_with_capability() {
     assert!(query.name.is_none());
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_service_query_with_tags() {
     let query = ServiceQuery {
         name: None,
@@ -100,7 +100,7 @@ async fn test_service_query_with_tags() {
     assert!(query.tags.contains(&"us-west".to_string()));
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_service_query_all_filters() {
     let query = ServiceQuery {
         name: Some("api-gateway".to_string()),
@@ -120,7 +120,7 @@ async fn test_service_query_all_filters() {
     assert!(query.limit.is_some());
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_service_query_empty() {
     let query = ServiceQuery {
         name: None,
@@ -140,7 +140,7 @@ async fn test_service_query_empty() {
     assert!(query.limit.is_none());
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_service_health_status_healthy() {
     let status = ServiceHealthStatus::Healthy;
     match status {
@@ -149,7 +149,7 @@ async fn test_service_health_status_healthy() {
     }
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_service_health_status_unhealthy() {
     let status = ServiceHealthStatus::Unhealthy;
     match status {
@@ -158,7 +158,7 @@ async fn test_service_health_status_unhealthy() {
     }
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_service_health_status_degraded() {
     let status = ServiceHealthStatus::Degraded;
     match status {
@@ -167,7 +167,7 @@ async fn test_service_health_status_degraded() {
     }
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_service_health_status_unknown() {
     let status = ServiceHealthStatus::Unknown;
     match status {
@@ -176,7 +176,7 @@ async fn test_service_health_status_unknown() {
     }
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_service_info_creation() {
     let mut service = create_test_service("srv-123", "test-service", "storage", 8080);
     service.tags = vec!["test".to_string()];
@@ -187,7 +187,7 @@ async fn test_service_info_creation() {
     assert!(matches!(service.status, ServiceStatus::Running));
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_service_info_with_capabilities() {
     let mut service = create_test_service("srv-456", "storage-service", "storage", 9000);
     service.version = "2.0.0".to_string();
@@ -198,7 +198,7 @@ async fn test_service_info_with_capabilities() {
     assert!(service.tags.contains(&"backup".to_string()));
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_service_info_with_metadata() {
     let mut metadata = HashMap::new();
     metadata.insert("region".to_string(), serde_json::json!("us-west-2"));
@@ -213,7 +213,7 @@ async fn test_service_info_with_metadata() {
     assert_eq!(service.metadata.get("region"), Some(&serde_json::json!("us-west-2")));
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_service_info_with_tags() {
     let mut service = create_test_service("srv-101", "tagged-service", "generic", 3000);
     service.tags = vec!["critical".to_string(), "monitored".to_string(), "production".to_string()];
@@ -223,7 +223,7 @@ async fn test_service_info_with_tags() {
     assert!(service.tags.contains(&"production".to_string()));
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_service_status_variants() {
     let statuses = vec![
         ServiceStatus::Starting,
@@ -235,7 +235,7 @@ async fn test_service_status_variants() {
     assert_eq!(statuses.len(), 4);
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_service_query_with_high_limit() {
     let query = ServiceQuery {
         name: None,
@@ -252,7 +252,7 @@ async fn test_service_query_with_high_limit() {
     assert_eq!(query.limit, Some(1000));
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_service_query_with_single_tag() {
     let query = ServiceQuery {
         name: None,
@@ -270,7 +270,7 @@ async fn test_service_query_with_single_tag() {
     assert_eq!(query.tags[0], "production");
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_service_query_name_only() {
     let query = ServiceQuery {
         name: Some("specific-service".to_string()),
@@ -289,7 +289,7 @@ async fn test_service_query_name_only() {
     assert_eq!(query.limit, Some(1));
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_service_query_capability_only() {
     let query = ServiceQuery {
         name: None,
@@ -307,7 +307,7 @@ async fn test_service_query_capability_only() {
     assert_eq!(query.service_type, Some("compute".to_string()));
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_service_info_empty_capabilities() {
     let service = create_test_service("srv-empty", "no-capability-service", "generic", 5000);
 
@@ -316,7 +316,7 @@ async fn test_service_info_empty_capabilities() {
     assert!(service.metadata.is_empty());
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_service_info_clone() {
     let mut service = create_test_service("srv-clone", "cloneable-service", "storage", 6000);
     service.tags = vec!["storage".to_string(), "test".to_string()];
@@ -327,7 +327,7 @@ async fn test_service_info_clone() {
     assert_eq!(service.tags, cloned.tags);
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_service_query_clone() {
     let query = ServiceQuery {
         name: Some("query-service".to_string()),
@@ -348,7 +348,7 @@ async fn test_service_query_clone() {
     assert_eq!(query.limit, cloned.limit);
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_multiple_services_different_capabilities() {
     let s1 = create_test_service("srv-1", "storage", "storage", 8001);
     let s2 = create_test_service("srv-2", "compute", "compute", 8002);
@@ -360,7 +360,7 @@ async fn test_multiple_services_different_capabilities() {
     assert!(services.iter().all(|s| matches!(s.status, ServiceStatus::Running)));
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_service_with_multiple_versions() {
     let mut v1 = create_test_service("srv-v1", "versioned-service", "generic", 8080);
     v1.tags = vec!["v1".to_string()];
@@ -374,7 +374,7 @@ async fn test_service_with_multiple_versions() {
     assert_ne!(v1.service_id, v2.service_id);
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_service_metadata_update_simulation() {
     let mut metadata = HashMap::new();
     metadata.insert("status".to_string(), serde_json::json!("initializing"));
@@ -388,7 +388,7 @@ async fn test_service_metadata_update_simulation() {
     assert_eq!(service.metadata.get("status"), Some(&serde_json::json!("ready")));
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_health_status_transition_sequence() {
     let transitions = vec![
         ServiceHealthStatus::Unknown,
@@ -400,7 +400,7 @@ async fn test_health_status_transition_sequence() {
     assert_eq!(transitions.len(), 4);
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_service_endpoint_formats() {
     let endpoints = vec![
         "http://localhost:8080",
@@ -420,7 +420,7 @@ async fn test_service_endpoint_formats() {
     }
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_service_query_combinations() {
     let queries = vec![
         ServiceQuery {
@@ -472,7 +472,7 @@ async fn test_service_query_combinations() {
     assert_eq!(queries.len(), 4);
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_large_service_collection() {
     let mut services = Vec::new();
 
@@ -491,7 +491,7 @@ async fn test_large_service_collection() {
     assert!(services.iter().all(|s| !s.service_id.is_empty()));
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_service_capabilities_overlap() {
     let mut service1 = create_test_service("srv-overlap-1", "multi-service-1", "storage", 8001);
     service1.tags = vec!["storage".to_string(), "compute".to_string()];
@@ -505,7 +505,7 @@ async fn test_service_capabilities_overlap() {
     assert_eq!(common[0], "compute");
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_service_tag_based_grouping() {
     let production_services: Vec<ServiceInfo> = (0..5)
         .map(|i| {

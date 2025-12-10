@@ -33,14 +33,19 @@ pub use scaling::{AutoScaler, ScalingPolicy};
 use serde::{Deserialize, Serialize};
 use songbird_types::SongbirdResult;
 use std::collections::HashMap;
+use std::sync::Arc;
 
 // Import comprehensive LoadBalancerConfig (Nov 10, 2025 consolidation)
-use songbird_config::unified::robustness::LoadBalancerConfig as CanonicalLoadBalancerConfig;
+use songbird_config::canonical::resilience::LoadBalancerConfig as CanonicalLoadBalancerConfig;
 
 /// Consolidated orchestrator engine
+///
+/// **ZERO-COPY OPTIMIZATION** (Dec 8, 2025):
+/// Config is wrapped in Arc to prevent expensive clones in hot paths.
+/// This config is read-only after creation and shared across components.
 #[derive(Debug)]
 pub struct ConsolidatedOrchestrator {
-    config: ConsolidatedOrchestratorConfig,
+    config: Arc<ConsolidatedOrchestratorConfig>,
     load_balancer: LoadBalancer,
     performance_monitor: PerformanceMonitor,
     service_registry: ServiceRegistry,
@@ -49,14 +54,17 @@ pub struct ConsolidatedOrchestrator {
 
 impl ConsolidatedOrchestrator {
     /// Create new consolidated orchestrator
+    ///
+    /// **ZERO-COPY**: Config is wrapped in Arc and shared, not cloned.
     #[must_use]
     pub fn new(config: ConsolidatedOrchestratorConfig) -> Self {
+        let config = Arc::new(config);
         Self {
-            config: config.clone(),
-            load_balancer: LoadBalancer::new(config.load_balancing),
-            performance_monitor: PerformanceMonitor::new(config.performance),
-            service_registry: ServiceRegistry::new(config.registry),
-            auto_scaler: AutoScaler::new(config.scaling),
+            config: Arc::clone(&config),
+            load_balancer: LoadBalancer::new(config.load_balancing.clone()),
+            performance_monitor: PerformanceMonitor::new(config.performance.clone()),
+            service_registry: ServiceRegistry::new(config.registry.clone()),
+            auto_scaler: AutoScaler::new(config.scaling.clone()),
         }
     }
 
@@ -143,7 +151,7 @@ pub struct ConsolidatedOrchestratorConfig {
 // ============================================================================
 //
 // LoadBalancingConfig was removed and replaced with CanonicalLoadBalancerConfig
-// from songbird_config::unified::robustness::LoadBalancerConfig
+// from songbird_config::canonical::resilience::LoadBalancerConfig
 //
 // Migration: Use CanonicalLoadBalancerConfig instead
 // - strategy (LoadBalancingStrategy) → algorithm (LoadBalancingAlgorithm)
@@ -161,24 +169,54 @@ pub struct ConsolidatedOrchestratorConfig {
 // ============================================================================
 
 /// Performance monitoring configuration
+///
+/// **ZERO-COPY OPTIMIZATION** (Dec 8, 2025):
+/// Uses `Arc<str>` for threshold keys to avoid cloning in hot paths.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PerformanceConfig {
     pub metrics_interval: u64,
-    pub alert_thresholds: HashMap<String, f64>,
+    #[serde(with = "arc_str_map_serde")]
+    pub alert_thresholds: HashMap<Arc<str>, f64>,
     pub enable_benchmarking: bool,
 }
 
 impl Default for PerformanceConfig {
     fn default() -> Self {
         let mut thresholds = HashMap::new();
-        thresholds.insert("cpu_usage".to_string(), 80.0);
-        thresholds.insert("memory_usage".to_string(), 85.0);
-        thresholds.insert("response_time".to_string(), 1000.0);
+        thresholds.insert(Arc::from("cpu_usage"), 80.0);
+        thresholds.insert(Arc::from("memory_usage"), 85.0);
+        thresholds.insert(Arc::from("response_time"), 1000.0);
         Self {
             metrics_interval: 60,
             alert_thresholds: thresholds,
             enable_benchmarking: true,
         }
+    }
+}
+
+/// Serde helper for `Arc<str>` HashMap keys
+mod arc_str_map_serde {
+    use super::*;
+    use serde::{Deserializer, Serializer};
+
+    pub fn serialize<S>(map: &HashMap<Arc<str>, f64>, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        use serde::ser::SerializeMap;
+        let mut ser_map = serializer.serialize_map(Some(map.len()))?;
+        for (k, v) in map {
+            ser_map.serialize_entry(k.as_ref(), v)?;
+        }
+        ser_map.end()
+    }
+
+    pub fn deserialize<'de, D>(deserializer: D) -> Result<HashMap<Arc<str>, f64>, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let map: HashMap<String, f64> = HashMap::deserialize(deserializer)?;
+        Ok(map.into_iter().map(|(k, v)| (Arc::from(k.as_str()), v)).collect())
     }
 }
 
@@ -268,11 +306,39 @@ pub enum HealthStatus {
 }
 
 /// Component health status
+///
+/// **ZERO-COPY OPTIMIZATION** (Dec 8, 2025):
+/// Message uses `Arc<str>` to avoid string clones when health data is shared.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ComponentHealth {
     pub status: HealthStatus,
-    pub message: Option<String>,
+    #[serde(with = "arc_str_option_serde")]
+    pub message: Option<Arc<str>>,
     pub last_check: Option<u64>,
+}
+
+/// Serde helper for `Option<Arc<str>>`
+mod arc_str_option_serde {
+    use super::*;
+    use serde::{Deserializer, Serializer};
+
+    pub fn serialize<S>(value: &Option<Arc<str>>, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        match value {
+            Some(s) => serializer.serialize_some(s.as_ref()),
+            None => serializer.serialize_none(),
+        }
+    }
+
+    pub fn deserialize<'de, D>(deserializer: D) -> Result<Option<Arc<str>>, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let s: Option<String> = Option::deserialize(deserializer)?;
+        Ok(s.map(|s| Arc::from(s.as_str())))
+    }
 }
 
 #[cfg(test)]
@@ -282,7 +348,7 @@ mod tests {
 
     #[test]
     fn test_consolidated_orchestrator_config_default() {
-        use songbird_config::unified::robustness::LoadBalancingAlgorithm;
+        use songbird_config::canonical::resilience::LoadBalancingAlgorithm;
         let config = ConsolidatedOrchestratorConfig::default();
         assert_eq!(config.load_balancing.algorithm, LoadBalancingAlgorithm::RoundRobin);
         assert!(!config.load_balancing.sticky_sessions);
@@ -292,7 +358,7 @@ mod tests {
     #[test]
     fn test_load_balancing_config_default() {
         let config = CanonicalLoadBalancerConfig::default();
-        use songbird_config::unified::robustness::LoadBalancingAlgorithm;
+        use songbird_config::canonical::resilience::LoadBalancingAlgorithm;
         assert_eq!(config.algorithm, LoadBalancingAlgorithm::RoundRobin);
         assert!(!config.sticky_sessions); // New field
         assert_eq!(config.max_connections_per_backend, 100); // New field
@@ -303,9 +369,9 @@ mod tests {
         let config = PerformanceConfig::default();
         assert_eq!(config.metrics_interval, 60);
         assert!(config.enable_benchmarking);
-        assert_eq!(config.alert_thresholds.get("cpu_usage"), Some(&80.0));
-        assert_eq!(config.alert_thresholds.get("memory_usage"), Some(&85.0));
-        assert_eq!(config.alert_thresholds.get("response_time"), Some(&1000.0));
+        assert_eq!(config.alert_thresholds.get(&Arc::from("cpu_usage")), Some(&80.0));
+        assert_eq!(config.alert_thresholds.get(&Arc::from("memory_usage")), Some(&85.0));
+        assert_eq!(config.alert_thresholds.get(&Arc::from("response_time")), Some(&1000.0));
     }
 
     #[test]
@@ -405,7 +471,7 @@ mod tests {
     fn test_component_health_construction() {
         let health = ComponentHealth {
             status: HealthStatus::Healthy,
-            message: Some("All systems operational".to_string()),
+            message: Some(Arc::from("All systems operational")),
             last_check: Some(1234567890),
         };
         assert_eq!(health.status, HealthStatus::Healthy);
@@ -454,7 +520,7 @@ mod tests {
 
     #[test]
     fn test_consolidated_orchestrator_new_with_custom_config() {
-        use songbird_config::unified::robustness::LoadBalancingAlgorithm;
+        use songbird_config::canonical::resilience::LoadBalancingAlgorithm;
         let mut config = ConsolidatedOrchestratorConfig::default();
         config.load_balancing.algorithm = LoadBalancingAlgorithm::LeastConnections;
         config.scaling.min_instances = 2;
@@ -579,29 +645,27 @@ mod tests {
 
     #[test]
     fn test_load_balancing_config_custom() {
-        use songbird_config::unified::robustness::{HealthCheckConfig, LoadBalancingAlgorithm};
-        use std::time::Duration;
+        use songbird_config::canonical::resilience::LoadBalancingAlgorithm;
 
         let config = CanonicalLoadBalancerConfig {
-            algorithm: LoadBalancingAlgorithm::HealthBased,
-            health_check: HealthCheckConfig::default(),
+            algorithm: LoadBalancingAlgorithm::LeastConnections,
             sticky_sessions: true,
-            session_timeout: Duration::from_secs(600),
+            session_timeout_secs: 600,
             max_connections_per_backend: 200,
-            connection_timeout: Duration::from_secs(60),
-            fail_fast: true,
+            connection_timeout_ms: 60000,
+            fail_fast: false,
         };
 
-        assert_eq!(config.algorithm, LoadBalancingAlgorithm::HealthBased);
+        assert_eq!(config.algorithm, LoadBalancingAlgorithm::LeastConnections);
         assert!(config.sticky_sessions);
         assert_eq!(config.max_connections_per_backend, 200);
-        assert!(config.fail_fast);
+        assert_eq!(config.session_timeout_secs, 600);
     }
 
     #[test]
     fn test_performance_config_custom_thresholds() {
         let mut thresholds = HashMap::new();
-        thresholds.insert("custom_metric".to_string(), 95.0);
+        thresholds.insert(Arc::from("custom_metric"), 95.0);
 
         let config = PerformanceConfig {
             metrics_interval: 30,
@@ -611,7 +675,7 @@ mod tests {
 
         assert_eq!(config.metrics_interval, 30);
         assert!(!config.enable_benchmarking);
-        assert_eq!(config.alert_thresholds.get("custom_metric"), Some(&95.0));
+        assert_eq!(config.alert_thresholds.get(&Arc::from("custom_metric")), Some(&95.0));
     }
 
     #[test]
@@ -691,7 +755,7 @@ mod tests {
     fn test_component_health_with_message() {
         let health = ComponentHealth {
             status: HealthStatus::Degraded,
-            message: Some("High memory usage".to_string()),
+            message: Some(Arc::from("High memory usage")),
             last_check: Some(chrono::Utc::now().timestamp() as u64),
         };
 

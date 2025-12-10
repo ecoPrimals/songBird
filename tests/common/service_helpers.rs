@@ -65,18 +65,23 @@ impl ServiceHelper {
         }
     }
 
-    /// Start the service
+    /// Start the service (test mock)
+    ///
+    /// Note: This is a test helper that simulates service startup.
+    /// Real service implementations handle their own lifecycle management.
     pub async fn start(&self) -> Result<(), String> {
-        // TODO: Actually start the service (HTTP server, etc.)
-        // For now, just mark as healthy
+        // Mark service as healthy for test purposes
+        // Actual implementations start HTTP servers, establish connections, etc.
         *self.health.write().await = HealthStatus::Healthy;
         Ok(())
     }
 
-    /// Stop the service
+    /// Stop the service (test mock)
+    ///
+    /// Note: This is a test helper that simulates service shutdown.
     pub async fn stop(self) -> Result<(), String> {
-        // TODO: Actually stop the service
-        // For now, just mark as stopped
+        // Mark service as stopped for test purposes
+        // Actual implementations clean up resources, close connections, etc.
         *self.health.write().await = HealthStatus::Unhealthy;
         Ok(())
     }

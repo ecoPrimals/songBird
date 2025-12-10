@@ -29,7 +29,6 @@ pub mod test_environment;
 
 use songbird_types::SongbirdResult;
 use std::time::Duration;
-use tokio::time::sleep;
 
 /// E2E test context with common setup
 pub struct E2ETestContext {
@@ -78,27 +77,23 @@ impl E2ETestContext {
     }
 }
 
-/// Test helper to wait for condition
+/// Test helper to wait for condition (event-driven, uses exponential backoff)
+///
+/// ✅ Modern pattern: Uses yield_now() and exponential backoff instead of fixed sleep intervals
 pub async fn wait_for_condition<F>(
-    condition: F,
+    mut condition: F,
     timeout: Duration,
-    check_interval: Duration,
+    _check_interval: Duration, // Retained for API compatibility, but ignored
 ) -> SongbirdResult<()>
 where
-    F: Fn() -> bool,
+    F: FnMut() -> bool,
 {
-    let start = std::time::Instant::now();
+    use songbird_test_utils::coordination::eventually_async;
     
-    while start.elapsed() < timeout {
-        if condition() {
-            return Ok(());
-        }
-        sleep(check_interval).await;
-    }
-    
-    Err(songbird_types::SongbirdError::timeout(
-        "Condition not met within timeout".to_string()
-    ))
+    eventually_async(
+        || async { condition() },
+        timeout,
+    ).await
 }
 
 #[cfg(test)]

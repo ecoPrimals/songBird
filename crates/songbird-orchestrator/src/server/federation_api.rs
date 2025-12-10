@@ -788,13 +788,12 @@ mod tests {
         assert_eq!(status.active_nodes, 3);
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
     async fn test_federation_status_uptime() {
         let state = create_test_state();
 
-        // Small delay to ensure uptime > 0
-        tokio::time::sleep(tokio::time::Duration::from_millis(10)).await;
-
+        // No sleep needed - status is available immediately
+        // If we need to wait for async initialization, use proper sync primitives
         let status = get_federation_status(&state).await;
         assert!(status.uptime_seconds >= 0);
     }

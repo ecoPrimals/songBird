@@ -1,10 +1,12 @@
 //! # 📊 Performance Monitoring
 //!
 //! **MODERN PERFORMANCE MONITORING** ✅
+//! **ZERO-COPY OPTIMIZATION** (Dec 8, 2025)
 
 use super::{ComponentHealth, HealthStatus, PerformanceConfig};
 use serde::{Deserialize, Serialize};
 use songbird_types::SongbirdResult;
+use std::sync::Arc;
 
 /// Performance metrics
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -72,7 +74,7 @@ impl PerformanceMonitor {
     pub async fn health_check(&self) -> SongbirdResult<ComponentHealth> {
         Ok(ComponentHealth {
             status: HealthStatus::Healthy,
-            message: Some("Performance monitor active".to_string()),
+            message: Some(Arc::from("Performance monitor active")),
             last_check: Some(chrono::Utc::now().timestamp() as u64),
         })
     }

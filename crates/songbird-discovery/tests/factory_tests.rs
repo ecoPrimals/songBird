@@ -184,7 +184,7 @@ fn test_discovery_config_debug() {
     assert!(debug_str.contains("backend"));
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_factory_create_for_static_config() {
     let config = DiscoveryConfig {
         backend: DiscoveryBackend::Static,
@@ -198,7 +198,7 @@ async fn test_factory_create_for_static_config() {
     assert!(discovery.is_ok(), "Static discovery should be created successfully");
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_factory_create_auto_detect() {
     // Should create some form of discovery (likely static in test environment)
     let discovery = UniversalDiscoveryFactory::create_auto_detect().await;

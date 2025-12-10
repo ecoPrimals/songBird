@@ -10,7 +10,7 @@ use songbird_test_utils::test_orchestrator_port;
 use songbird_types::{SongbirdError, SongbirdResult};
 use std::time::Duration;
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_discovery_types_available() {
     // Test that discovery types are accessible
     let result = std::panic::catch_unwind(|| true);

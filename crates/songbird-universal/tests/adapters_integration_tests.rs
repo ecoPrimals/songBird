@@ -100,9 +100,7 @@ async fn test_adapter_timeout_configuration() -> SongbirdResult<()> {
         format!("http://compute:{}", test_orchestrator_port()),
     );
 
-    let adapter = ComputeAdapter::new_from_discovery()
-        .await
-        ?;
+    let adapter = ComputeAdapter::new_from_discovery().await?;
 
     // Verify adapter can be configured with custom timeout
     let custom_adapter = adapter.with_timeout(std::time::Duration::from_secs(30));
@@ -122,9 +120,9 @@ async fn test_discovery_priority_order() -> SongbirdResult<()> {
     env::set_var("CAPABILITY_SECURITY_ENDPOINT", "http://new-priority:8443");
     env::set_var("BEARDOG_ENDPOINT", "http://old-legacy:8443");
 
-    let adapter = SecurityAdapter::from_discovery().await.map_err(|e| {
-        SongbirdError::configuration("Failed to discover security adapter")
-    })?;
+    let adapter = SecurityAdapter::from_discovery()
+        .await
+        .map_err(|e| SongbirdError::configuration("Failed to discover security adapter"))?;
 
     // Verify it uses the CAPABILITY_* endpoint (higher priority)
     // We can't directly check the endpoint, but we verify discovery succeeded
@@ -190,12 +188,8 @@ async fn test_multiple_adapter_instances() -> SongbirdResult<()> {
     env::set_var("CAPABILITY_STORAGE_ENDPOINT", "http://storage:9000");
 
     // Create multiple instances of the same adapter type
-    let storage1 = StorageAdapter::from_discovery()
-        .await
-        ?;
-    let storage2 = StorageAdapter::from_discovery()
-        .await
-        ?;
+    let storage1 = StorageAdapter::from_discovery().await?;
+    let storage2 = StorageAdapter::from_discovery().await?;
 
     // Both should be independent instances
     drop(storage1);
@@ -232,19 +226,11 @@ async fn test_capability_type_boundaries() -> SongbirdResult<()> {
     env::set_var("CAPABILITY_AI_ENDPOINT", "http://ai:4444");
 
     // Each adapter should use ONLY its capability endpoint
-    let compute = ComputeAdapter::new_from_discovery()
-        .await
-        ?;
+    let compute = ComputeAdapter::new_from_discovery().await?;
 
-    let security = SecurityAdapter::from_discovery()
-        .await
-        ?;
-    let storage = StorageAdapter::from_discovery()
-        .await
-        ?;
-    let ai = AIAdapter::from_discovery()
-        .await
-        ?;
+    let security = SecurityAdapter::from_discovery().await?;
+    let storage = StorageAdapter::from_discovery().await?;
+    let ai = AIAdapter::from_discovery().await?;
 
     // Verify adapters were created (actual endpoint usage tested by other tests)
     drop(compute);

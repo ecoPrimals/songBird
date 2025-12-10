@@ -19,7 +19,7 @@ use std::net::SocketAddr;
 use std::time::{Duration, SystemTime};
 use uuid::Uuid;
 
-/// Protocol handler enum - zero-cost dispatch instead of Box<dyn>
+/// Protocol handler enum - zero-cost dispatch instead of `Box<dyn Trait>`
 #[derive(Debug)]
 pub enum ProtocolHandlerImpl {
     Udp(UdpProtocolHandler),
@@ -128,12 +128,9 @@ impl GamingManager {
 
     /// Get health status
     pub async fn health_check(&self) -> SongbirdResult<GamingHealth> {
+        // Status is Healthy regardless of session count - simplify the logic
         Ok(GamingHealth {
-            status: if self.active_sessions.is_empty() {
-                NetworkStatus::Healthy
-            } else {
-                NetworkStatus::Healthy
-            },
+            status: NetworkStatus::Healthy,
             active_sessions: self.active_sessions.len() as u32,
             supported_protocols: self.config.protocols.clone(),
         })

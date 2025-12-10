@@ -1,0 +1,204 @@
+//! Tests for Canonical Environment Configuration
+//!
+//! EVOLVED: Modern concurrent-safe tests without environment variable manipulation (Dec 7, 2025)
+//! Tests validate config structures directly using dependency injection pattern.
+
+#![allow(clippy::unwrap_used)]
+
+use songbird_types::config::environment::{
+    CanonicalEnvironmentConfig, CapabilityEndpoints, DeploymentMode, EnvironmentHealthCheckConfig,
+    ResourceLimits, ServiceDiscoveryConfig,
+};
+
+// ============================================================================
+// STRUCTURE TESTS - Concurrent Safe
+// ============================================================================
+
+#[test]
+fn test_canonical_environment_config_default() {
+    let config = CanonicalEnvironmentConfig::default();
+
+    // Verify defaults are sensible - EVOLVED: Check actual struct fields
+    assert!(matches!(
+        config.deployment_mode,
+        DeploymentMode::Development | DeploymentMode::Production | DeploymentMode::Testing | DeploymentMode::Staging
+    ), "Should have valid deployment mode");
+    assert!(config.resource_limits.max_memory_mb > 0, "Should have positive memory limit");
+}
+
+#[test]
+fn test_canonical_environment_config_construction() {
+    let mut config = CanonicalEnvironmentConfig::default();
+    config.service_name = "test-service".to_string();
+    config.deployment_mode = DeploymentMode::Production;
+
+    assert_eq!(config.service_name, "test-service");
+    assert_eq!(config.deployment_mode, DeploymentMode::Production);
+}
+
+#[test]
+fn test_deployment_mode_variants() {
+    let modes = vec![
+        DeploymentMode::Development,
+        DeploymentMode::Production,
+        DeploymentMode::Staging,
+        DeploymentMode::Test,
+    ];
+
+    assert_eq!(modes.len(), 4, "Should have 4 deployment modes");
+}
+
+#[test]
+fn test_resource_limits_default() {
+    let limits = ResourceLimits::default();
+
+    assert!(limits.max_connections > 0, "Max connections should be positive");
+    assert!(limits.max_memory_mb > 0, "Max memory should be positive");
+}
+
+#[test]
+fn test_resource_limits_custom() {
+    let mut limits = ResourceLimits::default();
+    limits.max_connections = 5000;
+    limits.max_memory_mb = 4096;
+
+    assert_eq!(limits.max_connections, 5000);
+    assert_eq!(limits.max_memory_mb, 4096);
+}
+
+#[test]
+fn test_service_discovery_config_default() {
+    let config = ServiceDiscoveryConfig::default();
+
+    assert!(config.discovery_interval_secs > 0, "Discovery interval should be positive");
+    assert!(config.discovery_timeout_secs > 0, "Timeout should be positive");
+}
+
+#[test]
+fn test_capability_endpoints_default() {
+    let endpoints = CapabilityEndpoints::default();
+
+    // Should have default structure
+    assert!(endpoints.security.is_none() || endpoints.security.is_some());
+    assert!(endpoints.storage.is_none() || endpoints.storage.is_some());
+}
+
+#[test]
+fn test_capability_endpoints_custom() {
+    let mut endpoints = CapabilityEndpoints::default();
+    endpoints.security = Some("http://localhost:8443".to_string());
+    endpoints.storage = Some("http://localhost:9000".to_string());
+
+    assert_eq!(endpoints.security, Some("http://localhost:8443".to_string()));
+    assert_eq!(endpoints.storage, Some("http://localhost:9000".to_string()));
+}
+
+#[test]
+fn test_health_check_config_default() {
+    let config = EnvironmentHealthCheckConfig::default();
+
+    assert!(config.enabled, "Health checks should be enabled by default");
+    assert!(config.interval_secs > 0, "Interval should be positive");
+}
+
+// ============================================================================
+// CONCURRENT SAFETY TESTS
+// ============================================================================
+
+#[test]
+fn test_concurrent_config_creation() {
+    use std::sync::atomic::{AtomicU32, Ordering};
+    use std::sync::Arc;
+    use std::thread;
+
+    let counter = Arc::new(AtomicU32::new(0));
+    let mut handles = vec![];
+
+    // Spawn 100 threads creating configs concurrently
+    for _ in 0..100 {
+        let counter = Arc::clone(&counter);
+        handles.push(thread::spawn(move || {
+            let _config = CanonicalEnvironmentConfig::default();
+            counter.fetch_add(1, Ordering::Relaxed);
+        }));
+    }
+
+    for handle in handles {
+        handle.join().expect("Thread should not panic");
+    }
+
+    assert_eq!(counter.load(Ordering::Relaxed), 100, "All configs should create successfully");
+}
+
+#[test]
+fn test_config_is_send_and_sync() {
+    fn assert_send<T: Send>() {}
+    fn assert_sync<T: Sync>() {}
+
+    assert_send::<CanonicalEnvironmentConfig>();
+    assert_sync::<CanonicalEnvironmentConfig>();
+}
+
+// ============================================================================
+// VALIDATION TESTS
+// ============================================================================
+
+#[test]
+fn test_deployment_mode_serialization() {
+    let modes = vec![
+        DeploymentMode::Development,
+        DeploymentMode::Production,
+        DeploymentMode::Staging,
+        DeploymentMode::Test,
+    ];
+
+    for mode in modes {
+        let serialized = serde_json::to_string(&mode).unwrap();
+        let deserialized: DeploymentMode = serde_json::from_str(&serialized).unwrap();
+        assert_eq!(mode, deserialized, "Mode should round-trip through JSON");
+    }
+}
+
+#[test]
+fn test_resource_limits_validation() {
+    let mut limits = ResourceLimits::default();
+
+    // Valid limits
+    limits.max_connections = 1000;
+    assert!(limits.max_connections > 0);
+
+    limits.max_memory_mb = 2048;
+    assert!(limits.max_memory_mb > 0);
+}
+
+#[test]
+fn test_config_cloning() {
+    let config = CanonicalEnvironmentConfig::default();
+    let cloned = config.clone();
+
+    assert_eq!(config.service_name, cloned.service_name);
+    assert_eq!(config.deployment_mode, cloned.deployment_mode);
+}
+
+// ============================================================================
+// INTEGRATION TESTS
+// ============================================================================
+
+#[test]
+fn test_complete_config_construction() {
+    let mut config = CanonicalEnvironmentConfig::default();
+
+    // Set major fields
+    config.log_config.level = "info".to_string();
+    config.deployment_mode = DeploymentMode::Production;
+
+    let mut limits = ResourceLimits::default();
+    limits.max_connections = 10000;
+    limits.max_memory_mb = 8192;
+    config.resource_limits = limits;
+
+    // Verify
+    assert_eq!(config.service_name, "songbird-orchestrator");
+    assert_eq!(config.deployment_mode, DeploymentMode::Production);
+    assert_eq!(config.resource_limits.max_connections, 10000);
+}

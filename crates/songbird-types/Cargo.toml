@@ -52,6 +52,7 @@ tempfile = "3.0"
 criterion = { version = "0.5", features = ["html_reports"] }
 serial_test = "3.0"
 songbird-test-utils = { path = "../songbird-test-utils" }
+songbird-config = { path = "../songbird-config" }
 
 [[bench]]
 name = "comprehensive_unification_benchmarks"

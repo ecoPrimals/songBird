@@ -9,7 +9,7 @@ use songbird_discovery::{
     production::adapters::ProductionDiscoveryBackend,
 };
 use std::time::Duration;
-use tokio::time::sleep;
+// Removed unused: use tokio::time::sleep;
 
 #[tokio::test]
 async fn test_service_registration_and_discovery() -> Result<(), Box<dyn std::error::Error>> {

@@ -7,6 +7,7 @@ pub struct SquirrelConfig {
     pub port: u16,
     pub ai_provider: String,
     pub anthropic_api_key: Option<String>,
+    #[allow(dead_code)]
     pub openai_api_key: Option<String>,
 }
 

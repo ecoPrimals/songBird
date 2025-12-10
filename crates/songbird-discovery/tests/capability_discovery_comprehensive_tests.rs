@@ -12,7 +12,7 @@ use songbird_test_utils::test_orchestrator_port;
 use songbird_types::{SongbirdError, SongbirdResult};
 use std::collections::HashMap;
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_discover_by_single_capability() -> SongbirdResult<()> {
     let discovery = CapabilityDiscovery::new(DiscoveryConfig::default());
 
@@ -36,7 +36,7 @@ async fn test_discover_by_single_capability() -> SongbirdResult<()> {
     Ok(())
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_discover_multiple_capabilities() -> SongbirdResult<()> {
     let discovery = CapabilityDiscovery::new(DiscoveryConfig::default());
 
@@ -77,7 +77,7 @@ async fn test_discover_multiple_capabilities() -> SongbirdResult<()> {
     Ok(())
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_capability_not_found() -> SongbirdResult<()> {
     let discovery = CapabilityDiscovery::new(DiscoveryConfig::default());
 
@@ -91,7 +91,7 @@ async fn test_capability_not_found() -> SongbirdResult<()> {
     Ok(())
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_dynamic_capability_registration() -> SongbirdResult<()> {
     let discovery = CapabilityDiscovery::new(DiscoveryConfig::default());
 
@@ -122,7 +122,7 @@ async fn test_dynamic_capability_registration() -> SongbirdResult<()> {
     Ok(())
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_capability_deregistration() -> SongbirdResult<()> {
     let discovery = CapabilityDiscovery::new(DiscoveryConfig::default());
 
@@ -148,7 +148,7 @@ async fn test_capability_deregistration() -> SongbirdResult<()> {
     Ok(())
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_multiple_providers_same_capability() -> SongbirdResult<()> {
     let discovery = CapabilityDiscovery::new(DiscoveryConfig::default());
 
@@ -173,7 +173,7 @@ async fn test_multiple_providers_same_capability() -> SongbirdResult<()> {
     Ok(())
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_capability_with_metadata() -> SongbirdResult<()> {
     let discovery = CapabilityDiscovery::new(DiscoveryConfig::default());
 
@@ -200,7 +200,7 @@ async fn test_capability_with_metadata() -> SongbirdResult<()> {
     Ok(())
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_filtered_discovery_by_metadata() {
     let discovery = CapabilityDiscovery::new(DiscoveryConfig::default());
 
@@ -239,7 +239,7 @@ async fn test_filtered_discovery_by_metadata() {
     assert!(filtered.is_ok());
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_capability_priority_selection() {
     let discovery = CapabilityDiscovery::new(DiscoveryConfig::default());
 
@@ -264,7 +264,7 @@ async fn test_capability_priority_selection() {
     assert!(highest_priority.is_ok());
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_capability_health_aware_discovery() {
     let discovery = CapabilityDiscovery::new(DiscoveryConfig::default());
 
@@ -286,7 +286,7 @@ async fn test_capability_health_aware_discovery() {
     assert!(providers.is_ok());
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_concurrent_capability_registration() {
     let discovery = std::sync::Arc::new(CapabilityDiscovery::new(DiscoveryConfig::default()));
 
@@ -321,7 +321,7 @@ async fn test_concurrent_capability_registration() {
     assert_eq!(providers.len(), 10);
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_capability_cache_invalidation() -> SongbirdResult<()> {
     let discovery = CapabilityDiscovery::new(DiscoveryConfig::with_cache_ttl(100));
 
@@ -357,7 +357,7 @@ async fn test_capability_cache_invalidation() -> SongbirdResult<()> {
     Ok(())
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_wildcard_capability_discovery() -> SongbirdResult<()> {
     let discovery = CapabilityDiscovery::new(DiscoveryConfig::default());
 
@@ -383,7 +383,7 @@ async fn test_wildcard_capability_discovery() -> SongbirdResult<()> {
     Ok(())
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_capability_version_compatibility() {
     let discovery = CapabilityDiscovery::new(DiscoveryConfig::default());
 
@@ -405,7 +405,7 @@ async fn test_capability_version_compatibility() {
     assert!(compatible.is_ok());
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_capability_discovery_timeout() {
     let config = DiscoveryConfig::with_timeout(50); // 50ms timeout
     let discovery = CapabilityDiscovery::new(config);
@@ -417,7 +417,7 @@ async fn test_capability_discovery_timeout() {
     assert!(result.is_ok() || result.is_err());
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_empty_capability_list() {
     let discovery = CapabilityDiscovery::new(DiscoveryConfig::default());
 
@@ -435,7 +435,7 @@ async fn test_empty_capability_list() {
     assert!(result.is_ok() || result.is_err());
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_duplicate_capability_registration() -> SongbirdResult<()> {
     let discovery = CapabilityDiscovery::new(DiscoveryConfig::default());
 
@@ -459,7 +459,7 @@ async fn test_duplicate_capability_registration() -> SongbirdResult<()> {
     Ok(())
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_capability_statistics() {
     let discovery = CapabilityDiscovery::new(DiscoveryConfig::default());
 

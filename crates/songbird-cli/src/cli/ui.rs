@@ -344,10 +344,9 @@ where
 {
     let pb = spinner(message);
     // Use configurable refresh interval (with minimum for UI responsiveness)
-    let ui_refresh_interval =
-        songbird_config::config::hardcoded_elimination::replace::health_check_timeout()
-            .min(Duration::from_millis(500)) // UI refresh shouldn't be too slow
-            .max(Duration::from_millis(50)); // UI refresh shouldn't be too fast
+    let ui_refresh_interval = songbird_config::canonical::constants::health::DEFAULT_CHECK_TIMEOUT
+        .min(Duration::from_millis(500)) // UI refresh shouldn't be too slow
+        .max(Duration::from_millis(50)); // UI refresh shouldn't be too fast
     pb.enable_steady_tick(ui_refresh_interval);
     let result = future.await;
     pb.finish_with_message("Done");

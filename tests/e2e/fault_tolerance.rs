@@ -124,6 +124,7 @@ async fn test_retry_with_exponential_backoff() -> Result<(), Box<dyn std::error:
     for retry in 0..max_retries {
         attempt = retry + 1;
         
+        // ✅ ACCEPTABLE SLEEP: Testing exponential backoff behavior itself
         // Calculate exponential backoff: 100ms, 200ms, 400ms, 800ms, 1600ms
         if retry > 0 {
             let backoff = Duration::from_millis(100 * 2_u64.pow(retry as u32));
@@ -189,11 +190,22 @@ async fn test_circuit_breaker_recovery() -> Result<(), Box<dyn std::error::Error
     // Circuit is now open - heal the service
     env.update_service_health("recoverable-service", songbird_types::HealthStatus::Healthy).await?;
     
-    // Wait for circuit breaker to attempt recovery (half-open state)
-    tokio::time::sleep(Duration::from_secs(3)).await;
+    // Poll for circuit breaker to attempt recovery (half-open state)
+    let start = tokio::time::Instant::now();
+    let timeout = Duration::from_secs(5);
+    let mut interval = tokio::time::interval(Duration::from_millis(100));
     
-    // Try request again - should succeed now that service is healthy
-    let result = env.make_request("recoverable-service", "/compute").await;
+    let mut result = Err(Box::new(std::io::Error::new(std::io::ErrorKind::Other, "timeout")) as Box<dyn std::error::Error>);
+    while start.elapsed() < timeout {
+        result = env.make_request("recoverable-service", "/compute").await;
+        if result.is_ok() {
+            break;
+        }
+        interval.tick().await;
+    }
+    
+    // Should have recovered and allowed request
+    let result = result;
     
     // Circuit should close and allow traffic through
     assert!(result.is_ok(), "Circuit breaker should recover and allow requests");
@@ -245,6 +257,7 @@ async fn test_timeout_doesnt_block_other_requests() -> Result<(), Box<dyn std::e
         }
     });
     
+    // ✅ ACCEPTABLE SLEEP: E2E test ensuring slow request has started
     // Make fast request while slow one is running
     tokio::time::sleep(Duration::from_millis(100)).await;
     let fast_start = Instant::now();
@@ -289,11 +302,22 @@ async fn test_circuit_breaker_half_open_state() -> Result<(), Box<dyn std::error
         let _ = env.make_request("half-open-service", "/compute").await;
     }
     
-    // Wait for timeout to enter half-open state
-    tokio::time::sleep(Duration::from_millis(1500)).await;
+    // Poll for timeout to enter half-open state
+    let start = tokio::time::Instant::now();
+    let timeout = Duration::from_secs(3);
+    let mut interval = tokio::time::interval(Duration::from_millis(100));
+    
+    let mut result1 = Err(Box::new(std::io::Error::new(std::io::ErrorKind::Other, "timeout")) as Box<dyn std::error::Error>);
+    while start.elapsed() < timeout {
+        result1 = env.make_request("half-open-service", "/compute").await;
+        if result1.is_ok() {
+            break;
+        }
+        interval.tick().await;
+    }
     
     // First request in half-open should be allowed
-    let result1 = env.make_request("half-open-service", "/compute").await;
+    let result1 = result1;
     
     // Half-open state limits concurrent requests
     // Multiple rapid requests should show throttling behavior
@@ -343,6 +367,7 @@ async fn test_retry_with_jitter() -> Result<(), Box<dyn std::error::Error>> {
         if retry > 0 {
             let base_delay = Duration::from_millis(100 * 2_u64.pow(retry as u32 - 1));
             
+            // ✅ ACCEPTABLE SLEEP: Testing jittered retry behavior itself
             // Add jitter: ±25% of base delay
             let jitter_range = base_delay.as_millis() as i64 / 4;
             let jitter = fastrand::i64(-jitter_range..=jitter_range);
@@ -453,8 +478,8 @@ async fn test_resource_cleanup_on_timeout() -> Result<(), Box<dyn std::error::Er
     // Make request that will timeout
     let _ = env.make_request_with_timeout("cleanup-service", "/slow", Duration::from_millis(300)).await;
     
-    // Wait a moment for cleanup
-    tokio::time::sleep(Duration::from_millis(200)).await;
+    // The async timeout method handles cleanup when it returns
+    // No need to wait - cleanup is complete when the await returns
     
     // Verify resources were cleaned up
     let final_connections = env.get_active_connections().await.unwrap_or(0);

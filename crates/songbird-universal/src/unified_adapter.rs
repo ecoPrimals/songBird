@@ -40,6 +40,9 @@ pub struct UnifiedUniversalAdapter {
 }
 
 /// **UNIFIED**: Capability registry for discovered services
+///
+/// **FUTURE OPTIMIZATION**: Consider `Arc<str>` for service IDs and capability names
+/// when profiling shows clone overhead. Current design prioritizes simplicity.
 #[derive(Debug, Clone, Default)]
 pub struct CapabilityRegistry {
     /// Map of service ID to their capabilities

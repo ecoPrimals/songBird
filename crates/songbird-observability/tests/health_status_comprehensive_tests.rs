@@ -5,9 +5,9 @@
 
 #![allow(clippy::float_cmp)]
 #![allow(clippy::uninlined_format_args)]
+#![allow(clippy::unwrap_used)]
 
 use songbird_observability::health::*;
-use songbird_types::SongbirdResult;
 use std::collections::HashMap;
 use std::time::{Duration, SystemTime};
 

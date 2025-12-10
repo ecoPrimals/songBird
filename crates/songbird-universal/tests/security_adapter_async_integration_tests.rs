@@ -19,7 +19,7 @@ use std::time::Duration;
 // FROM_DISCOVERY ASYNC TESTS
 // ============================================================================
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_from_discovery_with_env_variable() {
     let server = mockito::Server::new_async().await;
     let endpoint = server.url();
@@ -38,7 +38,7 @@ async fn test_from_discovery_with_env_variable() {
     std::env::remove_var("SONGBIRD_SECURITY_ENDPOINT");
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_from_discovery_with_legacy_env_beardog() {
     let server = mockito::Server::new_async().await;
     let endpoint = server.url();
@@ -54,7 +54,7 @@ async fn test_from_discovery_with_legacy_env_beardog() {
     std::env::remove_var("BEARDOG_ENDPOINT");
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_from_discovery_fallback_to_default() {
     // Clear all env vars that might interfere
     std::env::remove_var("SONGBIRD_SECURITY_ENDPOINT");
@@ -74,7 +74,7 @@ async fn test_from_discovery_fallback_to_default() {
 // COLLECT_METRICS ASYNC TESTS
 // ============================================================================
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_collect_metrics_success() {
     let mut server = mockito::Server::new_async().await;
 
@@ -83,13 +83,15 @@ async fn test_collect_metrics_success() {
         .mock("GET", "/metrics/security")
         .with_status(200)
         .with_header("content-type", "application/json")
-        .with_body(r#"{
+        .with_body(
+            r#"{
             "active_sessions": 100,
             "failed_auth_attempts": 5,
             "blocked_ips": 2,
             "security_score": 0.95,
             "timestamp": "2025-11-18T12:00:00Z"
-        }"#)
+        }"#,
+        )
         .create_async()
         .await;
 
@@ -106,7 +108,7 @@ async fn test_collect_metrics_success() {
     mock.assert_async().await;
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_collect_metrics_sets_timestamp_if_missing() {
     let mut server = mockito::Server::new_async().await;
 
@@ -115,13 +117,15 @@ async fn test_collect_metrics_sets_timestamp_if_missing() {
         .mock("GET", "/metrics/security")
         .with_status(200)
         .with_header("content-type", "application/json")
-        .with_body(r#"{
+        .with_body(
+            r#"{
             "active_sessions": 50,
             "failed_auth_attempts": 3,
             "blocked_ips": 1,
             "security_score": 0.90,
             "timestamp": "1970-01-01T00:00:00Z"
-        }"#)
+        }"#,
+        )
         .create_async()
         .await;
 
@@ -139,7 +143,7 @@ async fn test_collect_metrics_sets_timestamp_if_missing() {
     mock.assert_async().await;
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_collect_metrics_network_error() {
     // Use invalid endpoint
     let adapter = SecurityAdapter::new("http://localhost:1".to_string()).unwrap();
@@ -151,7 +155,7 @@ async fn test_collect_metrics_network_error() {
     assert!(err.to_string().contains("Failed to reach security provider"));
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_collect_metrics_http_error_status() {
     let mut server = mockito::Server::new_async().await;
 
@@ -173,7 +177,7 @@ async fn test_collect_metrics_http_error_status() {
     mock.assert_async().await;
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_collect_metrics_invalid_json() {
     let mut server = mockito::Server::new_async().await;
 
@@ -196,7 +200,7 @@ async fn test_collect_metrics_invalid_json() {
     mock.assert_async().await;
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_collect_metrics_with_timeout() {
     let mut server = mockito::Server::new_async().await;
 
@@ -213,9 +217,8 @@ async fn test_collect_metrics_with_timeout() {
         .create_async()
         .await;
 
-    let adapter = SecurityAdapter::new(server.url())
-        .unwrap()
-        .with_timeout(Duration::from_millis(100)); // Very short timeout
+    let adapter =
+        SecurityAdapter::new(server.url()).unwrap().with_timeout(Duration::from_millis(100)); // Very short timeout
 
     let result = adapter.collect_metrics().await;
     assert!(result.is_err(), "Should timeout");
@@ -227,7 +230,7 @@ async fn test_collect_metrics_with_timeout() {
 // VERIFY_AUTH ASYNC TESTS
 // ============================================================================
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_verify_auth_authorized() {
     let mut server = mockito::Server::new_async().await;
 
@@ -250,16 +253,12 @@ async fn test_verify_auth_authorized() {
     mock.assert_async().await;
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_verify_auth_unauthorized() {
     let mut server = mockito::Server::new_async().await;
 
     // Return 401 for invalid token
-    let mock = server
-        .mock("POST", "/auth/verify")
-        .with_status(401)
-        .create_async()
-        .await;
+    let mock = server.mock("POST", "/auth/verify").with_status(401).create_async().await;
 
     let adapter = SecurityAdapter::new(server.url()).unwrap();
     let result = adapter.verify_auth("invalid-token").await;
@@ -270,7 +269,7 @@ async fn test_verify_auth_unauthorized() {
     mock.assert_async().await;
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_verify_auth_expired() {
     let mut server = mockito::Server::new_async().await;
 
@@ -291,7 +290,7 @@ async fn test_verify_auth_expired() {
     mock.assert_async().await;
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_verify_auth_invalid() {
     let mut server = mockito::Server::new_async().await;
 
@@ -312,7 +311,7 @@ async fn test_verify_auth_invalid() {
     mock.assert_async().await;
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_verify_auth_network_error() {
     let adapter = SecurityAdapter::new("http://localhost:1".to_string()).unwrap();
 
@@ -323,7 +322,7 @@ async fn test_verify_auth_network_error() {
     assert!(err.to_string().contains("Auth verification failed"));
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_verify_auth_invalid_json_response() {
     let mut server = mockito::Server::new_async().await;
 
@@ -348,7 +347,7 @@ async fn test_verify_auth_invalid_json_response() {
 // CHECK_HEALTH ASYNC TESTS
 // ============================================================================
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_check_health_healthy() {
     let mut server = mockito::Server::new_async().await;
 
@@ -357,13 +356,15 @@ async fn test_check_health_healthy() {
         .mock("GET", "/metrics/security")
         .with_status(200)
         .with_header("content-type", "application/json")
-        .with_body(r#"{
+        .with_body(
+            r#"{
             "active_sessions": 100,
             "failed_auth_attempts": 3,
             "blocked_ips": 1,
             "security_score": 0.95,
             "timestamp": "2025-11-18T12:00:00Z"
-        }"#)
+        }"#,
+        )
         .create_async()
         .await;
 
@@ -376,7 +377,7 @@ async fn test_check_health_healthy() {
     mock.assert_async().await;
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_check_health_warning() {
     let mut server = mockito::Server::new_async().await;
 
@@ -385,13 +386,15 @@ async fn test_check_health_warning() {
         .mock("GET", "/metrics/security")
         .with_status(200)
         .with_header("content-type", "application/json")
-        .with_body(r#"{
+        .with_body(
+            r#"{
             "active_sessions": 50,
             "failed_auth_attempts": 35,
             "blocked_ips": 8,
             "security_score": 0.65,
             "timestamp": "2025-11-18T12:00:00Z"
-        }"#)
+        }"#,
+        )
         .create_async()
         .await;
 
@@ -404,7 +407,7 @@ async fn test_check_health_warning() {
     mock.assert_async().await;
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_check_health_critical() {
     let mut server = mockito::Server::new_async().await;
 
@@ -413,13 +416,15 @@ async fn test_check_health_critical() {
         .mock("GET", "/metrics/security")
         .with_status(200)
         .with_header("content-type", "application/json")
-        .with_body(r#"{
+        .with_body(
+            r#"{
             "active_sessions": 50,
             "failed_auth_attempts": 150,
             "blocked_ips": 25,
             "security_score": 0.45,
             "timestamp": "2025-11-18T12:00:00Z"
-        }"#)
+        }"#,
+        )
         .create_async()
         .await;
 
@@ -432,7 +437,7 @@ async fn test_check_health_critical() {
     mock.assert_async().await;
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_check_health_network_error() {
     let adapter = SecurityAdapter::new("http://localhost:1".to_string()).unwrap();
 
@@ -444,7 +449,7 @@ async fn test_check_health_network_error() {
 // INTEGRATION WORKFLOW TESTS
 // ============================================================================
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_full_security_workflow() {
     let mut server = mockito::Server::new_async().await;
 
@@ -453,13 +458,15 @@ async fn test_full_security_workflow() {
         .mock("GET", "/metrics/security")
         .with_status(200)
         .with_header("content-type", "application/json")
-        .with_body(r#"{
+        .with_body(
+            r#"{
             "active_sessions": 80,
             "failed_auth_attempts": 5,
             "blocked_ips": 2,
             "security_score": 0.92,
             "timestamp": "2025-11-18T12:00:00Z"
-        }"#)
+        }"#,
+        )
         .expect(2) // Called twice
         .create_async()
         .await;
@@ -493,7 +500,7 @@ async fn test_full_security_workflow() {
     auth_mock.assert_async().await;
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_concurrent_requests() {
     let mut server = mockito::Server::new_async().await;
 
@@ -502,13 +509,15 @@ async fn test_concurrent_requests() {
         .mock("GET", "/metrics/security")
         .with_status(200)
         .with_header("content-type", "application/json")
-        .with_body(r#"{
+        .with_body(
+            r#"{
             "active_sessions": 100,
             "failed_auth_attempts": 5,
             "blocked_ips": 2,
             "security_score": 0.95,
             "timestamp": "2025-11-18T12:00:00Z"
-        }"#)
+        }"#,
+        )
         .expect(3)
         .create_async()
         .await;
@@ -516,11 +525,8 @@ async fn test_concurrent_requests() {
     let adapter = SecurityAdapter::new(server.url()).unwrap();
 
     // Fire off 3 concurrent requests
-    let futures = vec![
-        adapter.collect_metrics(),
-        adapter.collect_metrics(),
-        adapter.collect_metrics(),
-    ];
+    let futures =
+        vec![adapter.collect_metrics(), adapter.collect_metrics(), adapter.collect_metrics()];
 
     let results = futures::future::join_all(futures).await;
 
@@ -532,7 +538,7 @@ async fn test_concurrent_requests() {
     mock.assert_async().await;
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_retry_on_transient_failure() {
     let mut server = mockito::Server::new_async().await;
 
@@ -559,13 +565,15 @@ async fn test_retry_on_transient_failure() {
         .mock("GET", "/metrics/security")
         .with_status(200)
         .with_header("content-type", "application/json")
-        .with_body(r#"{
+        .with_body(
+            r#"{
             "active_sessions": 50,
             "failed_auth_attempts": 2,
             "blocked_ips": 1,
             "security_score": 0.93,
             "timestamp": "2025-11-18T12:00:00Z"
-        }"#)
+        }"#,
+        )
         .create_async()
         .await;
 
@@ -575,4 +583,3 @@ async fn test_retry_on_transient_failure() {
 
     success_mock.assert_async().await;
 }
-

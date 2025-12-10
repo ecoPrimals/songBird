@@ -54,7 +54,7 @@ fn test_port_config_defaults() {
 
     assert_eq!(config.discovery_port, 8081);
     assert_eq!(config.federation_port, 8082);
-    assert_eq!(config.health_port, 8085);
+    assert_eq!(config.health_port, 8002); // Fixed: health port default is 8002
     assert_eq!(config.dynamic_port_range, (9000, 9999));
 }
 

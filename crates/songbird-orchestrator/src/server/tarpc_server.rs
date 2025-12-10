@@ -197,15 +197,52 @@ impl SongbirdFederation for TarpcServer {
         _ctx: Context,
         service: ServiceInfo,
     ) -> Result<String, ServiceError> {
-        // TODO: Implement actual service registration
-        // For now, return a mock service ID
         tracing::info!(
             service_name = %service.name,
             service_port = service.port,
-            "tarpc: Received service registration request"
+            capabilities = ?service.capabilities,
+            "tarpc: Registering service"
         );
 
+        // Convert ServiceInfo to ServiceRegistration and register
         let service_id = uuid::Uuid::new_v4().to_string();
+        let service_registration =
+            songbird_network_federation::service_registry::ServiceRegistration {
+                service_id: service_id.clone(),
+                service_name: service.name.clone(),
+                service_type: service
+                    .metadata
+                    .get("type")
+                    .cloned()
+                    .unwrap_or_else(|| "unknown".to_string()),
+                tower_id: service
+                    .metadata
+                    .get("tower_id")
+                    .cloned()
+                    .unwrap_or_else(|| "local".to_string()),
+                tower_name: service
+                    .metadata
+                    .get("tower_name")
+                    .cloned()
+                    .unwrap_or_else(|| "Local Tower".to_string()),
+                endpoint: format!("{}:{}", service.address, service.port),
+                capabilities: service.capabilities,
+                metadata: service.metadata,
+                health_status:
+                    songbird_network_federation::service_registry::ServiceHealthStatus::Healthy,
+                registered_at: chrono::Utc::now(),
+                last_seen: chrono::Utc::now(),
+            };
+
+        // Register with the federated registry
+        self.service_registry.register_local(service_registration).await;
+
+        tracing::info!(
+            service_id = %service_id,
+            service_name = %service.name,
+            "tarpc: Service registered successfully"
+        );
+
         Ok(service_id)
     }
 
@@ -214,23 +251,57 @@ impl SongbirdFederation for TarpcServer {
         _ctx: Context,
         query: DiscoveryQuery,
     ) -> Result<Vec<ServiceInfo>, ServiceError> {
-        // TODO: Implement actual service discovery
-        tracing::info!(
+        tracing::debug!(
             capabilities = ?query.capabilities,
-            "tarpc: Received service discovery request"
+            filters = ?query.filters,
+            "tarpc: Discovering services"
         );
 
-        // For now, return empty list
-        Ok(Vec::new())
+        // Query the federated service registry by capabilities
+        let mut services = Vec::new();
+
+        // If specific capabilities requested, find by them
+        if !query.capabilities.is_empty() {
+            for capability in &query.capabilities {
+                let cap_services = self.service_registry.find_by_capability(capability).await;
+                services.extend(cap_services);
+            }
+            // Deduplicate
+            services.sort_by(|a, b| a.service_id.cmp(&b.service_id));
+            services.dedup_by(|a, b| a.service_id == b.service_id);
+        } else {
+            // No specific capabilities - return all services
+            services = self.service_registry.get_all_services().await;
+        }
+
+        // Convert to ServiceInfo format
+        let service_infos: Vec<ServiceInfo> = services
+            .into_iter()
+            .map(|s| ServiceInfo {
+                name: s.service_name,
+                address: s.endpoint.split(':').next().unwrap_or("").to_string(),
+                port: s.endpoint.split(':').nth(1).and_then(|p| p.parse().ok()).unwrap_or(0),
+                capabilities: s.capabilities,
+                metadata: s.metadata,
+            })
+            .collect();
+
+        tracing::info!(found_services = service_infos.len(), "tarpc: Service discovery completed");
+
+        Ok(service_infos)
     }
 
     async fn get_federation_status(self, _ctx: Context) -> Result<FederationStatus, ServiceError> {
         let start_time = self.start_time.read().await;
         let uptime = start_time.elapsed().as_secs();
 
+        // Get real metrics from registry and federation state
+        let registry_stats = self.service_registry.get_stats().await;
+        let fed_stats = self.federation_state.get_stats().await;
+
         Ok(FederationStatus {
-            total_services: 0, // TODO: Get from registry
-            total_peers: 0,    // TODO: Get from federation state
+            total_services: registry_stats.total_services,
+            total_peers: fed_stats.active_nodes,
             uptime_seconds: uptime,
             version: env!("CARGO_PKG_VERSION").to_string(),
         })
@@ -244,7 +315,7 @@ impl SongbirdFederation for TarpcServer {
 /// Start the tarpc server
 ///
 /// # Arguments
-/// * `addr` - Address to bind to (e.g., "[::]:8081")
+/// * `addr` - Address to bind to (e.g., `[::]:8081`)
 /// * `federation_state` - Federation state
 /// * `service_registry` - Service registry
 ///

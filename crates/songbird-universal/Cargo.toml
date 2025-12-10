@@ -18,6 +18,15 @@ default = []
 tests-incomplete = []  # Feature flag for incomplete tests
 federation-tests-disabled = []  # Feature flag for disabled federation tests
 
+# Discovery backend features (optional)
+mdns = ["dep:mdns"]
+dns-sd = ["dep:trust-dns-resolver"]
+k8s = ["dep:kube", "dep:k8s-openapi"]
+docker = ["dep:bollard"]
+
+# Convenience feature to enable all discovery backends
+full-discovery = ["mdns", "dns-sd", "k8s", "docker"]
+
 [dependencies]
 # anyhow = "1.0" # Unused - removed for optimization
 async-trait = "0.1"
@@ -39,8 +48,16 @@ songbird-config = { path = "../songbird-config" }
 # songbird-security-errors = { path = "../songbird-security-errors" }  # REMOVED: Using unified errors from songbird-types
 songbird-types = { path = "../songbird-types" }
 
+# Optional: Discovery backend dependencies
+mdns = { version = "3.0", optional = true }
+trust-dns-resolver = { version = "0.23", optional = true }
+kube = { version = "0.95", optional = true, features = ["client", "runtime"] }
+k8s-openapi = { version = "0.23", optional = true, features = ["v1_30"] }
+bollard = { version = "0.17", optional = true }
+
 [dev-dependencies]
 mockito = "1.2"
 tokio-test = "0.4"
 songbird-test-utils = { path = "../songbird-test-utils" } 
 serial_test = "3.2.0"
+wiremock = "0.6"

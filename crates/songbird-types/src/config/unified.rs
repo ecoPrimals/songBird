@@ -71,6 +71,21 @@ impl UnifiedSongbirdConfig {
         Ok(())
     }
 
+    /// Get bind address from environment map (for testing - concurrent safe)
+    #[must_use]
+    pub fn get_bind_address_from_env(
+        &self,
+        env: &std::collections::HashMap<String, String>,
+    ) -> String {
+        env.get("SONGBIRD_BIND_ADDRESS").cloned().unwrap_or_else(|| {
+            if self.is_production() {
+                "0.0.0.0".to_string()
+            } else {
+                "127.0.0.1".to_string()
+            }
+        })
+    }
+
     /// Get bind address based on environment
     #[must_use]
     pub fn get_bind_address(&self) -> String {
@@ -79,6 +94,19 @@ impl UnifiedSongbirdConfig {
                 "0.0.0.0"
             } else {
                 "127.0.0.1"
+            }
+        })
+    }
+
+    /// Get data directory from environment map (for testing - concurrent safe)
+    #[must_use]
+    pub fn get_data_dir_from_env(&self, env: &std::collections::HashMap<String, String>) -> String {
+        env.get("SONGBIRD_DATA_DIR").cloned().unwrap_or_else(|| {
+            if self.is_production() {
+                "/var/lib/songbird".to_string()
+            } else {
+                let home = env.get("HOME").map_or("/tmp", String::as_str);
+                format!("{}/.local/share/songbird", home)
             }
         })
     }
@@ -95,6 +123,22 @@ impl UnifiedSongbirdConfig {
         })
     }
 
+    /// Get config directory from environment map (for testing - concurrent safe)
+    #[must_use]
+    pub fn get_config_dir_from_env(
+        &self,
+        env: &std::collections::HashMap<String, String>,
+    ) -> String {
+        env.get("SONGBIRD_CONFIG_DIR").cloned().unwrap_or_else(|| {
+            if self.is_production() {
+                "/etc/songbird".to_string()
+            } else {
+                let home = env.get("HOME").map_or("/tmp", String::as_str);
+                format!("{}/.config/songbird", home)
+            }
+        })
+    }
+
     /// Get config directory path
     #[must_use]
     pub fn get_config_dir(&self) -> String {
@@ -107,6 +151,22 @@ impl UnifiedSongbirdConfig {
         })
     }
 
+    /// Get cache directory from environment map (for testing - concurrent safe)
+    #[must_use]
+    pub fn get_cache_dir_from_env(
+        &self,
+        env: &std::collections::HashMap<String, String>,
+    ) -> String {
+        env.get("SONGBIRD_CACHE_DIR").cloned().unwrap_or_else(|| {
+            if self.is_production() {
+                "/var/cache/songbird".to_string()
+            } else {
+                let home = env.get("HOME").map_or("/tmp", String::as_str);
+                format!("{}/.cache/songbird", home)
+            }
+        })
+    }
+
     /// Get cache directory path
     #[must_use]
     pub fn get_cache_dir(&self) -> String {
@@ -115,6 +175,19 @@ impl UnifiedSongbirdConfig {
                 "/var/cache/songbird".to_string()
             } else {
                 format!("{}/.cache/songbird", SafeEnv::get_or_default("HOME", "/tmp"))
+            }
+        })
+    }
+
+    /// Get log directory from environment map (for testing - concurrent safe)
+    #[must_use]
+    pub fn get_log_dir_from_env(&self, env: &std::collections::HashMap<String, String>) -> String {
+        env.get("SONGBIRD_LOG_DIR").cloned().unwrap_or_else(|| {
+            if self.is_production() {
+                "/var/log/songbird".to_string()
+            } else {
+                let home = env.get("HOME").map_or("/tmp", String::as_str);
+                format!("{}/.local/share/songbird/logs", home)
             }
         })
     }
@@ -145,6 +218,14 @@ impl UnifiedSongbirdConfig {
         self.system.environment == "development"
             || SafeEnv::get_or_default("SONGBIRD_ENV", "") == "development"
             || SafeEnv::get_or_default("NODE_ENV", "") == "development"
+    }
+
+    /// Check if running in test mode from environment map (for testing - concurrent safe)
+    #[must_use]
+    pub fn is_test_from_env(env: &std::collections::HashMap<String, String>) -> bool {
+        env.get("SONGBIRD_ENV").map(String::as_str) == Some("testing")
+            || env.get("NODE_ENV").map(String::as_str) == Some("test")
+            || env.contains_key("CI")
     }
 
     /// Check if running in test mode

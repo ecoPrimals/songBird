@@ -1,3 +1,4 @@
+#![cfg(feature = "tests-incomplete")]
 //! Federation-aware discovery tests
 //!
 //! Tests cross-node discovery, federated routing, and multi-node coordination

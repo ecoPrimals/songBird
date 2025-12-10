@@ -215,7 +215,7 @@ impl FederationCoordinator {
 
     /// Start health monitor
     async fn start_health_monitor(&self, config: &FederationConfig) -> SongbirdResult<()> {
-        let state = Arc::clone(&self.state);
+        let federation_state = Arc::clone(&self.state);
         let timeout_secs = config.node_timeout_secs;
 
         tokio::spawn(async move {
@@ -225,13 +225,13 @@ impl FederationCoordinator {
                 interval.tick().await;
 
                 debug!("🏥 Checking node health");
-                state.check_node_health(timeout_secs).await;
+                federation_state.check_node_health(timeout_secs).await;
 
-                let stats = state.get_stats().await;
-                if stats.active_nodes != stats.total_nodes {
+                let health_stats = federation_state.get_stats().await;
+                if health_stats.active_nodes != health_stats.total_nodes {
                     warn!(
                         "⚠️  Node health: {}/{} nodes active",
-                        stats.active_nodes, stats.total_nodes
+                        health_stats.active_nodes, health_stats.total_nodes
                     );
                 }
             }

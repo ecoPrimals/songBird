@@ -18,7 +18,7 @@ use std::sync::Arc;
 // ROUND-ROBIN STRATEGY TESTS
 // ============================================================================
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_round_robin_distribution() {
     let endpoints = vec![
         "http://service1:8080".to_string(),
@@ -39,7 +39,7 @@ async fn test_round_robin_distribution() {
     }
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_round_robin_with_concurrent_requests() {
     let endpoints = vec![
         "http://service1:8080".to_string(),
@@ -52,13 +52,11 @@ async fn test_round_robin_with_concurrent_requests() {
     let mut handles = vec![];
     for _ in 0..10 {
         let lb_clone = Arc::clone(&lb);
-        handles.push(tokio::spawn(async move {
-            lb_clone.get_next_endpoint().await
-        }));
+        handles.push(tokio::spawn(async move { lb_clone.get_next_endpoint().await }));
     }
 
     let results: Vec<_> = futures::future::join_all(handles).await;
-    
+
     // All should succeed
     for result in results {
         assert!(result.is_ok());
@@ -70,7 +68,7 @@ async fn test_round_robin_with_concurrent_requests() {
 // HEALTH-BASED STRATEGY TESTS
 // ============================================================================
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_health_based_selection() {
     let endpoints = vec![
         "http://service1:8080".to_string(),
@@ -91,12 +89,9 @@ async fn test_health_based_selection() {
     }
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_health_based_with_dynamic_updates() {
-    let endpoints = vec![
-        "http://service1:8080".to_string(),
-        "http://service2:8080".to_string(),
-    ];
+    let endpoints = vec!["http://service1:8080".to_string(), "http://service2:8080".to_string()];
     let lb = LoadBalancer::new(endpoints.clone(), LoadBalancingStrategy::HealthBased);
 
     // Initially equal health - either is fine
@@ -126,12 +121,9 @@ async fn test_health_based_with_dynamic_updates() {
 // AVAILABILITY MANAGEMENT TESTS
 // ============================================================================
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_mark_endpoint_unavailable() {
-    let endpoints = vec![
-        "http://service1:8080".to_string(),
-        "http://service2:8080".to_string(),
-    ];
+    let endpoints = vec!["http://service1:8080".to_string(), "http://service2:8080".to_string()];
     let lb = LoadBalancer::new(endpoints.clone(), LoadBalancingStrategy::RoundRobin);
 
     // Mark first endpoint unavailable
@@ -144,12 +136,9 @@ async fn test_mark_endpoint_unavailable() {
     }
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_mark_endpoint_available_after_unavailable() {
-    let endpoints = vec![
-        "http://service1:8080".to_string(),
-        "http://service2:8080".to_string(),
-    ];
+    let endpoints = vec!["http://service1:8080".to_string(), "http://service2:8080".to_string()];
     let lb = LoadBalancer::new(endpoints.clone(), LoadBalancingStrategy::RoundRobin);
 
     // Mark first endpoint unavailable then available again
@@ -165,12 +154,9 @@ async fn test_mark_endpoint_available_after_unavailable() {
     assert_ne!(first, second);
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_all_endpoints_unavailable() {
-    let endpoints = vec![
-        "http://service1:8080".to_string(),
-        "http://service2:8080".to_string(),
-    ];
+    let endpoints = vec!["http://service1:8080".to_string(), "http://service2:8080".to_string()];
     let lb = LoadBalancer::new(endpoints.clone(), LoadBalancingStrategy::RoundRobin);
 
     // Mark all unavailable
@@ -187,12 +173,9 @@ async fn test_all_endpoints_unavailable() {
 // CONCURRENT ACCESS TESTS
 // ============================================================================
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_concurrent_health_updates() {
-    let endpoints = vec![
-        "http://service1:8080".to_string(),
-        "http://service2:8080".to_string(),
-    ];
+    let endpoints = vec!["http://service1:8080".to_string(), "http://service2:8080".to_string()];
     let lb = Arc::new(LoadBalancer::new(endpoints.clone(), LoadBalancingStrategy::HealthBased));
 
     // Update health concurrently from multiple tasks
@@ -212,7 +195,7 @@ async fn test_concurrent_health_updates() {
     assert!(selected.is_ok());
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_concurrent_availability_changes() {
     let endpoints = vec![
         "http://service1:8080".to_string(),
@@ -246,7 +229,7 @@ async fn test_concurrent_availability_changes() {
 // STRATEGY-SPECIFIC TESTS
 // ============================================================================
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_least_loaded_strategy() {
     let endpoints = vec![
         "http://service1:8080".to_string(),
@@ -260,7 +243,7 @@ async fn test_least_loaded_strategy() {
     assert!(endpoints.contains(&first));
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_random_strategy_distribution() {
     let endpoints = vec![
         "http://service1:8080".to_string(),
@@ -284,7 +267,7 @@ async fn test_random_strategy_distribution() {
 // EDGE CASES
 // ============================================================================
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_single_endpoint() {
     let endpoints = vec!["http://only-service:8080".to_string()];
     let lb = LoadBalancer::new(endpoints.clone(), LoadBalancingStrategy::RoundRobin);
@@ -296,7 +279,7 @@ async fn test_single_endpoint() {
     }
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_empty_endpoints() {
     let endpoints: Vec<String> = vec![];
     let lb = LoadBalancer::new(endpoints, LoadBalancingStrategy::RoundRobin);
@@ -306,7 +289,7 @@ async fn test_empty_endpoints() {
     assert_eq!(result.unwrap_err(), "No endpoints configured");
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_healthy_count() {
     let endpoints = vec![
         "http://service1:8080".to_string(),
@@ -327,12 +310,9 @@ async fn test_healthy_count() {
     assert_eq!(lb.healthy_count().await, 1);
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_available_count() {
-    let endpoints = vec![
-        "http://service1:8080".to_string(),
-        "http://service2:8080".to_string(),
-    ];
+    let endpoints = vec!["http://service1:8080".to_string(), "http://service2:8080".to_string()];
     let lb = LoadBalancer::new(endpoints.clone(), LoadBalancingStrategy::RoundRobin);
 
     assert_eq!(lb.available_count().await, 2);
@@ -344,7 +324,7 @@ async fn test_available_count() {
     assert_eq!(lb.available_count().await, 0);
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_health_update_affects_availability() {
     let endpoints = vec!["http://service:8080".to_string()];
     let lb = LoadBalancer::new(endpoints.clone(), LoadBalancingStrategy::HealthBased);
@@ -360,4 +340,3 @@ async fn test_health_update_affects_availability() {
     lb.update_endpoint_health(&endpoints[0], 0.8).await;
     assert_eq!(lb.available_count().await, 1);
 }
-

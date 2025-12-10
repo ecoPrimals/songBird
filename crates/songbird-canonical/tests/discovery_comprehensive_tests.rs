@@ -278,7 +278,7 @@ fn test_service_info_deserialization() -> SongbirdResult<()> {
     let result: Result<ServiceInfo, _> = serde_json::from_str(json_data);
     assert!(result.is_ok());
 
-    let service = result.ok_or_else(|| {
+    let service = result.map_err(|_| {
         SongbirdError::configuration("Missing performance configuration".to_string())
     })?;
     assert_eq!(service.name, "test-service");
@@ -303,7 +303,7 @@ fn test_service_info_deserialization_with_metadata() -> SongbirdResult<()> {
     let result: Result<ServiceInfo, _> = serde_json::from_str(json_data);
     assert!(result.is_ok());
 
-    let service = result.ok_or_else(|| {
+    let service = result.map_err(|_| {
         SongbirdError::configuration("Missing performance configuration".to_string())
     })?;
     assert_eq!(service.metadata.len(), 2);
@@ -318,9 +318,8 @@ fn test_service_info_round_trip_serialization() -> SongbirdResult<()> {
         .with_metadata("key1".to_string(), "value1".to_string())
         .with_metadata("key2".to_string(), "value2".to_string());
 
-    let serialized = serde_json::to_string(&original).map_err(|e| {
-        SongbirdError::configuration("Missing performance configuration".to_string())
-    })?;
+    let serialized = serde_json::to_string(&original)
+        .map_err(|_e| SongbirdError::configuration("Serialization failed".to_string()))?;
     let deserialized: ServiceInfo =
         serde_json::from_str(&serialized).map_err(|e| SongbirdError::Serialization {
             format: Some("JSON".to_string()),
@@ -456,9 +455,10 @@ fn test_service_info_with_tags_metadata() -> SongbirdResult<()> {
         .with_metadata("tags".to_string(), "production,monitored,critical".to_string())
         .with_metadata("owner".to_string(), "platform-team".to_string());
 
-    let tags = service.metadata.get("tags").or_else(|_| {
-        SongbirdError::configuration("Missing performance configuration".to_string())
-    })?;
+    let tags = service
+        .metadata
+        .get("tags")
+        .ok_or_else(|| SongbirdError::configuration("Missing tags metadata".to_string()))?;
     assert!(tags.contains("production"));
     assert!(tags.contains("monitored"));
     assert!(tags.contains("critical"));

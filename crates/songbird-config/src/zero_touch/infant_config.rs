@@ -127,13 +127,13 @@ pub enum FallbackBehavior {
 /// **LOCAL DEFINITION**: Methods-based with caching support.
 /// **ZERO-TOUCH**: Designed for automatic bootstrapping and infant mode.
 /// Field mappings to canonical:
-/// - `methods` (Vec<Enum>) → Can derive from enabled flags in canonical configs
+/// - `methods` (`Vec<Enum>`) → Can derive from enabled flags in canonical configs
 /// - `timeout` (Duration) → `scan_timeout_secs` (u64, convert)
 /// - `refresh_interval` (Duration) → `service_discovery.discovery_interval_secs` (u64, convert)
 /// - `enable_cache` → `capability_discovery.enabled` (caching feature)
 /// - `cache_ttl` (Duration) → `capability_discovery.cache_ttl_secs` (u64, convert)
 ///
-/// **ARCHITECTURAL NOTE**: Methods-based pattern (Vec<DiscoveryMethod>) is an
+/// **ARCHITECTURAL NOTE**: Methods-based pattern (`Vec<DiscoveryMethod>`) is an
 /// alternative to flag-based. Both are valid approaches. Canonical uses nested
 /// configs with individual enable flags for finer control.
 #[derive(Debug, Clone, Serialize, Deserialize)]

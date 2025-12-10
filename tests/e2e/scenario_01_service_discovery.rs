@@ -1,16 +1,18 @@
 // E2E Scenario 1: Service Discovery and Registration
 // Created: October 30, 2025
+// Updated: December 2, 2025 - Modernized for concurrent execution
 // Priority: P0 - Critical
-// Status: Implementation in progress
+// Status: ✅ Modernized - Fully concurrent
 
 use anyhow::Result;
 use serde_json::json;
-use serial_test::serial;
 
 mod test_environment;
 use test_environment::TestEnvironment;
 
 /// E2E Test: Service discovers and registers with orchestrator
+/// 
+/// **MODERN:** No #[serial] - uses isolated TestEnvironment with atomic port allocation
 /// 
 /// Flow:
 /// 1. Start orchestrator (zero-knowledge state)
@@ -19,7 +21,6 @@ use test_environment::TestEnvironment;
 /// 4. Verify service registers capabilities
 /// 5. Verify orchestrator can route requests to service
 #[tokio::test]
-#[serial]
 async fn e2e_scenario_01_service_discovery_and_registration() -> Result<()> {
     // ARRANGE: Set up test environment
     let mut env = TestEnvironment::new().await?;
@@ -61,8 +62,8 @@ async fn e2e_scenario_01_service_discovery_and_registration() -> Result<()> {
 }
 
 /// Test: Multiple services register different capabilities
+/// **CONCURRENT-SAFE:** Each test gets unique port range via atomic allocation
 #[tokio::test]
-#[serial]
 async fn e2e_multiple_capability_registration() -> Result<()> {
     let mut env = TestEnvironment::new().await?;
     
@@ -91,8 +92,8 @@ async fn e2e_multiple_capability_registration() -> Result<()> {
 }
 
 /// Test: Service re-registration after restart
+/// **MODERN:** Uses TestEnvironment with proper synchronization primitives
 #[tokio::test]
-#[serial]
 async fn e2e_service_reregistration() -> Result<()> {
     let mut env = TestEnvironment::new().await?;
     
@@ -107,10 +108,13 @@ async fn e2e_service_reregistration() -> Result<()> {
     
     // Stop and restart service
     env.stop_service("compute-01").await?;
-    tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
+    
+    // Note: In real implementation, would use watch channels for state changes
+    // For now, TestEnvironment manages process lifecycle synchronously
+    
     let _service = env.start_service("compute-01", "compute").await?;
     
-    // Verify re-registration
+    // Verify re-registration (start_service waits for health)
     let response = orchestrator.request_capability("compute", request).await?;
     assert!(response.status().is_success(), "Re-registration should succeed");
     

@@ -46,7 +46,7 @@ fn test_result_err_creation() {
 }
 
 #[test]
-fn test_error_propagation() -> SongbirdResult<()> {
+fn test_error_propagation() {
     fn returns_error() -> SongbirdResult<()> {
         Err(SongbirdError::configuration("Propagated"))
     }
@@ -57,8 +57,7 @@ fn test_error_propagation() -> SongbirdResult<()> {
     }
 
     let result = calls_error_fn();
-    assert!(result.is_err());
-    Ok(())
+    assert!(result.is_err(), "Expected error propagation to produce Err");
 }
 
 #[test]
@@ -87,14 +86,16 @@ fn test_error_message_preservation() {
 fn test_result_map_operation() {
     let result: SongbirdResult<i32> = Ok(10);
     let mapped = result.map(|x| x * 2);
-    assert_eq!(mapped.unwrap(), 20);
+    // Test using pattern matching instead of unwrap
+    assert!(matches!(mapped, Ok(20)));
 }
 
 #[test]
 fn test_result_and_then_operation() {
     let result: SongbirdResult<i32> = Ok(10);
     let chained = result.map(|x| x + 5);
-    assert_eq!(chained.unwrap(), 15);
+    // Test using pattern matching instead of expect
+    assert!(matches!(chained, Ok(15)));
 }
 
 #[test]

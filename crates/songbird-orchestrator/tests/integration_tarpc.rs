@@ -196,7 +196,7 @@ async fn connect_client(port: u16) -> Result<SongbirdFederationClient> {
     Ok(client)
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_health_check() -> Result<()> {
     let (port, _handle) = start_test_server().await?;
     let client = connect_client(port).await?;
@@ -207,7 +207,7 @@ async fn test_health_check() -> Result<()> {
     Ok(())
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_service_registration() -> Result<()> {
     let (port, _handle) = start_test_server().await?;
     let client = connect_client(port).await?;
@@ -227,7 +227,7 @@ async fn test_service_registration() -> Result<()> {
     Ok(())
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_service_discovery() -> Result<()> {
     let (port, _handle) = start_test_server().await?;
     let client = connect_client(port).await?;
@@ -276,7 +276,7 @@ async fn test_service_discovery() -> Result<()> {
     Ok(())
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_federation_status() -> Result<()> {
     let (port, _handle) = start_test_server().await?;
     let client = connect_client(port).await?;
@@ -302,7 +302,7 @@ async fn test_federation_status() -> Result<()> {
     Ok(())
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_performance_latency() -> Result<()> {
     let (port, _handle) = start_test_server().await?;
     let client = connect_client(port).await?;
@@ -331,7 +331,7 @@ async fn test_performance_latency() -> Result<()> {
     Ok(())
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_concurrent_requests() -> Result<()> {
     let (port, _handle) = start_test_server().await?;
     let client = Arc::new(connect_client(port).await?);
@@ -355,7 +355,7 @@ async fn test_concurrent_requests() -> Result<()> {
     Ok(())
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_service_discovery_with_multiple_capabilities() -> Result<()> {
     let (port, _handle) = start_test_server().await?;
     let client = connect_client(port).await?;
@@ -394,7 +394,7 @@ async fn test_service_discovery_with_multiple_capabilities() -> Result<()> {
     Ok(())
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_multiple_service_registrations() -> Result<()> {
     let (port, _handle) = start_test_server().await?;
     let client = connect_client(port).await?;
@@ -420,7 +420,7 @@ async fn test_multiple_service_registrations() -> Result<()> {
     Ok(())
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_throughput() -> Result<()> {
     let (port, _handle) = start_test_server().await?;
     let client = connect_client(port).await?;

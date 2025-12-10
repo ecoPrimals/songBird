@@ -49,8 +49,7 @@ fn test_service_id_clone() {
 }
 
 #[test]
-fn test_service_id_hash() -> SongbirdResult<()> {
-    use songbird_types::{SongbirdError, SongbirdResult};
+fn test_service_id_hash() -> Result<(), Box<dyn std::error::Error>> {
     use std::collections::HashSet;
     let mut set = HashSet::new();
     set.insert(ServiceId::new("service-1"));

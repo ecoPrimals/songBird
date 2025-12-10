@@ -17,7 +17,7 @@ use std::time::Duration;
 // DISCOVERY ASYNC TESTS
 // ============================================================================
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_from_discovery_with_env_variable() {
     let server = mockito::Server::new_async().await;
     let endpoint = server.url();
@@ -36,7 +36,7 @@ async fn test_from_discovery_with_env_variable() {
     std::env::remove_var("SONGBIRD_STORAGE_ENDPOINT");
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_from_discovery_with_legacy_env() {
     let server = mockito::Server::new_async().await;
     let endpoint = server.url();
@@ -52,7 +52,7 @@ async fn test_from_discovery_with_legacy_env() {
     std::env::remove_var("STORAGE_PROVIDER_ENDPOINT");
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_from_discovery_fallback_to_default() {
     // Clear all env vars that might interfere
     std::env::remove_var("SONGBIRD_STORAGE_ENDPOINT");
@@ -71,7 +71,7 @@ async fn test_from_discovery_fallback_to_default() {
 // COLLECT_METRICS ASYNC TESTS
 // ============================================================================
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_collect_metrics_success() {
     let mut server = mockito::Server::new_async().await;
 
@@ -80,7 +80,8 @@ async fn test_collect_metrics_success() {
         .mock("GET", "/metrics/storage")
         .with_status(200)
         .with_header("content-type", "application/json")
-        .with_body(r#"{
+        .with_body(
+            r#"{
             "total_capacity_bytes": 10000000000,
             "used_bytes": 3500000000,
             "available_bytes": 6500000000,
@@ -88,7 +89,8 @@ async fn test_collect_metrics_success() {
             "avg_read_latency_ms": 12.5,
             "avg_write_latency_ms": 18.0,
             "timestamp": "2025-11-18T12:00:00Z"
-        }"#)
+        }"#,
+        )
         .create_async()
         .await;
 
@@ -107,7 +109,7 @@ async fn test_collect_metrics_success() {
     mock.assert_async().await;
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_collect_metrics_sets_timestamp_if_missing() {
     let mut server = mockito::Server::new_async().await;
 
@@ -116,7 +118,8 @@ async fn test_collect_metrics_sets_timestamp_if_missing() {
         .mock("GET", "/metrics/storage")
         .with_status(200)
         .with_header("content-type", "application/json")
-        .with_body(r#"{
+        .with_body(
+            r#"{
             "total_capacity_bytes": 5000000000,
             "used_bytes": 1000000000,
             "available_bytes": 4000000000,
@@ -124,7 +127,8 @@ async fn test_collect_metrics_sets_timestamp_if_missing() {
             "avg_read_latency_ms": 8.0,
             "avg_write_latency_ms": 10.0,
             "timestamp": "1970-01-01T00:00:00Z"
-        }"#)
+        }"#,
+        )
         .create_async()
         .await;
 
@@ -142,7 +146,7 @@ async fn test_collect_metrics_sets_timestamp_if_missing() {
     mock.assert_async().await;
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_collect_metrics_network_error() {
     // Use invalid endpoint
     let adapter = StorageAdapter::new("http://localhost:1".to_string()).unwrap();
@@ -154,7 +158,7 @@ async fn test_collect_metrics_network_error() {
     assert!(err.to_string().contains("Failed to reach storage provider"));
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_collect_metrics_http_error_status() {
     let mut server = mockito::Server::new_async().await;
 
@@ -176,7 +180,7 @@ async fn test_collect_metrics_http_error_status() {
     mock.assert_async().await;
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_collect_metrics_invalid_json() {
     let mut server = mockito::Server::new_async().await;
 
@@ -199,7 +203,7 @@ async fn test_collect_metrics_invalid_json() {
     mock.assert_async().await;
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_collect_metrics_with_timeout() {
     let mut server = mockito::Server::new_async().await;
 
@@ -215,9 +219,8 @@ async fn test_collect_metrics_with_timeout() {
         .create_async()
         .await;
 
-    let adapter = StorageAdapter::new(server.url())
-        .unwrap()
-        .with_timeout(Duration::from_millis(100)); // Very short timeout
+    let adapter =
+        StorageAdapter::new(server.url()).unwrap().with_timeout(Duration::from_millis(100)); // Very short timeout
 
     let result = adapter.collect_metrics().await;
     assert!(result.is_err(), "Should timeout");
@@ -229,7 +232,7 @@ async fn test_collect_metrics_with_timeout() {
 // CHECK_HEALTH ASYNC TESTS
 // ============================================================================
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_check_health_healthy() {
     let mut server = mockito::Server::new_async().await;
 
@@ -238,7 +241,8 @@ async fn test_check_health_healthy() {
         .mock("GET", "/metrics/storage")
         .with_status(200)
         .with_header("content-type", "application/json")
-        .with_body(r#"{
+        .with_body(
+            r#"{
             "total_capacity_bytes": 10000000000,
             "used_bytes": 3000000000,
             "available_bytes": 7000000000,
@@ -246,7 +250,8 @@ async fn test_check_health_healthy() {
             "avg_read_latency_ms": 10.0,
             "avg_write_latency_ms": 15.0,
             "timestamp": "2025-11-18T12:00:00Z"
-        }"#)
+        }"#,
+        )
         .create_async()
         .await;
 
@@ -259,7 +264,7 @@ async fn test_check_health_healthy() {
     mock.assert_async().await;
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_check_health_warning_high_usage() {
     let mut server = mockito::Server::new_async().await;
 
@@ -268,7 +273,8 @@ async fn test_check_health_warning_high_usage() {
         .mock("GET", "/metrics/storage")
         .with_status(200)
         .with_header("content-type", "application/json")
-        .with_body(r#"{
+        .with_body(
+            r#"{
             "total_capacity_bytes": 10000000000,
             "used_bytes": 8700000000,
             "available_bytes": 1300000000,
@@ -276,7 +282,8 @@ async fn test_check_health_warning_high_usage() {
             "avg_read_latency_ms": 15.0,
             "avg_write_latency_ms": 20.0,
             "timestamp": "2025-11-18T12:00:00Z"
-        }"#)
+        }"#,
+        )
         .create_async()
         .await;
 
@@ -289,7 +296,7 @@ async fn test_check_health_warning_high_usage() {
     mock.assert_async().await;
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_check_health_warning_high_latency() {
     let mut server = mockito::Server::new_async().await;
 
@@ -298,7 +305,8 @@ async fn test_check_health_warning_high_latency() {
         .mock("GET", "/metrics/storage")
         .with_status(200)
         .with_header("content-type", "application/json")
-        .with_body(r#"{
+        .with_body(
+            r#"{
             "total_capacity_bytes": 10000000000,
             "used_bytes": 5000000000,
             "available_bytes": 5000000000,
@@ -306,7 +314,8 @@ async fn test_check_health_warning_high_latency() {
             "avg_read_latency_ms": 125.0,
             "avg_write_latency_ms": 180.0,
             "timestamp": "2025-11-18T12:00:00Z"
-        }"#)
+        }"#,
+        )
         .create_async()
         .await;
 
@@ -319,7 +328,7 @@ async fn test_check_health_warning_high_latency() {
     mock.assert_async().await;
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_check_health_critical() {
     let mut server = mockito::Server::new_async().await;
 
@@ -328,7 +337,8 @@ async fn test_check_health_critical() {
         .mock("GET", "/metrics/storage")
         .with_status(200)
         .with_header("content-type", "application/json")
-        .with_body(r#"{
+        .with_body(
+            r#"{
             "total_capacity_bytes": 10000000000,
             "used_bytes": 9600000000,
             "available_bytes": 400000000,
@@ -336,7 +346,8 @@ async fn test_check_health_critical() {
             "avg_read_latency_ms": 120.0,
             "avg_write_latency_ms": 550.0,
             "timestamp": "2025-11-18T12:00:00Z"
-        }"#)
+        }"#,
+        )
         .create_async()
         .await;
 
@@ -349,7 +360,7 @@ async fn test_check_health_critical() {
     mock.assert_async().await;
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_check_health_network_error() {
     let adapter = StorageAdapter::new("http://localhost:1".to_string()).unwrap();
 
@@ -361,7 +372,7 @@ async fn test_check_health_network_error() {
 // INTEGRATION WORKFLOW TESTS
 // ============================================================================
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_full_storage_workflow() {
     let mut server = mockito::Server::new_async().await;
 
@@ -370,7 +381,8 @@ async fn test_full_storage_workflow() {
         .mock("GET", "/metrics/storage")
         .with_status(200)
         .with_header("content-type", "application/json")
-        .with_body(r#"{
+        .with_body(
+            r#"{
             "total_capacity_bytes": 8000000000,
             "used_bytes": 2500000000,
             "available_bytes": 5500000000,
@@ -378,7 +390,8 @@ async fn test_full_storage_workflow() {
             "avg_read_latency_ms": 11.0,
             "avg_write_latency_ms": 16.0,
             "timestamp": "2025-11-18T12:00:00Z"
-        }"#)
+        }"#,
+        )
         .expect(2) // Called twice
         .create_async()
         .await;
@@ -399,7 +412,7 @@ async fn test_full_storage_workflow() {
     metrics_mock.assert_async().await;
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_concurrent_requests() {
     let mut server = mockito::Server::new_async().await;
 
@@ -408,7 +421,8 @@ async fn test_concurrent_requests() {
         .mock("GET", "/metrics/storage")
         .with_status(200)
         .with_header("content-type", "application/json")
-        .with_body(r#"{
+        .with_body(
+            r#"{
             "total_capacity_bytes": 6000000000,
             "used_bytes": 2000000000,
             "available_bytes": 4000000000,
@@ -416,7 +430,8 @@ async fn test_concurrent_requests() {
             "avg_read_latency_ms": 9.0,
             "avg_write_latency_ms": 12.0,
             "timestamp": "2025-11-18T12:00:00Z"
-        }"#)
+        }"#,
+        )
         .expect(3)
         .create_async()
         .await;
@@ -424,11 +439,8 @@ async fn test_concurrent_requests() {
     let adapter = StorageAdapter::new(server.url()).unwrap();
 
     // Fire off 3 concurrent requests
-    let futures = vec![
-        adapter.collect_metrics(),
-        adapter.collect_metrics(),
-        adapter.collect_metrics(),
-    ];
+    let futures =
+        vec![adapter.collect_metrics(), adapter.collect_metrics(), adapter.collect_metrics()];
 
     let results = futures::future::join_all(futures).await;
 
@@ -440,7 +452,7 @@ async fn test_concurrent_requests() {
     mock.assert_async().await;
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_retry_on_transient_failure() {
     let mut server = mockito::Server::new_async().await;
 
@@ -467,7 +479,8 @@ async fn test_retry_on_transient_failure() {
         .mock("GET", "/metrics/storage")
         .with_status(200)
         .with_header("content-type", "application/json")
-        .with_body(r#"{
+        .with_body(
+            r#"{
             "total_capacity_bytes": 7000000000,
             "used_bytes": 2800000000,
             "available_bytes": 4200000000,
@@ -475,7 +488,8 @@ async fn test_retry_on_transient_failure() {
             "avg_read_latency_ms": 10.5,
             "avg_write_latency_ms": 14.0,
             "timestamp": "2025-11-18T12:00:00Z"
-        }"#)
+        }"#,
+        )
         .create_async()
         .await;
 
@@ -485,4 +499,3 @@ async fn test_retry_on_transient_failure() {
 
     success_mock.assert_async().await;
 }
-

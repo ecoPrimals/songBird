@@ -1,12 +1,14 @@
 //! # ⚖️ Load Balancer
 //!
 //! **MODERN LOAD BALANCING** ✅
+//! **ZERO-COPY OPTIMIZATION** (Dec 8, 2025): Config wrapped in Arc for hot path performance
 
 use super::{ComponentHealth, HealthStatus};
 use songbird_types::SongbirdResult;
+use std::sync::Arc;
 
 // Import comprehensive LoadBalancerConfig (Nov 10, 2025 consolidation)
-pub use songbird_config::unified::robustness::{
+pub use songbird_config::canonical::resilience::{
     LoadBalancerConfig as CanonicalLoadBalancerConfig, LoadBalancingAlgorithm,
 };
 
@@ -14,15 +16,19 @@ pub use songbird_config::unified::robustness::{
 pub use LoadBalancingAlgorithm as LoadBalancingStrategy;
 
 /// Load balancer implementation
-#[derive(Debug)]
+///
+/// **ZERO-COPY**: Config is shared via Arc to avoid clones during request routing (hot path).
+#[derive(Debug, Clone)]
 pub struct LoadBalancer {
-    config: CanonicalLoadBalancerConfig,
+    config: Arc<CanonicalLoadBalancerConfig>,
     strategy: LoadBalancingAlgorithm,
 }
 
 impl LoadBalancer {
+    /// Create new load balancer with zero-copy config sharing.
     #[must_use]
     pub fn new(config: CanonicalLoadBalancerConfig) -> Self {
+        let config = Arc::new(config);
         Self {
             strategy: config.algorithm.clone(),
             config,
@@ -63,7 +69,7 @@ impl LoadBalancer {
     pub async fn health_check(&self) -> SongbirdResult<ComponentHealth> {
         Ok(ComponentHealth {
             status: HealthStatus::Healthy,
-            message: Some("Load balancer operational".to_string()),
+            message: Some(Arc::from("Load balancer operational")),
             last_check: Some(chrono::Utc::now().timestamp() as u64),
         })
     }
@@ -84,16 +90,12 @@ mod tests {
 
     #[test]
     fn test_load_balancer_new_with_custom_strategy() {
-        use songbird_config::unified::robustness::HealthCheckConfig;
-        use std::time::Duration;
-
         let config = CanonicalLoadBalancerConfig {
             algorithm: LoadBalancingAlgorithm::LeastConnections,
-            health_check: HealthCheckConfig::default(),
             sticky_sessions: false,
-            session_timeout: Duration::from_secs(300),
+            session_timeout_secs: 300,
             max_connections_per_backend: 100,
-            connection_timeout: Duration::from_secs(60),
+            connection_timeout_ms: 60000,
             fail_fast: false,
         };
 
@@ -170,7 +172,7 @@ mod tests {
             LoadBalancingStrategy::RoundRobin,
             LoadBalancingStrategy::LeastConnections,
             LoadBalancingStrategy::WeightedRoundRobin,
-            LoadBalancingStrategy::HealthBased,
+            LoadBalancingStrategy::IpHash,
         ];
 
         assert_eq!(strategies.len(), 4);
@@ -184,7 +186,7 @@ mod tests {
             LoadBalancingStrategy::LeastConnections,
             LoadBalancingStrategy::WeightedRoundRobin
         );
-        assert_ne!(LoadBalancingStrategy::WeightedRoundRobin, LoadBalancingStrategy::HealthBased);
+        assert_ne!(LoadBalancingStrategy::RoundRobin, LoadBalancingStrategy::Random);
     }
 
     #[test]
@@ -197,7 +199,7 @@ mod tests {
 
     #[test]
     fn test_load_balancing_strategy_serialization() -> Result<(), Box<dyn std::error::Error>> {
-        let strategy = LoadBalancingStrategy::HealthBased;
+        let strategy = LoadBalancingStrategy::RoundRobin;
         let json = serde_json::to_string(&strategy).map_err(|e| SongbirdError::Serialization {
             format: Some("JSON".to_string()),
             message: format!("Serialization failed: {}", e),
@@ -216,24 +218,23 @@ mod tests {
 
     #[test]
     fn test_load_balancing_config_with_different_strategies() {
-        use songbird_config::unified::robustness::HealthCheckConfig;
+        use songbird_config::canonical::resilience::HealthCheckConfig;
         use std::time::Duration;
 
         let strategies = vec![
             LoadBalancingAlgorithm::RoundRobin,
             LoadBalancingAlgorithm::LeastConnections,
             LoadBalancingAlgorithm::WeightedRoundRobin,
-            LoadBalancingAlgorithm::HealthBased,
+            LoadBalancingAlgorithm::Random,
         ];
 
         for algorithm in strategies {
             let config = CanonicalLoadBalancerConfig {
                 algorithm: algorithm.clone(),
-                health_check: HealthCheckConfig::default(),
                 sticky_sessions: false,
-                session_timeout: Duration::from_secs(300),
+                session_timeout_secs: 300,
                 max_connections_per_backend: 100,
-                connection_timeout: Duration::from_secs(30),
+                connection_timeout_ms: 30000,
                 fail_fast: false,
             };
 

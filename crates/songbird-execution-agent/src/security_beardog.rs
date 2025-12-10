@@ -368,6 +368,7 @@ struct ThreatAssessment {
 }
 
 impl ThreatAssessment {
+    /// Calculate age of assessment (returns 0 if time calculation fails)
     fn age(&self) -> Duration {
         SystemTime::now().duration_since(self.assessed_at).unwrap_or(Duration::from_secs(0))
     }

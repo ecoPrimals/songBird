@@ -13,6 +13,7 @@
 #![allow(clippy::module_name_repetitions)]
 #![allow(clippy::uninlined_format_args)]
 #![allow(clippy::float_cmp)]
+#![allow(clippy::unwrap_used)]
 #![allow(clippy::useless_vec)]
 #![allow(clippy::unreadable_literal)]
 #![allow(clippy::items_after_statements)]

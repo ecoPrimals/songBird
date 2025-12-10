@@ -57,52 +57,52 @@ mod load_balancing_tests {
         // Test behavior with no instances
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_round_robin_selection_order() {
         // Test that selection follows round-robin order
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_round_robin_wraps_around() {
         // Test that index wraps around to start
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_round_robin_with_single_instance() {
         // Test round-robin with only one instance
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_round_robin_filters_unhealthy() {
         // Test that unhealthy services are filtered
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_round_robin_no_healthy_services() {
         // Test error when no healthy services available
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_round_robin_health_update() {
         // Test updating service health
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_round_robin_stats_tracking() {
         // Test statistics tracking
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_round_robin_stats_reset() {
         // Test resetting statistics
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_round_robin_concurrent_selection() {
         // Test concurrent access to selection
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_round_robin_instance_removal_during_selection() {
         // Test removing instance while selection is happening
     }
@@ -121,32 +121,32 @@ mod load_balancing_tests {
         // Test default implementation
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_least_connections_selection() {
         // Test that service with least connections is selected
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_least_connections_equal_distribution() {
         // Test even distribution with equal connections
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_least_connections_connection_tracking() {
         // Test connection count tracking
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_least_connections_connection_release() {
         // Test releasing connections
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_least_connections_overflow_handling() {
         // Test handling connection count overflow
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_least_connections_with_health_filter() {
         // Test filtering unhealthy services
     }
@@ -165,27 +165,27 @@ mod load_balancing_tests {
         // Test creating with specific weights
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_weighted_selection_distribution() {
         // Test that selection respects weights
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_weighted_equal_weights() {
         // Test behavior with equal weights
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_weighted_zero_weight() {
         // Test handling services with zero weight
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_weighted_weight_update() {
         // Test updating service weights
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_weighted_normalization() {
         // Test weight normalization
     }
@@ -199,17 +199,17 @@ mod load_balancing_tests {
         // Test random load balancer creation
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_random_selection() {
         // Test random selection
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_random_distribution() {
         // Test distribution over many selections
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_random_with_single_service() {
         // Test random selection with one service
     }
@@ -223,22 +223,22 @@ mod load_balancing_tests {
         // Test IP hash load balancer creation
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_ip_hash_consistency() {
         // Test that same IP gets same service
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_ip_hash_different_ips() {
         // Test different IPs get distributed
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_ip_hash_service_addition() {
         // Test adding services maintains consistency where possible
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_ip_hash_service_removal() {
         // Test removing services rehashes appropriately
     }
@@ -301,17 +301,17 @@ mod load_balancing_tests {
         // Test health status transitions
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_health_check_integration() {
         // Test health checks affecting load balancing
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_automatic_health_recovery() {
         // Test service automatically becoming healthy
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_health_degradation() {
         // Test service becoming unhealthy
     }
@@ -320,17 +320,17 @@ mod load_balancing_tests {
     // Load Balancer Strategy Comparison Tests
     // ============================================================================
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_strategy_performance_comparison() {
         // Compare performance of different strategies
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_strategy_fairness_comparison() {
         // Compare fairness of distribution
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_strategy_under_load() {
         // Test strategies under high load
     }
@@ -339,32 +339,32 @@ mod load_balancing_tests {
     // Edge Cases and Error Handling Tests
     // ============================================================================
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_concurrent_modifications() {
         // Test concurrent instance modifications
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_rapid_health_changes() {
         // Test rapid health status changes
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_all_services_unhealthy() {
         // Test behavior when all services become unhealthy
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_service_recovery_after_failure() {
         // Test service selection after recovery
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_load_balancer_stress() {
         // Stress test load balancer with many requests
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_memory_leak_prevention() {
         // Test that load balancer doesn't leak memory
     }
@@ -373,27 +373,27 @@ mod load_balancing_tests {
     // Integration Tests
     // ============================================================================
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_full_load_balancing_lifecycle() {
         // Test complete lifecycle: add, select, update, remove
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_load_balancer_with_circuit_breaker() {
         // Test integration with circuit breaker
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_load_balancer_with_rate_limiter() {
         // Test integration with rate limiting
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_load_balancer_failover() {
         // Test failover scenarios
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_load_balancer_scaling() {
         // Test dynamic scaling scenarios
     }

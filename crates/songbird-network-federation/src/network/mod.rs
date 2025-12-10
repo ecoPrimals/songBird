@@ -77,7 +77,7 @@ impl NetworkManager {
     /// Register a network provider (currently unused)
     ///
     /// # Future Enhancement
-    /// If multi-provider support is needed, use Arc<dyn NetworkProvider> instead of enum
+    /// If multi-provider support is needed, use `Arc<dyn NetworkProvider>` instead of enum
     #[allow(dead_code)]
     pub async fn register_provider<P: NetworkProvider + 'static>(
         &mut self,
@@ -89,9 +89,8 @@ impl NetworkManager {
 
     /// Get network health status
     pub async fn health_check(&self) -> SongbirdResult<NetworkHealth> {
-        let _provider_health = HashMap::<String, NetworkHealth>::new();
-
         // Multi-provider health aggregation deferred - currently single gaming provider only
+        let provider_health = HashMap::<String, NetworkHealth>::new();
 
         let gaming_health = if let Some(ref gaming) = self.gaming_manager {
             Some(gaming.health_check().await?)
@@ -106,7 +105,7 @@ impl NetworkManager {
 
         Ok(NetworkHealth {
             overall_status: NetworkStatus::Healthy,
-            provider_health: _provider_health,
+            provider_health,
             gaming_health,
             active_connections: u64::from(active_connections),
             bandwidth_usage,
@@ -296,7 +295,7 @@ pub enum LoadBalancingStrategy {
 /// **KEEP AS-IS**: This is a federation-specific config that should remain local.
 /// Field semantic alignment to canonical (for reference):
 /// - `enabled` → `network_discovery.enabled`
-/// - `methods` (Vec<DiscoveryMethod>) → `network_discovery.discovery_protocols`
+/// - `methods` (`Vec<DiscoveryMethod>`) → `network_discovery.discovery_protocols`
 /// - `interval` (Duration) → `service_discovery.discovery_interval_secs` (u64, convert)
 /// - `timeout` (Duration) → `scan_timeout_secs` (u64, convert)
 ///

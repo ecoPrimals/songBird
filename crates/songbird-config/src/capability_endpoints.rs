@@ -255,7 +255,7 @@ impl CapabilityEndpointResolver {
         capability: &CapabilityType,
     ) -> SongbirdResult<Option<CapabilityEndpoint>> {
         // Check if service registry is configured
-        let Ok(_registry_endpoint) = env::var("SERVICE_REGISTRY_ENDPOINT") else {
+        let Ok(registry_endpoint) = env::var("SERVICE_REGISTRY_ENDPOINT") else {
             return Ok(None);
         };
 
@@ -271,7 +271,7 @@ impl CapabilityEndpointResolver {
 
         // Try Consul-style query first
         let consul_url =
-            format!("{}/v1/catalog/service/{}", _registry_endpoint, capability.as_str());
+            format!("{}/v1/catalog/service/{}", registry_endpoint, capability.as_str());
         match client.get(&consul_url).send().await {
             Ok(response) if response.status().is_success() => {
                 // Parse Consul service catalog response
@@ -328,7 +328,7 @@ impl CapabilityEndpointResolver {
         capability: &CapabilityType,
     ) -> SongbirdResult<Option<CapabilityEndpoint>> {
         // Check if container metadata API is available
-        let Ok(_metadata_api) = env::var("CONTAINER_METADATA_API") else {
+        let Ok(metadata_api) = env::var("CONTAINER_METADATA_API") else {
             return Ok(None);
         };
 
@@ -344,7 +344,7 @@ impl CapabilityEndpointResolver {
 
         // Try Kubernetes service discovery
         let service_name = format!("{}-service", capability.as_str().to_lowercase());
-        let k8s_url = format!("{_metadata_api}/api/v1/services/{service_name}");
+        let k8s_url = format!("{metadata_api}/api/v1/services/{service_name}");
 
         match client.get(&k8s_url).send().await {
             Ok(response) if response.status().is_success() => {
@@ -397,7 +397,7 @@ impl CapabilityEndpointResolver {
         capability: &CapabilityType,
     ) -> SongbirdResult<Option<CapabilityEndpoint>> {
         // Check if DNS discovery domain is configured
-        let Ok(_dns_domain) = env::var("SERVICE_DISCOVERY_DOMAIN") else {
+        let Ok(dns_domain) = env::var("SERVICE_DISCOVERY_DOMAIN") else {
             return Ok(None);
         };
 
@@ -406,7 +406,7 @@ impl CapabilityEndpointResolver {
         // Query DNS SRV records for services providing this capability
         // Format: _capability._tcp.domain (RFC 2782)
 
-        let service_name = format!("_{}._tcp.{}", capability.as_str().to_lowercase(), _dns_domain);
+        let service_name = format!("_{}._tcp.{}", capability.as_str().to_lowercase(), dns_domain);
 
         // Use tokio's DNS resolver for SRV record lookup
         match tokio::net::lookup_host(service_name.as_str()).await {

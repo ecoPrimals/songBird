@@ -6,7 +6,7 @@
 //! knowledge and discover everything dynamically at runtime.
 
 #[allow(deprecated)]
-use crate::config::SongbirdConfig;
+// NOTE: SongbirdConfig imported where needed below
 use serde::{Deserialize, Serialize};
 
 // Export the comprehensive zero-touch infant configuration
@@ -53,7 +53,9 @@ pub struct ZeroTouchOrchestrator {
 }
 
 pub struct DeploymentResult {
-    pub config: Option<SongbirdConfig>,
+    /// Configuration result
+    #[allow(deprecated)]
+    pub config: Option<crate::config::SongbirdConfig>,
 }
 
 impl Default for ZeroTouchOrchestrator {
@@ -72,7 +74,8 @@ impl ZeroTouchOrchestrator {
     #[must_use]
     pub fn deploy() -> DeploymentResult {
         // Basic deployment logic
-        let config = SongbirdConfig::default();
+        #[allow(deprecated)]
+        let config = crate::config::SongbirdConfig::default();
 
         DeploymentResult {
             config: Some(config),

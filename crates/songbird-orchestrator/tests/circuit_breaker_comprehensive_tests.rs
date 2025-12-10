@@ -227,7 +227,7 @@ mod circuit_breaker_tests {
         // Test different timeout configurations
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_automatic_reset_attempt() {
         // Test automatic reset after timeout
     }
@@ -260,22 +260,22 @@ mod circuit_breaker_tests {
     // Concurrent Access Tests
     // ============================================================================
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_concurrent_success_recording() {
         // Test concurrent success recording
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_concurrent_failure_recording() {
         // Test concurrent failure recording
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_concurrent_state_transitions() {
         // Test concurrent state transitions
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_concurrent_request_allows() {
         // Test concurrent request allow checks
     }
@@ -284,17 +284,17 @@ mod circuit_breaker_tests {
     // Integration with Load Balancer Tests
     // ============================================================================
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_circuit_breaker_with_load_balancer() {
         // Test circuit breaker integration with load balancer
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_service_removal_on_circuit_open() {
         // Test removing service from load balancer when circuit opens
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_service_restoration_on_circuit_close() {
         // Test restoring service to load balancer when circuit closes
     }
@@ -366,12 +366,12 @@ mod circuit_breaker_tests {
         // Test handling counter overflow
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_long_running_open_state() {
         // Test circuit breaker in open state for extended period
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_recovery_patterns() {
         // Test various recovery patterns
     }
@@ -405,7 +405,7 @@ mod circuit_breaker_tests {
         // Test handling burst requests
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_rate_limiter_time_window() {
         // Test time window behavior
     }
@@ -429,12 +429,12 @@ mod circuit_breaker_tests {
         // Test capacity limiting
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_bulkhead_queue_management() {
         // Test queue management
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_bulkhead_timeout_handling() {
         // Test timeout handling in bulkhead
     }
@@ -458,7 +458,7 @@ mod circuit_breaker_tests {
         // Test maximum retry attempts
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_retry_with_circuit_breaker() {
         // Test retry policy with circuit breaker
     }
@@ -467,22 +467,22 @@ mod circuit_breaker_tests {
     // Health Checker Integration Tests
     // ============================================================================
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_health_checker_creation() {
         // Test health checker creation
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_health_check_execution() {
         // Test executing health checks
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_health_check_failure_handling() {
         // Test handling health check failures
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_health_check_circuit_breaker_integration() {
         // Test health checks affecting circuit breaker
     }
@@ -491,27 +491,27 @@ mod circuit_breaker_tests {
     // Complete Robustness Integration Tests
     // ============================================================================
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_full_robustness_stack() {
         // Test complete robustness pattern stack
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_cascading_failure_prevention() {
         // Test preventing cascading failures
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_graceful_degradation() {
         // Test graceful degradation under failure
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_automatic_recovery() {
         // Test automatic recovery mechanisms
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_fault_tolerance_under_load() {
         // Test fault tolerance under heavy load
     }

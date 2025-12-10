@@ -1,5 +1,7 @@
 //! Metrics integration tests for comprehensive coverage
 
+#![allow(clippy::unwrap_used)]
+
 use songbird_observability::observability::metrics::*;
 use songbird_observability::observability::*;
 use songbird_types::SongbirdResult;
@@ -198,10 +200,10 @@ async fn test_observability_manager_default_creation() {
 async fn test_metrics_collection_with_delays() {
     let collector = MetricsCollector::new();
 
+    // Collect metrics multiple times to verify idempotency
+    // No sleep needed - metrics collection is synchronous
     collector.collect_all_metrics().await.unwrap();
-    tokio::time::sleep(tokio::time::Duration::from_millis(10)).await;
     collector.collect_all_metrics().await.unwrap();
-    tokio::time::sleep(tokio::time::Duration::from_millis(10)).await;
     collector.collect_all_metrics().await.unwrap();
 
     assert_eq!(collector.get_collection_count(), 3);
@@ -243,24 +245,22 @@ async fn test_multiple_services_health_tracking() -> SongbirdResult<()> {
 }
 
 #[test]
-fn test_health_status_clone() -> SongbirdResult<()> {
+fn test_health_status_clone() {
     let status = HealthStatus::Healthy;
     let cloned = status.clone();
 
     assert!(matches!(status, HealthStatus::Healthy));
     assert!(matches!(cloned, HealthStatus::Healthy));
-    Ok(())
 }
 
 #[test]
-fn test_health_status_debug() -> SongbirdResult<()> {
+fn test_health_status_debug() {
     let statuses = vec![HealthStatus::Healthy, HealthStatus::Degraded, HealthStatus::Unhealthy];
 
     for status in statuses {
         let debug_str = format!("{status:?}");
         assert!(!debug_str.is_empty());
     }
-    Ok(())
 }
 
 #[test]

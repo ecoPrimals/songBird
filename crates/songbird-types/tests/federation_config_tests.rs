@@ -61,7 +61,6 @@ fn test_local_node_config_default() {
 
 #[test]
 fn test_local_node_config_custom() {
-    use songbird_types::{SongbirdError, SongbirdResult};
     use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 
     let config = CanonicalLocalNodeConfig {

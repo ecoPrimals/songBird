@@ -3,7 +3,6 @@
 /// Centralizes common configuration creation patterns used across tests
 ///
 /// **MODERNIZED**: Now uses canonical config types from songbird-config
-
 /// Performance configuration test helpers
 ///
 /// **CANONICAL**: Uses modern `PerformanceConfig` from songbird-config

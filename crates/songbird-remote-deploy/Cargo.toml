@@ -3,6 +3,11 @@ name = "songbird-remote-deploy"
 version = "0.1.0"
 edition = "2021"
 description = "Agnostic remote service deployment via SSH for Songbird federation"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/ecoPrimals/songbird"
+readme = "README.md"
+keywords = ["deployment", "distributed", "orchestration", "remote", "ssh"]
+categories = ["network-programming", "development-tools::build-utils"]
 
 [[bin]]
 name = "songbird-deploy"

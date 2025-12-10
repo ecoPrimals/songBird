@@ -155,13 +155,17 @@ pub struct HeartbeatData {
 }
 
 /// Internal representation of a registered provider
+///
+/// **ZERO-COPY OPTIMIZATION** (Dec 8, 2025 Phase 2):
+/// Registration ID uses `Arc<str>` to eliminate clones during verification checks.
 #[derive(Debug, Clone)]
 pub struct RegisteredProvider {
     /// Original registration request
     pub registration: CapabilityRegistrationRequest,
 
     /// Unique registration ID
-    pub registration_id: String,
+    /// **ZERO-COPY**: `Arc<str>` for efficient verification without clones
+    pub registration_id: std::sync::Arc<str>,
 
     /// Current health status
     pub health: ProviderHealth,
@@ -292,5 +296,24 @@ impl From<&RegisteredProvider> for ProviderSummary {
             last_heartbeat: provider.last_heartbeat,
             active_tasks: provider.active_tasks,
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_health_status_display() {
+        assert_eq!(HealthStatus::Healthy.to_string(), "healthy");
+        assert_eq!(HealthStatus::Degraded.to_string(), "degraded");
+        assert_eq!(HealthStatus::Unhealthy.to_string(), "unhealthy");
+        assert_eq!(HealthStatus::Offline.to_string(), "offline");
+    }
+
+    #[test]
+    fn test_health_status_equality() {
+        assert_eq!(HealthStatus::Healthy, HealthStatus::Healthy);
+        assert_ne!(HealthStatus::Healthy, HealthStatus::Degraded);
     }
 }

@@ -3,6 +3,7 @@
 pub mod constants;
 pub mod discovery;
 pub mod environment;
+pub mod hardcoded_elimination;
 pub mod load_balancing;
 // Network configuration - refactored into modular structure (Nov 10, 2025)
 // Previously: single 1,261-line file

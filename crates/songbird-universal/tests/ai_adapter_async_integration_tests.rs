@@ -17,7 +17,7 @@ use std::time::Duration;
 // DISCOVERY ASYNC TESTS
 // ============================================================================
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_from_discovery_with_env_variable() {
     let server = mockito::Server::new_async().await;
     let endpoint = server.url();
@@ -36,7 +36,7 @@ async fn test_from_discovery_with_env_variable() {
     std::env::remove_var("SONGBIRD_AI_ENDPOINT");
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_from_discovery_with_legacy_env() {
     let server = mockito::Server::new_async().await;
     let endpoint = server.url();
@@ -52,7 +52,7 @@ async fn test_from_discovery_with_legacy_env() {
     std::env::remove_var("AI_PROVIDER_ENDPOINT");
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_from_discovery_fallback_to_default() {
     // Clear all env vars that might interfere
     std::env::remove_var("SONGBIRD_AI_ENDPOINT");
@@ -71,7 +71,7 @@ async fn test_from_discovery_fallback_to_default() {
 // COLLECT_METRICS ASYNC TESTS
 // ============================================================================
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_collect_metrics_success() {
     let mut server = mockito::Server::new_async().await;
 
@@ -80,14 +80,16 @@ async fn test_collect_metrics_success() {
         .mock("GET", "/metrics/ai")
         .with_status(200)
         .with_header("content-type", "application/json")
-        .with_body(r#"{
+        .with_body(
+            r#"{
             "active_models": 8,
             "total_requests": 150000,
             "avg_latency_ms": 45.5,
             "accuracy_score": 0.94,
             "gpu_utilization_percent": 72.3,
             "timestamp": "2025-11-18T12:00:00Z"
-        }"#)
+        }"#,
+        )
         .create_async()
         .await;
 
@@ -97,7 +99,7 @@ async fn test_collect_metrics_success() {
     assert!(metrics.is_ok(), "Should collect metrics successfully");
     let metrics = metrics.unwrap();
     assert_eq!(metrics.active_models, 8);
-    assert_eq!(metrics.total_requests, 150000);
+    assert_eq!(metrics.total_requests, 150_000);
     assert!((metrics.avg_latency_ms - 45.5).abs() < 0.01);
     assert!((metrics.accuracy_score - 0.94).abs() < 0.01);
     assert!((metrics.gpu_utilization_percent - 72.3).abs() < 0.01);
@@ -105,7 +107,7 @@ async fn test_collect_metrics_success() {
     mock.assert_async().await;
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_collect_metrics_sets_timestamp_if_missing() {
     let mut server = mockito::Server::new_async().await;
 
@@ -114,14 +116,16 @@ async fn test_collect_metrics_sets_timestamp_if_missing() {
         .mock("GET", "/metrics/ai")
         .with_status(200)
         .with_header("content-type", "application/json")
-        .with_body(r#"{
+        .with_body(
+            r#"{
             "active_models": 4,
             "total_requests": 50000,
             "avg_latency_ms": 30.0,
             "accuracy_score": 0.90,
             "gpu_utilization_percent": 55.0,
             "timestamp": "1970-01-01T00:00:00Z"
-        }"#)
+        }"#,
+        )
         .create_async()
         .await;
 
@@ -139,7 +143,7 @@ async fn test_collect_metrics_sets_timestamp_if_missing() {
     mock.assert_async().await;
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_collect_metrics_network_error() {
     // Use invalid endpoint
     let adapter = AIAdapter::new("http://localhost:1".to_string()).unwrap();
@@ -151,7 +155,7 @@ async fn test_collect_metrics_network_error() {
     assert!(err.to_string().contains("Failed to reach AI provider"));
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_collect_metrics_http_error_status() {
     let mut server = mockito::Server::new_async().await;
 
@@ -173,7 +177,7 @@ async fn test_collect_metrics_http_error_status() {
     mock.assert_async().await;
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_collect_metrics_invalid_json() {
     let mut server = mockito::Server::new_async().await;
 
@@ -196,7 +200,7 @@ async fn test_collect_metrics_invalid_json() {
     mock.assert_async().await;
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_collect_metrics_with_timeout() {
     let mut server = mockito::Server::new_async().await;
 
@@ -212,9 +216,7 @@ async fn test_collect_metrics_with_timeout() {
         .create_async()
         .await;
 
-    let adapter = AIAdapter::new(server.url())
-        .unwrap()
-        .with_timeout(Duration::from_millis(100)); // Very short timeout
+    let adapter = AIAdapter::new(server.url()).unwrap().with_timeout(Duration::from_millis(100)); // Very short timeout
 
     let result = adapter.collect_metrics().await;
     assert!(result.is_err(), "Should timeout");
@@ -226,7 +228,7 @@ async fn test_collect_metrics_with_timeout() {
 // CHECK_HEALTH ASYNC TESTS
 // ============================================================================
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_check_health_healthy() {
     let mut server = mockito::Server::new_async().await;
 
@@ -235,14 +237,16 @@ async fn test_check_health_healthy() {
         .mock("GET", "/metrics/ai")
         .with_status(200)
         .with_header("content-type", "application/json")
-        .with_body(r#"{
+        .with_body(
+            r#"{
             "active_models": 5,
             "total_requests": 100000,
             "avg_latency_ms": 80.0,
             "accuracy_score": 0.92,
             "gpu_utilization_percent": 65.0,
             "timestamp": "2025-11-18T12:00:00Z"
-        }"#)
+        }"#,
+        )
         .create_async()
         .await;
 
@@ -255,7 +259,7 @@ async fn test_check_health_healthy() {
     mock.assert_async().await;
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_check_health_degraded_high_latency() {
     let mut server = mockito::Server::new_async().await;
 
@@ -264,14 +268,16 @@ async fn test_check_health_degraded_high_latency() {
         .mock("GET", "/metrics/ai")
         .with_status(200)
         .with_header("content-type", "application/json")
-        .with_body(r#"{
+        .with_body(
+            r#"{
             "active_models": 12,
             "total_requests": 250000,
             "avg_latency_ms": 1200.0,
             "accuracy_score": 0.88,
             "gpu_utilization_percent": 75.0,
             "timestamp": "2025-11-18T12:00:00Z"
-        }"#)
+        }"#,
+        )
         .create_async()
         .await;
 
@@ -284,7 +290,7 @@ async fn test_check_health_degraded_high_latency() {
     mock.assert_async().await;
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_check_health_degraded_high_gpu() {
     let mut server = mockito::Server::new_async().await;
 
@@ -293,14 +299,16 @@ async fn test_check_health_degraded_high_gpu() {
         .mock("GET", "/metrics/ai")
         .with_status(200)
         .with_header("content-type", "application/json")
-        .with_body(r#"{
+        .with_body(
+            r#"{
             "active_models": 10,
             "total_requests": 200000,
             "avg_latency_ms": 90.0,
             "accuracy_score": 0.91,
             "gpu_utilization_percent": 91.0,
             "timestamp": "2025-11-18T12:00:00Z"
-        }"#)
+        }"#,
+        )
         .create_async()
         .await;
 
@@ -313,7 +321,7 @@ async fn test_check_health_degraded_high_gpu() {
     mock.assert_async().await;
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_check_health_overloaded() {
     let mut server = mockito::Server::new_async().await;
 
@@ -322,14 +330,16 @@ async fn test_check_health_overloaded() {
         .mock("GET", "/metrics/ai")
         .with_status(200)
         .with_header("content-type", "application/json")
-        .with_body(r#"{
+        .with_body(
+            r#"{
             "active_models": 25,
             "total_requests": 500000,
             "avg_latency_ms": 320.0,
             "accuracy_score": 0.70,
             "gpu_utilization_percent": 98.5,
             "timestamp": "2025-11-18T12:00:00Z"
-        }"#)
+        }"#,
+        )
         .create_async()
         .await;
 
@@ -342,7 +352,7 @@ async fn test_check_health_overloaded() {
     mock.assert_async().await;
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_check_health_network_error() {
     let adapter = AIAdapter::new("http://localhost:1".to_string()).unwrap();
 
@@ -354,7 +364,7 @@ async fn test_check_health_network_error() {
 // INTEGRATION WORKFLOW TESTS
 // ============================================================================
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_full_ai_workflow() {
     let mut server = mockito::Server::new_async().await;
 
@@ -363,14 +373,16 @@ async fn test_full_ai_workflow() {
         .mock("GET", "/metrics/ai")
         .with_status(200)
         .with_header("content-type", "application/json")
-        .with_body(r#"{
+        .with_body(
+            r#"{
             "active_models": 6,
             "total_requests": 120000,
             "avg_latency_ms": 75.0,
             "accuracy_score": 0.93,
             "gpu_utilization_percent": 70.0,
             "timestamp": "2025-11-18T12:00:00Z"
-        }"#)
+        }"#,
+        )
         .expect(2) // Called twice
         .create_async()
         .await;
@@ -391,7 +403,7 @@ async fn test_full_ai_workflow() {
     metrics_mock.assert_async().await;
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_concurrent_requests() {
     let mut server = mockito::Server::new_async().await;
 
@@ -400,14 +412,16 @@ async fn test_concurrent_requests() {
         .mock("GET", "/metrics/ai")
         .with_status(200)
         .with_header("content-type", "application/json")
-        .with_body(r#"{
+        .with_body(
+            r#"{
             "active_models": 7,
             "total_requests": 100000,
             "avg_latency_ms": 60.0,
             "accuracy_score": 0.92,
             "gpu_utilization_percent": 68.0,
             "timestamp": "2025-11-18T12:00:00Z"
-        }"#)
+        }"#,
+        )
         .expect(3)
         .create_async()
         .await;
@@ -415,11 +429,8 @@ async fn test_concurrent_requests() {
     let adapter = AIAdapter::new(server.url()).unwrap();
 
     // Fire off 3 concurrent requests
-    let futures = vec![
-        adapter.collect_metrics(),
-        adapter.collect_metrics(),
-        adapter.collect_metrics(),
-    ];
+    let futures =
+        vec![adapter.collect_metrics(), adapter.collect_metrics(), adapter.collect_metrics()];
 
     let results = futures::future::join_all(futures).await;
 
@@ -431,7 +442,7 @@ async fn test_concurrent_requests() {
     mock.assert_async().await;
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_retry_on_transient_failure() {
     let mut server = mockito::Server::new_async().await;
 
@@ -458,14 +469,16 @@ async fn test_retry_on_transient_failure() {
         .mock("GET", "/metrics/ai")
         .with_status(200)
         .with_header("content-type", "application/json")
-        .with_body(r#"{
+        .with_body(
+            r#"{
             "active_models": 5,
             "total_requests": 90000,
             "avg_latency_ms": 65.0,
             "accuracy_score": 0.91,
             "gpu_utilization_percent": 62.0,
             "timestamp": "2025-11-18T12:00:00Z"
-        }"#)
+        }"#,
+        )
         .create_async()
         .await;
 
@@ -475,4 +488,3 @@ async fn test_retry_on_transient_failure() {
 
     success_mock.assert_async().await;
 }
-

@@ -2,6 +2,9 @@
 //!
 //! Manages external compute providers that register their capabilities with Songbird,
 //! enabling dynamic task routing based on provider capabilities and health status.
+//!
+//! **ZERO-COPY OPTIMIZATION** (Dec 8, 2025 Phase 2):
+//! Provider IDs use `Arc<str>` to eliminate clones during frequent lookups in hot paths.
 
 pub mod types;
 
@@ -17,10 +20,13 @@ use tracing::{debug, info, warn};
 use uuid::Uuid;
 
 /// Central registry for managing capability providers
+///
+/// **ZERO-COPY**: Provider ID keys use `Arc<str>` for zero-copy lookups (hot path optimization).
 #[derive(Debug, Clone)]
 pub struct CapabilityRegistry {
     /// Map of provider_id -> RegisteredProvider
-    providers: Arc<RwLock<HashMap<String, RegisteredProvider>>>,
+    /// **ZERO-COPY**: Keys are `Arc<str>` to eliminate clones during lookups
+    providers: Arc<RwLock<HashMap<Arc<str>, RegisteredProvider>>>,
 
     /// Heartbeat configuration
     config: HeartbeatConfig,
@@ -65,6 +71,8 @@ impl CapabilityRegistry {
 
     /// Register a new capability provider
     ///
+    /// **ZERO-COPY**: Provider ID is converted to `Arc<str>` for efficient lookups.
+    ///
     /// # Arguments
     /// * `request` - Registration details including capabilities and endpoints
     ///
@@ -74,8 +82,11 @@ impl CapabilityRegistry {
     pub async fn register(&self, request: CapabilityRegistrationRequest) -> SongbirdResult<String> {
         let mut providers = self.providers.write().await;
 
+        // Convert provider_id to `Arc<str>` for zero-copy lookups
+        let provider_id_arc: Arc<str> = Arc::from(request.provider_id.as_str());
+
         // Check for duplicate provider ID
-        if providers.contains_key(&request.provider_id) {
+        if providers.contains_key(&provider_id_arc) {
             return Err(SongbirdError::Registry {
                 message: format!("Provider '{}' is already registered", request.provider_id),
                 service_name: Some(request.provider_id),
@@ -108,21 +119,25 @@ impl CapabilityRegistry {
             });
         }
 
-        // Generate unique registration ID
-        let registration_id = Uuid::new_v4().to_string();
+        // Generate unique registration ID (Arc for zero-copy)
+        let registration_id = Arc::from(Uuid::new_v4().to_string().as_str());
         let now = Utc::now();
 
         // Create registered provider entry
+        // Extract available capacity from metadata, defaulting to 10 if not specified or invalid
+        let available_capacity = request
+            .metadata
+            .get("max_concurrent_tasks")
+            .and_then(serde_json::Value::as_u64)
+            .map(|v| v as usize)
+            .unwrap_or(10);
+
         let registered_provider = RegisteredProvider {
             registration: request.clone(),
-            registration_id: registration_id.clone(),
+            registration_id: Arc::clone(&registration_id),
             health: ProviderHealth {
                 status: HealthStatus::Healthy,
-                available_capacity: request
-                    .metadata
-                    .get("max_concurrent_tasks")
-                    .and_then(serde_json::Value::as_u64)
-                    .unwrap_or(10) as usize,
+                available_capacity,
                 resource_usage: ResourceUsage {
                     cpu_percent: 0.0,
                     memory_percent: 0.0,
@@ -134,7 +149,7 @@ impl CapabilityRegistry {
             active_tasks: 0,
         };
 
-        providers.insert(request.provider_id.clone(), registered_provider);
+        providers.insert(provider_id_arc, registered_provider);
 
         info!(
             provider_id = %request.provider_id,
@@ -143,10 +158,12 @@ impl CapabilityRegistry {
             "Provider registered successfully"
         );
 
-        Ok(registration_id)
+        Ok(registration_id.to_string())
     }
 
     /// Update provider health via heartbeat
+    ///
+    /// **ZERO-COPY**: Lookups use `&str` directly with `Arc<str>` keys (HashMap supports this).
     ///
     /// # Arguments
     /// * `provider_id` - Provider identifier
@@ -164,14 +181,15 @@ impl CapabilityRegistry {
     ) -> SongbirdResult<()> {
         let mut providers = self.providers.write().await;
 
+        // `HashMap<Arc<str>, V>` supports `&str` lookups directly (zero-copy)
         let provider = providers.get_mut(provider_id).ok_or_else(|| SongbirdError::Registry {
             message: format!("Provider '{}' not found", provider_id),
             service_name: Some(provider_id.to_string()),
             operation: "heartbeat".to_string(),
         })?;
 
-        // Verify registration ID
-        if provider.registration_id != registration_id {
+        // Verify registration ID (`Arc<str>` can be compared with `&str`)
+        if provider.registration_id.as_ref() != registration_id {
             return Err(SongbirdError::Security(songbird_types::SecurityError {
                 message: format!("Registration ID mismatch for provider '{}'", provider_id),
                 operation: Some("heartbeat".to_string()),
@@ -308,11 +326,13 @@ impl CapabilityRegistry {
     }
 
     /// Check health of all providers and update status
+    ///
+    /// **ZERO-COPY**: Arc<str> keys are cloned only for removal list (Arc refcount increment).
     async fn check_provider_health(&self) -> SongbirdResult<()> {
         let mut providers = self.providers.write().await;
         let now = Utc::now();
 
-        let mut to_remove = Vec::new();
+        let mut to_remove: Vec<Arc<str>> = Vec::new();
 
         for (provider_id, provider) in providers.iter_mut() {
             let elapsed = now - provider.last_heartbeat;
@@ -338,7 +358,7 @@ impl CapabilityRegistry {
                     "Provider offline - removing from registry"
                 );
                 provider.health.status = HealthStatus::Offline;
-                to_remove.push(provider_id.clone());
+                to_remove.push(Arc::clone(provider_id)); // Arc clone: just refcount increment
             }
         }
 

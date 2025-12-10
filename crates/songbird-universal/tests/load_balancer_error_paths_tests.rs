@@ -787,27 +787,19 @@ async fn test_round_robin_predictable_sequence() -> SongbirdResult<()> {
 
     // Should cycle through in order
     assert_eq!(
-        lb.get_next_endpoint()
-            .await
-            .map_err(|e| SongbirdError::configuration("Error"))?,
+        lb.get_next_endpoint().await.map_err(|e| SongbirdError::configuration("Error"))?,
         endpoints[0]
     );
     assert_eq!(
-        lb.get_next_endpoint()
-            .await
-            .map_err(|e| SongbirdError::configuration("Error"))?,
+        lb.get_next_endpoint().await.map_err(|e| SongbirdError::configuration("Error"))?,
         endpoints[1]
     );
     assert_eq!(
-        lb.get_next_endpoint()
-            .await
-            .map_err(|e| SongbirdError::configuration("Error"))?,
+        lb.get_next_endpoint().await.map_err(|e| SongbirdError::configuration("Error"))?,
         endpoints[2]
     );
     assert_eq!(
-        lb.get_next_endpoint()
-            .await
-            .map_err(|e| SongbirdError::configuration("Error"))?,
+        lb.get_next_endpoint().await.map_err(|e| SongbirdError::configuration("Error"))?,
         endpoints[0]
     );
     Ok(())

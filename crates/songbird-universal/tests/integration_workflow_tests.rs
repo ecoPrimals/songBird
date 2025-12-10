@@ -1,6 +1,6 @@
 #![cfg(feature = "tests-incomplete")]
 //! NOTE: Disabled - requires unimplemented methods
-
+//!
 //! Integration workflow tests
 //!
 //! Tests complete workflows involving multiple components
@@ -119,8 +119,9 @@ async fn test_workflow_cancellation() {
     let adapter_clone = Arc::clone(&adapter);
     let handle = tokio::spawn(async move { adapter_clone.execute_long_workflow().await });
 
-    // Cancel after brief delay
-    tokio::time::sleep(tokio::time::Duration::from_millis(10)).await;
+    // Cancel immediately - testing cancellation logic, not timing
+    // Use proper synchronization if testing race conditions
+    tokio::task::yield_now().await; // Allow task to start
     handle.abort();
 
     // Should handle cancellation gracefully

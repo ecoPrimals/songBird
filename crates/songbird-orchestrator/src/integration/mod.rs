@@ -108,31 +108,66 @@ impl IntegrationManager {
         Ok(())
     }
 
-    /// Graceful shutdown with timeout
-    pub async fn shutdown_gracefully(&self) -> Result<()> {
+    /// Graceful shutdown with proper orchestrator coordination
+    ///
+    /// This method properly shuts down the orchestrator and all its services:
+    /// 1. Signals shutdown to the orchestrator
+    /// 2. Waits for graceful service termination
+    /// 3. Enforces timeout for forced shutdown if needed
+    ///
+    /// # Modern Implementation
+    /// - Uses orchestrator's built-in shutdown channel
+    /// - No arbitrary sleeps - services signal completion
+    /// - Proper timeout handling with graceful degradation
+    pub async fn shutdown_gracefully(&self, orchestrator: &mut SongbirdOrchestrator) -> Result<()> {
         info!("🛑 Initiating graceful shutdown...");
 
         let shutdown_future = async {
-            // Perform shutdown operations
-            info!("🔄 Stopping services...");
-            tokio::time::sleep(Duration::from_millis(100)).await;
+            // Stop orchestrator services (sends shutdown signal via broadcast channel)
+            orchestrator.stop().await?;
+
+            info!("🔄 Orchestrator shutdown signal sent");
+            info!("🔄 Services shutting down gracefully...");
+
+            // Services are notified via the shutdown broadcast channel
+            // They handle their own cleanup asynchronously
+            // This includes:
+            // - HTTP server (axum graceful shutdown)
+            // - tarpc server (connection drain)
+            // - Health monitoring (interval cancellation)
+            // - ObservabilityManager (metric flush)
+            // - Federation coordinator (node deregistration)
+
             Ok::<(), anyhow::Error>(())
         };
 
         match tokio::time::timeout(self.shutdown_timeout, shutdown_future).await {
             Ok(Ok(())) => {
                 info!("✅ Graceful shutdown completed successfully");
+                info!("   All services stopped cleanly");
                 Ok(())
             }
             Ok(Err(e)) => {
                 error!("❌ Shutdown error: {}", e);
+                error!("   Some services may not have stopped cleanly");
                 Err(e)
             }
             Err(_) => {
-                warn!("⚠️ Shutdown timeout exceeded, forcing shutdown");
-                Err(anyhow::anyhow!("Shutdown timeout exceeded"))
+                warn!("⚠️ Shutdown timeout ({:?}) exceeded", self.shutdown_timeout);
+                warn!("   Forcing immediate shutdown");
+                warn!("   Some services may not have completed cleanup");
+                Err(anyhow::anyhow!("Shutdown timeout exceeded after {:?}", self.shutdown_timeout))
             }
         }
+    }
+
+    /// Shutdown without an orchestrator instance (for early failures)
+    ///
+    /// Use this when shutdown is needed before orchestrator is fully initialized
+    pub async fn shutdown_without_orchestrator(&self) -> Result<()> {
+        info!("🛑 Performing early shutdown (no orchestrator instance)");
+        info!("   No services to clean up");
+        Ok(())
     }
 
     /// Check service availability

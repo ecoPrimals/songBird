@@ -6,7 +6,7 @@ use std::collections::HashMap;
 use std::time::Duration;
 
 // Import comprehensive LoadBalancerConfig (Nov 10, 2025 consolidation)
-pub use songbird_config::unified::robustness::LoadBalancerConfig as CanonicalLoadBalancerConfig;
+pub use songbird_config::canonical::resilience::LoadBalancerConfig as CanonicalLoadBalancerConfig;
 
 // Create a basic ServiceRequest type for compatibility;
 #[derive(Debug, Clone, serde: :Serialize, serde: :Deserialize)]
@@ -54,7 +54,7 @@ pub enum LoadBalancerStrategy {
 // ============================================================================
 //
 // LoadBalancerConfig was removed and replaced with CanonicalLoadBalancerConfig
-// from songbird_config::unified::robustness::LoadBalancerConfig
+// from songbird_config::canonical::resilience::LoadBalancerConfig
 //
 // Migration: Use CanonicalLoadBalancerConfig instead
 // - strategy (LoadBalancerStrategy) → algorithm (LoadBalancingAlgorithm)

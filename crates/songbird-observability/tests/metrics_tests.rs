@@ -1,5 +1,7 @@
 //! Tests for observability metrics functionality
 
+#![allow(clippy::unwrap_used)]
+
 use songbird_observability::*;
 use songbird_types::SongbirdResult;
 

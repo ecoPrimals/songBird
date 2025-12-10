@@ -504,8 +504,8 @@ mod integration_tests {
         }
 
         assert_eq!(time_series.average_cpu_usage(), 50.0); // (30+40+50+60+70)/5
-        assert!(time_series.is_trending_up().or_else(|_| SongbirdError::configuration(
-            "trend check should work"
-        ))?);
+        assert!(time_series
+            .is_trending_up()
+            .or_else(|_| SongbirdError::configuration("trend check should work"))?);
     }
 }

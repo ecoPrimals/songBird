@@ -28,7 +28,7 @@
 //! - Internet/public: utilize network effect of multiple primals
 
 use serde::{Deserialize, Serialize};
-use songbird_types::SongbirdResult;
+use songbird_types::{SongbirdError, SongbirdResult};
 use std::sync::Arc;
 use tokio::sync::RwLock;
 use tracing::{debug, info, warn};
@@ -42,6 +42,7 @@ pub struct SovereignSecurityValidator {
     beardog: Arc<RwLock<Option<BearDogIntegration>>>,
 
     /// Configuration
+    #[allow(dead_code)]
     config: SecurityConfig,
 }
 
@@ -197,39 +198,167 @@ impl SovereignSecurity {
 }
 
 /// Optional BearDog integration (network effect)
+///
+/// Provides enhanced security validation by delegating to BearDog security service
+/// when available. Falls back to local validation if BearDog is unreachable.
 struct BearDogIntegration {
+    /// BearDog security endpoint URL
     endpoint: String,
-    // In production: HTTP client to BearDog
+    /// HTTP client for BearDog requests
+    client: reqwest::Client,
+    /// Request timeout for security operations
+    timeout: std::time::Duration,
 }
 
 impl BearDogIntegration {
+    /// Connect to BearDog security service
+    ///
+    /// Discovers BearDog endpoint via:
+    /// 1. `BEARDOG_SECURITY_ENDPOINT` environment variable
+    /// 2. `SONGBIRD_SECURITY_ENDPOINT` environment variable  
+    /// 3. Fallback to localhost:8443 (development)
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if HTTP client cannot be created
     async fn connect() -> SongbirdResult<Self> {
         let endpoint = std::env::var("BEARDOG_SECURITY_ENDPOINT")
+            .or_else(|_| std::env::var("SONGBIRD_SECURITY_ENDPOINT"))
             .unwrap_or_else(|_| "http://localhost:8443".to_string());
 
-        // In production: verify BearDog is reachable
-        info!("🔗 Connected to BearDog at {}", endpoint);
+        // Create HTTP client with reasonable defaults
+        let client = reqwest::Client::builder()
+            .timeout(std::time::Duration::from_secs(10))
+            .connect_timeout(std::time::Duration::from_secs(5))
+            .build()
+            .map_err(|e| {
+                SongbirdError::configuration(format!("Failed to create BearDog client: {e}"))
+            })?;
+
+        // Verify BearDog is reachable (non-blocking health check)
+        let health_url = format!("{endpoint}/health");
+        match client.get(&health_url).timeout(std::time::Duration::from_secs(2)).send().await {
+            Ok(response) if response.status().is_success() => {
+                info!("🔗 Successfully connected to BearDog at {endpoint}");
+            }
+            Ok(response) => {
+                warn!("⚠️ BearDog health check returned non-success: {}", response.status());
+            }
+            Err(e) => {
+                warn!("⚠️ BearDog not reachable (will use local validation): {e}");
+            }
+        }
 
         Ok(Self {
             endpoint,
+            client,
+            timeout: std::time::Duration::from_secs(5),
         })
     }
 
+    /// Validate security request using BearDog
+    ///
+    /// Calls BearDog's security validation API to get enhanced security decisions.
+    /// Falls back to permissive local decision if BearDog is unreachable.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error only for unrecoverable failures (not network issues)
     async fn validate(&self, request: &SecurityRequest) -> SongbirdResult<SecurityDecision> {
-        // In production: call BearDog's security validation API
-        // For now, simulate enhanced validation
-
         info!("🛡️ Delegating to BearDog for enhanced security");
 
-        // Simulate BearDog's enhanced checks
-        Ok(SecurityDecision {
-            allowed: true,
-            reason: None,
-            confidence: 0.95, // Higher confidence with BearDog
-            mode: SecurityMode::NetworkEffect {
-                primal: "beardog".to_string(),
-            },
-        })
+        let url = format!("{}/security/validate", self.endpoint);
+
+        // Prepare request payload
+        let payload = serde_json::json!({
+            "command": &request.command,
+            "auth_token": &request.auth_token,
+            "timeout_seconds": request.timeout_seconds,
+            "requester": &request.requester,
+        });
+
+        // Call BearDog security validation API
+        match self.client.post(&url).json(&payload).timeout(self.timeout).send().await {
+            Ok(response) if response.status().is_success() => {
+                // Parse BearDog's security decision
+                match response.json::<SecurityDecision>().await {
+                    Ok(decision) => {
+                        info!("✅ BearDog validation complete: {:?}", decision.allowed);
+                        Ok(decision)
+                    }
+                    Err(e) => {
+                        warn!("⚠️ Failed to parse BearDog response: {e}");
+                        // Fallback to permissive decision
+                        Ok(SecurityDecision {
+                            allowed: true,
+                            reason: Some(
+                                "BearDog validation unavailable (parse error)".to_string(),
+                            ),
+                            confidence: 0.5,
+                            mode: SecurityMode::Sovereign,
+                        })
+                    }
+                }
+            }
+            Ok(response) => {
+                warn!("⚠️ BearDog returned error status: {}", response.status());
+                // Fallback to permissive decision
+                Ok(SecurityDecision {
+                    allowed: true,
+                    reason: Some(format!(
+                        "BearDog validation unavailable (HTTP {})",
+                        response.status()
+                    )),
+                    confidence: 0.5,
+                    mode: SecurityMode::Sovereign,
+                })
+            }
+            Err(e) => {
+                warn!("⚠️ BearDog request failed: {e}");
+                // Fallback to permissive decision (don't block on network errors)
+                Ok(SecurityDecision {
+                    allowed: true,
+                    reason: Some("BearDog validation unavailable (network error)".to_string()),
+                    confidence: 0.5,
+                    mode: SecurityMode::Sovereign,
+                })
+            }
+        }
+    }
+
+    /// Check if BearDog is currently reachable
+    ///
+    /// Non-blocking health check to determine if BearDog integration is active
+    #[allow(dead_code)]
+    async fn is_available(&self) -> bool {
+        let url = format!("{}/health", self.endpoint);
+
+        self.client
+            .get(&url)
+            .timeout(std::time::Duration::from_secs(2))
+            .send()
+            .await
+            .map(|r| r.status().is_success())
+            .unwrap_or(false)
+    }
+
+    /// Get BearDog endpoint URL
+    #[must_use]
+    #[allow(dead_code)]
+    fn endpoint(&self) -> &str {
+        &self.endpoint
+    }
+}
+
+impl Default for BearDogIntegration {
+    fn default() -> Self {
+        // Synchronous default - use localhost endpoint
+        // For production, use connect() async method instead
+        Self {
+            endpoint: "http://localhost:8443".to_string(),
+            client: reqwest::Client::new(),
+            timeout: std::time::Duration::from_secs(5),
+        }
     }
 }
 
@@ -283,7 +412,7 @@ pub struct SecurityRequest {
 }
 
 /// Security decision
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SecurityDecision {
     pub allowed: bool,
     pub reason: Option<String>,

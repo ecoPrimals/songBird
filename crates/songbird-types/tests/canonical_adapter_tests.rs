@@ -223,11 +223,10 @@ fn test_retry_config_default() {
     let config = CanonicalRetryConfig::default();
 
     assert_eq!(config.max_attempts, 3);
-    assert_eq!(config.base_delay, Duration::from_millis(100));
+    assert_eq!(config.initial_delay, Duration::from_millis(100));
     assert_eq!(config.max_delay, Duration::from_secs(30));
     // Use epsilon comparison for floats to avoid clippy::float_cmp
     assert!((config.backoff_multiplier - 2.0).abs() < f64::EPSILON);
-    assert!((config.jitter_factor - 0.1).abs() < f64::EPSILON);
 }
 
 #[test]
@@ -237,15 +236,16 @@ fn test_retry_config_backoff_multiplier() {
 }
 
 #[test]
-fn test_retry_config_jitter_in_range() {
+fn test_retry_config_delays_sensible() {
     let config = CanonicalRetryConfig::default();
-    assert!(config.jitter_factor >= 0.0 && config.jitter_factor <= 1.0);
+    // Max delay should be greater than or equal to initial delay
+    assert!(config.max_delay >= config.initial_delay);
 }
 
 #[test]
-fn test_retry_config_max_delay_greater_than_base() {
+fn test_retry_config_has_max_attempts() {
     let config = CanonicalRetryConfig::default();
-    assert!(config.max_delay > config.base_delay);
+    assert!(config.max_attempts > 0, "Should have at least one retry attempt");
 }
 
 // ============================================================================

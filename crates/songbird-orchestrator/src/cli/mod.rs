@@ -242,7 +242,7 @@ pub fn clear_progress() {
 mod tests {
     use super::*;
     use crate::app::SongbirdOrchestrator;
-    use songbird_config::SongbirdConfig;
+    use songbird_types::config::CanonicalSongbirdConfig;
 
     #[test]
     fn test_cli_config_creation() {
@@ -275,7 +275,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_orchestrator_creation() {
-        let config = SongbirdConfig::default();
+        let config = CanonicalSongbirdConfig::default();
         let _orchestrator = SongbirdOrchestrator::new(config);
         // If this compiles and doesn't panic, initialization is successful
     }

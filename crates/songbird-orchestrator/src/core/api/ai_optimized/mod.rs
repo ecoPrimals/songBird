@@ -59,10 +59,13 @@ pub struct AiOptimizedConfig {
 impl AiOptimizedApiState {
     /// Create new AI-optimized API state
     #[must_use]
-    pub fn new(config: CanonicalAiOptimizedConfig) -> Self  {Self { cache: AiAwareCache::new(config.cache_config.clone(),
-            string_pool: Arc::new(RwLock::new(ModelStringPool::new()),
-            config;}}
-
+    pub fn new(config: Arc<AiOptimizedConfig>) -> Self {
+        Self {
+            cache: AiAwareCache::new(Arc::clone(&config.cache_config)),
+            string_pool: Arc::new(RwLock::new(ModelStringPool::new())),
+            config,
+        }
+    }
     /// Get cached inference result
     pub async fn get_cached_inference() -> Option<Arc<[u8]>>   {
 

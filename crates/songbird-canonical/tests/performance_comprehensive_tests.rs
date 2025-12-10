@@ -84,7 +84,6 @@ fn test_performance_monitoring_sequential_calls() {
 
 #[test]
 fn test_performance_monitoring_with_delays() {
-    use songbird_types::{SongbirdError, SongbirdResult};
     use std::thread;
     use std::time::Duration;
 

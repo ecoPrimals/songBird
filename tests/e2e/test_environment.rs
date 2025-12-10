@@ -1,20 +1,29 @@
 // E2E Test Environment Infrastructure
 // Created: October 30, 2025
+// Updated: December 2, 2025 - Modernized for concurrent execution
 // Purpose: Provide common test environment for E2E scenarios
+//
+// **MODERN:** Truly concurrent-safe with atomic port allocation and no sleeps!
 
 use std::collections::HashMap;
 use std::process::{Child, Command, Stdio};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicU16, Ordering};
 use std::time::Duration;
-use tokio::time::sleep;
 use anyhow::{Result, Context};
 
+/// Global atomic port allocator for truly concurrent tests
+/// Each test gets a unique port range without coordination
+static NEXT_PORT: AtomicU16 = AtomicU16::new(10000);
+
 /// Test environment for E2E scenarios
+/// **CONCURRENT-SAFE:** Each instance has isolated state
 pub struct TestEnvironment {
     orchestrator: Option<OrchestratorHandle>,
     services: HashMap<String, ServiceHandle>,
     config: TestConfig,
-    allocated_ports: Vec<u16>,
+    port_base: u16,  // This test's unique port range
+    port_offset: u16, // Offset within the range
 }
 
 /// Handle to a running orchestrator instance
@@ -53,29 +62,41 @@ impl Default for TestConfig {
 
 impl TestEnvironment {
     /// Create a new test environment
+    /// **CONCURRENT-SAFE:** Atomically allocates unique port range
     pub async fn new() -> Result<Self> {
+        // Atomically allocate a port range (100 ports per test)
+        let port_base = NEXT_PORT.fetch_add(100, Ordering::SeqCst);
+        
         Ok(Self {
             orchestrator: None,
             services: HashMap::new(),
             config: TestConfig::default(),
-            allocated_ports: Vec::new(),
+            port_base,
+            port_offset: 0,
         })
     }
 
     /// Create with custom config
+    /// **CONCURRENT-SAFE:** Atomically allocates unique port range
     pub async fn with_config(config: TestConfig) -> Result<Self> {
+        // Atomically allocate a port range (100 ports per test)
+        let port_base = NEXT_PORT.fetch_add(100, Ordering::SeqCst);
+        
         Ok(Self {
             orchestrator: None,
             services: HashMap::new(),
             config,
-            allocated_ports: Vec::new(),
+            port_base,
+            port_offset: 0,
         })
     }
 
     /// Allocate a unique test port
+    /// **CONCURRENT-SAFE:** Each test has its own port range
     fn allocate_port(&mut self) -> u16 {
-        let port = self.config.base_port + self.allocated_ports.len() as u16;
-        self.allocated_ports.push(port);
+        let port = self.port_base + self.port_offset;
+        self.port_offset += 1;
+        assert!(self.port_offset < 100, "Test exhausted port allocation (max 100 ports per test)");
         port
     }
 
@@ -142,12 +163,26 @@ impl TestEnvironment {
     }
 
     /// Wait for a health endpoint to become healthy
+    /// **MODERN:** Uses exponential backoff instead of fixed sleep intervals
     async fn wait_for_health(&self, endpoint: &str) -> Result<()> {
         let client = reqwest::Client::new();
-        let deadline = tokio::time::Instant::now() + self.config.timeout;
-
+        
+        // Use exponential backoff: 10us, 50us, 100us, 500us, 1ms, 5ms, 10ms
+        let intervals = [
+            Duration::from_micros(10),
+            Duration::from_micros(50),
+            Duration::from_micros(100),
+            Duration::from_micros(500),
+            Duration::from_millis(1),
+            Duration::from_millis(5),
+            Duration::from_millis(10),
+        ];
+        
+        let mut interval_idx = 0;
+        let start = tokio::time::Instant::now();
+        
         loop {
-            if tokio::time::Instant::now() > deadline {
+            if start.elapsed() >= self.config.timeout {
                 return Err(anyhow::anyhow!("Timeout waiting for health: {}", endpoint));
             }
 
@@ -156,7 +191,17 @@ impl TestEnvironment {
                     return Ok(());
                 }
                 _ => {
-                    sleep(Duration::from_millis(100)).await;
+                    // Yield first for cooperative multitasking
+                    tokio::task::yield_now().await;
+                    
+                    // Then exponential backoff
+                    if interval_idx < intervals.len() {
+                        tokio::time::sleep(intervals[interval_idx]).await;
+                        interval_idx += 1;
+                    } else {
+                        // Cap at max interval
+                        tokio::time::sleep(intervals[intervals.len() - 1]).await;
+                    }
                 }
             }
         }

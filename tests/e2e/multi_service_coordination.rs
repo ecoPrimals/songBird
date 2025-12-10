@@ -5,9 +5,8 @@
 
 use songbird_test_utils::{fixtures::*, mocks::*};
 use songbird_types::{CapabilityRequest, CapabilityResponse, HealthStatus};
-use songbird_universal::UniversalCapabilityAdapter;
+use songbird_universal::{UniversalCapabilityAdapter, test_helpers::register_test_service};
 use std::time::Duration;
-use tokio::time::sleep;
 
 /// Test that compute and storage services can coordinate on a workflow
 #[tokio::test]
@@ -20,17 +19,15 @@ async fn test_compute_storage_workflow() {
         .expect("Failed to create adapter");
 
     // Register compute service
-    let compute_service = compute_service_fixture();
-    adapter.register_service(compute_service.clone()).await
+    let compute_service = compute_service("test-compute-coord");
+    let _h1 = register_test_service(&adapter, compute_service).await
         .expect("Failed to register compute service");
 
     // Register storage service
-    let storage_service = storage_service_fixture();
-    adapter.register_service(storage_service.clone()).await
+    let storage_service = storage_service("test-storage-coord");
+    let _h2 = register_test_service(&adapter, storage_service).await
         .expect("Failed to register storage service");
-
-    // Wait for service registration to propagate
-    sleep(Duration::from_millis(100)).await;
+    // ✅ Event-driven: Both services ready immediately!
 
     // Discover compute providers
     let compute_providers = adapter
@@ -55,13 +52,12 @@ async fn test_compute_storage_workflow() {
     );
 
     // Execute compute task that requires storage
-    let compute_request = CapabilityRequest {
+    let compute_request = songbird_universal::capabilities::SimpleCapabilityRequest {
         capability: "compute".to_string(),
         operation: "process_data".to_string(),
         parameters: vec![("storage_provider".to_string(), storage_providers[0].id.clone())]
             .into_iter()
             .collect(),
-        timeout: Duration::from_secs(30),
     };
 
     let compute_response = adapter
@@ -71,16 +67,14 @@ async fn test_compute_storage_workflow() {
 
     assert!(
         compute_response.success,
-        "Compute request should succeed: {:?}",
-        compute_response.error
+        "Compute request should succeed"
     );
 
     // Verify storage was accessed
-    let storage_request = CapabilityRequest {
+    let storage_request = songbird_universal::capabilities::SimpleCapabilityRequest {
         capability: "storage".to_string(),
         operation: "get_access_log".to_string(),
         parameters: Default::default(),
-        timeout: Duration::from_secs(10),
     };
 
     let storage_response = adapter
@@ -102,19 +96,18 @@ async fn test_ai_security_coordination() {
         .expect("Failed to create adapter");
 
     // Register AI service
-    let ai_service = ai_service_fixture();
-    adapter.register_service(ai_service.clone()).await
+    let ai_service = ai_service("test-ai-sec");
+    let _h1 = register_test_service(&adapter, ai_service).await
         .expect("Failed to register AI service");
 
     // Register security service
-    let security_service = security_service_fixture();
-    adapter.register_service(security_service.clone()).await
+    let security_service = security_service("test-sec");
+    let _h2 = register_test_service(&adapter, security_service).await
         .expect("Failed to register security service");
-
-    sleep(Duration::from_millis(100)).await;
+    // ✅ Event-driven: Both ready immediately!
 
     // First, authenticate
-    let auth_request = CapabilityRequest {
+    let auth_request = songbird_universal::capabilities::SimpleCapabilityRequest {
         capability: "authentication".to_string(),
         operation: "authenticate".to_string(),
         parameters: vec![
@@ -123,7 +116,6 @@ async fn test_ai_security_coordination() {
         ]
         .into_iter()
         .collect(),
-        timeout: Duration::from_secs(10),
     };
 
     let auth_response = adapter
@@ -139,7 +131,7 @@ async fn test_ai_security_coordination() {
         .expect("Should receive auth token");
 
     // Then, use token for AI inference
-    let inference_request = CapabilityRequest {
+    let inference_request = songbird_universal::capabilities::SimpleCapabilityRequest {
         capability: "ai_inference".to_string(),
         operation: "infer".to_string(),
         parameters: vec![
@@ -149,7 +141,6 @@ async fn test_ai_security_coordination() {
         ]
         .into_iter()
         .collect(),
-        timeout: Duration::from_secs(30),
     };
 
     let inference_response = adapter
@@ -171,21 +162,15 @@ async fn test_complete_service_mesh() {
         .expect("Failed to create adapter");
 
     // Register all service types
-    let services = vec![
-        compute_service_fixture(),
-        storage_service_fixture(),
-        ai_service_fixture(),
-        security_service_fixture(),
-    ];
-
-    for service in &services {
-        adapter
-            .register_service(service.clone())
-            .await
-            .expect("Failed to register service");
-    }
-
-    sleep(Duration::from_millis(200)).await;
+    let _h1 = register_test_service(&adapter, compute_service("test-compute-mesh")).await
+        .expect("Failed to register compute");
+    let _h2 = register_test_service(&adapter, storage_service("test-storage-mesh")).await
+        .expect("Failed to register storage");
+    let _h3 = register_test_service(&adapter, ai_service("test-ai-mesh")).await
+        .expect("Failed to register AI");
+    let _h4 = register_test_service(&adapter, security_service("test-sec-mesh")).await
+        .expect("Failed to register security");
+    // ✅ Event-driven: All services ready in parallel!
 
     // Discover all capabilities
     let capabilities = vec!["compute", "storage", "ai_inference", "authentication"];
@@ -244,13 +229,12 @@ async fn test_dynamic_service_discovery() {
     );
 
     // Add first compute service
-    let compute1 = compute_service_fixture();
-    adapter
-        .register_service(compute1.clone())
+    let compute1 = compute_service("test-compute-dyn-1");
+    let compute1_id = compute1.id().to_string();
+    let _h1 = register_test_service(&adapter, compute1)
         .await
         .expect("Failed to register first compute service");
-
-    sleep(Duration::from_millis(100)).await;
+    // ✅ Event-driven: Ready immediately!
 
     let providers = adapter
         .discover_capability_providers("compute")
@@ -260,14 +244,12 @@ async fn test_dynamic_service_discovery() {
     assert_eq!(providers.len(), 1, "Should have one provider");
 
     // Add second compute service
-    let mut compute2 = compute_service_fixture();
-    compute2.id = format!("{}_2", compute2.id);
-    adapter
-        .register_service(compute2.clone())
+    let compute2 = compute_service("test-compute-dyn-2");
+    let compute2_id = compute2.id().to_string();
+    let _h2 = register_test_service(&adapter, compute2)
         .await
         .expect("Failed to register second compute service");
-
-    sleep(Duration::from_millis(100)).await;
+    // ✅ Event-driven: Ready immediately!
 
     let providers = adapter
         .discover_capability_providers("compute")
@@ -278,11 +260,10 @@ async fn test_dynamic_service_discovery() {
 
     // Remove first service
     adapter
-        .deregister_service(&compute1.id)
+        .deregister_service(&compute1_id)
         .await
         .expect("Failed to deregister first service");
-
-    sleep(Duration::from_millis(100)).await;
+    // ✅ Event-driven: Immediate deregistration!
 
     let providers = adapter
         .discover_capability_providers("compute")
@@ -290,7 +271,7 @@ async fn test_dynamic_service_discovery() {
         .expect("Failed to discover providers");
 
     assert_eq!(providers.len(), 1, "Should have one provider after deregistration");
-    assert_eq!(providers[0].id, compute2.id, "Should be the second service");
+    assert_eq!(providers[0].id, compute2_id, "Should be the second service");
 }
 
 /// Test service registration and health check propagation
@@ -300,18 +281,16 @@ async fn test_service_registration_flow() {
     let adapter = UniversalCapabilityAdapter::new(env.discovery_config.clone())
         .expect("Failed to create adapter");
 
-    let service = compute_service_fixture();
-    let service_id = service.id.clone();
+    let service = compute_service("test-compute-reg");
+    let service_id = service.id().to_string();
 
     // Register service
-    adapter
-        .register_service(service.clone())
+    let _handle = register_test_service(&adapter, service)
         .await
         .expect("Failed to register service");
+    // ✅ Event-driven: Ready immediately!
 
     // Verify service is discoverable
-    sleep(Duration::from_millis(100)).await;
-
     let providers = adapter
         .discover_capability_providers("compute")
         .await
@@ -330,17 +309,16 @@ async fn test_service_registration_flow() {
 
     assert_eq!(
         health.status,
-        HealthStatus::Healthy,
+        songbird_universal::types::HealthStatus::Healthy,
         "Service should be healthy"
     );
 
     // Update health status
     adapter
-        .update_service_health(&service_id, HealthStatus::Degraded)
+        .update_service_health(&service_id, songbird_universal::types::HealthStatus::Degraded)
         .await
         .expect("Failed to update health status");
-
-    sleep(Duration::from_millis(50)).await;
+    // ✅ Event-driven: Immediate update!
 
     let health = adapter
         .get_service_health(&service_id)
@@ -349,7 +327,7 @@ async fn test_service_registration_flow() {
 
     assert_eq!(
         health.status,
-        HealthStatus::Degraded,
+        songbird_universal::types::HealthStatus::Degraded,
         "Health status should be updated"
     );
 }
@@ -363,25 +341,21 @@ async fn test_load_balancing() {
 
     // Register multiple compute providers
     for i in 0..3 {
-        let mut service = compute_service_fixture();
-        service.id = format!("compute_service_{}", i);
-        adapter
-            .register_service(service)
+        let service = compute_service(&format!("test-compute-lb-{}", i));
+        let _ = register_test_service(&adapter, service)
             .await
             .expect("Failed to register service");
     }
-
-    sleep(Duration::from_millis(200)).await;
+    // ✅ Event-driven: All services ready in parallel!
 
     // Execute multiple requests and track which providers handle them
     let mut provider_usage = std::collections::HashMap::new();
 
     for _ in 0..30 {
-        let request = CapabilityRequest {
+        let request = songbird_universal::capabilities::SimpleCapabilityRequest {
             capability: "compute".to_string(),
             operation: "process".to_string(),
             parameters: Default::default(),
-            timeout: Duration::from_secs(10),
         };
 
         let response = adapter
@@ -418,37 +392,31 @@ async fn test_service_failover() {
         .expect("Failed to create adapter");
 
     // Register two compute providers
-    let service1 = compute_service_fixture();
-    let service1_id = service1.id.clone();
-    adapter
-        .register_service(service1)
+    let service1 = compute_service("test-compute-fail-1");
+    let service1_id = service1.id().to_string();
+    let _h1 = register_test_service(&adapter, service1)
         .await
         .expect("Failed to register service 1");
 
-    let mut service2 = compute_service_fixture();
-    service2.id = format!("{}_backup", service2.id);
-    let service2_id = service2.id.clone();
-    adapter
-        .register_service(service2)
+    let service2 = compute_service("test-compute-fail-2-backup");
+    let service2_id = service2.id().to_string();
+    let _h2 = register_test_service(&adapter, service2)
         .await
         .expect("Failed to register service 2");
-
-    sleep(Duration::from_millis(100)).await;
+    // ✅ Event-driven: Both services ready!
 
     // Mark first service as unhealthy
     adapter
-        .update_service_health(&service1_id, HealthStatus::Unhealthy)
+        .update_service_health(&service1_id, songbird_universal::types::HealthStatus::Unhealthy)
         .await
         .expect("Failed to mark service as unhealthy");
-
-    sleep(Duration::from_millis(50)).await;
+    // ✅ Event-driven: Immediate health change!
 
     // Execute request - should automatically fail over to healthy service
-    let request = CapabilityRequest {
+    let request = songbird_universal::capabilities::SimpleCapabilityRequest {
         capability: "compute".to_string(),
         operation: "process".to_string(),
         parameters: Default::default(),
-        timeout: Duration::from_secs(10),
     };
 
     let response = adapter
@@ -477,30 +445,23 @@ async fn test_multi_tier_architecture() {
         .expect("Failed to create adapter");
 
     // Tier 1: Storage (foundation)
-    let storage = storage_service_fixture();
-    adapter
-        .register_service(storage)
+    let _h1 = register_test_service(&adapter, storage_service("test-storage-tier"))
         .await
         .expect("Failed to register storage");
 
     // Tier 2: Compute (depends on storage)
-    let compute = compute_service_fixture();
-    adapter
-        .register_service(compute)
+    let _h2 = register_test_service(&adapter, compute_service("test-compute-tier"))
         .await
         .expect("Failed to register compute");
 
     // Tier 3: AI (depends on compute and storage)
-    let ai = ai_service_fixture();
-    adapter
-        .register_service(ai)
+    let _h3 = register_test_service(&adapter, ai_service("test-ai-tier"))
         .await
         .expect("Failed to register AI");
-
-    sleep(Duration::from_millis(200)).await;
+    // ✅ Event-driven: All tiers ready in parallel!
 
     // Execute AI request that cascades through tiers
-    let request = CapabilityRequest {
+    let request = songbird_universal::capabilities::SimpleCapabilityRequest {
         capability: "ai_inference".to_string(),
         operation: "complex_analysis".to_string(),
         parameters: vec![

@@ -17,7 +17,6 @@ pub const QUICK_TEST_TIMEOUT: Duration = Duration::from_secs(5);
 /// Extended test timeout for integration tests
 pub const EXTENDED_TEST_TIMEOUT: Duration = Duration::from_secs(120);
 
-/// Test result type alias for canonical usage
 // Type alias removed - use SongbirdResult<T> directly
 
 /// Test execution context with timing and resource tracking
@@ -406,8 +405,9 @@ impl MockService {
     /// # Errors
     /// Returns an error if the service is unhealthy.
     pub async fn call(&self, _input: &str) -> SongbirdResult<String> {
-        // Simulate response delay
-        tokio::time::sleep(Duration::from_millis(10)).await;
+        // No sleep - real services don't sleep, they do actual work
+        // If testing async behavior, use proper synchronization primitives
+        tokio::task::yield_now().await; // Allow task scheduling
 
         if self.healthy {
             Ok(format!("Response from {}", self.name))
@@ -470,7 +470,8 @@ impl TestEnvironment {
     /// Returns an error if cleanup fails.
     pub async fn cleanup() -> SongbirdResult<()> {
         // Perform any necessary cleanup
-        tokio::time::sleep(Duration::from_millis(10)).await;
+        // No sleep - cleanup should be immediate
+        tokio::task::yield_now().await; // Cooperative yield
         Ok(())
     }
 

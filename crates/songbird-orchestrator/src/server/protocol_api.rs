@@ -346,7 +346,10 @@ pub struct UpgradeResponse {
 fn generate_negotiation_id() -> String {
     use std::time::{SystemTime, UNIX_EPOCH};
 
-    let timestamp = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_micros();
+    let timestamp = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap_or_else(|_| std::time::Duration::from_secs(0)) // Fallback if system time goes backward
+        .as_micros();
 
     format!("nego_{}", timestamp)
 }
@@ -367,7 +370,7 @@ mod tests {
         // TarPC and JSON-RPC are now available by default
         assert!(protocols.tarpc.is_some());
         assert!(protocols.json_rpc.is_some());
-        
+
         // WebSocket not yet implemented
         assert!(protocols.websocket.is_none());
     }

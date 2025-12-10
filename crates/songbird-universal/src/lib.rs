@@ -64,3 +64,57 @@ pub fn create_universal_adapter_with_config(
 ) -> UnifiedUniversalAdapter {
     UnifiedUniversalAdapter::with_config(config)
 }
+
+#[cfg(test)]
+mod lib_tests {
+    use super::*;
+
+    #[test]
+    fn test_create_universal_adapter() {
+        let adapter = create_universal_adapter();
+        // Verify adapter is created and functional
+        assert!(format!("{:?}", adapter).contains("UnifiedUniversalAdapter"));
+    }
+
+    #[test]
+    fn test_create_universal_adapter_with_custom_config() {
+        let config = UnifiedAdapterConfig {
+            discovery_timeout: std::time::Duration::from_secs(10),
+            health_check_interval: std::time::Duration::from_secs(30),
+            max_concurrent_requests: 100,
+            auto_discovery: true,
+            discovery_endpoints: vec!["http://localhost:8080".to_string()],
+        };
+
+        let adapter = create_universal_adapter_with_config(config);
+        // Verify adapter is created with custom config
+        assert!(format!("{:?}", adapter).contains("UnifiedUniversalAdapter"));
+    }
+
+    #[test]
+    fn test_module_exports_compile() {
+        // Verify key types are exported and accessible at compile time
+        fn _check_types() {
+            let _adapter: UnifiedUniversalAdapter = create_universal_adapter();
+            let _config = UnifiedAdapterConfig::default();
+            let _registry = CapabilityRegistry::default();
+            let _connection: Option<ServiceConnection> = None;
+            let _stats: Option<RegistryStats> = None;
+        }
+    }
+
+    #[test]
+    fn test_unified_adapter_config_default() {
+        let config = UnifiedAdapterConfig::default();
+        // Verify default values are reasonable
+        assert!(config.discovery_timeout.as_secs() > 0);
+        assert!(config.health_check_interval.as_secs() > 0);
+        assert!(config.max_concurrent_requests > 0);
+    }
+
+    #[test]
+    fn test_capability_definition_reexport() {
+        // Verify CapabilityDefinition is accessible
+        fn _check_capability_def(_cap: CapabilityDefinition) {}
+    }
+}

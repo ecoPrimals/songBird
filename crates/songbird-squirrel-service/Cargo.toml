@@ -4,6 +4,11 @@ version = "0.1.0"
 edition = "2021"
 authors = ["ecoPrimals Team"]
 description = "Squirrel: AI/MCP Service - The True Model Context Protocol"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/ecoPrimals/songbird"
+readme = "README.md"
+keywords = ["ai", "mcp", "model-context-protocol", "llm", "distributed"]
+categories = ["network-programming", "web-programming"]
 
 [[bin]]
 name = "squirrel"

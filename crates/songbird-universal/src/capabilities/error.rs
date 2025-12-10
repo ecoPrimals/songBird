@@ -11,6 +11,8 @@ pub enum CapabilityError {
     PrimalNotFound(String),
     /// Capability not available
     CapabilityUnavailable(String),
+    /// Feature not yet implemented
+    NotImplemented(String),
 }
 
 impl std::fmt::Display for CapabilityError {
@@ -21,6 +23,9 @@ impl std::fmt::Display for CapabilityError {
             Self::PrimalNotFound(name) => write!(f, "Primal not found: {name}"),
             Self::CapabilityUnavailable(cap) => {
                 write!(f, "Capability unavailable: {cap}")
+            }
+            Self::NotImplemented(feature) => {
+                write!(f, "Not yet implemented: {feature}")
             }
         }
     }

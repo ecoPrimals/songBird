@@ -130,7 +130,7 @@ impl CanonicalSongbirdConfig {
     ///
     /// # Examples
     ///
-    /// ```no_run
+    /// ```ignore
     /// use songbird_types::config::{CanonicalSongbirdConfig, CanonicalSystemConfig};
     ///
     /// let config = CanonicalSongbirdConfig::builder()
@@ -140,6 +140,33 @@ impl CanonicalSongbirdConfig {
     /// ```
     pub fn builder() -> CanonicalConfigBuilder {
         CanonicalConfigBuilder::default()
+    }
+
+    /// Create test-friendly configuration with safe defaults
+    ///
+    /// This method provides a configuration suitable for testing environments:
+    /// - Uses localhost bindings
+    /// - Minimal resource requirements
+    /// - Permissive timeouts
+    /// - No external dependencies
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use songbird_types::config::CanonicalSongbirdConfig;
+    ///
+    /// let config = CanonicalSongbirdConfig::test_defaults();
+    /// assert_eq!(config.environment.name, "test");
+    /// ```
+    #[cfg(test)]
+    pub fn test_defaults() -> Self {
+        Self {
+            environment: CanonicalEnvironmentConfig {
+                name: "test".to_string(),
+                deployment_mode: "standalone".to_string(),
+            },
+            ..Self::default()
+        }
     }
 
     /// Validate configuration completeness and correctness

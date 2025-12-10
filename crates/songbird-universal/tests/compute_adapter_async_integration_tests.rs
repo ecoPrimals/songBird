@@ -17,7 +17,7 @@ use std::time::Duration;
 // DISCOVERY ASYNC TESTS
 // ============================================================================
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_new_from_discovery_with_env_variable() {
     let server = mockito::Server::new_async().await;
     let endpoint = server.url();
@@ -36,7 +36,7 @@ async fn test_new_from_discovery_with_env_variable() {
     std::env::remove_var("SONGBIRD_COMPUTE_ENDPOINT");
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_new_from_discovery_with_legacy_env() {
     let server = mockito::Server::new_async().await;
     let endpoint = server.url();
@@ -52,7 +52,7 @@ async fn test_new_from_discovery_with_legacy_env() {
     std::env::remove_var("COMPUTE_PROVIDER_ENDPOINT");
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_new_from_discovery_fallback_to_default() {
     // Clear all env vars that might interfere
     std::env::remove_var("SONGBIRD_COMPUTE_ENDPOINT");
@@ -71,7 +71,7 @@ async fn test_new_from_discovery_fallback_to_default() {
 // COLLECT_METRICS ASYNC TESTS
 // ============================================================================
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_collect_metrics_success() {
     let mut server = mockito::Server::new_async().await;
 
@@ -80,7 +80,8 @@ async fn test_collect_metrics_success() {
         .mock("GET", "/metrics/compute")
         .with_status(200)
         .with_header("content-type", "application/json")
-        .with_body(r#"{
+        .with_body(
+            r#"{
             "cpu_usage_percent": 45.5,
             "memory_usage_bytes": 2000000000,
             "memory_available_bytes": 6000000000,
@@ -88,7 +89,8 @@ async fn test_collect_metrics_success() {
             "queued_jobs": 2,
             "performance_score": 0.85,
             "timestamp": "2025-11-18T12:00:00Z"
-        }"#)
+        }"#,
+        )
         .create_async()
         .await;
 
@@ -105,7 +107,7 @@ async fn test_collect_metrics_success() {
     mock.assert_async().await;
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_collect_metrics_sets_timestamp_if_missing() {
     let mut server = mockito::Server::new_async().await;
 
@@ -114,7 +116,8 @@ async fn test_collect_metrics_sets_timestamp_if_missing() {
         .mock("GET", "/metrics/compute")
         .with_status(200)
         .with_header("content-type", "application/json")
-        .with_body(r#"{
+        .with_body(
+            r#"{
             "cpu_usage_percent": 30.0,
             "memory_usage_bytes": 1000000000,
             "memory_available_bytes": 7000000000,
@@ -122,7 +125,8 @@ async fn test_collect_metrics_sets_timestamp_if_missing() {
             "queued_jobs": 1,
             "performance_score": 0.90,
             "timestamp": "1970-01-01T00:00:00Z"
-        }"#)
+        }"#,
+        )
         .create_async()
         .await;
 
@@ -140,7 +144,7 @@ async fn test_collect_metrics_sets_timestamp_if_missing() {
     mock.assert_async().await;
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_collect_metrics_network_error() {
     // Use invalid endpoint
     let adapter = ComputeAdapter::new("http://localhost:1".to_string()).unwrap();
@@ -152,7 +156,7 @@ async fn test_collect_metrics_network_error() {
     assert!(err.to_string().contains("Failed to reach compute service"));
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_collect_metrics_http_error_status() {
     let mut server = mockito::Server::new_async().await;
 
@@ -174,7 +178,7 @@ async fn test_collect_metrics_http_error_status() {
     mock.assert_async().await;
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_collect_metrics_invalid_json() {
     let mut server = mockito::Server::new_async().await;
 
@@ -197,7 +201,7 @@ async fn test_collect_metrics_invalid_json() {
     mock.assert_async().await;
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_collect_metrics_with_timeout() {
     let mut server = mockito::Server::new_async().await;
 
@@ -213,9 +217,8 @@ async fn test_collect_metrics_with_timeout() {
         .create_async()
         .await;
 
-    let adapter = ComputeAdapter::new(server.url())
-        .unwrap()
-        .with_timeout(Duration::from_millis(100)); // Very short timeout
+    let adapter =
+        ComputeAdapter::new(server.url()).unwrap().with_timeout(Duration::from_millis(100)); // Very short timeout
 
     let result = adapter.collect_metrics().await;
     assert!(result.is_err(), "Should timeout");
@@ -227,7 +230,7 @@ async fn test_collect_metrics_with_timeout() {
 // CHECK_HEALTH ASYNC TESTS
 // ============================================================================
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_check_health_healthy() {
     let mut server = mockito::Server::new_async().await;
 
@@ -236,7 +239,8 @@ async fn test_check_health_healthy() {
         .mock("GET", "/metrics/compute")
         .with_status(200)
         .with_header("content-type", "application/json")
-        .with_body(r#"{
+        .with_body(
+            r#"{
             "cpu_usage_percent": 40.0,
             "memory_usage_bytes": 2000000000,
             "memory_available_bytes": 6000000000,
@@ -244,7 +248,8 @@ async fn test_check_health_healthy() {
             "queued_jobs": 1,
             "performance_score": 0.88,
             "timestamp": "2025-11-18T12:00:00Z"
-        }"#)
+        }"#,
+        )
         .create_async()
         .await;
 
@@ -257,7 +262,7 @@ async fn test_check_health_healthy() {
     mock.assert_async().await;
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_check_health_degraded_high_cpu() {
     let mut server = mockito::Server::new_async().await;
 
@@ -266,7 +271,8 @@ async fn test_check_health_degraded_high_cpu() {
         .mock("GET", "/metrics/compute")
         .with_status(200)
         .with_header("content-type", "application/json")
-        .with_body(r#"{
+        .with_body(
+            r#"{
             "cpu_usage_percent": 88.0,
             "memory_usage_bytes": 3000000000,
             "memory_available_bytes": 5000000000,
@@ -274,7 +280,8 @@ async fn test_check_health_degraded_high_cpu() {
             "queued_jobs": 5,
             "performance_score": 0.70,
             "timestamp": "2025-11-18T12:00:00Z"
-        }"#)
+        }"#,
+        )
         .create_async()
         .await;
 
@@ -287,7 +294,7 @@ async fn test_check_health_degraded_high_cpu() {
     mock.assert_async().await;
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_check_health_degraded_high_memory() {
     let mut server = mockito::Server::new_async().await;
 
@@ -296,7 +303,8 @@ async fn test_check_health_degraded_high_memory() {
         .mock("GET", "/metrics/compute")
         .with_status(200)
         .with_header("content-type", "application/json")
-        .with_body(r#"{
+        .with_body(
+            r#"{
             "cpu_usage_percent": 60.0,
             "memory_usage_bytes": 7200000000,
             "memory_available_bytes": 800000000,
@@ -304,7 +312,8 @@ async fn test_check_health_degraded_high_memory() {
             "queued_jobs": 3,
             "performance_score": 0.75,
             "timestamp": "2025-11-18T12:00:00Z"
-        }"#)
+        }"#,
+        )
         .create_async()
         .await;
 
@@ -318,7 +327,7 @@ async fn test_check_health_degraded_high_memory() {
     mock.assert_async().await;
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_check_health_unhealthy() {
     let mut server = mockito::Server::new_async().await;
 
@@ -327,7 +336,8 @@ async fn test_check_health_unhealthy() {
         .mock("GET", "/metrics/compute")
         .with_status(200)
         .with_header("content-type", "application/json")
-        .with_body(r#"{
+        .with_body(
+            r#"{
             "cpu_usage_percent": 98.0,
             "memory_usage_bytes": 7800000000,
             "memory_available_bytes": 200000000,
@@ -335,7 +345,8 @@ async fn test_check_health_unhealthy() {
             "queued_jobs": 50,
             "performance_score": 0.25,
             "timestamp": "2025-11-18T12:00:00Z"
-        }"#)
+        }"#,
+        )
         .create_async()
         .await;
 
@@ -348,7 +359,7 @@ async fn test_check_health_unhealthy() {
     mock.assert_async().await;
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_check_health_network_error() {
     let adapter = ComputeAdapter::new("http://localhost:1".to_string()).unwrap();
 
@@ -360,7 +371,7 @@ async fn test_check_health_network_error() {
 // INTEGRATION WORKFLOW TESTS
 // ============================================================================
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_full_compute_workflow() {
     let mut server = mockito::Server::new_async().await;
 
@@ -369,7 +380,8 @@ async fn test_full_compute_workflow() {
         .mock("GET", "/metrics/compute")
         .with_status(200)
         .with_header("content-type", "application/json")
-        .with_body(r#"{
+        .with_body(
+            r#"{
             "cpu_usage_percent": 55.0,
             "memory_usage_bytes": 3000000000,
             "memory_available_bytes": 5000000000,
@@ -377,7 +389,8 @@ async fn test_full_compute_workflow() {
             "queued_jobs": 2,
             "performance_score": 0.82,
             "timestamp": "2025-11-18T12:00:00Z"
-        }"#)
+        }"#,
+        )
         .expect(2) // Called twice
         .create_async()
         .await;
@@ -398,7 +411,7 @@ async fn test_full_compute_workflow() {
     metrics_mock.assert_async().await;
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_concurrent_requests() {
     let mut server = mockito::Server::new_async().await;
 
@@ -407,7 +420,8 @@ async fn test_concurrent_requests() {
         .mock("GET", "/metrics/compute")
         .with_status(200)
         .with_header("content-type", "application/json")
-        .with_body(r#"{
+        .with_body(
+            r#"{
             "cpu_usage_percent": 50.0,
             "memory_usage_bytes": 4000000000,
             "memory_available_bytes": 4000000000,
@@ -415,7 +429,8 @@ async fn test_concurrent_requests() {
             "queued_jobs": 2,
             "performance_score": 0.85,
             "timestamp": "2025-11-18T12:00:00Z"
-        }"#)
+        }"#,
+        )
         .expect(3)
         .create_async()
         .await;
@@ -423,11 +438,8 @@ async fn test_concurrent_requests() {
     let adapter = ComputeAdapter::new(server.url()).unwrap();
 
     // Fire off 3 concurrent requests
-    let futures = vec![
-        adapter.collect_metrics(),
-        adapter.collect_metrics(),
-        adapter.collect_metrics(),
-    ];
+    let futures =
+        vec![adapter.collect_metrics(), adapter.collect_metrics(), adapter.collect_metrics()];
 
     let results = futures::future::join_all(futures).await;
 
@@ -439,7 +451,7 @@ async fn test_concurrent_requests() {
     mock.assert_async().await;
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_retry_on_transient_failure() {
     let mut server = mockito::Server::new_async().await;
 
@@ -466,7 +478,8 @@ async fn test_retry_on_transient_failure() {
         .mock("GET", "/metrics/compute")
         .with_status(200)
         .with_header("content-type", "application/json")
-        .with_body(r#"{
+        .with_body(
+            r#"{
             "cpu_usage_percent": 45.0,
             "memory_usage_bytes": 2000000000,
             "memory_available_bytes": 6000000000,
@@ -474,7 +487,8 @@ async fn test_retry_on_transient_failure() {
             "queued_jobs": 1,
             "performance_score": 0.88,
             "timestamp": "2025-11-18T12:00:00Z"
-        }"#)
+        }"#,
+        )
         .create_async()
         .await;
 
@@ -484,4 +498,3 @@ async fn test_retry_on_transient_failure() {
 
     success_mock.assert_async().await;
 }
-

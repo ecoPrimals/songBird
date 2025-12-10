@@ -123,11 +123,51 @@ impl SovereigntyAwareAdapter {
         &self,
         request: UniversalRequest,
     ) -> SongbirdResult<UniversalResponse> {
-        // Get routing decision
-        let routing_decision = self.route_request(request.clone()).await?;
+        // Get routing decision (borrow request for analysis)
+        let routing_decision = self.route_request_borrowed(&request).await?;
 
-        // Execute through selected path
+        // Execute through selected path (consume request)
         self.execute_through_path(request, &routing_decision.selected_path).await
+    }
+
+    /// Route request using borrowed reference (zero-copy analysis)
+    async fn route_request_borrowed(
+        &self,
+        request: &UniversalRequest,
+    ) -> SongbirdResult<SovereigntyAwareRoutingDecision> {
+        debug!("Processing sovereignty-aware request: {:?}", request);
+
+        // Get available services from base adapter
+        let available_services = vec![]; // Placeholder for service discovery
+
+        // Find sovereignty-aware paths
+        let mut candidate_paths = if self.config.enable_sovereignty_routing {
+            self.sovereignty_router
+                .find_sovereignty_aware_paths(request, &available_services)
+                .await?
+        } else {
+            // Fallback to basic routing
+            self.generate_basic_paths(&available_services).await?
+        };
+
+        // Apply network effects optimization
+        if self.config.enable_network_optimization {
+            candidate_paths =
+                self.network_optimizer.optimize_for_network_effects(&candidate_paths).await?;
+        }
+
+        // Select best path
+        let selected_path = self.select_best_path(&candidate_paths)?;
+
+        // Create routing decision
+        let decision = self.create_routing_decision(selected_path, &candidate_paths).await?;
+
+        info!(
+            "Selected sovereignty-aware routing path with score: {}",
+            decision.selected_path.combined_score
+        );
+
+        Ok(decision)
     }
 
     async fn generate_basic_paths(

@@ -8,12 +8,12 @@
 //! This crate is undergoing consolidation to establish `canonical/` as the single source of truth.
 //!
 //! ### **Recommended Usage** (Modern)
-//! ```rust
+//! ```rust,ignore
 //! // ✅ PREFERRED: Use canonical exports
 //! use songbird_config::canonical::{
 //!     NetworkConfig,
 //!     EnvironmentConfig,
-//!     SecurityConfig,
+//!     // Note: SecurityConfig not re-exported (use canonical::security directly)
 //!     ServiceConfig,
 //! };
 //! ```

@@ -110,6 +110,9 @@ archive/
 *.backup
 *.bak
 *.old
+*~
+*.swp
+*.swo
 
 # Large binary files and media
 *.zip

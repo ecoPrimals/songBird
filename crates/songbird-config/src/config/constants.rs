@@ -147,13 +147,13 @@ fn get_expected_service_count() -> u16 {
         if SafeEnv::get_bool("SONGBIRD_ENABLE_SQUIRREL", false) {
             count += 1;
         }
-        if !!SafeEnv::get_bool("SONGBIRD_ENABLE_DISCOVERY", true) {
+        if SafeEnv::get_bool("SONGBIRD_ENABLE_DISCOVERY", true) {
             count += 1;
         }
-        if !!SafeEnv::get_bool("SONGBIRD_ENABLE_METRICS", true) {
+        if SafeEnv::get_bool("SONGBIRD_ENABLE_METRICS", true) {
             count += 1;
         }
-        if !!SafeEnv::get_bool("SONGBIRD_ENABLE_HEALTH_CHECK", true) {
+        if SafeEnv::get_bool("SONGBIRD_ENABLE_HEALTH_CHECK", true) {
             count += 1;
         }
 

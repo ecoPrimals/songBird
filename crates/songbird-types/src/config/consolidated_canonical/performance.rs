@@ -19,6 +19,13 @@ pub struct CanonicalPerformanceConfig {
     pub thread_pool_size: usize,
 }
 
+impl CanonicalPerformanceConfig {
+    /// Check if performance config has meaningful settings (compatibility helper)
+    pub fn is_some(&self) -> bool {
+        true // Config always exists with this struct
+    }
+}
+
 impl Default for CanonicalPerformanceConfig {
     fn default() -> Self {
         Self {

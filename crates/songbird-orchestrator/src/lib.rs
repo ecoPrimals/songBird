@@ -92,7 +92,7 @@ pub use songbird_registry as registry;
 // pub use songbird_universal_primals as primals;
 
 // Re-export commonly used types
-pub use songbird_config::SongbirdConfig;
+pub use songbird_types::config::CanonicalSongbirdConfig;
 pub use songbird_types::{SongbirdError, SongbirdResult};
 
 // Re-export key types that are commonly used

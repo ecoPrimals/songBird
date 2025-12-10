@@ -16,7 +16,7 @@
 //! Tests for canonical error types and error handling patterns.
 
 use songbird_canonical::errors::*;
-use songbird_types::{SongbirdError, SongbirdResult};
+use songbird_types::SongbirdResult;
 
 // ========== ErrorContext Tests ==========
 

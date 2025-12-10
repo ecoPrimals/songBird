@@ -1,9 +1,8 @@
-//! Test Fixtures for Songbird Testing
+//! Test Fixtures Module
 //!
-//! Organized collection of test fixtures for different components.
+//! Centralized test utilities, fixtures, and constants for consistent testing.
 
-pub mod orchestrator;
-pub mod services;
+pub mod ports;
 
-pub use orchestrator::*;
-pub use services::*;
+// Re-export for convenience
+pub use ports::{endpoints, hosts};

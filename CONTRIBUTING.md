@@ -1,280 +1,347 @@
-# Contributing to Songbird Universal Orchestrator
+# Contributing to Songbird
 
-Thank you for your interest in contributing to Songbird! This document provides guidelines for contributing to this **production-ready universal orchestrator** with real implementations across all critical systems.
+Thank you for your interest in contributing to Songbird, the ecoPrimals distributed orchestration system!
 
 ---
 
-## 🚀 **Getting Started**
+## 🎯 Code Quality Standards
 
-### Prerequisites
-- **Rust 1.70+** - Install from [rustup.rs](https://rustup.rs/)
-- **Git** - For version control
-- **Docker** (optional) - For containerized testing
+### Error Handling Policy
 
-### Development Setup
-```bash
-git clone <repository-url>
-cd songbird
+#### Production Code: **No Unwrap**
 
-# Build stable core crates (all production-ready)
-cargo build -p songbird-core -p songbird-network -p songbird-registry -p songbird-universal
+**Rule**: Production code MUST use proper `Result<T, E>` propagation with the `?` operator.
 
-# Verify build success
-cargo check -p songbird-core -p songbird-network -p songbird-registry -p songbird-universal
+```rust
+// ❌ BAD - Don't use unwrap in production code
+pub fn load_config() -> Config {
+    let file = std::fs::read_to_string("config.toml").unwrap();
+    toml::from_str(&file).unwrap()
+}
 
-# Run working tests
-cargo test -p songbird-core --lib test_byob_coordinator_creation
-cargo test -p songbird-registry --lib
-cargo test -p songbird-universal --lib
+// ✅ GOOD - Use Result and ? operator
+pub fn load_config() -> SongbirdResult<Config> {
+    let file = std::fs::read_to_string("config.toml")?;
+    let config = toml::from_str(&file)?;
+    Ok(config)
+}
 ```
 
+**Rationale**: Unwraps cause panics. Production systems must handle errors gracefully.
+
+#### Test Code: **Unwrap is Idiomatic**
+
+**Rule**: Test code MAY use `.unwrap()` and `.expect()` for cleaner test logic.
+
+```rust
+// ✅ GOOD - Unwrap is acceptable in tests
+#[tokio::test]
+async fn test_service_discovery() {
+    let config = DiscoveryConfig::default();
+    let adapter = UniversalCapabilityAdapter::new(config);
+    
+    // Unwrap here is fine - test will fail with clear panic message
+    let providers = adapter.find_capability_providers("compute").await;
+    assert!(!providers.is_empty());
+}
+```
+
+**Rationale**: Test panics are acceptable - they indicate test failures with clear stack traces.
+
+#### Example Code: **Documented Unwrap**
+
+**Rule**: Example code MAY use `.unwrap()` with clear comments explaining why.
+
+```rust
+// ✅ GOOD - Example with documented unwrap
+/// # Example
+/// ```rust
+/// use songbird_universal::UniversalCapabilityAdapter;
+/// 
+/// let config = DiscoveryConfig::default();
+/// let adapter = UniversalCapabilityAdapter::new(config);
+/// 
+/// // For this example, we unwrap for brevity
+/// // In production, use proper error handling with ?
+/// let providers = adapter.find_providers("compute").await.unwrap();
+/// ```
+```
+
+### Enforcing the Policy
+
+#### Critical Crates
+
+For security-critical crates, add this to the crate root (`lib.rs`):
+
+```rust
+// Deny unwrap in production code
+#![deny(clippy::unwrap_used)]
+#![deny(clippy::expect_used)]
+
+// Allow in tests
+#[cfg(test)]
+#[allow(clippy::unwrap_used)]
+#[allow(clippy::expect_used)]
+```
+
+**Critical crates** (consider adding deny pragmas):
+- `songbird-types` (core types)
+- `songbird-config` (configuration)
+- `songbird-orchestrator` (orchestration logic)
+- `songbird-network-federation` (networking)
+
+#### Code Review
+
+All PRs will be reviewed for:
+1. No unwraps in production code paths
+2. Proper `Result<T, E>` usage
+3. `?` operator for error propagation
+4. Tests can use unwrap/expect
+
 ---
 
-## 📋 **Development Guidelines**
+## 🦀 Idiomatic Rust Patterns
 
-### Code Quality Standards
-- **Compilation**: All code must compile without errors
-- **Real Implementations Only**: No mocks or placeholders in production code
-- **Testing**: New features require comprehensive tests (target: 90% coverage)
-- **Documentation**: Public APIs must be documented
-- **Formatting**: Use `cargo fmt` before committing
-- **Linting**: Address all `cargo clippy` warnings (zero tolerance)
-- **Safety**: No `unsafe` code in production (use `#![forbid(unsafe_code)]`)
+### Error Types
 
-### Error Handling
-- Use `SongbirdResult<T>` for all fallible operations
-- Provide meaningful error messages with context
-- Include recovery suggestions where appropriate
-- Follow the unified error handling patterns established in `songbird-errors`
+Use the canonical `SongbirdResult<T>` type:
 
-### Performance Considerations
-- Prefer zero-copy operations where possible
-- Use appropriate async patterns with `tokio`
-- Consider memory allocation impact
-- Profile performance-critical paths
-- Use `Arc<RwLock<>>` for shared mutable state
+```rust
+use songbird_types::{SongbirdResult, SongbirdError};
 
-### Universal Architecture Compliance
-- **No Hardcoded Primal Names** - Use capability discovery only
-- **Self-Knowledge Pattern** - Services only know themselves
-- **Universal Adapter Usage** - Route all external interactions through adapters
-- **Capability-Based Discovery** - Discover by capability, not by name
+pub async fn my_function() -> SongbirdResult<Value> {
+    let result = fallible_operation()?;
+    Ok(result)
+}
+```
+
+### Async/Await
+
+Use native `async fn` (not `#[async_trait]` unless necessary):
+
+```rust
+// ✅ GOOD - Native async
+pub async fn discover_services(&self) -> SongbirdResult<Vec<Service>> {
+    self.discovery_engine.find_all().await
+}
+
+// ❌ AVOID - async_trait has overhead
+#[async_trait]
+trait MyTrait {
+    async fn method(&self) -> Result<()>;
+}
+```
+
+### Zero-Copy Patterns
+
+Prefer borrowing over cloning:
+
+```rust
+// ❌ AVOID - Unnecessary clone
+fn process_name(name: String) { }
+let n = service.name.clone();
+process_name(n);
+
+// ✅ GOOD - Borrow
+fn process_name(name: &str) { }
+process_name(&service.name);
+```
+
+### Module Organization
+
+Keep files under 1000 lines:
+- Implementation in main file
+- Tests in separate `tests.rs` or module `tests/`
+- Large modules split by concern
 
 ---
 
-## 🧪 **Testing Requirements**
+## 🧪 Testing Standards
+
+### Test Coverage Target
+
+**Minimum**: 90% code coverage for library code
+
+Run coverage with:
+```bash
+cargo llvm-cov --workspace --lib --html
+```
+
+### Test Structure
+
+```rust
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn create_test_config() -> Config {
+        Config {
+            // Test configuration
+        }
+    }
+
+    #[tokio::test]
+    async fn test_feature_works() {
+        // Arrange
+        let config = create_test_config();
+        let adapter = Adapter::new(config);
+        
+        // Act
+        let result = adapter.do_something().await;
+        
+        // Assert
+        assert!(result.is_ok());
+    }
+}
+```
 
 ### Test Categories
-- **Unit Tests**: Test individual components in isolation
-- **Integration Tests**: Test component interactions
-- **Production Tests**: Test real implementations (no mocks)
-- **Error Handling Tests**: Verify proper error propagation
 
-### Current Working Tests
-```bash
-# Core orchestration tests
-cargo test -p songbird-core --lib test_byob_coordinator_creation
-cargo test -p songbird-core --lib test_universal_service_registration
-cargo test -p songbird-core --lib test_biome_coordinator_creation
-
-# Registry tests  
-cargo test -p songbird-registry --lib
-
-# Universal adapter tests
-cargo test -p songbird-universal --lib
-```
-
-### Known Test Issues
-- **Performance Tests**: Currently disabled due to hanging issues (P0)
-- **Network Tests**: 4 tests failing due to configuration issues (P0)
-- **Security Tests**: Crate temporarily disabled for API alignment (P1)
+1. **Unit Tests**: In `#[cfg(test)]` modules or `tests.rs` files
+2. **Integration Tests**: In `tests/integration/` directory
+3. **E2E Tests**: In `tests/e2e/` directory
+4. **Chaos Tests**: In `tests/chaos/` directory
+5. **Benchmarks**: In `benches/` directory
 
 ---
 
-## 🏗️ **Architecture Patterns**
+## 🔒 Safety & Security
 
-### Real Implementation Requirements
-All new code must implement **real functionality** with the following patterns:
+### Unsafe Code
 
-#### Authentication
+**Minimize unsafe usage**. When necessary:
+
+1. Document with clear safety comments
+2. Explain invariants being maintained
+3. Get peer review
+4. Consider alternatives first
+
 ```rust
-// ✅ GOOD: Real JWT implementation
-use songbird_security::UnifiedSecurityProvider;
-
-let auth_provider = UnifiedSecurityProvider::new(config);
-let response = auth_provider.authenticate(request).await?;
-
-// ❌ BAD: Mock or placeholder
-// Ok(AuthResponse { success: true }) // No validation
+// ✅ GOOD - Documented unsafe
+/// SAFETY: This is safe because:
+/// 1. The pointer is guaranteed to be valid
+/// 2. The lifetime is bounded by 'a
+/// 3. No mutable aliasing occurs
+unsafe {
+    // unsafe operation
+}
 ```
 
-#### Load Balancing
+### Human Dignity & Sovereignty
+
+This project follows strict ethical guidelines:
+- ✅ No surveillance code
+- ✅ No user tracking without explicit consent
+- ✅ Privacy-first architecture
+- ✅ User control over data
+- ✅ Transparent operations
+
+See `specs/INDIVIDUAL_HUMAN_DIGNITY_SPECIFICATION.md` for details.
+
+---
+
+## 📝 Documentation Standards
+
+### Doc Comments
+
+All public APIs must have doc comments:
+
 ```rust
-// ✅ GOOD: Smart IP detection
-let client_ip = self.get_client_ip_from_context();
-let server = load_balancer.select_server_for_ip(&client_ip)?;
-
-// ❌ BAD: Hardcoded values
-// let client_ip = "127.0.0.1";
-```
-
-#### Database Storage
-```rust
-// ✅ GOOD: Multi-database support
-storage.save_to_database(connection_string).await?;
-
-// ❌ BAD: Filesystem fallback only
-// warn!("Database not implemented, using filesystem");
-```
-
-#### Universal Discovery
-```rust
-// ✅ GOOD: Capability-based discovery
-let providers = universal_adapter.discover_capability_providers("authentication").await?;
-
-// ❌ BAD: Hardcoded primal names
-// let beardog_client = BeardogClient::new("http://beardog:8443");
+/// Discovers capabilities for a specific primal
+///
+/// # Arguments
+///
+/// * `primal_name` - The name of the primal to discover
+///
+/// # Errors
+///
+/// Returns an error if:
+/// - The primal is unreachable
+/// - The response is invalid
+///
+/// # Examples
+///
+/// ```rust,no_run
+/// # use songbird_universal::UniversalCapabilityAdapter;
+/// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+/// let adapter = UniversalCapabilityAdapter::new(config);
+/// let capabilities = adapter.discover_capabilities("compute").await?;
+/// # Ok(())
+/// # }
+/// ```
+pub async fn discover_capabilities(
+    &self,
+    primal_name: &str,
+) -> SongbirdResult<Vec<Capability>> {
+    // Implementation
+}
 ```
 
 ---
 
-## 🔧 **Development Workflow**
+## 🚀 Pull Request Process
 
-### Branch Strategy
-- **main** - Production-ready code only
-- **feature/*** - Feature development branches
-- **fix/*** - Bug fix branches
-- **docs/*** - Documentation updates
-
-### Commit Guidelines
-- Use conventional commit format: `type(scope): description`
-- Types: `feat`, `fix`, `docs`, `refactor`, `test`, `chore`
-- Keep commits focused and atomic
-- Include tests for new functionality
-
-### Pull Request Requirements
-1. **Build Success**: All core crates must compile
+1. **Create a branch**: `feature/your-feature-name`
+2. **Write tests**: Ensure >90% coverage
+3. **Run checks**:
    ```bash
-   cargo check -p songbird-core -p songbird-network -p songbird-registry -p songbird-universal
+   cargo fmt
+   cargo clippy --workspace -- -D warnings
+   cargo test --workspace --lib
    ```
-
-2. **Test Pass**: All working tests must pass
-   ```bash
-   cargo test -p songbird-core --lib test_byob_coordinator_creation
-   cargo test -p songbird-registry --lib
-   cargo test -p songbird-universal --lib
-   ```
-
-3. **Code Quality**: No clippy warnings
-   ```bash
-   cargo clippy -p songbird-core -p songbird-network -p songbird-registry -p songbird-universal
-   ```
-
-4. **Documentation**: Update relevant documentation
-5. **Real Implementation**: No mocks or placeholders
+4. **Update docs**: Keep documentation in sync
+5. **Submit PR**: Include description and rationale
+6. **Code review**: Address feedback
+7. **Merge**: Squash and merge when approved
 
 ---
 
-## 📚 **Documentation Standards**
+## 📊 Code Quality Checklist
 
-### Code Documentation
-- All public APIs must have doc comments
-- Include usage examples for complex functions
-- Document error conditions and recovery strategies
-- Use `#[must_use]` for important return values
+Before submitting a PR:
 
-### Architecture Documentation
-- Update architecture diagrams for significant changes
-- Document capability-based discovery patterns
-- Explain universal adapter usage
-- Include production deployment considerations
-
----
-
-## 🚨 **Current Development Status**
-
-### ✅ **Production Ready Crates**
-- **songbird-core** - Real deployment orchestration pipeline
-- **songbird-network** - Smart load balancing with IP detection
-- **songbird-registry** - Multi-database storage backend
-- **songbird-universal** - Capability-based discovery system
-
-### ⚠️ **Crates Needing Work**
-- **songbird-security** - API alignment with error system (P1)
-- **songbird-cli** - Import resolution issues (P1)
-- **songbird-federation** - Disabled pending fixes (P2)
-
-### 🚨 **Known Issues to Avoid**
-1. **Performance Tests** - Don't modify hanging tests without fixing the root cause
-2. **Network Config** - Be aware of 4 failing network configuration tests
-3. **Security API** - Don't add security features until API alignment is complete
-4. **Mock Code** - Never add mock implementations to production paths
+- [ ] All tests passing (`cargo test --workspace --lib`)
+- [ ] Code formatted (`cargo fmt`)
+- [ ] Clippy clean (`cargo clippy --workspace -- -D warnings`)
+- [ ] No unwraps in production code
+- [ ] Proper error handling with `?` operator
+- [ ] Doc comments on public APIs
+- [ ] Files under 1000 lines
+- [ ] Test coverage >90% for new code
+- [ ] No unsafe code (or justified with safety comments)
+- [ ] Idiomatic Rust patterns followed
 
 ---
 
-## 🎯 **Contribution Areas**
+## 🎓 Learning Resources
 
-### High Priority (P0)
-- Fix hanging performance tests in `songbird-core`
-- Resolve network configuration test failures
-- Complete security crate API alignment
+### Rust Best Practices
+- [The Rust Book](https://doc.rust-lang.org/book/)
+- [Rust API Guidelines](https://rust-lang.github.io/api-guidelines/)
+- [Async Book](https://rust-lang.github.io/async-book/)
 
-### Medium Priority (P1)
-- Fix CLI compilation issues
-- Add comprehensive integration tests
-- Improve error message quality
-
-### Low Priority (P2)
-- Re-enable federation crate
-- Add monitoring dashboards
-- Performance optimizations
+### Project-Specific
+- `specs/` - Architecture specifications
+- `docs/` - Detailed documentation
+- `ARCHITECTURE.md` - System architecture
+- `README.md` - Quick start guide
 
 ---
 
-## 🤝 **Community Guidelines**
+## 💬 Communication
 
-### Code Review Standards
-- Focus on real implementation quality
-- Verify universal architecture compliance
-- Check for proper error handling
-- Ensure no hardcoded primal references
-
-### Communication
-- Be respectful and constructive
-- Ask questions if architecture patterns are unclear
-- Share knowledge about production patterns
-- Help maintain high code quality standards
+- **Issues**: Use GitHub issues for bugs and features
+- **Discussions**: Use GitHub discussions for questions
+- **PRs**: Keep focused and well-documented
 
 ---
 
-## 📞 **Getting Help**
+## 📜 License
 
-### Resources
-- **[Quick Reference Guide](./QUICK_REFERENCE_GUIDE.md)** - Current implementation patterns
-- **[Mock Elimination Report](./MOCK_ELIMINATION_COMPLETION_REPORT.md)** - Recent changes
-- **[Architecture Overview](./ARCHITECTURE_OVERVIEW.md)** - System design
-
-### Common Questions
-
-#### "Why are some crates disabled?"
-Some crates (security, CLI) are temporarily disabled due to API mismatches with our updated error system. They need focused work to align with current patterns.
-
-#### "Why are performance tests commented out?"
-Performance tests have hanging issues that need investigation. We've temporarily disabled them to allow other development to continue.
-
-#### "How do I add a new primal integration?"
-Use the universal adapter pattern - never hardcode primal names. Discover capabilities and route through the adapter system.
-
-#### "What's the difference between this and the old code?"
-We've eliminated ALL mock implementations and replaced them with production-ready systems. Everything now works with real JWT, smart load balancing, multi-database storage, etc.
+By contributing, you agree that your contributions will be licensed under the same license as the project.
 
 ---
 
-## 🏆 **Recognition**
+**Thank you for contributing to Songbird!** 🎵✨
 
-Contributors who help maintain our **production-ready, mock-free** codebase are building the future of universal service orchestration. Thank you for helping make Songbird a truly enterprise-grade system!
-
----
-
-*Last Updated: September 19, 2025*  
-*Status: Production Ready - Core Infrastructure Complete* 
+Your efforts help build a production-grade, ethical distributed orchestration system.

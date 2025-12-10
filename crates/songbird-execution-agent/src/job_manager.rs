@@ -211,8 +211,10 @@ impl JobManager {
     pub async fn get_stats(&self) -> JobStats {
         let jobs = self.jobs.read().await;
 
-        let mut stats = JobStats::default();
-        stats.total = jobs.len();
+        let mut stats = JobStats {
+            total: jobs.len(),
+            ..Default::default()
+        };
 
         for job in jobs.values() {
             match job.status {

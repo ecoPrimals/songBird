@@ -153,22 +153,9 @@ async fn test_multiple_adapter_discovery_independence() {
     assert!(compute_result.is_ok());
     assert!(storage_result.is_ok());
 
-    assert_eq!(
-        ai_result.ok_or_else(|| SongbirdError::configuration("Error"))?.endpoint(),
-        format!("http://ai:{}", test_orchestrator_port())
-    );
-    assert_eq!(
-        compute_result
-            .ok_or_else(|| SongbirdError::configuration("Error"))?
-            .endpoint(),
-        format!("http://compute:{}", test_metrics_port())
-    );
-    assert_eq!(
-        storage_result
-            .ok_or_else(|| SongbirdError::configuration("Error"))?
-            .endpoint(),
-        "http://storage:9000"
-    );
+    assert_eq!(ai_result?.endpoint(), format!("http://ai:{}", test_orchestrator_port()));
+    assert_eq!(compute_result?.endpoint(), format!("http://compute:{}", test_metrics_port()));
+    assert_eq!(storage_result?.endpoint(), "http://storage:9000");
 }
 
 #[tokio::test]
@@ -202,10 +189,7 @@ async fn test_adapter_discovery_priority_order() {
 
     assert!(result.is_ok());
     // Environment variable should take priority
-    assert_eq!(
-        result.ok_or_else(|| SongbirdError::configuration("Error"))?.endpoint(),
-        format!("http://env-endpoint:{}", test_orchestrator_port())
-    );
+    assert_eq!(result?.endpoint(), format!("http://env-endpoint:{}", test_orchestrator_port()));
 }
 
 #[tokio::test]
@@ -215,9 +199,7 @@ async fn test_compute_adapter_direct_construction() {
     let adapter =
         ComputeAdapter::new(format!("http://explicit:{}", test_metrics_port()).to_string());
     assert!(adapter.is_ok());
-    let adapter = adapter.ok_or_else(|| {
-        SongbirdError::configuration("Missing performance configuration".to_string())
-    })?;
+    let adapter = adapter?;
     assert_eq!(adapter.endpoint(), format!("http://explicit:{}", test_metrics_port()));
 }
 
@@ -238,10 +220,7 @@ async fn test_adapter_endpoint_formats() {
         env::remove_var("CAPABILITY_COMPUTE_ENDPOINT");
 
         assert!(result.is_ok(), "Failed for endpoint: {}", endpoint);
-        assert_eq!(
-            result.ok_or_else(|| SongbirdError::configuration("Error"))?.endpoint(),
-            endpoint
-        );
+        assert_eq!(result?.endpoint(), endpoint);
     }
 }
 

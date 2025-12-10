@@ -19,6 +19,9 @@ pub struct DeploymentResponse {
     pub service_url: Option<String>,
 }
 
+/// Deployment information from server API
+/// Note: Currently unused - reserved for future status queries
+#[allow(dead_code)]
 #[derive(Debug, Serialize, Deserialize)]
 pub struct DeploymentInfo {
     pub deployment_id: String,
@@ -39,11 +42,9 @@ pub struct DeploymentInfo {
 #[derive(Debug, Deserialize)]
 pub struct DeploymentCapabilities {
     pub node_id: String,
-    pub timestamp: String,
     pub network: NetworkCapabilities,
     pub deployment_methods: DeploymentMethods,
     pub resources: ResourceInfo,
-    pub preferences: DeploymentPreferences,
 }
 
 #[derive(Debug, Deserialize)]
@@ -55,9 +56,12 @@ pub struct NetworkCapabilities {
 
 #[derive(Debug, Deserialize)]
 pub struct BandwidthEstimate {
+    #[allow(dead_code)] // Deserialized from API response
     pub download_mbps: u32,
     pub upload_mbps: u32,
+    #[allow(dead_code)] // Deserialized from API response
     pub latency_ms: u32,
+    #[allow(dead_code)] // Deserialized from API response
     pub confidence: String,
 }
 
@@ -68,42 +72,70 @@ pub struct DeploymentMethods {
     pub streaming: StreamingUploadMethod,
 }
 
+/// Single upload method details
 #[derive(Debug, Deserialize)]
 pub struct SingleUploadMethod {
     pub enabled: bool,
     pub max_size_mb: u32,
+    // Future: compression negotiation
+    #[allow(dead_code)]
     pub compression_supported: Vec<String>,
+    // Future: method recommendations
+    #[allow(dead_code)]
     pub recommended_for: String,
 }
 
+/// Chunked upload method details
 #[derive(Debug, Deserialize)]
 pub struct ChunkedUploadMethod {
     pub enabled: bool,
     pub max_total_size_mb: u32,
     pub chunk_size_mb: u32,
+    // Future: adaptive chunking
+    #[allow(dead_code)]
     pub max_chunks: u32,
+    // Future: compression negotiation
+    #[allow(dead_code)]
     pub compression_supported: Vec<String>,
+    // Future: method recommendations
+    #[allow(dead_code)]
     pub recommended_for: String,
 }
 
+/// Streaming upload method details
 #[derive(Debug, Deserialize)]
 pub struct StreamingUploadMethod {
     pub enabled: bool,
+    // Future: size restrictions
+    #[allow(dead_code)]
     pub unlimited: bool,
+    // Future: compression support
+    #[allow(dead_code)]
     pub compression_supported: Vec<String>,
+    // Future: method recommendations
+    #[allow(dead_code)]
     pub recommended_for: String,
 }
 
+/// Resource info from remote tower
 #[derive(Debug, Deserialize)]
 pub struct ResourceInfo {
     pub available_storage_gb: u64,
     pub available_memory_gb: u64,
     pub cpu_cores: usize,
+    // Future: load-based selection
+    #[allow(dead_code)]
     pub cpu_load_percent: f32,
+    // Future: queue management
+    #[allow(dead_code)]
     pub max_concurrent_deployments: usize,
+    #[allow(dead_code)]
     pub current_deployments: usize,
 }
 
+/// Deployment preferences from server
+/// Note: Reserved for future intelligent method selection
+#[allow(dead_code)]
 #[derive(Debug, Deserialize)]
 pub struct DeploymentPreferences {
     pub preferred_compression: String,
@@ -115,6 +147,8 @@ pub struct DeploymentPreferences {
 #[derive(Debug, Clone)]
 pub enum SelectedMethod {
     Single {
+        // Future: size validation
+        #[allow(dead_code)]
         max_size_mb: u32,
     },
     Chunked {
@@ -136,15 +170,22 @@ struct NegotiationRequest {
     compression: Option<String>,
 }
 
-/// Negotiation response
+/// Negotiation response from tower
+/// Future: implement full negotiation protocol
 #[derive(Debug, Deserialize)]
 struct NegotiationResponse {
     negotiation_id: String,
+    // Future: method validation
+    #[allow(dead_code)]
     accepted_method: String,
     chunk_size_mb: u32,
     total_chunks: usize,
+    // Future: dynamic endpoint routing
+    #[allow(dead_code)]
     chunk_upload_path: String,
+    #[allow(dead_code)]
     finalize_path: String,
+    #[allow(dead_code)]
     timeout_seconds: u64,
 }
 
@@ -528,6 +569,8 @@ pub async fn deploy_via_http(
 }
 
 /// Get deployment status
+/// Future: implement full deployment monitoring
+#[allow(dead_code)]
 pub async fn get_deployment_status(
     tower_endpoint: &str,
     deployment_id: &str,
@@ -549,6 +592,9 @@ pub async fn get_deployment_status(
 }
 
 /// Stop a deployment
+/// Stop a running deployment
+/// Future: implement deployment lifecycle management
+#[allow(dead_code)]
 pub async fn stop_deployment(tower_endpoint: &str, deployment_id: &str) -> Result<()> {
     let client = Client::new();
     let url = format!("{}/api/deployment/{}", tower_endpoint, deployment_id);
@@ -566,6 +612,9 @@ pub async fn stop_deployment(tower_endpoint: &str, deployment_id: &str) -> Resul
 }
 
 /// List all deployments on a tower
+/// List all deployments on a tower
+/// Future: implement deployment inventory
+#[allow(dead_code)]
 pub async fn list_deployments(tower_endpoint: &str) -> Result<Vec<DeploymentInfo>> {
     let client = Client::new();
     let url = format!("{}/api/deployment/list", tower_endpoint);

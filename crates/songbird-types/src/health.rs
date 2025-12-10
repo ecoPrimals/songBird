@@ -141,3 +141,130 @@ impl Default for CanonicalHealthConfig {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_health_status_default() {
+        let status = CanonicalHealthStatus::default();
+        assert_eq!(status, CanonicalHealthStatus::Unknown);
+    }
+
+    #[test]
+    fn test_health_status_display() {
+        assert_eq!(CanonicalHealthStatus::Healthy.to_string(), "Healthy");
+        assert_eq!(CanonicalHealthStatus::Degraded.to_string(), "Degraded");
+        assert_eq!(CanonicalHealthStatus::Unhealthy.to_string(), "Unhealthy");
+        assert_eq!(CanonicalHealthStatus::Unknown.to_string(), "Unknown");
+    }
+
+    #[test]
+    fn test_health_status_equality() {
+        assert_eq!(CanonicalHealthStatus::Healthy, CanonicalHealthStatus::Healthy);
+        assert_ne!(CanonicalHealthStatus::Healthy, CanonicalHealthStatus::Degraded);
+    }
+
+    #[test]
+    fn test_health_check_default() {
+        let check = CanonicalHealthCheck::default();
+        assert_eq!(check.status, CanonicalHealthStatus::Unknown);
+        assert!(check.message.is_none());
+        assert!(check.metrics.is_empty());
+        assert!(check.components.is_empty());
+    }
+
+    #[test]
+    fn test_health_check_healthy() {
+        let check = CanonicalHealthCheck::healthy();
+        assert_eq!(check.status, CanonicalHealthStatus::Healthy);
+        assert_eq!(check.message, Some("All systems operational".to_string()));
+        assert!(check.is_healthy());
+    }
+
+    #[test]
+    fn test_health_check_degraded() {
+        let check = CanonicalHealthCheck::degraded("Some services slow");
+        assert_eq!(check.status, CanonicalHealthStatus::Degraded);
+        assert_eq!(check.message, Some("Some services slow".to_string()));
+        assert!(!check.is_healthy());
+    }
+
+    #[test]
+    fn test_health_check_unhealthy() {
+        let check = CanonicalHealthCheck::unhealthy("Database down");
+        assert_eq!(check.status, CanonicalHealthStatus::Unhealthy);
+        assert_eq!(check.message, Some("Database down".to_string()));
+        assert!(!check.is_healthy());
+    }
+
+    #[test]
+    fn test_health_check_with_metrics() {
+        let mut check = CanonicalHealthCheck::healthy();
+        check.with_metric("cpu_usage", 45.5);
+        check.with_metric("memory_usage", 72.3);
+
+        assert_eq!(check.metrics.get("cpu_usage"), Some(&45.5));
+        assert_eq!(check.metrics.get("memory_usage"), Some(&72.3));
+        assert_eq!(check.metrics.len(), 2);
+    }
+
+    #[test]
+    fn test_health_check_with_components() {
+        let mut check = CanonicalHealthCheck::healthy();
+        check.with_component("database", CanonicalHealthStatus::Healthy);
+        check.with_component("cache", CanonicalHealthStatus::Degraded);
+
+        assert_eq!(check.components.get("database"), Some(&CanonicalHealthStatus::Healthy));
+        assert_eq!(check.components.get("cache"), Some(&CanonicalHealthStatus::Degraded));
+        assert_eq!(check.components.len(), 2);
+    }
+
+    #[test]
+    fn test_health_check_fluent_api() {
+        let mut check = CanonicalHealthCheck::healthy();
+        check
+            .with_metric("latency_ms", 15.2)
+            .with_metric("throughput", 1000.0)
+            .with_component("api", CanonicalHealthStatus::Healthy)
+            .with_component("worker", CanonicalHealthStatus::Healthy);
+
+        assert_eq!(check.metrics.len(), 2);
+        assert_eq!(check.components.len(), 2);
+        assert!(check.is_healthy());
+    }
+
+    #[test]
+    fn test_health_config_default() {
+        let config = CanonicalHealthConfig::default();
+        assert!(config.enabled);
+        assert_eq!(config.endpoint, "/health");
+        assert_eq!(config.check_interval_seconds, 30);
+        assert_eq!(config.timeout_seconds, 5);
+    }
+
+    #[test]
+    fn test_health_check_serialization() {
+        let check = CanonicalHealthCheck::healthy();
+        let json = serde_json::to_string(&check).unwrap();
+        assert!(json.contains("Healthy"));
+        assert!(json.contains("All systems operational"));
+    }
+
+    #[test]
+    fn test_health_status_serialization() {
+        let status = CanonicalHealthStatus::Healthy;
+        let json = serde_json::to_string(&status).unwrap();
+        let deserialized: CanonicalHealthStatus = serde_json::from_str(&json).unwrap();
+        assert_eq!(status, deserialized);
+    }
+
+    #[test]
+    fn test_health_check_is_healthy() {
+        assert!(CanonicalHealthCheck::healthy().is_healthy());
+        assert!(!CanonicalHealthCheck::degraded("issue").is_healthy());
+        assert!(!CanonicalHealthCheck::unhealthy("down").is_healthy());
+        assert!(!CanonicalHealthCheck::default().is_healthy());
+    }
+}

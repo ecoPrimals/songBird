@@ -7,7 +7,7 @@ use songbird_discovery::traits::{ServiceDiscovery, ServiceQuery};
 use songbird_discovery::UniversalDiscoveryFactory;
 use songbird_types::SongbirdResult;
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_factory_creates_auto_detect_discovery() -> SongbirdResult<()> {
     // Test that factory can create auto-detect discovery
     let result = UniversalDiscoveryFactory::create_auto_detect().await;
@@ -17,7 +17,7 @@ async fn test_factory_creates_auto_detect_discovery() -> SongbirdResult<()> {
     Ok(())
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_discovery_with_empty_query() -> SongbirdResult<()> {
     let discovery = UniversalDiscoveryFactory::create_auto_detect().await?;
     let query = ServiceQuery::default();
@@ -29,7 +29,7 @@ async fn test_discovery_with_empty_query() -> SongbirdResult<()> {
     Ok(())
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_discovery_query_with_tags() -> SongbirdResult<()> {
     let discovery = UniversalDiscoveryFactory::create_auto_detect().await?;
 
@@ -58,7 +58,7 @@ fn test_service_query_with_multiple_tags() {
     assert_eq!(query.tags.len(), 3);
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_discovery_returns_service_list() -> SongbirdResult<()> {
     let discovery = UniversalDiscoveryFactory::create_auto_detect().await?;
     let query = ServiceQuery::default();
@@ -71,7 +71,7 @@ async fn test_discovery_returns_service_list() -> SongbirdResult<()> {
     Ok(())
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_discovery_respects_query_filters() -> SongbirdResult<()> {
     let discovery = UniversalDiscoveryFactory::create_auto_detect().await?;
 
@@ -86,7 +86,7 @@ async fn test_discovery_respects_query_filters() -> SongbirdResult<()> {
     Ok(())
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_multiple_discovery_calls_consistent() -> SongbirdResult<()> {
     let discovery = UniversalDiscoveryFactory::create_auto_detect().await?;
 
@@ -102,7 +102,7 @@ async fn test_multiple_discovery_calls_consistent() -> SongbirdResult<()> {
     Ok(())
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_discovery_factory_multiple_instances() -> SongbirdResult<()> {
     // Should be able to create multiple instances
     let _discovery1 = UniversalDiscoveryFactory::create_auto_detect().await?;
@@ -122,7 +122,7 @@ fn test_service_query_builder_pattern() {
     assert!(query.service_type.is_some());
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_discovery_with_timeout_handling() -> SongbirdResult<()> {
     let discovery = UniversalDiscoveryFactory::create_auto_detect().await?;
     let query = ServiceQuery::default();
@@ -138,7 +138,7 @@ async fn test_discovery_with_timeout_handling() -> SongbirdResult<()> {
     Ok(())
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_discovery_error_handling() -> SongbirdResult<()> {
     // Test that discovery handles errors gracefully
     let discovery = UniversalDiscoveryFactory::create_auto_detect().await?;
@@ -154,7 +154,7 @@ async fn test_discovery_error_handling() -> SongbirdResult<()> {
     Ok(())
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_multiple_sequential_discovery_calls() -> SongbirdResult<()> {
     let discovery = UniversalDiscoveryFactory::create_auto_detect().await?;
 
@@ -176,7 +176,7 @@ fn test_service_query_clone() {
     assert_eq!(query1.tags.len(), query2.tags.len());
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_discovery_with_large_tag_list() -> SongbirdResult<()> {
     let discovery = UniversalDiscoveryFactory::create_auto_detect().await?;
 

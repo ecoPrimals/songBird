@@ -203,7 +203,7 @@ impl SafeEnv {
         env::var(key)
     }
 
-    /// Get environment variable with default value (never panics)
+    /// Get environment variable with default value (safe - never panics)
     pub fn get_or_default(key: &str, default: impl Into<String>) -> String {
         env::var(key).unwrap_or_else(|_| default.into())
     }
@@ -213,7 +213,7 @@ impl SafeEnv {
         env::var(key).or_config_error(&format!("Missing required environment variable: {}", key))
     }
 
-    /// Get port from environment with default
+    /// Get port from environment with default (safe - falls back to default on parse failure)
     pub fn get_port(key: &str, default: u16) -> u16 {
         match env::var(key) {
             Ok(value) => value.parse::<u16>().unwrap_or(default),
@@ -233,7 +233,7 @@ impl SafeEnv {
             .unwrap_or(default)
     }
 
-    /// Get integer from environment with default
+    /// Get integer from environment with default (safe - falls back to default on parse failure)
     pub fn get_usize(key: &str, default: usize) -> usize {
         match env::var(key) {
             Ok(value) => value.parse::<usize>().unwrap_or(default),
@@ -241,7 +241,7 @@ impl SafeEnv {
         }
     }
 
-    /// Generic parse with default value
+    /// Generic parse with default value (safe - falls back to default on parse failure)
     pub fn parse<T>(key: &str, default: T) -> T
     where
         T: FromStr,

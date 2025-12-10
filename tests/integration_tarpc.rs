@@ -178,8 +178,21 @@ async fn start_test_server() -> Result<(u16, tokio::task::JoinHandle<()>)> {
         }
     });
     
-    // Give the server a moment to start
-    tokio::time::sleep(Duration::from_millis(50)).await;
+    // ✅ MODERN: Wait for server to actually be ready, not arbitrary timeout
+    // Try connecting to verify server is up
+    let mut retries = 0;
+    loop {
+        if retries > 20 {
+            return Err("Server failed to start within timeout".into());
+        }
+        match tokio::net::TcpStream::connect(format!("127.0.0.1:{}", port)).await {
+            Ok(_) => break, // Server is ready
+            Err(_) => {
+                tokio::time::sleep(Duration::from_millis(5)).await;
+                retries += 1;
+            }
+        }
+    }
     
     Ok((port, handle))
 }

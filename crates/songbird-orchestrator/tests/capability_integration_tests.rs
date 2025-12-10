@@ -58,7 +58,7 @@ fn create_test_registration_request(provider_id: &str) -> CapabilityRegistration
     }
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_provider_registration() {
     let registry = create_test_registry();
     let request = create_test_registration_request("test-provider-1");
@@ -75,7 +75,7 @@ async fn test_provider_registration() {
     assert_eq!(providers[0].registration.provider_id, request.provider_id);
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_duplicate_registration_fails() {
     let registry = create_test_registry();
     let request = create_test_registration_request("test-provider-1");
@@ -89,7 +89,7 @@ async fn test_duplicate_registration_fails() {
     assert!(result2.is_err(), "Duplicate registration should fail");
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_multiple_providers() {
     let registry = create_test_registry();
 
@@ -105,7 +105,7 @@ async fn test_multiple_providers() {
     assert_eq!(providers.len(), 3, "Should have three registered providers");
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_find_providers_by_capability() {
     let registry = create_test_registry();
     let request = create_test_registration_request("test-provider-1");
@@ -124,7 +124,7 @@ async fn test_find_providers_by_capability() {
     assert_eq!(no_providers.len(), 0, "Should find no providers for nonexistent capability");
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_heartbeat_updates() {
     let registry = create_test_registry();
     let request = create_test_registration_request("test-provider-1");
@@ -144,7 +144,7 @@ async fn test_heartbeat_updates() {
     assert!(result.is_err(), "Heartbeat for unknown provider should fail");
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_provider_unregistration() {
     let registry = create_test_registry();
     let request = create_test_registration_request("test-provider-1");
@@ -168,7 +168,7 @@ async fn test_provider_unregistration() {
     assert!(result.is_err(), "Unregister should fail for non-existent provider");
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_heartbeat_timeout() {
     let registry = create_test_registry();
     let request = create_test_registration_request("test-provider-1");
@@ -201,7 +201,7 @@ async fn test_heartbeat_timeout() {
     assert_eq!(providers.len(), 0, "Provider should be removed after timeout");
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_routing_with_external_provider() {
     let registry = create_test_registry();
     let federation_state = Arc::new(FederationState::new());
@@ -237,7 +237,7 @@ async fn test_routing_with_external_provider() {
     }
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_routing_falls_back_without_provider() {
     let registry = create_test_registry();
     let federation_state = Arc::new(FederationState::new());
@@ -267,7 +267,7 @@ async fn test_routing_falls_back_without_provider() {
     }
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_provider_selection_prefers_healthy() {
     let registry = create_test_registry();
 
@@ -306,7 +306,7 @@ async fn test_provider_selection_prefers_healthy() {
     assert_eq!(providers[0].registration.provider_id, "provider-1");
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_concurrent_registrations() {
     let registry = create_test_registry();
 
@@ -332,7 +332,7 @@ async fn test_concurrent_registrations() {
     assert_eq!(providers.len(), 10, "Should have 10 registered providers");
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_registry_health_monitor_lifecycle() {
     let registry = create_test_registry();
 

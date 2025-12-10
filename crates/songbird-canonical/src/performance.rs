@@ -29,3 +29,33 @@ fn initialize_performance_tracking() {
     tracing::debug!("📈 Initializing performance tracking");
     // Implementation will set up performance tracking
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_initialize_performance_monitoring() {
+        // Should not panic
+        initialize_performance_monitoring();
+    }
+
+    #[test]
+    fn test_initialize_metrics_collection() {
+        // Should not panic
+        initialize_metrics_collection();
+    }
+
+    #[test]
+    fn test_initialize_performance_tracking() {
+        // Should not panic
+        initialize_performance_tracking();
+    }
+
+    #[test]
+    fn test_performance_monitoring_idempotent() {
+        // Should be safe to call multiple times
+        initialize_performance_monitoring();
+        initialize_performance_monitoring();
+    }
+}

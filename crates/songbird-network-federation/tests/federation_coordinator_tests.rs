@@ -1,84 +1,88 @@
-//! Comprehensive tests for Federation Coordinator and Network-Federation Integration
+//! Federation Coordinator Tests - Modern API
 //!
-//! Tests federation coordination, node management, and network integration
+//! Tests the federation coordination system with modern concurrent patterns
 
-use songbird_network_federation::{
-    FederationConfig, FederationCoordinator, NetworkFederationBridge, NodeInfo,
-};
-
-// ============================================================================
-// FederationCoordinator Tests
-// ============================================================================
-
-#[test]
-fn test_federation_coordinator_new() {
-    let coordinator = FederationCoordinator::new();
-    assert!(format!("{coordinator:?}").contains("FederationCoordinator"));
-}
-
-#[test]
-fn test_federation_coordinator_default() {
-    let coordinator = FederationCoordinator;
-    assert!(format!("{coordinator:?}").contains("FederationCoordinator"));
-}
-
-#[tokio::test]
-async fn test_federation_coordinator_coordinate() {
-    let coordinator = FederationCoordinator::new();
-    let result = coordinator.coordinate().await;
-    assert!(result.is_ok());
-}
-
-#[tokio::test]
-async fn test_federation_coordinator_multiple_coordinat_calls() {
-    let coordinator = FederationCoordinator::new();
-
-    // Should be able to call coordinate multiple times
-    for _ in 0..5 {
-        let result = coordinator.coordinate().await;
-        assert!(result.is_ok());
-    }
-}
-
-#[test]
-fn test_federation_coordinator_debug() {
-    let coordinator = FederationCoordinator::new();
-    let debug_str = format!("{coordinator:?}");
-    assert!(!debug_str.is_empty());
-}
+use songbird_network_federation::federation::{FederationConfig, FederationCoordinator};
+use songbird_network_federation::state::{NodeRegistration, NodeStatus};
+use songbird_network_federation::NetworkFederationBridge;
 
 // ============================================================================
-// FederationConfig Tests
+// FederationConfig Tests - Modern API
 // ============================================================================
 
 #[test]
 fn test_federation_config_default() {
     let config = FederationConfig::default();
-    assert!(!config.enabled);
-    assert_eq!(config.node_id, "node-1");
+    assert!(!config.enabled); // Disabled by default
+    assert!(config.bootstrap_address.is_none());
+    assert!(config.self_registration.is_none());
+    // Modern defaults from implementation
+    assert_eq!(config.heartbeat_interval_secs, 30);
+    assert_eq!(config.node_timeout_secs, 60); // Actual default in code
 }
 
 #[test]
-fn test_federation_config_custom() {
+fn test_federation_config_enabled() {
     let config = FederationConfig {
         enabled: true,
-        node_id: "custom-node-123".to_string(),
+        bootstrap_address: Some("192.168.1.1:8080".to_string()),
+        self_registration: None,
+        heartbeat_interval_secs: 30,
+        node_timeout_secs: 90,
     };
 
     assert!(config.enabled);
-    assert_eq!(config.node_id, "custom-node-123");
+    assert!(config.bootstrap_address.is_some());
+}
+
+#[test]
+fn test_federation_config_with_node_info() {
+    // Modern API: Use NodeRegistration for self-registration
+    let node_reg = NodeRegistration {
+        node_id: uuid::Uuid::new_v4().to_string(),
+        node_name: "node-123".to_string(),
+        node_address: "192.168.1.100:8080".to_string(),
+        cpu_cores: 8,
+        memory_gb: 16,
+        gpu_model: None,
+        storage_gb: None,
+        capabilities: vec!["compute".to_string()],
+        status: NodeStatus::Active,
+        joined_at: chrono::Utc::now(),
+        last_heartbeat: chrono::Utc::now(),
+    };
+
+    let config = FederationConfig {
+        enabled: true,
+        bootstrap_address: None,
+        self_registration: Some(node_reg.clone()),
+        heartbeat_interval_secs: 30,
+        node_timeout_secs: 90,
+    };
+
+    assert!(config.enabled);
+    assert_eq!(config.self_registration.as_ref().unwrap().node_name, "node-123");
 }
 
 #[test]
 fn test_federation_config_clone() {
+    let node_reg = create_test_registration("node-1");
+
     let config = FederationConfig {
         enabled: true,
-        node_id: "node-1".to_string(),
+        bootstrap_address: Some("192.168.1.1:8080".to_string()),
+        self_registration: Some(node_reg),
+        heartbeat_interval_secs: 15,
+        node_timeout_secs: 45,
     };
 
     let cloned = config.clone();
     assert_eq!(config.enabled, cloned.enabled);
-    assert_eq!(config.node_id, cloned.node_id);
+    assert_eq!(config.heartbeat_interval_secs, cloned.heartbeat_interval_secs);
+    assert_eq!(
+        config.self_registration.as_ref().unwrap().node_name,
+        cloned.self_registration.as_ref().unwrap().node_name
+    );
 }
 
 #[test]
@@ -86,127 +90,109 @@ fn test_federation_config_debug() {
     let config = FederationConfig::default();
     let debug_str = format!("{config:?}");
     assert!(debug_str.contains("FederationConfig"));
-    assert!(debug_str.contains("node-1"));
+    assert!(debug_str.contains("enabled"));
 }
 
 #[test]
 fn test_federation_config_serialization() {
+    let node_reg = create_test_registration("test-node");
+
     let config = FederationConfig {
         enabled: true,
-        node_id: "test-node".to_string(),
+        bootstrap_address: Some("192.168.1.1:8080".to_string()),
+        self_registration: Some(node_reg),
+        heartbeat_interval_secs: 30,
+        node_timeout_secs: 90,
     };
 
     let serialized = serde_json::to_string(&config).unwrap();
     let deserialized: FederationConfig = serde_json::from_str(&serialized).unwrap();
 
     assert_eq!(config.enabled, deserialized.enabled);
-    assert_eq!(config.node_id, deserialized.node_id);
+    assert_eq!(config.heartbeat_interval_secs, deserialized.heartbeat_interval_secs);
 }
 
 #[test]
 fn test_federation_config_enabled_states() {
     let enabled = FederationConfig {
         enabled: true,
-        node_id: "node-1".to_string(),
+        bootstrap_address: None,
+        self_registration: None,
+        heartbeat_interval_secs: 30,
+        node_timeout_secs: 90,
     };
 
-    let disabled = FederationConfig {
-        enabled: false,
-        node_id: "node-1".to_string(),
-    };
+    let disabled = FederationConfig::default();
 
     assert!(enabled.enabled);
     assert!(!disabled.enabled);
 }
 
 // ============================================================================
-// NodeInfo Tests
+// NodeRegistration Tests
 // ============================================================================
 
 #[test]
-fn test_node_info_creation() {
-    let node = NodeInfo {
-        node_id: "node-123".to_string(),
-        address: "192.168.1.100:8080".to_string(),
-        status: "active".to_string(),
-    };
+fn test_node_registration_creation() {
+    let node = create_test_registration("node-123");
 
-    assert_eq!(node.node_id, "node-123");
-    assert_eq!(node.address, "192.168.1.100:8080");
-    assert_eq!(node.status, "active");
+    assert_eq!(node.node_name, "node-123");
+    assert_eq!(node.node_address, "192.168.1.100:8080");
+    assert!(matches!(node.status, NodeStatus::Active));
 }
 
 #[test]
-fn test_node_info_clone() {
-    let node = NodeInfo {
-        node_id: "node-123".to_string(),
-        address: "192.168.1.100:8080".to_string(),
-        status: "active".to_string(),
-    };
-
+fn test_node_registration_clone() {
+    let node = create_test_registration("node-123");
     let cloned = node.clone();
+
     assert_eq!(node.node_id, cloned.node_id);
-    assert_eq!(node.address, cloned.address);
-    assert_eq!(node.status, cloned.status);
+    assert_eq!(node.node_name, cloned.node_name);
+    assert_eq!(node.node_address, cloned.node_address);
 }
 
 #[test]
-fn test_node_info_debug() {
-    let node = NodeInfo {
-        node_id: "node-123".to_string(),
-        address: "192.168.1.100:8080".to_string(),
-        status: "active".to_string(),
-    };
-
+fn test_node_registration_debug() {
+    let node = create_test_registration("node-123");
     let debug_str = format!("{node:?}");
+
     assert!(debug_str.contains("node-123"));
     assert!(debug_str.contains("192.168.1.100:8080"));
-    assert!(debug_str.contains("active"));
+    assert!(debug_str.contains("Active"));
 }
 
 #[test]
-fn test_node_info_serialization() {
-    let node = NodeInfo {
-        node_id: "node-123".to_string(),
-        address: "192.168.1.100:8080".to_string(),
-        status: "active".to_string(),
-    };
+fn test_node_registration_serialization() {
+    let node = create_test_registration("node-123");
 
     let serialized = serde_json::to_string(&node).unwrap();
-    let deserialized: NodeInfo = serde_json::from_str(&serialized).unwrap();
+    let deserialized: NodeRegistration = serde_json::from_str(&serialized).unwrap();
 
     assert_eq!(node.node_id, deserialized.node_id);
-    assert_eq!(node.address, deserialized.address);
-    assert_eq!(node.status, deserialized.status);
+    assert_eq!(node.node_name, deserialized.node_name);
+    assert_eq!(node.node_address, deserialized.node_address);
 }
 
 #[test]
-fn test_node_info_various_statuses() {
-    let statuses = vec!["active", "inactive", "joining", "leaving", "error"];
+fn test_node_registration_various_statuses() {
+    // Test available node statuses in modern API
+    let statuses = vec![NodeStatus::Active, NodeStatus::Inactive];
 
     for status in statuses {
-        let node = NodeInfo {
-            node_id: "node-1".to_string(),
-            address: "localhost:8080".to_string(),
-            status: status.to_string(),
-        };
-
+        let mut node = create_test_registration("node-1");
+        node.status = status;
         assert_eq!(node.status, status);
     }
 }
 
 #[test]
-fn test_node_info_various_addresses() {
+fn test_node_registration_various_addresses() {
     let addresses = vec!["localhost:8080", "192.168.1.1:9000", "10.0.0.1:3000", "example.com:443"];
 
     for address in addresses {
-        let node = NodeInfo {
-            node_id: "node-1".to_string(),
-            address: address.to_string(),
-            status: "active".to_string(),
-        };
-
-        assert_eq!(node.address, address);
+        let mut node = create_test_registration("node-1");
+        node.node_address = address.to_string();
+        assert_eq!(node.node_address, address);
     }
 }
 
@@ -217,140 +203,97 @@ fn test_node_info_various_addresses() {
 #[test]
 fn test_network_federation_bridge_new() {
     let bridge = NetworkFederationBridge::new();
+    // Just verify it can be created
     assert!(format!("{bridge:?}").contains("NetworkFederationBridge"));
-}
-
-#[test]
-fn test_network_federation_bridge_default() {
-    let bridge = NetworkFederationBridge;
-    assert!(format!("{bridge:?}").contains("NetworkFederationBridge"));
-}
-
-#[tokio::test]
-async fn test_network_federation_bridge_initialize() {
-    let mut bridge = NetworkFederationBridge::new();
-    let result = bridge.initialize().await;
-    assert!(result.is_ok());
-}
-
-#[tokio::test]
-async fn test_network_federation_bridge_multiple_initialize() {
-    let mut bridge = NetworkFederationBridge::new();
-
-    // Should be able to initialize multiple times
-    for _ in 0..3 {
-        let result = bridge.initialize().await;
-        assert!(result.is_ok());
-    }
 }
 
 #[test]
 fn test_network_federation_bridge_debug() {
     let bridge = NetworkFederationBridge::new();
     let debug_str = format!("{bridge:?}");
-    assert!(!debug_str.is_empty());
+    assert!(debug_str.contains("NetworkFederationBridge"));
+}
+
+// ============================================================================
+// FederationCoordinator Tests
+// ============================================================================
+
+#[test]
+fn test_coordinator_new() {
+    let coordinator = FederationCoordinator::new();
+    // Verify creation
+    assert!(format!("{coordinator:?}").contains("FederationCoordinator"));
+}
+
+#[test]
+fn test_coordinator_debug() {
+    let coordinator = FederationCoordinator::new();
+    let debug_str = format!("{coordinator:?}");
+    assert!(debug_str.contains("FederationCoordinator"));
+}
+
+#[test]
+fn test_coordinator_clone() {
+    let coordinator = FederationCoordinator::new();
+    let cloned = coordinator.clone();
+    // Both should have different Arc clones pointing to same state
+    assert!(format!("{cloned:?}").contains("FederationCoordinator"));
 }
 
 // ============================================================================
 // Integration Tests
 // ============================================================================
 
-#[tokio::test]
-async fn test_coordinator_and_bridge_integration() {
-    let coordinator = FederationCoordinator::new();
-    let mut bridge = NetworkFederationBridge::new();
-
-    // Initialize bridge
-    let bridge_result = bridge.initialize().await;
-    assert!(bridge_result.is_ok());
-
-    // Coordinate federation
-    let coord_result = coordinator.coordinate().await;
-    assert!(coord_result.is_ok());
-}
-
 #[test]
-fn test_federation_config_with_node_info() {
-    let config = FederationConfig {
-        enabled: true,
-        node_id: "node-123".to_string(),
-    };
-
-    let node = NodeInfo {
-        node_id: config.node_id.clone(),
-        address: "192.168.1.100:8080".to_string(),
-        status: "active".to_string(),
-    };
-
-    assert_eq!(config.node_id, node.node_id);
-}
-
-#[test]
-fn test_multiple_node_infos() {
+fn test_multiple_node_registrations() {
     let nodes = vec![
-        NodeInfo {
-            node_id: "node-1".to_string(),
-            address: "192.168.1.1:8080".to_string(),
-            status: "active".to_string(),
-        },
-        NodeInfo {
-            node_id: "node-2".to_string(),
-            address: "192.168.1.2:8080".to_string(),
-            status: "active".to_string(),
-        },
-        NodeInfo {
-            node_id: "node-3".to_string(),
-            address: "192.168.1.3:8080".to_string(),
-            status: "joining".to_string(),
-        },
+        create_test_registration("node-1"),
+        create_test_registration("node-2"),
+        create_test_registration("node-3"),
     ];
 
     assert_eq!(nodes.len(), 3);
-    assert!(nodes.iter().any(|n| n.status == "joining"));
-    assert_eq!(nodes.iter().filter(|n| n.status == "active").count(), 2);
+    assert!(nodes.iter().all(|n| matches!(n.status, NodeStatus::Active)));
 }
 
 #[test]
 fn test_federation_config_json_serialization() {
+    let node_reg = create_test_registration("test-node-456");
+
     let config = FederationConfig {
         enabled: true,
-        node_id: "test-node-456".to_string(),
+        bootstrap_address: Some("192.168.1.1:8080".to_string()),
+        self_registration: Some(node_reg),
+        heartbeat_interval_secs: 30,
+        node_timeout_secs: 90,
     };
 
     let json = serde_json::to_string_pretty(&config).unwrap();
     assert!(json.contains("enabled"));
-    assert!(json.contains("node_id"));
-    assert!(json.contains("test-node-456"));
+    assert!(json.contains("bootstrap_address"));
 }
 
 #[test]
-fn test_node_info_json_serialization() {
-    let node = NodeInfo {
-        node_id: "node-789".to_string(),
-        address: "10.0.0.1:9000".to_string(),
-        status: "inactive".to_string(),
-    };
+fn test_node_registration_json_serialization() {
+    let node = create_test_registration("node-789");
 
     let json = serde_json::to_string_pretty(&node).unwrap();
     assert!(json.contains("node_id"));
-    assert!(json.contains("address"));
+    assert!(json.contains("node_address"));
     assert!(json.contains("status"));
-    assert!(json.contains("node-789"));
 }
 
 #[tokio::test]
 async fn test_full_federation_workflow() {
-    // Create configuration
+    // Create configuration with self-registration
+    let node_reg = create_test_registration("primary-node");
+
     let config = FederationConfig {
         enabled: true,
-        node_id: "primary-node".to_string(),
-    };
-
-    // Create node info
-    let node = NodeInfo {
-        node_id: config.node_id.clone(),
-        address: "192.168.1.1:8080".to_string(),
-        status: "active".to_string(),
+        bootstrap_address: None,
+        self_registration: Some(node_reg.clone()),
+        heartbeat_interval_secs: 30,
+        node_timeout_secs: 90,
     };
 
     // Create coordinator
@@ -359,28 +302,48 @@ async fn test_full_federation_workflow() {
     // Create bridge
     let mut bridge = NetworkFederationBridge::new();
 
-    // Initialize
+    // Initialize bridge (concurrent-safe)
     assert!(bridge.initialize().await.is_ok());
 
-    // Coordinate
-    assert!(coordinator.coordinate().await.is_ok());
+    // Coordinate - modern API requires config parameter
+    assert!(coordinator.coordinate(&config).await.is_ok());
 
-    // Verify node info matches config
-    assert_eq!(node.node_id, config.node_id);
-    assert!(config.enabled);
+    // Verify state
+    let state = coordinator.state();
+    assert_eq!(state.nodes.read().await.len(), 1); // Self-registered
 }
 
-#[test]
-fn test_disabled_federation_config() {
+#[tokio::test]
+async fn test_federation_disabled() {
     let config = FederationConfig::default();
     assert!(!config.enabled);
 
-    // Even with disabled federation, we should be able to create nodes
-    let node = NodeInfo {
-        node_id: config.node_id.clone(),
-        address: "localhost:8080".to_string(),
-        status: "standby".to_string(),
-    };
+    let coordinator = FederationCoordinator::new();
 
-    assert_eq!(node.status, "standby");
+    // With disabled federation, coordinate should succeed but do nothing
+    assert!(coordinator.coordinate(&config).await.is_ok());
+
+    // No nodes should be registered
+    let state = coordinator.state();
+    assert_eq!(state.nodes.read().await.len(), 0);
+}
+
+// ============================================================================
+// Helper Functions
+// ============================================================================
+
+fn create_test_registration(node_name: &str) -> NodeRegistration {
+    NodeRegistration {
+        node_id: uuid::Uuid::new_v4().to_string(),
+        node_name: node_name.to_string(),
+        node_address: "192.168.1.100:8080".to_string(),
+        cpu_cores: 8,
+        memory_gb: 16,
+        gpu_model: None,
+        storage_gb: Some(512),
+        capabilities: vec!["compute".to_string()],
+        status: NodeStatus::Active,
+        joined_at: chrono::Utc::now(),
+        last_heartbeat: chrono::Utc::now(),
+    }
 }

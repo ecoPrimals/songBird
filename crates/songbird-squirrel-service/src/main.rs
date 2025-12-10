@@ -220,6 +220,7 @@ async fn models_handler(State(state): State<AppState>) -> impl IntoResponse {
 
 #[derive(Debug, Deserialize)]
 struct McpInitRequest {
+    #[allow(dead_code)]
     client_info: serde_json::Value,
 }
 

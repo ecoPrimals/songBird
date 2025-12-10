@@ -3,6 +3,11 @@ name = "songbird-compute-bridge"
 version = "0.1.0"
 edition = "2021"
 description = "Agnostic compute service bridge for Songbird federation - works with ANY compute provider"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/ecoPrimals/songbird"
+readme = "README.md"
+keywords = ["compute", "distributed", "orchestration", "bridge", "agnostic"]
+categories = ["network-programming", "web-programming"]
 
 [dependencies]
 tokio = { version = "1.35", features = ["full"] }

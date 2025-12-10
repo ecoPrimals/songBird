@@ -6,6 +6,10 @@ license.workspace = true
 authors.workspace = true
 repository.workspace = true
 homepage.workspace = true
+description = "Distributed task execution agent for Songbird orchestrator"
+readme = "../README.md"
+keywords = ["orchestration", "distributed", "execution", "async"]
+categories = ["asynchronous", "network-programming"]
 
 [dependencies]
 # Core async runtime
@@ -38,6 +42,9 @@ uuid = { workspace = true, features = ["v4", "serde"] }
 
 # Process management
 nix = { version = "0.29", features = ["process", "signal"] }
+
+# HTTP client (for BearDog integration)
+reqwest = { workspace = true }
 
 [dev-dependencies]
 reqwest = { workspace = true }
