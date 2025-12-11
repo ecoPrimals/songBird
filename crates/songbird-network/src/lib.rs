@@ -17,7 +17,7 @@ pub mod wireguard;
 pub mod error;
 
 pub use error::{NetworkError, NetworkResult};
-pub use tls::{TlsConfig, TlsManager, CertificateInfo};
+pub use tls::{TlsCertificateManager, TlsConfig, TlsError, create_tls_acceptor};
 pub use wireguard::{WireGuardConfig, WireGuardManager, TunnelInfo};
 
 /// Network security mode

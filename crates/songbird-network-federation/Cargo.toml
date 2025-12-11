@@ -34,6 +34,12 @@ anyhow = { workspace = true }
 reqwest = { version = "0.11", features = ["json"] }
 url = "2.5"
 
+# TLS/HTTPS support
+rustls = "0.23"
+rustls-pemfile = "2.1"
+tokio-rustls = "0.26"
+rcgen = "0.13"
+
 # Random number generation (missing dependency that caused errors)
 fastrand = "2.0"
 

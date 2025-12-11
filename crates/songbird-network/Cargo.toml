@@ -24,10 +24,11 @@ rand = "0.8"
 base64 = "0.21"
 
 # TLS
-rustls = "0.21"
-rustls-pemfile = "1.0"
-tokio-rustls = "0.24"
-rcgen = "0.11"  # For self-signed cert generation
+rustls = "0.23"
+rustls-pemfile = "2.1"
+tokio-rustls = "0.26"
+rcgen = "0.13"  # For self-signed cert generation
+pem = "3.0"
 
 # Networking
 socket2 = "0.5"
