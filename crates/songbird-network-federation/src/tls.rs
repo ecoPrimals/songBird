@@ -7,10 +7,27 @@ use rcgen::{CertificateParams, DistinguishedName, DnType, Ia5String, SanType};
 use rustls::pki_types::{CertificateDer, PrivateKeyDer};
 use std::io;
 use std::path::Path;
-use std::sync::Arc;
+use std::sync::{Arc, Once};
 use thiserror::Error;
 use tokio::fs;
 use tracing::{debug, info, warn};
+
+/// Ensure rustls crypto provider is installed (required for rustls 0.23+)
+///
+/// This must be called before any TLS operations. Uses `Once` to ensure it's only called once.
+static CRYPTO_PROVIDER_INIT: Once = Once::new();
+
+fn ensure_crypto_provider() {
+    CRYPTO_PROVIDER_INIT.call_once(|| {
+        // Install the ring crypto provider (default for rustls)
+        if let Err(e) = rustls::crypto::ring::default_provider().install_default() {
+            // If already installed, that's fine (might happen in tests)
+            debug!("Crypto provider installation result: {:?}", e);
+        } else {
+            info!("✅ Installed rustls crypto provider (ring)");
+        }
+    });
+}
 
 /// TLS configuration errors
 #[derive(Debug, Error)]
@@ -154,6 +171,9 @@ impl TlsCertificateManager {
     /// Returns an error if certificate or key loading fails
     pub async fn load_tls_config(&self) -> Result<rustls::ServerConfig, TlsError> {
         info!("🔐 Loading TLS configuration");
+
+        // Ensure crypto provider is installed (required for rustls 0.23+)
+        ensure_crypto_provider();
 
         // Read certificate chain
         let cert_pem = fs::read(&self.config.cert_path).await?;
