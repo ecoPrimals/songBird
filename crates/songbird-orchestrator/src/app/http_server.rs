@@ -40,13 +40,17 @@ pub async fn start_http_server(
         warn!("⚠️  Configured port {} busy, using port {} instead", port, actual_port);
     }
 
-    // ✅ TLS support (Dec 17, 2025)
-    let tls_enabled = SafeEnv::get_bool("SONGBIRD_TLS_ENABLED", false);
+    // ✅ TLS support (Dec 17, 2025) - ENABLED BY DEFAULT (fail-secure)
+    // Set SONGBIRD_TLS_ENABLED=false to explicitly opt-out (e.g., for local dev)
+    let tls_enabled = SafeEnv::get_bool("SONGBIRD_TLS_ENABLED", true);
 
     if tls_enabled {
-        info!("🔐 TLS enabled - configuring HTTPS server");
+        info!("🔐 TLS enabled - configuring HTTPS server (fail-secure by default)");
         start_https_server(app, listener, actual_addr).await
     } else {
+        warn!("⚠️  TLS DISABLED - Using plain HTTP (insecure)");
+        warn!("   This should only be used for local development on trusted networks");
+        warn!("   For production, remove SONGBIRD_TLS_ENABLED=false");
         info!("🌐 HTTP server listening on {}", actual_addr);
         start_http_server_plain(app, listener).await
     }
@@ -146,6 +150,27 @@ async fn start_http_server_plain(
     Ok(())
 }
 
+/// Get local IP address for certificate SANs
+async fn get_local_ip() -> Result<String> {
+    use std::net::{IpAddr, Ipv4Addr};
+    
+    // Try to get local IP by creating a UDP socket (doesn't actually send data)
+    let socket = std::net::UdpSocket::bind("0.0.0.0:0")?;
+    socket.connect("8.8.8.8:80")?;  // Doesn't actually connect, just determines route
+    
+    if let Ok(local_addr) = socket.local_addr() {
+        let ip = local_addr.ip();
+        match ip {
+            IpAddr::V4(ipv4) if ipv4 != Ipv4Addr::LOCALHOST => {
+                return Ok(ip.to_string());
+            }
+            _ => {}
+        }
+    }
+    
+    Err(anyhow::anyhow!("Could not determine local IP"))
+}
+
 /// Start HTTPS server with TLS
 async fn start_https_server(
     app: Router,
@@ -159,15 +184,37 @@ async fn start_https_server(
     let key_path = SafeEnv::get_or_default("SONGBIRD_TLS_KEY", "certs/songbird.key");
     
     // Get Subject Alternative Names (SANs) for certificate
-    let sans = SafeEnv::get_or_default("SONGBIRD_TLS_SANS", "localhost,127.0.0.1")
-        .split(',')
-        .map(str::trim)
-        .map(String::from)
-        .collect();
+    // Include localhost, local IPs, and any user-specified SANs
+    let mut sans_list = vec!["localhost".to_string(), "127.0.0.1".to_string()];
+    
+    // Try to get local IP address for automatic inclusion
+    if let Ok(local_ip) = get_local_ip().await {
+        sans_list.push(local_ip);
+    }
+    
+    // Add user-specified SANs
+    let user_sans = SafeEnv::get_or_default("SONGBIRD_TLS_SANS", "");
+    if !user_sans.is_empty() {
+        sans_list.extend(
+            user_sans
+                .split(',')
+                .map(str::trim)
+                .filter(|s| !s.is_empty())
+                .map(String::from)
+        );
+    }
+    
+    // Remove duplicates
+    sans_list.sort();
+    sans_list.dedup();
+    
+    let sans = sans_list;
 
     // Get node ID for common name
     let node_id = SafeEnv::get_or_default("SONGBIRD_NODE_ID", "songbird");
 
+    let sans_display = sans.join(", ");
+    
     let tls_config = TlsConfig {
         cert_path: cert_path.to_string(),
         key_path: key_path.to_string(),
@@ -188,7 +235,11 @@ async fn start_https_server(
     })?;
 
     info!("✅ TLS configuration loaded, HTTPS server listening on https://{}", addr);
-    info!("   Certificate: {}, Key: {}", cert_path, key_path);
+    info!("   Certificate: {}", cert_path);
+    info!("   Key: {}", key_path);
+    info!("   SANs: {}", sans_display);
+    info!("   🔒 SECURE BY DEFAULT - All connections encrypted");
+    info!("   💡 To disable TLS (not recommended): export SONGBIRD_TLS_ENABLED=false");
 
     // Use axum-server for TLS support
     let tls_config_for_server = axum_server::tls_rustls::RustlsConfig::from_config(Arc::new(rustls_config));
