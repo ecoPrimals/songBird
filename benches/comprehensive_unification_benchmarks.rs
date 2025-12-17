@@ -13,6 +13,7 @@ fn benchmark_config_creation(c: &mut Criterion) {
 }
 
 /// Benchmark configuration serialization performance
+#[allow(clippy::expect_used)] // Acceptable in benchmarks
 fn benchmark_config_serialization(c: &mut Criterion) {
     let config = UnifiedSongbirdConfig::default();
     let _group = c.bench_function("unified_config_serialization", |b| {

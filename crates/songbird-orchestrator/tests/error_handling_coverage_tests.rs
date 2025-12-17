@@ -1,3 +1,6 @@
+// Allow unwrap/expect in tests - idiomatic for test code
+#![allow(clippy::unwrap_used, clippy::expect_used)]
+
 //! Orchestrator Error Handling Coverage Tests
 //!
 //! **Purpose**: Expand coverage by testing error handling branches in orchestrator
@@ -160,8 +163,8 @@ async fn test_cascading_failure_handling() {
     assert!(result2.is_ok(), "Task 2 should complete");
 
     // Check the routing results
-    assert!(result1.unwrap().is_err(), "Failing request should error");
-    assert!(result2.unwrap().is_ok(), "Normal request should succeed");
+    assert!(result1.expect("test precondition").is_err(), "Failing request should error");
+    assert!(result2.expect("test precondition").is_ok(), "Normal request should succeed");
 }
 
 // ============================================================================

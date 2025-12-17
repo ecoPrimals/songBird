@@ -1,3 +1,6 @@
+// Allow unwrap/expect in tests - idiomatic for test code
+#![allow(clippy::unwrap_used, clippy::expect_used)]
+
 //! Comprehensive tests for Canonical Types
 //!
 //! Tests all core canonical types and their functionality

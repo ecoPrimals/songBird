@@ -1,3 +1,6 @@
+// Allow unwrap/expect in tests - idiomatic for test code
+#![allow(clippy::unwrap_used, clippy::expect_used)]
+
 //! Integration Tests for Security Adapter
 //!
 //! **Purpose**: Test actual async HTTP functionality that was missing coverage.
@@ -243,7 +246,7 @@ fn test_security_health_copy() {
 
 #[test]
 fn test_adapter_creation_with_empty_endpoint() {
-    let result = SecurityAdapter::new("".to_string());
+    let result = SecurityAdapter::new(String::new());
     // Empty endpoint should be allowed (for testing), actual connection will fail later
     assert!(result.is_ok());
 }

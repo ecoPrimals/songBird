@@ -1,3 +1,6 @@
+// Allow unwrap/expect in tests - idiomatic for test code
+#![allow(clippy::unwrap_used, clippy::expect_used)]
+
 //! Tests for performance measurement utilities
 
 use songbird_test_utils::performance::*;
@@ -45,7 +48,7 @@ fn test_average_duration_single() {
     let mut pm = PerformanceMeasurement::new("test");
     pm.record(Duration::from_millis(100));
 
-    let avg = pm.average_duration().unwrap();
+    let avg = pm.average_duration().expect("test precondition");
     assert_eq!(avg, Duration::from_millis(100));
 }
 
@@ -56,7 +59,7 @@ fn test_average_duration_multiple() {
     pm.record(Duration::from_millis(200));
     pm.record(Duration::from_millis(300));
 
-    let avg = pm.average_duration().unwrap();
+    let avg = pm.average_duration().expect("test precondition");
     // Average should be 200ms
     assert_eq!(avg, Duration::from_millis(200));
 }
@@ -72,7 +75,7 @@ fn test_percentile_duration_single() {
     let mut pm = PerformanceMeasurement::new("test");
     pm.record(Duration::from_millis(100));
 
-    let p95 = pm.percentile_duration(95.0).unwrap();
+    let p95 = pm.percentile_duration(95.0).expect("test precondition");
     assert_eq!(p95, Duration::from_millis(100));
 }
 
@@ -85,11 +88,11 @@ fn test_percentile_duration_multiple() {
     }
 
     // 50th percentile should be around 50ms
-    let p50 = pm.percentile_duration(50.0).unwrap();
+    let p50 = pm.percentile_duration(50.0).expect("test precondition");
     assert!(p50.as_millis() >= 40 && p50.as_millis() <= 60);
 
     // 95th percentile should be around 95ms
-    let p95 = pm.percentile_duration(95.0).unwrap();
+    let p95 = pm.percentile_duration(95.0).expect("test precondition");
     assert!(p95.as_millis() >= 85 && p95.as_millis() <= 99);
 }
 
@@ -100,7 +103,7 @@ fn test_percentile_duration_p99() {
         pm.record(Duration::from_millis(i));
     }
 
-    let p99 = pm.percentile_duration(99.0).unwrap();
+    let p99 = pm.percentile_duration(99.0).expect("test precondition");
     assert!(p99.as_millis() >= 95);
 }
 
@@ -141,7 +144,7 @@ async fn test_benchmark_async_success() {
     .await;
 
     assert!(result.is_ok());
-    let measurement = result.unwrap();
+    let measurement = result.expect("test precondition");
     assert_eq!(measurement.measurements.len(), 5);
     assert_eq!(counter.load(Ordering::SeqCst), 5);
 }
@@ -155,7 +158,7 @@ async fn test_benchmark_async_with_actual_work() {
     .await;
 
     assert!(result.is_ok());
-    let measurement = result.unwrap();
+    let measurement = result.expect("test precondition");
     assert_eq!(measurement.measurements.len(), 3);
 
     // Each iteration should take at least 50ms
@@ -179,7 +182,7 @@ fn test_benchmark_sync_success() {
     });
 
     assert!(result.is_ok());
-    let measurement = result.unwrap();
+    let measurement = result.expect("test precondition");
     assert_eq!(measurement.measurements.len(), 5);
     assert_eq!(counter.load(Ordering::SeqCst), 5);
 }
@@ -192,7 +195,7 @@ fn test_benchmark_sync_measures_time() {
     });
 
     assert!(result.is_ok());
-    let measurement = result.unwrap();
+    let measurement = result.expect("test precondition");
     assert_eq!(measurement.measurements.len(), 3);
 
     // Each iteration should take at least 20ms
@@ -233,7 +236,7 @@ async fn test_load_tester_run_basic() {
         .await;
 
     assert!(result.is_ok());
-    let results = result.unwrap();
+    let results = result.expect("test precondition");
     assert!(!results.samples.is_empty());
     assert_eq!(results.test_name, "basic_test");
 }

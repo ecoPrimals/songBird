@@ -11,6 +11,8 @@
 #![allow(clippy::similar_names)]
 #![allow(clippy::too_many_lines)]
 #![allow(clippy::module_name_repetitions)]
+// Allow unwrap/expect in tests - idiomatic for test code
+#![allow(clippy::unwrap_used, clippy::expect_used)]
 
 use serde_json::json;
 use songbird_canonical::metadata::*;
@@ -276,7 +278,7 @@ fn test_risk_level_deserialization() -> Result<(), Box<dyn std::error::Error>> {
         debug_info: None,
     })?;
     let deserialized: RiskLevel = serde_json::from_str(&serialized)
-        .map_err(|e| SongbirdError::configuration("Error occurred".to_string()))?;
+        .map_err(|_e| SongbirdError::configuration("Error occurred".to_string()))?;
 
     assert_eq!(risk, deserialized);
     Ok(())
@@ -457,7 +459,7 @@ fn test_quality_metrics_with_timeliness() -> SongbirdResult<()> {
     assert!(metrics.timeliness.is_some());
     let timeliness = metrics
         .timeliness
-        .ok_or_else(|| SongbirdError::configuration(format!("Should have timeliness")))?;
+        .ok_or_else(|| SongbirdError::configuration("Should have timeliness".to_string()))?;
     assert!((timeliness - 0.88).abs() < f64::EPSILON);
     Ok(())
 }
@@ -468,7 +470,7 @@ fn test_quality_metrics_accuracy_clamped_low() -> SongbirdResult<()> {
 
     let accuracy = metrics
         .accuracy
-        .ok_or_else(|| SongbirdError::configuration(format!("Should have accuracy")))?;
+        .ok_or_else(|| SongbirdError::configuration("Should have accuracy".to_string()))?;
     assert!((accuracy - 0.0).abs() < f64::EPSILON);
     Ok(())
 }
@@ -479,7 +481,7 @@ fn test_quality_metrics_accuracy_clamped_high() -> SongbirdResult<()> {
 
     let accuracy = metrics
         .accuracy
-        .ok_or_else(|| SongbirdError::configuration(format!("Should have accuracy")))?;
+        .ok_or_else(|| SongbirdError::configuration("Should have accuracy".to_string()))?;
     assert!((accuracy - 1.0).abs() < f64::EPSILON);
     Ok(())
 }
@@ -491,7 +493,7 @@ fn test_quality_metrics_calculate_overall_single_metric() -> SongbirdResult<()> 
     assert!(metrics.overall_quality.is_some());
     let overall = metrics
         .overall_quality
-        .ok_or_else(|| SongbirdError::configuration(format!("Should have overall quality")))?;
+        .ok_or_else(|| SongbirdError::configuration("Should have overall quality".to_string()))?;
     assert!((overall - 0.8).abs() < f64::EPSILON);
     Ok(())
 }
@@ -503,7 +505,7 @@ fn test_quality_metrics_calculate_overall_two_metrics() -> SongbirdResult<()> {
     assert!(metrics.overall_quality.is_some());
     let overall = metrics
         .overall_quality
-        .ok_or_else(|| SongbirdError::configuration(format!("Should have overall quality")))?;
+        .ok_or_else(|| SongbirdError::configuration("Should have overall quality".to_string()))?;
     assert!((overall - 0.85).abs() < 0.001);
     Ok(())
 }
@@ -520,7 +522,7 @@ fn test_quality_metrics_calculate_overall_all_metrics() -> SongbirdResult<()> {
     let expected = (0.9 + 0.85 + 0.92 + 0.88) / 4.0;
     let overall = metrics
         .overall_quality
-        .ok_or_else(|| SongbirdError::configuration(format!("Should have overall quality")))?;
+        .ok_or_else(|| SongbirdError::configuration("Should have overall quality".to_string()))?;
     assert!((overall - expected).abs() < 0.001);
     Ok(())
 }
@@ -529,12 +531,12 @@ fn test_quality_metrics_calculate_overall_all_metrics() -> SongbirdResult<()> {
 fn test_quality_metrics_calculate_overall_updates_on_change() -> SongbirdResult<()> {
     let mut metrics = QualityMetrics::default().with_accuracy(0.8);
     let first_overall = metrics.overall_quality.ok_or_else(|| {
-        SongbirdError::configuration(format!("Should have first overall quality"))
+        SongbirdError::configuration("Should have first overall quality".to_string())
     })?;
 
     metrics = metrics.with_completeness(0.9);
     let second_overall = metrics.overall_quality.ok_or_else(|| {
-        SongbirdError::configuration(format!("Should have second overall quality"))
+        SongbirdError::configuration("Should have second overall quality".to_string())
     })?;
 
     assert!((first_overall - second_overall).abs() > 0.001);
@@ -563,7 +565,7 @@ fn test_quality_metrics_serialization() -> SongbirdResult<()> {
 fn test_quality_metrics_deserialization() -> SongbirdResult<()> {
     let metrics = QualityMetrics::default().with_accuracy(0.9);
     let serialized = serde_json::to_string(&metrics)
-        .map_err(|e| SongbirdError::configuration(format!("Should serialize")))?;
+        .map_err(|_e| SongbirdError::configuration("Should serialize".to_string()))?;
     let deserialized: Result<QualityMetrics, _> = serde_json::from_str(&serialized);
 
     assert!(deserialized.is_ok());
@@ -623,7 +625,7 @@ fn test_quality_metrics_comprehensive() -> SongbirdResult<()> {
     let expected_overall = (0.95 + 0.90 + 0.92 + 0.88) / 4.0;
     let overall = metrics
         .overall_quality
-        .ok_or_else(|| SongbirdError::configuration(format!("Should have overall quality")))?;
+        .ok_or_else(|| SongbirdError::configuration("Should have overall quality".to_string()))?;
     assert!((overall - expected_overall).abs() < 0.001);
     Ok(())
 }

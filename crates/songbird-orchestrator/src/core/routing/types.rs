@@ -4,10 +4,16 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
 /// A task to be executed, either locally, on a peer, or via a capability
+///
+/// **ZERO-COPY OPTIMIZATION**: Uses `Arc<str>` for task_type to enable
+/// cheap sharing across async boundaries without cloning large strings.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Task {
     /// Type of task (e.g., "ml_training", "data_processing", "health_check")
-    pub task_type: String,
+    ///
+    /// **OPTIMIZED**: Arc<str> enables zero-copy sharing in async contexts
+    #[serde(with = "arc_str_serde")]
+    pub task_type: std::sync::Arc<str>,
 
     /// Task payload (arbitrary JSON)
     #[serde(default)]
@@ -24,6 +30,27 @@ pub struct Task {
     /// Additional metadata
     #[serde(default)]
     pub metadata: HashMap<String, String>,
+}
+
+/// Serde support for Arc<str>
+mod arc_str_serde {
+    use serde::{Deserialize, Deserializer, Serializer};
+    use std::sync::Arc;
+
+    pub fn serialize<S>(arc: &Arc<str>, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        serializer.serialize_str(arc)
+    }
+
+    pub fn deserialize<'de, D>(deserializer: D) -> Result<Arc<str>, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let s = String::deserialize(deserializer)?;
+        Ok(Arc::from(s.as_str()))
+    }
 }
 
 /// Resource requirements for a task
@@ -67,7 +94,7 @@ impl TaskBuilder {
     pub fn new(task_type: impl Into<String>) -> Self {
         Self {
             task: Task {
-                task_type: task_type.into(),
+                task_type: std::sync::Arc::from(task_type.into().as_str()),
                 payload: serde_json::Value::Null,
                 resource_requirements: None,
                 estimated_duration_secs: None,
@@ -77,18 +104,21 @@ impl TaskBuilder {
     }
 
     /// Set task payload
+    #[must_use = "Builder methods should be chained or assigned"]
     pub fn with_payload(mut self, payload: serde_json::Value) -> Self {
         self.task.payload = payload;
         self
     }
 
     /// Set resource requirements
+    #[must_use = "Builder methods should be chained or assigned"]
     pub fn with_resources(mut self, requirements: ResourceRequirements) -> Self {
         self.task.resource_requirements = Some(requirements);
         self
     }
 
     /// Require GPU for this task
+    #[must_use = "Builder methods should be chained or assigned"]
     pub fn with_gpu(mut self) -> Self {
         let mut reqs = self.task.resource_requirements.unwrap_or_default();
         reqs.gpu_required = true;
@@ -97,6 +127,7 @@ impl TaskBuilder {
     }
 
     /// Set CPU requirements
+    #[must_use = "Builder methods should be chained or assigned"]
     pub fn with_cpu(mut self, cores: f64) -> Self {
         let mut reqs = self.task.resource_requirements.unwrap_or_default();
         reqs.cpu_cores = Some(cores);
@@ -105,6 +136,7 @@ impl TaskBuilder {
     }
 
     /// Set memory requirements
+    #[must_use = "Builder methods should be chained or assigned"]
     pub fn with_memory(mut self, memory_mb: u64) -> Self {
         let mut reqs = self.task.resource_requirements.unwrap_or_default();
         reqs.memory_mb = Some(memory_mb);
@@ -113,12 +145,14 @@ impl TaskBuilder {
     }
 
     /// Set estimated duration
+    #[must_use = "Builder methods should be chained or assigned"]
     pub fn with_duration(mut self, duration_secs: u64) -> Self {
         self.task.estimated_duration_secs = Some(duration_secs);
         self
     }
 
     /// Add metadata
+    #[must_use = "Builder methods should be chained or assigned"]
     pub fn with_metadata(mut self, key: impl Into<String>, value: impl Into<String>) -> Self {
         self.task.metadata.insert(key.into(), value.into());
         self
@@ -139,7 +173,7 @@ impl Task {
     /// Quick constructor for simple tasks
     pub fn new(task_type: impl Into<String>) -> Self {
         Self {
-            task_type: task_type.into(),
+            task_type: std::sync::Arc::from(task_type.into().as_str()),
             payload: serde_json::Value::Null,
             resource_requirements: None,
             estimated_duration_secs: None,
@@ -162,9 +196,14 @@ mod tests {
             .with_metadata("model", "resnet50")
             .build();
 
-        assert_eq!(task.task_type, "ml_training");
-        assert!(task.resource_requirements.as_ref().unwrap().gpu_required);
-        assert_eq!(task.resource_requirements.as_ref().unwrap().cpu_cores, Some(4.0));
+        assert_eq!(task.task_type.as_ref(), "ml_training");
+        // Validate GPU task routing - use expect in tests with clear messages
+        let requirements = task
+            .resource_requirements
+            .as_ref()
+            .expect("GPU task should have resource requirements - test invariant");
+        assert!(requirements.gpu_required);
+        assert_eq!(requirements.cpu_cores, Some(4.0));
         assert_eq!(task.estimated_duration_secs, Some(600));
         assert_eq!(task.metadata.get("model"), Some(&"resnet50".to_string()));
     }
@@ -172,7 +211,7 @@ mod tests {
     #[test]
     fn test_simple_task() {
         let task = Task::new("health_check");
-        assert_eq!(task.task_type, "health_check");
+        assert_eq!(task.task_type.as_ref(), "health_check");
         assert!(task.resource_requirements.is_none());
     }
 }

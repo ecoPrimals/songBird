@@ -20,6 +20,8 @@
 #![allow(clippy::cast_possible_truncation)]
 #![allow(clippy::cast_sign_loss)]
 #![allow(clippy::needless_pass_by_value)]
+// Allow unwrap/expect in tests - idiomatic for test code
+#![allow(clippy::unwrap_used, clippy::expect_used)]
 
 //!
 //! These tests verify registry functionality in realistic scenarios.
@@ -47,7 +49,7 @@ fn test_health_status_unhealthy_creation() {
     assert!(!status.healthy);
     assert!(status.score.abs() < f64::EPSILON);
     assert!(status.message.is_some());
-    assert_eq!(status.message.unwrap(), "Service unavailable");
+    assert_eq!(status.message.expect("test precondition"), "Service unavailable");
 }
 
 #[test]
@@ -147,7 +149,7 @@ fn test_health_status_with_long_message() {
                        Response times have increased by 200%. Investigating root cause.";
     let status = HealthStatus::degraded(0.6, long_message);
 
-    assert_eq!(status.message.unwrap(), long_message);
+    assert_eq!(status.message.expect("test precondition"), long_message);
 }
 
 #[test]

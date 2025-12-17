@@ -1,3 +1,6 @@
+// Allow unwrap/expect in tests - idiomatic for test code
+#![allow(clippy::unwrap_used, clippy::expect_used)]
+
 //! Comprehensive Orchestrator Tests
 //!
 //! Modern concurrent testing patterns - no sleeps, event-driven coordination
@@ -150,7 +153,7 @@ async fn test_handle_command_empty() -> Result<()> {
     let config = CanonicalSongbirdConfig::default();
     let orchestrator = SongbirdOrchestrator::new(config).await?;
 
-    let result = orchestrator.handle_command("".to_string()).await;
+    let result = orchestrator.handle_command(String::new()).await;
     assert!(result.is_err() || result.is_ok());
 
     Ok(())

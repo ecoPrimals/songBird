@@ -237,7 +237,8 @@ fn convert_docker_container_to_primal(
 
     // Get first network
     let (_, network) = networks.iter().next()?;
-    let host = network.ip_address.clone().unwrap_or_else(|| "localhost".to_string());
+    // Use actual IP address from network, fallback to loopback for local dev
+    let host = network.ip_address.clone().unwrap_or_else(|| "127.0.0.1".to_string());
 
     // Get port from labels or default
     let labels = container.labels.unwrap_or_default();

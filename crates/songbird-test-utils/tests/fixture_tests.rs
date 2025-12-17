@@ -22,6 +22,8 @@
 #![allow(clippy::cast_possible_truncation)]
 #![allow(clippy::cast_sign_loss)]
 #![allow(clippy::needless_pass_by_value)]
+// Allow unwrap/expect in tests - idiomatic for test code
+#![allow(clippy::unwrap_used, clippy::expect_used)]
 
 //
 // Tests for test fixture management and setup utilities
@@ -92,7 +94,8 @@ struct TestFixtures {
 impl TestFixtures {
     fn new() -> Self {
         // Create unique temp directory for each test to avoid parallel test interference
-        let timestamp = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_nanos();
+        let timestamp =
+            SystemTime::now().duration_since(UNIX_EPOCH).expect("test precondition").as_nanos();
         let temp_dir = std::env::temp_dir().join(format!("songbird_test_fixtures_{timestamp}"));
         let config_dir = temp_dir.join("config");
         let data_dir = temp_dir.join("data");

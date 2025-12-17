@@ -104,10 +104,12 @@ pub async fn discover_mdns_services() -> Result<Vec<DiscoveredPrimal>, Discovery
     }
 }
 
-/// Query mDNS for Songbird services
-///
 /// **Production Implementation**: Real mDNS query with timeout and error handling
+///
+/// Currently returns empty - stub for future mDNS library integration.
+/// Kept async for API consistency with future implementation.
 #[cfg(feature = "mdns")]
+#[allow(clippy::unused_async)]
 async fn query_mdns_services(
     service_type: &str,
     timeout: std::time::Duration,

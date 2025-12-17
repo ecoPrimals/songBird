@@ -16,26 +16,41 @@
 //! ```
 
 use std::env;
-use std::sync::{Mutex, PoisonError};
+
+// ⚠️ CRITICAL FIX: Use tokio::sync::Mutex for async-safety!
+// Using std::sync::Mutex caused deadlocks in async tests because:
+// 1. Synchronous Mutex::lock() is a BLOCKING operation
+// 2. Holding it across await points blocks the tokio runtime thread
+// 3. Parallel async tests deadlock trying to acquire the same lock
+//
+// Solution: tokio::sync::Mutex allows the runtime to yield while waiting
+use std::sync::OnceLock;
+use tokio::sync::Mutex;
 
 // Global lock for test environment isolation
 // This ensures only one test modifies environment at a time
-static ENV_LOCK: Mutex<()> = Mutex::new(());
+// Using OnceLock + tokio::Mutex for async-safe initialization
+static ENV_LOCK: OnceLock<Mutex<()>> = OnceLock::new();
+
+fn get_env_lock() -> &'static Mutex<()> {
+    ENV_LOCK.get_or_init(|| Mutex::new(()))
+}
 
 /// Scoped environment variable that automatically cleans up on drop
 ///
 /// This type uses RAII to ensure environment variables set in tests
 /// are always cleaned up, even if the test panics.
 ///
-/// # Thread Safety
+/// # Thread Safety & Async Safety
 ///
-/// Uses a global mutex to ensure only one test can modify environment
-/// variables at a time, preventing race conditions in parallel tests.
+/// Uses a global `tokio::sync::Mutex` to ensure only one test can modify
+/// environment variables at a time. This is async-safe and won't deadlock
+/// in async tests, unlike the previous `std::sync::Mutex` implementation.
 #[must_use = "ScopedEnv must be held until cleanup is desired"]
 pub struct ScopedEnv {
     key: String,
     old_value: Option<String>,
-    _guard: std::sync::MutexGuard<'static, ()>,
+    _guard: tokio::sync::MutexGuard<'static, ()>,
 }
 
 impl ScopedEnv {
@@ -45,16 +60,18 @@ impl ScopedEnv {
     ///
     /// # Example
     ///
-    /// ```
+    /// ```no_run
     /// use songbird_test_utils::ScopedEnv;
     ///
-    /// let _env = ScopedEnv::set("TEST_VAR", "test_value");
+    /// # async fn example() {
+    /// let _env = ScopedEnv::set("TEST_VAR", "test_value").await;
     /// assert_eq!(std::env::var("TEST_VAR").unwrap(), "test_value");
     /// // Variable is cleaned up when _env drops
+    /// # }
     /// ```
-    pub fn set(key: impl Into<String>, value: impl AsRef<str>) -> Self {
+    pub async fn set(key: impl Into<String>, value: impl AsRef<str>) -> Self {
         let key = key.into();
-        let guard = ENV_LOCK.lock().unwrap_or_else(PoisonError::into_inner);
+        let guard = get_env_lock().lock().await;
 
         // Store old value (if any) for restoration
         let old_value = env::var(&key).ok();
@@ -76,21 +93,23 @@ impl ScopedEnv {
     ///
     /// # Example
     ///
-    /// ```
+    /// ```no_run
     /// use songbird_test_utils::ScopedEnv;
     ///
+    /// # async fn example() {
     /// let _env = ScopedEnv::set_multiple([
     ///     ("VAR1", "value1"),
     ///     ("VAR2", "value2"),
-    /// ]);
+    /// ]).await;
+    /// # }
     /// ```
-    pub fn set_multiple<I, K, V>(vars: I) -> ScopedEnvMultiple
+    pub async fn set_multiple<I, K, V>(vars: I) -> ScopedEnvMultiple
     where
         I: IntoIterator<Item = (K, V)>,
         K: Into<String>,
         V: AsRef<str>,
     {
-        let guard = ENV_LOCK.lock().unwrap_or_else(PoisonError::into_inner);
+        let guard = get_env_lock().lock().await;
 
         let mut restorations = Vec::new();
         for (key, value) in vars {
@@ -112,17 +131,19 @@ impl ScopedEnv {
     ///
     /// # Example
     ///
-    /// ```
+    /// ```no_run
     /// use songbird_test_utils::ScopedEnv;
     ///
+    /// # async fn example() {
     /// std::env::set_var("TEMP_VAR", "value");
-    /// let _env = ScopedEnv::remove("TEMP_VAR");
+    /// let _env = ScopedEnv::remove("TEMP_VAR").await;
     /// assert!(std::env::var("TEMP_VAR").is_err());
     /// // Variable is restored when _env drops
+    /// # }
     /// ```
-    pub fn remove(key: impl Into<String>) -> Self {
+    pub async fn remove(key: impl Into<String>) -> Self {
         let key = key.into();
-        let guard = ENV_LOCK.lock().unwrap_or_else(PoisonError::into_inner);
+        let guard = get_env_lock().lock().await;
 
         // Store old value for restoration
         let old_value = env::var(&key).ok();
@@ -133,6 +154,47 @@ impl ScopedEnv {
         Self {
             key,
             old_value,
+            _guard: guard,
+        }
+    }
+
+    /// Remove multiple environment variables at once
+    ///
+    /// **IMPORTANT**: This acquires a single lock for all variables to avoid deadlock.
+    /// Do NOT create multiple `ScopedEnv::remove()` instances simultaneously,
+    /// as they will deadlock trying to acquire the same global lock.
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// use songbird_test_utils::ScopedEnv;
+    ///
+    /// # async fn example() {
+    /// // ✅ CORRECT: Remove multiple vars with single lock
+    /// let _env = ScopedEnv::remove_multiple(["VAR1", "VAR2"]).await;
+    ///
+    /// // ❌ WRONG: This will DEADLOCK!
+    /// // let _env1 = ScopedEnv::remove("VAR1").await;
+    /// // let _env2 = ScopedEnv::remove("VAR2").await;
+    /// # }
+    /// ```
+    pub async fn remove_multiple<I, K>(keys: I) -> ScopedEnvMultiple
+    where
+        I: IntoIterator<Item = K>,
+        K: Into<String>,
+    {
+        let guard = get_env_lock().lock().await;
+
+        let mut restorations = Vec::new();
+        for key in keys {
+            let key_string = key.into();
+            let old_value = env::var(&key_string).ok();
+            env::remove_var(&key_string);
+            restorations.push((key_string, old_value));
+        }
+
+        ScopedEnvMultiple {
+            restorations,
             _guard: guard,
         }
     }
@@ -154,7 +216,7 @@ impl Drop for ScopedEnv {
 #[must_use = "ScopedEnvMultiple must be held until cleanup is desired"]
 pub struct ScopedEnvMultiple {
     restorations: Vec<(String, Option<String>)>,
-    _guard: std::sync::MutexGuard<'static, ()>,
+    _guard: tokio::sync::MutexGuard<'static, ()>,
 }
 
 impl Drop for ScopedEnvMultiple {
@@ -169,12 +231,18 @@ impl Drop for ScopedEnvMultiple {
     }
 }
 
+#[allow(
+    clippy::unwrap_used,
+    clippy::expect_used,
+    clippy::unnecessary_wraps,
+    clippy::field_reassign_with_default
+)]
 #[cfg(test)]
 mod tests {
     use super::*;
 
-    #[test]
-    fn test_scoped_env_set_and_cleanup() {
+    #[tokio::test]
+    async fn test_scoped_env_set_and_cleanup() {
         let test_key = "SONGBIRD_TEST_SCOPED_ENV_1";
 
         // Ensure clean state
@@ -182,7 +250,7 @@ mod tests {
         assert!(env::var(test_key).is_err());
 
         {
-            let _env = ScopedEnv::set(test_key, "test_value");
+            let _env = ScopedEnv::set(test_key, "test_value").await;
             assert_eq!(env::var(test_key).unwrap(), "test_value");
         }
 
@@ -190,15 +258,15 @@ mod tests {
         assert!(env::var(test_key).is_err());
     }
 
-    #[test]
-    fn test_scoped_env_restores_previous_value() {
+    #[tokio::test]
+    async fn test_scoped_env_restores_previous_value() {
         let test_key = "SONGBIRD_TEST_SCOPED_ENV_2";
 
         // Set initial value
         env::set_var(test_key, "original");
 
         {
-            let _env = ScopedEnv::set(test_key, "temporary");
+            let _env = ScopedEnv::set(test_key, "temporary").await;
             assert_eq!(env::var(test_key).unwrap(), "temporary");
         }
 
@@ -209,15 +277,15 @@ mod tests {
         env::remove_var(test_key);
     }
 
-    #[test]
-    fn test_scoped_env_remove() {
+    #[tokio::test]
+    async fn test_scoped_env_remove() {
         let test_key = "SONGBIRD_TEST_SCOPED_ENV_3";
 
         // Set initial value
         env::set_var(test_key, "value");
 
         {
-            let _env = ScopedEnv::remove(test_key);
+            let _env = ScopedEnv::remove(test_key).await;
             assert!(env::var(test_key).is_err());
         }
 
@@ -228,8 +296,8 @@ mod tests {
         env::remove_var(test_key);
     }
 
-    #[test]
-    fn test_scoped_env_multiple() {
+    #[tokio::test]
+    async fn test_scoped_env_multiple() {
         let keys = ["SONGBIRD_TEST_MULTI_1", "SONGBIRD_TEST_MULTI_2"];
 
         // Ensure clean state
@@ -238,7 +306,7 @@ mod tests {
         }
 
         {
-            let _envs = ScopedEnv::set_multiple([(keys[0], "value1"), (keys[1], "value2")]);
+            let _envs = ScopedEnv::set_multiple([(keys[0], "value1"), (keys[1], "value2")]).await;
 
             assert_eq!(env::var(keys[0]).unwrap(), "value1");
             assert_eq!(env::var(keys[1]).unwrap(), "value2");
@@ -250,18 +318,19 @@ mod tests {
         }
     }
 
-    #[test]
-    fn test_scoped_env_panic_safety() {
+    #[tokio::test]
+    async fn test_scoped_env_panic_safety() {
         let test_key = "SONGBIRD_TEST_SCOPED_ENV_PANIC";
 
         env::remove_var(test_key);
 
-        let result = std::panic::catch_unwind(|| {
-            let _env = ScopedEnv::set(test_key, "value");
+        let result = std::panic::AssertUnwindSafe(async move {
+            let _env = ScopedEnv::set(test_key, "value").await;
             assert_eq!(env::var(test_key).unwrap(), "value");
             panic!("Intentional panic for testing");
         });
 
+        let result = tokio::task::spawn(result).await;
         assert!(result.is_err());
 
         // Should still be cleaned up despite panic

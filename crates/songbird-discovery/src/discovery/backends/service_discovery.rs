@@ -568,3 +568,7 @@ impl ServiceDiscovery for UniversalServiceDiscovery {
         self
     }
 }
+
+#[cfg(test)]
+#[path = "service_discovery_tests.rs"]
+mod tests;

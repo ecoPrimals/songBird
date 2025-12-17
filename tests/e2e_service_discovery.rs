@@ -171,8 +171,13 @@ async fn test_concurrent_service_operations() -> Result<(), Box<dyn std::error::
         assert!(result.is_ok(), "Concurrent registration should succeed");
     }
     
-    // Give a moment for all registrations to settle
-    sleep(Duration::from_millis(50)).await;
+    // Wait for all registrations to be queryable (poll with timeout)
+    let all_registered = wait_for_all_services_registered(
+        &discovery,
+        5,
+        Duration::from_millis(200),
+    ).await;
+    assert!(all_registered, "All services should be registered within 200ms");
     
     // Verify all services are discoverable
     for i in 0..5 {
@@ -181,6 +186,34 @@ async fn test_concurrent_service_operations() -> Result<(), Box<dyn std::error::
     }
     
     Ok(())
+}
+
+/// Helper: Wait for all services to be registered
+async fn wait_for_all_services_registered(
+    discovery: &ServiceDiscovery<ProductionDiscoveryBackend>,
+    expected_count: usize,
+    timeout: Duration,
+) -> bool {
+    let deadline = tokio::time::Instant::now() + timeout;
+    while tokio::time::Instant::now() < deadline {
+        let mut all_found = true;
+        for i in 0..expected_count {
+            if let Ok(services) = discovery.discover_by_name(&format!("service-{}", i)).await {
+                if services.is_empty() {
+                    all_found = false;
+                    break;
+                }
+            } else {
+                all_found = false;
+                break;
+            }
+        }
+        if all_found {
+            return true;
+        }
+        tokio::time::sleep(Duration::from_millis(10)).await;
+    }
+    false
 }
 
 #[tokio::test]

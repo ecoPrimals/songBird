@@ -3,6 +3,8 @@
 //! Tests load balancing algorithms, failover, health-based routing, and edge cases
 
 #![cfg(test)]
+// Allow unwrap/expect in tests - idiomatic for test code
+#![allow(clippy::unwrap_used, clippy::expect_used)]
 
 use songbird_universal::load_balancer::{LoadBalancer, LoadBalancingStrategy};
 
@@ -17,10 +19,10 @@ async fn test_round_robin_basic() {
     let lb = LoadBalancer::new(endpoints.clone(), LoadBalancingStrategy::RoundRobin);
 
     // Should cycle through endpoints in order
-    let first = lb.get_next_endpoint().await.unwrap();
-    let second = lb.get_next_endpoint().await.unwrap();
-    let third = lb.get_next_endpoint().await.unwrap();
-    let fourth = lb.get_next_endpoint().await.unwrap();
+    let first = lb.get_next_endpoint().await.expect("should find expected value");
+    let second = lb.get_next_endpoint().await.expect("should find expected value");
+    let third = lb.get_next_endpoint().await.expect("should find expected value");
+    let fourth = lb.get_next_endpoint().await.expect("should find expected value");
 
     assert_eq!(first, endpoints[0]);
     assert_eq!(second, endpoints[1]);
@@ -36,7 +38,7 @@ async fn test_round_robin_single_endpoint() {
 
     // Should always return the same endpoint
     for _ in 0..5 {
-        let endpoint = lb.get_next_endpoint().await.unwrap();
+        let endpoint = lb.get_next_endpoint().await.expect("should find expected value");
         assert_eq!(endpoint, endpoints[0]);
     }
 }
@@ -49,7 +51,7 @@ async fn test_empty_endpoints() {
 
     let result = lb.get_next_endpoint().await;
     assert!(result.is_err());
-    assert_eq!(result.unwrap_err(), "No endpoints configured");
+    assert_eq!(result.expect_err("testing error case"), "No endpoints configured");
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
@@ -64,7 +66,7 @@ async fn test_all_endpoints_unavailable() {
 
     let result = lb.get_next_endpoint().await;
     assert!(result.is_err());
-    assert_eq!(result.unwrap_err(), "No available endpoints");
+    assert_eq!(result.expect_err("testing error case"), "No available endpoints");
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
@@ -81,9 +83,9 @@ async fn test_endpoint_failover() {
     lb.mark_endpoint_unavailable(&endpoints[0]).await;
 
     // Should skip unavailable endpoint
-    let first = lb.get_next_endpoint().await.unwrap();
-    let second = lb.get_next_endpoint().await.unwrap();
-    let third = lb.get_next_endpoint().await.unwrap();
+    let first = lb.get_next_endpoint().await.expect("should find expected value");
+    let second = lb.get_next_endpoint().await.expect("should find expected value");
+    let third = lb.get_next_endpoint().await.expect("should find expected value");
 
     // Should only cycle through available endpoints
     assert_ne!(first, endpoints[0]);
@@ -102,7 +104,7 @@ async fn test_endpoint_recovery() {
     lb.mark_endpoint_available(&endpoints[0]).await;
 
     // Endpoint should be available again
-    let result = lb.get_next_endpoint().await.unwrap();
+    let result = lb.get_next_endpoint().await.expect("should find expected value");
     // Should successfully return an endpoint (either one is fine)
     assert!(result == endpoints[0] || result == endpoints[1]);
 }
@@ -124,7 +126,7 @@ async fn test_health_based_strategy() {
 
     // Should consistently select healthiest endpoint
     for _ in 0..5 {
-        let endpoint = lb.get_next_endpoint().await.unwrap();
+        let endpoint = lb.get_next_endpoint().await.expect("should find expected value");
         assert_eq!(endpoint, endpoints[1]); // service-2 has best health (0.9)
     }
 }
@@ -142,7 +144,7 @@ async fn test_least_loaded_strategy() {
     // LeastLoaded strategy should return valid endpoints
     // (actual load tracking would require internal endpoint state manipulation)
     for _ in 0..5 {
-        let endpoint = lb.get_next_endpoint().await.unwrap();
+        let endpoint = lb.get_next_endpoint().await.expect("should find expected value");
         assert!(endpoints.contains(&endpoint));
     }
 }
@@ -160,7 +162,7 @@ async fn test_random_strategy() {
     // Get multiple endpoints and verify they're all valid
     let mut selected = vec![];
     for _ in 0..10 {
-        let endpoint = lb.get_next_endpoint().await.unwrap();
+        let endpoint = lb.get_next_endpoint().await.expect("should find expected value");
         assert!(endpoints.contains(&endpoint));
         selected.push(endpoint);
     }
@@ -202,7 +204,7 @@ async fn test_multiple_strategies() {
         LoadBalancingStrategy::Random,
     ] {
         let lb = LoadBalancer::new(endpoints.clone(), strategy);
-        let endpoint = lb.get_next_endpoint().await.unwrap();
+        let endpoint = lb.get_next_endpoint().await.expect("should find expected value");
         assert!(endpoints.contains(&endpoint));
     }
 }
@@ -230,9 +232,9 @@ async fn test_concurrent_access() {
 
     // All tasks should complete successfully
     for handle in handles {
-        let result = handle.await.unwrap();
+        let result = handle.await.expect("test precondition");
         assert!(result.is_ok());
-        assert!(endpoints.contains(&result.unwrap()));
+        assert!(endpoints.contains(&result.expect("test precondition")));
     }
 }
 

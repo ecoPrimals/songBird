@@ -11,6 +11,8 @@
 #![allow(clippy::similar_names)]
 #![allow(clippy::too_many_lines)]
 #![allow(clippy::module_name_repetitions)]
+// Allow unwrap/expect in tests - idiomatic for test code
+#![allow(clippy::unwrap_used, clippy::expect_used)]
 
 //!
 //! Simple tests for the discovery module to improve test coverage
@@ -85,7 +87,7 @@ fn test_service_info_creation() {
         version: "1.0.0".to_string(),
         service_type: "web_service".to_string(),
         description: Some("A test service".to_string()),
-        endpoints: endpoints.clone(),
+        endpoints: endpoints,
         health_check_endpoint: Some("/health".to_string()),
         metadata: metadata.clone(),
         tags: vec!["test".to_string(), "api".to_string()],
@@ -181,7 +183,7 @@ fn test_service_info_serialization() -> Result<(), Box<dyn std::error::Error>> {
         version: "0.1.0".to_string(),
         service_type: "other".to_string(),
         description: Some("Test serialization".to_string()),
-        endpoints: endpoints.clone(),
+        endpoints: endpoints,
         health_check_endpoint: None,
         metadata: metadata.clone(),
         tags: vec!["serialize".to_string()],

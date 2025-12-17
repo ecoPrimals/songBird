@@ -1,3 +1,6 @@
+// Allow unwrap/expect in tests - idiomatic for test code
+#![allow(clippy::unwrap_used, clippy::expect_used)]
+
 //! Async Integration Tests for Storage Adapter
 //!
 //! **Goal**: Test async network methods with mock HTTP servers
@@ -29,7 +32,7 @@ async fn test_from_discovery_with_env_variable() {
     let adapter = StorageAdapter::from_discovery().await;
     assert!(adapter.is_ok(), "Should create adapter from env var");
 
-    let adapter = adapter.unwrap();
+    let adapter = adapter.expect("test precondition");
     assert_eq!(adapter.endpoint(), &endpoint);
 
     // Cleanup
@@ -62,7 +65,7 @@ async fn test_from_discovery_fallback_to_default() {
     let adapter = StorageAdapter::from_discovery().await;
     assert!(adapter.is_ok(), "Should create adapter with fallback");
 
-    let adapter = adapter.unwrap();
+    let adapter = adapter.expect("test precondition");
     // Should have some default endpoint
     assert!(!adapter.endpoint().is_empty());
 }
@@ -94,11 +97,11 @@ async fn test_collect_metrics_success() {
         .create_async()
         .await;
 
-    let adapter = StorageAdapter::new(server.url()).unwrap();
+    let adapter = StorageAdapter::new(server.url()).expect("test precondition");
     let metrics = adapter.collect_metrics().await;
 
     assert!(metrics.is_ok(), "Should collect metrics successfully");
-    let metrics = metrics.unwrap();
+    let metrics = metrics.expect("test precondition");
     assert_eq!(metrics.total_capacity_bytes, 10000000000);
     assert_eq!(metrics.used_bytes, 3500000000);
     assert_eq!(metrics.available_bytes, 6500000000);
@@ -132,11 +135,11 @@ async fn test_collect_metrics_sets_timestamp_if_missing() {
         .create_async()
         .await;
 
-    let adapter = StorageAdapter::new(server.url()).unwrap();
+    let adapter = StorageAdapter::new(server.url()).expect("test precondition");
     let metrics = adapter.collect_metrics().await;
 
     assert!(metrics.is_ok());
-    let metrics = metrics.unwrap();
+    let metrics = metrics.expect("test precondition");
 
     // Timestamp should be set to current time
     let now = chrono::Utc::now();
@@ -149,12 +152,12 @@ async fn test_collect_metrics_sets_timestamp_if_missing() {
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_collect_metrics_network_error() {
     // Use invalid endpoint
-    let adapter = StorageAdapter::new("http://localhost:1".to_string()).unwrap();
+    let adapter = StorageAdapter::new("http://localhost:1".to_string()).expect("test precondition");
 
     let result = adapter.collect_metrics().await;
     assert!(result.is_err(), "Should fail with network error");
 
-    let err = result.unwrap_err();
+    let err = result.expect_err("testing error case");
     assert!(err.to_string().contains("Failed to reach storage provider"));
 }
 
@@ -170,11 +173,11 @@ async fn test_collect_metrics_http_error_status() {
         .create_async()
         .await;
 
-    let adapter = StorageAdapter::new(server.url()).unwrap();
+    let adapter = StorageAdapter::new(server.url()).expect("test precondition");
     let result = adapter.collect_metrics().await;
 
     assert!(result.is_err(), "Should fail with HTTP error");
-    let err = result.unwrap_err();
+    let err = result.expect_err("testing error case");
     assert!(err.to_string().contains("HTTP 503"));
 
     mock.assert_async().await;
@@ -193,11 +196,11 @@ async fn test_collect_metrics_invalid_json() {
         .create_async()
         .await;
 
-    let adapter = StorageAdapter::new(server.url()).unwrap();
+    let adapter = StorageAdapter::new(server.url()).expect("test precondition");
     let result = adapter.collect_metrics().await;
 
     assert!(result.is_err(), "Should fail with parse error");
-    let err = result.unwrap_err();
+    let err = result.expect_err("testing error case");
     assert!(err.to_string().contains("Failed to parse storage metrics"));
 
     mock.assert_async().await;
@@ -213,14 +216,18 @@ async fn test_collect_metrics_with_timeout() {
         .with_status(200)
         .with_header("content-type", "application/json")
         .with_body_from_request(|_| {
-            std::thread::sleep(Duration::from_secs(2));
+            // Note: mockito's with_body_from_request runs in sync context
+            // Using thread::sleep here is necessary for mockito compatibility
+            // The key improvement is the reduced timeout (100ms vs 1000ms)
+            std::thread::sleep(Duration::from_millis(150)); // Just over timeout
             r#"{"total_capacity_bytes":0,"used_bytes":0,"available_bytes":0,"object_count":0,"avg_read_latency_ms":0.0,"avg_write_latency_ms":0.0,"timestamp":"2025-11-18T12:00:00Z"}"#.into()
         })
         .create_async()
         .await;
 
-    let adapter =
-        StorageAdapter::new(server.url()).unwrap().with_timeout(Duration::from_millis(100)); // Very short timeout
+    let adapter = StorageAdapter::new(server.url())
+        .expect("test precondition")
+        .with_timeout(Duration::from_millis(100)); // Short timeout for fast test
 
     let result = adapter.collect_metrics().await;
     assert!(result.is_err(), "Should timeout");
@@ -255,11 +262,11 @@ async fn test_check_health_healthy() {
         .create_async()
         .await;
 
-    let adapter = StorageAdapter::new(server.url()).unwrap();
+    let adapter = StorageAdapter::new(server.url()).expect("test precondition");
     let health = adapter.check_health().await;
 
     assert!(health.is_ok());
-    assert_eq!(health.unwrap(), StorageHealth::Healthy);
+    assert_eq!(health.expect("test precondition"), StorageHealth::Healthy);
 
     mock.assert_async().await;
 }
@@ -287,11 +294,11 @@ async fn test_check_health_warning_high_usage() {
         .create_async()
         .await;
 
-    let adapter = StorageAdapter::new(server.url()).unwrap();
+    let adapter = StorageAdapter::new(server.url()).expect("test precondition");
     let health = adapter.check_health().await;
 
     assert!(health.is_ok());
-    assert_eq!(health.unwrap(), StorageHealth::Warning);
+    assert_eq!(health.expect("test precondition"), StorageHealth::Warning);
 
     mock.assert_async().await;
 }
@@ -319,11 +326,11 @@ async fn test_check_health_warning_high_latency() {
         .create_async()
         .await;
 
-    let adapter = StorageAdapter::new(server.url()).unwrap();
+    let adapter = StorageAdapter::new(server.url()).expect("test precondition");
     let health = adapter.check_health().await;
 
     assert!(health.is_ok());
-    assert_eq!(health.unwrap(), StorageHealth::Warning);
+    assert_eq!(health.expect("test precondition"), StorageHealth::Warning);
 
     mock.assert_async().await;
 }
@@ -351,18 +358,18 @@ async fn test_check_health_critical() {
         .create_async()
         .await;
 
-    let adapter = StorageAdapter::new(server.url()).unwrap();
+    let adapter = StorageAdapter::new(server.url()).expect("test precondition");
     let health = adapter.check_health().await;
 
     assert!(health.is_ok());
-    assert_eq!(health.unwrap(), StorageHealth::Critical);
+    assert_eq!(health.expect("test precondition"), StorageHealth::Critical);
 
     mock.assert_async().await;
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_check_health_network_error() {
-    let adapter = StorageAdapter::new("http://localhost:1".to_string()).unwrap();
+    let adapter = StorageAdapter::new("http://localhost:1".to_string()).expect("test precondition");
 
     let result = adapter.check_health().await;
     assert!(result.is_err(), "Should propagate network error from collect_metrics");
@@ -396,17 +403,17 @@ async fn test_full_storage_workflow() {
         .create_async()
         .await;
 
-    let adapter = StorageAdapter::new(server.url()).unwrap();
+    let adapter = StorageAdapter::new(server.url()).expect("test precondition");
 
     // 1. Check health
     let health = adapter.check_health().await;
     assert!(health.is_ok());
-    assert_eq!(health.unwrap(), StorageHealth::Healthy);
+    assert_eq!(health.expect("test precondition"), StorageHealth::Healthy);
 
     // 2. Get metrics directly
     let metrics = adapter.collect_metrics().await;
     assert!(metrics.is_ok());
-    let metrics = metrics.unwrap();
+    let metrics = metrics.expect("test precondition");
     assert_eq!(metrics.total_capacity_bytes, 8000000000);
 
     metrics_mock.assert_async().await;
@@ -436,7 +443,7 @@ async fn test_concurrent_requests() {
         .create_async()
         .await;
 
-    let adapter = StorageAdapter::new(server.url()).unwrap();
+    let adapter = StorageAdapter::new(server.url()).expect("test precondition");
 
     // Fire off 3 concurrent requests
     let futures =
@@ -465,7 +472,7 @@ async fn test_retry_on_transient_failure() {
         .create_async()
         .await;
 
-    let adapter = StorageAdapter::new(server.url()).unwrap();
+    let adapter = StorageAdapter::new(server.url()).expect("test precondition");
 
     // First attempt should fail
     let result1 = adapter.collect_metrics().await;

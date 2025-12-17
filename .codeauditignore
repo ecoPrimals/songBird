@@ -1,0 +1,39 @@
+# Code audit ignore - exclude these from audit scans to reduce false positives
+
+# Test code (not production)
+tests/
+crates/*/tests/
+*_tests.rs
+*_test.rs
+
+# Benchmarks (not production)
+benches/
+crates/*/benches/
+*_bench.rs
+*_benchmark.rs
+
+# Examples and demos (not production)
+examples/
+demos/
+showcase/
+crates/*/examples/
+
+# Configuration examples (not production config)
+config/*.example
+config/*.template
+*.toml.example
+
+# Documentation
+docs/
+*.md
+specs/
+
+# Scripts and utilities
+scripts/
+
+# Build artifacts (already in .gitignore but worth noting)
+target/
+*.rlib
+*.so
+*.bin
+

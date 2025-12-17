@@ -59,14 +59,18 @@ tokio-stream = "0.1"
 
 # HTTP server for web dashboard
 axum = { version = "0.7", features = ["multipart", "ws"] }
+axum-server = { version = "0.7", features = ["tls-rustls"] }  # TLS support for axum
 tower = "0.5"
 tower-http = { version = "0.5", features = ["cors", "fs", "trace", "limit"] }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 
 # tarpc for high-performance native RPC (Phase 3)
-tarpc = { workspace = true }
+tarpc = { workspace = true, features = ["full"] }
 bincode = { workspace = true }
+jsonrpsee = { version = "0.26.0", features = ["server", "client"] }
+tokio-util = { version = "0.7.17", features = ["codec"] }
+tokio-serde = { version = "0.8.0", features = ["bincode"] }
 
 [dev-dependencies]
 songbird-test-utils = { path = "../songbird-test-utils" }

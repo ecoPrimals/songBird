@@ -1,3 +1,6 @@
+// Allow unwrap/expect in tests - idiomatic for test code
+#![allow(clippy::unwrap_used, clippy::expect_used)]
+
 //! Sprint 1: CLI Coverage Boost Tests
 //! Target: 30% → 60% coverage
 //!
@@ -45,7 +48,7 @@ fn test_command_validation() {
     let valid_commands = vec!["start", "stop", "status", "config", "version"];
     for cmd in valid_commands {
         assert!(!cmd.is_empty());
-        assert!(cmd.chars().all(|c| c.is_alphanumeric()));
+        assert!(cmd.chars().all(char::is_alphanumeric));
     }
 }
 
@@ -159,7 +162,7 @@ fn test_subcommands() {
     let subcommands = vec!["start", "stop", "restart", "status", "config", "version", "health"];
     for cmd in subcommands {
         assert!(!cmd.is_empty());
-        assert!(cmd.chars().all(|c| c.is_alphanumeric()));
+        assert!(cmd.chars().all(char::is_alphanumeric));
     }
 }
 

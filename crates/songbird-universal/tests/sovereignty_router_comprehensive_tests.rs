@@ -6,6 +6,8 @@
 //! Tests all routing, scoring, and sovereignty assessment functionality
 
 #![allow(clippy::cast_precision_loss)]
+// Allow unwrap/expect in tests - idiomatic for test code
+#![allow(clippy::unwrap_used, clippy::expect_used)]
 
 use serde_json::json;
 use songbird_test_utils::test_discovery_port;
@@ -144,7 +146,7 @@ fn test_sovereignty_router_default_trait() -> SongbirdResult<()> {
 fn test_path_sovereignty_score_single_segment() {
     let service = create_test_service(
         "test-service",
-        format!("http://localhost:{}", test_orchestrator_port()),
+        &format!("http://localhost:{}", test_orchestrator_port()),
     );
 
     let segment = PathSegment {
@@ -452,7 +454,7 @@ fn test_path_segment_with_metadata() {
 fn test_routing_path_creation() {
     let service = create_test_service(
         "test-service",
-        format!("http://localhost:{}", test_orchestrator_port()),
+        &format!("http://localhost:{}", test_orchestrator_port()),
     );
 
     let segment = PathSegment {
@@ -598,9 +600,7 @@ async fn test_find_sovereignty_aware_paths_empty_services() -> SongbirdResult<()
     let result = router.find_sovereignty_aware_paths(&request, &services).await;
 
     assert!(result.is_ok());
-    let paths = result.ok_or_else(|| {
-        SongbirdError::configuration("Missing performance configuration".to_string())
-    })?;
+    let paths = result?;
     assert_eq!(paths.len(), 0);
     Ok(())
 }
@@ -624,9 +624,7 @@ async fn test_find_sovereignty_aware_paths_single_service() -> SongbirdResult<()
     let result = router.find_sovereignty_aware_paths(&request, &services).await;
 
     assert!(result.is_ok());
-    let paths = result.ok_or_else(|| {
-        SongbirdError::configuration("Missing performance configuration".to_string())
-    })?;
+    let paths = result?;
     // With default service assessment (ModeratelySovereign = 0.6),
     // paths are filtered out by compliance level check (requires >= 0.7)
     // This is expected behavior - the router enforces minimum compliance standards
@@ -658,9 +656,7 @@ async fn test_find_sovereignty_aware_paths_multiple_services() -> SongbirdResult
     let result = router.find_sovereignty_aware_paths(&request, &services).await;
 
     assert!(result.is_ok());
-    let paths = result.ok_or_else(|| {
-        SongbirdError::configuration("Missing performance configuration".to_string())
-    })?;
+    let paths = result?;
     // With default service assessment (ModeratelySovereign = 0.6),
     // all paths are filtered out by compliance level check (requires >= 0.7)
     assert_eq!(paths.len(), 0);

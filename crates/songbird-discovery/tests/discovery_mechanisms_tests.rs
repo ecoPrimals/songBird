@@ -409,7 +409,7 @@ async fn test_service_endpoint_formats() {
         "https://service.internal:443",
     ];
 
-    for (_i, endpoint) in endpoints.iter().enumerate() {
+    for endpoint in endpoints.iter() {
         let service = create_test_service(
             &format!("srv-{}", endpoint.len()),
             "endpoint-test",

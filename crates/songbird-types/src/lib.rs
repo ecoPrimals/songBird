@@ -76,6 +76,11 @@ pub mod service;
 pub mod traits;
 pub mod types;
 pub mod zero_copy;
+pub mod zero_copy_request;
+pub mod zero_copy_service;
+
+// Modern safe buffer - 100% safe Rust alternative to unsafe buffers
+pub mod modern_safe_buffer;
 
 // Backward compatibility alias for unified_constants
 // This allows old code using `songbird_types::unified_constants` to continue working

@@ -80,3 +80,7 @@ async fn reset_config(yes: bool) -> SongbirdResult<()> {
     println!("✅ Configuration reset complete");
     Ok(())
 }
+
+#[cfg(test)]
+#[path = "config_tests.rs"]
+mod tests;

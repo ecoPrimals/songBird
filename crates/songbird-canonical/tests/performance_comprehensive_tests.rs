@@ -1,3 +1,6 @@
+// Allow unwrap/expect in tests - idiomatic for test code
+#![allow(clippy::unwrap_used, clippy::expect_used)]
+
 //! Comprehensive tests for Canonical Performance Monitoring
 //!
 //! This test suite provides thorough coverage of the performance
@@ -9,19 +12,17 @@ use songbird_types::{SongbirdError, SongbirdResult};
 // ========== Performance Monitoring Initialization Tests ==========
 
 #[test]
-fn test_initialize_performance_monitoring() -> SongbirdResult<()> {
+fn test_initialize_performance_monitoring() {
     // Should complete without panicking
     initialize_performance_monitoring();
-    Ok(())
 }
 
 #[test]
-fn test_initialize_performance_monitoring_idempotent() -> SongbirdResult<()> {
+fn test_initialize_performance_monitoring_idempotent() {
     // Should be safe to call multiple times
     initialize_performance_monitoring();
     initialize_performance_monitoring();
     initialize_performance_monitoring();
-    Ok(())
 }
 
 #[test]

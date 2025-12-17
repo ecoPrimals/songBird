@@ -1,4 +1,7 @@
 #![cfg(feature = "tests-incomplete")]
+// Allow unwrap/expect in tests - idiomatic for test code
+#![allow(clippy::unwrap_used, clippy::expect_used)]
+
 //! NOTE: Disabled - requires unimplemented methods
 //!
 //! Integration workflow tests
@@ -151,54 +154,46 @@ async fn test_workflow_timeout() {
 }
 
 #[tokio::test]
-#[ignore = "Placeholder test - functionality not yet implemented"]
+#[ignore = "Placeholder test - functionality not yet implemented: execute_capability_workflow(), get_workflow_metrics()"]
 async fn test_workflow_metrics_collection() {
     let adapter = UniversalCapabilityAdapter::new(DiscoveryConfig::default());
 
-    // Execute workflow
-    let _ = adapter.execute_capability_workflow("compute").await;
-
-    // Should collect metrics
-    let metrics = adapter.get_workflow_metrics().await;
-    assert!(metrics.is_ok());
+    // TODO: Implement execute_capability_workflow() on UniversalCapabilityAdapter
+    // TODO: Implement get_workflow_metrics() on UniversalCapabilityAdapter
+    // let _ = adapter.execute_capability_workflow("compute").await;
+    // let metrics = adapter.get_workflow_metrics().await;
+    // assert!(metrics.is_ok());
 }
 
 #[tokio::test]
-#[ignore = "Placeholder test - functionality not yet implemented"]
+#[ignore = "Placeholder test - functionality not yet implemented: execute_conditional()"]
 async fn test_conditional_capability_execution() {
     let adapter = UniversalCapabilityAdapter::new(DiscoveryConfig::default());
 
-    // Execute capability B only if capability A succeeds
-    let result =
-        adapter.execute_conditional("capability_a", "capability_b", |result| result.is_ok()).await;
-
-    assert!(result.is_ok() || result.is_err());
+    // TODO: Implement execute_conditional() on UniversalCapabilityAdapter
+    // let result = adapter.execute_conditional("capability_a", "capability_b", |result| result.is_ok()).await;
+    // assert!(result.is_ok() || result.is_err());
 }
 
 #[tokio::test]
-#[ignore = "Placeholder test - functionality not yet implemented"]
+#[ignore = "Placeholder test - functionality not yet implemented: start_workflow(), resume_workflow()"]
 async fn test_workflow_state_persistence() {
     let adapter = UniversalCapabilityAdapter::new(DiscoveryConfig::default());
 
-    // Start workflow
-    let workflow_id = adapter.start_workflow("long_workflow").await.ok();
-
-    if let Some(id) = workflow_id {
-        // Should be able to resume
-        let resumed = adapter.resume_workflow(id).await;
-        assert!(resumed.is_ok() || resumed.is_err());
-    }
+    // TODO: Implement start_workflow() and resume_workflow() on UniversalCapabilityAdapter
+    // let workflow_id = adapter.start_workflow("long_workflow").await.ok();
+    // if let Some(id) = workflow_id {
+    //     let resumed = adapter.resume_workflow(id).await;
+    //     assert!(resumed.is_ok() || resumed.is_err());
+    // }
 }
 
 #[tokio::test]
-#[ignore = "Placeholder test - functionality not yet implemented"]
+#[ignore = "Placeholder test - functionality not yet implemented: execute_branched_workflow()"]
 async fn test_workflow_branching() {
     let adapter = UniversalCapabilityAdapter::new(DiscoveryConfig::default());
 
-    // Workflow with multiple branches
-    let result = adapter
-        .execute_branched_workflow(vec![vec!["storage", "compute"], vec!["network", "ai"]])
-        .await;
-
-    assert!(result.is_ok() || result.is_err());
+    // TODO: Implement execute_branched_workflow() on UniversalCapabilityAdapter
+    // let result = adapter.execute_branched_workflow(vec![vec!["storage", "compute"], vec!["network", "ai"]]).await;
+    // assert!(result.is_ok() || result.is_err());
 }

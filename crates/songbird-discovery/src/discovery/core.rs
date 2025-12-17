@@ -390,11 +390,11 @@ mod tests {
     fn test_canonical_discovery_config_serialization() -> Result<(), Box<dyn std::error::Error>> {
         let config = CanonicalDiscoveryConfig::consul_config("http://consul:8500".to_string());
         let json = serde_json::to_string(&config)
-            .map_err(|e| SongbirdError::configuration(format!("Failed to serialize: {}", e)))?;
+            .map_err(|e| SongbirdError::configuration(format!("Failed to serialize: {e}")))?;
         let deserialized: CanonicalDiscoveryConfig =
             serde_json::from_str(&json).map_err(|e| SongbirdError::Serialization {
                 format: Some("JSON".to_string()),
-                message: format!("Failed to deserialize: {}", e),
+                message: format!("Failed to deserialize: {e}"),
                 debug_info: None,
             })?;
 
@@ -543,11 +543,11 @@ mod tests {
         .with_health_status("healthy".to_string());
 
         let json = serde_json::to_string(&service)
-            .map_err(|e| SongbirdError::configuration(format!("Failed to serialize: {}", e)))?;
+            .map_err(|e| SongbirdError::configuration(format!("Failed to serialize: {e}")))?;
         let deserialized: ServiceInstance =
             serde_json::from_str(&json).map_err(|e| SongbirdError::Serialization {
                 format: Some("JSON".to_string()),
-                message: format!("Failed to deserialize: {}", e),
+                message: format!("Failed to deserialize: {e}"),
                 debug_info: None,
             })?;
 
@@ -561,8 +561,7 @@ mod tests {
 
     #[test]
     fn test_trust_level_all_variants() {
-        let levels =
-            vec![TrustLevel::High, TrustLevel::Medium, TrustLevel::Low, TrustLevel::Unknown];
+        let levels = [TrustLevel::High, TrustLevel::Medium, TrustLevel::Low, TrustLevel::Unknown];
 
         assert_eq!(levels.len(), 4);
     }
@@ -571,17 +570,17 @@ mod tests {
     fn test_trust_level_serialization() -> Result<(), Box<dyn std::error::Error>> {
         let level = TrustLevel::High;
         let json = serde_json::to_string(&level)
-            .map_err(|e| SongbirdError::configuration(format!("Failed to serialize: {}", e)))?;
+            .map_err(|e| SongbirdError::configuration(format!("Failed to serialize: {e}")))?;
         let deserialized: TrustLevel =
             serde_json::from_str(&json).map_err(|e| SongbirdError::Serialization {
                 format: Some("JSON".to_string()),
-                message: format!("Failed to deserialize: {}", e),
+                message: format!("Failed to deserialize: {e}"),
                 debug_info: None,
             })?;
 
         // Can't directly compare enums without PartialEq, so serialize both and compare
         let json2 = serde_json::to_string(&deserialized)
-            .map_err(|e| SongbirdError::configuration(format!("Failed to serialize: {}", e)))?;
+            .map_err(|e| SongbirdError::configuration(format!("Failed to serialize: {e}")))?;
         assert_eq!(json, json2);
         Ok(())
     }

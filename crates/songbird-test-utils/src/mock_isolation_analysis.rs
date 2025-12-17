@@ -172,6 +172,7 @@ pub fn get_discovery() -> Box<dyn DiscoveryService> {
 }
 
 // Mock ONLY in tests
+#[allow(clippy::unwrap_used, clippy::expect_used, clippy::unnecessary_wraps, clippy::field_reassign_with_default)]
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -244,6 +245,7 @@ impl PrimalAdapter for RealPrimalAdapter {
     }
 }
 
+#[allow(clippy::unwrap_used, clippy::expect_used, clippy::unnecessary_wraps, clippy::field_reassign_with_default)]
 #[cfg(test)]
 mod tests {
     use super::*;

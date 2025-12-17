@@ -167,7 +167,7 @@ impl CapabilityRouter {
         task: &Task,
     ) -> SongbirdResult<RoutingDecision> {
         // Determine required capability type
-        let capability_type = self.determine_capability_type(task);
+        let capability_type = Self::determine_capability_type(task);
         debug!("Task requires capability: {:?}", capability_type);
 
         // Format capability type for logging and error messages
@@ -304,14 +304,16 @@ impl CapabilityRouter {
     }
 
     /// Determine required capability type from task
-    fn determine_capability_type(&self, task: &Task) -> CapabilityType {
+    ///
+    /// Takes `&Task` but doesn't need `&self` - made into associated function for clarity
+    fn determine_capability_type(task: &Task) -> CapabilityType {
         // GPU required → Compute (Toadstool)
         if task.resource_requirements.as_ref().is_some_and(|r| r.gpu_required) {
             return CapabilityType::Compute;
         }
 
-        // Match on task type
-        match task.task_type.as_str() {
+        // Match on task type (Arc<str> derefs to &str)
+        match task.task_type.as_ref() {
             // Compute tasks (Toadstool)
             "ml_training" | "gpu_compute" | "batch_processing" | "video_processing" => {
                 CapabilityType::Compute
@@ -334,11 +336,13 @@ impl CapabilityRouter {
     /// Check if local Songbird instance has capacity
     ///
     /// FUTURE ENHANCEMENT: Implement resource-aware capacity checking
+    ///
     /// Planned metrics:
     /// - Current CPU usage (via sysinfo crate)
     /// - Available memory (RAM check)
     /// - Active task count (from job manager)
     /// - Load average (system load)
+    ///
     /// Priority: Medium (Week 4-5 optimization phase)
     async fn has_local_capacity(&self) -> bool {
         // SIMPLIFIED: Currently assumes capacity is always available
@@ -350,41 +354,35 @@ impl CapabilityRouter {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::core::routing::types::TaskBuilder;
 
     #[test]
     fn test_determine_capability_type_gpu() {
-        let router = create_test_router();
         let task = Task::builder("ml_training").with_gpu().build();
-        assert_eq!(router.determine_capability_type(&task), CapabilityType::Compute);
+        assert_eq!(CapabilityRouter::determine_capability_type(&task), CapabilityType::Compute);
     }
 
     #[test]
     fn test_determine_capability_type_ml() {
-        let router = create_test_router();
         let task = Task::new("ml_training");
-        assert_eq!(router.determine_capability_type(&task), CapabilityType::Compute);
+        assert_eq!(CapabilityRouter::determine_capability_type(&task), CapabilityType::Compute);
     }
 
     #[test]
     fn test_determine_capability_type_security() {
-        let router = create_test_router();
         let task = Task::new("encrypt");
-        assert_eq!(router.determine_capability_type(&task), CapabilityType::Security);
+        assert_eq!(CapabilityRouter::determine_capability_type(&task), CapabilityType::Security);
     }
 
     #[test]
     fn test_determine_capability_type_ai() {
-        let router = create_test_router();
         let task = Task::new("inference");
-        assert_eq!(router.determine_capability_type(&task), CapabilityType::Ai);
+        assert_eq!(CapabilityRouter::determine_capability_type(&task), CapabilityType::Ai);
     }
 
     #[test]
     fn test_determine_capability_type_storage() {
-        let router = create_test_router();
         let task = Task::new("store");
-        assert_eq!(router.determine_capability_type(&task), CapabilityType::Storage);
+        assert_eq!(CapabilityRouter::determine_capability_type(&task), CapabilityType::Storage);
     }
 
     fn create_test_router() -> CapabilityRouter {

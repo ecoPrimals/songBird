@@ -23,6 +23,8 @@
 #![allow(clippy::cast_possible_truncation)]
 #![allow(clippy::cast_sign_loss)]
 #![allow(clippy::needless_pass_by_value)]
+// Allow unwrap/expect in tests - idiomatic for test code
+#![allow(clippy::unwrap_used, clippy::expect_used)]
 
 //!
 //! Tests for plugin, capability, health, and event types.
@@ -386,7 +388,7 @@ fn test_health_status_with_response_time() {
 fn test_health_status_with_metadata() {
     let status = HealthStatus::healthy().with_metadata("cpu", "25%".to_string());
     assert!(status.message.is_some());
-    assert!(status.message.unwrap().contains("cpu=25%"));
+    assert!(status.message.expect("test precondition").contains("cpu=25%"));
 }
 
 #[test]
@@ -545,7 +547,7 @@ fn test_registry_event_plugin_id() {
     });
 
     assert!(event.plugin_id().is_some());
-    assert_eq!(event.plugin_id().unwrap().as_str(), "test");
+    assert_eq!(event.plugin_id().expect("test precondition").as_str(), "test");
 }
 
 #[test]

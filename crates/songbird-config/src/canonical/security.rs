@@ -632,3 +632,7 @@ impl Default for FallbackConfig {
         }
     }
 }
+
+#[cfg(test)]
+#[path = "security_tests.rs"]
+mod tests;

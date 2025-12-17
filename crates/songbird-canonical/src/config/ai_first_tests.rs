@@ -25,9 +25,9 @@ fn test_ai_first_config_default() -> SongbirdResult<()> {
 fn test_ai_first_config_serialization() -> SongbirdResult<()> {
     let config = AIFirstConfig::default();
     let json = serde_json::to_string(&config)
-        .map_err(|e| SongbirdError::configuration(format!("Serialization failed: {}", e)))?;
+        .map_err(|e| SongbirdError::configuration(format!("Serialization failed: {e}")))?;
     let deserialized: AIFirstConfig = serde_json::from_str(&json)
-        .map_err(|e| SongbirdError::configuration(format!("Deserialization failed: {}", e)))?;
+        .map_err(|e| SongbirdError::configuration(format!("Deserialization failed: {e}")))?;
 
     assert_eq!(config.enable_ai_responses, deserialized.enable_ai_responses);
     Ok(())
@@ -213,9 +213,9 @@ fn test_classification_strategy_variants() -> SongbirdResult<()> {
 fn test_classification_strategy_serialization() -> SongbirdResult<()> {
     let strategy = ClassificationStrategy::Hybrid;
     let json = serde_json::to_string(&strategy)
-        .map_err(|e| SongbirdError::configuration(format!("Serialization failed: {}", e)))?;
+        .map_err(|e| SongbirdError::configuration(format!("Serialization failed: {e}")))?;
     let deserialized: ClassificationStrategy = serde_json::from_str(&json)
-        .map_err(|e| SongbirdError::configuration(format!("Deserialization failed: {}", e)))?;
+        .map_err(|e| SongbirdError::configuration(format!("Deserialization failed: {e}")))?;
 
     // Verify deserialization works
     let _ = deserialized;

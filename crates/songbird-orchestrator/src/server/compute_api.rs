@@ -189,8 +189,9 @@ async fn submit_compute_task(
 
     // Execute the task based on routing decision
     // All execution is now async with proper status tracking
-    let router_clone = state.router.clone();
-    let active_jobs_clone = state.active_jobs.clone();
+    // Note: Arc clones are cheap (pointer + atomic increment), not deep clones
+    let router_clone = Arc::clone(&state.router);
+    let active_jobs_clone = Arc::clone(&state.active_jobs);
     let task_clone = req.task.clone();
 
     match &routing_decision {
@@ -459,7 +460,9 @@ mod tests {
             timeout_secs: Some(30),
         };
 
-        let response = submit_compute_task(State(state.clone()), Json(req)).await.unwrap();
+        let response = submit_compute_task(State(state.clone()), Json(req))
+            .await
+            .expect("Test task submission should succeed");
 
         assert_eq!(response.status, "routing");
         assert_eq!(response.routed_to, "local");

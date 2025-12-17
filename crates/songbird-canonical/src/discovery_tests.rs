@@ -58,9 +58,9 @@ fn test_service_info_serialization() -> SongbirdResult<()> {
         .with_metadata("env".to_string(), "production".to_string());
 
     let json = serde_json::to_string(&service)
-        .map_err(|e| SongbirdError::configuration(format!("Serialization failed: {}", e)))?;
+        .map_err(|e| SongbirdError::configuration(format!("Serialization failed: {e}")))?;
     let deserialized: ServiceInfo = serde_json::from_str(&json)
-        .map_err(|e| SongbirdError::configuration(format!("Deserialization failed: {}", e)))?;
+        .map_err(|e| SongbirdError::configuration(format!("Deserialization failed: {e}")))?;
 
     assert_eq!(service, deserialized);
     Ok(())
@@ -102,7 +102,7 @@ fn test_service_info_metadata_override() -> SongbirdResult<()> {
 fn test_service_info_debug_format() -> SongbirdResult<()> {
     let service = ServiceInfo::new("debug-test".to_string(), "127.0.0.1".to_string(), 8080);
 
-    let debug_str = format!("{:?}", service);
+    let debug_str = format!("{service:?}");
     assert!(debug_str.contains("debug-test"));
     assert!(debug_str.contains("127.0.0.1"));
     assert!(debug_str.contains("8080"));

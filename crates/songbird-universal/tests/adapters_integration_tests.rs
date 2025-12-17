@@ -1,3 +1,6 @@
+// Allow unwrap/expect in tests - idiomatic for test code
+#![allow(clippy::unwrap_used, clippy::expect_used)]
+
 //! Comprehensive Integration Tests for Universal Adapters
 //!
 //! Tests multi-tier discovery, health monitoring, and cross-adapter interactions.

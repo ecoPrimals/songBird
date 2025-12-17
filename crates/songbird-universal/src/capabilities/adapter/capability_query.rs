@@ -5,13 +5,14 @@
 //!
 //! Part of the smart refactoring from monolithic adapter.rs
 
+use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::RwLock;
 use tracing::{debug, info};
 
 use super::super::error::CapabilityError;
 use super::super::registry::CapabilityRegistry;
-use super::super::types::{Capability, PrimalType};
+use super::super::types::{Capability, PrimalType, QoSMetrics};
 
 /// Capability query component
 #[derive(Debug, Clone)]
@@ -23,7 +24,9 @@ pub struct CapabilityQuery {
 impl CapabilityQuery {
     /// Create new capability query component
     pub fn new(registry: Arc<RwLock<CapabilityRegistry>>) -> Self {
-        Self { registry }
+        Self {
+            registry,
+        }
     }
 
     /// Check if a primal provides a specific capability
@@ -38,9 +41,7 @@ impl CapabilityQuery {
 
         // Check if we have cached capabilities for this primal
         if let Some(capabilities) = registry.primal_capabilities.get(primal_name) {
-            let provides = capabilities
-                .iter()
-                .any(|cap| cap.capability_type == capability_type);
+            let provides = capabilities.iter().any(|cap| cap.capability_type == capability_type);
 
             if provides {
                 debug!("✅ {} provides {}", primal_name, capability_type);
@@ -57,29 +58,33 @@ impl CapabilityQuery {
     }
 
     /// Get the best primal for a capability based on QoS metrics
-    pub async fn get_best_primal_for_capability(
-        &self,
-        capability_type: &str,
-    ) -> Option<String> {
+    ///
+    /// Uses QoS-aware selection considering health, latency, load, and availability.
+    /// Falls back to simple selection if QoS metrics are not available.
+    pub async fn get_best_primal_for_capability(&self, capability_type: &str) -> Option<String> {
         debug!("🎯 Finding best primal for capability: {}", capability_type);
 
         let registry = self.registry.read().await;
 
         // Get all providers for this capability
-        let providers = registry
-            .capability_providers
-            .get(capability_type)
-            .cloned()
-            .unwrap_or_default();
+        let providers =
+            registry.capability_providers.get(capability_type).cloned().unwrap_or_default();
 
         if providers.is_empty() {
             debug!("❌ No providers found for capability: {}", capability_type);
             return None;
         }
 
-        // Simple selection: First available provider
-        // TODO: Enhance with QoS metrics (latency, availability, load)
-        let best = providers.first().cloned();
+        // ✨ Enhanced: QoS-aware selection
+        // If QoS metrics are available, use intelligent selection
+        // Otherwise fall back to first-available
+        let best = if let Some(qos_selector) = registry.qos_selector.as_ref() {
+            debug!("🎯 Using QoS-aware selection for {} providers", providers.len());
+            qos_selector.select_best_provider(&providers).await
+        } else {
+            debug!("ℹ️  QoS selector not available, using first provider");
+            providers.first().cloned()
+        };
 
         if let Some(ref primal) = best {
             info!("✅ Selected {} for capability {}", primal, capability_type);
@@ -129,7 +134,9 @@ impl CapabilityQuery {
                 Ok(response) if response.status().is_success() => {
                     match response.json::<Vec<Capability>>().await {
                         Ok(capabilities) => return Ok(capabilities),
-                        Err(e) => debug!("Failed to parse capabilities from {}: {}", cap_endpoint, e),
+                        Err(e) => {
+                            debug!("Failed to parse capabilities from {}: {}", cap_endpoint, e);
+                        }
                     }
                 }
                 Ok(response) => {
@@ -141,9 +148,7 @@ impl CapabilityQuery {
             }
         }
 
-        Err(CapabilityError::NetworkError(
-            "All capability endpoints failed".to_string(),
-        ))
+        Err(CapabilityError::NetworkError("All capability endpoints failed".to_string()))
     }
 
     /// Infer basic capabilities from primal name and endpoint
@@ -157,16 +162,16 @@ impl CapabilityQuery {
                     capability_type: "authentication".to_string(),
                     name: "auth_service".to_string(),
                     version: "1.0".to_string(),
-                    parameters: Default::default(),
-                    qos_metrics: Default::default(),
+                    parameters: HashMap::default(),
+                    qos_metrics: QoSMetrics::default(),
                     available: true,
                 },
                 Capability {
                     capability_type: "encryption".to_string(),
                     name: "encryption_service".to_string(),
                     version: "1.0".to_string(),
-                    parameters: Default::default(),
-                    qos_metrics: Default::default(),
+                    parameters: HashMap::default(),
+                    qos_metrics: QoSMetrics::default(),
                     available: true,
                 },
             ],
@@ -174,16 +179,16 @@ impl CapabilityQuery {
                 capability_type: "compute".to_string(),
                 name: "compute_service".to_string(),
                 version: "1.0".to_string(),
-                parameters: Default::default(),
-                qos_metrics: Default::default(),
+                parameters: HashMap::default(),
+                qos_metrics: QoSMetrics::default(),
                 available: true,
             }],
             PrimalType::Storage => vec![Capability {
                 capability_type: "storage".to_string(),
                 name: "storage_service".to_string(),
                 version: "1.0".to_string(),
-                parameters: Default::default(),
-                qos_metrics: Default::default(),
+                parameters: HashMap::default(),
+                qos_metrics: QoSMetrics::default(),
                 available: true,
             }],
             PrimalType::AI => vec![
@@ -191,16 +196,16 @@ impl CapabilityQuery {
                     capability_type: "ai".to_string(),
                     name: "ai_service".to_string(),
                     version: "1.0".to_string(),
-                    parameters: Default::default(),
-                    qos_metrics: Default::default(),
+                    parameters: HashMap::default(),
+                    qos_metrics: QoSMetrics::default(),
                     available: true,
                 },
                 Capability {
                     capability_type: "ml".to_string(),
                     name: "ml_service".to_string(),
                     version: "1.0".to_string(),
-                    parameters: Default::default(),
-                    qos_metrics: Default::default(),
+                    parameters: HashMap::default(),
+                    qos_metrics: QoSMetrics::default(),
                     available: true,
                 },
             ],
@@ -226,13 +231,25 @@ impl CapabilityQuery {
     fn infer_primal_type(name: &str) -> PrimalType {
         let name_lower = name.to_lowercase();
 
-        if name_lower.contains("beardog") || name_lower.contains("security") || name_lower.contains("auth") {
+        if name_lower.contains("beardog")
+            || name_lower.contains("security")
+            || name_lower.contains("auth")
+        {
             PrimalType::Security
-        } else if name_lower.contains("toadstool") || name_lower.contains("compute") || name_lower.contains("worker") {
+        } else if name_lower.contains("toadstool")
+            || name_lower.contains("compute")
+            || name_lower.contains("worker")
+        {
             PrimalType::Compute
-        } else if name_lower.contains("nestgate") || name_lower.contains("storage") || name_lower.contains("data") {
+        } else if name_lower.contains("nestgate")
+            || name_lower.contains("storage")
+            || name_lower.contains("data")
+        {
             PrimalType::Storage
-        } else if name_lower.contains("squirrel") || name_lower.contains("ai") || name_lower.contains("ml") {
+        } else if name_lower.contains("squirrel")
+            || name_lower.contains("ai")
+            || name_lower.contains("ml")
+        {
             PrimalType::AI
         } else {
             PrimalType::Generic
@@ -246,30 +263,15 @@ mod tests {
 
     #[tokio::test]
     async fn test_infer_primal_type() {
-        assert_eq!(
-            CapabilityQuery::infer_primal_type("beardog"),
-            PrimalType::Security
-        );
-        assert_eq!(
-            CapabilityQuery::infer_primal_type("toadstool"),
-            PrimalType::Compute
-        );
-        assert_eq!(
-            CapabilityQuery::infer_primal_type("nestgate"),
-            PrimalType::Storage
-        );
-        assert_eq!(
-            CapabilityQuery::infer_primal_type("squirrel"),
-            PrimalType::AI
-        );
+        assert_eq!(CapabilityQuery::infer_primal_type("beardog"), PrimalType::Security);
+        assert_eq!(CapabilityQuery::infer_primal_type("toadstool"), PrimalType::Compute);
+        assert_eq!(CapabilityQuery::infer_primal_type("nestgate"), PrimalType::Storage);
+        assert_eq!(CapabilityQuery::infer_primal_type("squirrel"), PrimalType::AI);
     }
 
     #[tokio::test]
     async fn test_extract_primal_name() {
-        assert_eq!(
-            CapabilityQuery::extract_primal_name("http://beardog:8443"),
-            "beardog"
-        );
+        assert_eq!(CapabilityQuery::extract_primal_name("http://beardog:8443"), "beardog");
         assert_eq!(
             CapabilityQuery::extract_primal_name("https://toadstool.local:9000"),
             "toadstool"
@@ -284,4 +286,3 @@ mod tests {
         assert!(caps.iter().any(|c| c.capability_type == "encryption"));
     }
 }
-

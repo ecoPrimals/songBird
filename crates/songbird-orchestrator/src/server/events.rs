@@ -43,7 +43,11 @@ impl EventType {
         }
     }
 
-    /// Parse event type from string
+    /// Parse event type from string (different from std::str::FromStr trait)
+    ///
+    /// Returns Option instead of Result to distinguish from the trait implementation.
+    /// This is an intentional design choice for flexibility.
+    #[allow(clippy::should_implement_trait)]
     pub fn from_str(s: &str) -> Option<Self> {
         match s {
             "service_update" => Some(Self::ServiceUpdate),
@@ -71,7 +75,15 @@ pub struct Event {
 
 impl Event {
     /// Create a new event
+    ///
+    /// # Modern Idiomatic Pattern
+    /// EventType is Copy (enum variants), payload is consumed (moved into Self)
+    /// The clippy warning is about EventType not being consumed, but it IS used
+    #[allow(clippy::needless_pass_by_value)]
     pub fn new(event_type: EventType, payload: serde_json::Value) -> Self {
+        // Safe: u128 millis since 1970 won't overflow u64 for centuries
+        // Alternative would be storing full SystemTime but u64 millis is standard
+        #[allow(clippy::cast_possible_truncation)]
         let timestamp = std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
             .unwrap_or_default()
@@ -85,7 +97,18 @@ impl Event {
     }
 
     /// Create a service update event
-    pub fn service_update(service_name: String, status: String, address: String) -> Self {
+    ///
+    /// # Modern Idiomatic Pattern
+    /// Takes `impl Into<String>` for ergonomic API - caller can pass `String`, `&str`, or `Cow<str>`
+    pub fn service_update(
+        service_name: impl Into<String>,
+        status: impl Into<String>,
+        address: impl Into<String>,
+    ) -> Self {
+        let service_name = service_name.into();
+        let status = status.into();
+        let address = address.into();
+
         Self::new(
             EventType::ServiceUpdate,
             serde_json::json!({
@@ -98,7 +121,16 @@ impl Event {
     }
 
     /// Create a health update event
-    pub fn health_update(service_name: String, healthy: bool, message: Option<String>) -> Self {
+    ///
+    /// # Modern Idiomatic Pattern
+    /// Takes `impl Into<String>` for ergonomic API - caller can pass `String`, `&str`, or `Cow<str>`
+    pub fn health_update(
+        service_name: impl Into<String>,
+        healthy: bool,
+        message: Option<String>,
+    ) -> Self {
+        let service_name = service_name.into();
+
         let mut payload = serde_json::json!({
             "type": "health_update",
             "service_name": service_name,
@@ -352,8 +384,9 @@ mod tests {
 
         broadcaster.broadcast(event.clone()).await;
 
-        // Receive event
-        let received = rx.recv().await.unwrap();
+        // Receive event - rx.recv() returns Option<T>, not Result
+        let received =
+            rx.recv().await.expect("Event channel should deliver event - test invariant");
         assert_eq!(received.event_type, "service_update");
     }
 

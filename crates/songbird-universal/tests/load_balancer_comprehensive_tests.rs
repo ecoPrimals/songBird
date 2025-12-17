@@ -1,3 +1,6 @@
+// Allow unwrap/expect in tests - idiomatic for test code
+#![allow(clippy::unwrap_used, clippy::expect_used)]
+
 //! Comprehensive Load Balancer Tests
 //!
 //! Tests all load balancing strategies, health tracking, and failover scenarios
@@ -69,7 +72,7 @@ async fn test_round_robin_with_unavailable_endpoint() -> SongbirdResult<()> {
     })?;
 
     // Collect endpoints (should only be service1 and service3)
-    let mut seen = vec![ep1.clone(), ep2.clone(), ep3.clone()];
+    let mut seen = vec![ep1.clone(), ep2.clone(), ep3];
     seen.sort();
     seen.dedup();
 
@@ -152,7 +155,7 @@ async fn test_no_endpoints_configured() {
 
     let result = lb.get_next_endpoint().await;
     assert!(result.is_err());
-    assert_eq!(result.unwrap_err(), "No endpoints configured");
+    assert_eq!(result.expect_err("testing error case"), "No endpoints configured");
 }
 
 #[tokio::test]
@@ -168,7 +171,7 @@ async fn test_all_endpoints_unavailable() {
 
     let result = lb.get_next_endpoint().await;
     assert!(result.is_err());
-    assert_eq!(result.unwrap_err(), "No available endpoints");
+    assert_eq!(result.expect_err("testing error case"), "No available endpoints");
 }
 
 #[tokio::test]

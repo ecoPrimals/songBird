@@ -1,4 +1,7 @@
 #![cfg(feature = "tests-incomplete")]
+// Allow unwrap/expect in tests - idiomatic for test code
+#![allow(clippy::unwrap_used, clippy::expect_used)]
+
 //! NOTE: Disabled - requires fixes
 
 //! Comprehensive tests for Capability Connection and Health Management
@@ -338,22 +341,16 @@ fn test_service_connection_last_contact() {
 
 #[test]
 fn test_service_info_with_health() {
-    let service = create_test_service_info(
-        "test-service",
-        format!("http://localhost:{}", test_orchestrator_port()),
-        HealthStatus::Healthy,
-    );
+    let url = format!("http://localhost:{}", test_orchestrator_port());
+    let service = create_test_service_info("test-service", &url, HealthStatus::Healthy);
     assert_eq!(service.name, "test-service");
     assert_eq!(service.health, HealthStatus::Healthy);
 }
 
 #[test]
 fn test_service_info_health_transitions() {
-    let mut service = create_test_service_info(
-        "test-service",
-        format!("http://localhost:{}", test_orchestrator_port()),
-        HealthStatus::Unknown,
-    );
+    let url = format!("http://localhost:{}", test_orchestrator_port());
+    let mut service = create_test_service_info("test-service", &url, HealthStatus::Unknown);
     assert_eq!(service.health, HealthStatus::Unknown);
 
     // Transition to healthy
@@ -371,9 +368,11 @@ fn test_service_info_health_transitions() {
 
 #[test]
 fn test_service_info_clone() {
+    use songbird_test_utils::network_fixtures::test_orchestrator_port;
+
     let service = create_test_service_info(
         "test-service",
-        format!("http://localhost:{}", test_orchestrator_port()),
+        &format!("http://localhost:{}", test_orchestrator_port()),
         HealthStatus::Healthy,
     );
     let cloned = service.clone();

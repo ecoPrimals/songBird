@@ -158,3 +158,7 @@ impl ServiceDiscovery for StaticServiceDiscovery {
         self
     }
 }
+
+#[cfg(test)]
+#[path = "static_discovery_tests.rs"]
+mod tests;

@@ -141,6 +141,12 @@ pub mod hosts {
     pub const TEST_INTERFACE: &str = "192.168.1.100";
 }
 
+#[allow(
+    clippy::unwrap_used,
+    clippy::expect_used,
+    clippy::unnecessary_wraps,
+    clippy::field_reassign_with_default
+)]
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -148,7 +154,7 @@ mod tests {
     #[test]
     fn test_port_allocation_no_conflicts() {
         // Verify no port conflicts in our allocation
-        let all_ports = vec![
+        let all_ports = [
             ORCHESTRATOR,
             DISCOVERY,
             FEDERATION,

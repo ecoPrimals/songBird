@@ -18,6 +18,8 @@
 #![allow(clippy::needless_pass_by_value)]
 #![allow(clippy::similar_names)]
 #![allow(clippy::module_name_repetitions)]
+// Allow unwrap/expect in tests - idiomatic for test code
+#![allow(clippy::unwrap_used, clippy::expect_used)]
 
 use songbird_test_utils::network_fixtures::*;
 use songbird_types::{SongbirdError, SongbirdResult};
@@ -62,7 +64,7 @@ fn test_config_with_invalid_url_formats() {
     // These are syntactically valid strings but semantically unusual URLs
     let endpoints = vec![
         "not-a-url".to_string(),
-        "".to_string(),
+        String::new(),
         "http://".to_string(),
         "://localhost".to_string(),
         "http://localhost:-1".to_string(),

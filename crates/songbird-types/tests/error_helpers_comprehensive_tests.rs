@@ -1,3 +1,6 @@
+// Allow unwrap/expect in tests - idiomatic for test code
+#![allow(clippy::unwrap_used, clippy::expect_used)]
+
 //! Comprehensive tests for Error Helper Traits
 //!
 //! Coverage goal: 64% → 85%+
@@ -19,7 +22,7 @@ fn test_or_config_error_ok() {
     let songbird_result = result.or_config_error("test_field");
 
     assert!(songbird_result.is_ok());
-    assert_eq!(songbird_result.unwrap(), 42);
+    assert_eq!(songbird_result.expect("test precondition"), 42);
 }
 
 #[test]
@@ -28,7 +31,7 @@ fn test_or_config_error_err() {
     let songbird_result = result.or_config_error("port");
 
     assert!(songbird_result.is_err());
-    let err = songbird_result.unwrap_err();
+    let err = songbird_result.expect_err("testing error case");
 
     match err {
         SongbirdError::Configuration {
@@ -52,7 +55,7 @@ fn test_or_config_error_with_io_error() {
     let songbird_result = result.or_config_error("config_file");
 
     assert!(songbird_result.is_err());
-    match songbird_result.unwrap_err() {
+    match songbird_result.expect_err("testing error case") {
         SongbirdError::Configuration {
             message,
             ..
@@ -73,7 +76,7 @@ fn test_or_network_error_ok() {
     let songbird_result = result.or_network_error("connection test");
 
     assert!(songbird_result.is_ok());
-    assert_eq!(songbird_result.unwrap(), "connected");
+    assert_eq!(songbird_result.expect("test precondition"), "connected");
 }
 
 #[test]
@@ -82,7 +85,7 @@ fn test_or_network_error_err() {
     let songbird_result = result.or_network_error("TCP connection");
 
     assert!(songbird_result.is_err());
-    match songbird_result.unwrap_err() {
+    match songbird_result.expect_err("testing error case") {
         SongbirdError::Network {
             message,
             interface,
@@ -103,7 +106,7 @@ fn test_or_network_error_with_custom_message() {
     let songbird_result = result.or_network_error("discovery service");
 
     assert!(songbird_result.is_err());
-    match songbird_result.unwrap_err() {
+    match songbird_result.expect_err("testing error case") {
         SongbirdError::Network {
             message,
             ..
@@ -133,7 +136,7 @@ fn test_or_service_error_err() {
     let songbird_result = result.or_service_error("storage");
 
     assert!(songbird_result.is_err());
-    match songbird_result.unwrap_err() {
+    match songbird_result.expect_err("testing error case") {
         SongbirdError::Service {
             service,
             message,
@@ -167,7 +170,7 @@ fn test_or_discovery_error_err() {
     let songbird_result = result.or_discovery_error("mDNS");
 
     assert!(songbird_result.is_err());
-    match songbird_result.unwrap_err() {
+    match songbird_result.expect_err("testing error case") {
         SongbirdError::Discovery {
             message,
             backend,
@@ -198,7 +201,7 @@ fn test_or_registry_error_err() {
     let songbird_result = result.or_registry_error("duplicate_registration");
 
     assert!(songbird_result.is_err());
-    match songbird_result.unwrap_err() {
+    match songbird_result.expect_err("testing error case") {
         SongbirdError::Registry {
             message,
             operation,
@@ -225,7 +228,7 @@ fn test_chained_conversions() {
 
     let result = operation_chain();
     assert!(result.is_err());
-    match result.unwrap_err() {
+    match result.expect_err("testing error case") {
         SongbirdError::Configuration {
             ..
         } => {}
@@ -258,7 +261,7 @@ fn test_error_context_preserved_in_config() {
     let result: Result<(), String> = Err("detailed error information".to_string());
     let songbird_result = result.or_config_error("critical_setting");
 
-    match songbird_result.unwrap_err() {
+    match songbird_result.expect_err("testing error case") {
         SongbirdError::Configuration {
             message,
             field,
@@ -267,7 +270,7 @@ fn test_error_context_preserved_in_config() {
             assert!(message.contains("detailed error information"));
             assert!(message.contains("critical_setting"));
             assert_eq!(field, Some("critical_setting".to_string()));
-            assert!(suggestion.unwrap().contains("configuration"));
+            assert!(suggestion.expect("test precondition").contains("configuration"));
         }
         _ => panic!("Wrong error type"),
     }
@@ -278,7 +281,7 @@ fn test_error_context_preserved_in_network() {
     let result: Result<(), &str> = Err("connection timeout");
     let songbird_result = result.or_network_error("remote host");
 
-    match songbird_result.unwrap_err() {
+    match songbird_result.expect_err("testing error case") {
         SongbirdError::Network {
             message,
             suggestion,
@@ -286,7 +289,7 @@ fn test_error_context_preserved_in_network() {
         } => {
             assert!(message.contains("connection timeout"));
             assert!(message.contains("remote host"));
-            assert!(suggestion.unwrap().contains("network"));
+            assert!(suggestion.expect("test precondition").contains("network"));
         }
         _ => panic!("Wrong error type"),
     }
@@ -297,14 +300,14 @@ fn test_error_suggestions_present() {
     let result: Result<(), &str> = Err("test error");
 
     // Config errors should suggest checking configuration
-    let config_err = result.clone().or_config_error("field");
+    let config_err = result.or_config_error("field");
     if let Err(SongbirdError::Configuration {
         suggestion,
         ..
     }) = config_err
     {
         assert!(suggestion.is_some());
-        assert!(suggestion.unwrap().contains("configuration"));
+        assert!(suggestion.expect("test precondition").contains("configuration"));
     }
 
     // Network errors should suggest checking network
@@ -315,7 +318,7 @@ fn test_error_suggestions_present() {
     }) = network_err
     {
         assert!(suggestion.is_some());
-        assert!(suggestion.unwrap().contains("network"));
+        assert!(suggestion.expect("test precondition").contains("network"));
     }
 }
 
@@ -328,7 +331,7 @@ fn test_service_error_has_recovery_actions() {
     let result: Result<(), &str> = Err("service down");
     let songbird_result = result.or_service_error("compute");
 
-    match songbird_result.unwrap_err() {
+    match songbird_result.expect_err("testing error case") {
         SongbirdError::Service {
             recovery_actions,
             ..
@@ -351,7 +354,7 @@ fn test_parse_port_with_error_conversion() {
     }
 
     assert!(parse_port("8080").is_ok());
-    assert_eq!(parse_port("8080").unwrap(), 8080);
+    assert_eq!(parse_port("8080").expect("should parse valid input"), 8080);
 
     assert!(parse_port("invalid").is_err());
     assert!(parse_port("99999").is_err());
@@ -367,7 +370,7 @@ fn test_env_var_with_error_conversion() {
     let result = get_required_env("NONEXISTENT_TEST_VAR_12345");
     assert!(result.is_err());
 
-    match result.unwrap_err() {
+    match result.expect_err("testing error case") {
         SongbirdError::Configuration {
             field,
             ..
@@ -389,7 +392,7 @@ fn test_network_operation_with_error_conversion() {
     let result = connect_to_service();
     assert!(result.is_err());
 
-    match result.unwrap_err() {
+    match result.expect_err("testing error case") {
         SongbirdError::Network {
             message,
             ..
@@ -412,7 +415,7 @@ fn test_service_call_with_error_conversion() {
     let result = call_storage_service();
     assert!(result.is_err());
 
-    match result.unwrap_err() {
+    match result.expect_err("testing error case") {
         SongbirdError::Service {
             service,
             message,
@@ -445,7 +448,7 @@ fn test_very_long_error_message() {
     let songbird_result = result.or_network_error("context");
 
     assert!(songbird_result.is_err());
-    match songbird_result.unwrap_err() {
+    match songbird_result.expect_err("testing error case") {
         SongbirdError::Network {
             message,
             ..
@@ -462,7 +465,7 @@ fn test_unicode_in_errors() {
     let songbird_result = result.or_service_error("multilang-service");
 
     assert!(songbird_result.is_err());
-    match songbird_result.unwrap_err() {
+    match songbird_result.expect_err("testing error case") {
         SongbirdError::Service {
             message,
             ..
@@ -527,8 +530,7 @@ fn test_type_inference_with_different_err_types() {
     let string_err: Result<(), String> = Err("error".to_string());
     assert!(string_err.or_config_error("field").is_err());
 
-    let io_err: Result<(), std::io::Error> =
-        Err(std::io::Error::new(std::io::ErrorKind::Other, "error"));
+    let io_err: Result<(), std::io::Error> = Err(std::io::Error::other("error"));
     assert!(io_err.or_config_error("field").is_err());
 }
 
@@ -555,5 +557,5 @@ fn test_method_chaining() {
         "8080".parse::<u16>().or_config_error("port")
     }
 
-    assert_eq!(chained_operations().unwrap(), 8080);
+    assert_eq!(chained_operations().expect("test precondition"), 8080);
 }

@@ -22,7 +22,7 @@ fn test_ai_response_metadata_default() {
 #[test]
 fn test_ai_response_metadata_with_automation_capability() {
     let capability = AutomationCapability::new("auto-retry", "Automatic retry on failure", 0.8);
-    let metadata = AIResponseMetadata::default().with_automation_capability(capability.clone());
+    let metadata = AIResponseMetadata::default().with_automation_capability(capability);
 
     assert_eq!(metadata.automation_capabilities.len(), 1);
     assert_eq!(metadata.automation_capabilities[0].capability, "auto-retry");
@@ -59,9 +59,9 @@ fn test_ai_response_metadata_serialization() -> SongbirdResult<()> {
     let metadata = AIResponseMetadata::default().with_custom_field("test", json!("value"));
 
     let json = serde_json::to_string(&metadata)
-        .map_err(|e| SongbirdError::configuration(format!("Serialization failed: {}", e)))?;
+        .map_err(|e| SongbirdError::configuration(format!("Serialization failed: {e}")))?;
     let deserialized: AIResponseMetadata = serde_json::from_str(&json)
-        .map_err(|e| SongbirdError::configuration(format!("Deserialization failed: {}", e)))?;
+        .map_err(|e| SongbirdError::configuration(format!("Deserialization failed: {e}")))?;
 
     assert_eq!(metadata.custom_fields.len(), deserialized.custom_fields.len());
     Ok(())
@@ -144,9 +144,9 @@ fn test_decision_context_serialization() -> SongbirdResult<()> {
     context.risk_level = RiskLevel::High;
 
     let json = serde_json::to_string(&context)
-        .map_err(|e| SongbirdError::configuration(format!("Serialization failed: {}", e)))?;
+        .map_err(|e| SongbirdError::configuration(format!("Serialization failed: {e}")))?;
     let deserialized: DecisionContext = serde_json::from_str(&json)
-        .map_err(|e| SongbirdError::configuration(format!("Deserialization failed: {}", e)))?;
+        .map_err(|e| SongbirdError::configuration(format!("Deserialization failed: {e}")))?;
 
     assert_eq!(context.risk_level, deserialized.risk_level);
     assert_eq!(context.influencing_factors.len(), deserialized.influencing_factors.len());
@@ -185,9 +185,9 @@ fn test_risk_level_serialization() -> SongbirdResult<()> {
 
     for level in levels {
         let json = serde_json::to_string(&level)
-            .map_err(|e| SongbirdError::configuration(format!("Serialization failed: {}", e)))?;
+            .map_err(|e| SongbirdError::configuration(format!("Serialization failed: {e}")))?;
         let deserialized: RiskLevel = serde_json::from_str(&json)
-            .map_err(|e| SongbirdError::configuration(format!("Deserialization failed: {}", e)))?;
+            .map_err(|e| SongbirdError::configuration(format!("Deserialization failed: {e}")))?;
         assert_eq!(level, deserialized);
     }
     Ok(())
@@ -237,9 +237,9 @@ fn test_automation_capability_serialization() -> SongbirdResult<()> {
         .with_prerequisite("prerequisite-1");
 
     let json = serde_json::to_string(&capability)
-        .map_err(|e| SongbirdError::configuration(format!("Serialization failed: {}", e)))?;
+        .map_err(|e| SongbirdError::configuration(format!("Serialization failed: {e}")))?;
     let deserialized: AutomationCapability = serde_json::from_str(&json)
-        .map_err(|e| SongbirdError::configuration(format!("Deserialization failed: {}", e)))?;
+        .map_err(|e| SongbirdError::configuration(format!("Deserialization failed: {e}")))?;
 
     assert_eq!(capability.capability, deserialized.capability);
     assert_eq!(capability.confidence_threshold, deserialized.confidence_threshold);
@@ -321,7 +321,7 @@ fn test_quality_metrics_partial_calculation() -> SongbirdResult<()> {
     let metrics = QualityMetrics::default().with_accuracy(0.9).with_relevance(0.8);
 
     // Overall should be average of provided metrics only
-    let expected = (0.9 + 0.8) / 2.0;
+    let expected = f64::midpoint(0.9, 0.8);
     assert!((metrics.overall_quality.unwrap() - expected).abs() < 0.001);
     Ok(())
 }
@@ -360,9 +360,9 @@ fn test_quality_metrics_serialization() -> SongbirdResult<()> {
     let metrics = QualityMetrics::default().with_accuracy(0.9).with_completeness(0.8);
 
     let json = serde_json::to_string(&metrics)
-        .map_err(|e| SongbirdError::configuration(format!("Serialization failed: {}", e)))?;
+        .map_err(|e| SongbirdError::configuration(format!("Serialization failed: {e}")))?;
     let deserialized: QualityMetrics = serde_json::from_str(&json)
-        .map_err(|e| SongbirdError::configuration(format!("Deserialization failed: {}", e)))?;
+        .map_err(|e| SongbirdError::configuration(format!("Deserialization failed: {e}")))?;
 
     assert_eq!(metrics.accuracy, deserialized.accuracy);
     assert_eq!(metrics.completeness, deserialized.completeness);

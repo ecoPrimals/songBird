@@ -263,7 +263,7 @@ fn test_security_level_ordering() {
 
 #[test]
 fn test_health_status_all_variants() {
-    let variants = vec![
+    let variants = [
         HealthStatus::Healthy,
         HealthStatus::Degraded,
         HealthStatus::Unhealthy,

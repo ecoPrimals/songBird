@@ -1,5 +1,7 @@
 #![allow(clippy::all)]
 #![allow(unused)]
+// Allow unwrap/expect in tests - idiomatic for test code
+#![allow(clippy::unwrap_used, clippy::expect_used)]
 
 //! Tests for UnifiedUniversalAdapter stress testing and boundary conditions
 //!
@@ -41,8 +43,8 @@ fn test_config_with_extreme_timeout_values() {
         Duration::from_nanos(1),
         Duration::from_millis(1),
         Duration::from_secs(1),
-        Duration::from_secs(86400),    // 1 day
-        Duration::from_secs(31536000), // 1 year
+        Duration::from_secs(86400),      // 1 day
+        Duration::from_secs(31_536_000), // 1 year
     ];
 
     for timeout in timeouts {
@@ -191,7 +193,7 @@ fn test_config_with_invalid_url_formats() {
     // These are syntactically valid strings but semantically unusual URLs
     let endpoints = vec![
         "not-a-url".to_string(),
-        "".to_string(),
+        String::new(),
         "http://".to_string(),
         "://localhost".to_string(),
         "http://localhost:-1".to_string(),

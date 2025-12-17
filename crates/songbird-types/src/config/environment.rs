@@ -574,6 +574,12 @@ impl CanonicalEnvironmentConfig {
     }
 }
 
+#[allow(
+    clippy::unwrap_used,
+    clippy::expect_used,
+    clippy::unnecessary_wraps,
+    clippy::field_reassign_with_default
+)]
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -613,6 +619,14 @@ mod tests {
 
     #[test]
     fn test_resource_limits_default() {
+        // Clear any environment variables from previous tests
+        env::remove_var("SONGBIRD_MAX_CONNECTIONS");
+        env::remove_var("SONGBIRD_MAX_MEMORY_MB");
+        env::remove_var("SONGBIRD_MAX_CPU_CORES");
+        env::remove_var("SONGBIRD_MAX_FDS");
+        env::remove_var("SONGBIRD_MAX_THREADS");
+        env::remove_var("SONGBIRD_MAX_DISK_GB");
+        
         let limits = ResourceLimits::default();
         assert_eq!(limits.max_connections, 1000);
         assert_eq!(limits.max_memory_mb, 2048);

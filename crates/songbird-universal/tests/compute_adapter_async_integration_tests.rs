@@ -1,3 +1,6 @@
+// Allow unwrap/expect in tests - idiomatic for test code
+#![allow(clippy::unwrap_used, clippy::expect_used)]
+
 //! Async Integration Tests for Compute Adapter
 //!
 //! **Goal**: Test async network methods with mock HTTP servers
@@ -29,7 +32,7 @@ async fn test_new_from_discovery_with_env_variable() {
     let adapter = ComputeAdapter::new_from_discovery().await;
     assert!(adapter.is_ok(), "Should create adapter from env var");
 
-    let adapter = adapter.unwrap();
+    let adapter = adapter.expect("test precondition");
     assert_eq!(adapter.endpoint(), &endpoint);
 
     // Cleanup
@@ -62,7 +65,7 @@ async fn test_new_from_discovery_fallback_to_default() {
     let adapter = ComputeAdapter::new_from_discovery().await;
     assert!(adapter.is_ok(), "Should create adapter with fallback");
 
-    let adapter = adapter.unwrap();
+    let adapter = adapter.expect("test precondition");
     // Should have some default endpoint
     assert!(!adapter.endpoint().is_empty());
 }
@@ -94,11 +97,11 @@ async fn test_collect_metrics_success() {
         .create_async()
         .await;
 
-    let adapter = ComputeAdapter::new(server.url()).unwrap();
+    let adapter = ComputeAdapter::new(server.url()).expect("test precondition");
     let metrics = adapter.collect_metrics().await;
 
     assert!(metrics.is_ok(), "Should collect metrics successfully");
-    let metrics = metrics.unwrap();
+    let metrics = metrics.expect("test precondition");
     assert!((metrics.cpu_usage_percent - 45.5).abs() < 0.01);
     assert_eq!(metrics.memory_usage_bytes, 2000000000);
     assert_eq!(metrics.active_containers, 5);
@@ -130,11 +133,11 @@ async fn test_collect_metrics_sets_timestamp_if_missing() {
         .create_async()
         .await;
 
-    let adapter = ComputeAdapter::new(server.url()).unwrap();
+    let adapter = ComputeAdapter::new(server.url()).expect("test precondition");
     let metrics = adapter.collect_metrics().await;
 
     assert!(metrics.is_ok());
-    let metrics = metrics.unwrap();
+    let metrics = metrics.expect("test precondition");
 
     // Timestamp should be set to current time
     let now = chrono::Utc::now();
@@ -147,12 +150,12 @@ async fn test_collect_metrics_sets_timestamp_if_missing() {
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_collect_metrics_network_error() {
     // Use invalid endpoint
-    let adapter = ComputeAdapter::new("http://localhost:1".to_string()).unwrap();
+    let adapter = ComputeAdapter::new("http://localhost:1".to_string()).expect("test precondition");
 
     let result = adapter.collect_metrics().await;
     assert!(result.is_err(), "Should fail with network error");
 
-    let err = result.unwrap_err();
+    let err = result.expect_err("testing error case");
     assert!(err.to_string().contains("Failed to reach compute service"));
 }
 
@@ -168,11 +171,11 @@ async fn test_collect_metrics_http_error_status() {
         .create_async()
         .await;
 
-    let adapter = ComputeAdapter::new(server.url()).unwrap();
+    let adapter = ComputeAdapter::new(server.url()).expect("test precondition");
     let result = adapter.collect_metrics().await;
 
     assert!(result.is_err(), "Should fail with HTTP error");
-    let err = result.unwrap_err();
+    let err = result.expect_err("testing error case");
     assert!(err.to_string().contains("HTTP 503"));
 
     mock.assert_async().await;
@@ -191,11 +194,11 @@ async fn test_collect_metrics_invalid_json() {
         .create_async()
         .await;
 
-    let adapter = ComputeAdapter::new(server.url()).unwrap();
+    let adapter = ComputeAdapter::new(server.url()).expect("test precondition");
     let result = adapter.collect_metrics().await;
 
     assert!(result.is_err(), "Should fail with parse error");
-    let err = result.unwrap_err();
+    let err = result.expect_err("testing error case");
     assert!(err.to_string().contains("Failed to parse compute metrics"));
 
     mock.assert_async().await;
@@ -206,19 +209,24 @@ async fn test_collect_metrics_with_timeout() {
     let mut server = mockito::Server::new_async().await;
 
     // Mock slow response (will timeout)
+    // NOTE: mockito callbacks run in sync context, so thread::sleep is necessary here.
+    // This is acceptable as it's a legitimate integration test of timeout behavior.
+    // Alternative would be to use a real server, but that adds complexity.
     let mock = server
         .mock("GET", "/metrics/compute")
         .with_status(200)
         .with_header("content-type", "application/json")
         .with_body_from_request(|_| {
-            std::thread::sleep(Duration::from_secs(2));
+            // Deliberately slow response to test timeout handling
+            std::thread::sleep(Duration::from_millis(150)); // Just over timeout
             r#"{"cpu_usage_percent":0.0,"memory_usage_bytes":0,"memory_available_bytes":0,"active_containers":0,"queued_jobs":0,"performance_score":1.0,"timestamp":"2025-11-18T12:00:00Z"}"#.into()
         })
         .create_async()
         .await;
 
-    let adapter =
-        ComputeAdapter::new(server.url()).unwrap().with_timeout(Duration::from_millis(100)); // Very short timeout
+    let adapter = ComputeAdapter::new(server.url())
+        .expect("test precondition")
+        .with_timeout(Duration::from_millis(100)); // Short timeout for fast test
 
     let result = adapter.collect_metrics().await;
     assert!(result.is_err(), "Should timeout");
@@ -253,11 +261,11 @@ async fn test_check_health_healthy() {
         .create_async()
         .await;
 
-    let adapter = ComputeAdapter::new(server.url()).unwrap();
+    let adapter = ComputeAdapter::new(server.url()).expect("test precondition");
     let health = adapter.check_health().await;
 
     assert!(health.is_ok());
-    assert_eq!(health.unwrap(), ComputeHealth::Healthy);
+    assert_eq!(health.expect("test precondition"), ComputeHealth::Healthy);
 
     mock.assert_async().await;
 }
@@ -285,11 +293,11 @@ async fn test_check_health_degraded_high_cpu() {
         .create_async()
         .await;
 
-    let adapter = ComputeAdapter::new(server.url()).unwrap();
+    let adapter = ComputeAdapter::new(server.url()).expect("test precondition");
     let health = adapter.check_health().await;
 
     assert!(health.is_ok());
-    assert_eq!(health.unwrap(), ComputeHealth::Degraded);
+    assert_eq!(health.expect("test precondition"), ComputeHealth::Degraded);
 
     mock.assert_async().await;
 }
@@ -317,12 +325,12 @@ async fn test_check_health_degraded_high_memory() {
         .create_async()
         .await;
 
-    let adapter = ComputeAdapter::new(server.url()).unwrap();
+    let adapter = ComputeAdapter::new(server.url()).expect("test precondition");
     let health = adapter.check_health().await;
 
     assert!(health.is_ok());
     // 7.2GB used out of 8GB total = 90% usage, should be degraded
-    assert_eq!(health.unwrap(), ComputeHealth::Degraded);
+    assert_eq!(health.expect("test precondition"), ComputeHealth::Degraded);
 
     mock.assert_async().await;
 }
@@ -350,18 +358,18 @@ async fn test_check_health_unhealthy() {
         .create_async()
         .await;
 
-    let adapter = ComputeAdapter::new(server.url()).unwrap();
+    let adapter = ComputeAdapter::new(server.url()).expect("test precondition");
     let health = adapter.check_health().await;
 
     assert!(health.is_ok());
-    assert_eq!(health.unwrap(), ComputeHealth::Unhealthy);
+    assert_eq!(health.expect("test precondition"), ComputeHealth::Unhealthy);
 
     mock.assert_async().await;
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_check_health_network_error() {
-    let adapter = ComputeAdapter::new("http://localhost:1".to_string()).unwrap();
+    let adapter = ComputeAdapter::new("http://localhost:1".to_string()).expect("test precondition");
 
     let result = adapter.check_health().await;
     assert!(result.is_err(), "Should propagate network error from collect_metrics");
@@ -395,17 +403,17 @@ async fn test_full_compute_workflow() {
         .create_async()
         .await;
 
-    let adapter = ComputeAdapter::new(server.url()).unwrap();
+    let adapter = ComputeAdapter::new(server.url()).expect("test precondition");
 
     // 1. Check health
     let health = adapter.check_health().await;
     assert!(health.is_ok());
-    assert_eq!(health.unwrap(), ComputeHealth::Healthy);
+    assert_eq!(health.expect("test precondition"), ComputeHealth::Healthy);
 
     // 2. Get metrics directly
     let metrics = adapter.collect_metrics().await;
     assert!(metrics.is_ok());
-    let metrics = metrics.unwrap();
+    let metrics = metrics.expect("test precondition");
     assert_eq!(metrics.active_containers, 6);
 
     metrics_mock.assert_async().await;
@@ -435,7 +443,7 @@ async fn test_concurrent_requests() {
         .create_async()
         .await;
 
-    let adapter = ComputeAdapter::new(server.url()).unwrap();
+    let adapter = ComputeAdapter::new(server.url()).expect("test precondition");
 
     // Fire off 3 concurrent requests
     let futures =
@@ -464,7 +472,7 @@ async fn test_retry_on_transient_failure() {
         .create_async()
         .await;
 
-    let adapter = ComputeAdapter::new(server.url()).unwrap();
+    let adapter = ComputeAdapter::new(server.url()).expect("test precondition");
 
     // First attempt should fail
     let result1 = adapter.collect_metrics().await;

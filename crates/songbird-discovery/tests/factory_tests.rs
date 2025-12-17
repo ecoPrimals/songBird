@@ -1,3 +1,6 @@
+// Allow unwrap/expect in tests - idiomatic for test code
+#![allow(clippy::unwrap_used, clippy::expect_used)]
+
 //! Tests for Discovery Factory
 //!
 //! Comprehensive tests for Universal Discovery Factory and adapters

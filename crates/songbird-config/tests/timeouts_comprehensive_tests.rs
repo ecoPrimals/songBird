@@ -1,3 +1,6 @@
+// Allow unwrap/expect in tests - idiomatic for test code
+#![allow(clippy::unwrap_used, clippy::expect_used)]
+
 //! Comprehensive tests for timeout configuration
 
 use songbird_config::defaults::timeouts::*;
@@ -76,7 +79,9 @@ fn test_cache_expiry_default_value() {
 }
 
 #[test]
+#[serial_test::serial]  // Prevent parallel test pollution
 fn test_cache_expiry_from_env() {
+    env::remove_var("SONGBIRD_CACHE_EXPIRY_MS");  // Clean first
     env::set_var("SONGBIRD_CACHE_EXPIRY_MS", "600000");
     let expiry = cache_expiry();
     assert_eq!(expiry, Duration::from_millis(600_000));
@@ -336,12 +341,17 @@ fn test_discovery_timeout_equals_standard_by_default() {
 
 #[test]
 fn test_request_timeout_equals_long_by_default() {
+    // Clear all timeout env vars to ensure defaults
     env::remove_var("SONGBIRD_LONG_TIMEOUT_MS");
     env::remove_var("SONGBIRD_REQUEST_TIMEOUT_MS");
+    env::remove_var("SONGBIRD_TIMEOUT_MS");
 
     let long = long_timeout();
     let request = request_timeout();
 
+    // Both should default to 30000ms
+    assert_eq!(long, Duration::from_millis(30000));
+    assert_eq!(request, Duration::from_millis(30000));
     assert_eq!(long, request);
 }
 

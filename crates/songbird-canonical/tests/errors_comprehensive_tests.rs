@@ -11,12 +11,13 @@
 #![allow(clippy::similar_names)]
 #![allow(clippy::too_many_lines)]
 #![allow(clippy::module_name_repetitions)]
+// Allow unwrap/expect in tests - idiomatic for test code
+#![allow(clippy::unwrap_used, clippy::expect_used)]
 
 //!
 //! Tests for canonical error types and error handling patterns.
 
 use songbird_canonical::errors::*;
-use songbird_types::SongbirdResult;
 
 // ========== ErrorContext Tests ==========
 
@@ -154,39 +155,35 @@ fn test_unit_success() {
 }
 
 #[test]
-fn test_unit_success_unwrap() -> SongbirdResult<()> {
+fn test_unit_success_unwrap() {
     let result = unit_success();
     assert!(result.is_ok());
-    Ok(())
 }
 
 // ========== Integration Tests ==========
 
 #[test]
-fn test_error_context_with_long_message() -> SongbirdResult<()> {
+fn test_error_context_with_long_message() {
     let long_message = "A".repeat(1000);
     let ctx = ErrorContext::new(long_message.clone(), "Context");
     assert_eq!(ctx.message(), &long_message);
-    Ok(())
 }
 
 #[test]
-fn test_error_context_with_unicode() -> SongbirdResult<()> {
+fn test_error_context_with_unicode() {
     let ctx =
         ErrorContext::new("エラー発生", "コンテキスト").with_suggestion("解決策を試してください");
 
     assert!(ctx.message().contains("エラー"));
     assert!(ctx.context().contains("コンテキスト"));
     assert!(ctx.suggestions()[0].contains("解決策"));
-    Ok(())
 }
 
 #[test]
-fn test_error_context_debug_output() -> SongbirdResult<()> {
+fn test_error_context_debug_output() {
     let ctx = ErrorContext::new("Debug test", "Context");
     let debug = format!("{ctx:?}");
     assert!(debug.contains("ErrorContext"));
-    Ok(())
 }
 
 // ========== Thread Safety Tests ==========

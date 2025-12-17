@@ -258,21 +258,22 @@ impl SongbirdFederation for TarpcServer {
         );
 
         // Query the federated service registry by capabilities
-        let mut services = Vec::new();
-
-        // If specific capabilities requested, find by them
-        if !query.capabilities.is_empty() {
+        // Modern idiomatic: use if expression to assign directly
+        let services = if query.capabilities.is_empty() {
+            // No specific capabilities - return all services
+            self.service_registry.get_all_services().await
+        } else {
+            // Specific capabilities requested, find by them
+            let mut svcs = Vec::new();
             for capability in &query.capabilities {
                 let cap_services = self.service_registry.find_by_capability(capability).await;
-                services.extend(cap_services);
+                svcs.extend(cap_services);
             }
             // Deduplicate
-            services.sort_by(|a, b| a.service_id.cmp(&b.service_id));
-            services.dedup_by(|a, b| a.service_id == b.service_id);
-        } else {
-            // No specific capabilities - return all services
-            services = self.service_registry.get_all_services().await;
-        }
+            svcs.sort_by(|a, b| a.service_id.cmp(&b.service_id));
+            svcs.dedup_by(|a, b| a.service_id == b.service_id);
+            svcs
+        };
 
         // Convert to ServiceInfo format
         let service_infos: Vec<ServiceInfo> = services

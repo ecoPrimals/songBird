@@ -53,6 +53,11 @@ impl BroadcastExecutor {
             let task = tokio::spawn(async move {
                 let start = std::time::Instant::now();
 
+                // Safe cast: u128 millis won't exceed u64 for any reasonable command duration
+                // Commands running >584 million years would truncate, which is acceptable
+                #[allow(clippy::cast_possible_truncation)]
+                let duration_ms = start.elapsed().as_millis() as u64;
+
                 match client.execute_command(&endpoint, request_clone).await {
                     Ok(response) => TowerExecutionResult {
                         tower_id: tower_id_clone,
@@ -60,7 +65,7 @@ impl BroadcastExecutor {
                         exit_code: response.exit_code,
                         stdout: response.stdout,
                         stderr: response.stderr,
-                        duration_ms: start.elapsed().as_millis() as u64,
+                        duration_ms,
                         error: None,
                     },
                     Err(e) => TowerExecutionResult {
@@ -69,7 +74,7 @@ impl BroadcastExecutor {
                         exit_code: None,
                         stdout: String::new(),
                         stderr: e.to_string(),
-                        duration_ms: start.elapsed().as_millis() as u64,
+                        duration_ms,
                         error: Some(e.to_string()),
                     },
                 }

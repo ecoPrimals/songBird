@@ -786,7 +786,7 @@ mod tests {
     #[test]
     fn test_endpoint_config_display() {
         let config = EndpointConfig::default();
-        let display = format!("{}", config);
+        let display = format!("{config}");
         assert!(display.contains("Orchestrator"));
         assert!(display.contains("8080"));
         assert!(display.contains("localhost"));

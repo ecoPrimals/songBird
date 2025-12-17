@@ -1,3 +1,6 @@
+// Allow unwrap/expect in tests - idiomatic for test code
+#![allow(clippy::unwrap_used, clippy::expect_used)]
+
 //! Tests for Orchestration Configuration
 //!
 //! Comprehensive tests for service orchestration configuration structures
@@ -149,13 +152,12 @@ fn test_scaling_config_enabled() {
 }
 
 #[test]
-fn test_scaling_config_validation() -> SongbirdResult<()> {
+fn test_scaling_config_validation() {
     let config = ScalingConfig::default();
 
     assert!(config.min_instances <= config.max_instances);
     assert!(config.target_cpu_percent > 0.0 && config.target_cpu_percent <= 100.0);
     assert!(config.target_memory_percent > 0.0 && config.target_memory_percent <= 100.0);
-    Ok(())
 }
 
 #[test]
@@ -180,24 +182,22 @@ fn test_orchestration_config_serialization() -> SongbirdResult<()> {
 }
 
 #[test]
-fn test_orchestration_config_clone() -> SongbirdResult<()> {
+fn test_orchestration_config_clone() {
     let config = OrchestrationConfig::default();
     let cloned = config.clone();
 
     assert_eq!(config.discovery.enabled, cloned.discovery.enabled);
     assert_eq!(config.health.enabled, cloned.health.enabled);
     assert_eq!(config.scaling.enabled, cloned.scaling.enabled);
-    Ok(())
 }
 
 #[test]
-fn test_orchestration_config_debug() -> SongbirdResult<()> {
+fn test_orchestration_config_debug() {
     let config = OrchestrationConfig::default();
     let debug_str = format!("{config:?}");
 
     assert!(debug_str.contains("OrchestrationConfig"));
     assert!(debug_str.contains("discovery"));
-    Ok(())
 }
 
 #[test]

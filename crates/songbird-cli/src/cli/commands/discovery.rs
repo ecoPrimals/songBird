@@ -46,3 +46,7 @@ pub async fn execute_discovery(
     println!("✅ Discovery complete ");
     Ok(())
 }
+
+#[cfg(test)]
+#[path = "discovery_tests.rs"]
+mod tests;

@@ -1,3 +1,6 @@
+// Allow unwrap/expect in tests - idiomatic for test code
+#![allow(clippy::unwrap_used, clippy::expect_used)]
+
 //! Comprehensive Compute Adapter Coverage Tests
 //!
 //! **Goal**: Raise coverage from 60.13% to 85%+
@@ -327,7 +330,7 @@ fn test_compute_metrics_serialization() {
     let json = serde_json::to_string(&metrics);
     assert!(json.is_ok(), "Should serialize successfully");
 
-    let json_str = json.unwrap();
+    let json_str = json.expect("test precondition");
     assert!(json_str.contains("cpu_usage_percent"));
     assert!(json_str.contains("45"));
 }
@@ -347,7 +350,7 @@ fn test_compute_metrics_deserialization() {
     let metrics: Result<ComputeMetrics, _> = serde_json::from_str(json);
     assert!(metrics.is_ok(), "Should deserialize successfully");
 
-    let metrics = metrics.unwrap();
+    let metrics = metrics.expect("test precondition");
     assert_eq!(metrics.cpu_usage_percent, 55.5);
     assert_eq!(metrics.active_containers, 15);
 }
@@ -450,7 +453,7 @@ fn test_health_status_deserialization() {
     for (json, expected) in test_cases {
         let health: Result<ComputeHealth, _> = serde_json::from_str(json);
         assert!(health.is_ok(), "Should deserialize: {}", json);
-        assert_eq!(health.unwrap(), expected);
+        assert_eq!(health.expect("test precondition"), expected);
     }
 }
 
@@ -464,7 +467,7 @@ fn test_adapter_new_success() {
     let adapter = ComputeAdapter::new(endpoint.clone());
 
     assert!(adapter.is_ok(), "Should create adapter successfully");
-    let adapter = adapter.unwrap();
+    let adapter = adapter.expect("test precondition");
     assert_eq!(adapter.endpoint(), &endpoint);
 }
 
@@ -486,7 +489,7 @@ fn test_adapter_new_various_endpoints() {
 #[test]
 fn test_adapter_with_timeout() {
     let endpoint = "http://localhost:8080".to_string();
-    let adapter = ComputeAdapter::new(endpoint).unwrap();
+    let adapter = ComputeAdapter::new(endpoint).expect("test precondition");
 
     let custom_timeout = Duration::from_secs(20);
     let _adapter_with_timeout = adapter.with_timeout(custom_timeout);
@@ -505,7 +508,8 @@ fn test_adapter_with_various_timeouts() {
     ];
 
     for timeout in timeouts {
-        let adapter = ComputeAdapter::new(endpoint.clone()).unwrap().with_timeout(timeout);
+        let adapter =
+            ComputeAdapter::new(endpoint.clone()).expect("test precondition").with_timeout(timeout);
         assert_eq!(adapter.endpoint(), "http://localhost:8080");
     }
 }
@@ -513,7 +517,7 @@ fn test_adapter_with_various_timeouts() {
 #[test]
 fn test_adapter_endpoint_getter() {
     let endpoint = "http://compute-service:8080".to_string();
-    let adapter = ComputeAdapter::new(endpoint.clone()).unwrap();
+    let adapter = ComputeAdapter::new(endpoint.clone()).expect("test precondition");
 
     assert_eq!(adapter.endpoint(), &endpoint);
     assert_eq!(adapter.endpoint(), "http://compute-service:8080");
@@ -522,7 +526,7 @@ fn test_adapter_endpoint_getter() {
 #[test]
 fn test_adapter_builder_pattern() {
     let adapter = ComputeAdapter::new("http://localhost:8080".to_string())
-        .unwrap()
+        .expect("test precondition")
         .with_timeout(Duration::from_secs(15));
 
     assert_eq!(adapter.endpoint(), "http://localhost:8080");
@@ -530,8 +534,10 @@ fn test_adapter_builder_pattern() {
 
 #[test]
 fn test_multiple_adapters_independent() {
-    let adapter1 = ComputeAdapter::new("http://compute1:8080".to_string()).unwrap();
-    let adapter2 = ComputeAdapter::new("http://compute2:8081".to_string()).unwrap();
+    let adapter1 =
+        ComputeAdapter::new("http://compute1:8080".to_string()).expect("test precondition");
+    let adapter2 =
+        ComputeAdapter::new("http://compute2:8081".to_string()).expect("test precondition");
 
     assert_eq!(adapter1.endpoint(), "http://compute1:8080");
     assert_eq!(adapter2.endpoint(), "http://compute2:8081");

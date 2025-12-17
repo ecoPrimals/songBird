@@ -1,3 +1,6 @@
+// Allow unwrap/expect in tests - idiomatic for test code
+#![allow(clippy::unwrap_used, clippy::expect_used)]
+
 //! Tests for Universal Capability Adapter
 //!
 //! Comprehensive tests for capability discovery and adaptation

@@ -1,3 +1,6 @@
+// Allow unwrap/expect in tests - idiomatic for test code
+#![allow(clippy::unwrap_used, clippy::expect_used)]
+
 //! Enhanced Discovery Tests
 //!
 //! Additional comprehensive tests for universal primal discovery system

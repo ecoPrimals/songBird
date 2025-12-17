@@ -7,6 +7,7 @@
 mod adapter;
 mod connection;
 mod error;
+mod qos_selection; // ✨ NEW: QoS-aware provider selection
 mod registry;
 mod types;
 

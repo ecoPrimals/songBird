@@ -13,6 +13,7 @@ pub mod canonical_test_framework;
 pub mod chaos_engineering;
 pub mod cli_helpers;
 pub mod config_helpers;
+pub mod env_isolation;
 pub mod error_testing;
 pub mod fixtures;
 // REMOVED: fixtures_legacy (Nov 8, 2025) - No active usage, fully deprecated
@@ -48,6 +49,7 @@ pub use mocks::{
 pub use async_helpers::*;
 pub use cli_helpers::*;
 pub use config_helpers::*;
+pub use env_isolation::{ScopedEnv, ScopedEnvMultiple};
 pub use network_fixtures::*;
 pub use service_fixtures::*;
 pub use test_env::*;

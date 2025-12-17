@@ -139,7 +139,11 @@ impl Default for ResourceMetrics {
 }
 
 /// Response format for capability queries
+///
+/// Used internally for deserializing HTTP responses from primal services.
+/// Public within module for testing, not exposed in public API.
 #[derive(Debug, Deserialize)]
+#[allow(dead_code)]
 pub(super) struct CapabilityResponse {
     pub capabilities: Vec<Capability>,
 }
@@ -169,7 +173,7 @@ mod tests {
 
     #[test]
     fn test_capability_from_string_security() {
-        let cap = Capability::from_string("security").unwrap();
+        let cap = Capability::from_string("security").expect("'security' is a valid capability");
         assert_eq!(cap.capability_type, "security");
         assert_eq!(cap.category(), "security");
         assert!(cap.available);
@@ -213,14 +217,14 @@ mod tests {
 
     #[test]
     fn test_capability_category() {
-        let cap = Capability::from_string("storage").unwrap();
+        let cap = Capability::from_string("storage").expect("'storage' is a valid capability");
         assert_eq!(cap.category(), "storage");
     }
 
     #[test]
     fn test_capability_equality() {
-        let cap1 = Capability::from_string("security").unwrap();
-        let cap2 = Capability::from_string("security").unwrap();
+        let cap1 = Capability::from_string("security").expect("'security' is a valid capability");
+        let cap2 = Capability::from_string("security").expect("'security' is a valid capability");
         assert_eq!(cap1, cap2);
     }
 
@@ -254,25 +258,29 @@ mod tests {
 
     #[test]
     fn test_capability_serialization() {
-        let cap = Capability::from_string("ai").unwrap();
-        let json = serde_json::to_string(&cap).unwrap();
-        let deserialized: Capability = serde_json::from_str(&json).unwrap();
+        let cap = Capability::from_string("ai").expect("'ai' is a valid capability");
+        let json = serde_json::to_string(&cap).expect("Capability should serialize to JSON");
+        let deserialized: Capability =
+            serde_json::from_str(&json).expect("JSON should deserialize to Capability");
         assert_eq!(cap, deserialized);
     }
 
     #[test]
     fn test_qos_metrics_serialization() {
         let qos = QoSMetrics::default();
-        let json = serde_json::to_string(&qos).unwrap();
-        let deserialized: QoSMetrics = serde_json::from_str(&json).unwrap();
+        let json = serde_json::to_string(&qos).expect("QoSMetrics should serialize to JSON");
+        let deserialized: QoSMetrics =
+            serde_json::from_str(&json).expect("JSON should deserialize to QoSMetrics");
         assert_eq!(qos, deserialized);
     }
 
     #[test]
     fn test_resource_metrics_serialization() {
         let resources = ResourceMetrics::default();
-        let json = serde_json::to_string(&resources).unwrap();
-        let deserialized: ResourceMetrics = serde_json::from_str(&json).unwrap();
+        let json =
+            serde_json::to_string(&resources).expect("ResourceMetrics should serialize to JSON");
+        let deserialized: ResourceMetrics =
+            serde_json::from_str(&json).expect("JSON should deserialize to ResourceMetrics");
         assert_eq!(resources, deserialized);
     }
 
@@ -286,8 +294,9 @@ mod tests {
     #[test]
     fn test_primal_type_serialization() {
         let primal = PrimalType::Orchestration;
-        let json = serde_json::to_string(&primal).unwrap();
-        let deserialized: PrimalType = serde_json::from_str(&json).unwrap();
+        let json = serde_json::to_string(&primal).expect("PrimalType should serialize to JSON");
+        let deserialized: PrimalType =
+            serde_json::from_str(&json).expect("JSON should deserialize to PrimalType");
         assert_eq!(primal, deserialized);
     }
 

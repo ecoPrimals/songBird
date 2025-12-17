@@ -429,6 +429,12 @@ impl MockCapabilityEnvironmentBuilder {
     }
 }
 
+#[allow(
+    clippy::unwrap_used,
+    clippy::expect_used,
+    clippy::unnecessary_wraps,
+    clippy::field_reassign_with_default
+)]
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -536,7 +542,7 @@ mod tests {
             avg_response_time_ms: 120.0,
             success_rate: 0.95,
         };
-        let cloned = metrics.clone();
+        let cloned = metrics;
         assert_eq!(cloned.requests_handled, 1000);
         assert!((cloned.current_load - 0.75).abs() < 0.001);
     }
@@ -571,7 +577,7 @@ mod tests {
             success_rate: 0.92,
         };
 
-        server.set_metrics(custom_metrics.clone());
+        server.set_metrics(custom_metrics);
         let retrieved = server.metrics();
 
         assert_eq!(retrieved.requests_handled, 500);
@@ -583,7 +589,7 @@ mod tests {
         let mut server = MockCapabilityServer::new(CapabilityType::Security);
 
         let response = serde_json::json!({"status": "ok", "data": "test"});
-        server.add_response("/test/endpoint".to_string(), response.clone());
+        server.add_response("/test/endpoint".to_string(), response);
 
         // Custom responses are internal, verify no panic
     }

@@ -1,3 +1,6 @@
+// Allow unwrap/expect in tests - idiomatic for test code
+#![allow(clippy::unwrap_used, clippy::expect_used)]
+
 //! Comprehensive Async Security Adapter Coverage Tests
 //!
 //! **Goal**: Cover async methods in security.rs (from_discovery, collect_metrics, verify_auth, check_health)
@@ -82,7 +85,7 @@ async fn test_from_discovery_uses_host_and_port_fallback() {
     let result = SecurityAdapter::from_discovery().await;
     assert!(result.is_ok(), "Should construct endpoint from host and port");
 
-    let adapter = result.unwrap();
+    let adapter = result.expect("test precondition");
     assert!(adapter.endpoint().contains("testhost"), "Should use configured host");
     assert!(adapter.endpoint().contains("9999"), "Should use configured port");
 
@@ -112,11 +115,11 @@ async fn test_collect_metrics_success() {
         .mount(&mock_server)
         .await;
 
-    let adapter = SecurityAdapter::new(mock_server.uri()).unwrap();
+    let adapter = SecurityAdapter::new(mock_server.uri()).expect("test precondition");
     let metrics = adapter.collect_metrics().await;
 
     assert!(metrics.is_ok(), "Should collect metrics successfully");
-    let metrics = metrics.unwrap();
+    let metrics = metrics.expect("test precondition");
     assert_eq!(metrics.active_sessions, 42);
     assert_eq!(metrics.failed_auth_attempts, 5);
     assert_eq!(metrics.blocked_ips, 2);
@@ -127,13 +130,13 @@ async fn test_collect_metrics_success() {
 async fn test_collect_metrics_network_error() {
     // Use a non-existent endpoint to trigger network error
     let adapter = SecurityAdapter::new("http://localhost:1".to_string())
-        .unwrap()
+        .expect("test precondition")
         .with_timeout(Duration::from_millis(100));
 
     let result = adapter.collect_metrics().await;
     assert!(result.is_err(), "Should fail with network error");
 
-    let err = result.unwrap_err();
+    let err = result.expect_err("testing error case");
     assert!(err.to_string().contains("network") || err.to_string().contains("reach"));
 }
 
@@ -148,11 +151,11 @@ async fn test_collect_metrics_http_error() {
         .mount(&mock_server)
         .await;
 
-    let adapter = SecurityAdapter::new(mock_server.uri()).unwrap();
+    let adapter = SecurityAdapter::new(mock_server.uri()).expect("test precondition");
     let result = adapter.collect_metrics().await;
 
     assert!(result.is_err(), "Should fail with HTTP error");
-    let err = result.unwrap_err();
+    let err = result.expect_err("testing error case");
     assert!(err.to_string().contains("500") || err.to_string().contains("unavailable"));
 }
 
@@ -167,11 +170,11 @@ async fn test_collect_metrics_invalid_json() {
         .mount(&mock_server)
         .await;
 
-    let adapter = SecurityAdapter::new(mock_server.uri()).unwrap();
+    let adapter = SecurityAdapter::new(mock_server.uri()).expect("test precondition");
     let result = adapter.collect_metrics().await;
 
     assert!(result.is_err(), "Should fail parsing invalid JSON");
-    let err = result.unwrap_err();
+    let err = result.expect_err("testing error case");
     assert!(err.to_string().contains("parse") || err.to_string().contains("security"));
 }
 
@@ -192,11 +195,11 @@ async fn test_collect_metrics_missing_timestamp() {
         .mount(&mock_server)
         .await;
 
-    let adapter = SecurityAdapter::new(mock_server.uri()).unwrap();
+    let adapter = SecurityAdapter::new(mock_server.uri()).expect("test precondition");
     let result = adapter.collect_metrics().await;
 
     assert!(result.is_ok(), "Should handle missing timestamp");
-    let metrics = result.unwrap();
+    let metrics = result.expect("test precondition");
     // Timestamp should be updated to current time if it was epoch
     assert!(metrics.timestamp.timestamp() > 0);
 }
@@ -212,8 +215,9 @@ async fn test_collect_metrics_timeout() {
         .mount(&mock_server)
         .await;
 
-    let adapter =
-        SecurityAdapter::new(mock_server.uri()).unwrap().with_timeout(Duration::from_millis(50));
+    let adapter = SecurityAdapter::new(mock_server.uri())
+        .expect("test precondition")
+        .with_timeout(Duration::from_millis(50));
 
     let result = adapter.collect_metrics().await;
     assert!(result.is_err(), "Should timeout on slow response");
@@ -234,11 +238,11 @@ async fn test_verify_auth_authorized() {
         .mount(&mock_server)
         .await;
 
-    let adapter = SecurityAdapter::new(mock_server.uri()).unwrap();
+    let adapter = SecurityAdapter::new(mock_server.uri()).expect("test precondition");
     let result = adapter.verify_auth("valid_token").await;
 
     assert!(result.is_ok(), "Should verify auth successfully");
-    assert_eq!(result.unwrap(), AuthResult::Authorized);
+    assert_eq!(result.expect("test precondition"), AuthResult::Authorized);
 }
 
 #[tokio::test]
@@ -252,11 +256,11 @@ async fn test_verify_auth_unauthorized() {
         .mount(&mock_server)
         .await;
 
-    let adapter = SecurityAdapter::new(mock_server.uri()).unwrap();
+    let adapter = SecurityAdapter::new(mock_server.uri()).expect("test precondition");
     let result = adapter.verify_auth("invalid_token").await;
 
     assert!(result.is_ok(), "Should handle unauthorized gracefully");
-    assert_eq!(result.unwrap(), AuthResult::Unauthorized);
+    assert_eq!(result.expect("test precondition"), AuthResult::Unauthorized);
 }
 
 #[tokio::test]
@@ -270,11 +274,11 @@ async fn test_verify_auth_expired() {
         .mount(&mock_server)
         .await;
 
-    let adapter = SecurityAdapter::new(mock_server.uri()).unwrap();
+    let adapter = SecurityAdapter::new(mock_server.uri()).expect("test precondition");
     let result = adapter.verify_auth("expired_token").await;
 
     assert!(result.is_ok(), "Should handle expired token");
-    assert_eq!(result.unwrap(), AuthResult::Expired);
+    assert_eq!(result.expect("test precondition"), AuthResult::Expired);
 }
 
 #[tokio::test]
@@ -288,17 +292,17 @@ async fn test_verify_auth_invalid() {
         .mount(&mock_server)
         .await;
 
-    let adapter = SecurityAdapter::new(mock_server.uri()).unwrap();
+    let adapter = SecurityAdapter::new(mock_server.uri()).expect("test precondition");
     let result = adapter.verify_auth("malformed_token").await;
 
     assert!(result.is_ok(), "Should handle invalid token");
-    assert_eq!(result.unwrap(), AuthResult::Invalid);
+    assert_eq!(result.expect("test precondition"), AuthResult::Invalid);
 }
 
 #[tokio::test]
 async fn test_verify_auth_network_error() {
     let adapter = SecurityAdapter::new("http://localhost:1".to_string())
-        .unwrap()
+        .expect("test precondition")
         .with_timeout(Duration::from_millis(100));
 
     let result = adapter.verify_auth("token").await;
@@ -316,7 +320,7 @@ async fn test_verify_auth_invalid_json_response() {
         .mount(&mock_server)
         .await;
 
-    let adapter = SecurityAdapter::new(mock_server.uri()).unwrap();
+    let adapter = SecurityAdapter::new(mock_server.uri()).expect("test precondition");
     let result = adapter.verify_auth("token").await;
 
     assert!(result.is_err(), "Should fail parsing invalid JSON");
@@ -343,11 +347,11 @@ async fn test_check_health_healthy() {
         .mount(&mock_server)
         .await;
 
-    let adapter = SecurityAdapter::new(mock_server.uri()).unwrap();
+    let adapter = SecurityAdapter::new(mock_server.uri()).expect("test precondition");
     let result = adapter.check_health().await;
 
     assert!(result.is_ok(), "Should check health successfully");
-    assert_eq!(result.unwrap(), SecurityHealth::Healthy);
+    assert_eq!(result.expect("test precondition"), SecurityHealth::Healthy);
 }
 
 #[tokio::test]
@@ -367,11 +371,11 @@ async fn test_check_health_warning() {
         .mount(&mock_server)
         .await;
 
-    let adapter = SecurityAdapter::new(mock_server.uri()).unwrap();
+    let adapter = SecurityAdapter::new(mock_server.uri()).expect("test precondition");
     let result = adapter.check_health().await;
 
     assert!(result.is_ok(), "Should check health successfully");
-    assert_eq!(result.unwrap(), SecurityHealth::Warning);
+    assert_eq!(result.expect("test precondition"), SecurityHealth::Warning);
 }
 
 #[tokio::test]
@@ -391,17 +395,17 @@ async fn test_check_health_critical() {
         .mount(&mock_server)
         .await;
 
-    let adapter = SecurityAdapter::new(mock_server.uri()).unwrap();
+    let adapter = SecurityAdapter::new(mock_server.uri()).expect("test precondition");
     let result = adapter.check_health().await;
 
     assert!(result.is_ok(), "Should check health successfully");
-    assert_eq!(result.unwrap(), SecurityHealth::Critical);
+    assert_eq!(result.expect("test precondition"), SecurityHealth::Critical);
 }
 
 #[tokio::test]
 async fn test_check_health_network_failure() {
     let adapter = SecurityAdapter::new("http://localhost:1".to_string())
-        .unwrap()
+        .expect("test precondition")
         .with_timeout(Duration::from_millis(100));
 
     let result = adapter.check_health().await;
@@ -431,12 +435,12 @@ async fn test_security_provider_collect_security_metrics() {
         .mount(&mock_server)
         .await;
 
-    let adapter = SecurityAdapter::new(mock_server.uri()).unwrap();
+    let adapter = SecurityAdapter::new(mock_server.uri()).expect("test precondition");
 
     // Call trait method directly (SecurityAdapter implements SecurityProvider)
     let result = SecurityProvider::collect_security_metrics(&adapter).await;
     assert!(result.is_ok(), "Trait method should work");
-    let metrics = result.unwrap();
+    let metrics = result.expect("test precondition");
     assert_eq!(metrics.active_sessions, 30);
 }
 
@@ -450,12 +454,12 @@ async fn test_security_provider_verify_authentication() {
         .mount(&mock_server)
         .await;
 
-    let adapter = SecurityAdapter::new(mock_server.uri()).unwrap();
+    let adapter = SecurityAdapter::new(mock_server.uri()).expect("test precondition");
 
     // Call trait method directly
     let result = SecurityProvider::verify_authentication(&adapter, "token").await;
     assert!(result.is_ok(), "Trait method should work");
-    assert_eq!(result.unwrap(), AuthResult::Authorized);
+    assert_eq!(result.expect("test precondition"), AuthResult::Authorized);
 }
 
 #[tokio::test]
@@ -474,12 +478,12 @@ async fn test_security_provider_check_security_health() {
         .mount(&mock_server)
         .await;
 
-    let adapter = SecurityAdapter::new(mock_server.uri()).unwrap();
+    let adapter = SecurityAdapter::new(mock_server.uri()).expect("test precondition");
 
     // Call trait method directly
     let result = SecurityProvider::check_security_health(&adapter).await;
     assert!(result.is_ok(), "Trait method should work");
-    assert_eq!(result.unwrap(), SecurityHealth::Healthy);
+    assert_eq!(result.expect("test precondition"), SecurityHealth::Healthy);
 }
 
 // ============================================================================
@@ -505,11 +509,11 @@ async fn test_collect_metrics_with_extra_fields() {
         .mount(&mock_server)
         .await;
 
-    let adapter = SecurityAdapter::new(mock_server.uri()).unwrap();
+    let adapter = SecurityAdapter::new(mock_server.uri()).expect("test precondition");
     let result = adapter.collect_metrics().await;
 
     assert!(result.is_ok(), "Should handle extra fields gracefully");
-    let metrics = result.unwrap();
+    let metrics = result.expect("test precondition");
     assert_eq!(metrics.active_sessions, 25);
 }
 
@@ -526,7 +530,7 @@ async fn test_collect_metrics_with_various_status_codes() {
             .mount(&mock_server)
             .await;
 
-        let adapter = SecurityAdapter::new(mock_server.uri()).unwrap();
+        let adapter = SecurityAdapter::new(mock_server.uri()).expect("test precondition");
         let result = adapter.collect_metrics().await;
 
         assert!(result.is_err(), "Should fail for status code {}", status_code);
@@ -546,11 +550,11 @@ async fn test_verify_auth_with_various_http_error_codes() {
             .mount(&mock_server)
             .await;
 
-        let adapter = SecurityAdapter::new(mock_server.uri()).unwrap();
+        let adapter = SecurityAdapter::new(mock_server.uri()).expect("test precondition");
         let result = adapter.verify_auth("token").await;
 
         assert!(result.is_ok(), "Should return Unauthorized for status {}", status_code);
-        assert_eq!(result.unwrap(), AuthResult::Unauthorized);
+        assert_eq!(result.expect("test precondition"), AuthResult::Unauthorized);
     }
 }
 
@@ -574,8 +578,9 @@ async fn test_adapter_with_custom_timeout_in_requests() {
         .await;
 
     // Should fail with very short timeout (100ms << 1s delay)
-    let adapter_short =
-        SecurityAdapter::new(mock_server.uri()).unwrap().with_timeout(Duration::from_millis(100));
+    let adapter_short = SecurityAdapter::new(mock_server.uri())
+        .expect("test precondition")
+        .with_timeout(Duration::from_millis(100));
     let result_short = adapter_short.collect_metrics().await;
     assert!(result_short.is_err(), "Should timeout with insufficient timeout (100ms vs 1s delay)");
 
@@ -606,7 +611,7 @@ async fn test_endpoint_url_construction_in_requests() {
             .mount(&mock_server)
             .await;
 
-        let adapter = SecurityAdapter::new(endpoint.clone()).unwrap();
+        let adapter = SecurityAdapter::new(endpoint.clone()).expect("test precondition");
         // Request should still work despite URL formatting
         let result = adapter.collect_metrics().await;
         // May succeed or fail depending on URL normalization

@@ -3,7 +3,7 @@
 //! Phase 3 Test Coverage Expansion - Week 1
 //! Target: 0% → 80%+ coverage for observability.rs
 
-use super::observability::*;
+use super::*;
 
 #[test]
 fn test_unified_observability_config_default() {

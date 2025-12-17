@@ -11,6 +11,8 @@
 #![allow(clippy::similar_names)]
 #![allow(clippy::too_many_lines)]
 #![allow(clippy::module_name_repetitions)]
+// Allow unwrap/expect in tests - idiomatic for test code
+#![allow(clippy::unwrap_used, clippy::expect_used)]
 
 //!
 //! Tests conversions between discovery-specific and universal types
@@ -193,7 +195,7 @@ fn test_round_trip_conversion_preserves_name() {
         metadata: HashMap::new(),
     };
 
-    let discovery: DiscoveryServiceInfo = universal.clone().into();
+    let discovery: DiscoveryServiceInfo = universal.into();
     let back_to_universal: UniversalServiceInfo = discovery.into();
 
     assert_eq!(back_to_universal.name, original_name);

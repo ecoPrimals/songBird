@@ -18,7 +18,7 @@ fn test_provider_factory_new() {
 
 #[test]
 fn test_provider_factory_default() {
-    let factory = CanonicalProviderFactory::default();
+    let factory = CanonicalProviderFactory;
 
     // Verify default implementation works
     let _ = factory;
@@ -28,7 +28,7 @@ fn test_provider_factory_default() {
 fn test_provider_factory_multiple_instances() {
     let factory1 = CanonicalProviderFactory::new();
     let factory2 = CanonicalProviderFactory::new();
-    let factory3 = CanonicalProviderFactory::default();
+    let factory3 = CanonicalProviderFactory;
 
     // Verify multiple instances can be created
     let _ = factory1;

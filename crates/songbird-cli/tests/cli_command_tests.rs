@@ -1,3 +1,6 @@
+// Allow unwrap/expect in tests - idiomatic for test code
+#![allow(clippy::unwrap_used, clippy::expect_used)]
+
 //! # Comprehensive CLI Command Tests
 //!
 //! Tests for all CLI commands and argument parsing
@@ -65,7 +68,7 @@ fn test_cli_args_with_config_path() {
     };
 
     assert!(args.config.is_some());
-    assert_eq!(args.config.unwrap(), "/path/to/config.toml");
+    assert_eq!(args.config.expect("test precondition"), "/path/to/config.toml");
 }
 
 // ============================================================================
@@ -188,7 +191,7 @@ fn test_cli_args_various_config_paths() {
             config: Some(path.to_string()),
         };
 
-        assert_eq!(args.config.unwrap(), path);
+        assert_eq!(args.config.expect("test precondition"), path);
     }
 }
 
@@ -244,7 +247,7 @@ fn test_cli_args_empty_config_path() {
     };
 
     assert!(args.config.is_some());
-    assert_eq!(args.config.unwrap(), "");
+    assert_eq!(args.config.expect("test precondition"), "");
 }
 
 #[test]
@@ -257,7 +260,7 @@ fn test_cli_args_very_long_config_path() {
         config: Some(long_path.clone()),
     };
 
-    assert_eq!(args.config.unwrap(), long_path);
+    assert_eq!(args.config.expect("test precondition"), long_path);
 }
 
 // ============================================================================

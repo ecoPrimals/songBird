@@ -26,6 +26,10 @@ pub mod real_adapter_discovery_e2e;
 pub mod scenario_01_service_discovery;
 pub mod service_discovery;
 pub mod test_environment;
+pub mod test_runtime_discovery;
+pub mod test_service_discovery_sovereign;
+pub mod test_capability_routing;
+pub mod test_primal_self_knowledge;
 
 use songbird_types::SongbirdResult;
 use std::time::Duration;

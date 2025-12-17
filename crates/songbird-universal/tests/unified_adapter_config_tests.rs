@@ -18,6 +18,8 @@
 #![allow(clippy::needless_pass_by_value)]
 #![allow(clippy::similar_names)]
 #![allow(clippy::module_name_repetitions)]
+// Allow unwrap/expect in tests - idiomatic for test code
+#![allow(clippy::unwrap_used, clippy::expect_used)]
 
 use songbird_test_utils::network_fixtures::*;
 use songbird_types::{SongbirdError, SongbirdResult};
@@ -413,7 +415,7 @@ async fn test_route_request_with_empty_string_capability() {
 
     // Create request with empty string capability_type
     let mut parameters = HashMap::new();
-    parameters.insert("capability_type".to_string(), serde_json::Value::String("".to_string()));
+    parameters.insert("capability_type".to_string(), serde_json::Value::String(String::new()));
 
     let request = UniversalRequest {
         request_id: "test-empty-cap".to_string(),

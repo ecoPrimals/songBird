@@ -1,3 +1,6 @@
+// Allow unwrap/expect in tests - idiomatic for test code
+#![allow(clippy::unwrap_used, clippy::expect_used)]
+
 //! Comprehensive tests for Network Optimization and Performance Management
 //!
 //! Tests network configuration, performance settings, and optimization strategies
@@ -121,7 +124,7 @@ fn test_proxy_config_enabled() {
     let config = ProxyConfig {
         enabled: true,
         proxy_type: ProxyType::Socks5,
-        upstream_servers: vec!["127.0.0.1:8080".parse().unwrap()],
+        upstream_servers: vec!["127.0.0.1:8080".parse().expect("should parse valid input")],
         load_balancing: LoadBalancingStrategy::LeastConnections,
     };
 
@@ -398,9 +401,9 @@ fn test_proxy_with_load_balancing() {
         enabled: true,
         proxy_type: ProxyType::Http,
         upstream_servers: vec![
-            "192.168.1.1:8080".parse().unwrap(),
-            "192.168.1.2:8080".parse().unwrap(),
-            "192.168.1.3:8080".parse().unwrap(),
+            "192.168.1.1:8080".parse().expect("should parse valid input"),
+            "192.168.1.2:8080".parse().expect("should parse valid input"),
+            "192.168.1.3:8080".parse().expect("should parse valid input"),
         ],
         load_balancing: LoadBalancingStrategy::LeastConnections,
     };

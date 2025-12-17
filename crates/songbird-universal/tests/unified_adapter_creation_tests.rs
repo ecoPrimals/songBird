@@ -18,6 +18,8 @@
 #![allow(clippy::needless_pass_by_value)]
 #![allow(clippy::similar_names)]
 #![allow(clippy::module_name_repetitions)]
+// Allow unwrap/expect in tests - idiomatic for test code
+#![allow(clippy::unwrap_used, clippy::expect_used)]
 
 use songbird_test_utils::network_fixtures::*;
 use songbird_types::{SongbirdError, SongbirdResult};

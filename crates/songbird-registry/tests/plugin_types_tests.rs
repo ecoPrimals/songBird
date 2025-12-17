@@ -20,6 +20,8 @@
 #![allow(clippy::cast_possible_truncation)]
 #![allow(clippy::cast_sign_loss)]
 #![allow(clippy::needless_pass_by_value)]
+// Allow unwrap/expect in tests - idiomatic for test code
+#![allow(clippy::unwrap_used, clippy::expect_used)]
 
 //!
 //! Tests for plugin type definitions in songbird-registry.
@@ -379,7 +381,7 @@ fn test_plugin_long_description() {
     let long_desc = "A".repeat(1000);
     let metadata = PluginMetadata {
         author: "Test".to_string(),
-        description: long_desc.clone(),
+        description: long_desc,
         tags: vec![],
         health_endpoint: None,
         extra: serde_json::Map::new(),
@@ -397,7 +399,7 @@ fn test_plugin_many_tags() {
     let metadata = PluginMetadata {
         author: "Test".to_string(),
         description: "Many tags".to_string(),
-        tags: tags.clone(),
+        tags: tags,
         health_endpoint: None,
         extra: serde_json::Map::new(),
     };

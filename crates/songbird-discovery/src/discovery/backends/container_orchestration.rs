@@ -733,3 +733,7 @@ impl ServiceDiscovery for UniversalContainerOrchestration {
         self
     }
 }
+
+#[cfg(test)]
+#[path = "container_orchestration_tests.rs"]
+mod tests;

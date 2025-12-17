@@ -140,7 +140,6 @@ impl TaskComplexityAnalyzer {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::core::routing::types::{ResourceRequirements, TaskBuilder};
 
     #[test]
     fn test_gpu_task_is_heavy() {

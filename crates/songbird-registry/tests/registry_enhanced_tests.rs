@@ -1,3 +1,6 @@
+// Allow unwrap/expect in tests - idiomatic for test code
+#![allow(clippy::unwrap_used, clippy::expect_used)]
+
 //! Enhanced Registry Tests
 //!
 //! Additional tests for service registry functionality
@@ -31,7 +34,7 @@ fn test_service_metadata_structure() {
 
 #[test]
 fn test_service_status_transitions() {
-    let statuses = vec!["pending", "starting", "healthy", "unhealthy", "stopping", "stopped"];
+    let statuses = ["pending", "starting", "healthy", "unhealthy", "stopping", "stopped"];
 
     assert_eq!(statuses.len(), 6);
     assert!(statuses.contains(&"healthy"));
@@ -43,11 +46,8 @@ fn test_service_status_transitions() {
 
 #[test]
 fn test_service_lookup_by_name() {
-    let services = vec![
-        ("service-a", "192.168.1.1"),
-        ("service-b", "192.168.1.2"),
-        ("service-c", "192.168.1.3"),
-    ];
+    let services =
+        [("service-a", "192.168.1.1"), ("service-b", "192.168.1.2"), ("service-c", "192.168.1.3")];
 
     let found = services.iter().find(|(name, _)| *name == "service-b").map(|(_, addr)| *addr);
 
@@ -56,7 +56,7 @@ fn test_service_lookup_by_name() {
 
 #[test]
 fn test_service_filtering_by_capability() {
-    let services = vec![
+    let services = [
         ("compute", vec!["cpu", "gpu"]),
         ("storage", vec!["disk", "cache"]),
         ("network", vec!["routing", "firewall"]),
@@ -180,7 +180,7 @@ fn test_service_per_type_limit() {
 
 #[test]
 fn test_endpoint_validation() {
-    let endpoints = vec!["http://service1:8080", "http://service2:8080", "http://service3:8080"];
+    let endpoints = ["http://service1:8080", "http://service2:8080", "http://service3:8080"];
 
     assert!(endpoints.iter().all(|e| e.starts_with("http://")));
     assert!(endpoints.iter().all(|e| e.contains(":8080")));
@@ -188,8 +188,7 @@ fn test_endpoint_validation() {
 
 #[test]
 fn test_multiple_endpoints_per_service() {
-    let service_endpoints =
-        vec!["http://primary:8080", "http://backup:8080", "http://fallback:8080"];
+    let service_endpoints = ["http://primary:8080", "http://backup:8080", "http://fallback:8080"];
 
     assert_eq!(service_endpoints.len(), 3);
 }
@@ -200,8 +199,8 @@ fn test_multiple_endpoints_per_service() {
 
 #[test]
 fn test_capability_intersection() {
-    let required = vec!["compute", "storage"];
-    let available = vec!["compute", "storage", "network"];
+    let required = ["compute", "storage"];
+    let available = ["compute", "storage", "network"];
 
     let has_all = required.iter().all(|r| available.contains(r));
     assert!(has_all);
@@ -209,8 +208,8 @@ fn test_capability_intersection() {
 
 #[test]
 fn test_capability_subset_check() {
-    let service_caps = vec!["compute", "gpu"];
-    let required_caps = vec!["compute"];
+    let service_caps = ["compute", "gpu"];
+    let required_caps = ["compute"];
 
     let matches = required_caps.iter().all(|r| service_caps.contains(r));
     assert!(matches);
@@ -222,7 +221,7 @@ fn test_capability_subset_check() {
 
 #[test]
 fn test_round_robin_selection() {
-    let services = vec!["service-1", "service-2", "service-3"];
+    let services = ["service-1", "service-2", "service-3"];
     let mut index = 0;
 
     let selected = services[index % services.len()];
@@ -273,7 +272,7 @@ fn test_api_version_matching() {
 
 #[test]
 fn test_service_tags() {
-    let tags = vec!["production", "critical", "monitored"];
+    let tags = ["production", "critical", "monitored"];
 
     assert!(tags.contains(&"production"));
     assert!(!tags.contains(&"development"));
@@ -281,7 +280,7 @@ fn test_service_tags() {
 
 #[test]
 fn test_tag_based_filtering() {
-    let services = vec![
+    let services = [
         ("service-a", vec!["production", "critical"]),
         ("service-b", vec!["development"]),
         ("service-c", vec!["production"]),
@@ -299,7 +298,7 @@ fn test_tag_based_filtering() {
 
 #[test]
 fn test_service_priority() {
-    let mut services = vec![("service-a", 5), ("service-b", 10), ("service-c", 3)];
+    let mut services = [("service-a", 5), ("service-b", 10), ("service-c", 3)];
 
     services.sort_by(|a, b| b.1.cmp(&a.1)); // Highest first
 
@@ -308,9 +307,9 @@ fn test_service_priority() {
 
 #[test]
 fn test_ranking_by_health_score() {
-    let mut services = vec![("service-a", 0.95), ("service-b", 0.85), ("service-c", 0.99)];
+    let mut services = [("service-a", 0.95), ("service-b", 0.85), ("service-c", 0.99)];
 
-    services.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap());
+    services.sort_by(|a, b| b.1.partial_cmp(&a.1).expect("test precondition"));
 
     assert_eq!(services[0].0, "service-c"); // Highest health
 }
@@ -335,7 +334,7 @@ fn test_concurrent_registrations() {
 
 #[test]
 fn test_duplicate_registration_detection() {
-    let registered_ids = vec!["service-1", "service-2"];
+    let registered_ids = ["service-1", "service-2"];
     let new_id = "service-1";
 
     let is_duplicate = registered_ids.contains(&new_id);
@@ -373,7 +372,7 @@ fn test_registration_counter() {
 fn test_success_rate_calculation() {
     let total = 100;
     let successful = 95;
-    let success_rate = successful as f64 / total as f64;
+    let success_rate = f64::from(successful) / f64::from(total);
 
     assert!(success_rate > 0.9);
     assert!(success_rate < 1.0);

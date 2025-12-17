@@ -691,29 +691,43 @@ pub mod network {
     /// Default dashboard port
     pub const DEFAULT_DASHBOARD_PORT: u16 = 3000;
 
-    /// Default Toadstool endpoint
-    pub const DEFAULT_TOADSTOOL_ENDPOINT: &str = "http://localhost:8001";
-
-    /// Default Toadstool port
-    pub const DEFAULT_TOADSTOOL_PORT: u16 = 8001;
-
-    /// Default Squirrel endpoint
-    pub const DEFAULT_SQUIRREL_ENDPOINT: &str = "http://localhost:8002";
-
-    /// Default Squirrel port
-    pub const DEFAULT_SQUIRREL_PORT: u16 = 8002;
-
-    /// Default `NestGate` endpoint
-    pub const DEFAULT_NESTGATE_ENDPOINT: &str = "http://localhost:8003";
-
-    /// Default `NestGate` port
-    pub const DEFAULT_NESTGATE_PORT: u16 = 8003;
-
-    /// Default `BearDog` endpoint
-    pub const DEFAULT_BEARDOG_ENDPOINT: &str = "http://localhost:8004";
-
-    /// Default `BearDog` port
-    pub const DEFAULT_BEARDOG_PORT: u16 = 8004;
+    // ============================================================================
+    // ⚠️ DEPRECATED PRIMAL ENDPOINT CONSTANTS - REMOVED FOR SOVEREIGNTY
+    // ============================================================================
+    //
+    // The following hardcoded endpoint constants have been REMOVED for sovereignty
+    // compliance. They violated the principle that primals should only have self-
+    // knowledge and discover other primals at runtime.
+    //
+    // OLD (REMOVED):
+    // - DEFAULT_TOADSTOOL_ENDPOINT (compute)
+    // - DEFAULT_SQUIRREL_ENDPOINT (AI)
+    // - DEFAULT_NESTGATE_ENDPOINT (storage)
+    // - DEFAULT_BEARDOG_ENDPOINT (security)
+    // - DEFAULT_*_PORT constants
+    //
+    // **SOVEREIGNTY VIOLATION**: Hardcoded primal endpoints violate sovereignty principles.
+    // Each primal should know only itself and discover others at runtime.
+    //
+    // NEW (USE INSTEAD):
+    // ```rust
+    // use songbird_config::primal_discovery::*;
+    //
+    // // Discovers ANY provider with the capability
+    // let compute = get_compute_endpoint().await?;    // set COMPUTE_ENDPOINT
+    // let ai = get_ai_endpoint().await?;              // set AI_ENDPOINT
+    // let storage = get_storage_endpoint().await?;    // set STORAGE_ENDPOINT
+    // let security = get_security_endpoint().await?;  // set SECURITY_ENDPOINT
+    //
+    // // Or use RuntimeDiscoveryEngine for dynamic discovery
+    // let engine = RuntimeDiscoveryEngine::new();
+    // let service = engine.discover_by_capability("compute").await?;
+    // ```
+    //
+    // See: crates/songbird-config/src/primal_discovery.rs
+    // See: crates/songbird-config/src/runtime_discovery.rs
+    // See: specs/INDIVIDUAL_HUMAN_DIGNITY_SPECIFICATION.md
+    // ============================================================================
 
     /// Default connection timeout
     // MIGRATED: Use songbird_types::unified_constants::timeouts::DEFAULT_CONNECTION_TIMEOUT instead

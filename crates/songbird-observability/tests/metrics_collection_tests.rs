@@ -11,13 +11,8 @@
 #![allow(clippy::similar_names)]
 #![allow(clippy::too_many_lines)]
 #![allow(clippy::module_name_repetitions)]
-#![allow(clippy::uninlined_format_args)]
-#![allow(clippy::float_cmp)]
 #![allow(clippy::unwrap_used)]
-#![allow(clippy::useless_vec)]
-#![allow(clippy::unreadable_literal)]
-#![allow(clippy::items_after_statements)]
-#![allow(clippy::cast_precision_loss)]
+#![allow(clippy::expect_used)]
 #![allow(clippy::cast_possible_truncation)]
 #![allow(clippy::cast_sign_loss)]
 #![allow(clippy::needless_pass_by_value)]
@@ -77,7 +72,10 @@ fn test_histogram_buckets() {
 
 #[test]
 fn test_metric_timestamps() {
-    let now = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_secs();
+    let now = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .expect("test precondition")
+        .as_secs();
 
     assert!(now > 1_600_000_000); // After 2020
 }

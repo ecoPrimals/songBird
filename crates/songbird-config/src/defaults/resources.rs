@@ -54,3 +54,7 @@ pub fn get_max_connections() -> usize {
 pub fn get_max_sessions() -> usize {
     env::var("SONGBIRD_MAX_SESSIONS").ok().and_then(|t| t.parse().ok()).unwrap_or(1000)
 }
+
+#[cfg(test)]
+#[path = "resources_tests.rs"]
+mod tests;

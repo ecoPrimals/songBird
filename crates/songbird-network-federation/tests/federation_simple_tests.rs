@@ -32,7 +32,7 @@ fn test_node_info_statuses() {
 
 #[test]
 fn test_multiple_nodes() {
-    let nodes = vec![
+    let nodes = [
         NodeInfo {
             node_id: "node-1".to_string(),
             address: "http://localhost:8080".to_string(),

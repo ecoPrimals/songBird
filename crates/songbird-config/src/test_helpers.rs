@@ -1,7 +1,26 @@
 //! Test helpers for concurrent, safe environment variable testing
 //!
-//! This module provides utilities for testing code that depends on environment
-//! variables in a concurrent-safe manner.
+//! **DEPRECATED**: This module is deprecated. Use `songbird_test_utils::ScopedEnv` instead.
+//!
+//! This implementation has been superseded by the async-safe version in `songbird-test-utils`
+//! which properly handles tokio async tests and prevents deadlocks.
+//!
+//! # Migration Guide
+//!
+//! ```ignore
+//! // Old (deprecated):
+//! use songbird_config::test_helpers::ScopedEnv;
+//! let _env = ScopedEnv::new("KEY", "value");
+//!
+//! // New (recommended):
+//! use songbird_test_utils::ScopedEnv;
+//! let _env = ScopedEnv::set("KEY", "value").await;
+//! ```
+
+#![deprecated(
+    since = "0.1.0",
+    note = "Use `songbird_test_utils::ScopedEnv` instead for async-safe environment variable testing"
+)]
 
 use std::sync::{Mutex, MutexGuard};
 

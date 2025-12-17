@@ -218,9 +218,6 @@ mod tests {
 
     #[test]
     fn test_load_balancing_config_with_different_strategies() {
-        use songbird_config::canonical::resilience::HealthCheckConfig;
-        use std::time::Duration;
-
         let strategies = vec![
             LoadBalancingAlgorithm::RoundRobin,
             LoadBalancingAlgorithm::LeastConnections,

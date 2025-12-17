@@ -444,3 +444,7 @@ impl Default for NetworkInterfaceConfig {
         }
     }
 }
+
+#[cfg(test)]
+#[path = "advanced_tests.rs"]
+mod tests;

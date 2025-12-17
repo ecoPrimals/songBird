@@ -1,4 +1,7 @@
 #![cfg(feature = "tests-incomplete")]
+// Allow unwrap/expect in tests - idiomatic for test code
+#![allow(clippy::unwrap_used, clippy::expect_used)]
+
 //! NOTE: Disabled - requires unimplemented methods
 
 //! Comprehensive tests for adapter discovery mechanisms
@@ -33,8 +36,7 @@ async fn test_ai_adapter_discovery_from_environment() {
 
     // Should succeed with environment discovery
     assert!(result.is_ok());
-    let adapter = result
-        .ok_or_else(|| SongbirdError::configuration("Failed to discover services".to_string()))?;
+    let adapter = result?;
     assert_eq!(adapter.endpoint(), format!("http://ai-provider:{}", test_orchestrator_port()));
 }
 
@@ -51,8 +53,7 @@ async fn test_compute_adapter_discovery_from_environment() {
     env::remove_var("CAPABILITY_COMPUTE_ENDPOINT");
 
     assert!(result.is_ok());
-    let adapter = result
-        .ok_or_else(|| SongbirdError::configuration("Failed to discover services".to_string()))?;
+    let adapter = result?;
     assert_eq!(adapter.endpoint(), format!("http://compute-provider:{}", test_metrics_port()));
 }
 
@@ -66,8 +67,7 @@ async fn test_security_adapter_discovery_from_environment() {
     env::remove_var("CAPABILITY_SECURITY_ENDPOINT");
 
     assert!(result.is_ok());
-    let adapter = result
-        .ok_or_else(|| SongbirdError::configuration("Failed to discover services".to_string()))?;
+    let adapter = result?;
     assert_eq!(adapter.endpoint(), "https://security-provider:8443");
 }
 
@@ -105,8 +105,7 @@ async fn test_adapter_discovery_fallback_to_default() {
     // Discovery should succeed with fallback to default endpoint
     // This is by design - fail-safe with sensible defaults
     assert!(result.is_ok(), "Discovery should succeed with fallback, but got: {:?}", result);
-    let adapter = result
-        .ok_or_else(|| SongbirdError::configuration("Failed to discover services".to_string()))?;
+    let adapter = result?;
     // Default fallback uses DEFAULT_HOST and port 8083
     assert!(
         adapter.endpoint().contains(test_bind_address())
@@ -199,8 +198,9 @@ async fn test_compute_adapter_direct_construction() {
     let adapter =
         ComputeAdapter::new(format!("http://explicit:{}", test_metrics_port()).to_string());
     assert!(adapter.is_ok());
-    let adapter = adapter?;
-    assert_eq!(adapter.endpoint(), format!("http://explicit:{}", test_metrics_port()));
+    if let Ok(adapter) = adapter {
+        assert_eq!(adapter.endpoint(), format!("http://explicit:{}", test_metrics_port()));
+    }
 }
 
 #[tokio::test]
@@ -209,18 +209,20 @@ async fn test_adapter_endpoint_formats() {
     // Test various valid endpoint formats
     let test_cases = vec![
         format!("http://localhost:{}", test_orchestrator_port()),
-        "https://secure.example.com:443",
+        "https://secure.example.com:443".to_string(),
         format!("http://192.168.1.100:{}", test_metrics_port()),
         format!("http://service.namespace.svc.cluster.local:{}", test_orchestrator_port()),
     ];
 
     for endpoint in test_cases {
-        env::set_var("CAPABILITY_COMPUTE_ENDPOINT", endpoint);
+        env::set_var("CAPABILITY_COMPUTE_ENDPOINT", &endpoint);
         let result = ComputeAdapter::new_from_discovery().await;
         env::remove_var("CAPABILITY_COMPUTE_ENDPOINT");
 
         assert!(result.is_ok(), "Failed for endpoint: {}", endpoint);
-        assert_eq!(result?.endpoint(), endpoint);
+        if let Ok(adapter) = result {
+            assert_eq!(adapter.endpoint(), endpoint);
+        }
     }
 }
 
@@ -288,8 +290,7 @@ async fn test_adapter_discovery_with_explicit_host_port() {
         "Discovery should succeed with custom host/port, but got: {:?}",
         result
     );
-    let adapter = result
-        .ok_or_else(|| SongbirdError::configuration("Failed to discover services".to_string()))?;
+    let adapter = result?;
     assert_eq!(adapter.endpoint(), "http://custom-host:9999");
 
     // Clean up

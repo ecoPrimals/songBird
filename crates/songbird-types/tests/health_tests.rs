@@ -1,3 +1,6 @@
+// Allow unwrap/expect in tests - idiomatic for test code
+#![allow(clippy::unwrap_used, clippy::expect_used)]
+
 //! Comprehensive tests for the Health Check system
 //!
 //! Coverage goal: 0% → 80%+
@@ -394,7 +397,7 @@ fn test_health_check_large_metrics() {
 
     // Add many metrics
     for i in 0..100 {
-        check.with_metric(format!("metric_{}", i), i as f64);
+        check.with_metric(format!("metric_{}", i), f64::from(i));
     }
 
     assert_eq!(check.metrics.len(), 100);

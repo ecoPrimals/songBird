@@ -1,3 +1,6 @@
+// Allow unwrap/expect in tests - idiomatic for test code
+#![allow(clippy::unwrap_used, clippy::expect_used)]
+
 //! Comprehensive tests for Canonical Load Balancing Configuration
 //!
 //! This test suite provides thorough coverage of load balancing

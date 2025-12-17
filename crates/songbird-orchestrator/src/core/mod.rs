@@ -196,8 +196,9 @@ impl Default for PerformanceConfig {
 
 /// Serde helper for `Arc<str>` HashMap keys
 mod arc_str_map_serde {
-    use super::*;
-    use serde::{Deserializer, Serializer};
+    use serde::{Deserialize, Deserializer, Serializer};
+    use std::collections::HashMap;
+    use std::sync::Arc;
 
     pub fn serialize<S>(map: &HashMap<Arc<str>, f64>, serializer: S) -> Result<S::Ok, S::Error>
     where
@@ -215,7 +216,7 @@ mod arc_str_map_serde {
     where
         D: Deserializer<'de>,
     {
-        let map: HashMap<String, f64> = HashMap::deserialize(deserializer)?;
+        let map = HashMap::<String, f64>::deserialize(deserializer)?;
         Ok(map.into_iter().map(|(k, v)| (Arc::from(k.as_str()), v)).collect())
     }
 }
@@ -319,9 +320,12 @@ pub struct ComponentHealth {
 
 /// Serde helper for `Option<Arc<str>>`
 mod arc_str_option_serde {
-    use super::*;
-    use serde::{Deserializer, Serializer};
+    use serde::{Deserialize, Deserializer, Serializer};
+    use std::sync::Arc;
 
+    // Clippy suggests Option<&T> but &Option<T> is required for serde with_attribute
+    // The field uses #[serde(with = "arc_str_option_serde")] which needs &Option<Arc<str>>
+    #[allow(clippy::ref_option)]
     pub fn serialize<S>(value: &Option<Arc<str>>, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer,
@@ -336,7 +340,7 @@ mod arc_str_option_serde {
     where
         D: Deserializer<'de>,
     {
-        let s: Option<String> = Option::deserialize(deserializer)?;
+        let s = Option::<String>::deserialize(deserializer)?;
         Ok(s.map(|s| Arc::from(s.as_str())))
     }
 }

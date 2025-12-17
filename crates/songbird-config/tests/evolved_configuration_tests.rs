@@ -1,3 +1,6 @@
+// Allow unwrap/expect in tests - idiomatic for test code
+#![allow(clippy::unwrap_used, clippy::expect_used)]
+
 //! Comprehensive tests for evolved capability-based configuration
 //!
 //! Tests cover:
@@ -212,8 +215,8 @@ fn test_port_allocator_os_assigned() {
     // Test that port allocation works (strategy is determined by environment)
     let result = allocator.allocate_for_capability("test");
     assert!(result.is_ok(), "Should allocate port");
-    let listener = result.unwrap();
-    let addr = listener.local_addr().unwrap();
+    let listener = result.expect("test precondition");
+    let addr = listener.local_addr().expect("test precondition");
     assert!(addr.port() > 0, "Port should be assigned");
 }
 
@@ -286,7 +289,7 @@ async fn test_full_self_aware_lifecycle() {
     let allocator = PortAllocator::new();
     let listener =
         allocator.allocate_for_capability("orchestration").expect("Should allocate port");
-    let actual_port = listener.local_addr().unwrap().port();
+    let actual_port = listener.local_addr().expect("test precondition").port();
     assert!(actual_port > 0);
 
     // 3. Create service locator

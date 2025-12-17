@@ -1,3 +1,6 @@
+// Allow unwrap/expect in tests - idiomatic for test code
+#![allow(clippy::unwrap_used, clippy::expect_used)]
+
 //! Federation Coordinator Tests - Modern API
 //!
 //! Tests the federation coordination system with modern concurrent patterns
@@ -55,13 +58,13 @@ fn test_federation_config_with_node_info() {
     let config = FederationConfig {
         enabled: true,
         bootstrap_address: None,
-        self_registration: Some(node_reg.clone()),
+        self_registration: Some(node_reg),
         heartbeat_interval_secs: 30,
         node_timeout_secs: 90,
     };
 
     assert!(config.enabled);
-    assert_eq!(config.self_registration.as_ref().unwrap().node_name, "node-123");
+    assert_eq!(config.self_registration.as_ref().expect("test precondition").node_name, "node-123");
 }
 
 #[test]
@@ -80,8 +83,8 @@ fn test_federation_config_clone() {
     assert_eq!(config.enabled, cloned.enabled);
     assert_eq!(config.heartbeat_interval_secs, cloned.heartbeat_interval_secs);
     assert_eq!(
-        config.self_registration.as_ref().unwrap().node_name,
-        cloned.self_registration.as_ref().unwrap().node_name
+        config.self_registration.as_ref().expect("test precondition").node_name,
+        cloned.self_registration.as_ref().expect("test precondition").node_name
     );
 }
 
@@ -105,8 +108,9 @@ fn test_federation_config_serialization() {
         node_timeout_secs: 90,
     };
 
-    let serialized = serde_json::to_string(&config).unwrap();
-    let deserialized: FederationConfig = serde_json::from_str(&serialized).unwrap();
+    let serialized = serde_json::to_string(&config).expect("test precondition");
+    let deserialized: FederationConfig =
+        serde_json::from_str(&serialized).expect("should parse valid input");
 
     assert_eq!(config.enabled, deserialized.enabled);
     assert_eq!(config.heartbeat_interval_secs, deserialized.heartbeat_interval_secs);
@@ -165,8 +169,9 @@ fn test_node_registration_debug() {
 fn test_node_registration_serialization() {
     let node = create_test_registration("node-123");
 
-    let serialized = serde_json::to_string(&node).unwrap();
-    let deserialized: NodeRegistration = serde_json::from_str(&serialized).unwrap();
+    let serialized = serde_json::to_string(&node).expect("test precondition");
+    let deserialized: NodeRegistration =
+        serde_json::from_str(&serialized).expect("should parse valid input");
 
     assert_eq!(node.node_id, deserialized.node_id);
     assert_eq!(node.node_name, deserialized.node_name);
@@ -235,7 +240,7 @@ fn test_coordinator_debug() {
 #[test]
 fn test_coordinator_clone() {
     let coordinator = FederationCoordinator::new();
-    let cloned = coordinator.clone();
+    let cloned = coordinator;
     // Both should have different Arc clones pointing to same state
     assert!(format!("{cloned:?}").contains("FederationCoordinator"));
 }
@@ -268,7 +273,7 @@ fn test_federation_config_json_serialization() {
         node_timeout_secs: 90,
     };
 
-    let json = serde_json::to_string_pretty(&config).unwrap();
+    let json = serde_json::to_string_pretty(&config).expect("test precondition");
     assert!(json.contains("enabled"));
     assert!(json.contains("bootstrap_address"));
 }
@@ -277,7 +282,7 @@ fn test_federation_config_json_serialization() {
 fn test_node_registration_json_serialization() {
     let node = create_test_registration("node-789");
 
-    let json = serde_json::to_string_pretty(&node).unwrap();
+    let json = serde_json::to_string_pretty(&node).expect("test precondition");
     assert!(json.contains("node_id"));
     assert!(json.contains("node_address"));
     assert!(json.contains("status"));

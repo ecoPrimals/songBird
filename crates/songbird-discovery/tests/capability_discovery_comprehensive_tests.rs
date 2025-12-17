@@ -1,5 +1,8 @@
 #![cfg(feature = "tests-incomplete")]
 #![allow(unexpected_cfgs)]
+// Allow unwrap/expect in tests - idiomatic for test code
+#![allow(clippy::unwrap_used, clippy::expect_used)]
+
 //! NOTE: Disabled - requires fixes
 
 //! Comprehensive capability discovery tests
@@ -345,8 +348,15 @@ async fn test_capability_cache_invalidation() -> SongbirdResult<()> {
     // Deregister
     discovery.deregister("cached-service").await.ok();
 
-    // Wait for cache to expire
-    tokio::time::sleep(tokio::time::Duration::from_millis(150)).await;
+    // Poll for cache to reflect deregistration (with timeout)
+    let cache_cleared = wait_for_discovery_state(
+        &discovery,
+        "cache-test",
+        |services| services.is_empty(),
+        Duration::from_millis(200),
+    )
+    .await;
+    assert!(cache_cleared, "Cache should reflect deregistration within 200ms");
 
     // Should reflect deregistration
     let after = discovery
@@ -355,6 +365,28 @@ async fn test_capability_cache_invalidation() -> SongbirdResult<()> {
         .map_err(|e| SongbirdError::configuration("Failed to discover services".to_string()))?;
     assert!(after.is_empty());
     Ok(())
+}
+
+/// Helper: Poll for discovery state with timeout
+async fn wait_for_discovery_state<F>(
+    discovery: &CapabilityDiscovery,
+    capability: &str,
+    condition: F,
+    timeout: Duration,
+) -> bool
+where
+    F: Fn(&[ServiceInfo]) -> bool,
+{
+    let deadline = tokio::time::Instant::now() + timeout;
+    while tokio::time::Instant::now() < deadline {
+        if let Ok(services) = discovery.discover_by_capability(capability).await {
+            if condition(&services) {
+                return true;
+            }
+        }
+        tokio::time::sleep(Duration::from_millis(10)).await;
+    }
+    false
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]

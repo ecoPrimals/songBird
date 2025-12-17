@@ -299,6 +299,15 @@ impl SongbirdError {
         }
     }
 
+    /// Create a new timeout error (network timeout)
+    pub fn timeout(message: impl Into<String>) -> Self {
+        Self::Network {
+            message: message.into(),
+            interface: None,
+            suggestion: Some("Increase timeout duration or check network connectivity".to_string()),
+        }
+    }
+
     /// Create a new metrics error
     pub fn metrics(message: impl Into<String>, operation: impl Into<String>) -> Self {
         Self::Metrics {
@@ -435,6 +444,12 @@ impl From<std::io::Error> for SongbirdError {
 // Note: From implementations for external crates (serde_yaml, reqwest, tokio)
 // are implemented in their respective modules where those dependencies are available
 
+#[allow(
+    clippy::unwrap_used,
+    clippy::expect_used,
+    clippy::unnecessary_wraps,
+    clippy::field_reassign_with_default
+)]
 #[cfg(test)]
 #[allow(clippy::uninlined_format_args)]
 #[allow(clippy::float_cmp)]

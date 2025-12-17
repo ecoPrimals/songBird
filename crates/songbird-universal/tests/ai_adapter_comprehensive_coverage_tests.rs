@@ -1,3 +1,6 @@
+// Allow unwrap/expect in tests - idiomatic for test code
+#![allow(clippy::unwrap_used, clippy::expect_used)]
+
 //! Comprehensive AI Adapter Coverage Tests
 //!
 //! **Goal**: Raise coverage from 64.62% to 85%+
@@ -262,7 +265,7 @@ fn test_ai_metrics_serialization() {
 
     let json = serde_json::to_string(&metrics);
     assert!(json.is_ok());
-    let json_str = json.unwrap();
+    let json_str = json.expect("test precondition");
     assert!(json_str.contains("active_models"));
     assert!(json_str.contains("1000"));
 }
@@ -280,7 +283,7 @@ fn test_ai_metrics_deserialization() {
 
     let metrics: Result<AIMetrics, _> = serde_json::from_str(json);
     assert!(metrics.is_ok());
-    let metrics = metrics.unwrap();
+    let metrics = metrics.expect("test precondition");
     assert_eq!(metrics.active_models, 4);
     assert_eq!(metrics.total_requests, 1500);
 }
@@ -341,7 +344,7 @@ fn test_ai_health_equality() {
 #[test]
 fn test_ai_health_clone() {
     let health = AIHealth::Degraded;
-    let cloned = health.clone();
+    let cloned = health;
     assert_eq!(health, cloned);
 }
 
@@ -380,7 +383,7 @@ fn test_ai_health_deserialization() {
     for (json, expected) in test_cases {
         let health: Result<AIHealth, _> = serde_json::from_str(json);
         assert!(health.is_ok(), "Should deserialize: {}", json);
-        assert_eq!(health.unwrap(), expected);
+        assert_eq!(health.expect("test precondition"), expected);
     }
 }
 
@@ -412,7 +415,7 @@ fn test_model_type_equality() {
 #[test]
 fn test_model_type_clone() {
     let model = ModelType::Vision;
-    let cloned = model.clone();
+    let cloned = model;
     assert_eq!(model, cloned);
 }
 
@@ -450,7 +453,7 @@ fn test_adapter_new_success() {
     let adapter = AIAdapter::new(endpoint.clone());
 
     assert!(adapter.is_ok());
-    let adapter = adapter.unwrap();
+    let adapter = adapter.expect("test precondition");
     assert_eq!(adapter.endpoint(), &endpoint);
 }
 
@@ -472,7 +475,7 @@ fn test_adapter_new_various_endpoints() {
 #[test]
 fn test_adapter_with_timeout() {
     let endpoint = "http://localhost:8082".to_string();
-    let adapter = AIAdapter::new(endpoint).unwrap();
+    let adapter = AIAdapter::new(endpoint).expect("test precondition");
 
     let custom_timeout = Duration::from_secs(30);
     let _adapter_with_timeout = adapter.with_timeout(custom_timeout);
@@ -481,7 +484,7 @@ fn test_adapter_with_timeout() {
 #[test]
 fn test_adapter_endpoint_getter() {
     let endpoint = "http://ai-service:8082".to_string();
-    let adapter = AIAdapter::new(endpoint.clone()).unwrap();
+    let adapter = AIAdapter::new(endpoint.clone()).expect("test precondition");
 
     assert_eq!(adapter.endpoint(), &endpoint);
 }
@@ -489,7 +492,7 @@ fn test_adapter_endpoint_getter() {
 #[test]
 fn test_adapter_builder_pattern() {
     let adapter = AIAdapter::new("http://localhost:8082".to_string())
-        .unwrap()
+        .expect("test precondition")
         .with_timeout(Duration::from_secs(25));
 
     assert_eq!(adapter.endpoint(), "http://localhost:8082");
@@ -497,8 +500,8 @@ fn test_adapter_builder_pattern() {
 
 #[test]
 fn test_multiple_adapters_independent() {
-    let adapter1 = AIAdapter::new("http://ai1:8082".to_string()).unwrap();
-    let adapter2 = AIAdapter::new("http://ai2:8083".to_string()).unwrap();
+    let adapter1 = AIAdapter::new("http://ai1:8082".to_string()).expect("test precondition");
+    let adapter2 = AIAdapter::new("http://ai2:8083".to_string()).expect("test precondition");
 
     assert_eq!(adapter1.endpoint(), "http://ai1:8082");
     assert_eq!(adapter2.endpoint(), "http://ai2:8083");

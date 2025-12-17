@@ -1,6 +1,7 @@
 //! Tests for observability metrics functionality
 
 #![allow(clippy::unwrap_used)]
+#![allow(clippy::expect_used)]
 
 use songbird_observability::*;
 use songbird_types::SongbirdResult;
@@ -26,7 +27,7 @@ async fn test_observability_manager_start() {
 async fn test_observability_manager_stop() -> SongbirdResult<()> {
     let manager = ObservabilityManager::new();
 
-    manager.start().await.unwrap();
+    manager.start().await.expect("test precondition");
 
     let result = manager.stop().await;
     assert!(result.is_ok());
@@ -99,8 +100,8 @@ async fn test_manager_lifecycle_timing() {
     let manager = ObservabilityManager::new();
 
     let start = Instant::now();
-    manager.start().await.unwrap();
-    manager.stop().await.unwrap();
+    manager.start().await.expect("test precondition");
+    manager.stop().await.expect("test precondition");
     let elapsed = start.elapsed();
 
     // Lifecycle operations should be fast

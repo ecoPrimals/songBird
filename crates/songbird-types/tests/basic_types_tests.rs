@@ -44,7 +44,7 @@ fn test_primal_type_network() {
 
 #[test]
 fn test_all_primal_types() {
-    let primals = vec![
+    let primals = [
         PrimalType::Security,
         PrimalType::Storage,
         PrimalType::Compute,
@@ -79,10 +79,11 @@ fn test_primal_type_copy() {
 
 #[test]
 fn test_primal_type_in_vec() {
-    let mut primals = Vec::new();
-    primals.push(PrimalType::Security); // BearDog -> Security capability
-    primals.push(PrimalType::AI); // Squirrel -> AI capability
-    primals.push(PrimalType::Storage); // NestGate -> Storage capability
+    let primals = vec![
+        PrimalType::Security, // BearDog -> Security capability
+        PrimalType::AI,       // Squirrel -> AI capability
+        PrimalType::Storage,  // NestGate -> Storage capability
+    ];
     assert_eq!(primals.len(), 3);
 }
 
@@ -103,7 +104,7 @@ fn test_primal_type_match() {
 #[test]
 fn test_primal_type_serialization() {
     let primal = PrimalType::Security;
-    let json = serde_json::to_string(&primal).unwrap();
+    let json = serde_json::to_string(&primal).expect("test precondition");
     assert!(!json.is_empty());
 }
 
@@ -111,7 +112,7 @@ fn test_primal_type_serialization() {
 fn test_primal_type_deserialization() {
     // Modern: Use capability-based types, not hardcoded names
     let json = "\"Storage\""; // Squirrel → Storage capability
-    let primal: PrimalType = serde_json::from_str(json).unwrap();
+    let primal: PrimalType = serde_json::from_str(json).expect("should parse valid input");
     assert_eq!(format!("{:?}", primal), "Storage");
 }
 
@@ -125,8 +126,9 @@ fn test_primal_types_roundtrip() {
         PrimalType::Network,
     ];
     for primal in primals {
-        let json = serde_json::to_string(&primal).unwrap();
-        let deserialized: PrimalType = serde_json::from_str(&json).unwrap();
+        let json = serde_json::to_string(&primal).expect("test precondition");
+        let deserialized: PrimalType =
+            serde_json::from_str(&json).expect("should parse valid input");
         assert_eq!(format!("{:?}", primal), format!("{:?}", deserialized));
     }
 }

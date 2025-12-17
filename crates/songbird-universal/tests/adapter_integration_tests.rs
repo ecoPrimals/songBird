@@ -14,6 +14,8 @@
 #![allow(clippy::similar_names)]
 #![allow(clippy::too_many_lines)]
 #![allow(clippy::module_name_repetitions)]
+// Allow unwrap/expect in tests - idiomatic for test code
+#![allow(clippy::unwrap_used, clippy::expect_used)]
 
 //!
 //! Tests all 4 production adapters working together in various scenarios.
@@ -33,19 +35,11 @@ mod integration_tests {
     #[test]
     fn test_all_adapters_creation() -> SongbirdResult<()> {
         // Create all 4 production adapters
-        let toadstool = ComputeAdapter::new(
-            format!("http://localhost:{}", test_orchestrator_port()).to_string(),
-        )
-        .ok_or_else(|| SongbirdError::configuration("ToadStool adapter"))?;
-        let beardog =
-            SecurityAdapter::new(format!("http://localhost:{}", test_discovery_port()).to_string())
-                .ok_or_else(|| SongbirdError::configuration("BearDog adapter"))?;
-        let nestgate =
-            StorageAdapter::new(format!("http://localhost:{}", test_health_port()).to_string())
-                .ok_or_else(|| SongbirdError::configuration("NestGate adapter"))?;
-        let squirrel =
-            AIAdapter::new(format!("http://localhost:{}", test_federation_port()).to_string())
-                .ok_or_else(|| SongbirdError::configuration("Squirrel adapter"))?;
+        let toadstool =
+            ComputeAdapter::new(format!("http://localhost:{}", test_orchestrator_port()))?;
+        let beardog = SecurityAdapter::new(format!("http://localhost:{}", test_discovery_port()))?;
+        let nestgate = StorageAdapter::new(format!("http://localhost:{}", test_health_port()))?;
+        let squirrel = AIAdapter::new(format!("http://localhost:{}", test_federation_port()))?;
 
         // Verify endpoints
         assert_eq!(toadstool.endpoint(), format!("http://localhost:{}", test_orchestrator_port()));
@@ -60,26 +54,18 @@ mod integration_tests {
     fn test_all_adapters_custom_timeouts() -> SongbirdResult<()> {
         use std::time::Duration;
 
-        let toadstool = ComputeAdapter::new(
-            format!("http://localhost:{}", test_orchestrator_port()).to_string(),
-        )
-        .ok_or_else(|| SongbirdError::configuration("ToadStool adapter"))?
-        .with_timeout(Duration::from_secs(10));
-
-        let beardog =
-            SecurityAdapter::new(format!("http://localhost:{}", test_discovery_port()).to_string())
-                .ok_or_else(|| SongbirdError::configuration("BearDog adapter"))?
+        let toadstool =
+            ComputeAdapter::new(format!("http://localhost:{}", test_orchestrator_port()))?
                 .with_timeout(Duration::from_secs(10));
 
-        let nestgate =
-            StorageAdapter::new(format!("http://localhost:{}", test_health_port()).to_string())
-                .ok_or_else(|| SongbirdError::configuration("NestGate adapter"))?
-                .with_timeout(Duration::from_secs(10));
+        let beardog = SecurityAdapter::new(format!("http://localhost:{}", test_discovery_port()))?
+            .with_timeout(Duration::from_secs(10));
 
-        let squirrel =
-            AIAdapter::new(format!("http://localhost:{}", test_federation_port()).to_string())
-                .ok_or_else(|| SongbirdError::configuration("Squirrel adapter"))?
-                .with_timeout(Duration::from_secs(20));
+        let nestgate = StorageAdapter::new(format!("http://localhost:{}", test_health_port()))?
+            .with_timeout(Duration::from_secs(10));
+
+        let squirrel = AIAdapter::new(format!("http://localhost:{}", test_federation_port()))?
+            .with_timeout(Duration::from_secs(20));
 
         assert_eq!(toadstool.endpoint(), format!("http://localhost:{}", test_orchestrator_port()));
         assert_eq!(beardog.endpoint(), format!("http://localhost:{}", test_discovery_port()));
@@ -102,16 +88,16 @@ mod integration_tests {
         fn create_adapter_endpoint(adapter_type: AdapterType) -> String {
             match adapter_type {
                 AdapterType::Compute => {
-                    format!("http://toadstool:{}", test_orchestrator_port()).to_string()
+                    format!("http://toadstool:{}", test_orchestrator_port())
                 }
                 AdapterType::Security => {
-                    format!("http://beardog:{}", test_discovery_port()).to_string()
+                    format!("http://beardog:{}", test_discovery_port())
                 }
                 AdapterType::Storage => {
-                    format!("http://nestgate:{}", test_health_port()).to_string()
+                    format!("http://nestgate:{}", test_health_port())
                 }
                 AdapterType::AI => {
-                    format!("http://squirrel:{}", test_federation_port()).to_string()
+                    format!("http://squirrel:{}", test_federation_port())
                 }
             }
         }
@@ -415,24 +401,14 @@ mod integration_tests {
     fn test_adapter_endpoint_validation() -> SongbirdResult<()> {
         // All adapters should accept various endpoint formats
         let adapters = [
-            ComputeAdapter::new(
-                format!("http://localhost:{}", test_orchestrator_port()).to_string(),
-            )
-            .ok_or_else(|| SongbirdError::configuration("ToadStool adapter"))?
-            .endpoint()
-            .to_string(),
-            SecurityAdapter::new("https://secure-beardog:8081".to_string())
-                .ok_or_else(|| SongbirdError::configuration("BearDog adapter"))?
+            ComputeAdapter::new(format!("http://localhost:{}", test_orchestrator_port()))?
                 .endpoint()
                 .to_string(),
-            StorageAdapter::new(
-                format!("http://nestgate.local:{}", test_health_port()).to_string(),
-            )
-            .ok_or_else(|| SongbirdError::configuration("NestGate adapter"))?
-            .endpoint()
-            .to_string(),
-            AIAdapter::new(format!("http://192.168.1.100:{}", test_federation_port()).to_string())
-                .ok_or_else(|| SongbirdError::configuration("Squirrel adapter"))?
+            SecurityAdapter::new("https://secure-beardog:8081".to_string())?.endpoint().to_string(),
+            StorageAdapter::new(format!("http://nestgate.local:{}", test_health_port()))?
+                .endpoint()
+                .to_string(),
+            AIAdapter::new(format!("http://192.168.1.100:{}", test_federation_port()))?
                 .endpoint()
                 .to_string(),
         ];
@@ -446,7 +422,7 @@ mod integration_tests {
 
     /// Test: Time-series metrics collection pattern
     #[test]
-    fn test_metrics_time_series_pattern() {
+    fn test_metrics_time_series_pattern() -> Result<(), SongbirdError> {
         // Unused imports removed
         use songbird_universal::adapters::compute::ComputeMetrics;
 
@@ -506,6 +482,7 @@ mod integration_tests {
         assert_eq!(time_series.average_cpu_usage(), 50.0); // (30+40+50+60+70)/5
         assert!(time_series
             .is_trending_up()
-            .or_else(|_| SongbirdError::configuration("trend check should work"))?);
+            .map_err(|e| SongbirdError::configuration(format!("trend check failed: {}", e)))?);
+        Ok(())
     }
 }

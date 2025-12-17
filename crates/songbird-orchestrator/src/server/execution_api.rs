@@ -35,8 +35,12 @@ impl ExecutionApiState {
     }
 
     /// Get the execution manager
+    ///
+    /// # Note on Arc::clone
+    /// Arc::clone is cheap (just pointer + atomic increment), but clippy suggests
+    /// explicit Arc::clone() for clarity. However, `.clone()` on Arc is idiomatic.
     pub fn manager(&self) -> Arc<RwLock<ExecutionManager>> {
-        self.manager.clone()
+        Arc::clone(&self.manager)
     }
 }
 

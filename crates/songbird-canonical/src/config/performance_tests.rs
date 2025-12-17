@@ -24,9 +24,9 @@ fn test_performance_config_default() -> SongbirdResult<()> {
 fn test_performance_config_serialization() -> SongbirdResult<()> {
     let config = PerformanceConfig::default();
     let json = serde_json::to_string(&config)
-        .map_err(|e| SongbirdError::configuration(format!("Serialization failed: {}", e)))?;
+        .map_err(|e| SongbirdError::configuration(format!("Serialization failed: {e}")))?;
     let deserialized: PerformanceConfig = serde_json::from_str(&json)
-        .map_err(|e| SongbirdError::configuration(format!("Deserialization failed: {}", e)))?;
+        .map_err(|e| SongbirdError::configuration(format!("Deserialization failed: {e}")))?;
 
     assert_eq!(config.enable_zero_cost, deserialized.enable_zero_cost);
     Ok(())

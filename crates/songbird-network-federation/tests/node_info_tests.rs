@@ -72,7 +72,7 @@ fn test_node_with_empty_capabilities() {
 
 #[test]
 fn test_multiple_nodes() {
-    let nodes = vec![
+    let nodes = [
         NodeInfo {
             node_id: "node-1".to_string(),
             address: "http://localhost:8080".to_string(),
@@ -92,11 +92,11 @@ fn test_multiple_nodes() {
 #[test]
 fn test_node_addresses() {
     let addresses =
-        vec!["http://localhost:8080", "http://192.168.1.100:9000", "https://node.example.com:443"];
+        ["http://localhost:8080", "http://192.168.1.100:9000", "https://node.example.com:443"];
     for (i, addr) in addresses.iter().enumerate() {
         let node = NodeInfo {
             node_id: format!("node-{}", i),
-            address: addr.to_string(),
+            address: (*addr).to_string(),
             status: "active".to_string(),
         };
         assert_eq!(&node.address, addr);
@@ -110,7 +110,7 @@ fn test_node_serialization() {
         address: "http://localhost:8080".to_string(),
         status: "active".to_string(),
     };
-    let json = serde_json::to_string(&node).unwrap();
+    let json = serde_json::to_string(&node).expect("test precondition");
     assert!(json.contains("test-node"));
 }
 
@@ -121,6 +121,6 @@ fn test_node_deserialization() {
         "address": "http://localhost:8080",
         "status": "active"
     }"#;
-    let node: NodeInfo = serde_json::from_str(json).unwrap();
+    let node: NodeInfo = serde_json::from_str(json).expect("should parse valid input");
     assert_eq!(node.node_id, "test-node");
 }

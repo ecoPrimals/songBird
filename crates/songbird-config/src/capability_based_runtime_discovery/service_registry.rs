@@ -1,0 +1,368 @@
+//! Service Registry Discovery Backend
+//!
+//! Complete production implementation for discovering capabilities via service registry.
+//! Integrates with songbird-registry for dynamic service discovery.
+
+use super::{CapabilityProvider, CapabilityRequest, Protocol};
+use songbird_types::{SongbirdError, SongbirdResult};
+use std::collections::HashMap;
+use std::time::Duration;
+use tracing::{debug, info};
+
+/// Service registry discovery backend
+///
+/// Discovers capabilities by querying the central service registry.
+/// Supports filtering by capability, features, and SLA requirements.
+#[derive(Debug, Clone)]
+pub struct ServiceRegistryDiscovery {
+    /// Registry endpoint
+    registry_endpoint: String,
+    /// Query timeout
+    timeout: Duration,
+    /// Cache TTL for future caching implementation
+    ///
+    /// Note: Currently unused, reserved for future caching layer.
+    /// Will be used when implementing distributed cache for service discovery.
+    #[allow(dead_code)]
+    cache_ttl: Duration,
+}
+
+impl ServiceRegistryDiscovery {
+    /// Create a new service registry discovery backend
+    ///
+    /// # Arguments
+    /// * `registry_endpoint` - URL of the service registry
+    ///
+    /// # Examples
+    /// ```no_run
+    /// use songbird_config::capability_based_runtime_discovery::service_registry::ServiceRegistryDiscovery;
+    ///
+    /// let discovery = ServiceRegistryDiscovery::new("http://registry.local:8500");
+    /// ```
+    #[must_use]
+    pub fn new(registry_endpoint: impl Into<String>) -> Self {
+        Self {
+            registry_endpoint: registry_endpoint.into(),
+            timeout: Duration::from_secs(5),
+            cache_ttl: Duration::from_secs(300),
+        }
+    }
+
+    /// Create from environment variables
+    ///
+    /// Reads `SONGBIRD_REGISTRY_ENDPOINT` for registry location
+    ///
+    /// # Errors
+    /// Returns error if environment variable is not set
+    pub fn from_env() -> SongbirdResult<Self> {
+        let endpoint = std::env::var("SONGBIRD_REGISTRY_ENDPOINT")
+            .map_err(|_| SongbirdError::configuration("SONGBIRD_REGISTRY_ENDPOINT not set"))?;
+
+        Ok(Self::new(endpoint))
+    }
+
+    /// Discover a capability provider from the registry
+    ///
+    /// # Errors
+    /// Returns error if registry is unreachable or capability not found
+    pub async fn discover(
+        &self,
+        request: &CapabilityRequest,
+    ) -> SongbirdResult<CapabilityProvider> {
+        debug!(
+            "Querying service registry at {} for capability: {}",
+            self.registry_endpoint, request.capability
+        );
+
+        // Query the registry for services matching the capability
+        let services = self.query_registry(request).await?;
+
+        if services.is_empty() {
+            return Err(SongbirdError::discovery(format!(
+                "No services found in registry for capability: {}",
+                request.capability
+            )));
+        }
+
+        // Select the best matching service
+        let best_match = self.select_best_match(&services, request)?;
+
+        info!(
+            "Discovered provider '{}' for capability '{}' from registry",
+            best_match.name, request.capability
+        );
+
+        Ok(best_match)
+    }
+
+    /// Query the service registry for matching services
+    async fn query_registry(
+        &self,
+        request: &CapabilityRequest,
+    ) -> SongbirdResult<Vec<RegistryService>> {
+        // Build query URL
+        let query_url = format!(
+            "{}/v1/catalog/service?capability={}",
+            self.registry_endpoint, request.capability
+        );
+
+        // Use reqwest for HTTP queries (production-ready)
+        let client = reqwest::Client::builder()
+            .timeout(self.timeout)
+            .build()
+            .map_err(|e| SongbirdError::network(format!("Failed to create HTTP client: {e}")))?;
+
+        let response = client
+            .get(&query_url)
+            .send()
+            .await
+            .map_err(|e| SongbirdError::network(format!("Registry query failed: {e}")))?;
+
+        if !response.status().is_success() {
+            return Err(SongbirdError::discovery(format!(
+                "Registry returned error: {}",
+                response.status()
+            )));
+        }
+
+        let services: Vec<RegistryService> = response.json().await.map_err(|e| {
+            SongbirdError::configuration(format!("Failed to parse registry response: {e}"))
+        })?;
+
+        Ok(services)
+    }
+
+    /// Select the best matching service based on requirements
+    fn select_best_match(
+        &self,
+        services: &[RegistryService],
+        request: &CapabilityRequest,
+    ) -> SongbirdResult<CapabilityProvider> {
+        // Filter by required features
+        let mut candidates: Vec<_> = services
+            .iter()
+            .filter(|s| Self::supports_required_features(s, &request.required_features))
+            .collect();
+
+        if candidates.is_empty() {
+            return Err(SongbirdError::discovery(format!(
+                "No services support required features: {:?}",
+                request.required_features
+            )));
+        }
+
+        // Filter by SLA if specified
+        if let Some(sla) = &request.min_sla {
+            candidates.retain(|s| self.meets_sla_requirements(s, sla));
+
+            if candidates.is_empty() {
+                return Err(SongbirdError::discovery(
+                    "No services meet SLA requirements".to_string(),
+                ));
+            }
+        }
+
+        // Apply preference-based scoring
+        candidates.sort_by(|a, b| {
+            let score_a = Self::calculate_preference_score(a, &request.preferences);
+            let score_b = Self::calculate_preference_score(b, &request.preferences);
+            score_b.partial_cmp(&score_a).unwrap_or(std::cmp::Ordering::Equal)
+        });
+
+        // Select the highest scoring service
+        let selected = candidates.first().ok_or_else(|| {
+            SongbirdError::discovery("No suitable service found after scoring".to_string())
+        })?;
+
+        Ok(CapabilityProvider {
+            name: selected.name.clone(),
+            capability: request.capability.clone(),
+            endpoint: selected.endpoint.clone(),
+            protocol: selected.protocol.clone(),
+            features: selected.features.clone(),
+            metadata: selected.metadata.clone(),
+        })
+    }
+
+    /// Check if service supports required features
+    fn supports_required_features(service: &RegistryService, required: &[String]) -> bool {
+        required.iter().all(|req| service.features.contains(req))
+    }
+
+    /// Check if service meets SLA requirements
+    ///
+    /// Pure function kept as method for potential future use of instance state.
+    #[allow(clippy::unused_self)]
+    fn meets_sla_requirements(
+        &self,
+        service: &RegistryService,
+        sla: &super::SlaRequirements,
+    ) -> bool {
+        if let Some(health) = &service.health_metrics {
+            health.average_latency_ms <= sla.max_latency_ms
+                && health.uptime_percent >= sla.min_uptime_percent
+                && health.error_rate_percent <= sla.max_error_rate_percent
+        } else {
+            false // No health metrics = can't verify SLA
+        }
+    }
+
+    /// Calculate preference score for service selection
+    ///
+    /// Uses f64 for scoring as precision loss is acceptable for ranking.
+    /// Millisecond-level latency doesn't require u64 precision.
+    #[allow(clippy::cast_precision_loss)]
+    fn calculate_preference_score(service: &RegistryService, preferences: &[String]) -> f64 {
+        let mut score = 0.0;
+
+        for preference in preferences {
+            match preference.as_str() {
+                "performance" | "latency" => {
+                    if let Some(health) = &service.health_metrics {
+                        // Lower latency is better
+                        score += 1000.0 / (health.average_latency_ms as f64 + 1.0);
+                    }
+                }
+                "throughput" => {
+                    if let Some(health) = &service.health_metrics {
+                        score += health.throughput_rps;
+                    }
+                }
+                "reliability" | "uptime" => {
+                    if let Some(health) = &service.health_metrics {
+                        score += health.uptime_percent * 10.0;
+                    }
+                }
+                "cost" => {
+                    // Lower load is preferred (more available capacity)
+                    if let Some(health) = &service.health_metrics {
+                        score += 100.0 - health.load_percent;
+                    }
+                }
+                _ => {}
+            }
+        }
+
+        // Default scoring if no preferences
+        if score == 0.0 {
+            score = if let Some(health) = &service.health_metrics {
+                health.uptime_percent * health.throughput_rps
+                    / (health.average_latency_ms as f64 + 1.0)
+            } else {
+                1.0
+            };
+        }
+
+        score
+    }
+}
+
+/// Service information from registry
+#[derive(Debug, Clone, serde::Deserialize)]
+struct RegistryService {
+    /// Service name
+    name: String,
+    /// Service endpoint
+    endpoint: String,
+    /// Protocol
+    #[serde(default = "default_protocol")]
+    protocol: Protocol,
+    /// Supported features
+    #[serde(default)]
+    features: Vec<String>,
+    /// Service metadata
+    #[serde(default)]
+    metadata: HashMap<String, String>,
+    /// Health metrics
+    health_metrics: Option<HealthMetrics>,
+}
+
+/// Health metrics from registry
+#[derive(Debug, Clone, serde::Deserialize)]
+struct HealthMetrics {
+    /// Average latency in milliseconds
+    average_latency_ms: u64,
+    /// Uptime percentage
+    uptime_percent: f64,
+    /// Error rate percentage
+    error_rate_percent: f64,
+    /// Throughput in requests per second
+    throughput_rps: f64,
+    /// Current load percentage
+    load_percent: f64,
+}
+
+fn default_protocol() -> Protocol {
+    Protocol::Http
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_service_registry_discovery_creation() {
+        let discovery = ServiceRegistryDiscovery::new("http://localhost:8500");
+        assert_eq!(discovery.registry_endpoint, "http://localhost:8500");
+        assert_eq!(discovery.timeout, Duration::from_secs(5));
+    }
+
+    #[test]
+    fn test_feature_support_check() {
+        let discovery = ServiceRegistryDiscovery::new("http://localhost:8500");
+
+        let service = RegistryService {
+            name: "test-service".to_string(),
+            endpoint: "http://test:8080".to_string(),
+            protocol: Protocol::Http,
+            features: vec!["feature1".to_string(), "feature2".to_string()],
+            metadata: HashMap::new(),
+            health_metrics: None,
+        };
+
+        assert!(ServiceRegistryDiscovery::supports_required_features(
+            &service,
+            &["feature1".to_string()]
+        ));
+        assert!(ServiceRegistryDiscovery::supports_required_features(
+            &service,
+            &["feature1".to_string(), "feature2".to_string()]
+        ));
+        assert!(!ServiceRegistryDiscovery::supports_required_features(
+            &service,
+            &["feature3".to_string()]
+        ));
+    }
+
+    #[test]
+    fn test_preference_scoring() {
+        let discovery = ServiceRegistryDiscovery::new("http://localhost:8500");
+
+        let service = RegistryService {
+            name: "test-service".to_string(),
+            endpoint: "http://test:8080".to_string(),
+            protocol: Protocol::Http,
+            features: vec![],
+            metadata: HashMap::new(),
+            health_metrics: Some(HealthMetrics {
+                average_latency_ms: 50,
+                uptime_percent: 99.9,
+                error_rate_percent: 0.1,
+                throughput_rps: 1000.0,
+                load_percent: 60.0,
+            }),
+        };
+
+        let performance_score = ServiceRegistryDiscovery::calculate_preference_score(
+            &service,
+            &["performance".to_string()],
+        );
+        let throughput_score = ServiceRegistryDiscovery::calculate_preference_score(
+            &service,
+            &["throughput".to_string()],
+        );
+
+        assert!(performance_score > 0.0);
+        assert!(throughput_score > 0.0);
+    }
+}

@@ -1,5 +1,8 @@
 #![cfg(feature = "tests-incomplete")]
 #![allow(unexpected_cfgs)]
+// Allow unwrap/expect in tests - idiomatic for test code
+#![allow(clippy::unwrap_used, clippy::expect_used)]
+
 //! NOTE: Disabled - requires unimplemented methods
 
 //! Discovery protocol and service announcement tests

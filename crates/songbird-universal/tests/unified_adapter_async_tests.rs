@@ -1,3 +1,6 @@
+// Allow unwrap/expect in tests - idiomatic for test code
+#![allow(clippy::unwrap_used, clippy::expect_used)]
+
 //! Async Integration Tests for Unified Adapter
 //!
 //! **Goal**: Test unified adapter under realistic async scenarios
@@ -24,7 +27,7 @@ async fn test_create_new_adapter() {
     // Should be able to query for capabilities (even if empty)
     let result = adapter.find_capability_providers("compute").await;
     assert!(result.is_ok());
-    assert_eq!(result.unwrap().len(), 0);
+    assert_eq!(result.expect("test precondition").len(), 0);
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
@@ -62,7 +65,7 @@ async fn test_find_nonexistent_capability() {
     // Should return empty, not error
     let result = adapter.find_capability_providers("nonexistent").await;
     assert!(result.is_ok());
-    assert_eq!(result.unwrap().len(), 0);
+    assert_eq!(result.expect("test precondition").len(), 0);
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
@@ -101,9 +104,9 @@ async fn test_concurrent_capability_lookups() {
     // All should succeed (returning empty lists)
     for result in results {
         assert!(result.is_ok());
-        let providers = result.unwrap();
+        let providers = result.expect("test precondition");
         assert!(providers.is_ok());
-        assert_eq!(providers.unwrap().len(), 0);
+        assert_eq!(providers.expect("test precondition").len(), 0);
     }
 }
 
@@ -123,7 +126,7 @@ async fn test_concurrent_stats_access() {
     // All should succeed
     for result in results {
         assert!(result.is_ok());
-        let stats = result.unwrap();
+        let stats = result.expect("test precondition");
         assert_eq!(stats.total_services, 0);
     }
 }
@@ -191,7 +194,7 @@ async fn test_lookup_with_empty_string() {
 
     let result = adapter.find_capability_providers("").await;
     assert!(result.is_ok());
-    assert_eq!(result.unwrap().len(), 0);
+    assert_eq!(result.expect("test precondition").len(), 0);
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]

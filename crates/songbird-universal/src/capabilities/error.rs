@@ -11,6 +11,11 @@ pub enum CapabilityError {
     PrimalNotFound(String),
     /// Capability not available
     CapabilityUnavailable(String),
+    /// No providers found for requested capability
+    NoProvidersFound {
+        /// Capability type that was requested
+        capability_type: String,
+    },
     /// Feature not yet implemented
     NotImplemented(String),
 }
@@ -23,6 +28,11 @@ impl std::fmt::Display for CapabilityError {
             Self::PrimalNotFound(name) => write!(f, "Primal not found: {name}"),
             Self::CapabilityUnavailable(cap) => {
                 write!(f, "Capability unavailable: {cap}")
+            }
+            Self::NoProvidersFound {
+                capability_type,
+            } => {
+                write!(f, "No providers found for capability: {capability_type}")
             }
             Self::NotImplemented(feature) => {
                 write!(f, "Not yet implemented: {feature}")

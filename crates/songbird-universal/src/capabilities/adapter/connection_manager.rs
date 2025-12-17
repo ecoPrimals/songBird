@@ -52,6 +52,7 @@ impl ConnectionManager {
             primal_type: Self::infer_primal_type(primal_name),
             health: ConnectionHealth::Unknown,
             last_contact: chrono::Utc::now(),
+            last_health_check: None,
             metadata: std::collections::HashMap::new(),
         };
 
@@ -63,10 +64,7 @@ impl ConnectionManager {
             Ok(())
         } else {
             warn!("❌ Failed health check for {}", primal_name);
-            Err(CapabilityError::NetworkError(format!(
-                "Health check failed for {}",
-                primal_name
-            )))
+            Err(CapabilityError::NetworkError(format!("Health check failed for {}", primal_name)))
         }
     }
 
@@ -157,10 +155,7 @@ impl ConnectionManager {
             Ok(())
         } else {
             warn!("⚠️  Primal {} was not connected", primal_name);
-            Err(CapabilityError::PrimalNotFound(format!(
-                "Primal {} not connected",
-                primal_name
-            ).to_string()))
+            Err(CapabilityError::PrimalNotFound(format!("Primal {} not connected", primal_name)))
         }
     }
 
@@ -175,7 +170,7 @@ impl ConnectionManager {
 
         for mut connection in connections_snapshot {
             let health_result = self.test_primal_health(&connection).await;
-            
+
             connection.health = if health_result.is_ok() {
                 ConnectionHealth::Healthy
             } else {
@@ -193,6 +188,10 @@ impl ConnectionManager {
     }
 
     /// Get connection by primal name
+    ///
+    /// Future use: Will be used for connection pooling and reuse optimization.
+    /// Currently connections are managed ephemerally, but this enables persistent connections.
+    #[allow(dead_code)]
     pub async fn get_connection(&self, primal_name: &str) -> Option<PrimalConnection> {
         let connections = self.connections.read().await;
         connections.get(primal_name).cloned()
@@ -211,26 +210,11 @@ mod tests {
 
     #[test]
     fn test_infer_primal_type() {
-        assert_eq!(
-            ConnectionManager::infer_primal_type("beardog"),
-            PrimalType::Security
-        );
-        assert_eq!(
-            ConnectionManager::infer_primal_type("toadstool"),
-            PrimalType::Compute
-        );
-        assert_eq!(
-            ConnectionManager::infer_primal_type("nestgate"),
-            PrimalType::Storage
-        );
-        assert_eq!(
-            ConnectionManager::infer_primal_type("squirrel-ai"),
-            PrimalType::AI
-        );
-        assert_eq!(
-            ConnectionManager::infer_primal_type("unknown-service"),
-            PrimalType::Generic
-        );
+        assert_eq!(ConnectionManager::infer_primal_type("beardog"), PrimalType::Security);
+        assert_eq!(ConnectionManager::infer_primal_type("toadstool"), PrimalType::Compute);
+        assert_eq!(ConnectionManager::infer_primal_type("nestgate"), PrimalType::Storage);
+        assert_eq!(ConnectionManager::infer_primal_type("squirrel-ai"), PrimalType::AI);
+        assert_eq!(ConnectionManager::infer_primal_type("unknown-service"), PrimalType::Generic);
     }
 
     #[tokio::test]
@@ -244,4 +228,3 @@ mod tests {
         assert!(manager.get_connection("test").await.is_none());
     }
 }
-

@@ -1,3 +1,6 @@
+// Allow unwrap/expect in tests - idiomatic for test code
+#![allow(clippy::unwrap_used, clippy::expect_used)]
+
 //! # Comprehensive E2E Tests for Unified Universal Adapter
 //!
 //! Tests complete workflows with real components
@@ -26,7 +29,7 @@ async fn test_e2e_adapter_creation_with_config() {
         ..Default::default()
     };
 
-    let adapter = UnifiedUniversalAdapter::with_config(config.clone());
+    let adapter = UnifiedUniversalAdapter::with_config(config);
     assert!(std::mem::size_of_val(&adapter) > 0);
 }
 
@@ -81,7 +84,7 @@ async fn test_e2e_find_capability_providers_empty_registry() {
     let result = adapter.find_capability_providers("compute").await;
 
     assert!(result.is_ok());
-    let providers = result.unwrap();
+    let providers = result.expect("test precondition");
     assert!(providers.is_empty(), "Should return empty list for unknown capability");
 }
 
@@ -216,7 +219,7 @@ async fn test_e2e_many_discovery_endpoints() {
         (0..20).map(|i| format!("http://discovery-{}:8080/discover", i)).collect();
 
     let config = UnifiedAdapterConfig {
-        discovery_endpoints: endpoints.clone(),
+        discovery_endpoints: endpoints,
         ..Default::default()
     };
 

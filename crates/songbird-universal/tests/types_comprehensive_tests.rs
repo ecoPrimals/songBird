@@ -11,6 +11,8 @@
 #![allow(clippy::similar_names)]
 #![allow(clippy::too_many_lines)]
 #![allow(clippy::module_name_repetitions)]
+// Allow unwrap/expect in tests - idiomatic for test code
+#![allow(clippy::unwrap_used, clippy::expect_used)]
 
 //!
 //! Tests for universal types module covering all data structures.
@@ -448,7 +450,7 @@ fn test_service_info_serialization() -> SongbirdResult<()> {
     let service = ServiceInfo {
         name: "serialize-test".to_string(),
         primal_type: PrimalType::new("storage"),
-        endpoint: format!("http://storage:{}", test_orchestrator_port()).to_string(),
+        endpoint: format!("http://storage:{}", test_orchestrator_port()),
         capabilities: vec![],
         health: HealthStatus::Degraded,
         metadata: HashMap::new(),

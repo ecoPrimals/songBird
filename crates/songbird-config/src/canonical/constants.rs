@@ -707,29 +707,9 @@ pub mod network {
     /// Default dashboard port
     pub const DEFAULT_DASHBOARD_PORT: u16 = 3000;
 
-    /// Default Toadstool endpoint
-    pub const DEFAULT_TOADSTOOL_ENDPOINT: &str = "http://localhost:8001";
-
-    /// Default Toadstool port
-    pub const DEFAULT_TOADSTOOL_PORT: u16 = 8001;
-
-    /// Default Squirrel endpoint
-    pub const DEFAULT_SQUIRREL_ENDPOINT: &str = "http://localhost:8002";
-
-    /// Default Squirrel port
-    pub const DEFAULT_SQUIRREL_PORT: u16 = 8002;
-
-    /// Default `NestGate` endpoint
-    pub const DEFAULT_NESTGATE_ENDPOINT: &str = "http://localhost:8003";
-
-    /// Default `NestGate` port
-    pub const DEFAULT_NESTGATE_PORT: u16 = 8003;
-
-    /// Default `BearDog` endpoint
-    pub const DEFAULT_BEARDOG_ENDPOINT: &str = "http://localhost:8004";
-
-    /// Default `BearDog` port
-    pub const DEFAULT_BEARDOG_PORT: u16 = 8004;
+    // REMOVED: Hardcoded primal endpoints (sovereignty violation)
+    // Use crate::primal_discovery::* instead with environment variables
+    // See: crates/songbird-config/src/primal_discovery.rs
 
     /// Default retry delay
     pub const DEFAULT_RETRY_DELAY: Duration = Duration::from_millis(1000);
@@ -859,7 +839,9 @@ mod tests {
         let end = get_port_range_end();
         assert!(start > 0);
         assert!(end > start);
-        assert!(end <= 65535);
+        // Port end is u16, so it's always <= 65535 by type constraint
+        // Verify it's a reasonable value
+        assert!(end >= 1024, "Port range end should be >= 1024");
     }
 
     #[test]

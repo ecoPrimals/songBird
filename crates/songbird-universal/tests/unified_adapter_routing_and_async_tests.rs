@@ -1,5 +1,7 @@
 #![allow(clippy::all)]
 #![allow(unused)]
+// Allow unwrap/expect in tests - idiomatic for test code
+#![allow(clippy::unwrap_used, clippy::expect_used)]
 
 //! Tests for UnifiedUniversalAdapter routing and async operations
 //!
@@ -377,7 +379,7 @@ async fn test_route_request_with_empty_string_capability() {
 
     // Create request with empty string capability_type
     let mut parameters = HashMap::new();
-    parameters.insert("capability_type".to_string(), serde_json::Value::String("".to_string()));
+    parameters.insert("capability_type".to_string(), serde_json::Value::String(String::new()));
 
     let request = UniversalRequest {
         request_id: "test-empty-cap".to_string(),

@@ -177,7 +177,7 @@ mod tests {
 
     #[test]
     fn test_deployment_type_all_variants() {
-        let variants = vec![
+        let variants = [
             DeploymentType::HomeNetwork,
             DeploymentType::ResearchCluster,
             DeploymentType::EdgeDeployment,
@@ -218,7 +218,7 @@ mod tests {
 
     #[test]
     fn test_output_format_all_variants() {
-        let variants = vec![
+        let variants = [
             OutputFormat::Auto,
             OutputFormat::Table,
             OutputFormat::Json,

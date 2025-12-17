@@ -189,6 +189,12 @@ impl fmt::Display for ServiceInstanceStatus {
     }
 }
 
+#[allow(
+    clippy::unwrap_used,
+    clippy::expect_used,
+    clippy::unnecessary_wraps,
+    clippy::field_reassign_with_default
+)]
 #[cfg(test)]
 mod tests {
     use super::super::{SongbirdError, SongbirdResult};
@@ -320,7 +326,7 @@ mod tests {
         );
 
         let detailed = DetailedHealthInfo {
-            status: overall.clone(),
+            status: overall,
             components: components.clone(),
         };
 

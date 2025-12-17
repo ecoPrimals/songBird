@@ -14,6 +14,8 @@
 #![allow(clippy::similar_names)]
 #![allow(clippy::too_many_lines)]
 #![allow(clippy::module_name_repetitions)]
+// Allow unwrap/expect in tests - idiomatic for test code
+#![allow(clippy::unwrap_used, clippy::expect_used)]
 
 //!
 //! Testing service query construction, filtering, and discovery operations
@@ -86,7 +88,7 @@ fn test_service_query_with_metadata() {
 fn test_service_query_with_health_status() {
     let query = ServiceQuery::new().with_health_status(HealthStatus::Healthy);
     assert!(query.health_status.is_some());
-    assert_eq!(query.health_status.unwrap(), HealthStatus::Healthy);
+    assert_eq!(query.health_status.expect("test precondition"), HealthStatus::Healthy);
 }
 
 #[test]
@@ -205,10 +207,10 @@ fn test_service_query_all_health_statuses() {
     let unhealthy = ServiceQuery::new().with_health_status(HealthStatus::Unhealthy);
     let unknown = ServiceQuery::new().with_health_status(HealthStatus::Unknown);
 
-    assert_eq!(healthy.health_status.unwrap(), HealthStatus::Healthy);
-    assert_eq!(degraded.health_status.unwrap(), HealthStatus::Degraded);
-    assert_eq!(unhealthy.health_status.unwrap(), HealthStatus::Unhealthy);
-    assert_eq!(unknown.health_status.unwrap(), HealthStatus::Unknown);
+    assert_eq!(healthy.health_status.expect("test precondition"), HealthStatus::Healthy);
+    assert_eq!(degraded.health_status.expect("test precondition"), HealthStatus::Degraded);
+    assert_eq!(unhealthy.health_status.expect("test precondition"), HealthStatus::Unhealthy);
+    assert_eq!(unknown.health_status.expect("test precondition"), HealthStatus::Unknown);
 }
 
 #[test]

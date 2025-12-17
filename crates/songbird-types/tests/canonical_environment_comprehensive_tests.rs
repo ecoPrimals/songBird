@@ -1,3 +1,6 @@
+// Allow unwrap/expect in tests - idiomatic for test code
+#![allow(clippy::unwrap_used, clippy::expect_used)]
+
 //! Comprehensive tests for canonical Environment type
 //!
 //! Focused on edge cases, parsing, and utility methods
@@ -59,7 +62,10 @@ fn test_environment_from_str_mixed_case() {
         Environment::from_str("DeVeL opment"),
         Err(ref e) if e == "Unknown environment: DeVeL opment"
     ));
-    assert_eq!(Environment::from_str("PrOd").unwrap(), Environment::Production);
+    assert_eq!(
+        Environment::from_str("PrOd").expect("should parse valid environment"),
+        Environment::Production
+    );
 }
 
 #[test]
@@ -244,7 +250,7 @@ fn test_environment_debug() {
 fn test_from_str_error_messages() {
     let result = Environment::from_str("unknown");
     assert!(result.is_err());
-    let err = result.unwrap_err();
+    let err = result.expect_err("should be error for unknown environment");
     assert!(err.contains("Unknown environment"));
     assert!(err.contains("unknown"));
 }
@@ -253,7 +259,9 @@ fn test_from_str_error_messages() {
 fn test_from_str_empty_error() {
     let result = Environment::from_str("");
     assert!(result.is_err());
-    assert!(result.unwrap_err().contains("Unknown environment: "));
+    assert!(result
+        .expect_err("should be error for empty string")
+        .contains("Unknown environment: "));
 }
 
 // ============================================================================

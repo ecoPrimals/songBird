@@ -28,6 +28,8 @@ pub async fn negotiate_chunked_upload(
 
     // Calculate chunks
     let chunk_size_mb = 10u32; // 10MB chunks
+                               // Safe cast: For any reasonable binary size (<18 exabytes), this won't overflow usize
+    #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
     let total_chunks = ((request.binary_size_mb / f64::from(chunk_size_mb)).ceil() as usize).max(1);
 
     // Create temp directory
@@ -77,7 +79,8 @@ pub async fn upload_chunk(
     let negotiations = state.negotiations.read().await;
     let negotiation = negotiations
         .get(&neg_id)
-        .ok_or((StatusCode::NOT_FOUND, format!("Negotiation '{}' not found", neg_id)))?
+        // Modern idiomatic: ok_or_else for lazy evaluation (only format on error path)
+        .ok_or_else(|| (StatusCode::NOT_FOUND, format!("Negotiation '{}' not found", neg_id)))?
         .clone();
     drop(negotiations);
 
@@ -108,8 +111,9 @@ pub async fn upload_chunk(
         }
     }
 
-    let chunk_data =
-        chunk_data.ok_or((StatusCode::BAD_REQUEST, "No chunk data provided".to_string()))?;
+    let chunk_data = chunk_data
+        // Modern idiomatic: ok_or_else for lazy evaluation
+        .ok_or_else(|| (StatusCode::BAD_REQUEST, "No chunk data provided".to_string()))?;
 
     // Write chunk to disk
     let chunk_path = format!("{}/chunk-{:04}", negotiation.temp_dir, chunk_index);
@@ -156,7 +160,8 @@ pub async fn finalize_chunked_upload(
     let mut negotiations = state.negotiations.write().await;
     let negotiation = negotiations
         .remove(&neg_id)
-        .ok_or((StatusCode::NOT_FOUND, format!("Negotiation '{}' not found", neg_id)))?;
+        // Modern idiomatic: ok_or_else for lazy evaluation
+        .ok_or_else(|| (StatusCode::NOT_FOUND, format!("Negotiation '{}' not found", neg_id)))?;
     drop(negotiations);
 
     // Verify all chunks received
@@ -190,7 +195,10 @@ pub async fn finalize_chunked_upload(
         let chunk_info = negotiation
             .received_chunks
             .get(&chunk_index)
-            .ok_or((StatusCode::INTERNAL_SERVER_ERROR, format!("Missing chunk {}", chunk_index)))?;
+            // Modern idiomatic: ok_or_else for lazy evaluation
+            .ok_or_else(|| {
+                (StatusCode::INTERNAL_SERVER_ERROR, format!("Missing chunk {}", chunk_index))
+            })?;
 
         let chunk_data = fs::read(&chunk_info.file_path).await.map_err(|e| {
             (StatusCode::INTERNAL_SERVER_ERROR, format!("Failed to read chunk: {}", e))
@@ -270,9 +278,14 @@ pub async fn finalize_chunked_upload(
     state.deployments.write().await.insert(deployment_id.clone(), deployment.clone());
 
     // Build service URL
-    let service_url = if let (Some(host), Some(port)) =
-        (request.env_vars.get("COMPUTE_HOST").or(request.env_vars.get("SERVICE_HOST")), port)
-    {
+    let service_url = if let (Some(host), Some(port)) = (
+        request
+            .env_vars
+            .get("COMPUTE_HOST")
+            // Modern idiomatic: or_else for lazy evaluation
+            .or_else(|| request.env_vars.get("SERVICE_HOST")),
+        port,
+    ) {
         Some(format!("http://{}:{}", host, port))
     } else {
         None

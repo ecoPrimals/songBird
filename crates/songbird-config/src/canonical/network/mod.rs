@@ -93,8 +93,8 @@ pub use super::resilience::CircuitBreakerConfig;
 
 /// # Migration from Monolithic File
 ///
-/// **Date**: November 10, 2025  
-/// **Previous**: Single 1,261-line `network.rs` file  
+/// **Date**: November 10, 2025\
+/// **Previous**: Single 1,261-line `network.rs` file\
 /// **Current**: 6 focused modules totaling same functionality
 ///
 /// ## Changes

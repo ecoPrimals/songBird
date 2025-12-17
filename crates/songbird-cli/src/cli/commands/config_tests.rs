@@ -1,381 +1,361 @@
-use songbird_config::unified::*;
-use songbird_types::{SongbirdError, SongbirdResult};
-//! Comprehensive tests for CLI config commands
+//! Comprehensive tests for config command
 //!
-//! Tests configuration validation, parsing, file operations, and error handling.
+//! Phase 3 Test Coverage Expansion - CLI Commands
+//! Target: 0% → 90%+ coverage for config.rs (42 lines)
 
-use super::config::*;
-use songbird_config::SongbirdConfig;
-use songbird_types::EvolvedResult;
-use std::path::PathBuf;
-use tempfile::TempDir;
-use tokio_test;
+use super::*;
 
-#[tokio::test]
-async fn test_config_init_command(&self) -> SongbirdResult<()> {
-    let temp_dir = TempDir::new().map_err(|e| SongbirdError::configuration(format!("Failed to create temp directory for test: {}", e)))?;"
-    let config_path = temp_dir.path().join("songbird.toml");"
+// =============================================================================
+// CONFIG COMMAND ENUM TESTS
+// =============================================================================
 
-    // Test config initialization
-    let result = init_config(&config_path).await;
-    assert!(result.is_ok(), "Config initialization should succeed");"
-
-    // Verify file was created
-    assert!(config_path.exists(), "Config file should be created");"
-
-    // Verify config can be loaded
-    let config = SongbirdConfig::from_file(&config_path,?;
-    assert_eq!(config.network.orchestrator_port, songbird_config::defaults::ports::orchestrator_port());
-
-    Ok(()),
-}
-
-#[tokio::test]
-async fn test_config_validate_command(&self) -> SongbirdResult<()> {
-    let temp_dir = TempDir::new().map_err(|e| SongbirdError::configuration(format!("Failed to create temp directory for test: {}", e)))?;"
-    let config_path = temp_dir.path().join("valid_config.toml");"
-
-    // Create valid config
-    let config = SongbirdConfig::default();
-    config.to_file(&config_path,?;
-
-    // Test validation
-    let result = validate_config(&config_path).await;
-    assert!(result.is_ok(), "Valid config should pass validation");"
-
-    Ok(()),
-}
-
-#[tokio::test]
-async fn test_config_validate_invalid(&self) -> SongbirdResult<()> {
-    let temp_dir = TempDir::new().map_err(|e| SongbirdError::configuration(format!("Failed to create temp directory for test: {}", e)))?;"
-    let config_path = temp_dir.path().join("invalid_config.toml");"
-
-    // Create invalid config content
-    std::fs::write(&config_path, "invalid toml content [[[").map_err(|e| SongbirdError::configuration(format!("Failed to write invalid config for test: {}", e)))?;"
-
-    // Test validation should fail
-    let result = validate_config(&config_path).await;
-    assert!(result.is_err(), "Invalid config should fail validation");"
-
-    Ok(()),
-}
-
-#[tokio::test]
-async fn test_config_get_set_operations(&self) -> SongbirdResult<()> {
-    let temp_dir = TempDir::new().map_err(|e| SongbirdError::configuration(format!("Failed to create temp directory for test: {}", e)))?;"
-    let config_path = temp_dir.path().join("test_config.toml");"
-
-    // Initialize config
-    init_config(&config_path).await?;
-
-    // Test setting a value
-    set_config_value(&config_path, "network.orchestrator_port", &songbird_config::canonical::constants::network::DEFAULT_METRICS_PORT.to_string().await?;"
-
-    // Test getting the value
-    let value = get_config_value(&config_path, "network.orchestrator_port").await?;"
-    assert_eq!(value, &songbird_config::canonical::constants::network::DEFAULT_METRICS_PORT.to_string()"
-
-    Ok(()),
-}
-
-#[tokio::test]
-async fn test_config_backup_restore(&self) -> SongbirdResult<()> {
-    let temp_dir = TempDir::new().map_err(|e| SongbirdError::configuration(format!("Failed to create temp directory for test: {}", e)))?;"
-    let config_path = temp_dir.path().join("config.toml");"
-    let backup_path = temp_dir.path().join("config.backup.toml");"
-
-    // Create original config
-    init_config(&config_path).await?;
-
-    // Modify config
-    set_config_value(&config_path, "network.orchestrator_port", "9999").await?;"
-
-    // Create backup
-    backup_config(&config_path, &backup_path).await?;
-    assert!(backup_path.exists(), "Backup should be created");"
-
-    // Modify original further
-    set_config_value(&config_path, "network.orchestrator_port", "8888").await?;"
-
-    // Restore from backup
-    restore_config(&backup_path, &config_path).await?;
-
-    // Verify restoration
-    let value = get_config_value(&config_path, "network.orchestrator_port").await?;"
-    assert_eq!(value, "9999")"
-
-    Ok(()),
-}
-
-#[tokio::test]
-async fn test_config_migration(&self) -> SongbirdResult<()> {
-    let temp_dir = TempDir::new().map_err(|e| SongbirdError::configuration(format!("Failed to create temp directory for test: {}", e)))?;"
-    let old_config_path = temp_dir.path().join("old_config.toml");"
-    let new_config_path = temp_dir.path().join("new_config.toml");"
-
-    // Create old format config (simulate legacy format,
-    let old_port = songbird_config::defaults::ports::orchestrator_port();
-    let old_content = format!(r#""
-[network]
-port = {}
-host = &songbird_config::canonical::constants::network::DEFAULT_HOST"
-
-[security]
-enabled = true
-"#, old_port);"
-    std::fs::write(&old_config_path, old_content,.map_err(|e| SongbirdError::configuration(format!("Failed to write old config for test: {}", e)))?;"
-
-    // Test migration
-    let result = migrate_config(&old_config_path, &new_config_path).await;
-    assert!(result.is_ok(), "Config migration should succeed");"
-
-    // Verify new config is valid
-    let config = SongbirdConfig::from_file(&new_config_path,?;
-    assert_eq!(config.network.orchestrator_port, songbird_config::defaults::ports::orchestrator_port());
-
-    Ok(()),
-}
-
-#[tokio::test]
-async fn test_config_export_import(&self) -> SongbirdResult<()> {
-    let temp_dir = TempDir::new().map_err(|e| SongbirdError::configuration(format!("Failed to create temp directory for test: {}", e)))?;"
-    let config_path = temp_dir.path().join("config.toml");"
-    let export_path = temp_dir.path().join("exported.json");"
-    let import_path = temp_dir.path().join("imported.toml");"
-
-    // Create and configure
-    init_config(&config_path).await?;
-    set_config_value(&config_path, "network.orchestrator_port", "7777").await?;"
-
-    // Export to JSON
-    export_config(&config_path, &export_path, "json").await?;"
-    assert!(export_path.exists(), "Export file should be created");"
-
-    // Import from JSON
-    import_config(&export_path, &import_path, "json").await?;"
-
-    // Verify import
-    let value = get_config_value(&import_path, "network.orchestrator_port").await?;"
-    assert_eq!(value, "7777")"
-
-    Ok(()),
-}
-
-#[tokio::test]
-async fn test_config_validation_edge_cases(&self) -> SongbirdResult<()> {
-    let temp_dir = TempDir::new().map_err(|e| SongbirdError::configuration(format!("Failed to create temp directory for test: {}", e)))?;"
-
-    // Test non-existent file
-    let nonexistent_path = temp_dir.path().join("nonexistent.toml");"
-    let result = validate_config(&nonexistent_path).await;
-    assert!(result.is_err(), "Should fail for non-existent file");"
-
-    // Test empty file
-    let empty_path = temp_dir.path().join("empty.toml");"
-    std::fs::write(&empty_path, "").map_err(|e| SongbirdError::configuration(format!("Failed to write empty config for test: {}", e)))?;"
-    let result = validate_config(&empty_path).await;
-    assert!(result.is_err(), "Should fail for empty file");"
-
-    // Test permission denied (simulate,
-    // This would require platform-specific permission manipulation
-
-    Ok(()),
-}
-
-#[tokio::test]
-async fn test_config_concurrent_access(&self) -> SongbirdResult<()> {
-    let temp_dir = TempDir::new().map_err(|e| SongbirdError::configuration(format!("Failed to create temp directory for test: {}", e)))?;"
-    let config_path = temp_dir.path().join("concurrent_config.toml");"
-
-    // Initialize config
-    init_config(&config_path).await?;
-
-    // Spawn multiple concurrent operations
-    let handles: Vec<_> = (0..10).map(|i| {
-        let path = config_path.clone());
-        tokio::spawn(async move {
-            set_config_value(&path, "network.orchestrator_port", &format!("{}", 8000 + i).await"
-        })
-    }).collect();
-
-    // Wait for all operations
-    for handle in handles {
-        let result = handle.await.map_err(|e| SongbirdError::configuration(format!("Task should complete successfully: {}", e)))?;"
-        // Some operations might succeed, others might fail due to concurrent access
-        // This is expected behavior and tests robustness
-    }
-
-    // Verify config is still valid
-    let result = validate_config(&config_path).await;
-    assert!(result.is_ok(), "Config should remain valid after concurrent access");"
-
-    Ok(()),
-}
-
-// Helper functions that would be implemented in the actual config module
-
-async fn init_config(&self) -> SongbirdResult<()> {
-    let config = SongbirdConfig::default();
-    config.to_file(path,?;
-    Ok(()),
-}
-
-async fn validate_config(&self) -> SongbirdResult<()> {
-    let _config = SongbirdConfig::from_file(path,?;
-    Ok(()),
-}
-
-async fn set_config_value(&self) -> SongbirdResult<()> {
-    let mut config = SongbirdConfig::from_file(path,?;
-
-    match key {
-        "network.orchestrator_port" => {"
-            config.network.orchestrator_port = value.parse().map_err(|e| SongbirdError::configuration(format!("Port value should be a valid number: {:?}", e)))?;"
-        })
-        _ => return Err(SongbirdError::Configuration  {field: "unknown".to_string()),
-            message: format!("Unknown config key: {}", ,"
-            current_value: None,
-            expected_format: None,
-            suggestion: None,
-        ), key,"
-            key: Some(key.to_string()),
-            value: Some(value.to_string()),
-        })
-    }
-
-    config.to_file(path,?;
-    Ok(()),
-}
-
-async fn get_config_value(&self) -> SongbirdResult<String>  {let config = SongbirdConfig::from_file(path,?;
-
-    let value = match key  {"network.orchestrator_port" => config.network.orchestrator_port.to_string()),
-        _ => return Err(SongbirdError::Configuration {
-        message: format!("Unknown config key: {,
-        field: "unknown".to_string(),
-            message: format!("Unknown config key: {.to_string(),
-        current_value: None,
-        expected_format: None,
-        suggestion: None,
-    }", ,"
-            current_value: None,
-            expected_format: None,
-            suggestion: None,
-        ), key,"
-            key: Some(key.to_string()),
-            value: None,
-        })
+#[test]
+fn test_config_command_show_default() {
+    let cmd = ConfigCommand::Show {
+        detailed: false,
     };
 
-    Ok(value,
+    match cmd {
+        ConfigCommand::Show {
+            detailed,
+        } => {
+            assert!(!detailed);
+        }
+        _ => panic!("Expected Show variant"),
+    }
 }
 
-async fn backup_config(&self) -> SongbirdResult<()> {
-    std::fs::copy(source, backup,.map_err(|e| {
-        SongbirdError::Io {
-            message: format!("Failed to backup config: {}", e,"
-            path: Some(source.to_string_lossy().to_string()),
-            operation: Some("backup".to_string(),"
+#[test]
+fn test_config_command_show_detailed() {
+    let cmd = ConfigCommand::Show {
+        detailed: true,
+    };
+
+    match cmd {
+        ConfigCommand::Show {
+            detailed,
+        } => {
+            assert!(detailed);
         }
-    })?;
-    Ok(()),
+        _ => panic!("Expected Show variant"),
+    }
 }
 
-async fn restore_config(&self) -> SongbirdResult<()> {
-    std::fs::copy(backup, target,.map_err(|e| {
-        SongbirdError::Io {
-            message: format!("Failed to restore config: {}", e,"
-            path: Some(backup.to_string_lossy().to_string()),
-            operation: Some("restore".to_string(),"
+#[test]
+fn test_config_command_set() {
+    let cmd = ConfigCommand::Set {
+        key: "gaming_mode".to_string(),
+        value: "enabled".to_string(),
+    };
+
+    match cmd {
+        ConfigCommand::Set {
+            key,
+            value,
+        } => {
+            assert_eq!(key, "gaming_mode");
+            assert_eq!(value, "enabled");
         }
-    })?;
-    Ok(()),
+        _ => panic!("Expected Set variant"),
+    }
 }
 
-async fn migrate_config(&self) -> SongbirdResult<()> {
-    // Simple migration - in reality this would be more complex
-    let content = std::fs::read_to_string(old_path,.map_err(|e| {
-        SongbirdError::Io {
-            message: format!("Failed to read old config: {}", e,"
-            path: Some(old_path.to_string_lossy().to_string()),
-            operation: Some("read".to_string(),"
-        }
-    })?;
+#[test]
+fn test_config_command_reset_no_confirm() {
+    let cmd = ConfigCommand::Reset {
+        yes: false,
+    };
 
-    // Convert old format to new format (simplified,
-    let mut config = SongbirdConfig::default();
-    if content.contains("port = 8080") {"
-        config.network.orchestrator_port = 8080;
+    match cmd {
+        ConfigCommand::Reset {
+            yes,
+        } => {
+            assert!(!yes);
+        }
+        _ => panic!("Expected Reset variant"),
+    }
+}
+
+#[test]
+fn test_config_command_reset_with_confirm() {
+    let cmd = ConfigCommand::Reset {
+        yes: true,
+    };
+
+    match cmd {
+        ConfigCommand::Reset {
+            yes,
+        } => {
+            assert!(yes);
+        }
+        _ => panic!("Expected Reset variant"),
+    }
+}
+
+#[test]
+fn test_config_command_clone() {
+    let cmd = ConfigCommand::Show {
+        detailed: true,
+    };
+    let cloned = cmd.clone();
+
+    match (cmd, cloned) {
+        (
+            ConfigCommand::Show {
+                detailed: d1,
+            },
+            ConfigCommand::Show {
+                detailed: d2,
+            },
+        ) => {
+            assert_eq!(d1, d2);
+        }
+        _ => panic!("Clone failed or wrong variant"),
+    }
+}
+
+// =============================================================================
+// HANDLE CONFIG COMMAND TESTS
+// =============================================================================
+
+#[tokio::test]
+async fn test_handle_show_simple() {
+    let cmd = ConfigCommand::Show {
+        detailed: false,
+    };
+    let result = handle_config_command(cmd).await;
+
+    assert!(result.is_ok());
+}
+
+#[tokio::test]
+async fn test_handle_show_detailed() {
+    let cmd = ConfigCommand::Show {
+        detailed: true,
+    };
+    let result = handle_config_command(cmd).await;
+
+    assert!(result.is_ok());
+}
+
+#[tokio::test]
+async fn test_handle_set_config() {
+    let cmd = ConfigCommand::Set {
+        key: "target_latency".to_string(),
+        value: "30ms".to_string(),
+    };
+    let result = handle_config_command(cmd).await;
+
+    assert!(result.is_ok());
+}
+
+#[tokio::test]
+async fn test_handle_reset_no_confirm() {
+    let cmd = ConfigCommand::Reset {
+        yes: false,
+    };
+    let result = handle_config_command(cmd).await;
+
+    assert!(result.is_ok());
+}
+
+#[tokio::test]
+async fn test_handle_reset_with_confirm() {
+    let cmd = ConfigCommand::Reset {
+        yes: true,
+    };
+    let result = handle_config_command(cmd).await;
+
+    assert!(result.is_ok());
+}
+
+// =============================================================================
+// SHOW CONFIG TESTS
+// =============================================================================
+
+#[tokio::test]
+async fn test_show_config_simple() {
+    let result = show_config(false).await;
+    assert!(result.is_ok());
+}
+
+#[tokio::test]
+async fn test_show_config_detailed() {
+    let result = show_config(true).await;
+    assert!(result.is_ok());
+}
+
+#[tokio::test]
+async fn test_show_config_multiple_calls() {
+    for _ in 0..3 {
+        let result = show_config(false).await;
+        assert!(result.is_ok());
+    }
+}
+
+// =============================================================================
+// SET CONFIG TESTS
+// =============================================================================
+
+#[tokio::test]
+async fn test_set_config_gaming_mode() {
+    let result = set_config("gaming_mode".to_string(), "enabled".to_string()).await;
+    assert!(result.is_ok());
+}
+
+#[tokio::test]
+async fn test_set_config_target_latency() {
+    let result = set_config("target_latency".to_string(), "50ms".to_string()).await;
+    assert!(result.is_ok());
+}
+
+#[tokio::test]
+async fn test_set_config_auto_optimize() {
+    let result = set_config("auto_optimize".to_string(), "true".to_string()).await;
+    assert!(result.is_ok());
+}
+
+#[tokio::test]
+async fn test_set_config_various_keys() {
+    let keys = vec![
+        ("network.port_range", "27015-27030"),
+        ("federation.auto_join", "false"),
+        ("matchmaking.skill_based", "true"),
+    ];
+
+    for (key, value) in keys {
+        let result = set_config(key.to_string(), value.to_string()).await;
+        assert!(result.is_ok());
+    }
+}
+
+#[tokio::test]
+async fn test_set_config_empty_value() {
+    let result = set_config("test_key".to_string(), "".to_string()).await;
+    assert!(result.is_ok());
+}
+
+// =============================================================================
+// RESET CONFIG TESTS
+// =============================================================================
+
+#[tokio::test]
+async fn test_reset_config_without_confirmation() {
+    let result = reset_config(false).await;
+    assert!(result.is_ok());
+}
+
+#[tokio::test]
+async fn test_reset_config_with_confirmation() {
+    let result = reset_config(true).await;
+    assert!(result.is_ok());
+}
+
+#[tokio::test]
+async fn test_reset_config_multiple_times() {
+    let result1 = reset_config(true).await;
+    let result2 = reset_config(true).await;
+    let result3 = reset_config(true).await;
+
+    assert!(result1.is_ok());
+    assert!(result2.is_ok());
+    assert!(result3.is_ok());
+}
+
+// =============================================================================
+// INTEGRATION TESTS
+// =============================================================================
+
+#[tokio::test]
+async fn test_config_workflow_show_set_show() {
+    // Show config
+    let show1 = show_config(false).await;
+    assert!(show1.is_ok());
+
+    // Set a value
+    let set = set_config("test_key".to_string(), "test_value".to_string()).await;
+    assert!(set.is_ok());
+
+    // Show config again
+    let show2 = show_config(false).await;
+    assert!(show2.is_ok());
+}
+
+#[tokio::test]
+async fn test_config_workflow_set_reset() {
+    // Set multiple values
+    let set1 = set_config("key1".to_string(), "value1".to_string()).await;
+    let set2 = set_config("key2".to_string(), "value2".to_string()).await;
+
+    assert!(set1.is_ok());
+    assert!(set2.is_ok());
+
+    // Reset with confirmation
+    let reset = reset_config(true).await;
+    assert!(reset.is_ok());
+}
+
+#[tokio::test]
+async fn test_all_config_commands() {
+    let commands = vec![
+        ConfigCommand::Show {
+            detailed: false,
+        },
+        ConfigCommand::Show {
+            detailed: true,
+        },
+        ConfigCommand::Set {
+            key: "test".to_string(),
+            value: "value".to_string(),
+        },
+        ConfigCommand::Reset {
+            yes: true,
+        },
+    ];
+
+    for cmd in commands {
+        let result = handle_config_command(cmd).await;
+        assert!(result.is_ok());
+    }
+}
+
+// =============================================================================
+// EDGE CASE TESTS
+// =============================================================================
+
+#[tokio::test]
+async fn test_set_config_special_characters() {
+    let result =
+        set_config("key-with-dashes".to_string(), "value_with_underscores".to_string()).await;
+    assert!(result.is_ok());
+}
+
+#[tokio::test]
+async fn test_set_config_long_values() {
+    let long_value = "x".repeat(1000);
+    let result = set_config("test_key".to_string(), long_value).await;
+    assert!(result.is_ok());
+}
+
+#[tokio::test]
+async fn test_concurrent_config_operations() {
+    let mut handles = vec![];
+
+    for i in 0..10 {
+        handles.push(tokio::spawn(async move {
+            set_config(format!("key{}", i), format!("value{}", i)).await
+        }));
     }
 
-    config.to_file(new_path,?;
-    Ok(()),
+    for handle in handles {
+        let result = handle.await.unwrap();
+        assert!(result.is_ok());
+    }
 }
 
-async fn export_config(&self) -> SongbirdResult<()> {
-    let config = SongbirdConfig::from_file(config_path,?;
-
-    match format {
-        "json" => {"
-            let json = serde_json::to_string_pretty(&config,.map_err(|e| {
-                SongbirdError::Serialization {
-                    message: format!("Failed to serialize config to JSON: {}", e,"
-                    format: Some("json".to_string(),"
-                }
-            })?;
-            std::fs::write(export_path, json,.map_err(|e| {
-                SongbirdError::Io {
-                    message: format!("Failed to write export file: {}", e,"
-                    path: Some(export_path.to_string_lossy().to_string()),
-                    operation: Some("write".to_string(),"
-                }
-            })?;
-        })
-        _ => return Err(SongbirdError::Configuration  {field: "unknown".to_string()),
-            message: format!("Unsupported export format: {}", ,"
-            current_value: None,
-            expected_format: None,
-            suggestion: None,
-        ), format,"
-            key: Some("format".to_string(),"
-            value: Some(format.to_string()),
-        })
-    }
-
-    Ok(()),
-}
-
-async fn import_config(&self) -> SongbirdResult<()> {
-    match format {
-        "json" => {"
-            let content = std::fs::read_to_string(import_path,.map_err(|e| {
-                SongbirdError::Io {
-                    message: format!("Failed to read import file: {}", e,"
-                    path: Some(import_path.to_string_lossy().to_string()),
-                    operation: Some("read".to_string(),"
-                }
-            })?;
-
-            let config: SongbirdConfig = serde_json::from_str(&content,.map_err(|e| {
-                SongbirdError::Serialization {
-                    message: format!("Failed to parse JSON config: {}", e,"
-                    format: Some("json".to_string(),"
-                }
-            })?;
-
-            config.to_file(config_path,?;
-        })
-        _ => return Err(SongbirdError::Configuration  {field: "unknown".to_string()),
-            message: format!("Unsupported import format: {}", ,"
-            current_value: None,
-            expected_format: None,
-            suggestion: None,
-        ), format,"
-            key: Some("format".to_string(),"
-            value: Some(format.to_string()),
-        })
-    }
-
-    Ok(()),
+#[tokio::test]
+async fn test_reset_without_prior_changes() {
+    // Reset should work even if no changes were made
+    let result = reset_config(true).await;
+    assert!(result.is_ok());
 }

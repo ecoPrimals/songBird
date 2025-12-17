@@ -1,3 +1,6 @@
+// Allow unwrap/expect in tests - idiomatic for test code
+#![allow(clippy::unwrap_used, clippy::expect_used)]
+
 //! Comprehensive Storage Adapter Coverage Tests
 //!
 //! **Goal**: Raise coverage from 66.50% to 85%+
@@ -367,7 +370,7 @@ fn test_storage_metrics_serialization() {
 
     let json = serde_json::to_string(&metrics);
     assert!(json.is_ok());
-    let json_str = json.unwrap();
+    let json_str = json.expect("test precondition");
     assert!(json_str.contains("total_capacity_bytes"));
 }
 
@@ -385,7 +388,7 @@ fn test_storage_metrics_deserialization() {
 
     let metrics: Result<StorageMetrics, _> = serde_json::from_str(json);
     assert!(metrics.is_ok());
-    let metrics = metrics.unwrap();
+    let metrics = metrics.expect("test precondition");
     assert_eq!(metrics.object_count, 50000);
 }
 
@@ -447,7 +450,7 @@ fn test_storage_health_equality() {
 #[test]
 fn test_storage_health_clone() {
     let health = StorageHealth::Warning;
-    let cloned = health.clone();
+    let cloned = health;
     assert_eq!(health, cloned);
 }
 
@@ -486,7 +489,7 @@ fn test_storage_health_deserialization() {
     for (json, expected) in test_cases {
         let health: Result<StorageHealth, _> = serde_json::from_str(json);
         assert!(health.is_ok(), "Should deserialize: {}", json);
-        assert_eq!(health.unwrap(), expected);
+        assert_eq!(health.expect("test precondition"), expected);
     }
 }
 
@@ -500,7 +503,7 @@ fn test_adapter_new_success() {
     let adapter = StorageAdapter::new(endpoint.clone());
 
     assert!(adapter.is_ok());
-    let adapter = adapter.unwrap();
+    let adapter = adapter.expect("test precondition");
     assert_eq!(adapter.endpoint(), &endpoint);
 }
 
@@ -522,7 +525,7 @@ fn test_adapter_new_various_endpoints() {
 #[test]
 fn test_adapter_with_timeout() {
     let endpoint = "http://localhost:8084".to_string();
-    let adapter = StorageAdapter::new(endpoint).unwrap();
+    let adapter = StorageAdapter::new(endpoint).expect("test precondition");
 
     let custom_timeout = Duration::from_secs(45);
     let _adapter_with_timeout = adapter.with_timeout(custom_timeout);
@@ -531,7 +534,7 @@ fn test_adapter_with_timeout() {
 #[test]
 fn test_adapter_endpoint_getter() {
     let endpoint = "http://storage-service:8084".to_string();
-    let adapter = StorageAdapter::new(endpoint.clone()).unwrap();
+    let adapter = StorageAdapter::new(endpoint.clone()).expect("test precondition");
 
     assert_eq!(adapter.endpoint(), &endpoint);
 }
@@ -539,7 +542,7 @@ fn test_adapter_endpoint_getter() {
 #[test]
 fn test_adapter_builder_pattern() {
     let adapter = StorageAdapter::new("http://localhost:8084".to_string())
-        .unwrap()
+        .expect("test precondition")
         .with_timeout(Duration::from_secs(60));
 
     assert_eq!(adapter.endpoint(), "http://localhost:8084");

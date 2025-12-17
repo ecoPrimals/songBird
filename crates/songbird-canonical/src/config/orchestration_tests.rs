@@ -23,9 +23,9 @@ fn test_orchestration_config_default() -> SongbirdResult<()> {
 fn test_orchestration_config_serialization() -> SongbirdResult<()> {
     let config = OrchestrationConfig::default();
     let json = serde_json::to_string(&config)
-        .map_err(|e| SongbirdError::configuration(format!("Serialization failed: {}", e)))?;
+        .map_err(|e| SongbirdError::configuration(format!("Serialization failed: {e}")))?;
     let deserialized: OrchestrationConfig = serde_json::from_str(&json)
-        .map_err(|e| SongbirdError::configuration(format!("Deserialization failed: {}", e)))?;
+        .map_err(|e| SongbirdError::configuration(format!("Deserialization failed: {e}")))?;
 
     assert_eq!(config.discovery.enabled, deserialized.discovery.enabled);
     Ok(())
@@ -142,9 +142,9 @@ fn test_load_balancing_strategy_serialization() -> SongbirdResult<()> {
 
     for strategy in strategies {
         let json = serde_json::to_string(&strategy)
-            .map_err(|e| SongbirdError::configuration(format!("Serialization failed: {}", e)))?;
+            .map_err(|e| SongbirdError::configuration(format!("Serialization failed: {e}")))?;
         let deserialized: LoadBalancingStrategy = serde_json::from_str(&json)
-            .map_err(|e| SongbirdError::configuration(format!("Deserialization failed: {}", e)))?;
+            .map_err(|e| SongbirdError::configuration(format!("Deserialization failed: {e}")))?;
         let _ = deserialized;
     }
     Ok(())

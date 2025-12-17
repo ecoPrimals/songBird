@@ -129,6 +129,7 @@ fn test_primal_connection_structure() {
         endpoint: "http://localhost:8080".to_string(),
         health: ConnectionHealth::Healthy,
         last_contact: chrono::Utc::now(),
+        last_health_check: None,
         metadata: HashMap::new(),
     };
 

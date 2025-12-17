@@ -1,3 +1,6 @@
+// Allow unwrap/expect in tests - idiomatic for test code
+#![allow(clippy::unwrap_used, clippy::expect_used)]
+
 //! Integration tests for Songbird Execution Agent
 
 use songbird_execution_agent::{
@@ -22,7 +25,7 @@ async fn test_command_execution_foreground() {
 
     let request = ExecutionRequest::new("echo 'Hello, Songbird!'").with_timeout(60);
 
-    let response = executor.execute(request).await.unwrap();
+    let response = executor.execute(request).await.expect("test precondition");
 
     assert_eq!(response.exit_code, Some(0));
     assert!(response.stdout.contains("Hello, Songbird!"));
@@ -40,7 +43,7 @@ async fn test_command_with_env_vars() {
         .with_env("TEST_VAR", "test_value")
         .with_timeout(60);
 
-    let response = executor.execute(request).await.unwrap();
+    let response = executor.execute(request).await.expect("test precondition");
 
     assert_eq!(response.exit_code, Some(0));
     assert!(response.stdout.trim().contains("test_value"));
@@ -53,7 +56,7 @@ async fn test_command_with_working_dir() {
 
     let request = ExecutionRequest::new("pwd").with_working_dir("/tmp").with_timeout(60);
 
-    let response = executor.execute(request).await.unwrap();
+    let response = executor.execute(request).await.expect("test precondition");
 
     assert_eq!(response.exit_code, Some(0));
     assert!(response.stdout.contains("/tmp"));
@@ -67,7 +70,7 @@ async fn test_command_with_error_exit_code() {
     // Use false command which always returns exit code 1
     let request = ExecutionRequest::new("false").with_timeout(60);
 
-    let response = executor.execute(request).await.unwrap();
+    let response = executor.execute(request).await.expect("test precondition");
 
     assert_eq!(response.exit_code, Some(1));
 }
@@ -79,11 +82,11 @@ async fn test_background_job_execution() {
 
     let request = ExecutionRequest::new("sleep 2").with_background(true).with_timeout(60);
 
-    let job = executor.execute_background(request).await.unwrap();
+    let job = executor.execute_background(request).await.expect("test precondition");
 
     assert!(!job.id.is_empty());
     assert!(job.pid.is_some());
-    assert!(job.started_at.elapsed().unwrap().as_secs() < 1);
+    assert!(job.started_at.elapsed().expect("test precondition").as_secs() < 1);
 }
 
 /// Test: Job manager - add and retrieve job
@@ -95,12 +98,12 @@ async fn test_job_manager_add_retrieve() {
     let request =
         ExecutionRequest::new("echo 'background job'").with_background(true).with_timeout(60);
 
-    let job = executor.execute_background(request).await.unwrap();
+    let job = executor.execute_background(request).await.expect("test precondition");
     let job_id = job.id.clone();
 
-    job_manager.add_job(job).await.unwrap();
+    job_manager.add_job(job).await.expect("test precondition");
 
-    let retrieved = job_manager.get_job(&job_id).await.unwrap();
+    let retrieved = job_manager.get_job(&job_id).await.expect("should find expected value");
     assert_eq!(retrieved.id, job_id);
 }
 
@@ -116,8 +119,8 @@ async fn test_job_manager_list_jobs() {
             .with_background(true)
             .with_timeout(60);
 
-        let job = executor.execute_background(request).await.unwrap();
-        job_manager.add_job(job).await.unwrap();
+        let job = executor.execute_background(request).await.expect("test precondition");
+        job_manager.add_job(job).await.expect("test precondition");
     }
 
     let jobs = job_manager.list_jobs().await;
@@ -136,14 +139,14 @@ async fn test_job_manager_concurrent_limit() {
             .with_background(true)
             .with_timeout(60);
 
-        let job = executor.execute_background(request).await.unwrap();
-        job_manager.add_job(job).await.unwrap();
+        let job = executor.execute_background(request).await.expect("test precondition");
+        job_manager.add_job(job).await.expect("test precondition");
     }
 
     // Try to add 3rd job (should fail due to limit)
     let request = ExecutionRequest::new("echo 'third job'").with_background(true).with_timeout(60);
 
-    let job = executor.execute_background(request).await.unwrap();
+    let job = executor.execute_background(request).await.expect("test precondition");
     let result = job_manager.add_job(job).await;
 
     assert!(result.is_err());
@@ -168,7 +171,7 @@ async fn test_security_auth_success() {
         requester: Some("test".to_string()),
     };
 
-    let decision = validator.validate_request(&request).await.unwrap();
+    let decision = validator.validate_request(&request).await.expect("test precondition");
     assert!(decision.allowed);
 }
 
@@ -191,7 +194,7 @@ async fn test_security_auth_failure() {
         requester: Some("test".to_string()),
     };
 
-    let decision = validator.validate_request(&request).await.unwrap();
+    let decision = validator.validate_request(&request).await.expect("test precondition");
     assert!(!decision.allowed);
 }
 
@@ -218,7 +221,7 @@ async fn test_security_dangerous_command_blocked() {
             requester: Some("test".to_string()),
         };
 
-        let decision = validator.validate_request(&request).await.unwrap();
+        let decision = validator.validate_request(&request).await.expect("test precondition");
         assert!(!decision.allowed, "Command '{}' should be blocked", cmd);
     }
 }
@@ -243,7 +246,7 @@ async fn test_security_timeout_limit() {
         requester: Some("test".to_string()),
     };
 
-    let decision = validator.validate_request(&request).await.unwrap();
+    let decision = validator.validate_request(&request).await.expect("test precondition");
     assert!(!decision.allowed);
 }
 
@@ -270,7 +273,7 @@ async fn test_security_safe_commands_allowed() {
             requester: Some("test".to_string()),
         };
 
-        let decision = validator.validate_request(&request).await.unwrap();
+        let decision = validator.validate_request(&request).await.expect("test precondition");
         assert!(decision.allowed, "Command '{}' should be allowed", cmd);
     }
 }
@@ -295,7 +298,7 @@ async fn test_command_with_stderr() {
     // Use ls with invalid directory to generate stderr
     let request = ExecutionRequest::new("ls /nonexistent_directory_12345").with_timeout(60);
 
-    let response = executor.execute(request).await.unwrap();
+    let response = executor.execute(request).await.expect("test precondition");
 
     // ls with invalid directory returns non-zero
     assert_ne!(response.exit_code, Some(0));
@@ -324,7 +327,7 @@ async fn test_security_multiple_tokens() {
             requester: Some("test".to_string()),
         };
 
-        let decision = validator.validate_request(&request).await.unwrap();
+        let decision = validator.validate_request(&request).await.expect("test precondition");
         assert!(decision.allowed, "Token {} should be valid", token);
     }
 }

@@ -76,6 +76,7 @@ pub mod app;
 pub mod cli;
 pub mod core; // Consolidated core functionality
 pub mod integration;
+pub mod rpc; // Multi-protocol RPC (JSON-RPC, tarpc)
 pub mod server;
 
 // Re-export main orchestrator

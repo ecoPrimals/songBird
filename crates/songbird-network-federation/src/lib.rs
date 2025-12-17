@@ -29,16 +29,21 @@
 )]
 
 // Core modules
+pub mod btsp; // ✨ NEW: BearDog Secure Tunnel Protocol interface
 pub mod federation;
 pub mod integration;
 pub mod network;
+pub mod protocol_capability; // ✨ NEW: Protocol capability advertisement
 pub mod service_registry;
 pub mod state;
 pub mod tls;
+pub mod zero_copy_registry; // ✨ NEW: Zero-copy evolved registry
 
 // Re-export core types for convenience
+pub use btsp::{BtspProvider, BtspConfig, LocalBtspProvider};
 pub use federation::{FederationConfig, FederationCoordinator, NodeInfo};
 pub use integration::NetworkFederationBridge;
 pub use network::{NetworkConfig, NetworkManager, NetworkProvider};
+pub use protocol_capability::{Protocol, ProtocolCapability, ProtocolCapabilityManager, TowerCapabilities};
 
 // Legacy compatibility removed - use canonical APIs directly

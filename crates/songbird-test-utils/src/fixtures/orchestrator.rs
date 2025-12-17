@@ -203,6 +203,7 @@ impl Drop for OrchestratorTestEnvironment {
     }
 }
 
+#[allow(clippy::unwrap_used, clippy::expect_used, clippy::unnecessary_wraps, clippy::field_reassign_with_default)]
 #[cfg(test)]
 #[allow(clippy::uninlined_format_args)]
 #[allow(clippy::float_cmp)]

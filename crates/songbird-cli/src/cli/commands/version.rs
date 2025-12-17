@@ -80,6 +80,10 @@ fn build_rust_version() -> String {
     option_env!("VERGEN_RUSTC_SEMVER").unwrap_or(env!("CARGO_PKG_RUST_VERSION")).to_string()
 }
 
+#[cfg(test)]
+#[path = "version_tests.rs"]
+mod tests;
+
 /// Show version information
 pub async fn show_version(detailed: bool) -> SongbirdResult<()> {
     let version = env!("CARGO_PKG_VERSION");

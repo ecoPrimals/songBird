@@ -121,3 +121,7 @@ impl Default for TracingConfig {
         }
     }
 }
+
+#[cfg(test)]
+#[path = "observability_tests.rs"]
+mod tests;

@@ -1,13 +1,16 @@
+// Allow unwrap/expect in tests - idiomatic for test code
+#![allow(clippy::unwrap_used, clippy::expect_used)]
+
 //! Comprehensive CLI Commands Tests
 //!
 //! Tests for CLI command structures, enumerations, and command parsing
 
 use songbird_orchestrator::cli::commands::{ServiceCommands, StatusCommands};
-use songbird_types::{SongbirdError, SongbirdResult};
+use songbird_types::SongbirdResult;
 
 #[test]
 fn test_status_commands_variants() -> SongbirdResult<()> {
-    let commands = vec![
+    let commands = [
         StatusCommands::Overview,
         StatusCommands::Services,
         StatusCommands::Network,
@@ -113,7 +116,7 @@ fn test_status_commands_all_variants_unique() -> SongbirdResult<()> {
 
 #[test]
 fn test_service_commands_operations_coverage() -> SongbirdResult<()> {
-    let operations = vec![
+    let operations = [
         ServiceCommands::List,
         ServiceCommands::Show {
             service_name: "test".to_string(),
@@ -260,7 +263,7 @@ fn test_service_restart_command_match() {
 
 #[test]
 fn test_service_commands_with_numeric_names() {
-    let commands = vec![
+    let commands = [
         ServiceCommands::Start {
             service_name: "service-1".to_string(),
         },
@@ -277,7 +280,7 @@ fn test_service_commands_with_numeric_names() {
 
 #[test]
 fn test_service_commands_with_prefixed_names() {
-    let prefixes = vec!["api-", "worker-", "db-", "cache-"];
+    let prefixes = ["api-", "worker-", "db-", "cache-"];
     let commands: Vec<ServiceCommands> = prefixes
         .iter()
         .map(|prefix| ServiceCommands::Start {
@@ -340,10 +343,10 @@ fn test_service_commands_multiple_operations_same_service() -> SongbirdResult<()
         service_name: service_name.clone(),
     };
     let restart = ServiceCommands::Restart {
-        service_name: service_name.clone(),
+        service_name: service_name,
     };
 
-    let debug_strs = vec![
+    let debug_strs = [
         format!("{:?}", show),
         format!("{:?}", start),
         format!("{:?}", stop),
@@ -413,7 +416,7 @@ fn test_service_commands_with_version_suffixes() {
         service_name: "api-v3".to_string(),
     };
 
-    let commands = vec![v1, v2, v3];
+    let commands = [v1, v2, v3];
     assert_eq!(commands.len(), 3);
 }
 
@@ -429,7 +432,7 @@ fn test_service_commands_with_environment_prefixes() -> SongbirdResult<()> {
         service_name: "prod-service".to_string(),
     };
 
-    let commands = vec![dev, staging, prod];
+    let commands = [dev, staging, prod];
     assert_eq!(commands.len(), 3);
     Ok(())
 }
@@ -474,17 +477,17 @@ fn test_service_commands_comprehensive_lifecycle() {
         service_name: service.clone(),
     };
     let stop = ServiceCommands::Stop {
-        service_name: service.clone(),
+        service_name: service,
     };
 
-    let lifecycle = vec![show, start, restart, stop];
+    let lifecycle = [show, start, restart, stop];
     assert_eq!(lifecycle.len(), 4);
 }
 
 #[test]
 fn test_status_commands_all_variants_exhaustive() -> SongbirdResult<()> {
     // Ensure we test all status command variants
-    let all_variants = vec![
+    let all_variants = [
         StatusCommands::Overview,
         StatusCommands::Services,
         StatusCommands::Network,
@@ -501,7 +504,7 @@ fn test_status_commands_all_variants_exhaustive() -> SongbirdResult<()> {
 
 #[test]
 fn test_service_commands_all_variants_exhaustive() {
-    let all_variants = vec![
+    let all_variants = [
         ServiceCommands::List,
         ServiceCommands::Show {
             service_name: "test".to_string(),
@@ -559,6 +562,6 @@ fn test_service_commands_name_with_numbers() {
         service_name,
     } = cmd
     {
-        assert!(service_name.chars().any(|c| c.is_numeric()));
+        assert!(service_name.chars().any(char::is_numeric));
     }
 }

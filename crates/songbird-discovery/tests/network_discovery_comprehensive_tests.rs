@@ -14,6 +14,8 @@
 #![allow(clippy::similar_names)]
 #![allow(clippy::too_many_lines)]
 #![allow(clippy::module_name_repetitions)]
+// Allow unwrap/expect in tests - idiomatic for test code
+#![allow(clippy::unwrap_used, clippy::expect_used)]
 
 //!
 //! Tests for network scanning, service mesh, and distributed discovery.
@@ -123,7 +125,7 @@ fn test_dns_cache_ttl() {
 #[test]
 fn test_srv_record_priority() {
     let priorities = [10, 20, 30];
-    let lowest = priorities.iter().min().unwrap();
+    let lowest = priorities.iter().min().expect("test precondition");
 
     assert_eq!(*lowest, 10);
 }
@@ -305,7 +307,7 @@ fn test_region_latency_measurement() {
     let closest = latencies
         .iter()
         .min_by(|(_, a), (_, b)| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal))
-        .unwrap();
+        .expect("test precondition");
     assert_eq!(closest.0, "us-west");
 }
 
@@ -457,7 +459,7 @@ fn test_routing_table_entry() {
 fn test_shortest_path_metric() {
     let paths = [("route-1", 5), ("route-2", 3), ("route-3", 7)];
 
-    let shortest = paths.iter().min_by_key(|(_, m)| m).unwrap();
+    let shortest = paths.iter().min_by_key(|(_, m)| m).expect("test precondition");
     assert_eq!(shortest.0, "route-2");
 }
 

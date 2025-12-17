@@ -120,7 +120,7 @@ mod integration_tests {
         }
 
         let result = outer_function();
-        assert!(matches!(result.unwrap_err(), ApiError::Execution(_)));
+        assert!(matches!(result.expect_err("testing error case"), ApiError::Execution(_)));
     }
 
     #[test]
@@ -155,7 +155,7 @@ mod edge_cases {
             .map(|i| thread::spawn(move || ApiError::Routing(format!("Error {}", i))))
             .collect();
         for handle in handles {
-            let error = handle.join().unwrap();
+            let error = handle.join().expect("test precondition");
             assert!(format!("{}", error).contains("Error"));
         }
     }
@@ -167,7 +167,7 @@ mod edge_cases {
             Err(ApiError::Execution("async error".to_string()))
         }
 
-        let runtime = tokio::runtime::Runtime::new().unwrap();
+        let runtime = tokio::runtime::Runtime::new().expect("test precondition");
         let result = runtime.block_on(async_error());
         assert!(result.is_err());
     }

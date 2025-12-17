@@ -1,3 +1,6 @@
+// Allow unwrap/expect in tests - idiomatic for test code
+#![allow(clippy::unwrap_used, clippy::expect_used)]
+
 //! Comprehensive Security Adapter Coverage Tests
 //!
 //! **Goal**: Raise coverage from 14.71% to 90%+
@@ -18,7 +21,7 @@
 //! - Zero unsafe code
 
 use songbird_universal::adapters::security::{
-    AuthResult, SecurityAdapter, SecurityHealth, SecurityMetrics, SecurityProvider,
+    AuthResult, SecurityAdapter, SecurityHealth, SecurityMetrics,
 };
 use std::time::Duration;
 
@@ -32,7 +35,7 @@ fn test_security_adapter_new_success() {
     let adapter = SecurityAdapter::new(endpoint.clone());
 
     assert!(adapter.is_ok(), "Should create adapter successfully");
-    let adapter = adapter.unwrap();
+    let adapter = adapter.expect("test precondition");
     assert_eq!(adapter.endpoint(), &endpoint);
 }
 
@@ -54,7 +57,7 @@ fn test_security_adapter_new_various_endpoints() {
 #[test]
 fn test_security_adapter_with_timeout() {
     let endpoint = "http://localhost:8081".to_string();
-    let adapter = SecurityAdapter::new(endpoint).unwrap();
+    let adapter = SecurityAdapter::new(endpoint).expect("test precondition");
 
     let custom_timeout = Duration::from_secs(15);
     let _adapter_with_timeout = adapter.with_timeout(custom_timeout);
@@ -74,7 +77,9 @@ fn test_security_adapter_with_various_timeouts() {
     ];
 
     for timeout in timeouts {
-        let adapter = SecurityAdapter::new(endpoint.clone()).unwrap().with_timeout(timeout);
+        let adapter = SecurityAdapter::new(endpoint.clone())
+            .expect("test precondition")
+            .with_timeout(timeout);
         assert_eq!(adapter.endpoint(), "http://localhost:8081");
     }
 }
@@ -82,7 +87,7 @@ fn test_security_adapter_with_various_timeouts() {
 #[test]
 fn test_security_adapter_endpoint_getter() {
     let endpoint = "http://security-provider:8081".to_string();
-    let adapter = SecurityAdapter::new(endpoint.clone()).unwrap();
+    let adapter = SecurityAdapter::new(endpoint.clone()).expect("test precondition");
 
     assert_eq!(adapter.endpoint(), &endpoint);
     assert_eq!(adapter.endpoint(), "http://security-provider:8081");
@@ -273,7 +278,7 @@ fn test_security_metrics_serialization() {
     let json = serde_json::to_string(&metrics);
     assert!(json.is_ok(), "Should serialize successfully");
 
-    let json_str = json.unwrap();
+    let json_str = json.expect("test precondition");
     assert!(json_str.contains("active_sessions"));
     assert!(json_str.contains("100"));
 }
@@ -291,7 +296,7 @@ fn test_security_metrics_deserialization() {
     let metrics: Result<SecurityMetrics, _> = serde_json::from_str(json);
     assert!(metrics.is_ok(), "Should deserialize successfully");
 
-    let metrics = metrics.unwrap();
+    let metrics = metrics.expect("test precondition");
     assert_eq!(metrics.active_sessions, 50);
     assert_eq!(metrics.failed_auth_attempts, 3);
     assert_eq!(metrics.blocked_ips, 1);
@@ -355,7 +360,7 @@ fn test_security_health_equality() {
 #[test]
 fn test_security_health_clone() {
     let health = SecurityHealth::Warning;
-    let cloned = health.clone();
+    let cloned = health;
     assert_eq!(health, cloned);
 }
 
@@ -388,17 +393,17 @@ fn test_security_health_deserialization() {
     let json = r#""Healthy""#;
     let health: Result<SecurityHealth, _> = serde_json::from_str(json);
     assert!(health.is_ok());
-    assert_eq!(health.unwrap(), SecurityHealth::Healthy);
+    assert_eq!(health.expect("test precondition"), SecurityHealth::Healthy);
 
     let json = r#""Warning""#;
     let health: Result<SecurityHealth, _> = serde_json::from_str(json);
     assert!(health.is_ok());
-    assert_eq!(health.unwrap(), SecurityHealth::Warning);
+    assert_eq!(health.expect("test precondition"), SecurityHealth::Warning);
 
     let json = r#""Critical""#;
     let health: Result<SecurityHealth, _> = serde_json::from_str(json);
     assert!(health.is_ok());
-    assert_eq!(health.unwrap(), SecurityHealth::Critical);
+    assert_eq!(health.expect("test precondition"), SecurityHealth::Critical);
 }
 
 // ============================================================================
@@ -465,15 +470,15 @@ fn test_auth_result_deserialization() {
     for (json, expected) in test_cases {
         let result: Result<AuthResult, _> = serde_json::from_str(json);
         assert!(result.is_ok(), "Should deserialize: {}", json);
-        assert_eq!(result.unwrap(), expected);
+        assert_eq!(result.expect("test precondition"), expected);
     }
 }
 
 #[test]
 fn test_auth_result_round_trip() {
     let original = AuthResult::Expired;
-    let json = serde_json::to_string(&original).unwrap();
-    let deserialized: AuthResult = serde_json::from_str(&json).unwrap();
+    let json = serde_json::to_string(&original).expect("test precondition");
+    let deserialized: AuthResult = serde_json::from_str(&json).expect("should parse valid input");
     assert_eq!(original, deserialized);
 }
 
@@ -535,7 +540,7 @@ fn test_security_workflow_degrading_system() {
 #[test]
 fn test_security_adapter_builder_pattern() {
     let adapter = SecurityAdapter::new("http://localhost:8081".to_string())
-        .unwrap()
+        .expect("test precondition")
         .with_timeout(Duration::from_secs(20));
 
     assert_eq!(adapter.endpoint(), "http://localhost:8081");
@@ -544,8 +549,10 @@ fn test_security_adapter_builder_pattern() {
 
 #[test]
 fn test_multiple_adapters_independent() {
-    let adapter1 = SecurityAdapter::new("http://security1:8081".to_string()).unwrap();
-    let adapter2 = SecurityAdapter::new("http://security2:8082".to_string()).unwrap();
+    let adapter1 =
+        SecurityAdapter::new("http://security1:8081".to_string()).expect("test precondition");
+    let adapter2 =
+        SecurityAdapter::new("http://security2:8082".to_string()).expect("test precondition");
 
     assert_eq!(adapter1.endpoint(), "http://security1:8081");
     assert_eq!(adapter2.endpoint(), "http://security2:8082");

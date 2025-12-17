@@ -88,7 +88,7 @@ fn test_sync_interval() {
 #[test]
 fn test_serialization() {
     let config = FederationConfig::default();
-    let json = serde_json::to_string(&config).unwrap();
+    let json = serde_json::to_string(&config).expect("test precondition");
     assert!(json.contains("enabled"));
 }
 
@@ -101,7 +101,7 @@ fn test_deserialization() {
         "heartbeat_interval_secs": 30,
         "node_timeout_secs": 120
     }"#;
-    let config: FederationConfig = serde_json::from_str(json).unwrap();
+    let config: FederationConfig = serde_json::from_str(json).expect("should parse valid input");
     assert!(config.enabled);
     assert_eq!(config.heartbeat_interval_secs, 30);
     assert_eq!(config.node_timeout_secs, 120);
@@ -137,8 +137,9 @@ fn test_full_config_roundtrip() {
         node_timeout_secs: 180,
         ..Default::default()
     };
-    let json = serde_json::to_string(&original).unwrap();
-    let deserialized: FederationConfig = serde_json::from_str(&json).unwrap();
+    let json = serde_json::to_string(&original).expect("test precondition");
+    let deserialized: FederationConfig =
+        serde_json::from_str(&json).expect("should parse valid input");
     assert_eq!(original.enabled, deserialized.enabled);
     assert_eq!(original.heartbeat_interval_secs, deserialized.heartbeat_interval_secs);
     assert_eq!(original.node_timeout_secs, deserialized.node_timeout_secs);

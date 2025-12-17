@@ -1,3 +1,6 @@
+// Allow unwrap/expect in tests - idiomatic for test code
+#![allow(clippy::unwrap_used, clippy::expect_used)]
+
 //! Tests for AI-First Configuration
 //!
 //! Comprehensive tests for AI-First Citizen API configuration structures
@@ -120,7 +123,7 @@ fn test_streaming_interface_defaults() {
 }
 
 #[test]
-fn test_streaming_interface_high_load() -> SongbirdResult<()> {
+fn test_streaming_interface_high_load() {
     let config = StreamingInterfaceConfig {
         enabled: true,
         max_concurrent_streams: 1000,
@@ -132,7 +135,6 @@ fn test_streaming_interface_high_load() -> SongbirdResult<()> {
     assert_eq!(config.max_concurrent_streams, 1000);
     assert_eq!(config.buffer_size, 65536);
     assert_eq!(config.heartbeat_interval, 10);
-    Ok(())
 }
 
 #[test]
@@ -169,7 +171,7 @@ fn test_ai_first_config_clone() {
 }
 
 #[test]
-fn test_confidence_thresholds_validation() -> SongbirdResult<()> {
+fn test_confidence_thresholds_validation() {
     // Valid configuration
     let valid = ConfidenceScoringConfig {
         enabled: true,
@@ -181,17 +183,15 @@ fn test_confidence_thresholds_validation() -> SongbirdResult<()> {
     assert!(valid.min_threshold < valid.high_threshold);
     assert!(valid.min_threshold >= 0.0 && valid.min_threshold <= 1.0);
     assert!(valid.high_threshold >= 0.0 && valid.high_threshold <= 1.0);
-    Ok(())
 }
 
 #[test]
-fn test_ai_first_config_debug() -> SongbirdResult<()> {
+fn test_ai_first_config_debug() {
     let config = AIFirstConfig::default();
     let debug_str = format!("{config:?}");
 
     assert!(debug_str.contains("AIFirstConfig"));
     assert!(debug_str.contains("enable_ai_responses"));
-    Ok(())
 }
 
 #[test]

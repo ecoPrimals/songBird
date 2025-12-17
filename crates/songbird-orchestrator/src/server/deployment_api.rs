@@ -377,8 +377,11 @@ fn estimate_bandwidth(network_type: &str) -> BandwidthEstimate {
 /// Calculate max concurrent deployments based on available memory
 fn calculate_max_concurrent(available_memory_gb: u64) -> usize {
     // Assume each deployment needs ~1GB
-
-    (available_memory_gb as usize).max(1).min(10)
+    // Modern idiomatic: clamp() is cleaner than max().min()
+    // Safe cast: u64 fits in usize on 64-bit, truncates on 32-bit (acceptable for concurrency limit)
+    #[allow(clippy::cast_possible_truncation)]
+    let memory_as_usize = available_memory_gb as usize;
+    memory_as_usize.clamp(1, 10)
 }
 
 // ============================================================================
@@ -441,8 +444,9 @@ async fn deploy_binary(
         }
     }
 
-    let binary_data =
-        binary_data.ok_or((StatusCode::BAD_REQUEST, "No binary provided".to_string()))?;
+    let binary_data = binary_data
+        // Modern idiomatic: ok_or_else for lazy evaluation
+        .ok_or_else(|| (StatusCode::BAD_REQUEST, "No binary provided".to_string()))?;
 
     info!("📦 Deploying service: {}", service_name);
     debug!("   Deployment ID: {}", deployment_id);
@@ -520,9 +524,13 @@ async fn deploy_binary(
     state.deployments.write().await.insert(deployment_id.clone(), deployment.clone());
 
     // Build service URL
-    let service_url = if let (Some(host), Some(port)) =
-        (env_vars.get("COMPUTE_HOST").or(env_vars.get("SERVICE_HOST")), port)
-    {
+    let service_url = if let (Some(host), Some(port)) = (
+        env_vars
+            .get("COMPUTE_HOST")
+            // Modern idiomatic: or_else for lazy evaluation
+            .or_else(|| env_vars.get("SERVICE_HOST")),
+        port,
+    ) {
         Some(format!("http://{}:{}", host, port))
     } else {
         None
@@ -541,10 +549,17 @@ async fn deploy_binary(
 }
 
 /// Start a service with environment variables
-pub async fn start_service(
+///
+/// # Modern Idiomatic Pattern
+/// Generic over HashMap hasher for flexibility (accepts any BuildHasher)
+/// Requires Send for async execution across threads
+pub async fn start_service<S>(
     binary_path: &str,
-    env_vars: &HashMap<String, String>,
-) -> Result<u32, String> {
+    env_vars: &std::collections::HashMap<String, String, S>,
+) -> Result<u32, String>
+where
+    S: std::hash::BuildHasher + Send + Sync,
+{
     debug!("🎬 Starting service: {}", binary_path);
 
     let mut command = Command::new(binary_path);
@@ -576,7 +591,8 @@ async fn get_deployment_status(
     deployments
         .get(&deployment_id)
         .cloned()
-        .ok_or((StatusCode::NOT_FOUND, format!("Deployment '{}' not found", deployment_id)))
+        // Modern idiomatic: ok_or_else for lazy evaluation
+        .ok_or_else(|| (StatusCode::NOT_FOUND, format!("Deployment '{}' not found", deployment_id)))
         .map(Json)
 }
 
@@ -591,7 +607,10 @@ async fn stop_deployment(
 
     let deployment = deployments
         .get_mut(&deployment_id)
-        .ok_or((StatusCode::NOT_FOUND, format!("Deployment '{}' not found", deployment_id)))?;
+        // Modern idiomatic: ok_or_else for lazy evaluation
+        .ok_or_else(|| {
+            (StatusCode::NOT_FOUND, format!("Deployment '{}' not found", deployment_id))
+        })?;
 
     // Stop process if running
     if let Some(pid) = deployment.pid {

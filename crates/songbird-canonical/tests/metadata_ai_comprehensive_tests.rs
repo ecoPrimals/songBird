@@ -1,3 +1,6 @@
+// Allow unwrap/expect in tests - idiomatic for test code
+#![allow(clippy::unwrap_used, clippy::expect_used)]
+
 //! Comprehensive tests for AI-first metadata types
 //!
 //! This test suite provides thorough coverage of the metadata system
@@ -166,7 +169,7 @@ fn test_decision_context_high_risk() -> SongbirdResult<()> {
     };
 
     assert_eq!(context.risk_level, RiskLevel::High);
-    assert!(context.reasoning.unwrap().contains("human oversight"));
+    assert!(context.reasoning.expect("test precondition").contains("human oversight"));
     Ok(())
 }
 
@@ -434,10 +437,10 @@ fn test_quality_metrics_realistic_scores() -> SongbirdResult<()> {
         .with_relevance(0.88)
         .with_timeliness(0.90);
 
-    assert!(metrics.accuracy.unwrap() > 0.90);
-    assert!(metrics.completeness.unwrap() > 0.90);
-    assert!(metrics.relevance.unwrap() > 0.85);
-    assert!(metrics.timeliness.unwrap() > 0.85);
+    assert!(metrics.accuracy.expect("test precondition") > 0.90);
+    assert!(metrics.completeness.expect("test precondition") > 0.90);
+    assert!(metrics.relevance.expect("test precondition") > 0.85);
+    assert!(metrics.timeliness.expect("test precondition") > 0.85);
     Ok(())
 }
 
@@ -471,7 +474,7 @@ fn test_quality_metrics_calculate_overall() -> SongbirdResult<()> {
     metrics.calculate_overall();
 
     // Average should be (0.90 + 0.80 + 0.85 + 0.75) / 4 = 0.825
-    let overall = metrics.overall_quality.unwrap();
+    let overall = metrics.overall_quality.expect("test precondition");
     assert!((overall - 0.825).abs() < 0.001);
     Ok(())
 }
@@ -488,7 +491,7 @@ fn test_quality_metrics_overall_with_partial() -> SongbirdResult<()> {
     metrics.calculate_overall();
 
     // Average should be (0.90 + 0.80) / 2 = 0.85
-    let overall = metrics.overall_quality.unwrap();
+    let overall = metrics.overall_quality.expect("test precondition");
     assert!((overall - 0.85).abs() < 0.001);
     Ok(())
 }
@@ -623,7 +626,7 @@ fn test_quality_metrics_builder_pattern() -> SongbirdResult<()> {
     assert_eq!(metrics.timeliness, Some(0.88));
 
     // Overall should be calculated automatically
-    let overall = metrics.overall_quality.unwrap();
+    let overall = metrics.overall_quality.expect("test precondition");
     assert!((overall - 0.895).abs() < 0.001);
     Ok(())
 }
@@ -676,7 +679,7 @@ fn test_decision_context_with_no_alternatives() -> SongbirdResult<()> {
     };
 
     assert!(context.alternatives_considered.is_empty());
-    assert!(context.reasoning.unwrap().contains("No alternatives"));
+    assert!(context.reasoning.expect("test precondition").contains("No alternatives"));
     Ok(())
 }
 

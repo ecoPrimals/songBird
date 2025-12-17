@@ -180,17 +180,15 @@ mod tests {
     #[test]
     fn test_conversion_batch_processing() {
         let count = 100;
-        let services: Vec<UniversalServiceInfo> = (0..count)
+        let converted: Vec<DiscoveryServiceInfo> = (0..count)
             .map(|i| {
                 create_test_universal_service(
                     &format!("service-{i}"),
                     &format!("host{}:808{}", i, i % 10),
                 )
             })
+            .map(std::convert::Into::into)
             .collect();
-
-        let converted: Vec<DiscoveryServiceInfo> =
-            services.into_iter().map(std::convert::Into::into).collect();
 
         assert_eq!(converted.len(), count);
     }

@@ -1,3 +1,6 @@
+// Allow unwrap/expect in tests - idiomatic for test code
+#![allow(clippy::unwrap_used, clippy::expect_used)]
+
 //! Comprehensive tests for host configuration
 //!
 //! These tests validate the robust, thread-safe host configuration system
@@ -5,7 +8,6 @@
 
 use songbird_config::canonical::hardcoded_elimination::HostConfig;
 use songbird_config::defaults::hosts::*;
-use songbird_types::SongbirdResult;
 
 // ============================================================================
 // GLOBAL CONFIGURATION TESTS
@@ -189,7 +191,8 @@ fn test_production_environment_detection() {
     // Note: Environment detection is via free functions, not HostConfig fields
     // HostConfig is for host addresses only
     let is_prod = is_production();
-    assert!(is_prod || !is_prod); // Function exists and returns bool
+    // Test that function exists and returns a bool - just check it doesn't panic
+    let _ = is_prod;
 
     // HostConfig is environment-agnostic
     let config = HostConfig::with_defaults();

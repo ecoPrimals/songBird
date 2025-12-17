@@ -9,8 +9,6 @@ use songbird_discovery::discovery::factory::UniversalDiscoveryFactory;
 use songbird_discovery::discovery::types::NodeType;
 use songbird_types::SongbirdResult;
 use std::sync::Arc;
-use std::time::Duration;
-use tokio::time::sleep;
 // ============================================================================
 // Configuration and Setup Tests
 fn create_test_config() -> SongbirdDiscoveryConfig {

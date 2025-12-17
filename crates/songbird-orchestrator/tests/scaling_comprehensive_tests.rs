@@ -1,3 +1,6 @@
+// Allow unwrap/expect in tests - idiomatic for test code
+#![allow(clippy::unwrap_used, clippy::expect_used)]
+
 //! Comprehensive tests for auto-scaling functionality
 
 use songbird_orchestrator::core::scaling::{AutoScaler, ScalingPolicy};

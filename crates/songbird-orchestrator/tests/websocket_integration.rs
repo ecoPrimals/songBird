@@ -1,3 +1,6 @@
+// Allow unwrap/expect in tests - idiomatic for test code
+#![allow(clippy::unwrap_used, clippy::expect_used)]
+
 /// WebSocket Integration Tests
 ///
 /// Comprehensive tests for WebSocket server and event broadcasting system.
@@ -24,7 +27,8 @@ async fn test_websocket_connection() {
 
         // Should receive welcome message
         if let Some(Ok(Message::Text(msg))) = read.next().await {
-            let data: serde_json::Value = serde_json::from_str(&msg).unwrap();
+            let data: serde_json::Value =
+                serde_json::from_str(&msg).expect("should parse valid input");
             assert_eq!(data["type"], "ack");
         }
 
@@ -49,11 +53,11 @@ async fn test_ping_pong() {
         "data": "test"
     });
 
-    write.send(Message::Text(ping_msg.to_string())).await.unwrap();
+    write.send(Message::Text(ping_msg.to_string())).await.expect("test precondition");
 
     // Wait for pong
     if let Some(Ok(Message::Text(msg))) = read.next().await {
-        let data: serde_json::Value = serde_json::from_str(&msg).unwrap();
+        let data: serde_json::Value = serde_json::from_str(&msg).expect("should parse valid input");
         assert_eq!(data["type"], "pong");
         assert_eq!(data["data"], "test");
     } else {
@@ -78,11 +82,11 @@ async fn test_query_status() {
         "type": "query_status"
     });
 
-    write.send(Message::Text(query_msg.to_string())).await.unwrap();
+    write.send(Message::Text(query_msg.to_string())).await.expect("test precondition");
 
     // Wait for response
     if let Some(Ok(Message::Text(msg))) = read.next().await {
-        let data: serde_json::Value = serde_json::from_str(&msg).unwrap();
+        let data: serde_json::Value = serde_json::from_str(&msg).expect("should parse valid input");
         assert_eq!(data["type"], "federation_status");
         assert!(data["total_services"].is_number());
         assert!(data["total_peers"].is_number());
@@ -110,11 +114,11 @@ async fn test_query_services() {
         "capabilities": ["ml"]
     });
 
-    write.send(Message::Text(query_msg.to_string())).await.unwrap();
+    write.send(Message::Text(query_msg.to_string())).await.expect("test precondition");
 
     // Wait for response
     if let Some(Ok(Message::Text(msg))) = read.next().await {
-        let data: serde_json::Value = serde_json::from_str(&msg).unwrap();
+        let data: serde_json::Value = serde_json::from_str(&msg).expect("should parse valid input");
         assert_eq!(data["type"], "service_list");
         assert!(data["services"].is_array());
     } else {
@@ -140,11 +144,11 @@ async fn test_subscription() {
         "events": ["service_update", "health_update"]
     });
 
-    write.send(Message::Text(subscribe_msg.to_string())).await.unwrap();
+    write.send(Message::Text(subscribe_msg.to_string())).await.expect("test precondition");
 
     // Wait for ack
     if let Some(Ok(Message::Text(msg))) = read.next().await {
-        let data: serde_json::Value = serde_json::from_str(&msg).unwrap();
+        let data: serde_json::Value = serde_json::from_str(&msg).expect("should parse valid input");
         assert_eq!(data["type"], "ack");
     } else {
         panic!("Did not receive subscription ack");
@@ -168,7 +172,7 @@ async fn test_unsubscribe() {
         "type": "subscribe",
         "events": ["service_update"]
     });
-    write.send(Message::Text(subscribe_msg.to_string())).await.unwrap();
+    write.send(Message::Text(subscribe_msg.to_string())).await.expect("test precondition");
     let _ = read.next().await; // Skip ack
 
     // Unsubscribe
@@ -177,11 +181,11 @@ async fn test_unsubscribe() {
         "events": ["service_update"]
     });
 
-    write.send(Message::Text(unsubscribe_msg.to_string())).await.unwrap();
+    write.send(Message::Text(unsubscribe_msg.to_string())).await.expect("test precondition");
 
     // Wait for ack
     if let Some(Ok(Message::Text(msg))) = read.next().await {
-        let data: serde_json::Value = serde_json::from_str(&msg).unwrap();
+        let data: serde_json::Value = serde_json::from_str(&msg).expect("should parse valid input");
         assert_eq!(data["type"], "ack");
     } else {
         panic!("Did not receive unsubscription ack");
@@ -201,13 +205,13 @@ async fn test_invalid_message() {
     let _ = read.next().await;
 
     // Send invalid JSON
-    write.send(Message::Text("invalid json".to_string())).await.unwrap();
+    write.send(Message::Text("invalid json".to_string())).await.expect("test precondition");
 
     // Should receive error response
     if let Some(Ok(Message::Text(msg))) = read.next().await {
-        let data: serde_json::Value = serde_json::from_str(&msg).unwrap();
+        let data: serde_json::Value = serde_json::from_str(&msg).expect("should parse valid input");
         assert_eq!(data["type"], "error");
-        assert!(data["message"].as_str().unwrap().contains("Invalid"));
+        assert!(data["message"].as_str().expect("test precondition").contains("Invalid"));
     } else {
         panic!("Did not receive error response");
     }
@@ -226,13 +230,13 @@ async fn test_binary_message_rejected() {
     let _ = read.next().await;
 
     // Send binary message
-    write.send(Message::Binary(vec![1, 2, 3, 4])).await.unwrap();
+    write.send(Message::Binary(vec![1, 2, 3, 4])).await.expect("test precondition");
 
     // Should receive error response
     if let Some(Ok(Message::Text(msg))) = read.next().await {
-        let data: serde_json::Value = serde_json::from_str(&msg).unwrap();
+        let data: serde_json::Value = serde_json::from_str(&msg).expect("should parse valid input");
         assert_eq!(data["type"], "error");
-        assert!(data["message"].as_str().unwrap().contains("Binary"));
+        assert!(data["message"].as_str().expect("test precondition").contains("Binary"));
     } else {
         panic!("Did not receive error response");
     }
@@ -259,19 +263,21 @@ async fn test_multiple_clients() {
     // Both clients query status
     let query = json!({"type": "query_status"});
 
-    write1.send(Message::Text(query.to_string())).await.unwrap();
-    write2.send(Message::Text(query.to_string())).await.unwrap();
+    write1.send(Message::Text(query.to_string())).await.expect("test precondition");
+    write2.send(Message::Text(query.to_string())).await.expect("test precondition");
 
     // Both should receive responses
     if let Some(Ok(Message::Text(msg1))) = read1.next().await {
-        let data: serde_json::Value = serde_json::from_str(&msg1).unwrap();
+        let data: serde_json::Value =
+            serde_json::from_str(&msg1).expect("should parse valid input");
         assert_eq!(data["type"], "federation_status");
     } else {
         panic!("Client 1 did not receive response");
     }
 
     if let Some(Ok(Message::Text(msg2))) = read2.next().await {
-        let data: serde_json::Value = serde_json::from_str(&msg2).unwrap();
+        let data: serde_json::Value =
+            serde_json::from_str(&msg2).expect("should parse valid input");
         assert_eq!(data["type"], "federation_status");
     } else {
         panic!("Client 2 did not receive response");
@@ -335,7 +341,7 @@ mod event_tests {
         broadcaster.broadcast(event.clone()).await;
 
         // Receive event
-        let received = rx.recv().await.unwrap();
+        let received = rx.recv().await.expect("test precondition");
         assert_eq!(received.event_type, "service_update");
     }
 

@@ -530,27 +530,34 @@ pub async fn get_multiple_endpoints(capabilities: &[&str]) -> SongbirdResult<Vec
 #[cfg(test)]
 mod tests {
     use super::*;
-    use serial_test::serial;
+    // ✅ CONCURRENT-SAFE! Using ScopedEnv for proper isolation
+    use songbird_test_utils::ScopedEnv;
 
-    #[tokio::test]
-    #[serial]
+    #[tokio::test] // ✅ CONCURRENT! Using ScopedEnv
     async fn test_capability_from_environment() {
-        env::set_var("CAPABILITY_SECURITY_ENDPOINT", "http://security:8443");
+        // ScopedEnv automatically cleans up when dropped (RAII pattern)
+        let _env = ScopedEnv::set("CAPABILITY_SECURITY_ENDPOINT", "http://security:8443").await;
 
         let endpoint = get_capability_endpoint("security").await.unwrap();
         assert_eq!(endpoint, "http://security:8443");
 
-        env::remove_var("CAPABILITY_SECURITY_ENDPOINT");
+        // Cleanup happens automatically when _env drops
     }
 
-    #[tokio::test]
-    #[serial]
+    #[tokio::test] // ✅ CONCURRENT! Using ScopedEnv
     async fn test_capability_not_found() {
-        env::remove_var("CAPABILITY_CUSTOM_TEST_ENDPOINT");
-        env::remove_var("SERVICE_REGISTRY_ENDPOINT");
+        // ✅ FIXED: Use remove_multiple to avoid deadlock
+        // Creating multiple ScopedEnv::remove() instances simultaneously deadlocks!
+        let _env = ScopedEnv::remove_multiple([
+            "CAPABILITY_CUSTOM_TEST_ENDPOINT",
+            "SERVICE_REGISTRY_ENDPOINT",
+        ])
+        .await;
 
         let result = get_capability_endpoint("custom_test").await;
         assert!(result.is_err());
+
+        // Variables restored automatically
     }
 
     #[test]
@@ -575,25 +582,28 @@ mod tests {
         );
     }
 
-    #[tokio::test]
-    #[serial]
+    #[tokio::test] // ✅ CONCURRENT! Using ScopedEnv
     async fn test_multiple_endpoints() {
-        env::set_var("CAPABILITY_SECURITY_ENDPOINT", "http://security:8443");
-        env::set_var("CAPABILITY_STORAGE_ENDPOINT", "http://storage:9000");
+        // Set multiple variables with automatic cleanup
+        let _env = ScopedEnv::set_multiple([
+            ("CAPABILITY_SECURITY_ENDPOINT", "http://security:8443"),
+            ("CAPABILITY_STORAGE_ENDPOINT", "http://storage:9000"),
+        ])
+        .await;
 
         let endpoints = get_multiple_endpoints(&["security", "storage"]).await.unwrap();
+
         assert_eq!(endpoints.len(), 2);
         assert_eq!(endpoints[0], "http://security:8443");
         assert_eq!(endpoints[1], "http://storage:9000");
 
-        env::remove_var("CAPABILITY_SECURITY_ENDPOINT");
-        env::remove_var("CAPABILITY_STORAGE_ENDPOINT");
+        // Cleanup happens automatically when _env drops
     }
 
-    #[tokio::test]
-    #[serial]
+    #[tokio::test] // ✅ CONCURRENT! Using ScopedEnv
     async fn test_cache_functionality() {
-        env::set_var("CAPABILITY_SECURITY_ENDPOINT", "http://security:8443");
+        // Use ScopedEnv for automatic cleanup
+        let _env = ScopedEnv::set("CAPABILITY_SECURITY_ENDPOINT", "http://security:8443").await;
 
         // First call - should discover
         let endpoint1 = get_capability_endpoint("security").await.unwrap();
@@ -608,8 +618,9 @@ mod tests {
 
         // Should discover again
         let endpoint3 = get_capability_endpoint("security").await.unwrap();
+
         assert_eq!(endpoint1, endpoint3);
 
-        env::remove_var("CAPABILITY_SECURITY_ENDPOINT");
+        // Cleanup happens automatically when _env drops
     }
 }

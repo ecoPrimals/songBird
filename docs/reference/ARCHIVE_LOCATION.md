@@ -1,14 +1,21 @@
 # 📦 Archive Location
 
-**Updated**: November 8, 2025 (Evening - Final Cleanup)  
+**Updated**: December 16, 2025 (Comprehensive Cleanup)  
 **Status**: Complete fossil record at parent level
 
 ---
 
-## 📍 Current Archive Location
+## 📍 Current Archive Locations
 
-All historical session documentation has been moved to the parent-level fossil record:
+All historical documentation, legacy code, and experimental data moved to parent-level fossil record:
 
+**Latest Archive (Dec 16, 2025)**:
+```
+/home/eastgate/Development/ecoPrimals/archive/songbird-cleanup-dec-16-2025/
+/home/eastgate/Development/ecoPrimals/archive/songbird-audits-dec-14-15-2025/
+```
+
+**Previous Archives**:
 ```
 /home/eastgate/Development/ecoPrimals/archive/songbird-docs-nov-8-2025/
 ```
@@ -16,6 +23,26 @@ All historical session documentation has been moved to the parent-level fossil r
 ---
 
 ## 📚 What's Archived
+
+### **December 16, 2025 Cleanup**
+Complete cleanup of historical artifacts and experimental data:
+
+**Historical Audits** (31 files):
+- Dec 14-15, 2025 audit reports and sessions
+- Week 1 completion status
+- Action plans and checklists
+- Technical analysis documents
+
+**Legacy Scripts** (7 files):
+- Archive utility scripts
+- Legacy pattern detection tools
+- Compatibility removal automation
+
+**Experimental Data** (1.9GB):
+- ImageNet-100 dataset (1.3GB)
+- Training results and checkpoints (549MB)
+- TensorBoard event logs
+- Multiple experiment runs
 
 ### **November 8, 2025 Session Documentation**
 Complete documentation from the unification review and cleanup session:
@@ -26,15 +53,6 @@ Complete documentation from the unification review and cleanup session:
 - Legacy audit results
 - Technical debt reality checks
 - Production quality assessments
-- Session certificates and handoffs
-- Git workflow documentation
-
-**Archive Contents**:
-- All `*NOV_8_2025*.md` files
-- Session summaries and reports
-- Execution logs and plans
-- Cleanup completion reports
-- Unification analysis documents
 
 ---
 
@@ -138,7 +156,11 @@ less CONSOLIDATION_REALITY_CHECK_NOV_8_2025.md
 
 ---
 
-**Archive Location**: `/home/eastgate/Development/ecoPrimals/archive/songbird-docs-nov-8-2025/`  
-**Files Archived**: 35+ session documentation files  
-**Workspace Status**: Clean, professional, production-ready  
-**Last Updated**: November 8, 2025 (Evening - Final Cleanup)
+**Archive Locations**:  
+- Dec 16, 2025: `/home/eastgate/Development/ecoPrimals/archive/songbird-cleanup-dec-16-2025/`
+- Dec 14-15 Audits: `/home/eastgate/Development/ecoPrimals/archive/songbird-audits-dec-14-15-2025/`
+- Nov 8, 2025: `/home/eastgate/Development/ecoPrimals/archive/songbird-docs-nov-8-2025/`
+
+**Total Archived**: 73+ files, 1.9GB experimental data  
+**Workspace Status**: Clean, professional, production-ready (73/100)  
+**Last Updated**: December 16, 2025 (Comprehensive Cleanup)

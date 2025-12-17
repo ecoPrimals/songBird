@@ -70,8 +70,11 @@ pub struct TlsCertificateManager {
 
 impl TlsCertificateManager {
     /// Create a new TLS certificate manager
+    #[must_use]
     pub fn new(config: TlsConfig) -> Self {
-        Self { config }
+        Self {
+            config,
+        }
     }
 
     /// Generate a self-signed certificate
@@ -82,6 +85,10 @@ impl TlsCertificateManager {
     /// # Errors
     ///
     /// Returns an error if certificate generation or file I/O fails
+    ///
+    /// # Panics
+    ///
+    /// Panics if IP address parsing fails after validation (should not happen in practice)
     pub async fn generate_self_signed_certificate(&self) -> Result<(), TlsError> {
         info!("🔐 Generating self-signed TLS certificate");
 
@@ -97,12 +104,16 @@ impl TlsCertificateManager {
         // Add Subject Alternative Names (SANs)
         for san in &self.config.sans {
             if san.parse::<std::net::IpAddr>().is_ok() {
-                params.subject_alt_names.push(SanType::IpAddress(
-                    san.parse().expect("Already validated as IP"),
-                ));
+                params
+                    .subject_alt_names
+                    // IP address already validated by is_ip(), safe to unwrap
+                    .push(SanType::IpAddress(san.parse().unwrap_or_else(|_| {
+                        unreachable!("IP address validation passed but parsing failed")
+                    })));
             } else {
-                let ia5_string = Ia5String::try_from(san.to_string())
-                    .map_err(|e| TlsError::CertificateGenerationFailed(format!("Invalid DNS name: {}", e)))?;
+                let ia5_string = Ia5String::try_from(san.to_string()).map_err(|e| {
+                    TlsError::CertificateGenerationFailed(format!("Invalid DNS name: {e}"))
+                })?;
                 params.subject_alt_names.push(SanType::DnsName(ia5_string));
             }
         }
@@ -110,7 +121,8 @@ impl TlsCertificateManager {
         // Generate certificate and key pair
         let key_pair = rcgen::KeyPair::generate()
             .map_err(|e| TlsError::CertificateGenerationFailed(e.to_string()))?;
-        let cert = params.self_signed(&key_pair)
+        let cert = params
+            .self_signed(&key_pair)
             .map_err(|e| TlsError::CertificateGenerationFailed(e.to_string()))?;
 
         // Get PEM-encoded certificate and key
@@ -193,18 +205,13 @@ impl TlsCertificateManager {
             return Ok(PrivateKeyDer::Pkcs1(key));
         }
 
-        Err(TlsError::PrivateKeyLoadFailed(
-            "No valid private key found in PEM data".to_string(),
-        ))
+        Err(TlsError::PrivateKeyLoadFailed("No valid private key found in PEM data".to_string()))
     }
 
     /// Check if certificates exist
     pub async fn certificates_exist(&self) -> bool {
-        tokio::try_join!(
-            fs::metadata(&self.config.cert_path),
-            fs::metadata(&self.config.key_path)
-        )
-        .is_ok()
+        tokio::try_join!(fs::metadata(&self.config.cert_path), fs::metadata(&self.config.key_path))
+            .is_ok()
     }
 
     /// Ensure certificates exist, generating self-signed if needed
@@ -224,9 +231,7 @@ impl TlsCertificateManager {
 }
 
 /// Helper to create a TLS acceptor from configuration
-pub async fn create_tls_acceptor(
-    config: TlsConfig,
-) -> Result<tokio_rustls::TlsAcceptor, TlsError> {
+pub async fn create_tls_acceptor(config: TlsConfig) -> Result<tokio_rustls::TlsAcceptor, TlsError> {
     let manager = TlsCertificateManager::new(config);
 
     // Ensure certificates exist
@@ -276,14 +281,10 @@ mod tests {
             tokio::fs::metadata(&config.cert_path).await.is_ok(),
             "Certificate file should exist"
         );
-        assert!(
-            tokio::fs::metadata(&config.key_path).await.is_ok(),
-            "Key file should exist"
-        );
+        assert!(tokio::fs::metadata(&config.key_path).await.is_ok(), "Key file should exist");
 
         // Clean up
         let _ = tokio::fs::remove_file(&config.cert_path).await;
         let _ = tokio::fs::remove_file(&config.key_path).await;
     }
 }
-

@@ -17,6 +17,8 @@
 #![allow(clippy::similar_names)]
 #![allow(clippy::too_many_lines)]
 #![allow(clippy::module_name_repetitions)]
+// Allow unwrap/expect in tests - idiomatic for test code
+#![allow(clippy::unwrap_used, clippy::expect_used)]
 
 //!
 //! Critical tests for sovereignty-aware routing and human dignity compliance.
@@ -335,15 +337,17 @@ fn test_routing_path_creation() {
 
 #[test]
 fn test_routing_path_multi_hop() {
+    let endpoint1 = format!("http://localhost:{}", test_orchestrator_port());
     let service1 = create_test_service_with_sovereignty(
         "service-1",
-        format!("http://localhost:{}", test_orchestrator_port()),
+        &endpoint1,
         SovereigntyLevel::FullySovereign,
     );
 
+    let endpoint2 = format!("http://localhost:{}", test_discovery_port());
     let service2 = create_test_service_with_sovereignty(
         "service-2",
-        format!("http://localhost:{}", test_discovery_port()),
+        &endpoint2,
         SovereigntyLevel::HighlySovereign,
     );
 
@@ -377,9 +381,10 @@ fn test_routing_path_multi_hop() {
 
 #[test]
 fn test_path_segment_with_metadata() -> SongbirdResult<()> {
+    let endpoint = format!("http://localhost:{}", test_health_port());
     let service = create_test_service_with_sovereignty(
         "metadata-service",
-        format!("http://localhost:{}", test_health_port()),
+        &endpoint,
         SovereigntyLevel::ModeratelySovereign,
     );
 
@@ -401,11 +406,17 @@ fn test_path_segment_with_metadata() -> SongbirdResult<()> {
 
     assert_eq!(segment.metadata.len(), 3);
     assert_eq!(
-        segment.metadata.get("region").or_else(|_| SongbirdError::configuration("Error"))?,
+        segment
+            .metadata
+            .get("region")
+            .ok_or_else(|| SongbirdError::configuration("Missing region"))?,
         "us-west-1"
     );
     assert_eq!(
-        segment.metadata.get("compliance").or_else(|_| SongbirdError::configuration("Error"))?,
+        segment
+            .metadata
+            .get("compliance")
+            .ok_or_else(|| SongbirdError::configuration("Missing compliance"))?,
         "gdpr"
     );
     assert_eq!(segment.security_capabilities.len(), 2);
@@ -418,9 +429,10 @@ fn test_path_segment_with_metadata() -> SongbirdResult<()> {
 
 #[test]
 fn test_high_sovereignty_score() {
+    let endpoint = format!("http://localhost:{}", test_federation_port());
     let service = create_test_service_with_sovereignty(
         "high-sov-service",
-        format!("http://localhost:{}", test_federation_port()),
+        &endpoint,
         SovereigntyLevel::FullySovereign,
     );
 
@@ -576,11 +588,8 @@ fn test_human_dignity_sovereignty_levels_comprehensive() -> SongbirdResult<()> {
     ];
 
     for level in levels {
-        let service = create_test_service_with_sovereignty(
-            "test",
-            format!("http://localhost:{}", test_orchestrator_port()),
-            level.clone(),
-        );
+        let endpoint = format!("http://localhost:{}", test_orchestrator_port());
+        let service = create_test_service_with_sovereignty("test", &endpoint, level.clone());
         assert!(!service.name.is_empty(), "System MUST support all sovereignty levels: {level:?}");
     }
     Ok(())

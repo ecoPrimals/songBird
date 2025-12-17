@@ -112,24 +112,56 @@ impl Default for ServiceEndpoints {
     fn default() -> Self {
         Self {
             // Use capability-based environment variables (not primal names)
+            // ZERO HARDCODING: Use environment variables for explicit configuration
+            // Discovery happens at runtime via RuntimeDiscoveryEngine
+            // No hardcoded fallback endpoints - fail fast if not configured
             beardog_endpoint: env::var("SECURITY_PROVIDER_ENDPOINT")
                 .or_else(|_| env::var("BEARDOG_ENDPOINT"))
-                .unwrap_or_else(|_| "http://127.0.0.1:8443".to_string()),
+                .unwrap_or_else(|_| {
+                    tracing::warn!(
+                        "BEARDOG_ENDPOINT not set. Use RuntimeDiscoveryEngine::discover_by_capability(\"security\") for dynamic discovery"
+                    );
+                    String::new() // Empty string signals discovery needed
+                }),
             nestgate_endpoint: env::var("STORAGE_PROVIDER_ENDPOINT")
                 .or_else(|_| env::var("NESTGATE_ENDPOINT"))
-                .unwrap_or_else(|_| "http://127.0.0.1:8444".to_string()),
+                .unwrap_or_else(|_| {
+                    tracing::warn!(
+                        "NESTGATE_ENDPOINT not set. Use RuntimeDiscoveryEngine::discover_by_capability(\"storage\") for dynamic discovery"
+                    );
+                    String::new()
+                }),
             toadstool_endpoint: env::var("COMPUTE_PROVIDER_ENDPOINT")
                 .or_else(|_| env::var("TOADSTOOL_ENDPOINT"))
-                .unwrap_or_else(|_| "http://127.0.0.1:9000".to_string()),
+                .unwrap_or_else(|_| {
+                    tracing::warn!(
+                        "TOADSTOOL_ENDPOINT not set. Use RuntimeDiscoveryEngine::discover_by_capability(\"compute\") for dynamic discovery"
+                    );
+                    String::new()
+                }),
             squirrel_endpoint: env::var("AI_PROVIDER_ENDPOINT")
                 .or_else(|_| env::var("SQUIRREL_ENDPOINT"))
-                .unwrap_or_else(|_| "http://127.0.0.1:8080".to_string()),
+                .unwrap_or_else(|_| {
+                    tracing::warn!(
+                        "SQUIRREL_ENDPOINT not set. Use RuntimeDiscoveryEngine::discover_by_capability(\"ai\") for dynamic discovery"
+                    );
+                    String::new()
+                }),
             discovery_endpoint: env::var("DISCOVERY_ENDPOINT")
-                .unwrap_or_else(|_| "http://127.0.0.1:8001".to_string()),
+                .unwrap_or_else(|_| {
+                    tracing::debug!("DISCOVERY_ENDPOINT not set, will use mDNS/registry discovery");
+                    String::new()
+                }),
             health_endpoint: env::var("HEALTH_ENDPOINT")
-                .unwrap_or_else(|_| "http://127.0.0.1:8002".to_string()),
+                .unwrap_or_else(|_| {
+                    tracing::debug!("HEALTH_ENDPOINT not set");
+                    String::new()
+                }),
             metrics_endpoint: env::var("METRICS_ENDPOINT")
-                .unwrap_or_else(|_| "http://127.0.0.1:8004".to_string()),
+                .unwrap_or_else(|_| {
+                    tracing::debug!("METRICS_ENDPOINT not set");
+                    String::new()
+                }),
         }
     }
 }

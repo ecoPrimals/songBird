@@ -204,9 +204,8 @@ async fn register_capability_provider(
         request.capabilities.len()
     );
 
-    let capability_registry = if let Some(registry) = &state.capability_registry {
-        registry
-    } else {
+    // Modern idiomatic: let...else pattern for early return
+    let Some(capability_registry) = &state.capability_registry else {
         warn!("Capability registry not initialized");
         return (
             StatusCode::SERVICE_UNAVAILABLE,
@@ -265,19 +264,17 @@ async fn capability_provider_heartbeat(
 ) -> impl IntoResponse {
     debug!("💓 Heartbeat from provider '{}'", request.provider_id);
 
-    let capability_registry = match &state.capability_registry {
-        Some(registry) => registry,
-        None => {
-            return (
-                StatusCode::SERVICE_UNAVAILABLE,
-                Json(crate::core::registry::types::HeartbeatResponse {
-                    success: false,
-                    data: None,
-                    error: Some("Capability registry not available".to_string()),
-                    timestamp: Utc::now(),
-                }),
-            );
-        }
+    // Modern idiomatic: let...else pattern for early return
+    let Some(capability_registry) = &state.capability_registry else {
+        return (
+            StatusCode::SERVICE_UNAVAILABLE,
+            Json(crate::core::registry::types::HeartbeatResponse {
+                success: false,
+                data: None,
+                error: Some("Capability registry not available".to_string()),
+                timestamp: Utc::now(),
+            }),
+        );
     };
 
     // Convert heartbeat status to ProviderHealth if provided
@@ -285,11 +282,11 @@ async fn capability_provider_heartbeat(
         use crate::core::registry::types::{HealthStatus, ProviderHealth, ResourceUsage};
 
         ProviderHealth {
+            // Modern idiomatic: combine identical match arms
             status: match status.status.as_str() {
-                "healthy" => HealthStatus::Healthy,
                 "degraded" => HealthStatus::Degraded,
                 "unhealthy" => HealthStatus::Unhealthy,
-                _ => HealthStatus::Healthy,
+                _ => HealthStatus::Healthy, // Default to healthy for unknown statuses
             },
             available_capacity: status.available_capacity,
             resource_usage: ResourceUsage {
@@ -343,19 +340,17 @@ async fn unregister_capability_provider(
 ) -> impl IntoResponse {
     info!("🔌 Provider '{}' unregistering", provider_id);
 
-    let capability_registry = match &state.capability_registry {
-        Some(registry) => registry,
-        None => {
-            return (
-                StatusCode::SERVICE_UNAVAILABLE,
-                Json(CapabilityRegistrationResponse {
-                    success: false,
-                    data: None,
-                    error: Some("Capability registry not available".to_string()),
-                    timestamp: Utc::now(),
-                }),
-            );
-        }
+    // Modern idiomatic: let...else pattern for early return
+    let Some(capability_registry) = &state.capability_registry else {
+        return (
+            StatusCode::SERVICE_UNAVAILABLE,
+            Json(CapabilityRegistrationResponse {
+                success: false,
+                data: None,
+                error: Some("Capability registry not available".to_string()),
+                timestamp: Utc::now(),
+            }),
+        );
     };
 
     match capability_registry.unregister(&provider_id).await {
@@ -400,19 +395,17 @@ async fn list_capability_providers(
 ) -> impl IntoResponse {
     debug!("📋 Listing all capability providers");
 
-    let capability_registry = match &state.capability_registry {
-        Some(registry) => registry,
-        None => {
-            return (
-                StatusCode::SERVICE_UNAVAILABLE,
-                Json(ProviderListResponse {
-                    success: false,
-                    data: None,
-                    error: Some("Capability registry not available".to_string()),
-                    timestamp: Utc::now(),
-                }),
-            );
-        }
+    // Modern idiomatic: let...else pattern for early return
+    let Some(capability_registry) = &state.capability_registry else {
+        return (
+            StatusCode::SERVICE_UNAVAILABLE,
+            Json(ProviderListResponse {
+                success: false,
+                data: None,
+                error: Some("Capability registry not available".to_string()),
+                timestamp: Utc::now(),
+            }),
+        );
     };
 
     let providers = capability_registry.list_providers().await;
@@ -578,7 +571,7 @@ mod tests {
               // Re-enable after: Federation API stabilization (tracked in COMPREHENSIVE_MODERNIZATION_REPORT_NOV_10.md)
     async fn test_federation_app_state_clone() {
         let state = create_test_state();
-        let _cloned = state.clone();
+        let _cloned = state;
         // Temporarily disabled - API under refactoring
         // Just verify clone works without panicking
     }

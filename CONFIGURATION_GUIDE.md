@@ -1,17 +1,46 @@
 # 📝 Configuration Guide - Songbird
 
-**Last Updated**: November 22, 2025  
-**Status**: ✅ Environment-Based Configuration
+**Last Updated**: December 15, 2025  
+**Status**: ✅ Capability-Based Discovery & Environment Configuration
 
 ---
 
 ## 🎯 Overview
 
-Songbird uses environment variables for flexible, environment-specific configuration. All hardcoded values have been replaced with environment-based configuration with sensible defaults.
+Songbird uses **capability-based discovery** with multiple discovery methods for maximum flexibility. All hardcoded endpoints have been eliminated in favor of dynamic runtime discovery.
+
+### Discovery Methods (Priority Order)
+
+1. **Environment Variables** - Highest priority, perfect for containers/K8s
+2. **DNS-SD (Service Discovery)** - Standard DNS SRV records
+3. **Service Registry** - Centralized capability registry
+4. **Config Files** - Static configuration for development
+
+**See**: [Capability Discovery Technical Summary](audits/dec-15-2025/CAPABILITY_DISCOVERY_TECHNICAL_SUMMARY.md) for complete details.
 
 ---
 
 ## ⚙️ Environment Variables
+
+### **Capability Discovery (NEW)** ⭐
+
+```bash
+# Primal Service Discovery (replaces hardcoded endpoints)
+COMPUTE_ENDPOINT=http://toadstool:8001   # Compute provider (e.g., ToadStool)
+STORAGE_ENDPOINT=http://squirrel:8002    # Storage provider (e.g., Squirrel)
+SECURITY_ENDPOINT=http://nestgate:8003   # Security provider (e.g., NestGate)
+AI_ENDPOINT=http://beardog:8004          # AI provider (e.g., BearDog)
+
+# Discovery Configuration
+REGISTRY_ENDPOINT=http://registry:8000   # Service registry endpoint
+DISCOVERY_TIMEOUT=5000                   # Discovery timeout in ms (default: 5000)
+DISCOVERY_CACHE_TTL=60                   # Cache TTL in seconds (default: 60)
+
+# DNS-SD Configuration (automatic if DNS records exist)
+# No configuration needed - Songbird automatically queries DNS SRV records:
+#   _compute._tcp.local.  IN SRV 0 5 8001 toadstool.local.
+#   _storage._tcp.local.  IN SRV 0 5 8002 squirrel.local.
+```
 
 ### **Core Service Ports**
 
@@ -27,9 +56,6 @@ SONGBIRD_HEALTH_PORT=8083           # Health check port (default: 8083)
 SONGBIRD_DASHBOARD_PORT=8084        # Dashboard port (default: 8084)
 SONGBIRD_WEBSOCKET_PORT=8085        # WebSocket port (default: 8085)
 SONGBIRD_FEDERATION_PORT=8086       # Federation port (default: 8086)
-
-# AI/ML Services  
-SONGBIRD_AI_ENDPOINT=http://localhost:8002  # AI service endpoint (default: localhost:8002)
 ```
 
 ### **Network Configuration**
@@ -37,11 +63,6 @@ SONGBIRD_AI_ENDPOINT=http://localhost:8002  # AI service endpoint (default: loca
 ```bash
 # Bind Addresses
 SONGBIRD_BIND_ADDRESS=0.0.0.0       # Main bind address (default: 0.0.0.0 for prod, 127.0.0.1 for dev)
-
-# Discovery
-SONGBIRD_DISCOVERY_TIMEOUT=5000     # Discovery timeout in ms (default: 5000)
-SONGBIRD_MDNS_ENABLED=true          # Enable mDNS discovery (default: true)
-SONGBIRD_DNS_SD_ENABLED=true        # Enable DNS-SD discovery (default: true)
 
 # Connection Limits
 SONGBIRD_MAX_CONNECTIONS=1000       # Max concurrent connections (default: 1000)
@@ -60,6 +81,94 @@ SONGBIRD_FEDERATION_ENABLED=false   # Enable federation (default: false in dev, 
 SONGBIRD_METRICS_ENABLED=true       # Enable metrics (default: true)
 SONGBIRD_OBSERVABILITY_ENABLED=true # Enable observability (default: true)
 ```
+
+---
+
+## 🔍 Capability Discovery Deployment Patterns
+
+### **Pattern 1: Environment Variables (Recommended for Docker/K8s)**
+
+```bash
+# Docker Compose
+services:
+  songbird:
+    environment:
+      - COMPUTE_ENDPOINT=http://toadstool:8001
+      - STORAGE_ENDPOINT=http://squirrel:8002
+      - SECURITY_ENDPOINT=http://nestgate:8003
+      - AI_ENDPOINT=http://beardog:8004
+
+# Kubernetes ConfigMap
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: songbird-endpoints
+data:
+  COMPUTE_ENDPOINT: "http://toadstool-service:8001"
+  STORAGE_ENDPOINT: "http://squirrel-service:8002"
+```
+
+**Benefits**:
+- ✅ No configuration files needed
+- ✅ Standard cloud-native practice
+- ✅ Easy to override per environment
+
+---
+
+### **Pattern 2: DNS-SD (Recommended for Enterprise)**
+
+```bash
+# Add DNS SRV records to your DNS server
+_compute._tcp.local.  IN SRV 0 5 8001 toadstool.local.
+_storage._tcp.local.  IN SRV 0 5 8002 squirrel.local.
+_security._tcp.local. IN SRV 0 5 8003 nestgate.local.
+_ai._tcp.local.       IN SRV 0 5 8004 beardog.local.
+
+# No environment variables needed!
+# Songbird automatically discovers services via DNS
+```
+
+**Benefits**:
+- ✅ Leverages existing DNS infrastructure
+- ✅ Standard protocol (RFC 6763)
+- ✅ Zero configuration in Songbird
+- ✅ Enterprise-ready
+
+---
+
+### **Pattern 3: Service Registry (Recommended for Dynamic Environments)**
+
+```bash
+# Start the registry service
+REGISTRY_ENDPOINT=http://registry:8000
+
+# Providers register themselves with the registry
+# Songbird queries registry for capabilities
+```
+
+**Benefits**:
+- ✅ Centralized service catalog
+- ✅ Dynamic updates
+- ✅ Health tracking
+- ✅ Multiple providers per capability
+
+---
+
+### **Pattern 4: Config Files (Recommended for Development)**
+
+```toml
+# config/endpoints.toml
+[endpoints]
+compute = "http://localhost:8001"
+storage = "http://localhost:8002"
+security = "http://localhost:8003"
+ai = "http://localhost:8004"
+```
+
+**Benefits**:
+- ✅ Explicit configuration
+- ✅ Version-controlled
+- ✅ Easy to understand
 
 ---
 

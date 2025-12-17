@@ -1,4 +1,7 @@
 #![cfg(feature = "tests-incomplete")]
+// Allow unwrap/expect in tests - idiomatic for test code
+#![allow(clippy::unwrap_used, clippy::expect_used)]
+
 //! NOTE: Disabled - requires unimplemented methods
 
 //! Comprehensive tests for adapter health monitoring and metrics
@@ -389,7 +392,7 @@ fn test_compute_health_degradation_sequence() {
     let unhealthy = ComputeMetrics {
         cpu_usage_percent: 98.0, // Critical
         memory_usage_bytes: 31 * 1024 * 1024 * 1024,
-        memory_available_bytes: 1 * 1024 * 1024 * 1024, // 96.875% used
+        memory_available_bytes: 1024 * 1024 * 1024, // 96.875% used
         active_containers: 50,
         queued_jobs: 30,
         performance_score: 0.3,

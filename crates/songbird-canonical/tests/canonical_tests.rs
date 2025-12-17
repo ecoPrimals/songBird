@@ -11,6 +11,8 @@
 #![allow(clippy::similar_names)]
 #![allow(clippy::too_many_lines)]
 #![allow(clippy::module_name_repetitions)]
+// Allow unwrap/expect in tests - idiomatic for test code
+#![allow(clippy::unwrap_used, clippy::expect_used)]
 
 //!
 //! Testing canonical type definitions and conversions.
@@ -19,7 +21,7 @@ use songbird_canonical::types::{Endpoint, RequestId, ServiceId};
 use songbird_test_utils::test_bind_address;
 use songbird_test_utils::test_dashboard_port;
 use songbird_test_utils::test_orchestrator_port;
-use songbird_types::{SongbirdError, SongbirdResult};
+use songbird_types::SongbirdError;
 
 #[test]
 fn test_canonical_type_creation() {
@@ -37,7 +39,7 @@ fn test_canonical_type_creation() {
 }
 
 #[test]
-fn test_canonical_validation() -> SongbirdResult<()> {
+fn test_canonical_validation() {
     // Test: Canonical types should validate their data
     let service_id = ServiceId::new("valid-service-123");
     assert_eq!(service_id.as_str(), "valid-service-123");
@@ -50,7 +52,6 @@ fn test_canonical_validation() -> SongbirdResult<()> {
     // Endpoint with path
     let endpoint_with_path = Endpoint::new("https", "api.example.com", 443).with_path("/v1/users");
     assert_eq!(endpoint_with_path.to_url(), "https://api.example.com:443/v1/users");
-    Ok(())
 }
 
 #[test]
@@ -149,7 +150,7 @@ fn test_canonical_defaults() {
 }
 
 #[test]
-fn test_canonical_thread_safety() -> SongbirdResult<()> {
+fn test_canonical_thread_safety() {
     // Test: Canonical types should be Send + Sync
     fn assert_send<T: Send>() {}
     fn assert_sync<T: Sync>() {}
@@ -160,11 +161,10 @@ fn test_canonical_thread_safety() -> SongbirdResult<()> {
     assert_sync::<Endpoint>();
     assert_send::<RequestId>();
     assert_sync::<RequestId>();
-    Ok(())
 }
 
 #[test]
-fn test_canonical_documentation() -> SongbirdResult<()> {
+fn test_canonical_documentation() {
     // Test: Canonical types should be well-documented (compile-time check)
     // This test verifies that types have proper Debug implementation
     let service_id = ServiceId::new("documented");
@@ -175,5 +175,4 @@ fn test_canonical_documentation() -> SongbirdResult<()> {
     let debug_str = format!("{endpoint:?}");
     assert!(debug_str.contains("Endpoint"));
     assert!(debug_str.contains("wss"));
-    Ok(())
 }

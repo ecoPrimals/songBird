@@ -1,3 +1,6 @@
+// Allow unwrap/expect in tests - idiomatic for test code
+#![allow(clippy::unwrap_used, clippy::expect_used)]
+
 //! Load Balancer Error Path Tests
 //!
 //! Focused test suite for load balancer error conditions and edge cases.
@@ -20,7 +23,7 @@ async fn test_empty_endpoints_error() {
 
     let result = lb.get_next_endpoint().await;
     assert!(result.is_err());
-    let error_msg = result.unwrap_err();
+    let error_msg = result.expect_err("testing error case");
     assert_eq!(error_msg, "No endpoints configured");
 }
 
@@ -65,7 +68,7 @@ async fn test_all_endpoints_marked_unhealthy() {
 
     let result = lb.get_next_endpoint().await;
     assert!(result.is_err());
-    assert_eq!(result.unwrap_err(), "No available endpoints");
+    assert_eq!(result.expect_err("testing error case"), "No available endpoints");
 }
 
 // ==================== Edge Case Tests ====================
@@ -375,7 +378,7 @@ async fn test_random_strategy_distribution() -> SongbirdResult<()> {
 
     let lb = LoadBalancer::new(endpoints.clone(), LoadBalancingStrategy::Random);
 
-    use songbird_types::{SongbirdError, SongbirdResult};
+    use songbird_types::SongbirdError;
     use std::collections::HashSet;
     let mut seen = HashSet::new();
 
@@ -519,7 +522,7 @@ async fn test_round_robin_counter_wrap() -> SongbirdResult<()> {
 #[test]
 fn test_load_balancing_strategy_clone() -> SongbirdResult<()> {
     let strategy = LoadBalancingStrategy::RoundRobin;
-    let cloned = strategy.clone();
+    let cloned = strategy;
     assert_eq!(strategy, cloned);
     Ok(())
 }

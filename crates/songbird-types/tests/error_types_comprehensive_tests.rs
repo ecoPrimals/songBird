@@ -20,6 +20,8 @@
 #![allow(clippy::cast_possible_truncation)]
 #![allow(clippy::cast_sign_loss)]
 #![allow(clippy::needless_pass_by_value)]
+// Allow unwrap/expect in tests - idiomatic for test code
+#![allow(clippy::unwrap_used, clippy::expect_used)]
 
 use songbird_types::{SecurityError, SongbirdError, SongbirdResult};
 
@@ -40,18 +42,16 @@ fn test_network_error() {
 }
 
 #[test]
-fn test_security_error() -> SongbirdResult<()> {
+fn test_security_error() {
     let error = SongbirdError::security("Unauthorized access");
     assert!(error.to_string().contains("Unauthorized"));
-    Ok(())
 }
 
 #[test]
-fn test_service_error() -> SongbirdResult<()> {
+fn test_service_error() {
     let error = SongbirdError::service("database", "Connection timeout");
     assert!(error.to_string().contains("database"));
     assert!(error.to_string().contains("Connection timeout"));
-    Ok(())
 }
 
 // ============================================================================
@@ -59,19 +59,17 @@ fn test_service_error() -> SongbirdResult<()> {
 // ============================================================================
 
 #[test]
-fn test_error_display_formatting() -> SongbirdResult<()> {
+fn test_error_display_formatting() {
     let error = SongbirdError::configuration("Test error");
     let display = format!("{error}");
     assert!(!display.is_empty());
-    Ok(())
 }
 
 #[test]
-fn test_error_debug_formatting() -> SongbirdResult<()> {
+fn test_error_debug_formatting() {
     let error = SongbirdError::network("Test".to_string());
     let debug = format!("{error:?}");
     assert!(!debug.is_empty());
-    Ok(())
 }
 
 // ============================================================================
@@ -143,20 +141,18 @@ fn test_security_error_with_context() {
 // ============================================================================
 
 #[test]
-fn test_result_ok() -> SongbirdResult<()> {
+fn test_result_ok() {
     let result: SongbirdResult<i32> = Ok(42);
     assert!(result.is_ok());
     if let Ok(value) = result {
         assert_eq!(value, 42);
     }
-    Ok(())
 }
 
 #[test]
-fn test_result_err() -> SongbirdResult<()> {
+fn test_result_err() {
     let result: SongbirdResult<String> = Err(SongbirdError::configuration("Test"));
     assert!(result.is_err());
-    Ok(())
 }
 
 #[test]
@@ -180,7 +176,7 @@ fn test_result_and_then() -> SongbirdResult<()> {
 // ============================================================================
 
 #[test]
-fn test_error_propagation() -> SongbirdResult<()> {
+fn test_error_propagation() {
     fn inner_function() -> SongbirdResult<i32> {
         Err(SongbirdError::configuration("Inner error"))
     }
@@ -192,7 +188,6 @@ fn test_error_propagation() -> SongbirdResult<()> {
 
     let result = outer_function();
     assert!(result.is_err());
-    Ok(())
 }
 
 #[test]
@@ -225,18 +220,16 @@ fn test_very_long_error_message() {
 }
 
 #[test]
-fn test_unicode_error_message() -> SongbirdResult<()> {
+fn test_unicode_error_message() {
     let error = SongbirdError::configuration("错误信息 🚨");
     assert!(error.to_string().contains("错误"));
     assert!(error.to_string().contains("🚨"));
-    Ok(())
 }
 
 #[test]
-fn test_error_with_newlines() -> SongbirdResult<()> {
+fn test_error_with_newlines() {
     let error = SongbirdError::configuration("Line 1\nLine 2\nLine 3");
     assert!(error.to_string().contains("Line 1"));
-    Ok(())
 }
 
 // ============================================================================

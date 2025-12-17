@@ -11,6 +11,8 @@
 #![allow(clippy::similar_names)]
 #![allow(clippy::too_many_lines)]
 #![allow(clippy::module_name_repetitions)]
+// Allow unwrap/expect in tests - idiomatic for test code
+#![allow(clippy::unwrap_used, clippy::expect_used)]
 
 //!
 //! Tests for service registration, lookup, and lifecycle management.
@@ -415,7 +417,7 @@ fn test_dependency_resolution_order() {
 #[test]
 fn test_service_priorities() {
     let priorities = [1, 2, 3, 4, 5];
-    let highest = priorities.iter().min().unwrap();
+    let highest = priorities.iter().min().expect("test precondition");
 
     assert_eq!(*highest, 1);
 }
@@ -424,7 +426,7 @@ fn test_service_priorities() {
 fn test_priority_based_selection() {
     let services = [("service-1", 3), ("service-2", 1), ("service-3", 2)];
 
-    let highest_priority = services.iter().min_by_key(|(_, p)| p).unwrap();
+    let highest_priority = services.iter().min_by_key(|(_, p)| p).expect("test precondition");
     assert_eq!(highest_priority.0, "service-2");
 }
 

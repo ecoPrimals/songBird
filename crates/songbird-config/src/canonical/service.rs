@@ -79,3 +79,7 @@ impl Default for HealthCheckConfig {
         }
     }
 }
+
+#[cfg(test)]
+#[path = "service_tests.rs"]
+mod tests;

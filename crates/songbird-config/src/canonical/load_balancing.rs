@@ -349,13 +349,13 @@ mod tests {
     #[test]
     fn test_strategy_debug_format() {
         let strategy = LoadBalancingStrategy::RoundRobin;
-        let debug_str = format!("{:?}", strategy);
+        let debug_str = format!("{strategy:?}");
         assert!(debug_str.contains("RoundRobin"));
 
         let weighted = LoadBalancingStrategy::WeightedRandom {
             weights: vec![1, 2],
         };
-        let weighted_debug = format!("{:?}", weighted);
+        let weighted_debug = format!("{weighted:?}");
         assert!(weighted_debug.contains("WeightedRandom"));
         assert!(weighted_debug.contains("weights"));
     }

@@ -125,12 +125,14 @@ impl CapabilityRegistry {
 
         // Create registered provider entry
         // Extract available capacity from metadata, defaulting to 10 if not specified or invalid
+        // Modern idiomatic: map_or is cleaner than map().unwrap_or()
+        // Safe cast: u64 fits in usize on 64-bit, truncates on 32-bit (acceptable for capacity)
+        #[allow(clippy::cast_possible_truncation)]
         let available_capacity = request
             .metadata
             .get("max_concurrent_tasks")
             .and_then(serde_json::Value::as_u64)
-            .map(|v| v as usize)
-            .unwrap_or(10);
+            .map_or(10, |v| v as usize);
 
         let registered_provider = RegisteredProvider {
             registration: request.clone(),
@@ -410,14 +412,13 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_register_provider() {
+    async fn test_register_provider() -> SongbirdResult<()> {
         let registry = CapabilityRegistry::new();
         let request = create_test_registration();
 
-        let result = registry.register(request).await;
-        assert!(result.is_ok());
-        let registration_id = result.unwrap();
+        let registration_id = registry.register(request).await?;
         assert!(!registration_id.is_empty());
+        Ok(())
     }
 
     #[tokio::test]
@@ -438,12 +439,18 @@ mod tests {
         let registry = CapabilityRegistry::new();
         let request = create_test_registration();
 
-        registry.register(request).await.unwrap();
+        registry.register(request).await.expect("Test registration should succeed");
 
-        let providers = registry.find_providers_with_capability("compute_gpu").await.unwrap();
+        let providers = registry
+            .find_providers_with_capability("compute_gpu")
+            .await
+            .expect("GPU capability query should succeed");
         assert_eq!(providers.len(), 1);
 
-        let no_providers = registry.find_providers_with_capability("nonexistent").await.unwrap();
+        let no_providers = registry
+            .find_providers_with_capability("nonexistent")
+            .await
+            .expect("Nonexistent capability query should succeed (returns empty)");
         assert_eq!(no_providers.len(), 0);
     }
 
@@ -452,15 +459,16 @@ mod tests {
         let registry = CapabilityRegistry::new();
         let request = create_test_registration();
 
-        let registration_id = registry.register(request.clone()).await.unwrap();
+        let registration_id =
+            registry.register(request.clone()).await.expect("Test registration should succeed");
 
-        // Update heartbeat
+        // Update heartbeat - should succeed
         let result = registry.update_heartbeat(&request.provider_id, &registration_id, None).await;
-        assert!(result.is_ok());
+        assert!(result.is_ok(), "Heartbeat update should succeed");
 
         // Wrong registration_id should fail
         let result = registry.update_heartbeat(&request.provider_id, "wrong-id", None).await;
-        assert!(result.is_err());
+        assert!(result.is_err(), "Heartbeat with wrong ID should fail");
     }
 
     #[tokio::test]

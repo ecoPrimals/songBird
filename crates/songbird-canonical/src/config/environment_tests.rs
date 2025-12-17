@@ -25,9 +25,9 @@ fn test_environment_config_default() -> SongbirdResult<()> {
 fn test_environment_config_serialization() -> SongbirdResult<()> {
     let config = EnvironmentConfig::default();
     let json = serde_json::to_string(&config)
-        .map_err(|e| SongbirdError::configuration(format!("Serialization failed: {}", e)))?;
+        .map_err(|e| SongbirdError::configuration(format!("Serialization failed: {e}")))?;
     let deserialized: EnvironmentConfig = serde_json::from_str(&json)
-        .map_err(|e| SongbirdError::configuration(format!("Deserialization failed: {}", e)))?;
+        .map_err(|e| SongbirdError::configuration(format!("Deserialization failed: {e}")))?;
 
     assert_eq!(config.ports.discovery_port, deserialized.ports.discovery_port);
     Ok(())
@@ -66,7 +66,7 @@ fn test_environment_variants() -> SongbirdResult<()> {
 fn test_environment_serialization() -> SongbirdResult<()> {
     let env = Environment::Production;
     let json = serde_json::to_string(&env)
-        .map_err(|e| SongbirdError::configuration(format!("Serialization failed: {}", e)))?;
+        .map_err(|e| SongbirdError::configuration(format!("Serialization failed: {e}")))?;
 
     assert!(json.contains("Production"));
     Ok(())

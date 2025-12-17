@@ -137,7 +137,7 @@ mod tests {
     fn test_plugin_registered_event() {
         let plugin_id = PluginId::from("test-plugin");
         let event = RegistryEvent::new(EventType::PluginRegistered {
-            plugin_id: plugin_id.clone(),
+            plugin_id: plugin_id,
         });
 
         assert!(event.plugin_id().is_some(), "PluginRegistered event should have plugin_id");

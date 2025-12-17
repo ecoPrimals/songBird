@@ -1,5 +1,7 @@
 #![allow(clippy::all)]
 #![allow(unused)]
+// Allow unwrap/expect in tests - idiomatic for test code
+#![allow(clippy::unwrap_used, clippy::expect_used)]
 
 //! Tests for UnifiedUniversalAdapter creation and configuration
 //!

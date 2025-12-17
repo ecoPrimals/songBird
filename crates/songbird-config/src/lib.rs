@@ -55,6 +55,13 @@ pub mod unified;
 // ============================================================================
 // STABLE MODULES - KEEP
 // ============================================================================
+/// **MODERN**: Capability-based service discovery (replaces hardcoded endpoints)
+pub mod capability_discovery;
+pub mod runtime_discovery;
+
+/// **MODERN**: Primal discovery functions (replaces deprecated endpoint constants)
+pub mod primal_discovery;
+
 /// Capability-based endpoint configuration
 pub mod capability_endpoints;
 
@@ -66,6 +73,12 @@ pub mod discoverable_endpoint;
 
 /// Zero-touch deployment configuration
 pub mod zero_touch;
+
+/// Capability-based runtime discovery (zero hardcoding)
+pub mod capability_based_runtime_discovery;
+
+/// Port discovery - Dynamic port allocation
+pub mod port_discovery;
 
 // ============================================================================
 // LEGACY MODULES - BEING CONSOLIDATED

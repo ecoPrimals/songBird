@@ -3,7 +3,7 @@
 //! Phase 3 Test Coverage Expansion - Week 1
 //! Target: 0% → 80%+ coverage for network/advanced.rs (447 lines)
 
-use super::advanced::*;
+use super::*;
 
 // ============================================================================
 // SERVICE ENDPOINT TESTS

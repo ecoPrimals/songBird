@@ -5,6 +5,8 @@
 
 #![allow(clippy::similar_names)]
 #![allow(clippy::uninlined_format_args)]
+// Allow unwrap/expect in tests - idiomatic for test code
+#![allow(clippy::unwrap_used, clippy::expect_used)]
 
 use songbird_types::adapters::canonical::*;
 use songbird_types::{SongbirdError, SongbirdResult};

@@ -23,6 +23,8 @@
 #![allow(clippy::cast_possible_truncation)]
 #![allow(clippy::cast_sign_loss)]
 #![allow(clippy::needless_pass_by_value)]
+// Allow unwrap/expect in tests - idiomatic for test code
+#![allow(clippy::unwrap_used, clippy::expect_used)]
 
 //!
 //! Tests for health monitoring types in songbird-registry.
@@ -84,7 +86,7 @@ fn test_health_status_with_metadata() {
     let status = HealthStatus::healthy().with_metadata("cpu", "50%").with_metadata("memory", "70%");
 
     assert!(status.message.is_some());
-    let msg = status.message.unwrap();
+    let msg = status.message.expect("test precondition");
     assert!(msg.contains("cpu=50%"));
     assert!(msg.contains("memory=70%"));
 }
@@ -207,7 +209,7 @@ fn test_health_check_type_clone() {
         expected_status: 200,
     };
 
-    let check2 = check1.clone();
+    let check2 = check1;
     assert!(matches!(check2, HealthCheckType::HttpEndpoint { .. }));
 }
 

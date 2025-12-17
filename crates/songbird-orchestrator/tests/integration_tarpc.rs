@@ -1,3 +1,6 @@
+// Allow unwrap/expect in tests - idiomatic for test code
+#![allow(clippy::unwrap_used, clippy::expect_used)]
+
 /// Integration tests for tarpc high-performance RPC
 ///
 /// These tests verify that the tarpc server and client work together correctly,
@@ -18,7 +21,7 @@ use tarpc::{
 use tokio::sync::RwLock;
 
 /// Service information for registration
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct ServiceInfo {
     pub name: String,
     pub address: String,
@@ -78,6 +81,12 @@ pub trait SongbirdFederation {
 pub struct MockTarpcServer {
     services: Arc<RwLock<HashMap<String, ServiceInfo>>>,
     start_time: std::time::SystemTime,
+}
+
+impl Default for MockTarpcServer {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl MockTarpcServer {

@@ -297,9 +297,9 @@ async fn handle_ws_message(msg: WsMessage, state: &WebSocketApiState) -> Option<
 
         WsMessage::QueryStatus => {
             // Get current federation status with real metrics
-            let stats = state.federation_state.get_stats().await;
+            let federation_stats = state.federation_state.get_stats().await;
 
-            // Get total services from registry (using stats)
+            // Get total services from registry
             let registry_stats = state.service_registry.get_stats().await;
             let total_services = registry_stats.total_services;
 
@@ -309,7 +309,7 @@ async fn handle_ws_message(msg: WsMessage, state: &WebSocketApiState) -> Option<
 
             Some(WsMessage::FederationStatus {
                 total_services,
-                total_peers: stats.active_nodes,
+                total_peers: federation_stats.active_nodes,
                 uptime_seconds,
             })
         }

@@ -237,7 +237,7 @@ async fn test_error_concurrent_routing() {
             security_context: None,
         };
         let handle = tokio::spawn(async move {
-            let adapter = SovereigntyAwareAdapter::new().await.unwrap();
+            let adapter = SovereigntyAwareAdapter::new().await.expect("test precondition");
             adapter.route_request(request).await
         });
         handles.push(handle);

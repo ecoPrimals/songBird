@@ -26,9 +26,9 @@ fn test_universal_adapter_config_default() -> SongbirdResult<()> {
 fn test_universal_adapter_config_serialization() -> SongbirdResult<()> {
     let config = UniversalAdapterConfig::default();
     let json = serde_json::to_string(&config)
-        .map_err(|e| SongbirdError::configuration(format!("Serialization failed: {}", e)))?;
+        .map_err(|e| SongbirdError::configuration(format!("Serialization failed: {e}")))?;
     let deserialized: UniversalAdapterConfig = serde_json::from_str(&json)
-        .map_err(|e| SongbirdError::configuration(format!("Deserialization failed: {}", e)))?;
+        .map_err(|e| SongbirdError::configuration(format!("Deserialization failed: {e}")))?;
 
     assert_eq!(config.security_adapters.enabled, deserialized.security_adapters.enabled);
     assert_eq!(config.settings.default_timeout_ms, deserialized.settings.default_timeout_ms);
@@ -144,7 +144,7 @@ fn test_storage_adapter_config_default() -> SongbirdResult<()> {
 fn test_storage_adapter_config_serialization() -> SongbirdResult<()> {
     let config = StorageAdapterConfig::default();
     let json = serde_json::to_string(&config)
-        .map_err(|e| SongbirdError::configuration(format!("Serialization failed: {}", e)))?;
+        .map_err(|e| SongbirdError::configuration(format!("Serialization failed: {e}")))?;
 
     assert!(json.contains("enabled"));
     assert!(json.contains("discovery_mode"));
@@ -287,9 +287,9 @@ fn test_circuit_breaker_disabled() -> SongbirdResult<()> {
 fn test_circuit_breaker_serialization() -> SongbirdResult<()> {
     let config = CircuitBreakerConfig::default();
     let json = serde_json::to_string(&config)
-        .map_err(|e| SongbirdError::configuration(format!("Serialization failed: {}", e)))?;
+        .map_err(|e| SongbirdError::configuration(format!("Serialization failed: {e}")))?;
     let deserialized: CircuitBreakerConfig = serde_json::from_str(&json)
-        .map_err(|e| SongbirdError::configuration(format!("Deserialization failed: {}", e)))?;
+        .map_err(|e| SongbirdError::configuration(format!("Deserialization failed: {e}")))?;
 
     assert_eq!(config.failure_threshold, deserialized.failure_threshold);
     assert_eq!(config.timeout, deserialized.timeout);

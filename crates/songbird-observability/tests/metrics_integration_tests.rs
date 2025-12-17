@@ -1,6 +1,7 @@
 //! Metrics integration tests for comprehensive coverage
 
 #![allow(clippy::unwrap_used)]
+#![allow(clippy::expect_used)]
 
 use songbird_observability::observability::metrics::*;
 use songbird_observability::observability::*;
@@ -32,7 +33,7 @@ async fn test_metrics_snapshot_structure() {
     let result = collector.collect_all_metrics().await;
 
     assert!(result.is_ok());
-    let snapshot = result.unwrap();
+    let snapshot = result.expect("test precondition");
 
     // Verify snapshot structure (unsigned types are always >= 0, so we verify they exist)
     assert!(snapshot.system.cpu_usage >= 0.0);
@@ -46,9 +47,9 @@ async fn test_metrics_snapshot_structure() {
 #[tokio::test]
 async fn test_prometheus_export_format() {
     let collector = MetricsCollector::new();
-    collector.collect_all_metrics().await.unwrap();
+    collector.collect_all_metrics().await.expect("test precondition");
 
-    let export = collector.export_prometheus().await.unwrap();
+    let export = collector.export_prometheus().await.expect("test precondition");
 
     // Verify Prometheus format
     assert!(export.contains("# HELP"));
@@ -63,7 +64,7 @@ async fn test_metrics_last_collection_time() {
     let time_before = collector.last_collection_time();
     assert!(time_before.is_some());
 
-    collector.collect_all_metrics().await.unwrap();
+    collector.collect_all_metrics().await.expect("test precondition");
 
     let time_after = collector.last_collection_time();
     assert!(time_after.is_some());
@@ -121,19 +122,19 @@ async fn test_observability_manager_lifecycle() {
 #[tokio::test]
 async fn test_observability_manager_get_metrics() {
     let manager = ObservabilityManager::new();
-    manager.start().await.unwrap();
+    manager.start().await.expect("test precondition");
 
     let metrics = manager.get_metrics().await;
     assert!(metrics.is_ok());
 
-    let system_metrics = metrics.unwrap();
+    let system_metrics = metrics.expect("test precondition");
     assert!(system_metrics.cpu_usage >= 0.0);
 }
 
 #[tokio::test]
 async fn test_health_check_recording() {
     let manager = ObservabilityManager::new();
-    manager.start().await.unwrap();
+    manager.start().await.expect("test precondition");
 
     let result =
         manager.record_health_check("test-service".to_string(), HealthStatus::Healthy, 100).await;
@@ -144,7 +145,7 @@ async fn test_health_check_recording() {
 #[tokio::test]
 async fn test_health_check_degraded() {
     let manager = ObservabilityManager::new();
-    manager.start().await.unwrap();
+    manager.start().await.expect("test precondition");
 
     let result = manager
         .record_health_check("degraded-service".to_string(), HealthStatus::Degraded, 500)
@@ -156,7 +157,7 @@ async fn test_health_check_degraded() {
 #[tokio::test]
 async fn test_health_check_unhealthy() {
     let manager = ObservabilityManager::new();
-    manager.start().await.unwrap();
+    manager.start().await.expect("test precondition");
 
     let result = manager
         .record_health_check("unhealthy-service".to_string(), HealthStatus::Unhealthy, 1000)
@@ -180,7 +181,7 @@ async fn test_event_subscription_system() {
 #[tokio::test]
 async fn test_cluster_status_reporting() {
     let manager = ObservabilityManager::new();
-    manager.start().await.unwrap();
+    manager.start().await.expect("test precondition");
 
     let cluster_status = manager.get_cluster_status().await;
     assert!(cluster_status.is_ok());
@@ -202,9 +203,9 @@ async fn test_metrics_collection_with_delays() {
 
     // Collect metrics multiple times to verify idempotency
     // No sleep needed - metrics collection is synchronous
-    collector.collect_all_metrics().await.unwrap();
-    collector.collect_all_metrics().await.unwrap();
-    collector.collect_all_metrics().await.unwrap();
+    collector.collect_all_metrics().await.expect("test precondition");
+    collector.collect_all_metrics().await.expect("test precondition");
+    collector.collect_all_metrics().await.expect("test precondition");
 
     assert_eq!(collector.get_collection_count(), 3);
 }
@@ -212,7 +213,7 @@ async fn test_metrics_collection_with_delays() {
 #[tokio::test]
 async fn test_service_health_tracking() {
     let manager = ObservabilityManager::new();
-    manager.start().await.unwrap();
+    manager.start().await.expect("test precondition");
 
     // Record multiple health checks for same service
     for i in 0..5 {
@@ -225,7 +226,7 @@ async fn test_service_health_tracking() {
         manager
             .record_health_check("test-service".to_string(), health_status, (i + 1) * 100)
             .await
-            .unwrap();
+            .expect("test precondition");
     }
 
     // All recordings should succeed
@@ -234,12 +235,15 @@ async fn test_service_health_tracking() {
 #[tokio::test]
 async fn test_multiple_services_health_tracking() -> SongbirdResult<()> {
     let manager = ObservabilityManager::new();
-    manager.start().await.unwrap();
+    manager.start().await.expect("test precondition");
 
     let services = vec!["service1", "service2", "service3", "service4"];
 
     for service in services {
-        manager.record_health_check(service.to_string(), HealthStatus::Healthy, 100).await.unwrap();
+        manager
+            .record_health_check(service.to_string(), HealthStatus::Healthy, 100)
+            .await
+            .expect("test precondition");
     }
     Ok(())
 }

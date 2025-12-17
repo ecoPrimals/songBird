@@ -321,8 +321,8 @@ mod tests {
     fn test_performance_config_multiple_clones() {
         let original = PerformanceConfig::default();
         let clone1 = original.clone();
-        let clone2 = clone1.clone();
-        let clone3 = clone2.clone();
+        let clone2 = clone1;
+        let clone3 = clone2;
 
         assert_eq!(original.connection_pool_size, clone3.connection_pool_size);
     }

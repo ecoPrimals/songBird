@@ -1,3 +1,6 @@
+// Allow unwrap/expect in tests - idiomatic for test code
+#![allow(clippy::unwrap_used, clippy::expect_used)]
+
 //! HTTP Mock Tests for Security Adapter
 //!
 //! **Purpose**: Test actual async HTTP methods with mocked responses.
@@ -56,13 +59,13 @@ async fn test_collect_metrics_success() -> SongbirdResult<()> {
 #[tokio::test]
 async fn test_collect_metrics_network_error() {
     let adapter = SecurityAdapter::new("http://nonexistent-host-12345:9999".to_string())
-        .unwrap()
+        .expect("test precondition")
         .with_timeout(Duration::from_millis(100));
 
     let result = adapter.collect_metrics().await;
     assert!(result.is_err());
 
-    let err = result.unwrap_err();
+    let err = result.expect_err("testing error case");
     assert!(err.to_string().contains("Failed to reach security provider"));
 }
 
@@ -76,7 +79,7 @@ async fn test_collect_metrics_http_error() -> SongbirdResult<()> {
     let result = adapter.collect_metrics().await;
 
     assert!(result.is_err());
-    let err = result.unwrap_err();
+    let err = result.expect_err("testing error case");
     assert!(err.to_string().contains("HTTP 500"));
 
     Ok(())
@@ -97,7 +100,7 @@ async fn test_collect_metrics_invalid_json() -> SongbirdResult<()> {
     let result = adapter.collect_metrics().await;
 
     assert!(result.is_err());
-    let err = result.unwrap_err();
+    let err = result.expect_err("testing error case");
     assert!(err.to_string().contains("Failed to parse security metrics"));
 
     Ok(())
@@ -243,13 +246,13 @@ async fn test_verify_auth_invalid() -> SongbirdResult<()> {
 #[tokio::test]
 async fn test_verify_auth_network_error() {
     let adapter = SecurityAdapter::new("http://nonexistent-host-67890:9999".to_string())
-        .unwrap()
+        .expect("test precondition")
         .with_timeout(Duration::from_millis(100));
 
     let result = adapter.verify_auth("any_token").await;
     assert!(result.is_err());
 
-    let err = result.unwrap_err();
+    let err = result.expect_err("testing error case");
     assert!(err.to_string().contains("Auth verification failed"));
 }
 
@@ -291,7 +294,7 @@ async fn test_verify_auth_invalid_json_response() -> SongbirdResult<()> {
     let result = adapter.verify_auth("token").await;
 
     assert!(result.is_err());
-    let err = result.unwrap_err();
+    let err = result.expect_err("testing error case");
     assert!(err.to_string().contains("Failed to parse auth result"));
 
     Ok(())
@@ -388,7 +391,7 @@ async fn test_check_health_critical() -> SongbirdResult<()> {
 #[tokio::test]
 async fn test_check_health_network_failure() {
     let adapter = SecurityAdapter::new("http://nonexistent-host-11111:9999".to_string())
-        .unwrap()
+        .expect("test precondition")
         .with_timeout(Duration::from_millis(100));
 
     let result = adapter.check_health().await;
@@ -500,7 +503,7 @@ async fn test_collect_metrics_404() -> SongbirdResult<()> {
     let result = adapter.collect_metrics().await;
 
     assert!(result.is_err());
-    let err = result.unwrap_err();
+    let err = result.expect_err("testing error case");
     assert!(err.to_string().contains("HTTP 404"));
 
     Ok(())
@@ -516,7 +519,7 @@ async fn test_collect_metrics_503() -> SongbirdResult<()> {
     let result = adapter.collect_metrics().await;
 
     assert!(result.is_err());
-    let err = result.unwrap_err();
+    let err = result.expect_err("testing error case");
     assert!(err.to_string().contains("HTTP 503"));
 
     Ok(())
