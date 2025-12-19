@@ -41,13 +41,28 @@ use tokio::sync::RwLock;
 use tracing::{debug, error, info, warn};
 use uuid::Uuid;
 
-/// Anonymous discovery message (v2.0)
+/// Anonymous discovery message (v2.1)
 ///
 /// This message is broadcast over UDP to discover other Songbird towers.
-/// It contains NO identity information - only capabilities and a temporary session ID.
+/// It contains NO identity information - only capabilities and connection info.
+///
+/// ## What's Shared (Anonymous):
+/// - Capabilities (what can be done)
+/// - Protocols (how to connect)
+/// - Port (where to connect)
+/// - Session ID (temporary, rotates hourly)
+///
+/// ## What's NOT Shared (Private):
+/// - Hostname
+/// - Node ID
+/// - Internal topology
+/// - User data
+///
+/// The IP address is inherently revealed by UDP (sender address), but we don't
+/// include it in the message to avoid redundancy and maintain protocol purity.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AnonymousDiscoveryMessage {
-    /// Protocol version (always "2.0" for anonymous discovery)
+    /// Protocol version (now "2.1" for connection-aware discovery)
     pub version: String,
 
     /// Temporary session ID (rotates every hour)
@@ -65,6 +80,12 @@ pub struct AnonymousDiscoveryMessage {
     /// Examples: "https", "tarpc-tls", "websocket-tls"
     pub protocols: Vec<String>,
 
+    /// Port where this tower's HTTPS/TLS server is listening
+    ///
+    /// Combined with the UDP sender's IP address, this allows peers to connect.
+    /// This is NOT considered identity information - it's connection metadata.
+    pub port: u16,
+
     /// Timestamp of message creation (Unix epoch seconds)
     pub timestamp: u64,
 
@@ -74,22 +95,17 @@ pub struct AnonymousDiscoveryMessage {
     /// For now, this is optional and can be added later for enhanced security.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub capability_proof: Option<String>,
-
-    // Explicitly NO identity fields:
-    // - NO hostname
-    // - NO IP address
-    // - NO node_id
-    // - NO internal topology
 }
 
 impl AnonymousDiscoveryMessage {
     /// Create a new anonymous discovery message
-    pub fn new(capabilities: Vec<String>, protocols: Vec<String>) -> Self {
+    pub fn new(capabilities: Vec<String>, protocols: Vec<String>, port: u16) -> Self {
         Self {
-            version: "2.0".to_string(),
+            version: "2.1".to_string(),
             session_id: Self::generate_session_id(),
             capabilities,
             protocols,
+            port,
             timestamp: SystemTime::now()
                 .duration_since(UNIX_EPOCH)
                 .unwrap_or_default()
@@ -140,14 +156,19 @@ impl AnonymousDiscoveryMessage {
     /// Validate the discovery message
     ///
     /// Checks:
-    /// - Protocol version is "2.0"
+    /// - Protocol version is "2.0" or "2.1"
     /// - Session ID is not empty
     /// - At least one capability
     /// - At least one protocol
+    /// - Port is valid (non-zero)
     /// - Timestamp is recent (within 5 minutes)
     pub fn validate(&self) -> Result<(), String> {
-        if self.version != "2.0" {
+        if self.version != "2.0" && self.version != "2.1" {
             return Err(format!("Unsupported protocol version: {}", self.version));
+        }
+
+        if self.port == 0 {
+            return Err("Invalid port: 0".to_string());
         }
 
         if self.session_id.is_empty() {
@@ -190,7 +211,10 @@ pub struct DiscoveredPeer {
     /// Supported protocols
     pub protocols: Vec<String>,
 
-    /// Socket address where the discovery message came from
+    /// Port where the peer's HTTPS/TLS server is listening
+    pub port: u16,
+
+    /// Socket address where the discovery message came from (UDP source)
     pub address: SocketAddr,
 
     /// When this peer was last seen
@@ -198,6 +222,15 @@ pub struct DiscoveredPeer {
 
     /// Discovery message version
     pub version: String,
+}
+
+impl DiscoveredPeer {
+    /// Get the HTTPS endpoint for this peer
+    ///
+    /// Combines the source IP (from UDP) with the advertised HTTPS port
+    pub fn https_endpoint(&self) -> String {
+        format!("https://{}:{}", self.address.ip(), self.port)
+    }
 }
 
 /// Anonymous discovery broadcaster
@@ -209,6 +242,9 @@ pub struct AnonymousDiscoveryBroadcaster {
 
     /// Protocols supported
     protocols: Vec<String>,
+
+    /// Port where this tower's HTTPS/TLS server is listening
+    port: u16,
 
     /// Broadcast addresses to send to
     broadcast_addresses: Vec<SocketAddr>,
@@ -222,12 +258,14 @@ impl AnonymousDiscoveryBroadcaster {
     pub fn new(
         capabilities: Vec<String>,
         protocols: Vec<String>,
+        port: u16,
         broadcast_addresses: Vec<SocketAddr>,
         interval_secs: u64,
     ) -> Self {
         Self {
             capabilities,
             protocols,
+            port,
             broadcast_addresses,
             interval_secs,
         }
@@ -258,6 +296,7 @@ impl AnonymousDiscoveryBroadcaster {
             let message = AnonymousDiscoveryMessage::new(
                 self.capabilities.clone(),
                 self.protocols.clone(),
+                self.port,
             );
 
             // Serialize to bytes
@@ -350,12 +389,16 @@ impl AnonymousDiscoveryListener {
                             // Store peer info
                             let peer = DiscoveredPeer {
                                 session_id: message.session_id.clone(),
-                                capabilities: message.capabilities,
-                                protocols: message.protocols,
+                                capabilities: message.capabilities.clone(),
+                                protocols: message.protocols.clone(),
+                                port: message.port,
                                 address: addr,
                                 last_seen: SystemTime::now(),
-                                version: message.version,
+                                version: message.version.clone(),
                             };
+
+                            info!("🔍 Discovered peer: {} (capabilities: {:?}, HTTPS: https://{}:{})", 
+                                message.session_id, message.capabilities, addr.ip(), message.port);
 
                             let mut peers = self.peers.write().await;
                             peers.insert(message.session_id, peer);

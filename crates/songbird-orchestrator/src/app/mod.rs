@@ -432,6 +432,12 @@ impl SongbirdOrchestrator {
         if self._config.discovery.enabled && self._config.discovery.anonymous {
             info!("🌐 Starting anonymous discovery...");
             
+            // Get the actual HTTPS port we're listening on
+            let https_port = SafeEnv::get_port(
+                "SONGBIRD_PORT",
+                songbird_config::defaults::ports::orchestrator_port(),
+            );
+            
             // Start discovery broadcaster
             let capabilities = vec![
                 "orchestration".to_string(),
@@ -450,6 +456,7 @@ impl SongbirdOrchestrator {
             let broadcaster = AnonymousDiscoveryBroadcaster::new(
                 capabilities,
                 protocols,
+                https_port, // Include our HTTPS port so peers can connect!
                 broadcast_addrs,
                 30, // broadcast every 30 seconds
             );
@@ -470,7 +477,8 @@ impl SongbirdOrchestrator {
                 });
             }
             
-            info!("✅ Anonymous discovery started (UDP port {})", self._config.discovery.port);
+            info!("✅ Anonymous discovery started (UDP port {}, advertising HTTPS port {})", 
+                self._config.discovery.port, https_port);
         }
 
         // Start trust escalation cleanup task
@@ -525,7 +533,10 @@ impl SongbirdOrchestrator {
 
     /// Start HTTP server with federation API
     async fn start_http_server(&self) -> Result<()> {
-        let bind_address = SafeEnv::get_or_default("SONGBIRD_BIND_ADDRESS", "[::]");
+        // Default to IPv4 (0.0.0.0) for maximum compatibility with federation
+        // IPv6 ([::]) can cause issues with IPv4-only networks
+        // Override with SONGBIRD_BIND_ADDRESS="[::]" if IPv6 is needed
+        let bind_address = SafeEnv::get_or_default("SONGBIRD_BIND_ADDRESS", "0.0.0.0");
         let port = SafeEnv::get_port(
             "SONGBIRD_PORT",
             songbird_config::defaults::ports::orchestrator_port(),
@@ -550,7 +561,8 @@ impl SongbirdOrchestrator {
             return Ok(());
         }
 
-        let bind_address = SafeEnv::get_or_default("SONGBIRD_TARPC_BIND", "[::]");
+        // Default to IPv4 (0.0.0.0) for maximum compatibility
+        let bind_address = SafeEnv::get_or_default("SONGBIRD_TARPC_BIND", "0.0.0.0");
         let port = SafeEnv::get_port(
             "SONGBIRD_TARPC_PORT",
             songbird_config::defaults::ports::tarpc_port(),

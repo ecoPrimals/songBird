@@ -61,11 +61,14 @@ echo ""
 
 # Start orchestrator with secure defaults
 # All configuration happens automatically!
+# Default to IPv4 (0.0.0.0) for maximum compatibility with federation
+# Can override with SONGBIRD_BIND_ADDRESS environment variable
 SONGBIRD_TLS_ENABLED=true \
 SONGBIRD_FEDERATION_ENABLED=true \
 SONGBIRD_ANONYMOUS_DISCOVERY=true \
 SONGBIRD_NODE_NAME="$TOWER_NAME" \
 SONGBIRD_TOWER_NAME="$TOWER_NAME" \
+SONGBIRD_BIND_ADDRESS="${SONGBIRD_BIND_ADDRESS:-0.0.0.0}" \
 nohup ./target/release/songbird-orchestrator > "$LOG_FILE" 2>&1 &
 
 ORCHESTRATOR_PID=$!
@@ -138,4 +141,6 @@ echo "   Just run this same script on other machines."
 echo ""
 echo "========================================"
 echo -e "${BLUE}Songbird Tower: $TOWER_NAME - OPERATIONAL${NC}"
+
+
 
