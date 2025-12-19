@@ -616,9 +616,44 @@ impl SongbirdOrchestrator {
                             peer.session_id, endpoint, peer.capabilities
                         );
                         
-                        // TODO: Establish trust and join federation
-                        // For now, just log that we would join
-                        debug!("Would establish trust and join federation for {}", peer.session_id);
+                        // Establish anonymous trust for discovered peer
+                        match trust_manager.establish_anonymous(peer.session_id.clone()).await {
+                            Ok(()) => {
+                                info!(
+                                    "✅ Trust established with {} (level: Anonymous)",
+                                    &peer.session_id[..8]
+                                );
+                                
+                                // Create node registration from discovered peer
+                                let node_registration = songbird_network_federation::state::NodeRegistration {
+                                    node_id: peer.session_id.clone(),
+                                    node_name: format!("peer-{}", &peer.session_id[..8]),
+                                    node_address: endpoint.clone(),
+                                    cpu_cores: 0, // Unknown at discovery stage
+                                    memory_gb: 0, // Unknown at discovery stage
+                                    gpu_model: None,
+                                    storage_gb: None,
+                                    capabilities: peer.capabilities.clone(),
+                                    status: songbird_network_federation::state::NodeStatus::Active,
+                                    joined_at: chrono::Utc::now(),
+                                    last_heartbeat: chrono::Utc::now(),
+                                };
+                                
+                                // Register node in federation
+                                federation_state.register_node(node_registration).await;
+                                
+                                info!(
+                                    "🤝 Peer {} joined federation (anonymous trust)",
+                                    &peer.session_id[..8]
+                                );
+                            }
+                            Err(e) => {
+                                warn!(
+                                    "❌ Failed to establish trust with {}: {}",
+                                    peer.session_id, e
+                                );
+                            }
+                        }
                     }
                 }
             });

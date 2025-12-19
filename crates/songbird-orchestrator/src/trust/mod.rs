@@ -43,5 +43,5 @@ pub mod escalation;
 pub mod types;
 
 pub use escalation::{TrustEscalationManager, TrustTimeouts};
-pub use types::{TrustLevel, TrustRelationship};
+pub use types::{CapabilityProof, HardwareAttestation, IdentityProof, TowerIdentity, TrustLevel, TrustRelationship};
 

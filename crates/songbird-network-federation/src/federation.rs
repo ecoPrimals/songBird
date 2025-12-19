@@ -176,7 +176,12 @@ impl FederationCoordinator {
                             continue;
                         }
 
-                        let url = format!("http://{}/api/federation/heartbeat", node.node_address);
+                        // node_address may already include protocol (https://...) from discovery
+                        let url = if node.node_address.starts_with("http://") || node.node_address.starts_with("https://") {
+                            format!("{}/api/federation/heartbeat", node.node_address)
+                        } else {
+                            format!("http://{}/api/federation/heartbeat", node.node_address)
+                        };
                         let heartbeat = serde_json::json!({
                             "node_id": node_id,
                             "timestamp": chrono::Utc::now().to_rfc3339(),
