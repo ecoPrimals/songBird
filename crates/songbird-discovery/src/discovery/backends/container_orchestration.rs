@@ -334,7 +334,7 @@ impl UniversalContainerOrchestration {
                 format!("{k8s_protocol}://kubernetes.default.svc.cluster.local")
             }),
             std::env::var("K8S_LOCAL_ENDPOINT").unwrap_or_else(|_| {
-                format!("{k8s_protocol}://{}:{k8s_api_port}", constants::network::DEFAULT_HOST)
+                format!("{k8s_protocol}://{}:{k8s_api_port}", constants::network::default_host())
             }),
         ];
 
@@ -664,7 +664,7 @@ impl UniversalContainerOrchestration {
             created_at: Utc::now(),
             updated_at: Utc::now(),
             instance_id: format!("{name}-instance"),
-            host: songbird_config::canonical::constants::network::DEFAULT_HOST.to_string(),
+            host: songbird_config::canonical::constants::network::default_host(),
             port: 8080,
         }
     }

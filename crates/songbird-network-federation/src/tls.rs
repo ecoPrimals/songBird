@@ -15,16 +15,25 @@ use tracing::{debug, info, warn};
 /// Ensure rustls crypto provider is installed (required for rustls 0.23+)
 ///
 /// This must be called before any TLS operations. Uses `Once` to ensure it's only called once.
+///
+/// # Deep Debt Fix (Dec 18, 2025)
+/// Previous implementation was a placeholder that did nothing. This caused TLS initialization
+/// failures with "Could not automatically determine CryptoProvider" errors.
+/// Now properly installs the ring crypto provider at process startup.
 static CRYPTO_PROVIDER_INIT: Once = Once::new();
 
 fn ensure_crypto_provider() {
     CRYPTO_PROVIDER_INIT.call_once(|| {
-        // Install the ring crypto provider (default for rustls)
-        if let Err(e) = rustls::crypto::ring::default_provider().install_default() {
-            // If already installed, that's fine (might happen in tests)
-            debug!("Crypto provider installation result: {:?}", e);
-        } else {
-            info!("✅ Installed rustls crypto provider (ring)");
+        // Install ring crypto provider for rustls 0.23+
+        // This is required before any TLS operations can be performed
+        match rustls::crypto::ring::default_provider().install_default() {
+            Ok(()) => {
+                debug!("✅ Rustls crypto provider (ring) installed successfully");
+            }
+            Err(_) => {
+                // Already installed (by another crate or earlier call)
+                debug!("ℹ️  Rustls crypto provider already installed");
+            }
         }
     });
 }

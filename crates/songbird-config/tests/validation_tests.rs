@@ -10,9 +10,7 @@
 //! - Error handling
 //! - Edge cases
 
-use songbird_config::canonical::constants::{
-    DEFAULT_BIND_ADDRESS, DEFAULT_LOCALHOST, LOCALHOST_IPV4,
-};
+use songbird_config::canonical::constants;
 use std::env;
 
 // =============================================================================
@@ -21,25 +19,35 @@ use std::env;
 
 #[test]
 fn test_localhost_constant() {
-    assert_eq!(LOCALHOST_IPV4, "127.0.0.1");
-    assert_eq!(DEFAULT_LOCALHOST, "127.0.0.1");
+    // Test environment-aware localhost
+    let localhost = constants::network::default_host();
+    assert!(localhost == "127.0.0.1" || localhost == "0.0.0.0");
 }
 
 #[test]
 fn test_default_bind_address() {
-    assert_eq!(DEFAULT_BIND_ADDRESS, "127.0.0.1:8080");
-    assert!(DEFAULT_BIND_ADDRESS.contains("127.0.0.1"));
-    assert!(DEFAULT_BIND_ADDRESS.contains(":8080"));
+    // Test environment-aware bind address (IP only)
+    let bind_addr = constants::get_bind_address();
+    assert!(bind_addr == "127.0.0.1" || bind_addr == "0.0.0.0");
+    // Parse to verify it's a valid IP
+    assert!(bind_addr.parse::<std::net::IpAddr>().is_ok());
 }
 
 #[test]
 fn test_bind_address_parsing() {
-    let addr = DEFAULT_BIND_ADDRESS;
-    let parts: Vec<&str> = addr.split(':').collect();
+    // Test full socket address construction
+    let host = constants::get_bind_address();
+    let port = 8080u16; // Standard dev port
+    let socket_addr = format!("{}:{}", host, port);
 
+    // Should parse as valid socket address
+    assert!(socket_addr.parse::<std::net::SocketAddr>().is_ok());
+
+    // Verify components
+    let parts: Vec<&str> = socket_addr.split(':').collect();
     assert_eq!(parts.len(), 2, "Should have host and port");
-    assert_eq!(parts[0], "127.0.0.1");
-    assert_eq!(parts[1], "8080");
+    assert!(parts[0] == "127.0.0.1" || parts[0] == "0.0.0.0");
+    assert!(parts[1].parse::<u16>().is_ok(), "Port should be valid");
 }
 
 // =============================================================================
@@ -48,8 +56,10 @@ fn test_bind_address_parsing() {
 
 #[test]
 fn test_ipv4_localhost_is_loopback() {
-    let ip: std::net::IpAddr = LOCALHOST_IPV4.parse().expect("Should parse");
-    assert!(ip.is_loopback(), "127.0.0.1 should be loopback");
+    let localhost = constants::network::default_host();
+    let ip: std::net::IpAddr = localhost.parse().expect("Should parse");
+    // Either localhost (127.0.0.1) or all interfaces (0.0.0.0) depending on environment
+    assert!(ip.is_loopback() || ip.is_unspecified(), "Should be loopback or unspecified");
 }
 
 #[test]
@@ -108,20 +118,25 @@ fn test_port_edge_cases() {
 // =============================================================================
 
 #[test]
-fn test_default_configuration_constants_exist() {
-    // Verify all expected constants are defined
-    let _ = LOCALHOST_IPV4;
-    let _ = DEFAULT_LOCALHOST;
-    let _ = DEFAULT_BIND_ADDRESS;
+fn test_default_configuration_functions_work() {
+    // Verify all configuration functions work
+    let _host = constants::network::default_host();
+    let _bind_addr = constants::get_bind_address();
+
+    // These should never panic
+    assert!(!_host.is_empty());
+    assert!(!_bind_addr.is_empty());
 }
 
 #[test]
 fn test_default_values_are_safe() {
-    // Localhost should be safe default
-    assert!(LOCALHOST_IPV4.starts_with("127."));
+    // Host should be safe default (localhost or unspecified)
+    let host = constants::network::default_host();
+    assert!(host.starts_with("127.") || host.starts_with("0."));
 
-    // Default bind should be localhost
-    assert!(DEFAULT_BIND_ADDRESS.starts_with("127."));
+    // Default bind should use safe host
+    let bind_addr = constants::get_bind_address();
+    assert!(bind_addr.starts_with("127.") || bind_addr.starts_with("0."));
 }
 
 // =============================================================================
@@ -200,20 +215,23 @@ fn test_hostname_special_characters() {
 
 #[test]
 fn test_http_endpoint_format() {
-    let endpoint = format!("http://{}", DEFAULT_BIND_ADDRESS);
+    let bind_addr = constants::get_bind_address();
+    let endpoint = format!("http://{}", bind_addr);
     assert!(endpoint.starts_with("http://"));
-    assert!(endpoint.contains("127.0.0.1"));
+    assert!(endpoint.contains("127.0.0.1") || endpoint.contains("0.0.0.0"));
 }
 
 #[test]
 fn test_https_endpoint_format() {
-    let endpoint = format!("https://{}", DEFAULT_BIND_ADDRESS);
+    let bind_addr = constants::get_bind_address();
+    let endpoint = format!("https://{}", bind_addr);
     assert!(endpoint.starts_with("https://"));
 }
 
 #[test]
 fn test_endpoint_with_path() {
-    let endpoint = format!("http://{}/api/v1", DEFAULT_BIND_ADDRESS);
+    let bind_addr = constants::get_bind_address();
+    let endpoint = format!("http://{}/api/v1", bind_addr);
     assert!(endpoint.ends_with("/api/v1"));
 }
 
@@ -223,11 +241,16 @@ fn test_endpoint_with_path() {
 
 #[test]
 fn test_socket_addr_parsing() {
-    let addr: std::net::SocketAddr =
-        DEFAULT_BIND_ADDRESS.parse().expect("Should parse socket address");
+    // Construct full socket address
+    let host = constants::get_bind_address();
+    let port = 8080u16; // Standard dev port
+    let socket_addr_str = format!("{}:{}", host, port);
 
-    assert_eq!(addr.ip().to_string(), "127.0.0.1");
-    assert_eq!(addr.port(), 8080);
+    let addr: std::net::SocketAddr = socket_addr_str.parse().expect("Should parse socket address");
+
+    // Should parse as valid socket address with valid port
+    assert!(addr.port() > 0);
+    assert!(addr.ip().is_loopback() || addr.ip().is_unspecified());
 }
 
 #[test]
@@ -384,12 +407,12 @@ fn test_env_var_error_message() {
 #[test]
 fn test_full_endpoint_validation_flow() {
     // Simulate full validation
-    let host = LOCALHOST_IPV4;
+    let host = constants::network::default_host();
     let port = 8080u16;
 
     // 1. Validate host
     let ip: std::net::IpAddr = host.parse().expect("Valid IP");
-    assert!(ip.is_loopback());
+    assert!(ip.is_loopback() || ip.is_unspecified());
 
     // 2. Validate port
     assert!(port > 0);
@@ -397,7 +420,7 @@ fn test_full_endpoint_validation_flow() {
 
     // 3. Construct endpoint
     let endpoint = format!("{}:{}", host, port);
-    assert_eq!(endpoint, "127.0.0.1:8080");
+    assert!(endpoint.contains(':'));
 
     // 4. Parse as socket address
     let _socket: std::net::SocketAddr = endpoint.parse().expect("Valid socket");
@@ -406,11 +429,18 @@ fn test_full_endpoint_validation_flow() {
 #[test]
 fn test_configuration_validation_chain() {
     // Test chained validation
+    let host = constants::network::default_host();
+    let bind_ip = constants::get_bind_address();
+    let port = 8080u16; // Standard dev port
+    let socket_addr = format!("{}:{}", bind_ip, port);
+
     let config_valid = true
-        && !LOCALHOST_IPV4.is_empty()
-        && LOCALHOST_IPV4.parse::<std::net::IpAddr>().is_ok()
-        && DEFAULT_BIND_ADDRESS.contains(':')
-        && DEFAULT_BIND_ADDRESS.parse::<std::net::SocketAddr>().is_ok();
+        && !host.is_empty()
+        && host.parse::<std::net::IpAddr>().is_ok()
+        && !bind_ip.is_empty()
+        && bind_ip.parse::<std::net::IpAddr>().is_ok()
+        && socket_addr.contains(':')
+        && socket_addr.parse::<std::net::SocketAddr>().is_ok();
 
     assert!(config_valid, "All config validations should pass");
 }

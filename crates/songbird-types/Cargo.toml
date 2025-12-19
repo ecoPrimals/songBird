@@ -21,6 +21,7 @@ serde = ["dep:serde", "dep:serde_json"]
 chrono = ["dep:chrono"]
 reqwest = ["dep:reqwest"]
 tests-incomplete = []  # Feature flag for incomplete tests
+unsafe-reference = []  # Feature flag for deprecated unsafe SafeZeroCopyBuffer (test-only)
 
 [dependencies]
 # Foundation layer has minimal external dependencies
@@ -44,6 +45,8 @@ arrayvec = "0.7"
 futures-util = "0.3"
 # Added for canonical adapters
 rand = { workspace = true }
+# Hostname detection for federation
+hostname = "0.3"
 
 [dev-dependencies]
 tokio = { version = "1.0", features = ["full"] }

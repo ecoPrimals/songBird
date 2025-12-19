@@ -106,13 +106,13 @@ impl Default for SecurityConfig {
             session_timeout: Duration::from_secs(3600),
             beardog_endpoint: env_or_default(
                 "SONGBIRD_BEARDOG_ENDPOINT",
-                &format!("https://{}:8443", crate::canonical::constants::network::DEFAULT_HOST),
+                &format!("https://{}:8443", crate::canonical::constants::get_bind_address()),
             ),
             oauth_redirect_uri: env_or_default(
                 "SONGBIRD_OAUTH_REDIRECT",
                 &format!(
                     "http://{}:8080/auth/callback",
-                    crate::canonical::constants::network::DEFAULT_HOST
+                    &crate::canonical::constants::get_bind_address()
                 ),
             ),
             tls_cert_path: env_or_default("SONGBIRD_TLS_CERT", "/etc/ssl/certs/songbird.crt"),
@@ -126,8 +126,8 @@ impl Default for ServiceConfig {
             "SONGBIRD_BASE_URL",
             &format!(
                 "http://{}:{}",
-                crate::canonical::constants::network::DEFAULT_HOST,
-                crate::canonical::constants::network::DEFAULT_ORCHESTRATOR_PORT
+                crate::canonical::constants::get_bind_address(),
+                crate::canonical::constants::network::default_orchestrator_port()
             ),
         );
         Self {
@@ -144,23 +144,23 @@ impl Default for NetworkConfig {
     fn default() -> Self {
         let bind_ip = env_or_default(
             "SONGBIRD_BIND_ADDRESS",
-            crate::canonical::constants::network::DEFAULT_HOST,
+            &crate::canonical::constants::get_bind_address(),
         );
         let orchestrator_port = env_or_default(
             "SONGBIRD_ORCHESTRATOR_PORT",
-            &crate::canonical::constants::network::DEFAULT_ORCHESTRATOR_PORT.to_string(),
+            &crate::canonical::constants::network::default_orchestrator_port().to_string(),
         );
         let gaming_port = env_or_default("SONGBIRD_GAMING_PORT", "8081");
         let federation_port = env_or_default("SONGBIRD_FEDERATION_PORT", "8082");
         let dashboard_port = env_or_default(
             "SONGBIRD_DASHBOARD_PORT",
-            &crate::canonical::constants::network::DEFAULT_DEV_PORT.to_string(),
+            &crate::canonical::constants::network::default_orchestrator_port().to_string(),
         );
 
         Self {
             bind_address: bind_ip.parse().unwrap_or_else(|e| {
                 tracing::warn!("Invalid SONGBIRD_BIND_ADDRESS, using default localhost: {}", e);
-                crate::canonical::constants::network::DEFAULT_HOST.parse().unwrap_or({
+                crate::canonical::constants::get_bind_address().parse().unwrap_or({
                     // Final fallback to localhost if constant is invalid
                     std::net::IpAddr::V4(std::net::Ipv4Addr::LOCALHOST)
                 })
@@ -249,14 +249,14 @@ impl Default for PrimalConfig {
     fn default() -> Self {
         let base_ip = env_or_default(
             "SONGBIRD_PRIMAL_BASE_IP",
-            crate::canonical::constants::network::DEFAULT_HOST,
+            &crate::canonical::constants::get_bind_address(),
         );
         let base_port: u16 = env_or_default(
             "SONGBIRD_PRIMAL_BASE_PORT",
-            &crate::canonical::constants::network::DEFAULT_ORCHESTRATOR_PORT.to_string(),
+            &crate::canonical::constants::network::default_orchestrator_port().to_string(),
         )
         .parse()
-        .unwrap_or(8080);
+        .unwrap_or_else(|_| crate::canonical::constants::get_port_range_start());
 
         Self {
             beardog_endpoint: Arc::from(env_or_default(
@@ -289,10 +289,10 @@ impl Default for PrimalConfig {
             port_range: (
                 env_or_default(
                     "SONGBIRD_PRIMAL_PORT_START",
-                    &crate::canonical::constants::network::DEFAULT_ORCHESTRATOR_PORT.to_string(),
+                    &crate::canonical::constants::network::default_orchestrator_port().to_string(),
                 )
                 .parse()
-                .unwrap_or(8080),
+                .unwrap_or_else(|_| crate::canonical::constants::get_port_range_start()),
                 env_or_default("SONGBIRD_PRIMAL_PORT_END", "8090").parse().unwrap_or(8090),
             ),
         }
@@ -303,11 +303,11 @@ impl Default for FederationConfig {
     fn default() -> Self {
         let base_ip = env_or_default(
             "SONGBIRD_FEDERATION_BASE_IP",
-            crate::canonical::constants::network::DEFAULT_HOST,
+            &crate::canonical::constants::get_bind_address(),
         );
         let base_port = env_or_default(
             "SONGBIRD_FEDERATION_BASE_PORT",
-            &crate::canonical::constants::network::DEFAULT_ORCHESTRATOR_PORT.to_string(),
+            &crate::canonical::constants::network::default_orchestrator_port().to_string(),
         );
 
         Self {

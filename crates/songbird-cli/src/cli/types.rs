@@ -273,10 +273,19 @@ mod tests {
 
     #[test]
     fn test_cli_args_parse_from_env_with_quiet() {
+        // Clean environment first to avoid test pollution
+        std::env::remove_var("SONGBIRD_QUIET");
+        std::env::remove_var("SONGBIRD_VERBOSE");
+        std::env::remove_var("SONGBIRD_CONFIG");
+
+        // Set quiet flag
         std::env::set_var("SONGBIRD_QUIET", "1");
         let args = CliArgs::parse_from_env();
-        assert!(args.quiet);
+
+        // Clean up before assertion (in case assertion fails)
         std::env::remove_var("SONGBIRD_QUIET");
+
+        assert!(args.quiet, "quiet flag should be true when SONGBIRD_QUIET is set");
     }
 
     #[test]

@@ -93,11 +93,11 @@ impl Default for UnifiedAdapterConfig {
             discovery_endpoints: {
                 let host = SafeEnv::get_or_default(
                     "ADAPTER_DISCOVERY_HOST",
-                    songbird_config::canonical::constants::network::DEFAULT_HOST,
+                    &songbird_config::canonical::constants::get_bind_address(),
                 );
                 let capabilities_port = SafeEnv::get_port(
                     "ADAPTER_CAPABILITIES_PORT",
-                    songbird_config::canonical::constants::network::DEFAULT_DEV_PORT,
+                    songbird_config::canonical::constants::network::default_orchestrator_port(),
                 )
                 .to_string();
                 let services_port = SafeEnv::get_port(

@@ -134,6 +134,12 @@ pub mod conversion;
 pub mod discovery;
 pub mod traits;
 
+/// Anonymous discovery protocol (v2.0) - Secure by default
+///
+/// Implements secure anonymous discovery with UDP broadcast.
+/// Towers discover each other without leaking identity, sharing only capabilities.
+pub mod anonymous_discovery;
+
 // 🌐 Federation-aware discovery enhancement
 // NOTE: Extensive syntax errors throughout file (32+ errors)
 // FUTURE: Complete rewrite deferred - federation-aware discovery is P2 optional feature

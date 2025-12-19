@@ -15,14 +15,9 @@ use std::time::Duration;
 /// Default configuration file path
 pub const DEFAULT_CONFIG_PATH: &str = "songbird.toml";
 
-/// IPv4 localhost address constant
-pub const LOCALHOST_IPV4: &str = "127.0.0.1";
-
-/// Default bind address constant (for backwards compatibility with tests)
-pub const DEFAULT_BIND_ADDRESS: &str = "127.0.0.1:8080";
-
-/// Default localhost constant (for backwards compatibility with tests)
-pub const DEFAULT_LOCALHOST: &str = "127.0.0.1";
+// NOTE: Removed hardcoded network constants per sovereignty principles
+// Tests should set their own environment variables instead of relying on these constants
+// For migration: Use get_bind_address() which is environment-aware
 
 // ==================== NETWORK CONFIGURATION ====================
 
@@ -334,7 +329,7 @@ fn calculate_default_primal_endpoint(primal_name: &str) -> String {
         primal_name.to_lowercase()
     } else {
         // Local development pattern
-        network::DEFAULT_HOST.to_string()
+        get_bind_address()
     };
 
     let protocol = if should_use_tls_for_primal(primal_name) {
@@ -618,27 +613,38 @@ pub fn is_production_environment() -> bool {
 // ==================== CORS CONFIGURATION ====================
 
 /// Get canonical CORS origins based on environment
+///
+/// SOVEREIGNTY: No hardcoded origins. All must be explicitly configured.
 #[must_use]
 pub fn get_canonical_cors_origins() -> Vec<String> {
-    if is_production_environment() {
-        // Production: Use environment variable or secure defaults
-        SafeEnv::get_required("SONGBIRD_CORS_ORIGINS").map_or_else(
-            |_| {
-                vec![
-                    "https://songbird.production.com".to_string(),
-                    "https://api.songbird.production.com".to_string(),
-                ]
-            },
-            |origins| origins.split(',').map(String::from).collect(),
-        )
-    } else {
-        // Development: Allow localhost origins
-        vec![
-            "http://127.0.0.1:3000".to_string(),
-            "http://127.0.0.1:8080".to_string(),
-            "http://localhost:3000".to_string(),
-        ]
-    }
+    // Always require explicit CORS configuration for security
+    SafeEnv::get("SONGBIRD_CORS_ORIGINS").map_or_else(
+        |_| {
+            if is_production_environment() {
+                // Production: No defaults - fail secure
+                tracing::warn!(
+                    "SONGBIRD_CORS_ORIGINS not set in production. CORS will deny all origins. \
+                     Set SONGBIRD_CORS_ORIGINS to comma-separated list of allowed origins."
+                );
+                Vec::new() // Empty = deny all (secure default)
+            } else {
+                // Development: Calculate from bind address
+                let bind_addr = get_bind_address();
+                let default_ports = vec![3000, 8080, 8081];
+
+                default_ports
+                    .iter()
+                    .flat_map(|port| {
+                        vec![
+                            format!("http://{}:{}", bind_addr, port),
+                            format!("http://localhost:{}", port),
+                        ]
+                    })
+                    .collect()
+            }
+        },
+        |origins| origins.split(',').map(|s| s.trim().to_string()).collect(),
+    )
 }
 
 // ==================== PROTOCOL CONFIGURATION ====================
@@ -657,7 +663,7 @@ pub fn protocol_port_mappings() -> std::collections::HashMap<String, u16> {
 /// Get external address for network configuration
 #[must_use]
 pub fn external_address() -> String {
-    SafeEnv::get_or_default("SONGBIRD_EXTERNAL_ADDRESS", network::DEFAULT_HOST.to_string())
+    SafeEnv::get_or_default("SONGBIRD_EXTERNAL_ADDRESS", get_bind_address())
 }
 
 /// Get default subnet configuration
@@ -686,36 +692,43 @@ pub fn node_id() -> String {
 // ==================== NETWORK CONSTANTS ====================
 
 /// Network-related constants
+///
+/// SOVEREIGNTY EVOLUTION: Hardcoded values removed. Use functions instead.
 pub mod network {
+    use super::*;
     use std::time::Duration;
 
-    /// Default host constant
-    pub const DEFAULT_HOST: &str = "localhost";
+    /// Get default host for current environment
+    #[must_use]
+    pub fn default_host() -> String {
+        get_bind_address()
+    }
 
-    /// Default host IPv4 constant
-    pub const DEFAULT_HOST_V4: &str = "127.0.0.1";
+    /// Get default orchestrator port
+    #[must_use]
+    pub fn default_orchestrator_port() -> u16 {
+        SafeEnv::get_port("SONGBIRD_ORCHESTRATOR_PORT", super::get_port_range_start())
+    }
 
-    /// Default bind address constant
-    pub const DEFAULT_BIND_ADDRESS: &str = "127.0.0.1:8080";
+    /// Get default dashboard port
+    #[must_use]
+    pub fn default_dashboard_port() -> u16 {
+        super::get_dashboard_port()
+    }
 
-    /// Default orchestrator port
-    pub const DEFAULT_ORCHESTRATOR_PORT: u16 = 8080;
-
-    /// Default development port
-    pub const DEFAULT_DEV_PORT: u16 = 8080;
-
-    /// Default dashboard port
-    pub const DEFAULT_DASHBOARD_PORT: u16 = 3000;
-
-    // REMOVED: Hardcoded primal endpoints (sovereignty violation)
-    // Use crate::primal_discovery::* instead with environment variables
-    // See: crates/songbird-config/src/primal_discovery.rs
-
-    /// Default retry delay
+    /// Default retry delay (kept as const - no sovereignty issue)
     pub const DEFAULT_RETRY_DELAY: Duration = Duration::from_millis(1000);
 
-    /// Production bind address
-    pub const PRODUCTION_BIND_ADDRESS: &str = "0.0.0.0";
+    // DEPRECATED MIGRATION HELPERS (will be removed in v0.3.0)
+    // These return function calls for backwards compatibility
+
+    /// DEPRECATED: Use network::default_host() instead
+    #[deprecated(since = "0.2.0", note = "Use network::default_host() function instead")]
+    pub const DEFAULT_HOST: &str = "localhost";
+
+    /// DEPRECATED: Use get_bind_address() instead  
+    #[deprecated(since = "0.2.0", note = "Use get_bind_address() function instead")]
+    pub const DEFAULT_HOST_V4: &str = "127.0.0.1";
 }
 
 // ==================== HEALTH CHECK CONSTANTS ====================

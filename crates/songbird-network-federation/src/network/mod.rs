@@ -177,7 +177,7 @@ pub struct InterfaceConfig {
 impl Default for InterfaceConfig {
     fn default() -> Self {
         Self {
-            bind_address: songbird_config::canonical::constants::network::DEFAULT_HOST
+            bind_address: songbird_config::canonical::constants::network::default_host()
                 .parse()
                 .unwrap_or({
                     // Fallback to localhost if constant parsing fails

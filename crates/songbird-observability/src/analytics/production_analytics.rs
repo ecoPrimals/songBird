@@ -299,14 +299,20 @@ impl ProductionAnalyticsEngine  {/// Create new production analytics engine
 
     /// Detect anomalies in real-time
     pub async fn detect_anomaly(&self, metric_name: &str, value: f64) -> ServiceResult<AnomalyResult> {
+        // Get or create anomaly model
+        let model = {
         let models = self.anomaly_models.read().await;
-
-        let model = models.get(metric_name,
-            .ok_or_else(|_| {
-                // Create new model if none exists
+            if let Some(model) = models.get(metric_name) {
+                model.clone()
+            } else {
                 drop(models);
-                self.create_anomaly_model_async(metric_name, value)
-            })?;
+                // Create new model if none exists
+                let new_model = self.create_anomaly_model(metric_name, value);
+                let mut models = self.anomaly_models.write().await;
+                models.insert(metric_name.to_string(), new_model.clone());
+                new_model
+            }
+        };
 
         // Calculate anomaly score using statistical method
         let z_score = (value - model.baseline_mean) / model.baseline_std;
@@ -344,16 +350,16 @@ impl ProductionAnalyticsEngine  {/// Create new production analytics engine
         Ok(anomaly)
     }
 
-    /// Create anomaly model (synchronous helper)
-    fn create_anomaly_model_async(&self, metric_name: &str, initial_value: f64) -> &AnomalyModel  {// This is a simplified placeholder - would be async in real implementation
-        static DEFAULT_MODEL: AnomalyModel = AnomalyModel  {name: String::new(,
-            baseline_mean: 0.0,
-            baseline_std: 1.0,
-            threshold_multiplier: 2.0,
-            training_size: 0,
-            last_updated: DateTime::<Utc>::MIN_UTC,
-        };
-        &DEFAULT_MODEL
+    /// Create anomaly model with initial training data
+    fn create_anomaly_model(&self, metric_name: &str, initial_value: f64) -> AnomalyModel {
+        AnomalyModel {
+            name: metric_name.to_string(),
+            baseline_mean: initial_value,
+            baseline_std: initial_value * 0.1, // Initial estimate at 10% of value
+            threshold_multiplier: self.config.anomaly_detection_sensitivity,
+            training_size: 1,
+            last_updated: Utc::now(),
+        }
     }
 
     /// Make predictions for a metric

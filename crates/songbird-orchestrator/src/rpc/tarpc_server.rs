@@ -1,43 +1,45 @@
 //! High-Performance tarpc Server for Songbird
-//! 
+//!
 //! Provides binary RPC with 10x performance improvement over HTTP/REST.
 //! Designed for primal-to-primal communication with TLS support.
-//! 
+//!
 //! Phase 2 Complete: Full async runtime implementation with tarpc.
 
+use std::collections::HashMap;
 use std::net::SocketAddr;
 use std::sync::Arc;
 
 use serde::{Deserialize, Serialize};
+use songbird_network_federation::service_registry::FederatedServiceRegistry;
 use tarpc::context::Context;
 use tarpc::server::Channel;
-use tracing::{info, debug, error};
+use tracing::{debug, error, info};
 
 use crate::app::SongbirdOrchestrator;
 
 /// tarpc service trait for Songbird operations
-/// 
+///
 /// This trait defines the async RPC interface using tarpc.
 #[tarpc::service]
 pub trait SongbirdRpc {
     /// Discover services by capability
     async fn discover(capability: String) -> Vec<ServiceInfo>;
-    
+
     /// Discover all available services
     async fn discover_all() -> Vec<ServiceInfo>;
-    
+
     /// Register a service
     async fn register(registration: ServiceRegistration) -> RegistrationResult;
-    
+
     /// Unregister a service
     async fn unregister(service_id: String) -> RegistrationResult;
-    
+
     /// Get health status
     async fn health() -> HealthStatus;
-    
+
     /// Get version information
     async fn version() -> VersionInfo;
-    
+
     /// Get available protocols
     async fn protocols() -> Vec<ProtocolInfo>;
 }
@@ -56,9 +58,15 @@ pub struct ServiceInfo {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ServiceRegistration {
     pub service_id: String,
+    pub service_name: String,
     pub capability: String,
     pub endpoint: String,
-    pub metadata: Option<serde_json::Value>,
+    #[serde(default)]
+    pub metadata: HashMap<String, String>,
+    #[serde(default)]
+    pub tower_id: Option<String>,
+    #[serde(default)]
+    pub tower_name: Option<String>,
 }
 
 /// Registration result
@@ -106,77 +114,139 @@ pub struct ServiceUpdate {
 #[derive(Clone)]
 pub struct TarpcServer {
     orchestrator: Arc<SongbirdOrchestrator>,
+    service_registry: Arc<FederatedServiceRegistry>,
+    start_time: std::time::Instant,
 }
 
 impl TarpcServer {
-    /// Create new tarpc server
-    pub fn new(orchestrator: Arc<SongbirdOrchestrator>) -> Self {
-        Self { orchestrator }
+    /// Create new tarpc server with service registry
+    pub fn new(
+        orchestrator: Arc<SongbirdOrchestrator>,
+        service_registry: Arc<FederatedServiceRegistry>,
+    ) -> Self {
+        Self {
+            orchestrator,
+            service_registry,
+            start_time: std::time::Instant::now(),
+        }
     }
 }
 
 impl SongbirdRpc for TarpcServer {
     async fn discover(self, _context: Context, capability: String) -> Vec<ServiceInfo> {
-        debug!("tarpc: discover({})", capability);
-        
-        // TODO: Call actual discovery implementation
-        // For now, return mock data for testing
-        vec![ServiceInfo {
-            id: "service-1".to_string(),
-            capability,
-            endpoint: "http://localhost:8001".to_string(),
-            status: "healthy".to_string(),
-            metadata: None,
-        }]
+        debug!("tarpc: discover(capability={})", capability);
+
+        // Use real capability-based discovery (EVOLVED from mock)
+        let services = self.service_registry.find_by_capability(&capability).await;
+        debug!("Discovered {} services for capability '{}'", services.len(), capability);
+        services
+            .into_iter()
+            .map(|svc| ServiceInfo {
+                id: svc.service_id,
+                capability: capability.clone(),
+                endpoint: svc.endpoint,
+                status: "healthy".to_string(),
+                metadata: None,
+            })
+            .collect()
     }
-    
+
     async fn discover_all(self, _context: Context) -> Vec<ServiceInfo> {
         debug!("tarpc: discover_all()");
-        
-        // TODO: Call actual discovery implementation
-        vec![ServiceInfo {
-            id: "service-1".to_string(),
-            capability: "compute".to_string(),
-            endpoint: "http://localhost:8001".to_string(),
-            status: "healthy".to_string(),
-            metadata: None,
-        }]
+
+        // Use real service registry (EVOLVED from mock)
+        let services = self.service_registry.get_all_services().await;
+        debug!("Discovered {} total services", services.len());
+        services
+            .into_iter()
+            .map(|svc| ServiceInfo {
+                id: svc.service_id,
+                capability: svc.service_type,
+                endpoint: svc.endpoint,
+                status: "healthy".to_string(),
+                metadata: None,
+            })
+            .collect()
     }
-    
-    async fn register(self, _context: Context, registration: ServiceRegistration) -> RegistrationResult {
+
+    async fn register(
+        self,
+        _context: Context,
+        registration: ServiceRegistration,
+    ) -> RegistrationResult {
         debug!("tarpc: register({}, {})", registration.service_id, registration.capability);
-        
-        // TODO: Call actual registry implementation
+
+        // Convert to FederatedServiceRegistry format and register
+        let service_registration =
+            songbird_network_federation::service_registry::ServiceRegistration {
+                service_id: registration.service_id.clone(),
+                service_name: registration.service_name.clone(),
+                service_type: registration.capability.clone(),
+                tower_id: registration.tower_id.unwrap_or_else(|| "unknown".to_string()),
+                tower_name: registration.tower_name.unwrap_or_else(|| "Unknown Tower".to_string()),
+                endpoint: registration.endpoint,
+                capabilities: vec![registration.capability.clone()],
+                metadata: registration.metadata,
+                health_status:
+                    songbird_network_federation::service_registry::ServiceHealthStatus::Healthy,
+                registered_at: chrono::Utc::now(),
+                last_seen: chrono::Utc::now(),
+            };
+
+        self.service_registry.register_local(service_registration).await;
+
+        info!("✅ Service registered: {} ({})", registration.service_name, registration.service_id);
+
         RegistrationResult {
             success: true,
             message: format!("Service {} registered successfully", registration.service_id),
         }
     }
-    
+
     async fn unregister(self, _context: Context, service_id: String) -> RegistrationResult {
         debug!("tarpc: unregister({})", service_id);
-        
-        // TODO: Call actual registry implementation
-        RegistrationResult {
-            success: true,
-            message: format!("Service {} unregistered successfully", service_id),
+
+        // Check if service exists before unregistering
+        let service_exists = self.service_registry.find_by_id(&service_id).await.is_some();
+
+        if service_exists {
+            self.service_registry.deregister_local(&service_id).await;
+            info!("✅ Service unregistered: {}", service_id);
+
+            RegistrationResult {
+                success: true,
+                message: format!("Service {} unregistered successfully", service_id),
+            }
+        } else {
+            debug!("⚠️  Service not found for unregistration: {}", service_id);
+
+            RegistrationResult {
+                success: false,
+                message: format!("Service {} not found", service_id),
+            }
         }
     }
-    
+
     async fn health(self, _context: Context) -> HealthStatus {
         debug!("tarpc: health()");
+
+        // Calculate real uptime
+        let uptime_seconds = self.start_time.elapsed().as_secs();
         
+        // Get real service count from registry
+        let services_count = self.service_registry.get_all_services().await.len();
+
         HealthStatus {
             status: "healthy".to_string(),
             version: env!("CARGO_PKG_VERSION").to_string(),
-            uptime_seconds: 3600, // TODO: Real uptime tracking
-            services_count: 0,    // TODO: Real count from registry
+            uptime_seconds,
+            services_count,
         }
     }
-    
+
     async fn version(self, _context: Context) -> VersionInfo {
         debug!("tarpc: version()");
-        
+
         VersionInfo {
             version: env!("CARGO_PKG_VERSION").to_string(),
             protocol: "tarpc".to_string(),
@@ -187,10 +257,10 @@ impl SongbirdRpc for TarpcServer {
             ],
         }
     }
-    
+
     async fn protocols(self, _context: Context) -> Vec<ProtocolInfo> {
         debug!("tarpc: protocols()");
-        
+
         vec![
             ProtocolInfo {
                 name: "HTTP".to_string(),
@@ -221,23 +291,24 @@ impl SongbirdRpc for TarpcServer {
 }
 
 /// Start tarpc server on specified address
-/// 
+///
 /// Full async implementation using tarpc with binary codec over TCP.
 pub async fn start_tarpc_server(
     orchestrator: Arc<SongbirdOrchestrator>,
+    service_registry: Arc<FederatedServiceRegistry>,
     addr: SocketAddr,
 ) -> Result<(), Box<dyn std::error::Error>> {
     use futures::StreamExt;
-    
+
     info!("🚀 Starting tarpc server on {}", addr);
-    
+
     // Bind TCP listener
     let listener = tokio::net::TcpListener::bind(addr).await?;
     info!("✅ tarpc server listening on {}", addr);
-    
-    // Create server instance
-    let server = TarpcServer::new(orchestrator);
-    
+
+    // Create server instance with real service registry (EVOLVED)
+    let server = TarpcServer::new(orchestrator, service_registry);
+
     // Accept connections in a loop
     loop {
         let (stream, peer_addr) = match listener.accept().await {
@@ -247,12 +318,12 @@ pub async fn start_tarpc_server(
                 continue;
             }
         };
-        
+
         debug!("New tarpc connection from {}", peer_addr);
-        
+
         // Clone server for this connection
         let server = server.clone();
-        
+
         // Spawn a task to handle this connection
         tokio::spawn(async move {
             // Create codec transport using tokio-serde with bincode
@@ -262,10 +333,10 @@ pub async fn start_tarpc_server(
                     .new_framed(stream),
                 tokio_serde::formats::Bincode::default(),
             );
-            
+
             // Create server channel
             let channel = tarpc::server::BaseChannel::with_defaults(transport);
-            
+
             // Respond to requests
             channel
                 .execute(server.serve())
@@ -273,7 +344,7 @@ pub async fn start_tarpc_server(
                     tokio::spawn(response);
                 })
                 .await;
-                
+
             debug!("tarpc connection from {} closed", peer_addr);
         });
     }
@@ -284,18 +355,20 @@ pub async fn start_tarpc_server(
 pub struct TarpcConfig {
     /// Bind address
     pub addr: SocketAddr,
-    
+
     /// Enable TLS
     pub tls_enabled: bool,
-    
+
     /// Maximum concurrent connections
     pub max_connections: usize,
 }
 
 impl Default for TarpcConfig {
     fn default() -> Self {
+        use std::net::{IpAddr, Ipv6Addr, SocketAddr};
         Self {
-            addr: "[::]:8081".parse().unwrap(),
+            // Use direct SocketAddr construction - zero unwraps
+            addr: SocketAddr::new(IpAddr::V6(Ipv6Addr::UNSPECIFIED), 8081),
             tls_enabled: false,
             max_connections: 1000,
         }
@@ -323,7 +396,7 @@ mod tests {
             status: "healthy".to_string(),
             metadata: None,
         };
-        
+
         let serialized = serde_json::to_string(&info).unwrap();
         let deserialized: ServiceInfo = serde_json::from_str(&serialized).unwrap();
         assert_eq!(info.id, deserialized.id);
@@ -332,4 +405,3 @@ mod tests {
     // Integration tests would go here
     // Require full orchestrator setup
 }
-

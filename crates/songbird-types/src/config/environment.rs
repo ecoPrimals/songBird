@@ -626,7 +626,7 @@ mod tests {
         env::remove_var("SONGBIRD_MAX_FDS");
         env::remove_var("SONGBIRD_MAX_THREADS");
         env::remove_var("SONGBIRD_MAX_DISK_GB");
-        
+
         let limits = ResourceLimits::default();
         assert_eq!(limits.max_connections, 1000);
         assert_eq!(limits.max_memory_mb, 2048);
@@ -637,12 +637,19 @@ mod tests {
     }
 
     #[test]
+    #[serial_test::serial]
     fn test_resource_limits_from_env() {
+        // Clean environment first to avoid pollution
+        env::remove_var("SONGBIRD_MAX_CONNECTIONS");
+        env::remove_var("SONGBIRD_MAX_MEMORY_MB");
+
         env::set_var("SONGBIRD_MAX_CONNECTIONS", "5000");
         env::set_var("SONGBIRD_MAX_MEMORY_MB", "4096");
         let limits = ResourceLimits::default();
         assert_eq!(limits.max_connections, 5000);
         assert_eq!(limits.max_memory_mb, 4096);
+
+        // Cleanup
         env::remove_var("SONGBIRD_MAX_CONNECTIONS");
         env::remove_var("SONGBIRD_MAX_MEMORY_MB");
     }

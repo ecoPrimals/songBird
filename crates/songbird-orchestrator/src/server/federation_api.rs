@@ -11,6 +11,7 @@ use axum::{
 };
 use chrono::Utc;
 use serde::{Deserialize, Serialize};
+use serde_json::{json, Value};
 use songbird_network_federation::service_registry::{
     FederatedServiceRegistry, ServiceRegistration,
 };
@@ -28,12 +29,16 @@ use crate::core::registry::types::{
 };
 use crate::core::registry::CapabilityRegistry;
 
+// Import trust system
+use crate::trust::{TrustEscalationManager, TrustLevel};
+
 /// Shared application state for federation
 #[derive(Debug, Clone)]
 pub struct FederationAppState {
     pub federation_state: Arc<FederationState>,
     pub service_registry: Arc<FederatedServiceRegistry>,
     pub capability_registry: Option<Arc<CapabilityRegistry>>,
+    pub trust_manager: Option<Arc<TrustEscalationManager>>,
 }
 
 /// Create federation routes
@@ -45,6 +50,7 @@ pub fn federation_routes(
         federation_state,
         service_registry,
         capability_registry: None,
+        trust_manager: None,
     });
 
     Router::new()
@@ -52,6 +58,7 @@ pub fn federation_routes(
         .route("/join", post(federation_join))
         .route("/status", get(federation_status))
         .route("/nodes", get(federation_nodes))
+        .route("/nodes/:node_id", get(get_node_details))
         .route("/heartbeat", post(federation_heartbeat))
         // Service management
         .route("/services", get(list_services))
@@ -72,6 +79,7 @@ pub fn federation_routes_with_capabilities(
         federation_state,
         service_registry,
         capability_registry: Some(capability_registry),
+        trust_manager: None,
     });
 
     Router::new()
@@ -79,6 +87,7 @@ pub fn federation_routes_with_capabilities(
         .route("/join", post(federation_join))
         .route("/status", get(federation_status))
         .route("/nodes", get(federation_nodes))
+        .route("/nodes/:node_id", get(get_node_details))
         .route("/heartbeat", post(federation_heartbeat))
         // Service management
         .route("/services", get(list_services))
@@ -87,6 +96,41 @@ pub fn federation_routes_with_capabilities(
         .route("/services/type/:service_type", get(find_services_by_type))
         .route("/services/stats", get(service_stats))
         // Capability registration (NEW)
+        .route("/register", post(register_capability_provider))
+        .route("/capability/heartbeat", post(capability_provider_heartbeat))
+        .route("/register/:provider_id", delete(unregister_capability_provider))
+        .route("/providers", get(list_capability_providers))
+        .with_state(app_state)
+}
+
+/// Create federation routes with trust manager (NEW - secure by default)
+pub fn federation_routes_with_trust(
+    federation_state: Arc<FederationState>,
+    service_registry: Arc<FederatedServiceRegistry>,
+    capability_registry: Option<Arc<CapabilityRegistry>>,
+    trust_manager: Arc<TrustEscalationManager>,
+) -> Router {
+    let app_state = Arc::new(FederationAppState {
+        federation_state,
+        service_registry,
+        capability_registry,
+        trust_manager: Some(trust_manager),
+    });
+
+    Router::new()
+        // Node management with graduated disclosure
+        .route("/join", post(federation_join))
+        .route("/status", get(federation_status))
+        .route("/nodes", get(federation_nodes_graduated))
+        .route("/nodes/:node_id", get(get_node_details))
+        .route("/heartbeat", post(federation_heartbeat))
+        // Service management
+        .route("/services", get(list_services))
+        .route("/services", post(register_service))
+        .route("/services/:service_id", get(get_service))
+        .route("/services/type/:service_type", get(find_services_by_type))
+        .route("/services/stats", get(service_stats))
+        // Capability registration (if available)
         .route("/register", post(register_capability_provider))
         .route("/capability/heartbeat", post(capability_provider_heartbeat))
         .route("/register/:provider_id", delete(unregister_capability_provider))
@@ -446,6 +490,124 @@ async fn get_federation_status(state: &FederationAppState) -> FederationStatus {
         total_memory_gb: stats.total_memory_gb,
         total_storage_gb: stats.total_storage_gb,
         uptime_seconds,
+    }
+}
+
+/// GET /api/federation/nodes (with graduated disclosure) - NEW
+async fn federation_nodes_graduated(
+    State(state): State<Arc<FederationAppState>>,
+) -> impl IntoResponse {
+    debug!("📋 Node list requested (with graduated disclosure)");
+
+    // For now, default to Anonymous trust level (most restrictive)
+    // In production, extract session ID from headers and look up trust level
+    let trust_level = TrustLevel::Anonymous;
+
+    let nodes: Vec<NodeRegistration> =
+        state.federation_state.nodes.read().await.values().cloned().collect();
+
+    // Apply graduated disclosure to each node
+    let filtered_nodes: Vec<Value> = nodes
+        .iter()
+        .map(|node| filter_node_by_trust(node, &trust_level))
+        .collect();
+
+    (StatusCode::OK, Json(filtered_nodes))
+}
+
+/// GET /api/federation/nodes/:node_id - Get specific node details (with graduated disclosure)
+async fn get_node_details(
+    State(state): State<Arc<FederationAppState>>,
+    Path(node_id): Path<String>,
+) -> impl IntoResponse {
+    debug!("📋 Node details requested for: {}", node_id);
+
+    // For now, default to Anonymous trust level
+    // In production, extract session ID from headers and look up trust level
+    let trust_level = TrustLevel::Anonymous;
+
+    let nodes = state.federation_state.nodes.read().await;
+    let node = nodes.get(&node_id);
+
+    match node {
+        Some(node) => {
+            let filtered_node = filter_node_by_trust(node, &trust_level);
+            (StatusCode::OK, Json(filtered_node))
+        }
+        None => {
+            let error = json!({
+                "error": "Node not found",
+                "node_id": node_id
+            });
+            (StatusCode::NOT_FOUND, Json(error))
+        }
+    }
+}
+
+/// Filter node information based on trust level (graduated disclosure)
+fn filter_node_by_trust(node: &NodeRegistration, trust_level: &TrustLevel) -> Value {
+    match trust_level {
+        TrustLevel::Anonymous => {
+            // Anonymous: Only basic capabilities
+            json!({
+                "node_id": node.node_id,
+                "capabilities": node.capabilities,
+            })
+        }
+        TrustLevel::CapabilityVerified => {
+            // Capability-Verified: + Name and status
+            json!({
+                "node_id": node.node_id,
+                "node_name": node.node_name,
+                "capabilities": node.capabilities,
+                "status": format!("{:?}", node.status),
+            })
+        }
+        TrustLevel::RoleVerified => {
+            // Role-Verified: + Resource info
+            json!({
+                "node_id": node.node_id,
+                "node_name": node.node_name,
+                "capabilities": node.capabilities,
+                "status": format!("{:?}", node.status),
+                "cpu_cores": node.cpu_cores,
+                "memory_gb": node.memory_gb,
+                "gpu_model": node.gpu_model,
+                "joined_at": node.joined_at,
+            })
+        }
+        TrustLevel::IdentityVerified => {
+            // Identity-Verified: + Address and heartbeat
+            json!({
+                "node_id": node.node_id,
+                "node_name": node.node_name,
+                "node_address": node.node_address,
+                "capabilities": node.capabilities,
+                "status": format!("{:?}", node.status),
+                "cpu_cores": node.cpu_cores,
+                "memory_gb": node.memory_gb,
+                "gpu_model": node.gpu_model,
+                "storage_gb": node.storage_gb,
+                "joined_at": node.joined_at,
+                "last_heartbeat": node.last_heartbeat,
+            })
+        }
+        TrustLevel::HardwareVerified => {
+            // Hardware-Verified: Full access (all fields)
+            json!({
+                "node_id": node.node_id,
+                "node_name": node.node_name,
+                "node_address": node.node_address,
+                "capabilities": node.capabilities,
+                "status": format!("{:?}", node.status),
+                "cpu_cores": node.cpu_cores,
+                "memory_gb": node.memory_gb,
+                "gpu_model": node.gpu_model,
+                "storage_gb": node.storage_gb,
+                "joined_at": node.joined_at,
+                "last_heartbeat": node.last_heartbeat,
+            })
+        }
     }
 }
 

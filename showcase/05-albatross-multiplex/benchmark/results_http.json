@@ -1,0 +1,19 @@
+{
+  "failed_requests": 0,
+  "latency_us": {
+    "max": 736,
+    "mean": 214.19799999999998,
+    "min": 164,
+    "p50": 215,
+    "p75": 223,
+    "p90": 238,
+    "p95": 251,
+    "p99": 297,
+    "stddev": 28.43231956770323
+  },
+  "protocol": "HTTP",
+  "requests_per_second": 4649.632672276923,
+  "successful_requests": 1000,
+  "total_duration_secs": 0.215070753,
+  "total_requests": 1000
+}

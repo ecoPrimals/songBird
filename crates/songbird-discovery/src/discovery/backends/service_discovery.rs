@@ -231,13 +231,13 @@ impl UniversalServiceDiscovery {
         let consul_default = format!(
             "{}://{}:{}",
             registry_protocol,
-            constants::network::DEFAULT_HOST,
+            constants::network::default_host(),
             std::env::var("CONSUL_PORT").unwrap_or_else(|_| "8500".to_string())
         );
         let eureka_default = format!(
             "{}://{}:{}",
             registry_protocol,
-            constants::network::DEFAULT_HOST,
+            constants::network::default_host(),
             std::env::var("EUREKA_PORT").unwrap_or_else(|_| "8761".to_string())
         );
 
@@ -499,7 +499,7 @@ impl UniversalServiceDiscovery {
             created_at: Utc::now(),
             updated_at: Utc::now(),
             instance_id: format!("{name}-instance"),
-            host: songbird_config::canonical::constants::network::DEFAULT_HOST.to_string(),
+            host: songbird_config::canonical::constants::network::default_host(),
             port: 8080,
         }
     }

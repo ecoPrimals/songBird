@@ -18,10 +18,12 @@ impl TunnelHandle {
             id: Uuid::new_v4().to_string(),
         }
     }
-    
+
     /// Create tunnel handle with specific ID
     pub fn with_id(id: String) -> Self {
-        Self { id }
+        Self {
+            id,
+        }
     }
 }
 
@@ -36,13 +38,13 @@ impl Default for TunnelHandle {
 pub struct SecurityContext {
     /// Tunnel ID this context belongs to
     pub tunnel_id: String,
-    
+
     /// Peer ID
     pub peer_id: String,
-    
+
     /// Optional nonce for this operation
     pub nonce: Option<Vec<u8>>,
-    
+
     /// Additional authenticated data
     pub aad: Option<Vec<u8>>,
 }
@@ -52,26 +54,26 @@ pub struct SecurityContext {
 pub struct TunnelStatus {
     /// Tunnel handle
     pub handle: TunnelHandle,
-    
+
     /// Current status
     pub status: TunnelState,
-    
+
     /// Peer information
     pub peer_id: String,
     pub peer_endpoint: String,
-    
+
     /// When tunnel was established
     pub established_at: DateTime<Utc>,
-    
+
     /// Last activity timestamp
     pub last_activity: DateTime<Utc>,
-    
+
     /// Bytes sent through tunnel
     pub bytes_sent: u64,
-    
+
     /// Bytes received through tunnel
     pub bytes_received: u64,
-    
+
     /// Number of errors encountered
     pub error_count: u32,
 }
@@ -81,16 +83,16 @@ pub struct TunnelStatus {
 pub enum TunnelState {
     /// Tunnel is being established
     Connecting,
-    
+
     /// Tunnel is active and ready
     Active,
-    
+
     /// Tunnel is temporarily unavailable
     Degraded,
-    
+
     /// Tunnel is closed
     Closed,
-    
+
     /// Tunnel encountered an error
     Error,
 }
@@ -100,20 +102,20 @@ pub enum TunnelState {
 pub struct Tunnel {
     /// Tunnel handle
     pub handle: TunnelHandle,
-    
+
     /// Peer information
     pub peer_id: String,
     pub peer_endpoint: String,
-    
+
     /// Shared secret key for encryption
     pub shared_key: Vec<u8>,
-    
+
     /// When tunnel was established
     pub established_at: DateTime<Utc>,
-    
+
     /// Current state
     pub state: TunnelState,
-    
+
     /// Statistics
     pub bytes_sent: u64,
     pub bytes_received: u64,
@@ -135,7 +137,7 @@ impl Tunnel {
             error_count: 0,
         }
     }
-    
+
     /// Get tunnel status
     pub fn status(&self) -> TunnelStatus {
         TunnelStatus {
@@ -150,22 +152,22 @@ impl Tunnel {
             error_count: self.error_count,
         }
     }
-    
+
     /// Mark tunnel as closed
     pub fn close(&mut self) {
         self.state = TunnelState::Closed;
     }
-    
+
     /// Record bytes sent
     pub fn record_sent(&mut self, bytes: usize) {
         self.bytes_sent += bytes as u64;
     }
-    
+
     /// Record bytes received
     pub fn record_received(&mut self, bytes: usize) {
         self.bytes_received += bytes as u64;
     }
-    
+
     /// Record error
     pub fn record_error(&mut self) {
         self.error_count += 1;
@@ -188,12 +190,9 @@ mod tests {
 
     #[test]
     fn test_tunnel_creation() {
-        let tunnel = Tunnel::new(
-            "peer-1".to_string(),
-            "http://peer:8080".to_string(),
-            vec![1, 2, 3, 4],
-        );
-        
+        let tunnel =
+            Tunnel::new("peer-1".to_string(), "http://peer:8080".to_string(), vec![1, 2, 3, 4]);
+
         assert_eq!(tunnel.state, TunnelState::Active);
         assert_eq!(tunnel.bytes_sent, 0);
         assert_eq!(tunnel.error_count, 0);
@@ -201,19 +200,15 @@ mod tests {
 
     #[test]
     fn test_tunnel_error_degradation() {
-        let mut tunnel = Tunnel::new(
-            "peer-1".to_string(),
-            "http://peer:8080".to_string(),
-            vec![1, 2, 3, 4],
-        );
-        
+        let mut tunnel =
+            Tunnel::new("peer-1".to_string(), "http://peer:8080".to_string(), vec![1, 2, 3, 4]);
+
         // Record multiple errors
         for _ in 0..11 {
             tunnel.record_error();
         }
-        
+
         assert_eq!(tunnel.state, TunnelState::Degraded);
         assert_eq!(tunnel.error_count, 11);
     }
 }
-

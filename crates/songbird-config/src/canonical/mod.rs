@@ -73,14 +73,14 @@ pub use constants::{
     protocol_port_mappings,
     // Structured exports (note: submodules accessible via constants::network::, etc.)
     CanonicalNetworkDefaults,
-    DEFAULT_BIND_ADDRESS,
+    // DEFAULT_BIND_ADDRESS, // Removed: Use get_bind_address() function instead
     DEFAULT_CACHE_TTL,
     // Constants
     DEFAULT_CONFIG_PATH,
     DEFAULT_EVALUATION_TIMEOUT,
-    DEFAULT_LOCALHOST,
+    // DEFAULT_LOCALHOST, // Removed: Use get_bind_address() function instead
     DEFAULT_METRICS_INTERVAL,
-    LOCALHOST_IPV4,
+    // LOCALHOST_IPV4, // Removed: Use get_bind_address() function instead
 };
 
 // Re-export all canonical types

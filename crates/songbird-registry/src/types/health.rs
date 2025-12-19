@@ -138,7 +138,7 @@ impl Default for HealthCheckConfig {
         use songbird_config::canonical::constants;
 
         let health_host = std::env::var("HEALTH_CHECK_HOST")
-            .unwrap_or_else(|_| constants::network::DEFAULT_HOST.to_string());
+            .unwrap_or_else(|_| constants::network::default_host());
         let health_port =
             std::env::var("HEALTH_CHECK_PORT").ok().and_then(|p| p.parse().ok()).unwrap_or(8080);
 

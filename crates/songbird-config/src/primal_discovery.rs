@@ -281,7 +281,7 @@ mod tests {
         // Clear all env vars first
         std::env::remove_var("COMPUTE_ENDPOINT");
         std::env::remove_var("TOADSTOOL_ENDPOINT");
-        
+
         std::env::set_var("COMPUTE_ENDPOINT", "http://test-compute:9000");
 
         let result = get_compute_endpoint().await;

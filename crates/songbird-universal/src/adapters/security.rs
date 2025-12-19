@@ -256,7 +256,7 @@ impl SecurityAdapter {
                     "SONGBIRD_HOST",
                     format!(
                         "http://{}",
-                        songbird_config::canonical::constants::network::DEFAULT_HOST
+                        &songbird_config::canonical::constants::get_bind_address()
                     ),
                 );
                 let port = SafeEnv::get_port("SONGBIRD_SECURITY_PORT", 8081).to_string();

@@ -1,0 +1,42 @@
+# Songbird Configuration - Student Onboarding (Local Network)
+# Version 1: Local network testing, auto-discovery via federation
+
+[server]
+# Listen on all interfaces for student connections
+host = "0.0.0.0"
+port = 8080
+protocol = "ws"  # WebSocket (WSS with BearDog in v2)
+
+[federation]
+# Federation identity
+name = "MSU-EcoPrimals-Test"
+node_name = "songbird-coordinator"
+
+# Service discovery - NO HARDCODED IPs!
+# Nodes register themselves, Songbird discovers them
+discovery_enabled = true
+discovery_interval_seconds = 30  # Re-discover every 30s
+
+# Federation registry endpoint (where nodes register)
+# This could be a local registry or distributed registry
+registry_url = "http://localhost:8000/api/federation/registry"
+
+[compute]
+# Capability-based routing
+required_capabilities = ["gpu-compute", "ml-training"]
+
+# Scheduling policy
+scheduling = "least-loaded"  # or "round-robin", "capability-match"
+
+# No hardcoded nodes! Discovery happens at runtime.
+
+[logging]
+level = "info"
+format = "pretty"
+
+[limits]
+# Student resource limits
+max_concurrent_tasks_per_user = 3
+max_task_duration_minutes = 60
+max_queued_tasks = 100
+

@@ -1,0 +1,382 @@
+//! Consent Management
+//!
+//! Implements:
+//! - Consent requests
+//! - User preferences
+//! - Auto-approval rules
+//! - Enforcement
+//!
+//! Human-in-the-loop for expensive operations.
+
+use crate::task_lifecycle::{TaskId, UserId};
+use chrono::{DateTime, Utc};
+use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
+use std::sync::Arc;
+use tokio::sync::RwLock;
+
+mod enforcement;
+mod preferences;
+mod request;
+mod rules;
+mod storage;
+
+pub use enforcement::*;
+pub use preferences::*;
+pub use request::*;
+pub use rules::*;
+pub use storage::*;
+
+/// Consent status
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum ConsentStatus {
+    Pending,
+    Approved,
+    Denied,
+    Expired,
+}
+
+/// Consent record
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ConsentRecord {
+    pub id: Arc<str>,
+    pub user_id: UserId,
+    pub task_id: TaskId,
+    pub operation: Arc<str>,
+    pub estimated_cost: Option<f64>,
+    pub status: ConsentStatus,
+    pub requested_at: DateTime<Utc>,
+    pub responded_at: Option<DateTime<Utc>>,
+    pub reason: Option<Arc<str>>,
+}
+
+/// Consent manager
+pub struct ConsentManager {
+    records: Arc<RwLock<HashMap<Arc<str>, ConsentRecord>>>,
+    preferences: Arc<RwLock<HashMap<UserId, UserPreferences>>>,
+
+    /// Optional persistent storage (MVP Week 5)
+    storage: Option<Arc<ConsentStorage>>,
+}
+
+impl ConsentManager {
+    /// Create a new consent manager without persistent storage
+    pub fn new() -> Self {
+        Self {
+            records: Arc::new(RwLock::new(HashMap::new())),
+            preferences: Arc::new(RwLock::new(HashMap::new())),
+            storage: None,
+        }
+    }
+
+    /// Create a new consent manager with persistent storage (MVP Week 5)
+    pub async fn with_storage(database_url: &str) -> anyhow::Result<Self> {
+        let storage = ConsentStorage::new(database_url).await?;
+        Ok(Self {
+            records: Arc::new(RwLock::new(HashMap::new())),
+            preferences: Arc::new(RwLock::new(HashMap::new())),
+            storage: Some(Arc::new(storage)),
+        })
+    }
+
+    /// Request consent for an operation
+    pub async fn request_consent(
+        &self,
+        user_id: UserId,
+        task_id: TaskId,
+        operation: impl Into<Arc<str>>,
+        estimated_cost: Option<f64>,
+    ) -> Arc<str> {
+        let id: Arc<str> = uuid::Uuid::new_v4().to_string().into();
+        let operation = operation.into();
+
+        // Check auto-approval rules
+        let prefs = self.preferences.read().await;
+        if let Some(user_prefs) = prefs.get(&user_id) {
+            if let Some(auto_approve_threshold) = user_prefs.auto_approve_under_cost {
+                if let Some(cost) = estimated_cost {
+                    if cost <= auto_approve_threshold {
+                        // Auto-approve
+                        let record = ConsentRecord {
+                            id: id.clone(),
+                            user_id,
+                            task_id,
+                            operation,
+                            estimated_cost,
+                            status: ConsentStatus::Approved,
+                            requested_at: Utc::now(),
+                            responded_at: Some(Utc::now()),
+                            reason: Some("Auto-approved based on user preferences".into()),
+                        };
+                        drop(prefs);
+
+                        // Persist to storage if available
+                        if let Some(ref storage) = self.storage {
+                            let _ = storage.save(&record).await; // Best effort
+                        }
+
+                        let mut records = self.records.write().await;
+                        records.insert(id.clone(), record);
+                        return id;
+                    }
+                }
+            }
+        }
+        drop(prefs);
+
+        // Create pending request
+        let record = ConsentRecord {
+            id: id.clone(),
+            user_id,
+            task_id,
+            operation,
+            estimated_cost,
+            status: ConsentStatus::Pending,
+            requested_at: Utc::now(),
+            responded_at: None,
+            reason: None,
+        };
+
+        // Persist to storage if available
+        if let Some(ref storage) = self.storage {
+            let _ = storage.save(&record).await; // Best effort
+        }
+
+        let mut records = self.records.write().await;
+        records.insert(id.clone(), record);
+
+        id
+    }
+
+    /// Approve a consent request
+    pub async fn approve(&self, consent_id: &str, reason: Option<Arc<str>>) -> bool {
+        let mut records = self.records.write().await;
+
+        if let Some(record) = records.get_mut(consent_id) {
+            record.status = ConsentStatus::Approved;
+            record.responded_at = Some(Utc::now());
+            record.reason = reason.clone();
+
+            // Persist to storage if available
+            if let Some(ref storage) = self.storage {
+                let _ = storage.save(record).await; // Best effort
+            }
+
+            true
+        } else {
+            false
+        }
+    }
+
+    /// Deny a consent request
+    pub async fn deny(&self, consent_id: &str, reason: Option<Arc<str>>) -> bool {
+        let mut records = self.records.write().await;
+
+        if let Some(record) = records.get_mut(consent_id) {
+            record.status = ConsentStatus::Denied;
+            record.responded_at = Some(Utc::now());
+            record.reason = reason.clone();
+
+            // Persist to storage if available
+            if let Some(ref storage) = self.storage {
+                let _ = storage.save(record).await; // Best effort
+            }
+
+            true
+        } else {
+            false
+        }
+    }
+
+    /// Get consent status
+    pub async fn get_status(&self, consent_id: &str) -> Option<ConsentStatus> {
+        let records = self.records.read().await;
+        records.get(consent_id).map(|r| r.status)
+    }
+
+    /// Get consent record by ID
+    pub async fn get_consent(&self, consent_id: &str) -> Option<ConsentRecord> {
+        let records = self.records.read().await;
+        records.get(consent_id).cloned()
+    }
+
+    /// List all consent records for a user
+    pub async fn list_by_user(&self, user_id: &UserId) -> Vec<ConsentRecord> {
+        let records = self.records.read().await;
+        records.values().filter(|r| &r.user_id == user_id).cloned().collect()
+    }
+
+    /// Wait for consent decision (with timeout)
+    pub async fn wait_for_decision(
+        &self,
+        consent_id: &str,
+        timeout: std::time::Duration,
+    ) -> Option<ConsentStatus> {
+        let start = std::time::Instant::now();
+
+        loop {
+            if let Some(status) = self.get_status(consent_id).await {
+                if status != ConsentStatus::Pending {
+                    return Some(status);
+                }
+            }
+
+            if start.elapsed() >= timeout {
+                return None;
+            }
+
+            tokio::time::sleep(std::time::Duration::from_millis(100)).await;
+        }
+    }
+}
+
+impl Default for ConsentManager {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn test_consent_request() {
+        let manager = ConsentManager::new();
+
+        let consent_id = manager
+            .request_consent(
+                UserId::from("alice"),
+                TaskId::new(),
+                "expensive_operation",
+                Some(100.0),
+            )
+            .await;
+
+        let status = manager.get_status(&consent_id).await.unwrap();
+        assert_eq!(status, ConsentStatus::Pending);
+    }
+
+    #[tokio::test]
+    async fn test_consent_approval() {
+        let manager = ConsentManager::new();
+
+        let consent_id = manager
+            .request_consent(
+                UserId::from("alice"),
+                TaskId::new(),
+                "expensive_operation",
+                Some(100.0),
+            )
+            .await;
+
+        manager.approve(&consent_id, Some("User approved".into())).await;
+
+        let status = manager.get_status(&consent_id).await.unwrap();
+        assert_eq!(status, ConsentStatus::Approved);
+    }
+
+    #[tokio::test]
+    async fn test_consent_denial() {
+        let manager = ConsentManager::new();
+
+        let consent_id = manager
+            .request_consent(
+                UserId::from("alice"),
+                TaskId::new(),
+                "expensive_operation",
+                Some(100.0),
+            )
+            .await;
+
+        manager.deny(&consent_id, Some("Too expensive".into())).await;
+
+        let status = manager.get_status(&consent_id).await.unwrap();
+        assert_eq!(status, ConsentStatus::Denied);
+    }
+
+    #[tokio::test]
+    async fn test_consent_workflow_with_storage() {
+        // Create manager with in-memory storage
+        let manager = ConsentManager::with_storage("sqlite::memory:")
+            .await
+            .expect("Failed to create manager with storage");
+
+        let user_id = UserId::new("alice");
+        let task_id = TaskId::new();
+
+        // Request consent
+        let consent_id =
+            manager.request_consent(user_id.clone(), task_id, "train-model", Some(100.0)).await;
+
+        // Verify it's pending
+        let status = manager.get_status(&consent_id).await.unwrap();
+        assert_eq!(status, ConsentStatus::Pending);
+
+        // Approve it
+        let approved = manager.approve(&consent_id, Some("Approved by user".into())).await;
+        assert!(approved);
+
+        // Verify approval
+        let status = manager.get_status(&consent_id).await.unwrap();
+        assert_eq!(status, ConsentStatus::Approved);
+
+        // Verify we can retrieve the full record
+        let record = manager.get_consent(&consent_id).await.unwrap();
+        assert_eq!(record.status, ConsentStatus::Approved);
+        assert_eq!(record.user_id, user_id);
+        assert!(record.reason.is_some());
+    }
+
+    #[tokio::test]
+    async fn test_list_by_user_with_storage() {
+        let manager = ConsentManager::with_storage("sqlite::memory:")
+            .await
+            .expect("Failed to create manager with storage");
+
+        let user_id = UserId::new("bob");
+
+        // Create multiple consent requests for same user
+        for i in 0..3 {
+            manager
+                .request_consent(
+                    user_id.clone(),
+                    TaskId::new(),
+                    format!("operation-{}", i),
+                    Some(50.0 * (i + 1) as f64),
+                )
+                .await;
+        }
+
+        // List all consents for user
+        let records = manager.list_by_user(&user_id).await;
+        assert_eq!(records.len(), 3);
+
+        // Verify all belong to the user
+        for record in &records {
+            assert_eq!(record.user_id, user_id);
+            assert_eq!(record.status, ConsentStatus::Pending);
+        }
+    }
+
+    #[tokio::test]
+    async fn test_get_consent_method() {
+        let manager = ConsentManager::new();
+
+        let consent_id = manager
+            .request_consent(UserId::new("charlie"), TaskId::new(), "analyze-data", Some(75.0))
+            .await;
+
+        // Get full consent record
+        let record = manager.get_consent(&consent_id).await.unwrap();
+        assert_eq!(record.id.as_ref(), consent_id.as_ref());
+        assert_eq!(record.user_id.as_str(), "charlie");
+        assert_eq!(record.operation.as_ref(), "analyze-data");
+        assert_eq!(record.estimated_cost, Some(75.0));
+        assert_eq!(record.status, ConsentStatus::Pending);
+
+        // Non-existent consent should return None
+        let missing = manager.get_consent("non-existent-id").await;
+        assert!(missing.is_none());
+    }
+}

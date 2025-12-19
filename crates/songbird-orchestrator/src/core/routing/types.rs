@@ -11,7 +11,7 @@ use std::collections::HashMap;
 pub struct Task {
     /// Type of task (e.g., "ml_training", "data_processing", "health_check")
     ///
-    /// **OPTIMIZED**: Arc<str> enables zero-copy sharing in async contexts
+    /// **OPTIMIZED**: `Arc<str>` enables zero-copy sharing in async contexts
     #[serde(with = "arc_str_serde")]
     pub task_type: std::sync::Arc<str>,
 

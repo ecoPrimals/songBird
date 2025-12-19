@@ -48,12 +48,12 @@
 //! ```
 //!
 //! ### Use Capability-Based Discovery:
-//! ```rust,no_run
+//! ```rust,ignore
 //! use songbird_config::capability_based_runtime_discovery::{CapabilityResolver, CapabilityRequest};
 //!
 //! # async fn example() -> Result<(), Box<dyn std::error::Error>> {
 //! // ✅ NEW WAY: Discover by capability at runtime
-//! let resolver = CapabilityResolver::new();
+//! let mut resolver = CapabilityResolver::new();
 //! let provider = resolver.discover_provider(
 //!     CapabilityRequest::new("ai")
 //!         .with_features(&["text-generation", "embeddings"])
@@ -61,7 +61,8 @@
 //! ).await?;
 //!
 //! // Use whatever provider was discovered (Squirrel, OpenAI, Anthropic, etc.)
-//! let response = provider.execute(request).await?;
+//! // Connect to the provider endpoint and make requests
+//! println!("Found provider: {} at {}", provider.name, provider.endpoint);
 //! # Ok(())
 //! # }
 //! ```

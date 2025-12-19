@@ -8,8 +8,8 @@
 
 use anyhow::Result;
 use axum::Router;
-use songbird_network_federation::state::FederationState;
 use songbird_network_federation::service_registry::FederatedServiceRegistry;
+use songbird_network_federation::state::FederationState;
 use songbird_types::SafeEnv;
 use std::net::SocketAddr;
 use std::sync::Arc;
@@ -25,10 +25,7 @@ pub async fn start_http_server(
     let addr: SocketAddr = super::parse_bind_address(bind_address, port)?;
 
     // Build the app with all API routes
-    let app = build_router(
-        Arc::clone(&federation_state),
-        Arc::clone(&federated_service_registry),
-    );
+    let app = build_router(Arc::clone(&federation_state), Arc::clone(&federated_service_registry));
 
     // Smart port management: Try configured port, auto-increment if busy
     let (listener, actual_addr) = bind_with_fallback(&addr).await?;
@@ -77,8 +74,7 @@ fn build_router(
     let protocol_state = crate::server::protocol_api::ProtocolApiState::new();
 
     // Create protocol API router with state
-    let protocol_router =
-        crate::server::protocol_api::protocol_routes().with_state(protocol_state);
+    let protocol_router = crate::server::protocol_api::protocol_routes().with_state(protocol_state);
 
     // Create JSON-RPC API state for universal gateway
     let jsonrpc_state = crate::server::jsonrpc_api::JsonRpcState::new(
@@ -111,35 +107,17 @@ fn build_router(
                 Arc::clone(&federated_service_registry),
             ),
         )
-        .nest(
-            "/api/compute",
-            compute_router,
-        )
-        .nest(
-            "/api/protocol",
-            protocol_router,
-        )
-        .nest(
-            "/jsonrpc",
-            jsonrpc_router,
-        )
-        .nest(
-            "/api/ws",
-            websocket_router,
-        )
-        .nest(
-            "/api/deployment",
-            crate::server::deployment_api::deployment_routes(deployment_state),
-        )
+        .nest("/api/compute", compute_router)
+        .nest("/api/protocol", protocol_router)
+        .nest("/jsonrpc", jsonrpc_router)
+        .nest("/api/ws", websocket_router)
+        .nest("/api/deployment", crate::server::deployment_api::deployment_routes(deployment_state))
         .route("/health", axum::routing::get(|| async { "OK" }))
         .layer(axum::extract::DefaultBodyLimit::max(100 * 1024 * 1024)) // 100 MB limit
 }
 
 /// Start plain HTTP server (no TLS)
-async fn start_http_server_plain(
-    app: Router,
-    listener: tokio::net::TcpListener,
-) -> Result<()> {
+async fn start_http_server_plain(app: Router, listener: tokio::net::TcpListener) -> Result<()> {
     // Spawn server in background
     tokio::spawn(async move {
         if let Err(e) = axum::serve(listener, app).await {
@@ -153,11 +131,11 @@ async fn start_http_server_plain(
 /// Get local IP address for certificate SANs
 async fn get_local_ip() -> Result<String> {
     use std::net::{IpAddr, Ipv4Addr};
-    
+
     // Try to get local IP by creating a UDP socket (doesn't actually send data)
     let socket = std::net::UdpSocket::bind("0.0.0.0:0")?;
-    socket.connect("8.8.8.8:80")?;  // Doesn't actually connect, just determines route
-    
+    socket.connect("8.8.8.8:80")?; // Doesn't actually connect, just determines route
+
     if let Ok(local_addr) = socket.local_addr() {
         let ip = local_addr.ip();
         match ip {
@@ -167,7 +145,7 @@ async fn get_local_ip() -> Result<String> {
             _ => {}
         }
     }
-    
+
     Err(anyhow::anyhow!("Could not determine local IP"))
 }
 
@@ -177,44 +155,40 @@ async fn start_https_server(
     _listener: tokio::net::TcpListener,
     addr: SocketAddr,
 ) -> Result<()> {
-    use songbird_network_federation::tls::{TlsConfig, TlsCertificateManager};
+    use songbird_network_federation::tls::{TlsCertificateManager, TlsConfig};
 
     // Get TLS configuration from environment
     let cert_path = SafeEnv::get_or_default("SONGBIRD_TLS_CERT", "certs/songbird.crt");
     let key_path = SafeEnv::get_or_default("SONGBIRD_TLS_KEY", "certs/songbird.key");
-    
+
     // Get Subject Alternative Names (SANs) for certificate
     // Include localhost, local IPs, and any user-specified SANs
     let mut sans_list = vec!["localhost".to_string(), "127.0.0.1".to_string()];
-    
+
     // Try to get local IP address for automatic inclusion
     if let Ok(local_ip) = get_local_ip().await {
         sans_list.push(local_ip);
     }
-    
+
     // Add user-specified SANs
     let user_sans = SafeEnv::get_or_default("SONGBIRD_TLS_SANS", "");
     if !user_sans.is_empty() {
         sans_list.extend(
-            user_sans
-                .split(',')
-                .map(str::trim)
-                .filter(|s| !s.is_empty())
-                .map(String::from)
+            user_sans.split(',').map(str::trim).filter(|s| !s.is_empty()).map(String::from),
         );
     }
-    
+
     // Remove duplicates
     sans_list.sort();
     sans_list.dedup();
-    
+
     let sans = sans_list;
 
     // Get node ID for common name
     let node_id = SafeEnv::get_or_default("SONGBIRD_NODE_ID", "songbird");
 
     let sans_display = sans.join(", ");
-    
+
     let tls_config = TlsConfig {
         cert_path: cert_path.to_string(),
         key_path: key_path.to_string(),
@@ -225,14 +199,16 @@ async fn start_https_server(
 
     // Create certificate manager and ensure certificates exist
     let cert_manager = TlsCertificateManager::new(tls_config);
-    cert_manager.ensure_certificates().await.map_err(|e| {
-        anyhow::anyhow!("Failed to ensure TLS certificates: {}", e)
-    })?;
+    cert_manager
+        .ensure_certificates()
+        .await
+        .map_err(|e| anyhow::anyhow!("Failed to ensure TLS certificates: {}", e))?;
 
     // Load rustls server config
-    let rustls_config = cert_manager.load_tls_config().await.map_err(|e| {
-        anyhow::anyhow!("Failed to load TLS config: {}", e)
-    })?;
+    let rustls_config = cert_manager
+        .load_tls_config()
+        .await
+        .map_err(|e| anyhow::anyhow!("Failed to load TLS config: {}", e))?;
 
     info!("✅ TLS configuration loaded, HTTPS server listening on https://{}", addr);
     info!("   Certificate: {}", cert_path);
@@ -242,8 +218,9 @@ async fn start_https_server(
     info!("   💡 To disable TLS (not recommended): export SONGBIRD_TLS_ENABLED=false");
 
     // Use axum-server for TLS support
-    let tls_config_for_server = axum_server::tls_rustls::RustlsConfig::from_config(Arc::new(rustls_config));
-    
+    let tls_config_for_server =
+        axum_server::tls_rustls::RustlsConfig::from_config(Arc::new(rustls_config));
+
     // Spawn HTTPS server in background
     tokio::spawn(async move {
         if let Err(e) = axum_server::bind_rustls(addr, tls_config_for_server)
@@ -261,9 +238,7 @@ async fn start_https_server(
 ///
 /// Tries the requested port first, then auto-increments until it finds an available port.
 /// Maximum 10 attempts before giving up.
-async fn bind_with_fallback(
-    addr: &SocketAddr,
-) -> Result<(tokio::net::TcpListener, SocketAddr)> {
+async fn bind_with_fallback(addr: &SocketAddr) -> Result<(tokio::net::TcpListener, SocketAddr)> {
     let host = addr.ip();
     let mut port = addr.port();
     let max_attempts = 10;
@@ -333,4 +308,3 @@ pub async fn start_tarpc_server(
 
     Ok(())
 }
-

@@ -1,0 +1,98 @@
+# Songbird Orchestrator Configuration
+# For ToadStool ML Orchestration Showcase
+
+[orchestrator]
+database_url = "sqlite:showcase-toadstool-ml.db"
+enable_resource_management = true
+enable_consent_management = true
+enable_observability = true
+
+[server]
+# HTTP/REST API
+bind_addr = "0.0.0.0"
+port = 8080
+
+# WebSocket for real-time updates
+websocket_port = 8090
+
+[federation]
+enabled = true
+# Discovery methods: mdns, dns-sd, manual
+discovery_method = "mdns"
+# Service types to discover
+service_types = ["compute", "ml-training", "ml-inference", "universal-compute"]
+# Auto-register discovered services
+auto_register = true
+# Heartbeat interval
+heartbeat_interval_secs = 30
+
+[tls]
+enabled = true
+# Auto-generate self-signed certs if not present
+auto_generate = true
+cert_path = "certs/songbird.crt"
+key_path = "certs/songbird.key"
+
+[rpc]
+# Tarpc for high-performance binary RPC (with ToadStool)
+tarpc_addr = "[::]:8091"
+tarpc_tls_enabled = true
+tarpc_max_connections = 1000
+
+# JSON-RPC for universal HTTP access
+jsonrpc_addr = "[::]:8080"
+jsonrpc_max_request_size_mb = 10
+jsonrpc_max_response_size_mb = 10
+
+[discovery]
+# Capability-based discovery
+enabled = true
+# Capabilities we're interested in
+compute_capabilities = [
+    "ml-training",
+    "ml-inference",
+    "gpu-compute",
+    "cpu-compute",
+    "universal-compute"
+]
+
+[task_routing]
+# Intelligent task routing configuration
+enable_gpu_awareness = true
+prefer_local = false  # Allow cross-tower routing
+load_balance_algorithm = "least-loaded"  # or "round-robin", "capability-match"
+
+[resource_limits]
+# Per-task resource limits
+max_memory_per_task_gb = 8
+max_cpu_per_task = 4
+max_gpu_memory_per_task_gb = 8
+max_concurrent_tasks = 10
+
+[observability]
+# Event streaming for monitoring
+enable_event_stream = true
+event_history_size = 1000
+# Metrics collection
+enable_metrics = true
+metrics_interval_secs = 10
+
+[consent]
+# Human dignity & consent management
+require_consent_for_heavy_tasks = false  # Set true for production
+consent_timeout_secs = 300
+
+[resilience]
+# Circuit breaker for failing services
+circuit_breaker_failure_threshold = 5
+circuit_breaker_timeout_secs = 60
+# Retry policy
+max_retries = 3
+retry_backoff_ms = 100
+
+[logging]
+level = "info"  # debug, info, warn, error
+format = "json"  # json or text
+output = "file"  # file or stdout
+log_dir = "logs"
+

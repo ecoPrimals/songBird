@@ -72,22 +72,33 @@
     clippy::unused_async
 )]
 
+pub mod access_control; // Access control & graduated information disclosure (Q1 2025)
 pub mod app;
 pub mod cli;
+pub mod consent_management;
 pub mod core; // Consolidated core functionality
+pub mod error_recovery; // Error recovery & resilience (Week 3 - Dec 18, 2025)
 pub mod integration;
+pub mod observability; // Basic observability (Week 4 - Dec 18, 2025)
+pub mod orchestrator; // MVP Integration (Week 1-5 - Dec 18, 2025)
+pub mod resource_management; // Resource management & fairness (Week 2 - Dec 18, 2025)
 pub mod rpc; // Multi-protocol RPC (JSON-RPC, tarpc)
 pub mod server;
+pub mod task_lifecycle; // Task lifecycle management (Week 1 - Dec 18, 2025) // Consent management (Week 5 - Dec 18, 2025)
+pub mod trust; // Trust escalation system (Dec 19, 2025) - Zero-trust progressive escalation
 
 // Re-export main orchestrator
 pub use app::SongbirdOrchestrator;
+
+// Re-export MVP orchestrator integration
+pub use orchestrator::{HealthStatus, OrchestratorConfig, SongbirdOrchestrator as MvpOrchestrator};
 
 // Re-export all functionality from crates (consolidated from songbird-lib)
 // pub use songbird_cli as cli_crate;
 pub use songbird_config as config;
 pub use songbird_discovery as discovery;
 // pub use songbird_security_errors as errors;
-pub use songbird_observability as observability;
+// pub use songbird_observability as observability; // Commented out - using new observability module (Week 4)
 pub use songbird_registry as registry;
 // pub use songbird_security_errors as security;
 // pub use songbird_universal_primals as primals;

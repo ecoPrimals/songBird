@@ -35,7 +35,7 @@ reqwest = { version = "0.11", features = ["json"] }
 url = "2.5"
 
 # TLS/HTTPS support
-rustls = "0.23"
+rustls = { version = "0.23", features = ["ring"] }
 rustls-pemfile = "2.1"
 tokio-rustls = "0.26"
 rcgen = "0.13"
@@ -55,6 +55,7 @@ songbird-config = { path = "../songbird-config" }
 # songbird-security-errors = { path = "../songbird-security-errors" }  # REMOVED: Using unified errors from songbird-types
 songbird-discovery = { path = "../songbird-discovery" }
 aes-gcm = "0.10.3"
+generic-array = "1.0"
 rand.workspace = true
 
 [dev-dependencies]

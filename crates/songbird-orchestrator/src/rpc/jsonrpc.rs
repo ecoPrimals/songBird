@@ -1,8 +1,7 @@
 /// JSON-RPC 2.0 Server for Songbird
-/// 
+///
 /// Provides universal, language-agnostic RPC access to Songbird orchestration
 /// capabilities over HTTPS. Works with any client supporting JSON-RPC 2.0.
-
 use std::net::SocketAddr;
 use std::sync::Arc;
 
@@ -12,9 +11,10 @@ use jsonrpsee::{
     RpcModule,
 };
 use serde::Deserialize;
-use tracing::{info, debug};
+use tracing::{debug, info};
 
 use crate::app::SongbirdOrchestrator;
+use songbird_network_federation::service_registry::FederatedServiceRegistry;
 
 /// JSON-RPC server configuration
 #[derive(Debug, Clone)]
@@ -31,27 +31,45 @@ pub struct JsonRpcConfig {
 
 impl Default for JsonRpcConfig {
     fn default() -> Self {
+        use std::net::{IpAddr, Ipv6Addr, SocketAddr};
         Self {
-            addr: "[::]:8080".parse().unwrap(),
+            // Use direct SocketAddr construction - zero unwraps
+            addr: SocketAddr::new(IpAddr::V6(Ipv6Addr::UNSPECIFIED), 8080),
             log_requests: true,
-            max_request_size: 10 * 1024 * 1024, // 10 MB
+            max_request_size: 10 * 1024 * 1024,  // 10 MB
             max_response_size: 10 * 1024 * 1024, // 10 MB
         }
     }
 }
 
+/// Shared state for JSON-RPC methods
+#[derive(Clone)]
+pub struct JsonRpcState {
+    pub orchestrator: Arc<SongbirdOrchestrator>,
+    pub service_registry: Arc<FederatedServiceRegistry>,
+    pub start_time: std::time::Instant,
+}
+
 /// JSON-RPC 2.0 server for Songbird orchestration
 pub struct JsonRpcServer {
     config: JsonRpcConfig,
-    orchestrator: Arc<SongbirdOrchestrator>,
+    state: JsonRpcState,
 }
 
 impl JsonRpcServer {
     /// Create a new JSON-RPC server
-    pub fn new(orchestrator: Arc<SongbirdOrchestrator>, config: JsonRpcConfig) -> Self {
+    pub fn new(
+        orchestrator: Arc<SongbirdOrchestrator>,
+        service_registry: Arc<FederatedServiceRegistry>,
+        config: JsonRpcConfig,
+    ) -> Self {
         Self {
             config,
-            orchestrator,
+            state: JsonRpcState {
+                orchestrator,
+                service_registry,
+                start_time: std::time::Instant::now(),
+            },
         }
     }
 
@@ -60,14 +78,12 @@ impl JsonRpcServer {
         info!("🚀 Starting JSON-RPC 2.0 server on {}", self.config.addr);
 
         // Build server
-        let server = Server::builder()
-            .build(self.config.addr)
-            .await?;
+        let server = Server::builder().build(self.config.addr).await?;
 
         let addr = server.local_addr()?;
 
-        // Create RPC module with methods
-        let mut module = RpcModule::new(self.orchestrator.clone());
+        // Create RPC module with shared state
+        let mut module = RpcModule::new(self.state.clone());
 
         // Register all JSON-RPC methods
         Self::register_discovery_methods(&mut module)?;
@@ -86,39 +102,64 @@ impl JsonRpcServer {
     }
 
     /// Register discovery-related JSON-RPC methods
-    fn register_discovery_methods(module: &mut RpcModule<Arc<SongbirdOrchestrator>>) -> Result<(), Box<dyn std::error::Error>> {
+    fn register_discovery_methods(
+        module: &mut RpcModule<JsonRpcState>,
+    ) -> Result<(), Box<dyn std::error::Error>> {
         // songbird.discover - Discover services by capability
-        module.register_async_method("songbird.discover", |params, _ctx, _state| async move {
+        module.register_async_method("songbird.discover", |params, ctx, _ext| async move {
             let capability: String = params.one()?;
             debug!("JSON-RPC: discover({})", capability);
 
-            // TODO: Call actual discovery implementation
-            // For now, return mock response
-            let services = vec![
-                serde_json::json!({
-                    "id": "service-1",
-                    "capability": capability,
-                    "endpoint": "http://localhost:8001",
-                    "status": "healthy"
+            // Access state from context
+            let state = ctx.as_ref();
+
+            // Use real capability-based discovery
+            let registrations = state.service_registry.find_by_capability(&capability).await;
+
+            let services: Vec<serde_json::Value> = registrations
+                .into_iter()
+                .map(|reg| {
+                    serde_json::json!({
+                        "id": reg.service_id,
+                        "service_name": reg.service_name,
+                        "service_type": reg.service_type,
+                        "tower_id": reg.tower_id,
+                        "capability": capability,
+                        "endpoint": reg.endpoint,
+                        "status": "healthy",
+                        "metadata": reg.metadata
+                    })
                 })
-            ];
+                .collect();
 
             Ok::<_, ErrorObjectOwned>(services)
         })?;
 
         // songbird.discoverAll - Discover all available services
-        module.register_async_method("songbird.discoverAll", |_params, _ctx, _state| async move {
+        module.register_async_method("songbird.discoverAll", |_params, ctx, _ext| async move {
             debug!("JSON-RPC: discoverAll()");
 
-            // TODO: Call actual discovery implementation
-            let services = vec![
-                serde_json::json!({
-                    "id": "service-1",
-                    "capability": "compute",
-                    "endpoint": "http://localhost:8001",
-                    "status": "healthy"
+            // Access state from context
+            let state = ctx.as_ref();
+
+            // Use real service discovery
+            let all_services = state.service_registry.get_all_services().await;
+
+            let services: Vec<serde_json::Value> = all_services
+                .into_iter()
+                .map(|reg| {
+                    serde_json::json!({
+                        "id": reg.service_id,
+                        "service_name": reg.service_name,
+                        "service_type": reg.service_type,
+                        "tower_id": reg.tower_id,
+                        "endpoint": reg.endpoint,
+                        "status": "healthy",
+                        "capabilities": reg.capabilities,
+                        "metadata": reg.metadata
+                    })
                 })
-            ];
+                .collect();
 
             Ok::<_, ErrorObjectOwned>(services)
         })?;
@@ -127,9 +168,11 @@ impl JsonRpcServer {
     }
 
     /// Register registry-related JSON-RPC methods
-    fn register_registry_methods(module: &mut RpcModule<Arc<SongbirdOrchestrator>>) -> Result<(), Box<dyn std::error::Error>> {
+    fn register_registry_methods(
+        module: &mut RpcModule<JsonRpcState>,
+    ) -> Result<(), Box<dyn std::error::Error>> {
         // songbird.register - Register a service
-        module.register_async_method("songbird.register", |params, _ctx, _state| async move {
+        module.register_async_method("songbird.register", |params, ctx, _ext| async move {
             #[derive(Deserialize)]
             struct RegisterRequest {
                 service_id: String,
@@ -141,26 +184,53 @@ impl JsonRpcServer {
             let req: RegisterRequest = params.parse()?;
             debug!("JSON-RPC: register({}, {})", req.service_id, req.capability);
 
-            // TODO: Call actual registry implementation
+            // Access state from context
+            let state = ctx.as_ref();
+
+            // Call actual registry implementation
+            use songbird_network_federation::service_registry::ServiceRegistration as RegEntry;
+            let registration = RegEntry {
+                service_id: req.service_id.clone(),
+                service_name: req.service_id.clone(),
+                service_type: req.capability.clone(),
+                tower_id: "jsonrpc-client".to_string(),
+                tower_name: "JSON-RPC Client".to_string(),
+                endpoint: req.endpoint,
+                capabilities: vec![req.capability],
+                metadata: req.metadata.and_then(|v| v.as_object().map(|o| {
+                    o.iter().map(|(k, v)| (k.clone(), v.to_string())).collect()
+                })).unwrap_or_default(),
+                health_status: songbird_network_federation::service_registry::ServiceHealthStatus::Healthy,
+                registered_at: chrono::Utc::now(),
+                last_seen: chrono::Utc::now(),
+            };
+
+            state.service_registry.register_local(registration).await;
+
             let response = serde_json::json!({
                 "success": true,
                 "service_id": req.service_id,
-                "message": "Service registered successfully"
+                "message": "Service registered successfully via JSON-RPC"
             });
 
             Ok::<_, ErrorObjectOwned>(response)
         })?;
 
         // songbird.unregister - Unregister a service
-        module.register_async_method("songbird.unregister", |params, _ctx, _state| async move {
+        module.register_async_method("songbird.unregister", |params, ctx, _ext| async move {
             let service_id: String = params.one()?;
             debug!("JSON-RPC: unregister({})", service_id);
 
-            // TODO: Call actual registry implementation
+            // Access state from context
+            let state = ctx.as_ref();
+
+            // Call actual registry implementation
+            state.service_registry.deregister_local(&service_id).await;
+
             let response = serde_json::json!({
                 "success": true,
                 "service_id": service_id,
-                "message": "Service unregistered successfully"
+                "message": "Service unregistered successfully via JSON-RPC"
             });
 
             Ok::<_, ErrorObjectOwned>(response)
@@ -170,16 +240,27 @@ impl JsonRpcServer {
     }
 
     /// Register health-related JSON-RPC methods
-    fn register_health_methods(module: &mut RpcModule<Arc<SongbirdOrchestrator>>) -> Result<(), Box<dyn std::error::Error>> {
+    fn register_health_methods(
+        module: &mut RpcModule<JsonRpcState>,
+    ) -> Result<(), Box<dyn std::error::Error>> {
         // songbird.health - Get orchestrator health status
-        module.register_async_method("songbird.health", |_params, _ctx, _state| async move {
+        module.register_async_method("songbird.health", |_params, ctx, _ext| async move {
             debug!("JSON-RPC: health()");
+
+            // Access state from context
+            let state = ctx.as_ref();
+
+            // Calculate real uptime
+            let uptime_seconds = state.start_time.elapsed().as_secs();
+            
+            // Get real service count from registry
+            let services_count = state.service_registry.get_all_services().await.len();
 
             let response = serde_json::json!({
                 "status": "healthy",
                 "version": env!("CARGO_PKG_VERSION"),
-                "uptime_seconds": 3600, // TODO: Real uptime
-                "services_count": 0, // TODO: Real count
+                "uptime_seconds": uptime_seconds,
+                "services_count": services_count,
             });
 
             Ok::<_, ErrorObjectOwned>(response)
@@ -202,7 +283,9 @@ impl JsonRpcServer {
     }
 
     /// Register protocol-related JSON-RPC methods
-    fn register_protocol_methods(module: &mut RpcModule<Arc<SongbirdOrchestrator>>) -> Result<(), Box<dyn std::error::Error>> {
+    fn register_protocol_methods(
+        module: &mut RpcModule<JsonRpcState>,
+    ) -> Result<(), Box<dyn std::error::Error>> {
         // songbird.protocols - Get available protocols
         module.register_async_method("songbird.protocols", |_params, _ctx, _state| async move {
             debug!("JSON-RPC: protocols()");
@@ -237,26 +320,29 @@ impl JsonRpcServer {
         })?;
 
         // songbird.negotiateProtocol - Negotiate protocol upgrade
-        module.register_async_method("songbird.negotiateProtocol", |params, _ctx, _state| async move {
-            #[derive(Deserialize)]
-            struct NegotiateRequest {
-                desired_protocol: String,
-                peer_id: Option<String>,
-            }
+        module.register_async_method(
+            "songbird.negotiateProtocol",
+            |params, _ctx, _state| async move {
+                #[derive(Deserialize)]
+                struct NegotiateRequest {
+                    desired_protocol: String,
+                    peer_id: Option<String>,
+                }
 
-            let req: NegotiateRequest = params.parse()?;
-            debug!("JSON-RPC: negotiateProtocol({})", req.desired_protocol);
+                let req: NegotiateRequest = params.parse()?;
+                debug!("JSON-RPC: negotiateProtocol({})", req.desired_protocol);
 
-            // TODO: Implement protocol negotiation
-            let response = serde_json::json!({
-                "protocol": req.desired_protocol,
-                "available": false,
-                "message": "Protocol negotiation not yet implemented",
-                "fallback": "JSON-RPC"
-            });
+                // TODO: Implement protocol negotiation
+                let response = serde_json::json!({
+                    "protocol": req.desired_protocol,
+                    "available": false,
+                    "message": "Protocol negotiation not yet implemented",
+                    "fallback": "JSON-RPC"
+                });
 
-            Ok::<_, ErrorObjectOwned>(response)
-        })?;
+                Ok::<_, ErrorObjectOwned>(response)
+            },
+        )?;
 
         Ok(())
     }
@@ -281,4 +367,3 @@ mod tests {
 
     // TODO: Add integration tests with actual JSON-RPC client
 }
-

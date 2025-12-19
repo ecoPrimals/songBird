@@ -1,0 +1,49 @@
+[package]
+name = "albatross-benchmark"
+version = "0.1.0"
+edition = "2021"
+description = "Performance benchmarks for Albatross multiplex protocol comparison"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/ecoPrimals/songbird"
+readme = "README.md"
+keywords = ["benchmark", "performance", "tarpc", "rpc"]
+categories = ["development-tools::profiling"]
+
+[dependencies]
+tokio = { version = "1.42", features = ["full"] }
+reqwest = { version = "0.12", features = ["json"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+anyhow = "1.0"
+clap = { version = "4.5", features = ["derive"] }
+colored = "2.1"
+
+# For statistics
+hdrhistogram = "7.5"
+
+# For tarpc benchmarking
+tarpc = { workspace = true, features = ["full"] }
+bincode = { workspace = true }
+tokio-serde = { version = "0.8", features = ["bincode"] }
+tokio-util = { version = "0.7", features = ["codec"] }
+futures = "0.3"
+
+[[bin]]
+name = "bench-http"
+path = "src/http_baseline.rs"
+
+[[bin]]
+name = "bench-jsonrpc"
+path = "src/jsonrpc_baseline.rs"
+
+[[bin]]
+name = "bench-tarpc-single"
+path = "src/tarpc_single.rs"
+
+[[bin]]
+name = "bench-tarpc-multiplex"
+path = "src/tarpc_multiplex.rs"
+
+[[bin]]
+name = "bench-all"
+path = "src/run_all.rs"

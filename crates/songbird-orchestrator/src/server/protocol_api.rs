@@ -14,10 +14,10 @@ use axum::{
     routing::{get, post},
     Json, Router,
 };
+use chrono;
 use serde::{Deserialize, Serialize};
 use std::{collections::HashMap, sync::Arc};
 use tracing::info;
-use chrono;
 
 /// Protocol capability discovery and negotiation routes
 pub fn protocol_routes() -> Router<ProtocolApiState> {
@@ -192,22 +192,22 @@ async fn negotiate_protocol(
 
     // Build list of available protocols
     let mut available = vec!["http".to_string()];
-    
+
     if state.available_protocols.json_rpc.is_some() {
         available.push("json-rpc".to_string());
     }
-    
+
     if state.available_protocols.tarpc.is_some() {
         available.push("tarpc".to_string());
     }
-    
+
     if state.available_protocols.websocket.is_some() {
         available.push("websocket".to_string());
     }
 
     // Select best protocol based on client preferences and server capabilities
     let selected = select_best_protocol(&request.client_protocols, &available, &request.preferred);
-    
+
     // Build endpoints for the selected protocol
     let endpoints = match selected.as_str() {
         "json-rpc" => {
@@ -236,7 +236,7 @@ async fn negotiate_protocol(
 
     // Check if upgrade is available (selected is better than HTTP)
     let upgrade_available = selected != "http";
-    
+
     // Generate upgrade token if upgrade is available
     let upgrade_token = if upgrade_available {
         Some(generate_upgrade_token())
@@ -293,9 +293,10 @@ fn select_best_protocol(
     const HIGH_PERFORMANCE: &[&str] = &["tarpc", "json-rpc"];
 
     // If client prefers a high-performance protocol and it's available, honor it
-    if HIGH_PERFORMANCE.contains(&preferred) 
-        && client_protocols.contains(&preferred.to_string()) 
-        && available_protocols.contains(&preferred.to_string()) {
+    if HIGH_PERFORMANCE.contains(&preferred)
+        && client_protocols.contains(&preferred.to_string())
+        && available_protocols.contains(&preferred.to_string())
+    {
         return preferred.to_string();
     }
 
@@ -314,12 +315,12 @@ fn select_best_protocol(
 /// Generate an upgrade token for protocol switching
 fn generate_upgrade_token() -> String {
     use std::time::{SystemTime, UNIX_EPOCH};
-    
+
     let timestamp = SystemTime::now()
         .duration_since(UNIX_EPOCH)
         .unwrap_or_else(|_| std::time::Duration::from_secs(0))
         .as_micros();
-    
+
     format!("upgrade_{}_{}", timestamp, fastrand::u64(..))
 }
 
@@ -485,7 +486,7 @@ mod tests {
         let client = vec!["http".to_string()];
         let server = vec!["http".to_string(), "tarpc".to_string()];
         assert_eq!(select_best_protocol(&client, &server, "http"), "http".to_string());
-        
+
         // Test priority: tarpc beats all when both client and server support it
         let client = vec!["http".to_string(), "websocket".to_string(), "tarpc".to_string()];
         let server = vec!["http".to_string(), "websocket".to_string(), "tarpc".to_string()];

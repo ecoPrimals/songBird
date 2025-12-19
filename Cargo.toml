@@ -35,6 +35,10 @@ members = [
     
     # 🔧 TOOLS
     # "tools/hardcoding-migrator",           # ⚠️ Missing directory
+    
+    # 🦅 ALBATROSS BENCHMARKS
+    "showcase/05-albatross-multiplex/benchmark",
+    "showcase/05-albatross-multiplex/tarpc-servers",
 ]
 
 [workspace.package]

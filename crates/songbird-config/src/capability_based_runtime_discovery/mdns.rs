@@ -90,6 +90,54 @@ impl MdnsDiscovery {
         Ok(best_match)
     }
 
+    /// Discover services by capability (convenience method)
+    ///
+    /// # Errors
+    /// Returns error if no services found or mDNS scanning fails
+    pub async fn discover_by_capability(
+        &self,
+        capability: &str,
+        timeout: Option<Duration>,
+    ) -> SongbirdResult<Vec<MdnsServiceInfo>> {
+        debug!("Discovering capability '{}' via mDNS", capability);
+
+        // Apply custom timeout if provided
+        let discovery = if let Some(custom_timeout) = timeout {
+            Self {
+                service_type: self.service_type.clone(),
+                timeout: custom_timeout,
+                interface: self.interface.clone(),
+            }
+        } else {
+            self.clone()
+        };
+
+        // Create request
+        let request = CapabilityRequest {
+            capability: capability.to_string(),
+            required_features: Vec::new(),
+            optional_features: Vec::new(),
+            preferences: Default::default(),
+            min_sla: None,
+        };
+
+        // Scan network
+        let services = discovery.scan_network(&request).await?;
+
+        // Convert to simplified service info format
+        let service_infos: Vec<MdnsServiceInfo> = services
+            .into_iter()
+            .map(|s| MdnsServiceInfo {
+                name: s.name,
+                address: format!("{}:{}", s.address, s.endpoint.rsplit(':').next().unwrap_or("80")),
+                endpoint: s.endpoint,
+                metadata: s.metadata,
+            })
+            .collect();
+
+        Ok(service_infos)
+    }
+
     /// Scan the local network for services
     async fn scan_network(&self, request: &CapabilityRequest) -> SongbirdResult<Vec<MdnsService>> {
         // Use mdns-sd crate for production-ready mDNS
@@ -254,6 +302,19 @@ struct MdnsService {
     metadata: HashMap<String, String>,
     priority: u32,
     address: IpAddr,
+}
+
+/// Simplified service info for discovery results
+#[derive(Debug, Clone)]
+pub struct MdnsServiceInfo {
+    /// Service name
+    pub name: String,
+    /// Service address (IP:port)
+    pub address: String,
+    /// Full endpoint URL
+    pub endpoint: String,
+    /// Service metadata
+    pub metadata: HashMap<String, String>,
 }
 
 #[cfg(test)]

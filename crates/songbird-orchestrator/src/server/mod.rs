@@ -16,13 +16,16 @@ use tokio::time::interval;
 // Server API modules
 pub mod chunked_upload;
 pub mod compute_api; // ✅ NEW: Intelligent capability routing API (Nov 9, 2025)
+pub mod consent_api; // ✅ NEW: Consent Management API (Dec 18, 2025 - Week 5 MVP)
 pub mod deployment_api;
 pub mod events; // ✅ NEW: Real-Time Event Broadcasting (Nov 11, 2025 - Phase 4)
 pub mod execution_api;
 pub mod federation_api;
+pub mod intelligent_protocol_router; // ✅ NEW: Intelligent Protocol Selection (Dec 18, 2025)
 pub mod jsonrpc_api; // ✅ NEW: JSON-RPC 2.0 Universal Gateway (Nov 11, 2025)
 pub mod protocol_api; // ✅ NEW: Progressive Protocol Enhancement API (Nov 11, 2025)
 pub mod tarpc_server; // ✅ NEW: tarpc High-Performance Native RPC (Nov 11, 2025 - Phase 3)
+pub mod task_api; // ✅ NEW: Task Lifecycle API (Dec 18, 2025 - Week 1 MVP)
 pub mod websocket_api; // ✅ NEW: WebSocket Real-Time API (Nov 11, 2025 - Phase 4)
 /// Server management and monitoring functionality
 pub struct ServerManager {

@@ -1,0 +1,19 @@
+{
+  "failed_requests": 0,
+  "latency_us": {
+    "max": 1171,
+    "mean": 278.2171999999999,
+    "min": 194,
+    "p50": 258,
+    "p75": 328,
+    "p90": 347,
+    "p95": 361,
+    "p99": 401,
+    "stddev": 57.136447423339156
+  },
+  "protocol": "JSON-RPC",
+  "requests_per_second": 3585.4570691730296,
+  "successful_requests": 5000,
+  "total_duration_secs": 1.394522345,
+  "total_requests": 5000
+}

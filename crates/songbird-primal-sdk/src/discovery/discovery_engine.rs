@@ -168,11 +168,19 @@ impl PrimalDiscoveryEngine  {/// Create a new discovery engine
             })?;
 
         // Discover broadcast addresses for all network interfaces
-        // Note: These methods need to be implemented in the PrimalDiscoveryEngine
-        // For now, we'll use placeholder implementations
-        let broadcast_addresses = vec!["224.0.0.0:2300".to_string()]; // Placeholder"
+        let broadcast_addresses = self.discover_broadcast_addresses(broadcast_port)?;
+        
+        if broadcast_addresses.is_empty() {
+            warn!("No network interfaces with broadcast capability found, using fallback multicast");"
+            // Fallback to well-known multicast address for service discovery
+            let fallback = vec![format!("224.0.0.251:{}", broadcast_port)]; // mDNS multicast
+            for broadcast_addr in fallback {
+                let target = broadcast_addr;
+                self.send_discovery_broadcast(&socket, &target, discovery_timeout).await?;
+            }
+        } else {
         for broadcast_addr in broadcast_addresses {
-            let target = format!("{}:{broadcast_port}", broadcast_addr);
+                let target = broadcast_addr;
             debug!("📡 Broadcasting discovery request to {}", target)"
 
             // Send discovery request
@@ -276,8 +284,9 @@ impl PrimalDiscoveryEngine  {/// Create a new discovery engine
                         }
                     }
                 }
-                Ok(Err(e) => debug!("UDP receive error: {}", e),"
-                Err(_) => debug!("UDP broadcast discovery timeout for {}", target),"
+                Ok(Err(e)) => debug!("UDP receive error: {}", e),
+                Err(_) => debug!("UDP broadcast discovery timeout for {}", target),
+            }
             }
         }
 
@@ -285,7 +294,70 @@ impl PrimalDiscoveryEngine  {/// Create a new discovery engine
             "📡 UDP broadcast discovery completed: found {} primals","
             discovered.len()
         );
-        Ok(success(discovered)
+        Ok(success(discovered))
+    }
+
+    /// Discover broadcast addresses for all network interfaces
+    fn discover_broadcast_addresses(&self, port: u16) -> Result<Vec<String>, crate::errors::PrimalError> {
+        use std::net::IpAddr;
+        
+        // Try to get network interfaces using environment variable first
+        if let Ok(addresses) = std::env::var("SONGBIRD_BROADCAST_ADDRESSES") {
+            let addrs: Vec<String> = addresses
+                .split(',')
+                .map(|s| {
+                    let trimmed = s.trim();
+                    if trimmed.contains(':') {
+                        trimmed.to_string()
+                    } else {
+                        format!("{}:{}", trimmed, port)
+                    }
+                })
+                .collect();
+            if !addrs.is_empty() {
+                return Ok(addrs);
+            }
+        }
+
+        // Fallback: Use common broadcast addresses
+        // In production, this would use platform-specific APIs or dependencies like `if_addrs`
+        let mut broadcast_addrs = Vec::new();
+        
+        // IPv4 local network broadcast
+        broadcast_addrs.push(format!("255.255.255.255:{}", port));
+        
+        // Common private network broadcasts
+        broadcast_addrs.push(format!("192.168.1.255:{}", port));
+        broadcast_addrs.push(format!("192.168.0.255:{}", port));
+        broadcast_addrs.push(format!("10.0.0.255:{}", port));
+        
+        debug!("📡 Using fallback broadcast addresses: {:?}", broadcast_addrs);
+        Ok(broadcast_addrs)
+    }
+
+    /// Send discovery broadcast to a target address
+    async fn send_discovery_broadcast(
+        &self,
+        socket: &tokio::net::UdpSocket,
+        target: &str,
+        _discovery_timeout: std::time::Duration,
+    ) -> Result<(), crate::errors::PrimalError> {
+        debug!("📡 Broadcasting discovery request to {}", target);
+
+        // Send discovery request
+        let discovery_msg = serde_json::json!({
+            "type": "primal_discovery_request",
+            "timestamp": chrono::Utc::now().timestamp(),
+            "requestor": "songbird-discovery-engine"
+        });
+        let msg_bytes = discovery_msg.to_string().into_bytes();
+        
+        socket.send_to(&msg_bytes, target).await
+            .map_err(|e| crate::errors::PrimalError::DiscoveryFailed(
+                format!("Failed to send broadcast to {}: {}", target, e)
+            ))?;
+
+        Ok(())
     }
 
     /// **PLACEHOLDER ELIMINATED**: Real federation discovery implementation

@@ -4,9 +4,7 @@
 
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
 
-// Test constants
-const DEFAULT_BIND_ADDRESS: &str = songbird_config::canonical::constants::network::DEFAULT_HOST;
-const DEFAULT_LOCALHOST: &str = songbird_config::canonical::constants::network::DEFAULT_HOST;
+// Test constants - use functions for environment-aware values
 const OPTIMIZATION_PORT: u16 = 8080;
 const OPTIMIZATION_TIMEOUT: u64 = 1_000;
 
@@ -14,19 +12,21 @@ const OPTIMIZATION_TIMEOUT: u64 = 1_000;
 fn benchmark_optimization_validation(c: &mut Criterion) {
     c.bench_function("config_optimization", |b| {
         b.iter(|| {
-            black_box(&DEFAULT_BIND_ADDRESS);
-            black_box(&DEFAULT_LOCALHOST);
-            black_box(OPTIMIZATION_PORT);
-            black_box(OPTIMIZATION_TIMEOUT);
+            // Test configuration access patterns using environment-aware functions
+            let _bind_addr = black_box(songbird_config::canonical::constants::get_bind_address());
+            let _host = black_box(songbird_config::canonical::constants::network::default_host());
+            let _port = black_box(OPTIMIZATION_PORT);
+            let _timeout = black_box(OPTIMIZATION_TIMEOUT);
         });
     });
 
     c.bench_function("memory_optimization", |b| {
         b.iter(|| {
-            black_box(&DEFAULT_BIND_ADDRESS);
-            black_box(&DEFAULT_LOCALHOST);
-            black_box(OPTIMIZATION_PORT);
-            black_box(OPTIMIZATION_TIMEOUT);
+            // Test memory access patterns
+            let _bind_addr = black_box(songbird_config::canonical::constants::get_bind_address());
+            let _host = black_box(songbird_config::canonical::constants::network::default_host());
+            let _port = black_box(OPTIMIZATION_PORT);
+            let _timeout = black_box(OPTIMIZATION_TIMEOUT);
         });
     });
 }

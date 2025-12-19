@@ -13,7 +13,10 @@ use axum::{extract::State, http::StatusCode, routing::post, Json, Router};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::sync::Arc;
-use tracing::{info, warn};
+use tracing::{debug, warn};
+
+/// JSON-RPC 2.0 version string (static to avoid allocations)
+const JSONRPC_VERSION: &str = "2.0";
 
 /// JSON-RPC 2.0 routes
 pub fn jsonrpc_routes() -> Router<JsonRpcState> {
@@ -162,16 +165,16 @@ async fn handle_jsonrpc_request(
     Json(request): Json<JsonRpcRequest>,
 ) -> Result<Json<JsonRpcResponse>, StatusCode> {
     // Validate JSON-RPC version
-    if request.jsonrpc != "2.0" {
+    if request.jsonrpc != JSONRPC_VERSION {
         return Ok(Json(JsonRpcResponse {
-            jsonrpc: "2.0".to_string(),
+            jsonrpc: JSONRPC_VERSION.to_string(),
             result: None,
             error: Some(JsonRpcError::invalid_request("jsonrpc must be '2.0'")),
             id: request.id.unwrap_or(Value::Null),
         }));
     }
 
-    info!("📞 JSON-RPC request: method={}", request.method);
+    debug!("📞 JSON-RPC request: method={}", request.method);
 
     // Route to appropriate handler based on method
     let result = match request.method.as_str() {
@@ -202,16 +205,16 @@ async fn handle_jsonrpc_request(
         }
     };
 
-    // Build response
+    // Build response (use static string to avoid allocation)
     let response = match result {
         Ok(value) => JsonRpcResponse {
-            jsonrpc: "2.0".to_string(),
+            jsonrpc: JSONRPC_VERSION.to_string(),
             result: Some(value),
             error: None,
             id: request.id.unwrap_or(Value::Null),
         },
         Err(error) => JsonRpcResponse {
-            jsonrpc: "2.0".to_string(),
+            jsonrpc: JSONRPC_VERSION.to_string(),
             result: None,
             error: Some(error),
             id: request.id.unwrap_or(Value::Null),
