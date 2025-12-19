@@ -27,7 +27,7 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::Duration;
 use tokio::time::interval;
-use tracing::{error, info, warn};
+use tracing::{debug, error, info, warn};
 
 // Import anonymous discovery and trust escalation
 use songbird_discovery::anonymous_discovery::{AnonymousDiscoveryBroadcaster, AnonymousDiscoveryListener};
@@ -479,6 +479,9 @@ impl SongbirdOrchestrator {
             
             info!("✅ Anonymous discovery started (UDP port {}, advertising HTTPS port {})", 
                 self._config.discovery.port, https_port);
+            
+            // Start discovery → federation bridge
+            self.start_discovery_federation_bridge().await?;
         }
 
         // Start trust escalation cleanup task
@@ -578,6 +581,51 @@ impl SongbirdOrchestrator {
         // into the orchestrator's startup flow. This will be completed when
         // the orchestrator is refactored to Arc-based architecture.
 
+        Ok(())
+    }
+
+    /// Start discovery → federation bridge (auto-join discovered peers)
+    async fn start_discovery_federation_bridge(&self) -> Result<()> {
+        if let Some(ref listener) = self.discovery_listener {
+            let listener_clone = Arc::clone(listener);
+            let federation_state = Arc::clone(&self.federation_state);
+            let trust_manager = Arc::clone(&self.trust_manager);
+            
+            tokio::spawn(async move {
+                let mut interval = tokio::time::interval(tokio::time::Duration::from_secs(10));
+                
+                info!("🌉 Discovery → Federation bridge started (10s interval)");
+                
+                loop {
+                    interval.tick().await;
+                    
+                    // Get all discovered peers
+                    let peers = listener_clone.get_peers().await;
+                    
+                    if !peers.is_empty() {
+                        debug!("🔍 Processing {} discovered peers", peers.len());
+                    }
+                    
+                    for peer in peers {
+                        // Get HTTPS endpoint
+                        let endpoint = peer.https_endpoint();
+                        
+                        // Log discovered peer
+                        info!(
+                            "🔍 Discovered peer: {} at {} (capabilities: {:?})",
+                            peer.session_id, endpoint, peer.capabilities
+                        );
+                        
+                        // TODO: Establish trust and join federation
+                        // For now, just log that we would join
+                        debug!("Would establish trust and join federation for {}", peer.session_id);
+                    }
+                }
+            });
+            
+            info!("✅ Discovery → Federation bridge task spawned");
+        }
+        
         Ok(())
     }
 

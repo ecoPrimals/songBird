@@ -32,6 +32,7 @@
 pub mod btsp; // ✨ NEW: BearDog Secure Tunnel Protocol interface
 pub mod federation;
 pub mod integration;
+pub mod multi_federation; // ✨ NEW: Multi-federation support with context-aware boundaries
 pub mod network;
 pub mod protocol_capability; // ✨ NEW: Protocol capability advertisement
 pub mod service_registry;
