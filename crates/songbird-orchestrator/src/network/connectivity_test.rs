@@ -251,9 +251,25 @@ impl ConnectivityRemediator {
 
         // Check if we're running with sufficient privileges
         if !Self::has_network_admin_privileges() {
-            warn!("⚠️  Insufficient privileges for auto-remediation");
-            actions.push("❌ Requires root/admin privileges for firewall changes".to_string());
-            actions.push("  💡 Run with: sudo ...".to_string());
+            warn!("⚠️  Insufficient network admin capabilities for auto-remediation");
+            actions.push("❌ Songbird lacks CAP_NET_ADMIN capability".to_string());
+            actions.push("".to_string());
+            actions.push("🦅 SELF-SOVEREIGN SOLUTION:".to_string());
+            actions.push("   Run the network sovereignty setup (one-time):".to_string());
+            actions.push("   sudo ./setup-network-sovereignty.sh".to_string());
+            actions.push("".to_string());
+            actions.push("   This grants Songbird:".to_string());
+            actions.push("   • CAP_NET_ADMIN: Manage its own firewall rules".to_string());
+            actions.push("   • CAP_NET_BIND_SERVICE: Bind to any port".to_string());
+            actions.push("".to_string());
+            actions.push("   After setup, Songbird will:".to_string());
+            actions.push("   • Auto-configure firewall on new deployments".to_string());
+            actions.push("   • Work without sudo or manual intervention".to_string());
+            actions.push("   • Remain sovereign and self-managing".to_string());
+            actions.push("".to_string());
+            actions.push("📝 Manual Alternative (not recommended):".to_string());
+            actions.push("   sudo iptables -I INPUT -p tcp --dport {} -j ACCEPT".to_string().replace("{}", &target.port().to_string()));
+            actions.push("   sudo iptables -I INPUT -p udp --dport 2300 -j ACCEPT".to_string());
             return Ok(actions);
         }
 
@@ -305,12 +321,21 @@ impl ConnectivityRemediator {
     fn has_network_admin_privileges() -> bool {
         #[cfg(target_os = "linux")]
         {
-            // Try to determine if running as root by checking /proc/sys/kernel/cap_last_cap
-            // This is a safe alternative to the unsafe libc::geteuid() call
+            // Check if the binary has CAP_NET_ADMIN capability
+            // This allows network configuration without full root
             //
-            // For now, we'll assume we don't have privileges and let the attempt fail gracefully
-            // A future improvement could use the `nix` crate which provides safe wrappers
-            false
+            // To grant this capability:
+            //   sudo setcap 'cap_net_admin=+ep' /path/to/songbird-orchestrator
+            //
+            // Or run the setup-network-sovereignty.sh script
+            
+            // Try to execute a benign iptables command to test for capabilities
+            // If it succeeds, we have CAP_NET_ADMIN
+            std::process::Command::new("iptables")
+                .args(["-C", "INPUT", "-j", "ACCEPT"])
+                .output()
+                .map(|output| output.status.success() || output.status.code() == Some(1)) // 1 = rule not found (but iptables works)
+                .unwrap_or(false)
         }
 
         #[cfg(not(target_os = "linux"))]

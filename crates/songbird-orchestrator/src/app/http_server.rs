@@ -240,48 +240,61 @@ async fn start_https_server(
     Ok(())
 }
 
-/// Smart port binding with automatic fallback
+/// Smart port binding with automatic fallback using Sovereign Socket
 ///
-/// Tries the requested port first, then auto-increments until it finds an available port.
-/// Maximum 10 attempts before giving up.
+/// Uses the SovereignBinder for truly sovereign network configuration.
+/// No external tools, no sudo, no manual setup required.
+///
+/// The sovereign binder will:
+/// - Try IPv4 wildcard (0.0.0.0) first
+/// - Fall back to IPv6 wildcard (::) if needed
+/// - Configure optimal socket options
+/// - Enable port reuse for zero-downtime restarts
 async fn bind_with_fallback(addr: &SocketAddr) -> Result<(tokio::net::TcpListener, SocketAddr)> {
-    let host = addr.ip();
-    let mut port = addr.port();
+    use crate::network::SovereignBinder;
+    
+    let port = addr.port();
+    
+    info!("🦅 Using sovereign socket binding for port {}", port);
+    
+    // Try sovereign binding on the requested port
+    match SovereignBinder::bind_sovereign(port).await {
+        Ok((listener, actual_addr)) => {
+            info!("✅ Sovereign bind successful: {}", actual_addr);
+            return Ok((listener, actual_addr));
+        }
+        Err(e) => {
+            warn!("Sovereign bind to port {} failed: {}", port, e);
+            warn!("Attempting fallback with incremental ports...");
+        }
+    }
+    
+    // Fallback: try incrementing ports
     let max_attempts = 10;
-
     for attempt in 1..=max_attempts {
-        let try_addr = SocketAddr::new(host, port);
-
-        match tokio::net::TcpListener::bind(try_addr).await {
-            Ok(listener) => {
-                let actual_addr = listener.local_addr()?;
-                if attempt > 1 {
-                    info!("✅ Found available port {} (after {} attempts)", port, attempt);
-                }
+        let try_port = port + attempt;
+        
+        match SovereignBinder::bind_sovereign(try_port).await {
+            Ok((listener, actual_addr)) => {
+                info!("✅ Sovereign bind successful on fallback port: {}", actual_addr);
                 return Ok((listener, actual_addr));
             }
-            Err(_e) if attempt < max_attempts => {
-                tracing::debug!(
-                    "Port {} busy, trying {} (attempt {}/{})",
-                    port,
-                    port + 1,
-                    attempt,
-                    max_attempts
-                );
-                port += 1;
+            Err(_) if attempt < max_attempts => {
+                tracing::debug!("Port {} busy, trying next...", try_port);
+                continue;
             }
             Err(e) => {
                 return Err(anyhow::anyhow!(
                     "Failed to bind after {} attempts. Last error: {}. Tried ports {}-{}",
                     max_attempts,
                     e,
-                    addr.port(),
-                    port
+                    port,
+                    try_port
                 ));
             }
         }
     }
-
+    
     unreachable!("Loop should have returned or errored");
 }
 
