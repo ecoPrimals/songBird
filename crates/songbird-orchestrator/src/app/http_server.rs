@@ -152,7 +152,7 @@ async fn get_local_ip() -> Result<String> {
 /// Start HTTPS server with TLS
 async fn start_https_server(
     app: Router,
-    _listener: tokio::net::TcpListener,
+    listener: tokio::net::TcpListener,
     addr: SocketAddr,
 ) -> Result<()> {
     use songbird_network_federation::tls::{TlsCertificateManager, TlsConfig};
@@ -217,13 +217,19 @@ async fn start_https_server(
     info!("   🔒 SECURE BY DEFAULT - All connections encrypted");
     info!("   💡 To disable TLS (not recommended): export SONGBIRD_TLS_ENABLED=false");
 
-    // Use axum-server for TLS support
+    // Use axum-server for TLS support with the pre-bound listener
     let tls_config_for_server =
         axum_server::tls_rustls::RustlsConfig::from_config(Arc::new(rustls_config));
 
+    // ✅ FIX (Dec 20, 2025): Use the pre-bound listener instead of binding again
+    // This prevents "address already in use" errors and startup hangs
+    // The listener parameter was being ignored (_listener), causing double-bind attempts
     // Spawn HTTPS server in background
     tokio::spawn(async move {
-        if let Err(e) = axum_server::bind_rustls(addr, tls_config_for_server)
+        // Convert tokio listener to std listener for axum-server compatibility
+        let std_listener = listener.into_std().expect("Failed to convert listener to std");
+        
+        if let Err(e) = axum_server::from_tcp_rustls(std_listener, tls_config_for_server)
             .serve(app.into_make_service())
             .await
         {
