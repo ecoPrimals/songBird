@@ -90,12 +90,15 @@ async fn test_discovery_to_federation_integration() -> Result<()> {
     // Simulate a discovered peer
     let mock_peer = songbird_discovery::anonymous_discovery::DiscoveredPeer {
         session_id: "mock-peer-789".to_string(),
+        node_id: Some("stable-node-id-123".to_string()),
+        node_name: Some("mock-tower".to_string()),
+        endpoints: None,
         capabilities: vec!["orchestration".to_string()],
         protocols: vec!["https".to_string()],
         port: 8080,
         address: "192.168.1.102:2300".parse().unwrap(),
         last_seen: std::time::SystemTime::now(),
-        version: "1.0".to_string(),
+        version: "3.0".to_string(),
     };
     
     let peer_id = &mock_peer.session_id;
@@ -112,6 +115,7 @@ async fn test_discovery_to_federation_integration() -> Result<()> {
         node_id: peer_id.to_string(),
         node_name: format!("peer-{}", &peer_id[..8]),
         node_address: endpoint.clone(),
+        endpoints: None,
         cpu_cores: 0,
         memory_gb: 0,
         gpu_model: None,
@@ -199,6 +203,7 @@ async fn test_multiple_peers_federation() -> Result<()> {
             node_id: peer_id.clone(),
             node_name: format!("node-{}", i),
             node_address: endpoint.clone(),
+            endpoints: None,
             cpu_cores: 8,
             memory_gb: 16,
             gpu_model: Some("NVIDIA RTX 4090".to_string()),
@@ -291,6 +296,7 @@ async fn test_concurrent_trust_establishment() -> Result<()> {
                 node_id: peer_id.clone(),
                 node_name: format!("concurrent-node-{}", i),
                 node_address: endpoint.clone(),
+                endpoints: None,
                 cpu_cores: 4,
                 memory_gb: 8,
                 gpu_model: None,
