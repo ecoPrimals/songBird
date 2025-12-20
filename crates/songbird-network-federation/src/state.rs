@@ -67,6 +67,53 @@ impl FederationState {
         }
     }
 
+    /// Remove stale nodes that haven't sent heartbeat within TTL
+    ///
+    /// Deep Debt Fix (Dec 20, 2025):
+    /// - Session IDs rotate every hour, creating new "nodes"
+    /// - Old sessions were never removed, accumulating indefinitely
+    /// - This led to 69 registered nodes for 4 physical towers (94% stale!)
+    /// - Now: Remove nodes after TTL expiration (default 10 minutes)
+    ///
+    /// TTL Strategy:
+    /// - Grace period: 2x heartbeat interval (10 min = 2 * 5 min)
+    /// - Allows for network hiccups and temporary disconnections
+    /// - But prevents indefinite accumulation of rotated sessions
+    pub async fn cleanup_stale_nodes(&self, ttl_secs: i64) -> usize {
+        let mut nodes = self.nodes.write().await;
+        let now = Utc::now();
+        let initial_count = nodes.len();
+
+        // Retain only nodes that have sent heartbeat within TTL
+        nodes.retain(|node_id, node| {
+            let elapsed = (now - node.last_heartbeat).num_seconds();
+            let should_keep = elapsed < ttl_secs;
+            
+            if !should_keep {
+                tracing::debug!(
+                    "🧹 Removing stale node {} (last seen {} seconds ago)",
+                    &node_id[..8.min(node_id.len())],
+                    elapsed
+                );
+            }
+            
+            should_keep
+        });
+
+        let removed_count = initial_count - nodes.len();
+        
+        if removed_count > 0 {
+            tracing::info!(
+                "🧹 Cleaned up {} stale nodes. Active: {} (was: {})",
+                removed_count,
+                nodes.len(),
+                initial_count
+            );
+        }
+
+        removed_count
+    }
+
     /// Get all active nodes
     pub async fn active_nodes(&self) -> Vec<NodeRegistration> {
         let nodes = self.nodes.read().await;

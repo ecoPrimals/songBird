@@ -544,6 +544,9 @@ impl SongbirdOrchestrator {
         // Start health monitoring
         self.start_health_monitoring().await?;
 
+        // Start session TTL cleanup task (Deep Debt Fix - Dec 20, 2025)
+        self.start_session_ttl_cleanup().await?;
+
         // Start HTTP server with federation API
         self.start_http_server().await?;
 
@@ -874,6 +877,42 @@ impl SongbirdOrchestrator {
             info!("✅ Discovery → Federation bridge task spawned");
         }
         
+        Ok(())
+    }
+
+    /// Start session TTL cleanup task
+    ///
+    /// Deep Debt Fix (Dec 20, 2025):
+    /// - Session IDs rotate hourly, creating "new" nodes for same tower
+    /// - Without cleanup, federation accumulates stale entries (69 nodes for 4 towers!)
+    /// - This task removes nodes that haven't sent heartbeat within TTL
+    ///
+    /// Lifecycle Evolution:
+    /// - Runs every 5 minutes
+    /// - TTL: 10 minutes (2x heartbeat interval)
+    /// - Graceful cleanup with logging
+    /// - Self-healing federation state
+    async fn start_session_ttl_cleanup(&self) -> Result<()> {
+        let federation_state = Arc::clone(&self.federation_state);
+        
+        tokio::spawn(async move {
+            let mut interval = tokio::time::interval(tokio::time::Duration::from_secs(300)); // 5 minutes
+            let ttl_secs = 600; // 10 minutes (2x heartbeat interval)
+            
+            info!("🧹 Session TTL cleanup task started (interval: 5min, TTL: 10min)");
+            
+            loop {
+                interval.tick().await;
+                
+                let removed = federation_state.cleanup_stale_nodes(ttl_secs).await;
+                
+                if removed > 0 {
+                    info!("🧹 TTL cleanup: Removed {} stale sessions", removed);
+                }
+            }
+        });
+        
+        info!("✅ Session TTL cleanup task spawned");
         Ok(())
     }
 
