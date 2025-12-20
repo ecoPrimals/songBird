@@ -69,6 +69,7 @@ tokio-stream = "0.1"
 # HTTP server for web dashboard
 axum = { version = "0.7", features = ["multipart", "ws"] }
 axum-server = { version = "0.7", features = ["tls-rustls"] }  # TLS support for axum
+rustls = { version = "0.23", features = ["ring"] }  # Explicit rustls for crypto provider init
 tower = "0.5"
 tower-http = { version = "0.5", features = ["cors", "fs", "trace", "limit"] }
 serde = { version = "1.0", features = ["derive"] }

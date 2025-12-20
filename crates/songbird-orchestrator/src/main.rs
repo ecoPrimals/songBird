@@ -9,6 +9,12 @@ use songbird_types::config::CanonicalSongbirdConfig;
 /// Main entry point for the Songbird Orchestrator
 #[tokio::main]
 async fn main() -> Result<()> {
+    // ✅ Initialize rustls crypto provider FIRST (before any TLS operations)
+    // This prevents "Could not automatically determine the process-level CryptoProvider" panic
+    rustls::crypto::ring::default_provider()
+        .install_default()
+        .map_err(|_| anyhow::anyhow!("Crypto provider already initialized"))?;
+
     // Initialize tracing
     tracing_subscriber::fmt::init();
 
