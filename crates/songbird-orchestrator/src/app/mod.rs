@@ -51,6 +51,26 @@ pub struct SongbirdOrchestrator {
     shutdown_sender: tokio::sync::broadcast::Sender<()>,
 }
 
+/// Get local IP address for connectivity testing
+async fn get_local_ip_for_connectivity_test() -> Result<String> {
+    use std::net::Ipv4Addr;
+
+    // Try to get local IP by creating a UDP socket (doesn't actually send data)
+    let socket = std::net::UdpSocket::bind("0.0.0.0:0")?;
+    socket.connect("8.8.8.8:80")?; // Doesn't actually connect, just determines route
+
+    if let Ok(local_addr) = socket.local_addr() {
+        let ip = local_addr.ip();
+        if let std::net::IpAddr::V4(ipv4) = ip {
+            if ipv4 != Ipv4Addr::LOCALHOST {
+                return Ok(ip.to_string());
+            }
+        }
+    }
+
+    Err(anyhow::anyhow!("Could not determine local IP"))
+}
+
 /// Parse bind address with support for IPv4, IPv6, and dual-stack
 ///
 /// Supports multiple formats:
@@ -530,6 +550,10 @@ impl SongbirdOrchestrator {
         // Start tarpc server for high-performance native RPC (Phase 3)
         self.start_tarpc_server().await?;
 
+        // ✅ POST-STARTUP: Verify external connectivity (Dec 20, 2025)
+        // This helps catch network/firewall issues early
+        self.verify_external_connectivity().await?;
+
         info!("✅ Songbird Orchestrator started successfully");
         Ok(())
     }
@@ -616,6 +640,116 @@ impl SongbirdOrchestrator {
         // For now, tarpc server is complete and tested, but not integrated
         // into the orchestrator's startup flow. This will be completed when
         // the orchestrator is refactored to Arc-based architecture.
+
+        Ok(())
+    }
+
+    /// Verify external connectivity after startup (Deep Debt Fix - Dec 20, 2025)
+    ///
+    /// This function tests whether the HTTPS server is reachable from external IPs.
+    /// It helps catch common issues like:
+    /// - Firewall rules blocking the port
+    /// - Network isolation (VLANs)
+    /// - TLS configuration issues
+    ///
+    /// If issues are detected, it provides diagnostics and attempts auto-remediation.
+    async fn verify_external_connectivity(&self) -> Result<()> {
+        use crate::network::{ConnectivityTester, ConnectivityRemediator};
+        
+        info!("🔍 Verifying external connectivity...");
+
+        let port = SafeEnv::get_port(
+            "SONGBIRD_PORT",
+            songbird_config::defaults::ports::orchestrator_port(),
+        );
+
+        // Get our local IP
+        let local_ip = match get_local_ip_for_connectivity_test().await {
+            Ok(ip) => ip,
+            Err(e) => {
+                warn!("⚠️  Could not determine local IP for connectivity test: {}", e);
+                warn!("   Skipping external connectivity verification");
+                return Ok(());
+            }
+        };
+
+        let target: std::net::SocketAddr = format!("{}:{}", local_ip, port)
+            .parse()
+            .map_err(|e| anyhow::anyhow!("Failed to parse socket address: {}", e))?;
+
+        // Run connectivity test
+        let tester = ConnectivityTester::new();
+        let result = tester.test_comprehensive(target).await?;
+
+        if result.https_reachable {
+            info!("✅ External connectivity verified: https://{}", target);
+            if let Some(rtt) = result.rtt_ms {
+                info!("   Round-trip time: {}ms", rtt);
+            }
+            return Ok(());
+        }
+
+        // Connectivity failed - provide diagnostics
+        warn!("⚠️  External connectivity test failed for https://{}", target);
+        warn!("   This may prevent federation with other towers");
+
+        let diagnostics = tester.diagnose_connectivity_issues(target).await;
+        for diagnostic in &diagnostics {
+            warn!("   {}", diagnostic);
+        }
+
+        // Attempt auto-remediation (requires root privileges)
+        warn!("🔧 Attempting auto-remediation...");
+        match ConnectivityRemediator::attempt_remediation(target).await {
+            Ok(actions) => {
+                for action in actions {
+                    warn!("   {}", action);
+                }
+
+                // Test again after remediation
+                warn!("🔍 Re-testing connectivity after remediation...");
+                let retest_result = tester.test_comprehensive(target).await?;
+
+                if retest_result.https_reachable {
+                    info!("✅ Connectivity restored after auto-remediation!");
+                    return Ok(());
+                } else {
+                    warn!("⚠️  Connectivity still failing after auto-remediation");
+                    warn!("   Manual intervention may be required");
+                }
+            }
+            Err(e) => {
+                warn!("❌ Auto-remediation failed: {}", e);
+            }
+        }
+
+        // Connectivity is not critical for startup, so don't fail
+        // Just log comprehensive guidance
+        warn!("");
+        warn!("╔═══════════════════════════════════════════════════════════════════╗");
+        warn!("║ ⚠️  EXTERNAL CONNECTIVITY ISSUE DETECTED                          ║");
+        warn!("╚═══════════════════════════════════════════════════════════════════╝");
+        warn!("");
+        warn!("Local connections work, but external connections may be blocked.");
+        warn!("");
+        warn!("Common Causes:");
+        warn!("  • Firewall rules (iptables, ufw, firewalld)");
+        warn!("  • Network isolation (VLANs, separate subnets)");
+        warn!("  • Router/switch port filtering");
+        warn!("");
+        warn!("Quick Fixes:");
+        warn!("  1. Allow port {} in firewall:", port);
+        warn!("     sudo iptables -I INPUT -p tcp --dport {} -j ACCEPT", port);
+        warn!("     sudo iptables -I INPUT -p udp --dport 2300 -j ACCEPT");
+        warn!("");
+        warn!("  2. Save iptables rules (persist across reboots):");
+        warn!("     sudo iptables-save > /etc/iptables/rules.v4");
+        warn!("");
+        warn!("  3. Or disable firewall temporarily (testing only):");
+        warn!("     sudo ufw disable");
+        warn!("");
+        warn!("If issues persist, check network routing and VLANs.");
+        warn!("╚═══════════════════════════════════════════════════════════════════╝");
 
         Ok(())
     }
