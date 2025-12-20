@@ -522,12 +522,14 @@ impl SongbirdOrchestrator {
             ];
             
             // Convert endpoints to discovery message format
+            // CRITICAL FIX (Dec 20, 2025): Include full address (IP:port) instead of just port
+            // This allows receivers to properly coalesce multi-interface nodes under one identity
             let endpoint_messages: Vec<songbird_discovery::anonymous_discovery::TransportEndpointMessage> = node_identity
                 .endpoints
                 .iter()
                 .map(|ep| songbird_discovery::anonymous_discovery::TransportEndpointMessage {
                     interface_type: ep.interface_type.clone(),
-                    port: ep.address.port(),
+                    address: ep.address.to_string(), // ✅ Full address, not just port!
                     protocols: ep.protocols.clone(),
                     preference: ep.preference,
                 })
@@ -907,11 +909,21 @@ impl SongbirdOrchestrator {
                                         );
                                         
                                         // Convert v3.0 endpoints to federation format (if available)
+                                        // 
+                                        // CRITICAL FIX (Dec 20, 2025): Use endpoint addresses from the discovery message,
+                                        // NOT the UDP source address. This allows proper coalescence of multi-interface nodes.
+                                        // 
+                                        // Previous bug: Used peer.address.ip() (UDP source) which meant:
+                                        //   - Eastgate's Ethernet (192.168.1.144) appeared as separate node
+                                        //   - Eastgate's WiFi (192.168.1.185) appeared as separate node
+                                        //   Even though both had the SAME node_id!
+                                        //
+                                        // Fix: Use the endpoint address from the discovery message itself.
                                         let endpoints = peer.endpoints.as_ref().map(|eps| {
                                             eps.iter().map(|ep| {
                                                 songbird_network_federation::state::TransportEndpointInfo {
                                                     interface_type: ep.interface_type.clone(),
-                                                    address: format!("{}:{}", peer.address.ip(), ep.port),
+                                                    address: ep.address.clone(), // ✅ Use advertised address, not UDP source!
                                                     protocols: ep.protocols.clone(),
                                                     preference: ep.preference,
                                                     status: songbird_network_federation::state::EndpointStatus::Active,

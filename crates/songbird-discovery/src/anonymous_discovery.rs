@@ -120,13 +120,20 @@ pub struct AnonymousDiscoveryMessage {
 }
 
 /// Transport endpoint in discovery message (v3.0+)
+///
+/// CRITICAL EVOLUTION (Dec 20, 2025): Changed from "port" to "address" (IP:port)
+/// to enable proper multi-interface coalescence. Without the full address, receivers
+/// couldn't distinguish between interfaces on the same machine vs different machines.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TransportEndpointMessage {
     /// Interface type (e.g., "ethernet", "wifi", "bluetooth")
     pub interface_type: String,
     
-    /// Port for this endpoint
-    pub port: u16,
+    /// Full network address for this endpoint (IP:port format)
+    /// 
+    /// This allows receivers to properly coalesce multiple interfaces under a
+    /// single node identity based on the stable node_id.
+    pub address: String,
     
     /// Protocols supported on this endpoint
     pub protocols: Vec<String>,
@@ -167,7 +174,13 @@ impl AnonymousDiscoveryMessage {
     ) -> Self {
         // Get primary endpoint for backward compatibility
         let primary_endpoint = endpoints.first();
-        let port = primary_endpoint.map(|e| e.port).unwrap_or(8080);
+        
+        // Extract port from address (format: "IP:port")
+        let port = primary_endpoint
+            .and_then(|e| e.address.split(':').nth(1))
+            .and_then(|p| p.parse().ok())
+            .unwrap_or(8080);
+            
         let protocols = primary_endpoint
             .map(|e| e.protocols.clone())
             .unwrap_or_else(|| vec!["https".to_string()]);
@@ -421,7 +434,13 @@ impl AnonymousDiscoveryBroadcaster {
     ) -> Self {
         // Extract primary endpoint for v2.1 fallback
         let primary = endpoints.first();
-        let port = primary.map(|e| e.port).unwrap_or(8080);
+        
+        // Extract port from address (format: "IP:port")
+        let port = primary
+            .and_then(|e| e.address.split(':').nth(1))
+            .and_then(|p| p.parse().ok())
+            .unwrap_or(8080);
+            
         let protocols = primary
             .map(|e| e.protocols.clone())
             .unwrap_or_else(|| vec!["https".to_string()]);
@@ -455,7 +474,7 @@ impl AnonymousDiscoveryBroadcaster {
         if let Some(ref endpoints) = self.endpoints {
             info!("   Endpoints: {} transport paths", endpoints.len());
             for (i, endpoint) in endpoints.iter().enumerate() {
-                info!("     {}. {} (port {}, preference {})", i + 1, endpoint.interface_type, endpoint.port, endpoint.preference);
+                info!("     {}. {} ({}, preference {})", i + 1, endpoint.interface_type, endpoint.address, endpoint.preference);
             }
         }
         info!("   Capabilities: {:?}", self.capabilities);
