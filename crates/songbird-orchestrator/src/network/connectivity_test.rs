@@ -17,7 +17,7 @@
 //! - Clear diagnostics for manual intervention
 
 use anyhow::{anyhow, Result};
-use std::net::{IpAddr, SocketAddr};
+use std::net::SocketAddr;
 use std::time::Duration;
 use tokio::net::TcpStream;
 use tokio::time::timeout;

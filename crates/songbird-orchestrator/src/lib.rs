@@ -84,6 +84,7 @@ pub mod node_identity; // Stable node identity (Dec 20, 2025) - Multi-path trans
 pub mod observability; // Basic observability (Week 4 - Dec 18, 2025)
 pub mod orchestrator; // MVP Integration (Week 1-5 - Dec 18, 2025)
 pub mod privilege; // Secure privilege management (Dec 20, 2025) - CAP_NET_ADMIN, no sudo prompts
+pub mod process_manager; // Process lifecycle & singleton enforcement (Dec 20, 2025) - Prevents split state bug
 pub mod resource_management; // Resource management & fairness (Week 2 - Dec 18, 2025)
 pub mod rpc; // Multi-protocol RPC (JSON-RPC, tarpc)
 pub mod server;

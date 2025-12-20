@@ -1,35 +1,56 @@
-//! Secure Privilege Management
+//! Secure Privilege Management - User Collaboration
 //!
-//! Handles privilege elevation securely without exposing sudo to users.
-//! Uses Linux capabilities and polkit for granular permission management.
+//! Philosophy (Dec 20, 2025):
+//!   "Work WITH users on permissions, not around them"
+//!
+//! Instead of trying to silently circumvent permission issues (like SO_REUSEPORT),
+//! we collaborate with users:
+//!   - Detect what's needed
+//!   - Explain clearly
+//!   - Offer to help configure
+//!   - Guide through process
+//!   - Verify it worked
+//!
+//! This builds trust and sovereignty rather than creating confusion.
 
 use anyhow::{anyhow, Result};
+use std::io::{self, Write};
 use std::process::Command;
-use tracing::{debug, info, warn};
+use tracing::{debug, info, error};
 
 /// Privilege Manager
 ///
-/// Manages system privileges securely for network operations.
-/// Aims to minimize or eliminate need for sudo prompts.
+/// Manages system privileges securely through user collaboration.
+/// Detects needs, explains clearly, offers help, verifies success.
 pub struct PrivilegeManager {
     /// Whether we have network admin capabilities
     has_net_admin: bool,
     
     /// Whether we're running with elevated privileges
     is_elevated: bool,
+    
+    /// Whether to run in interactive mode (ask user for help)
+    interactive: bool,
 }
 
 impl PrivilegeManager {
     /// Create a new privilege manager and detect current capabilities
     pub fn new() -> Self {
+        Self::with_interactive(true)
+    }
+    
+    /// Create a privilege manager with specific interactivity setting
+    pub fn with_interactive(interactive: bool) -> Self {
         let has_net_admin = Self::check_net_admin_capability();
         let is_elevated = Self::check_elevated();
         
-        debug!("🔐 Privilege detection: net_admin={}, elevated={}", has_net_admin, is_elevated);
+        debug!("🔐 Privilege detection: net_admin={}, elevated={}, interactive={}", 
+               has_net_admin, is_elevated, interactive);
         
         Self {
             has_net_admin,
             is_elevated,
+            interactive,
         }
     }
     
@@ -60,30 +81,62 @@ impl PrivilegeManager {
     
     /// Configure firewall rules for Songbird ports
     ///
-    /// This is the **secure** way to handle firewall configuration:
-    /// 1. Use systemd service with capabilities (no sudo needed)
-    /// 2. Or use polkit policy for granular permission
-    /// 3. Fallback: Provide user instructions (no auto-sudo!)
+    /// This is the **collaborative** way to handle firewall configuration:
+    /// 1. Detect what's needed
+    /// 2. Check if we can do it automatically
+    /// 3. If not, explain clearly to user
+    /// 4. Offer to help configure
+    /// 5. Verify it worked
     pub fn configure_firewall(&self, ports: &[u16]) -> Result<()> {
-        if self.has_net_admin {
-            info!("🔐 Configuring firewall with CAP_NET_ADMIN capability");
-            return self.configure_firewall_with_capability(ports);
+        info!("🔐 Checking firewall configuration...");
+        
+        // Check if firewall rules already exist
+        if self.check_firewall_rules(ports) {
+            info!("✅ Firewall rules already configured");
+            return Ok(());
         }
         
-        if self.is_elevated {
-            info!("🔐 Configuring firewall with elevated privileges");
-            return self.configure_firewall_with_privilege(ports);
+        // Try automatic configuration if we have permissions
+        if self.has_net_admin || self.is_elevated {
+            info!("🔐 Configuring firewall automatically...");
+            return self.configure_firewall_auto(ports);
         }
         
-        // Can't auto-configure - provide instructions
-        warn!("⚠️  No firewall management capability detected");
+        // Interactive mode: collaborate with user
+        if self.interactive {
+            return self.collaborate_on_firewall(ports);
+        }
+        
+        // Non-interactive: just provide instructions
         self.provide_firewall_instructions(ports);
-        
         Ok(())
     }
     
-    /// Configure firewall using CAP_NET_ADMIN capability
-    fn configure_firewall_with_capability(&self, ports: &[u16]) -> Result<()> {
+    /// Check if firewall rules exist for the given ports
+    fn check_firewall_rules(&self, ports: &[u16]) -> bool {
+        for port in ports {
+            let tcp_check = Command::new("iptables")
+                .args(["-C", "INPUT", "-p", "tcp", "--dport", &port.to_string(), "-j", "ACCEPT"])
+                .output();
+            
+            let udp_check = Command::new("iptables")
+                .args(["-C", "INPUT", "-p", "udp", "--dport", &port.to_string(), "-j", "ACCEPT"])
+                .output();
+            
+            if tcp_check.is_err() || udp_check.is_err() {
+                return false;
+            }
+            
+            if !tcp_check.unwrap().status.success() || !udp_check.unwrap().status.success() {
+                return false;
+            }
+        }
+        
+        true
+    }
+    
+    /// Configure firewall automatically (with permissions)
+    fn configure_firewall_auto(&self, ports: &[u16]) -> Result<()> {
         for port in ports {
             // TCP
             let status = Command::new("iptables")
@@ -109,42 +162,151 @@ impl PrivilegeManager {
         Ok(())
     }
     
-    /// Configure firewall with elevated privileges
-    fn configure_firewall_with_privilege(&self, ports: &[u16]) -> Result<()> {
-        // Same as capability method, but we're running as root
-        self.configure_firewall_with_capability(ports)
+    /// Collaborate with user on firewall configuration
+    fn collaborate_on_firewall(&self, ports: &[u16]) -> Result<()> {
+        info!("");
+        info!("╔═══════════════════════════════════════════════════════════════════╗");
+        info!("║                                                                   ║");
+        info!("║  🔧 NETWORK CONFIGURATION NEEDED                                  ║");
+        info!("║                                                                   ║");
+        info!("╚═══════════════════════════════════════════════════════════════════╝");
+        info!("");
+        info!("Songbird needs to accept connections on these ports:");
+        for port in ports {
+            info!("  • Port {}: TCP (HTTPS) and UDP (Discovery)", port);
+        }
+        info!("");
+        info!("I can help you configure this. The commands I'll run:");
+        info!("");
+        for port in ports {
+            info!("  sudo iptables -I INPUT -p tcp --dport {} -j ACCEPT", port);
+            info!("  sudo iptables -I INPUT -p udp --dport {} -j ACCEPT", port);
+        }
+        info!("");
+        
+        // Ask user permission
+        print!("Would you like me to run these commands for you? (y/n): ");
+        io::stdout().flush()?;
+        
+        let mut response = String::new();
+        io::stdin().read_line(&mut response)?;
+        
+        if response.trim().to_lowercase() == "y" {
+            info!("Running configuration commands...");
+            
+            for port in ports {
+                // TCP
+                let status = Command::new("sudo")
+                    .args(["iptables", "-I", "INPUT", "-p", "tcp", "--dport", &port.to_string(), "-j", "ACCEPT"])
+                    .status()?;
+                
+                if !status.success() {
+                    error!("❌ Failed to configure TCP port {}", port);
+                    return Err(anyhow!("Firewall configuration failed"));
+                }
+                
+                // UDP
+                let status = Command::new("sudo")
+                    .args(["iptables", "-I", "INPUT", "-p", "udp", "--dport", &port.to_string(), "-j", "ACCEPT"])
+                    .status()?;
+                
+                if !status.success() {
+                    error!("❌ Failed to configure UDP port {}", port);
+                    return Err(anyhow!("Firewall configuration failed"));
+                }
+                
+                info!("✅ Port {} configured", port);
+            }
+            
+            info!("");
+            info!("╔═══════════════════════════════════════════════════════════════════╗");
+            info!("║  ✅ FIREWALL CONFIGURATION COMPLETE                               ║");
+            info!("╚═══════════════════════════════════════════════════════════════════╝");
+            info!("");
+            
+            // Offer to persist
+            print!("Make these rules persistent across reboots? (y/n): ");
+            io::stdout().flush()?;
+            
+            response.clear();
+            io::stdin().read_line(&mut response)?;
+            
+            if response.trim().to_lowercase() == "y" {
+                let status = Command::new("sudo")
+                    .args(["iptables-save"])
+                    .stdout(std::process::Stdio::piped())
+                    .spawn()?
+                    .wait_with_output()?;
+                
+                if status.status.success() {
+                    std::fs::write("/tmp/iptables-rules.v4", status.stdout)?;
+                    let copy_status = Command::new("sudo")
+                        .args(["cp", "/tmp/iptables-rules.v4", "/etc/iptables/rules.v4"])
+                        .status()?;
+                    
+                    if copy_status.success() {
+                        info!("✅ Rules saved to /etc/iptables/rules.v4");
+                    }
+                }
+            }
+            
+            Ok(())
+        } else {
+            info!("No problem! You can run these commands manually later.");
+            self.provide_firewall_instructions(ports);
+            Ok(())
+        }
     }
     
     /// Provide user instructions for manual firewall configuration
     fn provide_firewall_instructions(&self, ports: &[u16]) {
         info!("");
-        info!("╔═══════════════════════════════════════════════════════════╗");
-        info!("║  🔐 FIREWALL CONFIGURATION REQUIRED                        ║");
-        info!("╚═══════════════════════════════════════════════════════════╝");
+        info!("╔═══════════════════════════════════════════════════════════════════╗");
+        info!("║  📋 FIREWALL CONFIGURATION INSTRUCTIONS                           ║");
+        info!("╚═══════════════════════════════════════════════════════════════════╝");
         info!("");
         info!("Songbird needs firewall rules for the following ports:");
         for port in ports {
             info!("  • Port {}: TCP (HTTPS) and UDP (Discovery)", port);
         }
         info!("");
-        info!("Option 1: Set Binary Capabilities (Recommended)");
-        info!("  sudo setcap cap_net_admin+ep target/release/songbird-orchestrator");
-        info!("  # Then restart Songbird (no sudo needed!)");
+        info!("╔═══════════════════════════════════════════════════════════════════╗");
+        info!("║  Option 1: Quick Fix (Temporary)                                 ║");
+        info!("╚═══════════════════════════════════════════════════════════════════╝");
+        for port in ports {
+            info!("  sudo iptables -I INPUT -p tcp --dport {} -j ACCEPT", port);
+            info!("  sudo iptables -I INPUT -p udp --dport {} -j ACCEPT", port);
+        }
         info!("");
-        info!("Option 2: Manual iptables Rules");
+        info!("╔═══════════════════════════════════════════════════════════════════╗");
+        info!("║  Option 2: Persistent Rules (Recommended)                        ║");
+        info!("╚═══════════════════════════════════════════════════════════════════╝");
         for port in ports {
             info!("  sudo iptables -I INPUT -p tcp --dport {} -j ACCEPT", port);
             info!("  sudo iptables -I INPUT -p udp --dport {} -j ACCEPT", port);
         }
         info!("  sudo iptables-save | sudo tee /etc/iptables/rules.v4");
         info!("");
-        info!("Option 3: Systemd Service (Most Secure)");
-        info!("  # Create /etc/systemd/system/songbird.service with:");
-        info!("  [Service]");
-        info!("  AmbientCapabilities=CAP_NET_BIND_SERVICE CAP_NET_ADMIN");
-        info!("  # Then: sudo systemctl daemon-reload && sudo systemctl start songbird");
+        info!("╔═══════════════════════════════════════════════════════════════════╗");
+        info!("║  Option 3: Binary Capabilities (No sudo needed!)                 ║");
+        info!("╚═══════════════════════════════════════════════════════════════════╝");
+        info!("  sudo setcap cap_net_admin+ep target/release/songbird-orchestrator");
+        info!("  # Then restart Songbird - it will configure itself!");
         info!("");
-        info!("╚═══════════════════════════════════════════════════════════╝");
+        info!("╔═══════════════════════════════════════════════════════════════════╗");
+        info!("║  Option 4: Systemd Service (Most Secure & Automatic)             ║");
+        info!("╚═══════════════════════════════════════════════════════════════════╝");
+        info!("  Create /etc/systemd/system/songbird.service:");
+        info!("");
+        info!("  [Service]");
+        info!("  ExecStart=/path/to/songbird-orchestrator");
+        info!("  AmbientCapabilities=CAP_NET_BIND_SERVICE CAP_NET_ADMIN");
+        info!("  User=your-username");
+        info!("");
+        info!("  sudo systemctl daemon-reload");
+        info!("  sudo systemctl start songbird");
+        info!("");
+        info!("╚═══════════════════════════════════════════════════════════════════╝");
         info!("");
     }
 }
@@ -168,10 +330,17 @@ mod tests {
     }
     
     #[test]
-    fn test_firewall_instructions() {
-        let manager = PrivilegeManager::new();
+    fn test_non_interactive_mode() {
+        let manager = PrivilegeManager::with_interactive(false);
+        // Should provide instructions without asking for input
         manager.provide_firewall_instructions(&[8080, 2300]);
-        // Should print instructions without panicking
+    }
+    
+    #[test]
+    fn test_firewall_rule_check() {
+        let manager = PrivilegeManager::new();
+        // Should not panic even if iptables not available
+        let _has_rules = manager.check_firewall_rules(&[8080]);
     }
 }
 

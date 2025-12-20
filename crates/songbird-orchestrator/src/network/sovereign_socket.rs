@@ -82,11 +82,12 @@ impl SovereignSocket {
             .set_reuse_address(true)
             .context("Failed to set SO_REUSEADDR")?;
 
-        // 2. Enable port reuse (load balancing, zero-downtime restart)
-        #[cfg(all(unix, not(target_os = "solaris"), not(target_os = "illumos")))]
-        socket
-            .set_reuse_port(true)
-            .context("Failed to set SO_REUSEPORT")?;
+        // 2. SO_REUSEPORT REMOVED - See SO_REUSEPORT_ANALYSIS_DEC_20_2025.md
+        // - Allowed multiple processes to bind same port (silent duplicates)
+        // - Caused "Federation Split State Bug" (Dec 20, 2025)
+        // - Not appropriate for singleton orchestrators
+        // - "Address already in use" error is now a FEATURE (detects duplicates)
+        // - PID file management handles singleton enforcement explicitly
 
         // 3. Disable Nagle's algorithm (low latency for small messages)
         // Note: TCP_NODELAY must be set after connection, not on listening socket
@@ -107,9 +108,8 @@ impl SovereignSocket {
             .context("Failed to set send buffer size")?;
 
         debug!("✅ Socket configured with sovereign settings");
-        debug!("   SO_REUSEADDR: enabled");
-        #[cfg(all(unix, not(target_os = "solaris"), not(target_os = "illumos")))]
-        debug!("   SO_REUSEPORT: enabled");
+        debug!("   SO_REUSEADDR: enabled (quick restart)");
+        debug!("   SO_REUSEPORT: DISABLED (singleton enforcement)");
         debug!("   Non-blocking: enabled");
         debug!("   Buffer sizes: {}KB", BUFFER_SIZE / 1024);
         debug!("   Note: TCP_NODELAY and keep-alive set per-connection");
