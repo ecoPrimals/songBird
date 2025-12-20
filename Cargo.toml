@@ -89,6 +89,7 @@ colored = "2.0"
 hickory-resolver = "0.24"  # Updated from trust-dns-resolver (unmaintained)
 trust-dns-resolver = "0.23"  # Legacy support for migration
 socket2 = "0.6"  # Updated to latest version to unify dependencies
+if-addrs = "0.13"  # Network interface enumeration
 
 # Time
 chrono = { version = "0.4", features = ["serde"] }

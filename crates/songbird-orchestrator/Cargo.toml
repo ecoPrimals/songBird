@@ -57,6 +57,7 @@ fastrand = "2.0"
 rand = { workspace = true }
 reqwest = { version = "0.11", features = ["json"] }
 socket2 = { workspace = true }
+if-addrs = { workspace = true }
 serde_yaml = "0.9.34"
 sysinfo = "0.30"
 hostname = "0.4"

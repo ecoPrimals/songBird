@@ -197,6 +197,98 @@ impl NodeIdentity {
         self.endpoints.sort_by(|a, b| b.preference.cmp(&a.preference));
     }
     
+    /// Detect all available network interfaces and populate endpoints
+    ///
+    /// This scans the system for all active network interfaces and creates
+    /// transport endpoints for each. It assigns preferences based on interface type:
+    /// - Ethernet: 100 (highest preference)
+    /// - WiFi: 80
+    /// - Other: 50
+    /// - Loopback: 10 (lowest preference)
+    pub fn detect_all_endpoints(&mut self, port: u16) -> Result<()> {
+        info!("🔍 Detecting network interfaces...");
+        
+        // Get all network interfaces
+        let interfaces = if_addrs::get_if_addrs()
+            .map_err(|e| anyhow!("Failed to enumerate network interfaces: {}", e))?;
+        
+        let mut detected_count = 0;
+        
+        for iface in interfaces {
+            // Skip loopback by default (can be enabled explicitly)
+            if iface.is_loopback() {
+                continue;
+            }
+            
+            // Determine interface type and preference
+            let (interface_type, preference) = Self::classify_interface(&iface.name);
+            
+            // Create endpoint
+            let address = match iface.addr {
+                if_addrs::IfAddr::V4(addr) => {
+                    SocketAddr::new(IpAddr::V4(addr.ip), port)
+                }
+                if_addrs::IfAddr::V6(addr) => {
+                    SocketAddr::new(IpAddr::V6(addr.ip), port)
+                }
+            };
+            
+            let endpoint = TransportEndpoint {
+                interface_type: interface_type.clone(),
+                address,
+                protocols: vec!["https".to_string(), "tarpc".to_string()],
+                preference,
+            };
+            
+            self.add_endpoint(endpoint);
+            detected_count += 1;
+            
+            info!(
+                "  ✅ {} ({}) - {} [preference: {}]",
+                iface.name,
+                interface_type,
+                address,
+                preference
+            );
+        }
+        
+        info!("🔍 Detected {} network endpoints", detected_count);
+        
+        Ok(())
+    }
+    
+    /// Classify network interface by name
+    ///
+    /// Returns (interface_type, preference)
+    fn classify_interface(name: &str) -> (String, u8) {
+        let name_lower = name.to_lowercase();
+        
+        // Ethernet interfaces
+        if name_lower.starts_with("eth")
+            || name_lower.starts_with("en")
+            || name_lower.starts_with("ens")
+            || name_lower.starts_with("enp")
+        {
+            return ("ethernet".to_string(), 100);
+        }
+        
+        // WiFi interfaces
+        if name_lower.starts_with("wlan")
+            || name_lower.starts_with("wl")
+            || name_lower.starts_with("wifi")
+        {
+            return ("wifi".to_string(), 80);
+        }
+        
+        // Loopback
+        if name_lower.starts_with("lo") {
+            return ("loopback".to_string(), 10);
+        }
+        
+        // Unknown/Other
+        ("other".to_string(), 50)
+    }
+    
     /// Get preferred endpoint (highest preference)
     pub fn preferred_endpoint(&self) -> Option<&TransportEndpoint> {
         self.endpoints.first()
