@@ -260,22 +260,20 @@ impl SongbirdOrchestrator {
         // Initialize federation (if enabled)
         let federation_state = Arc::new(FederationState::new());
         let federated_service_registry = Arc::new(FederatedServiceRegistry::new());
+        
+        // ✅ IDENTITY FIX (Dec 20, 2025): Load stable node identity EARLY
+        // This ensures self-registration and discovery use the SAME node_id
+        let node_identity = crate::node_identity::NodeIdentity::new_or_load(None)?;
+        info!("🆔 Loaded stable node identity: {} ({})", node_identity.node_name, node_identity.node_id);
+        
         let (federation_coordinator, federation_config) =
             if SafeEnv::get_bool("SONGBIRD_FEDERATION_ENABLED", false) {
                 info!("🌐 Federation mode enabled");
 
-                // Build self registration
+                // Build self registration using STABLE node_id
                 let self_registration = NodeRegistration {
-                    node_id: SafeEnv::get_or_default(
-                        "SONGBIRD_NODE_ID",
-                        uuid::Uuid::new_v4().to_string(),
-                    ),
-                    node_name: SafeEnv::get_or_default("SONGBIRD_NODE_NAME", {
-                        hostname::get()
-                            .ok()
-                            .and_then(|h| h.into_string().ok())
-                            .unwrap_or_else(|| "unknown".to_string())
-                    }),
+                    node_id: node_identity.node_id.to_string(), // ✅ Use stable identity
+                    node_name: node_identity.node_name.clone(),  // ✅ Use stable name
                     node_address: format!(
                         "{}:{}",
                         SafeEnv::get_or_default(
@@ -287,7 +285,7 @@ impl SongbirdOrchestrator {
                             songbird_config::defaults::ports::orchestrator_port().to_string()
                         )
                     ),
-                    endpoints: None, // TODO: Populate from NodeIdentity in Phase 4
+                    endpoints: None, // Will be populated in start() after we know the actual port
                     capabilities: vec!["orchestrator".to_string()],
                     cpu_cores: num_cpus::get(),
                     memory_gb: {
@@ -455,21 +453,67 @@ impl SongbirdOrchestrator {
         let actual_https_port = self.start_http_server().await?;
         info!("✅ HTTP server started on port {}", actual_https_port);
 
+        // ✅ IDENTITY FIX (Dec 20, 2025): Re-register SELF with actual port and endpoints
+        // This updates the self-registration created during new() with the actual bound port
+        if self.federation_config.is_some() {
+            // Re-load node identity (same stable ID) and detect endpoints with actual port
+            let mut node_identity = crate::node_identity::NodeIdentity::new_or_load(None)?;
+            node_identity.detect_all_endpoints(actual_https_port)?;
+            
+            info!("🆔 Re-registering self with actual port {}:", actual_https_port);
+            info!("   ID: {}", node_identity.node_id);
+            info!("   Name: {}", node_identity.node_name);
+            info!("   Endpoints: {}", node_identity.endpoints.len());
+            
+            let updated_self_registration = songbird_network_federation::state::NodeRegistration {
+                node_id: node_identity.node_id.to_string(),
+                node_name: node_identity.node_name.clone(),
+                node_address: format!("https://{}:{}", 
+                    Self::detect_primary_ip().unwrap_or_else(|| "127.0.0.1".to_string()),
+                    actual_https_port
+                ),
+                endpoints: Some(
+                    node_identity.endpoints.iter().map(|ep| {
+                        songbird_network_federation::state::TransportEndpointInfo {
+                            interface_type: ep.interface_type.clone(),
+                            address: format!("{}:{}", ep.address.ip(), actual_https_port),
+                            protocols: ep.protocols.clone(),
+                            preference: ep.preference,
+                            status: songbird_network_federation::state::EndpointStatus::Active,
+                            last_check: chrono::Utc::now(),
+                        }
+                    }).collect()
+                ),
+                capabilities: vec!["orchestrator".to_string()],
+                cpu_cores: num_cpus::get(),
+                memory_gb: {
+                    #[cfg(target_os = "linux")]
+                    {
+                        (sysinfo::System::new_all().total_memory() / (1024 * 1024 * 1024)) as usize
+                    }
+                    #[cfg(not(target_os = "linux"))]
+                    {
+                        16
+                    }
+                },
+                gpu_model: Self::detect_gpu(),
+                storage_gb: Self::detect_storage_capacity(),
+                status: songbird_network_federation::state::NodeStatus::Active,
+                joined_at: chrono::Utc::now(),
+                last_heartbeat: chrono::Utc::now(),
+            };
+            
+            info!("📝 Updating self-registration in federation");
+            self.federation_state.register_node(updated_self_registration).await;
+        }
+
         // Start anonymous discovery (if enabled) with ACTUAL port
         if self._config.discovery.enabled && self._config.discovery.anonymous {
             info!("🌐 Starting anonymous discovery with actual HTTPS port {}...", actual_https_port);
             
-            // Initialize node identity with multi-path transport
-            info!("🆔 Initializing node identity...");
+            // Re-use the SAME node identity (already loaded above)
             let mut node_identity = crate::node_identity::NodeIdentity::new_or_load(None)?;
-            
-            // Detect all network interfaces and populate endpoints with ACTUAL port
             node_identity.detect_all_endpoints(actual_https_port)?;
-            
-            info!("🆔 Node identity initialized:");
-            info!("   ID: {}", node_identity.node_id);
-            info!("   Name: {}", node_identity.node_name);
-            info!("   Endpoints: {}", node_identity.endpoints.len());
             
             // Start discovery broadcaster (v3.0 with multi-endpoint)
             let capabilities = vec![
