@@ -781,46 +781,89 @@ impl SongbirdOrchestrator {
                         let endpoint = peer.https_endpoint();
                         
                         // Log discovered peer
-                        info!(
+                        debug!(
                             "🔍 Discovered peer: {} at {} (capabilities: {:?})",
                             peer.session_id, endpoint, peer.capabilities
                         );
                         
-                        // Establish anonymous trust for discovered peer
-                        match trust_manager.establish_anonymous(peer.session_id.clone()).await {
-                            Ok(()) => {
+                        // CRITICAL: Verify HTTPS connectivity before registering
+                        // This prevents registering unreachable nodes
+                        let health_url = format!("{}/health", endpoint);
+                        let connectivity_check = tokio::time::timeout(
+                            tokio::time::Duration::from_secs(3),
+                            async {
+                                reqwest::Client::builder()
+                                    .danger_accept_invalid_certs(true)
+                                    .build()
+                                    .unwrap()
+                                    .get(&health_url)
+                                    .send()
+                                    .await
+                            }
+                        ).await;
+                        
+                        match connectivity_check {
+                            Ok(Ok(response)) if response.status().is_success() => {
                                 info!(
-                                    "✅ Trust established with {} (level: Anonymous)",
-                                    &peer.session_id[..8]
+                                    "✅ Peer {} is reachable at {}",
+                                    &peer.session_id[..8], endpoint
                                 );
                                 
-                                // Create node registration from discovered peer
-                                let node_registration = songbird_network_federation::state::NodeRegistration {
-                                    node_id: peer.session_id.clone(),
-                                    node_name: format!("peer-{}", &peer.session_id[..8]),
-                                    node_address: endpoint.clone(),
-                                    cpu_cores: 0, // Unknown at discovery stage
-                                    memory_gb: 0, // Unknown at discovery stage
-                                    gpu_model: None,
-                                    storage_gb: None,
-                                    capabilities: peer.capabilities.clone(),
-                                    status: songbird_network_federation::state::NodeStatus::Active,
-                                    joined_at: chrono::Utc::now(),
-                                    last_heartbeat: chrono::Utc::now(),
-                                };
-                                
-                                // Register node in federation
-                                federation_state.register_node(node_registration).await;
-                                
-                                info!(
-                                    "🤝 Peer {} joined federation (anonymous trust)",
-                                    &peer.session_id[..8]
+                                // Establish anonymous trust for verified peer
+                                match trust_manager.establish_anonymous(peer.session_id.clone()).await {
+                                    Ok(()) => {
+                                        info!(
+                                            "✅ Trust established with {} (level: Anonymous)",
+                                            &peer.session_id[..8]
+                                        );
+                                        
+                                        // Create node registration from discovered peer
+                                        let node_registration = songbird_network_federation::state::NodeRegistration {
+                                            node_id: peer.session_id.clone(),
+                                            node_name: format!("peer-{}", &peer.session_id[..8]),
+                                            node_address: endpoint.clone(),
+                                            cpu_cores: 0, // Unknown at discovery stage
+                                            memory_gb: 0, // Unknown at discovery stage
+                                            gpu_model: None,
+                                            storage_gb: None,
+                                            capabilities: peer.capabilities.clone(),
+                                            status: songbird_network_federation::state::NodeStatus::Active,
+                                            joined_at: chrono::Utc::now(),
+                                            last_heartbeat: chrono::Utc::now(),
+                                        };
+                                        
+                                        // Register node in federation (only verified nodes)
+                                        federation_state.register_node(node_registration).await;
+                                        
+                                        info!(
+                                            "🤝 Peer {} joined federation (verified + anonymous trust)",
+                                            &peer.session_id[..8]
+                                        );
+                                    }
+                                    Err(e) => {
+                                        warn!(
+                                            "❌ Failed to establish trust with {}: {}",
+                                            peer.session_id, e
+                                        );
+                                    }
+                                }
+                            }
+                            Ok(Ok(response)) => {
+                                debug!(
+                                    "⚠️  Peer {} returned HTTP {} - not registering",
+                                    &peer.session_id[..8], response.status()
                                 );
                             }
-                            Err(e) => {
-                                warn!(
-                                    "❌ Failed to establish trust with {}: {}",
-                                    peer.session_id, e
+                            Ok(Err(e)) => {
+                                debug!(
+                                    "⚠️  Peer {} unreachable: {} - not registering",
+                                    &peer.session_id[..8], e
+                                );
+                            }
+                            Err(_) => {
+                                debug!(
+                                    "⚠️  Peer {} connection timeout (3s) - not registering",
+                                    &peer.session_id[..8]
                                 );
                             }
                         }
