@@ -22,21 +22,33 @@
 - `stop-tower.sh` - Stop a tower
 - `check-tower.sh` - Check tower status
 
-## 🎉 December 2025 Session
+## 🎉 December 2025 Sessions
 
 **Main Summary (Root):**
-- **[FINAL_SESSION_SUMMARY_DEC_20_2025.md](./FINAL_SESSION_SUMMARY_DEC_20_2025.md)** ⭐ **START HERE**
+- **[PROCESS_LIFECYCLE_IMPLEMENTATION_DEC_20_2025.md](./PROCESS_LIFECYCLE_IMPLEMENTATION_DEC_20_2025.md)** ⭐ **LATEST**
+- **[FINAL_SESSION_SUMMARY_DEC_20_2025.md](./FINAL_SESSION_SUMMARY_DEC_20_2025.md)** ⭐ **Testing Session**
 - **[SESSION_COMPLETE_DEC_20_2025.txt](./SESSION_COMPLETE_DEC_20_2025.txt)** - Quick summary
 - **[TEST_SUCCESS_SUMMARY_DEC_20_2025.txt](./TEST_SUCCESS_SUMMARY_DEC_20_2025.txt)** - Test results
+
+**Process Lifecycle Session (Dec 20 - Evening):**
+- **[SO_REUSEPORT_REMOVAL_DEC_20_2025.md](./SO_REUSEPORT_REMOVAL_DEC_20_2025.md)** - Removal & testing
+- **[SO_REUSEPORT_ANALYSIS_DEC_20_2025.md](./SO_REUSEPORT_ANALYSIS_DEC_20_2025.md)** - Technical analysis
+- **[FEDERATION_SPLIT_STATE_BUG_DEC_20_2025.md](./FEDERATION_SPLIT_STATE_BUG_DEC_20_2025.md)** - Bug documentation
+- **[PROCESS_LIFECYCLE_ARCHITECTURE_GAP_DEC_20_2025.md](./PROCESS_LIFECYCLE_ARCHITECTURE_GAP_DEC_20_2025.md)** - Architectural gap
+
+**Multi-Path Transport Session (Dec 20):**
+- **[MULTI_INTERFACE_COALESCENCE_FIX_DEC_20_2025.md](./MULTI_INTERFACE_COALESCENCE_FIX_DEC_20_2025.md)** - Coalescence fix
+- **[FEDERATION_DEPLOYMENT_SESSION_DEC_20_2025.md](./FEDERATION_DEPLOYMENT_SESSION_DEC_20_2025.md)** - Deployment session
 
 **Detailed Reports:**
 - **[docs/sessions/december-2025/README.md](./docs/sessions/december-2025/README.md)** - Session index
 
-The `docs/sessions/december-2025/` directory contains 16 detailed reports on:
-- Test suite documentation
-- Bug fixes (port fallback, identity, crypto provider)
-- Architecture evolution
-- Deep debt solutions
+The root and `docs/sessions/december-2025/` directories contain comprehensive reports on:
+- Process lifecycle and singleton enforcement
+- Test suite documentation (26 tests)
+- Bug fixes (split state, zombies, port fallback, identity)
+- Architecture evolution (multi-path transport, identity-based routing)
+- Deep debt solutions (SO_REUSEPORT removal, user collaboration)
 - Deployment robustness
 
 ## 📖 Reference Documentation
@@ -121,18 +133,28 @@ songbird/
 
 ## 🌟 Latest Achievements (December 20, 2025)
 
-- ✅ **22-test comprehensive suite** (13 unit + 9 E2E)
+**Evening Session (Process Lifecycle):**
+- ✅ **Singleton enforcement** (PID file management, RAII guard)
+- ✅ **SO_REUSEPORT removed** (federation split state bug fixed)
+- ✅ **User collaboration** on permissions (not circumvention)
+- ✅ **Federation verified** (3/3 towers consistent)
+- ✅ **4 bugs fixed** (split state, zombies, duplicates, discovery)
+- ✅ **4 unit tests** (singleton, stale cleanup, process detection)
+
+**Testing + Identity Session:**
+- ✅ **26-test comprehensive suite** (13 unit + 9 E2E + 4 lifecycle)
 - ✅ **Identity-based routing complete** (no duplicate nodes)
 - ✅ **Port fallback robustness** (handles conflicts)
-- ✅ **3 critical bugs fixed**
 - ✅ **3-tower federation verified**
 - ✅ **Production ready**
 
 ## 📊 Organization Summary
 
-**Root (11 files):**
+**Root (16 files):**
 - Essential guides and quick access
-- Main session summary
+- Process lifecycle documentation (5 files)
+- Testing session summaries
+- Multi-path transport docs
 - Quick reference files
 
 **docs/sessions/december-2025/ (17 files):**
