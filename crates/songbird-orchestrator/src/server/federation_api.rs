@@ -696,10 +696,13 @@ mod tests {
     use tower::ServiceExt;
 
     fn create_test_state() -> Arc<FederationAppState> {
+        use crate::trust::{TrustEscalationManager};
+        
         Arc::new(FederationAppState {
             federation_state: Arc::new(FederationState::new()),
             service_registry: Arc::new(FederatedServiceRegistry::new()),
             capability_registry: None,
+            trust_manager: Some(Arc::new(TrustEscalationManager::with_defaults())),
         })
     }
 
@@ -885,10 +888,13 @@ mod tests {
 
     #[test]
     fn test_federation_app_state_debug() {
+        use crate::trust::TrustEscalationManager;
+        
         let state = Arc::new(FederationAppState {
             federation_state: Arc::new(FederationState::new()),
             service_registry: Arc::new(FederatedServiceRegistry::new()),
             capability_registry: None,
+            trust_manager: Some(Arc::new(TrustEscalationManager::with_defaults())),
         });
 
         let debug_str = format!("{:?}", state);

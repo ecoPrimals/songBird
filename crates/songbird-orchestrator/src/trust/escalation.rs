@@ -362,6 +362,7 @@ impl TrustEscalationManager {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::trust::{TowerIdentity, IdentityProof};
 
     #[tokio::test]
     async fn test_trust_escalation_manager_creation() {

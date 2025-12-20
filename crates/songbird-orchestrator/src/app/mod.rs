@@ -536,14 +536,50 @@ impl SongbirdOrchestrator {
 
     /// Start HTTP server with federation API
     async fn start_http_server(&self) -> Result<()> {
-        // Default to IPv4 (0.0.0.0) for maximum compatibility with federation
-        // IPv6 ([::]) can cause issues with IPv4-only networks
-        // Override with SONGBIRD_BIND_ADDRESS="[::]" if IPv6 is needed
-        let bind_address = SafeEnv::get_or_default("SONGBIRD_BIND_ADDRESS", "0.0.0.0");
+        use crate::network::NetworkBindingStrategy;
+        
         let port = SafeEnv::get_port(
             "SONGBIRD_PORT",
             songbird_config::defaults::ports::orchestrator_port(),
         );
+        
+        // 🚀 EVOLUTION: Zero-config intelligent binding
+        // Check if manual override exists (backwards compatibility during migration)
+        let bind_strategy = if let Ok(manual_addr) = SafeEnv::get("SONGBIRD_BIND_ADDRESS") {
+            warn!("⚠️  SONGBIRD_BIND_ADDRESS is deprecated and will be removed");
+            warn!("   Songbird now auto-detects optimal network binding");
+            warn!("   Manual override: {}", manual_addr);
+            warn!("   Please remove SONGBIRD_BIND_ADDRESS from your configuration");
+            
+            // Parse manual address for backwards compatibility
+            let addr = parse_bind_address(&manual_addr, port)?;
+            info!("   Using manual binding: {}", addr);
+            
+            // Start with manual binding (legacy path)
+            return http_server::start_http_server(
+                Arc::clone(&self.federation_state),
+                Arc::clone(&self.federated_service_registry),
+                &manual_addr,
+                port,
+            )
+            .await;
+        } else {
+            // 🎯 Intelligent auto-detection (zero-config)
+            info!("🌐 Auto-detecting optimal network binding (zero-config)...");
+            NetworkBindingStrategy::auto_detect().await?
+        };
+        
+        // Get socket address from strategy
+        let bind_addr = bind_strategy.primary_socket_addr(port);
+        
+        info!("✅ Binding to: {}", bind_addr);
+        info!("   Strategy: {:?}", bind_strategy);
+        info!("   IPv4 support: {}", bind_strategy.supports_ipv4());
+        info!("   IPv6 support: {}", bind_strategy.supports_ipv6());
+        
+        // Convert SocketAddr back to string for existing API
+        // TODO: Refactor http_server to accept SocketAddr directly
+        let bind_address = bind_addr.ip().to_string();
 
         http_server::start_http_server(
             Arc::clone(&self.federation_state),
