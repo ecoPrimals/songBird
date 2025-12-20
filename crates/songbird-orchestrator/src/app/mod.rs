@@ -449,22 +449,22 @@ impl SongbirdOrchestrator {
         // self.federation_manager.start(&federation_config).await?; // Temporarily disabled
         self.observability_manager.start().await?;
 
-        // Start anonymous discovery (if enabled)
+        // ✅ DEPLOYMENT FIX (Dec 20, 2025): Start HTTP server FIRST to get actual port
+        // This ensures discovery broadcasts the correct port even if fallback occurs
+        info!("🌐 Starting HTTP server...");
+        let actual_https_port = self.start_http_server().await?;
+        info!("✅ HTTP server started on port {}", actual_https_port);
+
+        // Start anonymous discovery (if enabled) with ACTUAL port
         if self._config.discovery.enabled && self._config.discovery.anonymous {
-            info!("🌐 Starting anonymous discovery...");
-            
-            // Get the actual HTTPS port we're listening on
-            let https_port = SafeEnv::get_port(
-                "SONGBIRD_PORT",
-                songbird_config::defaults::ports::orchestrator_port(),
-            );
+            info!("🌐 Starting anonymous discovery with actual HTTPS port {}...", actual_https_port);
             
             // Initialize node identity with multi-path transport
             info!("🆔 Initializing node identity...");
             let mut node_identity = crate::node_identity::NodeIdentity::new_or_load(None)?;
             
-            // Detect all network interfaces and populate endpoints
-            node_identity.detect_all_endpoints(https_port)?;
+            // Detect all network interfaces and populate endpoints with ACTUAL port
+            node_identity.detect_all_endpoints(actual_https_port)?;
             
             info!("🆔 Node identity initialized:");
             info!("   ID: {}", node_identity.node_id);
@@ -520,7 +520,7 @@ impl SongbirdOrchestrator {
             }
             
             info!("✅ Anonymous discovery started (UDP port {}, advertising HTTPS port {})", 
-                self._config.discovery.port, https_port);
+                self._config.discovery.port, actual_https_port);
             
             // Start discovery → federation bridge
             self.start_discovery_federation_bridge().await?;
@@ -569,8 +569,8 @@ impl SongbirdOrchestrator {
         // Start session TTL cleanup task (Deep Debt Fix - Dec 20, 2025)
         self.start_session_ttl_cleanup().await?;
 
-        // Start HTTP server with federation API
-        self.start_http_server().await?;
+        // HTTP server already started above (moved before discovery)
+        // self.start_http_server().await?; // ❌ OLD LOCATION
 
         // Start tarpc server for high-performance native RPC (Phase 3)
         self.start_tarpc_server().await?;
@@ -584,7 +584,9 @@ impl SongbirdOrchestrator {
     }
 
     /// Start HTTP server with federation API
-    async fn start_http_server(&self) -> Result<()> {
+    /// 
+    /// Returns the actual port the server bound to (may differ from configured if fallback occurred)
+    async fn start_http_server(&self) -> Result<u16> {
         use crate::network::NetworkBindingStrategy;
         
         let port = SafeEnv::get_port(
@@ -594,7 +596,7 @@ impl SongbirdOrchestrator {
         
         // 🚀 EVOLUTION: Zero-config intelligent binding
         // Check if manual override exists (backwards compatibility during migration)
-        let bind_strategy = if let Ok(manual_addr) = SafeEnv::get("SONGBIRD_BIND_ADDRESS") {
+        let actual_port = if let Ok(manual_addr) = SafeEnv::get("SONGBIRD_BIND_ADDRESS") {
             warn!("⚠️  SONGBIRD_BIND_ADDRESS is deprecated and will be removed");
             warn!("   Songbird now auto-detects optimal network binding");
             warn!("   Manual override: {}", manual_addr);
@@ -605,38 +607,40 @@ impl SongbirdOrchestrator {
             info!("   Using manual binding: {}", addr);
             
             // Start with manual binding (legacy path)
-            return http_server::start_http_server(
+            http_server::start_http_server(
                 Arc::clone(&self.federation_state),
                 Arc::clone(&self.federated_service_registry),
                 &manual_addr,
                 port,
             )
-            .await;
+            .await?
         } else {
             // 🎯 Intelligent auto-detection (zero-config)
             info!("🌐 Auto-detecting optimal network binding (zero-config)...");
-            NetworkBindingStrategy::auto_detect().await?
+            let bind_strategy = NetworkBindingStrategy::auto_detect().await?;
+            
+            // Get socket address from strategy
+            let bind_addr = bind_strategy.primary_socket_addr(port);
+            
+            info!("✅ Binding to: {}", bind_addr);
+            info!("   Strategy: {:?}", bind_strategy);
+            info!("   IPv4 support: {}", bind_strategy.supports_ipv4());
+            info!("   IPv6 support: {}", bind_strategy.supports_ipv6());
+            
+            // Convert SocketAddr back to string for existing API
+            // TODO: Refactor http_server to accept SocketAddr directly
+            let bind_address = bind_addr.ip().to_string();
+
+            http_server::start_http_server(
+                Arc::clone(&self.federation_state),
+                Arc::clone(&self.federated_service_registry),
+                &bind_address,
+                port,
+            )
+            .await?
         };
         
-        // Get socket address from strategy
-        let bind_addr = bind_strategy.primary_socket_addr(port);
-        
-        info!("✅ Binding to: {}", bind_addr);
-        info!("   Strategy: {:?}", bind_strategy);
-        info!("   IPv4 support: {}", bind_strategy.supports_ipv4());
-        info!("   IPv6 support: {}", bind_strategy.supports_ipv6());
-        
-        // Convert SocketAddr back to string for existing API
-        // TODO: Refactor http_server to accept SocketAddr directly
-        let bind_address = bind_addr.ip().to_string();
-
-        http_server::start_http_server(
-            Arc::clone(&self.federation_state),
-            Arc::clone(&self.federated_service_registry),
-            &bind_address,
-            port,
-        )
-        .await
+        Ok(actual_port)
     }
 
     /// Start tarpc server for high-performance native RPC

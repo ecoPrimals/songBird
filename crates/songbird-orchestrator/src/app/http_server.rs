@@ -16,12 +16,14 @@ use std::sync::Arc;
 use tracing::{error, info, warn};
 
 /// Start HTTP server with federation API
+///
+/// Returns the actual port the server bound to (may differ from configured port if fallback occurred)
 pub async fn start_http_server(
     federation_state: Arc<FederationState>,
     federated_service_registry: Arc<FederatedServiceRegistry>,
     bind_address: &str,
     port: u16,
-) -> Result<()> {
+) -> Result<u16> {
     let addr: SocketAddr = super::parse_bind_address(bind_address, port)?;
 
     // Build the app with all API routes
@@ -43,14 +45,17 @@ pub async fn start_http_server(
 
     if tls_enabled {
         info!("🔐 TLS enabled - configuring HTTPS server (fail-secure by default)");
-        start_https_server(app, listener, actual_addr).await
+        start_https_server(app, listener, actual_addr).await?;
     } else {
         warn!("⚠️  TLS DISABLED - Using plain HTTP (insecure)");
         warn!("   This should only be used for local development on trusted networks");
         warn!("   For production, remove SONGBIRD_TLS_ENABLED=false");
         info!("🌐 HTTP server listening on {}", actual_addr);
-        start_http_server_plain(app, listener).await
+        start_http_server_plain(app, listener).await?;
     }
+    
+    // Return the actual port we bound to
+    Ok(actual_port)
 }
 
 /// Build the Axum router with all API endpoints
