@@ -34,9 +34,67 @@ impl FederationState {
     }
 
     /// Add or update a node registration
+    ///
+    /// **Identity-Based Routing (Dec 20, 2025)**:
+    /// - If node_id already exists, merge endpoints instead of replacing
+    /// - This enables multi-interface coalescence (Ethernet + WiFi = 1 node)
+    /// - Multiple Songbird subsystems per tower can coexist
     pub async fn register_node(&self, registration: NodeRegistration) {
         let mut nodes = self.nodes.write().await;
-        nodes.insert(registration.node_id.clone(), registration);
+        
+        // Check if this node_id already exists
+        if let Some(existing) = nodes.get_mut(&registration.node_id) {
+            // Node exists - coalesce endpoints
+            tracing::debug!(
+                "🔄 Coalescing endpoints for existing node '{}' ({})",
+                existing.node_name,
+                &existing.node_id[..8.min(existing.node_id.len())]
+            );
+            
+            // Update heartbeat and status
+            existing.last_heartbeat = Utc::now();
+            existing.status = NodeStatus::Active;
+            
+            // Merge endpoints if new registration has any
+            if let Some(new_endpoints) = registration.endpoints {
+                for endpoint in new_endpoints {
+                    existing.add_endpoint(endpoint);
+                }
+                tracing::info!(
+                    "✅ Added {} endpoint(s) to '{}' (total: {})",
+                    1,
+                    existing.node_name,
+                    existing.endpoints.as_ref().map_or(0, |e| e.len())
+                );
+            }
+            
+            // Update primary address if different (keep most recent)
+            if existing.node_address != registration.node_address {
+                tracing::debug!(
+                    "🔄 Updated primary address for '{}': {} -> {}",
+                    existing.node_name,
+                    existing.node_address,
+                    registration.node_address
+                );
+                existing.node_address = registration.node_address;
+            }
+            
+            // Merge capabilities (union)
+            for capability in registration.capabilities {
+                if !existing.capabilities.contains(&capability) {
+                    existing.capabilities.push(capability);
+                }
+            }
+        } else {
+            // New node - insert
+            tracing::info!(
+                "✅ Registering new node '{}' ({}) at {}",
+                registration.node_name,
+                &registration.node_id[..8.min(registration.node_id.len())],
+                registration.node_address
+            );
+            nodes.insert(registration.node_id.clone(), registration);
+        }
     }
 
     /// Remove a node from the federation
@@ -133,6 +191,48 @@ impl FederationState {
             total_memory_gb: active_nodes.iter().map(|n| n.memory_gb).sum(),
             total_storage_gb: active_nodes.iter().filter_map(|n| n.storage_gb).sum(),
         }
+    }
+
+    /// Get best endpoint for a node (identity-based routing)
+    ///
+    /// **Routing Strategy**:
+    /// 1. Prefer endpoints marked as active
+    /// 2. Sort by preference value (highest first)
+    /// 3. Fall back to primary node_address if no endpoints
+    pub async fn get_best_endpoint(&self, node_id: &str) -> Option<String> {
+        let nodes = self.nodes.read().await;
+        let node = nodes.get(node_id)?;
+        
+        // Try to get preferred endpoint
+        if let Some(endpoint) = node.preferred_endpoint() {
+            return Some(format!("https://{}", endpoint.address));
+        }
+        
+        // Fall back to primary address
+        Some(node.node_address.clone())
+    }
+
+    /// Get all endpoints for a node (for connection fallback)
+    pub async fn get_all_endpoints(&self, node_id: &str) -> Vec<String> {
+        let nodes = self.nodes.read().await;
+        let node = match nodes.get(node_id) {
+            Some(n) => n,
+            None => return vec![],
+        };
+        
+        let mut endpoints = vec![];
+        
+        // Add all active endpoints
+        for endpoint in node.active_endpoints() {
+            endpoints.push(format!("https://{}", endpoint.address));
+        }
+        
+        // Add primary address as fallback
+        if !endpoints.contains(&node.node_address) {
+            endpoints.push(node.node_address.clone());
+        }
+        
+        endpoints
     }
 }
 

@@ -315,8 +315,17 @@ impl AnonymousDiscoveryMessage {
 /// Discovered peer information
 #[derive(Debug, Clone)]
 pub struct DiscoveredPeer {
-    /// Session ID of the peer
+    /// Session ID of the peer (v2.x - deprecated in v3.0)
     pub session_id: String,
+
+    /// Stable node ID (v3.0+) - machine-based UUID for identity coalescence
+    pub node_id: Option<String>,
+
+    /// Human-readable node name (v3.0+) - e.g., "eastgate", "westgate"
+    pub node_name: Option<String>,
+
+    /// All transport endpoints for this node (v3.0+)
+    pub endpoints: Option<Vec<TransportEndpointMessage>>,
 
     /// Capabilities offered by the peer
     pub capabilities: Vec<String>,
@@ -324,7 +333,7 @@ pub struct DiscoveredPeer {
     /// Supported protocols
     pub protocols: Vec<String>,
 
-    /// Port where the peer's HTTPS/TLS server is listening
+    /// Port where the peer's HTTPS/TLS server is listening (v2.x)
     pub port: u16,
 
     /// Socket address where the discovery message came from (UDP source)
@@ -568,9 +577,12 @@ impl AnonymousDiscoveryListener {
 
                             debug!("📥 Received discovery from {} (session: {})", addr, message.session_id);
 
-                            // Store peer info
+                            // Store peer info with v3.0 support
                             let peer = DiscoveredPeer {
                                 session_id: message.session_id.clone(),
+                                node_id: message.node_id.clone(),
+                                node_name: message.node_name.clone(),
+                                endpoints: message.endpoints.clone(),
                                 capabilities: message.capabilities.clone(),
                                 protocols: message.protocols.clone(),
                                 port: message.port,
@@ -579,8 +591,12 @@ impl AnonymousDiscoveryListener {
                                 version: message.version.clone(),
                             };
 
-                            info!("🔍 Discovered peer: {} (capabilities: {:?}, HTTPS: https://{}:{})", 
-                                message.session_id, message.capabilities, addr.ip(), message.port);
+                            // Log with node name if available (v3.0), otherwise session ID (v2.x)
+                            let peer_identifier = message.node_name.as_ref()
+                                .unwrap_or(&message.session_id);
+                            
+                            info!("🔍 Discovered peer: {} (v{}, capabilities: {:?}, HTTPS: https://{}:{})", 
+                                peer_identifier, message.version, message.capabilities, addr.ip(), message.port);
 
                             let mut peers = self.peers.write().await;
                             peers.insert(message.session_id, peer);

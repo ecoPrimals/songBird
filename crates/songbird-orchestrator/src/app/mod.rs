@@ -805,10 +805,25 @@ impl SongbirdOrchestrator {
                         // Get HTTPS endpoint
                         let endpoint = peer.https_endpoint();
                         
-                        // Log discovered peer
+                        // Extract identity based on protocol version
+                        let (node_id, node_name) = if peer.version == "3.0" {
+                            // v3.0: Use stable node_id and node_name
+                            match (&peer.node_id, &peer.node_name) {
+                                (Some(id), Some(name)) => (id.clone(), name.clone()),
+                                _ => {
+                                    warn!("⚠️  Peer claims v3.0 but missing node_id/node_name, falling back to session_id");
+                                    (peer.session_id.clone(), format!("peer-{}", &peer.session_id[..8]))
+                                }
+                            }
+                        } else {
+                            // v2.x: Fall back to session_id (legacy)
+                            (peer.session_id.clone(), format!("peer-{}", &peer.session_id[..8]))
+                        };
+                        
+                        // Log discovered peer with proper identity
                         debug!(
-                            "🔍 Discovered peer: {} at {} (capabilities: {:?})",
-                            peer.session_id, endpoint, peer.capabilities
+                            "🔍 Discovered peer: {} (v{}) at {} (capabilities: {:?})",
+                            node_name, peer.version, endpoint, peer.capabilities
                         );
                         
                         // CRITICAL: Verify HTTPS connectivity before registering
@@ -830,24 +845,39 @@ impl SongbirdOrchestrator {
                         match connectivity_check {
                             Ok(Ok(response)) if response.status().is_success() => {
                                 info!(
-                                    "✅ Peer {} is reachable at {}",
-                                    &peer.session_id[..8], endpoint
+                                    "✅ Peer '{}' (v{}) is reachable at {}",
+                                    node_name, peer.version, endpoint
                                 );
                                 
                                 // Establish anonymous trust for verified peer
+                                // Use session_id for trust tracking (for now, will evolve to node_id)
                                 match trust_manager.establish_anonymous(peer.session_id.clone()).await {
                                     Ok(()) => {
                                         info!(
-                                            "✅ Trust established with {} (level: Anonymous)",
-                                            &peer.session_id[..8]
+                                            "✅ Trust established with '{}' (level: Anonymous)",
+                                            node_name
                                         );
                                         
-                                        // Create node registration from discovered peer
+                                        // Convert v3.0 endpoints to federation format (if available)
+                                        let endpoints = peer.endpoints.as_ref().map(|eps| {
+                                            eps.iter().map(|ep| {
+                                                songbird_network_federation::state::TransportEndpointInfo {
+                                                    interface_type: ep.interface_type.clone(),
+                                                    address: format!("{}:{}", peer.address.ip(), ep.port),
+                                                    protocols: ep.protocols.clone(),
+                                                    preference: ep.preference,
+                                                    status: songbird_network_federation::state::EndpointStatus::Active,
+                                                    last_check: chrono::Utc::now(),
+                                                }
+                                            }).collect()
+                                        });
+                                        
+                                        // Create node registration with stable identity (v3.0) or session_id (v2.x)
                                         let node_registration = songbird_network_federation::state::NodeRegistration {
-                                            node_id: peer.session_id.clone(),
-                                            node_name: format!("peer-{}", &peer.session_id[..8]),
+                                            node_id,  // ✅ Now uses stable node_id for v3.0!
+                                            node_name, // ✅ Now uses human-readable name for v3.0!
                                             node_address: endpoint.clone(),
-                                            endpoints: None, // Will be populated when v3.0 discovery messages arrive
+                                            endpoints, // ✅ Multi-endpoint support for v3.0!
                                             cpu_cores: 0, // Unknown at discovery stage
                                             memory_gb: 0, // Unknown at discovery stage
                                             gpu_model: None,
