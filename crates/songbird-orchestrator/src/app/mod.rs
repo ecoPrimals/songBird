@@ -459,25 +459,46 @@ impl SongbirdOrchestrator {
                 songbird_config::defaults::ports::orchestrator_port(),
             );
             
-            // Start discovery broadcaster
+            // Initialize node identity with multi-path transport
+            info!("🆔 Initializing node identity...");
+            let mut node_identity = crate::node_identity::NodeIdentity::new_or_load(None)?;
+            
+            // Detect all network interfaces and populate endpoints
+            node_identity.detect_all_endpoints(https_port)?;
+            
+            info!("🆔 Node identity initialized:");
+            info!("   ID: {}", node_identity.node_id);
+            info!("   Name: {}", node_identity.node_name);
+            info!("   Endpoints: {}", node_identity.endpoints.len());
+            
+            // Start discovery broadcaster (v3.0 with multi-endpoint)
             let capabilities = vec![
                 "orchestration".to_string(),
                 "federation".to_string(),
             ];
-            let protocols = vec![
-                "https".to_string(),
-                "tarpc-tls".to_string(),
-                "websocket-tls".to_string(),
-            ];
+            
+            // Convert endpoints to discovery message format
+            let endpoint_messages: Vec<songbird_discovery::anonymous_discovery::TransportEndpointMessage> = node_identity
+                .endpoints
+                .iter()
+                .map(|ep| songbird_discovery::anonymous_discovery::TransportEndpointMessage {
+                    interface_type: ep.interface_type.clone(),
+                    port: ep.address.port(),
+                    protocols: ep.protocols.clone(),
+                    preference: ep.preference,
+                })
+                .collect();
+            
             let broadcast_addrs: Vec<std::net::SocketAddr> = self._config.discovery.broadcast_addresses
                 .iter()
                 .filter_map(|addr| addr.parse().ok())
                 .collect();
             
-            let broadcaster = AnonymousDiscoveryBroadcaster::new(
+            let broadcaster = AnonymousDiscoveryBroadcaster::new_v3(
+                node_identity.node_id.to_string(),
+                node_identity.node_name.clone(),
+                endpoint_messages,
                 capabilities,
-                protocols,
-                https_port, // Include our HTTPS port so peers can connect!
                 broadcast_addrs,
                 30, // broadcast every 30 seconds
             );

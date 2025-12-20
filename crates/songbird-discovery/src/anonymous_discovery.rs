@@ -349,14 +349,27 @@ impl DiscoveredPeer {
 /// Anonymous discovery broadcaster
 ///
 /// Broadcasts anonymous discovery messages over UDP to find other towers.
+/// Supports both v2.1 (session-based) and v3.0 (node-identity-based) protocols.
 pub struct AnonymousDiscoveryBroadcaster {
+    /// Protocol version ("2.1" or "3.0")
+    version: String,
+    
+    /// Stable node ID (v3.0 only)
+    node_id: Option<String>,
+    
+    /// Node name (v3.0 only)
+    node_name: Option<String>,
+    
+    /// All endpoints (v3.0 only)
+    endpoints: Option<Vec<TransportEndpointMessage>>,
+    
     /// Capabilities to advertise
     capabilities: Vec<String>,
 
-    /// Protocols supported
+    /// Protocols supported (v2.1 fallback)
     protocols: Vec<String>,
 
-    /// Port where this tower's HTTPS/TLS server is listening
+    /// Port where this tower's HTTPS/TLS server is listening (v2.1 fallback)
     port: u16,
 
     /// Broadcast addresses to send to
@@ -367,7 +380,7 @@ pub struct AnonymousDiscoveryBroadcaster {
 }
 
 impl AnonymousDiscoveryBroadcaster {
-    /// Create a new anonymous discovery broadcaster
+    /// Create a new anonymous discovery broadcaster (v2.1 - backward compatible)
     pub fn new(
         capabilities: Vec<String>,
         protocols: Vec<String>,
@@ -376,6 +389,39 @@ impl AnonymousDiscoveryBroadcaster {
         interval_secs: u64,
     ) -> Self {
         Self {
+            version: "2.1".to_string(),
+            node_id: None,
+            node_name: None,
+            endpoints: None,
+            capabilities,
+            protocols,
+            port,
+            broadcast_addresses,
+            interval_secs,
+        }
+    }
+    
+    /// Create a new v3.0 broadcaster with node identity and multiple endpoints
+    pub fn new_v3(
+        node_id: String,
+        node_name: String,
+        endpoints: Vec<TransportEndpointMessage>,
+        capabilities: Vec<String>,
+        broadcast_addresses: Vec<SocketAddr>,
+        interval_secs: u64,
+    ) -> Self {
+        // Extract primary endpoint for v2.1 fallback
+        let primary = endpoints.first();
+        let port = primary.map(|e| e.port).unwrap_or(8080);
+        let protocols = primary
+            .map(|e| e.protocols.clone())
+            .unwrap_or_else(|| vec!["https".to_string()]);
+        
+        Self {
+            version: "3.0".to_string(),
+            node_id: Some(node_id),
+            node_name: Some(node_name),
+            endpoints: Some(endpoints),
             capabilities,
             protocols,
             port,
@@ -387,8 +433,22 @@ impl AnonymousDiscoveryBroadcaster {
     /// Start broadcasting discovery messages
     ///
     /// This runs indefinitely, broadcasting every `interval_secs` seconds.
+    /// Sends v2.1 or v3.0 messages based on broadcaster configuration.
     pub async fn start_broadcasting(&self) -> Result<(), std::io::Error> {
         info!("🌐 Starting anonymous discovery broadcaster");
+        info!("   Version: {}", self.version);
+        if let Some(ref node_id) = self.node_id {
+            info!("   Node ID: {}", node_id);
+        }
+        if let Some(ref node_name) = self.node_name {
+            info!("   Node Name: {}", node_name);
+        }
+        if let Some(ref endpoints) = self.endpoints {
+            info!("   Endpoints: {} transport paths", endpoints.len());
+            for (i, endpoint) in endpoints.iter().enumerate() {
+                info!("     {}. {} (port {}, preference {})", i + 1, endpoint.interface_type, endpoint.port, endpoint.preference);
+            }
+        }
         info!("   Capabilities: {:?}", self.capabilities);
         info!("   Protocols: {:?}", self.protocols);
         info!("   Broadcast addresses: {:?}", self.broadcast_addresses);
@@ -405,12 +465,21 @@ impl AnonymousDiscoveryBroadcaster {
         loop {
             interval.tick().await;
 
-            // Create discovery message
-            let message = AnonymousDiscoveryMessage::new(
-                self.capabilities.clone(),
-                self.protocols.clone(),
-                self.port,
-            );
+            // Create discovery message (v2.1 or v3.0)
+            let message = if self.version == "3.0" {
+                AnonymousDiscoveryMessage::new_v3(
+                    self.node_id.clone().unwrap(),
+                    self.node_name.clone().unwrap(),
+                    self.endpoints.clone().unwrap(),
+                    self.capabilities.clone(),
+                )
+            } else {
+                AnonymousDiscoveryMessage::new(
+                    self.capabilities.clone(),
+                    self.protocols.clone(),
+                    self.port,
+                )
+            };
 
             // Serialize to bytes
             let bytes = match message.to_bytes() {
