@@ -80,6 +80,7 @@ pub mod core; // Consolidated core functionality
 pub mod error_recovery; // Error recovery & resilience (Week 3 - Dec 18, 2025)
 pub mod integration;
 pub mod network; // Network binding & endpoint management (Dec 20, 2025) - Zero-config intelligent binding
+pub mod node_identity; // Stable node identity (Dec 20, 2025) - Multi-path transport foundation
 pub mod observability; // Basic observability (Week 4 - Dec 18, 2025)
 pub mod orchestrator; // MVP Integration (Week 1-5 - Dec 18, 2025)
 pub mod privilege; // Secure privilege management (Dec 20, 2025) - CAP_NET_ADMIN, no sudo prompts
