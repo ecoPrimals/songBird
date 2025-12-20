@@ -62,13 +62,34 @@ use uuid::Uuid;
 /// include it in the message to avoid redundancy and maintain protocol purity.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AnonymousDiscoveryMessage {
-    /// Protocol version (now "2.1" for connection-aware discovery)
+    /// Protocol version (now "2.1" for connection-aware discovery, or "3.0" for multi-endpoint)
     pub version: String,
 
-    /// Temporary session ID (rotates every hour)
+    /// Stable node ID (v3.0+) - allows interface coalescence
+    ///
+    /// In v3.0, this is the stable machine-based UUID.
+    /// Receivers can group multiple endpoints under same node_id.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub node_id: Option<String>,
+
+    /// Human-readable node name (v3.0+)
+    ///
+    /// Example: "eastgate", "westgate", "strandgate"
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub node_name: Option<String>,
+
+    /// Temporary session ID (v2.x) - rotates every hour
     ///
     /// This prevents tracking across sessions while allowing response correlation.
+    /// In v3.0, this is deprecated in favor of node_id, but still included for compatibility.
     pub session_id: String,
+
+    /// All transport endpoints for this node (v3.0+)
+    ///
+    /// Each endpoint represents a different network interface (Ethernet, WiFi, etc.)
+    /// with its own address and capabilities.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub endpoints: Option<Vec<TransportEndpointMessage>>,
 
     /// Capabilities offered by this tower
     ///
@@ -80,10 +101,11 @@ pub struct AnonymousDiscoveryMessage {
     /// Examples: "https", "tarpc-tls", "websocket-tls"
     pub protocols: Vec<String>,
 
-    /// Port where this tower's HTTPS/TLS server is listening
+    /// Port where this tower's HTTPS/TLS server is listening (v2.x)
     ///
     /// Combined with the UDP sender's IP address, this allows peers to connect.
     /// This is NOT considered identity information - it's connection metadata.
+    /// In v3.0, this is deprecated in favor of endpoints array.
     pub port: u16,
 
     /// Timestamp of message creation (Unix epoch seconds)
@@ -97,12 +119,65 @@ pub struct AnonymousDiscoveryMessage {
     pub capability_proof: Option<String>,
 }
 
+/// Transport endpoint in discovery message (v3.0+)
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct TransportEndpointMessage {
+    /// Interface type (e.g., "ethernet", "wifi", "bluetooth")
+    pub interface_type: String,
+    
+    /// Port for this endpoint
+    pub port: u16,
+    
+    /// Protocols supported on this endpoint
+    pub protocols: Vec<String>,
+    
+    /// Relative preference (0-255, higher = more preferred)
+    pub preference: u8,
+}
+
 impl AnonymousDiscoveryMessage {
-    /// Create a new anonymous discovery message
+    /// Create a new anonymous discovery message (v2.1 - backward compatible)
     pub fn new(capabilities: Vec<String>, protocols: Vec<String>, port: u16) -> Self {
         Self {
             version: "2.1".to_string(),
+            node_id: None,
+            node_name: None,
             session_id: Self::generate_session_id(),
+            endpoints: None,
+            capabilities,
+            protocols,
+            port,
+            timestamp: SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .unwrap_or_default()
+                .as_secs(),
+            capability_proof: None,
+        }
+    }
+
+    /// Create a new multi-endpoint discovery message (v3.0)
+    ///
+    /// This includes stable node identity and multiple transport endpoints.
+    /// Receivers can coalesce multiple endpoints under the same node_id.
+    pub fn new_v3(
+        node_id: String,
+        node_name: String,
+        endpoints: Vec<TransportEndpointMessage>,
+        capabilities: Vec<String>,
+    ) -> Self {
+        // Get primary endpoint for backward compatibility
+        let primary_endpoint = endpoints.first();
+        let port = primary_endpoint.map(|e| e.port).unwrap_or(8080);
+        let protocols = primary_endpoint
+            .map(|e| e.protocols.clone())
+            .unwrap_or_else(|| vec!["https".to_string()]);
+
+        Self {
+            version: "3.0".to_string(),
+            node_id: Some(node_id.clone()),
+            node_name: Some(node_name),
+            session_id: Self::generate_session_id_from_node(&node_id),
+            endpoints: Some(endpoints),
             capabilities,
             protocols,
             port,
@@ -143,6 +218,30 @@ impl AnonymousDiscoveryMessage {
         format!("{:x}", hasher.finalize())
     }
 
+    /// Generate a session ID from stable node ID (v3.0+)
+    ///
+    /// This creates a deterministic but rotating session ID based on:
+    /// - Stable node ID (for consistency within an hour)
+    /// - Current hour (for rotation)
+    fn generate_session_id_from_node(node_id: &str) -> String {
+        use sha2::{Digest, Sha256};
+
+        let now = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap_or_default()
+            .as_secs();
+
+        // Truncate to hour (rotates every 3600 seconds)
+        let hour = now / 3600;
+
+        // Hash node_id + hour
+        let mut hasher = Sha256::new();
+        hasher.update(node_id.as_bytes());
+        hasher.update(hour.to_le_bytes());
+
+        format!("{:x}", hasher.finalize())
+    }
+
     /// Serialize to JSON bytes for UDP transmission
     pub fn to_bytes(&self) -> Result<Vec<u8>, serde_json::Error> {
         serde_json::to_vec(self)
@@ -156,15 +255,29 @@ impl AnonymousDiscoveryMessage {
     /// Validate the discovery message
     ///
     /// Checks:
-    /// - Protocol version is "2.0" or "2.1"
+    /// - Protocol version is "2.0", "2.1", or "3.0"
     /// - Session ID is not empty
     /// - At least one capability
     /// - At least one protocol
     /// - Port is valid (non-zero)
     /// - Timestamp is recent (within 5 minutes)
+    /// - For v3.0: node_id and endpoints are present
     pub fn validate(&self) -> Result<(), String> {
-        if self.version != "2.0" && self.version != "2.1" {
+        if self.version != "2.0" && self.version != "2.1" && self.version != "3.0" {
             return Err(format!("Unsupported protocol version: {}", self.version));
+        }
+
+        // v3.0 specific validation
+        if self.version == "3.0" {
+            if self.node_id.is_none() {
+                return Err("v3.0 requires node_id".to_string());
+            }
+            if self.node_name.is_none() {
+                return Err("v3.0 requires node_name".to_string());
+            }
+            if self.endpoints.is_none() || self.endpoints.as_ref().unwrap().is_empty() {
+                return Err("v3.0 requires at least one endpoint".to_string());
+            }
         }
 
         if self.port == 0 {
