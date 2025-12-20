@@ -287,6 +287,7 @@ impl SongbirdOrchestrator {
                             songbird_config::defaults::ports::orchestrator_port().to_string()
                         )
                     ),
+                    endpoints: None, // TODO: Populate from NodeIdentity in Phase 4
                     capabilities: vec!["orchestrator".to_string()],
                     cpu_cores: num_cpus::get(),
                     memory_gb: {
@@ -825,6 +826,7 @@ impl SongbirdOrchestrator {
                                             node_id: peer.session_id.clone(),
                                             node_name: format!("peer-{}", &peer.session_id[..8]),
                                             node_address: endpoint.clone(),
+                                            endpoints: None, // Will be populated when v3.0 discovery messages arrive
                                             cpu_cores: 0, // Unknown at discovery stage
                                             memory_gb: 0, // Unknown at discovery stage
                                             gpu_model: None,

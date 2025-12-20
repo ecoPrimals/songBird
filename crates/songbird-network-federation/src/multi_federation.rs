@@ -164,6 +164,7 @@ impl FederationContext {
             node_id: peer.session_id.clone(),
             node_name: peer.session_id.clone(),
             node_address: endpoint.to_string(),
+            endpoints: None, // Will be populated by discovery integration
             cpu_cores: 0,
             memory_gb: 0,
             gpu_model: None,
