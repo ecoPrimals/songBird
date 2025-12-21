@@ -18,6 +18,43 @@ NC='\033[0m'
 TOWERS=("eastgate" "westgate" "strandgate")
 CURRENT_TOWER=$(hostname | tr '[:upper:]' '[:lower:]')
 
+# Auto-detect songbird directory
+detect_songbird_dir() {
+    # Try common paths
+    local paths=(
+        "${HOME}/Development/ecoPrimals/songbird"
+        "${HOME}/Development/songbird"
+        "${PWD}"
+    )
+    
+    for path in "${paths[@]}"; do
+        if [[ -d "$path/crates/songbird-orchestrator" ]]; then
+            echo "$path"
+            return 0
+        fi
+    done
+    
+    # If running from within the repo, use git root
+    if git rev-parse --git-dir > /dev/null 2>&1; then
+        git rev-parse --show-toplevel
+        return 0
+    fi
+    
+    echo ""
+    return 1
+}
+
+SONGBIRD_DIR=$(detect_songbird_dir)
+
+if [[ -z "$SONGBIRD_DIR" ]]; then
+    echo -e "${RED}ERROR: Could not find songbird directory${NC}"
+    echo "Tried:"
+    echo "  - ${HOME}/Development/ecoPrimals/songbird"
+    echo "  - ${HOME}/Development/songbird"
+    echo "  - ${PWD}"
+    exit 1
+fi
+
 log() {
     echo -e "${GREEN}[$(date +'%H:%M:%S')]${NC} $*"
 }
@@ -42,6 +79,9 @@ section() {
 check_tower() {
     section "Tower Identification"
     
+    log "Hostname: ${CURRENT_TOWER}"
+    log "Songbird dir: ${SONGBIRD_DIR}"
+    
     local found=false
     for tower in "${TOWERS[@]}"; do
         if [[ "$CURRENT_TOWER" == *"$tower"* ]]; then
@@ -53,8 +93,9 @@ check_tower() {
     if ! $found; then
         warn "Running on unknown tower: ${CURRENT_TOWER}"
         warn "Expected one of: ${TOWERS[*]}"
+        log "Continuing anyway..."
     else
-        log "✅ Running on: ${CURRENT_TOWER}"
+        log "✅ Running on known tower: ${CURRENT_TOWER}"
     fi
 }
 
@@ -62,7 +103,292 @@ check_tower() {
 ensure_clean_workspace() {
     section "Git Workspace Check"
     
-    cd ~/Development/ecoPrimals/songbird
+    cd "$SONGBIRD_DIR"
+    
+    if [[ -n $(git status --porcelain) ]]; then
+        warn "Workspace has uncommitted changes"
+        git status --short
+        read -p "Continue anyway? (y/N) " -n 1 -r
+        echo
+        if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+            error "Aborting deployment"
+            exit 1
+        fi
+    else
+        log "✅ Workspace is clean"
+    fi
+}
+
+# Pull latest changes
+pull_updates() {
+    section "Pulling Latest Updates"
+    
+    cd "$SONGBIRD_DIR"
+    
+    log "Fetching from origin..."
+    git fetch origin
+    
+    local current_branch=$(git branch --show-current)
+    log "Current branch: ${current_branch}"
+    
+    log "Pulling updates..."
+    if git pull origin "$current_branch"; then
+        log "✅ Updates pulled successfully"
+    else
+        error "Failed to pull updates"
+        exit 1
+    fi
+}
+
+# Fix warnings
+fix_warnings() {
+    section "Fixing Compiler Warnings"
+    
+    cd "$SONGBIRD_DIR"
+    
+    log "Running cargo fix..."
+    cargo fix --lib -p songbird-network-federation --allow-dirty 2>&1 | tail -5 || true
+    
+    log "✅ Warnings fixed"
+}
+
+# Build
+build_release() {
+    section "Building Release Binary"
+    
+    cd "$SONGBIRD_DIR"
+    
+    log "Building with cargo..."
+    if cargo build --release 2>&1 | tee /tmp/songbird-build.log | tail -20; then
+        log "✅ Build successful"
+    else
+        error "Build failed. Check /tmp/songbird-build.log"
+        exit 1
+    fi
+}
+
+# Stop existing instance
+stop_songbird() {
+    section "Stopping Existing Songbird Instance"
+    
+    local pid_file=~/.songbird/songbird.pid
+    
+    if [[ -f "$pid_file" ]]; then
+        local pid=$(cat "$pid_file")
+        if ps -p "$pid" > /dev/null 2>&1; then
+            log "Stopping Songbird (PID: ${pid})..."
+            kill "$pid"
+            sleep 2
+            
+            if ps -p "$pid" > /dev/null 2>&1; then
+                warn "Graceful shutdown failed, forcing..."
+                kill -9 "$pid"
+            fi
+            
+            log "✅ Songbird stopped"
+        else
+            log "PID file exists but process not running"
+            rm -f "$pid_file"
+        fi
+    else
+        # Check for running process without PID file
+        local running_pid=$(ps aux | grep "[s]ongbird-orchestrator" | awk '{print $2}' | head -1)
+        if [[ -n "$running_pid" ]]; then
+            log "Found running Songbird without PID file (PID: ${running_pid})"
+            kill "$running_pid" 2>/dev/null || true
+            sleep 2
+        else
+            log "No existing instance found"
+        fi
+    fi
+}
+
+# Start new instance
+start_songbird() {
+    section "Starting Songbird"
+    
+    cd "$SONGBIRD_DIR"
+    
+    # Ensure log directory exists
+    mkdir -p ~/.songbird
+    
+    log "Starting new instance..."
+    nohup ./target/release/songbird-orchestrator > ~/.songbird/songbird.log 2>&1 &
+    
+    local pid=$!
+    echo "$pid" > ~/.songbird/songbird.pid
+    
+    log "Songbird started (PID: ${pid})"
+    log "Waiting for startup..."
+    
+    # Wait for health check
+    local max_attempts=30
+    local attempt=0
+    
+    while [ $attempt -lt $max_attempts ]; do
+        if curl -sk https://localhost:8080/health > /dev/null 2>&1; then
+            log "✅ Songbird is healthy"
+            return 0
+        fi
+        
+        sleep 1
+        attempt=$((attempt + 1))
+    done
+    
+    error "Songbird failed to start"
+    tail -20 ~/.songbird/songbird.log
+    exit 1
+}
+
+# Verify federation
+check_federation() {
+    section "Checking Federation Status"
+    
+    log "Querying federation nodes..."
+    
+    local response=$(curl -sk https://localhost:8080/api/v1/federation/nodes 2>/dev/null)
+    
+    if [[ -z "$response" ]]; then
+        error "Failed to query federation"
+        return 1
+    fi
+    
+    local node_count=$(echo "$response" | jq -r '.nodes | length')
+    log "Federation has ${node_count} node(s)"
+    
+    echo "$response" | jq -r '.nodes[] | "  - \(.node_name) (\(.status))"'
+    
+    log "✅ Federation check complete"
+}
+
+# Full deployment
+full_deploy() {
+    section "🚀 Full Deployment on ${CURRENT_TOWER}"
+    
+    check_tower
+    ensure_clean_workspace
+    pull_updates
+    fix_warnings
+    build_release
+    stop_songbird
+    start_songbird
+    sleep 3
+    check_federation
+    
+    section "✅ Deployment Complete on ${CURRENT_TOWER}"
+    
+    log ""
+    log "Songbird is running with:"
+    log "  - Enhanced Capability Router"
+    log "  - Universal Port Authority"
+    log "  - Service Registry endpoints"
+    log "  - Federation discovery"
+    log ""
+    log "Logs: tail -f ~/.songbird/songbird.log"
+    log "Status: curl -sk https://localhost:8080/health | jq"
+    log ""
+}
+
+# Quick restart (no pull/build)
+quick_restart() {
+    section "Quick Restart on ${CURRENT_TOWER}"
+    
+    check_tower
+    stop_songbird
+    start_songbird
+    sleep 3
+    check_federation
+    
+    section "✅ Restart Complete"
+}
+
+# Show deployment status
+show_status() {
+    section "Songbird Status on ${CURRENT_TOWER}"
+    
+    local pid_file=~/.songbird/songbird.pid
+    
+    if [[ -f "$pid_file" ]]; then
+        local pid=$(cat "$pid_file")
+        if ps -p "$pid" > /dev/null 2>&1; then
+            log "✅ Running (PID: ${pid})"
+            
+            if curl -sk https://localhost:8080/health > /dev/null 2>&1; then
+                log "✅ Health check passing"
+                check_federation
+            else
+                warn "Health check failing"
+            fi
+        else
+            error "PID file exists but process not running"
+        fi
+    else
+        error "Not running"
+    fi
+}
+
+# Main menu
+main() {
+    cat << 'EOF'
+
+╔═══════════════════════════════════════════════════════════════════╗
+║                                                                   ║
+║  🎵 Songbird Federation Deployment                                ║
+║     Universal Port Authority - Cross-Tower Updates               ║
+║                                                                   ║
+╚═══════════════════════════════════════════════════════════════════╝
+
+EOF
+
+    if [[ $# -eq 0 ]]; then
+        echo "Usage: $0 [command]"
+        echo ""
+        echo "Commands:"
+        echo "  deploy     - Full deployment (pull, build, restart)"
+        echo "  restart    - Quick restart (no pull/build)"
+        echo "  status     - Show current status"
+        echo "  stop       - Stop Songbird"
+        echo "  start      - Start Songbird"
+        echo "  build      - Build only"
+        echo "  fix        - Fix warnings only"
+        echo "  federation - Check federation"
+        echo ""
+        exit 1
+    fi
+    
+    case "$1" in
+        deploy)
+            full_deploy
+            ;;
+        restart)
+            quick_restart
+            ;;
+        status)
+            show_status
+            ;;
+        stop)
+            stop_songbird
+            ;;
+        start)
+            start_songbird
+            ;;
+        build)
+            build_release
+            ;;
+        fix)
+            fix_warnings
+            ;;
+        federation)
+            check_federation
+            ;;
+        *)
+            error "Unknown command: $1"
+            exit 1
+            ;;
+    esac
+}
+
+main "$@"
     
     if [[ -n $(git status --porcelain) ]]; then
         warn "Workspace has uncommitted changes"

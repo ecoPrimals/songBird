@@ -379,7 +379,7 @@ pub struct IpNetwork {
 impl IpNetwork {
     /// Check if an IP is in this network
     pub fn contains(&self, ip: IpAddr) -> bool {
-        use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
+        use std::net::IpAddr;
 
         match (self.address, ip) {
             (IpAddr::V4(net_ip), IpAddr::V4(test_ip)) => {
