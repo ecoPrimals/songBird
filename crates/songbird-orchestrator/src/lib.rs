@@ -88,6 +88,7 @@ pub mod process_manager; // Process lifecycle & singleton enforcement (Dec 20, 2
 pub mod resource_management; // Resource management & fairness (Week 2 - Dec 18, 2025)
 pub mod rpc; // Multi-protocol RPC (JSON-RPC, tarpc)
 pub mod server;
+pub mod service_registry; // Universal Port Authority (Dec 20, 2025) - Inter-primal service registration
 pub mod task_lifecycle; // Task lifecycle management (Week 1 - Dec 18, 2025) // Consent management (Week 5 - Dec 18, 2025)
 pub mod trust; // Trust escalation system (Dec 19, 2025) - Zero-trust progressive escalation
 

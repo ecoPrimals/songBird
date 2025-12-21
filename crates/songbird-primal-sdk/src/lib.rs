@@ -66,6 +66,43 @@ pub mod capability_orchestrator;
 pub mod capability_storage;
 
 // ============================================================================
+// PRIMAL REGISTRATION PROTOCOL ⭐ NEW! (Dec 20, 2025)
+// ============================================================================
+
+/// **Capability-Based Service Registration Protocol**
+///
+/// This module provides a generic registration protocol for primals to register
+/// with ANY orchestrator that implements the service registry capability.
+///
+/// **Core Principle:** "Each Primal Knows Only Itself"
+///
+/// This module does NOT hardcode "Songbird" or any specific orchestrator name.
+/// Instead, it discovers orchestrators by capability and registers generically.
+///
+/// # Example
+///
+/// ```no_run
+/// use songbird_primal_sdk::registration::{
+///     discover_orchestrators,
+///     register_with_orchestrator,
+///     ServiceInfo,
+/// };
+///
+/// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+/// // Discover ANY orchestrator (Songbird, Phoenix, etc.)
+/// let orchestrators = discover_orchestrators().await?;
+///
+/// // Register with whoever we found
+/// let registration = register_with_orchestrator(
+///     &orchestrators[0],
+///     ServiceInfo { /* ... */ }
+/// ).await?;
+/// # Ok(())
+/// # }
+/// ```
+pub mod registration;
+
+// ============================================================================
 // DEPRECATED: Primal-Specific Modules (Use capability_* instead)
 // ============================================================================
 

@@ -37,6 +37,7 @@ use crate::trust::{TrustEscalationManager, TrustTimeouts};
 pub struct SongbirdOrchestrator {
     _config: CanonicalSongbirdConfig,
     _service_registry: Arc<FederatedServiceRegistry>,
+    service_registry: Arc<crate::service_registry::ServiceRegistry>, // Universal Port Authority
     // gaming_manager: Arc<GamingManager>, // Temporarily disabled - gaming module not available
     // federation_manager: Arc<CanonicalFederation>, // Temporarily disabled
     federation_coordinator: Option<Arc<FederationCoordinator>>,
@@ -203,6 +204,9 @@ impl SongbirdOrchestrator {
 
         // Initialize service registry (using FederatedServiceRegistry)
         let service_registry = Arc::new(FederatedServiceRegistry::new());
+        
+        // Initialize Universal Port Authority service registry (Dec 20, 2025)
+        let universal_service_registry = Arc::new(crate::service_registry::ServiceRegistry::new());
 
         // // Initialize gaming manager (no parameters) - Temporarily disabled
         // let gaming_manager = Arc::new(GamingManager::new().await?);
@@ -394,6 +398,7 @@ impl SongbirdOrchestrator {
         Ok(Self {
             _config: config,
             _service_registry: service_registry,
+            service_registry: universal_service_registry,
             // gaming_manager, // Temporarily disabled
             // federation_manager, // Temporarily disabled
             federation_coordinator,
@@ -614,6 +619,9 @@ impl SongbirdOrchestrator {
 
         // Start session TTL cleanup task (Deep Debt Fix - Dec 20, 2025)
         self.start_session_ttl_cleanup().await?;
+        
+        // Start service registry cleanup task (Universal Port Authority - Dec 20, 2025)
+        self.start_service_registry_cleanup();
 
         // HTTP server already started above (moved before discovery)
         // self.start_http_server().await?; // ❌ OLD LOCATION
@@ -656,6 +664,7 @@ impl SongbirdOrchestrator {
             http_server::start_http_server(
                 Arc::clone(&self.federation_state),
                 Arc::clone(&self.federated_service_registry),
+                Arc::clone(&self.service_registry),
                 &manual_addr,
                 port,
             )
@@ -680,6 +689,7 @@ impl SongbirdOrchestrator {
             http_server::start_http_server(
                 Arc::clone(&self.federation_state),
                 Arc::clone(&self.federated_service_registry),
+                Arc::clone(&self.service_registry),
                 &bind_address,
                 port,
             )
@@ -1027,6 +1037,17 @@ impl SongbirdOrchestrator {
         
         info!("✅ Session TTL cleanup task spawned");
         Ok(())
+    }
+    
+    /// Start service registry cleanup task (Universal Port Authority)
+    ///
+    /// Cleans up stale registered services that have missed heartbeats.
+    fn start_service_registry_cleanup(&self) {
+        let registry = Arc::clone(&self.service_registry);
+        
+        crate::service_registry::spawn_cleanup_task((*registry).clone(), 60); // Clean every minute
+        
+        info!("✅ Service registry cleanup task started");
     }
 
     /// Stop the orchestrator

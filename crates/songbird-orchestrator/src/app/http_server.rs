@@ -21,13 +21,18 @@ use tracing::{error, info, warn};
 pub async fn start_http_server(
     federation_state: Arc<FederationState>,
     federated_service_registry: Arc<FederatedServiceRegistry>,
+    service_registry: Arc<crate::service_registry::ServiceRegistry>,
     bind_address: &str,
     port: u16,
 ) -> Result<u16> {
     let addr: SocketAddr = super::parse_bind_address(bind_address, port)?;
 
     // Build the app with all API routes
-    let app = build_router(Arc::clone(&federation_state), Arc::clone(&federated_service_registry));
+    let app = build_router(
+        Arc::clone(&federation_state),
+        Arc::clone(&federated_service_registry),
+        Arc::clone(&service_registry),
+    );
 
     // Smart port management: Try configured port, auto-increment if busy
     let (listener, actual_addr) = bind_with_fallback(&addr).await?;
@@ -62,6 +67,7 @@ pub async fn start_http_server(
 fn build_router(
     federation_state: Arc<FederationState>,
     federated_service_registry: Arc<FederatedServiceRegistry>,
+    service_registry: Arc<crate::service_registry::ServiceRegistry>,
 ) -> Router {
     // Build the app with federation and deployment routes
     let deployment_state = crate::server::deployment_api::DeploymentState::new();
@@ -103,6 +109,14 @@ fn build_router(
     // Create WebSocket router with state
     let websocket_router =
         crate::server::websocket_api::websocket_routes().with_state(websocket_state);
+    
+    // Create service registry router (Universal Port Authority)
+    let service_registry_router = crate::server::service_registry_api::service_registry_routes(
+        (*service_registry).clone()
+    );
+    
+    // Create info router (for orchestrator discovery)
+    let info_router = crate::server::service_registry_api::info_routes();
 
     Router::new()
         .nest(
@@ -117,6 +131,8 @@ fn build_router(
         .nest("/jsonrpc", jsonrpc_router)
         .nest("/api/ws", websocket_router)
         .nest("/api/deployment", crate::server::deployment_api::deployment_routes(deployment_state))
+        .nest("/api/v1/services", service_registry_router) // NEW: Universal Port Authority
+        .merge(info_router) // NEW: Orchestrator info for discovery
         .route("/health", axum::routing::get(|| async { "OK" }))
         .layer(axum::extract::DefaultBodyLimit::max(100 * 1024 * 1024)) // 100 MB limit
 }

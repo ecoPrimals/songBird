@@ -9,6 +9,8 @@
 
 use crate::core::registry::CapabilityRegistry;
 use crate::core::routing::{CapabilityRouter, RoutingDecision, Task};
+use crate::core::routing::enhanced_router::EnhancedCapabilityRouter;
+use crate::service_registry::ServiceRegistry;
 use axum::{
     extract::{Json, Path, State},
     http::StatusCode,
@@ -30,6 +32,8 @@ use uuid::Uuid;
 pub struct ComputeApiState {
     /// Capability router for intelligent task routing
     router: Arc<CapabilityRouter>,
+    /// Enhanced router with Universal Port Authority (optional, preferred)
+    enhanced_router: Option<Arc<EnhancedCapabilityRouter>>,
     /// Active job tracking
     active_jobs: Arc<RwLock<HashMap<Uuid, JobStatus>>>,
 }
@@ -43,6 +47,7 @@ impl ComputeApiState {
         let router = Arc::new(CapabilityRouter::new(federation_state, service_registry));
         Self {
             router,
+            enhanced_router: None,
             active_jobs: Arc::new(RwLock::new(HashMap::new())),
         }
     }
@@ -60,6 +65,40 @@ impl ComputeApiState {
         ));
         Self {
             router,
+            enhanced_router: None,
+            active_jobs: Arc::new(RwLock::new(HashMap::new())),
+        }
+    }
+
+    /// Create new compute API state with Enhanced Router (Universal Port Authority)
+    /// This is the modern, preferred constructor that uses the Enhanced Router
+    pub fn with_enhanced_router(
+        federation_state: Arc<FederationState>,
+        federated_service_registry: Arc<FederatedServiceRegistry>,
+        service_registry: Arc<ServiceRegistry>,
+        capability_registry: Option<Arc<CapabilityRegistry>>,
+    ) -> Self {
+        // Create enhanced router (modern approach with UPA)
+        let enhanced_router = Arc::new(EnhancedCapabilityRouter::new(
+            service_registry,
+            Arc::clone(&federation_state),
+            Arc::clone(&federated_service_registry),
+        ));
+
+        // Create legacy router for fallback
+        let router = if let Some(cap_registry) = capability_registry {
+            Arc::new(CapabilityRouter::with_capability_registry(
+                federation_state,
+                federated_service_registry,
+                cap_registry,
+            ))
+        } else {
+            Arc::new(CapabilityRouter::new(federation_state, federated_service_registry))
+        };
+
+        Self {
+            router,
+            enhanced_router: Some(enhanced_router),
             active_jobs: Arc::new(RwLock::new(HashMap::new())),
         }
     }
@@ -145,8 +184,15 @@ async fn submit_compute_task(
     let job_id = Uuid::new_v4();
 
     // Route the task intelligently
-    let routing_decision =
-        state.router.route_task(&req.task).await.map_err(|e| ApiError::Routing(e.to_string()))?;
+    // Prefer enhanced router if available (Universal Port Authority)
+    let routing_decision = if let Some(enhanced) = &state.enhanced_router {
+        info!("Using Enhanced Router with Universal Port Authority");
+        enhanced.route_task(&req.task).await
+    } else {
+        debug!("Using legacy router");
+        state.router.route_task(&req.task).await
+    }
+    .map_err(|e| ApiError::Routing(e.to_string()))?;
 
     debug!("Routing decision for job {}: {:?}", job_id, routing_decision);
 
@@ -157,6 +203,13 @@ async fn submit_compute_task(
             node_id,
             ..
         } => format!("songbird:{}", node_id),
+        RoutingDecision::RouteToRegisteredService {
+            service_name,
+            port,
+            ..
+        } => {
+            format!("service:{}:{}", service_name, port)
+        }
         RoutingDecision::RouteToCapability {
             capability_type,
             provider_endpoint,
@@ -222,6 +275,76 @@ async fn submit_compute_task(
                     status.status = JobStatusType::Completed;
                     status.completed_at = Some(chrono::Utc::now());
                     info!("Task {} completed locally", job_id);
+                }
+            });
+        }
+
+        RoutingDecision::RouteToRegisteredService {
+            service_id,
+            service_name,
+            endpoint,
+            port,
+        } => {
+            // Route to service registered via Universal Port Authority
+            info!(
+                "Routing task {} to registered service {} (ID: {}) at {}:{}",
+                job_id, service_name, service_id, endpoint, port
+            );
+
+            let endpoint_clone = endpoint.clone();
+            let service_name_clone = service_name.clone();
+            let port_clone = *port;
+
+            tokio::spawn(async move {
+                // Update to running
+                {
+                    let mut jobs = active_jobs_clone.write().await;
+                    if let Some(status) = jobs.get_mut(&job_id) {
+                        status.status = JobStatusType::Running;
+                    }
+                }
+
+                // Send task to registered service
+                let client = reqwest::Client::new();
+                let service_url = format!("http://{}:{}/execute", endpoint_clone, port_clone);
+
+                let result = client
+                    .post(&service_url)
+                    .json(&task_clone)
+                    .timeout(tokio::time::Duration::from_secs(300))
+                    .send()
+                    .await;
+
+                // Update job status with result
+                let mut jobs = active_jobs_clone.write().await;
+                if let Some(status) = jobs.get_mut(&job_id) {
+                    match result {
+                        Ok(response) if response.status().is_success() => {
+                            status.status = JobStatusType::Completed;
+                            status.completed_at = Some(chrono::Utc::now());
+                            info!("Task {} completed on service {}", job_id, service_name_clone);
+                        }
+                        Ok(response) => {
+                            status.status = JobStatusType::Failed;
+                            status.error = Some(format!(
+                                "Service {} returned error: {}",
+                                service_name_clone,
+                                response.status()
+                            ));
+                            warn!(
+                                "Task {} failed on service {}: {}",
+                                job_id,
+                                service_name_clone,
+                                response.status()
+                            );
+                        }
+                        Err(e) => {
+                            status.status = JobStatusType::Failed;
+                            status.error =
+                                Some(format!("Failed to send to service {}: {}", service_name_clone, e));
+                            warn!("Task {} failed to send to service {}: {}", job_id, service_name_clone, e);
+                        }
+                    }
                 }
             });
         }

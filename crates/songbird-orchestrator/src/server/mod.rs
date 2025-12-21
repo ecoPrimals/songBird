@@ -24,6 +24,7 @@ pub mod federation_api;
 pub mod intelligent_protocol_router; // ✅ NEW: Intelligent Protocol Selection (Dec 18, 2025)
 pub mod jsonrpc_api; // ✅ NEW: JSON-RPC 2.0 Universal Gateway (Nov 11, 2025)
 pub mod protocol_api; // ✅ NEW: Progressive Protocol Enhancement API (Nov 11, 2025)
+pub mod service_registry_api; // ✅ NEW: Universal Port Authority API (Dec 20, 2025) - Inter-primal registration
 pub mod tarpc_server; // ✅ NEW: tarpc High-Performance Native RPC (Nov 11, 2025 - Phase 3)
 pub mod task_api; // ✅ NEW: Task Lifecycle API (Dec 18, 2025 - Week 1 MVP)
 pub mod websocket_api; // ✅ NEW: WebSocket Real-Time API (Nov 11, 2025 - Phase 4)

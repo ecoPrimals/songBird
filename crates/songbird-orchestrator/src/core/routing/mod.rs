@@ -24,9 +24,11 @@
 //! ```
 
 pub mod analyzer;
+pub mod enhanced_router; // NEW: Modern router with Universal Port Authority
 pub mod router;
 pub mod types;
 
 pub use analyzer::{TaskComplexity, TaskComplexityAnalyzer};
+pub use enhanced_router::EnhancedCapabilityRouter; // Export for use
 pub use router::{CapabilityRouter, RoutingDecision};
 pub use types::{ResourceRequirements, Task, TaskBuilder};

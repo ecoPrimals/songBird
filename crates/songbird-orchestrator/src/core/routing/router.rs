@@ -27,6 +27,19 @@ pub enum RoutingDecision {
         endpoint: String,
     },
 
+    /// Route to a registered service (Universal Port Authority)
+    /// NEW: Modern routing via service registry
+    RouteToRegisteredService {
+        /// Service ID from registry
+        service_id: String,
+        /// Service name (e.g., "Toadstool")
+        service_name: String,
+        /// Full endpoint URL
+        endpoint: String,
+        /// Port assigned by UPA
+        port: u16,
+    },
+
     /// Route to a specialized capability provider
     RouteToCapability {
         /// Type of capability (Compute, Security, AI, Storage)
