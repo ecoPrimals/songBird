@@ -37,7 +37,9 @@ pub struct ServiceRegistryApiState {
 
 impl ServiceRegistryApiState {
     pub fn new(registry: ServiceRegistry) -> Self {
-        Self { registry }
+        Self {
+            registry,
+        }
     }
 }
 
@@ -254,4 +256,3 @@ mod tests {
         assert_eq!(response.status(), StatusCode::OK);
     }
 }
-

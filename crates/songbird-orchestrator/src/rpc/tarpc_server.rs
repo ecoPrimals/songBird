@@ -232,7 +232,7 @@ impl SongbirdRpc for TarpcServer {
 
         // Calculate real uptime
         let uptime_seconds = self.start_time.elapsed().as_secs();
-        
+
         // Get real service count from registry
         let services_count = self.service_registry.get_all_services().await.len();
 

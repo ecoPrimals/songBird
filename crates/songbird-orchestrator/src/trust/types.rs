@@ -321,4 +321,3 @@ mod tests {
         assert!(!invalid_proof.verify());
     }
 }
-

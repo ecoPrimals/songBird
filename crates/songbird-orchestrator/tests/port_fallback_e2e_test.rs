@@ -32,7 +32,8 @@ impl SimulatedTower {
 
     async fn start_with_fallback(&mut self) -> Result<()> {
         // Try to bind to configured port
-        let bind_result = tokio::net::TcpListener::bind(format!("127.0.0.1:{}", self.configured_port)).await;
+        let bind_result =
+            tokio::net::TcpListener::bind(format!("127.0.0.1:{}", self.configured_port)).await;
 
         match bind_result {
             Ok(listener) => {
@@ -46,12 +47,14 @@ impl SimulatedTower {
                 // Port conflict, try fallback ports
                 for fallback_offset in 1..=10 {
                     let fallback_port = self.configured_port + fallback_offset;
-                    if let Ok(fallback_listener) = tokio::net::TcpListener::bind(format!("127.0.0.1:{}", fallback_port)).await {
+                    if let Ok(fallback_listener) =
+                        tokio::net::TcpListener::bind(format!("127.0.0.1:{}", fallback_port)).await
+                    {
                         self.actual_port = Some(fallback_port);
-                        
+
                         // THE FIX: Discovery uses actual port (not configured)
                         self.discovery_broadcast_port = Some(fallback_port);
-                        
+
                         // Keep listener alive
                         std::mem::forget(fallback_listener);
                         break;
@@ -80,7 +83,7 @@ impl SimulatedTower {
 #[tokio::test]
 async fn test_e2e_port_fallback_discovery() {
     // Scenario: Two towers, one has port conflict
-    
+
     let mut tower_a = SimulatedTower::new("tower-a", 9000);
     let mut tower_b = SimulatedTower::new("tower-b", 9000); // Same port!
 
@@ -93,11 +96,20 @@ async fn test_e2e_port_fallback_discovery() {
     tower_b.start_with_fallback().await.unwrap();
     assert!(tower_b.actual_port.is_some(), "Tower B should have bound");
     assert!(tower_b.actual_port.unwrap() > 9000, "Tower B should have fallen back");
-    assert_eq!(tower_b.discovery_broadcast_port, tower_b.actual_port, "Tower B should broadcast fallback port");
+    assert_eq!(
+        tower_b.discovery_broadcast_port, tower_b.actual_port,
+        "Tower B should broadcast fallback port"
+    );
 
     // Key assertion: Towers can connect using broadcast ports
-    assert!(tower_a.can_connect(&tower_b), "Tower A should be able to connect to Tower B using broadcast port");
-    assert!(tower_b.can_connect(&tower_a), "Tower B should be able to connect to Tower A using broadcast port");
+    assert!(
+        tower_a.can_connect(&tower_b),
+        "Tower A should be able to connect to Tower B using broadcast port"
+    );
+    assert!(
+        tower_b.can_connect(&tower_a),
+        "Tower B should be able to connect to Tower A using broadcast port"
+    );
 }
 
 #[tokio::test]
@@ -105,7 +117,7 @@ async fn test_e2e_eastgate_westgate_scenario() {
     // Reproduce the exact Eastgate scenario:
     // - Eastgate: Port 8080 occupied by Cursor IDE
     // - Westgate: Port 8080 free
-    
+
     // Simulate Cursor IDE occupying port 8080 on Eastgate
     let _cursor_ide = TcpListener::bind("127.0.0.1:8080").ok();
 
@@ -116,7 +128,10 @@ async fn test_e2e_eastgate_westgate_scenario() {
     eastgate.start_with_fallback().await.unwrap();
     assert!(eastgate.actual_port.is_some(), "Eastgate should have bound");
     assert!(eastgate.actual_port.unwrap() > 8080, "Eastgate should have fallen back");
-    assert_eq!(eastgate.discovery_broadcast_port, eastgate.actual_port, "Eastgate should broadcast actual port");
+    assert_eq!(
+        eastgate.discovery_broadcast_port, eastgate.actual_port,
+        "Eastgate should broadcast actual port"
+    );
 
     // Westgate starts on 8081 (may or may not conflict)
     westgate.start_with_fallback().await.unwrap();
@@ -124,12 +139,12 @@ async fn test_e2e_eastgate_westgate_scenario() {
 
     // Critical assertion: Westgate can connect to Eastgate using broadcast port
     assert!(westgate.can_connect(&eastgate), "Westgate MUST be able to connect to Eastgate");
-    
+
     // This would FAIL before the fix:
     // - Eastgate broadcasts 8080 (configured)
     // - Eastgate listens on 8082 (actual)
     // - Westgate tries to connect to 8080 → Connection refused
-    
+
     // After the fix:
     // - Eastgate broadcasts 8082 (actual)
     // - Eastgate listens on 8082 (actual)
@@ -139,7 +154,7 @@ async fn test_e2e_eastgate_westgate_scenario() {
 #[tokio::test]
 async fn test_e2e_three_tower_federation() {
     // Simulate Eastgate, Westgate, Strandgate
-    
+
     let mut eastgate = SimulatedTower::new("eastgate", 9100);
     let mut westgate = SimulatedTower::new("westgate", 9101);
     let mut strandgate = SimulatedTower::new("strandgate", 9102);
@@ -166,7 +181,7 @@ async fn test_e2e_three_tower_federation() {
 #[tokio::test]
 async fn test_e2e_discovery_broadcast_actual_port() {
     // Test that discovery message contains actual port, not configured
-    
+
     #[derive(Debug, Clone)]
     struct DiscoveryMessage {
         node_name: String,
@@ -184,8 +199,14 @@ async fn test_e2e_discovery_broadcast_actual_port() {
     };
 
     // Assertions
-    assert_eq!(discovery_msg.advertised_port, actual_port, "Discovery should advertise actual port");
-    assert_ne!(discovery_msg.advertised_port, configured_port, "Discovery should NOT advertise configured port after fallback");
+    assert_eq!(
+        discovery_msg.advertised_port, actual_port,
+        "Discovery should advertise actual port"
+    );
+    assert_ne!(
+        discovery_msg.advertised_port, configured_port,
+        "Discovery should NOT advertise configured port after fallback"
+    );
 
     // Simulate another tower receiving this message
     let connect_url = format!("https://test-tower:{}", discovery_msg.advertised_port);
@@ -195,12 +216,12 @@ async fn test_e2e_discovery_broadcast_actual_port() {
 #[tokio::test]
 async fn test_e2e_startup_order_timing() {
     // Test that HTTP server starts BEFORE discovery
-    
+
     use std::sync::atomic::{AtomicU8, Ordering};
     let startup_order = Arc::new(AtomicU8::new(0));
 
     let order_clone = Arc::clone(&startup_order);
-    
+
     // Simulate HTTP server startup
     let http_task = tokio::spawn(async move {
         sleep(Duration::from_millis(10)).await;
@@ -210,7 +231,7 @@ async fn test_e2e_startup_order_timing() {
 
     // Wait for HTTP server to complete
     let actual_port = http_task.await.unwrap();
-    
+
     // Simulate discovery startup (should happen AFTER HTTP server)
     let order_clone2 = Arc::clone(&startup_order);
     let discovery_task = tokio::spawn(async move {
@@ -230,7 +251,7 @@ async fn test_e2e_startup_order_timing() {
 #[tokio::test]
 async fn test_e2e_port_propagation_full_chain() {
     // Test the complete propagation chain in a realistic scenario
-    
+
     struct NodeSetup {
         configured_port: u16,
         actual_port: u16,
@@ -241,19 +262,19 @@ async fn test_e2e_port_propagation_full_chain() {
 
     // Simulate full startup with fallback
     let configured = 8080u16;
-    
+
     // Step 1: HTTP server binds (with fallback)
     let actual = 8082u16; // Fallback
-    
+
     // Step 2: Node identity initialized with actual port
     let identity_port = actual;
-    
+
     // Step 3: Endpoints created with actual port
     let endpoint_port = identity_port;
-    
+
     // Step 4: Discovery broadcasts actual port
     let broadcast_port = endpoint_port;
-    
+
     let setup = NodeSetup {
         configured_port: configured,
         actual_port: actual,
@@ -266,7 +287,7 @@ async fn test_e2e_port_propagation_full_chain() {
     assert_eq!(setup.identity_port, setup.actual_port, "Identity should use actual port");
     assert_eq!(setup.endpoint_port, setup.actual_port, "Endpoint should use actual port");
     assert_eq!(setup.broadcast_port, setup.actual_port, "Broadcast should use actual port");
-    
+
     // Verify configured port is NOT used after fallback
     assert_ne!(setup.broadcast_port, setup.configured_port, "Should NOT broadcast configured port");
 }
@@ -274,7 +295,7 @@ async fn test_e2e_port_propagation_full_chain() {
 #[tokio::test]
 async fn test_e2e_multiple_sequential_starts() {
     // Test that multiple towers can start sequentially without conflicts
-    
+
     let mut tower1 = SimulatedTower::new("tower-1", 9500);
     tower1.start_with_fallback().await.unwrap();
     assert_eq!(tower1.actual_port, Some(9500), "First tower should get 9500");
@@ -299,12 +320,14 @@ async fn test_e2e_multiple_sequential_starts() {
 #[tokio::test]
 async fn test_e2e_regression_silent_failure() {
     // Regression test: Before the fix, federation would silently fail
-    
+
     struct FederationState {
         nodes: Vec<(String, bool)>, // (node_name, reachable)
     }
 
-    let mut federation = FederationState { nodes: vec![] };
+    let mut federation = FederationState {
+        nodes: vec![],
+    };
 
     // Simulate Eastgate with port conflict
     let eastgate_actual_port = 8082u16;
@@ -333,7 +356,7 @@ async fn test_e2e_regression_silent_failure() {
 #[test]
 fn test_e2e_deployment_checklist() {
     // This test validates the deployment checklist
-    
+
     struct DeploymentCheck {
         http_returns_port: bool,
         startup_order_correct: bool,
@@ -343,11 +366,11 @@ fn test_e2e_deployment_checklist() {
     }
 
     let checks = DeploymentCheck {
-        http_returns_port: true,        // start_http_server() returns u16
-        startup_order_correct: true,    // HTTP before discovery
-        discovery_uses_actual: true,    // Discovery uses actual port
-        identity_uses_actual: true,     // Identity endpoints use actual port
-        federation_connects: true,      // Other towers can connect
+        http_returns_port: true,     // start_http_server() returns u16
+        startup_order_correct: true, // HTTP before discovery
+        discovery_uses_actual: true, // Discovery uses actual port
+        identity_uses_actual: true,  // Identity endpoints use actual port
+        federation_connects: true,   // Other towers can connect
     };
 
     // All checks must pass
@@ -366,4 +389,3 @@ fn test_e2e_deployment_checklist() {
 
     assert!(deployment_ready, "All deployment checks must pass");
 }
-

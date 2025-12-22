@@ -25,9 +25,9 @@ pub struct FederationState {
 impl FederationState {
     /// Create a new federation state
     #[must_use]
-    pub fn new() -> Self {
+    pub fn new(_federation_id: String) -> Self {
         Self {
-            federation_id: Uuid::new_v4(),
+            federation_id: Uuid::new_v4(), // Still generate a UUID, but accept string for API compatibility
             nodes: Arc::new(RwLock::new(HashMap::new())),
             created_at: Utc::now(),
         }
@@ -41,7 +41,7 @@ impl FederationState {
     /// - Multiple Songbird subsystems per tower can coexist
     pub async fn register_node(&self, registration: NodeRegistration) {
         let mut nodes = self.nodes.write().await;
-        
+
         // Check if this node_id already exists
         if let Some(existing) = nodes.get_mut(&registration.node_id) {
             // Node exists - coalesce endpoints
@@ -50,11 +50,11 @@ impl FederationState {
                 existing.node_name,
                 &existing.node_id[..8.min(existing.node_id.len())]
             );
-            
+
             // Update heartbeat and status
             existing.last_heartbeat = Utc::now();
             existing.status = NodeStatus::Active;
-            
+
             // Merge endpoints if new registration has any
             if let Some(new_endpoints) = registration.endpoints {
                 for endpoint in new_endpoints {
@@ -67,7 +67,7 @@ impl FederationState {
                     existing.endpoints.as_ref().map_or(0, |e| e.len())
                 );
             }
-            
+
             // Update primary address if different (keep most recent)
             if existing.node_address != registration.node_address {
                 tracing::debug!(
@@ -78,7 +78,7 @@ impl FederationState {
                 );
                 existing.node_address = registration.node_address;
             }
-            
+
             // Merge capabilities (union)
             for capability in registration.capabilities {
                 if !existing.capabilities.contains(&capability) {
@@ -146,7 +146,7 @@ impl FederationState {
         nodes.retain(|node_id, node| {
             let elapsed = (now - node.last_heartbeat).num_seconds();
             let should_keep = elapsed < ttl_secs;
-            
+
             if !should_keep {
                 tracing::debug!(
                     "🧹 Removing stale node {} (last seen {} seconds ago)",
@@ -154,12 +154,12 @@ impl FederationState {
                     elapsed
                 );
             }
-            
+
             should_keep
         });
 
         let removed_count = initial_count - nodes.len();
-        
+
         if removed_count > 0 {
             tracing::info!(
                 "🧹 Cleaned up {} stale nodes. Active: {} (was: {})",
@@ -202,12 +202,12 @@ impl FederationState {
     pub async fn get_best_endpoint(&self, node_id: &str) -> Option<String> {
         let nodes = self.nodes.read().await;
         let node = nodes.get(node_id)?;
-        
+
         // Try to get preferred endpoint
         if let Some(endpoint) = node.preferred_endpoint() {
             return Some(format!("https://{}", endpoint.address));
         }
-        
+
         // Fall back to primary address
         Some(node.node_address.clone())
     }
@@ -219,26 +219,26 @@ impl FederationState {
             Some(n) => n,
             None => return vec![],
         };
-        
+
         let mut endpoints = vec![];
-        
+
         // Add all active endpoints
         for endpoint in node.active_endpoints() {
             endpoints.push(format!("https://{}", endpoint.address));
         }
-        
+
         // Add primary address as fallback
         if !endpoints.contains(&node.node_address) {
             endpoints.push(node.node_address.clone());
         }
-        
+
         endpoints
     }
 }
 
 impl Default for FederationState {
     fn default() -> Self {
-        Self::new()
+        Self::new("default".to_string())
     }
 }
 
@@ -294,19 +294,19 @@ pub struct NodeRegistration {
 pub struct TransportEndpointInfo {
     /// Interface type (e.g., "ethernet", "wifi", "bluetooth")
     pub interface_type: String,
-    
+
     /// Network address for this endpoint
     pub address: String,
-    
+
     /// Supported protocols on this endpoint
     pub protocols: Vec<String>,
-    
+
     /// Relative preference (0-255, higher = more preferred)
     pub preference: u8,
-    
+
     /// Endpoint status
     pub status: EndpointStatus,
-    
+
     /// Last health check for this endpoint
     pub last_check: DateTime<Utc>,
 }
@@ -317,13 +317,13 @@ pub struct TransportEndpointInfo {
 pub enum EndpointStatus {
     /// Endpoint is active and responding
     Active,
-    
+
     /// Endpoint is on standby (not currently used)
     Standby,
-    
+
     /// Endpoint is degraded (high latency, packet loss)
     Degraded,
-    
+
     /// Endpoint is failed (unreachable)
     Failed,
 }
@@ -335,7 +335,7 @@ impl NodeRegistration {
             // Remove existing endpoint with same address
             endpoints.retain(|e| e.address != endpoint.address);
             endpoints.push(endpoint);
-            
+
             // Sort by preference (highest first)
             endpoints.sort_by(|a, b| b.preference.cmp(&a.preference));
         } else {
@@ -343,7 +343,7 @@ impl NodeRegistration {
             self.endpoints = Some(vec![endpoint]);
         }
     }
-    
+
     /// Get preferred endpoint (highest preference and active)
     pub fn preferred_endpoint(&self) -> Option<&TransportEndpointInfo> {
         self.endpoints
@@ -352,20 +352,17 @@ impl NodeRegistration {
             .filter(|e| matches!(e.status, EndpointStatus::Active))
             .max_by_key(|e| e.preference)
     }
-    
+
     /// Get all active endpoints
     pub fn active_endpoints(&self) -> Vec<&TransportEndpointInfo> {
         self.endpoints
             .as_ref()
             .map(|endpoints| {
-                endpoints
-                    .iter()
-                    .filter(|e| matches!(e.status, EndpointStatus::Active))
-                    .collect()
+                endpoints.iter().filter(|e| matches!(e.status, EndpointStatus::Active)).collect()
             })
             .unwrap_or_default()
     }
-    
+
     /// Update endpoint status by address
     pub fn update_endpoint_status(&mut self, address: &str, status: EndpointStatus) {
         if let Some(ref mut endpoints) = self.endpoints {
@@ -450,13 +447,13 @@ mod tests {
 
     #[tokio::test]
     async fn test_federation_state_creation() {
-        let state = FederationState::new();
+        let state = FederationState::new("test".to_string());
         assert_eq!(state.nodes.read().await.len(), 0);
     }
 
     #[tokio::test]
     async fn test_node_registration() {
-        let state = FederationState::new();
+        let state = FederationState::new("test".to_string());
 
         let registration = NodeRegistration {
             node_id: "test-node".to_string(),
@@ -482,7 +479,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_heartbeat_update() {
-        let state = FederationState::new();
+        let state = FederationState::new("test".to_string());
 
         let registration = NodeRegistration {
             node_id: "test-node".to_string(),

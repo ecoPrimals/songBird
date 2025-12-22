@@ -58,6 +58,7 @@ pub mod unified;
 /// **MODERN**: Capability-based service discovery (replaces hardcoded endpoints)
 pub mod capability_discovery;
 pub mod runtime_discovery;
+pub mod runtime_endpoint_resolver;
 
 /// **MODERN**: Primal discovery functions (replaces deprecated endpoint constants)
 pub mod primal_discovery;

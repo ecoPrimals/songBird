@@ -20,14 +20,14 @@ use tracing::{debug, info, warn};
 pub enum NetworkBindingStrategy {
     /// Bind to all available IPv4 interfaces (0.0.0.0)
     IPv4All,
-    
+
     /// Bind to all available IPv6 interfaces (::)
     IPv6All,
-    
+
     /// Dual-stack: Bind to both IPv4 and IPv6
     /// This is the preferred strategy when both are available
     DualStack,
-    
+
     /// Bind to specific detected interface (for multi-NIC systems)
     /// String contains interface name (e.g., "eth0", "wlan0")
     Interface(String),
@@ -60,16 +60,16 @@ impl NetworkBindingStrategy {
     /// ```
     pub async fn auto_detect() -> Result<Self> {
         info!("🌐 Auto-detecting optimal network binding strategy...");
-        
+
         // Detect network capabilities
         let capabilities = NetworkCapabilities::detect().await?;
-        
+
         // Log detected capabilities
         debug!(
             "Network capabilities: IPv4={}, IPv6={}, interfaces={}",
             capabilities.has_ipv4, capabilities.has_ipv6, capabilities.interface_count
         );
-        
+
         // Select strategy based on capabilities
         let strategy = match (capabilities.has_ipv4, capabilities.has_ipv6) {
             (true, true) => {
@@ -95,11 +95,11 @@ impl NetworkBindingStrategy {
                 );
             }
         };
-        
+
         info!("🎯 Selected binding strategy: {:?}", strategy);
         Ok(strategy)
     }
-    
+
     /// Convert strategy to socket addresses for binding
     ///
     /// Returns a vector of socket addresses to bind to.
@@ -121,12 +121,15 @@ impl NetworkBindingStrategy {
             Self::Interface(name) => {
                 // For specific interface, try to get its address
                 // This is a placeholder - full implementation would query the interface
-                warn!("Specific interface binding ({}) not yet implemented, falling back to IPv4All", name);
+                warn!(
+                    "Specific interface binding ({}) not yet implemented, falling back to IPv4All",
+                    name
+                );
                 vec![SocketAddr::new(IpAddr::V4(Ipv4Addr::UNSPECIFIED), port)]
             }
         }
     }
-    
+
     /// Get primary socket address (for single-binding scenarios)
     ///
     /// For DualStack, returns IPv4 address (broader compatibility).
@@ -145,12 +148,12 @@ impl NetworkBindingStrategy {
             }
         }
     }
-    
+
     /// Check if this strategy supports IPv4
     pub const fn supports_ipv4(&self) -> bool {
         matches!(self, Self::IPv4All | Self::DualStack | Self::Interface(_))
     }
-    
+
     /// Check if this strategy supports IPv6
     pub const fn supports_ipv6(&self) -> bool {
         matches!(self, Self::IPv6All | Self::DualStack)
@@ -162,13 +165,13 @@ impl NetworkBindingStrategy {
 struct NetworkCapabilities {
     /// System has usable IPv4 interfaces
     has_ipv4: bool,
-    
+
     /// System has usable IPv6 interfaces
     has_ipv6: bool,
-    
+
     /// Number of non-loopback interfaces detected
     interface_count: usize,
-    
+
     /// Primary interface name (if detectable)
     primary_interface: Option<String>,
 }
@@ -180,12 +183,12 @@ impl NetworkCapabilities {
         if let Ok(caps) = Self::detect_via_udp_socket().await {
             return Ok(caps);
         }
-        
+
         // Method 2: Fallback to interface enumeration (platform-specific)
         if let Ok(caps) = Self::detect_via_interfaces().await {
             return Ok(caps);
         }
-        
+
         // Method 3: Last resort - assume IPv4 available
         warn!("Could not detect network capabilities, assuming IPv4 available");
         Ok(Self {
@@ -195,14 +198,14 @@ impl NetworkCapabilities {
             primary_interface: None,
         })
     }
-    
+
     /// Fast detection using UDP socket routing (doesn't actually send data)
     async fn detect_via_udp_socket() -> Result<Self> {
         use std::net::UdpSocket;
-        
+
         let mut has_ipv4 = false;
         let mut has_ipv6 = false;
-        
+
         // Test IPv4: Try to determine route to public IPv4 address
         if let Ok(socket) = UdpSocket::bind("0.0.0.0:0") {
             if socket.connect("8.8.8.8:80").is_ok() {
@@ -215,7 +218,7 @@ impl NetworkCapabilities {
                 }
             }
         }
-        
+
         // Test IPv6: Try to determine route to public IPv6 address
         if let Ok(socket) = UdpSocket::bind("[::]:0") {
             // Use Google's public DNS IPv6 address
@@ -229,49 +232,53 @@ impl NetworkCapabilities {
                 }
             }
         }
-        
+
         if !has_ipv4 && !has_ipv6 {
             anyhow::bail!("No routable IPv4 or IPv6 addresses detected");
         }
-        
+
         Ok(Self {
             has_ipv4,
             has_ipv6,
-            interface_count: if has_ipv4 && has_ipv6 { 2 } else { 1 },
+            interface_count: if has_ipv4 && has_ipv6 {
+                2
+            } else {
+                1
+            },
             primary_interface: None,
         })
     }
-    
+
     /// Fallback detection by enumerating network interfaces
     #[cfg(target_os = "linux")]
     async fn detect_via_interfaces() -> Result<Self> {
         use std::process::Command;
-        
+
         let mut has_ipv4 = false;
         let mut has_ipv6 = false;
         let mut interface_count = 0;
         let mut primary_interface = None;
-        
+
         // Use `ip addr` to list interfaces and addresses
         let output = Command::new("ip")
             .args(["addr", "show"])
             .output()
             .context("Failed to execute 'ip addr show'")?;
-        
+
         let stdout = String::from_utf8_lossy(&output.stdout);
-        
+
         for line in stdout.lines() {
             // Look for inet (IPv4) addresses
             if line.contains("inet ") && !line.contains("127.0.0.1") {
                 has_ipv4 = true;
                 interface_count += 1;
             }
-            
+
             // Look for inet6 (IPv6) addresses
             if line.contains("inet6 ") && !line.contains("::1") && !line.contains("fe80") {
                 has_ipv6 = true;
             }
-            
+
             // Try to detect primary interface name
             if primary_interface.is_none() && line.contains(": ") {
                 if let Some(name) = line.split(':').nth(1) {
@@ -282,11 +289,11 @@ impl NetworkCapabilities {
                 }
             }
         }
-        
+
         if !has_ipv4 && !has_ipv6 {
             anyhow::bail!("No non-loopback IPv4 or IPv6 addresses found in interfaces");
         }
-        
+
         Ok(Self {
             has_ipv4,
             has_ipv6,
@@ -294,7 +301,7 @@ impl NetworkCapabilities {
             primary_interface,
         })
     }
-    
+
     /// Fallback for non-Linux systems
     #[cfg(not(target_os = "linux"))]
     async fn detect_via_interfaces() -> Result<Self> {
@@ -306,45 +313,45 @@ impl NetworkCapabilities {
 #[cfg(test)]
 mod tests {
     use super::*;
-    
+
     #[tokio::test]
     async fn test_auto_detect() {
         // Should detect something (either IPv4, IPv6, or both)
         let strategy = NetworkBindingStrategy::auto_detect().await;
         assert!(strategy.is_ok(), "Auto-detection should succeed");
-        
+
         let strategy = strategy.unwrap();
         println!("Detected strategy: {:?}", strategy);
     }
-    
+
     #[test]
     fn test_to_socket_addrs_ipv4() {
         let strategy = NetworkBindingStrategy::IPv4All;
         let addrs = strategy.to_socket_addrs(8080);
-        
+
         assert_eq!(addrs.len(), 1);
         assert_eq!(addrs[0], "0.0.0.0:8080".parse::<SocketAddr>().unwrap());
     }
-    
+
     #[test]
     fn test_to_socket_addrs_ipv6() {
         let strategy = NetworkBindingStrategy::IPv6All;
         let addrs = strategy.to_socket_addrs(8080);
-        
+
         assert_eq!(addrs.len(), 1);
         assert_eq!(addrs[0], "[::]:8080".parse::<SocketAddr>().unwrap());
     }
-    
+
     #[test]
     fn test_to_socket_addrs_dual_stack() {
         let strategy = NetworkBindingStrategy::DualStack;
         let addrs = strategy.to_socket_addrs(8080);
-        
+
         assert_eq!(addrs.len(), 2);
         assert!(addrs.contains(&"0.0.0.0:8080".parse::<SocketAddr>().unwrap()));
         assert!(addrs.contains(&"[::]:8080".parse::<SocketAddr>().unwrap()));
     }
-    
+
     #[test]
     fn test_primary_socket_addr() {
         let ipv4_strategy = NetworkBindingStrategy::IPv4All;
@@ -352,13 +359,13 @@ mod tests {
             ipv4_strategy.primary_socket_addr(8080),
             "0.0.0.0:8080".parse::<SocketAddr>().unwrap()
         );
-        
+
         let ipv6_strategy = NetworkBindingStrategy::IPv6All;
         assert_eq!(
             ipv6_strategy.primary_socket_addr(8080),
             "[::]:8080".parse::<SocketAddr>().unwrap()
         );
-        
+
         // DualStack prefers IPv4 for compatibility
         let dual_strategy = NetworkBindingStrategy::DualStack;
         assert_eq!(
@@ -366,20 +373,19 @@ mod tests {
             "0.0.0.0:8080".parse::<SocketAddr>().unwrap()
         );
     }
-    
+
     #[test]
     fn test_supports_protocols() {
         let ipv4 = NetworkBindingStrategy::IPv4All;
         assert!(ipv4.supports_ipv4());
         assert!(!ipv4.supports_ipv6());
-        
+
         let ipv6 = NetworkBindingStrategy::IPv6All;
         assert!(!ipv6.supports_ipv4());
         assert!(ipv6.supports_ipv6());
-        
+
         let dual = NetworkBindingStrategy::DualStack;
         assert!(dual.supports_ipv4());
         assert!(dual.supports_ipv6());
     }
 }
-

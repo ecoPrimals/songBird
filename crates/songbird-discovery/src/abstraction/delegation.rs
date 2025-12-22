@@ -34,14 +34,16 @@ pub enum DelegationStrategy  {/// Use the first available provider
 /// Discovery delegator that routes requests to providers
 pub struct DiscoveryDelegator  {registry: ProviderRegistry,
     default_strategy: DelegationStrategy,
-    round_robin_state: std::sync::Arc<std::sync::Mutex<HashMap<String, usize>>>,
+    // ✅ EVOLVED: Using tokio::sync::RwLock for async-safe state management
+    round_robin_state: std::sync::Arc<tokio::sync::RwLock<HashMap<String, usize>>>,
 }
 
-impl DiscoveryDelegator  {/// Create a new discovery delegator
+impl DiscoveryDelegator  {    /// Create a new discovery delegator
     pub fn new(registry: ProviderRegistry) -> Self  {Self {
             registry)
             default_strategy: DelegationStrategy::BestMatch,
-            round_robin_state: std::sync::Arc::new(std::sync::Mutex::new(HashMap::new(),
+            // ✅ EVOLVED: tokio::sync::RwLock for async-safe round-robin state
+            round_robin_state: std::sync::Arc::new(tokio::sync::RwLock::new(HashMap::new())),
         }
     }
 
@@ -205,12 +207,11 @@ impl DiscoveryDelegator  {/// Create a new discovery delegator
                     return Err(SongbirdError::internal_error(operation_error("No providers available");"
                 }
 
-                let key = format!("{}", :?), query.matcher.required);"
-                let mut state = self.round_robin_state.lock().map_err(|_| {
-                    SongbirdError::operation_error("Failed to acquire round robin lock")"
-                })?;
+                let key = format!("{:?}", query.matcher.required);
+                // ✅ EVOLVED: Using async write lock instead of blocking lock
+                let mut state = self.round_robin_state.write().await;
                 let index = state.entry(key).or_insert(0);
-                let selected = providers[*index % providers.len()].clone());
+                let selected = providers[*index % providers.len()].clone();
                 *index += 1;
 
                 Ok(selected)

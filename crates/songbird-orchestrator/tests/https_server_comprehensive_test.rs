@@ -23,9 +23,7 @@ mod https_server_binding_tests {
     #[tokio::test]
     async fn test_listener_is_reused_not_double_bound() {
         // Bind to a random port
-        let listener = TcpListener::bind("127.0.0.1:0")
-            .await
-            .expect("Failed to bind");
+        let listener = TcpListener::bind("127.0.0.1:0").await.expect("Failed to bind");
         let addr = listener.local_addr().expect("Failed to get local addr");
 
         // The port should now be bound
@@ -33,11 +31,7 @@ mod https_server_binding_tests {
 
         // If we try to bind to the same port again, it should fail
         let result = TcpListener::bind(addr).await;
-        assert!(
-            result.is_err(),
-            "Port {} should already be in use",
-            addr.port()
-        );
+        assert!(result.is_err(), "Port {} should already be in use", addr.port());
 
         // The fix ensures that start_https_server uses the listener we provide
         // instead of calling axum_server::bind_rustls which would try to bind again
@@ -46,16 +40,12 @@ mod https_server_binding_tests {
     /// Test TCP listener conversion from tokio to std
     #[tokio::test]
     async fn test_tcp_listener_conversion() {
-        let listener = TcpListener::bind("127.0.0.1:0")
-            .await
-            .expect("Failed to bind");
+        let listener = TcpListener::bind("127.0.0.1:0").await.expect("Failed to bind");
         let addr = listener.local_addr().expect("Failed to get local addr");
 
         // Convert to std
         let std_listener = listener.into_std().expect("Failed to convert to std");
-        let std_addr = std_listener
-            .local_addr()
-            .expect("Failed to get std local addr");
+        let std_addr = std_listener.local_addr().expect("Failed to get std local addr");
 
         // Address should be the same
         assert_eq!(addr, std_addr);
@@ -65,15 +55,11 @@ mod https_server_binding_tests {
     #[tokio::test]
     async fn test_bind_with_fallback() {
         // Bind to a specific port
-        let listener1 = TcpListener::bind("127.0.0.1:0")
-            .await
-            .expect("Failed to bind");
+        let listener1 = TcpListener::bind("127.0.0.1:0").await.expect("Failed to bind");
         let addr1 = listener1.local_addr().expect("Failed to get local addr");
 
         // Try to bind to a different port
-        let listener2 = TcpListener::bind("127.0.0.1:0")
-            .await
-            .expect("Failed to bind to fallback");
+        let listener2 = TcpListener::bind("127.0.0.1:0").await.expect("Failed to bind to fallback");
         let addr2 = listener2.local_addr().expect("Failed to get local addr");
 
         // Should get different ports
@@ -83,9 +69,7 @@ mod https_server_binding_tests {
     /// Test that we can create a simple HTTP server with a pre-bound listener
     #[tokio::test]
     async fn test_server_with_prebound_listener() {
-        let listener = TcpListener::bind("127.0.0.1:0")
-            .await
-            .expect("Failed to bind");
+        let listener = TcpListener::bind("127.0.0.1:0").await.expect("Failed to bind");
         let addr = listener.local_addr().expect("Failed to get local addr");
 
         // Create a simple router
@@ -93,9 +77,7 @@ mod https_server_binding_tests {
 
         // Spawn server in background
         tokio::spawn(async move {
-            axum::serve(listener, app)
-                .await
-                .expect("Server failed to start");
+            axum::serve(listener, app).await.expect("Server failed to start");
         });
 
         // Wait a bit for server to start
@@ -107,10 +89,7 @@ mod https_server_binding_tests {
 
         let result = timeout(Duration::from_secs(2), client.get(&url).send()).await;
 
-        assert!(
-            result.is_ok(),
-            "Server should respond within 2 seconds"
-        );
+        assert!(result.is_ok(), "Server should respond within 2 seconds");
 
         if let Ok(Ok(response)) = result {
             assert_eq!(response.status(), 200);
@@ -123,39 +102,28 @@ mod https_server_binding_tests {
     #[tokio::test]
     async fn test_double_bind_fails() {
         // Bind to a specific port
-        let listener1 = TcpListener::bind("127.0.0.1:0")
-            .await
-            .expect("Failed to bind");
+        let listener1 = TcpListener::bind("127.0.0.1:0").await.expect("Failed to bind");
         let addr = listener1.local_addr().expect("Failed to get local addr");
 
         // Try to bind to the same address (should fail)
         let result = TcpListener::bind(addr).await;
 
-        assert!(
-            result.is_err(),
-            "Should not be able to bind to already-bound port"
-        );
+        assert!(result.is_err(), "Should not be able to bind to already-bound port");
     }
 
     /// Test listener conversion is idempotent
     #[tokio::test]
     async fn test_listener_conversion_idempotent() {
-        let listener = TcpListener::bind("127.0.0.1:0")
-            .await
-            .expect("Failed to bind");
+        let listener = TcpListener::bind("127.0.0.1:0").await.expect("Failed to bind");
         let original_addr = listener.local_addr().expect("Failed to get addr");
 
         // Convert to std and back
         let std_listener = listener.into_std().expect("Failed to convert to std");
-        std_listener
-            .set_nonblocking(true)
-            .expect("Failed to set non-blocking");
-        let tokio_listener = TcpListener::from_std(std_listener)
-            .expect("Failed to convert back to tokio");
+        std_listener.set_nonblocking(true).expect("Failed to set non-blocking");
+        let tokio_listener =
+            TcpListener::from_std(std_listener).expect("Failed to convert back to tokio");
 
-        let final_addr = tokio_listener
-            .local_addr()
-            .expect("Failed to get final addr");
+        let final_addr = tokio_listener.local_addr().expect("Failed to get final addr");
 
         // Address should remain the same through conversions
         assert_eq!(original_addr, final_addr);
@@ -164,17 +132,13 @@ mod https_server_binding_tests {
     /// Test that server can handle multiple concurrent connections
     #[tokio::test]
     async fn test_server_concurrent_connections() {
-        let listener = TcpListener::bind("127.0.0.1:0")
-            .await
-            .expect("Failed to bind");
+        let listener = TcpListener::bind("127.0.0.1:0").await.expect("Failed to bind");
         let addr = listener.local_addr().expect("Failed to get local addr");
 
         let app = Router::new().route("/health", axum::routing::get(|| async { "OK" }));
 
         tokio::spawn(async move {
-            axum::serve(listener, app)
-                .await
-                .expect("Server failed to start");
+            axum::serve(listener, app).await.expect("Server failed to start");
         });
 
         tokio::time::sleep(Duration::from_millis(100)).await;
@@ -189,9 +153,7 @@ mod https_server_binding_tests {
             let url = url.clone();
             let handle = tokio::spawn(async move {
                 let result = timeout(Duration::from_secs(2), client.get(&url).send()).await;
-                result
-                    .expect("Request timed out")
-                    .expect("Request failed")
+                result.expect("Request timed out").expect("Request failed")
             });
             handles.push(handle);
         }
@@ -206,9 +168,8 @@ mod https_server_binding_tests {
     /// Test that binding to IPv4 wildcard works
     #[tokio::test]
     async fn test_bind_ipv4_wildcard() {
-        let listener = TcpListener::bind("0.0.0.0:0")
-            .await
-            .expect("Failed to bind to IPv4 wildcard");
+        let listener =
+            TcpListener::bind("0.0.0.0:0").await.expect("Failed to bind to IPv4 wildcard");
         let addr = listener.local_addr().expect("Failed to get local addr");
 
         assert_eq!(addr.ip().to_string(), "0.0.0.0");
@@ -229,9 +190,7 @@ mod https_server_binding_tests {
     /// Test that listener keeps port binding after conversion
     #[tokio::test]
     async fn test_listener_maintains_binding_after_conversion() {
-        let listener = TcpListener::bind("127.0.0.1:0")
-            .await
-            .expect("Failed to bind");
+        let listener = TcpListener::bind("127.0.0.1:0").await.expect("Failed to bind");
         let addr = listener.local_addr().expect("Failed to get local addr");
 
         // Convert to std (this is what our fix does)
@@ -239,15 +198,11 @@ mod https_server_binding_tests {
 
         // Port should still be bound
         let result = std::net::TcpListener::bind(addr);
-        assert!(
-            result.is_err(),
-            "Port should still be bound after conversion"
-        );
+        assert!(result.is_err(), "Port should still be bound after conversion");
 
         // And we should be able to listen on the std listener
-        let local_addr = std_listener
-            .local_addr()
-            .expect("Failed to get local addr from std listener");
+        let local_addr =
+            std_listener.local_addr().expect("Failed to get local addr from std listener");
         assert_eq!(addr, local_addr);
     }
 }
@@ -263,9 +218,7 @@ mod https_server_regression_tests {
     #[tokio::test]
     async fn test_no_double_bind_regression() {
         // Simulate what bind_with_fallback does
-        let listener = TcpListener::bind("127.0.0.1:0")
-            .await
-            .expect("Failed to bind");
+        let listener = TcpListener::bind("127.0.0.1:0").await.expect("Failed to bind");
         let addr = listener.local_addr().expect("Failed to get local addr");
 
         // The BUG was: after binding here, start_https_server would call
@@ -275,9 +228,7 @@ mod https_server_regression_tests {
         // axum_server::from_tcp_rustls() which uses the existing listener
 
         // This test verifies that pattern:
-        let std_listener = listener
-            .into_std()
-            .expect("Failed to convert listener to std");
+        let std_listener = listener.into_std().expect("Failed to convert listener to std");
 
         // After conversion, the port should still be bound
         let still_bound = std::net::TcpListener::bind(addr);
@@ -287,9 +238,7 @@ mod https_server_regression_tests {
         );
 
         // And we can get the address from the std listener
-        let std_addr = std_listener
-            .local_addr()
-            .expect("Failed to get addr from std listener");
+        let std_addr = std_listener.local_addr().expect("Failed to get addr from std listener");
         assert_eq!(addr, std_addr, "Address should be preserved");
     }
 
@@ -297,9 +246,7 @@ mod https_server_regression_tests {
     #[tokio::test]
     async fn test_bug_scenario_would_fail() {
         // Step 1: bind_with_fallback creates a listener
-        let listener = TcpListener::bind("127.0.0.1:0")
-            .await
-            .expect("Failed to bind");
+        let listener = TcpListener::bind("127.0.0.1:0").await.expect("Failed to bind");
         let addr = listener.local_addr().expect("Failed to get local addr");
 
         // Step 2: The BUG was ignoring this listener (_listener) and trying to bind again
@@ -317,10 +264,7 @@ mod https_server_regression_tests {
         // Most likely: it would fail
         // But even if it succeeds, we've proven it's wasteful to bind twice
         if second_bind.is_ok() {
-            println!(
-                "Warning: OS allowed double bind on port {}. This is unusual.",
-                addr.port()
-            );
+            println!("Warning: OS allowed double bind on port {}. This is unusual.", addr.port());
         }
     }
 
@@ -328,27 +272,18 @@ mod https_server_regression_tests {
     #[tokio::test]
     async fn test_fix_reuses_listener() {
         // Step 1: bind_with_fallback creates a listener
-        let listener = TcpListener::bind("127.0.0.1:0")
-            .await
-            .expect("Failed to bind");
+        let listener = TcpListener::bind("127.0.0.1:0").await.expect("Failed to bind");
         let addr = listener.local_addr().expect("Failed to get local addr");
 
         // Step 2: THE FIX uses the listener (not ignoring it)
-        let std_listener = listener
-            .into_std()
-            .expect("Failed to convert listener to std");
+        let std_listener = listener.into_std().expect("Failed to convert listener to std");
 
         // Step 3: Port is still bound (no second bind attempt needed)
         let would_fail = std::net::TcpListener::bind(addr);
-        assert!(
-            would_fail.is_err(),
-            "Port should be bound by the original listener"
-        );
+        assert!(would_fail.is_err(), "Port should be bound by the original listener");
 
         // Step 4: We can use the std_listener with axum-server
-        let final_addr = std_listener
-            .local_addr()
-            .expect("Failed to get final addr");
+        let final_addr = std_listener.local_addr().expect("Failed to get final addr");
         assert_eq!(addr, final_addr, "Same address throughout");
     }
 }
@@ -365,22 +300,15 @@ mod https_server_integration_tests {
         // 2. Start server with that listener
         // 3. Verify server responds
 
-        let listener = TcpListener::bind("127.0.0.1:0")
-            .await
-            .expect("Failed to bind");
+        let listener = TcpListener::bind("127.0.0.1:0").await.expect("Failed to bind");
         let addr = listener.local_addr().expect("Failed to get local addr");
 
         let app = Router::new()
             .route("/health", axum::routing::get(|| async { "OK" }))
-            .route(
-                "/echo",
-                axum::routing::post(|body: String| async move { body }),
-            );
+            .route("/echo", axum::routing::post(|body: String| async move { body }));
 
         tokio::spawn(async move {
-            axum::serve(listener, app)
-                .await
-                .expect("Server failed to start");
+            axum::serve(listener, app).await.expect("Server failed to start");
         });
 
         // Wait for server to be ready
@@ -390,37 +318,26 @@ mod https_server_integration_tests {
         let base_url = format!("http://{}", addr);
 
         // Test health endpoint
-        let health_response = timeout(
-            Duration::from_secs(2),
-            client.get(format!("{}/health", base_url)).send(),
-        )
-        .await
-        .expect("Health check timed out")
-        .expect("Health check failed");
+        let health_response =
+            timeout(Duration::from_secs(2), client.get(format!("{}/health", base_url)).send())
+                .await
+                .expect("Health check timed out")
+                .expect("Health check failed");
 
         assert_eq!(health_response.status(), 200);
-        assert_eq!(
-            health_response.text().await.expect("Failed to read body"),
-            "OK"
-        );
+        assert_eq!(health_response.text().await.expect("Failed to read body"), "OK");
 
         // Test echo endpoint
         let echo_response = timeout(
             Duration::from_secs(2),
-            client
-                .post(format!("{}/echo", base_url))
-                .body("test message")
-                .send(),
+            client.post(format!("{}/echo", base_url)).body("test message").send(),
         )
         .await
         .expect("Echo request timed out")
         .expect("Echo request failed");
 
         assert_eq!(echo_response.status(), 200);
-        assert_eq!(
-            echo_response.text().await.expect("Failed to read body"),
-            "test message"
-        );
+        assert_eq!(echo_response.text().await.expect("Failed to read body"), "test message");
     }
 
     /// Note: Graceful shutdown testing is complex due to connection pooling
@@ -430,17 +347,13 @@ mod https_server_integration_tests {
     #[tokio::test(flavor = "multi_thread")]
     #[ignore]
     async fn test_server_graceful_shutdown() {
-        let listener = TcpListener::bind("127.0.0.1:0")
-            .await
-            .expect("Failed to bind");
+        let listener = TcpListener::bind("127.0.0.1:0").await.expect("Failed to bind");
         let addr = listener.local_addr().expect("Failed to get local addr");
 
         let app = Router::new().route("/health", axum::routing::get(|| async { "OK" }));
 
         let server_handle = tokio::spawn(async move {
-            axum::serve(listener, app)
-                .await
-                .expect("Server failed to start");
+            axum::serve(listener, app).await.expect("Server failed to start");
         });
 
         // Wait for server to start
@@ -468,11 +381,6 @@ mod https_server_integration_tests {
         let result = client.get(format!("http://{}/health", addr)).send().await;
 
         // Either connection refused or timeout is acceptable after shutdown
-        assert!(
-            result.is_err(),
-            "Server should not respond after shutdown (got: {:?})",
-            result
-        );
+        assert!(result.is_err(), "Server should not respond after shutdown (got: {:?})", result);
     }
 }
-

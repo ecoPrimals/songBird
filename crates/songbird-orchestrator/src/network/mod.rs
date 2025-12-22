@@ -11,4 +11,3 @@ pub use connectivity_test::{ConnectivityRemediator, ConnectivityTestResult, Conn
 pub use sovereign_socket::{SovereignBinder, SovereignSocket};
 
 pub use binding::NetworkBindingStrategy;
-

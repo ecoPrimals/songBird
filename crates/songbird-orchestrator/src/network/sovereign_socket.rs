@@ -55,7 +55,9 @@ impl SovereignSocket {
 
         Self::configure_socket(&socket)?;
 
-        Ok(Self { socket })
+        Ok(Self {
+            socket,
+        })
     }
 
     /// Create a new IPv6 sovereign socket
@@ -72,15 +74,15 @@ impl SovereignSocket {
 
         Self::configure_socket(&socket)?;
 
-        Ok(Self { socket })
+        Ok(Self {
+            socket,
+        })
     }
 
     /// Configure socket with optimal settings for sovereignty
     fn configure_socket(socket: &Socket) -> Result<()> {
         // 1. Enable address reuse (immediate rebind after crash/restart)
-        socket
-            .set_reuse_address(true)
-            .context("Failed to set SO_REUSEADDR")?;
+        socket.set_reuse_address(true).context("Failed to set SO_REUSEADDR")?;
 
         // 2. SO_REUSEPORT REMOVED - See SO_REUSEPORT_ANALYSIS_DEC_20_2025.md
         // - Allowed multiple processes to bind same port (silent duplicates)
@@ -94,18 +96,12 @@ impl SovereignSocket {
         // We'll document this for the application layer to handle
 
         // 4. Set non-blocking for async compatibility
-        socket
-            .set_nonblocking(true)
-            .context("Failed to set non-blocking mode")?;
+        socket.set_nonblocking(true).context("Failed to set non-blocking mode")?;
 
         // 5. Set generous buffer sizes (high throughput)
         const BUFFER_SIZE: usize = 1024 * 1024; // 1MB
-        socket
-            .set_recv_buffer_size(BUFFER_SIZE)
-            .context("Failed to set receive buffer size")?;
-        socket
-            .set_send_buffer_size(BUFFER_SIZE)
-            .context("Failed to set send buffer size")?;
+        socket.set_recv_buffer_size(BUFFER_SIZE).context("Failed to set receive buffer size")?;
+        socket.set_send_buffer_size(BUFFER_SIZE).context("Failed to set send buffer size")?;
 
         debug!("✅ Socket configured with sovereign settings");
         debug!("   SO_REUSEADDR: enabled (quick restart)");
@@ -123,9 +119,7 @@ impl SovereignSocket {
     ///
     /// Returns an error if binding fails
     pub fn bind(&self, addr: SocketAddr) -> Result<()> {
-        self.socket
-            .bind(&addr.into())
-            .with_context(|| format!("Failed to bind to {}", addr))?;
+        self.socket.bind(&addr.into()).with_context(|| format!("Failed to bind to {}", addr))?;
 
         info!("✅ Sovereign socket bound to {}", addr);
         Ok(())
@@ -137,9 +131,7 @@ impl SovereignSocket {
     ///
     /// Returns an error if listen fails
     pub fn listen(&self, backlog: i32) -> Result<()> {
-        self.socket
-            .listen(backlog)
-            .context("Failed to start listening")?;
+        self.socket.listen(backlog).context("Failed to start listening")?;
 
         debug!("✅ Socket listening (backlog: {})", backlog);
         Ok(())
@@ -293,4 +285,3 @@ mod tests {
         }
     }
 }
-

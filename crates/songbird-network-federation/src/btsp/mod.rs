@@ -21,6 +21,7 @@
 //! requiring BearDog to be running. When BearDog is available, the real
 //! provider is discovered and used automatically.
 
+pub mod http_provider;
 pub mod local;
 pub mod provider;
 pub mod tunnel;

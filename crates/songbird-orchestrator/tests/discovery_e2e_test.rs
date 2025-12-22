@@ -28,8 +28,8 @@ async fn test_discovery_broadcaster_starts_on_startup() -> Result<()> {
         .map_err(|e| anyhow::anyhow!("Failed to load config: {}", e))?;
 
     // Verify discovery is enabled in config
-    assert!(config.discovery.enabled, "Discovery should be enabled");
-    assert!(config.discovery.anonymous, "Anonymous discovery should be enabled");
+    assert!(config.discovery.mode.is_enabled(), "Discovery should be enabled");
+    assert!(config.discovery.mode.is_anonymous(), "Anonymous discovery should be enabled");
 
     tracing::info!("✅ Config validated: discovery enabled");
 
@@ -48,10 +48,7 @@ async fn test_discovery_broadcaster_starts_on_startup() -> Result<()> {
     // 4. Bridge polls discovered peers every 10s
 
     // Verify orchestrator was created successfully
-    assert!(
-        orchestrator.config().discovery.enabled,
-        "Orchestrator should have discovery enabled"
-    );
+    assert!(orchestrator.config().discovery.mode.is_enabled(), "Orchestrator should have discovery enabled");
 
     tracing::info!("✅ Test passed: Discovery components initialized");
 
@@ -61,14 +58,16 @@ async fn test_discovery_broadcaster_starts_on_startup() -> Result<()> {
 /// Test that discovery listener can receive broadcasts
 #[tokio::test]
 async fn test_discovery_listener_receives_broadcasts() -> Result<()> {
-    use songbird_discovery::anonymous_discovery::{AnonymousDiscoveryBroadcaster, AnonymousDiscoveryListener};
+    use songbird_discovery::anonymous_discovery::{
+        AnonymousDiscoveryBroadcaster, AnonymousDiscoveryListener,
+    };
     use std::sync::Arc;
 
     let _ = tracing_subscriber::fmt::try_init();
 
     // Create broadcaster and listener on test port
     let test_port = 12301;
-    
+
     let capabilities = vec!["test".to_string()];
     let protocols = vec!["https".to_string()];
     let broadcaster = AnonymousDiscoveryBroadcaster::new(
@@ -104,7 +103,7 @@ async fn test_discovery_listener_receives_broadcasts() -> Result<()> {
 
     // Check if any peers were discovered
     let peers = listener.get_peers().await;
-    
+
     tracing::info!("📊 Discovered {} peers", peers.len());
     for peer in &peers {
         tracing::info!("  Peer: {} with capabilities: {:?}", peer.session_id, peer.capabilities);
@@ -190,4 +189,3 @@ async fn test_full_orchestrator_startup_with_discovery() -> Result<()> {
 
     Ok(())
 }
-

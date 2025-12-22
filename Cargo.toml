@@ -29,6 +29,9 @@ members = [
     "crates/songbird-observability",
     "crates/songbird-test-utils",
     
+    # 🔐 GENESIS (1 crate) - Physical genesis bootstrap
+    "crates/songbird-genesis",
+    
     # 🌐 INTEGRATION (2 crates) - CONSOLIDATED
     # "crates/songbird-primal-sdk",        # ⚠️ DEFERRED: Cascading delimiter errors across multiple files (est. 2-4h systematic fix)
     "crates/songbird-squirrel-service", "crates/songbird-execution-agent",    # 🐿️ NEW: AI/MCP Service
@@ -38,7 +41,7 @@ members = [
     
     # 🦅 ALBATROSS BENCHMARKS
     "showcase/05-albatross-multiplex/benchmark",
-    "showcase/05-albatross-multiplex/tarpc-servers",
+    "showcase/05-albatross-multiplex/tarpc-servers", "rendezvous",
 ]
 
 [workspace.package]

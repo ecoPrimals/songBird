@@ -16,7 +16,7 @@
 use anyhow::{anyhow, Result};
 use std::io::{self, Write};
 use std::process::Command;
-use tracing::{debug, info, error};
+use tracing::{debug, error, info};
 
 /// Privilege Manager
 ///
@@ -25,10 +25,10 @@ use tracing::{debug, info, error};
 pub struct PrivilegeManager {
     /// Whether we have network admin capabilities
     has_net_admin: bool,
-    
+
     /// Whether we're running with elevated privileges
     is_elevated: bool,
-    
+
     /// Whether to run in interactive mode (ask user for help)
     interactive: bool,
 }
@@ -38,37 +38,36 @@ impl PrivilegeManager {
     pub fn new() -> Self {
         Self::with_interactive(true)
     }
-    
+
     /// Create a privilege manager with specific interactivity setting
     pub fn with_interactive(interactive: bool) -> Self {
         let has_net_admin = Self::check_net_admin_capability();
         let is_elevated = Self::check_elevated();
-        
-        debug!("🔐 Privilege detection: net_admin={}, elevated={}, interactive={}", 
-               has_net_admin, is_elevated, interactive);
-        
+
+        debug!(
+            "🔐 Privilege detection: net_admin={}, elevated={}, interactive={}",
+            has_net_admin, is_elevated, interactive
+        );
+
         Self {
             has_net_admin,
             is_elevated,
             interactive,
         }
     }
-    
+
     /// Check if we have CAP_NET_ADMIN capability
     fn check_net_admin_capability() -> bool {
         // Check via getcap on our own binary
         // Note: This requires the binary to have capabilities set
-        if let Ok(output) = Command::new("getcap")
-            .arg("/proc/self/exe")
-            .output()
-        {
+        if let Ok(output) = Command::new("getcap").arg("/proc/self/exe").output() {
             let stdout = String::from_utf8_lossy(&output.stdout);
             return stdout.contains("cap_net_admin");
         }
-        
+
         false
     }
-    
+
     /// Check if running with elevated privileges
     fn check_elevated() -> bool {
         // Check effective UID via environment variable (safe alternative to libc)
@@ -78,7 +77,7 @@ impl PrivilegeManager {
             .map(|euid| euid == 0)
             .unwrap_or(false)
     }
-    
+
     /// Configure firewall rules for Songbird ports
     ///
     /// This is the **collaborative** way to handle firewall configuration:
@@ -89,52 +88,52 @@ impl PrivilegeManager {
     /// 5. Verify it worked
     pub fn configure_firewall(&self, ports: &[u16]) -> Result<()> {
         info!("🔐 Checking firewall configuration...");
-        
+
         // Check if firewall rules already exist
         if self.check_firewall_rules(ports) {
             info!("✅ Firewall rules already configured");
             return Ok(());
         }
-        
+
         // Try automatic configuration if we have permissions
         if self.has_net_admin || self.is_elevated {
             info!("🔐 Configuring firewall automatically...");
             return self.configure_firewall_auto(ports);
         }
-        
+
         // Interactive mode: collaborate with user
         if self.interactive {
             return self.collaborate_on_firewall(ports);
         }
-        
+
         // Non-interactive: just provide instructions
         self.provide_firewall_instructions(ports);
         Ok(())
     }
-    
+
     /// Check if firewall rules exist for the given ports
     fn check_firewall_rules(&self, ports: &[u16]) -> bool {
         for port in ports {
             let tcp_check = Command::new("iptables")
                 .args(["-C", "INPUT", "-p", "tcp", "--dport", &port.to_string(), "-j", "ACCEPT"])
                 .output();
-            
+
             let udp_check = Command::new("iptables")
                 .args(["-C", "INPUT", "-p", "udp", "--dport", &port.to_string(), "-j", "ACCEPT"])
                 .output();
-            
+
             if tcp_check.is_err() || udp_check.is_err() {
                 return false;
             }
-            
+
             if !tcp_check.unwrap().status.success() || !udp_check.unwrap().status.success() {
                 return false;
             }
         }
-        
+
         true
     }
-    
+
     /// Configure firewall automatically (with permissions)
     fn configure_firewall_auto(&self, ports: &[u16]) -> Result<()> {
         for port in ports {
@@ -142,26 +141,26 @@ impl PrivilegeManager {
             let status = Command::new("iptables")
                 .args(["-I", "INPUT", "-p", "tcp", "--dport", &port.to_string(), "-j", "ACCEPT"])
                 .status()?;
-            
+
             if !status.success() {
                 return Err(anyhow!("Failed to add iptables rule for TCP port {}", port));
             }
-            
+
             // UDP
             let status = Command::new("iptables")
                 .args(["-I", "INPUT", "-p", "udp", "--dport", &port.to_string(), "-j", "ACCEPT"])
                 .status()?;
-            
+
             if !status.success() {
                 return Err(anyhow!("Failed to add iptables rule for UDP port {}", port));
             }
-            
+
             info!("✅ Firewall configured for port {}", port);
         }
-        
+
         Ok(())
     }
-    
+
     /// Collaborate with user on firewall configuration
     fn collaborate_on_firewall(&self, ports: &[u16]) -> Result<()> {
         info!("");
@@ -183,73 +182,93 @@ impl PrivilegeManager {
             info!("  sudo iptables -I INPUT -p udp --dport {} -j ACCEPT", port);
         }
         info!("");
-        
+
         // Ask user permission
         print!("Would you like me to run these commands for you? (y/n): ");
         io::stdout().flush()?;
-        
+
         let mut response = String::new();
         io::stdin().read_line(&mut response)?;
-        
+
         if response.trim().to_lowercase() == "y" {
             info!("Running configuration commands...");
-            
+
             for port in ports {
                 // TCP
                 let status = Command::new("sudo")
-                    .args(["iptables", "-I", "INPUT", "-p", "tcp", "--dport", &port.to_string(), "-j", "ACCEPT"])
+                    .args([
+                        "iptables",
+                        "-I",
+                        "INPUT",
+                        "-p",
+                        "tcp",
+                        "--dport",
+                        &port.to_string(),
+                        "-j",
+                        "ACCEPT",
+                    ])
                     .status()?;
-                
+
                 if !status.success() {
                     error!("❌ Failed to configure TCP port {}", port);
                     return Err(anyhow!("Firewall configuration failed"));
                 }
-                
+
                 // UDP
                 let status = Command::new("sudo")
-                    .args(["iptables", "-I", "INPUT", "-p", "udp", "--dport", &port.to_string(), "-j", "ACCEPT"])
+                    .args([
+                        "iptables",
+                        "-I",
+                        "INPUT",
+                        "-p",
+                        "udp",
+                        "--dport",
+                        &port.to_string(),
+                        "-j",
+                        "ACCEPT",
+                    ])
                     .status()?;
-                
+
                 if !status.success() {
                     error!("❌ Failed to configure UDP port {}", port);
                     return Err(anyhow!("Firewall configuration failed"));
                 }
-                
+
                 info!("✅ Port {} configured", port);
             }
-            
+
             info!("");
             info!("╔═══════════════════════════════════════════════════════════════════╗");
             info!("║  ✅ FIREWALL CONFIGURATION COMPLETE                               ║");
             info!("╚═══════════════════════════════════════════════════════════════════╝");
             info!("");
-            
+
             // Offer to persist
             print!("Make these rules persistent across reboots? (y/n): ");
             io::stdout().flush()?;
-            
+
             response.clear();
             io::stdin().read_line(&mut response)?;
-            
+
             if response.trim().to_lowercase() == "y" {
                 let status = Command::new("sudo")
                     .args(["iptables-save"])
                     .stdout(std::process::Stdio::piped())
                     .spawn()?
                     .wait_with_output()?;
-                
+
                 if status.status.success() {
                     std::fs::write("/tmp/iptables-rules.v4", status.stdout)?;
                     let copy_status = Command::new("sudo")
                         .args(["cp", "/tmp/iptables-rules.v4", "/etc/iptables/rules.v4"])
                         .status()?;
-                    
+
                     if copy_status.success() {
                         info!("✅ Rules saved to /etc/iptables/rules.v4");
                     }
                 }
             }
-            
+
             Ok(())
         } else {
             info!("No problem! You can run these commands manually later.");
@@ -257,7 +276,7 @@ impl PrivilegeManager {
             Ok(())
         }
     }
-    
+
     /// Provide user instructions for manual firewall configuration
     fn provide_firewall_instructions(&self, ports: &[u16]) {
         info!("");
@@ -320,22 +339,24 @@ impl Default for PrivilegeManager {
 #[cfg(test)]
 mod tests {
     use super::*;
-    
+
     #[test]
     fn test_privilege_manager_creation() {
         let manager = PrivilegeManager::new();
         // Should not panic
-        println!("Privilege manager created: has_net_admin={}, is_elevated={}", 
-                 manager.has_net_admin, manager.is_elevated);
+        println!(
+            "Privilege manager created: has_net_admin={}, is_elevated={}",
+            manager.has_net_admin, manager.is_elevated
+        );
     }
-    
+
     #[test]
     fn test_non_interactive_mode() {
         let manager = PrivilegeManager::with_interactive(false);
         // Should provide instructions without asking for input
         manager.provide_firewall_instructions(&[8080, 2300]);
     }
-    
+
     #[test]
     fn test_firewall_rule_check() {
         let manager = PrivilegeManager::new();
@@ -343,4 +364,3 @@ mod tests {
         let _has_rules = manager.check_firewall_rules(&[8080]);
     }
 }
-

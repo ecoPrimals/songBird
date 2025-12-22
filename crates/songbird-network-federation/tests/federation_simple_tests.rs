@@ -50,6 +50,9 @@ fn test_multiple_nodes() {
 #[test]
 fn test_federation_config_enabled() {
     let config = FederationConfig {
+        _legacy_test_fields: (),
+        discovery_mode: None,
+        rendezvous_url: None,
         enabled: true,
         bootstrap_address: Some("http://bootstrap:8080".to_string()),
         self_registration: None,
@@ -62,6 +65,9 @@ fn test_federation_config_enabled() {
 #[test]
 fn test_federation_config_disabled() {
     let config = FederationConfig {
+        _legacy_test_fields: (),
+        discovery_mode: None,
+        rendezvous_url: None,
         enabled: false,
         bootstrap_address: None,
         self_registration: None,
@@ -74,6 +80,9 @@ fn test_federation_config_disabled() {
 #[test]
 fn test_bootstrap_address() {
     let config = FederationConfig {
+        _legacy_test_fields: (),
+        discovery_mode: None,
+        rendezvous_url: None,
         enabled: true,
         bootstrap_address: Some("http://main-node:9000".to_string()),
         self_registration: None,
@@ -91,11 +100,15 @@ fn test_bootstrap_address() {
 fn test_heartbeat_interval() {
     for interval in [10, 20, 30, 60, 120] {
         let config = FederationConfig {
+            _legacy_test_fields: (),
+            discovery_mode: None,
+            rendezvous_url: None,
             enabled: true,
             bootstrap_address: None,
             self_registration: None,
             heartbeat_interval_secs: interval,
             node_timeout_secs: 120,
+            ..Default::default()
         };
         assert_eq!(config.heartbeat_interval_secs, interval);
     }
@@ -105,11 +118,15 @@ fn test_heartbeat_interval() {
 fn test_node_timeout() {
     for timeout in [30, 60, 120, 300] {
         let config = FederationConfig {
+            _legacy_test_fields: (),
+            discovery_mode: None,
+            rendezvous_url: None,
             enabled: true,
             bootstrap_address: None,
             self_registration: None,
             heartbeat_interval_secs: 30,
             node_timeout_secs: timeout,
+            ..Default::default()
         };
         assert_eq!(config.node_timeout_secs, timeout);
     }
@@ -118,6 +135,9 @@ fn test_node_timeout() {
 #[test]
 fn test_minimal_federation_config() {
     let config = FederationConfig {
+        _legacy_test_fields: (),
+        discovery_mode: None,
+        rendezvous_url: None,
         enabled: true,
         bootstrap_address: None,
         self_registration: None,

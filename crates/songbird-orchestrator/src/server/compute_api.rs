@@ -8,8 +8,8 @@
 //! - External providers → Registered capability providers
 
 use crate::core::registry::CapabilityRegistry;
-use crate::core::routing::{CapabilityRouter, RoutingDecision, Task};
 use crate::core::routing::enhanced_router::EnhancedCapabilityRouter;
+use crate::core::routing::{CapabilityRouter, RoutingDecision, Task};
 use crate::service_registry::ServiceRegistry;
 use axum::{
     extract::{Json, Path, State},
@@ -340,9 +340,14 @@ async fn submit_compute_task(
                         }
                         Err(e) => {
                             status.status = JobStatusType::Failed;
-                            status.error =
-                                Some(format!("Failed to send to service {}: {}", service_name_clone, e));
-                            warn!("Task {} failed to send to service {}: {}", job_id, service_name_clone, e);
+                            status.error = Some(format!(
+                                "Failed to send to service {}: {}",
+                                service_name_clone, e
+                            ));
+                            warn!(
+                                "Task {} failed to send to service {}: {}",
+                                job_id, service_name_clone, e
+                            );
                         }
                     }
                 }
@@ -568,7 +573,7 @@ mod tests {
     use super::*;
 
     fn create_test_state() -> ComputeApiState {
-        let federation_state = Arc::new(FederationState::new());
+        let federation_state = Arc::new(FederationState::new("default".to_string()));
         let service_registry = Arc::new(FederatedServiceRegistry::new());
         ComputeApiState::new(federation_state, service_registry)
     }

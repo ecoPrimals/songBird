@@ -128,16 +128,16 @@ pub struct AnonymousDiscoveryMessage {
 pub struct TransportEndpointMessage {
     /// Interface type (e.g., "ethernet", "wifi", "bluetooth")
     pub interface_type: String,
-    
+
     /// Full network address for this endpoint (IP:port format)
-    /// 
+    ///
     /// This allows receivers to properly coalesce multiple interfaces under a
     /// single node identity based on the stable node_id.
     pub address: String,
-    
+
     /// Protocols supported on this endpoint
     pub protocols: Vec<String>,
-    
+
     /// Relative preference (0-255, higher = more preferred)
     pub preference: u8,
 }
@@ -154,10 +154,7 @@ impl AnonymousDiscoveryMessage {
             capabilities,
             protocols,
             port,
-            timestamp: SystemTime::now()
-                .duration_since(UNIX_EPOCH)
-                .unwrap_or_default()
-                .as_secs(),
+            timestamp: SystemTime::now().duration_since(UNIX_EPOCH).unwrap_or_default().as_secs(),
             capability_proof: None,
         }
     }
@@ -174,13 +171,13 @@ impl AnonymousDiscoveryMessage {
     ) -> Self {
         // Get primary endpoint for backward compatibility
         let primary_endpoint = endpoints.first();
-        
+
         // Extract port from address (format: "IP:port")
         let port = primary_endpoint
             .and_then(|e| e.address.split(':').nth(1))
             .and_then(|p| p.parse().ok())
             .unwrap_or(8080);
-            
+
         let protocols = primary_endpoint
             .map(|e| e.protocols.clone())
             .unwrap_or_else(|| vec!["https".to_string()]);
@@ -194,10 +191,7 @@ impl AnonymousDiscoveryMessage {
             capabilities,
             protocols,
             port,
-            timestamp: SystemTime::now()
-                .duration_since(UNIX_EPOCH)
-                .unwrap_or_default()
-                .as_secs(),
+            timestamp: SystemTime::now().duration_since(UNIX_EPOCH).unwrap_or_default().as_secs(),
             capability_proof: None,
         }
     }
@@ -212,10 +206,7 @@ impl AnonymousDiscoveryMessage {
     fn generate_session_id() -> String {
         use sha2::{Digest, Sha256};
 
-        let now = SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .unwrap_or_default()
-            .as_secs();
+        let now = SystemTime::now().duration_since(UNIX_EPOCH).unwrap_or_default().as_secs();
 
         // Truncate to hour (rotates every 3600 seconds)
         let hour = now / 3600;
@@ -239,10 +230,7 @@ impl AnonymousDiscoveryMessage {
     fn generate_session_id_from_node(node_id: &str) -> String {
         use sha2::{Digest, Sha256};
 
-        let now = SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .unwrap_or_default()
-            .as_secs();
+        let now = SystemTime::now().duration_since(UNIX_EPOCH).unwrap_or_default().as_secs();
 
         // Truncate to hour (rotates every 3600 seconds)
         let hour = now / 3600;
@@ -310,10 +298,7 @@ impl AnonymousDiscoveryMessage {
         }
 
         // Check timestamp is recent (within 5 minutes)
-        let now = SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .unwrap_or_default()
-            .as_secs();
+        let now = SystemTime::now().duration_since(UNIX_EPOCH).unwrap_or_default().as_secs();
 
         let age = now.saturating_sub(self.timestamp);
         if age > 300 {
@@ -375,16 +360,16 @@ impl DiscoveredPeer {
 pub struct AnonymousDiscoveryBroadcaster {
     /// Protocol version ("2.1" or "3.0")
     version: String,
-    
+
     /// Stable node ID (v3.0 only)
     node_id: Option<String>,
-    
+
     /// Node name (v3.0 only)
     node_name: Option<String>,
-    
+
     /// All endpoints (v3.0 only)
     endpoints: Option<Vec<TransportEndpointMessage>>,
-    
+
     /// Capabilities to advertise
     capabilities: Vec<String>,
 
@@ -422,7 +407,7 @@ impl AnonymousDiscoveryBroadcaster {
             interval_secs,
         }
     }
-    
+
     /// Create a new v3.0 broadcaster with node identity and multiple endpoints
     pub fn new_v3(
         node_id: String,
@@ -434,17 +419,16 @@ impl AnonymousDiscoveryBroadcaster {
     ) -> Self {
         // Extract primary endpoint for v2.1 fallback
         let primary = endpoints.first();
-        
+
         // Extract port from address (format: "IP:port")
         let port = primary
             .and_then(|e| e.address.split(':').nth(1))
             .and_then(|p| p.parse().ok())
             .unwrap_or(8080);
-            
-        let protocols = primary
-            .map(|e| e.protocols.clone())
-            .unwrap_or_else(|| vec!["https".to_string()]);
-        
+
+        let protocols =
+            primary.map(|e| e.protocols.clone()).unwrap_or_else(|| vec!["https".to_string()]);
+
         Self {
             version: "3.0".to_string(),
             node_id: Some(node_id),
@@ -474,7 +458,13 @@ impl AnonymousDiscoveryBroadcaster {
         if let Some(ref endpoints) = self.endpoints {
             info!("   Endpoints: {} transport paths", endpoints.len());
             for (i, endpoint) in endpoints.iter().enumerate() {
-                info!("     {}. {} ({}, preference {})", i + 1, endpoint.interface_type, endpoint.address, endpoint.preference);
+                info!(
+                    "     {}. {} ({}, preference {})",
+                    i + 1,
+                    endpoint.interface_type,
+                    endpoint.address,
+                    endpoint.preference
+                );
             }
         }
         info!("   Capabilities: {:?}", self.capabilities);
@@ -488,7 +478,8 @@ impl AnonymousDiscoveryBroadcaster {
 
         info!("✅ Anonymous discovery broadcaster started");
 
-        let mut interval = tokio::time::interval(tokio::time::Duration::from_secs(self.interval_secs));
+        let mut interval =
+            tokio::time::interval(tokio::time::Duration::from_secs(self.interval_secs));
 
         loop {
             interval.tick().await;
@@ -594,7 +585,10 @@ impl AnonymousDiscoveryListener {
                                 continue;
                             }
 
-                            debug!("📥 Received discovery from {} (session: {})", addr, message.session_id);
+                            debug!(
+                                "📥 Received discovery from {} (session: {})",
+                                addr, message.session_id
+                            );
 
                             // Store peer info with v3.0 support
                             let peer = DiscoveredPeer {
@@ -611,9 +605,9 @@ impl AnonymousDiscoveryListener {
                             };
 
                             // Log with node name if available (v3.0), otherwise session ID (v2.x)
-                            let peer_identifier = message.node_name.as_ref()
-                                .unwrap_or(&message.session_id);
-                            
+                            let peer_identifier =
+                                message.node_name.as_ref().unwrap_or(&message.session_id);
+
                             info!("🔍 Discovered peer: {} (v{}, capabilities: {:?}, HTTPS: https://{}:{})", 
                                 peer_identifier, message.version, message.capabilities, addr.ip(), message.port);
 
@@ -645,8 +639,12 @@ impl AnonymousDiscoveryListener {
     }
 
     /// Cleanup stale peers (runs periodically)
-    async fn cleanup_stale_peers(peers: Arc<RwLock<HashMap<String, DiscoveredPeer>>>, timeout_secs: u64) {
-        let mut interval = tokio::time::interval(tokio::time::Duration::from_secs(timeout_secs / 2));
+    async fn cleanup_stale_peers(
+        peers: Arc<RwLock<HashMap<String, DiscoveredPeer>>>,
+        timeout_secs: u64,
+    ) {
+        let mut interval =
+            tokio::time::interval(tokio::time::Duration::from_secs(timeout_secs / 2));
 
         loop {
             interval.tick().await;
@@ -656,10 +654,7 @@ impl AnonymousDiscoveryListener {
 
             // Remove stale peers
             peers_lock.retain(|session_id, peer| {
-                let age = now
-                    .duration_since(peer.last_seen)
-                    .unwrap_or_default()
-                    .as_secs();
+                let age = now.duration_since(peer.last_seen).unwrap_or_default().as_secs();
 
                 if age > timeout_secs {
                     debug!("🗑️  Removing stale peer: {} (age: {}s)", session_id, age);
@@ -680,10 +675,11 @@ mod tests {
     fn test_anonymous_discovery_message_creation() {
         let capabilities = vec!["orchestration".to_string(), "gpu-compute".to_string()];
         let protocols = vec!["https".to_string(), "tarpc-tls".to_string()];
+        let port = 8080u16;
 
-        let message = AnonymousDiscoveryMessage::new(capabilities.clone(), protocols.clone());
+        let message = AnonymousDiscoveryMessage::new(capabilities.clone(), protocols.clone(), port);
 
-        assert_eq!(message.version, "2.0");
+        assert_eq!(message.version, "2.1");
         assert!(!message.session_id.is_empty());
         assert_eq!(message.capabilities, capabilities);
         assert_eq!(message.protocols, protocols);
@@ -704,8 +700,9 @@ mod tests {
     fn test_message_serialization() {
         let capabilities = vec!["orchestration".to_string()];
         let protocols = vec!["https".to_string()];
+        let port = 8080u16;
 
-        let message = AnonymousDiscoveryMessage::new(capabilities, protocols);
+        let message = AnonymousDiscoveryMessage::new(capabilities, protocols, port);
 
         // Serialize
         let bytes = message.to_bytes().unwrap();
@@ -722,8 +719,9 @@ mod tests {
     fn test_message_validation() {
         let capabilities = vec!["orchestration".to_string()];
         let protocols = vec!["https".to_string()];
+        let port = 8080u16;
 
-        let message = AnonymousDiscoveryMessage::new(capabilities, protocols);
+        let message = AnonymousDiscoveryMessage::new(capabilities, protocols, port);
 
         // Valid message should pass
         assert!(message.validate().is_ok());
@@ -769,18 +767,21 @@ mod tests {
         let capabilities = vec!["orchestration".to_string()];
         let protocols = vec!["https".to_string()];
         let broadcast_addrs = vec!["255.255.255.255:2300".parse().unwrap()];
+        let port = 8080u16;
+        let interval_secs = 30u64;
 
         let broadcaster = AnonymousDiscoveryBroadcaster::new(
             capabilities.clone(),
             protocols.clone(),
+            port,
             broadcast_addrs.clone(),
-            30,
+            interval_secs,
         );
 
         assert_eq!(broadcaster.capabilities, capabilities);
         assert_eq!(broadcaster.protocols, protocols);
+        assert_eq!(broadcaster.port, port);
         assert_eq!(broadcaster.broadcast_addresses, broadcast_addrs);
-        assert_eq!(broadcaster.interval_secs, 30);
+        assert_eq!(broadcaster.interval_secs, interval_secs);
     }
 }
-

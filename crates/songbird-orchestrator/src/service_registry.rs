@@ -50,10 +50,10 @@ use uuid::Uuid;
 pub struct ServiceRegistry {
     /// Registered services
     services: Arc<RwLock<HashMap<String, RegisteredService>>>,
-    
+
     /// Port allocation state
     port_allocator: Arc<RwLock<PortAllocator>>,
-    
+
     /// Registry configuration
     config: RegistryConfig,
 }
@@ -63,16 +63,16 @@ pub struct ServiceRegistry {
 pub struct RegistryConfig {
     /// Starting port for dynamic allocation
     pub port_range_start: u16,
-    
+
     /// Ending port for dynamic allocation
     pub port_range_end: u16,
-    
+
     /// Default heartbeat interval (seconds)
     pub default_heartbeat_interval: u64,
-    
+
     /// Service TTL after missed heartbeats (seconds)
     pub service_ttl_sec: u64,
-    
+
     /// Maximum missed heartbeats before cleanup
     pub max_missed_heartbeats: u32,
 }
@@ -94,46 +94,46 @@ impl Default for RegistryConfig {
 pub struct RegisteredService {
     /// Unique service ID
     pub service_id: String,
-    
+
     /// Service name (e.g., "Toadstool", "BearDog")
     pub service_name: String,
-    
+
     /// Service version
     pub service_version: String,
-    
+
     /// Assigned endpoint
     pub assigned_endpoint: ServiceEndpoint,
-    
+
     /// Optional fallback endpoint
     pub fallback_endpoint: Option<ServiceEndpoint>,
-    
+
     /// Registration token
     pub token: String,
-    
+
     /// Capabilities
     pub capabilities: Vec<ServiceCapability>,
-    
+
     /// Protocols
     pub protocols: Vec<String>,
-    
+
     /// Registration timestamp
     pub registered_at: SystemTime,
-    
+
     /// Last heartbeat timestamp
     pub last_heartbeat: SystemTime,
-    
+
     /// Heartbeat interval (seconds)
     pub heartbeat_interval: u64,
-    
+
     /// Current status
     pub status: ServiceStatus,
-    
+
     /// Trust level
     pub trust_level: String,
-    
+
     /// Missed heartbeat count
     pub missed_heartbeats: u32,
-    
+
     /// Metadata
     pub metadata: HashMap<String, serde_json::Value>,
 }
@@ -180,10 +180,10 @@ pub enum ServiceStatus {
 struct PortAllocator {
     /// Allocated ports (port -> service_id)
     allocated: HashMap<u16, String>,
-    
+
     /// Next port to try
     next_port: u16,
-    
+
     /// Port range
     range_start: u16,
     range_end: u16,
@@ -198,42 +198,45 @@ impl PortAllocator {
             range_end,
         }
     }
-    
+
     /// Allocate a port for a service
     fn allocate(&mut self, service_id: &str) -> Result<u16> {
         let start_port = self.next_port;
-        
+
         loop {
             let port = self.next_port;
-            
+
             // Move to next port for next allocation
             self.next_port += 1;
             if self.next_port > self.range_end {
                 self.next_port = self.range_start;
             }
-            
+
             // Check if this port is available
             if !self.allocated.contains_key(&port) {
                 self.allocated.insert(port, service_id.to_string());
                 debug!("✅ Allocated port {} to service {}", port, service_id);
                 return Ok(port);
             }
-            
+
             // If we've wrapped around, no ports available
             if self.next_port == start_port {
-                return Err(anyhow!("No available ports in range {}-{}", 
-                    self.range_start, self.range_end));
+                return Err(anyhow!(
+                    "No available ports in range {}-{}",
+                    self.range_start,
+                    self.range_end
+                ));
             }
         }
     }
-    
+
     /// Release a port
     fn release(&mut self, port: u16) {
         if let Some(service_id) = self.allocated.remove(&port) {
             debug!("Released port {} from service {}", port, service_id);
         }
     }
-    
+
     /// Check if a port is allocated
     fn is_allocated(&self, port: u16) -> bool {
         self.allocated.contains_key(&port)
@@ -303,62 +306,56 @@ impl ServiceRegistry {
     pub fn new() -> Self {
         Self::with_config(RegistryConfig::default())
     }
-    
+
     /// Create a new service registry with custom configuration
     pub fn with_config(config: RegistryConfig) -> Self {
-        let port_allocator = PortAllocator::new(
-            config.port_range_start,
-            config.port_range_end,
-        );
-        
+        let port_allocator = PortAllocator::new(config.port_range_start, config.port_range_end);
+
         Self {
             services: Arc::new(RwLock::new(HashMap::new())),
             port_allocator: Arc::new(RwLock::new(port_allocator)),
             config,
         }
     }
-    
+
     /// Register a new service
     pub async fn register(&self, request: RegistrationRequest) -> Result<RegistrationResponse> {
         info!("📝 Registering service: {}", request.primal_name);
-        
+
         // Generate service ID
         let service_id = Uuid::new_v4().to_string();
-        
+
         // Generate registration token
         let token = Uuid::new_v4().to_string();
-        
+
         // Allocate port
         let port = {
             let mut allocator = self.port_allocator.write().await;
             allocator.allocate(&service_id)?
         };
-        
+
         // Create endpoints
-        let assigned_endpoint = ServiceEndpoint::new(
-            &request.preferred_protocol,
-            "0.0.0.0",
-            port,
-        );
-        
+        let assigned_endpoint = ServiceEndpoint::new(&request.preferred_protocol, "0.0.0.0", port);
+
         // Optional: Allocate fallback port for different protocol
         let fallback_endpoint = if request.protocols.len() > 1 {
-            let fallback_protocol = request.protocols
+            let fallback_protocol = request
+                .protocols
                 .iter()
                 .find(|p| *p != &request.preferred_protocol)
                 .map(|s| s.as_str())
                 .unwrap_or("https");
-            
+
             let fallback_port = {
                 let mut allocator = self.port_allocator.write().await;
                 allocator.allocate(&service_id).ok()
             };
-            
+
             fallback_port.map(|p| ServiceEndpoint::new(fallback_protocol, "0.0.0.0", p))
         } else {
             None
         };
-        
+
         // Create registered service
         let now = SystemTime::now();
         let service = RegisteredService {
@@ -378,18 +375,15 @@ impl ServiceRegistry {
             missed_heartbeats: 0,
             metadata: request.metadata.unwrap_or_default(),
         };
-        
+
         // Store service
         {
             let mut services = self.services.write().await;
             services.insert(service_id.clone(), service);
         }
-        
-        info!(
-            "✅ Registered {} as service {} on port {}",
-            request.primal_name, service_id, port
-        );
-        
+
+        info!("✅ Registered {} as service {} on port {}", request.primal_name, service_id, port);
+
         Ok(RegistrationResponse {
             status: "registered".to_string(),
             service_id,
@@ -400,55 +394,55 @@ impl ServiceRegistry {
             trust_level: "anonymous".to_string(),
         })
     }
-    
+
     /// Process a heartbeat
     pub async fn heartbeat(&self, request: HeartbeatRequest) -> Result<HeartbeatResponse> {
         debug!("💓 Heartbeat from service {}", request.service_id);
-        
+
         let mut services = self.services.write().await;
-        
+
         let service = services
             .get_mut(&request.service_id)
             .ok_or_else(|| anyhow!("Service not found: {}", request.service_id))?;
-        
+
         // Validate token
         if service.token != request.token {
             return Err(anyhow!("Invalid token for service {}", request.service_id));
         }
-        
+
         // Update heartbeat
         service.last_heartbeat = SystemTime::now();
         service.missed_heartbeats = 0;
-        
+
         // Update status if changed
         if request.status == "operational" {
             service.status = ServiceStatus::Active;
         }
-        
+
         debug!("✅ Heartbeat acknowledged for {}", service.service_name);
-        
+
         Ok(HeartbeatResponse {
             status: "acknowledged".to_string(),
             next_heartbeat_sec: service.heartbeat_interval,
             commands: vec![],
         })
     }
-    
+
     /// Deregister a service
     pub async fn deregister(&self, request: DeregistrationRequest) -> Result<()> {
         info!("🛑 Deregistering service {}", request.service_id);
-        
+
         let service = {
             let mut services = self.services.write().await;
             services.remove(&request.service_id)
         };
-        
+
         if let Some(service) = service {
             // Validate token
             if service.token != request.token {
                 return Err(anyhow!("Invalid token for service {}", request.service_id));
             }
-            
+
             // Release ports
             {
                 let mut allocator = self.port_allocator.write().await;
@@ -457,48 +451,44 @@ impl ServiceRegistry {
                     allocator.release(fallback.port);
                 }
             }
-            
+
             info!("✅ Deregistered service {}", service.service_name);
             Ok(())
         } else {
             Err(anyhow!("Service not found: {}", request.service_id))
         }
     }
-    
+
     /// Get a service by ID
     pub async fn get_service(&self, service_id: &str) -> Option<RegisteredService> {
         let services = self.services.read().await;
         services.get(service_id).cloned()
     }
-    
+
     /// List all services
     pub async fn list_services(&self) -> Vec<RegisteredService> {
         let services = self.services.read().await;
         services.values().cloned().collect()
     }
-    
+
     /// Query services by capability
     pub async fn query_by_capability(&self, capability: &str) -> Vec<RegisteredService> {
         let services = self.services.read().await;
         services
             .values()
-            .filter(|s| {
-                s.capabilities
-                    .iter()
-                    .any(|c| c.name == capability)
-            })
+            .filter(|s| s.capabilities.iter().any(|c| c.name == capability))
             .cloned()
             .collect()
     }
-    
+
     /// Cleanup stale services (TTL expired)
     pub async fn cleanup_stale_services(&self) -> usize {
         let now = SystemTime::now();
         let ttl = Duration::from_secs(self.config.service_ttl_sec);
-        
+
         let mut services = self.services.write().await;
         let mut to_remove = Vec::new();
-        
+
         for (id, service) in services.iter_mut() {
             // Check if last heartbeat is beyond TTL
             if let Ok(elapsed) = now.duration_since(service.last_heartbeat) {
@@ -510,10 +500,11 @@ impl ServiceRegistry {
                     to_remove.push(id.clone());
                 } else {
                     // Update missed heartbeats
-                    let expected_heartbeats = (elapsed.as_secs() / service.heartbeat_interval) as u32;
+                    let expected_heartbeats =
+                        (elapsed.as_secs() / service.heartbeat_interval) as u32;
                     if expected_heartbeats > 0 {
                         service.missed_heartbeats = expected_heartbeats.saturating_sub(1);
-                        
+
                         if service.missed_heartbeats >= self.config.max_missed_heartbeats {
                             service.status = ServiceStatus::Degraded;
                         }
@@ -521,7 +512,7 @@ impl ServiceRegistry {
                 }
             }
         }
-        
+
         // Remove stale services
         let count = to_remove.len();
         for id in to_remove {
@@ -534,33 +525,34 @@ impl ServiceRegistry {
                 }
             }
         }
-        
+
         if count > 0 {
             info!("🗑️  Cleaned up {} stale service(s)", count);
         }
-        
+
         count
     }
-    
+
     /// Get registry statistics
     pub async fn get_stats(&self) -> RegistryStats {
         let services = self.services.read().await;
-        
+
         let total = services.len();
         let active = services.values().filter(|s| s.status == ServiceStatus::Active).count();
         let degraded = services.values().filter(|s| s.status == ServiceStatus::Degraded).count();
         let inactive = services.values().filter(|s| s.status == ServiceStatus::Inactive).count();
-        
+
         let allocator = self.port_allocator.read().await;
         let allocated_ports = allocator.allocated.len();
-        
+
         RegistryStats {
             total_services: total,
             active_services: active,
             degraded_services: degraded,
             inactive_services: inactive,
             allocated_ports,
-            available_ports: (self.config.port_range_end - self.config.port_range_start) as usize - allocated_ports,
+            available_ports: (self.config.port_range_end - self.config.port_range_start) as usize
+                - allocated_ports,
         }
     }
 }
@@ -593,10 +585,10 @@ pub fn spawn_cleanup_task(
 ) -> tokio::task::JoinHandle<()> {
     tokio::spawn(async move {
         let mut interval = tokio::time::interval(Duration::from_secs(interval_sec));
-        
+
         loop {
             interval.tick().await;
-            
+
             match registry.cleanup_stale_services().await {
                 0 => debug!("Cleanup: No stale services found"),
                 count => info!("Cleanup: Removed {} stale service(s)", count),
@@ -608,11 +600,11 @@ pub fn spawn_cleanup_task(
 #[cfg(test)]
 mod tests {
     use super::*;
-    
+
     #[tokio::test]
     async fn test_service_registration() {
         let registry = ServiceRegistry::new();
-        
+
         let request = RegistrationRequest {
             primal_name: "TestService".to_string(),
             primal_version: "1.0.0".to_string(),
@@ -622,18 +614,18 @@ mod tests {
             health_check_path: Some("/health".to_string()),
             metadata: None,
         };
-        
+
         let response = registry.register(request).await.unwrap();
-        
+
         assert_eq!(response.status, "registered");
         assert!(!response.service_id.is_empty());
         assert!(response.assigned_endpoint.port >= 8091);
     }
-    
+
     #[tokio::test]
     async fn test_heartbeat() {
         let registry = ServiceRegistry::new();
-        
+
         // Register service
         let request = RegistrationRequest {
             primal_name: "TestService".to_string(),
@@ -644,9 +636,9 @@ mod tests {
             health_check_path: None,
             metadata: None,
         };
-        
+
         let registration = registry.register(request).await.unwrap();
-        
+
         // Send heartbeat
         let heartbeat = HeartbeatRequest {
             service_id: registration.service_id.clone(),
@@ -655,15 +647,15 @@ mod tests {
             current_load: None,
             capabilities_changed: false,
         };
-        
+
         let response = registry.heartbeat(heartbeat).await.unwrap();
         assert_eq!(response.status, "acknowledged");
     }
-    
+
     #[tokio::test]
     async fn test_deregistration() {
         let registry = ServiceRegistry::new();
-        
+
         // Register service
         let request = RegistrationRequest {
             primal_name: "TestService".to_string(),
@@ -674,22 +666,22 @@ mod tests {
             health_check_path: None,
             metadata: None,
         };
-        
+
         let registration = registry.register(request).await.unwrap();
-        
+
         // Deregister
         let dereg = DeregistrationRequest {
             service_id: registration.service_id.clone(),
             token: registration.registration_token.clone(),
             reason: "test".to_string(),
         };
-        
+
         registry.deregister(dereg).await.unwrap();
-        
+
         // Verify service is gone
         assert!(registry.get_service(&registration.service_id).await.is_none());
     }
-    
+
     #[tokio::test]
     async fn test_port_allocation() {
         let config = RegistryConfig {
@@ -697,9 +689,9 @@ mod tests {
             port_range_end: 9002,
             ..Default::default()
         };
-        
+
         let registry = ServiceRegistry::with_config(config);
-        
+
         // Register 3 services (should fill the range)
         for i in 0..3 {
             let request = RegistrationRequest {
@@ -711,10 +703,10 @@ mod tests {
                 health_check_path: None,
                 metadata: None,
             };
-            
+
             registry.register(request).await.unwrap();
         }
-        
+
         // 4th service should fail (no ports available)
         let request = RegistrationRequest {
             primal_name: "Service3".to_string(),
@@ -725,8 +717,7 @@ mod tests {
             health_check_path: None,
             metadata: None,
         };
-        
+
         assert!(registry.register(request).await.is_err());
     }
 }
-

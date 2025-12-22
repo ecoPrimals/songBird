@@ -56,11 +56,16 @@ impl ConnectivityTester {
     /// Create a connectivity tester with custom timeout
     #[must_use]
     pub fn with_timeout(test_timeout: Duration) -> Self {
-        Self { test_timeout }
+        Self {
+            test_timeout,
+        }
     }
 
     /// Test TCP connectivity to a target
-    pub async fn test_tcp_connectivity(&self, target: SocketAddr) -> Result<ConnectivityTestResult> {
+    pub async fn test_tcp_connectivity(
+        &self,
+        target: SocketAddr,
+    ) -> Result<ConnectivityTestResult> {
         debug!("Testing TCP connectivity to {}", target);
 
         let start = std::time::Instant::now();
@@ -102,7 +107,10 @@ impl ConnectivityTester {
     }
 
     /// Test HTTPS connectivity to a target
-    pub async fn test_https_connectivity(&self, target: SocketAddr) -> Result<ConnectivityTestResult> {
+    pub async fn test_https_connectivity(
+        &self,
+        target: SocketAddr,
+    ) -> Result<ConnectivityTestResult> {
         debug!("Testing HTTPS connectivity to {}", target);
 
         let start = std::time::Instant::now();
@@ -122,7 +130,10 @@ impl ConnectivityTester {
                 let status = response.status();
 
                 if status.is_success() {
-                    info!("✅ HTTPS connection to {} succeeded ({}ms, status: {})", target, rtt_ms, status);
+                    info!(
+                        "✅ HTTPS connection to {} succeeded ({}ms, status: {})",
+                        target, rtt_ms, status
+                    );
                     Ok(ConnectivityTestResult {
                         target,
                         tcp_reachable: true,
@@ -192,12 +203,19 @@ impl ConnectivityTester {
                 if let Some(error) = &result.error {
                     if error.contains("timeout") || error.contains("Timeout") {
                         diagnostics.push("  🔍 Possible causes:".to_string());
-                        diagnostics.push("     - Firewall blocking port (check iptables/ufw)".to_string());
-                        diagnostics.push("     - Network isolation (VLANs, different subnets)".to_string());
+                        diagnostics
+                            .push("     - Firewall blocking port (check iptables/ufw)".to_string());
+                        diagnostics.push(
+                            "     - Network isolation (VLANs, different subnets)".to_string(),
+                        );
                         diagnostics.push("     - Router/switch filtering".to_string());
-                        diagnostics.push("  💡 Try: sudo iptables -I INPUT -p tcp --dport 8080 -j ACCEPT".to_string());
+                        diagnostics.push(
+                            "  💡 Try: sudo iptables -I INPUT -p tcp --dport 8080 -j ACCEPT"
+                                .to_string(),
+                        );
                     } else if error.contains("refused") {
-                        diagnostics.push("  🔍 Connection refused - service not listening".to_string());
+                        diagnostics
+                            .push("  🔍 Connection refused - service not listening".to_string());
                         diagnostics.push("  💡 Check: ss -tlnp | grep 8080".to_string());
                     }
                 }
@@ -268,7 +286,11 @@ impl ConnectivityRemediator {
             actions.push("   • Remain sovereign and self-managing".to_string());
             actions.push("".to_string());
             actions.push("📝 Manual Alternative (not recommended):".to_string());
-            actions.push("   sudo iptables -I INPUT -p tcp --dport {} -j ACCEPT".to_string().replace("{}", &target.port().to_string()));
+            actions.push(
+                "   sudo iptables -I INPUT -p tcp --dport {} -j ACCEPT"
+                    .to_string()
+                    .replace("{}", &target.port().to_string()),
+            );
             actions.push("   sudo iptables -I INPUT -p udp --dport 2300 -j ACCEPT".to_string());
             return Ok(actions);
         }
@@ -277,7 +299,16 @@ impl ConnectivityRemediator {
         #[cfg(target_os = "linux")]
         {
             if let Ok(output) = tokio::process::Command::new("iptables")
-                .args(["-C", "INPUT", "-p", "tcp", "--dport", &target.port().to_string(), "-j", "ACCEPT"])
+                .args([
+                    "-C",
+                    "INPUT",
+                    "-p",
+                    "tcp",
+                    "--dport",
+                    &target.port().to_string(),
+                    "-j",
+                    "ACCEPT",
+                ])
                 .output()
                 .await
             {
@@ -286,12 +317,24 @@ impl ConnectivityRemediator {
                     info!("Adding iptables rule for port {}", target.port());
 
                     match tokio::process::Command::new("iptables")
-                        .args(["-I", "INPUT", "-p", "tcp", "--dport", &target.port().to_string(), "-j", "ACCEPT"])
+                        .args([
+                            "-I",
+                            "INPUT",
+                            "-p",
+                            "tcp",
+                            "--dport",
+                            &target.port().to_string(),
+                            "-j",
+                            "ACCEPT",
+                        ])
                         .output()
                         .await
                     {
                         Ok(output) if output.status.success() => {
-                            actions.push(format!("✅ Added iptables ACCEPT rule for port {}", target.port()));
+                            actions.push(format!(
+                                "✅ Added iptables ACCEPT rule for port {}",
+                                target.port()
+                            ));
                         }
                         Ok(output) => {
                             let stderr = String::from_utf8_lossy(&output.stderr);
@@ -304,7 +347,10 @@ impl ConnectivityRemediator {
                         }
                     }
                 } else {
-                    actions.push(format!("ℹ️  iptables rule already exists for port {}", target.port()));
+                    actions.push(format!(
+                        "ℹ️  iptables rule already exists for port {}",
+                        target.port()
+                    ));
                 }
             }
         }
@@ -328,7 +374,7 @@ impl ConnectivityRemediator {
             //   sudo setcap 'cap_net_admin=+ep' /path/to/songbird-orchestrator
             //
             // Or run the setup-network-sovereignty.sh script
-            
+
             // Try to execute a benign iptables command to test for capabilities
             // If it succeeds, we have CAP_NET_ADMIN
             std::process::Command::new("iptables")
@@ -395,4 +441,3 @@ mod tests {
         assert!(result.error.is_some());
     }
 }
-

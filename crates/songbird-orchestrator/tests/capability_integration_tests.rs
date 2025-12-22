@@ -255,7 +255,7 @@ where
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_routing_with_external_provider() {
     let registry = create_test_registry();
-    let federation_state = Arc::new(FederationState::new());
+    let federation_state = Arc::new(FederationState::new("test".to_string()));
     let service_registry = Arc::new(FederatedServiceRegistry::new());
 
     // Create router with capability registry
@@ -291,7 +291,7 @@ async fn test_routing_with_external_provider() {
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_routing_falls_back_without_provider() {
     let registry = create_test_registry();
-    let federation_state = Arc::new(FederationState::new());
+    let federation_state = Arc::new(FederationState::new("test".to_string()));
     let service_registry = Arc::new(FederatedServiceRegistry::new());
 
     // Create router with empty registry (no providers registered)

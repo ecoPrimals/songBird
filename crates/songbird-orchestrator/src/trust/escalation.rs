@@ -3,8 +3,7 @@
 //! Manages progressive trust escalation from anonymous to hardware-verified.
 
 use super::types::{
-    CapabilityProof, HardwareAttestation, IdentityProof, TrustLevel,
-    TrustRelationship,
+    CapabilityProof, HardwareAttestation, IdentityProof, TrustLevel, TrustRelationship,
 };
 use anyhow::{anyhow, Result};
 use std::collections::HashMap;
@@ -54,10 +53,10 @@ pub struct TrustTimeouts {
 impl Default for TrustTimeouts {
     fn default() -> Self {
         Self {
-            anonymous: 3600,      // 1 hour
-            capability: 86400,    // 24 hours
-            identity: 604800,     // 7 days
-            hardware: 0,          // Never expire
+            anonymous: 3600,   // 1 hour
+            capability: 86400, // 24 hours
+            identity: 604800,  // 7 days
+            hardware: 0,       // Never expire
         }
     }
 }
@@ -101,7 +100,8 @@ impl TrustEscalationManager {
     /// This is the entry point for all new connections.
     /// No verification is required - we simply record that we've seen this session.
     pub async fn establish_anonymous(&self, session_id: String) -> Result<()> {
-        let relationship = TrustRelationship::new_anonymous(session_id.clone(), self.trust_timeouts.anonymous);
+        let relationship =
+            TrustRelationship::new_anonymous(session_id.clone(), self.trust_timeouts.anonymous);
 
         self.trust_store.write().await.insert(session_id.clone(), relationship);
 
@@ -112,7 +112,11 @@ impl TrustEscalationManager {
     /// Escalate to capability-verified
     ///
     /// Verifies cryptographic proof of capabilities and grants task coordination access.
-    pub async fn verify_capabilities(&self, session_id: &str, proof: CapabilityProof) -> Result<()> {
+    pub async fn verify_capabilities(
+        &self,
+        session_id: &str,
+        proof: CapabilityProof,
+    ) -> Result<()> {
         let mut store = self.trust_store.write().await;
         let relationship = store
             .get_mut(session_id)
@@ -127,13 +131,10 @@ impl TrustEscalationManager {
         relationship.trust_level = TrustLevel::CapabilityVerified;
         relationship.verified_capabilities = proof.capabilities.clone();
         relationship.last_verified_at = SystemTime::now();
-        relationship.expires_at = SystemTime::now()
-            + std::time::Duration::from_secs(self.trust_timeouts.capability);
+        relationship.expires_at =
+            SystemTime::now() + std::time::Duration::from_secs(self.trust_timeouts.capability);
 
-        info!(
-            "✅ Trust escalated to Capability-Verified (Level 1): {}",
-            session_id
-        );
+        info!("✅ Trust escalated to Capability-Verified (Level 1): {}", session_id);
         debug!("   Capabilities: {:?}", proof.capabilities);
 
         Ok(())
@@ -165,8 +166,8 @@ impl TrustEscalationManager {
         // Escalate trust level
         relationship.trust_level = TrustLevel::RoleVerified;
         relationship.last_verified_at = SystemTime::now();
-        relationship.expires_at = SystemTime::now()
-            + std::time::Duration::from_secs(self.trust_timeouts.identity);
+        relationship.expires_at =
+            SystemTime::now() + std::time::Duration::from_secs(self.trust_timeouts.identity);
 
         info!("✅ Trust escalated to Role-Verified (Level 2): {}", session_id);
         debug!("   Role: {}", role);
@@ -177,7 +178,11 @@ impl TrustEscalationManager {
     /// Escalate to identity-verified
     ///
     /// Verifies identity proof (JWT, certificate, etc.) and grants infrastructure access.
-    pub async fn verify_identity(&self, session_id: &str, identity_proof: IdentityProof) -> Result<()> {
+    pub async fn verify_identity(
+        &self,
+        session_id: &str,
+        identity_proof: IdentityProof,
+    ) -> Result<()> {
         let mut store = self.trust_store.write().await;
         let relationship = store
             .get_mut(session_id)
@@ -200,13 +205,10 @@ impl TrustEscalationManager {
         relationship.trust_level = TrustLevel::IdentityVerified;
         relationship.identity = Some(identity_proof.identity.clone());
         relationship.last_verified_at = SystemTime::now();
-        relationship.expires_at = SystemTime::now()
-            + std::time::Duration::from_secs(self.trust_timeouts.identity);
+        relationship.expires_at =
+            SystemTime::now() + std::time::Duration::from_secs(self.trust_timeouts.identity);
 
-        info!(
-            "✅ Trust escalated to Identity-Verified (Level 3): {}",
-            session_id
-        );
+        info!("✅ Trust escalated to Identity-Verified (Level 3): {}", session_id);
         info!("   Identity: {}", identity_proof.identity.node_id);
 
         Ok(())
@@ -215,7 +217,11 @@ impl TrustEscalationManager {
     /// Escalate to hardware-verified (requires BearDog)
     ///
     /// Verifies hardware key via BearDog and grants full admin access.
-    pub async fn verify_hardware(&self, session_id: &str, hardware_proof: HardwareAttestation) -> Result<()> {
+    pub async fn verify_hardware(
+        &self,
+        session_id: &str,
+        hardware_proof: HardwareAttestation,
+    ) -> Result<()> {
         let beardog = self
             .beardog_client
             .as_ref()
@@ -246,29 +252,29 @@ impl TrustEscalationManager {
 
         // Hardware-verified sessions never expire (unless explicitly revoked)
         if self.trust_timeouts.hardware > 0 {
-            relationship.expires_at = SystemTime::now()
-                + std::time::Duration::from_secs(self.trust_timeouts.hardware);
+            relationship.expires_at =
+                SystemTime::now() + std::time::Duration::from_secs(self.trust_timeouts.hardware);
         } else {
             // Never expire (set to far future)
-            relationship.expires_at = SystemTime::now()
-                + std::time::Duration::from_secs(u64::MAX / 2);
+            relationship.expires_at =
+                SystemTime::now() + std::time::Duration::from_secs(u64::MAX / 2);
         }
 
-        info!(
-            "🔒 Trust escalated to Hardware-Verified (Level 4 - ADMIN): {}",
-            session_id
-        );
+        info!("🔒 Trust escalated to Hardware-Verified (Level 4 - ADMIN): {}", session_id);
         info!("   Hardware Key: {}", hardware_proof.hardware_key);
 
         Ok(())
     }
 
     /// Check if a session can perform an operation requiring a minimum trust level
-    pub async fn check_permission(&self, session_id: &str, required_level: TrustLevel) -> Result<bool> {
+    pub async fn check_permission(
+        &self,
+        session_id: &str,
+        required_level: TrustLevel,
+    ) -> Result<bool> {
         let store = self.trust_store.read().await;
-        let relationship = store
-            .get(session_id)
-            .ok_or_else(|| anyhow!("Session not found: {}", session_id))?;
+        let relationship =
+            store.get(session_id).ok_or_else(|| anyhow!("Session not found: {}", session_id))?;
 
         if relationship.is_expired() {
             warn!(
@@ -284,9 +290,8 @@ impl TrustEscalationManager {
     /// Get current trust level for a session
     pub async fn get_trust_level(&self, session_id: &str) -> Result<TrustLevel> {
         let store = self.trust_store.read().await;
-        let relationship = store
-            .get(session_id)
-            .ok_or_else(|| anyhow!("Session not found: {}", session_id))?;
+        let relationship =
+            store.get(session_id).ok_or_else(|| anyhow!("Session not found: {}", session_id))?;
 
         if relationship.is_expired() {
             // Return Anonymous if expired
@@ -305,9 +310,7 @@ impl TrustEscalationManager {
     /// Remove a trust relationship (revoke trust)
     pub async fn revoke_trust(&self, session_id: &str) -> Result<()> {
         let mut store = self.trust_store.write().await;
-        store
-            .remove(session_id)
-            .ok_or_else(|| anyhow!("Session not found: {}", session_id))?;
+        store.remove(session_id).ok_or_else(|| anyhow!("Session not found: {}", session_id))?;
 
         info!("🗑️  Trust revoked: {}", session_id);
         Ok(())
@@ -338,10 +341,7 @@ impl TrustEscalationManager {
     /// Get all active trust relationships
     pub async fn get_all_relationships(&self) -> Vec<(String, TrustRelationship)> {
         let store = self.trust_store.read().await;
-        store
-            .iter()
-            .map(|(k, v)| (k.clone(), v.clone()))
-            .collect()
+        store.iter().map(|(k, v)| (k.clone(), v.clone())).collect()
     }
 
     /// Get count of relationships at each trust level
@@ -362,7 +362,7 @@ impl TrustEscalationManager {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::trust::{TowerIdentity, IdentityProof};
+    use crate::trust::{IdentityProof, TowerIdentity};
 
     #[tokio::test]
     async fn test_trust_escalation_manager_creation() {
@@ -459,10 +459,7 @@ mod tests {
         manager.verify_capabilities(&session_id, proof).await.unwrap();
 
         // Should be able to perform anonymous and capability operations
-        assert!(manager
-            .check_permission(&session_id, TrustLevel::Anonymous)
-            .await
-            .unwrap());
+        assert!(manager.check_permission(&session_id, TrustLevel::Anonymous).await.unwrap());
         assert!(manager
             .check_permission(&session_id, TrustLevel::CapabilityVerified)
             .await
@@ -504,4 +501,3 @@ mod tests {
         assert_eq!(removed, 1);
     }
 }
-

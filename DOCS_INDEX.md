@@ -1,189 +1,216 @@
 # 📚 Songbird Documentation Index
 
-**Clean, organized, and easy to navigate.**
-
-## 🎯 Quick Start (Root Directory)
-
-**Essential Files:**
-- **[00_START_HERE.md](./00_START_HERE.md)** - Start here for new users
-- **[README.md](./README.md)** - Project overview, status, quick links ⭐
-- **[STATUS.md](./STATUS.md)** - Current project status
-- **[CHANGELOG.md](./CHANGELOG.md)** - Version history
-
-**Guides:**
-- **[CONTRIBUTING.md](./CONTRIBUTING.md)** - How to contribute
-- **[CONFIGURATION_GUIDE.md](./CONFIGURATION_GUIDE.md)** - Configuration options
-- **[DEPLOYMENT_GUIDE.md](./DEPLOYMENT_GUIDE.md)** - Deployment instructions
-- **[ROADMAP.md](./ROADMAP.md)** - Future plans
-
-**Scripts:**
-- **[TOWER_SCRIPTS_README.md](./TOWER_SCRIPTS_README.md)** - Tower management scripts
-- `start-tower.sh` - Start a Songbird tower
-- `stop-tower.sh` - Stop a tower
-- `check-tower.sh` - Check tower status
-
-## 🎉 December 2025 Sessions
-
-**Main Summary (Root):**
-- **[PROCESS_LIFECYCLE_IMPLEMENTATION_DEC_20_2025.md](./PROCESS_LIFECYCLE_IMPLEMENTATION_DEC_20_2025.md)** ⭐ **LATEST**
-- **[FINAL_SESSION_SUMMARY_DEC_20_2025.md](./FINAL_SESSION_SUMMARY_DEC_20_2025.md)** ⭐ **Testing Session**
-- **[SESSION_COMPLETE_DEC_20_2025.txt](./SESSION_COMPLETE_DEC_20_2025.txt)** - Quick summary
-- **[TEST_SUCCESS_SUMMARY_DEC_20_2025.txt](./TEST_SUCCESS_SUMMARY_DEC_20_2025.txt)** - Test results
-
-**Process Lifecycle Session (Dec 20 - Evening):**
-- **[SO_REUSEPORT_REMOVAL_DEC_20_2025.md](./SO_REUSEPORT_REMOVAL_DEC_20_2025.md)** - Removal & testing
-- **[SO_REUSEPORT_ANALYSIS_DEC_20_2025.md](./SO_REUSEPORT_ANALYSIS_DEC_20_2025.md)** - Technical analysis
-- **[FEDERATION_SPLIT_STATE_BUG_DEC_20_2025.md](./FEDERATION_SPLIT_STATE_BUG_DEC_20_2025.md)** - Bug documentation
-- **[PROCESS_LIFECYCLE_ARCHITECTURE_GAP_DEC_20_2025.md](./PROCESS_LIFECYCLE_ARCHITECTURE_GAP_DEC_20_2025.md)** - Architectural gap
-
-**Multi-Path Transport Session (Dec 20):**
-- **[MULTI_INTERFACE_COALESCENCE_FIX_DEC_20_2025.md](./MULTI_INTERFACE_COALESCENCE_FIX_DEC_20_2025.md)** - Coalescence fix
-- **[FEDERATION_DEPLOYMENT_SESSION_DEC_20_2025.md](./FEDERATION_DEPLOYMENT_SESSION_DEC_20_2025.md)** - Deployment session
-
-**Detailed Reports:**
-- **[docs/sessions/december-2025/README.md](./docs/sessions/december-2025/README.md)** - Session index
-
-The root and `docs/sessions/december-2025/` directories contain comprehensive reports on:
-- Process lifecycle and singleton enforcement
-- Test suite documentation (26 tests)
-- Bug fixes (split state, zombies, port fallback, identity)
-- Architecture evolution (multi-path transport, identity-based routing)
-- Deep debt solutions (SO_REUSEPORT removal, user collaboration)
-- Deployment robustness
-
-## 📖 Reference Documentation
-
-**Location:** `docs/reference/`
-
-- **[SAFE_PATTERNS.md](./docs/reference/SAFE_PATTERNS.md)** - Safe coding patterns
-- **[UNSAFE_CODE_ANALYSIS.md](./docs/reference/UNSAFE_CODE_ANALYSIS.md)** - Unsafe code analysis
-- **[FEDERATION_MONITORING.md](./docs/reference/FEDERATION_MONITORING.md)** - Monitoring guide
-
-## 📦 Historical Archive
-
-**Location:** `../archive/songbird-docs-dec-2025/`
-
-Contains:
-- December 19, 2025 session reports (32 files)
-- Westgate documentation (10+ files)
-- Old deployment scripts (35 files)
-- Historical logs (5 files)
-- Build-out debris (7 files)
-
-See [archive/songbird-docs-dec-2025/README.md](../archive/songbird-docs-dec-2025/README.md)
-
-## 🎯 Navigation by Role
-
-### For New Users
-1. Read [00_START_HERE.md](./00_START_HERE.md)
-2. Review [README.md](./README.md)
-3. Follow [DEPLOYMENT_GUIDE.md](./DEPLOYMENT_GUIDE.md)
-
-### For Developers
-1. Read [CONTRIBUTING.md](./CONTRIBUTING.md)
-2. Review [FINAL_SESSION_SUMMARY_DEC_20_2025.md](./FINAL_SESSION_SUMMARY_DEC_20_2025.md)
-3. Explore [docs/sessions/december-2025/](./docs/sessions/december-2025/)
-
-### For Operators
-1. Use `start-tower.sh` to start
-2. Check [STATUS.md](./STATUS.md)
-3. Monitor with [docs/reference/FEDERATION_MONITORING.md](./docs/reference/FEDERATION_MONITORING.md)
-
-### For Researchers
-1. Read [FINAL_SESSION_SUMMARY_DEC_20_2025.md](./FINAL_SESSION_SUMMARY_DEC_20_2025.md)
-2. Explore architecture docs in [docs/sessions/december-2025/](./docs/sessions/december-2025/)
-3. Review test suite in [docs/sessions/december-2025/PORT_FALLBACK_TEST_SUITE_DEC_20_2025.md](./docs/sessions/december-2025/PORT_FALLBACK_TEST_SUITE_DEC_20_2025.md)
-
-## 🏗️ Directory Structure
-
-```
-songbird/
-├── README.md                           ⭐ Start here
-├── 00_START_HERE.md
-├── FINAL_SESSION_SUMMARY_DEC_20_2025.md  ⭐ Latest achievements
-├── DOCS_INDEX.md                       (this file)
-├── STATUS.md
-├── CHANGELOG.md
-├── CONTRIBUTING.md
-├── CONFIGURATION_GUIDE.md
-├── DEPLOYMENT_GUIDE.md
-├── ROADMAP.md
-├── TOWER_SCRIPTS_README.md
-├── *.sh                                (tower management scripts)
-│
-├── docs/
-│   ├── sessions/
-│   │   └── december-2025/              📁 16 session reports
-│   │       └── README.md               Session index
-│   │
-│   └── reference/                      📁 Reference materials
-│       ├── SAFE_PATTERNS.md
-│       ├── UNSAFE_CODE_ANALYSIS.md
-│       └── FEDERATION_MONITORING.md
-│
-└── ../archive/
-    └── songbird-docs-dec-2025/        📁 Historical archive
-        ├── README.md                   Archive index
-        ├── old-scripts/                (35 files)
-        ├── old-logs/                   (5 files)
-        ├── westgate-docs/              (10+ files)
-        ├── build-debris/               (7 files)
-        └── *.md                        (32 Dec 19 reports)
-```
-
-## 🌟 Latest Achievements (December 20, 2025)
-
-**Evening Session (Process Lifecycle):**
-- ✅ **Singleton enforcement** (PID file management, RAII guard)
-- ✅ **SO_REUSEPORT removed** (federation split state bug fixed)
-- ✅ **User collaboration** on permissions (not circumvention)
-- ✅ **Federation verified** (3/3 towers consistent)
-- ✅ **4 bugs fixed** (split state, zombies, duplicates, discovery)
-- ✅ **4 unit tests** (singleton, stale cleanup, process detection)
-
-**Testing + Identity Session:**
-- ✅ **26-test comprehensive suite** (13 unit + 9 E2E + 4 lifecycle)
-- ✅ **Identity-based routing complete** (no duplicate nodes)
-- ✅ **Port fallback robustness** (handles conflicts)
-- ✅ **3-tower federation verified**
-- ✅ **Production ready**
-
-## 📊 Organization Summary
-
-**Root (16 files):**
-- Essential guides and quick access
-- Process lifecycle documentation (5 files)
-- Testing session summaries
-- Multi-path transport docs
-- Quick reference files
-
-**docs/sessions/december-2025/ (17 files):**
-- Detailed session reports
-- Architecture documentation
-- Bug fix analysis
-- Test suite docs
-
-**docs/reference/ (3 files):**
-- Code quality patterns
-- Monitoring guides
-- Technical reference
-
-**Archive (111+ files):**
-- Historical documentation
-- Old scripts and logs
-- Build-out debris
-
-## 🎊 Benefits of This Organization
-
-✅ **Clean Root** - Only 11 essential files  
-✅ **Easy Navigation** - Clear structure  
-✅ **Preserved History** - Nothing lost  
-✅ **Better Search** - Less noise  
-✅ **Clear Context** - Current vs historical  
+**Last Updated**: December 22, 2025  
+**Status**: Organized & Current
 
 ---
 
-*Last Updated: December 20, 2025*  
-*Status: Organized and Complete*  
-*Root Files: 11 (from 100+)*  
-*Reduction: 89% cleaner*
+## 🚀 Getting Started
+
+| Document | Purpose | Audience |
+|----------|---------|----------|
+| **[README.md](README.md)** | Project overview & quick start | Everyone |
+| **[00_START_HERE.md](00_START_HERE.md)** | Navigation hub | Everyone |
+| **[QUICK_REFERENCE.md](QUICK_REFERENCE.md)** | Common commands | Developers |
+| **[CONFIGURATION_GUIDE.md](CONFIGURATION_GUIDE.md)** | Setup & configuration | Operators |
+
+---
+
+## 📊 Current Status
+
+| Document | Purpose | Updated |
+|----------|---------|---------|
+| **[STATUS.md](STATUS.md)** | Overall project status | Dec 22, 2025 |
+| **[00_GENESIS_COMPLETE.md](00_GENESIS_COMPLETE.md)** | Genesis bootstrap status | Dec 22, 2025 |
+| **[CLIPPY_CLEANUP_PLAN.md](CLIPPY_CLEANUP_PLAN.md)** | Technical debt tracking | Dec 22, 2025 |
+| **[ROADMAP.md](ROADMAP.md)** | Project timeline | Current |
+
+---
+
+## 🔐 Security & Integration
+
+### Genesis Bootstrap
+
+| Document | Purpose | For |
+|----------|---------|-----|
+| **[PHYSICAL_GENESIS_IMPLEMENTATION_PLAN.md](PHYSICAL_GENESIS_IMPLEMENTATION_PLAN.md)** | Architecture & design | Architects |
+| **[GENESIS_BOOTSTRAP_HANDOFF_BEARDOG.md](GENESIS_BOOTSTRAP_HANDOFF_BEARDOG.md)** | BearDog implementation spec | BearDog Team |
+| **[PHYSICAL_GENESIS_BOOTSTRAP.md](PHYSICAL_GENESIS_BOOTSTRAP.md)** | Concept overview | Everyone |
+
+### P2P Networking
+
+| Document | Purpose | For |
+|----------|---------|-----|
+| **[WHATS_LEFT_FOR_P2P.md](WHATS_LEFT_FOR_P2P.md)** | P2P roadmap & status | Integration |
+| **[BTSP_BIRDSONG_P2P_STATUS_DEC_21_2025.md](BTSP_BIRDSONG_P2P_STATUS_DEC_21_2025.md)** | P2P Phase 3 complete | Reference |
+| **[VPN_FREE_P2P_GAPS_ANALYSIS.md](VPN_FREE_P2P_GAPS_ANALYSIS.md)** | Missing components | Planning |
+| **[P2P_STATUS_CLARIFICATION.md](P2P_STATUS_CLARIFICATION.md)** | Status clarification | Reference |
+
+### BearDog Integration
+
+| Document | Purpose | For |
+|----------|---------|-----|
+| **[BEARDOG_PHASE3_HANDOFF_DEC_21_2025.md](BEARDOG_PHASE3_HANDOFF_DEC_21_2025.md)** | Phase 3 handoff (COMPLETE) | BearDog Team |
+| **[BEARDOG_GENESIS_HANDOFF_DEC_22_2025.md](BEARDOG_GENESIS_HANDOFF_DEC_22_2025.md)** | Genesis handoff | BearDog Team |
+| **[BEARDOG_BTSP_HANDOFF.md](BEARDOG_BTSP_HANDOFF.md)** | BTSP implementation | Reference |
+| **[BEARDOG_TEAM_BLURB.md](BEARDOG_TEAM_BLURB.md)** | Team overview | Reference |
+
+---
+
+## 🏗️ Architecture & Design
+
+### Core Architecture
+
+| Document | Purpose | For |
+|----------|---------|-----|
+| **[PRIVACY_BOUNDARIES_FEDERATION_VS_INTERPRIMAL.md](PRIVACY_BOUNDARIES_FEDERATION_VS_INTERPRIMAL.md)** | Privacy model | Architects |
+| **[INTERNET_DEPLOYMENT_ROADMAP.md](INTERNET_DEPLOYMENT_ROADMAP.md)** | Internet deployment plan | Planning |
+| **[INTERNET_DEPLOYMENT_ASSESSMENT.md](INTERNET_DEPLOYMENT_ASSESSMENT.md)** | Deployment assessment | Reference |
+| **[TRUE_P2P_PATH_FORWARD.md](TRUE_P2P_PATH_FORWARD.md)** | P2P strategy | Planning |
+
+### Refactoring & Debt
+
+| Document | Purpose | For |
+|----------|---------|-----|
+| **[DEEP_REFACTORING_PLAN.md](DEEP_REFACTORING_PLAN.md)** | Refactoring strategy | Developers |
+| **[TECHNICAL_DEBT_ROADMAP.md](TECHNICAL_DEBT_ROADMAP.md)** | Debt tracking | Developers |
+| **[CLIPPY_CLEANUP_PLAN.md](CLIPPY_CLEANUP_PLAN.md)** | Clippy warnings plan | Developers |
+
+---
+
+## 🚀 Deployment & Operations
+
+| Document | Purpose | For |
+|----------|---------|-----|
+| **[DEPLOYMENT_GUIDE.md](DEPLOYMENT_GUIDE.md)** | Deployment instructions | Operators |
+| **[TOWER_SCRIPTS_README.md](TOWER_SCRIPTS_README.md)** | Tower deployment scripts | Operators |
+| **[HANDOFF_CHECKLIST.md](HANDOFF_CHECKLIST.md)** | Integration checklist | Teams |
+
+---
+
+## 👥 Contributing
+
+| Document | Purpose | For |
+|----------|---------|-----|
+| **[CONTRIBUTING.md](CONTRIBUTING.md)** | How to contribute | Contributors |
+| **[DOCS_GUIDE.md](DOCS_GUIDE.md)** | Documentation guide | Writers |
+| **[CHANGELOG.md](CHANGELOG.md)** | Version history | Everyone |
+
+---
+
+## 📁 Archive
+
+Historical session reports and completed work:
+
+**Location**: `docs/archive/sessions-2025-12/`
+
+**Contents**:
+- Audit reports (Dec 21)
+- P2P testing sessions (Dec 21-22)
+- Genesis implementation session (Dec 22)
+- E2E validation reports
+- Showcase test reports
+
+**Note**: These are historical records. For current status, see [STATUS.md](STATUS.md)
+
+---
+
+## 🗺️ Navigation by Role
+
+### For New Users
+1. Start: [README.md](README.md)
+2. Navigate: [00_START_HERE.md](00_START_HERE.md)
+3. Quick ref: [QUICK_REFERENCE.md](QUICK_REFERENCE.md)
+
+### For Developers
+1. Setup: [CONFIGURATION_GUIDE.md](CONFIGURATION_GUIDE.md)
+2. Contribute: [CONTRIBUTING.md](CONTRIBUTING.md)
+3. Status: [STATUS.md](STATUS.md)
+4. Debt: [CLIPPY_CLEANUP_PLAN.md](CLIPPY_CLEANUP_PLAN.md)
+
+### For Integration Partners (BearDog)
+1. Genesis spec: [GENESIS_BOOTSTRAP_HANDOFF_BEARDOG.md](GENESIS_BOOTSTRAP_HANDOFF_BEARDOG.md)
+2. Phase 3 status: [BEARDOG_PHASE3_HANDOFF_DEC_21_2025.md](BEARDOG_PHASE3_HANDOFF_DEC_21_2025.md)
+3. P2P status: [WHATS_LEFT_FOR_P2P.md](WHATS_LEFT_FOR_P2P.md)
+
+### For Architects
+1. Genesis design: [PHYSICAL_GENESIS_IMPLEMENTATION_PLAN.md](PHYSICAL_GENESIS_IMPLEMENTATION_PLAN.md)
+2. Privacy model: [PRIVACY_BOUNDARIES_FEDERATION_VS_INTERPRIMAL.md](PRIVACY_BOUNDARIES_FEDERATION_VS_INTERPRIMAL.md)
+3. Internet deployment: [INTERNET_DEPLOYMENT_ROADMAP.md](INTERNET_DEPLOYMENT_ROADMAP.md)
+
+### For Project Managers
+1. Status: [STATUS.md](STATUS.md)
+2. Roadmap: [ROADMAP.md](ROADMAP.md)
+3. Technical debt: [TECHNICAL_DEBT_ROADMAP.md](TECHNICAL_DEBT_ROADMAP.md)
+
+---
+
+## 📊 Document Statistics
+
+- **Total Root Docs**: 32 (down from 47)
+- **Archived**: 15 session reports
+- **Core Docs**: 10 (README, STATUS, etc.)
+- **Integration Docs**: 8 (BearDog, P2P, Genesis)
+- **Architecture Docs**: 6
+- **Operations Docs**: 4
+- **Contributing Docs**: 4
+
+---
+
+## 🔄 Maintenance
+
+### Document Lifecycle
+
+**Active** (Keep Current):
+- STATUS.md - Update with each milestone
+- README.md - Update with major features
+- 00_START_HERE.md - Update with navigation changes
+- Handoff docs - Update when specs change
+
+**Reference** (Stable):
+- Architecture docs - Update on design changes
+- Contributing guides - Update as process evolves
+- Deployment guides - Update with new procedures
+
+**Archive** (Historical):
+- Session reports - Move to archive when complete
+- Completed milestones - Archive after documentation
+- Outdated handoffs - Archive when superseded
+
+### Adding New Documents
+
+1. Create in appropriate location (root vs docs/)
+2. Add entry to this index
+3. Link from relevant navigation docs
+4. Update README.md if major feature
+5. Tag with creation date in document
+
+### Archiving Documents
+
+1. Move to `docs/archive/sessions-YYYY-MM/`
+2. Remove from this index (add to Archive section)
+3. Update links in other documents
+4. Keep handoff/spec docs as reference
+
+---
+
+## 🎯 Quick Links
+
+**Most Used**:
+- [README.md](README.md) - Start here
+- [STATUS.md](STATUS.md) - Current state
+- [00_START_HERE.md](00_START_HERE.md) - Navigation
+- [00_GENESIS_COMPLETE.md](00_GENESIS_COMPLETE.md) - Genesis status
+
+**For Teams**:
+- [GENESIS_BOOTSTRAP_HANDOFF_BEARDOG.md](GENESIS_BOOTSTRAP_HANDOFF_BEARDOG.md) - BearDog team
+- [WHATS_LEFT_FOR_P2P.md](WHATS_LEFT_FOR_P2P.md) - Integration teams
+- [CONTRIBUTING.md](CONTRIBUTING.md) - Contributors
+
+---
+
+**Last Updated**: December 22, 2025  
+**Maintainer**: Songbird Core Team  
+**Next Review**: When adding major features or docs
+
+📚 **All documentation paths lead through this index!** 📚

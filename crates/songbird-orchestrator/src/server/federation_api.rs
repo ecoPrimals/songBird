@@ -507,10 +507,8 @@ async fn federation_nodes_graduated(
         state.federation_state.nodes.read().await.values().cloned().collect();
 
     // Apply graduated disclosure to each node
-    let filtered_nodes: Vec<Value> = nodes
-        .iter()
-        .map(|node| filter_node_by_trust(node, &trust_level))
-        .collect();
+    let filtered_nodes: Vec<Value> =
+        nodes.iter().map(|node| filter_node_by_trust(node, &trust_level)).collect();
 
     (StatusCode::OK, Json(filtered_nodes))
 }
@@ -696,10 +694,10 @@ mod tests {
     use tower::ServiceExt;
 
     fn create_test_state() -> Arc<FederationAppState> {
-        use crate::trust::{TrustEscalationManager};
-        
+        use crate::trust::TrustEscalationManager;
+
         Arc::new(FederationAppState {
-            federation_state: Arc::new(FederationState::new()),
+            federation_state: Arc::new(FederationState::new("default".to_string())),
             service_registry: Arc::new(FederatedServiceRegistry::new()),
             capability_registry: None,
             trust_manager: Some(Arc::new(TrustEscalationManager::with_defaults())),
@@ -854,7 +852,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_federation_routes_construction() {
-        let federation_state = Arc::new(FederationState::new());
+        let federation_state = Arc::new(FederationState::new("default".to_string()));
         let service_registry = Arc::new(FederatedServiceRegistry::new());
 
         let router = federation_routes(federation_state, service_registry);
@@ -890,9 +888,9 @@ mod tests {
     #[test]
     fn test_federation_app_state_debug() {
         use crate::trust::TrustEscalationManager;
-        
+
         let state = Arc::new(FederationAppState {
-            federation_state: Arc::new(FederationState::new()),
+            federation_state: Arc::new(FederationState::new("default".to_string())),
             service_registry: Arc::new(FederatedServiceRegistry::new()),
             capability_registry: None,
             trust_manager: Some(Arc::new(TrustEscalationManager::with_defaults())),

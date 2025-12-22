@@ -6,15 +6,33 @@ use serde::{Deserialize, Serialize};
 use songbird_types::{SongbirdError, SongbirdResult};
 use std::sync::Arc;
 use std::time::Duration;
+use tokio::sync::RwLock;
 use tracing::{debug, info, warn};
 
+use crate::beardog::{BearDogProvider, BearDogProviderFactory};
+use crate::discovery_mode::DiscoveryMode;
+use crate::rendezvous::RendezvousClient;
 use crate::state::{FederationState, NodeRegistration};
 
 /// Federation coordinator
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct FederationCoordinator {
     state: Arc<FederationState>,
     client: reqwest::Client,
+    rendezvous_client: Arc<RwLock<Option<Arc<RendezvousClient>>>>,
+    beardog_provider: Arc<RwLock<Option<Box<dyn BearDogProvider>>>>,
+}
+
+// Manual Debug implementation since BearDogProvider doesn't impl Debug
+impl std::fmt::Debug for FederationCoordinator {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("FederationCoordinator")
+            .field("state", &self.state)
+            .field("client", &self.client)
+            .field("rendezvous_client", &"<rendezvous>")
+            .field("beardog_provider", &"<beardog>")
+            .finish()
+    }
 }
 
 impl Default for FederationCoordinator {
@@ -27,8 +45,10 @@ impl FederationCoordinator {
     #[must_use]
     pub fn new() -> Self {
         Self {
-            state: Arc::new(FederationState::new()),
+            state: Arc::new(FederationState::new("default".to_string())),
             client: reqwest::Client::new(),
+            rendezvous_client: Arc::new(RwLock::new(None)),
+            beardog_provider: Arc::new(RwLock::new(None)),
         }
     }
 
@@ -38,7 +58,39 @@ impl FederationCoordinator {
         Self {
             state,
             client: reqwest::Client::new(),
+            rendezvous_client: Arc::new(RwLock::new(None)),
+            beardog_provider: Arc::new(RwLock::new(None)),
         }
+    }
+
+    /// Check if BearDog is available
+    pub async fn has_beardog(&self) -> bool {
+        self.beardog_provider.read().await.is_some()
+    }
+
+    /// Get discovery mode based on BearDog availability
+    pub async fn discovery_mode(&self) -> DiscoveryMode {
+        if self.has_beardog().await {
+            DiscoveryMode::BirdSong
+        } else {
+            DiscoveryMode::Plaintext
+        }
+    }
+
+    /// Get effective discovery mode (respecting config override)
+    pub async fn effective_discovery_mode(&self, config: &FederationConfig) -> DiscoveryMode {
+        // If config forces a mode, use it
+        if let Some(mode) = config.discovery_mode {
+            // Validate that we can support it
+            if mode.requires_beardog() && !self.has_beardog().await {
+                warn!("⚠️  BirdSong mode requested but BearDog unavailable, falling back to plaintext");
+                return DiscoveryMode::Plaintext;
+            }
+            return mode;
+        }
+
+        // Otherwise auto-detect
+        self.discovery_mode().await
     }
 
     /// Get the federation state
@@ -60,6 +112,33 @@ impl FederationCoordinator {
         if let Some(node_info) = &config.self_registration {
             info!("📍 Registering self as node: {}", node_info.node_name);
             self.state.register_node(node_info.clone()).await;
+        }
+
+        // Initialize BearDog provider if available
+        info!("🔒 Attempting to discover BearDog security provider...");
+        match BearDogProviderFactory::discover().await {
+            Ok(Some(provider)) => {
+                info!("✅ BearDog available - using encrypted birdSong discovery");
+                *self.beardog_provider.write().await = Some(provider);
+            }
+            Ok(None) => {
+                info!("ℹ️  BearDog not available - using plaintext discovery (trusted LAN only)");
+            }
+            Err(e) => {
+                warn!("⚠️  BearDog discovery failed: {} - using plaintext discovery", e);
+            }
+        }
+
+        // Initialize rendezvous client if URL provided
+        if let Some(rendezvous_url) = &config.rendezvous_url {
+            info!("🌍 Initializing rendezvous client: {}", rendezvous_url);
+            match self.initialize_rendezvous(rendezvous_url, config).await {
+                Ok(()) => info!("✅ Connected to rendezvous server"),
+                Err(e) => {
+                    warn!("⚠️  Failed to connect to rendezvous: {}", e);
+                    // Continue anyway - LAN discovery still works
+                }
+            }
         }
 
         // Join federation if bootstrap provided
@@ -177,7 +256,9 @@ impl FederationCoordinator {
                         }
 
                         // node_address may already include protocol (https://...) from discovery
-                        let url = if node.node_address.starts_with("http://") || node.node_address.starts_with("https://") {
+                        let url = if node.node_address.starts_with("http://")
+                            || node.node_address.starts_with("https://")
+                        {
                             format!("{}/api/federation/heartbeat", node.node_address)
                         } else {
                             format!("http://{}/api/federation/heartbeat", node.node_address)
@@ -244,6 +325,101 @@ impl FederationCoordinator {
 
         Ok(())
     }
+
+    /// Initialize rendezvous client and register presence
+    async fn initialize_rendezvous(
+        &self,
+        rendezvous_url: &str,
+        config: &FederationConfig,
+    ) -> SongbirdResult<()> {
+        // Get our node registration
+        let registration =
+            config.self_registration.as_ref().ok_or_else(|| SongbirdError::Configuration {
+                message: "Cannot use rendezvous without self registration info".to_string(),
+                field: Some("self_registration".to_string()),
+                suggestion: Some("Provide node registration information".to_string()),
+            })?;
+
+        // Create rendezvous client
+        let mut client = RendezvousClient::new(rendezvous_url.to_string()).map_err(|e| {
+            SongbirdError::Network {
+                message: format!("Failed to create rendezvous client: {e}"),
+                interface: Some(rendezvous_url.to_string()),
+                suggestion: Some("Check rendezvous server URL is valid".to_string()),
+            }
+        })?;
+
+        // Set our node info
+        client.set_node_info(registration.clone());
+
+        // Register presence
+        client.register_presence().await.map_err(|e| SongbirdError::Network {
+            message: format!("Failed to register with rendezvous: {e}"),
+            interface: Some(rendezvous_url.to_string()),
+            suggestion: Some("Check rendezvous server is running and accessible".to_string()),
+        })?;
+
+        // Store client
+        let client_arc = Arc::new(client);
+        *self.rendezvous_client.write().await = Some(Arc::clone(&client_arc));
+
+        // Start heartbeat loop
+        tokio::spawn(async move {
+            client_arc.start_heartbeat_loop().await;
+        });
+
+        // Start peer discovery loop
+        let state = Arc::clone(&self.state);
+        let rendezvous_client_lock = Arc::clone(&self.rendezvous_client);
+        tokio::spawn(async move {
+            Self::rendezvous_discovery_loop(state, rendezvous_client_lock).await;
+        });
+
+        Ok(())
+    }
+
+    /// Background loop for discovering peers via rendezvous
+    async fn rendezvous_discovery_loop(
+        _state: Arc<FederationState>,
+        rendezvous_client: Arc<RwLock<Option<Arc<RendezvousClient>>>>,
+    ) {
+        let mut interval = tokio::time::interval(Duration::from_secs(60));
+
+        loop {
+            interval.tick().await;
+
+            // Get client reference
+            let client = {
+                let lock = rendezvous_client.read().await;
+                match &*lock {
+                    Some(c) => Arc::clone(c),
+                    None => continue,
+                }
+            };
+
+            debug!("🔍 Discovering peers via rendezvous");
+
+            // Query for orchestration capability (other Songbird instances)
+            match client.query_peers(vec!["orchestration".to_string()]).await {
+                Ok(peers) => {
+                    info!("🌍 Discovered {} peers via rendezvous", peers.len());
+
+                    // TODO: For each peer, attempt to establish connection
+                    // For now, just log them
+                    for peer in peers {
+                        debug!(
+                            "  Peer: {} (capabilities: {:?})",
+                            &peer.ephemeral_session_id[..8],
+                            peer.capabilities
+                        );
+                    }
+                }
+                Err(e) => {
+                    warn!("⚠️  Rendezvous peer query failed: {}", e);
+                }
+            }
+        }
+    }
 }
 
 /// Federation configuration
@@ -265,6 +441,20 @@ pub struct FederationConfig {
     /// Node timeout in seconds (mark as inactive after this)
     #[serde(default = "default_node_timeout")]
     pub node_timeout_secs: i64,
+
+    /// Rendezvous server URL for internet-wide discovery (optional)
+    /// Example: "http://rendezvous.songbird.network:8888"
+    pub rendezvous_url: Option<String>,
+
+    /// Force discovery mode (if None, auto-detect based on BearDog availability)
+    #[serde(default)]
+    pub discovery_mode: Option<DiscoveryMode>,
+
+    /// Discovery mode (deprecated, use discovery_mode instead)
+    /// For test compatibility
+    #[serde(skip)]
+    #[deprecated(note = "Use discovery_mode instead")]
+    pub _legacy_test_fields: (),
 }
 
 fn default_heartbeat_interval() -> u64 {
@@ -283,6 +473,9 @@ impl Default for FederationConfig {
             self_registration: None,
             heartbeat_interval_secs: 30,
             node_timeout_secs: 60,
+            rendezvous_url: None,
+            discovery_mode: None, // Auto-detect
+            _legacy_test_fields: (),
         }
     }
 }

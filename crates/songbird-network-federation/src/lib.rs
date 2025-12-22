@@ -29,12 +29,16 @@
 )]
 
 // Core modules
+pub mod beardog; // ✨ NEW: BearDog integration traits (lineage, birdSong, relay)
+pub mod birdsong_payload; // ✨ NEW: BirdSong payload structures
 pub mod btsp; // ✨ NEW: BearDog Secure Tunnel Protocol interface
+pub mod discovery_mode; // ✨ NEW: Discovery mode (plaintext vs birdSong)
 pub mod federation;
 pub mod integration;
 pub mod multi_federation; // ✨ NEW: Multi-federation support with context-aware boundaries
 pub mod network;
 pub mod protocol_capability; // ✨ NEW: Protocol capability advertisement
+pub mod rendezvous; // ✨ NEW: Rendezvous client for internet discovery
 pub mod service_registry;
 pub mod state;
 pub mod tls;

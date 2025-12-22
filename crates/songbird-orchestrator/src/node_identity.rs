@@ -22,10 +22,10 @@ use uuid::Uuid;
 pub struct NodeIdentity {
     /// Stable unique identifier for this node
     pub node_id: Uuid,
-    
+
     /// Human-readable node name (hostname by default)
     pub node_name: String,
-    
+
     /// All available transport endpoints for this node
     pub endpoints: Vec<TransportEndpoint>,
 }
@@ -35,13 +35,13 @@ pub struct NodeIdentity {
 pub struct TransportEndpoint {
     /// Interface type (e.g., "ethernet", "wifi", "bluetooth")
     pub interface_type: String,
-    
+
     /// Network address for this endpoint
     pub address: SocketAddr,
-    
+
     /// Supported protocols on this endpoint
     pub protocols: Vec<String>,
-    
+
     /// Relative preference (higher = more preferred)
     pub preference: u8,
 }
@@ -58,7 +58,7 @@ impl NodeIdentity {
             info!("🆔 Loaded existing node identity: {}", identity.node_id);
             return Ok(identity);
         }
-        
+
         // Generate new identity
         let node_id = Self::generate_stable_id()?;
         let node_name = node_name.unwrap_or_else(|| {
@@ -67,20 +67,20 @@ impl NodeIdentity {
                 .and_then(|h| h.into_string().ok())
                 .unwrap_or_else(|| "songbird-node".to_string())
         });
-        
+
         let identity = Self {
             node_id,
             node_name,
             endpoints: Vec::new(),
         };
-        
+
         // Persist to disk
         identity.save_to_disk()?;
-        
+
         info!("🆔 Generated new node identity: {}", identity.node_id);
         Ok(identity)
     }
-    
+
     /// Generate a stable node ID
     ///
     /// Strategy (in order of preference):
@@ -94,89 +94,73 @@ impl NodeIdentity {
             let machine_id = machine_id.trim();
             if !machine_id.is_empty() {
                 // Hash machine-id to UUID
-                return Ok(Uuid::new_v5(
-                    &Uuid::NAMESPACE_DNS,
-                    machine_id.as_bytes(),
-                ));
+                return Ok(Uuid::new_v5(&Uuid::NAMESPACE_DNS, machine_id.as_bytes()));
             }
         }
-        
+
         // Try dbus machine-id
         if let Ok(machine_id) = fs::read_to_string("/var/lib/dbus/machine-id") {
             let machine_id = machine_id.trim();
             if !machine_id.is_empty() {
-                return Ok(Uuid::new_v5(
-                    &Uuid::NAMESPACE_DNS,
-                    machine_id.as_bytes(),
-                ));
+                return Ok(Uuid::new_v5(&Uuid::NAMESPACE_DNS, machine_id.as_bytes()));
             }
         }
-        
+
         // Try MAC address (less stable, but better than random)
         #[cfg(target_os = "linux")]
         {
             if let Ok(interfaces) = Self::get_mac_addresses() {
                 if let Some(mac) = interfaces.first() {
-                    return Ok(Uuid::new_v5(
-                        &Uuid::NAMESPACE_DNS,
-                        mac.as_bytes(),
-                    ));
+                    return Ok(Uuid::new_v5(&Uuid::NAMESPACE_DNS, mac.as_bytes()));
                 }
             }
         }
-        
+
         // Last resort: random UUID (will be persisted)
         warn!("⚠️  Could not determine stable machine ID, using random UUID");
         warn!("   This ID will change if identity file is deleted");
         Ok(Uuid::new_v4())
     }
-    
+
     /// Get MAC addresses from network interfaces
     #[cfg(target_os = "linux")]
     fn get_mac_addresses() -> Result<Vec<String>> {
         use std::process::Command;
-        
-        let output = Command::new("ip")
-            .args(["link", "show"])
-            .output()?;
-        
+
+        let output = Command::new("ip").args(["link", "show"]).output()?;
+
         let output = String::from_utf8_lossy(&output.stdout);
         let macs: Vec<String> = output
             .lines()
             .filter(|line| line.contains("link/ether"))
-            .filter_map(|line| {
-                line.split_whitespace()
-                    .nth(1)
-                    .map(|mac| mac.to_string())
-            })
+            .filter_map(|line| line.split_whitespace().nth(1).map(|mac| mac.to_string()))
             .collect();
-        
+
         Ok(macs)
     }
-    
+
     /// Path to identity file
     fn identity_path() -> PathBuf {
-        let data_dir = dirs::data_local_dir()
-            .unwrap_or_else(|| PathBuf::from("."));
+        let data_dir = dirs::data_local_dir().unwrap_or_else(|| PathBuf::from("."));
         data_dir.join("songbird").join("node_identity.json")
     }
-    
+
     /// Save identity to disk
     fn save_to_disk(&self) -> Result<()> {
         let path = Self::identity_path();
-        
+
         // Create parent directory if needed
         if let Some(parent) = path.parent() {
             fs::create_dir_all(parent)?;
         }
-        
+
         let json = serde_json::to_string_pretty(self)?;
         fs::write(&path, json)?;
-        
+
         debug!("💾 Saved node identity to: {}", path.display());
         Ok(())
     }
-    
+
     /// Load identity from disk
     fn load_from_disk() -> Result<Self> {
         let path = Self::identity_path();
@@ -184,19 +168,19 @@ impl NodeIdentity {
         let identity: NodeIdentity = serde_json::from_str(&json)?;
         Ok(identity)
     }
-    
+
     /// Add or update a transport endpoint
     pub fn add_endpoint(&mut self, endpoint: TransportEndpoint) {
         // Remove existing endpoint with same address
         self.endpoints.retain(|e| e.address != endpoint.address);
-        
+
         // Add new endpoint
         self.endpoints.push(endpoint);
-        
+
         // Sort by preference (highest first)
         self.endpoints.sort_by(|a, b| b.preference.cmp(&a.preference));
     }
-    
+
     /// Detect all available network interfaces and populate endpoints
     ///
     /// This scans the system for all active network interfaces and creates
@@ -207,62 +191,55 @@ impl NodeIdentity {
     /// - Loopback: 10 (lowest preference)
     pub fn detect_all_endpoints(&mut self, port: u16) -> Result<()> {
         info!("🔍 Detecting network interfaces...");
-        
+
         // Get all network interfaces
         let interfaces = if_addrs::get_if_addrs()
             .map_err(|e| anyhow!("Failed to enumerate network interfaces: {}", e))?;
-        
+
         let mut detected_count = 0;
-        
+
         for iface in interfaces {
             // Skip loopback by default (can be enabled explicitly)
             if iface.is_loopback() {
                 continue;
             }
-            
+
             // Determine interface type and preference
             let (interface_type, preference) = Self::classify_interface(&iface.name);
-            
+
             // Create endpoint
             let address = match iface.addr {
-                if_addrs::IfAddr::V4(addr) => {
-                    SocketAddr::new(IpAddr::V4(addr.ip), port)
-                }
-                if_addrs::IfAddr::V6(addr) => {
-                    SocketAddr::new(IpAddr::V6(addr.ip), port)
-                }
+                if_addrs::IfAddr::V4(addr) => SocketAddr::new(IpAddr::V4(addr.ip), port),
+                if_addrs::IfAddr::V6(addr) => SocketAddr::new(IpAddr::V6(addr.ip), port),
             };
-            
+
             let endpoint = TransportEndpoint {
                 interface_type: interface_type.clone(),
                 address,
                 protocols: vec!["https".to_string(), "tarpc".to_string()],
                 preference,
             };
-            
+
             self.add_endpoint(endpoint);
             detected_count += 1;
-            
+
             info!(
                 "  ✅ {} ({}) - {} [preference: {}]",
-                iface.name,
-                interface_type,
-                address,
-                preference
+                iface.name, interface_type, address, preference
             );
         }
-        
+
         info!("🔍 Detected {} network endpoints", detected_count);
-        
+
         Ok(())
     }
-    
+
     /// Classify network interface by name
     ///
     /// Returns (interface_type, preference)
     fn classify_interface(name: &str) -> (String, u8) {
         let name_lower = name.to_lowercase();
-        
+
         // Ethernet interfaces
         if name_lower.starts_with("eth")
             || name_lower.starts_with("en")
@@ -271,7 +248,7 @@ impl NodeIdentity {
         {
             return ("ethernet".to_string(), 100);
         }
-        
+
         // WiFi interfaces
         if name_lower.starts_with("wlan")
             || name_lower.starts_with("wl")
@@ -279,21 +256,21 @@ impl NodeIdentity {
         {
             return ("wifi".to_string(), 80);
         }
-        
+
         // Loopback
         if name_lower.starts_with("lo") {
             return ("loopback".to_string(), 10);
         }
-        
+
         // Unknown/Other
         ("other".to_string(), 50)
     }
-    
+
     /// Get preferred endpoint (highest preference)
     pub fn preferred_endpoint(&self) -> Option<&TransportEndpoint> {
         self.endpoints.first()
     }
-    
+
     /// Get all IP addresses for this node
     pub fn all_addresses(&self) -> Vec<IpAddr> {
         self.endpoints.iter().map(|e| e.address.ip()).collect()
@@ -309,16 +286,16 @@ impl Default for NodeIdentity {
 #[cfg(test)]
 mod tests {
     use super::*;
-    
+
     #[test]
     fn test_stable_id_generation() {
         let id1 = NodeIdentity::generate_stable_id().unwrap();
         let id2 = NodeIdentity::generate_stable_id().unwrap();
-        
+
         // Should generate same ID on same machine
         assert_eq!(id1, id2, "Stable ID should be consistent");
     }
-    
+
     #[test]
     fn test_endpoint_management() {
         let mut identity = NodeIdentity {
@@ -326,7 +303,7 @@ mod tests {
             node_name: "test".to_string(),
             endpoints: Vec::new(),
         };
-        
+
         // Add Ethernet endpoint
         identity.add_endpoint(TransportEndpoint {
             interface_type: "ethernet".to_string(),
@@ -334,7 +311,7 @@ mod tests {
             protocols: vec!["https".to_string()],
             preference: 100,
         });
-        
+
         // Add WiFi endpoint
         identity.add_endpoint(TransportEndpoint {
             interface_type: "wifi".to_string(),
@@ -342,16 +319,16 @@ mod tests {
             protocols: vec!["https".to_string()],
             preference: 80,
         });
-        
+
         // Should have 2 endpoints
         assert_eq!(identity.endpoints.len(), 2);
-        
+
         // Preferred should be Ethernet (higher preference)
         let preferred = identity.preferred_endpoint().unwrap();
         assert_eq!(preferred.interface_type, "ethernet");
         assert_eq!(preferred.preference, 100);
     }
-    
+
     #[test]
     fn test_endpoint_update() {
         let mut identity = NodeIdentity {
@@ -359,9 +336,9 @@ mod tests {
             node_name: "test".to_string(),
             endpoints: Vec::new(),
         };
-        
+
         let addr: SocketAddr = "192.168.1.144:8080".parse().unwrap();
-        
+
         // Add endpoint
         identity.add_endpoint(TransportEndpoint {
             interface_type: "ethernet".to_string(),
@@ -369,7 +346,7 @@ mod tests {
             protocols: vec!["https".to_string()],
             preference: 100,
         });
-        
+
         // Update same endpoint (new preference)
         identity.add_endpoint(TransportEndpoint {
             interface_type: "ethernet".to_string(),
@@ -377,14 +354,13 @@ mod tests {
             protocols: vec!["https".to_string(), "tarpc".to_string()],
             preference: 90,
         });
-        
+
         // Should still have 1 endpoint (updated, not duplicated)
         assert_eq!(identity.endpoints.len(), 1);
-        
+
         // Should have new protocols
         let endpoint = &identity.endpoints[0];
         assert_eq!(endpoint.protocols.len(), 2);
         assert_eq!(endpoint.preference, 90);
     }
 }
-

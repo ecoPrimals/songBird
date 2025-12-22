@@ -197,10 +197,15 @@ impl JsonRpcServer {
                 tower_name: "JSON-RPC Client".to_string(),
                 endpoint: req.endpoint,
                 capabilities: vec![req.capability],
-                metadata: req.metadata.and_then(|v| v.as_object().map(|o| {
-                    o.iter().map(|(k, v)| (k.clone(), v.to_string())).collect()
-                })).unwrap_or_default(),
-                health_status: songbird_network_federation::service_registry::ServiceHealthStatus::Healthy,
+                metadata: req
+                    .metadata
+                    .and_then(|v| {
+                        v.as_object()
+                            .map(|o| o.iter().map(|(k, v)| (k.clone(), v.to_string())).collect())
+                    })
+                    .unwrap_or_default(),
+                health_status:
+                    songbird_network_federation::service_registry::ServiceHealthStatus::Healthy,
                 registered_at: chrono::Utc::now(),
                 last_seen: chrono::Utc::now(),
             };
@@ -252,7 +257,7 @@ impl JsonRpcServer {
 
             // Calculate real uptime
             let uptime_seconds = state.start_time.elapsed().as_secs();
-            
+
             // Get real service count from registry
             let services_count = state.service_registry.get_all_services().await.len();
 

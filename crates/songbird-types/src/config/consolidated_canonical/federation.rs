@@ -3,6 +3,7 @@
 //! **CANONICAL FEDERATION CONFIGURATION** ✅
 //!
 //! This module provides federation and clustering configuration structures for the Songbird ecosystem.
+//! Uses idiomatic Rust patterns: enums for policies, bitflags for features.
 
 use serde::{Deserialize, Serialize};
 use std::env;
@@ -11,39 +12,58 @@ use std::env;
 // FEDERATION CONFIGURATION - Zero-Trust Federation
 // ============================================================================
 
+/// Federation acceptance policy - replaces auto_accept_lan/wan bools
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+pub enum FederationAcceptancePolicy {
+    /// Manual approval required for all connections
+    ManualOnly,
+    /// Auto-accept from LAN, manual for WAN
+    LanAutoWanManual,
+    /// Auto-accept from both LAN and WAN
+    AutoAcceptAll,
+}
+
+impl Default for FederationAcceptancePolicy {
+    fn default() -> Self {
+        Self::LanAutoWanManual // Safe default
+    }
+}
+
+/// Trust escalation policy - replaces multiple escalation bools
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+pub enum TrustEscalationPolicy {
+    /// No escalation allowed (locked at initial trust level)
+    Disabled,
+    /// Only capability escalation allowed
+    CapabilityOnly,
+    /// Both capability and identity escalation allowed
+    Progressive,
+}
+
+impl Default for TrustEscalationPolicy {
+    fn default() -> Self {
+        Self::Progressive // Enable progressive trust by default
+    }
+}
+
 /// **CANONICAL**: Federation configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CanonicalFederationConfig {
-    /// Enable federation features (default: true)
-    pub enabled: bool,
-    
-    /// Cluster name (default: auto-detected from hostname)
-    pub cluster_name: String,
-    
-    /// Progressive trust escalation enabled (default: true)
-    pub trust_escalation: bool,
-    
+    /// Cluster name (default: auto-detected from hostname, None = disabled)
+    pub cluster_name: Option<String>,
+
+    /// Trust escalation policy (replaces multiple bools)
+    pub trust_escalation_policy: TrustEscalationPolicy,
+
     /// Initial trust level for new federation members (default: anonymous)
     pub initial_trust_level: String,
-    
-    /// Allow capability escalation (default: true)
-    pub allow_capability_escalation: bool,
-    
-    /// Allow identity escalation (default: true)
-    pub allow_identity_escalation: bool,
-    
+
     /// Require hardware key for admin operations (default: true)
     pub require_hardware_for_admin: bool,
-    
-    /// Federated service discovery enabled (default: true)
-    pub federated_discovery: bool,
-    
-    /// Auto-accept federation members from LAN (default: true)
-    pub auto_accept_lan: bool,
-    
-    /// Auto-accept federation members from WAN (default: false, manual approval)
-    pub auto_accept_wan: bool,
-    
+
+    /// Federation acceptance policy (replaces auto_accept bools)
+    pub acceptance_policy: FederationAcceptancePolicy,
+
     /// Trust timeouts for different trust levels (in seconds)
     pub trust_timeouts: TrustTimeouts,
 }
@@ -63,29 +83,43 @@ pub struct TrustTimeouts {
 
 impl Default for CanonicalFederationConfig {
     fn default() -> Self {
+        // Parse trust escalation policy from environment
+        let trust_escalation_policy = env::var("SONGBIRD_TRUST_ESCALATION_POLICY")
+            .ok()
+            .and_then(|v| match v.to_lowercase().as_str() {
+                "disabled" => Some(TrustEscalationPolicy::Disabled),
+                "capability" => Some(TrustEscalationPolicy::CapabilityOnly),
+                "progressive" => Some(TrustEscalationPolicy::Progressive),
+                _ => None,
+            })
+            .unwrap_or_default();
+
+        // Parse acceptance policy from environment
+        let acceptance_policy = env::var("SONGBIRD_FEDERATION_ACCEPTANCE")
+            .ok()
+            .and_then(|v| match v.to_lowercase().as_str() {
+                "manual" => Some(FederationAcceptancePolicy::ManualOnly),
+                "lan_auto" => Some(FederationAcceptancePolicy::LanAutoWanManual),
+                "auto_all" => Some(FederationAcceptancePolicy::AutoAcceptAll),
+                _ => None,
+            })
+            .unwrap_or_default();
+
         Self {
-            enabled: env::var("SONGBIRD_ENABLE_FEDERATION")
-                .ok()
-                .and_then(|v| v.parse().ok())
-                .unwrap_or(true), // Federation enabled by default
             cluster_name: env::var("SONGBIRD_CLUSTER_NAME")
-                .unwrap_or_else(|_| {
+                .ok()
+                .or_else(|| {
                     hostname::get()
                         .ok()
                         .and_then(|h| h.into_string().ok())
-                        .unwrap_or_else(|| "songbird-cluster".to_string())
                 }),
-            trust_escalation: env::var("SONGBIRD_TRUST_ESCALATION")
+            trust_escalation_policy,
+            initial_trust_level: "anonymous".to_string(),
+            require_hardware_for_admin: env::var("SONGBIRD_REQUIRE_HARDWARE_ADMIN")
                 .ok()
                 .and_then(|v| v.parse().ok())
                 .unwrap_or(true),
-            initial_trust_level: "anonymous".to_string(),
-            allow_capability_escalation: true,
-            allow_identity_escalation: true,
-            require_hardware_for_admin: true,
-            federated_discovery: true,
-            auto_accept_lan: true,  // Trust LAN by default
-            auto_accept_wan: false, // Manual approval for WAN
+            acceptance_policy,
             trust_timeouts: TrustTimeouts::default(),
         }
     }
@@ -94,9 +128,9 @@ impl Default for CanonicalFederationConfig {
 impl Default for TrustTimeouts {
     fn default() -> Self {
         Self {
-            anonymous: 3600,    // 1 hour
-            capability: 86400,  // 24 hours
-            identity: 604800,   // 7 days
+            anonymous: 3_600,   // 1 hour
+            capability: 86_400, // 24 hours
+            identity: 604_800,  // 7 days
             hardware: 0,        // Never expire
         }
     }

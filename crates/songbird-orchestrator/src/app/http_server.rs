@@ -58,7 +58,7 @@ pub async fn start_http_server(
         info!("🌐 HTTP server listening on {}", actual_addr);
         start_http_server_plain(app, listener).await?;
     }
-    
+
     // Return the actual port we bound to
     Ok(actual_port)
 }
@@ -109,12 +109,11 @@ fn build_router(
     // Create WebSocket router with state
     let websocket_router =
         crate::server::websocket_api::websocket_routes().with_state(websocket_state);
-    
+
     // Create service registry router (Universal Port Authority)
-    let service_registry_router = crate::server::service_registry_api::service_registry_routes(
-        (*service_registry).clone()
-    );
-    
+    let service_registry_router =
+        crate::server::service_registry_api::service_registry_routes((*service_registry).clone());
+
     // Create info router (for orchestrator discovery)
     let info_router = crate::server::service_registry_api::info_routes();
 
@@ -249,7 +248,7 @@ async fn start_https_server(
     tokio::spawn(async move {
         // Convert tokio listener to std listener for axum-server compatibility
         let std_listener = listener.into_std().expect("Failed to convert listener to std");
-        
+
         if let Err(e) = axum_server::from_tcp_rustls(std_listener, tls_config_for_server)
             .serve(app.into_make_service())
             .await
@@ -273,11 +272,11 @@ async fn start_https_server(
 /// - Enable port reuse for zero-downtime restarts
 async fn bind_with_fallback(addr: &SocketAddr) -> Result<(tokio::net::TcpListener, SocketAddr)> {
     use crate::network::SovereignBinder;
-    
+
     let port = addr.port();
-    
+
     info!("🦅 Using sovereign socket binding for port {}", port);
-    
+
     // Try sovereign binding on the requested port
     match SovereignBinder::bind_sovereign(port).await {
         Ok((listener, actual_addr)) => {
@@ -289,12 +288,12 @@ async fn bind_with_fallback(addr: &SocketAddr) -> Result<(tokio::net::TcpListene
             warn!("Attempting fallback with incremental ports...");
         }
     }
-    
+
     // Fallback: try incrementing ports
     let max_attempts = 10;
     for attempt in 1..=max_attempts {
         let try_port = port + attempt;
-        
+
         match SovereignBinder::bind_sovereign(try_port).await {
             Ok((listener, actual_addr)) => {
                 info!("✅ Sovereign bind successful on fallback port: {}", actual_addr);
@@ -315,7 +314,7 @@ async fn bind_with_fallback(addr: &SocketAddr) -> Result<(tokio::net::TcpListene
             }
         }
     }
-    
+
     unreachable!("Loop should have returned or errored");
 }
 

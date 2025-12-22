@@ -27,11 +27,15 @@ fn test_federation_config_default() {
 #[test]
 fn test_federation_config_enabled() {
     let config = FederationConfig {
+        _legacy_test_fields: (),
+        discovery_mode: None,
+        rendezvous_url: None,
         enabled: true,
         bootstrap_address: Some("192.168.1.1:8080".to_string()),
         self_registration: None,
         heartbeat_interval_secs: 30,
         node_timeout_secs: 90,
+        ..Default::default()
     };
 
     assert!(config.enabled);
@@ -53,14 +57,19 @@ fn test_federation_config_with_node_info() {
         status: NodeStatus::Active,
         joined_at: chrono::Utc::now(),
         last_heartbeat: chrono::Utc::now(),
+        endpoints: Some(vec![]),
     };
 
     let config = FederationConfig {
+        _legacy_test_fields: (),
+        discovery_mode: None,
+        rendezvous_url: None,
         enabled: true,
         bootstrap_address: None,
         self_registration: Some(node_reg),
         heartbeat_interval_secs: 30,
         node_timeout_secs: 90,
+        ..Default::default()
     };
 
     assert!(config.enabled);
@@ -72,11 +81,15 @@ fn test_federation_config_clone() {
     let node_reg = create_test_registration("node-1");
 
     let config = FederationConfig {
+        _legacy_test_fields: (),
+        discovery_mode: None,
+        rendezvous_url: None,
         enabled: true,
         bootstrap_address: Some("192.168.1.1:8080".to_string()),
         self_registration: Some(node_reg),
         heartbeat_interval_secs: 15,
         node_timeout_secs: 45,
+        ..Default::default()
     };
 
     let cloned = config.clone();
@@ -101,11 +114,15 @@ fn test_federation_config_serialization() {
     let node_reg = create_test_registration("test-node");
 
     let config = FederationConfig {
+        _legacy_test_fields: (),
+        discovery_mode: None,
+        rendezvous_url: None,
         enabled: true,
         bootstrap_address: Some("192.168.1.1:8080".to_string()),
         self_registration: Some(node_reg),
         heartbeat_interval_secs: 30,
         node_timeout_secs: 90,
+        ..Default::default()
     };
 
     let serialized = serde_json::to_string(&config).expect("test precondition");
@@ -119,11 +136,15 @@ fn test_federation_config_serialization() {
 #[test]
 fn test_federation_config_enabled_states() {
     let enabled = FederationConfig {
+        _legacy_test_fields: (),
+        discovery_mode: None,
+        rendezvous_url: None,
         enabled: true,
         bootstrap_address: None,
         self_registration: None,
         heartbeat_interval_secs: 30,
         node_timeout_secs: 90,
+        ..Default::default()
     };
 
     let disabled = FederationConfig::default();
@@ -266,11 +287,15 @@ fn test_federation_config_json_serialization() {
     let node_reg = create_test_registration("test-node-456");
 
     let config = FederationConfig {
+        _legacy_test_fields: (),
+        discovery_mode: None,
+        rendezvous_url: None,
         enabled: true,
         bootstrap_address: Some("192.168.1.1:8080".to_string()),
         self_registration: Some(node_reg),
         heartbeat_interval_secs: 30,
         node_timeout_secs: 90,
+        ..Default::default()
     };
 
     let json = serde_json::to_string_pretty(&config).expect("test precondition");
@@ -294,11 +319,15 @@ async fn test_full_federation_workflow() {
     let node_reg = create_test_registration("primary-node");
 
     let config = FederationConfig {
+        _legacy_test_fields: (),
+        discovery_mode: None,
+        rendezvous_url: None,
         enabled: true,
         bootstrap_address: None,
         self_registration: Some(node_reg.clone()),
         heartbeat_interval_secs: 30,
         node_timeout_secs: 90,
+        ..Default::default()
     };
 
     // Create coordinator
@@ -350,5 +379,6 @@ fn create_test_registration(node_name: &str) -> NodeRegistration {
         status: NodeStatus::Active,
         joined_at: chrono::Utc::now(),
         last_heartbeat: chrono::Utc::now(),
+        endpoints: Some(vec![]),
     }
 }

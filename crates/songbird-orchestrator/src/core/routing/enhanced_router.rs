@@ -161,8 +161,12 @@ impl EnhancedCapabilityRouter {
     ) -> SongbirdResult<RoutingDecision> {
         let capability_type = Self::determine_capability_type(task);
         let capability_name = Self::capability_type_to_name(&capability_type);
-        
-        debug!("Task requires capability: {} ({})", capability_name, format!("{:?}", capability_type));
+
+        debug!(
+            "Task requires capability: {} ({})",
+            capability_name,
+            format!("{:?}", capability_type)
+        );
 
         // PRIORITY 1: Query Universal Port Authority
         info!("🔍 [1/3] Querying Universal Port Authority for '{}'...", capability_name);
@@ -187,8 +191,7 @@ impl EnhancedCapabilityRouter {
                     let provider = &providers[0];
                     let endpoint = format!(
                         "{}{}",
-                        provider.registration.endpoint,
-                        provider.registration.workload_endpoint
+                        provider.registration.endpoint, provider.registration.workload_endpoint
                     );
 
                     info!("✅ Found legacy provider: {}", provider.registration.provider_name);
@@ -212,12 +215,10 @@ impl EnhancedCapabilityRouter {
                     provider_endpoint: endpoint,
                 })
             }
-            Err(e) => {
-                Err(SongbirdError::service(
-                    capability_name,
-                    format!("No provider found for capability: {}", e),
-                ))
-            }
+            Err(e) => Err(SongbirdError::service(
+                capability_name,
+                format!("No provider found for capability: {}", e),
+            )),
         }
     }
 
@@ -229,10 +230,8 @@ impl EnhancedCapabilityRouter {
         let services = self.service_registry.query_by_capability(capability).await;
 
         // Filter to active services only
-        let active_services: Vec<_> = services
-            .into_iter()
-            .filter(|s| s.status == ServiceStatus::Active)
-            .collect();
+        let active_services: Vec<_> =
+            services.into_iter().filter(|s| s.status == ServiceStatus::Active).collect();
 
         if active_services.is_empty() {
             return Ok(None);
@@ -268,12 +267,10 @@ impl EnhancedCapabilityRouter {
     async fn route_to_peer_songbird(&self) -> SongbirdResult<RoutingDecision> {
         let state = self.federation_state.nodes.read().await;
         let nodes = state.values().cloned().collect::<Vec<_>>();
-        
+
         // Filter to active nodes only
-        let active_nodes: Vec<_> = nodes
-            .into_iter()
-            .filter(|n| n.status == NodeStatus::Active)
-            .collect();
+        let active_nodes: Vec<_> =
+            nodes.into_iter().filter(|n| n.status == NodeStatus::Active).collect();
 
         // Find a healthy peer
         for node in active_nodes {
@@ -351,15 +348,13 @@ impl EnhancedCapabilityRouter {
                 suggestion: Some("Check system network configuration".to_string()),
             })?;
 
-        let response = client
-            .post(format!("{}/execute", endpoint))
-            .json(task)
-            .send()
-            .await
-            .map_err(|e| SongbirdError::Network {
-                message: format!("Failed to send task to service: {}", e),
-                interface: Some(endpoint.to_string()),
-                suggestion: Some("Check service health and network connectivity".to_string()),
+        let response =
+            client.post(format!("{}/execute", endpoint)).json(task).send().await.map_err(|e| {
+                SongbirdError::Network {
+                    message: format!("Failed to send task to service: {}", e),
+                    interface: Some(endpoint.to_string()),
+                    suggestion: Some("Check service health and network connectivity".to_string()),
+                }
             })?;
 
         if !response.status().is_success() {
@@ -371,15 +366,12 @@ impl EnhancedCapabilityRouter {
             });
         }
 
-        let result = response
-            .json()
-            .await
-            .map_err(|e| SongbirdError::Service {
-                service: service_id.to_string(),
-                message: format!("Failed to parse service response: {}", e),
-                suggested_alternatives: vec![],
-                recovery_actions: vec![],
-            })?;
+        let result = response.json().await.map_err(|e| SongbirdError::Service {
+            service: service_id.to_string(),
+            message: format!("Failed to parse service response: {}", e),
+            suggested_alternatives: vec![],
+            recovery_actions: vec![],
+        })?;
 
         info!("✅ Task executed successfully on service {}", service_id);
         Ok(result)
@@ -402,4 +394,3 @@ mod tests {
         );
     }
 }
-

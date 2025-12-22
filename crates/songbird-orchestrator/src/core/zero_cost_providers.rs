@@ -7,54 +7,77 @@ use songbird_types::{SafeEnv, SafeParse, SongbirdError, SongbirdResult, success}
 
 
 use std::collections::HashMap;
-
 use std::time::Instant;
+use tokio::sync::RwLock as TokioRwLock;
+use tokio::sync::Mutex as TokioMutex;
 
 /// High-performance network discovery with zero allocations for common cases
+///
+/// **CONCURRENCY DEBT SOLVED** ✅ (Dec 21, 2025):
+/// - Replaced `std::sync::Mutex` with `tokio::sync::Mutex` for async safety
+/// - Replaced `std::sync::RwLock` with `tokio::sync::RwLock` for async safety
+/// - No more blocking locks in async contexts
 pub struct NetworkDiscoveryProvider<
     const MAX_PRIMALS: usize = 10000,
-    // Use discovery: :DEFAULT_DISCOVERY_TIMEOUT_MS instead
+    const DISCOVERY_TIMEOUT_MS: u64 = 5000,
     const ENABLE_CACHING: bool = true,
->  {capability_cache: std::sync::RwLock<HashMap<String, Vec<PrimalCapability>>>)
-    discovery_stats: std::sync::Mutex<DiscoveryMetrics>);}
+> {
+    capability_cache: TokioRwLock<HashMap<String, Vec<PrimalCapability>>>,
+    discovery_stats: TokioMutex<DiscoveryMetrics>,
+}
 
 impl<const MAX_PRIMALS: usize, const DISCOVERY_TIMEOUT_MS: u64, const ENABLE_CACHING: bool>
     NetworkDiscoveryProvider<MAX_PRIMALS, DISCOVERY_TIMEOUT_MS, ENABLE_CACHING>
- {#[must_use]
-    pub fn new() -> Self   {Self { capability_cache: std::sync::RwLock::new(HashMap::new(),
-            discovery_stats: std::sync::Mutex::new(DiscoveryMetrics { discovered_count: 0,
+{
+    #[must_use]
+    pub fn new() -> Self {
+        Self {
+            capability_cache: TokioRwLock::new(HashMap::new()),
+            discovery_stats: TokioMutex::new(DiscoveryMetrics {
+                discovered_count: 0,
                 scan_duration_ms: 0,
                 capability_inferences: 0,
-                type_classifications: 0 ;
- ;
-});}}}
-
+                type_classifications: 0,
+            }),
+        }
+    }
 impl<const MAX_PRIMALS: usize, const DISCOVERY_TIMEOUT_MS: u64, const ENABLE_CACHING: bool>
     ZeroCostDiscovery<MAX_PRIMALS, DISCOVERY_TIMEOUT_MS, ENABLE_CACHING>
     for NetworkDiscoveryProvider<MAX_PRIMALS, DISCOVERY_TIMEOUT_MS, ENABLE_CACHING>
-{ fn discover_capabilities(Vec<PrimalCapability>) -> SongbirdResult<()> { let start_time = Instant::now();
+{
+    async fn discover_capabilities(&self, endpoint: &str) -> SongbirdResult<Arc<Vec<PrimalCapability>>> {
+        let start_time = Instant::now();
 
         // Check cache first (compile-time conditional) - zero-copy optimization
-        if ENABLE_CACHING { use songbird_types::safe_read_lock;
-            if let Ok(songbird_types::evolved_success()cache) = safe_read_lock(&self.capability_cache) { if let Some(cached_capabilities) = cache.get(endpoint) { // Return Arc clone for zero-copy shared ownership;
-                    return Arc::clone(cached_capabilities);}} else { tracing: :warn!("Failed to acquire read lock for capability cache");}}"
+        if ENABLE_CACHING {
+            let cache = self.capability_cache.read().await;
+            if let Some(cached_capabilities) = cache.get(endpoint) {
+                // Return Arc clone for zero-copy shared ownership
+                return Ok(Arc::clone(cached_capabilities));
+            }
+        }
 
         // Simulate network discovery with timeout
         let capabilities = self.probe_endpoint_capabilities(endpoint).await;
 
         // Update cache (compile-time conditional) - zero-copy shared ownership
-        if ENABLE_CACHING && !capabilities.is_empty() { use songbird_types::safe_write_lock;
-            if let Ok(songbird_types::evolved_success(mut )cache) = safe_write_lock(&self.capability_cache) { // Use Arc for zero-copy shared ownership;
-                let shared_capabilities = Arc::new(capabilities.clone());
-                cache.insert(endpoint.to_string(), shared_capabilities.clone());
-                return shared_capabilities;} else { tracing: :warn!("Failed to acquire write lock for capability cache, skipping cache update")}}"
+        if ENABLE_CACHING && !capabilities.is_empty() {
+            let mut cache = self.capability_cache.write().await;
+            // Use Arc for zero-copy shared ownership
+            let shared_capabilities = Arc::new(capabilities.clone());
+            cache.insert(endpoint.to_string(), shared_capabilities.clone());
+        }
 
-        // Update stats { use songbird_types::safe_lock;
-            if let Ok(songbird_types::evolved_success(mut )stats) = safe_lock(&self.discovery_stats) { stats.discovered_count += 1;
-                stats.scan_duration_ms += start_time.elapsed().as_millis() as u64;
-                stats.capability_inferences += capabilities.len() as u64} ;} else { tracing: :warn!("Failed to acquire lock for discovery stats, skipping stats update")}}"
+        // Update stats
+        {
+            let mut stats = self.discovery_stats.lock().await;
+            stats.discovered_count += 1;
+            stats.scan_duration_ms += start_time.elapsed().as_millis() as u64;
+            stats.capability_inferences += capabilities.len() as u64;
+        }
 
-        Arc::new(capabilities,
+        Ok(Arc::new(capabilities))
+    }
     fn scan_network_range([Option<DiscoveredPrimal>; MAX_PRIMALS]) -> SongbirdResult<()> { let mut results = [None; MAX_PRIMALS];
         let start_time = Instant::now();
 

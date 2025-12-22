@@ -1,0 +1,277 @@
+//! Runtime Endpoint Resolution
+//!
+//! Modern, capability-based endpoint resolution that replaces hardcoded values
+//! with runtime discovery. Each primal only knows itself; all inter-primal
+//! communication is discovered dynamically.
+//!
+//! ## Evolution from Hardcoding
+//!
+//! ```rust,ignore
+//! // ❌ OLD: Hardcoded
+//! let endpoint = "http://localhost:8080";
+//!
+//! // ✅ NEW: Capability-based discovery
+//! let endpoint = resolver.resolve_capability("compute").await?;
+//! ```
+
+use songbird_types::{SafeEnv, SongbirdError, SongbirdResult};
+use std::collections::HashMap;
+use std::sync::Arc;
+use tokio::sync::RwLock;
+use tracing::{debug, info, warn};
+
+use crate::capability_discovery::{CapabilityDiscovery, ServiceEndpoint};
+
+/// Runtime endpoint resolver using capability-based discovery
+///
+/// This resolver provides a modern alternative to hardcoded endpoints,
+/// supporting multiple discovery strategies with fallback chains.
+pub struct RuntimeEndpointResolver {
+    /// Capability discovery engine
+    discovery: Arc<CapabilityDiscovery>,
+
+    /// Local service registry (for self-knowledge)
+    local_services: Arc<RwLock<HashMap<String, String>>>,
+
+    /// Fallback configuration
+    fallbacks: Arc<RwLock<HashMap<String, Vec<String>>>>,
+}
+
+impl RuntimeEndpointResolver {
+    /// Create new resolver with default discovery
+    pub fn new() -> Self {
+        Self {
+            discovery: Arc::new(CapabilityDiscovery::new()),
+            local_services: Arc::new(RwLock::new(HashMap::new())),
+            fallbacks: Arc::new(RwLock::new(Self::default_fallbacks())),
+        }
+    }
+
+    /// Create with custom discovery engine
+    pub fn with_discovery(discovery: CapabilityDiscovery) -> Self {
+        Self {
+            discovery: Arc::new(discovery),
+            local_services: Arc::new(RwLock::new(HashMap::new())),
+            fallbacks: Arc::new(RwLock::new(Self::default_fallbacks())),
+        }
+    }
+
+    /// Register local service (self-knowledge)
+    ///
+    /// Each primal registers only its own services.
+    pub async fn register_local_service(
+        &self,
+        capability: impl Into<String>,
+        endpoint: impl Into<String>,
+    ) -> SongbirdResult<()> {
+        let capability = capability.into();
+        let endpoint = endpoint.into();
+
+        info!("🔍 Registering local service: {} -> {}", capability, endpoint);
+        self.local_services.write().await.insert(capability, endpoint);
+        Ok(())
+    }
+
+    /// Resolve endpoint by capability
+    ///
+    /// Discovery order:
+    /// 1. Local services (self-knowledge)
+    /// 2. Environment variables
+    /// 3. Runtime discovery
+    /// 4. Configured fallbacks
+    ///
+    /// # Example
+    ///
+    /// ```rust,ignore
+    /// let resolver = RuntimeEndpointResolver::new();
+    ///
+    /// // Resolve by capability, not by primal name
+    /// let compute_endpoint = resolver.resolve_capability("compute").await?;
+    /// let storage_endpoint = resolver.resolve_capability("storage").await?;
+    /// ```
+    pub async fn resolve_capability(&self, capability: &str) -> SongbirdResult<String> {
+        debug!("🔍 Resolving capability: {}", capability);
+
+        // 1. Check local services first (self-knowledge)
+        if let Some(endpoint) = self.local_services.read().await.get(capability) {
+            info!("✅ Resolved {} from local services: {}", capability, endpoint);
+            return Ok(endpoint.clone());
+        }
+
+        // 2. Check environment variables
+        if let Some(endpoint) = self.try_env_resolution(capability) {
+            info!("✅ Resolved {} from environment: {}", capability, endpoint);
+            return Ok(endpoint);
+        }
+
+        // 3. Try runtime discovery
+        match self.discovery.find_providers_by_capability(capability).await {
+            Ok(endpoints) if !endpoints.is_empty() => {
+                let best = Self::select_best_endpoint(&endpoints);
+                info!("✅ Resolved {} from discovery: {}", capability, best.url);
+                return Ok(best.url.clone());
+            }
+            Ok(_) => debug!("No endpoints found via discovery for {}", capability),
+            Err(e) => debug!("Discovery failed for {}: {}", capability, e),
+        }
+
+        // 4. Fall back to configured defaults
+        if let Some(endpoint) = self.try_fallback_resolution(capability).await {
+            warn!("⚠️  Using fallback for {}: {}", capability, endpoint);
+            return Ok(endpoint);
+        }
+
+        Err(SongbirdError::discovery(format!(
+            "Could not resolve capability '{}' through any discovery method",
+            capability
+        )))
+    }
+
+    /// Try to resolve from environment variables
+    ///
+    /// Supports multiple naming conventions:
+    /// - `{CAPABILITY}_ENDPOINT` (e.g., `COMPUTE_ENDPOINT`)
+    /// - `SONGBIRD_{CAPABILITY}_URL` (e.g., `SONGBIRD_COMPUTE_URL`)
+    fn try_env_resolution(&self, capability: &str) -> Option<String> {
+        let capability_upper = capability.to_uppercase();
+
+        // Try various env var patterns
+        let env_keys = [
+            format!("{}_ENDPOINT", capability_upper),
+            format!("SONGBIRD_{}_URL", capability_upper),
+            format!("SONGBIRD_{}_ENDPOINT", capability_upper),
+            format!("{}_URL", capability_upper),
+        ];
+
+        for key in env_keys {
+            if let Ok(value) = std::env::var(&key) {
+                if !value.is_empty() {
+                    return Some(value);
+                }
+            }
+        }
+
+        None
+    }
+
+    /// Try configured fallback endpoints
+    async fn try_fallback_resolution(&self, capability: &str) -> Option<String> {
+        let fallbacks = self.fallbacks.read().await;
+        fallbacks.get(capability).and_then(|endpoints| endpoints.first()).cloned()
+    }
+
+    /// Select best endpoint from discovered options
+    ///
+    /// Criteria:
+    /// 1. Health score
+    /// 2. Response time (if available)
+    /// 3. Recency
+    fn select_best_endpoint(endpoints: &[ServiceEndpoint]) -> &ServiceEndpoint {
+        endpoints
+            .iter()
+            .max_by(|a, b| {
+                a.health_score.partial_cmp(&b.health_score).unwrap_or(std::cmp::Ordering::Equal)
+            })
+            .expect("endpoints is non-empty")
+    }
+
+    /// Default fallback endpoints
+    ///
+    /// These are ONLY used as last resort when all discovery methods fail.
+    /// They use localhost for development/testing scenarios.
+    fn default_fallbacks() -> HashMap<String, Vec<String>> {
+        let mut fallbacks = HashMap::new();
+
+        // Development fallbacks (localhost only, for testing)
+        fallbacks.insert(
+            "orchestrator".to_string(),
+            vec![SafeEnv::get_or_default(
+                "SONGBIRD_ORCHESTRATOR_FALLBACK",
+                "http://localhost:8080",
+            )],
+        );
+
+        fallbacks.insert(
+            "registry".to_string(),
+            vec![SafeEnv::get_or_default("SONGBIRD_REGISTRY_FALLBACK", "http://localhost:8081")],
+        );
+
+        fallbacks
+    }
+}
+
+impl Default for RuntimeEndpointResolver {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+/// Migration helper to evolve from hardcoded patterns
+///
+/// This struct helps in migrating existing code from hardcoded
+/// endpoints to capability-based discovery.
+pub struct EndpointMigrationHelper {
+    resolver: Arc<RuntimeEndpointResolver>,
+}
+
+impl EndpointMigrationHelper {
+    /// Create new migration helper
+    pub fn new(resolver: RuntimeEndpointResolver) -> Self {
+        Self {
+            resolver: Arc::new(resolver),
+        }
+    }
+
+    /// Migrate a hardcoded endpoint pattern
+    ///
+    /// # Example
+    ///
+    /// ```rust,ignore
+    /// // Before: let addr = "http://localhost:8080";
+    /// let addr = helper.migrate_endpoint(
+    ///     "http://localhost:8080",
+    ///     "orchestrator"
+    /// ).await?;
+    /// ```
+    pub async fn migrate_endpoint(
+        &self,
+        _hardcoded: &str, // For documentation/logging only
+        capability: &str,
+    ) -> SongbirdResult<String> {
+        self.resolver.resolve_capability(capability).await
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn test_local_service_resolution() {
+        let resolver = RuntimeEndpointResolver::new();
+
+        resolver.register_local_service("my-service", "http://my-endpoint:9000").await.unwrap();
+
+        let endpoint = resolver.resolve_capability("my-service").await.unwrap();
+        assert_eq!(endpoint, "http://my-endpoint:9000");
+    }
+
+    #[tokio::test]
+    async fn test_env_resolution() {
+        std::env::set_var("COMPUTE_ENDPOINT", "http://env-compute:8080");
+
+        let resolver = RuntimeEndpointResolver::new();
+        let endpoint = resolver.resolve_capability("compute").await.unwrap();
+
+        assert_eq!(endpoint, "http://env-compute:8080");
+
+        std::env::remove_var("COMPUTE_ENDPOINT");
+    }
+
+    #[test]
+    fn test_fallbacks_configuration() {
+        let fallbacks = RuntimeEndpointResolver::default_fallbacks();
+        assert!(fallbacks.contains_key("orchestrator"));
+        assert!(fallbacks.contains_key("registry"));
+    }
+}

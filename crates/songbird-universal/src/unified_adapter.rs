@@ -341,6 +341,25 @@ pub enum UniversalAdapterError {
     NoProvidersAvailable(String),
 }
 
+// Convert UniversalAdapterError to SongbirdError for test compatibility
+impl From<UniversalAdapterError> for songbird_types::SongbirdError {
+    fn from(err: UniversalAdapterError) -> Self {
+        use UniversalAdapterError::*;
+        match err {
+            NetworkError(msg) | ParseError(msg) | DiscoveryError(msg) | ServiceError(msg) => {
+                songbird_types::SongbirdError::from(msg)
+            }
+            MissingCapability => {
+                songbird_types::SongbirdError::from("Required capability is missing")
+            }
+            NoProvidersAvailable(cap) => songbird_types::SongbirdError::from(format!(
+                "No providers available for capability: {}",
+                cap
+            )),
+        }
+    }
+}
+
 // ============================================================================
 // UTILITY TYPES
 // ============================================================================

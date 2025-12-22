@@ -38,20 +38,21 @@ where
         let validator = crate::access_control::tokens::TokenValidator::new();
         let secret = std::env::var("SONGBIRD_JWT_SECRET")
             .unwrap_or_else(|_| "songbird-dev-secret-change-in-production".to_string());
-        
+
         let token = AccessToken::decode(token_str, secret.as_bytes())
             .map_err(|_| AuthError::InvalidToken)?;
-        
+
         // Check if token is expired
         if token.is_expired() {
             return Err(AuthError::ExpiredToken);
         }
-        
-        // Validate token (checks blacklist, expiry, etc.)
-        validator.validate(&token).await
-            .map_err(|_| AuthError::InvalidToken)?;
 
-        Ok(AuthenticatedUser { token })
+        // Validate token (checks blacklist, expiry, etc.)
+        validator.validate(&token).await.map_err(|_| AuthError::InvalidToken)?;
+
+        Ok(AuthenticatedUser {
+            token,
+        })
     }
 }
 
@@ -109,25 +110,18 @@ pub struct LoginResponse {
 /// - Development mode MUST be disabled in production
 /// - Admin/RemoteAdmin roles REQUIRE 2FA token
 pub async fn login(Json(req): Json<LoginRequest>) -> Result<Json<LoginResponse>, AuthError> {
-    tracing::info!(
-        "Login attempt for user '{}' with role '{}'",
-        req.user_id,
-        req.role
-    );
+    tracing::info!("Login attempt for user '{}' with role '{}'", req.user_id, req.role);
 
     // Validate credentials using configured authentication method
     validate_credentials(&req).await?;
-    
+
     // For admin roles, require 2FA
     if matches!(req.role.as_str(), "admin" | "remote-admin") {
         if req.two_factor_token.is_none() {
-            tracing::warn!(
-                "Admin login attempt for user '{}' without 2FA token",
-                req.user_id
-            );
+            tracing::warn!("Admin login attempt for user '{}' without 2FA token", req.user_id);
             return Err(AuthError::InsufficientPermissions);
         }
-        
+
         // Validate 2FA token
         let two_factor_token = req.two_factor_token.as_ref().unwrap();
         validate_two_factor_token(&req.user_id, two_factor_token).await?;
@@ -146,18 +140,15 @@ pub async fn login(Json(req): Json<LoginRequest>) -> Result<Json<LoginResponse>,
     };
 
     // Encode token with production secret
-    let secret = std::env::var("SONGBIRD_JWT_SECRET")
-        .unwrap_or_else(|_| {
-            tracing::warn!(
-                "SONGBIRD_JWT_SECRET not set. Using development secret. \
+    let secret = std::env::var("SONGBIRD_JWT_SECRET").unwrap_or_else(|_| {
+        tracing::warn!(
+            "SONGBIRD_JWT_SECRET not set. Using development secret. \
                  DO NOT USE IN PRODUCTION."
-            );
-            "songbird-dev-secret-change-in-production".to_string()
-        });
-    
-    let token_str = token
-        .encode(secret.as_bytes())
-        .map_err(|_| AuthError::InvalidToken)?;
+        );
+        "songbird-dev-secret-change-in-production".to_string()
+    });
+
+    let token_str = token.encode(secret.as_bytes()).map_err(|_| AuthError::InvalidToken)?;
 
     tracing::info!("Login successful for user '{}'", req.user_id);
 
@@ -214,8 +205,12 @@ async fn validate_sso_credential(
     credential: &str,
     sso_endpoint: &str,
 ) -> Result<(), AuthError> {
-    tracing::debug!("Validating SSO credential for user '{}' via endpoint: {}", user_id, sso_endpoint);
-    
+    tracing::debug!(
+        "Validating SSO credential for user '{}' via endpoint: {}",
+        user_id,
+        sso_endpoint
+    );
+
     // Create HTTP client with timeout
     let client = reqwest::Client::builder()
         .timeout(std::time::Duration::from_secs(10))
@@ -224,14 +219,14 @@ async fn validate_sso_credential(
             tracing::error!("Failed to create HTTP client for SSO validation: {}", e);
             AuthError::InvalidToken
         })?;
-    
+
     // Prepare SSO validation request
     let validation_request = serde_json::json!({
         "user_id": user_id,
         "token": credential,
         "grant_type": "sso_token"
     });
-    
+
     // Send validation request to SSO endpoint
     let response = client
         .post(format!("{}/validate", sso_endpoint))
@@ -242,22 +237,19 @@ async fn validate_sso_credential(
             tracing::error!("SSO validation request failed for user '{}': {}", user_id, e);
             AuthError::InvalidToken
         })?;
-    
+
     // Check response status
     if !response.status().is_success() {
         tracing::warn!("SSO validation failed for user '{}': HTTP {}", user_id, response.status());
         return Err(AuthError::InvalidToken);
     }
-    
+
     // Parse validation response
-    let validation_result: serde_json::Value = response
-        .json()
-        .await
-        .map_err(|e| {
-            tracing::error!("Failed to parse SSO validation response: {}", e);
-            AuthError::InvalidToken
-        })?;
-    
+    let validation_result: serde_json::Value = response.json().await.map_err(|e| {
+        tracing::error!("Failed to parse SSO validation response: {}", e);
+        AuthError::InvalidToken
+    })?;
+
     // Check if validation succeeded
     if validation_result.get("valid").and_then(|v| v.as_bool()) == Some(true) {
         tracing::info!("SSO validation successful for user '{}'", user_id);
@@ -278,7 +270,7 @@ async fn validate_db_credential(
     auth_db: &str,
 ) -> Result<(), AuthError> {
     tracing::debug!("Validating credential via database: {} for user '{}'", auth_db, user_id);
-    
+
     // Parse database connection string
     // Format: "postgres://user:pass@host/db" or "sqlite:path/to/db.sqlite" or "redis://host:port"
     if auth_db.starts_with("postgres://") || auth_db.starts_with("postgresql://") {
@@ -288,7 +280,7 @@ async fn validate_db_credential(
     } else if auth_db.starts_with("redis://") {
         return validate_db_redis(user_id, credential, auth_db).await;
     }
-    
+
     tracing::error!("Unsupported database type in connection string: {}", auth_db);
     Err(AuthError::InvalidToken)
 }
@@ -302,13 +294,13 @@ async fn validate_db_postgres(
     // NOTE: Full PostgreSQL implementation would use sqlx or tokio-postgres
     // For now, this is a framework for the implementation
     tracing::info!("PostgreSQL authentication for user '{}' (implementation pending: requires sqlx dependency)", user_id);
-    
+
     // Expected implementation:
     // 1. Connect to PostgreSQL using sqlx
     // 2. Query: SELECT password_hash FROM users WHERE user_id = $1
     // 3. Verify hash using bcrypt::verify(credential, &stored_hash)
     // 4. Return Ok(()) if valid, Err(AuthError::InvalidToken) if not
-    
+
     // For now, accept any non-empty credential but log warning
     if !credential.is_empty() {
         tracing::warn!("PostgreSQL authentication not fully implemented - accepting credential (add sqlx dependency)");
@@ -326,13 +318,13 @@ async fn validate_db_sqlite(
 ) -> Result<(), AuthError> {
     // NOTE: Full SQLite implementation would use rusqlite or sqlx
     tracing::info!("SQLite authentication for user '{}' (implementation pending: requires rusqlite dependency)", user_id);
-    
+
     // Expected implementation:
     // 1. Open SQLite database
     // 2. Query: SELECT password_hash FROM users WHERE user_id = ?
     // 3. Verify hash using bcrypt::verify(credential, &stored_hash)
     // 4. Return Ok(()) if valid, Err(AuthError::InvalidToken) if not
-    
+
     // For now, accept any non-empty credential but log warning
     if !credential.is_empty() {
         tracing::warn!("SQLite authentication not fully implemented - accepting credential (add rusqlite dependency)");
@@ -349,14 +341,17 @@ async fn validate_db_redis(
     _redis_url: &str,
 ) -> Result<(), AuthError> {
     // NOTE: Full Redis implementation would use redis-rs
-    tracing::info!("Redis authentication for user '{}' (implementation pending: requires redis dependency)", user_id);
-    
+    tracing::info!(
+        "Redis authentication for user '{}' (implementation pending: requires redis dependency)",
+        user_id
+    );
+
     // Expected implementation:
     // 1. Connect to Redis
     // 2. GET auth:user:{user_id}:token
     // 3. Compare stored token with credential
     // 4. Return Ok(()) if valid, Err(AuthError::InvalidToken) if not
-    
+
     // For now, accept any non-empty credential but log warning
     if !credential.is_empty() {
         tracing::warn!("Redis authentication not fully implemented - accepting credential (add redis dependency)");
@@ -372,30 +367,27 @@ async fn validate_db_redis(
 /// - TOTP (Time-based One-Time Password) - RFC 6238
 /// - Hardware keys (WebAuthn, FIDO2) via BearDog
 /// - SMS/Email codes (via external service)
-async fn validate_two_factor_token(
-    user_id: &str,
-    token: &str,
-) -> Result<(), AuthError> {
+async fn validate_two_factor_token(user_id: &str, token: &str) -> Result<(), AuthError> {
     tracing::debug!("Validating 2FA token for user '{}'", user_id);
-    
+
     // Try BearDog hardware key validation first (most secure)
     if let Ok(beardog_endpoint) = std::env::var("BEARDOG_2FA_ENDPOINT") {
         tracing::debug!("Attempting BearDog hardware key validation for user '{}'", user_id);
         return validate_beardog_2fa(user_id, token, &beardog_endpoint).await;
     }
-    
+
     // Try TOTP validation (standard authenticator apps)
     if let Ok(totp_secret) = std::env::var(format!("SONGBIRD_TOTP_SECRET_{}", user_id).as_str()) {
         tracing::debug!("Attempting TOTP validation for user '{}'", user_id);
         return validate_totp_token(user_id, token, &totp_secret);
     }
-    
+
     // Try external 2FA service (SMS, Email, etc.)
     if let Ok(twofa_endpoint) = std::env::var("SONGBIRD_2FA_SERVICE") {
         tracing::debug!("Attempting external 2FA service validation for user '{}'", user_id);
         return validate_external_2fa(user_id, token, &twofa_endpoint).await;
     }
-    
+
     // No 2FA backend configured - this is a security issue for admin access
     tracing::error!(
         "2FA required for user '{}' but no 2FA backend configured. \
@@ -412,20 +404,20 @@ async fn validate_beardog_2fa(
     beardog_endpoint: &str,
 ) -> Result<(), AuthError> {
     tracing::info!("Validating hardware key via BearDog for user '{}'", user_id);
-    
+
     // Create HTTP client
     let client = reqwest::Client::builder()
         .timeout(std::time::Duration::from_secs(5))
         .build()
         .map_err(|_| AuthError::InvalidToken)?;
-    
+
     // Prepare validation request
     let validation_request = serde_json::json!({
         "user_id": user_id,
         "token": token,
         "auth_type": "webauthn"
     });
-    
+
     // Send validation request
     let response = client
         .post(format!("{}/auth/validate", beardog_endpoint))
@@ -436,33 +428,36 @@ async fn validate_beardog_2fa(
             tracing::error!("BearDog 2FA validation failed: {}", e);
             AuthError::InvalidToken
         })?;
-    
+
     // Check response
     if response.status().is_success() {
         tracing::info!("BearDog 2FA validation successful for user '{}'", user_id);
         Ok(())
     } else {
-        tracing::warn!("BearDog 2FA validation failed for user '{}': HTTP {}", user_id, response.status());
+        tracing::warn!(
+            "BearDog 2FA validation failed for user '{}': HTTP {}",
+            user_id,
+            response.status()
+        );
         Err(AuthError::InvalidToken)
     }
 }
 
 /// Validate TOTP token (Time-based One-Time Password - RFC 6238)
-fn validate_totp_token(
-    user_id: &str,
-    token: &str,
-    totp_secret: &str,
-) -> Result<(), AuthError> {
+fn validate_totp_token(user_id: &str, token: &str, totp_secret: &str) -> Result<(), AuthError> {
     // NOTE: Full TOTP implementation would use totp-rs crate
     // For now, this is a framework for the implementation
-    tracing::info!("TOTP validation for user '{}' (implementation pending: requires totp-rs dependency)", user_id);
-    
+    tracing::info!(
+        "TOTP validation for user '{}' (implementation pending: requires totp-rs dependency)",
+        user_id
+    );
+
     // Expected implementation:
     // 1. Parse TOTP secret (base32)
     // 2. Generate current TOTP code using TOTP::new(secret, 30, 0, 6, Sha1)
     // 3. Compare with provided token (with time window tolerance)
     // 4. Return Ok(()) if valid, Err(AuthError::InvalidToken) if not
-    
+
     // For now, accept 6-digit codes that match expected format
     if token.len() == 6 && token.chars().all(|c| c.is_ascii_digit()) && !totp_secret.is_empty() {
         tracing::warn!("TOTP validation not fully implemented - accepting well-formed code (add totp-rs dependency)");
@@ -480,19 +475,19 @@ async fn validate_external_2fa(
     service_endpoint: &str,
 ) -> Result<(), AuthError> {
     tracing::info!("Validating 2FA via external service for user '{}'", user_id);
-    
+
     // Create HTTP client
     let client = reqwest::Client::builder()
         .timeout(std::time::Duration::from_secs(10))
         .build()
         .map_err(|_| AuthError::InvalidToken)?;
-    
+
     // Prepare validation request
     let validation_request = serde_json::json!({
         "user_id": user_id,
         "code": token
     });
-    
+
     // Send validation request
     let response = client
         .post(format!("{}/verify", service_endpoint))
@@ -503,13 +498,17 @@ async fn validate_external_2fa(
             tracing::error!("External 2FA validation failed: {}", e);
             AuthError::InvalidToken
         })?;
-    
+
     // Check response
     if response.status().is_success() {
         tracing::info!("External 2FA validation successful for user '{}'", user_id);
         Ok(())
     } else {
-        tracing::warn!("External 2FA validation failed for user '{}': HTTP {}", user_id, response.status());
+        tracing::warn!(
+            "External 2FA validation failed for user '{}': HTTP {}",
+            user_id,
+            response.status()
+        );
         Err(AuthError::InvalidToken)
     }
 }

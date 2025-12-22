@@ -16,9 +16,7 @@ use crate::{
     resource_management::{
         AdmissionController, AdmissionDecision, FairScheduler, QuotaManager, UsageTracker,
     },
-    task_lifecycle::{
-        TaskId, TaskLifecycle, TaskLifecycleManager, TaskSpec, TowerId, UserId,
-    },
+    task_lifecycle::{TaskId, TaskLifecycle, TaskLifecycleManager, TaskSpec, TowerId, UserId},
 };
 use anyhow::{Context, Result};
 use std::sync::Arc;

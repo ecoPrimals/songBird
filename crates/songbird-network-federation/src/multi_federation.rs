@@ -18,12 +18,12 @@
 
 use anyhow::Result;
 use chrono::{DateTime, Utc};
-use tokio::sync::RwLock;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::net::IpAddr;
 use std::path::PathBuf;
 use std::sync::Arc;
+use tokio::sync::RwLock;
 use tracing::{debug, info};
 use uuid::Uuid;
 
@@ -57,7 +57,8 @@ pub struct MultiFederationState {
     /// All federations this node participates in
     federations: Arc<RwLock<HashMap<FederationId, FederationContext>>>,
 
-    /// Node's core identity
+    /// Node's core identity (used for federation membership tracking)
+    #[allow(dead_code)] // Will be used for federation-specific identity management
     node_id: Uuid,
 }
 
@@ -332,27 +333,13 @@ impl AutoJoinPolicy {
         }
 
         // Check capabilities
-        if !self
-            .required_capabilities
-            .iter()
-            .all(|cap| peer.capabilities.contains(cap))
-        {
-            debug!(
-                "Peer missing required capabilities: {:?}",
-                self.required_capabilities
-            );
+        if !self.required_capabilities.iter().all(|cap| peer.capabilities.contains(cap)) {
+            debug!("Peer missing required capabilities: {:?}", self.required_capabilities);
             return false;
         }
 
-        if self
-            .forbidden_capabilities
-            .iter()
-            .any(|cap| peer.capabilities.contains(cap))
-        {
-            debug!(
-                "Peer has forbidden capabilities: {:?}",
-                self.forbidden_capabilities
-            );
+        if self.forbidden_capabilities.iter().any(|cap| peer.capabilities.contains(cap)) {
+            debug!("Peer has forbidden capabilities: {:?}", self.forbidden_capabilities);
             return false;
         }
 
@@ -444,10 +431,7 @@ impl DiscoveryRouter {
         // If no matches, use default
         if matches.is_empty() {
             if let Some(ref default) = self.default_federation {
-                debug!(
-                    "Peer {} using default federation {}",
-                    peer.session_id, default.0
-                );
+                debug!("Peer {} using default federation {}", peer.session_id, default.0);
                 matches.push(default.clone());
             }
         }
@@ -525,7 +509,10 @@ mod tests {
         };
 
         let peer = DiscoveredPeer {
+            node_id: None,
+            node_name: None,
             session_id: "test".to_string(),
+            endpoints: None,
             capabilities: vec!["academic".to_string(), "compute".to_string()],
             protocols: vec!["https".to_string()],
             port: 8080,
@@ -549,18 +536,23 @@ mod tests {
         let router = DiscoveryRouter::new(Some(family_id.clone()));
 
         // Add school rule (IP-based)
-        router.add_rule(RoutingRule {
-            matcher: RoutingMatcher::IpSubnet(IpNetwork {
-                address: IpAddr::V4(Ipv4Addr::new(10, 0, 0, 0)),
-                prefix_len: 8,
-            }),
-            target_federation: school_id.clone(),
-            priority: 100,
-        }).await;
+        router
+            .add_rule(RoutingRule {
+                matcher: RoutingMatcher::IpSubnet(IpNetwork {
+                    address: IpAddr::V4(Ipv4Addr::new(10, 0, 0, 0)),
+                    prefix_len: 8,
+                }),
+                target_federation: school_id.clone(),
+                priority: 100,
+            })
+            .await;
 
         // Peer from school network
         let school_peer = DiscoveredPeer {
+            node_id: None,
+            node_name: None,
             session_id: "school_peer".to_string(),
+            endpoints: None,
             capabilities: vec!["academic".to_string()],
             protocols: vec!["https".to_string()],
             port: 8080,
@@ -575,7 +567,10 @@ mod tests {
 
         // Peer from home network (no match, uses default)
         let home_peer = DiscoveredPeer {
+            node_id: None,
+            node_name: None,
             session_id: "home_peer".to_string(),
+            endpoints: None,
             capabilities: vec!["media".to_string()],
             protocols: vec!["https".to_string()],
             port: 8080,
@@ -589,4 +584,3 @@ mod tests {
         assert_eq!(routes[0], family_id);
     }
 }
-

@@ -14,11 +14,15 @@ fn test_default_federation_config() {
 #[test]
 fn test_federation_config_creation() {
     let config = FederationConfig {
+        _legacy_test_fields: (),
+        discovery_mode: None,
+        rendezvous_url: None,
         enabled: true,
         bootstrap_address: None,
         self_registration: None,
         heartbeat_interval_secs: 30,
         node_timeout_secs: 120,
+        ..Default::default()
     };
     assert!(config.enabled);
     assert_eq!(config.node_timeout_secs, 120);

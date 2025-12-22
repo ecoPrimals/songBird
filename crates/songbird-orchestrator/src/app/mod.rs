@@ -1,6 +1,17 @@
 #![allow(dead_code)]
 
-mod http_server;
+// Module declarations
+pub mod core;
+pub mod health;
+pub mod http_server; // Public for E2E tests
+pub mod network;
+pub mod startup;
+
+// Re-exports for backwards compatibility
+pub use core::SongbirdOrchestrator;
+pub use health::{run_health_check, HealthCheckReport, OrchestratorStatus};
+pub use network::{detect_primary_ip, get_local_ip_for_connectivity_test, parse_bind_address};
+pub use startup::{start_orchestrator, Orchestrator};
 
 use anyhow::Result;
 use songbird_config::{
@@ -30,173 +41,57 @@ use tokio::time::interval;
 use tracing::{debug, error, info, warn};
 
 // Import anonymous discovery and trust escalation
-use songbird_discovery::anonymous_discovery::{AnonymousDiscoveryBroadcaster, AnonymousDiscoveryListener};
 use crate::trust::{TrustEscalationManager, TrustTimeouts};
-/// Main orchestrator application
-#[allow(dead_code)]
-pub struct SongbirdOrchestrator {
-    _config: CanonicalSongbirdConfig,
-    _service_registry: Arc<FederatedServiceRegistry>,
-    service_registry: Arc<crate::service_registry::ServiceRegistry>, // Universal Port Authority
-    // gaming_manager: Arc<GamingManager>, // Temporarily disabled - gaming module not available
-    // federation_manager: Arc<CanonicalFederation>, // Temporarily disabled
-    federation_coordinator: Option<Arc<FederationCoordinator>>,
-    federation_config: Option<FederationConfig>,
-    federation_state: Arc<FederationState>,
-    federated_service_registry: Arc<FederatedServiceRegistry>,
-    observability_manager: Arc<ObservabilityManager>,
-    // security_integration: Arc<UniversalSecurityIntegration>, // Temporarily disabled
-    trust_manager: Arc<TrustEscalationManager>,
-    discovery_listener: Option<Arc<AnonymousDiscoveryListener>>,
-    shutdown_signal: tokio::sync::broadcast::Receiver<()>,
-    shutdown_sender: tokio::sync::broadcast::Sender<()>,
-}
-
-/// Get local IP address for connectivity testing
-async fn get_local_ip_for_connectivity_test() -> Result<String> {
-    use std::net::Ipv4Addr;
-
-    // Try to get local IP by creating a UDP socket (doesn't actually send data)
-    let socket = std::net::UdpSocket::bind("0.0.0.0:0")?;
-    socket.connect("8.8.8.8:80")?; // Doesn't actually connect, just determines route
-
-    if let Ok(local_addr) = socket.local_addr() {
-        let ip = local_addr.ip();
-        if let std::net::IpAddr::V4(ipv4) = ip {
-            if ipv4 != Ipv4Addr::LOCALHOST {
-                return Ok(ip.to_string());
-            }
-        }
-    }
-
-    Err(anyhow::anyhow!("Could not determine local IP"))
-}
-
-/// Parse bind address with support for IPv4, IPv6, and dual-stack
-///
-/// Supports multiple formats:
-/// - `[::]` - IPv6 wildcard (dual-stack, recommended)
-/// - `[::1]` - IPv6 localhost
-/// - `0.0.0.0` - IPv4 wildcard (legacy)
-/// - `127.0.0.1` - IPv4 localhost
-/// - Custom IPv4 or IPv6 addresses
-fn parse_bind_address(addr: &str, port: u16) -> Result<std::net::SocketAddr> {
-    use std::net::{IpAddr, Ipv4Addr, Ipv6Addr, SocketAddr};
-
-    match addr {
-        "[::]" => {
-            // Dual-stack: IPv6 wildcard (automatically handles IPv4 via IPv4-mapped addresses)
-            Ok(SocketAddr::new(IpAddr::V6(Ipv6Addr::UNSPECIFIED), port))
-        }
-        "[::1]" => {
-            // IPv6 localhost
-            Ok(SocketAddr::new(IpAddr::V6(Ipv6Addr::LOCALHOST), port))
-        }
-        "0.0.0.0" => {
-            // IPv4 wildcard (legacy mode)
-            Ok(SocketAddr::new(IpAddr::V4(Ipv4Addr::UNSPECIFIED), port))
-        }
-        "127.0.0.1" => {
-            // IPv4 localhost
-            Ok(SocketAddr::new(IpAddr::V4(Ipv4Addr::LOCALHOST), port))
-        }
-        _ => {
-            // Try to parse as IPv6 format: [addr] or custom address
-            if addr.starts_with('[') && addr.ends_with(']') {
-                let ip_part = addr.trim_start_matches('[').trim_end_matches(']');
-                let ip: IpAddr = ip_part
-                    .parse()
-                    .map_err(|e| anyhow::anyhow!("Invalid IPv6 address '{}': {}", ip_part, e))?;
-                Ok(SocketAddr::new(ip, port))
-            } else {
-                // Try as IPv4 address or parse full socket address
-                format!("{addr}:{port}")
-                    .parse()
-                    .map_err(|e| anyhow::anyhow!("Invalid bind address '{}': {}", addr, e))
-            }
-        }
-    }
-}
+use songbird_discovery::anonymous_discovery::{
+    AnonymousDiscoveryBroadcaster, AnonymousDiscoveryListener,
+};
 
 impl SongbirdOrchestrator {
-    /// Detect primary network interface IP address
-    fn detect_primary_ip() -> Option<String> {
-        use std::net::{IpAddr, UdpSocket};
-
-        // Try to detect by creating a UDP socket to a public DNS server
-        // This doesn't actually send data, just determines which interface would be used
-        if let Ok(socket) = UdpSocket::bind("0.0.0.0:0") {
-            if matches!(socket.connect("8.8.8.8:80"), Ok(())) {
-                if let Ok(addr) = socket.local_addr() {
-                    let ip = addr.ip();
-                    // Only return if it's a real IP (not 0.0.0.0 or loopback)
-                    if !ip.is_loopback() && !ip.is_unspecified() {
-                        info!("🌐 Detected primary network IP: {}", ip);
-                        return Some(ip.to_string());
-                    }
-                }
-            }
-        }
-
-        // Fallback: Try to get from network interfaces
-        #[cfg(target_os = "linux")]
-        {
-            use std::process::Command;
-
-            // Try ip command first
-            if let Ok(output) = Command::new("ip").args(["route", "get", "1.1.1.1"]).output() {
-                if let Ok(stdout) = String::from_utf8(output.stdout) {
-                    // Parse output like: "1.1.1.1 via X.X.X.X dev eth0 src Y.Y.Y.Y"
-                    for line in stdout.lines() {
-                        if let Some(src_pos) = line.find(" src ") {
-                            let after_src = &line[src_pos + 5..];
-                            if let Some(ip_str) = after_src.split_whitespace().next() {
-                                if let Ok(ip) = ip_str.parse::<IpAddr>() {
-                                    if !ip.is_loopback() && !ip.is_unspecified() {
-                                        info!("🌐 Detected primary network IP: {}", ip);
-                                        return Some(ip.to_string());
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-
-            // Fallback to hostname -I
-            if let Ok(output) = Command::new("hostname").arg("-I").output() {
-                if let Ok(stdout) = String::from_utf8(output.stdout) {
-                    // Get first non-loopback IP
-                    for ip_str in stdout.split_whitespace() {
-                        if let Ok(ip) = ip_str.parse::<IpAddr>() {
-                            if !ip.is_loopback() && !ip.is_unspecified() {
-                                info!("🌐 Detected primary network IP: {}", ip);
-                                return Some(ip.to_string());
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
-        warn!("⚠️  Could not detect primary network IP, using fallback");
-        None
-    }
-
     /// Create new orchestrator instance
     pub async fn new(config: CanonicalSongbirdConfig) -> Result<Self> {
         let (shutdown_sender, shutdown_signal) = tokio::sync::broadcast::channel(1);
 
         // Print secure-by-default configuration
         info!("🔒 Songbird Orchestrator - Secure by Default");
-        info!("   TLS: {} (failsafe default)", if config.security.tls.enabled { "✅ Enabled" } else { "⚠️  Disabled" });
-        info!("   Discovery: {} ({})", 
-            if config.discovery.enabled { "✅ Enabled" } else { "❌ Disabled" },
-            if config.discovery.anonymous { "anonymous secure" } else { "identity-based" }
+        info!(
+            "   TLS: {} ({})",
+            match config.security.tls.cert_policy {
+                songbird_types::config::consolidated_canonical::security::TlsCertPolicy::ProvidedOnly => "✅ Enabled (provided certs)",
+                songbird_types::config::consolidated_canonical::security::TlsCertPolicy::AutoGenerate => "✅ Enabled (auto-generate)",
+                songbird_types::config::consolidated_canonical::security::TlsCertPolicy::AutoGenerateWithSans => "✅ Enabled (auto + SANs)",
+            },
+            match config.security.security_level {
+                songbird_types::config::consolidated_canonical::security::SecurityLevel::Minimal => "minimal",
+                songbird_types::config::consolidated_canonical::security::SecurityLevel::Standard => "standard",
+                songbird_types::config::consolidated_canonical::security::SecurityLevel::Paranoid => "paranoid (2FA)",
+            }
         );
-        info!("   Federation: {} (trust: {})", 
-            if config.federation.enabled { "✅ Enabled" } else { "❌ Disabled" },
-            if config.federation.trust_escalation { "progressive escalation" } else { "static" }
+        info!(
+            "   Discovery: {} ({})",
+            if config.discovery.mode.is_enabled() {
+                "✅ Enabled"
+            } else {
+                "❌ Disabled"
+            },
+            match config.discovery.mode {
+                songbird_types::config::consolidated_canonical::discovery::DiscoveryMode::Disabled => "disabled",
+                songbird_types::config::consolidated_canonical::discovery::DiscoveryMode::Anonymous => "anonymous secure",
+                songbird_types::config::consolidated_canonical::discovery::DiscoveryMode::CapabilityAware => "capability-aware",
+                songbird_types::config::consolidated_canonical::discovery::DiscoveryMode::FullDisclosure => "full disclosure",
+            }
+        );
+        info!(
+            "   Federation: {} (trust: {})",
+            if config.federation.cluster_name.is_some() {
+                "✅ Enabled"
+            } else {
+                "❌ Disabled"
+            },
+            match config.federation.trust_escalation_policy {
+                songbird_types::config::consolidated_canonical::federation::TrustEscalationPolicy::Disabled => "static",
+                songbird_types::config::consolidated_canonical::federation::TrustEscalationPolicy::CapabilityOnly => "capability escalation",
+                songbird_types::config::consolidated_canonical::federation::TrustEscalationPolicy::Progressive => "progressive escalation",
+            }
         );
         info!("   Trust Model: Zero-trust with progressive escalation");
         info!("   Initial Trust: {} → Escalate on demand", config.federation.initial_trust_level);
@@ -204,7 +99,7 @@ impl SongbirdOrchestrator {
 
         // Initialize service registry (using FederatedServiceRegistry)
         let service_registry = Arc::new(FederatedServiceRegistry::new());
-        
+
         // Initialize Universal Port Authority service registry (Dec 20, 2025)
         let universal_service_registry = Arc::new(crate::service_registry::ServiceRegistry::new());
 
@@ -242,15 +137,20 @@ impl SongbirdOrchestrator {
         };
         let trust_manager = Arc::new(TrustEscalationManager::new(trust_timeouts, None));
         info!("✅ Trust escalation manager initialized");
-        info!("   Timeouts: Anonymous={}s, Capability={}s, Identity={}s, Hardware={}s",
+        info!(
+            "   Timeouts: Anonymous={}s, Capability={}s, Identity={}s, Hardware={}s",
             config.federation.trust_timeouts.anonymous,
             config.federation.trust_timeouts.capability,
             config.federation.trust_timeouts.identity,
-            if config.federation.trust_timeouts.hardware == 0 { "never".to_string() } else { format!("{}s", config.federation.trust_timeouts.hardware) }
+            if config.federation.trust_timeouts.hardware == 0 {
+                "never".to_string()
+            } else {
+                format!("{}s", config.federation.trust_timeouts.hardware)
+            }
         );
 
         // Initialize anonymous discovery listener (if enabled)
-        let discovery_listener = if config.discovery.enabled && config.discovery.anonymous {
+        let discovery_listener = if config.discovery.mode.is_enabled() {
             let listener = Arc::new(AnonymousDiscoveryListener::new(
                 config.discovery.port,
                 60, // 60 second peer timeout
@@ -262,14 +162,17 @@ impl SongbirdOrchestrator {
         };
 
         // Initialize federation (if enabled)
-        let federation_state = Arc::new(FederationState::new());
+        let federation_state = Arc::new(FederationState::new("main".to_string()));
         let federated_service_registry = Arc::new(FederatedServiceRegistry::new());
-        
+
         // ✅ IDENTITY FIX (Dec 20, 2025): Load stable node identity EARLY
         // This ensures self-registration and discovery use the SAME node_id
         let node_identity = crate::node_identity::NodeIdentity::new_or_load(None)?;
-        info!("🆔 Loaded stable node identity: {} ({})", node_identity.node_name, node_identity.node_id);
-        
+        info!(
+            "🆔 Loaded stable node identity: {} ({})",
+            node_identity.node_name, node_identity.node_id
+        );
+
         let (federation_coordinator, federation_config) =
             if SafeEnv::get_bool("SONGBIRD_FEDERATION_ENABLED", false) {
                 info!("🌐 Federation mode enabled");
@@ -277,12 +180,12 @@ impl SongbirdOrchestrator {
                 // Build self registration using STABLE node_id
                 let self_registration = NodeRegistration {
                     node_id: node_identity.node_id.to_string(), // ✅ Use stable identity
-                    node_name: node_identity.node_name.clone(),  // ✅ Use stable name
+                    node_name: node_identity.node_name.clone(), // ✅ Use stable name
                     node_address: format!(
                         "{}:{}",
                         SafeEnv::get_or_default(
                             "SONGBIRD_NODE_ADDRESS",
-                            Self::detect_primary_ip().unwrap_or_else(|| "127.0.0.1".to_string())
+                            network::detect_primary_ip().unwrap_or_else(|| "127.0.0.1".to_string())
                         ),
                         SafeEnv::get_or_default(
                             "SONGBIRD_PORT",
@@ -317,6 +220,9 @@ impl SongbirdOrchestrator {
                     self_registration: Some(self_registration),
                     heartbeat_interval_secs: 30,
                     node_timeout_secs: 60,
+                    rendezvous_url: SafeEnv::get_required("SONGBIRD_RENDEZVOUS_URL").ok(),
+                    discovery_mode: None, // Auto-detect based on BearDog availability
+                    _legacy_test_fields: (),
                 };
 
                 // Register self if we have bootstrap
@@ -377,7 +283,7 @@ impl SongbirdOrchestrator {
             // Create capability-based configuration (simplified to canonical types)
             let mut _security_primal =
                 PrimalConfiguration::new_template("security", "Security Capability Provider");
-            _security_primal.enabled = true;
+            // Security primal enabled implicitly via registration
             _security_primal.endpoint = PrimalEndpoint {
                 primary_url: security_endpoint,
                 use_tls: true,
@@ -464,30 +370,33 @@ impl SongbirdOrchestrator {
             // Re-load node identity (same stable ID) and detect endpoints with actual port
             let mut node_identity = crate::node_identity::NodeIdentity::new_or_load(None)?;
             node_identity.detect_all_endpoints(actual_https_port)?;
-            
+
             info!("🆔 Re-registering self with actual port {}:", actual_https_port);
             info!("   ID: {}", node_identity.node_id);
             info!("   Name: {}", node_identity.node_name);
             info!("   Endpoints: {}", node_identity.endpoints.len());
-            
+
             let updated_self_registration = songbird_network_federation::state::NodeRegistration {
                 node_id: node_identity.node_id.to_string(),
                 node_name: node_identity.node_name.clone(),
-                node_address: format!("https://{}:{}", 
-                    Self::detect_primary_ip().unwrap_or_else(|| "127.0.0.1".to_string()),
+                node_address: format!(
+                    "https://{}:{}",
+                    network::detect_primary_ip().unwrap_or_else(|| "127.0.0.1".to_string()),
                     actual_https_port
                 ),
                 endpoints: Some(
-                    node_identity.endpoints.iter().map(|ep| {
-                        songbird_network_federation::state::TransportEndpointInfo {
+                    node_identity
+                        .endpoints
+                        .iter()
+                        .map(|ep| songbird_network_federation::state::TransportEndpointInfo {
                             interface_type: ep.interface_type.clone(),
                             address: format!("{}:{}", ep.address.ip(), actual_https_port),
                             protocols: ep.protocols.clone(),
                             preference: ep.preference,
                             status: songbird_network_federation::state::EndpointStatus::Active,
                             last_check: chrono::Utc::now(),
-                        }
-                    }).collect()
+                        })
+                        .collect(),
                 ),
                 capabilities: vec!["orchestrator".to_string()],
                 cpu_cores: num_cpus::get(),
@@ -507,29 +416,31 @@ impl SongbirdOrchestrator {
                 joined_at: chrono::Utc::now(),
                 last_heartbeat: chrono::Utc::now(),
             };
-            
+
             info!("📝 Updating self-registration in federation");
             self.federation_state.register_node(updated_self_registration).await;
         }
 
         // Start anonymous discovery (if enabled) with ACTUAL port
-        if self._config.discovery.enabled && self._config.discovery.anonymous {
-            info!("🌐 Starting anonymous discovery with actual HTTPS port {}...", actual_https_port);
-            
+        if self._config.discovery.mode.is_enabled() {
+            info!(
+                "🌐 Starting anonymous discovery with actual HTTPS port {}...",
+                actual_https_port
+            );
+
             // Re-use the SAME node identity (already loaded above)
             let mut node_identity = crate::node_identity::NodeIdentity::new_or_load(None)?;
             node_identity.detect_all_endpoints(actual_https_port)?;
-            
+
             // Start discovery broadcaster (v3.0 with multi-endpoint)
-            let capabilities = vec![
-                "orchestration".to_string(),
-                "federation".to_string(),
-            ];
-            
+            let capabilities = vec!["orchestration".to_string(), "federation".to_string()];
+
             // Convert endpoints to discovery message format
             // CRITICAL FIX (Dec 20, 2025): Include full address (IP:port) instead of just port
             // This allows receivers to properly coalesce multi-interface nodes under one identity
-            let endpoint_messages: Vec<songbird_discovery::anonymous_discovery::TransportEndpointMessage> = node_identity
+            let endpoint_messages: Vec<
+                songbird_discovery::anonymous_discovery::TransportEndpointMessage,
+            > = node_identity
                 .endpoints
                 .iter()
                 .map(|ep| songbird_discovery::anonymous_discovery::TransportEndpointMessage {
@@ -539,12 +450,15 @@ impl SongbirdOrchestrator {
                     preference: ep.preference,
                 })
                 .collect();
-            
-            let broadcast_addrs: Vec<std::net::SocketAddr> = self._config.discovery.broadcast_addresses
+
+            let broadcast_addrs: Vec<std::net::SocketAddr> = self
+                ._config
+                .discovery
+                .broadcast_addresses
                 .iter()
                 .filter_map(|addr| addr.parse().ok())
                 .collect();
-            
+
             let broadcaster = AnonymousDiscoveryBroadcaster::new_v3(
                 node_identity.node_id.to_string(),
                 node_identity.node_name.clone(),
@@ -553,13 +467,13 @@ impl SongbirdOrchestrator {
                 broadcast_addrs,
                 30, // broadcast every 30 seconds
             );
-            
+
             tokio::spawn(async move {
                 if let Err(e) = broadcaster.start_broadcasting().await {
                     error!("❌ Anonymous discovery broadcaster error: {}", e);
                 }
             });
-            
+
             // Start discovery listener
             if let Some(ref listener) = self.discovery_listener {
                 let listener_clone = Arc::clone(listener);
@@ -569,10 +483,12 @@ impl SongbirdOrchestrator {
                     }
                 });
             }
-            
-            info!("✅ Anonymous discovery started (UDP port {}, advertising HTTPS port {})", 
-                self._config.discovery.port, actual_https_port);
-            
+
+            info!(
+                "✅ Anonymous discovery started (UDP port {}, advertising HTTPS port {})",
+                self._config.discovery.port, actual_https_port
+            );
+
             // Start discovery → federation bridge
             self.start_discovery_federation_bridge().await?;
         }
@@ -619,7 +535,7 @@ impl SongbirdOrchestrator {
 
         // Start session TTL cleanup task (Deep Debt Fix - Dec 20, 2025)
         self.start_session_ttl_cleanup().await?;
-        
+
         // Start service registry cleanup task (Universal Port Authority - Dec 20, 2025)
         self.start_service_registry_cleanup();
 
@@ -638,16 +554,16 @@ impl SongbirdOrchestrator {
     }
 
     /// Start HTTP server with federation API
-    /// 
+    ///
     /// Returns the actual port the server bound to (may differ from configured if fallback occurred)
     async fn start_http_server(&self) -> Result<u16> {
         use crate::network::NetworkBindingStrategy;
-        
+
         let port = SafeEnv::get_port(
             "SONGBIRD_PORT",
             songbird_config::defaults::ports::orchestrator_port(),
         );
-        
+
         // 🚀 EVOLUTION: Zero-config intelligent binding
         // Check if manual override exists (backwards compatibility during migration)
         let actual_port = if let Ok(manual_addr) = SafeEnv::get("SONGBIRD_BIND_ADDRESS") {
@@ -655,11 +571,11 @@ impl SongbirdOrchestrator {
             warn!("   Songbird now auto-detects optimal network binding");
             warn!("   Manual override: {}", manual_addr);
             warn!("   Please remove SONGBIRD_BIND_ADDRESS from your configuration");
-            
+
             // Parse manual address for backwards compatibility
             let addr = parse_bind_address(&manual_addr, port)?;
             info!("   Using manual binding: {}", addr);
-            
+
             // Start with manual binding (legacy path)
             http_server::start_http_server(
                 Arc::clone(&self.federation_state),
@@ -673,15 +589,15 @@ impl SongbirdOrchestrator {
             // 🎯 Intelligent auto-detection (zero-config)
             info!("🌐 Auto-detecting optimal network binding (zero-config)...");
             let bind_strategy = NetworkBindingStrategy::auto_detect().await?;
-            
+
             // Get socket address from strategy
             let bind_addr = bind_strategy.primary_socket_addr(port);
-            
+
             info!("✅ Binding to: {}", bind_addr);
             info!("   Strategy: {:?}", bind_strategy);
             info!("   IPv4 support: {}", bind_strategy.supports_ipv4());
             info!("   IPv6 support: {}", bind_strategy.supports_ipv6());
-            
+
             // Convert SocketAddr back to string for existing API
             // TODO: Refactor http_server to accept SocketAddr directly
             let bind_address = bind_addr.ip().to_string();
@@ -695,7 +611,7 @@ impl SongbirdOrchestrator {
             )
             .await?
         };
-        
+
         Ok(actual_port)
     }
 
@@ -739,8 +655,8 @@ impl SongbirdOrchestrator {
     ///
     /// If issues are detected, it provides diagnostics and attempts auto-remediation.
     async fn verify_external_connectivity(&self) -> Result<()> {
-        use crate::network::{ConnectivityTester, ConnectivityRemediator};
-        
+        use crate::network::{ConnectivityRemediator, ConnectivityTester};
+
         info!("🔍 Verifying external connectivity...");
 
         let port = SafeEnv::get_port(
@@ -845,26 +761,26 @@ impl SongbirdOrchestrator {
             let listener_clone = Arc::clone(listener);
             let federation_state = Arc::clone(&self.federation_state);
             let trust_manager = Arc::clone(&self.trust_manager);
-            
+
             tokio::spawn(async move {
                 let mut interval = tokio::time::interval(tokio::time::Duration::from_secs(10));
-                
+
                 info!("🌉 Discovery → Federation bridge started (10s interval)");
-                
+
                 loop {
                     interval.tick().await;
-                    
+
                     // Get all discovered peers
                     let peers = listener_clone.get_peers().await;
-                    
+
                     if !peers.is_empty() {
                         debug!("🔍 Processing {} discovered peers", peers.len());
                     }
-                    
+
                     for peer in peers {
                         // Get HTTPS endpoint
                         let endpoint = peer.https_endpoint();
-                        
+
                         // Extract identity based on protocol version
                         let (node_id, node_name) = if peer.version == "3.0" {
                             // v3.0: Use stable node_id and node_name
@@ -872,57 +788,69 @@ impl SongbirdOrchestrator {
                                 (Some(id), Some(name)) => (id.clone(), name.clone()),
                                 _ => {
                                     warn!("⚠️  Peer claims v3.0 but missing node_id/node_name, falling back to session_id");
-                                    (peer.session_id.clone(), format!("peer-{}", &peer.session_id[..8]))
+                                    (
+                                        peer.session_id.clone(),
+                                        format!("peer-{}", &peer.session_id[..8]),
+                                    )
                                 }
                             }
                         } else {
                             // v2.x: Fall back to session_id (legacy)
                             (peer.session_id.clone(), format!("peer-{}", &peer.session_id[..8]))
                         };
-                        
+
                         // Log discovered peer with proper identity
                         debug!(
                             "🔍 Discovered peer: {} (v{}) at {} (capabilities: {:?})",
                             node_name, peer.version, endpoint, peer.capabilities
                         );
-                        
+
                         // CRITICAL: Verify HTTPS connectivity before registering
                         // This prevents registering unreachable nodes
                         let health_url = format!("{}/health", endpoint);
                         let connectivity_check = tokio::time::timeout(
                             tokio::time::Duration::from_secs(3),
                             async {
-                                reqwest::Client::builder()
+                                // ✅ EVOLVED: Proper error handling instead of unwrap
+                                let client = reqwest::Client::builder()
                                     .danger_accept_invalid_certs(true)
                                     .build()
-                                    .unwrap()
+                                    .map_err(|e| {
+                                        warn!("Failed to build HTTP client for connectivity check: {}", e);
+                                        e
+                                    })?;
+
+                                client
                                     .get(&health_url)
                                     .send()
                                     .await
                             }
                         ).await;
-                        
+
                         match connectivity_check {
                             Ok(Ok(response)) if response.status().is_success() => {
                                 info!(
                                     "✅ Peer '{}' (v{}) is reachable at {}",
                                     node_name, peer.version, endpoint
                                 );
-                                
+
                                 // Establish anonymous trust for verified peer
                                 // Use session_id for trust tracking (for now, will evolve to node_id)
-                                match trust_manager.establish_anonymous(peer.session_id.clone()).await {
+                                match trust_manager
+                                    .establish_anonymous(peer.session_id.clone())
+                                    .await
+                                {
                                     Ok(()) => {
                                         info!(
                                             "✅ Trust established with '{}' (level: Anonymous)",
                                             node_name
                                         );
-                                        
+
                                         // Convert v3.0 endpoints to federation format (if available)
-                                        // 
+                                        //
                                         // CRITICAL FIX (Dec 20, 2025): Use endpoint addresses from the discovery message,
                                         // NOT the UDP source address. This allows proper coalescence of multi-interface nodes.
-                                        // 
+                                        //
                                         // Previous bug: Used peer.address.ip() (UDP source) which meant:
                                         //   - Eastgate's Ethernet (192.168.1.144) appeared as separate node
                                         //   - Eastgate's WiFi (192.168.1.185) appeared as separate node
@@ -941,7 +869,7 @@ impl SongbirdOrchestrator {
                                                 }
                                             }).collect()
                                         });
-                                        
+
                                         // Create node registration with stable identity (v3.0) or session_id (v2.x)
                                         let node_registration = songbird_network_federation::state::NodeRegistration {
                                             node_id,  // ✅ Now uses stable node_id for v3.0!
@@ -957,10 +885,10 @@ impl SongbirdOrchestrator {
                                             joined_at: chrono::Utc::now(),
                                             last_heartbeat: chrono::Utc::now(),
                                         };
-                                        
+
                                         // Register node in federation (only verified nodes)
                                         federation_state.register_node(node_registration).await;
-                                        
+
                                         info!(
                                             "🤝 Peer {} joined federation (verified + anonymous trust)",
                                             &peer.session_id[..8]
@@ -977,13 +905,15 @@ impl SongbirdOrchestrator {
                             Ok(Ok(response)) => {
                                 debug!(
                                     "⚠️  Peer {} returned HTTP {} - not registering",
-                                    &peer.session_id[..8], response.status()
+                                    &peer.session_id[..8],
+                                    response.status()
                                 );
                             }
                             Ok(Err(e)) => {
                                 debug!(
                                     "⚠️  Peer {} unreachable: {} - not registering",
-                                    &peer.session_id[..8], e
+                                    &peer.session_id[..8],
+                                    e
                                 );
                             }
                             Err(_) => {
@@ -996,10 +926,10 @@ impl SongbirdOrchestrator {
                     }
                 }
             });
-            
+
             info!("✅ Discovery → Federation bridge task spawned");
         }
-        
+
         Ok(())
     }
 
@@ -1017,36 +947,36 @@ impl SongbirdOrchestrator {
     /// - Self-healing federation state
     async fn start_session_ttl_cleanup(&self) -> Result<()> {
         let federation_state = Arc::clone(&self.federation_state);
-        
+
         tokio::spawn(async move {
             let mut interval = tokio::time::interval(tokio::time::Duration::from_secs(300)); // 5 minutes
             let ttl_secs = 600; // 10 minutes (2x heartbeat interval)
-            
+
             info!("🧹 Session TTL cleanup task started (interval: 5min, TTL: 10min)");
-            
+
             loop {
                 interval.tick().await;
-                
+
                 let removed = federation_state.cleanup_stale_nodes(ttl_secs).await;
-                
+
                 if removed > 0 {
                     info!("🧹 TTL cleanup: Removed {} stale sessions", removed);
                 }
             }
         });
-        
+
         info!("✅ Session TTL cleanup task spawned");
         Ok(())
     }
-    
+
     /// Start service registry cleanup task (Universal Port Authority)
     ///
     /// Cleans up stale registered services that have missed heartbeats.
     fn start_service_registry_cleanup(&self) {
         let registry = Arc::clone(&self.service_registry);
-        
+
         crate::service_registry::spawn_cleanup_task((*registry).clone(), 60); // Clean every minute
-        
+
         info!("✅ Service registry cleanup task started");
     }
 
@@ -1318,55 +1248,7 @@ impl SongbirdOrchestrator {
     }
 }
 
-/// Orchestrator status information
-#[derive(Debug, Clone)]
-pub struct OrchestratorStatus {
-    pub gaming_active: bool,
-    pub federation_connected: bool,
-    pub active_sessions: u32,
-    pub total_players: u32,
-}
-
-/// Health check report for all orchestrator components
-#[derive(Debug, Clone)]
-pub struct HealthCheckReport {
-    pub gaming_healthy: bool,
-    pub federation_healthy: bool,
-    pub observability_healthy: bool,
-    pub security_healthy: bool,
-    pub overall_healthy: bool,
-    pub timestamp: std::time::SystemTime,
-}
-
-/// Run health check on the orchestrator
-pub async fn run_health_check(orchestrator: &SongbirdOrchestrator) -> Result<()> {
-    let status = orchestrator.get_status().await?;
-    info!("Health check completed: {:?}", status);
-    Ok(())
-}
-
-/// Start the orchestrator with configuration
-pub async fn start_orchestrator(config: CanonicalSongbirdConfig) -> Result<()> {
-    let mut orchestrator = SongbirdOrchestrator::new(config).await?;
-    orchestrator.start().await?;
-
-    // Keep running until interrupted
-    tokio::signal::ctrl_c().await?;
-    orchestrator.stop().await?;
-
-    Ok(())
-}
-
-/// Simple orchestrator wrapper
-pub struct Orchestrator {
-    _config: CanonicalSongbirdConfig,
-}
-
-impl Orchestrator {
-    #[must_use]
-    pub fn new(config: CanonicalSongbirdConfig) -> Self {
-        Self {
-            _config: config,
-        }
-    }
-}
+// Status, health check, and startup functions are now in their respective modules:
+// - health::{OrchestratorStatus, HealthCheckReport, run_health_check}
+// - startup::{start_orchestrator, Orchestrator}
+// They are re-exported at the top of this module for backwards compatibility.

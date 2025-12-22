@@ -399,7 +399,7 @@ mod tests {
     }
 
     fn create_test_router() -> CapabilityRouter {
-        let federation_state = Arc::new(FederationState::new());
+        let federation_state = Arc::new(FederationState::new("default".to_string()));
         let service_registry = Arc::new(FederatedServiceRegistry::new());
         CapabilityRouter::new(federation_state, service_registry)
     }

@@ -97,8 +97,7 @@ async fn test_discover_services_empty_response() -> SongbirdResult<()> {
 
     // ASSERT: Should return OK with empty list (graceful degradation)
     assert!(result.is_ok());
-    let services = result
-        .ok_or_else(|| SongbirdError::configuration("Failed to discover services".to_string()))?;
+    let services = result?;
     assert_eq!(services.len(), 0, "Should return empty list when no services found");
     Ok(())
 }
@@ -120,8 +119,7 @@ async fn test_discover_services_network_timeout() -> SongbirdResult<()> {
 
     // ASSERT: Should handle timeout gracefully
     assert!(result.is_ok(), "Discovery should not panic on timeout");
-    let services = result
-        .ok_or_else(|| SongbirdError::configuration("Failed to discover services".to_string()))?;
+    let services = result?;
     assert_eq!(services.len(), 0, "Timeout should result in no discovered services");
     Ok(())
 }
@@ -279,8 +277,7 @@ async fn test_discover_services_graceful_failure_handling() -> SongbirdResult<()
 
     // ASSERT: Should succeed with empty list (all endpoints failed gracefully)
     assert!(result.is_ok(), "Discovery should handle all failures gracefully");
-    let services = result
-        .ok_or_else(|| SongbirdError::configuration("Failed to discover services".to_string()))?;
+    let services = result?;
     assert_eq!(services.len(), 0, "No services expected when all endpoints fail");
     Ok(())
 }
