@@ -12,6 +12,9 @@ pub mod qr_code;
 #[cfg(feature = "bluetooth")]
 pub mod bluetooth;
 
+#[cfg(feature = "bluetooth-pure")]
+pub mod bluetooth_pure;
+
 // Mock implementation for testing
 pub mod mock;
 pub use mock::MockPhysicalChannel;

@@ -87,7 +87,7 @@ pub use device::{Device, DeviceInfo, Address};
 pub use transport::usb::UsbTransport;
 
 #[cfg(feature = "uart")]
-pub use transport::uart::UartTransport;
+pub use transport::UartTransport;
 
 /// Bluetooth LE stack version
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");

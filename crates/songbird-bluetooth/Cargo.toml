@@ -61,6 +61,7 @@ serde = ["dep:serde", "uuid/serde"]
 
 # Development features
 test-utils = []
+serialport = ["dep:serialport"]
 
 [lib]
 # Deny unsafe code by default - we're building safe, fast Rust

@@ -15,6 +15,9 @@ pub mod usb;
 #[cfg(feature = "uart")]
 pub mod uart;
 
+#[cfg(feature = "uart")]
+pub use uart::UartTransport;
+
 /// Transport type identifier
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum TransportType {
