@@ -1,0 +1,91 @@
+[package]
+name = "songbird-bluetooth"
+version = "0.1.0"
+edition = "2021"
+license = "MIT OR Apache-2.0"
+authors = ["ecoPrimals Team"]
+description = "Pure Rust Bluetooth LE stack for Songbird - Universal comms with zero system dependencies"
+repository = "https://github.com/ecoPrimals/songbird"
+keywords = ["bluetooth", "ble", "no-std", "embedded", "sovereignty"]
+categories = ["network-programming", "embedded", "no-std"]
+
+[dependencies]
+# Pure Rust BLE stack (Embassy project)
+trouble-host = { version = "0.5", default-features = false, features = ["gatt", "central", "peripheral"] }
+bt-hci = "0.6"
+
+# Transport layers
+rusb = { version = "0.9", optional = true }           # USB transport
+serialport = { version = "4.5", optional = true }      # UART transport
+
+# Async runtime (Tokio for desktop, Embassy for embedded)
+tokio = { version = "1", features = ["sync", "time", "macros"] }
+
+# Error handling (modern, zero-cost)
+thiserror = "1.0"
+anyhow = "1.0"
+
+# Serialization
+serde = { version = "1.0", features = ["derive"], optional = true }
+
+# Logging
+tracing = "0.1"
+
+# Utilities
+uuid = { version = "1.6", features = ["v4"] }
+bytes = "1.5"
+futures = "0.3"
+
+# Zero-copy optimizations
+zerocopy = { version = "0.7", features = ["derive"] }
+async-trait.workspace = true
+
+[dev-dependencies]
+tokio = { version = "1", features = ["full", "test-util"] }
+tokio-test = "0.4"
+criterion = "0.5"
+proptest = "1.4"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+async-trait.workspace = true
+rand.workspace = true
+
+[features]
+default = ["usb"]
+
+# Transport layers
+usb = ["rusb"]
+uart = ["serialport"]
+
+# Optional features
+serde = ["dep:serde", "uuid/serde"]
+
+# Development features
+test-utils = []
+
+[lib]
+# Deny unsafe code by default - we're building safe, fast Rust
+# Any unsafe MUST be documented with SAFETY comments
+doctest = true
+
+# Benchmarks (to be added later)
+# [[bench]]
+# name = "bluetooth_benchmarks"
+# harness = false
+# required-features = ["tokio-runtime"]
+
+[lints.rust]
+unsafe_code = "forbid"
+missing_docs = "warn"
+unused_must_use = "deny"
+
+[lints.clippy]
+all = "warn"
+pedantic = "warn"
+nursery = "warn"
+# Zero-cost abstractions
+unnecessary_wraps = "warn"
+redundant_clone = "warn"
+# Concurrency
+missing_panics_doc = "warn"
+# Modern patterns
+manual_let_else = "warn"
