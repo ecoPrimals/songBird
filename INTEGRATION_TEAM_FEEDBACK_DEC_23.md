@@ -4,9 +4,9 @@
 
 ---
 
-## 🐦 SONGBIRD - System Dependency Issue
+## 🐦 SONGBIRD - System Dependency Issue ✅ RESOLVED
 
-### Current Status: ✅ Builds (with system dep)
+### Current Status: ✅ Pure Rust (zero system deps!)
 
 **Issue**: Requires `libdbus-1-dev` system package
 
@@ -82,6 +82,50 @@ bluetooth-genesis = ["btleplug"]  # Enable only when needed
 **Priority**: 🟡 Medium (Songbird builds, but sovereignty improvement)
 
 **Note**: Bluetooth genesis is currently a **TODO stub** (see audit report), so system dep isn't blocking production yet.
+
+---
+
+## ✅ RESOLUTION IMPLEMENTED
+
+**Change Made**: Removed `bluetooth` from default features
+
+**File**: `crates/songbird-genesis/Cargo.toml`
+```diff
+[features]
+- default = ["solokey", "qr", "bluetooth"]
++ default = ["solokey", "qr"]  # Bluetooth opt-in for zero system deps
+bluetooth = ["btleplug"]  # Opt-in: Linux requires libdbus-1-dev
+```
+
+**Verification**:
+```bash
+✅ cargo tree | grep dbus     # No results!
+✅ cargo tree | grep btleplug # No results!
+✅ cargo build --release      # Builds without system deps!
+```
+
+**Result**:
+- ✅ **Zero system dependencies** in default build
+- ✅ **100% Pure Rust** sovereignty maintained
+- ✅ Builds on all platforms without `apt install`
+- ✅ Bluetooth still available via `--features bluetooth`
+- ✅ Windows/macOS unaffected (already pure Rust)
+
+**Usage**:
+```bash
+# Default build (no system deps) - RECOMMENDED
+cargo build --release
+
+# With Bluetooth (Linux needs libdbus-1-dev)
+cargo build --release --features bluetooth
+sudo apt install libdbus-1-dev  # Only if using bluetooth feature
+```
+
+**Documentation**: See `PURE_RUST_BLUETOOTH_EVOLUTION.md` for:
+- Full technical analysis
+- 4 evolution options evaluated
+- Long-term pure Rust roadmap
+- Platform-specific considerations
 
 ### Immediate Workaround
 
