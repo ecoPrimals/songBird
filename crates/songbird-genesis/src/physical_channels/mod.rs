@@ -12,7 +12,7 @@ pub mod qr_code;
 #[cfg(feature = "bluetooth")]
 pub mod bluetooth;
 
-#[cfg(feature = "bluetooth-pure")]
+#[cfg(feature = "pure-bluetooth")]
 pub mod bluetooth_pure;
 
 // Mock implementation for testing
@@ -36,7 +36,6 @@ pub trait PhysicalChannelProvider: Send + Sync {
 }
 
 /// Physical channel enum for genesis
-#[derive(Debug)]
 pub enum PhysicalChannel {
     /// Hardware security key (SoloKey, YubiKey, etc.)
     #[cfg(feature = "solokey")]
@@ -46,9 +45,13 @@ pub enum PhysicalChannel {
     #[cfg(feature = "qr")]
     QrCode(qr_code::QrCodeChannel),
 
-    /// Bluetooth LE pairing
+    /// Bluetooth LE pairing (legacy btleplug)
     #[cfg(feature = "bluetooth")]
     Bluetooth(bluetooth::BluetoothChannel),
+
+    /// Pure Rust Bluetooth LE pairing
+    #[cfg(feature = "pure-bluetooth")]
+    BluetoothPure(bluetooth_pure::PureRustBluetoothChannel),
 
     /// Mock channel for testing
     Mock(MockPhysicalChannel),
@@ -67,6 +70,9 @@ impl PhysicalChannelProvider for PhysicalChannel {
             #[cfg(feature = "bluetooth")]
             Self::Bluetooth(ch) => ch.verify_proximity().await,
 
+            #[cfg(feature = "pure-bluetooth")]
+            Self::BluetoothPure(ch) => ch.verify_proximity().await,
+
             Self::Mock(ch) => ch.verify_proximity().await,
         }
     }
@@ -81,6 +87,9 @@ impl PhysicalChannelProvider for PhysicalChannel {
 
             #[cfg(feature = "bluetooth")]
             Self::Bluetooth(ch) => ch.secure_exchange().await,
+
+            #[cfg(feature = "pure-bluetooth")]
+            Self::BluetoothPure(ch) => ch.secure_exchange().await,
 
             Self::Mock(ch) => ch.secure_exchange().await,
         }
@@ -97,6 +106,9 @@ impl PhysicalChannelProvider for PhysicalChannel {
             #[cfg(feature = "bluetooth")]
             Self::Bluetooth(ch) => ch.trust_level(),
 
+            #[cfg(feature = "pure-bluetooth")]
+            Self::BluetoothPure(ch) => ch.trust_level(),
+
             Self::Mock(ch) => ch.trust_level(),
         }
     }
@@ -111,6 +123,9 @@ impl PhysicalChannelProvider for PhysicalChannel {
 
             #[cfg(feature = "bluetooth")]
             Self::Bluetooth(ch) => ch.channel_type(),
+
+            #[cfg(feature = "pure-bluetooth")]
+            Self::BluetoothPure(ch) => ch.channel_type(),
 
             Self::Mock(ch) => ch.channel_type(),
         }

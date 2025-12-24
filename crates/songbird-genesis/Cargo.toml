@@ -41,18 +41,18 @@ chrono = { version = "0.4", features = ["serde"] }
 # UUID
 uuid = { version = "1.6", features = ["v4", "serde"] }
 
-# Internal dependencies (will add as we build)
-# songbird-types = { path = "../songbird-types" }
-# songbird-network-federation = { path = "../songbird-network-federation" }
+# Internal dependencies
+songbird-bluetooth = { path = "../songbird-bluetooth", optional = true, features = ["usb"] }
 
 [dev-dependencies]
 tokio-test = "0.4"
 mockall = "0.12"
 
 [features]
-default = ["solokey", "qr"]  # Bluetooth opt-in for zero system deps
+default = ["solokey", "qr", "pure-bluetooth"]  # Pure Rust - zero system deps!
 solokey = ["webauthn-rs"]
 qr = ["qrcode", "image", "rqrr"]
-bluetooth = ["btleplug"]  # Opt-in: Linux requires libdbus-1-dev
+bluetooth = ["btleplug"]  # Legacy: Linux requires libdbus-1-dev
+pure-bluetooth = ["songbird-bluetooth"]  # Pure Rust BLE - universal!
 nfc = []  # Future: NFC support
 
