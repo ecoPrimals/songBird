@@ -1,7 +1,25 @@
 # 📊 Songbird Status - December 24, 2025
 
-**Overall**: 🎉 **PRODUCTION READY** - Universal Coordinator v0.1.0!  
-**Latest**: Universal Coordinator **PRODUCTION READY** ✅
+**Overall**: 🎉 **PRODUCTION READY** - Universal Coordinator + Lineage Relay!  
+**Latest**: 🐻 BearDog v0.9.0 Available - Integration Ready! ✅
+
+---
+
+## 🆕 BREAKING: BearDog v0.9.0 Released - Integration Ready!
+
+### Status: 🟢 **Available for Integration**
+
+**BearDog v0.9.0-integration-dec23**:
+- 🟢 Local binary available: `../phase2/phase1bins/beardog-v0.9.0-dec23`
+- 🟢 GitHub release: https://github.com/ecoPrimals/bearDog/releases/tag/v0.9.0-integration-dec23
+- 🟢 Songbird lineage relay ready (v0.1.0)
+- 🟢 Complete integration guide: [BEARDOG_V0.9.0_INTEGRATION_GUIDE.md](BEARDOG_V0.9.0_INTEGRATION_GUIDE.md)
+
+**Integration Timeline**:
+- Day 1: Local testing
+- Day 2-3: Songbird integration
+- Day 4-5: End-to-end testing
+- Week 2: Staging deployment
 
 ---
 
@@ -103,11 +121,17 @@ let services = gatt.discover_services().await?; // Ready for hardware
 - **TLS Auto-Configuration**: Automatic certificate generation
 - **Physical Genesis Bootstrap**: Complete specification + BLE channel ready
 
-#### Universal Coordinator (NEW!)
+#### Universal Coordinator (NEW! v0.1.0)
 - **Zero Hardcoded Primals**: Capability-based discovery (Security, Compute, Storage, AI)
 - **O(N) Coordination**: Single hub instead of N² connections
 - **Infant Discovery**: Start with 0 knowledge, discover at runtime
 - **Production Ready**: 100% test coverage, full documentation
+
+#### Lineage Relay (NEW! v0.1.0)
+- **Genetic Lineage**: Ancestors relay for descendants (no TURN servers)
+- **BirdSong Protocol**: Family-only decryption broadcasts
+- **Privacy-Preserving**: Masked relay by default
+- **Integration Ready**: Waiting for BearDog v0.9.0 ← **NOW AVAILABLE!**
 
 #### Pure Rust Bluetooth
 - **Complete BLE Stack**: HCI → L2CAP → ATT → GATT all implemented
@@ -126,7 +150,8 @@ let services = gatt.discover_services().await?; // Ready for hardware
 ## 📈 Code Quality Metrics
 
 ### Test Coverage
-- **Total Tests**: 552 passing (491 core + 52 Bluetooth + 9 Coordination)
+- **Total Tests**: 570 passing (491 core + 52 Bluetooth + 9 Coordination + 18 Lineage Relay)
+- **Lineage Relay**: 14 unit + 4 integration (100% coverage)
 - **Coordination Tests**: 6 primal-coordination + 3 compute-bridge (100% coverage)
 - **BLE Tests**: 41 unit/integration + 11 Genesis
 - **Test Types**: Unit, integration, doc, E2E, chaos
