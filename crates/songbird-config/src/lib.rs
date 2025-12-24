@@ -205,3 +205,6 @@ impl Default for PerformanceConfig {
 #[cfg(test)]
 #[path = "lib_tests.rs"]
 mod lib_tests;
+
+// Test helpers exposed for both unit and integration tests
+pub mod test_helpers;

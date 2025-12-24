@@ -129,13 +129,19 @@ fn test_self_aware_config_creation() {
 
 #[test]
 fn test_self_aware_config_development() {
+    // Acquire lock to prevent concurrent env var modifications
+    use songbird_config::test_helpers::EnvironmentLock;
+    let _lock = EnvironmentLock::new();
+
     // Clear production environment indicators
     let _k8s = std::env::var("KUBERNETES_SERVICE_HOST");
     let _docker = std::env::var("DOCKER_HOST");
     let _prod = std::env::var("PRODUCTION");
+    let _ecs = std::env::var("ECS_CONTAINER_METADATA_URI");
     std::env::remove_var("KUBERNETES_SERVICE_HOST");
     std::env::remove_var("DOCKER_HOST");
     std::env::remove_var("PRODUCTION");
+    std::env::remove_var("ECS_CONTAINER_METADATA_URI");
 
     std::env::set_var("SONGBIRD_ENVIRONMENT", "development");
     let config = SelfAwareConfig::from_environment();
@@ -149,6 +155,9 @@ fn test_self_aware_config_development() {
     }
     if let Ok(v) = _docker {
         std::env::set_var("DOCKER_HOST", v);
+    }
+    if let Ok(v) = _ecs {
+        std::env::set_var("ECS_CONTAINER_METADATA_URI", v);
     }
     if let Ok(v) = _prod {
         std::env::set_var("PRODUCTION", v);
