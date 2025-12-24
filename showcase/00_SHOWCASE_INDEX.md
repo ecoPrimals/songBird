@@ -124,9 +124,45 @@ Single Tower    Multi-Tower        + Toadstool       + Protocol Escalation
 
 ---
 
+### 15. **Songbird + BearDog P2P Backbone** (`15-songbird-beardog-backbone/`) 🆕 ⭐
+**Status:** ✅ Complete (Software)  
+**Description:** **FLAGSHIP DEMO** - The foundation of sovereign interprimal communication
+
+**Quick Start:** `QUICK_START.sh` (Interactive menu)
+
+**What It Shows:**
+- 🧬 Genesis ceremony with cryptographic lineage
+- 🎵 BirdSong: Privacy-preserving discovery (family-only decryption)
+- 🔄 Lineage relay: NAT traversal without TURN servers
+- 🍄🦡🐿️ Multi-primal coordination (Toadstool, NestGate, Squirrel)
+- 🔐 Hardware root of trust (SoloKey integration)
+- 🎯 Full end-to-end integration test
+
+**Key Innovation:** Replace infrastructure (TURN servers) with cryptography (genetic lineage)
+
+**Demos:**
+1. `01-genesis-ceremony.sh` - How nodes are born
+2. `02-birdsong-broadcast.sh` - Encrypted family-only broadcasts
+3. `03-lineage-relay.sh` - Ancestors relay for descendants
+4. `04-multi-primal.sh` - Ecosystem working together
+5. `05-hardware-genesis.sh` - Hardware-backed identity
+6. `06-full-integration.sh` - Complete scenario (10 tests)
+
+**Architecture:**
+- **Songbird:** Universal coordinator (networking, discovery, relay sessions)
+- **BearDog:** Genetic cryptography (lineage, authorization, encryption)
+- **Other Primals:** Specialized functions (compute, storage, AI)
+
+**Production Status:**
+- ✅ Songbird lineage relay: v0.1.0 (complete)
+- ✅ BearDog integration: v0.9.0 (lineage graph ready)
+- ⏳ BearDog Phase 2-4: BirdSong encryption, relay auth, hardware (in progress)
+
+---
+
 ## 🔮 Coming Soon
 
-### 5. **Albatross Multiplex** (Planned) 🦅 🆕
+### 5. **Albatross Multiplex** (Completed) 🦅
 **tarpc at Full Saturation**: Performance benchmarks with multiplexing
 
 **Quick Start:** `QUICK_START.md` (5-minute benchmark)
@@ -219,7 +255,7 @@ brew install curl jq
 
 ---
 
-**Status:** ✅ 4 showcases ready, 3 more planned  
-**Latest:** Multi-Protocol Federation (04) - December 17, 2025  
-**Next:** BearDog Integration (05)
+**Status:** ✅ 15 showcases ready, ecosystem demonstrations complete  
+**Latest:** Songbird + BearDog P2P Backbone (15) - December 24, 2025  
+**Flagship:** Inter-Primal Backbone demonstrating genetic lineage relay
 
