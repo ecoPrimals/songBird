@@ -9,15 +9,34 @@
 
 ## 🎯 What This Showcase Does
 
-**Live, validatable, reproducible integration testing** between Songbird and BearDog v0.9.2.
+**Live, validatable, reproducible integration testing** between Songbird and BearDog.
 
 **No mocks. Real crypto. Real gaps found and FIXED!**
 
-### 🎉 Evolution Complete
+### 🎉 Foundation Complete (v0.9.2)
 
 - **v0.9.0:** Privacy gap found → Fixed in 3 hours → v0.9.1
 - **v0.9.1:** Key derivation bug found → Fixed in 30 minutes → v0.9.2
 - **v0.9.2:** ALL TESTS PASS! ✅ (100% success rate)
+
+### 🚀 Complete Roadmap
+
+**See [SHOWCASE_ROADMAP.md](./SHOWCASE_ROADMAP.md) for the complete plan:**
+
+**Phase 1: Songbird Federation** (Next)
+- BirdSong federation with encrypted entry
+- BTSP secure tunnels
+- VPN-free P2P backbone
+- Zero-trust genetic NAT solution
+
+**Phase 2: BearDog Security** (Future)
+- Human entropy seeding (hardware roots)
+- Entropy hierarchy & key derivation
+
+**Phase 3: Integrated Meshes** (Future)
+- Secure automated meshes
+- Human-owned meshes
+- Hybrid mesh interactions
 
 ---
 
