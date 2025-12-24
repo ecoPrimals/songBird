@@ -42,6 +42,9 @@ members = [
     # 🦅 ALBATROSS BENCHMARKS
     "showcase/05-albatross-multiplex/benchmark",
     "showcase/05-albatross-multiplex/tarpc-servers", "rendezvous", "crates/songbird-bluetooth", "crates/songbird-primal-coordination",
+    
+    # 🧬 LINEAGE RELAY - Evolution beyond NAT/STUN/TURN
+    "crates/songbird-lineage-relay",
 ]
 
 [workspace.package]
