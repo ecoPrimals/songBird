@@ -1,0 +1,29 @@
+🔑 BearDog Key Derivation
+========================
+
+📥 Loading master key: node-b-child-1766593815
+✅ Master key loaded
+   Algorithm: ed25519
+   HSM: BearDog Native Software HSM
+   Generation: 1
+
+🔐 Deriving new key...
+   Purpose: grandchild
+
+✅ Key derived successfully!
+
+📋 Derived Key Details:
+   ID: node-c-grandchild-1766593815
+   Algorithm: ed25519
+   HSM: BearDog Native Software HSM
+   Generation: 2 (derived from Gen 1)
+   Parent: node-b-child-1766593815
+   Status: Active
+
+📜 Receipt: receipts/receipt-key-derive-20251224-163015-337.json
+   Receipt ID: de0c06b3-b954-4849-8ada-3c105c19e156
+
+💡 Next steps:
+   • Encrypt: beardog encrypt --key node-c-grandchild-1766593815 --input data.txt --output data.enc
+   • View info: beardog key info --key-id node-c-grandchild-1766593815
+   • View lineage: beardog key lineage --key-id node-c-grandchild-1766593815

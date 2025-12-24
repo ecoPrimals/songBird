@@ -1,0 +1,27 @@
+2025-12-24T16:31:56.081738Z  INFO 🎵 BirdSong Lineage Decryption
+=================================
+
+📋 Configuration:
+   Input: /home/eastgate/Development/ecoPrimals/songbird/showcase/15-songbird-beardog-backbone/receipts/20251224_113155_v092_verification/encrypted.birdsong
+   Key ID: node-a-root-1766593915
+
+🔍 Looking up lineage proof for node-a-root-1766593915...
+📜 Lineage proof:
+   Node ID: node-a-root-1766593915
+   Root ID: node-a-root-1766593915
+   Path depth: 0
+
+🔑 Loading root key node-a-root-1766593915...
+2025-12-24T16:31:56.081795Z  INFO 🔑 Initializing LineageKeyDerivation
+2025-12-24T16:31:56.081797Z  INFO 🎵 Initializing BirdSongEncryption
+🔓 Attempting to decrypt...
+✅ Decrypted successfully!
+
+📄 Decrypted Message:
+RELAY_REQUEST: Node C needs relay to reach peer at 203.0.113.10:8080
+
+🔐 Privacy verified:
+   You are in lineage 'node-a-root-1766593915'
+   Your depth: 0
+   Allowed range: 0-1
+
