@@ -86,6 +86,7 @@ pub mod error;
 pub mod relay;
 pub mod session;
 pub mod types;
+pub mod universal_coordinator_adapter;
 
 // Mock BearDog implementations for testing
 pub mod beardog;
@@ -97,4 +98,5 @@ pub use error::{LineageRelayError, Result};
 pub use relay::{RelayDiscovery, RelaySession};
 pub use session::ConnectionSession;
 pub use types::*;
+pub use universal_coordinator_adapter::{LineageRelayAdapter, LineageRelayPrimalConnection};
 
