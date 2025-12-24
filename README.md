@@ -11,14 +11,15 @@
 ## 🎯 What is Songbird?
 
 Songbird is a **production-ready federated ML orchestration system** that enables:
-- 🔐 **Sovereign Computing**: Self-hosted, capability-based architecture
+- 🌳 **Universal Coordinator**: Zero hardcoded knowledge, capability-based discovery
+- 🔐 **Sovereign Computing**: Self-hosted, no vendor lock-in
 - 🌐 **True P2P Networking**: VPN-free encrypted communication via BTSP & BirdSong
 - 🔑 **Physical Genesis**: Secure node bootstrap with hardware attestation  
 - 📡 **Pure Rust Bluetooth**: Universal comms with zero system dependencies
 - 🎓 **Education First**: Built for research and learning environments
-- 🐻 **ecoPrimals Integration**: Works with BearDog (security) & Toadstool (compute)
+- 🐻 **Primal Agnostic**: Works with ANY primal providing security, compute, storage, or AI
 
-**Current Status**: 🎉 **PRODUCTION READY** | 🔐 **Genesis Complete** | 📡 **Pure Rust BLE Stack COMPLETE** ✅
+**Current Status**: 🎉 **PRODUCTION READY** | 🔐 **Genesis Complete** | 📡 **Pure Rust BLE Stack COMPLETE** | 🌳 **Universal Coordinator COMPLETE** ✅
 
 ---
 
@@ -73,12 +74,20 @@ cargo run --release --bin songbird-orchestrator
 - Cryptographic lineage from birth
 - *"Never let a bird be alone in the dark forest"*
 
-**Pure Rust Bluetooth Stack** 🆕 ✅:
+**Pure Rust Bluetooth Stack** ✅:
 - Complete BLE protocol stack (3,340 lines)
 - Zero system dependencies (works anywhere!)
 - Universal platform support (Linux, Windows, macOS, embedded)
 - Genesis-integrated physical channel
 - Just needs a $10 USB dongle!
+
+**Universal Coordinator** 🆕 ✅:
+- Zero hardcoded primal names (BearDog, Toadstool, etc.)
+- Capability-based discovery (request "security" not "beardog")
+- O(N) coordination instead of O(N²) hardcoded connections
+- Infant discovery: starts with 0 knowledge, learns at runtime
+- Works with ANY primal providing ANY capability
+- 2,627 lines of pure capability-based coordination
 
 **Federation**:
 - Multi-federation support
