@@ -8,6 +8,7 @@ use crate::{
     device::{Address, Device, DeviceInfo},
     error::{BluetoothError, Result},
     gatt::GattClient,
+    l2cap::{L2capChannel, L2capManager},
     transport::Transport,
 };
 use std::collections::HashMap;
@@ -81,6 +82,7 @@ pub struct BluetoothHost<T: Transport> {
     config: HostConfig,
     connections: Arc<RwLock<HashMap<Address, Arc<Device>>>>,
     scanning: Arc<Mutex<bool>>,
+    l2cap_manager: Arc<L2capManager>,
 }
 
 impl<T: Transport + 'static> BluetoothHost<T> {
@@ -116,6 +118,7 @@ impl<T: Transport + 'static> BluetoothHost<T> {
             config,
             connections: Arc::new(RwLock::new(HashMap::new())),
             scanning: Arc::new(Mutex::new(false)),
+            l2cap_manager: Arc::new(L2capManager::new()),
         })
     }
 
@@ -533,6 +536,9 @@ impl<T: Transport + 'static> BluetoothHost<T> {
         // Wait for disconnection complete
         self.wait_for_disconnection_complete(handle).await?;
 
+        // Remove L2CAP channel
+        self.l2cap_manager.remove_channel(handle).await;
+
         // Remove from connections map
         let mut connections = self.connections.write().await;
         connections.remove(&address);
@@ -616,13 +622,23 @@ impl<T: Transport + 'static> BluetoothHost<T> {
     /// # Errors
     ///
     /// Returns error if device not connected
-    pub async fn gatt_client(&self, address: Address) -> Result<GattClient> {
+    pub async fn gatt_client(&self, address: Address) -> Result<GattClient<T>> {
         let connections = self.connections.read().await;
         let device = connections
             .get(&address)
             .ok_or_else(|| BluetoothError::device(format!("Device not connected: {address}")))?;
 
-        Ok(GattClient::new(Arc::clone(device)))
+        // Create or get L2CAP ATT channel for this connection
+        let l2cap_channel = match self.l2cap_manager.get_att_channel(device.handle()).await {
+            Ok(channel) => channel,
+            Err(_) => self.l2cap_manager.create_att_channel(device.handle()).await?,
+        };
+
+        Ok(GattClient::new(
+            Arc::clone(device),
+            l2cap_channel,
+            Arc::clone(&self.transport),
+        ))
     }
 
     /// Get number of active connections

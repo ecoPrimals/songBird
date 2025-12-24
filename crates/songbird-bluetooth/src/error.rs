@@ -53,6 +53,13 @@ pub enum BluetoothError {
     /// Not supported on this platform or hardware
     #[error("Not supported: {0}")]
     NotSupported(String),
+
+    /// Invalid data format
+    #[error("Invalid data: {context}")]
+    InvalidData {
+        /// Error context
+        context: String,
+    },
 }
 
 /// Transport-specific errors

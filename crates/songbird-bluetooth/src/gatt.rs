@@ -3,9 +3,15 @@
 //! Provides high-level API for GATT service discovery and characteristic access.
 //! Uses ATT (Attribute Protocol) over L2CAP channel 0x0004.
 
-use crate::{device::Device, error::{BluetoothError, Result}};
+use crate::{
+    device::Device,
+    error::{BluetoothError, Result},
+    l2cap::L2capChannel,
+    transport::Transport,
+};
 use std::sync::Arc;
 use std::time::Duration;
+use tokio::sync::Mutex;
 use tokio::time::timeout;
 use tracing::{debug, trace, warn};
 use uuid::Uuid;
@@ -124,19 +130,67 @@ mod att_uuid {
     pub const CLIENT_CHAR_CONFIG: u16 = 0x2902;
 }
 
-pub struct GattClient {
+pub struct GattClient<T: Transport> {
     device: Arc<Device>,
     services: Vec<Service>,
+    l2cap_channel: L2capChannel,
+    transport: Arc<Mutex<T>>,
+    timeout_duration: Duration,
 }
 
-impl GattClient {
+impl<T: Transport + 'static> GattClient<T> {
     /// Create new GATT client
     #[must_use]
-    pub fn new(device: Arc<Device>) -> Self {
+    pub fn new(
+        device: Arc<Device>,
+        l2cap_channel: L2capChannel,
+        transport: Arc<Mutex<T>>,
+    ) -> Self {
+        trace!("Creating GATT client for device {}", device.address());
         Self {
             device,
             services: Vec::new(),
+            l2cap_channel,
+            transport,
+            timeout_duration: Duration::from_secs(5),
         }
+    }
+
+    /// Set GATT operation timeout
+    #[must_use]
+    pub fn with_timeout(mut self, duration: Duration) -> Self {
+        self.timeout_duration = duration;
+        self
+    }
+
+    /// Send ATT request and receive response
+    async fn send_att_request(&mut self, request: &[u8]) -> Result<Vec<u8>> {
+        trace!("Sending ATT request: {} bytes", request.len());
+
+        // Build L2CAP packet
+        let acl_packet = self.l2cap_channel.build_acl_packet(request);
+
+        // Send via transport
+        {
+            let mut transport = self.transport.lock().await;
+            transport.send_acl(&acl_packet).await?;
+        }
+
+        // Receive response with timeout
+        let response = timeout(self.timeout_duration, async {
+            let mut transport = self.transport.lock().await;
+            let acl_response = transport.receive_acl().await?;
+
+            // Parse L2CAP packet to extract ATT payload
+            self.l2cap_channel.parse_acl_packet(&acl_response)
+        })
+        .await
+        .map_err(|_| BluetoothError::Timeout {
+            duration: self.timeout_duration,
+        })??;
+
+        trace!("Received ATT response: {} bytes", response.len());
+        Ok(response)
     }
 
     /// Discover all services
@@ -163,14 +217,30 @@ impl GattClient {
 
             trace!("Sending ATT Read By Group Type Request: start=0x{:04X}", start_handle);
 
-            // TODO: Send request over L2CAP ATT channel (0x0004)
-            // For now, simulate empty response to complete the implementation structure
+            // Send request and get response
+            let response = self.send_att_request(&request).await?;
             
-            // Parse response would go here
-            // let services = self.parse_read_by_group_type_response(&response)?;
+            // Parse response
+            let discovered_services = self.parse_read_by_group_type_response(&response)?;
             
-            // For now, break after first attempt (will be fixed when L2CAP is implemented)
-            break;
+            if discovered_services.is_empty() {
+                // No more services
+                break;
+            }
+            
+            // Add services to list
+            self.services.extend(discovered_services.clone());
+            
+            // Update start handle for next iteration
+            if let Some(last_service) = discovered_services.last() {
+                start_handle = last_service.end_handle + 1;
+                if start_handle == 0 {
+                    // Wrapped around
+                    break;
+                }
+            } else {
+                break;
+            }
         }
 
         debug!("Discovered {} services", self.services.len());
@@ -636,13 +706,55 @@ impl GattClient {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::device::{Address, DeviceInfo};
+    use crate::{
+        device::{Address, DeviceInfo},
+        l2cap::L2capChannel,
+        transport::{Transport, TransportType},
+    };
+    use tokio::sync::Mutex;
+
+    // Mock transport for testing
+    struct MockTransport;
+
+    #[async_trait::async_trait]
+    impl Transport for MockTransport {
+        fn transport_type(&self) -> TransportType {
+            TransportType::Usb
+        }
+
+        async fn send_command(&mut self, _data: &[u8]) -> Result<()> {
+            Ok(())
+        }
+
+        async fn receive_event(&mut self) -> Result<Vec<u8>> {
+            Ok(Vec::new())
+        }
+
+        async fn send_acl(&mut self, _data: &[u8]) -> Result<()> {
+            Ok(())
+        }
+
+        async fn receive_acl(&mut self) -> Result<Vec<u8>> {
+            Ok(Vec::new())
+        }
+
+        fn is_connected(&self) -> bool {
+            true
+        }
+
+        async fn close(&mut self) -> Result<()> {
+            Ok(())
+        }
+    }
 
     #[test]
     fn test_gatt_client_creation() {
         let info = DeviceInfo::new(Address::from_bytes([1, 2, 3, 4, 5, 6]));
-        let device = Arc::new(Device::new(info, 0));
-        let gatt = GattClient::new(device);
+        let device = Arc::new(Device::new(info, 0x0040));
+        let l2cap_channel = L2capChannel::new_att(0x0040);
+        let transport = Arc::new(Mutex::new(MockTransport));
+        
+        let gatt = GattClient::new(device, l2cap_channel, transport);
         
         assert_eq!(gatt.services.len(), 0);
     }

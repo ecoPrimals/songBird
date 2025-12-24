@@ -82,12 +82,14 @@ mod controller;
 pub mod host;
 pub mod gatt;
 pub mod device;
+pub mod l2cap;
 
 // Re-exports for convenience
 pub use error::{BluetoothError, Result};
 pub use host::BluetoothHost;
 pub use transport::{Transport, TransportType};
 pub use device::{Device, DeviceInfo, Address};
+pub use l2cap::{L2capChannel, L2capManager, ATT_CHANNEL_ID};
 
 #[cfg(feature = "usb")]
 pub use transport::usb::UsbTransport;
