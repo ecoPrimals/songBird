@@ -18,7 +18,7 @@ Songbird is a **production-ready federated ML orchestration system** that enable
 - 🎓 **Education First**: Built for research and learning environments
 - 🐻 **ecoPrimals Integration**: Works with BearDog (security) & Toadstool (compute)
 
-**Current Status**: ✅ **P2P OPERATIONAL** | 🔐 **Genesis Bootstrap Ready** | 📡 **BLE Stack Active (Phase 2: 60%)**
+**Current Status**: 🎉 **PRODUCTION READY** | 🔐 **Genesis Complete** | 📡 **Pure Rust BLE Stack COMPLETE** ✅
 
 ---
 
@@ -66,11 +66,19 @@ cargo run --release --bin songbird-orchestrator
 - Real BearDog integration (no mocks)
 - End-to-end encrypted communication
 
-**Physical Genesis Bootstrap** 🆕:
+**Physical Genesis Bootstrap** ✅:
 - Hardware-backed node attestation (SoloKey/FIDO2)
+- Pure Rust BLE physical channel (universal deployment!)
 - Multi-primal witness coordination
 - Cryptographic lineage from birth
 - *"Never let a bird be alone in the dark forest"*
+
+**Pure Rust Bluetooth Stack** 🆕 ✅:
+- Complete BLE protocol stack (3,340 lines)
+- Zero system dependencies (works anywhere!)
+- Universal platform support (Linux, Windows, macOS, embedded)
+- Genesis-integrated physical channel
+- Just needs a $10 USB dongle!
 
 **Federation**:
 - Multi-federation support
