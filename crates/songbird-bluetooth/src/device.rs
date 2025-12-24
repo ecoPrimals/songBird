@@ -102,6 +102,34 @@ impl DeviceInfo {
         }
     }
 
+    /// Set device name (builder pattern)
+    #[must_use]
+    pub fn with_name(mut self, name: String) -> Self {
+        self.name = Some(name);
+        self
+    }
+
+    /// Set RSSI (builder pattern)
+    #[must_use]
+    pub fn with_rssi(mut self, rssi: i8) -> Self {
+        self.rssi = rssi;
+        self
+    }
+
+    /// Add service UUID (builder pattern)
+    #[must_use]
+    pub fn with_service(mut self, service: uuid::Uuid) -> Self {
+        self.services.push(service);
+        self
+    }
+
+    /// Set manufacturer data (builder pattern)
+    #[must_use]
+    pub fn with_manufacturer_data(mut self, data: Vec<u8>) -> Self {
+        self.manufacturer_data = Some(data);
+        self
+    }
+
     /// Check if device advertises a specific service
     #[must_use]
     pub fn has_service(&self, service_uuid: &uuid::Uuid) -> bool {

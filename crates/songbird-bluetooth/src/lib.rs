@@ -40,6 +40,7 @@
 //!
 //! ```rust,no_run
 //! use songbird_bluetooth::{BluetoothHost, UsbTransport};
+//! use std::time::Duration;
 //!
 //! # async fn example() -> Result<(), Box<dyn std::error::Error>> {
 //! // Create USB transport (works anywhere with USB dongle)
@@ -49,13 +50,17 @@
 //! let mut host = BluetoothHost::new(transport)?;
 //!
 //! // Scan for devices
-//! let devices = host.scan_devices(std::time::Duration::from_secs(5)).await?;
+//! let devices = host.scan_devices(Duration::from_secs(5)).await?;
 //!
 //! // Connect to device
-//! let connection = host.connect(devices[0].address).await?;
-//!
-//! // GATT operations
-//! let data = connection.read_characteristic(uuid).await?;
+//! if !devices.is_empty() {
+//!     let _connection = host.connect(devices[0].address).await?;
+//!     
+//!     // Get GATT client for operations
+//!     let mut gatt = host.gatt_client(devices[0].address).await?;
+//!     let services = gatt.discover_services().await?;
+//!     println!("Found {} services", services.len());
+//! }
 //! # Ok(())
 //! # }
 //! ```
@@ -73,6 +78,7 @@
 
 pub mod error;
 pub mod transport;
+mod controller;
 pub mod host;
 pub mod gatt;
 pub mod device;
