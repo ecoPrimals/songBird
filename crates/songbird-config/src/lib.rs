@@ -60,6 +60,9 @@ pub mod capability_discovery;
 pub mod runtime_discovery;
 pub mod runtime_endpoint_resolver;
 
+/// **MODERN**: Agnostic primal configuration (zero hardcoded primal names)
+pub mod agnostic_primal_config;
+
 /// **MODERN**: Primal discovery functions (replaces deprecated endpoint constants)
 pub mod primal_discovery;
 

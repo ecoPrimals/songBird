@@ -32,6 +32,7 @@
 #![warn(clippy::all)]
 
 pub mod ceremony;
+pub mod coordination_bridge;
 pub mod error;
 pub mod identity;
 pub mod physical_channels;

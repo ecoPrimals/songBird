@@ -43,6 +43,7 @@ uuid = { version = "1.6", features = ["v4", "serde"] }
 
 # Internal dependencies
 songbird-bluetooth = { path = "../songbird-bluetooth", optional = true, features = ["usb"] }
+songbird-primal-coordination = { path = "../songbird-primal-coordination", optional = true }
 
 [dev-dependencies]
 tokio-test = "0.4"
@@ -54,5 +55,6 @@ solokey = ["webauthn-rs"]
 qr = ["qrcode", "image", "rqrr"]
 bluetooth = ["btleplug"]  # Legacy: Linux requires libdbus-1-dev
 pure-bluetooth = ["songbird-bluetooth"]  # Pure Rust BLE - universal!
+coordination = ["songbird-primal-coordination"]  # Agnostic primal coordination
 nfc = []  # Future: NFC support
 

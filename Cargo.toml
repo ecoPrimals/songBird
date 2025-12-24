@@ -41,7 +41,7 @@ members = [
     
     # 🦅 ALBATROSS BENCHMARKS
     "showcase/05-albatross-multiplex/benchmark",
-    "showcase/05-albatross-multiplex/tarpc-servers", "rendezvous", "crates/songbird-bluetooth",
+    "showcase/05-albatross-multiplex/tarpc-servers", "rendezvous", "crates/songbird-bluetooth", "crates/songbird-primal-coordination",
 ]
 
 [workspace.package]

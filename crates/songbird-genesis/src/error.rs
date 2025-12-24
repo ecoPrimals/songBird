@@ -20,6 +20,10 @@ pub enum GenesisError {
     #[error("Physical channel error: {0}")]
     PhysicalChannelError(String),
 
+    /// Coordination error (when using primal coordination)
+    #[error("Coordination failed: {0}")]
+    CoordinationFailed(String),
+
     /// Multi-primal coordination failed
     #[error("Multi-primal coordination failed: {0}")]
     CoordinationFailed(String),
