@@ -1,506 +1,342 @@
-# 🌳🐻 Songbird + BearDog: The P2P Backbone
+# 🌳🐻 Songbird + BearDog: Live Integration Testing
 
-**The Foundation of Sovereign Interprimal Communication**
-
----
-
-## 🎯 What This Showcase Demonstrates
-
-This is **the flagship demo** of the ecoPrimals ecosystem, showing how **Songbird** (universal coordinator) and **BearDog** (genetic cryptography) work together to create a **sovereign P2P backbone** that enables all primals to communicate securely without external infrastructure.
-
-### **Core Vision**
-
-```
-┌─────────────────────────────────────────────────────────────┐
-│                    TRADITIONAL APPROACH                      │
-│                         (Outdated)                          │
-├─────────────────────────────────────────────────────────────┤
-│  Primal A ──→ NAT/STUN ──→ TURN Server ──→ Primal B        │
-│                            ↓                                 │
-│                   ❌ Central point of failure               │
-│                   ❌ Trust external infrastructure          │
-│                   ❌ Observable by third parties            │
-│                   ❌ Jurisdiction-bound                      │
-└─────────────────────────────────────────────────────────────┘
-
-┌─────────────────────────────────────────────────────────────┐
-│               SONGBIRD + BEARDOG APPROACH                    │
-│                      (Evolution)                             │
-├─────────────────────────────────────────────────────────────┤
-│  Primal A ──→ BirdSong Broadcast ──→ Lineage Relay ──→ B   │
-│                            ↓                                 │
-│                   ✅ Cryptographic lineage trust            │
-│                   ✅ Ancestors relay for descendants        │
-│                   ✅ Privacy-preserving (masked)            │
-│                   ✅ Sovereign (no external dependency)     │
-└─────────────────────────────────────────────────────────────┘
-```
+**Status**: 🟡 **Integration Gaps Found - Ready for Evolution**  
+**Testing Method**: Live integration with real BearDog v0.9.0  
+**No Mocks**: All tests use actual cryptographic operations
 
 ---
 
-## 🧬 The Genetic Network Model
+## 🎯 What This Showcase Does
 
-### **Genesis Creates Lineage**
+**Live, validatable, reproducible integration testing** between Songbird and BearDog v0.9.0.
 
-Every node is **born through Genesis**, establishing cryptographic lineage:
-
-```rust
-// Node A performs Genesis for Node B
-Genesis Ceremony {
-    Parent: Node A (witness + sign)
-    Child: Node B (receive identity)
-    Result: B.lineage = [A, ...A's ancestors]
-}
-
-// Later, Node B performs Genesis for Node C
-Genesis Ceremony {
-    Parent: Node B
-    Child: Node C
-    Result: C.lineage = [B, A, ...A's ancestors]
-}
-```
-
-**Key Insight**: Lineage creates a **trust graph** where ancestors can relay for descendants.
+**No mocks. Real crypto. Real gaps found.**
 
 ---
 
-## 🎵 BirdSong Protocol: Privacy-Preserving Discovery
-
-### **How It Works**
-
-1. **Node C needs to reach Node A** (behind NAT)
-2. **Node C broadcasts BirdSong** (encrypted for ancestors)
-3. **Node A's ancestors receive and decrypt** (Node A's parent, grandparent, etc.)
-4. **Node B (C's parent) relays** the connection
-
-```
-┌──────────────────────────────────────────────────────────┐
-│                  BirdSong Broadcast                       │
-├──────────────────────────────────────────────────────────┤
-│  Encrypted for: [B's ancestors]                          │
-│  Message: "Relay needed to reach A"                      │
-│  Non-family sees: [random noise]                         │
-│  Family sees: [clear message]                            │
-└──────────────────────────────────────────────────────────┘
-```
-
-**Privacy**: Non-lineage nodes see only noise, lineage nodes see clear messages.
-
----
-
-## 🚀 What You'll See in This Demo
-
-### **1. Genesis Ceremony** (`01-genesis-ceremony.sh`)
-- BearDog v0.9.0 signs parent → child lineage
-- Songbird coordinates physical proximity (BLE)
-- Witnesses verify the ceremony
-- Child receives cryptographic identity
-
-### **2. BirdSong Broadcasting** (`02-birdsong-broadcast.sh`)
-- Node broadcasts discovery message
-- Encrypted for lineage (ancestors only)
-- Non-family sees noise
-- Family sees clear relay request
-
-### **3. Lineage Relay Discovery** (`03-lineage-relay.sh`)
-- Node behind NAT needs connectivity
-- Ancestor nodes offer relay service
-- Masking level determined by lineage depth
-- Relay session established
-
-### **4. Multi-Primal Coordination** (`04-multi-primal.sh`)
-- Toadstool (compute) uses Songbird for discovery
-- NestGate (storage) uses Songbird for coordination
-- BearDog provides security primitives
-- All communicate over the genetic backbone
-
-### **5. Hardware Root of Trust** (`05-hardware-genesis.sh`)
-- SoloKey seeds Genesis identity
-- Hardware attestation for node
-- Secure key storage
-- Tamper-resistant lineage
-
-### **6. Full Integration Test** (`06-full-integration.sh`)
-- Complete end-to-end scenario
-- 3 nodes: A (root), B (child), C (grandchild)
-- C behind NAT, needs to reach A
-- B automatically relays (as ancestor)
-- All verified cryptographically
-
----
-
-## 📊 Architecture Diagram
-
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                         ECOSYSTEM VIEW                          │
-├─────────────────────────────────────────────────────────────────┤
-│                                                                 │
-│  ┌──────────────┐     ┌──────────────┐     ┌──────────────┐   │
-│  │  Toadstool   │     │   NestGate   │     │   Squirrel   │   │
-│  │  (Compute)   │     │  (Storage)   │     │    (AI)      │   │
-│  └──────┬───────┘     └──────┬───────┘     └──────┬───────┘   │
-│         │                    │                    │            │
-│         └────────────────────┼────────────────────┘            │
-│                              │                                 │
-│              ┌───────────────▼───────────────┐                 │
-│              │       SONGBIRD                │                 │
-│              │  (Universal Coordinator)      │                 │
-│              │  - BirdSong Broadcasting      │                 │
-│              │  - Relay Session Management   │                 │
-│              │  - Genesis Orchestration      │                 │
-│              │  - Primal Discovery           │                 │
-│              └───────────────┬───────────────┘                 │
-│                              │                                 │
-│              ┌───────────────▼───────────────┐                 │
-│              │       BEARDOG                 │                 │
-│              │  (Genetic Cryptography)       │                 │
-│              │  - Lineage Signing            │                 │
-│              │  - BirdSong Encryption        │                 │
-│              │  - Relay Authorization        │                 │
-│              │  - Hardware Root of Trust     │                 │
-│              └───────────────────────────────┘                 │
-│                                                                 │
-│                      🧬 P2P Backbone 🧬                         │
-└─────────────────────────────────────────────────────────────────┘
-```
-
----
-
-## 🎓 Key Concepts Demonstrated
-
-### **1. Separation of Concerns**
-
-| Component | Responsibility |
-|-----------|---------------|
-| **Songbird** | Networking, coordination, discovery, relay sessions |
-| **BearDog** | Cryptography, lineage, authorization, security |
-| **Other Primals** | Specialized functions (compute, storage, AI, etc.) |
-
-**No primal hardcodes others** - all use capability-based discovery.
-
-### **2. Zero-Touch Configuration**
-
-```bash
-# No hardcoded IPs or ports!
-export CAPABILITY_SECURITY_ENDPOINT="discover://beardog"
-export CAPABILITY_COMPUTE_ENDPOINT="discover://toadstool"
-
-# Services discover each other dynamically
-songbird start --discover
-```
-
-### **3. Genetic Trust Model**
-
-```rust
-// Traditional: Trust based on infrastructure
-if server.is_authorized() { allow() }
-
-// Genetic: Trust based on lineage
-if requester.is_descendant_of(my_family) { allow_relay() }
-```
-
-### **4. Privacy Levels**
-
-```
-Masking Level (based on lineage depth):
-
-Parent → Child:      FullVisibility (direct family)
-Grandparent → GC:    SubMasked (some metadata)
-Far Ancestor → Desc: Masked (minimal metadata)
-Non-Family:          Noise (complete privacy)
-```
-
----
-
-## 🏃 Quick Start
+## 🚀 Quick Start
 
 ### **Prerequisites**
 
-1. **BearDog v0.9.0** installed
+1. **BearDog v0.9.0** installed:
    ```bash
-   # Check version
-   beardog --version
+   # Check if available
+   ../../../phase2/phase1bins/beardog-v0.9.0-dec23 --version
    # Expected: beardog 0.9.0
    ```
 
-2. **Songbird** built with lineage relay
-   ```bash
-   cd /home/eastgate/Development/ecoPrimals/songbird
-   cargo build --release --features lineage-relay
+2. If not available, download from:
+   ```
+   https://github.com/ecoPrimals/bearDog/releases/tag/v0.9.0-integration-dec23
    ```
 
-3. **Environment** setup
-   ```bash
-   # Copy example config
-   cp configs/example.env .env
-   source .env
-   ```
-
-### **Run the Complete Demo**
+### **Run Live Tests**
 
 ```bash
-# Full integration test (3 nodes, NAT traversal, relay)
-./06-full-integration.sh
+cd showcase/15-songbird-beardog-backbone
 
-# Expected output:
-# ✅ Genesis: A → B → C (lineage established)
-# ✅ BirdSong: C broadcasts to ancestors
-# ✅ Relay: B offers relay for C
-# ✅ Connection: C → B (relay) → A
-# ✅ Verification: All cryptographically verified
-```
+# Test 1: Key Lineage (✅ Works!)
+./01-beardog-key-lineage.sh
 
-### **Individual Demos**
-
-```bash
-# 1. Genesis ceremony
-./01-genesis-ceremony.sh
-
-# 2. BirdSong broadcasting
-./02-birdsong-broadcast.sh
-
-# 3. Lineage relay
-./03-lineage-relay.sh
-
-# 4. Multi-primal coordination
-./04-multi-primal.sh
-
-# 5. Hardware root of trust
-./05-hardware-genesis.sh
+# Test 2: Encryption (⚠️ Privacy gap found!)
+./02-beardog-encryption.sh
 ```
 
 ---
 
-## 📈 Performance Characteristics
+## 📊 Test Results
 
-### **Relay Discovery Time**
+### **Test 1: BearDog Key Lineage** ✅
 
+**Status**: **SUCCESS** - All operations work!
+
+**What Was Tested**:
+- Real key generation with Ed25519
+- Key derivation (parent→child→grandchild)
+- Lineage tree queries
+- Cryptographic receipts
+
+**Result**:
 ```
-BirdSong Broadcast → Ancestor Response
-- Direct connection attempt: 50-100ms
-- Relay discovery: 200-500ms
-- Relay establishment: 100-200ms
-Total: ~300-800ms (vs TURN ~1-2s)
-```
-
-### **Privacy Guarantees**
-
-```
-Non-family nodes:
-- Cannot decrypt BirdSong (see random noise)
-- Cannot determine relay relationships
-- Cannot observe connection metadata
-
-Family nodes:
-- Decrypt BirdSong (lineage verified)
-- Masking level based on depth
-- Cryptographic authorization
+✅ Root key generated
+✅ Child key derived from root
+✅ Grandchild key derived from child
+✅ Full lineage tree queryable
+✅ All receipts saved to disk
 ```
 
-### **Scalability**
-
-```
-Lineage Graph:
-- O(log n) relay discovery (tree structure)
-- O(1) lineage verification (signature check)
-- O(n) for genesis (witnesses required)
-
-Network:
-- Broadcast: UDP multicast/broadcast
-- Relay: Point-to-point TCP
-- No central servers required
-```
-
----
-
-## 🔍 What Makes This Unique
-
-### **1. No External Infrastructure**
-
-Traditional WebRTC/P2P requires:
-- ❌ STUN servers for discovery
-- ❌ TURN servers for relay
-- ❌ Signaling servers for coordination
-
-Songbird + BearDog:
-- ✅ BirdSong for discovery (encrypted broadcast)
-- ✅ Lineage for relay (ancestors help descendants)
-- ✅ Genesis for coordination (cryptographic ceremony)
-
-### **2. Cryptographic Authorization**
-
-Traditional relay:
-- ❌ "Anyone can use my TURN server" (if they pay)
-- ❌ Authorization based on accounts/tokens
-
-Lineage relay:
-- ✅ "I relay for my descendants" (family duty)
-- ✅ Authorization based on cryptographic lineage
-
-### **3. Privacy by Design**
-
-Traditional broadcast:
-- ❌ Everyone sees your discovery message
-- ❌ Metadata reveals network topology
-
-BirdSong:
-- ✅ Only family decrypts your message
-- ✅ Non-family sees random noise
-- ✅ Masking preserves privacy
-
-### **4. Self-Healing Network**
-
-Traditional infrastructure:
-- ❌ Central points of failure
-- ❌ DNS/IP dependencies
-
-Genetic network:
-- ✅ Multiple ancestors can relay
-- ✅ Automatic fallback to other family
-- ✅ Resilient to node churn
-
----
-
-## 🧪 Testing & Validation
-
-### **Unit Tests** (Mock BearDog)
-
-```bash
-cd crates/songbird-lineage-relay
-cargo test
-# Expected: 18/18 tests passing
-```
-
-### **Integration Tests** (Real BearDog v0.9.0)
-
-```bash
-./scripts/integration-test.sh
-# Expected: End-to-end genesis, birdsong, relay
-```
-
-### **Chaos Testing** (Network Failures)
-
-```bash
-./scripts/chaos-test.sh
-# Expected: Graceful degradation, fallback relays
+**Lineage Tree** (real output from BearDog):
+```json
+{
+  "requested_key": "node-c-grandchild-1766591173",
+  "root_key": "node-a-root-1766591172",
+  "total_keys": 3,
+  "max_depth": 2,
+  "lineage_tree": {
+    "key_id": "node-a-root-1766591172",
+    "generation": 0,
+    "children": [
+      {
+        "key_id": "node-b-child-1766591173",
+        "generation": 1,
+        "parent_key_id": "node-a-root-1766591172",
+        "children": [
+          {
+            "key_id": "node-c-grandchild-1766591173",
+            "generation": 2,
+            "parent_key_id": "node-b-child-1766591173"
+          }
+        ]
+      }
+    ]
+  }
+}
 ```
 
 ---
 
-## 📚 Documentation References
+### **Test 2: BearDog Encryption** ⚠️
 
-### **Specifications**
-- **[specs/LINEAGE_GATED_RELAY_PROTOCOL.md](../../specs/LINEAGE_GATED_RELAY_PROTOCOL.md)** - Complete LGRP specification
-- **[specs/BIRDSONG_PROTOCOL.md](../../specs/BIRDSONG_PROTOCOL.md)** - BirdSong protocol details
-- **[specs/PRIMAL_COORDINATION_ARCHITECTURE.md](../../specs/PRIMAL_COORDINATION_ARCHITECTURE.md)** - Universal Coordinator design
+**Status**: **PARTIAL** - Encryption works, privacy gap found!
 
-### **Handoffs**
-- **[BEARDOG_GENESIS_HANDOFF_DEC_22_2025.md](../../BEARDOG_GENESIS_HANDOFF_DEC_22_2025.md)** - Genesis ceremony integration
-- **[BEARDOG_LINEAGE_RELAY_HANDOFF.md](../../BEARDOG_LINEAGE_RELAY_HANDOFF.md)** - Lineage relay API contract
+**What Was Tested**:
+- Real encryption/decryption
+- Privacy verification (family vs strangers)
+- Cryptographic receipts
+
+**Result**:
+```
+✅ Encryption works
+✅ Decryption works
+✅ Receipts generated
+❌ Privacy NOT enforced - strangers can decrypt!
+```
+
+**Critical Gap Found**:
+- Node C encrypts message
+- Node C can decrypt ✅ (expected)
+- Node A (family) can decrypt ✅ (expected)
+- Node X (stranger) can decrypt ❌ **PRIVACY GAP!**
+
+**Expected**: Strangers should see only noise  
+**Actual**: Strangers can decrypt with their own key
+
+---
+
+## 🔍 Integration Gaps Found
+
+See **[INTEGRATION_GAPS_FOUND.md](INTEGRATION_GAPS_FOUND.md)** for complete details.
+
+### **Gap 1: Lineage-Based Key Sharing** (P0)
+
+**Missing**: `derive_shared_key(ancestor, descendant, lineage_proof)`
+
+**Needed For**: Ancestors to derive shared keys with descendants
+
+### **Gap 2: BirdSong Encryption Protocol** (P0)
+
+**Missing**: `encrypt_for_lineage(message, hint)`
+
+**Needed For**: Encrypt for multiple recipients (all ancestors)
+
+### **Gap 3: Privacy Enforcement** (P0)
+
+**Missing**: Lineage verification in decryption
+
+**Needed For**: Prevent strangers from decrypting family messages
+
+---
+
+## 📜 Cryptographic Receipts
+
+All operations generate **cryptographic receipts** saved to `receipts/` directory:
+
+```
+receipts/20251224_104612/
+├── 01_root_key_generation.txt        # Root key creation receipt
+├── 02_child_key_derivation.txt       # Child derivation receipt
+├── 03_grandchild_key_derivation.txt  # Grandchild derivation receipt
+├── 04_lineage_verification.json      # Full lineage tree (JSON)
+└── 05_key_list.txt                   # All keys in system
+
+receipts/20251224_104618/
+├── plaintext_message.txt             # Original message
+├── encrypted_message.bin             # Encrypted data (106 bytes)
+├── encryption_receipt.txt            # Encryption operation receipt
+├── decrypted_by_a.txt                # Node A decryption result
+├── decrypted_by_c.txt                # Node C decryption result
+├── decrypted_by_x.txt                # Node X decryption result (GAP!)
+├── decryption_a_receipt.txt          # Node A decryption receipt
+├── decryption_c_receipt.txt          # Node C decryption receipt
+└── decryption_x_receipt.txt          # Node X decryption receipt
+```
+
+**All receipts include**:
+- Timestamps
+- Key IDs
+- Operation details
+- Cryptographic proofs
+
+**Reproducible**: Anyone can verify these operations independently.
+
+---
+
+## 💡 Why No Mocks?
+
+### **Mocks Hide Issues**
+
+```rust
+// Mock (hides problems):
+impl MockBearDog {
+    fn encrypt(&self, msg: &[u8]) -> Vec<u8> {
+        // Returns fake encrypted data
+        // Privacy "works" because we coded it to work
+        vec![0xDE, 0xAD, 0xBE, 0xEF]
+    }
+}
+```
+
+### **Real Integration Exposes Gaps**
+
+```bash
+# Real BearDog (exposes problems):
+$ beardog encrypt --key node-x --input msg.txt --output enc.bin
+✅ Encrypted
+
+$ beardog decrypt --key node-x --input enc.bin --output dec.txt
+✅ Decrypted  # ← Should have failed! Privacy gap found!
+```
+
+**Result**: We found a **real privacy gap** that mocks would have hidden.
+
+---
+
+## 🎯 What This Proves
+
+### **1. Real Crypto Works**
+
+- ✅ BearDog v0.9.0 generates actual keys
+- ✅ Key derivation creates parent→child relationships
+- ✅ Lineage tree is queryable and correct
+- ✅ Encryption/decryption works
+- ✅ All operations produce cryptographic receipts
+
+### **2. Gaps Are Exposed**
+
+- ⚠️ Privacy not enforced (strangers can decrypt)
+- ⚠️ Lineage-based key sharing not implemented
+- ⚠️ BirdSong protocol needs integration
+
+### **3. Clear Path Forward**
+
+- ✅ Identified 3 specific gaps to evolve
+- ✅ Documented expected vs actual behavior
+- ✅ Provided API examples for BearDog team
+- ✅ Created test cases to validate fixes
+
+---
+
+## 🔄 Evolution Path
+
+### **Phase 1: Current State** ✅
+
+- [x] Key generation works
+- [x] Key derivation works
+- [x] Lineage tree queryable
+- [x] Basic encryption/decryption works
+- [x] Receipts generated
+
+### **Phase 2: Privacy Enforcement** (Next)
+
+- [ ] BearDog implements `derive_shared_key()`
+- [ ] BearDog implements `encrypt_for_lineage()`
+- [ ] BearDog implements `decrypt_birdsong()`
+- [ ] Re-run tests to verify privacy
+- [ ] Update receipts with successful privacy tests
+
+### **Phase 3: Full Integration** (Future)
+
+- [ ] Songbird uses BearDog for Genesis lineage
+- [ ] Songbird uses BearDog for BirdSong encryption
+- [ ] Songbird uses BearDog for relay authorization
+- [ ] End-to-end relay scenario working
+- [ ] Hardware root of trust (SoloKey)
+
+---
+
+## 📚 Documentation
+
+- **[INTEGRATION_GAPS_FOUND.md](INTEGRATION_GAPS_FOUND.md)** - Complete gap analysis
+- **[BEARDOG_LINEAGE_RELAY_HANDOFF.md](../../BEARDOG_LINEAGE_RELAY_HANDOFF.md)** - API spec for BearDog team
 - **[BEARDOG_V0.9.0_INTEGRATION_GUIDE.md](../../BEARDOG_V0.9.0_INTEGRATION_GUIDE.md)** - Integration instructions
 
-### **Crates**
-- **[crates/songbird-lineage-relay/](../../crates/songbird-lineage-relay/)** - Lineage relay implementation
-- **[crates/songbird-primal-coordination/](../../crates/songbird-primal-coordination/)** - Universal Coordinator
-- **[crates/songbird-genesis/](../../crates/songbird-genesis/)** - Genesis ceremony orchestration
-
 ---
 
-## 🎯 Success Criteria
+## 🎓 Key Lessons
 
-### **For This Demo**
+### **1. Live Testing is Essential**
 
-✅ **Genesis**: Node can be born with cryptographic lineage  
-✅ **BirdSong**: Messages encrypted for family only  
-✅ **Relay**: Ancestors relay for descendants  
-✅ **Privacy**: Non-family sees noise  
-✅ **Verification**: All cryptographically verified  
-✅ **Multi-Primal**: Other primals use the backbone  
+Mocks hide integration issues. Real testing exposes them.
 
-### **Production Readiness**
+### **2. Receipts Enable Validation**
 
-- [ ] BearDog v1.0 (currently v0.9.0)
-- [ ] Hardware genesis in production
-- [ ] Lineage relay at scale (1000+ nodes)
-- [ ] Chaos testing passed
-- [ ] Security audit complete
+All operations save cryptographic receipts. Anyone can verify independently.
+
+### **3. Gaps Are Opportunities**
+
+Finding gaps early means we can evolve the right solutions.
+
+### **4. Reproducibility Matters**
+
+All test data saved to disk. Tests can be re-run and verified.
 
 ---
 
 ## 🚀 Next Steps
 
-### **For Integration Teams**
-1. Run the demos
-2. Review the code in `crates/songbird-lineage-relay/`
-3. Integrate BearDog v0.9.0 into your primal
-4. Use `songbird-primal-coordination` for discovery
-5. Test with Genesis ceremony
-
 ### **For BearDog Team**
-1. Review `BEARDOG_LINEAGE_RELAY_HANDOFF.md`
-2. Continue Phase 2 (BirdSong encryption)
-3. Implement relay authorization (Phase 3)
-4. Hardware integration (Phase 4)
 
-### **For Other Primals**
-1. Remove hardcoded primal names/ports
-2. Use capability-based discovery
-3. Register with Songbird Universal Coordinator
-4. Use Genesis for secure onboarding
+1. Review `INTEGRATION_GAPS_FOUND.md`
+2. Implement `derive_shared_key()` API
+3. Implement `encrypt_for_lineage()` API
+4. Implement `decrypt_birdsong()` API
+5. Add privacy enforcement to encryption
 
----
+### **For Songbird Team**
 
-## 🌟 Vision
+1. ✅ Document gaps found
+2. ✅ Provide test cases with receipts
+3. [ ] Create integration tests for when BearDog implements gaps
+4. [ ] Update showcase when gaps are filled
 
-**This showcase demonstrates the future of sovereign networking:**
+### **For Integration**
 
-- 🧬 **Genetic Trust**: Lineage replaces infrastructure
-- 🔒 **Privacy-Preserving**: Family-only decryption
-- 🌐 **Self-Healing**: Multiple relay paths
-- 🚫 **No External Dependencies**: Pure P2P
-- 🎯 **Separation of Concerns**: Each primal does one thing well
-
-**The result**: A P2P backbone that's **faster, more private, and more resilient** than traditional approaches, with **zero external dependencies**.
+1. [ ] BearDog implements missing APIs
+2. [ ] Songbird updates demos to use new APIs
+3. [ ] Re-run tests to verify privacy enforcement
+4. [ ] Update receipts with successful privacy tests
 
 ---
 
-## 🤝 Contributing
+## 📊 Summary
 
-Want to improve this demo or add new scenarios?
+| Component | Status | Notes |
+|-----------|--------|-------|
+| Key Generation | ✅ Works | Real crypto, receipts generated |
+| Key Derivation | ✅ Works | Parent→child chains established |
+| Lineage Tree | ✅ Works | Full tree queryable with JSON |
+| Encryption | ✅ Works | Real encrypted data |
+| Decryption | ✅ Works | Can decrypt own messages |
+| **Privacy** | ❌ **Gap** | **Strangers can decrypt (needs fix)** |
+| Receipts | ✅ Works | All operations logged |
+| Reproducibility | ✅ Works | All data saved to disk |
 
-1. Add new demo scripts to `demos/`
-2. Update this README with new scenarios
-3. Add tests to validate your scenario
-4. Submit PR with clear documentation
-
-**Questions?** See `../../TEAM_HANDOFF_UNIVERSAL_COORDINATOR.md` for team contacts.
-
----
-
-## 📊 Current Status
-
-```
-🐻 BearDog: v0.9.0 (Genesis + Lineage Graph)
-🌳 Songbird Lineage Relay: v0.1.0 (Session Management + BirdSong Broadcasting)
-🎯 Universal Coordinator: v0.1.0 (Capability Discovery)
-🔵 Pure Rust Bluetooth: v0.1.0 (Physical Genesis)
-
-Integration: ✅ READY
-Testing: ✅ 18/18 passing (mocks)
-Documentation: ✅ COMPLETE
-Production: 🟡 Awaiting BearDog Phase 2-4
-```
+**Overall**: 7/8 features work, 1 critical gap found and documented.
 
 ---
 
-**Ready to see the future of sovereign networking!** 🚀🧬
+**Status**: 🟡 **Integration Gaps Identified - Ready for Evolution**
 
-🌳 **Songbird** - Universal signal and coordinator  
-🐻 **BearDog** - Genetic cryptography and security  
-🍄 **Toadstool** - Compute orchestration  
-🦡 **NestGate** - Secure storage  
-🐿️ **Squirrel** - AI and learning
+**No mocks. Real crypto. Real gaps found. Clear path forward.**
 
-**Together**: A sovereign, privacy-preserving, self-healing ecosystem! 🌲
-
+🐻 **BearDog v0.9.0** + 🌳 **Songbird** = 🧬 **Genetic Lineage Connectivity** (in progress)

@@ -1,0 +1,7 @@
+error: unexpected argument '--key-type' found
+
+  tip: a similar argument exists: '--key-id'
+
+Usage: beardog-v0.9.0-dec23 key generate --key-id <KEY_ID> --algorithm <ALGORITHM>
+
+For more information, try '--help'.

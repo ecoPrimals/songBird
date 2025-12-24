@@ -1,0 +1,885 @@
+🔑 Available Keys
+================
+
+Found 176 key(s):
+
+📋 Key: household-key
+   Algorithm: aes-256-gcm
+   HSM: mixed-BearDog Native Software HSM-BearDog Native Software HSM
+   Created: 2025-12-19T16:15:07.166984964+00:00
+
+📋 Key: key-composite-1766205418
+   Algorithm: AES-256-GCM
+   HSM: BearDog Native Software HSM
+   Created: 2025-12-20T04:37:13.531299917+00:00
+
+📋 Key: share-7of11-holder3-1766204923
+   Algorithm: AES-256-GCM
+   HSM: BearDog Native Software HSM
+   Created: 2025-12-20T04:28:51.793216233+00:00
+
+📋 Key: mobile-app-1766203114
+   Algorithm: AES-256-GCM
+   HSM: BearDog Native Software HSM
+   Created: 2025-12-20T03:58:45.951620187+00:00
+
+📋 Key: soft-hsm-test-key
+   Algorithm: aes-256-gcm
+   HSM: BearDog Native Software HSM
+   Created: 2025-12-19T16:15:07.504920112+00:00
+
+📋 Key: bench-keygen-Software-1766202991852788130
+   Algorithm: AES-256-GCM
+   HSM: BearDog Native Software HSM
+   Created: 2025-12-20T03:56:33.333305272+00:00
+
+📋 Key: multi-hsm-mixed-1766201845
+   Algorithm: AES-256-GCM
+   HSM: mixed-mixed-BearDog Native Software HSM-BearDog Native Software HSM-BearDog Native Software HSM
+   Created: 2025-12-20T03:37:35.668614503+00:00
+
+📋 Key: genesis-key
+   Algorithm: ed25519
+   HSM: BearDog Native Software HSM
+   Created: 2025-12-22T00:56:27.090888060+00:00
+
+📋 Key: test-sub-001
+   Algorithm: AES-256-GCM
+   HSM: BearDog Native Software HSM
+   Created: 2025-12-19T16:45:15.894258511+00:00
+
+📋 Key: bench-encrypt-Software-1766202999
+   Algorithm: AES-256-GCM
+   HSM: BearDog Native Software HSM
+   Created: 2025-12-20T03:56:40.655311321+00:00
+
+📋 Key: songbird-tower-b-1766194274
+   Algorithm: AES-256-GCM
+   HSM: BearDog Native Software HSM
+   Created: 2025-12-20T01:31:17.481169998+00:00
+
+📋 Key: temp-mix-ab-1766204923
+   Algorithm: AES-256-GCM
+   HSM: mixed-BearDog Native Software HSM-BearDog Native Software HSM
+   Created: 2025-12-20T04:28:46.391414672+00:00
+
+📋 Key: team-frontend-1766205256
+   Algorithm: AES-256-GCM
+   HSM: BearDog Native Software HSM
+   Created: 2025-12-20T04:34:21.975074305+00:00
+
+📋 Key: share-3of5-member3-1766204910
+   Algorithm: AES-256-GCM
+   HSM: BearDog Native Software HSM
+   Created: 2025-12-20T04:28:31.449840030+00:00
+
+📋 Key: e2e-mobile
+   Algorithm: aes256-gcm
+   HSM: Android StrongBox (Pixel 8a)
+   Created: 2025-12-01T00:37:02.939125069+00:00
+
+📋 Key: demo-key-1765416707
+   Algorithm: aes-256-gcm
+   HSM: SoftHSM2
+   Created: 2025-12-11T01:31:47.934110499+00:00
+
+📋 Key: party-b-1766201845
+   Algorithm: AES-256-GCM
+   HSM: BearDog Native Software HSM
+   Created: 2025-12-20T03:37:30.303815396+00:00
+
+📋 Key: songbird-tower-a-1766191710
+   Algorithm: AES-256-GCM
+   HSM: BearDog Native Software HSM
+   Created: 2025-12-20T00:48:31.377120011+00:00
+
+📋 Key: songbird-channel-001-1766199633
+   Algorithm: AES-256-GCM
+   HSM: BearDog Native Software HSM
+   Created: 2025-12-20T03:00:35.205839077+00:00
+
+📋 Key: mobile-master-mobile-context-1765460481
+   Algorithm: aes-256-gcm
+   HSM: SoftHSM2
+   Created: 2025-12-11T13:41:21.378455794+00:00
+
+📋 Key: node-c-grandchild-1766591173
+   Algorithm: ed25519
+   HSM: BearDog Native Software HSM
+   Created: 2025-12-24T15:46:13.028771793+00:00
+
+📋 Key: session-1766203114
+   Algorithm: AES-256-GCM
+   HSM: BearDog Native Software HSM
+   Created: 2025-12-20T03:58:42.479854107+00:00
+
+📋 Key: lab-master-secure-lab-1765460217
+   Algorithm: aes-256-gcm
+   HSM: SoftHSM2
+   Created: 2025-12-11T13:36:58.081715511+00:00
+
+📋 Key: party-a-1766201845
+   Algorithm: AES-256-GCM
+   HSM: BearDog Native Software HSM
+   Created: 2025-12-20T03:37:26.912422761+00:00
+
+📋 Key: my-first-sovereign-human-key
+   Algorithm: AES-256-GCM
+   HSM: BearDog Native Software HSM
+   Created: 2025-12-19T21:51:17.882280873+00:00
+
+📋 Key: toadstool-workload-1766104366
+   Algorithm: genetic-aes256
+   HSM: BearDog Native Software HSM
+   Created: 2025-12-19T00:32:46.755002917+00:00
+
+📋 Key: e2e-auto
+   Algorithm: aes256-gcm
+   HSM: Android StrongBox (Pixel 8a)
+   Created: 2025-12-01T00:37:03.125052878+00:00
+
+📋 Key: friend-tower-access
+   Algorithm: aes-256-gcm
+   HSM: delegated-BearDog Native Software HSM
+   Created: 2025-12-19T16:15:07.177662821+00:00
+
+📋 Key: root-ceo-1766205233
+   Algorithm: AES-256-GCM
+   HSM: BearDog Native Software HSM
+   Created: 2025-12-20T04:33:54.834310433+00:00
+
+📋 Key: test-key
+   Algorithm: aes256-gcm
+   HSM: Android StrongBox (Pixel 8a)
+   Created: 2025-12-01T01:35:45.798289843+00:00
+
+📋 Key: alice-backend-1766205233
+   Algorithm: AES-256-GCM
+   HSM: BearDog Native Software HSM
+   Created: 2025-12-20T04:34:00.910453058+00:00
+
+📋 Key: songbird-tower-a-1766194274
+   Algorithm: AES-256-GCM
+   HSM: BearDog Native Software HSM
+   Created: 2025-12-20T01:31:16.073612346+00:00
+
+📋 Key: delegated-time-constraint-demo-1765459844
+   Algorithm: aes-256-gcm
+   HSM: delegated-SoftHSM2
+   Created: 2025-12-11T13:30:45.107886436+00:00
+
+📋 Key: delegated-composite-constraint-demo-1765459844
+   Algorithm: aes-256-gcm
+   HSM: delegated-SoftHSM2
+   Created: 2025-12-11T13:30:45.604953367+00:00
+
+📋 Key: test-bob-test-1765419537
+   Algorithm: aes-256-gcm
+   HSM: SoftHSM2
+   Created: 2025-12-11T02:18:57.074388900+00:00
+
+📋 Key: board-master-1766204923
+   Algorithm: AES-256-GCM
+   HSM: BearDog Native Software HSM
+   Created: 2025-12-20T04:28:44.346279332+00:00
+
+📋 Key: device-quality-key-entropy-real-1766164844
+   Algorithm: AES-256-GCM
+   HSM: BearDog Native Software HSM
+   Created: 2025-12-19T17:24:30.340849621+00:00
+
+📋 Key: songbird-tower-a-1766191889
+   Algorithm: AES-256-GCM
+   HSM: BearDog Native Software HSM
+   Created: 2025-12-20T00:51:31.583106253+00:00
+
+📋 Key: share-3of5-member4-1766204923
+   Algorithm: AES-256-GCM
+   HSM: BearDog Native Software HSM
+   Created: 2025-12-20T04:28:44.374887607+00:00
+
+📋 Key: master-time-constraint-demo-1765459844
+   Algorithm: aes-256-gcm
+   HSM: SoftHSM2
+   Created: 2025-12-11T13:30:45.101218517+00:00
+
+📋 Key: hkdf-test-kdf-test-1765419852
+   Algorithm: aes-256-gcm
+   HSM: SoftHSM2
+   Created: 2025-12-11T02:24:13.270714649+00:00
+
+📋 Key: daily-ops-gen1
+   Algorithm: aes-256-gcm
+   HSM: BearDog Native Software HSM
+   Created: 2025-12-20T03:34:13.679488791+00:00
+
+📋 Key: share-3of5-member1-1766204910
+   Algorithm: AES-256-GCM
+   HSM: BearDog Native Software HSM
+   Created: 2025-12-20T04:28:31.437102191+00:00
+
+📋 Key: share-3of5-member5-1766204923
+   Algorithm: AES-256-GCM
+   HSM: BearDog Native Software HSM
+   Created: 2025-12-20T04:28:44.379570704+00:00
+
+📋 Key: tower-a-1766142702
+   Algorithm: genetic-hkdf
+   HSM: BearDog Native Software HSM
+   Created: 2025-12-19T11:11:42.889504223+00:00
+
+📋 Key: bench-keygen-Software-1766203024357261306
+   Algorithm: AES-256-GCM
+   HSM: BearDog Native Software HSM
+   Created: 2025-12-20T03:57:05.840601324+00:00
+
+📋 Key: share-7of11-holder8-1766204923
+   Algorithm: AES-256-GCM
+   HSM: BearDog Native Software HSM
+   Created: 2025-12-20T04:28:51.821732070+00:00
+
+📋 Key: share-7of11-holder1-1766204923
+   Algorithm: AES-256-GCM
+   HSM: BearDog Native Software HSM
+   Created: 2025-12-20T04:28:51.781702448+00:00
+
+📋 Key: bench-keygen-Software-1766202921
+   Algorithm: AES-256-GCM
+   HSM: BearDog Native Software HSM
+   Created: 2025-12-20T03:55:23.235171220+00:00
+
+📋 Key: bench-encrypt-Software-1766203031
+   Algorithm: AES-256-GCM
+   HSM: BearDog Native Software HSM
+   Created: 2025-12-20T03:57:12.586911148+00:00
+
+📋 Key: bench-keygen-Software-1766203021349642224
+   Algorithm: AES-256-GCM
+   HSM: BearDog Native Software HSM
+   Created: 2025-12-20T03:57:02.935357846+00:00
+
+📋 Key: master-weekday-constraint-demo-1765459844
+   Algorithm: aes-256-gcm
+   HSM: SoftHSM2
+   Created: 2025-12-11T13:30:45.208315774+00:00
+
+📋 Key: team-backend-1766205256
+   Algorithm: AES-256-GCM
+   HSM: BearDog Native Software HSM
+   Created: 2025-12-20T04:34:21.969666749+00:00
+
+📋 Key: bench-encrypt-Software-1766203034
+   Algorithm: AES-256-GCM
+   HSM: BearDog Native Software HSM
+   Created: 2025-12-20T03:57:16.022656453+00:00
+
+📋 Key: api-tier1-1766205418
+   Algorithm: AES-256-GCM
+   HSM: delegated-BearDog Native Software HSM
+   Created: 2025-12-20T04:37:03.557787723+00:00
+
+📋 Key: dept-engineering-1766205233
+   Algorithm: AES-256-GCM
+   HSM: BearDog Native Software HSM
+   Created: 2025-12-20T04:33:56.859244712+00:00
+
+📋 Key: multi-hsm-mixed-1766201977
+   Algorithm: AES-256-GCM
+   HSM: mixed-mixed-BearDog Native Software HSM-BearDog Native Software HSM-BearDog Native Software HSM
+   Created: 2025-12-20T03:39:47.292695604+00:00
+
+📋 Key: bench-encrypt-Software-1766202995
+   Algorithm: AES-256-GCM
+   HSM: BearDog Native Software HSM
+   Created: 2025-12-20T03:56:37.138943019+00:00
+
+📋 Key: carol-frontend-1766205256
+   Algorithm: AES-256-GCM
+   HSM: BearDog Native Software HSM
+   Created: 2025-12-20T04:34:24.018006227+00:00
+
+📋 Key: test-delegated-001
+   Algorithm: AES-256-GCM
+   HSM: delegated-BearDog Native Software HSM
+   Created: 2025-12-19T16:45:15.941751081+00:00
+
+📋 Key: pkcs11-demo-1766203203
+   Algorithm: AES-256-GCM
+   HSM: BearDog Native Software HSM
+   Created: 2025-12-20T04:00:05.321926724+00:00
+
+📋 Key: team-backend-1766205233
+   Algorithm: AES-256-GCM
+   HSM: BearDog Native Software HSM
+   Created: 2025-12-20T04:33:58.879981032+00:00
+
+📋 Key: test-derived-test-1765419542
+   Algorithm: aes-256-gcm
+   HSM: SoftHSM2
+   Created: 2025-12-11T02:19:02.219015677+00:00
+
+📋 Key: backup-key-gen1
+   Algorithm: aes-256-gcm
+   HSM: BearDog Native Software HSM
+   Created: 2025-12-19T16:15:07.124974245+00:00
+
+📋 Key: bench-keygen-Software-1766202988811485990
+   Algorithm: AES-256-GCM
+   HSM: BearDog Native Software HSM
+   Created: 2025-12-20T03:56:30.219255631+00:00
+
+📋 Key: share-7of11-holder6-1766204923
+   Algorithm: AES-256-GCM
+   HSM: BearDog Native Software HSM
+   Created: 2025-12-20T04:28:51.808240284+00:00
+
+📋 Key: bob-personal-key
+   Algorithm: aes-256-gcm
+   HSM: BearDog Native Software HSM
+   Created: 2025-12-19T16:15:07.160213325+00:00
+
+📋 Key: bench-encrypt-Software-1766202928
+   Algorithm: AES-256-GCM
+   HSM: BearDog Native Software HSM
+   Created: 2025-12-20T03:55:29.961544674+00:00
+
+📋 Key: share-7of11-holder4-1766204923
+   Algorithm: AES-256-GCM
+   HSM: BearDog Native Software HSM
+   Created: 2025-12-20T04:28:51.799286178+00:00
+
+📋 Key: key-us-only-1766205418
+   Algorithm: AES-256-GCM
+   HSM: BearDog Native Software HSM
+   Created: 2025-12-20T04:37:06.884204784+00:00
+
+📋 Key: hsm-switch-demo-1766199247
+   Algorithm: AES-256-GCM
+   HSM: BearDog Native Software HSM
+   Created: 2025-12-20T02:54:08.435865536+00:00
+
+📋 Key: device-alpha-genetic-1766181494
+   Algorithm: AES-256-GCM
+   HSM: BearDog Native Software HSM
+   Created: 2025-12-19T22:07:22.348631602+00:00
+
+📋 Key: songbird-channel-mixed-1766194330
+   Algorithm: AES-256-GCM
+   HSM: mixed-BearDog Native Software HSM-BearDog Native Software HSM
+   Created: 2025-12-20T01:32:15.611423614+00:00
+
+📋 Key: team-accounting-1766205256
+   Algorithm: AES-256-GCM
+   HSM: BearDog Native Software HSM
+   Created: 2025-12-20T04:34:21.993030723+00:00
+
+📋 Key: constraint-master-constraint-1765457417
+   Algorithm: aes-256-gcm
+   HSM: SoftHSM2
+   Created: 2025-12-11T12:50:17.437545052+00:00
+
+📋 Key: pixel-test-key
+   Algorithm: aes256-gcm
+   HSM: Android StrongBox (Pixel 8a)
+   Created: 2025-12-01T00:36:11.476650262+00:00
+
+📋 Key: test-round-trip
+   Algorithm: aes256-gcm
+   HSM: SoftHSM2
+   Created: 2025-12-01T00:32:32.967521960+00:00
+
+📋 Key: master-cpu-constraint-demo-1765459844
+   Algorithm: aes-256-gcm
+   HSM: SoftHSM2
+   Created: 2025-12-11T13:30:45.303913387+00:00
+
+📋 Key: songbird-tower-b-1766191710
+   Algorithm: AES-256-GCM
+   HSM: BearDog Native Software HSM
+   Created: 2025-12-20T00:48:32.716853708+00:00
+
+📋 Key: expiring-key-constraint-demo-1765459844
+   Algorithm: aes-256-gcm
+   HSM: SoftHSM2
+   Created: 2025-12-11T13:30:45.508896684+00:00
+
+📋 Key: share-3of5-member2-1766204910
+   Algorithm: AES-256-GCM
+   HSM: BearDog Native Software HSM
+   Created: 2025-12-20T04:28:31.444447992+00:00
+
+📋 Key: carol-frontend-1766205233
+   Algorithm: AES-256-GCM
+   HSM: BearDog Native Software HSM
+   Created: 2025-12-20T04:34:00.923115384+00:00
+
+📋 Key: dao-treasury-1766204923
+   Algorithm: AES-256-GCM
+   HSM: BearDog Native Software HSM
+   Created: 2025-12-20T04:28:51.772280037+00:00
+
+📋 Key: share-7of11-holder9-1766204923
+   Algorithm: AES-256-GCM
+   HSM: BearDog Native Software HSM
+   Created: 2025-12-20T04:28:51.826562877+00:00
+
+📋 Key: contract-sign-1766203114
+   Algorithm: AES-256-GCM
+   HSM: BearDog Native Software HSM
+   Created: 2025-12-20T03:58:35.781377848+00:00
+
+📋 Key: songbird-channel-mixed-1766191710
+   Algorithm: AES-256-GCM
+   HSM: mixed-BearDog Native Software HSM-BearDog Native Software HSM
+   Created: 2025-12-20T00:48:34.903608731+00:00
+
+📋 Key: tower-master-tower-sharing-1765459966
+   Algorithm: aes-256-gcm
+   HSM: SoftHSM2
+   Created: 2025-12-11T13:32:46.589825403+00:00
+
+📋 Key: e2e-soft
+   Algorithm: aes256-gcm
+   HSM: SoftHSM2
+   Created: 2025-12-01T00:37:02.749891653+00:00
+
+📋 Key: bob-backend-1766205233
+   Algorithm: AES-256-GCM
+   HSM: BearDog Native Software HSM
+   Created: 2025-12-20T04:34:00.915726241+00:00
+
+📋 Key: share-7of11-holder11-1766204923
+   Algorithm: AES-256-GCM
+   HSM: BearDog Native Software HSM
+   Created: 2025-12-20T04:28:51.836090741+00:00
+
+📋 Key: share-3of5-member3-1766204923
+   Algorithm: AES-256-GCM
+   HSM: BearDog Native Software HSM
+   Created: 2025-12-20T04:28:44.370258578+00:00
+
+📋 Key: backup-encrypt-1766203102
+   Algorithm: AES-256-GCM
+   HSM: BearDog Native Software HSM
+   Created: 2025-12-20T03:58:27.524509487+00:00
+
+📋 Key: argon2-test-kdf-test-1765419852
+   Algorithm: aes-256-gcm
+   HSM: SoftHSM2
+   Created: 2025-12-11T02:24:13.264482009+00:00
+
+📋 Key: argon2-test-kdf-test-1765419845
+   Algorithm: aes-256-gcm
+   HSM: SoftHSM2
+   Created: 2025-12-11T02:24:06.111784602+00:00
+
+📋 Key: node-a-root-1766591172
+   Algorithm: ed25519
+   HSM: BearDog Native Software HSM
+   Created: 2025-12-24T15:46:13.018464329+00:00
+
+📋 Key: delegated-weekday-constraint-demo-1765459844
+   Algorithm: aes-256-gcm
+   HSM: delegated-SoftHSM2
+   Created: 2025-12-11T13:30:45.212314196+00:00
+
+📋 Key: test-master-test-1765419537
+   Algorithm: aes-256-gcm
+   HSM: SoftHSM2
+   Created: 2025-12-11T02:18:57.060935950+00:00
+
+📋 Key: tower-b-1766142733
+   Algorithm: genetic-hkdf
+   HSM: BearDog Native Software HSM
+   Created: 2025-12-19T11:12:13.021140298+00:00
+
+📋 Key: final-test
+   Algorithm: aes256-gcm
+   HSM: Android StrongBox (Pixel 8a)
+   Created: 2025-12-01T00:40:27.454864332+00:00
+
+📋 Key: tower-a-1766142733
+   Algorithm: genetic-hkdf
+   HSM: BearDog Native Software HSM
+   Created: 2025-12-19T11:12:13.015864601+00:00
+
+📋 Key: bench-keygen-Software-1766202990278023139
+   Algorithm: AES-256-GCM
+   HSM: BearDog Native Software HSM
+   Created: 2025-12-20T03:56:31.817306505+00:00
+
+📋 Key: node-a-root-1766591156
+   Algorithm: ed25519
+   HSM: BearDog Native Software HSM
+   Created: 2025-12-24T15:45:56.747467238+00:00
+
+📋 Key: test-derived-test-1765419537
+   Algorithm: aes-256-gcm
+   HSM: SoftHSM2
+   Created: 2025-12-11T02:18:57.065358040+00:00
+
+📋 Key: master-1766142732
+   Algorithm: genetic-hkdf
+   HSM: BearDog Native Software HSM
+   Created: 2025-12-19T11:12:13.005169+00:00
+
+📋 Key: party-c-1766201977
+   Algorithm: AES-256-GCM
+   HSM: BearDog Native Software HSM
+   Created: 2025-12-20T03:39:45.269922848+00:00
+
+📋 Key: validation-key-1
+   Algorithm: ed25519
+   HSM: BearDog Native Software HSM
+   Created: 2025-12-22T00:56:10.953200856+00:00
+
+📋 Key: tower-b-1766142702
+   Algorithm: genetic-hkdf
+   HSM: BearDog Native Software HSM
+   Created: 2025-12-19T11:11:42.894537389+00:00
+
+📋 Key: test-bob-test-1765419542
+   Algorithm: aes-256-gcm
+   HSM: SoftHSM2
+   Created: 2025-12-11T02:19:02.229171657+00:00
+
+📋 Key: hsm-discovery-test-001
+   Algorithm: AES-256-GCM
+   HSM: BearDog Native Software HSM
+   Created: 2025-12-20T01:32:31.089279117+00:00
+
+📋 Key: test-alice-test-1765419542
+   Algorithm: aes-256-gcm
+   HSM: SoftHSM2
+   Created: 2025-12-11T02:19:02.224254661+00:00
+
+📋 Key: demo-key-1765416919
+   Algorithm: aes-256-gcm
+   HSM: SoftHSM2
+   Created: 2025-12-11T01:35:19.858733077+00:00
+
+📋 Key: bob-backend-1766205256
+   Algorithm: AES-256-GCM
+   HSM: BearDog Native Software HSM
+   Created: 2025-12-20T04:34:24.011454454+00:00
+
+📋 Key: root-ceo-1766205256
+   Algorithm: AES-256-GCM
+   HSM: BearDog Native Software HSM
+   Created: 2025-12-20T04:34:17.931215895+00:00
+
+📋 Key: test-mixed-test-1765419542
+   Algorithm: aes-256-gcm
+   HSM: mixed-SoftHSM2-SoftHSM2
+   Created: 2025-12-11T02:19:02.234776722+00:00
+
+📋 Key: key-business-hours-1766205418
+   Algorithm: AES-256-GCM
+   HSM: BearDog Native Software HSM
+   Created: 2025-12-20T04:37:00.209309319+00:00
+
+📋 Key: pbkdf2-test-kdf-test-1765419845
+   Algorithm: aes-256-gcm
+   HSM: SoftHSM2
+   Created: 2025-12-11T02:24:05.744737649+00:00
+
+📋 Key: alice-personal-key
+   Algorithm: aes-256-gcm
+   HSM: BearDog Native Software HSM
+   Created: 2025-12-19T16:15:07.144840659+00:00
+
+📋 Key: songbird-channel-mixed-1766194274
+   Algorithm: AES-256-GCM
+   HSM: mixed-BearDog Native Software HSM-BearDog Native Software HSM
+   Created: 2025-12-20T01:31:19.499633014+00:00
+
+📋 Key: backup-encrypt-1766203114
+   Algorithm: AES-256-GCM
+   HSM: BearDog Native Software HSM
+   Created: 2025-12-20T03:58:39.139524125+00:00
+
+📋 Key: human-entropy-key-entropy-1766163640
+   Algorithm: AES-256-GCM
+   HSM: BearDog Native Software HSM
+   Created: 2025-12-19T17:08:48.300415914+00:00
+
+📋 Key: share-7of11-holder10-1766204923
+   Algorithm: AES-256-GCM
+   HSM: BearDog Native Software HSM
+   Created: 2025-12-20T04:28:51.831531152+00:00
+
+📋 Key: key-mobile-only-1766205418
+   Algorithm: AES-256-GCM
+   HSM: BearDog Native Software HSM
+   Created: 2025-12-20T04:37:10.201617928+00:00
+
+📋 Key: david-accounting-1766205233
+   Algorithm: AES-256-GCM
+   HSM: BearDog Native Software HSM
+   Created: 2025-12-20T04:34:00.928551713+00:00
+
+📋 Key: dept-finance-1766205256
+   Algorithm: AES-256-GCM
+   HSM: BearDog Native Software HSM
+   Created: 2025-12-20T04:34:19.959148941+00:00
+
+📋 Key: key-api-limited-1766205418
+   Algorithm: AES-256-GCM
+   HSM: BearDog Native Software HSM
+   Created: 2025-12-20T04:37:03.550273381+00:00
+
+📋 Key: bench-encrypt-Software-1766202925
+   Algorithm: AES-256-GCM
+   HSM: BearDog Native Software HSM
+   Created: 2025-12-20T03:55:26.590771383+00:00
+
+📋 Key: share-3of5-member1-1766204923
+   Algorithm: AES-256-GCM
+   HSM: BearDog Native Software HSM
+   Created: 2025-12-20T04:28:44.355092444+00:00
+
+📋 Key: board-master-1766204910
+   Algorithm: AES-256-GCM
+   HSM: BearDog Native Software HSM
+   Created: 2025-12-20T04:28:31.418255093+00:00
+
+📋 Key: test-alice-test-1765419537
+   Algorithm: aes-256-gcm
+   HSM: SoftHSM2
+   Created: 2025-12-11T02:18:57.069597321+00:00
+
+📋 Key: master-key-gen0
+   Algorithm: aes-256-gcm
+   HSM: BearDog Native Software HSM
+   Created: 2025-12-20T03:34:12.952145480+00:00
+
+📋 Key: test-delegated-test-1765419542
+   Algorithm: aes-256-gcm
+   HSM: delegated-SoftHSM2
+   Created: 2025-12-11T02:19:02.238102912+00:00
+
+📋 Key: test-master-test-1765419542
+   Algorithm: aes-256-gcm
+   HSM: SoftHSM2
+   Created: 2025-12-11T02:19:02.214905742+00:00
+
+📋 Key: bench-keygen-Software-1766203022947354737
+   Algorithm: AES-256-GCM
+   HSM: BearDog Native Software HSM
+   Created: 2025-12-20T03:57:04.344279449+00:00
+
+📋 Key: david-accounting-1766205256
+   Algorithm: AES-256-GCM
+   HSM: BearDog Native Software HSM
+   Created: 2025-12-20T04:34:24.024384083+00:00
+
+📋 Key: temp-mix-ab-1766201977
+   Algorithm: AES-256-GCM
+   HSM: mixed-BearDog Native Software HSM-BearDog Native Software HSM
+   Created: 2025-12-20T03:39:47.282530893+00:00
+
+📋 Key: party-c-1766201845
+   Algorithm: AES-256-GCM
+   HSM: BearDog Native Software HSM
+   Created: 2025-12-20T03:37:33.629895064+00:00
+
+📋 Key: songbird-channel-mixed-1766191889
+   Algorithm: AES-256-GCM
+   HSM: mixed-BearDog Native Software HSM-BearDog Native Software HSM
+   Created: 2025-12-20T00:51:33.304275810+00:00
+
+📋 Key: employee-john-1766205418
+   Algorithm: AES-256-GCM
+   HSM: delegated-BearDog Native Software HSM
+   Created: 2025-12-20T04:37:00.218618877+00:00
+
+📋 Key: share-3of5-member2-1766204923
+   Algorithm: AES-256-GCM
+   HSM: BearDog Native Software HSM
+   Created: 2025-12-20T04:28:44.360033220+00:00
+
+📋 Key: critical-ops-1766205418
+   Algorithm: AES-256-GCM
+   HSM: delegated-BearDog Native Software HSM
+   Created: 2025-12-20T04:37:13.538364727+00:00
+
+📋 Key: share-3of5-member5-1766204910
+   Algorithm: AES-256-GCM
+   HSM: BearDog Native Software HSM
+   Created: 2025-12-20T04:28:31.462640141+00:00
+
+📋 Key: bench-encrypt-Software-1766202932
+   Algorithm: AES-256-GCM
+   HSM: BearDog Native Software HSM
+   Created: 2025-12-20T03:55:33.331468836+00:00
+
+📋 Key: pbkdf2-test-kdf-test-1765419852
+   Algorithm: aes-256-gcm
+   HSM: SoftHSM2
+   Created: 2025-12-11T02:24:12.933314372+00:00
+
+📋 Key: reconstruct-2shares-1766204923
+   Algorithm: AES-256-GCM
+   HSM: mixed-BearDog Native Software HSM-BearDog Native Software HSM
+   Created: 2025-12-20T04:28:48.426141665+00:00
+
+📋 Key: master-memory-constraint-demo-1765459844
+   Algorithm: aes-256-gcm
+   HSM: SoftHSM2
+   Created: 2025-12-11T13:30:45.412051540+00:00
+
+📋 Key: songbird-tower-a-1766194330
+   Algorithm: AES-256-GCM
+   HSM: BearDog Native Software HSM
+   Created: 2025-12-20T01:32:12.069639102+00:00
+
+📋 Key: team-frontend-1766205233
+   Algorithm: AES-256-GCM
+   HSM: BearDog Native Software HSM
+   Created: 2025-12-20T04:33:58.885024322+00:00
+
+📋 Key: share-7of11-holder7-1766204923
+   Algorithm: AES-256-GCM
+   HSM: BearDog Native Software HSM
+   Created: 2025-12-20T04:28:51.815602113+00:00
+
+📋 Key: demo-key-1765416026
+   Algorithm: aes-256-gcm
+   HSM: SoftHSM2
+   Created: 2025-12-11T01:20:30.048779691+00:00
+
+📋 Key: team-accounting-1766205233
+   Algorithm: AES-256-GCM
+   HSM: BearDog Native Software HSM
+   Created: 2025-12-20T04:33:58.899344124+00:00
+
+📋 Key: share-7of11-holder2-1766204923
+   Algorithm: AES-256-GCM
+   HSM: BearDog Native Software HSM
+   Created: 2025-12-20T04:28:51.788254342+00:00
+
+📋 Key: contract-sign-1766203102
+   Algorithm: AES-256-GCM
+   HSM: BearDog Native Software HSM
+   Created: 2025-12-20T03:58:24.195009004+00:00
+
+📋 Key: alice-backend-1766205256
+   Algorithm: AES-256-GCM
+   HSM: BearDog Native Software HSM
+   Created: 2025-12-20T04:34:24.004876724+00:00
+
+📋 Key: master-1766142670
+   Algorithm: genetic-hkdf
+   HSM: BearDog Native Software HSM
+   Created: 2025-12-19T11:11:10.196950979+00:00
+
+📋 Key: share-7of11-holder5-1766204923
+   Algorithm: AES-256-GCM
+   HSM: BearDog Native Software HSM
+   Created: 2025-12-20T04:28:51.803571281+00:00
+
+📋 Key: reconstruct-3shares-1766204923
+   Algorithm: AES-256-GCM
+   HSM: mixed-mixed-BearDog Native Software HSM-BearDog Native Software HSM-BearDog Native Software HSM
+   Created: 2025-12-20T04:28:46.398664243+00:00
+
+📋 Key: constraint-delegated-constraint-1765457417
+   Algorithm: aes-256-gcm
+   HSM: delegated-SoftHSM2
+   Created: 2025-12-11T12:50:17.447469024+00:00
+
+📋 Key: dept-engineering-1766205256
+   Algorithm: AES-256-GCM
+   HSM: BearDog Native Software HSM
+   Created: 2025-12-20T04:34:19.941460476+00:00
+
+📋 Key: test-master-001
+   Algorithm: AES-256-GCM
+   HSM: BearDog Native Software HSM
+   Created: 2025-12-19T16:45:15.888724319+00:00
+
+📋 Key: songbird-tower-b-1766191889
+   Algorithm: AES-256-GCM
+   HSM: BearDog Native Software HSM
+   Created: 2025-12-20T00:51:33.256231122+00:00
+
+📋 Key: delegated-memory-constraint-demo-1765459844
+   Algorithm: aes-256-gcm
+   HSM: delegated-SoftHSM2
+   Created: 2025-12-11T13:30:45.415663386+00:00
+
+📋 Key: party-b-1766201977
+   Algorithm: AES-256-GCM
+   HSM: BearDog Native Software HSM
+   Created: 2025-12-20T03:39:41.863445238+00:00
+
+📋 Key: temp-mix-ab-1766201845
+   Algorithm: AES-256-GCM
+   HSM: mixed-BearDog Native Software HSM-BearDog Native Software HSM
+   Created: 2025-12-20T03:37:35.659997857+00:00
+
+📋 Key: master-composite-constraint-demo-1765459844
+   Algorithm: aes-256-gcm
+   HSM: SoftHSM2
+   Created: 2025-12-11T13:30:45.601499985+00:00
+
+📋 Key: party-a-1766201977
+   Algorithm: AES-256-GCM
+   HSM: BearDog Native Software HSM
+   Created: 2025-12-20T03:39:38.527823080+00:00
+
+📋 Key: dept-finance-1766205233
+   Algorithm: AES-256-GCM
+   HSM: BearDog Native Software HSM
+   Created: 2025-12-20T04:33:56.867342113+00:00
+
+📋 Key: delegated-cpu-constraint-demo-1765459844
+   Algorithm: aes-256-gcm
+   HSM: delegated-SoftHSM2
+   Created: 2025-12-11T13:30:45.306804445+00:00
+
+📋 Key: share-3of5-member4-1766204910
+   Algorithm: AES-256-GCM
+   HSM: BearDog Native Software HSM
+   Created: 2025-12-20T04:28:31.454803619+00:00
+
+📋 Key: songbird-tower-b-1766194330
+   Algorithm: AES-256-GCM
+   HSM: BearDog Native Software HSM
+   Created: 2025-12-20T01:32:13.593045380+00:00
+
+📋 Key: songbird-channel-001-1766190405
+   Algorithm: AES-256-GCM
+   HSM: BearDog Native Software HSM
+   Created: 2025-12-20T00:26:47.098383305+00:00
+
+📋 Key: master-1766142702
+   Algorithm: genetic-hkdf
+   HSM: BearDog Native Software HSM
+   Created: 2025-12-19T11:11:42.876228355+00:00
+
+📋 Key: device-quality-key-entropy-real-1766172475
+   Algorithm: AES-256-GCM
+   HSM: BearDog Native Software HSM
+   Created: 2025-12-19T19:48:20.851558966+00:00
+
+📋 Key: bench-encrypt-Software-1766203027
+   Algorithm: AES-256-GCM
+   HSM: BearDog Native Software HSM
+   Created: 2025-12-20T03:57:09.183987689+00:00
+
+📋 Key: child-key-1.json
+   Algorithm: ed25519
+   HSM: BearDog Native Software HSM
+   Created: 2025-12-22T00:56:32.815067041+00:00
+
+📋 Key: bench-encrypt-Software-1766203002
+   Algorithm: AES-256-GCM
+   HSM: BearDog Native Software HSM
+   Created: 2025-12-20T03:56:44.032034648+00:00
+
+📋 Key: node-b-child-1766591173
+   Algorithm: ed25519
+   HSM: BearDog Native Software HSM
+   Created: 2025-12-24T15:46:13.024283157+00:00
+

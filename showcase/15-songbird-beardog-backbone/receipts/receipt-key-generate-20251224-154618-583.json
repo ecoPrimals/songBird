@@ -1,0 +1,24 @@
+{
+  "receipt_id": "678efcda-3afc-4c9b-b2b4-817fcfed40a7",
+  "operation": "key-generate",
+  "timestamp": "2025-12-24T15:46:18.583364206+00:00",
+  "result": {
+    "status": "success"
+  },
+  "key_info": {
+    "key_id": "node-c-1766591178",
+    "algorithm": "ed25519",
+    "generation": 0,
+    "usage": "all"
+  },
+  "hsm_info": {
+    "name": "BearDog Native Software HSM",
+    "vendor": "BearDog",
+    "model": "Native Software HSM",
+    "hsm_type": "Software"
+  },
+  "metadata": {
+    "entropy_source": "system",
+    "kdf": "argon2"
+  }
+}
