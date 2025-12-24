@@ -16,6 +16,7 @@ pub struct AgnosticComputeCoordinator {
     providers: Arc<RwLock<HashMap<String, ComputeProvider>>>,
     
     /// Configuration
+    #[allow(dead_code)] // Used for future discovery implementations
     config: ComputeCoordinatorConfig,
 }
 
@@ -143,18 +144,8 @@ pub struct Workload {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DeploymentId(pub String);
 
-/// Compute coordinator errors
-#[derive(Debug, thiserror::Error)]
-pub enum ComputeError {
-    #[error("No compute provider available: {0}")]
-    NoProviderAvailable(String),
-    
-    #[error("Deployment failed: {0}")]
-    DeploymentFailed(String),
-    
-    #[error("Provider error: {0}")]
-    ProviderError(String),
-}
+// Re-export ComputeError from error module
+pub use crate::error::ComputeError;
 
 #[cfg(test)]
 mod tests {

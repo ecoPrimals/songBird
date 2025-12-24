@@ -4,7 +4,6 @@
 //! **ZERO HARDCODING**: No primal names, only capability requests.
 
 use crate::error::{GenesisError, Result};
-use crate::identity::Identity as GenesisIdentity;
 use std::sync::Arc;
 
 // NOTE: Conditional compilation for the coordination feature
@@ -38,7 +37,7 @@ impl GenesisCoordinationBridge {
     /// # Errors
     ///
     /// Returns an error if coordination fails
-    pub async fn execute_genesis(&self, node_id_str: String) -> Result<GenesisIdentity> {
+    pub async fn execute_genesis(&self, node_id_str: String) -> Result<Identity> {
         tracing::info!("🌱 Genesis: Executing ceremony with capability-based coordination");
 
         // Convert string to NodeId
@@ -50,13 +49,8 @@ impl GenesisCoordinationBridge {
             .await
             .map_err(|e| GenesisError::CoordinationFailed(e.to_string()))?;
 
-        // Convert coordination Identity to Genesis Identity
-        Ok(GenesisIdentity {
-            node_id: identity.node_id.0,
-            public_key: identity.public_key,
-            lineage_proof: identity.lineage.data,
-            witness_signatures: identity.witness_proof.data,
-        })
+        // Return the coordination Identity directly
+        Ok(identity)
     }
 
     /// Request security capability for genesis operations
@@ -95,7 +89,7 @@ impl GenesisCoordinationBridge {
     /// # Errors
     ///
     /// Returns an error indicating coordination is not available
-    pub async fn execute_genesis(&self, _node_id_str: String) -> Result<GenesisIdentity> {
+    pub async fn execute_genesis(&self, _node_id_str: String) -> Result<()> {
         Err(GenesisError::CoordinationFailed(
             "Coordination feature not enabled".to_string(),
         ))

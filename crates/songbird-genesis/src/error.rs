@@ -24,10 +24,6 @@ pub enum GenesisError {
     #[error("Coordination failed: {0}")]
     CoordinationFailed(String),
 
-    /// Multi-primal coordination failed
-    #[error("Multi-primal coordination failed: {0}")]
-    CoordinationFailed(String),
-
     /// Genesis ceremony timeout
     #[error("Genesis ceremony timed out after {0}s")]
     CeremonyTimeout(u64),
