@@ -179,6 +179,12 @@ impl Device {
     pub fn name(&self) -> Option<&str> {
         self.info.name.as_deref()
     }
+
+    /// Get connection handle
+    #[must_use]
+    pub const fn handle(&self) -> u16 {
+        self.handle
+    }
 }
 
 #[cfg(test)]
