@@ -13,11 +13,12 @@
 Songbird is a **production-ready federated ML orchestration system** that enables:
 - 🔐 **Sovereign Computing**: Self-hosted, capability-based architecture
 - 🌐 **True P2P Networking**: VPN-free encrypted communication via BTSP & BirdSong
-- 🔑 **Physical Genesis**: Secure node bootstrap with hardware attestation
+- 🔑 **Physical Genesis**: Secure node bootstrap with hardware attestation  
+- 📡 **Pure Rust Bluetooth**: Universal comms with zero system dependencies
 - 🎓 **Education First**: Built for research and learning environments
 - 🐻 **ecoPrimals Integration**: Works with BearDog (security) & Toadstool (compute)
 
-**Current Status**: ✅ **P2P OPERATIONAL** | 🔐 **Genesis Bootstrap Ready** | 🎯 **Production Evolution Complete**
+**Current Status**: ✅ **P2P OPERATIONAL** | 🔐 **Genesis Bootstrap Ready** | 📡 **BLE Stack Active (Phase 2: 60%)**
 
 ---
 
