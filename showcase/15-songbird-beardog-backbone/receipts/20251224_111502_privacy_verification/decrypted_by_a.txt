@@ -1,0 +1,24 @@
+2025-12-24T16:15:02.411725Z  INFO 🎵 BirdSong Lineage Decryption
+=================================
+
+📋 Configuration:
+   Input: /home/eastgate/Development/ecoPrimals/songbird/showcase/15-songbird-beardog-backbone/receipts/20251224_111502_privacy_verification/encrypted.birdsong
+   Key ID: node-a-root-1766592902
+
+🔍 Looking up lineage proof for node-a-root-1766592902...
+📜 Lineage proof:
+   Node ID: node-a-root-1766592902
+   Root ID: node-a-root-1766592902
+   Path depth: 0
+
+2025-12-24T16:15:02.411776Z  INFO 🔑 Initializing LineageKeyDerivation
+2025-12-24T16:15:02.411778Z  INFO 🎵 Initializing BirdSongEncryption
+🔓 Attempting to decrypt...
+❌ Cannot decrypt: System error: Decryption failed (wrong key or tampered data): aead::Error
+
+🔐 Privacy enforced:
+   Either you're not in the allowed depth range,
+   or the key is expired/invalid.
+   Strangers see only noise.
+
+Error: System { message: "Decryption failed (wrong key or tampered data): aead::Error", category: General }

@@ -1,0 +1,19 @@
+{
+  "receipt_id": "56199eed-cb0a-4b8a-b765-9985dcf93efe",
+  "operation": "key-derive",
+  "timestamp": "2025-12-24T16:14:32.593940408+00:00",
+  "result": {
+    "status": "success"
+  },
+  "key_info": {
+    "key_id": "node-b-child-1766592872",
+    "algorithm": "ed25519",
+    "generation": 1,
+    "parent_key_id": "node-a-root-1766592872",
+    "purpose": "child-b"
+  },
+  "metadata": {
+    "master_key_id": "node-a-root-1766592872",
+    "derivation_purpose": "child-b"
+  }
+}

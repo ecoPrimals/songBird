@@ -1,0 +1,23 @@
+2025-12-24T16:15:02.407522Z  INFO 🎵 BirdSong Lineage Encryption
+================================
+
+📋 Configuration:
+   Message: 68 bytes
+   Lineage Hint: DirectAncestors
+   Root ID: node-a-root-1766592902
+
+2025-12-24T16:15:02.407548Z  INFO 🔑 Initializing LineageKeyDerivation
+2025-12-24T16:15:02.407550Z  INFO 🎵 Initializing BirdSongEncryption
+🔒 Encrypting broadcast for lineage node-a-root-1766592902...
+✅ Broadcast encrypted successfully!
+
+📁 Output:
+   File: /home/eastgate/Development/ecoPrimals/songbird/showcase/15-songbird-beardog-backbone/receipts/20251224_111502_privacy_verification/encrypted.birdsong
+   Size: 1095 bytes
+   Ciphertext: 84 bytes
+
+🔐 Privacy:
+   Only nodes in lineage 'node-a-root-1766592902' can decrypt
+   Allowed depth range: 0-1
+   Strangers will see: 'Cannot decrypt: not in lineage'
+
