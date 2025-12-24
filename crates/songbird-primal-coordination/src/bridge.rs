@@ -15,13 +15,13 @@ use tokio::sync::RwLock;
 pub struct PrimalConnection {
     /// Connection identifier
     pub connection_id: String,
-    
+
     /// Endpoint (discovered, not hardcoded)
     pub endpoint: String,
-    
+
     /// Capabilities advertised by this primal
     pub capabilities: Arc<RwLock<PrimalCapabilities>>,
-    
+
     /// Connection metadata
     pub metadata: Arc<RwLock<std::collections::HashMap<String, serde_json::Value>>>,
 }
@@ -49,25 +49,23 @@ impl PrimalConnection {
             self.endpoint,
             self.connection_id
         );
-        
+
         // TODO: Implement actual network communication
         // For now, this is a placeholder that will be implemented with real P2P networking
         tracing::warn!("PrimalConnection::send_request is not yet fully implemented");
-        
+
         // Placeholder response based on request type
         match request {
             PrimalRequest::DiscoverCapabilities => {
                 let caps = self.capabilities.read().await.clone();
                 Ok(PrimalResponse::Capabilities(caps))
             }
-            PrimalRequest::Status => {
-                Ok(PrimalResponse::StatusResponse(ServiceStatus {
-                    healthy: true,
-                    version: "0.1.0".to_string(),
-                    capabilities: self.capabilities.read().await.services.clone(),
-                    metrics: std::collections::HashMap::new(),
-                }))
-            }
+            PrimalRequest::Status => Ok(PrimalResponse::StatusResponse(ServiceStatus {
+                healthy: true,
+                version: "0.1.0".to_string(),
+                capabilities: self.capabilities.read().await.services.clone(),
+                metrics: std::collections::HashMap::new(),
+            })),
             _ => Err(crate::error::PrimalCoordinationError::Internal(
                 "Request type not yet implemented".to_string(),
             )),
@@ -108,7 +106,10 @@ pub trait PrimalBridge: Send + Sync {
     /// # Errors
     ///
     /// Returns an error if discovery fails
-    async fn discover_capabilities(&self, connection: &PrimalConnection) -> Result<PrimalCapabilities>;
+    async fn discover_capabilities(
+        &self,
+        connection: &PrimalConnection,
+    ) -> Result<PrimalCapabilities>;
 
     /// Get the capabilities this bridge can connect to
     ///
@@ -129,7 +130,9 @@ impl DiscoveryBasedBridge {
     /// Create a new discovery-based bridge
     #[must_use]
     pub fn new(discovery: Arc<dyn PrimalDiscovery>) -> Self {
-        Self { discovery }
+        Self {
+            discovery,
+        }
     }
 }
 
@@ -137,16 +140,12 @@ impl DiscoveryBasedBridge {
 impl PrimalBridge for DiscoveryBasedBridge {
     async fn connect(&self, capability: CapabilityType) -> Result<PrimalConnection> {
         tracing::info!("Discovering primal for capability: {}", capability);
-        
+
         // Use discovery engine to find a primal
         let discovered = self.discovery.discover_by_capability(&capability).await?;
-        
-        tracing::info!(
-            "Found primal at {} for capability {}",
-            discovered.endpoint,
-            capability
-        );
-        
+
+        tracing::info!("Found primal at {} for capability {}", discovered.endpoint, capability);
+
         // Create connection
         Ok(PrimalConnection::new(
             uuid::Uuid::new_v4().to_string(),
@@ -155,10 +154,13 @@ impl PrimalBridge for DiscoveryBasedBridge {
         ))
     }
 
-    async fn discover_capabilities(&self, connection: &PrimalConnection) -> Result<PrimalCapabilities> {
+    async fn discover_capabilities(
+        &self,
+        connection: &PrimalConnection,
+    ) -> Result<PrimalCapabilities> {
         // Query the primal for its capabilities
         let response = connection.send_request(PrimalRequest::DiscoverCapabilities).await?;
-        
+
         match response {
             PrimalResponse::Capabilities(caps) => Ok(caps),
             PrimalResponse::Error(e) => Err(crate::error::PrimalCoordinationError::PrimalError(e)),
@@ -190,7 +192,8 @@ pub trait PrimalDiscovery: Send + Sync {
     /// # Errors
     ///
     /// Returns an error if no primal with the capability is found
-    async fn discover_by_capability(&self, capability: &CapabilityType) -> Result<DiscoveredPrimal>;
+    async fn discover_by_capability(&self, capability: &CapabilityType)
+        -> Result<DiscoveredPrimal>;
 }
 
 /// Discovered primal information
@@ -212,13 +215,13 @@ mod tests {
             metadata: std::collections::HashMap::new(),
             quality: ServiceQuality::default(),
         };
-        
+
         let conn = PrimalConnection::new(
             "test-conn-1".to_string(),
             "http://localhost:8080".to_string(),
             caps,
         );
-        
+
         assert_eq!(conn.connection_id, "test-conn-1");
         assert_eq!(conn.endpoint, "http://localhost:8080");
         assert!(conn.supports_capability(&CapabilityType::Security).await);
@@ -233,17 +236,17 @@ mod tests {
             metadata: std::collections::HashMap::new(),
             quality: ServiceQuality::default(),
         };
-        
+
         let conn = PrimalConnection::new(
             "test-conn-2".to_string(),
             "http://localhost:8080".to_string(),
             initial_caps,
         );
-        
+
         // Initially only supports security
         assert!(conn.supports_capability(&CapabilityType::Security).await);
         assert!(!conn.supports_capability(&CapabilityType::Compute).await);
-        
+
         // Update capabilities
         let new_caps = PrimalCapabilities {
             services: vec!["security".to_string(), "compute".to_string()],
@@ -252,10 +255,9 @@ mod tests {
             quality: ServiceQuality::default(),
         };
         conn.update_capabilities(new_caps).await;
-        
+
         // Now supports both
         assert!(conn.supports_capability(&CapabilityType::Security).await);
         assert!(conn.supports_capability(&CapabilityType::Compute).await);
     }
 }
-

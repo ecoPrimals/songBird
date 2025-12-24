@@ -82,14 +82,14 @@ impl L2capChannel {
         // For LE, we use packet boundary = 0b00 (first packet, non-automatically flushable)
         let handle_and_flags = self.connection_handle & 0x0FFF;
         packet.extend_from_slice(&handle_and_flags.to_le_bytes());
-        
+
         // ACL data length
         packet.extend_from_slice(&(acl_data_length as u16).to_le_bytes());
 
         // L2CAP Header
         // PDU length (payload only, not including L2CAP header)
         packet.extend_from_slice(&(l2cap_length as u16).to_le_bytes());
-        
+
         // Channel ID
         packet.extend_from_slice(&self.channel_id.to_le_bytes());
 
@@ -150,14 +150,9 @@ impl L2capChannel {
 
         // Parse L2CAP header
         let l2cap_start = ACL_HEADER_SIZE;
-        let pdu_length = u16::from_le_bytes([
-            packet[l2cap_start],
-            packet[l2cap_start + 1],
-        ]) as usize;
-        let channel_id = u16::from_le_bytes([
-            packet[l2cap_start + 2],
-            packet[l2cap_start + 3],
-        ]);
+        let pdu_length =
+            u16::from_le_bytes([packet[l2cap_start], packet[l2cap_start + 1]]) as usize;
+        let channel_id = u16::from_le_bytes([packet[l2cap_start + 2], packet[l2cap_start + 3]]);
 
         if channel_id != self.channel_id {
             return Err(BluetoothError::InvalidData {
@@ -218,7 +213,7 @@ impl L2capManager {
     /// Returns error if channel already exists
     pub async fn create_att_channel(&self, connection_handle: u16) -> Result<L2capChannel> {
         let mut channels = self.channels.lock().await;
-        
+
         // Check if channel already exists
         if channels.iter().any(|c| c.connection_handle == connection_handle) {
             return Err(BluetoothError::InvalidOperation(format!(
@@ -242,17 +237,15 @@ impl L2capManager {
     /// Returns error if channel doesn't exist
     pub async fn get_att_channel(&self, connection_handle: u16) -> Result<L2capChannel> {
         let channels = self.channels.lock().await;
-        
-        channels
-            .iter()
-            .find(|c| c.connection_handle == connection_handle)
-            .cloned()
-            .ok_or_else(|| {
+
+        channels.iter().find(|c| c.connection_handle == connection_handle).cloned().ok_or_else(
+            || {
                 BluetoothError::InvalidOperation(format!(
                     "No ATT channel for handle 0x{:04X}",
                     connection_handle
                 ))
-            })
+            },
+        )
     }
 
     /// Remove channel for a connection
@@ -308,7 +301,7 @@ mod tests {
     #[test]
     fn test_parse_acl_packet() {
         let channel = L2capChannel::new_att(0x0040);
-        
+
         // Build a sample ACL packet
         let packet = vec![
             0x40, 0x00, // Handle 0x0040
@@ -319,7 +312,7 @@ mod tests {
         ];
 
         let payload = channel.parse_acl_packet(&packet).unwrap();
-        
+
         assert_eq!(payload.len(), 3);
         assert_eq!(payload[0], 0x0A); // ATT Read Request opcode
         assert_eq!(payload[1], 0x01); // Handle low
@@ -338,7 +331,7 @@ mod tests {
     #[test]
     fn test_parse_wrong_channel() {
         let channel = L2capChannel::new_att(0x0040);
-        
+
         let packet = vec![
             0x40, 0x00, // Handle 0x0040
             0x07, 0x00, // ACL data length 7
@@ -385,4 +378,3 @@ mod tests {
         assert_eq!(channel.mtu, 512);
     }
 }
-

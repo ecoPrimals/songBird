@@ -14,4 +14,3 @@ pub use agnostic_coordinator::{
 
 /// Compute bridge version
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");
-

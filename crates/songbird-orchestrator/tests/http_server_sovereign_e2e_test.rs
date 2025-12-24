@@ -25,7 +25,8 @@ async fn test_http_server_starts_with_sovereign_socket() -> Result<()> {
     let (federation_state, service_registry) = create_test_federation_state();
 
     // Start server on ephemeral port (OS chooses)
-    let local_service_registry = Arc::new(songbird_orchestrator::service_registry::ServiceRegistry::new());
+    let local_service_registry =
+        Arc::new(songbird_orchestrator::service_registry::ServiceRegistry::new());
     let server_task = tokio::spawn(async move {
         http_server::start_http_server(
             federation_state,
@@ -54,7 +55,8 @@ async fn test_http_server_health_endpoint_with_sovereign_socket() -> Result<()> 
     let (federation_state, service_registry) = create_test_federation_state();
 
     // Start server
-    let local_service_registry = Arc::new(songbird_orchestrator::service_registry::ServiceRegistry::new());
+    let local_service_registry =
+        Arc::new(songbird_orchestrator::service_registry::ServiceRegistry::new());
     tokio::spawn(async move {
         let _ = http_server::start_http_server(
             federation_state,
@@ -96,7 +98,8 @@ async fn test_http_server_rapid_restart_with_sovereign_socket() -> Result<()> {
     for i in 0..3 {
         let (federation_state, service_registry) = create_test_federation_state();
 
-        let local_service_registry = Arc::new(songbird_orchestrator::service_registry::ServiceRegistry::new());
+        let local_service_registry =
+            Arc::new(songbird_orchestrator::service_registry::ServiceRegistry::new());
         let server_task = tokio::spawn(async move {
             http_server::start_http_server(
                 federation_state,
@@ -132,7 +135,8 @@ async fn test_http_server_concurrent_requests_with_sovereign_socket() -> Result<
     let (federation_state, service_registry) = create_test_federation_state();
 
     // Start server
-    let local_service_registry = Arc::new(songbird_orchestrator::service_registry::ServiceRegistry::new());
+    let local_service_registry =
+        Arc::new(songbird_orchestrator::service_registry::ServiceRegistry::new());
     tokio::spawn(async move {
         let _ = http_server::start_http_server(
             federation_state,
@@ -199,7 +203,8 @@ async fn test_http_server_fallback_port_selection() -> Result<()> {
     // Try to start server on blocked port (should fall back)
     let (federation_state, service_registry) = create_test_federation_state();
 
-    let local_service_registry = Arc::new(songbird_orchestrator::service_registry::ServiceRegistry::new());
+    let local_service_registry =
+        Arc::new(songbird_orchestrator::service_registry::ServiceRegistry::new());
     let server_task = tokio::spawn(async move {
         http_server::start_http_server(
             federation_state,

@@ -7,8 +7,8 @@ use crate::error::{LineageRelayError, Result};
 use crate::types::NodeId;
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
-use songbird_primal_coordination::types::{PrimalRequest, PrimalResponse};
 use songbird_primal_coordination::bridge::PrimalConnection;
+use songbird_primal_coordination::types::{PrimalRequest, PrimalResponse};
 use std::net::SocketAddr;
 use std::sync::Arc;
 
@@ -49,7 +49,9 @@ impl LineageRelayAdapter {
     /// Create new adapter
     #[must_use]
     pub fn new(coordinator: Arc<LineageRelayCoordinator>) -> Self {
-        Self { coordinator }
+        Self {
+            coordinator,
+        }
     }
 
     /// Handle connectivity request from Universal Coordinator
@@ -57,9 +59,15 @@ impl LineageRelayAdapter {
     /// # Errors
     ///
     /// Returns error if request fails
-    pub async fn handle_request(&self, request: ConnectivityRequest) -> Result<ConnectivityResponse> {
+    pub async fn handle_request(
+        &self,
+        request: ConnectivityRequest,
+    ) -> Result<ConnectivityResponse> {
         match request {
-            ConnectivityRequest::EstablishConnection { peer_id, peer_address } => {
+            ConnectivityRequest::EstablishConnection {
+                peer_id,
+                peer_address,
+            } => {
                 let peer = NodeId::from(peer_id);
                 let address: SocketAddr = peer_address
                     .parse()
@@ -99,7 +107,9 @@ impl LineageRelayPrimalConnection {
     /// Create new primal connection wrapper
     #[must_use]
     pub fn new(adapter: Arc<LineageRelayAdapter>) -> Self {
-        Self { adapter }
+        Self {
+            adapter,
+        }
     }
 
     /// Send request (for Universal Coordinator integration)
@@ -130,7 +140,8 @@ mod tests {
     #[tokio::test]
     async fn test_universal_coordinator_adapter() {
         let lineage_provider = Arc::new(MockLineageProvider::new());
-        let crypto = Arc::new(MockBirdSongCrypto::new(lineage_provider.clone(), "node-1".to_string()));
+        let crypto =
+            Arc::new(MockBirdSongCrypto::new(lineage_provider.clone(), "node-1".to_string()));
         let relay_authority = Arc::new(MockRelayAuthority::new(lineage_provider));
 
         let broadcaster = Arc::new(
@@ -146,25 +157,22 @@ mod tests {
 
         let config = LineageRelayConfig::default();
         let coordinator = Arc::new(
-            LineageRelayCoordinator::new(config, broadcaster, relay_authority)
-                .await
-                .unwrap(),
+            LineageRelayCoordinator::new(config, broadcaster, relay_authority).await.unwrap(),
         );
 
         let adapter = LineageRelayAdapter::new(coordinator);
 
         // Test relay stats request
-        let response = adapter
-            .handle_request(ConnectivityRequest::GetRelayStats)
-            .await
-            .unwrap();
+        let response = adapter.handle_request(ConnectivityRequest::GetRelayStats).await.unwrap();
 
         match response {
-            ConnectivityResponse::RelayStats { active_relays, .. } => {
+            ConnectivityResponse::RelayStats {
+                active_relays,
+                ..
+            } => {
                 assert_eq!(active_relays, 0); // No active relays yet
             }
             _ => panic!("Expected RelayStats response"),
         }
     }
 }
-

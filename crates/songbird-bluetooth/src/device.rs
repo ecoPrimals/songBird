@@ -30,14 +30,7 @@ impl Address {
     pub fn random() -> Self {
         use rand::Rng;
         let mut rng = rand::thread_rng();
-        Self([
-            rng.gen(),
-            rng.gen(),
-            rng.gen(),
-            rng.gen(),
-            rng.gen(),
-            rng.gen(),
-        ])
+        Self([rng.gen(), rng.gen(), rng.gen(), rng.gen(), rng.gen(), rng.gen()])
     }
 }
 
@@ -62,8 +55,8 @@ impl FromStr for Address {
 
         let mut bytes = [0u8; 6];
         for (i, part) in parts.iter().enumerate() {
-            bytes[i] = u8::from_str_radix(part, 16)
-                .map_err(|e| format!("Invalid hex byte: {e}"))?;
+            bytes[i] =
+                u8::from_str_radix(part, 16).map_err(|e| format!("Invalid hex byte: {e}"))?;
         }
 
         Ok(Self(bytes))
@@ -75,16 +68,16 @@ impl FromStr for Address {
 pub struct DeviceInfo {
     /// Device address
     pub address: Address,
-    
+
     /// Device name (if available)
     pub name: Option<String>,
-    
+
     /// RSSI (signal strength)
     pub rssi: i8,
-    
+
     /// Advertised services
     pub services: Vec<uuid::Uuid>,
-    
+
     /// Manufacturer data
     pub manufacturer_data: Option<Vec<u8>>,
 }
@@ -156,7 +149,7 @@ impl fmt::Display for DeviceInfo {
 pub struct Device {
     /// Device info
     pub info: DeviceInfo,
-    
+
     /// Connection handle
     pub(crate) handle: u16,
 }
@@ -165,7 +158,10 @@ impl Device {
     /// Create new device handle
     #[must_use]
     pub(crate) fn new(info: DeviceInfo, handle: u16) -> Self {
-        Self { info, handle }
+        Self {
+            info,
+            handle,
+        }
     }
 
     /// Get device address
@@ -210,4 +206,3 @@ mod tests {
         assert_eq!(info.rssi, -50);
     }
 }
-

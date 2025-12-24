@@ -18,10 +18,10 @@ use tokio::sync::RwLock;
 pub struct PrimalCoordinator {
     /// Capability-based bridge for discovering primals
     bridge: Arc<dyn PrimalBridge>,
-    
+
     /// Active connections to primals (by capability)
     active_connections: Arc<RwLock<HashMap<String, PrimalConnection>>>,
-    
+
     /// Connection pool configuration
     config: CoordinatorConfig,
 }
@@ -31,13 +31,13 @@ pub struct PrimalCoordinator {
 pub struct CoordinatorConfig {
     /// Maximum connections per capability
     pub max_connections_per_capability: usize,
-    
+
     /// Connection timeout in seconds
     pub connection_timeout_secs: u64,
-    
+
     /// Health check interval in seconds
     pub health_check_interval_secs: u64,
-    
+
     /// Enable connection pooling
     pub enable_pooling: bool,
 }
@@ -80,7 +80,7 @@ impl PrimalCoordinator {
     /// Returns an error if no primal with the capability can be found
     pub async fn request_capability(&self, capability: CapabilityType) -> Result<PrimalConnection> {
         tracing::info!("🔍 Requesting capability: {}", capability);
-        
+
         // Check if we already have a connection for this capability
         let cache_key = capability.as_str().to_string();
         {
@@ -90,15 +90,15 @@ impl PrimalCoordinator {
                 return Ok(conn.clone());
             }
         }
-        
+
         // Discover and connect to a primal with this capability
         let connection = self.bridge.connect(capability.clone()).await?;
-        
+
         // Cache the connection
         if self.config.enable_pooling {
             self.active_connections.write().await.insert(cache_key, connection.clone());
         }
-        
+
         tracing::info!("✅ Connected to primal for capability: {}", capability);
         Ok(connection)
     }
@@ -201,9 +201,7 @@ impl PrimalCoordinator {
         let deployment_id = match deploy_response {
             PrimalResponse::WorkloadDeployed(id) => id,
             PrimalResponse::Error(e) => {
-                return Err(PrimalCoordinationError::PrimalError(format!(
-                    "Deployment failed: {e}"
-                )))
+                return Err(PrimalCoordinationError::PrimalError(format!("Deployment failed: {e}")))
             }
             _ => {
                 return Err(PrimalCoordinationError::UnexpectedResponse(
@@ -211,7 +209,7 @@ impl PrimalCoordinator {
                 ))
             }
         };
-        
+
         tracing::info!(
             "✅ Songbird: Workload {} deployed to compute primal with ID: {}",
             workload.id,
@@ -370,7 +368,7 @@ mod tests {
     async fn test_coordinator_creation() {
         let bridge = Arc::new(MockBridge);
         let coordinator = PrimalCoordinator::new(bridge);
-        
+
         // Coordinator should be created successfully
         assert_eq!(coordinator.config.max_connections_per_capability, 10);
     }
@@ -379,10 +377,10 @@ mod tests {
     async fn test_request_capability() {
         let bridge = Arc::new(MockBridge);
         let coordinator = PrimalCoordinator::new(bridge);
-        
+
         let conn = coordinator.request_capability(CapabilityType::Security).await;
         assert!(conn.is_ok());
-        
+
         let conn = conn.unwrap();
         assert!(conn.supports_capability(&CapabilityType::Security).await);
     }
@@ -391,15 +389,15 @@ mod tests {
     async fn test_capability_caching() {
         let bridge = Arc::new(MockBridge);
         let coordinator = PrimalCoordinator::new(bridge);
-        
+
         // First request
         let conn1 = coordinator.request_capability(CapabilityType::Security).await.unwrap();
         let id1 = conn1.connection_id.clone();
-        
+
         // Second request should return cached connection
         let conn2 = coordinator.request_capability(CapabilityType::Security).await.unwrap();
         let id2 = conn2.connection_id;
-        
+
         assert_eq!(id1, id2, "Should return cached connection");
     }
 
@@ -407,11 +405,11 @@ mod tests {
     async fn test_service_mesh_coordination() {
         let bridge = Arc::new(MockBridge);
         let coordinator = PrimalCoordinator::new(bridge);
-        
+
         let mesh = coordinator
             .coordinate_service_mesh(CapabilityType::Compute, CapabilityType::Security)
             .await;
-        
+
         assert!(mesh.is_ok());
         let mesh = mesh.unwrap();
         assert!(!mesh.id.is_empty());
@@ -419,4 +417,3 @@ mod tests {
         assert_eq!(mesh.provider_capability, CapabilityType::Security);
     }
 }
-

@@ -155,7 +155,11 @@ impl Default for TlsConfig {
                 .ok()
                 .and_then(|s| {
                     let sans: Vec<String> = s.split(',').map(|s| s.trim().to_string()).collect();
-                    if sans.is_empty() { None } else { Some(sans) }
+                    if sans.is_empty() {
+                        None
+                    } else {
+                        Some(sans)
+                    }
                 })
                 .unwrap_or_default(),
             require_valid_certs: env::var("SONGBIRD_TLS_REQUIRE_VALID")

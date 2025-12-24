@@ -33,10 +33,10 @@ use std::collections::HashMap;
 pub struct AgnosticPrimalConfig {
     /// Capability-to-endpoint mapping (discovered or from env)
     pub capability_endpoints: HashMap<String, String>,
-    
+
     /// Discovery configuration
     pub discovery: CapabilityDiscoveryConfig,
-    
+
     /// Service mesh configuration (for primal-to-primal)
     pub service_mesh: ServiceMeshConfig,
 }
@@ -46,16 +46,16 @@ pub struct AgnosticPrimalConfig {
 pub struct CapabilityDiscoveryConfig {
     /// Enable automatic discovery
     pub enabled: bool,
-    
+
     /// Discovery methods to try (in order)
     pub methods: Vec<DiscoveryMethod>,
-    
+
     /// Discovery timeout in seconds
     pub timeout_secs: u64,
-    
+
     /// Cache discovered endpoints
     pub enable_cache: bool,
-    
+
     /// Cache TTL in seconds
     pub cache_ttl_secs: u64,
 }
@@ -66,19 +66,19 @@ pub struct CapabilityDiscoveryConfig {
 pub enum DiscoveryMethod {
     /// Environment variables (CAPABILITY_SECURITY_ENDPOINT, etc.)
     Environment,
-    
+
     /// DNS SRV records (_security._tcp.local, etc.)
     DnsSrv,
-    
+
     /// HTTP service registry (Consul, Eureka, etc.)
     HttpRegistry,
-    
+
     /// Container metadata (Kubernetes, Docker, etc.)
     ContainerMetadata,
-    
+
     /// mDNS/Bonjour
     Mdns,
-    
+
     /// Static configuration file
     StaticFile,
 }
@@ -88,13 +88,13 @@ pub enum DiscoveryMethod {
 pub struct ServiceMeshConfig {
     /// Enable service mesh coordination
     pub enabled: bool,
-    
+
     /// Mesh protocol (grpc, tarpc, http, etc.)
     pub protocol: String,
-    
+
     /// Enable TLS for mesh connections
     pub enable_tls: bool,
-    
+
     /// Mesh discovery interval in seconds
     pub discovery_interval_secs: u64,
 }
@@ -109,28 +109,28 @@ impl AgnosticPrimalConfig {
     /// Returns an error if required environment variables are missing
     pub fn from_environment() -> SongbirdResult<Self> {
         tracing::info!("🔄 Creating agnostic primal config (zero hardcoded primal names)");
-        
+
         let capability_endpoints = Self::discover_capability_endpoints();
         let discovery = Self::create_discovery_config();
         let service_mesh = Self::create_service_mesh_config();
-        
+
         Ok(Self {
             capability_endpoints,
             discovery,
             service_mesh,
         })
     }
-    
+
     /// Discover capability endpoints from environment
     ///
     /// Pattern: `CAPABILITY_<TYPE>_ENDPOINT`
     /// Example: `CAPABILITY_SECURITY_ENDPOINT=https://localhost:8443`
     fn discover_capability_endpoints() -> HashMap<String, String> {
         let mut endpoints = HashMap::new();
-        
+
         // Standard capabilities to check
         let capabilities = ["security", "compute", "storage", "ai", "discovery", "orchestration"];
-        
+
         for capability in &capabilities {
             let env_var = format!("CAPABILITY_{}_ENDPOINT", capability.to_uppercase());
             if let Ok(endpoint) = std::env::var(&env_var) {
@@ -138,7 +138,7 @@ impl AgnosticPrimalConfig {
                 endpoints.insert(capability.to_string(), endpoint);
             }
         }
-        
+
         // Check for custom capabilities
         for (key, value) in std::env::vars() {
             if key.starts_with("CAPABILITY_") && key.ends_with("_ENDPOINT") {
@@ -152,25 +152,25 @@ impl AgnosticPrimalConfig {
                 }
             }
         }
-        
+
         if endpoints.is_empty() {
             tracing::warn!("No capability endpoints discovered from environment");
         }
-        
+
         endpoints
     }
-    
+
     /// Create discovery configuration from environment
     fn create_discovery_config() -> CapabilityDiscoveryConfig {
         let enabled = std::env::var("CAPABILITY_DISCOVERY_ENABLED")
             .map(|v| v == "true" || v == "1")
             .unwrap_or(true);
-        
+
         let mut methods = Vec::new();
-        
+
         // Always include environment discovery
         methods.push(DiscoveryMethod::Environment);
-        
+
         // Add other methods based on environment
         if std::env::var("ENABLE_DNS_SRV_DISCOVERY").is_ok() {
             methods.push(DiscoveryMethod::DnsSrv);
@@ -184,17 +184,15 @@ impl AgnosticPrimalConfig {
         if std::env::var("ENABLE_MDNS_DISCOVERY").is_ok() {
             methods.push(DiscoveryMethod::Mdns);
         }
-        
+
         let timeout_secs = std::env::var("CAPABILITY_DISCOVERY_TIMEOUT")
             .ok()
             .and_then(|s| s.parse().ok())
             .unwrap_or(30);
-        
-        let cache_ttl_secs = std::env::var("CAPABILITY_CACHE_TTL")
-            .ok()
-            .and_then(|s| s.parse().ok())
-            .unwrap_or(300);
-        
+
+        let cache_ttl_secs =
+            std::env::var("CAPABILITY_CACHE_TTL").ok().and_then(|s| s.parse().ok()).unwrap_or(300);
+
         CapabilityDiscoveryConfig {
             enabled,
             methods,
@@ -203,25 +201,23 @@ impl AgnosticPrimalConfig {
             cache_ttl_secs,
         }
     }
-    
+
     /// Create service mesh configuration
     fn create_service_mesh_config() -> ServiceMeshConfig {
-        let enabled = std::env::var("SERVICE_MESH_ENABLED")
-            .map(|v| v == "true" || v == "1")
-            .unwrap_or(true);
-        
-        let protocol = std::env::var("SERVICE_MESH_PROTOCOL")
-            .unwrap_or_else(|_| "tarpc".to_string());
-        
-        let enable_tls = std::env::var("SERVICE_MESH_TLS")
-            .map(|v| v == "true" || v == "1")
-            .unwrap_or(true);
-        
+        let enabled =
+            std::env::var("SERVICE_MESH_ENABLED").map(|v| v == "true" || v == "1").unwrap_or(true);
+
+        let protocol =
+            std::env::var("SERVICE_MESH_PROTOCOL").unwrap_or_else(|_| "tarpc".to_string());
+
+        let enable_tls =
+            std::env::var("SERVICE_MESH_TLS").map(|v| v == "true" || v == "1").unwrap_or(true);
+
         let discovery_interval_secs = std::env::var("SERVICE_MESH_DISCOVERY_INTERVAL")
             .ok()
             .and_then(|s| s.parse().ok())
             .unwrap_or(60);
-        
+
         ServiceMeshConfig {
             enabled,
             protocol,
@@ -229,7 +225,7 @@ impl AgnosticPrimalConfig {
             discovery_interval_secs,
         }
     }
-    
+
     /// Request an endpoint for a capability
     ///
     /// # Errors
@@ -240,18 +236,21 @@ impl AgnosticPrimalConfig {
         if let Some(endpoint) = self.capability_endpoints.get(capability) {
             return Ok(endpoint.clone());
         }
-        
+
         // If discovery is enabled, try to discover
         if self.discovery.enabled {
             tracing::debug!("Attempting to discover {} capability", capability);
             // TODO: Implement dynamic discovery
             // For now, return error if not in cache
         }
-        
+
         Err(SongbirdError::Configuration {
             message: format!("Capability '{}' not available", capability),
             field: Some("capability".to_string()),
-            suggestion: Some(format!("Set CAPABILITY_{}_ENDPOINT environment variable", capability.to_uppercase())),
+            suggestion: Some(format!(
+                "Set CAPABILITY_{}_ENDPOINT environment variable",
+                capability.to_uppercase()
+            )),
         })
     }
 }
@@ -297,7 +296,7 @@ impl PrimalConfigMigration {
             ("SONGBIRD_NESTGATE_ENDPOINT", "CAPABILITY_STORAGE_ENDPOINT"),
             ("SONGBIRD_SQUIRREL_ENDPOINT", "CAPABILITY_AI_ENDPOINT"),
         ];
-        
+
         for (legacy_var, capability_var) in &migrations {
             if let Ok(value) = std::env::var(legacy_var) {
                 if std::env::var(capability_var).is_err() {
@@ -317,48 +316,48 @@ impl PrimalConfigMigration {
 #[cfg(test)]
 mod tests {
     use super::*;
-    
+
     #[test]
     fn test_discover_capability_endpoints() {
         // Set test environment variables
         std::env::set_var("CAPABILITY_SECURITY_ENDPOINT", "https://localhost:8443");
         std::env::set_var("CAPABILITY_COMPUTE_ENDPOINT", "http://localhost:8082");
-        
+
         let endpoints = AgnosticPrimalConfig::discover_capability_endpoints();
-        
+
         assert_eq!(endpoints.get("security"), Some(&"https://localhost:8443".to_string()));
         assert_eq!(endpoints.get("compute"), Some(&"http://localhost:8082".to_string()));
-        
+
         // Cleanup
         std::env::remove_var("CAPABILITY_SECURITY_ENDPOINT");
         std::env::remove_var("CAPABILITY_COMPUTE_ENDPOINT");
     }
-    
+
     #[test]
     fn test_discovery_config_creation() {
         std::env::set_var("CAPABILITY_DISCOVERY_ENABLED", "true");
         std::env::set_var("ENABLE_DNS_SRV_DISCOVERY", "1");
-        
+
         let config = AgnosticPrimalConfig::create_discovery_config();
-        
+
         assert!(config.enabled);
         assert!(config.methods.contains(&DiscoveryMethod::Environment));
         assert!(config.methods.contains(&DiscoveryMethod::DnsSrv));
-        
+
         // Cleanup
         std::env::remove_var("CAPABILITY_DISCOVERY_ENABLED");
         std::env::remove_var("ENABLE_DNS_SRV_DISCOVERY");
     }
-    
+
     #[test]
     fn test_migration_helper() {
         // Set legacy variables
         std::env::set_var("SONGBIRD_BEARDOG_ENDPOINT", "https://beardog:8443");
         std::env::set_var("SONGBIRD_TOADSTOOL_ENDPOINT", "http://toadstool:8082");
-        
+
         // Migrate
         PrimalConfigMigration::migrate_legacy_env_vars();
-        
+
         // Check new variables are set
         assert_eq!(
             std::env::var("CAPABILITY_SECURITY_ENDPOINT").ok(),
@@ -368,7 +367,7 @@ mod tests {
             std::env::var("CAPABILITY_COMPUTE_ENDPOINT").ok(),
             Some("http://toadstool:8082".to_string())
         );
-        
+
         // Cleanup
         std::env::remove_var("SONGBIRD_BEARDOG_ENDPOINT");
         std::env::remove_var("SONGBIRD_TOADSTOOL_ENDPOINT");
@@ -376,4 +375,3 @@ mod tests {
         std::env::remove_var("CAPABILITY_COMPUTE_ENDPOINT");
     }
 }
-

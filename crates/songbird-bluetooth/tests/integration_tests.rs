@@ -104,7 +104,7 @@ async fn test_scan_empty() {
 
     // Scanning will timeout with no responses
     let result = host.scan_devices(std::time::Duration::from_millis(100)).await;
-    
+
     // Should not error, just return empty results when timeout occurs
     assert!(result.is_ok() || matches!(result, Err(BluetoothError::Timeout { .. })));
 }
@@ -113,7 +113,7 @@ async fn test_scan_empty() {
 async fn test_connection_count() {
     let transport = MockTransport::new();
     let host = BluetoothHost::new(transport).unwrap();
-    
+
     let count = host.connection_count().await;
     assert_eq!(count, 0);
 }
@@ -122,17 +122,15 @@ async fn test_connection_count() {
 async fn test_is_scanning_initially_false() {
     let transport = MockTransport::new();
     let host = BluetoothHost::new(transport).unwrap();
-    
+
     assert!(!host.is_scanning().await);
 }
 
 #[tokio::test]
 async fn test_device_info_builder() {
     let address = Address::from_bytes([1, 2, 3, 4, 5, 6]);
-    let info = DeviceInfo::new(address)
-        .with_name("Test Device".to_string())
-        .with_rssi(-45);
-    
+    let info = DeviceInfo::new(address).with_name("Test Device".to_string()).with_rssi(-45);
+
     assert_eq!(info.address, address);
     assert_eq!(info.name, Some("Test Device".to_string()));
     assert_eq!(info.rssi, -45);
@@ -142,7 +140,7 @@ async fn test_device_info_builder() {
 async fn test_address_parsing() {
     let addr1 = Address::from_bytes([0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF]);
     let addr2 = Address::from_bytes([0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF]);
-    
+
     assert_eq!(addr1, addr2);
 }
 
@@ -150,7 +148,7 @@ async fn test_address_parsing() {
 async fn test_address_display() {
     let addr = Address::from_bytes([0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF]);
     let display = format!("{}", addr);
-    
+
     assert!(display.contains("AA"));
     assert!(display.contains("FF"));
 }
@@ -159,10 +157,10 @@ async fn test_address_display() {
 async fn test_disconnect_not_connected() {
     let transport = MockTransport::new();
     let mut host = BluetoothHost::new(transport).unwrap();
-    
+
     let address = Address::from_bytes([1, 2, 3, 4, 5, 6]);
     let result = host.disconnect(address).await;
-    
+
     assert!(result.is_err());
     assert!(matches!(result, Err(BluetoothError::Device(_))));
 }
@@ -171,10 +169,10 @@ async fn test_disconnect_not_connected() {
 async fn test_gatt_client_for_non_connected_device() {
     let transport = MockTransport::new();
     let host = BluetoothHost::new(transport).unwrap();
-    
+
     let address = Address::from_bytes([1, 2, 3, 4, 5, 6]);
     let result = host.gatt_client(address).await;
-    
+
     assert!(result.is_err());
     assert!(matches!(result, Err(BluetoothError::Device(_))));
 }
@@ -182,7 +180,7 @@ async fn test_gatt_client_for_non_connected_device() {
 #[tokio::test]
 async fn test_host_config_defaults() {
     use songbird_bluetooth::host::HostConfig;
-    
+
     let config = HostConfig::default();
     assert_eq!(config.device_name, "Songbird");
     assert_eq!(config.scan_window_ms, 100);
@@ -194,10 +192,10 @@ async fn test_host_config_defaults() {
 async fn test_scan_timeout() {
     let transport = MockTransport::new();
     let mut host = BluetoothHost::new(transport).unwrap();
-    
+
     // Scan will timeout with no responses - this is expected behavior
     let result = host.scan_devices(std::time::Duration::from_millis(100)).await;
-    
+
     // Should either succeed with empty list or timeout
     assert!(result.is_ok() || matches!(result, Err(BluetoothError::Timeout { .. })));
 }
@@ -205,7 +203,7 @@ async fn test_scan_timeout() {
 #[tokio::test]
 async fn test_characteristic_properties() {
     use songbird_bluetooth::gatt::CharacteristicProperties;
-    
+
     let props = CharacteristicProperties {
         read: true,
         write: false,
@@ -213,7 +211,7 @@ async fn test_characteristic_properties() {
         notify: true,
         indicate: false,
     };
-    
+
     assert!(props.read);
     assert!(!props.write);
     assert!(props.write_without_response);
@@ -231,7 +229,7 @@ async fn test_transport_type() {
 async fn test_mock_transport_close() {
     let mut transport = MockTransport::new();
     assert!(transport.is_connected());
-    
+
     transport.close().await.unwrap();
     assert!(!transport.is_connected());
 }
@@ -241,15 +239,15 @@ async fn test_mock_transport_send_receive() {
     let mut transport = MockTransport::with_responses(vec![
         vec![0x04, 0x0E, 0x04, 0x01, 0x03, 0x0C, 0x00], // Command Complete
     ]);
-    
+
     // Send command
     transport.send_command(&[0x01, 0x03, 0x0C, 0x00]).await.unwrap();
-    
+
     // Verify command was recorded
     let commands = transport.commands_sent();
     assert_eq!(commands.len(), 1);
     assert_eq!(commands[0], vec![0x01, 0x03, 0x0C, 0x00]);
-    
+
     // Receive event
     let event = transport.receive_event().await.unwrap();
     assert_eq!(event, vec![0x04, 0x0E, 0x04, 0x01, 0x03, 0x0C, 0x00]);
@@ -258,7 +256,7 @@ async fn test_mock_transport_send_receive() {
 #[tokio::test]
 async fn test_mock_transport_empty_responses() {
     let mut transport = MockTransport::new();
-    
+
     // Should timeout when no responses
     let result = transport.receive_event().await;
     assert!(result.is_err());
@@ -269,10 +267,10 @@ async fn test_mock_transport_empty_responses() {
 async fn test_multiple_hosts_with_mock_transport() {
     let transport1 = MockTransport::new();
     let transport2 = MockTransport::new();
-    
+
     let host1 = BluetoothHost::new(transport1);
     let host2 = BluetoothHost::new(transport2);
-    
+
     assert!(host1.is_ok());
     assert!(host2.is_ok());
 }
@@ -281,7 +279,7 @@ async fn test_multiple_hosts_with_mock_transport() {
 async fn test_host_shutdown() {
     let transport = MockTransport::new();
     let host = BluetoothHost::new(transport).unwrap();
-    
+
     let result = host.shutdown().await;
     assert!(result.is_ok());
 }
@@ -293,9 +291,8 @@ async fn test_error_display() {
     };
     let display = format!("{}", err);
     assert!(display.contains("5"));
-    
+
     let err2 = BluetoothError::Device("test error".to_string());
     let display2 = format!("{}", err2);
     assert!(display2.contains("test error"));
 }
-

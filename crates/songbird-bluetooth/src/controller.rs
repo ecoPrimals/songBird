@@ -3,10 +3,7 @@
 //! Simplified controller implementation focusing on async operations.
 //! This bridges our Transport trait to work with trouble-host's BLE stack.
 
-use crate::{
-    error::Result,
-    transport::Transport,
-};
+use crate::{error::Result, transport::Transport};
 use std::sync::Arc;
 use tokio::sync::Mutex;
 use tracing::{debug, trace};
@@ -23,16 +20,18 @@ impl<T: Transport> ControllerAdapter<T> {
     /// Create new controller adapter
     pub fn new(transport: Arc<Mutex<T>>) -> Self {
         debug!("Creating HCI controller adapter");
-        Self { transport }
+        Self {
+            transport,
+        }
     }
-    
+
     /// Send HCI command
     pub async fn send_command(&self, data: &[u8]) -> Result<()> {
         trace!("Sending HCI command: {} bytes", data.len());
         let mut transport = self.transport.lock().await;
         transport.send_command(data).await
     }
-    
+
     /// Receive HCI event
     pub async fn receive_event(&self) -> Result<Vec<u8>> {
         let mut transport = self.transport.lock().await;
@@ -40,7 +39,7 @@ impl<T: Transport> ControllerAdapter<T> {
         trace!("Received HCI event: {} bytes", event.len());
         Ok(event)
     }
-    
+
     /// Check if controller is connected
     pub async fn is_connected(&self) -> bool {
         let transport = self.transport.lock().await;
@@ -69,18 +68,20 @@ mod hci_opcode {
 #[cfg(test)]
 mod tests {
     use super::*;
-    
+
     /// Mock transport for testing
     struct MockTransport {
         connected: bool,
     }
-    
+
     impl MockTransport {
         fn new() -> Self {
-            Self { connected: true }
+            Self {
+                connected: true,
+            }
         }
     }
-    
+
     #[async_trait::async_trait]
     impl Transport for MockTransport {
         fn transport_type(&self) -> crate::transport::TransportType {
@@ -90,50 +91,50 @@ mod tests {
         async fn send_command(&mut self, _data: &[u8]) -> Result<()> {
             Ok(())
         }
-        
+
         async fn receive_event(&mut self) -> Result<Vec<u8>> {
             Ok(vec![0x04, 0x0E, 0x04, 0x01, 0x03, 0x0C, 0x00])
         }
-        
+
         async fn send_acl(&mut self, _data: &[u8]) -> Result<()> {
             Ok(())
         }
-        
+
         async fn receive_acl(&mut self) -> Result<Vec<u8>> {
             Ok(Vec::new())
         }
-        
+
         fn is_connected(&self) -> bool {
             self.connected
         }
-        
+
         async fn close(&mut self) -> Result<()> {
             self.connected = false;
             Ok(())
         }
     }
-    
+
     #[tokio::test]
     async fn test_controller_adapter_creation() {
         let transport = MockTransport::new();
         let adapter = ControllerAdapter::new(Arc::new(Mutex::new(transport)));
         assert!(adapter.is_connected().await);
     }
-    
+
     #[tokio::test]
     async fn test_send_command() {
         let transport = MockTransport::new();
         let adapter = ControllerAdapter::new(Arc::new(Mutex::new(transport)));
-        
+
         let result = adapter.send_command(&[0x01, 0x03, 0x0C, 0x00]).await;
         assert!(result.is_ok());
     }
-    
+
     #[tokio::test]
     async fn test_receive_event() {
         let transport = MockTransport::new();
         let adapter = ControllerAdapter::new(Arc::new(Mutex::new(transport)));
-        
+
         let result = adapter.receive_event().await;
         assert!(result.is_ok());
         let event = result.unwrap();

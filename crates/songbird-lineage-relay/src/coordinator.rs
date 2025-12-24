@@ -103,9 +103,8 @@ impl LineageRelayCoordinator {
         }
 
         // Phase 2: Request lineage relay
-        let relay_session = self.relay_discovery
-            .request_relay(peer.clone(), Some(peer_address))
-            .await?;
+        let relay_session =
+            self.relay_discovery.request_relay(peer.clone(), Some(peer_address)).await?;
 
         info!("✅ Relayed connection established through {}", relay_session.relay_node);
 
@@ -130,12 +129,15 @@ impl LineageRelayCoordinator {
 
             // For mock: always fail (to demonstrate relay)
             // In real implementation: try actual connection
-            Err(LineageRelayError::DirectConnectionFailed(
-                format!("Could not establish direct connection to {}", address)
-            ))
+            Err(LineageRelayError::DirectConnectionFailed(format!(
+                "Could not establish direct connection to {}",
+                address
+            )))
         })
         .await
-        .map_err(|_| LineageRelayError::Timeout("Direct connection attempt timed out".to_string()))?
+        .map_err(|_| {
+            LineageRelayError::Timeout("Direct connection attempt timed out".to_string())
+        })?
     }
 
     /// Start offering relay service (for ancestors)
@@ -144,8 +146,9 @@ impl LineageRelayCoordinator {
     ///
     /// Returns error if relay service cannot be started
     pub async fn start_relay_service(&self) -> Result<()> {
-        let relay_address = self.config.my_relay_address
-            .ok_or_else(|| LineageRelayError::ConfigError("No relay address configured".to_string()))?;
+        let relay_address = self.config.my_relay_address.ok_or_else(|| {
+            LineageRelayError::ConfigError("No relay address configured".to_string())
+        })?;
 
         info!("Starting relay service on {}", relay_address);
 
@@ -187,7 +190,8 @@ mod tests {
     #[tokio::test]
     async fn test_coordinator_creation() {
         let lineage_provider = Arc::new(MockLineageProvider::new());
-        let crypto = Arc::new(MockBirdSongCrypto::new(lineage_provider.clone(), "node-1".to_string()));
+        let crypto =
+            Arc::new(MockBirdSongCrypto::new(lineage_provider.clone(), "node-1".to_string()));
         let relay_authority = Arc::new(MockRelayAuthority::new(lineage_provider));
 
         let broadcaster = Arc::new(
@@ -206,9 +210,8 @@ mod tests {
             ..Default::default()
         };
 
-        let coordinator = LineageRelayCoordinator::new(config, broadcaster, relay_authority)
-            .await
-            .unwrap();
+        let coordinator =
+            LineageRelayCoordinator::new(config, broadcaster, relay_authority).await.unwrap();
 
         assert_eq!(coordinator.config.my_id.0, "node-1");
     }
@@ -216,7 +219,8 @@ mod tests {
     #[tokio::test]
     async fn test_direct_connection_attempt() {
         let lineage_provider = Arc::new(MockLineageProvider::new());
-        let crypto = Arc::new(MockBirdSongCrypto::new(lineage_provider.clone(), "node-1".to_string()));
+        let crypto =
+            Arc::new(MockBirdSongCrypto::new(lineage_provider.clone(), "node-1".to_string()));
         let relay_authority = Arc::new(MockRelayAuthority::new(lineage_provider));
 
         let broadcaster = Arc::new(
@@ -236,9 +240,8 @@ mod tests {
             ..Default::default()
         };
 
-        let coordinator = LineageRelayCoordinator::new(config, broadcaster, relay_authority)
-            .await
-            .unwrap();
+        let coordinator =
+            LineageRelayCoordinator::new(config, broadcaster, relay_authority).await.unwrap();
 
         // Try direct connection (will fail in mock)
         let result = coordinator
@@ -248,4 +251,3 @@ mod tests {
         assert!(result.is_err());
     }
 }
-

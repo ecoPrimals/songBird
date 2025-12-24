@@ -33,7 +33,7 @@ pub struct LineageProof {
     pub node_id: NodeId,
     pub parent: Option<NodeId>,
     pub ancestors: Vec<NodeId>,
-    pub birth_signature: Vec<u8>,  // Signed by BearDog
+    pub birth_signature: Vec<u8>, // Signed by BearDog
     pub birth_timestamp: SystemTime,
 }
 
@@ -112,4 +112,3 @@ pub struct ConnectionStats {
     pub established_at: Option<SystemTime>,
     pub connection_type: Option<ConnectionType>,
 }
-

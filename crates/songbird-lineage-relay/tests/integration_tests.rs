@@ -1,6 +1,8 @@
 //! Integration tests for lineage relay system
 
-use songbird_lineage_relay::beardog::{MockBirdSongCrypto, MockLineageProvider, MockRelayAuthority};
+use songbird_lineage_relay::beardog::{
+    MockBirdSongCrypto, MockLineageProvider, MockRelayAuthority,
+};
 use songbird_lineage_relay::birdsong::{BirdSongBroadcaster, BirdSongCrypto, LineageHint};
 use songbird_lineage_relay::coordinator::{LineageRelayConfig, LineageRelayCoordinator};
 use songbird_lineage_relay::relay::RelayAuthority;
@@ -40,9 +42,8 @@ async fn test_lineage_based_relay_system() {
         ..Default::default()
     };
 
-    let _coordinator = LineageRelayCoordinator::new(config, broadcaster, relay_authority)
-        .await
-        .unwrap();
+    let _coordinator =
+        LineageRelayCoordinator::new(config, broadcaster, relay_authority).await.unwrap();
 
     // Successfully created coordinator with lineage-based relay
 }
@@ -60,16 +61,12 @@ async fn test_ancestor_can_decrypt_descendant_birdsong() {
 
     // Child encrypts message for ancestors
     let message = b"help me relay!";
-    let encrypted = child_crypto
-        .encrypt_for_lineage(message, LineageHint::DirectAncestors)
-        .await
-        .unwrap();
+    let encrypted =
+        child_crypto.encrypt_for_lineage(message, LineageHint::DirectAncestors).await.unwrap();
 
     // Parent should be able to decrypt (is ancestor of child)
-    let decrypted = parent_crypto
-        .decrypt_birdsong(&encrypted, &NodeId::from("child"))
-        .await
-        .unwrap();
+    let decrypted =
+        parent_crypto.decrypt_birdsong(&encrypted, &NodeId::from("child")).await.unwrap();
 
     assert_eq!(decrypted, Some(message.to_vec()));
 }
@@ -87,16 +84,12 @@ async fn test_unrelated_node_cannot_decrypt() {
 
     // Child encrypts message for ancestors
     let message = b"secret message";
-    let encrypted = child_crypto
-        .encrypt_for_lineage(message, LineageHint::DirectAncestors)
-        .await
-        .unwrap();
+    let encrypted =
+        child_crypto.encrypt_for_lineage(message, LineageHint::DirectAncestors).await.unwrap();
 
     // Unrelated should NOT be able to decrypt
-    let decrypted = unrelated_crypto
-        .decrypt_birdsong(&encrypted, &NodeId::from("child"))
-        .await
-        .unwrap();
+    let decrypted =
+        unrelated_crypto.decrypt_birdsong(&encrypted, &NodeId::from("child")).await.unwrap();
 
     assert_eq!(decrypted, None); // Cannot decrypt!
 }
@@ -124,4 +117,3 @@ async fn test_relay_authorization_based_on_lineage() {
 
     assert!(!auth.authorized);
 }
-

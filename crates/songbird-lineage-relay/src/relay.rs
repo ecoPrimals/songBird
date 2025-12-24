@@ -160,11 +160,7 @@ impl RelayDiscovery {
 
         // Broadcast to ancestors (only they can decrypt)
         self.broadcaster
-            .broadcast(
-                BirdSongType::RelayRequest,
-                &payload,
-                LineageHint::DirectAncestors,
-            )
+            .broadcast(BirdSongType::RelayRequest, &payload, LineageHint::DirectAncestors)
             .await?;
 
         debug!("Relay request broadcast, waiting for offers...");
@@ -194,10 +190,8 @@ impl RelayDiscovery {
         timeout(duration, async {
             loop {
                 // Check for relay offer messages
-                let messages = self
-                    .broadcaster
-                    .get_messages_by_type(BirdSongType::RelayOffer)
-                    .await;
+                let messages =
+                    self.broadcaster.get_messages_by_type(BirdSongType::RelayOffer).await;
 
                 for msg in messages {
                     // Deserialize offer
@@ -229,10 +223,8 @@ impl RelayDiscovery {
         info!("Considering relay offer for {}", request.requester);
 
         // Verify authorization through BearDog
-        let authorization = self
-            .relay_authority
-            .authorize_relay(&self.my_id, &request.requester)
-            .await?;
+        let authorization =
+            self.relay_authority.authorize_relay(&self.my_id, &request.requester).await?;
 
         if !authorization.authorized {
             warn!("Relay denied for {}", request.requester);
@@ -346,4 +338,3 @@ mod tests {
         assert_eq!(auth.masking_level, MaskingLevel::Masked);
     }
 }
-

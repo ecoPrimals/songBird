@@ -76,20 +76,20 @@
 #![warn(clippy::all, clippy::pedantic, clippy::nursery)]
 #![allow(clippy::module_name_repetitions)]
 
-pub mod error;
-pub mod transport;
 mod controller;
-pub mod host;
-pub mod gatt;
 pub mod device;
+pub mod error;
+pub mod gatt;
+pub mod host;
 pub mod l2cap;
+pub mod transport;
 
 // Re-exports for convenience
+pub use device::{Address, Device, DeviceInfo};
 pub use error::{BluetoothError, Result};
 pub use host::BluetoothHost;
-pub use transport::{Transport, TransportType};
-pub use device::{Device, DeviceInfo, Address};
 pub use l2cap::{L2capChannel, L2capManager, ATT_CHANNEL_ID};
+pub use transport::{Transport, TransportType};
 
 #[cfg(feature = "usb")]
 pub use transport::usb::UsbTransport;

@@ -10,9 +10,8 @@ use std::sync::Arc;
 // This allows genesis to work with or without the coordination crate
 #[cfg(feature = "coordination")]
 use songbird_primal_coordination::{
-    PrimalCoordinator,
-    CapabilityType,
-    types::{NodeId, Identity, PrimalRequest, PrimalResponse},
+    types::{Identity, NodeId, PrimalRequest, PrimalResponse},
+    CapabilityType, PrimalCoordinator,
 };
 
 /// Genesis coordination using capability-based discovery
@@ -29,7 +28,9 @@ impl GenesisCoordinationBridge {
     #[must_use]
     pub fn new(coordinator: Arc<PrimalCoordinator>) -> Self {
         tracing::info!("🌱 Genesis: Using capability-based coordination (zero hardcoded primals)");
-        Self { coordinator }
+        Self {
+            coordinator,
+        }
     }
 
     /// Execute genesis ceremony using capability discovery
@@ -44,7 +45,8 @@ impl GenesisCoordinationBridge {
         let node_id = NodeId(node_id_str.clone());
 
         // Use coordinator to execute genesis
-        let identity = self.coordinator
+        let identity = self
+            .coordinator
             .coordinate_genesis(node_id)
             .await
             .map_err(|e| GenesisError::CoordinationFailed(e.to_string()))?;
@@ -59,12 +61,9 @@ impl GenesisCoordinationBridge {
     ///
     /// Returns an error if no security capability is available
     pub async fn request_security_capability(&self) -> Result<()> {
-        self.coordinator
-            .request_capability(CapabilityType::Security)
-            .await
-            .map_err(|e| GenesisError::CoordinationFailed(format!(
-                "Security capability not available: {e}"
-            )))?;
+        self.coordinator.request_capability(CapabilityType::Security).await.map_err(|e| {
+            GenesisError::CoordinationFailed(format!("Security capability not available: {e}"))
+        })?;
         Ok(())
     }
 }
@@ -90,9 +89,7 @@ impl GenesisCoordinationBridge {
     ///
     /// Returns an error indicating coordination is not available
     pub async fn execute_genesis(&self, _node_id_str: String) -> Result<()> {
-        Err(GenesisError::CoordinationFailed(
-            "Coordination feature not enabled".to_string(),
-        ))
+        Err(GenesisError::CoordinationFailed("Coordination feature not enabled".to_string()))
     }
 }
 
@@ -104,12 +101,15 @@ mod tests {
     #[tokio::test]
     async fn test_genesis_coordination_bridge_creation() {
         use songbird_primal_coordination::bridge::*;
-        
+
         struct MockBridge;
-        
+
         #[async_trait::async_trait]
         impl PrimalBridge for MockBridge {
-            async fn connect(&self, _capability: CapabilityType) -> songbird_primal_coordination::Result<PrimalConnection> {
+            async fn connect(
+                &self,
+                _capability: CapabilityType,
+            ) -> songbird_primal_coordination::Result<PrimalConnection> {
                 use songbird_primal_coordination::types::*;
                 Ok(PrimalConnection::new(
                     "mock-conn".to_string(),
@@ -123,7 +123,10 @@ mod tests {
                 ))
             }
 
-            async fn discover_capabilities(&self, _connection: &PrimalConnection) -> songbird_primal_coordination::Result<PrimalCapabilities> {
+            async fn discover_capabilities(
+                &self,
+                _connection: &PrimalConnection,
+            ) -> songbird_primal_coordination::Result<PrimalCapabilities> {
                 use songbird_primal_coordination::types::*;
                 Ok(PrimalCapabilities {
                     services: vec!["security".to_string()],
@@ -137,11 +140,11 @@ mod tests {
                 vec![CapabilityType::Security]
             }
         }
-        
+
         let bridge = Arc::new(MockBridge);
         let coordinator = Arc::new(PrimalCoordinator::new(bridge));
         let genesis_bridge = GenesisCoordinationBridge::new(coordinator);
-        
+
         // Should be able to request security capability
         let result = genesis_bridge.request_security_capability().await;
         assert!(result.is_ok());
@@ -155,4 +158,3 @@ mod tests {
         assert!(result.is_err());
     }
 }
-

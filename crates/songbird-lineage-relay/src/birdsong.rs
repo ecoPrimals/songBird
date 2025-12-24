@@ -73,18 +73,10 @@ pub struct BirdSongMessage {
 #[async_trait]
 pub trait BirdSongCrypto: Send + Sync {
     /// Encrypt message for lineage
-    async fn encrypt_for_lineage(
-        &self,
-        message: &[u8],
-        hint: LineageHint,
-    ) -> Result<Vec<u8>>;
+    async fn encrypt_for_lineage(&self, message: &[u8], hint: LineageHint) -> Result<Vec<u8>>;
 
     /// Decrypt BirdSong message (returns None if not in lineage)
-    async fn decrypt_birdsong(
-        &self,
-        encrypted: &[u8],
-        sender: &NodeId,
-    ) -> Result<Option<Vec<u8>>>;
+    async fn decrypt_birdsong(&self, encrypted: &[u8], sender: &NodeId) -> Result<Option<Vec<u8>>>;
 }
 
 /// BirdSong broadcaster
@@ -136,7 +128,8 @@ impl BirdSongBroadcaster {
         debug!("Broadcasting BirdSong message: {:?}", message_type);
 
         // Encrypt payload for lineage
-        let encrypted_payload = self.crypto.encrypt_for_lineage(payload, lineage_hint.clone()).await?;
+        let encrypted_payload =
+            self.crypto.encrypt_for_lineage(payload, lineage_hint.clone()).await?;
 
         // Create BirdSong message
         let message = BirdSongMessage {
@@ -168,10 +161,10 @@ impl BirdSongBroadcaster {
     /// Returns error if receiving or decryption fails
     pub async fn listen(&self) -> Result<()> {
         let mut buf = vec![0u8; 65536];
-        
+
         loop {
             let (len, _addr) = self.socket.recv_from(&mut buf).await?;
-            
+
             // Deserialize message
             let message: BirdSongMessage = match serde_json::from_slice(&buf[..len]) {
                 Ok(msg) => msg,
@@ -190,7 +183,7 @@ impl BirdSongBroadcaster {
             match self.crypto.decrypt_birdsong(&message.payload, &message.sender).await? {
                 Some(decrypted_payload) => {
                     info!("Received BirdSong from family: {:?}", message.message_type);
-                    
+
                     // Store decrypted message
                     let mut messages = self.received_messages.write().await;
                     let mut decrypted_message = message;
@@ -214,9 +207,9 @@ impl BirdSongBroadcaster {
     /// Get messages of specific type
     pub async fn get_messages_by_type(&self, msg_type: BirdSongType) -> Vec<BirdSongMessage> {
         let mut messages = self.received_messages.write().await;
-        let (matching, remaining): (Vec<_>, Vec<_>) = messages
-            .drain(..)
-            .partition(|msg| std::mem::discriminant(&msg.message_type) == std::mem::discriminant(&msg_type));
+        let (matching, remaining): (Vec<_>, Vec<_>) = messages.drain(..).partition(|msg| {
+            std::mem::discriminant(&msg.message_type) == std::mem::discriminant(&msg_type)
+        });
         *messages = remaining;
         matching
     }
@@ -237,7 +230,11 @@ mod tests {
             Ok(encrypted)
         }
 
-        async fn decrypt_birdsong(&self, encrypted: &[u8], _sender: &NodeId) -> Result<Option<Vec<u8>>> {
+        async fn decrypt_birdsong(
+            &self,
+            encrypted: &[u8],
+            _sender: &NodeId,
+        ) -> Result<Option<Vec<u8>>> {
             // Mock: remove "ENCRYPTED:" prefix
             if encrypted.starts_with(b"ENCRYPTED:") {
                 Ok(Some(encrypted[10..].to_vec()))
@@ -266,12 +263,12 @@ mod tests {
     async fn test_mock_encryption() {
         let crypto = MockCrypto;
         let message = b"test message";
-        
-        let encrypted = crypto.encrypt_for_lineage(message, LineageHint::DirectAncestors).await.unwrap();
+
+        let encrypted =
+            crypto.encrypt_for_lineage(message, LineageHint::DirectAncestors).await.unwrap();
         assert!(encrypted.starts_with(b"ENCRYPTED:"));
-        
+
         let decrypted = crypto.decrypt_birdsong(&encrypted, &NodeId::from("sender")).await.unwrap();
         assert_eq!(decrypted, Some(message.to_vec()));
     }
 }
-

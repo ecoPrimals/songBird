@@ -137,11 +137,7 @@ impl RelayedConnection {
     ///
     /// Returns error if sending fails
     pub async fn send(&self, data: &[u8]) -> Result<()> {
-        debug!(
-            "Sending {} bytes through relay {}",
-            data.len(),
-            self.relay_session.relay_node
-        );
+        debug!("Sending {} bytes through relay {}", data.len(), self.relay_session.relay_node);
 
         self.relay_session.send(data).await?;
 
@@ -168,10 +164,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_direct_connection() {
-        let conn = DirectConnection::new(
-            NodeId::from("peer-1"),
-            "127.0.0.1:8080".parse().unwrap(),
-        );
+        let conn = DirectConnection::new(NodeId::from("peer-1"), "127.0.0.1:8080".parse().unwrap());
 
         conn.send(b"test data").await.unwrap();
 
@@ -202,10 +195,8 @@ mod tests {
 
     #[tokio::test]
     async fn test_connection_session_enum() {
-        let direct = DirectConnection::new(
-            NodeId::from("peer-1"),
-            "127.0.0.1:8080".parse().unwrap(),
-        );
+        let direct =
+            DirectConnection::new(NodeId::from("peer-1"), "127.0.0.1:8080".parse().unwrap());
         let session = ConnectionSession::Direct(direct);
 
         assert_eq!(session.connection_type(), ConnectionType::Direct);
@@ -216,4 +207,3 @@ mod tests {
         assert_eq!(stats.bytes_sent, 5);
     }
 }
-

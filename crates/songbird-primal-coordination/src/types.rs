@@ -72,13 +72,13 @@ impl std::fmt::Display for CapabilityType {
 pub struct PrimalCapabilities {
     /// Services provided
     pub services: Vec<String>,
-    
+
     /// Resources available
     pub resources: HashMap<String, String>,
-    
+
     /// Service metadata
     pub metadata: HashMap<String, serde_json::Value>,
-    
+
     /// Service quality metrics
     pub quality: ServiceQuality,
 }
@@ -102,13 +102,13 @@ impl PrimalCapabilities {
 pub struct ServiceQuality {
     /// Average response time in milliseconds
     pub avg_response_time_ms: Option<u64>,
-    
+
     /// Availability (0.0 - 1.0)
     pub availability: Option<f64>,
-    
+
     /// Throughput (requests per second)
     pub throughput_rps: Option<f64>,
-    
+
     /// Current load (0.0 - 1.0)
     pub current_load: Option<f64>,
 }
@@ -130,23 +130,23 @@ impl Default for ServiceQuality {
 pub enum PrimalRequest {
     /// Discover primal capabilities
     DiscoverCapabilities,
-    
+
     /// Generate cryptographic keys
     GenerateKeys,
-    
+
     /// Sign lineage proof
     SignLineage {
         keys: GeneratedKeys,
         proof: WitnessProof,
         node_id: NodeId,
     },
-    
+
     /// Deploy compute workload
     DeployWorkload(Workload),
-    
+
     /// Query status
     Status,
-    
+
     /// Custom request
     Custom {
         operation: String,
@@ -160,22 +160,22 @@ pub enum PrimalRequest {
 pub enum PrimalResponse {
     /// Capabilities discovered
     Capabilities(PrimalCapabilities),
-    
+
     /// Keys generated successfully
     KeysGenerated(GeneratedKeys),
-    
+
     /// Lineage signed successfully
     LineageSigned(Lineage),
-    
+
     /// Workload deployed successfully
     WorkloadDeployed(DeploymentId),
-    
+
     /// Status response
     StatusResponse(ServiceStatus),
-    
+
     /// Error occurred
     Error(String),
-    
+
     /// Custom response
     Custom(serde_json::Value),
 }
@@ -261,4 +261,3 @@ pub struct ServiceStatus {
     pub capabilities: Vec<String>,
     pub metrics: HashMap<String, serde_json::Value>,
 }
-

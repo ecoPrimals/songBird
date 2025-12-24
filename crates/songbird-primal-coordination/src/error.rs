@@ -52,4 +52,3 @@ pub enum PrimalCoordinationError {
     #[error("Error: {0}")]
     Other(#[from] anyhow::Error),
 }
-

@@ -8,7 +8,7 @@ use crate::{
     device::{Address, Device, DeviceInfo},
     error::{BluetoothError, Result},
     gatt::GattClient,
-    l2cap::{L2capChannel, L2capManager},
+    l2cap::L2capManager,
     transport::Transport,
 };
 use std::collections::HashMap;
@@ -23,16 +23,16 @@ use tracing::{debug, info, warn};
 pub struct HostConfig {
     /// Device name
     pub device_name: String,
-    
+
     /// Scan window (milliseconds)
     pub scan_window_ms: u16,
-    
+
     /// Scan interval (milliseconds)
     pub scan_interval_ms: u16,
-    
+
     /// Connection timeout
     pub connection_timeout: Duration,
-    
+
     /// Max connections
     pub max_connections: usize,
 }
@@ -102,9 +102,7 @@ impl<T: Transport + 'static> BluetoothHost<T> {
     /// Returns error if configuration is invalid
     pub fn with_config(transport: T, config: HostConfig) -> Result<Self> {
         if !transport.is_connected() {
-            return Err(BluetoothError::InvalidOperation(
-                "Transport not connected".into(),
-            ));
+            return Err(BluetoothError::InvalidOperation("Transport not connected".into()));
         }
 
         info!("Initializing Bluetooth host: {}", config.device_name);
@@ -140,7 +138,7 @@ impl<T: Transport + 'static> BluetoothHost<T> {
         let result = self.perform_scan(duration).await;
 
         *scanning = false;
-        
+
         match result {
             Ok(devices) => {
                 debug!("Scan complete, found {} devices", devices.len());
@@ -162,9 +160,8 @@ impl<T: Transport + 'static> BluetoothHost<T> {
         self.enable_scan(true).await?;
 
         // Step 3: Collect advertisements for the specified duration
-        let devices = timeout(duration, self.collect_advertisements())
-            .await
-            .unwrap_or_else(|_| {
+        let devices =
+            timeout(duration, self.collect_advertisements()).await.unwrap_or_else(|_| {
                 debug!("Scan timeout reached");
                 Ok(Vec::new())
             })?;
@@ -178,7 +175,7 @@ impl<T: Transport + 'static> BluetoothHost<T> {
     /// Set BLE scan parameters
     async fn set_scan_parameters(&self) -> Result<()> {
         debug!("Setting scan parameters");
-        
+
         // HCI_LE_Set_Scan_Parameters command
         // Opcode: 0x200B
         // Parameters:
@@ -187,7 +184,7 @@ impl<T: Transport + 'static> BluetoothHost<T> {
         // - Scan Window: 0x0010 (10ms)
         // - Own Address Type: 0x00 (Public)
         // - Scanning Filter Policy: 0x00 (Accept all)
-        
+
         let cmd = vec![
             0x01, // Command packet
             0x0B, 0x20, // Opcode: LE Set Scan Parameters
@@ -200,13 +197,12 @@ impl<T: Transport + 'static> BluetoothHost<T> {
         ];
 
         self.controller.send_command(&cmd).await?;
-        
+
         // Wait for command complete
-        let _response = timeout(
-            Duration::from_secs(1),
-            self.controller.receive_event()
-        ).await.map_err(|_| BluetoothError::Timeout {
-            duration: Duration::from_secs(1)
+        let _response = timeout(Duration::from_secs(1), self.controller.receive_event())
+            .await
+            .map_err(|_| BluetoothError::Timeout {
+            duration: Duration::from_secs(1),
         })??;
 
         debug!("Scan parameters set");
@@ -215,53 +211,68 @@ impl<T: Transport + 'static> BluetoothHost<T> {
 
     /// Enable or disable BLE scanning
     async fn enable_scan(&self, enable: bool) -> Result<()> {
-        debug!("{}abling scan", if enable { "En" } else { "Dis" });
-        
+        debug!(
+            "{}abling scan",
+            if enable {
+                "En"
+            } else {
+                "Dis"
+            }
+        );
+
         // HCI_LE_Set_Scan_Enable command
         // Opcode: 0x200C
         // Parameters:
         // - LE Scan Enable: 0x01 (enabled) or 0x00 (disabled)
         // - Filter Duplicates: 0x01 (enabled)
-        
+
         let cmd = vec![
             0x01, // Command packet
-            0x0C, 0x20, // Opcode: LE Set Scan Enable
+            0x0C,
+            0x20, // Opcode: LE Set Scan Enable
             0x02, // Parameter length
-            if enable { 0x01 } else { 0x00 }, // Scan enable
+            if enable {
+                0x01
+            } else {
+                0x00
+            }, // Scan enable
             0x01, // Filter duplicates
         ];
 
         self.controller.send_command(&cmd).await?;
-        
+
         // Wait for command complete
-        let _response = timeout(
-            Duration::from_secs(1),
-            self.controller.receive_event()
-        ).await.map_err(|_| BluetoothError::Timeout {
-            duration: Duration::from_secs(1)
+        let _response = timeout(Duration::from_secs(1), self.controller.receive_event())
+            .await
+            .map_err(|_| BluetoothError::Timeout {
+            duration: Duration::from_secs(1),
         })??;
 
-        debug!("Scan {}abled", if enable { "en" } else { "dis" });
+        debug!(
+            "Scan {}abled",
+            if enable {
+                "en"
+            } else {
+                "dis"
+            }
+        );
         Ok(())
     }
 
     /// Collect BLE advertisements
     async fn collect_advertisements(&self) -> Result<Vec<DeviceInfo>> {
         let mut devices = HashMap::new();
-        
+
         // Collect advertisements until timeout or max devices
         loop {
             // Try to receive advertisement with short timeout
-            let event_result = timeout(
-                Duration::from_millis(100),
-                self.controller.receive_event()
-            ).await;
+            let event_result =
+                timeout(Duration::from_millis(100), self.controller.receive_event()).await;
 
             match event_result {
                 Ok(Ok(event)) => {
                     if let Some(device) = self.parse_advertisement(&event) {
-                        devices.entry(device.address)
-                            .or_insert(device);
+                        devices.entry(device.address).or_insert(device);
                     }
                 }
                 Ok(Err(e)) => {
@@ -273,7 +284,7 @@ impl<T: Transport + 'static> BluetoothHost<T> {
                     continue;
                 }
             }
-            
+
             // Limit to reasonable number of devices
             if devices.len() >= 100 {
                 debug!("Reached max device limit");
@@ -302,10 +313,8 @@ impl<T: Transport + 'static> BluetoothHost<T> {
             return None;
         }
 
-        let addr_bytes: [u8; 6] = event[addr_start..addr_start + 6]
-            .try_into()
-            .ok()?;
-        
+        let addr_bytes: [u8; 6] = event[addr_start..addr_start + 6].try_into().ok()?;
+
         let address = Address::from_bytes(addr_bytes);
 
         // Parse RSSI (last byte)
@@ -354,9 +363,10 @@ impl<T: Transport + 'static> BluetoothHost<T> {
 
         // Check connection limit
         if self.connection_count().await >= self.config.max_connections {
-            return Err(BluetoothError::InvalidOperation(
-                format!("Max connections ({}) reached", self.config.max_connections)
-            ));
+            return Err(BluetoothError::InvalidOperation(format!(
+                "Max connections ({}) reached",
+                self.config.max_connections
+            )));
         }
 
         // Perform actual BLE connection
@@ -395,35 +405,30 @@ impl<T: Transport + 'static> BluetoothHost<T> {
         // HCI_LE_Create_Connection (0x200D)
         // Connection parameters optimized for low latency
         let addr_bytes = address.as_bytes();
-        
+
         let mut cmd = vec![
             0x01, // Command packet
             0x0D, 0x20, // Opcode: LE Create Connection
             0x19, // Parameter length (25 bytes)
-            
             // Scan parameters
             0x60, 0x00, // Scan Interval: 96 (60ms)
             0x30, 0x00, // Scan Window: 48 (30ms)
-            
             // Connection parameters
             0x00, // Initiator Filter Policy: Use peer address
             0x00, // Peer Address Type: Public Device Address
         ];
-        
+
         // Peer Address (6 bytes, little-endian)
         cmd.extend_from_slice(addr_bytes);
-        
+
         cmd.extend_from_slice(&[
             0x00, // Own Address Type: Public Device Address
-            
             // Connection interval
             0x18, 0x00, // Min: 24 (30ms)
             0x28, 0x00, // Max: 40 (50ms)
-            
             // Connection parameters
             0x00, 0x00, // Connection Latency: 0
             0x80, 0x0C, // Supervision Timeout: 3200 (32s)
-            
             // CE Length
             0x00, 0x00, // Min CE Length: 0
             0x00, 0x00, // Max CE Length: 0
@@ -432,18 +437,18 @@ impl<T: Transport + 'static> BluetoothHost<T> {
         self.controller.send_command(&cmd).await?;
 
         // Wait for Command Status event
-        let status = timeout(
-            Duration::from_secs(1),
-            self.controller.receive_event()
-        ).await.map_err(|_| BluetoothError::Timeout {
-            duration: Duration::from_secs(1)
-        })??;
+        let status = timeout(Duration::from_secs(1), self.controller.receive_event())
+            .await
+            .map_err(|_| BluetoothError::Timeout {
+                duration: Duration::from_secs(1),
+            })??;
 
         // Check command status (should be 0x00 for success)
         if status.len() > 2 && status[2] != 0x00 {
-            return Err(BluetoothError::Hci(
-                format!("Connection command failed with status: 0x{:02X}", status[2])
-            ));
+            return Err(BluetoothError::Hci(format!(
+                "Connection command failed with status: 0x{:02X}",
+                status[2]
+            )));
         }
 
         debug!("Create connection command sent successfully");
@@ -455,12 +460,11 @@ impl<T: Transport + 'static> BluetoothHost<T> {
         debug!("Waiting for connection complete event");
 
         // Wait for LE Meta Event with Connection Complete subevent
-        let event = timeout(
-            self.config.connection_timeout,
-            self.wait_for_le_connection_event()
-        ).await.map_err(|_| BluetoothError::Timeout {
-            duration: self.config.connection_timeout
-        })??;
+        let event = timeout(self.config.connection_timeout, self.wait_for_le_connection_event())
+            .await
+            .map_err(|_| BluetoothError::Timeout {
+                duration: self.config.connection_timeout,
+            })??;
 
         // Parse connection handle from event
         // LE Connection Complete event format:
@@ -469,16 +473,17 @@ impl<T: Transport + 'static> BluetoothHost<T> {
         // [2]: Subevent Code (0x01 - LE Connection Complete)
         // [3]: Status
         // [4-5]: Connection Handle (little-endian)
-        
+
         if event.len() < 6 {
             return Err(BluetoothError::Hci("Invalid connection complete event".into()));
         }
 
         // Check status
         if event[3] != 0x00 {
-            return Err(BluetoothError::Hci(
-                format!("Connection failed with status: 0x{:02X}", event[3])
-            ));
+            return Err(BluetoothError::Hci(format!(
+                "Connection failed with status: 0x{:02X}",
+                event[3]
+            )));
         }
 
         // Extract connection handle (bytes 4-5, little-endian)
@@ -523,7 +528,8 @@ impl<T: Transport + 'static> BluetoothHost<T> {
         // Get device and connection handle
         let device = {
             let connections = self.connections.read().await;
-            connections.get(&address)
+            connections
+                .get(&address)
                 .ok_or_else(|| BluetoothError::device(format!("Device not connected: {address}")))?
                 .clone()
         };
@@ -555,21 +561,22 @@ impl<T: Transport + 'static> BluetoothHost<T> {
         let handle_bytes = handle.to_le_bytes();
         let cmd = vec![
             0x01, // Command packet
-            0x06, 0x04, // Opcode: Disconnect
+            0x06,
+            0x04, // Opcode: Disconnect
             0x03, // Parameter length
-            handle_bytes[0], handle_bytes[1], // Connection Handle
-            0x13, // Reason: Remote User Terminated Connection
+            handle_bytes[0],
+            handle_bytes[1], // Connection Handle
+            0x13,            // Reason: Remote User Terminated Connection
         ];
 
         self.controller.send_command(&cmd).await?;
 
         // Wait for Command Status event
-        let _status = timeout(
-            Duration::from_secs(1),
-            self.controller.receive_event()
-        ).await.map_err(|_| BluetoothError::Timeout {
-            duration: Duration::from_secs(1)
-        })??;
+        let _status = timeout(Duration::from_secs(1), self.controller.receive_event())
+            .await
+            .map_err(|_| BluetoothError::Timeout {
+                duration: Duration::from_secs(1),
+            })??;
 
         debug!("Disconnect command sent");
         Ok(())
@@ -579,12 +586,11 @@ impl<T: Transport + 'static> BluetoothHost<T> {
     async fn wait_for_disconnection_complete(&self, handle: u16) -> Result<()> {
         debug!("Waiting for disconnection complete");
 
-        let event = timeout(
-            Duration::from_secs(5),
-            self.wait_for_disconnect_event(handle)
-        ).await.map_err(|_| BluetoothError::Timeout {
-            duration: Duration::from_secs(5)
-        })??;
+        let event = timeout(Duration::from_secs(5), self.wait_for_disconnect_event(handle))
+            .await
+            .map_err(|_| BluetoothError::Timeout {
+                duration: Duration::from_secs(5),
+            })??;
 
         // Check status (byte 2)
         if event.len() > 2 && event[2] != 0x00 {
@@ -634,11 +640,7 @@ impl<T: Transport + 'static> BluetoothHost<T> {
             Err(_) => self.l2cap_manager.create_att_channel(device.handle()).await?,
         };
 
-        Ok(GattClient::new(
-            Arc::clone(device),
-            l2cap_channel,
-            Arc::clone(&self.transport),
-        ))
+        Ok(GattClient::new(Arc::clone(device), l2cap_channel, Arc::clone(&self.transport)))
     }
 
     /// Get number of active connections
@@ -686,7 +688,7 @@ impl<T: Transport + 'static> BluetoothHost<T> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::transport::{TransportType, Transport as TransportTrait};
+    use crate::transport::{Transport as TransportTrait, TransportType};
 
     // Mock transport for testing
     struct MockTransport {
@@ -695,7 +697,9 @@ mod tests {
 
     impl MockTransport {
         fn new() -> Self {
-            Self { connected: true }
+            Self {
+                connected: true,
+            }
         }
     }
 
@@ -742,7 +746,7 @@ mod tests {
     async fn test_host_scanning() {
         let transport = MockTransport::new();
         let mut host = BluetoothHost::new(transport).unwrap();
-        
+
         let result = host.scan_devices(Duration::from_millis(100)).await;
         assert!(result.is_ok());
     }
@@ -751,9 +755,8 @@ mod tests {
     async fn test_host_shutdown() {
         let transport = MockTransport::new();
         let host = BluetoothHost::new(transport).unwrap();
-        
+
         let result = host.shutdown().await;
         assert!(result.is_ok());
     }
 }
-

@@ -93,7 +93,8 @@ impl UsbTransport {
             .map_err(|e| TransportError::Usb(format!("Failed to create USB context: {e}")))?;
 
         // Find Bluetooth USB device
-        let devices = context.devices()
+        let devices = context
+            .devices()
             .map_err(|e| TransportError::Usb(format!("Failed to enumerate devices: {e}")))?;
 
         for device in devices.iter() {
@@ -131,7 +132,7 @@ impl UsbTransport {
     /// Check if device has Bluetooth interface
     fn is_bluetooth_interface<T: UsbContext>(device: &Device<T>) -> rusb::Result<bool> {
         let config_desc = device.active_config_descriptor()?;
-        
+
         for interface in config_desc.interfaces() {
             for interface_desc in interface.descriptors() {
                 if interface_desc.class_code() == USB_CLASS_WIRELESS_CONTROLLER
@@ -142,17 +143,19 @@ impl UsbTransport {
                 }
             }
         }
-        
+
         Ok(false)
     }
 
     /// Open and configure Bluetooth device
     async fn open_device(device: Device<Context>) -> Result<Self> {
-        let handle = device.open()
+        let handle = device
+            .open()
             .map_err(|e| TransportError::Usb(format!("Failed to open device: {e}")))?;
 
         // Find Bluetooth interface
-        let config_desc = device.active_config_descriptor()
+        let config_desc = device
+            .active_config_descriptor()
             .map_err(|e| TransportError::Usb(format!("Failed to get config descriptor: {e}")))?;
 
         let mut bt_interface = None;
@@ -195,7 +198,8 @@ impl UsbTransport {
             .ok_or_else(|| TransportError::Usb("No Bluetooth interface found".into()))?;
 
         // Claim interface
-        handle.claim_interface(interface_num)
+        handle
+            .claim_interface(interface_num)
             .map_err(|e| TransportError::Usb(format!("Failed to claim interface: {e}")))?;
 
         info!("USB Bluetooth transport initialized on interface {}", interface_num);
@@ -223,17 +227,18 @@ impl Transport for UsbTransport {
         }
 
         let handle = self.handle.lock().await;
-        
+
         // HCI commands sent via control transfer
-        handle.write_control(
-            0x20, // bmRequestType: Class request, host to device
-            0x00, // bRequest: HCI command
-            0,    // wValue
-            0,    // wIndex
-            data,
-            USB_TIMEOUT,
-        )
-        .map_err(|e| TransportError::Usb(format!("Failed to send command: {e}")))?;
+        handle
+            .write_control(
+                0x20, // bmRequestType: Class request, host to device
+                0x00, // bRequest: HCI command
+                0,    // wValue
+                0,    // wIndex
+                data,
+                USB_TIMEOUT,
+            )
+            .map_err(|e| TransportError::Usb(format!("Failed to send command: {e}")))?;
 
         debug!("Sent HCI command: {} bytes", data.len());
         Ok(())
@@ -246,13 +251,10 @@ impl Transport for UsbTransport {
 
         let handle = self.handle.lock().await;
         let mut buf = vec![0u8; 256];
-        
-        let len = handle.read_interrupt(
-            self.event_endpoint,
-            &mut buf,
-            USB_TIMEOUT,
-        )
-        .map_err(|e| TransportError::Usb(format!("Failed to receive event: {e}")))?;
+
+        let len = handle
+            .read_interrupt(self.event_endpoint, &mut buf, USB_TIMEOUT)
+            .map_err(|e| TransportError::Usb(format!("Failed to receive event: {e}")))?;
 
         buf.truncate(len);
         debug!("Received HCI event: {} bytes", len);
@@ -265,13 +267,10 @@ impl Transport for UsbTransport {
         }
 
         let handle = self.handle.lock().await;
-        
-        handle.write_bulk(
-            self.acl_out_endpoint,
-            data,
-            USB_TIMEOUT,
-        )
-        .map_err(|e| TransportError::Usb(format!("Failed to send ACL data: {e}")))?;
+
+        handle
+            .write_bulk(self.acl_out_endpoint, data, USB_TIMEOUT)
+            .map_err(|e| TransportError::Usb(format!("Failed to send ACL data: {e}")))?;
 
         debug!("Sent ACL data: {} bytes", data.len());
         Ok(())
@@ -284,13 +283,10 @@ impl Transport for UsbTransport {
 
         let handle = self.handle.lock().await;
         let mut buf = vec![0u8; 1024];
-        
-        let len = handle.read_bulk(
-            self.acl_in_endpoint,
-            &mut buf,
-            USB_TIMEOUT,
-        )
-        .map_err(|e| TransportError::Usb(format!("Failed to receive ACL data: {e}")))?;
+
+        let len = handle
+            .read_bulk(self.acl_in_endpoint, &mut buf, USB_TIMEOUT)
+            .map_err(|e| TransportError::Usb(format!("Failed to receive ACL data: {e}")))?;
 
         buf.truncate(len);
         debug!("Received ACL data: {} bytes", len);
@@ -337,4 +333,3 @@ mod tests {
         }
     }
 }
-

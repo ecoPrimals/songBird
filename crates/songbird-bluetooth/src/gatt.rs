@@ -21,13 +21,13 @@ use uuid::Uuid;
 pub struct Service {
     /// Service UUID
     pub uuid: Uuid,
-    
+
     /// Start handle
     pub start_handle: u16,
-    
+
     /// End handle
     pub end_handle: u16,
-    
+
     /// Characteristics in this service
     pub characteristics: Vec<Characteristic>,
 }
@@ -50,10 +50,10 @@ impl Service {
 pub struct Characteristic {
     /// Characteristic UUID
     pub uuid: Uuid,
-    
+
     /// Characteristic handle
     pub handle: u16,
-    
+
     /// Properties (read, write, notify, etc.)
     pub properties: CharacteristicProperties,
 }
@@ -63,16 +63,16 @@ pub struct Characteristic {
 pub struct CharacteristicProperties {
     /// Can be read
     pub read: bool,
-    
+
     /// Can be written
     pub write: bool,
-    
+
     /// Can be written without response
     pub write_without_response: bool,
-    
+
     /// Supports notifications
     pub notify: bool,
-    
+
     /// Supports indications
     pub indicate: bool,
 }
@@ -122,10 +122,10 @@ mod att_opcode {
 mod att_uuid {
     /// Primary Service UUID (0x2800)
     pub const PRIMARY_SERVICE: u16 = 0x2800;
-    
+
     /// Characteristic UUID (0x2803)
     pub const CHARACTERISTIC: u16 = 0x2803;
-    
+
     /// Client Characteristic Configuration Descriptor (0x2902)
     pub const CLIENT_CHAR_CONFIG: u16 = 0x2902;
 }
@@ -141,11 +141,7 @@ pub struct GattClient<T: Transport> {
 impl<T: Transport + 'static> GattClient<T> {
     /// Create new GATT client
     #[must_use]
-    pub fn new(
-        device: Arc<Device>,
-        l2cap_channel: L2capChannel,
-        transport: Arc<Mutex<T>>,
-    ) -> Self {
+    pub fn new(device: Arc<Device>, l2cap_channel: L2capChannel, transport: Arc<Mutex<T>>) -> Self {
         trace!("Creating GATT client for device {}", device.address());
         Self {
             device,
@@ -219,18 +215,18 @@ impl<T: Transport + 'static> GattClient<T> {
 
             // Send request and get response
             let response = self.send_att_request(&request).await?;
-            
+
             // Parse response
             let discovered_services = self.parse_read_by_group_type_response(&response)?;
-            
+
             if discovered_services.is_empty() {
                 // No more services
                 break;
             }
-            
+
             // Add services to list
             self.services.extend(discovered_services.clone());
-            
+
             // Update start handle for next iteration
             if let Some(last_service) = discovered_services.last() {
                 start_handle = last_service.end_handle + 1;
@@ -255,16 +251,16 @@ impl<T: Transport + 'static> GattClient<T> {
         group_type: u16,
     ) -> Vec<u8> {
         let mut request = vec![att_opcode::READ_BY_GROUP_TYPE_REQ];
-        
+
         // Start handle (little-endian)
         request.extend_from_slice(&start_handle.to_le_bytes());
-        
+
         // End handle (little-endian)
         request.extend_from_slice(&end_handle.to_le_bytes());
-        
+
         // Attribute Group Type (16-bit UUID, little-endian)
         request.extend_from_slice(&group_type.to_le_bytes());
-        
+
         request
     }
 
@@ -283,9 +279,7 @@ impl<T: Transport + 'static> GattClient<T> {
 
         // Check for correct response opcode
         if opcode != att_opcode::READ_BY_GROUP_TYPE_RSP {
-            return Err(BluetoothError::Gatt(
-                format!("Unexpected opcode: 0x{:02X}", opcode)
-            ));
+            return Err(BluetoothError::Gatt(format!("Unexpected opcode: 0x{:02X}", opcode)));
         }
 
         if response.len() < 2 {
@@ -305,7 +299,7 @@ impl<T: Transport + 'static> GattClient<T> {
             let uuid = if length == 6 {
                 // 16-bit UUID
                 let uuid_16 = u16::from_le_bytes([response[offset + 4], response[offset + 5]]);
-                Uuid::from_u128(0x0000_0000_1000_8000_8000_00805F9B34FB | ((uuid_16 as u128) << 96))
+                Uuid::from_u128(0x0000_0000_1000_8000_8000_0080_5F9B_34FB | ((uuid_16 as u128) << 96))
             } else if length == 20 {
                 // 128-bit UUID
                 let mut uuid_bytes = [0u8; 16];
@@ -338,16 +332,14 @@ impl<T: Transport + 'static> GattClient<T> {
         }
 
         let error_code = response[4];
-        
+
         // Error code 0x0A means "Attribute Not Found" - end of discovery
         if error_code == 0x0A {
             debug!("Service discovery complete (Attribute Not Found)");
             return Ok(Vec::new());
         }
 
-        Err(BluetoothError::Gatt(
-            format!("ATT error: 0x{:02X}", error_code)
-        ))
+        Err(BluetoothError::Gatt(format!("ATT error: 0x{:02X}", error_code)))
     }
 
     /// Find service by UUID
@@ -371,24 +363,22 @@ impl<T: Transport + 'static> GattClient<T> {
         debug!("Discovering characteristics for service: {}", service_uuid);
 
         // Find the service
-        let service_index = self.services
-            .iter()
-            .position(|s| &s.uuid == service_uuid)
-            .ok_or_else(|| BluetoothError::Gatt(format!("Service not found: {}", service_uuid)))?;
+        let service_index =
+            self.services.iter().position(|s| &s.uuid == service_uuid).ok_or_else(|| {
+                BluetoothError::Gatt(format!("Service not found: {}", service_uuid))
+            })?;
 
         let start_handle = self.services[service_index].start_handle;
         let end_handle = self.services[service_index].end_handle;
 
         // Build ATT Read By Type Request for Characteristic
-        let request = self.build_read_by_type_request(
-            start_handle,
-            end_handle,
-            att_uuid::CHARACTERISTIC,
-        );
+        let _request =
+            self.build_read_by_type_request(start_handle, end_handle, att_uuid::CHARACTERISTIC);
 
         trace!(
             "Sending ATT Read By Type Request for characteristics: start=0x{:04X}, end=0x{:04X}",
-            start_handle, end_handle
+            start_handle,
+            end_handle
         );
 
         // TODO: Send request over L2CAP ATT channel (0x0004)
@@ -405,16 +395,16 @@ impl<T: Transport + 'static> GattClient<T> {
         attr_type: u16,
     ) -> Vec<u8> {
         let mut request = vec![att_opcode::READ_BY_TYPE_REQ];
-        
+
         // Start handle (little-endian)
         request.extend_from_slice(&start_handle.to_le_bytes());
-        
+
         // End handle (little-endian)
         request.extend_from_slice(&end_handle.to_le_bytes());
-        
+
         // Attribute Type (16-bit UUID, little-endian)
         request.extend_from_slice(&attr_type.to_le_bytes());
-        
+
         request
     }
 
@@ -432,16 +422,15 @@ impl<T: Transport + 'static> GattClient<T> {
                 // Attribute Not Found - normal end of discovery
                 return Ok(Vec::new());
             }
-            return Err(BluetoothError::Gatt(
-                format!("ATT error: 0x{:02X}", response.get(4).copied().unwrap_or(0))
-            ));
+            return Err(BluetoothError::Gatt(format!(
+                "ATT error: 0x{:02X}",
+                response.get(4).copied().unwrap_or(0)
+            )));
         }
 
         // Check for correct response opcode
         if opcode != att_opcode::READ_BY_TYPE_RSP {
-            return Err(BluetoothError::Gatt(
-                format!("Unexpected opcode: 0x{:02X}", opcode)
-            ));
+            return Err(BluetoothError::Gatt(format!("Unexpected opcode: 0x{:02X}", opcode)));
         }
 
         if response.len() < 2 {
@@ -455,7 +444,7 @@ impl<T: Transport + 'static> GattClient<T> {
         // Parse characteristic declarations
         while offset + length <= response.len() {
             let handle = u16::from_le_bytes([response[offset], response[offset + 1]]);
-            
+
             if offset + 2 >= response.len() {
                 break;
             }
@@ -471,9 +460,9 @@ impl<T: Transport + 'static> GattClient<T> {
             let uuid = if length == 7 {
                 // 16-bit UUID
                 let uuid_16 = u16::from_le_bytes([response[offset + 5], response[offset + 6]]);
-                Uuid::from_u128(0x0000_0000_1000_8000_8000_00805F9B34FB | ((uuid_16 as u128) << 96))
+                Uuid::from_u128(0x0000_0000_1000_8000_8000_0080_5F9B_34FB | ((uuid_16 as u128) << 96))
             } else if length == 21 {
-                // 128-bit UUID  
+                // 128-bit UUID
                 let mut uuid_bytes = [0u8; 16];
                 uuid_bytes.copy_from_slice(&response[offset + 5..offset + 21]);
                 Uuid::from_bytes_le(uuid_bytes)
@@ -524,9 +513,9 @@ impl<T: Transport + 'static> GattClient<T> {
         for service in &self.services {
             if let Some(characteristic) = service.characteristics.iter().find(|c| &c.uuid == uuid) {
                 if !characteristic.properties.read {
-                    return Err(BluetoothError::gatt(
-                        format!("Characteristic {uuid} does not support read"),
-                    ));
+                    return Err(BluetoothError::gatt(format!(
+                        "Characteristic {uuid} does not support read"
+                    )));
                 }
 
                 // Build ATT Read Request
@@ -536,7 +525,7 @@ impl<T: Transport + 'static> GattClient<T> {
 
                 // TODO: Send request over L2CAP ATT channel (0x0004)
                 // Parse response and return value
-                
+
                 return Ok(Vec::new());
             }
         }
@@ -561,16 +550,15 @@ impl<T: Transport + 'static> GattClient<T> {
 
         // Check for error response
         if opcode == att_opcode::ERROR_RSP {
-            return Err(BluetoothError::Gatt(
-                format!("ATT error: 0x{:02X}", response.get(4).copied().unwrap_or(0))
-            ));
+            return Err(BluetoothError::Gatt(format!(
+                "ATT error: 0x{:02X}",
+                response.get(4).copied().unwrap_or(0)
+            )));
         }
 
         // Check for correct response opcode
         if opcode != att_opcode::READ_RSP {
-            return Err(BluetoothError::Gatt(
-                format!("Unexpected opcode: 0x{:02X}", opcode)
-            ));
+            return Err(BluetoothError::Gatt(format!("Unexpected opcode: 0x{:02X}", opcode)));
         }
 
         // Value starts at byte 1
@@ -591,10 +579,12 @@ impl<T: Transport + 'static> GattClient<T> {
         // Find characteristic
         for service in &self.services {
             if let Some(characteristic) = service.characteristics.iter().find(|c| &c.uuid == uuid) {
-                if !characteristic.properties.write && !characteristic.properties.write_without_response {
-                    return Err(BluetoothError::gatt(
-                        format!("Characteristic {uuid} does not support write"),
-                    ));
+                if !characteristic.properties.write
+                    && !characteristic.properties.write_without_response
+                {
+                    return Err(BluetoothError::gatt(format!(
+                        "Characteristic {uuid} does not support write"
+                    )));
                 }
 
                 // Choose write type based on properties
@@ -609,13 +599,17 @@ impl<T: Transport + 'static> GattClient<T> {
 
                 trace!(
                     "Would send ATT Write {} for handle 0x{:04X}",
-                    if with_response { "Request" } else { "Command" },
+                    if with_response {
+                        "Request"
+                    } else {
+                        "Command"
+                    },
                     characteristic.handle
                 );
 
                 // TODO: Send request over L2CAP ATT channel (0x0004)
                 // If with_response, wait for Write Response
-                
+
                 return Ok(());
             }
         }
@@ -649,16 +643,15 @@ impl<T: Transport + 'static> GattClient<T> {
 
         // Check for error response
         if opcode == att_opcode::ERROR_RSP {
-            return Err(BluetoothError::Gatt(
-                format!("ATT error: 0x{:02X}", response.get(4).copied().unwrap_or(0))
-            ));
+            return Err(BluetoothError::Gatt(format!(
+                "ATT error: 0x{:02X}",
+                response.get(4).copied().unwrap_or(0)
+            )));
         }
 
         // Check for correct response opcode
         if opcode != att_opcode::WRITE_RSP {
-            return Err(BluetoothError::Gatt(
-                format!("Unexpected opcode: 0x{:02X}", opcode)
-            ));
+            return Err(BluetoothError::Gatt(format!("Unexpected opcode: 0x{:02X}", opcode)));
         }
 
         Ok(())
@@ -683,9 +676,9 @@ impl<T: Transport + 'static> GattClient<T> {
         for service in &self.services {
             if let Some(characteristic) = service.characteristics.iter().find(|c| &c.uuid == uuid) {
                 if !characteristic.properties.notify {
-                    return Err(BluetoothError::gatt(
-                        format!("Characteristic {uuid} does not support notifications"),
-                    ));
+                    return Err(BluetoothError::gatt(format!(
+                        "Characteristic {uuid} does not support notifications"
+                    )));
                 }
 
                 // TODO: Implement actual subscription using trouble-host
@@ -753,9 +746,9 @@ mod tests {
         let device = Arc::new(Device::new(info, 0x0040));
         let l2cap_channel = L2capChannel::new_att(0x0040);
         let transport = Arc::new(Mutex::new(MockTransport));
-        
+
         let gatt = GattClient::new(device, l2cap_channel, transport);
-        
+
         assert_eq!(gatt.services.len(), 0);
     }
 
@@ -776,4 +769,3 @@ mod tests {
         assert!(!props.indicate);
     }
 }
-

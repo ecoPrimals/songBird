@@ -48,7 +48,10 @@ async fn test_discovery_broadcaster_starts_on_startup() -> Result<()> {
     // 4. Bridge polls discovered peers every 10s
 
     // Verify orchestrator was created successfully
-    assert!(orchestrator.config().discovery.mode.is_enabled(), "Orchestrator should have discovery enabled");
+    assert!(
+        orchestrator.config().discovery.mode.is_enabled(),
+        "Orchestrator should have discovery enabled"
+    );
 
     tracing::info!("✅ Test passed: Discovery components initialized");
 

@@ -99,4 +99,3 @@ pub use relay::{RelayDiscovery, RelaySession};
 pub use session::ConnectionSession;
 pub use types::*;
 pub use universal_coordinator_adapter::{LineageRelayAdapter, LineageRelayPrimalConnection};
-

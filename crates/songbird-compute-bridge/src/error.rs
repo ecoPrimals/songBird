@@ -37,4 +37,3 @@ pub enum ComputeError {
     #[error("Error: {0}")]
     Other(#[from] anyhow::Error),
 }
-

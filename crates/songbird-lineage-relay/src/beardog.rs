@@ -36,10 +36,7 @@ impl MockLineageProvider {
 
         // Add to descendants
         let mut descendants = self.descendants.write().await;
-        descendants
-            .entry(parent.to_string())
-            .or_insert_with(Vec::new)
-            .push(child.to_string());
+        descendants.entry(parent.to_string()).or_insert_with(Vec::new).push(child.to_string());
     }
 
     /// Check if node2 is an ancestor of node1
@@ -98,14 +95,8 @@ impl BirdSongCrypto for MockBirdSongCrypto {
 
     async fn decrypt_birdsong(&self, encrypted: &[u8], sender: &NodeId) -> Result<Option<Vec<u8>>> {
         // Check if we're in sender's lineage
-        let can_decrypt = self
-            .lineage_provider
-            .is_ancestor(&self.my_id, &sender.0)
-            .await
-            || self
-                .lineage_provider
-                .is_descendant(&self.my_id, &sender.0)
-                .await;
+        let can_decrypt = self.lineage_provider.is_ancestor(&self.my_id, &sender.0).await
+            || self.lineage_provider.is_descendant(&self.my_id, &sender.0).await;
 
         if can_decrypt && encrypted.starts_with(b"LINEAGE:") {
             Ok(Some(encrypted[8..].to_vec()))
@@ -124,7 +115,9 @@ impl MockRelayAuthority {
     /// Create new mock relay authority
     #[must_use]
     pub fn new(lineage_provider: Arc<MockLineageProvider>) -> Self {
-        Self { lineage_provider }
+        Self {
+            lineage_provider,
+        }
     }
 }
 
@@ -136,10 +129,7 @@ impl RelayAuthority for MockRelayAuthority {
         requester: &NodeId,
     ) -> Result<RelayAuthorization> {
         // Check if relay_node is ancestor of requester
-        let authorized = self
-            .lineage_provider
-            .is_ancestor(&requester.0, &relay_node.0)
-            .await;
+        let authorized = self.lineage_provider.is_ancestor(&requester.0, &relay_node.0).await;
 
         Ok(RelayAuthorization {
             relay_node: relay_node.clone(),
@@ -162,10 +152,7 @@ impl RelayAuthority for MockRelayAuthority {
         requester: &NodeId,
     ) -> Result<MaskingLevel> {
         // Simple masking: masked for descendants
-        let is_ancestor = self
-            .lineage_provider
-            .is_ancestor(&requester.0, &relay_node.0)
-            .await;
+        let is_ancestor = self.lineage_provider.is_ancestor(&requester.0, &relay_node.0).await;
 
         Ok(if is_ancestor {
             MaskingLevel::Masked
@@ -203,24 +190,17 @@ mod tests {
         let crypto = MockBirdSongCrypto::new(provider.clone(), "parent".to_string());
 
         let message = b"test message";
-        let encrypted = crypto
-            .encrypt_for_lineage(message, LineageHint::DirectAncestors)
-            .await
-            .unwrap();
+        let encrypted =
+            crypto.encrypt_for_lineage(message, LineageHint::DirectAncestors).await.unwrap();
 
         // Parent should be able to decrypt child's message
-        let decrypted = crypto
-            .decrypt_birdsong(&encrypted, &NodeId::from("child"))
-            .await
-            .unwrap();
+        let decrypted = crypto.decrypt_birdsong(&encrypted, &NodeId::from("child")).await.unwrap();
         assert_eq!(decrypted, Some(message.to_vec()));
 
         // Unrelated node cannot decrypt
         let crypto_unrelated = MockBirdSongCrypto::new(provider, "unrelated".to_string());
-        let decrypted_unrelated = crypto_unrelated
-            .decrypt_birdsong(&encrypted, &NodeId::from("child"))
-            .await
-            .unwrap();
+        let decrypted_unrelated =
+            crypto_unrelated.decrypt_birdsong(&encrypted, &NodeId::from("child")).await.unwrap();
         assert_eq!(decrypted_unrelated, None);
     }
 
@@ -246,4 +226,3 @@ mod tests {
         assert!(!auth.authorized);
     }
 }
-

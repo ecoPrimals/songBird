@@ -102,16 +102,16 @@ pub trait Transport: Send + Sync {
 pub struct TransportConfig {
     /// Transport type
     pub transport_type: TransportType,
-    
+
     /// Vendor ID (for USB)
     pub vendor_id: Option<u16>,
-    
+
     /// Product ID (for USB)
     pub product_id: Option<u16>,
-    
+
     /// Serial port path (for UART)
     pub serial_port: Option<String>,
-    
+
     /// Baud rate (for UART)
     pub baud_rate: Option<u32>,
 }
@@ -169,4 +169,3 @@ impl TransportConfig {
         self
     }
 }
-

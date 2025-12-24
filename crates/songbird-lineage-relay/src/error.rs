@@ -68,4 +68,3 @@ impl From<&str> for LineageRelayError {
         Self::Other(msg.to_string())
     }
 }
-
