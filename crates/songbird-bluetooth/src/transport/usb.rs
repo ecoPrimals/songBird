@@ -41,6 +41,8 @@ const USB_SUBCLASS_RF_CONTROLLER: u8 = 0x01;
 const USB_PROTOCOL_BLUETOOTH: u8 = 0x01;
 
 /// HCI command endpoint (Control)
+/// Note: Awaiting hardware validation - will be used in Phase 3
+#[allow(dead_code)]
 const HCI_COMMAND_ENDPOINT: u8 = 0x00;
 
 /// HCI event endpoint (Interrupt IN)
@@ -323,7 +325,7 @@ mod tests {
     use super::*;
 
     #[tokio::test]
-    #[ignore] // Requires USB Bluetooth dongle
+    #[ignore = "Requires USB Bluetooth dongle"]
     async fn test_usb_transport_creation() {
         let result = UsbTransport::new().await;
         // May fail if no dongle present, but shouldn't panic

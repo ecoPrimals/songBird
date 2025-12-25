@@ -85,7 +85,7 @@ pub struct DeviceInfo {
 impl DeviceInfo {
     /// Create new device info
     #[must_use]
-    pub fn new(address: Address) -> Self {
+    pub const fn new(address: Address) -> Self {
         Self {
             address,
             name: None,
@@ -104,7 +104,7 @@ impl DeviceInfo {
 
     /// Set RSSI (builder pattern)
     #[must_use]
-    pub fn with_rssi(mut self, rssi: i8) -> Self {
+    pub const fn with_rssi(mut self, rssi: i8) -> Self {
         self.rssi = rssi;
         self
     }
@@ -157,7 +157,7 @@ pub struct Device {
 impl Device {
     /// Create new device handle
     #[must_use]
-    pub(crate) fn new(info: DeviceInfo, handle: u16) -> Self {
+    pub(crate) const fn new(info: DeviceInfo, handle: u16) -> Self {
         Self {
             info,
             handle,

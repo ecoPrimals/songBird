@@ -29,7 +29,7 @@ use std::io::{Read, Write};
 use std::sync::Arc;
 use std::time::Duration;
 use tokio::sync::Mutex;
-use tracing::{debug, info, warn};
+use tracing::{debug, info};
 
 /// Default UART baud rate for HCI
 const DEFAULT_BAUD_RATE: u32 = 115_200;
@@ -275,17 +275,17 @@ mod tests {
     }
 
     #[tokio::test]
-    #[ignore] // Requires UART Bluetooth module
+    #[ignore = "Requires UART Bluetooth module"]
     async fn test_uart_transport_creation() {
         // This test requires actual hardware
         // Run with: cargo test --features uart -- --ignored
         let ports = UartTransport::list_ports().unwrap_or_default();
         if let Some(port) = ports.first() {
-            let result = UartTransport::new(port, 115200).await;
+            let result = UartTransport::new(port, 115_200).await;
             if let Ok(transport) = result {
                 assert!(transport.is_connected());
                 assert_eq!(transport.transport_type(), TransportType::Uart);
-                assert_eq!(transport.baud_rate(), 115200);
+                assert_eq!(transport.baud_rate(), 115_200);
             }
         }
     }

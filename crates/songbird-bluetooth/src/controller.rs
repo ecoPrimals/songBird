@@ -34,13 +34,18 @@ impl<T: Transport> ControllerAdapter<T> {
 
     /// Receive HCI event
     pub async fn receive_event(&self) -> Result<Vec<u8>> {
-        let mut transport = self.transport.lock().await;
-        let event = transport.receive_event().await?;
+        let event = {
+            let mut transport = self.transport.lock().await;
+            transport.receive_event().await?
+        };
         trace!("Received HCI event: {} bytes", event.len());
         Ok(event)
     }
 
     /// Check if controller is connected
+    /// 
+    /// Note: Awaiting hardware validation - will be used in Phase 3 testing
+    #[allow(dead_code)]
     pub async fn is_connected(&self) -> bool {
         let transport = self.transport.lock().await;
         transport.is_connected()

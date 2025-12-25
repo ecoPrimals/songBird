@@ -59,14 +59,18 @@ pub struct AvailableProtocols {
 
 impl Default for AvailableProtocols {
     fn default() -> Self {
+        // ✅ MIGRATED: Use environment-based configuration
+        let port = std::env::var("SONGBIRD_PORT").unwrap_or_else(|_| "8080".to_string());
+        let base_url = format!("http://[::]:{}", port);
+        
         Self {
             http: ProtocolInfo {
                 version: "1.1".to_string(),
                 endpoints: HashMap::from([
-                    ("federation".to_string(), "http://[::]:8080/api/federation".to_string()),
-                    ("compute".to_string(), "http://[::]:8080/api/compute".to_string()),
-                    ("deployment".to_string(), "http://[::]:8080/api/deployment".to_string()),
-                    ("protocol".to_string(), "http://[::]:8080/api/protocol".to_string()),
+                    ("federation".to_string(), format!("{}/api/federation", base_url)),
+                    ("compute".to_string(), format!("{}/api/compute", base_url)),
+                    ("deployment".to_string(), format!("{}/api/deployment", base_url)),
+                    ("protocol".to_string(), format!("{}/api/protocol", base_url)),
                 ]),
                 features: vec!["rest".to_string(), "streaming".to_string(), "chunked".to_string()],
                 performance: None,
@@ -75,8 +79,8 @@ impl Default for AvailableProtocols {
             json_rpc: Some(ProtocolInfo {
                 version: "2.0".to_string(),
                 endpoints: HashMap::from([
-                    ("rpc".to_string(), "http://[::]:8080/jsonrpc".to_string()),
-                    ("alternate".to_string(), "http://[::]:8080/jsonrpc/rpc".to_string()),
+                    ("rpc".to_string(), format!("{}/jsonrpc", base_url)),
+                    ("alternate".to_string(), format!("{}/jsonrpc/rpc", base_url)),
                 ]),
                 features: vec![
                     "universal".to_string(),

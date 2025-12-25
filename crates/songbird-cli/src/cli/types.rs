@@ -117,6 +117,7 @@ impl CliArgs {
 /// Main CLI application structure
 #[derive(Debug, Clone, clap::Parser)]
 #[command(name = "songbird")]
+#[command(version = env!("CARGO_PKG_VERSION"))]
 #[command(about = "Songbird Universal Orchestrator CLI")]
 #[command(long_about = "Make distributed computing as simple as 'songbird init'")]
 pub struct Cli {

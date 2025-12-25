@@ -174,9 +174,16 @@ async fn query_by_capability(
 
 /// GET /api/v1/info
 async fn get_orchestrator_info() -> Json<serde_json::Value> {
+    // ✅ MIGRATED: Use environment-based configuration
+    let base_url = std::env::var("SONGBIRD_BASE_URL")
+        .unwrap_or_else(|_| {
+            let port = std::env::var("SONGBIRD_PORT").unwrap_or_else(|_| "8080".to_string());
+            format!("https://[::]:{}", port)
+        });
+    
     Json(json!({
         "name": "Songbird",
-        "url": "https://localhost:8080", // Will be dynamic in production
+        "url": base_url,
         "capabilities": [
             "service_registry",
             "federation",

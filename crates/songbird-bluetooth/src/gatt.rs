@@ -104,6 +104,8 @@ pub struct CharacteristicProperties {
 /// # }
 /// ```
 /// ATT opcodes
+/// Note: Constants awaiting hardware validation - will be used in Phase 3
+#[allow(dead_code)]
 mod att_opcode {
     pub const ERROR_RSP: u8 = 0x01;
     pub const READ_BY_GROUP_TYPE_REQ: u8 = 0x10;
@@ -119,6 +121,8 @@ mod att_opcode {
 }
 
 /// ATT UUIDs
+/// Note: Constants awaiting hardware validation - will be used in Phase 3
+#[allow(dead_code)]
 mod att_uuid {
     /// Primary Service UUID (0x2800)
     pub const PRIMARY_SERVICE: u16 = 0x2800;
@@ -299,7 +303,9 @@ impl<T: Transport + 'static> GattClient<T> {
             let uuid = if length == 6 {
                 // 16-bit UUID
                 let uuid_16 = u16::from_le_bytes([response[offset + 4], response[offset + 5]]);
-                Uuid::from_u128(0x0000_0000_1000_8000_8000_0080_5F9B_34FB | ((uuid_16 as u128) << 96))
+                Uuid::from_u128(
+                    0x0000_0000_1000_8000_8000_0080_5F9B_34FB | ((uuid_16 as u128) << 96),
+                )
             } else if length == 20 {
                 // 128-bit UUID
                 let mut uuid_bytes = [0u8; 16];
@@ -409,6 +415,8 @@ impl<T: Transport + 'static> GattClient<T> {
     }
 
     /// Parse ATT Read By Type Response for characteristics
+    /// Note: Awaiting hardware validation - will be used in Phase 3
+    #[allow(dead_code)]
     fn parse_read_by_type_response(&self, response: &[u8]) -> Result<Vec<Characteristic>> {
         if response.is_empty() {
             return Err(BluetoothError::Gatt("Empty response".into()));
@@ -460,7 +468,9 @@ impl<T: Transport + 'static> GattClient<T> {
             let uuid = if length == 7 {
                 // 16-bit UUID
                 let uuid_16 = u16::from_le_bytes([response[offset + 5], response[offset + 6]]);
-                Uuid::from_u128(0x0000_0000_1000_8000_8000_0080_5F9B_34FB | ((uuid_16 as u128) << 96))
+                Uuid::from_u128(
+                    0x0000_0000_1000_8000_8000_0080_5F9B_34FB | ((uuid_16 as u128) << 96),
+                )
             } else if length == 21 {
                 // 128-bit UUID
                 let mut uuid_bytes = [0u8; 16];
@@ -519,7 +529,7 @@ impl<T: Transport + 'static> GattClient<T> {
                 }
 
                 // Build ATT Read Request
-                let request = self.build_read_request(characteristic.handle);
+                let _request = self.build_read_request(characteristic.handle);
 
                 trace!("Sending ATT Read Request for handle 0x{:04X}", characteristic.handle);
 
@@ -541,6 +551,8 @@ impl<T: Transport + 'static> GattClient<T> {
     }
 
     /// Parse ATT Read Response
+    /// Note: Awaiting hardware validation - will be used in Phase 3
+    #[allow(dead_code)]
     fn parse_read_response(&self, response: &[u8]) -> Result<Vec<u8>> {
         if response.is_empty() {
             return Err(BluetoothError::Gatt("Empty response".into()));
@@ -634,6 +646,8 @@ impl<T: Transport + 'static> GattClient<T> {
     }
 
     /// Parse ATT Write Response
+    /// Note: Awaiting hardware validation - will be used in Phase 3
+    #[allow(dead_code)]
     fn parse_write_response(&self, response: &[u8]) -> Result<()> {
         if response.is_empty() {
             return Err(BluetoothError::Gatt("Empty response".into()));

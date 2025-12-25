@@ -30,9 +30,9 @@
 //!
 //! ## Platform Support
 //!
-//! - ✅ Linux (any distro, no BlueZ needed)
-//! - ✅ Windows (no WinRT needed)
-//! - ✅ macOS (no CoreBluetooth needed)
+//! - ✅ Linux (any distro, no `BlueZ` needed)
+//! - ✅ Windows (no `WinRT` needed)
+//! - ✅ macOS (no `CoreBluetooth` needed)
 //! - ✅ Embedded (ARM, RISC-V, etc.)
 //! - ✅ Any platform with USB Bluetooth dongle
 //!
