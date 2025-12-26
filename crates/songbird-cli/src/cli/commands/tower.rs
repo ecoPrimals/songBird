@@ -4,7 +4,7 @@
 
 use clap::{Args, Subcommand};
 use serde::{Deserialize, Serialize};
-use std::process::Command;
+use std::process::Command; // Still needed for GPU/storage detection
 use sysinfo::System;
 
 use crate::errors::SongbirdResult;
@@ -155,15 +155,20 @@ async fn start_tower(args: &TowerStartArgs) -> SongbirdResult<()> {
 
     println!("🚀 Launching orchestrator...\n");
 
-    // Start the orchestrator
-    let status = Command::new("cargo")
-        .args(["run", "--release", "--bin", "songbird-orchestrator"])
-        .status()
-        .map_err(|e| format!("Failed to start orchestrator: {e}"))?;
+    // ✅ FIX: Direct function call instead of cargo run (makes binary standalone)
+    // Load configuration from environment (environment vars are already set above)
+    let config = songbird_types::config::CanonicalSongbirdConfig::from_env()
+        .map_err(|e| format!("Failed to load configuration: {e}"))?;
 
-    if !status.success() {
-        return Err(format!("Orchestrator exited with status: {status}").into());
-    }
+    // Initialize rustls crypto provider (required before any TLS operations)
+    rustls::crypto::ring::default_provider()
+        .install_default()
+        .ok(); // Ignore if already initialized
+
+    // Start the orchestrator directly (no cargo run needed!)
+    songbird_orchestrator::app::start_orchestrator(config)
+        .await
+        .map_err(|e| format!("Orchestrator failed: {e}"))?;
 
     Ok(())
 }
@@ -294,7 +299,7 @@ RUST_LOG="info,songbird=debug"
     println!("✅ Configuration written to: {output}\n");
     println!("To use:");
     println!("  $ source {output}");
-    println!("  $ cargo run --release --bin songbird-orchestrator");
+    println!("  $ songbird tower start");
     println!();
 
     Ok(())
