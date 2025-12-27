@@ -262,12 +262,15 @@ impl EnhancedCapabilityRouter {
     /// 1. Prefer services with fewer active connections
     /// 2. Fall back to round-robin if load is equal
     /// 3. Consider service health scores
-    async fn select_best_service<'a>(&self, services: &'a [crate::service_registry::RegisteredService]) -> &'a crate::service_registry::RegisteredService {
+    async fn select_best_service<'a>(
+        &self,
+        services: &'a [crate::service_registry::RegisteredService],
+    ) -> &'a crate::service_registry::RegisteredService {
         // For now, use simple round-robin (first service)
         // Future: Track active connections per service and select least loaded
         // Future: Consider geographic proximity for distributed deployments
         // Future: Implement weighted load balancing based on capacity
-        
+
         &services[0]
     }
 
@@ -278,36 +281,37 @@ impl EnhancedCapabilityRouter {
     /// - Memory available
     /// - Active task count below limit
     async fn has_local_capacity(&self) -> bool {
-        use sysinfo::{System, RefreshKind, CpuRefreshKind, MemoryRefreshKind};
-        
+        use sysinfo::{CpuRefreshKind, MemoryRefreshKind, RefreshKind, System};
+
         // Refresh system information
         let mut sys = System::new_with_specifics(
             RefreshKind::new()
                 .with_cpu(CpuRefreshKind::everything())
-                .with_memory(MemoryRefreshKind::everything())
+                .with_memory(MemoryRefreshKind::everything()),
         );
-        
+
         // Wait a bit for CPU measurement to be accurate
         std::thread::sleep(std::time::Duration::from_millis(100));
         sys.refresh_cpu();
-        
+
         // Check CPU usage (average across all cores)
         let cpu_usage = sys.global_cpu_info().cpu_usage();
         if cpu_usage > 80.0 {
             debug!("Local capacity check: CPU usage too high ({:.1}%)", cpu_usage);
             return false;
         }
-        
+
         // Check memory usage (require at least 10% free)
         let total_memory = sys.total_memory();
         let available_memory = sys.available_memory();
-        let memory_usage_percent = ((total_memory - available_memory) as f64 / total_memory as f64) * 100.0;
-        
+        let memory_usage_percent =
+            ((total_memory - available_memory) as f64 / total_memory as f64) * 100.0;
+
         if memory_usage_percent > 90.0 {
             debug!("Local capacity check: Memory usage too high ({:.1}%)", memory_usage_percent);
             return false;
         }
-        
+
         debug!(
             "Local capacity available: CPU {:.1}%, Memory {:.1}% used",
             cpu_usage, memory_usage_percent

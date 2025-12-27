@@ -342,11 +342,13 @@ impl JsonRpcServer {
                 let (available, message) = match req.desired_protocol.as_str() {
                     "JSON-RPC" | "jsonrpc" => (true, "JSON-RPC is available"),
                     "tarpc" => (false, "tarpc support planned for future release"),
-                    "WebSocket" | "websocket" => (false, "WebSocket support planned for future release"),
+                    "WebSocket" | "websocket" => {
+                        (false, "WebSocket support planned for future release")
+                    }
                     "HTTP" | "http" => (true, "HTTP/JSON-RPC is available"),
                     _ => (false, "Unknown protocol"),
                 };
-                
+
                 let response = serde_json::json!({
                     "protocol": req.desired_protocol,
                     "available": available,

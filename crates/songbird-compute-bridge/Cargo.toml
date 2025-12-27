@@ -25,3 +25,6 @@ thiserror = "2.0"
 num_cpus = "1.16"
 hostname = "0.3"
 
+# Internal dependencies
+songbird-config = { path = "../songbird-config" }
+

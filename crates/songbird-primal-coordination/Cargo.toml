@@ -25,6 +25,9 @@ tracing = "0.1"
 # Time and UUIDs
 uuid = { version = "1", features = ["v4", "serde"] }
 
+# HTTP client
+reqwest = { version = "0.12", features = ["json"] }
+
 # Internal dependencies
 songbird-types = { path = "../songbird-types" }
 songbird-discovery = { path = "../songbird-discovery" }

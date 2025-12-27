@@ -277,24 +277,26 @@ async fn submit_compute_task(
             // 3. Stream output updates
             // 4. Persist job state
             tokio::spawn(async move {
-                use songbird_execution_agent::{CommandExecutor, ExecutionRequest, ExecutionStatus, ResourceLimits};
-                
+                use songbird_execution_agent::{
+                    CommandExecutor, ExecutionRequest, ExecutionStatus, ResourceLimits,
+                };
+
                 // Create executor with reasonable defaults
                 let limits = ResourceLimits {
-                    max_memory_mb: Some(1024), // 1GB per task
+                    max_memory_mb: Some(1024),       // 1GB per task
                     max_cpu_time_seconds: Some(300), // 5 minutes
-                    default_timeout_seconds: 60, // 1 minute default
+                    default_timeout_seconds: 60,     // 1 minute default
                 };
                 let executor = CommandExecutor::new(limits);
-                
+
                 // Prepare execution request using builder pattern
                 // The task_type contains the command to execute
-                let exec_request = ExecutionRequest::new(task_clone.task_type.as_ref())
-                    .with_timeout(60); // 1 minute timeout
-                
+                let exec_request =
+                    ExecutionRequest::new(task_clone.task_type.as_ref()).with_timeout(60); // 1 minute timeout
+
                 // Execute the command
                 let result = executor.execute(exec_request).await;
-                
+
                 // Update job status based on execution result
                 let mut jobs = active_jobs_clone.write().await;
                 if let Some(status) = jobs.get_mut(&job_id) {
@@ -313,13 +315,19 @@ async fn submit_compute_task(
                                     status.status = JobStatusType::Failed;
                                     warn!(
                                         "Task {} failed (status: {}, exit code: {:?}): {}",
-                                        job_id, response.status, response.exit_code, response.stderr
+                                        job_id,
+                                        response.status,
+                                        response.exit_code,
+                                        response.stderr
                                     );
                                 }
                                 _ => {
                                     // Should not happen for synchronous execution
                                     status.status = JobStatusType::Failed;
-                                    warn!("Task {} in unexpected state: {}", job_id, response.status);
+                                    warn!(
+                                        "Task {} in unexpected state: {}",
+                                        job_id, response.status
+                                    );
                                 }
                             }
                         }

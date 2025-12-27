@@ -101,11 +101,28 @@ impl AgnosticComputeCoordinator {
             return Ok(provider.clone());
         }
 
-        // TODO: Implement dynamic discovery
-        Err(ComputeError::NoProviderAvailable(
-            "No compute provider discovered. Set CAPABILITY_COMPUTE_ENDPOINT environment variable."
-                .to_string(),
-        ))
+        // Dynamic discovery using songbird-config primal discovery
+        tracing::info!("🔍 Attempting dynamic compute provider discovery");
+
+        // Use get_compute_endpoint for 4-tier discovery
+        match songbird_config::primal_discovery::get_compute_endpoint().await {
+            Ok(endpoint) => {
+                tracing::info!("✅ Discovered compute provider at: {}", endpoint);
+                Ok(ComputeProvider {
+                    endpoint,
+                    capabilities: vec!["compute".to_string()],
+                    metadata: HashMap::new(),
+                    healthy: true,
+                })
+            }
+            Err(e) => {
+                tracing::warn!("❌ Compute provider discovery failed: {}", e);
+                Err(ComputeError::NoProviderAvailable(
+                    "No compute provider discovered. Set COMPUTE_ENDPOINT environment variable or configure service registry."
+                        .to_string(),
+                ))
+            }
+        }
     }
 
     /// Deploy workload to any available compute provider
@@ -163,7 +180,7 @@ mod tests {
         // Isolated test - doesn't mutate global state
         // Tests that coordinator can be created
         let coordinator = AgnosticComputeCoordinator::new();
-        
+
         // Coordinator should initialize successfully
         assert!(coordinator.config.enable_cache);
     }
@@ -180,7 +197,7 @@ mod tests {
 
         // Deploy workload - should succeed with discovery or fallback
         let deployment_id = coordinator.deploy_workload(workload).await;
-        
+
         // Note: In full evolution, we'd pass EnvOverride to coordinator
         // For now, we test that deployment logic works
         assert!(deployment_id.is_ok() || deployment_id.is_err());

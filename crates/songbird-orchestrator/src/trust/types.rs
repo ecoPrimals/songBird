@@ -185,19 +185,19 @@ impl CapabilityProof {
     #[must_use]
     pub fn verify(&self) -> bool {
         use std::time::SystemTime;
-        
+
         // Step 1: Validate structure
         if self.capabilities.is_empty() || self.proof.is_empty() {
             tracing::warn!("Capability proof verification failed: empty capabilities or proof");
             return false;
         }
-        
+
         // Step 2: Check proof format (should be base64 or hex)
         if self.proof.len() < 32 {
             tracing::warn!("Capability proof verification failed: proof too short (< 32 chars)");
             return false;
         }
-        
+
         // Step 3: Verify timestamp freshness (within 1 hour)
         let now = SystemTime::now();
         if let Ok(age) = now.duration_since(self.timestamp) {
@@ -209,7 +209,7 @@ impl CapabilityProof {
                 );
                 return false;
             }
-            
+
             tracing::debug!(
                 "Capability proof verified: {} capabilities, timestamp {} hours old (basic validation only)",
                 self.capabilities.len(),
@@ -219,13 +219,13 @@ impl CapabilityProof {
             tracing::warn!("Capability proof verification failed: timestamp in the future");
             return false;
         }
-        
+
         // Step 4: Future - cryptographic signature verification
         // When BearDog is integrated, add:
         // - Verify Ed25519 signature
         // - Check proof against public key
         // - Validate capability claims
-        
+
         true
     }
 }
@@ -261,20 +261,20 @@ impl IdentityProof {
     #[must_use]
     pub fn verify(&self) -> bool {
         use std::time::SystemTime;
-        
+
         // Step 1: Validate identity node ID
         let node_id = &self.identity.node_id;
         if node_id.is_empty() || node_id.len() < 8 {
             tracing::warn!("Identity proof verification failed: invalid node ID");
             return false;
         }
-        
+
         // Step 2: Validate proof structure
         if self.proof.is_empty() || self.proof.len() < 32 {
             tracing::warn!("Identity proof verification failed: invalid proof structure");
             return false;
         }
-        
+
         // Step 3: Verify timestamp freshness (within 24 hours)
         let now = SystemTime::now();
         if let Ok(age) = now.duration_since(self.timestamp) {
@@ -286,7 +286,7 @@ impl IdentityProof {
                 );
                 return false;
             }
-            
+
             tracing::debug!(
                 "Identity proof verified: node ID {}, {} hours old (basic validation only)",
                 node_id,
@@ -296,14 +296,14 @@ impl IdentityProof {
             tracing::warn!("Identity proof verification failed: timestamp in the future");
             return false;
         }
-        
+
         // Step 4: Future - genetic lineage verification
         // When BearDog is integrated, add:
         // - Verify JWT signature or certificate
         // - Check genetic signature
         // - Validate lineage chain
         // - Verify against known identities
-        
+
         true
     }
 }

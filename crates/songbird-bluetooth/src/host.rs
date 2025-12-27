@@ -336,9 +336,49 @@ impl<T: Transport + 'static> BluetoothHost<T> {
     }
 
     /// Parse device name from advertisement data
-    fn parse_device_name(&self, _event: &[u8]) -> Option<String> {
-        // TODO: Implement AD type parsing
-        // For now, return None
+    ///
+    /// Parses Bluetooth advertising data (AD) structures to extract the device name.
+    /// Follows Bluetooth Core Specification Vol 3, Part C, Section 11.
+    ///
+    /// AD Structure format:
+    /// - Length (1 byte): Length of Type + Data
+    /// - Type (1 byte): AD Type
+    /// - Data (variable): AD Data
+    fn parse_device_name(&self, event: &[u8]) -> Option<String> {
+        // Minimum event size check
+        if event.len() < 2 {
+            return None;
+        }
+
+        let mut offset = 0;
+
+        // Parse AD structures
+        while offset + 1 < event.len() {
+            let length = event[offset] as usize;
+
+            // Check for end of data or invalid length
+            if length == 0 || offset + length >= event.len() {
+                break;
+            }
+
+            let ad_type = event[offset + 1];
+            let data_start = offset + 2;
+            let data_end = offset + 1 + length;
+
+            // AD Type 0x08: Shortened Local Name
+            // AD Type 0x09: Complete Local Name
+            if ad_type == 0x08 || ad_type == 0x09 {
+                if data_end <= event.len() {
+                    let name_bytes = &event[data_start..data_end];
+                    // Convert bytes to UTF-8 string, replacing invalid sequences
+                    return Some(String::from_utf8_lossy(name_bytes).to_string());
+                }
+            }
+
+            // Move to next AD structure
+            offset += 1 + length;
+        }
+
         None
     }
 

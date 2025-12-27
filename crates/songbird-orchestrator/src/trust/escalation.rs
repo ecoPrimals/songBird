@@ -79,19 +79,19 @@ impl BearDogClient {
     /// Create a new BearDog client with runtime discovery
     pub fn new() -> Self {
         // Try to discover BearDog via environment variable
-        let endpoint = std::env::var("BEARDOG_URL")
-            .or_else(|_| std::env::var("SECURITY_URL"))
-            .ok();
-        
+        let endpoint = std::env::var("BEARDOG_URL").or_else(|_| std::env::var("SECURITY_URL")).ok();
+
         if let Some(ref url) = endpoint {
             tracing::info!("BearDog client configured with endpoint: {}", url);
         } else {
             tracing::debug!("BearDog client created without endpoint (will use mock verification)");
         }
-        
-        Self { endpoint }
+
+        Self {
+            endpoint,
+        }
     }
-    
+
     /// Verify a hardware key via BearDog
     ///
     /// ## Implementation
@@ -111,26 +111,20 @@ impl BearDogClient {
                 "Verifying hardware key via BearDog at {} (future: implement actual HTTP call)",
                 endpoint
             );
-            
+
             // Future: Implement actual BearDog API call
             // For now, accept non-empty keys as valid when BearDog is configured
             let is_valid = !hardware_key.is_empty() && hardware_key.len() >= 32;
-            
-            tracing::debug!(
-                "Hardware key verification result: {} (mock implementation)",
-                is_valid
-            );
-            
+
+            tracing::debug!("Hardware key verification result: {} (mock implementation)", is_valid);
+
             Ok(is_valid)
         } else {
             // Development mode: Accept valid-looking keys
             let is_valid = !hardware_key.is_empty() && hardware_key.len() >= 32;
-            
-            tracing::debug!(
-                "Hardware key verification (development mode): {}",
-                is_valid
-            );
-            
+
+            tracing::debug!("Hardware key verification (development mode): {}", is_valid);
+
             Ok(is_valid)
         }
     }
@@ -238,40 +232,34 @@ impl TrustEscalationManager {
         if role.is_empty() {
             return Err(anyhow!("Role cannot be empty"));
         }
-        
+
         // Define known valid roles
         const VALID_ROLES: &[&str] = &[
-            "coordinator",  // Can coordinate federation-wide tasks
-            "worker",       // Can execute tasks assigned to it
-            "observer",     // Read-only access to registry
-            "compute",      // Compute-specific role
-            "storage",      // Storage-specific role
-            "ai",           // AI workload role
-            "security",     // Security service role
+            "coordinator", // Can coordinate federation-wide tasks
+            "worker",      // Can execute tasks assigned to it
+            "observer",    // Read-only access to registry
+            "compute",     // Compute-specific role
+            "storage",     // Storage-specific role
+            "ai",          // AI workload role
+            "security",    // Security service role
         ];
-        
+
         // Normalize role to lowercase for comparison
         let normalized_role = role.to_lowercase();
-        
+
         // Check if role is valid
         if !VALID_ROLES.contains(&normalized_role.as_str()) {
-            tracing::warn!(
-                "Unknown role requested: '{}'. Known roles: {:?}",
-                role,
-                VALID_ROLES
-            );
+            tracing::warn!("Unknown role requested: '{}'. Known roles: {:?}", role, VALID_ROLES);
             // Accept unknown roles but log for monitoring
             // This allows extension without code changes
         }
-        
+
         // Additional role-specific validation
         match normalized_role.as_str() {
             "admin" => {
                 // Admin role requires identity-verified first
                 // Cannot jump directly from capability to admin
-                return Err(anyhow!(
-                    "Admin role requires identity verification first (Level 3)"
-                ));
+                return Err(anyhow!("Admin role requires identity verification first (Level 3)"));
             }
             _ => {
                 // Other roles are allowed at this trust level

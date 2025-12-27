@@ -319,7 +319,7 @@ mod tests {
     use crate::env_override::EnvOverride;
 
     /// Test concurrent-safe capability endpoint discovery
-    /// 
+    ///
     /// This test can run in parallel with all other tests without any race conditions
     #[test]
     fn test_discover_capability_endpoints() {
@@ -327,7 +327,7 @@ mod tests {
         let env = EnvOverride::new();
         env.set("CAPABILITY_SECURITY_ENDPOINT", "https://localhost:8443");
         env.set("CAPABILITY_COMPUTE_ENDPOINT", "http://localhost:8082");
-        
+
         // Discover using our isolated environment
         let mut endpoints = HashMap::new();
         for capability_type in &["security", "compute", "storage", "ai", "discovery"] {
@@ -339,7 +339,7 @@ mod tests {
 
         assert_eq!(endpoints.get("security"), Some(&"https://localhost:8443".to_string()));
         assert_eq!(endpoints.get("compute"), Some(&"http://localhost:8082".to_string()));
-        
+
         // No cleanup needed - env is scoped to this test
     }
 
@@ -351,26 +351,26 @@ mod tests {
         env.set("ENABLE_DNS_SRV_DISCOVERY", "1");
 
         // Test the logic with our isolated env
-        let enabled = env.get("CAPABILITY_DISCOVERY_ENABLED")
+        let enabled = env
+            .get("CAPABILITY_DISCOVERY_ENABLED")
             .map(|v| v == "true" || v == "1")
             .unwrap_or(false);
-        
-        let dns_srv_enabled = env.get("ENABLE_DNS_SRV_DISCOVERY")
-            .map(|v| v == "true" || v == "1")
-            .unwrap_or(false);
-        
+
+        let dns_srv_enabled =
+            env.get("ENABLE_DNS_SRV_DISCOVERY").map(|v| v == "true" || v == "1").unwrap_or(false);
+
         assert!(enabled);
         assert!(dns_srv_enabled);
-        
+
         // Construct what the config would look like
         let mut methods = vec![DiscoveryMethod::Environment];
         if dns_srv_enabled {
             methods.push(DiscoveryMethod::DnsSrv);
         }
-        
+
         assert!(methods.contains(&DiscoveryMethod::Environment));
         assert!(methods.contains(&DiscoveryMethod::DnsSrv));
-        
+
         // No cleanup needed - fully isolated
     }
 
@@ -393,7 +393,7 @@ mod tests {
         for (legacy_var, capability_var) in &migrations {
             if let Some(value) = env.get(legacy_var) {
                 if !env.contains_key(capability_var) {
-                    env.set(*capability_var, value);  // Dereference to get &str
+                    env.set(*capability_var, value); // Dereference to get &str
                 }
             }
         }
@@ -407,7 +407,7 @@ mod tests {
             env.get("CAPABILITY_COMPUTE_ENDPOINT"),
             Some("http://toadstool:8082".to_string())
         );
-        
+
         // No cleanup needed - env is scoped
     }
 }

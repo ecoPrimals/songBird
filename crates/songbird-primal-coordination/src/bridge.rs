@@ -40,9 +40,15 @@ impl PrimalConnection {
 
     /// Send a request to the primal
     ///
+    /// Implements network communication to send requests to remote primals.
+    /// Uses HTTP as the primary transport protocol.
+    ///
     /// # Errors
     ///
-    /// Returns an error if the request fails or the response is invalid
+    /// Returns an error if:
+    /// - Network request fails
+    /// - Response is invalid
+    /// - Timeout occurs
     pub async fn send_request(&self, request: PrimalRequest) -> Result<PrimalResponse> {
         tracing::debug!(
             "Sending request to primal at {} (connection: {})",
@@ -50,26 +56,59 @@ impl PrimalConnection {
             self.connection_id
         );
 
-        // TODO: Implement actual network communication
-        // For now, this is a placeholder that will be implemented with real P2P networking
-        tracing::warn!("PrimalConnection::send_request is not yet fully implemented");
+        // Build HTTP client with timeout
+        let client = reqwest::Client::builder()
+            .timeout(std::time::Duration::from_secs(30))
+            .build()
+            .map_err(|e| {
+                crate::error::PrimalCoordinationError::Internal(format!(
+                    "Failed to build HTTP client: {}",
+                    e
+                ))
+            })?;
 
-        // Placeholder response based on request type
-        match request {
-            PrimalRequest::DiscoverCapabilities => {
-                let caps = self.capabilities.read().await.clone();
-                Ok(PrimalResponse::Capabilities(caps))
-            }
-            PrimalRequest::Status => Ok(PrimalResponse::StatusResponse(ServiceStatus {
-                healthy: true,
-                version: "0.1.0".to_string(),
-                capabilities: self.capabilities.read().await.services.clone(),
-                metrics: std::collections::HashMap::new(),
-            })),
-            _ => Err(crate::error::PrimalCoordinationError::Internal(
-                "Request type not yet implemented".to_string(),
-            )),
+        // Determine endpoint path based on request type
+        let path = match &request {
+            PrimalRequest::DiscoverCapabilities => "/api/v1/capabilities",
+            PrimalRequest::Status => "/api/v1/status",
+            PrimalRequest::GenerateKeys => "/api/v1/keys/generate",
+            PrimalRequest::SignLineage {
+                ..
+            } => "/api/v1/lineage/sign",
+            PrimalRequest::DeployWorkload(_) => "/api/v1/workload/deploy",
+            PrimalRequest::Custom {
+                ..
+            } => "/api/v1/custom",
+        };
+
+        let url = format!("{}{}", self.endpoint, path);
+
+        // Send POST request with JSON body
+        let response = client.post(&url).json(&request).send().await.map_err(|e| {
+            crate::error::PrimalCoordinationError::Internal(format!(
+                "Network request failed: {}",
+                e
+            ))
+        })?;
+
+        // Check for HTTP errors
+        if !response.status().is_success() {
+            return Err(crate::error::PrimalCoordinationError::Internal(format!(
+                "HTTP error: {}",
+                response.status()
+            )));
         }
+
+        // Parse JSON response
+        let primal_response: PrimalResponse = response.json().await.map_err(|e| {
+            crate::error::PrimalCoordinationError::Internal(format!(
+                "Failed to parse response: {}",
+                e
+            ))
+        })?;
+
+        tracing::debug!("Received response from primal");
+        Ok(primal_response)
     }
 
     /// Check if this connection supports a capability
