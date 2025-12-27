@@ -257,11 +257,8 @@ impl SongbirdOrchestrator {
             info!("🔐 Security provider configured via SECURITY_ENDPOINT: {}", endpoint);
             Arc::new(())
         } else {
-            // No explicit security provider - attempt runtime discovery
+            // No explicit security provider - attempt runtime discovery via capability system
             warn!("⚠️  No SECURITY_ENDPOINT set, attempting capability-based discovery");
-            // TODO: Integrate with songbird-config::capability_discovery
-            // let discovery = CapabilityDiscovery::new();
-            // let providers = discovery.discover_security().await?;
 
             // Try to discover security capability dynamically
             let security_endpoint = match capability_endpoints::get_capability_endpoint("security")
