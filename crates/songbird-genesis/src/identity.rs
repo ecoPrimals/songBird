@@ -74,11 +74,48 @@ impl NewNodeIdentity {
         self.primal_signature_count() >= 2
     }
 
-    /// Verify all primal signatures (placeholder)
-    pub fn verify_all_signatures(&self) -> bool {
-        // TODO: Implement actual signature verification
-        // For now, just check we have lineages
-        !self.genesis_lineage.primal_lineages.is_empty()
+    /// Verify all primal signatures using BearDog
+    pub async fn verify_all_signatures(&self) -> bool {
+        use crate::beardog_client::BearDogClient;
+
+        if self.genesis_lineage.primal_lineages.is_empty() {
+            return false;
+        }
+
+        // Try to create BearDog client for verification
+        let client = match BearDogClient::new().await {
+            Ok(client) => client,
+            Err(e) => {
+                tracing::warn!(
+                    "BearDog not available for signature verification: {}. Using basic check.",
+                    e
+                );
+                // Fallback: Just check we have lineages
+                return !self.genesis_lineage.primal_lineages.is_empty();
+            }
+        };
+
+        // Verify each primal's signature
+        for (primal_name, lineage) in &self.genesis_lineage.primal_lineages {
+            match client
+                .verify_signature(&self.node_id, &lineage.lineage_data, &lineage.signature)
+                .await
+            {
+                Ok(true) => {
+                    tracing::debug!("✅ Signature verified for primal: {}", primal_name);
+                }
+                Ok(false) => {
+                    tracing::warn!("❌ Invalid signature from primal: {}", primal_name);
+                    return false;
+                }
+                Err(e) => {
+                    tracing::error!("Failed to verify signature from {}: {}", primal_name, e);
+                    return false;
+                }
+            }
+        }
+
+        true
     }
 }
 

@@ -31,6 +31,7 @@
 #![warn(missing_docs)]
 #![warn(clippy::all)]
 
+pub mod beardog_client;
 pub mod ceremony;
 pub mod coordination_bridge;
 pub mod error;

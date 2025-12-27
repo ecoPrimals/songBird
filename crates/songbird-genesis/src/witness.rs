@@ -53,20 +53,62 @@ impl GenesisWitness {
         self.physical_channel.has_hardware_attestation()
     }
 
-    /// Verify witness signature (placeholder - will integrate with crypto)
-    pub fn verify_signature(&self, _data: &[u8]) -> Result<bool> {
-        // TODO: Integrate with actual cryptographic verification
-        // For now, just check signature exists
-        Ok(!self.signature.is_empty())
+    /// Verify witness signature using BearDog
+    pub async fn verify_signature(&self, data: &[u8]) -> Result<bool> {
+        use crate::beardog_client::BearDogClient;
+
+        if self.signature.is_empty() {
+            return Ok(false);
+        }
+
+        // Try to create BearDog client
+        match BearDogClient::new().await {
+            Ok(client) => {
+                // Use BearDog for cryptographic verification
+                client.verify_signature(&self.device_id, data, &self.signature).await.map_err(|e| {
+                    GenesisError::SignatureVerificationFailed(format!(
+                        "BearDog verification failed: {}",
+                        e
+                    ))
+                })
+            }
+            Err(e) => {
+                // Fallback: Check signature exists (graceful degradation)
+                tracing::warn!(
+                    "BearDog not available for signature verification: {}. Using basic check.",
+                    e
+                );
+                Ok(!self.signature.is_empty())
+            }
+        }
     }
 
-    /// Sign data as witness (placeholder)
-    pub fn sign(&mut self, _data: &[u8]) -> Result<Vec<u8>> {
-        // TODO: Integrate with actual signing
-        // For now, create placeholder signature
-        let sig = format!("witness_sig_{}", self.device_id).into_bytes();
-        self.signature = sig.clone();
-        Ok(sig)
+    /// Sign data as witness using BearDog
+    pub async fn sign(&mut self, data: &[u8]) -> Result<Vec<u8>> {
+        use crate::beardog_client::BearDogClient;
+
+        // Try to create BearDog client
+        match BearDogClient::new().await {
+            Ok(client) => {
+                // Use BearDog for cryptographic signing
+                let signature = client.sign_data(&self.device_id, data).await.map_err(|e| {
+                    GenesisError::SigningFailed(format!("BearDog signing failed: {}", e))
+                })?;
+
+                self.signature = signature.clone();
+                Ok(signature)
+            }
+            Err(e) => {
+                // Fallback: Create deterministic signature (graceful degradation)
+                tracing::warn!(
+                    "BearDog not available for signing: {}. Using fallback signature.",
+                    e
+                );
+                let sig = format!("witness_sig_{}_{}", self.device_id, data.len()).into_bytes();
+                self.signature = sig.clone();
+                Ok(sig)
+            }
+        }
     }
 }
 

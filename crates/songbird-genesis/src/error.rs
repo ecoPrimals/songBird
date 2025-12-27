@@ -40,6 +40,14 @@ pub enum GenesisError {
     #[error("Lineage establishment failed: {0}")]
     LineageFailed(String),
 
+    /// Cryptographic signature verification failed
+    #[error("Signature verification failed: {0}")]
+    SignatureVerificationFailed(String),
+
+    /// Cryptographic signing failed
+    #[error("Signing failed: {0}")]
+    SigningFailed(String),
+
     /// Hardware key error (SoloKey, YubiKey, etc.)
     #[error("Hardware key error: {0}")]
     HardwareKeyError(String),
