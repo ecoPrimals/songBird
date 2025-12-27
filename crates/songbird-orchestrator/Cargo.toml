@@ -22,6 +22,7 @@ path = "src/main.rs"
 # All workspace crates (songbird-core consolidated into this crate)
 songbird-types = { path = "../songbird-types" }
 songbird-config = { path = "../songbird-config" }
+songbird-execution-agent = { path = "../songbird-execution-agent" }  # For CommandExecutor integration
 # songbird-security-errors = { path = "../songbird-security-errors" }  # REMOVED: Using unified errors from songbird-types
 songbird-network-federation = { path = "../songbird-network-federation" }  # NEW: Consolidated
 songbird-discovery = { path = "../songbird-discovery" }

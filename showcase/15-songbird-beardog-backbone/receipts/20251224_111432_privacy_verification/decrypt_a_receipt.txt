@@ -1,5 +1,0 @@
-error: unexpected argument '--output' found
-
-Usage: beardog-v0.9.1-birdsong-dec24 birdsong decrypt --input <INPUT> --key-id <KEY_ID>
-
-For more information, try '--help'.

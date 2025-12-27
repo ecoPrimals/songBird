@@ -30,10 +30,17 @@ pub struct LineageRelayConfig {
 
 impl Default for LineageRelayConfig {
     fn default() -> Self {
+        // These are well-known IPv4 addresses that will always parse successfully
+        // 0.0.0.0:42424 = bind to all interfaces
+        // 255.255.255.255:42424 = broadcast address
         Self {
             my_id: NodeId::from("default-node"),
-            birdsong_bind: "0.0.0.0:42424".parse().unwrap(),
-            birdsong_broadcast: "255.255.255.255:42424".parse().unwrap(),
+            birdsong_bind: "0.0.0.0:42424"
+                .parse()
+                .expect("hardcoded IPv4 bind address should always parse"),
+            birdsong_broadcast: "255.255.255.255:42424"
+                .parse()
+                .expect("hardcoded IPv4 broadcast address should always parse"),
             my_relay_address: None,
             direct_timeout: Duration::from_secs(5),
         }

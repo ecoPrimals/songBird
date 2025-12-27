@@ -161,9 +161,7 @@ async fn start_tower(args: &TowerStartArgs) -> SongbirdResult<()> {
         .map_err(|e| format!("Failed to load configuration: {e}"))?;
 
     // Initialize rustls crypto provider (required before any TLS operations)
-    rustls::crypto::ring::default_provider()
-        .install_default()
-        .ok(); // Ignore if already initialized
+    rustls::crypto::ring::default_provider().install_default().ok(); // Ignore if already initialized
 
     // Start the orchestrator directly (no cargo run needed!)
     songbird_orchestrator::app::start_orchestrator(config)

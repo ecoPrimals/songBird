@@ -55,8 +55,15 @@ pub mod unified;
 // ============================================================================
 // STABLE MODULES - KEEP
 // ============================================================================
+/// **TEST INFRASTRUCTURE**: Thread-safe environment overrides for concurrent testing
+pub mod env_override;
+
+/// **MODERN ARCHITECTURE**: Environment provider trait for dependency injection
+pub mod env_provider;
+
 /// **MODERN**: Capability-based service discovery (replaces hardcoded endpoints)
 pub mod capability_discovery;
+pub mod discovery_helpers;
 pub mod runtime_discovery;
 pub mod runtime_endpoint_resolver;
 

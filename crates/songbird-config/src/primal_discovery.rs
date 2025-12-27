@@ -312,8 +312,12 @@ mod tests {
     #[tokio::test]
     #[serial]
     async fn test_compute_endpoint_not_configured() {
+        // Clear all possible environment variables
         std::env::remove_var("COMPUTE_ENDPOINT");
         std::env::remove_var("TOADSTOOL_ENDPOINT");
+        std::env::remove_var("CAPABILITY_COMPUTE_ENDPOINT");
+        std::env::remove_var("COMPUTE_URL");
+        std::env::remove_var("TOADSTOOL_URL");
 
         let result = get_compute_endpoint().await;
         assert!(result.is_err());

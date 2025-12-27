@@ -24,7 +24,7 @@ use songbird_network_federation::state::FederationState;
 use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::RwLock;
-use tracing::{debug, info, warn};
+use tracing::{debug, error, info, warn};
 use uuid::Uuid;
 
 /// State for compute API
@@ -260,21 +260,75 @@ async fn submit_compute_task(
                 }
             }
 
-            // Spawn async task for local execution
-            // Future integration: Use songbird-execution-agent's CommandExecutor
+            // Spawn async task for local execution using CommandExecutor
+            //
+            // ## Integration Pattern
+            // We use the execution-agent's CommandExecutor for actual command execution.
+            // This provides:
+            // - Resource limiting
+            // - Timeout handling
+            // - Output capture
+            // - Process management
+            //
+            // ## Future Evolution
+            // When orchestrator has access to a JobManager, we can:
+            // 1. Track long-running background jobs
+            // 2. Support job cancellation
+            // 3. Stream output updates
+            // 4. Persist job state
             tokio::spawn(async move {
-                // TODO: Integrate with songbird-execution-agent's CommandExecutor
-                // For now, immediately mark as completed (remove simulation delay)
-                // Real implementation will have actual async work here
-
-                // Yield to allow task scheduling (proper async pattern)
-                tokio::task::yield_now().await;
-
+                use songbird_execution_agent::{CommandExecutor, ExecutionRequest, ExecutionStatus, ResourceLimits};
+                
+                // Create executor with reasonable defaults
+                let limits = ResourceLimits {
+                    max_memory_mb: Some(1024), // 1GB per task
+                    max_cpu_time_seconds: Some(300), // 5 minutes
+                    default_timeout_seconds: 60, // 1 minute default
+                };
+                let executor = CommandExecutor::new(limits);
+                
+                // Prepare execution request using builder pattern
+                // The task_type contains the command to execute
+                let exec_request = ExecutionRequest::new(task_clone.task_type.as_ref())
+                    .with_timeout(60); // 1 minute timeout
+                
+                // Execute the command
+                let result = executor.execute(exec_request).await;
+                
+                // Update job status based on execution result
                 let mut jobs = active_jobs_clone.write().await;
                 if let Some(status) = jobs.get_mut(&job_id) {
-                    status.status = JobStatusType::Completed;
+                    match result {
+                        Ok(response) => {
+                            // Check execution status
+                            match response.status {
+                                ExecutionStatus::Completed => {
+                                    status.status = JobStatusType::Completed;
+                                    info!(
+                                        "Task {} completed successfully (exit code: {:?})",
+                                        job_id, response.exit_code
+                                    );
+                                }
+                                ExecutionStatus::Failed | ExecutionStatus::Timeout => {
+                                    status.status = JobStatusType::Failed;
+                                    warn!(
+                                        "Task {} failed (status: {}, exit code: {:?}): {}",
+                                        job_id, response.status, response.exit_code, response.stderr
+                                    );
+                                }
+                                _ => {
+                                    // Should not happen for synchronous execution
+                                    status.status = JobStatusType::Failed;
+                                    warn!("Task {} in unexpected state: {}", job_id, response.status);
+                                }
+                            }
+                        }
+                        Err(e) => {
+                            status.status = JobStatusType::Failed;
+                            error!("Task {} execution error: {}", job_id, e);
+                        }
+                    }
                     status.completed_at = Some(chrono::Utc::now());
-                    info!("Task {} completed locally", job_id);
                 }
             });
         }

@@ -19,12 +19,7 @@ use tracing::{debug, error, info, warn};
 
 use crate::trust::{TrustEscalationManager, TrustTimeouts};
 use songbird_config::{
-    canonical::primals::{
-        PrimalCapability,
-        PrimalConfiguration,
-        PrimalEndpoint,
-        QosMetrics,
-    },
+    canonical::primals::{PrimalCapability, PrimalConfiguration, PrimalEndpoint, QosMetrics},
     capability_endpoints,
 };
 use songbird_discovery::anonymous_discovery::AnonymousDiscoveryBroadcaster;

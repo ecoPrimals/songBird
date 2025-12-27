@@ -18,12 +18,12 @@ async fn main() {
     tracing_subscriber::fmt::init();
 
     info!("🎼 Songbird Orchestrator CLI starting");
-    
+
     // Execute the CLI command
     if let Err(e) = cli.execute().await {
         error!("❌ Command failed: {}", e);
         std::process::exit(1);
     }
-    
+
     info!("✅ Command completed successfully");
 }

@@ -62,7 +62,7 @@ impl Default for AvailableProtocols {
         // ✅ MIGRATED: Use environment-based configuration
         let port = std::env::var("SONGBIRD_PORT").unwrap_or_else(|_| "8080".to_string());
         let base_url = format!("http://[::]:{}", port);
-        
+
         Self {
             http: ProtocolInfo {
                 version: "1.1".to_string(),

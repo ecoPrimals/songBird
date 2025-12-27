@@ -131,11 +131,10 @@ fn format_trust_escalation_policy(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use songbird_types::config::consolidated_canonical::{
-        discovery::DiscoveryMode,
-        federation::TrustTimeouts as ConfigTrustTimeouts,
-    };
     use crate::trust::escalation::TrustTimeouts;
+    use songbird_types::config::consolidated_canonical::{
+        discovery::DiscoveryMode, federation::TrustTimeouts as ConfigTrustTimeouts,
+    };
 
     #[test]
     fn test_discovery_initialization_disabled() {

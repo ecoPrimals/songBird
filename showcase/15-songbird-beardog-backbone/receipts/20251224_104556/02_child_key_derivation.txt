@@ -1,7 +1,0 @@
-error: unexpected argument '--parent-key' found
-
-  tip: a similar argument exists: '--master-key'
-
-Usage: beardog-v0.9.0-dec23 key derive --master-key <MASTER_KEY> --purpose <PURPOSE> --output <OUTPUT>
-
-For more information, try '--help'.

@@ -163,21 +163,77 @@ fn detect_memory_gb() -> usize {
 }
 
 /// Detect GPU model (runtime capability discovery)
+///
+/// Uses platform-specific methods to detect GPU hardware:
+/// - Linux: Reads from `/sys/class/drm/` and `/proc/driver/nvidia/gpus/`
+/// - Windows: Falls back to generic detection
+/// - macOS: Falls back to generic detection
+///
+/// Returns the GPU model string if detected, None otherwise.
 fn detect_gpu() -> Option<String> {
-    // TODO: Implement GPU detection via:
-    // - Linux: `/sys/class/drm/` or `lspci`
-    // - Windows: WMI queries
-    // - macOS: System profiler
+    #[cfg(target_os = "linux")]
+    {
+        // Try NVIDIA GPU first
+        if let Ok(entries) = std::fs::read_dir("/proc/driver/nvidia/gpus") {
+            for entry in entries.flatten() {
+                if let Ok(info) = std::fs::read_to_string(entry.path().join("information")) {
+                    // Parse GPU model from NVIDIA information file
+                    for line in info.lines() {
+                        if line.starts_with("Model:") {
+                            let model = line.trim_start_matches("Model:").trim();
+                            return Some(format!("NVIDIA {}", model));
+                        }
+                    }
+                }
+            }
+        }
+
+        // Try AMD/Intel via DRM
+        if let Ok(entries) = std::fs::read_dir("/sys/class/drm") {
+            for entry in entries.flatten() {
+                let path = entry.path();
+                if path.is_dir() && path.file_name()?.to_str()?.starts_with("card") {
+                    // Try to read vendor and device
+                    if let Ok(vendor) = std::fs::read_to_string(path.join("device/vendor")) {
+                        let vendor = vendor.trim();
+                        if let Ok(device) = std::fs::read_to_string(path.join("device/device")) {
+                            let device = device.trim();
+                            return Some(format!("GPU {}/{}", vendor, device));
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    // Fallback: No GPU detected
+    tracing::debug!("No GPU detected via platform-specific methods");
     None
 }
 
 /// Detect storage capacity in GB (runtime capability discovery)
+///
+/// Uses `sysinfo` crate for cross-platform storage detection.
+/// Returns total available storage across all disks in gigabytes.
 fn detect_storage_capacity() -> Option<usize> {
-    // TODO: Implement storage detection via:
-    // - Linux: `statvfs` system call
-    // - Windows: `GetDiskFreeSpaceEx`
-    // - macOS: `statfs`
-    None
+    use sysinfo::{Disks, System};
+
+    let disks = Disks::new_with_refreshed_list();
+    
+    // Sum total space across all disks
+    let total_bytes: u64 = disks.iter()
+        .map(|disk| disk.total_space())
+        .sum();
+    
+    if total_bytes > 0 {
+        // Convert bytes to GB (using 1000^3, not 1024^3 for consistency with disk manufacturers)
+        let total_gb = (total_bytes / 1_000_000_000) as usize;
+        tracing::debug!("Detected storage capacity: {} GB across {} disks", total_gb, disks.len());
+        Some(total_gb)
+    } else {
+        tracing::warn!("No storage capacity detected");
+        None
+    }
 }
 
 #[cfg(test)]

@@ -1,3 +1,0 @@
-subject=CN = songbird-pop-os, O = ecoPrimals
-notBefore=Jan  1 00:00:00 1975 GMT
-notAfter=Jan  1 00:00:00 4096 GMT

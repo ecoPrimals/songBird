@@ -43,7 +43,7 @@ impl<T: Transport> ControllerAdapter<T> {
     }
 
     /// Check if controller is connected
-    /// 
+    ///
     /// Note: Awaiting hardware validation - will be used in Phase 3 testing
     #[allow(dead_code)]
     pub async fn is_connected(&self) -> bool {

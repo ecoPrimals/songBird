@@ -59,22 +59,109 @@ pub struct Characteristic {
 }
 
 /// Characteristic properties
-#[derive(Debug, Clone, Copy, Default)]
+///
+/// Uses bitflags for efficient representation and operations.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub struct CharacteristicProperties {
-    /// Can be read
-    pub read: bool,
+    flags: u8,
+}
 
-    /// Can be written
-    pub write: bool,
+impl CharacteristicProperties {
+    /// Bit flag for read property
+    pub const READ: u8 = 1 << 0;
 
-    /// Can be written without response
-    pub write_without_response: bool,
+    /// Bit flag for write property
+    pub const WRITE: u8 = 1 << 1;
 
-    /// Supports notifications
-    pub notify: bool,
+    /// Bit flag for write without response property
+    pub const WRITE_WITHOUT_RESPONSE: u8 = 1 << 2;
 
-    /// Supports indications
-    pub indicate: bool,
+    /// Bit flag for notify property
+    pub const NOTIFY: u8 = 1 << 3;
+
+    /// Bit flag for indicate property
+    pub const INDICATE: u8 = 1 << 4;
+
+    /// Create empty properties
+    #[must_use]
+    pub const fn new() -> Self {
+        Self {
+            flags: 0,
+        }
+    }
+
+    /// Create from raw flags
+    #[must_use]
+    pub const fn from_flags(flags: u8) -> Self {
+        Self {
+            flags,
+        }
+    }
+
+    /// Check if readable
+    #[must_use]
+    pub const fn read(&self) -> bool {
+        (self.flags & Self::READ) != 0
+    }
+
+    /// Check if writable
+    #[must_use]
+    pub const fn write(&self) -> bool {
+        (self.flags & Self::WRITE) != 0
+    }
+
+    /// Check if writable without response
+    #[must_use]
+    pub const fn write_without_response(&self) -> bool {
+        (self.flags & Self::WRITE_WITHOUT_RESPONSE) != 0
+    }
+
+    /// Check if notifications supported
+    #[must_use]
+    pub const fn notify(&self) -> bool {
+        (self.flags & Self::NOTIFY) != 0
+    }
+
+    /// Check if indications supported
+    #[must_use]
+    pub const fn indicate(&self) -> bool {
+        (self.flags & Self::INDICATE) != 0
+    }
+
+    /// Set readable
+    #[must_use]
+    pub const fn with_read(mut self) -> Self {
+        self.flags |= Self::READ;
+        self
+    }
+
+    /// Set writable
+    #[must_use]
+    pub const fn with_write(mut self) -> Self {
+        self.flags |= Self::WRITE;
+        self
+    }
+
+    /// Set writable without response
+    #[must_use]
+    pub const fn with_write_without_response(mut self) -> Self {
+        self.flags |= Self::WRITE_WITHOUT_RESPONSE;
+        self
+    }
+
+    /// Set notifications
+    #[must_use]
+    pub const fn with_notify(mut self) -> Self {
+        self.flags |= Self::NOTIFY;
+        self
+    }
+
+    /// Set indications
+    #[must_use]
+    pub const fn with_indicate(mut self) -> Self {
+        self.flags |= Self::INDICATE;
+        self
+    }
 }
 
 /// GATT Client
@@ -158,7 +245,7 @@ impl<T: Transport + 'static> GattClient<T> {
 
     /// Set GATT operation timeout
     #[must_use]
-    pub fn with_timeout(mut self, duration: Duration) -> Self {
+    pub const fn with_timeout(mut self, duration: Duration) -> Self {
         self.timeout_duration = duration;
         self
     }
@@ -170,11 +257,11 @@ impl<T: Transport + 'static> GattClient<T> {
         // Build L2CAP packet
         let acl_packet = self.l2cap_channel.build_acl_packet(request);
 
-        // Send via transport
+        // Send via transport (scoped lock)
         {
             let mut transport = self.transport.lock().await;
             transport.send_acl(&acl_packet).await?;
-        }
+        } // Lock dropped here
 
         // Receive response with timeout
         let response = timeout(self.timeout_duration, async {
@@ -482,14 +569,23 @@ impl<T: Transport + 'static> GattClient<T> {
                 continue;
             };
 
-            // Parse properties from byte
-            let properties = CharacteristicProperties {
-                read: (properties_byte & 0x02) != 0,
-                write: (properties_byte & 0x08) != 0,
-                write_without_response: (properties_byte & 0x04) != 0,
-                notify: (properties_byte & 0x10) != 0,
-                indicate: (properties_byte & 0x20) != 0,
-            };
+            // Parse properties from byte (BT spec bit positions)
+            let mut properties = CharacteristicProperties::new();
+            if (properties_byte & 0x02) != 0 {
+                properties = properties.with_read();
+            }
+            if (properties_byte & 0x08) != 0 {
+                properties = properties.with_write();
+            }
+            if (properties_byte & 0x04) != 0 {
+                properties = properties.with_write_without_response();
+            }
+            if (properties_byte & 0x10) != 0 {
+                properties = properties.with_notify();
+            }
+            if (properties_byte & 0x20) != 0 {
+                properties = properties.with_indicate();
+            }
 
             debug!(
                 "Found characteristic: UUID={}, handle=0x{:04X}, props={:?}",
@@ -522,7 +618,7 @@ impl<T: Transport + 'static> GattClient<T> {
         // Find characteristic
         for service in &self.services {
             if let Some(characteristic) = service.characteristics.iter().find(|c| &c.uuid == uuid) {
-                if !characteristic.properties.read {
+                if !characteristic.properties.read() {
                     return Err(BluetoothError::gatt(format!(
                         "Characteristic {uuid} does not support read"
                     )));
@@ -591,8 +687,8 @@ impl<T: Transport + 'static> GattClient<T> {
         // Find characteristic
         for service in &self.services {
             if let Some(characteristic) = service.characteristics.iter().find(|c| &c.uuid == uuid) {
-                if !characteristic.properties.write
-                    && !characteristic.properties.write_without_response
+                if !characteristic.properties.write()
+                    && !characteristic.properties.write_without_response()
                 {
                     return Err(BluetoothError::gatt(format!(
                         "Characteristic {uuid} does not support write"
@@ -600,7 +696,7 @@ impl<T: Transport + 'static> GattClient<T> {
                 }
 
                 // Choose write type based on properties
-                let with_response = characteristic.properties.write;
+                let with_response = characteristic.properties.write();
 
                 // Build ATT Write Request or Command
                 let _request = if with_response {
@@ -689,7 +785,7 @@ impl<T: Transport + 'static> GattClient<T> {
         // Find characteristic
         for service in &self.services {
             if let Some(characteristic) = service.characteristics.iter().find(|c| &c.uuid == uuid) {
-                if !characteristic.properties.notify {
+                if !characteristic.properties.notify() {
                     return Err(BluetoothError::gatt(format!(
                         "Characteristic {uuid} does not support notifications"
                     )));
@@ -768,18 +864,12 @@ mod tests {
 
     #[test]
     fn test_characteristic_properties() {
-        let props = CharacteristicProperties {
-            read: true,
-            write: true,
-            write_without_response: false,
-            notify: true,
-            indicate: false,
-        };
+        let props = CharacteristicProperties::new().with_read().with_write().with_notify();
 
-        assert!(props.read);
-        assert!(props.write);
-        assert!(!props.write_without_response);
-        assert!(props.notify);
-        assert!(!props.indicate);
+        assert!(props.read());
+        assert!(props.write());
+        assert!(!props.write_without_response());
+        assert!(props.notify());
+        assert!(!props.indicate());
     }
 }

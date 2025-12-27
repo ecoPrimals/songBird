@@ -74,18 +74,54 @@ impl BearDogProviderFactory {
     }
 
     async fn discover_via_upa() -> anyhow::Result<Option<Box<dyn BearDogProvider>>> {
-        // TODO: Query UPA for "security" capability
+        use songbird_config::discovery_helpers::discover_primal;
+        use songbird_types::CanonicalPrimalType;
+
+        // Query capability registry for "security" capability (BearDog)
+        if let Ok(endpoint) = discover_primal(CanonicalPrimalType::Security).await {
+            tracing::info!("Discovered BearDog via capability discovery at: {}", endpoint.url);
+            // TODO: Create actual BearDogProviderImpl when available
+            // For now, return mock (this is resolved by user providing real impl)
+            tracing::warn!("Using MockBearDogProvider (no real BearDog client implemented yet)");
+            return Ok(Some(Box::new(crate::beardog::mock::MockBearDogProvider::new())));
+        }
+
         Ok(None)
     }
 
     async fn discover_via_env() -> anyhow::Result<Option<Box<dyn BearDogProvider>>> {
-        // TODO: Check BEARDOG_URL environment variable
+        // Check BEARDOG_URL or SECURITY_URL environment variable
+        if std::env::var("BEARDOG_URL").is_ok() || std::env::var("SECURITY_URL").is_ok() {
+            let url = std::env::var("BEARDOG_URL").or_else(|_| std::env::var("SECURITY_URL"))?;
+            tracing::info!("Found BearDog via environment at: {}", url);
+            // TODO: Create actual BearDogProviderImpl when available
+            tracing::warn!("Using MockBearDogProvider (no real BearDog client implemented yet)");
+            return Ok(Some(Box::new(crate::beardog::mock::MockBearDogProvider::new())));
+        }
+
         Ok(None)
     }
 
     async fn discover_via_wellknown() -> anyhow::Result<Option<Box<dyn BearDogProvider>>> {
-        // TODO: Try localhost:8200
-        Ok(None)
+        // Development fallback: Try localhost:8200 (only in debug builds)
+        #[cfg(debug_assertions)]
+        {
+            let default_url = "http://[::]:8200";
+            tracing::warn!("Using development fallback for BearDog: {}", default_url);
+            tracing::warn!("Set BEARDOG_URL or SECURITY_URL for production");
+            tracing::warn!("Using MockBearDogProvider (no real BearDog client implemented yet)");
+            // TODO: Create actual BearDogProviderImpl when available
+            return Ok(Some(Box::new(crate::beardog::mock::MockBearDogProvider::new())));
+        }
+
+        #[cfg(not(debug_assertions))]
+        {
+            // Production: No fallback
+            tracing::error!(
+                "BearDog not found. Set BEARDOG_URL or SECURITY_URL environment variable"
+            );
+            Ok(None)
+        }
     }
 }
 

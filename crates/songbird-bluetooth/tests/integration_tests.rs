@@ -204,19 +204,14 @@ async fn test_scan_timeout() {
 async fn test_characteristic_properties() {
     use songbird_bluetooth::gatt::CharacteristicProperties;
 
-    let props = CharacteristicProperties {
-        read: true,
-        write: false,
-        write_without_response: true,
-        notify: true,
-        indicate: false,
-    };
+    let props =
+        CharacteristicProperties::new().with_read().with_write_without_response().with_notify();
 
-    assert!(props.read);
-    assert!(!props.write);
-    assert!(props.write_without_response);
-    assert!(props.notify);
-    assert!(!props.indicate);
+    assert!(props.read());
+    assert!(!props.write());
+    assert!(props.write_without_response());
+    assert!(props.notify());
+    assert!(!props.indicate());
 }
 
 #[tokio::test]

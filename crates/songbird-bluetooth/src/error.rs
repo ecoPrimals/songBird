@@ -108,7 +108,7 @@ impl BluetoothError {
 
     /// Create a timeout error
     #[must_use]
-    pub fn timeout(duration: std::time::Duration) -> Self {
+    pub const fn timeout(duration: std::time::Duration) -> Self {
         Self::Timeout {
             duration,
         }
@@ -116,13 +116,13 @@ impl BluetoothError {
 
     /// Check if error is a timeout
     #[must_use]
-    pub fn is_timeout(&self) -> bool {
+    pub const fn is_timeout(&self) -> bool {
         matches!(self, Self::Timeout { .. })
     }
 
     /// Check if error is recoverable
     #[must_use]
-    pub fn is_recoverable(&self) -> bool {
+    pub const fn is_recoverable(&self) -> bool {
         matches!(self, Self::Timeout { .. } | Self::Device(_) | Self::Transport(_))
     }
 }
