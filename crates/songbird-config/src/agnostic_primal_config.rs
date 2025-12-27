@@ -240,8 +240,23 @@ impl AgnosticPrimalConfig {
         // If discovery is enabled, try to discover
         if self.discovery.enabled {
             tracing::debug!("Attempting to discover {} capability", capability);
-            // TODO: Implement dynamic discovery
-            // For now, return error if not in cache
+
+            // Use runtime discovery engine for dynamic capability lookup
+            let discovery_engine = crate::runtime_discovery::RuntimeDiscoveryEngine::new();
+            match discovery_engine.discover_by_capability(capability).await {
+                Ok(service) => {
+                    tracing::info!(
+                        "✅ Discovered {} capability at {}",
+                        capability,
+                        service.endpoint
+                    );
+                    return Ok(service.endpoint);
+                }
+                Err(e) => {
+                    tracing::debug!("Dynamic discovery failed for {}: {}", capability, e);
+                    // Fall through to error
+                }
+            }
         }
 
         Err(SongbirdError::Configuration {

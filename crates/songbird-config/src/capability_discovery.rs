@@ -428,7 +428,9 @@ impl CapabilityDiscovery {
     }
 
     /// Discover via configuration file
-    #[allow(clippy::unused_async)] // TODO: Will use .await when implementing config file I/O
+    ///
+    /// Reads service configurations from TOML, JSON, or YAML files.
+    /// Supports standard configuration paths and formats.
     async fn discover_via_config_file(
         &self,
         capability: &str,
@@ -436,15 +438,203 @@ impl CapabilityDiscovery {
     ) -> SongbirdResult<Vec<ServiceEndpoint>> {
         debug!("Reading configuration file at {} for capability: {}", config_path, capability);
 
-        // TODO: Implement config file parsing
-        // For now, return empty
+        // Read configuration file
+        let config_content =
+            tokio::fs::read_to_string(config_path).await.map_err(|e| SongbirdError::Discovery {
+                message: format!("Failed to read config file: {}", e),
+                backend: Some("config_file".to_string()),
+                retry_strategy: Some("Check file path and permissions".to_string()),
+            })?;
 
-        warn!("Config file discovery not yet implemented");
-        Err(SongbirdError::Discovery {
-            message: "Config file discovery not yet implemented".to_string(),
-            backend: Some("config_file".to_string()),
-            retry_strategy: Some("Use environment variable or other discovery methods".to_string()),
-        })
+        // Parse based on file extension
+        let endpoints = if config_path.ends_with(".toml") {
+            self.parse_toml_config(&config_content, capability)?
+        } else if config_path.ends_with(".json") {
+            self.parse_json_config(&config_content, capability)?
+        } else if config_path.ends_with(".yaml") || config_path.ends_with(".yml") {
+            self.parse_yaml_config(&config_content, capability)?
+        } else {
+            return Err(SongbirdError::Discovery {
+                message: format!("Unsupported config file format: {}", config_path),
+                backend: Some("config_file".to_string()),
+                retry_strategy: Some("Use .toml, .json, or .yaml file".to_string()),
+            });
+        };
+
+        if endpoints.is_empty() {
+            warn!("No endpoints found for capability '{}' in config file", capability);
+        } else {
+            info!(
+                "Found {} endpoints for capability '{}' in config file",
+                endpoints.len(),
+                capability
+            );
+        }
+
+        Ok(endpoints)
+    }
+
+    /// Parse TOML configuration
+    fn parse_toml_config(
+        &self,
+        content: &str,
+        capability: &str,
+    ) -> SongbirdResult<Vec<ServiceEndpoint>> {
+        let config: toml::Value =
+            toml::from_str(content).map_err(|e| SongbirdError::Discovery {
+                message: format!("Failed to parse TOML: {}", e),
+                backend: Some("config_file".to_string()),
+                retry_strategy: Some("Check TOML syntax".to_string()),
+            })?;
+
+        self.extract_endpoints_from_config(&config, capability)
+    }
+
+    /// Parse JSON configuration
+    fn parse_json_config(
+        &self,
+        content: &str,
+        capability: &str,
+    ) -> SongbirdResult<Vec<ServiceEndpoint>> {
+        let config: serde_json::Value =
+            serde_json::from_str(content).map_err(|e| SongbirdError::Discovery {
+                message: format!("Failed to parse JSON: {}", e),
+                backend: Some("config_file".to_string()),
+                retry_strategy: Some("Check JSON syntax".to_string()),
+            })?;
+
+        self.extract_endpoints_from_json(&config, capability)
+    }
+
+    /// Parse YAML configuration
+    fn parse_yaml_config(
+        &self,
+        content: &str,
+        capability: &str,
+    ) -> SongbirdResult<Vec<ServiceEndpoint>> {
+        let config: serde_yaml::Value =
+            serde_yaml::from_str(content).map_err(|e| SongbirdError::Discovery {
+                message: format!("Failed to parse YAML: {}", e),
+                backend: Some("config_file".to_string()),
+                retry_strategy: Some("Check YAML syntax".to_string()),
+            })?;
+
+        self.extract_endpoints_from_yaml(&config, capability)
+    }
+
+    /// Extract endpoints from TOML config
+    fn extract_endpoints_from_config(
+        &self,
+        config: &toml::Value,
+        capability: &str,
+    ) -> SongbirdResult<Vec<ServiceEndpoint>> {
+        let mut endpoints = Vec::new();
+
+        if let Some(services) = config.get("services").and_then(|s| s.as_table()) {
+            for (service_id, service_config) in services {
+                if let Some(caps) = service_config.get("capabilities").and_then(|c| c.as_array()) {
+                    let has_capability = caps.iter().any(|c| c.as_str() == Some(capability));
+
+                    if has_capability {
+                        if let Some(url) = service_config.get("url").and_then(|u| u.as_str()) {
+                            endpoints.push(ServiceEndpoint {
+                                id: service_id.clone(),
+                                url: url.to_string(),
+                                capabilities: caps
+                                    .iter()
+                                    .filter_map(|c| c.as_str().map(String::from))
+                                    .collect(),
+                                health_score: service_config
+                                    .get("health_score")
+                                    .and_then(|h| h.as_float())
+                                    .unwrap_or(1.0),
+                                last_seen: std::time::SystemTime::now(),
+                            });
+                        }
+                    }
+                }
+            }
+        }
+
+        Ok(endpoints)
+    }
+
+    /// Extract endpoints from JSON config
+    fn extract_endpoints_from_json(
+        &self,
+        config: &serde_json::Value,
+        capability: &str,
+    ) -> SongbirdResult<Vec<ServiceEndpoint>> {
+        let mut endpoints = Vec::new();
+
+        if let Some(services) = config.get("services").and_then(|s| s.as_object()) {
+            for (service_id, service_config) in services {
+                if let Some(caps) = service_config.get("capabilities").and_then(|c| c.as_array()) {
+                    let has_capability = caps.iter().any(|c| c.as_str() == Some(capability));
+
+                    if has_capability {
+                        if let Some(url) = service_config.get("url").and_then(|u| u.as_str()) {
+                            endpoints.push(ServiceEndpoint {
+                                id: service_id.clone(),
+                                url: url.to_string(),
+                                capabilities: caps
+                                    .iter()
+                                    .filter_map(|c| c.as_str().map(String::from))
+                                    .collect(),
+                                health_score: service_config
+                                    .get("health_score")
+                                    .and_then(|h| h.as_f64())
+                                    .unwrap_or(1.0),
+                                last_seen: std::time::SystemTime::now(),
+                            });
+                        }
+                    }
+                }
+            }
+        }
+
+        Ok(endpoints)
+    }
+
+    /// Extract endpoints from YAML config
+    fn extract_endpoints_from_yaml(
+        &self,
+        config: &serde_yaml::Value,
+        capability: &str,
+    ) -> SongbirdResult<Vec<ServiceEndpoint>> {
+        let mut endpoints = Vec::new();
+
+        if let Some(services) = config.get("services").and_then(|s| s.as_mapping()) {
+            for (service_id, service_config) in services {
+                if let Some(caps) = service_config.get("capabilities").and_then(|c| c.as_sequence())
+                {
+                    let has_capability = caps.iter().any(|c| c.as_str() == Some(capability));
+
+                    if has_capability {
+                        if let Some(url) = service_config.get("url").and_then(|u| u.as_str()) {
+                            let service_id_str =
+                                service_id.as_str().unwrap_or("unknown").to_string();
+
+                            endpoints.push(ServiceEndpoint {
+                                id: service_id_str,
+                                url: url.to_string(),
+                                capabilities: caps
+                                    .iter()
+                                    .filter_map(|c| c.as_str().map(String::from))
+                                    .collect(),
+                                health_score: service_config
+                                    .get("health_score")
+                                    .and_then(|h| h.as_f64())
+                                    .unwrap_or(1.0),
+                                last_seen: std::time::SystemTime::now(),
+                            });
+                        }
+                    }
+                }
+            }
+        }
+
+        Ok(endpoints)
     }
 
     /// Clear cache for a specific capability
