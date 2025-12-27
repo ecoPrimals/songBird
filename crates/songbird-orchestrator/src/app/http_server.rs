@@ -22,11 +22,8 @@ pub async fn start_http_server(
     federation_state: Arc<FederationState>,
     federated_service_registry: Arc<FederatedServiceRegistry>,
     service_registry: Arc<crate::service_registry::ServiceRegistry>,
-    bind_address: &str,
-    port: u16,
+    bind_addr: SocketAddr,
 ) -> Result<u16> {
-    let addr: SocketAddr = super::parse_bind_address(bind_address, port)?;
-
     // Build the app with all API routes
     let app = build_router(
         Arc::clone(&federation_state),
@@ -35,13 +32,13 @@ pub async fn start_http_server(
     );
 
     // Smart port management: Try configured port, auto-increment if busy
-    let (listener, actual_addr) = bind_with_fallback(&addr).await?;
+    let (listener, actual_addr) = bind_with_fallback(&bind_addr).await?;
     let actual_port = actual_addr.port();
 
-    if actual_port == port {
-        info!("✅ Bound to configured port {}", port);
+    if actual_port == bind_addr.port() {
+        info!("✅ Bound to configured port {}", bind_addr.port());
     } else {
-        warn!("⚠️  Configured port {} busy, using port {} instead", port, actual_port);
+        warn!("⚠️  Configured port {} busy, using port {} instead", bind_addr.port(), actual_port);
     }
 
     // ✅ TLS support (Dec 17, 2025) - ENABLED BY DEFAULT (fail-secure)

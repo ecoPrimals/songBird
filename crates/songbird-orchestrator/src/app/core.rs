@@ -586,8 +586,7 @@ impl SongbirdOrchestrator {
                 Arc::clone(&self.federation_state),
                 Arc::clone(&self.federated_service_registry),
                 Arc::clone(&self.service_registry),
-                &manual_addr,
-                port,
+                addr,
             )
             .await?
         } else {
@@ -603,16 +602,12 @@ impl SongbirdOrchestrator {
             info!("   IPv4 support: {}", bind_strategy.supports_ipv4());
             info!("   IPv6 support: {}", bind_strategy.supports_ipv6());
 
-            // Convert SocketAddr back to string for existing API
-            // TODO: Refactor http_server to accept SocketAddr directly
-            let bind_address = bind_addr.ip().to_string();
-
+            // Start HTTP server with SocketAddr directly (modern API)
             http_server::start_http_server(
                 Arc::clone(&self.federation_state),
                 Arc::clone(&self.federated_service_registry),
                 Arc::clone(&self.service_registry),
-                &bind_address,
-                port,
+                bind_addr,
             )
             .await?
         };

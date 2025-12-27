@@ -280,7 +280,10 @@ impl PrimalCoordinator {
                             }
                         }
                         Err(lineage_err) => {
-                            tracing::warn!("BearDog lineage creation failed: {}. Using mock.", lineage_err);
+                            tracing::warn!(
+                                "BearDog lineage creation failed: {}. Using mock.",
+                                lineage_err
+                            );
                         }
                     }
                 }
