@@ -72,7 +72,7 @@ impl LineageProvider for MockBearDogProvider {
 
     async fn verify_lineage(&self, proof: &LineageProof) -> Result<bool> {
         tracing::warn!("🐻 MOCK: Fake lineage verification (always true)");
-        Ok(proof.chain.verify_integrity()?)
+        Ok(proof.chain.verify_integrity().await?)
     }
 
     async fn get_descendants(&self, root_id: &str) -> Result<Vec<String>> {

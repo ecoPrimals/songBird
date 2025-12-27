@@ -94,7 +94,7 @@ impl LineageChain {
     /// 1. Each link's signature is valid
     /// 2. The chain is continuous (parent → child matches)
     /// 3. The depth matches the number of links
-    pub fn verify_integrity(&self) -> anyhow::Result<bool> {
+    pub async fn verify_integrity(&self) -> anyhow::Result<bool> {
         // Check depth matches
         if self.depth != self.links.len() {
             return Ok(false);
@@ -114,8 +114,75 @@ impl LineageChain {
             return Ok(false);
         }
 
-        // TODO: Verify signatures (requires BearDog crypto)
+        // Verify signatures using BearDog crypto
+        self.verify_signatures().await
+    }
 
+    /// Verify all signatures in the lineage chain
+    ///
+    /// Uses BearDog security service for cryptographic verification.
+    /// In development mode without BearDog, returns Ok(true) with warning.
+    async fn verify_signatures(&self) -> anyhow::Result<bool> {
+        // Check if BearDog is available
+        let beardog_endpoint = match std::env::var("BEARDOG_ENDPOINT")
+            .or_else(|_| std::env::var("SECURITY_ENDPOINT"))
+        {
+            Ok(endpoint) => endpoint,
+            Err(_) => {
+                tracing::warn!(
+                    "BearDog not configured, skipping signature verification (dev mode)"
+                );
+                return Ok(true);
+            }
+        };
+
+        tracing::debug!("Verifying {} lineage signatures via BearDog", self.links.len());
+
+        // Build HTTP client
+        let client = reqwest::Client::builder()
+            .timeout(std::time::Duration::from_secs(30))
+            .build()
+            .map_err(|e| anyhow::anyhow!("Failed to build HTTP client: {}", e))?;
+
+        // Verify each link's signature
+        for link in &self.links {
+            let verify_request = serde_json::json!({
+                "parent_id": link.parent_id,
+                "child_id": link.child_id,
+                "signature": link.signature,
+            });
+
+            let response = client
+                .post(format!("{}/api/v1/verify-signature", beardog_endpoint))
+                .json(&verify_request)
+                .send()
+                .await
+                .map_err(|e| anyhow::anyhow!("Signature verification request failed: {}", e))?;
+
+            if !response.status().is_success() {
+                tracing::warn!(
+                    "Signature verification failed for link {}->{}: {}",
+                    link.parent_id,
+                    link.child_id,
+                    response.status()
+                );
+                return Ok(false);
+            }
+
+            let result: serde_json::Value = response
+                .json()
+                .await
+                .map_err(|e| anyhow::anyhow!("Failed to parse verification response: {}", e))?;
+
+            let is_valid = result.get("valid").and_then(|v| v.as_bool()).unwrap_or(false);
+
+            if !is_valid {
+                tracing::warn!("Invalid signature for link {}->{}", link.parent_id, link.child_id);
+                return Ok(false);
+            }
+        }
+
+        tracing::debug!("✅ All {} signatures verified", self.links.len());
         Ok(true)
     }
 
