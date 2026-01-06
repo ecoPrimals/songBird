@@ -119,7 +119,7 @@ async fn fetch_identity_attestations() -> Result<Vec<songbird_discovery::Identit
     match std::env::var("SONGBIRD_BEARDOG_URL").or_else(|_| std::env::var("SECURITY_ENDPOINT")) {
         Ok(url) => {
             info!("🔐 Fetching identity attestations from security provider: {}", url);
-            let mut security_client =
+            let security_client =
                 crate::security_capability_client::SecurityCapabilityClient::from_endpoint(url);
 
             match security_client?.get_identity().await {

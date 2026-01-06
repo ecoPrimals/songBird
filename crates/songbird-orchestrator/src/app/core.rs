@@ -220,7 +220,7 @@ impl SongbirdOrchestrator {
                 info!("🔐 Security provider configured: {}", url);
                 
                 // Query for identity
-                let mut security_client = SecurityCapabilityClient::from_endpoint(url);
+                let security_client = SecurityCapabilityClient::from_endpoint(url);
                 
                 match security_client?.get_identity().await {
                     Ok(identity) => {
