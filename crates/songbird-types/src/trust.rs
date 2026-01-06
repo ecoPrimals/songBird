@@ -16,13 +16,17 @@
 //! Genetic lineage establishes recognition but NOT full access.
 //! Progressive elevation requires human oversight.
 
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use std::collections::HashMap;
 
 /// Progressive trust levels for peer connections
 ///
 /// Each level grants specific capabilities with clear boundaries.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
+///
+/// **Phase 1 (v3.13.1)**: Accepts both integer and string formats from BearDog!
+/// - Deserialize: Accepts integer OR string (flexible!)
+/// - Serialize: Always produces integer (compact, efficient)
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[repr(u8)]
 pub enum TrustLevel {
     /// No trust - different family or no lineage
@@ -53,6 +57,68 @@ pub enum TrustLevel {
     Highest = 3,
 }
 
+/// Custom serializer for TrustLevel (always serialize as integer)
+impl Serialize for TrustLevel {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        serializer.serialize_u8(*self as u8)
+    }
+}
+
+/// Custom deserializer for TrustLevel (Phase 1: Accept both int and string)
+///
+/// **BearDog Compatibility**:
+/// - Accepts integer: 0, 1, 2, 3
+/// - Accepts string: "none", "limited", "elevated", "highest"
+/// - Accepts aliases: "anonymous", "basic", "medium", "explicit"
+impl<'de> Deserialize<'de> for TrustLevel {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        #[derive(Deserialize)]
+        #[serde(untagged)]
+        enum TrustLevelHelper {
+            Int(u8),
+            String(String),
+        }
+
+        match TrustLevelHelper::deserialize(deserializer)? {
+            // Integer format (BearDog primary)
+            TrustLevelHelper::Int(0) => Ok(TrustLevel::None),
+            TrustLevelHelper::Int(1) => Ok(TrustLevel::Limited),
+            TrustLevelHelper::Int(2) => Ok(TrustLevel::Elevated),
+            TrustLevelHelper::Int(3) => Ok(TrustLevel::Highest),
+            TrustLevelHelper::Int(n) => Err(serde::de::Error::custom(format!(
+                "Invalid trust level integer: {} (expected 0-3)",
+                n
+            ))),
+            
+            // String format (aliases for compatibility)
+            TrustLevelHelper::String(s) => match s.to_lowercase().as_str() {
+                // Primary names
+                "none" => Ok(TrustLevel::None),
+                "limited" => Ok(TrustLevel::Limited),
+                "elevated" => Ok(TrustLevel::Elevated),
+                "highest" => Ok(TrustLevel::Highest),
+                
+                // BearDog aliases
+                "anonymous" | "unknown" => Ok(TrustLevel::None),
+                "basic" => Ok(TrustLevel::Limited),
+                "medium" => Ok(TrustLevel::Elevated),
+                "explicit" | "full" => Ok(TrustLevel::Highest),
+                
+                _ => Err(serde::de::Error::custom(format!(
+                    "Unknown trust level string: '{}' (expected: none, limited, elevated, highest)",
+                    s
+                ))),
+            },
+        }
+    }
+}
+
 impl TrustLevel {
     /// Get trust level from numeric value
     pub fn from_u8(value: u8) -> Option<Self> {
@@ -77,6 +143,16 @@ impl TrustLevel {
             Self::Limited => "limited",
             Self::Elevated => "elevated",
             Self::Highest => "highest",
+        }
+    }
+    
+    /// Get BearDog alias for compatibility
+    pub const fn beardog_alias(self) -> &'static str {
+        match self {
+            Self::None => "anonymous",
+            Self::Limited => "basic",
+            Self::Elevated => "medium",
+            Self::Highest => "explicit",
         }
     }
 

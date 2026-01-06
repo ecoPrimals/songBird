@@ -80,7 +80,8 @@ pub mod errors;
 pub mod health;
 pub mod lineage;  // Genetic lineage types
 pub mod memory_optimized;
-pub mod trust;  // Progressive trust model types
+pub mod trust;
+pub mod trust_tests;  // Progressive trust model types
 // pub mod performance;  // Temporarily disabled - syntax errors need fixing
 pub mod primal;
 pub mod response;
