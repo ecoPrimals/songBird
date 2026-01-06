@@ -25,7 +25,7 @@ mod tests_discovery_bridge; // Discovery→Federation bridge unit & E2E tests (v
 
 // Re-exports for backwards compatibility
 pub use core::SongbirdOrchestrator;
-pub use health::{run_health_check, HealthCheckReport, OrchestratorStatus};
+pub use health::{HealthCheckReport, OrchestratorStatus};
 pub use network::{detect_primary_ip, get_local_ip_for_connectivity_test, parse_bind_address};
 pub use startup::{start_orchestrator, Orchestrator};
 

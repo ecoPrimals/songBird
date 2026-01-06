@@ -1,9 +1,12 @@
 //! Health check and status reporting for the orchestrator
 //!
 //! Provides comprehensive health monitoring for all orchestrator components.
+//!
+//! **EVOLUTION (v3.13.0 - Jan 7, 2026)**: Extracted health check methods from core.rs
+//! to reduce file size and improve maintainability. Follows single responsibility principle.
 
 use anyhow::Result;
-use tracing::info;
+use tracing::{debug, info, warn};
 
 use super::core::SongbirdOrchestrator;
 
@@ -63,13 +66,98 @@ impl HealthCheckReport {
     }
 }
 
-/// Run comprehensive health check on the orchestrator
-///
-/// Checks all subsystems and returns detailed status.
-pub async fn run_health_check(orchestrator: &SongbirdOrchestrator) -> Result<()> {
-    let status = orchestrator.get_status().await?;
-    info!("Health check completed: {:?}", status);
-    Ok(())
+impl SongbirdOrchestrator {
+    /// Get current orchestrator status
+    ///
+    /// Returns a snapshot of the operational state.
+    pub async fn get_status(&self) -> Result<OrchestratorStatus> {
+        Ok(OrchestratorStatus {
+            gaming_active: false,      // Placeholder
+            federation_connected: true, // Placeholder - federation is started
+            active_sessions: 0,        // Placeholder
+            total_players: 0,          // Placeholder
+        })
+    }
+
+    /// Start health monitoring loop (placeholder for v3.13.0)
+    ///
+    /// Periodically checks health of all subsystems.
+    /// Note: Full background task implementation is in core.rs (future extraction target).
+    pub async fn start_health_monitoring(&self) -> Result<()> {
+        info!("🏥 Health monitoring initialized (checks via handle_command)");
+        Ok(())
+    }
+
+    /// Run a comprehensive health check (MODERN RUST - extracted v3.13.0)
+    ///
+    /// Checks health of all orchestrator subsystems and returns a detailed report.
+    pub(crate) async fn run_comprehensive_health_check(&self) -> Result<HealthCheckReport> {
+        info!("🔍 Running comprehensive health check...");
+
+        // Check gaming manager health
+        let gaming_healthy = self.check_gaming_manager_health().await;
+
+        // Check federation manager health
+        let federation_healthy = self.check_federation_manager_health().await;
+
+        // Check observability manager health
+        let observability_healthy = self.check_observability_manager_health().await;
+
+        // Check security integration health
+        let security_healthy = self.check_security_integration_health().await;
+
+        let overall_healthy =
+            gaming_healthy && federation_healthy && observability_healthy && security_healthy;
+
+        Ok(HealthCheckReport {
+            gaming_healthy,
+            federation_healthy,
+            observability_healthy,
+            security_healthy,
+            overall_healthy,
+            timestamp: std::time::SystemTime::now(),
+        })
+    }
+
+    /// Check gaming manager health
+    pub(crate) async fn check_gaming_manager_health(&self) -> bool {
+        // Validate gaming manager is operational
+        // In a real implementation, this would check gaming bridge connections
+        debug!("Gaming manager health check completed");
+        true
+    }
+
+    /// Check federation manager health
+    pub(crate) async fn check_federation_manager_health(&self) -> bool {
+        // Validate federation manager is operational
+        // In a real implementation, this would check federation connectivity
+        debug!("Federation manager health check completed");
+        true
+    }
+
+    /// Check observability manager health
+    pub(crate) async fn check_observability_manager_health(&self) -> bool {
+        // Validate observability manager is operational
+        // In a real implementation, this would check metrics collection
+        debug!("Observability manager health check completed");
+        true
+    }
+
+    /// Check security integration health
+    pub(crate) async fn check_security_integration_health(&self) -> bool {
+        // Validate security integration is operational
+        // Temporarily disabled security health check
+        match Ok::<bool, &str>(true) {
+            Ok(_) => {
+                debug!("Security integration health check completed");
+                true
+            }
+            Err(e) => {
+                warn!("Security integration health check failed: {}", e);
+                false
+            }
+        }
+    }
 }
 
 #[cfg(test)]

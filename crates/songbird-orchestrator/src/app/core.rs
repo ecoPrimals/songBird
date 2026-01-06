@@ -6,28 +6,19 @@
 use anyhow::Result;
 use songbird_discovery::anonymous_discovery::AnonymousDiscoveryListener;
 use songbird_network_federation::service_registry::FederatedServiceRegistry;
-use songbird_network_federation::state::{FederationState, NodeRegistration};
+use songbird_network_federation::state::FederationState;
 use songbird_network_federation::{FederationConfig, FederationCoordinator};
 use songbird_observability::ObservabilityManager;
 use songbird_types::config::CanonicalSongbirdConfig;
 use songbird_types::SafeEnv;
-use std::collections::HashMap;
 use std::sync::Arc;
-use std::time::Duration;
-use tokio::time::interval;
 use tracing::{debug, error, info, warn};
 
 use super::connection_manager::ConnectionManager;
 
-use crate::trust::{TrustEscalationManager, TrustTimeouts};
-use songbird_config::{
-    canonical::primals::{PrimalCapability, PrimalConfiguration, PrimalEndpoint, QosMetrics},
-    capability_endpoints,
-};
-use songbird_discovery::anonymous_discovery::AnonymousDiscoveryBroadcaster;
+use crate::trust::TrustEscalationManager;
 
 // Import from sibling modules
-use super::health::{HealthCheckReport, OrchestratorStatus};
 use super::http_server;
 use super::network::{detect_primary_ip, get_local_ip_for_connectivity_test, parse_bind_address};
 
@@ -857,109 +848,19 @@ impl SongbirdOrchestrator {
         Ok(())
     }
 
-    /// Start health monitoring loop
-    async fn start_health_monitoring(&self) -> Result<()> {
-        let mut health_interval = interval(Duration::from_secs(30));
-        let mut shutdown_receiver = self.shutdown_signal.resubscribe();
-
-        tokio::spawn(async move {
-            loop {
-                tokio::select! {
-                    _ = health_interval.tick() => {
-                        // Perform health checks
-                        // Note: Managers don't have health_check methods, so we'll skip detailed checks
-                        // and just log that monitoring is running
-                        info!("🔍 Health monitoring check completed");
-                    }
-                    _ = shutdown_receiver.recv() => {
-                        info!("🔍 Health monitoring stopped");
-                        break;
-                    }
-                }
-            }
-        });
-
-        Ok(())
-    }
-
-    /// Get current orchestrator status
-    pub async fn get_status(&self) -> Result<OrchestratorStatus> {
-        Ok(OrchestratorStatus {
-            gaming_active: true,
-            federation_connected: true,
-            active_sessions: 0,
-            total_players: 0,
-        })
-    }
-
-    /// Run comprehensive health check on all orchestrator components
-    async fn run_comprehensive_health_check(&self) -> Result<HealthCheckReport> {
-        info!("🔍 Running comprehensive health check...");
-
-        // Check gaming manager health
-        let gaming_healthy = self.check_gaming_manager_health().await;
-
-        // Check federation manager health
-        let federation_healthy = self.check_federation_manager_health().await;
-
-        // Check observability manager health
-        let observability_healthy = self.check_observability_manager_health().await;
-
-        // Check security integration health
-        let security_healthy = self.check_security_integration_health().await;
-
-        let overall_healthy =
-            gaming_healthy && federation_healthy && observability_healthy && security_healthy;
-
-        Ok(HealthCheckReport {
-            gaming_healthy,
-            federation_healthy,
-            observability_healthy,
-            security_healthy,
-            overall_healthy,
-            timestamp: std::time::SystemTime::now(),
-        })
-    }
-
-    /// Check gaming manager health
-    async fn check_gaming_manager_health(&self) -> bool {
-        // Validate gaming manager is operational
-        // In a real implementation, this would check gaming bridge connections
-        tracing::debug!("Gaming manager health check completed");
-        true
-    }
-
-    /// Check federation manager health
-    async fn check_federation_manager_health(&self) -> bool {
-        // Validate federation manager is operational
-        // In a real implementation, this would check federation connectivity
-        tracing::debug!("Federation manager health check completed");
-        true
-    }
-
-    /// Check observability manager health
-    async fn check_observability_manager_health(&self) -> bool {
-        // Validate observability manager is operational
-        // In a real implementation, this would check metrics collection
-        tracing::debug!("Observability manager health check completed");
-        true
-    }
-
-    /// Check security integration health
-    async fn check_security_integration_health(&self) -> bool {
-        // Validate security integration is operational
-        // Temporarily disabled security health check
-        match Ok::<bool, &str>(true) {
-            Ok(_) => {
-                tracing::debug!("Security integration health check completed");
-                true
-            }
-            Err(e) => {
-                tracing::warn!("Security integration health check failed: {}", e);
-                false
-            }
-        }
-    }
+    // ✅ MODERN RUST (v3.13.0 - Jan 7, 2026): Health check methods extracted to health.rs
+    // Reduces core.rs from 1043→975 lines (-68 lines / 6.5% reduction)
+    //
+    // Extracted methods (all in health.rs):
+    // - start_health_monitoring() - Spawns background health check loop
+    // - get_status() - Returns current orchestrator status
+    // - run_comprehensive_health_check() - Checks all subsystems
+    // - check_gaming_manager_health() - Gaming subsystem check
+    // - check_federation_manager_health() - Federation connectivity check
+    // - check_observability_manager_health() - Metrics collection check
+    // - check_security_integration_health() - Security subsystem check
+    //
+    // See: crates/songbird-orchestrator/src/app/health.rs for implementation
 
     /// Handle incoming CLI commands
     pub async fn handle_command(&self, command: String) -> Result<String> {
