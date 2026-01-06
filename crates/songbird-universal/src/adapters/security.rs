@@ -538,6 +538,198 @@ impl SecurityAdapter {
     pub fn endpoint(&self) -> &str {
         &self.endpoint
     }
+
+    /// Evaluate peer trust (protocol-agnostic) - v3.12.3
+    ///
+    /// **Protocol Agnostic**: Automatically uses tarpc/JSON-RPC/HTTP based on endpoint
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if:
+    /// - Network request fails
+    /// - Service returns non-success status
+    /// - Response cannot be parsed
+    pub async fn evaluate_trust(
+        &self,
+        request: &crate::trust_types::TrustEvaluationRequest,
+    ) -> SongbirdResult<crate::trust_types::TrustEvaluationResponse> {
+        debug!("Evaluating trust for peer: {}", request.peer_id);
+
+        match &self.protocol {
+            SecurityProtocol::Tarpc(client) => {
+                // tarpc - HIGH-PERFORMANCE binary RPC (PRIMARY - ~10-20 μs latency!)
+                debug!("🚀 Using tarpc for trust evaluation (PRIMARY protocol)");
+                let result = client
+                    .call_method("trust.evaluate_peer", Some(serde_json::to_value(request)?))
+                    .await
+                    .map_err(|e| {
+                        warn!("tarpc trust evaluation failed: {e}");
+                        SongbirdError::network(format!(
+                            "Failed to evaluate trust via tarpc: {e}"
+                        ))
+                    })?;
+
+                serde_json::from_value(result).map_err(|e| {
+                    warn!("Failed to parse trust evaluation response: {e}");
+                    SongbirdError::security(format!(
+                        "Failed to parse trust evaluation response: {e}"
+                    ))
+                })
+            }
+            SecurityProtocol::JsonRpc(client) => {
+                // JSON-RPC protocol (SECONDARY - ~50-100 μs latency)
+                debug!("🔌 Using JSON-RPC for trust evaluation (SECONDARY protocol)");
+                let result = client
+                    .call_method("trust.evaluate_peer", Some(serde_json::to_value(request)?))
+                    .await
+                    .map_err(|e| {
+                        warn!("JSON-RPC trust evaluation failed: {e}");
+                        SongbirdError::network(format!(
+                            "Failed to evaluate trust via JSON-RPC: {e}"
+                        ))
+                    })?;
+
+                serde_json::from_value(result).map_err(|e| {
+                    warn!("Failed to parse trust evaluation response: {e}");
+                    SongbirdError::security(format!(
+                        "Failed to parse trust evaluation response: {e}"
+                    ))
+                })
+            }
+            SecurityProtocol::Http(client) => {
+                // HTTP protocol (FALLBACK - ~500-1000 μs latency)
+                debug!("🌐 Using HTTP for trust evaluation (FALLBACK protocol)");
+                let url = format!("{}/api/v1/trust/evaluate", self.endpoint);
+
+                let response = client
+                    .post(&url)
+                    .timeout(self.timeout)
+                    .json(request)
+                    .send()
+                    .await
+                    .map_err(|e| {
+                        warn!("Failed to reach security provider for trust evaluation: {e}");
+                        SongbirdError::network(format!(
+                            "Failed to reach security provider: {e}"
+                        ))
+                    })?;
+
+                if !response.status().is_success() {
+                    let status = response.status();
+                    let body = response.text().await.unwrap_or_default();
+                    warn!(
+                        "Security provider returned error for trust evaluation: {} - {}",
+                        status, body
+                    );
+                    return Err(SongbirdError::security(format!(
+                        "Trust evaluation failed: {} - {}",
+                        status, body
+                    )));
+                }
+
+                response.json().await.map_err(|e| {
+                    warn!("Failed to parse trust evaluation response: {e}");
+                    SongbirdError::security(format!(
+                        "Failed to parse trust evaluation response: {e}"
+                    ))
+                })
+            }
+        }
+    }
+
+    /// Get identity from security provider (protocol-agnostic) - v3.12.3
+    ///
+    /// **Protocol Agnostic**: Automatically uses tarpc/JSON-RPC/HTTP based on endpoint
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if:
+    /// - Network request fails
+    /// - Service returns non-success status
+    /// - Response cannot be parsed
+    pub async fn get_identity(&self) -> SongbirdResult<crate::trust_types::IdentityResponse> {
+        debug!("Getting identity from security provider: {}", self.endpoint);
+
+        match &self.protocol {
+            SecurityProtocol::Tarpc(client) => {
+                // tarpc - HIGH-PERFORMANCE binary RPC (PRIMARY)
+                debug!("🚀 Using tarpc for identity (PRIMARY protocol)");
+                let result = client
+                    .call_method("identity", None)
+                    .await
+                    .map_err(|e| {
+                        warn!("tarpc identity request failed: {e}");
+                        SongbirdError::network(format!(
+                            "Failed to get identity via tarpc: {e}"
+                        ))
+                    })?;
+
+                serde_json::from_value(result).map_err(|e| {
+                    warn!("Failed to parse identity response: {e}");
+                    SongbirdError::security(format!(
+                        "Failed to parse identity response: {e}"
+                    ))
+                })
+            }
+            SecurityProtocol::JsonRpc(client) => {
+                // JSON-RPC protocol (SECONDARY)
+                debug!("🔌 Using JSON-RPC for identity (SECONDARY protocol)");
+                let result = client
+                    .call_method("identity", None)
+                    .await
+                    .map_err(|e| {
+                        warn!("JSON-RPC identity request failed: {e}");
+                        SongbirdError::network(format!(
+                            "Failed to get identity via JSON-RPC: {e}"
+                        ))
+                    })?;
+
+                serde_json::from_value(result).map_err(|e| {
+                    warn!("Failed to parse identity response: {e}");
+                    SongbirdError::security(format!(
+                        "Failed to parse identity response: {e}"
+                    ))
+                })
+            }
+            SecurityProtocol::Http(client) => {
+                // HTTP protocol (FALLBACK)
+                debug!("🌐 Using HTTP for identity (FALLBACK protocol)");
+                let url = format!("{}/api/v1/identity", self.endpoint);
+
+                let response = client
+                    .get(&url)
+                    .timeout(self.timeout)
+                    .send()
+                    .await
+                    .map_err(|e| {
+                        warn!("Failed to reach security provider for identity: {e}");
+                        SongbirdError::network(format!(
+                            "Failed to reach security provider: {e}"
+                        ))
+                    })?;
+
+                if !response.status().is_success() {
+                    let status = response.status();
+                    let body = response.text().await.unwrap_or_default();
+                    warn!(
+                        "Security provider returned error for identity: {} - {}",
+                        status, body
+                    );
+                    return Err(SongbirdError::security(format!(
+                        "Identity request failed: {} - {}",
+                        status, body
+                    )));
+                }
+
+                response.json().await.map_err(|e| {
+                    warn!("Failed to parse identity response: {e}");
+                    SongbirdError::security(format!(
+                        "Failed to parse identity response: {e}"
+                    ))
+                })
+            }
+        }
+    }
 }
 
 /// Trait for security capability providers
@@ -572,3 +764,7 @@ mod tests;
 #[cfg(test)]
 #[path = "tests_protocol_detection.rs"]
 mod protocol_detection_tests;
+
+#[cfg(test)]
+#[path = "security_trust_tests.rs"]
+mod trust_tests;
