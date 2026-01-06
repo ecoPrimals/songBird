@@ -27,7 +27,7 @@ use anyhow::{Context, Result};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::net::{IpAddr, SocketAddr};
-use tracing::{debug, info};
+use tracing::{debug, info, warn};
 use uuid::Uuid;
 
 /// Self-knowledge about this primal
@@ -172,11 +172,81 @@ impl SelfKnowledge {
     }
     
     /// Discover our node ID (generate or load from persistent storage)
+    ///
+    /// This ensures stable node identity across restarts and supports multi-instance
+    /// deployment (each instance gets its own ID based on NODE_ID env var).
+    ///
+    /// Identity file path: `/var/lib/songbird/identity-{NODE_ID}.json` (or custom via SONGBIRD_IDENTITY_PATH)
     fn discover_node_id() -> Result<Uuid> {
-        // TODO: Load from persistent storage if exists
-        // For now, generate new UUID
-        let node_id = Uuid::new_v4();
-        debug!("Generated new node ID: {}", node_id);
+        use std::fs;
+        use std::path::PathBuf;
+
+        // Get identity file path (unique per NODE_ID for multi-instance support)
+        let node_env = std::env::var("NODE_ID").unwrap_or_else(|_| "default".to_string());
+        let identity_path = std::env::var("SONGBIRD_IDENTITY_PATH")
+            .map(PathBuf::from)
+            .unwrap_or_else(|_| {
+                PathBuf::from(format!("/var/lib/songbird/identity-{}.json", node_env))
+            });
+
+        // Try to load existing node ID
+        if identity_path.exists() {
+            match fs::read_to_string(&identity_path) {
+                Ok(content) => {
+                    if let Ok(stored_id) = serde_json::from_str::<serde_json::Value>(&content) {
+                        if let Some(id_str) = stored_id.get("node_id").and_then(|v| v.as_str()) {
+                            if let Ok(node_id) = Uuid::parse_str(id_str) {
+                                debug!("✅ Loaded node ID from {}: {}", identity_path.display(), node_id);
+                                return Ok(node_id);
+                            }
+                        }
+                    }
+                }
+                Err(e) => {
+                    warn!("⚠️  Failed to read identity file {}: {}", identity_path.display(), e);
+                }
+            }
+        }
+
+        // Generate new node ID (stable per NODE_ID for deterministic behavior)
+        let node_id = if node_env == "default" {
+            // Default: pure random UUID
+            Uuid::new_v4()
+        } else {
+            // Multi-instance: deterministic UUID from NODE_ID for reproducibility
+            use sha2::{Digest, Sha256};
+            let mut hasher = Sha256::new();
+            hasher.update(node_env.as_bytes());
+            hasher.update(b"songbird-node-id");
+            let hash = hasher.finalize();
+            
+            // Create UUID v4 from hash (deterministic but looks random)
+            Uuid::from_slice(&hash[0..16])
+                .unwrap_or_else(|_| Uuid::new_v4())
+        };
+
+        debug!("🆕 Generated new node ID: {}", node_id);
+
+        // Try to persist for future restarts
+        if let Some(parent) = identity_path.parent() {
+            if let Err(e) = fs::create_dir_all(parent) {
+                debug!("⚠️  Could not create identity directory: {}", e);
+            }
+        }
+
+        let identity_data = serde_json::json!({
+            "node_id": node_id.to_string(),
+            "created_at": chrono::Utc::now().to_rfc3339(),
+            "node_env": node_env,
+        });
+
+        if let Err(e) = fs::write(&identity_path, serde_json::to_string_pretty(&identity_data)?) {
+            debug!("⚠️  Could not persist identity to {}: {}", identity_path.display(), e);
+            debug!("   (This is non-fatal - identity will regenerate on restart)");
+        } else {
+            debug!("💾 Persisted node ID to {}", identity_path.display());
+        }
+
         Ok(node_id)
     }
     
@@ -270,11 +340,29 @@ impl SelfKnowledge {
                 continue; // Skip interfaces with no IPs
             }
             
+            // Parse interface flags from netdev
+            let mut flags = Vec::new();
+            if iface.is_up() {
+                flags.push("UP".to_string());
+            }
+            if iface.is_running() {
+                flags.push("RUNNING".to_string());
+            }
+            if iface.is_loopback() {
+                flags.push("LOOPBACK".to_string());
+            }
+            if iface.is_multicast() {
+                flags.push("MULTICAST".to_string());
+            }
+            
+            // Get MTU from interface (netdev provides this as Option<u32>)
+            let mtu = iface.mtu;
+            
             interfaces.push(NetworkInterface {
                 name: iface.name.clone(),
                 addresses,
-                flags: vec![], // TODO: Parse interface flags
-                mtu: None, // TODO: Get MTU
+                flags,
+                mtu,
             });
         }
         

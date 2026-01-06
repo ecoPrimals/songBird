@@ -145,6 +145,12 @@ pub mod discovery_stats; // NEW: Discovery statistics and observability (Jan 5, 
 /// Towers discover each other without leaking identity, sharing only capabilities.
 pub mod anonymous_discovery;
 
+/// Anonymous discovery protocol (v3.12.1+) - Refactored modules
+///
+/// This is the modern refactored version split into domain-driven modules.
+/// Module 1 (messages) is complete. Modules 2-5 are in progress.
+pub mod anonymous;
+
 /// Unit and integration tests for self-filtering (v3.10.2 - Jan 5, 2026)
 #[cfg(test)]
 mod tests_self_filtering;

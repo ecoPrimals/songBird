@@ -310,23 +310,48 @@ impl UniversalAdapter {
     /// Call tarpc provider
     async fn call_tarpc(
         &self,
-        _provider: &DiscoveredProvider,
-        _method: &str,
-        _params: serde_json::Value,
+        provider: &DiscoveredProvider,
+        method: &str,
+        params: serde_json::Value,
     ) -> Result<serde_json::Value> {
-        // TODO: Implement tarpc client
-        Err(anyhow!("tarpc protocol not yet implemented"))
+        // Extract address from endpoint (e.g., "tarpc://127.0.0.1:8081" -> "127.0.0.1:8081")
+        let address = provider.endpoint
+            .trim_start_matches("tarpc://")
+            .trim_start_matches("tcp://");
+
+        debug!("Calling tarpc provider: {} on {}", method, address);
+
+        // Parse address for tarpc connection
+        let addr: std::net::SocketAddr = address
+            .parse()
+            .with_context(|| format!("Invalid tarpc address: {}", address))?;
+
+        // Use tarpc client from universal adapter
+        // Note: This uses the existing tarpc infrastructure from songbird-universal
+        let endpoint = format!("tarpc://{}", addr);
+        let client = songbird_universal::TarpcClient::new(&endpoint)?;
+        
+        // Call the method (tarpc client handles serialization)
+        client.call_method(method, Some(params))
+            .await
+            .with_context(|| format!("tarpc call failed: {}", method))
     }
     
     /// Call gRPC provider
+    ///
+    /// NOTE: gRPC is intentionally not prioritized in Songbird's protocol hierarchy.
+    /// Songbird uses: tarpc > JSON-RPC > HTTP (in order of preference).
+    /// gRPC support may be added later if ecosystem needs arise.
     async fn call_grpc(
         &self,
         _provider: &DiscoveredProvider,
         _method: &str,
         _params: serde_json::Value,
     ) -> Result<serde_json::Value> {
-        // TODO: Implement gRPC client
-        Err(anyhow!("gRPC protocol not yet implemented"))
+        Err(anyhow!(
+            "gRPC protocol not supported. Songbird prioritizes: tarpc > JSON-RPC > HTTP.\n\
+             If you need gRPC, please open an issue explaining your use case."
+        ))
     }
     
     /// Clear cache for a capability
