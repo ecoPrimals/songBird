@@ -5,7 +5,7 @@
 
 #[cfg(test)]
 mod unit_tests {
-    use crate::anonymous_discovery::AnonymousDiscoveryListener;
+    use crate::anonymous::AnonymousDiscoveryListener;
 
     /// Test that with_node_id() builder sets the node_id field correctly
     #[test]
@@ -59,7 +59,7 @@ mod unit_tests {
 
 #[cfg(test)]
 mod integration_tests {
-    use crate::anonymous_discovery::AnonymousDiscoveryListener;
+    use crate::anonymous::AnonymousDiscoveryListener;
 
     /// Test that get_peers() debug logging works correctly
     #[tokio::test]
@@ -188,7 +188,7 @@ mod e2e_tests {
 
 #[cfg(test)]
 mod regression_tests {
-    use crate::anonymous_discovery::AnonymousDiscoveryListener;
+    use crate::anonymous::AnonymousDiscoveryListener;
 
     /// Regression: Ensure listener works without node_id (backward compatible)
     #[test]

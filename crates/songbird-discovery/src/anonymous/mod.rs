@@ -8,18 +8,21 @@
 //! - `messages` - Message types and serialization (✅ Complete)
 //! - `peer` - Peer discovery and management (✅ Complete)
 //! - `broadcaster` - Broadcasting logic (✅ Complete)
-//! - `listener` - Listening and processing (pending extraction)
+//! - `listener` - Listening and processing (✅ Complete)
+//!
+//! ## Refactoring Complete (v3.12.2)
+//!
+//! All modules extracted from `anonymous_discovery.rs` (1396 lines)
+//! into focused, testable modules with comprehensive unit tests.
 
 pub mod broadcaster;
+pub mod listener;
 pub mod messages;
 pub mod peer;
 
 // Re-export public types for backward compatibility
 pub use broadcaster::AnonymousDiscoveryBroadcaster;
+pub use listener::AnonymousDiscoveryListener;
 pub use messages::{AnonymousDiscoveryMessage, TransportEndpointMessage};
 pub use peer::DiscoveredPeer;
-
-// TODO: Complete refactoring by extracting listener from anonymous_discovery.rs
-// pub mod listener;
-// pub use listener::AnonymousDiscoveryListener;
 

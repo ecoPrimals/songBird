@@ -139,17 +139,25 @@ pub mod birdsong_integration; // NEW: BirdSong encrypted discovery
 pub mod beardog_birdsong_provider; // NEW: BearDog BirdSong encryption provider (Jan 3, 2026)
 pub mod discovery_stats; // NEW: Discovery statistics and observability (Jan 5, 2026)
 
-/// Anonymous discovery protocol (v2.0) - Secure by default
+/// Anonymous discovery protocol (v3.12.2) - Refactored modules
 ///
-/// Implements secure anonymous discovery with UDP broadcast.
-/// Towers discover each other without leaking identity, sharing only capabilities.
-pub mod anonymous_discovery;
-
-/// Anonymous discovery protocol (v3.12.1+) - Refactored modules
+/// Implements secure anonymous discovery with UDP multicast.
+/// Split into domain-driven modules for maintainability and testability.
 ///
-/// This is the modern refactored version split into domain-driven modules.
-/// Module 1 (messages) is complete. Modules 2-5 are in progress.
+/// ## Modules
+/// - `messages` - Message types and serialization (✅ Complete)
+/// - `peer` - Peer discovery and management (✅ Complete)
+/// - `broadcaster` - Broadcasting logic (✅ Complete)
+/// - `listener` - Listening and processing (✅ Complete)
+///
+/// **Refactoring Complete**: 1396 lines → 4 focused modules with 23 comprehensive tests
 pub mod anonymous;
+
+// Old anonymous_discovery.rs kept temporarily for compatibility (v3.12.1)
+// All functionality has been migrated to the `anonymous` module
+// TODO: Remove after full verification (v3.13.0)
+#[allow(dead_code)]
+pub mod anonymous_discovery;
 
 /// Unit and integration tests for self-filtering (v3.10.2 - Jan 5, 2026)
 #[cfg(test)]
