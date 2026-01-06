@@ -111,6 +111,17 @@ pub enum SongbirdError {
         debug_info: Option<String>,
     },
 
+    /// RPC-related errors (tarpc, JSON-RPC, etc.)
+    #[error("RPC error: {message}")]
+    Rpc {
+        /// Error message
+        message: String,
+        /// RPC method that failed
+        method: Option<String>,
+        /// Error code from RPC response (if applicable)
+        code: Option<i64>,
+    },
+
     /// Async runtime errors
     #[error("Async runtime error: {message}")]
     Runtime {
@@ -341,6 +352,15 @@ impl SongbirdError {
             format: None,
             message: message.into(),
             debug_info: None,
+        }
+    }
+
+    /// Create a new RPC error
+    pub fn rpc(message: impl Into<String>) -> Self {
+        Self::Rpc {
+            message: message.into(),
+            method: None,
+            code: None,
         }
     }
 

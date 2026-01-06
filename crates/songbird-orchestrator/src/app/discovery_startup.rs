@@ -334,7 +334,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_initialize_birdsong_processor_no_identity() {
-        let empty_attestations: Vec<serde_json::Value> = Vec::new();
+        let empty_attestations: Vec<songbird_discovery::IdentityAttestation> = Vec::new();
         let processor = initialize_birdsong_processor(&empty_attestations).await;
 
         assert!(

@@ -1,15 +1,30 @@
 # 📚 Songbird Documentation Index
 
-**Last Updated**: January 6, 2026 17:30 EST  
-**Status**: 🎊 Production Ready + Protocol-Agnostic + Unix Sockets PRIMARY  
-**Version**: v3.11.0-protocol-agnostic with Full Adapter Evolution Complete
+**Last Updated**: January 6, 2026 22:00 EST  
+**Status**: 🎊 Production Ready + Deep Debt Evolution + Zero Unsafe  
+**Version**: v3.12.1-deep-debt-evolution with Smart Refactoring Plans
 
 ---
 
 ## 🌟 Start Here (Quick Links)
 
-### For Latest Release (v3.11.0) 🎊 **NEW!**
-👉 **[PROTOCOL_AGNOSTIC_COMPLETE_V3_11_0.md](PROTOCOL_AGNOSTIC_COMPLETE_V3_11_0.md)** 🎊 **PROTOCOL-AGNOSTIC COMPLETE** 🎊
+### For Latest Release (v3.12.1) 🏗️ **NEW!**
+👉 **[NEURALAPI_INTEGRATION_PROGRESS.md](NEURALAPI_INTEGRATION_PROGRESS.md)** 🧠 **neuralAPI INTEGRATION ROADMAP** 🧠
+👉 **[specs/SONGBIRD_NEURALAPI_ALIGNMENT_V3_12_1.md](specs/SONGBIRD_NEURALAPI_ALIGNMENT_V3_12_1.md)** - Strategic Alignment
+👉 **[specs/PROTOCOL_NEGOTIATION_STATUS_V3_12_1.md](specs/PROTOCOL_NEGOTIATION_STATUS_V3_12_1.md)** - Protocol Status
+👉 **[DEEP_DEBT_AUDIT_V3_12_1.md](DEEP_DEBT_AUDIT_V3_12_1.md)** - Comprehensive Debt Audit
+👉 **[ANONYMOUS_DISCOVERY_REFACTOR_PLAN_V3_12_1.md](ANONYMOUS_DISCOVERY_REFACTOR_PLAN_V3_12_1.md)** - Smart Refactoring Plan
+
+### For Previous Release (v3.12.0) 🚀
+👉 **[TARPC_PHASE_1_FINAL_SUMMARY_V3_12_0.md](TARPC_PHASE_1_FINAL_SUMMARY_V3_12_0.md)** 🚀 **tarpc COMPLETE SUMMARY** 🚀
+👉 **[TARPC_SERVER_WIRING_COMPLETE_V3_12_0.md](TARPC_SERVER_WIRING_COMPLETE_V3_12_0.md)** - Server Wiring Details
+👉 **[TARPC_INTEGRATION_COMPLETE_V3_12_0.md](TARPC_INTEGRATION_COMPLETE_V3_12_0.md)** - Phase 1 Complete
+👉 **[TARPC_DEPLOYMENT_READY_V3_12_0.md](TARPC_DEPLOYMENT_READY_V3_12_0.md)** - Deployment Guide
+👉 **[TARPC_INTEGRATION_PLAN_V3_12_0.md](TARPC_INTEGRATION_PLAN_V3_12_0.md)** - Execution Plan
+👉 **[PROTOCOL_HIERARCHY_ANALYSIS_V3_11_0.md](PROTOCOL_HIERARCHY_ANALYSIS_V3_11_0.md)** - Strategic Analysis
+
+### For Previous Release (v3.11.0)
+👉 **[PROTOCOL_AGNOSTIC_COMPLETE_V3_11_0.md](PROTOCOL_AGNOSTIC_COMPLETE_V3_11_0.md)** - Protocol-Agnostic Complete
 👉 **[PROTOCOL_AGNOSTIC_EVOLUTION_V3_11_0.md](PROTOCOL_AGNOSTIC_EVOLUTION_V3_11_0.md)** - Implementation Handoff
 👉 **[IPC_INTEGRATION_GUIDE.md](IPC_INTEGRATION_GUIDE.md)** - Comprehensive Rewrite (1300+ lines)
 
@@ -53,9 +68,9 @@
 ### Core Project Docs
 | Document | Purpose | Status |
 |----------|---------|--------|
-| [README.md](README.md) | Project overview, features, quick start | ✅ v3.11.0 |
-| [STATUS.md](STATUS.md) | Detailed status, metrics, roadmap | ✅ v3.11.0 |
-| [ROOT_DOCS_INDEX.md](ROOT_DOCS_INDEX.md) | This document - central index | ✅ v3.11.0 |
+| [README.md](README.md) | Project overview, features, quick start | ✅ v3.12.0 |
+| [STATUS.md](STATUS.md) | Detailed status, metrics, roadmap | ✅ v3.12.0 |
+| [ROOT_DOCS_INDEX.md](ROOT_DOCS_INDEX.md) | This document - central index | ✅ v3.12.0 |
 | [IPC_INTEGRATION_GUIDE.md](IPC_INTEGRATION_GUIDE.md) | Inter-primal communication (rewritten) | ✅ v3.11.0 |
 | [00_START_HERE.md](00_START_HERE.md) | Main entry point for all users | ✅ Current |
 | [ROADMAP.md](ROADMAP.md) | Future development plans | ✅ Current |

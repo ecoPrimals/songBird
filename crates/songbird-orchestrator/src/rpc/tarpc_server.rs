@@ -4,6 +4,7 @@
 //! Designed for primal-to-primal communication with TLS support.
 //!
 //! Phase 2 Complete: Full async runtime implementation with tarpc.
+//! v3.12.0: Imports types from songbird-universal for consistency
 
 use std::collections::HashMap;
 use std::net::SocketAddr;
@@ -11,98 +12,23 @@ use std::sync::Arc;
 
 use serde::{Deserialize, Serialize};
 use songbird_network_federation::service_registry::FederatedServiceRegistry;
+use songbird_universal::tarpc_types::{
+    HealthStatus, ProtocolInfo, RegistrationResult, ServiceInfo, ServiceRegistration,
+    SongbirdRpc, VersionInfo,
+};
 use tarpc::context::Context;
 use tarpc::server::Channel;
 use tracing::{debug, error, info};
 
 use crate::app::SongbirdOrchestrator;
 
-/// tarpc service trait for Songbird operations
-///
-/// This trait defines the async RPC interface using tarpc.
-#[tarpc::service]
-pub trait SongbirdRpc {
-    /// Discover services by capability
-    async fn discover(capability: String) -> Vec<ServiceInfo>;
+// Re-export the trait from songbird-universal for backward compatibility
+pub use songbird_universal::tarpc_types::SongbirdRpc as SongbirdRpcTrait;
 
-    /// Discover all available services
-    async fn discover_all() -> Vec<ServiceInfo>;
+// All type definitions now imported from songbird-universal for consistency (v3.12.0)
+// This eliminates duplication and ensures type consistency across client and server
 
-    /// Register a service
-    async fn register(registration: ServiceRegistration) -> RegistrationResult;
-
-    /// Unregister a service
-    async fn unregister(service_id: String) -> RegistrationResult;
-
-    /// Get health status
-    async fn health() -> HealthStatus;
-
-    /// Get version information
-    async fn version() -> VersionInfo;
-
-    /// Get available protocols
-    async fn protocols() -> Vec<ProtocolInfo>;
-}
-
-/// Service information returned by discovery
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ServiceInfo {
-    pub id: String,
-    pub capability: String,
-    pub endpoint: String,
-    pub status: String,
-    pub metadata: Option<serde_json::Value>,
-}
-
-/// Service registration request
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ServiceRegistration {
-    pub service_id: String,
-    pub service_name: String,
-    pub capability: String,
-    pub endpoint: String,
-    #[serde(default)]
-    pub metadata: HashMap<String, String>,
-    #[serde(default)]
-    pub tower_id: Option<String>,
-    #[serde(default)]
-    pub tower_name: Option<String>,
-}
-
-/// Registration result
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct RegistrationResult {
-    pub success: bool,
-    pub message: String,
-}
-
-/// Health status
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct HealthStatus {
-    pub status: String,
-    pub version: String,
-    pub uptime_seconds: u64,
-    pub services_count: usize,
-}
-
-/// Version information
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct VersionInfo {
-    pub version: String,
-    pub protocol: String,
-    pub capabilities: Vec<String>,
-}
-
-/// Protocol information
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ProtocolInfo {
-    pub name: String,
-    pub port: u16,
-    pub status: String,
-    pub path: Option<String>,
-}
-
-/// Service update event
+/// Service update event (local to orchestrator)
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ServiceUpdate {
     pub service_id: String,
@@ -110,7 +36,185 @@ pub struct ServiceUpdate {
     pub timestamp: i64,
 }
 
-/// tarpc server implementation
+/// tarpc server implementation (simplified, zero unsafe - v3.12.0)
+///
+/// **Modern Rust**: This version doesn't require Arc<SongbirdOrchestrator>,
+/// making it simpler and safer. The orchestrator field was never actually used.
+#[derive(Clone)]
+pub struct TarpcServerSimple {
+    service_registry: Arc<FederatedServiceRegistry>,
+    start_time: std::time::Instant,
+}
+
+impl TarpcServerSimple {
+    /// Create new tarpc server with only service registry (no orchestrator needed!)
+    pub fn new(service_registry: Arc<FederatedServiceRegistry>) -> Self {
+        Self {
+            service_registry,
+            start_time: std::time::Instant::now(),
+        }
+    }
+}
+
+/// Implementation of SongbirdRpc trait for TarpcServerSimple (v3.12.0)
+impl SongbirdRpc for TarpcServerSimple {
+    async fn discover(self, _context: Context, capability: String) -> Vec<ServiceInfo> {
+        debug!("tarpc: discover(capability={})", capability);
+
+        // Use real capability-based discovery (EVOLVED from mock)
+        let services = self.service_registry.find_by_capability(&capability).await;
+        debug!("Discovered {} services for capability '{}'", services.len(), capability);
+        services
+            .into_iter()
+            .map(|svc| ServiceInfo {
+                id: svc.service_id,
+                capability: capability.clone(),
+                endpoint: svc.endpoint,
+                status: "healthy".to_string(),
+                metadata: None,
+            })
+            .collect()
+    }
+
+    async fn discover_all(self, _context: Context) -> Vec<ServiceInfo> {
+        debug!("tarpc: discover_all()");
+
+        // Use real service registry (EVOLVED from mock)
+        let services = self.service_registry.get_all_services().await;
+        debug!("Discovered {} total services", services.len());
+        services
+            .into_iter()
+            .map(|svc| ServiceInfo {
+                id: svc.service_id,
+                capability: svc.service_type,
+                endpoint: svc.endpoint,
+                status: "healthy".to_string(),
+                metadata: None,
+            })
+            .collect()
+    }
+
+    async fn register(
+        self,
+        _context: Context,
+        registration: ServiceRegistration,
+    ) -> RegistrationResult {
+        debug!("tarpc: register({}, {})", registration.service_id, registration.capability);
+
+        // Convert to FederatedServiceRegistry format and register
+        let service_registration =
+            songbird_network_federation::service_registry::ServiceRegistration {
+                service_id: registration.service_id.clone(),
+                service_name: registration.service_name.clone(),
+                service_type: registration.capability.clone(),
+                tower_id: registration.tower_id.unwrap_or_else(|| "unknown".to_string()),
+                tower_name: registration.tower_name.unwrap_or_else(|| "Unknown Tower".to_string()),
+                endpoint: registration.endpoint,
+                capabilities: vec![registration.capability.clone()],
+                metadata: registration.metadata,
+                health_status:
+                    songbird_network_federation::service_registry::ServiceHealthStatus::Healthy,
+                registered_at: chrono::Utc::now(),
+                last_seen: chrono::Utc::now(),
+            };
+
+        self.service_registry.register_local(service_registration).await;
+
+        info!("✅ Service registered: {} ({})", registration.service_name, registration.service_id);
+
+        RegistrationResult {
+            success: true,
+            message: format!("Service {} registered successfully", registration.service_id),
+        }
+    }
+
+    async fn unregister(self, _context: Context, service_id: String) -> RegistrationResult {
+        debug!("tarpc: unregister({})", service_id);
+
+        // Check if service exists before unregistering
+        let service_exists = self.service_registry.find_by_id(&service_id).await.is_some();
+
+        if service_exists {
+            self.service_registry.deregister_local(&service_id).await;
+            info!("✅ Service unregistered: {}", service_id);
+
+            RegistrationResult {
+                success: true,
+                message: format!("Service {} unregistered successfully", service_id),
+            }
+        } else {
+            debug!("⚠️  Service not found for unregistration: {}", service_id);
+
+            RegistrationResult {
+                success: false,
+                message: format!("Service {} not found", service_id),
+            }
+        }
+    }
+
+    async fn health(self, _context: Context) -> HealthStatus {
+        debug!("tarpc: health()");
+
+        // Calculate real uptime
+        let uptime_seconds = self.start_time.elapsed().as_secs();
+
+        // Get real service count from registry
+        let services_count = self.service_registry.get_all_services().await.len();
+
+        HealthStatus {
+            status: "healthy".to_string(),
+            version: env!("CARGO_PKG_VERSION").to_string(),
+            uptime_seconds,
+            services_count,
+        }
+    }
+
+    async fn version(self, _context: Context) -> VersionInfo {
+        debug!("tarpc: version()");
+
+        VersionInfo {
+            version: env!("CARGO_PKG_VERSION").to_string(),
+            protocol: "tarpc".to_string(),
+            capabilities: vec![
+                "discovery".to_string(),
+                "registry".to_string(),
+                "health".to_string(),
+            ],
+        }
+    }
+
+    async fn protocols(self, _context: Context) -> Vec<ProtocolInfo> {
+        debug!("tarpc: protocols()");
+
+        vec![
+            ProtocolInfo {
+                name: "tarpc".to_string(),
+                port: 9001,
+                enabled: true,
+                info: HashMap::new(),
+            },
+            ProtocolInfo {
+                name: "jsonrpc".to_string(),
+                port: 0, // Unix socket
+                enabled: true,
+                info: [("path".to_string(), "/tmp/songbird.sock".to_string())]
+                    .iter()
+                    .cloned()
+                    .collect(),
+            },
+            ProtocolInfo {
+                name: "http".to_string(),
+                port: 8080,
+                enabled: true,
+                info: HashMap::new(),
+            },
+        ]
+    }
+}
+
+/// tarpc server implementation (original - legacy)
+///
+/// **Legacy**: Kept for backward compatibility. New code should use `TarpcServerSimple`.
 #[derive(Clone)]
 pub struct TarpcServer {
     orchestrator: Arc<SongbirdOrchestrator>,
@@ -265,34 +369,100 @@ impl SongbirdRpc for TarpcServer {
             ProtocolInfo {
                 name: "HTTP".to_string(),
                 port: 8080,
-                status: "active".to_string(),
-                path: None,
+                enabled: true,
+                info: HashMap::new(),
             },
             ProtocolInfo {
                 name: "HTTPS".to_string(),
                 port: 8443,
-                status: "active".to_string(),
-                path: None,
+                enabled: true,
+                info: HashMap::new(),
             },
             ProtocolInfo {
                 name: "JSON-RPC".to_string(),
                 port: 8443,
-                status: "active".to_string(),
-                path: Some("/jsonrpc".to_string()),
+                enabled: true,
+                info: [("path".to_string(), "/jsonrpc".to_string())]
+                    .iter()
+                    .cloned()
+                    .collect(),
             },
             ProtocolInfo {
                 name: "tarpc".to_string(),
                 port: 8081,
-                status: "active".to_string(),
-                path: None,
+                enabled: true,
+                info: HashMap::new(),
             },
         ]
     }
 }
 
-/// Start tarpc server on specified address
+/// Start tarpc server on specified address (simplified version without orchestrator Arc)
 ///
-/// Full async implementation using tarpc with binary codec over TCP.
+/// **v3.12.0**: Zero unsafe blocks - uses TarpcServerSimple without orchestrator dependency
+///
+/// This is the production version that avoids Arc<SongbirdOrchestrator> complexity.
+/// The TarpcServer only needs service_registry, so this version is simpler and safer.
+pub async fn start_tarpc_server_simple(
+    service_registry: Arc<FederatedServiceRegistry>,
+    addr: SocketAddr,
+) -> Result<(), Box<dyn std::error::Error>> {
+    use futures::StreamExt;
+
+    info!("🚀 Starting tarpc server (simplified, zero unsafe) on {}", addr);
+
+    // Bind TCP listener
+    let listener = tokio::net::TcpListener::bind(addr).await?;
+    info!("✅ tarpc server listening on {}", addr);
+
+    // Create simplified server instance (no orchestrator Arc needed!)
+    let server = TarpcServerSimple::new(service_registry);
+
+    // Accept connections in a loop
+    loop {
+        let (stream, peer_addr) = match listener.accept().await {
+            Ok(conn) => conn,
+            Err(e) => {
+                error!("Failed to accept connection: {}", e);
+                continue;
+            }
+        };
+
+        debug!("New tarpc connection from {}", peer_addr);
+
+        // Clone server for this connection
+        let server = server.clone();
+
+        // Spawn a task to handle this connection
+        tokio::spawn(async move {
+            // Create codec transport using tokio-serde with bincode
+            let transport = tarpc::serde_transport::new(
+                tokio_util::codec::LengthDelimitedCodec::builder()
+                    .max_frame_length(16 * 1024 * 1024) // 16 MB max frame
+                    .new_framed(stream),
+                tokio_serde::formats::Bincode::default(),
+            );
+
+            // Create server channel
+            let channel = tarpc::server::BaseChannel::with_defaults(transport);
+
+            // Respond to requests
+            channel
+                .execute(server.serve())
+                .for_each(|response| async move {
+                    tokio::spawn(response);
+                })
+                .await;
+
+            debug!("tarpc connection from {} closed", peer_addr);
+        });
+    }
+}
+
+/// Start tarpc server on specified address (original version with orchestrator Arc)
+///
+/// **Legacy**: This version requires Arc<SongbirdOrchestrator> but doesn't actually use it.
+/// Kept for backward compatibility. New code should use `start_tarpc_server_simple`.
 pub async fn start_tarpc_server(
     orchestrator: Arc<SongbirdOrchestrator>,
     service_registry: Arc<FederatedServiceRegistry>,
