@@ -72,7 +72,7 @@ pub async fn start_discovery_system(
     info!("🌐 Starting anonymous discovery system...");
 
     // Step 1: Fetch identity attestations from security provider
-    let identity_attestations = fetch_identity_attestations().await;
+    let identity_attestations = fetch_identity_attestations().await?;
 
     // Step 2: Initialize BirdSong processor (if genetic identity available)
     let birdsong_processor = initialize_birdsong_processor(&identity_attestations).await;
@@ -115,14 +115,14 @@ pub async fn start_discovery_system(
 /// Discovers security provider via environment:
 /// - `SONGBIRD_BEARDOG_URL` (preferred)
 /// - `SECURITY_ENDPOINT` (fallback)
-async fn fetch_identity_attestations() -> Vec<songbird_discovery::IdentityAttestation> {
+async fn fetch_identity_attestations() -> Result<Vec<songbird_discovery::IdentityAttestation>, anyhow::Error> {
     match std::env::var("SONGBIRD_BEARDOG_URL").or_else(|_| std::env::var("SECURITY_ENDPOINT")) {
         Ok(url) => {
             info!("🔐 Fetching identity attestations from security provider: {}", url);
             let mut security_client =
                 crate::security_capability_client::SecurityCapabilityClient::from_endpoint(url);
 
-            match security_client.get_identity().await {
+            match security_client?.get_identity().await {
                 Ok(identity) => {
                     info!("✅ Got identity with encryption tag: {}", identity.encryption_tag);
                     if let Some(ref family_id) = identity.family_id {
@@ -134,18 +134,18 @@ async fn fetch_identity_attestations() -> Vec<songbird_discovery::IdentityAttest
                             &identity,
                         );
                     info!("✅ Created {} identity attestations for discovery", attestations.len());
-                    attestations
+                    Ok(attestations)
                 }
                 Err(e) => {
                     warn!("⚠️  Could not get identity from security provider: {}", e);
                     warn!("   Discovery will continue without genetic lineage attestations");
-                    Vec::new()
+                    Ok(Vec::new())
                 }
             }
         }
         Err(_) => {
             info!("📡 No security provider configured - discovery without genetic lineage");
-            Vec::new()
+            Ok(Vec::new())
         }
     }
 }
@@ -325,7 +325,7 @@ mod tests {
         std::env::remove_var("SONGBIRD_BEARDOG_URL");
         std::env::remove_var("SECURITY_ENDPOINT");
 
-        let attestations = fetch_identity_attestations().await;
+        let attestations = fetch_identity_attestations().await.unwrap_or_default();
         assert!(
             attestations.is_empty(),
             "Should return empty attestations when no provider configured"

@@ -231,7 +231,7 @@ impl SongbirdOrchestrator {
                 // Query for identity
                 let mut security_client = SecurityCapabilityClient::from_endpoint(url);
                 
-                match security_client.get_identity().await {
+                match security_client?.get_identity().await {
                     Ok(identity) => {
                         info!("✅ Got encryption tag: {}", identity.encryption_tag);
                         if let Some(family_id) = &identity.family_id {

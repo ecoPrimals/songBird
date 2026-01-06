@@ -261,7 +261,13 @@ impl SongbirdOrchestrator {
                                     use crate::trust::peer_trust::{evaluate_peer_trust, DiscoveredPeer};
                                     use crate::security_capability_client::SecurityCapabilityClient;
                                     
-                                    let security_client = SecurityCapabilityClient::from_endpoint(sec_endpoint.clone());
+                                    let security_client = match SecurityCapabilityClient::from_endpoint(sec_endpoint.clone()) {
+                                        Ok(client) => client,
+                                        Err(e) => {
+                                            warn!("⚠️  Failed to create security client: {}", e);
+                                            continue;
+                                        }
+                                    };
                                     
                                     // 🚨 CRITICAL FIX (Jan 3, 2026): Convert discovery attestations to trust layer format
                                     let trust_attestations = peer.identity_attestations.as_ref()

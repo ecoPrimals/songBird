@@ -211,6 +211,7 @@ enum SecurityProtocol {
 /// - `unix://` → JSON-RPC 2.0 over Unix socket (port-free)
 /// - `http://` or `https://` → HTTP protocol
 /// - Enables fractal, isomorphic deployment patterns
+#[derive(Debug, Clone)]
 pub struct SecurityAdapter {
     /// Endpoint URL for the security capability provider
     endpoint: String,

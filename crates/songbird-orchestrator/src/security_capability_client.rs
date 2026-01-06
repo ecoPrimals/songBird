@@ -88,6 +88,10 @@ pub struct SecurityCapabilityClient {
     /// Handles tarpc, JSON-RPC, and HTTP automatically
     adapter: SecurityAdapter,
     
+    /// HTTP client for legacy methods (temporary during migration)
+    /// TODO: Remove when all methods migrated to adapter (v3.13.0)
+    http_client: Client,
+    
     /// Optional: Cached identity
     cached_identity: Option<IdentityResponse>,
 }
@@ -123,8 +127,15 @@ impl SecurityCapabilityClient {
         let adapter = SecurityAdapter::new(endpoint.into())
             .context("Failed to create protocol-agnostic security adapter")?;
         
+        // Create HTTP client for legacy methods (temporary)
+        let http_client = Client::builder()
+            .timeout(Duration::from_secs(10))
+            .build()
+            .unwrap_or_default();
+        
         Ok(Self {
             adapter,
+            http_client,
             cached_identity: None,
         })
     }
@@ -237,10 +248,17 @@ impl SecurityCapabilityClient {
         debug!("Evaluating trust for peer {} using protocol-agnostic adapter", request.peer_id);
 
         // Convert to universal format
+        let connection_info_map = request.connection_info.as_ref().map(|info| {
+            let mut map = HashMap::new();
+            map.insert("endpoint".to_string(), info.endpoint.clone());
+            map.insert("protocol".to_string(), info.protocol.clone());
+            map
+        });
+        
         let universal_req = songbird_universal::TrustEvaluationRequest {
             peer_id: request.peer_id.clone(),
             peer_tags: request.peer_tags.clone(),
-            connection_info: request.connection_info.clone(),
+            connection_info: connection_info_map,
             context: request.context.clone(),
         };
 
@@ -256,7 +274,7 @@ impl SecurityCapabilityClient {
                     encryption_tag: None, // Not in universal format yet
                     metadata: universal_resp.metadata.unwrap_or_default()
                         .into_iter()
-                        .map(|(k, v)| (k, v))
+                        .map(|(k, v)| (k, v.to_string()))
                         .collect(),
                 }
             },
@@ -385,7 +403,7 @@ impl SecurityCapabilityClient {
     ///
     /// Universal trust response with decision, confidence, and reason.
     pub async fn evaluate_trust_universal(&self, request: &UniversalTrustRequest) -> Result<UniversalTrustResponse> {
-        let url = format!("{}/api/v1/trust/evaluate", self.endpoint);
+        let url = format!("{}/api/v1/trust/evaluate", self.adapter.endpoint());
         debug!("Evaluating trust (universal API): {}", url);
         
         let response = self.http_client
@@ -472,9 +490,12 @@ impl SecurityCapabilityClient {
     
     /// Backward compatibility: alias for from_endpoint
     #[deprecated(note = "Use from_endpoint instead for clarity")]
-    pub fn new(endpoint: impl Into<String>) -> Self {
+    /// Create from endpoint (legacy wrapper)
+    ///
+    /// **MODERNIZED v3.12.3**: Now returns Result due to protocol detection
+    pub fn new(endpoint: impl Into<String>) -> Result<Self> {
         Self::from_endpoint(endpoint)
-}
+    }
 
     /// Get our current genetic lineage from security provider
     ///
@@ -484,7 +505,7 @@ impl SecurityCapabilityClient {
     ///
     /// Returns error if security provider is unreachable or returns invalid response.
     pub async fn get_current_lineage(&self) -> Result<Option<CurrentLineageInfo>> {
-        let url = format!("{}/api/v1/lineage/current", self.endpoint);
+        let url = format!("{}/api/v1/lineage/current", self.adapter.endpoint());
         debug!("Querying security provider for current lineage: {}", url);
 
         let response = self.http_client
@@ -522,7 +543,7 @@ impl SecurityCapabilityClient {
     ///
     /// Returns error if security provider is unreachable or returns invalid response.
     pub async fn verify_lineage(&self, proof: &LineageProof) -> Result<VerificationResult> {
-        let url = format!("{}/api/v1/lineage/verify", self.endpoint);
+        let url = format!("{}/api/v1/lineage/verify", self.adapter.endpoint());
         debug!("Verifying lineage proof with security provider: {}", url);
 
         let response = self.http_client
@@ -569,7 +590,7 @@ impl SecurityCapabilityClient {
     ///
     /// Returns error if security provider is unreachable or returns invalid response.
     pub async fn same_family(&self, lineage_a: &LineageId, lineage_b: &LineageId) -> Result<bool> {
-        let url = format!("{}/api/v1/lineage/same_family", self.endpoint);
+        let url = format!("{}/api/v1/lineage/same_family", self.adapter.endpoint());
         debug!("Checking if lineages are from same family: {} vs {}", lineage_a, lineage_b);
 
         #[derive(Serialize)]
@@ -762,7 +783,7 @@ mod tests {
     fn test_client_creation() {
         // No hardcoded endpoint! Discovered at runtime
         let client = SecurityCapabilityClient::from_endpoint("http://discovered-security-provider");
-        assert_eq!(client.endpoint(), "http://discovered-security-provider");
+        assert_eq!(client.unwrap().endpoint(), "http://discovered-security-provider");
     }
 
     #[test]
