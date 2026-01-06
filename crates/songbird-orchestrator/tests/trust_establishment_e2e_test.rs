@@ -99,6 +99,9 @@ async fn test_discovery_to_federation_integration() -> Result<()> {
         address: "192.168.1.102:2300".parse().unwrap(),
         last_seen: std::time::SystemTime::now(),
         version: "3.0".to_string(),
+        tags: None,
+        timestamp: None,
+        identity_attestations: None, // No genetic lineage for this mock peer
     };
 
     let peer_id = &mock_peer.session_id;

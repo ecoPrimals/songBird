@@ -65,8 +65,11 @@ pub struct CanonicalDiscoveryConfig {
     /// Discovery port for UDP broadcast (default: 2300)
     pub port: u16,
 
-    /// Broadcast addresses for discovery
+    /// Broadcast addresses for discovery (supports multicast)
     pub broadcast_addresses: Vec<String>,
+
+    /// Known peer addresses for direct discovery (bypasses multicast)
+    pub known_peers: Vec<String>,
 
     /// Discovery protocol version (default: "2.0")
     pub protocol_version: String,
@@ -108,8 +111,20 @@ impl Default for CanonicalDiscoveryConfig {
                     }
                 })
                 .unwrap_or_else(|| {
-                    vec!["255.255.255.255:2300".to_string(), "192.168.1.255:2300".to_string()]
+                    // Use multicast by default (224.0.0.251 is mDNS multicast group)
+                    vec!["224.0.0.251:2300".to_string()]
                 }),
+            known_peers: env::var("SONGBIRD_KNOWN_PEERS")
+                .ok()
+                .and_then(|s| {
+                    let addrs: Vec<String> = s.split(',').map(|s| s.trim().to_string()).collect();
+                    if addrs.is_empty() {
+                        None
+                    } else {
+                        Some(addrs)
+                    }
+                })
+                .unwrap_or_default(),
             protocol_version: "2.0".to_string(),
             session_rotation_interval: 3600, // 1 hour
         }

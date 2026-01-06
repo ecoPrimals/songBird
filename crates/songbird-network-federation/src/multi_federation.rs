@@ -519,6 +519,9 @@ mod tests {
             address: SocketAddr::new(IpAddr::V4(Ipv4Addr::new(192, 168, 1, 100)), 2300),
             last_seen: SystemTime::now(),
             version: "2.1".to_string(),
+            tags: None,
+            timestamp: None,
+            identity_attestations: Some(Vec::new()),
         };
 
         // Should auto-join (has required, no forbidden, under capacity)
@@ -559,6 +562,9 @@ mod tests {
             address: SocketAddr::new(IpAddr::V4(Ipv4Addr::new(10, 0, 1, 100)), 2300),
             last_seen: SystemTime::now(),
             version: "2.1".to_string(),
+            tags: None,
+            timestamp: None,
+            identity_attestations: Some(Vec::new()),
         };
 
         let routes = router.route(&school_peer).await;
@@ -577,6 +583,9 @@ mod tests {
             address: SocketAddr::new(IpAddr::V4(Ipv4Addr::new(192, 168, 1, 100)), 2300),
             last_seen: SystemTime::now(),
             version: "2.1".to_string(),
+            tags: None,
+            timestamp: None,
+            identity_attestations: Some(Vec::new()),
         };
 
         let routes = router.route(&home_peer).await;

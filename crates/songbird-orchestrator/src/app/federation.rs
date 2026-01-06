@@ -216,7 +216,7 @@ fn detect_gpu() -> Option<String> {
 /// Uses `sysinfo` crate for cross-platform storage detection.
 /// Returns total available storage across all disks in gigabytes.
 fn detect_storage_capacity() -> Option<usize> {
-    use sysinfo::{Disks, System};
+    use sysinfo::Disks;
 
     let disks = Disks::new_with_refreshed_list();
 

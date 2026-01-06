@@ -128,16 +128,38 @@ impl LineageRelayCoordinator {
         peer: &NodeId,
         address: SocketAddr,
     ) -> Result<DirectConnection> {
-        // In real implementation, would attempt UDP hole punching or direct TCP
-        // For now, simulate with timeout
+        // 🚨 DEEP DEBT (v3.10.4 - Jan 6, 2026): Mock implementation with sleep
+        //
+        // CURRENT: Mock that always fails after simulated 100ms delay
+        // SHOULD BE: Real UDP hole punching or STUN/TURN implementation
+        //
+        // Modern Implementation Options:
+        // 1. UDP Hole Punching:
+        //    - Both peers send UDP packets to each other's public endpoints
+        //    - NAT traversal via simultaneous open
+        //    - Use tokio::net::UdpSocket
+        //
+        // 2. STUN Protocol:
+        //    - Discover public IP/port via STUN server
+        //    - Attempt direct connection with discovered endpoints
+        //    - Use stun-rs crate
+        //
+        // 3. TURN Relay (fallback):
+        //    - Use TURN server for NAT traversal when hole punching fails
+        //    - More reliable but higher latency
+        //
+        // Current mock always fails to demonstrate relay fallback path.
+        //
+        // Status: MOCK/INCOMPLETE - Real implementation needed for production
+        // Priority: LOW (relay fallback works, direct connection is optimization)
         timeout(self.config.direct_timeout, async {
-            // Simulate connection attempt
-            tokio::time::sleep(Duration::from_millis(100)).await;
+            // TODO: Implement real UDP hole punching / STUN
+            // For now: mock that demonstrates fallback to relay
+            tokio::time::sleep(Duration::from_millis(100)).await; // ❌ MOCK SIMULATION
 
-            // For mock: always fail (to demonstrate relay)
-            // In real implementation: try actual connection
+            // Mock: always fail to demonstrate relay
             Err(LineageRelayError::DirectConnectionFailed(format!(
-                "Could not establish direct connection to {}",
+                "Could not establish direct connection to {} (mock always fails)",
                 address
             )))
         })
@@ -163,11 +185,33 @@ impl LineageRelayCoordinator {
         let relay_discovery = self.relay_discovery.clone();
         let my_relay_address = relay_address;
 
+        // 🚨 DEEP DEBT (v3.10.4 - Jan 6, 2026): Polling loop with sleep
+        //
+        // CURRENT: Polls every 1 second (blocking, wasteful, high latency)
+        // SHOULD BE: Event-driven with mpsc channel
+        //
+        // Modern Rust Solution:
+        // ```rust
+        // let (request_tx, mut request_rx) = tokio::sync::mpsc::channel(100);
+        // tokio::spawn(async move {
+        //     while let Some(request) = request_rx.recv().await {
+        //         process_relay_request(request).await;
+        //     }
+        // });
+        // ```
+        //
+        // Benefits:
+        // - Zero latency (instant processing)
+        // - No CPU waste (event-driven)
+        // - Proper backpressure (bounded queue)
+        // - Clean shutdown (channel close)
+        //
+        // Status: INCOMPLETE - This module needs architectural evolution
+        // Priority: MEDIUM (relay functionality is experimental)
         tokio::spawn(async move {
             loop {
-                // Get relay request messages
-                // In real implementation, would continuously process requests
-                tokio::time::sleep(Duration::from_secs(1)).await;
+                // TODO: Replace with mpsc channel-based request queue
+                tokio::time::sleep(Duration::from_secs(1)).await; // ❌ POLLING ANTI-PATTERN
                 // Process any pending relay requests here
             }
         });

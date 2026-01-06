@@ -32,8 +32,7 @@ async fn test_http_server_starts_with_sovereign_socket() -> Result<()> {
             federation_state,
             service_registry,
             local_service_registry,
-            "0.0.0.0",
-            0, // Ephemeral port
+            "0.0.0.0:0".parse().unwrap(), // Ephemeral port
         )
         .await
     });
@@ -62,8 +61,7 @@ async fn test_http_server_health_endpoint_with_sovereign_socket() -> Result<()> 
             federation_state,
             service_registry,
             local_service_registry,
-            "127.0.0.1",
-            18765, // Fixed port for testing
+            "127.0.0.1:18765".parse().unwrap(), // Fixed port for testing
         )
         .await;
     });
@@ -105,8 +103,7 @@ async fn test_http_server_rapid_restart_with_sovereign_socket() -> Result<()> {
                 federation_state,
                 service_registry,
                 local_service_registry,
-                "127.0.0.1",
-                port,
+                format!("127.0.0.1:{}", port).parse().unwrap(),
             )
             .await
         });
@@ -142,8 +139,7 @@ async fn test_http_server_concurrent_requests_with_sovereign_socket() -> Result<
             federation_state,
             service_registry,
             local_service_registry,
-            "127.0.0.1",
-            port,
+            format!("127.0.0.1:{}", port).parse().unwrap(),
         )
         .await;
     });
@@ -210,8 +206,7 @@ async fn test_http_server_fallback_port_selection() -> Result<()> {
             federation_state,
             service_registry,
             local_service_registry,
-            "127.0.0.1",
-            blocked_port,
+            format!("127.0.0.1:{}", blocked_port).parse().unwrap(),
         )
         .await
     });
@@ -241,8 +236,7 @@ async fn test_http_server_ipv4_and_ipv6_binding() -> Result<()> {
             federation_state_v4,
             service_registry_v4,
             Arc::new(songbird_orchestrator::service_registry::ServiceRegistry::new()),
-            "0.0.0.0", // IPv4 wildcard
-            18769,
+            "0.0.0.0:18769".parse().unwrap(), // IPv4 wildcard
         )
         .await
     });
@@ -262,8 +256,7 @@ async fn test_http_server_ipv4_and_ipv6_binding() -> Result<()> {
             federation_state_v6,
             service_registry_v6,
             Arc::new(songbird_orchestrator::service_registry::ServiceRegistry::new()),
-            "::", // IPv6 wildcard
-            18770,
+            "[::]:18770".parse().unwrap(), // IPv6 wildcard
         )
         .await
     });

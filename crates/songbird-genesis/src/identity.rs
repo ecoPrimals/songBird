@@ -76,18 +76,18 @@ impl NewNodeIdentity {
 
     /// Verify all primal signatures using BearDog
     pub async fn verify_all_signatures(&self) -> bool {
-        use crate::beardog_client::BearDogClient;
+        use crate::security_capability_client::SecurityCapabilityClient;
 
         if self.genesis_lineage.primal_lineages.is_empty() {
             return false;
         }
 
-        // Try to create BearDog client for verification
-        let client = match BearDogClient::new().await {
+        // Try to create security capability client for verification
+        let client = match SecurityCapabilityClient::new().await {
             Ok(client) => client,
             Err(e) => {
                 tracing::warn!(
-                    "BearDog not available for signature verification: {}. Using basic check.",
+                    "Security provider not available for signature verification: {}. Using basic check.",
                     e
                 );
                 // Fallback: Just check we have lineages

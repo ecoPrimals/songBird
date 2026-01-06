@@ -75,25 +75,44 @@
 pub mod access_control; // Access control & graduated information disclosure (Q1 2025)
 pub mod app;
 pub mod cli;
+pub mod connections; // Progressive trust connection management (Jan 2026)
 pub mod consent_management;
 pub mod core; // Consolidated core functionality
 pub mod error_recovery; // Error recovery & resilience (Week 3 - Dec 18, 2025)
 pub mod integration;
+pub mod ipc; // Inter-Primal Communication (Unix socket IPC + primal registry) (Jan 4, 2026)
 pub mod network; // Network binding & endpoint management (Dec 20, 2025) - Zero-config intelligent binding
 pub mod node_identity; // Stable node identity (Dec 20, 2025) - Multi-path transport foundation
 pub mod observability; // Basic observability (Week 4 - Dec 18, 2025)
 pub mod orchestrator; // MVP Integration (Week 1-5 - Dec 18, 2025)
 pub mod privilege; // Secure privilege management (Dec 20, 2025) - CAP_NET_ADMIN, no sudo prompts
-pub mod process_manager; // Process lifecycle & singleton enforcement (Dec 20, 2025) - Prevents split state bug
+pub mod process_manager; // Process lifecycle & multi-instance support (Jan 4, 2026) - Enables fractal scaling
+pub mod registration; // Node registration with genetic lineage (Jan 1, 2026) - biomeOS integration
 pub mod resource_management; // Resource management & fairness (Week 2 - Dec 18, 2025)
 pub mod rpc; // Multi-protocol RPC (JSON-RPC, tarpc)
+pub mod security_capability_client; // Security capability client (provider-agnostic) (Jan 1, 2026)
+pub mod self_knowledge; // Self-knowledge about this primal (zero hardcoding!) (Jan 1, 2026)
 pub mod server;
 pub mod service_registry; // Universal Port Authority (Dec 20, 2025) - Inter-primal service registration
 pub mod task_lifecycle; // Task lifecycle management (Week 1 - Dec 18, 2025) // Consent management (Week 5 - Dec 18, 2025)
 pub mod trust; // Trust escalation system (Dec 19, 2025) - Zero-trust progressive escalation
+pub mod universal_adapter; // Universal Primal Adapter (capability-based discovery) (Jan 1, 2026)
 
 // Re-export main orchestrator
 pub use app::SongbirdOrchestrator;
+
+// Re-export security capability client (provider-agnostic!)
+pub use security_capability_client::{SecurityCapabilityClient, TrustEvaluationRequest, TrustEvaluationResponse};
+
+// Re-export universal adapter (capability-based discovery!)
+pub use universal_adapter::{UniversalAdapter, DiscoveredProvider, CapabilityQuery};
+
+// Re-export self-knowledge (what we know about ourselves!)
+pub use self_knowledge::{SelfKnowledge, PrimalType as SelfPrimalType, NetworkInterface, SelfEndpoint, EnvironmentConfig};
+
+// Backward compatibility alias (deprecated - encourage migration!)
+#[deprecated(note = "Use SecurityCapabilityClient instead - no primal name hardcoding!")]
+pub use security_capability_client::SecurityCapabilityClient as BearDogClient;
 
 // Re-export MVP orchestrator integration
 pub use orchestrator::{HealthStatus, OrchestratorConfig, SongbirdOrchestrator as MvpOrchestrator};
@@ -115,3 +134,6 @@ pub use songbird_types::{SongbirdError, SongbirdResult};
 // Re-export key types that are commonly used
 // pub use songbird_universal_primals::{PrimalCapability, PrimalProvider};
 pub use songbird_universal::PrimalType;
+
+// Re-export connection types (progressive trust)
+pub use connections::{Connection, FederatedConnection, FullTrustConnection, LimitedConnection, PeerConnection};

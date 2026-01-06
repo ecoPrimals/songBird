@@ -13,10 +13,9 @@
 //! - Timeout behavior
 //! - Status code handling
 
-use mockito::{Mock, ServerGuard};
 use songbird_types::SongbirdResult;
 use songbird_universal::adapters::security::{
-    AuthResult, SecurityAdapter, SecurityHealth, SecurityMetrics,
+    AuthResult, SecurityAdapter, SecurityHealth,
 };
 use std::time::Duration;
 

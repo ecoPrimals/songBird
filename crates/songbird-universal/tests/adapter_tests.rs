@@ -14,7 +14,7 @@
 // Allow unwrap/expect in tests - idiomatic for test code
 #![allow(clippy::unwrap_used, clippy::expect_used)]
 
-use songbird_types::{SongbirdError, SongbirdResult};
+use songbird_types::SongbirdResult;
 use songbird_universal::*;
 
 #[test]

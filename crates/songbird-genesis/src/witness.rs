@@ -55,14 +55,14 @@ impl GenesisWitness {
 
     /// Verify witness signature using BearDog
     pub async fn verify_signature(&self, data: &[u8]) -> Result<bool> {
-        use crate::beardog_client::BearDogClient;
+        use crate::security_capability_client::SecurityCapabilityClient;
 
         if self.signature.is_empty() {
             return Ok(false);
         }
 
         // Try to create BearDog client
-        match BearDogClient::new().await {
+        match SecurityCapabilityClient::new().await {
             Ok(client) => {
                 // Use BearDog for cryptographic verification
                 client.verify_signature(&self.device_id, data, &self.signature).await.map_err(|e| {
@@ -85,10 +85,10 @@ impl GenesisWitness {
 
     /// Sign data as witness using BearDog
     pub async fn sign(&mut self, data: &[u8]) -> Result<Vec<u8>> {
-        use crate::beardog_client::BearDogClient;
+        use crate::security_capability_client::SecurityCapabilityClient;
 
         // Try to create BearDog client
-        match BearDogClient::new().await {
+        match SecurityCapabilityClient::new().await {
             Ok(client) => {
                 // Use BearDog for cryptographic signing
                 let signature = client.sign_data(&self.device_id, data).await.map_err(|e| {

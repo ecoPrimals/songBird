@@ -10,15 +10,16 @@ use std::net::{IpAddr, SocketAddr};
 use std::path::PathBuf;
 use tracing::{debug, info, warn};
 use uuid::Uuid;
+use songbird_types::{LineageId, LineageProof};
 
-/// Stable node identity
+/// Stable node identity with genetic lineage
 ///
 /// This identity remains constant across:
 /// - Network interface changes (WiFi → Ethernet)
 /// - IP address changes (DHCP)
 /// - Process restarts
 /// - System reboots (persisted to disk)
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct NodeIdentity {
     /// Stable unique identifier for this node
     pub node_id: Uuid,
@@ -28,6 +29,19 @@ pub struct NodeIdentity {
 
     /// All available transport endpoints for this node
     pub endpoints: Vec<TransportEndpoint>,
+
+    /// Genetic lineage identifier (NEW)
+    ///
+    /// Cryptographic ancestry of this node, enabling automatic
+    /// trust establishment with same-lineage peers.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub genetic_lineage: Option<LineageId>,
+
+    /// Cryptographic lineage proof (NEW)
+    ///
+    /// Signature chain proving this node's ancestry.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub lineage_proof: Option<LineageProof>,
 }
 
 /// A transport endpoint for reaching this node
@@ -61,10 +75,18 @@ impl NodeIdentity {
 
         // Generate new identity
         let node_id = Self::generate_stable_id()?;
+        
+        // CRITICAL FIX (Jan 5, 2026): Prefer SONGBIRD_NODE_ID over hostname
+        // This ensures multi-instance deployments have unique discoverable names
         let node_name = node_name.unwrap_or_else(|| {
-            hostname::get()
+            std::env::var("SONGBIRD_NODE_ID")
+                .or_else(|_| std::env::var("NODE_ID"))
                 .ok()
-                .and_then(|h| h.into_string().ok())
+                .or_else(|| {
+                    hostname::get()
+                        .ok()
+                        .and_then(|h| h.into_string().ok())
+                })
                 .unwrap_or_else(|| "songbird-node".to_string())
         });
 
@@ -72,6 +94,8 @@ impl NodeIdentity {
             node_id,
             node_name,
             endpoints: Vec::new(),
+            genetic_lineage: None,  // Will be set when BearDog integration is ready
+            lineage_proof: None,
         };
 
         // Persist to disk
@@ -81,20 +105,59 @@ impl NodeIdentity {
         Ok(identity)
     }
 
+    /// Set genetic lineage for this node
+    ///
+    /// Updates the node identity with genetic lineage information from BearDog.
+    pub fn set_lineage(&mut self, lineage_id: LineageId, proof: LineageProof) -> Result<()> {
+        self.genetic_lineage = Some(lineage_id.clone());
+        self.lineage_proof = Some(proof);
+        
+        // Persist updated identity
+        self.save_to_disk()?;
+        
+        info!("🧬 Updated node identity with genetic lineage: {}", lineage_id);
+        Ok(())
+    }
+
+    /// Check if this node has genetic lineage
+    pub fn has_lineage(&self) -> bool {
+        self.genetic_lineage.is_some() && self.lineage_proof.is_some()
+    }
+
+    /// Get lineage information
+    pub fn get_lineage(&self) -> Option<(&LineageId, &LineageProof)> {
+        self.genetic_lineage.as_ref()
+            .zip(self.lineage_proof.as_ref())
+    }
+
     /// Generate a stable node ID
     ///
+    /// CRITICAL FIX (Jan 5, 2026): Include NODE_ID in UUID generation
+    /// to support multiple instances on same machine
+    ///
     /// Strategy (in order of preference):
-    /// 1. Use /etc/machine-id (Linux standard)
-    /// 2. Use /var/lib/dbus/machine-id (systemd)
-    /// 3. Generate from MAC address (fallback)
+    /// 1. Use /etc/machine-id + NODE_ID (Linux standard, multi-instance)
+    /// 2. Use /var/lib/dbus/machine-id + NODE_ID (systemd)
+    /// 3. Generate from MAC address + NODE_ID (fallback)
     /// 4. Generate random UUID and persist (last resort)
     fn generate_stable_id() -> Result<Uuid> {
+        // Get NODE_ID if available for multi-instance support
+        let node_id_suffix = std::env::var("SONGBIRD_NODE_ID")
+            .or_else(|_| std::env::var("NODE_ID"))
+            .ok();
+        
         // Try machine-id (most stable)
         if let Ok(machine_id) = fs::read_to_string("/etc/machine-id") {
             let machine_id = machine_id.trim();
             if !machine_id.is_empty() {
+                // CRITICAL: Include NODE_ID in hash for uniqueness
+                let hash_input = if let Some(ref suffix) = node_id_suffix {
+                    format!("{}:{}", machine_id, suffix)
+                } else {
+                    machine_id.to_string()
+                };
                 // Hash machine-id to UUID
-                return Ok(Uuid::new_v5(&Uuid::NAMESPACE_DNS, machine_id.as_bytes()));
+                return Ok(Uuid::new_v5(&Uuid::NAMESPACE_DNS, hash_input.as_bytes()));
             }
         }
 
@@ -102,7 +165,12 @@ impl NodeIdentity {
         if let Ok(machine_id) = fs::read_to_string("/var/lib/dbus/machine-id") {
             let machine_id = machine_id.trim();
             if !machine_id.is_empty() {
-                return Ok(Uuid::new_v5(&Uuid::NAMESPACE_DNS, machine_id.as_bytes()));
+                let hash_input = if let Some(ref suffix) = node_id_suffix {
+                    format!("{}:{}", machine_id, suffix)
+                } else {
+                    machine_id.to_string()
+                };
+                return Ok(Uuid::new_v5(&Uuid::NAMESPACE_DNS, hash_input.as_bytes()));
             }
         }
 
@@ -111,7 +179,12 @@ impl NodeIdentity {
         {
             if let Ok(interfaces) = Self::get_mac_addresses() {
                 if let Some(mac) = interfaces.first() {
-                    return Ok(Uuid::new_v5(&Uuid::NAMESPACE_DNS, mac.as_bytes()));
+                    let hash_input = if let Some(ref suffix) = node_id_suffix {
+                        format!("{}:{}", mac, suffix)
+                    } else {
+                        mac.to_string()
+                    };
+                    return Ok(Uuid::new_v5(&Uuid::NAMESPACE_DNS, hash_input.as_bytes()));
                 }
             }
         }
@@ -142,7 +215,16 @@ impl NodeIdentity {
     /// Path to identity file
     fn identity_path() -> PathBuf {
         let data_dir = dirs::data_local_dir().unwrap_or_else(|| PathBuf::from("."));
-        data_dir.join("songbird").join("node_identity.json")
+        
+        // CRITICAL FIX (Jan 5, 2026): Support multiple instances on same machine
+        // Use SONGBIRD_NODE_ID or NODE_ID to create unique identity files
+        let filename = std::env::var("SONGBIRD_NODE_ID")
+            .or_else(|_| std::env::var("NODE_ID"))
+            .ok()
+            .map(|node_id| format!("node_identity-{}.json", node_id))
+            .unwrap_or_else(|| "node_identity.json".to_string());
+        
+        data_dir.join("songbird").join(filename)
     }
 
     /// Save identity to disk
@@ -302,6 +384,8 @@ mod tests {
             node_id: Uuid::new_v4(),
             node_name: "test".to_string(),
             endpoints: Vec::new(),
+            genetic_lineage: None,
+            lineage_proof: None,
         };
 
         // Add Ethernet endpoint
@@ -335,6 +419,8 @@ mod tests {
             node_id: Uuid::new_v4(),
             node_name: "test".to_string(),
             endpoints: Vec::new(),
+            genetic_lineage: None,
+            lineage_proof: None,
         };
 
         let addr: SocketAddr = "192.168.1.144:8080".parse().unwrap();

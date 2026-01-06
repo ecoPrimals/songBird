@@ -186,6 +186,36 @@ impl RelayDiscovery {
     }
 
     /// Wait for relay offer (from ancestors)
+    ///
+    /// 🚨 DEEP DEBT (v3.10.4 - Jan 6, 2026): Polling loop with sleep
+    ///
+    /// CURRENT: Polls broadcaster every 100ms (blocking, wasteful, introduces latency)
+    /// SHOULD BE: Event-driven with watch channel or notification
+    ///
+    /// Modern Rust Solution:
+    /// ```rust
+    /// // In broadcaster: notify on new messages
+    /// let (offer_tx, mut offer_rx) = tokio::sync::watch::channel(None);
+    ///
+    /// // Producer notifies
+    /// offer_tx.send(Some(offer))?;
+    ///
+    /// // Consumer waits (instant notification, zero latency)
+    /// timeout(duration, async {
+    ///     offer_rx.changed().await?;
+    ///     Ok(offer_rx.borrow().clone().unwrap())
+    /// }).await?
+    /// ```
+    ///
+    /// Benefits:
+    /// - Zero latency (instant notification vs 100ms polling)
+    /// - No CPU waste (event-driven, not busy-waiting)
+    /// - Cleaner code (no manual polling logic)
+    ///
+    /// Alternative: Make broadcaster.get_messages() await-able (blocking call)
+    ///
+    /// Status: INCOMPLETE - Requires broadcaster architectural changes
+    /// Priority: MEDIUM (relay functionality is experimental)
     async fn wait_for_relay_offer(&self, duration: Duration) -> Result<RelayOffer> {
         timeout(duration, async {
             loop {
@@ -202,8 +232,8 @@ impl RelayDiscovery {
                     }
                 }
 
-                // Wait a bit before checking again
-                tokio::time::sleep(Duration::from_millis(100)).await;
+                // TODO: Replace with watch channel or await-able broadcaster API
+                tokio::time::sleep(Duration::from_millis(100)).await; // ❌ POLLING ANTI-PATTERN
             }
         })
         .await

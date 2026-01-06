@@ -30,12 +30,16 @@ async-trait = "0.1"
 futures-util = "0.3"
 parking_lot = "0.12"
 reqwest = { version = "0.11", features = ["json", "rustls-tls"] }
+base64 = "0.21"  # For BearDog BirdSong provider
 uuid = { workspace = true }
 thiserror = { workspace = true }
 chrono = { workspace = true }
 hickory-resolver = { workspace = true }
 num_cpus = { workspace = true }
 sha2 = "0.10"  # For session ID generation in anonymous discovery
+anyhow = "1.0"  # For lineage discovery error handling
+hex = "0.4"  # For discovery packet hashing
+socket2 = "0.5"  # For multicast socket configuration
 
 [dev-dependencies]
 tracing-subscriber = "0.3"

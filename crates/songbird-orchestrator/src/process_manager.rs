@@ -1,16 +1,26 @@
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-//  Process Manager - Singleton Enforcement & PID File Management
+//  Process Manager - Multi-Instance Support with NODE_ID Scoping
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 //
 //  Purpose:
-//    Ensures only one Songbird orchestrator instance runs at a time
-//    Prevents "Federation Split State Bug" (Dec 20, 2025)
+//    Ensures only one Songbird instance per NODE_ID runs at a time
+//    Supports multi-instance deployments (Albatross, Sparrow flocks, etc.)
+//
+//  Evolution from v3.7.2:
+//    - Was: Global singleton (blocked multi-spore)
+//    - Now: NODE_ID-scoped singleton (enables fractal scaling)
 //
 //  Features:
-//    - PID file management
+//    - PID file management (scoped per FAMILY_ID + NODE_ID)
 //    - Stale process detection
 //    - Graceful takeover
+//    - Multi-instance support (Albatross, Sparrow, etc.)
 //    - Friendly error messages
+//
+//  Design Philosophy:
+//    "Songbirds can take many forms: singleton Songbird, Albatross multiplexer,
+//     or flocks of Sparrows for IoT. Each has its own identity but can coordinate,
+//     form hierarchies, or subspawn as needed."
 //
 //  User Collaboration:
 //    Instead of silently failing or allowing duplicates, we:
@@ -27,17 +37,31 @@ use std::path::PathBuf;
 use std::process;
 use tracing::{debug, error, info, warn};
 
-/// Process manager for singleton enforcement
+/// Process manager for multi-instance support
+///
+/// Each Songbird instance (identified by FAMILY_ID + NODE_ID) gets its own PID file.
+/// This enables:
+/// - Multi-spore deployments (multiple Songbirds per machine)
+/// - Albatross multiplexer instances
+/// - Sparrow IoT flocks
+/// - Any other Songbird variant
 pub struct ProcessManager {
     pid_file: PathBuf,
+    node_identity: Option<String>, // For error messages
 }
 
 impl ProcessManager {
-    /// Create a new process manager with default PID file location
+    /// Create a new process manager with NODE_ID-scoped PID file
+    ///
+    /// This automatically reads SONGBIRD_FAMILY_ID and SONGBIRD_NODE_ID from the environment
+    /// to create a unique PID file per instance, enabling multi-instance deployments.
     pub fn new() -> Result<Self> {
         let pid_file = Self::default_pid_file()?;
+        let node_identity = Self::get_node_identity();
+        
         Ok(Self {
             pid_file,
+            node_identity,
         })
     }
 
@@ -45,17 +69,63 @@ impl ProcessManager {
     pub fn with_pid_file(pid_file: PathBuf) -> Self {
         Self {
             pid_file,
+            node_identity: Self::get_node_identity(),
+        }
+    }
+    
+    /// Get node identity from environment (for error messages)
+    fn get_node_identity() -> Option<String> {
+        let family = std::env::var("SONGBIRD_FAMILY_ID")
+            .or_else(|_| std::env::var("FAMILY_ID"))
+            .ok();
+        let node = std::env::var("SONGBIRD_NODE_ID")
+            .or_else(|_| std::env::var("NODE_ID"))
+            .or_else(|_| std::env::var("SPORE_ID"))
+            .ok();
+        
+        match (family, node) {
+            (Some(f), Some(n)) => Some(format!("{}-{}", f, n)),
+            (Some(f), None) => Some(f),
+            (None, Some(n)) => Some(n),
+            (None, None) => None,
         }
     }
 
     /// Get the default PID file location
     ///
+    /// PID file path is scoped by FAMILY_ID and NODE_ID to allow multiple instances:
+    ///
+    /// Examples:
+    /// - `/var/run/songbird/songbird-nat0-tower1.pid` (multi-spore)
+    /// - `/var/run/songbird/songbird-albatross-main.pid` (Albatross)
+    /// - `/var/run/songbird/songbird-sparrow-iot1.pid` (Sparrow fleet)
+    /// - `/var/run/songbird/songbird.pid` (legacy fallback)
+    ///
     /// Priority:
-    /// 1. /var/run/songbird/songbird.pid (system-wide, requires root)
-    /// 2. ~/.local/share/songbird/songbird.pid (user-specific)
+    /// 1. /var/run/songbird/songbird-{family}-{node}.pid (system-wide, requires root)
+    /// 2. ~/.local/share/songbird/songbird-{family}-{node}.pid (user-specific)
     fn default_pid_file() -> Result<PathBuf> {
+        // Get FAMILY_ID and NODE_ID from environment
+        let family_id = std::env::var("SONGBIRD_FAMILY_ID")
+            .or_else(|_| std::env::var("FAMILY_ID"))
+            .ok();
+        let node_id = std::env::var("SONGBIRD_NODE_ID")
+            .or_else(|_| std::env::var("NODE_ID"))
+            .or_else(|_| std::env::var("SPORE_ID"))
+            .ok();
+        
+        // Build filename suffix based on available IDs
+        let filename_suffix = match (family_id.as_ref(), node_id.as_ref()) {
+            (Some(family), Some(node)) => format!("-{}-{}", family, node),
+            (Some(family), None) => format!("-{}", family),
+            (None, Some(node)) => format!("-{}", node),
+            (None, None) => String::new(), // Legacy fallback
+        };
+        
+        let filename = format!("songbird{}.pid", filename_suffix);
+        
         // Try system-wide location first
-        let system_path = PathBuf::from("/var/run/songbird/songbird.pid");
+        let system_path = PathBuf::from("/var/run/songbird").join(&filename);
         if let Some(parent) = system_path.parent() {
             if parent.exists() || fs::create_dir_all(parent).is_ok() {
                 return Ok(system_path);
@@ -64,7 +134,7 @@ impl ProcessManager {
 
         // Fall back to user-specific location
         let home = dirs::home_dir().context("Could not determine home directory")?;
-        let user_path = home.join(".local/share/songbird/songbird.pid");
+        let user_path = home.join(".local/share/songbird").join(&filename);
 
         if let Some(parent) = user_path.parent() {
             fs::create_dir_all(parent).context("Failed to create PID file directory")?;
@@ -73,17 +143,21 @@ impl ProcessManager {
         Ok(user_path)
     }
 
-    /// Acquire singleton lock
+    /// Acquire instance lock (scoped per NODE_ID)
     ///
-    /// This ensures only one instance can run at a time.
+    /// This ensures only one instance **with this specific NODE_ID** can run at a time.
+    /// Multiple instances with different NODE_IDs can run simultaneously.
     ///
     /// # Errors
     ///
     /// Returns an error if:
-    /// - Another instance is already running
+    /// - Another instance **with the same NODE_ID** is already running
     /// - Cannot write PID file
     pub fn acquire_lock(&self) -> Result<SingletonGuard> {
-        debug!("Attempting to acquire singleton lock: {}", self.pid_file.display());
+        debug!("Attempting to acquire instance lock: {}", self.pid_file.display());
+        if let Some(ref identity) = self.node_identity {
+            debug!("   Node Identity: {}", identity);
+        }
 
         // Check if PID file exists
         if self.pid_file.exists() {
@@ -93,7 +167,12 @@ impl ProcessManager {
             if self.is_process_running(existing_pid) {
                 // A real instance is running - bail out with helpful message
                 self.print_duplicate_error(existing_pid)?;
-                bail!("Another Songbird instance is already running (PID: {})", existing_pid);
+                
+                let identity_msg = self.node_identity.as_ref()
+                    .map(|id| format!(" with NODE_ID={}", id))
+                    .unwrap_or_default();
+                
+                bail!("Another Songbird instance{} is already running (PID: {})", identity_msg, existing_pid);
             } else {
                 // Stale PID file - clean it up
                 warn!("Found stale PID file (PID {} not running), cleaning up", existing_pid);
@@ -105,7 +184,10 @@ impl ProcessManager {
         let current_pid = process::id();
         self.write_pid_file(current_pid)?;
 
-        info!("✅ Singleton lock acquired (PID: {})", current_pid);
+        info!("✅ Instance lock acquired (PID: {})", current_pid);
+        if let Some(ref identity) = self.node_identity {
+            info!("   Node Identity: {}", identity);
+        }
         info!("   PID file: {}", self.pid_file.display());
 
         Ok(SingletonGuard {
@@ -164,22 +246,40 @@ impl ProcessManager {
         }
     }
 
-    /// Print a helpful error message when a duplicate is detected
+    /// Print a helpful error message when a duplicate NODE_ID is detected
     fn print_duplicate_error(&self, existing_pid: u32) -> Result<()> {
+        let identity_display = self.node_identity.as_ref()
+            .map(|id| format!("NODE_ID: {}", id))
+            .unwrap_or_else(|| "NODE_ID: (not set)".to_string());
+        
         error!("╔═══════════════════════════════════════════════════════════════════╗");
         error!("║                                                                   ║");
-        error!("║  ⚠️  SONGBIRD ALREADY RUNNING                                     ║");
+        error!("║  ⚠️  SONGBIRD INSTANCE ALREADY RUNNING                            ║");
         error!("║                                                                   ║");
         error!("╚═══════════════════════════════════════════════════════════════════╝");
         error!("");
-        error!("Another Songbird instance is already running:");
+        error!("Another Songbird instance with the same identity is running:");
         error!("  PID: {}", existing_pid);
+        error!("  {}", identity_display);
         error!("  PID file: {}", self.pid_file.display());
         error!("");
-        error!("This prevents the 'Federation Split State Bug' where multiple");
-        error!("instances create inconsistent federation views.");
+        error!("This prevents multiple instances with the same NODE_ID from");
+        error!("creating inconsistent state.");
         error!("");
-        error!("Options:");
+        error!("💡 To run multiple Songbird instances on this machine:");
+        error!("   Set unique SONGBIRD_NODE_ID for each instance:");
+        error!("");
+        error!("   # Spore 1");
+        error!("   export SONGBIRD_FAMILY_ID=nat0");
+        error!("   export SONGBIRD_NODE_ID=tower1");
+        error!("   songbird &");
+        error!("");
+        error!("   # Spore 2 (different NODE_ID!)");
+        error!("   export SONGBIRD_FAMILY_ID=nat0");
+        error!("   export SONGBIRD_NODE_ID=tower2");
+        error!("   songbird &");
+        error!("");
+        error!("Options for this instance:");
         error!("  1. Stop the existing instance:");
         error!("     kill {}", existing_pid);
         error!("");
@@ -201,9 +301,10 @@ impl Default for ProcessManager {
     }
 }
 
-/// RAII guard for singleton lock
+/// RAII guard for instance lock
 ///
-/// Automatically releases the lock (removes PID file) when dropped
+/// Automatically releases the lock (removes PID file) when dropped.
+/// This ensures clean shutdown even in case of panics.
 pub struct SingletonGuard {
     pid_file: PathBuf,
     pid: u32,
@@ -211,13 +312,13 @@ pub struct SingletonGuard {
 
 impl Drop for SingletonGuard {
     fn drop(&mut self) {
-        debug!("Releasing singleton lock (PID: {})", self.pid);
+        debug!("Releasing instance lock (PID: {})", self.pid);
 
         if self.pid_file.exists() {
             if let Err(e) = fs::remove_file(&self.pid_file) {
                 warn!("Failed to remove PID file on shutdown: {}", e);
             } else {
-                info!("✅ Singleton lock released cleanly");
+                info!("✅ Instance lock released cleanly");
             }
         }
     }

@@ -10,7 +10,8 @@ use songbird_types::config::CanonicalSongbirdConfig;
 /// Main entry point for the Songbird Orchestrator
 #[tokio::main]
 async fn main() -> Result<()> {
-    // ✅ Step 1: Acquire singleton lock FIRST (before any resources)
+    // ✅ Step 1: Acquire instance lock FIRST (before any resources)
+    // This lock is scoped per NODE_ID, enabling multi-instance deployments
     // This prevents "Federation Split State Bug" (Dec 20, 2025)
     let process_mgr = ProcessManager::new()?;
     let _singleton_guard = process_mgr.acquire_lock()?;
@@ -25,9 +26,25 @@ async fn main() -> Result<()> {
     // Step 3: Initialize tracing
     tracing_subscriber::fmt::init();
 
+    // Get node identity for logging
+    let node_identity = std::env::var("SONGBIRD_NODE_ID")
+        .or_else(|_| std::env::var("NODE_ID"))
+        .or_else(|_| std::env::var("SPORE_ID"))
+        .ok();
+    
+    let family_identity = std::env::var("SONGBIRD_FAMILY_ID")
+        .or_else(|_| std::env::var("FAMILY_ID"))
+        .ok();
+
     tracing::info!("🚀 Starting Songbird Orchestrator...");
     tracing::info!("   Process ID: {}", std::process::id());
-    tracing::info!("   Singleton: Enforced (PID file active)");
+    if let Some(ref family) = family_identity {
+        tracing::info!("   Family: {}", family);
+    }
+    if let Some(ref node) = node_identity {
+        tracing::info!("   Node: {}", node);
+    }
+    tracing::info!("   Instance Lock: Enforced (PID file active)");
 
     // Step 4: Load configuration from environment
     let config = CanonicalSongbirdConfig::from_env()
@@ -42,7 +59,7 @@ async fn main() -> Result<()> {
     tokio::signal::ctrl_c().await?;
 
     tracing::info!("🛑 Shutting down Songbird Orchestrator...");
-    tracing::info!("   Singleton lock will release automatically");
+    tracing::info!("   Instance lock will release automatically");
 
     Ok(())
     // _singleton_guard drops here, removing PID file cleanly

@@ -221,6 +221,26 @@ mod att_uuid {
     pub const CLIENT_CHAR_CONFIG: u16 = 0x2902;
 }
 
+/// GATT (Generic Attribute Profile) client for Bluetooth LE devices
+///
+/// Provides a high-level interface for interacting with GATT services and characteristics
+/// on Bluetooth Low Energy devices. Supports reading, writing, and subscribing to
+/// characteristic notifications.
+///
+/// # Example
+///
+/// ```no_run
+/// use songbird_bluetooth::gatt::GattClient;
+/// use songbird_bluetooth::transport::Transport;
+///
+/// # async fn example<T: Transport>(transport: T) {
+/// let mut client = GattClient::new(transport);
+/// // Discover services
+/// client.discover_services().await.unwrap();
+/// // Read characteristic
+/// let value = client.read_characteristic(uuid).await.unwrap();
+/// # }
+/// ```
 pub struct GattClient<T: Transport> {
     device: Arc<Device>,
     services: Vec<Service>,

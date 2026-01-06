@@ -30,6 +30,16 @@ pub use errors::{AutomationHint, SecurityError, SongbirdError, SongbirdResult, U
 // Re-export error helper traits for unwrap elimination
 pub use error_helpers::{OptionElimination, SafeEnv, SafeParse, UnwrapElimination};
 
+// Re-export genetic lineage types
+pub use lineage::{
+    CurrentLineage, LineageError, LineageId, LineageProof, LineageSignature, LineageVerification,
+};
+
+// Re-export progressive trust types
+pub use trust::{
+    ElevationEvidence, ElevationPath, TrustEvaluation, TrustLevel, is_operation_allowed,
+};
+
 // Re-export response types
 pub use response::{
     AIFirstResponse,
@@ -68,7 +78,9 @@ pub mod constants;
 pub mod error_helpers;
 pub mod errors;
 pub mod health;
+pub mod lineage;  // Genetic lineage types
 pub mod memory_optimized;
+pub mod trust;  // Progressive trust model types
 // pub mod performance;  // Temporarily disabled - syntax errors need fixing
 pub mod primal;
 pub mod response;

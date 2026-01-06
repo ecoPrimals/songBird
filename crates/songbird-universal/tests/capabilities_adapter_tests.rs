@@ -8,7 +8,7 @@
 use songbird_test_utils::test_discovery_port;
 use songbird_test_utils::test_federation_port;
 use songbird_test_utils::test_health_port;
-use songbird_types::{SongbirdError, SongbirdResult};
+use songbird_types::SongbirdResult;
 use songbird_universal::capabilities::{DiscoveryConfig, PrimalType, UniversalCapabilityAdapter};
 use std::env;
 

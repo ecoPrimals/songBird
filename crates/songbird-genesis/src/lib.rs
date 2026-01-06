@@ -31,7 +31,8 @@
 #![warn(missing_docs)]
 #![warn(clippy::all)]
 
-pub mod beardog_client;
+// Security capability client (provider-agnostic!)
+pub mod security_capability_client;
 pub mod ceremony;
 pub mod coordination_bridge;
 pub mod error;

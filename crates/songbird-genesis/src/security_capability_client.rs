@@ -1,26 +1,26 @@
-//! BearDog Client for Genesis Operations
+//! Security Capability Client for Genesis Operations
 //!
-//! Provides HTTP client for BearDog signing and verification operations.
+//! Provider-agnostic client for security capabilities (signing, verification).
+//! Discovers security providers at runtime - NO hardcoded primal names!
 
 use anyhow::{Context, Result};
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 
-/// BearDog client for cryptographic operations
+/// Security capability client for cryptographic operations
 #[derive(Debug, Clone)]
-pub struct BearDogClient {
+pub struct SecurityCapabilityClient {
     base_url: String,
     http_client: reqwest::Client,
 }
 
-impl BearDogClient {
-    /// Create new BearDog client
+impl SecurityCapabilityClient {
+    /// Create new security client
     ///
-    /// Attempts to discover BearDog endpoint using:
-    /// 1. `BEARDOG_ENDPOINT` environment variable
-    /// 2. `SECURITY_ENDPOINT` environment variable
-    /// 3. Capability discovery (via songbird-config)
-    /// 4. Well-known default (localhost:8200)
+    /// Attempts to discover security provider endpoint using:
+    /// 1. `SECURITY_ENDPOINT` environment variable
+    /// 2. Capability discovery (via songbird-config)
+    /// 3. Well-known default (localhost:8200)
     pub async fn new() -> Result<Self> {
         let base_url = Self::discover_endpoint().await?;
 
@@ -29,7 +29,7 @@ impl BearDogClient {
             .build()
             .context("Failed to create HTTP client")?;
 
-        tracing::info!("🐻 BearDog client created for endpoint: {}", base_url);
+        tracing::info!("🔐 Security capability client created for endpoint: {}", base_url);
 
         Ok(Self {
             base_url,
@@ -306,20 +306,20 @@ mod tests {
 
     #[test]
     fn test_deterministic_fingerprint() {
-        let fp1 = BearDogClient::generate_deterministic_fingerprint("test-node");
-        let fp2 = BearDogClient::generate_deterministic_fingerprint("test-node");
+        let fp1 = SecurityCapabilityClient::generate_deterministic_fingerprint("test-node");
+        let fp2 = SecurityCapabilityClient::generate_deterministic_fingerprint("test-node");
 
         // Should be deterministic
         assert_eq!(fp1, fp2);
 
         // Different nodes should have different fingerprints
-        let fp3 = BearDogClient::generate_deterministic_fingerprint("other-node");
+        let fp3 = SecurityCapabilityClient::generate_deterministic_fingerprint("other-node");
         assert_ne!(fp1, fp3);
     }
 
     #[tokio::test]
     async fn test_client_creation_with_explicit_endpoint() {
-        let client = BearDogClient::with_endpoint("http://localhost:9999");
+        let client = SecurityCapabilityClient::with_endpoint("http://localhost:9999");
         assert!(client.is_ok());
 
         let client = client.unwrap();

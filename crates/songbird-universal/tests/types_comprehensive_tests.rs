@@ -77,9 +77,9 @@ fn test_primal_type_clone() -> SongbirdResult<()> {
 fn test_primal_type_serialization() -> SongbirdResult<()> {
     let primal = PrimalType::new("compute");
     let json = serde_json::to_string(&primal)
-        .map_err(|e| SongbirdError::configuration("Failed to serialize"))?;
+        .map_err(|_e| SongbirdError::configuration("Failed to serialize"))?;
     let deserialized: PrimalType = serde_json::from_str(&json)
-        .map_err(|e| SongbirdError::configuration("Failed to deserialize"))?;
+        .map_err(|_e| SongbirdError::configuration("Failed to deserialize"))?;
 
     assert_eq!(deserialized, primal);
     Ok(())
