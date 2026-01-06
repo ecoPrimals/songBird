@@ -1,0 +1,395 @@
+//! Anonymous Discovery Broadcaster
+//!
+//! This module contains the broadcasting logic for anonymous discovery via UDP multicast.
+//!
+//! ## Contents
+//! - `AnonymousDiscoveryBroadcaster` - Broadcasts discovery messages
+//! - Multicast setup and network interface detection
+//! - V2.1 and v3.0 protocol support
+//! - Optional BirdSong encryption integration
+
+use std::net::SocketAddr;
+use std::sync::Arc;
+use tokio::net::UdpSocket;
+use tracing::{debug, error, info, warn};
+
+use super::messages::{AnonymousDiscoveryMessage, TransportEndpointMessage};
+
+/// Anonymous discovery broadcaster
+///
+/// Broadcasts anonymous discovery messages over UDP multicast to find other towers.
+/// Supports both v2.1 (session-based) and v3.0 (node-identity-based) protocols.
+///
+/// Uses UDP multicast (224.0.0.251) by default for reliable cross-router discovery.
+/// Falls back to broadcast and known peers for maximum compatibility.
+pub struct AnonymousDiscoveryBroadcaster {
+    /// Protocol version ("2.1" or "3.0")
+    version: String,
+
+    /// Stable node ID (v3.0 only)
+    node_id: Option<String>,
+
+    /// Node name (v3.0 only)
+    node_name: Option<String>,
+
+    /// All endpoints (v3.0 only)
+    endpoints: Option<Vec<TransportEndpointMessage>>,
+
+    /// Capabilities to advertise
+    capabilities: Vec<String>,
+
+    /// Protocols supported (v2.1 fallback)
+    protocols: Vec<String>,
+
+    /// Port where this tower's HTTPS/TLS server is listening (v2.1 fallback)
+    port: u16,
+
+    /// Multicast/broadcast addresses to send to
+    broadcast_addresses: Vec<SocketAddr>,
+
+    /// Known peer addresses for direct discovery (bypasses multicast)
+    known_peers: Vec<SocketAddr>,
+
+    /// Broadcast interval in seconds
+    interval_secs: u64,
+    
+    /// Identity attestations from security provider (CRITICAL FIX - Jan 3, 2026)
+    ///
+    /// These are provided by the security capability provider (e.g., BearDog) on startup
+    /// and enable genetic lineage auto-trust. MUST be included for federation to work!
+    identity_attestations: Option<Vec<crate::IdentityAttestation>>,
+    
+    /// BirdSong encryption processor (optional) - NEW (Jan 3, 2026)
+    birdsong: Option<Arc<crate::birdsong_integration::BirdSongProcessor>>,
+    
+    /// Statistics tracker for observability (optional) - NEW (Jan 5, 2026)
+    stats: Option<Arc<crate::discovery_stats::DiscoveryStats>>,
+}
+
+impl AnonymousDiscoveryBroadcaster {
+    /// Create a new anonymous discovery broadcaster (v2.1 - backward compatible)
+    #[must_use] 
+    pub fn new(
+        capabilities: Vec<String>,
+        protocols: Vec<String>,
+        port: u16,
+        broadcast_addresses: Vec<SocketAddr>,
+        interval_secs: u64,
+    ) -> Self {
+        Self {
+            version: "2.1".to_string(),
+            node_id: None,
+            node_name: None,
+            endpoints: None,
+            capabilities,
+            protocols,
+            port,
+            broadcast_addresses,
+            known_peers: Vec::new(),
+            interval_secs,
+            identity_attestations: None,
+            birdsong: None,
+            stats: None,
+        }
+    }
+
+    /// Create a new v3.0 broadcaster with node identity and multiple endpoints
+    #[must_use] 
+    pub fn new_v3(
+        node_id: String,
+        node_name: String,
+        endpoints: Vec<TransportEndpointMessage>,
+        capabilities: Vec<String>,
+        broadcast_addresses: Vec<SocketAddr>,
+        interval_secs: u64,
+    ) -> Self {
+        // Extract primary endpoint for v2.1 fallback
+        let primary = endpoints.first();
+
+        // Extract port from address (format: "IP:port")
+        let port = primary
+            .and_then(|e| e.address.split(':').nth(1))
+            .and_then(|p| p.parse().ok())
+            .unwrap_or(8080);
+
+        let protocols =
+            primary.map_or_else(|| vec!["https".to_string()], |e| e.protocols.clone());
+
+        Self {
+            version: "3.0".to_string(),
+            node_id: Some(node_id),
+            node_name: Some(node_name),
+            endpoints: Some(endpoints),
+            capabilities,
+            protocols,
+            port,
+            broadcast_addresses,
+            known_peers: Vec::new(),
+            interval_secs,
+            identity_attestations: None,
+            birdsong: None,
+            stats: None,
+        }
+    }
+
+    /// Add known peer addresses for direct discovery
+    #[must_use] 
+    pub fn with_known_peers(mut self, peers: Vec<SocketAddr>) -> Self {
+        self.known_peers = peers;
+        self
+    }
+    
+    /// Set identity attestations from security provider (CRITICAL FIX - Jan 3, 2026)
+    ///
+    /// Adds identity attestations for genetic lineage auto-trust. This should be called
+    /// after querying the security provider (e.g., BearDog) for our node's identity.
+    #[must_use] 
+    pub fn with_identity_attestations(mut self, attestations: Vec<crate::IdentityAttestation>) -> Self {
+        self.identity_attestations = Some(attestations);
+        self
+    }
+    
+    /// Enable statistics tracking for observability (NEW - Jan 5, 2026)
+    #[must_use]
+    pub fn with_stats(mut self, stats: Arc<crate::discovery_stats::DiscoveryStats>) -> Self {
+        stats.set_broadcasting(true);
+        self.stats = Some(stats);
+        self
+    }
+    
+    /// Enable BirdSong encrypted discovery (NEW - Jan 3, 2026)
+    ///
+    /// Adds BirdSong encryption for privacy-preserving discovery.
+    /// Only same-family peers can decrypt discovery packets.
+    #[must_use] 
+    pub fn with_birdsong(mut self, processor: Arc<crate::birdsong_integration::BirdSongProcessor>) -> Self {
+        info!("🎵 BirdSong encryption enabled for discovery broadcaster");
+        info!("   Status: {}", processor.status());
+        self.birdsong = Some(processor);
+        self
+    }
+
+    /// Start broadcasting discovery messages
+    ///
+    /// This runs indefinitely, broadcasting every `interval_secs` seconds.
+    /// Sends v2.1 or v3.0 messages based on broadcaster configuration.
+    ///
+    /// Uses UDP multicast for reliable cross-router discovery, with fallback to:
+    /// - Broadcast addresses (for local subnet)
+    /// - Known peers (for guaranteed delivery)
+    pub async fn start_broadcasting(&self) -> Result<(), std::io::Error> {
+        info!("🌐 Starting anonymous discovery broadcaster");
+        info!("   Version: {}", self.version);
+        if let Some(ref node_id) = self.node_id {
+            info!("   Node ID: {}", node_id);
+        }
+        if let Some(ref node_name) = self.node_name {
+            info!("   Node Name: {}", node_name);
+        }
+        if let Some(ref endpoints) = self.endpoints {
+            info!("   Endpoints: {} transport paths", endpoints.len());
+            for (i, endpoint) in endpoints.iter().enumerate() {
+                info!(
+                    "     {}. {} ({}, preference {})",
+                    i + 1,
+                    endpoint.interface_type,
+                    endpoint.address,
+                    endpoint.preference
+                );
+            }
+        }
+        info!("   Capabilities: {:?}", self.capabilities);
+        info!("   Protocols: {:?}", self.protocols);
+        info!("   Multicast/broadcast addresses: {:?}", self.broadcast_addresses);
+        if !self.known_peers.is_empty() {
+            info!("   Known peers: {:?}", self.known_peers);
+        }
+        info!("   Interval: {}s", self.interval_secs);
+
+        // Create UDP socket with multicast support using socket2
+        use socket2::{Domain, Protocol, Socket, Type};
+
+        let socket = Socket::new(Domain::IPV4, Type::DGRAM, Some(Protocol::UDP))?;
+        socket.set_broadcast(true)?; // Keep for fallback to broadcast
+        socket.set_multicast_ttl_v4(255)?; // Multicast TTL for cross-router
+        socket.set_nonblocking(true)?;
+
+        // Convert to tokio UdpSocket
+        let std_socket: std::net::UdpSocket = socket.into();
+        let socket = UdpSocket::from_std(std_socket)?;
+
+        info!("✅ Anonymous discovery broadcaster started (multicast-enabled)");
+
+        let mut interval =
+            tokio::time::interval(tokio::time::Duration::from_secs(self.interval_secs));
+
+        loop {
+            interval.tick().await;
+
+            // Create discovery message (v2.1 or v3.0)
+            let mut message = if self.version == "3.0" {
+                AnonymousDiscoveryMessage::new_v3(
+                    self.node_id.clone().unwrap(),
+                    self.node_name.clone().unwrap(),
+                    self.endpoints.clone().unwrap(),
+                    self.capabilities.clone(),
+                )
+            } else {
+                AnonymousDiscoveryMessage::new(
+                    self.capabilities.clone(),
+                    self.protocols.clone(),
+                    self.port,
+                )
+            };
+            
+            // 🚨 CRITICAL FIX (Jan 3, 2026): Include identity attestations for genetic lineage auto-trust
+            if let Some(ref attestations) = self.identity_attestations {
+                message = message.with_identity_attestations(attestations.clone());
+            }
+
+            // Serialize to bytes
+            let bytes = match message.to_bytes() {
+                Ok(b) => b,
+                Err(e) => {
+                    error!("Failed to serialize discovery message: {}", e);
+                    continue;
+                }
+            };
+            
+            // 🎵 NEW (Jan 3, 2026): Optional BirdSong encryption for privacy
+            let bytes = if let Some(ref birdsong) = self.birdsong {
+                match birdsong.encrypt_packet(&bytes).await {
+                    Ok(encrypted) => {
+                        debug!("🔒 BirdSong encrypted: {} -> {} bytes", bytes.len(), encrypted.len());
+                        encrypted
+                    }
+                    Err(e) => {
+                        warn!("⚠️  BirdSong encryption failed: {}, using plaintext", e);
+                        bytes
+                    }
+                }
+            } else {
+                bytes
+            };
+
+            // 1. Send to multicast/broadcast addresses
+            for addr in &self.broadcast_addresses {
+                match socket.send_to(&bytes, addr).await {
+                    Ok(sent) => {
+                        debug!("Multicast {} bytes to {}", sent, addr);
+                        if let Some(ref stats) = self.stats {
+                            stats.record_broadcast();
+                        }
+                    }
+                    Err(e) => {
+                        warn!("Failed to multicast to {}: {}", addr, e);
+                        if let Some(ref stats) = self.stats {
+                            stats.record_error();
+                        }
+                    }
+                }
+            }
+
+            // 2. Send to known peers (direct UDP)
+            for peer in &self.known_peers {
+                match socket.send_to(&bytes, peer).await {
+                    Ok(sent) => {
+                        debug!("Direct send {} bytes to known peer {}", sent, peer);
+                        if let Some(ref stats) = self.stats {
+                            stats.record_broadcast();
+                        }
+                    }
+                    Err(e) => {
+                        warn!("Failed to send to known peer {}: {}", peer, e);
+                        if let Some(ref stats) = self.stats {
+                            stats.record_error();
+                        }
+                    }
+                }
+            }
+
+            debug!("📡 Broadcast discovery message (session: {})", message.session_id);
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_broadcaster_new_v2() {
+        let broadcaster = AnonymousDiscoveryBroadcaster::new(
+            vec!["orchestration".to_string()],
+            vec!["https".to_string()],
+            8080,
+            vec!["224.0.0.251:2300".parse().unwrap()],
+            30,
+        );
+
+        assert_eq!(broadcaster.version, "2.1");
+        assert!(broadcaster.node_id.is_none());
+        assert_eq!(broadcaster.capabilities.len(), 1);
+        assert_eq!(broadcaster.interval_secs, 30);
+    }
+
+    #[test]
+    fn test_broadcaster_new_v3() {
+        let endpoints = vec![TransportEndpointMessage {
+            interface_type: "ethernet".to_string(),
+            address: "192.168.1.100:8080".to_string(),
+            protocols: vec!["https".to_string()],
+            preference: 255,
+        }];
+
+        let broadcaster = AnonymousDiscoveryBroadcaster::new_v3(
+            "node-123".to_string(),
+            "testnode".to_string(),
+            endpoints,
+            vec!["orchestration".to_string()],
+            vec!["224.0.0.251:2300".parse().unwrap()],
+            30,
+        );
+
+        assert_eq!(broadcaster.version, "3.0");
+        assert_eq!(broadcaster.node_id, Some("node-123".to_string()));
+        assert_eq!(broadcaster.node_name, Some("testnode".to_string()));
+        assert!(broadcaster.endpoints.is_some());
+    }
+
+    #[test]
+    fn test_broadcaster_with_known_peers() {
+        let broadcaster = AnonymousDiscoveryBroadcaster::new(
+            vec!["orchestration".to_string()],
+            vec!["https".to_string()],
+            8080,
+            vec!["224.0.0.251:2300".parse().unwrap()],
+            30,
+        ).with_known_peers(vec!["192.168.1.10:2300".parse().unwrap()]);
+
+        assert_eq!(broadcaster.known_peers.len(), 1);
+    }
+
+    #[test]
+    fn test_broadcaster_with_identity_attestations() {
+        use crate::IdentityAttestation;
+
+        let attestation = IdentityAttestation {
+            provider_capability: "security/identity".to_string(),
+            format: "tag_list".to_string(),
+            data: serde_json::json!({"family_id": "test-family"}),
+        };
+
+        let broadcaster = AnonymousDiscoveryBroadcaster::new(
+            vec!["orchestration".to_string()],
+            vec!["https".to_string()],
+            8080,
+            vec!["224.0.0.251:2300".parse().unwrap()],
+            30,
+        ).with_identity_attestations(vec![attestation]);
+
+        assert!(broadcaster.identity_attestations.is_some());
+        assert_eq!(broadcaster.identity_attestations.unwrap().len(), 1);
+    }
+}
+

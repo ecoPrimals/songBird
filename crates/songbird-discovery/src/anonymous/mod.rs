@@ -7,19 +7,19 @@
 //!
 //! - `messages` - Message types and serialization (✅ Complete)
 //! - `peer` - Peer discovery and management (✅ Complete)
-//! - `broadcaster` - Broadcasting logic (pending extraction)
+//! - `broadcaster` - Broadcasting logic (✅ Complete)
 //! - `listener` - Listening and processing (pending extraction)
 
+pub mod broadcaster;
 pub mod messages;
 pub mod peer;
 
 // Re-export public types for backward compatibility
+pub use broadcaster::AnonymousDiscoveryBroadcaster;
 pub use messages::{AnonymousDiscoveryMessage, TransportEndpointMessage};
 pub use peer::DiscoveredPeer;
 
-// TODO: Complete refactoring by extracting these from anonymous_discovery.rs
-// pub mod broadcaster;
+// TODO: Complete refactoring by extracting listener from anonymous_discovery.rs
 // pub mod listener;
-// pub use broadcaster::AnonymousDiscoveryBroadcaster;
 // pub use listener::AnonymousDiscoveryListener;
 
