@@ -11,6 +11,7 @@ use serde::{Deserialize, Serialize};
 use songbird_types::{SafeEnv, SongbirdError, SongbirdResult};
 use std::time::Duration;
 use tracing::{debug, warn};
+use crate::JsonRpcClient;
 
 /// AI metrics from any AI capability provider
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -79,17 +80,34 @@ pub enum ModelType {
     Embedding,
 }
 
+/// Protocol for communication (v3.11.0 - Protocol-Agnostic)
+enum Protocol {
+    Http(reqwest::Client),
+    JsonRpc(JsonRpcClient),
+}
+
+impl std::fmt::Debug for Protocol {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Protocol::Http(_) => write!(f, "Protocol::Http"),
+            Protocol::JsonRpc(_) => write!(f, "Protocol::JsonRpc"),
+        }
+    }
+}
+
 /// **CAPABILITY-BASED AI ADAPTER**
 ///
 /// Works with ANY AI provider discovered through:
 /// - Environment variable: `SONGBIRD_AI_ENDPOINT`
 /// - Capability discovery: `capability:ai`
 /// - Zero-knowledge bootstrap
+///
+/// **v3.11.0**: Protocol-agnostic - supports Unix sockets (PRIMARY) or HTTP (FALLBACK)
 pub struct AIAdapter {
     /// Endpoint URL for the AI capability provider
     endpoint: String,
-    /// HTTP client for requests
-    client: reqwest::Client,
+    /// Protocol (Unix socket JSON-RPC or HTTP)
+    protocol: Protocol,
     /// Request timeout
     timeout: Duration,
 }
@@ -172,22 +190,35 @@ impl AIAdapter {
 
     /// Create adapter with explicit endpoint (for testing or explicit configuration)
     ///
+    /// **v3.11.0**: Protocol-agnostic - automatically detects Unix sockets or HTTP
+    ///
     /// # Arguments
     ///
     /// * `endpoint` - Base URL of any AI capability provider
+    ///   - `unix:///path/to/socket.sock` → JSON-RPC over Unix socket (PRIMARY)
+    ///   - `http://...` or `https://...` → HTTP (FALLBACK)
     ///
     /// # Errors
     ///
-    /// Returns an error if the HTTP client cannot be created.
+    /// Returns an error if the protocol client cannot be created.
     pub fn new(endpoint: String) -> SongbirdResult<Self> {
-        Ok(Self {
-            endpoint,
-            client: reqwest::Client::builder()
+        // Protocol detection (v3.11.0)
+        let protocol = if endpoint.starts_with("unix://") {
+            debug!("🔌 Detected Unix socket endpoint for AI: {}", endpoint);
+            Protocol::JsonRpc(JsonRpcClient::new(&endpoint)?)
+        } else {
+            debug!("🌐 Detected HTTP endpoint for AI: {}", endpoint);
+            Protocol::Http(reqwest::Client::builder()
                 .timeout(Duration::from_secs(30)) // AI operations may take longer
                 .build()
                 .map_err(|e| {
                     SongbirdError::configuration(format!("Failed to create HTTP client: {e}"))
-                })?,
+                })?)
+        };
+
+        Ok(Self {
+            endpoint,
+            protocol,
             timeout: Duration::from_secs(15),
         })
     }
@@ -201,35 +232,50 @@ impl AIAdapter {
 
     /// Collect AI metrics from the capability provider
     ///
+    /// **v3.11.0**: Protocol-agnostic - works with Unix sockets or HTTP
+    ///
     /// # Errors
     ///
     /// Returns an error if:
-    /// - Network request fails
-    /// - Service returns non-success status
+    /// - Network/IPC request fails
+    /// - Service returns non-success status (HTTP) or error (JSON-RPC)
     /// - Response cannot be parsed
     pub async fn collect_metrics(&self) -> SongbirdResult<AIMetrics> {
-        let url = format!("{}/metrics/ai", self.endpoint);
+        debug!("Collecting AI metrics from: {}", self.endpoint);
 
-        debug!("Collecting AI metrics from: {}", url);
+        let mut metrics: AIMetrics = match &self.protocol {
+            Protocol::Http(client) => {
+                // HTTP protocol (FALLBACK)
+                let url = format!("{}/metrics/ai", self.endpoint);
 
-        let response = self.client.get(&url).timeout(self.timeout).send().await.map_err(|e| {
-            warn!("Failed to reach AI capability provider: {e}");
-            songbird_types::SongbirdError::network(format!("Failed to reach AI provider: {e}"))
-        })?;
+                let response = client.get(&url).timeout(self.timeout).send().await.map_err(|e| {
+                    warn!("Failed to reach AI capability provider via HTTP: {e}");
+                    SongbirdError::network(format!("Failed to reach AI provider: {e}"))
+                })?;
 
-        if !response.status().is_success() {
-            let status = response.status();
-            warn!("AI capability provider returned error status: {}", status);
-            return Err(songbird_types::SongbirdError::service(
-                "ai",
-                format!("HTTP {status}: AI metrics unavailable"),
-            ));
-        }
+                if !response.status().is_success() {
+                    let status = response.status();
+                    warn!("AI capability provider returned error status: {}", status);
+                    return Err(SongbirdError::service(
+                        "ai",
+                        format!("HTTP {status}: AI metrics unavailable"),
+                    ));
+                }
 
-        let mut metrics: AIMetrics = response.json().await.map_err(|e| {
-            warn!("Failed to parse AI metrics: {e}");
-            songbird_types::SongbirdError::service("ai", format!("Failed to parse AI metrics: {e}"))
-        })?;
+                response.json().await.map_err(|e| {
+                    warn!("Failed to parse AI metrics from HTTP: {e}");
+                    SongbirdError::service("ai", format!("Failed to parse AI metrics: {e}"))
+                })?
+            }
+            Protocol::JsonRpc(client) => {
+                // JSON-RPC protocol over Unix socket (PRIMARY)
+                let result = client.call_method("get_ai_metrics", None).await?;
+                serde_json::from_value(result).map_err(|e| {
+                    warn!("Failed to parse AI metrics from JSON-RPC: {e}");
+                    SongbirdError::serialization(format!("Failed to parse AI metrics: {e}"))
+                })?
+            }
+        };
 
         // Set timestamp if not provided
         if metrics.timestamp.timestamp() == 0 {

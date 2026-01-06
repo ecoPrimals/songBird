@@ -188,17 +188,32 @@ pub enum AuthResult {
     Invalid,
 }
 
+/// Protocol used for communication with security provider
+#[derive(Debug, Clone)]
+enum SecurityProtocol {
+    /// HTTP/HTTPS protocol (reqwest)
+    Http(reqwest::Client),
+    /// JSON-RPC 2.0 over Unix socket
+    JsonRpc(crate::JsonRpcClient),
+}
+
 /// **CAPABILITY-BASED SECURITY ADAPTER**
 ///
 /// Works with ANY security provider discovered through:
 /// - Environment variable: `SONGBIRD_SECURITY_ENDPOINT`
 /// - Capability discovery: `capability:security`
 /// - Zero-knowledge bootstrap
+///
+/// **PROTOCOL AGNOSTIC** (v3.10.4):
+/// - Automatically detects protocol based on endpoint URL scheme
+/// - `unix://` → JSON-RPC 2.0 over Unix socket (port-free)
+/// - `http://` or `https://` → HTTP protocol
+/// - Enables fractal, isomorphic deployment patterns
 pub struct SecurityAdapter {
     /// Endpoint URL for the security capability provider
     endpoint: String,
-    /// HTTP client for requests
-    client: reqwest::Client,
+    /// Protocol-specific client
+    protocol: SecurityProtocol,
     /// Request timeout
     timeout: Duration,
 }
@@ -270,19 +285,56 @@ impl SecurityAdapter {
 
     /// Create adapter with explicit endpoint (for testing or explicit configuration)
     ///
+    /// **Protocol Detection** (v3.10.4):
+    /// - `unix://` → JSON-RPC 2.0 over Unix socket (port-free architecture)
+    /// - `http://` or `https://` → HTTP protocol
+    /// - Automatic detection, zero configuration needed
+    ///
     /// # Arguments
     ///
     /// * `endpoint` - Base URL of any security capability provider
     ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// # tokio_test::block_on(async {
+    /// use songbird_universal::adapters::SecurityAdapter;
+    ///
+    /// // Unix socket (JSON-RPC)
+    /// let adapter1 = SecurityAdapter::new("unix:///tmp/beardog.sock".to_string())?;
+    ///
+    /// // HTTP endpoint
+    /// let adapter2 = SecurityAdapter::new("http://localhost:9000".to_string())?;
+    /// # Ok::<(), Box<dyn std::error::Error>>(())
+    /// # });
+    /// ```
+    ///
     /// # Errors
     ///
-    /// Returns an error if the HTTP client cannot be created.
+    /// Returns an error if the client cannot be created.
     pub fn new(endpoint: String) -> SongbirdResult<Self> {
+        // Detect protocol based on endpoint scheme
+        let protocol = if endpoint.starts_with("unix://") {
+            // JSON-RPC over Unix socket
+            debug!("🔌 Protocol detected: JSON-RPC 2.0 over Unix socket (port-free)");
+            let client = crate::JsonRpcClient::new(&endpoint)
+                .map_err(|e| SongbirdError::configuration(format!("Failed to create JSON-RPC client: {e}")))?;
+            SecurityProtocol::JsonRpc(client)
+        } else {
+            // HTTP/HTTPS protocol
+            debug!("🌐 Protocol detected: HTTP");
+            let client = reqwest::Client::builder()
+                .timeout(Duration::from_secs(10))
+                .build()
+                .map_err(|e| SongbirdError::configuration(format!("Failed to create HTTP client: {e}")))?;
+            SecurityProtocol::Http(client)
+        };
+
+        debug!("✅ SecurityAdapter initialized: endpoint={}", endpoint);
+
         Ok(Self {
             endpoint,
-            client: reqwest::Client::builder().timeout(Duration::from_secs(10)).build().map_err(
-                |e| SongbirdError::configuration(format!("Failed to create HTTP client: {e}")),
-            )?,
+            protocol,
             timeout: Duration::from_secs(5),
         })
     }
@@ -296,6 +348,10 @@ impl SecurityAdapter {
 
     /// Collect security metrics from the capability provider
     ///
+    /// **Protocol Agnostic** (v3.10.4):
+    /// - Automatically uses HTTP or JSON-RPC based on endpoint
+    /// - Zero configuration, seamless protocol switching
+    ///
     /// # Errors
     ///
     /// Returns an error if:
@@ -303,31 +359,52 @@ impl SecurityAdapter {
     /// - Service returns non-success status
     /// - Response cannot be parsed
     pub async fn collect_metrics(&self) -> SongbirdResult<SecurityMetrics> {
-        let url = format!("{}/metrics/security", self.endpoint);
+        debug!("Collecting security metrics from: {}", self.endpoint);
 
-        debug!("Collecting security metrics from: {}", url);
+        let mut metrics: SecurityMetrics = match &self.protocol {
+            SecurityProtocol::Http(client) => {
+                // HTTP protocol
+                let url = format!("{}/metrics/security", self.endpoint);
+                
+                let response = client.get(&url).timeout(self.timeout).send().await.map_err(|e| {
+                    warn!("Failed to reach security capability provider: {e}");
+                    songbird_types::SongbirdError::network(format!(
+                        "Failed to reach security provider: {e}"
+                    ))
+                })?;
 
-        let response = self.client.get(&url).timeout(self.timeout).send().await.map_err(|e| {
-            warn!("Failed to reach security capability provider: {e}");
-            songbird_types::SongbirdError::network(format!(
-                "Failed to reach security provider: {e}"
-            ))
-        })?;
+                if !response.status().is_success() {
+                    let status = response.status();
+                    warn!("Security capability provider returned error status: {}", status);
+                    return Err(songbird_types::SongbirdError::security(format!(
+                        "HTTP {status}: Security metrics unavailable"
+                    )));
+                }
 
-        if !response.status().is_success() {
-            let status = response.status();
-            warn!("Security capability provider returned error status: {}", status);
-            return Err(songbird_types::SongbirdError::security(format!(
-                "HTTP {status}: Security metrics unavailable"
-            )));
-        }
+                response.json().await.map_err(|e| {
+                    warn!("Failed to parse security metrics: {e}");
+                    songbird_types::SongbirdError::security(format!(
+                        "Failed to parse security metrics: {e}"
+                    ))
+                })?
+            }
+            SecurityProtocol::JsonRpc(client) => {
+                // JSON-RPC protocol
+                let result = client.call_method("get_metrics", Some(serde_json::json!({"type": "security"}))).await.map_err(|e| {
+                    warn!("JSON-RPC request failed: {e}");
+                    songbird_types::SongbirdError::network(format!(
+                        "Failed to reach security provider: {e}"
+                    ))
+                })?;
 
-        let mut metrics: SecurityMetrics = response.json().await.map_err(|e| {
-            warn!("Failed to parse security metrics: {e}");
-            songbird_types::SongbirdError::security(format!(
-                "Failed to parse security metrics: {e}"
-            ))
-        })?;
+                serde_json::from_value(result).map_err(|e| {
+                    warn!("Failed to parse security metrics: {e}");
+                    songbird_types::SongbirdError::security(format!(
+                        "Failed to parse security metrics: {e}"
+                    ))
+                })?
+            }
+        };
 
         // Set timestamp if not provided
         if metrics.timestamp.timestamp() == 0 {
@@ -347,34 +424,53 @@ impl SecurityAdapter {
 
     /// Verify authentication token
     ///
+    /// **Protocol Agnostic** (v3.10.4):
+    /// - Automatically uses HTTP or JSON-RPC based on endpoint
+    ///
     /// # Errors
     ///
     /// Returns an error if the verification request fails
     pub async fn verify_auth(&self, token: &str) -> SongbirdResult<AuthResult> {
-        let url = format!("{}/auth/verify", self.endpoint);
-
         debug!("Verifying authentication token");
 
-        let response = self
-            .client
-            .post(&url)
-            .json(&serde_json::json!({ "token": token }))
-            .timeout(self.timeout)
-            .send()
-            .await
-            .map_err(|e| {
-                warn!("Auth verification request failed: {e}");
-                songbird_types::SongbirdError::network(format!("Auth verification failed: {e}"))
-            })?;
+        let result: AuthResult = match &self.protocol {
+            SecurityProtocol::Http(client) => {
+                // HTTP protocol
+                let url = format!("{}/auth/verify", self.endpoint);
 
-        if !response.status().is_success() {
-            return Ok(AuthResult::Unauthorized);
-        }
+                let response = client
+                    .post(&url)
+                    .json(&serde_json::json!({ "token": token }))
+                    .timeout(self.timeout)
+                    .send()
+                    .await
+                    .map_err(|e| {
+                        warn!("Auth verification request failed: {e}");
+                        songbird_types::SongbirdError::network(format!("Auth verification failed: {e}"))
+                    })?;
 
-        let result: AuthResult = response.json().await.map_err(|e| {
-            warn!("Failed to parse auth result: {e}");
-            songbird_types::SongbirdError::security(format!("Failed to parse auth result: {e}"))
-        })?;
+                if !response.status().is_success() {
+                    return Ok(AuthResult::Unauthorized);
+                }
+
+                response.json().await.map_err(|e| {
+                    warn!("Failed to parse auth result: {e}");
+                    songbird_types::SongbirdError::security(format!("Failed to parse auth result: {e}"))
+                })?
+            }
+            SecurityProtocol::JsonRpc(client) => {
+                // JSON-RPC protocol
+                let rpc_result = client.call_method("verify_auth", Some(serde_json::json!({ "token": token }))).await.map_err(|e| {
+                    warn!("JSON-RPC auth verification failed: {e}");
+                    songbird_types::SongbirdError::network(format!("Auth verification failed: {e}"))
+                })?;
+
+                serde_json::from_value(rpc_result).map_err(|e| {
+                    warn!("Failed to parse auth result: {e}");
+                    songbird_types::SongbirdError::security(format!("Failed to parse auth result: {e}"))
+                })?
+            }
+        };
 
         debug!("Auth verification result: {:?}", result);
 
@@ -426,3 +522,7 @@ impl SecurityProvider for SecurityAdapter {
 #[cfg(test)]
 #[path = "security_tests.rs"]
 mod tests;
+
+#[cfg(test)]
+#[path = "tests_protocol_detection.rs"]
+mod protocol_detection_tests;

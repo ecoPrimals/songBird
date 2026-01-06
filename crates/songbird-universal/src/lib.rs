@@ -23,6 +23,7 @@ pub mod capabilities;
 pub mod circuit_breaker;
 pub mod discovery;
 pub mod federated_capability_adapter;
+pub mod jsonrpc_client;
 pub mod load_balancer;
 pub mod sovereignty;
 pub mod traits;
@@ -50,6 +51,9 @@ pub use types::*;
 // Explicitly re-export capability types to avoid confusion
 pub use capabilities::Capability as CapabilityDefinition;
 pub use types::DiscoveredCapability;
+
+// Re-export JSON-RPC client for protocol-agnostic communication
+pub use jsonrpc_client::JsonRpcClient;
 
 /// Create a new unified universal adapter with default configuration
 #[must_use]

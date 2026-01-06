@@ -14,6 +14,7 @@ use serde::{Deserialize, Serialize};
 use songbird_types::{SafeEnv, SongbirdError, SongbirdResult};
 use std::time::Duration;
 use tracing::{debug, warn};
+use crate::JsonRpcClient;
 
 /// Storage metrics from any storage capability provider
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -85,6 +86,21 @@ pub enum StorageHealth {
     Critical,
 }
 
+/// Protocol for communication (v3.11.0 - Protocol-Agnostic)
+enum Protocol {
+    Http(reqwest::Client),
+    JsonRpc(JsonRpcClient),
+}
+
+impl std::fmt::Debug for Protocol {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Protocol::Http(_) => write!(f, "Protocol::Http"),
+            Protocol::JsonRpc(_) => write!(f, "Protocol::JsonRpc"),
+        }
+    }
+}
+
 /// **CAPABILITY-BASED STORAGE ADAPTER**
 ///
 /// Works with ANY storage provider discovered through:
@@ -92,12 +108,14 @@ pub enum StorageHealth {
 /// - Capability discovery: `capability:storage`
 /// - Zero-knowledge bootstrap
 /// - Local filesystem fallback for sovereign operation
+///
+/// **v3.11.0**: Protocol-agnostic - supports Unix sockets (PRIMARY) or HTTP (FALLBACK)
 #[derive(Debug)]
 pub struct StorageAdapter {
     /// Endpoint URL for the storage capability provider
     endpoint: String,
-    /// HTTP client for requests
-    client: reqwest::Client,
+    /// Protocol (Unix socket JSON-RPC or HTTP)
+    protocol: Protocol,
     /// Request timeout
     timeout: Duration,
 }
@@ -165,19 +183,32 @@ impl StorageAdapter {
 
     /// Create adapter with explicit endpoint (for testing or explicit configuration)
     ///
+    /// **v3.11.0**: Protocol-agnostic - automatically detects Unix sockets or HTTP
+    ///
     /// # Arguments
     ///
     /// * `endpoint` - Base URL of any storage capability provider
+    ///   - `unix:///path/to/socket.sock` → JSON-RPC over Unix socket (PRIMARY)
+    ///   - `http://...` or `https://...` → HTTP (FALLBACK)
     ///
     /// # Errors
     ///
-    /// Returns an error if the HTTP client cannot be created.
+    /// Returns an error if the protocol client cannot be created.
     pub fn new(endpoint: String) -> SongbirdResult<Self> {
+        // Protocol detection (v3.11.0)
+        let protocol = if endpoint.starts_with("unix://") {
+            debug!("🔌 Detected Unix socket endpoint for storage: {}", endpoint);
+            Protocol::JsonRpc(JsonRpcClient::new(&endpoint)?)
+        } else {
+            debug!("🌐 Detected HTTP endpoint for storage: {}", endpoint);
+            Protocol::Http(reqwest::Client::builder().timeout(Duration::from_secs(10)).build().map_err(
+                |e| SongbirdError::configuration(format!("Failed to create HTTP client: {e}")),
+            )?)
+        };
+
         Ok(Self {
             endpoint,
-            client: reqwest::Client::builder().timeout(Duration::from_secs(10)).build().map_err(
-                |e| SongbirdError::configuration(format!("Failed to create HTTP client: {e}")),
-            )?,
+            protocol,
             timeout: Duration::from_secs(5),
         })
     }
@@ -191,38 +222,53 @@ impl StorageAdapter {
 
     /// Collect storage metrics from the capability provider
     ///
+    /// **v3.11.0**: Protocol-agnostic - works with Unix sockets or HTTP
+    ///
     /// # Errors
     ///
     /// Returns an error if:
-    /// - Network request fails
-    /// - Service returns non-success status
+    /// - Network/IPC request fails
+    /// - Service returns non-success status (HTTP) or error (JSON-RPC)
     /// - Response cannot be parsed
     pub async fn collect_metrics(&self) -> SongbirdResult<StorageMetrics> {
-        let url = format!("{}/metrics/storage", self.endpoint);
+        debug!("Collecting storage metrics from: {}", self.endpoint);
 
-        debug!("Collecting storage metrics from: {}", url);
+        let mut metrics: StorageMetrics = match &self.protocol {
+            Protocol::Http(client) => {
+                // HTTP protocol (FALLBACK)
+                let url = format!("{}/metrics/storage", self.endpoint);
+                
+                let response = client.get(&url).timeout(self.timeout).send().await.map_err(|e| {
+                    warn!("Failed to reach storage capability provider via HTTP: {e}");
+                    SongbirdError::network(format!("Failed to reach storage provider: {e}"))
+                })?;
 
-        let response = self.client.get(&url).timeout(self.timeout).send().await.map_err(|e| {
-            warn!("Failed to reach storage capability provider: {e}");
-            songbird_types::SongbirdError::network(format!("Failed to reach storage provider: {e}"))
-        })?;
+                if !response.status().is_success() {
+                    let status = response.status();
+                    warn!("Storage capability provider returned error status: {}", status);
+                    return Err(SongbirdError::service(
+                        "storage",
+                        format!("HTTP {status}: Storage metrics unavailable"),
+                    ));
+                }
 
-        if !response.status().is_success() {
-            let status = response.status();
-            warn!("Storage capability provider returned error status: {}", status);
-            return Err(songbird_types::SongbirdError::service(
-                "storage",
-                format!("HTTP {status}: Storage metrics unavailable"),
-            ));
-        }
-
-        let mut metrics: StorageMetrics = response.json().await.map_err(|e| {
-            warn!("Failed to parse storage metrics: {e}");
-            songbird_types::SongbirdError::service(
-                "storage",
-                format!("Failed to parse storage metrics: {e}"),
-            )
-        })?;
+                response.json().await.map_err(|e| {
+                    warn!("Failed to parse storage metrics from HTTP: {e}");
+                    SongbirdError::service(
+                        "storage",
+                        format!("Failed to parse storage metrics: {e}"),
+                    )
+                })?
+            }
+            Protocol::JsonRpc(client) => {
+                // JSON-RPC protocol over Unix socket (PRIMARY)
+                let result = client.call_method("get_storage_metrics", None).await?;
+                serde_json::from_value(result).map_err(|e| {
+                    warn!("Failed to parse storage metrics from JSON-RPC: {e}");
+                    SongbirdError::serialization(format!("Failed to parse storage metrics: {e}"))
+                })?
+            }
+        };
 
         // Set timestamp if not provided
         if metrics.timestamp.timestamp() == 0 {

@@ -32,6 +32,7 @@ use serde::{Deserialize, Serialize};
 use songbird_types::{SafeEnv, SongbirdError, SongbirdResult};
 use std::time::Duration;
 use tracing::{debug, warn};
+use crate::JsonRpcClient;
 
 /// Compute metrics from any compute capability provider
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -102,17 +103,34 @@ pub enum HealthStatus {
     Unhealthy,
 }
 
+/// Protocol for communication (v3.11.0 - Protocol-Agnostic)
+enum Protocol {
+    Http(reqwest::Client),
+    JsonRpc(JsonRpcClient),
+}
+
+impl std::fmt::Debug for Protocol {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Protocol::Http(_) => write!(f, "Protocol::Http"),
+            Protocol::JsonRpc(_) => write!(f, "Protocol::JsonRpc"),
+        }
+    }
+}
+
 /// Generic adapter for compute capability providers
 ///
 /// **SOVEREIGNTY**: This adapter discovers compute providers by capability,
 /// not by hardcoded primal names. It works with ANY service that implements
 /// the compute capability interface.
+///
+/// **v3.11.0**: Protocol-agnostic - supports Unix sockets (PRIMARY) or HTTP (FALLBACK)
 #[derive(Debug)]
 pub struct ComputeAdapter {
     /// Endpoint URL for the compute service (discovered dynamically)
     endpoint: String,
-    /// HTTP client for requests
-    client: reqwest::Client,
+    /// Protocol (Unix socket JSON-RPC or HTTP)
+    protocol: Protocol,
     /// Request timeout
     timeout: Duration,
 }
@@ -181,12 +199,16 @@ impl ComputeAdapter {
 
     /// Create adapter with explicit endpoint
     ///
+    /// **v3.11.0**: Protocol-agnostic - automatically detects Unix sockets or HTTP
+    ///
     /// Use this when you already know the compute provider's endpoint
     /// (e.g., from service discovery).
     ///
     /// # Arguments
     ///
     /// * `endpoint` - Base URL of any compute capability provider
+    ///   - `unix:///path/to/socket.sock` → JSON-RPC over Unix socket (PRIMARY)
+    ///   - `http://...` or `https://...` → HTTP (FALLBACK)
     ///
     /// # Examples
     ///
@@ -194,21 +216,30 @@ impl ComputeAdapter {
     /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
     /// use songbird_universal::adapters::ComputeAdapter;
     ///
-    /// // Works with ANY compute provider
-    /// let adapter = ComputeAdapter::new("http://compute-service:8080".to_string())?;
+    /// // Works with ANY compute provider - protocol auto-detected
+    /// let adapter = ComputeAdapter::new("unix:///tmp/toadstool-nat0-tower1.sock".to_string())?;
     /// # Ok(())
     /// # }
     /// ```
     ///
     /// # Errors
     ///
-    /// Returns an error if the HTTP client cannot be created.
+    /// Returns an error if the protocol client cannot be created.
     pub fn new(endpoint: String) -> SongbirdResult<Self> {
+        // Protocol detection (v3.11.0)
+        let protocol = if endpoint.starts_with("unix://") {
+            debug!("🔌 Detected Unix socket endpoint for compute: {}", endpoint);
+            Protocol::JsonRpc(JsonRpcClient::new(&endpoint)?)
+        } else {
+            debug!("🌐 Detected HTTP endpoint for compute: {}", endpoint);
+            Protocol::Http(reqwest::Client::builder().timeout(Duration::from_secs(10)).build().map_err(
+                |e| SongbirdError::configuration(format!("Failed to create HTTP client: {e}")),
+            )?)
+        };
+
         Ok(Self {
             endpoint,
-            client: reqwest::Client::builder().timeout(Duration::from_secs(10)).build().map_err(
-                |e| SongbirdError::configuration(format!("Failed to create HTTP client: {e}")),
-            )?,
+            protocol,
             timeout: Duration::from_secs(5),
         })
     }
@@ -222,35 +253,50 @@ impl ComputeAdapter {
 
     /// Collect compute metrics from the service
     ///
+    /// **v3.11.0**: Protocol-agnostic - works with Unix sockets or HTTP
+    ///
     /// # Errors
     ///
     /// Returns an error if:
-    /// - Network request fails
-    /// - Service returns non-success status
+    /// - Network/IPC request fails
+    /// - Service returns non-success status (HTTP) or error (JSON-RPC)
     /// - Response cannot be parsed
     pub async fn collect_metrics(&self) -> SongbirdResult<ComputeMetrics> {
-        let url = format!("{}/metrics/compute", self.endpoint);
+        debug!("Collecting compute metrics from: {}", self.endpoint);
 
-        debug!("Collecting compute metrics from: {}", url);
+        let mut metrics: ComputeMetrics = match &self.protocol {
+            Protocol::Http(client) => {
+                // HTTP protocol (FALLBACK)
+                let url = format!("{}/metrics/compute", self.endpoint);
 
-        let response = self.client.get(&url).timeout(self.timeout).send().await.map_err(|e| {
-            warn!("Failed to reach compute service: {e}");
-            SongbirdError::network(format!("Failed to reach compute service: {e}"))
-        })?;
+                let response = client.get(&url).timeout(self.timeout).send().await.map_err(|e| {
+                    warn!("Failed to reach compute service via HTTP: {e}");
+                    SongbirdError::network(format!("Failed to reach compute service: {e}"))
+                })?;
 
-        if !response.status().is_success() {
-            let status = response.status();
-            warn!("Compute service returned error status: {}", status);
-            return Err(SongbirdError::service(
-                "compute",
-                format!("HTTP {status}: Metrics unavailable"),
-            ));
-        }
+                if !response.status().is_success() {
+                    let status = response.status();
+                    warn!("Compute service returned error status: {}", status);
+                    return Err(SongbirdError::service(
+                        "compute",
+                        format!("HTTP {status}: Metrics unavailable"),
+                    ));
+                }
 
-        let mut metrics: ComputeMetrics = response.json().await.map_err(|e| {
-            warn!("Failed to parse compute metrics: {e}");
-            SongbirdError::service("compute", format!("Failed to parse compute metrics: {e}"))
-        })?;
+                response.json().await.map_err(|e| {
+                    warn!("Failed to parse compute metrics from HTTP: {e}");
+                    SongbirdError::service("compute", format!("Failed to parse compute metrics: {e}"))
+                })?
+            }
+            Protocol::JsonRpc(client) => {
+                // JSON-RPC protocol over Unix socket (PRIMARY)
+                let result = client.call_method("get_compute_metrics", None).await?;
+                serde_json::from_value(result).map_err(|e| {
+                    warn!("Failed to parse compute metrics from JSON-RPC: {e}");
+                    SongbirdError::serialization(format!("Failed to parse compute metrics: {e}"))
+                })?
+            }
+        };
 
         // Set timestamp if not provided
         if metrics.timestamp.timestamp() == 0 {

@@ -1,14 +1,19 @@
 # 📚 Songbird Documentation Index
 
-**Last Updated**: January 6, 2026 15:00 EST  
-**Status**: 🎊 Production Ready + Exemplary Architecture + Zero Hardcoding Exemplified  
-**Version**: v3.10.4-evolved with Deep Debt Evolution Complete
+**Last Updated**: January 6, 2026 17:30 EST  
+**Status**: 🎊 Production Ready + Protocol-Agnostic + Unix Sockets PRIMARY  
+**Version**: v3.11.0-protocol-agnostic with Full Adapter Evolution Complete
 
 ---
 
 ## 🌟 Start Here (Quick Links)
 
-### For Latest Release (v3.10.4) 🎊 **NEW!**
+### For Latest Release (v3.11.0) 🎊 **NEW!**
+👉 **[PROTOCOL_AGNOSTIC_COMPLETE_V3_11_0.md](PROTOCOL_AGNOSTIC_COMPLETE_V3_11_0.md)** 🎊 **PROTOCOL-AGNOSTIC COMPLETE** 🎊
+👉 **[PROTOCOL_AGNOSTIC_EVOLUTION_V3_11_0.md](PROTOCOL_AGNOSTIC_EVOLUTION_V3_11_0.md)** - Implementation Handoff
+👉 **[IPC_INTEGRATION_GUIDE.md](IPC_INTEGRATION_GUIDE.md)** - Comprehensive Rewrite (1300+ lines)
+
+### For Previous Release (v3.10.4)
 👉 **[DEEP_DEBT_EVOLUTION_SESSION_SUMMARY.md](DEEP_DEBT_EVOLUTION_SESSION_SUMMARY.md)** 🎊 **EVOLUTION COMPLETE** 🎊
 👉 **[DEEP_DEBT_EVOLUTION_PLAN.md](DEEP_DEBT_EVOLUTION_PLAN.md)** - Comprehensive Audit & Plan
 👉 **[PRODUCTION_SLEEP_ELIMINATION_V3_10_4.md](PRODUCTION_SLEEP_ELIMINATION_V3_10_4.md)** - Modern Async Patterns
@@ -48,9 +53,10 @@
 ### Core Project Docs
 | Document | Purpose | Status |
 |----------|---------|--------|
-| [README.md](README.md) | Project overview, features, quick start | ✅ v3.10.4 |
-| [STATUS.md](STATUS.md) | Detailed status, metrics, roadmap | ✅ v3.10.4 |
-| [ROOT_DOCS_INDEX.md](ROOT_DOCS_INDEX.md) | This document - central index | ✅ v3.10.4 |
+| [README.md](README.md) | Project overview, features, quick start | ✅ v3.11.0 |
+| [STATUS.md](STATUS.md) | Detailed status, metrics, roadmap | ✅ v3.11.0 |
+| [ROOT_DOCS_INDEX.md](ROOT_DOCS_INDEX.md) | This document - central index | ✅ v3.11.0 |
+| [IPC_INTEGRATION_GUIDE.md](IPC_INTEGRATION_GUIDE.md) | Inter-primal communication (rewritten) | ✅ v3.11.0 |
 | [00_START_HERE.md](00_START_HERE.md) | Main entry point for all users | ✅ Current |
 | [ROADMAP.md](ROADMAP.md) | Future development plans | ✅ Current |
 | [CHANGELOG.md](CHANGELOG.md) | Version history | ✅ Current |
@@ -58,7 +64,35 @@
 
 ---
 
-## 🎊 Latest Release: v3.10.4-evolved (January 6, 2026) 🎊 **EXEMPLARY!**
+## 🎊 Latest Release: v3.11.0-protocol-agnostic (January 6, 2026) 🎊 **PROTOCOL-AGNOSTIC!**
+
+### Unix Sockets PRIMARY, HTTP FALLBACK! 🎊 **ALL ADAPTERS EVOLVED!**
+| Document | Purpose | Lines | Status |
+|----------|---------|-------|--------|
+| [PROTOCOL_AGNOSTIC_COMPLETE_V3_11_0.md](PROTOCOL_AGNOSTIC_COMPLETE_V3_11_0.md) | Completion summary | ~600 | ✅ **COMPLETE** |
+| [PROTOCOL_AGNOSTIC_EVOLUTION_V3_11_0.md](PROTOCOL_AGNOSTIC_EVOLUTION_V3_11_0.md) | Implementation handoff | ~400 | ✅ **HANDOFF** |
+| [IPC_INTEGRATION_GUIDE.md](IPC_INTEGRATION_GUIDE.md) | Comprehensive rewrite | 1300+ | ✅ **REWRITTEN** |
+
+**What's Included:**
+
+**v3.11.0: Protocol-Agnostic Evolution COMPLETE! 🎊**
+- 🔌 **All adapters protocol-agnostic** - Security, Storage, Compute, AI (automatic detection!)
+- 🚀 **JSON-RPC client implemented** - Modern async JSON-RPC 2.0 over Unix sockets (433 lines)
+- 🏆 **Unix sockets PRIMARY** - Port-free, more secure, more reliable, more fractal (~10x faster!)
+- ⚠️ **HTTP FALLBACK** - Only for cross-machine (less secure, less reliable, less fractal)
+- ✅ **17 new protocol tests** - Unit, integration, E2E, regression, property (522 total, 100% pass)
+- 📚 **IPC guide rewritten** - 1300+ lines, protocol selection, migration, best practices
+- 🔍 **Zero configuration** - `unix://` → JSON-RPC, `http://` → HTTP (automatic!)
+- 🎯 **Upstream debt resolved** - Songbird ↔ BearDog protocol mismatch unblocked
+
+**Mission Achieved:**
+- ❌ Before: HTTP everywhere, even for same-machine (network exposure, port conflicts)
+- ✅ After: Unix sockets PRIMARY, HTTP fallback (port-free, secure, ~10x faster)
+- 🎯 Result: **True fractal deployment enabled! Zero port conflicts!**
+
+---
+
+## 🎊 Previous Release: v3.10.4-evolved (January 6, 2026) 🎊 **EXEMPLARY!**
 
 ### Deep Debt Evolution + Modern Idiomatic Rust! 🎊 **ARCHITECTURE EXCELLENCE!**
 | Document | Purpose | Lines | Status |

@@ -335,6 +335,15 @@ impl SongbirdError {
         }
     }
 
+    /// Create a new serialization error
+    pub fn serialization(message: impl Into<String>) -> Self {
+        Self::Serialization {
+            format: None,
+            message: message.into(),
+            debug_info: None,
+        }
+    }
+
     /// Add context to the error
     pub fn with_context(&mut self, context: impl Into<String>) -> &mut Self {
         match self {
