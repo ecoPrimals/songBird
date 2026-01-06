@@ -1,13 +1,18 @@
 //! E2E Tests for Trust Establishment
 //!
+//! **EVOLVED (v3.13.0)**: Event-driven synchronization, no arbitrary sleeps
+//!
 //! Tests the full trust establishment flow from discovery to federation.
+
+mod common;
+use common::sync_helpers::*;
 
 use anyhow::Result;
 use songbird_discovery::anonymous_discovery::AnonymousDiscoveryListener;
 use songbird_network_federation::state::{FederationState, NodeStatus};
 use songbird_orchestrator::trust::{TrustEscalationManager, TrustLevel, TrustTimeouts};
 use std::sync::Arc;
-use tokio::time::{sleep, Duration};
+use tokio::time::Duration;
 use tracing::{info, warn};
 
 /// Initialize tracing for tests
@@ -166,13 +171,23 @@ async fn test_trust_timeout_and_cleanup() -> Result<()> {
     assert!(trust_manager.get_trust_level(peer_id).await.is_ok());
     info!("✅ Step 1: Trust established");
 
-    // Wait for timeout
-    sleep(Duration::from_secs(2)).await;
+    // ✅ EVOLVED (v3.13.0): Poll for trust expiration instead of arbitrary sleep
+    // Wait for trust to actually expire (event-driven, precise)
+    let expired = wait_for_condition(
+        || async {
+            // Check if trust has expired
+            trust_manager.get_trust_level(peer_id).await.is_err()
+        },
+        Duration::from_secs(3) // Safety margin above 1s timeout
+    ).await;
+    
+    assert!(expired, "Trust should expire within timeout period");
+    info!("✅ Step 2: Trust expired (event-driven check)");
 
     // Cleanup expired trusts
     let removed_count = trust_manager.cleanup_expired().await;
     assert_eq!(removed_count, 1);
-    info!("✅ Step 2: Expired trust cleaned up");
+    info!("✅ Step 3: Expired trust cleaned up");
 
     // Verify trust is gone
     assert!(trust_manager.get_trust_level(peer_id).await.is_err());

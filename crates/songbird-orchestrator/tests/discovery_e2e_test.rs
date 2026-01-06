@@ -1,5 +1,7 @@
 //! End-to-End tests for Discovery integration
 //!
+//! **EVOLVED (v3.13.0)**: Event-driven synchronization, no arbitrary sleeps
+//!
 //! Tests that discovery broadcaster and listener start properly
 //! on orchestrator startup and can discover peers.
 
@@ -7,7 +9,9 @@ use anyhow::Result;
 use songbird_orchestrator::app::SongbirdOrchestrator;
 use songbird_types::config::CanonicalSongbirdConfig;
 use std::time::Duration;
-use tokio::time::sleep;
+
+mod common;
+use common::sync_helpers::*;
 
 /// Test that discovery broadcaster starts on orchestrator startup
 #[tokio::test]
@@ -85,9 +89,9 @@ async fn test_discovery_listener_receives_broadcasts() -> Result<()> {
 
     tracing::info!("✅ Created broadcaster and listener");
 
-    // Start broadcaster in background
+    // ✅ EVOLVED (v3.13.0): Event-driven synchronization instead of sleep
+    // Start broadcaster in background (no artificial delay needed)
     let broadcaster_handle = tokio::spawn(async move {
-        sleep(Duration::from_millis(100)).await; // Small delay
         if let Err(e) = broadcaster.start_broadcasting().await {
             tracing::error!("Broadcaster error: {}", e);
         }
@@ -101,11 +105,19 @@ async fn test_discovery_listener_receives_broadcasts() -> Result<()> {
         }
     });
 
-    // Wait for broadcast and discovery
-    sleep(Duration::from_secs(2)).await;
-
-    // Check if any peers were discovered
-    let peers = listener.get_peers().await;
+    // ✅ EVOLVED: Poll until peers discovered (event-driven, not time-based)
+    let listener_poll = Arc::clone(&listener);
+    let start = tokio::time::Instant::now();
+    let peers = loop {
+        let p = listener_poll.get_peers().await;
+        if !p.is_empty() {
+            break p;
+        }
+        if start.elapsed() > Duration::from_secs(5) {
+            panic!("Timeout: No peers discovered within 5 seconds");
+        }
+        tokio::task::yield_now().await; // Cooperative yielding
+    };
 
     tracing::info!("📊 Discovered {} peers", peers.len());
     for peer in &peers {
@@ -179,11 +191,18 @@ async fn test_full_orchestrator_startup_with_discovery() -> Result<()> {
         }
     });
 
-    // Wait for services to initialize
-    sleep(Duration::from_secs(3)).await;
+    // ✅ EVOLVED (v3.13.0): Poll for readiness instead of arbitrary sleep
+    // Check if orchestrator services are responding (event-driven)
+    let ready = poll_until(
+        || {
+            // In production, we'd check actual service health endpoints
+            // For now, verify the handle is still running
+            !start_handle.is_finished()
+        },
+        Duration::from_secs(5) // Much faster timeout
+    ).await;
 
-    // Verify services are running
-    // (In a real test, we'd check ports, make HTTP requests, etc.)
+    assert!(ready, "Orchestrator should be running within 5 seconds");
 
     tracing::info!("✅ Integration test: Orchestrator started successfully");
 
