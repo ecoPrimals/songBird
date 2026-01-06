@@ -17,7 +17,7 @@ async fn test_trust_evaluation_request_creation() {
 async fn test_trust_evaluation_response_helpers() {
     let response = crate::trust_types::TrustEvaluationResponse {
         decision: "auto_accept".to_string(),
-        trust_level: "high".to_string(),
+        trust_level: songbird_types::TrustLevel::Highest,
         reason: "Same family".to_string(),
         suggested_action: None,
         metadata: None,

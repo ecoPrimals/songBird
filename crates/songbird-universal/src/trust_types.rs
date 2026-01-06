@@ -5,6 +5,7 @@
 
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+use songbird_types::TrustLevel; // ← Import TrustLevel enum with Phase 1 deserializer
 
 /// Request for trust evaluation
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -32,8 +33,8 @@ pub struct TrustEvaluationResponse {
     /// Decision: "auto_accept", "prompt_user", or "reject"
     pub decision: String,
     
-    /// Trust level: "high", "medium", "low", or "none"
-    pub trust_level: String,
+    /// Trust level: TrustLevel enum (accepts both integer and string via Phase 1 custom deserializer)
+    pub trust_level: TrustLevel,
     
     /// Reason for decision
     pub reason: String,
@@ -141,7 +142,7 @@ mod tests {
     fn test_trust_response_is_auto_accept() {
         let response = TrustEvaluationResponse {
             decision: "auto_accept".to_string(),
-            trust_level: "high".to_string(),
+            trust_level: TrustLevel::Highest, // Phase 1: Use enum
             reason: "Same family".to_string(),
             suggested_action: None,
             metadata: None,
@@ -156,7 +157,7 @@ mod tests {
     fn test_trust_response_is_reject() {
         let response = TrustEvaluationResponse {
             decision: "reject".to_string(),
-            trust_level: "none".to_string(),
+            trust_level: TrustLevel::None, // Phase 1: Use enum
             reason: "Unknown peer".to_string(),
             suggested_action: None,
             metadata: None,

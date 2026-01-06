@@ -268,7 +268,7 @@ impl SecurityCapabilityClient {
                 // Convert from universal format to local format
                 TrustEvaluationResponse {
                     decision: universal_resp.decision,
-                    trust_level: universal_resp.trust_level,
+                    trust_level: universal_resp.trust_level.name().to_string(), // Convert TrustLevel enum to string
                     confidence: 0.0, // Not in universal format yet
                     reason: universal_resp.reason,
                     encryption_tag: None, // Not in universal format yet
