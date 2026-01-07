@@ -473,12 +473,6 @@ pub struct FederationConfig {
     /// Force discovery mode (if None, auto-detect based on BearDog availability)
     #[serde(default)]
     pub discovery_mode: Option<DiscoveryMode>,
-
-    /// Discovery mode (deprecated, use discovery_mode instead)
-    /// For test compatibility
-    #[serde(skip)]
-    #[deprecated(note = "Use discovery_mode instead")]
-    pub _legacy_test_fields: (),
 }
 
 fn default_heartbeat_interval() -> u64 {
@@ -499,7 +493,6 @@ impl Default for FederationConfig {
             node_timeout_secs: 60,
             rendezvous_url: None,
             discovery_mode: None, // Auto-detect
-            _legacy_test_fields: (),
         }
     }
 }

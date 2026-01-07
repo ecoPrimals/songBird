@@ -89,10 +89,16 @@ pub struct SecurityCapabilityClient {
     /// Handles tarpc, JSON-RPC, and HTTP automatically
     adapter: SecurityAdapter,
     
-    /// HTTP client for lineage methods (v3.14.1)
+    /// HTTP client for lineage methods (v3.14.2)
     /// 
-    /// **Status**: Kept for lineage API endpoints (get_current_lineage, verify_lineage, same_family)
-    /// which are not yet in SecurityAdapter. These will be migrated when Phase 1.5 is ready.
+    /// **Status**: Used ONLY for lineage API endpoints which are Phase 1.5 features:
+    /// - `evaluate_trust_universal()` - Universal trust API (transitional)
+    /// - `get_current_lineage()` - Query our genetic lineage
+    /// - `verify_lineage()` - Verify lineage proof cryptographically
+    /// - `same_family()` - Check if two lineages share ancestry
+    /// 
+    /// **Migration Plan**: These will move to SecurityAdapter when BearDog Phase 1.5 is complete.
+    /// Until then, HTTP is acceptable as these are specialized genetic lineage operations.
     http_client: Client,
     
     /// Optional: Cached identity

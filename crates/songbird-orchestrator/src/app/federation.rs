@@ -94,8 +94,6 @@ fn create_federation_coordinator(
         node_timeout_secs: 60,
         rendezvous_url: SafeEnv::get_required("SONGBIRD_RENDEZVOUS_URL").ok(),
         discovery_mode: None, // Auto-detect based on BearDog availability
-        #[allow(deprecated)]
-        _legacy_test_fields: (),
     };
 
     // Register self if we have bootstrap
