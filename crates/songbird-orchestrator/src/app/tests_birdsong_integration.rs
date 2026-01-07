@@ -10,7 +10,7 @@
 #[cfg(test)]
 mod tests {
     use songbird_discovery::birdsong_integration::{BirdSongConfig, BirdSongProcessor, BirdSongEncryption};
-    use songbird_discovery::anonymous_discovery::{
+    use songbird_discovery::anonymous::{
         AnonymousDiscoveryBroadcaster, AnonymousDiscoveryListener, AnonymousDiscoveryMessage,
         TransportEndpointMessage,
     };

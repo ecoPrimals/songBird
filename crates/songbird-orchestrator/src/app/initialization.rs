@@ -25,7 +25,7 @@ use std::sync::Arc;
 use tracing::info;
 
 use songbird_config::CanonicalSongbirdConfig;
-use songbird_discovery::anonymous_discovery::AnonymousDiscoveryListener;
+use songbird_discovery::anonymous::AnonymousDiscoveryListener;
 use songbird_network_federation::service_registry::FederatedServiceRegistry;
 use songbird_network_federation::state::FederationState;
 use songbird_observability::ObservabilityManager;

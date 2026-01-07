@@ -82,7 +82,7 @@ pub mod error_recovery; // Error recovery & resilience (Week 3 - Dec 18, 2025)
 pub mod integration;
 pub mod ipc; // Inter-Primal Communication (Unix socket IPC + primal registry) (Jan 4, 2026)
 pub mod network; // Network binding & endpoint management (Dec 20, 2025) - Zero-config intelligent binding
-pub mod node_identity; // Stable node identity (Dec 20, 2025) - Multi-path transport foundation
+pub mod node_identity;
 pub mod observability; // Basic observability (Week 4 - Dec 18, 2025)
 pub mod orchestrator; // MVP Integration (Week 1-5 - Dec 18, 2025)
 pub mod privilege; // Secure privilege management (Dec 20, 2025) - CAP_NET_ADMIN, no sudo prompts
@@ -108,7 +108,7 @@ pub use security_capability_client::{SecurityCapabilityClient, TrustEvaluationRe
 pub use universal_adapter::{UniversalAdapter, DiscoveredProvider, CapabilityQuery};
 
 // Re-export self-knowledge (what we know about ourselves!)
-pub use self_knowledge::{SelfKnowledge, PrimalType as SelfPrimalType, NetworkInterface, SelfEndpoint, EnvironmentConfig};
+// self_knowledge exports removed - module provides functions, not types
 
 // Backward compatibility alias (deprecated - encourage migration!)
 #[deprecated(note = "Use SecurityCapabilityClient instead - no primal name hardcoding!")]

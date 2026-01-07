@@ -196,6 +196,20 @@ impl AnonymousDiscoveryMessage {
     ///
     /// Adds identity attestations from security provider for genetic lineage auto-trust.
     #[must_use]
+    /// Set identity tags (v3.14.0 - tag-based identity)
+    ///
+    /// Tags are opaque strings we broadcast. We don't interpret them!
+    /// Format: `{provider}:{type}:{value}`
+    /// Example: `beardog:family:nat0`
+    pub fn with_tags(mut self, tags: Vec<String>) -> Self {
+        self.tags = if tags.is_empty() {
+            None
+        } else {
+            Some(tags)
+        };
+        self
+    }
+    
     pub fn with_identity_attestations(mut self, attestations: Vec<crate::IdentityAttestation>) -> Self {
         self.identity_attestations = Some(attestations);
         self

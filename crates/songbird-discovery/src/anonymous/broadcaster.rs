@@ -53,6 +53,11 @@ pub struct AnonymousDiscoveryBroadcaster {
     /// Broadcast interval in seconds
     interval_secs: u64,
     
+    /// Identity tags (v3.14.0 - tag-based identity)
+    /// Opaque strings we broadcast. We don't interpret them!
+    /// Format: `{provider}:{type}:{value}` (e.g., `beardog:family:nat0`)
+    tags: Option<Vec<String>>,
+    
     /// Identity attestations from security provider (CRITICAL FIX - Jan 3, 2026)
     ///
     /// These are provided by the security capability provider (e.g., BearDog) on startup
@@ -87,6 +92,7 @@ impl AnonymousDiscoveryBroadcaster {
             broadcast_addresses,
             known_peers: Vec::new(),
             interval_secs,
+            tags: None, // NEW (v3.14.0)
             identity_attestations: None,
             birdsong: None,
             stats: None,
@@ -126,12 +132,13 @@ impl AnonymousDiscoveryBroadcaster {
             broadcast_addresses,
             known_peers: Vec::new(),
             interval_secs,
+            tags: None, // NEW (v3.14.0)
             identity_attestations: None,
             birdsong: None,
             stats: None,
         }
     }
-
+    
     /// Add known peer addresses for direct discovery
     #[must_use] 
     pub fn with_known_peers(mut self, peers: Vec<SocketAddr>) -> Self {
@@ -146,6 +153,23 @@ impl AnonymousDiscoveryBroadcaster {
     #[must_use] 
     pub fn with_identity_attestations(mut self, attestations: Vec<crate::IdentityAttestation>) -> Self {
         self.identity_attestations = Some(attestations);
+        self
+    }
+    
+    /// Set identity tags (v3.14.0 - tag-based identity)
+    ///
+    /// Tags are opaque strings we broadcast. We don't interpret them!
+    /// Format: `{provider}:{type}:{value}`
+    /// Example: `beardog:family:nat0`
+    ///
+    /// Security providers (BearDog) interpret tag meaning.
+    #[must_use]
+    pub fn with_identity_tags(mut self, tags: Vec<String>) -> Self {
+        self.tags = if tags.is_empty() {
+            None
+        } else {
+            Some(tags)
+        };
         self
     }
     

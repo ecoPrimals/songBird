@@ -6,7 +6,7 @@
 //! - Discovery mode handling
 
 use anyhow::Result;
-use songbird_discovery::anonymous_discovery::AnonymousDiscoveryListener;
+use songbird_discovery::anonymous::AnonymousDiscoveryListener;
 use songbird_types::config::CanonicalSongbirdConfig;
 use std::sync::Arc;
 use tracing::info;

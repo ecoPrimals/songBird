@@ -4,7 +4,7 @@
 //! fundamental operations.
 
 use anyhow::Result;
-use songbird_discovery::anonymous_discovery::AnonymousDiscoveryListener;
+use songbird_discovery::anonymous::AnonymousDiscoveryListener;
 use songbird_network_federation::service_registry::FederatedServiceRegistry;
 use songbird_network_federation::state::FederationState;
 use songbird_network_federation::{FederationConfig, FederationCoordinator};
@@ -354,11 +354,11 @@ impl SongbirdOrchestrator {
             // CRITICAL FIX (Dec 20, 2025): Include full address (IP:port) instead of just port
             // This allows receivers to properly coalesce multi-interface nodes under one identity
             let endpoint_messages: Vec<
-                songbird_discovery::anonymous_discovery::TransportEndpointMessage,
+                songbird_discovery::anonymous::TransportEndpointMessage,
             > = node_identity
                 .endpoints
                 .iter()
-                .map(|ep| songbird_discovery::anonymous_discovery::TransportEndpointMessage {
+                .map(|ep| songbird_discovery::anonymous::TransportEndpointMessage {
                     interface_type: ep.interface_type.clone(),
                     address: ep.address.to_string(), // ✅ Full address, not just port!
                     protocols: ep.protocols.clone(),

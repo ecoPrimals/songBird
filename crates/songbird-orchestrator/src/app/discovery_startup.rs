@@ -26,10 +26,11 @@ use anyhow::Result;
 use std::sync::Arc;
 use tracing::{error, info, warn};
 
-use songbird_discovery::anonymous_discovery::{AnonymousDiscoveryBroadcaster, AnonymousDiscoveryListener, TransportEndpointMessage};
+use songbird_discovery::anonymous::{AnonymousDiscoveryBroadcaster, AnonymousDiscoveryListener, TransportEndpointMessage};
 use songbird_discovery::DiscoveryStatusManager;
 
 use crate::node_identity::NodeIdentity;
+use crate::self_knowledge;
 
 /// Start the complete discovery system
 ///
@@ -77,12 +78,17 @@ pub async fn start_discovery_system(
     // Step 2: Initialize BirdSong processor (if genetic identity available)
     let birdsong_processor = initialize_birdsong_processor(&identity_attestations).await;
 
+    // Step 2.5: Discover our own identity tags (self-knowledge!)
+    // Songbird doesn't interpret tags - just broadcasts them
+    let identity_tags = self_knowledge::discover_identity_tags();
+    
     // Step 3: Create and start broadcaster
     start_discovery_broadcaster(
         node_identity,
         endpoint_messages,
         capabilities,
         broadcast_addrs,
+        identity_tags,
         identity_attestations,
         birdsong_processor.as_ref(),
     )
@@ -235,6 +241,7 @@ async fn start_discovery_broadcaster(
     endpoint_messages: Vec<TransportEndpointMessage>,
     capabilities: Vec<String>,
     broadcast_addrs: Vec<std::net::SocketAddr>,
+    identity_tags: Vec<String>,  // NEW: Tags we broadcast (don't interpret!)
     identity_attestations: Vec<songbird_discovery::IdentityAttestation>,
     birdsong_processor: Option<&Arc<songbird_discovery::BirdSongProcessor>>,
 ) -> Result<()> {
@@ -246,6 +253,7 @@ async fn start_discovery_broadcaster(
         broadcast_addrs,
         30, // broadcast every 30 seconds
     )
+    .with_identity_tags(identity_tags) // NEW: Broadcast tags (we don't interpret!)
     .with_identity_attestations(identity_attestations); // Include attestations for genetic lineage
 
     // Enable BirdSong encryption if available
