@@ -332,6 +332,7 @@ impl SongbirdOrchestrator {
                                             node_id.clone(),
                                             endpoint.clone(),
                                             peer.capabilities.clone(),
+                                            peer.tags.clone().unwrap_or_default(),  // v3.18.0: Pass tags for BTSP selection
                                             &crate::trust::peer_trust::PeerTrustDecision::AutoAccept {
                                                 reason: reason.clone(),
                                                 confidence,
@@ -432,6 +433,7 @@ impl SongbirdOrchestrator {
                                             node_id.clone(),
                                             endpoint.clone(),
                                             peer.capabilities.clone(),
+                                            peer.tags.clone().unwrap_or_default(),  // v3.18.0: Pass tags (unused for rejections)
                                             &crate::trust::peer_trust::PeerTrustDecision::Reject {
                                                 reason: reason.clone(),
                                                 trust_level: trust_level.clone(),

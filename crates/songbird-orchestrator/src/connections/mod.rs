@@ -16,9 +16,19 @@ pub mod limited;
 pub mod federated;
 pub mod full_trust;
 
+// v3.18.0: BTSP connection types (port-free, encrypted P2P)
+pub mod limited_btsp;
+pub mod federated_btsp;
+pub mod full_trust_btsp;
+
 pub use limited::LimitedConnection;
 pub use federated::FederatedConnection;
 pub use full_trust::FullTrustConnection;
+
+// v3.18.0: Export BTSP connections
+pub use limited_btsp::LimitedBtspConnection;
+pub use federated_btsp::FederatedBtspConnection;
+pub use full_trust_btsp::FullTrustBtspConnection;
 
 /// Trait for all peer connections with trust-based capability enforcement
 #[async_trait]
@@ -49,19 +59,33 @@ pub trait PeerConnection: Send + Sync {
 }
 
 /// Enum wrapping all connection types
+///
+/// v3.18.0: Added BTSP variants for port-free, encrypted P2P communication
 pub enum Connection {
+    // HTTPS connections (v3.0+)
     Limited(LimitedConnection),
     Federated(FederatedConnection),
     FullTrust(FullTrustConnection),
+    
+    // BTSP connections (v3.18.0+) - Port-free, NAT traversal built-in
+    LimitedBtsp(LimitedBtspConnection),
+    FederatedBtsp(FederatedBtspConnection),
+    FullTrustBtsp(FullTrustBtspConnection),
 }
 
 impl Connection {
     /// Get the underlying peer connection trait object
     pub fn as_peer_connection(&self) -> &dyn PeerConnection {
         match self {
+            // HTTPS connections
             Connection::Limited(conn) => conn,
             Connection::Federated(conn) => conn,
             Connection::FullTrust(conn) => conn,
+            
+            // BTSP connections (v3.18.0)
+            Connection::LimitedBtsp(conn) => conn,
+            Connection::FederatedBtsp(conn) => conn,
+            Connection::FullTrustBtsp(conn) => conn,
         }
     }
     
