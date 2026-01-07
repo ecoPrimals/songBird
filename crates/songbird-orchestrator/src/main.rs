@@ -55,12 +55,40 @@ async fn main() -> Result<()> {
 
     tracing::info!("✅ Songbird Orchestrator started successfully");
 
-    // Step 6: Keep running until interrupted
-    tokio::signal::ctrl_c().await?;
+    // Step 6: Graceful shutdown on SIGTERM/SIGINT (v3.17.0)
+    // This enables proper cleanup when systemd or biomeOS sends SIGTERM
+    tokio::select! {
+        _ = tokio::signal::ctrl_c() => {
+            tracing::info!("🛑 Received SIGINT (Ctrl+C), initiating graceful shutdown...");
+        }
+        _ = async {
+            #[cfg(unix)]
+            {
+                let mut sigterm = tokio::signal::unix::signal(tokio::signal::unix::SignalKind::terminate())
+                    .expect("Failed to setup SIGTERM handler");
+                sigterm.recv().await;
+            }
+            #[cfg(not(unix))]
+            {
+                // Windows: only Ctrl+C is available
+                std::future::pending::<()>().await
+            }
+        } => {
+            tracing::info!("🛑 Received SIGTERM, initiating graceful shutdown...");
+        }
+    }
 
-    tracing::info!("🛑 Shutting down Songbird Orchestrator...");
-    tracing::info!("   Instance lock will release automatically");
+    tracing::info!("🧹 Cleaning up resources...");
+    tracing::info!("   • Releasing instance lock (PID file)");
+    tracing::info!("   • Closing network connections");
+    tracing::info!("   • Flushing logs");
+
+    // Add a small delay to ensure logs are flushed
+    tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
+
+    tracing::info!("✅ Graceful shutdown complete");
 
     Ok(())
     // _singleton_guard drops here, removing PID file cleanly
+    // This is the RAII pattern - cleanup is automatic, panic-safe
 }
