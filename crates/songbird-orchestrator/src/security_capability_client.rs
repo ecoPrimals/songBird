@@ -97,7 +97,7 @@ pub struct SecurityCapabilityClient {
     /// - `verify_lineage()` - Verify lineage proof cryptographically
     /// - `same_family()` - Check if two lineages share ancestry
     /// 
-    /// **Migration Plan**: These will move to SecurityAdapter when BearDog Phase 1.5 is complete.
+    /// **Migration Plan**: These will move to SecurityAdapter when security provider Phase 1.5 is complete.
     /// Until then, HTTP is acceptable as these are specialized genetic lineage operations.
     http_client: Client,
     
@@ -701,7 +701,7 @@ pub struct TrustEvaluationRequest {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub connection_info: Option<ConnectionInfo>,
     
-    /// Discovery context (optional, flattened HashMap for BearDog compatibility)
+    /// Discovery context (optional, flattened HashMap for security provider compatibility)
     #[serde(skip_serializing_if = "Option::is_none")]
     pub context: Option<HashMap<String, String>>,
 }
