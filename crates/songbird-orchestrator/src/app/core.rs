@@ -230,7 +230,7 @@ impl SongbirdOrchestrator {
                         }
                         info!("🔑 Capabilities: {:?}", identity.capabilities);
                         
-                        // TODO: Store encryption tag in orchestrator state for use in discovery
+                        // ✅ v3.14.0: Tags now broadcast in discovery via discover_identity_tags()
                         // For now, it's logged and can be accessed via SecurityCapabilityClient
                     }
                     Err(e) => {

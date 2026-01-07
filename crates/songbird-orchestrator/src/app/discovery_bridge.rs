@@ -282,9 +282,18 @@ impl SongbirdOrchestrator {
                                         })
                                         .unwrap_or_default();
                                     
+                                    // ✅ v3.14.2: Log peer tags for debugging
+                                    let peer_tags = peer.tags.clone().unwrap_or_default();
+                                    if peer_tags.is_empty() {
+                                        warn!("⚠️  Peer {} has NO tags - family extraction will fail!", node_id);
+                                        warn!("   This means the peer didn't broadcast identity tags");
+                                    } else {
+                                        debug!("📋 Peer {} has {} tags: {:?}", node_id, peer_tags.len(), peer_tags);
+                                    }
+                                    
                                     let discovered_peer = DiscoveredPeer {
                                         node_id: node_id.clone(),
-                                        tags: peer.tags.clone().unwrap_or_default(),
+                                        tags: peer_tags,
                                         identity_attestations: trust_attestations, // ✅ FIXED: Pass attestations from discovery
                                         endpoint: endpoint.clone(),
                                         capabilities: peer.capabilities.clone(),

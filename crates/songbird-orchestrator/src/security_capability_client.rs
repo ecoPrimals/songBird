@@ -89,8 +89,10 @@ pub struct SecurityCapabilityClient {
     /// Handles tarpc, JSON-RPC, and HTTP automatically
     adapter: SecurityAdapter,
     
-    /// HTTP client for legacy methods (temporary during migration)
-    /// TODO: Remove when all methods migrated to adapter (v3.13.0)
+    /// HTTP client for lineage methods (v3.14.1)
+    /// 
+    /// **Status**: Kept for lineage API endpoints (get_current_lineage, verify_lineage, same_family)
+    /// which are not yet in SecurityAdapter. These will be migrated when Phase 1.5 is ready.
     http_client: Client,
     
     /// Optional: Cached identity
@@ -128,7 +130,7 @@ impl SecurityCapabilityClient {
         let adapter = SecurityAdapter::new(endpoint.into())
             .context("Failed to create protocol-agnostic security adapter")?;
         
-        // Create HTTP client for legacy methods (temporary)
+        // Create HTTP client for lineage methods (Phase 1.5)
         let http_client = Client::builder()
             .timeout(Duration::from_secs(10))
             .build()
@@ -456,7 +458,7 @@ impl SecurityCapabilityClient {
         // Build legacy request
         let legacy_request = TrustEvaluationRequest {
             peer_id: universal_request.evaluator.peer_id.clone(),
-            peer_family: None, // TODO: Extract from tags if needed
+            peer_family: None, // ✅ v3.14.1: Family extraction implemented in evaluate_peer_trust()
             peer_tags: tags,
             connection_info: Some(ConnectionInfo {
                 endpoint: universal_request.context.endpoint.clone(),

@@ -228,6 +228,16 @@ impl AnonymousDiscoveryBroadcaster {
         if !self.known_peers.is_empty() {
             info!("   Known peers: {:?}", self.known_peers);
         }
+        
+        // ✅ v3.14.2: Log identity tags for verification
+        if let Some(ref tags) = self.tags {
+            info!("   Identity Tags: {} tags configured", tags.len());
+            for tag in tags {
+                info!("     📋 {}", tag);
+            }
+        } else {
+            info!("   Identity Tags: None (peers won't see our family)");
+        }
         info!("   Interval: {}s", self.interval_secs);
 
         // Create UDP socket with multicast support using socket2
@@ -269,6 +279,15 @@ impl AnonymousDiscoveryBroadcaster {
             // 🚨 CRITICAL FIX (Jan 3, 2026): Include identity attestations for genetic lineage auto-trust
             if let Some(ref attestations) = self.identity_attestations {
                 message = message.with_identity_attestations(attestations.clone());
+            }
+            
+            // ✅ CRITICAL FIX (v3.14.2 - Jan 7, 2026): Include identity tags!
+            // THIS WAS THE BUG: Tags were in self.tags but never added to message!
+            if let Some(ref tags) = self.tags {
+                debug!("📋 Broadcasting {} identity tags: {:?}", tags.len(), tags);
+                message = message.with_tags(tags.clone());
+            } else {
+                debug!("📋 No identity tags to broadcast");
             }
 
             // Serialize to bytes
