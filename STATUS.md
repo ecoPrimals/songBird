@@ -16,7 +16,15 @@
 
 ---
 
-## ✅ **LATEST: v3.15.0 - Zero Vendor Hardcoding (100% COMPLETE)** 🏆
+## ✅ **LATEST: v3.15.1 - BTSP Foundation Complete** 🔐🏆
+
+### Status: ✅ **FOUNDATION READY** - VPN-Free P2P Architecture
+
+**New in v3.15.1**: BTSP (BirdSong Transport Protocol) + VPN-free P2P foundation (777 lines)
+
+---
+
+## ✅ **v3.15.0 - Zero Vendor Hardcoding (100% COMPLETE)** 🏆
 
 ### Status: ✅ **PRODUCTION READY** - Zero Deep Debt, A+ Quality
 
