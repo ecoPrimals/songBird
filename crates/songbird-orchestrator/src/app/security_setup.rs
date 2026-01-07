@@ -33,46 +33,102 @@ use songbird_types::SafeEnv;
 /// The setup logic demonstrates capability-based discovery pattern.
 pub type SecurityIntegration = Arc<()>;
 
+/// Discover security provider endpoint
+///
+/// **EVOLVED (v3.15.0)**: Zero vendor hardcoding! Uses capability discovery.
+///
+/// Priority:
+/// 1. `SONGBIRD_SECURITY_PROVIDER` (NEW - generic capability)
+/// 2. `SECURITY_ENDPOINT` (existing - generic)
+/// 3. `SONGBIRD_BEARDOG_URL` (DEPRECATED - vendor-specific, will be removed in v3.16.0)
+/// 4. Discovery via Universal Adapter (fallback)
+///
+/// # Arguments
+///
+/// * `universal_adapter` - Optional Universal Adapter for capability discovery
+///
+/// # Returns
+///
+/// - `Ok(String)` if a security provider is found
+/// - `Err(...)` if no security provider is available
+pub async fn discover_security_endpoint(
+    universal_adapter: Option<&mut crate::universal_adapter::UniversalAdapter>,
+) -> Result<String> {
+    // Priority 1: NEW - Generic capability env var (v3.15.0)
+    if let Ok(endpoint) = std::env::var("SONGBIRD_SECURITY_PROVIDER") {
+        info!("🔐 Security provider: {} (via SONGBIRD_SECURITY_PROVIDER)", endpoint);
+        return Ok(endpoint);
+    }
+
+    // Priority 2: EXISTING - Generic security endpoint
+    if let Ok(endpoint) = std::env::var("SECURITY_ENDPOINT") {
+        info!("🔐 Security provider: {} (via SECURITY_ENDPOINT)", endpoint);
+        return Ok(endpoint);
+    }
+
+    // Priority 3: DEPRECATED - Vendor-specific env var (backward compat only)
+    if let Ok(endpoint) = std::env::var("SONGBIRD_BEARDOG_URL") {
+        warn!("⚠️  DEPRECATED: SONGBIRD_BEARDOG_URL is deprecated (vendor-specific hardcoding)");
+        warn!("   Please use SONGBIRD_SECURITY_PROVIDER instead (generic capability)");
+        warn!("   SONGBIRD_BEARDOG_URL will be removed in v3.16.0");
+        info!("🔐 Security provider: {} (via SONGBIRD_BEARDOG_URL - DEPRECATED)", endpoint);
+        return Ok(endpoint);
+    }
+
+    // Priority 4: FALLBACK - Discover via Universal Adapter
+    if let Some(adapter) = universal_adapter {
+        info!("🔍 No security provider configured, discovering via Universal Adapter...");
+        match adapter.discover_capability("security").await {
+            Ok(providers) if !providers.is_empty() => {
+                let endpoint = providers[0].endpoint.clone();
+                info!("✅ Discovered security provider: {}", endpoint);
+                return Ok(endpoint);
+            }
+            Ok(_) => {
+                warn!("⚠️  Universal Adapter found no security providers");
+            }
+            Err(e) => {
+                warn!("⚠️  Universal Adapter discovery failed: {}", e);
+            }
+        }
+    }
+
+    // Priority 5: Legacy fallback (for backward compat)
+    if let Ok(endpoint) = std::env::var("CAPABILITY_SECURITY_ENDPOINT") {
+        warn!("⚠️  Using legacy CAPABILITY_SECURITY_ENDPOINT");
+        warn!("   Please use SONGBIRD_SECURITY_PROVIDER instead");
+        return Ok(endpoint);
+    }
+
+    Err(anyhow::anyhow!(
+        "No security provider configured.\n\
+         Please set one of:\n\
+         - SONGBIRD_SECURITY_PROVIDER (recommended - generic capability)\n\
+         - SECURITY_ENDPOINT (alternative - generic)\n\
+         - Or configure Universal Adapter for automatic discovery"
+    ))
+}
+
 /// Setup security integration using capability-based discovery
+///
+/// **EVOLVED (v3.15.0)**: Now uses `discover_security_endpoint` with deprecation support
 ///
 /// # Zero Hardcoding
 ///
-/// Discovers security provider at runtime via:
-/// 1. `SECURITY_ENDPOINT` environment variable (explicit)
-/// 2. Capability system query for "security" capability
-/// 3. `CAPABILITY_SECURITY_ENDPOINT` fallback
-/// 4. Constructed endpoint from bind address + port
+/// Discovers security provider at runtime via capability discovery (no vendor names!)
 ///
 /// # Returns
 ///
 /// Security integration instance (currently a placeholder)
 pub async fn setup_security() -> Result<SecurityIntegration> {
-    // ✅ ZERO HARDCODING: Discovery via environment
-    if let Ok(endpoint) = std::env::var("SECURITY_ENDPOINT") {
-        info!("🔐 Security provider configured via SECURITY_ENDPOINT: {}", endpoint);
-        return Ok(Arc::new(()));
-    }
-
-    // No explicit security provider - attempt runtime discovery via capability system
-    warn!("⚠️  No SECURITY_ENDPOINT set, attempting capability-based discovery");
-
-    // ✅ ZERO HARDCODING: Try to discover security capability
-    // NOTE: Full capability discovery implementation pending
-    // For now, construct endpoint from environment or defaults
-    let security_endpoint = SafeEnv::get_required("CAPABILITY_SECURITY_ENDPOINT").unwrap_or_else(|_| {
-        warn!("💡 No security capability found. Set CAPABILITY_SECURITY_ENDPOINT environment variable");
-        construct_default_security_endpoint()
-    });
-    
-    info!("🔐 Using security capability at: {}", security_endpoint);
+    // Use new discovery function (supports Universal Adapter in future)
+    let _security_endpoint = discover_security_endpoint(None).await?;
 
     // Security integration temporarily disabled - using placeholder
-    // FUTURE WORK: Re-enable when UniversalSecurityIntegration is available
     // The important architectural pattern is demonstrated:
     // - Zero hardcoding
     // - Runtime discovery
     // - Environment-driven configuration
-    // Tracked in: COMPREHENSIVE_MODERNIZATION_REPORT_NOV_10.md (Week 2-3)
     Ok(Arc::new(()))
 }
 

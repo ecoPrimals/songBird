@@ -117,11 +117,9 @@ impl SongbirdOrchestrator {
             let trust_manager = Arc::clone(&self.trust_manager);
             let connection_manager = Arc::clone(&self.connection_manager);
             
-            // Check for security provider (BearDog or other) for trust evaluation
-            // This is agnostic - discovers capability at runtime, no hardcoding
-            let security_client_endpoint = std::env::var("SONGBIRD_BEARDOG_URL")
-                .or_else(|_| std::env::var("SECURITY_ENDPOINT"))
-                .ok();
+            // Check for security provider for trust evaluation
+            // EVOLVED (v3.15.0): Agnostic capability discovery (zero vendor hardcoding!)
+            let security_client_endpoint = crate::app::security_setup::discover_security_endpoint(None).await.ok();
 
             tokio::spawn(async move {
                 let mut interval = interval(tokio::time::Duration::from_secs(10));
