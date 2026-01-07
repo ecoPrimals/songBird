@@ -19,6 +19,7 @@
 // ============================================================================
 
 pub mod adapters;
+pub mod btsp_types; // BTSP (BirdSong Transport Protocol) types (v3.15.1)
 pub mod capabilities;
 pub mod circuit_breaker;
 pub mod discovery;
@@ -73,6 +74,10 @@ pub use tarpc_types::{
 // Re-export trust evaluation types for inter-primal trust evaluation (v3.12.3)
 pub use trust_types::{
     IdentityResponse, TrustEvaluationRequest, TrustEvaluationResponse,
+};
+pub use btsp_types::{
+    BtspEndpoint, BtspTunnel, BtspTunnelRequest, BtspTunnelResponse, ContactExchangeRequest,
+    ContactExchangeResponse, PeerContact, TunnelState, TunnelType,
 };
 
 /// Create a new unified universal adapter with default configuration
