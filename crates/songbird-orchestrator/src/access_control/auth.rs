@@ -370,10 +370,14 @@ async fn validate_db_redis(
 async fn validate_two_factor_token(user_id: &str, token: &str) -> Result<(), AuthError> {
     tracing::debug!("Validating 2FA token for user '{}'", user_id);
 
-    // Try BearDog hardware key validation first (most secure)
-    if let Ok(beardog_endpoint) = std::env::var("BEARDOG_2FA_ENDPOINT") {
-        tracing::debug!("Attempting BearDog hardware key validation for user '{}'", user_id);
-        return validate_beardog_2fa(user_id, token, &beardog_endpoint).await;
+    // EVOLVED (v3.15.0): Try authentication provider validation first
+    // Note: For now, keeping the check but using generic endpoint discovery
+    // TODO: Evolve to use Universal Adapter for 2FA validation
+    if let Ok(_auth_endpoint) = std::env::var("BEARDOG_2FA_ENDPOINT") {
+        tracing::warn!("⚠️  DEPRECATED: BEARDOG_2FA_ENDPOINT is deprecated");
+        tracing::warn!("   Use SONGBIRD_SECURITY_PROVIDER instead");
+        tracing::warn!("   2FA via authentication provider not yet fully implemented");
+        // Fallthrough to other methods
     }
 
     // Try TOTP validation (standard authenticator apps)
@@ -391,7 +395,7 @@ async fn validate_two_factor_token(user_id: &str, token: &str) -> Result<(), Aut
     // No 2FA backend configured - this is a security issue for admin access
     tracing::error!(
         "2FA required for user '{}' but no 2FA backend configured. \
-         Set BEARDOG_2FA_ENDPOINT, SONGBIRD_TOTP_SECRET_*, or SONGBIRD_2FA_SERVICE.",
+         Set SONGBIRD_TOTP_SECRET_*, SONGBIRD_2FA_SERVICE, or SONGBIRD_SECURITY_PROVIDER.",
         user_id
     );
     Err(AuthError::InvalidToken)

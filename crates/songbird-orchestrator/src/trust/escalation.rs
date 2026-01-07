@@ -77,15 +77,31 @@ pub struct BearDogClient {
 }
 
 impl BearDogClient {
-    /// Create a new BearDog client with runtime discovery
+    /// Create a new security client with runtime discovery
+    ///
+    /// **EVOLVED (v3.15.0)**: Uses capability discovery (zero vendor hardcoding!)
+    ///
+    /// Note: This is a sync function, so we use environment variables directly.
+    /// Full async discovery is available in async methods.
     pub fn new() -> Self {
-        // Try to discover BearDog via environment variable
-        let endpoint = std::env::var("BEARDOG_URL").or_else(|_| std::env::var("SECURITY_URL")).ok();
+        // EVOLVED: Use generic capability env vars (sync version)
+        let endpoint = std::env::var("SONGBIRD_SECURITY_PROVIDER")
+            .or_else(|_| std::env::var("SECURITY_ENDPOINT"))
+            .or_else(|_| {
+                if let Ok(url) = std::env::var("BEARDOG_URL") {
+                    tracing::warn!("⚠️  DEPRECATED: BEARDOG_URL is deprecated");
+                    tracing::warn!("   Use SONGBIRD_SECURITY_PROVIDER instead");
+                    Ok(url)
+                } else {
+                    Err(std::env::VarError::NotPresent)
+                }
+            })
+            .ok();
 
         if let Some(ref url) = endpoint {
-            tracing::info!("BearDog client configured with endpoint: {}", url);
+            tracing::info!("Security provider configured: {}", url);
         } else {
-            tracing::debug!("BearDog client created without endpoint (will use mock verification)");
+            tracing::debug!("Security client created without endpoint (will use mock verification)");
         }
 
         Self {

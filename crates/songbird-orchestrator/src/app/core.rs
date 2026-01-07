@@ -205,15 +205,15 @@ impl SongbirdOrchestrator {
 
     /// Query security provider for node identity and encryption tags
     ///
-    /// This is called on startup to get our BearDog encryption tag for USB seed integration.
-    /// If SONGBIRD_BEARDOG_URL or SECURITY_ENDPOINT is configured, queries the security
-    /// provider's /api/v1/identity endpoint to get encryption tags and family ID.
+    /// **EVOLVED (v3.15.0)**: Uses capability discovery (zero vendor hardcoding!)
+    ///
+    /// This is called on startup to get our encryption tag for USB seed integration.
+    /// Discovers security provider via generic capability discovery.
     async fn query_security_identity(&self) -> Result<()> {
         use crate::security_capability_client::SecurityCapabilityClient;
 
-        // Check for security provider endpoint
-        let security_url = std::env::var("SONGBIRD_BEARDOG_URL")
-            .or_else(|_| std::env::var("SECURITY_ENDPOINT"));
+        // EVOLVED: Use capability discovery (not hardcoded vendor name!)
+        let security_url = crate::app::security_setup::discover_security_endpoint(None).await;
 
         match security_url {
             Ok(url) => {
@@ -240,7 +240,7 @@ impl SongbirdOrchestrator {
                 }
             }
             Err(_) => {
-                debug!("No security provider configured (SONGBIRD_BEARDOG_URL not set)");
+                debug!("No security provider configured (SONGBIRD_SECURITY_PROVIDER not set)");
                 debug!("Continuing without encryption tags");
             }
         }

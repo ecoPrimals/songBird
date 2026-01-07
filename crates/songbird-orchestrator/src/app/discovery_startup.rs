@@ -10,8 +10,9 @@
 //! ## Zero Hardcoding Philosophy
 //!
 //! This module discovers security providers at runtime via environment:
-//! - `SONGBIRD_BEARDOG_URL`: Security provider URL
-//! - `SECURITY_ENDPOINT`: Alternative security endpoint
+//! - `SONGBIRD_SECURITY_PROVIDER`: Security provider URL (NEW - generic capability)
+//! - `SECURITY_ENDPOINT`: Alternative security endpoint (generic)
+//! - `SONGBIRD_BEARDOG_URL`: DEPRECATED - Use SONGBIRD_SECURITY_PROVIDER instead
 //!
 //! No hardcoded endpoints - all runtime discovery!
 //!
@@ -113,16 +114,18 @@ pub async fn start_discovery_system(
 
 /// Fetch identity attestations from security provider
 ///
+/// **EVOLVED (v3.15.0)**: Uses capability discovery (zero vendor hardcoding!)
+///
 /// Queries the configured security provider for genetic lineage attestations.
 /// These are used for same-family trust and BirdSong encryption.
 ///
-/// # Zero Hardcoding
+/// # Environment Variables (v3.15.0)
 ///
-/// Discovers security provider via environment:
-/// - `SONGBIRD_BEARDOG_URL` (preferred)
-/// - `SECURITY_ENDPOINT` (fallback)
+/// - `SONGBIRD_SECURITY_PROVIDER` (NEW - generic capability)
+/// - `SECURITY_ENDPOINT` (generic)
+/// - `SONGBIRD_BEARDOG_URL` (DEPRECATED - vendor-specific)
 async fn fetch_identity_attestations() -> Result<Vec<songbird_discovery::IdentityAttestation>, anyhow::Error> {
-    match std::env::var("SONGBIRD_BEARDOG_URL").or_else(|_| std::env::var("SECURITY_ENDPOINT")) {
+    match crate::app::security_setup::discover_security_endpoint(None).await {
         Ok(url) => {
             info!("🔐 Fetching identity attestations from security provider: {}", url);
             let security_client =
@@ -169,8 +172,9 @@ async fn initialize_birdsong_processor(
     }
 
     // Extract security endpoint
-    let security_endpoint = std::env::var("SONGBIRD_BEARDOG_URL")
-        .or_else(|_| std::env::var("SECURITY_ENDPOINT"))
+    // EVOLVED (v3.15.0): Use capability discovery (zero vendor hardcoding!)
+    let security_endpoint = crate::app::security_setup::discover_security_endpoint(None)
+        .await
         .ok();
 
     // Extract family_id from identity attestations
