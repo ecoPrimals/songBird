@@ -20,7 +20,7 @@
 //!     ↓
 //! Same-Family Detection (NEW v3.10.0)
 //!     ↓
-//! Trust Evaluation (BearDog/Security Provider)
+//! Trust Evaluation (security provider/Security Provider)
 //!     ↓
 //! ConnectionManager (Progressive Trust)
 //!     ↓
@@ -64,13 +64,13 @@ impl SongbirdOrchestrator {
     /// 2. Extracts peer identity (node_id, node_name)
     /// 3. Checks same-family status (for LAN optimization)
     /// 4. Verifies connectivity (HTTPS /health, skipped for same-family)
-    /// 5. Evaluates trust (via BearDog or other security provider)
+    /// 5. Evaluates trust (via security provider or other security provider)
     /// 6. Establishes connection at appropriate trust level
     /// 7. Registers in federation state
     ///
     /// ## Trust Evaluation
     ///
-    /// **With Security Provider** (BearDog):
+    /// **With Security Provider** (security provider):
     /// - Queries security provider for genetic lineage verification
     /// - Only accepts peers with valid family lineage
     /// - Secure by default
@@ -244,7 +244,7 @@ impl SongbirdOrchestrator {
                                 );
 
                                 // 🔒 CRITICAL: Genetic lineage trust evaluation (USB seed integration)
-                                // Query security provider (e.g., BearDog) for trust decision
+                                // Query security provider (e.g., security provider) for trust decision
                                 // 
                                 // Agnostic Pattern: Node discovers security capability at runtime
                                 // - If security provider configured → evaluate trust (secure)

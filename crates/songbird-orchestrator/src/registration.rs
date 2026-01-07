@@ -136,7 +136,7 @@ pub async fn create_registration_from_identity(
         registration.set_lineage(lineage_id.clone(), proof.clone());
         info!("✅ Registration includes genetic lineage: {}", lineage_id);
     } else {
-        info!("ℹ️  Registration without lineage - BearDog not yet initialized");
+        info!("ℹ️  Registration without lineage - security provider not yet initialized");
     }
 
     Ok(registration)

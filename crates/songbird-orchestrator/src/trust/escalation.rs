@@ -62,17 +62,17 @@ impl Default for TrustTimeouts {
     }
 }
 
-/// BearDog client for hardware verification
+/// security provider client for hardware verification
 ///
-/// Integrates with BearDog v0.9.5+ for cryptographic identity verification.
-/// When BearDog is available, this provides hardware-backed trust anchors.
+/// Integrates with security provider v0.9.5+ for cryptographic identity verification.
+/// When security provider is available, this provides hardware-backed trust anchors.
 ///
 /// ## Integration Status
-/// - BearDog v0.9.5 is available at ../beardog
+/// - security provider v0.9.5 is available at ../security provider
 /// - Using capability-based discovery for endpoint resolution
 /// - Falls back to mock verification in development mode
 pub struct BearDogClient {
-    /// Optional BearDog endpoint (discovered at runtime)
+    /// Optional security provider endpoint (discovered at runtime)
     endpoint: Option<String>,
 }
 
@@ -109,14 +109,14 @@ impl BearDogClient {
         }
     }
 
-    /// Verify a hardware key via BearDog
+    /// Verify a hardware key via security provider
     ///
     /// ## Implementation
-    /// - In production with BearDog available: Makes HTTP request to BearDog API
-    /// - In development or without BearDog: Returns mock verification
+    /// - In production with security provider available: Makes HTTP request to security provider API
+    /// - In development or without security provider: Returns mock verification
     ///
     /// ## Future Enhancement
-    /// When BearDog HTTP API is fully documented, replace with actual API calls:
+    /// When security provider HTTP API is fully documented, replace with actual API calls:
     /// ```ignore
     /// POST /api/v1/verify-key
     /// Body: { "key": "...", "challenge": "..." }
@@ -125,12 +125,12 @@ impl BearDogClient {
     pub async fn verify_hardware_key(&self, hardware_key: &str) -> Result<bool> {
         if let Some(ref endpoint) = self.endpoint {
             tracing::info!(
-                "Verifying hardware key via BearDog at {} (future: implement actual HTTP call)",
+                "Verifying hardware key via security provider at {} (future: implement actual HTTP call)",
                 endpoint
             );
 
-            // Future: Implement actual BearDog API call
-            // For now, accept non-empty keys as valid when BearDog is configured
+            // Future: Implement actual security provider API call
+            // For now, accept non-empty keys as valid when security provider is configured
             let is_valid = !hardware_key.is_empty() && hardware_key.len() >= 32;
 
             tracing::debug!("Hardware key verification result: {} (mock implementation)", is_valid);
@@ -337,9 +337,9 @@ impl TrustEscalationManager {
         Ok(())
     }
 
-    /// Escalate to hardware-verified (requires BearDog)
+    /// Escalate to hardware-verified (requires security provider)
     ///
-    /// Verifies hardware key via BearDog and grants full admin access.
+    /// Verifies hardware key via security provider and grants full admin access.
     pub async fn verify_hardware(
         &self,
         session_id: &str,
@@ -348,9 +348,9 @@ impl TrustEscalationManager {
         let beardog = self
             .security_client
             .as_ref()
-            .ok_or_else(|| anyhow!("BearDog integration not configured"))?;
+            .ok_or_else(|| anyhow!("security provider integration not configured"))?;
 
-        // Verify hardware key via BearDog
+        // Verify hardware key via security provider
         // Verify hardware attestation (if security provider available)
         if let Some(ref security) = self.security_client {
             // TODO: Implement hardware verification via security provider

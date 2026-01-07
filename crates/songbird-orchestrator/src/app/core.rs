@@ -142,7 +142,7 @@ impl SongbirdOrchestrator {
         // ✅ SMART REFACTORING (v3.10.3 - Jan 6, 2026): Setup security via capability discovery
         // Extracted to security_setup module demonstrating ZERO HARDCODING philosophy.
         // This is the CORRECT way: runtime discovery, ANY provider, no hardcoded endpoints.
-        // Songbird knows about "security" capability, NOT about specific providers like BearDog.
+        // Songbird knows about "security" capability, NOT about specific providers like security provider.
         // This reduces core.rs by ~56 lines while showcasing modern capability-based architecture.
         let security_integration = super::security_setup::setup_security().await?;
 
@@ -256,7 +256,7 @@ impl SongbirdOrchestrator {
         info!("   Federation: Zero-trust progressive escalation");
         info!("   All connections: Encrypted by default (TLS failsafe)");
 
-        // NEW: Query BearDog for our encryption tag (USB seed integration)
+        // NEW: Query security provider for our encryption tag (USB seed integration)
         self.query_security_identity().await?;
 
         // Start all services
@@ -432,11 +432,11 @@ impl SongbirdOrchestrator {
             });
         }
 
-        // Initialize real BearDog security integration
-        info!("🐕 Initializing BearDog security integration...");
+        // Initialize real security provider security integration
+        info!("🐕 Initializing security provider security integration...");
         // Temporarily disabled security integration initialization
         {
-            info!("✅ BearDog security integration initialized successfully");
+            info!("✅ security provider security integration initialized successfully");
         }
 
         // Start health monitoring
@@ -521,7 +521,7 @@ impl SongbirdOrchestrator {
     
     /// Start Unix Socket IPC server for inter-primal communication (Jan 4, 2026)
     ///
-    /// Starts a Unix socket server that allows other primals (BearDog, ToadStool, etc.)
+    /// Starts a Unix socket server that allows other primals (security provider, ToadStool, etc.)
     /// to register their capabilities and communicate with Songbird.
     ///
     /// Socket path format: `/tmp/songbird-{family_id}-{node_id}.sock`
@@ -529,7 +529,7 @@ impl SongbirdOrchestrator {
     /// If no node_id is configured, uses: `/tmp/songbird.sock` (legacy fallback)
     ///
     /// This ensures multiple Songbird instances (spores) can run on the same machine
-    /// without socket path conflicts, following BearDog's pattern.
+    /// without socket path conflicts, following security provider's pattern.
     async fn start_ipc_server(&mut self) -> Result<()> {
         use crate::ipc::UnixSocketIpcServer;
         
@@ -545,7 +545,7 @@ impl SongbirdOrchestrator {
             .or_else(|| std::env::var("SPORE_ID").ok());
         
         // Build socket path: /tmp/songbird-{family}-{node}.sock
-        // This follows BearDog's pattern to avoid conflicts when running multiple spores
+        // This follows security provider's pattern to avoid conflicts when running multiple spores
         let socket_path = match (family_id.as_ref(), node_id.as_ref()) {
             (Some(family), Some(node)) => {
                 format!("/tmp/songbird-{}-{}.sock", family, node)

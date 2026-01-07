@@ -9,7 +9,7 @@
 //! Level 1: Capability-Verified → Can coordinate tasks
 //! Level 2: Role-Verified       → Can access service registry
 //! Level 3: Identity-Verified   → Can see infrastructure details
-//! Level 4: Hardware-Verified   → Full admin access (BearDog)
+//! Level 4: Hardware-Verified   → Full admin access (security provider)
 //! ```
 //!
 //! ## Progressive Escalation
@@ -32,7 +32,7 @@
 //!    |------------------------------->|
 //!    |  Provide Hardware Key          |
 //!    |------------------------------->|
-//!    |  Verify with BearDog           |
+//!    |  Verify with security provider           |
 //!    |<==============================>|
 //!    |  Trust Level: 4 (Hardware)     |
 //!    |  Grant Full Access             |

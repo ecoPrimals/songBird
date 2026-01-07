@@ -9,7 +9,7 @@
 //! - Discovers own network interfaces
 //! - Exposes own capabilities
 //! - **Does NOT interpret or understand tags** - just reads and broadcasts them
-//! - Security providers (BearDog) interpret tag meaning
+//! - Security providers (security provider) interpret tag meaning
 //!
 //! ## Tag-Based Identity (v3.14.0)
 //!
@@ -97,7 +97,7 @@ pub fn discover_capabilities() -> Vec<String> {
 ///
 /// ## Philosophy:
 /// Songbird doesn't know what tags mean. It just broadcasts them.
-/// Security providers (BearDog) interpret tags and make decisions.
+/// Security providers (security provider) interpret tags and make decisions.
 ///
 /// This is **self-knowledge** - we only know our own tags, not what they mean!
 pub fn discover_identity_tags() -> Vec<String> {
@@ -121,21 +121,21 @@ pub fn discover_identity_tags() -> Vec<String> {
     if let Ok(family_id) = std::env::var("SONGBIRD_FAMILY_ID") {
         let tag = format!("beardog:family:{}", family_id);
         tags.push(tag.clone());
-        debug!("📋 Self-knowledge: Family tag '{}' (BearDog will interpret)", tag);
+        debug!("📋 Self-knowledge: Family tag '{}' (security provider will interpret)", tag);
     }
     
     // Org ID → beardog:org:{id}
     if let Ok(org_id) = std::env::var("SONGBIRD_ORG_ID") {
         let tag = format!("beardog:org:{}", org_id);
         tags.push(tag.clone());
-        debug!("📋 Self-knowledge: Org tag '{}' (BearDog will interpret)", tag);
+        debug!("📋 Self-knowledge: Org tag '{}' (security provider will interpret)", tag);
     }
     
-    // Role → beardog:role:{role}
+    // Role → security provider:role:{role}
     if let Ok(role) = std::env::var("SONGBIRD_ROLE") {
-        let tag = format!("beardog:role:{}", role);
+        let tag = format!("security provider:role:{}", role);
         tags.push(tag.clone());
-        debug!("📋 Self-knowledge: Role tag '{}' (BearDog will interpret)", tag);
+        debug!("📋 Self-knowledge: Role tag '{}' (security provider will interpret)", tag);
     }
     
     if tags.is_empty() {

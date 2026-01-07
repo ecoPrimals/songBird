@@ -2,7 +2,7 @@
 //!
 //! This module provides capability-based discovery and routing for primals.
 //! Unlike the plugin registry (which manages internal plugins), this registry
-//! tracks **external primals** (BearDog, ToadStool, Gorilla, etc.) and routes
+//! tracks **external primals** (security provider, ToadStool, Gorilla, etc.) and routes
 //! requests based on the capabilities they provide.
 //!
 //! ## Architecture
@@ -18,7 +18,7 @@
 //!     ┌──────────────┼──────────────┐
 //!     │              │              │
 //! ┌───┴────┐    ┌───┴────┐    ┌───┴────┐
-//! │BearDog │    │ToadStol│    │Gorilla │
+//! │security provider │    │ToadStol│    │Gorilla │
 //! │        │    │        │    │        │
 //! │security│    │storage │    │compute │
 //! └────────┘    └────────┘    └────────┘
@@ -41,7 +41,7 @@
 //!
 //! // Register a primal
 //! registry.register(PrimalInfo {
-//!     primal_id: "beardog-tower1".to_string(),
+//!     primal_id: "security provider-tower1".to_string(),
 //!     capabilities: vec!["security".to_string(), "encryption".to_string()],
 //!     endpoint: Some("http://localhost:9000".to_string()),
 //!     metadata: Default::default(),
@@ -62,7 +62,7 @@ use tracing::{debug, info};
 /// Information about a registered primal
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PrimalInfo {
-    /// Unique primal identifier (e.g., "beardog-tower1", "toadstool-main")
+    /// Unique primal identifier (e.g., "security provider-tower1", "toadstool-main")
     pub primal_id: String,
     
     /// Capabilities this primal provides (e.g., ["security", "encryption", "trust"])
@@ -112,9 +112,9 @@ impl PrimalRegistry {
     /// let mut registry = PrimalRegistry::new();
     ///
     /// registry.register(PrimalInfo {
-    ///     primal_id: "beardog-tower1".to_string(),
+    ///     primal_id: "security provider-tower1".to_string(),
     ///     capabilities: vec!["security".to_string(), "encryption".to_string()],
-    ///     endpoint: Some("/tmp/beardog.sock".to_string()),
+    ///     endpoint: Some("/tmp/security provider.sock".to_string()),
     ///     metadata: Default::default(),
     /// }).await?;
     /// # Ok(())
@@ -163,7 +163,7 @@ impl PrimalRegistry {
     /// # use songbird_orchestrator::ipc::primal_registry::PrimalRegistry;
     /// # async fn example() -> anyhow::Result<()> {
     /// let mut registry = PrimalRegistry::new();
-    /// registry.unregister("beardog-tower1").await?;
+    /// registry.unregister("security provider-tower1").await?;
     /// # Ok(())
     /// # }
     /// ```
@@ -312,7 +312,7 @@ impl PrimalRegistry {
     /// # async fn example() -> anyhow::Result<()> {
     /// let registry = PrimalRegistry::new();
     ///
-    /// if let Some(info) = registry.get_primal("beardog-tower1").await? {
+    /// if let Some(info) = registry.get_primal("security provider-tower1").await? {
     ///     println!("Primal: {}", info.primal_id);
     ///     println!("Capabilities: {:?}", info.capabilities);
     /// }
@@ -404,24 +404,24 @@ mod tests {
     async fn test_register_primal() {
         let mut registry = PrimalRegistry::new();
         
-        let primal = create_test_primal("beardog", vec!["security", "encryption"]);
+        let primal = create_test_primal("security provider", vec!["security", "encryption"]);
         registry.register(primal).await.unwrap();
         
         let all = registry.list_all().await.unwrap();
         assert_eq!(all.len(), 1);
-        assert_eq!(all[0].primal_id, "beardog");
+        assert_eq!(all[0].primal_id, "security provider");
     }
     
     #[tokio::test]
     async fn test_get_provider() {
         let mut registry = PrimalRegistry::new();
         
-        let primal = create_test_primal("beardog", vec!["security", "encryption"]);
+        let primal = create_test_primal("security provider", vec!["security", "encryption"]);
         registry.register(primal).await.unwrap();
         
         let provider = registry.get_provider("security").await.unwrap();
         assert!(provider.is_some());
-        assert_eq!(provider.unwrap().primal_id, "beardog");
+        assert_eq!(provider.unwrap().primal_id, "security provider");
         
         let no_provider = registry.get_provider("storage").await.unwrap();
         assert!(no_provider.is_none());
@@ -431,8 +431,8 @@ mod tests {
     async fn test_list_providers() {
         let mut registry = PrimalRegistry::new();
         
-        registry.register(create_test_primal("beardog1", vec!["security"])).await.unwrap();
-        registry.register(create_test_primal("beardog2", vec!["security"])).await.unwrap();
+        registry.register(create_test_primal("security provider1", vec!["security"])).await.unwrap();
+        registry.register(create_test_primal("security provider2", vec!["security"])).await.unwrap();
         registry.register(create_test_primal("toadstool", vec!["storage"])).await.unwrap();
         
         let security_providers = registry.list_providers("security").await.unwrap();
@@ -446,10 +446,10 @@ mod tests {
     async fn test_unregister() {
         let mut registry = PrimalRegistry::new();
         
-        registry.register(create_test_primal("beardog", vec!["security"])).await.unwrap();
+        registry.register(create_test_primal("security provider", vec!["security"])).await.unwrap();
         assert_eq!(registry.list_all().await.unwrap().len(), 1);
         
-        registry.unregister("beardog").await.unwrap();
+        registry.unregister("security provider").await.unwrap();
         assert_eq!(registry.list_all().await.unwrap().len(), 0);
         
         let provider = registry.get_provider("security").await.unwrap();
@@ -460,7 +460,7 @@ mod tests {
     async fn test_available_capabilities() {
         let mut registry = PrimalRegistry::new();
         
-        registry.register(create_test_primal("beardog", vec!["security", "encryption"])).await.unwrap();
+        registry.register(create_test_primal("security provider", vec!["security", "encryption"])).await.unwrap();
         registry.register(create_test_primal("toadstool", vec!["storage"])).await.unwrap();
         
         let capabilities = registry.available_capabilities().await.unwrap();
@@ -474,7 +474,7 @@ mod tests {
     async fn test_stats() {
         let mut registry = PrimalRegistry::new();
         
-        registry.register(create_test_primal("beardog", vec!["security"])).await.unwrap();
+        registry.register(create_test_primal("security provider", vec!["security"])).await.unwrap();
         registry.register(create_test_primal("toadstool", vec!["storage"])).await.unwrap();
         
         let stats = registry.stats().await.unwrap();

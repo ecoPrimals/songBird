@@ -95,7 +95,7 @@ pub struct RegisteredService {
     /// Unique service ID
     pub service_id: String,
 
-    /// Service name (e.g., "Toadstool", "BearDog")
+    /// Service name (e.g., "Toadstool", "security provider")
     pub service_name: String,
 
     /// Service version

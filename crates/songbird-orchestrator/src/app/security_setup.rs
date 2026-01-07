@@ -178,7 +178,7 @@ mod tests {
     #[tokio::test]
     async fn test_security_setup_with_explicit_endpoint() {
         // Set explicit endpoint
-        std::env::set_var("SECURITY_ENDPOINT", "https://beardog.local:8443");
+        std::env::set_var("SECURITY_ENDPOINT", "https://security provider.local:8443");
         
         let result = setup_security().await;
         assert!(result.is_ok());
@@ -246,19 +246,19 @@ mod tests {
         // This test demonstrates that the security setup follows
         // the zero hardcoding philosophy:
         //
-        // 1. Primal code (Songbird) has ZERO knowledge of BearDog
+        // 1. Primal code (Songbird) has ZERO knowledge of security provider
         // 2. Security provider is discovered at runtime
-        // 3. ANY security provider can be used (not just BearDog)
+        // 3. ANY security provider can be used (not just security provider)
         // 4. Configuration is 100% external (environment)
         //
         // This is THE CORRECT WAY to build primal systems!
         
-        // Songbird doesn't know about BearDog - it only knows about "security" capability
-        let capability_type = "security"; // NOT "beardog"!
+        // Songbird doesn't know about security provider - it only knows about "security" capability
+        let capability_type = "security"; // NOT "security provider"!
         assert_eq!(capability_type, "security");
         
         // Any provider can fulfill this capability:
-        // - BearDog (current)
+        // - security provider (current)
         // - NewSecurityPrimal (future)
         // - CustomSecurityService (user-provided)
         //

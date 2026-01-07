@@ -9,7 +9,7 @@
 /// - tarpc:    ~50μs latency, 10 GB/s throughput (100-200x faster!)
 ///
 /// Use Cases:
-/// - Primal-to-primal communication (BearDog, Squirrel, Toadstool, NestGate)
+/// - Primal-to-primal communication (security provider, Squirrel, Toadstool, NestGate)
 /// - High-frequency service discovery
 /// - Real-time federation updates
 /// - Internal microservice communication

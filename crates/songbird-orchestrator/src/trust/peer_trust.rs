@@ -1,7 +1,7 @@
 //! Peer Trust Evaluation
 //!
-//! Evaluates whether to trust discovered peers by consulting the security provider (BearDog).
-//! This is part of the USB seed integration - BearDog makes the trust decision based on
+//! Evaluates whether to trust discovered peers by consulting the security provider (security provider).
+//! This is part of the USB seed integration - security provider makes the trust decision based on
 //! genetic lineage derived from the USB family seed.
 
 use anyhow::Result;
@@ -66,19 +66,19 @@ pub struct DiscoveredPeer {
 
 /// Evaluate whether to trust a discovered peer
 ///
-/// Consults BearDog (security provider) for trust decision.
-/// BearDog checks genetic lineage and returns auto_accept/prompt_user/reject.
+/// Consults security provider (security provider) for trust decision.
+/// security provider checks genetic lineage and returns auto_accept/prompt_user/reject.
 ///
 /// # Architecture
 ///
 /// - **Songbird**: Discovers peers, asks "should I trust?"
-/// - **BearDog**: Knows lineage, answers yes/no/prompt
+/// - **security provider**: Knows lineage, answers yes/no/prompt
 /// - **Clean API**: Songbird doesn't need crypto knowledge
 ///
 /// # Arguments
 ///
 /// * `peer` - Discovered peer information
-/// * `beardog_client` - Client for querying BearDog
+/// * `security provider_client` - Client for querying security provider
 ///
 /// # Returns
 ///
@@ -96,7 +96,7 @@ pub async fn evaluate_peer_trust(
     if let Some(ref family) = peer_family {
         info!("🏷️  Peer {} family extracted from tags: {}", peer.node_id, family);
     } else {
-        warn!("⚠️  Peer {} has no family tag - BearDog will reject", peer.node_id);
+        warn!("⚠️  Peer {} has no family tag - security provider will reject", peer.node_id);
     }
     
     // Build trust evaluation request
@@ -116,15 +116,15 @@ pub async fn evaluate_peer_trust(
         }),
     };
     
-    // Ask BearDog: "Should I trust this peer?"
+    // Ask security provider: "Should I trust this peer?"
     match beardog_client.evaluate_trust(&request).await {
         Ok(response) => {
-            // Handle BearDog's decision
+            // Handle security provider's decision
             handle_trust_response(&peer.node_id, response)
         }
         Err(e) => {
-            // BearDog unavailable - default to prompting user
-            warn!("⚠️ BearDog unavailable for peer {}: {}", peer.node_id, e);
+            // security provider unavailable - default to prompting user
+            warn!("⚠️ security provider unavailable for peer {}: {}", peer.node_id, e);
             warn!("   Defaulting to prompt user (safe default)");
             
             Ok(PeerTrustDecision::PromptUser {
@@ -136,14 +136,14 @@ pub async fn evaluate_peer_trust(
     }
 }
 
-/// Handle trust response from BearDog
+/// Handle trust response from security provider
 fn handle_trust_response(
     peer_id: &str,
     response: TrustEvaluationResponse,
 ) -> Result<PeerTrustDecision> {
     match response.decision.as_str() {
         "auto_accept" => {
-            info!("✅ BearDog says AUTO-ACCEPT peer {} ({})", peer_id, response.reason);
+            info!("✅ security provider says AUTO-ACCEPT peer {} ({})", peer_id, response.reason);
             info!("   Trust level: {} | Confidence: {:.2}", 
                   response.trust_level, response.confidence);
             
@@ -155,7 +155,7 @@ fn handle_trust_response(
         }
         
         "prompt_user" => {
-            info!("⚠️ BearDog says PROMPT USER for peer {} ({})", peer_id, response.reason);
+            info!("⚠️ security provider says PROMPT USER for peer {} ({})", peer_id, response.reason);
             info!("   Trust level: {} | Confidence: {:.2}", 
                   response.trust_level, response.confidence);
             
@@ -171,7 +171,7 @@ fn handle_trust_response(
         }
         
         "reject" => {
-            warn!("❌ BearDog says REJECT peer {} ({})", peer_id, response.reason);
+            warn!("❌ security provider says REJECT peer {} ({})", peer_id, response.reason);
             warn!("   Trust level: {} | Confidence: {:.2}", 
                   response.trust_level, response.confidence);
             
@@ -182,7 +182,7 @@ fn handle_trust_response(
         }
         
         unknown => {
-            warn!("❓ Unknown decision from BearDog: {}", unknown);
+            warn!("❓ Unknown decision from security provider: {}", unknown);
             warn!("   Defaulting to prompt user (safe default)");
             
             Ok(PeerTrustDecision::PromptUser {
@@ -197,7 +197,7 @@ fn handle_trust_response(
 /// Extract family ID from peer tags (v3.14.1)
 ///
 /// Tags format: "beardog:family:nat0" or "beardog:family:acmecorp"
-/// Songbird doesn't interpret these tags - it just extracts and passes to BearDog.
+/// Songbird doesn't interpret these tags - it just extracts and passes to security provider.
 ///
 /// # Arguments
 ///

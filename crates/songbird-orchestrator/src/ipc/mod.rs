@@ -1,7 +1,7 @@
 //! Inter-Primal Communication (IPC) Module
 //!
 //! This module provides Unix socket-based IPC for Songbird to communicate with
-//! other primals (BearDog, ToadStool, Gorilla, etc.) using JSON-RPC 2.0.
+//! other primals (security provider, ToadStool, Gorilla, etc.) using JSON-RPC 2.0.
 //!
 //! ## Architecture
 //!
@@ -21,7 +21,7 @@
 //!     ┌─────┴──────┬──────────┬──────────────┐
 //!     │            │          │              │
 //! ┌───┴────┐  ┌───┴────┐ ┌───┴────┐   ┌────┴────┐
-//! │BearDog │  │ToadStol│ │Gorilla │   │ Future  │
+//! │security provider │  │ToadStol│ │Gorilla │   │ Future  │
 //! │        │  │        │ │        │   │ Primals │
 //! │security│  │storage │ │compute │   │   ...   │
 //! └────────┘  └────────┘ └────────┘   └─────────┘

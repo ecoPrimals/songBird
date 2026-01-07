@@ -357,8 +357,8 @@ mod tests {
                 "family_id": "test-family",
                 "tags": [
                     "beardog:family:test-family:node1",
-                    "beardog:capability:orchestration",
-                    "beardog:hardware:tpm2"
+                    "security provider:capability:orchestration",
+                    "security provider:hardware:tpm2"
                 ],
                 "trust_level": "elevated",
                 "timestamp": 1704326400

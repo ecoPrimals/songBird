@@ -12,7 +12,7 @@ pub async fn handle_service_command(service_command: Option<ServiceCommands>) ->
             print_info("  • orchestrator    - Main orchestration service");
             print_info("  • gaming         - Gaming bridge services");
             print_info("  • federation     - Peer-to-peer federation");
-            print_info("  • security       - BearDog security integration");
+            print_info("  • security       - security provider security integration");
             print_info("  • discovery      - Network discovery service");
             print_info("  • observability  - Monitoring and metrics");
             Ok(())

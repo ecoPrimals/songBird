@@ -6,10 +6,10 @@
 //! ## Zero Hardcoding Philosophy
 //!
 //! ```text
-//! ❌ OLD: "Connect to BearDog at localhost:9000"
+//! ❌ OLD: "Connect to security provider at localhost:9000"
 //! ✅ NEW: "Discover who provides 'security' capability"
 //!
-//! ❌ OLD: "If security needed, call BearDog API"
+//! ❌ OLD: "If security needed, call security provider API"
 //! ✅ NEW: "If security needed, discover security provider and call its API"
 //!
 //! ❌ OLD: hardcoded primal names everywhere
@@ -31,7 +31,7 @@
 //! # async fn example() -> anyhow::Result<()> {
 //! let adapter = UniversalAdapter::new().await?;
 //!
-//! // Discover security provider (could be BearDog, could be something else!)
+//! // Discover security provider (could be security provider, could be something else!)
 //! let security_provider = adapter.discover_capability("security").await?;
 //! println!("Found security provider at: {}", security_provider.endpoint);
 //!
@@ -137,7 +137,7 @@ impl UniversalAdapter {
     /// # async fn example() -> anyhow::Result<()> {
     /// let adapter = UniversalAdapter::new().await?;
     ///
-    /// // Find ALL security providers (could be BearDog, or others!)
+    /// // Find ALL security providers (could be security provider, or others!)
     /// let providers = adapter.discover_capability("security").await?;
     /// for provider in providers {
     ///     println!("Found: {} at {}", provider.provider_id, provider.endpoint);

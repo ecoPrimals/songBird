@@ -485,7 +485,7 @@ async fn submit_compute_task(
             provider_endpoint,
             capability_type,
         } => {
-            // Forward to capability provider (Toadstool, BearDog, etc.)
+            // Forward to capability provider (Toadstool, security provider, etc.)
             info!(
                 "Forwarding task {} to {:?} capability at {}",
                 job_id, capability_type, provider_endpoint

@@ -1,7 +1,7 @@
 //! Universal Trust Evaluation API
 //!
 //! Generic, provider-agnostic API for trust evaluation across any security provider.
-//! Works with BearDog, ToadStool, hardware HSMs, and future cryptographic systems.
+//! Works with security provider, ToadStool, hardware HSMs, and future cryptographic systems.
 
 use serde::{Deserialize, Serialize};
 use serde_json::Value as JsonValue;
@@ -180,7 +180,7 @@ impl IdentityAttestation {
         self
     }
     
-    /// Create a tag list attestation (for BearDog-style tags)
+    /// Create a tag list attestation (for security provider-style tags)
     pub fn tag_list(tags: Vec<String>) -> Self {
         Self {
             provider: None,

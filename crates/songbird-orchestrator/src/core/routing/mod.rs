@@ -2,7 +2,7 @@
 //!
 //! This module implements intelligent task routing for Songbird orchestrator:
 //! - Small/simple tasks → Route to peer Songbird instances (federation)
-//! - Large/complex tasks → Route to specialized capabilities (Toadstool, BearDog, etc.)
+//! - Large/complex tasks → Route to specialized capabilities (Toadstool, security provider, etc.)
 //!
 //! ## Architecture
 //!

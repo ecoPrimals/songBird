@@ -195,20 +195,20 @@ async fn initialize_birdsong_processor(
         return None;
     };
 
-    info!("🎵 Initializing BearDog BirdSong encryption provider");
+    info!("🎵 Initializing security provider BirdSong encryption provider");
     info!("   Endpoint: {}", endpoint);
     if let Some(ref fam) = family_id {
         info!("   Family ID: {}", fam);
     }
 
-    // Create BearDog provider
+    // Create security provider provider
     let beardog_provider = songbird_discovery::BearDogBirdSongProvider::new(
         endpoint.clone(),
         family_id.clone(),
     );
 
     if beardog_provider.check_health().await {
-        info!("✅ BearDog provider healthy");
+        info!("✅ security provider provider healthy");
         let config = songbird_discovery::BirdSongConfig {
             enabled: true,
             fallback_to_plaintext: true, // Allow mixed-mode for migration
@@ -223,7 +223,7 @@ async fn initialize_birdsong_processor(
         info!("🎵 BirdSong processor initialized: {}", processor.status());
         Some(Arc::new(processor))
     } else {
-        warn!("⚠️  BearDog provider not available, using plaintext fallback");
+        warn!("⚠️  security provider provider not available, using plaintext fallback");
         let config = songbird_discovery::BirdSongConfig {
             enabled: true,
             fallback_to_plaintext: true,
@@ -358,7 +358,7 @@ mod tests {
     #[test]
     fn test_zero_hardcoding_discovery_startup() {
         // This test verifies the zero hardcoding philosophy:
-        // - No hardcoded BearDog endpoints
+        // - No hardcoded security provider endpoints
         // - All configuration via environment
         // - Runtime discovery of security provider
 

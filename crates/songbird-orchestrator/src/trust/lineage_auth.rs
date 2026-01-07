@@ -128,8 +128,8 @@ struct CachedVerification {
     cached_at: std::time::Instant,
 }
 
-/// Simplified BearDog client for lineage operations
-/// (Will use actual BearDog client when Phase 1.5 is ready)
+/// Simplified security provider client for lineage operations
+/// (Will use actual security provider client when Phase 1.5 is ready)
 #[derive(Debug, Clone)]
 pub struct BearDogClient {
     endpoint: String,
@@ -137,7 +137,7 @@ pub struct BearDogClient {
 }
 
 impl BearDogClient {
-    /// Create a new BearDog client
+    /// Create a new security provider client
     pub fn new(endpoint: impl Into<String>) -> Self {
         Self {
             endpoint: endpoint.into(),
@@ -147,10 +147,10 @@ impl BearDogClient {
 
     /// Verify lineage proof
     pub async fn verify_lineage(&self, proof: &LineageProof) -> Result<VerificationResult> {
-        // TODO: Call actual BearDog API when Phase 1.5 is ready
+        // TODO: Call actual security provider API when Phase 1.5 is ready
         // For now, implement graceful fallback
         
-        info!("🔍 Verifying lineage proof via BearDog (mock implementation)");
+        info!("🔍 Verifying lineage proof via security provider (mock implementation)");
         
         // Mock verification - always succeeds for development
         // In production, this will call POST /api/v1/lineage/verify
@@ -158,13 +158,13 @@ impl BearDogClient {
             valid: true,
             same_genesis: false,
             lineage_id: proof.lineage_id.clone(),
-            messages: vec!["Mock verification - BearDog Phase 1.5 pending".to_string()],
+            messages: vec!["Mock verification - security provider Phase 1.5 pending".to_string()],
         })
     }
 
     /// Check if two lineages share the same genesis
     pub async fn same_family(&self, lineage_a: &LineageId, lineage_b: &LineageId) -> Result<bool> {
-        // TODO: Call actual BearDog API when Phase 1.5 is ready
+        // TODO: Call actual security provider API when Phase 1.5 is ready
         // For now, compare tower IDs as a heuristic
         
         Ok(lineage_a.tower_id() == lineage_b.tower_id())
@@ -172,14 +172,14 @@ impl BearDogClient {
 
     /// Get current lineage for this node
     pub async fn get_current_lineage(&self) -> Result<Option<CurrentLineageInfo>> {
-        // TODO: Call actual BearDog API when Phase 1.5 is ready
+        // TODO: Call actual security provider API when Phase 1.5 is ready
         // For now, return None (graceful degradation)
         
         Ok(None)
     }
 }
 
-/// Verification result from BearDog
+/// Verification result from security provider
 #[derive(Debug, Clone)]
 pub struct VerificationResult {
     pub valid: bool,
@@ -284,7 +284,7 @@ impl LineageAuthenticator {
         if let Some(our_lineage) = &our_lineage_clone {
             let same_family = security.same_family(our_lineage, lineage).await?;
             
-            // Cache the verification AFTER all beardog operations
+            // Cache the verification AFTER all security provider operations
             self.cache_verification(peer_node_id, verification.valid, same_family);
             
             if same_family {

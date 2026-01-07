@@ -104,7 +104,7 @@ pub fn setup_federation(
         heartbeat_interval_secs: 30,
         node_timeout_secs: 60,
         rendezvous_url: SafeEnv::get_required("SONGBIRD_RENDEZVOUS_URL").ok(),
-        discovery_mode: None, // Auto-detect based on BearDog availability
+        discovery_mode: None, // Auto-detect based on security provider availability
     };
 
     // Log bootstrap if configured

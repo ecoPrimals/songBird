@@ -34,7 +34,7 @@ pub enum TrustLevel {
     /// **Denied:** Admin operations (deployment, configuration changes)
     IdentityVerified = 3,
 
-    /// Hardware-verified (full admin access, BearDog)
+    /// Hardware-verified (full admin access, security provider)
     ///
     /// **Granted:** Full admin access, deployment, configuration, all operations
     HardwareVerified = 4,
@@ -143,10 +143,10 @@ pub struct TowerIdentity {
 /// Hardware attestation for hardware-verified trust
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct HardwareAttestation {
-    /// Hardware key ID (from BearDog)
+    /// Hardware key ID (from security provider)
     pub hardware_key: String,
 
-    /// Genetic identity proof (from BearDog)
+    /// Genetic identity proof (from security provider)
     pub genetic_proof: Option<String>,
 
     /// Attestation timestamp
@@ -176,11 +176,11 @@ impl CapabilityProof {
     /// 1. Validates proof structure (non-empty)
     /// 2. Validates capabilities list (non-empty)
     /// 3. Checks timestamp freshness (within 1 hour)
-    /// 4. Future: Cryptographic signature verification via BearDog
+    /// 4. Future: Cryptographic signature verification via security provider
     ///
     /// ## Security Notes
     /// - Current implementation provides basic validation
-    /// - Full cryptographic verification requires BearDog integration
+    /// - Full cryptographic verification requires security provider integration
     /// - Timestamp check prevents replay attacks
     #[must_use]
     pub fn verify(&self) -> bool {
@@ -221,7 +221,7 @@ impl CapabilityProof {
         }
 
         // Step 4: Future - cryptographic signature verification
-        // When BearDog is integrated, add:
+        // When security provider is integrated, add:
         // - Verify Ed25519 signature
         // - Check proof against public key
         // - Validate capability claims
@@ -253,11 +253,11 @@ impl IdentityProof {
     /// 1. Validates identity structure (non-empty node ID)
     /// 2. Validates proof structure (non-empty, minimum length)
     /// 3. Checks timestamp freshness (within 24 hours for identity)
-    /// 4. Future: Cryptographic signature verification via BearDog
+    /// 4. Future: Cryptographic signature verification via security provider
     ///
     /// ## Security Notes
     /// - Identity proofs have longer validity (24h) than capability proofs (1h)
-    /// - Full verification requires BearDog's genetic lineage system
+    /// - Full verification requires security provider's genetic lineage system
     #[must_use]
     pub fn verify(&self) -> bool {
         use std::time::SystemTime;
@@ -298,7 +298,7 @@ impl IdentityProof {
         }
 
         // Step 4: Future - genetic lineage verification
-        // When BearDog is integrated, add:
+        // When security provider is integrated, add:
         // - Verify JWT signature or certificate
         // - Check genetic signature
         // - Validate lineage chain

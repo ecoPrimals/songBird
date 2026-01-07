@@ -379,7 +379,7 @@ mod e2e_tests {
     // 1. Spinning up actual Songbird instances
     // 2. Creating mock UDP multicast packets
     // 3. Verifying ConnectionManager state
-    // 4. Testing actual trust evaluation with BearDog mock
+    // 4. Testing actual trust evaluation with security provider mock
     //
     // These are marked as ignored by default and should be run
     // in a proper E2E test environment with:
@@ -411,13 +411,13 @@ mod e2e_tests {
     }
 
     #[tokio::test]
-    #[ignore = "Requires full Songbird setup with BearDog mock"]
+    #[ignore = "Requires full Songbird setup with security provider mock"]
     async fn test_e2e_trust_evaluation_with_security_provider() {
         // This would test:
-        // 1. Start Songbird with mock BearDog security provider
-        // 2. Configure genetic lineage in mock BearDog
+        // 1. Start Songbird with mock security provider security provider
+        // 2. Configure genetic lineage in mock security provider
         // 3. Trigger peer discovery
-        // 4. Verify BearDog is queried for trust decision
+        // 4. Verify security provider is queried for trust decision
         // 5. Verify peer is accepted/rejected based on lineage
         todo!("Implement E2E test with mock security provider");
     }

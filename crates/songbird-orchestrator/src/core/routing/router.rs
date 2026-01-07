@@ -108,7 +108,7 @@ impl CapabilityRouter {
     ///
     /// - **Lightweight**: Execute locally if capacity available, else route to peer
     /// - **Moderate**: Prefer peer Songbird, fallback to capability if needed
-    /// - **Heavy**: Always route to specialized capability (Toadstool, BearDog, etc.)
+    /// - **Heavy**: Always route to specialized capability (Toadstool, security provider, etc.)
     ///
     /// # Examples
     ///
@@ -174,7 +174,7 @@ impl CapabilityRouter {
         self.route_to_specialized_capability(task).await
     }
 
-    /// Route to a specialized capability (Toadstool, BearDog, etc.)
+    /// Route to a specialized capability (Toadstool, security provider, etc.)
     async fn route_to_specialized_capability(
         &self,
         task: &Task,
@@ -332,7 +332,7 @@ impl CapabilityRouter {
                 CapabilityType::Compute
             }
 
-            // Security tasks (BearDog)
+            // Security tasks (security provider)
             "encrypt" | "decrypt" | "sign" | "verify" | "auth" => CapabilityType::Security,
 
             // AI tasks (Squirrel)

@@ -365,7 +365,7 @@ async fn validate_db_redis(
 ///
 /// Supports multiple 2FA methods through capability-based discovery:
 /// - TOTP (Time-based One-Time Password) - RFC 6238
-/// - Hardware keys (WebAuthn, FIDO2) via BearDog
+/// - Hardware keys (WebAuthn, FIDO2) via security provider
 /// - SMS/Email codes (via external service)
 async fn validate_two_factor_token(user_id: &str, token: &str) -> Result<(), AuthError> {
     tracing::debug!("Validating 2FA token for user '{}'", user_id);
@@ -401,13 +401,13 @@ async fn validate_two_factor_token(user_id: &str, token: &str) -> Result<(), Aut
     Err(AuthError::InvalidToken)
 }
 
-/// Validate 2FA via BearDog hardware key service
+/// Validate 2FA via security provider hardware key service
 async fn validate_beardog_2fa(
     user_id: &str,
     token: &str,
     beardog_endpoint: &str,
 ) -> Result<(), AuthError> {
-    tracing::info!("Validating hardware key via BearDog for user '{}'", user_id);
+    tracing::info!("Validating hardware key via security provider for user '{}'", user_id);
 
     // Create HTTP client
     let client = reqwest::Client::builder()
@@ -429,17 +429,17 @@ async fn validate_beardog_2fa(
         .send()
         .await
         .map_err(|e| {
-            tracing::error!("BearDog 2FA validation failed: {}", e);
+            tracing::error!("security provider 2FA validation failed: {}", e);
             AuthError::InvalidToken
         })?;
 
     // Check response
     if response.status().is_success() {
-        tracing::info!("BearDog 2FA validation successful for user '{}'", user_id);
+        tracing::info!("security provider 2FA validation successful for user '{}'", user_id);
         Ok(())
     } else {
         tracing::warn!(
-            "BearDog 2FA validation failed for user '{}': HTTP {}",
+            "security provider 2FA validation failed for user '{}': HTTP {}",
             user_id,
             response.status()
         );

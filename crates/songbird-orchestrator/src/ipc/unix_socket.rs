@@ -1,7 +1,7 @@
 //! Unix Socket IPC Server for Inter-Primal Communication
 //!
 //! This module implements a Unix socket-based IPC server that allows other primals
-//! (BearDog, ToadStool, Gorilla, etc.) to communicate with Songbird for:
+//! (security provider, ToadStool, Gorilla, etc.) to communicate with Songbird for:
 //! - Capability-based registration
 //! - Peer discovery notifications
 //! - Service lookup
@@ -11,7 +11,7 @@
 //!
 //! ```text
 //! ┌─────────────┐     Unix Socket      ┌──────────────┐
-//! │   BearDog   │────/tmp/songbird.sock│  Songbird    │
+//! │   security provider   │────/tmp/songbird.sock│  Songbird    │
 //! │  (Client)   │<────JSON-RPC 2.0─────│  (Server)    │
 //! └─────────────┘                      └──────────────┘
 //!        │

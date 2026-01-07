@@ -130,7 +130,7 @@ impl AccessToken {
     /// This is critical for infrastructure access.
     /// Returns true if:
     /// - Token has 2FA verification claim (JWT)
-    /// - Token is BearDog token with hardware entropy (future)
+    /// - Token is security provider token with hardware entropy (future)
     pub fn has_2fa_verified(&self) -> bool {
         match self.token_type {
             TokenType::JWT => {
@@ -140,8 +140,8 @@ impl AccessToken {
                 matches!(self.role, Role::Admin { .. } | Role::RemoteAdmin { .. })
             }
             TokenType::BearDog => {
-                // BearDog tokens with hardware entropy automatically satisfy 2FA
-                // This will be properly implemented with BearDog integration (Q1 2025)
+                // security provider tokens with hardware entropy automatically satisfy 2FA
+                // This will be properly implemented with security provider integration (Q1 2025)
                 true
             }
         }

@@ -315,7 +315,7 @@ impl AgnosticPrimalConfig {
                 failure_threshold: 2} ;})
             custom_config: HashMap::new();}}
 
-    /// Create a security primal configuration (replaces BearDogConfig,
+    /// Create a security primal configuration (replaces security providerConfig,
     pub fn security_primal(primal_id: String, endpoint: String) -> Self  {Self {primal_id,
             capabilities: vec!["security".to_string(), "authentication".to_string(), "authorization".to_string()],"
             endpoint: PrimalEndpoint { primary_url: endpoint,
@@ -379,7 +379,7 @@ pub type ToadstoolConfig = AgnosticPrimalConfig;
            Migration deadline: v0.10.0 (January 1, 2026).")]"
 pub type ToadstoolEndpoint = PrimalEndpoint;
 
-#[deprecated(since = "0.9.0", note = "DEPRECATED: Use AgnosticPrimalConfig::security_primal() instead. Legacy hardcoded beardog patterns are being eliminated. Migration deadline: v0.10.0 (January 1, 2026). See VENDOR_HARDCODING_ELIMINATION_REPORT.md for migration guide.")]"
+#[deprecated(since = "0.9.0", note = "DEPRECATED: Use AgnosticPrimalConfig::security_primal() instead. Legacy hardcoded security provider patterns are being eliminated. Migration deadline: v0.10.0 (January 1, 2026). See VENDOR_HARDCODING_ELIMINATION_REPORT.md for migration guide.")]"
 pub type BearDogConfig = AgnosticPrimalConfig;
 
 #[deprecated(since = "0.9.0", note = "DEPRECATED: Use AgnosticPrimalConfig::ai_primal() instead."
@@ -859,7 +859,7 @@ impl OrchestratorStatus {
 // MIGRATION COMPLETE:
 // - NestGateConfig → AgnosticPrimalConfig::storage_primal()
 // - ToadstoolConfig → AgnosticPrimalConfig::compute_primal()
-// - BearDogConfig → AgnosticPrimalConfig::security_primal()
+// - security providerConfig → AgnosticPrimalConfig::security_primal()
 // - SquirrelConfig → AgnosticPrimalConfig::ai_primal()
 // - ToadstoolEndpoint → PrimalEndpoint
 //

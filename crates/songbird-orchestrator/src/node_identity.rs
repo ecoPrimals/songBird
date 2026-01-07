@@ -94,7 +94,7 @@ impl NodeIdentity {
             node_id,
             node_name,
             endpoints: Vec::new(),
-            genetic_lineage: None,  // Will be set when BearDog integration is ready
+            genetic_lineage: None,  // Will be set when security provider integration is ready
             lineage_proof: None,
         };
 
@@ -107,7 +107,7 @@ impl NodeIdentity {
 
     /// Set genetic lineage for this node
     ///
-    /// Updates the node identity with genetic lineage information from BearDog.
+    /// Updates the node identity with genetic lineage information from security provider.
     pub fn set_lineage(&mut self, lineage_id: LineageId, proof: LineageProof) -> Result<()> {
         self.genetic_lineage = Some(lineage_id.clone());
         self.lineage_proof = Some(proof);
