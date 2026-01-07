@@ -5,11 +5,11 @@
 [![Rust](https://img.shields.io/badge/rust-1.70%2B-orange.svg)](https://www.rust-lang.org/)
 [![License](https://img.shields.io/badge/license-MIT%2FApache--2.0-blue.svg)](LICENSE)
 [![Status](https://img.shields.io/badge/status-production--ready-green.svg)](STATUS.md)
-[![Tests](https://img.shields.io/badge/tests-553%2F553%20passing-brightgreen.svg)](REFACTORING_COMPLETE_V3_12_2.md)
+[![Tests](https://img.shields.io/badge/tests-556%2B%20passing-brightgreen.svg)](TEST_EVOLUTION_STATUS_V3_14_0.md)
 
-> **Version**: v3.12.2 (tarpc OPERATIONAL + Refactoring COMPLETE)  
-> **Last Updated**: January 7, 2026 02:00 EST  
-> **Quick Start**: See `QUICK_STATUS.md` | **Status**: Production Ready + A+ Memory Safety
+> **Version**: v3.14.0 (Tag-Based Identity - Isomorphic & Future-Proof)  
+> **Last Updated**: January 7, 2026 07:00 EST  
+> **Quick Start**: See [TAG_BASED_IDENTITY_COMPLETE_V3_14_0.md](TAG_BASED_IDENTITY_COMPLETE_V3_14_0.md) | **Status**: Production Ready 🏷️
 
 ---
 
@@ -32,7 +32,10 @@ Songbird is a **production-ready universal P2P coordinator** that enables:
 - 🏆 **A+ Memory Safety**: Top 1% of Rust projects, zero unsafe in production
 - 🚀 **Port-Free**: Unix sockets for fractal, conflict-free deployment
 
-**Current Status**: 🎉 **PRODUCTION READY + TAG IDENTITY** | 🏆 **Grade A++ (100/100)** | ✅ **556+ Tests + Isomorphic Architecture**
+**Current Status**: 🎉 **PRODUCTION READY + TAG IDENTITY v3.14.0** | 🏆 **Grade A++ (100/100)** | ✅ **556+ Tests + Isomorphic Architecture**
+
+**Binary**: `primalBins/songbird-orchestrator` (26MB)  
+**SHA256**: `0bcb23a5c75387e48f1c3bc97ba40ca7f3abdd783697acd305aac9b2e7da3336`
 
 ---
 
