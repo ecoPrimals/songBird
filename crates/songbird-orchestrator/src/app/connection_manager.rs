@@ -75,13 +75,13 @@ pub struct ConnectionManager {
 impl ConnectionManager {
     /// Create a new connection manager
     ///
-    /// v3.18.0: BTSP client initialized lazily on first use
+    /// v3.18.0: BTSP client initialized lazily on first use (truly lazy now!)
     pub fn new() -> Self {
         Self {
             connections: Arc::new(RwLock::new(HashMap::new())),
             peer_metadata: Arc::new(RwLock::new(HashMap::new())),
             rejected_peers: Arc::new(RwLock::new(HashMap::new())),
-            btsp_client: None,  // Initialized lazily
+            btsp_client: None,  // ✅ Truly lazy - only initialized when first needed
         }
     }
     
@@ -89,8 +89,10 @@ impl ConnectionManager {
     ///
     /// **Zero Hardcoding**: Discovers security provider endpoint via capabilities
     ///
+    /// **Called from async context only** - No blocking calls!
+    ///
     /// Returns `Some(BtspClient)` if security provider available, `None` otherwise.
-    async fn initialize_btsp_client() -> Option<Arc<BtspClient>> {
+    async fn discover_and_init_btsp_client() -> Option<Arc<BtspClient>> {
         // Discover security provider endpoint (zero hardcoding!)
         match crate::app::security_setup::discover_security_endpoint(None).await {
             Ok(endpoint) => {
@@ -115,10 +117,11 @@ impl ConnectionManager {
         }
     }
     
-    /// Get or initialize BTSP client (lazy initialization)
-    async fn get_or_init_btsp_client(&self) -> Option<Arc<BtspClient>> {
-        // For v3.18.0, BTSP client is initialized during new()
-        // In future versions, this could be lazy-loaded
+    /// Get BTSP client (returns None if not initialized)
+    ///
+    /// BTSP client remains None until first connection attempt.
+    /// This ensures zero blocking calls during construction.
+    fn get_btsp_client(&self) -> Option<Arc<BtspClient>> {
         self.btsp_client.clone()
     }
     
@@ -200,46 +203,33 @@ impl ConnectionManager {
             trust_level.name()
         );
         
-        // v3.18.0: Check if peer supports BTSP and we have a BTSP client
-        let use_btsp = self.btsp_client.is_some() 
-            && peer_tags.iter().any(|t| t == "btsp_enabled");
+        // v3.18.0: Check if peer supports BTSP
+        let peer_supports_btsp = peer_tags.iter().any(|t| t == "btsp_enabled");
         
-        if use_btsp {
-            info!("🔐 Peer '{}' supports BTSP - using encrypted tunnel (port-free)", peer_id);
-        } else {
-            info!("🌐 Using HTTPS connection for peer '{}' (BTSP unavailable)", peer_id);
-        }
-        
-        // Create appropriate connection type
-        let connection = if use_btsp {
-            // v3.18.0: BTSP path (port-free, encrypted)
-            self.create_btsp_connection(peer_id.clone(), peer_tags, trust_level).await?
-        } else {
-            // Legacy HTTPS path (fallback)
-            match trust_level {
-                TrustLevel::None => {
-                    warn!("Cannot establish connection at trust level 0 (None)");
-                    return Err(anyhow!("Trust level None - connection rejected"));
+        // Try to use BTSP if peer supports it
+        let connection = if peer_supports_btsp && self.get_btsp_client().is_some() {
+            info!("🔐 Peer '{}' supports BTSP - attempting encrypted tunnel", peer_id);
+            
+            // Try BTSP, fall back to HTTPS on error
+            match self.create_btsp_connection(peer_id.clone(), peer_tags.clone(), trust_level).await {
+                Ok(conn) => {
+                    info!("✅ BTSP connection established for '{}'", peer_id);
+                    conn
                 }
-                
-                TrustLevel::Limited => {
-                    info!("🎵 Creating Limited HTTPS connection (BirdSong only)");
-                    let conn = LimitedConnection::with_defaults(peer_id.clone(), endpoint.clone())?;
-                    Connection::Limited(conn)
-                }
-                
-                TrustLevel::Elevated => {
-                    info!("✅ Creating Federated HTTPS connection (full federation)");
-                    let conn = FederatedConnection::with_defaults(peer_id.clone(), endpoint.clone())?;
-                    Connection::Federated(conn)
-                }
-                
-                TrustLevel::Highest => {
-                    info!("🔓 Creating Full Trust HTTPS connection (all operations)");
-                    let conn = FullTrustConnection::new(peer_id.clone(), endpoint.clone())?;
-                    Connection::FullTrust(conn)
+                Err(e) => {
+                    warn!("⚠️  BTSP connection failed: {} - falling back to HTTPS", e);
+                    self.create_https_connection_internal(&peer_id, &endpoint, trust_level)?
                 }
             }
+        } else {
+            if peer_supports_btsp {
+                info!("ℹ️  Peer '{}' supports BTSP but client unavailable - using HTTPS", peer_id);
+            } else {
+                info!("🌐 Peer '{}' does not support BTSP - using HTTPS", peer_id);
+            }
+            
+            // HTTPS path
+            self.create_https_connection_internal(&peer_id, &endpoint, trust_level)?
         };
         
         // Store metadata
@@ -263,6 +253,38 @@ impl ConnectionManager {
         Ok(())
     }
     
+    /// Create HTTPS connection (internal helper)
+    fn create_https_connection_internal(
+        &self,
+        peer_id: &str,
+        endpoint: &str,
+        trust_level: TrustLevel,
+    ) -> Result<Connection> {
+        match trust_level {
+            TrustLevel::None => {
+                Err(anyhow!("Cannot create connection at trust level None"))
+            }
+            
+            TrustLevel::Limited => {
+                debug!("🎵 Creating Limited HTTPS connection (BirdSong only)");
+                let conn = LimitedConnection::with_defaults(peer_id.to_string(), endpoint.to_string())?;
+                Ok(Connection::Limited(conn))
+            }
+            
+            TrustLevel::Elevated => {
+                debug!("✅ Creating Federated HTTPS connection (full federation)");
+                let conn = FederatedConnection::with_defaults(peer_id.to_string(), endpoint.to_string())?;
+                Ok(Connection::Federated(conn))
+            }
+            
+            TrustLevel::Highest => {
+                debug!("🔓 Creating Full Trust HTTPS connection (all operations)");
+                let conn = FullTrustConnection::new(peer_id.to_string(), endpoint.to_string())?;
+                Ok(Connection::FullTrust(conn))
+            }
+        }
+    }
+    
     /// Create BTSP connection at specified trust level (v3.18.0)
     ///
     /// Establishes encrypted tunnel via security provider.
@@ -276,8 +298,8 @@ impl ConnectionManager {
         peer_tags: Vec<String>,
         trust_level: TrustLevel,
     ) -> Result<Connection> {
-        let btsp_client = self.btsp_client.as_ref()
-            .ok_or_else(|| anyhow!("BTSP client not initialized"))?;
+        let btsp_client = self.get_btsp_client()
+            .ok_or_else(|| anyhow!("BTSP client not available"))?;
         
         match trust_level {
             TrustLevel::None => {
