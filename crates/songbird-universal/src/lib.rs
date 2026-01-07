@@ -19,6 +19,7 @@
 // ============================================================================
 
 pub mod adapters;
+pub mod btsp_client; // BTSP client for security provider communication (v3.15.1)
 pub mod btsp_types; // BTSP (BirdSong Transport Protocol) types (v3.15.1)
 pub mod capabilities;
 pub mod circuit_breaker;
@@ -75,6 +76,7 @@ pub use tarpc_types::{
 pub use trust_types::{
     IdentityResponse, TrustEvaluationRequest, TrustEvaluationResponse,
 };
+pub use btsp_client::BtspClient;
 pub use btsp_types::{
     BtspEndpoint, BtspTunnel, BtspTunnelRequest, BtspTunnelResponse, ContactExchangeRequest,
     ContactExchangeResponse, PeerContact, TunnelState, TunnelType,
