@@ -8,7 +8,7 @@ use serde_json::Value;
 use songbird_types::TrustLevel;
 use std::collections::HashMap;
 use std::sync::Arc;
-use tokio::sync::RwLock;
+use tokio::sync::{OnceCell, RwLock};
 use tracing::{debug, info, warn};
 
 use crate::connections::{
@@ -56,7 +56,10 @@ mod systemtime_as_secs {
 
 /// Manages connections to discovered peers with progressive trust
 ///
-/// v3.18.0: Supports BTSP-first connection strategy (port-free P2P)
+/// v3.19.0: Modern async Rust with proper lazy initialization
+/// - Uses `OnceCell` for thread-safe lazy initialization
+/// - BTSP client initialized on first connection attempt
+/// - Zero blocking calls, fully concurrent
 pub struct ConnectionManager {
     /// Active connections by peer_id
     connections: Arc<RwLock<HashMap<String, Connection>>>,
@@ -67,62 +70,74 @@ pub struct ConnectionManager {
     /// Rejected peers (for audit trail)
     rejected_peers: Arc<RwLock<HashMap<String, String>>>,
     
-    /// BTSP client for encrypted P2P tunnels (v3.18.0)
-    /// None if security provider unavailable
-    btsp_client: Option<Arc<BtspClient>>,
+    /// BTSP client for encrypted P2P tunnels (v3.19.0)
+    /// Lazy-initialized using OnceCell (thread-safe, async-aware)
+    /// Modern Rust pattern: initialize once on first use
+    btsp_client: Arc<OnceCell<Arc<BtspClient>>>,
 }
 
 impl ConnectionManager {
     /// Create a new connection manager
     ///
-    /// v3.18.0: BTSP client initialized lazily on first use (truly lazy now!)
+    /// v3.19.0: Modern idiomatic async Rust
+    /// - No blocking calls
+    /// - OnceCell for lazy initialization
+    /// - Thread-safe, concurrent
     pub fn new() -> Self {
         Self {
             connections: Arc::new(RwLock::new(HashMap::new())),
             peer_metadata: Arc::new(RwLock::new(HashMap::new())),
             rejected_peers: Arc::new(RwLock::new(HashMap::new())),
-            btsp_client: None,  // ✅ Truly lazy - only initialized when first needed
+            btsp_client: Arc::new(OnceCell::new()),  // ✅ Modern Rust: OnceCell
         }
     }
     
-    /// Initialize BTSP client from runtime-discovered security provider (async)
+    /// Get or initialize BTSP client (lazy, thread-safe)
     ///
-    /// **Zero Hardcoding**: Discovers security provider endpoint via capabilities
+    /// **Modern Async Rust Pattern** (v3.19.0):
+    /// - Uses `OnceCell::get_or_try_init()` for thread-safe lazy initialization
+    /// - Only initializes once, even with concurrent calls
+    /// - Zero blocking, fully async
+    /// - Automatic fallback if security provider unavailable
     ///
-    /// **Called from async context only** - No blocking calls!
-    ///
-    /// Returns `Some(BtspClient)` if security provider available, `None` otherwise.
-    async fn discover_and_init_btsp_client() -> Option<Arc<BtspClient>> {
-        // Discover security provider endpoint (zero hardcoding!)
-        match crate::app::security_setup::discover_security_endpoint(None).await {
-            Ok(endpoint) => {
-                debug!("🔍 Discovered security provider at: {}", endpoint);
-                
-                // Create BTSP client
-                match BtspClient::new(endpoint) {
-                    Ok(client) => {
-                        info!("🔐 BTSP client created successfully");
-                        Some(Arc::new(client))
-                    }
-                    Err(e) => {
-                        warn!("⚠️  Failed to create BTSP client: {}", e);
-                        None
+    /// **Zero Hardcoding**: Discovers security provider at runtime
+    async fn get_or_init_btsp_client(&self) -> Option<Arc<BtspClient>> {
+        // OnceCell::get_or_try_init is thread-safe and only runs once
+        match self.btsp_client.get_or_try_init(|| async {
+            debug!("🔍 First BTSP connection attempt - discovering security provider...");
+            
+            // Discover security provider endpoint (zero hardcoding!)
+            match crate::app::security_setup::discover_security_endpoint(None).await {
+                Ok(endpoint) => {
+                    debug!("🔍 Discovered security provider at: {}", endpoint);
+                    
+                    // Create BTSP client
+                    match BtspClient::new(endpoint) {
+                        Ok(client) => {
+                            info!("✅ BTSP client initialized successfully (lazy)");
+                            Ok(Arc::new(client))
+                        }
+                        Err(e) => {
+                            warn!("⚠️  Failed to create BTSP client: {}", e);
+                            // Convert SongbirdError to anyhow::Error for OnceCell
+                            Err(anyhow::anyhow!("BTSP client creation failed: {}", e))
+                        }
                     }
                 }
+                Err(e) => {
+                    debug!("ℹ️  Security provider not available for BTSP: {}", e);
+                    info!("ℹ️  BTSP unavailable - will use HTTPS fallback");
+                    // Already anyhow::Error
+                    Err(e)
+                }
             }
-            Err(e) => {
-                debug!("ℹ️  Security provider not available for BTSP: {}", e);
+        }).await {
+            Ok(client) => Some(client.clone()),
+            Err(_) => {
+                // Initialization failed, but that's OK - we'll use HTTPS fallback
                 None
             }
         }
-    }
-    
-    /// Get BTSP client (returns None if not initialized)
-    ///
-    /// BTSP client remains None until first connection attempt.
-    /// This ensures zero blocking calls during construction.
-    fn get_btsp_client(&self) -> Option<Arc<BtspClient>> {
-        self.btsp_client.clone()
     }
     
     /// Handle a trust decision and establish appropriate connection
@@ -203,32 +218,38 @@ impl ConnectionManager {
             trust_level.name()
         );
         
-        // v3.18.0: Check if peer supports BTSP
+        // v3.19.0: Check if peer supports BTSP and try to initialize client
         let peer_supports_btsp = peer_tags.iter().any(|t| t == "btsp_enabled");
         
         // Try to use BTSP if peer supports it
-        let connection = if peer_supports_btsp && self.get_btsp_client().is_some() {
+        let connection = if peer_supports_btsp {
             info!("🔐 Peer '{}' supports BTSP - attempting encrypted tunnel", peer_id);
             
-            // Try BTSP, fall back to HTTPS on error
-            match self.create_btsp_connection(peer_id.clone(), peer_tags.clone(), trust_level).await {
-                Ok(conn) => {
-                    info!("✅ BTSP connection established for '{}'", peer_id);
-                    conn
+            // Get or initialize BTSP client (lazy, thread-safe)
+            // v3.19.0: This is where initialization actually happens!
+            match self.get_or_init_btsp_client().await {
+                Some(_client) => {
+                    // BTSP client available, try to connect
+                    match self.create_btsp_connection(peer_id.clone(), peer_tags.clone(), trust_level).await {
+                        Ok(conn) => {
+                            info!("✅ BTSP connection established for '{}'", peer_id);
+                            conn
+                        }
+                        Err(e) => {
+                            warn!("⚠️  BTSP connection failed: {} - falling back to HTTPS", e);
+                            self.create_https_connection_internal(&peer_id, &endpoint, trust_level)?
+                        }
+                    }
                 }
-                Err(e) => {
-                    warn!("⚠️  BTSP connection failed: {} - falling back to HTTPS", e);
+                None => {
+                    // BTSP client unavailable (no security provider)
+                    info!("ℹ️  Security provider unavailable - using HTTPS fallback for '{}'", peer_id);
                     self.create_https_connection_internal(&peer_id, &endpoint, trust_level)?
                 }
             }
         } else {
-            if peer_supports_btsp {
-                info!("ℹ️  Peer '{}' supports BTSP but client unavailable - using HTTPS", peer_id);
-            } else {
-                info!("🌐 Peer '{}' does not support BTSP - using HTTPS", peer_id);
-            }
-            
-            // HTTPS path
+            // Peer doesn't support BTSP
+            info!("🌐 Peer '{}' does not support BTSP - using HTTPS", peer_id);
             self.create_https_connection_internal(&peer_id, &endpoint, trust_level)?
         };
         
@@ -285,21 +306,23 @@ impl ConnectionManager {
         }
     }
     
-    /// Create BTSP connection at specified trust level (v3.18.0)
+    /// Create BTSP connection at specified trust level (v3.19.0)
     ///
     /// Establishes encrypted tunnel via security provider.
     /// Uses BirdSong genetic lineage for NAT traversal if needed.
     ///
     /// **Zero Hardcoding**: Security provider discovered at runtime
     /// **Protocol Agnostic**: Works with any security provider (tarpc/JSON-RPC/HTTP)
+    /// **Modern Rust**: Uses OnceCell for thread-safe lazy initialization
     async fn create_btsp_connection(
         &self,
         peer_id: String,
         peer_tags: Vec<String>,
         trust_level: TrustLevel,
     ) -> Result<Connection> {
-        let btsp_client = self.get_btsp_client()
-            .ok_or_else(|| anyhow!("BTSP client not available"))?;
+        // Get BTSP client from OnceCell (already initialized by caller)
+        let btsp_client = self.btsp_client.get()
+            .ok_or_else(|| anyhow!("BTSP client not initialized"))?;
         
         match trust_level {
             TrustLevel::None => {
@@ -588,6 +611,18 @@ mod tests {
         let tower3 = peers.iter().find(|p| p.peer_id == "tower3").unwrap();
         assert_eq!(tower3.trust_level, TrustLevel::Highest);
         assert_eq!(tower3.discovery_method, "mdns");
+    }
+    
+    // v3.19.0: Test OnceCell lazy initialization
+    #[tokio::test]
+    async fn test_oncecell_btsp_lazy_init() {
+        let manager = ConnectionManager::new();
+        
+        // Initially, OnceCell is empty
+        assert!(manager.btsp_client.get().is_none());
+        
+        // First connection attempt would initialize it
+        // (can't test actual init without security provider, but API is correct)
     }
     
     #[tokio::test]
@@ -910,12 +945,12 @@ mod tests {
         // Manager should be created successfully regardless of BTSP availability
         assert!(manager.connections.read().await.is_empty());
         
-        // BTSP client may or may not be available (depends on environment)
-        // This test just verifies graceful handling
-        if manager.btsp_client.is_some() {
+        // v3.19.0: BTSP client uses OnceCell (lazy init)
+        // Initially empty, initialized on first connection attempt
+        if manager.btsp_client.get().is_some() {
             info!("✅ Test: BTSP client initialized");
         } else {
-            info!("ℹ️  Test: BTSP client unavailable (expected in test environment)");
+            info!("ℹ️  Test: BTSP client not yet initialized (lazy)");
         }
     }
     
@@ -926,13 +961,13 @@ mod tests {
         
         // Test 1: No btsp_enabled tag → HTTPS
         let tags_no_btsp = vec!["some_other_tag".to_string()];
-        let use_btsp_1 = manager.btsp_client.is_some() 
+        let use_btsp_1 = manager.btsp_client.get().is_some()  // v3.19.0: OnceCell API
             && tags_no_btsp.iter().any(|t| t == "btsp_enabled");
         assert!(!use_btsp_1, "Should not use BTSP without btsp_enabled tag");
         
         // Test 2: Has btsp_enabled tag but no BTSP client → HTTPS
         let tags_with_btsp = vec!["btsp_enabled".to_string()];
-        let has_btsp_client = manager.btsp_client.is_some();
+        let has_btsp_client = manager.btsp_client.get().is_some();  // v3.19.0: OnceCell API
         let use_btsp_2 = has_btsp_client && tags_with_btsp.iter().any(|t| t == "btsp_enabled");
         
         if has_btsp_client {
@@ -963,7 +998,8 @@ mod tests {
         // Verify BTSP connections can be created at all trust levels (if client available)
         let manager = ConnectionManager::new();
         
-        if manager.btsp_client.is_none() {
+        // v3.19.0: OnceCell API - check if initialized
+        if manager.btsp_client.get().is_none() {
             info!("ℹ️  Skipping BTSP trust level test - no security provider available");
             return;
         }
