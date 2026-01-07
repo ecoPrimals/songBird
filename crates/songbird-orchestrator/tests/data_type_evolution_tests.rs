@@ -58,6 +58,7 @@ fn test_discovery_context_deserialization() {
 fn test_trust_evaluation_request_with_string_timestamp() {
     let request = TrustEvaluationRequest {
         peer_id: "tower2".to_string(),
+        peer_family: Some("iidn".to_string()), // ✅ v3.14.1
         peer_tags: vec!["beardog:family:iidn:tower2".to_string()],
         connection_info: Some(ConnectionInfo {
             endpoint: "https://192.168.1.135:8080".to_string(),
@@ -80,6 +81,7 @@ fn test_trust_evaluation_request_with_string_timestamp() {
 fn test_trust_evaluation_request_beardog_format() {
     let request = TrustEvaluationRequest {
         peer_id: "tower2".to_string(),
+        peer_family: Some("iidn".to_string()), // ✅ v3.14.1
         peer_tags: vec!["beardog:family:iidn:tower2".to_string()],
         connection_info: Some(ConnectionInfo {
             endpoint: "https://192.168.1.135:8080".to_string(),
@@ -142,6 +144,7 @@ fn test_various_timestamp_formats() {
 fn test_trust_request_without_context() {
     let request = TrustEvaluationRequest {
         peer_id: "tower2".to_string(),
+        peer_family: Some("iidn".to_string()), // ✅ v3.14.1
         peer_tags: vec!["beardog:family:iidn:tower2".to_string()],
         connection_info: Some(ConnectionInfo {
             endpoint: "https://192.168.1.135:8080".to_string(),
@@ -202,6 +205,7 @@ fn test_round_trip_serialization() {
 fn test_beardog_api_exact_format() {
     let request = TrustEvaluationRequest {
         peer_id: "tower2".to_string(),
+        peer_family: Some("iidn".to_string()), // ✅ v3.14.1
         peer_tags: vec!["beardog:family:iidn:tower2".to_string()],
         connection_info: Some(ConnectionInfo {
             endpoint: "https://192.168.1.135:8080".to_string(),

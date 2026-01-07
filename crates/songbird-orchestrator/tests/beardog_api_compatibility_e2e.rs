@@ -25,6 +25,7 @@ fn test_complete_trust_evaluation_flow() {
     // Build trust evaluation request (converts to String)
     let request = TrustEvaluationRequest {
         peer_id: peer.node_id.clone(),
+        peer_family: Some("iidn".to_string()), // ✅ Extracted from "beardog:family:iidn:tower2"
         peer_tags: peer.tags.clone(),
         connection_info: Some(ConnectionInfo {
             endpoint: peer.endpoint.clone(),
@@ -80,6 +81,7 @@ fn test_multiple_peer_discovery() {
         
         let request = TrustEvaluationRequest {
             peer_id: peer.node_id.clone(),
+            peer_family: Some("iidn".to_string()), // ✅ v3.14.1
             peer_tags: peer.tags.clone(),
             connection_info: Some(ConnectionInfo {
                 endpoint: peer.endpoint.clone(),
@@ -103,6 +105,7 @@ fn test_request_response_cycle() {
     // 1. Create request
     let request = TrustEvaluationRequest {
         peer_id: "tower2".to_string(),
+        peer_family: Some("iidn".to_string()), // ✅ v3.14.1
         peer_tags: vec!["beardog:family:iidn:tower2".to_string()],
         connection_info: Some(ConnectionInfo {
             endpoint: "https://192.168.1.135:8080".to_string(),
@@ -142,6 +145,7 @@ fn test_request_response_cycle() {
 fn test_trust_request_without_context() {
     let request = TrustEvaluationRequest {
         peer_id: "tower2".to_string(),
+        peer_family: Some("iidn".to_string()), // ✅ v3.14.1
         peer_tags: vec!["beardog:family:iidn:tower2".to_string()],
         connection_info: Some(ConnectionInfo {
             endpoint: "https://192.168.1.135:8080".to_string(),
@@ -165,6 +169,7 @@ fn test_discovery_with_metadata() {
     
     let request = TrustEvaluationRequest {
         peer_id: "tower2".to_string(),
+        peer_family: Some("iidn".to_string()), // ✅ v3.14.1
         peer_tags: vec!["beardog:family:iidn:tower2".to_string()],
         connection_info: Some(ConnectionInfo {
             endpoint: "https://192.168.1.135:8080".to_string(),
@@ -193,6 +198,7 @@ fn test_different_discovery_methods() {
     for method in methods {
         let request = TrustEvaluationRequest {
             peer_id: "tower2".to_string(),
+        peer_family: Some("iidn".to_string()), // ✅ v3.14.1
             peer_tags: vec!["beardog:family:iidn:tower2".to_string()],
             connection_info: Some(ConnectionInfo {
                 endpoint: "https://192.168.1.135:8080".to_string(),
@@ -215,6 +221,7 @@ fn test_concurrent_requests() {
     let requests: Vec<TrustEvaluationRequest> = (0..10)
         .map(|i| TrustEvaluationRequest {
             peer_id: format!("tower{}", i + 2),
+            peer_family: Some("iidn".to_string()), // ✅ v3.14.1
             peer_tags: vec![format!("beardog:family:iidn:tower{}", i + 2)],
             connection_info: Some(ConnectionInfo {
                 endpoint: format!("https://192.168.1.{}:8080", 135 + i),
@@ -284,6 +291,7 @@ fn test_full_e2e_flow() {
     // Step 2: Build trust request (u64 → String conversion happens here)
     let trust_request = TrustEvaluationRequest {
         peer_id: discovered_peer.node_id.clone(),
+        peer_family: Some("iidn".to_string()), // ✅ v3.14.1
         peer_tags: discovered_peer.tags.clone(),
         connection_info: Some(ConnectionInfo {
             endpoint: discovered_peer.endpoint.clone(),

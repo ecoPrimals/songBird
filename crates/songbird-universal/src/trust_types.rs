@@ -13,6 +13,13 @@ pub struct TrustEvaluationRequest {
     /// Peer node ID
     pub peer_id: String,
     
+    /// Peer family ID (v3.14.1 - tag-based identity)
+    ///
+    /// Extracted from peer tags (e.g., "beardog:family:nat0" → "nat0")
+    /// Songbird doesn't interpret this - just extracts and passes to BearDog
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub peer_family: Option<String>,
+    
     /// Peer tags (includes security provider encryption tag if present)
     ///
     /// Example: `["crypto:family:a3f2", "encryption_enabled"]`
@@ -68,10 +75,18 @@ impl TrustEvaluationRequest {
     pub fn new(peer_id: impl Into<String>, peer_tags: Vec<String>) -> Self {
         Self {
             peer_id: peer_id.into(),
+            peer_family: None, // ✅ Initialize to None (v3.14.1)
             peer_tags,
             connection_info: None,
             context: None,
         }
+    }
+    
+    /// Set peer family ID (v3.14.1 - tag-based identity)
+    #[must_use]
+    pub fn with_peer_family(mut self, family: impl Into<String>) -> Self {
+        self.peer_family = Some(family.into());
+        self
     }
     
     /// Add connection information

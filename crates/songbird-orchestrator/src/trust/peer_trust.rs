@@ -89,9 +89,20 @@ pub async fn evaluate_peer_trust(
 ) -> Result<PeerTrustDecision> {
     info!("🔍 Evaluating trust for peer: {}", peer.node_id);
     
+    // Extract peer family from tags (v3.14.1 - tag-based identity)
+    // Tags format: "beardog:family:nat0" or "beardog:family:acmecorp"
+    let peer_family = extract_family_from_tags(&peer.tags);
+    
+    if let Some(ref family) = peer_family {
+        info!("🏷️  Peer {} family extracted from tags: {}", peer.node_id, family);
+    } else {
+        warn!("⚠️  Peer {} has no family tag - BearDog will reject", peer.node_id);
+    }
+    
     // Build trust evaluation request
     let request = TrustEvaluationRequest {
         peer_id: peer.node_id.clone(),
+        peer_family, // ✅ NOW PROVIDED! (v3.14.1 fix)
         peer_tags: peer.tags.clone(),
         connection_info: Some(ConnectionInfo {
             endpoint: peer.endpoint.clone(),
@@ -183,9 +194,89 @@ fn handle_trust_response(
     }
 }
 
+/// Extract family ID from peer tags (v3.14.1)
+///
+/// Tags format: "beardog:family:nat0" or "beardog:family:acmecorp"
+/// Songbird doesn't interpret these tags - it just extracts and passes to BearDog.
+///
+/// # Arguments
+///
+/// * `tags` - Peer tags from discovery
+///
+/// # Returns
+///
+/// Family ID if found in tags, `None` otherwise
+fn extract_family_from_tags(tags: &[String]) -> Option<String> {
+    const FAMILY_TAG_PREFIX: &str = "beardog:family:";
+    
+    for tag in tags {
+        if let Some(family_id) = tag.strip_prefix(FAMILY_TAG_PREFIX) {
+            if !family_id.is_empty() {
+                return Some(family_id.to_string());
+            }
+        }
+    }
+    
+    None
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+    
+    #[test]
+    fn test_extract_family_from_tags_found() {
+        let tags = vec![
+            "some:other:tag".to_string(),
+            "beardog:family:nat0".to_string(),
+            "another:tag".to_string(),
+        ];
+        
+        let family = extract_family_from_tags(&tags);
+        assert_eq!(family, Some("nat0".to_string()));
+    }
+    
+    #[test]
+    fn test_extract_family_from_tags_not_found() {
+        let tags = vec![
+            "some:other:tag".to_string(),
+            "another:tag".to_string(),
+        ];
+        
+        let family = extract_family_from_tags(&tags);
+        assert_eq!(family, None);
+    }
+    
+    #[test]
+    fn test_extract_family_from_tags_empty_family() {
+        let tags = vec![
+            "beardog:family:".to_string(), // Empty family ID
+        ];
+        
+        let family = extract_family_from_tags(&tags);
+        assert_eq!(family, None); // Should ignore empty family
+    }
+    
+    #[test]
+    fn test_extract_family_from_tags_multiple_families() {
+        let tags = vec![
+            "beardog:family:nat0".to_string(),
+            "beardog:family:acmecorp".to_string(), // Second family (should be ignored)
+        ];
+        
+        let family = extract_family_from_tags(&tags);
+        assert_eq!(family, Some("nat0".to_string())); // Returns first match
+    }
+    
+    #[test]
+    fn test_extract_family_from_tags_complex_family_id() {
+        let tags = vec![
+            "beardog:family:acmecorp-engineering-prod".to_string(),
+        ];
+        
+        let family = extract_family_from_tags(&tags);
+        assert_eq!(family, Some("acmecorp-engineering-prod".to_string()));
+    }
     
     #[test]
     fn test_peer_trust_decision_types() {

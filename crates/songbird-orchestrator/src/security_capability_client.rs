@@ -30,6 +30,7 @@
 //! // Evaluate peer trust
 //! let request = TrustEvaluationRequest {
 //!     peer_id: "tower2".to_string(),
+//!     peer_family: Some("a3f2".to_string()),
 //!     peer_tags: vec!["beardog:family:a3f2".to_string()],
 //!     connection_info: None,
 //!     context: None,
@@ -257,6 +258,7 @@ impl SecurityCapabilityClient {
         
         let universal_req = songbird_universal::TrustEvaluationRequest {
             peer_id: request.peer_id.clone(),
+            peer_family: request.peer_family.clone(), // ✅ Pass peer_family (v3.14.1)
             peer_tags: request.peer_tags.clone(),
             connection_info: connection_info_map,
             context: request.context.clone(),
@@ -454,6 +456,7 @@ impl SecurityCapabilityClient {
         // Build legacy request
         let legacy_request = TrustEvaluationRequest {
             peer_id: universal_request.evaluator.peer_id.clone(),
+            peer_family: None, // TODO: Extract from tags if needed
             peer_tags: tags,
             connection_info: Some(ConnectionInfo {
                 endpoint: universal_request.context.endpoint.clone(),
@@ -674,6 +677,13 @@ pub struct TrustEvaluationRequest {
     /// Peer node ID
     pub peer_id: String,
     
+    /// Peer family ID (v3.14.1 - tag-based identity)
+    ///
+    /// Extracted from peer tags (e.g., "beardog:family:nat0" → "nat0")
+    /// Songbird doesn't interpret this - just extracts and passes to BearDog
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub peer_family: Option<String>,
+    
     /// Peer tags (includes security provider encryption tag if present)
     ///
     /// Example: `["crypto:family:a3f2", "encryption_enabled"]`
@@ -852,6 +862,7 @@ mod tests {
         
         let request = TrustEvaluationRequest {
             peer_id: "tower2".to_string(),
+            peer_family: Some("a3f2".to_string()), // Extracted from tags
             peer_tags: vec!["crypto-provider:family:a3f2".to_string()],
             connection_info: Some(ConnectionInfo {
                 endpoint: "https://192.168.1.134:8080".to_string(),
