@@ -155,7 +155,7 @@ pub struct PeerContact {
 }
 
 /// Tunnel type preference
-#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum TunnelType {
     /// Prefer direct connection (fastest)
     Direct,

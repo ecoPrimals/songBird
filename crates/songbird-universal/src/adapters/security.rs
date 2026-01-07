@@ -540,6 +540,103 @@ impl SecurityAdapter {
         &self.endpoint
     }
 
+    /// Generic method for calling security provider endpoints (v3.16.0)
+    ///
+    /// **Modern Idiomatic Rust**: Protocol-agnostic, zero hardcoding
+    ///
+    /// This method enables BTSP integration and future extensibility.
+    /// Works with ANY security provider via automatic protocol negotiation.
+    ///
+    /// **Protocol Hierarchy**:
+    /// - tarpc (PRIMARY): 10-100μs - High-performance binary RPC
+    /// - JSON-RPC (SECONDARY): 50-100μs - Port-free, complementary
+    /// - HTTP (FALLBACK): 500-1000μs - Network compatibility
+    ///
+    /// # Arguments
+    ///
+    /// * `method` - The RPC method name (e.g., "btsp/contact/exchange")
+    /// * `params` - The parameters as a JSON value
+    ///
+    /// # Returns
+    ///
+    /// * `SongbirdResult<serde_json::Value>` - The response from the security provider
+    ///
+    /// # Errors
+    ///
+    /// Returns error if the call fails, times out, or the response cannot be parsed.
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// use songbird_universal::adapters::SecurityAdapter;
+    /// use serde_json::json;
+    ///
+    /// # async fn example() -> songbird_types::SongbirdResult<()> {
+    /// let adapter = SecurityAdapter::new("tarpc://localhost:8765".to_string())?;
+    /// 
+    /// let params = json!({
+    ///     "target_peer_id": "tower-b",
+    ///     "max_hops": 3
+    /// });
+    /// 
+    /// let response = adapter.call_generic("btsp/contact/exchange", params).await?;
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub async fn call_generic(
+        &self,
+        method: &str,
+        params: serde_json::Value,
+    ) -> SongbirdResult<serde_json::Value> {
+        debug!("📡 Generic call to security provider: method={}", method);
+        
+        match &self.protocol {
+            SecurityProtocol::Tarpc(client) => {
+                debug!("🚀 Using tarpc for {} (PRIMARY - 10-100μs)", method);
+                tokio::time::timeout(
+                    self.timeout,
+                    client.call_method(method, Some(params)),
+                )
+                .await
+                .map_err(|_| SongbirdError::network(format!("Timeout calling method '{}'", method)))?
+            }
+            SecurityProtocol::JsonRpc(client) => {
+                debug!("🔌 Using JSON-RPC for {} (SECONDARY - 50-100μs)", method);
+                tokio::time::timeout(
+                    self.timeout,
+                    client.call_method(method, Some(params)),
+                )
+                .await
+                .map_err(|_| SongbirdError::network(format!("Timeout calling method '{}'", method)))?
+            }
+            SecurityProtocol::Http(client) => {
+                debug!("🌐 Using HTTP for {} (FALLBACK - 500-1000μs)", method);
+                let url = format!("{}/{}", self.endpoint, method);
+                
+                let response = tokio::time::timeout(
+                    self.timeout,
+                    client.post(&url).json(&params).send(),
+                )
+                .await
+                .map_err(|_| SongbirdError::network(format!("Timeout calling method '{}'", method)))?
+                .map_err(|e| SongbirdError::network(format!("HTTP request failed for '{}': {}", method, e)))?;
+
+                if !response.status().is_success() {
+                    return Err(SongbirdError::network(format!(
+                        "Method '{}' failed: {}",
+                        method,
+                        response.status()
+                    )));
+                }
+
+                response
+                    .json()
+                    .await
+                    .map_err(|e| SongbirdError::serialization(format!("Failed to parse response for '{}': {}", method, e)))
+            }
+        }
+    }
+
     /// Evaluate peer trust (protocol-agnostic) - v3.12.3
     ///
     /// **Protocol Agnostic**: Automatically uses tarpc/JSON-RPC/HTTP based on endpoint

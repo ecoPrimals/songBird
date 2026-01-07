@@ -323,6 +323,12 @@ impl BtspClient {
     ///
     /// tarpc and JSON-RPC are treated as complementary first-class systems.
     /// Zero hardcoding - works with ANY security provider.
+    ///
+    /// **Modern Idiomatic Rust** (v3.16.0):
+    /// - Uses SecurityAdapter.call_generic() for zero hardcoding
+    /// - Automatic protocol negotiation
+    /// - Type-safe error handling
+    /// - Async/await throughout
     async fn call_security_provider(
         &self,
         method: &str,
@@ -333,24 +339,11 @@ impl BtspClient {
         
         // Serialize payload to JSON Value for adapter
         let params = serde_json::to_value(payload)
-            .map_err(|e| SongbirdError::serialization(format!("Failed to serialize params: {}", e)))?;
+            .map_err(|e| SongbirdError::serialization(format!("Failed to serialize params for '{}': {}", method, e)))?;
         
-        // Build request (generic format that adapter will translate)
-        let request = json!({
-            "method": method,
-            "params": params,
-        });
-        
-        // TODO: SecurityAdapter needs a generic call method
-        // For now, use evaluate_trust as a template for how to call security provider
-        // In production, this would use adapter.call_generic(method, request)
-        
-        // Placeholder: Return mock response
-        // Real implementation will use SecurityAdapter methods
-        Ok(json!({
-            "success": true,
-            "message": "BTSP not yet fully wired to SecurityAdapter"
-        }))
+        // Call security provider via SecurityAdapter (v3.16.0)
+        // This uses automatic protocol negotiation (tarpc > JSON-RPC > HTTP)
+        self.adapter.call_generic(method, params).await
     }
 }
 
@@ -366,7 +359,7 @@ impl std::fmt::Debug for BtspClient {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::btsp_types::{TunnelType, BtspEndpoint};
+    use crate::btsp_types::BtspEndpoint;
     
     #[tokio::test]
     async fn test_btsp_client_creation() {

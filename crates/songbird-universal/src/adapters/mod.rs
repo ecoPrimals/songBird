@@ -27,6 +27,8 @@
 pub mod ai;
 pub mod compute;
 pub mod security;
+#[cfg(test)]
+mod security_btsp_tests;
 pub mod storage;
 
 // Re-export adapters
