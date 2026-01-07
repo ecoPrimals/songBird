@@ -202,12 +202,12 @@ async fn initialize_birdsong_processor(
     }
 
     // Create security provider provider
-    let beardog_provider = songbird_discovery::BearDogBirdSongProvider::new(
+    let security_provider = songbird_discovery::BearDogBirdSongProvider::new(
         endpoint.clone(),
         family_id.clone(),
     );
 
-    if beardog_provider.check_health().await {
+    if security_provider.check_health().await {
         info!("✅ security provider provider healthy");
         let config = songbird_discovery::BirdSongConfig {
             enabled: true,
@@ -217,7 +217,7 @@ async fn initialize_birdsong_processor(
         };
 
         let processor = songbird_discovery::BirdSongProcessor::new(
-            Some(Arc::new(beardog_provider)),
+            Some(Arc::new(security_provider)),
             config,
         );
         info!("🎵 BirdSong processor initialized: {}", processor.status());

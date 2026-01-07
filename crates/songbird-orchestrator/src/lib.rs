@@ -112,6 +112,8 @@ pub use universal_adapter::{UniversalAdapter, DiscoveredProvider, CapabilityQuer
 
 // Backward compatibility alias (deprecated - encourage migration!)
 #[deprecated(note = "Use SecurityCapabilityClient instead - no primal name hardcoding!")]
+// Type alias for backward compatibility (deprecated in v3.15.0)
+// Use SecurityCapabilityClient directly for new code
 pub use security_capability_client::SecurityCapabilityClient as BearDogClient;
 
 // Re-export MVP orchestrator integration

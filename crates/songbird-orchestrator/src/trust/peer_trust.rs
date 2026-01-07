@@ -85,7 +85,7 @@ pub struct DiscoveredPeer {
 /// Decision on whether to trust the peer
 pub async fn evaluate_peer_trust(
     peer: &DiscoveredPeer,
-    beardog_client: &SecurityCapabilityClient,
+    security_client: &SecurityCapabilityClient,
 ) -> Result<PeerTrustDecision> {
     info!("🔍 Evaluating trust for peer: {}", peer.node_id);
     
@@ -117,7 +117,7 @@ pub async fn evaluate_peer_trust(
     };
     
     // Ask security provider: "Should I trust this peer?"
-    match beardog_client.evaluate_trust(&request).await {
+    match security_client.evaluate_trust(&request).await {
         Ok(response) => {
             // Handle security provider's decision
             handle_trust_response(&peer.node_id, response)

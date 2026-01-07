@@ -345,7 +345,7 @@ impl TrustEscalationManager {
         session_id: &str,
         hardware_proof: HardwareAttestation,
     ) -> Result<()> {
-        let beardog = self
+        let security_client = self
             .security_client
             .as_ref()
             .ok_or_else(|| anyhow!("security provider integration not configured"))?;

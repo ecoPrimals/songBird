@@ -402,10 +402,10 @@ async fn validate_two_factor_token(user_id: &str, token: &str) -> Result<(), Aut
 }
 
 /// Validate 2FA via security provider hardware key service
-async fn validate_beardog_2fa(
+async fn validate_security_provider_2fa(
     user_id: &str,
     token: &str,
-    beardog_endpoint: &str,
+    security_endpoint: &str,
 ) -> Result<(), AuthError> {
     tracing::info!("Validating hardware key via security provider for user '{}'", user_id);
 
@@ -424,7 +424,7 @@ async fn validate_beardog_2fa(
 
     // Send validation request
     let response = client
-        .post(format!("{}/auth/validate", beardog_endpoint))
+        .post(format!("{}/auth/validate", security_endpoint))
         .json(&validation_request)
         .send()
         .await
