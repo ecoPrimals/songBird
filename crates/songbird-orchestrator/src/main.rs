@@ -50,13 +50,15 @@ async fn main() -> Result<()> {
     let config = CanonicalSongbirdConfig::from_env()
         .map_err(|e| anyhow::anyhow!("Failed to load configuration from environment: {}. Check environment variables and config files.", e))?;
 
-    // Step 5: Start the orchestrator
-    app::start_orchestrator(config).await?;
+    // Step 5: Start the orchestrator (non-blocking, returns handle)
+    // v3.18.2: Modern idiomatic Rust - clear separation of concerns
+    let mut orchestrator = app::start_orchestrator(config).await?;
 
     tracing::info!("✅ Songbird Orchestrator started successfully");
+    tracing::info!("✅ Orchestrator running. Press Ctrl+C to stop.");
 
-    // Step 6: Graceful shutdown on SIGTERM/SIGINT (v3.17.0)
-    // This enables proper cleanup when systemd or biomeOS sends SIGTERM
+    // Step 6: Main event loop - wait for shutdown signal
+    // This is the ONLY signal handler (no duplication)
     tokio::select! {
         _ = tokio::signal::ctrl_c() => {
             tracing::info!("🛑 Received SIGINT (Ctrl+C), initiating graceful shutdown...");
@@ -77,6 +79,10 @@ async fn main() -> Result<()> {
             tracing::info!("🛑 Received SIGTERM, initiating graceful shutdown...");
         }
     }
+
+    // Step 7: Graceful shutdown - stop orchestrator components
+    tracing::info!("🧹 Stopping orchestrator components...");
+    orchestrator.stop().await?;
 
     tracing::info!("🧹 Cleaning up resources...");
     tracing::info!("   • Releasing instance lock (PID file)");

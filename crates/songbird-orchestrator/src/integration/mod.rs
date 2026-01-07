@@ -38,6 +38,8 @@ impl IntegrationManager {
     }
 
     /// Start all services with integration
+    ///
+    /// v3.18.2: Updated for new start_orchestrator signature
     pub async fn start_integrated_services(&self) -> Result<()> {
         info!("🚀 Starting integrated services...");
 
@@ -47,8 +49,10 @@ impl IntegrationManager {
                 .await;
 
         match startup_result {
-            Ok(Ok(())) => {
+            Ok(Ok(_orchestrator)) => {
                 info!("✅ Integrated services started successfully");
+                // Note: In integration tests, orchestrator is dropped here
+                // In production, caller keeps orchestrator alive until shutdown
                 Ok(())
             }
             Ok(Err(e)) => {

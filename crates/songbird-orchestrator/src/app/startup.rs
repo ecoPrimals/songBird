@@ -28,22 +28,29 @@ use super::core::SongbirdOrchestrator;
 ///     start_orchestrator(config).await
 /// }
 /// ```
-pub async fn start_orchestrator(config: CanonicalSongbirdConfig) -> Result<()> {
-    info!("🚀 Starting Songbird Orchestrator");
+/// Start the orchestrator and return the handle
+///
+/// **Modern Idiomatic Rust** (v3.18.2):
+/// - Spawns background tasks
+/// - Returns immediately (non-blocking)
+/// - Caller handles signal waiting and shutdown
+/// - Separation of concerns (startup vs lifecycle management)
+///
+/// **Deep Debt Fixed**:
+/// - No duplicate signal handlers
+/// - Clear ownership: caller controls lifecycle
+/// - Testable: can start/stop without blocking
+pub async fn start_orchestrator(config: CanonicalSongbirdConfig) -> Result<SongbirdOrchestrator> {
+    info!("🔧 Initializing orchestrator components...");
 
     let mut orchestrator = SongbirdOrchestrator::new(config).await?;
     orchestrator.start().await?;
 
-    info!("✅ Orchestrator running. Press Ctrl+C to stop.");
+    info!("✅ Orchestrator components started");
 
-    // Keep running until interrupted
-    tokio::signal::ctrl_c().await?;
-
-    info!("🛑 Shutdown signal received. Stopping orchestrator...");
-    orchestrator.stop().await?;
-
-    info!("👋 Orchestrator stopped gracefully");
-    Ok(())
+    // Return orchestrator handle to caller
+    // Caller is responsible for lifecycle management
+    Ok(orchestrator)
 }
 
 /// Simple orchestrator wrapper for basic use cases
@@ -65,8 +72,13 @@ impl Orchestrator {
 
     /// Start the orchestrator (convenience method)
     ///
-    /// Equivalent to calling `start_orchestrator` directly.
+    /// v3.18.2: Updated for new start_orchestrator signature
     pub async fn run(self) -> Result<()> {
-        start_orchestrator(self._config).await
+        let _orchestrator = start_orchestrator(self._config).await?;
+        
+        // Wait for shutdown signal
+        tokio::signal::ctrl_c().await?;
+        
+        Ok(())
     }
 }
