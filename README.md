@@ -32,11 +32,35 @@ Songbird is a **production-ready universal P2P coordinator** that enables:
 - 🏆 **A+ Memory Safety**: Top 1% of Rust projects, zero unsafe in production
 - 🚀 **Port-Free**: Unix sockets for fractal, conflict-free deployment
 
-**Current Status**: 🎉 **PRODUCTION READY + A+ MEMORY SAFETY** | 🏆 **Grade A++ (100/100)** | ✅ **553 Tests + tarpc PRIMARY**
+**Current Status**: 🎉 **PRODUCTION READY + TAG IDENTITY** | 🏆 **Grade A++ (100/100)** | ✅ **556+ Tests + Isomorphic Architecture**
 
 ---
 
-## 🎊 **Major Milestone: Federation Unblocked (v3.12.3)**
+## 🎊 **Major Milestone: Tag-Based Identity System (v3.14.0)** 🏷️
+
+**Isomorphic, Agnostic, Extensible, Future-Proof**
+
+Songbird now uses a universal tag-based identity system where:
+- ✅ **Songbird only knows itself** - Reads own tags from environment
+- ✅ **Tags are opaque strings** - Songbird doesn't interpret them
+- ✅ **Security providers interpret** - BearDog makes trust decisions
+- ✅ **Zero hardcoding** - Pure configuration-driven
+- ✅ **Infinite extensibility** - Add any tag type without code changes
+- ✅ **Future-proof** - Phase 1 (strings) → Phase 2 (crypto) → Phase 3 (multi-identity) seamlessly
+
+**Configuration**:
+```bash
+export SONGBIRD_FAMILY_ID=nat0
+export SONGBIRD_ORG_ID=acmecorp
+```
+
+**Result**: Federation works TODAY with strings, scales FOREVER with crypto!
+
+See: [TAG_BASED_IDENTITY_COMPLETE_V3_14_0.md](TAG_BASED_IDENTITY_COMPLETE_V3_14_0.md)
+
+---
+
+## 🎊 **Previous Milestone: Federation Unblocked (v3.12.3)**
 
 **Transformational Achievement** (9-hour marathon, 18 commits):
 - ✅ **Federation Unblocked** - Unix sockets fully functional
