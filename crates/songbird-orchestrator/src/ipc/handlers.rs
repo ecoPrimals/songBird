@@ -6,23 +6,37 @@ use anyhow::Result;
 use jsonrpsee::types::{ErrorObject, Params};
 use std::sync::Arc;
 use std::time::SystemTime;
-use tokio::sync::RwLock;
 use tracing::{debug, info, warn};
 
 use super::types::*;
-use crate::app::core::SongbirdOrchestrator;
+use crate::app::connection_manager::ConnectionManager;
+use songbird_discovery::anonymous::AnonymousDiscoveryListener;
 use songbird_types::TrustLevel;
 
 /// API handlers for Unix socket JSON-RPC methods
+///
+/// v3.19.2: Refactored to take individual components instead of whole orchestrator
+/// This avoids circular Arc<RwLock<>> dependencies and simplifies the architecture.
 pub struct IpcHandlers {
-    /// Reference to the orchestrator (for accessing discovery, connections, etc.)
-    orchestrator: Arc<RwLock<SongbirdOrchestrator>>,
+    /// Discovery listener for getting discovered peers
+    discovery_listener: Option<Arc<AnonymousDiscoveryListener>>,
+    
+    /// Connection manager for establishing connections
+    connection_manager: Arc<ConnectionManager>,
 }
 
 impl IpcHandlers {
-    /// Create new API handlers
-    pub fn new(orchestrator: Arc<RwLock<SongbirdOrchestrator>>) -> Self {
-        Self { orchestrator }
+    /// Create new API handlers with individual components
+    ///
+    /// v3.19.2: Modern Rust - pass only what's needed, not whole orchestrator
+    pub fn new(
+        discovery_listener: Option<Arc<AnonymousDiscoveryListener>>,
+        connection_manager: Arc<ConnectionManager>,
+    ) -> Self {
+        Self {
+            discovery_listener,
+            connection_manager,
+        }
     }
     
     /// Handle `discover_by_family` RPC call
@@ -59,18 +73,13 @@ impl IpcHandlers {
         
         info!("🔍 Discovering peers in families: {:?}", request.family_tags);
         
-        // Get orchestrator (read lock)
-        let orch = self.orchestrator.read().await;
-        
         // Get all discovered peers from discovery listener
-        let all_peers = orch
-            .get_discovered_peers()
-            .await
-            .map_err(|e| ErrorObject::owned(
-                -32603,
-                "Failed to get discovered peers",
-                Some(format!("{}", e)),
-            ))?;
+        let all_peers = if let Some(ref listener) = self.discovery_listener {
+            listener.get_peers().await
+        } else {
+            // No discovery listener = no peers
+            vec![]
+        };
         
         debug!("   Total discovered peers: {}", all_peers.len());
         
@@ -174,22 +183,16 @@ impl IpcHandlers {
         
         info!("🌐 Creating genetic tunnel to peer: {}", request.peer_node_id);
         
-        // Get orchestrator (read lock for query, then write lock for mutation)
-        let orch = self.orchestrator.read().await;
-        
         // Get peer endpoint (from request or discovery)
         let peer_endpoint = if let Some(endpoint) = request.peer_endpoint {
             endpoint
         } else {
             // Look up peer in discovered peers
-            let discovered_peers = orch
-                .get_discovered_peers()
-                .await
-                .map_err(|e| ErrorObject::owned(
-                    -32603,
-                    "Failed to get discovered peers",
-                    Some(format!("{}", e)),
-                ))?;
+            let discovered_peers = if let Some(ref listener) = self.discovery_listener {
+                listener.get_peers().await
+            } else {
+                vec![]
+            };
             
             discovered_peers
                 .iter()
@@ -217,12 +220,8 @@ impl IpcHandlers {
             TrustLevel::Limited
         };
         
-        // Drop read lock before acquiring write lock
-        drop(orch);
-        
         // Establish connection (BTSP-first)
-        let mut orch_mut = self.orchestrator.write().await;
-        orch_mut
+        self.connection_manager
             .establish_connection(
                 request.peer_node_id.clone(),
                 peer_endpoint.clone(),
@@ -297,16 +296,13 @@ impl IpcHandlers {
         info!("   Genetic families: {:?}", request.genetic_families);
         info!("   Sub-federations: {:?}", request.sub_federations);
         
-        // Get orchestrator (write lock for mutation)
-        let orch = self.orchestrator.write().await;
-        
         // Update capabilities in broadcaster
-        // TODO: Implement orchestrator.update_capabilities() method
-        // For now, log the update (implementation in next phase)
+        // TODO v3.19.3: Implement broadcaster.update_capabilities() method
+        // For now, log the update (full implementation in Phase 3)
         
         warn!("⚠️  Capability update logged but not yet applied to broadcaster");
         warn!("   This requires broadcaster to be wrapped in Arc<RwLock<>>");
-        warn!("   Tracked for v3.19.2 implementation");
+        warn!("   Tracked for v3.19.3 implementation");
         
         Ok(AnnounceCapabilitiesResponse {
             status: "pending".to_string(),  // "updated" when implemented

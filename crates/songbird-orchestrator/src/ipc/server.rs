@@ -19,7 +19,8 @@ use tokio::sync::RwLock;
 use tracing::{debug, info, warn};
 
 use super::handlers::IpcHandlers;
-use crate::app::core::SongbirdOrchestrator;
+use crate::app::connection_manager::ConnectionManager;
+use songbird_discovery::anonymous::AnonymousDiscoveryListener;
 
 /// Unix socket JSON-RPC server for inter-primal communication
 ///
@@ -50,15 +51,25 @@ impl UnixSocketServer {
     ///
     /// **Zero Hardcoding**: Socket path derived from node_id
     ///
+    /// **v3.19.2**: Refactored to take individual components instead of whole orchestrator
+    ///
     /// ## Example
     ///
     /// ```rust
-    /// let server = UnixSocketServer::new("tower-001", orchestrator);
+    /// let server = UnixSocketServer::new(
+    ///     "tower-001",
+    ///     discovery_listener,
+    ///     connection_manager,
+    /// );
     /// server.start().await?;
     /// ```
-    pub fn new(node_id: &str, orchestrator: Arc<RwLock<SongbirdOrchestrator>>) -> Self {
+    pub fn new(
+        node_id: &str,
+        discovery_listener: Option<Arc<AnonymousDiscoveryListener>>,
+        connection_manager: Arc<ConnectionManager>,
+    ) -> Self {
         let socket_path = Self::socket_path_for_node(node_id);
-        let handlers = Arc::new(IpcHandlers::new(orchestrator));
+        let handlers = Arc::new(IpcHandlers::new(discovery_listener, connection_manager));
         
         Self {
             socket_path,
@@ -86,8 +97,12 @@ impl UnixSocketServer {
     /// 1. Remove stale socket file (if exists)
     /// 2. Create jsonrpsee server
     /// 3. Register API methods
-    /// 4. Start listening
-    pub async fn start(&mut self) -> Result<()> {
+    /// 4. Start listening (returns immediately, runs in background)
+    ///
+    /// ## Returns
+    ///
+    /// `ServerHandle` for graceful shutdown
+    pub async fn start(&mut self) -> Result<ServerHandle> {
         info!("🔌 Starting Unix socket JSON-RPC server...");
         info!("   Socket path: {:?}", self.socket_path);
         
@@ -134,15 +149,22 @@ impl UnixSocketServer {
             }
         })?;
         
-        // Start server with registered methods
+        // Start server with registered methods (runs in background)
         let handle = server.start(module);
-        self.server_handle = Some(handle);
         
         info!("✅ Unix socket JSON-RPC server started");
         info!("   Listening at: {:?}", self.socket_path);
         info!("   APIs: discover_by_family, create_genetic_tunnel, announce_capabilities");
         
-        Ok(())
+        // Store handle for graceful shutdown
+        self.server_handle = Some(handle.clone());
+        
+        Ok(handle)
+    }
+    
+    /// Check if server is running
+    pub fn is_running(&self) -> bool {
+        self.server_handle.is_some()
     }
     
     /// Stop the server gracefully

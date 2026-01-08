@@ -531,68 +531,44 @@ impl SongbirdOrchestrator {
     /// This ensures multiple Songbird instances (spores) can run on the same machine
     /// without socket path conflicts, following security provider's pattern.
     async fn start_ipc_server(&mut self) -> Result<()> {
-        // v3.19.1: Unix socket JSON-RPC server infrastructure (pending full integration)
+        use crate::ipc::UnixSocketServer;
         
-        // Get family ID (if configured)
-        let family_id = SafeEnv::get("SONGBIRD_FAMILY_ID")
-            .ok()
-            .or_else(|| std::env::var("FAMILY_ID").ok());
-        
-        // Get node/spore ID to ensure unique socket per instance
+        // Get node ID for socket path (zero hardcoding!)
         let node_id = SafeEnv::get("SONGBIRD_NODE_ID")
             .ok()
             .or_else(|| std::env::var("NODE_ID").ok())
-            .or_else(|| std::env::var("SPORE_ID").ok());
+            .or_else(|| std::env::var("SPORE_ID").ok())
+            .unwrap_or_else(|| "default".to_string());
         
-        // Build socket path: /tmp/songbird-{family}-{node}.sock
-        // This follows security provider's pattern to avoid conflicts when running multiple spores
-        let socket_path = match (family_id.as_ref(), node_id.as_ref()) {
-            (Some(family), Some(node)) => {
-                format!("/tmp/songbird-{}-{}.sock", family, node)
-            }
-            (Some(family), None) => {
-                // Has family but no node ID - use family only (single spore mode)
-                format!("/tmp/songbird-{}.sock", family)
-            }
-            (None, Some(node)) => {
-                // Has node but no family - use node only
-                format!("/tmp/songbird-{}.sock", node)
-            }
-            (None, None) => {
-                // No family or node - use legacy fallback
-                "/tmp/songbird.sock".to_string()
-            }
-        };
-        
-        info!("🎧 Initializing Unix Socket IPC server");
-        info!("   Socket: {}", socket_path);
-        if let Some(ref family) = family_id {
-            info!("   Family: {}", family);
-        }
-        if let Some(ref node) = node_id {
-            info!("   Node: {}", node);
-        }
+        info!("🎧 Starting Unix Socket IPC server (v3.19.2)");
+        info!("   Node ID: {}", node_id);
+        info!("   Socket: /tmp/songbird-{}.sock", node_id);
         info!("   Protocol: JSON-RPC 2.0");
         
-        // TODO v3.19.1: Wire Unix socket JSON-RPC server with jsonrpsee
-        // Infrastructure created in:
-        //   - crates/songbird-orchestrator/src/ipc/server.rs
-        //   - crates/songbird-orchestrator/src/ipc/handlers.rs
-        //   - crates/songbird-orchestrator/src/ipc/types.rs
-        //
-        // Next steps:
-        //   1. Create Unix socket server instance with jsonrpsee
-        //   2. Wire orchestrator reference for handlers
-        //   3. Spawn server task
-        //   4. Add integration tests
-        //
-        // Planned APIs:
-        //   - discover_by_family (filter by genetic tags)
-        //   - create_genetic_tunnel (BTSP with genetic proof)
-        //   - announce_capabilities (update broadcaster)
+        // v3.19.2: Pass individual components (cleaner than Arc<RwLock<whole orchestrator>>)
+        // Handlers only need discovery_listener and connection_manager
+        let discovery_listener_clone = self.discovery_listener.clone();
+        let connection_manager_clone = Arc::clone(&self.connection_manager);
         
-        warn!("   ⚠️  Unix socket IPC integration pending (v3.19.1 - infrastructure ready, awaiting wiring)");
-        info!("   📋 APIs planned: discover_by_family, create_genetic_tunnel, announce_capabilities");
+        // Create Unix socket server
+        let mut server = UnixSocketServer::new(
+            &node_id,
+            discovery_listener_clone,
+            connection_manager_clone,
+        );
+        
+        // Start server (returns ServerHandle for graceful shutdown)
+        let server_handle = server.start().await?;
+        
+        info!("✅ Unix Socket IPC server started successfully");
+        info!("   APIs: discover_by_family, create_genetic_tunnel, announce_capabilities");
+        info!("   🌱 biomeOS can now connect for spore federation!");
+        
+        // Store handle for graceful shutdown (would need to be added to orchestrator struct)
+        // For now, server runs indefinitely in background
+        // TODO v3.19.3: Add server_handle to orchestrator struct for graceful shutdown
+        drop(server_handle);  // Prevent unused warning
+        
         Ok(())
     }
 
