@@ -1,65 +1,39 @@
-//! Inter-Primal Communication (IPC) Module
+//! Inter-Primal Communication (IPC) via Unix Socket JSON-RPC
 //!
-//! This module provides Unix socket-based IPC for Songbird to communicate with
-//! other primals (security provider, ToadStool, Gorilla, etc.) using JSON-RPC 2.0.
+//! v3.19.1: Modern async Rust patterns for primal-to-primal communication
 //!
 //! ## Architecture
 //!
 //! ```text
-//! ┌───────────────────────────────────────────────────────────────┐
-//! │                      Songbird                                 │
-//! │                                                               │
-//! │  ┌──────────────┐         ┌─────────────────┐               │
-//! │  │   Unix       │         │    Primal       │               │
-//! │  │   Socket     │◄────────│    Registry     │               │
-//! │  │   Server     │         │ (Capabilities)  │               │
-//! │  └──────┬───────┘         └─────────────────┘               │
-//! │         │                                                     │
-//! └─────────┼─────────────────────────────────────────────────────┘
-//!           │ /tmp/songbird-{family}.sock
-//!           │
-//!     ┌─────┴──────┬──────────┬──────────────┐
-//!     │            │          │              │
-//! ┌───┴────┐  ┌───┴────┐ ┌───┴────┐   ┌────┴────┐
-//! │security provider │  │ToadStol│ │Gorilla │   │ Future  │
-//! │        │  │        │ │        │   │ Primals │
-//! │security│  │storage │ │compute │   │   ...   │
-//! └────────┘  └────────┘ └────────┘   └─────────┘
+//! ┌──────────────────────────────────────────────────────┐
+//! │ Unix Socket Server                                   │
+//! │ /tmp/songbird-{node_id}.sock                         │
+//! ├──────────────────────────────────────────────────────┤
+//! │ JSON-RPC 2.0 APIs:                                   │
+//! │  • discover_by_family (filter by genetic tags)       │
+//! │  • create_genetic_tunnel (BTSP with genetic proof)   │
+//! │  • announce_capabilities (update broadcaster)        │
+//! └──────────────────────────────────────────────────────┘
 //! ```
 //!
-//! ## Key Features
+//! ## Design Principles
 //!
-//! - **Unix Socket IPC**: Low-latency, secure local communication
-//! - **JSON-RPC 2.0**: Language-agnostic protocol
-//! - **Capability Registry**: Dynamic primal discovery by capability
-//! - **Zero Hardcoding**: No compile-time knowledge of specific primals
-//!
-//! ## Usage
-//!
-//! ```rust,no_run
-//! use songbird_orchestrator::ipc::{UnixSocketIpcServer, PrimalRegistry};
-//!
-//! # async fn example() -> anyhow::Result<()> {
-//! // Start IPC server
-//! let server = UnixSocketIpcServer::new("/tmp/songbird.sock").await?;
-//! let registry = server.registry();
-//!
-//! // Server accepts connections and handles primal registration
-//! tokio::spawn(async move {
-//!     server.start().await.unwrap();
-//! });
-//!
-//! // Query registry for capabilities
-//! let security_provider = registry.read().await.get_provider("security").await?;
-//! # Ok(())
-//! # }
-//! ```
+//! 1. **Zero Hardcoding**: Socket path derived from node_id
+//! 2. **Modern Async**: jsonrpsee with tokio
+//! 3. **Protocol Agnostic**: Works with any JSON-RPC 2.0 client
+//! 4. **Observable**: Structured logging at every step
+//! 5. **Secure**: Unix socket permissions, credential passing (future)
 
-pub mod primal_registry;
-pub mod unix_socket;
+pub mod server;
+pub mod handlers;
+pub mod types;
 
-pub use primal_registry::{PrimalInfo, PrimalRegistry, RegistryStats};
-pub use unix_socket::{
-    JsonRpcError, JsonRpcRequest, JsonRpcResponse, UnixSocketIpcServer,
+pub use server::UnixSocketServer;
+pub use types::{
+    DiscoverByFamilyRequest,
+    DiscoverByFamilyResponse,
+    CreateGeneticTunnelRequest,
+    CreateGeneticTunnelResponse,
+    AnnounceCapabilitiesRequest,
+    AnnounceCapabilitiesResponse,
 };
-

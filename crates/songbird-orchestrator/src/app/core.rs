@@ -531,7 +531,7 @@ impl SongbirdOrchestrator {
     /// This ensures multiple Songbird instances (spores) can run on the same machine
     /// without socket path conflicts, following security provider's pattern.
     async fn start_ipc_server(&mut self) -> Result<()> {
-        use crate::ipc::UnixSocketIpcServer;
+        // v3.19.1: Unix socket JSON-RPC server infrastructure (pending full integration)
         
         // Get family ID (if configured)
         let family_id = SafeEnv::get("SONGBIRD_FAMILY_ID")
@@ -574,47 +574,25 @@ impl SongbirdOrchestrator {
         }
         info!("   Protocol: JSON-RPC 2.0");
         
-        // Create IPC server
-        let mut server = UnixSocketIpcServer::new(&socket_path).await?;
+        // TODO v3.19.1: Wire Unix socket JSON-RPC server with jsonrpsee
+        // Infrastructure created in:
+        //   - crates/songbird-orchestrator/src/ipc/server.rs
+        //   - crates/songbird-orchestrator/src/ipc/handlers.rs
+        //   - crates/songbird-orchestrator/src/ipc/types.rs
+        //
+        // Next steps:
+        //   1. Create Unix socket server instance with jsonrpsee
+        //   2. Wire orchestrator reference for handlers
+        //   3. Spawn server task
+        //   4. Add integration tests
+        //
+        // Planned APIs:
+        //   - discover_by_family (filter by genetic tags)
+        //   - create_genetic_tunnel (BTSP with genetic proof)
+        //   - announce_capabilities (update broadcaster)
         
-        // Wire ConnectionManager for peer discovery APIs
-        info!("   🔗 Wiring ConnectionManager for peer discovery APIs");
-        server.set_connection_manager(Arc::clone(&self.connection_manager));
-        
-        // Wire DiscoveryStatusManager for discovery observability (Jan 5, 2026)
-        info!("   📊 Wiring DiscoveryStatusManager for discovery observability");
-        server.set_discovery_status_manager(Arc::clone(&self.discovery_status_manager));
-        
-        // Log available methods
-        info!("   Available methods:");
-        info!("      • primal.register (register with capabilities)");
-        info!("      • primal.unregister");
-        info!("      • primal.get_provider (find provider by capability)");
-        info!("      • primal.list_providers (list all providers for capability)");
-        info!("      • primal.list_all (list all registered primals)");
-        info!("      • primal.health");
-        info!("      • primal.ping");
-        info!("      • discovery.list_peers ⭐ (list discovered peers)");
-        info!("      • discovery.peer_count ⭐ (count discovered peers)");
-        info!("      • discovery.rejected_peers ⭐ (list rejected peers)");
-        info!("      • discovery.status 🔥 (discovery observability)");
-        info!("      • peer.ping ⭐ (ping specific peer)");
-        
-        // Store registry for later use (if needed)
-        let _registry = server.registry();
-        
-        // Spawn IPC server task
-        let server_handle = tokio::spawn(async move {
-            if let Err(e) = server.start().await {
-                error!("❌ Unix Socket IPC server error: {}", e);
-            }
-        });
-        
-        // Store handle for graceful shutdown
-        self.ipc_server_handle = Some(server_handle);
-        
-        info!("✅ Unix Socket IPC server started successfully");
-        info!("   🎯 User sovereignty: Full visibility into peer discovery");
+        warn!("   ⚠️  Unix socket IPC integration pending (v3.19.1 - infrastructure ready, awaiting wiring)");
+        info!("   📋 APIs planned: discover_by_family, create_genetic_tunnel, announce_capabilities");
         Ok(())
     }
 
@@ -846,6 +824,44 @@ impl SongbirdOrchestrator {
 
         info!("✅ Songbird Orchestrator stopped successfully");
         Ok(())
+    }
+    
+    /// Get discovered peers from the discovery listener (v3.19.1)
+    ///
+    /// Used by Unix socket IPC handlers to implement `discover_by_family` API
+    pub async fn get_discovered_peers(
+        &self,
+    ) -> Result<Vec<songbird_discovery::anonymous::DiscoveredPeer>> {
+        if let Some(ref listener) = self.discovery_listener {
+            Ok(listener.get_peers().await)
+        } else {
+            // No discovery listener = no peers
+            Ok(vec![])
+        }
+    }
+    
+    /// Establish a connection to a peer (v3.19.1)
+    ///
+    /// Used by Unix socket IPC handlers to implement `create_genetic_tunnel` API
+    pub async fn establish_connection(
+        &mut self,
+        peer_id: String,
+        endpoint: String,
+        capabilities: Vec<String>,
+        peer_tags: Vec<String>,
+        trust_level: songbird_types::TrustLevel,
+        discovery_method: String,
+    ) -> Result<()> {
+        self.connection_manager
+            .establish_connection(
+                peer_id,
+                endpoint,
+                capabilities,
+                peer_tags,
+                trust_level,
+                discovery_method,
+            )
+            .await
     }
 
     // ✅ MODERN RUST (v3.13.0 - Jan 7, 2026): Health check methods extracted to health.rs
