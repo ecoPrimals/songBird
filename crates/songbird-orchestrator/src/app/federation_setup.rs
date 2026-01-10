@@ -113,9 +113,7 @@ pub fn setup_federation(
     }
 
     // Create coordinator with state
-    let coordinator = Arc::new(FederationCoordinator::with_state(Arc::clone(
-        &federation_state,
-    )));
+    let coordinator = Arc::new(FederationCoordinator::with_state(Arc::clone(&federation_state)));
 
     Ok(FederationSetup {
         coordinator: Some(coordinator),
@@ -215,4 +213,3 @@ mod tests {
         std::env::remove_var("SONGBIRD_FEDERATION_ENABLED");
     }
 }
-

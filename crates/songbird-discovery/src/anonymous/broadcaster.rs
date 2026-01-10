@@ -52,28 +52,28 @@ pub struct AnonymousDiscoveryBroadcaster {
 
     /// Broadcast interval in seconds
     interval_secs: u64,
-    
+
     /// Identity tags (v3.14.0 - tag-based identity)
     /// Opaque strings we broadcast. We don't interpret them!
     /// Format: `{provider}:{type}:{value}` (e.g., `beardog:family:nat0`)
     tags: Option<Vec<String>>,
-    
+
     /// Identity attestations from security provider (CRITICAL FIX - Jan 3, 2026)
     ///
     /// These are provided by the security capability provider (e.g., BearDog) on startup
     /// and enable genetic lineage auto-trust. MUST be included for federation to work!
     identity_attestations: Option<Vec<crate::IdentityAttestation>>,
-    
+
     /// BirdSong encryption processor (optional) - NEW (Jan 3, 2026)
     birdsong: Option<Arc<crate::birdsong_integration::BirdSongProcessor>>,
-    
+
     /// Statistics tracker for observability (optional) - NEW (Jan 5, 2026)
     stats: Option<Arc<crate::discovery_stats::DiscoveryStats>>,
 }
 
 impl AnonymousDiscoveryBroadcaster {
     /// Create a new anonymous discovery broadcaster (v2.1 - backward compatible)
-    #[must_use] 
+    #[must_use]
     pub fn new(
         capabilities: Vec<String>,
         protocols: Vec<String>,
@@ -100,7 +100,7 @@ impl AnonymousDiscoveryBroadcaster {
     }
 
     /// Create a new v3.0 broadcaster with node identity and multiple endpoints
-    #[must_use] 
+    #[must_use]
     pub fn new_v3(
         node_id: String,
         node_name: String,
@@ -118,8 +118,7 @@ impl AnonymousDiscoveryBroadcaster {
             .and_then(|p| p.parse().ok())
             .unwrap_or(8080);
 
-        let protocols =
-            primary.map_or_else(|| vec!["https".to_string()], |e| e.protocols.clone());
+        let protocols = primary.map_or_else(|| vec!["https".to_string()], |e| e.protocols.clone());
 
         Self {
             version: "3.0".to_string(),
@@ -138,24 +137,27 @@ impl AnonymousDiscoveryBroadcaster {
             stats: None,
         }
     }
-    
+
     /// Add known peer addresses for direct discovery
-    #[must_use] 
+    #[must_use]
     pub fn with_known_peers(mut self, peers: Vec<SocketAddr>) -> Self {
         self.known_peers = peers;
         self
     }
-    
+
     /// Set identity attestations from security provider (CRITICAL FIX - Jan 3, 2026)
     ///
     /// Adds identity attestations for genetic lineage auto-trust. This should be called
     /// after querying the security provider (e.g., BearDog) for our node's identity.
-    #[must_use] 
-    pub fn with_identity_attestations(mut self, attestations: Vec<crate::IdentityAttestation>) -> Self {
+    #[must_use]
+    pub fn with_identity_attestations(
+        mut self,
+        attestations: Vec<crate::IdentityAttestation>,
+    ) -> Self {
         self.identity_attestations = Some(attestations);
         self
     }
-    
+
     /// Set identity tags (v3.14.0 - tag-based identity)
     ///
     /// Tags are opaque strings we broadcast. We don't interpret them!
@@ -172,7 +174,7 @@ impl AnonymousDiscoveryBroadcaster {
         };
         self
     }
-    
+
     /// Enable statistics tracking for observability (NEW - Jan 5, 2026)
     #[must_use]
     pub fn with_stats(mut self, stats: Arc<crate::discovery_stats::DiscoveryStats>) -> Self {
@@ -180,13 +182,16 @@ impl AnonymousDiscoveryBroadcaster {
         self.stats = Some(stats);
         self
     }
-    
+
     /// Enable BirdSong encrypted discovery (NEW - Jan 3, 2026)
     ///
     /// Adds BirdSong encryption for privacy-preserving discovery.
     /// Only same-family peers can decrypt discovery packets.
-    #[must_use] 
-    pub fn with_birdsong(mut self, processor: Arc<crate::birdsong_integration::BirdSongProcessor>) -> Self {
+    #[must_use]
+    pub fn with_birdsong(
+        mut self,
+        processor: Arc<crate::birdsong_integration::BirdSongProcessor>,
+    ) -> Self {
         info!("🎵 BirdSong encryption enabled for discovery broadcaster");
         info!("   Status: {}", processor.status());
         self.birdsong = Some(processor);
@@ -228,7 +233,7 @@ impl AnonymousDiscoveryBroadcaster {
         if !self.known_peers.is_empty() {
             info!("   Known peers: {:?}", self.known_peers);
         }
-        
+
         // ✅ v3.14.2: Log identity tags for verification
         if let Some(ref tags) = self.tags {
             info!("   Identity Tags: {} tags configured", tags.len());
@@ -275,12 +280,12 @@ impl AnonymousDiscoveryBroadcaster {
                     self.port,
                 )
             };
-            
+
             // 🚨 CRITICAL FIX (Jan 3, 2026): Include identity attestations for genetic lineage auto-trust
             if let Some(ref attestations) = self.identity_attestations {
                 message = message.with_identity_attestations(attestations.clone());
             }
-            
+
             // ✅ CRITICAL FIX (v3.14.2 - Jan 7, 2026): Include identity tags!
             // THIS WAS THE BUG: Tags were in self.tags but never added to message!
             if let Some(ref tags) = self.tags {
@@ -298,12 +303,16 @@ impl AnonymousDiscoveryBroadcaster {
                     continue;
                 }
             };
-            
+
             // 🎵 NEW (Jan 3, 2026): Optional BirdSong encryption for privacy
             let bytes = if let Some(ref birdsong) = self.birdsong {
                 match birdsong.encrypt_packet(&bytes).await {
                     Ok(encrypted) => {
-                        debug!("🔒 BirdSong encrypted: {} -> {} bytes", bytes.len(), encrypted.len());
+                        debug!(
+                            "🔒 BirdSong encrypted: {} -> {} bytes",
+                            bytes.len(),
+                            encrypted.len()
+                        );
                         encrypted
                     }
                     Err(e) => {
@@ -408,7 +417,8 @@ mod tests {
             8080,
             vec!["224.0.0.251:2300".parse().unwrap()],
             30,
-        ).with_known_peers(vec!["192.168.1.10:2300".parse().unwrap()]);
+        )
+        .with_known_peers(vec!["192.168.1.10:2300".parse().unwrap()]);
 
         assert_eq!(broadcaster.known_peers.len(), 1);
     }
@@ -429,10 +439,10 @@ mod tests {
             8080,
             vec!["224.0.0.251:2300".parse().unwrap()],
             30,
-        ).with_identity_attestations(vec![attestation]);
+        )
+        .with_identity_attestations(vec![attestation]);
 
         assert!(broadcaster.identity_attestations.is_some());
         assert_eq!(broadcaster.identity_attestations.unwrap().len(), 1);
     }
 }
-

@@ -116,10 +116,11 @@ impl SongbirdOrchestrator {
             let federation_state = Arc::clone(&self.federation_state);
             let trust_manager = Arc::clone(&self.trust_manager);
             let connection_manager = Arc::clone(&self.connection_manager);
-            
+
             // Check for security provider for trust evaluation
             // EVOLVED (v3.15.0): Agnostic capability discovery (zero vendor hardcoding!)
-            let security_client_endpoint = crate::app::security_setup::discover_security_endpoint(None).await.ok();
+            let security_client_endpoint =
+                crate::app::security_setup::discover_security_endpoint(None).await.ok();
 
             tokio::spawn(async move {
                 let mut interval = interval(tokio::time::Duration::from_secs(10));
@@ -132,7 +133,7 @@ impl SongbirdOrchestrator {
 
                 loop {
                     interval.tick().await;
-                    
+
                     // INFO LOGGING (v3.10.3 - Jan 6, 2026): Show bridge polls at INFO level
                     // Helps verify bridge is running even with default logging
                     debug!("🔄 Bridge poll tick (checking for discovered peers...)");
@@ -144,61 +145,66 @@ impl SongbirdOrchestrator {
                         info!("🔍 Processing {} discovered peers", peers.len());
 
                         for peer in peers {
-                        // Get HTTPS endpoint
-                        let endpoint = peer.https_endpoint();
+                            // Get HTTPS endpoint
+                            let endpoint = peer.https_endpoint();
 
-                        // Extract identity based on protocol version
-                        let (node_id, node_name) = if peer.version == "3.0" {
-                            // v3.0: Use stable node_id and node_name
-                            match (&peer.node_id, &peer.node_name) {
-                                (Some(id), Some(name)) => (id.clone(), name.clone()),
-                                _ => {
-                                    warn!("⚠️  Peer claims v3.0 but missing node_id/node_name, falling back to session_id");
-                                    (
-                                        peer.session_id.clone(),
-                                        format!("peer-{}", &peer.session_id[..8]),
-                                    )
+                            // Extract identity based on protocol version
+                            let (node_id, node_name) = if peer.version == "3.0" {
+                                // v3.0: Use stable node_id and node_name
+                                match (&peer.node_id, &peer.node_name) {
+                                    (Some(id), Some(name)) => (id.clone(), name.clone()),
+                                    _ => {
+                                        warn!("⚠️  Peer claims v3.0 but missing node_id/node_name, falling back to session_id");
+                                        (
+                                            peer.session_id.clone(),
+                                            format!("peer-{}", &peer.session_id[..8]),
+                                        )
+                                    }
                                 }
-                            }
-                        } else {
-                            // v2.x: Fall back to session_id (legacy)
-                            (peer.session_id.clone(), format!("peer-{}", &peer.session_id[..8]))
-                        };
+                            } else {
+                                // v2.x: Fall back to session_id (legacy)
+                                (peer.session_id.clone(), format!("peer-{}", &peer.session_id[..8]))
+                            };
 
-                        // Log discovered peer with proper identity
-                        debug!(
-                            "🔍 Discovered peer: {} (v{}) at {} (capabilities: {:?})",
-                            node_name, peer.version, endpoint, peer.capabilities
-                        );
+                            // Log discovered peer with proper identity
+                            debug!(
+                                "🔍 Discovered peer: {} (v{}) at {} (capabilities: {:?})",
+                                node_name, peer.version, endpoint, peer.capabilities
+                            );
 
-                        // Check if same family for trust decisions (Jan 5, 2026)
-                        // Tags format: ["beardog:family:FAMILY_ID:NODE_ID", ...]
-                        let same_family = std::env::var("SONGBIRD_FAMILY_ID")
-                            .ok()
-                            .map(|my_family| {
-                                peer.tags.as_ref()
-                                    .map(|tags| {
-                                        tags.iter().any(|tag| {
-                                            tag.contains(&format!(":family:{}:", my_family))
-                                                || tag.contains(&format!("family_{}", my_family))
+                            // Check if same family for trust decisions (Jan 5, 2026)
+                            // Tags format: ["beardog:family:FAMILY_ID:NODE_ID", ...]
+                            let same_family = std::env::var("SONGBIRD_FAMILY_ID")
+                                .ok()
+                                .map(|my_family| {
+                                    peer.tags
+                                        .as_ref()
+                                        .map(|tags| {
+                                            tags.iter().any(|tag| {
+                                                tag.contains(&format!(":family:{}:", my_family))
+                                                    || tag
+                                                        .contains(&format!("family_{}", my_family))
+                                            })
                                         })
-                                    })
-                                    .unwrap_or(false)
-                            })
-                            .unwrap_or(false);
+                                        .unwrap_or(false)
+                                })
+                                .unwrap_or(false);
 
-                        // CRITICAL: Verify HTTPS connectivity before registering
-                        // EVOLVED (Jan 5, 2026): Skip for same-family LAN peers
-                        let skip_connectivity_check = same_family;
-                        
-                        let connectivity_ok = if skip_connectivity_check {
-                            info!("✅ Same family peer '{}' - skipping connectivity check (trust LAN discovery)", node_name);
-                            true
-                        } else {
-                            let health_url = format!("{}/health", endpoint);
-                            debug!("🔍 Checking connectivity to {} at {}", node_name, health_url);
-                            
-                            let connectivity_check = tokio::time::timeout(
+                            // CRITICAL: Verify HTTPS connectivity before registering
+                            // EVOLVED (Jan 5, 2026): Skip for same-family LAN peers
+                            let skip_connectivity_check = same_family;
+
+                            let connectivity_ok = if skip_connectivity_check {
+                                info!("✅ Same family peer '{}' - skipping connectivity check (trust LAN discovery)", node_name);
+                                true
+                            } else {
+                                let health_url = format!("{}/health", endpoint);
+                                debug!(
+                                    "🔍 Checking connectivity to {} at {}",
+                                    node_name, health_url
+                                );
+
+                                let connectivity_check = tokio::time::timeout(
                                 tokio::time::Duration::from_secs(3),
                                 async {
                                     // ✅ EVOLVED: Proper error handling instead of unwrap
@@ -216,28 +222,31 @@ impl SongbirdOrchestrator {
                                         .await
                                 }
                             ).await;
-                            
-                            match connectivity_check {
-                                Ok(Ok(response)) if response.status().is_success() => {
-                                    info!("✅ Peer '{}' (v{}) is reachable at {}", node_name, peer.version, endpoint);
-                                    true
-                                }
-                                Ok(Ok(response)) => {
-                                    warn!("⚠️  Peer '{}' returned HTTP {} - connectivity check failed", node_name, response.status());
-                                    false
-                                }
-                                Ok(Err(e)) => {
-                                    warn!("⚠️  Peer '{}' unreachable: {}", node_name, e);
-                                    false
-                                }
-                                Err(_) => {
-                                    warn!("⚠️  Peer '{}' connection timeout (3s)", node_name);
-                                    false
-                                }
-                            }
-                        };
 
-                        if connectivity_ok {
+                                match connectivity_check {
+                                    Ok(Ok(response)) if response.status().is_success() => {
+                                        info!(
+                                            "✅ Peer '{}' (v{}) is reachable at {}",
+                                            node_name, peer.version, endpoint
+                                        );
+                                        true
+                                    }
+                                    Ok(Ok(response)) => {
+                                        warn!("⚠️  Peer '{}' returned HTTP {} - connectivity check failed", node_name, response.status());
+                                        false
+                                    }
+                                    Ok(Err(e)) => {
+                                        warn!("⚠️  Peer '{}' unreachable: {}", node_name, e);
+                                        false
+                                    }
+                                    Err(_) => {
+                                        warn!("⚠️  Peer '{}' connection timeout (3s)", node_name);
+                                        false
+                                    }
+                                }
+                            };
+
+                            if connectivity_ok {
                                 info!(
                                     "✅ Peer '{}' (v{}) is reachable at {}",
                                     node_name, peer.version, endpoint
@@ -245,7 +254,7 @@ impl SongbirdOrchestrator {
 
                                 // 🔒 CRITICAL: Genetic lineage trust evaluation (USB seed integration)
                                 // Query security provider (e.g., security provider) for trust decision
-                                // 
+                                //
                                 // Agnostic Pattern: Node discovers security capability at runtime
                                 // - If security provider configured → evaluate trust (secure)
                                 // - If no security provider → anonymous trust (development only)
@@ -253,42 +262,66 @@ impl SongbirdOrchestrator {
                                 // This replaces the previous "establish_anonymous" which was:
                                 // ❌ Insecure: Auto-accepted all peers (no lineage check)
                                 // ✅ Now secure: Only accepts peers with valid lineage
-                                
-                                let trust_decision_result = if let Some(ref sec_endpoint) = security_client_endpoint {
+
+                                let trust_decision_result = if let Some(ref sec_endpoint) =
+                                    security_client_endpoint
+                                {
                                     // Security provider available - evaluate trust properly
-                                    use crate::trust::peer_trust::{evaluate_peer_trust, DiscoveredPeer};
                                     use crate::security_capability_client::SecurityCapabilityClient;
-                                    
-                                    let security_client = match SecurityCapabilityClient::from_endpoint(sec_endpoint.clone()) {
-                                        Ok(client) => client,
-                                        Err(e) => {
-                                            warn!("⚠️  Failed to create security client: {}", e);
-                                            continue;
-                                        }
+                                    use crate::trust::peer_trust::{
+                                        evaluate_peer_trust, DiscoveredPeer,
                                     };
-                                    
+
+                                    let security_client =
+                                        match SecurityCapabilityClient::from_endpoint(
+                                            sec_endpoint.clone(),
+                                        ) {
+                                            Ok(client) => client,
+                                            Err(e) => {
+                                                warn!(
+                                                    "⚠️  Failed to create security client: {}",
+                                                    e
+                                                );
+                                                continue;
+                                            }
+                                        };
+
                                     // 🚨 CRITICAL FIX (Jan 3, 2026): Convert discovery attestations to trust layer format
-                                    let trust_attestations = peer.identity_attestations.as_ref()
+                                    let trust_attestations = peer
+                                        .identity_attestations
+                                        .as_ref()
                                         .map(|attestations| {
-                                            attestations.iter().map(|att| {
-                                                crate::trust::UniversalIdentityAttestation {
-                                                    provider: Some(att.provider_capability.clone()),
-                                                    format: att.format.clone(),
-                                                    data: att.data.clone(),
-                                                }
-                                            }).collect()
+                                            attestations
+                                                .iter()
+                                                .map(|att| {
+                                                    crate::trust::UniversalIdentityAttestation {
+                                                        provider: Some(
+                                                            att.provider_capability.clone(),
+                                                        ),
+                                                        format: att.format.clone(),
+                                                        data: att.data.clone(),
+                                                    }
+                                                })
+                                                .collect()
                                         })
                                         .unwrap_or_default();
-                                    
+
                                     // ✅ v3.14.2: Log peer tags for debugging
                                     let peer_tags = peer.tags.clone().unwrap_or_default();
                                     if peer_tags.is_empty() {
                                         warn!("⚠️  Peer {} has NO tags - family extraction will fail!", node_id);
-                                        warn!("   This means the peer didn't broadcast identity tags");
+                                        warn!(
+                                            "   This means the peer didn't broadcast identity tags"
+                                        );
                                     } else {
-                                        debug!("📋 Peer {} has {} tags: {:?}", node_id, peer_tags.len(), peer_tags);
+                                        debug!(
+                                            "📋 Peer {} has {} tags: {:?}",
+                                            node_id,
+                                            peer_tags.len(),
+                                            peer_tags
+                                        );
                                     }
-                                    
+
                                     let discovered_peer = DiscoveredPeer {
                                         node_id: node_id.clone(),
                                         tags: peer_tags,
@@ -298,11 +331,16 @@ impl SongbirdOrchestrator {
                                         discovery_method: "udp_multicast".to_string(),
                                         first_seen_at: peer.timestamp.unwrap_or(0),
                                     };
-                                    
-                                    match evaluate_peer_trust(&discovered_peer, &security_client).await {
+
+                                    match evaluate_peer_trust(&discovered_peer, &security_client)
+                                        .await
+                                    {
                                         Ok(decision) => Some(decision),
                                         Err(e) => {
-                                            warn!("⚠️  Trust evaluation failed for {}: {}", node_name, e);
+                                            warn!(
+                                                "⚠️  Trust evaluation failed for {}: {}",
+                                                node_name, e
+                                            );
                                             warn!("   Defaulting to reject (safe default)");
                                             None // Reject on error (safe default)
                                         }
@@ -311,7 +349,7 @@ impl SongbirdOrchestrator {
                                     // No security provider - fall back to anonymous trust (INSECURE - development only)
                                     warn!("⚠️  No security provider configured - using anonymous trust (INSECURE)");
                                     warn!("   Set SONGBIRD_BEARDOG_URL for secure genetic lineage verification");
-                                    
+
                                     // Use fully qualified path to avoid duplicate import
                                     Some(crate::trust::peer_trust::PeerTrustDecision::AutoAccept {
                                         reason: "no_security_provider_configured".to_string(),
@@ -319,14 +357,20 @@ impl SongbirdOrchestrator {
                                         encryption_tag: None,
                                     })
                                 };
-                                
+
                                 match trust_decision_result {
-                                    Some(crate::trust::peer_trust::PeerTrustDecision::AutoAccept { reason, confidence, .. }) => {
+                                    Some(
+                                        crate::trust::peer_trust::PeerTrustDecision::AutoAccept {
+                                            reason,
+                                            confidence,
+                                            ..
+                                        },
+                                    ) => {
                                         info!(
                                             "✅ Trust Decision: AUTO-ACCEPT for '{}' (reason: {}, confidence: {:.2})",
                                             node_name, reason, confidence
                                         );
-                                        
+
                                         // Handle trust decision via connection manager (progressive trust)
                                         match connection_manager.handle_trust_decision(
                                             node_id.clone(),
@@ -408,8 +452,14 @@ impl SongbirdOrchestrator {
                                             }
                                         }
                                     }
-                                    
-                                    Some(crate::trust::peer_trust::PeerTrustDecision::PromptUser { reason, peer_id, recommendation }) => {
+
+                                    Some(
+                                        crate::trust::peer_trust::PeerTrustDecision::PromptUser {
+                                            reason,
+                                            peer_id,
+                                            recommendation,
+                                        },
+                                    ) => {
                                         warn!(
                                             "⚠️  Trust Decision: PROMPT USER for '{}' (reason: {})",
                                             node_name, reason
@@ -419,15 +469,21 @@ impl SongbirdOrchestrator {
                                         warn!("   TODO: Implement user consent UI - for now, skipping peer");
                                         // Skip this peer - do not add to federation without user consent
                                     }
-                                    
-                                    Some(crate::trust::peer_trust::PeerTrustDecision::Reject { reason, trust_level }) => {
+
+                                    Some(crate::trust::peer_trust::PeerTrustDecision::Reject {
+                                        reason,
+                                        trust_level,
+                                    }) => {
                                         warn!(
                                             "❌ Trust Decision: REJECT for '{}' (reason: {})",
                                             node_name, reason
                                         );
                                         warn!("   Trust level: {}", trust_level);
-                                        info!("   Peer {} rejected - no genetic lineage", &peer.session_id[..8]);
-                                        
+                                        info!(
+                                            "   Peer {} rejected - no genetic lineage",
+                                            &peer.session_id[..8]
+                                        );
+
                                         // Track rejection in connection manager for audit trail
                                         if let Err(e) = connection_manager.handle_trust_decision(
                                             node_id.clone(),
@@ -444,7 +500,7 @@ impl SongbirdOrchestrator {
                                         }
                                         // Skip this peer - do not add to federation
                                     }
-                                    
+
                                     None => {
                                         warn!(
                                             "❌ Trust evaluation failed for '{}' - rejecting (safe default)",
@@ -455,7 +511,10 @@ impl SongbirdOrchestrator {
                                 }
                             } else {
                                 // Connectivity check failed - peer not reachable
-                                debug!("🔍 Peer '{}' not added - connectivity check failed", node_name);
+                                debug!(
+                                    "🔍 Peer '{}' not added - connectivity check failed",
+                                    node_name
+                                );
                             }
                         } // End of: for peer in peers
                     } // End of: if !peers.is_empty()
@@ -468,4 +527,3 @@ impl SongbirdOrchestrator {
         Ok(())
     }
 }
-

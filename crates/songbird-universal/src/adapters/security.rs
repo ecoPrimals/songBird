@@ -324,22 +324,24 @@ impl SecurityAdapter {
         let protocol = if endpoint.starts_with("tarpc://") {
             // tarpc - HIGH-PERFORMANCE binary RPC (PRIMARY)
             debug!("🚀 Protocol detected: tarpc (PRIMARY - high-performance binary RPC)");
-            let client = crate::TarpcClient::new(&endpoint)
-                .map_err(|e| SongbirdError::configuration(format!("Failed to create tarpc client: {e}")))?;
+            let client = crate::TarpcClient::new(&endpoint).map_err(|e| {
+                SongbirdError::configuration(format!("Failed to create tarpc client: {e}"))
+            })?;
             SecurityProtocol::Tarpc(client)
         } else if endpoint.starts_with("unix://") {
             // JSON-RPC over Unix socket (SECONDARY)
             debug!("🔌 Protocol detected: JSON-RPC 2.0 over Unix socket (SECONDARY - port-free)");
-            let client = crate::JsonRpcClient::new(&endpoint)
-                .map_err(|e| SongbirdError::configuration(format!("Failed to create JSON-RPC client: {e}")))?;
+            let client = crate::JsonRpcClient::new(&endpoint).map_err(|e| {
+                SongbirdError::configuration(format!("Failed to create JSON-RPC client: {e}"))
+            })?;
             SecurityProtocol::JsonRpc(client)
         } else {
             // HTTP/HTTPS protocol (FALLBACK)
             debug!("🌐 Protocol detected: HTTP (FALLBACK - network only)");
-            let client = reqwest::Client::builder()
-                .timeout(Duration::from_secs(10))
-                .build()
-                .map_err(|e| SongbirdError::configuration(format!("Failed to create HTTP client: {e}")))?;
+            let client =
+                reqwest::Client::builder().timeout(Duration::from_secs(10)).build().map_err(
+                    |e| SongbirdError::configuration(format!("Failed to create HTTP client: {e}")),
+                )?;
             SecurityProtocol::Http(client)
         };
 
@@ -378,12 +380,13 @@ impl SecurityAdapter {
             SecurityProtocol::Tarpc(client) => {
                 // tarpc - HIGH-PERFORMANCE binary RPC (PRIMARY - ~10-20 μs latency!)
                 debug!("🚀 Using tarpc (PRIMARY protocol)");
-                let result = client.call_method("get_security_metrics", None).await.map_err(|e| {
-                    warn!("tarpc request failed: {e}");
-                    songbird_types::SongbirdError::network(format!(
-                        "Failed to reach security provider via tarpc: {e}"
-                    ))
-                })?;
+                let result =
+                    client.call_method("get_security_metrics", None).await.map_err(|e| {
+                        warn!("tarpc request failed: {e}");
+                        songbird_types::SongbirdError::network(format!(
+                            "Failed to reach security provider via tarpc: {e}"
+                        ))
+                    })?;
 
                 serde_json::from_value(result).map_err(|e| {
                     warn!("Failed to parse security metrics: {e}");
@@ -395,12 +398,15 @@ impl SecurityAdapter {
             SecurityProtocol::JsonRpc(client) => {
                 // JSON-RPC protocol (SECONDARY - ~50-100 μs latency)
                 debug!("🔌 Using JSON-RPC (SECONDARY protocol)");
-                let result = client.call_method("get_metrics", Some(serde_json::json!({"type": "security"}))).await.map_err(|e| {
-                    warn!("JSON-RPC request failed: {e}");
-                    songbird_types::SongbirdError::network(format!(
-                        "Failed to reach security provider: {e}"
-                    ))
-                })?;
+                let result = client
+                    .call_method("get_metrics", Some(serde_json::json!({"type": "security"})))
+                    .await
+                    .map_err(|e| {
+                        warn!("JSON-RPC request failed: {e}");
+                        songbird_types::SongbirdError::network(format!(
+                            "Failed to reach security provider: {e}"
+                        ))
+                    })?;
 
                 serde_json::from_value(result).map_err(|e| {
                     warn!("Failed to parse security metrics: {e}");
@@ -413,13 +419,14 @@ impl SecurityAdapter {
                 // HTTP protocol (FALLBACK - ~500-1000 μs latency)
                 debug!("🌐 Using HTTP (FALLBACK protocol)");
                 let url = format!("{}/metrics/security", self.endpoint);
-                
-                let response = client.get(&url).timeout(self.timeout).send().await.map_err(|e| {
-                    warn!("Failed to reach security capability provider: {e}");
-                    songbird_types::SongbirdError::network(format!(
-                        "Failed to reach security provider: {e}"
-                    ))
-                })?;
+
+                let response =
+                    client.get(&url).timeout(self.timeout).send().await.map_err(|e| {
+                        warn!("Failed to reach security capability provider: {e}");
+                        songbird_types::SongbirdError::network(format!(
+                            "Failed to reach security provider: {e}"
+                        ))
+                    })?;
 
                 if !response.status().is_success() {
                     let status = response.status();
@@ -469,27 +476,41 @@ impl SecurityAdapter {
             SecurityProtocol::Tarpc(client) => {
                 // tarpc - HIGH-PERFORMANCE binary RPC (PRIMARY)
                 debug!("🚀 Using tarpc (PRIMARY protocol)");
-                let rpc_result = client.call_method("verify_auth", Some(serde_json::json!({ "token": token }))).await.map_err(|e| {
-                    warn!("tarpc auth verification failed: {e}");
-                    songbird_types::SongbirdError::network(format!("Auth verification failed via tarpc: {e}"))
-                })?;
+                let rpc_result = client
+                    .call_method("verify_auth", Some(serde_json::json!({ "token": token })))
+                    .await
+                    .map_err(|e| {
+                        warn!("tarpc auth verification failed: {e}");
+                        songbird_types::SongbirdError::network(format!(
+                            "Auth verification failed via tarpc: {e}"
+                        ))
+                    })?;
 
                 serde_json::from_value(rpc_result).map_err(|e| {
                     warn!("Failed to parse auth result: {e}");
-                    songbird_types::SongbirdError::security(format!("Failed to parse auth result: {e}"))
+                    songbird_types::SongbirdError::security(format!(
+                        "Failed to parse auth result: {e}"
+                    ))
                 })?
             }
             SecurityProtocol::JsonRpc(client) => {
                 // JSON-RPC protocol (SECONDARY)
                 debug!("🔌 Using JSON-RPC (SECONDARY protocol)");
-                let rpc_result = client.call_method("verify_auth", Some(serde_json::json!({ "token": token }))).await.map_err(|e| {
-                    warn!("JSON-RPC auth verification failed: {e}");
-                    songbird_types::SongbirdError::network(format!("Auth verification failed: {e}"))
-                })?;
+                let rpc_result = client
+                    .call_method("verify_auth", Some(serde_json::json!({ "token": token })))
+                    .await
+                    .map_err(|e| {
+                        warn!("JSON-RPC auth verification failed: {e}");
+                        songbird_types::SongbirdError::network(format!(
+                            "Auth verification failed: {e}"
+                        ))
+                    })?;
 
                 serde_json::from_value(rpc_result).map_err(|e| {
                     warn!("Failed to parse auth result: {e}");
-                    songbird_types::SongbirdError::security(format!("Failed to parse auth result: {e}"))
+                    songbird_types::SongbirdError::security(format!(
+                        "Failed to parse auth result: {e}"
+                    ))
                 })?
             }
             SecurityProtocol::Http(client) => {
@@ -505,7 +526,9 @@ impl SecurityAdapter {
                     .await
                     .map_err(|e| {
                         warn!("Auth verification request failed: {e}");
-                        songbird_types::SongbirdError::network(format!("Auth verification failed: {e}"))
+                        songbird_types::SongbirdError::network(format!(
+                            "Auth verification failed: {e}"
+                        ))
                     })?;
 
                 if !response.status().is_success() {
@@ -514,7 +537,9 @@ impl SecurityAdapter {
 
                 response.json().await.map_err(|e| {
                     warn!("Failed to parse auth result: {e}");
-                    songbird_types::SongbirdError::security(format!("Failed to parse auth result: {e}"))
+                    songbird_types::SongbirdError::security(format!(
+                        "Failed to parse auth result: {e}"
+                    ))
                 })?
             }
         };
@@ -573,12 +598,12 @@ impl SecurityAdapter {
     ///
     /// # async fn example() -> songbird_types::SongbirdResult<()> {
     /// let adapter = SecurityAdapter::new("tarpc://localhost:8765".to_string())?;
-    /// 
+    ///
     /// let params = json!({
     ///     "target_peer_id": "tower-b",
     ///     "max_hops": 3
     /// });
-    /// 
+    ///
     /// let response = adapter.call_generic("btsp/contact/exchange", params).await?;
     /// # Ok(())
     /// # }
@@ -589,37 +614,40 @@ impl SecurityAdapter {
         params: serde_json::Value,
     ) -> SongbirdResult<serde_json::Value> {
         debug!("📡 Generic call to security provider: method={}", method);
-        
+
         match &self.protocol {
             SecurityProtocol::Tarpc(client) => {
                 debug!("🚀 Using tarpc for {} (PRIMARY - 10-100μs)", method);
-                tokio::time::timeout(
-                    self.timeout,
-                    client.call_method(method, Some(params)),
-                )
-                .await
-                .map_err(|_| SongbirdError::network(format!("Timeout calling method '{}'", method)))?
+                tokio::time::timeout(self.timeout, client.call_method(method, Some(params)))
+                    .await
+                    .map_err(|_| {
+                    SongbirdError::network(format!("Timeout calling method '{}'", method))
+                })?
             }
             SecurityProtocol::JsonRpc(client) => {
                 debug!("🔌 Using JSON-RPC for {} (SECONDARY - 50-100μs)", method);
-                tokio::time::timeout(
-                    self.timeout,
-                    client.call_method(method, Some(params)),
-                )
-                .await
-                .map_err(|_| SongbirdError::network(format!("Timeout calling method '{}'", method)))?
+                tokio::time::timeout(self.timeout, client.call_method(method, Some(params)))
+                    .await
+                    .map_err(|_| {
+                    SongbirdError::network(format!("Timeout calling method '{}'", method))
+                })?
             }
             SecurityProtocol::Http(client) => {
                 debug!("🌐 Using HTTP for {} (FALLBACK - 500-1000μs)", method);
                 let url = format!("{}/{}", self.endpoint, method);
-                
-                let response = tokio::time::timeout(
-                    self.timeout,
-                    client.post(&url).json(&params).send(),
-                )
-                .await
-                .map_err(|_| SongbirdError::network(format!("Timeout calling method '{}'", method)))?
-                .map_err(|e| SongbirdError::network(format!("HTTP request failed for '{}': {}", method, e)))?;
+
+                let response =
+                    tokio::time::timeout(self.timeout, client.post(&url).json(&params).send())
+                        .await
+                        .map_err(|_| {
+                            SongbirdError::network(format!("Timeout calling method '{}'", method))
+                        })?
+                        .map_err(|e| {
+                            SongbirdError::network(format!(
+                                "HTTP request failed for '{}': {}",
+                                method, e
+                            ))
+                        })?;
 
                 if !response.status().is_success() {
                     return Err(SongbirdError::network(format!(
@@ -629,10 +657,12 @@ impl SecurityAdapter {
                     )));
                 }
 
-                response
-                    .json()
-                    .await
-                    .map_err(|e| SongbirdError::serialization(format!("Failed to parse response for '{}': {}", method, e)))
+                response.json().await.map_err(|e| {
+                    SongbirdError::serialization(format!(
+                        "Failed to parse response for '{}': {}",
+                        method, e
+                    ))
+                })
             }
         }
     }
@@ -662,9 +692,7 @@ impl SecurityAdapter {
                     .await
                     .map_err(|e| {
                         warn!("tarpc trust evaluation failed: {e}");
-                        SongbirdError::network(format!(
-                            "Failed to evaluate trust via tarpc: {e}"
-                        ))
+                        SongbirdError::network(format!("Failed to evaluate trust via tarpc: {e}"))
                     })?;
 
                 serde_json::from_value(result).map_err(|e| {
@@ -699,18 +727,15 @@ impl SecurityAdapter {
                 debug!("🌐 Using HTTP for trust evaluation (FALLBACK protocol)");
                 let url = format!("{}/api/v1/trust/evaluate", self.endpoint);
 
-                let response = client
-                    .post(&url)
-                    .timeout(self.timeout)
-                    .json(request)
-                    .send()
-                    .await
-                    .map_err(|e| {
-                        warn!("Failed to reach security provider for trust evaluation: {e}");
-                        SongbirdError::network(format!(
-                            "Failed to reach security provider: {e}"
-                        ))
-                    })?;
+                let response =
+                    client.post(&url).timeout(self.timeout).json(request).send().await.map_err(
+                        |e| {
+                            warn!("Failed to reach security provider for trust evaluation: {e}");
+                            SongbirdError::network(format!(
+                                "Failed to reach security provider: {e}"
+                            ))
+                        },
+                    )?;
 
                 if !response.status().is_success() {
                     let status = response.status();
@@ -752,41 +777,27 @@ impl SecurityAdapter {
             SecurityProtocol::Tarpc(client) => {
                 // tarpc - HIGH-PERFORMANCE binary RPC (PRIMARY)
                 debug!("🚀 Using tarpc for identity (PRIMARY protocol)");
-                let result = client
-                    .call_method("identity", None)
-                    .await
-                    .map_err(|e| {
-                        warn!("tarpc identity request failed: {e}");
-                        SongbirdError::network(format!(
-                            "Failed to get identity via tarpc: {e}"
-                        ))
-                    })?;
+                let result = client.call_method("identity", None).await.map_err(|e| {
+                    warn!("tarpc identity request failed: {e}");
+                    SongbirdError::network(format!("Failed to get identity via tarpc: {e}"))
+                })?;
 
                 serde_json::from_value(result).map_err(|e| {
                     warn!("Failed to parse identity response: {e}");
-                    SongbirdError::security(format!(
-                        "Failed to parse identity response: {e}"
-                    ))
+                    SongbirdError::security(format!("Failed to parse identity response: {e}"))
                 })
             }
             SecurityProtocol::JsonRpc(client) => {
                 // JSON-RPC protocol (SECONDARY)
                 debug!("🔌 Using JSON-RPC for identity (SECONDARY protocol)");
-                let result = client
-                    .call_method("identity", None)
-                    .await
-                    .map_err(|e| {
-                        warn!("JSON-RPC identity request failed: {e}");
-                        SongbirdError::network(format!(
-                            "Failed to get identity via JSON-RPC: {e}"
-                        ))
-                    })?;
+                let result = client.call_method("identity", None).await.map_err(|e| {
+                    warn!("JSON-RPC identity request failed: {e}");
+                    SongbirdError::network(format!("Failed to get identity via JSON-RPC: {e}"))
+                })?;
 
                 serde_json::from_value(result).map_err(|e| {
                     warn!("Failed to parse identity response: {e}");
-                    SongbirdError::security(format!(
-                        "Failed to parse identity response: {e}"
-                    ))
+                    SongbirdError::security(format!("Failed to parse identity response: {e}"))
                 })
             }
             SecurityProtocol::Http(client) => {
@@ -794,25 +805,16 @@ impl SecurityAdapter {
                 debug!("🌐 Using HTTP for identity (FALLBACK protocol)");
                 let url = format!("{}/api/v1/identity", self.endpoint);
 
-                let response = client
-                    .get(&url)
-                    .timeout(self.timeout)
-                    .send()
-                    .await
-                    .map_err(|e| {
+                let response =
+                    client.get(&url).timeout(self.timeout).send().await.map_err(|e| {
                         warn!("Failed to reach security provider for identity: {e}");
-                        SongbirdError::network(format!(
-                            "Failed to reach security provider: {e}"
-                        ))
+                        SongbirdError::network(format!("Failed to reach security provider: {e}"))
                     })?;
 
                 if !response.status().is_success() {
                     let status = response.status();
                     let body = response.text().await.unwrap_or_default();
-                    warn!(
-                        "Security provider returned error for identity: {} - {}",
-                        status, body
-                    );
+                    warn!("Security provider returned error for identity: {} - {}", status, body);
                     return Err(SongbirdError::security(format!(
                         "Identity request failed: {} - {}",
                         status, body
@@ -821,9 +823,7 @@ impl SecurityAdapter {
 
                 response.json().await.map_err(|e| {
                     warn!("Failed to parse identity response: {e}");
-                    SongbirdError::security(format!(
-                        "Failed to parse identity response: {e}"
-                    ))
+                    SongbirdError::security(format!("Failed to parse identity response: {e}"))
                 })
             }
         }

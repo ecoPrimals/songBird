@@ -43,8 +43,10 @@ pub fn discover_node_id() -> Result<Uuid> {
         Ok(node_id)
     } else {
         let node_id = Uuid::new_v4();
-        fs::create_dir_all(identity_path.parent().unwrap())
-            .context(format!("Failed to create config directory for {}", identity_path.display()))?;
+        fs::create_dir_all(identity_path.parent().unwrap()).context(format!(
+            "Failed to create config directory for {}",
+            identity_path.display()
+        ))?;
         fs::write(&identity_path, node_id.to_string())
             .context(format!("Failed to write node ID to file {}", identity_path.display()))?;
         info!("Generated and saved new node ID to {}: {}", identity_path.display(), node_id);
@@ -61,13 +63,11 @@ pub fn discover_node_name() -> Result<String> {
         debug!("Using NODE_ID from environment: {}", node_id);
         return Ok(node_id);
     }
-    
+
     // Fall back to hostname
-    let hostname = hostname::get()
-        .context("Failed to get hostname")?
-        .to_string_lossy()
-        .into_owned();
-    
+    let hostname =
+        hostname::get().context("Failed to get hostname")?.to_string_lossy().into_owned();
+
     debug!("Using hostname as node name: {}", hostname);
     Ok(hostname)
 }
@@ -102,7 +102,7 @@ pub fn discover_capabilities() -> Vec<String> {
 /// This is **self-knowledge** - we only know our own tags, not what they mean!
 pub fn discover_identity_tags() -> Vec<String> {
     let mut tags = Vec::new();
-    
+
     // Option 1: Explicit tags from SONGBIRD_TAGS (comma-separated)
     if let Ok(tags_env) = std::env::var("SONGBIRD_TAGS") {
         for tag in tags_env.split(',') {
@@ -113,31 +113,31 @@ pub fn discover_identity_tags() -> Vec<String> {
             }
         }
     }
-    
+
     // Option 2: Convenience vars that get converted to tags
     // (Songbird still doesn't interpret - just formats!)
-    
+
     // Family ID → beardog:family:{id}
     if let Ok(family_id) = std::env::var("SONGBIRD_FAMILY_ID") {
         let tag = format!("beardog:family:{}", family_id);
         tags.push(tag.clone());
         debug!("📋 Self-knowledge: Family tag '{}' (security provider will interpret)", tag);
     }
-    
+
     // Org ID → beardog:org:{id}
     if let Ok(org_id) = std::env::var("SONGBIRD_ORG_ID") {
         let tag = format!("beardog:org:{}", org_id);
         tags.push(tag.clone());
         debug!("📋 Self-knowledge: Org tag '{}' (security provider will interpret)", tag);
     }
-    
+
     // Role → security provider:role:{role}
     if let Ok(role) = std::env::var("SONGBIRD_ROLE") {
         let tag = format!("security provider:role:{}", role);
         tags.push(tag.clone());
         debug!("📋 Self-knowledge: Role tag '{}' (security provider will interpret)", tag);
     }
-    
+
     if tags.is_empty() {
         warn!("⚠️  No identity tags configured. Set SONGBIRD_FAMILY_ID or SONGBIRD_TAGS");
         warn!("   Example: SONGBIRD_FAMILY_ID=nat0");
@@ -145,7 +145,7 @@ pub fn discover_identity_tags() -> Vec<String> {
     } else {
         info!("📋 Discovered {} identity tags (we don't interpret them!)", tags.len());
     }
-    
+
     tags
 }
 
@@ -154,7 +154,7 @@ pub fn discover_identity_tags() -> Vec<String> {
 /// Creates endpoint information for all network interfaces
 pub fn discover_endpoints(https_port: u16) -> Vec<TransportEndpointMessage> {
     let mut endpoints = Vec::new();
-    
+
     // Discover network interfaces
     let interfaces = match discover_interfaces() {
         Ok(ifaces) => ifaces,
@@ -163,7 +163,7 @@ pub fn discover_endpoints(https_port: u16) -> Vec<TransportEndpointMessage> {
             return endpoints;
         }
     };
-    
+
     // Create endpoints for all non-loopback interfaces
     for interface in interfaces {
         for addr in &interface.addresses {
@@ -171,13 +171,13 @@ pub fn discover_endpoints(https_port: u16) -> Vec<TransportEndpointMessage> {
             if addr.is_loopback() {
                 continue;
             }
-            
+
             let interface_type = if addr.is_ipv6() {
                 "ipv6"
             } else {
                 "ipv4"
             };
-            
+
             endpoints.push(TransportEndpointMessage {
                 interface_type: interface_type.to_string(),
                 address: format!("{}:{}", addr, https_port),
@@ -186,7 +186,7 @@ pub fn discover_endpoints(https_port: u16) -> Vec<TransportEndpointMessage> {
             });
         }
     }
-    
+
     if endpoints.is_empty() {
         warn!("No endpoints discovered - using localhost fallback");
         endpoints.push(TransportEndpointMessage {
@@ -196,7 +196,7 @@ pub fn discover_endpoints(https_port: u16) -> Vec<TransportEndpointMessage> {
             preference: 0,
         });
     }
-    
+
     debug!("Discovered {} endpoints", endpoints.len());
     endpoints
 }
@@ -213,20 +213,20 @@ pub struct NetworkInterface {
 /// Discover our own network interfaces
 fn discover_interfaces() -> Result<Vec<NetworkInterface>> {
     let mut interfaces = Vec::new();
-    
+
     for iface in netdev::get_interfaces() {
         let mut addresses = Vec::new();
-        
+
         // Collect IPv4 addresses
         for ipv4 in &iface.ipv4 {
             addresses.push(IpAddr::V4(ipv4.addr()));
         }
-        
+
         // Collect IPv6 addresses
         for ipv6 in &iface.ipv6 {
             addresses.push(IpAddr::V6(ipv6.addr()));
         }
-        
+
         if !addresses.is_empty() {
             interfaces.push(NetworkInterface {
                 name: iface.name.clone(),
@@ -236,65 +236,65 @@ fn discover_interfaces() -> Result<Vec<NetworkInterface>> {
             });
         }
     }
-    
+
     Ok(interfaces)
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    
+
     #[test]
     fn test_discover_node_id() {
         let node_id = discover_node_id().unwrap();
         assert!(!node_id.is_nil());
     }
-    
+
     #[test]
     fn test_discover_node_name() {
         let node_name = discover_node_name().unwrap();
         assert!(!node_name.is_empty());
     }
-    
+
     #[test]
     fn test_discover_capabilities() {
         let capabilities = discover_capabilities();
         assert!(!capabilities.is_empty());
         assert!(capabilities.contains(&"discovery".to_string()));
     }
-    
+
     #[test]
     fn test_discover_identity_tags_empty() {
         // No env vars set
         std::env::remove_var("SONGBIRD_TAGS");
         std::env::remove_var("SONGBIRD_FAMILY_ID");
-        
+
         let tags = discover_identity_tags();
         // May be empty or have default values
         assert!(tags.is_empty() || !tags.is_empty());
     }
-    
+
     #[test]
     fn test_discover_identity_tags_from_family() {
         std::env::set_var("SONGBIRD_FAMILY_ID", "test_family");
-        
+
         let tags = discover_identity_tags();
         assert!(tags.contains(&"beardog:family:test_family".to_string()));
-        
+
         std::env::remove_var("SONGBIRD_FAMILY_ID");
     }
-    
+
     #[test]
     fn test_discover_identity_tags_explicit() {
         std::env::set_var("SONGBIRD_TAGS", "custom:tag:value1,another:tag:value2");
-        
+
         let tags = discover_identity_tags();
         assert!(tags.contains(&"custom:tag:value1".to_string()));
         assert!(tags.contains(&"another:tag:value2".to_string()));
-        
+
         std::env::remove_var("SONGBIRD_TAGS");
     }
-    
+
     #[test]
     fn test_discover_endpoints() {
         let endpoints = discover_endpoints(8443);

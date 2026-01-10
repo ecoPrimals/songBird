@@ -72,10 +72,10 @@ impl SongbirdOrchestrator {
     /// Returns a snapshot of the operational state.
     pub async fn get_status(&self) -> Result<OrchestratorStatus> {
         Ok(OrchestratorStatus {
-            gaming_active: false,      // Placeholder
+            gaming_active: false,       // Placeholder
             federation_connected: true, // Placeholder - federation is started
-            active_sessions: 0,        // Placeholder
-            total_players: 0,          // Placeholder
+            active_sessions: 0,         // Placeholder
+            total_players: 0,           // Placeholder
         })
     }
 

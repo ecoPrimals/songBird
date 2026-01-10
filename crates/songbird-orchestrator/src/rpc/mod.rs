@@ -10,9 +10,9 @@ pub mod tarpc_server;
 
 pub use self::jsonrpc::{JsonRpcConfig, JsonRpcServer};
 pub use self::tarpc_server::{
-    start_tarpc_server, 
+    start_tarpc_server,
     start_tarpc_server_simple, // v3.12.0 - simplified version without Arc<Orchestrator>
-    TarpcConfig, 
+    TarpcConfig,
     TarpcServer,
     TarpcServerSimple, // v3.12.0 - modern Rust, zero unsafe
 };

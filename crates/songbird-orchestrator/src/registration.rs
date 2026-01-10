@@ -13,31 +13,31 @@ use tracing::info;
 pub struct NodeRegistration {
     /// Node identifier
     pub node_id: String,
-    
+
     /// Human-readable node name
     pub node_name: String,
-    
+
     /// Advertised capabilities
     pub capabilities: Vec<String>,
-    
+
     /// Network endpoint
     pub endpoint: String,
-    
+
     /// Additional metadata
     #[serde(default)]
     pub metadata: HashMap<String, String>,
-    
+
     /// Genetic lineage identifier (NEW)
     #[serde(skip_serializing_if = "Option::is_none")]
     pub genetic_lineage: Option<LineageId>,
-    
+
     /// Cryptographic lineage proof (NEW)
     #[serde(skip_serializing_if = "Option::is_none")]
     pub lineage_proof: Option<LineageProof>,
-    
+
     /// Registration timestamp
     pub registered_at: u64,
-    
+
     /// Time-to-live (seconds)
     pub ttl: u64,
 }
@@ -146,7 +146,7 @@ pub async fn create_registration_from_identity(
 pub struct RegistrationManager {
     /// Current registration
     current: Option<NodeRegistration>,
-    
+
     /// Refresh interval (seconds)
     refresh_interval: u64,
 }
@@ -166,9 +166,13 @@ impl RegistrationManager {
             "📝 Registering node: {} with {} capabilities{}",
             registration.node_name,
             registration.capabilities.len(),
-            if registration.has_lineage() { " and genetic lineage" } else { "" }
+            if registration.has_lineage() {
+                " and genetic lineage"
+            } else {
+                ""
+            }
         );
-        
+
         self.current = Some(registration);
     }
 
@@ -198,12 +202,11 @@ impl RegistrationManager {
 
     /// Update lineage in current registration
     pub fn update_lineage(&mut self, lineage_id: LineageId, proof: LineageProof) -> Result<()> {
-        let registration = self.current.as_mut()
-            .context("No active registration to update")?;
-        
+        let registration = self.current.as_mut().context("No active registration to update")?;
+
         registration.set_lineage(lineage_id.clone(), proof);
         info!("🧬 Updated registration with genetic lineage: {}", lineage_id);
-        
+
         Ok(())
     }
 }
@@ -269,18 +272,17 @@ mod tests {
     #[test]
     fn test_registration_manager() {
         let mut manager = RegistrationManager::new(60);
-        
+
         assert!(manager.current().is_none());
-        
+
         let reg = NodeRegistration::new(
             "node-123",
             "test-node",
             vec!["compute".to_string()],
             "http://localhost:8080",
         );
-        
+
         manager.register(reg);
         assert!(manager.current().is_some());
     }
 }
-

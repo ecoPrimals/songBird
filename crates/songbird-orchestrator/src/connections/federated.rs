@@ -49,7 +49,7 @@ impl FederatedConnection {
             .timeout(Duration::from_secs(30))
             .build()
             .context("Failed to create HTTP client")?;
-        
+
         Ok(Self {
             peer_id,
             endpoint,
@@ -58,14 +58,10 @@ impl FederatedConnection {
             http_client,
         })
     }
-    
+
     /// Create with default Level 2 capabilities
     pub fn with_defaults(peer_id: String, endpoint: String) -> Result<Self> {
-        Self::new(
-            peer_id,
-            endpoint,
-            TrustLevel::Elevated.default_allowed_capabilities(),
-        )
+        Self::new(peer_id, endpoint, TrustLevel::Elevated.default_allowed_capabilities())
     }
 }
 
@@ -74,23 +70,19 @@ impl PeerConnection for FederatedConnection {
     fn trust_level(&self) -> TrustLevel {
         TrustLevel::Elevated
     }
-    
+
     fn allowed_capabilities(&self) -> &[String] {
         &self.allowed_capabilities
     }
-    
+
     fn denied_capabilities(&self) -> &[String] {
         &self.denied_capabilities
     }
-    
+
     fn is_operation_allowed(&self, operation: &str) -> bool {
-        check_operation_allowed(
-            operation,
-            &self.allowed_capabilities,
-            &self.denied_capabilities,
-        )
+        check_operation_allowed(operation, &self.allowed_capabilities, &self.denied_capabilities)
     }
-    
+
     async fn call(&self, operation: &str, request: Value) -> Result<Value> {
         // Enforce capability restrictions
         if !self.is_operation_allowed(operation) {
@@ -106,22 +98,17 @@ impl PeerConnection for FederatedConnection {
                 self.allowed_capabilities
             ));
         }
-        
-        debug!(
-            "✅ Calling federated operation '{}' on peer '{}'",
-            operation, self.peer_id
-        );
-        
+
+        debug!("✅ Calling federated operation '{}' on peer '{}'", operation, self.peer_id);
+
         // Make HTTP call
         let url = format!("{}/api/v1/{}", self.endpoint, operation);
-        
-        let response = self.http_client
-            .post(&url)
-            .json(&request)
-            .send()
-            .await
-            .context(format!("Failed to call operation '{}' on peer '{}'", operation, self.peer_id))?;
-        
+
+        let response = self.http_client.post(&url).json(&request).send().await.context(format!(
+            "Failed to call operation '{}' on peer '{}'",
+            operation, self.peer_id
+        ))?;
+
         let status = response.status();
         if !status.is_success() {
             let error_body = response.text().await.unwrap_or_else(|_| "Unknown error".to_string());
@@ -132,22 +119,22 @@ impl PeerConnection for FederatedConnection {
                 error_body
             ));
         }
-        
-        let result = response.json::<Value>().await
-            .context("Failed to parse response from peer")?;
-        
+
+        let result =
+            response.json::<Value>().await.context("Failed to parse response from peer")?;
+
         debug!("✅ Federated operation '{}' succeeded on peer '{}'", operation, self.peer_id);
         Ok(result)
     }
-    
+
     fn peer_id(&self) -> &str {
         &self.peer_id
     }
-    
+
     fn endpoint(&self) -> &str {
         &self.endpoint
     }
-    
+
     async fn close(&self) -> Result<()> {
         debug!("Closing federated connection to peer '{}'", self.peer_id);
         Ok(())
@@ -163,12 +150,13 @@ mod tests {
         let conn = FederatedConnection::with_defaults(
             "test_peer".to_string(),
             "http://localhost:8080".to_string(),
-        ).unwrap();
-        
+        )
+        .unwrap();
+
         // Level 1 operations
         assert!(conn.is_operation_allowed("birdsong/sync"));
         assert!(conn.is_operation_allowed("health"));
-        
+
         // Level 2 operations
         assert!(conn.is_operation_allowed("federation/join"));
         assert!(conn.is_operation_allowed("data/read"));
@@ -179,8 +167,9 @@ mod tests {
         let conn = FederatedConnection::with_defaults(
             "test_peer".to_string(),
             "http://localhost:8080".to_string(),
-        ).unwrap();
-        
+        )
+        .unwrap();
+
         assert!(!conn.is_operation_allowed("data/write"));
         assert!(!conn.is_operation_allowed("commands/sensitive"));
         assert!(!conn.is_operation_allowed("keys/access"));
@@ -191,9 +180,9 @@ mod tests {
         let conn = FederatedConnection::with_defaults(
             "test_peer".to_string(),
             "http://localhost:8080".to_string(),
-        ).unwrap();
-        
+        )
+        .unwrap();
+
         assert_eq!(conn.trust_level(), TrustLevel::Elevated);
     }
 }
-

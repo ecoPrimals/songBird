@@ -47,8 +47,8 @@ pub mod universal_trust_api; // Universal, provider-agnostic trust API
 
 pub use escalation::{TrustEscalationManager, TrustTimeouts};
 pub use lineage_auth::{
-    LineageAuthenticator, PeerAcceptanceDecision, LineageStatus,
-    UserRecommendation, RejectionSeverity, PeerInfo,
+    LineageAuthenticator, LineageStatus, PeerAcceptanceDecision, PeerInfo, RejectionSeverity,
+    UserRecommendation,
 };
 pub use peer_trust::{evaluate_peer_trust, DiscoveredPeer, PeerTrustDecision}; // NEW: USB seed integration
 pub use types::{
@@ -56,10 +56,7 @@ pub use types::{
     TrustRelationship,
 };
 pub use universal_trust_api::{
-    DiscoveryContext as UniversalDiscoveryContext,
-    EvaluatorInfo,
-    IdentityAttestation as UniversalIdentityAttestation,
-    TrustDecision as UniversalTrustDecision,
-    UniversalTrustRequest,
-    UniversalTrustResponse,
+    DiscoveryContext as UniversalDiscoveryContext, EvaluatorInfo,
+    IdentityAttestation as UniversalIdentityAttestation, TrustDecision as UniversalTrustDecision,
+    UniversalTrustRequest, UniversalTrustResponse,
 };

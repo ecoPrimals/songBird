@@ -113,17 +113,17 @@ where
 {
     let start = tokio::time::Instant::now();
     let mut last_error = None;
-    
+
     loop {
         match check() {
             Ok(result) => return Ok(result),
             Err(e) => last_error = Some(e),
         }
-        
+
         if start.elapsed() > timeout {
             return Err(PollError::Timeout(last_error));
         }
-        
+
         tokio::task::yield_now().await;
     }
 }
@@ -212,19 +212,17 @@ mod tests {
     async fn test_poll_until_eventual() {
         let counter = Arc::new(AtomicUsize::new(0));
         let counter_clone = counter.clone();
-        
+
         // Spawn task that sets condition after 10ms
         tokio::spawn(async move {
             tokio::time::sleep(Duration::from_millis(10)).await;
             counter_clone.store(1, Ordering::SeqCst);
         });
-        
+
         // Poll should succeed before timeout
-        let result = poll_until(
-            || counter.load(Ordering::SeqCst) == 1,
-            Duration::from_secs(1)
-        ).await;
-        
+        let result =
+            poll_until(|| counter.load(Ordering::SeqCst) == 1, Duration::from_secs(1)).await;
+
         assert!(result);
     }
 
@@ -237,11 +235,8 @@ mod tests {
 
     #[tokio::test]
     async fn test_poll_until_some_immediate() {
-        let result = poll_until_some(
-            || Some(42),
-            Duration::from_secs(1)
-        ).await;
-        
+        let result = poll_until_some(|| Some(42), Duration::from_secs(1)).await;
+
         assert_eq!(result, Some(42));
     }
 
@@ -249,22 +244,23 @@ mod tests {
     async fn test_poll_until_some_eventual() {
         let value = Arc::new(tokio::sync::RwLock::new(None));
         let value_clone = value.clone();
-        
+
         // Spawn task that sets value
         tokio::spawn(async move {
             tokio::time::sleep(Duration::from_millis(10)).await;
             *value_clone.write().await = Some(42);
         });
-        
+
         // Poll should get value
         let result = poll_until_some(
             || {
                 let v = value.blocking_read();
                 *v
             },
-            Duration::from_secs(1)
-        ).await;
-        
+            Duration::from_secs(1),
+        )
+        .await;
+
         assert_eq!(result, Some(42));
     }
 
@@ -272,7 +268,7 @@ mod tests {
     async fn test_poll_until_count() {
         let counter = Arc::new(AtomicUsize::new(0));
         let counter_clone = counter.clone();
-        
+
         // Spawn task that increments counter
         tokio::spawn(async move {
             for i in 1..=5 {
@@ -280,14 +276,11 @@ mod tests {
                 counter_clone.store(i, Ordering::SeqCst);
             }
         });
-        
+
         // Wait for count to reach 3
-        let result = poll_until_count(
-            || counter.load(Ordering::SeqCst),
-            3,
-            Duration::from_secs(1)
-        ).await;
-        
+        let result =
+            poll_until_count(|| counter.load(Ordering::SeqCst), 3, Duration::from_secs(1)).await;
+
         assert!(result);
     }
 
@@ -295,22 +288,17 @@ mod tests {
     async fn test_wait_for_condition_async() {
         let ready = Arc::new(tokio::sync::RwLock::new(false));
         let ready_clone = ready.clone();
-        
+
         // Spawn task that sets ready flag
         tokio::spawn(async move {
             tokio::time::sleep(Duration::from_millis(10)).await;
             *ready_clone.write().await = true;
         });
-        
+
         // Wait for ready
-        let result = wait_for_condition(
-            || async {
-                *ready.read().await
-            },
-            Duration::from_secs(1)
-        ).await;
-        
+        let result =
+            wait_for_condition(|| async { *ready.read().await }, Duration::from_secs(1)).await;
+
         assert!(result);
     }
 }
-

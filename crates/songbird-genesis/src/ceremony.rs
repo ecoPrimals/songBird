@@ -337,7 +337,7 @@ mod tests {
         assert!(identity.is_ok(), "Genesis ceremony failed: {:?}", identity.err());
         let identity = identity.unwrap();
         assert_eq!(identity.node_id, "new-node-test");
-        
+
         // Note: In fallback mode (no real primals), we won't have multi-primal genesis
         // This is expected behavior for isolated testing
         // In production with real BearDog+Songbird, is_multi_primal_genesis() would return true

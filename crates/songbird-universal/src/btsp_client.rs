@@ -59,7 +59,7 @@ use tracing::{debug, info, warn};
 pub struct BtspClient {
     /// Security adapter (protocol-agnostic: tarpc/JSON-RPC/HTTP)
     adapter: Arc<crate::adapters::SecurityAdapter>,
-    
+
     /// Active tunnels (tunnel_id → BtspTunnel)
     tunnels: Arc<RwLock<HashMap<String, BtspTunnel>>>,
 }
@@ -96,13 +96,13 @@ impl BtspClient {
     /// ```
     pub fn new(endpoint: impl Into<String>) -> SongbirdResult<Self> {
         let adapter = crate::adapters::SecurityAdapter::new(endpoint.into())?;
-        
+
         Ok(Self {
             adapter: Arc::new(adapter),
             tunnels: Arc::new(RwLock::new(HashMap::new())),
         })
     }
-    
+
     /// Create BTSP client from existing SecurityAdapter
     ///
     /// Allows reusing an existing adapter (efficient for multiple operations).
@@ -112,7 +112,7 @@ impl BtspClient {
             tunnels: Arc::new(RwLock::new(HashMap::new())),
         }
     }
-    
+
     /// Establish BTSP tunnel to remote peer
     ///
     /// Calls security provider to establish encrypted tunnel.
@@ -151,7 +151,7 @@ impl BtspClient {
     /// ```
     pub async fn establish_tunnel(&self, request: BtspTunnelRequest) -> SongbirdResult<BtspTunnel> {
         info!("🔐 Establishing BTSP tunnel to: {}", request.remote_node_id);
-        
+
         // 1. If no contact info and NAT traversal enabled, request contact exchange
         let enriched_request = if request.remote_contact.is_none() && request.use_lineage_for_nat {
             debug!("🔍 No contact info, requesting via BirdSong lineage");
@@ -171,27 +171,32 @@ impl BtspClient {
         } else {
             request
         };
-        
+
         // 2. Call security provider to establish tunnel
-        let response = self.call_security_provider(
-            "/btsp/tunnel/establish",
-            &enriched_request,
-        ).await?;
-        
+        let response =
+            self.call_security_provider("/btsp/tunnel/establish", &enriched_request).await?;
+
         // 3. Parse response
-        let tunnel_response: BtspTunnelResponse = serde_json::from_value(response)
-            .map_err(|e| SongbirdError::serialization(format!("Failed to parse tunnel response: {}", e)))?;
-        
+        let tunnel_response: BtspTunnelResponse =
+            serde_json::from_value(response).map_err(|e| {
+                SongbirdError::serialization(format!("Failed to parse tunnel response: {}", e))
+            })?;
+
         if !tunnel_response.success {
-            return Err(SongbirdError::network(format!("Tunnel establishment failed: {}", tunnel_response.message)));
+            return Err(SongbirdError::network(format!(
+                "Tunnel establishment failed: {}",
+                tunnel_response.message
+            )));
         }
-        
-        let tunnel_id = tunnel_response.tunnel_id
+
+        let tunnel_id = tunnel_response
+            .tunnel_id
             .ok_or_else(|| SongbirdError::network("No tunnel ID in response"))?;
-        
-        let endpoint = tunnel_response.endpoint
+
+        let endpoint = tunnel_response
+            .endpoint
             .ok_or_else(|| SongbirdError::network("No endpoint in response"))?;
-        
+
         // 4. Create tunnel handle
         let tunnel = BtspTunnel {
             tunnel_id: tunnel_id.clone(),
@@ -201,15 +206,15 @@ impl BtspClient {
             established_at: SystemTime::now(),
             last_activity: SystemTime::now(),
         };
-        
+
         // 5. Store tunnel
         self.tunnels.write().await.insert(tunnel_id.clone(), tunnel.clone());
-        
+
         info!("✅ BTSP tunnel established: {}", tunnel_id);
-        
+
         Ok(tunnel)
     }
-    
+
     /// Exchange contact information via BirdSong lineage
     ///
     /// Asks genetic lineage nodes (grandparents, siblings, etc.) for peer's contact info.
@@ -250,70 +255,74 @@ impl BtspClient {
     ) -> SongbirdResult<ContactExchangeResponse> {
         info!("🔍 Requesting contact exchange for: {}", request.target_node_id);
         debug!("   Via lineage: {}, max hops: {}", request.requester_lineage_id, request.max_hops);
-        
+
         // Call security provider's BirdSong API
-        let response = self.call_security_provider(
-            "/btsp/contact/exchange",
-            &request,
-        ).await?;
-        
-        let exchange_response: ContactExchangeResponse = serde_json::from_value(response)
-            .map_err(|e| SongbirdError::serialization(format!("Failed to parse contact exchange response: {}", e)))?;
-        
+        let response = self.call_security_provider("/btsp/contact/exchange", &request).await?;
+
+        let exchange_response: ContactExchangeResponse =
+            serde_json::from_value(response).map_err(|e| {
+                SongbirdError::serialization(format!(
+                    "Failed to parse contact exchange response: {}",
+                    e
+                ))
+            })?;
+
         if exchange_response.success {
-            info!("✅ Contact exchange succeeded via lineage path: {:?}", 
-                  exchange_response.lineage_path);
+            info!(
+                "✅ Contact exchange succeeded via lineage path: {:?}",
+                exchange_response.lineage_path
+            );
         } else {
             warn!("⚠️ Contact exchange failed: {}", exchange_response.message);
         }
-        
+
         Ok(exchange_response)
     }
-    
+
     /// Get tunnel by ID
     pub async fn get_tunnel(&self, tunnel_id: &str) -> Option<BtspTunnel> {
         self.tunnels.read().await.get(tunnel_id).cloned()
     }
-    
+
     /// List all active tunnels
     pub async fn list_tunnels(&self) -> Vec<BtspTunnel> {
         self.tunnels.read().await.values().cloned().collect()
     }
-    
+
     /// Close tunnel
     pub async fn close_tunnel(&self, tunnel_id: &str) -> SongbirdResult<()> {
         info!("🔒 Closing BTSP tunnel: {}", tunnel_id);
-        
+
         // Call security provider to close tunnel
-        let _response = self.call_security_provider(
-            &format!("/btsp/tunnel/{}/close", tunnel_id),
-            &json!({}),
-        ).await?;
-        
+        let _response = self
+            .call_security_provider(&format!("/btsp/tunnel/{}/close", tunnel_id), &json!({}))
+            .await?;
+
         // Remove from active tunnels
         self.tunnels.write().await.remove(tunnel_id);
-        
+
         info!("✅ Tunnel closed: {}", tunnel_id);
-        
+
         Ok(())
     }
-    
+
     /// Internal: Exchange contact for node ID
     async fn exchange_contact_internal(&self, target_node_id: &str) -> SongbirdResult<PeerContact> {
-        // Note: In production, requester_node_id and requester_lineage_id 
+        // Note: In production, requester_node_id and requester_lineage_id
         // should come from node's identity (self-knowledge)
         let request = ContactExchangeRequest::new(
             target_node_id,
-            "self", // TODO: Get from node identity
+            "self",         // TODO: Get from node identity
             "self-lineage", // TODO: Get from node identity
         );
-        
+
         let response = self.exchange_contact(request).await?;
-        
-        response.contact
+
+        response
+            .contact
             .ok_or_else(|| SongbirdError::network("No contact information returned from lineage"))
     }
-    
+
     /// Call security provider (protocol-agnostic)
     ///
     /// **Uses SecurityAdapter for automatic protocol negotiation**:
@@ -336,11 +345,15 @@ impl BtspClient {
     ) -> SongbirdResult<serde_json::Value> {
         debug!("📡 Calling security provider method: {}", method);
         debug!("   Protocol: Automatic (tarpc/JSON-RPC/HTTP via SecurityAdapter)");
-        
+
         // Serialize payload to JSON Value for adapter
-        let params = serde_json::to_value(payload)
-            .map_err(|e| SongbirdError::serialization(format!("Failed to serialize params for '{}': {}", method, e)))?;
-        
+        let params = serde_json::to_value(payload).map_err(|e| {
+            SongbirdError::serialization(format!(
+                "Failed to serialize params for '{}': {}",
+                method, e
+            ))
+        })?;
+
         // Call security provider via SecurityAdapter (v3.16.0)
         // This uses automatic protocol negotiation (tarpc > JSON-RPC > HTTP)
         self.adapter.call_generic(method, params).await
@@ -360,17 +373,17 @@ impl std::fmt::Debug for BtspClient {
 mod tests {
     use super::*;
     use crate::btsp_types::BtspEndpoint;
-    
+
     #[tokio::test]
     async fn test_btsp_client_creation() {
         let client = BtspClient::new("unix:///var/run/security.sock").unwrap();
         assert_eq!(client.list_tunnels().await.len(), 0);
     }
-    
+
     #[tokio::test]
     async fn test_tunnel_storage() {
         let client = BtspClient::new("unix:///test.sock").unwrap();
-        
+
         let tunnel = BtspTunnel {
             tunnel_id: "test-tunnel-1".to_string(),
             remote_node_id: "peer-1".to_string(),
@@ -381,23 +394,20 @@ mod tests {
             established_at: SystemTime::now(),
             last_activity: SystemTime::now(),
         };
-        
+
         // Store tunnel
-        client.tunnels.write().await.insert(
-            tunnel.tunnel_id.clone(),
-            tunnel.clone(),
-        );
-        
+        client.tunnels.write().await.insert(tunnel.tunnel_id.clone(), tunnel.clone());
+
         // Retrieve tunnel
         let retrieved = client.get_tunnel("test-tunnel-1").await;
         assert!(retrieved.is_some());
         assert_eq!(retrieved.unwrap().tunnel_id, "test-tunnel-1");
-        
+
         // List tunnels
         let tunnels = client.list_tunnels().await;
         assert_eq!(tunnels.len(), 1);
     }
-    
+
     #[test]
     fn test_btsp_client_debug() {
         let client = BtspClient::new("http://localhost:9000").unwrap();
@@ -406,4 +416,3 @@ mod tests {
         assert!(debug_str.contains("SecurityAdapter"));
     }
 }
-

@@ -9,13 +9,15 @@
 
 #[cfg(test)]
 mod tests {
-    use songbird_discovery::birdsong_integration::{BirdSongConfig, BirdSongProcessor, BirdSongEncryption};
+    use serde_json::json;
     use songbird_discovery::anonymous::{
         AnonymousDiscoveryBroadcaster, AnonymousDiscoveryListener, AnonymousDiscoveryMessage,
         TransportEndpointMessage,
     };
+    use songbird_discovery::birdsong_integration::{
+        BirdSongConfig, BirdSongEncryption, BirdSongProcessor,
+    };
     use songbird_discovery::IdentityAttestation;
-    use serde_json::json;
     use std::sync::Arc;
 
     /// Mock BirdSong provider for testing
@@ -127,8 +129,7 @@ mod tests {
         let processor = Arc::new(BirdSongProcessor::new(Some(provider), config));
 
         // Create listener with BirdSong (v3.3 fix!)
-        let listener = AnonymousDiscoveryListener::new(2300, 60)
-            .with_birdsong(processor.clone());
+        let listener = AnonymousDiscoveryListener::new(2300, 60).with_birdsong(processor.clone());
 
         // Verify listener has BirdSong
         // (This is the critical v3.3 fix - listener can now decrypt)
@@ -182,17 +183,13 @@ mod tests {
         let decrypted = processor.decrypt_packet(&encrypted).await.unwrap();
         assert!(decrypted.is_some(), "Decryption should succeed for same family");
 
-        let recovered_message =
-            AnonymousDiscoveryMessage::from_bytes(&decrypted.unwrap()).unwrap();
+        let recovered_message = AnonymousDiscoveryMessage::from_bytes(&decrypted.unwrap()).unwrap();
 
         // Verify attestations survived the roundtrip
         assert!(recovered_message.identity_attestations.is_some());
         let recovered_attestations = recovered_message.identity_attestations.unwrap();
         assert_eq!(recovered_attestations.len(), 1);
-        assert_eq!(
-            recovered_attestations[0].data["family_id"],
-            json!("iidn")
-        );
+        assert_eq!(recovered_attestations[0].data["family_id"], json!("iidn"));
     }
 
     #[tokio::test]
@@ -245,10 +242,7 @@ mod tests {
         let decrypted = processor2.decrypt_packet(&encrypted).await.unwrap();
 
         // Should return None (different family = noise)
-        assert!(
-            decrypted.is_none(),
-            "Different family should not be able to decrypt"
-        );
+        assert!(decrypted.is_none(), "Different family should not be able to decrypt");
     }
 
     #[tokio::test]
@@ -405,4 +399,3 @@ mod tests {
         assert_eq!(attestation.data["tags"].as_array().unwrap().len(), 3);
     }
 }
-

@@ -12,14 +12,16 @@
 
 #[cfg(test)]
 mod fault_injection_tests {
-    use songbird_discovery::birdsong_integration::{BirdSongConfig, BirdSongEncryption, BirdSongProcessor};
+    use serde_json::json;
     use songbird_discovery::anonymous_discovery::{
         AnonymousDiscoveryMessage, TransportEndpointMessage,
     };
+    use songbird_discovery::birdsong_integration::{
+        BirdSongConfig, BirdSongEncryption, BirdSongProcessor,
+    };
     use songbird_discovery::IdentityAttestation;
-    use serde_json::json;
-    use std::sync::Arc;
     use std::sync::atomic::{AtomicUsize, Ordering};
+    use std::sync::Arc;
 
     /// Mock provider that fails after N operations
     struct FailingBirdSongProvider {
@@ -102,10 +104,7 @@ mod fault_injection_tests {
     #[tokio::test]
     async fn test_encryption_failure_with_fallback() {
         // Provider that fails after 3 calls
-        let provider = Arc::new(FailingBirdSongProvider::new(
-            Some("test-family".to_string()),
-            3,
-        ));
+        let provider = Arc::new(FailingBirdSongProvider::new(Some("test-family".to_string()), 3));
 
         let config = BirdSongConfig {
             enabled: true,
@@ -168,7 +167,7 @@ mod fault_injection_tests {
         // Should fall back to plaintext
         let message = create_test_message();
         let plaintext = message.to_bytes().unwrap();
-        
+
         let result = processor.encrypt_packet(&plaintext).await;
         assert!(result.is_ok(), "Should fall back to plaintext when provider unavailable");
     }
@@ -187,7 +186,7 @@ mod fault_injection_tests {
 
         // Try to parse corrupted packet
         let result = AnonymousDiscoveryMessage::from_bytes(&corrupted);
-        
+
         // Should fail gracefully (not panic)
         assert!(result.is_err(), "Corrupted packet should be rejected");
     }
@@ -195,7 +194,7 @@ mod fault_injection_tests {
     #[tokio::test]
     async fn test_empty_packet_handling() {
         let empty = vec![];
-        
+
         // Should handle empty packet gracefully
         let result = AnonymousDiscoveryMessage::from_bytes(&empty);
         assert!(result.is_err(), "Empty packet should be rejected");
@@ -205,7 +204,7 @@ mod fault_injection_tests {
     async fn test_oversized_packet_handling() {
         // Create a packet larger than reasonable
         let oversized = vec![0u8; 10_000_000]; // 10MB packet
-        
+
         // Should reject or handle gracefully (not OOM)
         let result = AnonymousDiscoveryMessage::from_bytes(&oversized);
         assert!(result.is_err(), "Oversized packet should be rejected");
@@ -231,7 +230,7 @@ mod fault_injection_tests {
         // Serialize and deserialize should work
         let bytes = message.to_bytes().unwrap();
         let recovered = AnonymousDiscoveryMessage::from_bytes(&bytes).unwrap();
-        
+
         assert_eq!(recovered.node_id, message.node_id);
     }
 
@@ -255,7 +254,7 @@ mod fault_injection_tests {
         for i in 0..10 {
             let message = create_test_message();
             let plaintext = message.to_bytes().unwrap();
-            
+
             // Some will encrypt, some will fall back to plaintext
             let result = processor.encrypt_packet(&plaintext).await;
             assert!(result.is_ok(), "Iteration {} should succeed", i);
@@ -295,18 +294,17 @@ mod fault_injection_tests {
 
         // Try to decrypt with family "other"
         let result = processor_b.decrypt_packet(&encrypted).await;
-        
+
         // Should either fail or return None (can't decrypt)
-        assert!(result.is_err() || result.unwrap().is_none(), 
-                "Should not decrypt message from different family");
+        assert!(
+            result.is_err() || result.unwrap().is_none(),
+            "Should not decrypt message from different family"
+        );
     }
 
     #[tokio::test]
     async fn test_rapid_provider_availability_changes() {
-        let provider = Arc::new(FailingBirdSongProvider::new(
-            Some("test-family".to_string()),
-            5,
-        ));
+        let provider = Arc::new(FailingBirdSongProvider::new(Some("test-family".to_string()), 5));
 
         let config = BirdSongConfig {
             enabled: true,
@@ -321,7 +319,7 @@ mod fault_injection_tests {
         for i in 0..10 {
             let _is_available = provider.is_available();
             let result = processor.encrypt_packet(format!("msg-{}", i).as_bytes()).await;
-            
+
             // Should handle state changes gracefully
             assert!(result.is_ok() || result.is_err()); // Just verify no panic
         }
@@ -393,4 +391,3 @@ mod fault_injection_tests {
         }
     }
 }
-

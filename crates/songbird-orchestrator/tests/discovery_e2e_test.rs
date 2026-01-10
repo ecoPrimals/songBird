@@ -199,8 +199,9 @@ async fn test_full_orchestrator_startup_with_discovery() -> Result<()> {
             // For now, verify the handle is still running
             !start_handle.is_finished()
         },
-        Duration::from_secs(5) // Much faster timeout
-    ).await;
+        Duration::from_secs(5), // Much faster timeout
+    )
+    .await;
 
     assert!(ready, "Orchestrator should be running within 5 seconds");
 

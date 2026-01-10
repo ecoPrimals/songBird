@@ -47,10 +47,10 @@ pub struct BirdSongPacket {
     /// BirdSong protocol version
     #[serde(rename = "birdsong")]
     pub version: String,
-    
+
     /// Family ID (plaintext) - allows receivers to decide if they can decrypt
     pub family_id: String,
-    
+
     /// Encrypted payload (base64)
     pub encrypted_payload: String,
 }
@@ -144,10 +144,10 @@ pub struct BirdSongConfig {
 impl Default for BirdSongConfig {
     fn default() -> Self {
         Self {
-            enabled: false,                  // Opt-in for privacy
-            fallback_to_plaintext: true,     // Graceful degradation
-            security_endpoint: None,          // Auto-discover
-            mixed_mode: true,                 // Support migration
+            enabled: false,              // Opt-in for privacy
+            fallback_to_plaintext: true, // Graceful degradation
+            security_endpoint: None,     // Auto-discover
+            mixed_mode: true,            // Support migration
         }
     }
 }
@@ -186,10 +186,7 @@ impl BirdSongProcessor {
         // Log configuration
         if let Some(ref enc) = encryption {
             if enc.is_available() {
-                info!(
-                    "🎵 BirdSong encryption enabled (provider: {})",
-                    enc.provider_name()
-                );
+                info!("🎵 BirdSong encryption enabled (provider: {})", enc.provider_name());
                 if let Some(family) = enc.family_id() {
                     info!("   Family ID: {}", family);
                 }
@@ -214,7 +211,10 @@ impl BirdSongProcessor {
             info!("📢 BirdSong: plaintext mode (trusted LAN only)");
         }
 
-        Self { encryption, config }
+        Self {
+            encryption,
+            config,
+        }
     }
 
     /// Encrypt discovery packet with plaintext family_id header
@@ -250,41 +250,42 @@ impl BirdSongProcessor {
         match &self.encryption {
             Some(enc) if enc.is_available() => {
                 debug!("🔒 Encrypting discovery packet ({} bytes)", plaintext.len());
-                
+
                 // Get family_id from provider (needed for plaintext header)
-                let family_id = enc.family_id()
-                    .ok_or_else(|| anyhow::anyhow!("No family_id available from encryption provider"))?;
-                
+                let family_id = enc.family_id().ok_or_else(|| {
+                    anyhow::anyhow!("No family_id available from encryption provider")
+                })?;
+
                 // Encrypt the payload
-                let encrypted_payload = enc.encrypt_discovery(plaintext)
-                    .await
-                    .context("BirdSong encryption failed")?;
-                
+                let encrypted_payload =
+                    enc.encrypt_discovery(plaintext).await.context("BirdSong encryption failed")?;
+
                 // Create BirdSongPacket with plaintext family_id header
                 // This allows receivers to see the family_id and decide if they should decrypt
-                use base64::{Engine as _, engine::general_purpose};
+                use base64::{engine::general_purpose, Engine as _};
                 let packet = BirdSongPacket {
                     version: "1.0".to_string(),
                     family_id: family_id.clone(),
                     encrypted_payload: general_purpose::STANDARD.encode(&encrypted_payload),
                 };
-                
+
                 // Serialize to JSON
-                let packet_json = serde_json::to_vec(&packet)
-                    .context("Failed to serialize BirdSongPacket")?;
-                
-                debug!("✅ Encrypted: {} -> {} bytes (family: {})", 
-                    plaintext.len(), packet_json.len(), family_id);
-                
+                let packet_json =
+                    serde_json::to_vec(&packet).context("Failed to serialize BirdSongPacket")?;
+
+                debug!(
+                    "✅ Encrypted: {} -> {} bytes (family: {})",
+                    plaintext.len(),
+                    packet_json.len(),
+                    family_id
+                );
+
                 Ok(packet_json)
             }
             Some(enc) => {
                 // Provider configured but unavailable
-                warn!(
-                    "⚠️  BirdSong provider unavailable ({})",
-                    enc.provider_name()
-                );
-                
+                warn!("⚠️  BirdSong provider unavailable ({})", enc.provider_name());
+
                 if self.config.fallback_to_plaintext {
                     info!("   Falling back to plaintext");
                     Ok(plaintext.to_vec())
@@ -337,24 +338,27 @@ impl BirdSongProcessor {
         // Try to parse as BirdSongPacket (new format)
         if let Ok(packet) = serde_json::from_slice::<BirdSongPacket>(received) {
             debug!("🔍 Received BirdSongPacket (family: {})", packet.family_id);
-            
+
             // Check if we have an encryption provider
             match &self.encryption {
                 Some(enc) if enc.is_available() => {
                     // Check if it's our family
                     if let Some(our_family) = enc.family_id() {
                         if packet.family_id != our_family {
-                            debug!("🔇 Different family ({} != {}), ignoring", 
-                                packet.family_id, our_family);
+                            debug!(
+                                "🔇 Different family ({} != {}), ignoring",
+                                packet.family_id, our_family
+                            );
                             return Ok(None); // Different family = noise
                         }
                     }
-                    
+
                     // Same family! Try to decrypt
-                    use base64::{Engine as _, engine::general_purpose};
-                    let encrypted_payload = general_purpose::STANDARD.decode(&packet.encrypted_payload)
+                    use base64::{engine::general_purpose, Engine as _};
+                    let encrypted_payload = general_purpose::STANDARD
+                        .decode(&packet.encrypted_payload)
                         .context("Failed to decode base64 encrypted_payload")?;
-                    
+
                     match enc.decrypt_discovery(&encrypted_payload).await {
                         Ok(Some(plaintext)) => {
                             debug!(
@@ -404,12 +408,7 @@ impl BirdSongProcessor {
 
     /// Check if BirdSong encryption is actively being used
     pub fn is_encrypted(&self) -> bool {
-        self.config.enabled
-            && self
-                .encryption
-                .as_ref()
-                .map(|e| e.is_available())
-                .unwrap_or(false)
+        self.config.enabled && self.encryption.as_ref().map(|e| e.is_available()).unwrap_or(false)
     }
 
     /// Get current encryption status for logging
@@ -487,11 +486,7 @@ mod tests {
         let encrypted = processor.encrypt_packet(message).await.unwrap();
         assert_ne!(&encrypted[..], message, "Should be encrypted");
 
-        let decrypted = processor
-            .decrypt_packet(&encrypted)
-            .await
-            .unwrap()
-            .unwrap();
+        let decrypted = processor.decrypt_packet(&encrypted).await.unwrap().unwrap();
         assert_eq!(&decrypted[..], message, "Should decrypt correctly");
     }
 
@@ -511,10 +506,7 @@ mod tests {
 
         // Packet from different family (starts with 0xFF)
         let different_family_packet = vec![0xFF, 0x01, 0x02, 0x03];
-        let result = processor
-            .decrypt_packet(&different_family_packet)
-            .await
-            .unwrap();
+        let result = processor.decrypt_packet(&different_family_packet).await.unwrap();
 
         assert!(result.is_none(), "Should return None for different family");
     }
@@ -620,4 +612,3 @@ mod tests {
         assert!(status.contains("MockEncryption"), "Should include provider name");
     }
 }
-

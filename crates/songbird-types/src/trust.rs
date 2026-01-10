@@ -1,7 +1,7 @@
 //! Progressive Trust Model Types
 //!
 //! Implements a progressive trust model with capability-based access control.
-//! 
+//!
 //! ## Trust Levels
 //!
 //! - **Level 0 (None)**: No trust - reject connection
@@ -12,7 +12,7 @@
 //! ## Philosophy
 //!
 //! "Same family = can hear the song, NOT enter the nest"
-//! 
+//!
 //! Genetic lineage establishes recognition but NOT full access.
 //! Progressive elevation requires human oversight.
 
@@ -30,27 +30,27 @@ use std::collections::HashMap;
 #[repr(u8)]
 pub enum TrustLevel {
     /// No trust - different family or no lineage
-    /// 
+    ///
     /// Allowed: Nothing
     /// Decision: Reject connection
     None = 0,
 
     /// Limited trust - same genetic family
-    /// 
+    ///
     /// Allowed: BirdSong coordination, health checks, capability discovery
     /// Denied: Data access, commands, full federation
     /// Philosophy: "Can hear the song, cannot enter the nest"
     Limited = 1,
 
     /// Elevated trust - human approved
-    /// 
+    ///
     /// Allowed: Full federation, resource sharing, data read
     /// Denied: Sensitive operations, key access, data write
     /// Requirement: Human approval via UI
     Elevated = 2,
 
     /// Highest trust - human entropy added
-    /// 
+    ///
     /// Allowed: Everything including sensitive operations
     /// Denied: Nothing
     /// Requirement: Human entropy (SoloKey, Phone HSM)
@@ -95,7 +95,7 @@ impl<'de> Deserialize<'de> for TrustLevel {
                 "Invalid trust level integer: {} (expected 0-3)",
                 n
             ))),
-            
+
             // String format (aliases for compatibility)
             TrustLevelHelper::String(s) => match s.to_lowercase().as_str() {
                 // Primary names
@@ -103,13 +103,13 @@ impl<'de> Deserialize<'de> for TrustLevel {
                 "limited" => Ok(TrustLevel::Limited),
                 "elevated" => Ok(TrustLevel::Elevated),
                 "highest" => Ok(TrustLevel::Highest),
-                
+
                 // BearDog aliases
                 "anonymous" | "unknown" => Ok(TrustLevel::None),
                 "basic" => Ok(TrustLevel::Limited),
                 "medium" => Ok(TrustLevel::Elevated),
                 "explicit" | "full" => Ok(TrustLevel::Highest),
-                
+
                 _ => Err(serde::de::Error::custom(format!(
                     "Unknown trust level string: '{}' (expected: none, limited, elevated, highest)",
                     s
@@ -145,7 +145,7 @@ impl TrustLevel {
             Self::Highest => "highest",
         }
     }
-    
+
     /// Get BearDog alias for compatibility
     pub const fn beardog_alias(self) -> &'static str {
         match self {
@@ -221,25 +221,25 @@ impl std::fmt::Display for TrustLevel {
 pub struct TrustEvaluation {
     /// Trust level determined
     pub level: TrustLevel,
-    
+
     /// Confidence in this evaluation (0.0 - 1.0)
     pub confidence: f64,
-    
+
     /// Human-readable reason
     pub reason: String,
-    
+
     /// Machine-readable reason code
     pub reason_code: String,
-    
+
     /// Capabilities allowed at this trust level
     pub allowed_capabilities: Vec<String>,
-    
+
     /// Capabilities explicitly denied
     pub denied_capabilities: Vec<String>,
-    
+
     /// Path to elevate trust level
     pub elevation_path: Option<ElevationPath>,
-    
+
     /// Additional metadata
     #[serde(default)]
     pub metadata: HashMap<String, String>,
@@ -298,10 +298,10 @@ impl TrustEvaluation {
 pub struct ElevationPath {
     /// Next trust level achievable
     pub next_level: TrustLevel,
-    
+
     /// Requirements to achieve next level
     pub requirements: Vec<String>,
-    
+
     /// Method to achieve elevation
     pub method: String,
 }
@@ -311,13 +311,13 @@ pub struct ElevationPath {
 pub struct ElevationEvidence {
     /// Type of evidence ("human_approval", "human_entropy")
     pub evidence_type: String,
-    
+
     /// Timestamp of evidence collection
     pub timestamp: String,
-    
+
     /// Method used to collect evidence
     pub method: String,
-    
+
     /// Optional entropy data
     #[serde(skip_serializing_if = "Option::is_none")]
     pub entropy: Option<Vec<u8>>,
@@ -326,16 +326,12 @@ pub struct ElevationEvidence {
 /// Check if operation matches capability pattern
 ///
 /// Supports wildcards: "data/*" matches "data/read", "data/write"
-pub fn is_operation_allowed(
-    operation: &str,
-    allowed: &[String],
-    denied: &[String],
-) -> bool {
+pub fn is_operation_allowed(operation: &str, allowed: &[String], denied: &[String]) -> bool {
     // Check denied first (explicit deny overrides allow)
     if denied.iter().any(|pattern| matches_pattern(operation, pattern)) {
         return false;
     }
-    
+
     // Check allowed
     allowed.iter().any(|pattern| matches_pattern(operation, pattern))
 }
@@ -344,7 +340,7 @@ fn matches_pattern(operation: &str, pattern: &str) -> bool {
     if pattern == "*" {
         return true; // Wildcard matches everything
     }
-    
+
     if let Some(prefix) = pattern.strip_suffix("/*") {
         operation.starts_with(prefix)
     } else {
@@ -415,4 +411,3 @@ mod tests {
         assert!(eval.is_operation_allowed("keys/access"));
     }
 }
-

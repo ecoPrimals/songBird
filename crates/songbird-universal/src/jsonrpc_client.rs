@@ -132,10 +132,7 @@ impl JsonRpcClient {
             return Err(SongbirdError::configuration("Empty socket path"));
         }
 
-        info!(
-            "📡 JSON-RPC client initialized for socket: {}",
-            socket_path.display()
-        );
+        info!("📡 JSON-RPC client initialized for socket: {}", socket_path.display());
 
         Ok(Self {
             socket_path,
@@ -188,9 +185,7 @@ impl JsonRpcClient {
     /// ```
     pub async fn call_method(&self, method: &str, params: Option<Value>) -> SongbirdResult<Value> {
         // Generate request ID
-        let id = self
-            .next_id
-            .fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+        let id = self.next_id.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
 
         // Build request
         let request = JsonRpcRequest {
@@ -200,10 +195,7 @@ impl JsonRpcClient {
             id,
         };
 
-        debug!(
-            "📤 JSON-RPC request: method={}, id={}",
-            request.method, request.id
-        );
+        debug!("📤 JSON-RPC request: method={}, id={}", request.method, request.id);
 
         // Send request and get response
         self.send_request(&request).await
@@ -252,16 +244,20 @@ impl JsonRpcClient {
         let request_json = serde_json::to_string(request)?;
         let request_bytes = format!("{}\n", request_json); // JSON-RPC over newline-delimited stream
 
-        debug!(
-            "🔌 Connecting to Unix socket: {}",
-            self.socket_path.display()
-        );
+        debug!("🔌 Connecting to Unix socket: {}", self.socket_path.display());
 
         // Connect with timeout
         let stream = timeout(self.timeout, UnixStream::connect(&self.socket_path))
             .await
-            .map_err(|_| SongbirdError::network(format!("Connection timeout to {}", self.socket_path.display())))
-            .and_then(|r| r.map_err(|e| SongbirdError::network(format!("Failed to connect: {}", e))))?;
+            .map_err(|_| {
+                SongbirdError::network(format!(
+                    "Connection timeout to {}",
+                    self.socket_path.display()
+                ))
+            })
+            .and_then(|r| {
+                r.map_err(|e| SongbirdError::network(format!("Failed to connect: {}", e)))
+            })?;
 
         // Split into reader and writer
         let (reader, mut writer) = stream.into_split();
@@ -289,18 +285,14 @@ impl JsonRpcClient {
 
         // Validate response ID matches request ID
         if response.id != request.id {
-            warn!(
-                "⚠️ Response ID mismatch: expected {}, got {}",
-                request.id, response.id
-            );
+            warn!("⚠️ Response ID mismatch: expected {}, got {}", request.id, response.id);
         }
 
         // Check for errors
         if let Some(error) = response.error {
             return Err(SongbirdError::protocol(format!(
                 "JSON-RPC error {}: {}",
-                error.code,
-                error.message
+                error.code, error.message
             )));
         }
 
@@ -346,9 +338,8 @@ mod tests {
 
     #[test]
     fn test_with_timeout() {
-        let client = JsonRpcClient::new("/tmp/test.sock")
-            .unwrap()
-            .with_timeout(Duration::from_secs(10));
+        let client =
+            JsonRpcClient::new("/tmp/test.sock").unwrap().with_timeout(Duration::from_secs(10));
         assert_eq!(client.timeout(), Duration::from_secs(10));
     }
 
@@ -380,7 +371,8 @@ mod tests {
 
     #[test]
     fn test_response_deserialization_error() {
-        let json = r#"{"jsonrpc":"2.0","error":{"code":-32600,"message":"Invalid Request"},"id":1}"#;
+        let json =
+            r#"{"jsonrpc":"2.0","error":{"code":-32600,"message":"Invalid Request"},"id":1}"#;
         let response: JsonRpcResponse = serde_json::from_str(json).unwrap();
 
         assert_eq!(response.jsonrpc, "2.0");
@@ -393,4 +385,3 @@ mod tests {
         assert_eq!(error.message, "Invalid Request");
     }
 }
-

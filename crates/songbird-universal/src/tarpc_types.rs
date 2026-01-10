@@ -88,16 +88,16 @@ pub trait SongbirdRpc {
 pub struct ServiceInfo {
     /// Unique service identifier
     pub id: String,
-    
+
     /// Service capability (e.g., "storage", "security")
     pub capability: String,
-    
+
     /// Service endpoint URL
     pub endpoint: String,
-    
+
     /// Service status ("active", "degraded", "unavailable")
     pub status: String,
-    
+
     /// Optional service metadata
     pub metadata: Option<serde_json::Value>,
 }
@@ -107,24 +107,24 @@ pub struct ServiceInfo {
 pub struct ServiceRegistration {
     /// Unique service identifier
     pub service_id: String,
-    
+
     /// Human-readable service name
     pub service_name: String,
-    
+
     /// Service capability
     pub capability: String,
-    
+
     /// Service endpoint URL
     pub endpoint: String,
-    
+
     /// Optional metadata key-value pairs
     #[serde(default)]
     pub metadata: HashMap<String, String>,
-    
+
     /// Optional tower ID (for federated deployments)
     #[serde(default)]
     pub tower_id: Option<String>,
-    
+
     /// Optional tower name
     #[serde(default)]
     pub tower_name: Option<String>,
@@ -135,7 +135,7 @@ pub struct ServiceRegistration {
 pub struct RegistrationResult {
     /// Whether registration succeeded
     pub success: bool,
-    
+
     /// Result message
     pub message: String,
 }
@@ -145,13 +145,13 @@ pub struct RegistrationResult {
 pub struct HealthStatus {
     /// Status string ("healthy", "degraded", "unhealthy")
     pub status: String,
-    
+
     /// Service version
     pub version: String,
-    
+
     /// Uptime in seconds
     pub uptime_seconds: u64,
-    
+
     /// Number of registered services
     pub services_count: usize,
 }
@@ -161,10 +161,10 @@ pub struct HealthStatus {
 pub struct VersionInfo {
     /// Service version string
     pub version: String,
-    
+
     /// Protocol version
     pub protocol: String,
-    
+
     /// Supported capabilities
     pub capabilities: Vec<String>,
 }
@@ -174,13 +174,13 @@ pub struct VersionInfo {
 pub struct ProtocolInfo {
     /// Protocol name ("tarpc", "jsonrpc", "http")
     pub name: String,
-    
+
     /// Port number
     pub port: u16,
-    
+
     /// Whether this protocol is enabled
     pub enabled: bool,
-    
+
     /// Optional additional info
     #[serde(default)]
     pub info: HashMap<String, String>,
@@ -249,4 +249,3 @@ mod tests {
         assert!(proto.enabled);
     }
 }
-

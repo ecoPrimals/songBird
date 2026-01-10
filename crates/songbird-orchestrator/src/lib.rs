@@ -102,10 +102,12 @@ pub mod universal_adapter; // Universal Primal Adapter (capability-based discove
 pub use app::SongbirdOrchestrator;
 
 // Re-export security capability client (provider-agnostic!)
-pub use security_capability_client::{SecurityCapabilityClient, TrustEvaluationRequest, TrustEvaluationResponse};
+pub use security_capability_client::{
+    SecurityCapabilityClient, TrustEvaluationRequest, TrustEvaluationResponse,
+};
 
 // Re-export universal adapter (capability-based discovery!)
-pub use universal_adapter::{UniversalAdapter, DiscoveredProvider, CapabilityQuery};
+pub use universal_adapter::{CapabilityQuery, DiscoveredProvider, UniversalAdapter};
 
 // Re-export self-knowledge (what we know about ourselves!)
 // self_knowledge exports removed - module provides functions, not types
@@ -138,4 +140,6 @@ pub use songbird_types::{SongbirdError, SongbirdResult};
 pub use songbird_universal::PrimalType;
 
 // Re-export connection types (progressive trust)
-pub use connections::{Connection, FederatedConnection, FullTrustConnection, LimitedConnection, PeerConnection};
+pub use connections::{
+    Connection, FederatedConnection, FullTrustConnection, LimitedConnection, PeerConnection,
+};

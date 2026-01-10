@@ -30,7 +30,9 @@ impl UnixSocketClient {
         let stream = UnixStream::connect(socket_path)?;
         stream.set_read_timeout(Some(Duration::from_secs(5)))?;
         stream.set_write_timeout(Some(Duration::from_secs(5)))?;
-        Ok(Self { stream })
+        Ok(Self {
+            stream,
+        })
     }
 
     /// Send JSON-RPC request and receive response
@@ -55,17 +57,14 @@ impl UnixSocketClient {
 
         // Parse response
         let response: Value = serde_json::from_str(&response_line)?;
-        
+
         // Check for error
         if let Some(error) = response.get("error") {
             anyhow::bail!("JSON-RPC error: {}", error);
         }
 
         // Return result
-        response
-            .get("result")
-            .cloned()
-            .ok_or_else(|| anyhow::anyhow!("No result in response"))
+        response.get("result").cloned().ok_or_else(|| anyhow::anyhow!("No result in response"))
     }
 }
 
@@ -87,16 +86,16 @@ async fn wait_for_socket(socket_path: &str, timeout_secs: u64) -> Result<()> {
 #[ignore] // Requires server to be running
 async fn test_unix_socket_connection() -> Result<()> {
     let socket_path = "/tmp/songbird-test.sock";
-    
+
     // Wait for socket to exist (server should be started manually)
     println!("Waiting for socket: {}", socket_path);
     wait_for_socket(socket_path, 5).await?;
-    
+
     // Connect to Unix socket
     println!("Connecting to socket...");
     let _client = UnixSocketClient::connect(socket_path)?;
     println!("✅ Connected successfully!");
-    
+
     Ok(())
 }
 
@@ -104,11 +103,11 @@ async fn test_unix_socket_connection() -> Result<()> {
 #[ignore] // Requires server to be running
 async fn test_discover_by_family_api() -> Result<()> {
     let socket_path = "/tmp/songbird-test.sock";
-    
+
     // Connect
     wait_for_socket(socket_path, 5).await?;
     let mut client = UnixSocketClient::connect(socket_path)?;
-    
+
     // Call discover_by_family
     println!("Calling discover_by_family...");
     let result = client.call(
@@ -118,14 +117,14 @@ async fn test_discover_by_family_api() -> Result<()> {
             "timeout_ms": 5000
         }),
     )?;
-    
+
     println!("Response: {}", serde_json::to_string_pretty(&result)?);
-    
+
     // Verify response structure
     assert!(result.get("nodes").is_some());
     let nodes = result["nodes"].as_array().unwrap();
     println!("✅ Discovered {} nodes", nodes.len());
-    
+
     // Verify node structure
     if let Some(node) = nodes.first() {
         assert!(node.get("node_id").is_some());
@@ -133,7 +132,7 @@ async fn test_discover_by_family_api() -> Result<()> {
         assert!(node.get("genetic_families").is_some());
         println!("✅ Node structure valid");
     }
-    
+
     Ok(())
 }
 
@@ -141,11 +140,11 @@ async fn test_discover_by_family_api() -> Result<()> {
 #[ignore] // Requires server to be running
 async fn test_create_genetic_tunnel_api() -> Result<()> {
     let socket_path = "/tmp/songbird-test.sock";
-    
+
     // Connect
     wait_for_socket(socket_path, 5).await?;
     let mut client = UnixSocketClient::connect(socket_path)?;
-    
+
     // Call create_genetic_tunnel
     println!("Calling create_genetic_tunnel...");
     let result = client.call(
@@ -160,14 +159,14 @@ async fn test_create_genetic_tunnel_api() -> Result<()> {
             }
         }),
     )?;
-    
+
     println!("Response: {}", serde_json::to_string_pretty(&result)?);
-    
+
     // Verify response structure
     assert!(result.get("tunnel_id").is_some());
     assert!(result.get("status").is_some());
     println!("✅ Tunnel response valid");
-    
+
     Ok(())
 }
 
@@ -175,11 +174,11 @@ async fn test_create_genetic_tunnel_api() -> Result<()> {
 #[ignore] // Requires server to be running
 async fn test_announce_capabilities_api() -> Result<()> {
     let socket_path = "/tmp/songbird-test.sock";
-    
+
     // Connect
     wait_for_socket(socket_path, 5).await?;
     let mut client = UnixSocketClient::connect(socket_path)?;
-    
+
     // Call announce_capabilities
     println!("Calling announce_capabilities...");
     let result = client.call(
@@ -190,14 +189,14 @@ async fn test_announce_capabilities_api() -> Result<()> {
             "genetic_families": ["nat0"]
         }),
     )?;
-    
+
     println!("Response: {}", serde_json::to_string_pretty(&result)?);
-    
+
     // Verify response structure
     assert!(result.get("status").is_some());
     assert!(result.get("broadcasting").is_some());
     println!("✅ Announce response valid");
-    
+
     Ok(())
 }
 
@@ -205,19 +204,19 @@ async fn test_announce_capabilities_api() -> Result<()> {
 #[ignore] // Requires server to be running
 async fn test_invalid_method() -> Result<()> {
     let socket_path = "/tmp/songbird-test.sock";
-    
+
     // Connect
     wait_for_socket(socket_path, 5).await?;
     let mut client = UnixSocketClient::connect(socket_path)?;
-    
+
     // Call invalid method
     println!("Calling invalid method...");
     let result = client.call("nonexistent_method", json!({}));
-    
+
     // Should return error
     assert!(result.is_err());
     println!("✅ Error handling works");
-    
+
     Ok(())
 }
 
@@ -225,11 +224,11 @@ async fn test_invalid_method() -> Result<()> {
 #[ignore] // Requires server to be running
 async fn test_invalid_params() -> Result<()> {
     let socket_path = "/tmp/songbird-test.sock";
-    
+
     // Connect
     wait_for_socket(socket_path, 5).await?;
     let mut client = UnixSocketClient::connect(socket_path)?;
-    
+
     // Call with invalid params
     println!("Calling with invalid params...");
     let result = client.call(
@@ -238,11 +237,11 @@ async fn test_invalid_params() -> Result<()> {
             "wrong_field": "wrong_value"
         }),
     );
-    
+
     // Should return error
     assert!(result.is_err());
     println!("✅ Parameter validation works");
-    
+
     Ok(())
 }
 
@@ -250,13 +249,13 @@ async fn test_invalid_params() -> Result<()> {
 #[ignore] // Manual test
 async fn test_concurrent_connections() -> Result<()> {
     let socket_path = "/tmp/songbird-test.sock";
-    
+
     // Wait for socket
     wait_for_socket(socket_path, 5).await?;
-    
+
     // Spawn multiple concurrent connections
     let mut handles = vec![];
-    
+
     for i in 0..5 {
         let socket_path = socket_path.to_string();
         let handle = tokio::spawn(async move {
@@ -273,13 +272,12 @@ async fn test_concurrent_connections() -> Result<()> {
         });
         handles.push(handle);
     }
-    
+
     // Wait for all
     for handle in handles {
         handle.await??;
     }
-    
+
     println!("✅ Concurrent connections work");
     Ok(())
 }
-

@@ -14,10 +14,8 @@ mod unit_tests {
     fn test_same_family_detection_with_matching_tags() {
         // Simulate same-family detection logic
         let my_family = "nat0";
-        let peer_tags = vec![
-            "beardog:family:nat0:tower1".to_string(),
-            "capability:encryption".to_string(),
-        ];
+        let peer_tags =
+            vec!["beardog:family:nat0:tower1".to_string(), "capability:encryption".to_string()];
 
         let same_family = peer_tags.iter().any(|tag| {
             tag.contains(&format!(":family:{}:", my_family))
@@ -30,10 +28,8 @@ mod unit_tests {
     #[test]
     fn test_same_family_detection_with_non_matching_tags() {
         let my_family = "nat0";
-        let peer_tags = vec![
-            "beardog:family:nat1:tower1".to_string(),
-            "capability:encryption".to_string(),
-        ];
+        let peer_tags =
+            vec!["beardog:family:nat1:tower1".to_string(), "capability:encryption".to_string()];
 
         let same_family = peer_tags.iter().any(|tag| {
             tag.contains(&format!(":family:{}:", my_family))
@@ -59,10 +55,7 @@ mod unit_tests {
     #[test]
     fn test_same_family_detection_with_alternate_format() {
         let my_family = "nat0";
-        let peer_tags = vec![
-            "family_nat0".to_string(),
-            "capability:orchestrator".to_string(),
-        ];
+        let peer_tags = vec!["family_nat0".to_string(), "capability:orchestrator".to_string()];
 
         let same_family = peer_tags.iter().any(|tag| {
             tag.contains(&format!(":family:{}:", my_family))
@@ -83,9 +76,7 @@ mod unit_tests {
                 peer_tags
                     .as_ref()
                     .map(|tags| {
-                        tags.iter().any(|tag| {
-                            tag.contains(&format!(":family:{}:", my_family))
-                        })
+                        tags.iter().any(|tag| tag.contains(&format!(":family:{}:", my_family)))
                     })
                     .unwrap_or(false)
             })
@@ -104,9 +95,7 @@ mod unit_tests {
                 peer_tags
                     .as_ref()
                     .map(|tags| {
-                        tags.iter().any(|tag| {
-                            tag.contains(&format!(":family:{}:", my_family))
-                        })
+                        tags.iter().any(|tag| tag.contains(&format!(":family:{}:", my_family)))
                     })
                     .unwrap_or(false)
             })
@@ -125,9 +114,7 @@ mod unit_tests {
                 peer_tags
                     .as_ref()
                     .map(|tags| {
-                        tags.iter().any(|tag| {
-                            tag.contains(&format!(":family:{}:", my_family))
-                        })
+                        tags.iter().any(|tag| tag.contains(&format!(":family:{}:", my_family)))
                     })
                     .unwrap_or(false)
             })
@@ -142,19 +129,13 @@ mod unit_tests {
         let same_family = true;
         let skip_connectivity_check = same_family;
 
-        assert!(
-            skip_connectivity_check,
-            "Same family peers should skip connectivity check"
-        );
+        assert!(skip_connectivity_check, "Same family peers should skip connectivity check");
 
         // Test that non-family peers don't skip
         let same_family = false;
         let skip_connectivity_check = same_family;
 
-        assert!(
-            !skip_connectivity_check,
-            "Non-family peers should require connectivity check"
-        );
+        assert!(!skip_connectivity_check, "Non-family peers should require connectivity check");
     }
 
     #[test]
@@ -168,10 +149,7 @@ mod unit_tests {
         let (extracted_id, extracted_name) = if version == "3.0" {
             match (&node_id, &node_name) {
                 (Some(id), Some(name)) => (id.clone(), name.clone()),
-                _ => (
-                    session_id.clone(),
-                    format!("peer-{}", &session_id[..8]),
-                ),
+                _ => (session_id.clone(), format!("peer-{}", &session_id[..8])),
             }
         } else {
             (session_id.clone(), format!("peer-{}", &session_id[..8]))
@@ -192,10 +170,7 @@ mod unit_tests {
         let (extracted_id, extracted_name) = if version == "3.0" {
             match (&node_id, &node_name) {
                 (Some(id), Some(name)) => (id.clone(), name.clone()),
-                _ => (
-                    session_id.clone(),
-                    format!("peer-{}", &session_id[..8]),
-                ),
+                _ => (session_id.clone(), format!("peer-{}", &session_id[..8])),
             }
         } else {
             (session_id.clone(), format!("peer-{}", &session_id[..8]))
@@ -216,10 +191,7 @@ mod unit_tests {
         let (extracted_id, extracted_name) = if version == "3.0" {
             match (&node_id, &node_name) {
                 (Some(id), Some(name)) => (id.clone(), name.clone()),
-                _ => (
-                    session_id.clone(),
-                    format!("peer-{}", &session_id[..8]),
-                ),
+                _ => (session_id.clone(), format!("peer-{}", &session_id[..8])),
             }
         } else {
             (session_id.clone(), format!("peer-{}", &session_id[..8]))
@@ -284,7 +256,10 @@ mod integration_tests {
         };
 
         match trust_decision {
-            MockTrustDecision::AutoAccept { reason, confidence } => {
+            MockTrustDecision::AutoAccept {
+                reason,
+                confidence,
+            } => {
                 assert_eq!(reason, "same_genetic_family");
                 assert_eq!(confidence, 1.0);
             }
@@ -297,7 +272,9 @@ mod integration_tests {
         };
 
         match trust_decision {
-            MockTrustDecision::Reject { reason } => {
+            MockTrustDecision::Reject {
+                reason,
+            } => {
                 assert_eq!(reason, "no_genetic_lineage");
             }
             _ => panic!("Expected Reject"),
@@ -323,9 +300,17 @@ mod integration_tests {
 
     // Mock enum for testing trust decision flow
     enum MockTrustDecision {
-        AutoAccept { reason: String, confidence: f64 },
-        Reject { reason: String },
-        PromptUser { reason: String, recommendation: String },
+        AutoAccept {
+            reason: String,
+            confidence: f64,
+        },
+        Reject {
+            reason: String,
+        },
+        PromptUser {
+            reason: String,
+            recommendation: String,
+        },
     }
 
     #[tokio::test]
@@ -486,4 +471,3 @@ mod e2e_tests {
 // 3. **Mock enums**: Create lightweight mocks for testing logic flow
 // 4. **Duration assertions**: Test timing with acceptable variance
 // 5. **Comprehensive scenarios**: Cover success, failure, and edge cases
-

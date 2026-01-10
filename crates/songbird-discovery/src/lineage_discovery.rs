@@ -14,19 +14,19 @@ use tracing::{debug, info, warn};
 pub struct LineageServiceDiscovery {
     /// Service name for mDNS
     service_name: String,
-    
+
     /// Local node information
     local_node_id: String,
     local_capabilities: Vec<String>,
     local_endpoint: String,
-    
+
     /// Genetic lineage (if available)
     local_lineage: Option<songbird_types::LineageId>,
     local_proof: Option<songbird_types::LineageProof>,
-    
+
     /// Cache of discovered peers with lineage
     peer_cache: HashMap<String, DiscoveryPacket>,
-    
+
     /// Cache TTL
     cache_ttl: Duration,
 }
@@ -52,7 +52,7 @@ impl LineageServiceDiscovery {
     }
 
     /// Set local lineage information
-    #[must_use] 
+    #[must_use]
     pub fn with_lineage(
         mut self,
         lineage_id: songbird_types::LineageId,
@@ -87,7 +87,7 @@ impl LineageServiceDiscovery {
 
         // Convert to TXT records for mDNS
         let txt_records = packet.to_txt_records();
-        
+
         debug!("📡 mDNS TXT records: {} entries", txt_records.len());
         for (key, value) in &txt_records {
             debug!("  {}: {} bytes", key, value.len());
@@ -96,7 +96,7 @@ impl LineageServiceDiscovery {
         // TODO: Actual mDNS broadcast implementation
         // This will use mdns-sd or similar crate when integrated
         // For now, we log the records that would be broadcast
-        
+
         Ok(())
     }
 
@@ -109,10 +109,10 @@ impl LineageServiceDiscovery {
 
         // TODO: Actual mDNS discovery implementation
         // This will use mdns-sd or similar crate when integrated
-        
+
         // For now, return cached peers
         let mut peers: Vec<_> = self.peer_cache.values().cloned().collect();
-        
+
         // Sort by lineage compatibility
         if let Some(our_lineage) = &self.local_lineage {
             peers.sort_by_key(|p| {
@@ -146,8 +146,7 @@ impl LineageServiceDiscovery {
             .context("Failed to parse discovery packet from TXT records")?;
 
         if packet.has_lineage() {
-            info!("✅ Peer {} has genetic lineage: {:?}", 
-                  packet.node_id, packet.genetic_lineage);
+            info!("✅ Peer {} has genetic lineage: {:?}", packet.node_id, packet.genetic_lineage);
         } else {
             debug!("ℹ️  Peer {} has no lineage information", packet.node_id);
         }
@@ -159,7 +158,7 @@ impl LineageServiceDiscovery {
     }
 
     /// Get peers that share our genetic lineage
-    #[must_use] 
+    #[must_use]
     pub fn get_same_lineage_peers(&self) -> Vec<&DiscoveryPacket> {
         if let Some(our_lineage) = &self.local_lineage {
             self.peer_cache
@@ -172,7 +171,7 @@ impl LineageServiceDiscovery {
     }
 
     /// Get peers with different lineage
-    #[must_use] 
+    #[must_use]
     pub fn get_different_lineage_peers(&self) -> Vec<&DiscoveryPacket> {
         if let Some(our_lineage) = &self.local_lineage {
             self.peer_cache
@@ -191,12 +190,9 @@ impl LineageServiceDiscovery {
     }
 
     /// Get peers with no lineage information
-    #[must_use] 
+    #[must_use]
     pub fn get_no_lineage_peers(&self) -> Vec<&DiscoveryPacket> {
-        self.peer_cache
-            .values()
-            .filter(|p| p.genetic_lineage.is_none())
-            .collect()
+        self.peer_cache.values().filter(|p| p.genetic_lineage.is_none()).collect()
     }
 
     /// Clear expired peers from cache
@@ -290,7 +286,10 @@ mod tests {
             vec!["storage".to_string()],
             "http://192.168.1.101:8080",
         )
-        .with_lineage(our_lineage.clone(), LineageProof::new(our_lineage.clone(), vec![], 1234567890));
+        .with_lineage(
+            our_lineage.clone(),
+            LineageProof::new(our_lineage.clone(), vec![], 1234567890),
+        );
         discovery.peer_cache.insert("peer-same".to_string(), same_packet);
 
         // Add peer with different lineage
@@ -300,7 +299,10 @@ mod tests {
             vec!["compute".to_string()],
             "http://192.168.1.102:8080",
         )
-        .with_lineage(different_lineage.clone(), LineageProof::new(different_lineage, vec![], 1234567890));
+        .with_lineage(
+            different_lineage.clone(),
+            LineageProof::new(different_lineage, vec![], 1234567890),
+        );
         discovery.peer_cache.insert("peer-different".to_string(), different_packet);
 
         // Add peer with no lineage
@@ -317,4 +319,3 @@ mod tests {
         assert_eq!(discovery.get_no_lineage_peers().len(), 1);
     }
 }
-

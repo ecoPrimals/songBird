@@ -23,28 +23,28 @@ use tokio::sync::RwLock;
 pub struct DiscoveryStats {
     /// Number of broadcast packets sent
     pub broadcasts_sent: Arc<AtomicU64>,
-    
+
     /// Number of packets received
     pub packets_received: Arc<AtomicU64>,
-    
+
     /// Number of unique peers discovered
     pub peers_discovered: Arc<AtomicU64>,
-    
+
     /// Number of currently active peers
     pub peers_active: Arc<AtomicU64>,
-    
+
     /// Number of discovery errors encountered
     pub errors: Arc<AtomicU64>,
-    
+
     /// Last broadcast timestamp (Unix epoch seconds)
     pub last_broadcast_time: Arc<AtomicU64>,
-    
+
     /// Last received packet timestamp (Unix epoch seconds)
     pub last_received_time: Arc<AtomicU64>,
-    
+
     /// Whether broadcasting is currently active
     pub is_broadcasting: Arc<AtomicBool>,
-    
+
     /// Whether listening is currently active
     pub is_listening: Arc<AtomicBool>,
 }
@@ -70,52 +70,48 @@ impl DiscoveryStats {
             is_listening: Arc::new(AtomicBool::new(false)),
         }
     }
-    
+
     /// Record a broadcast packet sent
     pub fn record_broadcast(&self) {
         self.broadcasts_sent.fetch_add(1, Ordering::Relaxed);
-        let now = std::time::SystemTime::now()
-            .duration_since(std::time::UNIX_EPOCH)
-            .unwrap()
-            .as_secs();
+        let now =
+            std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_secs();
         self.last_broadcast_time.store(now, Ordering::Relaxed);
     }
-    
+
     /// Record a packet received
     pub fn record_received(&self) {
         self.packets_received.fetch_add(1, Ordering::Relaxed);
-        let now = std::time::SystemTime::now()
-            .duration_since(std::time::UNIX_EPOCH)
-            .unwrap()
-            .as_secs();
+        let now =
+            std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_secs();
         self.last_received_time.store(now, Ordering::Relaxed);
     }
-    
+
     /// Record a peer discovered
     pub fn record_peer_discovered(&self) {
         self.peers_discovered.fetch_add(1, Ordering::Relaxed);
     }
-    
+
     /// Record an error
     pub fn record_error(&self) {
         self.errors.fetch_add(1, Ordering::Relaxed);
     }
-    
+
     /// Update active peer count
     pub fn set_peers_active(&self, count: u64) {
         self.peers_active.store(count, Ordering::Relaxed);
     }
-    
+
     /// Mark broadcasting as started
     pub fn set_broadcasting(&self, active: bool) {
         self.is_broadcasting.store(active, Ordering::Relaxed);
     }
-    
+
     /// Mark listening as started
     pub fn set_listening(&self, active: bool) {
         self.is_listening.store(active, Ordering::Relaxed);
     }
-    
+
     /// Get a snapshot of current statistics
     pub fn snapshot(&self) -> DiscoveryStatsSnapshot {
         DiscoveryStatsSnapshot {
@@ -193,7 +189,12 @@ struct DiscoveryConfigSnapshot {
 
 impl DiscoveryStatusManager {
     /// Create a new status manager
-    pub fn new(enabled: bool, mode: String, udp_port: u16, multicast_address: Option<String>) -> Self {
+    pub fn new(
+        enabled: bool,
+        mode: String,
+        udp_port: u16,
+        multicast_address: Option<String>,
+    ) -> Self {
         Self {
             stats: Arc::new(DiscoveryStats::new()),
             config: Arc::new(RwLock::new(DiscoveryConfigSnapshot {
@@ -204,17 +205,17 @@ impl DiscoveryStatusManager {
             })),
         }
     }
-    
+
     /// Get the statistics tracker
     pub fn stats(&self) -> Arc<DiscoveryStats> {
         Arc::clone(&self.stats)
     }
-    
+
     /// Get complete discovery status
     pub async fn get_status(&self) -> DiscoveryStatus {
         let config = self.config.read().await;
         let stats_snapshot = self.stats.snapshot();
-        
+
         DiscoveryStatus {
             enabled: config.enabled,
             mode: config.mode.clone(),
@@ -232,12 +233,12 @@ impl DiscoveryStatusManager {
 #[cfg(test)]
 mod tests {
     use super::*;
-    
+
     #[test]
     fn test_discovery_stats_new() {
         let stats = DiscoveryStats::new();
         let snapshot = stats.snapshot();
-        
+
         assert_eq!(snapshot.broadcasts_sent, 0);
         assert_eq!(snapshot.packets_received, 0);
         assert_eq!(snapshot.peers_discovered, 0);
@@ -246,39 +247,39 @@ mod tests {
         assert!(!snapshot.is_broadcasting);
         assert!(!snapshot.is_listening);
     }
-    
+
     #[test]
     fn test_record_broadcast() {
         let stats = DiscoveryStats::new();
-        
+
         stats.record_broadcast();
         stats.record_broadcast();
         stats.record_broadcast();
-        
+
         let snapshot = stats.snapshot();
         assert_eq!(snapshot.broadcasts_sent, 3);
         assert!(snapshot.last_broadcast_time > 0);
     }
-    
+
     #[test]
     fn test_record_received() {
         let stats = DiscoveryStats::new();
-        
+
         stats.record_received();
         stats.record_received();
-        
+
         let snapshot = stats.snapshot();
         assert_eq!(snapshot.packets_received, 2);
         assert!(snapshot.last_received_time > 0);
     }
-    
+
     #[test]
     fn test_concurrent_updates() {
         use std::thread;
-        
+
         let stats = Arc::new(DiscoveryStats::new());
         let mut handles = vec![];
-        
+
         // Spawn 10 threads each recording 100 broadcasts
         for _ in 0..10 {
             let stats_clone = Arc::clone(&stats);
@@ -289,17 +290,17 @@ mod tests {
             });
             handles.push(handle);
         }
-        
+
         // Wait for all threads
         for handle in handles {
             handle.join().unwrap();
         }
-        
+
         // Should have 1000 total broadcasts
         let snapshot = stats.snapshot();
         assert_eq!(snapshot.broadcasts_sent, 1000);
     }
-    
+
     #[tokio::test]
     async fn test_status_manager() {
         let manager = DiscoveryStatusManager::new(
@@ -308,15 +309,15 @@ mod tests {
             2300,
             Some("239.255.42.99:4242".to_string()),
         );
-        
+
         // Record some activity
         manager.stats().record_broadcast();
         manager.stats().record_received();
         manager.stats().set_broadcasting(true);
-        
+
         // Get status
         let status = manager.get_status().await;
-        
+
         assert!(status.enabled);
         assert_eq!(status.mode, "Anonymous");
         assert!(status.running);
@@ -325,4 +326,3 @@ mod tests {
         assert_eq!(status.network.udp_port, 2300);
     }
 }
-

@@ -111,7 +111,7 @@ pub struct AnonymousDiscoveryMessage {
 
     /// Timestamp of message creation (Unix epoch seconds)
     pub timestamp: u64,
-    
+
     /// Generic tags (NEW - for USB seed integration)
     ///
     /// Contains BearDog encryption tags and other metadata for trust evaluation.
@@ -122,7 +122,7 @@ pub struct AnonymousDiscoveryMessage {
     /// - Protocol support: `"btsp_enabled"`, `"birdsong_v2"`
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub tags: Option<Vec<String>>,
-    
+
     /// Identity attestations (CRITICAL FIX - Jan 3, 2026)
     ///
     /// Structured identity information from security providers (e.g., BearDog, ToadStool).
@@ -165,7 +165,7 @@ pub struct TransportEndpointMessage {
 
 impl AnonymousDiscoveryMessage {
     /// Create a new anonymous discovery message (v2.1 - backward compatible)
-    #[must_use] 
+    #[must_use]
     pub fn new(capabilities: Vec<String>, protocols: Vec<String>, port: u16) -> Self {
         Self {
             version: "2.1".to_string(),
@@ -187,7 +187,7 @@ impl AnonymousDiscoveryMessage {
     ///
     /// This includes stable node identity and multiple transport endpoints.
     /// Receivers can coalesce multiple endpoints under the same `node_id`.
-    #[must_use] 
+    #[must_use]
     pub fn new_v3(
         node_id: String,
         node_name: String,
@@ -203,7 +203,8 @@ impl AnonymousDiscoveryMessage {
             .and_then(|p| p.parse().ok())
             .unwrap_or(8080);
 
-        let protocols = primary_endpoint.map_or_else(|| vec!["https".to_string()], |e| e.protocols.clone());
+        let protocols =
+            primary_endpoint.map_or_else(|| vec!["https".to_string()], |e| e.protocols.clone());
 
         Self {
             version: "3.0".to_string(),
@@ -220,11 +221,14 @@ impl AnonymousDiscoveryMessage {
             capability_proof: None,
         }
     }
-    
+
     /// Set identity attestations (CRITICAL FIX - Jan 3, 2026)
     ///
     /// Adds identity attestations from security provider for genetic lineage auto-trust.
-    pub fn with_identity_attestations(mut self, attestations: Vec<crate::IdentityAttestation>) -> Self {
+    pub fn with_identity_attestations(
+        mut self,
+        attestations: Vec<crate::IdentityAttestation>,
+    ) -> Self {
         self.identity_attestations = Some(attestations);
         self
     }
@@ -360,15 +364,15 @@ pub struct DiscoveredPeer {
 
     /// Capabilities offered by the peer
     pub capabilities: Vec<String>,
-    
+
     /// Generic tags (NEW - for USB seed integration)
     /// Contains BearDog encryption tags for genetic lineage verification
     pub tags: Option<Vec<String>>,
-    
+
     /// Discovery timestamp (NEW - for USB seed integration)
     /// Unix timestamp when this discovery message was sent
     pub timestamp: Option<u64>,
-    
+
     /// Identity attestations (CRITICAL FIX - Jan 3, 2026)
     /// Structured identity information from security providers for genetic lineage auto-trust
     pub identity_attestations: Option<Vec<crate::IdentityAttestation>>,
@@ -393,7 +397,7 @@ impl DiscoveredPeer {
     /// Get the HTTPS endpoint for this peer
     ///
     /// Combines the source IP (from UDP) with the advertised HTTPS port
-    #[must_use] 
+    #[must_use]
     pub fn https_endpoint(&self) -> String {
         format!("https://{}:{}", self.address.ip(), self.port)
     }
@@ -436,23 +440,23 @@ pub struct AnonymousDiscoveryBroadcaster {
 
     /// Broadcast interval in seconds
     interval_secs: u64,
-    
+
     /// Identity attestations from security provider (CRITICAL FIX - Jan 3, 2026)
     ///
     /// These are provided by the security capability provider (e.g., BearDog) on startup
     /// and enable genetic lineage auto-trust. MUST be included for federation to work!
     identity_attestations: Option<Vec<crate::IdentityAttestation>>,
-    
+
     /// BirdSong encryption processor (optional) - NEW (Jan 3, 2026)
     birdsong: Option<Arc<crate::birdsong_integration::BirdSongProcessor>>,
-    
+
     /// Statistics tracker for observability (optional) - NEW (Jan 5, 2026)
     stats: Option<Arc<crate::discovery_stats::DiscoveryStats>>,
 }
 
 impl AnonymousDiscoveryBroadcaster {
     /// Create a new anonymous discovery broadcaster (v2.1 - backward compatible)
-    #[must_use] 
+    #[must_use]
     pub fn new(
         capabilities: Vec<String>,
         protocols: Vec<String>,
@@ -478,7 +482,7 @@ impl AnonymousDiscoveryBroadcaster {
     }
 
     /// Create a new v3.0 broadcaster with node identity and multiple endpoints
-    #[must_use] 
+    #[must_use]
     pub fn new_v3(
         node_id: String,
         node_name: String,
@@ -496,8 +500,7 @@ impl AnonymousDiscoveryBroadcaster {
             .and_then(|p| p.parse().ok())
             .unwrap_or(8080);
 
-        let protocols =
-            primary.map_or_else(|| vec!["https".to_string()], |e| e.protocols.clone());
+        let protocols = primary.map_or_else(|| vec!["https".to_string()], |e| e.protocols.clone());
 
         Self {
             version: "3.0".to_string(),
@@ -517,22 +520,25 @@ impl AnonymousDiscoveryBroadcaster {
     }
 
     /// Add known peer addresses for direct discovery
-    #[must_use] 
+    #[must_use]
     pub fn with_known_peers(mut self, peers: Vec<SocketAddr>) -> Self {
         self.known_peers = peers;
         self
     }
-    
+
     /// Set identity attestations from security provider (CRITICAL FIX - Jan 3, 2026)
     ///
     /// Adds identity attestations for genetic lineage auto-trust. This should be called
     /// after querying the security provider (e.g., BearDog) for our node's identity.
-    #[must_use] 
-    pub fn with_identity_attestations(mut self, attestations: Vec<crate::IdentityAttestation>) -> Self {
+    #[must_use]
+    pub fn with_identity_attestations(
+        mut self,
+        attestations: Vec<crate::IdentityAttestation>,
+    ) -> Self {
         self.identity_attestations = Some(attestations);
         self
     }
-    
+
     /// Enable statistics tracking for observability (NEW - Jan 5, 2026)
     #[must_use]
     pub fn with_stats(mut self, stats: Arc<crate::discovery_stats::DiscoveryStats>) -> Self {
@@ -540,13 +546,16 @@ impl AnonymousDiscoveryBroadcaster {
         self.stats = Some(stats);
         self
     }
-    
+
     /// Enable BirdSong encrypted discovery (NEW - Jan 3, 2026)
     ///
     /// Adds BirdSong encryption for privacy-preserving discovery.
     /// Only same-family peers can decrypt discovery packets.
-    #[must_use] 
-    pub fn with_birdsong(mut self, processor: Arc<crate::birdsong_integration::BirdSongProcessor>) -> Self {
+    #[must_use]
+    pub fn with_birdsong(
+        mut self,
+        processor: Arc<crate::birdsong_integration::BirdSongProcessor>,
+    ) -> Self {
         info!("🎵 BirdSong encryption enabled for discovery broadcaster");
         info!("   Status: {}", processor.status());
         self.birdsong = Some(processor);
@@ -625,7 +634,7 @@ impl AnonymousDiscoveryBroadcaster {
                     self.port,
                 )
             };
-            
+
             // 🚨 CRITICAL FIX (Jan 3, 2026): Include identity attestations for genetic lineage auto-trust
             if let Some(ref attestations) = self.identity_attestations {
                 message = message.with_identity_attestations(attestations.clone());
@@ -639,12 +648,16 @@ impl AnonymousDiscoveryBroadcaster {
                     continue;
                 }
             };
-            
+
             // 🎵 NEW (Jan 3, 2026): Optional BirdSong encryption for privacy
             let bytes = if let Some(ref birdsong) = self.birdsong {
                 match birdsong.encrypt_packet(&bytes).await {
                     Ok(encrypted) => {
-                        debug!("🔒 BirdSong encrypted: {} -> {} bytes", bytes.len(), encrypted.len());
+                        debug!(
+                            "🔒 BirdSong encrypted: {} -> {} bytes",
+                            bytes.len(),
+                            encrypted.len()
+                        );
                         encrypted
                     }
                     Err(e) => {
@@ -703,23 +716,23 @@ pub struct AnonymousDiscoveryListener {
 
     /// Peer timeout in seconds (default: 60)
     peer_timeout_secs: u64,
-    
+
     /// BirdSong decryption processor (optional)
     birdsong: Option<Arc<crate::birdsong_integration::BirdSongProcessor>>,
-    
+
     /// Our own node_id for self-filtering (v3.10.2 - Jan 5, 2026)
     ///
     /// Used to filter out our own discovery broadcasts to prevent self-discovery.
     /// Critical for multi-instance deployments where multiple towers run on same machine.
     node_id: Option<String>,
-    
+
     /// Statistics tracker for observability (optional) - NEW (Jan 5, 2026)
     stats: Option<Arc<crate::discovery_stats::DiscoveryStats>>,
 }
 
 impl AnonymousDiscoveryListener {
     /// Create a new anonymous discovery listener
-    #[must_use] 
+    #[must_use]
     pub fn new(port: u16, peer_timeout_secs: u64) -> Self {
         Self {
             port,
@@ -733,7 +746,7 @@ impl AnonymousDiscoveryListener {
     }
 
     /// Create a listener without multicast (broadcast-only fallback)
-    #[must_use] 
+    #[must_use]
     pub fn new_broadcast_only(port: u16, peer_timeout_secs: u64) -> Self {
         Self {
             port,
@@ -745,7 +758,7 @@ impl AnonymousDiscoveryListener {
             node_id: None,
         }
     }
-    
+
     /// Set node ID for self-filtering (v3.10.2 - Jan 5, 2026)
     ///
     /// Enables filtering out our own discovery broadcasts to prevent self-discovery.
@@ -761,19 +774,22 @@ impl AnonymousDiscoveryListener {
         self.node_id = Some(node_id);
         self
     }
-    
+
     /// Enable BirdSong encrypted discovery (NEW - Jan 3, 2026)
     ///
     /// Adds BirdSong decryption for privacy-preserving discovery.
     /// Only same-family peers' packets will be decoded.
-    #[must_use] 
-    pub fn with_birdsong(mut self, processor: Arc<crate::birdsong_integration::BirdSongProcessor>) -> Self {
+    #[must_use]
+    pub fn with_birdsong(
+        mut self,
+        processor: Arc<crate::birdsong_integration::BirdSongProcessor>,
+    ) -> Self {
         info!("🎵 BirdSong decryption enabled for discovery listener");
         info!("   Status: {}", processor.status());
         self.birdsong = Some(processor);
         self
     }
-    
+
     /// Enable statistics tracking for observability (NEW - Jan 5, 2026)
     #[must_use]
     pub fn with_stats(mut self, stats: Arc<crate::discovery_stats::DiscoveryStats>) -> Self {
@@ -806,11 +822,10 @@ impl AnonymousDiscoveryListener {
         // Join multicast group if configured
         if let Some(multicast_addr) = self.multicast_addr {
             let interface = Ipv4Addr::UNSPECIFIED; // Join on all interfaces
-            socket.join_multicast_v4(&multicast_addr, &interface)
-                .map_err(|e| {
-                    error!("Failed to join multicast group {}: {}", multicast_addr, e);
-                    e
-                })?;
+            socket.join_multicast_v4(&multicast_addr, &interface).map_err(|e| {
+                error!("Failed to join multicast group {}: {}", multicast_addr, e);
+                e
+            })?;
             info!("✅ Joined multicast group: {}", multicast_addr);
         }
 
@@ -835,12 +850,16 @@ impl AnonymousDiscoveryListener {
             match socket.recv_from(&mut buf).await {
                 Ok((len, addr)) => {
                     let data = &buf[..len];
-                    
+
                     // 🎵 NEW (Jan 3, 2026): Optional BirdSong decryption
                     let data = if let Some(ref birdsong) = self.birdsong {
                         match birdsong.decrypt_packet(data).await {
                             Ok(Some(plaintext)) => {
-                                debug!("🔓 BirdSong decrypted {} -> {} bytes", data.len(), plaintext.len());
+                                debug!(
+                                    "🔓 BirdSong decrypted {} -> {} bytes",
+                                    data.len(),
+                                    plaintext.len()
+                                );
                                 plaintext
                             }
                             Ok(None) => {
@@ -865,7 +884,7 @@ impl AnonymousDiscoveryListener {
                                 warn!("Invalid discovery message from {}: {}", addr, e);
                                 continue;
                             }
-                            
+
                             // CRITICAL FIX (v3.10.2 - Jan 5, 2026): Filter out self-discovery
                             // Prevents towers from discovering their own broadcasts
                             // Critical for multi-instance deployments (tower1, tower2, etc.)
@@ -873,12 +892,12 @@ impl AnonymousDiscoveryListener {
                                 if let Some(ref peer_node_id) = message.node_id {
                                     if my_node_id == peer_node_id {
                                         debug!("📭 Skipping own broadcast (self-discovery filtered: {})", my_node_id);
-                                        
+
                                         // Update stats: self-discoveries filtered
                                         if let Some(ref _stats) = self.stats {
                                             // Note: Could add a self_discoveries_filtered counter if needed
                                         }
-                                        
+
                                         continue;
                                     }
                                 }
@@ -931,7 +950,7 @@ impl AnonymousDiscoveryListener {
     /// Get all discovered peers
     pub async fn get_peers(&self) -> Vec<DiscoveredPeer> {
         let peers = self.peers.read().await;
-        
+
         // INFO LOGGING (v3.10.3 - Jan 6, 2026): Diagnose bridge gap at INFO level
         // Previous debug!() required RUST_LOG=debug, now visible with default logging
         if !peers.is_empty() {
@@ -942,7 +961,7 @@ impl AnonymousDiscoveryListener {
                 info!("   - session:{} | node_id:{} | name:{}", session_id, node_id, node_name);
             }
         }
-        
+
         peers.values().cloned().collect()
     }
 
@@ -1106,7 +1125,7 @@ mod tests {
     #[test]
     fn test_listener_with_birdsong_builder() {
         use crate::birdsong_integration::{BirdSongConfig, BirdSongProcessor};
-        
+
         // Create a plaintext-fallback BirdSong processor
         let config = BirdSongConfig {
             enabled: true,
@@ -1115,11 +1134,10 @@ mod tests {
             mixed_mode: true,
         };
         let processor = Arc::new(BirdSongProcessor::new(None, config));
-        
+
         // Create listener with BirdSong
-        let listener = AnonymousDiscoveryListener::new(2300, 60)
-            .with_birdsong(processor.clone());
-        
+        let listener = AnonymousDiscoveryListener::new(2300, 60).with_birdsong(processor.clone());
+
         // Verify BirdSong is wired
         assert!(listener.birdsong.is_some());
         assert!(Arc::ptr_eq(&listener.birdsong.unwrap(), &processor));
@@ -1129,32 +1147,26 @@ mod tests {
     fn test_broadcaster_with_identity_attestations() {
         use crate::IdentityAttestation;
         use serde_json::json;
-        
+
         let capabilities = vec!["orchestration".to_string()];
         let protocols = vec!["https".to_string()];
         let broadcast_addrs = vec!["224.0.0.251:2300".parse().unwrap()];
-        
+
         // Create identity attestations
-        let attestations = vec![
-            IdentityAttestation {
-                provider_capability: "security/identity".to_string(),
-                format: "tag_list".to_string(),
-                data: json!({
-                    "family_id": "test-family",
-                    "tags": ["beardog:family:test-family:node1"]
-                }),
-            }
-        ];
-        
+        let attestations = vec![IdentityAttestation {
+            provider_capability: "security/identity".to_string(),
+            format: "tag_list".to_string(),
+            data: json!({
+                "family_id": "test-family",
+                "tags": ["beardog:family:test-family:node1"]
+            }),
+        }];
+
         // Create broadcaster with attestations
-        let broadcaster = AnonymousDiscoveryBroadcaster::new(
-            capabilities,
-            protocols,
-            8080,
-            broadcast_addrs,
-            30,
-        ).with_identity_attestations(attestations.clone());
-        
+        let broadcaster =
+            AnonymousDiscoveryBroadcaster::new(capabilities, protocols, 8080, broadcast_addrs, 30)
+                .with_identity_attestations(attestations.clone());
+
         // Verify attestations are stored
         assert!(broadcaster.identity_attestations.is_some());
         assert_eq!(broadcaster.identity_attestations.unwrap().len(), 1);
@@ -1164,32 +1176,30 @@ mod tests {
     fn test_discovery_message_with_attestations() {
         use crate::IdentityAttestation;
         use serde_json::json;
-        
+
         let capabilities = vec!["orchestration".to_string()];
         let protocols = vec!["https".to_string()];
-        
+
         // Create identity attestations
-        let attestations = vec![
-            IdentityAttestation {
-                provider_capability: "security/identity".to_string(),
-                format: "tag_list".to_string(),
-                data: json!({
-                    "family_id": "iidn",
-                    "tags": ["beardog:family:iidn:test-node"]
-                }),
-            }
-        ];
-        
+        let attestations = vec![IdentityAttestation {
+            provider_capability: "security/identity".to_string(),
+            format: "tag_list".to_string(),
+            data: json!({
+                "family_id": "iidn",
+                "tags": ["beardog:family:iidn:test-node"]
+            }),
+        }];
+
         // Create message with attestations
         let message = AnonymousDiscoveryMessage::new(capabilities, protocols, 8080)
             .with_identity_attestations(attestations.clone());
-        
+
         // Verify attestations are present
         assert!(message.identity_attestations.is_some());
         let msg_attestations = message.identity_attestations.as_ref().unwrap();
         assert_eq!(msg_attestations.len(), 1);
         assert_eq!(msg_attestations[0].provider_capability, "security/identity");
-        
+
         // Verify serialization preserves attestations
         let bytes = message.to_bytes().unwrap();
         let deserialized = AnonymousDiscoveryMessage::from_bytes(&bytes).unwrap();
@@ -1201,19 +1211,17 @@ mod tests {
         use crate::birdsong_integration::{BirdSongConfig, BirdSongProcessor};
         use crate::IdentityAttestation;
         use serde_json::json;
-        
+
         // Create identity attestations
-        let attestations = vec![
-            IdentityAttestation {
-                provider_capability: "security/identity".to_string(),
-                format: "tag_list".to_string(),
-                data: json!({
-                    "family_id": "test-family",
-                    "tags": ["beardog:family:test-family:node1"]
-                }),
-            }
-        ];
-        
+        let attestations = vec![IdentityAttestation {
+            provider_capability: "security/identity".to_string(),
+            format: "tag_list".to_string(),
+            data: json!({
+                "family_id": "test-family",
+                "tags": ["beardog:family:test-family:node1"]
+            }),
+        }];
+
         // Create BirdSong processor (plaintext fallback mode)
         let config = BirdSongConfig {
             enabled: true,
@@ -1222,7 +1230,7 @@ mod tests {
             mixed_mode: true,
         };
         let processor = Arc::new(BirdSongProcessor::new(None, config));
-        
+
         // Create discovery message with attestations
         let endpoints = vec![TransportEndpointMessage {
             interface_type: "ethernet".to_string(),
@@ -1230,24 +1238,25 @@ mod tests {
             protocols: vec!["https".to_string()],
             preference: 100,
         }];
-        
+
         let message = AnonymousDiscoveryMessage::new_v3(
             "test-node-1".to_string(),
             "test-node-1".to_string(),
             endpoints,
             vec!["orchestration".to_string()],
-        ).with_identity_attestations(attestations.clone());
-        
+        )
+        .with_identity_attestations(attestations.clone());
+
         // Serialize message
         let plaintext = message.to_bytes().unwrap();
-        
+
         // Test encryption (should fall back to plaintext in this mode)
         let encrypted = processor.encrypt_packet(&plaintext).await.unwrap();
-        
+
         // Test decryption
         let decrypted = processor.decrypt_packet(&encrypted).await.unwrap();
         assert!(decrypted.is_some(), "Decryption should succeed");
-        
+
         // Verify attestations survived the roundtrip
         let recovered_message = AnonymousDiscoveryMessage::from_bytes(&decrypted.unwrap()).unwrap();
         assert!(recovered_message.identity_attestations.is_some());
@@ -1258,31 +1267,30 @@ mod tests {
     async fn test_listener_handles_plaintext_packets() {
         use crate::IdentityAttestation;
         use serde_json::json;
-        
+
         // Create a listener WITHOUT BirdSong (plaintext mode)
         let _listener = AnonymousDiscoveryListener::new(2301, 60);
-        
+
         // Create a plaintext discovery message with attestations
-        let attestations = vec![
-            IdentityAttestation {
-                provider_capability: "security/identity".to_string(),
-                format: "tag_list".to_string(),
-                data: json!({
-                    "family_id": "plaintext-family",
-                    "tags": ["beardog:family:plaintext-family:node1"]
-                }),
-            }
-        ];
-        
+        let attestations = vec![IdentityAttestation {
+            provider_capability: "security/identity".to_string(),
+            format: "tag_list".to_string(),
+            data: json!({
+                "family_id": "plaintext-family",
+                "tags": ["beardog:family:plaintext-family:node1"]
+            }),
+        }];
+
         let message = AnonymousDiscoveryMessage::new(
             vec!["orchestration".to_string()],
             vec!["https".to_string()],
             8080,
-        ).with_identity_attestations(attestations);
-        
+        )
+        .with_identity_attestations(attestations);
+
         // Serialize to bytes (plaintext)
         let bytes = message.to_bytes().unwrap();
-        
+
         // Verify listener can parse plaintext packets
         let parsed = AnonymousDiscoveryMessage::from_bytes(&bytes).unwrap();
         assert!(parsed.identity_attestations.is_some());
@@ -1294,19 +1302,17 @@ mod tests {
         use crate::birdsong_integration::{BirdSongConfig, BirdSongProcessor};
         use crate::IdentityAttestation;
         use serde_json::json;
-        
+
         // Create identity attestations
-        let attestations = vec![
-            IdentityAttestation {
-                provider_capability: "security/identity".to_string(),
-                format: "tag_list".to_string(),
-                data: json!({
-                    "family_id": "encrypted-family",
-                    "tags": ["beardog:family:encrypted-family:node1"]
-                }),
-            }
-        ];
-        
+        let attestations = vec![IdentityAttestation {
+            provider_capability: "security/identity".to_string(),
+            format: "tag_list".to_string(),
+            data: json!({
+                "family_id": "encrypted-family",
+                "tags": ["beardog:family:encrypted-family:node1"]
+            }),
+        }];
+
         // Create BirdSong processor
         let config = BirdSongConfig {
             enabled: true,
@@ -1315,26 +1321,27 @@ mod tests {
             mixed_mode: true,
         };
         let processor = Arc::new(BirdSongProcessor::new(None, config));
-        
+
         // Create discovery message with attestations
         let message = AnonymousDiscoveryMessage::new(
             vec!["orchestration".to_string()],
             vec!["https".to_string()],
             8080,
-        ).with_identity_attestations(attestations.clone());
-        
+        )
+        .with_identity_attestations(attestations.clone());
+
         // Serialize and encrypt
         let plaintext = message.to_bytes().unwrap();
         let encrypted = processor.encrypt_packet(&plaintext).await.unwrap();
-        
+
         // Verify encryption changes the data (in real encryption mode)
         // In fallback mode, it might be the same, but structure should be valid
         assert!(!encrypted.is_empty());
-        
+
         // Verify we can decrypt back
         let decrypted = processor.decrypt_packet(&encrypted).await.unwrap();
         assert!(decrypted.is_some());
-        
+
         // Verify attestations are preserved
         let recovered = AnonymousDiscoveryMessage::from_bytes(&decrypted.unwrap()).unwrap();
         assert!(recovered.identity_attestations.is_some());
@@ -1344,7 +1351,7 @@ mod tests {
     fn test_v3_message_with_attestations_serialization() {
         use crate::IdentityAttestation;
         use serde_json::json;
-        
+
         // Create v3.0 message with all features
         let endpoints = vec![
             TransportEndpointMessage {
@@ -1360,31 +1367,30 @@ mod tests {
                 preference: 50,
             },
         ];
-        
-        let attestations = vec![
-            IdentityAttestation {
-                provider_capability: "security/identity".to_string(),
-                format: "tag_list".to_string(),
-                data: json!({
-                    "family_id": "v3-family",
-                    "tags": ["beardog:family:v3-family:multi-endpoint"]
-                }),
-            }
-        ];
-        
+
+        let attestations = vec![IdentityAttestation {
+            provider_capability: "security/identity".to_string(),
+            format: "tag_list".to_string(),
+            data: json!({
+                "family_id": "v3-family",
+                "tags": ["beardog:family:v3-family:multi-endpoint"]
+            }),
+        }];
+
         let message = AnonymousDiscoveryMessage::new_v3(
             "multi-endpoint-node".to_string(),
             "multi-endpoint-node".to_string(),
             endpoints,
             vec!["orchestration".to_string(), "storage".to_string()],
-        ).with_identity_attestations(attestations);
-        
+        )
+        .with_identity_attestations(attestations);
+
         // Serialize
         let bytes = message.to_bytes().unwrap();
-        
+
         // Deserialize
         let recovered = AnonymousDiscoveryMessage::from_bytes(&bytes).unwrap();
-        
+
         // Verify all fields preserved
         assert_eq!(recovered.version, "3.0");
         assert!(recovered.node_id.is_some());

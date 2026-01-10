@@ -27,7 +27,9 @@ use anyhow::Result;
 use std::sync::Arc;
 use tracing::{error, info, warn};
 
-use songbird_discovery::anonymous::{AnonymousDiscoveryBroadcaster, AnonymousDiscoveryListener, TransportEndpointMessage};
+use songbird_discovery::anonymous::{
+    AnonymousDiscoveryBroadcaster, AnonymousDiscoveryListener, TransportEndpointMessage,
+};
 use songbird_discovery::DiscoveryStatusManager;
 
 use crate::node_identity::NodeIdentity;
@@ -82,7 +84,7 @@ pub async fn start_discovery_system(
     // Step 2.5: Discover our own identity tags (self-knowledge!)
     // Songbird doesn't interpret tags - just broadcasts them
     let identity_tags = self_knowledge::discover_identity_tags();
-    
+
     // Step 3: Create and start broadcaster
     start_discovery_broadcaster(
         node_identity,
@@ -124,7 +126,8 @@ pub async fn start_discovery_system(
 /// - `SONGBIRD_SECURITY_PROVIDER` (NEW - generic capability)
 /// - `SECURITY_ENDPOINT` (generic)
 /// - `SONGBIRD_BEARDOG_URL` (DEPRECATED - vendor-specific)
-async fn fetch_identity_attestations() -> Result<Vec<songbird_discovery::IdentityAttestation>, anyhow::Error> {
+async fn fetch_identity_attestations(
+) -> Result<Vec<songbird_discovery::IdentityAttestation>, anyhow::Error> {
     match crate::app::security_setup::discover_security_endpoint(None).await {
         Ok(url) => {
             info!("🔐 Fetching identity attestations from security provider: {}", url);
@@ -173,9 +176,7 @@ async fn initialize_birdsong_processor(
 
     // Extract security endpoint
     // EVOLVED (v3.15.0): Use capability discovery (zero vendor hardcoding!)
-    let security_endpoint = crate::app::security_setup::discover_security_endpoint(None)
-        .await
-        .ok();
+    let security_endpoint = crate::app::security_setup::discover_security_endpoint(None).await.ok();
 
     // Extract family_id from identity attestations
     let family_id = identity_attestations.iter().find_map(|a| {
@@ -202,10 +203,8 @@ async fn initialize_birdsong_processor(
     }
 
     // Create security provider provider
-    let security_provider = songbird_discovery::BearDogBirdSongProvider::new(
-        endpoint.clone(),
-        family_id.clone(),
-    );
+    let security_provider =
+        songbird_discovery::BearDogBirdSongProvider::new(endpoint.clone(), family_id.clone());
 
     if security_provider.check_health().await {
         info!("✅ security provider provider healthy");
@@ -216,10 +215,8 @@ async fn initialize_birdsong_processor(
             mixed_mode: true, // Support both encrypted and plaintext discovery
         };
 
-        let processor = songbird_discovery::BirdSongProcessor::new(
-            Some(Arc::new(security_provider)),
-            config,
-        );
+        let processor =
+            songbird_discovery::BirdSongProcessor::new(Some(Arc::new(security_provider)), config);
         info!("🎵 BirdSong processor initialized: {}", processor.status());
         Some(Arc::new(processor))
     } else {
@@ -245,7 +242,7 @@ async fn start_discovery_broadcaster(
     endpoint_messages: Vec<TransportEndpointMessage>,
     capabilities: Vec<String>,
     broadcast_addrs: Vec<std::net::SocketAddr>,
-    identity_tags: Vec<String>,  // NEW: Tags we broadcast (don't interpret!)
+    identity_tags: Vec<String>, // NEW: Tags we broadcast (don't interpret!)
     identity_attestations: Vec<songbird_discovery::IdentityAttestation>,
     birdsong_processor: Option<&Arc<songbird_discovery::BirdSongProcessor>>,
 ) -> Result<()> {
@@ -349,10 +346,7 @@ mod tests {
         let empty_attestations: Vec<songbird_discovery::IdentityAttestation> = Vec::new();
         let processor = initialize_birdsong_processor(&empty_attestations).await;
 
-        assert!(
-            processor.is_none(),
-            "Should return None when no identity attestations"
-        );
+        assert!(processor.is_none(), "Should return None when no identity attestations");
     }
 
     #[test]
@@ -363,11 +357,16 @@ mod tests {
         // - Runtime discovery of security provider
 
         // Security provider discovered via environment
-        assert!(std::env::var("SONGBIRD_BEARDOG_URL").is_err() || std::env::var("SONGBIRD_BEARDOG_URL").is_ok());
-        assert!(std::env::var("SECURITY_ENDPOINT").is_err() || std::env::var("SECURITY_ENDPOINT").is_ok());
+        assert!(
+            std::env::var("SONGBIRD_BEARDOG_URL").is_err()
+                || std::env::var("SONGBIRD_BEARDOG_URL").is_ok()
+        );
+        assert!(
+            std::env::var("SECURITY_ENDPOINT").is_err()
+                || std::env::var("SECURITY_ENDPOINT").is_ok()
+        );
 
         // No hardcoded values in this module!
         // All security provider discovery is runtime-based via environment
     }
 }
-

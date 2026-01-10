@@ -8,7 +8,7 @@ async fn test_trust_evaluation_request_creation() {
         "tower2",
         vec!["crypto:family:a3f2".to_string()],
     );
-    
+
     assert_eq!(request.peer_id, "tower2");
     assert_eq!(request.peer_tags.len(), 1);
 }
@@ -22,7 +22,7 @@ async fn test_trust_evaluation_response_helpers() {
         suggested_action: None,
         metadata: None,
     };
-    
+
     assert!(response.is_auto_accept());
     assert!(!response.is_reject());
 }
@@ -33,11 +33,10 @@ async fn test_identity_response_structure() {
         encryption_tag: "crypto:family:test".to_string(),
         capabilities: vec!["identity".to_string(), "trust-evaluation".to_string()],
     };
-    
+
     assert!(identity.encryption_tag.contains("crypto:family"));
     assert_eq!(identity.capabilities.len(), 2);
 }
 
 // Integration tests would go here when we have a mock security provider
 // For now, these structural tests validate the types work correctly
-

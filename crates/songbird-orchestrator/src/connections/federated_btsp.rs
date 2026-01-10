@@ -48,19 +48,19 @@ use tracing::{debug, info, warn};
 pub struct FederatedBtspConnection {
     /// Peer node ID
     peer_id: String,
-    
+
     /// BTSP tunnel ID (managed by security provider)
     tunnel_id: Arc<RwLock<String>>,
-    
+
     /// BTSP client (protocol-agnostic: tarpc/JSON-RPC/HTTP)
     btsp_client: Arc<BtspClient>,
-    
+
     /// Allowed capabilities for Level 2 trust
     allowed_capabilities: Vec<String>,
-    
+
     /// Denied capabilities (explicit deny overrides allow)
     denied_capabilities: Vec<String>,
-    
+
     /// Connection metadata
     established_at: SystemTime,
 }
@@ -96,17 +96,19 @@ impl FederatedBtspConnection {
     ) -> Result<Self> {
         info!("🔐 Creating BTSP Federated connection to peer '{}'", peer_id);
         debug!("   Peer tags: {:?}", peer_tags);
-        
+
         // Create tunnel request with automatic NAT traversal via lineage
         let tunnel_request = songbird_universal::btsp_types::BtspTunnelRequest::new(&peer_id)
             .with_tunnel_type(songbird_universal::btsp_types::TunnelType::Auto);
-        
+
         // Establish tunnel via security provider
-        let tunnel = btsp_client.establish_tunnel(tunnel_request).await
+        let tunnel = btsp_client
+            .establish_tunnel(tunnel_request)
+            .await
             .context(format!("Failed to establish BTSP tunnel to peer '{}'", peer_id))?;
-        
+
         info!("✅ BTSP tunnel established: {} (state: {:?})", tunnel.tunnel_id, tunnel.state);
-        
+
         Ok(Self {
             peer_id: peer_id.clone(),
             tunnel_id: Arc::new(RwLock::new(tunnel.tunnel_id)),
@@ -116,7 +118,7 @@ impl FederatedBtspConnection {
             established_at: SystemTime::now(),
         })
     }
-    
+
     /// Create with default Level 2 capabilities
     pub async fn with_defaults(
         peer_id: String,
@@ -128,13 +130,14 @@ impl FederatedBtspConnection {
             peer_tags,
             btsp_client,
             TrustLevel::Elevated.default_allowed_capabilities(),
-        ).await
+        )
+        .await
     }
-    
+
     /// Send RPC call over BTSP tunnel
     async fn send_rpc(&self, operation: &str, request: Value) -> Result<Value> {
         let tunnel_id = self.tunnel_id.read().await.clone();
-        
+
         // Create JSON-RPC 2.0 request
         let rpc_request = serde_json::json!({
             "jsonrpc": "2.0",
@@ -142,9 +145,9 @@ impl FederatedBtspConnection {
             "params": request,
             "id": uuid::Uuid::new_v4().to_string(),
         });
-        
+
         debug!("📡 Sending RPC over BTSP tunnel {}: {}", tunnel_id, operation);
-        
+
         // TODO(v3.18.1): Implement bidirectional BTSP communication
         Err(anyhow!(
             "BTSP bidirectional communication not yet implemented. \
@@ -152,12 +155,10 @@ impl FederatedBtspConnection {
              Current implementation establishes tunnels only."
         ))
     }
-    
+
     /// Get connection uptime
     pub fn uptime(&self) -> std::time::Duration {
-        SystemTime::now()
-            .duration_since(self.established_at)
-            .unwrap_or_default()
+        SystemTime::now().duration_since(self.established_at).unwrap_or_default()
     }
 }
 
@@ -166,23 +167,19 @@ impl PeerConnection for FederatedBtspConnection {
     fn trust_level(&self) -> TrustLevel {
         TrustLevel::Elevated
     }
-    
+
     fn allowed_capabilities(&self) -> &[String] {
         &self.allowed_capabilities
     }
-    
+
     fn denied_capabilities(&self) -> &[String] {
         &self.denied_capabilities
     }
-    
+
     fn is_operation_allowed(&self, operation: &str) -> bool {
-        check_operation_allowed(
-            operation,
-            &self.allowed_capabilities,
-            &self.denied_capabilities,
-        )
+        check_operation_allowed(operation, &self.allowed_capabilities, &self.denied_capabilities)
     }
-    
+
     async fn call(&self, operation: &str, request: Value) -> Result<Value> {
         // Enforce capability restrictions
         if !self.is_operation_allowed(operation) {
@@ -198,32 +195,33 @@ impl PeerConnection for FederatedBtspConnection {
                 self.allowed_capabilities
             ));
         }
-        
+
         debug!(
             "🔐 Calling federated operation '{}' on peer '{}' via BTSP tunnel",
             operation, self.peer_id
         );
-        
+
         // Send RPC over BTSP tunnel
         self.send_rpc(operation, request).await
     }
-    
+
     fn peer_id(&self) -> &str {
         &self.peer_id
     }
-    
+
     fn endpoint(&self) -> &str {
         "btsp://<encrypted-tunnel>"
     }
-    
+
     async fn close(&self) -> Result<()> {
         let tunnel_id = self.tunnel_id.read().await.clone();
-        info!("🔌 Closing BTSP Federated connection to peer '{}' (tunnel: {})", 
-              self.peer_id, tunnel_id);
-        
-        self.btsp_client.close_tunnel(&tunnel_id).await
-            .context("Failed to close BTSP tunnel")?;
-        
+        info!(
+            "🔌 Closing BTSP Federated connection to peer '{}' (tunnel: {})",
+            self.peer_id, tunnel_id
+        );
+
+        self.btsp_client.close_tunnel(&tunnel_id).await.context("Failed to close BTSP tunnel")?;
+
         info!("✅ BTSP tunnel closed: {}", tunnel_id);
         Ok(())
     }
@@ -235,12 +233,11 @@ impl Drop for FederatedBtspConnection {
         let tunnel_id = self.tunnel_id.clone();
         let btsp_client = Arc::clone(&self.btsp_client);
         let peer_id = self.peer_id.clone();
-        
+
         tokio::spawn(async move {
             let id = tunnel_id.read().await.clone();
             if let Err(e) = btsp_client.close_tunnel(&id).await {
-                warn!("⚠️ Failed to close BTSP tunnel for peer '{}' during drop: {}", 
-                      peer_id, e);
+                warn!("⚠️ Failed to close BTSP tunnel for peer '{}' during drop: {}", peer_id, e);
             } else {
                 debug!("✅ BTSP tunnel cleanup complete for peer '{}'", peer_id);
             }
@@ -256,11 +253,11 @@ mod tests {
     fn test_federated_allows_level1_plus_federation() {
         let allowed = TrustLevel::Elevated.default_allowed_capabilities();
         let denied = TrustLevel::Elevated.default_denied_capabilities();
-        
+
         // Level 1 operations
         assert!(check_operation_allowed("birdsong/sync", &allowed, &denied));
         assert!(check_operation_allowed("health", &allowed, &denied));
-        
+
         // Level 2 operations
         assert!(check_operation_allowed("federation/join", &allowed, &denied));
         assert!(check_operation_allowed("data/read", &allowed, &denied));
@@ -270,7 +267,7 @@ mod tests {
     fn test_federated_denies_sensitive() {
         let allowed = TrustLevel::Elevated.default_allowed_capabilities();
         let denied = TrustLevel::Elevated.default_denied_capabilities();
-        
+
         assert!(!check_operation_allowed("data/write", &allowed, &denied));
         assert!(!check_operation_allowed("commands/sensitive", &allowed, &denied));
         assert!(!check_operation_allowed("keys/access", &allowed, &denied));
@@ -280,15 +277,16 @@ mod tests {
     async fn test_btsp_federated_connection_creation() {
         let btsp_client = Arc::new(
             BtspClient::new("unix:///nonexistent.sock")
-                .expect("BtspClient creation should succeed")
+                .expect("BtspClient creation should succeed"),
         );
-        
+
         let result = FederatedBtspConnection::with_defaults(
             "test_peer".to_string(),
             vec!["btsp_enabled".to_string()],
             btsp_client,
-        ).await;
-        
+        )
+        .await;
+
         // Should fail (no real security provider), but validates API
         assert!(result.is_err());
     }
@@ -297,9 +295,8 @@ mod tests {
     fn test_trust_level() {
         let allowed = TrustLevel::Elevated.default_allowed_capabilities();
         let denied = TrustLevel::Elevated.default_denied_capabilities();
-        
+
         assert!(!allowed.is_empty());
         assert!(!denied.is_empty());
     }
 }
-

@@ -58,8 +58,7 @@ use std::time::Duration;
 use tracing::{debug, error, info, warn};
 
 use crate::trust::universal_trust_api::{
-    IdentityAttestation as UniversalIdentityAttestation,
-    UniversalTrustRequest,
+    IdentityAttestation as UniversalIdentityAttestation, UniversalTrustRequest,
     UniversalTrustResponse,
 };
 
@@ -88,19 +87,19 @@ pub struct SecurityCapabilityClient {
     /// Protocol-agnostic security adapter (v3.12.3)
     /// Handles tarpc, JSON-RPC, and HTTP automatically
     adapter: SecurityAdapter,
-    
+
     /// HTTP client for lineage methods (v3.14.2)
-    /// 
+    ///
     /// **Status**: Used ONLY for lineage API endpoints which are Phase 1.5 features:
     /// - `evaluate_trust_universal()` - Universal trust API (transitional)
     /// - `get_current_lineage()` - Query our genetic lineage
     /// - `verify_lineage()` - Verify lineage proof cryptographically
     /// - `same_family()` - Check if two lineages share ancestry
-    /// 
+    ///
     /// **Migration Plan**: These will move to SecurityAdapter when security provider Phase 1.5 is complete.
     /// Until then, HTTP is acceptable as these are specialized genetic lineage operations.
     http_client: Client,
-    
+
     /// Optional: Cached identity
     cached_identity: Option<IdentityResponse>,
 }
@@ -135,13 +134,11 @@ impl SecurityCapabilityClient {
     pub fn from_endpoint(endpoint: impl Into<String>) -> Result<Self> {
         let adapter = SecurityAdapter::new(endpoint.into())
             .context("Failed to create protocol-agnostic security adapter")?;
-        
+
         // Create HTTP client for lineage methods (Phase 1.5)
-        let http_client = Client::builder()
-            .timeout(Duration::from_secs(10))
-            .build()
-            .unwrap_or_default();
-        
+        let http_client =
+            Client::builder().timeout(Duration::from_secs(10)).build().unwrap_or_default();
+
         Ok(Self {
             adapter,
             http_client,
@@ -162,23 +159,22 @@ impl SecurityCapabilityClient {
     {
         // ✅ IDIOMATIC REST: HTTP status code is source of truth
         let status = response.status();
-        
+
         if !status.is_success() {
             let body = response.text().await.unwrap_or_default();
             error!("Security provider returned error: {} - {}", status, body);
             anyhow::bail!("Security provider error: {} - {}", status, body);
         }
-        
+
         // Get response body as text first (so we can try multiple parse attempts)
-        let body_text = response.text().await
-            .context("Failed to read response body")?;
-        
+        let body_text = response.text().await.context("Failed to read response body")?;
+
         // Try unwrapped format first (modern, idiomatic)
         if let Ok(data) = serde_json::from_str::<T>(&body_text) {
             debug!("Parsed response as unwrapped format (idiomatic REST)");
             return Ok(data);
         }
-        
+
         // Fall back to wrapped format (backward compatibility)
         if let Ok(wrapped) = serde_json::from_str::<ApiResponseWrapper<T>>(&body_text) {
             if wrapped.success {
@@ -191,7 +187,7 @@ impl SecurityCapabilityClient {
                 );
             }
         }
-        
+
         // Neither format worked - show body for debugging
         error!("Failed to parse response in any known format. Body: {}", body_text);
         anyhow::bail!("Failed to parse security provider response")
@@ -220,9 +216,8 @@ impl SecurityCapabilityClient {
         // Query security provider using protocol-agnostic adapter
         debug!("Querying security provider identity using protocol-agnostic adapter");
 
-        let universal_identity = self.adapter.get_identity()
-            .await
-            .context("Failed to connect to security provider")?;
+        let universal_identity =
+            self.adapter.get_identity().await.context("Failed to connect to security provider")?;
 
         // Convert from universal format to local format
         let identity = IdentityResponse {
@@ -232,10 +227,10 @@ impl SecurityCapabilityClient {
         };
 
         info!("✅ Retrieved identity from security provider: {}", identity.encryption_tag);
-        
+
         // Cache for future use
         self.cached_identity = Some(identity.clone());
-        
+
         Ok(identity)
     }
 
@@ -253,7 +248,10 @@ impl SecurityCapabilityClient {
     /// # Errors
     ///
     /// Returns error if security provider is unreachable or returns invalid response.
-    pub async fn evaluate_trust(&self, request: &TrustEvaluationRequest) -> Result<TrustEvaluationResponse> {
+    pub async fn evaluate_trust(
+        &self,
+        request: &TrustEvaluationRequest,
+    ) -> Result<TrustEvaluationResponse> {
         debug!("Evaluating trust for peer {} using protocol-agnostic adapter", request.peer_id);
 
         // Convert to universal format
@@ -263,7 +261,7 @@ impl SecurityCapabilityClient {
             map.insert("protocol".to_string(), info.protocol.clone());
             map
         });
-        
+
         let universal_req = songbird_universal::TrustEvaluationRequest {
             peer_id: request.peer_id.clone(),
             peer_family: request.peer_family.clone(), // ✅ Pass peer_family (v3.14.1)
@@ -282,16 +280,20 @@ impl SecurityCapabilityClient {
                     confidence: 0.0, // Not in universal format yet
                     reason: universal_resp.reason,
                     encryption_tag: None, // Not in universal format yet
-                    metadata: universal_resp.metadata.unwrap_or_default()
+                    metadata: universal_resp
+                        .metadata
+                        .unwrap_or_default()
                         .into_iter()
                         .map(|(k, v)| (k, v.to_string()))
                         .collect(),
                 }
-            },
+            }
             Err(e) => {
-                warn!("Security provider trust evaluation failed for peer {}: {}", 
-                      request.peer_id, e);
-                
+                warn!(
+                    "Security provider trust evaluation failed for peer {}: {}",
+                    request.peer_id, e
+                );
+
                 // Return reject decision on error (fail-safe)
                 TrustEvaluationResponse {
                     decision: "reject".to_string(),
@@ -306,21 +308,29 @@ impl SecurityCapabilityClient {
 
         match decision.decision.as_str() {
             "auto_accept" => {
-                info!("✅ Security provider auto-accepts peer {} ({})", 
-                      request.peer_id, decision.reason);
-            },
+                info!(
+                    "✅ Security provider auto-accepts peer {} ({})",
+                    request.peer_id, decision.reason
+                );
+            }
             "prompt_user" => {
-                warn!("⚠️ Security provider requests user prompt for peer {} ({})", 
-                      request.peer_id, decision.reason);
-            },
+                warn!(
+                    "⚠️ Security provider requests user prompt for peer {} ({})",
+                    request.peer_id, decision.reason
+                );
+            }
             "reject" => {
-                error!("❌ Security provider rejects peer {} ({})", 
-                       request.peer_id, decision.reason);
-            },
+                error!(
+                    "❌ Security provider rejects peer {} ({})",
+                    request.peer_id, decision.reason
+                );
+            }
             other => {
-                warn!("Unknown security provider decision '{}' for peer {}, treating as reject", 
-                      other, request.peer_id);
-            },
+                warn!(
+                    "Unknown security provider decision '{}' for peer {}, treating as reject",
+                    other, request.peer_id
+                );
+            }
         }
 
         Ok(decision)
@@ -345,62 +355,66 @@ impl SecurityCapabilityClient {
     pub fn endpoint(&self) -> &str {
         self.adapter.endpoint()
     }
-    
+
     /// Convert identity response to universal attestations
     ///
     /// Creates generic identity attestations from provider-specific identity.
-    pub fn identity_to_attestations(identity: &IdentityResponse) -> Vec<UniversalIdentityAttestation> {
+    pub fn identity_to_attestations(
+        identity: &IdentityResponse,
+    ) -> Vec<UniversalIdentityAttestation> {
         let mut attestations = Vec::new();
-        
+
         // Create tag list attestation
         if !identity.encryption_tag.is_empty() {
             let mut data = json!({
                 "tags": vec![identity.encryption_tag.clone()]
             });
-            
+
             // Add family_id if present
             if let Some(ref family_id) = identity.family_id {
                 data["family_id"] = json!(family_id);
             }
-            
+
             attestations.push(UniversalIdentityAttestation {
                 provider: Some("security/identity".to_string()),
                 format: "tag_list".to_string(),
                 data,
             });
         }
-        
+
         attestations
     }
-    
+
     /// Convert identity response to discovery attestations (CRITICAL FIX - Jan 3, 2026)
     ///
     /// Creates discovery `IdentityAttestation` for inclusion in UDP discovery packets.
     /// This enables genetic lineage auto-trust across the network.
-    pub fn identity_to_discovery_attestations(identity: &IdentityResponse) -> Vec<songbird_discovery::IdentityAttestation> {
+    pub fn identity_to_discovery_attestations(
+        identity: &IdentityResponse,
+    ) -> Vec<songbird_discovery::IdentityAttestation> {
         let mut attestations = Vec::new();
-        
+
         // Create tag list attestation with family ID
         if !identity.encryption_tag.is_empty() {
             let mut data = json!({
                 "tags": vec![identity.encryption_tag.clone()]
             });
-            
+
             // Add family_id if present (CRITICAL for auto-trust)
             if let Some(ref family_id) = identity.family_id {
                 data["family_id"] = json!(family_id);
             }
-            
+
             attestations.push(songbird_discovery::IdentityAttestation {
                 provider_capability: "security/identity".to_string(),
                 format: "tag_list".to_string(),
                 data,
             });
         }
-        
+
         attestations
     }
-    
+
     /// Evaluate trust using universal API format
     ///
     /// Generic trust evaluation that works with any security provider.
@@ -412,18 +426,22 @@ impl SecurityCapabilityClient {
     /// # Returns
     ///
     /// Universal trust response with decision, confidence, and reason.
-    pub async fn evaluate_trust_universal(&self, request: &UniversalTrustRequest) -> Result<UniversalTrustResponse> {
+    pub async fn evaluate_trust_universal(
+        &self,
+        request: &UniversalTrustRequest,
+    ) -> Result<UniversalTrustResponse> {
         let url = format!("{}/api/v1/trust/evaluate", self.adapter.endpoint());
         debug!("Evaluating trust (universal API): {}", url);
-        
-        let response = self.http_client
+
+        let response = self
+            .http_client
             .post(&url)
             .json(request)
             .timeout(Duration::from_secs(10))
             .send()
             .await
             .context("Failed to connect to security provider for trust evaluation")?;
-        
+
         // ✅ AGNOSTIC: Gracefully handles wrapped or unwrapped format
         // Falls back to legacy format if universal format fails
         let trust_response = match self.parse_response::<UniversalTrustResponse>(response).await {
@@ -434,19 +452,24 @@ impl SecurityCapabilityClient {
                 self.evaluate_trust_legacy_fallback(request).await?
             }
         };
-        
-        info!("✅ Trust evaluation complete: decision={:?}, confidence={}", 
-              trust_response.decision, trust_response.confidence);
-        
+
+        info!(
+            "✅ Trust evaluation complete: decision={:?}, confidence={}",
+            trust_response.decision, trust_response.confidence
+        );
+
         Ok(trust_response)
     }
-    
+
     /// Fallback to legacy trust evaluation format
     ///
     /// Used during transition period when provider hasn't updated to universal API yet.
-    async fn evaluate_trust_legacy_fallback(&self, universal_request: &UniversalTrustRequest) -> Result<UniversalTrustResponse> {
+    async fn evaluate_trust_legacy_fallback(
+        &self,
+        universal_request: &UniversalTrustRequest,
+    ) -> Result<UniversalTrustResponse> {
         warn!("Falling back to legacy trust evaluation format");
-        
+
         // Extract tags from attestations
         let mut tags = Vec::new();
         for attestation in &universal_request.evaluator.attestations {
@@ -460,7 +483,7 @@ impl SecurityCapabilityClient {
                 }
             }
         }
-        
+
         // Build legacy request
         let legacy_request = TrustEvaluationRequest {
             peer_id: universal_request.evaluator.peer_id.clone(),
@@ -472,33 +495,31 @@ impl SecurityCapabilityClient {
             }),
             context: None, // Legacy format doesn't use structured context
         };
-        
+
         // Call legacy API
         let legacy_response = self.evaluate_trust(&legacy_request).await?;
-        
+
         // Convert to universal format
         use crate::trust::universal_trust_api::TrustDecision as UniversalTrustDecision;
-        
+
         let decision = match legacy_response.decision.as_str() {
             "auto_accept" => UniversalTrustDecision::AutoAccept,
             "prompt_user" => UniversalTrustDecision::PromptUser,
             _ => UniversalTrustDecision::Reject,
         };
-        
+
         Ok(UniversalTrustResponse {
             response_format: "universal_trust_v1".to_string(),
             decision,
             confidence: legacy_response.confidence,
             reason: legacy_response.reason.clone(),
             reason_code: legacy_response.reason.clone(), // Use reason as code
-            metadata: legacy_response.metadata.iter()
-                .map(|(k, v)| (k.clone(), json!(v)))
-                .collect(),
+            metadata: legacy_response.metadata.iter().map(|(k, v)| (k.clone(), json!(v))).collect(),
             expires_at: None,
             custom: HashMap::new(),
         })
     }
-    
+
     /// Backward compatibility: alias for from_endpoint
     #[deprecated(note = "Use from_endpoint instead for clarity")]
     /// Create from endpoint (legacy wrapper)
@@ -519,7 +540,8 @@ impl SecurityCapabilityClient {
         let url = format!("{}/api/v1/lineage/current", self.adapter.endpoint());
         debug!("Querying security provider for current lineage: {}", url);
 
-        let response = self.http_client
+        let response = self
+            .http_client
             .get(&url)
             .send()
             .await
@@ -529,23 +551,24 @@ impl SecurityCapabilityClient {
             let status = response.status();
             let body = response.text().await.unwrap_or_default();
             warn!("Security provider lineage query returned {}: {}", status, body);
-            
+
             // If not found, return None (no lineage configured)
             if status.as_u16() == 404 {
                 return Ok(None);
             }
-            
+
             anyhow::bail!("Security provider returned error: {}", status);
         }
 
-        let lineage_info = response.json::<CurrentLineageInfo>()
+        let lineage_info = response
+            .json::<CurrentLineageInfo>()
             .await
             .context("Failed to parse security provider lineage response")?;
 
         info!("✅ Retrieved current lineage from security provider: {}", lineage_info.lineage_id);
         Ok(Some(lineage_info))
     }
-    
+
     /// Verify a peer's lineage proof
     ///
     /// Asks security provider to cryptographically verify the lineage proof.
@@ -557,7 +580,8 @@ impl SecurityCapabilityClient {
         let url = format!("{}/api/v1/lineage/verify", self.adapter.endpoint());
         debug!("Verifying lineage proof with security provider: {}", url);
 
-        let response = self.http_client
+        let response = self
+            .http_client
             .post(&url)
             .json(proof)
             .send()
@@ -568,8 +592,8 @@ impl SecurityCapabilityClient {
             let status = response.status();
             let body = response.text().await.unwrap_or_default();
             error!("Security provider lineage verification failed: {} - {}", status, body);
-            
-            // Return invalid verification result on error  
+
+            // Return invalid verification result on error
             // LineageId::new does not return Result - it just wraps the string
             let invalid_lineage = LineageId::new("error-invalid".to_string());
             return Ok(VerificationResult {
@@ -580,7 +604,8 @@ impl SecurityCapabilityClient {
             });
         }
 
-        let result = response.json::<VerificationResult>()
+        let result = response
+            .json::<VerificationResult>()
             .await
             .context("Failed to parse security provider verification response")?;
 
@@ -592,7 +617,7 @@ impl SecurityCapabilityClient {
 
         Ok(result)
     }
-    
+
     /// Check if two lineages are from the same genetic family
     ///
     /// Asks security provider to compare lineage origins.
@@ -621,7 +646,8 @@ impl SecurityCapabilityClient {
             lineage_b: lineage_b.to_string(),
         };
 
-        let response = self.http_client
+        let response = self
+            .http_client
             .post(&url)
             .json(&request)
             .send()
@@ -632,17 +658,21 @@ impl SecurityCapabilityClient {
             let status = response.status();
             let body = response.text().await.unwrap_or_default();
             warn!("Security provider family check failed: {} - {}", status, body);
-            
+
             // Conservative: assume different families on error
             return Ok(false);
         }
 
-        let result = response.json::<SameFamilyResponse>()
+        let result = response
+            .json::<SameFamilyResponse>()
             .await
             .context("Failed to parse security provider family check response")?;
 
         if result.same_family {
-            info!("✅ Lineages are from same genetic family (confidence: {:.2})", result.confidence);
+            info!(
+                "✅ Lineages are from same genetic family (confidence: {:.2})",
+                result.confidence
+            );
         } else {
             debug!("Different genetic families");
         }
@@ -663,12 +693,12 @@ pub struct IdentityResponse {
     /// Format: `{provider}:family:{family_id}:{node_id}` (provider-agnostic!)
     /// Example: `crypto-provider:family:a3f2:tower1`
     pub encryption_tag: String,
-    
+
     /// Security provider capabilities
     ///
     /// Example: `["identity", "encryption", "trust-evaluation"]`
     pub capabilities: Vec<String>,
-    
+
     /// Family ID (optional)
     ///
     /// Example: `ecoPrimals-20260101-a3f2`
@@ -684,23 +714,23 @@ pub struct IdentityResponse {
 pub struct TrustEvaluationRequest {
     /// Peer node ID
     pub peer_id: String,
-    
+
     /// Peer family ID (v3.14.1 - tag-based identity)
     ///
     /// Extracted from peer tags (e.g., "beardog:family:nat0" → "nat0")
     /// Songbird doesn't interpret this - just extracts and passes to security provider
     #[serde(skip_serializing_if = "Option::is_none")]
     pub peer_family: Option<String>,
-    
+
     /// Peer tags (includes security provider encryption tag if present)
     ///
     /// Example: `["crypto:family:a3f2", "encryption_enabled"]`
     pub peer_tags: Vec<String>,
-    
+
     /// Connection information (optional)
     #[serde(skip_serializing_if = "Option::is_none")]
     pub connection_info: Option<ConnectionInfo>,
-    
+
     /// Discovery context (optional, flattened HashMap for security provider compatibility)
     #[serde(skip_serializing_if = "Option::is_none")]
     pub context: Option<HashMap<String, String>>,
@@ -711,7 +741,7 @@ pub struct TrustEvaluationRequest {
 pub struct ConnectionInfo {
     /// Peer endpoint
     pub endpoint: String,
-    
+
     /// Protocol used
     pub protocol: String,
 }
@@ -721,10 +751,10 @@ pub struct ConnectionInfo {
 pub struct DiscoveryContext {
     /// How peer was discovered
     pub discovery_method: String,
-    
+
     /// When peer was first seen (Unix timestamp as string for JSON compatibility)
     pub first_seen_at: String,
-    
+
     /// Additional metadata
     #[serde(default)]
     pub metadata: std::collections::HashMap<String, String>,
@@ -737,20 +767,20 @@ pub struct DiscoveryContext {
 pub struct TrustEvaluationResponse {
     /// Decision: "auto_accept", "prompt_user", or "reject"
     pub decision: String,
-    
+
     /// Trust level: "high", "medium", "low", or "none"
     pub trust_level: String,
-    
+
     /// Confidence score (0.0-1.0)
     pub confidence: f64,
-    
+
     /// Human-readable reason
     pub reason: String,
-    
+
     /// Encryption tag for establishing secure connection
     #[serde(skip_serializing_if = "Option::is_none")]
     pub encryption_tag: Option<String>,
-    
+
     /// Additional metadata
     #[serde(default)]
     pub metadata: HashMap<String, String>,
@@ -814,7 +844,7 @@ mod tests {
             encryption_tag: Some("crypto-provider:family:a3f2".to_string()),
             metadata: HashMap::new(),
         };
-        
+
         assert!(auto_accept.is_auto_accept());
         assert!(!auto_accept.requires_prompt());
         assert!(!auto_accept.is_reject());
@@ -827,7 +857,7 @@ mod tests {
             encryption_tag: None,
             metadata: HashMap::new(),
         };
-        
+
         assert!(!prompt.is_auto_accept());
         assert!(prompt.requires_prompt());
         assert!(!prompt.is_reject());
@@ -840,7 +870,7 @@ mod tests {
             encryption_tag: None,
             metadata: HashMap::new(),
         };
-        
+
         assert!(!reject.is_auto_accept());
         assert!(!reject.requires_prompt());
         assert!(reject.is_reject());
@@ -867,7 +897,7 @@ mod tests {
         let mut context = HashMap::new();
         context.insert("discovery_method".to_string(), "udp_multicast".to_string());
         context.insert("first_seen_at".to_string(), "2024-01-01T12:00:00Z".to_string());
-        
+
         let request = TrustEvaluationRequest {
             peer_id: "tower2".to_string(),
             peer_family: Some("a3f2".to_string()), // Extracted from tags
@@ -886,4 +916,3 @@ mod tests {
         assert_eq!(request.peer_tags, deserialized.peer_tags);
     }
 }
-

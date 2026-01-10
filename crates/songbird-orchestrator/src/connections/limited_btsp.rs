@@ -51,19 +51,19 @@ use tracing::{debug, info, warn};
 pub struct LimitedBtspConnection {
     /// Peer node ID
     peer_id: String,
-    
+
     /// BTSP tunnel ID (managed by security provider)
     tunnel_id: Arc<RwLock<String>>,
-    
+
     /// BTSP client (protocol-agnostic: tarpc/JSON-RPC/HTTP)
     btsp_client: Arc<BtspClient>,
-    
+
     /// Allowed capabilities for Level 1 trust
     allowed_capabilities: Vec<String>,
-    
+
     /// Denied capabilities (explicit deny overrides allow)
     denied_capabilities: Vec<String>,
-    
+
     /// Connection metadata
     established_at: SystemTime,
 }
@@ -100,7 +100,7 @@ impl LimitedBtspConnection {
     /// # use std::sync::Arc;
     /// # async fn example() -> anyhow::Result<()> {
     /// let btsp_client = Arc::new(BtspClient::new("unix:///var/run/security.sock")?);
-    /// 
+    ///
     /// let conn = LimitedBtspConnection::new(
     ///     "tower2".to_string(),
     ///     vec!["btsp_enabled".to_string()],
@@ -118,17 +118,19 @@ impl LimitedBtspConnection {
     ) -> Result<Self> {
         info!("🔐 Creating BTSP Limited connection to peer '{}'", peer_id);
         debug!("   Peer tags: {:?}", peer_tags);
-        
+
         // Create tunnel request with automatic NAT traversal via lineage
         let tunnel_request = songbird_universal::btsp_types::BtspTunnelRequest::new(&peer_id)
             .with_tunnel_type(songbird_universal::btsp_types::TunnelType::Auto);
-        
+
         // Establish tunnel via security provider
-        let tunnel = btsp_client.establish_tunnel(tunnel_request).await
+        let tunnel = btsp_client
+            .establish_tunnel(tunnel_request)
+            .await
             .context(format!("Failed to establish BTSP tunnel to peer '{}'", peer_id))?;
-        
+
         info!("✅ BTSP tunnel established: {} (state: {:?})", tunnel.tunnel_id, tunnel.state);
-        
+
         Ok(Self {
             peer_id: peer_id.clone(),
             tunnel_id: Arc::new(RwLock::new(tunnel.tunnel_id)),
@@ -138,7 +140,7 @@ impl LimitedBtspConnection {
             established_at: SystemTime::now(),
         })
     }
-    
+
     /// Create with default Level 1 capabilities
     ///
     /// Convenience constructor using standard Limited trust level capabilities.
@@ -152,16 +154,17 @@ impl LimitedBtspConnection {
             peer_tags,
             btsp_client,
             TrustLevel::Limited.default_allowed_capabilities(),
-        ).await
+        )
+        .await
     }
-    
+
     /// Send RPC call over BTSP tunnel
     ///
     /// Serializes JSON-RPC 2.0 request and sends over encrypted tunnel.
     /// This is the core communication method for all operations.
     async fn send_rpc(&self, operation: &str, request: Value) -> Result<Value> {
         let tunnel_id = self.tunnel_id.read().await.clone();
-        
+
         // Create JSON-RPC 2.0 request
         let rpc_request = serde_json::json!({
             "jsonrpc": "2.0",
@@ -169,21 +172,21 @@ impl LimitedBtspConnection {
             "params": request,
             "id": uuid::Uuid::new_v4().to_string(),
         });
-        
+
         debug!("📡 Sending RPC over BTSP tunnel {}: {}", tunnel_id, operation);
-        
+
         // Serialize request
-        let request_bytes = serde_json::to_vec(&rpc_request)
-            .context("Failed to serialize RPC request")?;
-        
+        let request_bytes =
+            serde_json::to_vec(&rpc_request).context("Failed to serialize RPC request")?;
+
         // Send over tunnel
         // NOTE: In v3.18.0, send_data_over_tunnel is not yet implemented in BtspClient
         // This is a deep debt that requires BearDog v0.16.0+
         // For now, we'll document this as a TODO for Phase 2
-        
+
         // TODO(v3.18.1): Implement bidirectional BTSP communication
         // self.btsp_client.send_data_over_tunnel(&tunnel_id, &request_bytes).await?;
-        
+
         // For v3.18.0, return error indicating feature not yet implemented
         Err(anyhow!(
             "BTSP bidirectional communication not yet implemented. \
@@ -192,12 +195,10 @@ impl LimitedBtspConnection {
              See BTSP_CONNECTION_EVOLUTION_V3_18_0.md for roadmap."
         ))
     }
-    
+
     /// Get connection uptime
     pub fn uptime(&self) -> std::time::Duration {
-        SystemTime::now()
-            .duration_since(self.established_at)
-            .unwrap_or_default()
+        SystemTime::now().duration_since(self.established_at).unwrap_or_default()
     }
 }
 
@@ -206,23 +207,19 @@ impl PeerConnection for LimitedBtspConnection {
     fn trust_level(&self) -> TrustLevel {
         TrustLevel::Limited
     }
-    
+
     fn allowed_capabilities(&self) -> &[String] {
         &self.allowed_capabilities
     }
-    
+
     fn denied_capabilities(&self) -> &[String] {
         &self.denied_capabilities
     }
-    
+
     fn is_operation_allowed(&self, operation: &str) -> bool {
-        check_operation_allowed(
-            operation,
-            &self.allowed_capabilities,
-            &self.denied_capabilities,
-        )
+        check_operation_allowed(operation, &self.allowed_capabilities, &self.denied_capabilities)
     }
-    
+
     async fn call(&self, operation: &str, request: Value) -> Result<Value> {
         // Enforce capability restrictions
         if !self.is_operation_allowed(operation) {
@@ -238,35 +235,36 @@ impl PeerConnection for LimitedBtspConnection {
                 self.allowed_capabilities
             ));
         }
-        
+
         debug!(
             "🔐 Calling limited operation '{}' on peer '{}' via BTSP tunnel",
             operation, self.peer_id
         );
-        
+
         // Send RPC over BTSP tunnel
         self.send_rpc(operation, request).await
     }
-    
+
     fn peer_id(&self) -> &str {
         &self.peer_id
     }
-    
+
     fn endpoint(&self) -> &str {
         // BTSP connections don't have traditional endpoints (no URLs, no ports)
         // Return descriptive string for observability
         "btsp://<encrypted-tunnel>"
     }
-    
+
     async fn close(&self) -> Result<()> {
         let tunnel_id = self.tunnel_id.read().await.clone();
-        info!("🔌 Closing BTSP Limited connection to peer '{}' (tunnel: {})", 
-              self.peer_id, tunnel_id);
-        
+        info!(
+            "🔌 Closing BTSP Limited connection to peer '{}' (tunnel: {})",
+            self.peer_id, tunnel_id
+        );
+
         // Close tunnel via security provider
-        self.btsp_client.close_tunnel(&tunnel_id).await
-            .context("Failed to close BTSP tunnel")?;
-        
+        self.btsp_client.close_tunnel(&tunnel_id).await.context("Failed to close BTSP tunnel")?;
+
         info!("✅ BTSP tunnel closed: {}", tunnel_id);
         Ok(())
     }
@@ -278,16 +276,15 @@ impl Drop for LimitedBtspConnection {
         // Spawn cleanup task (Drop is sync, but close_tunnel is async)
         // Note: This is a "best effort" cleanup. The tunnel will be closed
         // eventually by the security provider's timeout mechanism if this fails.
-        
+
         let tunnel_id = self.tunnel_id.clone();
         let btsp_client = Arc::clone(&self.btsp_client);
         let peer_id = self.peer_id.clone();
-        
+
         tokio::spawn(async move {
             let id = tunnel_id.read().await.clone();
             if let Err(e) = btsp_client.close_tunnel(&id).await {
-                warn!("⚠️ Failed to close BTSP tunnel for peer '{}' during drop: {}", 
-                      peer_id, e);
+                warn!("⚠️ Failed to close BTSP tunnel for peer '{}' during drop: {}", peer_id, e);
             } else {
                 debug!("✅ BTSP tunnel cleanup complete for peer '{}'", peer_id);
             }
@@ -304,7 +301,7 @@ mod tests {
         // Capability checking doesn't require async or BTSP client
         let allowed = TrustLevel::Limited.default_allowed_capabilities();
         let denied = TrustLevel::Limited.default_denied_capabilities();
-        
+
         assert!(check_operation_allowed("birdsong/sync", &allowed, &denied));
         assert!(check_operation_allowed("coordination/state", &allowed, &denied));
         assert!(check_operation_allowed("health", &allowed, &denied));
@@ -315,7 +312,7 @@ mod tests {
     fn test_limited_denies_data() {
         let allowed = TrustLevel::Limited.default_allowed_capabilities();
         let denied = TrustLevel::Limited.default_denied_capabilities();
-        
+
         assert!(!check_operation_allowed("data/read", &allowed, &denied));
         assert!(!check_operation_allowed("data/write", &allowed, &denied));
         assert!(!check_operation_allowed("commands/exec", &allowed, &denied));
@@ -327,18 +324,19 @@ mod tests {
     async fn test_btsp_connection_creation() {
         // Test connection creation (will fail without real security provider)
         // This validates the API, not the end-to-end flow
-        
+
         let btsp_client = Arc::new(
             BtspClient::new("unix:///nonexistent.sock")
-                .expect("BtspClient creation should succeed")
+                .expect("BtspClient creation should succeed"),
         );
-        
+
         let result = LimitedBtspConnection::with_defaults(
             "test_peer".to_string(),
             vec!["btsp_enabled".to_string()],
             btsp_client,
-        ).await;
-        
+        )
+        .await;
+
         // Should fail (no real security provider), but validates API
         assert!(result.is_err());
         assert!(format!("{:?}", result).contains("Failed to establish BTSP tunnel"));
@@ -348,7 +346,7 @@ mod tests {
     async fn test_endpoint_shows_btsp() {
         // LimitedBtspConnection doesn't have traditional HTTP endpoints
         // It should return a descriptive BTSP indicator
-        
+
         // We can't create a real connection without a security provider,
         // but we can test the pattern is correct by checking the trait contract
         let allowed = TrustLevel::Limited.default_allowed_capabilities();
@@ -360,10 +358,9 @@ mod tests {
         // Trust level is constant, no async needed
         let allowed = TrustLevel::Limited.default_allowed_capabilities();
         let denied = TrustLevel::Limited.default_denied_capabilities();
-        
+
         // Verify Level 1 capabilities are defined
         assert!(!allowed.is_empty(), "Limited trust should allow some operations");
         assert!(!denied.is_empty(), "Limited trust should deny some operations");
     }
 }
-

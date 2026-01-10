@@ -7,14 +7,9 @@ use songbird_orchestrator::trust::peer_trust::{DiscoveredPeer, PeerTrustDecision
 /// Property: All peer IDs should be non-empty
 #[test]
 fn prop_peer_id_non_empty() {
-    let test_cases = vec![
-        "tower1",
-        "tower-2",
-        "TOWER_3",
-        "t",
-        "very-long-tower-name-with-many-characters",
-    ];
-    
+    let test_cases =
+        vec!["tower1", "tower-2", "TOWER_3", "t", "very-long-tower-name-with-many-characters"];
+
     for peer_id in test_cases {
         let peer = DiscoveredPeer {
             node_id: peer_id.to_string(),
@@ -22,10 +17,10 @@ fn prop_peer_id_non_empty() {
             endpoint: "https://localhost:8080".to_string(),
             discovery_method: "udp_multicast".to_string(),
             first_seen_at: 1704196800,
-        capabilities: vec![],
-        identity_attestations: vec![],
+            capabilities: vec![],
+            identity_attestations: vec![],
         };
-        
+
         assert!(!peer.node_id.is_empty(), "Peer ID should never be empty");
     }
 }
@@ -34,16 +29,19 @@ fn prop_peer_id_non_empty() {
 #[test]
 fn prop_confidence_in_range() {
     let confidences = vec![0.0, 0.1, 0.5, 0.9, 1.0];
-    
+
     for confidence in confidences {
         let decision = PeerTrustDecision::AutoAccept {
             reason: "test".to_string(),
             confidence,
             encryption_tag: None,
         };
-        
+
         match decision {
-            PeerTrustDecision::AutoAccept { confidence: c, .. } => {
+            PeerTrustDecision::AutoAccept {
+                confidence: c,
+                ..
+            } => {
                 assert!(c >= 0.0 && c <= 1.0, "Confidence must be in [0.0, 1.0]");
             }
             _ => panic!("Expected AutoAccept"),
@@ -56,7 +54,7 @@ fn prop_confidence_in_range() {
 fn prop_tags_order_independent() {
     let tags1 = vec!["tag1".to_string(), "tag2".to_string(), "tag3".to_string()];
     let tags2 = vec!["tag3".to_string(), "tag1".to_string(), "tag2".to_string()];
-    
+
     let peer1 = DiscoveredPeer {
         node_id: "tower1".to_string(),
         tags: tags1.clone(),
@@ -66,7 +64,7 @@ fn prop_tags_order_independent() {
         capabilities: vec![],
         identity_attestations: vec![],
     };
-    
+
     let peer2 = DiscoveredPeer {
         node_id: "tower1".to_string(),
         tags: tags2.clone(),
@@ -76,7 +74,7 @@ fn prop_tags_order_independent() {
         capabilities: vec![],
         identity_attestations: vec![],
     };
-    
+
     // Both peers have the same tags, just in different order
     assert_eq!(peer1.node_id, peer2.node_id);
     let mut sorted1 = peer1.tags.clone();
@@ -98,7 +96,7 @@ fn prop_empty_tags_valid() {
         capabilities: vec![],
         identity_attestations: vec![],
     };
-    
+
     assert!(peer.tags.is_empty());
     // Empty tags is valid - means no security provider configured
 }
@@ -107,7 +105,7 @@ fn prop_empty_tags_valid() {
 #[test]
 fn prop_timestamp_monotonic() {
     let mut timestamps = vec![];
-    
+
     for i in 0..10 {
         let peer = DiscoveredPeer {
             node_id: format!("tower{}", i),
@@ -118,10 +116,10 @@ fn prop_timestamp_monotonic() {
             capabilities: vec![],
             identity_attestations: vec![],
         };
-        
+
         timestamps.push(peer.first_seen_at);
     }
-    
+
     // Timestamps should be in ascending order
     for window in timestamps.windows(2) {
         assert!(window[0] <= window[1], "Timestamps should be monotonic");
@@ -131,14 +129,8 @@ fn prop_timestamp_monotonic() {
 /// Property: Different discovery methods are all valid
 #[test]
 fn prop_discovery_methods_valid() {
-    let methods = vec![
-        "udp_multicast",
-        "udp_broadcast",
-        "mdns",
-        "manual",
-        "api",
-    ];
-    
+    let methods = vec!["udp_multicast", "udp_broadcast", "mdns", "manual", "api"];
+
     for method in methods {
         let peer = DiscoveredPeer {
             node_id: "tower1".to_string(),
@@ -146,10 +138,10 @@ fn prop_discovery_methods_valid() {
             endpoint: "https://localhost:8080".to_string(),
             discovery_method: method.to_string(),
             first_seen_at: 1704196800,
-        capabilities: vec![],
-        identity_attestations: vec![],
+            capabilities: vec![],
+            identity_attestations: vec![],
         };
-        
+
         assert!(!peer.discovery_method.is_empty());
     }
 }
@@ -163,7 +155,7 @@ fn prop_endpoint_url_format() {
         "https://example.com:443",
         "http://[::1]:8080", // IPv6
     ];
-    
+
     for endpoint in endpoints {
         let peer = DiscoveredPeer {
             node_id: "tower1".to_string(),
@@ -171,10 +163,10 @@ fn prop_endpoint_url_format() {
             endpoint: endpoint.to_string(),
             discovery_method: "udp_multicast".to_string(),
             first_seen_at: 1704196800,
-        capabilities: vec![],
-        identity_attestations: vec![],
+            capabilities: vec![],
+            identity_attestations: vec![],
         };
-        
+
         assert!(peer.endpoint.contains("://"), "Endpoint should look like a URL");
     }
 }
@@ -187,15 +179,23 @@ fn prop_trust_decision_immutable() {
         confidence: 1.0,
         encryption_tag: Some("tag".to_string()),
     };
-    
+
     // Clone the decision
     let decision_clone = decision.clone();
-    
+
     // Both should be identical
     match (decision, decision_clone) {
         (
-            PeerTrustDecision::AutoAccept { reason: r1, confidence: c1, .. },
-            PeerTrustDecision::AutoAccept { reason: r2, confidence: c2, .. },
+            PeerTrustDecision::AutoAccept {
+                reason: r1,
+                confidence: c1,
+                ..
+            },
+            PeerTrustDecision::AutoAccept {
+                reason: r2,
+                confidence: c2,
+                ..
+            },
         ) => {
             assert_eq!(r1, r2);
             assert_eq!(c1, c2);
@@ -210,10 +210,10 @@ fn prop_tags_utf8() {
     let tags = vec![
         "beardog:family:iidn:tower1".to_string(),
         "日本語タグ".to_string(), // Japanese
-        "тег".to_string(), // Cyrillic
-        "🔒🔑".to_string(), // Emojis
+        "тег".to_string(),        // Cyrillic
+        "🔒🔑".to_string(),       // Emojis
     ];
-    
+
     let peer = DiscoveredPeer {
         node_id: "tower1".to_string(),
         tags: tags.clone(),
@@ -223,7 +223,7 @@ fn prop_tags_utf8() {
         capabilities: vec![],
         identity_attestations: vec![],
     };
-    
+
     assert_eq!(peer.tags.len(), 4);
     // All UTF-8 strings should be preserved
 }
@@ -240,7 +240,7 @@ fn prop_no_tags_no_auto_accept() {
         capabilities: vec![],
         identity_attestations: vec![],
     };
-    
+
     // In production, this should be rejected
     // (unless no security provider is configured - development mode)
     assert!(peer.tags.is_empty());
@@ -258,7 +258,7 @@ fn prop_rediscovery_updates_timestamp() {
         capabilities: vec![],
         identity_attestations: vec![],
     };
-    
+
     let second_discovery = DiscoveredPeer {
         node_id: "tower1".to_string(),
         tags: vec!["tag1".to_string()],
@@ -268,7 +268,7 @@ fn prop_rediscovery_updates_timestamp() {
         capabilities: vec![],
         identity_attestations: vec![],
     };
-    
+
     assert_eq!(first_discovery.node_id, second_discovery.node_id);
     assert!(second_discovery.first_seen_at > first_discovery.first_seen_at);
 }
@@ -281,9 +281,13 @@ fn prop_zero_confidence_uncertain() {
         confidence: 0.0,
         encryption_tag: None,
     };
-    
+
     match decision {
-        PeerTrustDecision::AutoAccept { confidence, reason, .. } => {
+        PeerTrustDecision::AutoAccept {
+            confidence,
+            reason,
+            ..
+        } => {
             if confidence == 0.0 {
                 // Zero confidence should have a reason explaining why
                 assert!(!reason.is_empty());
@@ -306,7 +310,7 @@ fn prop_tags_dont_affect_identity() {
         capabilities: vec![],
         identity_attestations: vec![],
     };
-    
+
     let peer_many_tags = DiscoveredPeer {
         node_id: "tower1".to_string(),
         tags: vec!["tag1".to_string(), "tag2".to_string(), "tag3".to_string()],
@@ -316,7 +320,7 @@ fn prop_tags_dont_affect_identity() {
         capabilities: vec![],
         identity_attestations: vec![],
     };
-    
+
     // Same node_id = same identity, regardless of tags
     assert_eq!(peer_no_tags.node_id, peer_many_tags.node_id);
 }
@@ -333,7 +337,7 @@ fn prop_endpoint_change_same_identity() {
         capabilities: vec![],
         identity_attestations: vec![],
     };
-    
+
     let peer_wifi = DiscoveredPeer {
         node_id: "tower1".to_string(),
         tags: vec![],
@@ -343,8 +347,7 @@ fn prop_endpoint_change_same_identity() {
         capabilities: vec![],
         identity_attestations: vec![],
     };
-    
+
     // Same node_id = same tower, even if discovered on different interfaces
     assert_eq!(peer_ethernet.node_id, peer_wifi.node_id);
 }
-

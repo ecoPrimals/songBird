@@ -5,11 +5,11 @@
 //! - Recovery scenarios
 //! - Graceful degradation
 
-use songbird_orchestrator::trust::{
-    UniversalTrustRequest, UniversalTrustResponse, UniversalIdentityAttestation,
-    UniversalTrustDecision,
-};
 use serde_json::json;
+use songbird_orchestrator::trust::{
+    UniversalIdentityAttestation, UniversalTrustDecision, UniversalTrustRequest,
+    UniversalTrustResponse,
+};
 
 /// Test: Partial attestation failure
 #[test]
@@ -22,9 +22,9 @@ fn fault_partial_attestation_failure() {
             data: json!(null),
         },
     ];
-    
+
     let request = UniversalTrustRequest::new("tower1", attestations);
-    
+
     // Should handle partial failure gracefully
     assert_eq!(request.evaluator.attestations.len(), 2);
     // Provider should evaluate based on valid attestations
@@ -40,9 +40,9 @@ fn fault_serialization_failure_recovery() {
             provider: None,
             format: "test".to_string(),
             data: json!({"nested": {"very": {"deeply": {"nested": "value"}}}}),
-        }]
+        }],
     );
-    
+
     // Should serialize successfully
     let result = serde_json::to_string(&request);
     assert!(result.is_ok());
@@ -58,10 +58,10 @@ fn fault_missing_optional_fields() {
         "reason": "test",
         "reason_code": "test"
     }"#;
-    
-    let response: UniversalTrustResponse = serde_json::from_str(json)
-        .expect("Should parse with missing optional fields");
-    
+
+    let response: UniversalTrustResponse =
+        serde_json::from_str(json).expect("Should parse with missing optional fields");
+
     assert!(response.metadata.is_empty());
     assert!(response.expires_at.is_none());
 }
@@ -70,7 +70,7 @@ fn fault_missing_optional_fields() {
 #[test]
 fn fault_confidence_boundaries() {
     let confidences = vec![0.0, 0.0001, 0.5, 0.9999, 1.0];
-    
+
     for conf in confidences {
         let response = UniversalTrustResponse {
             response_format: "universal_trust_v1".to_string(),
@@ -82,7 +82,7 @@ fn fault_confidence_boundaries() {
             expires_at: None,
             custom: Default::default(),
         };
-        
+
         assert_eq!(response.confidence, conf);
     }
 }
@@ -90,9 +90,8 @@ fn fault_confidence_boundaries() {
 /// Test: Empty capabilities list
 #[test]
 fn fault_empty_capabilities() {
-    let request = UniversalTrustRequest::new("tower1", vec![])
-        .with_capabilities(vec![]);
-    
+    let request = UniversalTrustRequest::new("tower1", vec![]).with_capabilities(vec![]);
+
     assert_eq!(request.context.capabilities.len(), 0);
 }
 
@@ -101,7 +100,7 @@ fn fault_empty_capabilities() {
 fn fault_empty_tags_attestation() {
     let attestation = UniversalIdentityAttestation::tag_list(vec![]);
     let request = UniversalTrustRequest::new("tower1", vec![attestation]);
-    
+
     assert_eq!(request.evaluator.attestations.len(), 1);
 }
 
@@ -120,7 +119,7 @@ fn fault_multiple_empty_attestations() {
             data: json!(null),
         },
     ];
-    
+
     let request = UniversalTrustRequest::new("tower1", attestations);
     assert_eq!(request.evaluator.attestations.len(), 2);
 }
@@ -131,7 +130,7 @@ fn fault_empty_metadata_keys() {
     let mut metadata = std::collections::HashMap::new();
     metadata.insert(String::new(), json!("value"));
     metadata.insert("key".to_string(), json!(String::new()));
-    
+
     let response = UniversalTrustResponse {
         response_format: "universal_trust_v1".to_string(),
         decision: UniversalTrustDecision::PromptUser,
@@ -142,7 +141,7 @@ fn fault_empty_metadata_keys() {
         expires_at: None,
         custom: Default::default(),
     };
-    
+
     assert_eq!(response.metadata.len(), 2);
 }
 
@@ -157,9 +156,9 @@ fn fault_attestation_format_mismatch() {
             "not_tags": "wrong_field"
         }),
     };
-    
+
     let request = UniversalTrustRequest::new("tower1", vec![attestation]);
-    
+
     // Should create request (provider validates format)
     assert_eq!(request.evaluator.attestations.len(), 1);
 }
@@ -168,7 +167,7 @@ fn fault_attestation_format_mismatch() {
 #[test]
 fn fault_very_short_peer_ids() {
     let short_ids = vec!["a", "1", "x", ""];
-    
+
     for id in short_ids {
         let request = UniversalTrustRequest::new(id, vec![]);
         assert_eq!(request.evaluator.peer_id, id);
@@ -181,7 +180,7 @@ fn fault_whitespace_only_strings() {
     let request = UniversalTrustRequest::new("   ", vec![])
         .with_endpoint("  \t\n  ")
         .with_discovery_method(" ");
-    
+
     assert_eq!(request.evaluator.peer_id, "   ");
     assert!(request.context.endpoint.trim().is_empty());
 }
@@ -197,10 +196,10 @@ fn fault_mixed_case_decision() {
         "reason": "test",
         "reason_code": "test"
     }"#;
-    
-    let response: UniversalTrustResponse = serde_json::from_str(lowercase_json)
-        .expect("Should parse lowercase");
-    
+
+    let response: UniversalTrustResponse =
+        serde_json::from_str(lowercase_json).expect("Should parse lowercase");
+
     assert!(response.is_auto_accept());
 }
 
@@ -208,17 +207,17 @@ fn fault_mixed_case_decision() {
 #[test]
 fn fault_various_timestamp_formats() {
     let timestamps = vec![
-        "2026-01-03T12:00:00Z",           // ISO 8601
-        "1704196800",                      // Unix timestamp as string
-        "2026-01-03 12:00:00",             // Space-separated
-        "invalid timestamp",               // Invalid
-        "",                                // Empty
+        "2026-01-03T12:00:00Z", // ISO 8601
+        "1704196800",           // Unix timestamp as string
+        "2026-01-03 12:00:00",  // Space-separated
+        "invalid timestamp",    // Invalid
+        "",                     // Empty
     ];
-    
+
     for ts in timestamps {
         let mut request = UniversalTrustRequest::new("tower1", vec![]);
         request.context.first_seen_at = ts.to_string();
-        
+
         // Should accept any string (validation is application logic)
         assert_eq!(request.context.first_seen_at, ts);
     }
@@ -240,13 +239,13 @@ fn fault_deeply_nested_data() {
             }
         }
     });
-    
+
     let attestation = UniversalIdentityAttestation {
         provider: None,
         format: "nested".to_string(),
         data: deep_data,
     };
-    
+
     let request = UniversalTrustRequest::new("tower1", vec![attestation]);
     assert_eq!(request.evaluator.attestations.len(), 1);
 }
@@ -264,7 +263,7 @@ fn fault_future_expiration() {
         expires_at: Some("9999-12-31T23:59:59Z".to_string()),
         custom: Default::default(),
     };
-    
+
     assert!(response.expires_at.is_some());
 }
 
@@ -278,7 +277,7 @@ fn fault_array_of_nulls() {
             "tags": [null, null, null]
         }),
     };
-    
+
     let request = UniversalTrustRequest::new("tower1", vec![attestation]);
     assert_eq!(request.evaluator.attestations.len(), 1);
 }
@@ -290,7 +289,7 @@ fn fault_all_empty_fields() {
         .with_endpoint("")
         .with_discovery_method("")
         .with_capabilities(vec![]);
-    
+
     assert_eq!(request.evaluator.peer_id, "");
     assert_eq!(request.evaluator.attestations.len(), 0);
     assert_eq!(request.context.endpoint, "");
@@ -303,14 +302,14 @@ fn fault_decision_consistency_check() {
     let response = UniversalTrustResponse {
         response_format: "universal_trust_v1".to_string(),
         decision: UniversalTrustDecision::Reject,
-        confidence: 1.0,  // High confidence in rejection
+        confidence: 1.0, // High confidence in rejection
         reason: "Known malicious".to_string(),
         reason_code: "malicious".to_string(),
         metadata: Default::default(),
         expires_at: None,
         custom: Default::default(),
     };
-    
+
     assert!(response.is_reject());
     assert_eq!(response.confidence, 1.0);
 }
@@ -320,8 +319,8 @@ fn fault_decision_consistency_check() {
 fn fault_duplicate_metadata_keys() {
     let mut metadata = std::collections::HashMap::new();
     metadata.insert("key".to_string(), json!("value1"));
-    metadata.insert("key".to_string(), json!("value2"));  // Overwrites
-    
+    metadata.insert("key".to_string(), json!("value2")); // Overwrites
+
     let response = UniversalTrustResponse {
         response_format: "universal_trust_v1".to_string(),
         decision: UniversalTrustDecision::AutoAccept,
@@ -332,7 +331,7 @@ fn fault_duplicate_metadata_keys() {
         expires_at: None,
         custom: Default::default(),
     };
-    
+
     // HashMap should only have one entry
     assert_eq!(response.metadata.len(), 1);
     assert_eq!(response.metadata.get("key"), Some(&json!("value2")));
@@ -341,9 +340,8 @@ fn fault_duplicate_metadata_keys() {
 /// Test: Zero-length arrays in various fields
 #[test]
 fn fault_zero_length_arrays() {
-    let request = UniversalTrustRequest::new("tower1", vec![])
-        .with_capabilities(vec![]);
-    
+    let request = UniversalTrustRequest::new("tower1", vec![]).with_capabilities(vec![]);
+
     assert_eq!(request.evaluator.attestations.len(), 0);
     assert_eq!(request.context.capabilities.len(), 0);
 }
@@ -356,16 +354,15 @@ fn fault_complex_reference_structure() {
         format: "format1".to_string(),
         data: json!({"ref": "attestation2"}),
     };
-    
+
     let attestation2 = UniversalIdentityAttestation {
         provider: Some("provider2".to_string()),
         format: "format2".to_string(),
         data: json!({"ref": "attestation1"}),
     };
-    
+
     let request = UniversalTrustRequest::new("tower1", vec![attestation1, attestation2]);
-    
+
     // Should handle without issue
     assert_eq!(request.evaluator.attestations.len(), 2);
 }
-

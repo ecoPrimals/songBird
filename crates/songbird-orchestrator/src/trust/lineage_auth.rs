@@ -24,7 +24,7 @@ pub enum PeerAcceptanceDecision {
         /// Confidence level (0.0-1.0)
         confidence: f64,
     },
-    
+
     /// Prompt user for decision (different or unknown lineage)
     PromptUser {
         /// Peer information for user review
@@ -34,7 +34,7 @@ pub enum PeerAcceptanceDecision {
         /// Recommended action
         recommendation: UserRecommendation,
     },
-    
+
     /// Reject peer (invalid proof or security concern)
     Reject {
         /// Reason for rejection
@@ -52,16 +52,16 @@ pub enum LineageStatus {
         lineage_id: LineageId,
         genesis_timestamp: u64,
     },
-    
+
     /// Different genesis - separate lineage family
     DifferentGenesis {
         their_lineage: LineageId,
         our_lineage: LineageId,
     },
-    
+
     /// Unknown lineage - peer has no lineage information
     UnknownLineage,
-    
+
     /// Invalid proof - cryptographic verification failed
     InvalidProof {
         error: String,
@@ -109,13 +109,13 @@ pub struct PeerInfo {
 pub struct LineageAuthenticator {
     /// Security capability client for lineage verification
     security_client: Option<SecurityCapabilityClient>,
-    
+
     /// Our local lineage (if available)
     local_lineage: Option<LineageId>,
-    
+
     /// Cache of verified lineages
     verification_cache: std::collections::HashMap<String, CachedVerification>,
-    
+
     /// Cache TTL
     cache_ttl: std::time::Duration,
 }
@@ -149,9 +149,9 @@ impl BearDogClient {
     pub async fn verify_lineage(&self, proof: &LineageProof) -> Result<VerificationResult> {
         // TODO: Call actual security provider API when Phase 1.5 is ready
         // For now, implement graceful fallback
-        
+
         info!("🔍 Verifying lineage proof via security provider (mock implementation)");
-        
+
         // Mock verification - always succeeds for development
         // In production, this will call POST /api/v1/lineage/verify
         Ok(VerificationResult {
@@ -166,7 +166,7 @@ impl BearDogClient {
     pub async fn same_family(&self, lineage_a: &LineageId, lineage_b: &LineageId) -> Result<bool> {
         // TODO: Call actual security provider API when Phase 1.5 is ready
         // For now, compare tower IDs as a heuristic
-        
+
         Ok(lineage_a.tower_id() == lineage_b.tower_id())
     }
 
@@ -174,7 +174,7 @@ impl BearDogClient {
     pub async fn get_current_lineage(&self) -> Result<Option<CurrentLineageInfo>> {
         // TODO: Call actual security provider API when Phase 1.5 is ready
         // For now, return None (graceful degradation)
-        
+
         Ok(None)
     }
 }
@@ -209,10 +209,13 @@ impl LineageAuthenticator {
 
     /// Initialize with security capability client
     pub async fn initialize(&mut self, security_endpoint: &str) -> Result<()> {
-        info!("🔐 Initializing lineage authenticator with security provider: {}", security_endpoint);
-        
+        info!(
+            "🔐 Initializing lineage authenticator with security provider: {}",
+            security_endpoint
+        );
+
         let client = SecurityCapabilityClient::from_endpoint(security_endpoint)?;
-        
+
         // Try to get our local lineage
         if let Ok(Some(lineage_info)) = client.get_current_lineage().await {
             self.local_lineage = Some(lineage_info.lineage_id.clone());
@@ -220,9 +223,9 @@ impl LineageAuthenticator {
         } else {
             warn!("⚠️ No genetic lineage found - will prompt for all peers");
         }
-        
+
         self.security_client = Some(client);
-        
+
         Ok(())
     }
 
@@ -265,12 +268,14 @@ impl LineageAuthenticator {
         }
 
         // Verify lineage proof with security provider
-        let security = self.security_client.as_ref()
-            .context("Security provider client not initialized")?;
-        
-        let verification = security.verify_lineage(proof).await
+        let security =
+            self.security_client.as_ref().context("Security provider client not initialized")?;
+
+        let verification = security
+            .verify_lineage(proof)
+            .await
             .context("Failed to verify lineage with security provider")?;
-        
+
         if !verification.valid {
             warn!("❌ Invalid lineage proof from peer {}", peer_node_id);
             return Ok(PeerAcceptanceDecision::Reject {
@@ -283,10 +288,10 @@ impl LineageAuthenticator {
         let our_lineage_clone = self.local_lineage.clone();
         if let Some(our_lineage) = &our_lineage_clone {
             let same_family = security.same_family(our_lineage, lineage).await?;
-            
+
             // Cache the verification AFTER all security provider operations
             self.cache_verification(peer_node_id, verification.valid, same_family);
-            
+
             if same_family {
                 info!("✅ Auto-accepting peer {} - same genetic family", peer_node_id);
                 return Ok(PeerAcceptanceDecision::AutoAccept {
@@ -381,15 +386,18 @@ mod tests {
     #[tokio::test]
     async fn test_peer_without_lineage_prompts_user() {
         let mut auth = LineageAuthenticator::new();
-        
-        let decision = auth.evaluate_peer(
-            "peer-1",
-            "http://192.168.1.100:8080",
-            &["compute".to_string()],
-            None,
-            None,
-        ).await.unwrap();
-        
+
+        let decision = auth
+            .evaluate_peer(
+                "peer-1",
+                "http://192.168.1.100:8080",
+                &["compute".to_string()],
+                None,
+                None,
+            )
+            .await
+            .unwrap();
+
         assert!(matches!(decision, PeerAcceptanceDecision::PromptUser { .. }));
     }
 
@@ -399,4 +407,3 @@ mod tests {
         assert_ne!(RejectionSeverity::Low, RejectionSeverity::High);
     }
 }
-

@@ -58,7 +58,7 @@ impl ProcessManager {
     pub fn new() -> Result<Self> {
         let pid_file = Self::default_pid_file()?;
         let node_identity = Self::get_node_identity();
-        
+
         Ok(Self {
             pid_file,
             node_identity,
@@ -72,17 +72,16 @@ impl ProcessManager {
             node_identity: Self::get_node_identity(),
         }
     }
-    
+
     /// Get node identity from environment (for error messages)
     fn get_node_identity() -> Option<String> {
-        let family = std::env::var("SONGBIRD_FAMILY_ID")
-            .or_else(|_| std::env::var("FAMILY_ID"))
-            .ok();
+        let family =
+            std::env::var("SONGBIRD_FAMILY_ID").or_else(|_| std::env::var("FAMILY_ID")).ok();
         let node = std::env::var("SONGBIRD_NODE_ID")
             .or_else(|_| std::env::var("NODE_ID"))
             .or_else(|_| std::env::var("SPORE_ID"))
             .ok();
-        
+
         match (family, node) {
             (Some(f), Some(n)) => Some(format!("{}-{}", f, n)),
             (Some(f), None) => Some(f),
@@ -106,14 +105,13 @@ impl ProcessManager {
     /// 2. ~/.local/share/songbird/songbird-{family}-{node}.pid (user-specific)
     fn default_pid_file() -> Result<PathBuf> {
         // Get FAMILY_ID and NODE_ID from environment
-        let family_id = std::env::var("SONGBIRD_FAMILY_ID")
-            .or_else(|_| std::env::var("FAMILY_ID"))
-            .ok();
+        let family_id =
+            std::env::var("SONGBIRD_FAMILY_ID").or_else(|_| std::env::var("FAMILY_ID")).ok();
         let node_id = std::env::var("SONGBIRD_NODE_ID")
             .or_else(|_| std::env::var("NODE_ID"))
             .or_else(|_| std::env::var("SPORE_ID"))
             .ok();
-        
+
         // Build filename suffix based on available IDs
         let filename_suffix = match (family_id.as_ref(), node_id.as_ref()) {
             (Some(family), Some(node)) => format!("-{}-{}", family, node),
@@ -121,9 +119,9 @@ impl ProcessManager {
             (None, Some(node)) => format!("-{}", node),
             (None, None) => String::new(), // Legacy fallback
         };
-        
+
         let filename = format!("songbird{}.pid", filename_suffix);
-        
+
         // Try system-wide location first
         let system_path = PathBuf::from("/var/run/songbird").join(&filename);
         if let Some(parent) = system_path.parent() {
@@ -167,12 +165,18 @@ impl ProcessManager {
             if self.is_process_running(existing_pid) {
                 // A real instance is running - bail out with helpful message
                 self.print_duplicate_error(existing_pid)?;
-                
-                let identity_msg = self.node_identity.as_ref()
+
+                let identity_msg = self
+                    .node_identity
+                    .as_ref()
                     .map(|id| format!(" with NODE_ID={}", id))
                     .unwrap_or_default();
-                
-                bail!("Another Songbird instance{} is already running (PID: {})", identity_msg, existing_pid);
+
+                bail!(
+                    "Another Songbird instance{} is already running (PID: {})",
+                    identity_msg,
+                    existing_pid
+                );
             } else {
                 // Stale PID file - clean it up
                 warn!("Found stale PID file (PID {} not running), cleaning up", existing_pid);
@@ -245,7 +249,7 @@ impl ProcessManager {
                 // Parse state from /proc/{pid}/stat
                 // Format: pid (comm) state ppid pgrp session tty_nr tpgid flags ...
                 // State: R (running), S (sleeping), D (disk sleep), Z (zombie), T (stopped), t (tracing stop), W (paging), X (dead), x (dead), K (wakekill), W (waking), P (parked)
-                
+
                 // Find the closing parenthesis after the command name
                 // This is important because command name can contain spaces and special chars
                 if let Some(state_pos) = contents.rfind(')') {
@@ -259,7 +263,7 @@ impl ProcessManager {
                                     This allows graceful takeover by new deployment.",
                                     pid
                                 );
-                                return false;  // ✅ Zombies are stale!
+                                return false; // ✅ Zombies are stale!
                             }
                             'X' | 'x' => {
                                 // Dead process
@@ -285,7 +289,10 @@ impl ProcessManager {
                             }
                             _ => {
                                 // Unknown state - be conservative, check with kill
-                                debug!("Unknown process state '{}' for PID {}, using fallback check", state_char, pid);
+                                debug!(
+                                    "Unknown process state '{}' for PID {}, using fallback check",
+                                    state_char, pid
+                                );
                             }
                         }
                     }
@@ -295,15 +302,12 @@ impl ProcessManager {
                 debug!("PID {} does not exist (/proc entry missing)", pid);
                 return false;
             }
-            
+
             // Step 2: Fallback to kill -0 if /proc parsing failed or state unknown
             // This maintains backward compatibility with non-Linux Unix systems
             debug!("Using fallback kill -0 check for PID {}", pid);
-            let status = std::process::Command::new("kill")
-                .arg("-0")
-                .arg(pid.to_string())
-                .output();
-            
+            let status = std::process::Command::new("kill").arg("-0").arg(pid.to_string()).output();
+
             match status {
                 Ok(output) => {
                     let is_running = output.status.success();
@@ -328,10 +332,12 @@ impl ProcessManager {
 
     /// Print a helpful error message when a duplicate NODE_ID is detected
     fn print_duplicate_error(&self, existing_pid: u32) -> Result<()> {
-        let identity_display = self.node_identity.as_ref()
+        let identity_display = self
+            .node_identity
+            .as_ref()
             .map(|id| format!("NODE_ID: {}", id))
             .unwrap_or_else(|| "NODE_ID: (not set)".to_string());
-        
+
         error!("╔═══════════════════════════════════════════════════════════════════╗");
         error!("║                                                                   ║");
         error!("║  ⚠️  SONGBIRD INSTANCE ALREADY RUNNING                            ║");
@@ -478,28 +484,25 @@ mod tests {
     #[cfg(unix)]
     fn test_zombie_detection_logic() {
         let manager = ProcessManager::new().unwrap();
-        
+
         // Test 1: Current process should be running (not a zombie)
         let current_pid = process::id();
         assert!(
             manager.is_process_running(current_pid),
             "Current process should be detected as running"
         );
-        
+
         // Test 2: Non-existent PID should not be running
         assert!(
             !manager.is_process_running(999999),
             "Non-existent PID should not be detected as running"
         );
-        
+
         // Test 3: PID 1 (init/systemd) should always be running
         // (unless running in a container without PID 1)
         let pid_1_exists = fs::read_to_string("/proc/1/stat").is_ok();
         if pid_1_exists {
-            assert!(
-                manager.is_process_running(1),
-                "PID 1 (init/systemd) should be running"
-            );
+            assert!(manager.is_process_running(1), "PID 1 (init/systemd) should be running");
         }
     }
 
@@ -508,29 +511,29 @@ mod tests {
     #[cfg(unix)]
     fn test_proc_stat_parsing() {
         // This test verifies our parsing logic handles various /proc formats correctly
-        
+
         // Example /proc/pid/stat format:
         // 12345 (process name) R 1 12345 12345 0 -1 4194304 ...
         //                        ^ state character (R = running, S = sleeping, Z = zombie, etc.)
-        
+
         // Test case 1: Running process
         let stat_running = "12345 (bash) R 1 12345 12345 0 -1 4194304 123 456 0 0 10 20 0 0 20 0 1 0 1234567 8192 100 18446744073709551615";
         let state_pos = stat_running.rfind(')').unwrap();
         let state = stat_running[state_pos + 2..].chars().next().unwrap();
         assert_eq!(state, 'R', "Should parse running state");
-        
+
         // Test case 2: Sleeping process
         let stat_sleeping = "12346 (sleep) S 1 12346 12346 0 -1 4194304 123 456 0 0 10 20 0 0 20 0 1 0 1234568 8192 100 18446744073709551615";
         let state_pos = stat_sleeping.rfind(')').unwrap();
         let state = stat_sleeping[state_pos + 2..].chars().next().unwrap();
         assert_eq!(state, 'S', "Should parse sleeping state");
-        
+
         // Test case 3: Zombie process
         let stat_zombie = "12347 (defunct) Z 1 12347 12347 0 -1 4194304 0 0 0 0 0 0 0 0 20 0 1 0 1234569 0 0 18446744073709551615";
         let state_pos = stat_zombie.rfind(')').unwrap();
         let state = stat_zombie[state_pos + 2..].chars().next().unwrap();
         assert_eq!(state, 'Z', "Should parse zombie state");
-        
+
         // Test case 4: Process name with spaces and special chars
         let stat_complex = "12348 (my (complex) name!) R 1 12348 12348 0 -1 4194304 123 456 0 0 10 20 0 0 20 0 1 0 1234570 8192 100 18446744073709551615";
         let state_pos = stat_complex.rfind(')').unwrap();
@@ -551,7 +554,7 @@ mod tests {
         // 1. Write a PID file with a "zombie" PID
         // 2. is_process_running() should return false for zombies
         // 3. New deployment should succeed (zombie treated as stale)
-        
+
         // For this test, we use PID 999999 which definitely doesn't exist
         // In production, is_process_running() would detect a real zombie via /proc
         fs::write(&pid_file, "999999").unwrap();
@@ -583,7 +586,7 @@ mod tests {
         // Second lock fails with helpful error
         let result = manager.acquire_lock();
         assert!(result.is_err());
-        
+
         // Error message should mention the PID and how to resolve
         let error_msg = format!("{}", result.unwrap_err());
         assert!(

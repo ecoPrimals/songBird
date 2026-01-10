@@ -43,19 +43,19 @@ use std::time::SystemTime;
 pub struct BtspTunnel {
     /// Unique tunnel identifier
     pub tunnel_id: String,
-    
+
     /// Remote peer node ID
     pub remote_node_id: String,
-    
+
     /// Tunnel endpoint (managed by security provider)
     pub endpoint: BtspEndpoint,
-    
+
     /// Tunnel state
     pub state: TunnelState,
-    
+
     /// When tunnel was established
     pub established_at: SystemTime,
-    
+
     /// Last activity timestamp
     pub last_activity: SystemTime,
 }
@@ -68,7 +68,7 @@ pub enum BtspEndpoint {
         /// Remote address
         addr: SocketAddr,
     },
-    
+
     /// NAT traversal via lineage relay
     Relayed {
         /// Relay node address (grandparent/sibling)
@@ -76,7 +76,7 @@ pub enum BtspEndpoint {
         /// Relay node ID
         relay_node_id: String,
     },
-    
+
     /// Hole-punched connection (via lineage coordination)
     HolePunched {
         /// Local endpoint
@@ -91,16 +91,16 @@ pub enum BtspEndpoint {
 pub enum TunnelState {
     /// Establishing tunnel (requesting from security provider)
     Establishing,
-    
+
     /// Active and ready for communication
     Active,
-    
+
     /// Idle but still connected
     Idle,
-    
+
     /// Connection lost, attempting to reconnect
     Reconnecting,
-    
+
     /// Tunnel closed
     Closed,
 }
@@ -112,19 +112,19 @@ pub enum TunnelState {
 pub struct BtspTunnelRequest {
     /// Remote peer node ID
     pub remote_node_id: String,
-    
+
     /// Remote peer's contact information (if known)
     #[serde(skip_serializing_if = "Option::is_none")]
     pub remote_contact: Option<PeerContact>,
-    
+
     /// Preferred tunnel type
     #[serde(skip_serializing_if = "Option::is_none")]
     pub preferred_type: Option<TunnelType>,
-    
+
     /// Request lineage assistance for NAT traversal
     #[serde(default)]
     pub use_lineage_for_nat: bool,
-    
+
     /// Timeout for tunnel establishment
     #[serde(skip_serializing_if = "Option::is_none")]
     pub timeout_secs: Option<u64>,
@@ -138,18 +138,18 @@ pub struct BtspTunnelRequest {
 pub struct PeerContact {
     /// Peer's node ID
     pub node_id: String,
-    
+
     /// Known addresses (may be behind NAT)
     pub addresses: Vec<SocketAddr>,
-    
+
     /// Peer's genetic lineage ID (for trust verification)
     #[serde(skip_serializing_if = "Option::is_none")]
     pub lineage_id: Option<String>,
-    
+
     /// Contact exchange path (which lineage nodes helped)
     #[serde(default)]
     pub exchange_path: Vec<String>,
-    
+
     /// When contact info was obtained
     pub obtained_at: SystemTime,
 }
@@ -159,13 +159,13 @@ pub struct PeerContact {
 pub enum TunnelType {
     /// Prefer direct connection (fastest)
     Direct,
-    
+
     /// Prefer hole-punched (NAT traversal, no relay)
     HolePunched,
-    
+
     /// Accept relay if needed (slowest but most reliable)
     Relayed,
-    
+
     /// Try all methods, use fastest
     Auto,
 }
@@ -175,16 +175,16 @@ pub enum TunnelType {
 pub struct BtspTunnelResponse {
     /// Tunnel ID (if successful)
     pub tunnel_id: Option<String>,
-    
+
     /// Tunnel endpoint
     pub endpoint: Option<BtspEndpoint>,
-    
+
     /// Success or failure
     pub success: bool,
-    
+
     /// Human-readable message
     pub message: String,
-    
+
     /// Additional metadata
     #[serde(default)]
     pub metadata: std::collections::HashMap<String, serde_json::Value>,
@@ -198,13 +198,13 @@ pub struct BtspTunnelResponse {
 pub struct ContactExchangeRequest {
     /// Target peer node ID
     pub target_node_id: String,
-    
+
     /// Our node ID (for lineage verification)
     pub requester_node_id: String,
-    
+
     /// Our lineage ID (for trust)
     pub requester_lineage_id: String,
-    
+
     /// Maximum hops through lineage (default: 3)
     #[serde(default = "default_max_hops")]
     pub max_hops: u32,
@@ -219,13 +219,13 @@ fn default_max_hops() -> u32 {
 pub struct ContactExchangeResponse {
     /// Peer contact info (if found)
     pub contact: Option<PeerContact>,
-    
+
     /// Success or failure
     pub success: bool,
-    
+
     /// Human-readable message
     pub message: String,
-    
+
     /// Lineage path used to find contact
     #[serde(default)]
     pub lineage_path: Vec<String>,
@@ -236,15 +236,12 @@ impl BtspTunnel {
     pub fn is_active(&self) -> bool {
         matches!(self.state, TunnelState::Active)
     }
-    
+
     /// Check if tunnel needs reconnection
     pub fn needs_reconnect(&self) -> bool {
-        matches!(
-            self.state,
-            TunnelState::Reconnecting | TunnelState::Closed
-        )
+        matches!(self.state, TunnelState::Reconnecting | TunnelState::Closed)
     }
-    
+
     /// Update last activity timestamp
     pub fn mark_activity(&mut self) {
         self.last_activity = SystemTime::now();
@@ -262,21 +259,21 @@ impl BtspTunnelRequest {
             timeout_secs: Some(30),
         }
     }
-    
+
     /// Set remote contact information
     #[must_use]
     pub fn with_contact(mut self, contact: PeerContact) -> Self {
         self.remote_contact = Some(contact);
         self
     }
-    
+
     /// Set preferred tunnel type
     #[must_use]
     pub fn with_tunnel_type(mut self, tunnel_type: TunnelType) -> Self {
         self.preferred_type = Some(tunnel_type);
         self
     }
-    
+
     /// Disable lineage-based NAT traversal
     #[must_use]
     pub fn without_lineage(mut self) -> Self {
@@ -299,7 +296,7 @@ impl ContactExchangeRequest {
             max_hops: default_max_hops(),
         }
     }
-    
+
     /// Set maximum hops through lineage
     #[must_use]
     pub fn with_max_hops(mut self, max_hops: u32) -> Self {
@@ -311,32 +308,29 @@ impl ContactExchangeRequest {
 #[cfg(test)]
 mod tests {
     use super::*;
-    
+
     #[test]
     fn test_btsp_tunnel_request_builder() {
         let request = BtspTunnelRequest::new("peer-123")
             .with_tunnel_type(TunnelType::HolePunched)
             .without_lineage();
-        
+
         assert_eq!(request.remote_node_id, "peer-123");
         assert_eq!(request.preferred_type, Some(TunnelType::HolePunched));
         assert!(!request.use_lineage_for_nat);
     }
-    
+
     #[test]
     fn test_contact_exchange_request() {
-        let request = ContactExchangeRequest::new(
-            "target-456",
-            "requester-789",
-            "lineage-abc",
-        ).with_max_hops(5);
-        
+        let request = ContactExchangeRequest::new("target-456", "requester-789", "lineage-abc")
+            .with_max_hops(5);
+
         assert_eq!(request.target_node_id, "target-456");
         assert_eq!(request.requester_node_id, "requester-789");
         assert_eq!(request.requester_lineage_id, "lineage-abc");
         assert_eq!(request.max_hops, 5);
     }
-    
+
     #[test]
     fn test_tunnel_state_checks() {
         let mut tunnel = BtspTunnel {
@@ -349,13 +343,12 @@ mod tests {
             established_at: SystemTime::now(),
             last_activity: SystemTime::now(),
         };
-        
+
         assert!(tunnel.is_active());
         assert!(!tunnel.needs_reconnect());
-        
+
         tunnel.state = TunnelState::Closed;
         assert!(!tunnel.is_active());
         assert!(tunnel.needs_reconnect());
     }
 }
-

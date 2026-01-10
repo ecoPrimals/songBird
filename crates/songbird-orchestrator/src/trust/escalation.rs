@@ -101,7 +101,9 @@ impl BearDogClient {
         if let Some(ref url) = endpoint {
             tracing::info!("Security provider configured: {}", url);
         } else {
-            tracing::debug!("Security client created without endpoint (will use mock verification)");
+            tracing::debug!(
+                "Security client created without endpoint (will use mock verification)"
+            );
         }
 
         Self {
@@ -156,7 +158,10 @@ impl Default for BearDogClient {
 impl TrustEscalationManager {
     /// Create a new trust escalation manager
     #[must_use]
-    pub fn new(trust_timeouts: TrustTimeouts, security_client: Option<Arc<SecurityCapabilityClient>>) -> Self {
+    pub fn new(
+        trust_timeouts: TrustTimeouts,
+        security_client: Option<Arc<SecurityCapabilityClient>>,
+    ) -> Self {
         Self {
             trust_store: Arc::new(RwLock::new(HashMap::new())),
             trust_timeouts,
@@ -354,7 +359,9 @@ impl TrustEscalationManager {
         // Verify hardware attestation (if security provider available)
         if let Some(ref security) = self.security_client {
             // TODO: Implement hardware verification via security provider
-            tracing::info!("Hardware verification via security provider (future: implement actual HTTP call)");
+            tracing::info!(
+                "Hardware verification via security provider (future: implement actual HTTP call)"
+            );
         }
 
         let mut store = self.trust_store.write().await;

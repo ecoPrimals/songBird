@@ -10,22 +10,26 @@ mod tests {
         // BearDog sends integers
         let json_0 = json!({"trust_level": 0});
         let parsed: serde_json::Value = serde_json::from_value(json_0).unwrap();
-        let trust_level: TrustLevel = serde_json::from_value(parsed["trust_level"].clone()).unwrap();
+        let trust_level: TrustLevel =
+            serde_json::from_value(parsed["trust_level"].clone()).unwrap();
         assert_eq!(trust_level, TrustLevel::None);
 
         let json_1 = json!({"trust_level": 1});
         let parsed: serde_json::Value = serde_json::from_value(json_1).unwrap();
-        let trust_level: TrustLevel = serde_json::from_value(parsed["trust_level"].clone()).unwrap();
+        let trust_level: TrustLevel =
+            serde_json::from_value(parsed["trust_level"].clone()).unwrap();
         assert_eq!(trust_level, TrustLevel::Limited);
 
         let json_2 = json!({"trust_level": 2});
         let parsed: serde_json::Value = serde_json::from_value(json_2).unwrap();
-        let trust_level: TrustLevel = serde_json::from_value(parsed["trust_level"].clone()).unwrap();
+        let trust_level: TrustLevel =
+            serde_json::from_value(parsed["trust_level"].clone()).unwrap();
         assert_eq!(trust_level, TrustLevel::Elevated);
 
         let json_3 = json!({"trust_level": 3});
         let parsed: serde_json::Value = serde_json::from_value(json_3).unwrap();
-        let trust_level: TrustLevel = serde_json::from_value(parsed["trust_level"].clone()).unwrap();
+        let trust_level: TrustLevel =
+            serde_json::from_value(parsed["trust_level"].clone()).unwrap();
         assert_eq!(trust_level, TrustLevel::Highest);
     }
 
@@ -34,22 +38,26 @@ mod tests {
         // Songbird primary names
         let json = json!({"trust_level": "none"});
         let parsed: serde_json::Value = serde_json::from_value(json).unwrap();
-        let trust_level: TrustLevel = serde_json::from_value(parsed["trust_level"].clone()).unwrap();
+        let trust_level: TrustLevel =
+            serde_json::from_value(parsed["trust_level"].clone()).unwrap();
         assert_eq!(trust_level, TrustLevel::None);
 
         let json = json!({"trust_level": "limited"});
         let parsed: serde_json::Value = serde_json::from_value(json).unwrap();
-        let trust_level: TrustLevel = serde_json::from_value(parsed["trust_level"].clone()).unwrap();
+        let trust_level: TrustLevel =
+            serde_json::from_value(parsed["trust_level"].clone()).unwrap();
         assert_eq!(trust_level, TrustLevel::Limited);
 
         let json = json!({"trust_level": "elevated"});
         let parsed: serde_json::Value = serde_json::from_value(json).unwrap();
-        let trust_level: TrustLevel = serde_json::from_value(parsed["trust_level"].clone()).unwrap();
+        let trust_level: TrustLevel =
+            serde_json::from_value(parsed["trust_level"].clone()).unwrap();
         assert_eq!(trust_level, TrustLevel::Elevated);
 
         let json = json!({"trust_level": "highest"});
         let parsed: serde_json::Value = serde_json::from_value(json).unwrap();
-        let trust_level: TrustLevel = serde_json::from_value(parsed["trust_level"].clone()).unwrap();
+        let trust_level: TrustLevel =
+            serde_json::from_value(parsed["trust_level"].clone()).unwrap();
         assert_eq!(trust_level, TrustLevel::Highest);
     }
 
@@ -58,22 +66,26 @@ mod tests {
         // BearDog aliases
         let json = json!({"trust_level": "anonymous"});
         let parsed: serde_json::Value = serde_json::from_value(json).unwrap();
-        let trust_level: TrustLevel = serde_json::from_value(parsed["trust_level"].clone()).unwrap();
+        let trust_level: TrustLevel =
+            serde_json::from_value(parsed["trust_level"].clone()).unwrap();
         assert_eq!(trust_level, TrustLevel::None);
 
         let json = json!({"trust_level": "basic"});
         let parsed: serde_json::Value = serde_json::from_value(json).unwrap();
-        let trust_level: TrustLevel = serde_json::from_value(parsed["trust_level"].clone()).unwrap();
+        let trust_level: TrustLevel =
+            serde_json::from_value(parsed["trust_level"].clone()).unwrap();
         assert_eq!(trust_level, TrustLevel::Limited);
 
         let json = json!({"trust_level": "medium"});
         let parsed: serde_json::Value = serde_json::from_value(json).unwrap();
-        let trust_level: TrustLevel = serde_json::from_value(parsed["trust_level"].clone()).unwrap();
+        let trust_level: TrustLevel =
+            serde_json::from_value(parsed["trust_level"].clone()).unwrap();
         assert_eq!(trust_level, TrustLevel::Elevated);
 
         let json = json!({"trust_level": "explicit"});
         let parsed: serde_json::Value = serde_json::from_value(json).unwrap();
-        let trust_level: TrustLevel = serde_json::from_value(parsed["trust_level"].clone()).unwrap();
+        let trust_level: TrustLevel =
+            serde_json::from_value(parsed["trust_level"].clone()).unwrap();
         assert_eq!(trust_level, TrustLevel::Highest);
     }
 
@@ -82,12 +94,14 @@ mod tests {
         // Mixed case
         let json = json!({"trust_level": "LIMITED"});
         let parsed: serde_json::Value = serde_json::from_value(json).unwrap();
-        let trust_level: TrustLevel = serde_json::from_value(parsed["trust_level"].clone()).unwrap();
+        let trust_level: TrustLevel =
+            serde_json::from_value(parsed["trust_level"].clone()).unwrap();
         assert_eq!(trust_level, TrustLevel::Limited);
 
         let json = json!({"trust_level": "Elevated"});
         let parsed: serde_json::Value = serde_json::from_value(json).unwrap();
-        let trust_level: TrustLevel = serde_json::from_value(parsed["trust_level"].clone()).unwrap();
+        let trust_level: TrustLevel =
+            serde_json::from_value(parsed["trust_level"].clone()).unwrap();
         assert_eq!(trust_level, TrustLevel::Elevated);
     }
 
@@ -134,19 +148,16 @@ mod tests {
         });
 
         // Parse trust_level (should accept integer)
-        let trust_level: TrustLevel = serde_json::from_value(
-            beardog_response["trust_level"].clone()
-        ).unwrap();
+        let trust_level: TrustLevel =
+            serde_json::from_value(beardog_response["trust_level"].clone()).unwrap();
         assert_eq!(trust_level, TrustLevel::Limited);
 
         // Parse trust_level_name (should accept string)
-        let trust_level_name: TrustLevel = serde_json::from_value(
-            beardog_response["trust_level_name"].clone()
-        ).unwrap();
+        let trust_level_name: TrustLevel =
+            serde_json::from_value(beardog_response["trust_level_name"].clone()).unwrap();
         assert_eq!(trust_level_name, TrustLevel::Limited);
 
         // Both should match!
         assert_eq!(trust_level, trust_level_name);
     }
 }
-

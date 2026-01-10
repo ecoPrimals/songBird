@@ -75,10 +75,10 @@ impl Orchestrator {
     /// v3.18.2: Updated for new start_orchestrator signature
     pub async fn run(self) -> Result<()> {
         let _orchestrator = start_orchestrator(self._config).await?;
-        
+
         // Wait for shutdown signal
         tokio::signal::ctrl_c().await?;
-        
+
         Ok(())
     }
 }

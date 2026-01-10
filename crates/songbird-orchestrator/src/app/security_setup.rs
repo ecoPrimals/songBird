@@ -28,7 +28,7 @@ use tracing::{info, warn};
 use songbird_types::SafeEnv;
 
 /// Security integration placeholder
-/// 
+///
 /// Currently a placeholder until UniversalSecurityIntegration is available.
 /// The setup logic demonstrates capability-based discovery pattern.
 pub type SecurityIntegration = Arc<()>;
@@ -139,17 +139,17 @@ pub async fn setup_security() -> Result<SecurityIntegration> {
 fn construct_default_security_endpoint() -> String {
     let bind_address = SafeEnv::get_or_default(
         "SONGBIRD_BIND_ADDRESS",
-        songbird_config::canonical::constants::get_bind_address()
+        songbird_config::canonical::constants::get_bind_address(),
     );
-    
+
     let security_port = SafeEnv::get_or_default(
         "CAPABILITY_SECURITY_PORT",
         SafeEnv::get_or_default(
             "SONGBIRD_SECURITY_PORT",
-            songbird_config::defaults::ports::beardog_port().to_string()
-        )
+            songbird_config::defaults::ports::beardog_port().to_string(),
+        ),
     );
-    
+
     format!("http://{}:{}", bind_address, security_port)
 }
 
@@ -160,16 +160,16 @@ mod tests {
     #[test]
     fn test_construct_default_security_endpoint() {
         let endpoint = construct_default_security_endpoint();
-        
+
         // Should be a valid URL format
         assert!(endpoint.starts_with("http://"));
         assert!(endpoint.contains(":"));
-        
+
         // Should have reasonable components
         let parts: Vec<&str> = endpoint.split("://").collect();
         assert_eq!(parts.len(), 2);
         assert_eq!(parts[0], "http");
-        
+
         // Should have host:port format
         let host_port = parts[1];
         assert!(host_port.contains(":"));
@@ -179,10 +179,10 @@ mod tests {
     async fn test_security_setup_with_explicit_endpoint() {
         // Set explicit endpoint
         std::env::set_var("SECURITY_ENDPOINT", "https://security provider.local:8443");
-        
+
         let result = setup_security().await;
         assert!(result.is_ok());
-        
+
         // Clean up
         std::env::remove_var("SECURITY_ENDPOINT");
     }
@@ -192,7 +192,7 @@ mod tests {
         // Remove explicit endpoint
         std::env::remove_var("SECURITY_ENDPOINT");
         std::env::remove_var("CAPABILITY_SECURITY_ENDPOINT");
-        
+
         let result = setup_security().await;
         assert!(result.is_ok());
     }
@@ -201,18 +201,15 @@ mod tests {
     fn test_zero_hardcoding_pattern() {
         // This test verifies the zero hardcoding pattern by checking
         // that all configuration comes from environment or runtime discovery
-        
+
         // Save original env
         let original_endpoint = std::env::var("SECURITY_ENDPOINT").ok();
         let original_capability = std::env::var("CAPABILITY_SECURITY_ENDPOINT").ok();
-        
+
         // Test 1: Explicit configuration (no hardcoding)
         std::env::set_var("SECURITY_ENDPOINT", "https://custom.security:9000");
-        assert_eq!(
-            std::env::var("SECURITY_ENDPOINT").unwrap(),
-            "https://custom.security:9000"
-        );
-        
+        assert_eq!(std::env::var("SECURITY_ENDPOINT").unwrap(), "https://custom.security:9000");
+
         // Test 2: Capability-based discovery (no hardcoding)
         std::env::remove_var("SECURITY_ENDPOINT");
         std::env::set_var("CAPABILITY_SECURITY_ENDPOINT", "https://discovered.security:8000");
@@ -220,16 +217,16 @@ mod tests {
             std::env::var("CAPABILITY_SECURITY_ENDPOINT").unwrap(),
             "https://discovered.security:8000"
         );
-        
+
         // Test 3: Constructed endpoint uses env vars (no hardcoding)
         std::env::remove_var("SECURITY_ENDPOINT");
         std::env::remove_var("CAPABILITY_SECURITY_ENDPOINT");
         std::env::set_var("SONGBIRD_BIND_ADDRESS", "192.168.1.100");
         std::env::set_var("CAPABILITY_SECURITY_PORT", "7777");
-        
+
         let endpoint = construct_default_security_endpoint();
         assert_eq!(endpoint, "http://192.168.1.100:7777");
-        
+
         // Restore original env
         std::env::remove_var("SONGBIRD_BIND_ADDRESS");
         std::env::remove_var("CAPABILITY_SECURITY_PORT");
@@ -252,11 +249,11 @@ mod tests {
         // 4. Configuration is 100% external (environment)
         //
         // This is THE CORRECT WAY to build primal systems!
-        
+
         // Songbird doesn't know about security provider - it only knows about "security" capability
         let capability_type = "security"; // NOT "security provider"!
         assert_eq!(capability_type, "security");
-        
+
         // Any provider can fulfill this capability:
         // - security provider (current)
         // - NewSecurityPrimal (future)
@@ -265,4 +262,3 @@ mod tests {
         // This is fractal, isomorphic, and sovereign! ✨
     }
 }
-

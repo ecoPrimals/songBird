@@ -5,12 +5,12 @@
 
 use anyhow::{anyhow, Result};
 use serde::{Deserialize, Serialize};
+use songbird_types::{LineageId, LineageProof};
 use std::fs;
 use std::net::{IpAddr, SocketAddr};
 use std::path::PathBuf;
 use tracing::{debug, info, warn};
 use uuid::Uuid;
-use songbird_types::{LineageId, LineageProof};
 
 /// Stable node identity with genetic lineage
 ///
@@ -75,18 +75,14 @@ impl NodeIdentity {
 
         // Generate new identity
         let node_id = Self::generate_stable_id()?;
-        
+
         // CRITICAL FIX (Jan 5, 2026): Prefer SONGBIRD_NODE_ID over hostname
         // This ensures multi-instance deployments have unique discoverable names
         let node_name = node_name.unwrap_or_else(|| {
             std::env::var("SONGBIRD_NODE_ID")
                 .or_else(|_| std::env::var("NODE_ID"))
                 .ok()
-                .or_else(|| {
-                    hostname::get()
-                        .ok()
-                        .and_then(|h| h.into_string().ok())
-                })
+                .or_else(|| hostname::get().ok().and_then(|h| h.into_string().ok()))
                 .unwrap_or_else(|| "songbird-node".to_string())
         });
 
@@ -94,7 +90,7 @@ impl NodeIdentity {
             node_id,
             node_name,
             endpoints: Vec::new(),
-            genetic_lineage: None,  // Will be set when security provider integration is ready
+            genetic_lineage: None, // Will be set when security provider integration is ready
             lineage_proof: None,
         };
 
@@ -111,10 +107,10 @@ impl NodeIdentity {
     pub fn set_lineage(&mut self, lineage_id: LineageId, proof: LineageProof) -> Result<()> {
         self.genetic_lineage = Some(lineage_id.clone());
         self.lineage_proof = Some(proof);
-        
+
         // Persist updated identity
         self.save_to_disk()?;
-        
+
         info!("🧬 Updated node identity with genetic lineage: {}", lineage_id);
         Ok(())
     }
@@ -126,8 +122,7 @@ impl NodeIdentity {
 
     /// Get lineage information
     pub fn get_lineage(&self) -> Option<(&LineageId, &LineageProof)> {
-        self.genetic_lineage.as_ref()
-            .zip(self.lineage_proof.as_ref())
+        self.genetic_lineage.as_ref().zip(self.lineage_proof.as_ref())
     }
 
     /// Generate a stable node ID
@@ -142,10 +137,9 @@ impl NodeIdentity {
     /// 4. Generate random UUID and persist (last resort)
     fn generate_stable_id() -> Result<Uuid> {
         // Get NODE_ID if available for multi-instance support
-        let node_id_suffix = std::env::var("SONGBIRD_NODE_ID")
-            .or_else(|_| std::env::var("NODE_ID"))
-            .ok();
-        
+        let node_id_suffix =
+            std::env::var("SONGBIRD_NODE_ID").or_else(|_| std::env::var("NODE_ID")).ok();
+
         // Try machine-id (most stable)
         if let Ok(machine_id) = fs::read_to_string("/etc/machine-id") {
             let machine_id = machine_id.trim();
@@ -215,7 +209,7 @@ impl NodeIdentity {
     /// Path to identity file
     fn identity_path() -> PathBuf {
         let data_dir = dirs::data_local_dir().unwrap_or_else(|| PathBuf::from("."));
-        
+
         // CRITICAL FIX (Jan 5, 2026): Support multiple instances on same machine
         // Use SONGBIRD_NODE_ID or NODE_ID to create unique identity files
         let filename = std::env::var("SONGBIRD_NODE_ID")
@@ -223,7 +217,7 @@ impl NodeIdentity {
             .ok()
             .map(|node_id| format!("node_identity-{}.json", node_id))
             .unwrap_or_else(|| "node_identity.json".to_string());
-        
+
         data_dir.join("songbird").join(filename)
     }
 

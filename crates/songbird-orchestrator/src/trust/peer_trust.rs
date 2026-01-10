@@ -9,8 +9,7 @@ use serde::{Deserialize, Serialize};
 use tracing::{info, warn};
 
 use crate::security_capability_client::{
-    SecurityCapabilityClient, TrustEvaluationRequest, TrustEvaluationResponse,
-    ConnectionInfo,
+    ConnectionInfo, SecurityCapabilityClient, TrustEvaluationRequest, TrustEvaluationResponse,
 };
 
 /// Result of peer trust evaluation
@@ -25,7 +24,7 @@ pub enum PeerTrustDecision {
         /// Encryption tag if available
         encryption_tag: Option<String>,
     },
-    
+
     /// Prompt user for consent (different family or unknown)
     PromptUser {
         /// Reason for prompting
@@ -35,7 +34,7 @@ pub enum PeerTrustDecision {
         /// Recommended action
         recommendation: String,
     },
-    
+
     /// Reject this peer (no lineage, untrusted, security concern)
     Reject {
         /// Reason for rejection
@@ -88,17 +87,17 @@ pub async fn evaluate_peer_trust(
     security_client: &SecurityCapabilityClient,
 ) -> Result<PeerTrustDecision> {
     info!("🔍 Evaluating trust for peer: {}", peer.node_id);
-    
+
     // Extract peer family from tags (v3.14.1 - tag-based identity)
     // Tags format: "beardog:family:nat0" or "beardog:family:acmecorp"
     let peer_family = extract_family_from_tags(&peer.tags);
-    
+
     if let Some(ref family) = peer_family {
         info!("🏷️  Peer {} family extracted from tags: {}", peer.node_id, family);
     } else {
         warn!("⚠️  Peer {} has no family tag - security provider will reject", peer.node_id);
     }
-    
+
     // Build trust evaluation request
     let request = TrustEvaluationRequest {
         peer_id: peer.node_id.clone(),
@@ -115,7 +114,7 @@ pub async fn evaluate_peer_trust(
             ctx
         }),
     };
-    
+
     // Ask security provider: "Should I trust this peer?"
     match security_client.evaluate_trust(&request).await {
         Ok(response) => {
@@ -126,7 +125,7 @@ pub async fn evaluate_peer_trust(
             // security provider unavailable - default to prompting user
             warn!("⚠️ security provider unavailable for peer {}: {}", peer.node_id, e);
             warn!("   Defaulting to prompt user (safe default)");
-            
+
             Ok(PeerTrustDecision::PromptUser {
                 reason: "security_provider_unavailable".to_string(),
                 peer_id: peer.node_id.clone(),
@@ -144,21 +143,28 @@ fn handle_trust_response(
     match response.decision.as_str() {
         "auto_accept" => {
             info!("✅ security provider says AUTO-ACCEPT peer {} ({})", peer_id, response.reason);
-            info!("   Trust level: {} | Confidence: {:.2}", 
-                  response.trust_level, response.confidence);
-            
+            info!(
+                "   Trust level: {} | Confidence: {:.2}",
+                response.trust_level, response.confidence
+            );
+
             Ok(PeerTrustDecision::AutoAccept {
                 reason: response.reason,
                 confidence: response.confidence,
                 encryption_tag: response.encryption_tag,
             })
         }
-        
+
         "prompt_user" => {
-            info!("⚠️ security provider says PROMPT USER for peer {} ({})", peer_id, response.reason);
-            info!("   Trust level: {} | Confidence: {:.2}", 
-                  response.trust_level, response.confidence);
-            
+            info!(
+                "⚠️ security provider says PROMPT USER for peer {} ({})",
+                peer_id, response.reason
+            );
+            info!(
+                "   Trust level: {} | Confidence: {:.2}",
+                response.trust_level, response.confidence
+            );
+
             Ok(PeerTrustDecision::PromptUser {
                 reason: response.reason.clone(),
                 peer_id: peer_id.to_string(),
@@ -169,22 +175,24 @@ fn handle_trust_response(
                 },
             })
         }
-        
+
         "reject" => {
             warn!("❌ security provider says REJECT peer {} ({})", peer_id, response.reason);
-            warn!("   Trust level: {} | Confidence: {:.2}", 
-                  response.trust_level, response.confidence);
-            
+            warn!(
+                "   Trust level: {} | Confidence: {:.2}",
+                response.trust_level, response.confidence
+            );
+
             Ok(PeerTrustDecision::Reject {
                 reason: response.reason,
                 trust_level: response.trust_level,
             })
         }
-        
+
         unknown => {
             warn!("❓ Unknown decision from security provider: {}", unknown);
             warn!("   Defaulting to prompt user (safe default)");
-            
+
             Ok(PeerTrustDecision::PromptUser {
                 reason: format!("unknown_decision: {}", unknown),
                 peer_id: peer_id.to_string(),
@@ -208,7 +216,7 @@ fn handle_trust_response(
 /// Family ID if found in tags, `None` otherwise
 fn extract_family_from_tags(tags: &[String]) -> Option<String> {
     const FAMILY_TAG_PREFIX: &str = "beardog:family:";
-    
+
     for tag in tags {
         if let Some(family_id) = tag.strip_prefix(FAMILY_TAG_PREFIX) {
             if !family_id.is_empty() {
@@ -216,14 +224,14 @@ fn extract_family_from_tags(tags: &[String]) -> Option<String> {
             }
         }
     }
-    
+
     None
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    
+
     #[test]
     fn test_extract_family_from_tags_found() {
         let tags = vec![
@@ -231,53 +239,48 @@ mod tests {
             "beardog:family:nat0".to_string(),
             "another:tag".to_string(),
         ];
-        
+
         let family = extract_family_from_tags(&tags);
         assert_eq!(family, Some("nat0".to_string()));
     }
-    
+
     #[test]
     fn test_extract_family_from_tags_not_found() {
-        let tags = vec![
-            "some:other:tag".to_string(),
-            "another:tag".to_string(),
-        ];
-        
+        let tags = vec!["some:other:tag".to_string(), "another:tag".to_string()];
+
         let family = extract_family_from_tags(&tags);
         assert_eq!(family, None);
     }
-    
+
     #[test]
     fn test_extract_family_from_tags_empty_family() {
         let tags = vec![
             "beardog:family:".to_string(), // Empty family ID
         ];
-        
+
         let family = extract_family_from_tags(&tags);
         assert_eq!(family, None); // Should ignore empty family
     }
-    
+
     #[test]
     fn test_extract_family_from_tags_multiple_families() {
         let tags = vec![
             "beardog:family:nat0".to_string(),
             "beardog:family:acmecorp".to_string(), // Second family (should be ignored)
         ];
-        
+
         let family = extract_family_from_tags(&tags);
         assert_eq!(family, Some("nat0".to_string())); // Returns first match
     }
-    
+
     #[test]
     fn test_extract_family_from_tags_complex_family_id() {
-        let tags = vec![
-            "beardog:family:acmecorp-engineering-prod".to_string(),
-        ];
-        
+        let tags = vec!["beardog:family:acmecorp-engineering-prod".to_string()];
+
         let family = extract_family_from_tags(&tags);
         assert_eq!(family, Some("acmecorp-engineering-prod".to_string()));
     }
-    
+
     #[test]
     fn test_peer_trust_decision_types() {
         // Test decision types exist and can be created
@@ -286,23 +289,23 @@ mod tests {
             confidence: 1.0,
             encryption_tag: None,
         };
-        
+
         let _prompt = PeerTrustDecision::PromptUser {
             reason: "test".to_string(),
             peer_id: "peer1".to_string(),
             recommendation: "neutral".to_string(),
         };
-        
+
         let _reject = PeerTrustDecision::Reject {
             reason: "test".to_string(),
             trust_level: "none".to_string(),
         };
     }
-    
+
     #[test]
     fn test_handle_auto_accept_response() {
         use std::collections::HashMap;
-        
+
         let response = TrustEvaluationResponse {
             decision: "auto_accept".to_string(),
             trust_level: "high".to_string(),
@@ -311,22 +314,26 @@ mod tests {
             encryption_tag: Some("beardog:family:a3f2".to_string()),
             metadata: HashMap::new(),
         };
-        
+
         let decision = handle_trust_response("peer1", response).unwrap();
-        
+
         match decision {
-            PeerTrustDecision::AutoAccept { reason, confidence, .. } => {
+            PeerTrustDecision::AutoAccept {
+                reason,
+                confidence,
+                ..
+            } => {
                 assert_eq!(reason, "same_genetic_family");
                 assert_eq!(confidence, 1.0);
             }
             _ => panic!("Expected AutoAccept"),
         }
     }
-    
+
     #[test]
     fn test_handle_prompt_user_response() {
         use std::collections::HashMap;
-        
+
         let response = TrustEvaluationResponse {
             decision: "prompt_user".to_string(),
             trust_level: "low".to_string(),
@@ -335,21 +342,24 @@ mod tests {
             encryption_tag: None,
             metadata: HashMap::new(),
         };
-        
+
         let decision = handle_trust_response("peer2", response).unwrap();
-        
+
         match decision {
-            PeerTrustDecision::PromptUser { reason, .. } => {
+            PeerTrustDecision::PromptUser {
+                reason,
+                ..
+            } => {
                 assert_eq!(reason, "different_genetic_family");
             }
             _ => panic!("Expected PromptUser"),
         }
     }
-    
+
     #[test]
     fn test_handle_reject_response() {
         use std::collections::HashMap;
-        
+
         let response = TrustEvaluationResponse {
             decision: "reject".to_string(),
             trust_level: "none".to_string(),
@@ -358,21 +368,24 @@ mod tests {
             encryption_tag: None,
             metadata: HashMap::new(),
         };
-        
+
         let decision = handle_trust_response("peer3", response).unwrap();
-        
+
         match decision {
-            PeerTrustDecision::Reject { reason, .. } => {
+            PeerTrustDecision::Reject {
+                reason,
+                ..
+            } => {
                 assert_eq!(reason, "no_genetic_lineage");
             }
             _ => panic!("Expected Reject"),
         }
     }
-    
+
     #[test]
     fn test_handle_unknown_response() {
         use std::collections::HashMap;
-        
+
         let response = TrustEvaluationResponse {
             decision: "unknown_decision".to_string(),
             trust_level: "unknown".to_string(),
@@ -381,14 +394,15 @@ mod tests {
             encryption_tag: None,
             metadata: HashMap::new(),
         };
-        
+
         let decision = handle_trust_response("peer4", response).unwrap();
-        
+
         // Unknown decisions should default to PromptUser (safe default)
         match decision {
-            PeerTrustDecision::PromptUser { .. } => {},
+            PeerTrustDecision::PromptUser {
+                ..
+            } => {}
             _ => panic!("Expected PromptUser for unknown decision"),
         }
     }
 }
-

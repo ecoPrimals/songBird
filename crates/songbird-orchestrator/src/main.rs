@@ -31,10 +31,9 @@ async fn main() -> Result<()> {
         .or_else(|_| std::env::var("NODE_ID"))
         .or_else(|_| std::env::var("SPORE_ID"))
         .ok();
-    
-    let family_identity = std::env::var("SONGBIRD_FAMILY_ID")
-        .or_else(|_| std::env::var("FAMILY_ID"))
-        .ok();
+
+    let family_identity =
+        std::env::var("SONGBIRD_FAMILY_ID").or_else(|_| std::env::var("FAMILY_ID")).ok();
 
     tracing::info!("🚀 Starting Songbird Orchestrator...");
     tracing::info!("   Process ID: {}", std::process::id());

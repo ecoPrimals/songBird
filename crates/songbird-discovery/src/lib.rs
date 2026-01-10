@@ -130,14 +130,14 @@
 //! error information including network errors, timeout handling, and recovery
 //! suggestions for common discovery failures.
 
+pub mod beardog_birdsong_provider; // NEW: BearDog BirdSong encryption provider (Jan 3, 2026)
+pub mod birdsong_integration; // NEW: BirdSong encrypted discovery
 pub mod conversion;
 pub mod discovery;
 pub mod discovery_packet; // NEW: Enhanced discovery with genetic lineage
+pub mod discovery_stats;
 pub mod lineage_discovery; // NEW: Lineage-aware mDNS backend
-pub mod traits;
-pub mod birdsong_integration; // NEW: BirdSong encrypted discovery
-pub mod beardog_birdsong_provider; // NEW: BearDog BirdSong encryption provider (Jan 3, 2026)
-pub mod discovery_stats; // NEW: Discovery statistics and observability (Jan 5, 2026)
+pub mod traits; // NEW: Discovery statistics and observability (Jan 5, 2026)
 
 /// Anonymous discovery protocol (v3.12.2) - Refactored modules
 ///
@@ -174,13 +174,15 @@ mod tests_self_filtering;
 // pub mod migration;
 
 // Re-export universal discovery functionality
+pub use beardog_birdsong_provider::BearDogBirdSongProvider; // NEW (Jan 3, 2026)
+pub use birdsong_integration::{BirdSongConfig, BirdSongEncryption, BirdSongProcessor}; // NEW
 pub use discovery::UniversalDiscoveryFactory;
 pub use discovery_packet::{DiscoveryError, DiscoveryPacket, IdentityAttestation}; // NEW
+pub use discovery_stats::{
+    DiscoveryStats, DiscoveryStatsSnapshot, DiscoveryStatus, DiscoveryStatusManager, NetworkInfo,
+};
 pub use lineage_discovery::LineageServiceDiscovery; // NEW
-pub use traits::{DiscoveryConfig, ServiceDiscovery, ServiceInfo, ServiceStatus};
-pub use birdsong_integration::{BirdSongEncryption, BirdSongConfig, BirdSongProcessor}; // NEW
-pub use beardog_birdsong_provider::BearDogBirdSongProvider; // NEW (Jan 3, 2026)
-pub use discovery_stats::{DiscoveryStats, DiscoveryStatsSnapshot, DiscoveryStatus, DiscoveryStatusManager, NetworkInfo}; // NEW (Jan 5, 2026)
+pub use traits::{DiscoveryConfig, ServiceDiscovery, ServiceInfo, ServiceStatus}; // NEW (Jan 5, 2026)
 
 // Re-export federation-aware functionality
 // TEMP DISABLED: federation_aware_discovery module disabled due to syntax errors

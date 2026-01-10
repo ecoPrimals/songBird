@@ -5,9 +5,9 @@
 
 use serde::{Deserialize, Serialize};
 use serde_json::Value as JsonValue;
-use std::collections::HashMap;
-use songbird_types::{LineageId, LineageProof};
 use sha2::{Digest, Sha256};
+use songbird_types::{LineageId, LineageProof};
+use std::collections::HashMap;
 
 /// Identity attestation from a security provider
 ///
@@ -17,10 +17,10 @@ use sha2::{Digest, Sha256};
 pub struct IdentityAttestation {
     /// Capability that provided this attestation (e.g., "security/identity")
     pub provider_capability: String,
-    
+
     /// Format of the attestation data (e.g., "tag_list", "x509_certificate", "pgp_key")
     pub format: String,
-    
+
     /// The attestation data itself (format-specific, flexible)
     pub data: JsonValue,
 }
@@ -30,13 +30,13 @@ pub struct IdentityAttestation {
 pub struct DiscoveryPacket {
     /// Unique node identifier
     pub node_id: String,
-    
+
     /// Human-readable node name
     pub node_name: Option<String>,
-    
+
     /// Advertised capabilities
     pub capabilities: Vec<String>,
-    
+
     /// Generic tags (e.g., BearDog encryption tags, protocol versions)
     ///
     /// Tags are opaque strings that can be used for various purposes:
@@ -47,35 +47,35 @@ pub struct DiscoveryPacket {
     /// Songbird doesn't parse these - just passes them to security provider for evaluation.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub tags: Vec<String>,
-    
+
     /// Identity attestations (generic, structured format)
     ///
     /// Provides structured identity information from various providers.
     /// Each attestation is self-describing and provider-agnostic.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub identity_attestations: Vec<IdentityAttestation>,
-    
+
     /// Network endpoint (HTTP/HTTPS URL)
     pub endpoint: String,
-    
+
     /// Additional metadata
     #[serde(default)]
     pub metadata: HashMap<String, String>,
-    
+
     /// Genetic lineage identifier (NEW)
     ///
     /// This identifies the cryptographic ancestry of this node,
     /// allowing peers to verify shared genetic lineage.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub genetic_lineage: Option<LineageId>,
-    
+
     /// Cryptographic lineage proof (NEW)
     ///
     /// Contains the signature chain proving this node's ancestry,
     /// enabling automatic trust establishment for same-lineage peers.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub lineage_proof: Option<LineageProof>,
-    
+
     /// Discovery timestamp
     #[serde(default = "current_timestamp")]
     pub timestamp: u64,
@@ -116,14 +116,14 @@ impl DiscoveryPacket {
         self.tags.push(tag.into());
         self
     }
-    
+
     /// Add identity attestations (generic format)
     #[must_use]
     pub fn with_identity_attestations(mut self, attestations: Vec<IdentityAttestation>) -> Self {
         self.identity_attestations = attestations;
         self
     }
-    
+
     /// Add a single identity attestation
     #[must_use]
     pub fn with_identity_attestation(mut self, attestation: IdentityAttestation) -> Self {
@@ -159,29 +159,29 @@ impl DiscoveryPacket {
     #[must_use]
     pub fn to_txt_records(&self) -> HashMap<String, String> {
         let mut txt = HashMap::new();
-        
+
         // Core fields
         txt.insert("node_id".to_string(), self.node_id.clone());
         txt.insert("capabilities".to_string(), self.capabilities.join(","));
         txt.insert("tags".to_string(), self.tags.join(","));
         txt.insert("endpoint".to_string(), self.endpoint.clone());
         txt.insert("timestamp".to_string(), self.timestamp.to_string());
-        
+
         // Optional node name
         if let Some(name) = &self.node_name {
             txt.insert("node_name".to_string(), name.clone());
         }
-        
+
         // User metadata
         for (k, v) in &self.metadata {
             txt.insert(format!("meta_{k}"), v.clone());
         }
-        
+
         // NEW: Genetic lineage (compact representation for TXT records)
         if let Some(lineage) = &self.genetic_lineage {
             txt.insert("lineage".to_string(), lineage.to_string());
         }
-        
+
         // NEW: Lineage proof (base64 encoded)
         if let Some(proof) = &self.lineage_proof {
             if let Ok(encoded) = proof.to_discovery_txt() {
@@ -192,12 +192,14 @@ impl DiscoveryPacket {
                     // Store a hash instead and require HTTP fetch for full proof
                     let proof_hash = Self::hash_proof(&encoded);
                     txt.insert("lineage_proof_hash".to_string(), proof_hash);
-                    txt.insert("lineage_proof_url".to_string(), 
-                              format!("{}/api/v1/lineage/proof", self.endpoint));
+                    txt.insert(
+                        "lineage_proof_url".to_string(),
+                        format!("{}/api/v1/lineage/proof", self.endpoint),
+                    );
                 }
             }
         }
-        
+
         txt
     }
 
@@ -206,38 +208,35 @@ impl DiscoveryPacket {
     /// # Errors
     /// Returns error if required fields are missing or invalid
     pub fn from_txt_records(txt: &HashMap<String, String>) -> Result<Self, DiscoveryError> {
-        let node_id = txt.get("node_id")
-            .ok_or(DiscoveryError::MissingField("node_id"))?
-            .clone();
-        
-        let capabilities = txt.get("capabilities")
+        let node_id = txt.get("node_id").ok_or(DiscoveryError::MissingField("node_id"))?.clone();
+
+        let capabilities = txt
+            .get("capabilities")
             .map(|s| s.split(',').map(String::from).filter(|s| !s.is_empty()).collect())
             .unwrap_or_default();
-        
-        let tags = txt.get("tags")
+
+        let tags = txt
+            .get("tags")
             .map(|s| s.split(',').map(String::from).filter(|s| !s.is_empty()).collect())
             .unwrap_or_default();
-        
-        let endpoint = txt.get("endpoint")
-            .ok_or(DiscoveryError::MissingField("endpoint"))?
-            .clone();
-        
-        let timestamp = txt.get("timestamp")
-            .and_then(|s| s.parse().ok())
-            .unwrap_or_else(current_timestamp);
-        
+
+        let endpoint = txt.get("endpoint").ok_or(DiscoveryError::MissingField("endpoint"))?.clone();
+
+        let timestamp =
+            txt.get("timestamp").and_then(|s| s.parse().ok()).unwrap_or_else(current_timestamp);
+
         let node_name = txt.get("node_name").cloned();
-        
+
         // Extract user metadata (keys starting with "meta_")
-        let metadata = txt.iter()
+        let metadata = txt
+            .iter()
             .filter(|(k, _)| k.starts_with("meta_"))
             .map(|(k, v)| (k.trim_start_matches("meta_").to_string(), v.clone()))
             .collect();
-        
+
         // NEW: Parse genetic lineage
-        let genetic_lineage = txt.get("lineage")
-            .and_then(|s| LineageId::from_str(s).ok());
-        
+        let genetic_lineage = txt.get("lineage").and_then(|s| LineageId::from_str(s).ok());
+
         // NEW: Parse lineage proof
         let lineage_proof = if let Some(proof_txt) = txt.get("lineage_proof") {
             LineageProof::from_discovery_txt(proof_txt).ok()
@@ -248,7 +247,7 @@ impl DiscoveryPacket {
         } else {
             None
         };
-        
+
         Ok(Self {
             node_id,
             node_name,
@@ -289,11 +288,11 @@ pub enum DiscoveryError {
     /// Required field is missing from TXT records
     #[error("Missing required field: {0}")]
     MissingField(&'static str),
-    
+
     /// Invalid data format
     #[error("Invalid data format: {0}")]
     InvalidFormat(String),
-    
+
     /// Lineage error
     #[error("Lineage error: {0}")]
     LineageError(#[from] songbird_types::LineageError),
@@ -301,10 +300,7 @@ pub enum DiscoveryError {
 
 /// Get current Unix timestamp
 fn current_timestamp() -> u64 {
-    std::time::SystemTime::now()
-        .duration_since(std::time::UNIX_EPOCH)
-        .unwrap_or_default()
-        .as_secs()
+    std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap_or_default().as_secs()
 }
 
 #[cfg(test)]
@@ -353,7 +349,7 @@ mod tests {
         .with_metadata("version", "1.0.0");
 
         let txt = packet.to_txt_records();
-        
+
         assert_eq!(txt.get("node_id"), Some(&"node-123".to_string()));
         assert_eq!(txt.get("node_name"), Some(&"test-node".to_string()));
         assert_eq!(txt.get("capabilities"), Some(&"compute,storage".to_string()));
@@ -391,7 +387,7 @@ mod tests {
         .with_lineage(lineage_id, proof);
 
         let txt = packet.to_txt_records();
-        
+
         assert!(txt.contains_key("lineage"));
         assert!(txt.contains_key("lineage_proof") || txt.contains_key("lineage_proof_hash"));
 
@@ -400,4 +396,3 @@ mod tests {
         assert!(parsed.has_lineage());
     }
 }
-

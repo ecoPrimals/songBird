@@ -10,11 +10,11 @@
 // Allow async_fn_in_trait warning - our traits guarantee Send + Sync
 #![allow(async_fn_in_trait)]
 
+use crate::JsonRpcClient;
 use serde::{Deserialize, Serialize};
 use songbird_types::{SafeEnv, SongbirdError, SongbirdResult};
 use std::time::Duration;
 use tracing::{debug, warn};
-use crate::JsonRpcClient;
 
 /// Storage metrics from any storage capability provider
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -88,9 +88,9 @@ pub enum StorageHealth {
 
 /// Protocol for communication (v3.12.0 - tarpc PRIMARY)
 enum Protocol {
-    Tarpc(crate::TarpcClient),       // PRIMARY - high-performance binary RPC
-    JsonRpc(JsonRpcClient),          // SECONDARY - universal, port-free
-    Http(reqwest::Client),           // FALLBACK - network only
+    Tarpc(crate::TarpcClient), // PRIMARY - high-performance binary RPC
+    JsonRpc(JsonRpcClient),    // SECONDARY - universal, port-free
+    Http(reqwest::Client),     // FALLBACK - network only
 }
 
 impl std::fmt::Debug for Protocol {
@@ -207,9 +207,11 @@ impl StorageAdapter {
             Protocol::JsonRpc(JsonRpcClient::new(&endpoint)?)
         } else {
             debug!("🌐 Detected HTTP endpoint for storage (FALLBACK): {}", endpoint);
-            Protocol::Http(reqwest::Client::builder().timeout(Duration::from_secs(10)).build().map_err(
-                |e| SongbirdError::configuration(format!("Failed to create HTTP client: {e}")),
-            )?)
+            Protocol::Http(
+                reqwest::Client::builder().timeout(Duration::from_secs(10)).build().map_err(
+                    |e| SongbirdError::configuration(format!("Failed to create HTTP client: {e}")),
+                )?,
+            )
         };
 
         Ok(Self {
@@ -262,11 +264,12 @@ impl StorageAdapter {
                 // HTTP protocol (FALLBACK - ~500-1000 μs latency)
                 debug!("🌐 Using HTTP (FALLBACK protocol)");
                 let url = format!("{}/metrics/storage", self.endpoint);
-                
-                let response = client.get(&url).timeout(self.timeout).send().await.map_err(|e| {
-                    warn!("Failed to reach storage capability provider via HTTP: {e}");
-                    SongbirdError::network(format!("Failed to reach storage provider: {e}"))
-                })?;
+
+                let response =
+                    client.get(&url).timeout(self.timeout).send().await.map_err(|e| {
+                        warn!("Failed to reach storage capability provider via HTTP: {e}");
+                        SongbirdError::network(format!("Failed to reach storage provider: {e}"))
+                    })?;
 
                 if !response.status().is_success() {
                     let status = response.status();

@@ -25,4 +25,3 @@ pub use broadcaster::AnonymousDiscoveryBroadcaster;
 pub use listener::AnonymousDiscoveryListener;
 pub use messages::{AnonymousDiscoveryMessage, TransportEndpointMessage};
 pub use peer::DiscoveredPeer;
-

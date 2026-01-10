@@ -7,11 +7,11 @@
 // Allow async_fn_in_trait warning - our traits guarantee Send + Sync
 #![allow(async_fn_in_trait)]
 
+use crate::JsonRpcClient;
 use serde::{Deserialize, Serialize};
 use songbird_types::{SafeEnv, SongbirdError, SongbirdResult};
 use std::time::Duration;
 use tracing::{debug, warn};
-use crate::JsonRpcClient;
 
 /// AI metrics from any AI capability provider
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -82,9 +82,9 @@ pub enum ModelType {
 
 /// Protocol for communication (v3.12.0 - tarpc PRIMARY)
 enum Protocol {
-    Tarpc(crate::TarpcClient),       // PRIMARY - high-performance binary RPC
-    JsonRpc(JsonRpcClient),          // SECONDARY - universal, port-free
-    Http(reqwest::Client),           // FALLBACK - network only
+    Tarpc(crate::TarpcClient), // PRIMARY - high-performance binary RPC
+    JsonRpc(JsonRpcClient),    // SECONDARY - universal, port-free
+    Http(reqwest::Client),     // FALLBACK - network only
 }
 
 impl std::fmt::Debug for Protocol {
@@ -214,12 +214,14 @@ impl AIAdapter {
             Protocol::JsonRpc(JsonRpcClient::new(&endpoint)?)
         } else {
             debug!("🌐 Detected HTTP endpoint for AI (FALLBACK): {}", endpoint);
-            Protocol::Http(reqwest::Client::builder()
-                .timeout(Duration::from_secs(30)) // AI operations may take longer
-                .build()
-                .map_err(|e| {
-                    SongbirdError::configuration(format!("Failed to create HTTP client: {e}"))
-                })?)
+            Protocol::Http(
+                reqwest::Client::builder()
+                    .timeout(Duration::from_secs(30)) // AI operations may take longer
+                    .build()
+                    .map_err(|e| {
+                        SongbirdError::configuration(format!("Failed to create HTTP client: {e}"))
+                    })?,
+            )
         };
 
         Ok(Self {
@@ -273,10 +275,11 @@ impl AIAdapter {
                 debug!("🌐 Using HTTP (FALLBACK protocol)");
                 let url = format!("{}/metrics/ai", self.endpoint);
 
-                let response = client.get(&url).timeout(self.timeout).send().await.map_err(|e| {
-                    warn!("Failed to reach AI capability provider via HTTP: {e}");
-                    SongbirdError::network(format!("Failed to reach AI provider: {e}"))
-                })?;
+                let response =
+                    client.get(&url).timeout(self.timeout).send().await.map_err(|e| {
+                        warn!("Failed to reach AI capability provider via HTTP: {e}");
+                        SongbirdError::network(format!("Failed to reach AI provider: {e}"))
+                    })?;
 
                 if !response.status().is_success() {
                     let status = response.status();

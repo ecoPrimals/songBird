@@ -41,14 +41,14 @@ pub struct SongbirdOrchestrator {
     // security_integration: Arc<UniversalSecurityIntegration>, // Temporarily disabled
     pub(super) trust_manager: Arc<TrustEscalationManager>,
     pub(super) connection_manager: Arc<ConnectionManager>,
-    
+
     // ✅ MODERN RUST PATTERN (v3.10.3 - Jan 6, 2026): Store listener WITHOUT Arc
     // This enables builder pattern usage (add BirdSong, stats) before Arc wrapping.
     // Arc wrapping happens in start() AFTER all configuration is complete.
     // This follows "build then Arc" pattern, not "Arc then try to mutate" anti-pattern.
     pub(super) discovery_listener_pending: Option<AnonymousDiscoveryListener>,
     pub(super) discovery_listener: Option<Arc<AnonymousDiscoveryListener>>,
-    
+
     pub(super) discovery_status_manager: Arc<songbird_discovery::DiscoveryStatusManager>,
     pub(super) ipc_server_handle: Option<tokio::task::JoinHandle<()>>,
     pub(super) shutdown_signal: tokio::sync::broadcast::Receiver<()>,
@@ -64,7 +64,7 @@ impl SongbirdOrchestrator {
 
         // Print secure-by-default configuration
         info!("🔒 Songbird Orchestrator - Secure by Default");
-        
+
         // ✅ MODERN RUST PATTERN (v3.10.3 - Jan 6, 2026): Smart refactoring
         // Component initialization extracted to separate module for clarity and maintainability.
         // This follows single responsibility principle - initialization.rs handles component creation,
@@ -117,7 +117,7 @@ impl SongbirdOrchestrator {
         // Extracted to initialization module for clarity, maintainability, and testability.
         // This reduces core.rs by ~220 lines while improving separation of concerns.
         let components = super::initialization::initialize_components(&config)?;
-        
+
         // Destructure initialized components for use
         let service_registry = components.service_registry;
         let universal_service_registry = components.universal_service_registry;
@@ -168,8 +168,8 @@ impl SongbirdOrchestrator {
             // security_integration, // Temporarily disabled
             trust_manager,
             connection_manager,
-            discovery_listener_pending,  // ✅ Holds non-Arc listener for configuration
-            discovery_listener: None,     // ✅ Will be set in start() after full config
+            discovery_listener_pending, // ✅ Holds non-Arc listener for configuration
+            discovery_listener: None,   // ✅ Will be set in start() after full config
             discovery_status_manager,
             ipc_server_handle: None, // Will be set in start()
             shutdown_signal,
@@ -218,10 +218,10 @@ impl SongbirdOrchestrator {
         match security_url {
             Ok(url) => {
                 info!("🔐 Security provider configured: {}", url);
-                
+
                 // Query for identity
                 let security_client = SecurityCapabilityClient::from_endpoint(url);
-                
+
                 match security_client?.get_identity().await {
                     Ok(identity) => {
                         info!("✅ Got encryption tag: {}", identity.encryption_tag);
@@ -229,7 +229,7 @@ impl SongbirdOrchestrator {
                             info!("👨‍👩‍👧‍👦 Family ID: {}", family_id);
                         }
                         info!("🔑 Capabilities: {:?}", identity.capabilities);
-                        
+
                         // ✅ v3.14.0: Tags now broadcast in discovery via discover_identity_tags()
                         // For now, it's logged and can be accessed via SecurityCapabilityClient
                     }
@@ -244,7 +244,7 @@ impl SongbirdOrchestrator {
                 debug!("Continuing without encryption tags");
             }
         }
-        
+
         Ok(())
     }
 
@@ -268,7 +268,7 @@ impl SongbirdOrchestrator {
         info!("🌐 Starting HTTP server...");
         let actual_https_port = self.start_http_server().await?;
         info!("✅ HTTP server started on port {}", actual_https_port);
-        
+
         // 🎧 NEW (Jan 4, 2026): Start Unix Socket IPC Server for inter-primal communication
         info!("🎧 Starting Unix Socket IPC server...");
         self.start_ipc_server().await?;
@@ -353,18 +353,17 @@ impl SongbirdOrchestrator {
             // Convert endpoints to discovery message format
             // CRITICAL FIX (Dec 20, 2025): Include full address (IP:port) instead of just port
             // This allows receivers to properly coalesce multi-interface nodes under one identity
-            let endpoint_messages: Vec<
-                songbird_discovery::anonymous::TransportEndpointMessage,
-            > = node_identity
-                .endpoints
-                .iter()
-                .map(|ep| songbird_discovery::anonymous::TransportEndpointMessage {
-                    interface_type: ep.interface_type.clone(),
-                    address: ep.address.to_string(), // ✅ Full address, not just port!
-                    protocols: ep.protocols.clone(),
-                    preference: ep.preference,
-                })
-                .collect();
+            let endpoint_messages: Vec<songbird_discovery::anonymous::TransportEndpointMessage> =
+                node_identity
+                    .endpoints
+                    .iter()
+                    .map(|ep| songbird_discovery::anonymous::TransportEndpointMessage {
+                        interface_type: ep.interface_type.clone(),
+                        address: ep.address.to_string(), // ✅ Full address, not just port!
+                        protocols: ep.protocols.clone(),
+                        preference: ep.preference,
+                    })
+                    .collect();
 
             let broadcast_addrs: Vec<std::net::SocketAddr> = self
                 ._config
@@ -389,7 +388,7 @@ impl SongbirdOrchestrator {
                 Arc::clone(&self.discovery_status_manager),
             )
             .await?;
-            
+
             // Store the configured listener for bridge polling
             self.discovery_listener = listener_arc;
 
@@ -518,7 +517,7 @@ impl SongbirdOrchestrator {
 
         Ok(actual_port)
     }
-    
+
     /// Start Unix Socket IPC server for inter-primal communication (Jan 4, 2026)
     ///
     /// Starts a Unix socket server that allows other primals (security provider, ToadStool, etc.)
@@ -528,47 +527,49 @@ impl SongbirdOrchestrator {
     /// If no family_id is configured, uses: `/tmp/songbird-{node_id}.sock`
     /// If no node_id is configured, uses: `/tmp/songbird.sock` (legacy fallback)
     ///
+    /// v3.19.2: Unix Socket IPC Server (port-free!)
+    /// v3.20.0: Service registry mode - primals register themselves
+    ///
+    /// This creates a Unix domain socket for JSON-RPC 2.0 communication with other primals.
+    /// Socket path is derived from SONGBIRD_FAMILY_ID env var (zero hardcoding!).
+    ///
     /// This ensures multiple Songbird instances (spores) can run on the same machine
     /// without socket path conflicts, following security provider's pattern.
     async fn start_ipc_server(&mut self) -> Result<()> {
-        use crate::ipc::UnixSocketServer;
-        
-        // Get node ID for socket path (zero hardcoding!)
-        let node_id = SafeEnv::get("SONGBIRD_NODE_ID")
-            .ok()
-            .or_else(|| std::env::var("NODE_ID").ok())
-            .or_else(|| std::env::var("SPORE_ID").ok())
-            .unwrap_or_else(|| "default".to_string());
-        
-        info!("🎧 Starting Unix Socket IPC server (v3.19.2)");
-        info!("   Node ID: {}", node_id);
-        info!("   Socket: /tmp/songbird-{}.sock", node_id);
+        use crate::ipc::{ServiceRegistry, UnixSocketServer};
+
+        info!("🎧 Starting Unix Socket IPC server (v3.20.0 - Service Registry Mode)");
+        info!("   Family ID: {}", std::env::var("SONGBIRD_FAMILY_ID").unwrap_or_else(|_| "default".to_string()));
         info!("   Protocol: JSON-RPC 2.0");
-        
+
+        // v3.20.0: Create service registry for primal registration
+        let service_registry = Arc::new(ServiceRegistry::new());
+
         // v3.19.2: Pass individual components (cleaner than Arc<RwLock<whole orchestrator>>)
-        // Handlers only need discovery_listener and connection_manager
         let discovery_listener_clone = self.discovery_listener.clone();
         let connection_manager_clone = Arc::clone(&self.connection_manager);
-        
-        // Create Unix socket server
+
+        // v3.20.0: Create Unix socket server with service registry
         let mut server = UnixSocketServer::new(
-            &node_id,
+            service_registry,
             discovery_listener_clone,
             connection_manager_clone,
         );
-        
+
         // Start server (returns ServerHandle for graceful shutdown)
         let server_handle = server.start().await?;
-        
+
         info!("✅ Unix Socket IPC server started successfully");
-        info!("   APIs: discover_by_family, create_genetic_tunnel, announce_capabilities");
-        info!("   🌱 biomeOS can now connect for spore federation!");
-        
+        info!("   APIs: 7 total");
+        info!("   - Service Registry: register_service, discover_by_capability, get_service_health, health_check");
+        info!("   - P2P Discovery: discover_by_family, create_genetic_tunnel, announce_capabilities");
+        info!("   🌱 Primals can now register and discover each other!");
+
         // Store handle for graceful shutdown (would need to be added to orchestrator struct)
         // For now, server runs indefinitely in background
-        // TODO v3.19.3: Add server_handle to orchestrator struct for graceful shutdown
-        drop(server_handle);  // Prevent unused warning
-        
+        // TODO v3.20.0: Add server_handle to orchestrator struct for graceful shutdown
+        drop(server_handle); // Prevent unused warning
+
         Ok(())
     }
 
@@ -607,10 +608,9 @@ impl SongbirdOrchestrator {
 
         // Spawn tarpc server in background (uses simplified server without orchestrator Arc)
         tokio::spawn(async move {
-            if let Err(e) = crate::rpc::tarpc_server::start_tarpc_server_simple(
-                service_registry,
-                addr,
-            ).await {
+            if let Err(e) =
+                crate::rpc::tarpc_server::start_tarpc_server_simple(service_registry, addr).await
+            {
                 error!("tarpc server error: {}", e);
             }
         });
@@ -801,7 +801,7 @@ impl SongbirdOrchestrator {
         info!("✅ Songbird Orchestrator stopped successfully");
         Ok(())
     }
-    
+
     /// Get discovered peers from the discovery listener (v3.19.1)
     ///
     /// Used by Unix socket IPC handlers to implement `discover_by_family` API
@@ -815,7 +815,7 @@ impl SongbirdOrchestrator {
             Ok(vec![])
         }
     }
-    
+
     /// Establish a connection to a peer (v3.19.1)
     ///
     /// Used by Unix socket IPC handlers to implement `create_genetic_tunnel` API
@@ -917,7 +917,7 @@ impl SongbirdOrchestrator {
     }
 
     /// Detect GPU model if available
-    /// 
+    ///
     /// Public for use in federation setup
     /// Detect GPU model (re-exported from hardware_detection module)
     pub fn detect_gpu() -> Option<String> {

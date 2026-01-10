@@ -14,9 +14,7 @@
 //! - Status code handling
 
 use songbird_types::SongbirdResult;
-use songbird_universal::adapters::security::{
-    AuthResult, SecurityAdapter, SecurityHealth,
-};
+use songbird_universal::adapters::security::{AuthResult, SecurityAdapter, SecurityHealth};
 use std::time::Duration;
 
 // ============================================================================

@@ -178,9 +178,10 @@ async fn test_trust_timeout_and_cleanup() -> Result<()> {
             // Check if trust has expired
             trust_manager.get_trust_level(peer_id).await.is_err()
         },
-        Duration::from_secs(3) // Safety margin above 1s timeout
-    ).await;
-    
+        Duration::from_secs(3), // Safety margin above 1s timeout
+    )
+    .await;
+
     assert!(expired, "Trust should expire within timeout period");
     info!("✅ Step 2: Trust expired (event-driven check)");
 

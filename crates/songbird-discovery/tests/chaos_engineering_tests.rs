@@ -12,15 +12,17 @@
 
 #[cfg(test)]
 mod chaos_engineering_tests {
-    use songbird_discovery::birdsong_integration::{BirdSongConfig, BirdSongEncryption, BirdSongProcessor};
+    use serde_json::json;
     use songbird_discovery::anonymous_discovery::{
         AnonymousDiscoveryMessage, TransportEndpointMessage,
     };
+    use songbird_discovery::birdsong_integration::{
+        BirdSongConfig, BirdSongEncryption, BirdSongProcessor,
+    };
     use songbird_discovery::IdentityAttestation;
-    use serde_json::json;
-    use std::sync::Arc;
     use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
-    use tokio::time::{Duration, sleep, Instant};
+    use std::sync::Arc;
+    use tokio::time::{sleep, Duration, Instant};
 
     /// Chaotic provider that randomly fails operations
     struct ChaoticBirdSongProvider {
@@ -101,14 +103,15 @@ mod chaos_engineering_tests {
 
         async fn simulate_send(&self) -> bool {
             let count = self.packet_count.fetch_add(1, Ordering::SeqCst);
-            
+
             // Simulate packet loss
             if (count % 100) < (self.packet_loss_rate * 100.0) as usize {
                 return false; // Packet lost
             }
 
             // Simulate latency with jitter
-            let actual_latency = self.latency + Duration::from_millis(count as u64 % self.jitter.as_millis() as u64);
+            let actual_latency =
+                self.latency + Duration::from_millis(count as u64 % self.jitter.as_millis() as u64);
             sleep(actual_latency).await;
 
             true // Packet delivered
@@ -118,10 +121,8 @@ mod chaos_engineering_tests {
     #[tokio::test]
     async fn test_random_provider_failures() {
         // Provider that fails 30% of the time
-        let provider = Arc::new(ChaoticBirdSongProvider::new(
-            Some("chaos-family".to_string()),
-            0.3,
-        ));
+        let provider =
+            Arc::new(ChaoticBirdSongProvider::new(Some("chaos-family".to_string()), 0.3));
 
         let config = BirdSongConfig {
             enabled: true,
@@ -139,7 +140,7 @@ mod chaos_engineering_tests {
         for i in 0..100 {
             let message = create_test_message(&format!("msg-{}", i));
             let plaintext = message.to_bytes().unwrap();
-            
+
             let result = processor.encrypt_packet(&plaintext).await;
             match result {
                 Ok(_) => success_count += 1,
@@ -149,7 +150,10 @@ mod chaos_engineering_tests {
 
         // With 30% failure rate and fallback enabled, should have high success
         assert!(success_count > 60, "Should handle most messages despite failures");
-        println!("✅ Chaos test: {} successes, {} fallbacks out of 100", success_count, fallback_count);
+        println!(
+            "✅ Chaos test: {} successes, {} fallbacks out of 100",
+            success_count, fallback_count
+        );
     }
 
     #[tokio::test]
@@ -195,8 +199,8 @@ mod chaos_engineering_tests {
     async fn test_slow_network_conditions() {
         let network = NetworkSimulator::new(
             Duration::from_millis(100), // 100ms base latency
-            Duration::from_millis(50),   // 50ms jitter
-            0.05,                         // 5% packet loss
+            Duration::from_millis(50),  // 50ms jitter
+            0.05,                       // 5% packet loss
         );
 
         let start = Instant::now();
@@ -334,7 +338,7 @@ mod chaos_engineering_tests {
 
         // Phase 2: "Fix" the system (reduce failure rate by resetting counter)
         provider.call_count.store(0, Ordering::SeqCst);
-        
+
         let mut phase2_success = 0;
         for i in 0..50 {
             let msg = create_test_message(&format!("phase2-{}", i));
@@ -345,8 +349,10 @@ mod chaos_engineering_tests {
 
         // System should recover in phase 2
         assert!(phase2_success >= phase1_success, "Should recover or maintain performance");
-        println!("✅ Cascading failure: Phase 1 = {}, Phase 2 = {} (recovery verified)", 
-                 phase1_success, phase2_success);
+        println!(
+            "✅ Cascading failure: Phase 1 = {}, Phase 2 = {} (recovery verified)",
+            phase1_success, phase2_success
+        );
     }
 
     #[tokio::test]
@@ -391,15 +397,9 @@ mod chaos_engineering_tests {
         let family_a = "partition-a";
         let family_b = "partition-b";
 
-        let provider_a = Arc::new(ChaoticBirdSongProvider::new(
-            Some(family_a.to_string()),
-            0.0,
-        ));
+        let provider_a = Arc::new(ChaoticBirdSongProvider::new(Some(family_a.to_string()), 0.0));
 
-        let provider_b = Arc::new(ChaoticBirdSongProvider::new(
-            Some(family_b.to_string()),
-            0.0,
-        ));
+        let provider_b = Arc::new(ChaoticBirdSongProvider::new(Some(family_b.to_string()), 0.0));
 
         let config = BirdSongConfig {
             enabled: true,
@@ -419,8 +419,10 @@ mod chaos_engineering_tests {
 
         // Messages from partition A to partition B (should fail)
         let decrypted_cross = processor_b.decrypt_packet(&encrypted_a).await;
-        assert!(decrypted_cross.is_err() || decrypted_cross.unwrap().is_none(),
-                "Should not decrypt across partitions");
+        assert!(
+            decrypted_cross.is_err() || decrypted_cross.unwrap().is_none(),
+            "Should not decrypt across partitions"
+        );
 
         println!("✅ Network partition: Cross-partition communication properly isolated");
     }
@@ -428,10 +430,7 @@ mod chaos_engineering_tests {
     #[tokio::test]
     async fn test_memory_pressure_simulation() {
         // Create and discard many messages to simulate memory pressure
-        let provider = Arc::new(ChaoticBirdSongProvider::new(
-            Some("memory-test".to_string()),
-            0.0,
-        ));
+        let provider = Arc::new(ChaoticBirdSongProvider::new(Some("memory-test".to_string()), 0.0));
 
         let config = BirdSongConfig {
             enabled: true,
@@ -456,10 +455,8 @@ mod chaos_engineering_tests {
 
     #[tokio::test]
     async fn test_rapid_state_changes() {
-        let provider = Arc::new(ChaoticBirdSongProvider::new(
-            Some("rapid-changes".to_string()),
-            0.2,
-        ));
+        let provider =
+            Arc::new(ChaoticBirdSongProvider::new(Some("rapid-changes".to_string()), 0.2));
 
         let config = BirdSongConfig {
             enabled: true,
@@ -534,4 +531,3 @@ mod chaos_engineering_tests {
         .with_identity_attestations(attestations)
     }
 }
-

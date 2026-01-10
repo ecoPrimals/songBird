@@ -13,8 +13,8 @@ use std::sync::Arc;
 use serde::{Deserialize, Serialize};
 use songbird_network_federation::service_registry::FederatedServiceRegistry;
 use songbird_universal::tarpc_types::{
-    HealthStatus, ProtocolInfo, RegistrationResult, ServiceInfo, ServiceRegistration,
-    SongbirdRpc, VersionInfo,
+    HealthStatus, ProtocolInfo, RegistrationResult, ServiceInfo, ServiceRegistration, SongbirdRpc,
+    VersionInfo,
 };
 use tarpc::context::Context;
 use tarpc::server::Channel;
@@ -382,10 +382,7 @@ impl SongbirdRpc for TarpcServer {
                 name: "JSON-RPC".to_string(),
                 port: 8443,
                 enabled: true,
-                info: [("path".to_string(), "/jsonrpc".to_string())]
-                    .iter()
-                    .cloned()
-                    .collect(),
+                info: [("path".to_string(), "/jsonrpc".to_string())].iter().cloned().collect(),
             },
             ProtocolInfo {
                 name: "tarpc".to_string(),

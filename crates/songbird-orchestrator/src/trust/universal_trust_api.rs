@@ -15,10 +15,10 @@ use std::collections::HashMap;
 pub struct UniversalTrustRequest {
     /// Request format version
     pub request_format: String,
-    
+
     /// Information about the peer being evaluated
     pub evaluator: EvaluatorInfo,
-    
+
     /// Context about how/when the peer was discovered
     pub context: DiscoveryContext,
 }
@@ -28,7 +28,7 @@ pub struct UniversalTrustRequest {
 pub struct EvaluatorInfo {
     /// Unique peer identifier
     pub peer_id: String,
-    
+
     /// Identity attestations from various providers
     pub attestations: Vec<IdentityAttestation>,
 }
@@ -39,10 +39,10 @@ pub struct IdentityAttestation {
     /// Optional hint about which provider issued this
     #[serde(skip_serializing_if = "Option::is_none")]
     pub provider: Option<String>,
-    
+
     /// Format of the attestation data (e.g., "tag_list", "x509_certificate", "pgp_key")
     pub format: String,
-    
+
     /// The attestation data itself (format-specific, flexible)
     pub data: JsonValue,
 }
@@ -52,17 +52,17 @@ pub struct IdentityAttestation {
 pub struct DiscoveryContext {
     /// How peer was discovered (e.g., "udp_multicast", "mdns", "manual", "registry")
     pub discovery_method: String,
-    
+
     /// When peer was first seen (ISO8601 timestamp)
     pub first_seen_at: String,
-    
+
     /// Peer's network endpoint
     pub endpoint: String,
-    
+
     /// Peer's advertised capabilities
     #[serde(default)]
     pub capabilities: Vec<String>,
-    
+
     /// Provider-specific context (extensible)
     #[serde(default, skip_serializing_if = "HashMap::is_empty")]
     pub custom: HashMap<String, JsonValue>,
@@ -75,27 +75,27 @@ pub struct DiscoveryContext {
 pub struct UniversalTrustResponse {
     /// Response format version
     pub response_format: String,
-    
+
     /// Trust decision
     pub decision: TrustDecision,
-    
+
     /// Confidence level (0.0 = no trust, 1.0 = full trust)
     pub confidence: f64,
-    
+
     /// Human-readable explanation
     pub reason: String,
-    
+
     /// Machine-readable reason code
     pub reason_code: String,
-    
+
     /// Additional context (provider-specific)
     #[serde(default, skip_serializing_if = "HashMap::is_empty")]
     pub metadata: HashMap<String, JsonValue>,
-    
+
     /// When this trust decision expires (for caching)
     #[serde(skip_serializing_if = "Option::is_none")]
     pub expires_at: Option<String>,
-    
+
     /// Provider-specific response data (extensible)
     #[serde(default, skip_serializing_if = "HashMap::is_empty")]
     pub custom: HashMap<String, JsonValue>,
@@ -107,10 +107,10 @@ pub struct UniversalTrustResponse {
 pub enum TrustDecision {
     /// Automatically accept this peer (high trust, same family/group)
     AutoAccept,
-    
+
     /// Prompt user for consent (unknown or different family)
     PromptUser,
-    
+
     /// Reject this peer (known malicious or policy violation)
     Reject,
 }
@@ -133,28 +133,28 @@ impl UniversalTrustRequest {
             },
         }
     }
-    
+
     /// Set discovery context
     #[must_use]
     pub fn with_context(mut self, context: DiscoveryContext) -> Self {
         self.context = context;
         self
     }
-    
+
     /// Set discovery method
     #[must_use]
     pub fn with_discovery_method(mut self, method: impl Into<String>) -> Self {
         self.context.discovery_method = method.into();
         self
     }
-    
+
     /// Set endpoint
     #[must_use]
     pub fn with_endpoint(mut self, endpoint: impl Into<String>) -> Self {
         self.context.endpoint = endpoint.into();
         self
     }
-    
+
     /// Set capabilities
     #[must_use]
     pub fn with_capabilities(mut self, capabilities: Vec<String>) -> Self {
@@ -172,14 +172,14 @@ impl IdentityAttestation {
             data,
         }
     }
-    
+
     /// Set provider hint
     #[must_use]
     pub fn with_provider(mut self, provider: impl Into<String>) -> Self {
         self.provider = Some(provider.into());
         self
     }
-    
+
     /// Create a tag list attestation (for security provider-style tags)
     pub fn tag_list(tags: Vec<String>) -> Self {
         Self {
@@ -190,7 +190,7 @@ impl IdentityAttestation {
             }),
         }
     }
-    
+
     /// Create a tag list attestation with family ID
     pub fn tag_list_with_family(tags: Vec<String>, family_id: impl Into<String>) -> Self {
         Self {
@@ -210,19 +210,19 @@ impl UniversalTrustResponse {
     pub fn is_auto_accept(&self) -> bool {
         self.decision == TrustDecision::AutoAccept
     }
-    
+
     /// Check if the decision is prompt user
     #[must_use]
     pub fn is_prompt_user(&self) -> bool {
         self.decision == TrustDecision::PromptUser
     }
-    
+
     /// Check if the decision is reject
     #[must_use]
     pub fn is_reject(&self) -> bool {
         self.decision == TrustDecision::Reject
     }
-    
+
     /// Get metadata value
     pub fn get_metadata(&self, key: &str) -> Option<&JsonValue> {
         self.metadata.get(key)
@@ -232,50 +232,49 @@ impl UniversalTrustResponse {
 #[cfg(test)]
 mod tests {
     use super::*;
-    
+
     #[test]
     fn test_universal_trust_request_creation() {
-        let attestations = vec![
-            IdentityAttestation::tag_list(vec!["beardog:family:iidn:tower1".to_string()]),
-        ];
-        
+        let attestations =
+            vec![IdentityAttestation::tag_list(vec!["beardog:family:iidn:tower1".to_string()])];
+
         let request = UniversalTrustRequest::new("tower1", attestations)
             .with_discovery_method("udp_multicast")
             .with_endpoint("https://192.168.1.100:8080")
             .with_capabilities(vec!["orchestration".to_string()]);
-        
+
         assert_eq!(request.request_format, "universal_trust_v1");
         assert_eq!(request.evaluator.peer_id, "tower1");
         assert_eq!(request.context.discovery_method, "udp_multicast");
     }
-    
+
     #[test]
     fn test_identity_attestation_tag_list() {
         let attestation = IdentityAttestation::tag_list_with_family(
             vec!["beardog:family:iidn:tower1".to_string()],
-            "iidn"
+            "iidn",
         );
-        
+
         assert_eq!(attestation.format, "tag_list");
         assert!(attestation.data.get("tags").is_some());
         assert!(attestation.data.get("family_id").is_some());
     }
-    
+
     #[test]
     fn test_trust_decision_serialization() {
         let decision = TrustDecision::AutoAccept;
         let json = serde_json::to_string(&decision).unwrap();
         assert_eq!(json, r#""auto_accept""#);
-        
+
         let decision = TrustDecision::PromptUser;
         let json = serde_json::to_string(&decision).unwrap();
         assert_eq!(json, r#""prompt_user""#);
-        
+
         let decision = TrustDecision::Reject;
         let json = serde_json::to_string(&decision).unwrap();
         assert_eq!(json, r#""reject""#);
     }
-    
+
     #[test]
     fn test_universal_trust_response_helpers() {
         let response = UniversalTrustResponse {
@@ -288,10 +287,9 @@ mod tests {
             expires_at: None,
             custom: HashMap::new(),
         };
-        
+
         assert!(response.is_auto_accept());
         assert!(!response.is_prompt_user());
         assert!(!response.is_reject());
     }
 }
-

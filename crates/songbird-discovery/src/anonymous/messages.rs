@@ -82,7 +82,7 @@ pub struct AnonymousDiscoveryMessage {
 
     /// Timestamp of message creation (Unix epoch seconds)
     pub timestamp: u64,
-    
+
     /// Generic tags (NEW - for USB seed integration)
     ///
     /// Contains BearDog encryption tags and other metadata for trust evaluation.
@@ -93,7 +93,7 @@ pub struct AnonymousDiscoveryMessage {
     /// - Protocol support: `"btsp_enabled"`, `"birdsong_v2"`
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub tags: Option<Vec<String>>,
-    
+
     /// Identity attestations (CRITICAL FIX - Jan 3, 2026)
     ///
     /// Structured identity information from security providers (e.g., BearDog, ToadStool).
@@ -136,7 +136,7 @@ pub struct TransportEndpointMessage {
 
 impl AnonymousDiscoveryMessage {
     /// Create a new anonymous discovery message (v2.1 - backward compatible)
-    #[must_use] 
+    #[must_use]
     pub fn new(capabilities: Vec<String>, protocols: Vec<String>, port: u16) -> Self {
         Self {
             version: "2.1".to_string(),
@@ -158,7 +158,7 @@ impl AnonymousDiscoveryMessage {
     ///
     /// This includes stable node identity and multiple transport endpoints.
     /// Receivers can coalesce multiple endpoints under the same `node_id`.
-    #[must_use] 
+    #[must_use]
     pub fn new_v3(
         node_id: String,
         node_name: String,
@@ -174,7 +174,8 @@ impl AnonymousDiscoveryMessage {
             .and_then(|p| p.parse().ok())
             .unwrap_or(8080);
 
-        let protocols = primary_endpoint.map_or_else(|| vec!["https".to_string()], |e| e.protocols.clone());
+        let protocols =
+            primary_endpoint.map_or_else(|| vec!["https".to_string()], |e| e.protocols.clone());
 
         Self {
             version: "3.0".to_string(),
@@ -191,7 +192,7 @@ impl AnonymousDiscoveryMessage {
             capability_proof: None,
         }
     }
-    
+
     /// Set identity attestations (CRITICAL FIX - Jan 3, 2026)
     ///
     /// Adds identity attestations from security provider for genetic lineage auto-trust.
@@ -209,8 +210,11 @@ impl AnonymousDiscoveryMessage {
         };
         self
     }
-    
-    pub fn with_identity_attestations(mut self, attestations: Vec<crate::IdentityAttestation>) -> Self {
+
+    pub fn with_identity_attestations(
+        mut self,
+        attestations: Vec<crate::IdentityAttestation>,
+    ) -> Self {
         self.identity_attestations = Some(attestations);
         self
     }
@@ -397,8 +401,8 @@ mod tests {
         );
 
         let bytes = msg.to_bytes().expect("Serialization failed");
-        let deserialized = AnonymousDiscoveryMessage::from_bytes(&bytes)
-            .expect("Deserialization failed");
+        let deserialized =
+            AnonymousDiscoveryMessage::from_bytes(&bytes).expect("Deserialization failed");
 
         assert_eq!(msg.version, deserialized.version);
         assert_eq!(msg.capabilities, deserialized.capabilities);
@@ -411,7 +415,7 @@ mod tests {
 
         // Should be different (random UUID component)
         assert_ne!(id1, id2);
-        
+
         // Should be 64 hex characters (SHA-256)
         assert_eq!(id1.len(), 64);
     }
@@ -424,9 +428,8 @@ mod tests {
 
         // Should be identical within same hour (deterministic)
         assert_eq!(id1, id2);
-        
+
         // Should be 64 hex characters (SHA-256)
         assert_eq!(id1.len(), 64);
     }
 }
-

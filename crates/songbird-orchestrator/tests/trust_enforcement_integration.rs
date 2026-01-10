@@ -2,9 +2,7 @@
 //!
 //! Tests the complete flow from discovery → trust evaluation → peer acceptance/rejection
 
-use songbird_orchestrator::trust::peer_trust::{
-    DiscoveredPeer, PeerTrustDecision,
-};
+use songbird_orchestrator::trust::peer_trust::{DiscoveredPeer, PeerTrustDecision};
 
 /// Test: Peer with same family should be auto-accepted
 #[tokio::test]
@@ -18,10 +16,10 @@ async fn test_same_family_auto_accept() {
         capabilities: vec![],
         identity_attestations: vec![],
     };
-    
+
     // Note: This test requires a running BearDog instance or mock server
     // For now, we're just testing the structure
-    
+
     assert_eq!(peer.node_id, "tower2");
     assert!(peer.tags.contains(&"beardog:family:iidn:tower2".to_string()));
 }
@@ -38,7 +36,7 @@ async fn test_no_tags_reject() {
         capabilities: vec![],
         identity_attestations: vec![],
     };
-    
+
     assert!(peer.tags.is_empty());
     // Without tags, BearDog should reject this peer
 }
@@ -55,7 +53,7 @@ async fn test_different_family_prompt() {
         capabilities: vec![],
         identity_attestations: vec![],
     };
-    
+
     assert_eq!(peer.node_id, "tower4");
     // Different family should trigger user prompt
 }
@@ -68,9 +66,13 @@ fn test_peer_trust_decision_auto_accept() {
         confidence: 1.0,
         encryption_tag: Some("beardog:family:iidn:tower1".to_string()),
     };
-    
+
     match decision {
-        PeerTrustDecision::AutoAccept { reason, confidence, .. } => {
+        PeerTrustDecision::AutoAccept {
+            reason,
+            confidence,
+            ..
+        } => {
             assert_eq!(reason, "same_genetic_family");
             assert_eq!(confidence, 1.0);
         }
@@ -86,9 +88,13 @@ fn test_peer_trust_decision_prompt_user() {
         peer_id: "tower4".to_string(),
         recommendation: "verify_identity_before_accepting".to_string(),
     };
-    
+
     match decision {
-        PeerTrustDecision::PromptUser { reason, peer_id, recommendation } => {
+        PeerTrustDecision::PromptUser {
+            reason,
+            peer_id,
+            recommendation,
+        } => {
             assert_eq!(reason, "different_genetic_family");
             assert_eq!(peer_id, "tower4");
             assert_eq!(recommendation, "verify_identity_before_accepting");
@@ -104,9 +110,12 @@ fn test_peer_trust_decision_reject() {
         reason: "no_genetic_lineage".to_string(),
         trust_level: "none".to_string(),
     };
-    
+
     match decision {
-        PeerTrustDecision::Reject { reason, trust_level } => {
+        PeerTrustDecision::Reject {
+            reason,
+            trust_level,
+        } => {
             assert_eq!(reason, "no_genetic_lineage");
             assert_eq!(trust_level, "none");
         }
@@ -126,7 +135,7 @@ fn test_discovered_peer_creation() {
         capabilities: vec![],
         identity_attestations: vec![],
     };
-    
+
     assert_eq!(peer.node_id, "test-tower");
     assert_eq!(peer.tags.len(), 2);
     assert_eq!(peer.discovery_method, "udp_multicast");
@@ -149,7 +158,7 @@ fn test_multiple_tags() {
         capabilities: vec![],
         identity_attestations: vec![],
     };
-    
+
     assert_eq!(peer.tags.len(), 3);
     assert!(peer.tags.iter().any(|t| t.starts_with("beardog:family:")));
     assert!(peer.tags.contains(&"btsp_enabled".to_string()));
@@ -167,7 +176,7 @@ fn test_empty_endpoint() {
         capabilities: vec![],
         identity_attestations: vec![],
     };
-    
+
     assert!(peer.endpoint.is_empty());
     // In real code, we should validate this
 }
@@ -181,16 +190,19 @@ fn test_confidence_levels() {
         (0.3, "different_family_unknown"),
         (0.0, "no_lineage"),
     ];
-    
+
     for (confidence, reason) in decisions {
         let decision = PeerTrustDecision::AutoAccept {
             reason: reason.to_string(),
             confidence,
             encryption_tag: None,
         };
-        
+
         match decision {
-            PeerTrustDecision::AutoAccept { confidence: c, .. } => {
+            PeerTrustDecision::AutoAccept {
+                confidence: c,
+                ..
+            } => {
                 assert!((0.0..=1.0).contains(&c), "Confidence should be between 0.0 and 1.0");
             }
             _ => {}
@@ -210,22 +222,19 @@ fn test_agnostic_pattern() {
         capabilities: vec![],
         identity_attestations: vec![],
     };
-    
+
     // Tags are generic - could be from any security provider
     assert!(!format!("{:?}", peer).contains("BearDog"));
     assert!(!peer.endpoint.contains("beardog"));
-    
+
     // Only the tag content mentions the provider, which is opaque to Songbird
 }
 
 /// Test: Discovery timestamp validation
 #[test]
 fn test_timestamp_validity() {
-    let now = std::time::SystemTime::now()
-        .duration_since(std::time::UNIX_EPOCH)
-        .unwrap()
-        .as_secs();
-    
+    let now = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_secs();
+
     let peer = DiscoveredPeer {
         node_id: "time-test-tower".to_string(),
         tags: vec![],
@@ -235,7 +244,7 @@ fn test_timestamp_validity() {
         capabilities: vec![],
         identity_attestations: vec![],
     };
-    
+
     // Timestamp should be recent (within last day)
     assert!(peer.first_seen_at <= now);
     assert!(peer.first_seen_at > now - 86400); // Not older than 24 hours
@@ -245,22 +254,23 @@ fn test_timestamp_validity() {
 #[test]
 fn test_trust_decision_performance() {
     let start = std::time::Instant::now();
-    
+
     for i in 0..1000 {
         let decision = PeerTrustDecision::AutoAccept {
             reason: format!("test_reason_{}", i),
             confidence: 1.0,
             encryption_tag: Some(format!("tag_{}", i)),
         };
-        
+
         match decision {
-            PeerTrustDecision::AutoAccept { .. } => {}
+            PeerTrustDecision::AutoAccept {
+                ..
+            } => {}
             _ => panic!("Unexpected decision"),
         }
     }
-    
+
     let duration = start.elapsed();
     println!("1000 trust decisions in {:?}", duration);
     assert!(duration.as_millis() < 100, "Trust decisions should be fast");
 }
-

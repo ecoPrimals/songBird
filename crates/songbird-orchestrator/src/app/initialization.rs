@@ -114,10 +114,7 @@ pub fn initialize_components(config: &CanonicalSongbirdConfig) -> Result<Initial
     // ✅ IDENTITY FIX (Dec 20, 2025): Load stable node identity EARLY
     // This ensures self-registration and discovery use the SAME node_id
     let node_identity = crate::node_identity::NodeIdentity::new_or_load(None)?;
-    info!(
-        "   ✅ Stable node identity: {} ({})",
-        node_identity.node_name, node_identity.node_id
-    );
+    info!("   ✅ Stable node identity: {} ({})", node_identity.node_name, node_identity.node_id);
 
     // ✅ MODERN RUST PATTERN (v3.10.3 - Jan 6, 2026): Create listener WITHOUT Arc wrapping
     // We'll add BirdSong and stats in start(), THEN wrap in Arc.
@@ -167,10 +164,7 @@ mod tests {
         let config = CanonicalSongbirdConfig::default();
         let result = initialize_components(&config);
 
-        assert!(
-            result.is_ok(),
-            "Component initialization should succeed with default config"
-        );
+        assert!(result.is_ok(), "Component initialization should succeed with default config");
 
         let components = result.unwrap();
 
@@ -192,10 +186,7 @@ mod tests {
         );
 
         // Verify node identity loaded
-        assert!(
-            !components.node_identity.node_name.is_empty(),
-            "Node identity should have a name"
-        );
+        assert!(!components.node_identity.node_name.is_empty(), "Node identity should have a name");
 
         // Discovery listener depends on config
         if config.discovery.mode.is_enabled() {
@@ -209,7 +200,8 @@ mod tests {
     #[test]
     fn test_initialization_with_discovery_disabled() {
         let mut config = CanonicalSongbirdConfig::default();
-        config.discovery.mode = songbird_types::config::consolidated_canonical::discovery::DiscoveryMode::Disabled;
+        config.discovery.mode =
+            songbird_types::config::consolidated_canonical::discovery::DiscoveryMode::Disabled;
 
         let result = initialize_components(&config);
         assert!(result.is_ok());
@@ -243,4 +235,3 @@ mod tests {
         );
     }
 }
-

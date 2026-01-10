@@ -37,7 +37,7 @@ pub use lineage::{
 
 // Re-export progressive trust types
 pub use trust::{
-    ElevationEvidence, ElevationPath, TrustEvaluation, TrustLevel, is_operation_allowed,
+    is_operation_allowed, ElevationEvidence, ElevationPath, TrustEvaluation, TrustLevel,
 };
 
 // Re-export response types
@@ -78,11 +78,11 @@ pub mod constants;
 pub mod error_helpers;
 pub mod errors;
 pub mod health;
-pub mod lineage;  // Genetic lineage types
+pub mod lineage; // Genetic lineage types
 pub mod memory_optimized;
 pub mod trust;
-pub mod trust_tests;  // Progressive trust model types
-// pub mod performance;  // Temporarily disabled - syntax errors need fixing
+pub mod trust_tests; // Progressive trust model types
+                     // pub mod performance;  // Temporarily disabled - syntax errors need fixing
 pub mod primal;
 pub mod response;
 pub mod service;

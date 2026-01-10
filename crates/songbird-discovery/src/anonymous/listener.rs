@@ -38,23 +38,23 @@ pub struct AnonymousDiscoveryListener {
 
     /// Peer timeout in seconds (default: 60)
     peer_timeout_secs: u64,
-    
+
     /// BirdSong decryption processor (optional)
     birdsong: Option<Arc<crate::birdsong_integration::BirdSongProcessor>>,
-    
+
     /// Our own node_id for self-filtering (v3.10.2 - Jan 5, 2026)
     ///
     /// Used to filter out our own discovery broadcasts to prevent self-discovery.
     /// Critical for multi-instance deployments where multiple towers run on same machine.
     node_id: Option<String>,
-    
+
     /// Statistics tracker for observability (optional) - NEW (Jan 5, 2026)
     stats: Option<Arc<crate::discovery_stats::DiscoveryStats>>,
 }
 
 impl AnonymousDiscoveryListener {
     /// Create a new anonymous discovery listener
-    #[must_use] 
+    #[must_use]
     pub fn new(port: u16, peer_timeout_secs: u64) -> Self {
         Self {
             port,
@@ -68,7 +68,7 @@ impl AnonymousDiscoveryListener {
     }
 
     /// Create a listener without multicast (broadcast-only fallback)
-    #[must_use] 
+    #[must_use]
     pub fn new_broadcast_only(port: u16, peer_timeout_secs: u64) -> Self {
         Self {
             port,
@@ -80,7 +80,7 @@ impl AnonymousDiscoveryListener {
             node_id: None,
         }
     }
-    
+
     /// Set node ID for self-filtering (v3.10.2 - Jan 5, 2026)
     ///
     /// Enables filtering out our own discovery broadcasts to prevent self-discovery.
@@ -90,19 +90,22 @@ impl AnonymousDiscoveryListener {
         self.node_id = Some(node_id);
         self
     }
-    
+
     /// Enable BirdSong encrypted discovery (NEW - Jan 3, 2026)
     ///
     /// Adds BirdSong decryption for privacy-preserving discovery.
     /// Only same-family peers' packets will be decoded.
-    #[must_use] 
-    pub fn with_birdsong(mut self, processor: Arc<crate::birdsong_integration::BirdSongProcessor>) -> Self {
+    #[must_use]
+    pub fn with_birdsong(
+        mut self,
+        processor: Arc<crate::birdsong_integration::BirdSongProcessor>,
+    ) -> Self {
         info!("🎵 BirdSong decryption enabled for discovery listener");
         info!("   Status: {}", processor.status());
         self.birdsong = Some(processor);
         self
     }
-    
+
     /// Enable statistics tracking for observability (NEW - Jan 5, 2026)
     #[must_use]
     pub fn with_stats(mut self, stats: Arc<crate::discovery_stats::DiscoveryStats>) -> Self {
@@ -135,11 +138,10 @@ impl AnonymousDiscoveryListener {
         // Join multicast group if configured
         if let Some(multicast_addr) = self.multicast_addr {
             let interface = Ipv4Addr::UNSPECIFIED; // Join on all interfaces
-            socket.join_multicast_v4(&multicast_addr, &interface)
-                .map_err(|e| {
-                    error!("Failed to join multicast group {}: {}", multicast_addr, e);
-                    e
-                })?;
+            socket.join_multicast_v4(&multicast_addr, &interface).map_err(|e| {
+                error!("Failed to join multicast group {}: {}", multicast_addr, e);
+                e
+            })?;
             info!("✅ Joined multicast group: {}", multicast_addr);
         }
 
@@ -164,12 +166,16 @@ impl AnonymousDiscoveryListener {
             match socket.recv_from(&mut buf).await {
                 Ok((len, addr)) => {
                     let data = &buf[..len];
-                    
+
                     // 🎵 NEW (Jan 3, 2026): Optional BirdSong decryption
                     let data = if let Some(ref birdsong) = self.birdsong {
                         match birdsong.decrypt_packet(data).await {
                             Ok(Some(plaintext)) => {
-                                debug!("🔓 BirdSong decrypted {} -> {} bytes", data.len(), plaintext.len());
+                                debug!(
+                                    "🔓 BirdSong decrypted {} -> {} bytes",
+                                    data.len(),
+                                    plaintext.len()
+                                );
                                 if let Some(ref stats) = self.stats {
                                     stats.record_received();
                                 }
@@ -206,7 +212,7 @@ impl AnonymousDiscoveryListener {
                                 }
                                 continue;
                             }
-                            
+
                             // CRITICAL FIX (v3.10.2 - Jan 5, 2026): Filter out self-discovery
                             // Prevents towers from discovering their own broadcasts
                             // Critical for multi-instance deployments (tower1, tower2, etc.)
@@ -276,7 +282,7 @@ impl AnonymousDiscoveryListener {
     /// Get all discovered peers
     pub async fn get_peers(&self) -> Vec<DiscoveredPeer> {
         let peers = self.peers.read().await;
-        
+
         // INFO LOGGING (v3.10.3 - Jan 6, 2026): Diagnose bridge gap at INFO level
         if !peers.is_empty() {
             info!("📊 get_peers() called: {} peers in HashMap", peers.len());
@@ -286,11 +292,11 @@ impl AnonymousDiscoveryListener {
                 info!("   - session:{} | node_id:{} | name:{}", session_id, node_id, node_name);
             }
         }
-        
+
         if let Some(ref stats) = self.stats {
             stats.set_peers_active(peers.len() as u64);
         }
-        
+
         peers.values().cloned().collect()
     }
 
@@ -351,8 +357,7 @@ mod tests {
 
     #[test]
     fn test_listener_with_node_id() {
-        let listener = AnonymousDiscoveryListener::new(2300, 60)
-            .with_node_id("tower1".to_string());
+        let listener = AnonymousDiscoveryListener::new(2300, 60).with_node_id("tower1".to_string());
         assert_eq!(listener.node_id, Some("tower1".to_string()));
     }
 
@@ -370,4 +375,3 @@ mod tests {
         assert!(peer.is_none());
     }
 }
-

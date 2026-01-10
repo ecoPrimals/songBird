@@ -212,7 +212,7 @@ impl LineageRelayCoordinator {
             loop {
                 // TODO: Replace with mpsc channel-based request queue
                 tokio::time::sleep(Duration::from_secs(1)).await; // ❌ POLLING ANTI-PATTERN
-                // Process any pending relay requests here
+                                                                  // Process any pending relay requests here
             }
         });
 

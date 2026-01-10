@@ -32,12 +32,12 @@
 #![warn(clippy::all)]
 
 // Security capability client (provider-agnostic!)
-pub mod security_capability_client;
 pub mod ceremony;
 pub mod coordination_bridge;
 pub mod error;
 pub mod identity;
 pub mod physical_channels;
+pub mod security_capability_client;
 pub mod types;
 pub mod witness;
 

@@ -72,7 +72,7 @@ impl LimitedConnection {
             .timeout(Duration::from_secs(10))
             .build()
             .context("Failed to create HTTP client")?;
-        
+
         Ok(Self {
             peer_id,
             endpoint,
@@ -81,14 +81,10 @@ impl LimitedConnection {
             http_client,
         })
     }
-    
+
     /// Create with default Level 1 capabilities
     pub fn with_defaults(peer_id: String, endpoint: String) -> Result<Self> {
-        Self::new(
-            peer_id,
-            endpoint,
-            TrustLevel::Limited.default_allowed_capabilities(),
-        )
+        Self::new(peer_id, endpoint, TrustLevel::Limited.default_allowed_capabilities())
     }
 }
 
@@ -97,23 +93,19 @@ impl PeerConnection for LimitedConnection {
     fn trust_level(&self) -> TrustLevel {
         TrustLevel::Limited
     }
-    
+
     fn allowed_capabilities(&self) -> &[String] {
         &self.allowed_capabilities
     }
-    
+
     fn denied_capabilities(&self) -> &[String] {
         &self.denied_capabilities
     }
-    
+
     fn is_operation_allowed(&self, operation: &str) -> bool {
-        check_operation_allowed(
-            operation,
-            &self.allowed_capabilities,
-            &self.denied_capabilities,
-        )
+        check_operation_allowed(operation, &self.allowed_capabilities, &self.denied_capabilities)
     }
-    
+
     async fn call(&self, operation: &str, request: Value) -> Result<Value> {
         // Enforce capability restrictions
         if !self.is_operation_allowed(operation) {
@@ -129,22 +121,20 @@ impl PeerConnection for LimitedConnection {
                 self.allowed_capabilities
             ));
         }
-        
+
         debug!(
             "🎵 Calling limited operation '{}' on peer '{}' (BirdSong)",
             operation, self.peer_id
         );
-        
+
         // Make HTTP call
         let url = format!("{}/api/v1/{}", self.endpoint, operation);
-        
-        let response = self.http_client
-            .post(&url)
-            .json(&request)
-            .send()
-            .await
-            .context(format!("Failed to call operation '{}' on peer '{}'", operation, self.peer_id))?;
-        
+
+        let response = self.http_client.post(&url).json(&request).send().await.context(format!(
+            "Failed to call operation '{}' on peer '{}'",
+            operation, self.peer_id
+        ))?;
+
         let status = response.status();
         if !status.is_success() {
             let error_body = response.text().await.unwrap_or_else(|_| "Unknown error".to_string());
@@ -155,22 +145,22 @@ impl PeerConnection for LimitedConnection {
                 error_body
             ));
         }
-        
-        let result = response.json::<Value>().await
-            .context("Failed to parse response from peer")?;
-        
+
+        let result =
+            response.json::<Value>().await.context("Failed to parse response from peer")?;
+
         debug!("✅ Limited operation '{}' succeeded on peer '{}'", operation, self.peer_id);
         Ok(result)
     }
-    
+
     fn peer_id(&self) -> &str {
         &self.peer_id
     }
-    
+
     fn endpoint(&self) -> &str {
         &self.endpoint
     }
-    
+
     async fn close(&self) -> Result<()> {
         debug!("Closing limited connection to peer '{}'", self.peer_id);
         // HTTP client cleanup happens automatically
@@ -187,8 +177,9 @@ mod tests {
         let conn = LimitedConnection::with_defaults(
             "test_peer".to_string(),
             "http://localhost:8080".to_string(),
-        ).unwrap();
-        
+        )
+        .unwrap();
+
         assert!(conn.is_operation_allowed("birdsong/sync"));
         assert!(conn.is_operation_allowed("coordination/state"));
         assert!(conn.is_operation_allowed("health"));
@@ -200,8 +191,9 @@ mod tests {
         let conn = LimitedConnection::with_defaults(
             "test_peer".to_string(),
             "http://localhost:8080".to_string(),
-        ).unwrap();
-        
+        )
+        .unwrap();
+
         assert!(!conn.is_operation_allowed("data/read"));
         assert!(!conn.is_operation_allowed("data/write"));
         assert!(!conn.is_operation_allowed("commands/exec"));
@@ -214,9 +206,9 @@ mod tests {
         let conn = LimitedConnection::with_defaults(
             "test_peer".to_string(),
             "http://localhost:8080".to_string(),
-        ).unwrap();
-        
+        )
+        .unwrap();
+
         assert_eq!(conn.trust_level(), TrustLevel::Limited);
     }
 }
-

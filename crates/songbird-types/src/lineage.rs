@@ -74,16 +74,16 @@ impl From<LineageId> for String {
 pub struct LineageProof {
     /// The lineage identifier this proof validates
     pub lineage_id: LineageId,
-    
+
     /// Cryptographic signatures in the chain
     pub signatures: Vec<LineageSignature>,
-    
+
     /// Genesis timestamp (Unix epoch)
     pub genesis_timestamp: u64,
-    
+
     /// Proof generation timestamp
     pub generated_at: u64,
-    
+
     /// Optional metadata
     #[serde(default)]
     pub metadata: HashMap<String, String>,
@@ -94,13 +94,13 @@ pub struct LineageProof {
 pub struct LineageSignature {
     /// Signer's node ID
     pub signer_node_id: String,
-    
+
     /// Signature data (hex-encoded)
     pub signature: String,
-    
+
     /// What was signed (hash of previous link + new node)
     pub signed_data_hash: String,
-    
+
     /// Timestamp of this signature
     pub timestamp: u64,
 }
@@ -108,7 +108,11 @@ pub struct LineageSignature {
 impl LineageProof {
     /// Create a new lineage proof
     #[must_use]
-    pub fn new(lineage_id: LineageId, signatures: Vec<LineageSignature>, genesis_timestamp: u64) -> Self {
+    pub fn new(
+        lineage_id: LineageId,
+        signatures: Vec<LineageSignature>,
+        genesis_timestamp: u64,
+    ) -> Self {
         Self {
             lineage_id,
             signatures,
@@ -131,7 +135,7 @@ impl LineageProof {
         // Serialize to JSON
         let json = serde_json::to_string(self)
             .map_err(|e| LineageError::SerializationError(e.to_string()))?;
-        
+
         // Base64 encode for TXT record
         Ok(base64::encode(json.as_bytes()))
     }
@@ -144,13 +148,13 @@ impl LineageProof {
     /// Returns error if decoding or deserialization fails
     pub fn from_discovery_txt(txt: &str) -> Result<Self, LineageError> {
         // Base64 decode
-        let json_bytes = base64::decode(txt)
-            .map_err(|e| LineageError::DecodingError(e.to_string()))?;
-        
+        let json_bytes =
+            base64::decode(txt).map_err(|e| LineageError::DecodingError(e.to_string()))?;
+
         // Deserialize from JSON
         let json_str = String::from_utf8(json_bytes)
             .map_err(|e| LineageError::DecodingError(e.to_string()))?;
-        
+
         serde_json::from_str(&json_str)
             .map_err(|e| LineageError::DeserializationError(e.to_string()))
     }
@@ -162,7 +166,7 @@ impl LineageProof {
             .duration_since(std::time::UNIX_EPOCH)
             .unwrap_or_default()
             .as_secs();
-        
+
         now - self.generated_at > ttl_seconds
     }
 
@@ -178,13 +182,13 @@ impl LineageProof {
 pub struct LineageVerification {
     /// Whether the lineage proof is cryptographically valid
     pub valid: bool,
-    
+
     /// Whether this lineage shares the same genesis as ours
     pub same_genesis: bool,
-    
+
     /// The verified lineage ID
     pub lineage_id: LineageId,
-    
+
     /// Any verification errors or warnings
     pub messages: Vec<String>,
 }
@@ -195,23 +199,23 @@ pub enum LineageError {
     /// Invalid lineage ID format
     #[error("Invalid lineage ID format: {0}")]
     InvalidFormat(String),
-    
+
     /// Serialization error
     #[error("Failed to serialize lineage: {0}")]
     SerializationError(String),
-    
+
     /// Deserialization error
     #[error("Failed to deserialize lineage: {0}")]
     DeserializationError(String),
-    
+
     /// Decoding error
     #[error("Failed to decode lineage data: {0}")]
     DecodingError(String),
-    
+
     /// Verification error
     #[error("Lineage verification failed: {0}")]
     VerificationFailed(String),
-    
+
     /// BearDog API error
     #[error("BearDog API error: {0}")]
     BearDogError(String),
@@ -222,13 +226,13 @@ pub enum LineageError {
 pub struct CurrentLineage {
     /// This node's lineage ID
     pub lineage_id: LineageId,
-    
+
     /// Proof of this lineage
     pub proof: LineageProof,
-    
+
     /// Genesis tower ID
     pub genesis_tower: Option<String>,
-    
+
     /// Parent node ID (if spawned from another node)
     pub parent_node_id: Option<String>,
 }
@@ -318,24 +322,21 @@ mod tests {
             generated_at: std::time::SystemTime::now()
                 .duration_since(std::time::UNIX_EPOCH)
                 .unwrap()
-                .as_secs() - 3600, // 1 hour ago
+                .as_secs()
+                - 3600, // 1 hour ago
             metadata: HashMap::new(),
         };
 
         // Should be expired with 30 minute TTL
         assert!(proof.is_expired(1800));
-        
+
         // Should not be expired with 2 hour TTL
         assert!(!proof.is_expired(7200));
     }
 
     #[test]
     fn test_current_lineage_builder() {
-        let proof = LineageProof::new(
-            LineageId::new("lineage:test:123:abc"),
-            vec![],
-            1234567890,
-        );
+        let proof = LineageProof::new(LineageId::new("lineage:test:123:abc"), vec![], 1234567890);
 
         let lineage = CurrentLineage::new(LineageId::new("lineage:test:123:abc"), proof)
             .with_genesis_tower("tower1")
@@ -345,4 +346,3 @@ mod tests {
         assert_eq!(lineage.parent_node_id, Some("parent-node-id".to_string()));
     }
 }
-

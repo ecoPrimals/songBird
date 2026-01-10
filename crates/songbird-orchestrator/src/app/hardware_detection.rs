@@ -138,10 +138,10 @@ mod tests {
     fn test_detect_gpu_with_override() {
         // Set environment override
         std::env::set_var("GPU_MODEL", "TestGPU RTX 9999");
-        
+
         let gpu = detect_gpu();
         assert_eq!(gpu, Some("TestGPU RTX 9999".to_string()));
-        
+
         // Clean up
         std::env::remove_var("GPU_MODEL");
     }
@@ -162,10 +162,10 @@ mod tests {
     fn test_detect_storage_capacity_with_override() {
         // Set environment override
         std::env::set_var("STORAGE_GB", "500");
-        
+
         let storage = detect_storage_capacity();
         assert_eq!(storage, Some(500));
-        
+
         // Clean up
         std::env::remove_var("STORAGE_GB");
     }
@@ -176,18 +176,17 @@ mod tests {
         // - No hardcoded hardware values
         // - Runtime detection or environment override
         // - Graceful fallback to None
-        
+
         // Without override, should use system detection or None
         std::env::remove_var("GPU_MODEL");
         std::env::remove_var("STORAGE_GB");
-        
+
         let gpu = detect_gpu();
         let storage = detect_storage_capacity();
-        
+
         // Results depend on system - that's the point!
         // No hardcoded values means results vary by environment
         assert!(gpu.is_some() || gpu.is_none());
         assert!(storage.is_some() || storage.is_none());
     }
 }
-

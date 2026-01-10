@@ -284,11 +284,7 @@ impl TarpcClient {
     ///
     /// # Errors
     /// Returns error if method is unknown or RPC call fails
-    pub async fn call_method(
-        &self,
-        method: &str,
-        params: Option<Value>,
-    ) -> SongbirdResult<Value> {
+    pub async fn call_method(&self, method: &str, params: Option<Value>) -> SongbirdResult<Value> {
         debug!("Calling method: {} with params: {:?}", method, params);
 
         match method {
@@ -301,13 +297,15 @@ impl TarpcClient {
                     .to_string();
 
                 let result = self.discover(&capability).await?;
-                serde_json::to_value(result)
-                    .map_err(|e| SongbirdError::serialization(format!("Failed to serialize: {}", e)))
+                serde_json::to_value(result).map_err(|e| {
+                    SongbirdError::serialization(format!("Failed to serialize: {}", e))
+                })
             }
             "discover_all" => {
                 let result = self.discover_all().await?;
-                serde_json::to_value(result)
-                    .map_err(|e| SongbirdError::serialization(format!("Failed to serialize: {}", e)))
+                serde_json::to_value(result).map_err(|e| {
+                    SongbirdError::serialization(format!("Failed to serialize: {}", e))
+                })
             }
             "register" => {
                 let registration: ServiceRegistration = serde_json::from_value(
@@ -318,8 +316,9 @@ impl TarpcClient {
                 })?;
 
                 let result = self.register(registration).await?;
-                serde_json::to_value(result)
-                    .map_err(|e| SongbirdError::serialization(format!("Failed to serialize: {}", e)))
+                serde_json::to_value(result).map_err(|e| {
+                    SongbirdError::serialization(format!("Failed to serialize: {}", e))
+                })
             }
             "unregister" => {
                 let service_id = params
@@ -330,23 +329,27 @@ impl TarpcClient {
                     .to_string();
 
                 let result = self.unregister(&service_id).await?;
-                serde_json::to_value(result)
-                    .map_err(|e| SongbirdError::serialization(format!("Failed to serialize: {}", e)))
+                serde_json::to_value(result).map_err(|e| {
+                    SongbirdError::serialization(format!("Failed to serialize: {}", e))
+                })
             }
             "health" => {
                 let result = self.health().await?;
-                serde_json::to_value(result)
-                    .map_err(|e| SongbirdError::serialization(format!("Failed to serialize: {}", e)))
+                serde_json::to_value(result).map_err(|e| {
+                    SongbirdError::serialization(format!("Failed to serialize: {}", e))
+                })
             }
             "version" => {
                 let result = self.version().await?;
-                serde_json::to_value(result)
-                    .map_err(|e| SongbirdError::serialization(format!("Failed to serialize: {}", e)))
+                serde_json::to_value(result).map_err(|e| {
+                    SongbirdError::serialization(format!("Failed to serialize: {}", e))
+                })
             }
             "protocols" => {
                 let result = self.protocols().await?;
-                serde_json::to_value(result)
-                    .map_err(|e| SongbirdError::serialization(format!("Failed to serialize: {}", e)))
+                serde_json::to_value(result).map_err(|e| {
+                    SongbirdError::serialization(format!("Failed to serialize: {}", e))
+                })
             }
             _ => Err(SongbirdError::rpc(format!("Unknown method: {}", method))),
         }
@@ -400,17 +403,12 @@ impl TarpcClient {
         debug!("Connecting to tarpc server at {}", self.addr);
 
         // Connect with timeout
-        let stream = tokio::time::timeout(
-            self.timeout,
-            tokio::net::TcpStream::connect(self.addr),
-        )
-        .await
-        .map_err(|_| {
-            SongbirdError::network(format!("Connection timeout to {}", self.addr))
-        })?
-        .map_err(|e| {
-            SongbirdError::network(format!("Failed to connect to {}: {}", self.addr, e))
-        })?;
+        let stream = tokio::time::timeout(self.timeout, tokio::net::TcpStream::connect(self.addr))
+            .await
+            .map_err(|_| SongbirdError::network(format!("Connection timeout to {}", self.addr)))?
+            .map_err(|e| {
+                SongbirdError::network(format!("Failed to connect to {}: {}", self.addr, e))
+            })?;
 
         debug!("✅ TCP connection established to {}", self.addr);
 
@@ -453,14 +451,12 @@ impl TarpcClient {
     /// tarpc requires resolved addresses at construction time for performance).
     fn parse_endpoint(endpoint: &str) -> SongbirdResult<SocketAddr> {
         // Remove tarpc:// prefix
-        let addr_str = endpoint
-            .strip_prefix("tarpc://")
-            .ok_or_else(|| {
-                SongbirdError::configuration(format!(
-                    "Invalid tarpc endpoint (expected tarpc://host:port): {}",
-                    endpoint
-                ))
-            })?;
+        let addr_str = endpoint.strip_prefix("tarpc://").ok_or_else(|| {
+            SongbirdError::configuration(format!(
+                "Invalid tarpc endpoint (expected tarpc://host:port): {}",
+                endpoint
+            ))
+        })?;
 
         // Try direct parse first (for IP addresses)
         if let Ok(addr) = addr_str.parse::<SocketAddr>() {
@@ -478,12 +474,9 @@ impl TarpcClient {
         })?;
 
         // Parse port
-        let port: u16 = port.parse().map_err(|e| {
-            SongbirdError::configuration(format!(
-                "Invalid port '{}': {}",
-                port, e
-            ))
-        })?;
+        let port: u16 = port
+            .parse()
+            .map_err(|e| SongbirdError::configuration(format!("Invalid port '{}': {}", port, e)))?;
 
         // Resolve common hostnames (localhost aliases)
         let ip = match host {
@@ -571,4 +564,3 @@ mod tests {
         assert!(debug_str.contains("localhost:9001"));
     }
 }
-

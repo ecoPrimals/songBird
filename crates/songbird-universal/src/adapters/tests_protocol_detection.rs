@@ -19,7 +19,7 @@ mod protocol_detection_unit_tests {
     fn test_unix_socket_detection() {
         // Test that unix:// URLs are detected for JSON-RPC protocol
         let adapter = SecurityAdapter::new("unix:///tmp/beardog.sock".to_string()).unwrap();
-        
+
         // Verify adapter is created (can't inspect internal enum, but we can verify it works)
         assert_eq!(adapter.endpoint(), "unix:///tmp/beardog.sock");
     }
@@ -28,7 +28,7 @@ mod protocol_detection_unit_tests {
     fn test_http_detection() {
         // Test that http:// URLs are detected for HTTP protocol
         let adapter = SecurityAdapter::new("http://localhost:9000".to_string()).unwrap();
-        
+
         assert_eq!(adapter.endpoint(), "http://localhost:9000");
     }
 
@@ -36,7 +36,7 @@ mod protocol_detection_unit_tests {
     fn test_https_detection() {
         // Test that https:// URLs are detected for HTTP protocol
         let adapter = SecurityAdapter::new("https://example.com:8443".to_string()).unwrap();
-        
+
         assert_eq!(adapter.endpoint(), "https://example.com:8443");
     }
 
@@ -46,7 +46,7 @@ mod protocol_detection_unit_tests {
         let adapter = SecurityAdapter::new("http://localhost:9000".to_string())
             .unwrap()
             .with_timeout(Duration::from_secs(10));
-        
+
         assert_eq!(adapter.endpoint(), "http://localhost:9000");
     }
 
@@ -54,7 +54,7 @@ mod protocol_detection_unit_tests {
     fn test_unix_socket_without_prefix() {
         // Test that raw paths (without unix://) still work for backward compat
         let result = SecurityAdapter::new("/tmp/beardog.sock".to_string());
-        
+
         // Should fail because it doesn't start with unix:// and isn't http(s)://
         // This would be interpreted as HTTP with invalid URL
         assert!(result.is_ok()); // reqwest::Client creation should still work
@@ -152,11 +152,7 @@ mod protocol_integration_tests {
     async fn test_http_verify_auth_unauthorized() {
         // Test HTTP unauthorized response
         let mut server = mockito::Server::new_async().await;
-        let mock = server
-            .mock("POST", "/auth/verify")
-            .with_status(401)
-            .create_async()
-            .await;
+        let mock = server.mock("POST", "/auth/verify").with_status(401).create_async().await;
 
         let adapter = SecurityAdapter::new(server.url()).unwrap();
         let result = adapter.verify_auth("bad-token").await.unwrap();
@@ -275,7 +271,7 @@ mod jsonrpc_e2e_tests {
         // Run with: cargo test --features e2e test_jsonrpc_collect_metrics_e2e -- --ignored
 
         let adapter = SecurityAdapter::new("unix:///tmp/beardog-test.sock".to_string()).unwrap();
-        
+
         let metrics = adapter.collect_metrics().await.expect("Should collect metrics via JSON-RPC");
 
         // Verify metrics are reasonable
@@ -295,7 +291,7 @@ mod jsonrpc_e2e_tests {
         // Run with: cargo test --features e2e test_jsonrpc_verify_auth_e2e -- --ignored
 
         let adapter = SecurityAdapter::new("unix:///tmp/beardog-test.sock".to_string()).unwrap();
-        
+
         // Test with valid token (configure BearDog to accept "test-valid-token")
         let result = adapter.verify_auth("test-valid-token").await.unwrap();
         assert_eq!(result, AuthResult::Authorized);
@@ -322,8 +318,9 @@ mod jsonrpc_e2e_tests {
         //
         // Run with: cargo test --features e2e test_genetic_lineage_trust_e2e -- --ignored
 
-        let adapter = SecurityAdapter::new("unix:///tmp/beardog-nat0-tower1.sock".to_string()).unwrap();
-        
+        let adapter =
+            SecurityAdapter::new("unix:///tmp/beardog-nat0-tower1.sock".to_string()).unwrap();
+
         // Verify health (should work via JSON-RPC)
         let health = adapter.check_health().await.expect("Health check should work");
         assert_eq!(health, SecurityHealth::Healthy);
@@ -345,10 +342,10 @@ mod jsonrpc_e2e_tests {
 
 #[cfg(test)]
 mod backward_compatibility_tests {
+    use super::super::*;
     use mockito;
     use serde_json::json;
-    use tokio;
-    use super::super::*; // Import from security module
+    use tokio; // Import from security module
 
     #[tokio::test]
     async fn test_existing_http_endpoints_still_work() {
@@ -373,7 +370,7 @@ mod backward_compatibility_tests {
 
         // Create adapter with HTTP endpoint (pre-v3.11 behavior)
         let adapter = SecurityAdapter::new(server.url()).unwrap();
-        
+
         // Verify it still works
         let metrics = adapter.collect_metrics().await.unwrap();
         assert_eq!(metrics.active_sessions, 5);
@@ -388,7 +385,7 @@ mod backward_compatibility_tests {
         // Just verify it doesn't panic
 
         std::env::set_var("SONGBIRD_SECURITY_ENDPOINT", "http://localhost:9000");
-        
+
         let result = SecurityAdapter::from_discovery().await;
         assert!(result.is_ok());
 
@@ -409,10 +406,10 @@ mod property_tests {
         // Property: Same endpoint should always select same protocol
         let endpoint1 = "unix:///tmp/test.sock";
         let endpoint2 = "unix:///tmp/test.sock";
-        
+
         let adapter1 = SecurityAdapter::new(endpoint1.to_string()).unwrap();
         let adapter2 = SecurityAdapter::new(endpoint2.to_string()).unwrap();
-        
+
         // Both should have same endpoint
         assert_eq!(adapter1.endpoint(), adapter2.endpoint());
     }
@@ -448,4 +445,3 @@ mod property_tests {
         }
     }
 }
-

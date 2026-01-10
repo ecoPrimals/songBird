@@ -32,15 +32,15 @@ pub struct DiscoveredPeer {
 
     /// Capabilities offered by the peer
     pub capabilities: Vec<String>,
-    
+
     /// Generic tags (NEW - for USB seed integration)
     /// Contains BearDog encryption tags for genetic lineage verification
     pub tags: Option<Vec<String>>,
-    
+
     /// Discovery timestamp (NEW - for USB seed integration)
     /// Unix timestamp when this discovery message was sent
     pub timestamp: Option<u64>,
-    
+
     /// Identity attestations (CRITICAL FIX - Jan 3, 2026)
     /// Structured identity information from security providers for genetic lineage auto-trust
     pub identity_attestations: Option<Vec<crate::IdentityAttestation>>,
@@ -66,7 +66,7 @@ impl DiscoveredPeer {
     ///
     /// Combines the source IP (from UDP) with the advertised HTTPS port.
     /// This is the primary connection endpoint for v2.x peers.
-    #[must_use] 
+    #[must_use]
     pub fn https_endpoint(&self) -> String {
         format!("https://{}:{}", self.address.ip(), self.port)
     }
@@ -116,10 +116,7 @@ impl DiscoveredPeer {
     /// Returns None if time calculation fails
     #[must_use]
     pub fn age_secs(&self) -> Option<u64> {
-        SystemTime::now()
-            .duration_since(self.last_seen)
-            .ok()
-            .map(|d| d.as_secs())
+        SystemTime::now().duration_since(self.last_seen).ok().map(|d| d.as_secs())
     }
 
     /// Check if this peer information is stale (older than TTL)
@@ -316,4 +313,3 @@ mod tests {
         assert_eq!(peer_v2.display_name(), "session-xyz");
     }
 }
-

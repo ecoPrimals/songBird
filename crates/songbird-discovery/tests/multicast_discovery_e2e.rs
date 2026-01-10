@@ -23,7 +23,7 @@ async fn test_multicast_discovery_loopback() {
     let capabilities = vec!["compute".to_string(), "storage".to_string()];
     let protocols = vec!["https".to_string()];
     let multicast_addr: SocketAddr = "224.0.0.251:2301".parse().unwrap();
-    
+
     let _broadcaster = AnonymousDiscoveryBroadcaster::new(
         capabilities,
         protocols,
@@ -49,14 +49,10 @@ async fn test_known_peers_discovery() {
     let multicast_addr: SocketAddr = "224.0.0.251:2302".parse().unwrap();
     let known_peer1: SocketAddr = "192.168.1.100:2302".parse().unwrap();
     let known_peer2: SocketAddr = "192.168.1.101:2302".parse().unwrap();
-    
-    let _broadcaster = AnonymousDiscoveryBroadcaster::new(
-        capabilities,
-        protocols,
-        8080,
-        vec![multicast_addr],
-        30,
-    ).with_known_peers(vec![known_peer1, known_peer2]);
+
+    let _broadcaster =
+        AnonymousDiscoveryBroadcaster::new(capabilities, protocols, 8080, vec![multicast_addr], 30)
+            .with_known_peers(vec![known_peer1, known_peer2]);
 
     // Verify broadcaster was created successfully
     assert!(true);
@@ -69,14 +65,12 @@ async fn test_v3_multicast_discovery() {
     // Test v3.0 protocol with node identity and multiple endpoints
     let node_id = "test-node-123".to_string();
     let node_name = "test-tower".to_string();
-    let endpoints = vec![
-        TransportEndpointMessage {
-            interface_type: "ethernet".to_string(),
-            address: "192.168.1.100:8080".to_string(),
-            protocols: vec!["https".to_string()],
-            preference: 100,
-        },
-    ];
+    let endpoints = vec![TransportEndpointMessage {
+        interface_type: "ethernet".to_string(),
+        address: "192.168.1.100:8080".to_string(),
+        protocols: vec!["https".to_string()],
+        preference: 100,
+    }];
     let capabilities = vec!["compute".to_string()];
     let multicast_addr: SocketAddr = "224.0.0.251:2303".parse().unwrap();
 
@@ -98,7 +92,7 @@ async fn test_listener_multicast_join() {
 
     // Test that listener properly configures multicast
     let _listener = AnonymousDiscoveryListener::new(2304, 60);
-    
+
     assert!(true);
 }
 
@@ -108,7 +102,7 @@ async fn test_listener_broadcast_fallback() {
 
     // Test broadcast-only mode (no multicast)
     let _listener = AnonymousDiscoveryListener::new_broadcast_only(2305, 60);
-    
+
     assert!(true);
 }
 
@@ -119,24 +113,24 @@ async fn test_hybrid_discovery_strategy() {
     // Test hybrid strategy: multicast + known peers + broadcast
     let capabilities = vec!["gpu-compute".to_string()];
     let protocols = vec!["https".to_string(), "tarpc-tls".to_string()];
-    
+
     // Multicast address
     let multicast_addr: SocketAddr = "224.0.0.251:2306".parse().unwrap();
-    
+
     // Broadcast address (fallback)
     let broadcast_addr: SocketAddr = "255.255.255.255:2306".parse().unwrap();
-    
+
     // Known peers
     let known_peer: SocketAddr = "192.168.1.150:2306".parse().unwrap();
-    
+
     let _broadcaster = AnonymousDiscoveryBroadcaster::new(
         capabilities,
         protocols,
         8080,
         vec![multicast_addr, broadcast_addr], // Both multicast and broadcast
         30,
-    ).with_known_peers(vec![known_peer]);
+    )
+    .with_known_peers(vec![known_peer]);
 
     assert!(true);
 }
-

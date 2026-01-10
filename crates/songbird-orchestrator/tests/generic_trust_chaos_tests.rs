@@ -7,17 +7,17 @@
 //! - Race conditions
 //! - Resource exhaustion
 
-use songbird_orchestrator::trust::{
-    UniversalTrustRequest, UniversalTrustResponse, UniversalIdentityAttestation,
-    UniversalTrustDecision, EvaluatorInfo, UniversalDiscoveryContext,
-};
 use serde_json::json;
+use songbird_orchestrator::trust::{
+    EvaluatorInfo, UniversalDiscoveryContext, UniversalIdentityAttestation, UniversalTrustDecision,
+    UniversalTrustRequest, UniversalTrustResponse,
+};
 
 /// Test: Empty attestations list
 #[test]
 fn chaos_empty_attestations() {
     let request = UniversalTrustRequest::new("tower1", vec![]);
-    
+
     assert_eq!(request.evaluator.attestations.len(), 0);
     // Should still serialize without panic
     let json = serde_json::to_string(&request).expect("Failed to serialize");
@@ -32,9 +32,9 @@ fn chaos_malformed_attestation_data() {
         format: "unknown_format".to_string(),
         data: json!(null),
     };
-    
+
     let request = UniversalTrustRequest::new("tower1", vec![attestation]);
-    
+
     // Should handle gracefully
     let json = serde_json::to_string(&request).expect("Should serialize even with null data");
     assert!(json.contains("tower1"));
@@ -49,9 +49,9 @@ fn chaos_large_attestation_data() {
         format: "tag_list".to_string(),
         data: json!({ "tags": large_data }),
     };
-    
+
     let request = UniversalTrustRequest::new("tower1", vec![attestation]);
-    
+
     // Should handle large data without panic
     assert_eq!(request.evaluator.attestations.len(), 1);
 }
@@ -67,11 +67,11 @@ fn chaos_special_chars_in_peer_id() {
         "<script>alert('xss')</script>",
         "'; DROP TABLE peers; --",
     ];
-    
+
     for id in weird_ids {
         let request = UniversalTrustRequest::new(id, vec![]);
         assert_eq!(request.evaluator.peer_id, id);
-        
+
         // Should serialize without panic
         let json = serde_json::to_string(&request).expect("Failed to serialize");
         // JSON may escape special characters, just verify it serialized
@@ -89,9 +89,9 @@ fn chaos_invalid_json_structure() {
             "tags": 123,  // Should be array, not number
         }),
     };
-    
+
     let request = UniversalTrustRequest::new("tower1", vec![attestation]);
-    
+
     // Should still create request
     assert!(request.evaluator.attestations.len() > 0);
 }
@@ -100,12 +100,12 @@ fn chaos_invalid_json_structure() {
 #[test]
 fn chaos_duplicate_attestations() {
     let attestation = UniversalIdentityAttestation::tag_list(vec!["tag1".to_string()]);
-    
+
     let request = UniversalTrustRequest::new(
         "tower1",
-        vec![attestation.clone(), attestation.clone(), attestation]
+        vec![attestation.clone(), attestation.clone(), attestation],
     );
-    
+
     // Should accept duplicates (provider decides what to do)
     assert_eq!(request.evaluator.attestations.len(), 3);
 }
@@ -115,16 +115,16 @@ fn chaos_duplicate_attestations() {
 fn chaos_conflicting_attestations() {
     let att1 = UniversalIdentityAttestation::tag_list_with_family(
         vec!["beardog:family:aaaa:tower1".to_string()],
-        "aaaa"
+        "aaaa",
     );
-    
+
     let att2 = UniversalIdentityAttestation::tag_list_with_family(
         vec!["beardog:family:bbbb:tower1".to_string()],
-        "bbbb"
+        "bbbb",
     );
-    
+
     let request = UniversalTrustRequest::new("tower1", vec![att1, att2]);
-    
+
     // Should accept both (provider resolves conflict)
     assert_eq!(request.evaluator.attestations.len(), 2);
 }
@@ -132,9 +132,8 @@ fn chaos_conflicting_attestations() {
 /// Test: Empty endpoint
 #[test]
 fn fault_empty_endpoint() {
-    let request = UniversalTrustRequest::new("tower1", vec![])
-        .with_endpoint("");
-    
+    let request = UniversalTrustRequest::new("tower1", vec![]).with_endpoint("");
+
     assert_eq!(request.context.endpoint, "");
 }
 
@@ -148,11 +147,10 @@ fn fault_malformed_endpoint() {
         "http://[invalid:ipv6",
         "file:///etc/passwd",
     ];
-    
+
     for endpoint in bad_endpoints {
-        let request = UniversalTrustRequest::new("tower1", vec![])
-            .with_endpoint(endpoint);
-        
+        let request = UniversalTrustRequest::new("tower1", vec![]).with_endpoint(endpoint);
+
         assert_eq!(request.context.endpoint, endpoint);
     }
 }
@@ -161,9 +159,8 @@ fn fault_malformed_endpoint() {
 #[test]
 fn chaos_long_discovery_method() {
     let long_method = "a".repeat(10000);
-    let request = UniversalTrustRequest::new("tower1", vec![])
-        .with_discovery_method(&long_method);
-    
+    let request = UniversalTrustRequest::new("tower1", vec![]).with_discovery_method(&long_method);
+
     assert_eq!(request.context.discovery_method, long_method);
 }
 
@@ -173,14 +170,14 @@ fn fault_invalid_confidence() {
     let response = UniversalTrustResponse {
         response_format: "universal_trust_v1".to_string(),
         decision: UniversalTrustDecision::AutoAccept,
-        confidence: 999.9,  // Invalid (should be 0.0-1.0)
+        confidence: 999.9, // Invalid (should be 0.0-1.0)
         reason: "test".to_string(),
         reason_code: "test".to_string(),
         metadata: Default::default(),
         expires_at: None,
         custom: Default::default(),
     };
-    
+
     // Should still create (validation is application logic)
     assert_eq!(response.confidence, 999.9);
 }
@@ -191,14 +188,14 @@ fn fault_negative_confidence() {
     let response = UniversalTrustResponse {
         response_format: "universal_trust_v1".to_string(),
         decision: UniversalTrustDecision::Reject,
-        confidence: -1.0,  // Invalid
+        confidence: -1.0, // Invalid
         reason: "test".to_string(),
         reason_code: "test".to_string(),
         metadata: Default::default(),
         expires_at: None,
         custom: Default::default(),
     };
-    
+
     assert_eq!(response.confidence, -1.0);
 }
 
@@ -207,19 +204,19 @@ fn fault_negative_confidence() {
 fn chaos_concurrent_requests() {
     use std::sync::Arc;
     use std::thread;
-    
+
     let handles: Vec<_> = (0..100)
         .map(|i| {
             thread::spawn(move || {
                 let request = UniversalTrustRequest::new(
                     format!("tower{}", i),
-                    vec![UniversalIdentityAttestation::tag_list(vec![format!("tag{}", i)])]
+                    vec![UniversalIdentityAttestation::tag_list(vec![format!("tag{}", i)])],
                 );
                 assert_eq!(request.evaluator.peer_id, format!("tower{}", i));
             })
         })
         .collect();
-    
+
     for handle in handles {
         handle.join().expect("Thread panicked");
     }
@@ -231,13 +228,13 @@ fn chaos_serialization_roundtrip_stress() {
     for i in 0..1000 {
         let request = UniversalTrustRequest::new(
             format!("tower{}", i),
-            vec![UniversalIdentityAttestation::tag_list(vec![format!("tag{}", i)])]
+            vec![UniversalIdentityAttestation::tag_list(vec![format!("tag{}", i)])],
         );
-        
+
         let json = serde_json::to_string(&request).expect("Failed to serialize");
-        let deserialized: UniversalTrustRequest = serde_json::from_str(&json)
-            .expect("Failed to deserialize");
-        
+        let deserialized: UniversalTrustRequest =
+            serde_json::from_str(&json).expect("Failed to deserialize");
+
         assert_eq!(deserialized.evaluator.peer_id, format!("tower{}", i));
     }
 }
@@ -249,7 +246,7 @@ fn chaos_large_metadata() {
     for i in 0..10000 {
         metadata.insert(format!("key{}", i), json!(format!("value{}", i)));
     }
-    
+
     let response = UniversalTrustResponse {
         response_format: "universal_trust_v1".to_string(),
         decision: UniversalTrustDecision::AutoAccept,
@@ -260,7 +257,7 @@ fn chaos_large_metadata() {
         expires_at: None,
         custom: Default::default(),
     };
-    
+
     assert_eq!(response.metadata.len(), 10000);
 }
 
@@ -273,7 +270,7 @@ fn fault_missing_fields_json() {
             "peer_id": "tower1"
         }
     }"#;
-    
+
     // Should fail gracefully
     let result: Result<UniversalTrustRequest, _> = serde_json::from_str(incomplete_json);
     assert!(result.is_err());
@@ -289,7 +286,7 @@ fn fault_unknown_decision() {
         "reason": "test",
         "reason_code": "test"
     }"#;
-    
+
     let result: Result<UniversalTrustResponse, _> = serde_json::from_str(json);
     assert!(result.is_err());
 }
@@ -307,7 +304,7 @@ fn fault_empty_reason_strings() {
         expires_at: None,
         custom: Default::default(),
     };
-    
+
     assert!(response.reason.is_empty());
     assert!(response.reason_code.is_empty());
 }
@@ -323,13 +320,13 @@ fn fault_invalid_timestamp() {
         },
         context: UniversalDiscoveryContext {
             discovery_method: "udp".to_string(),
-            first_seen_at: "not a timestamp".to_string(),  // Invalid
+            first_seen_at: "not a timestamp".to_string(), // Invalid
             endpoint: "http://test".to_string(),
             capabilities: vec![],
             custom: Default::default(),
         },
     };
-    
+
     // Should serialize even with invalid timestamp
     let json = serde_json::to_string(&request).expect("Failed to serialize");
     assert!(json.contains("not a timestamp"));
@@ -341,7 +338,7 @@ fn chaos_null_metadata_values() {
     let mut metadata = std::collections::HashMap::new();
     metadata.insert("key1".to_string(), json!(null));
     metadata.insert("key2".to_string(), json!("value"));
-    
+
     let response = UniversalTrustResponse {
         response_format: "universal_trust_v1".to_string(),
         decision: UniversalTrustDecision::PromptUser,
@@ -352,7 +349,7 @@ fn chaos_null_metadata_values() {
         expires_at: None,
         custom: Default::default(),
     };
-    
+
     assert_eq!(response.metadata.len(), 2);
 }
 
@@ -360,10 +357,9 @@ fn chaos_null_metadata_values() {
 #[test]
 fn chaos_extremely_long_strings() {
     let long_string = "a".repeat(1_000_000);
-    
-    let request = UniversalTrustRequest::new(&long_string, vec![])
-        .with_endpoint(&long_string);
-    
+
+    let request = UniversalTrustRequest::new(&long_string, vec![]).with_endpoint(&long_string);
+
     assert_eq!(request.evaluator.peer_id.len(), 1_000_000);
     assert_eq!(request.context.endpoint.len(), 1_000_000);
 }
@@ -374,9 +370,9 @@ fn chaos_many_attestations() {
     let attestations: Vec<_> = (0..10000)
         .map(|i| UniversalIdentityAttestation::tag_list(vec![format!("tag{}", i)]))
         .collect();
-    
+
     let request = UniversalTrustRequest::new("tower1", attestations);
-    
+
     assert_eq!(request.evaluator.attestations.len(), 10000);
 }
 
@@ -401,9 +397,9 @@ fn fault_mixed_attestations() {
         },
         UniversalIdentityAttestation::tag_list(vec!["also_valid".to_string()]),
     ];
-    
+
     let request = UniversalTrustRequest::new("tower1", attestations);
-    
+
     assert_eq!(request.evaluator.attestations.len(), 3);
 }
 
@@ -412,11 +408,11 @@ fn fault_mixed_attestations() {
 fn chaos_unicode_everywhere() {
     let request = UniversalTrustRequest::new(
         "塔🗼タワー",
-        vec![UniversalIdentityAttestation::tag_list(vec!["標籤🏷️タグ".to_string()])]
+        vec![UniversalIdentityAttestation::tag_list(vec!["標籤🏷️タグ".to_string()])],
     )
     .with_endpoint("https://例え.jp/端点")
     .with_discovery_method("発見方法");
-    
+
     assert!(request.evaluator.peer_id.contains("塔"));
     assert!(request.context.endpoint.contains("例え"));
 }
@@ -427,15 +423,14 @@ fn fault_contradictory_response() {
     let response = UniversalTrustResponse {
         response_format: "universal_trust_v1".to_string(),
         decision: UniversalTrustDecision::AutoAccept,
-        confidence: 0.0,  // Contradicts auto_accept
+        confidence: 0.0, // Contradicts auto_accept
         reason: "test".to_string(),
         reason_code: "test".to_string(),
         metadata: Default::default(),
         expires_at: None,
         custom: Default::default(),
     };
-    
+
     assert!(response.is_auto_accept());
     assert_eq!(response.confidence, 0.0);
 }
-
