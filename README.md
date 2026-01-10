@@ -1,7 +1,7 @@
 # 🎵 Songbird - Port-Free P2P Orchestrator
 
-**Version**: v3.19.3  
-**Status**: Production Ready ✅ (biomeOS Integration Complete!)  
+**Version**: v3.20.0 POLISHED  
+**Status**: Production Ready ✅ (Service Registry Complete!)  
 **Architecture**: Modern Idiomatic Rust  
 
 ---
@@ -18,7 +18,8 @@
 - 📡 **Zero Configuration**: Auto-discovery via UDP multicast
 - 🧬 **Genetic Trust**: Progressive trust levels based on cryptographic lineage
 - 🦅 **Fractal Coordination**: Albatross (HPC) → Songbird (Tower) → Sparrow (Edge)
-- 🌱 **Inter-Primal IPC**: Unix socket JSON-RPC for biomeOS integration (v3.19+)
+- 🌱 **Inter-Primal IPC**: Unix socket JSON-RPC for biomeOS integration
+- 🗂️ **Service Registry**: Capability-based primal discovery (v3.20+)
 
 ---
 
@@ -78,14 +79,14 @@ systemctl start songbird
 - [specs/LIFECYCLE_ORCHESTRATION_EVOLUTION.md](./specs/LIFECYCLE_ORCHESTRATION_EVOLUTION.md) - Lifecycle vision
 
 ### Integration Guides
-- [IPC_INTEGRATION_GUIDE.md](./IPC_INTEGRATION_GUIDE.md) - IPC integration
+- **[BIOMEOS_HANDOFF_V3_20_0.md](./BIOMEOS_HANDOFF_V3_20_0.md)** - biomeOS integration (PRIMARY) 🎊
 - [NESTGATE_INTEGRATION_GUIDE.md](./NESTGATE_INTEGRATION_GUIDE.md) - NestGate integration
 - [NEURALAPI_INTEGRATION_PROGRESS.md](./NEURALAPI_INTEGRATION_PROGRESS.md) - NeuralAPI integration
 
-### Latest Evolution (v3.18.x)
-- [BTSP_CONNECTION_COMPLETE_V3_18_0.md](./BTSP_CONNECTION_COMPLETE_V3_18_0.md) - BTSP implementation complete
-- [DEEP_DEBT_FIX_V3_18_2.md](./DEEP_DEBT_FIX_V3_18_2.md) - Architectural refactoring
-- [BIOMEOS_HANDOFF_V3_17_0.md](./BIOMEOS_HANDOFF_V3_17_0.md) - biomeOS integration
+### Latest Evolution (v3.20.0)
+- **[SERVICE_REGISTRY_POLISHED_V3_20_0.md](./SERVICE_REGISTRY_POLISHED_V3_20_0.md)** - Service registry complete
+- **[HANDOFF_FINAL_V3_20_0.md](./HANDOFF_FINAL_V3_20_0.md)** - Complete handoff
+- **[EVOLUTION_COMPLETE_V3_20_0_POLISHED.md](./EVOLUTION_COMPLETE_V3_20_0_POLISHED.md)** - Evolution summary
 
 ### Archived Documentation
 - [docs/archive/](./docs/archive/) - Historical documentation
