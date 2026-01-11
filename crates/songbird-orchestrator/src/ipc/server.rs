@@ -202,12 +202,23 @@ impl UnixSocketServer {
             async move { handlers.announce_capabilities(params).await }
         })?;
 
+        // ====================================================================
+        // Graph Validation APIs (v3.21.0 - Collaborative Intelligence)
+        // ====================================================================
+
+        // API 8: graph.validate
+        let handlers_clone = self.handlers.clone();
+        module.register_async_method("graph.validate", move |params, _, _| {
+            let handlers = handlers_clone.clone();
+            async move { handlers.validate_graph(params).await }
+        })?;
+
         // Start server with registered methods (runs in background)
         let handle = server.start(module);
 
         info!("✅ Unix socket JSON-RPC server started");
         info!("   Listening at: {:?}", self.socket_path);
-        info!("   APIs: 7 (4 service registry + 3 P2P discovery)");
+        info!("   APIs: 8 (4 service registry + 3 P2P discovery + 1 graph validation)");
 
         // Store handle for graceful shutdown
         self.server_handle = Some(handle.clone());

@@ -12,6 +12,7 @@ use tracing::{debug, info, warn};
 use super::registry::ServiceRegistry;
 use super::types::*;
 use crate::app::connection_manager::ConnectionManager;
+use crate::graph::GraphValidator;
 use songbird_discovery::anonymous::AnonymousDiscoveryListener;
 use songbird_types::TrustLevel;
 
@@ -19,6 +20,7 @@ use songbird_types::TrustLevel;
 ///
 /// v3.19.2: Refactored to take individual components instead of whole orchestrator
 /// v3.20.0: Added service registry for capability-based discovery
+/// v3.21.0: Added graph validator for Collaborative Intelligence
 pub struct IpcHandlers {
     /// Service registry (v3.20.0)
     service_registry: Arc<ServiceRegistry>,
@@ -28,6 +30,9 @@ pub struct IpcHandlers {
 
     /// Connection manager for establishing connections (v3.19.1)
     connection_manager: Arc<ConnectionManager>,
+
+    /// Graph validator for Collaborative Intelligence (v3.21.0)
+    graph_validator: Arc<GraphValidator>,
 }
 
 impl IpcHandlers {
@@ -35,6 +40,7 @@ impl IpcHandlers {
     ///
     /// v3.19.2: Modern Rust - pass only what's needed, not whole orchestrator
     /// v3.20.0: Added service_registry parameter
+    /// v3.21.0: Added graph_validator
     pub fn new(
         service_registry: Arc<ServiceRegistry>,
         discovery_listener: Option<Arc<AnonymousDiscoveryListener>>,
@@ -44,6 +50,7 @@ impl IpcHandlers {
             service_registry,
             discovery_listener,
             connection_manager,
+            graph_validator: Arc::new(GraphValidator::new()),
         }
     }
 
@@ -544,6 +551,61 @@ impl IpcHandlers {
                 }
             })
             .collect()
+    }
+
+    // ========================================================================
+    // Graph Validation APIs (v3.21.0 - Collaborative Intelligence)
+    // ========================================================================
+
+    /// Handle `graph.validate` RPC call
+    ///
+    /// Validates a graph structure for the Collaborative Intelligence system.
+    ///
+    /// ## Example Request
+    ///
+    /// ```json
+    /// {
+    ///   "jsonrpc": "2.0",
+    ///   "method": "graph.validate",
+    ///   "params": {
+    ///     "graph": {
+    ///       "id": "pipeline-1",
+    ///       "name": "Data Pipeline",
+    ///       "nodes": [...],
+    ///       "edges": [...],
+    ///       "metadata": {...}
+    ///     }
+    ///   },
+    ///   "id": 8
+    /// }
+    /// ```
+    pub async fn validate_graph(
+        &self,
+        params: Params<'_>,
+    ) -> Result<crate::graph::ValidationResult, ErrorObject<'static>> {
+        debug!("📊 IPC: graph.validate called");
+
+        // Parse request parameters
+        let graph: crate::graph::Graph = params
+            .one()
+            .map_err(|e| ErrorObject::owned(-32602, "Invalid params", Some(format!("{}", e))))?;
+
+        info!("🔍 Validating graph: {} ({})", graph.id, graph.name);
+
+        // Validate the graph
+        let result = self.graph_validator.validate(&graph);
+
+        if result.valid {
+            info!("✅ Graph {} is valid", graph.id);
+        } else {
+            warn!(
+                "⚠️  Graph {} has {} issues",
+                graph.id,
+                result.issues.len()
+            );
+        }
+
+        Ok(result)
     }
 }
 

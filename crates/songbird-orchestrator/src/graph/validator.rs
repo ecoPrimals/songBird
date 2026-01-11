@@ -493,5 +493,220 @@ mod tests {
         assert!(!result.valid);
         assert!(result.issues.iter().any(|i| i.code == "MISSING_CAPABILITY"));
     }
+
+    #[test]
+    fn test_orphan_node() {
+        let validator = GraphValidator::new();
+        
+        let mut node1 = create_test_node("node-1", "encryption");
+        node1.outputs = vec!["data".to_string()];
+        
+        let mut node2 = create_test_node("node-2", "storage");
+        node2.inputs = vec!["data".to_string()];
+        
+        // Node 3 is an orphan - has no connections
+        let mut node3 = create_test_node("node-3", "compute");
+        node3.inputs = vec!["input".to_string()];
+        node3.outputs = vec!["output".to_string()];
+
+        let graph = Graph::new(
+            "test".to_string(),
+            "Test".to_string(),
+            vec![node1, node2, node3],
+            vec![GraphEdge {
+                from: "node-1".to_string(),
+                to: "node-2".to_string(),
+                data_mapping: None,
+            }],
+            GraphMetadata::default(),
+        );
+
+        let result = validator.validate(&graph);
+        assert!(!result.valid);
+        assert!(result.issues.iter().any(|i| i.code == "ORPHAN_NODE"));
+        assert!(result.issues.iter().any(|i| i.nodes.contains(&"node-3".to_string())));
+    }
+
+    #[test]
+    fn test_unsatisfied_input() {
+        let validator = GraphValidator::new();
+        
+        let mut node1 = create_test_node("node-1", "encryption");
+        node1.outputs = vec!["encrypted_data".to_string()];
+        
+        let mut node2 = create_test_node("node-2", "storage");
+        node2.inputs = vec!["decrypted_data".to_string()]; // Wrong input - not provided by node1
+        
+        let graph = Graph::new(
+            "test".to_string(),
+            "Test".to_string(),
+            vec![node1, node2],
+            vec![GraphEdge {
+                from: "node-1".to_string(),
+                to: "node-2".to_string(),
+                data_mapping: None,
+            }],
+            GraphMetadata::default(),
+        );
+
+        let result = validator.validate(&graph);
+        assert!(!result.valid);
+        assert!(result.issues.iter().any(|i| i.code == "UNSATISFIED_INPUT"));
+    }
+
+    #[test]
+    fn test_complex_graph_validation() {
+        let validator = GraphValidator::new();
+        
+        // Create a complex valid graph with 10 nodes
+        let mut nodes = Vec::new();
+        for i in 1..=10 {
+            let mut node = create_test_node(&format!("node-{}", i), "compute");
+            if i > 1 {
+                node.inputs = vec![format!("data-{}", i - 1)];
+            }
+            if i < 10 {
+                node.outputs = vec![format!("data-{}", i)];
+            }
+            nodes.push(node);
+        }
+
+        let mut edges = Vec::new();
+        for i in 1..10 {
+            edges.push(GraphEdge {
+                from: format!("node-{}", i),
+                to: format!("node-{}", i + 1),
+                data_mapping: None,
+            });
+        }
+
+        let graph = Graph::new(
+            "complex".to_string(),
+            "Complex Graph".to_string(),
+            nodes,
+            edges,
+            GraphMetadata::default(),
+        );
+
+        let result = validator.validate(&graph);
+        assert!(result.valid, "Complex graph should be valid");
+        assert!(result.issues.is_empty());
+        assert_eq!(result.info.as_ref().unwrap().node_count, 10);
+        assert_eq!(result.info.as_ref().unwrap().edge_count, 9);
+        assert!(!result.info.as_ref().unwrap().has_cycles);
+    }
+
+    #[test]
+    fn test_multiple_entry_points() {
+        let validator = GraphValidator::new();
+        
+        // Two entry points feeding into one exit
+        let mut node1 = create_test_node("entry-1", "source");
+        node1.outputs = vec!["data-1".to_string()];
+        
+        let mut node2 = create_test_node("entry-2", "source");
+        node2.outputs = vec!["data-2".to_string()];
+        
+        let mut node3 = create_test_node("merge", "compute");
+        node3.inputs = vec!["data-1".to_string(), "data-2".to_string()];
+        node3.outputs = vec!["merged".to_string()];
+
+        let graph = Graph::new(
+            "multi-entry".to_string(),
+            "Multiple Entry Points".to_string(),
+            vec![node1, node2, node3],
+            vec![
+                GraphEdge {
+                    from: "entry-1".to_string(),
+                    to: "merge".to_string(),
+                    data_mapping: None,
+                },
+                GraphEdge {
+                    from: "entry-2".to_string(),
+                    to: "merge".to_string(),
+                    data_mapping: None,
+                },
+            ],
+            GraphMetadata::default(),
+        );
+
+        let result = validator.validate(&graph);
+        assert!(result.valid);
+        let info = result.info.unwrap();
+        assert_eq!(info.entry_points.len(), 2);
+        assert!(info.entry_points.contains(&"entry-1".to_string()));
+        assert!(info.entry_points.contains(&"entry-2".to_string()));
+    }
+
+    #[test]
+    fn test_multiple_exit_points() {
+        let validator = GraphValidator::new();
+        
+        // One entry splitting into two exits (fan-out)
+        let mut node1 = create_test_node("source", "source");
+        node1.outputs = vec!["data".to_string()];
+        
+        let mut node2 = create_test_node("exit-1", "sink");
+        node2.inputs = vec!["data".to_string()];
+        
+        let mut node3 = create_test_node("exit-2", "sink");
+        node3.inputs = vec!["data".to_string()];
+
+        let graph = Graph::new(
+            "multi-exit".to_string(),
+            "Multiple Exit Points".to_string(),
+            vec![node1, node2, node3],
+            vec![
+                GraphEdge {
+                    from: "source".to_string(),
+                    to: "exit-1".to_string(),
+                    data_mapping: None,
+                },
+                GraphEdge {
+                    from: "source".to_string(),
+                    to: "exit-2".to_string(),
+                    data_mapping: None,
+                },
+            ],
+            GraphMetadata::default(),
+        );
+
+        let result = validator.validate(&graph);
+        assert!(result.valid);
+        let info = result.info.unwrap();
+        assert_eq!(info.exit_points.len(), 2);
+        assert!(info.exit_points.contains(&"exit-1".to_string()));
+        assert!(info.exit_points.contains(&"exit-2".to_string()));
+    }
+
+    #[test]
+    fn test_data_mapping() {
+        let validator = GraphValidator::new();
+        
+        let mut node1 = create_test_node("node-1", "encryption");
+        node1.outputs = vec!["encrypted_data".to_string()];
+        
+        let mut node2 = create_test_node("node-2", "storage");
+        node2.inputs = vec!["data_to_store".to_string()];
+        
+        // Use data mapping to connect mismatched names
+        let mut data_mapping = HashMap::new();
+        data_mapping.insert("encrypted_data".to_string(), "data_to_store".to_string());
+        
+        let graph = Graph::new(
+            "mapping".to_string(),
+            "Data Mapping".to_string(),
+            vec![node1, node2],
+            vec![GraphEdge {
+                from: "node-1".to_string(),
+                to: "node-2".to_string(),
+                data_mapping: Some(data_mapping),
+            }],
+            GraphMetadata::default(),
+        );
+
+        let result = validator.validate(&graph);
+        assert!(result.valid, "Graph with proper data mapping should be valid");
+    }
 }
 
