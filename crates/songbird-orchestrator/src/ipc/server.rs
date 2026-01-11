@@ -92,25 +92,64 @@ impl UnixSocketServer {
     ///
     /// **v3.20.0**: Changed from `/tmp/songbird-{node_id}.sock`
     ///              to `/run/user/{uid}/songbird-{family_id}.sock`
+    /// **v3.21.1**: Added SONGBIRD_SOCKET env var override (biomeOS standard)
     ///
-    /// Format: `/run/user/{uid}/songbird-{family_id}.sock`
+    /// ## Priority Order (biomeOS-compliant):
+    ///
+    /// 1. `SONGBIRD_SOCKET` env var (highest priority - explicit override)
+    /// 2. XDG Runtime Directory: `/run/user/{uid}/songbird-{family}.sock`
+    /// 3. Temp Directory (last resort): `/tmp/songbird-{family}-{node}.sock`
     ///
     /// ## Discovery by biomeOS
     ///
-    /// 1. Read `SONGBIRD_FAMILY_ID` env var (e.g., "nat0")
-    /// 2. Get current UID via `id -u` or `$UID`
-    /// 3. Connect to `/run/user/{uid}/songbird-{family_id}.sock`
+    /// 1. Read `SONGBIRD_SOCKET` env var for explicit path
+    /// 2. Or read `SONGBIRD_FAMILY_ID` env var (e.g., "nat0")
+    /// 3. Get current UID via `id -u` or `$UID`
+    /// 4. Connect to `/run/user/{uid}/songbird-{family_id}.sock`
+    /// 5. Fallback to `/tmp/` if XDG not available
     fn socket_path_from_env() -> PathBuf {
-        // Get family_id from env var (fallback to "default")
+        // 1. Check for explicit SONGBIRD_SOCKET override (highest priority)
+        if let Ok(socket_path) = std::env::var("SONGBIRD_SOCKET") {
+            info!("📍 Using SONGBIRD_SOCKET override: {}", socket_path);
+            return PathBuf::from(socket_path);
+        }
+
+        // Get family_id and node_id from env vars
         let family_id =
             std::env::var("SONGBIRD_FAMILY_ID").unwrap_or_else(|_| "default".to_string());
+        let node_id = std::env::var("SONGBIRD_NODE_ID").unwrap_or_else(|_| "default".to_string());
 
-        // Get current user ID from environment
-        // Try $UID first (set by most shells), then try to parse from $USER
-        let uid = std::env::var("UID").ok().and_then(|s| s.parse::<u32>().ok()).unwrap_or(1000); // Fallback to 1000 (typical first user)
+        // Get current user ID
+        // Try $UID first (set by most shells), fallback to safe default
+        let uid = std::env::var("UID")
+            .ok()
+            .and_then(|s| s.parse::<u32>().ok())
+            .unwrap_or_else(|| {
+                // Try to get from /proc/self/loginuid (Linux-specific but safe fallback)
+                std::fs::read_to_string("/proc/self/loginuid")
+                    .ok()
+                    .and_then(|s| s.trim().parse().ok())
+                    .unwrap_or(1000) // Default to 1000 (typical first user)
+            });
 
-        // Build path: /run/user/{uid}/songbird-{family_id}.sock
-        PathBuf::from(format!("/run/user/{}/songbird-{}.sock", uid, family_id))
+        // 2. Try XDG Runtime Directory (preferred for production)
+        let xdg_runtime_dir = PathBuf::from(format!("/run/user/{}", uid));
+        if xdg_runtime_dir.exists() {
+            let socket_path = xdg_runtime_dir.join(format!("songbird-{}.sock", family_id));
+            info!(
+                "📍 Using XDG runtime directory: {}",
+                socket_path.display()
+            );
+            return socket_path;
+        }
+
+        // 3. Fallback to /tmp (last resort, includes node_id for multi-instance)
+        let socket_path = PathBuf::from(format!("/tmp/songbird-{}-{}.sock", family_id, node_id));
+        warn!(
+            "⚠️  XDG runtime directory not available, falling back to /tmp: {}",
+            socket_path.display()
+        );
+        socket_path
     }
 
     /// Start the Unix socket JSON-RPC server
@@ -128,6 +167,17 @@ impl UnixSocketServer {
     pub async fn start(&mut self) -> Result<ServerHandle> {
         info!("🔌 Starting Unix socket JSON-RPC server...");
         info!("   Socket path: {:?}", self.socket_path);
+
+        // Ensure parent directory exists (biomeOS requirement)
+        if let Some(parent) = self.socket_path.parent() {
+            if !parent.exists() {
+                debug!("   Creating socket directory: {:?}", parent);
+                std::fs::create_dir_all(parent).context(format!(
+                    "Failed to create socket directory: {}",
+                    parent.display()
+                ))?;
+            }
+        }
 
         // Remove stale socket file (if exists)
         if self.socket_path.exists() {
@@ -299,35 +349,146 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_socket_path_from_env() {
-        // Test socket path derivation
+    fn test_socket_path_explicit_override() {
+        // Test 1: SONGBIRD_SOCKET env var override (highest priority)
+        std::env::set_var("SONGBIRD_SOCKET", "/tmp/test-socket.sock");
         std::env::set_var("SONGBIRD_FAMILY_ID", "nat0");
         std::env::set_var("UID", "1000");
 
         let path = UnixSocketServer::socket_path_from_env();
-        let expected = "/run/user/1000/songbird-nat0.sock";
-        assert_eq!(path.to_str().unwrap(), expected);
+        assert_eq!(path.to_str().unwrap(), "/tmp/test-socket.sock");
 
-        // Test default fallback
-        std::env::remove_var("SONGBIRD_FAMILY_ID");
+        std::env::remove_var("SONGBIRD_SOCKET");
+    }
+
+    #[test]
+    fn test_socket_path_xdg_runtime() {
+        // Test 2: XDG runtime directory (if available)
+        std::env::remove_var("SONGBIRD_SOCKET");
+        std::env::remove_var("SONGBIRD_NODE_ID"); // Ensure no node_id pollution
+        std::env::set_var("SONGBIRD_FAMILY_ID", "nat0");
+        std::env::set_var("UID", "1000");
+
         let path = UnixSocketServer::socket_path_from_env();
-        let expected_default = "/run/user/1000/songbird-default.sock";
-        assert_eq!(path.to_str().unwrap(), expected_default);
+        let path_str = path.to_str().unwrap();
+        eprintln!("XDG path: {}", path_str);
+
+        // Should contain family_id regardless of whether using XDG or /tmp
+        assert!(
+            path_str.contains("songbird") && path_str.contains("nat0"),
+            "Path should contain 'songbird' and 'nat0', got: {}",
+            path_str
+        );
+
+        // Path should be reasonable (XDG or /tmp)
+        assert!(
+            path_str.starts_with("/run/user/") || path_str.starts_with("/tmp/"),
+            "Path should start with /run/user/ or /tmp/, got: {}",
+            path_str
+        );
+    }
+
+    #[test]
+    fn test_socket_path_fallback_to_tmp() {
+        // Test 3: Fallback to /tmp with node_id
+        std::env::remove_var("SONGBIRD_SOCKET");
+        std::env::set_var("SONGBIRD_FAMILY_ID", "test0");
+        std::env::set_var("SONGBIRD_NODE_ID", "node1");
+        std::env::set_var("UID", "99999"); // Non-existent UID to force /tmp
+
+        let path = UnixSocketServer::socket_path_from_env();
+        let path_str = path.to_str().unwrap();
+        eprintln!("Fallback path: {}", path_str);
+
+        // Should contain songbird and test0 regardless of path
+        assert!(
+            path_str.contains("songbird") && path_str.contains("test0"),
+            "Path should contain 'songbird' and 'test0', got: {}",
+            path_str
+        );
+
+        // If /run/user/99999 doesn't exist (likely), should fall back to /tmp
+        if !std::path::Path::new("/run/user/99999").exists() {
+            assert!(
+                path_str.starts_with("/tmp/"),
+                "Should use /tmp when XDG unavailable, got: {}",
+                path_str
+            );
+            assert!(
+                path_str.contains("node1"),
+                "/tmp fallback should include node_id, got: {}",
+                path_str
+            );
+        }
+    }
+
+    #[test]
+    fn test_socket_path_default_family() {
+        // Test 4: Default family_id and node_id
+        // Clear all relevant env vars to ensure clean test
+        std::env::remove_var("SONGBIRD_SOCKET");
+        std::env::remove_var("SONGBIRD_FAMILY_ID");
+        std::env::remove_var("SONGBIRD_NODE_ID");
+        std::env::set_var("UID", "1000");
+
+        let path = UnixSocketServer::socket_path_from_env();
+        let path_str = path.to_str().unwrap();
+        eprintln!("Default path: {}", path_str);
+        assert!(
+            path_str.contains("songbird") && path_str.contains("default"),
+            "Path should contain 'songbird' and 'default', got: {}",
+            path_str
+        );
     }
 
     #[test]
     fn test_socket_path_no_hardcoding() {
-        // Different family IDs = different socket paths
+        // Test 5: Different family IDs = different socket paths
+        std::env::remove_var("SONGBIRD_SOCKET");
         std::env::set_var("UID", "1000");
 
         std::env::set_var("SONGBIRD_FAMILY_ID", "nat0");
         let path1 = UnixSocketServer::socket_path_from_env();
+        eprintln!("Path 1 (nat0): {}", path1.to_str().unwrap());
 
         std::env::set_var("SONGBIRD_FAMILY_ID", "lan0");
         let path2 = UnixSocketServer::socket_path_from_env();
+        eprintln!("Path 2 (lan0): {}", path2.to_str().unwrap());
 
         assert_ne!(path1, path2);
-        assert!(path1.to_str().unwrap().contains("nat0"));
-        assert!(path2.to_str().unwrap().contains("lan0"));
+        assert!(
+            path1.to_str().unwrap().contains("nat0"),
+            "Path 1 should contain 'nat0', got: {}",
+            path1.to_str().unwrap()
+        );
+        assert!(
+            path2.to_str().unwrap().contains("lan0"),
+            "Path 2 should contain 'lan0', got: {}",
+            path2.to_str().unwrap()
+        );
+    }
+
+    #[test]
+    fn test_socket_path_node_id_differentiation() {
+        // Test 6: Different node IDs = different socket paths (in /tmp)
+        std::env::remove_var("SONGBIRD_SOCKET");
+        std::env::set_var("SONGBIRD_FAMILY_ID", "nat0");
+        std::env::set_var("UID", "99999"); // Force /tmp fallback
+
+        std::env::set_var("SONGBIRD_NODE_ID", "alpha");
+        let path1 = UnixSocketServer::socket_path_from_env();
+
+        std::env::set_var("SONGBIRD_NODE_ID", "beta");
+        let path2 = UnixSocketServer::socket_path_from_env();
+
+        // Paths should be different if using /tmp (XDG doesn't include node_id)
+        let path1_str = path1.to_str().unwrap();
+        let path2_str = path2.to_str().unwrap();
+
+        if path1_str.starts_with("/tmp/") && path2_str.starts_with("/tmp/") {
+            assert_ne!(path1, path2);
+            assert!(path1_str.contains("alpha"));
+            assert!(path2_str.contains("beta"));
+        }
     }
 }
