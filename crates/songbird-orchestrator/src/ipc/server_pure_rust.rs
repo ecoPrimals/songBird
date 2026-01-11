@@ -1,29 +1,106 @@
-//! Unix Socket JSON-RPC Server for Inter-Primal IPC
+//! Pure Rust Unix Socket JSON-RPC Server for Inter-Primal IPC
 //!
-//! v3.19.1: Modern async Rust with jsonrpsee
-//! v3.20.0: Service registry + biomeOS-compatible socket path
+//! v3.22.0: Evolved from jsonrpsee to pure Rust implementation (BearDog pattern)
+//!
+//! ## Evolution Rationale
+//!
+//! **Problem**: `jsonrpsee` has complex Unix socket requirements causing "invalid socket address" errors
+//! **Solution**: Pure Rust implementation using `tokio::net::UnixListener` (proven by BearDog v0.16.1)
 //!
 //! ## Design Principles
 //!
-//! 1. **Zero Hardcoding**: Socket path from env vars
-//! 2. **Modern Async**: jsonrpsee + tokio
-//! 3. **Thread-Safe**: Arc<RwLock> for shared state
-//! 4. **Observable**: Structured logging
-//! 5. **Graceful Shutdown**: Cleanup on drop
+//! 1. **Zero External RPC Libraries**: Pure `tokio::net::UnixListener` + JSON
+//! 2. **Zero Hardcoding**: Socket path from env vars
+//! 3. **Modern Async**: tokio + async/await
+//! 4. **Thread-Safe**: Arc + atomic readiness flags
+//! 5. **Observable**: Structured logging
+//! 6. **Graceful Shutdown**: Cleanup on drop
+//!
+//! ## Inspired By
+//!
+//! BearDog v0.16.1's proven Unix socket IPC implementation (production-tested).
 
 use anyhow::{Context, Result};
-use jsonrpsee::server::{Server, ServerHandle};
-use jsonrpsee::RpcModule;
-use std::path::PathBuf;
+use serde::{Deserialize, Serialize};
+use std::path::{Path, PathBuf};
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
-use tracing::{debug, info, warn};
+use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
+use tokio::net::{UnixListener, UnixStream};
+use tracing::{debug, error, info, warn};
 
 use super::handlers::IpcHandlers;
 use super::registry::ServiceRegistry;
 use crate::app::connection_manager::ConnectionManager;
 use songbird_discovery::anonymous::AnonymousDiscoveryListener;
 
-/// Unix socket JSON-RPC server for inter-primal communication
+/// JSON-RPC 2.0 Request
+#[derive(Debug, Clone, Deserialize)]
+pub struct JsonRpcRequest {
+    pub jsonrpc: String,
+    pub method: String,
+    #[serde(default)]
+    pub params: Option<serde_json::Value>,
+    pub id: Option<serde_json::Value>,
+}
+
+/// JSON-RPC 2.0 Response
+#[derive(Debug, Clone, Serialize)]
+pub struct JsonRpcResponse {
+    pub jsonrpc: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub result: Option<serde_json::Value>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub error: Option<JsonRpcError>,
+    pub id: serde_json::Value,
+}
+
+/// JSON-RPC 2.0 Error
+#[derive(Debug, Clone, Serialize)]
+pub struct JsonRpcError {
+    pub code: i32,
+    pub message: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub data: Option<serde_json::Value>,
+}
+
+impl JsonRpcError {
+    /// Standard JSON-RPC 2.0 error codes
+    pub const PARSE_ERROR: i32 = -32700;
+    pub const INVALID_REQUEST: i32 = -32600;
+    pub const METHOD_NOT_FOUND: i32 = -32601;
+    pub const INVALID_PARAMS: i32 = -32602;
+    pub const INTERNAL_ERROR: i32 = -32603;
+
+    /// Create a parse error
+    pub fn parse_error(message: impl Into<String>) -> Self {
+        Self {
+            code: Self::PARSE_ERROR,
+            message: message.into(),
+            data: None,
+        }
+    }
+
+    /// Create a method not found error
+    pub fn method_not_found(method: impl Into<String>) -> Self {
+        Self {
+            code: Self::METHOD_NOT_FOUND,
+            message: format!("Method not found: {}", method.into()),
+            data: None,
+        }
+    }
+
+    /// Create an internal error
+    pub fn internal_error(message: impl Into<String>) -> Self {
+        Self {
+            code: Self::INTERNAL_ERROR,
+            message: message.into(),
+            data: None,
+        }
+    }
+}
+
+/// Pure Rust Unix socket JSON-RPC server for inter-primal communication
 ///
 /// ## Architecture
 ///
@@ -31,36 +108,45 @@ use songbird_discovery::anonymous::AnonymousDiscoveryListener;
 /// Primals → Unix Socket → JSON-RPC 2.0 → Songbird APIs
 /// ```
 ///
-/// ## APIs Exposed
+/// ## Evolution (v3.22.0)
 ///
-/// ### P2P Discovery (v3.19.1)
+/// **Before**: `jsonrpsee::Server` (complex, Unix socket issues)
+/// **After**: `tokio::net::UnixListener` (simple, proven by BearDog)
+///
+/// ## APIs Exposed (11 total)
+///
+/// ### P2P Discovery (3 APIs)
 /// - `discover_by_family`: Filter discovered peers by genetic family tags
 /// - `create_genetic_tunnel`: Establish BTSP tunnel with genetic proof
 /// - `announce_capabilities`: Update broadcaster capabilities/tags
 ///
-/// ### Service Registry (v3.20.0)
+/// ### Service Registry (4 APIs)
 /// - `register_service`: Register a primal with Songbird
 /// - `discover_by_capability`: Find primals by capability
 /// - `get_service_health`: Check primal health status
 /// - `health_check`: Check Songbird's own health
+///
+/// ### Graph Intelligence (4 APIs)
+/// - `graph.validate`: Validate graph structure
+/// - `graph.check_availability`: Check primal availability
+/// - `graph.suggest_alternatives`: Suggest alternative primals
+/// - `coordination.validate_pattern`: Validate coordination patterns
 pub struct UnixSocketServer {
     /// Socket path (e.g., /run/user/{uid}/songbird-{family_id}.sock)
     socket_path: PathBuf,
 
-    /// Server handle (for graceful shutdown)
-    server_handle: Option<ServerHandle>,
-
     /// API handlers
     handlers: Arc<IpcHandlers>,
+
+    /// Atomic readiness flag for lock-free concurrent checks (BearDog pattern)
+    is_ready: Arc<AtomicBool>,
 }
 
 impl UnixSocketServer {
     /// Create a new Unix socket server
     ///
-    /// **Zero Hardcoding**: Socket path derived from family_id env var
-    ///
-    /// **v3.19.2**: Refactored to take individual components
-    /// **v3.20.0**: Added service_registry, changed socket path to /run/user/...
+    /// **Zero Hardcoding**: Socket path derived from env vars
+    /// **v3.22.0**: Pure Rust implementation (no jsonrpsee)
     ///
     /// ## Example
     ///
@@ -83,15 +169,13 @@ impl UnixSocketServer {
 
         Self {
             socket_path,
-            server_handle: None,
             handlers,
+            is_ready: Arc::new(AtomicBool::new(false)),
         }
     }
 
     /// Derive socket path from environment (zero hardcoding!)
     ///
-    /// **v3.20.0**: Changed from `/tmp/songbird-{node_id}.sock`
-    ///              to `/run/user/{uid}/songbird-{family_id}.sock`
     /// **v3.21.1**: Added SONGBIRD_SOCKET env var override (biomeOS standard)
     ///
     /// ## Priority Order (biomeOS-compliant):
@@ -152,21 +236,54 @@ impl UnixSocketServer {
         socket_path
     }
 
+    /// Get the socket path
+    pub fn socket_path(&self) -> &Path {
+        &self.socket_path
+    }
+
+    /// Get a clone of the readiness flag (BearDog pattern)
+    ///
+    /// This allows checking readiness even after the server has been moved
+    /// into a spawn task. This is lock-free and safe for concurrent access!
+    pub fn readiness_flag(&self) -> Arc<AtomicBool> {
+        Arc::clone(&self.is_ready)
+    }
+
+    /// Check if the server is ready to accept connections (atomic, lock-free)
+    pub fn is_ready(&self) -> bool {
+        self.is_ready.load(Ordering::Acquire)
+    }
+
+    /// Wait for the server to be ready (non-blocking async wait)
+    ///
+    /// Returns `true` if ready within timeout, `false` if timeout expired.
+    pub async fn wait_ready(&self, timeout: std::time::Duration) -> bool {
+        let start = std::time::Instant::now();
+        while !self.is_ready() {
+            if start.elapsed() > timeout {
+                return false;
+            }
+            tokio::time::sleep(std::time::Duration::from_millis(10)).await;
+        }
+        true
+    }
+
     /// Start the Unix socket JSON-RPC server
     ///
     /// ## Lifecycle
     ///
     /// 1. Remove stale socket file (if exists)
-    /// 2. Create jsonrpsee server
-    /// 3. Register API methods (7 total: 3 P2P + 4 service registry)
-    /// 4. Start listening (returns immediately, runs in background)
+    /// 2. Create parent directory (if needed)
+    /// 3. Bind Unix socket listener
+    /// 4. Mark as ready (atomic flag)
+    /// 5. Accept connections loop
     ///
     /// ## Returns
     ///
-    /// `ServerHandle` for graceful shutdown
-    pub async fn start(&mut self) -> Result<ServerHandle> {
-        info!("🔌 Starting Unix socket JSON-RPC server...");
-        info!("   Socket path: {:?}", self.socket_path);
+    /// Never returns (runs until cancelled)
+    pub async fn start(self: Arc<Self>) -> Result<()> {
+        info!("🔌 Starting pure Rust Unix socket JSON-RPC server...");
+        info!("   Socket path: {}", self.socket_path.display());
 
         // Ensure parent directory exists (biomeOS requirement)
         if let Some(parent) = self.socket_path.parent() {
@@ -186,149 +303,162 @@ impl UnixSocketServer {
                 .context("Failed to remove stale socket file")?;
         }
 
-        // Create jsonrpsee server with Unix socket transport
-        let server = Server::builder()
-            .build(self.socket_path.as_os_str())
-            .await
-            .context("Failed to create Unix socket server")?;
+        // Bind Unix socket (pure tokio - no jsonrpsee!)
+        let listener = UnixListener::bind(&self.socket_path).context(format!(
+            "Failed to bind Unix socket: {}",
+            self.socket_path.display()
+        ))?;
 
-        // Create RPC module and register methods
-        let mut module = RpcModule::new(());
+        // Mark server as ready atomically (lock-free!)
+        self.is_ready.store(true, Ordering::Release);
 
-        // ====================================================================
-        // Service Registry APIs (v3.20.0)
-        // ====================================================================
+        info!(
+            "✅ Unix socket JSON-RPC server listening: {}",
+            self.socket_path.display()
+        );
+        info!("   Protocol: JSON-RPC 2.0 (pure Rust)");
+        info!("   APIs: 11 (3 P2P + 4 registry + 4 graph intelligence)");
+        info!("   Status: READY ✅ (atomic flag set)");
 
-        // API 1: register_service
-        let handlers_clone = self.handlers.clone();
-        module.register_async_method("register_service", move |params, _, _| {
-            let handlers = handlers_clone.clone();
-            async move { handlers.register_service(params).await }
-        })?;
-
-        // API 2: discover_by_capability
-        let handlers_clone = self.handlers.clone();
-        module.register_async_method("discover_by_capability", move |params, _, _| {
-            let handlers = handlers_clone.clone();
-            async move { handlers.discover_by_capability(params).await }
-        })?;
-
-        // API 3: get_service_health
-        let handlers_clone = self.handlers.clone();
-        module.register_async_method("get_service_health", move |params, _, _| {
-            let handlers = handlers_clone.clone();
-            async move { handlers.get_service_health(params).await }
-        })?;
-
-        // API 4: health_check
-        let handlers_clone = self.handlers.clone();
-        module.register_async_method("health_check", move |params, _, _| {
-            let handlers = handlers_clone.clone();
-            async move { handlers.health_check(params).await }
-        })?;
-
-        // ====================================================================
-        // P2P Discovery APIs (v3.19.1)
-        // ====================================================================
-
-        // API 5: discover_by_family
-        let handlers_clone = self.handlers.clone();
-        module.register_async_method("discover_by_family", move |params, _, _| {
-            let handlers = handlers_clone.clone();
-            async move { handlers.discover_by_family(params).await }
-        })?;
-
-        // API 6: create_genetic_tunnel
-        let handlers_clone = self.handlers.clone();
-        module.register_async_method("create_genetic_tunnel", move |params, _, _| {
-            let handlers = handlers_clone.clone();
-            async move { handlers.create_genetic_tunnel(params).await }
-        })?;
-
-        // API 7: announce_capabilities
-        let handlers_clone = self.handlers.clone();
-        module.register_async_method("announce_capabilities", move |params, _, _| {
-            let handlers = handlers_clone.clone();
-            async move { handlers.announce_capabilities(params).await }
-        })?;
-
-        // ====================================================================
-        // Graph Validation APIs (v3.21.0 - Collaborative Intelligence)
-        // ====================================================================
-
-        // API 8: graph.validate
-        let handlers_clone = self.handlers.clone();
-        module.register_async_method("graph.validate", move |params, _, _| {
-            let handlers = handlers_clone.clone();
-            async move { handlers.validate_graph(params).await }
-        })?;
-
-        // ====================================================================
-        // Graph Availability APIs (v3.21.0 - Collaborative Intelligence Week 2)
-        // ====================================================================
-
-        // API 9: graph.check_availability
-        let handlers_clone = self.handlers.clone();
-        module.register_async_method("graph.check_availability", move |params, _, _| {
-            let handlers = handlers_clone.clone();
-            async move { handlers.check_availability(params).await }
-        })?;
-
-        // API 10: graph.suggest_alternatives
-        let handlers_clone = self.handlers.clone();
-        module.register_async_method("graph.suggest_alternatives", move |params, _, _| {
-            let handlers = handlers_clone.clone();
-            async move { handlers.suggest_alternatives(params).await }
-        })?;
-
-        // ====================================================================
-        // Coordination Validation API (v3.21.0 - Collaborative Intelligence Week 3)
-        // ====================================================================
-
-        // API 11: coordination.validate_pattern
-        let handlers_clone = self.handlers.clone();
-        module.register_async_method("coordination.validate_pattern", move |params, _, _| {
-            let handlers = handlers_clone.clone();
-            async move { handlers.validate_coordination_pattern(params).await }
-        })?;
-
-        // Start server with registered methods (runs in background)
-        let handle = server.start(module);
-
-        info!("✅ Unix socket JSON-RPC server started");
-        info!("   Listening at: {:?}", self.socket_path);
-        info!("   APIs: 11 (4 service registry + 3 P2P discovery + 4 graph intelligence)");
-
-        // Store handle for graceful shutdown
-        self.server_handle = Some(handle.clone());
-
-        Ok(handle)
-    }
-
-    /// Check if server is running
-    pub fn is_running(&self) -> bool {
-        self.server_handle.is_some()
-    }
-
-    /// Stop the server gracefully
-    pub async fn stop(&mut self) -> Result<()> {
-        if let Some(handle) = self.server_handle.take() {
-            info!("🛑 Stopping Unix socket JSON-RPC server...");
-            handle.stop()?;
-
-            // Clean up socket file
-            if self.socket_path.exists() {
-                std::fs::remove_file(&self.socket_path).context("Failed to remove socket file")?;
+        // Accept connections loop
+        loop {
+            match listener.accept().await {
+                Ok((stream, _addr)) => {
+                    let server = Arc::clone(&self);
+                    tokio::spawn(async move {
+                        if let Err(e) = server.handle_connection(stream).await {
+                            error!("❌ Connection handler error: {}", e);
+                        }
+                    });
+                }
+                Err(e) => {
+                    error!("❌ Failed to accept connection: {}", e);
+                }
             }
-
-            info!("✅ Unix socket server stopped");
         }
+    }
+
+    /// Handle a single client connection with JSON-RPC 2.0
+    async fn handle_connection(&self, stream: UnixStream) -> Result<()> {
+        debug!("📥 New IPC connection");
+
+        let (reader, mut writer) = stream.into_split();
+        let mut reader = BufReader::new(reader);
+        let mut line = String::new();
+
+        loop {
+            line.clear();
+            match reader.read_line(&mut line).await {
+                Ok(0) => {
+                    debug!("📤 Client disconnected");
+                    break;
+                }
+                Ok(_) => {
+                    if line.trim().is_empty() {
+                        continue;
+                    }
+
+                    // Parse JSON-RPC request
+                    let response = match serde_json::from_str::<JsonRpcRequest>(&line) {
+                        Ok(request) => {
+                            debug!("📨 JSON-RPC request: {}", request.method);
+                            self.handle_jsonrpc_request(request).await
+                        }
+                        Err(e) => JsonRpcResponse {
+                            jsonrpc: "2.0".to_string(),
+                            result: None,
+                            error: Some(JsonRpcError::parse_error(format!(
+                                "Failed to parse JSON-RPC request: {}",
+                                e
+                            ))),
+                            id: serde_json::Value::Null,
+                        },
+                    };
+
+                    // Send response
+                    let response_json = serde_json::to_string(&response)?;
+                    writer.write_all(response_json.as_bytes()).await?;
+                    writer.write_all(b"\n").await?;
+                }
+                Err(e) => {
+                    error!("❌ Failed to read from socket: {}", e);
+                    break;
+                }
+            }
+        }
+
         Ok(())
     }
 
-    /// Get the socket path
-    pub fn socket_path(&self) -> &PathBuf {
-        &self.socket_path
+    /// Handle a JSON-RPC 2.0 request and route to appropriate API handler
+    async fn handle_jsonrpc_request(&self, request: JsonRpcRequest) -> JsonRpcResponse {
+        let id = request.id.clone().unwrap_or(serde_json::Value::Null);
+
+        // Route to appropriate handler based on method name
+        let result = match request.method.as_str() {
+            // P2P Discovery APIs (3)
+            "discover_by_family" => self.handlers.discover_by_family(request.params).await,
+            "create_genetic_tunnel" => {
+                self.handlers.create_genetic_tunnel(request.params).await
+            }
+            "announce_capabilities" => {
+                self.handlers.announce_capabilities(request.params).await
+            }
+
+            // Service Registry APIs (4)
+            "register_service" => self.handlers.register_service(request.params).await,
+            "discover_by_capability" => {
+                self.handlers.discover_by_capability(request.params).await
+            }
+            "get_service_health" => self.handlers.get_service_health(request.params).await,
+            "health_check" => self.handlers.health_check().await,
+
+            // Graph Intelligence APIs (4)
+            "graph.validate" => self.handlers.validate_graph(request.params).await,
+            "graph.check_availability" => self.handlers.check_availability(request.params).await,
+            "graph.suggest_alternatives" => {
+                self.handlers.suggest_alternatives(request.params).await
+            }
+            "coordination.validate_pattern" => {
+                self.handlers.validate_coordination_pattern(request.params).await
+            }
+
+            // Unknown method
+            _ => Err(JsonRpcError::method_not_found(&request.method)),
+        };
+
+        // Build response
+        match result {
+            Ok(value) => JsonRpcResponse {
+                jsonrpc: "2.0".to_string(),
+                result: Some(value),
+                error: None,
+                id,
+            },
+            Err(error) => JsonRpcResponse {
+                jsonrpc: "2.0".to_string(),
+                result: None,
+                error: Some(error),
+                id,
+            },
+        }
+    }
+
+    /// Stop the server gracefully
+    pub async fn stop(&self) -> Result<()> {
+        info!("🛑 Stopping Unix socket JSON-RPC server...");
+
+        // Mark as not ready (atomic)
+        self.is_ready.store(false, Ordering::Release);
+
+        // Remove socket file
+        if self.socket_path.exists() {
+            std::fs::remove_file(&self.socket_path).context("Failed to remove socket file")?;
+            info!("🧹 Removed socket: {}", self.socket_path.display());
+        }
+
+        info!("✅ Unix socket server stopped");
+        Ok(())
     }
 }
 
@@ -492,3 +622,4 @@ mod tests {
         }
     }
 }
+
