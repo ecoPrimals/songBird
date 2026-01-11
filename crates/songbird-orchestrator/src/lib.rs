@@ -79,6 +79,7 @@ pub mod connections; // Progressive trust connection management (Jan 2026)
 pub mod consent_management;
 pub mod core; // Consolidated core functionality
 pub mod error_recovery; // Error recovery & resilience (Week 3 - Dec 18, 2025)
+pub mod graph; // Graph validation for Collaborative Intelligence (Jan 11, 2026)
 pub mod integration;
 pub mod ipc; // Inter-Primal Communication (Unix socket IPC + primal registry) (Jan 4, 2026)
 pub mod network; // Network binding & endpoint management (Dec 20, 2025) - Zero-config intelligent binding
