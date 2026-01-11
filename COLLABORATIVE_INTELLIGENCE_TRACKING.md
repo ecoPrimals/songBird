@@ -164,26 +164,26 @@
 ### Unit Tests (24 total)
 
 **Graph Validation (10)**:
-- [ ] `test_valid_simple_graph`
-- [ ] `test_detect_cycle`
-- [ ] `test_detect_orphan_node`
-- [ ] `test_validate_dependencies`
-- [ ] `test_duplicate_node_ids`
-- [ ] `test_invalid_edge_reference`
-- [ ] `test_missing_required_fields`
-- [ ] `test_complex_graph_validation`
-- [ ] `test_multiple_entry_points`
-- [ ] `test_multiple_exit_points`
+- [x] `test_valid_simple_graph` ✅
+- [x] `test_detect_cycle` ✅
+- [x] `test_detect_orphan_node` ✅
+- [x] `test_validate_dependencies` ✅
+- [x] `test_duplicate_node_ids` ✅
+- [x] `test_invalid_edge_reference` ✅
+- [x] `test_missing_required_fields` ✅
+- [x] `test_complex_graph_validation` ✅
+- [x] `test_multiple_entry_points` ✅
+- [x] `test_multiple_exit_points` ✅
 
 **Availability Checking (8)**:
-- [ ] `test_all_available`
-- [ ] `test_some_unavailable`
+- [x] `test_all_available` ✅
+- [x] `test_some_unavailable` ✅
 - [ ] `test_unhealthy_primal`
 - [ ] `test_degraded_primal`
-- [ ] `test_no_primals_registered`
-- [ ] `test_protocol_filtering`
+- [x] `test_no_primals_registered` ✅
+- [x] `test_protocol_filtering` ✅
 - [ ] `test_health_status_changes`
-- [ ] `test_suggest_alternatives_ranking`
+- [x] `test_suggest_alternatives_ranking` ✅
 
 **Coordination Patterns (6)**:
 - [ ] `test_validate_sequential_pattern`
@@ -197,6 +197,10 @@
 - [ ] `test_full_validation_workflow`
 - [ ] `test_availability_with_real_registry`
 - [ ] `test_live_graph_modification`
+- [ ] `test_multi_primal_coordination`
+- [ ] `test_end_to_end_graph_execution`
+
+**Progress**: 0/5 (0%) - E2E tests pending
 - [ ] `test_multi_primal_coordination`
 - [ ] `test_alternative_suggestion_workflow`
 
