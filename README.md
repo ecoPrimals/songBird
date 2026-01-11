@@ -1,14 +1,14 @@
 # 🎵 Songbird - Port-Free P2P Orchestrator
 
-**Version**: v3.21.0 (Collaborative Intelligence - Week 2 Complete)  
-**Status**: Production Ready ✅ (Graph Availability APIs Complete!)  
+**Version**: v3.21.0 (Collaborative Intelligence - Week 3 Complete)  
+**Status**: Production Ready ✅ (Graph Coordination APIs Complete!)  
 **Architecture**: Modern Idiomatic Rust  
 
 ---
 
 ## 🎯 What is Songbird?
 
-**Songbird** is a **port-free, encrypted P2P orchestrator** for distributed systems with **Collaborative Intelligence** for graph validation and primal availability checking. It discovers peers via UDP multicast, establishes trust through genetic lineage, and creates encrypted tunnels (BTSP) for communication - all without requiring TCP port exposure.
+**Songbird** is a **port-free, encrypted P2P orchestrator** for distributed systems with **Collaborative Intelligence** for graph validation, availability checking, and coordination pattern validation. It discovers peers via UDP multicast, establishes trust through genetic lineage, and creates encrypted tunnels (BTSP) for communication - all without requiring TCP port exposure.
 
 ### Key Features
 
@@ -20,7 +20,7 @@
 - 🦅 **Fractal Coordination**: Albatross (HPC) → Songbird (Tower) → Sparrow (Edge)
 - 🌱 **Inter-Primal IPC**: Unix socket JSON-RPC for biomeOS integration
 - 🗂️ **Service Registry**: Capability-based primal discovery (v3.20.0)
-- 🤝 **Collaborative Intelligence**: Graph validation + availability checking (v3.21.0)
+- 🤝 **Collaborative Intelligence**: Graph validation + availability + coordination (v3.21.0)
 
 ---
 
@@ -86,9 +86,11 @@ systemctl start songbird
 - [NEURALAPI_INTEGRATION_PROGRESS.md](./NEURALAPI_INTEGRATION_PROGRESS.md) - NeuralAPI integration
 
 ### Latest Evolution (v3.21.0 - Collaborative Intelligence)
-- **[COLLABORATIVE_INTELLIGENCE_TRACKING.md](./COLLABORATIVE_INTELLIGENCE_TRACKING.md)** - Overall progress tracking
-- **[WEEK_2_COMPLETE_SUMMARY.md](./WEEK_2_COMPLETE_SUMMARY.md)** - Week 2 complete summary 🎊
+- **[COLLABORATIVE_INTELLIGENCE_TRACKING.md](./COLLABORATIVE_INTELLIGENCE_TRACKING.md)** - Overall progress tracking (90% complete)
+- **[WEEK_3_COMPLETE_SUMMARY.md](./WEEK_3_COMPLETE_SUMMARY.md)** - Week 3 complete summary 🎊
+- **[WEEK_2_COMPLETE_SUMMARY.md](./WEEK_2_COMPLETE_SUMMARY.md)** - Week 2 complete summary
 - **[specs/COLLABORATIVE_INTELLIGENCE_GRAPH_VALIDATION.md](./specs/COLLABORATIVE_INTELLIGENCE_GRAPH_VALIDATION.md)** - Technical specification
+- **[docs/GRAPH_AVAILABILITY_API.md](./docs/GRAPH_AVAILABILITY_API.md)** - Availability API documentation
 
 ### Previous Evolution (v3.20.0 - Service Registry)
 - **[SERVICE_REGISTRY_POLISHED_V3_20_0.md](./SERVICE_REGISTRY_POLISHED_V3_20_0.md)** - Service registry complete
