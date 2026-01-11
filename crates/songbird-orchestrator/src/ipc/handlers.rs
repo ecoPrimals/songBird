@@ -9,8 +9,8 @@ use std::sync::Arc;
 use std::time::SystemTime;
 use tracing::{debug, info, warn};
 
-use super::types::*;
 use super::registry::ServiceRegistry;
+use super::types::*;
 use crate::app::connection_manager::ConnectionManager;
 use songbird_discovery::anonymous::AnonymousDiscoveryListener;
 use songbird_types::TrustLevel;
@@ -98,7 +98,9 @@ impl IpcHandlers {
                 request.health_check_interval,
             )
             .await
-            .map_err(|e| ErrorObject::owned(-32603, "Failed to register service", Some(format!("{}", e))))?;
+            .map_err(|e| {
+                ErrorObject::owned(-32603, "Failed to register service", Some(format!("{}", e)))
+            })?;
 
         info!("✅ Service registered: {}", service_id);
 
@@ -144,11 +146,15 @@ impl IpcHandlers {
             .service_registry
             .discover_by_capability(&request.capability, request.protocol.as_deref())
             .await
-            .map_err(|e| ErrorObject::owned(-32603, "Failed to discover primals", Some(format!("{}", e))))?;
+            .map_err(|e| {
+                ErrorObject::owned(-32603, "Failed to discover primals", Some(format!("{}", e)))
+            })?;
 
         info!("   Found {} primals", primals.len());
 
-        Ok(DiscoverByCapabilityResponse { primals })
+        Ok(DiscoverByCapabilityResponse {
+            primals,
+        })
     }
 
     /// Handle `get_service_health` RPC call
@@ -181,11 +187,10 @@ impl IpcHandlers {
         info!("🏥 Checking health for service: {}", request.service_id);
 
         // Get health from registry
-        let (status, message) = self
-            .service_registry
-            .get_service_health(&request.service_id)
-            .await
-            .map_err(|e| ErrorObject::owned(-32603, "Failed to get health", Some(format!("{}", e))))?;
+        let (status, message) =
+            self.service_registry.get_service_health(&request.service_id).await.map_err(|e| {
+                ErrorObject::owned(-32603, "Failed to get health", Some(format!("{}", e)))
+            })?;
 
         let health = HealthStatus {
             service_id: request.service_id,
@@ -194,7 +199,9 @@ impl IpcHandlers {
             timestamp: system_time_to_iso8601(SystemTime::now()),
         };
 
-        Ok(GetServiceHealthResponse { health })
+        Ok(GetServiceHealthResponse {
+            health,
+        })
     }
 
     /// Handle `health_check` RPC call
@@ -225,7 +232,9 @@ impl IpcHandlers {
             timestamp: system_time_to_iso8601(SystemTime::now()),
         };
 
-        Ok(HealthCheckResponse { health })
+        Ok(HealthCheckResponse {
+            health,
+        })
     }
 
     // ========================================================================

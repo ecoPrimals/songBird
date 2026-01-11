@@ -33,18 +33,29 @@
 //! 5. **Secure**: Unix socket permissions, credential passing (future)
 
 pub mod handlers;
+pub mod registry;
 pub mod server;
 pub mod types;
-pub mod registry;
 
-pub use server::UnixSocketServer;
 pub use registry::ServiceRegistry;
+pub use server::UnixSocketServer;
 pub use types::{
     // P2P Discovery (v3.19)
-    AnnounceCapabilitiesRequest, AnnounceCapabilitiesResponse, CreateGeneticTunnelRequest,
-    CreateGeneticTunnelResponse, DiscoverByFamilyRequest, DiscoverByFamilyResponse,
+    AnnounceCapabilitiesRequest,
+    AnnounceCapabilitiesResponse,
+    CreateGeneticTunnelRequest,
+    CreateGeneticTunnelResponse,
+    DiscoverByCapabilityRequest,
+    DiscoverByCapabilityResponse,
+    DiscoverByFamilyRequest,
+    DiscoverByFamilyResponse,
+    GetServiceHealthRequest,
+    GetServiceHealthResponse,
+    HealthCheckRequest,
+    HealthCheckResponse,
+    HealthStatus,
+    PrimalEndpoint,
     // Service Registry (v3.20)
-    RegisterServiceRequest, RegisterServiceResponse, DiscoverByCapabilityRequest,
-    DiscoverByCapabilityResponse, GetServiceHealthRequest, GetServiceHealthResponse,
-    HealthCheckRequest, HealthCheckResponse, PrimalEndpoint, HealthStatus,
+    RegisterServiceRequest,
+    RegisterServiceResponse,
 };

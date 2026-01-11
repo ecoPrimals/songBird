@@ -78,11 +78,8 @@ impl UnixSocketServer {
         connection_manager: Arc<ConnectionManager>,
     ) -> Self {
         let socket_path = Self::socket_path_from_env();
-        let handlers = Arc::new(IpcHandlers::new(
-            service_registry,
-            discovery_listener,
-            connection_manager,
-        ));
+        let handlers =
+            Arc::new(IpcHandlers::new(service_registry, discovery_listener, connection_manager));
 
         Self {
             socket_path,
@@ -105,14 +102,12 @@ impl UnixSocketServer {
     /// 3. Connect to `/run/user/{uid}/songbird-{family_id}.sock`
     fn socket_path_from_env() -> PathBuf {
         // Get family_id from env var (fallback to "default")
-        let family_id = std::env::var("SONGBIRD_FAMILY_ID").unwrap_or_else(|_| "default".to_string());
+        let family_id =
+            std::env::var("SONGBIRD_FAMILY_ID").unwrap_or_else(|_| "default".to_string());
 
         // Get current user ID from environment
         // Try $UID first (set by most shells), then try to parse from $USER
-        let uid = std::env::var("UID")
-            .ok()
-            .and_then(|s| s.parse::<u32>().ok())
-            .unwrap_or(1000); // Fallback to 1000 (typical first user)
+        let uid = std::env::var("UID").ok().and_then(|s| s.parse::<u32>().ok()).unwrap_or(1000); // Fallback to 1000 (typical first user)
 
         // Build path: /run/user/{uid}/songbird-{family_id}.sock
         PathBuf::from(format!("/run/user/{}/songbird-{}.sock", uid, family_id))

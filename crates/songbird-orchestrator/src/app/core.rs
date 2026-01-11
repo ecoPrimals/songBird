@@ -539,7 +539,10 @@ impl SongbirdOrchestrator {
         use crate::ipc::{ServiceRegistry, UnixSocketServer};
 
         info!("🎧 Starting Unix Socket IPC server (v3.20.0 - Service Registry Mode)");
-        info!("   Family ID: {}", std::env::var("SONGBIRD_FAMILY_ID").unwrap_or_else(|_| "default".to_string()));
+        info!(
+            "   Family ID: {}",
+            std::env::var("SONGBIRD_FAMILY_ID").unwrap_or_else(|_| "default".to_string())
+        );
         info!("   Protocol: JSON-RPC 2.0");
 
         // v3.20.0: Create service registry for primal registration
@@ -562,7 +565,9 @@ impl SongbirdOrchestrator {
         info!("✅ Unix Socket IPC server started successfully");
         info!("   APIs: 7 total");
         info!("   - Service Registry: register_service, discover_by_capability, get_service_health, health_check");
-        info!("   - P2P Discovery: discover_by_family, create_genetic_tunnel, announce_capabilities");
+        info!(
+            "   - P2P Discovery: discover_by_family, create_genetic_tunnel, announce_capabilities"
+        );
         info!("   🌱 Primals can now register and discover each other!");
 
         // Store handle for graceful shutdown (would need to be added to orchestrator struct)

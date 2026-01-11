@@ -92,7 +92,11 @@ impl ServiceRegistry {
             existing_service.service_id.clone()
         } else {
             // Generate new service ID
-            let service_id = format!("{}-{}", primal_name.to_lowercase(), Uuid::new_v4().to_string()[..8].to_string());
+            let service_id = format!(
+                "{}-{}",
+                primal_name.to_lowercase(),
+                Uuid::new_v4().to_string()[..8].to_string()
+            );
             info!("✅ Registering new service: {}", service_id);
             service_id
         };
@@ -275,7 +279,7 @@ mod tests {
             .register_service(
                 "BearDog".to_string(),
                 vec!["encryption".to_string(), "identity".to_string()], // Updated capabilities
-                "/tmp/beardog.sock".to_string(), // Same endpoint
+                "/tmp/beardog.sock".to_string(),                        // Same endpoint
                 "json-rpc".to_string(),
                 30,
             )
@@ -356,7 +360,8 @@ mod tests {
             .unwrap();
 
         // Discover encryption with json-rpc protocol
-        let primals = registry.discover_by_capability("encryption", Some("json-rpc")).await.unwrap();
+        let primals =
+            registry.discover_by_capability("encryption", Some("json-rpc")).await.unwrap();
         assert_eq!(primals.len(), 1);
         assert_eq!(primals[0].primal_name, "BearDog");
     }
@@ -414,4 +419,3 @@ mod tests {
         assert_eq!(primals.len(), 0);
     }
 }
-
