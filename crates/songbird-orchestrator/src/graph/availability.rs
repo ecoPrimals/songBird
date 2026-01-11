@@ -696,5 +696,124 @@ mod tests {
         assert!(suggestions.alternatives[0].primal_name.contains("Healthy"));
         assert!(suggestions.alternatives[0].compatibility_score > suggestions.alternatives[1].compatibility_score);
     }
+
+    #[tokio::test]
+    async fn test_unhealthy_primal() {
+        let registry = Arc::new(ServiceRegistry::new());
+        let checker = AvailabilityChecker::new(registry.clone());
+
+        // Register a primal
+        let service_id = registry
+            .register_service(
+                "UnhealthyPrimal".to_string(),
+                vec!["encryption".to_string()],
+                "/run/user/1000/unhealthy.sock".to_string(),
+                "json-rpc".to_string(),
+                30,
+            )
+            .await
+            .unwrap();
+
+        // Mark it as down
+        registry
+            .update_health(&service_id, "down".to_string())
+            .await
+            .unwrap();
+
+        let node = create_test_node("node-1", "encryption", None);
+        let report = checker.check_node_availability(&node).await.unwrap();
+
+        // Should be unhealthy (not available for use)
+        assert_eq!(report.status, NodeAvailabilityStatus::Unhealthy);
+        assert_eq!(report.health_status, Some("down".to_string()));
+    }
+
+    #[tokio::test]
+    async fn test_degraded_primal() {
+        let registry = Arc::new(ServiceRegistry::new());
+        let checker = AvailabilityChecker::new(registry.clone());
+
+        // Register a primal
+        let service_id = registry
+            .register_service(
+                "DegradedPrimal".to_string(),
+                vec!["encryption".to_string()],
+                "/run/user/1000/degraded.sock".to_string(),
+                "json-rpc".to_string(),
+                30,
+            )
+            .await
+            .unwrap();
+
+        // Mark it as degraded
+        registry
+            .update_health(&service_id, "degraded".to_string())
+            .await
+            .unwrap();
+
+        let node = create_test_node("node-1", "encryption", None);
+        let report = checker.check_node_availability(&node).await.unwrap();
+
+        // Should be degraded (available but not ideal)
+        assert_eq!(report.status, NodeAvailabilityStatus::Degraded);
+        assert_eq!(report.health_status, Some("degraded".to_string()));
+    }
+
+    #[tokio::test]
+    async fn test_health_status_changes() {
+        let registry = Arc::new(ServiceRegistry::new());
+        let checker = AvailabilityChecker::new(registry.clone());
+
+        // Register a primal
+        let service_id = registry
+            .register_service(
+                "FlakeyPrimal".to_string(),
+                vec!["encryption".to_string()],
+                "/run/user/1000/flakey.sock".to_string(),
+                "json-rpc".to_string(),
+                30,
+            )
+            .await
+            .unwrap();
+
+        let graph = Graph::new(
+            "test".to_string(),
+            "Test".to_string(),
+            vec![create_test_node("node-1", "encryption", None)],
+            vec![],
+            GraphMetadata::default(),
+        );
+
+        // Initial: unknown (newly registered) -> treated as available
+        let report1 = checker.check_availability(&graph).await.unwrap();
+        assert_eq!(report1.summary.availability_percent, 100.0);
+
+        // Mark as healthy
+        registry
+            .update_health(&service_id, "healthy".to_string())
+            .await
+            .unwrap();
+        let report2 = checker.check_availability(&graph).await.unwrap();
+        assert_eq!(report2.summary.availability_percent, 100.0);
+
+        // Mark as degraded
+        registry
+            .update_health(&service_id, "degraded".to_string())
+            .await
+            .unwrap();
+        let report3 = checker.check_availability(&graph).await.unwrap();
+        assert_eq!(report3.available.len(), 0);
+        assert_eq!(report3.degraded.len(), 1);
+
+        // Mark as down
+        registry
+            .update_health(&service_id, "down".to_string())
+            .await
+            .unwrap();
+        let report4 = checker.check_availability(&graph).await.unwrap();
+        assert_eq!(report4.available.len(), 0);
+        assert_eq!(report4.unhealthy.len(), 1);
+        assert_eq!(report4.summary.availability_percent, 0.0);
+    }
 }
 
