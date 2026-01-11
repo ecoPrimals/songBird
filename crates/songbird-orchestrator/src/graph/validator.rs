@@ -13,7 +13,7 @@
 //! - **Fast**: Optimized algorithms for large graphs
 //! - **Safe**: No unsafe code, all operations are memory-safe
 
-use super::types::{Graph, ValidationIssue, ValidationResult, ValidationInfo, IssueSeverity};
+use super::types::{Graph, IssueSeverity, ValidationInfo, ValidationIssue, ValidationResult};
 use std::collections::{HashMap, HashSet};
 use tracing::{debug, warn};
 
@@ -178,7 +178,10 @@ impl GraphValidator {
                 issues.push(
                     ValidationIssue::error(
                         "ORPHAN_NODE",
-                        format!("Node '{}' has no connections and is not an entry/exit point", node.id),
+                        format!(
+                            "Node '{}' has no connections and is not an entry/exit point",
+                            node.id
+                        ),
                     )
                     .with_nodes(vec![node.id.clone()]),
                 );
@@ -201,21 +204,15 @@ impl GraphValidator {
         // Build adjacency list
         let mut adj: HashMap<&str, Vec<&str>> = HashMap::new();
         for edge in &graph.edges {
-            adj.entry(edge.from.as_str())
-                .or_insert_with(Vec::new)
-                .push(edge.to.as_str());
+            adj.entry(edge.from.as_str()).or_insert_with(Vec::new).push(edge.to.as_str());
         }
 
         // Try DFS from each node
         for node in &graph.nodes {
             if !visited.contains(node.id.as_str()) {
-                if let Some(cycle) = self.dfs_cycle(
-                    node.id.as_str(),
-                    &adj,
-                    &mut visited,
-                    &mut rec_stack,
-                    &mut path,
-                ) {
+                if let Some(cycle) =
+                    self.dfs_cycle(node.id.as_str(), &adj, &mut visited, &mut rec_stack, &mut path)
+                {
                     return Some(cycle);
                 }
             }
@@ -265,10 +262,7 @@ impl GraphValidator {
         // Build a map of node outputs
         let mut outputs: HashMap<&str, HashSet<&str>> = HashMap::new();
         for node in &graph.nodes {
-            outputs.insert(
-                node.id.as_str(),
-                node.outputs.iter().map(|s| s.as_str()).collect(),
-            );
+            outputs.insert(node.id.as_str(), node.outputs.iter().map(|s| s.as_str()).collect());
         }
 
         // Check that each node's inputs are satisfied
@@ -395,14 +389,14 @@ mod tests {
     #[test]
     fn test_detect_cycle() {
         let validator = GraphValidator::new();
-        
+
         let mut node1 = create_test_node("node-1", "encryption");
         node1.outputs = vec!["data".to_string()];
-        
+
         let mut node2 = create_test_node("node-2", "storage");
         node2.inputs = vec!["data".to_string()];
         node2.outputs = vec!["result".to_string()];
-        
+
         let mut node3 = create_test_node("node-3", "compute");
         node3.inputs = vec!["result".to_string()];
         node3.outputs = vec!["data".to_string()]; // Cycles back to node-1
@@ -497,13 +491,13 @@ mod tests {
     #[test]
     fn test_orphan_node() {
         let validator = GraphValidator::new();
-        
+
         let mut node1 = create_test_node("node-1", "encryption");
         node1.outputs = vec!["data".to_string()];
-        
+
         let mut node2 = create_test_node("node-2", "storage");
         node2.inputs = vec!["data".to_string()];
-        
+
         // Node 3 is an orphan - has no connections
         let mut node3 = create_test_node("node-3", "compute");
         node3.inputs = vec!["input".to_string()];
@@ -530,13 +524,13 @@ mod tests {
     #[test]
     fn test_unsatisfied_input() {
         let validator = GraphValidator::new();
-        
+
         let mut node1 = create_test_node("node-1", "encryption");
         node1.outputs = vec!["encrypted_data".to_string()];
-        
+
         let mut node2 = create_test_node("node-2", "storage");
         node2.inputs = vec!["decrypted_data".to_string()]; // Wrong input - not provided by node1
-        
+
         let graph = Graph::new(
             "test".to_string(),
             "Test".to_string(),
@@ -557,7 +551,7 @@ mod tests {
     #[test]
     fn test_complex_graph_validation() {
         let validator = GraphValidator::new();
-        
+
         // Create a complex valid graph with 10 nodes
         let mut nodes = Vec::new();
         for i in 1..=10 {
@@ -599,14 +593,14 @@ mod tests {
     #[test]
     fn test_multiple_entry_points() {
         let validator = GraphValidator::new();
-        
+
         // Two entry points feeding into one exit
         let mut node1 = create_test_node("entry-1", "source");
         node1.outputs = vec!["data-1".to_string()];
-        
+
         let mut node2 = create_test_node("entry-2", "source");
         node2.outputs = vec!["data-2".to_string()];
-        
+
         let mut node3 = create_test_node("merge", "compute");
         node3.inputs = vec!["data-1".to_string(), "data-2".to_string()];
         node3.outputs = vec!["merged".to_string()];
@@ -641,14 +635,14 @@ mod tests {
     #[test]
     fn test_multiple_exit_points() {
         let validator = GraphValidator::new();
-        
+
         // One entry splitting into two exits (fan-out)
         let mut node1 = create_test_node("source", "source");
         node1.outputs = vec!["data".to_string()];
-        
+
         let mut node2 = create_test_node("exit-1", "sink");
         node2.inputs = vec!["data".to_string()];
-        
+
         let mut node3 = create_test_node("exit-2", "sink");
         node3.inputs = vec!["data".to_string()];
 
@@ -682,17 +676,17 @@ mod tests {
     #[test]
     fn test_data_mapping() {
         let validator = GraphValidator::new();
-        
+
         let mut node1 = create_test_node("node-1", "encryption");
         node1.outputs = vec!["encrypted_data".to_string()];
-        
+
         let mut node2 = create_test_node("node-2", "storage");
         node2.inputs = vec!["data_to_store".to_string()];
-        
+
         // Use data mapping to connect mismatched names
         let mut data_mapping = HashMap::new();
         data_mapping.insert("encrypted_data".to_string(), "data_to_store".to_string());
-        
+
         let graph = Graph::new(
             "mapping".to_string(),
             "Data Mapping".to_string(),
@@ -709,4 +703,3 @@ mod tests {
         assert!(result.valid, "Graph with proper data mapping should be valid");
     }
 }
-

@@ -33,13 +33,14 @@
 /// }
 /// # Ok::<(), anyhow::Error>(())
 /// ```
-
+pub mod availability;
 pub mod types;
 pub mod validator;
 
 // Re-export commonly used types
-pub use types::{
-    Graph, GraphEdge, GraphMetadata, GraphNode, ValidationIssue, ValidationResult,
+pub use availability::{
+    AlternativePrimal, AlternativeSuggestions, AvailabilityChecker, AvailabilityReport,
+    NodeAvailability, NodeAvailabilityStatus,
 };
+pub use types::{Graph, GraphEdge, GraphMetadata, GraphNode, ValidationIssue, ValidationResult};
 pub use validator::GraphValidator;
-

@@ -104,30 +104,18 @@ impl Graph {
 
     /// Get all entry points (nodes with no incoming edges)
     pub fn entry_points(&self) -> Vec<&GraphNode> {
-        let has_incoming: HashMap<&str, bool> = self
-            .edges
-            .iter()
-            .map(|e| (e.to.as_str(), true))
-            .collect();
+        let has_incoming: HashMap<&str, bool> =
+            self.edges.iter().map(|e| (e.to.as_str(), true)).collect();
 
-        self.nodes
-            .iter()
-            .filter(|n| !has_incoming.contains_key(n.id.as_str()))
-            .collect()
+        self.nodes.iter().filter(|n| !has_incoming.contains_key(n.id.as_str())).collect()
     }
 
     /// Get all exit points (nodes with no outgoing edges)
     pub fn exit_points(&self) -> Vec<&GraphNode> {
-        let has_outgoing: HashMap<&str, bool> = self
-            .edges
-            .iter()
-            .map(|e| (e.from.as_str(), true))
-            .collect();
+        let has_outgoing: HashMap<&str, bool> =
+            self.edges.iter().map(|e| (e.from.as_str(), true)).collect();
 
-        self.nodes
-            .iter()
-            .filter(|n| !has_outgoing.contains_key(n.id.as_str()))
-            .collect()
+        self.nodes.iter().filter(|n| !has_outgoing.contains_key(n.id.as_str())).collect()
     }
 }
 
@@ -520,4 +508,3 @@ mod tests {
         assert_eq!(issue.nodes.len(), 2);
     }
 }
-

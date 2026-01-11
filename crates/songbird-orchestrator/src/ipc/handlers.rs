@@ -12,7 +12,7 @@ use tracing::{debug, info, warn};
 use super::registry::ServiceRegistry;
 use super::types::*;
 use crate::app::connection_manager::ConnectionManager;
-use crate::graph::GraphValidator;
+use crate::graph::{AvailabilityChecker, GraphValidator};
 use songbird_discovery::anonymous::AnonymousDiscoveryListener;
 use songbird_types::TrustLevel;
 
@@ -33,6 +33,9 @@ pub struct IpcHandlers {
 
     /// Graph validator for Collaborative Intelligence (v3.21.0)
     graph_validator: Arc<GraphValidator>,
+
+    /// Availability checker for Collaborative Intelligence (v3.21.0)
+    availability_checker: Arc<AvailabilityChecker>,
 }
 
 impl IpcHandlers {
@@ -46,11 +49,13 @@ impl IpcHandlers {
         discovery_listener: Option<Arc<AnonymousDiscoveryListener>>,
         connection_manager: Arc<ConnectionManager>,
     ) -> Self {
+        let availability_checker = Arc::new(AvailabilityChecker::new(service_registry.clone()));
         Self {
             service_registry,
             discovery_listener,
             connection_manager,
             graph_validator: Arc::new(GraphValidator::new()),
+            availability_checker,
         }
     }
 
@@ -598,14 +603,91 @@ impl IpcHandlers {
         if result.valid {
             info!("✅ Graph {} is valid", graph.id);
         } else {
-            warn!(
-                "⚠️  Graph {} has {} issues",
-                graph.id,
-                result.issues.len()
-            );
+            warn!("⚠️  Graph {} has {} issues", graph.id, result.issues.len());
         }
 
         Ok(result)
+    }
+
+    // ========================================================================
+    // Graph Availability APIs (v3.21.0 - Collaborative Intelligence Week 2)
+    // ========================================================================
+
+    /// Handle `graph.check_availability` RPC call
+    ///
+    /// Checks if all nodes in a graph have available primals registered.
+    pub async fn check_availability(
+        &self,
+        params: Params<'_>,
+    ) -> Result<crate::graph::AvailabilityReport, ErrorObject<'static>> {
+        debug!("📊 IPC: graph.check_availability called");
+        
+        let graph: crate::graph::Graph = params
+            .one()
+            .map_err(|e| ErrorObject::owned(-32602, "Invalid params", Some(format!("{}", e))))?;
+        
+        info!("🔍 Checking availability for graph: {} ({})", graph.id, graph.name);
+        
+        let report = self
+            .availability_checker
+            .check_availability(&graph)
+            .await
+            .map_err(|e| {
+                ErrorObject::owned(-32603, "Availability check failed", Some(format!("{}", e)))
+            })?;
+
+        if report.summary.availability_percent == 100.0 {
+            info!(
+                "✅ Graph {} has 100% availability ({}/{})",
+                graph.id, report.summary.available_nodes, report.summary.total_nodes
+            );
+        } else {
+            warn!(
+                "⚠️  Graph {} has {:.1}% availability ({}/{})",
+                graph.id,
+                report.summary.availability_percent,
+                report.summary.available_nodes,
+                report.summary.total_nodes
+            );
+        }
+
+        Ok(report)
+    }
+
+    /// Handle `graph.suggest_alternatives` RPC call
+    ///
+    /// Suggests alternative primals for a node based on capability and health.
+    pub async fn suggest_alternatives(
+        &self,
+        params: Params<'_>,
+    ) -> Result<crate::graph::AlternativeSuggestions, ErrorObject<'static>> {
+        debug!("📊 IPC: graph.suggest_alternatives called");
+        
+        let node: crate::graph::GraphNode = params
+            .one()
+            .map_err(|e| ErrorObject::owned(-32602, "Invalid params", Some(format!("{}", e))))?;
+        
+        info!("🔍 Finding alternatives for node: {} (capability: {})", node.id, node.capability);
+        
+        let suggestions = self
+            .availability_checker
+            .suggest_alternatives(&node)
+            .await
+            .map_err(|e| {
+                ErrorObject::owned(-32603, "Alternative suggestion failed", Some(format!("{}", e)))
+            })?;
+
+        if suggestions.alternatives.is_empty() {
+            warn!("⚠️  No alternatives found for node {}", node.id);
+        } else {
+            info!(
+                "✅ Found {} alternatives for node {}",
+                suggestions.alternatives.len(),
+                node.id
+            );
+        }
+
+        Ok(suggestions)
     }
 }
 
