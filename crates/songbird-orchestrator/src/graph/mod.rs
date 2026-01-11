@@ -34,6 +34,7 @@
 /// # Ok::<(), anyhow::Error>(())
 /// ```
 pub mod availability;
+pub mod coordination;
 pub mod types;
 pub mod validator;
 
@@ -41,6 +42,9 @@ pub mod validator;
 pub use availability::{
     AlternativePrimal, AlternativeSuggestions, AvailabilityChecker, AvailabilityReport,
     NodeAvailability, NodeAvailabilityStatus,
+};
+pub use coordination::{
+    CoordinationIssue, CoordinationPattern, CoordinationValidationResult, CoordinationValidator,
 };
 pub use types::{Graph, GraphEdge, GraphMetadata, GraphNode, ValidationIssue, ValidationResult};
 pub use validator::GraphValidator;
