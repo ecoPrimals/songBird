@@ -1,14 +1,14 @@
 # 🎵 Songbird - Port-Free P2P Orchestrator
 
-**Version**: v3.20.0 POLISHED  
-**Status**: Production Ready ✅ (Service Registry Complete!)  
+**Version**: v3.21.0 (Collaborative Intelligence - Week 2 Complete)  
+**Status**: Production Ready ✅ (Graph Availability APIs Complete!)  
 **Architecture**: Modern Idiomatic Rust  
 
 ---
 
 ## 🎯 What is Songbird?
 
-**Songbird** is a **port-free, encrypted P2P orchestrator** for distributed systems. It discovers peers via UDP multicast, establishes trust through genetic lineage, and creates encrypted tunnels (BTSP) for communication - all without requiring TCP port exposure.
+**Songbird** is a **port-free, encrypted P2P orchestrator** for distributed systems with **Collaborative Intelligence** for graph validation and primal availability checking. It discovers peers via UDP multicast, establishes trust through genetic lineage, and creates encrypted tunnels (BTSP) for communication - all without requiring TCP port exposure.
 
 ### Key Features
 
@@ -19,7 +19,8 @@
 - 🧬 **Genetic Trust**: Progressive trust levels based on cryptographic lineage
 - 🦅 **Fractal Coordination**: Albatross (HPC) → Songbird (Tower) → Sparrow (Edge)
 - 🌱 **Inter-Primal IPC**: Unix socket JSON-RPC for biomeOS integration
-- 🗂️ **Service Registry**: Capability-based primal discovery (v3.20+)
+- 🗂️ **Service Registry**: Capability-based primal discovery (v3.20.0)
+- 🤝 **Collaborative Intelligence**: Graph validation + availability checking (v3.21.0)
 
 ---
 
@@ -79,11 +80,17 @@ systemctl start songbird
 - [specs/LIFECYCLE_ORCHESTRATION_EVOLUTION.md](./specs/LIFECYCLE_ORCHESTRATION_EVOLUTION.md) - Lifecycle vision
 
 ### Integration Guides
-- **[BIOMEOS_HANDOFF_V3_20_0.md](./BIOMEOS_HANDOFF_V3_20_0.md)** - biomeOS integration (PRIMARY) 🎊
+- **[BIOMEOS_HANDOFF_V3_20_0.md](./BIOMEOS_HANDOFF_V3_20_0.md)** - biomeOS integration (Service Registry) 🎊
+- **[docs/GRAPH_AVAILABILITY_API.md](./docs/GRAPH_AVAILABILITY_API.md)** - Graph Availability APIs (v3.21.0) 🆕
 - [NESTGATE_INTEGRATION_GUIDE.md](./NESTGATE_INTEGRATION_GUIDE.md) - NestGate integration
 - [NEURALAPI_INTEGRATION_PROGRESS.md](./NEURALAPI_INTEGRATION_PROGRESS.md) - NeuralAPI integration
 
-### Latest Evolution (v3.20.0)
+### Latest Evolution (v3.21.0 - Collaborative Intelligence)
+- **[COLLABORATIVE_INTELLIGENCE_TRACKING.md](./COLLABORATIVE_INTELLIGENCE_TRACKING.md)** - Overall progress tracking
+- **[WEEK_2_COMPLETE_SUMMARY.md](./WEEK_2_COMPLETE_SUMMARY.md)** - Week 2 complete summary 🎊
+- **[specs/COLLABORATIVE_INTELLIGENCE_GRAPH_VALIDATION.md](./specs/COLLABORATIVE_INTELLIGENCE_GRAPH_VALIDATION.md)** - Technical specification
+
+### Previous Evolution (v3.20.0 - Service Registry)
 - **[SERVICE_REGISTRY_POLISHED_V3_20_0.md](./SERVICE_REGISTRY_POLISHED_V3_20_0.md)** - Service registry complete
 - **[HANDOFF_FINAL_V3_20_0.md](./HANDOFF_FINAL_V3_20_0.md)** - Complete handoff
 - **[EVOLUTION_COMPLETE_V3_20_0_POLISHED.md](./EVOLUTION_COMPLETE_V3_20_0_POLISHED.md)** - Evolution summary
