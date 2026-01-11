@@ -776,3 +776,425 @@ mod tests {
         assert!(subfeds.contains(&"family".to_string()));
     }
 }
+
+// ============================================================================
+// Pure Rust JSON-RPC Adapters (v3.22.0)
+// ============================================================================
+
+impl IpcHandlers {
+    /// Adapter: Convert pure Rust JSON-RPC calls to existing handler format
+    ///
+    /// These adapters bridge the gap between pure `serde_json::Value` params
+    /// and the existing `jsonrpsee::Params` handlers. This allows us to reuse
+    /// all existing handler logic without modification.
+    
+    /// Service Registry: register_service (pure JSON adapter)
+    pub async fn register_service_json(
+        &self,
+        params: Option<serde_json::Value>,
+    ) -> Result<serde_json::Value, crate::ipc::server_pure_rust::JsonRpcError> {
+        let request: RegisterServiceRequest = match params {
+            Some(p) => serde_json::from_value(p).map_err(|e| {
+                crate::ipc::server_pure_rust::JsonRpcError::invalid_params(format!(
+                    "Invalid params: {}",
+                    e
+                ))
+            })?,
+            None => {
+                return Err(crate::ipc::server_pure_rust::JsonRpcError::invalid_params(
+                    "params required",
+                ))
+            }
+        };
+
+        let response = self
+            .service_registry
+            .register_service(
+                request.primal_name,
+                request.capabilities,
+                request.endpoint,
+                request.protocol,
+                request.health_check_interval,
+            )
+            .await
+            .map_err(|e| {
+                crate::ipc::server_pure_rust::JsonRpcError::internal_error(format!(
+                    "Failed to register service: {}",
+                    e
+                ))
+            })?;
+
+        let resp = RegisterServiceResponse {
+            service_id: response,
+            status: "registered".to_string(),
+            registered_at: system_time_to_iso8601(SystemTime::now()),
+        };
+
+        serde_json::to_value(resp).map_err(|e| {
+            crate::ipc::server_pure_rust::JsonRpcError::internal_error(format!(
+                "Failed to serialize response: {}",
+                e
+            ))
+        })
+    }
+
+    /// Service Registry: discover_by_capability (pure JSON adapter)
+    pub async fn discover_by_capability_json(
+        &self,
+        params: Option<serde_json::Value>,
+    ) -> Result<serde_json::Value, crate::ipc::server_pure_rust::JsonRpcError> {
+        let request: DiscoverByCapabilityRequest = match params {
+            Some(p) => serde_json::from_value(p).map_err(|e| {
+                crate::ipc::server_pure_rust::JsonRpcError::invalid_params(format!(
+                    "Invalid params: {}",
+                    e
+                ))
+            })?,
+            None => {
+                return Err(crate::ipc::server_pure_rust::JsonRpcError::invalid_params(
+                    "params required",
+                ))
+            }
+        };
+
+        let primals = self
+            .service_registry
+            .discover_by_capability(&request.capability, request.protocol.as_deref())
+            .await
+            .map_err(|e| {
+                crate::ipc::server_pure_rust::JsonRpcError::internal_error(format!(
+                    "Failed to discover primals: {}",
+                    e
+                ))
+            })?;
+
+        let resp = DiscoverByCapabilityResponse { primals };
+
+        serde_json::to_value(resp).map_err(|e| {
+            crate::ipc::server_pure_rust::JsonRpcError::internal_error(format!(
+                "Failed to serialize response: {}",
+                e
+            ))
+        })
+    }
+
+    /// Service Registry: get_service_health (pure JSON adapter)
+    pub async fn get_service_health_json(
+        &self,
+        params: Option<serde_json::Value>,
+    ) -> Result<serde_json::Value, crate::ipc::server_pure_rust::JsonRpcError> {
+        let request: GetServiceHealthRequest = match params {
+            Some(p) => serde_json::from_value(p).map_err(|e| {
+                crate::ipc::server_pure_rust::JsonRpcError::invalid_params(format!(
+                    "Invalid params: {}",
+                    e
+                ))
+            })?,
+            None => {
+                return Err(crate::ipc::server_pure_rust::JsonRpcError::invalid_params(
+                    "params required",
+                ))
+            }
+        };
+
+        let (status, message) = self
+            .service_registry
+            .get_service_health(&request.service_id)
+            .await
+            .map_err(|e| {
+                crate::ipc::server_pure_rust::JsonRpcError::internal_error(format!(
+                    "Failed to get health: {}",
+                    e
+                ))
+            })?;
+
+        let health = HealthStatus {
+            service_id: request.service_id,
+            status,
+            message,
+            timestamp: system_time_to_iso8601(SystemTime::now()),
+        };
+
+        let resp = GetServiceHealthResponse { health };
+
+        serde_json::to_value(resp).map_err(|e| {
+            crate::ipc::server_pure_rust::JsonRpcError::internal_error(format!(
+                "Failed to serialize response: {}",
+                e
+            ))
+        })
+    }
+
+    /// Service Registry: health_check (pure JSON adapter)
+    pub async fn health_check_json(
+        &self,
+    ) -> Result<serde_json::Value, crate::ipc::server_pure_rust::JsonRpcError> {
+        let resp = HealthCheckResponse {
+            status: "healthy".to_string(),
+            message: "Songbird orchestrator is running".to_string(),
+            timestamp: system_time_to_iso8601(SystemTime::now()),
+        };
+
+        serde_json::to_value(resp).map_err(|e| {
+            crate::ipc::server_pure_rust::JsonRpcError::internal_error(format!(
+                "Failed to serialize response: {}",
+                e
+            ))
+        })
+    }
+
+    /// P2P Discovery: discover_by_family (pure JSON adapter)
+    pub async fn discover_by_family_json(
+        &self,
+        params: Option<serde_json::Value>,
+    ) -> Result<serde_json::Value, crate::ipc::server_pure_rust::JsonRpcError> {
+        let request: DiscoverByFamilyRequest = match params {
+            Some(p) => serde_json::from_value(p).map_err(|e| {
+                crate::ipc::server_pure_rust::JsonRpcError::invalid_params(format!(
+                    "Invalid params: {}",
+                    e
+                ))
+            })?,
+            None => {
+                return Err(crate::ipc::server_pure_rust::JsonRpcError::invalid_params(
+                    "params required",
+                ))
+            }
+        };
+
+        let listener = self.discovery_listener.as_ref().ok_or_else(|| {
+            crate::ipc::server_pure_rust::JsonRpcError::internal_error(
+                "Discovery listener not available",
+            )
+        })?;
+
+        let all_peers = listener.get_discovered_peers().await;
+        let filtered_peers: Vec<_> = all_peers
+            .iter()
+            .filter(|peer| {
+                peer.tags.as_ref().map_or(false, |tags| {
+                    let families = Self::extract_genetic_families_from_tags(tags);
+                    request.family_tags.iter().any(|tag| families.contains(tag))
+                })
+            })
+            .cloned()
+            .collect();
+
+        let resp = DiscoverByFamilyResponse {
+            peers: filtered_peers,
+            count: filtered_peers.len(),
+        };
+
+        serde_json::to_value(resp).map_err(|e| {
+            crate::ipc::server_pure_rust::JsonRpcError::internal_error(format!(
+                "Failed to serialize response: {}",
+                e
+            ))
+        })
+    }
+
+    /// P2P Discovery: create_genetic_tunnel (pure JSON adapter)
+    pub async fn create_genetic_tunnel_json(
+        &self,
+        params: Option<serde_json::Value>,
+    ) -> Result<serde_json::Value, crate::ipc::server_pure_rust::JsonRpcError> {
+        let request: CreateGeneticTunnelRequest = match params {
+            Some(p) => serde_json::from_value(p).map_err(|e| {
+                crate::ipc::server_pure_rust::JsonRpcError::invalid_params(format!(
+                    "Invalid params: {}",
+                    e
+                ))
+            })?,
+            None => {
+                return Err(crate::ipc::server_pure_rust::JsonRpcError::invalid_params(
+                    "params required",
+                ))
+            }
+        };
+
+        self.connection_manager
+            .establish_connection(
+                request.peer_id.clone(),
+                request.endpoint.clone(),
+                request.capabilities.clone(),
+                vec![], // peer_tags
+                TrustLevel::Federated, // Use federated trust for genetic tunnels
+                "genetic_lineage".to_string(),
+            )
+            .await
+            .map_err(|e| {
+                crate::ipc::server_pure_rust::JsonRpcError::internal_error(format!(
+                    "Failed to create tunnel: {}",
+                    e
+                ))
+            })?;
+
+        let resp = CreateGeneticTunnelResponse {
+            tunnel_id: format!("tunnel-{}", request.peer_id),
+            status: "established".to_string(),
+            peer_id: request.peer_id,
+        };
+
+        serde_json::to_value(resp).map_err(|e| {
+            crate::ipc::server_pure_rust::JsonRpcError::internal_error(format!(
+                "Failed to serialize response: {}",
+                e
+            ))
+        })
+    }
+
+    /// P2P Discovery: announce_capabilities (pure JSON adapter)
+    pub async fn announce_capabilities_json(
+        &self,
+        params: Option<serde_json::Value>,
+    ) -> Result<serde_json::Value, crate::ipc::server_pure_rust::JsonRpcError> {
+        let request: AnnounceCapabilitiesRequest = match params {
+            Some(p) => serde_json::from_value(p).map_err(|e| {
+                crate::ipc::server_pure_rust::JsonRpcError::invalid_params(format!(
+                    "Invalid params: {}",
+                    e
+                ))
+            })?,
+            None => {
+                return Err(crate::ipc::server_pure_rust::JsonRpcError::invalid_params(
+                    "params required",
+                ))
+            }
+        };
+
+        let resp = AnnounceCapabilitiesResponse {
+            status: "capabilities_updated".to_string(),
+            capabilities: request.capabilities,
+            tags: request.tags.unwrap_or_default(),
+        };
+
+        serde_json::to_value(resp).map_err(|e| {
+            crate::ipc::server_pure_rust::JsonRpcError::internal_error(format!(
+                "Failed to serialize response: {}",
+                e
+            ))
+        })
+    }
+
+    /// Graph Intelligence: validate_graph (pure JSON adapter)
+    pub async fn validate_graph_json(
+        &self,
+        params: Option<serde_json::Value>,
+    ) -> Result<serde_json::Value, crate::ipc::server_pure_rust::JsonRpcError> {
+        let request: crate::graph::types::Graph = match params {
+            Some(p) => serde_json::from_value(p).map_err(|e| {
+                crate::ipc::server_pure_rust::JsonRpcError::invalid_params(format!(
+                    "Invalid params: {}",
+                    e
+                ))
+            })?,
+            None => {
+                return Err(crate::ipc::server_pure_rust::JsonRpcError::invalid_params(
+                    "params required",
+                ))
+            }
+        };
+
+        let result = self.graph_validator.validate(&request);
+
+        serde_json::to_value(result).map_err(|e| {
+            crate::ipc::server_pure_rust::JsonRpcError::internal_error(format!(
+                "Failed to serialize response: {}",
+                e
+            ))
+        })
+    }
+
+    /// Graph Intelligence: check_availability (pure JSON adapter)
+    pub async fn check_availability_json(
+        &self,
+        params: Option<serde_json::Value>,
+    ) -> Result<serde_json::Value, crate::ipc::server_pure_rust::JsonRpcError> {
+        let request: crate::graph::types::Graph = match params {
+            Some(p) => serde_json::from_value(p).map_err(|e| {
+                crate::ipc::server_pure_rust::JsonRpcError::invalid_params(format!(
+                    "Invalid params: {}",
+                    e
+                ))
+            })?,
+            None => {
+                return Err(crate::ipc::server_pure_rust::JsonRpcError::invalid_params(
+                    "params required",
+                ))
+            }
+        };
+
+        let result = self.availability_checker.check_availability(&request).await;
+
+        serde_json::to_value(result).map_err(|e| {
+            crate::ipc::server_pure_rust::JsonRpcError::internal_error(format!(
+                "Failed to serialize response: {}",
+                e
+            ))
+        })
+    }
+
+    /// Graph Intelligence: suggest_alternatives (pure JSON adapter)
+    pub async fn suggest_alternatives_json(
+        &self,
+        params: Option<serde_json::Value>,
+    ) -> Result<serde_json::Value, crate::ipc::server_pure_rust::JsonRpcError> {
+        let request: crate::graph::types::GraphNode = match params {
+            Some(p) => serde_json::from_value(p).map_err(|e| {
+                crate::ipc::server_pure_rust::JsonRpcError::invalid_params(format!(
+                    "Invalid params: {}",
+                    e
+                ))
+            })?,
+            None => {
+                return Err(crate::ipc::server_pure_rust::JsonRpcError::invalid_params(
+                    "params required",
+                ))
+            }
+        };
+
+        let result = self
+            .availability_checker
+            .suggest_alternatives(&request)
+            .await;
+
+        serde_json::to_value(result).map_err(|e| {
+            crate::ipc::server_pure_rust::JsonRpcError::internal_error(format!(
+                "Failed to serialize response: {}",
+                e
+            ))
+        })
+    }
+
+    /// Graph Intelligence: validate_coordination_pattern (pure JSON adapter)
+    pub async fn validate_coordination_pattern_json(
+        &self,
+        params: Option<serde_json::Value>,
+    ) -> Result<serde_json::Value, crate::ipc::server_pure_rust::JsonRpcError> {
+        let request: crate::graph::types::Graph = match params {
+            Some(p) => serde_json::from_value(p).map_err(|e| {
+                crate::ipc::server_pure_rust::JsonRpcError::invalid_params(format!(
+                    "Invalid params: {}",
+                    e
+                ))
+            })?,
+            None => {
+                return Err(crate::ipc::server_pure_rust::JsonRpcError::invalid_params(
+                    "params required",
+                ))
+            }
+        };
+
+        let result = self
+            .coordination_validator
+            .validate_pattern(&request)
+            .await;
+
+        serde_json::to_value(result).map_err(|e| {
+            crate::ipc::server_pure_rust::JsonRpcError::internal_error(format!(
+                "Failed to serialize response: {}",
+                e
+            ))
+        })
+    }
+}

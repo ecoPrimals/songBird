@@ -559,21 +559,31 @@ impl SongbirdOrchestrator {
             connection_manager_clone,
         );
 
-        // Start server (returns ServerHandle for graceful shutdown)
-        let server_handle = server.start().await?;
+        // Start server in background task (pure Rust server runs forever)
+        let server_clone = Arc::clone(&server);
+        let server_task = tokio::spawn(async move {
+            if let Err(e) = server_clone.start().await {
+                error!("❌ Unix Socket IPC server error: {}", e);
+            }
+        });
+
+        // Wait for server to be ready (atomic, lock-free!)
+        if !server.wait_ready(std::time::Duration::from_secs(5)).await {
+            warn!("⚠️  Unix Socket IPC server did not become ready within 5 seconds");
+        }
 
         info!("✅ Unix Socket IPC server started successfully");
-        info!("   APIs: 7 total");
+        info!("   APIs: 11 total");
         info!("   - Service Registry: register_service, discover_by_capability, get_service_health, health_check");
         info!(
             "   - P2P Discovery: discover_by_family, create_genetic_tunnel, announce_capabilities"
         );
+        info!("   - Graph Intelligence: graph.validate, graph.check_availability, graph.suggest_alternatives, coordination.validate_pattern");
         info!("   🌱 Primals can now register and discover each other!");
 
-        // Store handle for graceful shutdown (would need to be added to orchestrator struct)
+        // Store task handle for cleanup (would need to be added to orchestrator struct)
         // For now, server runs indefinitely in background
-        // TODO v3.20.0: Add server_handle to orchestrator struct for graceful shutdown
-        drop(server_handle); // Prevent unused warning
+        drop(server_task); // Prevent unused warning
 
         Ok(())
     }
