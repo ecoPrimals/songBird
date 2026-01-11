@@ -12,7 +12,7 @@ use tracing::{debug, info, warn};
 use super::registry::ServiceRegistry;
 use super::types::*;
 use crate::app::connection_manager::ConnectionManager;
-use crate::graph::{AvailabilityChecker, GraphValidator};
+use crate::graph::{AvailabilityChecker, CoordinationValidator, GraphValidator};
 use songbird_discovery::anonymous::AnonymousDiscoveryListener;
 use songbird_types::TrustLevel;
 
@@ -36,6 +36,9 @@ pub struct IpcHandlers {
 
     /// Availability checker for Collaborative Intelligence (v3.21.0)
     availability_checker: Arc<AvailabilityChecker>,
+
+    /// Coordination validator for Collaborative Intelligence (v3.21.0 Week 3)
+    coordination_validator: Arc<CoordinationValidator>,
 }
 
 impl IpcHandlers {
@@ -50,12 +53,14 @@ impl IpcHandlers {
         connection_manager: Arc<ConnectionManager>,
     ) -> Self {
         let availability_checker = Arc::new(AvailabilityChecker::new(service_registry.clone()));
+        let coordination_validator = Arc::new(CoordinationValidator::new(service_registry.clone()));
         Self {
             service_registry,
             discovery_listener,
             connection_manager,
             graph_validator: Arc::new(GraphValidator::new()),
             availability_checker,
+            coordination_validator,
         }
     }
 
@@ -688,6 +693,51 @@ impl IpcHandlers {
         }
 
         Ok(suggestions)
+    }
+
+    // ========================================================================
+    // Coordination Validation API (v3.21.0 - Collaborative Intelligence Week 3)
+    // ========================================================================
+
+    /// Handle `coordination.validate_pattern` RPC call
+    ///
+    /// Validates coordination patterns (sequential, parallel, pipeline, mapreduce)
+    /// for a graph and checks resource availability.
+    pub async fn validate_coordination_pattern(
+        &self,
+        params: Params<'_>,
+    ) -> Result<crate::graph::CoordinationValidationResult, ErrorObject<'static>> {
+        debug!("📊 IPC: coordination.validate_pattern called");
+        
+        let graph: crate::graph::Graph = params
+            .one()
+            .map_err(|e| ErrorObject::owned(-32602, "Invalid params", Some(format!("{}", e))))?;
+        
+        info!("🔍 Validating coordination pattern for graph: {} ({})", graph.id, graph.name);
+        
+        let result = self
+            .coordination_validator
+            .validate_pattern(&graph)
+            .await
+            .map_err(|e| {
+                ErrorObject::owned(-32603, "Coordination validation failed", Some(format!("{}", e)))
+            })?;
+
+        if result.valid {
+            info!(
+                "✅ Graph {} coordination is valid (pattern: {:?})",
+                graph.id, result.pattern
+            );
+        } else {
+            warn!(
+                "⚠️  Graph {} coordination has {} issues (pattern: {:?})",
+                graph.id,
+                result.issues.len(),
+                result.pattern
+            );
+        }
+
+        Ok(result)
     }
 }
 

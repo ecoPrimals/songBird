@@ -231,12 +231,23 @@ impl UnixSocketServer {
             async move { handlers.suggest_alternatives(params).await }
         })?;
 
+        // ====================================================================
+        // Coordination Validation API (v3.21.0 - Collaborative Intelligence Week 3)
+        // ====================================================================
+
+        // API 11: coordination.validate_pattern
+        let handlers_clone = self.handlers.clone();
+        module.register_async_method("coordination.validate_pattern", move |params, _, _| {
+            let handlers = handlers_clone.clone();
+            async move { handlers.validate_coordination_pattern(params).await }
+        })?;
+
         // Start server with registered methods (runs in background)
         let handle = server.start(module);
 
         info!("✅ Unix socket JSON-RPC server started");
         info!("   Listening at: {:?}", self.socket_path);
-        info!("   APIs: 10 (4 service registry + 3 P2P discovery + 3 graph intelligence)");
+        info!("   APIs: 11 (4 service registry + 3 P2P discovery + 4 graph intelligence)");
 
         // Store handle for graceful shutdown
         self.server_handle = Some(handle.clone());
