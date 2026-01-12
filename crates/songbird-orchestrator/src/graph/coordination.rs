@@ -14,9 +14,9 @@ use anyhow::{Context, Result};
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
-use tracing::{debug, info, warn};
+use tracing::{debug, info};
 
-use super::types::{Graph, GraphNode};
+use super::types::Graph;
 use crate::ipc::registry::ServiceRegistry;
 
 /// Coordination pattern validator

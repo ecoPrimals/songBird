@@ -929,11 +929,14 @@ impl IpcHandlers {
     pub async fn health_check_json(
         &self,
     ) -> Result<serde_json::Value, crate::ipc::server_pure_rust::JsonRpcError> {
-        let resp = HealthCheckResponse {
+        let health = HealthStatus {
+            service_id: "songbird".to_string(),
             status: "healthy".to_string(),
-            message: "Songbird orchestrator is running".to_string(),
+            message: Some("Songbird orchestrator is running".to_string()),
             timestamp: system_time_to_iso8601(SystemTime::now()),
         };
+
+        let resp = HealthCheckResponse { health };
 
         serde_json::to_value(resp).map_err(|e| {
             crate::ipc::server_pure_rust::JsonRpcError::internal_error(format!(
@@ -968,21 +971,46 @@ impl IpcHandlers {
             )
         })?;
 
-        let all_peers = listener.get_discovered_peers().await;
-        let filtered_peers: Vec<_> = all_peers
-            .iter()
-            .filter(|peer| {
-                peer.tags.as_ref().map_or(false, |tags| {
-                    let families = Self::extract_genetic_families_from_tags(tags);
-                    request.family_tags.iter().any(|tag| families.contains(tag))
-                })
+        // Get all discovered peers
+        let all_peers = listener.get_peers().await;
+
+        // Convert to DiscoveredNode format, filtering by family tags
+        let filtered_nodes: Vec<DiscoveredNode> = all_peers
+            .into_iter()
+            .filter_map(|peer| {
+                // Extract genetic families from capabilities/tags
+                let genetic_families: Vec<String> = peer
+                    .capabilities
+                    .iter()
+                    .filter(|cap| cap.starts_with("family:"))
+                    .map(|cap| cap.strip_prefix("family:").unwrap_or(cap).to_string())
+                    .collect();
+
+                // Check if any requested family tag matches
+                let matches = request
+                    .family_tags
+                    .iter()
+                    .any(|tag| genetic_families.contains(tag));
+
+                if matches {
+                    Some(DiscoveredNode {
+                        node_id: peer.node_id.unwrap_or_else(|| peer.session_id.clone()),
+                        node_name: peer.node_name,
+                        genetic_families,
+                        sub_federations: vec![],
+                        capabilities: peer.capabilities,
+                        btsp_endpoint: None,
+                        https_endpoint: "".to_string(),
+                        last_seen: system_time_to_iso8601(SystemTime::now()),
+                    })
+                } else {
+                    None
+                }
             })
-            .cloned()
             .collect();
 
         let resp = DiscoverByFamilyResponse {
-            peers: filtered_peers,
-            count: filtered_peers.len(),
+            nodes: filtered_nodes,
         };
 
         serde_json::to_value(resp).map_err(|e| {
@@ -1012,13 +1040,16 @@ impl IpcHandlers {
             }
         };
 
+        // Use peer_endpoint if provided, otherwise use empty string (will be discovered)
+        let endpoint = request.peer_endpoint.clone().unwrap_or_default();
+
         self.connection_manager
             .establish_connection(
-                request.peer_id.clone(),
-                request.endpoint.clone(),
-                request.capabilities.clone(),
+                request.peer_node_id.clone(),
+                endpoint,
+                vec![], // capabilities
                 vec![], // peer_tags
-                TrustLevel::Federated, // Use federated trust for genetic tunnels
+                TrustLevel::Elevated, // Use Elevated trust for genetic tunnels (human-approved federation)
                 "genetic_lineage".to_string(),
             )
             .await
@@ -1030,9 +1061,12 @@ impl IpcHandlers {
             })?;
 
         let resp = CreateGeneticTunnelResponse {
-            tunnel_id: format!("tunnel-{}", request.peer_id),
+            tunnel_id: format!("tunnel-{}", request.peer_node_id),
             status: "established".to_string(),
-            peer_id: request.peer_id,
+            local_endpoint: None,
+            peer_endpoint: request.peer_endpoint,
+            encryption: Some("BTSP".to_string()),
+            created_at: system_time_to_iso8601(SystemTime::now()),
         };
 
         serde_json::to_value(resp).map_err(|e| {
@@ -1062,10 +1096,13 @@ impl IpcHandlers {
             }
         };
 
+        // In a full implementation, this would update the broadcaster
+        // For now, just acknowledge the request
+
         let resp = AnnounceCapabilitiesResponse {
-            status: "capabilities_updated".to_string(),
-            capabilities: request.capabilities,
-            tags: request.tags.unwrap_or_default(),
+            status: "updated".to_string(),
+            broadcasting: true,
+            updated_at: system_time_to_iso8601(SystemTime::now()),
         };
 
         serde_json::to_value(resp).map_err(|e| {
@@ -1124,9 +1161,18 @@ impl IpcHandlers {
             }
         };
 
-        let result = self.availability_checker.check_availability(&request).await;
+        let result = self
+            .availability_checker
+            .check_availability(&request)
+            .await
+            .map_err(|e| {
+                crate::ipc::server_pure_rust::JsonRpcError::internal_error(format!(
+                    "Availability check failed: {}",
+                    e
+                ))
+            })?;
 
-        serde_json::to_value(result).map_err(|e| {
+        serde_json::to_value(&result).map_err(|e| {
             crate::ipc::server_pure_rust::JsonRpcError::internal_error(format!(
                 "Failed to serialize response: {}",
                 e
@@ -1156,9 +1202,15 @@ impl IpcHandlers {
         let result = self
             .availability_checker
             .suggest_alternatives(&request)
-            .await;
+            .await
+            .map_err(|e| {
+                crate::ipc::server_pure_rust::JsonRpcError::internal_error(format!(
+                    "Suggest alternatives failed: {}",
+                    e
+                ))
+            })?;
 
-        serde_json::to_value(result).map_err(|e| {
+        serde_json::to_value(&result).map_err(|e| {
             crate::ipc::server_pure_rust::JsonRpcError::internal_error(format!(
                 "Failed to serialize response: {}",
                 e
@@ -1188,9 +1240,15 @@ impl IpcHandlers {
         let result = self
             .coordination_validator
             .validate_pattern(&request)
-            .await;
+            .await
+            .map_err(|e| {
+                crate::ipc::server_pure_rust::JsonRpcError::internal_error(format!(
+                    "Coordination validation failed: {}",
+                    e
+                ))
+            })?;
 
-        serde_json::to_value(result).map_err(|e| {
+        serde_json::to_value(&result).map_err(|e| {
             crate::ipc::server_pure_rust::JsonRpcError::internal_error(format!(
                 "Failed to serialize response: {}",
                 e

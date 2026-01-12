@@ -553,16 +553,16 @@ impl SongbirdOrchestrator {
         let connection_manager_clone = Arc::clone(&self.connection_manager);
 
         // v3.20.0: Create Unix socket server with service registry
-        let mut server = UnixSocketServer::new(
+        let server = Arc::new(UnixSocketServer::new(
             service_registry,
             discovery_listener_clone,
             connection_manager_clone,
-        );
+        ));
 
         // Start server in background task (pure Rust server runs forever)
-        let server_clone = Arc::clone(&server);
+        let server_arc = Arc::clone(&server);
         let server_task = tokio::spawn(async move {
-            if let Err(e) = server_clone.start().await {
+            if let Err(e) = server_arc.start().await {
                 error!("❌ Unix Socket IPC server error: {}", e);
             }
         });

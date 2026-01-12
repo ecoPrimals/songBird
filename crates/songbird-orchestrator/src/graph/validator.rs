@@ -13,7 +13,7 @@
 //! - **Fast**: Optimized algorithms for large graphs
 //! - **Safe**: No unsafe code, all operations are memory-safe
 
-use super::types::{Graph, IssueSeverity, ValidationInfo, ValidationIssue, ValidationResult};
+use super::types::{Graph, ValidationInfo, ValidationIssue, ValidationResult};
 use std::collections::{HashMap, HashSet};
 use tracing::{debug, warn};
 

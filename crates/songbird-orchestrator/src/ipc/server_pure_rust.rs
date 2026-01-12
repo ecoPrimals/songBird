@@ -313,7 +313,7 @@ impl UnixSocketServer {
         }
 
         // Bind Unix socket (pure tokio - no jsonrpsee!)
-        let listener = UnixListener::bind(&self.socket_path).context(format!(
+        let listener = UnixListener::bind(&*self.socket_path).context(format!(
             "Failed to bind Unix socket: {}",
             self.socket_path.display()
         ))?;
