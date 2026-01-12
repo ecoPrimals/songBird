@@ -1,8 +1,8 @@
 # 🎵 Songbird - Port-Free P2P Orchestrator
 
-**Version**: v3.21.1 (Socket Configuration Evolution)  
-**Status**: ✅ Production Ready (All APIs + biomeOS Socket Standard)  
-**Architecture**: Modern Idiomatic Rust  
+**Version**: v3.22.0 (Pure Rust Unix Socket Evolution)  
+**Status**: ✅ Production Ready (Pure Rust, Zero Dependencies, Fully Concurrent)  
+**Architecture**: Modern Idiomatic Rust + BearDog Pattern  
 
 ---
 
@@ -18,9 +18,10 @@
 - 📡 **Zero Configuration**: Auto-discovery via UDP multicast
 - 🧬 **Genetic Trust**: Progressive trust levels based on cryptographic lineage
 - 🦅 **Fractal Coordination**: Albatross (HPC) → Songbird (Tower) → Sparrow (Edge)
-- 🌱 **Inter-Primal IPC**: Unix socket JSON-RPC for biomeOS integration
+- 🌱 **Inter-Primal IPC**: **Pure Rust Unix socket** JSON-RPC (v3.22.0 - no jsonrpsee!)
 - 🗂️ **Service Registry**: Capability-based primal discovery (v3.20.0)
 - 🤝 **Collaborative Intelligence**: Graph validation + availability + coordination (v3.21.0)
+- ⚡ **Concurrent-Safe**: Atomic shutdown, lock-free readiness, fully async (v3.22.0)
 
 ---
 
