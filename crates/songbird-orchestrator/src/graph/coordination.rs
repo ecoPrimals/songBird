@@ -686,7 +686,7 @@ struct ResourceCheck {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::graph::types::{GraphEdge, GraphMetadata};
+    use crate::graph::types::{GraphEdge, GraphMetadata, GraphNode};
 
     fn create_test_node(id: &str, capability: &str) -> GraphNode {
         GraphNode {

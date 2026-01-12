@@ -25,6 +25,7 @@ use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
+use std::time::Duration;
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
 use tokio::net::{UnixListener, UnixStream};
 use tracing::{debug, error, info, warn};
@@ -149,6 +150,9 @@ pub struct UnixSocketServer {
 
     /// Atomic readiness flag for lock-free concurrent checks (BearDog pattern)
     is_ready: Arc<AtomicBool>,
+
+    /// Atomic running flag for graceful shutdown (concurrent-safe)
+    is_running: Arc<AtomicBool>,
 }
 
 impl UnixSocketServer {
@@ -180,6 +184,7 @@ impl UnixSocketServer {
             socket_path,
             handlers,
             is_ready: Arc::new(AtomicBool::new(false)),
+            is_running: Arc::new(AtomicBool::new(false)),
         }
     }
 
@@ -258,6 +263,18 @@ impl UnixSocketServer {
         Arc::clone(&self.is_ready)
     }
 
+    /// Check if the server is running
+    pub fn is_running(&self) -> bool {
+        self.is_running.load(Ordering::Acquire)
+    }
+
+    /// Request server shutdown (graceful, non-blocking)
+    pub fn shutdown(&self) {
+        info!("🛑 Shutdown requested for Unix socket server");
+        self.is_running.store(false, Ordering::Release);
+        self.is_ready.store(false, Ordering::Release);
+    }
+
     /// Check if the server is ready to accept connections (atomic, lock-free)
     pub fn is_ready(&self) -> bool {
         self.is_ready.load(Ordering::Acquire)
@@ -318,7 +335,8 @@ impl UnixSocketServer {
             self.socket_path.display()
         ))?;
 
-        // Mark server as ready atomically (lock-free!)
+        // Mark server as ready and running atomically (lock-free!)
+        self.is_running.store(true, Ordering::Release);
         self.is_ready.store(true, Ordering::Release);
 
         info!(
@@ -329,10 +347,11 @@ impl UnixSocketServer {
         info!("   APIs: 11 (3 P2P + 4 registry + 4 graph intelligence)");
         info!("   Status: READY ✅ (atomic flag set)");
 
-        // Accept connections loop
-        loop {
-            match listener.accept().await {
-                Ok((stream, _addr)) => {
+        // Accept connections loop (checks is_running for graceful shutdown)
+        while self.is_running() {
+            // Use timeout to allow checking shutdown flag
+            match tokio::time::timeout(Duration::from_millis(100), listener.accept()).await {
+                Ok(Ok((stream, _addr))) => {
                     let server = Arc::clone(&self);
                     tokio::spawn(async move {
                         if let Err(e) = server.handle_connection(stream).await {
@@ -340,11 +359,17 @@ impl UnixSocketServer {
                         }
                     });
                 }
-                Err(e) => {
+                Ok(Err(e)) => {
                     error!("❌ Failed to accept connection: {}", e);
+                }
+                Err(_) => {
+                    // Timeout - just continue loop and check is_running
                 }
             }
         }
+
+        info!("🛑 Unix socket server stopped gracefully");
+        Ok(())
     }
 
     /// Handle a single client connection with JSON-RPC 2.0
