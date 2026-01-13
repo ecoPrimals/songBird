@@ -169,7 +169,7 @@ impl DnsSDDiscovery {
                                 "protocol" => {
                                     protocol = match value {
                                         "https" => Protocol::Https,
-                                        "grpc" => Protocol::Grpc,
+                                        "tarpc" => Protocol::Tarpc,
                                         "ws" | "websocket" => Protocol::WebSocket,
                                         _ => Protocol::Http,
                                     };
@@ -189,7 +189,7 @@ impl DnsSDDiscovery {
             "{}://{}:{}",
             match protocol {
                 Protocol::Https => "https",
-                Protocol::Grpc => "grpc",
+                Protocol::Tarpc => "tarpc",
                 Protocol::WebSocket => "ws",
                 _ => "http",
             },

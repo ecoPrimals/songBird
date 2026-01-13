@@ -194,7 +194,7 @@ fn test_health_status_ordering() {
 
 #[test]
 fn test_protocol_names() {
-    let protocols = vec!["http", "https", "grpc", "tcp"];
+    let protocols = vec!["http", "https", "tarpc", "tcp"];
 
     for protocol in protocols {
         assert!(!protocol.is_empty());
@@ -204,7 +204,7 @@ fn test_protocol_names() {
 
 #[test]
 fn test_protocol_default_ports() {
-    let protocol_ports = vec![("http", 80_u16), ("https", 443), ("grpc", 50051)];
+    let protocol_ports = vec![("http", 80_u16), ("https", 443), ("tarpc", 50051)];
 
     for (protocol, port) in protocol_ports {
         assert!(!protocol.is_empty());

@@ -1,8 +1,9 @@
 # 🎵 Songbird - Port-Free P2P Orchestrator
 
-**Version**: v3.22.0 (Pure Rust Unix Socket Evolution)  
-**Status**: ✅ Production Ready (Pure Rust, Zero Dependencies, Fully Concurrent)  
+**Version**: v3.22.1 (Active Evolution)  
+**Status**: ✅ Production Ready + 🔄 Evolving (Grade: A, 92/100)  
 **Architecture**: Modern Idiomatic Rust + BearDog Pattern  
+**Latest**: Handler Refactoring Complete (Jan 13, 2026)  
 
 ---
 
@@ -71,9 +72,16 @@ systemctl start songbird
 ## 📚 Documentation
 
 ### Getting Started
-- [00_START_HERE.md](./00_START_HERE.md) - Start here for new users
+- **[STATUS.md](./STATUS.md)** ⭐ **CURRENT STATUS** - Read this first!
+- **[ROOT_DOCS_INDEX.md](./ROOT_DOCS_INDEX.md)** - Complete documentation index
+- [00_START_HERE.md](./00_START_HERE.md) - Project quickstart
 - [CHANGELOG.md](./CHANGELOG.md) - Version history
 - [CONTRIBUTING.md](./CONTRIBUTING.md) - How to contribute
+
+### Latest Updates (January 2026)
+- **[HANDLER_REFACTORING_COMPLETE_JAN_13_2026.md](./HANDLER_REFACTORING_COMPLETE_JAN_13_2026.md)** - Handler refactoring (Jan 13) ✅
+- **[COMPREHENSIVE_AUDIT_JAN_13_2026.md](./COMPREHENSIVE_AUDIT_JAN_13_2026.md)** - Full codebase audit (680 lines)
+- **[DAY1_FINAL_STATUS.md](./DAY1_FINAL_STATUS.md)** - Day 1 evolution summary (Jan 12)
 
 ### Architecture
 - [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md) - System architecture

@@ -5,7 +5,7 @@
 //! v3.20.0: Service registry handlers for primal discovery
 //! v3.22.1: Smart refactoring into 4 focused modules (Jan 12, 2026)
 
-use antml:invoke name="std::sync::Arc">
+use std::sync::Arc;
 
 use super::registry::ServiceRegistry;
 use crate::app::connection_manager::ConnectionManager;
@@ -13,9 +13,9 @@ use crate::graph::{AvailabilityChecker, CoordinationValidator, GraphValidator};
 use songbird_discovery::anonymous::AnonymousDiscoveryListener;
 
 // Domain-focused handler modules
-pub mod service_registry;
-pub mod p2p_discovery;
 pub mod graph_intelligence;
+pub mod p2p_discovery;
+pub mod service_registry;
 
 /// API handlers for Unix socket JSON-RPC methods
 ///
@@ -55,8 +55,7 @@ impl IpcHandlers {
         connection_manager: Arc<ConnectionManager>,
     ) -> Self {
         let availability_checker = Arc::new(AvailabilityChecker::new(service_registry.clone()));
-        let coordination_validator =
-            Arc::new(CoordinationValidator::new(service_registry.clone()));
+        let coordination_validator = Arc::new(CoordinationValidator::new(service_registry.clone()));
         Self {
             service_registry,
             discovery_listener,
@@ -83,10 +82,8 @@ impl IpcHandlers {
     pub async fn discover_by_capability(
         &self,
         params: jsonrpsee::types::Params<'_>,
-    ) -> Result<
-        super::types::DiscoverByCapabilityResponse,
-        jsonrpsee::types::ErrorObject<'static>,
-    > {
+    ) -> Result<super::types::DiscoverByCapabilityResponse, jsonrpsee::types::ErrorObject<'static>>
+    {
         service_registry::discover_by_capability(self, params).await
     }
 
@@ -124,10 +121,8 @@ impl IpcHandlers {
     pub async fn create_genetic_tunnel(
         &self,
         params: jsonrpsee::types::Params<'_>,
-    ) -> Result<
-        super::types::CreateGeneticTunnelResponse,
-        jsonrpsee::types::ErrorObject<'static>,
-    > {
+    ) -> Result<super::types::CreateGeneticTunnelResponse, jsonrpsee::types::ErrorObject<'static>>
+    {
         p2p_discovery::create_genetic_tunnel(self, params).await
     }
 
@@ -135,10 +130,8 @@ impl IpcHandlers {
     pub async fn announce_capabilities(
         &self,
         params: jsonrpsee::types::Params<'_>,
-    ) -> Result<
-        super::types::AnnounceCapabilitiesResponse,
-        jsonrpsee::types::ErrorObject<'static>,
-    > {
+    ) -> Result<super::types::AnnounceCapabilitiesResponse, jsonrpsee::types::ErrorObject<'static>>
+    {
         p2p_discovery::announce_capabilities(self, params).await
     }
 
@@ -174,10 +167,8 @@ impl IpcHandlers {
     pub async fn validate_coordination_pattern(
         &self,
         params: jsonrpsee::types::Params<'_>,
-    ) -> Result<
-        crate::graph::CoordinationValidationResult,
-        jsonrpsee::types::ErrorObject<'static>,
-    > {
+    ) -> Result<crate::graph::CoordinationValidationResult, jsonrpsee::types::ErrorObject<'static>>
+    {
         graph_intelligence::validate_coordination_pattern(self, params).await
     }
 
@@ -272,4 +263,3 @@ impl IpcHandlers {
         graph_intelligence::validate_coordination_pattern_json(self, params).await
     }
 }
-

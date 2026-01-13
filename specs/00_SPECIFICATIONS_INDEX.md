@@ -138,10 +138,10 @@
     - JSON-RPC over tarpc
     - High-performance RPC
 
-18. **[GRPC_GATEWAY_ADAPTER_SPECIFICATION.md](GRPC_GATEWAY_ADAPTER_SPECIFICATION.md)**
-    - gRPC integration
-    - Gateway patterns
-    - Cross-protocol translation
+18. **Protocol Architecture** (ARCHIVED: gRPC gateway - see archive/deprecated-protocols/)
+    - Songbird uses: **tarpc** (primary), **JSON-RPC**, **HTTP/HTTPS**
+    - gRPC intentionally not supported (protobuf conflicts with ecosystem philosophy)
+    - See TARPC_JSON_RPC_PROTOCOL_SPEC.md for current protocols
 
 ### Specific Integrations
 

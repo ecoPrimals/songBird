@@ -12,6 +12,7 @@ pub mod async_helpers;
 pub mod canonical_test_framework;
 pub mod chaos_engineering;
 pub mod cli_helpers;
+pub mod concurrent_helpers; // Modern async testing patterns (Week 1 LiveSpore evolution)
 pub mod config_helpers;
 pub mod env_isolation;
 pub mod error_testing;

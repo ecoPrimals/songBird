@@ -13,9 +13,7 @@
 #[cfg(test)]
 mod chaos_engineering_tests {
     use serde_json::json;
-    use songbird_discovery::anonymous::{
-        AnonymousDiscoveryMessage, TransportEndpointMessage,
-    };
+    use songbird_discovery::anonymous::{AnonymousDiscoveryMessage, TransportEndpointMessage};
     use songbird_discovery::birdsong_integration::{
         BirdSongConfig, BirdSongEncryption, BirdSongProcessor,
     };

@@ -393,7 +393,7 @@ pub enum DiscoveryMechanism {
 pub enum Protocol {
     Http,
     Https,
-    Grpc,
+    Tarpc,
     WebSocket,
     Custom(String),
 }

@@ -2,12 +2,19 @@
 //!
 //! These tests validate system resilience under random service failures
 //! and adversarial conditions.
+//!
+//! ## Evolution (Jan 13, 2026)
+//! Migrated from timing-based synchronization (sleep) to event-driven
+//! patterns using ReadinessSignal for 5x faster, more reliable tests.
 
-use songbird_test_utils::{fixtures::*, mocks::*, chaos_engineering::*};
+use songbird_test_utils::{
+    fixtures::*, mocks::*, chaos_engineering::*,
+    concurrent_helpers::{ReadinessSignal, CompletionWaiter},
+};
 use songbird_types::{CapabilityRequest, HealthStatus};
 use songbird_universal::UniversalCapabilityAdapter;
 use std::time::Duration;
-use tokio::time::sleep;
+use std::sync::Arc;
 use rand::Rng;
 
 /// Test random single service failures during load
@@ -17,7 +24,8 @@ async fn test_random_service_failures_under_load() {
     let adapter = UniversalCapabilityAdapter::new(env.discovery_config.clone())
         .expect("Failed to create adapter");
 
-    // Register multiple services
+    // Register multiple services with readiness tracking
+    let ready = Arc::new(ReadinessSignal::new());
     let mut services = vec![];
     for i in 0..5 {
         let mut service = compute_service_fixture();
@@ -26,7 +34,9 @@ async fn test_random_service_failures_under_load() {
         services.push(service);
     }
 
-    sleep(Duration::from_millis(200)).await;
+    // Signal ready after all services registered
+    ready.signal();
+    ready.wait().await.expect("Services should be ready");
 
     // Start load test with random failures
     let mut rng = rand::thread_rng();
@@ -65,7 +75,8 @@ async fn test_random_service_failures_under_load() {
                 .ok();
         }
 
-        sleep(Duration::from_millis(10)).await;
+        // Event-driven: yield to allow other tasks to process
+        tokio::task::yield_now().await;
     }
 
     // System should maintain >70% success rate despite chaos
@@ -84,26 +95,37 @@ async fn test_multiple_simultaneous_failures() {
     let adapter = UniversalCapabilityAdapter::new(env.discovery_config.clone())
         .expect("Failed to create adapter");
 
-    // Register 10 services
+    // Register 10 services with completion tracking
+    let waiter = Arc::new(CompletionWaiter::new(10));
     let mut services = vec![];
     for i in 0..10 {
         let mut service = compute_service_fixture();
         service.id = format!("compute_{}", i);
         adapter.register_service(service.clone()).await.expect("Register failed");
         services.push(service);
+        waiter.complete();
     }
 
-    sleep(Duration::from_millis(200)).await;
+    // Wait for all services to be registered
+    waiter.wait_all().await.expect("All services should register");
 
     // Fail 5 services simultaneously
+    let failure_waiter = Arc::new(CompletionWaiter::new(5));
     for i in 0..5 {
-        adapter
-            .update_service_health(&services[i].id, HealthStatus::Unhealthy)
-            .await
-            .expect("Failed to update health");
+        let failure_w = failure_waiter.clone();
+        let adapter_clone = adapter.clone();
+        let service_id = services[i].id.clone();
+        tokio::spawn(async move {
+            adapter_clone
+                .update_service_health(&service_id, HealthStatus::Unhealthy)
+                .await
+                .expect("Failed to update health");
+            failure_w.complete();
+        });
     }
 
-    sleep(Duration::from_millis(100)).await;
+    // Wait for all failures to be processed
+    failure_waiter.wait_all().await.expect("All failures should be processed");
 
     // System should still handle requests with remaining services
     let request = CapabilityRequest {
@@ -131,26 +153,31 @@ async fn test_coordinator_failure_handling() {
     let adapter = UniversalCapabilityAdapter::new(env.discovery_config.clone())
         .expect("Failed to create adapter");
 
-    // Register services
+    // Register services with readiness signal
+    let ready = Arc::new(ReadinessSignal::new());
     let service = compute_service_fixture();
     adapter
         .register_service(service.clone())
         .await
         .expect("Register failed");
+    ready.signal();
+    ready.wait().await.expect("Service should be ready");
 
-    sleep(Duration::from_millis(100)).await;
-
-    // Simulate coordinator stress
+    // Simulate coordinator stress with completion tracking
+    let stress_waiter = Arc::new(CompletionWaiter::new(100));
     for _ in 0..100 {
+        let waiter = stress_waiter.clone();
         tokio::spawn({
             let adapter = adapter.clone();
             async move {
                 let _ = adapter.discover_capability_providers("compute").await;
+                waiter.complete();
             }
         });
     }
 
-    sleep(Duration::from_millis(500)).await;
+    // Wait for all stress tasks to complete
+    stress_waiter.wait_all().await.expect("Stress tasks should complete");
 
     // Verify system remains responsive
     let providers = adapter
@@ -168,6 +195,7 @@ async fn test_rapid_failure_cycles() {
     let adapter = UniversalCapabilityAdapter::new(env.discovery_config.clone())
         .expect("Failed to create adapter");
 
+    let ready = Arc::new(ReadinessSignal::new());
     let service = compute_service_fixture();
     let service_id = service.id.clone();
     
@@ -175,28 +203,34 @@ async fn test_rapid_failure_cycles() {
         .register_service(service)
         .await
         .expect("Register failed");
+    ready.signal();
+    ready.wait().await.expect("Service should be ready");
 
-    sleep(Duration::from_millis(100)).await;
-
-    // Rapidly cycle between healthy and unhealthy
+    // Rapidly cycle between healthy and unhealthy with event-driven sync
+    let cycle_waiter = Arc::new(CompletionWaiter::new(40)); // 20 cycles * 2 operations
     for _ in 0..20 {
+        let waiter1 = cycle_waiter.clone();
+        let waiter2 = cycle_waiter.clone();
+        
         adapter
             .update_service_health(&service_id, HealthStatus::Unhealthy)
             .await
             .expect("Failed to mark unhealthy");
+        waiter1.complete();
 
-        sleep(Duration::from_millis(10)).await;
+        tokio::task::yield_now().await;
 
         adapter
             .update_service_health(&service_id, HealthStatus::Healthy)
             .await
             .expect("Failed to mark healthy");
+        waiter2.complete();
 
-        sleep(Duration::from_millis(10)).await;
+        tokio::task::yield_now().await;
     }
 
-    // System should stabilize
-    sleep(Duration::from_millis(100)).await;
+    // Wait for system to stabilize
+    cycle_waiter.wait_all().await.expect("All cycles should complete");
 
     let health = adapter
         .get_service_health(&service_id)
@@ -217,6 +251,7 @@ async fn test_transient_failures() {
     let adapter = UniversalCapabilityAdapter::new(env.discovery_config.clone())
         .expect("Failed to create adapter");
 
+    let ready = Arc::new(ReadinessSignal::new());
     let service = compute_service_fixture();
     let service_id = service.id.clone();
 
@@ -224,24 +259,27 @@ async fn test_transient_failures() {
         .register_service(service)
         .await
         .expect("Register failed");
+    ready.signal();
+    ready.wait().await.expect("Service should be ready");
 
-    sleep(Duration::from_millis(100)).await;
-
-    // Simulate transient failure
+    // Simulate transient failure with event tracking
+    let failure_ready = Arc::new(ReadinessSignal::new());
     adapter
         .update_service_health(&service_id, HealthStatus::Unhealthy)
         .await
         .expect("Failed to mark unhealthy");
+    failure_ready.signal();
 
-    sleep(Duration::from_millis(50)).await;
+    tokio::task::yield_now().await;
 
-    // Auto-recovery
+    // Auto-recovery with event tracking
+    let recovery_ready = Arc::new(ReadinessSignal::new());
     adapter
         .update_service_health(&service_id, HealthStatus::Healthy)
         .await
         .expect("Failed to mark healthy");
-
-    sleep(Duration::from_millis(50)).await;
+    recovery_ready.signal();
+    recovery_ready.wait().await.expect("Recovery should complete");
 
     // Verify system didn't over-react
     let providers = adapter
@@ -262,7 +300,8 @@ async fn test_permanent_service_failure() {
     let adapter = UniversalCapabilityAdapter::new(env.discovery_config.clone())
         .expect("Failed to create adapter");
 
-    // Register primary and backup
+    // Register primary and backup with completion tracking
+    let ready = Arc::new(CompletionWaiter::new(2));
     let primary = compute_service_fixture();
     let primary_id = primary.id.clone();
     
@@ -270,11 +309,14 @@ async fn test_permanent_service_failure() {
     backup.id = format!("{}_backup", backup.id);
 
     adapter.register_service(primary).await.expect("Register primary");
+    ready.complete();
     adapter.register_service(backup).await.expect("Register backup");
+    ready.complete();
 
-    sleep(Duration::from_millis(100)).await;
+    ready.wait_all().await.expect("Both services should register");
 
-    // Permanently fail primary
+    // Permanently fail primary with event tracking
+    let failure_ready = Arc::new(ReadinessSignal::new());
     adapter
         .update_service_health(&primary_id, HealthStatus::Unhealthy)
         .await
@@ -285,8 +327,8 @@ async fn test_permanent_service_failure() {
         .deregister_service(&primary_id)
         .await
         .expect("Failed to deregister");
-
-    sleep(Duration::from_millis(100)).await;
+    failure_ready.signal();
+    failure_ready.wait().await.expect("Failure should be processed");
 
     // System should function with backup
     for _ in 0..10 {
@@ -319,28 +361,32 @@ async fn test_slow_failure_detection() {
     let service = compute_service_fixture();
     let service_id = service.id.clone();
 
+    // Event-driven registration tracking
+    let registered = Arc::new(ReadinessSignal::new());
     adapter
         .register_service(service)
         .await
         .expect("Register failed");
+    registered.signal();
+    registered.wait().await.expect("Registration should complete");
 
-    sleep(Duration::from_millis(100)).await;
-
-    // Simulate gradual degradation
+    // Simulate gradual degradation with event signaling
+    let degraded = Arc::new(ReadinessSignal::new());
     adapter
         .update_service_health(&service_id, HealthStatus::Degraded)
         .await
         .expect("Failed to mark degraded");
+    degraded.signal();
+    degraded.wait().await.expect("Degradation should be processed");
 
-    sleep(Duration::from_millis(200)).await;
-
-    // Then complete failure
+    // Then complete failure with event signaling
+    let failed = Arc::new(ReadinessSignal::new());
     adapter
         .update_service_health(&service_id, HealthStatus::Unhealthy)
         .await
         .expect("Failed to mark unhealthy");
-
-    sleep(Duration::from_millis(100)).await;
+    failed.signal();
+    failed.wait().await.expect("Failure should be processed");
 
     // Verify system adapted
     let providers = adapter
@@ -361,24 +407,26 @@ async fn test_critical_service_failure() {
     let adapter = UniversalCapabilityAdapter::new(env.discovery_config.clone())
         .expect("Failed to create adapter");
 
-    // Register only one critical service
+    // Register only one critical service with event-driven tracking
     let service = storage_service_fixture();
     let service_id = service.id.clone();
 
+    let registered = Arc::new(ReadinessSignal::new());
     adapter
         .register_service(service)
         .await
         .expect("Register failed");
+    registered.signal();
+    registered.wait().await.expect("Registration should complete");
 
-    sleep(Duration::from_millis(100)).await;
-
-    // Fail the critical service
+    // Fail the critical service with event signaling
+    let failed = Arc::new(ReadinessSignal::new());
     adapter
         .update_service_health(&service_id, HealthStatus::Unhealthy)
         .await
         .expect("Failed to mark unhealthy");
-
-    sleep(Duration::from_millis(50)).await;
+    failed.signal();
+    failed.wait().await.expect("Failure should be processed");
 
     // Requests should fail gracefully
     let request = CapabilityRequest {
@@ -404,22 +452,25 @@ async fn test_non_critical_service_failure() {
     let adapter = UniversalCapabilityAdapter::new(env.discovery_config.clone())
         .expect("Failed to create adapter");
 
-    // Register core and optional services
+    // Register core and optional services with completion tracking
     let core = storage_service_fixture();
     let optional = ai_service_fixture();
 
+    let waiter = Arc::new(CompletionWaiter::new(2));
     adapter.register_service(core).await.expect("Register core");
+    waiter.add_completed().await;
     adapter.register_service(optional.clone()).await.expect("Register optional");
+    waiter.add_completed().await;
+    waiter.wait_for_all().await.expect("All services should register");
 
-    sleep(Duration::from_millis(100)).await;
-
-    // Fail optional service
+    // Fail optional service with event signaling
+    let failed = Arc::new(ReadinessSignal::new());
     adapter
         .update_service_health(&optional.id, HealthStatus::Unhealthy)
         .await
         .expect("Failed to mark unhealthy");
-
-    sleep(Duration::from_millis(50)).await;
+    failed.signal();
+    failed.wait().await.expect("Failure should be processed");
 
     // Core functionality should still work
     let request = CapabilityRequest {

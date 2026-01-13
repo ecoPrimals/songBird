@@ -166,7 +166,7 @@ impl SecurityProviderClient {
     /// Returns error if no security provider can be discovered
     pub async fn from_discovery() -> Result<Self> {
         debug!("🔍 Discovering security provider via capability-based discovery");
-        
+
         match security_setup::discover_security_endpoint(None).await {
             Ok(endpoint) => {
                 info!("✅ Security provider discovered: {}", endpoint);
@@ -188,23 +188,21 @@ impl SecurityProviderClient {
         debug!("🔍 Verifying lineage proof via security provider: {}", self.endpoint);
 
         let url = format!("{}/api/v1/lineage/verify", self.endpoint);
-        
-        match self.http_client
-            .post(&url)
-            .json(proof)
-            .send()
-            .await
-        {
+
+        match self.http_client.post(&url).json(proof).send().await {
             Ok(response) => {
                 if response.status().is_success() {
-                    let result: VerificationResult = response.json().await
+                    let result: VerificationResult = response
+                        .json()
+                        .await
                         .context("Failed to parse lineage verification response")?;
-                    
+
                     debug!("✅ Lineage verification complete: valid={}", result.valid);
                     Ok(result)
                 } else {
                     let status = response.status();
-                    let error_text = response.text().await.unwrap_or_else(|_| "Unknown error".to_string());
+                    let error_text =
+                        response.text().await.unwrap_or_else(|_| "Unknown error".to_string());
                     Err(anyhow::anyhow!(
                         "Security provider returned error {}: {}",
                         status,
@@ -228,19 +226,20 @@ impl SecurityProviderClient {
         debug!("🔍 Checking if lineages share same genesis via security provider");
 
         let url = format!("{}/api/v1/lineage/same_family", self.endpoint);
-        
+
         #[derive(Serialize)]
         struct SameFamilyRequest {
             lineage_a: LineageId,
             lineage_b: LineageId,
         }
-        
+
         #[derive(Deserialize)]
         struct SameFamilyResponse {
             same_family: bool,
         }
-        
-        match self.http_client
+
+        match self
+            .http_client
             .post(&url)
             .json(&SameFamilyRequest {
                 lineage_a: lineage_a.clone(),
@@ -251,16 +250,13 @@ impl SecurityProviderClient {
         {
             Ok(response) => {
                 if response.status().is_success() {
-                    let result: SameFamilyResponse = response.json().await
-                        .context("Failed to parse same_family response")?;
-                    
+                    let result: SameFamilyResponse =
+                        response.json().await.context("Failed to parse same_family response")?;
+
                     debug!("✅ Same family check: {}", result.same_family);
                     Ok(result.same_family)
                 } else {
-                    Err(anyhow::anyhow!(
-                        "Security provider returned error: {}",
-                        response.status()
-                    ))
+                    Err(anyhow::anyhow!("Security provider returned error: {}", response.status()))
                 }
             }
             Err(e) => {
@@ -279,17 +275,15 @@ impl SecurityProviderClient {
         debug!("🔍 Getting current lineage from security provider");
 
         let url = format!("{}/api/v1/lineage/current", self.endpoint);
-        
-        match self.http_client
-            .get(&url)
-            .send()
-            .await
-        {
+
+        match self.http_client.get(&url).send().await {
             Ok(response) => {
                 if response.status().is_success() {
-                    let info: Option<CurrentLineageInfo> = response.json().await
+                    let info: Option<CurrentLineageInfo> = response
+                        .json()
+                        .await
                         .context("Failed to parse current lineage response")?;
-                    
+
                     debug!("✅ Current lineage retrieved: {:?}", info.is_some());
                     Ok(info)
                 } else if response.status() == reqwest::StatusCode::NOT_FOUND {
@@ -297,10 +291,7 @@ impl SecurityProviderClient {
                     debug!("ℹ️ No current lineage configured");
                     Ok(None)
                 } else {
-                    Err(anyhow::anyhow!(
-                        "Security provider returned error: {}",
-                        response.status()
-                    ))
+                    Err(anyhow::anyhow!("Security provider returned error: {}", response.status()))
                 }
             }
             Err(e) => {

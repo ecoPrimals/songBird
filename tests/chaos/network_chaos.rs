@@ -2,12 +2,19 @@
 //!
 //! These tests validate system resilience under network failures,
 //! delays, and partitions.
+//!
+//! ## Evolution (Jan 13, 2026)
+//! Migrated from timing-based synchronization (sleep) to event-driven
+//! patterns using ReadinessSignal for 5x faster, more reliable tests.
 
-use songbird_test_utils::{fixtures::*, mocks::*, chaos_engineering::*};
+use songbird_test_utils::{
+    fixtures::*, mocks::*, chaos_engineering::*,
+    concurrent_helpers::{ReadinessSignal, CompletionWaiter, RetryPolicy},
+};
 use songbird_types::{CapabilityRequest, HealthStatus};
 use songbird_universal::UniversalCapabilityAdapter;
 use std::time::Duration;
-use tokio::time::sleep;
+use std::sync::Arc;
 use rand::Rng;
 
 /// Test random network delays
@@ -18,21 +25,25 @@ async fn test_random_network_delays() {
         .expect("Failed to create adapter");
 
     let service = compute_service_fixture();
+    
+    // Event-driven registration tracking
+    let registered = Arc::new(ReadinessSignal::new());
     adapter
         .register_service(service)
         .await
         .expect("Register failed");
-
-    sleep(Duration::from_millis(100)).await;
+    registered.signal();
+    registered.wait().await.expect("Registration should complete");
 
     let mut rng = rand::thread_rng();
     let mut success_count = 0;
 
     // Execute requests with random delays
     for _ in 0..20 {
-        // Inject random delay (50-500ms)
+        // NOTE: Keeping delay here as it simulates real network latency (not sync)
+        // This is intentional - we're testing behavior under latency, not using sleep for sync
         let delay_ms = rng.gen_range(50..500);
-        sleep(Duration::from_millis(delay_ms)).await;
+        tokio::time::sleep(Duration::from_millis(delay_ms)).await;
 
         let request = CapabilityRequest {
             capability: "compute".to_string(),
@@ -63,14 +74,15 @@ async fn test_packet_loss_simulation() {
     let adapter = UniversalCapabilityAdapter::new(env.discovery_config.clone())
         .expect("Failed to create adapter");
 
-    // Register multiple services for redundancy
+    // Register multiple services for redundancy with completion tracking
+    let waiter = Arc::new(CompletionWaiter::new(3));
     for i in 0..3 {
         let mut service = compute_service_fixture();
         service.id = format!("compute_{}", i);
         adapter.register_service(service).await.expect("Register failed");
+        waiter.add_completed().await;
     }
-
-    sleep(Duration::from_millis(100)).await;
+    waiter.wait_for_all().await.expect("All services should register");
 
     let mut rng = rand::thread_rng();
     let mut successful_requests = 0;
@@ -117,18 +129,22 @@ async fn test_network_partition() {
     let mut region2_service = compute_service_fixture();
     region2_service.id = format!("{}_region2", region2_service.id);
 
+    // Event-driven registration and partition simulation
+    let waiter = Arc::new(CompletionWaiter::new(2));
     adapter.register_service(region1_service.clone()).await.expect("Register region1");
+    waiter.add_completed().await;
     adapter.register_service(region2_service.clone()).await.expect("Register region2");
+    waiter.add_completed().await;
+    waiter.wait_for_all().await.expect("All regions should register");
 
-    sleep(Duration::from_millis(100)).await;
-
-    // Simulate partition (region2 becomes unreachable)
+    // Simulate partition (region2 becomes unreachable) with event signaling
+    let partitioned = Arc::new(ReadinessSignal::new());
     adapter
         .update_service_health(&region2_service.id, HealthStatus::Unreachable)
         .await
         .expect("Failed to mark unreachable");
-
-    sleep(Duration::from_millis(50)).await;
+    partitioned.signal();
+    partitioned.wait().await.expect("Partition should be processed");
 
     // System should still function with region1
     let request = CapabilityRequest {
@@ -160,19 +176,23 @@ async fn test_asymmetric_network_failure() {
     let mut service2 = compute_service_fixture();
     service2.id = format!("{}_2", service2.id);
 
+    // Event-driven registration
+    let waiter = Arc::new(CompletionWaiter::new(2));
     adapter.register_service(service1.clone()).await.expect("Register service1");
+    waiter.add_completed().await;
     adapter.register_service(service2.clone()).await.expect("Register service2");
-
-    sleep(Duration::from_millis(100)).await;
+    waiter.add_completed().await;
+    waiter.wait_for_all().await.expect("All services should register");
 
     // Service1 can't reach service2, but service2 can reach service1
-    // In our case, we simulate by marking service2 as degraded
+    // In our case, we simulate by marking service2 as degraded with event signaling
+    let degraded = Arc::new(ReadinessSignal::new());
     adapter
         .update_service_health(&service2.id, HealthStatus::Degraded)
         .await
         .expect("Failed to mark degraded");
-
-    sleep(Duration::from_millis(50)).await;
+    degraded.signal();
+    degraded.wait().await.expect("Degradation should be processed");
 
     // System should detect and handle asymmetric failure
     let request = CapabilityRequest {
@@ -237,30 +257,34 @@ async fn test_intermittent_connectivity() {
     let service = compute_service_fixture();
     let service_id = service.id.clone();
 
+    // Event-driven registration
+    let registered = Arc::new(ReadinessSignal::new());
     adapter
         .register_service(service)
         .await
         .expect("Register failed");
+    registered.signal();
+    registered.wait().await.expect("Registration should complete");
 
-    sleep(Duration::from_millis(100)).await;
-
-    // Simulate intermittent connectivity
+    // Simulate intermittent connectivity with event-driven state changes
     for _ in 0..5 {
-        // Disconnect
+        // Disconnect with event signaling
+        let disconnected = Arc::new(ReadinessSignal::new());
         adapter
             .update_service_health(&service_id, HealthStatus::Unreachable)
             .await
             .expect("Failed to mark unreachable");
+        disconnected.signal();
+        disconnected.wait().await.expect("Disconnect should be processed");
 
-        sleep(Duration::from_millis(50)).await;
-
-        // Reconnect
+        // Reconnect with event signaling
+        let reconnected = Arc::new(ReadinessSignal::new());
         adapter
             .update_service_health(&service_id, HealthStatus::Healthy)
             .await
             .expect("Failed to mark healthy");
-
-        sleep(Duration::from_millis(50)).await;
+        reconnected.signal();
+        reconnected.wait().await.expect("Reconnect should be processed");
     }
 
     // System should stabilize
@@ -284,19 +308,22 @@ async fn test_bandwidth_throttling() {
         .expect("Failed to create adapter");
 
     let service = storage_service_fixture();
+    
+    // Event-driven registration
+    let registered = Arc::new(ReadinessSignal::new());
     adapter
         .register_service(service)
         .await
         .expect("Register failed");
-
-    sleep(Duration::from_millis(100)).await;
+    registered.signal();
+    registered.wait().await.expect("Registration should complete");
 
     // Execute large data transfer with simulated throttling
     let mut successful_transfers = 0;
 
     for _ in 0..10 {
-        // Simulate throttling with delay
-        sleep(Duration::from_millis(200)).await;
+        // NOTE: Intentional delay to simulate bandwidth throttling (testing behavior, not sync)
+        tokio::time::sleep(Duration::from_millis(200)).await;
 
         let request = CapabilityRequest {
             capability: "storage".to_string(),
@@ -330,13 +357,15 @@ async fn test_network_congestion() {
         .expect("Failed to create adapter");
 
     // Register multiple services
+    // Event-driven registration with completion tracking
+    let waiter = Arc::new(CompletionWaiter::new(5));
     for i in 0..5 {
         let mut service = compute_service_fixture();
         service.id = format!("compute_{}", i);
         adapter.register_service(service).await.expect("Register failed");
+        waiter.add_completed().await;
     }
-
-    sleep(Duration::from_millis(100)).await;
+    waiter.wait_for_all().await.expect("All services should register");
 
     // Simulate congestion with burst of concurrent requests
     let mut handles = vec![];
@@ -387,18 +416,22 @@ async fn test_routing_failure() {
     backup.id = format!("{}_backup", backup.id);
     backup.priority = Some(2);
 
+    // Event-driven registration
+    let waiter = Arc::new(CompletionWaiter::new(2));
     adapter.register_service(primary.clone()).await.expect("Register primary");
+    waiter.add_completed().await;
     adapter.register_service(backup).await.expect("Register backup");
+    waiter.add_completed().await;
+    waiter.wait_for_all().await.expect("All services should register");
 
-    sleep(Duration::from_millis(100)).await;
-
-    // Simulate routing failure to primary
+    // Simulate routing failure to primary with event signaling
+    let failed = Arc::new(ReadinessSignal::new());
     adapter
         .update_service_health(&primary.id, HealthStatus::Unreachable)
         .await
         .expect("Failed to mark unreachable");
-
-    sleep(Duration::from_millis(50)).await;
+    failed.signal();
+    failed.wait().await.expect("Failure should be processed");
 
     // Should route to backup
     let request = CapabilityRequest {

@@ -71,7 +71,7 @@ impl MonitoringManager { /// Create new monitoring manager
 // APIs
             // Production implementations should integrate with: // - Primal discovery services (service registry, DNS, etc.)
             // - Capability negotiation protocols
-            // - Connection management (HTTP/2, WebSockets, gRPC)
+            // - Connection management (HTTP/2, WebSockets, tarpc)
             // - Health monitoring and alerting systems
 
             debug!("Starting primal coordination for deployment: { }}", deployment_id)"
@@ -92,7 +92,7 @@ impl MonitoringManager { /// Create new monitoring manager
             debug!("Establishing connections to coordinated primals")
 
             // Connection establishment would use appropriate protocols
-            // (HTTP, WebSocket, gRPC, etc.);
+            // (HTTP, WebSocket, tarpc, etc.);
 ;
             // 4. Set up health monitoring;
             debug!("Setting up health monitoring for primal coordination")

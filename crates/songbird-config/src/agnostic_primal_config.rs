@@ -89,7 +89,7 @@ pub struct ServiceMeshConfig {
     /// Enable service mesh coordination
     pub enabled: bool,
 
-    /// Mesh protocol (grpc, tarpc, http, etc.)
+    /// Mesh protocol (tarpc, json-rpc, http, etc.)
     pub protocol: String,
 
     /// Enable TLS for mesh connections

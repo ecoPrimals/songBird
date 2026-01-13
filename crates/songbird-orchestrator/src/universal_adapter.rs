@@ -70,7 +70,7 @@ pub struct DiscoveredProvider {
     /// Endpoint URL
     pub endpoint: String,
 
-    /// Protocol (http, tarpc, grpc, etc.)
+    /// Protocol (http, https, tarpc, json-rpc)
     pub protocol: String,
 
     /// Additional metadata
@@ -252,7 +252,7 @@ impl UniversalAdapter {
 
     /// Call a provider's API
     ///
-    /// Handles protocol translation (HTTP, tarpc, gRPC, etc.)
+    /// Handles protocol translation (HTTP/HTTPS, tarpc, JSON-RPC)
     ///
     /// # Example
     ///
@@ -278,8 +278,10 @@ impl UniversalAdapter {
         match provider.protocol.as_str() {
             "http" | "https" => self.call_http(provider, method, params).await,
             "tarpc" => self.call_tarpc(provider, method, params).await,
-            "grpc" => self.call_grpc(provider, method, params).await,
-            protocol => Err(anyhow!("Unsupported protocol: {}", protocol)),
+            protocol => Err(anyhow!(
+                "Unsupported protocol: {}. Songbird supports: tarpc, JSON-RPC, HTTP/HTTPS",
+                protocol
+            )),
         }
     }
 
@@ -336,23 +338,6 @@ impl UniversalAdapter {
             .call_method(method, Some(params))
             .await
             .with_context(|| format!("tarpc call failed: {}", method))
-    }
-
-    /// Call gRPC provider
-    ///
-    /// NOTE: gRPC is intentionally not prioritized in Songbird's protocol hierarchy.
-    /// Songbird uses: tarpc > JSON-RPC > HTTP (in order of preference).
-    /// gRPC support may be added later if ecosystem needs arise.
-    async fn call_grpc(
-        &self,
-        _provider: &DiscoveredProvider,
-        _method: &str,
-        _params: serde_json::Value,
-    ) -> Result<serde_json::Value> {
-        Err(anyhow!(
-            "gRPC protocol not supported. Songbird prioritizes: tarpc > JSON-RPC > HTTP.\n\
-             If you need gRPC, please open an issue explaining your use case."
-        ))
     }
 
     /// Clear cache for a capability

@@ -15,7 +15,8 @@ categories = ["development-tools::testing"]
 workspace = true
 
 [features]
-default = []
+default = ["tracing"]
+tracing = []
 k8s = []
 docker = []
 mdns = []

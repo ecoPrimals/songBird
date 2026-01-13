@@ -219,7 +219,7 @@ impl MdnsDiscovery {
         let protocol_str = properties.get_property_val_str("protocol").unwrap_or("http");
         let protocol = match protocol_str {
             "https" => Protocol::Https,
-            "grpc" => Protocol::Grpc,
+            "tarpc" => Protocol::Tarpc,
             "ws" | "websocket" => Protocol::WebSocket,
             _ => Protocol::Http,
         };

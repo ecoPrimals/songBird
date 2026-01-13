@@ -45,7 +45,7 @@ async fn test_execute_discovery_with_protocol() {
 
 #[tokio::test]
 async fn test_execute_discovery_with_various_protocols() {
-    let protocols = vec!["tcp", "udp", "http", "https", "grpc", "websocket"];
+    let protocols = vec!["tcp", "udp", "http", "https", "tarpc", "websocket"];
 
     for protocol in protocols {
         let result = execute_discovery(5, Some(protocol.to_string()), false).await;
@@ -93,7 +93,7 @@ async fn test_execute_discovery_continuous_with_protocol() {
 
 #[tokio::test]
 async fn test_execute_discovery_all_parameters() {
-    let result = execute_discovery(30, Some("grpc".to_string()), true).await;
+    let result = execute_discovery(30, Some("tarpc".to_string()), true).await;
     assert!(result.is_ok());
 }
 

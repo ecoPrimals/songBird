@@ -250,7 +250,7 @@ fn test_service_type_default() {
 #[test]
 fn test_service_type_all_variants() {
     let web = CanonicalServiceType::Web;
-    let grpc = CanonicalServiceType::Grpc;
+    let tarpc = CanonicalServiceType::Tarpc;
     let database = CanonicalServiceType::Database;
     let mq = CanonicalServiceType::MessageQueue;
     let cache = CanonicalServiceType::Cache;
@@ -262,7 +262,7 @@ fn test_service_type_all_variants() {
     let custom = CanonicalServiceType::Custom("MyService".to_string());
 
     assert_eq!(web, CanonicalServiceType::Web);
-    assert_eq!(grpc, CanonicalServiceType::Grpc);
+    assert_eq!(tarpc, CanonicalServiceType::Tarpc);
     assert_eq!(database, CanonicalServiceType::Database);
     assert_eq!(mq, CanonicalServiceType::MessageQueue);
     assert_eq!(cache, CanonicalServiceType::Cache);
@@ -277,7 +277,7 @@ fn test_service_type_all_variants() {
 #[test]
 fn test_service_type_as_str() {
     assert_eq!(CanonicalServiceType::Web.as_str(), "web");
-    assert_eq!(CanonicalServiceType::Grpc.as_str(), "grpc");
+    assert_eq!(CanonicalServiceType::Tarpc.as_str(), "tarpc");
     assert_eq!(CanonicalServiceType::Database.as_str(), "database");
     assert_eq!(CanonicalServiceType::MessageQueue.as_str(), "message_queue");
     assert_eq!(CanonicalServiceType::Cache.as_str(), "cache");
@@ -292,7 +292,7 @@ fn test_service_type_as_str() {
 #[test]
 fn test_service_type_equality() -> SongbirdResult<()> {
     assert_eq!(CanonicalServiceType::Web, CanonicalServiceType::Web);
-    assert_ne!(CanonicalServiceType::Web, CanonicalServiceType::Grpc);
+    assert_ne!(CanonicalServiceType::Web, CanonicalServiceType::Tarpc);
     Ok(())
 }
 
@@ -318,7 +318,7 @@ fn test_service_type_hash() -> SongbirdResult<()> {
 
     let mut set = HashSet::new();
     set.insert(CanonicalServiceType::Web);
-    set.insert(CanonicalServiceType::Grpc);
+    set.insert(CanonicalServiceType::Tarpc);
     set.insert(CanonicalServiceType::Web); // Duplicate
 
     assert_eq!(set.len(), 2); // Should only have 2 unique types

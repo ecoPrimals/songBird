@@ -89,7 +89,6 @@ unused_must_use = "deny"
 # This crate will be evolved to full production quality during Genesis implementation
 # See DEEP_DEBT_EVOLUTION_PLAN.md Section "Phase 2" for evolution roadmap
 all = "allow"
-
 # Still enforce critical safety lints
 correctness = "deny"
 suspicious = "deny"

@@ -76,7 +76,7 @@ fn test_service_tags() {
 #[test]
 fn test_service_endpoint_formats() {
     let endpoints =
-        vec!["http://localhost:8080", "https://api.example.com:443", "grpc://service.local:50051"];
+        vec!["http://localhost:8080", "https://api.example.com:443", "tarpc://service.local:50051"];
 
     for endpoint in endpoints {
         assert!(endpoint.contains("://"));

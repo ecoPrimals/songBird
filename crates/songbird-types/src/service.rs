@@ -116,7 +116,7 @@ pub enum CanonicalServiceType {
     /// Web service (HTTP/REST API)
     Web,
     /// gRPC service
-    Grpc,
+    Tarpc,
     /// Database service
     Database,
     /// Message queue service
@@ -149,7 +149,7 @@ impl CanonicalServiceType {
     pub fn as_str(&self) -> &str {
         match self {
             Self::Web => "web",
-            Self::Grpc => "grpc",
+            Self::Tarpc => "tarpc",
             Self::Database => "database",
             Self::MessageQueue => "message_queue",
             Self::Cache => "cache",
@@ -454,7 +454,7 @@ mod tests {
 
     #[test]
     fn test_canonical_service_type_as_str_grpc() {
-        assert_eq!(CanonicalServiceType::Grpc.as_str(), "grpc");
+        assert_eq!(CanonicalServiceType::Tarpc.as_str(), "tarpc");
     }
 
     #[test]
@@ -506,8 +506,8 @@ mod tests {
     #[test]
     fn test_canonical_service_type_equality() {
         assert_eq!(CanonicalServiceType::Web, CanonicalServiceType::Web);
-        assert_eq!(CanonicalServiceType::Grpc, CanonicalServiceType::Grpc);
-        assert_ne!(CanonicalServiceType::Web, CanonicalServiceType::Grpc);
+        assert_eq!(CanonicalServiceType::Tarpc, CanonicalServiceType::Tarpc);
+        assert_ne!(CanonicalServiceType::Web, CanonicalServiceType::Tarpc);
 
         let custom1 = CanonicalServiceType::Custom("type1".to_string());
         let custom2 = CanonicalServiceType::Custom("type1".to_string());

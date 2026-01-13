@@ -323,7 +323,7 @@ impl<T: Transport + 'static> GattClient<T> {
             let response = self.send_att_request(&request).await?;
 
             // Parse response
-            let discovered_services = self.parse_read_by_group_type_response(&response)?;
+            let discovered_services = Self::parse_read_by_group_type_response(&response)?;
 
             if discovered_services.is_empty() {
                 // No more services
@@ -370,7 +370,7 @@ impl<T: Transport + 'static> GattClient<T> {
     }
 
     /// Parse ATT Read By Group Type Response
-    fn parse_read_by_group_type_response(&mut self, response: &[u8]) -> Result<Vec<Service>> {
+    fn parse_read_by_group_type_response(response: &[u8]) -> Result<Vec<Service>> {
         if response.is_empty() {
             return Err(BluetoothError::Gatt("Empty response".into()));
         }
@@ -379,7 +379,7 @@ impl<T: Transport + 'static> GattClient<T> {
 
         // Check for error response
         if opcode == att_opcode::ERROR_RSP {
-            return self.handle_att_error(response);
+            return Self::handle_att_error(response);
         }
 
         // Check for correct response opcode
@@ -433,7 +433,7 @@ impl<T: Transport + 'static> GattClient<T> {
     }
 
     /// Handle ATT error response
-    fn handle_att_error(&self, response: &[u8]) -> Result<Vec<Service>> {
+    fn handle_att_error(response: &[u8]) -> Result<Vec<Service>> {
         if response.len() < 4 {
             return Err(BluetoothError::Gatt("Invalid error response".into()));
         }
@@ -446,7 +446,7 @@ impl<T: Transport + 'static> GattClient<T> {
             return Ok(Vec::new());
         }
 
-        Err(BluetoothError::Gatt(format!("ATT error: 0x{:02X}", error_code)))
+        Err(BluetoothError::Gatt(format!("ATT error: 0x{error_code:02X}")))
     }
 
     /// Find service by UUID
@@ -472,7 +472,7 @@ impl<T: Transport + 'static> GattClient<T> {
         // Find the service
         let service_index =
             self.services.iter().position(|s| &s.uuid == service_uuid).ok_or_else(|| {
-                BluetoothError::Gatt(format!("Service not found: {}", service_uuid))
+                BluetoothError::Gatt(format!("Service not found: {service_uuid}"))
             })?;
 
         let start_handle = self.services[service_index].start_handle;
@@ -480,7 +480,7 @@ impl<T: Transport + 'static> GattClient<T> {
 
         // Build ATT Read By Type Request for Characteristic
         let _request =
-            self.build_read_by_type_request(start_handle, end_handle, att_uuid::CHARACTERISTIC);
+            Self::build_read_by_type_request(start_handle, end_handle, att_uuid::CHARACTERISTIC);
 
         trace!(
             "Sending ATT Read By Type Request for characteristics: start=0x{:04X}, end=0x{:04X}",
@@ -495,12 +495,7 @@ impl<T: Transport + 'static> GattClient<T> {
     }
 
     /// Build ATT Read By Type Request
-    fn build_read_by_type_request(
-        &self,
-        start_handle: u16,
-        end_handle: u16,
-        attr_type: u16,
-    ) -> Vec<u8> {
+    fn build_read_by_type_request(start_handle: u16, end_handle: u16, attr_type: u16) -> Vec<u8> {
         let mut request = vec![att_opcode::READ_BY_TYPE_REQ];
 
         // Start handle (little-endian)
@@ -518,7 +513,7 @@ impl<T: Transport + 'static> GattClient<T> {
     /// Parse ATT Read By Type Response for characteristics
     /// Note: Awaiting hardware validation - will be used in Phase 3
     #[allow(dead_code)]
-    fn parse_read_by_type_response(&self, response: &[u8]) -> Result<Vec<Characteristic>> {
+    fn parse_read_by_type_response(response: &[u8]) -> Result<Vec<Characteristic>> {
         if response.is_empty() {
             return Err(BluetoothError::Gatt("Empty response".into()));
         }
@@ -539,7 +534,7 @@ impl<T: Transport + 'static> GattClient<T> {
 
         // Check for correct response opcode
         if opcode != att_opcode::READ_BY_TYPE_RSP {
-            return Err(BluetoothError::Gatt(format!("Unexpected opcode: 0x{:02X}", opcode)));
+            return Err(BluetoothError::Gatt(format!("Unexpected opcode: 0x{opcode:02X}")));
         }
 
         if response.len() < 2 {
@@ -639,7 +634,7 @@ impl<T: Transport + 'static> GattClient<T> {
                 }
 
                 // Build ATT Read Request
-                let _request = self.build_read_request(characteristic.handle);
+                let _request = Self::build_read_request(characteristic.handle);
 
                 trace!("Sending ATT Read Request for handle 0x{:04X}", characteristic.handle);
 
@@ -654,7 +649,7 @@ impl<T: Transport + 'static> GattClient<T> {
     }
 
     /// Build ATT Read Request
-    fn build_read_request(&self, handle: u16) -> Vec<u8> {
+    fn build_read_request(handle: u16) -> Vec<u8> {
         let mut request = vec![att_opcode::READ_REQ];
         request.extend_from_slice(&handle.to_le_bytes());
         request
@@ -663,7 +658,7 @@ impl<T: Transport + 'static> GattClient<T> {
     /// Parse ATT Read Response
     /// Note: Awaiting hardware validation - will be used in Phase 3
     #[allow(dead_code)]
-    fn parse_read_response(&self, response: &[u8]) -> Result<Vec<u8>> {
+    fn parse_read_response(response: &[u8]) -> Result<Vec<u8>> {
         if response.is_empty() {
             return Err(BluetoothError::Gatt("Empty response".into()));
         }
@@ -680,7 +675,7 @@ impl<T: Transport + 'static> GattClient<T> {
 
         // Check for correct response opcode
         if opcode != att_opcode::READ_RSP {
-            return Err(BluetoothError::Gatt(format!("Unexpected opcode: 0x{:02X}", opcode)));
+            return Err(BluetoothError::Gatt(format!("Unexpected opcode: 0x{opcode:02X}")));
         }
 
         // Value starts at byte 1
@@ -714,7 +709,7 @@ impl<T: Transport + 'static> GattClient<T> {
 
                 // Build ATT Write Request or Command
                 let _request = if with_response {
-                    self.build_write_request(characteristic.handle, data)
+                    Self::build_write_request(characteristic.handle, data)
                 } else {
                     self.build_write_command(characteristic.handle, data)
                 };
@@ -740,7 +735,7 @@ impl<T: Transport + 'static> GattClient<T> {
     }
 
     /// Build ATT Write Request (with response)
-    fn build_write_request(&self, handle: u16, data: &[u8]) -> Vec<u8> {
+    fn build_write_request(handle: u16, data: &[u8]) -> Vec<u8> {
         let mut request = vec![att_opcode::WRITE_REQ];
         request.extend_from_slice(&handle.to_le_bytes());
         request.extend_from_slice(data);
@@ -775,7 +770,7 @@ impl<T: Transport + 'static> GattClient<T> {
 
         // Check for correct response opcode
         if opcode != att_opcode::WRITE_RSP {
-            return Err(BluetoothError::Gatt(format!("Unexpected opcode: 0x{:02X}", opcode)));
+            return Err(BluetoothError::Gatt(format!("Unexpected opcode: 0x{opcode:02X}")));
         }
 
         Ok(())

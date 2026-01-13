@@ -8,8 +8,8 @@ use jsonrpsee::types::{ErrorObject, Params};
 use std::time::SystemTime;
 use tracing::{debug, info};
 
-use crate::ipc::types::*;
 use crate::ipc::handlers::IpcHandlers;
+use crate::ipc::types::*;
 
 // ============================================================================
 // jsonrpsee Handlers (Original API)
@@ -116,7 +116,9 @@ pub async fn discover_by_capability(
 
     info!("   Found {} primals", primals.len());
 
-    Ok(DiscoverByCapabilityResponse { primals })
+    Ok(DiscoverByCapabilityResponse {
+        primals,
+    })
 }
 
 /// Handle `get_service_health` RPC call
@@ -149,11 +151,10 @@ pub async fn get_service_health(
     info!("🏥 Checking health for service: {}", request.service_id);
 
     // Get health from registry
-    let (status, message) = handlers
-        .service_registry
-        .get_service_health(&request.service_id)
-        .await
-        .map_err(|e| ErrorObject::owned(-32603, "Failed to get health", Some(format!("{}", e))))?;
+    let (status, message) =
+        handlers.service_registry.get_service_health(&request.service_id).await.map_err(|e| {
+            ErrorObject::owned(-32603, "Failed to get health", Some(format!("{}", e)))
+        })?;
 
     let health = HealthStatus {
         service_id: request.service_id,
@@ -162,7 +163,9 @@ pub async fn get_service_health(
         timestamp: system_time_to_iso8601(SystemTime::now()),
     };
 
-    Ok(GetServiceHealthResponse { health })
+    Ok(GetServiceHealthResponse {
+        health,
+    })
 }
 
 /// Handle `health_check` RPC call
@@ -193,7 +196,9 @@ pub async fn health_check(
         timestamp: system_time_to_iso8601(SystemTime::now()),
     };
 
-    Ok(HealthCheckResponse { health })
+    Ok(HealthCheckResponse {
+        health,
+    })
 }
 
 // ============================================================================
@@ -280,7 +285,9 @@ pub async fn discover_by_capability_json(
             ))
         })?;
 
-    let resp = DiscoverByCapabilityResponse { primals };
+    let resp = DiscoverByCapabilityResponse {
+        primals,
+    };
 
     serde_json::to_value(resp).map_err(|e| {
         crate::ipc::server_pure_rust::JsonRpcError::internal_error(format!(
@@ -309,11 +316,8 @@ pub async fn get_service_health_json(
         }
     };
 
-    let (status, message) = handlers
-        .service_registry
-        .get_service_health(&request.service_id)
-        .await
-        .map_err(|e| {
+    let (status, message) =
+        handlers.service_registry.get_service_health(&request.service_id).await.map_err(|e| {
             crate::ipc::server_pure_rust::JsonRpcError::internal_error(format!(
                 "Failed to get health: {}",
                 e
@@ -327,7 +331,9 @@ pub async fn get_service_health_json(
         timestamp: system_time_to_iso8601(SystemTime::now()),
     };
 
-    let resp = GetServiceHealthResponse { health };
+    let resp = GetServiceHealthResponse {
+        health,
+    };
 
     serde_json::to_value(resp).map_err(|e| {
         crate::ipc::server_pure_rust::JsonRpcError::internal_error(format!(
@@ -348,7 +354,9 @@ pub async fn health_check_json(
         timestamp: system_time_to_iso8601(SystemTime::now()),
     };
 
-    let resp = HealthCheckResponse { health };
+    let resp = HealthCheckResponse {
+        health,
+    };
 
     serde_json::to_value(resp).map_err(|e| {
         crate::ipc::server_pure_rust::JsonRpcError::internal_error(format!(
@@ -357,4 +365,3 @@ pub async fn health_check_json(
         ))
     })
 }
-

@@ -112,7 +112,7 @@ pub enum EndpointProtocol {
     /// HTTPS protocol (typically port 443)
     Https,
     /// gRPC protocol
-    Grpc,
+    Tarpc,
     /// Custom protocol
     Custom,
 }
@@ -160,7 +160,7 @@ impl OptimizedEndpoint {
         let protocol = match self.protocol {
             EndpointProtocol::Http => "http",
             EndpointProtocol::Https => "https",
-            EndpointProtocol::Grpc => "grpc",
+            EndpointProtocol::Tarpc => "tarpc",
             EndpointProtocol::Custom => "custom",
         };
         format!("{}://{}:{}", protocol, self.host.as_str(), self.port)

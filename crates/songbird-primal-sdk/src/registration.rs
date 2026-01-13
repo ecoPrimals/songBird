@@ -144,7 +144,7 @@ pub struct ServiceInfo {
     /// Capabilities this service provides
     pub capabilities: Vec<Capability>,
 
-    /// Supported protocols (https, tarpc, grpc, etc.)
+    /// Supported protocols (https, tarpc, json-rpc, etc.)
     pub protocols: Vec<String>,
 
     /// Additional metadata
@@ -186,7 +186,7 @@ pub enum CapabilityType {
 /// Endpoint information
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Endpoint {
-    /// Protocol (https, tarpc, grpc)
+    /// Protocol (https, tarpc, json-rpc)
     pub protocol: String,
 
     /// Host

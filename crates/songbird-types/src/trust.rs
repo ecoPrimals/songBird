@@ -99,13 +99,13 @@ impl<'de> Deserialize<'de> for TrustLevel {
             TrustLevelHelper::String(s) => match s.to_lowercase().as_str() {
                 // None: Primary and aliases
                 "none" | "anonymous" | "unknown" => Ok(Self::None),
-                
+
                 // Limited: Primary and aliases
                 "limited" | "basic" => Ok(Self::Limited),
-                
+
                 // Elevated: Primary and aliases
                 "elevated" | "medium" => Ok(Self::Elevated),
-                
+
                 // Highest: Primary and aliases
                 "highest" | "explicit" | "full" => Ok(Self::Highest),
 
