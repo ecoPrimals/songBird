@@ -7,10 +7,13 @@
 use anyhow::{Context, Result};
 use serde::{Deserialize, Serialize};
 use songbird_types::{LineageId, LineageProof};
-use tracing::{info, warn};
+use tracing::{debug, info, warn};
 
 // Import security capability client
 use crate::security_capability_client::SecurityCapabilityClient;
+
+// For capability-based discovery
+use crate::app::security_setup;
 
 /// Decision for peer acceptance based on genetic lineage
 #[derive(Debug, Clone)]
@@ -128,16 +131,22 @@ struct CachedVerification {
     cached_at: std::time::Instant,
 }
 
-/// Simplified security provider client for lineage operations
-/// (Will use actual security provider client when Phase 1.5 is ready)
+/// Security provider client for lineage operations
+///
+/// **EVOLVED (v3.22.1)**: Uses capability-based discovery (no hardcoded provider)
+/// - Discovers security provider via `security_setup::discover_security_endpoint()`
+/// - Works with any primal providing "security" capability (BearDog, future alternatives)
+/// - Follows "Each Primal Knows Only Itself" principle
 #[derive(Debug, Clone)]
-pub struct BearDogClient {
+pub struct SecurityProviderClient {
     endpoint: String,
     http_client: reqwest::Client,
 }
 
-impl BearDogClient {
+impl SecurityProviderClient {
     /// Create a new security provider client
+    ///
+    /// **EVOLVED**: Use `from_discovery()` for capability-based discovery
     pub fn new(endpoint: impl Into<String>) -> Self {
         Self {
             endpoint: endpoint.into(),
@@ -145,42 +154,204 @@ impl BearDogClient {
         }
     }
 
-    /// Verify lineage proof
+    /// Create client via capability-based discovery
+    ///
+    /// **Production Path**: Discovers security provider via multi-tier discovery:
+    /// 1. Environment variables (SONGBIRD_SECURITY_PROVIDER)
+    /// 2. Universal Adapter capability discovery
+    /// 3. Local UPA service registry
+    ///
+    /// # Errors
+    ///
+    /// Returns error if no security provider can be discovered
+    pub async fn from_discovery() -> Result<Self> {
+        debug!("🔍 Discovering security provider via capability-based discovery");
+        
+        match security_setup::discover_security_endpoint(None).await {
+            Ok(endpoint) => {
+                info!("✅ Security provider discovered: {}", endpoint);
+                Ok(Self::new(endpoint))
+            }
+            Err(e) => {
+                warn!("⚠️ No security provider available: {}", e);
+                Err(e).context("Failed to discover security provider for lineage verification")
+            }
+        }
+    }
+
+    /// Verify lineage proof via security provider
+    ///
+    /// **EVOLVED (v3.22.1)**: Real implementation using discovered security provider
+    ///
+    /// Calls `POST /api/v1/lineage/verify` on the discovered security provider
     pub async fn verify_lineage(&self, proof: &LineageProof) -> Result<VerificationResult> {
-        // TODO: Call actual security provider API when Phase 1.5 is ready
-        // For now, implement graceful fallback
+        debug!("🔍 Verifying lineage proof via security provider: {}", self.endpoint);
 
-        info!("🔍 Verifying lineage proof via security provider (mock implementation)");
+        let url = format!("{}/api/v1/lineage/verify", self.endpoint);
+        
+        match self.http_client
+            .post(&url)
+            .json(proof)
+            .send()
+            .await
+        {
+            Ok(response) => {
+                if response.status().is_success() {
+                    let result: VerificationResult = response.json().await
+                        .context("Failed to parse lineage verification response")?;
+                    
+                    debug!("✅ Lineage verification complete: valid={}", result.valid);
+                    Ok(result)
+                } else {
+                    let status = response.status();
+                    let error_text = response.text().await.unwrap_or_else(|_| "Unknown error".to_string());
+                    Err(anyhow::anyhow!(
+                        "Security provider returned error {}: {}",
+                        status,
+                        error_text
+                    ))
+                }
+            }
+            Err(e) => {
+                warn!("⚠️ Failed to verify lineage proof: {}", e);
+                Err(e).context("HTTP request to security provider failed")
+            }
+        }
+    }
 
-        // Mock verification - always succeeds for development
-        // In production, this will call POST /api/v1/lineage/verify
+    /// Check if two lineages share the same genesis
+    ///
+    /// **EVOLVED (v3.22.1)**: Real implementation using discovered security provider
+    ///
+    /// Calls `POST /api/v1/lineage/same_family` on the discovered security provider
+    pub async fn same_family(&self, lineage_a: &LineageId, lineage_b: &LineageId) -> Result<bool> {
+        debug!("🔍 Checking if lineages share same genesis via security provider");
+
+        let url = format!("{}/api/v1/lineage/same_family", self.endpoint);
+        
+        #[derive(Serialize)]
+        struct SameFamilyRequest {
+            lineage_a: LineageId,
+            lineage_b: LineageId,
+        }
+        
+        #[derive(Deserialize)]
+        struct SameFamilyResponse {
+            same_family: bool,
+        }
+        
+        match self.http_client
+            .post(&url)
+            .json(&SameFamilyRequest {
+                lineage_a: lineage_a.clone(),
+                lineage_b: lineage_b.clone(),
+            })
+            .send()
+            .await
+        {
+            Ok(response) => {
+                if response.status().is_success() {
+                    let result: SameFamilyResponse = response.json().await
+                        .context("Failed to parse same_family response")?;
+                    
+                    debug!("✅ Same family check: {}", result.same_family);
+                    Ok(result.same_family)
+                } else {
+                    Err(anyhow::anyhow!(
+                        "Security provider returned error: {}",
+                        response.status()
+                    ))
+                }
+            }
+            Err(e) => {
+                warn!("⚠️ Failed to check same_family: {}", e);
+                Err(e).context("HTTP request to security provider failed")
+            }
+        }
+    }
+
+    /// Get current lineage for this node
+    ///
+    /// **EVOLVED (v3.22.1)**: Real implementation using discovered security provider
+    ///
+    /// Calls `GET /api/v1/lineage/current` on the discovered security provider
+    pub async fn get_current_lineage(&self) -> Result<Option<CurrentLineageInfo>> {
+        debug!("🔍 Getting current lineage from security provider");
+
+        let url = format!("{}/api/v1/lineage/current", self.endpoint);
+        
+        match self.http_client
+            .get(&url)
+            .send()
+            .await
+        {
+            Ok(response) => {
+                if response.status().is_success() {
+                    let info: Option<CurrentLineageInfo> = response.json().await
+                        .context("Failed to parse current lineage response")?;
+                    
+                    debug!("✅ Current lineage retrieved: {:?}", info.is_some());
+                    Ok(info)
+                } else if response.status() == reqwest::StatusCode::NOT_FOUND {
+                    // No lineage configured - graceful degradation
+                    debug!("ℹ️ No current lineage configured");
+                    Ok(None)
+                } else {
+                    Err(anyhow::anyhow!(
+                        "Security provider returned error: {}",
+                        response.status()
+                    ))
+                }
+            }
+            Err(e) => {
+                warn!("⚠️ Failed to get current lineage: {}", e);
+                Err(e).context("HTTP request to security provider failed")
+            }
+        }
+    }
+}
+
+// ============================================================================
+// TEST-ONLY MOCK IMPLEMENTATION
+// ============================================================================
+
+#[cfg(test)]
+/// Mock security provider client for testing
+///
+/// **TEST ONLY**: This implementation is only available in test builds.
+/// Production code MUST use `SecurityProviderClient::from_discovery()`.
+pub struct MockSecurityProviderClient;
+
+#[cfg(test)]
+impl MockSecurityProviderClient {
+    /// Create mock client for testing
+    pub fn new() -> Self {
+        Self
+    }
+
+    /// Mock lineage verification (always succeeds)
+    pub async fn verify_lineage(&self, proof: &LineageProof) -> Result<VerificationResult> {
         Ok(VerificationResult {
             valid: true,
             same_genesis: false,
             lineage_id: proof.lineage_id.clone(),
-            messages: vec!["Mock verification - security provider Phase 1.5 pending".to_string()],
+            messages: vec!["Mock verification (test only)".to_string()],
         })
     }
 
-    /// Check if two lineages share the same genesis
+    /// Mock same_family check (compares tower IDs)
     pub async fn same_family(&self, lineage_a: &LineageId, lineage_b: &LineageId) -> Result<bool> {
-        // TODO: Call actual security provider API when Phase 1.5 is ready
-        // For now, compare tower IDs as a heuristic
-
         Ok(lineage_a.tower_id() == lineage_b.tower_id())
     }
 
-    /// Get current lineage for this node
+    /// Mock get_current_lineage (returns None)
     pub async fn get_current_lineage(&self) -> Result<Option<CurrentLineageInfo>> {
-        // TODO: Call actual security provider API when Phase 1.5 is ready
-        // For now, return None (graceful degradation)
-
         Ok(None)
     }
 }
 
 /// Verification result from security provider
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct VerificationResult {
     pub valid: bool,
     pub same_genesis: bool,
@@ -189,7 +360,7 @@ pub struct VerificationResult {
 }
 
 /// Current lineage information
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CurrentLineageInfo {
     pub lineage_id: LineageId,
     pub proof: LineageProof,

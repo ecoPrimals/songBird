@@ -87,28 +87,27 @@ impl<'de> Deserialize<'de> for TrustLevel {
 
         match TrustLevelHelper::deserialize(deserializer)? {
             // Integer format (BearDog primary)
-            TrustLevelHelper::Int(0) => Ok(TrustLevel::None),
-            TrustLevelHelper::Int(1) => Ok(TrustLevel::Limited),
-            TrustLevelHelper::Int(2) => Ok(TrustLevel::Elevated),
-            TrustLevelHelper::Int(3) => Ok(TrustLevel::Highest),
+            TrustLevelHelper::Int(0) => Ok(Self::None),
+            TrustLevelHelper::Int(1) => Ok(Self::Limited),
+            TrustLevelHelper::Int(2) => Ok(Self::Elevated),
+            TrustLevelHelper::Int(3) => Ok(Self::Highest),
             TrustLevelHelper::Int(n) => Err(serde::de::Error::custom(format!(
-                "Invalid trust level integer: {} (expected 0-3)",
-                n
+                "Invalid trust level integer: {n} (expected 0-3)",
             ))),
 
             // String format (aliases for compatibility)
             TrustLevelHelper::String(s) => match s.to_lowercase().as_str() {
-                // Primary names
-                "none" => Ok(TrustLevel::None),
-                "limited" => Ok(TrustLevel::Limited),
-                "elevated" => Ok(TrustLevel::Elevated),
-                "highest" => Ok(TrustLevel::Highest),
-
-                // BearDog aliases
-                "anonymous" | "unknown" => Ok(TrustLevel::None),
-                "basic" => Ok(TrustLevel::Limited),
-                "medium" => Ok(TrustLevel::Elevated),
-                "explicit" | "full" => Ok(TrustLevel::Highest),
+                // None: Primary and aliases
+                "none" | "anonymous" | "unknown" => Ok(Self::None),
+                
+                // Limited: Primary and aliases
+                "limited" | "basic" => Ok(Self::Limited),
+                
+                // Elevated: Primary and aliases
+                "elevated" | "medium" => Ok(Self::Elevated),
+                
+                // Highest: Primary and aliases
+                "highest" | "explicit" | "full" => Ok(Self::Highest),
 
                 _ => Err(serde::de::Error::custom(format!(
                     "Unknown trust level string: '{}' (expected: none, limited, elevated, highest)",
@@ -277,7 +276,7 @@ impl TrustEvaluation {
 
     fn default_elevation_path(level: TrustLevel) -> Option<ElevationPath> {
         match level {
-            TrustLevel::None => None,
+            TrustLevel::None | TrustLevel::Highest => None,
             TrustLevel::Limited => Some(ElevationPath {
                 next_level: TrustLevel::Elevated,
                 requirements: vec!["human_approval".to_string()],
@@ -288,7 +287,6 @@ impl TrustEvaluation {
                 requirements: vec!["human_entropy".to_string()],
                 method: "solokey_or_phone_hsm".to_string(),
             }),
-            TrustLevel::Highest => None,
         }
     }
 }

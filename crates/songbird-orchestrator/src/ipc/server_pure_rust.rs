@@ -219,10 +219,8 @@ impl UnixSocketServer {
 
         // Get current user ID
         // Try $UID first (set by most shells), fallback to safe default
-        let uid = std::env::var("UID")
-            .ok()
-            .and_then(|s| s.parse::<u32>().ok())
-            .unwrap_or_else(|| {
+        let uid =
+            std::env::var("UID").ok().and_then(|s| s.parse::<u32>().ok()).unwrap_or_else(|| {
                 // Try to get from /proc/self/loginuid (Linux-specific but safe fallback)
                 std::fs::read_to_string("/proc/self/loginuid")
                     .ok()
@@ -234,10 +232,7 @@ impl UnixSocketServer {
         let xdg_runtime_dir = PathBuf::from(format!("/run/user/{}", uid));
         if xdg_runtime_dir.exists() {
             let socket_path = xdg_runtime_dir.join(format!("songbird-{}.sock", family_id));
-            info!(
-                "📍 Using XDG runtime directory: {}",
-                socket_path.display()
-            );
+            info!("📍 Using XDG runtime directory: {}", socket_path.display());
             return socket_path;
         }
 
@@ -315,10 +310,8 @@ impl UnixSocketServer {
         if let Some(parent) = self.socket_path.parent() {
             if !parent.exists() {
                 debug!("   Creating socket directory: {:?}", parent);
-                std::fs::create_dir_all(parent).context(format!(
-                    "Failed to create socket directory: {}",
-                    parent.display()
-                ))?;
+                std::fs::create_dir_all(parent)
+                    .context(format!("Failed to create socket directory: {}", parent.display()))?;
             }
         }
 
@@ -330,19 +323,14 @@ impl UnixSocketServer {
         }
 
         // Bind Unix socket (pure tokio - no jsonrpsee!)
-        let listener = UnixListener::bind(&*self.socket_path).context(format!(
-            "Failed to bind Unix socket: {}",
-            self.socket_path.display()
-        ))?;
+        let listener = UnixListener::bind(&*self.socket_path)
+            .context(format!("Failed to bind Unix socket: {}", self.socket_path.display()))?;
 
         // Mark server as ready and running atomically (lock-free!)
         self.is_running.store(true, Ordering::Release);
         self.is_ready.store(true, Ordering::Release);
 
-        info!(
-            "✅ Unix socket JSON-RPC server listening: {}",
-            self.socket_path.display()
-        );
+        info!("✅ Unix socket JSON-RPC server listening: {}", self.socket_path.display());
         info!("   Protocol: JSON-RPC 2.0 (pure Rust)");
         info!("   APIs: 11 (3 P2P + 4 registry + 4 graph intelligence)");
         info!("   Status: READY ✅ (atomic flag set)");
@@ -432,20 +420,32 @@ impl UnixSocketServer {
         let result = match request.method.as_str() {
             // P2P Discovery APIs (3)
             "discover_by_family" => self.handlers.discover_by_family_json(request.params).await,
-            "create_genetic_tunnel" => self.handlers.create_genetic_tunnel_json(request.params).await,
-            "announce_capabilities" => self.handlers.announce_capabilities_json(request.params).await,
+            "create_genetic_tunnel" => {
+                self.handlers.create_genetic_tunnel_json(request.params).await
+            }
+            "announce_capabilities" => {
+                self.handlers.announce_capabilities_json(request.params).await
+            }
 
             // Service Registry APIs (4)
             "register_service" => self.handlers.register_service_json(request.params).await,
-            "discover_by_capability" => self.handlers.discover_by_capability_json(request.params).await,
+            "discover_by_capability" => {
+                self.handlers.discover_by_capability_json(request.params).await
+            }
             "get_service_health" => self.handlers.get_service_health_json(request.params).await,
             "health_check" => self.handlers.health_check_json().await,
 
             // Graph Intelligence APIs (4)
             "graph.validate" => self.handlers.validate_graph_json(request.params).await,
-            "graph.check_availability" => self.handlers.check_availability_json(request.params).await,
-            "graph.suggest_alternatives" => self.handlers.suggest_alternatives_json(request.params).await,
-            "coordination.validate_pattern" => self.handlers.validate_coordination_pattern_json(request.params).await,
+            "graph.check_availability" => {
+                self.handlers.check_availability_json(request.params).await
+            }
+            "graph.suggest_alternatives" => {
+                self.handlers.suggest_alternatives_json(request.params).await
+            }
+            "coordination.validate_pattern" => {
+                self.handlers.validate_coordination_pattern_json(request.params).await
+            }
 
             // Unknown method
             _ => Err(JsonRpcError::method_not_found(&request.method)),
@@ -646,4 +646,3 @@ mod tests {
         }
     }
 }
-

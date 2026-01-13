@@ -277,17 +277,12 @@ impl<T: Transport + 'static> GattClient<T> {
         // Build L2CAP packet
         let acl_packet = self.l2cap_channel.build_acl_packet(request);
 
-        // Send via transport (scoped lock)
-        {
-            let mut transport = self.transport.lock().await;
-            transport.send_acl(&acl_packet).await?;
-        } // Lock dropped here
+        // Send via transport (lock released immediately after send)
+        self.transport.lock().await.send_acl(&acl_packet).await?;
 
-        // Receive response with timeout
+        // Receive response with timeout (lock released immediately after receive)
         let response = timeout(self.timeout_duration, async {
-            let mut transport = self.transport.lock().await;
-            let acl_response = transport.receive_acl().await?;
-
+            let acl_response = self.transport.lock().await.receive_acl().await?;
             // Parse L2CAP packet to extract ATT payload
             self.l2cap_channel.parse_acl_packet(&acl_response)
         })
@@ -316,7 +311,7 @@ impl<T: Transport + 'static> GattClient<T> {
 
         loop {
             // Send ATT Read By Group Type Request for Primary Service
-            let request = self.build_read_by_group_type_request(
+            let request = Self::build_read_by_group_type_request(
                 start_handle,
                 end_handle,
                 att_uuid::PRIMARY_SERVICE,
@@ -356,7 +351,6 @@ impl<T: Transport + 'static> GattClient<T> {
 
     /// Build ATT Read By Group Type Request
     fn build_read_by_group_type_request(
-        &self,
         start_handle: u16,
         end_handle: u16,
         group_type: u16,
@@ -390,7 +384,7 @@ impl<T: Transport + 'static> GattClient<T> {
 
         // Check for correct response opcode
         if opcode != att_opcode::READ_BY_GROUP_TYPE_RSP {
-            return Err(BluetoothError::Gatt(format!("Unexpected opcode: 0x{:02X}", opcode)));
+            return Err(BluetoothError::Gatt(format!("Unexpected opcode: 0x{opcode:02X}")));
         }
 
         if response.len() < 2 {
@@ -411,7 +405,7 @@ impl<T: Transport + 'static> GattClient<T> {
                 // 16-bit UUID
                 let uuid_16 = u16::from_le_bytes([response[offset + 4], response[offset + 5]]);
                 Uuid::from_u128(
-                    0x0000_0000_1000_8000_8000_0080_5F9B_34FB | ((uuid_16 as u128) << 96),
+                    0x0000_0000_1000_8000_8000_0080_5F9B_34FB | (u128::from(uuid_16) << 96),
                 )
             } else if length == 20 {
                 // 128-bit UUID

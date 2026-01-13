@@ -399,7 +399,7 @@ impl SongbirdOrchestrator {
                                                             _ => "Unknown",
                                                         }
                                                     );
-                                                    
+
                                                     // Also establish legacy anonymous trust for backward compatibility
                                                     if let Err(e) = trust_manager.establish_anonymous(peer.session_id.clone()).await {
                                                         warn!("⚠️  Failed to establish legacy trust: {}", e);

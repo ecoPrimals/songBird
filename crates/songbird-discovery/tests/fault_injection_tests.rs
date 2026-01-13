@@ -13,7 +13,7 @@
 #[cfg(test)]
 mod fault_injection_tests {
     use serde_json::json;
-    use songbird_discovery::anonymous_discovery::{
+    use songbird_discovery::anonymous::{
         AnonymousDiscoveryMessage, TransportEndpointMessage,
     };
     use songbird_discovery::birdsong_integration::{

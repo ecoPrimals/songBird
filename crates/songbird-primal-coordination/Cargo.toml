@@ -5,6 +5,10 @@ edition = "2021"
 license = "MIT OR Apache-2.0"
 authors = ["ecoPrimals Team"]
 description = "Agnostic primal coordination - Songbird as universal signal and coordinator"
+repository = "https://github.com/ecoPrimals/songbird"
+readme = "README.md"
+keywords = ["coordination", "distributed", "mesh", "primals", "sovereignty"]
+categories = ["network-programming", "asynchronous"]
 
 [dependencies]
 # Core async runtime

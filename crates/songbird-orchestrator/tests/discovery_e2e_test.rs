@@ -65,7 +65,7 @@ async fn test_discovery_broadcaster_starts_on_startup() -> Result<()> {
 /// Test that discovery listener can receive broadcasts
 #[tokio::test]
 async fn test_discovery_listener_receives_broadcasts() -> Result<()> {
-    use songbird_discovery::anonymous_discovery::{
+    use songbird_discovery::anonymous::{
         AnonymousDiscoveryBroadcaster, AnonymousDiscoveryListener,
     };
     use std::sync::Arc;
@@ -140,7 +140,7 @@ async fn test_discovery_listener_receives_broadcasts() -> Result<()> {
 /// Test that discovery → federation bridge polls discovered peers
 #[tokio::test]
 async fn test_discovery_federation_bridge_polls_peers() -> Result<()> {
-    use songbird_discovery::anonymous_discovery::AnonymousDiscoveryListener;
+    use songbird_discovery::anonymous::AnonymousDiscoveryListener;
     use std::sync::Arc;
 
     let _ = tracing_subscriber::fmt::try_init();

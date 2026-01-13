@@ -139,7 +139,7 @@ pub mod discovery_stats;
 pub mod lineage_discovery; // NEW: Lineage-aware mDNS backend
 pub mod traits; // NEW: Discovery statistics and observability (Jan 5, 2026)
 
-/// Anonymous discovery protocol (v3.12.2) - Refactored modules
+/// Anonymous discovery protocol (v3.22.1) - Refactored modules
 ///
 /// Implements secure anonymous discovery with UDP multicast.
 /// Split into domain-driven modules for maintainability and testability.
@@ -150,14 +150,11 @@ pub mod traits; // NEW: Discovery statistics and observability (Jan 5, 2026)
 /// - `broadcaster` - Broadcasting logic (✅ Complete)
 /// - `listener` - Listening and processing (✅ Complete)
 ///
-/// **Refactoring Complete**: 1396 lines → 4 focused modules with 23 comprehensive tests
+/// **Refactoring Complete (v3.22.1)**: 1402 lines → 4 focused modules
+/// - Old `anonymous_discovery.rs` removed (Jan 12, 2026)
+/// - All imports updated to use `anonymous::` module
+/// - File size compliance achieved (<1000 lines per file)
 pub mod anonymous;
-
-// Old anonymous_discovery.rs kept temporarily for compatibility (v3.12.1)
-// All functionality has been migrated to the `anonymous` module
-// TODO: Remove after full verification (v3.13.0)
-#[allow(dead_code)]
-pub mod anonymous_discovery;
 
 /// Unit and integration tests for self-filtering (v3.10.2 - Jan 5, 2026)
 #[cfg(test)]

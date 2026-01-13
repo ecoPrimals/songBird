@@ -28,7 +28,7 @@ use tracing::{debug, info};
 use uuid::Uuid;
 
 use crate::state::NodeRegistration;
-use songbird_discovery::anonymous_discovery::DiscoveredPeer;
+use songbird_discovery::anonymous::DiscoveredPeer;
 
 /// Federation identifier
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]

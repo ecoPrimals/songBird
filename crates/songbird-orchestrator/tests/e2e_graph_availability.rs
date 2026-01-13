@@ -73,18 +73,9 @@ async fn test_e2e_availability_workflow() {
         .unwrap();
 
     // Mark BearDog and NestGate as healthy, ToadStool as degraded
-    registry
-        .update_health(&beardog_id, "healthy".to_string())
-        .await
-        .unwrap();
-    registry
-        .update_health(&nestgate_id, "healthy".to_string())
-        .await
-        .unwrap();
-    registry
-        .update_health(&toadstool_id, "degraded".to_string())
-        .await
-        .unwrap();
+    registry.update_health(&beardog_id, "healthy".to_string()).await.unwrap();
+    registry.update_health(&nestgate_id, "healthy".to_string()).await.unwrap();
+    registry.update_health(&toadstool_id, "degraded".to_string()).await.unwrap();
 
     // Step 2: Create a graph needing encryption, storage, and compute
     let graph = create_test_graph(vec![
@@ -157,18 +148,9 @@ async fn test_e2e_alternatives_workflow() {
         .unwrap();
 
     // Set different health statuses
-    registry
-        .update_health(&beardog_id, "healthy".to_string())
-        .await
-        .unwrap();
-    registry
-        .update_health(&fastcrypto_id, "healthy".to_string())
-        .await
-        .unwrap();
-    registry
-        .update_health(&slowcrypto_id, "degraded".to_string())
-        .await
-        .unwrap();
+    registry.update_health(&beardog_id, "healthy".to_string()).await.unwrap();
+    registry.update_health(&fastcrypto_id, "healthy".to_string()).await.unwrap();
+    registry.update_health(&slowcrypto_id, "degraded".to_string()).await.unwrap();
 
     // Step 2: Request alternatives for an encryption node preferring json-rpc
     let node = create_test_node("encrypt", "encryption", Some("json-rpc"));
@@ -195,7 +177,10 @@ async fn test_e2e_alternatives_workflow() {
     assert_eq!(suggestions.alternatives[2].primal_name, "FastCrypto");
     assert_eq!(suggestions.alternatives[2].health_status, "healthy");
     assert_eq!(suggestions.alternatives[2].protocol, "tarpc");
-    assert!(suggestions.alternatives[2].compatibility_score < suggestions.alternatives[0].compatibility_score);
+    assert!(
+        suggestions.alternatives[2].compatibility_score
+            < suggestions.alternatives[0].compatibility_score
+    );
 
     // Verify recommendation is BearDog
     assert!(suggestions.recommendation.is_some());
@@ -247,10 +232,7 @@ async fn test_e2e_real_registry_integration() {
 
     // Simulate health checks (all healthy after startup)
     for service_id in [&beardog_id, &nestgate_id, &toadstool_id] {
-        registry
-            .update_health(service_id, "healthy".to_string())
-            .await
-            .unwrap();
+        registry.update_health(service_id, "healthy".to_string()).await.unwrap();
     }
 
     // Step 2: biomeOS creates a graph for data processing
@@ -283,10 +265,7 @@ async fn test_e2e_real_registry_integration() {
     }
 
     // Step 4: Simulate a primal going down
-    registry
-        .update_health(&toadstool_id, "down".to_string())
-        .await
-        .unwrap();
+    registry.update_health(&toadstool_id, "down".to_string()).await.unwrap();
 
     // Step 5: Re-check availability
     let report2 = checker.check_availability(&graph).await.unwrap();
@@ -305,4 +284,3 @@ async fn test_e2e_real_registry_integration() {
     // Score: down=0 + json-rpc protocol=40 + timestamp=10 = 50
     assert_eq!(alternatives.alternatives[0].compatibility_score, 50);
 }
-

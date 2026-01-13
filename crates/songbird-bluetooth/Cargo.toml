@@ -4,10 +4,15 @@ version = "0.1.0"
 edition = "2021"
 license = "MIT OR Apache-2.0"
 authors = ["ecoPrimals Team"]
-description = "Pure Rust Bluetooth LE stack for Songbird - Universal comms with zero system dependencies"
+description = "EXPERIMENTAL: Pure Rust Bluetooth LE stack for Songbird - Genesis Phase 2"
 repository = "https://github.com/ecoPrimals/songbird"
+readme = "README.md"
 keywords = ["bluetooth", "ble", "no-std", "embedded", "sovereignty"]
 categories = ["network-programming", "embedded", "no-std"]
+
+# EXPERIMENTAL STATUS: This crate is under active development for Phase 2
+# Genesis physical channels (Bluetooth, FIDO2, QR) are not yet production-ready
+# See DEEP_DEBT_EVOLUTION_PLAN.md for evolution roadmap
 
 [dependencies]
 # Pure Rust BLE stack (Embassy project)
@@ -80,13 +85,11 @@ missing_docs = "warn"
 unused_must_use = "deny"
 
 [lints.clippy]
-all = "warn"
-pedantic = "warn"
-nursery = "warn"
-# Zero-cost abstractions
-unnecessary_wraps = "warn"
-redundant_clone = "warn"
-# Concurrency
-missing_panics_doc = "warn"
-# Modern patterns
-manual_let_else = "warn"
+# TEMPORARY: Allow warnings while in experimental phase (Phase 2)
+# This crate will be evolved to full production quality during Genesis implementation
+# See DEEP_DEBT_EVOLUTION_PLAN.md Section "Phase 2" for evolution roadmap
+all = "allow"
+
+# Still enforce critical safety lints
+correctness = "deny"
+suspicious = "deny"

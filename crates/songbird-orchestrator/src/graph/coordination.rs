@@ -55,7 +55,9 @@ pub struct CoordinationValidator {
 impl CoordinationValidator {
     /// Create a new coordination validator
     pub fn new(service_registry: Arc<ServiceRegistry>) -> Self {
-        Self { service_registry }
+        Self {
+            service_registry,
+        }
     }
 
     /// Validate coordination pattern for a graph
@@ -125,11 +127,9 @@ impl CoordinationValidator {
         // Check linear chain
         let dependencies = self.build_dependency_map(graph);
         if !self.is_linear_chain(&dependencies, graph.nodes.len()) {
-            result.add_issue(
-                CoordinationIssue::error(
-                    "Sequential pattern requires linear chain".to_string(),
-                ),
-            );
+            result.add_issue(CoordinationIssue::error(
+                "Sequential pattern requires linear chain".to_string(),
+            ));
         }
 
         // Check data flow
@@ -159,9 +159,7 @@ impl CoordinationValidator {
         // Check for parallel branches
         let parallel_groups = self.identify_parallel_groups(graph)?;
         if parallel_groups.is_empty() {
-            result.add_issue(CoordinationIssue::warning(
-                "No parallel groups detected".to_string(),
-            ));
+            result.add_issue(CoordinationIssue::warning("No parallel groups detected".to_string()));
         }
 
         // Check resource availability for concurrent execution
@@ -259,18 +257,12 @@ impl CoordinationValidator {
 
         // Check data partitioning
         if let Err(e) = self.validate_map_partitioning(graph, &map_nodes) {
-            result.add_issue(CoordinationIssue::error(format!(
-                "Map partitioning error: {}",
-                e
-            )));
+            result.add_issue(CoordinationIssue::error(format!("Map partitioning error: {}", e)));
         }
 
         // Check reduce aggregation
         if let Err(e) = self.validate_reduce_aggregation(graph, &reduce_nodes) {
-            result.add_issue(CoordinationIssue::error(format!(
-                "Reduce aggregation error: {}",
-                e
-            )));
+            result.add_issue(CoordinationIssue::error(format!("Reduce aggregation error: {}", e)));
         }
 
         // Check resource requirements for parallel map
@@ -333,9 +325,7 @@ impl CoordinationValidator {
         let mut deps: HashMap<String, Vec<String>> = HashMap::new();
 
         for edge in &graph.edges {
-            deps.entry(edge.to.clone())
-                .or_insert_with(Vec::new)
-                .push(edge.from.clone());
+            deps.entry(edge.to.clone()).or_insert_with(Vec::new).push(edge.from.clone());
         }
 
         deps
@@ -361,24 +351,36 @@ impl CoordinationValidator {
     }
 
     /// Check if graph is a linear chain (A → B → C → ...)
-    fn is_linear_chain(&self, dependencies: &HashMap<String, Vec<String>>, node_count: usize) -> bool {
+    fn is_linear_chain(
+        &self,
+        dependencies: &HashMap<String, Vec<String>>,
+        node_count: usize,
+    ) -> bool {
         if node_count == 0 {
             return true;
         }
 
         // Every node (except first) should have exactly one dependency
         // Every node (except last) should have exactly one dependent
-        dependencies.values().all(|sources| sources.len() <= 1)
-            && !self.has_fan_out(dependencies)
+        dependencies.values().all(|sources| sources.len() <= 1) && !self.has_fan_out(dependencies)
     }
 
     /// Check if graph matches map-reduce pattern
-    fn is_map_reduce_pattern(&self, dependencies: &HashMap<String, Vec<String>>, graph: &Graph) -> bool {
+    fn is_map_reduce_pattern(
+        &self,
+        dependencies: &HashMap<String, Vec<String>>,
+        graph: &Graph,
+    ) -> bool {
         // Look for: single source → multiple parallel → single sink
-        let entry_points: HashSet<_> = graph.entry_points().into_iter().map(|n| n.id.clone()).collect();
-        let exit_points: HashSet<_> = graph.exit_points().into_iter().map(|n| n.id.clone()).collect();
+        let entry_points: HashSet<_> =
+            graph.entry_points().into_iter().map(|n| n.id.clone()).collect();
+        let exit_points: HashSet<_> =
+            graph.exit_points().into_iter().map(|n| n.id.clone()).collect();
 
-        entry_points.len() == 1 && exit_points.len() == 1 && self.has_fan_out(dependencies) && self.has_fan_in(dependencies)
+        entry_points.len() == 1
+            && exit_points.len() == 1
+            && self.has_fan_out(dependencies)
+            && self.has_fan_in(dependencies)
     }
 
     /// Identify parallel execution groups
@@ -393,10 +395,7 @@ impl CoordinationValidator {
             let mut deps = dependencies.get(&node.id).cloned().unwrap_or_default();
             deps.sort();
 
-            dep_groups
-                .entry(deps)
-                .or_insert_with(Vec::new)
-                .push(node.id.clone());
+            dep_groups.entry(deps).or_insert_with(Vec::new).push(node.id.clone());
         }
 
         // Only include groups with multiple nodes
@@ -449,8 +448,10 @@ impl CoordinationValidator {
     /// Identify map and reduce nodes in mapreduce pattern
     fn identify_map_reduce_nodes(&self, graph: &Graph) -> Result<(Vec<String>, Vec<String>)> {
         let dependencies = self.build_dependency_map(graph);
-        let entry_points: HashSet<_> = graph.entry_points().into_iter().map(|n| n.id.clone()).collect();
-        let exit_points: HashSet<_> = graph.exit_points().into_iter().map(|n| n.id.clone()).collect();
+        let entry_points: HashSet<_> =
+            graph.entry_points().into_iter().map(|n| n.id.clone()).collect();
+        let exit_points: HashSet<_> =
+            graph.exit_points().into_iter().map(|n| n.id.clone()).collect();
 
         let mut map_nodes = Vec::new();
         let mut reduce_nodes = Vec::new();
@@ -530,10 +531,8 @@ impl CoordinationValidator {
     async fn check_sequential_resources(&self, graph: &Graph) -> Result<ResourceCheck> {
         // Sequential execution only needs one primal at a time
         for node in &graph.nodes {
-            let primals = self
-                .service_registry
-                .discover_by_capability(&node.capability, None)
-                .await?;
+            let primals =
+                self.service_registry.discover_by_capability(&node.capability, None).await?;
 
             if primals.is_empty() {
                 return Ok(ResourceCheck {
@@ -549,24 +548,25 @@ impl CoordinationValidator {
         })
     }
 
-    async fn check_parallel_resources(&self, graph: &Graph, group: &[String]) -> Result<ResourceCheck> {
+    async fn check_parallel_resources(
+        &self,
+        graph: &Graph,
+        group: &[String],
+    ) -> Result<ResourceCheck> {
         // Parallel execution needs concurrent primals
         for node_id in group {
-            let node = graph
-                .nodes
-                .iter()
-                .find(|n| n.id == *node_id)
-                .context("Node not found")?;
+            let node = graph.nodes.iter().find(|n| n.id == *node_id).context("Node not found")?;
 
-            let primals = self
-                .service_registry
-                .discover_by_capability(&node.capability, None)
-                .await?;
+            let primals =
+                self.service_registry.discover_by_capability(&node.capability, None).await?;
 
             if primals.is_empty() {
                 return Ok(ResourceCheck {
                     feasible: false,
-                    reason: format!("No primal for capability '{}' in parallel group", node.capability),
+                    reason: format!(
+                        "No primal for capability '{}' in parallel group",
+                        node.capability
+                    ),
                 });
             }
 
@@ -574,7 +574,11 @@ impl CoordinationValidator {
             if primals.len() < group.len() {
                 return Ok(ResourceCheck {
                     feasible: true, // Still feasible, but not optimal
-                    reason: format!("Limited parallelism: {} primals for {} nodes", primals.len(), group.len()),
+                    reason: format!(
+                        "Limited parallelism: {} primals for {} nodes",
+                        primals.len(),
+                        group.len()
+                    ),
                 });
             }
         }
@@ -585,7 +589,11 @@ impl CoordinationValidator {
         })
     }
 
-    async fn check_mapreduce_resources(&self, graph: &Graph, map_nodes: &[String]) -> Result<ResourceCheck> {
+    async fn check_mapreduce_resources(
+        &self,
+        graph: &Graph,
+        map_nodes: &[String],
+    ) -> Result<ResourceCheck> {
         // Check resources for map phase (most demanding)
         self.check_parallel_resources(graph, map_nodes).await
     }
@@ -738,12 +746,36 @@ mod tests {
                 create_test_node("output", "output"),
             ],
             vec![
-                GraphEdge { from: "input".to_string(), to: "parallel1".to_string(), data_mapping: None },
-                GraphEdge { from: "input".to_string(), to: "parallel2".to_string(), data_mapping: None },
-                GraphEdge { from: "input".to_string(), to: "parallel3".to_string(), data_mapping: None },
-                GraphEdge { from: "parallel1".to_string(), to: "output".to_string(), data_mapping: None },
-                GraphEdge { from: "parallel2".to_string(), to: "output".to_string(), data_mapping: None },
-                GraphEdge { from: "parallel3".to_string(), to: "output".to_string(), data_mapping: None },
+                GraphEdge {
+                    from: "input".to_string(),
+                    to: "parallel1".to_string(),
+                    data_mapping: None,
+                },
+                GraphEdge {
+                    from: "input".to_string(),
+                    to: "parallel2".to_string(),
+                    data_mapping: None,
+                },
+                GraphEdge {
+                    from: "input".to_string(),
+                    to: "parallel3".to_string(),
+                    data_mapping: None,
+                },
+                GraphEdge {
+                    from: "parallel1".to_string(),
+                    to: "output".to_string(),
+                    data_mapping: None,
+                },
+                GraphEdge {
+                    from: "parallel2".to_string(),
+                    to: "output".to_string(),
+                    data_mapping: None,
+                },
+                GraphEdge {
+                    from: "parallel3".to_string(),
+                    to: "output".to_string(),
+                    data_mapping: None,
+                },
             ],
             GraphMetadata::default(),
         )
@@ -803,7 +835,11 @@ mod tests {
         let result = validator.validate_sequential(&graph).await.unwrap();
         // Should fail because no primals registered for capabilities
         // Resource check will detect missing primals and add error
-        assert!(!result.valid, "Expected validation to fail with no primals, but got: {:?}", result);
+        assert!(
+            !result.valid,
+            "Expected validation to fail with no primals, but got: {:?}",
+            result
+        );
     }
 
     #[tokio::test]
@@ -814,7 +850,10 @@ mod tests {
 
         let result = validator.validate_parallel(&graph).await.unwrap();
         // Should fail because no primals registered
-        assert!(!result.valid, "Expected validation to fail with no primals, but got: {:?}", result);
+        assert!(
+            !result.valid,
+            "Expected validation to fail with no primals, but got: {:?}",
+            result
+        );
     }
 }
-

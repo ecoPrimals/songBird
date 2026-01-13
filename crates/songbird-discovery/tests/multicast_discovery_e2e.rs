@@ -2,7 +2,7 @@
 //!
 //! Tests the full discovery flow with multicast and known peers
 
-use songbird_discovery::anonymous_discovery::{
+use songbird_discovery::anonymous::{
     AnonymousDiscoveryBroadcaster, AnonymousDiscoveryListener, TransportEndpointMessage,
 };
 use std::net::SocketAddr;

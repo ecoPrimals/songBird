@@ -626,20 +626,16 @@ impl IpcHandlers {
         params: Params<'_>,
     ) -> Result<crate::graph::AvailabilityReport, ErrorObject<'static>> {
         debug!("📊 IPC: graph.check_availability called");
-        
+
         let graph: crate::graph::Graph = params
             .one()
             .map_err(|e| ErrorObject::owned(-32602, "Invalid params", Some(format!("{}", e))))?;
-        
+
         info!("🔍 Checking availability for graph: {} ({})", graph.id, graph.name);
-        
-        let report = self
-            .availability_checker
-            .check_availability(&graph)
-            .await
-            .map_err(|e| {
-                ErrorObject::owned(-32603, "Availability check failed", Some(format!("{}", e)))
-            })?;
+
+        let report = self.availability_checker.check_availability(&graph).await.map_err(|e| {
+            ErrorObject::owned(-32603, "Availability check failed", Some(format!("{}", e)))
+        })?;
 
         if report.summary.availability_percent == 100.0 {
             info!(
@@ -667,29 +663,22 @@ impl IpcHandlers {
         params: Params<'_>,
     ) -> Result<crate::graph::AlternativeSuggestions, ErrorObject<'static>> {
         debug!("📊 IPC: graph.suggest_alternatives called");
-        
+
         let node: crate::graph::GraphNode = params
             .one()
             .map_err(|e| ErrorObject::owned(-32602, "Invalid params", Some(format!("{}", e))))?;
-        
+
         info!("🔍 Finding alternatives for node: {} (capability: {})", node.id, node.capability);
-        
-        let suggestions = self
-            .availability_checker
-            .suggest_alternatives(&node)
-            .await
-            .map_err(|e| {
+
+        let suggestions =
+            self.availability_checker.suggest_alternatives(&node).await.map_err(|e| {
                 ErrorObject::owned(-32603, "Alternative suggestion failed", Some(format!("{}", e)))
             })?;
 
         if suggestions.alternatives.is_empty() {
             warn!("⚠️  No alternatives found for node {}", node.id);
         } else {
-            info!(
-                "✅ Found {} alternatives for node {}",
-                suggestions.alternatives.len(),
-                node.id
-            );
+            info!("✅ Found {} alternatives for node {}", suggestions.alternatives.len(), node.id);
         }
 
         Ok(suggestions)
@@ -708,26 +697,19 @@ impl IpcHandlers {
         params: Params<'_>,
     ) -> Result<crate::graph::CoordinationValidationResult, ErrorObject<'static>> {
         debug!("📊 IPC: coordination.validate_pattern called");
-        
+
         let graph: crate::graph::Graph = params
             .one()
             .map_err(|e| ErrorObject::owned(-32602, "Invalid params", Some(format!("{}", e))))?;
-        
+
         info!("🔍 Validating coordination pattern for graph: {} ({})", graph.id, graph.name);
-        
-        let result = self
-            .coordination_validator
-            .validate_pattern(&graph)
-            .await
-            .map_err(|e| {
-                ErrorObject::owned(-32603, "Coordination validation failed", Some(format!("{}", e)))
-            })?;
+
+        let result = self.coordination_validator.validate_pattern(&graph).await.map_err(|e| {
+            ErrorObject::owned(-32603, "Coordination validation failed", Some(format!("{}", e)))
+        })?;
 
         if result.valid {
-            info!(
-                "✅ Graph {} coordination is valid (pattern: {:?})",
-                graph.id, result.pattern
-            );
+            info!("✅ Graph {} coordination is valid (pattern: {:?})", graph.id, result.pattern);
         } else {
             warn!(
                 "⚠️  Graph {} coordination has {} issues (pattern: {:?})",
@@ -787,7 +769,7 @@ impl IpcHandlers {
     /// These adapters bridge the gap between pure `serde_json::Value` params
     /// and the existing `jsonrpsee::Params` handlers. This allows us to reuse
     /// all existing handler logic without modification.
-    
+
     /// Service Registry: register_service (pure JSON adapter)
     pub async fn register_service_json(
         &self,
@@ -868,7 +850,9 @@ impl IpcHandlers {
                 ))
             })?;
 
-        let resp = DiscoverByCapabilityResponse { primals };
+        let resp = DiscoverByCapabilityResponse {
+            primals,
+        };
 
         serde_json::to_value(resp).map_err(|e| {
             crate::ipc::server_pure_rust::JsonRpcError::internal_error(format!(
@@ -897,11 +881,8 @@ impl IpcHandlers {
             }
         };
 
-        let (status, message) = self
-            .service_registry
-            .get_service_health(&request.service_id)
-            .await
-            .map_err(|e| {
+        let (status, message) =
+            self.service_registry.get_service_health(&request.service_id).await.map_err(|e| {
                 crate::ipc::server_pure_rust::JsonRpcError::internal_error(format!(
                     "Failed to get health: {}",
                     e
@@ -915,7 +896,9 @@ impl IpcHandlers {
             timestamp: system_time_to_iso8601(SystemTime::now()),
         };
 
-        let resp = GetServiceHealthResponse { health };
+        let resp = GetServiceHealthResponse {
+            health,
+        };
 
         serde_json::to_value(resp).map_err(|e| {
             crate::ipc::server_pure_rust::JsonRpcError::internal_error(format!(
@@ -936,7 +919,9 @@ impl IpcHandlers {
             timestamp: system_time_to_iso8601(SystemTime::now()),
         };
 
-        let resp = HealthCheckResponse { health };
+        let resp = HealthCheckResponse {
+            health,
+        };
 
         serde_json::to_value(resp).map_err(|e| {
             crate::ipc::server_pure_rust::JsonRpcError::internal_error(format!(
@@ -987,10 +972,7 @@ impl IpcHandlers {
                     .collect();
 
                 // Check if any requested family tag matches
-                let matches = request
-                    .family_tags
-                    .iter()
-                    .any(|tag| genetic_families.contains(tag));
+                let matches = request.family_tags.iter().any(|tag| genetic_families.contains(tag));
 
                 if matches {
                     Some(DiscoveredNode {
@@ -1047,8 +1029,8 @@ impl IpcHandlers {
             .establish_connection(
                 request.peer_node_id.clone(),
                 endpoint,
-                vec![], // capabilities
-                vec![], // peer_tags
+                vec![],               // capabilities
+                vec![],               // peer_tags
                 TrustLevel::Elevated, // Use Elevated trust for genetic tunnels (human-approved federation)
                 "genetic_lineage".to_string(),
             )
@@ -1161,16 +1143,12 @@ impl IpcHandlers {
             }
         };
 
-        let result = self
-            .availability_checker
-            .check_availability(&request)
-            .await
-            .map_err(|e| {
-                crate::ipc::server_pure_rust::JsonRpcError::internal_error(format!(
-                    "Availability check failed: {}",
-                    e
-                ))
-            })?;
+        let result = self.availability_checker.check_availability(&request).await.map_err(|e| {
+            crate::ipc::server_pure_rust::JsonRpcError::internal_error(format!(
+                "Availability check failed: {}",
+                e
+            ))
+        })?;
 
         serde_json::to_value(&result).map_err(|e| {
             crate::ipc::server_pure_rust::JsonRpcError::internal_error(format!(
@@ -1199,11 +1177,8 @@ impl IpcHandlers {
             }
         };
 
-        let result = self
-            .availability_checker
-            .suggest_alternatives(&request)
-            .await
-            .map_err(|e| {
+        let result =
+            self.availability_checker.suggest_alternatives(&request).await.map_err(|e| {
                 crate::ipc::server_pure_rust::JsonRpcError::internal_error(format!(
                     "Suggest alternatives failed: {}",
                     e
@@ -1237,16 +1212,12 @@ impl IpcHandlers {
             }
         };
 
-        let result = self
-            .coordination_validator
-            .validate_pattern(&request)
-            .await
-            .map_err(|e| {
-                crate::ipc::server_pure_rust::JsonRpcError::internal_error(format!(
-                    "Coordination validation failed: {}",
-                    e
-                ))
-            })?;
+        let result = self.coordination_validator.validate_pattern(&request).await.map_err(|e| {
+            crate::ipc::server_pure_rust::JsonRpcError::internal_error(format!(
+                "Coordination validation failed: {}",
+                e
+            ))
+        })?;
 
         serde_json::to_value(&result).map_err(|e| {
             crate::ipc::server_pure_rust::JsonRpcError::internal_error(format!(

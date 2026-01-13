@@ -29,9 +29,7 @@ async fn test_e2e_sequential_pattern_validation() {
     let validator = CoordinationValidator::new(registry.clone());
 
     // Register primals for each stage of the sequential workflow
-    for (i, capability) in ["data-ingestion", "data-processing", "data-storage"]
-        .iter()
-        .enumerate()
+    for (i, capability) in ["data-ingestion", "data-processing", "data-storage"].iter().enumerate()
     {
         let primal_name = format!("Worker{}", i + 1);
         let service_id = registry
@@ -46,10 +44,7 @@ async fn test_e2e_sequential_pattern_validation() {
             .unwrap();
 
         // Mark as healthy
-        registry
-            .update_health(&service_id, "healthy".to_string())
-            .await
-            .unwrap();
+        registry.update_health(&service_id, "healthy".to_string()).await.unwrap();
     }
 
     // Step 2: Create a sequential data processing graph
@@ -81,10 +76,7 @@ async fn test_e2e_sequential_pattern_validation() {
 
     // Step 4: Verify results
     assert_eq!(result.pattern, CoordinationPattern::Sequential);
-    assert!(
-        result.valid,
-        "Sequential pattern should be valid with all primals available"
-    );
+    assert!(result.valid, "Sequential pattern should be valid with all primals available");
     assert!(result.issues.is_empty(), "Should have no issues");
 }
 
@@ -105,10 +97,7 @@ async fn test_e2e_parallel_pattern_validation() {
         )
         .await
         .unwrap();
-    registry
-        .update_health(&input_id, "healthy".to_string())
-        .await
-        .unwrap();
+    registry.update_health(&input_id, "healthy".to_string()).await.unwrap();
 
     // Register 3 parallel compute workers
     for i in 1..=3 {
@@ -122,10 +111,7 @@ async fn test_e2e_parallel_pattern_validation() {
             )
             .await
             .unwrap();
-        registry
-            .update_health(&service_id, "healthy".to_string())
-            .await
-            .unwrap();
+        registry.update_health(&service_id, "healthy".to_string()).await.unwrap();
     }
 
     // Register output aggregator
@@ -139,10 +125,7 @@ async fn test_e2e_parallel_pattern_validation() {
         )
         .await
         .unwrap();
-    registry
-        .update_health(&output_id, "healthy".to_string())
-        .await
-        .unwrap();
+    registry.update_health(&output_id, "healthy".to_string()).await.unwrap();
 
     // Step 2: Create a parallel computation graph (MapReduce pattern)
     let graph = Graph::new(
@@ -195,10 +178,7 @@ async fn test_e2e_parallel_pattern_validation() {
 
     // Step 4: Verify results
     assert_eq!(result.pattern, CoordinationPattern::MapReduce);
-    assert!(
-        result.valid,
-        "MapReduce pattern should be valid with sufficient primals"
-    );
+    assert!(result.valid, "MapReduce pattern should be valid with sufficient primals");
 }
 
 #[tokio::test]
@@ -218,10 +198,7 @@ async fn test_e2e_insufficient_resources_for_parallel() {
         )
         .await
         .unwrap();
-    registry
-        .update_health(&input_id, "healthy".to_string())
-        .await
-        .unwrap();
+    registry.update_health(&input_id, "healthy".to_string()).await.unwrap();
 
     // Register only 1 compute worker (insufficient for 3 parallel tasks)
     let compute_id = registry
@@ -234,10 +211,7 @@ async fn test_e2e_insufficient_resources_for_parallel() {
         )
         .await
         .unwrap();
-    registry
-        .update_health(&compute_id, "healthy".to_string())
-        .await
-        .unwrap();
+    registry.update_health(&compute_id, "healthy".to_string()).await.unwrap();
 
     // Register output aggregator
     let output_id = registry
@@ -250,10 +224,7 @@ async fn test_e2e_insufficient_resources_for_parallel() {
         )
         .await
         .unwrap();
-    registry
-        .update_health(&output_id, "healthy".to_string())
-        .await
-        .unwrap();
+    registry.update_health(&output_id, "healthy".to_string()).await.unwrap();
 
     // Step 2: Create a parallel graph requiring 3 workers
     let graph = Graph::new(
@@ -328,10 +299,7 @@ async fn test_e2e_missing_capability_for_coordination() {
         )
         .await
         .unwrap();
-    registry
-        .update_health(&input_id, "healthy".to_string())
-        .await
-        .unwrap();
+    registry.update_health(&input_id, "healthy".to_string()).await.unwrap();
 
     // Step 2: Create a sequential graph requiring missing capabilities
     let graph = Graph::new(
@@ -362,23 +330,12 @@ async fn test_e2e_missing_capability_for_coordination() {
 
     // Step 4: Verify results
     assert_eq!(result.pattern, CoordinationPattern::Sequential);
-    assert!(
-        !result.valid,
-        "Should be invalid due to missing capabilities"
-    );
-    assert!(
-        !result.issues.is_empty(),
-        "Should have issues about missing primals"
-    );
+    assert!(!result.valid, "Should be invalid due to missing capabilities");
+    assert!(!result.issues.is_empty(), "Should have issues about missing primals");
 
     // Check that issues mention the missing capabilities
     let issue_messages: Vec<_> = result.issues.iter().map(|i| &i.message).collect();
-    let has_compute_issue = issue_messages
-        .iter()
-        .any(|msg| msg.contains("compute") || msg.contains("capability"));
-    assert!(
-        has_compute_issue,
-        "Should have issue about missing compute capability"
-    );
+    let has_compute_issue =
+        issue_messages.iter().any(|msg| msg.contains("compute") || msg.contains("capability"));
+    assert!(has_compute_issue, "Should have issue about missing compute capability");
 }
-

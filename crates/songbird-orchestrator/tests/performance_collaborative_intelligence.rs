@@ -63,11 +63,7 @@ async fn benchmark_graph_validation() {
 
     assert!(result.valid, "Graph should be valid");
     println!("✅ graph.validate: {:?} (target: < 50ms)", duration);
-    assert!(
-        duration.as_millis() < 50,
-        "Validation took {:?}, expected < 50ms",
-        duration
-    );
+    assert!(duration.as_millis() < 50, "Validation took {:?}, expected < 50ms", duration);
 }
 
 #[tokio::test]
@@ -93,15 +89,8 @@ async fn benchmark_availability_checking() {
     let _result = checker.check_availability(&graph).await.unwrap();
     let duration = start.elapsed();
 
-    println!(
-        "✅ graph.check_availability: {:?} (target: < 50ms)",
-        duration
-    );
-    assert!(
-        duration.as_millis() < 50,
-        "Availability check took {:?}, expected < 50ms",
-        duration
-    );
+    println!("✅ graph.check_availability: {:?} (target: < 50ms)", duration);
+    assert!(duration.as_millis() < 50, "Availability check took {:?}, expected < 50ms", duration);
 }
 
 #[tokio::test]
@@ -138,10 +127,7 @@ async fn benchmark_alternative_suggestions() {
     let _result = checker.suggest_alternatives(&node).await.unwrap();
     let duration = start.elapsed();
 
-    println!(
-        "✅ graph.suggest_alternatives: {:?} (target: < 30ms)",
-        duration
-    );
+    println!("✅ graph.suggest_alternatives: {:?} (target: < 30ms)", duration);
     assert!(
         duration.as_millis() < 30,
         "Alternative suggestion took {:?}, expected < 30ms",
@@ -173,10 +159,7 @@ async fn benchmark_coordination_validation() {
     let duration = start.elapsed();
 
     assert!(result.valid, "Coordination should be valid");
-    println!(
-        "✅ coordination.validate_pattern: {:?} (target: < 100ms)",
-        duration
-    );
+    println!("✅ coordination.validate_pattern: {:?} (target: < 100ms)", duration);
     assert!(
         duration.as_millis() < 100,
         "Coordination validation took {:?}, expected < 100ms",
@@ -270,14 +253,6 @@ async fn benchmark_full_validation_workflow() {
 
     let duration = start.elapsed();
 
-    println!(
-        "✅ Full validation workflow: {:?} (target: < 200ms)",
-        duration
-    );
-    assert!(
-        duration.as_millis() < 200,
-        "Full workflow took {:?}, expected < 200ms",
-        duration
-    );
+    println!("✅ Full validation workflow: {:?} (target: < 200ms)", duration);
+    assert!(duration.as_millis() < 200, "Full workflow took {:?}, expected < 200ms", duration);
 }
-

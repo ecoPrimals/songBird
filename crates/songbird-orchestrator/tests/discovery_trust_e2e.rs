@@ -6,7 +6,7 @@
 //! 3. Trust evaluation performed
 //! 4. Peer accepted/rejected based on decision
 
-use songbird_discovery::anonymous_discovery::AnonymousDiscoveryMessage;
+use songbird_discovery::anonymous::AnonymousDiscoveryMessage;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 /// Test: Discovery message with tags

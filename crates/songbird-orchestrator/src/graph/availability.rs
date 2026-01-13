@@ -55,7 +55,9 @@ pub struct AvailabilityChecker {
 impl AvailabilityChecker {
     /// Create a new availability checker
     pub fn new(service_registry: Arc<ServiceRegistry>) -> Self {
-        Self { service_registry }
+        Self {
+            service_registry,
+        }
     }
 
     /// Check availability of all nodes in a graph
@@ -130,18 +132,12 @@ impl AvailabilityChecker {
 
     /// Check availability of a single node
     async fn check_node_availability(&self, node: &GraphNode) -> Result<NodeAvailability> {
-        debug!(
-            "Checking availability for node {} (capability: {})",
-            node.id, node.capability
-        );
+        debug!("Checking availability for node {} (capability: {})", node.id, node.capability);
 
         // Query service registry for primals with this capability
         // NOTE: We pass None for protocol to get all primals with the capability,
         // then filter/rank by protocol preference ourselves
-        let primals = self
-            .service_registry
-            .discover_by_capability(&node.capability, None)
-            .await?;
+        let primals = self.service_registry.discover_by_capability(&node.capability, None).await?;
 
         if primals.is_empty() {
             // No primal registered with this capability
@@ -154,10 +150,7 @@ impl AvailabilityChecker {
                 health_status: None,
                 last_seen: None,
                 required_capability: Some(node.capability.clone()),
-                reason: Some(format!(
-                    "No primal registered with capability '{}'",
-                    node.capability
-                )),
+                reason: Some(format!("No primal registered with capability '{}'", node.capability)),
                 suggested_action: Some(format!(
                     "Register a primal with capability '{}' or use an alternative capability",
                     node.capability
@@ -166,19 +159,18 @@ impl AvailabilityChecker {
         }
 
         // Filter by protocol preference if specified
-        let preferred_primals: Vec<_> = if let Some(ref preferred_protocol) = node.preferred_protocol {
-            primals
-                .iter()
-                .filter(|p| p.protocol == *preferred_protocol)
-                .collect()
-        } else {
-            primals.iter().collect()
-        };
+        let preferred_primals: Vec<_> =
+            if let Some(ref preferred_protocol) = node.preferred_protocol {
+                primals.iter().filter(|p| p.protocol == *preferred_protocol).collect()
+            } else {
+                primals.iter().collect()
+            };
 
         // Choose the best primal (prefer preferred protocol and healthy status)
         // NOTE: "unknown" health status is treated as available (newly registered service)
-        let is_available = |p: &PrimalEndpoint| p.health_status == "healthy" || p.health_status == "unknown";
-        
+        let is_available =
+            |p: &PrimalEndpoint| p.health_status == "healthy" || p.health_status == "unknown";
+
         let best_primal = if !preferred_primals.is_empty() {
             preferred_primals
                 .iter()
@@ -186,10 +178,7 @@ impl AvailabilityChecker {
                 .or_else(|| preferred_primals.first())
                 .copied()
         } else {
-            primals
-                .iter()
-                .find(|p| is_available(p))
-                .or_else(|| primals.first())
+            primals.iter().find(|p| is_available(p)).or_else(|| primals.first())
         };
 
         if let Some(primal) = best_primal {
@@ -236,16 +225,10 @@ impl AvailabilityChecker {
     /// 2. Protocol compatibility (exact match > compatible > incompatible)
     /// 3. Last seen timestamp (more recent = better)
     pub async fn suggest_alternatives(&self, node: &GraphNode) -> Result<AlternativeSuggestions> {
-        debug!(
-            "Finding alternatives for node {} (capability: {})",
-            node.id, node.capability
-        );
+        debug!("Finding alternatives for node {} (capability: {})", node.id, node.capability);
 
         // Query service registry for all primals with this capability
-        let primals = self
-            .service_registry
-            .discover_by_capability(&node.capability, None)
-            .await?;
+        let primals = self.service_registry.discover_by_capability(&node.capability, None).await?;
 
         if primals.is_empty() {
             return Ok(AlternativeSuggestions {
@@ -371,12 +354,7 @@ impl AvailabilityChecker {
         // Capability match
         let capability_reason = format!("capability '{}'", node.capability);
 
-        format!(
-            "{}, {} (score: {})",
-            reasons.join(", "),
-            capability_reason,
-            score
-        )
+        format!("{}, {} (score: {})", reasons.join(", "), capability_reason, score)
     }
 }
 
@@ -677,15 +655,9 @@ mod tests {
             .unwrap();
 
         // Mark one as healthy and one as degraded (use actual service IDs)
-        registry
-            .update_health(&healthy_service_id, "healthy".to_string())
-            .await
-            .unwrap();
-        
-        registry
-            .update_health(&degraded_service_id, "degraded".to_string())
-            .await
-            .unwrap();
+        registry.update_health(&healthy_service_id, "healthy".to_string()).await.unwrap();
+
+        registry.update_health(&degraded_service_id, "degraded".to_string()).await.unwrap();
 
         let node = create_test_node("node-1", "encryption", Some("json-rpc"));
         let suggestions = checker.suggest_alternatives(&node).await.unwrap();
@@ -694,7 +666,10 @@ mod tests {
         // Healthy primal should rank first
         assert_eq!(suggestions.alternatives[0].rank, 1);
         assert!(suggestions.alternatives[0].primal_name.contains("Healthy"));
-        assert!(suggestions.alternatives[0].compatibility_score > suggestions.alternatives[1].compatibility_score);
+        assert!(
+            suggestions.alternatives[0].compatibility_score
+                > suggestions.alternatives[1].compatibility_score
+        );
     }
 
     #[tokio::test]
@@ -715,10 +690,7 @@ mod tests {
             .unwrap();
 
         // Mark it as down
-        registry
-            .update_health(&service_id, "down".to_string())
-            .await
-            .unwrap();
+        registry.update_health(&service_id, "down".to_string()).await.unwrap();
 
         let node = create_test_node("node-1", "encryption", None);
         let report = checker.check_node_availability(&node).await.unwrap();
@@ -746,10 +718,7 @@ mod tests {
             .unwrap();
 
         // Mark it as degraded
-        registry
-            .update_health(&service_id, "degraded".to_string())
-            .await
-            .unwrap();
+        registry.update_health(&service_id, "degraded".to_string()).await.unwrap();
 
         let node = create_test_node("node-1", "encryption", None);
         let report = checker.check_node_availability(&node).await.unwrap();
@@ -789,31 +758,21 @@ mod tests {
         assert_eq!(report1.summary.availability_percent, 100.0);
 
         // Mark as healthy
-        registry
-            .update_health(&service_id, "healthy".to_string())
-            .await
-            .unwrap();
+        registry.update_health(&service_id, "healthy".to_string()).await.unwrap();
         let report2 = checker.check_availability(&graph).await.unwrap();
         assert_eq!(report2.summary.availability_percent, 100.0);
 
         // Mark as degraded
-        registry
-            .update_health(&service_id, "degraded".to_string())
-            .await
-            .unwrap();
+        registry.update_health(&service_id, "degraded".to_string()).await.unwrap();
         let report3 = checker.check_availability(&graph).await.unwrap();
         assert_eq!(report3.available.len(), 0);
         assert_eq!(report3.degraded.len(), 1);
 
         // Mark as down
-        registry
-            .update_health(&service_id, "down".to_string())
-            .await
-            .unwrap();
+        registry.update_health(&service_id, "down".to_string()).await.unwrap();
         let report4 = checker.check_availability(&graph).await.unwrap();
         assert_eq!(report4.available.len(), 0);
         assert_eq!(report4.unhealthy.len(), 1);
         assert_eq!(report4.summary.availability_percent, 0.0);
     }
 }
-

@@ -8,7 +8,7 @@ mod common;
 use common::sync_helpers::*;
 
 use anyhow::Result;
-use songbird_discovery::anonymous_discovery::AnonymousDiscoveryListener;
+use songbird_discovery::anonymous::AnonymousDiscoveryListener;
 use songbird_network_federation::state::{FederationState, NodeStatus};
 use songbird_orchestrator::trust::{TrustEscalationManager, TrustLevel, TrustTimeouts};
 use std::sync::Arc;
