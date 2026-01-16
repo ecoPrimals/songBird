@@ -15,16 +15,16 @@ pub struct BtspConfig {
     /// Enable BTSP encryption
     pub enabled: bool,
 
-    /// BearDog discovery method (capability-based, not hardcoded)
+    /// `BearDog` discovery method (capability-based, not hardcoded)
     pub discovery_method: DiscoveryMethod,
 
-    /// Capability to discover BearDog service
+    /// Capability to discover `BearDog` service
     pub security_capability: String,
 
-    /// Fallback to local implementation if BearDog unavailable
+    /// Fallback to local implementation if `BearDog` unavailable
     pub local_fallback: bool,
 
-    /// Genetic auth enabled (requires BearDog)
+    /// Genetic auth enabled (requires `BearDog`)
     pub genetic_auth: bool,
 
     /// Key lineage tracking
@@ -77,7 +77,7 @@ pub struct PeerInfo {
 /// This trait defines the interface for all BTSP implementations.
 /// Implementations can be:
 /// - Local (for testing)
-/// - BearDog (real genetic crypto)
+/// - `BearDog` (real genetic crypto)
 /// - Mock (for unit tests)
 #[async_trait]
 pub trait BtspProvider: Send + Sync {
@@ -113,6 +113,7 @@ pub struct BtspProviderFactory {
 
 impl BtspProviderFactory {
     /// Create a new factory with configuration
+    #[must_use] 
     pub fn new(config: BtspConfig) -> Self {
         Self {
             config,
@@ -121,8 +122,8 @@ impl BtspProviderFactory {
 
     /// Create BTSP provider based on runtime discovery
     ///
-    /// This method discovers BearDog via capability system at runtime.
-    /// If BearDog is not available and local_fallback is enabled, returns
+    /// This method discovers `BearDog` via capability system at runtime.
+    /// If `BearDog` is not available and `local_fallback` is enabled, returns
     /// local implementation.
     pub async fn create_provider(&self) -> SongbirdResult<Arc<dyn BtspProvider>> {
         if !self.config.enabled {
@@ -175,7 +176,7 @@ impl BtspProviderFactory {
 
         // Strategy 3: Try well-known local ports (localhost only for security)
         for port in [9000, 9001, 9002] {
-            let endpoint = format!("https://localhost:{}", port);
+            let endpoint = format!("https://localhost:{port}");
             if self.probe_security_provider_endpoint(&endpoint).await.is_ok() {
                 debug!("✅ Found security provider via probe: {}", endpoint);
                 return self.connect_to_security_provider(&endpoint).await;
@@ -194,14 +195,14 @@ impl BtspProviderFactory {
     ///
     /// **Capability-Based Discovery**: Queries for "security" capability,
     /// not hardcoded primal name. Any primal providing security with BTSP
-    /// support will be discovered (BearDog, future alternatives, etc.)
+    /// support will be discovered (`BearDog`, future alternatives, etc.)
     async fn query_local_upa_for_security_provider(&self) -> SongbirdResult<Option<String>> {
         // Query localhost:8080 (local Songbird UPA)
         let client = reqwest::Client::builder()
             .danger_accept_invalid_certs(true) // Self-signed certs OK on localhost
             .timeout(std::time::Duration::from_secs(2))
             .build()
-            .map_err(|e| SongbirdError::network(format!("HTTP client creation failed: {}", e)))?;
+            .map_err(|e| SongbirdError::network(format!("HTTP client creation failed: {e}")))?;
 
         let url = "https://localhost:8080/api/v1/services/query/security";
 
@@ -217,14 +218,13 @@ impl BtspProviderFactory {
                             let has_btsp = capabilities.iter().any(|cap| {
                                 cap.get("name")
                                     .and_then(|n| n.as_str())
-                                    .map(|name| {
+                                    .is_some_and(|name| {
                                         name == "btsp" || name == "lineage" || name == "birdsong"
                                     })
-                                    .unwrap_or(false)
                             });
 
                             if has_btsp {
-                                if let Some(port) = service.get("port").and_then(|p| p.as_u64()) {
+                                if let Some(port) = service.get("port").and_then(serde_json::Value::as_u64) {
                                     let primal_name = service
                                         .get("primal_name")
                                         .and_then(|n| n.as_str())
@@ -233,7 +233,7 @@ impl BtspProviderFactory {
                                         "🔍 Discovered security provider '{}' with BTSP support",
                                         primal_name
                                     );
-                                    return Ok(Some(format!("https://localhost:{}", port)));
+                                    return Ok(Some(format!("https://localhost:{port}")));
                                 }
                             }
                         }
@@ -255,10 +255,10 @@ impl BtspProviderFactory {
             .danger_accept_invalid_certs(true)
             .timeout(std::time::Duration::from_millis(500))
             .build()
-            .map_err(|e| SongbirdError::network(format!("HTTP client creation failed: {}", e)))?;
+            .map_err(|e| SongbirdError::network(format!("HTTP client creation failed: {e}")))?;
 
         // Try to hit a health endpoint
-        let url = format!("{}/health", endpoint);
+        let url = format!("{endpoint}/health");
 
         match client.get(&url).send().await {
             Ok(response) if response.status().is_success() => Ok(()),
@@ -269,7 +269,7 @@ impl BtspProviderFactory {
     /// Connect to security provider at discovered endpoint
     ///
     /// **Capability-Based**: Works with ANY primal implementing the BTSP API,
-    /// not just BearDog. The provider self-identifies through UPA registration.
+    /// not just `BearDog`. The provider self-identifies through UPA registration.
     async fn connect_to_security_provider(
         &self,
         endpoint: &str,

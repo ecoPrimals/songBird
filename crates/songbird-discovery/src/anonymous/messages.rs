@@ -58,7 +58,7 @@ pub struct AnonymousDiscoveryMessage {
 
     /// All transport endpoints for this node (v3.0+)
     ///
-    /// Each endpoint represents a different network interface (Ethernet, WiFi, etc.)
+    /// Each endpoint represents a different network interface (Ethernet, `WiFi`, etc.)
     /// with its own address and capabilities.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub endpoints: Option<Vec<TransportEndpointMessage>>,
@@ -85,18 +85,18 @@ pub struct AnonymousDiscoveryMessage {
 
     /// Generic tags (NEW - for USB seed integration)
     ///
-    /// Contains BearDog encryption tags and other metadata for trust evaluation.
+    /// Contains `BearDog` encryption tags and other metadata for trust evaluation.
     /// Songbird doesn't parse these - just passes them to the security provider.
     ///
     /// Examples:
-    /// - BearDog lineage: `"beardog:family:a3f2:tower1"`
+    /// - `BearDog` lineage: `"beardog:family:a3f2:tower1"`
     /// - Protocol support: `"btsp_enabled"`, `"birdsong_v2"`
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub tags: Option<Vec<String>>,
 
     /// Identity attestations (CRITICAL FIX - Jan 3, 2026)
     ///
-    /// Structured identity information from security providers (e.g., BearDog, ToadStool).
+    /// Structured identity information from security providers (e.g., `BearDog`, `ToadStool`).
     /// Enables genetic lineage auto-trust and provider-agnostic authentication.
     ///
     /// MUST be included for federation to work with genetic lineage!
@@ -211,6 +211,7 @@ impl AnonymousDiscoveryMessage {
         self
     }
 
+    #[must_use] 
     pub fn with_identity_attestations(
         mut self,
         attestations: Vec<crate::IdentityAttestation>,

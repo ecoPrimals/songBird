@@ -36,8 +36,8 @@ impl FederationState {
     /// Add or update a node registration
     ///
     /// **Identity-Based Routing (Dec 20, 2025)**:
-    /// - If node_id already exists, merge endpoints instead of replacing
-    /// - This enables multi-interface coalescence (Ethernet + WiFi = 1 node)
+    /// - If `node_id` already exists, merge endpoints instead of replacing
+    /// - This enables multi-interface coalescence (Ethernet + `WiFi` = 1 node)
     /// - Multiple Songbird subsystems per tower can coexist
     pub async fn register_node(&self, registration: NodeRegistration) {
         let mut nodes = self.nodes.write().await;
@@ -64,7 +64,7 @@ impl FederationState {
                     "✅ Added {} endpoint(s) to '{}' (total: {})",
                     1,
                     existing.node_name,
-                    existing.endpoints.as_ref().map_or(0, |e| e.len())
+                    existing.endpoints.as_ref().map_or(0, std::vec::Vec::len)
                 );
             }
 
@@ -198,7 +198,7 @@ impl FederationState {
     /// **Routing Strategy**:
     /// 1. Prefer endpoints marked as active
     /// 2. Sort by preference value (highest first)
-    /// 3. Fall back to primary node_address if no endpoints
+    /// 3. Fall back to primary `node_address` if no endpoints
     pub async fn get_best_endpoint(&self, node_id: &str) -> Option<String> {
         let nodes = self.nodes.read().await;
         let node = nodes.get(node_id)?;
@@ -259,8 +259,8 @@ pub struct NodeRegistration {
 
     /// All transport endpoints for this node (v3.0+)
     ///
-    /// Each endpoint represents a different network interface (Ethernet, WiFi, etc.)
-    /// For backward compatibility, this is optional. If None, use node_address.
+    /// Each endpoint represents a different network interface (Ethernet, `WiFi`, etc.)
+    /// For backward compatibility, this is optional. If None, use `node_address`.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub endpoints: Option<Vec<TransportEndpointInfo>>,
 
@@ -345,6 +345,7 @@ impl NodeRegistration {
     }
 
     /// Get preferred endpoint (highest preference and active)
+    #[must_use] 
     pub fn preferred_endpoint(&self) -> Option<&TransportEndpointInfo> {
         self.endpoints
             .as_ref()?
@@ -354,6 +355,7 @@ impl NodeRegistration {
     }
 
     /// Get all active endpoints
+    #[must_use] 
     pub fn active_endpoints(&self) -> Vec<&TransportEndpointInfo> {
         self.endpoints
             .as_ref()

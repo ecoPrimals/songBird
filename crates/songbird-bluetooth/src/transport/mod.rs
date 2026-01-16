@@ -150,21 +150,21 @@ impl TransportConfig {
 
     /// Set vendor ID (for USB filtering)
     #[must_use]
-    pub fn with_vendor_id(mut self, vid: u16) -> Self {
+    pub const fn with_vendor_id(mut self, vid: u16) -> Self {
         self.vendor_id = Some(vid);
         self
     }
 
     /// Set product ID (for USB filtering)
     #[must_use]
-    pub fn with_product_id(mut self, pid: u16) -> Self {
+    pub const fn with_product_id(mut self, pid: u16) -> Self {
         self.product_id = Some(pid);
         self
     }
 
     /// Set baud rate (for UART)
     #[must_use]
-    pub fn with_baud_rate(mut self, baud: u32) -> Self {
+    pub const fn with_baud_rate(mut self, baud: u32) -> Self {
         self.baud_rate = Some(baud);
         self
     }

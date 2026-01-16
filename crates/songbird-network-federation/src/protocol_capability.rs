@@ -19,7 +19,7 @@ pub enum Protocol {
     JsonRpc,
     /// High-performance binary RPC
     Tarpc,
-    /// BearDog Secure Tunnel Protocol
+    /// `BearDog` Secure Tunnel Protocol
     Btsp,
     /// WebSocket
     WebSocket,
@@ -29,42 +29,46 @@ pub enum Protocol {
 
 impl Protocol {
     /// Get protocol name
+    #[must_use] 
     pub fn name(&self) -> &'static str {
         match self {
-            Protocol::Http => "HTTP",
-            Protocol::Https => "HTTPS",
-            Protocol::JsonRpc => "JSON-RPC",
-            Protocol::Tarpc => "tarpc",
-            Protocol::Btsp => "BTSP",
-            Protocol::WebSocket => "WebSocket",
-            Protocol::WebSocketSecure => "WebSocket/TLS",
+            Self::Http => "HTTP",
+            Self::Https => "HTTPS",
+            Self::JsonRpc => "JSON-RPC",
+            Self::Tarpc => "tarpc",
+            Self::Btsp => "BTSP",
+            Self::WebSocket => "WebSocket",
+            Self::WebSocketSecure => "WebSocket/TLS",
         }
     }
 
     /// Get protocol performance tier (higher is better)
+    #[must_use] 
     pub fn performance_tier(&self) -> u8 {
         match self {
-            Protocol::Tarpc => 5, // Highest performance
-            Protocol::Btsp => 4,  // High performance + security
-            Protocol::WebSocketSecure => 3,
-            Protocol::JsonRpc => 2,
-            Protocol::Https => 2,
-            Protocol::WebSocket => 1,
-            Protocol::Http => 1, // Lowest (unencrypted)
+            Self::Tarpc => 5, // Highest performance
+            Self::Btsp => 4,  // High performance + security
+            Self::WebSocketSecure => 3,
+            Self::JsonRpc => 2,
+            Self::Https => 2,
+            Self::WebSocket => 1,
+            Self::Http => 1, // Lowest (unencrypted)
         }
     }
 
     /// Check if protocol is encrypted
+    #[must_use] 
     pub fn is_encrypted(&self) -> bool {
         matches!(
             self,
-            Protocol::Https | Protocol::Btsp | Protocol::WebSocketSecure | Protocol::Tarpc // tarpc can use TLS
+            Self::Https | Self::Btsp | Self::WebSocketSecure | Self::Tarpc // tarpc can use TLS
         )
     }
 
     /// Check if protocol is recommended for production
+    #[must_use] 
     pub fn is_production_ready(&self) -> bool {
-        !matches!(self, Protocol::Http | Protocol::WebSocket)
+        !matches!(self, Self::Http | Self::WebSocket)
     }
 }
 
@@ -124,6 +128,7 @@ pub struct TowerCapabilities {
 
 impl TowerCapabilities {
     /// Create new tower capabilities
+    #[must_use] 
     pub fn new(tower_id: String, endpoint: String) -> Self {
         Self {
             tower_id,
@@ -145,6 +150,7 @@ impl TowerCapabilities {
     }
 
     /// Get best protocol for communication
+    #[must_use] 
     pub fn best_protocol(&self) -> Option<&ProtocolCapability> {
         self.protocols
             .iter()
@@ -153,6 +159,7 @@ impl TowerCapabilities {
     }
 
     /// Get best encrypted protocol
+    #[must_use] 
     pub fn best_encrypted_protocol(&self) -> Option<&ProtocolCapability> {
         self.protocols
             .iter()
@@ -161,6 +168,7 @@ impl TowerCapabilities {
     }
 
     /// Check if protocol is supported
+    #[must_use] 
     pub fn supports_protocol(&self, protocol: &Protocol) -> bool {
         self.protocols.iter().any(|p| &p.protocol == protocol && p.status == ProtocolStatus::Active)
     }
@@ -177,6 +185,7 @@ pub struct ProtocolCapabilityManager {
 
 impl ProtocolCapabilityManager {
     /// Create new manager
+    #[must_use] 
     pub fn new(tower_id: String, endpoint: String) -> Self {
         Self {
             local_capabilities: Arc::new(RwLock::new(TowerCapabilities::new(tower_id, endpoint))),

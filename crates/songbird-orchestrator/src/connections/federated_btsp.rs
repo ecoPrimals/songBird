@@ -209,7 +209,7 @@ impl PeerConnection for FederatedBtspConnection {
         &self.peer_id
     }
 
-    fn endpoint(&self) -> &str {
+    fn endpoint(&self) -> &'static str {
         "btsp://<encrypted-tunnel>"
     }
 

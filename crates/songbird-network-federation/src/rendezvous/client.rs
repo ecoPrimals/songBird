@@ -192,15 +192,15 @@ impl RendezvousClient {
         }
     }
 
-    /// Get public key fingerprint from BearDog or generate placeholder
+    /// Get public key fingerprint from `BearDog` or generate placeholder
     ///
-    /// In production, this would fetch the actual public key from the BearDog
+    /// In production, this would fetch the actual public key from the `BearDog`
     /// security service and compute its SHA-256 fingerprint.
     async fn get_public_key_fingerprint(&self) -> String {
         // Try to get from BearDog security service
         if let Ok(beardog_url) = std::env::var("BEARDOG_ENDPOINT") {
             // Attempt to fetch public key
-            match self.client.get(format!("{}/api/v1/public-key", beardog_url)).send().await {
+            match self.client.get(format!("{beardog_url}/api/v1/public-key")).send().await {
                 Ok(response) if response.status().is_success() => {
                     if let Ok(key_data) = response.bytes().await {
                         // Compute SHA-256 fingerprint
@@ -225,9 +225,9 @@ impl RendezvousClient {
         }
     }
 
-    /// Sign registration message with BearDog or return None
+    /// Sign registration message with `BearDog` or return None
     ///
-    /// In production, this would use the BearDog security service to
+    /// In production, this would use the `BearDog` security service to
     /// cryptographically sign the registration message.
     async fn sign_message_for_registration(&self) -> Option<String> {
         // Try to sign with BearDog security service

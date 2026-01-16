@@ -172,7 +172,7 @@ impl PeerConnection for FullTrustBtspConnection {
         &self.peer_id
     }
 
-    fn endpoint(&self) -> &str {
+    fn endpoint(&self) -> &'static str {
         "btsp://<encrypted-tunnel>"
     }
 

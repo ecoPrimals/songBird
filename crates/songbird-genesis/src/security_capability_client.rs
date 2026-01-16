@@ -237,7 +237,7 @@ impl SecurityCapabilityClient {
                 "🐻 Using default BearDog endpoint (development only): {}",
                 default_endpoint
             );
-            return Ok(default_endpoint);
+            Ok(default_endpoint)
         }
 
         #[cfg(not(debug_assertions))]

@@ -34,7 +34,7 @@ pub struct EvaluatorInfo {
 }
 
 /// Identity attestation from a security provider
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct IdentityAttestation {
     /// Optional hint about which provider issued this
     #[serde(skip_serializing_if = "Option::is_none")]

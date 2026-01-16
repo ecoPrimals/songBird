@@ -1,9 +1,22 @@
 //! Token generation and validation
+//!
+//! Uses jsonwebtoken (ring-based, no cmake) - Will migrate to RustCrypto Ed25519 in Week 2
 
 use super::Role;
 use anyhow::{anyhow, Result};
-use jsonwebtoken::{decode, encode, Algorithm, DecodingKey, EncodingKey, Header, Validation};
+use jsonwebtoken::{decode, encode, DecodingKey, EncodingKey, Header, Validation};
 use serde::{Deserialize, Serialize};
+
+/// Custom claims for our JWT
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Claims {
+    pub sub: String,      // Subject
+    pub iat: i64,         // Issued at
+    pub exp: i64,         // Expiry
+    #[serde(flatten)]
+    pub role: Role,
+    pub token_type: TokenType,
+}
 
 /// Access token (JWT in standalone mode)
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -147,29 +160,57 @@ impl AccessToken {
         }
     }
 
-    /// Encode as JWT string
+    /// Encode as JWT string (using jsonwebtoken with ring - no cmake!)
     pub fn encode(&self, secret: &[u8]) -> Result<String> {
-        let header = Header::new(Algorithm::HS256);
-        let key = EncodingKey::from_secret(secret);
+        let claims = Claims {
+            sub: self.sub.clone(),
+            iat: self.iat,
+            exp: self.exp,
+            role: self.role.clone(),
+            token_type: self.token_type.clone(),
+        };
 
-        encode(&header, self, &key).map_err(|e| anyhow!("Failed to encode token: {}", e))
+        encode(
+            &Header::default(),
+            &claims,
+            &EncodingKey::from_secret(secret),
+        )
+        .map_err(|e| anyhow!("Failed to encode token: {}", e))
     }
 
-    /// Decode from JWT string
+    /// Decode from JWT string (using jsonwebtoken with ring - no cmake!)
     pub fn decode(token_str: &str, secret: &[u8]) -> Result<Self> {
-        let key = DecodingKey::from_secret(secret);
-        let validation = Validation::new(Algorithm::HS256);
+        let token_data = decode::<Claims>(
+            token_str,
+            &DecodingKey::from_secret(secret),
+            &Validation::default(),
+        )
+        .map_err(|e| anyhow!("Failed to decode token: {}", e))?;
 
-        let token_data = decode::<AccessToken>(token_str, &key, &validation)
-            .map_err(|e| anyhow!("Failed to decode token: {}", e))?;
+        let claims = token_data.claims;
 
-        Ok(token_data.claims)
+        Ok(Self {
+            token_type: claims.token_type,
+            sub: claims.sub.clone(),
+            iat: claims.iat,
+            exp: claims.exp,
+            role: claims.role.clone(),
+            subject: claims.sub,
+            issued_at: claims.iat,
+            expires_at: claims.exp,
+        })
     }
 }
 
 /// Token validator
 pub struct TokenValidator {
     secret: Vec<u8>,
+}
+
+impl Default for TokenValidator {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl TokenValidator {

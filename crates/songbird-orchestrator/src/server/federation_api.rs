@@ -527,18 +527,15 @@ async fn get_node_details(
     let nodes = state.federation_state.nodes.read().await;
     let node = nodes.get(&node_id);
 
-    match node {
-        Some(node) => {
-            let filtered_node = filter_node_by_trust(node, &trust_level);
-            (StatusCode::OK, Json(filtered_node))
-        }
-        None => {
-            let error = json!({
-                "error": "Node not found",
-                "node_id": node_id
-            });
-            (StatusCode::NOT_FOUND, Json(error))
-        }
+    if let Some(node) = node {
+        let filtered_node = filter_node_by_trust(node, &trust_level);
+        (StatusCode::OK, Json(filtered_node))
+    } else {
+        let error = json!({
+            "error": "Node not found",
+            "node_id": node_id
+        });
+        (StatusCode::NOT_FOUND, Json(error))
     }
 }
 

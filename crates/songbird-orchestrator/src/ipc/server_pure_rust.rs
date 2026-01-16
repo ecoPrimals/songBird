@@ -190,59 +190,102 @@ impl UnixSocketServer {
 
     /// Derive socket path from environment (zero hardcoding!)
     ///
-    /// **v3.21.1**: Added SONGBIRD_SOCKET env var override (biomeOS standard)
+    /// **v3.23.0**: BiomeOS Neural API compatibility (Jan 15, 2026)
     ///
-    /// ## Priority Order (biomeOS-compliant):
+    /// ## Priority Order (BiomeOS-compliant):
     ///
-    /// 1. `SONGBIRD_SOCKET` env var (highest priority - explicit override)
-    /// 2. XDG Runtime Directory: `/run/user/{uid}/songbird-{family}.sock`
-    /// 3. Temp Directory (last resort): `/tmp/songbird-{family}-{node}.sock`
+    /// Socket Path:
+    /// 1. `SONGBIRD_ORCHESTRATOR_SOCKET` (Neural API standard)
+    /// 2. `SONGBIRD_SOCKET` (alternative naming)
+    /// 3. `BIOMEOS_SOCKET_PATH` (generic orchestrator)
+    /// 4. Default: `/tmp/songbird-{family_id}.sock`
     ///
-    /// ## Discovery by biomeOS
+    /// Family ID:
+    /// 1. `SONGBIRD_ORCHESTRATOR_FAMILY_ID` (Neural API standard)
+    /// 2. `SONGBIRD_ORCHESTRATOR_FAMILY` (alternative)
+    /// 3. `BIOMEOS_FAMILY_ID` (generic orchestrator)
+    /// 4. `SONGBIRD_FAMILY_ID` (legacy)
+    /// 5. Default: `"default"`
     ///
-    /// 1. Read `SONGBIRD_SOCKET` env var for explicit path
-    /// 2. Or read `SONGBIRD_FAMILY_ID` env var (e.g., "nat0")
-    /// 3. Get current UID via `id -u` or `$UID`
-    /// 4. Connect to `/run/user/{uid}/songbird-{family_id}.sock`
-    /// 5. Fallback to `/tmp/` if XDG not available
-    fn socket_path_from_env() -> PathBuf {
-        // 1. Check for explicit SONGBIRD_SOCKET override (highest priority)
-        if let Ok(socket_path) = std::env::var("SONGBIRD_SOCKET") {
-            info!("📍 Using SONGBIRD_SOCKET override: {}", socket_path);
+    /// ## BiomeOS Discovery
+    ///
+    /// BiomeOS Neural API sets environment variables and expects primals
+    /// to honor them. This enables zero-configuration multi-family deployments.
+    /// Derive socket path from environment variables (BiomeOS Neural API compatible)
+    ///
+    /// ## Priority Order (BiomeOS Standard)
+    ///
+    /// 1. `SONGBIRD_ORCHESTRATOR_SOCKET` (highest priority - Neural API)
+    /// 2. `SONGBIRD_SOCKET` (alternative naming)
+    /// 3. `BIOMEOS_SOCKET_PATH` (generic orchestrator)
+    /// 4. Default: `/tmp/songbird-{family_id}.sock`
+    ///
+    /// ## Family ID Priority (for default path construction)
+    ///
+    /// 1. `SONGBIRD_ORCHESTRATOR_FAMILY_ID`
+    /// 2. `SONGBIRD_ORCHESTRATOR_FAMILY`
+    /// 3. `BIOMEOS_FAMILY_ID`
+    /// 4. `SONGBIRD_FAMILY_ID`
+    /// 5. Default: `"default"`
+    ///
+    /// ## Testing
+    ///
+    /// This method is `pub` to enable comprehensive testing of BiomeOS compatibility.
+    /// See `tests/biomeos_socket_env_vars.rs` for validation.
+    pub fn socket_path_from_env() -> PathBuf {
+        // Priority 1: SONGBIRD_ORCHESTRATOR_SOCKET (Neural API standard)
+        if let Ok(socket_path) = std::env::var("SONGBIRD_ORCHESTRATOR_SOCKET") {
+            info!("📍 Using SONGBIRD_ORCHESTRATOR_SOCKET: {}", socket_path);
             return PathBuf::from(socket_path);
         }
 
-        // Get family_id and node_id from env vars
-        let family_id =
-            std::env::var("SONGBIRD_FAMILY_ID").unwrap_or_else(|_| "default".to_string());
-        let node_id = std::env::var("SONGBIRD_NODE_ID").unwrap_or_else(|_| "default".to_string());
-
-        // Get current user ID
-        // Try $UID first (set by most shells), fallback to safe default
-        let uid =
-            std::env::var("UID").ok().and_then(|s| s.parse::<u32>().ok()).unwrap_or_else(|| {
-                // Try to get from /proc/self/loginuid (Linux-specific but safe fallback)
-                std::fs::read_to_string("/proc/self/loginuid")
-                    .ok()
-                    .and_then(|s| s.trim().parse().ok())
-                    .unwrap_or(1000) // Default to 1000 (typical first user)
-            });
-
-        // 2. Try XDG Runtime Directory (preferred for production)
-        let xdg_runtime_dir = PathBuf::from(format!("/run/user/{}", uid));
-        if xdg_runtime_dir.exists() {
-            let socket_path = xdg_runtime_dir.join(format!("songbird-{}.sock", family_id));
-            info!("📍 Using XDG runtime directory: {}", socket_path.display());
-            return socket_path;
+        // Priority 2: SONGBIRD_SOCKET (alternative naming)
+        if let Ok(socket_path) = std::env::var("SONGBIRD_SOCKET") {
+            info!("📍 Using SONGBIRD_SOCKET: {}", socket_path);
+            return PathBuf::from(socket_path);
         }
 
-        // 3. Fallback to /tmp (last resort, includes node_id for multi-instance)
-        let socket_path = PathBuf::from(format!("/tmp/songbird-{}-{}.sock", family_id, node_id));
-        warn!(
-            "⚠️  XDG runtime directory not available, falling back to /tmp: {}",
+        // Priority 3: BIOMEOS_SOCKET_PATH (generic orchestrator)
+        if let Ok(socket_path) = std::env::var("BIOMEOS_SOCKET_PATH") {
+            info!("📍 Using BIOMEOS_SOCKET_PATH: {}", socket_path);
+            return PathBuf::from(socket_path);
+        }
+
+        // No explicit socket path - construct from family ID
+        // Priority order for family ID:
+        let family_id = Self::get_family_id();
+
+        // Default: /tmp/songbird-{family_id}.sock (BiomeOS standard)
+        // Note: BiomeOS expects /tmp/ by default, NOT /run/user/{uid}/
+        let socket_path = PathBuf::from(format!("/tmp/songbird-{}.sock", family_id));
+        info!(
+            "📍 Using default socket path with family '{}': {}",
+            family_id,
             socket_path.display()
         );
         socket_path
+    }
+
+    /// Get family ID from environment variables (BiomeOS Neural API compatible)
+    ///
+    /// ## Priority Order (BiomeOS Standard)
+    ///
+    /// 1. `SONGBIRD_ORCHESTRATOR_FAMILY_ID` (highest priority - Neural API)
+    /// 2. `SONGBIRD_ORCHESTRATOR_FAMILY` (alternative)
+    /// 3. `BIOMEOS_FAMILY_ID` (generic orchestrator)
+    /// 4. `SONGBIRD_FAMILY_ID` (legacy)
+    /// 5. Default: `"default"`
+    ///
+    /// ## Testing
+    ///
+    /// This method is `pub` to enable comprehensive testing of BiomeOS compatibility.
+    /// See `tests/biomeos_socket_env_vars.rs` for validation.
+    pub fn get_family_id() -> String {
+        std::env::var("SONGBIRD_ORCHESTRATOR_FAMILY_ID")
+            .or_else(|_| std::env::var("SONGBIRD_ORCHESTRATOR_FAMILY"))
+            .or_else(|_| std::env::var("BIOMEOS_FAMILY_ID"))
+            .or_else(|_| std::env::var("SONGBIRD_FAMILY_ID"))
+            .unwrap_or_else(|_| "default".to_string())
     }
 
     /// Get the socket path

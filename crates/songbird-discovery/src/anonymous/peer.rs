@@ -34,7 +34,7 @@ pub struct DiscoveredPeer {
     pub capabilities: Vec<String>,
 
     /// Generic tags (NEW - for USB seed integration)
-    /// Contains BearDog encryption tags for genetic lineage verification
+    /// Contains `BearDog` encryption tags for genetic lineage verification
     pub tags: Option<Vec<String>>,
 
     /// Discovery timestamp (NEW - for USB seed integration)
@@ -86,8 +86,8 @@ impl DiscoveredPeer {
 
     /// Check if this peer matches another peer (same identity)
     ///
-    /// For v3.0: Compares node_id
-    /// For v2.x: Compares session_id (less reliable)
+    /// For v3.0: Compares `node_id`
+    /// For v2.x: Compares `session_id` (less reliable)
     #[must_use]
     pub fn is_same_peer(&self, other: &Self) -> bool {
         if let (Some(ref my_id), Some(ref other_id)) = (&self.node_id, &other.node_id) {
@@ -111,7 +111,7 @@ impl DiscoveredPeer {
         self.protocols.iter().any(|p| p == protocol)
     }
 
-    /// Get age of this peer information (seconds since last_seen)
+    /// Get age of this peer information (seconds since `last_seen`)
     ///
     /// Returns None if time calculation fails
     #[must_use]
@@ -124,17 +124,17 @@ impl DiscoveredPeer {
     /// Default TTL: 300 seconds (5 minutes)
     #[must_use]
     pub fn is_stale(&self, ttl_secs: u64) -> bool {
-        self.age_secs().map_or(true, |age| age > ttl_secs)
+        self.age_secs().is_none_or(|age| age > ttl_secs)
     }
 
-    /// Update last_seen timestamp to now
+    /// Update `last_seen` timestamp to now
     pub fn touch(&mut self) {
         self.last_seen = SystemTime::now();
     }
 
     /// Get display name for this peer
     ///
-    /// Prefers node_name (v3.0), falls back to session_id
+    /// Prefers `node_name` (v3.0), falls back to `session_id`
     #[must_use]
     pub fn display_name(&self) -> &str {
         if let Some(ref name) = self.node_name {

@@ -1,4 +1,4 @@
-//! BirdSong Integration - Encrypted Discovery
+//! `BirdSong` Integration - Encrypted Discovery
 //!
 //! Integrates encrypted discovery into Songbird's anonymous discovery system.
 //!
@@ -11,10 +11,10 @@
 //! - Works on LAN while learning the system
 //! - Seamless upgrade path to internet-wide P2P
 //!
-//! ## BirdSong Packet Format
+//! ## `BirdSong` Packet Format
 //!
-//! To avoid the chicken-and-egg problem (needing family_id to decrypt, but family_id is encrypted),
-//! BirdSong packets have a plaintext header with family_id:
+//! To avoid the chicken-and-egg problem (needing `family_id` to decrypt, but `family_id` is encrypted),
+//! `BirdSong` packets have a plaintext header with `family_id`:
 //!
 //! ```json
 //! {
@@ -38,13 +38,13 @@ use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use tracing::{debug, info, warn};
 
-/// BirdSong packet envelope (plaintext wrapper)
+/// `BirdSong` packet envelope (plaintext wrapper)
 ///
-/// Contains plaintext metadata (family_id) so receivers can decide
+/// Contains plaintext metadata (`family_id`) so receivers can decide
 /// if they should attempt decryption, avoiding the chicken-and-egg problem.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct BirdSongPacket {
-    /// BirdSong protocol version
+    /// `BirdSong` protocol version
     #[serde(rename = "birdsong")]
     pub version: String,
 
@@ -55,9 +55,9 @@ pub struct BirdSongPacket {
     pub encrypted_payload: String,
 }
 
-/// BirdSong encryption provider trait
+/// `BirdSong` encryption provider trait
 ///
-/// Implemented by security providers (e.g., BearDog) to enable
+/// Implemented by security providers (e.g., `BearDog`) to enable
 /// encrypted discovery broadcasts.
 ///
 /// ## Provider Responsibilities
@@ -92,7 +92,7 @@ pub trait BirdSongEncryption: Send + Sync {
     /// - `Err` only on system errors (not decryption failures)
     async fn decrypt_discovery(&self, ciphertext: &[u8]) -> Result<Option<Vec<u8>>>;
 
-    /// Check if BirdSong encryption is available
+    /// Check if `BirdSong` encryption is available
     ///
     /// Provider may become unavailable if:
     /// - Security service is down
@@ -109,10 +109,10 @@ pub trait BirdSongEncryption: Send + Sync {
     }
 }
 
-/// BirdSong configuration
+/// `BirdSong` configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct BirdSongConfig {
-    /// Enable BirdSong encryption
+    /// Enable `BirdSong` encryption
     ///
     /// When `true`, uses encryption if provider available.
     /// When `false`, always uses plaintext.
@@ -164,12 +164,12 @@ pub struct BirdSongProcessor {
 }
 
 impl BirdSongProcessor {
-    /// Create new BirdSong processor
+    /// Create new `BirdSong` processor
     ///
     /// # Arguments
     ///
     /// * `encryption` - Optional encryption provider (None = plaintext only)
-    /// * `config` - BirdSong configuration
+    /// * `config` - `BirdSong` configuration
     ///
     /// # Example
     ///
@@ -217,15 +217,15 @@ impl BirdSongProcessor {
         }
     }
 
-    /// Encrypt discovery packet with plaintext family_id header
+    /// Encrypt discovery packet with plaintext `family_id` header
     ///
-    /// Creates a BirdSongPacket with plaintext family_id header and encrypted payload.
-    /// This solves the chicken-and-egg problem: receivers can see the family_id to decide
+    /// Creates a `BirdSongPacket` with plaintext `family_id` header and encrypted payload.
+    /// This solves the chicken-and-egg problem: receivers can see the `family_id` to decide
     /// if they should attempt decryption.
     ///
     /// # Returns
     ///
-    /// - BirdSongPacket (JSON) if encryption available and enabled
+    /// - `BirdSongPacket` (JSON) if encryption available and enabled
     /// - Original bytes if plaintext mode or fallback
     /// - Error if encryption fails and fallback disabled
     ///
@@ -304,10 +304,10 @@ impl BirdSongProcessor {
         }
     }
 
-    /// Decrypt received discovery packet (handles BirdSongPacket format)
+    /// Decrypt received discovery packet (handles `BirdSongPacket` format)
     ///
     /// Supports two formats:
-    /// 1. BirdSongPacket (JSON) - with plaintext family_id header
+    /// 1. `BirdSongPacket` (JSON) - with plaintext `family_id` header
     /// 2. Plaintext discovery message (backward compat)
     ///
     /// # Returns
@@ -406,20 +406,20 @@ impl BirdSongProcessor {
         }
     }
 
-    /// Check if BirdSong encryption is actively being used
+    /// Check if `BirdSong` encryption is actively being used
+    #[must_use] 
     pub fn is_encrypted(&self) -> bool {
-        self.config.enabled && self.encryption.as_ref().map(|e| e.is_available()).unwrap_or(false)
+        self.config.enabled && self.encryption.as_ref().is_some_and(|e| e.is_available())
     }
 
     /// Get current encryption status for logging
+    #[must_use] 
     pub fn status(&self) -> String {
         if self.is_encrypted() {
             format!(
                 "Encrypted ({})",
                 self.encryption
-                    .as_ref()
-                    .map(|e| e.provider_name())
-                    .unwrap_or_else(|| "unknown".to_string())
+                    .as_ref().map_or_else(|| "unknown".to_string(), |e| e.provider_name())
             )
         } else if self.config.enabled {
             "Plaintext (provider unavailable)".to_string()

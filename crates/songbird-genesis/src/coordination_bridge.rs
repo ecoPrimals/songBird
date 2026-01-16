@@ -4,7 +4,6 @@
 //! **ZERO HARDCODING**: No primal names, only capability requests.
 
 use crate::error::{GenesisError, Result};
-use std::sync::Arc;
 
 // NOTE: Conditional compilation for the coordination feature
 // This allows genesis to work with or without the coordination crate

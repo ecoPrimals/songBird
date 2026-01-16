@@ -39,7 +39,7 @@ impl TaskStorage {
         debug!("Running database migrations");
 
         sqlx::query(
-            r#"
+            r"
             CREATE TABLE IF NOT EXISTS tasks (
                 id TEXT PRIMARY KEY,
                 owner TEXT NOT NULL,
@@ -55,14 +55,14 @@ impl TaskStorage {
                 spec_json TEXT NOT NULL,
                 last_updated INTEGER NOT NULL
             )
-            "#,
+            ",
         )
         .execute(&self.pool)
         .await
         .context("Failed to create tasks table")?;
 
         sqlx::query(
-            r#"
+            r"
             CREATE TABLE IF NOT EXISTS checkpoints (
                 id TEXT PRIMARY KEY,
                 task_id TEXT NOT NULL,
@@ -74,7 +74,7 @@ impl TaskStorage {
                 checksum TEXT NOT NULL,
                 FOREIGN KEY (task_id) REFERENCES tasks(id) ON DELETE CASCADE
             )
-            "#,
+            ",
         )
         .execute(&self.pool)
         .await
@@ -103,7 +103,7 @@ impl TaskStorage {
         let spec_json = serde_json::to_string(&task.spec)?;
 
         sqlx::query(
-            r#"
+            r"
             INSERT INTO tasks (
                 id, owner, status, progress, created_at, current_tower,
                 pausable, cancellable, resumable, spec_json, last_updated
@@ -113,17 +113,17 @@ impl TaskStorage {
                 progress = excluded.progress,
                 current_tower = excluded.current_tower,
                 last_updated = excluded.last_updated
-            "#,
+            ",
         )
         .bind(task.id.to_string())
         .bind(task.owner.as_str())
         .bind(status_json)
         .bind(task.progress)
         .bind(task.created_at.timestamp())
-        .bind(task.current_tower.as_ref().map(|t| t.as_str()))
-        .bind(task.pausable as i32)
-        .bind(task.cancellable as i32)
-        .bind(task.resumable as i32)
+        .bind(task.current_tower.as_ref().map(super::TowerId::as_str))
+        .bind(i32::from(task.pausable))
+        .bind(i32::from(task.cancellable))
+        .bind(i32::from(task.resumable))
         .bind(spec_json)
         .bind(task.last_updated.timestamp())
         .execute(&self.pool)
@@ -136,12 +136,12 @@ impl TaskStorage {
     /// Get a task by ID
     pub async fn get_task(&self, id: TaskId) -> Result<Option<TaskLifecycle>> {
         let row = sqlx::query(
-            r#"
+            r"
             SELECT id, owner, status, progress, created_at, current_tower,
                    pausable, cancellable, resumable, spec_json, last_updated
             FROM tasks
             WHERE id = ?1
-            "#,
+            ",
         )
         .bind(id.to_string())
         .fetch_optional(&self.pool)
@@ -203,12 +203,12 @@ impl TaskStorage {
     /// Save a checkpoint
     pub async fn save_checkpoint(&self, checkpoint: &Checkpoint) -> Result<()> {
         sqlx::query(
-            r#"
+            r"
             INSERT INTO checkpoints (
                 id, task_id, created_at, progress, state_blob,
                 size_bytes, compression, checksum
             ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)
-            "#,
+            ",
         )
         .bind(checkpoint.id.as_ref())
         .bind(checkpoint.task_id.to_string())
@@ -228,12 +228,12 @@ impl TaskStorage {
     /// Get a checkpoint
     pub async fn get_checkpoint(&self, id: &str) -> Result<Option<Checkpoint>> {
         let row = sqlx::query(
-            r#"
+            r"
             SELECT id, task_id, created_at, progress, state_blob,
                    size_bytes, compression, checksum
             FROM checkpoints
             WHERE id = ?1
-            "#,
+            ",
         )
         .bind(id)
         .fetch_optional(&self.pool)
@@ -251,13 +251,13 @@ impl TaskStorage {
     /// List checkpoints for a task
     pub async fn list_checkpoints(&self, task_id: TaskId) -> Result<Vec<Checkpoint>> {
         let rows = sqlx::query(
-            r#"
+            r"
             SELECT id, task_id, created_at, progress, state_blob,
                    size_bytes, compression, checksum
             FROM checkpoints
             WHERE task_id = ?1
             ORDER BY created_at DESC
-            "#,
+            ",
         )
         .bind(task_id.to_string())
         .fetch_all(&self.pool)
@@ -272,7 +272,7 @@ impl TaskStorage {
     /// Delete old checkpoints for a specific task, keeping only the most recent ones
     pub async fn delete_old_checkpoints(&self, task_id: TaskId, keep_count: usize) -> Result<()> {
         sqlx::query(
-            r#"
+            r"
             DELETE FROM checkpoints
             WHERE task_id = ?1
             AND id NOT IN (
@@ -281,7 +281,7 @@ impl TaskStorage {
                 ORDER BY created_at DESC
                 LIMIT ?2
             )
-            "#,
+            ",
         )
         .bind(task_id.to_string())
         .bind(keep_count as i64)
@@ -299,10 +299,10 @@ impl TaskStorage {
         let cutoff_time = Utc::now().timestamp() - max_age_seconds as i64;
 
         let result = sqlx::query(
-            r#"
+            r"
             DELETE FROM checkpoints
             WHERE created_at < ?1
-            "#,
+            ",
         )
         .bind(cutoff_time)
         .execute(&self.pool)

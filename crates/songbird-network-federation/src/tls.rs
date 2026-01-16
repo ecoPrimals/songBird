@@ -3,7 +3,8 @@
 //! Provides native TLS support using rustls for secure HTTPS communication.
 //! Supports both self-signed certificates (development/LAN) and CA-signed certificates (production).
 
-use rcgen::{CertificateParams, DistinguishedName, DnType, Ia5String, SanType};
+use rcgen::{CertificateParams, DistinguishedName, DnType, SanType};
+use rcgen::string::Ia5String;
 use rustls::pki_types::{CertificateDer, PrivateKeyDer};
 use std::io;
 use std::path::Path;
@@ -18,17 +19,17 @@ use tracing::{debug, info, warn};
 ///
 /// # Deep Debt Fix (Dec 18, 2025)
 /// Previous implementation was a placeholder that did nothing. This caused TLS initialization
-/// failures with "Could not automatically determine CryptoProvider" errors.
+/// failures with "Could not automatically determine `CryptoProvider`" errors.
 /// Now properly installs the ring crypto provider at process startup.
 static CRYPTO_PROVIDER_INIT: Once = Once::new();
 
 fn ensure_crypto_provider() {
     CRYPTO_PROVIDER_INIT.call_once(|| {
-        // Install ring crypto provider for rustls 0.23+
+        // ✅ No external build dependencies! (ring = self-contained)
         // This is required before any TLS operations can be performed
         match rustls::crypto::ring::default_provider().install_default() {
             Ok(()) => {
-                debug!("✅ Rustls crypto provider (ring) installed successfully");
+                debug!("✅ Rustls crypto provider (ring) installed - NO cmake needed!");
             }
             Err(_) => {
                 // Already installed (by another crate or earlier call)
@@ -137,7 +138,8 @@ impl TlsCertificateManager {
                         unreachable!("IP address validation passed but parsing failed")
                     })));
             } else {
-                let ia5_string = Ia5String::try_from(san.to_string()).map_err(|e| {
+                // rcgen 0.14+ API: Ia5String imported from rcgen::string module
+                let ia5_string = Ia5String::try_from(san.as_str()).map_err(|e| {
                     TlsError::CertificateGenerationFailed(format!("Invalid DNS name: {e}"))
                 })?;
                 params.subject_alt_names.push(SanType::DnsName(ia5_string));

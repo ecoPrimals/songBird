@@ -134,7 +134,7 @@ impl RetryPolicy {
 
         // Apply jitter (±25%)
         if self.jitter {
-            let jitter_factor = 1.0 + (fastrand::f64() * 0.5 - 0.25);
+            let jitter_factor = 1.0 + fastrand::f64().mul_add(0.5, -0.25);
             duration_ms *= jitter_factor;
         }
 

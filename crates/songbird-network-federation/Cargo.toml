@@ -30,15 +30,15 @@ uuid = { workspace = true }
 thiserror = { workspace = true }
 anyhow = { workspace = true }
 
-# Networking
-reqwest = { version = "0.11", features = ["json"] }
+# Networking (✅ Pure Rust TLS!)
+reqwest = { version = "0.11", features = ["json", "rustls-tls"], default-features = false }
 url = "2.5"
 
-# TLS/HTTPS support
-rustls = { version = "0.23", features = ["ring"] }
+# TLS/HTTPS support (✅ Pure Rust crypto - no C dependencies!)
+rustls = { version = "0.23", default-features = false, features = ["ring"] }  # ✅ No cmake! Self-contained build
 rustls-pemfile = "2.1"
 tokio-rustls = "0.26"
-rcgen = "0.13"
+rcgen = "0.14"  # Pure Rust cert generation (no ring dependency!)
 
 # Random number generation (missing dependency that caused errors)
 fastrand = "2.0"

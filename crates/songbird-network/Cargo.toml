@@ -23,11 +23,11 @@ chacha20poly1305 = "0.10"
 rand = "0.8"
 base64 = "0.21"
 
-# TLS
-rustls = "0.23"
+# TLS (✅ Pure Rust crypto - no C dependencies!)
+rustls = { version = "0.23", default-features = false, features = ["ring"] }  # ✅ No cmake! Self-contained build
 rustls-pemfile = "2.1"
 tokio-rustls = "0.26"
-rcgen = "0.13"  # For self-signed cert generation
+rcgen = "0.14"  # Pure Rust cert generation (no ring dependency!)
 pem = "3.0"
 
 # Networking

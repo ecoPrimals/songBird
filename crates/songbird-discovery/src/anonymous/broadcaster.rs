@@ -6,7 +6,7 @@
 //! - `AnonymousDiscoveryBroadcaster` - Broadcasts discovery messages
 //! - Multicast setup and network interface detection
 //! - V2.1 and v3.0 protocol support
-//! - Optional BirdSong encryption integration
+//! - Optional `BirdSong` encryption integration
 
 use std::net::SocketAddr;
 use std::sync::Arc;
@@ -60,11 +60,11 @@ pub struct AnonymousDiscoveryBroadcaster {
 
     /// Identity attestations from security provider (CRITICAL FIX - Jan 3, 2026)
     ///
-    /// These are provided by the security capability provider (e.g., BearDog) on startup
+    /// These are provided by the security capability provider (e.g., `BearDog`) on startup
     /// and enable genetic lineage auto-trust. MUST be included for federation to work!
     identity_attestations: Option<Vec<crate::IdentityAttestation>>,
 
-    /// BirdSong encryption processor (optional) - NEW (Jan 3, 2026)
+    /// `BirdSong` encryption processor (optional) - NEW (Jan 3, 2026)
     birdsong: Option<Arc<crate::birdsong_integration::BirdSongProcessor>>,
 
     /// Statistics tracker for observability (optional) - NEW (Jan 5, 2026)
@@ -148,7 +148,7 @@ impl AnonymousDiscoveryBroadcaster {
     /// Set identity attestations from security provider (CRITICAL FIX - Jan 3, 2026)
     ///
     /// Adds identity attestations for genetic lineage auto-trust. This should be called
-    /// after querying the security provider (e.g., BearDog) for our node's identity.
+    /// after querying the security provider (e.g., `BearDog`) for our node's identity.
     #[must_use]
     pub fn with_identity_attestations(
         mut self,
@@ -164,7 +164,7 @@ impl AnonymousDiscoveryBroadcaster {
     /// Format: `{provider}:{type}:{value}`
     /// Example: `beardog:family:nat0`
     ///
-    /// Security providers (BearDog) interpret tag meaning.
+    /// Security providers (`BearDog`) interpret tag meaning.
     #[must_use]
     pub fn with_identity_tags(mut self, tags: Vec<String>) -> Self {
         self.tags = if tags.is_empty() {
@@ -183,9 +183,9 @@ impl AnonymousDiscoveryBroadcaster {
         self
     }
 
-    /// Enable BirdSong encrypted discovery (NEW - Jan 3, 2026)
+    /// Enable `BirdSong` encrypted discovery (NEW - Jan 3, 2026)
     ///
-    /// Adds BirdSong encryption for privacy-preserving discovery.
+    /// Adds `BirdSong` encryption for privacy-preserving discovery.
     /// Only same-family peers can decrypt discovery packets.
     #[must_use]
     pub fn with_birdsong(

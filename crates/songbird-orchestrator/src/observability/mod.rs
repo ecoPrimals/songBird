@@ -63,7 +63,7 @@ impl MetricsCollector {
     /// Get all metrics for a name
     pub async fn get_metrics(&self, name: &str) -> Vec<MetricValue> {
         let metrics = self.metrics.read().await;
-        metrics.get(name).map(|v| v.clone()).unwrap_or_default()
+        metrics.get(name).cloned().unwrap_or_default()
     }
 
     /// Get latest value for a metric

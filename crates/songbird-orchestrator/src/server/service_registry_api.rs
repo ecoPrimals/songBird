@@ -213,25 +213,25 @@ pub enum ApiError {
 
 impl From<anyhow::Error> for ApiError {
     fn from(err: anyhow::Error) -> Self {
-        ApiError::Internal(err)
+        Self::Internal(err)
     }
 }
 
 impl From<serde_json::Error> for ApiError {
     fn from(err: serde_json::Error) -> Self {
-        ApiError::Internal(err.into())
+        Self::Internal(err.into())
     }
 }
 
 impl IntoResponse for ApiError {
     fn into_response(self) -> Response {
         let (status, message) = match self {
-            ApiError::Internal(err) => {
+            Self::Internal(err) => {
                 error!("Internal error: {}", err);
                 (StatusCode::INTERNAL_SERVER_ERROR, format!("Internal server error: {}", err))
             }
-            ApiError::NotFound(msg) => (StatusCode::NOT_FOUND, msg),
-            ApiError::BadRequest(msg) => (StatusCode::BAD_REQUEST, msg),
+            Self::NotFound(msg) => (StatusCode::NOT_FOUND, msg),
+            Self::BadRequest(msg) => (StatusCode::BAD_REQUEST, msg),
         };
 
         let body = Json(json!({

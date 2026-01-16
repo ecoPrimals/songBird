@@ -93,7 +93,7 @@ impl Default for UnifiedAdapterConfig {
             discovery_endpoints: {
                 let host = SafeEnv::get_or_default(
                     "ADAPTER_DISCOVERY_HOST",
-                    &songbird_config::canonical::constants::get_bind_address(),
+                    songbird_config::canonical::constants::get_bind_address(),
                 );
                 let capabilities_port = SafeEnv::get_port(
                     "ADAPTER_CAPABILITIES_PORT",
@@ -344,15 +344,15 @@ pub enum UniversalAdapterError {
 // Convert UniversalAdapterError to SongbirdError for test compatibility
 impl From<UniversalAdapterError> for songbird_types::SongbirdError {
     fn from(err: UniversalAdapterError) -> Self {
-        use UniversalAdapterError::*;
+        use UniversalAdapterError::{NetworkError, ParseError, DiscoveryError, ServiceError, MissingCapability, NoProvidersAvailable};
         match err {
             NetworkError(msg) | ParseError(msg) | DiscoveryError(msg) | ServiceError(msg) => {
-                songbird_types::SongbirdError::from(msg)
+                Self::from(msg)
             }
             MissingCapability => {
-                songbird_types::SongbirdError::from("Required capability is missing")
+                Self::from("Required capability is missing")
             }
-            NoProvidersAvailable(cap) => songbird_types::SongbirdError::from(format!(
+            NoProvidersAvailable(cap) => Self::from(format!(
                 "No providers available for capability: {}",
                 cap
             )),

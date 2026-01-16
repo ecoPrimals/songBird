@@ -13,12 +13,12 @@ use std::collections::HashMap;
 ///
 /// Generic, provider-agnostic structure for identity information.
 /// Each attestation is self-describing and extensible.
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct IdentityAttestation {
     /// Capability that provided this attestation (e.g., "security/identity")
     pub provider_capability: String,
 
-    /// Format of the attestation data (e.g., "tag_list", "x509_certificate", "pgp_key")
+    /// Format of the attestation data (e.g., "`tag_list`", "`x509_certificate`", "`pgp_key`")
     pub format: String,
 
     /// The attestation data itself (format-specific, flexible)
@@ -37,10 +37,10 @@ pub struct DiscoveryPacket {
     /// Advertised capabilities
     pub capabilities: Vec<String>,
 
-    /// Generic tags (e.g., BearDog encryption tags, protocol versions)
+    /// Generic tags (e.g., `BearDog` encryption tags, protocol versions)
     ///
     /// Tags are opaque strings that can be used for various purposes:
-    /// - BearDog encryption: `"beardog:family:a3f2:tower1"`
+    /// - `BearDog` encryption: `"beardog:family:a3f2:tower1"`
     /// - Protocol support: `"btsp_enabled"`, `"birdsong_v2"`
     /// - Custom metadata: any string format
     ///
@@ -103,7 +103,7 @@ impl DiscoveryPacket {
         }
     }
 
-    /// Add tags (e.g., BearDog encryption tags)
+    /// Add tags (e.g., `BearDog` encryption tags)
     #[must_use]
     pub fn with_tags(mut self, tags: Vec<String>) -> Self {
         self.tags = tags;

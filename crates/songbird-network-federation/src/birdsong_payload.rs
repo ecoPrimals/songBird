@@ -1,4 +1,4 @@
-//! BirdSong Payload Structures
+//! `BirdSong` Payload Structures
 //!
 //! Data structures for encrypted discovery broadcasts
 
@@ -51,6 +51,7 @@ pub struct TransportEndpoint {
 
 impl BirdSongPayload {
     /// Create a new payload
+    #[must_use] 
     pub fn new(
         node_id: String,
         node_name: String,
@@ -73,6 +74,7 @@ impl BirdSongPayload {
     }
 
     /// Check if timestamp is recent (within 60 seconds)
+    #[must_use] 
     pub fn is_fresh(&self) -> bool {
         let now =
             SystemTime::now().duration_since(SystemTime::UNIX_EPOCH).unwrap_or_default().as_secs();
@@ -93,7 +95,7 @@ impl BirdSongPayload {
 
 /// Plaintext discovery payload
 ///
-/// Used when BearDog is not available
+/// Used when `BearDog` is not available
 /// WARNING: Everything is visible to network observers
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PlaintextPayload {
@@ -118,6 +120,7 @@ pub struct PlaintextPayload {
 
 impl PlaintextPayload {
     /// Create a new plaintext payload
+    #[must_use] 
     pub fn new(
         node_id: String,
         node_name: String,
@@ -145,7 +148,8 @@ impl PlaintextPayload {
         serde_json::from_str(json)
     }
 
-    /// Convert to BirdSong payload (for encryption)
+    /// Convert to `BirdSong` payload (for encryption)
+    #[must_use] 
     pub fn to_birdsong(&self) -> BirdSongPayload {
         BirdSongPayload::new(
             self.node_id.clone(),

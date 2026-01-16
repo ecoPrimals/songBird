@@ -1,7 +1,7 @@
-//! BearDog BirdSong Encryption Provider
+//! `BearDog` `BirdSong` Encryption Provider
 //!
-//! Implements the BirdSongEncryption trait using BearDog's family-based encryption.
-//! This provider connects to BearDog's encryption API to encrypt/decrypt discovery
+//! Implements the `BirdSongEncryption` trait using `BearDog`'s family-based encryption.
+//! This provider connects to `BearDog`'s encryption API to encrypt/decrypt discovery
 //! packets based on genetic family lineage.
 
 use anyhow::Result;
@@ -13,9 +13,9 @@ use tracing::{debug, info, warn};
 
 use crate::birdsong_integration::BirdSongEncryption;
 
-/// BearDog API response wrapper
+/// `BearDog` API response wrapper
 ///
-/// BearDog wraps all API responses in this structure for consistency
+/// `BearDog` wraps all API responses in this structure for consistency
 #[derive(Debug, Clone, Deserialize)]
 struct BearDogApiResponse<T> {
     /// Success indicator
@@ -27,7 +27,7 @@ struct BearDogApiResponse<T> {
     error: Option<String>,
 }
 
-/// BearDog encryption request
+/// `BearDog` encryption request
 #[derive(Debug, Clone, Serialize)]
 struct BearDogEncryptRequest {
     /// Plaintext data to encrypt (base64 encoded automatically by serde)
@@ -39,7 +39,7 @@ struct BearDogEncryptRequest {
     family_id: Option<String>,
 }
 
-/// Base64 serialization helper (matching BearDog's format)
+/// Base64 serialization helper (matching `BearDog`'s format)
 mod base64_serde {
     use base64::{engine::general_purpose::STANDARD, Engine};
     use serde::{Deserialize, Deserializer, Serializer};
@@ -60,7 +60,7 @@ mod base64_serde {
     }
 }
 
-/// BearDog encryption response (adaptive format)
+/// `BearDog` encryption response (adaptive format)
 ///
 /// Handles both v1 ("encrypted") and v2 ("ciphertext") field names
 /// for backward compatibility and graceful API evolution.
@@ -76,7 +76,7 @@ struct BearDogEncryptResponse {
     family_id: String,
 }
 
-/// BearDog decryption request
+/// `BearDog` decryption request
 #[derive(Debug, Clone, Serialize)]
 struct BearDogDecryptRequest {
     /// Ciphertext to decrypt (base64 encoded automatically)
@@ -84,7 +84,7 @@ struct BearDogDecryptRequest {
     ciphertext: Vec<u8>,
 }
 
-/// BearDog decryption response
+/// `BearDog` decryption response
 #[derive(Debug, Clone, Deserialize)]
 struct BearDogDecryptResponse {
     /// Decrypted plaintext (deserialized from base64 automatically)
@@ -98,13 +98,13 @@ struct BearDogDecryptResponse {
     success: bool,
 }
 
-/// BearDog BirdSong encryption provider
+/// `BearDog` `BirdSong` encryption provider
 ///
-/// Connects to BearDog's encryption API to provide family-based encryption
+/// Connects to `BearDog`'s encryption API to provide family-based encryption
 /// for discovery packets. Only peers from the same genetic family can
 /// decrypt each other's packets.
 pub struct BearDogBirdSongProvider {
-    /// BearDog API endpoint
+    /// `BearDog` API endpoint
     endpoint: String,
 
     /// HTTP client for API calls
@@ -118,12 +118,12 @@ pub struct BearDogBirdSongProvider {
 }
 
 impl BearDogBirdSongProvider {
-    /// Create new BearDog BirdSong provider
+    /// Create new `BearDog` `BirdSong` provider
     ///
     /// # Arguments
     ///
-    /// * `endpoint` - BearDog API endpoint (e.g., "http://localhost:7600")
-    /// * `family_id` - Optional family ID (will query BearDog if not provided)
+    /// * `endpoint` - `BearDog` API endpoint (e.g., "<http://localhost:7600>")
+    /// * `family_id` - Optional family ID (will query `BearDog` if not provided)
     ///
     /// # Example
     ///
@@ -160,9 +160,9 @@ impl BearDogBirdSongProvider {
         }
     }
 
-    /// Async health check for BearDog availability
+    /// Async health check for `BearDog` availability
     ///
-    /// This should be called from async context to properly check if BearDog is available.
+    /// This should be called from async context to properly check if `BearDog` is available.
     pub async fn check_health(&self) -> bool {
         let health_url = format!("{}/health", self.endpoint);
 
@@ -183,7 +183,7 @@ impl BearDogBirdSongProvider {
         }
     }
 
-    /// Check if BearDog is available (sync version)
+    /// Check if `BearDog` is available (sync version)
     ///
     /// Note: This is a synchronous check that should only be used during initialization.
     /// For runtime checks, use the async `check_health()` method instead.
@@ -194,7 +194,7 @@ impl BearDogBirdSongProvider {
         true // Assume available, will fail gracefully on first async call if not
     }
 
-    /// Encrypt data using BearDog family encryption
+    /// Encrypt data using `BearDog` family encryption
     ///
     /// Uses adaptive API endpoint detection to work with both v1 and v2.
     async fn encrypt_internal(&self, plaintext: &[u8]) -> Result<Vec<u8>, String> {
@@ -226,7 +226,7 @@ impl BearDogBirdSongProvider {
                     .json(&request)
                     .send()
                     .await
-                    .map_err(|e| format!("BearDog v2 encrypt request failed: {}", e))?
+                    .map_err(|e| format!("BearDog v2 encrypt request failed: {e}"))?
             }
             Err(e) => {
                 debug!("⚠️  BearDog v1 endpoint unavailable: {}, trying v2", e);
@@ -236,7 +236,7 @@ impl BearDogBirdSongProvider {
                     .json(&request)
                     .send()
                     .await
-                    .map_err(|e| format!("BearDog v2 encrypt request failed: {}", e))?
+                    .map_err(|e| format!("BearDog v2 encrypt request failed: {e}"))?
             }
         };
 
@@ -245,7 +245,7 @@ impl BearDogBirdSongProvider {
         }
 
         let response_text =
-            response.text().await.map_err(|e| format!("Failed to read BearDog response: {}", e))?;
+            response.text().await.map_err(|e| format!("Failed to read BearDog response: {e}"))?;
 
         debug!("📥 BearDog response: {}", response_text);
 
@@ -253,8 +253,7 @@ impl BearDogBirdSongProvider {
         let api_response: BearDogApiResponse<BearDogEncryptResponse> =
             serde_json::from_str(&response_text).map_err(|e| {
                 let error_msg = format!(
-                    "Failed to parse BearDog response: {}. Response was: {}",
-                    e, response_text
+                    "Failed to parse BearDog response: {e}. Response was: {response_text}"
                 );
                 warn!("❌ {}", error_msg);
                 error_msg
@@ -284,7 +283,7 @@ impl BearDogBirdSongProvider {
         Ok(encrypt_response.ciphertext)
     }
 
-    /// Decrypt data using BearDog family decryption
+    /// Decrypt data using `BearDog` family decryption
     ///
     /// Uses adaptive API endpoint detection to work with both v1 and v2.
     async fn decrypt_internal(&self, ciphertext: &[u8]) -> Result<Option<Vec<u8>>, String> {
@@ -313,7 +312,7 @@ impl BearDogBirdSongProvider {
                     .json(&request)
                     .send()
                     .await
-                    .map_err(|e| format!("BearDog v2 decrypt request failed: {}", e))?
+                    .map_err(|e| format!("BearDog v2 decrypt request failed: {e}"))?
             }
             Err(e) => {
                 debug!("⚠️  BearDog v1 decrypt endpoint unavailable: {}, trying v2", e);
@@ -323,7 +322,7 @@ impl BearDogBirdSongProvider {
                     .json(&request)
                     .send()
                     .await
-                    .map_err(|e| format!("BearDog v2 decrypt request failed: {}", e))?
+                    .map_err(|e| format!("BearDog v2 decrypt request failed: {e}"))?
             }
         };
 
@@ -332,7 +331,7 @@ impl BearDogBirdSongProvider {
         }
 
         let response_text =
-            response.text().await.map_err(|e| format!("Failed to read BearDog response: {}", e))?;
+            response.text().await.map_err(|e| format!("Failed to read BearDog response: {e}"))?;
 
         debug!("📥 BearDog decrypt response: {}", response_text);
 
@@ -340,8 +339,7 @@ impl BearDogBirdSongProvider {
         let api_response: BearDogApiResponse<BearDogDecryptResponse> =
             serde_json::from_str(&response_text).map_err(|e| {
                 let error_msg = format!(
-                    "Failed to parse BearDog response: {}. Response was: {}",
-                    e, response_text
+                    "Failed to parse BearDog response: {e}. Response was: {response_text}"
                 );
                 warn!("❌ {}", error_msg);
                 error_msg

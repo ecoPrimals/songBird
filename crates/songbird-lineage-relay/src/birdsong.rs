@@ -1,4 +1,4 @@
-//! BirdSong - Lineage-gated broadcast system
+//! `BirdSong` - Lineage-gated broadcast system
 //!
 //! ## Concept
 //!
@@ -8,7 +8,7 @@
 //! - Non-family sees encrypted noise
 //! - Privacy through selective intelligibility
 
-use crate::error::{LineageRelayError, Result};
+use crate::error::Result;
 use crate::types::NodeId;
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
@@ -33,7 +33,7 @@ pub enum LineageHint {
     SpecificAncestor(NodeId),
 }
 
-/// BirdSong message type
+/// `BirdSong` message type
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum BirdSongType {
     /// Presence announcement
@@ -52,7 +52,7 @@ pub enum BirdSongType {
     Custom(String),
 }
 
-/// BirdSong message structure
+/// `BirdSong` message structure
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct BirdSongMessage {
     /// Protocol version
@@ -63,23 +63,23 @@ pub struct BirdSongMessage {
     pub sender: NodeId,
     /// Lineage hint (who should receive)
     pub lineage_hint: LineageHint,
-    /// Payload (encrypted by BearDog)
+    /// Payload (encrypted by `BearDog`)
     pub payload: Vec<u8>,
     /// Timestamp
     pub timestamp: u64,
 }
 
-/// BirdSong crypto provider (implemented by BearDog)
+/// `BirdSong` crypto provider (implemented by `BearDog`)
 #[async_trait]
 pub trait BirdSongCrypto: Send + Sync {
     /// Encrypt message for lineage
     async fn encrypt_for_lineage(&self, message: &[u8], hint: LineageHint) -> Result<Vec<u8>>;
 
-    /// Decrypt BirdSong message (returns None if not in lineage)
+    /// Decrypt `BirdSong` message (returns None if not in lineage)
     async fn decrypt_birdsong(&self, encrypted: &[u8], sender: &NodeId) -> Result<Option<Vec<u8>>>;
 }
 
-/// BirdSong broadcaster
+/// `BirdSong` broadcaster
 pub struct BirdSongBroadcaster {
     socket: Arc<UdpSocket>,
     crypto: Arc<dyn BirdSongCrypto>,
@@ -89,7 +89,7 @@ pub struct BirdSongBroadcaster {
 }
 
 impl BirdSongBroadcaster {
-    /// Create new BirdSong broadcaster
+    /// Create new `BirdSong` broadcaster
     ///
     /// # Errors
     ///
@@ -114,7 +114,7 @@ impl BirdSongBroadcaster {
         })
     }
 
-    /// Broadcast a BirdSong message
+    /// Broadcast a `BirdSong` message
     ///
     /// # Errors
     ///
@@ -154,7 +154,7 @@ impl BirdSongBroadcaster {
         Ok(())
     }
 
-    /// Listen for incoming BirdSong messages
+    /// Listen for incoming `BirdSong` messages
     ///
     /// # Errors
     ///

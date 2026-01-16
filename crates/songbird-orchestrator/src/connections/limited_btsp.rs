@@ -249,7 +249,7 @@ impl PeerConnection for LimitedBtspConnection {
         &self.peer_id
     }
 
-    fn endpoint(&self) -> &str {
+    fn endpoint(&self) -> &'static str {
         // BTSP connections don't have traditional endpoints (no URLs, no ports)
         // Return descriptive string for observability
         "btsp://<encrypted-tunnel>"

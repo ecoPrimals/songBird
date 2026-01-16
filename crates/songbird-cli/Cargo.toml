@@ -54,7 +54,7 @@ tokio = { workspace = true }
 fastrand = { workspace = true }
 clap = { version = "4.0", features = ["derive"] }
 colored = "2.0"
-reqwest = { version = "0.11", features = ["json"] }
+reqwest = { version = "0.11", features = ["json", "rustls-tls"], default-features = false }
 tracing = "0.1"
 dialoguer = "0.11"
 console = "0.15"
@@ -66,7 +66,7 @@ futures-util = "0.3"
 regex = "1.10"
 tracing-subscriber = "0.3"
 atty = "0.2"
-rustls = "0.23"  # ✅ ADDED: For standalone orchestrator initialization
+rustls = { version = "0.23", default-features = false, features = ["ring"] }  # ✅ No cmake dependency! (ring = vetted BoringSSL subset)
 anyhow = "1.0"   # ✅ ADDED: For error handling
 
 [features]

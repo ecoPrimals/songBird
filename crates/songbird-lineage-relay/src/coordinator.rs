@@ -6,21 +6,21 @@ use crate::birdsong::BirdSongBroadcaster;
 use crate::error::{LineageRelayError, Result};
 use crate::relay::{RelayAuthority, RelayDiscovery};
 use crate::session::{ConnectionSession, DirectConnection, RelayedConnection};
-use crate::types::{ConnectionEndpoint, NodeId};
+use crate::types::NodeId;
 use std::net::SocketAddr;
 use std::sync::Arc;
 use std::time::Duration;
 use tokio::time::timeout;
-use tracing::{debug, info, warn};
+use tracing::{debug, info};
 
 /// Configuration for lineage relay coordinator
 #[derive(Debug, Clone)]
 pub struct LineageRelayConfig {
     /// My node ID
     pub my_id: NodeId,
-    /// Bind address for BirdSong
+    /// Bind address for `BirdSong`
     pub birdsong_bind: SocketAddr,
-    /// Broadcast address for BirdSong
+    /// Broadcast address for `BirdSong`
     pub birdsong_broadcast: SocketAddr,
     /// My relay address (if offering relay service)
     pub my_relay_address: Option<SocketAddr>,
@@ -61,7 +61,7 @@ impl LineageRelayCoordinator {
     ///
     /// # Errors
     ///
-    /// Returns error if BirdSong broadcaster cannot be created
+    /// Returns error if `BirdSong` broadcaster cannot be created
     pub async fn new(
         config: LineageRelayConfig,
         broadcaster: Arc<BirdSongBroadcaster>,
@@ -159,8 +159,7 @@ impl LineageRelayCoordinator {
 
             // Mock: always fail to demonstrate relay
             Err(LineageRelayError::DirectConnectionFailed(format!(
-                "Could not establish direct connection to {} (mock always fails)",
-                address
+                "Could not establish direct connection to {address} (mock always fails)"
             )))
         })
         .await

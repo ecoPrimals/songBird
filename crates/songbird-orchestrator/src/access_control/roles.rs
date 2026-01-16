@@ -41,15 +41,15 @@ pub enum Role {
 
 impl Role {
     pub fn is_admin(&self) -> bool {
-        matches!(self, Role::Admin { .. } | Role::RemoteAdmin { .. })
+        matches!(self, Self::Admin { .. } | Self::RemoteAdmin { .. })
     }
 
     pub fn is_teaching_staff(&self) -> bool {
-        matches!(self, Role::TA { .. } | Role::Professor { .. })
+        matches!(self, Self::TA { .. } | Self::Professor { .. })
     }
 
     pub fn requires_hardware_key(&self) -> bool {
-        matches!(self, Role::RemoteAdmin { .. })
+        matches!(self, Self::RemoteAdmin { .. })
     }
 }
 

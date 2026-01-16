@@ -248,15 +248,15 @@ impl FairScheduler {
         // Cost is based on resource requirements
         // For priority-aware scheduling: lower cost = earlier finish time = higher priority
         // Inverse the priority values so critical tasks have lowest cost
-        let base_cost = match task.spec.priority {
+        
+
+        // Could be extended with actual resource requirements
+        match task.spec.priority {
             crate::task_lifecycle::types::Priority::Critical => 0.125, // 1/8 - highest priority
             crate::task_lifecycle::types::Priority::High => 0.25,      // 1/4
             crate::task_lifecycle::types::Priority::Standard => 1.0,   // baseline
             crate::task_lifecycle::types::Priority::Low => 2.0,        // lowest priority
-        };
-
-        // Could be extended with actual resource requirements
-        base_cost
+        }
     }
 }
 

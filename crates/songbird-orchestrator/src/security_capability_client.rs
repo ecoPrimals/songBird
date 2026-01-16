@@ -180,12 +180,11 @@ impl SecurityCapabilityClient {
             if wrapped.success {
                 debug!("Parsed response as wrapped format (legacy compatibility)");
                 return Ok(wrapped.data);
-            } else {
-                anyhow::bail!(
-                    "Security provider returned success=false: {}",
-                    wrapped.error.unwrap_or_else(|| "Unknown error".to_string())
-                );
             }
+            anyhow::bail!(
+                "Security provider returned success=false: {}",
+                wrapped.error.unwrap_or_else(|| "Unknown error".to_string())
+            );
         }
 
         // Neither format worked - show body for debugging
@@ -342,10 +341,7 @@ impl SecurityCapabilityClient {
     ///
     /// Returns true if security provider responds to health checks.
     pub async fn is_available(&self) -> bool {
-        match self.adapter.check_health().await {
-            Ok(_) => true,
-            Err(_) => false,
-        }
+        (self.adapter.check_health().await).is_ok()
     }
 
     /// Get security provider endpoint

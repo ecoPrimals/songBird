@@ -89,13 +89,13 @@ impl ServiceRegistry {
         let service_id = if let Some(existing_service) = existing {
             // Update existing service
             info!("🔄 Updating existing service: {}", existing_service.service_id);
-            existing_service.service_id.clone()
+            existing_service.service_id
         } else {
             // Generate new service ID
             let service_id = format!(
                 "{}-{}",
                 primal_name.to_lowercase(),
-                Uuid::new_v4().to_string()[..8].to_string()
+                &Uuid::new_v4().to_string()[..8]
             );
             info!("✅ Registering new service: {}", service_id);
             service_id
@@ -152,7 +152,7 @@ impl ServiceRegistry {
                 };
 
                 // Filter by protocol (if specified)
-                let protocol_match = protocol.map_or(true, |p| service.protocol == p);
+                let protocol_match = protocol.is_none_or(|p| service.protocol == p);
 
                 capability_match && protocol_match
             })

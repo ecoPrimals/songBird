@@ -325,7 +325,7 @@ impl CoordinationValidator {
         let mut deps: HashMap<String, Vec<String>> = HashMap::new();
 
         for edge in &graph.edges {
-            deps.entry(edge.to.clone()).or_insert_with(Vec::new).push(edge.from.clone());
+            deps.entry(edge.to.clone()).or_default().push(edge.from.clone());
         }
 
         deps
@@ -336,7 +336,7 @@ impl CoordinationValidator {
         // Build reverse map (node → dependents)
         let mut dependents: HashMap<String, usize> = HashMap::new();
 
-        for (_, sources) in dependencies.iter() {
+        for sources in dependencies.values() {
             for source in sources {
                 *dependents.entry(source.clone()).or_insert(0) += 1;
             }
@@ -395,7 +395,7 @@ impl CoordinationValidator {
             let mut deps = dependencies.get(&node.id).cloned().unwrap_or_default();
             deps.sort();
 
-            dep_groups.entry(deps).or_insert_with(Vec::new).push(node.id.clone());
+            dep_groups.entry(deps).or_default().push(node.id.clone());
         }
 
         // Only include groups with multiple nodes

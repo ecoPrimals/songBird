@@ -48,7 +48,7 @@ impl ConsentStorage {
         debug!("Running consent storage migrations...");
 
         sqlx::query(
-            r#"
+            r"
             CREATE TABLE IF NOT EXISTS consent_records (
                 id TEXT PRIMARY KEY,
                 user_id TEXT NOT NULL,
@@ -60,7 +60,7 @@ impl ConsentStorage {
                 responded_at INTEGER,
                 reason TEXT
             )
-            "#,
+            ",
         )
         .execute(&self.pool)
         .await
@@ -68,30 +68,30 @@ impl ConsentStorage {
 
         // Create indices for efficient queries
         sqlx::query(
-            r#"
+            r"
             CREATE INDEX IF NOT EXISTS idx_consent_user_id 
             ON consent_records(user_id)
-            "#,
+            ",
         )
         .execute(&self.pool)
         .await
         .context("Failed to create user_id index")?;
 
         sqlx::query(
-            r#"
+            r"
             CREATE INDEX IF NOT EXISTS idx_consent_task_id 
             ON consent_records(task_id)
-            "#,
+            ",
         )
         .execute(&self.pool)
         .await
         .context("Failed to create task_id index")?;
 
         sqlx::query(
-            r#"
+            r"
             CREATE INDEX IF NOT EXISTS idx_consent_status 
             ON consent_records(status)
-            "#,
+            ",
         )
         .execute(&self.pool)
         .await
@@ -107,10 +107,10 @@ impl ConsentStorage {
 
         let status_str = format!("{:?}", record.status);
         let requested_at = record.requested_at.timestamp();
-        let responded_at = record.responded_at.as_ref().map(|dt| dt.timestamp());
+        let responded_at = record.responded_at.as_ref().map(chrono::DateTime::timestamp);
 
         sqlx::query(
-            r#"
+            r"
             INSERT INTO consent_records 
             (id, user_id, task_id, operation, estimated_cost, status, requested_at, responded_at, reason)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
@@ -118,7 +118,7 @@ impl ConsentStorage {
                 status = excluded.status,
                 responded_at = excluded.responded_at,
                 reason = excluded.reason
-            "#,
+            ",
         )
         .bind(record.id.as_ref())
         .bind(record.user_id.as_str())
@@ -128,7 +128,7 @@ impl ConsentStorage {
         .bind(&status_str)
         .bind(requested_at)
         .bind(responded_at)
-        .bind(record.reason.as_ref().map(|r| r.as_ref()))
+        .bind(record.reason.as_ref().map(std::convert::AsRef::as_ref))
         .execute(&self.pool)
         .await
         .context("Failed to save consent record")?;
@@ -147,16 +147,13 @@ impl ConsentStorage {
             .await
             .context("Failed to query consent record")?;
 
-        match row {
-            Some(row) => {
-                let record = self.row_to_record(row)?;
-                debug!("✅ Found consent record: {}", id);
-                Ok(Some(record))
-            }
-            None => {
-                debug!("Consent record not found: {}", id);
-                Ok(None)
-            }
+        if let Some(row) = row {
+            let record = self.row_to_record(row)?;
+            debug!("✅ Found consent record: {}", id);
+            Ok(Some(record))
+        } else {
+            debug!("Consent record not found: {}", id);
+            Ok(None)
         }
     }
 

@@ -50,7 +50,7 @@ where
         // Validate token (checks blacklist, expiry, etc.)
         validator.validate(&token).await.map_err(|_| AuthError::InvalidToken)?;
 
-        Ok(AuthenticatedUser {
+        Ok(Self {
             token,
         })
     }
@@ -67,10 +67,10 @@ pub enum AuthError {
 impl IntoResponse for AuthError {
     fn into_response(self) -> Response {
         let (status, message) = match self {
-            AuthError::MissingToken => (StatusCode::UNAUTHORIZED, "Missing authorization token"),
-            AuthError::InvalidToken => (StatusCode::UNAUTHORIZED, "Invalid token"),
-            AuthError::ExpiredToken => (StatusCode::UNAUTHORIZED, "Token expired"),
-            AuthError::InsufficientPermissions => {
+            Self::MissingToken => (StatusCode::UNAUTHORIZED, "Missing authorization token"),
+            Self::InvalidToken => (StatusCode::UNAUTHORIZED, "Invalid token"),
+            Self::ExpiredToken => (StatusCode::UNAUTHORIZED, "Token expired"),
+            Self::InsufficientPermissions => {
                 (StatusCode::FORBIDDEN, "Insufficient permissions")
             }
         };
@@ -251,7 +251,7 @@ async fn validate_sso_credential(
     })?;
 
     // Check if validation succeeded
-    if validation_result.get("valid").and_then(|v| v.as_bool()) == Some(true) {
+    if validation_result.get("valid").and_then(serde_json::Value::as_bool) == Some(true) {
         tracing::info!("SSO validation successful for user '{}'", user_id);
         Ok(())
     } else {
@@ -302,11 +302,11 @@ async fn validate_db_postgres(
     // 4. Return Ok(()) if valid, Err(AuthError::InvalidToken) if not
 
     // For now, accept any non-empty credential but log warning
-    if !credential.is_empty() {
+    if credential.is_empty() {
+        Err(AuthError::InvalidToken)
+    } else {
         tracing::warn!("PostgreSQL authentication not fully implemented - accepting credential (add sqlx dependency)");
         Ok(())
-    } else {
-        Err(AuthError::InvalidToken)
     }
 }
 
@@ -326,11 +326,11 @@ async fn validate_db_sqlite(
     // 4. Return Ok(()) if valid, Err(AuthError::InvalidToken) if not
 
     // For now, accept any non-empty credential but log warning
-    if !credential.is_empty() {
+    if credential.is_empty() {
+        Err(AuthError::InvalidToken)
+    } else {
         tracing::warn!("SQLite authentication not fully implemented - accepting credential (add rusqlite dependency)");
         Ok(())
-    } else {
-        Err(AuthError::InvalidToken)
     }
 }
 
@@ -353,11 +353,11 @@ async fn validate_db_redis(
     // 4. Return Ok(()) if valid, Err(AuthError::InvalidToken) if not
 
     // For now, accept any non-empty credential but log warning
-    if !credential.is_empty() {
+    if credential.is_empty() {
+        Err(AuthError::InvalidToken)
+    } else {
         tracing::warn!("Redis authentication not fully implemented - accepting credential (add redis dependency)");
         Ok(())
-    } else {
-        Err(AuthError::InvalidToken)
     }
 }
 

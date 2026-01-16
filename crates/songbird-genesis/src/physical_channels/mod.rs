@@ -15,8 +15,10 @@ pub mod bluetooth;
 #[cfg(feature = "pure-bluetooth")]
 pub mod bluetooth_pure;
 
-// Mock implementation for testing
+// Mock implementation - TEST ONLY
+#[cfg(test)]
 pub mod mock;
+#[cfg(test)]
 pub use mock::MockPhysicalChannel;
 
 /// Physical channel trait for genesis ceremonies
@@ -54,6 +56,7 @@ pub enum PhysicalChannel {
     BluetoothPure(bluetooth_pure::PureRustBluetoothChannel),
 
     /// Mock channel for testing
+    #[cfg(test)]
     Mock(MockPhysicalChannel),
 }
 
@@ -73,6 +76,7 @@ impl PhysicalChannelProvider for PhysicalChannel {
             #[cfg(feature = "pure-bluetooth")]
             Self::BluetoothPure(ch) => ch.verify_proximity().await,
 
+            #[cfg(test)]
             Self::Mock(ch) => ch.verify_proximity().await,
         }
     }
@@ -91,6 +95,7 @@ impl PhysicalChannelProvider for PhysicalChannel {
             #[cfg(feature = "pure-bluetooth")]
             Self::BluetoothPure(ch) => ch.secure_exchange().await,
 
+            #[cfg(test)]
             Self::Mock(ch) => ch.secure_exchange().await,
         }
     }
@@ -109,6 +114,7 @@ impl PhysicalChannelProvider for PhysicalChannel {
             #[cfg(feature = "pure-bluetooth")]
             Self::BluetoothPure(ch) => ch.trust_level(),
 
+            #[cfg(test)]
             Self::Mock(ch) => ch.trust_level(),
         }
     }
@@ -127,6 +133,7 @@ impl PhysicalChannelProvider for PhysicalChannel {
             #[cfg(feature = "pure-bluetooth")]
             Self::BluetoothPure(ch) => ch.channel_type(),
 
+            #[cfg(test)]
             Self::Mock(ch) => ch.channel_type(),
         }
     }

@@ -300,6 +300,7 @@ impl<T: Transport + 'static> GattClient<T> {
     /// # Errors
     ///
     /// Returns error if service discovery fails
+    #[allow(clippy::cognitive_complexity)]
     pub async fn discover_services(&mut self) -> Result<&[Service]> {
         debug!("Discovering services on {}", self.device.address());
 
@@ -565,7 +566,7 @@ impl<T: Transport + 'static> GattClient<T> {
                 // 16-bit UUID
                 let uuid_16 = u16::from_le_bytes([response[offset + 5], response[offset + 6]]);
                 Uuid::from_u128(
-                    0x0000_0000_1000_8000_8000_0080_5F9B_34FB | ((uuid_16 as u128) << 96),
+                    0x0000_0000_1000_8000_8000_0080_5F9B_34FB | (u128::from(uuid_16) << 96),
                 )
             } else if length == 21 {
                 // 128-bit UUID
@@ -743,6 +744,7 @@ impl<T: Transport + 'static> GattClient<T> {
     }
 
     /// Build ATT Write Command (without response)
+    #[allow(clippy::unused_self)]
     fn build_write_command(&self, handle: u16, data: &[u8]) -> Vec<u8> {
         let mut request = vec![att_opcode::WRITE_CMD];
         request.extend_from_slice(&handle.to_le_bytes());
@@ -753,6 +755,7 @@ impl<T: Transport + 'static> GattClient<T> {
     /// Parse ATT Write Response
     /// Note: Awaiting hardware validation - will be used in Phase 3
     #[allow(dead_code)]
+    #[allow(clippy::unused_self)]
     fn parse_write_response(&self, response: &[u8]) -> Result<()> {
         if response.is_empty() {
             return Err(BluetoothError::Gatt("Empty response".into()));

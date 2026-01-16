@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 /// Discovery mode for federation broadcasts
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum DiscoveryMode {
-    /// Plaintext broadcasts (no BearDog)
+    /// Plaintext broadcasts (no `BearDog`)
     ///
     /// Suitable for:
     /// - Trusted LANs (university campus, research lab)
@@ -17,10 +17,10 @@ pub enum DiscoveryMode {
     /// Privacy: LOW (everything visible to network observers)
     Plaintext,
 
-    /// Encrypted birdSong broadcasts (with BearDog)
+    /// Encrypted birdSong broadcasts (with `BearDog`)
     ///
     /// Suitable for:
-    /// - Untrusted networks (internet, public WiFi, cellular)
+    /// - Untrusted networks (internet, public `WiFi`, cellular)
     /// - Privacy-sensitive federations
     /// - Cross-organization collaboration
     ///
@@ -29,17 +29,20 @@ pub enum DiscoveryMode {
 }
 
 impl DiscoveryMode {
-    /// Check if this mode requires BearDog
+    /// Check if this mode requires `BearDog`
+    #[must_use] 
     pub fn requires_beardog(&self) -> bool {
         matches!(self, Self::BirdSong)
     }
 
     /// Check if this mode is privacy-preserving
+    #[must_use] 
     pub fn is_private(&self) -> bool {
         matches!(self, Self::BirdSong)
     }
 
     /// Get human-readable description
+    #[must_use] 
     pub fn description(&self) -> &'static str {
         match self {
             Self::Plaintext => "Plaintext (trusted LAN only)",

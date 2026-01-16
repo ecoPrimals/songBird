@@ -126,18 +126,23 @@ impl<T: Transport + 'static> BluetoothHost<T> {
     ///
     /// Returns error if scan fails or timeout occurs
     pub async fn scan_devices(&mut self, duration: Duration) -> Result<Vec<DeviceInfo>> {
-        let mut scanning = self.scanning.lock().await;
-        if *scanning {
-            return Err(BluetoothError::InvalidOperation("Scan already in progress".into()));
-        }
+        {
+            let mut scanning = self.scanning.lock().await;
+            if *scanning {
+                return Err(BluetoothError::InvalidOperation("Scan already in progress".into()));
+            }
 
-        *scanning = true;
+            *scanning = true;
+        }
         info!("Starting BLE scan for {:?}", duration);
 
         // Phase 2: Actual BLE scanning with HCI commands
         let result = self.perform_scan(duration).await;
 
-        *scanning = false;
+        {
+            let mut scanning = self.scanning.lock().await;
+            *scanning = false;
+        }
 
         match result {
             Ok(devices) => {
@@ -229,14 +234,10 @@ impl<T: Transport + 'static> BluetoothHost<T> {
         let cmd = vec![
             0x01, // Command packet
             0x0C,
-            0x20, // Opcode: LE Set Scan Enable
-            0x02, // Parameter length
-            if enable {
-                0x01
-            } else {
-                0x00
-            }, // Scan enable
-            0x01, // Filter duplicates
+            0x20,             // Opcode: LE Set Scan Enable
+            0x02,             // Parameter length
+            u8::from(enable), // Scan enable
+            0x01,             // Filter duplicates
         ];
 
         self.controller.send_command(&cmd).await?;
@@ -318,6 +319,7 @@ impl<T: Transport + 'static> BluetoothHost<T> {
         let address = Address::from_bytes(addr_bytes);
 
         // Parse RSSI (last byte)
+        #[allow(clippy::cast_possible_wrap)]
         let rssi = event.last().copied().map(|b| b as i8);
 
         // Parse device name from advertisement data (if present)
@@ -367,13 +369,12 @@ impl<T: Transport + 'static> BluetoothHost<T> {
 
             // AD Type 0x08: Shortened Local Name
             // AD Type 0x09: Complete Local Name
-            if ad_type == 0x08 || ad_type == 0x09 {
-                if data_end <= event.len() {
+            if (ad_type == 0x08 || ad_type == 0x09)
+                && data_end <= event.len() {
                     let name_bytes = &event[data_start..data_end];
                     // Convert bytes to UTF-8 string, replacing invalid sequences
                     return Some(String::from_utf8_lossy(name_bytes).to_string());
                 }
-            }
 
             // Move to next AD structure
             offset += 1 + length;

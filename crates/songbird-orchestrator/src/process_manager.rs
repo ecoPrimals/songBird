@@ -177,11 +177,10 @@ impl ProcessManager {
                     identity_msg,
                     existing_pid
                 );
-            } else {
-                // Stale PID file - clean it up
-                warn!("Found stale PID file (PID {} not running), cleaning up", existing_pid);
-                self.remove_pid_file()?;
             }
+            // Stale PID file - clean it up
+            warn!("Found stale PID file (PID {} not running), cleaning up", existing_pid);
+            self.remove_pid_file()?;
         }
 
         // Write our PID
@@ -334,9 +333,7 @@ impl ProcessManager {
     fn print_duplicate_error(&self, existing_pid: u32) -> Result<()> {
         let identity_display = self
             .node_identity
-            .as_ref()
-            .map(|id| format!("NODE_ID: {}", id))
-            .unwrap_or_else(|| "NODE_ID: (not set)".to_string());
+            .as_ref().map_or_else(|| "NODE_ID: (not set)".to_string(), |id| format!("NODE_ID: {}", id));
 
         error!("╔═══════════════════════════════════════════════════════════════════╗");
         error!("║                                                                   ║");

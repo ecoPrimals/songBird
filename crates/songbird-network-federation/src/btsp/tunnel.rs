@@ -13,6 +13,7 @@ pub struct TunnelHandle {
 
 impl TunnelHandle {
     /// Create a new tunnel handle with generated ID
+    #[must_use] 
     pub fn new() -> Self {
         Self {
             id: Uuid::new_v4().to_string(),
@@ -20,6 +21,7 @@ impl TunnelHandle {
     }
 
     /// Create tunnel handle with specific ID
+    #[must_use] 
     pub fn with_id(id: String) -> Self {
         Self {
             id,
@@ -124,6 +126,7 @@ pub struct Tunnel {
 
 impl Tunnel {
     /// Create a new tunnel
+    #[must_use] 
     pub fn new(peer_id: String, peer_endpoint: String, shared_key: Vec<u8>) -> Self {
         Self {
             handle: TunnelHandle::new(),
@@ -139,6 +142,7 @@ impl Tunnel {
     }
 
     /// Get tunnel status
+    #[must_use] 
     pub fn status(&self) -> TunnelStatus {
         TunnelStatus {
             handle: self.handle.clone(),

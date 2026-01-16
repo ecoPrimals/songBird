@@ -1,13 +1,13 @@
 //! Lineage-Gated Relay Trait
 //!
-//! BearDog provides relay services based on lineage.
+//! `BearDog` provides relay services based on lineage.
 
 use super::lineage::LineageProof;
 use serde::{Deserialize, Serialize};
 
 /// Lineage-gated relay provider
 ///
-/// BearDog implements this to offer relay services to descendants.
+/// `BearDog` implements this to offer relay services to descendants.
 #[async_trait::async_trait]
 pub trait LineageRelay: Send + Sync {
     /// Offer relay service to descendant
@@ -95,6 +95,7 @@ impl AccessLevel {
     /// - 1-3 (close ancestor): Sub-masked
     /// - 4-10 (distant ancestor): Masked
     /// - 11+ (very distant): Transport only
+    #[must_use] 
     pub fn from_lineage_depth(depth: usize) -> Self {
         match depth {
             0 => Self::FullLineage,   // Direct parent
@@ -105,16 +106,19 @@ impl AccessLevel {
     }
 
     /// Check if this level can see stable node IDs
+    #[must_use] 
     pub fn can_see_node_id(&self) -> bool {
         matches!(self, Self::SubMasked | Self::FullLineage)
     }
 
     /// Check if this level can see network topology
+    #[must_use] 
     pub fn can_see_topology(&self) -> bool {
         matches!(self, Self::FullLineage)
     }
 
     /// Check if this level can revoke relay
+    #[must_use] 
     pub fn can_revoke(&self) -> bool {
         matches!(self, Self::FullLineage)
     }
@@ -122,17 +126,20 @@ impl AccessLevel {
 
 impl RelaySession {
     /// Check if this session is currently active
+    #[must_use] 
     pub fn is_active(&self) -> bool {
         let now = chrono::Utc::now();
         now >= self.created_at && now < self.expires_at
     }
 
     /// Check if this session is expired
+    #[must_use] 
     pub fn is_expired(&self) -> bool {
         chrono::Utc::now() >= self.expires_at
     }
 
     /// Time remaining in this session
+    #[must_use] 
     pub fn time_remaining(&self) -> Option<chrono::Duration> {
         let now = chrono::Utc::now();
         if now >= self.expires_at {

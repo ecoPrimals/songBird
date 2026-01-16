@@ -215,25 +215,13 @@ async fn negotiate_protocol(
     // Build endpoints for the selected protocol
     let endpoints = match selected.as_str() {
         "json-rpc" => {
-            if let Some(ref json_rpc) = state.available_protocols.json_rpc {
-                Some(json_rpc.endpoints.clone())
-            } else {
-                None
-            }
+            state.available_protocols.json_rpc.as_ref().map(|json_rpc| json_rpc.endpoints.clone())
         }
         "tarpc" => {
-            if let Some(ref tarpc) = state.available_protocols.tarpc {
-                Some(tarpc.endpoints.clone())
-            } else {
-                None
-            }
+            state.available_protocols.tarpc.as_ref().map(|tarpc| tarpc.endpoints.clone())
         }
         "websocket" => {
-            if let Some(ref ws) = state.available_protocols.websocket {
-                Some(ws.endpoints.clone())
-            } else {
-                None
-            }
+            state.available_protocols.websocket.as_ref().map(|ws| ws.endpoints.clone())
         }
         _ => Some(state.available_protocols.http.endpoints.clone()),
     };
@@ -306,7 +294,7 @@ fn select_best_protocol(
 
     // Otherwise, select the highest priority protocol that both support
     for protocol in PRIORITY {
-        let protocol_str = protocol.to_string();
+        let protocol_str = (*protocol).to_string();
         if client_protocols.contains(&protocol_str) && available_protocols.contains(&protocol_str) {
             return protocol_str;
         }

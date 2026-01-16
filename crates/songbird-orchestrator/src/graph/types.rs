@@ -47,7 +47,7 @@ use std::collections::HashMap;
 ///     },
 /// };
 /// ```
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct Graph {
     /// Unique graph identifier
     pub id: String,
@@ -130,7 +130,7 @@ impl Graph {
 /// Notice that `primal_name` is `Option<String>` and used for informational
 /// purposes only. The validator and availability checker use only the `capability`
 /// field to discover appropriate primals at runtime.
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct GraphNode {
     /// Unique node identifier within the graph
     pub id: String,
@@ -182,7 +182,7 @@ pub struct GraphNode {
 /// An edge indicates that the target node (`to`) depends on the source node (`from`).
 /// The edge can optionally specify how to map output data from the source to
 /// input data for the target.
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct GraphEdge {
     /// Source node ID
     pub from: String,
@@ -209,7 +209,7 @@ pub struct GraphEdge {
 }
 
 /// Graph metadata
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct GraphMetadata {
     /// User or system that created the graph
     pub created_by: String,
@@ -243,7 +243,7 @@ impl Default for GraphMetadata {
 ///
 /// Contains detailed information about validation success or failure,
 /// including any issues found, warnings, and informational messages.
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct ValidationResult {
     /// Whether the graph is valid
     ///
@@ -308,7 +308,7 @@ impl ValidationResult {
 }
 
 /// A single validation issue
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct ValidationIssue {
     /// Severity of the issue
     pub severity: IssueSeverity,
@@ -362,7 +362,7 @@ pub enum IssueSeverity {
 }
 
 /// Informational data about a validated graph
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct ValidationInfo {
     /// Number of nodes in the graph
     pub node_count: usize,

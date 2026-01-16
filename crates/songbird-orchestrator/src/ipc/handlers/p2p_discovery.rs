@@ -36,21 +36,18 @@ pub async fn discover_by_family(
         )
     })?;
 
-    match &handlers.discovery_listener {
-        Some(_listener) => {
-            // TODO: Implement get_discovered_peers() method on AnonymousDiscoveryListener
-            info!("✅ Would discover peers matching family tags: {:?}", request.family_tags);
+    if let Some(_listener) = &handlers.discovery_listener {
+        // TODO: Implement get_discovered_peers() method on AnonymousDiscoveryListener
+        info!("✅ Would discover peers matching family tags: {:?}", request.family_tags);
 
-            Ok(DiscoverByFamilyResponse {
-                nodes: vec![],
-            })
-        }
-        None => {
-            warn!("⚠️  Discovery listener not available");
-            Ok(DiscoverByFamilyResponse {
-                nodes: vec![],
-            })
-        }
+        Ok(DiscoverByFamilyResponse {
+            nodes: vec![],
+        })
+    } else {
+        warn!("⚠️  Discovery listener not available");
+        Ok(DiscoverByFamilyResponse {
+            nodes: vec![],
+        })
     }
 }
 
@@ -128,7 +125,7 @@ pub async fn create_genetic_tunnel(
         Err(e) => {
             warn!("❌ Failed to establish BTSP tunnel: {}", e);
             Ok(CreateGeneticTunnelResponse {
-                tunnel_id: "".to_string(),
+                tunnel_id: String::new(),
                 status: "failed".to_string(),
                 local_endpoint: None,
                 peer_endpoint: request.peer_endpoint,
@@ -193,20 +190,17 @@ pub async fn discover_by_family_json(
         return Err(JsonRpcError::invalid_params("Missing params for discover_by_family"));
     };
 
-    match &handlers.discovery_listener {
-        Some(_listener) => {
-            // TODO: Implement get_discovered_peers() method
-            let response = DiscoverByFamilyResponse {
-                nodes: vec![],
-            };
-            serde_json::to_value(response).map_err(|e| JsonRpcError::internal_error(e.to_string()))
-        }
-        None => {
-            let response = DiscoverByFamilyResponse {
-                nodes: vec![],
-            };
-            serde_json::to_value(response).map_err(|e| JsonRpcError::internal_error(e.to_string()))
-        }
+    if let Some(_listener) = &handlers.discovery_listener {
+        // TODO: Implement get_discovered_peers() method
+        let response = DiscoverByFamilyResponse {
+            nodes: vec![],
+        };
+        serde_json::to_value(response).map_err(|e| JsonRpcError::internal_error(e.to_string()))
+    } else {
+        let response = DiscoverByFamilyResponse {
+            nodes: vec![],
+        };
+        serde_json::to_value(response).map_err(|e| JsonRpcError::internal_error(e.to_string()))
     }
 }
 
@@ -265,7 +259,7 @@ pub async fn create_genetic_tunnel_json(
             created_at: timestamp,
         },
         Err(e) => CreateGeneticTunnelResponse {
-            tunnel_id: "".to_string(),
+            tunnel_id: String::new(),
             status: format!("failed: {}", e),
             local_endpoint: None,
             peer_endpoint: request.peer_endpoint,

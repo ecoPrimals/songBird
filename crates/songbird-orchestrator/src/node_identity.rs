@@ -200,7 +200,7 @@ impl NodeIdentity {
         let macs: Vec<String> = output
             .lines()
             .filter(|line| line.contains("link/ether"))
-            .filter_map(|line| line.split_whitespace().nth(1).map(|mac| mac.to_string()))
+            .filter_map(|line| line.split_whitespace().nth(1).map(std::string::ToString::to_string))
             .collect();
 
         Ok(macs)
@@ -214,9 +214,7 @@ impl NodeIdentity {
         // Use SONGBIRD_NODE_ID or NODE_ID to create unique identity files
         let filename = std::env::var("SONGBIRD_NODE_ID")
             .or_else(|_| std::env::var("NODE_ID"))
-            .ok()
-            .map(|node_id| format!("node_identity-{}.json", node_id))
-            .unwrap_or_else(|| "node_identity.json".to_string());
+            .ok().map_or_else(|| "node_identity.json".to_string(), |node_id| format!("node_identity-{}.json", node_id));
 
         data_dir.join("songbird").join(filename)
     }
@@ -241,7 +239,7 @@ impl NodeIdentity {
     fn load_from_disk() -> Result<Self> {
         let path = Self::identity_path();
         let json = fs::read_to_string(&path)?;
-        let identity: NodeIdentity = serde_json::from_str(&json)?;
+        let identity: Self = serde_json::from_str(&json)?;
         Ok(identity)
     }
 

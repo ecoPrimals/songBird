@@ -1,20 +1,20 @@
 //! Local BTSP Implementation
 //!
 //! This module provides a local implementation of BTSP for testing and
-//! development without requiring BearDog to be running. It uses standard
+//! development without requiring `BearDog` to be running. It uses standard
 //! Rust cryptography libraries to simulate the BTSP protocol.
 //!
 //! ## Security Notice
 //!
 //! This implementation is for TESTING ONLY. It does not provide the same
-//! security guarantees as real BearDog genetic cryptography:
+//! security guarantees as real `BearDog` genetic cryptography:
 //!
 //! - Uses AES-256-GCM instead of genetic crypto
 //! - No key lineage tracking
 //! - No multi-party consent
 //! - No threshold key schemes
 //!
-//! When BearDog is available, it will be discovered and used automatically.
+//! When `BearDog` is available, it will be discovered and used automatically.
 
 use async_trait::async_trait;
 use std::collections::HashMap;
@@ -35,7 +35,7 @@ use songbird_types::{SongbirdError, SongbirdResult};
 /// Local BTSP provider for testing
 ///
 /// This implementation uses standard AES-256-GCM encryption and is suitable
-/// for testing federation without BearDog. It maintains tunnels in memory
+/// for testing federation without `BearDog`. It maintains tunnels in memory
 /// and uses symmetric encryption.
 pub struct LocalBtspProvider {
     tunnels: Arc<RwLock<HashMap<String, Tunnel>>>,
@@ -144,7 +144,7 @@ impl BtspProvider for LocalBtspProvider {
         Ok(())
     }
 
-    fn provider_name(&self) -> &str {
+    fn provider_name(&self) -> &'static str {
         "Local"
     }
 
@@ -206,7 +206,7 @@ impl LocalKeyManager {
         // Encrypt
         let ciphertext = cipher
             .encrypt(&nonce, data)
-            .map_err(|e| SongbirdError::security(format!("Encryption failed: {}", e)))?;
+            .map_err(|e| SongbirdError::security(format!("Encryption failed: {e}")))?;
 
         // Prepend nonce to ciphertext for decryption
         let mut result = nonce_bytes.to_vec();
@@ -240,7 +240,7 @@ impl LocalKeyManager {
         // Decrypt
         let plaintext = cipher
             .decrypt(&nonce, ciphertext)
-            .map_err(|e| SongbirdError::security(format!("Decryption failed: {}", e)))?;
+            .map_err(|e| SongbirdError::security(format!("Decryption failed: {e}")))?;
 
         Ok(plaintext)
     }

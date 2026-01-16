@@ -1,0 +1,308 @@
+//! # 🎯 Test Endpoint Fixtures
+//!
+//! **Zero-hardcoding test infrastructure**
+//!
+//! Provides dynamic endpoint generation for tests that:
+//! - Respects environment variables
+//! - Avoids port conflicts
+//! - Demonstrates capability-based discovery
+//! - Works across all test environments
+//!
+//! ## Usage
+//!
+//! ```rust
+//! use songbird_test_utils::fixtures::endpoints::*;
+//!
+//! #[tokio::test]
+//! async fn test_security_integration() {
+//!     // Get endpoint for security capability
+//!     let security_endpoint = test_endpoint("security");
+//!     // Uses SECURITY_ENDPOINT env var or generates unique endpoint
+//!     
+//!     // Get dynamic port for capability
+//!     let port = test_port("compute");
+//!     // Uses COMPUTE_PORT env var or selects available port
+//! }
+//! ```
+
+use std::collections::HashMap;
+use std::net::TcpListener;
+use std::sync::Mutex;
+
+/// Global registry of allocated test ports to avoid conflicts
+static PORT_REGISTRY: std::sync::LazyLock<Mutex<HashMap<String, u16>>> = std::sync::LazyLock::new(|| Mutex::new(HashMap::new()));
+
+/// Get test endpoint for a capability
+///
+/// Discovery order:
+/// 1. `{CAPABILITY}_ENDPOINT` environment variable
+/// 2. `TEST_{CAPABILITY}_ENDPOINT` environment variable
+/// 3. Generated endpoint with dynamic port
+///
+/// # Examples
+///
+/// ```rust
+/// use songbird_test_utils::fixtures::endpoints::test_endpoint;
+///
+/// // With environment variable:
+/// // export SECURITY_ENDPOINT=http://localhost:9443
+/// let endpoint = test_endpoint("security");
+/// assert_eq!(endpoint, "http://localhost:9443");
+///
+/// // Without environment variable:
+/// let endpoint = test_endpoint("compute");
+/// // Returns: "http://127.0.0.1:PORT" with dynamically allocated PORT
+/// ```
+#[must_use] 
+pub fn test_endpoint(capability: &str) -> String {
+    // Try environment variables first
+    let env_key = format!("{}_ENDPOINT", capability.to_uppercase());
+    if let Ok(endpoint) = std::env::var(&env_key) {
+        return endpoint;
+    }
+
+    let test_env_key = format!("TEST_{}_ENDPOINT", capability.to_uppercase());
+    if let Ok(endpoint) = std::env::var(&test_env_key) {
+        return endpoint;
+    }
+
+    // Generate endpoint with dynamic port
+    let port = test_port(capability);
+    format!("http://127.0.0.1:{port}")
+}
+
+/// Get test port for a capability
+///
+/// Discovery order:
+/// 1. `{CAPABILITY}_PORT` environment variable
+/// 2. `TEST_{CAPABILITY}_PORT` environment variable
+/// 3. Previously allocated port for this capability (cached)
+/// 4. Dynamically allocated available port
+///
+/// Ports are cached per capability to ensure consistency within a test run.
+///
+/// # Examples
+///
+/// ```rust
+/// use songbird_test_utils::fixtures::endpoints::test_port;
+///
+/// // With environment variable:
+/// // export SECURITY_PORT=9443
+/// let port = test_port("security");
+/// assert_eq!(port, 9443);
+///
+/// // Without environment variable:
+/// let port1 = test_port("compute");
+/// let port2 = test_port("compute");
+/// assert_eq!(port1, port2); // Same capability = same port (cached)
+/// ```
+pub fn test_port(capability: &str) -> u16 {
+    // Try environment variables first
+    let env_key = format!("{}_PORT", capability.to_uppercase());
+    if let Ok(port_str) = std::env::var(&env_key) {
+        if let Ok(port) = port_str.parse() {
+            return port;
+        }
+    }
+
+    let test_env_key = format!("TEST_{}_PORT", capability.to_uppercase());
+    if let Ok(port_str) = std::env::var(&test_env_key) {
+        if let Ok(port) = port_str.parse() {
+            return port;
+        }
+    }
+
+    // Check if we've already allocated a port for this capability
+    {
+        let registry = PORT_REGISTRY.lock().unwrap();
+        if let Some(&port) = registry.get(capability) {
+            return port;
+        }
+    }
+
+    // Allocate a new port
+    let port = allocate_available_port();
+    
+    // Cache it
+    {
+        let mut registry = PORT_REGISTRY.lock().unwrap();
+        registry.insert(capability.to_string(), port);
+    }
+
+    port
+}
+
+/// Get test endpoint with specific port override
+///
+/// Useful when you need to force a specific port for testing.
+///
+/// # Examples
+///
+/// ```rust
+/// use songbird_test_utils::fixtures::endpoints::test_endpoint_with_port;
+///
+/// let endpoint = test_endpoint_with_port("security", 9443);
+/// assert_eq!(endpoint, "http://127.0.0.1:9443");
+/// ```
+#[must_use] 
+pub fn test_endpoint_with_port(capability: &str, port: u16) -> String {
+    // Check if security capability should use HTTPS
+    let protocol = if capability == "security" && port == 8443 {
+        "https"
+    } else {
+        "http"
+    };
+    
+    format!("{protocol}://127.0.0.1:{port}")
+}
+
+/// Allocate an available port from the OS
+///
+/// Uses OS port allocation by binding to port 0 and retrieving the assigned port.
+/// This ensures we get an available port without conflicts.
+fn allocate_available_port() -> u16 {
+    // Bind to port 0 to let OS choose an available port
+    let listener = TcpListener::bind("127.0.0.1:0")
+        .expect("Failed to bind to ephemeral port");
+    
+    
+    
+    // Listener is dropped here, freeing the port for actual use
+    listener.local_addr()
+        .expect("Failed to get local address")
+        .port()
+}
+
+/// Clear port registry (useful for test isolation)
+///
+/// Call this in test setup/teardown if you need fresh port allocation.
+///
+/// # Examples
+///
+/// ```rust
+/// use songbird_test_utils::fixtures::endpoints::{clear_port_registry, test_port};
+///
+/// #[test]
+/// fn test_isolated() {
+///     clear_port_registry();
+///     let port = test_port("isolated");
+///     // Fresh allocation
+/// }
+/// ```
+pub fn clear_port_registry() {
+    let mut registry = PORT_REGISTRY.lock().unwrap();
+    registry.clear();
+}
+
+/// Get test bind address for capability
+///
+/// Returns `127.0.0.1:PORT` where PORT is determined via `test_port()`.
+///
+/// # Examples
+///
+/// ```rust
+/// use songbird_test_utils::fixtures::endpoints::test_bind_address;
+///
+/// let addr = test_bind_address("discovery");
+/// // Returns: "127.0.0.1:PORT"
+/// ```
+#[must_use] 
+pub fn test_bind_address(capability: &str) -> String {
+    let port = test_port(capability);
+    format!("127.0.0.1:{port}")
+}
+
+/// Get test socket address for capability
+///
+/// Returns a parsed `SocketAddr` ready for binding.
+///
+/// # Examples
+///
+/// ```rust
+/// use songbird_test_utils::fixtures::endpoints::test_socket_addr;
+/// use std::net::TcpListener;
+///
+/// let addr = test_socket_addr("http");
+/// let listener = TcpListener::bind(addr).unwrap();
+/// ```
+#[must_use] 
+pub fn test_socket_addr(capability: &str) -> std::net::SocketAddr {
+    let port = test_port(capability);
+    format!("127.0.0.1:{port}")
+        .parse()
+        .expect("Failed to parse socket address")
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_endpoint_respects_env_var() {
+        std::env::set_var("SECURITY_ENDPOINT", "https://test.local:9000");
+        let endpoint = test_endpoint("security");
+        assert_eq!(endpoint, "https://test.local:9000");
+        std::env::remove_var("SECURITY_ENDPOINT");
+    }
+
+    #[test]
+    fn test_port_respects_env_var() {
+        std::env::set_var("COMPUTE_PORT", "7777");
+        let port = test_port("compute");
+        assert_eq!(port, 7777);
+        std::env::remove_var("COMPUTE_PORT");
+    }
+
+    #[test]
+    fn test_port_allocation_is_cached() {
+        clear_port_registry();
+        let port1 = test_port("test_capability");
+        let port2 = test_port("test_capability");
+        assert_eq!(port1, port2, "Same capability should return same port");
+    }
+
+    #[test]
+    fn test_different_capabilities_get_different_ports() {
+        clear_port_registry();
+        let port1 = test_port("capability_a");
+        let port2 = test_port("capability_b");
+        assert_ne!(port1, port2, "Different capabilities should get different ports");
+    }
+
+    #[test]
+    fn test_endpoint_with_port_override() {
+        let endpoint = test_endpoint_with_port("storage", 8888);
+        assert_eq!(endpoint, "http://127.0.0.1:8888");
+    }
+
+    #[test]
+    fn test_security_uses_https() {
+        let endpoint = test_endpoint_with_port("security", 8443);
+        assert!(endpoint.starts_with("https://"), "Security should use HTTPS");
+    }
+
+    #[test]
+    fn test_bind_address_format() {
+        clear_port_registry();
+        let addr = test_bind_address("test");
+        assert!(addr.starts_with("127.0.0.1:"), "Bind address should start with 127.0.0.1:");
+    }
+
+    #[test]
+    fn test_socket_addr_parseable() {
+        let addr = test_socket_addr("websocket");
+        assert_eq!(addr.ip().to_string(), "127.0.0.1");
+        assert!(addr.port() > 0, "Port should be allocated");
+    }
+
+    #[test]
+    fn test_clear_registry() {
+        let port1 = test_port("clear_test");
+        clear_port_registry();
+        let port2 = test_port("clear_test");
+        // Ports might be different after clear (new allocation)
+        // This just verifies clear doesn't panic
+        assert!(port2 > 0);
+    }
+}
+

@@ -43,7 +43,7 @@ pub enum TrustLevel {
 impl TrustLevel {
     /// Check if this trust level can perform an operation requiring a minimum level
     #[must_use]
-    pub fn can_perform(&self, required_level: TrustLevel) -> bool {
+    pub fn can_perform(&self, required_level: Self) -> bool {
         *self >= required_level
     }
 

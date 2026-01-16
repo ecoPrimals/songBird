@@ -277,7 +277,7 @@ impl super::InformationLayerBuilder {
                 } => {
                     let duration_hours =
                         (completed_at.timestamp() - task.created_at.timestamp()) as f64 / 3600.0;
-                    duration_hours * task.spec.resources.gpu_count.unwrap_or(1) as f64
+                    duration_hours * f64::from(task.spec.resources.gpu_count.unwrap_or(1))
                 }
                 _ => 0.0,
             }

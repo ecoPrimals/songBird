@@ -47,8 +47,8 @@ impl Capability {
     ///
     /// The information hierarchy is:
     /// Infrastructure ⊃ Administrative ⊃ Operational ⊃ Educational ⊃ Public
-    pub fn implies(&self, other: &Capability) -> bool {
-        use Capability::*;
+    pub fn implies(&self, other: &Self) -> bool {
+        use Capability::{All, ViewInfrastructureInfo, ViewAdministrativeInfo, ViewOperationalInfo, ViewEducationalInfo, ViewPublicInfo, ViewAllTasks, ViewAllStudentTasks, ViewOwnTasks, CancelAnyTask, CancelOwnTasks, ManageAllUsers, ManageCourseUsers, AccessSystemLogs, AccessSecurityLogs, AccessRawLogs, AccessStudentLogs};
 
         // All implies everything
         if matches!(self, All) {
@@ -104,11 +104,11 @@ impl Capability {
     pub fn is_sensitive(&self) -> bool {
         matches!(
             self,
-            Capability::ViewInfrastructureInfo
-                | Capability::ManageConfiguration
-                | Capability::RestartServices
-                | Capability::ManageNodes
-                | Capability::AccessSecurityLogs
+            Self::ViewInfrastructureInfo
+                | Self::ManageConfiguration
+                | Self::RestartServices
+                | Self::ManageNodes
+                | Self::AccessSecurityLogs
         )
     }
 }

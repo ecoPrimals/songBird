@@ -5,9 +5,7 @@
 use crate::coordinator::LineageRelayCoordinator;
 use crate::error::{LineageRelayError, Result};
 use crate::types::NodeId;
-use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
-use songbird_primal_coordination::bridge::PrimalConnection;
 use songbird_primal_coordination::types::{PrimalRequest, PrimalResponse};
 use std::net::SocketAddr;
 use std::sync::Arc;
@@ -71,7 +69,7 @@ impl LineageRelayAdapter {
                 let peer = NodeId::from(peer_id);
                 let address: SocketAddr = peer_address
                     .parse()
-                    .map_err(|e| LineageRelayError::Other(format!("Invalid address: {}", e)))?;
+                    .map_err(|e| LineageRelayError::Other(format!("Invalid address: {e}")))?;
 
                 let connection = self.coordinator.establish_connection(peer, address).await?;
 
@@ -98,7 +96,7 @@ impl LineageRelayAdapter {
     }
 }
 
-/// Wrapper to integrate with Universal Coordinator's PrimalConnection
+/// Wrapper to integrate with Universal Coordinator's `PrimalConnection`
 pub struct LineageRelayPrimalConnection {
     adapter: Arc<LineageRelayAdapter>,
 }
@@ -125,7 +123,7 @@ impl LineageRelayPrimalConnection {
                 let response = self.adapter.handle_request(conn_request).await?;
                 Ok(PrimalResponse::Custom(serde_json::to_value(response)?))
             }
-            Err(e) => Ok(PrimalResponse::Error(format!("Invalid connectivity request: {}", e))),
+            Err(e) => Ok(PrimalResponse::Error(format!("Invalid connectivity request: {e}"))),
         }
     }
 }

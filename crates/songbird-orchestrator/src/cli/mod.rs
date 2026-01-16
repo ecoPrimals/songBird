@@ -186,7 +186,7 @@ pub fn get_discovery_config() -> &'static SongbirdDiscoveryConfig {
             multicast_address: "239.255.255.250".to_string(),
             federation_port: 8001,
             service_port: 8002,
-            bind_address: songbird_config::canonical::constants::get_bind_address().to_string(),
+            bind_address: songbird_config::canonical::constants::get_bind_address(),
             announcement_interval_secs: 30,
             response_timeout_secs: 5,
             ping_timeout_secs: 3,

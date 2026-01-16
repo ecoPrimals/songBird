@@ -215,34 +215,31 @@ impl SongbirdOrchestrator {
         // EVOLVED: Use capability discovery (not hardcoded vendor name!)
         let security_url = crate::app::security_setup::discover_security_endpoint(None).await;
 
-        match security_url {
-            Ok(url) => {
-                info!("🔐 Security provider configured: {}", url);
+        if let Ok(url) = security_url {
+            info!("🔐 Security provider configured: {}", url);
 
-                // Query for identity
-                let security_client = SecurityCapabilityClient::from_endpoint(url);
+            // Query for identity
+            let security_client = SecurityCapabilityClient::from_endpoint(url);
 
-                match security_client?.get_identity().await {
-                    Ok(identity) => {
-                        info!("✅ Got encryption tag: {}", identity.encryption_tag);
-                        if let Some(family_id) = &identity.family_id {
-                            info!("👨‍👩‍👧‍👦 Family ID: {}", family_id);
-                        }
-                        info!("🔑 Capabilities: {:?}", identity.capabilities);
-
-                        // ✅ v3.14.0: Tags now broadcast in discovery via discover_identity_tags()
-                        // For now, it's logged and can be accessed via SecurityCapabilityClient
+            match security_client?.get_identity().await {
+                Ok(identity) => {
+                    info!("✅ Got encryption tag: {}", identity.encryption_tag);
+                    if let Some(family_id) = &identity.family_id {
+                        info!("👨‍👩‍👧‍👦 Family ID: {}", family_id);
                     }
-                    Err(e) => {
-                        warn!("⚠️  Could not query security identity: {}", e);
-                        warn!("   Continuing without encryption tags");
-                    }
+                    info!("🔑 Capabilities: {:?}", identity.capabilities);
+
+                    // ✅ v3.14.0: Tags now broadcast in discovery via discover_identity_tags()
+                    // For now, it's logged and can be accessed via SecurityCapabilityClient
+                }
+                Err(e) => {
+                    warn!("⚠️  Could not query security identity: {}", e);
+                    warn!("   Continuing without encryption tags");
                 }
             }
-            Err(_) => {
-                debug!("No security provider configured (SONGBIRD_SECURITY_PROVIDER not set)");
-                debug!("Continuing without encryption tags");
-            }
+        } else {
+            debug!("No security provider configured (SONGBIRD_SECURITY_PROVIDER not set)");
+            debug!("Continuing without encryption tags");
         }
 
         Ok(())
@@ -707,10 +704,9 @@ impl SongbirdOrchestrator {
                 if retest_result.https_reachable {
                     info!("✅ Connectivity restored after auto-remediation!");
                     return Ok(());
-                } else {
-                    warn!("⚠️  Connectivity still failing after auto-remediation");
-                    warn!("   Manual intervention may be required");
                 }
+                warn!("⚠️  Connectivity still failing after auto-remediation");
+                warn!("   Manual intervention may be required");
             }
             Err(e) => {
                 warn!("❌ Auto-remediation failed: {}", e);

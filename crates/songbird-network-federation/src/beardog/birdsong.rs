@@ -1,14 +1,14 @@
-//! BirdSong Encryption Trait
+//! `BirdSong` Encryption Trait
 //!
-//! BearDog provides encryption/decryption for birdSong broadcasts.
+//! `BearDog` provides encryption/decryption for birdSong broadcasts.
 
 use super::genesis::GenesisWitnessProof;
 use super::lineage::LineageProof;
 use serde::{Deserialize, Serialize};
 
-/// BirdSong encryption provider
+/// `BirdSong` encryption provider
 ///
-/// BearDog implements this to encrypt/decrypt birdSong messages.
+/// `BearDog` implements this to encrypt/decrypt birdSong messages.
 #[async_trait::async_trait]
 pub trait BirdSongCrypto: Send + Sync {
     /// Encrypt payload for a specific lineage
@@ -30,7 +30,7 @@ pub trait BirdSongCrypto: Send + Sync {
 
     /// Request decryption key for a lineage
     ///
-    /// BearDog verifies the lineage proof, then provides the key if authorized.
+    /// `BearDog` verifies the lineage proof, then provides the key if authorized.
     async fn request_key(
         &self,
         lineage_hint: &LineageHint,
@@ -95,15 +95,15 @@ pub enum LineageHint {
 
 /// Broadcast key for encrypting/decrypting birdSong
 ///
-/// Derived from lineage, distributed by BearDog.
-/// **Phase 3**: Used for BirdSong encrypted broadcasts
+/// Derived from lineage, distributed by `BearDog`.
+/// **Phase 3**: Used for `BirdSong` encrypted broadcasts
 #[derive(Debug, Clone)]
 pub struct BroadcastKey {
     /// Key identifier (for caching)
     pub key_id: String,
 
     /// The actual key material (kept private)
-    /// **Phase 3**: Used by encrypt_broadcast() and decrypt_broadcast() methods
+    /// **Phase 3**: Used by `encrypt_broadcast()` and `decrypt_broadcast()` methods
     #[allow(dead_code)] // Phase 3: BirdSong encryption implementation pending
     pub(crate) key_data: Vec<u8>,
 
@@ -118,8 +118,9 @@ impl BroadcastKey {
     /// Encrypt broadcast data using this key (Phase 3 placeholder)
     ///
     /// **Status**: Phase 3 - Mock implementation for testing
-    /// Once BearDog integration is complete, this will use real genetic cryptography.
+    /// Once `BearDog` integration is complete, this will use real genetic cryptography.
     #[allow(dead_code)] // Phase 3: Called by BirdSong protocol
+    #[must_use] 
     pub fn encrypt_broadcast(&self, data: &[u8]) -> Vec<u8> {
         // Mock XOR encryption for testing
         // Phase 3: Replace with real BirdSong encryption
@@ -127,17 +128,20 @@ impl BroadcastKey {
     }
 
     /// Check if this key is currently valid
+    #[must_use] 
     pub fn is_valid(&self) -> bool {
         let now = chrono::Utc::now();
         now >= self.valid_from && now <= self.valid_until
     }
 
     /// Check if this key is expired
+    #[must_use] 
     pub fn is_expired(&self) -> bool {
         chrono::Utc::now() > self.valid_until
     }
 
     /// Time until expiration
+    #[must_use] 
     pub fn time_until_expiry(&self) -> Option<chrono::Duration> {
         let now = chrono::Utc::now();
         if now > self.valid_until {
@@ -152,12 +156,14 @@ impl EncryptedBirdSong {
     /// Check if this birdSong is recent (not a replay)
     ///
     /// Rejects messages older than 60 seconds.
+    #[must_use] 
     pub fn is_recent(&self) -> bool {
         let age = chrono::Utc::now() - self.timestamp;
         age.num_seconds() < 60
     }
 
     /// Check if timestamp is valid (not in the future)
+    #[must_use] 
     pub fn has_valid_timestamp(&self) -> bool {
         let now = chrono::Utc::now();
         self.timestamp <= now

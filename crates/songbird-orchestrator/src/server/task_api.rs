@@ -244,23 +244,23 @@ pub enum AppError {
 
 impl From<anyhow::Error> for AppError {
     fn from(err: anyhow::Error) -> Self {
-        AppError::Internal(err)
+        Self::Internal(err)
     }
 }
 
 impl From<serde_json::Error> for AppError {
     fn from(err: serde_json::Error) -> Self {
-        AppError::Internal(err.into())
+        Self::Internal(err.into())
     }
 }
 
 impl IntoResponse for AppError {
     fn into_response(self) -> Response {
         let (status, message) = match self {
-            AppError::InvalidTaskId => (StatusCode::BAD_REQUEST, "Invalid task ID"),
-            AppError::TaskNotFound => (StatusCode::NOT_FOUND, "Task not found"),
-            AppError::InvalidCheckpointData => (StatusCode::BAD_REQUEST, "Invalid checkpoint data"),
-            AppError::Internal(err) => {
+            Self::InvalidTaskId => (StatusCode::BAD_REQUEST, "Invalid task ID"),
+            Self::TaskNotFound => (StatusCode::NOT_FOUND, "Task not found"),
+            Self::InvalidCheckpointData => (StatusCode::BAD_REQUEST, "Invalid checkpoint data"),
+            Self::Internal(err) => {
                 error!("Internal error: {:?}", err);
                 (StatusCode::INTERNAL_SERVER_ERROR, "Internal server error")
             }

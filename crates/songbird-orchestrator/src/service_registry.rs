@@ -168,7 +168,7 @@ pub struct ServiceCapability {
 }
 
 /// Service status
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "lowercase")]
 pub enum ServiceStatus {
     Active,
@@ -213,8 +213,8 @@ impl PortAllocator {
             }
 
             // Check if this port is available
-            if !self.allocated.contains_key(&port) {
-                self.allocated.insert(port, service_id.to_string());
+            if let std::collections::hash_map::Entry::Vacant(e) = self.allocated.entry(port) {
+                e.insert(service_id.to_string());
                 debug!("✅ Allocated port {} to service {}", port, service_id);
                 return Ok(port);
             }
@@ -343,8 +343,7 @@ impl ServiceRegistry {
                 .protocols
                 .iter()
                 .find(|p| *p != &request.preferred_protocol)
-                .map(|s| s.as_str())
-                .unwrap_or("https");
+                .map_or("https", std::string::String::as_str);
 
             let fallback_port = {
                 let mut allocator = self.port_allocator.write().await;

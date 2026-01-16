@@ -183,10 +183,10 @@ pub enum ApiError {
 impl IntoResponse for ApiError {
     fn into_response(self) -> Response {
         let (status, message) = match self {
-            ApiError::InvalidTaskId => (StatusCode::BAD_REQUEST, "Invalid task ID"),
-            ApiError::InvalidStatus => (StatusCode::BAD_REQUEST, "Invalid consent status"),
-            ApiError::ConsentNotFound => (StatusCode::NOT_FOUND, "Consent not found"),
-            ApiError::Internal(msg) => {
+            Self::InvalidTaskId => (StatusCode::BAD_REQUEST, "Invalid task ID"),
+            Self::InvalidStatus => (StatusCode::BAD_REQUEST, "Invalid consent status"),
+            Self::ConsentNotFound => (StatusCode::NOT_FOUND, "Consent not found"),
+            Self::Internal(msg) => {
                 error!("Internal error: {}", msg);
                 (StatusCode::INTERNAL_SERVER_ERROR, "Internal server error")
             }

@@ -34,7 +34,8 @@ members = [
     
     # 🌐 INTEGRATION (2 crates) - CONSOLIDATED
     # "crates/songbird-primal-sdk",        # ⚠️ DEFERRED: Cascading delimiter errors across multiple files (est. 2-4h systematic fix)
-    "crates/songbird-squirrel-service", "crates/songbird-execution-agent",    # 🐿️ NEW: AI/MCP Service
+    # "crates/songbird-squirrel-service",  # ⛔ DEPRECATED JAN 16 2026: TRUE PRIMAL violation - use separate phase1/squirrel/ primal
+    "crates/songbird-execution-agent",    # ✅ Command execution
     
     # 🔧 TOOLS
     # "tools/hardcoding-migrator",           # ⚠️ Missing directory
@@ -103,8 +104,8 @@ chrono = { version = "0.4", features = ["serde"] }
 # Random number generation
 rand = "0.8"
 
-# HTTP client
-reqwest = { version = "0.11", features = ["json"] }
+# HTTP client (✅ Pure Rust TLS - no C dependencies!)
+reqwest = { version = "0.11", features = ["json", "rustls-tls"], default-features = false }
 
 # Serialization
 bincode = "1.3"

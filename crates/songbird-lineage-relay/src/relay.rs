@@ -4,7 +4,7 @@
 
 use crate::birdsong::{BirdSongBroadcaster, BirdSongType, LineageHint};
 use crate::error::{LineageRelayError, Result};
-use crate::types::{ConnectionEndpoint, MaskingLevel, NodeId, RelayAuthorization};
+use crate::types::{MaskingLevel, NodeId, RelayAuthorization};
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 use std::net::SocketAddr;
@@ -14,7 +14,7 @@ use tokio::sync::{Mutex, RwLock};
 use tokio::time::timeout;
 use tracing::{debug, info, warn};
 
-/// Relay authority provider (implemented by BearDog)
+/// Relay authority provider (implemented by `BearDog`)
 #[async_trait]
 pub trait RelayAuthority: Send + Sync {
     /// Authorize relay service for requester
@@ -212,7 +212,7 @@ impl RelayDiscovery {
     /// - No CPU waste (event-driven, not busy-waiting)
     /// - Cleaner code (no manual polling logic)
     ///
-    /// Alternative: Make broadcaster.get_messages() await-able (blocking call)
+    /// Alternative: Make `broadcaster.get_messages()` await-able (blocking call)
     ///
     /// Status: INCOMPLETE - Requires broadcaster architectural changes
     /// Priority: MEDIUM (relay functionality is experimental)

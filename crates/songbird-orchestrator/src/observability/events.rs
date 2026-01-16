@@ -165,11 +165,10 @@ impl EventFilter {
         }
 
         // Check event type filter
-        if !self.event_types.is_empty() {
-            if !self.event_types.contains(&event.event_type) {
+        if !self.event_types.is_empty()
+            && !self.event_types.contains(&event.event_type) {
                 return false;
             }
-        }
 
         true
     }

@@ -52,23 +52,23 @@ impl TaskStatus {
     pub fn is_terminal(&self) -> bool {
         matches!(
             self,
-            TaskStatus::Completed { .. } | TaskStatus::Failed { .. } | TaskStatus::Cancelled { .. }
+            Self::Completed { .. } | Self::Failed { .. } | Self::Cancelled { .. }
         )
     }
 
     /// Check if task is active (running or queued)
     pub fn is_active(&self) -> bool {
-        matches!(self, TaskStatus::Queued | TaskStatus::Running { .. })
+        matches!(self, Self::Queued | Self::Running { .. })
     }
 
     /// Check if task can be paused
     pub fn can_pause(&self) -> bool {
-        matches!(self, TaskStatus::Running { .. })
+        matches!(self, Self::Running { .. })
     }
 
     /// Check if task can be resumed
     pub fn can_resume(&self) -> bool {
-        matches!(self, TaskStatus::Paused { .. })
+        matches!(self, Self::Paused { .. })
     }
 }
 
@@ -124,7 +124,7 @@ pub enum Priority {
 
 impl Default for Priority {
     fn default() -> Self {
-        Priority::Standard
+        Self::Standard
     }
 }
 

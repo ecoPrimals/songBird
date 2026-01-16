@@ -220,7 +220,7 @@ fn detect_storage_capacity() -> Option<usize> {
     let disks = Disks::new_with_refreshed_list();
 
     // Sum total space across all disks
-    let total_bytes: u64 = disks.iter().map(|disk| disk.total_space()).sum();
+    let total_bytes: u64 = disks.iter().map(sysinfo::Disk::total_space).sum();
 
     if total_bytes > 0 {
         // Convert bytes to GB (using 1000^3, not 1024^3 for consistency with disk manufacturers)

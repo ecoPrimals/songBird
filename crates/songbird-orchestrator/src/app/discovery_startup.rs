@@ -128,37 +128,34 @@ pub async fn start_discovery_system(
 /// - `SONGBIRD_BEARDOG_URL` (DEPRECATED - vendor-specific)
 async fn fetch_identity_attestations(
 ) -> Result<Vec<songbird_discovery::IdentityAttestation>, anyhow::Error> {
-    match crate::app::security_setup::discover_security_endpoint(None).await {
-        Ok(url) => {
-            info!("🔐 Fetching identity attestations from security provider: {}", url);
-            let security_client =
-                crate::security_capability_client::SecurityCapabilityClient::from_endpoint(url);
+    if let Ok(url) = crate::app::security_setup::discover_security_endpoint(None).await {
+        info!("🔐 Fetching identity attestations from security provider: {}", url);
+        let security_client =
+            crate::security_capability_client::SecurityCapabilityClient::from_endpoint(url);
 
-            match security_client?.get_identity().await {
-                Ok(identity) => {
-                    info!("✅ Got identity with encryption tag: {}", identity.encryption_tag);
-                    if let Some(ref family_id) = identity.family_id {
-                        info!("👨‍👩‍👧‍👦 Family ID: {} (enabling auto-trust)", family_id);
-                    }
+        match security_client?.get_identity().await {
+            Ok(identity) => {
+                info!("✅ Got identity with encryption tag: {}", identity.encryption_tag);
+                if let Some(ref family_id) = identity.family_id {
+                    info!("👨‍👩‍👧‍👦 Family ID: {} (enabling auto-trust)", family_id);
+                }
 
-                    let attestations =
-                        crate::security_capability_client::SecurityCapabilityClient::identity_to_discovery_attestations(
-                            &identity,
-                        );
-                    info!("✅ Created {} identity attestations for discovery", attestations.len());
-                    Ok(attestations)
-                }
-                Err(e) => {
-                    warn!("⚠️  Could not get identity from security provider: {}", e);
-                    warn!("   Discovery will continue without genetic lineage attestations");
-                    Ok(Vec::new())
-                }
+                let attestations =
+                    crate::security_capability_client::SecurityCapabilityClient::identity_to_discovery_attestations(
+                        &identity,
+                    );
+                info!("✅ Created {} identity attestations for discovery", attestations.len());
+                Ok(attestations)
+            }
+            Err(e) => {
+                warn!("⚠️  Could not get identity from security provider: {}", e);
+                warn!("   Discovery will continue without genetic lineage attestations");
+                Ok(Vec::new())
             }
         }
-        Err(_) => {
-            info!("📡 No security provider configured - discovery without genetic lineage");
-            Ok(Vec::new())
-        }
+    } else {
+        info!("📡 No security provider configured - discovery without genetic lineage");
+        Ok(Vec::new())
     }
 }
 

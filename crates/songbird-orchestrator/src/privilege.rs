@@ -74,8 +74,7 @@ impl PrivilegeManager {
         std::env::var("EUID")
             .ok()
             .and_then(|euid| euid.parse::<u32>().ok())
-            .map(|euid| euid == 0)
-            .unwrap_or(false)
+            .is_some_and(|euid| euid == 0)
     }
 
     /// Configure firewall rules for Songbird ports

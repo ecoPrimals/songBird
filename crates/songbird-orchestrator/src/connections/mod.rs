@@ -78,14 +78,14 @@ impl Connection {
     pub fn as_peer_connection(&self) -> &dyn PeerConnection {
         match self {
             // HTTPS connections
-            Connection::Limited(conn) => conn,
-            Connection::Federated(conn) => conn,
-            Connection::FullTrust(conn) => conn,
+            Self::Limited(conn) => conn,
+            Self::Federated(conn) => conn,
+            Self::FullTrust(conn) => conn,
 
             // BTSP connections (v3.18.0)
-            Connection::LimitedBtsp(conn) => conn,
-            Connection::FederatedBtsp(conn) => conn,
-            Connection::FullTrustBtsp(conn) => conn,
+            Self::LimitedBtsp(conn) => conn,
+            Self::FederatedBtsp(conn) => conn,
+            Self::FullTrustBtsp(conn) => conn,
         }
     }
 

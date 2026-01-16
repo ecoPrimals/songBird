@@ -225,14 +225,14 @@ impl ConnectivityTester {
 
                 // Now test HTTPS
                 if let Ok(https_result) = self.test_https_connectivity(target).await {
-                    if !https_result.https_reachable {
+                    if https_result.https_reachable {
+                        diagnostics.push("✅ HTTPS connectivity working".to_string());
+                    } else {
                         diagnostics.push("❌ HTTPS handshake failed".to_string());
                         diagnostics.push("  🔍 Possible causes:".to_string());
                         diagnostics.push("     - TLS certificate issues".to_string());
                         diagnostics.push("     - Protocol mismatch (HTTP vs HTTPS)".to_string());
                         diagnostics.push("  💡 Check server logs for TLS errors".to_string());
-                    } else {
-                        diagnostics.push("✅ HTTPS connectivity working".to_string());
                     }
                 }
             }
@@ -271,20 +271,20 @@ impl ConnectivityRemediator {
         if !Self::has_network_admin_privileges() {
             warn!("⚠️  Insufficient network admin capabilities for auto-remediation");
             actions.push("❌ Songbird lacks CAP_NET_ADMIN capability".to_string());
-            actions.push("".to_string());
+            actions.push(String::new());
             actions.push("🦅 SELF-SOVEREIGN SOLUTION:".to_string());
             actions.push("   Run the network sovereignty setup (one-time):".to_string());
             actions.push("   sudo ./setup-network-sovereignty.sh".to_string());
-            actions.push("".to_string());
+            actions.push(String::new());
             actions.push("   This grants Songbird:".to_string());
             actions.push("   • CAP_NET_ADMIN: Manage its own firewall rules".to_string());
             actions.push("   • CAP_NET_BIND_SERVICE: Bind to any port".to_string());
-            actions.push("".to_string());
+            actions.push(String::new());
             actions.push("   After setup, Songbird will:".to_string());
             actions.push("   • Auto-configure firewall on new deployments".to_string());
             actions.push("   • Work without sudo or manual intervention".to_string());
             actions.push("   • Remain sovereign and self-managing".to_string());
-            actions.push("".to_string());
+            actions.push(String::new());
             actions.push("📝 Manual Alternative (not recommended):".to_string());
             actions.push(
                 "   sudo iptables -I INPUT -p tcp --dport {} -j ACCEPT"
@@ -312,7 +312,12 @@ impl ConnectivityRemediator {
                 .output()
                 .await
             {
-                if !output.status.success() {
+                if output.status.success() {
+                    actions.push(format!(
+                        "ℹ️  iptables rule already exists for port {}",
+                        target.port()
+                    ));
+                } else {
                     // Rule doesn't exist, try to add it
                     info!("Adding iptables rule for port {}", target.port());
 
@@ -346,11 +351,6 @@ impl ConnectivityRemediator {
                             actions.push(format!("❌ Failed to run iptables: {}", e));
                         }
                     }
-                } else {
-                    actions.push(format!(
-                        "ℹ️  iptables rule already exists for port {}",
-                        target.port()
-                    ));
                 }
             }
         }

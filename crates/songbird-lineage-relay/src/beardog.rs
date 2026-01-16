@@ -1,6 +1,6 @@
-//! Mock BearDog implementations for testing
+//! Mock `BearDog` implementations for testing
 //!
-//! These mocks allow Songbird to test lineage relay without BearDog running
+//! These mocks allow Songbird to test lineage relay without `BearDog` running
 
 use crate::birdsong::{BirdSongCrypto, LineageHint};
 use crate::error::Result;
@@ -14,9 +14,9 @@ use tokio::sync::RwLock;
 
 /// Mock lineage provider for testing
 pub struct MockLineageProvider {
-    /// Lineage graph: node_id → parent_id
+    /// Lineage graph: `node_id` → `parent_id`
     lineages: Arc<RwLock<HashMap<String, String>>>,
-    /// Descendants: ancestor_id → list of descendant_ids
+    /// Descendants: `ancestor_id` → list of `descendant_ids`
     descendants: Arc<RwLock<HashMap<String, Vec<String>>>>,
 }
 
@@ -67,7 +67,7 @@ impl Default for MockLineageProvider {
     }
 }
 
-/// Mock BirdSong crypto (for testing)
+/// Mock `BirdSong` crypto (for testing)
 pub struct MockBirdSongCrypto {
     lineage_provider: Arc<MockLineageProvider>,
     my_id: String,

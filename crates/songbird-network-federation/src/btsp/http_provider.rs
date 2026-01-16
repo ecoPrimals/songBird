@@ -1,12 +1,12 @@
 //! HTTP-based BTSP Provider Client
 //!
 //! This module implements a BTSP provider that communicates with a remote
-//! security provider (like BearDog) over HTTP/HTTPS.
+//! security provider (like `BearDog`) over HTTP/HTTPS.
 //!
 //! **Modern Idiomatic Rust**:
 //! - Async/await throughout
-//! - No unwrap() in production paths
-//! - Proper error handling with SongbirdError
+//! - No `unwrap()` in production paths
+//! - Proper error handling with `SongbirdError`
 //! - Connection pooling via reqwest
 //! - Timeout and retry logic
 
@@ -22,7 +22,7 @@ use songbird_types::{SongbirdError, SongbirdResult};
 
 /// HTTP client for communicating with a remote BTSP provider
 pub struct HttpBtspProvider {
-    /// Base URL of the security provider (e.g., "https://localhost:8091")
+    /// Base URL of the security provider (e.g., "<https://localhost:8091>")
     base_url: String,
     /// HTTP client with connection pooling
     client: Client,
@@ -34,7 +34,7 @@ impl HttpBtspProvider {
     /// Create a new HTTP BTSP provider
     ///
     /// # Arguments
-    /// * `base_url` - The base URL of the security provider (e.g., "https://localhost:8091")
+    /// * `base_url` - The base URL of the security provider (e.g., "<https://localhost:8091>")
     /// * `provider_name` - Name of the provider for logging (e.g., "beardog")
     pub fn new(base_url: String, provider_name: String) -> SongbirdResult<Self> {
         let client = Client::builder()
@@ -43,7 +43,7 @@ impl HttpBtspProvider {
             .connect_timeout(Duration::from_secs(5))
             .pool_max_idle_per_host(10)
             .build()
-            .map_err(|e| SongbirdError::network(format!("Failed to create HTTP client: {}", e)))?;
+            .map_err(|e| SongbirdError::network(format!("Failed to create HTTP client: {e}")))?;
 
         info!("🔒 Created HTTP BTSP provider for {} at {}", provider_name, base_url);
 
@@ -107,7 +107,7 @@ impl BtspProvider for HttpBtspProvider {
 
         let response =
             self.client.post(&url).json(&request).send().await.map_err(|e| {
-                SongbirdError::network(format!("Failed to establish tunnel: {}", e))
+                SongbirdError::network(format!("Failed to establish tunnel: {e}"))
             })?;
 
         if !response.status().is_success() {
@@ -115,14 +115,14 @@ impl BtspProvider for HttpBtspProvider {
             let body = response.text().await.unwrap_or_else(|_| "unknown".to_string());
             return Err(SongbirdError::service(
                 &self.provider_name,
-                format!("Tunnel establishment failed: {} - {}", status, body),
+                format!("Tunnel establishment failed: {status} - {body}"),
             ));
         }
 
         let establish_response: EstablishResponse = response.json().await.map_err(|e| {
             SongbirdError::from(serde_json::Error::io(std::io::Error::new(
                 std::io::ErrorKind::InvalidData,
-                format!("Failed to parse tunnel response: {}", e),
+                format!("Failed to parse tunnel response: {e}"),
             )))
         })?;
 
@@ -164,20 +164,20 @@ impl BtspProvider for HttpBtspProvider {
             .json(&request)
             .send()
             .await
-            .map_err(|e| SongbirdError::network(format!("Failed to encrypt data: {}", e)))?;
+            .map_err(|e| SongbirdError::network(format!("Failed to encrypt data: {e}")))?;
 
         if !response.status().is_success() {
             let status = response.status();
             return Err(SongbirdError::service(
                 &self.provider_name,
-                format!("Encryption failed: {}", status),
+                format!("Encryption failed: {status}"),
             ));
         }
 
         let encrypt_response: EncryptResponse = response.json().await.map_err(|e| {
             SongbirdError::from(serde_json::Error::io(std::io::Error::new(
                 std::io::ErrorKind::InvalidData,
-                format!("Failed to parse encryption response: {}", e),
+                format!("Failed to parse encryption response: {e}"),
             )))
         })?;
 
@@ -218,20 +218,20 @@ impl BtspProvider for HttpBtspProvider {
             .json(&request)
             .send()
             .await
-            .map_err(|e| SongbirdError::network(format!("Failed to decrypt data: {}", e)))?;
+            .map_err(|e| SongbirdError::network(format!("Failed to decrypt data: {e}")))?;
 
         if !response.status().is_success() {
             let status = response.status();
             return Err(SongbirdError::service(
                 &self.provider_name,
-                format!("Decryption failed: {}", status),
+                format!("Decryption failed: {status}"),
             ));
         }
 
         let decrypt_response: DecryptResponse = response.json().await.map_err(|e| {
             SongbirdError::from(serde_json::Error::io(std::io::Error::new(
                 std::io::ErrorKind::InvalidData,
-                format!("Failed to parse decryption response: {}", e),
+                format!("Failed to parse decryption response: {e}"),
             )))
         })?;
 
@@ -246,21 +246,21 @@ impl BtspProvider for HttpBtspProvider {
 
         let response =
             self.client.get(&url).send().await.map_err(|e| {
-                SongbirdError::network(format!("Failed to get tunnel status: {}", e))
+                SongbirdError::network(format!("Failed to get tunnel status: {e}"))
             })?;
 
         if !response.status().is_success() {
             let status = response.status();
             return Err(SongbirdError::service(
                 &self.provider_name,
-                format!("Failed to get tunnel status: {}", status),
+                format!("Failed to get tunnel status: {status}"),
             ));
         }
 
         let status: TunnelStatus = response.json().await.map_err(|e| {
             SongbirdError::from(serde_json::Error::io(std::io::Error::new(
                 std::io::ErrorKind::InvalidData,
-                format!("Failed to parse tunnel status: {}", e),
+                format!("Failed to parse tunnel status: {e}"),
             )))
         })?;
 
@@ -278,14 +278,14 @@ impl BtspProvider for HttpBtspProvider {
             .delete(&url)
             .send()
             .await
-            .map_err(|e| SongbirdError::network(format!("Failed to close tunnel: {}", e)))?;
+            .map_err(|e| SongbirdError::network(format!("Failed to close tunnel: {e}")))?;
 
-        if !response.status().is_success() {
+        if response.status().is_success() {
+            info!("✅ Tunnel {} closed", handle.id);
+        } else {
             let status = response.status();
             warn!("⚠️ Failed to close tunnel {}: {} (may already be closed)", handle.id, status);
             // Don't return error - tunnel might already be closed
-        } else {
-            info!("✅ Tunnel {} closed", handle.id);
         }
 
         Ok(())

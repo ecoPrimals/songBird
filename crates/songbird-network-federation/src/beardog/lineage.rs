@@ -1,12 +1,12 @@
 //! Lineage Management Trait
 //!
-//! BearDog provides lineage (genetic) services to Songbird.
+//! `BearDog` provides lineage (genetic) services to Songbird.
 
 use serde::{Deserialize, Serialize};
 
 /// Lineage provider interface
 ///
-/// BearDog implements this to provide lineage services.
+/// `BearDog` implements this to provide lineage services.
 #[async_trait::async_trait]
 pub trait LineageProvider: Send + Sync {
     /// Generate lineage for a new node
@@ -120,20 +120,16 @@ impl LineageChain {
 
     /// Verify all signatures in the lineage chain
     ///
-    /// Uses BearDog security service for cryptographic verification.
-    /// In development mode without BearDog, returns Ok(true) with warning.
+    /// Uses `BearDog` security service for cryptographic verification.
+    /// In development mode without `BearDog`, returns Ok(true) with warning.
     async fn verify_signatures(&self) -> anyhow::Result<bool> {
         // Check if BearDog is available
-        let beardog_endpoint = match std::env::var("BEARDOG_ENDPOINT")
-            .or_else(|_| std::env::var("SECURITY_ENDPOINT"))
-        {
-            Ok(endpoint) => endpoint,
-            Err(_) => {
-                tracing::warn!(
-                    "BearDog not configured, skipping signature verification (dev mode)"
-                );
-                return Ok(true);
-            }
+        let beardog_endpoint = if let Ok(endpoint) = std::env::var("BEARDOG_ENDPOINT")
+            .or_else(|_| std::env::var("SECURITY_ENDPOINT")) { endpoint } else {
+            tracing::warn!(
+                "BearDog not configured, skipping signature verification (dev mode)"
+            );
+            return Ok(true);
         };
 
         tracing::debug!("Verifying {} lineage signatures via BearDog", self.links.len());
@@ -142,7 +138,7 @@ impl LineageChain {
         let client = reqwest::Client::builder()
             .timeout(std::time::Duration::from_secs(30))
             .build()
-            .map_err(|e| anyhow::anyhow!("Failed to build HTTP client: {}", e))?;
+            .map_err(|e| anyhow::anyhow!("Failed to build HTTP client: {e}"))?;
 
         // Verify each link's signature
         for link in &self.links {
@@ -153,11 +149,11 @@ impl LineageChain {
             });
 
             let response = client
-                .post(format!("{}/api/v1/verify-signature", beardog_endpoint))
+                .post(format!("{beardog_endpoint}/api/v1/verify-signature"))
                 .json(&verify_request)
                 .send()
                 .await
-                .map_err(|e| anyhow::anyhow!("Signature verification request failed: {}", e))?;
+                .map_err(|e| anyhow::anyhow!("Signature verification request failed: {e}"))?;
 
             if !response.status().is_success() {
                 tracing::warn!(
@@ -172,9 +168,9 @@ impl LineageChain {
             let result: serde_json::Value = response
                 .json()
                 .await
-                .map_err(|e| anyhow::anyhow!("Failed to parse verification response: {}", e))?;
+                .map_err(|e| anyhow::anyhow!("Failed to parse verification response: {e}"))?;
 
-            let is_valid = result.get("valid").and_then(|v| v.as_bool()).unwrap_or(false);
+            let is_valid = result.get("valid").and_then(serde_json::Value::as_bool).unwrap_or(false);
 
             if !is_valid {
                 tracing::warn!("Invalid signature for link {}->{}", link.parent_id, link.child_id);
@@ -187,6 +183,7 @@ impl LineageChain {
     }
 
     /// Check if this chain is a descendant of a specific ancestor
+    #[must_use] 
     pub fn is_descendant_of(&self, ancestor_id: &str) -> bool {
         if self.root_id == ancestor_id {
             return true;

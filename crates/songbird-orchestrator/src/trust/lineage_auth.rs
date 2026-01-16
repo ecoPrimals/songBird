@@ -401,21 +401,18 @@ impl LineageAuthenticator {
         peer_proof: Option<&LineageProof>,
     ) -> Result<PeerAcceptanceDecision> {
         // If peer has no lineage, prompt user
-        let (lineage, proof) = match (peer_lineage, peer_proof) {
-            (Some(l), Some(p)) => (l, p),
-            _ => {
-                info!("⚠️ Peer {} has no lineage - prompting user", peer_node_id);
-                return Ok(PeerAcceptanceDecision::PromptUser {
-                    peer_info: PeerInfo {
-                        node_id: peer_node_id.to_string(),
-                        endpoint: peer_endpoint.to_string(),
-                        capabilities: peer_capabilities.to_vec(),
-                        discovered_at: Self::current_timestamp(),
-                    },
-                    lineage_status: LineageStatus::UnknownLineage,
-                    recommendation: UserRecommendation::Neutral,
-                });
-            }
+        let (lineage, proof) = if let (Some(l), Some(p)) = (peer_lineage, peer_proof) { (l, p) } else {
+            info!("⚠️ Peer {} has no lineage - prompting user", peer_node_id);
+            return Ok(PeerAcceptanceDecision::PromptUser {
+                peer_info: PeerInfo {
+                    node_id: peer_node_id.to_string(),
+                    endpoint: peer_endpoint.to_string(),
+                    capabilities: peer_capabilities.to_vec(),
+                    discovered_at: Self::current_timestamp(),
+                },
+                lineage_status: LineageStatus::UnknownLineage,
+                recommendation: UserRecommendation::Neutral,
+            });
         };
 
         // Check cache first
@@ -461,22 +458,21 @@ impl LineageAuthenticator {
                     lineage_id: lineage.clone(),
                     confidence: 1.0,
                 });
-            } else {
-                info!("⚠️ Different genetic lineage detected for peer {}", peer_node_id);
-                return Ok(PeerAcceptanceDecision::PromptUser {
-                    peer_info: PeerInfo {
-                        node_id: peer_node_id.to_string(),
-                        endpoint: peer_endpoint.to_string(),
-                        capabilities: peer_capabilities.to_vec(),
-                        discovered_at: Self::current_timestamp(),
-                    },
-                    lineage_status: LineageStatus::DifferentGenesis {
-                        their_lineage: lineage.clone(),
-                        our_lineage: our_lineage.clone(),
-                    },
-                    recommendation: UserRecommendation::Neutral,
-                });
             }
+            info!("⚠️ Different genetic lineage detected for peer {}", peer_node_id);
+            return Ok(PeerAcceptanceDecision::PromptUser {
+                peer_info: PeerInfo {
+                    node_id: peer_node_id.to_string(),
+                    endpoint: peer_endpoint.to_string(),
+                    capabilities: peer_capabilities.to_vec(),
+                    discovered_at: Self::current_timestamp(),
+                },
+                lineage_status: LineageStatus::DifferentGenesis {
+                    their_lineage: lineage.clone(),
+                    our_lineage: our_lineage.clone(),
+                },
+                recommendation: UserRecommendation::Neutral,
+            });
         }
 
         // Cache the verification for no local lineage case
@@ -536,7 +532,7 @@ impl Default for LineageAuthenticator {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use songbird_types::LineageProof;
+    
 
     #[tokio::test]
     async fn test_authenticator_creation() {

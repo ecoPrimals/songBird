@@ -1,4 +1,4 @@
-//! Genesis Support for BearDog Integration
+//! Genesis Support for `BearDog` Integration
 //!
 //! Types and interfaces for physical genesis bootstrap coordination.
 
@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 
 /// Genesis witness proof for new node births
 ///
-/// Included in BirdSong discovery broadcasts when a new node is announcing
+/// Included in `BirdSong` discovery broadcasts when a new node is announcing
 /// its genesis certification. This allows the network to verify the node
 /// was properly witnessed during physical bootstrap.
 ///
@@ -15,14 +15,14 @@ use serde::{Deserialize, Serialize};
 ///
 /// A new node is vulnerable during genesis. By including multi-primal witness
 /// signatures, we ensure:
-/// - Physical proximity was verified (SoloKey, QR, Bluetooth)
+/// - Physical proximity was verified (`SoloKey`, QR, Bluetooth)
 /// - Multiple primals witnessed the genesis
 /// - Cryptographic lineage established from birth
 /// - Node has strong trust anchors immediately
 ///
 /// ## Privacy
 ///
-/// The witness proof itself is encrypted in BirdSong broadcasts, so only
+/// The witness proof itself is encrypted in `BirdSong` broadcasts, so only
 /// nodes with lineage can decrypt and verify the genesis.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct GenesisWitnessProof {
@@ -32,16 +32,16 @@ pub struct GenesisWitnessProof {
     /// New node's identifier
     pub node_id: String,
 
-    /// Physical witness device (SoloKey, etc.)
+    /// Physical witness device (`SoloKey`, etc.)
     pub witness_device_id: String,
 
     /// Signature from witness device
     pub witness_signature: Vec<u8>,
 
-    /// Physical channel used (HardwareKey, QR, Bluetooth)
+    /// Physical channel used (`HardwareKey`, QR, Bluetooth)
     pub physical_channel: PhysicalChannelType,
 
-    /// Primal witness signatures (Songbird, BearDog, etc.)
+    /// Primal witness signatures (Songbird, `BearDog`, etc.)
     pub primal_witnesses: Vec<PrimalWitnessSignature>,
 
     /// Genesis timestamp
@@ -70,7 +70,7 @@ pub enum PhysicalChannelType {
 /// Signature from a primal witnessing the genesis
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct PrimalWitnessSignature {
-    /// Primal name (e.g., "Songbird", "BearDog")
+    /// Primal name (e.g., "Songbird", "`BearDog`")
     pub primal_name: String,
 
     /// Lineage granted by this primal
@@ -111,7 +111,7 @@ impl GenesisWitnessProof {
     /// - Trust level matches physical channel
     ///
     /// Note: This does NOT verify cryptographic signatures.
-    /// That requires coordination with BearDog.
+    /// That requires coordination with `BearDog`.
     pub fn verify_structure(&self) -> anyhow::Result<()> {
         if self.primal_witnesses.is_empty() {
             anyhow::bail!("Genesis proof must have at least one primal witness");
@@ -151,21 +151,25 @@ impl GenesisWitnessProof {
     }
 
     /// Get the number of primal witnesses
+    #[must_use] 
     pub fn witness_count(&self) -> usize {
         self.primal_witnesses.len()
     }
 
     /// Check if a specific primal witnessed this genesis
+    #[must_use] 
     pub fn has_primal_witness(&self, primal_name: &str) -> bool {
         self.primal_witnesses.iter().any(|w| w.primal_name == primal_name)
     }
 
     /// Get the age of this genesis proof
+    #[must_use] 
     pub fn age(&self) -> chrono::Duration {
         Utc::now() - self.birth_timestamp
     }
 
     /// Check if this is a fresh genesis (less than 1 hour old)
+    #[must_use] 
     pub fn is_fresh(&self) -> bool {
         self.age().num_hours() < 1
     }

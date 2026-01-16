@@ -65,6 +65,12 @@ pub struct RoleCapabilityMap {
     mappings: std::collections::HashMap<Role, Vec<Capability>>,
 }
 
+impl Default for RoleCapabilityMap {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl RoleCapabilityMap {
     pub fn new() -> Self {
         let mut mappings = std::collections::HashMap::new();
@@ -177,6 +183,12 @@ impl RoleCapabilityMap {
 /// Information layer builder
 pub struct InformationLayerBuilder;
 
+impl Default for InformationLayerBuilder {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl InformationLayerBuilder {
     pub fn new() -> Self {
         Self
@@ -187,6 +199,12 @@ impl InformationLayerBuilder {
 
 /// Audit logger
 pub struct AuditLog;
+
+impl Default for AuditLog {
+    fn default() -> Self {
+        Self::new()
+    }
+}
 
 impl AuditLog {
     pub fn new() -> Self {
@@ -260,7 +278,7 @@ impl AccessControl {
     ) -> Result<information_layers::TaskInfo> {
         let identity = self.token_validator.validate(token).await?;
 
-        let mut info = information_layers::TaskInfo::new(task.id.clone());
+        let mut info = information_layers::TaskInfo::new(task.id);
 
         // Always add public layer
         info.add_public_layer(self.info_builder.build_public(task));
@@ -290,7 +308,9 @@ impl AccessControl {
                 AuthMode::Standalone => {
                     // In standalone mode, infrastructure access requires explicit 2FA verification
                     // This should be checked in token validation, but we do an additional check here
-                    if !token.has_2fa_verified() {
+                    if token.has_2fa_verified() {
+                        info.add_infrastructure_layer(self.info_builder.build_infrastructure(task));
+                    } else {
                         tracing::warn!(
                             "Infrastructure access attempted without 2FA verification. \
                              Token: {}, Role: {:?}",
@@ -298,8 +318,6 @@ impl AccessControl {
                             token.role
                         );
                         // Do not add infrastructure layer without 2FA
-                    } else {
-                        info.add_infrastructure_layer(self.info_builder.build_infrastructure(task));
                     }
                 }
                 AuthMode::BearDogEnhanced {

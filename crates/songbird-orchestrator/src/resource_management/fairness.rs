@@ -54,7 +54,7 @@ impl FairnessCalculator {
                 let usage = current_usage
                     .get(user_id)
                     .and_then(|u| u.get(resource_type))
-                    .cloned()
+                    .copied()
                     .unwrap_or_else(|| ResourceAmount::zero(capacity.unit));
 
                 // Calculate ratio
@@ -97,7 +97,7 @@ impl FairnessCalculator {
         // Group by user
         let mut by_user: HashMap<UserId, Vec<&FairShare>> = HashMap::new();
         for fs in fair_shares {
-            by_user.entry(fs.user_id.clone()).or_insert_with(Vec::new).push(fs);
+            by_user.entry(fs.user_id.clone()).or_default().push(fs);
         }
 
         // Find dominant resource for each user

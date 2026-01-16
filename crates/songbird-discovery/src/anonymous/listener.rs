@@ -7,7 +7,7 @@
 //! - Multicast group joining
 //! - Message processing & peer registry
 //! - Self-filtering logic
-//! - Optional BirdSong decryption
+//! - Optional `BirdSong` decryption
 
 use std::collections::HashMap;
 use std::net::{Ipv4Addr, SocketAddr};
@@ -25,7 +25,7 @@ use super::peer::DiscoveredPeer;
 /// Listens for anonymous discovery messages from other towers.
 /// Joins multicast group for reliable reception across routers.
 ///
-/// **NEW (Jan 3, 2026)**: Optional BirdSong decryption for privacy-preserving discovery.
+/// **NEW (Jan 3, 2026)**: Optional `BirdSong` decryption for privacy-preserving discovery.
 pub struct AnonymousDiscoveryListener {
     /// Port to listen on (typically 2300)
     port: u16,
@@ -39,10 +39,10 @@ pub struct AnonymousDiscoveryListener {
     /// Peer timeout in seconds (default: 60)
     peer_timeout_secs: u64,
 
-    /// BirdSong decryption processor (optional)
+    /// `BirdSong` decryption processor (optional)
     birdsong: Option<Arc<crate::birdsong_integration::BirdSongProcessor>>,
 
-    /// Our own node_id for self-filtering (v3.10.2 - Jan 5, 2026)
+    /// Our own `node_id` for self-filtering (v3.10.2 - Jan 5, 2026)
     ///
     /// Used to filter out our own discovery broadcasts to prevent self-discovery.
     /// Critical for multi-instance deployments where multiple towers run on same machine.
@@ -91,9 +91,9 @@ impl AnonymousDiscoveryListener {
         self
     }
 
-    /// Enable BirdSong encrypted discovery (NEW - Jan 3, 2026)
+    /// Enable `BirdSong` encrypted discovery (NEW - Jan 3, 2026)
     ///
-    /// Adds BirdSong decryption for privacy-preserving discovery.
+    /// Adds `BirdSong` decryption for privacy-preserving discovery.
     /// Only same-family peers' packets will be decoded.
     #[must_use]
     pub fn with_birdsong(

@@ -16,7 +16,7 @@ pub enum LineageRelayError {
     #[error("No ancestors available for relay: {0}")]
     NoRelayAvailable(String),
 
-    /// BirdSong encryption/decryption failed
+    /// `BirdSong` encryption/decryption failed
     #[error("BirdSong operation failed: {0}")]
     BirdSongError(String),
 

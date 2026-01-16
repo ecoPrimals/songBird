@@ -90,9 +90,9 @@ enum Protocol {
 impl std::fmt::Debug for Protocol {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Protocol::Tarpc(_) => write!(f, "Protocol::Tarpc"),
-            Protocol::JsonRpc(_) => write!(f, "Protocol::JsonRpc"),
-            Protocol::Http(_) => write!(f, "Protocol::Http"),
+            Self::Tarpc(_) => write!(f, "Protocol::Tarpc"),
+            Self::JsonRpc(_) => write!(f, "Protocol::JsonRpc"),
+            Self::Http(_) => write!(f, "Protocol::Http"),
         }
     }
 }

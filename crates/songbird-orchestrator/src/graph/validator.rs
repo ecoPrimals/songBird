@@ -204,7 +204,7 @@ impl GraphValidator {
         // Build adjacency list
         let mut adj: HashMap<&str, Vec<&str>> = HashMap::new();
         for edge in &graph.edges {
-            adj.entry(edge.from.as_str()).or_insert_with(Vec::new).push(edge.to.as_str());
+            adj.entry(edge.from.as_str()).or_default().push(edge.to.as_str());
         }
 
         // Try DFS from each node
@@ -262,7 +262,7 @@ impl GraphValidator {
         // Build a map of node outputs
         let mut outputs: HashMap<&str, HashSet<&str>> = HashMap::new();
         for node in &graph.nodes {
-            outputs.insert(node.id.as_str(), node.outputs.iter().map(|s| s.as_str()).collect());
+            outputs.insert(node.id.as_str(), node.outputs.iter().map(std::string::String::as_str).collect());
         }
 
         // Check that each node's inputs are satisfied
@@ -279,8 +279,7 @@ impl GraphValidator {
                         } else {
                             outputs
                                 .get(e.from.as_str())
-                                .map(|outs| outs.contains(input.as_str()))
-                                .unwrap_or(false)
+                                .is_some_and(|outs| outs.contains(input.as_str()))
                         }
                     })
                     .collect();

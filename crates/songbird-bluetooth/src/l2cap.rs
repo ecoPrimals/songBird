@@ -217,8 +217,7 @@ impl L2capManager {
         // Check if channel already exists
         if channels.iter().any(|c| c.connection_handle == connection_handle) {
             return Err(BluetoothError::InvalidOperation(format!(
-                "ATT channel already exists for handle 0x{:04X}",
-                connection_handle
+                "ATT channel already exists for handle 0x{connection_handle:04X}"
             )));
         }
 
@@ -241,8 +240,7 @@ impl L2capManager {
         channels.iter().find(|c| c.connection_handle == connection_handle).cloned().ok_or_else(
             || {
                 BluetoothError::InvalidOperation(format!(
-                    "No ATT channel for handle 0x{:04X}",
-                    connection_handle
+                    "No ATT channel for handle 0x{connection_handle:04X}"
                 ))
             },
         )

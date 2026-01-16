@@ -1,9 +1,9 @@
-//! BearDog Integration Traits
+//! `BearDog` Integration Traits
 //!
-//! Modern, idiomatic Rust traits for integrating BearDog security with Songbird.
+//! Modern, idiomatic Rust traits for integrating `BearDog` security with Songbird.
 //!
-//! **Architecture**: Songbird defines the traits, BearDog implements them.
-//! **Pattern**: Dependency inversion - Songbird doesn't depend on BearDog code.
+//! **Architecture**: Songbird defines the traits, `BearDog` implements them.
+//! **Pattern**: Dependency inversion - Songbird doesn't depend on `BearDog` code.
 
 pub mod birdsong;
 pub mod genesis;
@@ -14,35 +14,35 @@ pub use birdsong::{BirdSongCrypto, BroadcastKey, EncryptedBirdSong, LineageHint}
 pub use lineage::{LineageChain, LineageLink, LineageProof, LineageProvider};
 pub use relay::{AccessLevel, LineageRelay, RelaySession};
 
-/// BearDog provider that combines all capabilities
+/// `BearDog` provider that combines all capabilities
 ///
-/// This is the main interface Songbird uses to interact with BearDog.
-/// BearDog will implement this trait, providing all three capabilities.
+/// This is the main interface Songbird uses to interact with `BearDog`.
+/// `BearDog` will implement this trait, providing all three capabilities.
 #[async_trait::async_trait]
 pub trait BearDogProvider: LineageProvider + BirdSongCrypto + LineageRelay + Send + Sync {
-    /// Check if BearDog is available and operational
+    /// Check if `BearDog` is available and operational
     async fn is_available(&self) -> bool;
 
-    /// Get BearDog version for compatibility checking
+    /// Get `BearDog` version for compatibility checking
     fn version(&self) -> &str;
 
     /// Graceful shutdown
     async fn shutdown(&self) -> anyhow::Result<()>;
 }
 
-/// Factory for discovering and creating BearDog providers
+/// Factory for discovering and creating `BearDog` providers
 ///
 /// Supports multiple discovery strategies:
 /// 1. UPA (Universal Port Authority) - query for "security" capability
-/// 2. Environment variable - BEARDOG_URL
+/// 2. Environment variable - `BEARDOG_URL`
 /// 3. Well-known port - localhost:8200
-/// 4. Mock provider - for testing without BearDog
+/// 4. Mock provider - for testing without `BearDog`
 pub struct BearDogProviderFactory;
 
 impl BearDogProviderFactory {
-    /// Discover BearDog via multiple strategies
+    /// Discover `BearDog` via multiple strategies
     ///
-    /// Returns None if BearDog is not available (graceful degradation)
+    /// Returns None if `BearDog` is not available (graceful degradation)
     pub async fn discover() -> anyhow::Result<Option<Box<dyn BearDogProvider>>> {
         // Strategy 1: Check UPA for "security" capability
         if let Ok(Some(provider)) = Self::discover_via_upa().await {
@@ -67,7 +67,18 @@ impl BearDogProviderFactory {
         Ok(None)
     }
 
+    /// Create no-op provider when `BearDog` is unavailable
+    /// 
+    /// This is NOT a mock - it returns clear errors for all operations.
+    /// Use in production for graceful degradation when security features are optional.
+    #[must_use] 
+    pub fn create_noop() -> Box<dyn BearDogProvider> {
+        use crate::beardog::noop::NoOpBearDogProvider;
+        Box::new(NoOpBearDogProvider::new())
+    }
+
     /// Create mock provider for testing
+    #[cfg(test)]
     pub fn create_mock() -> Box<dyn BearDogProvider> {
         use crate::beardog::mock::MockBearDogProvider;
         Box::new(MockBearDogProvider::new())
@@ -80,10 +91,10 @@ impl BearDogProviderFactory {
         // Query capability registry for "security" capability (BearDog)
         if let Ok(endpoint) = discover_primal(CanonicalPrimalType::Security).await {
             tracing::info!("Discovered BearDog via capability discovery at: {}", endpoint.url);
-            // TODO: Create actual BearDogProviderImpl when available
-            // For now, return mock (this is resolved by user providing real impl)
-            tracing::warn!("Using MockBearDogProvider (no real BearDog client implemented yet)");
-            return Ok(Some(Box::new(crate::beardog::mock::MockBearDogProvider::new())));
+            // TODO: Create actual HTTP BearDog client implementation
+            // For now, return no-op that explicitly errors (graceful degradation)
+            tracing::warn!("BearDog discovered but HTTP client not yet implemented - using NoOp provider");
+            return Ok(Some(Self::create_noop()));
         }
 
         Ok(None)
@@ -94,9 +105,9 @@ impl BearDogProviderFactory {
         if std::env::var("BEARDOG_URL").is_ok() || std::env::var("SECURITY_URL").is_ok() {
             let url = std::env::var("BEARDOG_URL").or_else(|_| std::env::var("SECURITY_URL"))?;
             tracing::info!("Found BearDog via environment at: {}", url);
-            // TODO: Create actual BearDogProviderImpl when available
-            tracing::warn!("Using MockBearDogProvider (no real BearDog client implemented yet)");
-            return Ok(Some(Box::new(crate::beardog::mock::MockBearDogProvider::new())));
+            // TODO: Create actual HTTP BearDog client implementation
+            tracing::warn!("BearDog URL configured but HTTP client not yet implemented - using NoOp provider");
+            return Ok(Some(Self::create_noop()));
         }
 
         Ok(None)
@@ -109,9 +120,9 @@ impl BearDogProviderFactory {
             let default_url = "http://[::]:8200";
             tracing::warn!("Using development fallback for BearDog: {}", default_url);
             tracing::warn!("Set BEARDOG_URL or SECURITY_URL for production");
-            tracing::warn!("Using MockBearDogProvider (no real BearDog client implemented yet)");
-            // TODO: Create actual BearDogProviderImpl when available
-            return Ok(Some(Box::new(crate::beardog::mock::MockBearDogProvider::new())));
+            // TODO: Create actual HTTP BearDog client implementation
+            tracing::warn!("Development mode: HTTP client not yet implemented - using NoOp provider");
+            Ok(Some(Self::create_noop()))
         }
 
         #[cfg(not(debug_assertions))]
@@ -125,4 +136,9 @@ impl BearDogProviderFactory {
     }
 }
 
+// No-Op implementation for production when BearDog unavailable
+pub mod noop;
+
+// Mock implementation - TEST ONLY
+#[cfg(test)]
 pub mod mock;

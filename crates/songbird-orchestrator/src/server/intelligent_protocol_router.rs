@@ -71,21 +71,21 @@ pub enum PayloadSize {
 impl PayloadSize {
     pub fn from_bytes(bytes: u64) -> Self {
         match bytes {
-            0..=1_024 => PayloadSize::Tiny,
-            1_025..=102_400 => PayloadSize::Small,
-            102_401..=10_485_760 => PayloadSize::Medium,
-            10_485_761..=1_073_741_824 => PayloadSize::Large,
-            _ => PayloadSize::Huge,
+            0..=1_024 => Self::Tiny,
+            1_025..=102_400 => Self::Small,
+            102_401..=10_485_760 => Self::Medium,
+            10_485_761..=1_073_741_824 => Self::Large,
+            _ => Self::Huge,
         }
     }
 
     pub fn to_bytes(&self) -> u64 {
         match self {
-            PayloadSize::Tiny => 512,
-            PayloadSize::Small => 50_000,
-            PayloadSize::Medium => 5_000_000,
-            PayloadSize::Large => 500_000_000,
-            PayloadSize::Huge => 50_000_000_000,
+            Self::Tiny => 512,
+            Self::Small => 50_000,
+            Self::Medium => 5_000_000,
+            Self::Large => 500_000_000,
+            Self::Huge => 50_000_000_000,
         }
     }
 }
@@ -375,12 +375,11 @@ impl IntelligentProtocolRouter {
         }
 
         // Rule 3: JSON data → prefer HTTP/JSON-RPC
-        if workload.data_type == DataType::Json {
-            if perf.json_efficient {
+        if workload.data_type == DataType::Json
+            && perf.json_efficient {
                 score += 20;
                 reasons.push("native JSON support");
             }
-        }
 
         // Rule 4: Large payloads → prefer high throughput
         match workload.payload_size {
@@ -411,20 +410,18 @@ impl IntelligentProtocolRouter {
         }
 
         // Rule 6: Status/monitoring → prefer HTTP (universal)
-        if workload.operation == OperationType::Status {
-            if protocol == "http" {
+        if workload.operation == OperationType::Status
+            && protocol == "http" {
                 score += 25;
                 reasons.push("universal access for monitoring");
             }
-        }
 
         // Rule 7: RPC operations → prefer tarpc or JSON-RPC
-        if workload.operation == OperationType::Rpc {
-            if protocol == "tarpc" || protocol == "json-rpc" {
+        if workload.operation == OperationType::Rpc
+            && (protocol == "tarpc" || protocol == "json-rpc") {
                 score += 20;
                 reasons.push("native RPC protocol");
             }
-        }
 
         // Rule 8: Network type consideration
         if let Some(ref network) = workload.network_context {

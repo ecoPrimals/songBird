@@ -31,7 +31,7 @@ pub mod test_env;
 pub use canonical_test_framework::{MockService, TestEnvironment};
 pub use chaos_engineering::ChaosEngineeringManager;
 pub use error_testing::ErrorTestingFramework;
-pub use fixtures::*;
+pub use fixtures::{test_endpoint, test_port, test_bind_address, test_socket_addr};
 pub use integration::IntegrationTestContext;
 pub use network_mocks::NetworkMockManager;
 pub use performance_testing::PerformanceTestFramework;

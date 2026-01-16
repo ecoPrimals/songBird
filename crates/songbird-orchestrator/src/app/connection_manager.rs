@@ -248,31 +248,28 @@ impl ConnectionManager {
 
             // Get or initialize BTSP client (lazy, thread-safe)
             // v3.19.0: This is where initialization actually happens!
-            match self.get_or_init_btsp_client().await {
-                Some(_client) => {
-                    // BTSP client available, try to connect
-                    match self
-                        .create_btsp_connection(peer_id.clone(), peer_tags.clone(), trust_level)
-                        .await
-                    {
-                        Ok(conn) => {
-                            info!("✅ BTSP connection established for '{}'", peer_id);
-                            conn
-                        }
-                        Err(e) => {
-                            warn!("⚠️  BTSP connection failed: {} - falling back to HTTPS", e);
-                            self.create_https_connection_internal(&peer_id, &endpoint, trust_level)?
-                        }
+            if let Some(_client) = self.get_or_init_btsp_client().await {
+                // BTSP client available, try to connect
+                match self
+                    .create_btsp_connection(peer_id.clone(), peer_tags.clone(), trust_level)
+                    .await
+                {
+                    Ok(conn) => {
+                        info!("✅ BTSP connection established for '{}'", peer_id);
+                        conn
+                    }
+                    Err(e) => {
+                        warn!("⚠️  BTSP connection failed: {} - falling back to HTTPS", e);
+                        self.create_https_connection_internal(&peer_id, &endpoint, trust_level)?
                     }
                 }
-                None => {
-                    // BTSP client unavailable (no security provider)
-                    info!(
-                        "ℹ️  Security provider unavailable - using HTTPS fallback for '{}'",
-                        peer_id
-                    );
-                    self.create_https_connection_internal(&peer_id, &endpoint, trust_level)?
-                }
+            } else {
+                // BTSP client unavailable (no security provider)
+                info!(
+                    "ℹ️  Security provider unavailable - using HTTPS fallback for '{}'",
+                    peer_id
+                );
+                self.create_https_connection_internal(&peer_id, &endpoint, trust_level)?
             }
         } else {
             // Peer doesn't support BTSP
@@ -424,7 +421,7 @@ impl ConnectionManager {
     /// Get connection for a peer
     pub async fn get_connection(&self, peer_id: &str) -> Option<TrustLevel> {
         let connections = self.connections.read().await;
-        connections.get(peer_id).map(|conn| conn.trust_level())
+        connections.get(peer_id).map(super::super::connections::Connection::trust_level)
     }
 
     /// Get all connected peers

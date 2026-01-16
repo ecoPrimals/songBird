@@ -323,7 +323,7 @@ impl SongbirdOrchestrator {
             .await;
 
         match result {
-            Ok(_) => {
+            Ok(()) => {
                 self.lifecycle.complete_task(task_id).await?;
 
                 // Emit completion event

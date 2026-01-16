@@ -63,12 +63,12 @@ impl FederationCoordinator {
         }
     }
 
-    /// Check if BearDog is available
+    /// Check if `BearDog` is available
     pub async fn has_beardog(&self) -> bool {
         self.beardog_provider.read().await.is_some()
     }
 
-    /// Get discovery mode based on BearDog availability
+    /// Get discovery mode based on `BearDog` availability
     pub async fn discovery_mode(&self) -> DiscoveryMode {
         if self.has_beardog().await {
             DiscoveryMode::BirdSong
@@ -467,10 +467,10 @@ pub struct FederationConfig {
     pub node_timeout_secs: i64,
 
     /// Rendezvous server URL for internet-wide discovery (optional)
-    /// Example: "http://rendezvous.songbird.network:8888"
+    /// Example: "<http://rendezvous.songbird.network:8888>"
     pub rendezvous_url: Option<String>,
 
-    /// Force discovery mode (if None, auto-detect based on BearDog availability)
+    /// Force discovery mode (if None, auto-detect based on `BearDog` availability)
     #[serde(default)]
     pub discovery_mode: Option<DiscoveryMode>,
 }

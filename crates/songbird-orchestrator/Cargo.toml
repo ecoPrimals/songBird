@@ -56,7 +56,7 @@ parking_lot = "0.12"
 num_cpus = "1.16"
 fastrand = "2.0"
 rand = { workspace = true }
-reqwest = { version = "0.11", features = ["json"] }
+reqwest = { version = "0.11", features = ["json", "rustls-tls"], default-features = false }
 socket2 = { workspace = true }
 if-addrs = { workspace = true }
 serde_yaml = "0.9.34"
@@ -70,14 +70,25 @@ tokio-stream = "0.1"
 # HTTP server for web dashboard
 axum = { version = "0.7", features = ["multipart", "ws"] }
 axum-server = { version = "0.7", features = ["tls-rustls"] }  # TLS support for axum
-rustls = { version = "0.23", features = ["ring"] }  # Explicit rustls for crypto provider init
+rustls = { version = "0.23", default-features = false, features = ["ring", "logging", "std", "tls12"] }  # ⚠️ TEMPORARY: ring for TLS only (unmaintained, evolve to RustCrypto TLS provider Q3-Q4 2026)
 tower = "0.5"
 tower-http = { version = "0.5", features = ["cors", "fs", "trace", "limit"] }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 
 # Access control and authentication
-jsonwebtoken = "9.3"
+jsonwebtoken = "9.3"  # Uses ring (no cmake!), will migrate to RustCrypto Ed25519 in Week 2
+
+# 🦀 RustCrypto: Audited pure Rust crypto (BiomeOS Concentrated Gap Strategy)
+# For internal operations (BTSP, BirdSong, auth) - NOT for TLS (ring handles TLS temporarily)
+aes-gcm = "0.10"            # Encryption (NCC Group audited)
+ed25519-dalek = "2.1"       # Signatures (audited)
+x25519-dalek = "2.0"        # Key exchange (Diffie-Hellman)
+# sha2 = "0.10"             # Already present above (line 51) ✅
+hmac = "0.12"               # HMAC authentication (audited)
+argon2 = "0.5"              # Password hashing / Key derivation (audited)
+chacha20poly1305 = "0.10"   # Alternative encryption (NCC Group audited)
+# Note: rand and sha2 already present in dependencies
 
 # tarpc for high-performance native RPC (Phase 3)
 tarpc = { workspace = true, features = ["full"] }

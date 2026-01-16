@@ -1,6 +1,6 @@
 //! Modern Concurrent Test Helpers
 //!
-//! Production-grade concurrent testing utilities evolved from BearDog's patterns.
+//! Production-grade concurrent testing utilities evolved from `BearDog`'s patterns.
 //!
 //! ## Philosophy
 //!
@@ -11,9 +11,9 @@
 //! - Explicit readiness signaling
 //! - Fast and reliable
 //!
-//! ## Evolution from BearDog
+//! ## Evolution from `BearDog`
 //!
-//! This module implements the concurrent testing patterns proven by BearDog,
+//! This module implements the concurrent testing patterns proven by `BearDog`,
 //! adapted for Songbird's architecture:
 //!
 //! - `ReadinessSignal` - Event-driven service startup
@@ -126,7 +126,7 @@ impl ReadinessSignal {
         timeout(duration, self.notify.notified())
             .await
             .map_err(|_| "Readiness signal timeout".into())
-            .map(|_| {
+            .map(|()| {
                 #[cfg(feature = "tracing")]
                 debug!("Readiness signal received");
             })
@@ -237,7 +237,7 @@ impl CompletionWaiter {
         })
         .await
         .map_err(|_| "Completion waiter timeout".into())
-        .map(|_| {
+        .map(|()| {
             #[cfg(feature = "tracing")]
             debug!("All tasks complete");
         })
@@ -335,7 +335,7 @@ impl AsyncBarrier {
             })
             .await
             .map_err(|_| "Barrier wait timeout".into())
-            .map(|_| {
+            .map(|()| {
                 #[cfg(feature = "tracing")]
                 debug!("Barrier: released");
             })
@@ -513,11 +513,13 @@ impl ConcurrencyLimiter {
     }
 
     /// Try to acquire a permit (non-blocking)
+    #[must_use] 
     pub fn try_acquire(&self) -> Option<tokio::sync::SemaphorePermit<'_>> {
         self.semaphore.try_acquire().ok()
     }
 
     /// Get available permits
+    #[must_use] 
     pub fn available_permits(&self) -> usize {
         self.semaphore.available_permits()
     }
@@ -579,22 +581,29 @@ mod tests {
 
     #[tokio::test]
     async fn test_retry_policy() {
+        use std::sync::atomic::{AtomicUsize, Ordering};
+        use std::sync::Arc;
+
         let policy = RetryPolicy::default();
-        let mut attempts = 0;
+        let attempts = Arc::new(AtomicUsize::new(0));
+        let attempts_clone = attempts.clone();
 
         let result = policy
-            .retry_with_backoff(|| async {
-                attempts += 1;
-                if attempts < 3 {
-                    Err(anyhow::anyhow!("Not yet"))
-                } else {
-                    Ok("Success")
+            .retry_with_backoff(move || {
+                let attempts = attempts_clone.clone();
+                async move {
+                    let count = attempts.fetch_add(1, Ordering::SeqCst) + 1;
+                    if count < 3 {
+                        Err(anyhow::anyhow!("Not yet"))
+                    } else {
+                        Ok("Success")
+                    }
                 }
             })
             .await;
 
         assert!(result.is_ok());
-        assert_eq!(attempts, 3);
+        assert_eq!(attempts.load(Ordering::SeqCst), 3);
     }
 
     #[test]

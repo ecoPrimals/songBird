@@ -445,8 +445,31 @@ pub mod replace {
     }
 
     /// Format endpoint with configurable IP and port
+    ///
+    /// **EVOLVED**: Uses environment variables and capability discovery
+    /// instead of hardcoded primal names.
+    ///
+    /// Discovery order:
+    /// 1. `{CAPABILITY}_ENDPOINT` environment variable
+    /// 2. `{CAPABILITY}_PORT` environment variable + bind address
+    /// 3. Auto-select port (0) for dynamic allocation
+    ///
+    /// # Examples
+    /// ```ignore
+    /// // For security capability:
+    /// // Set SECURITY_ENDPOINT=https://security-provider:8443
+    /// // OR set SECURITY_PORT=8443
+    /// let endpoint = format_endpoint("security", None);
+    /// ```
     #[must_use]
-    pub fn format_endpoint(service: &str, port_override: Option<u16>) -> Arc<str> {
+    pub fn format_endpoint(capability: &str, port_override: Option<u16>) -> Arc<str> {
+        // Check for full endpoint override first
+        let env_key_endpoint = format!("{}_ENDPOINT", capability.to_uppercase());
+        if let Ok(endpoint) = std::env::var(&env_key_endpoint) {
+            return Arc::from(endpoint);
+        }
+
+        // Otherwise construct from IP and port
         let config = get_config();
         let ip = if std::env::var("SONGBIRD_ENVIRONMENT").unwrap_or_default() == "production" {
             config.network.production_bind_address
@@ -454,15 +477,13 @@ pub mod replace {
             config.network.bind_address
         };
 
-        let port = port_override.unwrap_or(match service {
-            "gaming" => 8081,
-            "federation" | "toadstool" => 8082,
-            "beardog" => 8443,
-            "squirrel" => 8083,
-            _ => 8080, // Default for orchestrator, nestgate, and others
-        });
+        // Get port from environment or use override or auto-select
+        let env_key_port = format!("{}_PORT", capability.to_uppercase());
+        let port = port_override
+            .or_else(|| std::env::var(&env_key_port).ok().and_then(|p| p.parse().ok()))
+            .unwrap_or(0); // 0 = auto-select dynamic port
 
-        let protocol = if port == 8443 {
+        let protocol = if port == 8443 || capability == "security" {
             "https"
         } else {
             "http"

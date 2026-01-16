@@ -171,14 +171,14 @@ impl AvailabilityChecker {
         let is_available =
             |p: &PrimalEndpoint| p.health_status == "healthy" || p.health_status == "unknown";
 
-        let best_primal = if !preferred_primals.is_empty() {
+        let best_primal = if preferred_primals.is_empty() {
+            primals.iter().find(|p| is_available(p)).or_else(|| primals.first())
+        } else {
             preferred_primals
                 .iter()
                 .find(|&&p| is_available(p))
                 .or_else(|| preferred_primals.first())
                 .copied()
-        } else {
-            primals.iter().find(|p| is_available(p)).or_else(|| primals.first())
         };
 
         if let Some(primal) = best_primal {
@@ -394,7 +394,7 @@ pub struct AvailabilitySummary {
 }
 
 /// Availability status for a single node
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct NodeAvailability {
     /// Availability status
     pub status: NodeAvailabilityStatus,
@@ -442,7 +442,7 @@ pub enum NodeAvailabilityStatus {
 }
 
 /// Alternative primal suggestions
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct AlternativeSuggestions {
     /// List of alternative primals, ranked by compatibility
     pub alternatives: Vec<AlternativePrimal>,
@@ -455,7 +455,7 @@ pub struct AlternativeSuggestions {
 }
 
 /// An alternative primal suggestion
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct AlternativePrimal {
     /// Rank (1 = best, 2 = second best, etc.)
     pub rank: usize,
@@ -486,7 +486,7 @@ pub struct AlternativePrimal {
 }
 
 /// Recommended alternative
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct AlternativeRecommendation {
     /// Service ID of recommended primal
     pub service_id: String,
