@@ -11,6 +11,7 @@ use std::sync::Arc;
 use tokio::sync::{OnceCell, RwLock};
 use tracing::{debug, info, warn};
 
+use crate::btsp_client::BtspClient; // v3.20.0: Unix socket BTSP client (Jan 16, 2026)
 use crate::connections::{
     Connection,
     // v3.18.0: BTSP connections
@@ -22,7 +23,6 @@ use crate::connections::{
     LimitedConnection,
 };
 use crate::trust::peer_trust::PeerTrustDecision;
-use songbird_universal::BtspClient;
 
 /// Metadata about a peer connection
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -104,37 +104,33 @@ impl ConnectionManager {
     /// - Zero blocking, fully async
     /// - Automatic fallback if security provider unavailable
     ///
-    /// **Zero Hardcoding**: Discovers security provider at runtime
+    /// **Zero Hardcoding**: Discovers BearDog socket at runtime
+    /// 
+    /// v3.20.0: Migrated to Unix socket (Jan 16, 2026)
+    /// - Uses environment-based socket discovery
+    /// - No HTTP, direct Unix socket to BearDog
+    /// - Aligned with BiomeOS "Concentrated Gap" strategy
     async fn get_or_init_btsp_client(&self) -> Option<Arc<BtspClient>> {
         // OnceCell::get_or_try_init is thread-safe and only runs once
         match self
             .btsp_client
             .get_or_try_init(|| async {
-                debug!("🔍 First BTSP connection attempt - discovering security provider...");
+                debug!("🔍 First BTSP connection attempt - discovering BearDog socket...");
 
-                // Discover security provider endpoint (zero hardcoding!)
-                match crate::app::security_setup::discover_security_endpoint(None).await {
-                    Ok(endpoint) => {
-                        debug!("🔍 Discovered security provider at: {}", endpoint);
-
-                        // Create BTSP client
-                        match BtspClient::new(endpoint) {
-                            Ok(client) => {
-                                info!("✅ BTSP client initialized successfully (lazy)");
-                                Ok(Arc::new(client))
-                            }
-                            Err(e) => {
-                                warn!("⚠️  Failed to create BTSP client: {}", e);
-                                // Convert SongbirdError to anyhow::Error for OnceCell
-                                Err(anyhow::anyhow!("BTSP client creation failed: {}", e))
-                            }
-                        }
+                // Create BTSP client (discovers socket from environment)
+                // Socket priority: BEARDOG_SOCKET -> BIOMEOS_SOCKET_PATH -> XDG_RUNTIME_DIR -> fallback
+                let client = BtspClient::new();
+                
+                // Test connectivity with ping
+                match client.ping().await {
+                    Ok(_) => {
+                        info!("✅ BTSP client initialized successfully (Unix socket)");
+                        Ok(Arc::new(client))
                     }
                     Err(e) => {
-                        debug!("ℹ️  Security provider not available for BTSP: {}", e);
+                        warn!("⚠️  BearDog not available via Unix socket: {}", e);
                         info!("ℹ️  BTSP unavailable - will use HTTPS fallback");
-                        // Already anyhow::Error
-                        Err(e)
+                        Err(anyhow::anyhow!("BearDog ping failed: {}", e))
                     }
                 }
             })

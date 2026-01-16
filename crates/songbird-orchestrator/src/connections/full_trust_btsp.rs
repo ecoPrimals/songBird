@@ -25,11 +25,11 @@
 //! - **Capability-Based**: Runtime security enforcement
 
 use super::PeerConnection;
+use crate::btsp_client::BtspClient; // v3.20.0: Unix socket BTSP client (Jan 16, 2026)
 use anyhow::{anyhow, Context, Result};
 use async_trait::async_trait;
 use serde_json::Value;
 use songbird_types::TrustLevel;
-use songbird_universal::BtspClient;
 use std::sync::Arc;
 use std::time::SystemTime;
 use tokio::sync::RwLock;
@@ -86,21 +86,26 @@ impl FullTrustBtspConnection {
         info!("🔐 Creating BTSP Full Trust connection to peer '{}'", peer_id);
         debug!("   Peer tags: {:?}", peer_tags);
 
-        // Create tunnel request with automatic NAT traversal via lineage
-        let tunnel_request = songbird_universal::btsp_types::BtspTunnelRequest::new(&peer_id)
-            .with_tunnel_type(songbird_universal::btsp_types::TunnelType::Auto);
+        // v3.20.0: Unix socket BTSP client (Jan 16, 2026)
+        // Create peer endpoint from peer_id and tags
+        let peer_endpoint = crate::btsp_client::PeerEndpoint {
+            id: peer_id.clone(),
+            endpoint: format!("peer://{}", peer_id), // Will be resolved via BirdSong/lineage
+            public_key: None, // Will be exchanged during handshake
+            capabilities: peer_tags.clone(),
+        };
 
-        // Establish tunnel via security provider
+        // Establish tunnel via BearDog Unix socket
         let tunnel = btsp_client
-            .establish_tunnel(tunnel_request)
+            .establish_tunnel(peer_endpoint)
             .await
             .context(format!("Failed to establish BTSP tunnel to peer '{}'", peer_id))?;
 
-        info!("✅ BTSP tunnel established: {} (state: {:?})", tunnel.tunnel_id, tunnel.state);
+        info!("✅ BTSP tunnel established: {} to peer {}", tunnel.id, tunnel.peer_id);
 
         Ok(Self {
             peer_id: peer_id.clone(),
-            tunnel_id: Arc::new(RwLock::new(tunnel.tunnel_id)),
+            tunnel_id: Arc::new(RwLock::new(tunnel.id)),
             btsp_client,
             established_at: SystemTime::now(),
         })
@@ -223,10 +228,8 @@ mod tests {
 
     #[tokio::test]
     async fn test_btsp_full_trust_connection_creation() {
-        let btsp_client = Arc::new(
-            BtspClient::new("unix:///nonexistent.sock")
-                .expect("BtspClient creation should succeed"),
-        );
+        // v3.20.0: Unix socket client auto-discovers from environment
+        let btsp_client = Arc::new(BtspClient::new());
 
         let result = FullTrustBtspConnection::new(
             "test_peer".to_string(),

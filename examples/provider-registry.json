@@ -1,0 +1,88 @@
+{
+  "version": "1.0",
+  "description": "Songbird Universal HTTP Gateway - Provider Registry",
+  "created": "2026-01-16",
+  "philosophy": "Zero hardcoding - All providers discovered at runtime!",
+  "providers": [
+    {
+      "id": "openai",
+      "name": "OpenAI GPT",
+      "capabilities": [
+        {
+          "id": "ai:text-generation:openai",
+          "description": "OpenAI GPT text generation",
+          "category": "ai",
+          "capability_type": "text-generation",
+          "sub_type": "openai",
+          "metadata": {
+            "provider_name": "OpenAI",
+            "model": "gpt-4",
+            "is_local": false,
+            "cost_per_1k_tokens": 0.03,
+            "avg_latency_ms": 800,
+            "quality_tier": "premium"
+          }
+        }
+      ],
+      "socket_path": null,
+      "backend": {
+        "base_url": "https://api.openai.com/v1/chat/completions",
+        "api_key_env": "OPENAI_API_KEY",
+        "request_transform": {
+          "field_mappings": {
+            "prompt": "messages[0].content",
+            "max_tokens": "max_tokens"
+          },
+          "template": null
+        },
+        "response_transform": {
+          "field_mappings": {
+            "choices[0].message.content": "response"
+          },
+          "template": null
+        },
+        "headers": {
+          "Content-Type": "application/json"
+        }
+      },
+      "metadata": {
+        "rate_limit_requests_per_minute": 60,
+        "cache_enabled": true,
+        "cache_ttl_seconds": 300
+      }
+    },
+    {
+      "id": "toadstool",
+      "name": "ToadStool Local GPU",
+      "capabilities": [
+        {
+          "id": "ai:text-generation:local",
+          "description": "Local GPU text generation via ToadStool",
+          "category": "ai",
+          "capability_type": "text-generation",
+          "sub_type": "local",
+          "metadata": {
+            "provider_name": "ToadStool",
+            "is_local": true,
+            "cost_per_1k_tokens": 0.0,
+            "privacy": "100% local"
+          }
+        }
+      ],
+      "socket_path": "/run/user/1000/toadstool-ai.sock",
+      "backend": null,
+      "metadata": {
+        "rate_limit_requests_per_minute": 100,
+        "note": "Local primal - no external HTTP!"
+      }
+    }
+  ],
+  "notes": {
+    "zero_hardcoding": "Notice: NO vendor-specific code in Songbird!",
+    "universal_design": "ONE proxy implementation works for ALL providers",
+    "capability_based": "Routing by capability, not by vendor name",
+    "agnostic": "Works with any HTTP API - just add config!",
+    "evolution": "Add new providers without code changes - just JSON!"
+  }
+}
+

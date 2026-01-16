@@ -1,0 +1,53 @@
+{
+  "id": "huggingface",
+  "name": "HuggingFace Inference",
+  "capabilities": [
+    {
+      "id": "ai:text-generation:huggingface",
+      "description": "HuggingFace text generation models",
+      "category": "ai",
+      "capability_type": "text-generation",
+      "sub_type": "huggingface",
+      "metadata": {
+        "provider_name": "HuggingFace",
+        "model": "mistralai/Mistral-7B-Instruct-v0.2",
+        "is_local": false,
+        "cost_per_1k_tokens": 0.0,
+        "avg_latency_ms": 2000,
+        "quality_tier": "standard"
+      }
+    }
+  ],
+  "socket_path": null,
+  "backend": {
+    "base_url": "https://api-inference.huggingface.co/models/mistralai/Mistral-7B-Instruct-v0.2",
+    "api_key_env": "HUGGINGFACE_API_KEY",
+    "request_transform": {
+      "field_mappings": {
+        "prompt": "inputs",
+        "max_tokens": "parameters.max_new_tokens",
+        "temperature": "parameters.temperature"
+      },
+      "template": null
+    },
+    "response_transform": {
+      "field_mappings": {
+        "[0].generated_text": "response"
+      },
+      "template": null
+    },
+    "headers": {
+      "Content-Type": "application/json"
+    }
+  },
+  "metadata": {
+    "rate_limit_requests_per_minute": 30,
+    "cache_enabled": true,
+    "cache_ttl_seconds": 600,
+    "retry_max_attempts": 5,
+    "retry_backoff": "exponential",
+    "wait_for_model": true,
+    "timeout_seconds": 60
+  }
+}
+

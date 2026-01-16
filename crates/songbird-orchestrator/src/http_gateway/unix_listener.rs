@@ -1,0 +1,557 @@
+//! Unix Socket Listener for HTTP Gateway
+//!
+//! This module implements Unix socket listeners that receive JSON-RPC requests
+//! from other primals and route them through the universal HTTP gateway.
+//!
+//! # Philosophy
+//! - **Zero Hardcoding**: No primal names, socket paths are discovered at runtime
+//! - **Capability-Based**: Each socket represents a capability, not a vendor
+//! - **JSON-RPC 2.0**: Standard protocol for inter-primal communication
+//! - **Async/Non-blocking**: Modern tokio-based async I/O
+//!
+//! # Architecture
+//! ```text
+//! Primal (Unix Socket) → Listener → Capability Router → Universal Proxy → External API
+//!                           ↓
+//!                    JSON-RPC 2.0
+//!                  (Standard Protocol)
+//! ```
+
+use super::capability_router::{CapabilityRouter, Route};
+use super::cache::ResponseCache;
+use super::credentials::CredentialManager;
+use super::rate_limiter::RateLimiter;
+use anyhow::{anyhow, Result};
+use serde::{Deserialize, Serialize};
+use std::path::PathBuf;
+use std::sync::Arc;
+use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
+use tokio::net::{UnixListener, UnixStream};
+use tokio::sync::RwLock;
+use tracing::{debug, error, info, trace, warn};
+
+/// JSON-RPC 2.0 Request
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct JsonRpcRequest {
+    pub jsonrpc: String,
+    pub method: String,
+    pub params: serde_json::Value,
+    pub id: serde_json::Value,
+}
+
+/// JSON-RPC 2.0 Response
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct JsonRpcResponse {
+    pub jsonrpc: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub result: Option<serde_json::Value>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub error: Option<JsonRpcError>,
+    pub id: serde_json::Value,
+}
+
+/// JSON-RPC 2.0 Error
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct JsonRpcError {
+    pub code: i32,
+    pub message: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub data: Option<serde_json::Value>,
+}
+
+impl JsonRpcError {
+    /// Create a new JSON-RPC error
+    #[must_use]
+    pub fn new(code: i32, message: impl Into<String>) -> Self {
+        Self {
+            code,
+            message: message.into(),
+            data: None,
+        }
+    }
+
+    /// Parse error (-32700)
+    #[must_use]
+    pub fn parse_error() -> Self {
+        Self::new(-32700, "Parse error")
+    }
+
+    /// Invalid request (-32600)
+    #[must_use]
+    pub fn invalid_request() -> Self {
+        Self::new(-32600, "Invalid request")
+    }
+
+    /// Method not found (-32601)
+    #[must_use]
+    pub fn method_not_found() -> Self {
+        Self::new(-32601, "Method not found")
+    }
+
+    /// Invalid params (-32602)
+    #[must_use]
+    pub fn invalid_params() -> Self {
+        Self::new(-32602, "Invalid params")
+    }
+
+    /// Internal error (-32603)
+    #[must_use]
+    pub fn internal_error(message: impl Into<String>) -> Self {
+        Self::new(-32603, message)
+    }
+
+    /// Server error (custom code)
+    #[must_use]
+    pub fn server_error(code: i32, message: impl Into<String>) -> Self {
+        Self::new(code, message)
+    }
+}
+
+/// Unix Socket Listener Configuration
+#[derive(Debug, Clone)]
+pub struct UnixListenerConfig {
+    /// Socket path for this listener
+    pub socket_path: PathBuf,
+    
+    /// Capability this socket handles (e.g., "ai:text-generation")
+    pub capability_id: String,
+    
+    /// Maximum concurrent connections
+    pub max_connections: usize,
+    
+    /// Request timeout in seconds
+    pub timeout_secs: u64,
+}
+
+/// Unix Socket Listener - handles JSON-RPC requests from other primals
+pub struct UnixSocketListener {
+    config: UnixListenerConfig,
+    router: Arc<CapabilityRouter>,
+    rate_limiter: Arc<RateLimiter>,
+    cache: Arc<ResponseCache>,
+    credentials: Arc<CredentialManager>,
+    http_client: reqwest::Client,
+    active_connections: Arc<RwLock<usize>>,
+}
+
+impl UnixSocketListener {
+    /// Create a new Unix socket listener
+    #[must_use]
+    pub fn new(
+        config: UnixListenerConfig,
+        router: Arc<CapabilityRouter>,
+        rate_limiter: Arc<RateLimiter>,
+        cache: Arc<ResponseCache>,
+        credentials: Arc<CredentialManager>,
+        http_client: reqwest::Client,
+    ) -> Self {
+        info!(
+            "Creating Unix socket listener for capability '{}' at {:?}",
+            config.capability_id, config.socket_path
+        );
+
+        Self {
+            config,
+            router,
+            rate_limiter,
+            cache,
+            credentials,
+            http_client,
+            active_connections: Arc::new(RwLock::new(0)),
+        }
+    }
+
+    /// Start listening for connections
+    ///
+    /// This is the main entry point for the listener.
+    /// It binds to the Unix socket and spawns tasks for each incoming connection.
+    pub async fn start(self: Arc<Self>) -> Result<()> {
+        // Remove existing socket file if it exists
+        if self.config.socket_path.exists() {
+            tokio::fs::remove_file(&self.config.socket_path).await?;
+        }
+
+        // Create parent directory if it doesn't exist
+        if let Some(parent) = self.config.socket_path.parent() {
+            tokio::fs::create_dir_all(parent).await?;
+        }
+
+        // Bind to Unix socket
+        let listener = UnixListener::bind(&self.config.socket_path)?;
+        
+        info!(
+            "✅ Unix socket listener started: {:?} (capability: {})",
+            self.config.socket_path, self.config.capability_id
+        );
+
+        // Accept connections in a loop
+        loop {
+            match listener.accept().await {
+                Ok((stream, _addr)) => {
+                    // Check connection limit
+                    let active = *self.active_connections.read().await;
+                    if active >= self.config.max_connections {
+                        warn!(
+                            "Connection limit reached ({}/{}), rejecting new connection",
+                            active, self.config.max_connections
+                        );
+                        continue;
+                    }
+
+                    // Spawn task to handle this connection
+                    let listener = self.clone();
+                    tokio::spawn(async move {
+                        if let Err(e) = listener.handle_connection(stream).await {
+                            error!("Error handling connection: {}", e);
+                        }
+                    });
+                }
+                Err(e) => {
+                    error!("Error accepting connection: {}", e);
+                }
+            }
+        }
+    }
+
+    /// Handle a single connection
+    async fn handle_connection(&self, mut stream: UnixStream) -> Result<()> {
+        // Increment active connections
+        {
+            let mut active = self.active_connections.write().await;
+            *active += 1;
+            debug!("Active connections: {}", *active);
+        }
+
+        // Ensure we decrement on exit
+        let _guard = ConnectionGuard {
+            counter: self.active_connections.clone(),
+        };
+
+        let (reader, mut writer) = stream.split();
+        let mut reader = BufReader::new(reader);
+        let mut buffer = Vec::new();
+
+        loop {
+            buffer.clear();
+
+            // Read one line (JSON-RPC request)
+            let bytes_read = reader.read_until(b'\n', &mut buffer).await?;
+            if bytes_read == 0 {
+                debug!("Connection closed by client");
+                break;
+            }
+
+            // Parse JSON-RPC request
+            let request: JsonRpcRequest = match serde_json::from_slice(&buffer) {
+                Ok(req) => req,
+                Err(e) => {
+                    warn!("Failed to parse JSON-RPC request: {}", e);
+                    let error_response = JsonRpcResponse {
+                        jsonrpc: "2.0".to_string(),
+                        result: None,
+                        error: Some(JsonRpcError::parse_error()),
+                        id: serde_json::Value::Null,
+                    };
+                    self.send_response_to_writer(&mut writer, error_response).await?;
+                    continue;
+                }
+            };
+
+            trace!("Received request: method={}, id={:?}", request.method, request.id);
+
+            // Handle the request
+            let response = self.handle_request(request).await;
+
+            // Send response
+            self.send_response_to_writer(&mut writer, response).await?;
+        }
+
+        Ok(())
+    }
+
+    /// Handle a JSON-RPC request
+    async fn handle_request(&self, request: JsonRpcRequest) -> JsonRpcResponse {
+        // Validate JSON-RPC version
+        if request.jsonrpc != "2.0" {
+            return JsonRpcResponse {
+                jsonrpc: "2.0".to_string(),
+                result: None,
+                error: Some(JsonRpcError::invalid_request()),
+                id: request.id,
+            };
+        }
+
+        // Route based on method
+        match request.method.as_str() {
+            "proxy" | "http.proxy" => self.handle_proxy_request(request).await,
+            "ping" => self.handle_ping_request(request).await,
+            "capabilities" => self.handle_capabilities_request(request).await,
+            _ => JsonRpcResponse {
+                jsonrpc: "2.0".to_string(),
+                result: None,
+                error: Some(JsonRpcError::method_not_found()),
+                id: request.id,
+            },
+        }
+    }
+
+    /// Handle a proxy request (the main functionality)
+    async fn handle_proxy_request(&self, request: JsonRpcRequest) -> JsonRpcResponse {
+        // Extract parameters
+        let params = match request.params.as_object() {
+            Some(obj) => obj,
+            None => {
+                return JsonRpcResponse {
+                    jsonrpc: "2.0".to_string(),
+                    result: None,
+                    error: Some(JsonRpcError::invalid_params()),
+                    id: request.id,
+                };
+            }
+        };
+
+        // Get capability ID (use our listener's capability if not specified)
+        let capability_id = params
+            .get("capability")
+            .and_then(|v| v.as_str())
+            .unwrap_or(&self.config.capability_id);
+
+        // Get request method and payload
+        let http_method = params
+            .get("method")
+            .and_then(|v| v.as_str())
+            .unwrap_or("POST");
+        
+        let payload = params.get("payload").cloned();
+
+        debug!(
+            "Proxy request: capability='{}', method='{}'",
+            capability_id, http_method
+        );
+
+        // Route to appropriate provider
+        let route = match self.router.route(capability_id).await {
+            Ok(r) => r,
+            Err(e) => {
+                warn!("Routing failed for capability '{}': {}", capability_id, e);
+                return JsonRpcResponse {
+                    jsonrpc: "2.0".to_string(),
+                    result: None,
+                    error: Some(JsonRpcError::server_error(-32000, format!("Routing failed: {}", e))),
+                    id: request.id,
+                };
+            }
+        };
+
+        // Check rate limits
+        if let Err(e) = self.rate_limiter.check(&route.provider.id).await {
+            warn!("Rate limit exceeded for provider '{}': {}", route.provider.id, e);
+            return JsonRpcResponse {
+                jsonrpc: "2.0".to_string(),
+                result: None,
+                error: Some(JsonRpcError::server_error(-32001, "Rate limit exceeded")),
+                id: request.id,
+            };
+        }
+
+        // Check cache
+        let cache_key = format!("{}:{}", capability_id, serde_json::to_string(&payload).unwrap_or_default());
+        if let Some(cached) = self.cache.get(&cache_key).await {
+            debug!("Cache hit for key: {}", cache_key);
+            return JsonRpcResponse {
+                jsonrpc: "2.0".to_string(),
+                result: Some(cached),
+                error: None,
+                id: request.id,
+            };
+        }
+
+        // Make the actual HTTP request to external API
+        let result = self
+            .make_external_request(&route, http_method, payload.as_ref())
+            .await;
+
+        match result {
+            Ok(response_data) => {
+                // Cache the response
+                // TODO: Implement caching logic
+
+                JsonRpcResponse {
+                    jsonrpc: "2.0".to_string(),
+                    result: Some(response_data),
+                    error: None,
+                    id: request.id,
+                }
+            }
+            Err(e) => {
+                error!("External request failed: {}", e);
+                JsonRpcResponse {
+                    jsonrpc: "2.0".to_string(),
+                    result: None,
+                    error: Some(JsonRpcError::internal_error(format!("External request failed: {}", e))),
+                    id: request.id,
+                }
+            }
+        }
+    }
+
+    /// Make an external HTTP request
+    async fn make_external_request(
+        &self,
+        route: &Route,
+        method: &str,
+        payload: Option<&serde_json::Value>,
+    ) -> Result<serde_json::Value> {
+        // Get backend configuration
+        let backend = route
+            .provider
+            .backend
+            .as_ref()
+            .ok_or_else(|| anyhow!("Provider has no backend configuration"))?;
+
+        // Get API key if needed
+        let api_key = if backend.api_key_env.is_some() {
+            self.credentials.get_api_key(&route.provider.id)
+        } else {
+            None
+        };
+
+        // Build request
+        let client_builder = match method {
+            "GET" => self.http_client.get(&backend.base_url),
+            "POST" => self.http_client.post(&backend.base_url),
+            "PUT" => self.http_client.put(&backend.base_url),
+            "DELETE" => self.http_client.delete(&backend.base_url),
+            _ => return Err(anyhow!("Unsupported HTTP method: {}", method)),
+        };
+
+        let mut request = client_builder;
+
+        // Add API key header if present
+        if let Some(key) = api_key {
+            request = request.bearer_auth(key);
+        }
+
+        // Add custom headers
+        for (name, value) in &backend.headers {
+            request = request.header(name, value);
+        }
+
+        // Add payload if present
+        if let Some(data) = payload {
+            request = request.json(data);
+        }
+
+        // Send request
+        let response = request.send().await?;
+        let status = response.status();
+        let body = response.json::<serde_json::Value>().await?;
+
+        if !status.is_success() {
+            return Err(anyhow!("External API returned error: {} - {:?}", status, body));
+        }
+
+        Ok(body)
+    }
+
+    /// Handle a ping request
+    async fn handle_ping_request(&self, request: JsonRpcRequest) -> JsonRpcResponse {
+        JsonRpcResponse {
+            jsonrpc: "2.0".to_string(),
+            result: Some(serde_json::json!({
+                "status": "ok",
+                "primal": "songbird",
+                "capability": self.config.capability_id,
+                "active_connections": *self.active_connections.read().await,
+            })),
+            error: None,
+            id: request.id,
+        }
+    }
+
+    /// Handle a capabilities request
+    async fn handle_capabilities_request(&self, request: JsonRpcRequest) -> JsonRpcResponse {
+        let capabilities = self.router.list_capabilities().await;
+        
+        JsonRpcResponse {
+            jsonrpc: "2.0".to_string(),
+            result: Some(serde_json::json!({
+                "capabilities": capabilities,
+            })),
+            error: None,
+            id: request.id,
+        }
+    }
+
+    /// Send a JSON-RPC response to a writer
+    async fn send_response_to_writer<W>(
+        &self,
+        writer: &mut W,
+        response: JsonRpcResponse,
+    ) -> Result<()>
+    where
+        W: tokio::io::AsyncWrite + Unpin,
+    {
+        let response_bytes = serde_json::to_vec(&response)?;
+        writer.write_all(&response_bytes).await?;
+        writer.write_all(b"\n").await?;
+        Ok(())
+    }
+}
+
+/// Guard to ensure connection counter is decremented
+struct ConnectionGuard {
+    counter: Arc<RwLock<usize>>,
+}
+
+impl Drop for ConnectionGuard {
+    fn drop(&mut self) {
+        let counter = self.counter.clone();
+        tokio::spawn(async move {
+            let mut active = counter.write().await;
+            *active = active.saturating_sub(1);
+        });
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_jsonrpc_error_creation() {
+        let error = JsonRpcError::parse_error();
+        assert_eq!(error.code, -32700);
+        assert_eq!(error.message, "Parse error");
+    }
+
+    #[test]
+    fn test_jsonrpc_request_serialization() {
+        let request = JsonRpcRequest {
+            jsonrpc: "2.0".to_string(),
+            method: "proxy".to_string(),
+            params: serde_json::json!({"capability": "ai:text-generation"}),
+            id: serde_json::json!(1),
+        };
+
+        let json = serde_json::to_string(&request).unwrap();
+        assert!(json.contains("\"jsonrpc\":\"2.0\""));
+        assert!(json.contains("\"method\":\"proxy\""));
+    }
+
+    #[test]
+    fn test_jsonrpc_response_serialization() {
+        let response = JsonRpcResponse {
+            jsonrpc: "2.0".to_string(),
+            result: Some(serde_json::json!({"status": "ok"})),
+            error: None,
+            id: serde_json::json!(1),
+        };
+
+        let json = serde_json::to_string(&response).unwrap();
+        assert!(json.contains("\"jsonrpc\":\"2.0\""));
+        assert!(json.contains("\"result\""));
+        assert!(!json.contains("\"error\""));
+    }
+}
+

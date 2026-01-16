@@ -35,7 +35,7 @@ use anyhow::{anyhow, Context, Result};
 use async_trait::async_trait;
 use serde_json::Value;
 use songbird_types::TrustLevel;
-use songbird_universal::BtspClient;
+use crate::btsp_client::BtspClient; // v3.20.0: Unix socket BTSP client (Jan 16, 2026)
 use std::sync::Arc;
 use std::time::SystemTime;
 use tokio::sync::RwLock;
@@ -96,10 +96,10 @@ impl LimitedBtspConnection {
     ///
     /// ```rust,no_run
     /// # use songbird_orchestrator::connections::LimitedBtspConnection;
-    /// # use songbird_universal::BtspClient;
+    /// # use crate::btsp_client::BtspClient; // v3.20.0: Unix socket BTSP client (Jan 16, 2026)
     /// # use std::sync::Arc;
     /// # async fn example() -> anyhow::Result<()> {
-    /// let btsp_client = Arc::new(BtspClient::new("unix:///var/run/security.sock")?);
+    /// let btsp_client = Arc::new(BtspClient::new());  // Auto-discovers socket
     ///
     /// let conn = LimitedBtspConnection::new(
     ///     "tower2".to_string(),
@@ -119,21 +119,25 @@ impl LimitedBtspConnection {
         info!("🔐 Creating BTSP Limited connection to peer '{}'", peer_id);
         debug!("   Peer tags: {:?}", peer_tags);
 
-        // Create tunnel request with automatic NAT traversal via lineage
-        let tunnel_request = songbird_universal::btsp_types::BtspTunnelRequest::new(&peer_id)
-            .with_tunnel_type(songbird_universal::btsp_types::TunnelType::Auto);
+        // v3.20.0: Unix socket BTSP client (Jan 16, 2026)
+        let peer_endpoint = crate::btsp_client::PeerEndpoint {
+            id: peer_id.clone(),
+            endpoint: format!("peer://{}", peer_id),
+            public_key: None,
+            capabilities: peer_tags.clone(),
+        };
 
-        // Establish tunnel via security provider
+        // Establish tunnel via BearDog Unix socket
         let tunnel = btsp_client
-            .establish_tunnel(tunnel_request)
+            .establish_tunnel(peer_endpoint)
             .await
             .context(format!("Failed to establish BTSP tunnel to peer '{}'", peer_id))?;
 
-        info!("✅ BTSP tunnel established: {} (state: {:?})", tunnel.tunnel_id, tunnel.state);
+        info!("✅ BTSP tunnel established: {} to peer {}", tunnel.id, tunnel.peer_id);
 
         Ok(Self {
             peer_id: peer_id.clone(),
-            tunnel_id: Arc::new(RwLock::new(tunnel.tunnel_id)),
+            tunnel_id: Arc::new(RwLock::new(tunnel.id)),
             btsp_client,
             allowed_capabilities,
             denied_capabilities: TrustLevel::Limited.default_denied_capabilities(),
@@ -325,10 +329,8 @@ mod tests {
         // Test connection creation (will fail without real security provider)
         // This validates the API, not the end-to-end flow
 
-        let btsp_client = Arc::new(
-            BtspClient::new("unix:///nonexistent.sock")
-                .expect("BtspClient creation should succeed"),
-        );
+        // v3.20.0: Unix socket client auto-discovers from environment
+        let btsp_client = Arc::new(BtspClient::new());
 
         let result = LimitedBtspConnection::with_defaults(
             "test_peer".to_string(),

@@ -19,7 +19,8 @@
 // ============================================================================
 
 pub mod adapters;
-pub mod btsp_client; // BTSP client for security provider communication (v3.15.1)
+// NOTE: btsp_client moved to songbird-orchestrator (v3.20.0, Jan 16, 2026)
+// New Unix socket-based implementation in songbird-orchestrator/src/btsp_client.rs
 pub mod btsp_types; // BTSP (BirdSong Transport Protocol) types (v3.15.1)
 pub mod capabilities;
 pub mod circuit_breaker;
@@ -75,7 +76,8 @@ pub use tarpc_types::{
 };
 
 // Re-export trust evaluation types for inter-primal trust evaluation (v3.12.3)
-pub use btsp_client::BtspClient;
+// NOTE: BtspClient moved to songbird-orchestrator (v3.20.0, Jan 16, 2026)
+// Use: use songbird_orchestrator::btsp_client::BtspClient;
 pub use btsp_types::{
     BtspEndpoint, BtspTunnel, BtspTunnelRequest, BtspTunnelResponse, ContactExchangeRequest,
     ContactExchangeResponse, PeerContact, TunnelState, TunnelType,
