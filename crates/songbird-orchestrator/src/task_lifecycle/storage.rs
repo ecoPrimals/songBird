@@ -377,8 +377,11 @@ impl TaskStorage {
             metadata: CheckpointMetadata {
                 size_bytes: size_bytes as u64,
                 compression: compression.and_then(|s| {
-                    if s == "Zstd" {
-                        Some(super::CompressionAlgorithm::Zstd)
+                    if s == "Gzip" {
+                        Some(super::CompressionAlgorithm::Gzip)
+                    } else if s == "Zstd" {
+                        // Legacy: Support reading old Zstd checkpoints (migration compatibility)
+                        None  // Treat as uncompressed for now
                     } else {
                         None
                     }

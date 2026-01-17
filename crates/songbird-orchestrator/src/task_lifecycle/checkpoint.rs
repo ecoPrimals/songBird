@@ -48,7 +48,7 @@ pub struct CheckpointMetadata {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum CompressionAlgorithm {
     None,
-    Zstd,
+    Gzip,  // Pure Rust via flate2 (migrated from Zstd on Jan 17, 2026)
 }
 
 impl Checkpoint {
@@ -85,7 +85,7 @@ impl Checkpoint {
             state: compressed,
             metadata: CheckpointMetadata {
                 size_bytes,
-                compression: Some(CompressionAlgorithm::Zstd),
+                compression: Some(CompressionAlgorithm::Gzip),
                 checksum: Arc::from(checksum),
             },
         })
@@ -103,7 +103,7 @@ impl Checkpoint {
     /// Get decompressed state
     pub fn get_state(&self) -> Result<Vec<u8>> {
         match self.metadata.compression {
-            Some(CompressionAlgorithm::Zstd) => Self::decompress_state(&self.state),
+            Some(CompressionAlgorithm::Gzip) => Self::decompress_state(&self.state),
             Some(CompressionAlgorithm::None) | None => Ok(self.state.clone()),
         }
     }
@@ -116,16 +116,29 @@ impl Checkpoint {
         format!("{:x}", hasher.finalize())
     }
 
-    /// Compress state using zstd
+    /// Compress state using gzip (pure Rust via flate2)
     fn compress_state(data: &[u8]) -> Result<Vec<u8>> {
-        zstd::bulk::compress(data, 3).context("Failed to compress checkpoint state")
+        use flate2::write::GzEncoder;
+        use flate2::Compression;
+        use std::io::Write;
+        
+        let mut encoder = GzEncoder::new(Vec::new(), Compression::fast());
+        encoder.write_all(data)
+            .context("Failed to write data to gzip encoder")?;
+        encoder.finish()
+            .context("Failed to compress checkpoint state with gzip")
     }
 
-    /// Decompress state using zstd
+    /// Decompress state using gzip (pure Rust via flate2)
     fn decompress_state(data: &[u8]) -> Result<Vec<u8>> {
-        // Use safe decompression with auto-sizing (slower but handles any size)
-        // For production, we could cache the original size in metadata
-        zstd::stream::decode_all(data).context("Failed to decompress checkpoint state")
+        use flate2::read::GzDecoder;
+        use std::io::Read;
+        
+        let mut decoder = GzDecoder::new(data);
+        let mut result = Vec::new();
+        decoder.read_to_end(&mut result)
+            .context("Failed to decompress checkpoint state with gzip")?;
+        Ok(result)
     }
 }
 
@@ -200,7 +213,7 @@ mod tests {
 
         // Compressed should be smaller than original (repetitive data compresses well)
         assert!(checkpoint.metadata.size_bytes < 5000);
-        assert_eq!(checkpoint.metadata.compression, Some(CompressionAlgorithm::Zstd));
+        assert_eq!(checkpoint.metadata.compression, Some(CompressionAlgorithm::Gzip));
 
         // Should decompress correctly
         let decompressed = checkpoint.get_state().unwrap();
