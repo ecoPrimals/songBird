@@ -68,7 +68,7 @@ pub enum TaskEvent {
 ///
 /// The manager coordinates between:
 /// - **Storage layer**: SQLite for persistent task state
-/// - **Checkpoint system**: zstd compression with SHA-256 verification
+/// - **Checkpoint system**: gzip compression (flate2) with SHA-256 verification
 /// - **Event system**: Broadcast channels for real-time updates
 /// - **Background tasks**: Automatic cleanup of old tasks
 ///

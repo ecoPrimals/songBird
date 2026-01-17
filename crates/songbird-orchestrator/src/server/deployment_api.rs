@@ -294,7 +294,7 @@ async fn get_capabilities(State(state): State<DeploymentState>) -> Json<Deployme
             single: SingleUploadMethod {
                 enabled: true,
                 max_size_mb: 50,
-                compression_supported: vec!["gzip".to_string(), "zstd".to_string()],
+                compression_supported: vec!["gzip".to_string()],
                 recommended_for: "< 10MB".to_string(),
             },
             chunked: ChunkedUploadMethod {
@@ -302,13 +302,13 @@ async fn get_capabilities(State(state): State<DeploymentState>) -> Json<Deployme
                 max_total_size_mb: 1000,
                 chunk_size_mb: 10,
                 max_chunks: 100,
-                compression_supported: vec!["gzip".to_string(), "zstd".to_string()],
+                compression_supported: vec!["gzip".to_string()],
                 recommended_for: "2MB - 500MB".to_string(),
             },
             streaming: StreamingUploadMethod {
                 enabled: false, // Phase 4
                 unlimited: true,
-                compression_supported: vec!["gzip".to_string(), "zstd".to_string()],
+                compression_supported: vec!["gzip".to_string()],
                 recommended_for: "> 500MB".to_string(),
             },
         },
@@ -321,12 +321,7 @@ async fn get_capabilities(State(state): State<DeploymentState>) -> Json<Deployme
             current_deployments,
         },
         preferences: DeploymentPreferences {
-            preferred_compression: if network_type == "lan" {
-                "gzip"
-            } else {
-                "zstd"
-            }
-            .to_string(),
+            preferred_compression: "gzip".to_string(), // Pure Rust (flate2)
             preferred_method: "single".to_string(), // Will be "chunked" in Phase 3
             encryption_required: false,
         },
