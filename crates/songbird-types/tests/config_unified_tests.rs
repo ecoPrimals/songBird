@@ -60,7 +60,7 @@ fn test_get_bind_address_development() {
     let env = TestEnv::new(); // Empty environment
     let mut config = UnifiedSongbirdConfig::default();
     config.system.environment = "development".to_string();
-    assert_eq!(config.get_bind_address_from_env(env.as_map()), test_bind_address());
+    assert_eq!(config.get_bind_address_from_env(env.as_map()), "127.0.0.1");
 }
 
 #[test] // ✅ NO #[serial]! Fully concurrent!
