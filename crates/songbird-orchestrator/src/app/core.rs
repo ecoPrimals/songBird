@@ -19,8 +19,7 @@ use super::connection_manager::ConnectionManager;
 use crate::trust::TrustEscalationManager;
 
 // Import from sibling modules
-use super::http_server;
-use super::network::{detect_primary_ip, get_local_ip_for_connectivity_test, parse_bind_address};
+use super::network::{detect_primary_ip, get_local_ip_for_connectivity_test};
 
 /// Main orchestrator application
 ///
@@ -458,61 +457,20 @@ impl SongbirdOrchestrator {
         Ok(())
     }
 
-    /// Start HTTP server with federation API
+    /// IPC server is the ONLY communication mechanism
     ///
-    /// Returns the actual port the server bound to (may differ from configured if fallback occurred)
+    /// Deep Debt Solution: Unix sockets ONLY for internal communication
+    /// HTTP/TLS is handled by external gateway component (Concentrated Gap strategy)
+    ///
+    /// This method is kept for API compatibility but does nothing.
+    /// IPC server (Unix sockets) is started elsewhere.
     async fn start_http_server(&self) -> Result<u16> {
-        use crate::network::NetworkBindingStrategy;
-
-        let port = SafeEnv::get_port(
-            "SONGBIRD_PORT",
-            songbird_config::defaults::ports::orchestrator_port(),
-        );
-
-        // 🚀 EVOLUTION: Zero-config intelligent binding
-        // Check if manual override exists (backwards compatibility during migration)
-        let actual_port = if let Ok(manual_addr) = SafeEnv::get("SONGBIRD_BIND_ADDRESS") {
-            warn!("⚠️  SONGBIRD_BIND_ADDRESS is deprecated and will be removed");
-            warn!("   Songbird now auto-detects optimal network binding");
-            warn!("   Manual override: {}", manual_addr);
-            warn!("   Please remove SONGBIRD_BIND_ADDRESS from your configuration");
-
-            // Parse manual address for backwards compatibility
-            let addr = parse_bind_address(&manual_addr, port)?;
-            info!("   Using manual binding: {}", addr);
-
-            // Start with manual binding (legacy path)
-            http_server::start_http_server(
-                Arc::clone(&self.federation_state),
-                Arc::clone(&self.federated_service_registry),
-                Arc::clone(&self.service_registry),
-                addr,
-            )
-            .await?
-        } else {
-            // 🎯 Intelligent auto-detection (zero-config)
-            info!("🌐 Auto-detecting optimal network binding (zero-config)...");
-            let bind_strategy = NetworkBindingStrategy::auto_detect().await?;
-
-            // Get socket address from strategy
-            let bind_addr = bind_strategy.primary_socket_addr(port);
-
-            info!("✅ Binding to: {}", bind_addr);
-            info!("   Strategy: {:?}", bind_strategy);
-            info!("   IPv4 support: {}", bind_strategy.supports_ipv4());
-            info!("   IPv6 support: {}", bind_strategy.supports_ipv6());
-
-            // Start HTTP server with SocketAddr directly (modern API)
-            http_server::start_http_server(
-                Arc::clone(&self.federation_state),
-                Arc::clone(&self.federated_service_registry),
-                Arc::clone(&self.service_registry),
-                bind_addr,
-            )
-            .await?
-        };
-
-        Ok(actual_port)
+        // Unix sockets ONLY - no TCP binding
+        info!("🔒 Songbird uses Unix sockets ONLY (Concentrated Gap strategy)");
+        info!("   Internal: Unix domain sockets (IPC)");
+        info!("   External: HTTP/TLS gateway component (separate)");
+        
+        Ok(0) // No port used
     }
 
     /// Start Unix Socket IPC server for inter-primal communication (Jan 4, 2026)
@@ -585,53 +543,16 @@ impl SongbirdOrchestrator {
         Ok(())
     }
 
-    /// Start tarpc server for high-performance native RPC (v3.12.0)
+    /// tarpc server removed - Unix sockets ONLY
     ///
-    /// **HIGH-PERFORMANCE RPC**: ~10-20 μs latency (vs 50-100 μs JSON-RPC, 500-1000 μs HTTP)
+    /// Deep Debt Solution: Completely removed tarpc TCP binding
+    /// Use IPC server (Unix sockets) for all primal-to-primal communication
     ///
-    /// This server provides type-safe binary RPC for primal-to-primal communication.
-    /// It's the PRIMARY protocol for high-performance inter-primal communication.
-    ///
-    /// **Modern Rust**: Zero unsafe blocks - uses simplified server without orchestrator Arc
+    /// This method is kept for API compatibility but does nothing.
     async fn start_tarpc_server(&self) -> Result<()> {
-        // Check if tarpc is enabled (default: true for v3.12.0+)
-        let tarpc_enabled = SafeEnv::get_bool("SONGBIRD_TARPC_ENABLED", true);
-
-        if !tarpc_enabled {
-            info!("ℹ️  tarpc server disabled (set SONGBIRD_TARPC_ENABLED=false to disable)");
-            return Ok(());
-        }
-
-        // Default to IPv4 (0.0.0.0) for maximum compatibility
-        let bind_address = SafeEnv::get_or_default("SONGBIRD_TARPC_BIND", "0.0.0.0");
-        let port = SafeEnv::get_port(
-            "SONGBIRD_TARPC_PORT",
-            songbird_config::defaults::ports::tarpc_port(),
-        );
-
-        let addr = parse_bind_address(&bind_address, port)?;
-
-        info!("🚀 Starting tarpc server (PRIMARY protocol for primal-to-primal)...");
-        info!("   Address: {}", addr);
-        info!("   Performance: ~10-20 μs latency (50-100x faster than HTTP!)");
-
-        // Clone Arc references needed for tarpc server
-        let service_registry = Arc::clone(&self.federated_service_registry);
-
-        // Spawn tarpc server in background (uses simplified server without orchestrator Arc)
-        tokio::spawn(async move {
-            if let Err(e) =
-                crate::rpc::tarpc_server::start_tarpc_server_simple(service_registry, addr).await
-            {
-                error!("tarpc server error: {}", e);
-            }
-        });
-
-        info!("✅ tarpc server started successfully on {}", addr);
-        info!("   🚀 tarpc PRIMARY: High-performance binary RPC ready");
-        info!("   🔌 JSON-RPC SECONDARY: Unix socket IPC available");
-        info!("   🌐 HTTP FALLBACK: Network communication available");
-
+        // Unix sockets ONLY - no TCP binding
+        info!("🔒 Using IPC (Unix sockets) for primal-to-primal communication");
+        
         Ok(())
     }
 

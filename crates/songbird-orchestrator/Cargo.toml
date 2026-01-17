@@ -15,7 +15,7 @@ categories = ["command-line-utilities", "game-engines", "network-programming"]
 workspace = true
 
 [[bin]]
-name = "songbird-orchestrator"
+name = "songbird"  # ✅ UniBin Architecture Compliant (Jan 16, 2026)
 path = "src/main.rs"
 
 [dependencies]
@@ -102,6 +102,8 @@ netdev = "0.40.0"
 songbird-test-utils = { path = "../songbird-test-utils" }
 serial_test = "3.0"
 tokio-tungstenite = "0.24"
+assert_cmd = "2.0"  # UniBin CLI testing
+predicates = "3.0"  # UniBin assertion helpers
+tempfile = "3.8"    # UniBin config testing (also used in tests)
 futures-util = "0.3"
-tempfile = "3.8"
 

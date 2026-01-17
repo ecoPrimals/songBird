@@ -109,7 +109,7 @@ fn test_endpoint_to_url_with_leading_slash() {
 
 #[test]
 fn test_endpoint_http() {
-    let bind_addr = test_bind_address();
+    let bind_addr = test_bind_address("test");
     let endpoint = Endpoint::new("http", bind_addr.as_str(), test_orchestrator_port());
     assert_eq!(endpoint.to_url(), format!("http://{}:{}", bind_addr, test_orchestrator_port()));
 }
@@ -481,7 +481,7 @@ fn test_full_response_workflow() {
 
 #[test]
 fn test_endpoint_combinations() {
-    let bind_addr = test_bind_address();
+    let bind_addr = test_bind_address("test");
     let endpoints = vec![
         ("https", "api.example.com", 443, Some("/v1/users")),
         ("http", bind_addr.as_str(), 8080, Some("/api/test")),
