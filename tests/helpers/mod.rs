@@ -6,8 +6,10 @@
 pub mod btsp_mock;
 pub mod http_mock;
 pub mod test_utils;
+pub mod scoped_env;
 
 pub use btsp_mock::BearDogMock;
 pub use http_mock::MockHttpApi;
 pub use test_utils::*;
+pub use scoped_env::ScopedEnv;
 

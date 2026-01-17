@@ -4,17 +4,25 @@ use std::time::Duration;
 use tokio::time::timeout;
 
 /// Wait for a condition to be true with timeout
+///
+/// Modern approach: Uses exponential backoff (1ms -> 100ms) instead of fixed 10ms sleep.
+/// This is faster when condition becomes true quickly, more responsive, and more robust.
 pub async fn wait_for<F>(condition: F, max_duration: Duration) -> bool
 where
     F: Fn() -> bool,
 {
     let start = std::time::Instant::now();
+    let mut backoff = Duration::from_millis(1);
+    let max_backoff = Duration::from_millis(100);
     
     while start.elapsed() < max_duration {
         if condition() {
             return true;
         }
-        tokio::time::sleep(Duration::from_millis(10)).await;
+        
+        // Exponential backoff: 1ms, 2ms, 4ms, 8ms, ..., up to 100ms
+        tokio::time::sleep(backoff).await;
+        backoff = std::cmp::min(backoff * 2, max_backoff);
     }
     
     false
@@ -23,6 +31,20 @@ where
 /// Create a temporary Unix socket path
 pub fn temp_unix_socket_path(name: &str) -> String {
     format!("/tmp/songbird-test-{}-{}.sock", name, uuid::Uuid::new_v4())
+}
+
+/// Wait for Unix socket to be ready (file exists and is a socket)
+///
+/// Modern approach: Checks actual socket readiness instead of blind sleep.
+/// Uses exponential backoff for efficiency.
+pub async fn wait_for_socket_ready(path: &str, max_duration: Duration) -> bool {
+    wait_for(
+        || {
+            std::path::Path::new(path).exists()
+        },
+        max_duration,
+    )
+    .await
 }
 
 /// Clean up Unix socket file

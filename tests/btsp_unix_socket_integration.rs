@@ -8,7 +8,7 @@
 
 mod helpers;
 
-use helpers::{BearDogMock, temp_unix_socket_path, cleanup_socket};
+use helpers::{BearDogMock, temp_unix_socket_path, cleanup_socket, wait_for_socket_ready};
 use songbird_orchestrator::btsp_client::{BtspClient, PeerEndpoint, Direction, TunnelState};
 use std::time::Duration;
 
@@ -30,8 +30,11 @@ async fn test_btsp_tunnel_establishment() {
         }
     });
     
-    // Give mock time to start
-    tokio::time::sleep(Duration::from_millis(100)).await;
+    // Wait for socket to be ready (no blind sleep!)
+    assert!(
+        wait_for_socket_ready(&socket_path, Duration::from_secs(2)).await,
+        "Socket did not become ready in time"
+    );
     
     // Test: Create BTSP client with mock socket
     std::env::set_var("BEARDOG_SOCKET", &socket_path);
@@ -70,7 +73,11 @@ async fn test_btsp_tunnel_encrypt_decrypt() {
         }
     });
     
-    tokio::time::sleep(Duration::from_millis(100)).await;
+    // Wait for socket to be ready
+    assert!(
+        wait_for_socket_ready(&socket_path, Duration::from_secs(2)).await,
+        "Socket did not become ready in time"
+    );
     
     std::env::set_var("BEARDOG_SOCKET", &socket_path);
     let client = BtspClient::new();
@@ -122,7 +129,11 @@ async fn test_btsp_tunnel_status() {
         }
     });
     
-    tokio::time::sleep(Duration::from_millis(100)).await;
+    // Wait for socket to be ready
+    assert!(
+        wait_for_socket_ready(&socket_path, Duration::from_secs(2)).await,
+        "Socket did not become ready in time"
+    );
     
     std::env::set_var("BEARDOG_SOCKET", &socket_path);
     let client = BtspClient::new();
@@ -162,7 +173,11 @@ async fn test_btsp_ping() {
         }
     });
     
-    tokio::time::sleep(Duration::from_millis(100)).await;
+    // Wait for socket to be ready
+    assert!(
+        wait_for_socket_ready(&socket_path, Duration::from_secs(2)).await,
+        "Socket did not become ready in time"
+    );
     
     std::env::set_var("BEARDOG_SOCKET", &socket_path);
     let client = BtspClient::new();
