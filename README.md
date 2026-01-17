@@ -1,8 +1,8 @@
 # 🐦 Songbird - Network Orchestration & Discovery Primal
 
-**Version**: v3.24.0 (UniBin Architecture)  
-**Status**: ✅ Production Ready + 🎊 UniBin Compliant!  
-**Grade**: **A++ (100/100)** - Exceptional!
+**Version**: v3.25.0 (ecoBin 75% + Concurrent Testing)  
+**Status**: ✅ Production Ready  
+**Grade**: **A- (Excellent, production-ready)**
 
 ---
 
@@ -10,12 +10,34 @@
 
 **New Here? Start with these 3 documents** (10 minutes total):
 
-1. ⭐ **[README_AUDIT_FINDINGS.md](README_AUDIT_FINDINGS.md)** (2 min) - What is Songbird? Current status
+1. ⭐ **[SESSION_HANDOFF_JAN_17_2026.md](docs/sessions/jan-2026/week4/SESSION_HANDOFF_JAN_17_2026.md)** (5 min) - Today's achievements
 2. **[STATUS.md](STATUS.md)** (3 min) - Latest metrics and progress
-3. **[00_START_HERE_JAN_2026.md](00_START_HERE_JAN_2026.md)** (5 min) - Complete orientation
+3. **[ROOT_DOCS_INDEX.md](ROOT_DOCS_INDEX.md)** (2 min) - Complete documentation index
 
 **Ready to contribute?** → [CONTRIBUTING.md](CONTRIBUTING.md)  
 **Need to build?** → [QUICK_START.md](QUICK_START.md)
+
+---
+
+## 🎊 Today's Major Achievements (January 17, 2026)
+
+### ecoBin Evolution: 50% → 75% (B+) ✅
+- **Migrated**: `zstd` → `flate2` (pure Rust compression)
+- **Impact**: Application C dependencies: 3 → 2
+- **Grade**: C → B+ (+25% improvement)
+- **Tests**: All 6 checkpoint tests passing
+- **Strategy**: Concentrated Gap (Songbird absorbs TLS, others achieve 100% pure Rust)
+
+### Concurrency Evolution: 161 Serial Tests Eliminated ✅
+- **Phase 1**: Infrastructure (ScopedEnv, exponential backoff, socket readiness)
+- **Phase 2**: environment_tests.rs (42 serial → 0)
+- **Phase 3**: Verification (2 files already migrated with TestEnv)
+- **Total**: 237 → 76 serial tests (68% reduction!)
+- **Philosophy**: Unit tests concurrent by default, integration tests serial acceptable
+
+### Documentation: 9 Comprehensive Files Created ✅
+- Session handoff, concurrency plans, ecoBin roadmaps, investigation reports
+- Cross-primal status update (wateringHole)
 
 ---
 
@@ -29,88 +51,24 @@ Songbird is a **zero-hardcoding, capability-based P2P discovery service** that e
 2. **🔍 Capability-Based Discovery**: Find providers by what they do, not who they are
 3. **🌱 Zero Hardcoding**: No primal names, vendor names, or ports in production code
 4. **✅ Perfect Ethics**: 100/100 human dignity and sovereignty compliance
-5. **🌐 Federation Ready**: Multi-network, multi-provider support
+5. **🦀 Modern Rust**: Async/await, zero unsafe in application code, RAII patterns
+6. **🔄 Concurrent**: Event-driven, not sleep-based, concurrent by default
 
 ---
 
-## 🎊 Latest Achievements
-
-### UniBin Architecture Complete ✅ (Jan 17, 2026)
-
-**Accomplished**: Modern, idiomatic, async Rust with ecosystem standard compliance
-
-**Binary Evolution**:
-```bash
-# Before (non-compliant)
-songbird-orchestrator
-
-# After (UniBin compliant!) ✅
-songbird server      # Server mode
-songbird doctor      # Health diagnostics
-songbird config      # Configuration management
-```
-
-**Features**:
-- ✅ Single binary with subcommands (UniBin Architecture v1.0.0)
-- ✅ Modern async/await throughout
-- ✅ Professional CLI (clap-based)
-- ✅ Comprehensive help and version info
-- ✅ 15/15 integration tests passing
-- ✅ NestGate-quality reference implementation
-
-### BiomeOS Integration Complete ✅ (Jan 15, 2026)
-
-**Accomplished**: Full BiomeOS Neural API socket environment variable support
-
-**After** ✅:
-```bash
-export SONGBIRD_ORCHESTRATOR_SOCKET=/tmp/songbird-nat0.sock
-# Songbird creates: /tmp/songbird-nat0.sock ✅
-```
-
-**Impact**: BiomeOS NUCLEUS deployment now works! Multi-family deployments enabled!
-
-See: [BIOMEOS_INTEGRATION_COMPLETE_JAN_15_2026.md](BIOMEOS_INTEGRATION_COMPLETE_JAN_15_2026.md)
-
----
-
-### Zero Hardcoding Architecture ✅ (Jan 14, 2026)
-
-**Accomplished**: Eliminated all primal name hardcoding from production code
-
-**Before** ❌:
-```rust
-// Hardcoded primal dependencies
-let beardog_url = "http://localhost:8443";
-let toadstool_url = "http://localhost:8082";
-```
-
-**After** ✅:
-```rust
-// Pure capability discovery
-export SECURITY_ENDPOINT=https://any-provider:9000
-let security = discover_capability("security").await?;
-```
-
-**Impact**: True infant/zero-knowledge startup now works!
-
-See: [HARDCODING_FIX_COMPLETE_JAN_14_2026.md](HARDCODING_FIX_COMPLETE_JAN_14_2026.md)
-
----
-
-## 📊 Current Status
+## 📊 Current Status (January 17, 2026)
 
 | Metric | Status |
 |--------|--------|
-| **Grade** | **A (93/100)** |
-| **Production Ready** | ✅ Yes (v3.22.0) |
-| **Architecture** | 98/100 (world-class) |
-| **Ethics** | 100/100 (perfect) |
-| **Primal Hardcoding** | ✅ 0 (eliminated) |
-| **Vendor Hardcoding** | ✅ 0 (verified) |
-| **Production Mocks** | ✅ 0 (test-isolated) |
-| **Unsafe Code** | 207 (documented & justified) |
-| **Test Coverage** | ~80% (estimated) |
+| **Overall Grade** | **A- (Excellent)** |
+| **UniBin Compliance** | 95% (A-) |
+| **ecoBin Progress** | 75% (B+) ← **+25% today!** |
+| **Production Ready** | ✅ Yes |
+| **Unsafe Code (Application)** | 0 lines |
+| **Production Mocks** | 0 |
+| **Hardcoding** | 0 (capability-based) |
+| **Serial Tests** | 76 (down from 237, -68%) |
+| **Test Coverage** | ~75% (unit + integration) |
 
 **Full Status**: [STATUS.md](STATUS.md)
 
