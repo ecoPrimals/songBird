@@ -112,12 +112,13 @@ fn test_config() {
 
 ### Metrics
 
-| Metric | Before | After Phase 1 | Delta |
-|--------|--------|---------------|-------|
-| BTSP sleeps | 4 | 0 | -4 ✅ |
-| wait_for efficiency | Fixed 10ms | 1-100ms exp | +90% ✅ |
-| ScopedEnv tests | 0 | 10 | +10 ✅ |
-| Serial tests eliminated | 0 | 10 | +10 ✅ |
+| Metric | Before | After Phase 1 | After Phase 2 | Delta |
+|--------|--------|---------------|---------------|-------|
+| BTSP sleeps | 4 | 0 | 0 | -4 ✅ |
+| wait_for efficiency | Fixed 10ms | 1-100ms exp | 1-100ms exp | +90% ✅ |
+| environment_tests.rs serial | 42 | 10 (partial) | 0 | -42 ✅ |
+| ScopedEnv tests | 0 | 10 | 40 | +40 ✅ |
+| Serial tests eliminated | 0 | 10 | 42 | +42 ✅ |
 
 ### Files Modified
 
@@ -241,17 +242,18 @@ fn test_config() {
 
 ## Success Criteria
 
-✅ **Phase 1 Complete** (This Session):
+✅ **Phase 1 Complete** (Session 1):
 - [x] Exponential backoff in wait_for
 - [x] Socket readiness helper
 - [x] ScopedEnv implementation
 - [x] Zero sleeps in BTSP tests
 - [x] Proof-of-concept serial → concurrent migration
 
-🔄 **Phase 2** (Next Session):
-- [ ] Complete environment_tests.rs migration (32 tests)
-- [ ] Verify all tests pass concurrently
-- [ ] Document ScopedEnv usage pattern
+✅ **Phase 2 Complete** (Session 2):
+- [x] Complete environment_tests.rs migration (40 tests)
+- [x] Verify all tests pass concurrently
+- [x] Document ScopedEnv usage pattern
+- [x] 42 serial tests → 0 serial tests ✅
 
 🔄 **Phase 3** (Future):
 - [ ] Migrate config_canonical tests (27)

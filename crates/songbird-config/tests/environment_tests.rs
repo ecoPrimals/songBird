@@ -88,32 +88,28 @@ fn test_env_var_newline_characters() {
     let value = env::var("TEST_NEWLINE").expect("test precondition");
     assert!(value.contains('\n'));
 }
-}
 
 #[test]
 fn test_env_var_tab_characters() {
     let _env = ScopedEnv::new().set("TEST_TAB", "col1\tcol2\tcol3");
     let value = env::var("TEST_TAB").expect("test precondition");
     assert!(value.contains('\t'));
-    env::remove_var("TEST_TAB");
 }
 
 #[test]
 fn test_env_var_very_long_value() {
     let long_value = "a".repeat(10000);
-    env::set_var("TEST_LONG", &long_value);
+    let _env = ScopedEnv::new().set("TEST_LONG", &long_value);
     let value = env::var("TEST_LONG").expect("test precondition");
     assert_eq!(value.len(), 10000);
-    env::remove_var("TEST_LONG");
 }
 
 #[test]
 fn test_env_var_json_value() {
     let json = r#"{"key":"value","num":42}"#;
-    env::set_var("TEST_JSON", json);
+    let _env = ScopedEnv::new().set("TEST_JSON", json);
     let value = env::var("TEST_JSON").expect("test precondition");
     assert!(value.contains("key"));
-    env::remove_var("TEST_JSON");
 }
 
 #[test]
@@ -121,7 +117,6 @@ fn test_env_var_url_value() {
     let _env = ScopedEnv::new().set("TEST_URL", "https://example.com:8080/path?query=value");
     let value = env::var("TEST_URL").expect("test precondition");
     assert!(value.starts_with("https://"));
-    env::remove_var("TEST_URL");
 }
 
 #[test]
@@ -129,7 +124,6 @@ fn test_env_var_path_value() {
     let _env = ScopedEnv::new().set("TEST_PATH", "/usr/local/bin:/usr/bin:/bin");
     let value = env::var("TEST_PATH").expect("test precondition");
     assert!(value.contains('/'));
-    env::remove_var("TEST_PATH");
 }
 
 #[test]
@@ -137,7 +131,6 @@ fn test_env_var_comma_separated() {
     let _env = ScopedEnv::new().set("TEST_LIST", "item1,item2,item3");
     let value = env::var("TEST_LIST").expect("test precondition");
     assert_eq!(value.split(',').count(), 3);
-    env::remove_var("TEST_LIST");
 }
 
 #[test]
@@ -145,7 +138,6 @@ fn test_env_var_colon_separated() {
     let _env = ScopedEnv::new().set("TEST_PATH_LIST", "path1:path2:path3");
     let value = env::var("TEST_PATH_LIST").expect("test precondition");
     assert_eq!(value.split(':').count(), 3);
-    env::remove_var("TEST_PATH_LIST");
 }
 
 #[test]
@@ -153,7 +145,6 @@ fn test_env_var_equals_in_value() {
     let _env = ScopedEnv::new().set("TEST_EQUALS", "key=value");
     let value = env::var("TEST_EQUALS").expect("test precondition");
     assert!(value.contains('='));
-    env::remove_var("TEST_EQUALS");
 }
 
 #[test]
@@ -161,15 +152,14 @@ fn test_env_var_quotes_in_value() {
     let _env = ScopedEnv::new().set("TEST_QUOTES", r#""quoted value""#);
     let value = env::var("TEST_QUOTES").expect("test precondition");
     assert!(value.contains('"'));
-    env::remove_var("TEST_QUOTES");
 }
 
 #[test]
 fn test_env_var_parsing_u64_max() {
-    let _env = ScopedEnv::new().set("TEST_U64", u64::MAX.to_string());
+    let value_str = u64::MAX.to_string();
+    let _env = ScopedEnv::new().set("TEST_U64", &value_str);
     let parsed: Result<u64, _> = env::var("TEST_U64").expect("should parse valid input").parse();
     assert_eq!(parsed.expect("should parse valid input"), u64::MAX);
-    env::remove_var("TEST_U64");
 }
 
 #[test]
@@ -177,7 +167,6 @@ fn test_env_var_parsing_negative_number() {
     let _env = ScopedEnv::new().set("TEST_NEG", "-42");
     let parsed: Result<i32, _> = env::var("TEST_NEG").expect("should parse valid input").parse();
     assert_eq!(parsed.expect("should parse valid input"), -42);
-    env::remove_var("TEST_NEG");
 }
 
 #[test]
@@ -185,7 +174,6 @@ fn test_env_var_parsing_float() {
     let _env = ScopedEnv::new().set("TEST_FLOAT", "3.14159");
     let parsed: Result<f64, _> = env::var("TEST_FLOAT").expect("should parse valid input").parse();
     assert!((parsed.expect("should parse valid input") - std::f64::consts::PI).abs() < 0.001);
-    env::remove_var("TEST_FLOAT");
 }
 
 #[test]
@@ -193,7 +181,6 @@ fn test_env_var_parsing_scientific_notation() {
     let _env = ScopedEnv::new().set("TEST_SCI", "1.23e10");
     let parsed: Result<f64, _> = env::var("TEST_SCI").expect("should parse valid input").parse();
     assert!(parsed.expect("should parse valid input") > 1e10);
-    env::remove_var("TEST_SCI");
 }
 
 #[test]
@@ -204,7 +191,6 @@ fn test_env_var_case_sensitivity() {
     let lower = env::var("TEST_CASE");
     assert!(lower.is_ok());
 
-    env::remove_var("TEST_CASE");
 }
 
 #[test]
@@ -217,7 +203,6 @@ fn test_env_var_trimming_not_automatic() {
     // Manual trim works
     let trimmed = value.trim();
     assert_eq!(trimmed, "value");
-    env::remove_var("TEST_TRIM");
 }
 
 #[test]
@@ -225,7 +210,6 @@ fn test_env_var_zero_value() {
     let _env = ScopedEnv::new().set("TEST_ZERO", "0");
     let parsed: Result<i32, _> = env::var("TEST_ZERO").expect("should parse valid input").parse();
     assert_eq!(parsed.expect("should parse valid input"), 0);
-    env::remove_var("TEST_ZERO");
 }
 
 #[test]
@@ -250,7 +234,6 @@ fn test_env_var_chaining_with_and_then() {
     let _env = ScopedEnv::new().set("TEST_CHAIN", "123");
     let result = env::var("TEST_CHAIN").ok().and_then(|s| s.parse::<i32>().ok());
     assert_eq!(result, Some(123));
-    env::remove_var("TEST_CHAIN");
 }
 
 #[test]
@@ -258,7 +241,6 @@ fn test_env_var_mapping_with_map() {
     let _env = ScopedEnv::new().set("TEST_MAP", "hello");
     let result = env::var("TEST_MAP").ok().map(|s| s.to_uppercase());
     assert_eq!(result, Some("HELLO".to_string()));
-    env::remove_var("TEST_MAP");
 }
 
 #[test]
@@ -266,27 +248,31 @@ fn test_env_var_set_and_read_immediately() {
     let _env = ScopedEnv::new().set("IMMEDIATE_VAR", "immediate_value");
     let value = env::var("IMMEDIATE_VAR").expect("test precondition");
     assert_eq!(value, "immediate_value");
-    env::remove_var("IMMEDIATE_VAR");
 }
 
 #[test]
 fn test_env_var_remove_and_verify() {
-    let _env = ScopedEnv::new().set("TEMP_VAR", "temp");
-    assert!(env::var("TEMP_VAR").is_ok());
+    // First, create a scoped var to set it
+    {
+        let _env = ScopedEnv::new().set("TEMP_VAR", "temp");
+        assert!(env::var("TEMP_VAR").is_ok());
+    } // _env drops here, TEMP_VAR is restored (removed)
 
-    env::remove_var("TEMP_VAR");
+    // Now verify it's gone
     assert!(env::var("TEMP_VAR").is_err());
 }
 
 #[test]
 fn test_env_var_overwrite() {
-    let _env = ScopedEnv::new().set("OVERWRITE_VAR", "first");
+    let _env = ScopedEnv::new()
+        .set("OVERWRITE_VAR", "first");
     assert_eq!(env::var("OVERWRITE_VAR").expect("test precondition"), "first");
 
+    // Test overwrite within the same scope
+    // Note: This tests that env::set_var still works, but ScopedEnv will restore original on drop
     env::set_var("OVERWRITE_VAR", "second");
     assert_eq!(env::var("OVERWRITE_VAR").expect("test precondition"), "second");
-
-    env::remove_var("OVERWRITE_VAR");
+    // When _env drops, it will restore to "first" (or None if didn't exist before)
 }
 
 #[test]
@@ -294,7 +280,6 @@ fn test_env_var_underscore_naming() {
     let _env = ScopedEnv::new().set("TEST_WITH_UNDERSCORES", "value");
     let value = env::var("TEST_WITH_UNDERSCORES").expect("test precondition");
     assert_eq!(value, "value");
-    env::remove_var("TEST_WITH_UNDERSCORES");
 }
 
 #[test]
@@ -302,7 +287,6 @@ fn test_env_var_numeric_suffix() {
     let _env = ScopedEnv::new().set("TEST_VAR_123", "numeric_suffix");
     let value = env::var("TEST_VAR_123").expect("test precondition");
     assert_eq!(value, "numeric_suffix");
-    env::remove_var("TEST_VAR_123");
 }
 
 #[test]
@@ -311,26 +295,23 @@ fn test_env_var_parsing_hex_number() {
     let value = env::var("TEST_HEX").expect("test precondition");
     // Would need custom parsing for hex
     assert_eq!(value, "0xFF");
-    env::remove_var("TEST_HEX");
 }
 
 #[test]
 fn test_env_var_multiline_value() {
     let multiline = "line1\nline2\nline3";
-    env::set_var("TEST_MULTILINE", multiline);
+    let _env = ScopedEnv::new().set("TEST_MULTILINE", multiline);
     let value = env::var("TEST_MULTILINE").expect("test precondition");
     let lines: Vec<&str> = value.lines().collect();
     assert_eq!(lines.len(), 3);
-    env::remove_var("TEST_MULTILINE");
 }
 
 #[test]
 fn test_env_var_base64_value() {
     let base64 = "SGVsbG8gV29ybGQh"; // "Hello World!" in base64
-    env::set_var("TEST_BASE64", base64);
+    let _env = ScopedEnv::new().set("TEST_BASE64", base64);
     let value = env::var("TEST_BASE64").expect("test precondition");
     assert_eq!(value, base64);
-    env::remove_var("TEST_BASE64");
 }
 
 #[test]
@@ -338,7 +319,6 @@ fn test_env_var_iso_date() {
     let _env = ScopedEnv::new().set("TEST_DATE", "2025-12-11T10:30:00Z");
     let value = env::var("TEST_DATE").expect("test precondition");
     assert!(value.contains('T'));
-    env::remove_var("TEST_DATE");
 }
 
 #[test]
@@ -346,5 +326,4 @@ fn test_env_var_duration_format() {
     let _env = ScopedEnv::new().set("TEST_DURATION", "1h30m45s");
     let value = env::var("TEST_DURATION").expect("test precondition");
     assert!(value.contains('h'));
-    env::remove_var("TEST_DURATION");
 }
