@@ -91,8 +91,9 @@ pub use host::BluetoothHost;
 pub use l2cap::{L2capChannel, L2capManager, ATT_CHANNEL_ID};
 pub use transport::{Transport, TransportType};
 
-#[cfg(feature = "usb")]
-pub use transport::usb::UsbTransport;
+// Re-export UsbTransport (either nusb or rusb implementation)
+#[cfg(any(feature = "usb-rust", feature = "usb-c"))]
+pub use transport::UsbTransport;
 
 #[cfg(feature = "uart")]
 pub use transport::UartTransport;

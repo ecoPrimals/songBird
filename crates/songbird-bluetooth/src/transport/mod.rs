@@ -1,15 +1,36 @@
 //! Transport layer abstraction for Bluetooth HCI
 //!
 //! Supports multiple transport types:
-//! - USB: For desktop deployments with USB Bluetooth dongles
-//! - UART: For embedded deployments with UART Bluetooth modules
+//! - **USB (nusb)**: Pure Rust USB transport (default, ecoBin compliant)
+//! - **USB (rusb)**: C-based USB transport (fallback for compatibility)
+//! - **UART**: For embedded deployments with UART Bluetooth modules
 //!
 //! All transports implement the `Transport` trait for unified access.
+//!
+//! ## Feature Flags
+//!
+//! - `usb-rust` (default): Pure Rust USB via `nusb` - ecoBin compliant
+//! - `usb-c`: C-based USB via `rusb` - maximum compatibility fallback
+//! - `uart`: Serial port transport
 
 use crate::error::Result;
 use std::fmt;
 
-#[cfg(feature = "usb")]
+// Pure Rust USB transport (default)
+#[cfg(feature = "usb-rust")]
+pub mod usb_nusb;
+#[cfg(feature = "usb-rust")]
+pub use usb_nusb::UsbTransport;
+
+// C-based USB transport (fallback) - only if nusb not enabled
+#[cfg(all(feature = "usb-c", not(feature = "usb-rust")))]
+pub mod usb;
+#[cfg(all(feature = "usb-c", not(feature = "usb-rust")))]
+pub use usb::UsbTransport;
+
+// Keep usb module available for reference even when using nusb
+#[cfg(all(feature = "usb-c", feature = "usb-rust"))]
+#[allow(dead_code)]
 pub mod usb;
 
 #[cfg(feature = "uart")]

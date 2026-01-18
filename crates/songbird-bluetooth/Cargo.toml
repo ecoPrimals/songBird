@@ -19,8 +19,9 @@ categories = ["network-programming", "embedded", "no-std"]
 trouble-host = { version = "0.5", default-features = false, features = ["gatt", "central", "peripheral"] }
 bt-hci = "0.6"
 
-# Transport layers
-rusb = { version = "0.9", optional = true }           # USB transport
+# Transport layers - USB (dual support for migration)
+nusb = { version = "0.2", optional = true }            # Pure Rust USB (default)
+rusb = { version = "0.9", optional = true }            # C-based USB (fallback)
 serialport = { version = "4.5", optional = true }      # UART transport
 
 # Async runtime (Tokio for desktop, Embassy for embedded)
@@ -55,10 +56,12 @@ async-trait.workspace = true
 rand.workspace = true
 
 [features]
-default = ["usb"]
+default = ["usb-rust"]
 
 # Transport layers
-usb = ["rusb"]
+usb-rust = ["nusb"]     # Pure Rust USB (default, ecoBin compliant)
+usb-c = ["rusb"]        # C-based USB (fallback for compatibility)
+usb = ["usb-rust"]      # Alias for convenience
 uart = ["serialport"]
 
 # Optional features

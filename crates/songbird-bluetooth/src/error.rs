@@ -65,7 +65,7 @@ pub enum BluetoothError {
 #[derive(Debug, thiserror::Error)]
 pub enum TransportError {
     /// USB transport error
-    #[cfg(feature = "usb")]
+    #[cfg(any(feature = "usb-rust", feature = "usb-c"))]
     #[error("USB error: {0}")]
     Usb(String),
 
@@ -129,7 +129,7 @@ impl BluetoothError {
 
 impl TransportError {
     /// Create a USB error
-    #[cfg(feature = "usb")]
+    #[cfg(any(feature = "usb-rust", feature = "usb-c"))]
     #[must_use]
     pub fn usb(msg: impl Into<String>) -> Self {
         Self::Usb(msg.into())

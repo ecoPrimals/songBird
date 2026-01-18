@@ -42,7 +42,7 @@ chrono = { version = "0.4", features = ["serde"] }
 uuid = { version = "1.6", features = ["v4", "serde"] }
 
 # Internal dependencies
-songbird-bluetooth = { path = "../songbird-bluetooth", optional = true, features = ["usb"] }
+songbird-bluetooth = { path = "../songbird-bluetooth", optional = true, features = ["usb-rust"] }
 songbird-primal-coordination = { path = "../songbird-primal-coordination", optional = true }
 songbird-config = { path = "../songbird-config", optional = true }
 songbird-types = { path = "../songbird-types", optional = true }
