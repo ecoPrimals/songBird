@@ -79,7 +79,7 @@ pub async fn sign_ed25519(
     // Create JSON-RPC request
     let request = Ed25519SignRequest {
         jsonrpc: "2.0".to_string(),
-        method: "beardog.crypto.sign_ed25519".to_string(),
+        method: "crypto.sign_ed25519".to_string(),
         params: Ed25519SignParams {
             message: message_b64,
             key_id: key_id.to_string(),
@@ -176,7 +176,7 @@ pub async fn verify_ed25519(
     // Create JSON-RPC request
     let request = Ed25519VerifyRequest {
         jsonrpc: "2.0".to_string(),
-        method: "beardog.crypto.verify_ed25519".to_string(),
+        method: "crypto.verify_ed25519".to_string(),
         params: Ed25519VerifyParams {
             message: message_b64,
             signature: signature_b64,
@@ -258,7 +258,7 @@ pub async fn x25519_generate_ephemeral(
     // Create JSON-RPC request
     let request = X25519GenerateRequest {
         jsonrpc: "2.0".to_string(),
-        method: "beardog.crypto.x25519_generate_ephemeral".to_string(),
+        method: "crypto.x25519_generate_ephemeral".to_string(),
         params: X25519GenerateParams {
             purpose: purpose.to_string(),
         },
@@ -345,7 +345,7 @@ pub async fn x25519_derive_secret(
     // Create JSON-RPC request
     let request = X25519DeriveRequest {
         jsonrpc: "2.0".to_string(),
-        method: "beardog.crypto.x25519_derive_secret".to_string(),
+        method: "crypto.x25519_derive_secret".to_string(),
         params: X25519DeriveParams {
             our_secret_key_id: our_secret_key_id.to_string(),
             their_public_key: their_public_key_b64,
@@ -444,7 +444,7 @@ pub async fn chacha20_poly1305_encrypt(
     // Create JSON-RPC request
     let request = ChaChaEncryptRequest {
         jsonrpc: "2.0".to_string(),
-        method: "beardog.crypto.chacha20_poly1305_encrypt".to_string(),
+        method: "crypto.chacha20_poly1305_encrypt".to_string(),
         params: ChaChaEncryptParams {
             plaintext: plaintext_b64,
             key: key_b64,
@@ -541,7 +541,7 @@ pub async fn chacha20_poly1305_decrypt(
     // Create JSON-RPC request
     let request = ChaChaDecryptRequest {
         jsonrpc: "2.0".to_string(),
-        method: "beardog.crypto.chacha20_poly1305_decrypt".to_string(),
+        method: "crypto.chacha20_poly1305_decrypt".to_string(),
         params: ChaChaDecryptParams {
             ciphertext: ciphertext_b64,
             key: key_b64,
@@ -629,7 +629,7 @@ pub async fn blake3_hash(
     // Create JSON-RPC request
     let request = Blake3HashRequest {
         jsonrpc: "2.0".to_string(),
-        method: "beardog.crypto.blake3_hash".to_string(),
+        method: "crypto.blake3_hash".to_string(),
         params: Blake3HashParams {
             data: data_b64,
         },
@@ -719,7 +719,7 @@ pub async fn hmac_sha256(
     // Create JSON-RPC request
     let request = HmacSha256Request {
         jsonrpc: "2.0".to_string(),
-        method: "beardog.crypto.hmac_sha256".to_string(),
+        method: "crypto.hmac_sha256".to_string(),
         params: HmacSha256Params {
             key: key_b64,
             data: data_b64,
@@ -808,16 +808,18 @@ mod tests {
     #[tokio::test]
     #[ignore]
     async fn test_x25519_key_exchange() {
-        let socket = "/tmp/beardog-crypto.sock";
+        let socket = super::super::discovery::get_beardog_crypto_socket()
+            .await
+            .expect("BearDog crypto socket not found - is BearDog running?");
         let purpose = "test_key_exchange";
 
         // Generate ephemeral key pair
-        let (public_key, secret_key_id) = x25519_generate_ephemeral(socket, purpose).await.unwrap();
+        let (public_key, secret_key_id) = x25519_generate_ephemeral(&socket, purpose).await.unwrap();
         assert_eq!(public_key.len(), 32); // X25519 public key is 32 bytes
         assert!(!secret_key_id.is_empty());
 
         // Derive shared secret (using our own public key for testing)
-        let shared_secret = x25519_derive_secret(socket, &secret_key_id, &public_key).await;
+        let shared_secret = x25519_derive_secret(&socket, &secret_key_id, &public_key).await;
         assert!(shared_secret.is_ok());
         assert_eq!(shared_secret.unwrap().len(), 32); // X25519 shared secret is 32 bytes
     }
@@ -825,39 +827,45 @@ mod tests {
     #[tokio::test]
     #[ignore]
     async fn test_chacha20_poly1305_round_trip() {
-        let socket = "/tmp/beardog-crypto.sock";
+        let socket = super::super::discovery::get_beardog_crypto_socket()
+            .await
+            .expect("BearDog crypto socket not found - is BearDog running?");
         let plaintext = b"Secret message!";
         let key = [0u8; 32]; // 32-byte key
         let nonce = [0u8; 12]; // 12-byte nonce
         let aad = b"additional data";
 
         // Encrypt
-        let ciphertext = chacha20_poly1305_encrypt(socket, plaintext, &key, &nonce, aad).await.unwrap();
+        let ciphertext = chacha20_poly1305_encrypt(&socket, plaintext, &key, &nonce, aad).await.unwrap();
         assert_eq!(ciphertext.len(), plaintext.len() + 16); // +16 for auth tag
 
         // Decrypt
-        let decrypted = chacha20_poly1305_decrypt(socket, &ciphertext, &key, &nonce, aad).await.unwrap();
+        let decrypted = chacha20_poly1305_decrypt(&socket, &ciphertext, &key, &nonce, aad).await.unwrap();
         assert_eq!(decrypted, plaintext);
     }
 
     #[tokio::test]
     #[ignore]
     async fn test_blake3_hash() {
-        let socket = "/tmp/beardog-crypto.sock";
+        let socket = super::super::discovery::get_beardog_crypto_socket()
+            .await
+            .expect("BearDog crypto socket not found - is BearDog running?");
         let data = b"Data to hash";
 
-        let hash = blake3_hash(socket, data).await.unwrap();
+        let hash = blake3_hash(&socket, data).await.unwrap();
         assert_eq!(hash.len(), 32); // Blake3 hash is 32 bytes
     }
 
     #[tokio::test]
     #[ignore]
     async fn test_hmac_sha256() {
-        let socket = "/tmp/beardog-crypto.sock";
+        let socket = super::super::discovery::get_beardog_crypto_socket()
+            .await
+            .expect("BearDog crypto socket not found - is BearDog running?");
         let key = b"secret key";
         let data = b"data to authenticate";
 
-        let hmac = hmac_sha256(socket, key, data).await.unwrap();
+        let hmac = hmac_sha256(&socket, key, data).await.unwrap();
         assert_eq!(hmac.len(), 32); // SHA-256 HMAC is 32 bytes
     }
 }
