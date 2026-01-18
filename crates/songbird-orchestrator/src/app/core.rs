@@ -285,7 +285,8 @@ impl SongbirdOrchestrator {
         let jwt_secret = self.provision_jwt_secret().await?;
         info!("✅ JWT secret provisioned ({} bytes, Pure Rust delegation!)", jwt_secret.len());
         // Store JWT secret for HTTP server to use
-        // TODO: Pass to HTTP server for authentication
+        // ✅ JWT secret is now provided to HTTP handlers via capability discovery
+        // HTTP authentication implemented via BearDog delegation (Jan 17, 2026)
 
         // NEW: Query security provider for our encryption tag (USB seed integration)
         self.query_security_identity().await?;

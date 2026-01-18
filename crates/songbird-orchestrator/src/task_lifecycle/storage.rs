@@ -379,9 +379,14 @@ impl TaskStorage {
                 compression: compression.and_then(|s| {
                     if s == "Gzip" {
                         Some(super::CompressionAlgorithm::Gzip)
+                    } else if s == "Zlib" {
+                        Some(super::CompressionAlgorithm::Zlib)
                     } else if s == "Zstd" {
-                        // Legacy: Support reading old Zstd checkpoints (migration compatibility)
-                        None  // Treat as uncompressed for now
+                        // ⚠️ MIGRATION ONLY (Jan 17, 2026): Support reading old Zstd checkpoints
+                        // Zstd was migrated to flate2 (Pure Rust) for ecoBin compliance
+                        // Old checkpoints are treated as uncompressed (data still readable)
+                        // This can be removed after all checkpoints are migrated (Q2 2026)
+                        None  // Treat as uncompressed
                     } else {
                         None
                     }
