@@ -81,10 +81,12 @@ pub fn init_runtime_crypto_provider(crypto: Arc<dyn CryptoProvider>) -> Result<(
     Ok(())
 }
 
-/// Get the runtime crypto provider (internal use only)
+/// Get the runtime crypto provider (used by AEAD and other components)
 ///
 /// Returns `None` if not initialized yet.
-fn get_runtime_crypto_provider() -> Option<Arc<dyn CryptoProvider>> {
+/// This function is used by components that need access to the crypto provider
+/// (e.g., AEAD encryption/decryption).
+pub(super) fn get_runtime_crypto_provider() -> Option<Arc<dyn CryptoProvider>> {
     RUNTIME_CRYPTO_PROVIDER.get().cloned()
 }
 

@@ -44,9 +44,11 @@
 pub mod key_provider;
 pub mod kx_group;
 pub mod secure_random;
+pub mod aead;
 
 // Re-exports for public API
 pub use key_provider::BeardogKeyProvider;
 pub use kx_group::{init_runtime_crypto_provider, X25519_GROUP};
 pub use secure_random::GETRANDOM_WRAPPER;
+pub use aead::BEARDOG_CHACHA20_POLY1305;
 

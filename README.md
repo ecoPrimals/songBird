@@ -1,17 +1,17 @@
 # 🐦 Songbird - Network Orchestration & Discovery Primal
 
-**Version**: v3.28.0 (ecoBin 95% + Week 2 Day 1 Extended!)  
-**Status**: ✅ Production Ready + Week 2 In Progress (43% complete!)  
-**Grade**: **A (95% ecoBin → A++ in progress!)**
+**Version**: v3.29.0 (🎯 Pure Rust TLS Pivot!)  
+**Status**: ✅ Production Ready + Pure Songbird TLS In Progress  
+**Grade**: **A (95% ecoBin → A++ via Pure TLS!)**
 
 ---
 
 ## ⚡ Quick Start
 
-**New Here? Start with these 3 documents** (10 minutes total):
+**New Here? Start with these 4 documents** (15 minutes total):
 
-1. ⭐ **[SESSION_HANDOFF_JAN_18_2026_EVENING.md](docs/sessions/jan-2026/week4-day6/SESSION_HANDOFF_JAN_18_2026_EVENING.md)** (5 min) - Week 1 Complete!
-2. **[CAPABILITY_EVOLUTION_JAN_18_2026.md](docs/sessions/jan-2026/week4-day6/CAPABILITY_EVOLUTION_JAN_18_2026.md)** (3 min) - TRUE PRIMAL principles
+1. ⭐ **[PURE_RUST_TLS_PIVOT.md](PURE_RUST_TLS_PIVOT.md)** (5 min) - **NEW!** Why we're building Pure Songbird TLS
+2. 📋 **[specs/PURE_SONGBIRD_TLS.md](specs/PURE_SONGBIRD_TLS.md)** (10 min) - **NEW!** Complete technical specification
 3. **[STATUS.md](STATUS.md)** (3 min) - Latest metrics and progress
 4. **[ROOT_DOCS_INDEX.md](ROOT_DOCS_INDEX.md)** (2 min) - Complete documentation index
 
@@ -20,9 +20,62 @@
 
 ---
 
-## 🎊 Week 2 In Progress: Pure Rust TLS Implementation! (January 18, 2026)
+## 🎯 MAJOR PIVOT: Pure Songbird TLS (January 18, 2026)
 
-### 🏆 Week 1 Summary: Foundation → Capability-Based ✅
+### 🚀 The Decision
+
+**From:** Integrating with rustls (still has C dependencies via ring/aws-lc-rs)  
+**To:** Building **Pure Songbird TLS** (100% Pure Rust, zero C dependencies)
+
+**Why:** Deep debt solution - own the entire stack, TRUE Pure Rust sovereignty!
+
+### 📊 Architecture
+
+```
+Pure Songbird TLS = Protocol (Songbird) + Crypto (BearDog)
+
+Songbird:                          BearDog:
+├── TLS 1.3 Handshake             ├── Ed25519 (sign/verify)
+├── Record Layer (framing)        ├── X25519 (key exchange)
+├── Key Schedule (HKDF)           ├── ChaCha20-Poly1305 (AEAD)
+├── Certificate Validation        ├── Blake3 (hashing)
+└── Alert Protocol                └── HMAC-SHA256 (KDF)
+
+Result: 100% Pure Rust HTTPS with zero C dependencies!
+```
+
+### 📈 Timeline
+
+**Total:** 6-7 weeks (7 phases)
+
+| Phase | Duration | Status |
+|-------|----------|--------|
+| Phase 1: Core Protocol Types | Week 1 (4-5 days) | ⏳ Starting Jan 19 |
+| Phase 2: Record Layer | Week 2 (5-6 days) | ⏳ Pending |
+| Phase 3: Key Schedule | Week 3 (3-4 days) | ⏳ Pending |
+| Phase 4: Handshake | Week 4-5 (8-10 days) | ⏳ Pending |
+| Phase 5: Certificate Validation | Week 6 (3-4 days) | ⏳ Pending |
+| Phase 6: Integration & Testing | Week 7 (5-7 days) | ⏳ Pending |
+
+**Start Date:** January 19, 2026  
+**Target Completion:** Early March 2026  
+
+### 🏆 Benefits
+
+| Benefit | rustls Integration | Pure Songbird TLS |
+|---------|-------------------|-------------------|
+| Pure Rust | ❌ No (ring/aws-lc) | ✅ Yes (100%) |
+| C Dependencies | ❌ Yes | ✅ No (zero) |
+| API Control | ❌ Limited | ✅ Complete |
+| Protocol Agnostic | ❌ TLS-only | ✅ Extensible |
+| Tower Architecture | ⚠️ Partial | ✅ Perfect fit |
+| ecoBin Compliant | ❌ No | ✅ Yes |
+
+**Verdict:** Pure Songbird TLS wins on EVERY criterion! 🎉
+
+---
+
+## 🎊 Week 1 Complete: Foundation → Capability-Based ✅
 **10/10 tests passing | 59 commits | TRUE PRIMAL principles achieved!**
 
 1. **BearDog API Verification** ✅
@@ -45,19 +98,20 @@
 
 **Result**: TRUE PRIMAL principles achieved! No hardcoded primal names!
 
-### 🎯 Week 2 In Progress: rustls Integration ✅
-**Goal: 100% Pure Rust TLS!**
+### 📦 rustls Integration Work (43% Complete - Now Paused)
 
-**Phase 1-2 Complete**: Research & Architecture ✅
-- Research document: 592 lines (comprehensive analysis)
-- Architecture document: 822 lines (6 components designed)
-- Challenges identified and solved (3 major)
-- Timeline: ~4-5 days total
+**Completed (3/7 components):**
+1. GetrandomWrapper - Pure Rust RNG (119 lines, 5 tests) ✅
+2. KeyProvider + SigningKey - Ed25519 delegation (470 lines, 10 tests) ✅
+3. X25519Group - Key exchange (470 lines, 7 tests) ✅
 
-**Phase 3 Day 1 Extended Complete**: 3/7 Components! ✅
-- Component 1: GetrandomWrapper (119 lines, 5 tests) ✅
-- Component 2: KeyProvider + SigningKey (470 lines, 10 tests) ✅
-- Component 3: X25519Group (470 lines, 7 tests) ✅
+**Paused (4/7 components):**
+4. AEAD (ChaCha20-Poly1305) - IN PROGRESS (344 lines) ⏸️
+5. Cipher Suites - NOT STARTED ⏸️
+6. BeardogCryptoProvider - NOT STARTED ⏸️
+7. Integration - NOT STARTED ⏸️
+
+**Status:** Archiving to `archive/rustls-integration/` - valuable learning experience!
 - Total: 1,059 lines, 22/22 tests passing!
 - Efficiency: 183% (ahead of schedule!)
 - Time: ~6 hours (vs 11-15h estimated)
