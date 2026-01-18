@@ -1,8 +1,8 @@
 # 🐦 Songbird - Network Orchestration & Discovery Primal
 
-**Version**: v3.31.0 (🎯 Pure Songbird TLS 100% COMPLETE!)  
-**Status**: ✅ Production Ready + Pure Songbird TLS COMPLETE  
-**Grade**: **A++ (100% ecoBin - TRUE Pure Rust Sovereignty!)**
+**Version**: v3.31.0 (🎯 Pure Songbird TLS 100% + reqwest Migration Strategy)  
+**Status**: ✅ Production Ready | ⚠️ ecoBin BLOCKED (reqwest → C deps)  
+**Grade**: **A (95% ecoBin) - Staged for A++ (1-2 days to 100% ecoBin)**
 
 ---
 
@@ -10,9 +10,9 @@
 
 **New Here? Start with these 4 documents** (15 minutes total):
 
-1. ⭐ **[PURE_RUST_TLS_PIVOT.md](PURE_RUST_TLS_PIVOT.md)** (5 min) - Pure Songbird TLS (100% COMPLETE!)
-2. 📋 **[specs/PURE_SONGBIRD_TLS.md](specs/PURE_SONGBIRD_TLS.md)** (10 min) - Complete technical specification
-3. **[STATUS.md](STATUS.md)** (3 min) - Latest metrics (A++ grade!)
+1. ⭐ **[FINAL_SESSION_HANDOFF_REQWEST_JAN_18_2026.md](FINAL_SESSION_HANDOFF_REQWEST_JAN_18_2026.md)** (5 min) - **Latest session (READ THIS FIRST!)**
+2. **[PURE_RUST_TLS_PIVOT.md](PURE_RUST_TLS_PIVOT.md)** (5 min) - Pure Songbird TLS (100% COMPLETE!)
+3. **[STATUS.md](STATUS.md)** (3 min) - Latest status & metrics
 4. **[ROOT_DOCS_INDEX.md](ROOT_DOCS_INDEX.md)** (2 min) - Complete documentation index
 
 **Ready to contribute?** → [CONTRIBUTING.md](CONTRIBUTING.md)  
@@ -20,7 +20,35 @@
 
 ---
 
-## 🎯 LEGENDARY ACHIEVEMENT: Pure Songbird TLS 100% COMPLETE! (January 18, 2026)
+## ⚠️ CURRENT STATUS: ecoBin Blocker Identified (January 18, 2026 EVENING)
+
+### 🔍 Critical Finding
+**Blocker**: `reqwest` → `rustls` → `ring`/`aws-lc-sys` (C code)  
+**Impact**: BLOCKS 100% ecoBin validation  
+**Status**: ✅ Strategy Complete, ⏳ Execution Staged (1-2 days)
+
+### ✅ Progress Today (Session 2)
+- ✅ Phase 7.1-7.2: Removed rustls from orchestrator
+- ✅ Comprehensive audit: 15 Cargo.toml, 30+ reqwest usages
+- ✅ Strategic decision: Complete reqwest removal
+- ✅ 8-phase execution plan created
+- ✅ Infrastructure verified: BirdSong/BTSP/BearDog ready!
+- ✅ 4 comprehensive documents created
+- ✅ 31 commits (all pushed)
+
+### 🚀 Next Steps (1-2 days to 100% ecoBin)
+**Migration Plan**: HTTP client → Unix sockets (BTSP) + UDP discovery (BirdSong)
+1. ⏳ Phase 2: Discovery migration (2 hrs)
+2. ⏳ Phase 3-6: Auth, monitoring, routing, orchestration (6 hrs)
+3. ⏳ Phase 7-8: Cleanup & verification (1 hr)
+
+**Expected Outcome**: TRUE ecoBin (100% Pure Rust, zero C deps!)
+
+📋 **Read**: [FINAL_SESSION_HANDOFF_REQWEST_JAN_18_2026.md](FINAL_SESSION_HANDOFF_REQWEST_JAN_18_2026.md) for complete details
+
+---
+
+## 🎯 LEGENDARY ACHIEVEMENT: Pure Songbird TLS 100% COMPLETE! (January 18, 2026 AM)
 
 ### 🚀 The Pivot
 

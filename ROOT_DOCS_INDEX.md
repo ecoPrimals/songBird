@@ -1,9 +1,9 @@
 # Songbird Documentation Index
 
-**Version**: 3.31.0 (Pure Songbird TLS COMPLETE - January 18, 2026)  
-**Status**: ✅ Production Ready + ✅ Pure Songbird TLS 100% Complete!  
-**Grade**: **A++ (100% ecoBin - TRUE Pure Rust Sovereignty!)**  
-**Tests**: 106/106 Pure TLS tests + 636 orchestrator tests | Commits: 16 TLS commits
+**Version**: 3.31.0 (Pure Songbird TLS + reqwest Migration Strategy - January 18, 2026)  
+**Status**: ✅ Production Ready | ⚠️ ecoBin BLOCKED (reqwest) | ✅ Strategy Complete  
+**Grade**: **A (95% ecoBin)** - Staged for **A++ (100% ecoBin in 1-2 days)**  
+**Tests**: 106/106 Pure TLS tests + 636 orchestrator tests | Commits: 16 TLS + 31 reqwest strategy
 
 ---
 
@@ -11,20 +11,47 @@
 
 **New to Songbird?** Start here:
 
-1. **[README.md](README.md)** - Project overview and Pure Songbird TLS achievement
-2. **[STATUS.md](STATUS.md)** - Current status (A++ grade, 100% ecoBin!)
-3. **[PURE_RUST_TLS_PIVOT.md](PURE_RUST_TLS_PIVOT.md)** - Pure TLS roadmap (100% complete!)
-4. **[PURE_SONGBIRD_TLS_COMPLETE_JAN_18_2026.md](docs/sessions/jan-2026/week4-day6/PURE_SONGBIRD_TLS_COMPLETE_JAN_18_2026.md)** - **Latest session handoff (READ THIS FIRST!)**
+1. **[FINAL_SESSION_HANDOFF_REQWEST_JAN_18_2026.md](FINAL_SESSION_HANDOFF_REQWEST_JAN_18_2026.md)** - **Latest session (READ THIS FIRST!)** ⭐⭐⭐
+2. **[README.md](README.md)** - Project overview and current status
+3. **[STATUS.md](STATUS.md)** - Current metrics (A grade, reqwest blocker identified)
+4. **[PURE_RUST_TLS_PIVOT.md](PURE_RUST_TLS_PIVOT.md)** - Pure TLS roadmap (100% complete!)
 5. **[QUICK_START.md](QUICK_START.md)** - Get up and running with `songbird` binary
 
 ---
 
-## 🎊 **LEGENDARY ACHIEVEMENT** (January 18, 2026)
+## 🎯 **TODAY'S STATUS** (January 18, 2026 - Session 2)
+
+### ⚠️ ecoBin BLOCKED: reqwest Migration Required
+
+**Critical Finding**: `reqwest` → `rustls` → `ring`/`aws-lc-sys` (C code)
+
+**Achievements (Session 2 - 3+ hours)**:
+1. ✅ Phase 7.1-7.2: Removed rustls from orchestrator
+2. ✅ Comprehensive audit: 15 Cargo.toml, 30+ reqwest usages
+3. ✅ Strategic decision: Complete reqwest removal (Option A)
+4. ✅ 8-phase execution plan (8-10 hours total)
+5. ✅ Infrastructure verified: BirdSong/BTSP/BearDog ready!
+6. ✅ 4 comprehensive documents created
+7. ✅ 31 commits (all pushed)
+
+**Status**: ✅ Strategy 100% Complete | ⏳ Execution Staged (1-2 days)
+
+**Next**: Phase 2 (Discovery Migration) → 1-2 days → TRUE ecoBin (100% Pure Rust!)
+
+**Key Documents**:
+- **[FINAL_SESSION_HANDOFF_REQWEST_JAN_18_2026.md](FINAL_SESSION_HANDOFF_REQWEST_JAN_18_2026.md)** ⭐ Complete implementation guide
+- **[REQWEST_REMOVAL_STRATEGY_JAN_18_2026.md](REQWEST_REMOVAL_STRATEGY_JAN_18_2026.md)** - Strategic analysis
+- **[SESSION_STATUS_REQWEST_MIGRATION_JAN_18_2026.md](SESSION_STATUS_REQWEST_MIGRATION_JAN_18_2026.md)** - Session metrics
+- **[CRITICAL_ISSUE_REQWEST_JAN_18_2026.md](CRITICAL_ISSUE_REQWEST_JAN_18_2026.md)** - Initial finding
+
+---
+
+## 🎊 **LEGENDARY ACHIEVEMENT** (January 18, 2026 - Session 1)
 
 ### 🏆 Pure Songbird TLS: 100% COMPLETE! ✅
 **Built complete TLS 1.3 in Pure Rust in ONE DAY!**
 
-**Achievement**: A (95% ecoBin) → **A++ (100% ecoBin - TRUE Pure Rust!)**
+**Achievement**: A (95% ecoBin) → Pure Songbird TLS 100% (awaiting reqwest removal for TRUE ecoBin)
 
 1. **Pure Songbird TLS** (100%)
    - Complete TLS 1.3 protocol (RFC 8446)
