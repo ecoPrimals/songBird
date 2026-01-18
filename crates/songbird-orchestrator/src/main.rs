@@ -154,12 +154,8 @@ async fn run_server(
     let _singleton_guard = process_mgr.acquire_lock()?;
     tracing::info!("   Instance Lock: ✅ Acquired (PID file active)");
 
-    // ✅ Step 2: Initialize rustls crypto provider (before any TLS operations)
-    // Prevents "Could not automatically determine the process-level CryptoProvider" panic
-    rustls::crypto::ring::default_provider()
-        .install_default()
-        .map_err(|_| anyhow::anyhow!("Crypto provider already initialized"))?;
-    tracing::info!("   Crypto Provider: ✅ Initialized (rustls/ring)");
+    // ✅ Pure Songbird TLS - No crypto provider init needed!
+    // (BearDog handles all crypto via JSON-RPC at runtime)
 
     // Get node identity for logging
     let node_identity = std::env::var("SONGBIRD_NODE_ID")

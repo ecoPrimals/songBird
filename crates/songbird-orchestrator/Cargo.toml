@@ -57,7 +57,7 @@ parking_lot = "0.12"
 num_cpus = "1.16"
 fastrand = "2.0"
 rand = { workspace = true }
-reqwest = { version = "0.11", features = ["json", "rustls-tls"], default-features = false }
+reqwest = { version = "0.11", features = ["json"], default-features = false }  # ✅ No TLS (Pure Songbird TLS!)
 socket2 = { workspace = true }
 if-addrs = { workspace = true }
 serde_yaml = "0.9.34"
@@ -70,10 +70,11 @@ tokio-stream = "0.1"
 
 # HTTP server for web dashboard
 axum = { version = "0.7", features = ["multipart", "ws"] }
-axum-server = { version = "0.7", features = ["tls-rustls"] }  # TLS support for axum
-rustls = { version = "0.23", default-features = false, features = ["ring", "logging", "std", "tls12"] }  # ⚠️ TEMPORARY: ring for TLS only (evolving to capability-based crypto - Week 2 Phase 3 in progress)
-getrandom = "0.2"  # ✅ Pure Rust RNG for rustls CryptoProvider
-once_cell = "1.21"  # ✅ Static initialization for X25519Group
+# ✅ REMOVED: axum-server (rustls) - replaced by Pure Songbird TLS!
+# ✅ REMOVED: rustls - replaced by songbird-tls (100% Pure Rust!)
+# ✅ REMOVED: getrandom - no longer needed
+# ✅ REMOVED: once_cell - no longer needed
+songbird-tls = { path = "../songbird-tls" }  # ✅ Pure Rust TLS implementation!
 tower = "0.5"
 tower-http = { version = "0.5", features = ["cors", "fs", "trace", "limit"] }
 serde = { version = "1.0", features = ["derive"] }
