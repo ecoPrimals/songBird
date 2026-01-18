@@ -19,6 +19,9 @@
 pub mod beardog_jwt_client;  // BearDog JWT delegation (Pure Rust!)
 pub mod capability_discovery;  // Capability-based BearDog discovery (TRUE PRIMAL!)
 
+#[cfg(test)]
+mod tests;  // Integration tests for JWT delegation
+
 pub use beardog_jwt_client::{
     fetch_jwt_secret_from_beardog,
     generate_secure_random_jwt,
