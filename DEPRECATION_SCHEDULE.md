@@ -1,6 +1,6 @@
 # Deprecation Schedule - Songbird
 
-**Last Updated**: January 17, 2026  
+**Last Updated**: January 18, 2026  
 **Status**: Active deprecation management  
 **Philosophy**: Gradual, well-communicated migrations with clear timelines
 
@@ -54,27 +54,35 @@ let config = AgnosticPrimalConfig::storage_primal("storage-provider-1", endpoint
 #### 2.1 `BEARDOG_URL`
 
 **Status**: Deprecated  
-**Removal**: Q2 2026 (v3.16.0)  
-**Impact**: Low (2 files)
+**Removal**: v4.0.0 (Q4 2026)  
+**Impact**: Low (1 file)
 
 **Replacement**: `SECURITY_PROVIDER` or `SONGBIRD_SECURITY_PROVIDER`
 
 **Files**:
-- `crates/songbird-orchestrator/src/trust/escalation.rs`
-- `crates/songbird-orchestrator/src/app/security_setup.rs`
+- `crates/songbird-orchestrator/src/trust/escalation.rs:92`
+
+**Current Behavior**:
+- Emits deprecation warning
+- Falls back to BEARDOG_URL if newer vars not set
+- Provides graceful migration path
 
 **Migration**:
 ```bash
 # ❌ OLD
 export BEARDOG_URL=http://localhost:8443
 
-# ✅ NEW
-export SECURITY_PROVIDER=http://localhost:8443
-# or
+# ✅ NEW (Recommended)
 export SONGBIRD_SECURITY_PROVIDER=http://localhost:8443
+# or
+export SECURITY_PROVIDER=http://localhost:8443
+
+# ✅ BEST (Week 1 Complete - Capability-based!)
+# No environment variable needed!
+# Uses capability discovery automatically
 ```
 
-**Action Required**: Update deprecation warnings with Q2 2026 date
+**Action Required**: None (warning in place, Q4 2026 removal)
 
 ---
 
@@ -106,24 +114,29 @@ export SONGBIRD_SECURITY_PROVIDER=http://localhost:8443
 #### 2.3 `BEARDOG_2FA_ENDPOINT`
 
 **Status**: Deprecated  
-**Removal**: Q2 2026 (v3.16.0)  
+**Removal**: v4.0.0 (Q4 2026)  
 **Impact**: Low (1 file)
 
 **Replacement**: Universal Adapter capability discovery
 
 **Files**:
-- `crates/songbird-orchestrator/src/access_control/auth.rs`
+- `crates/songbird-orchestrator/src/access_control/auth.rs:377`
+
+**Current Behavior**:
+- Emits deprecation warning
+- Falls through to other 2FA methods
+- TODO: Full Universal Adapter integration
 
 **Migration**:
 ```rust
 // ❌ OLD
 let endpoint = env::var("BEARDOG_2FA_ENDPOINT")?;
 
-// ✅ NEW
+// ✅ NEW (Q2 2026)
 let client = UniversalAdapter::discover_capability("2fa").await?;
 ```
 
-**Action Required**: Update deprecation warning with Q2 2026 date
+**Action Required**: None (warning in place, Q4 2026 removal)
 
 ---
 
@@ -214,12 +227,11 @@ let security = SecurityCapabilityClient::new().await?;
 
 ### Q2 2026 (April-June)
 
-- [ ] Remove `BEARDOG_URL` environment variable
 - [ ] Remove `SONGBIRD_BEARDOG_URL` environment variable
-- [ ] Remove `BEARDOG_2FA_ENDPOINT` environment variable
 - [ ] Remove legacy configuration helpers
 - [ ] Remove legacy BearDog SDK module
 - [ ] Migrate all active Zstd checkpoints to Gzip/Zlib
+- [ ] Complete Universal Adapter 2FA integration
 
 ### Q3 2026 (July-September)
 
@@ -228,7 +240,9 @@ let security = SecurityCapabilityClient::new().await?;
 
 ### Q4 2026 (October-December)
 
-- [ ] Migrate `rustls` to `rustls-rustcrypto` (Pure Rust TLS)
+- [ ] Remove `BEARDOG_URL` environment variable (final cleanup)
+- [ ] Remove `BEARDOG_2FA_ENDPOINT` environment variable (final cleanup)
+- [ ] Migrate `rustls` to `rustls-rustcrypto` (Pure Rust TLS) ← **Week 2 in progress!**
 - [ ] Migrate internal JWT to Pure Rust (remove `jsonwebtoken` dependency)
 - [ ] **Achieve 100% ecoBin!** 🎉
 
@@ -322,9 +336,15 @@ let security = SecurityCapabilityClient::new().await?;
 
 ---
 
-**Last Review**: January 17, 2026  
+**Last Review**: January 18, 2026  
 **Next Review**: February 1, 2026  
 **Owner**: Songbird Core Team
+
+**Recent Updates** (Jan 18, 2026):
+- Extended `BEARDOG_URL` removal to Q4 2026 (graceful migration)
+- Extended `BEARDOG_2FA_ENDPOINT` removal to Q4 2026 (awaiting Universal Adapter)
+- Updated status: Both deprecations on track with clear warnings
+- Added note: Week 2 rustls migration in progress!
 
 ---
 
