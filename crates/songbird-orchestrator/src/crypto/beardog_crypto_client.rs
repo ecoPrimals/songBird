@@ -229,25 +229,25 @@ struct X25519GenerateResponse {
 #[derive(Debug, Deserialize)]
 struct X25519GenerateResult {
     public_key: String,         // base64-encoded
-    secret_key_id: String,      // BearDog stores the secret
+    secret_key: String,         // base64-encoded (BearDog is stateless!)
 }
 
 /// Generate ephemeral X25519 key pair via BearDog
 ///
-/// The secret key is stored in BearDog, only the public key and ID are returned.
-/// This prevents secret key leakage and ensures secure key management.
+/// **BearDog's Stateless Design**: Returns actual key bytes, not IDs!
+/// The caller is responsible for managing the secret key securely.
 ///
 /// # Arguments
 /// * `socket_path` - Path to BearDog's crypto Unix socket
 /// * `purpose` - Purpose for audit logging (e.g., "tls_key_exchange")
 ///
 /// # Returns
-/// * `Ok((public_key, secret_key_id))` - Public key bytes and secret key ID
+/// * `Ok((public_key, secret_key))` - Both keys as bytes (32 bytes each)
 /// * `Err` - If BearDog is unavailable or generation fails
 pub async fn x25519_generate_ephemeral(
     socket_path: &str,
     purpose: &str,
-) -> Result<(Vec<u8>, String)> {
+) -> Result<(Vec<u8>, Vec<u8>)> {
     debug!("🔑 Generating X25519 ephemeral key pair via BearDog");
 
     // Connect to BearDog
@@ -277,17 +277,19 @@ pub async fn x25519_generate_ephemeral(
     let response: X25519GenerateResponse = serde_json::from_str(&response_str)
         .context("Failed to parse BearDog X25519 generate response")?;
 
-    // Decode public key from base64
+    // Decode both keys from base64
     use base64::Engine;
     let public_key = base64::engine::general_purpose::STANDARD
         .decode(&response.result.public_key)
         .context("Failed to decode X25519 public key")?;
 
-    let secret_key_id = response.result.secret_key_id;
+    let secret_key = base64::engine::general_purpose::STANDARD
+        .decode(&response.result.secret_key)
+        .context("Failed to decode X25519 secret key")?;
 
-    debug!("✅ X25519 ephemeral key pair generated (id: {})", secret_key_id);
+    debug!("✅ X25519 ephemeral key pair generated (stateless, {} bytes each)", public_key.len());
 
-    Ok((public_key, secret_key_id))
+    Ok((public_key, secret_key))
 }
 
 #[derive(Debug, Serialize)]
@@ -300,8 +302,8 @@ struct X25519DeriveRequest {
 
 #[derive(Debug, Serialize)]
 struct X25519DeriveParams {
-    our_secret_key_id: String,
-    their_public_key: String,   // base64-encoded
+    our_secret: String,          // base64-encoded secret key bytes (stateless!)
+    their_public: String,        // base64-encoded public key
 }
 
 #[derive(Debug, Deserialize)]
@@ -318,17 +320,19 @@ struct X25519DeriveResult {
 
 /// Derive X25519 shared secret via BearDog
 ///
+/// **BearDog's Stateless Design**: Pass actual key bytes, not IDs!
+///
 /// # Arguments
 /// * `socket_path` - Path to BearDog's crypto Unix socket
-/// * `our_secret_key_id` - Our secret key ID (from generate_ephemeral)
+/// * `our_secret_key` - Our secret key bytes (from generate_ephemeral)
 /// * `their_public_key` - Their public key bytes
 ///
 /// # Returns
-/// * `Ok(shared_secret)` - Shared secret bytes
+/// * `Ok(shared_secret)` - Shared secret bytes (32 bytes)
 /// * `Err` - If BearDog is unavailable or derivation fails
 pub async fn x25519_derive_secret(
     socket_path: &str,
-    our_secret_key_id: &str,
+    our_secret_key: &[u8],
     their_public_key: &[u8],
 ) -> Result<Vec<u8>> {
     debug!("🤝 Deriving X25519 shared secret via BearDog");
@@ -338,17 +342,18 @@ pub async fn x25519_derive_secret(
         .await
         .context(format!("Failed to connect to BearDog crypto at {}", socket_path))?;
 
-    // Encode their public key to base64
+    // Encode both keys to base64
     use base64::Engine;
-    let their_public_key_b64 = base64::engine::general_purpose::STANDARD.encode(their_public_key);
+    let our_secret_b64 = base64::engine::general_purpose::STANDARD.encode(our_secret_key);
+    let their_public_b64 = base64::engine::general_purpose::STANDARD.encode(their_public_key);
 
     // Create JSON-RPC request
     let request = X25519DeriveRequest {
         jsonrpc: "2.0".to_string(),
         method: "crypto.x25519_derive_secret".to_string(),
         params: X25519DeriveParams {
-            our_secret_key_id: our_secret_key_id.to_string(),
-            their_public_key: their_public_key_b64,
+            our_secret: our_secret_b64,
+            their_public: their_public_b64,
         },
         id: 4,
     };
@@ -685,7 +690,7 @@ struct HmacSha256Response {
 
 #[derive(Debug, Deserialize)]
 struct HmacSha256Result {
-    hmac: String,           // base64-encoded
+    mac: String,            // base64-encoded (BearDog uses "mac" not "hmac")
 }
 
 /// Compute HMAC-SHA256 via BearDog
@@ -741,7 +746,7 @@ pub async fn hmac_sha256(
 
     // Decode HMAC from base64
     let hmac = encoder
-        .decode(&response.result.hmac)
+        .decode(&response.result.mac)
         .context("Failed to decode HMAC-SHA256")?;
 
     debug!("✅ HMAC-SHA256 complete ({} bytes)", hmac.len());
@@ -795,12 +800,14 @@ mod tests {
     #[tokio::test]
     #[ignore]
     async fn test_sign_ed25519() {
-        let socket = "/tmp/beardog-crypto.sock";
+        let socket = super::super::discovery::get_beardog_crypto_socket()
+            .await
+            .expect("BearDog crypto socket not found - is BearDog running?");
         let message = b"Hello, World!";
         let key_id = "test_key";
         let purpose = "test";
 
-        let signature = sign_ed25519(socket, message, key_id, purpose).await;
+        let signature = sign_ed25519(&socket, message, key_id, purpose).await;
         assert!(signature.is_ok());
         assert_eq!(signature.unwrap().len(), 64); // Ed25519 signature is 64 bytes
     }
