@@ -8,6 +8,7 @@ use serde::{Deserialize, Serialize};
 use std::path::Path;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::UnixStream;
+use base64::{Engine as _, engine::general_purpose};
 
 /// BearDog crypto client for TLS operations
 ///
@@ -155,9 +156,9 @@ impl BeardogCryptoClient {
             .as_str()
             .ok_or_else(|| TlsError::CryptoError("Missing secret_key in response".to_string()))?;
 
-        let public_key = base64::decode(public_key_b64)
+        let public_key = general_purpose::STANDARD.decode(public_key_b64)
             .map_err(|e| TlsError::CryptoError(format!("Failed to decode public_key: {}", e)))?;
-        let secret_key = base64::decode(secret_key_b64)
+        let secret_key = general_purpose::STANDARD.decode(secret_key_b64)
             .map_err(|e| TlsError::CryptoError(format!("Failed to decode secret_key: {}", e)))?;
 
         Ok((public_key, secret_key))
@@ -172,8 +173,8 @@ impl BeardogCryptoClient {
         their_public: &[u8],
     ) -> Result<Vec<u8>> {
         let params = serde_json::json!({
-            "our_secret": base64::encode(our_secret),
-            "their_public": base64::encode(their_public)
+            "our_secret": general_purpose::STANDARD.encode(our_secret),
+            "their_public": general_purpose::STANDARD.encode(their_public)
         });
 
         let result = self.call_jsonrpc("crypto.x25519_derive_secret", params).await?;
@@ -182,7 +183,7 @@ impl BeardogCryptoClient {
             .as_str()
             .ok_or_else(|| TlsError::CryptoError("Missing shared_secret in response".to_string()))?;
 
-        let shared_secret = base64::decode(shared_secret_b64)
+        let shared_secret = general_purpose::STANDARD.decode(shared_secret_b64)
             .map_err(|e| TlsError::CryptoError(format!("Failed to decode shared_secret: {}", e)))?;
 
         Ok(shared_secret)
@@ -199,12 +200,12 @@ impl BeardogCryptoClient {
         aad: Option<&[u8]>,
     ) -> Result<(Vec<u8>, Vec<u8>, Vec<u8>)> {
         let mut params = serde_json::json!({
-            "plaintext": base64::encode(plaintext),
-            "key": base64::encode(key)
+            "plaintext": general_purpose::STANDARD.encode(plaintext),
+            "key": general_purpose::STANDARD.encode(key)
         });
 
         if let Some(aad_data) = aad {
-            params["aad"] = serde_json::json!(base64::encode(aad_data));
+            params["aad"] = serde_json::json!(general_purpose::STANDARD.encode(aad_data));
         }
 
         let result = self.call_jsonrpc("crypto.chacha20_poly1305_encrypt", params).await?;
@@ -219,11 +220,11 @@ impl BeardogCryptoClient {
             .as_str()
             .ok_or_else(|| TlsError::CryptoError("Missing tag in response".to_string()))?;
 
-        let ciphertext = base64::decode(ciphertext_b64)
+        let ciphertext = general_purpose::STANDARD.decode(ciphertext_b64)
             .map_err(|e| TlsError::CryptoError(format!("Failed to decode ciphertext: {}", e)))?;
-        let nonce = base64::decode(nonce_b64)
+        let nonce = general_purpose::STANDARD.decode(nonce_b64)
             .map_err(|e| TlsError::CryptoError(format!("Failed to decode nonce: {}", e)))?;
-        let tag = base64::decode(tag_b64)
+        let tag = general_purpose::STANDARD.decode(tag_b64)
             .map_err(|e| TlsError::CryptoError(format!("Failed to decode tag: {}", e)))?;
 
         Ok((ciphertext, nonce, tag))
@@ -241,14 +242,14 @@ impl BeardogCryptoClient {
         aad: Option<&[u8]>,
     ) -> Result<Vec<u8>> {
         let mut params = serde_json::json!({
-            "ciphertext": base64::encode(ciphertext),
-            "key": base64::encode(key),
-            "nonce": base64::encode(nonce),
-            "tag": base64::encode(tag)
+            "ciphertext": general_purpose::STANDARD.encode(ciphertext),
+            "key": general_purpose::STANDARD.encode(key),
+            "nonce": general_purpose::STANDARD.encode(nonce),
+            "tag": general_purpose::STANDARD.encode(tag)
         });
 
         if let Some(aad_data) = aad {
-            params["aad"] = serde_json::json!(base64::encode(aad_data));
+            params["aad"] = serde_json::json!(general_purpose::STANDARD.encode(aad_data));
         }
 
         let result = self.call_jsonrpc("crypto.chacha20_poly1305_decrypt", params).await?;
@@ -257,7 +258,7 @@ impl BeardogCryptoClient {
             .as_str()
             .ok_or_else(|| TlsError::CryptoError("Missing plaintext in response".to_string()))?;
 
-        let plaintext = base64::decode(plaintext_b64)
+        let plaintext = general_purpose::STANDARD.decode(plaintext_b64)
             .map_err(|e| TlsError::CryptoError(format!("Failed to decode plaintext: {}", e)))?;
 
         Ok(plaintext)
@@ -268,7 +269,7 @@ impl BeardogCryptoClient {
     /// Returns: signature (64 bytes)
     pub async fn ed25519_sign(&self, message: &[u8], key_id: &str) -> Result<Vec<u8>> {
         let params = serde_json::json!({
-            "message": base64::encode(message),
+            "message": general_purpose::STANDARD.encode(message),
             "key_id": key_id,
             "purpose": "certificate_signing"
         });
@@ -279,7 +280,7 @@ impl BeardogCryptoClient {
             .as_str()
             .ok_or_else(|| TlsError::CryptoError("Missing signature in response".to_string()))?;
 
-        let signature = base64::decode(signature_b64)
+        let signature = general_purpose::STANDARD.decode(signature_b64)
             .map_err(|e| TlsError::CryptoError(format!("Failed to decode signature: {}", e)))?;
 
         Ok(signature)
@@ -290,8 +291,8 @@ impl BeardogCryptoClient {
     /// Returns: MAC (32 bytes)
     pub async fn hmac_sha256(&self, message: &[u8], key: &[u8]) -> Result<Vec<u8>> {
         let params = serde_json::json!({
-            "message": base64::encode(message),
-            "key": base64::encode(key)
+            "message": general_purpose::STANDARD.encode(message),
+            "key": general_purpose::STANDARD.encode(key)
         });
 
         let result = self.call_jsonrpc("crypto.hmac_sha256", params).await?;
@@ -300,7 +301,7 @@ impl BeardogCryptoClient {
             .as_str()
             .ok_or_else(|| TlsError::CryptoError("Missing mac in response".to_string()))?;
 
-        let mac = base64::decode(mac_b64)
+        let mac = general_purpose::STANDARD.decode(mac_b64)
             .map_err(|e| TlsError::CryptoError(format!("Failed to decode mac: {}", e)))?;
 
         Ok(mac)
