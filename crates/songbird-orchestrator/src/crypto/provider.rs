@@ -37,7 +37,7 @@ use std::sync::Arc;
 /// - `UnixSocketCryptoProvider`: Communicates via Unix socket JSON-RPC
 /// - Future: `HttpCryptoProvider`, `GrpcCryptoProvider`, etc.
 #[async_trait]
-pub trait CryptoProvider: Send + Sync {
+pub trait CryptoProvider: Send + Sync + std::fmt::Debug {
     /// Compute BLAKE3 hash of data
     ///
     /// # Arguments
@@ -154,6 +154,7 @@ pub trait CryptoProvider: Send + Sync {
 ///
 /// Implements `CryptoProvider` by delegating to a primal via Unix socket JSON-RPC.
 /// Does NOT know which primal it's talking to - just that it offers crypto capability.
+#[derive(Debug)]
 pub struct UnixSocketCryptoProvider {
     socket_path: String,
 }
@@ -288,6 +289,7 @@ mod tests {
     use super::*;
 
     // Mock provider for unit testing
+    #[derive(Debug)]
     struct MockCryptoProvider;
 
     #[async_trait]

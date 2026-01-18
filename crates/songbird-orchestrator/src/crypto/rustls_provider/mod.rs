@@ -41,8 +41,10 @@
 //! }
 //! ```
 
-mod secure_random;
+pub mod key_provider;
+pub mod secure_random;
 
 // Re-exports for public API
+pub use key_provider::BeardogKeyProvider;
 pub use secure_random::GETRANDOM_WRAPPER;
 
