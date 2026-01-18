@@ -10,9 +10,10 @@
 
 **New Here? Start with these 3 documents** (10 minutes total):
 
-1. ⭐ **[FINAL_SESSION_HANDOFF_JAN_17_2026.md](docs/sessions/jan-2026/week4-day5/FINAL_SESSION_HANDOFF_JAN_17_2026.md)** (5 min) - Complete session summary
-2. **[STATUS.md](STATUS.md)** (3 min) - Latest metrics and progress
-3. **[ROOT_DOCS_INDEX.md](ROOT_DOCS_INDEX.md)** (2 min) - Complete documentation index
+1. ⭐ **[SESSION_HANDOFF_JAN_18_2026.md](docs/sessions/jan-2026/week4-day6/SESSION_HANDOFF_JAN_18_2026.md)** (5 min) - Latest session (Pure Rust TLS Phase 1)
+2. **[FINAL_SESSION_HANDOFF_JAN_17_2026.md](docs/sessions/jan-2026/week4-day5/FINAL_SESSION_HANDOFF_JAN_17_2026.md)** (5 min) - Previous session summary
+3. **[STATUS.md](STATUS.md)** (3 min) - Latest metrics and progress
+4. **[ROOT_DOCS_INDEX.md](ROOT_DOCS_INDEX.md)** (2 min) - Complete documentation index
 
 **Ready to contribute?** → [CONTRIBUTING.md](CONTRIBUTING.md)  
 **Need to build?** → [QUICK_START.md](QUICK_START.md)
