@@ -409,28 +409,31 @@ struct ChaChaEncryptResponse {
 
 #[derive(Debug, Deserialize)]
 struct ChaChaEncryptResult {
-    ciphertext: String,     // base64-encoded (includes auth tag)
+    ciphertext: String,     // base64-encoded
+    nonce: String,          // base64-encoded (BearDog generates!)
+    tag: String,            // base64-encoded auth tag
 }
 
 /// Encrypt with ChaCha20-Poly1305 AEAD via BearDog
 ///
+/// **BearDog's Secure Design**: Generates nonce automatically!
+/// This ensures cryptographically secure, non-repeating nonces.
+///
 /// # Arguments
 /// * `socket_path` - Path to BearDog's crypto Unix socket
 /// * `plaintext` - Plaintext bytes to encrypt
-/// * `key` - Encryption key (32 bytes for ChaCha20-Poly1305)
-/// * `nonce` - Nonce (12 bytes for ChaCha20-Poly1305)
-/// * `aad` - Additional authenticated data (can be empty)
+/// * `key` - Encryption key (32 bytes)
+/// * `aad` - Additional authenticated data (optional)
 ///
 /// # Returns
-/// * `Ok(ciphertext)` - Ciphertext bytes (includes 16-byte authentication tag)
+/// * `Ok((ciphertext, nonce, tag))` - Ciphertext, nonce (12 bytes), and auth tag (16 bytes)
 /// * `Err` - If BearDog is unavailable or encryption fails
 pub async fn chacha20_poly1305_encrypt(
     socket_path: &str,
     plaintext: &[u8],
     key: &[u8],
-    nonce: &[u8],
-    aad: &[u8],
-) -> Result<Vec<u8>> {
+    aad: Option<&[u8]>,
+) -> Result<(Vec<u8>, Vec<u8>, Vec<u8>)> {
     debug!("🔒 Encrypting with ChaCha20-Poly1305 via BearDog ({} bytes)", plaintext.len());
 
     // Connect to BearDog
@@ -443,17 +446,16 @@ pub async fn chacha20_poly1305_encrypt(
     let encoder = base64::engine::general_purpose::STANDARD;
     let plaintext_b64 = encoder.encode(plaintext);
     let key_b64 = encoder.encode(key);
-    let nonce_b64 = encoder.encode(nonce);
-    let aad_b64 = encoder.encode(aad);
+    let aad_b64 = aad.map(|a| encoder.encode(a)).unwrap_or_default();
 
-    // Create JSON-RPC request
+    // Create JSON-RPC request (no nonce - BearDog generates it!)
     let request = ChaChaEncryptRequest {
         jsonrpc: "2.0".to_string(),
         method: "crypto.chacha20_poly1305_encrypt".to_string(),
         params: ChaChaEncryptParams {
             plaintext: plaintext_b64,
             key: key_b64,
-            nonce: nonce_b64,
+            nonce: String::new(),  // Empty - BearDog will generate
             aad: aad_b64,
         },
         id: 5,
@@ -471,14 +473,23 @@ pub async fn chacha20_poly1305_encrypt(
     let response: ChaChaEncryptResponse = serde_json::from_str(&response_str)
         .context("Failed to parse BearDog ChaCha20-Poly1305 encrypt response")?;
 
-    // Decode ciphertext from base64
+    // Decode all parts from base64
     let ciphertext = encoder
         .decode(&response.result.ciphertext)
         .context("Failed to decode ChaCha20-Poly1305 ciphertext")?;
+    
+    let nonce = encoder
+        .decode(&response.result.nonce)
+        .context("Failed to decode ChaCha20-Poly1305 nonce")?;
+    
+    let tag = encoder
+        .decode(&response.result.tag)
+        .context("Failed to decode ChaCha20-Poly1305 tag")?;
 
-    debug!("✅ ChaCha20-Poly1305 encryption complete ({} bytes)", ciphertext.len());
+    debug!("✅ ChaCha20-Poly1305 encryption complete ({} bytes ciphertext, {} bytes nonce, {} bytes tag)", 
+           ciphertext.len(), nonce.len(), tag.len());
 
-    Ok(ciphertext)
+    Ok((ciphertext, nonce, tag))
 }
 
 #[derive(Debug, Serialize)]
@@ -491,10 +502,11 @@ struct ChaChaDecryptRequest {
 
 #[derive(Debug, Serialize)]
 struct ChaChaDecryptParams {
-    ciphertext: String,     // base64-encoded (includes auth tag)
+    ciphertext: String,     // base64-encoded
     key: String,            // base64-encoded
     nonce: String,          // base64-encoded
-    aad: String,            // base64-encoded
+    tag: String,            // base64-encoded auth tag
+    aad: String,            // base64-encoded (optional)
 }
 
 #[derive(Debug, Deserialize)]
@@ -513,9 +525,10 @@ struct ChaChaDecryptResult {
 ///
 /// # Arguments
 /// * `socket_path` - Path to BearDog's crypto Unix socket
-/// * `ciphertext` - Ciphertext bytes to decrypt (includes auth tag)
+/// * `ciphertext` - Ciphertext bytes to decrypt
 /// * `key` - Decryption key (32 bytes)
-/// * `nonce` - Nonce (12 bytes)
+/// * `nonce` - Nonce (12 bytes, from encryption)
+/// * `tag` - Authentication tag (16 bytes, from encryption)
 /// * `aad` - Additional authenticated data (must match encryption AAD)
 ///
 /// # Returns
@@ -526,7 +539,8 @@ pub async fn chacha20_poly1305_decrypt(
     ciphertext: &[u8],
     key: &[u8],
     nonce: &[u8],
-    aad: &[u8],
+    tag: &[u8],
+    aad: Option<&[u8]>,
 ) -> Result<Vec<u8>> {
     debug!("🔓 Decrypting with ChaCha20-Poly1305 via BearDog ({} bytes)", ciphertext.len());
 
@@ -541,7 +555,8 @@ pub async fn chacha20_poly1305_decrypt(
     let ciphertext_b64 = encoder.encode(ciphertext);
     let key_b64 = encoder.encode(key);
     let nonce_b64 = encoder.encode(nonce);
-    let aad_b64 = encoder.encode(aad);
+    let tag_b64 = encoder.encode(tag);
+    let aad_b64 = aad.map(|a| encoder.encode(a)).unwrap_or_default();
 
     // Create JSON-RPC request
     let request = ChaChaDecryptRequest {
@@ -551,6 +566,7 @@ pub async fn chacha20_poly1305_decrypt(
             ciphertext: ciphertext_b64,
             key: key_b64,
             nonce: nonce_b64,
+            tag: tag_b64,
             aad: aad_b64,
         },
         id: 6,
@@ -839,15 +855,21 @@ mod tests {
             .expect("BearDog crypto socket not found - is BearDog running?");
         let plaintext = b"Secret message!";
         let key = [0u8; 32]; // 32-byte key
-        let nonce = [0u8; 12]; // 12-byte nonce
         let aad = b"additional data";
 
-        // Encrypt
-        let ciphertext = chacha20_poly1305_encrypt(&socket, plaintext, &key, &nonce, aad).await.unwrap();
-        assert_eq!(ciphertext.len(), plaintext.len() + 16); // +16 for auth tag
+        // Encrypt (BearDog generates nonce!)
+        let (ciphertext, nonce, tag) = chacha20_poly1305_encrypt(&socket, plaintext, &key, Some(aad))
+            .await
+            .unwrap();
+        
+        assert_eq!(ciphertext.len(), plaintext.len()); // Ciphertext same size as plaintext
+        assert_eq!(nonce.len(), 12); // Nonce is 12 bytes
+        assert_eq!(tag.len(), 16); // Auth tag is 16 bytes
 
         // Decrypt
-        let decrypted = chacha20_poly1305_decrypt(&socket, &ciphertext, &key, &nonce, aad).await.unwrap();
+        let decrypted = chacha20_poly1305_decrypt(&socket, &ciphertext, &key, &nonce, &tag, Some(aad))
+            .await
+            .unwrap();
         assert_eq!(decrypted, plaintext);
     }
 
