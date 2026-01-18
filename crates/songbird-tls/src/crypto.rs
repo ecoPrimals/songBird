@@ -12,6 +12,7 @@ use tokio::net::UnixStream;
 /// BearDog crypto client for TLS operations
 ///
 /// Communicates with BearDog via Unix socket JSON-RPC.
+#[derive(Clone)]
 pub struct BeardogCryptoClient {
     socket_path: String,
 }
@@ -282,6 +283,27 @@ impl BeardogCryptoClient {
             .map_err(|e| TlsError::CryptoError(format!("Failed to decode signature: {}", e)))?;
 
         Ok(signature)
+    }
+
+    /// HMAC-SHA256
+    ///
+    /// Returns: MAC (32 bytes)
+    pub async fn hmac_sha256(&self, message: &[u8], key: &[u8]) -> Result<Vec<u8>> {
+        let params = serde_json::json!({
+            "message": base64::encode(message),
+            "key": base64::encode(key)
+        });
+
+        let result = self.call_jsonrpc("crypto.hmac_sha256", params).await?;
+
+        let mac_b64 = result["mac"]
+            .as_str()
+            .ok_or_else(|| TlsError::CryptoError("Missing mac in response".to_string()))?;
+
+        let mac = base64::decode(mac_b64)
+            .map_err(|e| TlsError::CryptoError(format!("Failed to decode mac: {}", e)))?;
+
+        Ok(mac)
     }
 }
 
