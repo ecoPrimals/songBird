@@ -1,0 +1,38 @@
+[package]
+name = "songbird-tls"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+# Core dependencies (all Pure Rust!)
+tokio = { version = "1", features = ["full", "net"] }
+tracing = "0.1"
+anyhow = "1.0"
+thiserror = "1.0"
+
+# Serialization (Pure Rust)
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+
+# Base64 encoding (Pure Rust)
+base64 = "0.22"
+
+# Optional: X.509 certificate parsing (Pure Rust)
+# We'll add this when we reach Phase 5
+# webpki = { version = "0.22", optional = true }
+
+[dev-dependencies]
+tokio-test = "0.4"
+criterion = "0.5"
+
+[features]
+default = []
+# Future: Add features for different protocol support
+# http2 = []
+# http3 = []
+# websocket = []
+
+[lib]
+name = "songbird_tls"
+path = "src/lib.rs"
+

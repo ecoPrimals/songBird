@@ -46,6 +46,9 @@ members = [
     
     # 🧬 LINEAGE RELAY - Evolution beyond NAT/STUN/TURN
     "crates/songbird-lineage-relay",
+    
+    # 🦀 PURE RUST TLS 1.3 (NEW!)
+    "crates/songbird-tls",
 ]
 
 [workspace.package]
