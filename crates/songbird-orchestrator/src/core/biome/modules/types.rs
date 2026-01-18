@@ -360,33 +360,17 @@ impl AgnosticPrimalConfig {
                 check_timeout_secs: 15,
                 failure_threshold: 2} ;})
             custom_config: HashMap::new();}}}
-// Legacy type aliases for backward compatibility - /// DEPRECATED
-// DEPRECATED
-// 🚨 DEPRECATION NOTICE: These types will be removed in v0.10.0
-// Migration deadline: January 1, 2026
-// Use AgnosticPrimalConfig with capability-based patterns instead
-#[deprecated( note = "DEPRECATED: Use AgnosticPrimalConfig::storage_primal() instead. Legacy hardcoded 'nestgate' patterns are being eliminated. Migration deadline: v0.10.0 (January 1, 2026). See VENDOR_HARDCODING_ELIMINATION_REPORT.md for migration guide.")]"
-pub type NestGateConfig = AgnosticPrimalConfig;
-
-#[deprecated( note = "DEPRECATED: Use AgnosticPrimalConfig::compute_primal() instead."
-           Legacy hardcoded 'toadstool' patterns are being eliminated.
-           Migration deadline: v0.10.0 (January 1, 2026).
-           See VENDOR_HARDCODING_ELIMINATION_REPORT.md for migration guide.")]"
-pub type ToadstoolConfig = AgnosticPrimalConfig;
-
-#[deprecated(since = "0.9.0", note = "DEPRECATED: Use PrimalEndpoint instead."
-           Legacy hardcoded 'toadstool' patterns are being eliminated.)
-           Migration deadline: v0.10.0 (January 1, 2026).")]"
-pub type ToadstoolEndpoint = PrimalEndpoint;
-
-#[deprecated(since = "0.9.0", note = "DEPRECATED: Use AgnosticPrimalConfig::security_primal() instead. Legacy hardcoded security provider patterns are being eliminated. Migration deadline: v0.10.0 (January 1, 2026). See VENDOR_HARDCODING_ELIMINATION_REPORT.md for migration guide.")]"
-pub type BearDogConfig = AgnosticPrimalConfig;
-
-#[deprecated(since = "0.9.0", note = "DEPRECATED: Use AgnosticPrimalConfig::ai_primal() instead."
-           Legacy hardcoded 'squirrel' patterns are being eliminated.
-           Migration deadline: v0.10.0 (January 1, 2026).
-           See VENDOR_HARDCODING_ELIMINATION_REPORT.md for migration guide.")]"
-pub type SquirrelConfig = AgnosticPrimalConfig;
+// ✅ REMOVED (Jan 17, 2026): Hardcoded primal type aliases
+// Migration deadline passed (Jan 1, 2026)
+// 
+// Removed types:
+// - NestGateConfig → AgnosticPrimalConfig::storage_primal()
+// - ToadstoolConfig → AgnosticPrimalConfig::compute_primal()
+// - ToadstoolEndpoint → PrimalEndpoint
+// - BearDogConfig → AgnosticPrimalConfig::security_primal()
+// - SquirrelConfig → AgnosticPrimalConfig::ai_primal()
+//
+// See DEPRECATION_SCHEDULE.md for migration guide
 
 /// Legacy storage provider configuration - /// DEPRECATED
 // DEPRECATED
