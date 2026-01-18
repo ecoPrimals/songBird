@@ -16,8 +16,16 @@
 
 pub mod beardog_crypto_client;
 pub mod discovery;
+pub mod provider;
 
-// Re-export main functions for convenience
+// Re-export capability-based abstractions (preferred API - TRUE PRIMAL!)
+pub use provider::{
+    discover_crypto_provider,
+    CryptoProvider,
+    UnixSocketCryptoProvider,
+};
+
+// Re-export low-level functions for backward compatibility
 pub use beardog_crypto_client::{
     blake3_hash,
     chacha20_poly1305_decrypt,

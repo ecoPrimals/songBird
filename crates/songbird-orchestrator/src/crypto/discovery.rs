@@ -1,88 +1,99 @@
-//! Capability-Based BearDog Crypto Discovery
+//! Capability-Based Crypto Provider Discovery
 //!
-//! Discovers BearDog crypto service via capability-based discovery.
+//! Discovers ANY primal offering "crypto" capability via runtime discovery.
 //! Maintains TRUE PRIMAL self-knowledge - Songbird only knows itself,
-//! discovers BearDog at runtime via "crypto" capability.
+//! discovers crypto providers at runtime.
 //!
 //! **Pattern**: Adapted from `auth/capability_discovery.rs` (proven in production)
+//! **Philosophy**: Primals only know themselves, discover others by capability
 
 use anyhow::Result;
 use tracing::{debug, info, warn};
 
-/// Discover BearDog crypto socket via capability-based discovery
+/// Discover crypto provider socket via capability-based discovery
 ///
 /// ## TRUE PRIMAL Principles
 ///
 /// 1. **Self-Knowledge**: Songbird only knows itself
 /// 2. **Capability Discovery**: Searches for "crypto" capability
 /// 3. **Runtime Discovery**: No hardcoded primal names
-/// 4. **Graceful Fallback**: Works without BearDog (ring fallback)
+/// 4. **Graceful Fallback**: Works without crypto provider
 ///
 /// ## Discovery Strategy
 ///
-/// 1. Check `CRYPTO_PROVIDER` environment variable (orchestrator-provided)
-/// 2. Check `BEARDOG_CRYPTO_SOCKET` environment variable (explicit override)
-/// 3. Check `BEARDOG_SOCKET` environment variable (generic BearDog socket)
-/// 4. Search common socket paths for crypto capability
-/// 5. Return error if not found (triggers ring fallback)
+/// 1. Check `CRYPTO_PROVIDER_SOCKET` environment variable (orchestrator-provided, preferred)
+/// 2. Check `CRYPTO_PROVIDER` environment variable (alternative)
+/// 3. Check `BEARDOG_CRYPTO_SOCKET` environment variable (compatibility during migration)
+/// 4. Check `BEARDOG_SOCKET` environment variable (generic socket, may support crypto)
+/// 5. Search common socket paths for crypto capability
+/// 6. Return error if not found
 ///
 /// # Returns
 ///
-/// * `Ok(String)` - Path to BearDog crypto socket
-/// * `Err` - BearDog crypto not available (use ring fallback)
+/// * `Ok(String)` - Path to crypto provider socket
+/// * `Err` - No crypto provider available
 pub async fn get_beardog_crypto_socket() -> Result<String> {
-    info!("🔍 Discovering crypto provider (BearDog) via capability-based discovery...");
+    info!("🔍 Discovering crypto provider via capability-based discovery...");
 
-    // Strategy 1: CRYPTO_PROVIDER (orchestrator-managed, preferred)
+    // Strategy 1: CRYPTO_PROVIDER_SOCKET (orchestrator-managed, preferred)
+    if let Ok(socket_path) = std::env::var("CRYPTO_PROVIDER_SOCKET") {
+        info!("   ✅ Found CRYPTO_PROVIDER_SOCKET: {}", socket_path);
+        return Ok(socket_path);
+    }
+
+    // Strategy 2: CRYPTO_PROVIDER (alternative env var)
     if let Ok(socket_path) = std::env::var("CRYPTO_PROVIDER") {
         info!("   ✅ Found CRYPTO_PROVIDER: {}", socket_path);
         return Ok(socket_path);
     }
 
-    // Strategy 2: BEARDOG_CRYPTO_SOCKET (explicit override)
+    // Strategy 3: BEARDOG_CRYPTO_SOCKET (compatibility during migration)
     if let Ok(socket_path) = std::env::var("BEARDOG_CRYPTO_SOCKET") {
-        info!("   ✅ Found BEARDOG_CRYPTO_SOCKET: {}", socket_path);
+        info!("   ✅ Found BEARDOG_CRYPTO_SOCKET (compatibility): {}", socket_path);
         return Ok(socket_path);
     }
 
-    // Strategy 3: BEARDOG_SOCKET (generic BearDog socket, may support crypto)
+    // Strategy 4: BEARDOG_SOCKET (generic socket, may support crypto)
     if let Ok(socket_path) = std::env::var("BEARDOG_SOCKET") {
         info!("   ✅ Found BEARDOG_SOCKET (checking for crypto capability): {}", socket_path);
         return Ok(socket_path);
     }
 
-    // Strategy 4: Search common socket paths
+    // Strategy 5: Search common socket paths
     let common_paths = vec![
-        "/tmp/beardog-crypto.sock",         // Dedicated crypto socket
-        "/tmp/beardog-nat0.sock",           // NUCLEUS default
+        "/tmp/crypto.sock",                  // Generic crypto provider
+        "/tmp/beardog-crypto.sock",          // BearDog dedicated crypto socket
+        "/tmp/beardog-nat0.sock",            // NUCLEUS default
         "/tmp/beardog-default-default.sock", // biomeOS default
-        "/run/user/1000/beardog.sock",      // User runtime dir
-        "/var/run/beardog.sock",            // System runtime dir
+        "/run/user/1000/beardog.sock",       // User runtime dir
+        "/var/run/beardog.sock",             // System runtime dir
     ];
 
     for path in &common_paths {
         if std::path::Path::new(path).exists() {
-            info!("   ✅ Found BearDog socket at: {}", path);
+            info!("   ✅ Found crypto provider socket at: {}", path);
             return Ok(path.to_string());
         } else {
             debug!("   ⏭️  Not found: {}", path);
         }
     }
 
-    // Strategy 5: Search /tmp for any beardog socket
+    // Strategy 6: Search /tmp for any crypto provider socket
     if let Ok(entries) = std::fs::read_dir("/tmp") {
         for entry in entries.flatten() {
             if let Ok(file_name) = entry.file_name().into_string() {
-                if file_name.starts_with("beardog") && file_name.ends_with(".sock") {
+                // Look for crypto-related sockets (beardog, crypto, etc.)
+                if (file_name.contains("crypto") || file_name.starts_with("beardog")) 
+                    && file_name.ends_with(".sock") {
                     let path = entry.path();
-                    info!("   ✅ Found BearDog socket at: {}", path.display());
+                    info!("   ✅ Found crypto provider socket at: {}", path.display());
                     return Ok(path.to_string_lossy().to_string());
                 }
             }
         }
     }
 
-    warn!("⚠️  No crypto provider (BearDog) found via capability discovery");
+    warn!("❌ No crypto provider found - checked all discovery strategies");
     warn!("   Songbird will fall back to ring crypto provider (temporary)");
     warn!("   This maintains TLS functionality but uses C dependencies");
 
