@@ -244,6 +244,34 @@ impl SongbirdOrchestrator {
         Ok(())
     }
 
+    /// Provision JWT secret from BearDog via capability-based discovery
+    ///
+    /// ## TRUE PRIMAL Architecture
+    ///
+    /// - **Self-Knowledge**: Songbird only knows itself
+    /// - **Capability Discovery**: Discovers BearDog via "security" capability
+    /// - **Graceful Fallback**: Uses secure random if BearDog unavailable
+    /// - **Pure Rust**: JSON-RPC over Unix socket (no C dependencies!)
+    ///
+    /// # Returns
+    ///
+    /// * `Ok(String)` - JWT secret (512 bits, base64-encoded)
+    /// * `Err` - Only on critical failure (fallback always succeeds)
+    async fn provision_jwt_secret(&self) -> Result<String> {
+        use crate::auth::{get_beardog_socket_for_jwt, provision_jwt_secret};
+
+        // Discover BearDog via capability-based discovery
+        let beardog_socket = get_beardog_socket_for_jwt();
+
+        // Provision JWT secret (tries BearDog, falls back to secure random)
+        let jwt_secret = provision_jwt_secret(
+            beardog_socket.as_deref(),
+            "songbird_authentication"
+        ).await?;
+
+        Ok(jwt_secret)
+    }
+
     /// Start the orchestrator
     pub async fn start(&mut self) -> Result<()> {
         info!("🚀 Starting Songbird Orchestrator");
@@ -251,6 +279,13 @@ impl SongbirdOrchestrator {
         info!("   Auto-discovery: Secure anonymous capability exchange");
         info!("   Federation: Zero-trust progressive escalation");
         info!("   All connections: Encrypted by default (TLS failsafe)");
+
+        // NEW (Jan 17, 2026): Provision JWT secret from BearDog via capability discovery
+        info!("🔐 Provisioning JWT secret from security provider (BearDog)...");
+        let jwt_secret = self.provision_jwt_secret().await?;
+        info!("✅ JWT secret provisioned ({} bytes, Pure Rust delegation!)", jwt_secret.len());
+        // Store JWT secret for HTTP server to use
+        // TODO: Pass to HTTP server for authentication
 
         // NEW: Query security provider for our encryption tag (USB seed integration)
         self.query_security_identity().await?;

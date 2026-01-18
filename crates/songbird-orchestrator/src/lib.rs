@@ -74,6 +74,7 @@
 
 pub mod access_control; // Access control & graduated information disclosure (Q1 2025)
 pub mod app;
+pub mod auth; // JWT authentication via BearDog delegation (Pure Rust!) (Jan 17, 2026)
 pub mod btsp_client; // BTSP Unix socket client for BearDog tunnels (Jan 16, 2026)
 pub mod cli;
 pub mod http_gateway; // HTTP gateway for universal pure Rust ecosystem (Jan 16, 2026)
