@@ -91,8 +91,9 @@ Songbird is a **zero-hardcoding, capability-based P2P discovery service** that e
 | **Production Mocks** | 0 |
 | **Hardcoding** | 0 (capability-based) |
 | **Serial Tests** | 76 (down from 237, -68%) |
-| **Test Coverage** | ~75% (unit + integration) |
-| **Commits Today** | 25 (all pushed to main) |
+| **Test Coverage** | ~75% (unit + integration + chaos + fault) |
+| **Total Tests** | 584+ (all passing!) |
+| **Commits Today** | 28 (all pushed to main) |
 
 **Full Status**: [STATUS.md](STATUS.md)
 
