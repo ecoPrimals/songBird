@@ -77,6 +77,7 @@ pub mod app;
 pub mod auth; // JWT authentication via BearDog delegation (Pure Rust!) (Jan 17, 2026)
 pub mod btsp_client; // BTSP Unix socket client for BearDog tunnels (Jan 16, 2026)
 pub mod cli;
+pub mod crypto; // Pure Rust TLS via BearDog crypto delegation (Jan 18, 2026) - Path to 100% ecoBin!
 pub mod http_gateway; // HTTP gateway for universal pure Rust ecosystem (Jan 16, 2026)
 pub mod connections; // Progressive trust connection management (Jan 2026)
 pub mod consent_management;
