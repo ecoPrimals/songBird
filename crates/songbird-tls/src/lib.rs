@@ -61,6 +61,7 @@ pub mod handshake;
 pub mod record_layer;
 pub mod key_schedule;
 pub mod cert;
+pub mod crypto;
 
 // Error types
 pub mod error;
