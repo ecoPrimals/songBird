@@ -10,7 +10,7 @@
 
 **New Here? Start with these 3 documents** (10 minutes total):
 
-1. ⭐ **[SESSION_HANDOFF_JAN_17_2026.md](docs/sessions/jan-2026/week4/SESSION_HANDOFF_JAN_17_2026.md)** (5 min) - Today's achievements
+1. ⭐ **[FINAL_SESSION_HANDOFF_JAN_17_2026.md](docs/sessions/jan-2026/week4-day5/FINAL_SESSION_HANDOFF_JAN_17_2026.md)** (5 min) - Complete session summary
 2. **[STATUS.md](STATUS.md)** (3 min) - Latest metrics and progress
 3. **[ROOT_DOCS_INDEX.md](ROOT_DOCS_INDEX.md)** (2 min) - Complete documentation index
 
@@ -99,7 +99,7 @@ Songbird is a **zero-hardcoding, capability-based P2P discovery service** that e
 | **Serial Tests** | 76 (down from 237, -68%) |
 | **Test Coverage** | ~75% (unit + integration + chaos + fault) |
 | **Total Tests** | 584+ (all passing!) |
-| **Commits Today** | 35 (all pushed to main) |
+| **Commits Today** | 37 (all pushed to main) |
 
 **Full Status**: [STATUS.md](STATUS.md)
 
