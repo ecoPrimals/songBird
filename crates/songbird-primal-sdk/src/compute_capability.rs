@@ -19,21 +19,25 @@
 //! ```
 
 use chrono::{DateTime, Utc};
-use reqwest::Client;
 use serde::{Deserialize, Serialize};
 use songbird_config::capability_endpoints::{CapabilityEndpointResolver, CapabilityType};
 use songbird_types::errors::{SongbirdError, SongbirdResult};
+use songbird_universal::UnixRpcClient;
 use std::collections::HashMap;
+use std::path::PathBuf;
 use std::time::Duration;
 use tracing::{debug, info};
 
 /// Compute capability client (replaces ToadstoolPrimal)
-#[derive(Debug)]
+///
+/// **Pure Rust Implementation**: Uses Unix socket JSON-RPC for inter-primal communication,
+/// eliminating HTTP overhead and `reqwest` dependency (ring-free!).
+#[derive(Debug, Clone)]
 pub struct ComputeCapabilityClient {
-    /// Capability endpoint resolver
+    /// Capability endpoint resolver (for discovery)
     resolver: CapabilityEndpointResolver,
-    /// HTTP client for requests
-    http_client: Client,
+    /// JSON-RPC client for Unix socket communication (Pure Rust!)
+    rpc_client: UnixRpcClient,
     /// Client configuration
     config: ComputeClientConfig,
 }
@@ -184,22 +188,39 @@ impl ComputeCapabilityClient {
     
     /// Create compute client with custom configuration
     pub async fn with_config(config: ComputeClientConfig) -> SongbirdResult<Self> {
-        info!("⚙️ Creating compute capability client (zero hardcoding)");
+        info!("⚙️ Creating compute capability client (Pure Rust Unix socket!)");
         
-        let http_client = Client::builder()
-            .timeout(config.timeout)
-            .build()
+        // Discover Unix socket path for compute capability
+        let socket_path = Self::discover_socket_path()?;
+        
+        // Create UnixRpcClient (100% Pure Rust!)
+        let rpc_client = UnixRpcClient::new(&socket_path)
             .map_err(|e| SongbirdError::Configuration {
-                message: format!("Failed to create HTTP client: {}", e),
-                field: Some("http_client".to_string()),
-                suggestion: Some("Check network configuration".to_string()),
+                message: format!("Failed to create Unix RPC client for {:?}: {}", socket_path, e),
+                field: Some("rpc_client".to_string()),
+                suggestion: Some("Ensure compute primal is running and socket exists".to_string()),
             })?;
+        
+        info!("✅ Compute capability client connected to {:?}", socket_path);
         
         Ok(Self {
             resolver: CapabilityEndpointResolver::new(),
-            http_client,
+            rpc_client,
             config,
         })
+    }
+    
+    /// Discover Unix socket path for compute capability
+    ///
+    /// Priority:
+    /// 1. COMPUTE_SOCKET_PATH environment variable
+    /// 2. TOADSTOOL_SOCKET_PATH environment variable (legacy)
+    /// 3. Default: /tmp/toadstool.sock
+    fn discover_socket_path() -> SongbirdResult<PathBuf> {
+        std::env::var("COMPUTE_SOCKET_PATH")
+            .or_else(|_| std::env::var("TOADSTOOL_SOCKET_PATH"))
+            .map(PathBuf::from)
+            .or_else(|_| Ok(PathBuf::from("/tmp/toadstool.sock")))
     }
     
     /// Execute workload on any compute provider
@@ -237,126 +258,84 @@ impl ComputeCapabilityClient {
     /// # }
     /// ```
     pub async fn execute_workload(&self, request: WorkloadRequest) -> SongbirdResult<WorkloadResponse> {
-        debug!("🚀 Executing workload: {}", request.name);
+        debug!("🚀 Executing workload via JSON-RPC: {}", request.name);
         
-        // Discover compute capability provider
-        let endpoint = self.resolver.get_endpoint(CapabilityType::Compute).await?;
-        
-        let response = self.http_client
-            .post(format!("{}/workloads", endpoint))
-            .json(&request)
-            .send()
+        // Call compute.execute_workload JSON-RPC method
+        let response: WorkloadResponse = self.rpc_client
+            .call("compute.execute_workload", &request)
             .await
             .map_err(|e| SongbirdError::Network {
-                message: format!("Workload execution request failed: {}", e),
-                source: Some(endpoint.clone()),
+                message: format!("Workload execution RPC failed: {}", e),
+                source: Some("compute.execute_workload".to_string()),
             })?;
         
-        if response.status().is_success() {
-            let result: WorkloadResponse = response.json().await
-                .map_err(|e| SongbirdError::Parsing {
-                    message: format!("Failed to parse workload response: {}", e),
-                    expected: "WorkloadResponse".to_string(),
-                })?;
-            
-            info!("✅ Workload started: {}", result.workload_id);
-            Ok(result)
-        } else {
-            let status = response.status();
-            let error_text = response.text().await.unwrap_or_default();
-            Err(SongbirdError::External {
-                service: "compute_capability".to_string(),
-                message: format!("Workload execution failed with status {}: {}", status, error_text),
-            })
-        }
+        info!("✅ Workload started (Pure Rust RPC!): {}", response.workload_id);
+        Ok(response)
     }
     
     /// Get workload status
     pub async fn get_workload_status(&self, workload_id: &str) -> SongbirdResult<WorkloadResponse> {
-        debug!("🔍 Getting workload status: {}", workload_id);
+        debug!("🔍 Getting workload status via JSON-RPC: {}", workload_id);
         
-        let endpoint = self.resolver.get_endpoint(CapabilityType::Compute).await?;
+        #[derive(Serialize)]
+        struct StatusRequest {
+            workload_id: String,
+        }
         
-        let response = self.http_client
-            .get(format!("{}/workloads/{}", endpoint, workload_id))
-            .send()
+        // Call compute.get_workload_status JSON-RPC method
+        let response: WorkloadResponse = self.rpc_client
+            .call("compute.get_workload_status", &StatusRequest {
+                workload_id: workload_id.to_string(),
+            })
             .await
             .map_err(|e| SongbirdError::Network {
-                message: format!("Failed to get workload status: {}", e),
-                source: Some(endpoint.clone()),
+                message: format!("Workload status RPC failed: {}", e),
+                source: Some("compute.get_workload_status".to_string()),
             })?;
         
-        if response.status().is_success() {
-            response.json().await
-                .map_err(|e| SongbirdError::Parsing {
-                    message: format!("Failed to parse workload status: {}", e),
-                    expected: "WorkloadResponse".to_string(),
-                })
-        } else {
-            let status = response.status();
-            let error_text = response.text().await.unwrap_or_default();
-            Err(SongbirdError::External {
-                service: "compute_capability".to_string(),
-                message: format!("Failed to get workload status {}: {}", status, error_text),
-            })
-        }
+        info!("✅ Workload status retrieved (Pure Rust RPC!)");
+        Ok(response)
     }
     
     /// Scale workload replicas
     pub async fn scale_workload(&self, request: ScaleRequest) -> SongbirdResult<()> {
-        debug!("📊 Scaling workload {} to {} replicas", request.workload_id, request.replicas);
+        debug!("📊 Scaling workload {} to {} replicas via JSON-RPC", request.workload_id, request.replicas);
         
-        let endpoint = self.resolver.get_endpoint(CapabilityType::Compute).await?;
-        
-        let response = self.http_client
-            .post(format!("{}/workloads/{}/scale", endpoint, request.workload_id))
-            .json(&request)
-            .send()
+        // Call compute.scale_workload JSON-RPC method
+        let _response: serde_json::Value = self.rpc_client
+            .call("compute.scale_workload", &request)
             .await
             .map_err(|e| SongbirdError::Network {
-                message: format!("Workload scaling request failed: {}", e),
-                source: Some(endpoint.clone()),
+                message: format!("Workload scaling RPC failed: {}", e),
+                source: Some("compute.scale_workload".to_string()),
             })?;
         
-        if response.status().is_success() {
-            info!("✅ Workload scaled successfully");
-            Ok(())
-        } else {
-            let status = response.status();
-            let error_text = response.text().await.unwrap_or_default();
-            Err(SongbirdError::External {
-                service: "compute_capability".to_string(),
-                message: format!("Workload scaling failed with status {}: {}", status, error_text),
-            })
-        }
+        info!("✅ Workload scaled successfully (Pure Rust RPC!)");
+        Ok(())
     }
     
     /// Terminate workload
     pub async fn terminate_workload(&self, workload_id: &str) -> SongbirdResult<()> {
-        debug!("🛑 Terminating workload: {}", workload_id);
+        debug!("🛑 Terminating workload via JSON-RPC: {}", workload_id);
         
-        let endpoint = self.resolver.get_endpoint(CapabilityType::Compute).await?;
+        #[derive(Serialize)]
+        struct TerminateRequest {
+            workload_id: String,
+        }
         
-        let response = self.http_client
-            .delete(format!("{}/workloads/{}", endpoint, workload_id))
-            .send()
+        // Call compute.terminate_workload JSON-RPC method
+        let _response: serde_json::Value = self.rpc_client
+            .call("compute.terminate_workload", &TerminateRequest {
+                workload_id: workload_id.to_string(),
+            })
             .await
             .map_err(|e| SongbirdError::Network {
-                message: format!("Workload termination request failed: {}", e),
-                source: Some(endpoint.clone()),
+                message: format!("Workload termination RPC failed: {}", e),
+                source: Some("compute.terminate_workload".to_string()),
             })?;
         
-        if response.status().is_success() {
-            info!("✅ Workload terminated successfully");
-            Ok(())
-        } else {
-            let status = response.status();
-            let error_text = response.text().await.unwrap_or_default();
-            Err(SongbirdError::External {
-                service: "compute_capability".to_string(),
-                message: format!("Workload termination failed with status {}: {}", status, error_text),
-            })
-        }
+        info!("✅ Workload terminated successfully (Pure Rust RPC!)");
+        Ok(())
     }
     
     /// Check if compute capability is available
