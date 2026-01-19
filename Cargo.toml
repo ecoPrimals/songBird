@@ -90,6 +90,10 @@ anyhow = { workspace = true }
 clap = { workspace = true }
 tokio = { workspace = true }
 
+# Dependencies for examples (NO Songbird imports!)
+serde = { workspace = true }
+serde_json = { workspace = true }
+
 [lints]
 workspace = true
 

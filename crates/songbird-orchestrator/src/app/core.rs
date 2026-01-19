@@ -304,6 +304,11 @@ impl SongbirdOrchestrator {
         self.start_ipc_server().await?;
         info!("✅ Unix Socket IPC server started");
 
+        // 🌍 NEW (Jan 19, 2026): Start Universal IPC Broker for service-based inter-primal IPC
+        info!("🌍 Starting Universal IPC Broker...");
+        crate::ipc::universal_broker::start_broker().await?;
+        info!("✅ Universal IPC Broker started");
+
         // 🚀 NEW (Jan 6, 2026): Start tarpc Server for high-performance primal-to-primal RPC
         info!("🚀 Starting tarpc server...");
         self.start_tarpc_server().await?;

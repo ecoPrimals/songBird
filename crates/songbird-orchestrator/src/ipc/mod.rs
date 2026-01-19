@@ -44,6 +44,7 @@
 pub mod handlers;
 pub mod registry;
 pub mod server_pure_rust; // v3.22.0: Pure Rust implementation
+pub mod universal_broker; // v4.1.0: Universal IPC broker (service-based)
 
 // Deprecated: Old jsonrpsee-based server (renamed to .rs.deprecated)
 // #[deprecated(note = "Use UnixSocketServer from server_pure_rust instead")]
@@ -51,6 +52,7 @@ pub mod server_pure_rust; // v3.22.0: Pure Rust implementation
 
 pub use registry::ServiceRegistry;
 pub use server_pure_rust::UnixSocketServer; // v3.22.0: Pure Rust is default
+pub use universal_broker::UniversalIpcBroker; // v4.1.0: Universal IPC broker
 pub use types::{
     // P2P Discovery (v3.19)
     AnnounceCapabilitiesRequest,
