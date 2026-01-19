@@ -45,6 +45,11 @@ pub use songbird_types::config::consolidated_canonical::CanonicalSongbirdConfig 
 pub mod adaptive_discovery;
 
 // ============================================================================
+// UNIX SOCKET RPC CLIENT (v3.34.0 - Pure Rust Inter-Primal Communication)
+// ============================================================================
+pub mod unix_rpc_client;
+
+// ============================================================================
 // CAPABILITY-BASED MODULES (Primal-Agnostic) ⭐ NEW!
 // ============================================================================
 
