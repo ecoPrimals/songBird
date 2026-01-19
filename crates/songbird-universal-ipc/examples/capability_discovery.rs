@@ -24,7 +24,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("📝 Step 1: Discover crypto provider by capability");
     println!("   (No hardcoded primal names - pure capability-based!)");
 
-    match capability::discover("crypto").await {
+    match capability::discovery::discover("crypto").await {
         Ok(provider) => {
             println!("   ✅ Found crypto provider: {}", provider.id);
             println!("      Virtual endpoint: {}", provider.virtual_endpoint);
