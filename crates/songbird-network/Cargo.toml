@@ -27,7 +27,7 @@ base64 = "0.21"
 rustls = { version = "0.23", default-features = false, features = ["ring"] }  # ✅ No cmake! Self-contained build
 rustls-pemfile = "2.1"
 tokio-rustls = "0.26"
-rcgen = "0.14"  # Pure Rust cert generation (no ring dependency!)
+# rcgen = "0.14"  # ❌ REMOVED: Uses ring (C code). Replaced with songbird-tls::CertificateGenerator - Jan 19, 2026
 pem = "3.0"
 
 # Networking

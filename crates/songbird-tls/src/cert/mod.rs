@@ -5,6 +5,7 @@
 //! Full X.509 parsing will be added as needed.
 
 pub mod test_utils;
+pub mod generator; // Pure Rust certificate generation (hybrid standalone + BearDog)
 
 use crate::crypto::BeardogCryptoClient;
 use crate::error::{Result, TlsError};

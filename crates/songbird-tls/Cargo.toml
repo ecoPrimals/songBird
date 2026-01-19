@@ -17,6 +17,11 @@ serde_json = "1.0"
 # Base64 encoding (Pure Rust)
 base64 = "0.22"
 
+# Pure Rust certificate generation (standalone mode)
+ed25519-dalek = "2.1"  # 100% Pure Rust Ed25519 signatures
+rand = "0.8"           # For key generation
+chrono = "0.4"         # For certificate validity
+
 [dev-dependencies]
 tokio-test = "0.4"
 criterion = "0.5"

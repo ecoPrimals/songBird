@@ -81,7 +81,7 @@ serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 
 # Access control and authentication
-jsonwebtoken = "9.3"  # Uses ring (no cmake!), will migrate to RustCrypto Ed25519 in Week 2
+# jsonwebtoken = "9.3"  # ❌ REMOVED: Uses ring (C code). Replaced with pure_rust_jwt (HMAC-SHA256) - Jan 19, 2026
 
 # 🦀 RustCrypto: Audited pure Rust crypto (BiomeOS Concentrated Gap Strategy)
 # For internal operations (BTSP, BirdSong, auth) - NOT for TLS (ring handles TLS temporarily)
