@@ -34,11 +34,10 @@ anyhow = { workspace = true }
 reqwest = { version = "0.11", features = ["json", "rustls-tls"], default-features = false }
 url = "2.5"
 
-# TLS/HTTPS support (✅ Pure Rust crypto - no C dependencies!)
-rustls = { version = "0.23", default-features = false, features = ["ring"] }  # ✅ No cmake! Self-contained build
-rustls-pemfile = "2.1"
-tokio-rustls = "0.26"
-rcgen = "0.14"  # Pure Rust cert generation (no ring dependency!)
+# TLS/HTTPS support - REMOVED! Using songbird-tls instead (100% Pure Rust!)
+# Was: rustls, rustls-pemfile, tokio-rustls (all had C dependencies via ring/aws-lc-rs)
+# Now: songbird-tls handles all TLS (delegated to BearDog for crypto)
+rcgen = "0.14"  # Pure Rust cert generation (standalone, no deps!)
 
 # Random number generation (missing dependency that caused errors)
 fastrand = "2.0"

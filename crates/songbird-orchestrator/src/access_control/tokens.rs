@@ -1,10 +1,11 @@
 //! Token generation and validation
 //!
-//! Uses jsonwebtoken (ring-based, no cmake) - Will migrate to RustCrypto Ed25519 in Week 2
+//! ✅ Pure Rust JWT implementation using RustCrypto (hmac + sha2)
+//! Zero C dependencies - 100% ecoBin compliant!
 
 use super::Role;
+use super::pure_rust_jwt;
 use anyhow::{anyhow, Result};
-use jsonwebtoken::{decode, encode, DecodingKey, EncodingKey, Header, Validation};
 use serde::{Deserialize, Serialize};
 
 /// Custom claims for our JWT
@@ -160,7 +161,7 @@ impl AccessToken {
         }
     }
 
-    /// Encode as JWT string (using jsonwebtoken with ring - no cmake!)
+    /// Encode as JWT string (✅ Pure Rust using RustCrypto hmac + sha2!)
     pub fn encode(&self, secret: &[u8]) -> Result<String> {
         let claims = Claims {
             sub: self.sub.clone(),
@@ -170,17 +171,12 @@ impl AccessToken {
             token_type: self.token_type.clone(),
         };
 
-        encode(&Header::default(), &claims, &EncodingKey::from_secret(secret))
-            .map_err(|e| anyhow!("Failed to encode token: {}", e))
+        pure_rust_jwt::encode(&claims, secret)
     }
 
-    /// Decode from JWT string (using jsonwebtoken with ring - no cmake!)
+    /// Decode from JWT string (✅ Pure Rust using RustCrypto hmac + sha2!)
     pub fn decode(token_str: &str, secret: &[u8]) -> Result<Self> {
-        let token_data =
-            decode::<Claims>(token_str, &DecodingKey::from_secret(secret), &Validation::default())
-                .map_err(|e| anyhow!("Failed to decode token: {}", e))?;
-
-        let claims = token_data.claims;
+        let claims: Claims = pure_rust_jwt::decode(token_str, secret)?;
 
         Ok(Self {
             token_type: claims.token_type,

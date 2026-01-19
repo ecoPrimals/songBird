@@ -59,6 +59,39 @@ authors = ["ecoPrimals <contact@ecoprimals.dev>"]
 repository = "https://github.com/ecoPrimals/SongBird"
 homepage = "https://songbird-gaming.ecoprimals.dev"
 
+# ═══════════════════════════════════════════════════════════════════
+# 🦀 UNIBIN: Single `songbird` Binary (Ecosystem Standard v1.0.0)
+# ═══════════════════════════════════════════════════════════════════
+[package]
+name = "songbird"
+version = "3.33.0"  # Bumped for UniBin compliance
+edition = "2021"
+license = "AGPL-3.0"
+authors = ["ecoPrimals <contact@ecoprimals.dev>"]
+repository = "https://github.com/ecoPrimals/SongBird"
+homepage = "https://songbird-gaming.ecoprimals.dev"
+description = "Network Orchestration & Discovery Primal - UniBin Architecture"
+keywords = ["orchestrator", "gaming", "network", "discovery", "unibin"]
+categories = ["command-line-utilities", "network-programming"]
+
+[[bin]]
+name = "songbird"
+path = "src/main.rs"
+
+[dependencies]
+# Core orchestrator (contains server, doctor, config modes)
+songbird-orchestrator = { path = "crates/songbird-orchestrator" }
+
+# Core dependencies for CLI routing
+anyhow = { workspace = true }
+clap = { workspace = true }
+tokio = { workspace = true }
+
+[lints]
+workspace = true
+
+# ═══════════════════════════════════════════════════════════════════
+
 [workspace.dependencies]
 # Core async runtime
 tokio = { version = "1.46", features = ["full"] }  # Updated to fix slab vulnerability
@@ -107,8 +140,8 @@ chrono = { version = "0.4", features = ["serde"] }
 # Random number generation
 rand = "0.8"
 
-# HTTP client (✅ Pure Rust TLS - no C dependencies!)
-reqwest = { version = "0.11", features = ["json", "rustls-tls"], default-features = false }
+# HTTP client (✅ Pure Rust - no TLS needed for internal Unix socket communication!)
+reqwest = { version = "0.11", features = ["json"], default-features = false }
 
 # Serialization
 bincode = "1.3"

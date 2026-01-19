@@ -44,7 +44,7 @@ num_cpus = "1.16"
 chrono = { version = "0.4", features = ["serde"] }
 url = "2.5"
 gethostname = "0.4"
-reqwest = { version = "0.11", features = ["json", "rustls-tls"], default-features = false }
+reqwest = { version = "0.11", features = ["json"], default-features = false }  # ✅ No TLS (Pure Rust!)
 hickory-resolver = "0.24"
 mdns-sd = "0.10"
 trust-dns-resolver = "0.23"

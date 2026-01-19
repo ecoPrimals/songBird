@@ -18,6 +18,7 @@
 pub mod auth;
 pub mod capabilities;
 pub mod information_layers;
+pub mod pure_rust_jwt; // ✅ Pure Rust JWT (hmac + sha2, zero C dependencies!)
 pub mod roles;
 pub mod tokens;
 

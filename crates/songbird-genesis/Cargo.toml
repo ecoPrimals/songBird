@@ -48,7 +48,7 @@ songbird-config = { path = "../songbird-config", optional = true }
 songbird-types = { path = "../songbird-types", optional = true }
 
 # HTTP client for BearDog communication (✅ Pure Rust TLS!)
-reqwest = { version = "0.11", features = ["json", "rustls-tls"], default-features = false }
+reqwest = { version = "0.11", features = ["json"], default-features = false }  # ✅ No TLS (Pure Rust!)
 
 # Cryptography
 sha2 = "0.10"

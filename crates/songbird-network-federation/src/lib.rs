@@ -41,7 +41,7 @@ pub mod protocol_capability; // ✨ NEW: Protocol capability advertisement
 pub mod rendezvous; // ✨ NEW: Rendezvous client for internet discovery
 pub mod service_registry;
 pub mod state;
-pub mod tls;
+// pub mod tls;  // ✅ DEPRECATED: Using songbird-tls instead (100% Pure Rust via BearDog!)
 pub mod zero_copy_registry; // ✨ NEW: Zero-copy evolved registry
 
 // Re-export core types for convenience

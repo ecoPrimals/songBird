@@ -48,6 +48,13 @@
 //! - Universal primals
 //! - External integrations
 //! - Health monitoring
+//!
+//! ## UniBin API
+//!
+//! For UniBin integration, this crate exposes public entry points:
+//!
+//! - `run_orchestrator()` - Main server mode entry point
+//! - CLI types and functions (re-exported from main.rs)
 //! - Performance optimization
 //!
 //! ## Management Interface
@@ -75,6 +82,7 @@
 pub mod access_control; // Access control & graduated information disclosure (Q1 2025)
 pub mod app;
 pub mod auth; // JWT authentication via BearDog delegation (Pure Rust!) (Jan 17, 2026)
+pub mod bin_interface; // ✅ UniBin public API (Jan 19, 2026)
 pub mod btsp_client; // BTSP Unix socket client for BearDog tunnels (Jan 16, 2026)
 pub mod cli;
 pub mod connections; // Progressive trust connection management (Jan 2026)
@@ -143,6 +151,9 @@ pub use songbird_types::{SongbirdError, SongbirdResult};
 // Re-export key types that are commonly used
 // pub use songbird_universal_primals::{PrimalCapability, PrimalProvider};
 pub use songbird_universal::PrimalType;
+
+// Re-export UniBin public API for easy access
+pub use bin_interface::{run_config, run_doctor, run_server, ConfigCommands, DoctorArgs, ServerArgs};
 
 // Re-export connection types (progressive trust)
 pub use connections::{
