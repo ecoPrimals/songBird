@@ -19,7 +19,7 @@ workspace = true
 # songbird-security-errors = { path = "../songbird-security-errors" }  # REMOVED: Using unified errors from songbird-types
 songbird-types = { path = "../songbird-types" }
 songbird-config = { path = "../songbird-config" }
-songbird-universal = { path = "../songbird-universal" }
+songbird-universal = { path = "../songbird-universal" }  # Includes UnixRpcClient (Pure Rust!)
 
 # External dependencies
 tokio = { version = "1.0", features = ["full"] }

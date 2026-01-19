@@ -36,6 +36,7 @@ pub mod trust_types;
 pub mod trust_types_phase1_tests;
 pub mod types;
 pub mod unified_adapter;
+pub mod unix_rpc_client; // Pure Rust Unix socket JSON-RPC client (v3.35.0)
 
 // NOTE: zero_knowledge_bootstrap removed - will be properly reimplemented in Phase 2B
 // with modern idiomatic Rust patterns. Feature tracked in IMPLEMENTATION_CHECKLIST.md
@@ -59,8 +60,9 @@ pub use types::*;
 pub use capabilities::Capability as CapabilityDefinition;
 pub use types::DiscoveredCapability;
 
-// Re-export JSON-RPC client for protocol-agnostic communication
+// Re-export JSON-RPC clients for protocol-agnostic communication
 pub use jsonrpc_client::JsonRpcClient;
+pub use unix_rpc_client::UnixRpcClient; // Pure Rust Unix socket RPC!
 
 // Re-export tarpc types and client for high-performance primal-to-primal RPC (v3.12.0)
 pub use tarpc_client::TarpcClient;

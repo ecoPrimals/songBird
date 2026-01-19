@@ -47,7 +47,9 @@ pub mod adaptive_discovery;
 // ============================================================================
 // UNIX SOCKET RPC CLIENT (v3.34.0 - Pure Rust Inter-Primal Communication)
 // ============================================================================
-pub mod unix_rpc_client;
+// NOTE: unix_rpc_client moved to songbird-universal (v3.35.0, Jan 19, 2026)
+// Re-export for backwards compatibility
+pub use songbird_universal::UnixRpcClient;
 
 // ============================================================================
 // CAPABILITY-BASED MODULES (Primal-Agnostic) ⭐ NEW!
