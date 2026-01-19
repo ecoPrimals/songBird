@@ -16,20 +16,20 @@ use tracing::{debug, info};
 // jsonrpsee Handlers (for jsonrpsee server)
 // ============================================================================
 
-/// Handle `graph.validate` RPC call (jsonrpsee)
+/// Handle `graph.validate` RPC call (Pure Rust, v3.34.0)
 ///
 /// v3.21.0: Validates graph structure and relationships
 pub async fn validate_graph(
     handlers: &IpcHandlers,
-    params: jsonrpsee::types::Params<'_>,
-) -> Result<ValidationResult, jsonrpsee::types::ErrorObject<'static>> {
+    params: serde_json::Value,
+) -> Result<ValidationResult, JsonRpcError> {
     debug!("🔍 Graph Intelligence API: graph.validate");
 
-    let graph: crate::graph::Graph = params.parse().map_err(|e| {
-        jsonrpsee::types::ErrorObject::owned(
-            jsonrpsee::types::error::PARSE_ERROR_CODE,
+    let graph: crate::graph::Graph = serde_json::from_value(params).map_err(|e| {
+        JsonRpcError::custom(
+            -32602,
             format!("Failed to parse graph: {}", e),
-            None::<()>,
+            None,
         )
     })?;
 
@@ -40,28 +40,28 @@ pub async fn validate_graph(
     Ok(result)
 }
 
-/// Handle `graph.check_availability` RPC call (jsonrpsee)
+/// Handle `graph.check_availability` RPC call (Pure Rust, v3.34.0)
 ///
 /// v3.21.0: Checks if required primals are available
 pub async fn check_availability(
     handlers: &IpcHandlers,
-    params: jsonrpsee::types::Params<'_>,
-) -> Result<AvailabilityReport, jsonrpsee::types::ErrorObject<'static>> {
+    params: serde_json::Value,
+) -> Result<AvailabilityReport, JsonRpcError> {
     debug!("🔍 Graph Intelligence API: graph.check_availability");
 
-    let graph: crate::graph::Graph = params.parse().map_err(|e| {
-        jsonrpsee::types::ErrorObject::owned(
-            jsonrpsee::types::error::PARSE_ERROR_CODE,
+    let graph: crate::graph::Graph = serde_json::from_value(params).map_err(|e| {
+        JsonRpcError::custom(
+            -32602,
             format!("Failed to parse graph: {}", e),
-            None::<()>,
+            None,
         )
     })?;
 
     let report = handlers.availability_checker.check_availability(&graph).await.map_err(|e| {
-        jsonrpsee::types::ErrorObject::owned(
-            jsonrpsee::types::error::INTERNAL_ERROR_CODE,
+        JsonRpcError::custom(
+            -32603,
             format!("Availability check failed: {}", e),
-            None::<()>,
+            None,
         )
     })?;
 
@@ -74,29 +74,29 @@ pub async fn check_availability(
     Ok(report)
 }
 
-/// Handle `graph.suggest_alternatives` RPC call (jsonrpsee)
+/// Handle `graph.suggest_alternatives` RPC call (Pure Rust, v3.34.0)
 ///
 /// v3.21.0: Suggests alternative primals for unavailable nodes
 pub async fn suggest_alternatives(
     handlers: &IpcHandlers,
-    params: jsonrpsee::types::Params<'_>,
-) -> Result<AlternativeSuggestions, jsonrpsee::types::ErrorObject<'static>> {
+    params: serde_json::Value,
+) -> Result<AlternativeSuggestions, JsonRpcError> {
     debug!("🔍 Graph Intelligence API: graph.suggest_alternatives");
 
-    let node: crate::graph::GraphNode = params.parse().map_err(|e| {
-        jsonrpsee::types::ErrorObject::owned(
-            jsonrpsee::types::error::PARSE_ERROR_CODE,
+    let node: crate::graph::GraphNode = serde_json::from_value(params).map_err(|e| {
+        JsonRpcError::custom(
+            -32602,
             format!("Failed to parse graph node: {}", e),
-            None::<()>,
+            None,
         )
     })?;
 
     let suggestions =
         handlers.availability_checker.suggest_alternatives(&node).await.map_err(|e| {
-            jsonrpsee::types::ErrorObject::owned(
-                jsonrpsee::types::error::INTERNAL_ERROR_CODE,
+            JsonRpcError::custom(
+                -32603,
                 format!("Failed to suggest alternatives: {}", e),
-                None::<()>,
+                None,
             )
         })?;
 
@@ -109,28 +109,28 @@ pub async fn suggest_alternatives(
     Ok(suggestions)
 }
 
-/// Handle `coordination.validate_pattern` RPC call (jsonrpsee)
+/// Handle `coordination.validate_pattern` RPC call (Pure Rust, v3.34.0)
 ///
 /// v3.21.0 Week 3: Validates coordination patterns
 pub async fn validate_coordination_pattern(
     handlers: &IpcHandlers,
-    params: jsonrpsee::types::Params<'_>,
-) -> Result<CoordinationValidationResult, jsonrpsee::types::ErrorObject<'static>> {
+    params: serde_json::Value,
+) -> Result<CoordinationValidationResult, JsonRpcError> {
     debug!("🔍 Graph Intelligence API: coordination.validate_pattern");
 
-    let graph: crate::graph::Graph = params.parse().map_err(|e| {
-        jsonrpsee::types::ErrorObject::owned(
-            jsonrpsee::types::error::PARSE_ERROR_CODE,
+    let graph: crate::graph::Graph = serde_json::from_value(params).map_err(|e| {
+        JsonRpcError::custom(
+            -32602,
             format!("Failed to parse graph: {}", e),
-            None::<()>,
+            None,
         )
     })?;
 
     let result = handlers.coordination_validator.validate_pattern(&graph).await.map_err(|e| {
-        jsonrpsee::types::ErrorObject::owned(
-            jsonrpsee::types::error::INTERNAL_ERROR_CODE,
+        JsonRpcError::custom(
+            -32603,
             format!("Coordination validation failed: {}", e),
-            None::<()>,
+            None,
         )
     })?;
 

@@ -108,6 +108,17 @@ impl JsonRpcError {
             data: None,
         }
     }
+
+    /// Create a custom error with code, message, and optional data
+    /// 
+    /// This is a compatibility helper for migrating from jsonrpsee::types::ErrorObject::owned
+    pub fn custom(code: i32, message: impl Into<String>, data: Option<String>) -> Self {
+        Self {
+            code,
+            message: message.into(),
+            data: data.map(serde_json::Value::String),
+        }
+    }
 }
 
 /// Pure Rust Unix socket JSON-RPC server for inter-primal communication

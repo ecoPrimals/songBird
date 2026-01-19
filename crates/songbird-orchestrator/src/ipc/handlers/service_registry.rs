@@ -3,12 +3,13 @@
 //! Handles registration, discovery, and health checking of primal services.
 //! v3.20.0: Service registry for capability-based discovery
 //! v3.22.1: Extracted to focused module (Jan 12, 2026)
+//! v3.34.0: Migrated to Pure Rust types (Phase 4B)
 
-use jsonrpsee::types::{ErrorObject, Params};
 use std::time::SystemTime;
 use tracing::{debug, info};
 
 use crate::ipc::handlers::IpcHandlers;
+use crate::ipc::server_pure_rust::JsonRpcError;
 use crate::ipc::types::{
     system_time_to_iso8601, DiscoverByCapabilityRequest, DiscoverByCapabilityResponse,
     GetServiceHealthRequest, GetServiceHealthResponse, HealthCheckResponse, HealthStatus,
@@ -41,14 +42,13 @@ use crate::ipc::types::{
 /// ```
 pub async fn register_service(
     handlers: &IpcHandlers,
-    params: Params<'_>,
-) -> Result<RegisterServiceResponse, ErrorObject<'static>> {
+    params: serde_json::Value,
+) -> Result<RegisterServiceResponse, JsonRpcError> {
     debug!("📝 IPC: register_service called");
 
     // Parse request parameters
-    let request: RegisterServiceRequest = params
-        .parse()
-        .map_err(|e| ErrorObject::owned(-32602, "Invalid params", Some(format!("{}", e))))?;
+    let request: RegisterServiceRequest = serde_json::from_value(params)
+        .map_err(|e| JsonRpcError::invalid_params(format!("Invalid params: {}", e)))?;
 
     info!(
         "📋 Registering service: {} with capabilities: {:?}",
@@ -67,7 +67,7 @@ pub async fn register_service(
         )
         .await
         .map_err(|e| {
-            ErrorObject::owned(-32603, "Failed to register service", Some(format!("{}", e)))
+            JsonRpcError::custom(-32603, "Failed to register service", Some(format!("{}", e)))
         })?;
 
     info!("✅ Service registered: {}", service_id);
@@ -98,14 +98,13 @@ pub async fn register_service(
 /// ```
 pub async fn discover_by_capability(
     handlers: &IpcHandlers,
-    params: Params<'_>,
-) -> Result<DiscoverByCapabilityResponse, ErrorObject<'static>> {
+    params: serde_json::Value,
+) -> Result<DiscoverByCapabilityResponse, JsonRpcError> {
     debug!("🔍 IPC: discover_by_capability called");
 
     // Parse request parameters
-    let request: DiscoverByCapabilityRequest = params
-        .parse()
-        .map_err(|e| ErrorObject::owned(-32602, "Invalid params", Some(format!("{}", e))))?;
+    let request: DiscoverByCapabilityRequest = serde_json::from_value(params)
+        .map_err(|e| JsonRpcError::invalid_params(format!("Invalid params: {}", e)))?;
 
     info!("🔎 Discovering primals with capability: {}", request.capability);
 
@@ -115,7 +114,7 @@ pub async fn discover_by_capability(
         .discover_by_capability(&request.capability, request.protocol.as_deref())
         .await
         .map_err(|e| {
-            ErrorObject::owned(-32603, "Failed to discover primals", Some(format!("{}", e)))
+            JsonRpcError::custom(-32603, "Failed to discover primals", Some(format!("{}", e)))
         })?;
 
     info!("   Found {} primals", primals.len());
@@ -143,21 +142,20 @@ pub async fn discover_by_capability(
 /// ```
 pub async fn get_service_health(
     handlers: &IpcHandlers,
-    params: Params<'_>,
-) -> Result<GetServiceHealthResponse, ErrorObject<'static>> {
+    params: serde_json::Value,
+) -> Result<GetServiceHealthResponse, JsonRpcError> {
     debug!("🩺 IPC: get_service_health called");
 
     // Parse request parameters
-    let request: GetServiceHealthRequest = params
-        .parse()
-        .map_err(|e| ErrorObject::owned(-32602, "Invalid params", Some(format!("{}", e))))?;
+    let request: GetServiceHealthRequest = serde_json::from_value(params)
+        .map_err(|e| JsonRpcError::invalid_params(format!("Invalid params: {}", e)))?;
 
     info!("🏥 Checking health for service: {}", request.service_id);
 
     // Get health from registry
     let (status, message) =
         handlers.service_registry.get_service_health(&request.service_id).await.map_err(|e| {
-            ErrorObject::owned(-32603, "Failed to get health", Some(format!("{}", e)))
+            JsonRpcError::custom(-32603, "Failed to get health", Some(format!("{}", e)))
         })?;
 
     let health = HealthStatus {
@@ -188,8 +186,8 @@ pub async fn get_service_health(
 /// ```
 pub async fn health_check(
     _handlers: &IpcHandlers,
-    _params: Params<'_>,
-) -> Result<HealthCheckResponse, ErrorObject<'static>> {
+    _params: serde_json::Value,
+) -> Result<HealthCheckResponse, JsonRpcError> {
     debug!("💓 IPC: health_check called");
 
     // Songbird's health is always "healthy" if responding to RPC

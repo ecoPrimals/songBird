@@ -19,20 +19,20 @@ use tracing::{info, warn};
 // jsonrpsee Handlers (for jsonrpsee server)
 // ============================================================================
 
-/// Handle `discover_by_family` RPC call (jsonrpsee)
+/// Handle `discover_by_family` RPC call (Pure Rust, v3.34.0)
 ///
 /// v3.19.1: Returns discovered peers filtered by family tags
 pub async fn discover_by_family(
     handlers: &IpcHandlers,
-    params: jsonrpsee::types::Params<'_>,
-) -> Result<DiscoverByFamilyResponse, jsonrpsee::types::ErrorObject<'static>> {
+    params: serde_json::Value,
+) -> Result<DiscoverByFamilyResponse, JsonRpcError> {
     info!("🔍 P2P Discovery API: discover_by_family");
 
-    let request: DiscoverByFamilyRequest = params.parse().map_err(|e| {
-        jsonrpsee::types::ErrorObject::owned(
-            jsonrpsee::types::error::PARSE_ERROR_CODE,
+    let request: DiscoverByFamilyRequest = serde_json::from_value(params).map_err(|e| {
+        JsonRpcError::custom(
+            -32602,
             format!("Failed to parse params: {}", e),
-            None::<()>,
+            None,
         )
     })?;
 
@@ -51,20 +51,20 @@ pub async fn discover_by_family(
     }
 }
 
-/// Handle `create_genetic_tunnel` RPC call (jsonrpsee)
+/// Handle `create_genetic_tunnel` RPC call (Pure Rust, v3.34.0)
 ///
 /// v3.19.1: Establishes BTSP tunnel with genetic lineage proof
 pub async fn create_genetic_tunnel(
     handlers: &IpcHandlers,
-    params: jsonrpsee::types::Params<'_>,
-) -> Result<CreateGeneticTunnelResponse, jsonrpsee::types::ErrorObject<'static>> {
+    params: serde_json::Value,
+) -> Result<CreateGeneticTunnelResponse, JsonRpcError> {
     info!("🔗 P2P Discovery API: create_genetic_tunnel");
 
-    let request: CreateGeneticTunnelRequest = params.parse().map_err(|e| {
-        jsonrpsee::types::ErrorObject::owned(
-            jsonrpsee::types::error::PARSE_ERROR_CODE,
+    let request: CreateGeneticTunnelRequest = serde_json::from_value(params).map_err(|e| {
+        JsonRpcError::custom(
+            -32602,
             format!("Failed to parse params: {}", e),
-            None::<()>,
+            None,
         )
     })?;
 
@@ -72,10 +72,10 @@ pub async fn create_genetic_tunnel(
     let peer_endpoint = match &request.peer_endpoint {
         Some(ep) => ep.clone(),
         None => {
-            return Err(jsonrpsee::types::ErrorObject::owned(
-                jsonrpsee::types::error::INVALID_PARAMS_CODE,
+            return Err(JsonRpcError::custom(
+                -32602,
                 "peer_endpoint is required for tunnel creation",
-                None::<()>,
+                None,
             ));
         }
     };
@@ -140,20 +140,20 @@ pub async fn create_genetic_tunnel(
     }
 }
 
-/// Handle `announce_capabilities` RPC call (jsonrpsee)
+/// Handle `announce_capabilities` RPC call (Pure Rust, v3.34.0)
 ///
 /// v3.19.1: Updates broadcaster with new capabilities
 pub async fn announce_capabilities(
     handlers: &IpcHandlers,
-    params: jsonrpsee::types::Params<'_>,
-) -> Result<AnnounceCapabilitiesResponse, jsonrpsee::types::ErrorObject<'static>> {
+    params: serde_json::Value,
+) -> Result<AnnounceCapabilitiesResponse, JsonRpcError> {
     info!("📢 P2P Discovery API: announce_capabilities");
 
-    let request: AnnounceCapabilitiesRequest = params.parse().map_err(|e| {
-        jsonrpsee::types::ErrorObject::owned(
-            jsonrpsee::types::error::PARSE_ERROR_CODE,
+    let request: AnnounceCapabilitiesRequest = serde_json::from_value(params).map_err(|e| {
+        JsonRpcError::custom(
+            -32602,
             format!("Failed to parse params: {}", e),
-            None::<()>,
+            None,
         )
     })?;
 

@@ -70,37 +70,37 @@ impl IpcHandlers {
     // Service Registry APIs (v3.20.0) - Delegated to service_registry module
     // ========================================================================
 
-    /// Handle `register_service` RPC call (jsonrpsee)
+    /// Handle `register_service` RPC call (Pure Rust, v3.34.0)
     pub async fn register_service(
         &self,
-        params: jsonrpsee::types::Params<'_>,
-    ) -> Result<super::types::RegisterServiceResponse, jsonrpsee::types::ErrorObject<'static>> {
+        params: serde_json::Value,
+    ) -> Result<super::types::RegisterServiceResponse, crate::ipc::server_pure_rust::JsonRpcError> {
         service_registry::register_service(self, params).await
     }
 
-    /// Handle `discover_by_capability` RPC call (jsonrpsee)
+    /// Handle `discover_by_capability` RPC call (Pure Rust, v3.34.0)
     pub async fn discover_by_capability(
         &self,
-        params: jsonrpsee::types::Params<'_>,
-    ) -> Result<super::types::DiscoverByCapabilityResponse, jsonrpsee::types::ErrorObject<'static>>
+        params: serde_json::Value,
+    ) -> Result<super::types::DiscoverByCapabilityResponse, crate::ipc::server_pure_rust::JsonRpcError>
     {
         service_registry::discover_by_capability(self, params).await
     }
 
-    /// Handle `get_service_health` RPC call (jsonrpsee)
+    /// Handle `get_service_health` RPC call (Pure Rust, v3.34.0)
     pub async fn get_service_health(
         &self,
-        params: jsonrpsee::types::Params<'_>,
-    ) -> Result<super::types::GetServiceHealthResponse, jsonrpsee::types::ErrorObject<'static>>
+        params: serde_json::Value,
+    ) -> Result<super::types::GetServiceHealthResponse, crate::ipc::server_pure_rust::JsonRpcError>
     {
         service_registry::get_service_health(self, params).await
     }
 
-    /// Handle `health_check` RPC call (jsonrpsee)
+    /// Handle `health_check` RPC call (Pure Rust, v3.34.0)
     pub async fn health_check(
         &self,
-        params: jsonrpsee::types::Params<'_>,
-    ) -> Result<super::types::HealthCheckResponse, jsonrpsee::types::ErrorObject<'static>> {
+        params: serde_json::Value,
+    ) -> Result<super::types::HealthCheckResponse, crate::ipc::server_pure_rust::JsonRpcError> {
         service_registry::health_check(self, params).await
     }
 
@@ -108,29 +108,29 @@ impl IpcHandlers {
     // P2P Discovery APIs (v3.19.1) - Delegated to p2p_discovery module
     // ========================================================================
 
-    /// Handle `discover_by_family` RPC call (jsonrpsee)
+    /// Handle `discover_by_family` RPC call (Pure Rust, v3.34.0)
     pub async fn discover_by_family(
         &self,
-        params: jsonrpsee::types::Params<'_>,
-    ) -> Result<super::types::DiscoverByFamilyResponse, jsonrpsee::types::ErrorObject<'static>>
+        params: serde_json::Value,
+    ) -> Result<super::types::DiscoverByFamilyResponse, crate::ipc::server_pure_rust::JsonRpcError>
     {
         p2p_discovery::discover_by_family(self, params).await
     }
 
-    /// Handle `create_genetic_tunnel` RPC call (jsonrpsee)
+    /// Handle `create_genetic_tunnel` RPC call (Pure Rust, v3.34.0)
     pub async fn create_genetic_tunnel(
         &self,
-        params: jsonrpsee::types::Params<'_>,
-    ) -> Result<super::types::CreateGeneticTunnelResponse, jsonrpsee::types::ErrorObject<'static>>
+        params: serde_json::Value,
+    ) -> Result<super::types::CreateGeneticTunnelResponse, crate::ipc::server_pure_rust::JsonRpcError>
     {
         p2p_discovery::create_genetic_tunnel(self, params).await
     }
 
-    /// Handle `announce_capabilities` RPC call (jsonrpsee)
+    /// Handle `announce_capabilities` RPC call (Pure Rust, v3.34.0)
     pub async fn announce_capabilities(
         &self,
-        params: jsonrpsee::types::Params<'_>,
-    ) -> Result<super::types::AnnounceCapabilitiesResponse, jsonrpsee::types::ErrorObject<'static>>
+        params: serde_json::Value,
+    ) -> Result<super::types::AnnounceCapabilitiesResponse, crate::ipc::server_pure_rust::JsonRpcError>
     {
         p2p_discovery::announce_capabilities(self, params).await
     }
@@ -139,35 +139,35 @@ impl IpcHandlers {
     // Graph Intelligence APIs (v3.21.0) - Delegated to graph_intelligence module
     // ========================================================================
 
-    /// Handle `graph.validate` RPC call (jsonrpsee)
+    /// Handle `graph.validate` RPC call (Pure Rust, v3.34.0)
     pub async fn validate_graph(
         &self,
-        params: jsonrpsee::types::Params<'_>,
-    ) -> Result<crate::graph::ValidationResult, jsonrpsee::types::ErrorObject<'static>> {
+        params: serde_json::Value,
+    ) -> Result<crate::graph::ValidationResult, crate::ipc::server_pure_rust::JsonRpcError> {
         graph_intelligence::validate_graph(self, params).await
     }
 
-    /// Handle `graph.check_availability` RPC call (jsonrpsee)
+    /// Handle `graph.check_availability` RPC call (Pure Rust, v3.34.0)
     pub async fn check_availability(
         &self,
-        params: jsonrpsee::types::Params<'_>,
-    ) -> Result<crate::graph::AvailabilityReport, jsonrpsee::types::ErrorObject<'static>> {
+        params: serde_json::Value,
+    ) -> Result<crate::graph::AvailabilityReport, crate::ipc::server_pure_rust::JsonRpcError> {
         graph_intelligence::check_availability(self, params).await
     }
 
-    /// Handle `graph.suggest_alternatives` RPC call (jsonrpsee)
+    /// Handle `graph.suggest_alternatives` RPC call (Pure Rust, v3.34.0)
     pub async fn suggest_alternatives(
         &self,
-        params: jsonrpsee::types::Params<'_>,
-    ) -> Result<crate::graph::AlternativeSuggestions, jsonrpsee::types::ErrorObject<'static>> {
+        params: serde_json::Value,
+    ) -> Result<crate::graph::AlternativeSuggestions, crate::ipc::server_pure_rust::JsonRpcError> {
         graph_intelligence::suggest_alternatives(self, params).await
     }
 
-    /// Handle `coordination.validate_pattern` RPC call (jsonrpsee)
+    /// Handle `coordination.validate_pattern` RPC call (Pure Rust, v3.34.0)
     pub async fn validate_coordination_pattern(
         &self,
-        params: jsonrpsee::types::Params<'_>,
-    ) -> Result<crate::graph::CoordinationValidationResult, jsonrpsee::types::ErrorObject<'static>>
+        params: serde_json::Value,
+    ) -> Result<crate::graph::CoordinationValidationResult, crate::ipc::server_pure_rust::JsonRpcError>
     {
         graph_intelligence::validate_coordination_pattern(self, params).await
     }

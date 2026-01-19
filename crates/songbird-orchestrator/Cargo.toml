@@ -97,7 +97,7 @@ chacha20poly1305 = "0.10"   # Alternative encryption (NCC Group audited)
 # tarpc for high-performance native RPC (Phase 3)
 tarpc = { workspace = true, features = ["full"] }
 bincode = { workspace = true }
-jsonrpsee = { version = "0.26.0", features = ["server", "client"] }
+# jsonrpsee = { version = "0.26.0", features = ["server", "client"] } # REMOVED: Phase 4C (v3.34.0) - Migrated to Pure Rust types
 tokio-util = { version = "0.7.17", features = ["codec"] }
 tokio-serde = { version = "0.8.0", features = ["bincode"] }
 netdev = "0.40.0"
