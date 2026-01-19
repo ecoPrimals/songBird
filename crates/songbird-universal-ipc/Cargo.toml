@@ -1,0 +1,39 @@
+[package]
+name = "songbird-universal-ipc"
+version = "0.1.0"
+edition = "2021"
+authors = ["ecoPrimals <contact@ecoprimals.dev>"]
+description = "Universal IPC abstraction for ecoPrimals - works on ALL platforms"
+license = "AGPL-3.0"
+keywords = ["ipc", "unix-socket", "named-pipe", "universal", "platform-agnostic"]
+categories = ["os", "network-programming"]
+
+[dependencies]
+# Core async runtime
+tokio = { workspace = true, features = ["net", "sync", "time", "io-util"] }
+async-trait = { workspace = true }
+
+# Error handling
+anyhow = { workspace = true }
+thiserror = { workspace = true }
+
+# Logging
+tracing = { workspace = true }
+
+# Serialization (for registry)
+serde = { workspace = true }
+serde_json = { workspace = true }
+
+# Windows named pipes (only on Windows)
+[target.'cfg(windows)'.dependencies]
+tokio = { workspace = true, features = ["net"] }
+
+[dev-dependencies]
+tokio-test = "0.4"
+tempfile = "3.0"
+tracing-subscriber = { workspace = true }
+
+[features]
+default = []
+# Optional NestGate integration (requires nestgate primal)
+nestgate = []

@@ -4,7 +4,7 @@
 //!
 //! This demo shows what we've built vs. what true reproduction would look like.
 
-use std: :collections::HashMap;
+use std::collections::HashMap;
 use std::time::Duration;
 use tokio::time::sleep;
 use tracing::info;

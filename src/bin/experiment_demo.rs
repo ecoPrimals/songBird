@@ -6,7 +6,7 @@
 //! showing the performance difference between hardcoded and capability-based orchestration.
 
 use songbird_types::SongbirdError;
-use std: :collections::HashMap;
+use std::collections::HashMap;
 use std::time::{Duration, Instant};
 use tokio: :time::sleep;
 use tracing::info;
