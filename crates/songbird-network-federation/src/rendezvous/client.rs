@@ -4,8 +4,9 @@
 
 use anyhow::Result;
 use chrono::Utc;
-use reqwest::Client;
 use serde::{Deserialize, Serialize};
+use songbird_universal::UnixRpcClient;
+use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::Duration;
 use tokio::sync::RwLock;
@@ -14,13 +15,14 @@ use tracing::{debug, info, warn};
 use crate::state::NodeRegistration;
 
 /// Rendezvous client for internet discovery
+/// **Pure Rust**: Uses Unix socket RPC instead of HTTP
 #[derive(Debug)]
 pub struct RendezvousClient {
-    /// Rendezvous server URL
-    server_url: String,
+    /// Rendezvous server socket path
+    socket_path: PathBuf,
 
-    /// HTTP client
-    client: Client,
+    /// RPC client for JSON-RPC communication
+    rpc_client: UnixRpcClient,
 
     /// Current session ID (if registered)
     session_id: Arc<RwLock<Option<String>>>,
@@ -30,13 +32,18 @@ pub struct RendezvousClient {
 }
 
 impl RendezvousClient {
-    /// Create a new rendezvous client
-    pub fn new(server_url: String) -> Result<Self> {
-        let client = Client::builder().timeout(Duration::from_secs(10)).build()?;
+    /// Create a new rendezvous client (Pure Rust Unix socket)
+    pub fn new(_server_url: String) -> Result<Self> {
+        // Convert server_url to socket path or use env var
+        let socket_path = std::env::var("RENDEZVOUS_SOCKET_PATH")
+            .map(PathBuf::from)
+            .unwrap_or_else(|_| PathBuf::from("/tmp/rendezvous.sock"));
+
+        let rpc_client = UnixRpcClient::new(&socket_path)?;
 
         Ok(Self {
-            server_url,
-            client,
+            socket_path,
+            rpc_client,
             session_id: Arc::new(RwLock::new(None)),
             node_info: None,
         })
@@ -52,7 +59,7 @@ impl RendezvousClient {
         let node_info =
             self.node_info.as_ref().ok_or_else(|| anyhow::anyhow!("Node info not set"))?;
 
-        info!("📡 Registering with rendezvous: {}", self.server_url);
+        info!("📡 Registering with rendezvous via RPC at {:?}", self.socket_path);
 
         // Get public key fingerprint (may involve BearDog call)
         let public_key_fingerprint = self.get_public_key_fingerprint().await;
@@ -81,14 +88,10 @@ impl RendezvousClient {
             },
         };
 
-        let url = format!("{}/api/v1/register", self.server_url);
-        let response = self.client.post(&url).json(&msg).send().await?;
-
-        if !response.status().is_success() {
-            return Err(anyhow::anyhow!("Registration failed: {}", response.status()));
-        }
-
-        let reg_response: RegisterPresenceResponse = response.json().await?;
+        let reg_response: RegisterPresenceResponse = self
+            .rpc_client
+            .call("rendezvous.register", &msg)
+            .await?;
 
         let session_id = reg_response.session_id.clone();
         *self.session_id.write().await = Some(session_id.clone());
@@ -115,13 +118,10 @@ impl RendezvousClient {
             signature: None,
         };
 
-        let url = format!("{}/api/v1/heartbeat", self.server_url);
-        let response = self.client.post(&url).json(&msg).send().await?;
-
-        if !response.status().is_success() {
-            warn!("⚠️  Heartbeat failed: {}", response.status());
-            return Err(anyhow::anyhow!("Heartbeat failed"));
-        }
+        let _hb_response: serde_json::Value = self
+            .rpc_client
+            .call("rendezvous.heartbeat", &msg)
+            .await?;
 
         debug!("💓 Heartbeat acknowledged");
         Ok(())
@@ -158,14 +158,10 @@ impl RendezvousClient {
             filters: None,
         };
 
-        let url = format!("{}/api/v1/query", self.server_url);
-        let response = self.client.post(&url).json(&msg).send().await?;
-
-        if !response.status().is_success() {
-            return Err(anyhow::anyhow!("Query failed: {}", response.status()));
-        }
-
-        let query_response: QueryPeersResponse = response.json().await?;
+        let query_response: QueryPeersResponse = self
+            .rpc_client
+            .call("rendezvous.query", &msg)
+            .await?;
 
         info!("🔍 Found {} peers via rendezvous", query_response.peers.len());
 
@@ -197,20 +193,20 @@ impl RendezvousClient {
     /// In production, this would fetch the actual public key from the `BearDog`
     /// security service and compute its SHA-256 fingerprint.
     async fn get_public_key_fingerprint(&self) -> String {
-        // Try to get from BearDog security service
-        if let Ok(beardog_url) = std::env::var("BEARDOG_ENDPOINT") {
-            // Attempt to fetch public key
-            match self.client.get(format!("{beardog_url}/api/v1/public-key")).send().await {
-                Ok(response) if response.status().is_success() => {
-                    if let Ok(key_data) = response.bytes().await {
+        // Try to get from BearDog security service via RPC
+        if let Ok(socket_path) = std::env::var("BEARDOG_SOCKET_PATH") {
+            // Attempt to fetch public key via JSON-RPC
+            if let Ok(beardog_client) = UnixRpcClient::new(&PathBuf::from(socket_path)) {
+                match beardog_client.call_no_params::<Vec<u8>>("crypto.get_public_key").await {
+                    Ok(key_data) => {
                         // Compute SHA-256 fingerprint
                         use sha2::{Digest, Sha256};
                         let hash = Sha256::digest(&key_data);
                         return format!("sha256:{}", hex::encode(hash));
                     }
-                }
-                _ => {
-                    debug!("Failed to fetch public key from BearDog, using placeholder");
+                    _ => {
+                        debug!("Failed to fetch public key from BearDog, using placeholder");
+                    }
                 }
             }
         }
