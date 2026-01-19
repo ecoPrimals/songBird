@@ -17,13 +17,14 @@ pub use pure_jsonrpc_types::{JsonRpcRequest, JsonRpcResponse, JsonRpcError};
 pub use pure_jsonrpc_handler::handle_jsonrpc_request;
 
 // ============================================================================
-// Current jsonrpsee-based implementation (98% Pure Rust)
+// Former jsonrpsee-based implementation (REMOVED - was dead code!)
 // ============================================================================
-// NOTE: jsonrpsee has 2% C dependencies (rustls → ring/aws-lc-rs)
-// We keep this for now as IPC handlers use it extensively (88 references)
-// Migration path: See JSONRPC_MIGRATION_STRATEGY_JAN_19_2026.md
-pub mod jsonrpc;
-pub use self::jsonrpc::{JsonRpcConfig, JsonRpcServer};
+// NOTE: JsonRpcServer was never actually used in production
+// Production uses UnixSocketIpcServer (Pure Rust, v3.22.0)
+// See: ipc/server_pure_rust.rs for the actual implementation
+// See: PHASE4_JSONRPSEE_ANALYSIS_JAN_19_2026.md for analysis
+// pub mod jsonrpc; // REMOVED: Dead code (not instantiated anywhere)
+// pub use self::jsonrpc::{JsonRpcConfig, JsonRpcServer}; // REMOVED
 
 // ============================================================================
 // tarpc RPC (100% Pure Rust, production-ready)
