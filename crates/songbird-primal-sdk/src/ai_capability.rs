@@ -19,20 +19,24 @@
 //! ```
 
 use chrono::{DateTime, Utc};
-use reqwest::Client;
 use serde::{Deserialize, Serialize};
 use songbird_config::capability_endpoints::{CapabilityEndpointResolver, CapabilityType};
 use songbird_types::errors::{SongbirdError, SongbirdResult};
+use songbird_universal::UnixRpcClient;
+use std::path::PathBuf;
 use std::time::Duration;
 use tracing::{debug, info};
 
 /// AI capability client (replaces SquirrelPrimal)
-#[derive(Debug)]
+///
+/// **Pure Rust Implementation**: Uses Unix socket JSON-RPC for inter-primal communication,
+/// eliminating HTTP overhead and `reqwest` dependency (ring-free!).
+#[derive(Debug, Clone)]
 pub struct AiCapabilityClient {
-    /// Capability endpoint resolver
+    /// Capability endpoint resolver (for discovery)
     resolver: CapabilityEndpointResolver,
-    /// HTTP client for requests
-    http_client: Client,
+    /// JSON-RPC client for Unix socket communication (Pure Rust!)
+    rpc_client: UnixRpcClient,
     /// Client configuration
     config: AiClientConfig,
 }
@@ -138,22 +142,39 @@ impl AiCapabilityClient {
     
     /// Create AI client with custom configuration
     pub async fn with_config(config: AiClientConfig) -> SongbirdResult<Self> {
-        info!("🤖 Creating AI capability client (zero hardcoding)");
+        info!("🤖 Creating AI capability client (Pure Rust Unix socket!)");
         
-        let http_client = Client::builder()
-            .timeout(config.timeout)
-            .build()
+        // Discover Unix socket path for AI capability
+        let socket_path = Self::discover_socket_path()?;
+        
+        // Create UnixRpcClient (100% Pure Rust!)
+        let rpc_client = UnixRpcClient::new(&socket_path)
             .map_err(|e| SongbirdError::Configuration {
-                message: format!("Failed to create HTTP client: {}", e),
-                field: Some("http_client".to_string()),
-                suggestion: Some("Check network configuration".to_string()),
+                message: format!("Failed to create Unix RPC client for {:?}: {}", socket_path, e),
+                field: Some("rpc_client".to_string()),
+                suggestion: Some("Ensure AI primal is running and socket exists".to_string()),
             })?;
+        
+        info!("✅ AI capability client connected to {:?}", socket_path);
         
         Ok(Self {
             resolver: CapabilityEndpointResolver::new(),
-            http_client,
+            rpc_client,
             config,
         })
+    }
+    
+    /// Discover Unix socket path for AI capability
+    ///
+    /// Priority:
+    /// 1. AI_SOCKET_PATH environment variable
+    /// 2. SQUIRREL_SOCKET_PATH environment variable (legacy)
+    /// 3. Default: /tmp/squirrel.sock
+    fn discover_socket_path() -> SongbirdResult<PathBuf> {
+        std::env::var("AI_SOCKET_PATH")
+            .or_else(|_| std::env::var("SQUIRREL_SOCKET_PATH"))
+            .map(PathBuf::from)
+            .or_else(|_| Ok(PathBuf::from("/tmp/squirrel.sock")))
     }
     
     /// Get model inference from any AI provider
@@ -180,10 +201,7 @@ impl AiCapabilityClient {
     /// # }
     /// ```
     pub async fn get_model_inference(&self, model: &str, prompt: &str) -> SongbirdResult<InferenceResponse> {
-        debug!("🧠 Requesting model inference: model={}", model);
-        
-        // Discover AI capability provider
-        let endpoint = self.resolver.get_endpoint(CapabilityType::Ai).await?;
+        debug!("🧠 Requesting model inference via JSON-RPC: model={}", model);
         
         let request = InferenceRequest {
             model: model.to_string(),
@@ -192,105 +210,53 @@ impl AiCapabilityClient {
             temperature: self.config.temperature,
         };
         
-        let response = self.http_client
-            .post(format!("{}/inference", endpoint))
-            .json(&request)
-            .send()
+        // Call ai.inference JSON-RPC method
+        let response: InferenceResponse = self.rpc_client
+            .call("ai.inference", &request)
             .await
             .map_err(|e| SongbirdError::Network {
-                message: format!("AI inference request failed: {}", e),
-                source: Some(endpoint.clone()),
+                message: format!("AI inference RPC failed: {}", e),
+                source: Some("ai.inference".to_string()),
             })?;
         
-        if response.status().is_success() {
-            let result: InferenceResponse = response.json().await
-                .map_err(|e| SongbirdError::Parsing {
-                    message: format!("Failed to parse AI response: {}", e),
-                    expected: "InferenceResponse".to_string(),
-                })?;
-            
-            info!("✅ AI inference complete: {} tokens", result.tokens_used.unwrap_or(0));
-            Ok(result)
-        } else {
-            let status = response.status();
-            let error_text = response.text().await.unwrap_or_default();
-            Err(SongbirdError::External {
-                service: "ai_capability".to_string(),
-                message: format!("AI inference failed with status {}: {}", status, error_text),
-            })
-        }
+        info!("✅ AI inference complete (Pure Rust RPC!): {} tokens", response.tokens_used.unwrap_or(0));
+        Ok(response)
     }
     
     /// Execute agent framework action
     ///
     /// Supports MCP (Model Context Protocol) for agent communication.
     pub async fn execute_agent_action(&self, request: AgentRequest) -> SongbirdResult<serde_json::Value> {
-        debug!("🤖 Executing agent action: {}", request.action);
+        debug!("🤖 Executing agent action via JSON-RPC: {}", request.action);
         
-        let endpoint = self.resolver.get_endpoint(CapabilityType::Ai).await?;
-        
-        let response = self.http_client
-            .post(format!("{}/agent", endpoint))
-            .json(&request)
-            .send()
+        // Call ai.execute_agent JSON-RPC method
+        let response: serde_json::Value = self.rpc_client
+            .call("ai.execute_agent", &request)
             .await
             .map_err(|e| SongbirdError::Network {
-                message: format!("Agent request failed: {}", e),
-                source: Some(endpoint.clone()),
+                message: format!("Agent RPC failed: {}", e),
+                source: Some("ai.execute_agent".to_string()),
             })?;
         
-        if response.status().is_success() {
-            let result = response.json().await
-                .map_err(|e| SongbirdError::Parsing {
-                    message: format!("Failed to parse agent response: {}", e),
-                    expected: "JSON Value".to_string(),
-                })?;
-            
-            info!("✅ Agent action complete");
-            Ok(result)
-        } else {
-            let status = response.status();
-            let error_text = response.text().await.unwrap_or_default();
-            Err(SongbirdError::External {
-                service: "ai_capability".to_string(),
-                message: format!("Agent action failed with status {}: {}", status, error_text),
-            })
-        }
+        info!("✅ Agent action complete (Pure Rust RPC!)");
+        Ok(response)
     }
     
     /// Process natural language
     pub async fn process_natural_language(&self, request: NlpRequest) -> SongbirdResult<serde_json::Value> {
-        debug!("💬 Processing NLP: operation={}", request.operation);
+        debug!("💬 Processing NLP via JSON-RPC: operation={}", request.operation);
         
-        let endpoint = self.resolver.get_endpoint(CapabilityType::Ai).await?;
-        
-        let response = self.http_client
-            .post(format!("{}/nlp", endpoint))
-            .json(&request)
-            .send()
+        // Call ai.nlp JSON-RPC method
+        let response: serde_json::Value = self.rpc_client
+            .call("ai.nlp", &request)
             .await
             .map_err(|e| SongbirdError::Network {
-                message: format!("NLP request failed: {}", e),
-                source: Some(endpoint.clone()),
+                message: format!("NLP RPC failed: {}", e),
+                source: Some("ai.nlp".to_string()),
             })?;
         
-        if response.status().is_success() {
-            let result = response.json().await
-                .map_err(|e| SongbirdError::Parsing {
-                    message: format!("Failed to parse NLP response: {}", e),
-                    expected: "JSON Value".to_string(),
-                })?;
-            
-            info!("✅ NLP processing complete");
-            Ok(result)
-        } else {
-            let status = response.status();
-            let error_text = response.text().await.unwrap_or_default();
-            Err(SongbirdError::External {
-                service: "ai_capability".to_string(),
-                message: format!("NLP processing failed with status {}: {}", status, error_text),
-            })
-        }
+        info!("✅ NLP processing complete (Pure Rust RPC!)");
+        Ok(response)
     }
     
     /// Check if AI capability is available
