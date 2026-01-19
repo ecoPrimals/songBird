@@ -17,35 +17,41 @@
 use super::PeerConnection;
 use anyhow::{anyhow, Context, Result};
 use async_trait::async_trait;
-use reqwest::Client;
 use serde_json::Value;
 use songbird_types::TrustLevel;
+use songbird_universal::UnixRpcClient;
+use std::path::PathBuf;
 use std::time::Duration;
 use tracing::debug;
 
 /// Full trust connection for peers with human entropy (Level 3)
 ///
 /// Allows all operations with no restrictions.
+/// **Pure Rust**: Uses Unix socket RPC for peer communication.
 pub struct FullTrustConnection {
     peer_id: String,
-    endpoint: String,
+    socket_path: PathBuf,
     allowed_capabilities: Vec<String>,
-    http_client: Client,
+    rpc_client: UnixRpcClient,
 }
 
 impl FullTrustConnection {
-    /// Create a new full trust connection
+    /// Create a new full trust connection (Pure Rust Unix socket)
     pub fn new(peer_id: String, endpoint: String) -> Result<Self> {
-        let http_client = Client::builder()
-            .timeout(Duration::from_secs(60))
-            .build()
-            .context("Failed to create HTTP client")?;
+        // Convert endpoint to Unix socket path
+        let socket_path = std::env::var(format!("{}_SOCKET_PATH", peer_id.to_uppercase()))
+            .or_else(|_| std::env::var("PEER_SOCKET_PATH"))
+            .map(PathBuf::from)
+            .unwrap_or_else(|_| PathBuf::from(format!("/tmp/{}.sock", peer_id)));
+
+        let rpc_client = UnixRpcClient::new(&socket_path)
+            .context(format!("Failed to create RPC client for peer {}", peer_id))?;
 
         Ok(Self {
             peer_id,
-            endpoint,
+            socket_path,
             allowed_capabilities: vec!["*".to_string()],
-            http_client,
+            rpc_client,
         })
     }
 }
@@ -70,31 +76,15 @@ impl PeerConnection for FullTrustConnection {
 
     async fn call(&self, operation: &str, request: Value) -> Result<Value> {
         debug!(
-            "🔓 Calling full-trust operation '{}' on peer '{}' (Level 3)",
+            "🔓 Calling full-trust operation '{}' on peer '{}' via RPC (Level 3)",
             operation, self.peer_id
         );
 
-        // Make HTTP call (no capability restrictions)
-        let url = format!("{}/api/v1/{}", self.endpoint, operation);
-
-        let response = self.http_client.post(&url).json(&request).send().await.context(format!(
+        // Make JSON-RPC call (no capability restrictions, full trust!)
+        let result: Value = self.rpc_client.call(operation, &request).await.context(format!(
             "Failed to call operation '{}' on peer '{}'",
             operation, self.peer_id
         ))?;
-
-        let status = response.status();
-        if !status.is_success() {
-            let error_body = response.text().await.unwrap_or_else(|_| "Unknown error".to_string());
-            return Err(anyhow!(
-                "Peer '{}' returned error {}: {}",
-                self.peer_id,
-                status,
-                error_body
-            ));
-        }
-
-        let result =
-            response.json::<Value>().await.context("Failed to parse response from peer")?;
 
         debug!("✅ Full-trust operation '{}' succeeded on peer '{}'", operation, self.peer_id);
         Ok(result)
@@ -105,7 +95,8 @@ impl PeerConnection for FullTrustConnection {
     }
 
     fn endpoint(&self) -> &str {
-        &self.endpoint
+        // Return socket path as string for compatibility
+        self.socket_path.to_str().unwrap_or(&self.peer_id)
     }
 
     async fn close(&self) -> Result<()> {
