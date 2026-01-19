@@ -17,7 +17,7 @@ pub fn test_service_name(base: &str, index: Option<usize>) -> String {
 pub fn test_service_endpoint(service_name: &str) -> String {
     format!(
         "http://{}:{}/{}",
-        crate::network_fixtures::test_bind_address(),
+        crate::network_fixtures::test_bind_ip_str(),
         crate::network_fixtures::test_port(),
         service_name
     )
@@ -28,7 +28,7 @@ pub fn test_service_endpoint(service_name: &str) -> String {
 pub fn test_health_endpoint(service_name: &str) -> String {
     format!(
         "http://{}:{}/{}/health",
-        crate::network_fixtures::test_bind_address(),
+        crate::network_fixtures::test_bind_ip_str(),
         crate::network_fixtures::test_port(),
         service_name
     )

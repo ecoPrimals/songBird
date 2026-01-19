@@ -3,8 +3,8 @@
 //! The ServerHello message is sent by the server in response to ClientHello.
 //! It contains the server's selected cipher suite, key share, and other parameters.
 
-use crate::error::{Result, TlsError};
 use super::Extension;
+use crate::error::{Result, TlsError};
 
 /// ServerHello message
 ///
@@ -22,19 +22,19 @@ use super::Extension;
 pub struct ServerHello {
     /// Legacy version (always 0x0303 for TLS 1.3)
     pub legacy_version: u16,
-    
+
     /// Server random (32 bytes of randomness)
     pub random: [u8; 32],
-    
+
     /// Echo of client's legacy session ID
     pub legacy_session_id_echo: Vec<u8>,
-    
+
     /// Selected cipher suite
     pub cipher_suite: u16,
-    
+
     /// Legacy compression method (always 0)
     pub legacy_compression_method: u8,
-    
+
     /// Extensions (must include supported_versions and key_share)
     pub extensions: Vec<Extension>,
 }
@@ -137,10 +137,8 @@ mod tests {
     #[test]
     fn test_server_hello_validation_success() {
         let random = [99u8; 32];
-        let extensions = vec![
-            Extension::SupportedVersions(vec![0x0304]),
-            Extension::KeyShare(vec![5, 6, 7, 8]),
-        ];
+        let extensions =
+            vec![Extension::SupportedVersions(vec![0x0304]), Extension::KeyShare(vec![5, 6, 7, 8])];
 
         let hello = ServerHello::new(random, vec![], 0x1303, extensions);
         assert!(hello.validate().is_ok());
@@ -178,13 +176,10 @@ mod tests {
     #[test]
     fn test_get_supported_version() {
         let random = [99u8; 32];
-        let extensions = vec![
-            Extension::SupportedVersions(vec![0x0304]),
-            Extension::KeyShare(vec![5, 6, 7, 8]),
-        ];
+        let extensions =
+            vec![Extension::SupportedVersions(vec![0x0304]), Extension::KeyShare(vec![5, 6, 7, 8])];
 
         let hello = ServerHello::new(random, vec![], 0x1303, extensions);
         assert_eq!(hello.get_supported_version(), Some(0x0304));
     }
 }
-

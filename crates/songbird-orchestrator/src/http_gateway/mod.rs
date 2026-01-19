@@ -44,15 +44,15 @@ pub mod cache;
 pub mod capability_router;
 pub mod credentials;
 pub mod rate_limiter;
-pub mod unix_listener;
 pub mod universal_proxy;
+pub mod unix_listener;
 
 pub use cache::ResponseCache;
 pub use capability_router::{Capability, CapabilityRouter, ProviderConfig};
 pub use credentials::CredentialManager;
 pub use rate_limiter::RateLimiter;
-pub use unix_listener::{UnixListenerConfig, UnixSocketListener};
 pub use universal_proxy::UniversalProxy;
+pub use unix_listener::{UnixListenerConfig, UnixSocketListener};
 
 use anyhow::Result;
 use serde_json::Value;
@@ -71,13 +71,13 @@ use tracing::info;
 pub struct HttpGatewayService {
     /// Rate limiter for all proxied requests
     rate_limiter: Arc<RateLimiter>,
-    
+
     /// Response cache to reduce external API calls
     cache: Arc<ResponseCache>,
-    
+
     /// Credential manager for API keys
     credentials: Arc<CredentialManager>,
-    
+
     /// HTTP client for external requests (pure Rust!)
     http_client: reqwest::Client,
 }
@@ -91,31 +91,28 @@ impl HttpGatewayService {
     /// - Zero hardcoding: all config from environment
     pub fn new() -> Result<Self> {
         info!("🌐 Initializing HTTP Gateway Service");
-        
+
         // Create HTTP client (pure Rust with rustls!)
         let http_client = reqwest::Client::builder()
             .timeout(std::time::Duration::from_secs(30))
             .connect_timeout(std::time::Duration::from_secs(5))
             .pool_max_idle_per_host(10)
             .build()?;
-        
+
         // Create rate limiter (100 requests per minute default)
-        let rate_limiter = Arc::new(RateLimiter::new(
-            100,
-            std::time::Duration::from_secs(60),
-        ));
-        
+        let rate_limiter = Arc::new(RateLimiter::new(100, std::time::Duration::from_secs(60)));
+
         // Create response cache (100MB default)
         let cache = Arc::new(ResponseCache::new(100 * 1024 * 1024));
-        
+
         // Create credential manager
         let credentials = Arc::new(CredentialManager::new());
-        
+
         info!("✅ HTTP Gateway Service initialized");
         info!("   Rate limit: 100 req/min per client");
         info!("   Cache size: 100MB");
         info!("   TLS: Pure Rust (rustls)");
-        
+
         Ok(Self {
             rate_limiter,
             cache,
@@ -123,7 +120,7 @@ impl HttpGatewayService {
             http_client,
         })
     }
-    
+
     /// Start the HTTP gateway service
     ///
     /// This will start Unix socket listeners for:
@@ -134,19 +131,19 @@ impl HttpGatewayService {
     /// **Future**: Phase 2 will add actual proxy listeners
     pub async fn start(&self) -> Result<()> {
         info!("🚀 Starting HTTP Gateway Service");
-        
+
         // Phase 1: Core infrastructure complete
         // Phase 2: Add Unix socket listeners
         // Phase 3: Add AI-specific proxies
         // Phase 4: Add generic HTTP proxy
-        
+
         info!("✅ HTTP Gateway Service ready (core infrastructure)");
         info!("   Phase 2: Add Unix socket listeners");
         info!("   Phase 3: Add AI-specific proxies");
-        
+
         Ok(())
     }
-    
+
     /// Check rate limit for a client
     ///
     /// # Arguments
@@ -158,7 +155,7 @@ impl HttpGatewayService {
     pub async fn check_rate_limit(&self, client_id: &str) -> Result<()> {
         self.rate_limiter.check(client_id).await
     }
-    
+
     /// Get cached response if available
     ///
     /// # Arguments
@@ -170,17 +167,22 @@ impl HttpGatewayService {
     pub async fn get_cached(&self, cache_key: &str) -> Option<Value> {
         self.cache.get(cache_key).await
     }
-    
+
     /// Cache a response
     ///
     /// # Arguments
     /// * `cache_key` - Unique key for the cached response
     /// * `response` - Response to cache
     /// * `ttl` - Time-to-live for the cached response
-    pub async fn cache_response(&self, cache_key: &str, response: &Value, ttl: std::time::Duration) {
+    pub async fn cache_response(
+        &self,
+        cache_key: &str,
+        response: &Value,
+        ttl: std::time::Duration,
+    ) {
         self.cache.set(cache_key, response, ttl).await;
     }
-    
+
     /// Get API key for a service
     ///
     /// # Arguments
@@ -203,32 +205,31 @@ impl Default for HttpGatewayService {
 #[cfg(test)]
 mod tests {
     use super::*;
-    
+
     #[test]
     fn test_http_gateway_creation() {
         let gateway = HttpGatewayService::new().unwrap();
         // Gateway created successfully
         drop(gateway);
     }
-    
+
     #[tokio::test]
     async fn test_http_gateway_start() {
         let gateway = HttpGatewayService::new().unwrap();
         let result = gateway.start().await;
         assert!(result.is_ok());
     }
-    
+
     #[tokio::test]
     async fn test_rate_limit() {
         let gateway = HttpGatewayService::new().unwrap();
-        
+
         // First 100 requests should succeed
         for _ in 0..100 {
             assert!(gateway.check_rate_limit("test_client").await.is_ok());
         }
-        
+
         // 101st request should fail
         assert!(gateway.check_rate_limit("test_client").await.is_err());
     }
 }
-

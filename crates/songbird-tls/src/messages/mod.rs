@@ -3,21 +3,21 @@
 //! Defines all TLS 1.3 message structures per RFC 8446.
 //! Pure Rust types with no external dependencies.
 
-pub mod client_hello;
-pub mod server_hello;
-pub mod extensions;
+pub mod alert;
 pub mod certificate;
 pub mod certificate_verify;
+pub mod client_hello;
+pub mod extensions;
 pub mod finished;
-pub mod alert;
+pub mod server_hello;
 
-pub use client_hello::ClientHello;
-pub use server_hello::ServerHello;
-pub use extensions::Extension;
+pub use alert::Alert;
 pub use certificate::Certificate;
 pub use certificate_verify::CertificateVerify;
+pub use client_hello::ClientHello;
+pub use extensions::Extension;
 pub use finished::Finished;
-pub use alert::Alert;
+pub use server_hello::ServerHello;
 
 /// Content type for TLS records
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -114,4 +114,3 @@ mod tests {
         assert_eq!(u8::from(HandshakeType::ServerHello), 2);
     }
 }
-

@@ -23,28 +23,15 @@ pub mod discovery;
 pub mod provider;
 
 // Re-export capability-based abstractions (preferred API - TRUE PRIMAL!)
-pub use provider::{
-    discover_crypto_provider,
-    CryptoProvider,
-    UnixSocketCryptoProvider,
-};
+pub use provider::{discover_crypto_provider, CryptoProvider, UnixSocketCryptoProvider};
 
 // Re-export low-level functions for backward compatibility
 pub use beardog_crypto_client::{
-    blake3_hash,
-    chacha20_poly1305_decrypt,
-    chacha20_poly1305_encrypt,
-    hmac_sha256,
-    sign_ed25519,
-    verify_ed25519,
-    x25519_derive_secret,
-    x25519_generate_ephemeral,
+    blake3_hash, chacha20_poly1305_decrypt, chacha20_poly1305_encrypt, hmac_sha256, sign_ed25519,
+    verify_ed25519, x25519_derive_secret, x25519_generate_ephemeral,
 };
 
 pub use discovery::{
-    get_beardog_crypto_socket,
-    get_beardog_crypto_socket_for_family,
-    get_beardog_crypto_socket_for_purpose,
-    is_beardog_crypto_available,
+    get_beardog_crypto_socket, get_beardog_crypto_socket_for_family,
+    get_beardog_crypto_socket_for_purpose, is_beardog_crypto_available,
 };
-

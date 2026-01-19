@@ -35,7 +35,10 @@ async fn test_e2e_jwt_provisioning_from_beardog() {
                 assert_eq!(decoded.len(), 64); // 512 bits
             }
             Ok(Err(e)) => {
-                println!("⚠️  BearDog JWT fetch failed (expected if method not implemented): {}", e);
+                println!(
+                    "⚠️  BearDog JWT fetch failed (expected if method not implemented): {}",
+                    e
+                );
                 // This is acceptable - BearDog may not have the method yet
             }
             Err(_) => {
@@ -65,9 +68,8 @@ async fn test_e2e_jwt_provisioning_fallback_flow() {
 
     // Verify it's valid base64
     use base64::Engine;
-    let decoded = base64::engine::general_purpose::STANDARD
-        .decode(&secret)
-        .expect("Should be valid base64");
+    let decoded =
+        base64::engine::general_purpose::STANDARD.decode(&secret).expect("Should be valid base64");
     assert_eq!(decoded.len(), 64); // 512 bits
 
     println!("✅ Fallback flow complete and secure!");
@@ -139,9 +141,8 @@ async fn test_e2e_jwt_provisioning_performance() {
     let iterations = 100;
 
     for i in 0..iterations {
-        let _ = provision_jwt_secret(None, &format!("perf_test_{}", i))
-            .await
-            .expect("Should succeed");
+        let _ =
+            provision_jwt_secret(None, &format!("perf_test_{}", i)).await.expect("Should succeed");
     }
 
     let elapsed = start.elapsed();
@@ -153,4 +154,3 @@ async fn test_e2e_jwt_provisioning_performance() {
     // Should be fast (< 10ms per secret on average)
     assert!(avg_ms < 10, "JWT generation should be fast");
 }
-

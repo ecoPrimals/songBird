@@ -92,11 +92,8 @@ impl ServiceRegistry {
             existing_service.service_id
         } else {
             // Generate new service ID
-            let service_id = format!(
-                "{}-{}",
-                primal_name.to_lowercase(),
-                &Uuid::new_v4().to_string()[..8]
-            );
+            let service_id =
+                format!("{}-{}", primal_name.to_lowercase(), &Uuid::new_v4().to_string()[..8]);
             info!("✅ Registering new service: {}", service_id);
             service_id
         };

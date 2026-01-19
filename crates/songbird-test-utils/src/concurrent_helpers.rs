@@ -513,13 +513,13 @@ impl ConcurrencyLimiter {
     }
 
     /// Try to acquire a permit (non-blocking)
-    #[must_use] 
+    #[must_use]
     pub fn try_acquire(&self) -> Option<tokio::sync::SemaphorePermit<'_>> {
         self.semaphore.try_acquire().ok()
     }
 
     /// Get available permits
-    #[must_use] 
+    #[must_use]
     pub fn available_permits(&self) -> usize {
         self.semaphore.available_permits()
     }

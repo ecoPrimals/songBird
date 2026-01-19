@@ -407,19 +407,20 @@ impl BirdSongProcessor {
     }
 
     /// Check if `BirdSong` encryption is actively being used
-    #[must_use] 
+    #[must_use]
     pub fn is_encrypted(&self) -> bool {
         self.config.enabled && self.encryption.as_ref().is_some_and(|e| e.is_available())
     }
 
     /// Get current encryption status for logging
-    #[must_use] 
+    #[must_use]
     pub fn status(&self) -> String {
         if self.is_encrypted() {
             format!(
                 "Encrypted ({})",
                 self.encryption
-                    .as_ref().map_or_else(|| "unknown".to_string(), |e| e.provider_name())
+                    .as_ref()
+                    .map_or_else(|| "unknown".to_string(), |e| e.provider_name())
             )
         } else if self.config.enabled {
             "Plaintext (provider unavailable)".to_string()

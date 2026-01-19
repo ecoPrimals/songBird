@@ -183,7 +183,8 @@ async fn discover_capability(capability: &str) -> Result<CapabilityProvider, Str
 
     Err(format!(
         "No provider found for capability '{}'. Set {}_ENDPOINT environment variable.",
-        capability, capability.to_uppercase()
+        capability,
+        capability.to_uppercase()
     ))
 }
 
@@ -211,21 +212,21 @@ mod tests {
     #[tokio::test]
     async fn test_discovery_from_env() {
         std::env::set_var("TEST_CAPABILITY_ENDPOINT", "http://test:9000");
-        
+
         let result = discover_capability("test_capability").await;
         assert!(result.is_ok());
-        
+
         let provider = result.unwrap();
         assert_eq!(provider.capability, "test_capability");
         assert_eq!(provider.endpoint, "http://test:9000");
-        
+
         std::env::remove_var("TEST_CAPABILITY_ENDPOINT");
     }
 
     #[tokio::test]
     async fn test_discovery_failure() {
         std::env::remove_var("NONEXISTENT_ENDPOINT");
-        
+
         let result = discover_capability("nonexistent").await;
         assert!(result.is_err());
     }
@@ -236,7 +237,7 @@ mod tests {
             service_id: "test-service".to_string(),
             provides_capabilities: vec!["test".to_string()],
         };
-        
+
         assert_eq!(identity.service_id, "test-service");
         assert_eq!(identity.provides_capabilities.len(), 1);
     }

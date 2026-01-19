@@ -120,7 +120,7 @@ impl BroadcastKey {
     /// **Status**: Phase 3 - Mock implementation for testing
     /// Once `BearDog` integration is complete, this will use real genetic cryptography.
     #[allow(dead_code)] // Phase 3: Called by BirdSong protocol
-    #[must_use] 
+    #[must_use]
     pub fn encrypt_broadcast(&self, data: &[u8]) -> Vec<u8> {
         // Mock XOR encryption for testing
         // Phase 3: Replace with real BirdSong encryption
@@ -128,20 +128,20 @@ impl BroadcastKey {
     }
 
     /// Check if this key is currently valid
-    #[must_use] 
+    #[must_use]
     pub fn is_valid(&self) -> bool {
         let now = chrono::Utc::now();
         now >= self.valid_from && now <= self.valid_until
     }
 
     /// Check if this key is expired
-    #[must_use] 
+    #[must_use]
     pub fn is_expired(&self) -> bool {
         chrono::Utc::now() > self.valid_until
     }
 
     /// Time until expiration
-    #[must_use] 
+    #[must_use]
     pub fn time_until_expiry(&self) -> Option<chrono::Duration> {
         let now = chrono::Utc::now();
         if now > self.valid_until {
@@ -156,14 +156,14 @@ impl EncryptedBirdSong {
     /// Check if this birdSong is recent (not a replay)
     ///
     /// Rejects messages older than 60 seconds.
-    #[must_use] 
+    #[must_use]
     pub fn is_recent(&self) -> bool {
         let age = chrono::Utc::now() - self.timestamp;
         age.num_seconds() < 60
     }
 
     /// Check if timestamp is valid (not in the future)
-    #[must_use] 
+    #[must_use]
     pub fn has_valid_timestamp(&self) -> bool {
         let now = chrono::Utc::now();
         self.timestamp <= now

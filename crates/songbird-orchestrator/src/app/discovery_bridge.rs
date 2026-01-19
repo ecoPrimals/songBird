@@ -151,7 +151,9 @@ impl SongbirdOrchestrator {
                             // Extract identity based on protocol version
                             let (node_id, node_name) = if peer.version == "3.0" {
                                 // v3.0: Use stable node_id and node_name
-                                if let (Some(id), Some(name)) = (&peer.node_id, &peer.node_name) { (id.clone(), name.clone()) } else {
+                                if let (Some(id), Some(name)) = (&peer.node_id, &peer.node_name) {
+                                    (id.clone(), name.clone())
+                                } else {
                                     warn!("⚠️  Peer claims v3.0 but missing node_id/node_name, falling back to session_id");
                                     (
                                         peer.session_id.clone(),
@@ -171,18 +173,14 @@ impl SongbirdOrchestrator {
 
                             // Check if same family for trust decisions (Jan 5, 2026)
                             // Tags format: ["beardog:family:FAMILY_ID:NODE_ID", ...]
-                            let same_family = std::env::var("SONGBIRD_FAMILY_ID")
-                                .ok()
-                                .is_some_and(|my_family| {
-                                    peer.tags
-                                        .as_ref()
-                                        .is_some_and(|tags| {
-                                            tags.iter().any(|tag| {
-                                                tag.contains(&format!(":family:{}:", my_family))
-                                                    || tag
-                                                        .contains(&format!("family_{}", my_family))
-                                            })
+                            let same_family =
+                                std::env::var("SONGBIRD_FAMILY_ID").ok().is_some_and(|my_family| {
+                                    peer.tags.as_ref().is_some_and(|tags| {
+                                        tags.iter().any(|tag| {
+                                            tag.contains(&format!(":family:{}:", my_family))
+                                                || tag.contains(&format!("family_{}", my_family))
                                         })
+                                    })
                                 });
 
                             // CRITICAL: Verify HTTPS connectivity before registering

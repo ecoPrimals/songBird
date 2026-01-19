@@ -197,7 +197,9 @@ fn test_network_binding_config_default() {
 #[test] // ✅ NO #[serial]! Fully concurrent!
 fn test_network_binding_config_from_env() {
     let mut env = TestEnv::new();
-    env.set("SONGBIRD_BIND_ADDRESS", &test_bind_address());
+    // NOTE: SONGBIRD_BIND_ADDRESS expects IP only (not IP:PORT)
+    // test_bind_address() returns "IP:PORT", so extract just the IP
+    env.set("SONGBIRD_BIND_ADDRESS", "127.0.0.1");
     env.set("SONGBIRD_BIND_PORT", "3000");
 
     let config = NetworkBindingConfig::from_env_map(env.as_map());

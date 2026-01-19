@@ -10,39 +10,42 @@
 #[derive(Debug, Clone, PartialEq)]
 pub enum Extension {
     /// supported_versions (RFC 8446 Section 4.2.1)
-    /// 
+    ///
     /// In ClientHello: list of supported versions (e.g., [0x0304] for TLS 1.3)
     /// In ServerHello: selected version
     SupportedVersions(Vec<u16>),
 
     /// key_share (RFC 8446 Section 4.2.8)
-    /// 
+    ///
     /// Contains the client's or server's public key for key exchange.
     /// For X25519, this is 32 bytes.
     KeyShare(Vec<u8>),
 
     /// server_name (RFC 6066 Section 3)
-    /// 
+    ///
     /// SNI (Server Name Indication) - hostname the client wants to connect to.
     ServerName(String),
 
     /// signature_algorithms (RFC 8446 Section 4.2.3)
-    /// 
+    ///
     /// List of signature algorithms supported by the client.
     /// For Ed25519: 0x0807
     SignatureAlgorithms(Vec<u16>),
 
     /// supported_groups (RFC 8446 Section 4.2.7)
-    /// 
+    ///
     /// List of named groups (curves) supported by the client.
     /// For X25519: 0x001d
     SupportedGroups(Vec<u16>),
 
     /// Unknown extension (for forward compatibility)
-    /// 
+    ///
     /// Store extension type and data for extensions we don't recognize.
     /// This allows forward compatibility with future TLS versions.
-    Unknown { extension_type: u16, data: Vec<u8> },
+    Unknown {
+        extension_type: u16,
+        data: Vec<u8>,
+    },
 }
 
 impl Extension {
@@ -54,16 +57,16 @@ impl Extension {
             Extension::ServerName(_) => 0,
             Extension::SignatureAlgorithms(_) => 13,
             Extension::SupportedGroups(_) => 10,
-            Extension::Unknown { extension_type, .. } => *extension_type,
+            Extension::Unknown {
+                extension_type,
+                ..
+            } => *extension_type,
         }
     }
 
     /// Check if this is a mandatory extension for TLS 1.3
     pub fn is_mandatory_for_tls13(&self) -> bool {
-        matches!(
-            self,
-            Extension::SupportedVersions(_) | Extension::KeyShare(_)
-        )
+        matches!(self, Extension::SupportedVersions(_) | Extension::KeyShare(_))
     }
 }
 
@@ -121,4 +124,3 @@ mod tests {
         assert_eq!(GROUP_X25519, 0x001d);
     }
 }
-

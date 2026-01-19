@@ -30,7 +30,8 @@ use std::net::TcpListener;
 use std::sync::Mutex;
 
 /// Global registry of allocated test ports to avoid conflicts
-static PORT_REGISTRY: std::sync::LazyLock<Mutex<HashMap<String, u16>>> = std::sync::LazyLock::new(|| Mutex::new(HashMap::new()));
+static PORT_REGISTRY: std::sync::LazyLock<Mutex<HashMap<String, u16>>> =
+    std::sync::LazyLock::new(|| Mutex::new(HashMap::new()));
 
 /// Get test endpoint for a capability
 ///
@@ -53,7 +54,7 @@ static PORT_REGISTRY: std::sync::LazyLock<Mutex<HashMap<String, u16>>> = std::sy
 /// let endpoint = test_endpoint("compute");
 /// // Returns: "http://127.0.0.1:PORT" with dynamically allocated PORT
 /// ```
-#[must_use] 
+#[must_use]
 pub fn test_endpoint(capability: &str) -> String {
     // Try environment variables first
     let env_key = format!("{}_ENDPOINT", capability.to_uppercase());
@@ -122,7 +123,7 @@ pub fn test_port(capability: &str) -> u16 {
 
     // Allocate a new port
     let port = allocate_available_port();
-    
+
     // Cache it
     {
         let mut registry = PORT_REGISTRY.lock().unwrap();
@@ -144,7 +145,7 @@ pub fn test_port(capability: &str) -> u16 {
 /// let endpoint = test_endpoint_with_port("security", 9443);
 /// assert_eq!(endpoint, "http://127.0.0.1:9443");
 /// ```
-#[must_use] 
+#[must_use]
 pub fn test_endpoint_with_port(capability: &str, port: u16) -> String {
     // Check if security capability should use HTTPS
     let protocol = if capability == "security" && port == 8443 {
@@ -152,7 +153,7 @@ pub fn test_endpoint_with_port(capability: &str, port: u16) -> String {
     } else {
         "http"
     };
-    
+
     format!("{protocol}://127.0.0.1:{port}")
 }
 
@@ -162,15 +163,10 @@ pub fn test_endpoint_with_port(capability: &str, port: u16) -> String {
 /// This ensures we get an available port without conflicts.
 fn allocate_available_port() -> u16 {
     // Bind to port 0 to let OS choose an available port
-    let listener = TcpListener::bind("127.0.0.1:0")
-        .expect("Failed to bind to ephemeral port");
-    
-    
-    
+    let listener = TcpListener::bind("127.0.0.1:0").expect("Failed to bind to ephemeral port");
+
     // Listener is dropped here, freeing the port for actual use
-    listener.local_addr()
-        .expect("Failed to get local address")
-        .port()
+    listener.local_addr().expect("Failed to get local address").port()
 }
 
 /// Clear port registry (useful for test isolation)
@@ -206,7 +202,7 @@ pub fn clear_port_registry() {
 /// let addr = test_bind_address("discovery");
 /// // Returns: "127.0.0.1:PORT"
 /// ```
-#[must_use] 
+#[must_use]
 pub fn test_bind_address(capability: &str) -> String {
     let port = test_port(capability);
     format!("127.0.0.1:{port}")
@@ -225,12 +221,10 @@ pub fn test_bind_address(capability: &str) -> String {
 /// let addr = test_socket_addr("http");
 /// let listener = TcpListener::bind(addr).unwrap();
 /// ```
-#[must_use] 
+#[must_use]
 pub fn test_socket_addr(capability: &str) -> std::net::SocketAddr {
     let port = test_port(capability);
-    format!("127.0.0.1:{port}")
-        .parse()
-        .expect("Failed to parse socket address")
+    format!("127.0.0.1:{port}").parse().expect("Failed to parse socket address")
 }
 
 #[cfg(test)]
@@ -305,4 +299,3 @@ mod tests {
         assert!(port2 > 0);
     }
 }
-

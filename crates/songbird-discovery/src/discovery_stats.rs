@@ -57,7 +57,7 @@ impl Default for DiscoveryStats {
 
 impl DiscoveryStats {
     /// Create a new statistics tracker
-    #[must_use] 
+    #[must_use]
     pub fn new() -> Self {
         Self {
             broadcasts_sent: Arc::new(AtomicU64::new(0)),
@@ -114,7 +114,7 @@ impl DiscoveryStats {
     }
 
     /// Get a snapshot of current statistics
-    #[must_use] 
+    #[must_use]
     pub fn snapshot(&self) -> DiscoveryStatsSnapshot {
         DiscoveryStatsSnapshot {
             broadcasts_sent: self.broadcasts_sent.load(Ordering::Relaxed),
@@ -166,7 +166,7 @@ pub struct NetworkInfo {
 
 impl NetworkInfo {
     /// Detect available network interfaces
-    #[must_use] 
+    #[must_use]
     pub fn detect_interfaces() -> Vec<String> {
         // Use nix or pnet to detect interfaces
         // For now, return a simple list
@@ -192,7 +192,7 @@ struct DiscoveryConfigSnapshot {
 
 impl DiscoveryStatusManager {
     /// Create a new status manager
-    #[must_use] 
+    #[must_use]
     pub fn new(
         enabled: bool,
         mode: String,
@@ -211,7 +211,7 @@ impl DiscoveryStatusManager {
     }
 
     /// Get the statistics tracker
-    #[must_use] 
+    #[must_use]
     pub fn stats(&self) -> Arc<DiscoveryStats> {
         Arc::clone(&self.stats)
     }

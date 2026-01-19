@@ -113,7 +113,7 @@ pub struct BtspProviderFactory {
 
 impl BtspProviderFactory {
     /// Create a new factory with configuration
-    #[must_use] 
+    #[must_use]
     pub fn new(config: BtspConfig) -> Self {
         Self {
             config,
@@ -216,15 +216,15 @@ impl BtspProviderFactory {
                             service.get("capabilities").and_then(|c| c.as_array())
                         {
                             let has_btsp = capabilities.iter().any(|cap| {
-                                cap.get("name")
-                                    .and_then(|n| n.as_str())
-                                    .is_some_and(|name| {
-                                        name == "btsp" || name == "lineage" || name == "birdsong"
-                                    })
+                                cap.get("name").and_then(|n| n.as_str()).is_some_and(|name| {
+                                    name == "btsp" || name == "lineage" || name == "birdsong"
+                                })
                             });
 
                             if has_btsp {
-                                if let Some(port) = service.get("port").and_then(serde_json::Value::as_u64) {
+                                if let Some(port) =
+                                    service.get("port").and_then(serde_json::Value::as_u64)
+                                {
                                     let primal_name = service
                                         .get("primal_name")
                                         .and_then(|n| n.as_str())

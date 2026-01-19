@@ -151,25 +151,25 @@ impl GenesisWitnessProof {
     }
 
     /// Get the number of primal witnesses
-    #[must_use] 
+    #[must_use]
     pub fn witness_count(&self) -> usize {
         self.primal_witnesses.len()
     }
 
     /// Check if a specific primal witnessed this genesis
-    #[must_use] 
+    #[must_use]
     pub fn has_primal_witness(&self, primal_name: &str) -> bool {
         self.primal_witnesses.iter().any(|w| w.primal_name == primal_name)
     }
 
     /// Get the age of this genesis proof
-    #[must_use] 
+    #[must_use]
     pub fn age(&self) -> chrono::Duration {
         Utc::now() - self.birth_timestamp
     }
 
     /// Check if this is a fresh genesis (less than 1 hour old)
-    #[must_use] 
+    #[must_use]
     pub fn is_fresh(&self) -> bool {
         self.age().num_hours() < 1
     }

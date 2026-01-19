@@ -50,10 +50,7 @@ pub enum TaskStatus {
 impl TaskStatus {
     /// Check if task is terminal (won't change)
     pub fn is_terminal(&self) -> bool {
-        matches!(
-            self,
-            Self::Completed { .. } | Self::Failed { .. } | Self::Cancelled { .. }
-        )
+        matches!(self, Self::Completed { .. } | Self::Failed { .. } | Self::Cancelled { .. })
     }
 
     /// Check if task is active (running or queued)

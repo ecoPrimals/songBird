@@ -29,7 +29,7 @@ pub enum Protocol {
 
 impl Protocol {
     /// Get protocol name
-    #[must_use] 
+    #[must_use]
     pub fn name(&self) -> &'static str {
         match self {
             Self::Http => "HTTP",
@@ -43,7 +43,7 @@ impl Protocol {
     }
 
     /// Get protocol performance tier (higher is better)
-    #[must_use] 
+    #[must_use]
     pub fn performance_tier(&self) -> u8 {
         match self {
             Self::Tarpc => 5, // Highest performance
@@ -57,7 +57,7 @@ impl Protocol {
     }
 
     /// Check if protocol is encrypted
-    #[must_use] 
+    #[must_use]
     pub fn is_encrypted(&self) -> bool {
         matches!(
             self,
@@ -66,7 +66,7 @@ impl Protocol {
     }
 
     /// Check if protocol is recommended for production
-    #[must_use] 
+    #[must_use]
     pub fn is_production_ready(&self) -> bool {
         !matches!(self, Self::Http | Self::WebSocket)
     }
@@ -128,7 +128,7 @@ pub struct TowerCapabilities {
 
 impl TowerCapabilities {
     /// Create new tower capabilities
-    #[must_use] 
+    #[must_use]
     pub fn new(tower_id: String, endpoint: String) -> Self {
         Self {
             tower_id,
@@ -150,7 +150,7 @@ impl TowerCapabilities {
     }
 
     /// Get best protocol for communication
-    #[must_use] 
+    #[must_use]
     pub fn best_protocol(&self) -> Option<&ProtocolCapability> {
         self.protocols
             .iter()
@@ -159,7 +159,7 @@ impl TowerCapabilities {
     }
 
     /// Get best encrypted protocol
-    #[must_use] 
+    #[must_use]
     pub fn best_encrypted_protocol(&self) -> Option<&ProtocolCapability> {
         self.protocols
             .iter()
@@ -168,7 +168,7 @@ impl TowerCapabilities {
     }
 
     /// Check if protocol is supported
-    #[must_use] 
+    #[must_use]
     pub fn supports_protocol(&self, protocol: &Protocol) -> bool {
         self.protocols.iter().any(|p| &p.protocol == protocol && p.status == ProtocolStatus::Active)
     }
@@ -185,7 +185,7 @@ pub struct ProtocolCapabilityManager {
 
 impl ProtocolCapabilityManager {
     /// Create new manager
-    #[must_use] 
+    #[must_use]
     pub fn new(tower_id: String, endpoint: String) -> Self {
         Self {
             local_capabilities: Arc::new(RwLock::new(TowerCapabilities::new(tower_id, endpoint))),

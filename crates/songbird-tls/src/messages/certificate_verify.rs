@@ -17,7 +17,7 @@ use crate::error::{Result, TlsError};
 pub struct CertificateVerify {
     /// Signature algorithm used (e.g., Ed25519)
     pub algorithm: u16,
-    
+
     /// Signature over the handshake transcript
     pub signature: Vec<u8>,
 }
@@ -42,9 +42,7 @@ impl CertificateVerify {
     pub fn validate(&self) -> Result<()> {
         // Signature must not be empty
         if self.signature.is_empty() {
-            return Err(TlsError::CertificateError(
-                "Signature cannot be empty".to_string(),
-            ));
+            return Err(TlsError::CertificateError("Signature cannot be empty".to_string()));
         }
 
         // Check if algorithm is supported
@@ -144,4 +142,3 @@ mod tests {
         assert_eq!(SIGNATURE_ECDSA_SECP256R1_SHA256, 0x0403);
     }
 }
-

@@ -70,9 +70,7 @@ impl IntoResponse for AuthError {
             Self::MissingToken => (StatusCode::UNAUTHORIZED, "Missing authorization token"),
             Self::InvalidToken => (StatusCode::UNAUTHORIZED, "Invalid token"),
             Self::ExpiredToken => (StatusCode::UNAUTHORIZED, "Token expired"),
-            Self::InsufficientPermissions => {
-                (StatusCode::FORBIDDEN, "Insufficient permissions")
-            }
+            Self::InsufficientPermissions => (StatusCode::FORBIDDEN, "Insufficient permissions"),
         };
 
         (status, message).into_response()

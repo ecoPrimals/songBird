@@ -91,7 +91,7 @@ impl FullTrustBtspConnection {
         let peer_endpoint = crate::btsp_client::PeerEndpoint {
             id: peer_id.clone(),
             endpoint: format!("peer://{}", peer_id), // Will be resolved via BirdSong/lineage
-            public_key: None, // Will be exchanged during handshake
+            public_key: None,                        // Will be exchanged during handshake
             capabilities: peer_tags.clone(),
         };
 

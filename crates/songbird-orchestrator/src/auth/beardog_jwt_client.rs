@@ -55,10 +55,7 @@ struct JwtSecretResult {
 /// # Returns
 /// * `Ok(String)` - Base64-encoded JWT secret (512 bits / 88 characters)
 /// * `Err` - If BearDog is unavailable or request fails
-pub async fn fetch_jwt_secret_from_beardog(
-    socket_path: &str,
-    purpose: &str,
-) -> Result<String> {
+pub async fn fetch_jwt_secret_from_beardog(socket_path: &str, purpose: &str) -> Result<String> {
     info!("🔐 Fetching JWT secret from BearDog at: {}", socket_path);
     info!("   Purpose: {}", purpose);
 
@@ -79,26 +76,20 @@ pub async fn fetch_jwt_secret_from_beardog(
     };
 
     // Serialize request
-    let request_json = serde_json::to_string(&request)
-        .context("Failed to serialize JWT request")?;
-    
+    let request_json =
+        serde_json::to_string(&request).context("Failed to serialize JWT request")?;
+
     info!("   📤 Sending JSON-RPC request...");
-    
+
     // Send request (JSON-RPC over Unix socket)
-    stream
-        .write_all(request_json.as_bytes())
-        .await
-        .context("Failed to write to BearDog socket")?;
-    
-    stream
-        .write_all(b"\n")
-        .await
-        .context("Failed to write newline to BearDog socket")?;
+    stream.write_all(request_json.as_bytes()).await.context("Failed to write to BearDog socket")?;
+
+    stream.write_all(b"\n").await.context("Failed to write newline to BearDog socket")?;
 
     // Read response
     let mut response_buffer = Vec::new();
     let mut read_buffer = [0u8; 4096];
-    
+
     loop {
         match stream.read(&mut read_buffer).await {
             Ok(0) => break, // EOF
@@ -113,9 +104,9 @@ pub async fn fetch_jwt_secret_from_beardog(
         }
     }
 
-    let response_str = String::from_utf8(response_buffer)
-        .context("BearDog response was not valid UTF-8")?;
-    
+    let response_str =
+        String::from_utf8(response_buffer).context("BearDog response was not valid UTF-8")?;
+
     info!("   📥 Received response from BearDog");
 
     // Parse JSON-RPC response
@@ -124,7 +115,7 @@ pub async fn fetch_jwt_secret_from_beardog(
 
     // Extract secret
     let secret = response.result.secret;
-    
+
     info!("✅ JWT secret obtained from BearDog");
     info!("   Length: {} characters", secret.len());
     info!("   Strength: {} ({} bytes)", response.result.strength, response.result.byte_length);
@@ -145,21 +136,20 @@ pub async fn fetch_jwt_secret_from_beardog(
 /// * Base64-encoded random secret
 pub fn generate_secure_random_jwt(bytes: usize) -> Result<String> {
     use rand::RngCore;
-    
+
     warn!("⚠️ Generating fallback JWT secret (BearDog unavailable)");
     warn!("   This is cryptographically secure but not coordinated with NUCLEUS");
-    
+
     let mut rng = rand::thread_rng();
     let mut secret_bytes = vec![0u8; bytes];
     rng.fill_bytes(&mut secret_bytes);
-    
+
     use base64::Engine;
     let secret = base64::engine::general_purpose::STANDARD.encode(&secret_bytes);
-    
+
     info!("✅ Secure random JWT secret generated");
-    info!("   Length: {} characters ({} bytes, {} bits)", 
-          secret.len(), bytes, bytes * 8);
-    
+    info!("   Length: {} characters ({} bytes, {} bits)", secret.len(), bytes, bytes * 8);
+
     Ok(secret)
 }
 
@@ -173,10 +163,7 @@ pub fn generate_secure_random_jwt(bytes: usize) -> Result<String> {
 ///
 /// # Returns
 /// * JWT secret (base64-encoded, 512 bits minimum)
-pub async fn provision_jwt_secret(
-    beardog_socket: Option<&str>,
-    purpose: &str,
-) -> Result<String> {
+pub async fn provision_jwt_secret(beardog_socket: Option<&str>, purpose: &str) -> Result<String> {
     // Try BearDog first (preferred)
     if let Some(socket_path) = beardog_socket {
         match fetch_jwt_secret_from_beardog(socket_path, purpose).await {
@@ -204,10 +191,10 @@ mod tests {
     #[test]
     fn test_generate_secure_random_jwt() {
         let secret = generate_secure_random_jwt(64).unwrap();
-        
+
         // Should be base64-encoded (64 bytes → ~88 characters)
         assert!(secret.len() >= 85 && secret.len() <= 90);
-        
+
         // Should be different each time
         let secret2 = generate_secure_random_jwt(64).unwrap();
         assert_ne!(secret, secret2);
@@ -217,9 +204,8 @@ mod tests {
     async fn test_provision_jwt_secret_fallback() {
         // No BearDog available, should fall back to secure random
         let secret = provision_jwt_secret(None, "test_purpose").await.unwrap();
-        
+
         assert!(secret.len() >= 85);
         assert!(!secret.is_empty());
     }
 }
-

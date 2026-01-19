@@ -429,17 +429,21 @@ async fn handle_task_events(socket: WebSocket, state: WebSocketApiState) {
     let (mut sender, mut receiver) = socket.split();
 
     // Get orchestrator event stream
-    let event_stream = if let Some(orch) = &state.orchestrator { if let Some(stream) = orch.get_event_stream() { stream } else {
-        error!("Orchestrator event stream not available");
-        let error_msg = WsMessage::Error {
-            message: "Event stream not available".to_string(),
-            code: Some("NO_EVENT_STREAM".to_string()),
-        };
-        if let Ok(json) = serde_json::to_string(&error_msg) {
-            let _ = sender.send(Message::Text(json)).await;
+    let event_stream = if let Some(orch) = &state.orchestrator {
+        if let Some(stream) = orch.get_event_stream() {
+            stream
+        } else {
+            error!("Orchestrator event stream not available");
+            let error_msg = WsMessage::Error {
+                message: "Event stream not available".to_string(),
+                code: Some("NO_EVENT_STREAM".to_string()),
+            };
+            if let Ok(json) = serde_json::to_string(&error_msg) {
+                let _ = sender.send(Message::Text(json)).await;
+            }
+            return;
         }
-        return;
-    } } else {
+    } else {
         error!("Orchestrator not available");
         let error_msg = WsMessage::Error {
             message: "Task events not available (orchestrator not configured)".to_string(),

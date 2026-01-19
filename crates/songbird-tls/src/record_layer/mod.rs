@@ -13,10 +13,10 @@
 //! } TLSPlaintext;
 //! ```
 
+use crate::codec::bytes::*;
 use crate::error::{Result, TlsError};
 use crate::messages::ContentType;
-use crate::codec::bytes::*;
-use crate::{TLS_VERSION_1_2, MAX_RECORD_SIZE};
+use crate::{MAX_RECORD_SIZE, TLS_VERSION_1_2};
 
 /// TLS Record Layer
 ///
@@ -24,10 +24,10 @@ use crate::{TLS_VERSION_1_2, MAX_RECORD_SIZE};
 pub struct RecordLayer {
     /// Sequence number for outgoing records (for nonce construction)
     write_sequence: u64,
-    
+
     /// Sequence number for incoming records (for nonce construction)
     read_sequence: u64,
-    
+
     /// Are we in encrypted mode? (after handshake)
     encrypted: bool,
 }
@@ -125,7 +125,9 @@ impl RecordLayer {
 
         // Validate length
         if length > MAX_RECORD_SIZE {
-            return Err(TlsError::RecordTooLarge { size: length });
+            return Err(TlsError::RecordTooLarge {
+                size: length,
+            });
         }
 
         // Check if we have the full payload
@@ -167,7 +169,7 @@ impl RecordLayer {
         let mut inner = Vec::with_capacity(plaintext.len() + 1);
         inner.extend_from_slice(plaintext);
         inner.push(content_type.into()); // Actual content type
-        // No padding for now (can be added later for traffic analysis resistance)
+                                         // No padding for now (can be added later for traffic analysis resistance)
 
         // Encrypt the inner plaintext
         let ciphertext = encrypt_fn(&inner, self.write_sequence)?;
@@ -204,7 +206,7 @@ impl RecordLayer {
 
         // Last byte is the actual content type
         let content_type = ContentType::from(inner.pop().unwrap());
-        
+
         Ok((content_type, inner))
     }
 }
@@ -238,11 +240,9 @@ mod tests {
     fn test_frame_plaintext() {
         let mut record_layer = RecordLayer::new();
         let payload = b"Hello, TLS 1.3!";
-        
-        let record = record_layer
-            .frame_plaintext(ContentType::Handshake, payload)
-            .unwrap();
-        
+
+        let record = record_layer.frame_plaintext(ContentType::Handshake, payload).unwrap();
+
         // Check record structure: type (1) + version (2) + length (2) + payload
         assert_eq!(record.len(), 5 + payload.len());
         assert_eq!(record[0], ContentType::Handshake as u8);
@@ -254,17 +254,15 @@ mod tests {
     #[test]
     fn test_parse_record() {
         let mut record_layer = RecordLayer::new();
-        
+
         // Create a test record
         let payload = b"Test payload";
-        let record = record_layer
-            .frame_plaintext(ContentType::ApplicationData, payload)
-            .unwrap();
-        
+        let record = record_layer.frame_plaintext(ContentType::ApplicationData, payload).unwrap();
+
         // Parse it back
         let (content_type, parsed_payload, bytes_consumed) =
             record_layer.parse_record(&record).unwrap();
-        
+
         assert_eq!(content_type, ContentType::ApplicationData);
         assert_eq!(parsed_payload, payload);
         assert_eq!(bytes_consumed, record.len());
@@ -274,15 +272,14 @@ mod tests {
     fn test_frame_parse_roundtrip() {
         let mut record_layer = RecordLayer::new();
         let original_payload = b"Roundtrip test data";
-        
+
         // Frame
-        let record = record_layer
-            .frame_plaintext(ContentType::Handshake, original_payload)
-            .unwrap();
-        
+        let record =
+            record_layer.frame_plaintext(ContentType::Handshake, original_payload).unwrap();
+
         // Parse
         let (content_type, parsed_payload, _) = record_layer.parse_record(&record).unwrap();
-        
+
         assert_eq!(content_type, ContentType::Handshake);
         assert_eq!(parsed_payload, original_payload);
     }
@@ -291,7 +288,7 @@ mod tests {
     fn test_record_too_large() {
         let mut record_layer = RecordLayer::new();
         let payload = vec![0u8; MAX_RECORD_SIZE + 1]; // Too large!
-        
+
         let result = record_layer.frame_plaintext(ContentType::ApplicationData, &payload);
         assert!(result.is_err());
     }
@@ -300,7 +297,7 @@ mod tests {
     fn test_parse_record_too_short() {
         let mut record_layer = RecordLayer::new();
         let buf = vec![0x17, 0x03, 0x03]; // Only 3 bytes (need 5 for header)
-        
+
         let result = record_layer.parse_record(&buf);
         assert!(result.is_err());
     }
@@ -310,7 +307,7 @@ mod tests {
         let mut record_layer = RecordLayer::new();
         // Header says 10 bytes, but only 5 bytes of payload
         let buf = vec![0x17, 0x03, 0x03, 0x00, 0x0A, 1, 2, 3, 4, 5];
-        
+
         let result = record_layer.parse_record(&buf);
         assert!(result.is_err());
     }
@@ -318,18 +315,18 @@ mod tests {
     #[test]
     fn test_sequence_numbers() {
         let mut record_layer = RecordLayer::new();
-        
+
         assert_eq!(record_layer.write_sequence(), 0);
         assert_eq!(record_layer.read_sequence(), 0);
-        
+
         // Simulate encryption (increments write sequence)
         record_layer.increment_write_sequence();
         assert_eq!(record_layer.write_sequence(), 1);
-        
+
         // Simulate decryption (increments read sequence)
         record_layer.increment_read_sequence();
         assert_eq!(record_layer.read_sequence(), 1);
-        
+
         // Multiple increments
         for i in 2..=5 {
             record_layer.increment_write_sequence();
@@ -341,9 +338,9 @@ mod tests {
     fn test_encrypt_decrypt_roundtrip() {
         let mut record_layer = RecordLayer::new();
         record_layer.enable_encryption();
-        
+
         let plaintext = b"Secret message";
-        
+
         // Mock encryption: just append sequence number and reverse bytes
         let encrypt_fn = |data: &[u8], seq: u64| {
             let mut encrypted = data.to_vec();
@@ -351,27 +348,27 @@ mod tests {
             encrypted.extend_from_slice(&seq.to_be_bytes());
             Ok(encrypted)
         };
-        
+
         // Mock decryption: remove sequence number and reverse bytes
         let decrypt_fn = |data: &[u8], _seq: u64| {
             let mut decrypted = data[..data.len() - 8].to_vec();
             decrypted.reverse();
             Ok(decrypted)
         };
-        
+
         // Encrypt
         let encrypted_record = record_layer
             .encrypt_record(ContentType::ApplicationData, plaintext, encrypt_fn)
             .unwrap();
-        
+
         // Parse the encrypted record
         let (content_type, ciphertext, _) = record_layer.parse_record(&encrypted_record).unwrap();
         assert_eq!(content_type, ContentType::ApplicationData);
-        
+
         // Decrypt
         let (decrypted_type, decrypted_plaintext) =
             record_layer.decrypt_record(&ciphertext, decrypt_fn).unwrap();
-        
+
         assert_eq!(decrypted_type, ContentType::ApplicationData);
         assert_eq!(decrypted_plaintext, plaintext);
     }
@@ -380,7 +377,7 @@ mod tests {
     fn test_sequence_wrapping() {
         let mut record_layer = RecordLayer::new();
         record_layer.write_sequence = u64::MAX;
-        
+
         record_layer.increment_write_sequence();
         assert_eq!(record_layer.write_sequence(), 0); // Wrapped to 0
     }

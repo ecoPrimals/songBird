@@ -36,13 +36,13 @@ pub struct FederationId(pub Uuid);
 
 impl FederationId {
     /// Create a new random federation ID
-    #[must_use] 
+    #[must_use]
     pub fn new() -> Self {
         Self(Uuid::new_v4())
     }
 
     /// Create from existing UUID
-    #[must_use] 
+    #[must_use]
     pub fn from_uuid(uuid: Uuid) -> Self {
         Self(uuid)
     }
@@ -239,8 +239,7 @@ impl Default for ResourceQuota {
 }
 
 /// Data isolation policy for a federation
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[derive(Default)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct DataPolicy {
     /// What data can be accessed by this federation's nodes
     pub accessible_paths: Vec<PathBuf>,
@@ -254,7 +253,6 @@ pub struct DataPolicy {
     /// Audit logging enabled
     pub audit_logging: bool,
 }
-
 
 /// Auto-join policy for a federation
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -358,7 +356,7 @@ pub struct IpNetwork {
 
 impl IpNetwork {
     /// Check if an IP is in this network
-    #[must_use] 
+    #[must_use]
     pub fn contains(&self, ip: IpAddr) -> bool {
         use std::net::IpAddr;
 
@@ -462,7 +460,7 @@ pub enum RoutingMatcher {
 
 impl RoutingMatcher {
     /// Check if a peer matches this matcher
-    #[must_use] 
+    #[must_use]
     pub fn matches(&self, peer: &DiscoveredPeer) -> bool {
         match self {
             Self::IpSubnet(network) => network.contains(peer.address.ip()),

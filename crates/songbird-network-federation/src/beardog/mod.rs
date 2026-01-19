@@ -68,10 +68,10 @@ impl BearDogProviderFactory {
     }
 
     /// Create no-op provider when `BearDog` is unavailable
-    /// 
+    ///
     /// This is NOT a mock - it returns clear errors for all operations.
     /// Use in production for graceful degradation when security features are optional.
-    #[must_use] 
+    #[must_use]
     pub fn create_noop() -> Box<dyn BearDogProvider> {
         use crate::beardog::noop::NoOpBearDogProvider;
         Box::new(NoOpBearDogProvider::new())
@@ -93,7 +93,9 @@ impl BearDogProviderFactory {
             tracing::info!("Discovered BearDog via capability discovery at: {}", endpoint.url);
             // TODO: Create actual HTTP BearDog client implementation
             // For now, return no-op that explicitly errors (graceful degradation)
-            tracing::warn!("BearDog discovered but HTTP client not yet implemented - using NoOp provider");
+            tracing::warn!(
+                "BearDog discovered but HTTP client not yet implemented - using NoOp provider"
+            );
             return Ok(Some(Self::create_noop()));
         }
 
@@ -106,7 +108,9 @@ impl BearDogProviderFactory {
             let url = std::env::var("BEARDOG_URL").or_else(|_| std::env::var("SECURITY_URL"))?;
             tracing::info!("Found BearDog via environment at: {}", url);
             // TODO: Create actual HTTP BearDog client implementation
-            tracing::warn!("BearDog URL configured but HTTP client not yet implemented - using NoOp provider");
+            tracing::warn!(
+                "BearDog URL configured but HTTP client not yet implemented - using NoOp provider"
+            );
             return Ok(Some(Self::create_noop()));
         }
 
@@ -121,7 +125,9 @@ impl BearDogProviderFactory {
             tracing::warn!("Using development fallback for BearDog: {}", default_url);
             tracing::warn!("Set BEARDOG_URL or SECURITY_URL for production");
             // TODO: Create actual HTTP BearDog client implementation
-            tracing::warn!("Development mode: HTTP client not yet implemented - using NoOp provider");
+            tracing::warn!(
+                "Development mode: HTTP client not yet implemented - using NoOp provider"
+            );
             Ok(Some(Self::create_noop()))
         }
 

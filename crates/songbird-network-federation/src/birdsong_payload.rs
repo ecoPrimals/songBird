@@ -51,7 +51,7 @@ pub struct TransportEndpoint {
 
 impl BirdSongPayload {
     /// Create a new payload
-    #[must_use] 
+    #[must_use]
     pub fn new(
         node_id: String,
         node_name: String,
@@ -74,7 +74,7 @@ impl BirdSongPayload {
     }
 
     /// Check if timestamp is recent (within 60 seconds)
-    #[must_use] 
+    #[must_use]
     pub fn is_fresh(&self) -> bool {
         let now =
             SystemTime::now().duration_since(SystemTime::UNIX_EPOCH).unwrap_or_default().as_secs();
@@ -120,7 +120,7 @@ pub struct PlaintextPayload {
 
 impl PlaintextPayload {
     /// Create a new plaintext payload
-    #[must_use] 
+    #[must_use]
     pub fn new(
         node_id: String,
         node_name: String,
@@ -149,7 +149,7 @@ impl PlaintextPayload {
     }
 
     /// Convert to `BirdSong` payload (for encryption)
-    #[must_use] 
+    #[must_use]
     pub fn to_birdsong(&self) -> BirdSongPayload {
         BirdSongPayload::new(
             self.node_id.clone(),

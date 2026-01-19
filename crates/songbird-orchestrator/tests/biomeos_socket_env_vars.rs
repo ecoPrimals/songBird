@@ -122,7 +122,7 @@ fn test_default_socket_directory_is_tmp() {
     env::remove_var("SONGBIRD_FAMILY_ID");
 
     let path = UnixSocketServer::socket_path_from_env();
-    
+
     // Should default to /tmp/songbird-default.sock
     // NOT /run/user/1000/songbird-default.sock
     assert!(
@@ -185,4 +185,3 @@ fn test_family_id_priority_order() {
     env::remove_var("BIOMEOS_FAMILY_ID");
     env::remove_var("SONGBIRD_FAMILY_ID");
 }
-

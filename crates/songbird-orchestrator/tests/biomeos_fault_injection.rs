@@ -16,17 +16,17 @@ use std::path::PathBuf;
 fn fault_missing_all_env_vars() {
     // Save original state
     let original = save_env_state();
-    
+
     // Remove ALL environment variables
     clear_all_env_vars();
-    
+
     // Should not panic, should return default
     let path = UnixSocketServer::socket_path_from_env();
     let family_id = UnixSocketServer::get_family_id();
-    
+
     assert_eq!(path, PathBuf::from("/tmp/songbird-default.sock"));
     assert_eq!(family_id, "default");
-    
+
     // Cleanup
     restore_env_state(original);
 }
@@ -37,17 +37,17 @@ fn fault_missing_all_env_vars() {
 #[test]
 fn fault_nonexistent_directory() {
     let original = save_env_state();
-    
+
     // Set socket path to non-existent directory
     env::set_var("SONGBIRD_ORCHESTRATOR_SOCKET", "/non/existent/path/songbird.sock");
-    
+
     // Should return the path (validation happens at bind time)
     let path = UnixSocketServer::socket_path_from_env();
     assert_eq!(path, PathBuf::from("/non/existent/path/songbird.sock"));
-    
+
     // Note: Actual failure would occur when trying to create socket
     // This tests that path derivation doesn't crash on invalid paths
-    
+
     restore_env_state(original);
 }
 
@@ -57,7 +57,7 @@ fn fault_nonexistent_directory() {
 #[test]
 fn fault_invalid_family_id_special_chars() {
     let original = save_env_state();
-    
+
     // Test various problematic family IDs
     let test_cases = vec![
         ("spaces in name", "/tmp/songbird-spaces in name.sock"),
@@ -65,21 +65,21 @@ fn fault_invalid_family_id_special_chars() {
         ("slash/attack", "/tmp/songbird-slash/attack.sock"),
         ("../traversal", "/tmp/songbird-../traversal.sock"),
         ("unicode-🦜", "/tmp/songbird-unicode-🦜.sock"),
-        ("", "/tmp/songbird-.sock"),  // Empty string
+        ("", "/tmp/songbird-.sock"), // Empty string
     ];
-    
+
     for (family_id, expected_path) in test_cases {
         clear_all_env_vars();
         env::set_var("BIOMEOS_FAMILY_ID", family_id);
-        
+
         let path = UnixSocketServer::socket_path_from_env();
         let derived_family = UnixSocketServer::get_family_id();
-        
+
         // Should not crash, should construct path with provided ID
         assert_eq!(path, PathBuf::from(expected_path));
         assert_eq!(derived_family, family_id);
     }
-    
+
     restore_env_state(original);
 }
 
@@ -92,25 +92,25 @@ fn fault_invalid_family_id_special_chars() {
 fn fault_empty_string_env_vars() {
     let original = save_env_state();
     clear_all_env_vars();
-    
+
     // Test 1: Empty socket path env var
     env::set_var("SONGBIRD_ORCHESTRATOR_SOCKET", "");
-    
+
     let path = UnixSocketServer::socket_path_from_env();
     // Empty string is treated as "set to empty", so it's used directly
     assert_eq!(path, PathBuf::from(""));
-    
+
     // Test 2: Empty family ID (used as-is in path construction)
     clear_all_env_vars();
     env::set_var("BIOMEOS_FAMILY_ID", "");
-    
+
     let family_id = UnixSocketServer::get_family_id();
     let path = UnixSocketServer::socket_path_from_env();
-    
+
     // Empty family ID is used as-is in path construction
     assert_eq!(family_id, "");
     assert_eq!(path, PathBuf::from("/tmp/songbird-.sock"));
-    
+
     restore_env_state(original);
 }
 
@@ -120,16 +120,16 @@ fn fault_empty_string_env_vars() {
 #[test]
 fn fault_very_long_socket_path() {
     let original = save_env_state();
-    
+
     // Create a very long path (but still valid)
     let long_path = format!("/tmp/{}.sock", "a".repeat(200));
     env::set_var("SONGBIRD_ORCHESTRATOR_SOCKET", &long_path);
-    
+
     let path = UnixSocketServer::socket_path_from_env();
-    
+
     // Should handle long paths without crashing
     assert_eq!(path, PathBuf::from(long_path));
-    
+
     restore_env_state(original);
 }
 
@@ -139,15 +139,15 @@ fn fault_very_long_socket_path() {
 #[test]
 fn fault_relative_socket_path() {
     let original = save_env_state();
-    
+
     // Test relative path
     env::set_var("SONGBIRD_ORCHESTRATOR_SOCKET", "relative/path/songbird.sock");
-    
+
     let path = UnixSocketServer::socket_path_from_env();
-    
+
     // Should accept relative paths (path resolution happens at bind time)
     assert_eq!(path, PathBuf::from("relative/path/songbird.sock"));
-    
+
     restore_env_state(original);
 }
 
@@ -157,15 +157,15 @@ fn fault_relative_socket_path() {
 #[test]
 fn fault_path_with_symlinks() {
     let original = save_env_state();
-    
+
     // Simulate path with symlink
     env::set_var("SONGBIRD_ORCHESTRATOR_SOCKET", "/tmp/link/to/socket/songbird.sock");
-    
+
     let path = UnixSocketServer::socket_path_from_env();
-    
+
     // Should accept paths with symlinks (resolution happens at bind time)
     assert_eq!(path, PathBuf::from("/tmp/link/to/socket/songbird.sock"));
-    
+
     restore_env_state(original);
 }
 
@@ -175,19 +175,19 @@ fn fault_path_with_symlinks() {
 #[test]
 fn fault_whitespace_in_env_vars() {
     let original = save_env_state();
-    
+
     // Set env vars with whitespace
     env::set_var("SONGBIRD_ORCHESTRATOR_SOCKET", "  /tmp/songbird.sock  ");
     env::set_var("BIOMEOS_FAMILY_ID", "  nat0  ");
-    
+
     let path = UnixSocketServer::socket_path_from_env();
     let family_id = UnixSocketServer::get_family_id();
-    
+
     // Current implementation doesn't trim, so this tests as-is behavior
     // (Trimming could be added as an enhancement)
     assert_eq!(path, PathBuf::from("  /tmp/songbird.sock  "));
     assert_eq!(family_id, "  nat0  ");
-    
+
     restore_env_state(original);
 }
 
@@ -198,16 +198,16 @@ fn fault_whitespace_in_env_vars() {
 fn fault_case_sensitivity_env_vars() {
     let original = save_env_state();
     clear_all_env_vars();
-    
+
     // Set lowercase version (should NOT be recognized)
     env::set_var("songbird_orchestrator_socket", "/tmp/wrong.sock");
     env::set_var("SONGBIRD_ORCHESTRATOR_SOCKET", "/tmp/correct.sock");
-    
+
     let path = UnixSocketServer::socket_path_from_env();
-    
+
     // Should use the correctly-cased version
     assert_eq!(path, PathBuf::from("/tmp/correct.sock"));
-    
+
     restore_env_state(original);
 }
 
@@ -217,16 +217,16 @@ fn fault_case_sensitivity_env_vars() {
 #[test]
 fn fault_null_bytes_in_path() {
     let original = save_env_state();
-    
+
     // Rust strings can't contain null bytes, but if they somehow got in via FFI...
     // This is more of a defensive test
     env::set_var("SONGBIRD_ORCHESTRATOR_SOCKET", "/tmp/songbird.sock");
-    
+
     let path = UnixSocketServer::socket_path_from_env();
-    
+
     // Should handle normal paths correctly
     assert_eq!(path, PathBuf::from("/tmp/songbird.sock"));
-    
+
     restore_env_state(original);
 }
 
@@ -236,20 +236,20 @@ fn fault_null_bytes_in_path() {
 #[test]
 fn fault_concurrent_env_changes() {
     let original = save_env_state();
-    
+
     // Set initial env var
     env::set_var("SONGBIRD_ORCHESTRATOR_SOCKET", "/tmp/socket1.sock");
     let path1 = UnixSocketServer::socket_path_from_env();
-    
+
     // Change env var
     env::set_var("SONGBIRD_ORCHESTRATOR_SOCKET", "/tmp/socket2.sock");
     let path2 = UnixSocketServer::socket_path_from_env();
-    
+
     // Should reflect the change
     assert_eq!(path1, PathBuf::from("/tmp/socket1.sock"));
     assert_eq!(path2, PathBuf::from("/tmp/socket2.sock"));
     assert_ne!(path1, path2);
-    
+
     restore_env_state(original);
 }
 
@@ -259,7 +259,7 @@ fn fault_concurrent_env_changes() {
 #[test]
 fn fault_family_id_path_construction() {
     let original = save_env_state();
-    
+
     let test_cases = vec![
         ("nat0", "/tmp/songbird-nat0.sock"),
         ("production", "/tmp/songbird-production.sock"),
@@ -267,15 +267,15 @@ fn fault_family_id_path_construction() {
         ("123", "/tmp/songbird-123.sock"),
         ("_underscore_", "/tmp/songbird-_underscore_.sock"),
     ];
-    
+
     for (family_id, expected_path) in test_cases {
         clear_all_env_vars();
         env::set_var("BIOMEOS_FAMILY_ID", family_id);
-        
+
         let path = UnixSocketServer::socket_path_from_env();
         assert_eq!(path, PathBuf::from(expected_path));
     }
-    
+
     restore_env_state(original);
 }
 
@@ -285,25 +285,25 @@ fn fault_family_id_path_construction() {
 #[test]
 fn fault_all_priorities_set() {
     let original = save_env_state();
-    
+
     // Set ALL socket path env vars
     env::set_var("SONGBIRD_ORCHESTRATOR_SOCKET", "/tmp/highest.sock");
     env::set_var("SONGBIRD_SOCKET", "/tmp/medium.sock");
     env::set_var("BIOMEOS_SOCKET_PATH", "/tmp/lowest.sock");
-    
+
     // Set ALL family ID env vars
     env::set_var("SONGBIRD_ORCHESTRATOR_FAMILY_ID", "highest-family");
     env::set_var("SONGBIRD_ORCHESTRATOR_FAMILY", "medium-high-family");
     env::set_var("BIOMEOS_FAMILY_ID", "medium-family");
     env::set_var("SONGBIRD_FAMILY_ID", "lowest-family");
-    
+
     let path = UnixSocketServer::socket_path_from_env();
     let family_id = UnixSocketServer::get_family_id();
-    
+
     // Should use highest priority for both
     assert_eq!(path, PathBuf::from("/tmp/highest.sock"));
     assert_eq!(family_id, "highest-family");
-    
+
     restore_env_state(original);
 }
 
@@ -313,24 +313,21 @@ fn fault_all_priorities_set() {
 #[test]
 fn fault_repeated_calls_consistency() {
     let original = save_env_state();
-    
+
     env::set_var("SONGBIRD_ORCHESTRATOR_SOCKET", "/tmp/test.sock");
     env::set_var("BIOMEOS_FAMILY_ID", "test");
-    
+
     // Call multiple times
     let results: Vec<_> = (0..100)
-        .map(|_| (
-            UnixSocketServer::socket_path_from_env(),
-            UnixSocketServer::get_family_id()
-        ))
+        .map(|_| (UnixSocketServer::socket_path_from_env(), UnixSocketServer::get_family_id()))
         .collect();
-    
+
     // All results should be identical
     for (path, family_id) in results {
         assert_eq!(path, PathBuf::from("/tmp/test.sock"));
         assert_eq!(family_id, "test");
     }
-    
+
     restore_env_state(original);
 }
 
@@ -348,10 +345,8 @@ fn save_env_state() -> Vec<(String, Option<String>)> {
         "BIOMEOS_FAMILY_ID",
         "SONGBIRD_FAMILY_ID",
     ];
-    
-    keys.iter()
-        .map(|key| (key.to_string(), env::var(key).ok()))
-        .collect()
+
+    keys.iter().map(|key| (key.to_string(), env::var(key).ok())).collect()
 }
 
 fn restore_env_state(state: Vec<(String, Option<String>)>) {
@@ -372,4 +367,3 @@ fn clear_all_env_vars() {
     env::remove_var("BIOMEOS_FAMILY_ID");
     env::remove_var("SONGBIRD_FAMILY_ID");
 }
-

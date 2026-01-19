@@ -386,7 +386,7 @@ impl TaskStorage {
                         // Zstd was migrated to flate2 (Pure Rust) for ecoBin compliance
                         // Old checkpoints are treated as uncompressed (data still readable)
                         // This can be removed after all checkpoints are migrated (Q2 2026)
-                        None  // Treat as uncompressed
+                        None // Treat as uncompressed
                     } else {
                         None
                     }

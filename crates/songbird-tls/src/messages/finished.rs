@@ -30,7 +30,9 @@ pub struct Finished {
 impl Finished {
     /// Create a new Finished message
     pub fn new(verify_data: Vec<u8>) -> Self {
-        Self { verify_data }
+        Self {
+            verify_data,
+        }
     }
 
     /// Validate Finished message
@@ -162,12 +164,11 @@ mod tests {
         // In a real scenario, we'd use a crypto timing analysis tool
         let verify_data1 = vec![0u8; 32];
         let verify_data2 = vec![1u8; 32];
-        
+
         let finished = Finished::new(verify_data1);
         let result = finished.verify(&verify_data2);
-        
+
         // Should fail, but the important thing is it uses constant-time comparison
         assert!(result.is_err());
     }
 }
-

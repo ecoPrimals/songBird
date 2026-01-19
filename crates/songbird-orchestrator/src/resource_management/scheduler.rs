@@ -248,7 +248,6 @@ impl FairScheduler {
         // Cost is based on resource requirements
         // For priority-aware scheduling: lower cost = earlier finish time = higher priority
         // Inverse the priority values so critical tasks have lowest cost
-        
 
         // Could be extended with actual resource requirements
         match task.spec.priority {

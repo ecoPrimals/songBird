@@ -55,22 +55,24 @@
 //! - [The Illustrated TLS 1.3 Connection](https://tls13.xargs.org/)
 
 // Core modules
-pub mod messages;
-pub mod codec;
-pub mod handshake;
-pub mod record_layer;
-pub mod key_schedule;
 pub mod cert;
+pub mod codec;
 pub mod crypto;
+pub mod handshake;
+pub mod key_schedule;
+pub mod messages;
+pub mod record_layer;
+pub mod server; // NEW: High-level server API
 
 // Error types
 pub mod error;
-pub use error::{TlsError, Result};
+pub use error::{Result, TlsError};
 
 // Re-exports for convenience
-pub use messages::{ClientHello, ServerHello, Certificate, Finished};
 pub use handshake::{HandshakeState, HandshakeStateMachine};
+pub use messages::{Certificate, ClientHello, Finished, ServerHello};
 pub use record_layer::RecordLayer;
+pub use server::{TlsAcceptor, TlsServerConfig, TlsStream};
 
 /// TLS 1.3 protocol version (0x0304)
 pub const TLS_VERSION_1_3: u16 = 0x0304;
@@ -133,4 +135,3 @@ mod tests {
         assert_eq!(MAX_HANDSHAKE_SIZE, 262144);
     }
 }
-

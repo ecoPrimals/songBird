@@ -18,10 +18,7 @@ fn test_capability_discovery_with_security_provider() {
 
     let socket = discover_beardog_socket();
     assert!(socket.is_some());
-    assert_eq!(
-        socket.unwrap().to_str().unwrap(),
-        "/tmp/test-beardog-unit.sock"
-    );
+    assert_eq!(socket.unwrap().to_str().unwrap(), "/tmp/test-beardog-unit.sock");
 
     // Cleanup
     std::env::remove_var("SECURITY_PROVIDER");
@@ -38,10 +35,7 @@ fn test_capability_discovery_with_beardog_socket() {
 
     let socket = discover_beardog_socket();
     assert!(socket.is_some());
-    assert_eq!(
-        socket.unwrap().to_str().unwrap(),
-        "/tmp/test-beardog-override.sock"
-    );
+    assert_eq!(socket.unwrap().to_str().unwrap(), "/tmp/test-beardog-override.sock");
 
     // Cleanup
     std::env::remove_var("BEARDOG_SOCKET");
@@ -59,10 +53,7 @@ fn test_capability_discovery_priority() {
 
     let socket = discover_beardog_socket();
     assert!(socket.is_some());
-    assert_eq!(
-        socket.unwrap().to_str().unwrap(),
-        "/tmp/security-provider.sock"
-    );
+    assert_eq!(socket.unwrap().to_str().unwrap(), "/tmp/security-provider.sock");
 
     // Cleanup
     std::env::remove_var("SECURITY_PROVIDER");
@@ -103,9 +94,7 @@ fn test_get_beardog_socket_for_jwt() {
 #[tokio::test]
 async fn test_jwt_provisioning_fallback_secure_random() {
     // No BearDog available, should fall back to secure random
-    let secret = provision_jwt_secret(None, "test_unit_purpose")
-        .await
-        .unwrap();
+    let secret = provision_jwt_secret(None, "test_unit_purpose").await.unwrap();
 
     // Should be base64-encoded (64 bytes → ~88 characters)
     assert!(secret.len() >= 85);
@@ -113,9 +102,7 @@ async fn test_jwt_provisioning_fallback_secure_random() {
     assert!(!secret.is_empty());
 
     // Should be different each time
-    let secret2 = provision_jwt_secret(None, "test_unit_purpose2")
-        .await
-        .unwrap();
+    let secret2 = provision_jwt_secret(None, "test_unit_purpose2").await.unwrap();
     assert_ne!(secret, secret2);
 }
 
@@ -137,9 +124,8 @@ async fn test_jwt_provisioning_base64_validity() {
     let secret = provision_jwt_secret(None, "test_base64").await.unwrap();
 
     // Should be valid base64
-    let decoded = base64::engine::general_purpose::STANDARD
-        .decode(&secret)
-        .expect("Should be valid base64");
+    let decoded =
+        base64::engine::general_purpose::STANDARD.decode(&secret).expect("Should be valid base64");
 
     // Should be 64 bytes (512 bits)
     assert_eq!(decoded.len(), 64);
@@ -160,4 +146,3 @@ fn test_capability_discovery_no_env_vars() {
         None => println!("No socket found (expected without env vars)"),
     }
 }
-

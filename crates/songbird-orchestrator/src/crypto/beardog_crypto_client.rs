@@ -31,7 +31,7 @@ struct Ed25519SignRequest {
 
 #[derive(Debug, Serialize)]
 struct Ed25519SignParams {
-    message: String,     // base64-encoded
+    message: String, // base64-encoded
     key_id: String,
     purpose: String,
 }
@@ -45,7 +45,7 @@ struct Ed25519SignResponse {
 
 #[derive(Debug, Deserialize)]
 struct Ed25519SignResult {
-    signature: String,   // base64-encoded
+    signature: String, // base64-encoded
 }
 
 /// Sign a message with Ed25519 via BearDog
@@ -124,9 +124,9 @@ struct Ed25519VerifyRequest {
 
 #[derive(Debug, Serialize)]
 struct Ed25519VerifyParams {
-    message: String,        // base64-encoded
-    signature: String,      // base64-encoded
-    public_key: String,     // base64-encoded
+    message: String,    // base64-encoded
+    signature: String,  // base64-encoded
+    public_key: String, // base64-encoded
 }
 
 #[derive(Debug, Deserialize)]
@@ -228,8 +228,8 @@ struct X25519GenerateResponse {
 
 #[derive(Debug, Deserialize)]
 struct X25519GenerateResult {
-    public_key: String,         // base64-encoded
-    secret_key: String,         // base64-encoded (BearDog is stateless!)
+    public_key: String, // base64-encoded
+    secret_key: String, // base64-encoded (BearDog is stateless!)
 }
 
 /// Generate ephemeral X25519 key pair via BearDog
@@ -302,8 +302,8 @@ struct X25519DeriveRequest {
 
 #[derive(Debug, Serialize)]
 struct X25519DeriveParams {
-    our_secret: String,          // base64-encoded secret key bytes (stateless!)
-    their_public: String,        // base64-encoded public key
+    our_secret: String,   // base64-encoded secret key bytes (stateless!)
+    their_public: String, // base64-encoded public key
 }
 
 #[derive(Debug, Deserialize)]
@@ -315,7 +315,7 @@ struct X25519DeriveResponse {
 
 #[derive(Debug, Deserialize)]
 struct X25519DeriveResult {
-    shared_secret: String,      // base64-encoded
+    shared_secret: String, // base64-encoded
 }
 
 /// Derive X25519 shared secret via BearDog
@@ -394,10 +394,10 @@ struct ChaChaEncryptRequest {
 
 #[derive(Debug, Serialize)]
 struct ChaChaEncryptParams {
-    plaintext: String,      // base64-encoded
-    key: String,            // base64-encoded
-    nonce: String,          // base64-encoded
-    aad: String,            // base64-encoded (additional authenticated data)
+    plaintext: String, // base64-encoded
+    key: String,       // base64-encoded
+    nonce: String,     // base64-encoded
+    aad: String,       // base64-encoded (additional authenticated data)
 }
 
 #[derive(Debug, Deserialize)]
@@ -409,9 +409,9 @@ struct ChaChaEncryptResponse {
 
 #[derive(Debug, Deserialize)]
 struct ChaChaEncryptResult {
-    ciphertext: String,     // base64-encoded
-    nonce: String,          // base64-encoded (BearDog generates!)
-    tag: String,            // base64-encoded auth tag
+    ciphertext: String, // base64-encoded
+    nonce: String,      // base64-encoded (BearDog generates!)
+    tag: String,        // base64-encoded auth tag
 }
 
 /// Encrypt with ChaCha20-Poly1305 AEAD via BearDog
@@ -455,7 +455,7 @@ pub async fn chacha20_poly1305_encrypt(
         params: ChaChaEncryptParams {
             plaintext: plaintext_b64,
             key: key_b64,
-            nonce: String::new(),  // Empty - BearDog will generate
+            nonce: String::new(), // Empty - BearDog will generate
             aad: aad_b64,
         },
         id: 5,
@@ -477,14 +477,13 @@ pub async fn chacha20_poly1305_encrypt(
     let ciphertext = encoder
         .decode(&response.result.ciphertext)
         .context("Failed to decode ChaCha20-Poly1305 ciphertext")?;
-    
+
     let nonce = encoder
         .decode(&response.result.nonce)
         .context("Failed to decode ChaCha20-Poly1305 nonce")?;
-    
-    let tag = encoder
-        .decode(&response.result.tag)
-        .context("Failed to decode ChaCha20-Poly1305 tag")?;
+
+    let tag =
+        encoder.decode(&response.result.tag).context("Failed to decode ChaCha20-Poly1305 tag")?;
 
     debug!("✅ ChaCha20-Poly1305 encryption complete ({} bytes ciphertext, {} bytes nonce, {} bytes tag)", 
            ciphertext.len(), nonce.len(), tag.len());
@@ -502,11 +501,11 @@ struct ChaChaDecryptRequest {
 
 #[derive(Debug, Serialize)]
 struct ChaChaDecryptParams {
-    ciphertext: String,     // base64-encoded
-    key: String,            // base64-encoded
-    nonce: String,          // base64-encoded
-    tag: String,            // base64-encoded auth tag
-    aad: String,            // base64-encoded (optional)
+    ciphertext: String, // base64-encoded
+    key: String,        // base64-encoded
+    nonce: String,      // base64-encoded
+    tag: String,        // base64-encoded auth tag
+    aad: String,        // base64-encoded (optional)
 }
 
 #[derive(Debug, Deserialize)]
@@ -518,7 +517,7 @@ struct ChaChaDecryptResponse {
 
 #[derive(Debug, Deserialize)]
 struct ChaChaDecryptResult {
-    plaintext: String,      // base64-encoded
+    plaintext: String, // base64-encoded
 }
 
 /// Decrypt with ChaCha20-Poly1305 AEAD via BearDog
@@ -608,7 +607,7 @@ struct Blake3HashRequest {
 
 #[derive(Debug, Serialize)]
 struct Blake3HashParams {
-    data: String,           // base64-encoded
+    data: String, // base64-encoded
 }
 
 #[derive(Debug, Deserialize)]
@@ -620,7 +619,7 @@ struct Blake3HashResponse {
 
 #[derive(Debug, Deserialize)]
 struct Blake3HashResult {
-    hash: String,           // base64-encoded
+    hash: String, // base64-encoded
 }
 
 /// Hash data with Blake3 via BearDog
@@ -632,10 +631,7 @@ struct Blake3HashResult {
 /// # Returns
 /// * `Ok(hash)` - Blake3 hash bytes (32 bytes)
 /// * `Err` - If BearDog is unavailable or hashing fails
-pub async fn blake3_hash(
-    socket_path: &str,
-    data: &[u8],
-) -> Result<Vec<u8>> {
+pub async fn blake3_hash(socket_path: &str, data: &[u8]) -> Result<Vec<u8>> {
     debug!("# Hashing with Blake3 via BearDog ({} bytes)", data.len());
 
     // Connect to BearDog
@@ -693,8 +689,8 @@ struct HmacSha256Request {
 
 #[derive(Debug, Serialize)]
 struct HmacSha256Params {
-    key: String,            // base64-encoded
-    data: String,           // base64-encoded
+    key: String,  // base64-encoded
+    data: String, // base64-encoded
 }
 
 #[derive(Debug, Deserialize)]
@@ -706,7 +702,7 @@ struct HmacSha256Response {
 
 #[derive(Debug, Deserialize)]
 struct HmacSha256Result {
-    mac: String,            // base64-encoded (BearDog uses "mac" not "hmac")
+    mac: String, // base64-encoded (BearDog uses "mac" not "hmac")
 }
 
 /// Compute HMAC-SHA256 via BearDog
@@ -719,11 +715,7 @@ struct HmacSha256Result {
 /// # Returns
 /// * `Ok(hmac)` - HMAC-SHA256 bytes (32 bytes)
 /// * `Err` - If BearDog is unavailable or HMAC computation fails
-pub async fn hmac_sha256(
-    socket_path: &str,
-    key: &[u8],
-    data: &[u8],
-) -> Result<Vec<u8>> {
+pub async fn hmac_sha256(socket_path: &str, key: &[u8], data: &[u8]) -> Result<Vec<u8>> {
     debug!("🔏 Computing HMAC-SHA256 via BearDog ({} bytes)", data.len());
 
     // Connect to BearDog
@@ -761,9 +753,7 @@ pub async fn hmac_sha256(
         .context("Failed to parse BearDog HMAC-SHA256 response")?;
 
     // Decode HMAC from base64
-    let hmac = encoder
-        .decode(&response.result.mac)
-        .context("Failed to decode HMAC-SHA256")?;
+    let hmac = encoder.decode(&response.result.mac).context("Failed to decode HMAC-SHA256")?;
 
     debug!("✅ HMAC-SHA256 complete ({} bytes)", hmac.len());
 
@@ -795,8 +785,8 @@ async fn read_json_rpc_response(stream: &mut UnixStream) -> Result<String> {
         }
     }
 
-    let response_str = String::from_utf8(response_buffer)
-        .context("BearDog response was not valid UTF-8")?;
+    let response_str =
+        String::from_utf8(response_buffer).context("BearDog response was not valid UTF-8")?;
 
     Ok(response_str)
 }
@@ -837,7 +827,8 @@ mod tests {
         let purpose = "test_key_exchange";
 
         // Generate ephemeral key pair
-        let (public_key, secret_key_id) = x25519_generate_ephemeral(&socket, purpose).await.unwrap();
+        let (public_key, secret_key_id) =
+            x25519_generate_ephemeral(&socket, purpose).await.unwrap();
         assert_eq!(public_key.len(), 32); // X25519 public key is 32 bytes
         assert!(!secret_key_id.is_empty());
 
@@ -858,18 +849,18 @@ mod tests {
         let aad = b"additional data";
 
         // Encrypt (BearDog generates nonce!)
-        let (ciphertext, nonce, tag) = chacha20_poly1305_encrypt(&socket, plaintext, &key, Some(aad))
-            .await
-            .unwrap();
-        
+        let (ciphertext, nonce, tag) =
+            chacha20_poly1305_encrypt(&socket, plaintext, &key, Some(aad)).await.unwrap();
+
         assert_eq!(ciphertext.len(), plaintext.len()); // Ciphertext same size as plaintext
         assert_eq!(nonce.len(), 12); // Nonce is 12 bytes
         assert_eq!(tag.len(), 16); // Auth tag is 16 bytes
 
         // Decrypt
-        let decrypted = chacha20_poly1305_decrypt(&socket, &ciphertext, &key, &nonce, &tag, Some(aad))
-            .await
-            .unwrap();
+        let decrypted =
+            chacha20_poly1305_decrypt(&socket, &ciphertext, &key, &nonce, &tag, Some(aad))
+                .await
+                .unwrap();
         assert_eq!(decrypted, plaintext);
     }
 
@@ -898,4 +889,3 @@ mod tests {
         assert_eq!(hmac.len(), 32); // SHA-256 HMAC is 32 bytes
     }
 }
-

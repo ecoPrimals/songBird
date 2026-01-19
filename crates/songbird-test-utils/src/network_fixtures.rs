@@ -5,19 +5,34 @@
 
 use std::net::IpAddr;
 
-/// Get test bind address from environment or use safe default
+/// Get test bind IP address (just the IP, not IP:PORT)
 ///
 /// Respects `SONGBIRD_TEST_BIND_ADDRESS` environment variable.
 /// Defaults to 127.0.0.1 for test isolation.
+///
+/// For IP:PORT combinations with capability-based port allocation,
+/// use `test_bind_address(capability)` from fixtures module instead.
+#[must_use]
+pub fn test_bind_ip_str() -> String {
+    std::env::var("SONGBIRD_TEST_BIND_ADDRESS").unwrap_or_else(|_| "127.0.0.1".to_string())
+}
+
+/// DEPRECATED: Use `test_bind_ip_str()` for IP-only or `test_bind_address(capability)` for IP:PORT
+///
+/// This function is kept for backward compatibility but will be removed.
+#[deprecated(
+    since = "0.2.2",
+    note = "Use test_bind_ip_str() for IP-only or fixtures::test_bind_address(capability) for IP:PORT"
+)]
 #[must_use]
 pub fn test_bind_address() -> String {
-    std::env::var("SONGBIRD_TEST_BIND_ADDRESS").unwrap_or_else(|_| "127.0.0.1".to_string())
+    test_bind_ip_str()
 }
 
 /// Get test bind address as `IpAddr` type
 #[must_use]
 pub fn test_bind_ip() -> IpAddr {
-    test_bind_address().parse().unwrap_or(IpAddr::V4(std::net::Ipv4Addr::LOCALHOST))
+    test_bind_ip_str().parse().unwrap_or(IpAddr::V4(std::net::Ipv4Addr::LOCALHOST))
 }
 
 /// Get test port from environment or use safe default
@@ -79,7 +94,7 @@ pub fn test_federation_port() -> u16 {
 pub fn test_service_url(service: &str) -> String {
     let env_var = format!("SONGBIRD_TEST_{}_URL", service.to_uppercase());
     std::env::var(&env_var)
-        .unwrap_or_else(|_| format!("http://{}:{}/{}", test_bind_address(), test_port(), service))
+        .unwrap_or_else(|_| format!("http://{}:{}/{}", test_bind_ip_str(), test_port(), service))
 }
 
 /// Create a test endpoint URL with custom port
@@ -89,25 +104,25 @@ pub fn test_service_url(service: &str) -> String {
 /// * `port` - Port number
 #[must_use]
 pub fn test_endpoint_url(path: &str, port: u16) -> String {
-    format!("http://{}:{}/{}", test_bind_address(), port, path.trim_start_matches('/'))
+    format!("http://{}:{}/{}", test_bind_ip_str(), port, path.trim_start_matches('/'))
 }
 
 /// Get test host:port pair
 #[must_use]
 pub fn test_host_port() -> String {
-    format!("{}:{}", test_bind_address(), test_port())
+    format!("{}:{}", test_bind_ip_str(), test_port())
 }
 
 /// Get test HTTP base URL
 #[must_use]
 pub fn test_http_url() -> String {
-    format!("http://{}:{}", test_bind_address(), test_port())
+    format!("http://{}:{}", test_bind_ip_str(), test_port())
 }
 
 /// Get test WebSocket URL
 #[must_use]
 pub fn test_websocket_url() -> String {
-    format!("ws://{}:{}", test_bind_address(), test_port())
+    format!("ws://{}:{}", test_bind_ip_str(), test_port())
 }
 
 #[allow(

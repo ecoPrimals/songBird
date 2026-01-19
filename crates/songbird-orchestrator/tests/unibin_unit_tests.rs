@@ -61,7 +61,7 @@ mod helper_tests {
         // Test boolean flag parsing
         let daemon_flag = false;
         assert!(!daemon_flag);
-        
+
         let verbose_flag = true;
         assert!(verbose_flag);
     }
@@ -71,7 +71,7 @@ mod helper_tests {
         // Test Option type handling
         let config_path: Option<String> = None;
         assert!(config_path.is_none());
-        
+
         let config_path = Some("config.toml".to_string());
         assert!(config_path.is_some());
         assert_eq!(config_path.unwrap(), "config.toml");
@@ -100,10 +100,10 @@ mod helper_tests {
             .or_else(|_| std::env::var("NODE_ID"))
             .or_else(|_| std::env::var("SPORE_ID"))
             .ok();
-        
+
         assert!(node_id.is_some());
         assert_eq!(node_id.unwrap(), "test-node-1");
-        
+
         std::env::remove_var("SONGBIRD_NODE_ID");
     }
 
@@ -111,13 +111,12 @@ mod helper_tests {
     fn test_family_identity_env_vars() {
         // Test family identity environment variable priority
         std::env::set_var("SONGBIRD_FAMILY_ID", "nat0");
-        let family_id = std::env::var("SONGBIRD_FAMILY_ID")
-            .or_else(|_| std::env::var("FAMILY_ID"))
-            .ok();
-        
+        let family_id =
+            std::env::var("SONGBIRD_FAMILY_ID").or_else(|_| std::env::var("FAMILY_ID")).ok();
+
         assert!(family_id.is_some());
         assert_eq!(family_id.unwrap(), "nat0");
-        
+
         std::env::remove_var("SONGBIRD_FAMILY_ID");
     }
 
@@ -127,15 +126,15 @@ mod helper_tests {
         std::env::remove_var("SONGBIRD_NODE_ID");
         std::env::remove_var("NODE_ID");
         std::env::set_var("SPORE_ID", "fallback-spore");
-        
+
         let node_id = std::env::var("SONGBIRD_NODE_ID")
             .or_else(|_| std::env::var("NODE_ID"))
             .or_else(|_| std::env::var("SPORE_ID"))
             .ok();
-        
+
         assert!(node_id.is_some());
         assert_eq!(node_id.unwrap(), "fallback-spore");
-        
+
         std::env::remove_var("SPORE_ID");
     }
 }
@@ -182,7 +181,7 @@ mod config_tests {
         // Test config file path handling
         let config_path: Option<String> = Some("songbird.toml".to_string());
         assert!(config_path.is_some());
-        
+
         if let Some(path) = config_path {
             assert!(path.ends_with(".toml"));
         }
@@ -202,7 +201,7 @@ mod version_tests {
         // Test version string format
         let version = env!("CARGO_PKG_VERSION");
         assert!(!version.is_empty());
-        
+
         // Version should have at least one dot (e.g., "0.1.0")
         assert!(version.contains('.'));
     }
@@ -257,9 +256,9 @@ mod error_handling_tests {
     #[test]
     fn test_error_context() {
         // Test error context propagation
-        let result: Result<()> = Err(anyhow::anyhow!("base error"))
-            .map_err(|e| anyhow::anyhow!("context: {}", e));
-        
+        let result: Result<()> =
+            Err(anyhow::anyhow!("base error")).map_err(|e| anyhow::anyhow!("context: {}", e));
+
         assert!(result.is_err());
         let err_msg = format!("{}", result.unwrap_err());
         assert!(err_msg.contains("context"));
@@ -295,7 +294,11 @@ mod logging_tests {
     fn test_mode_info_formatting() {
         // Test mode info formatting
         let daemon = false;
-        let mode_str = if daemon { "(daemon)" } else { "(foreground)" };
+        let mode_str = if daemon {
+            "(daemon)"
+        } else {
+            "(foreground)"
+        };
         assert_eq!(mode_str, "(foreground)");
     }
 
@@ -379,7 +382,7 @@ mod signal_tests {
         // Test graceful shutdown flag
         let mut shutdown = false;
         assert!(!shutdown);
-        
+
         // Simulate shutdown request
         shutdown = true;
         assert!(shutdown);
@@ -452,11 +455,11 @@ async fn test_async_operation() {
 async fn test_async_delay() {
     // Test async delay
     use tokio::time::{sleep, Duration};
-    
+
     let start = std::time::Instant::now();
     sleep(Duration::from_millis(10)).await;
     let elapsed = start.elapsed();
-    
+
     assert!(elapsed.as_millis() >= 10);
 }
 
@@ -465,12 +468,12 @@ async fn test_async_delay() {
 async fn test_concurrent_operations() {
     // Test concurrent async operations
     use tokio::join;
-    
+
     let op1 = async { 1 };
     let op2 = async { 2 };
-    
+
     let (r1, r2) = join!(op1, op2);
-    
+
     assert_eq!(r1, 1);
     assert_eq!(r2, 2);
 }
@@ -503,11 +506,11 @@ mod memory_tests {
     fn test_option_size() {
         // Test Option memory layout
         use std::mem::size_of;
-        
+
         let opt: Option<String> = None;
         let size = size_of::<Option<String>>();
         assert!(size > 0);
-        
+
         drop(opt); // Explicit drop for clarity
     }
 
@@ -515,7 +518,7 @@ mod memory_tests {
     fn test_result_size() {
         // Test Result memory layout
         use std::mem::size_of;
-        
+
         let size = size_of::<Result<i32>>();
         assert!(size > 0);
     }
@@ -583,4 +586,3 @@ mod edge_case_tests {
         assert!(s.trim().is_empty());
     }
 }
-

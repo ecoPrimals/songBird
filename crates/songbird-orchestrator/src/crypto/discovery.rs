@@ -83,8 +83,9 @@ pub async fn get_beardog_crypto_socket() -> Result<String> {
         for entry in entries.flatten() {
             if let Ok(file_name) = entry.file_name().into_string() {
                 // Look for crypto-related sockets (beardog, crypto, etc.)
-                if (file_name.contains("crypto") || file_name.starts_with("beardog")) 
-                    && file_name.ends_with(".sock") {
+                if (file_name.contains("crypto") || file_name.starts_with("beardog"))
+                    && file_name.ends_with(".sock")
+                {
                     let path = entry.path();
                     info!("   ✅ Found crypto provider socket at: {}", path.display());
                     return Ok(path.to_string_lossy().to_string());
@@ -136,9 +137,10 @@ pub async fn get_beardog_crypto_socket_for_family(family_id: &str) -> Result<Str
 /// * `false` - BearDog crypto not available (will use ring fallback)
 pub async fn is_beardog_crypto_available() -> bool {
     // Quick check without verbose logging
-    if std::env::var("CRYPTO_PROVIDER").is_ok() 
+    if std::env::var("CRYPTO_PROVIDER").is_ok()
         || std::env::var("BEARDOG_CRYPTO_SOCKET").is_ok()
-        || std::env::var("BEARDOG_SOCKET").is_ok() {
+        || std::env::var("BEARDOG_SOCKET").is_ok()
+    {
         return true;
     }
 
@@ -173,19 +175,19 @@ pub async fn get_beardog_crypto_socket_for_purpose(purpose: &str) -> Result<Stri
 mod tests {
     use super::*;
     use std::sync::Mutex;
-    
+
     // Mutex to serialize tests that modify environment
     static ENV_MUTEX: Mutex<()> = Mutex::new(());
 
     #[tokio::test]
     async fn test_discover_beardog_crypto_socket_env_var() {
         let _guard = ENV_MUTEX.lock().unwrap();
-        
+
         // Clear all related env vars first
         std::env::remove_var("CRYPTO_PROVIDER");
         std::env::remove_var("BEARDOG_CRYPTO_SOCKET");
         std::env::remove_var("BEARDOG_SOCKET");
-        
+
         // Set environment variable
         std::env::set_var("CRYPTO_PROVIDER", "/tmp/test-beardog-crypto.sock");
 
@@ -200,7 +202,7 @@ mod tests {
     #[tokio::test]
     async fn test_discover_beardog_crypto_socket_fallback() {
         let _guard = ENV_MUTEX.lock().unwrap();
-        
+
         // Ensure no environment variables set
         std::env::remove_var("CRYPTO_PROVIDER");
         std::env::remove_var("BEARDOG_CRYPTO_SOCKET");
@@ -219,12 +221,12 @@ mod tests {
     #[tokio::test]
     async fn test_is_beardog_crypto_available() {
         let _guard = ENV_MUTEX.lock().unwrap();
-        
+
         // Clear all related env vars first
         std::env::remove_var("CRYPTO_PROVIDER");
         std::env::remove_var("BEARDOG_CRYPTO_SOCKET");
         std::env::remove_var("BEARDOG_SOCKET");
-        
+
         std::env::set_var("CRYPTO_PROVIDER", "/tmp/test-crypto.sock");
 
         let available = is_beardog_crypto_available().await;
@@ -236,12 +238,12 @@ mod tests {
     #[tokio::test]
     async fn test_get_beardog_crypto_socket_for_purpose() {
         let _guard = ENV_MUTEX.lock().unwrap();
-        
+
         // Clear all related env vars first
         std::env::remove_var("CRYPTO_PROVIDER");
         std::env::remove_var("BEARDOG_CRYPTO_SOCKET");
         std::env::remove_var("BEARDOG_SOCKET");
-        
+
         std::env::set_var("CRYPTO_PROVIDER", "/tmp/purpose-test.sock");
 
         let socket = get_beardog_crypto_socket_for_purpose("tls_handshake").await;
@@ -251,4 +253,3 @@ mod tests {
         std::env::remove_var("CRYPTO_PROVIDER");
     }
 }
-

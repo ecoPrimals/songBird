@@ -39,16 +39,24 @@ pub enum TlsError {
     InternalError(String),
 
     /// Buffer too small
-    BufferTooSmall { required: usize, available: usize },
+    BufferTooSmall {
+        required: usize,
+        available: usize,
+    },
 
     /// Invalid parameter
     InvalidParameter(String),
 
     /// Record too large (> 16KB)
-    RecordTooLarge { size: usize },
+    RecordTooLarge {
+        size: usize,
+    },
 
     /// Unexpected message type
-    UnexpectedMessage { expected: String, got: String },
+    UnexpectedMessage {
+        expected: String,
+        got: String,
+    },
 }
 
 impl fmt::Display for TlsError {
@@ -62,7 +70,10 @@ impl fmt::Display for TlsError {
             TlsError::IoError(msg) => write!(f, "IO error: {}", msg),
             TlsError::CryptoError(msg) => write!(f, "Crypto error: {}", msg),
             TlsError::InternalError(msg) => write!(f, "Internal error: {}", msg),
-            TlsError::BufferTooSmall { required, available } => {
+            TlsError::BufferTooSmall {
+                required,
+                available,
+            } => {
                 write!(
                     f,
                     "Buffer too small: required {} bytes, available {} bytes",
@@ -70,10 +81,15 @@ impl fmt::Display for TlsError {
                 )
             }
             TlsError::InvalidParameter(msg) => write!(f, "Invalid parameter: {}", msg),
-            TlsError::RecordTooLarge { size } => {
+            TlsError::RecordTooLarge {
+                size,
+            } => {
                 write!(f, "Record too large: {} bytes (max 16384)", size)
             }
-            TlsError::UnexpectedMessage { expected, got } => {
+            TlsError::UnexpectedMessage {
+                expected,
+                got,
+            } => {
                 write!(f, "Unexpected message: expected {}, got {}", expected, got)
             }
         }
@@ -99,16 +115,20 @@ impl From<anyhow::Error> for TlsError {
 impl TlsError {
     pub fn to_alert_code(&self) -> u8 {
         match self {
-            TlsError::DecryptError => 51, // decrypt_error
+            TlsError::DecryptError => 51,        // decrypt_error
             TlsError::CertificateError(_) => 42, // bad_certificate
             TlsError::HandshakeFailure(_) => 40, // handshake_failure
-            TlsError::Unsupported(_) => 70, // protocol_version
-            TlsError::ProtocolError(_) => 10, // unexpected_message
+            TlsError::Unsupported(_) => 70,      // protocol_version
+            TlsError::ProtocolError(_) => 10,    // unexpected_message
             TlsError::InvalidParameter(_) => 47, // illegal_parameter
-            TlsError::RecordTooLarge { .. } => 22, // record_overflow
-            TlsError::UnexpectedMessage { .. } => 10, // unexpected_message
-            TlsError::InternalError(_) => 80, // internal_error
-            _ => 80, // internal_error (default)
+            TlsError::RecordTooLarge {
+                ..
+            } => 22, // record_overflow
+            TlsError::UnexpectedMessage {
+                ..
+            } => 10, // unexpected_message
+            TlsError::InternalError(_) => 80,    // internal_error
+            _ => 80,                             // internal_error (default)
         }
     }
 
@@ -134,23 +154,14 @@ mod tests {
             required: 100,
             available: 50,
         };
-        assert_eq!(
-            err.to_string(),
-            "Buffer too small: required 100 bytes, available 50 bytes"
-        );
+        assert_eq!(err.to_string(), "Buffer too small: required 100 bytes, available 50 bytes");
     }
 
     #[test]
     fn test_alert_codes() {
         assert_eq!(TlsError::DecryptError.to_alert_code(), 51);
-        assert_eq!(
-            TlsError::CertificateError("test".to_string()).to_alert_code(),
-            42
-        );
-        assert_eq!(
-            TlsError::HandshakeFailure("test".to_string()).to_alert_code(),
-            40
-        );
+        assert_eq!(TlsError::CertificateError("test".to_string()).to_alert_code(), 42);
+        assert_eq!(TlsError::HandshakeFailure("test".to_string()).to_alert_code(), 40);
     }
 
     #[test]
@@ -168,4 +179,3 @@ mod tests {
         assert!(matches!(tls_err, TlsError::IoError(_)));
     }
 }
-

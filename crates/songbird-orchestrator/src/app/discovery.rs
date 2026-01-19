@@ -131,7 +131,7 @@ fn format_trust_escalation_policy(
 #[cfg(test)]
 mod tests {
     use super::*;
-    
+
     use songbird_types::config::consolidated_canonical::{
         discovery::DiscoveryMode, federation::TrustTimeouts as ConfigTrustTimeouts,
     };

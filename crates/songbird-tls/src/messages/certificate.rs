@@ -21,7 +21,7 @@ use crate::error::{Result, TlsError};
 pub struct Certificate {
     /// Certificate request context (empty for server certificates)
     pub certificate_request_context: Vec<u8>,
-    
+
     /// List of certificates in the chain (leaf first, root last)
     pub certificate_list: Vec<CertificateEntry>,
 }
@@ -31,7 +31,7 @@ pub struct Certificate {
 pub struct CertificateEntry {
     /// Certificate data (X.509 certificate in DER format)
     pub cert_data: Vec<u8>,
-    
+
     /// Extensions (e.g., status_request for OCSP stapling)
     pub extensions: Vec<u8>, // Simplified for now - will parse later
 }
@@ -65,9 +65,7 @@ impl Certificate {
     pub fn validate(&self) -> Result<()> {
         // Must have at least one certificate
         if self.certificate_list.is_empty() {
-            return Err(TlsError::CertificateError(
-                "Certificate list cannot be empty".to_string(),
-            ));
+            return Err(TlsError::CertificateError("Certificate list cannot be empty".to_string()));
         }
 
         // Each certificate must have data
@@ -166,4 +164,3 @@ mod tests {
         assert_eq!(entry.extensions, extensions);
     }
 }
-

@@ -211,7 +211,7 @@ impl AnonymousDiscoveryMessage {
         self
     }
 
-    #[must_use] 
+    #[must_use]
     pub fn with_identity_attestations(
         mut self,
         attestations: Vec<crate::IdentityAttestation>,

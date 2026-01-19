@@ -124,11 +124,12 @@ impl LineageChain {
     /// In development mode without `BearDog`, returns Ok(true) with warning.
     async fn verify_signatures(&self) -> anyhow::Result<bool> {
         // Check if BearDog is available
-        let beardog_endpoint = if let Ok(endpoint) = std::env::var("BEARDOG_ENDPOINT")
-            .or_else(|_| std::env::var("SECURITY_ENDPOINT")) { endpoint } else {
-            tracing::warn!(
-                "BearDog not configured, skipping signature verification (dev mode)"
-            );
+        let beardog_endpoint = if let Ok(endpoint) =
+            std::env::var("BEARDOG_ENDPOINT").or_else(|_| std::env::var("SECURITY_ENDPOINT"))
+        {
+            endpoint
+        } else {
+            tracing::warn!("BearDog not configured, skipping signature verification (dev mode)");
             return Ok(true);
         };
 
@@ -170,7 +171,8 @@ impl LineageChain {
                 .await
                 .map_err(|e| anyhow::anyhow!("Failed to parse verification response: {e}"))?;
 
-            let is_valid = result.get("valid").and_then(serde_json::Value::as_bool).unwrap_or(false);
+            let is_valid =
+                result.get("valid").and_then(serde_json::Value::as_bool).unwrap_or(false);
 
             if !is_valid {
                 tracing::warn!("Invalid signature for link {}->{}", link.parent_id, link.child_id);
@@ -183,7 +185,7 @@ impl LineageChain {
     }
 
     /// Check if this chain is a descendant of a specific ancestor
-    #[must_use] 
+    #[must_use]
     pub fn is_descendant_of(&self, ancestor_id: &str) -> bool {
         if self.root_id == ancestor_id {
             return true;

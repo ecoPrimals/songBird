@@ -11,7 +11,7 @@ mod tests {
         // Clean up any previous test pollution
         std::env::remove_var("SECURITY_PROVIDER");
         std::env::remove_var("BEARDOG_SOCKET");
-        
+
         // Set SECURITY_PROVIDER environment variable
         std::env::set_var("SECURITY_PROVIDER", "/tmp/test-beardog.sock");
 
@@ -28,7 +28,7 @@ mod tests {
         // Clean up any previous test pollution
         std::env::remove_var("SECURITY_PROVIDER");
         std::env::remove_var("BEARDOG_SOCKET");
-        
+
         std::env::set_var("SECURITY_PROVIDER", "/tmp/jwt-test.sock");
 
         let socket = get_beardog_socket_for_jwt();
@@ -63,9 +63,7 @@ mod tests {
         // This test requires BearDog to be running
         // Set BEARDOG_SOCKET to test with real BearDog
         if let Ok(socket) = std::env::var("BEARDOG_SOCKET") {
-            let secret = provision_jwt_secret(Some(&socket), "songbird_test")
-                .await
-                .unwrap();
+            let secret = provision_jwt_secret(Some(&socket), "songbird_test").await.unwrap();
 
             assert!(secret.len() >= 85);
             println!("✅ Got JWT secret from BearDog: {} chars", secret.len());
@@ -74,4 +72,3 @@ mod tests {
         }
     }
 }
-

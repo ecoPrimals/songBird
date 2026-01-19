@@ -42,19 +42,19 @@ pub type ProviderId = String;
 pub struct Capability {
     /// Capability identifier (e.g., "ai:text-generation")
     pub id: CapabilityId,
-    
+
     /// Human-readable description
     pub description: String,
-    
+
     /// Capability category (e.g., "ai", "storage", "compute")
     pub category: String,
-    
+
     /// Capability type (e.g., "text-generation", "image-generation")
     pub capability_type: String,
-    
+
     /// Optional sub-type for more specific capabilities
     pub sub_type: Option<String>,
-    
+
     /// Metadata about the capability
     pub metadata: HashMap<String, serde_json::Value>,
 }
@@ -72,11 +72,7 @@ impl Capability {
         let parts: Vec<&str> = id.split(':').collect();
         match parts.len() {
             2 => Some((parts[0].to_string(), parts[1].to_string(), None)),
-            3 => Some((
-                parts[0].to_string(),
-                parts[1].to_string(),
-                Some(parts[2].to_string()),
-            )),
+            3 => Some((parts[0].to_string(), parts[1].to_string(), Some(parts[2].to_string()))),
             _ => None,
         }
     }
@@ -104,19 +100,19 @@ impl Capability {
 pub struct ProviderConfig {
     /// Provider identifier (runtime-discovered)
     pub id: ProviderId,
-    
+
     /// Human-readable provider name
     pub name: String,
-    
+
     /// Capabilities this provider offers
     pub capabilities: Vec<Capability>,
-    
+
     /// Unix socket path for this provider (if local)
     pub socket_path: Option<String>,
-    
+
     /// Backend configuration for external providers
     pub backend: Option<BackendConfig>,
-    
+
     /// Provider metadata
     pub metadata: HashMap<String, serde_json::Value>,
 }
@@ -126,16 +122,16 @@ pub struct ProviderConfig {
 pub struct BackendConfig {
     /// Base URL for the external API
     pub base_url: String,
-    
+
     /// Environment variable name for API key
     pub api_key_env: Option<String>,
-    
+
     /// Request transformation rules
     pub request_transform: Option<TransformConfig>,
-    
+
     /// Response transformation rules
     pub response_transform: Option<TransformConfig>,
-    
+
     /// Custom headers
     pub headers: HashMap<String, String>,
 }
@@ -145,7 +141,7 @@ pub struct BackendConfig {
 pub struct TransformConfig {
     /// JSONPath mappings for field transformations
     pub field_mappings: HashMap<String, String>,
-    
+
     /// Template for transforming the entire payload
     pub template: Option<String>,
 }
@@ -155,10 +151,10 @@ pub struct TransformConfig {
 pub struct Route {
     /// The provider that will handle this request
     pub provider: ProviderConfig,
-    
+
     /// The specific capability being invoked
     pub capability: Capability,
-    
+
     /// Routing metadata
     pub metadata: HashMap<String, String>,
 }
@@ -168,7 +164,7 @@ pub struct Route {
 pub struct CapabilityRouter {
     /// Registry of providers and their capabilities (runtime-discovered)
     providers: Arc<RwLock<HashMap<ProviderId, ProviderConfig>>>,
-    
+
     /// Capability index for fast lookup
     capability_index: Arc<RwLock<HashMap<CapabilityId, Vec<ProviderId>>>>,
 }
@@ -190,8 +186,11 @@ impl CapabilityRouter {
     /// No hardcoding required!
     pub async fn register_provider(&self, provider: ProviderConfig) -> Result<()> {
         let provider_id = provider.id.clone();
-        info!("Registering provider '{}' with {} capabilities", 
-              provider.name, provider.capabilities.len());
+        info!(
+            "Registering provider '{}' with {} capabilities",
+            provider.name,
+            provider.capabilities.len()
+        );
 
         // Update capability index
         {
@@ -201,7 +200,7 @@ impl CapabilityRouter {
                     .entry(capability.id.clone())
                     .or_insert_with(Vec::new)
                     .push(provider_id.clone());
-                
+
                 debug!("  • Capability '{}' registered", capability.id);
             }
         }
@@ -256,9 +255,9 @@ impl CapabilityRouter {
         })?;
 
         // Get the first available provider (TODO: implement selection strategy)
-        let provider_id = provider_ids.first().ok_or_else(|| {
-            anyhow!("Provider list empty for capability: {}", capability_id)
-        })?;
+        let provider_id = provider_ids
+            .first()
+            .ok_or_else(|| anyhow!("Provider list empty for capability: {}", capability_id))?;
 
         // Retrieve provider configuration
         let provider = {
@@ -266,9 +265,8 @@ impl CapabilityRouter {
             providers.get(provider_id).cloned()
         };
 
-        let provider = provider.ok_or_else(|| {
-            anyhow!("Provider '{}' not found in registry", provider_id)
-        })?;
+        let provider =
+            provider.ok_or_else(|| anyhow!("Provider '{}' not found in registry", provider_id))?;
 
         // Find the matching capability
         let capability = provider
@@ -277,17 +275,10 @@ impl CapabilityRouter {
             .find(|c| c.matches(capability_id))
             .cloned()
             .ok_or_else(|| {
-                anyhow!(
-                    "Capability '{}' not found in provider '{}'",
-                    capability_id,
-                    provider.name
-                )
-            })?;
+            anyhow!("Capability '{}' not found in provider '{}'", capability_id, provider.name)
+        })?;
 
-        debug!(
-            "Routed '{}' → provider '{}' ({})",
-            capability_id, provider.name, provider.id
-        );
+        debug!("Routed '{}' → provider '{}' ({})", capability_id, provider.name, provider.id);
 
         Ok(Route {
             provider,
@@ -300,10 +291,7 @@ impl CapabilityRouter {
     #[must_use]
     pub async fn list_capabilities(&self) -> Vec<Capability> {
         let providers = self.providers.read().await;
-        providers
-            .values()
-            .flat_map(|p| p.capabilities.clone())
-            .collect()
+        providers.values().flat_map(|p| p.capabilities.clone()).collect()
     }
 
     /// List all registered providers
@@ -333,7 +321,7 @@ impl CapabilityRouter {
 
         let provider_count = self.providers.read().await.len();
         let capability_count = self.capability_index.read().await.len();
-        
+
         info!(
             "✅ Discovery complete: {} providers, {} capabilities",
             provider_count, capability_count
@@ -432,7 +420,8 @@ mod tests {
     #[tokio::test]
     async fn test_capability_routing() {
         let router = CapabilityRouter::new();
-        let provider = create_test_provider("test1", vec!["ai:text-generation", "ai:image-generation"]);
+        let provider =
+            create_test_provider("test1", vec!["ai:text-generation", "ai:image-generation"]);
 
         router.register_provider(provider).await.unwrap();
 
@@ -499,4 +488,3 @@ mod tests {
         assert!(!cap.matches("ai:image-generation"));
     }
 }
-

@@ -26,8 +26,8 @@
 //! // Transform request → Send to provider → Transform response
 //! ```
 
-use super::capability_router::Route;
 use super::cache::ResponseCache;
+use super::capability_router::Route;
 use super::credentials::CredentialManager;
 use super::rate_limiter::RateLimiter;
 use anyhow::{anyhow, Result};
@@ -72,7 +72,7 @@ impl UniversalProxy {
         payload: Option<&Value>,
     ) -> Result<Value> {
         let provider_id = &route.provider.id;
-        
+
         debug!(
             "Universal proxy: {} request to '{}' for capability '{}'",
             method, route.provider.name, route.capability.id
@@ -95,9 +95,8 @@ impl UniversalProxy {
         let transformed_payload = self.transform_request(route, payload)?;
 
         // Make external request
-        let response_data = self
-            .make_external_request(route, method, transformed_payload.as_ref())
-            .await?;
+        let response_data =
+            self.make_external_request(route, method, transformed_payload.as_ref()).await?;
 
         // Transform response (back to generic format)
         let generic_response = self.transform_response(route, &response_data)?;
@@ -116,17 +115,11 @@ impl UniversalProxy {
         payload: Option<&Value>,
     ) -> Result<Value> {
         // Get backend configuration
-        let backend = route
-            .provider
-            .backend
-            .as_ref()
-            .ok_or_else(|| anyhow!("Provider '{}' has no backend configuration", route.provider.name))?;
+        let backend = route.provider.backend.as_ref().ok_or_else(|| {
+            anyhow!("Provider '{}' has no backend configuration", route.provider.name)
+        })?;
 
-        trace!(
-            "Making {} request to: {}",
-            method,
-            backend.base_url
-        );
+        trace!("Making {} request to: {}", method, backend.base_url);
 
         // Get API key if configured
         let api_key = if backend.api_key_env.is_some() {
@@ -180,10 +173,7 @@ impl UniversalProxy {
 
         // Check for errors
         if !status.is_success() {
-            error!(
-                "External API returned error: {} - {:?}",
-                status, json
-            );
+            error!("External API returned error: {} - {:?}", status, json);
             return Err(anyhow!("External API error: {} - {:?}", status, json));
         }
 
@@ -266,21 +256,19 @@ impl UniversalProxy {
 
     /// Generate a cache key for a request
     fn generate_cache_key(&self, route: &Route, method: &str, payload: Option<&Value>) -> String {
-        let payload_str = payload
-            .map(|p| serde_json::to_string(p).unwrap_or_default())
-            .unwrap_or_default();
+        let payload_str =
+            payload.map(|p| serde_json::to_string(p).unwrap_or_default()).unwrap_or_default();
 
-        format!(
-            "{}:{}:{}:{}",
-            route.capability.id, route.provider.id, method, payload_str
-        )
+        format!("{}:{}:{}:{}", route.capability.id, route.provider.id, method, payload_str)
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::http_gateway::capability_router::{BackendConfig, Capability, ProviderConfig, TransformConfig};
+    use crate::http_gateway::capability_router::{
+        BackendConfig, Capability, ProviderConfig, TransformConfig,
+    };
     use std::collections::HashMap;
 
     fn create_test_route() -> Route {
@@ -383,4 +371,3 @@ mod tests {
         assert_eq!(transformed["result"], "Generated text");
     }
 }
-

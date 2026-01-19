@@ -375,11 +375,10 @@ impl IntelligentProtocolRouter {
         }
 
         // Rule 3: JSON data → prefer HTTP/JSON-RPC
-        if workload.data_type == DataType::Json
-            && perf.json_efficient {
-                score += 20;
-                reasons.push("native JSON support");
-            }
+        if workload.data_type == DataType::Json && perf.json_efficient {
+            score += 20;
+            reasons.push("native JSON support");
+        }
 
         // Rule 4: Large payloads → prefer high throughput
         match workload.payload_size {
@@ -410,18 +409,18 @@ impl IntelligentProtocolRouter {
         }
 
         // Rule 6: Status/monitoring → prefer HTTP (universal)
-        if workload.operation == OperationType::Status
-            && protocol == "http" {
-                score += 25;
-                reasons.push("universal access for monitoring");
-            }
+        if workload.operation == OperationType::Status && protocol == "http" {
+            score += 25;
+            reasons.push("universal access for monitoring");
+        }
 
         // Rule 7: RPC operations → prefer tarpc or JSON-RPC
         if workload.operation == OperationType::Rpc
-            && (protocol == "tarpc" || protocol == "json-rpc") {
-                score += 20;
-                reasons.push("native RPC protocol");
-            }
+            && (protocol == "tarpc" || protocol == "json-rpc")
+        {
+            score += 20;
+            reasons.push("native RPC protocol");
+        }
 
         // Rule 8: Network type consideration
         if let Some(ref network) = workload.network_context {

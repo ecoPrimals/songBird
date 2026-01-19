@@ -105,10 +105,13 @@ impl BtspProvider for HttpBtspProvider {
             protocols: &peer.protocols,
         };
 
-        let response =
-            self.client.post(&url).json(&request).send().await.map_err(|e| {
-                SongbirdError::network(format!("Failed to establish tunnel: {e}"))
-            })?;
+        let response = self
+            .client
+            .post(&url)
+            .json(&request)
+            .send()
+            .await
+            .map_err(|e| SongbirdError::network(format!("Failed to establish tunnel: {e}")))?;
 
         if !response.status().is_success() {
             let status = response.status();
@@ -244,10 +247,12 @@ impl BtspProvider for HttpBtspProvider {
         let url = format!("{}/api/btsp/tunnel/status/{}", self.base_url, handle.id);
         debug!("🔍 Checking tunnel status: {}", handle.id);
 
-        let response =
-            self.client.get(&url).send().await.map_err(|e| {
-                SongbirdError::network(format!("Failed to get tunnel status: {e}"))
-            })?;
+        let response = self
+            .client
+            .get(&url)
+            .send()
+            .await
+            .map_err(|e| SongbirdError::network(format!("Failed to get tunnel status: {e}")))?;
 
         if !response.status().is_success() {
             let status = response.status();

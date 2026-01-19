@@ -48,8 +48,8 @@ pub struct CheckpointMetadata {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum CompressionAlgorithm {
     None,
-    Gzip,  // Pure Rust via flate2 (migrated from Zstd on Jan 17, 2026)
-    Zlib,  // Pure Rust via flate2 (alternative compression)
+    Gzip, // Pure Rust via flate2 (migrated from Zstd on Jan 17, 2026)
+    Zlib, // Pure Rust via flate2 (alternative compression)
 }
 
 impl Checkpoint {
@@ -123,22 +123,21 @@ impl Checkpoint {
         use flate2::write::GzEncoder;
         use flate2::Compression;
         use std::io::Write;
-        
+
         let mut encoder = GzEncoder::new(Vec::new(), Compression::fast());
-        encoder.write_all(data)
-            .context("Failed to write data to gzip encoder")?;
-        encoder.finish()
-            .context("Failed to compress checkpoint state with gzip")
+        encoder.write_all(data).context("Failed to write data to gzip encoder")?;
+        encoder.finish().context("Failed to compress checkpoint state with gzip")
     }
 
     /// Decompress state using gzip (pure Rust via flate2)
     fn decompress_gzip(data: &[u8]) -> Result<Vec<u8>> {
         use flate2::read::GzDecoder;
         use std::io::Read;
-        
+
         let mut decoder = GzDecoder::new(data);
         let mut result = Vec::new();
-        decoder.read_to_end(&mut result)
+        decoder
+            .read_to_end(&mut result)
             .context("Failed to decompress checkpoint state with gzip")?;
         Ok(result)
     }
@@ -147,10 +146,11 @@ impl Checkpoint {
     fn decompress_zlib(data: &[u8]) -> Result<Vec<u8>> {
         use flate2::read::ZlibDecoder;
         use std::io::Read;
-        
+
         let mut decoder = ZlibDecoder::new(data);
         let mut result = Vec::new();
-        decoder.read_to_end(&mut result)
+        decoder
+            .read_to_end(&mut result)
             .context("Failed to decompress checkpoint state with zlib")?;
         Ok(result)
     }

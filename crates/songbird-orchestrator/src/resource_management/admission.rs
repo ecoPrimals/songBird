@@ -145,8 +145,10 @@ impl AdmissionController {
         let mut resources = HashMap::new();
 
         if let Some(cpu) = task.spec.resources.cpu_cores {
-            resources
-                .insert(ResourceType::Cpu, ResourceAmount::new(f64::from(cpu), ResourceUnit::Cores));
+            resources.insert(
+                ResourceType::Cpu,
+                ResourceAmount::new(f64::from(cpu), ResourceUnit::Cores),
+            );
         }
 
         if let Some(memory) = task.spec.resources.memory_mb {
@@ -157,8 +159,10 @@ impl AdmissionController {
         }
 
         if let Some(gpu) = task.spec.resources.gpu_count {
-            resources
-                .insert(ResourceType::Gpu, ResourceAmount::new(f64::from(gpu), ResourceUnit::Devices));
+            resources.insert(
+                ResourceType::Gpu,
+                ResourceAmount::new(f64::from(gpu), ResourceUnit::Devices),
+            );
         }
 
         resources

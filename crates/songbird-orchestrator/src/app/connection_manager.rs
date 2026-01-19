@@ -105,7 +105,7 @@ impl ConnectionManager {
     /// - Automatic fallback if security provider unavailable
     ///
     /// **Zero Hardcoding**: Discovers BearDog socket at runtime
-    /// 
+    ///
     /// v3.20.0: Migrated to Unix socket (Jan 16, 2026)
     /// - Uses environment-based socket discovery
     /// - No HTTP, direct Unix socket to BearDog
@@ -120,7 +120,7 @@ impl ConnectionManager {
                 // Create BTSP client (discovers socket from environment)
                 // Socket priority: BEARDOG_SOCKET -> BIOMEOS_SOCKET_PATH -> XDG_RUNTIME_DIR -> fallback
                 let client = BtspClient::new();
-                
+
                 // Test connectivity with ping
                 match client.ping().await {
                     Ok(_) => {
@@ -261,10 +261,7 @@ impl ConnectionManager {
                 }
             } else {
                 // BTSP client unavailable (no security provider)
-                info!(
-                    "ℹ️  Security provider unavailable - using HTTPS fallback for '{}'",
-                    peer_id
-                );
+                info!("ℹ️  Security provider unavailable - using HTTPS fallback for '{}'", peer_id);
                 self.create_https_connection_internal(&peer_id, &endpoint, trust_level)?
             }
         } else {

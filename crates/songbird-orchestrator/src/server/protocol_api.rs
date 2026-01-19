@@ -217,12 +217,8 @@ async fn negotiate_protocol(
         "json-rpc" => {
             state.available_protocols.json_rpc.as_ref().map(|json_rpc| json_rpc.endpoints.clone())
         }
-        "tarpc" => {
-            state.available_protocols.tarpc.as_ref().map(|tarpc| tarpc.endpoints.clone())
-        }
-        "websocket" => {
-            state.available_protocols.websocket.as_ref().map(|ws| ws.endpoints.clone())
-        }
+        "tarpc" => state.available_protocols.tarpc.as_ref().map(|tarpc| tarpc.endpoints.clone()),
+        "websocket" => state.available_protocols.websocket.as_ref().map(|ws| ws.endpoints.clone()),
         _ => Some(state.available_protocols.http.endpoints.clone()),
     };
 

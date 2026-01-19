@@ -252,9 +252,8 @@ impl BearDogBirdSongProvider {
         // Parse the wrapped API response
         let api_response: BearDogApiResponse<BearDogEncryptResponse> =
             serde_json::from_str(&response_text).map_err(|e| {
-                let error_msg = format!(
-                    "Failed to parse BearDog response: {e}. Response was: {response_text}"
-                );
+                let error_msg =
+                    format!("Failed to parse BearDog response: {e}. Response was: {response_text}");
                 warn!("❌ {}", error_msg);
                 error_msg
             })?;
@@ -338,9 +337,8 @@ impl BearDogBirdSongProvider {
         // Parse the wrapped API response
         let api_response: BearDogApiResponse<BearDogDecryptResponse> =
             serde_json::from_str(&response_text).map_err(|e| {
-                let error_msg = format!(
-                    "Failed to parse BearDog response: {e}. Response was: {response_text}"
-                );
+                let error_msg =
+                    format!("Failed to parse BearDog response: {e}. Response was: {response_text}");
                 warn!("❌ {}", error_msg);
                 error_msg
             })?;

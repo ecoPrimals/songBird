@@ -2,12 +2,12 @@
 //!
 //! This module provides USB transport for Bluetooth HCI using `rusb` (C bindings to libusb).
 //! Works with any USB Bluetooth dongle without OS Bluetooth stack.
-//! 
+//!
 //! ## Note
-//! 
+//!
 //! This is the **legacy C-based** implementation. Consider using the pure Rust
 //! implementation (`usb_nusb`) for better portability and ecoBin compliance.
-//! 
+//!
 //! Enable with `--features usb-c` if you need maximum compatibility.
 //!
 //! ## Hardware Support

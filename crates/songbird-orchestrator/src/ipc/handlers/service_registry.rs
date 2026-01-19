@@ -9,7 +9,11 @@ use std::time::SystemTime;
 use tracing::{debug, info};
 
 use crate::ipc::handlers::IpcHandlers;
-use crate::ipc::types::{RegisterServiceResponse, RegisterServiceRequest, system_time_to_iso8601, DiscoverByCapabilityResponse, DiscoverByCapabilityRequest, GetServiceHealthResponse, GetServiceHealthRequest, HealthStatus, HealthCheckResponse};
+use crate::ipc::types::{
+    system_time_to_iso8601, DiscoverByCapabilityRequest, DiscoverByCapabilityResponse,
+    GetServiceHealthRequest, GetServiceHealthResponse, HealthCheckResponse, HealthStatus,
+    RegisterServiceRequest, RegisterServiceResponse,
+};
 
 // ============================================================================
 // jsonrpsee Handlers (Original API)

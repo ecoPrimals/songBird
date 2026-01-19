@@ -2,15 +2,15 @@
 //!
 //! Modern, idiomatic async Rust implementation with zero C dependencies.
 //! Deep debt solution: eliminates C dep, uses proper async patterns.
-//! 
+//!
 //! ## Architecture
-//! 
+//!
 //! This implementation uses nusb's one-shot transfer API, which is perfect
 //! for HCI where each transfer is independent (commands, events, ACL packets).
 //! No complex streaming needed - HCI is request/response by nature.
 //!
 //! ## Benefits
-//! 
+//!
 //! - **Pure Rust**: Zero C dependencies (ecoBin compliant)
 //! - **Modern async**: Proper concurrent patterns with `.await`
 //! - **Simple & correct**: Matches HCI's request/response model
@@ -18,8 +18,8 @@
 
 use crate::error::{Result, TransportError};
 use crate::transport::{Transport, TransportType};
+use nusb::transfer::{ControlIn, ControlOut, ControlType, Recipient};
 use nusb::{DeviceInfo, Interface};
-use nusb::transfer::{ControlOut, ControlIn, ControlType, Recipient};
 use std::sync::Arc;
 use std::time::Duration;
 use tracing::{debug, info};
@@ -154,7 +154,8 @@ impl Transport for UsbTransport {
         }
 
         // HCI events via interrupt IN transfer
-        let data = self.interface
+        let data = self
+            .interface
             .control_in(
                 ControlIn {
                     control_type: ControlType::Class,
@@ -206,7 +207,8 @@ impl Transport for UsbTransport {
 
         // ACL data via control IN (simplified for now)
         // TODO: Use bulk endpoint when we add streaming support
-        let data = self.interface
+        let data = self
+            .interface
             .control_in(
                 ControlIn {
                     control_type: ControlType::Class,

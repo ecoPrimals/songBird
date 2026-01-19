@@ -40,12 +40,10 @@ async fn test_fault_socket_connection_refused() {
     println!("💥 FAULT: Testing connection refused...");
 
     // Use a path that's unlikely to have a listening socket
-    let secret = provision_jwt_secret(
-        Some("/tmp/beardog-fault-refused-12345.sock"),
-        "fault_refused",
-    )
-    .await
-    .expect("Should fall back to secure random");
+    let secret =
+        provision_jwt_secret(Some("/tmp/beardog-fault-refused-12345.sock"), "fault_refused")
+            .await
+            .expect("Should fall back to secure random");
 
     assert!(secret.len() >= 85);
 
@@ -58,9 +56,7 @@ async fn test_fault_empty_purpose() {
     // Test with empty purpose string
     println!("💥 FAULT: Testing empty purpose...");
 
-    let secret = provision_jwt_secret(None, "")
-        .await
-        .expect("Should succeed with empty purpose");
+    let secret = provision_jwt_secret(None, "").await.expect("Should succeed with empty purpose");
 
     assert!(secret.len() >= 85);
 
@@ -74,9 +70,8 @@ async fn test_fault_very_long_purpose() {
     println!("💥 FAULT: Testing very long purpose...");
 
     let long_purpose = "a".repeat(10000);
-    let secret = provision_jwt_secret(None, &long_purpose)
-        .await
-        .expect("Should succeed with long purpose");
+    let secret =
+        provision_jwt_secret(None, &long_purpose).await.expect("Should succeed with long purpose");
 
     assert!(secret.len() >= 85);
 
@@ -286,4 +281,3 @@ async fn test_fault_resource_exhaustion() {
 
     println!("✅ FAULT: Resource exhaustion test passed!");
 }
-

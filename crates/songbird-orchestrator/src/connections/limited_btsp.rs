@@ -31,11 +31,11 @@
 //! - **Capability-Based**: Runtime security enforcement
 
 use super::{check_operation_allowed, PeerConnection};
+use crate::btsp_client::BtspClient; // v3.20.0: Unix socket BTSP client (Jan 16, 2026)
 use anyhow::{anyhow, Context, Result};
 use async_trait::async_trait;
 use serde_json::Value;
 use songbird_types::TrustLevel;
-use crate::btsp_client::BtspClient; // v3.20.0: Unix socket BTSP client (Jan 16, 2026)
 use std::sync::Arc;
 use std::time::SystemTime;
 use tokio::sync::RwLock;

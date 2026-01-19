@@ -17,8 +17,8 @@
 //!                  (Standard Protocol)
 //! ```
 
-use super::capability_router::{CapabilityRouter, Route};
 use super::cache::ResponseCache;
+use super::capability_router::{CapabilityRouter, Route};
 use super::credentials::CredentialManager;
 use super::rate_limiter::RateLimiter;
 use anyhow::{anyhow, Result};
@@ -112,13 +112,13 @@ impl JsonRpcError {
 pub struct UnixListenerConfig {
     /// Socket path for this listener
     pub socket_path: PathBuf,
-    
+
     /// Capability this socket handles (e.g., "ai:text-generation")
     pub capability_id: String,
-    
+
     /// Maximum concurrent connections
     pub max_connections: usize,
-    
+
     /// Request timeout in seconds
     pub timeout_secs: u64,
 }
@@ -178,7 +178,7 @@ impl UnixSocketListener {
 
         // Bind to Unix socket
         let listener = UnixListener::bind(&self.config.socket_path)?;
-        
+
         info!(
             "✅ Unix socket listener started: {:?} (capability: {})",
             self.config.socket_path, self.config.capability_id
@@ -311,23 +311,15 @@ impl UnixSocketListener {
         };
 
         // Get capability ID (use our listener's capability if not specified)
-        let capability_id = params
-            .get("capability")
-            .and_then(|v| v.as_str())
-            .unwrap_or(&self.config.capability_id);
+        let capability_id =
+            params.get("capability").and_then(|v| v.as_str()).unwrap_or(&self.config.capability_id);
 
         // Get request method and payload
-        let http_method = params
-            .get("method")
-            .and_then(|v| v.as_str())
-            .unwrap_or("POST");
-        
+        let http_method = params.get("method").and_then(|v| v.as_str()).unwrap_or("POST");
+
         let payload = params.get("payload").cloned();
 
-        debug!(
-            "Proxy request: capability='{}', method='{}'",
-            capability_id, http_method
-        );
+        debug!("Proxy request: capability='{}', method='{}'", capability_id, http_method);
 
         // Route to appropriate provider
         let route = match self.router.route(capability_id).await {
@@ -337,7 +329,10 @@ impl UnixSocketListener {
                 return JsonRpcResponse {
                     jsonrpc: "2.0".to_string(),
                     result: None,
-                    error: Some(JsonRpcError::server_error(-32000, format!("Routing failed: {}", e))),
+                    error: Some(JsonRpcError::server_error(
+                        -32000,
+                        format!("Routing failed: {}", e),
+                    )),
                     id: request.id,
                 };
             }
@@ -355,7 +350,8 @@ impl UnixSocketListener {
         }
 
         // Check cache
-        let cache_key = format!("{}:{}", capability_id, serde_json::to_string(&payload).unwrap_or_default());
+        let cache_key =
+            format!("{}:{}", capability_id, serde_json::to_string(&payload).unwrap_or_default());
         if let Some(cached) = self.cache.get(&cache_key).await {
             debug!("Cache hit for key: {}", cache_key);
             return JsonRpcResponse {
@@ -367,9 +363,7 @@ impl UnixSocketListener {
         }
 
         // Make the actual HTTP request to external API
-        let result = self
-            .make_external_request(&route, http_method, payload.as_ref())
-            .await;
+        let result = self.make_external_request(&route, http_method, payload.as_ref()).await;
 
         match result {
             Ok(response_data) => {
@@ -388,7 +382,10 @@ impl UnixSocketListener {
                 JsonRpcResponse {
                     jsonrpc: "2.0".to_string(),
                     result: None,
-                    error: Some(JsonRpcError::internal_error(format!("External request failed: {}", e))),
+                    error: Some(JsonRpcError::internal_error(format!(
+                        "External request failed: {}",
+                        e
+                    ))),
                     id: request.id,
                 }
             }
@@ -472,7 +469,7 @@ impl UnixSocketListener {
     /// Handle a capabilities request
     async fn handle_capabilities_request(&self, request: JsonRpcRequest) -> JsonRpcResponse {
         let capabilities = self.router.list_capabilities().await;
-        
+
         JsonRpcResponse {
             jsonrpc: "2.0".to_string(),
             result: Some(serde_json::json!({
@@ -554,4 +551,3 @@ mod tests {
         assert!(!json.contains("\"error\""));
     }
 }
-

@@ -5,7 +5,10 @@
 //!
 //! **Production Safe**: Explicitly returns errors rather than faking functionality.
 
-use super::{LineageProvider, LineageChain, LineageProof, BirdSongCrypto, LineageHint, EncryptedBirdSong, BroadcastKey, LineageRelay, RelaySession, AccessLevel, BearDogProvider};
+use super::{
+    AccessLevel, BearDogProvider, BirdSongCrypto, BroadcastKey, EncryptedBirdSong, LineageChain,
+    LineageHint, LineageProof, LineageProvider, LineageRelay, RelaySession,
+};
 use anyhow::{anyhow, Result};
 
 /// No-Op `BearDog` provider for when `BearDog` is not configured
@@ -38,11 +41,7 @@ impl Default for NoOpBearDogProvider {
 
 #[async_trait::async_trait]
 impl LineageProvider for NoOpBearDogProvider {
-    async fn generate_lineage(
-        &self,
-        _node_id: &str,
-        _parent_id: &str,
-    ) -> Result<LineageChain> {
+    async fn generate_lineage(&self, _node_id: &str, _parent_id: &str) -> Result<LineageChain> {
         Err(anyhow!(
             "BearDog not available: Cannot generate lineage. \
              Configure BearDog with BEARDOG_URL environment variable."
@@ -167,4 +166,3 @@ impl BearDogProvider for NoOpBearDogProvider {
         Ok(())
     }
 }
-

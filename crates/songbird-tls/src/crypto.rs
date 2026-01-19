@@ -4,11 +4,11 @@
 //! All cryptographic operations are delegated to BearDog via Unix sockets.
 
 use crate::error::{Result, TlsError};
-use serde::{Deserialize, Serialize};
+use base64::{engine::general_purpose, Engine as _};
+use serde::Deserialize;
 use std::path::Path;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::UnixStream;
-use base64::{Engine as _, engine::general_purpose};
 
 /// BearDog crypto client for TLS operations
 ///
@@ -24,7 +24,7 @@ impl BeardogCryptoClient {
     /// Uses runtime discovery to find the BearDog socket.
     pub async fn new() -> Result<Self> {
         let socket_path = Self::discover_socket()?;
-        
+
         // Verify socket exists
         if !Path::new(&socket_path).exists() {
             return Err(TlsError::CryptoError(format!(
@@ -32,13 +32,17 @@ impl BeardogCryptoClient {
                 socket_path
             )));
         }
-        
-        Ok(Self { socket_path })
+
+        Ok(Self {
+            socket_path,
+        })
     }
 
     /// Create a client with explicit socket path (for testing)
     pub fn with_socket_path(socket_path: String) -> Self {
-        Self { socket_path }
+        Self {
+            socket_path,
+        }
     }
 
     /// Discover BearDog crypto socket
@@ -73,20 +77,24 @@ impl BeardogCryptoClient {
             for entry in entries.flatten() {
                 let path = entry.path();
                 if let Some(name) = path.file_name() {
-                    if name.to_string_lossy().contains("crypto") && name.to_string_lossy().ends_with(".sock") {
+                    if name.to_string_lossy().contains("crypto")
+                        && name.to_string_lossy().ends_with(".sock")
+                    {
                         return Ok(path.to_string_lossy().to_string());
                     }
                 }
             }
         }
 
-        Err(TlsError::CryptoError(
-            "Could not discover BearDog crypto socket".to_string(),
-        ))
+        Err(TlsError::CryptoError("Could not discover BearDog crypto socket".to_string()))
     }
 
     /// Make a JSON-RPC call to BearDog
-    async fn call_jsonrpc(&self, method: &str, params: serde_json::Value) -> Result<serde_json::Value> {
+    async fn call_jsonrpc(
+        &self,
+        method: &str,
+        params: serde_json::Value,
+    ) -> Result<serde_json::Value> {
         // Connect to Unix socket
         let mut stream = UnixStream::connect(&self.socket_path)
             .await
@@ -156,9 +164,11 @@ impl BeardogCryptoClient {
             .as_str()
             .ok_or_else(|| TlsError::CryptoError("Missing secret_key in response".to_string()))?;
 
-        let public_key = general_purpose::STANDARD.decode(public_key_b64)
+        let public_key = general_purpose::STANDARD
+            .decode(public_key_b64)
             .map_err(|e| TlsError::CryptoError(format!("Failed to decode public_key: {}", e)))?;
-        let secret_key = general_purpose::STANDARD.decode(secret_key_b64)
+        let secret_key = general_purpose::STANDARD
+            .decode(secret_key_b64)
             .map_err(|e| TlsError::CryptoError(format!("Failed to decode secret_key: {}", e)))?;
 
         Ok((public_key, secret_key))
@@ -179,11 +189,12 @@ impl BeardogCryptoClient {
 
         let result = self.call_jsonrpc("crypto.x25519_derive_secret", params).await?;
 
-        let shared_secret_b64 = result["shared_secret"]
-            .as_str()
-            .ok_or_else(|| TlsError::CryptoError("Missing shared_secret in response".to_string()))?;
+        let shared_secret_b64 = result["shared_secret"].as_str().ok_or_else(|| {
+            TlsError::CryptoError("Missing shared_secret in response".to_string())
+        })?;
 
-        let shared_secret = general_purpose::STANDARD.decode(shared_secret_b64)
+        let shared_secret = general_purpose::STANDARD
+            .decode(shared_secret_b64)
             .map_err(|e| TlsError::CryptoError(format!("Failed to decode shared_secret: {}", e)))?;
 
         Ok(shared_secret)
@@ -220,11 +231,14 @@ impl BeardogCryptoClient {
             .as_str()
             .ok_or_else(|| TlsError::CryptoError("Missing tag in response".to_string()))?;
 
-        let ciphertext = general_purpose::STANDARD.decode(ciphertext_b64)
+        let ciphertext = general_purpose::STANDARD
+            .decode(ciphertext_b64)
             .map_err(|e| TlsError::CryptoError(format!("Failed to decode ciphertext: {}", e)))?;
-        let nonce = general_purpose::STANDARD.decode(nonce_b64)
+        let nonce = general_purpose::STANDARD
+            .decode(nonce_b64)
             .map_err(|e| TlsError::CryptoError(format!("Failed to decode nonce: {}", e)))?;
-        let tag = general_purpose::STANDARD.decode(tag_b64)
+        let tag = general_purpose::STANDARD
+            .decode(tag_b64)
             .map_err(|e| TlsError::CryptoError(format!("Failed to decode tag: {}", e)))?;
 
         Ok((ciphertext, nonce, tag))
@@ -258,7 +272,8 @@ impl BeardogCryptoClient {
             .as_str()
             .ok_or_else(|| TlsError::CryptoError("Missing plaintext in response".to_string()))?;
 
-        let plaintext = general_purpose::STANDARD.decode(plaintext_b64)
+        let plaintext = general_purpose::STANDARD
+            .decode(plaintext_b64)
             .map_err(|e| TlsError::CryptoError(format!("Failed to decode plaintext: {}", e)))?;
 
         Ok(plaintext)
@@ -280,7 +295,8 @@ impl BeardogCryptoClient {
             .as_str()
             .ok_or_else(|| TlsError::CryptoError("Missing signature in response".to_string()))?;
 
-        let signature = general_purpose::STANDARD.decode(signature_b64)
+        let signature = general_purpose::STANDARD
+            .decode(signature_b64)
             .map_err(|e| TlsError::CryptoError(format!("Failed to decode signature: {}", e)))?;
 
         Ok(signature)
@@ -301,7 +317,8 @@ impl BeardogCryptoClient {
             .as_str()
             .ok_or_else(|| TlsError::CryptoError("Missing mac in response".to_string()))?;
 
-        let mac = general_purpose::STANDARD.decode(mac_b64)
+        let mac = general_purpose::STANDARD
+            .decode(mac_b64)
             .map_err(|e| TlsError::CryptoError(format!("Failed to decode mac: {}", e)))?;
 
         Ok(mac)
@@ -333,11 +350,11 @@ mod tests {
     fn test_discover_socket_env_var() {
         // Set environment variable
         std::env::set_var("SONGBIRD_CRYPTO_SOCKET", "/tmp/test.sock");
-        
+
         let result = BeardogCryptoClient::discover_socket();
         assert!(result.is_ok());
         assert_eq!(result.unwrap(), "/tmp/test.sock");
-        
+
         // Cleanup
         std::env::remove_var("SONGBIRD_CRYPTO_SOCKET");
     }
@@ -350,4 +367,3 @@ mod tests {
 
     // Note: Integration tests with live BearDog are in tests/ directory
 }
-

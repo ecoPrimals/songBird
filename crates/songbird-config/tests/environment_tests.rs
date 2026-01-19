@@ -10,8 +10,8 @@
 #![allow(clippy::unnecessary_literal_unwrap)]
 
 mod test_utils;
-use test_utils::ScopedEnv;
 use std::env;
+use test_utils::ScopedEnv;
 
 #[test]
 fn test_env_var_parsing_valid_integer() {
@@ -190,7 +190,6 @@ fn test_env_var_case_sensitivity() {
     // Most systems are case-sensitive for env vars
     let lower = env::var("TEST_CASE");
     assert!(lower.is_ok());
-
 }
 
 #[test]
@@ -264,8 +263,7 @@ fn test_env_var_remove_and_verify() {
 
 #[test]
 fn test_env_var_overwrite() {
-    let _env = ScopedEnv::new()
-        .set("OVERWRITE_VAR", "first");
+    let _env = ScopedEnv::new().set("OVERWRITE_VAR", "first");
     assert_eq!(env::var("OVERWRITE_VAR").expect("test precondition"), "first");
 
     // Test overwrite within the same scope

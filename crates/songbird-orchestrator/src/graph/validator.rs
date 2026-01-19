@@ -262,7 +262,10 @@ impl GraphValidator {
         // Build a map of node outputs
         let mut outputs: HashMap<&str, HashSet<&str>> = HashMap::new();
         for node in &graph.nodes {
-            outputs.insert(node.id.as_str(), node.outputs.iter().map(std::string::String::as_str).collect());
+            outputs.insert(
+                node.id.as_str(),
+                node.outputs.iter().map(std::string::String::as_str).collect(),
+            );
         }
 
         // Check that each node's inputs are satisfied

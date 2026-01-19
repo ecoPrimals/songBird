@@ -369,12 +369,11 @@ impl<T: Transport + 'static> BluetoothHost<T> {
 
             // AD Type 0x08: Shortened Local Name
             // AD Type 0x09: Complete Local Name
-            if (ad_type == 0x08 || ad_type == 0x09)
-                && data_end <= event.len() {
-                    let name_bytes = &event[data_start..data_end];
-                    // Convert bytes to UTF-8 string, replacing invalid sequences
-                    return Some(String::from_utf8_lossy(name_bytes).to_string());
-                }
+            if (ad_type == 0x08 || ad_type == 0x09) && data_end <= event.len() {
+                let name_bytes = &event[data_start..data_end];
+                // Convert bytes to UTF-8 string, replacing invalid sequences
+                return Some(String::from_utf8_lossy(name_bytes).to_string());
+            }
 
             // Move to next AD structure
             offset += 1 + length;

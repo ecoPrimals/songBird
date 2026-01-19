@@ -44,10 +44,10 @@ pub fn discover_beardog_socket() -> Option<PathBuf> {
 
     // Strategy 3: Search common socket paths
     let common_paths = vec![
-        "/tmp/beardog-nat0.sock",           // NUCLEUS default
+        "/tmp/beardog-nat0.sock",            // NUCLEUS default
         "/tmp/beardog-default-default.sock", // biomeOS default
-        "/run/user/1000/beardog.sock",      // User runtime dir
-        "/var/run/beardog.sock",            // System runtime dir
+        "/run/user/1000/beardog.sock",       // User runtime dir
+        "/var/run/beardog.sock",             // System runtime dir
     ];
 
     for path in common_paths {
@@ -160,4 +160,3 @@ mod tests {
         std::env::remove_var("SECURITY_PROVIDER");
     }
 }
-

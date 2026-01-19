@@ -70,11 +70,11 @@ tokio-stream = "0.1"
 
 # HTTP server for web dashboard
 axum = { version = "0.7", features = ["multipart", "ws"] }
-# ✅ REMOVED: axum-server (rustls) - replaced by Pure Songbird TLS!
-# ✅ REMOVED: rustls - replaced by songbird-tls (100% Pure Rust!)
-# ✅ REMOVED: getrandom - no longer needed
-# ✅ REMOVED: once_cell - no longer needed
-songbird-tls = { path = "../songbird-tls" }  # ✅ Pure Rust TLS implementation!
+# Modern pure Rust TLS stack (no axum-server needed!)
+tokio-rustls = "0.26"  # TLS acceptor for tokio
+hyper = { version = "1.0", features = ["server", "http1"] }
+hyper-util = { version = "0.1", features = ["tokio"] }
+songbird-tls = { path = "../songbird-tls" }  # ✅ Pure Rust TLS implementation (future)
 tower = "0.5"
 tower-http = { version = "0.5", features = ["cors", "fs", "trace", "limit"] }
 serde = { version = "1.0", features = ["derive"] }

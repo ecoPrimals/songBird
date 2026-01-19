@@ -30,10 +30,10 @@ impl ScopedEnv {
         if !self.restore.contains_key(key) {
             self.restore.insert(key.to_string(), env::var(key).ok());
         }
-        
+
         // Set new value
         env::set_var(key, value);
-        
+
         self
     }
 
@@ -45,10 +45,10 @@ impl ScopedEnv {
         if !self.restore.contains_key(key) {
             self.restore.insert(key.to_string(), env::var(key).ok());
         }
-        
+
         // Remove variable
         env::remove_var(key);
-        
+
         self
     }
 
@@ -78,4 +78,3 @@ impl Drop for ScopedEnv {
         }
     }
 }
-

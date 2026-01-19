@@ -29,10 +29,10 @@ use tracing::debug;
 struct CacheEntry {
     /// Cached response value
     value: Value,
-    
+
     /// When this entry expires
     expires_at: Instant,
-    
+
     /// Estimated size in bytes
     size: usize,
 }
@@ -41,17 +41,15 @@ impl CacheEntry {
     /// Create a new cache entry
     fn new(value: Value, ttl: Duration) -> Self {
         // Estimate size (rough approximation)
-        let size = serde_json::to_string(&value)
-            .map(|s| s.len())
-            .unwrap_or(0);
-        
+        let size = serde_json::to_string(&value).map(|s| s.len()).unwrap_or(0);
+
         Self {
             value,
             expires_at: Instant::now() + ttl,
             size,
         }
     }
-    
+
     /// Check if entry is expired
     fn is_expired(&self) -> bool {
         Instant::now() > self.expires_at
@@ -68,10 +66,10 @@ impl CacheEntry {
 pub struct ResponseCache {
     /// Cached entries
     entries: Arc<RwLock<HashMap<String, CacheEntry>>>,
-    
+
     /// Maximum cache size in bytes
     max_size: usize,
-    
+
     /// Current cache size in bytes
     current_size: Arc<RwLock<usize>>,
 }
@@ -97,7 +95,7 @@ impl ResponseCache {
             current_size: Arc::new(RwLock::new(0)),
         }
     }
-    
+
     /// Get a cached response
     ///
     /// # Arguments
@@ -112,18 +110,18 @@ impl ResponseCache {
     /// - Automatic cleanup: Removes expired entries
     pub async fn get(&self, key: &str) -> Option<Value> {
         let mut entries = self.entries.write().await;
-        
+
         // Check if entry exists and is not expired
         if let Some(entry) = entries.get(key) {
             if entry.is_expired() {
                 debug!("Cache entry expired: {}", key);
-                
+
                 // Remove expired entry
                 if let Some(removed) = entries.remove(key) {
                     let mut size = self.current_size.write().await;
                     *size = size.saturating_sub(removed.size);
                 }
-                
+
                 None
             } else {
                 debug!("Cache hit: {}", key);
@@ -134,7 +132,7 @@ impl ResponseCache {
             None
         }
     }
-    
+
     /// Cache a response
     ///
     /// # Arguments
@@ -148,10 +146,10 @@ impl ResponseCache {
     pub async fn set(&self, key: &str, value: &Value, ttl: Duration) {
         let entry = CacheEntry::new(value.clone(), ttl);
         let entry_size = entry.size;
-        
+
         let mut entries = self.entries.write().await;
         let mut size = self.current_size.write().await;
-        
+
         // Check if we need to evict entries to make space
         while *size + entry_size > self.max_size && !entries.is_empty() {
             // Find and remove the oldest entry (simple LRU approximation)
@@ -166,7 +164,7 @@ impl ResponseCache {
                 break;
             }
         }
-        
+
         // Insert new entry
         if entry_size <= self.max_size {
             *size += entry_size;
@@ -176,28 +174,28 @@ impl ResponseCache {
             debug!("Response too large to cache: {} (size: {})", key, entry_size);
         }
     }
-    
+
     /// Clear all cached entries
     pub async fn clear(&self) {
         let mut entries = self.entries.write().await;
         let mut size = self.current_size.write().await;
-        
+
         entries.clear();
         *size = 0;
-        
+
         debug!("Cache cleared");
     }
-    
+
     /// Get current cache size
     pub async fn size(&self) -> usize {
         *self.current_size.read().await
     }
-    
+
     /// Get number of cached entries
     pub async fn len(&self) -> usize {
         self.entries.read().await.len()
     }
-    
+
     /// Check if cache is empty
     pub async fn is_empty(&self) -> bool {
         self.entries.read().await.is_empty()
@@ -209,96 +207,95 @@ mod tests {
     use super::*;
     use serde_json::json;
     use tokio::time::sleep;
-    
+
     #[tokio::test]
     async fn test_cache_set_and_get() {
         let cache = ResponseCache::new(1024 * 1024); // 1MB
-        
+
         let value = json!({"result": "success"});
         cache.set("test_key", &value, Duration::from_secs(60)).await;
-        
+
         let cached = cache.get("test_key").await;
         assert_eq!(cached, Some(value));
     }
-    
+
     #[tokio::test]
     async fn test_cache_miss() {
         let cache = ResponseCache::new(1024 * 1024);
-        
+
         let cached = cache.get("nonexistent_key").await;
         assert_eq!(cached, None);
     }
-    
+
     #[tokio::test]
     async fn test_cache_expiration() {
         let cache = ResponseCache::new(1024 * 1024);
-        
+
         let value = json!({"result": "success"});
         cache.set("test_key", &value, Duration::from_millis(50)).await;
-        
+
         // Should be cached immediately
         assert!(cache.get("test_key").await.is_some());
-        
+
         // Wait for expiration
         sleep(Duration::from_millis(100)).await;
-        
+
         // Should be expired
         assert!(cache.get("test_key").await.is_none());
     }
-    
+
     #[tokio::test]
     async fn test_cache_size_limit() {
         let cache = ResponseCache::new(100); // Small cache (100 bytes)
-        
+
         // Create a large value
         let large_value = json!({"data": "x".repeat(200)});
-        
+
         // Should not cache (too large)
         cache.set("large_key", &large_value, Duration::from_secs(60)).await;
-        
+
         let cached = cache.get("large_key").await;
         assert_eq!(cached, None);
     }
-    
+
     #[tokio::test]
     async fn test_cache_eviction() {
         let cache = ResponseCache::new(50); // Very small cache (50 bytes)
-        
+
         // Create larger values that will exceed cache size
         let value1 = json!({"data": "x".repeat(30)}); // ~40 bytes
         let value2 = json!({"data": "y".repeat(30)}); // ~40 bytes
-        
+
         cache.set("key1", &value1, Duration::from_secs(60)).await;
-        
+
         // First entry should be cached
         assert_eq!(cache.len().await, 1);
-        
+
         // Second entry should cause eviction of first (exceeds 50 byte limit)
         cache.set("key2", &value2, Duration::from_secs(60)).await;
-        
+
         // Should only have 1 entry (second one, first was evicted)
         assert_eq!(cache.len().await, 1);
-        
+
         // First entry should be evicted
         assert!(cache.get("key1").await.is_none());
-        
+
         // Second entry should still be cached
         assert!(cache.get("key2").await.is_some());
     }
-    
+
     #[tokio::test]
     async fn test_cache_clear() {
         let cache = ResponseCache::new(1024 * 1024);
-        
+
         let value = json!({"result": "success"});
         cache.set("test_key", &value, Duration::from_secs(60)).await;
-        
+
         assert!(!cache.is_empty().await);
-        
+
         cache.clear().await;
-        
+
         assert!(cache.is_empty().await);
         assert_eq!(cache.size().await, 0);
     }
 }
-

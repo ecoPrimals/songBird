@@ -17,7 +17,7 @@ use crate::error::TlsError;
 pub struct Alert {
     /// Alert level (warning or fatal)
     pub level: AlertLevel,
-    
+
     /// Alert description (specific error code)
     pub description: AlertDescription,
 }
@@ -25,7 +25,10 @@ pub struct Alert {
 impl Alert {
     /// Create a new Alert message
     pub fn new(level: AlertLevel, description: AlertDescription) -> Self {
-        Self { level, description }
+        Self {
+            level,
+            description,
+        }
     }
 
     /// Create a fatal alert
@@ -61,8 +64,12 @@ impl Alert {
             TlsError::Unsupported(_) => AlertDescription::ProtocolVersion,
             TlsError::ProtocolError(_) => AlertDescription::UnexpectedMessage,
             TlsError::InvalidParameter(_) => AlertDescription::IllegalParameter,
-            TlsError::RecordTooLarge { .. } => AlertDescription::RecordOverflow,
-            TlsError::UnexpectedMessage { .. } => AlertDescription::UnexpectedMessage,
+            TlsError::RecordTooLarge {
+                ..
+            } => AlertDescription::RecordOverflow,
+            TlsError::UnexpectedMessage {
+                ..
+            } => AlertDescription::UnexpectedMessage,
             _ => AlertDescription::InternalError,
         };
 
@@ -231,7 +238,7 @@ mod tests {
         assert_eq!(u8::from(AlertDescription::CloseNotify), 0);
         assert_eq!(u8::from(AlertDescription::HandshakeFailure), 40);
         assert_eq!(u8::from(AlertDescription::DecryptError), 51);
-        
+
         assert_eq!(AlertDescription::from(0), AlertDescription::CloseNotify);
         assert_eq!(AlertDescription::from(40), AlertDescription::HandshakeFailure);
         assert_eq!(AlertDescription::from(51), AlertDescription::DecryptError);
@@ -241,9 +248,8 @@ mod tests {
     fn test_unknown_conversions() {
         // Unknown alert level defaults to Fatal
         assert_eq!(AlertLevel::from(99), AlertLevel::Fatal);
-        
+
         // Unknown alert description defaults to InternalError
         assert_eq!(AlertDescription::from(255), AlertDescription::InternalError);
     }
 }
-

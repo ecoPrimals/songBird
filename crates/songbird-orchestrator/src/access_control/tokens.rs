@@ -10,9 +10,9 @@ use serde::{Deserialize, Serialize};
 /// Custom claims for our JWT
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Claims {
-    pub sub: String,      // Subject
-    pub iat: i64,         // Issued at
-    pub exp: i64,         // Expiry
+    pub sub: String, // Subject
+    pub iat: i64,    // Issued at
+    pub exp: i64,    // Expiry
     #[serde(flatten)]
     pub role: Role,
     pub token_type: TokenType,
@@ -170,22 +170,15 @@ impl AccessToken {
             token_type: self.token_type.clone(),
         };
 
-        encode(
-            &Header::default(),
-            &claims,
-            &EncodingKey::from_secret(secret),
-        )
-        .map_err(|e| anyhow!("Failed to encode token: {}", e))
+        encode(&Header::default(), &claims, &EncodingKey::from_secret(secret))
+            .map_err(|e| anyhow!("Failed to encode token: {}", e))
     }
 
     /// Decode from JWT string (using jsonwebtoken with ring - no cmake!)
     pub fn decode(token_str: &str, secret: &[u8]) -> Result<Self> {
-        let token_data = decode::<Claims>(
-            token_str,
-            &DecodingKey::from_secret(secret),
-            &Validation::default(),
-        )
-        .map_err(|e| anyhow!("Failed to decode token: {}", e))?;
+        let token_data =
+            decode::<Claims>(token_str, &DecodingKey::from_secret(secret), &Validation::default())
+                .map_err(|e| anyhow!("Failed to decode token: {}", e))?;
 
         let claims = token_data.claims;
 

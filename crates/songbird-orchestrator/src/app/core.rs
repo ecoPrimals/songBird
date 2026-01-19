@@ -264,10 +264,8 @@ impl SongbirdOrchestrator {
         let beardog_socket = get_beardog_socket_for_jwt();
 
         // Provision JWT secret (tries BearDog, falls back to secure random)
-        let jwt_secret = provision_jwt_secret(
-            beardog_socket.as_deref(),
-            "songbird_authentication"
-        ).await?;
+        let jwt_secret =
+            provision_jwt_secret(beardog_socket.as_deref(), "songbird_authentication").await?;
 
         Ok(jwt_secret)
     }
@@ -505,7 +503,7 @@ impl SongbirdOrchestrator {
         info!("🔒 Songbird uses Unix sockets ONLY (Concentrated Gap strategy)");
         info!("   Internal: Unix domain sockets (IPC)");
         info!("   External: HTTP/TLS gateway component (separate)");
-        
+
         Ok(0) // No port used
     }
 
@@ -588,7 +586,7 @@ impl SongbirdOrchestrator {
     async fn start_tarpc_server(&self) -> Result<()> {
         // Unix sockets ONLY - no TCP binding
         info!("🔒 Using IPC (Unix sockets) for primal-to-primal communication");
-        
+
         Ok(())
     }
 

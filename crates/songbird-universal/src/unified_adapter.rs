@@ -344,18 +344,18 @@ pub enum UniversalAdapterError {
 // Convert UniversalAdapterError to SongbirdError for test compatibility
 impl From<UniversalAdapterError> for songbird_types::SongbirdError {
     fn from(err: UniversalAdapterError) -> Self {
-        use UniversalAdapterError::{NetworkError, ParseError, DiscoveryError, ServiceError, MissingCapability, NoProvidersAvailable};
+        use UniversalAdapterError::{
+            DiscoveryError, MissingCapability, NetworkError, NoProvidersAvailable, ParseError,
+            ServiceError,
+        };
         match err {
             NetworkError(msg) | ParseError(msg) | DiscoveryError(msg) | ServiceError(msg) => {
                 Self::from(msg)
             }
-            MissingCapability => {
-                Self::from("Required capability is missing")
+            MissingCapability => Self::from("Required capability is missing"),
+            NoProvidersAvailable(cap) => {
+                Self::from(format!("No providers available for capability: {}", cap))
             }
-            NoProvidersAvailable(cap) => Self::from(format!(
-                "No providers available for capability: {}",
-                cap
-            )),
         }
     }
 }

@@ -322,7 +322,7 @@ async fn get_capabilities(State(state): State<DeploymentState>) -> Json<Deployme
         },
         preferences: DeploymentPreferences {
             preferred_compression: "gzip".to_string(), // Pure Rust (flate2)
-            preferred_method: "single".to_string(), // Will be "chunked" in Phase 3
+            preferred_method: "single".to_string(),    // Will be "chunked" in Phase 3
             encryption_required: false,
         },
     };

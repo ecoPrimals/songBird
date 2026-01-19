@@ -105,15 +105,8 @@ fn test_config_init() {
     let config_path = tmp_dir.path().join("test-config.toml");
 
     let mut cmd = Command::cargo_bin("songbird").unwrap();
-    cmd.args([
-        "config",
-        "init",
-        "--output",
-        config_path.to_str().unwrap(),
-    ]);
-    cmd.assert()
-        .success()
-        .stdout(predicate::str::contains("Configuration template generated"));
+    cmd.args(["config", "init", "--output", config_path.to_str().unwrap()]);
+    cmd.assert().success().stdout(predicate::str::contains("Configuration template generated"));
 
     // Verify file was created
     assert!(config_path.exists());
@@ -138,23 +131,12 @@ fn test_config_init_force() {
 
     // Try to init without --force (should fail)
     let mut cmd = Command::cargo_bin("songbird").unwrap();
-    cmd.args([
-        "config",
-        "init",
-        "--output",
-        config_path.to_str().unwrap(),
-    ]);
+    cmd.args(["config", "init", "--output", config_path.to_str().unwrap()]);
     cmd.assert().failure();
 
     // Try with --force (should succeed)
     let mut cmd = Command::cargo_bin("songbird").unwrap();
-    cmd.args([
-        "config",
-        "init",
-        "--output",
-        config_path.to_str().unwrap(),
-        "--force",
-    ]);
+    cmd.args(["config", "init", "--output", config_path.to_str().unwrap(), "--force"]);
     cmd.assert().success();
 
     // Verify new content
@@ -167,9 +149,7 @@ fn test_config_init_force() {
 fn test_unknown_command() {
     let mut cmd = Command::cargo_bin("songbird").unwrap();
     cmd.arg("unknown");
-    cmd.assert()
-        .failure()
-        .stderr(predicate::str::contains("unrecognized subcommand"));
+    cmd.assert().failure().stderr(predicate::str::contains("unrecognized subcommand"));
 }
 
 #[test]
@@ -184,26 +164,19 @@ fn test_server_port_arg() {
 fn test_doctor_comprehensive() {
     let mut cmd = Command::cargo_bin("songbird").unwrap();
     cmd.args(["doctor", "--comprehensive"]);
-    cmd.assert()
-        .success()
-        .stdout(predicate::str::contains("Comprehensive Checks"));
+    cmd.assert().success().stdout(predicate::str::contains("Comprehensive Checks"));
 }
 
 #[test]
 fn test_doctor_json_format() {
     let mut cmd = Command::cargo_bin("songbird").unwrap();
     cmd.args(["doctor", "--format", "json"]);
-    cmd.assert()
-        .success()
-        .stdout(predicate::str::contains("status"));
+    cmd.assert().success().stdout(predicate::str::contains("status"));
 }
 
 #[test]
 fn test_config_show() {
     let mut cmd = Command::cargo_bin("songbird").unwrap();
     cmd.args(["config", "show"]);
-    cmd.assert()
-        .success()
-        .stdout(predicate::str::contains("Configuration"));
+    cmd.assert().success().stdout(predicate::str::contains("Configuration"));
 }
-

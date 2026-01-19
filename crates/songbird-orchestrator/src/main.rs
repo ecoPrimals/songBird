@@ -111,7 +111,9 @@ async fn main() -> Result<()> {
         } => {
             run_doctor(comprehensive, &format).await?;
         }
-        Commands::Config { config_cmd } => {
+        Commands::Config {
+            config_cmd,
+        } => {
             run_config_command(config_cmd).await?;
         }
     }
@@ -134,16 +136,21 @@ async fn run_server(
 ) -> Result<()> {
     // Initialize tracing (early, before any logging)
     if verbose {
-        tracing_subscriber::fmt()
-            .with_max_level(tracing::Level::DEBUG)
-            .init();
+        tracing_subscriber::fmt().with_max_level(tracing::Level::DEBUG).init();
     } else {
         tracing_subscriber::fmt::init();
     }
 
     // Log startup with mode information
     tracing::info!("🚀 Songbird v{} - Server Mode", env!("CARGO_PKG_VERSION"));
-    tracing::info!("   Mode: Server {}", if daemon { "(daemon)" } else { "(foreground)" });
+    tracing::info!(
+        "   Mode: Server {}",
+        if daemon {
+            "(daemon)"
+        } else {
+            "(foreground)"
+        }
+    );
     tracing::info!("   Port: {}", port);
     tracing::info!("   Process ID: {}", std::process::id());
 
@@ -254,9 +261,7 @@ async fn run_server(
 /// Modern, idiomatic Rust implementation with async/await
 async fn run_doctor(comprehensive: bool, format: &str) -> Result<()> {
     // Initialize minimal logging for doctor mode
-    tracing_subscriber::fmt()
-        .with_max_level(tracing::Level::INFO)
-        .init();
+    tracing_subscriber::fmt().with_max_level(tracing::Level::INFO).init();
 
     match format {
         "text" => run_doctor_text(comprehensive).await,
@@ -418,18 +423,21 @@ async fn check_beardog_connectivity() -> Result<bool> {
 /// Modern, idiomatic Rust implementation
 async fn run_config_command(cmd: ConfigCommands) -> Result<()> {
     // Initialize minimal logging
-    tracing_subscriber::fmt()
-        .with_max_level(tracing::Level::INFO)
-        .init();
+    tracing_subscriber::fmt().with_max_level(tracing::Level::INFO).init();
 
     match cmd {
-        ConfigCommands::Show { show_secrets } => {
+        ConfigCommands::Show {
+            show_secrets,
+        } => {
             show_config(show_secrets).await?;
         }
         ConfigCommands::Validate => {
             validate_config().await?;
         }
-        ConfigCommands::Init { output, force } => {
+        ConfigCommands::Init {
+            output,
+            force,
+        } => {
             init_config(&output, force).await?;
         }
     }

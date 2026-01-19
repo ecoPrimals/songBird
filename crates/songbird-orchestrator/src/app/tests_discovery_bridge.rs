@@ -8,7 +8,6 @@
 
 #[cfg(test)]
 mod unit_tests {
-    
 
     #[test]
     fn test_same_family_detection_with_matching_tags() {
@@ -204,7 +203,7 @@ mod unit_tests {
 
 #[cfg(test)]
 mod integration_tests {
-    
+
     use std::time::Duration;
 
     #[tokio::test]
@@ -358,7 +357,6 @@ mod integration_tests {
 
 #[cfg(test)]
 mod e2e_tests {
-    
 
     // Note: Full E2E tests would require:
     // 1. Spinning up actual Songbird instances

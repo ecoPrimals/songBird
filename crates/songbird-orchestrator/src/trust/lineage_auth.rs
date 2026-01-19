@@ -401,7 +401,9 @@ impl LineageAuthenticator {
         peer_proof: Option<&LineageProof>,
     ) -> Result<PeerAcceptanceDecision> {
         // If peer has no lineage, prompt user
-        let (lineage, proof) = if let (Some(l), Some(p)) = (peer_lineage, peer_proof) { (l, p) } else {
+        let (lineage, proof) = if let (Some(l), Some(p)) = (peer_lineage, peer_proof) {
+            (l, p)
+        } else {
             info!("⚠️ Peer {} has no lineage - prompting user", peer_node_id);
             return Ok(PeerAcceptanceDecision::PromptUser {
                 peer_info: PeerInfo {
@@ -532,7 +534,6 @@ impl Default for LineageAuthenticator {
 #[cfg(test)]
 mod tests {
     use super::*;
-    
 
     #[tokio::test]
     async fn test_authenticator_creation() {

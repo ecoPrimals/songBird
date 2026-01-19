@@ -48,7 +48,12 @@ impl Capability {
     /// The information hierarchy is:
     /// Infrastructure ⊃ Administrative ⊃ Operational ⊃ Educational ⊃ Public
     pub fn implies(&self, other: &Self) -> bool {
-        use Capability::{All, ViewInfrastructureInfo, ViewAdministrativeInfo, ViewOperationalInfo, ViewEducationalInfo, ViewPublicInfo, ViewAllTasks, ViewAllStudentTasks, ViewOwnTasks, CancelAnyTask, CancelOwnTasks, ManageAllUsers, ManageCourseUsers, AccessSystemLogs, AccessSecurityLogs, AccessRawLogs, AccessStudentLogs};
+        use Capability::{
+            AccessRawLogs, AccessSecurityLogs, AccessStudentLogs, AccessSystemLogs, All,
+            CancelAnyTask, CancelOwnTasks, ManageAllUsers, ManageCourseUsers,
+            ViewAdministrativeInfo, ViewAllStudentTasks, ViewAllTasks, ViewEducationalInfo,
+            ViewInfrastructureInfo, ViewOperationalInfo, ViewOwnTasks, ViewPublicInfo,
+        };
 
         // All implies everything
         if matches!(self, All) {

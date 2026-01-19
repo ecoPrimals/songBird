@@ -34,7 +34,7 @@ fn clear_test_env() {
         "SONGBIRD_ORCHESTRATOR_SOCKET",
         "BIOMEOS_SOCKET_PATH",
     ];
-    
+
     for var in &env_vars {
         std::env::remove_var(var);
     }
@@ -54,21 +54,15 @@ fn create_test_config(dir: &TempDir, content: &str) -> PathBuf {
 #[serial]
 async fn test_e2e_help_and_version_workflow() -> Result<(), Box<dyn std::error::Error>> {
     clear_test_env();
-    
+
     // Step 1: Check version
     let mut cmd = Command::cargo_bin("songbird")?;
-    cmd.arg("--version")
-        .assert()
-        .success()
-        .stdout(predicate::str::contains("songbird"));
-    
+    cmd.arg("--version").assert().success().stdout(predicate::str::contains("songbird"));
+
     // Step 2: Check main help
     let mut cmd = Command::cargo_bin("songbird")?;
-    cmd.arg("--help")
-        .assert()
-        .success()
-        .stdout(predicate::str::contains("Network Orchestration"));
-    
+    cmd.arg("--help").assert().success().stdout(predicate::str::contains("Network Orchestration"));
+
     // Step 3: Check server help
     let mut cmd = Command::cargo_bin("songbird")?;
     cmd.arg("server")
@@ -76,7 +70,7 @@ async fn test_e2e_help_and_version_workflow() -> Result<(), Box<dyn std::error::
         .assert()
         .success()
         .stdout(predicate::str::contains("Start Songbird orchestrator"));
-    
+
     // Step 4: Check doctor help
     let mut cmd = Command::cargo_bin("songbird")?;
     cmd.arg("doctor")
@@ -84,7 +78,7 @@ async fn test_e2e_help_and_version_workflow() -> Result<(), Box<dyn std::error::
         .assert()
         .success()
         .stdout(predicate::str::contains("health diagnostics"));
-    
+
     // Step 5: Check config help
     let mut cmd = Command::cargo_bin("songbird")?;
     cmd.arg("config")
@@ -92,7 +86,7 @@ async fn test_e2e_help_and_version_workflow() -> Result<(), Box<dyn std::error::
         .assert()
         .success()
         .stdout(predicate::str::contains("Configuration management"));
-    
+
     Ok(())
 }
 
@@ -102,7 +96,7 @@ async fn test_e2e_config_init_validate_workflow() -> Result<(), Box<dyn std::err
     clear_test_env();
     let temp_dir = tempdir()?;
     let config_path = temp_dir.path().join("songbird-generated.toml");
-    
+
     // Step 1: Initialize config
     let mut cmd = Command::cargo_bin("songbird")?;
     cmd.arg("config")
@@ -112,26 +106,20 @@ async fn test_e2e_config_init_validate_workflow() -> Result<(), Box<dyn std::err
         .arg("--force")
         .assert()
         .success();
-    
+
     // Verify config file was created
     assert!(config_path.exists(), "Config file should be created");
-    
+
     // Step 2: Validate the generated config
     // Note: validate doesn't take --config, it reads from env or default
     let mut cmd = Command::cargo_bin("songbird")?;
-    cmd.arg("config")
-        .arg("validate")
-        .assert()
-        .success();
-    
+    cmd.arg("config").arg("validate").assert().success();
+
     // Step 3: Show the config
     // Note: show doesn't take --config, it reads from env or default
     let mut cmd = Command::cargo_bin("songbird")?;
-    cmd.arg("config")
-        .arg("show")
-        .assert()
-        .success();
-    
+    cmd.arg("config").arg("show").assert().success();
+
     Ok(())
 }
 
@@ -139,23 +127,15 @@ async fn test_e2e_config_init_validate_workflow() -> Result<(), Box<dyn std::err
 #[serial]
 async fn test_e2e_doctor_basic_checks() -> Result<(), Box<dyn std::error::Error>> {
     clear_test_env();
-    
+
     // Step 1: Run basic doctor checks
     let mut cmd = Command::cargo_bin("songbird")?;
-    cmd.arg("doctor")
-        .arg("--format")
-        .arg("text")
-        .assert()
-        .success();
-    
+    cmd.arg("doctor").arg("--format").arg("text").assert().success();
+
     // Step 2: Run doctor with JSON output
     let mut cmd = Command::cargo_bin("songbird")?;
-    cmd.arg("doctor")
-        .arg("--format")
-        .arg("json")
-        .assert()
-        .success();
-    
+    cmd.arg("doctor").arg("--format").arg("json").assert().success();
+
     Ok(())
 }
 
@@ -163,7 +143,7 @@ async fn test_e2e_doctor_basic_checks() -> Result<(), Box<dyn std::error::Error>
 #[serial]
 async fn test_e2e_server_with_custom_port() -> Result<(), Box<dyn std::error::Error>> {
     clear_test_env();
-    
+
     // Test that server command accepts custom port
     // Note: We don't actually start the server (would hang), just validate args
     let mut cmd = Command::cargo_bin("songbird")?;
@@ -173,7 +153,7 @@ async fn test_e2e_server_with_custom_port() -> Result<(), Box<dyn std::error::Er
         .arg("--help") // Use help to avoid actually starting
         .assert()
         .success();
-    
+
     Ok(())
 }
 
@@ -181,21 +161,19 @@ async fn test_e2e_server_with_custom_port() -> Result<(), Box<dyn std::error::Er
 #[serial]
 async fn test_e2e_environment_variable_integration() -> Result<(), Box<dyn std::error::Error>> {
     clear_test_env();
-    
+
     // Set environment variables
     std::env::set_var("SONGBIRD_PORT", "9000");
     std::env::set_var("SONGBIRD_NODE_ID", "e2e-test-node");
     std::env::set_var("SONGBIRD_FAMILY_ID", "nat0");
-    
+
     // Run doctor to verify env vars are read
     let mut cmd = Command::cargo_bin("songbird")?;
-    cmd.arg("doctor")
-        .assert()
-        .success();
-    
+    cmd.arg("doctor").assert().success();
+
     // Clean up
     clear_test_env();
-    
+
     Ok(())
 }
 
@@ -203,15 +181,11 @@ async fn test_e2e_environment_variable_integration() -> Result<(), Box<dyn std::
 #[serial]
 async fn test_e2e_verbose_logging_mode() -> Result<(), Box<dyn std::error::Error>> {
     clear_test_env();
-    
+
     // Test verbose flag
     let mut cmd = Command::cargo_bin("songbird")?;
-    cmd.arg("server")
-        .arg("--verbose")
-        .arg("--help")
-        .assert()
-        .success();
-    
+    cmd.arg("server").arg("--verbose").arg("--help").assert().success();
+
     Ok(())
 }
 
@@ -219,15 +193,11 @@ async fn test_e2e_verbose_logging_mode() -> Result<(), Box<dyn std::error::Error
 #[serial]
 async fn test_e2e_daemon_mode_flag() -> Result<(), Box<dyn std::error::Error>> {
     clear_test_env();
-    
+
     // Test daemon flag
     let mut cmd = Command::cargo_bin("songbird")?;
-    cmd.arg("server")
-        .arg("--daemon")
-        .arg("--help")
-        .assert()
-        .success();
-    
+    cmd.arg("server").arg("--daemon").arg("--help").assert().success();
+
     Ok(())
 }
 
@@ -237,19 +207,14 @@ async fn test_e2e_config_file_path() -> Result<(), Box<dyn std::error::Error>> {
     clear_test_env();
     let temp_dir = tempdir()?;
     let config_path = temp_dir.path().join("custom-config.toml");
-    
+
     // Create a config file
     fs::write(&config_path, "# Test config\n")?;
-    
+
     // Test config path flag
     let mut cmd = Command::cargo_bin("songbird")?;
-    cmd.arg("server")
-        .arg("--config")
-        .arg(&config_path)
-        .arg("--help")
-        .assert()
-        .success();
-    
+    cmd.arg("server").arg("--config").arg(&config_path).arg("--help").assert().success();
+
     Ok(())
 }
 
@@ -257,18 +222,14 @@ async fn test_e2e_config_file_path() -> Result<(), Box<dyn std::error::Error>> {
 #[serial]
 async fn test_e2e_multiple_doctor_formats() -> Result<(), Box<dyn std::error::Error>> {
     clear_test_env();
-    
+
     let formats = vec!["text", "json", "yaml"];
-    
+
     for format in formats {
         let mut cmd = Command::cargo_bin("songbird")?;
-        cmd.arg("doctor")
-            .arg("--format")
-            .arg(format)
-            .assert()
-            .success();
+        cmd.arg("doctor").arg("--format").arg(format).assert().success();
     }
-    
+
     Ok(())
 }
 
@@ -276,14 +237,11 @@ async fn test_e2e_multiple_doctor_formats() -> Result<(), Box<dyn std::error::Er
 #[serial]
 async fn test_e2e_comprehensive_doctor() -> Result<(), Box<dyn std::error::Error>> {
     clear_test_env();
-    
+
     // Run comprehensive doctor checks
     let mut cmd = Command::cargo_bin("songbird")?;
-    cmd.arg("doctor")
-        .arg("--comprehensive")
-        .assert()
-        .success();
-    
+    cmd.arg("doctor").arg("--comprehensive").assert().success();
+
     Ok(())
 }
 
@@ -291,22 +249,15 @@ async fn test_e2e_comprehensive_doctor() -> Result<(), Box<dyn std::error::Error
 #[serial]
 async fn test_e2e_config_show_with_secrets() -> Result<(), Box<dyn std::error::Error>> {
     clear_test_env();
-    
+
     // Show config without secrets (reads from env or default)
     let mut cmd = Command::cargo_bin("songbird")?;
-    cmd.arg("config")
-        .arg("show")
-        .assert()
-        .success();
-    
+    cmd.arg("config").arg("show").assert().success();
+
     // Show config with secrets flag
     let mut cmd = Command::cargo_bin("songbird")?;
-    cmd.arg("config")
-        .arg("show")
-        .arg("--show-secrets")
-        .assert()
-        .success();
-    
+    cmd.arg("config").arg("show").arg("--show-secrets").assert().success();
+
     Ok(())
 }
 
@@ -316,10 +267,10 @@ async fn test_e2e_config_init_force_overwrite() -> Result<(), Box<dyn std::error
     clear_test_env();
     let temp_dir = tempdir()?;
     let config_path = temp_dir.path().join("overwrite-test.toml");
-    
+
     // Create initial file
     fs::write(&config_path, "# Original content\n")?;
-    
+
     // Try to init without force (should fail or warn)
     // Then init with force (should succeed)
     let mut cmd = Command::cargo_bin("songbird")?;
@@ -330,7 +281,7 @@ async fn test_e2e_config_init_force_overwrite() -> Result<(), Box<dyn std::error
         .arg("--force")
         .assert()
         .success();
-    
+
     Ok(())
 }
 
@@ -338,13 +289,11 @@ async fn test_e2e_config_init_force_overwrite() -> Result<(), Box<dyn std::error
 #[serial]
 async fn test_e2e_error_handling_invalid_command() -> Result<(), Box<dyn std::error::Error>> {
     clear_test_env();
-    
+
     // Test unknown command
     let mut cmd = Command::cargo_bin("songbird")?;
-    cmd.arg("invalid-command")
-        .assert()
-        .failure();
-    
+    cmd.arg("invalid-command").assert().failure();
+
     Ok(())
 }
 
@@ -352,7 +301,7 @@ async fn test_e2e_error_handling_invalid_command() -> Result<(), Box<dyn std::er
 #[serial]
 async fn test_e2e_error_handling_invalid_port() -> Result<(), Box<dyn std::error::Error>> {
     clear_test_env();
-    
+
     // Test invalid port number
     let mut cmd = Command::cargo_bin("songbird")?;
     cmd.arg("server")
@@ -360,7 +309,7 @@ async fn test_e2e_error_handling_invalid_port() -> Result<(), Box<dyn std::error
         .arg("99999") // Invalid: > 65535
         .assert()
         .failure();
-    
+
     Ok(())
 }
 
@@ -368,7 +317,7 @@ async fn test_e2e_error_handling_invalid_port() -> Result<(), Box<dyn std::error
 #[serial]
 async fn test_e2e_error_handling_invalid_format() -> Result<(), Box<dyn std::error::Error>> {
     clear_test_env();
-    
+
     // Test invalid format (should error)
     let mut cmd = Command::cargo_bin("songbird")?;
     cmd.arg("doctor")
@@ -377,7 +326,7 @@ async fn test_e2e_error_handling_invalid_format() -> Result<(), Box<dyn std::err
         .assert()
         .failure() // Should fail with invalid format
         .stderr(predicate::str::contains("Unknown format"));
-    
+
     Ok(())
 }
 
@@ -385,13 +334,13 @@ async fn test_e2e_error_handling_invalid_format() -> Result<(), Box<dyn std::err
 #[serial]
 async fn test_e2e_rapid_command_execution() -> Result<(), Box<dyn std::error::Error>> {
     clear_test_env();
-    
+
     // Execute multiple commands rapidly
     for _ in 0..10 {
         let mut cmd = Command::cargo_bin("songbird")?;
         cmd.arg("--version").assert().success();
     }
-    
+
     Ok(())
 }
 
@@ -399,10 +348,10 @@ async fn test_e2e_rapid_command_execution() -> Result<(), Box<dyn std::error::Er
 #[serial]
 async fn test_e2e_concurrent_doctor_checks() -> Result<(), Box<dyn std::error::Error>> {
     clear_test_env();
-    
+
     // Run multiple doctor checks concurrently
     let mut handles = vec![];
-    
+
     for _ in 0..3 {
         let handle = tokio::spawn(async {
             let mut cmd = Command::cargo_bin("songbird").unwrap();
@@ -410,12 +359,12 @@ async fn test_e2e_concurrent_doctor_checks() -> Result<(), Box<dyn std::error::E
         });
         handles.push(handle);
     }
-    
+
     // Wait for all to complete
     for handle in handles {
         handle.await?;
     }
-    
+
     Ok(())
 }
 
@@ -424,15 +373,12 @@ async fn test_e2e_concurrent_doctor_checks() -> Result<(), Box<dyn std::error::E
 async fn test_e2e_full_lifecycle_simulation() -> Result<(), Box<dyn std::error::Error>> {
     clear_test_env();
     let temp_dir = tempdir()?;
-    
+
     // Full lifecycle: check version -> init config -> validate -> doctor -> show config
-    
+
     // 1. Check version
-    Command::cargo_bin("songbird")?
-        .arg("--version")
-        .assert()
-        .success();
-    
+    Command::cargo_bin("songbird")?.arg("--version").assert().success();
+
     // 2. Initialize config
     let config_path = temp_dir.path().join("lifecycle-config.toml");
     Command::cargo_bin("songbird")?
@@ -443,27 +389,16 @@ async fn test_e2e_full_lifecycle_simulation() -> Result<(), Box<dyn std::error::
         .arg("--force")
         .assert()
         .success();
-    
+
     // 3. Validate config (reads from env or default)
-    Command::cargo_bin("songbird")?
-        .arg("config")
-        .arg("validate")
-        .assert()
-        .success();
-    
+    Command::cargo_bin("songbird")?.arg("config").arg("validate").assert().success();
+
     // 4. Run doctor
-    Command::cargo_bin("songbird")?
-        .arg("doctor")
-        .assert()
-        .success();
-    
+    Command::cargo_bin("songbird")?.arg("doctor").assert().success();
+
     // 5. Show config (reads from env or default)
-    Command::cargo_bin("songbird")?
-        .arg("config")
-        .arg("show")
-        .assert()
-        .success();
-    
+    Command::cargo_bin("songbird")?.arg("config").arg("show").assert().success();
+
     Ok(())
 }
 
@@ -471,19 +406,19 @@ async fn test_e2e_full_lifecycle_simulation() -> Result<(), Box<dyn std::error::
 #[serial]
 async fn test_e2e_stress_version_calls() -> Result<(), Box<dyn std::error::Error>> {
     clear_test_env();
-    
+
     // Stress test: rapid version checks
     for i in 0..50 {
         let mut cmd = Command::cargo_bin("songbird")?;
         cmd.arg("--version").assert().success();
-        
+
         // Every 10 iterations, check help too
         if i % 10 == 0 {
             let mut cmd = Command::cargo_bin("songbird")?;
             cmd.arg("--help").assert().success();
         }
     }
-    
+
     Ok(())
 }
 
@@ -491,21 +426,16 @@ async fn test_e2e_stress_version_calls() -> Result<(), Box<dyn std::error::Error
 #[serial]
 async fn test_e2e_environment_precedence() -> Result<(), Box<dyn std::error::Error>> {
     clear_test_env();
-    
+
     // Test environment variable precedence
     std::env::set_var("SONGBIRD_PORT", "9000");
-    
+
     // Command line should override env var
     let mut cmd = Command::cargo_bin("songbird")?;
-    cmd.arg("server")
-        .arg("--port")
-        .arg("8888")
-        .arg("--help")
-        .assert()
-        .success();
-    
+    cmd.arg("server").arg("--port").arg("8888").arg("--help").assert().success();
+
     clear_test_env();
-    
+
     Ok(())
 }
 
@@ -513,18 +443,14 @@ async fn test_e2e_environment_precedence() -> Result<(), Box<dyn std::error::Err
 #[serial]
 async fn test_e2e_all_subcommands_accessible() -> Result<(), Box<dyn std::error::Error>> {
     clear_test_env();
-    
+
     // Verify all subcommands are accessible
     let subcommands = vec!["server", "doctor", "config"];
-    
+
     for subcmd in subcommands {
         let mut cmd = Command::cargo_bin("songbird")?;
-        cmd.arg(subcmd)
-            .arg("--help")
-            .assert()
-            .success();
+        cmd.arg(subcmd).arg("--help").assert().success();
     }
-    
+
     Ok(())
 }
-

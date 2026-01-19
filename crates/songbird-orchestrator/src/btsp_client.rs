@@ -35,7 +35,9 @@ impl BtspClient {
     pub fn new() -> Self {
         let socket_path = Self::discover_socket_path();
         info!("BTSP client initialized with socket: {:?}", socket_path);
-        Self { socket_path }
+        Self {
+            socket_path,
+        }
     }
 
     /// Discover BearDog socket path from environment
@@ -273,15 +275,9 @@ impl BtspClient {
     /// * Timeout errors
     async fn send_request(&self, request: serde_json::Value) -> Result<serde_json::Value> {
         // Connect to BearDog's Unix socket
-        let mut stream = UnixStream::connect(&self.socket_path)
-            .await
-            .map_err(|e| {
-                anyhow!(
-                    "Failed to connect to BearDog socket {:?}: {}",
-                    self.socket_path,
-                    e
-                )
-            })?;
+        let mut stream = UnixStream::connect(&self.socket_path).await.map_err(|e| {
+            anyhow!("Failed to connect to BearDog socket {:?}: {}", self.socket_path, e)
+        })?;
 
         // Send request (newline-delimited JSON)
         let request_bytes = serde_json::to_vec(&request)?;
@@ -300,10 +296,7 @@ impl BtspClient {
         if let Some(error) = response.get("error") {
             return Err(anyhow!(
                 "BTSP JSON-RPC error: {}",
-                error
-                    .get("message")
-                    .and_then(|m| m.as_str())
-                    .unwrap_or("Unknown error")
+                error.get("message").and_then(|m| m.as_str()).unwrap_or("Unknown error")
             ));
         }
 
@@ -396,4 +389,3 @@ mod tests {
         }
     }
 }
-

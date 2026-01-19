@@ -3,8 +3,8 @@
 //! Provides native TLS support using rustls for secure HTTPS communication.
 //! Supports both self-signed certificates (development/LAN) and CA-signed certificates (production).
 
-use rcgen::{CertificateParams, DistinguishedName, DnType, SanType};
 use rcgen::string::Ia5String;
+use rcgen::{CertificateParams, DistinguishedName, DnType, SanType};
 use rustls::pki_types::{CertificateDer, PrivateKeyDer};
 use std::io;
 use std::path::Path;

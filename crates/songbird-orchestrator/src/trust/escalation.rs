@@ -148,10 +148,7 @@ impl BearDogClient {
     #[allow(dead_code)]
     pub async fn verify_hardware_key(&self, hardware_key: &str) -> Result<bool> {
         if let Some(ref endpoint) = self.endpoint {
-            tracing::warn!(
-                "⚠️  DEPRECATED: HTTP-based hardware key verification at {}",
-                endpoint
-            );
+            tracing::warn!("⚠️  DEPRECATED: HTTP-based hardware key verification at {}", endpoint);
             tracing::warn!("   Evolution path: Use BTSP client for secure verification");
 
             // NoOp provider: Return basic validation

@@ -127,41 +127,28 @@ fn test_self_aware_config_creation() {
     assert!(config.advertise_address().port() > 0 || config.environment == Environment::Test);
 }
 
-#[test]
-fn test_self_aware_config_development() {
-    // Acquire lock to prevent concurrent env var modifications
-    use songbird_config::test_helpers::EnvironmentLock;
-    let _lock = EnvironmentLock::new();
+#[tokio::test]
+async fn test_self_aware_config_development() {
+    // Use modern RAII-based environment isolation
+    use songbird_test_utils::ScopedEnv;
 
-    // Clear production environment indicators
-    let _k8s = std::env::var("KUBERNETES_SERVICE_HOST");
-    let _docker = std::env::var("DOCKER_HOST");
-    let _prod = std::env::var("PRODUCTION");
-    let _ecs = std::env::var("ECS_CONTAINER_METADATA_URI");
-    std::env::remove_var("KUBERNETES_SERVICE_HOST");
-    std::env::remove_var("DOCKER_HOST");
-    std::env::remove_var("PRODUCTION");
-    std::env::remove_var("ECS_CONTAINER_METADATA_URI");
+    // Remove production environment indicators for this test scope
+    let _env_guard = ScopedEnv::remove_multiple([
+        "KUBERNETES_SERVICE_HOST",
+        "DOCKER_HOST",
+        "PRODUCTION",
+        "ECS_CONTAINER_METADATA_URI",
+    ])
+    .await;
 
-    std::env::set_var("SONGBIRD_ENVIRONMENT", "development");
+    // Set test environment
+    let _test_env = ScopedEnv::set("SONGBIRD_ENVIRONMENT", "development").await;
+
     let config = SelfAwareConfig::from_environment();
     assert_eq!(config.environment, Environment::Development);
     assert!(config.bind_address().ip().is_loopback());
 
-    // Restore
-    std::env::remove_var("SONGBIRD_ENVIRONMENT");
-    if let Ok(v) = _k8s {
-        std::env::set_var("KUBERNETES_SERVICE_HOST", v);
-    }
-    if let Ok(v) = _docker {
-        std::env::set_var("DOCKER_HOST", v);
-    }
-    if let Ok(v) = _ecs {
-        std::env::set_var("ECS_CONTAINER_METADATA_URI", v);
-    }
-    if let Ok(v) = _prod {
-        std::env::set_var("PRODUCTION", v);
-    }
+    // No manual cleanup needed - RAII handles restoration automatically!
 }
 
 #[test]

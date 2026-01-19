@@ -3,8 +3,8 @@
 //! The ClientHello message is the first message in the TLS handshake.
 //! It contains the client's supported versions, cipher suites, and extensions.
 
-use crate::error::{Result, TlsError};
 use super::Extension;
+use crate::error::{Result, TlsError};
 
 /// ClientHello message
 ///
@@ -22,19 +22,19 @@ use super::Extension;
 pub struct ClientHello {
     /// Legacy version (always 0x0303 for TLS 1.3)
     pub legacy_version: u16,
-    
+
     /// Client random (32 bytes of randomness)
     pub random: [u8; 32],
-    
+
     /// Legacy session ID (empty in TLS 1.3, but kept for middlebox compatibility)
     pub legacy_session_id: Vec<u8>,
-    
+
     /// List of cipher suites supported by client
     pub cipher_suites: Vec<u16>,
-    
+
     /// Legacy compression methods (always [0] in TLS 1.3)
     pub legacy_compression_methods: Vec<u8>,
-    
+
     /// Extensions (required - must include supported_versions and key_share)
     pub extensions: Vec<Extension>,
 }
@@ -131,10 +131,8 @@ mod tests {
     fn test_client_hello_validation_success() {
         let random = [42u8; 32];
         let cipher_suites = vec![0x1303];
-        let extensions = vec![
-            Extension::SupportedVersions(vec![0x0304]),
-            Extension::KeyShare(vec![1, 2, 3, 4]),
-        ];
+        let extensions =
+            vec![Extension::SupportedVersions(vec![0x0304]), Extension::KeyShare(vec![1, 2, 3, 4])];
 
         let hello = ClientHello::new(random, cipher_suites, extensions);
         assert!(hello.validate().is_ok());
@@ -182,4 +180,3 @@ mod tests {
         assert_eq!(hello.get_key_share(), Some(key_share_data.as_slice()));
     }
 }
-

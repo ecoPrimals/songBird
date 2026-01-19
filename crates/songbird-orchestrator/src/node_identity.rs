@@ -214,7 +214,11 @@ impl NodeIdentity {
         // Use SONGBIRD_NODE_ID or NODE_ID to create unique identity files
         let filename = std::env::var("SONGBIRD_NODE_ID")
             .or_else(|_| std::env::var("NODE_ID"))
-            .ok().map_or_else(|| "node_identity.json".to_string(), |node_id| format!("node_identity-{}.json", node_id));
+            .ok()
+            .map_or_else(
+                || "node_identity.json".to_string(),
+                |node_id| format!("node_identity-{}.json", node_id),
+            );
 
         data_dir.join("songbird").join(filename)
     }

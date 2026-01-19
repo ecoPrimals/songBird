@@ -345,7 +345,7 @@ impl NodeRegistration {
     }
 
     /// Get preferred endpoint (highest preference and active)
-    #[must_use] 
+    #[must_use]
     pub fn preferred_endpoint(&self) -> Option<&TransportEndpointInfo> {
         self.endpoints
             .as_ref()?
@@ -355,7 +355,7 @@ impl NodeRegistration {
     }
 
     /// Get all active endpoints
-    #[must_use] 
+    #[must_use]
     pub fn active_endpoints(&self) -> Vec<&TransportEndpointInfo> {
         self.endpoints
             .as_ref()

@@ -66,12 +66,7 @@ pub trait CryptoProvider: Send + Sync + std::fmt::Debug {
     ///
     /// # Returns
     /// * `Ok(signature)` - Ed25519 signature (64 bytes)
-    async fn sign_ed25519(
-        &self,
-        message: &[u8],
-        key_id: &str,
-        purpose: &str,
-    ) -> Result<Vec<u8>>;
+    async fn sign_ed25519(&self, message: &[u8], key_id: &str, purpose: &str) -> Result<Vec<u8>>;
 
     /// Verify Ed25519 signature
     ///
@@ -165,7 +160,9 @@ impl UnixSocketCryptoProvider {
     /// # Arguments
     /// * `socket_path` - Path to Unix socket offering crypto capability
     pub fn new(socket_path: String) -> Self {
-        Self { socket_path }
+        Self {
+            socket_path,
+        }
     }
 
     /// Get the socket path
@@ -184,12 +181,7 @@ impl CryptoProvider for UnixSocketCryptoProvider {
         super::beardog_crypto_client::hmac_sha256(&self.socket_path, key, data).await
     }
 
-    async fn sign_ed25519(
-        &self,
-        message: &[u8],
-        key_id: &str,
-        purpose: &str,
-    ) -> Result<Vec<u8>> {
+    async fn sign_ed25519(&self, message: &[u8], key_id: &str, purpose: &str) -> Result<Vec<u8>> {
         super::beardog_crypto_client::sign_ed25519(&self.socket_path, message, key_id, purpose)
             .await
     }
@@ -200,8 +192,13 @@ impl CryptoProvider for UnixSocketCryptoProvider {
         signature: &[u8],
         public_key: &[u8],
     ) -> Result<bool> {
-        super::beardog_crypto_client::verify_ed25519(&self.socket_path, message, signature, public_key)
-            .await
+        super::beardog_crypto_client::verify_ed25519(
+            &self.socket_path,
+            message,
+            signature,
+            public_key,
+        )
+        .await
     }
 
     async fn x25519_generate_ephemeral(&self, purpose: &str) -> Result<(Vec<u8>, Vec<u8>)> {
@@ -280,7 +277,7 @@ impl CryptoProvider for UnixSocketCryptoProvider {
 pub async fn discover_crypto_provider() -> Result<Arc<dyn CryptoProvider>> {
     // Use existing discovery (already capability-based in spirit)
     let socket_path = super::discovery::get_beardog_crypto_socket().await?;
-    
+
     Ok(Arc::new(UnixSocketCryptoProvider::new(socket_path)))
 }
 
@@ -303,11 +300,21 @@ mod tests {
             Ok(vec![1u8; 32])
         }
 
-        async fn sign_ed25519(&self, _message: &[u8], _key_id: &str, _purpose: &str) -> Result<Vec<u8>> {
+        async fn sign_ed25519(
+            &self,
+            _message: &[u8],
+            _key_id: &str,
+            _purpose: &str,
+        ) -> Result<Vec<u8>> {
             Ok(vec![2u8; 64])
         }
 
-        async fn verify_ed25519(&self, _message: &[u8], _signature: &[u8], _public_key: &[u8]) -> Result<bool> {
+        async fn verify_ed25519(
+            &self,
+            _message: &[u8],
+            _signature: &[u8],
+            _public_key: &[u8],
+        ) -> Result<bool> {
             Ok(true)
         }
 
@@ -315,15 +322,31 @@ mod tests {
             Ok((vec![3u8; 32], vec![4u8; 32]))
         }
 
-        async fn x25519_derive_secret(&self, _our_secret_key: &[u8], _their_public_key: &[u8]) -> Result<Vec<u8>> {
+        async fn x25519_derive_secret(
+            &self,
+            _our_secret_key: &[u8],
+            _their_public_key: &[u8],
+        ) -> Result<Vec<u8>> {
             Ok(vec![5u8; 32])
         }
 
-        async fn chacha20_poly1305_encrypt(&self, plaintext: &[u8], _key: &[u8], _aad: Option<&[u8]>) -> Result<(Vec<u8>, Vec<u8>, Vec<u8>)> {
+        async fn chacha20_poly1305_encrypt(
+            &self,
+            plaintext: &[u8],
+            _key: &[u8],
+            _aad: Option<&[u8]>,
+        ) -> Result<(Vec<u8>, Vec<u8>, Vec<u8>)> {
             Ok((plaintext.to_vec(), vec![6u8; 12], vec![7u8; 16]))
         }
 
-        async fn chacha20_poly1305_decrypt(&self, ciphertext: &[u8], _key: &[u8], _nonce: &[u8], _tag: &[u8], _aad: Option<&[u8]>) -> Result<Vec<u8>> {
+        async fn chacha20_poly1305_decrypt(
+            &self,
+            ciphertext: &[u8],
+            _key: &[u8],
+            _nonce: &[u8],
+            _tag: &[u8],
+            _aad: Option<&[u8]>,
+        ) -> Result<Vec<u8>> {
             Ok(ciphertext.to_vec())
         }
     }
@@ -347,7 +370,7 @@ mod tests {
         let provider = MockCryptoProvider;
         let sig = provider.sign_ed25519(b"msg", "key1", "test").await.unwrap();
         assert_eq!(sig.len(), 64);
-        
+
         let valid = provider.verify_ed25519(b"msg", &sig, &[0u8; 32]).await.unwrap();
         assert!(valid);
     }
@@ -358,7 +381,7 @@ mod tests {
         let (pk, sk) = provider.x25519_generate_ephemeral("test").await.unwrap();
         assert_eq!(pk.len(), 32);
         assert_eq!(sk.len(), 32);
-        
+
         let shared = provider.x25519_derive_secret(&sk, &pk).await.unwrap();
         assert_eq!(shared.len(), 32);
     }
@@ -367,14 +390,15 @@ mod tests {
     async fn test_mock_provider_chacha20() {
         let provider = MockCryptoProvider;
         let plaintext = b"secret message";
-        
-        let (ct, nonce, tag) = provider.chacha20_poly1305_encrypt(plaintext, &[0u8; 32], None).await.unwrap();
+
+        let (ct, nonce, tag) =
+            provider.chacha20_poly1305_encrypt(plaintext, &[0u8; 32], None).await.unwrap();
         assert_eq!(ct.len(), plaintext.len());
         assert_eq!(nonce.len(), 12);
         assert_eq!(tag.len(), 16);
-        
-        let decrypted = provider.chacha20_poly1305_decrypt(&ct, &[0u8; 32], &nonce, &tag, None).await.unwrap();
+
+        let decrypted =
+            provider.chacha20_poly1305_decrypt(&ct, &[0u8; 32], &nonce, &tag, None).await.unwrap();
         assert_eq!(decrypted, plaintext);
     }
 }
-

@@ -166,17 +166,19 @@ async fn get_local_ip() -> Result<String> {
     Err(anyhow::anyhow!("Could not determine local IP"))
 }
 
-/// Start HTTPS server with TLS
+/// Start HTTPS server with Pure Rust TLS (songbird-tls + BearDog)
 async fn start_https_server(
     app: Router,
     listener: tokio::net::TcpListener,
     addr: SocketAddr,
 ) -> Result<()> {
-    use songbird_network_federation::tls::{TlsCertificateManager, TlsConfig};
+    use songbird_tls::cert::test_utils::generate_test_certificate;
+    use songbird_tls::crypto::BeardogCryptoClient;
+    use songbird_tls::{TlsAcceptor, TlsServerConfig};
 
     // Get TLS configuration from environment
-    let cert_path = SafeEnv::get_or_default("SONGBIRD_TLS_CERT", "certs/songbird.crt");
-    let key_path = SafeEnv::get_or_default("SONGBIRD_TLS_KEY", "certs/songbird.key");
+    let _cert_path = SafeEnv::get_or_default("SONGBIRD_TLS_CERT", "certs/songbird.crt");
+    let _key_path = SafeEnv::get_or_default("SONGBIRD_TLS_KEY", "certs/songbird.key");
 
     // Get Subject Alternative Names (SANs) for certificate
     // Include localhost, local IPs, and any user-specified SANs
@@ -206,51 +208,107 @@ async fn start_https_server(
 
     let sans_display = sans.join(", ");
 
-    let tls_config = TlsConfig {
-        cert_path: cert_path.to_string(),
-        key_path: key_path.to_string(),
-        sans,
-        organization: "ecoPrimals".to_string(),
-        common_name: node_id.to_string(),
+    // PURE RUST TLS: songbird-tls + BearDog crypto
+    // Generate test certificate (in production, use proper cert management)
+    let test_cert = generate_test_certificate(&node_id)
+        .await
+        .map_err(|e| anyhow::anyhow!("Failed to generate test certificate: {}", e))?;
+
+    // Extract certificate data (first entry in chain)
+    let certificate_der = test_cert
+        .certificate_list
+        .first()
+        .ok_or_else(|| anyhow::anyhow!("No certificate in chain"))?
+        .cert_data
+        .clone();
+
+    // Create BearDog crypto client for TLS operations
+    // This will discover BearDog via Unix socket at runtime
+    let crypto_client = BeardogCryptoClient::new()
+        .await
+        .map_err(|e| anyhow::anyhow!("Failed to create BearDog crypto client: {}", e))?;
+
+    // Create Pure Rust TLS server config
+    let tls_config = TlsServerConfig {
+        crypto_client,
+        certificate: certificate_der,
+        key_id: format!("{}_tls_key", node_id), // Key ID for BearDog signing
     };
 
-    // Create certificate manager and ensure certificates exist
-    let cert_manager = TlsCertificateManager::new(tls_config);
-    cert_manager
-        .ensure_certificates()
-        .await
-        .map_err(|e| anyhow::anyhow!("Failed to ensure TLS certificates: {}", e))?;
+    // Create Pure Rust TLS acceptor (wrap in Arc for sharing across tasks)
+    let tls_acceptor = Arc::new(TlsAcceptor::new(tls_config));
 
-    // Load rustls server config
-    let rustls_config = cert_manager
-        .load_tls_config()
-        .await
-        .map_err(|e| anyhow::anyhow!("Failed to load TLS config: {}", e))?;
-
-    info!("✅ TLS configuration loaded, HTTPS server listening on https://{}", addr);
-    info!("   Certificate: {}", cert_path);
-    info!("   Key: {}", key_path);
+    info!("✅ Pure Rust TLS configuration loaded, HTTPS server listening on https://{}", addr);
+    info!("   Certificate: Generated (test cert for '{}')", node_id);
+    info!("   Crypto: BearDog via Unix socket");
     info!("   SANs: {}", sans_display);
-    info!("   🔒 SECURE BY DEFAULT - All connections encrypted");
+    info!("   🔒 100% PURE RUST - Zero C dependencies!");
+    info!("   🎯 Protocol: songbird-tls | Crypto: BearDog");
     info!("   💡 To disable TLS (not recommended): export SONGBIRD_TLS_ENABLED=false");
 
-    // Use axum-server for TLS support with the pre-bound listener
-    let tls_config_for_server =
-        axum_server::tls_rustls::RustlsConfig::from_config(Arc::new(rustls_config));
+    // DEEP DEBT SOLUTION: 100% Pure Rust TLS with songbird-tls
+    //
+    // This is the sovereign pattern:
+    // - songbird-tls for TLS 1.3 protocol (Pure Rust)
+    // - BearDog for all cryptographic operations (Pure Rust)
+    // - Runtime discovery via Unix sockets (no hardcoding)
+    // - Zero C dependencies (TRUE ecoBin)
 
-    // ✅ FIX (Dec 20, 2025): Use the pre-bound listener instead of binding again
-    // This prevents "address already in use" errors and startup hangs
-    // The listener parameter was being ignored (_listener), causing double-bind attempts
-    // Spawn HTTPS server in background
+    // Spawn HTTPS server using Pure Rust TLS (songbird-tls)
     tokio::spawn(async move {
-        // Convert tokio listener to std listener for axum-server compatibility
-        let std_listener = listener.into_std().expect("Failed to convert listener to std");
+        // Accept loop: convert TCP connections to TLS streams
+        loop {
+            let (tcp_stream, remote_addr) = match listener.accept().await {
+                Ok(conn) => conn,
+                Err(e) => {
+                    error!("Failed to accept TCP connection: {}", e);
+                    continue;
+                }
+            };
 
-        if let Err(e) = axum_server::from_tcp_rustls(std_listener, tls_config_for_server)
-            .serve(app.into_make_service())
-            .await
-        {
-            error!("❌ HTTPS server error: {}", e);
+            let tls_acceptor = tls_acceptor.clone();
+            let app = app.clone();
+
+            // Handle each connection in its own task
+            tokio::spawn(async move {
+                // Perform Pure Rust TLS handshake (songbird-tls + BearDog)
+                let tls_stream = match tls_acceptor.accept(tcp_stream).await {
+                    Ok(stream) => stream,
+                    Err(e) => {
+                        error!("🔒 Pure Rust TLS handshake failed from {}: {}", remote_addr, e);
+                        return;
+                    }
+                };
+
+                // Successfully established Pure Rust TLS connection!
+                tracing::debug!("🔒 Pure Rust TLS connection established from {}", remote_addr);
+
+                // Serve HTTP/1.1 over Pure Rust TLS using axum's tower service
+                use hyper::body::Incoming;
+                use hyper_util::rt::TokioIo;
+                use tower::Service;
+
+                let hyper_service =
+                    hyper::service::service_fn(move |request: hyper::Request<Incoming>| {
+                        // Clone app for this request (cheap - Arc internally)
+                        let mut app = app.clone();
+                        async move {
+                            // Call tower::Service::call (axum Router implements this)
+                            app.call(request).await
+                        }
+                    });
+
+                // Serve the connection over Pure Rust TLS
+                if let Err(e) = hyper::server::conn::http1::Builder::new()
+                    .serve_connection(TokioIo::new(tls_stream), hyper_service)
+                    .await
+                {
+                    // Only log if not a normal close
+                    if !e.to_string().contains("connection closed") {
+                        error!("Error serving HTTPS connection from {}: {}", remote_addr, e);
+                    }
+                }
+            });
         }
     });
 

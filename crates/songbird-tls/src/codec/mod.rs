@@ -13,7 +13,7 @@ use crate::error::{Result, TlsError};
 pub trait Encode {
     /// Encode this type to bytes
     fn encode(&self, buf: &mut Vec<u8>) -> Result<()>;
-    
+
     /// Get the encoded size in bytes
     fn encoded_size(&self) -> usize;
 }
@@ -123,12 +123,7 @@ pub mod bytes {
         if *offset + 4 > buf.len() {
             return Err(TlsError::ProtocolError("Buffer underflow reading u32".to_string()));
         }
-        let bytes = [
-            buf[*offset],
-            buf[*offset + 1],
-            buf[*offset + 2],
-            buf[*offset + 3],
-        ];
+        let bytes = [buf[*offset], buf[*offset + 1], buf[*offset + 2], buf[*offset + 3]];
         *offset += 4;
         Ok(u32::from_be_bytes(bytes))
     }
@@ -181,8 +176,8 @@ pub mod bytes {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use super::bytes::*;
+    use super::*;
 
     #[test]
     fn test_write_read_u8() {

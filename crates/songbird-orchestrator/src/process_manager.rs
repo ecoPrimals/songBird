@@ -333,7 +333,8 @@ impl ProcessManager {
     fn print_duplicate_error(&self, existing_pid: u32) -> Result<()> {
         let identity_display = self
             .node_identity
-            .as_ref().map_or_else(|| "NODE_ID: (not set)".to_string(), |id| format!("NODE_ID: {}", id));
+            .as_ref()
+            .map_or_else(|| "NODE_ID: (not set)".to_string(), |id| format!("NODE_ID: {}", id));
 
         error!("╔═══════════════════════════════════════════════════════════════════╗");
         error!("║                                                                   ║");
