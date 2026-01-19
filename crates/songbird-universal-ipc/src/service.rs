@@ -4,158 +4,35 @@
 //! primals importing `songbird-universal-ipc` as a library (which would violate
 //! primal autonomy), they connect to Songbird's IPC service via JSON-RPC.
 //!
-//! ## Architecture
+//! ## TRUE PRIMAL Architecture
+//!
+//! **Problem**: Library embedding violates primal autonomy
+//! **Solution**: Service-based architecture via JSON-RPC
 //!
 //! ```text
-//! Primal (BearDog, Squirrel, etc.):
-//!   - Uses tokio::net::UnixStream directly
-//!   - Connects to /primal/songbird
-//!   - Calls JSON-RPC methods for discovery
-//!   - Connects directly to discovered services
+//! Other Primals (BearDog, Squirrel, etc.):
+//!   - Use tokio::net::UnixStream (standard library!)
+//!   - Connect to /primal/songbird
+//!   - Call JSON-RPC methods for discovery
+//!   - Connect directly to discovered services
+//!   - ZERO Songbird code embedded!
 //!
 //! Songbird IPC Service (this module):
 //!   - Maintains service registry
 //!   - Provides discovery via JSON-RPC
 //!   - Manages platform abstraction internally
-//!   - NO code embedding - pure service!
-//! ```
-//!
-//! ## JSON-RPC Methods
-//!
-//! ### `ipc.register`
-//! Register a primal with capabilities
-//!
-//! **Request**:
-//! ```json
-//! {
-//!   "jsonrpc": "2.0",
-//!   "method": "ipc.register",
-//!   "params": {
-//!     "primal_id": "beardog",
-//!     "capabilities": ["crypto", "btsp"],
-//!     "endpoint": "/tmp/primal-beardog.sock"
-//!   },
-//!   "id": 1
-//! }
-//! ```
-//!
-//! **Response**:
-//! ```json
-//! {
-//!   "jsonrpc": "2.0",
-//!   "result": {
-//!     "virtual_endpoint": "/primal/beardog",
-//!     "registered_at": "2026-01-19T12:00:00Z"
-//!   },
-//!   "id": 1
-//! }
-//! ```
-//!
-//! ### `ipc.resolve`
-//! Resolve a primal to its native endpoint
-//!
-//! **Request**:
-//! ```json
-//! {
-//!   "jsonrpc": "2.0",
-//!   "method": "ipc.resolve",
-//!   "params": {
-//!     "primal_id": "beardog"
-//!   },
-//!   "id": 2
-//! }
-//! ```
-//!
-//! **Response**:
-//! ```json
-//! {
-//!   "jsonrpc": "2.0",
-//!   "result": {
-//!     "virtual_endpoint": "/primal/beardog",
-//!     "native_endpoint": "/tmp/primal-beardog.sock",
-//!     "capabilities": ["crypto", "btsp"]
-//!   },
-//!   "id": 2
-//! }
-//! ```
-//!
-//! ### `ipc.discover`
-//! Discover services by capability
-//!
-//! **Request**:
-//! ```json
-//! {
-//!   "jsonrpc": "2.0",
-//!   "method": "ipc.discover",
-//!   "params": {
-//!     "capability": "crypto"
-//!   },
-//!   "id": 3
-//! }
-//! ```
-//!
-//! **Response**:
-//! ```json
-//! {
-//!   "jsonrpc": "2.0",
-//!   "result": {
-//!     "providers": [
-//!       {
-//!         "primal_id": "beardog",
-//!         "virtual_endpoint": "/primal/beardog",
-//!         "native_endpoint": "/tmp/primal-beardog.sock",
-//!         "capabilities": ["crypto", "btsp"]
-//!       }
-//!     ]
-//!   },
-//!   "id": 3
-//! }
-//! ```
-//!
-//! ### `ipc.list`
-//! List all registered services
-//!
-//! **Request**:
-//! ```json
-//! {
-//!   "jsonrpc": "2.0",
-//!   "method": "ipc.list",
-//!   "params": {},
-//!   "id": 4
-//! }
-//! ```
-//!
-//! **Response**:
-//! ```json
-//! {
-//!   "jsonrpc": "2.0",
-//!   "result": {
-//!     "services": [
-//!       {
-//!         "primal_id": "beardog",
-//!         "virtual_endpoint": "/primal/beardog",
-//!         "capabilities": ["crypto", "btsp"]
-//!       },
-//!       {
-//!         "primal_id": "squirrel",
-//!         "virtual_endpoint": "/primal/squirrel",
-//!         "capabilities": ["ai", "mcp"]
-//!       }
-//!     ]
-//!   },
-//!   "id": 4
-//! }
+//!   - Pure service - no code embedding!
 //! ```
 
-use crate::capability::Provider;
+use crate::endpoint::NativeEndpoint;
 use crate::registry::ServiceRegistry;
-use crate::tower_atomic::{JsonRpcError, JsonRpcHandler, JsonRpcRequest, JsonRpcResponse};
+use crate::tower_atomic::JsonRpcHandler;
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
-use serde_json::{json, Value};
+use serde_json::Value;
 use std::sync::Arc;
 use tokio::sync::RwLock;
-use tracing::{debug, info, warn};
+use tracing::{debug, info};
 
 /// IPC service request parameters for registration
 #[derive(Debug, Clone, Deserialize)]
@@ -226,6 +103,8 @@ pub struct ServiceInfo {
 /// This handler provides IPC brokering as a JSON-RPC service,
 /// allowing other primals to discover and connect to services
 /// without embedding Songbird code.
+///
+/// **TRUE PRIMAL**: Zero code embedding, pure service protocol!
 pub struct IpcServiceHandler {
     registry: Arc<RwLock<ServiceRegistry>>,
 }
@@ -246,22 +125,32 @@ impl IpcServiceHandler {
             params.primal_id, params.endpoint
         );
 
-        // Create provider
-        let provider = Provider {
-            id: params.primal_id.clone(),
-            virtual_endpoint: format!("/primal/{}", params.primal_id),
-            native_endpoint: params.endpoint.clone(),
-            capabilities: params.capabilities.clone(),
-            registered_at: std::time::SystemTime::now(),
-            last_seen: std::time::SystemTime::now(),
+        // Parse native endpoint
+        let native_endpoint = if params.endpoint.starts_with("/") {
+            // Unix socket path
+            NativeEndpoint::UnixSocket(params.endpoint.into())
+        } else if params.endpoint.starts_with("127.0.0.1:") || params.endpoint.contains(":") {
+            // TCP localhost
+            let port: u16 = params
+                .endpoint
+                .split(':')
+                .nth(1)
+                .and_then(|p| p.parse().ok())
+                .ok_or_else(|| "Invalid TCP port".to_string())?;
+            NativeEndpoint::TcpLocal(port)
+        } else {
+            return Err(format!("Invalid endpoint format: {}", params.endpoint));
         };
 
         // Register in registry
-        let mut registry = self.registry.write().await;
-        registry.register_provider(provider).await;
+        let registry = self.registry.write().await;
+        let virtual_endpoint = registry
+            .register(&params.primal_id, native_endpoint, params.capabilities)
+            .await
+            .map_err(|e| format!("Registration failed: {}", e))?;
 
         let result = RegisterResult {
-            virtual_endpoint: format!("/primal/{}", params.primal_id),
+            virtual_endpoint: virtual_endpoint.path,
             registered_at: chrono::Utc::now().to_rfc3339(),
         };
 
@@ -275,19 +164,17 @@ impl IpcServiceHandler {
 
         debug!("Resolving primal: {}", params.primal_id);
 
-        let virtual_path = format!("/primal/{}", params.primal_id);
-
-        // Resolve from registry
+        // Get service entry from registry
         let registry = self.registry.read().await;
-        let provider = registry
-            .resolve(&virtual_path)
+        let entry = registry
+            .get_service(&params.primal_id)
             .await
             .ok_or_else(|| format!("Primal not found: {}", params.primal_id))?;
 
         let result = ResolveResult {
-            virtual_endpoint: provider.virtual_endpoint,
-            native_endpoint: provider.native_endpoint,
-            capabilities: provider.capabilities,
+            virtual_endpoint: entry.virtual_endpoint.path,
+            native_endpoint: entry.native_endpoint.display(),
+            capabilities: entry.capabilities,
         };
 
         Ok(serde_json::to_value(result).map_err(|e| format!("Serialization error: {}", e))?)
@@ -300,19 +187,25 @@ impl IpcServiceHandler {
 
         debug!("Discovering capability: {}", params.capability);
 
-        // Discover from registry
+        // Discover from registry (returns virtual paths)
         let registry = self.registry.read().await;
-        let providers = registry.find_by_capability(&params.capability).await;
+        let virtual_paths = registry.find_by_capability(&params.capability).await;
 
-        let provider_infos: Vec<ProviderInfo> = providers
-            .into_iter()
-            .map(|p| ProviderInfo {
-                primal_id: p.id,
-                virtual_endpoint: p.virtual_endpoint,
-                native_endpoint: p.native_endpoint,
-                capabilities: p.capabilities,
-            })
-            .collect();
+        // Get full service entries for each path
+        let mut provider_infos = Vec::new();
+        for virtual_path in virtual_paths {
+            // Extract service name from virtual path
+            if let Some(name) = virtual_path.strip_prefix("/primal/") {
+                if let Some(entry) = registry.get_service(name).await {
+                    provider_infos.push(ProviderInfo {
+                        primal_id: name.to_string(),
+                        virtual_endpoint: entry.virtual_endpoint.path,
+                        native_endpoint: entry.native_endpoint.display(),
+                        capabilities: entry.capabilities,
+                    });
+                }
+            }
+        }
 
         let result = DiscoverResult {
             providers: provider_infos,
@@ -325,18 +218,21 @@ impl IpcServiceHandler {
     async fn handle_list(&self, _params: Value) -> Result<Value, String> {
         debug!("Listing all services");
 
-        // List all from registry
+        // List all from registry (returns service names)
         let registry = self.registry.read().await;
-        let providers = registry.list_all().await;
+        let service_names = registry.list_services().await;
 
-        let service_infos: Vec<ServiceInfo> = providers
-            .into_iter()
-            .map(|p| ServiceInfo {
-                primal_id: p.id,
-                virtual_endpoint: p.virtual_endpoint,
-                capabilities: p.capabilities,
-            })
-            .collect();
+        // Get full service entries for each name
+        let mut service_infos = Vec::new();
+        for name in service_names {
+            if let Some(entry) = registry.get_service(&name).await {
+                service_infos.push(ServiceInfo {
+                    primal_id: name,
+                    virtual_endpoint: entry.virtual_endpoint.path,
+                    capabilities: entry.capabilities,
+                });
+            }
+        }
 
         let result = ListResult {
             services: service_infos,
@@ -362,6 +258,7 @@ impl JsonRpcHandler for IpcServiceHandler {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use serde_json::json;
 
     #[tokio::test]
     async fn test_ipc_service_register() {
@@ -378,10 +275,7 @@ mod tests {
         assert!(result.is_ok());
 
         let result_value = result.unwrap();
-        assert_eq!(
-            result_value["virtual_endpoint"],
-            "/primal/beardog"
-        );
+        assert_eq!(result_value["virtual_endpoint"], "/primal/beardog");
     }
 
     #[tokio::test]
@@ -395,7 +289,10 @@ mod tests {
             "capabilities": ["crypto"],
             "endpoint": "/tmp/primal-beardog.sock"
         });
-        handler.handle("ipc.register", register_params).await.unwrap();
+        handler
+            .handle("ipc.register", register_params)
+            .await
+            .unwrap();
 
         // Then resolve
         let resolve_params = json!({
@@ -407,7 +304,10 @@ mod tests {
 
         let result_value = result.unwrap();
         assert_eq!(result_value["virtual_endpoint"], "/primal/beardog");
-        assert_eq!(result_value["native_endpoint"], "/tmp/primal-beardog.sock");
+        assert!(result_value["native_endpoint"]
+            .as_str()
+            .unwrap()
+            .contains("beardog"));
     }
 
     #[tokio::test]
@@ -421,7 +321,10 @@ mod tests {
             "capabilities": ["crypto", "btsp"],
             "endpoint": "/tmp/primal-beardog.sock"
         });
-        handler.handle("ipc.register", register_params).await.unwrap();
+        handler
+            .handle("ipc.register", register_params)
+            .await
+            .unwrap();
 
         // Discover by capability
         let discover_params = json!({
@@ -443,10 +346,7 @@ mod tests {
         let handler = IpcServiceHandler::new(registry.clone());
 
         // Register multiple services
-        for (id, caps) in &[
-            ("beardog", vec!["crypto"]),
-            ("squirrel", vec!["ai"]),
-        ] {
+        for (id, caps) in &[("beardog", vec!["crypto"]), ("squirrel", vec!["ai"])] {
             let params = json!({
                 "primal_id": id,
                 "capabilities": caps,
@@ -464,4 +364,3 @@ mod tests {
         assert_eq!(services.len(), 2);
     }
 }
-
