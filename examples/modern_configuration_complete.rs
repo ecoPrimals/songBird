@@ -23,9 +23,9 @@ fn stage1_hardcoded() {
     // Everything hardcoded - BAD!
     let _orchestrator_addr = "127.0.0.1:8080";
     let _discovery_addr = "127.0.0.1:8081";
-    let _beardog_addr = "127.0.0.1:3000";  // Hardcoded primal!
+    let _beardog_addr = "127.0.0.1:3000"; // Hardcoded primal!
     let _toadstool_addr = "127.0.0.1:5000"; // Hardcoded primal!
-    
+
     println!("Problems:");
     println!("  ❌ Hardcoded IP addresses");
     println!("  ❌ Hardcoded port numbers");
@@ -43,18 +43,15 @@ fn stage2_env_vars() {
     println!("================================================\n");
 
     // Better, but still has hardcoded fallbacks
-    let _host = std::env::var("SONGBIRD_HOST")
-        .unwrap_or_else(|_| "127.0.0.1".to_string());
-    let _port: u16 = std::env::var("SONGBIRD_PORT")
-        .ok()
-        .and_then(|p| p.parse().ok())
-        .unwrap_or(8080);
-    
+    let _host = std::env::var("SONGBIRD_HOST").unwrap_or_else(|_| "127.0.0.1".to_string());
+    let _port: u16 =
+        std::env::var("SONGBIRD_PORT").ok().and_then(|p| p.parse().ok()).unwrap_or(8080);
+
     println!("Improvements:");
     println!("  ✓ Can override via environment");
     println!("  ✓ Some deployment flexibility");
     println!();
-    
+
     println!("Remaining Problems:");
     println!("  ⚠️  Still has hardcoded fallbacks");
     println!("  ⚠️  No environment awareness");
@@ -70,7 +67,7 @@ fn stage3_modern_capability_based() {
 
     // Self-aware configuration
     let config = SelfAwareConfig::from_environment();
-    
+
     println!("Self-Awareness:");
     println!("  Environment: {:?}", config.environment);
     println!("  Bind Address: {}", config.bind_address());
@@ -79,7 +76,7 @@ fn stage3_modern_capability_based() {
 
     // Capability-based port allocation
     let port_allocator = PortAllocator::new();
-    
+
     println!("Capability-Based Port Allocation:");
     match port_allocator.allocate_for_capability("orchestration") {
         Ok(listener) => {
@@ -88,7 +85,7 @@ fn stage3_modern_capability_based() {
         }
         Err(e) => println!("  Error allocating port: {}", e),
     }
-    
+
     match port_allocator.allocate_for_capability("discovery") {
         Ok(listener) => {
             let addr = listener.local_addr().unwrap();
@@ -96,9 +93,9 @@ fn stage3_modern_capability_based() {
         }
         Err(e) => println!("  Error allocating port: {}", e),
     }
-    
+
     println!();
-    
+
     println!("Port Ranges by Capability:");
     println!("  orchestration: 8000-8099");
     println!("  discovery:     8100-8199");
@@ -117,34 +114,34 @@ async fn stage3_runtime_discovery() {
     println!("=====================================\n");
 
     let locator = ServiceLocator::new();
-    
+
     println!("Discovering Services by Capability (Not by Name!):");
     println!();
-    
+
     // No hardcoded primal names!
     // Discover by what they CAN DO, not what they're CALLED
-    
+
     let storage_services = locator.discover_by_capability("storage").await;
     println!("  'storage' capability:");
     println!("    Found {} providers", storage_services.len());
     println!("    Could be: NestGate, S3, local filesystem, etc.");
     println!("    ✓ No hardcoding!");
     println!();
-    
+
     let compute_services = locator.discover_by_capability("compute").await;
     println!("  'compute' capability:");
     println!("    Found {} providers", compute_services.len());
     println!("    Could be: ToadStool, AWS Lambda, local execution, etc.");
     println!("    ✓ No hardcoding!");
     println!();
-    
+
     let ai_services = locator.discover_by_capability("ai").await;
     println!("  'ai' capability:");
     println!("    Found {} providers", ai_services.len());
     println!("    Could be: Squirrel, OpenAI, local models, etc.");
     println!("    ✓ No hardcoding!");
     println!();
-    
+
     let security_services = locator.discover_by_capability("security").await;
     println!("  'security' capability:");
     println!("    Found {} providers", security_services.len());
@@ -159,30 +156,25 @@ async fn stage3_self_registration() -> Result<(), Box<dyn std::error::Error>> {
     println!("==============================\n");
 
     let locator = ServiceLocator::new();
-    
+
     // Service registers itself with capabilities
-    let capabilities = vec![
-        "orchestration",
-        "service-mesh",
-        "load-balancing",
-        "discovery",
-        "routing",
-    ];
-    
+    let capabilities =
+        vec!["orchestration", "service-mesh", "load-balancing", "discovery", "routing"];
+
     println!("Registering Songbird with capabilities:");
     for cap in &capabilities {
         println!("  ✓ {}", cap);
     }
     println!();
-    
+
     locator.register_self(&capabilities).await?;
-    
+
     println!("Registration Complete!");
     println!("  ✓ Other services can discover us by capability");
     println!("  ✓ No hardcoded knowledge required");
     println!("  ✓ Runtime binding");
     println!();
-    
+
     Ok(())
 }
 
@@ -223,19 +215,19 @@ fn complete_comparison() {
     println!("     - Self-configuring services");
     println!("     - Environment auto-detection");
     println!();
-    
+
     println!("  🚀 Better Scaling");
     println!("     - Automatic port allocation");
     println!("     - Dynamic service discovery");
     println!("     - No port conflicts");
     println!();
-    
+
     println!("  🚀 Improved Resilience");
     println!("     - Discover new instances automatically");
     println!("     - Failover to available services");
     println!("     - No single points of failure in config");
     println!();
-    
+
     println!("  🚀 Ecosystem Evolution");
     println!("     - Add new primals without code changes");
     println!("     - Replace implementations transparently");
@@ -250,10 +242,10 @@ fn environment_adaptation() {
     println!("╚════════════════════════════════════════════════╝\n");
 
     let env = Environment::detect();
-    
+
     println!("Current Environment: {:?}", env);
     println!();
-    
+
     match env {
         Environment::Development => {
             println!("Development Mode Behavior:");
@@ -312,16 +304,16 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Show the evolution stages
     stage1_hardcoded();
     println!("───────────────────────────────────────────────────────────\n");
-    
+
     stage2_env_vars();
     println!("───────────────────────────────────────────────────────────\n");
-    
+
     stage3_modern_capability_based();
     println!("───────────────────────────────────────────────────────────\n");
-    
+
     stage3_runtime_discovery().await;
     println!("───────────────────────────────────────────────────────────\n");
-    
+
     stage3_self_registration().await?;
     println!("───────────────────────────────────────────────────────────\n");
 
@@ -336,7 +328,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("║                                                           ║");
     println!("╚═══════════════════════════════════════════════════════════╝");
     println!();
-    
+
     Ok(())
 }
-

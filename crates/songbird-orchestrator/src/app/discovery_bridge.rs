@@ -202,7 +202,6 @@ impl SongbirdOrchestrator {
                                 async {
                                     // ✅ EVOLVED: Proper error handling instead of unwrap
                                     let client = reqwest::Client::builder()
-                                        .danger_accept_invalid_certs(true)
                                         .build()
                                         .map_err(|e| {
                                             warn!("Failed to build HTTP client for connectivity check: {}", e);

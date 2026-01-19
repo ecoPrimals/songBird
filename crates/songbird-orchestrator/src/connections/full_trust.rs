@@ -15,13 +15,12 @@
 //! - None
 
 use super::PeerConnection;
-use anyhow::{anyhow, Context, Result};
+use anyhow::{Context, Result};
 use async_trait::async_trait;
 use serde_json::Value;
 use songbird_types::TrustLevel;
 use songbird_universal::UnixRpcClient;
 use std::path::PathBuf;
-use std::time::Duration;
 use tracing::debug;
 
 /// Full trust connection for peers with human entropy (Level 3)

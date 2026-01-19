@@ -3,10 +3,10 @@
 //! Benchmarks for identifying and measuring performance of hot paths
 //! in Songbird to guide optimization efforts.
 
-use criterion::{black_box, criterion_group, criterion_main, Criterion, BenchmarkId};
+use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion};
 use songbird_test_utils::fixtures::*;
-use songbird_universal::UniversalCapabilityAdapter;
 use songbird_types::{CapabilityRequest, ServiceId};
+use songbird_universal::UniversalCapabilityAdapter;
 use std::time::Duration;
 
 /// Benchmark service discovery operations
@@ -79,16 +79,15 @@ fn bench_health_checks(c: &mut Criterion) {
 
     let service = compute_service_fixture();
     let service_id = service.id.clone();
-    
+
     let rt = tokio::runtime::Runtime::new().unwrap();
     rt.block_on(async {
         adapter.register_service(service).await.ok();
     });
 
     c.bench_function("health_check", |b| {
-        b.to_async(&rt).iter(|| async {
-            adapter.get_service_health(black_box(&service_id)).await.ok()
-        })
+        b.to_async(&rt)
+            .iter(|| async { adapter.get_service_health(black_box(&service_id)).await.ok() })
     });
 }
 
@@ -96,99 +95,95 @@ fn bench_health_checks(c: &mut Criterion) {
 fn bench_config_operations(c: &mut Criterion) {
     use songbird_config::EnvironmentConfig;
 
-    c.bench_function("config_load", |b| {
-        b.iter(|| {
-            EnvironmentConfig::from_env().ok()
-        })
-    });
+    c.bench_function("config_load", |b| b.iter(|| EnvironmentConfig::from_env().ok()));
 }
 
 /// Benchmark clone operations vs references
 fn bench_clone_vs_reference(c: &mut Criterion) {
     let service = compute_service_fixture();
-    
+
     let mut group = c.benchmark_group("clone_comparison");
-    
+
     group.bench_function("service_clone", |b| {
         b.iter(|| {
             let _cloned = black_box(&service).clone();
         })
     });
-    
+
     group.bench_function("service_reference", |b| {
         b.iter(|| {
             let _ref = black_box(&service);
         })
     });
-    
+
     group.finish();
 }
 
 /// Benchmark string operations (clone vs reference)
 fn bench_string_operations(c: &mut Criterion) {
     let test_string = "test_service_name_with_reasonable_length".to_string();
-    
+
     let mut group = c.benchmark_group("string_comparison");
-    
+
     group.bench_function("string_clone", |b| {
         b.iter(|| {
             let _cloned = black_box(&test_string).clone();
         })
     });
-    
+
     group.bench_function("string_reference", |b| {
         b.iter(|| {
             let _ref: &str = black_box(&test_string);
         })
     });
-    
+
     group.finish();
 }
 
 /// Benchmark various data structure sizes
 fn bench_structure_sizes(c: &mut Criterion) {
     let mut group = c.benchmark_group("structure_cloning");
-    
+
     for size in [10, 100, 1000].iter() {
         let vec: Vec<String> = (0..*size).map(|i| format!("item_{}", i)).collect();
-        
+
         group.bench_with_input(BenchmarkId::new("vec_clone", size), size, |b, _| {
             b.iter(|| {
                 let _cloned = black_box(&vec).clone();
             })
         });
-        
+
         group.bench_with_input(BenchmarkId::new("vec_reference", size), size, |b, _| {
             b.iter(|| {
                 let _ref = black_box(&vec);
             })
         });
     }
-    
+
     group.finish();
 }
 
 /// Benchmark Arc operations
 fn bench_arc_operations(c: &mut Criterion) {
     use std::sync::Arc;
-    
+
     let service = Arc::new(compute_service_fixture());
-    
+
     let mut group = c.benchmark_group("arc_comparison");
-    
+
     group.bench_function("arc_clone", |b| {
         b.iter(|| {
             let _cloned = Arc::clone(black_box(&service));
         })
     });
-    
+
     group.bench_function("direct_clone", |b| {
         let service = compute_service_fixture();
         b.iter(|| {
             let _cloned = black_box(&service).clone();
         })
     });
-    
+
     group.finish();
 }
 
@@ -207,7 +202,7 @@ fn bench_concurrent_access(c: &mut Criterion) {
     c.bench_function("concurrent_discovery", |b| {
         b.to_async(&rt).iter(|| async {
             let mut handles = vec![];
-            
+
             for _ in 0..10 {
                 let adapter = adapter.clone();
                 let handle = tokio::spawn(async move {
@@ -215,7 +210,7 @@ fn bench_concurrent_access(c: &mut Criterion) {
                 });
                 handles.push(handle);
             }
-            
+
             for handle in handles {
                 handle.await.ok();
             }
@@ -226,7 +221,7 @@ fn bench_concurrent_access(c: &mut Criterion) {
 /// Benchmark memory allocation patterns
 fn bench_allocation_patterns(c: &mut Criterion) {
     let mut group = c.benchmark_group("allocation_patterns");
-    
+
     group.bench_function("frequent_small_allocs", |b| {
         b.iter(|| {
             for i in 0..100 {
@@ -234,13 +229,13 @@ fn bench_allocation_patterns(c: &mut Criterion) {
             }
         })
     });
-    
+
     group.bench_function("single_large_alloc", |b| {
         b.iter(|| {
             let _v: Vec<String> = (0..100).map(|i| format!("string_{}", i)).collect();
         })
     });
-    
+
     group.bench_function("reuse_allocation", |b| {
         let mut buffer = String::with_capacity(1000);
         b.iter(|| {
@@ -250,7 +245,7 @@ fn bench_allocation_patterns(c: &mut Criterion) {
             }
         })
     });
-    
+
     group.finish();
 }
 
@@ -270,4 +265,3 @@ criterion_group!(
 );
 
 criterion_main!(benches);
-

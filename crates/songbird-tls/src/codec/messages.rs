@@ -141,9 +141,9 @@ impl Decode for ClientHello {
         // Legacy session ID
         let legacy_session_id = read_vec8(buf, &mut offset)?;
 
-        // Cipher suites
+        // Cipher suites (each suite is 2 bytes, so length must be even)
         let cipher_suites_len = read_u16(buf, &mut offset)? as usize;
-        if cipher_suites_len % 2 != 0 {
+        if !cipher_suites_len.is_multiple_of(2) {
             return Err(TlsError::ProtocolError(
                 "ClientHello: cipher suites length must be even".to_string(),
             ));

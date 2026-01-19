@@ -103,6 +103,7 @@ async fn test_e2e_list_peers_with_data() {
             "tower1".to_string(),
             "https://192.168.1.100:8080".to_string(),
             vec!["orchestrator".to_string()],
+            vec![], // peer_tags
             TrustLevel::Limited,
             "udp_multicast".to_string(),
         )
@@ -114,6 +115,7 @@ async fn test_e2e_list_peers_with_data() {
             "tower2".to_string(),
             "https://192.168.1.101:8080".to_string(),
             vec!["orchestrator", "federation-member"].iter().map(|s| s.to_string()).collect(),
+            vec![], // peer_tags
             TrustLevel::Elevated,
             "udp_multicast".to_string(),
         )
@@ -172,6 +174,7 @@ async fn test_e2e_peer_count() {
             "tower1".to_string(),
             "https://192.168.1.100:8080".to_string(),
             vec!["orchestrator".to_string()],
+            vec![], // peer_tags
             TrustLevel::Limited,
             "udp_multicast".to_string(),
         )
@@ -194,6 +197,7 @@ async fn test_e2e_peer_count() {
             "tower2".to_string(),
             "https://192.168.1.101:8080".to_string(),
             vec!["orchestrator".to_string()],
+            vec![], // peer_tags
             TrustLevel::Limited,
             "udp_multicast".to_string(),
         )
@@ -292,6 +296,7 @@ async fn test_e2e_peer_ping_success() {
             "tower1".to_string(),
             "https://192.168.1.100:8080".to_string(),
             vec!["orchestrator".to_string()],
+            vec![], // peer_tags
             TrustLevel::Limited,
             "udp_multicast".to_string(),
         )
@@ -362,6 +367,7 @@ async fn test_e2e_concurrent_clients() {
                 format!("peer{}", i),
                 format!("https://192.168.1.{}:8080", 100 + i),
                 vec!["orchestrator".to_string()],
+                vec![], // peer_tags
                 TrustLevel::Limited,
                 "udp_multicast".to_string(),
             )
@@ -472,6 +478,7 @@ async fn test_e2e_sequential_requests() {
             "peer1".to_string(),
             "https://192.168.1.100:8080".to_string(),
             vec!["orchestrator".to_string()],
+            vec![], // peer_tags
             TrustLevel::Limited,
             "udp_multicast".to_string(),
         )

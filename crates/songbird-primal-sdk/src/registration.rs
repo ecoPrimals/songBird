@@ -334,7 +334,6 @@ async fn probe_orchestrator(url: &str) -> RegistrationResult<OrchestratorInfo> {
     debug!("Probing orchestrator at {}", health_url);
 
     let client = reqwest::Client::builder()
-        .danger_accept_invalid_certs(true) // For self-signed certs in dev
         .timeout(Duration::from_secs(5))
         .build()?;
 
@@ -436,7 +435,6 @@ pub async fn register_with_orchestrator(
     });
 
     let client = reqwest::Client::builder()
-        .danger_accept_invalid_certs(true)
         .timeout(Duration::from_secs(30))
         .build()?;
 
@@ -491,7 +489,6 @@ pub async fn send_heartbeat(
     );
 
     let client = reqwest::Client::builder()
-        .danger_accept_invalid_certs(true)
         .timeout(Duration::from_secs(10))
         .build()?;
 
@@ -538,7 +535,6 @@ pub async fn deregister_from_orchestrator(
     });
 
     let client = reqwest::Client::builder()
-        .danger_accept_invalid_certs(true)
         .timeout(Duration::from_secs(10))
         .build()?;
 

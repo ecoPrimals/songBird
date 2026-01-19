@@ -18,18 +18,18 @@ async fn test_e2e_service_discovery_and_invocation() -> SongbirdResult<()> {
     // 3. Query capabilities
     // 4. Invoke a capability
     // 5. Handle response
-    
+
     let adapter = create_universal_adapter();
-    
+
     // Verify adapter is operational
     assert!(std::mem::size_of_val(&adapter) > 0);
-    
+
     // In a real E2E test, we would:
     // - Start mock services
     // - Perform actual discovery
     // - Make real capability calls
     // - Verify end-to-end behavior
-    
+
     Ok(())
 }
 
@@ -42,15 +42,15 @@ async fn test_e2e_circuit_breaker_recovery() -> SongbirdResult<()> {
     // 3. Circuit breaker activation
     // 4. Automatic recovery
     // 5. Service restoration
-    
+
     let adapter = create_universal_adapter();
-    
+
     // Simulate service lifecycle:
     // - Service healthy → requests succeed
     // - Service fails → circuit opens
     // - Service recovers → circuit closes
     // - Normal operation resumes
-    
+
     Ok(())
 }
 
@@ -62,14 +62,14 @@ async fn test_e2e_multi_adapter_workflow() -> SongbirdResult<()> {
     // 2. Cross-adapter capability routing
     // 3. Load balancing across adapters
     // 4. Failure isolation between adapters
-    
+
     let adapter1 = create_universal_adapter();
     let adapter2 = create_universal_adapter();
-    
+
     // Verify both adapters can coexist
     assert!(std::mem::size_of_val(&adapter1) > 0);
     assert!(std::mem::size_of_val(&adapter2) > 0);
-    
+
     Ok(())
 }
 
@@ -82,15 +82,15 @@ async fn test_e2e_sovereignty_routing() -> SongbirdResult<()> {
     // 3. Permission checking
     // 4. Request routing based on sovereignty
     // 5. Response handling with sovereignty context
-    
+
     let adapter = create_universal_adapter();
-    
+
     // Simulate different entity types:
     // - Individual human (zero friction)
     // - Small group (minimal friction)
     // - Organization (moderate friction)
     // - External entity (high friction)
-    
+
     Ok(())
 }
 
@@ -103,15 +103,15 @@ async fn test_e2e_config_hot_reload() -> SongbirdResult<()> {
     // 3. Configuration update
     // 4. Hot reload without service interruption
     // 5. Operation with new config
-    
+
     let adapter = create_universal_adapter();
-    
+
     // Simulate config lifecycle:
     // - Load initial config
     // - Process requests
     // - Update config
     // - Continue processing with new config
-    
+
     Ok(())
 }
 
@@ -125,15 +125,15 @@ async fn test_e2e_capability_lifecycle() -> SongbirdResult<()> {
     // 4. Client invokes capability
     // 5. Service provides capability
     // 6. Service unregisters (graceful shutdown)
-    
+
     let adapter = create_universal_adapter();
-    
+
     // Capability lifecycle:
     // - Registration
     // - Discovery
     // - Invocation
     // - Unregistration
-    
+
     Ok(())
 }
 
@@ -146,15 +146,15 @@ async fn test_e2e_error_propagation() -> SongbirdResult<()> {
     // 3. Circuit breaker consideration
     // 4. Client error handling
     // 5. Recovery mechanisms
-    
+
     let adapter = create_universal_adapter();
-    
+
     // Test error scenarios:
     // - Network errors
     // - Service errors
     // - Timeout errors
     // - Validation errors
-    
+
     Ok(())
 }
 
@@ -167,15 +167,15 @@ async fn test_e2e_concurrent_load() -> SongbirdResult<()> {
     // 3. Circuit breaker behavior under load
     // 4. Resource utilization
     // 5. Throughput and latency
-    
+
     let adapter = create_universal_adapter();
-    
+
     // Simulate realistic load:
     // - 100 concurrent requests
     // - Mixed capability types
     // - Various response times
     // - Some failures
-    
+
     Ok(())
 }
 
@@ -188,15 +188,15 @@ async fn test_e2e_federation_coordination() -> SongbirdResult<()> {
     // 3. Cross-node capability invocation
     // 4. Federation state synchronization
     // 5. Node failure and recovery
-    
+
     let adapter = create_universal_adapter();
-    
+
     // Federation workflow:
     // - Node registration
     // - Peer discovery
     // - Cross-node communication
     // - State sync
-    
+
     Ok(())
 }
 
@@ -209,22 +209,22 @@ async fn test_e2e_request_tracing() -> SongbirdResult<()> {
     // 3. Trace spans created at each layer
     // 4. Complete trace collected
     // 5. Trace analysis for debugging
-    
+
     let adapter = create_universal_adapter();
-    
+
     // Request tracing:
     // - Start trace
     // - Propagate context
     // - Record spans
     // - Complete trace
-    
+
     Ok(())
 }
 
 #[cfg(test)]
 mod test_helpers {
     use super::*;
-    
+
     /// Helper to wait for condition with timeout (uses interval instead of sleep)
     pub async fn wait_for_condition<F>(
         condition: F,
@@ -240,11 +240,10 @@ mod test_helpers {
             }
         })
         .await;
-        
+
         match result {
             Ok(_) => Ok(()),
             Err(_) => Err(SongbirdError::timeout("Condition not met within timeout")),
         }
     }
 }
-

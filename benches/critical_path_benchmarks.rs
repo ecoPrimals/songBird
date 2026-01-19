@@ -3,7 +3,7 @@
 //! Benchmarks for the most performance-critical operations in Songbird
 //! to establish baseline metrics and detect performance regressions.
 
-use criterion::{black_box, criterion_group, criterion_main, Criterion, BenchmarkId};
+use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion};
 use songbird_config::SongbirdConfig;
 use songbird_errors::{SongbirdError, SongbirdResult};
 use songbird_types::*;
@@ -13,21 +13,21 @@ use tokio::runtime::Runtime;
 /// Benchmark error creation and conversion performance
 fn bench_error_operations(c: &mut Criterion) {
     let mut group = c.benchmark_group("error_operations");
-    
+
     group.bench_function("create_config_error", |b| {
         b.iter(|| {
             let error = SongbirdError::configuration(black_box("Test configuration error"));
             black_box(error);
         });
     });
-    
+
     group.bench_function("create_network_error", |b| {
         b.iter(|| {
             let error = SongbirdError::network(black_box("Test network error"));
             black_box(error);
         });
     });
-    
+
     group.bench_function("parse_int_error_conversion", |b| {
         b.iter(|| {
             let parse_error = black_box("not_a_number").parse::<i32>().unwrap_err();
@@ -35,32 +35,33 @@ fn bench_error_operations(c: &mut Criterion) {
             black_box(songbird_error);
         });
     });
-    
+
     group.finish();
 }
 
 /// Benchmark configuration operations
 fn bench_configuration_operations(c: &mut Criterion) {
     let mut group = c.benchmark_group("configuration_operations");
-    
+
     group.bench_function("create_default_config", |b| {
         b.iter(|| {
             let config = SongbirdConfig::default();
             black_box(config);
         });
     });
-    
+
     group.bench_function("config_modification", |b| {
         b.iter(|| {
             let mut config = SongbirdConfig::default();
             if let Some(ref mut network) = config.network {
                 network.bind_address = black_box("127.0.0.1".to_string());
-                network.http_port = black_box(songbird_config::defaults::ports::orchestrator_port());
+                network.http_port =
+                    black_box(songbird_config::defaults::ports::orchestrator_port());
             }
             black_box(config);
         });
     });
-    
+
     group.finish();
 }
 
@@ -68,43 +69,43 @@ fn bench_configuration_operations(c: &mut Criterion) {
 fn bench_async_operations(c: &mut Criterion) {
     let rt = Runtime::new().unwrap();
     let mut group = c.benchmark_group("async_operations");
-    
+
     group.bench_function("simple_async_task", |b| {
         b.to_async(&rt).iter(|| async {
             let result = async {
                 tokio::time::sleep(Duration::from_nanos(1)).await;
                 black_box(42)
-            }.await;
+            }
+            .await;
             black_box(result);
         });
     });
-    
+
     group.bench_function("concurrent_tasks", |b| {
         b.to_async(&rt).iter(|| async {
-            let tasks: Vec<_> = (0..black_box(10)).map(|i| {
-                tokio::spawn(async move {
-                    tokio::time::sleep(Duration::from_nanos(1)).await;
-                    i * 2
+            let tasks: Vec<_> = (0..black_box(10))
+                .map(|i| {
+                    tokio::spawn(async move {
+                        tokio::time::sleep(Duration::from_nanos(1)).await;
+                        i * 2
+                    })
                 })
-            }).collect();
-
-            let results: Vec<_> = futures::future::join_all(tasks)
-                .await
-                .into_iter()
-                .map(|r| r.unwrap())
                 .collect();
-            
+
+            let results: Vec<_> =
+                futures::future::join_all(tasks).await.into_iter().map(|r| r.unwrap()).collect();
+
             black_box(results);
         });
     });
-    
+
     group.finish();
 }
 
 /// Benchmark memory allocation patterns
 fn bench_memory_operations(c: &mut Criterion) {
     let mut group = c.benchmark_group("memory_operations");
-    
+
     group.bench_function("vec_allocation", |b| {
         b.iter(|| {
             let mut vec = Vec::with_capacity(black_box(1000));
@@ -114,7 +115,7 @@ fn bench_memory_operations(c: &mut Criterion) {
             black_box(vec);
         });
     });
-    
+
     group.bench_function("string_operations", |b| {
         b.iter(|| {
             let mut string = String::with_capacity(black_box(1000));
@@ -124,7 +125,7 @@ fn bench_memory_operations(c: &mut Criterion) {
             black_box(string);
         });
     });
-    
+
     // Benchmark different collection sizes
     for size in [100, 1000, 10000].iter() {
         group.bench_with_input(BenchmarkId::new("vec_with_size", size), size, |b, &size| {
@@ -134,14 +135,14 @@ fn bench_memory_operations(c: &mut Criterion) {
             });
         });
     }
-    
+
     group.finish();
 }
 
 /// Benchmark serialization/deserialization operations
 fn bench_serialization_operations(c: &mut Criterion) {
     let mut group = c.benchmark_group("serialization_operations");
-    
+
     // Create test data
     let test_data = serde_json::json!({
         "service_id": "test-service-001",
@@ -155,44 +156,45 @@ fn bench_serialization_operations(c: &mut Criterion) {
             ]
         }
     });
-    
+
     let json_string = serde_json::to_string(&test_data).unwrap();
-    
+
     group.bench_function("json_serialize", |b| {
         b.iter(|| {
             let serialized = serde_json::to_string(&black_box(&test_data)).unwrap();
             black_box(serialized);
         });
     });
-    
+
     group.bench_function("json_deserialize", |b| {
         b.iter(|| {
-            let deserialized: serde_json::Value = serde_json::from_str(&black_box(&json_string)).unwrap();
+            let deserialized: serde_json::Value =
+                serde_json::from_str(&black_box(&json_string)).unwrap();
             black_box(deserialized);
         });
     });
-    
+
     group.finish();
 }
 
 /// Benchmark time-critical operations
 fn bench_time_operations(c: &mut Criterion) {
     let mut group = c.benchmark_group("time_operations");
-    
+
     group.bench_function("system_time_now", |b| {
         b.iter(|| {
             let now = std::time::SystemTime::now();
             black_box(now);
         });
     });
-    
+
     group.bench_function("instant_now", |b| {
         b.iter(|| {
             let now = Instant::now();
             black_box(now);
         });
     });
-    
+
     group.bench_function("duration_calculation", |b| {
         let start = Instant::now();
         b.iter(|| {
@@ -200,7 +202,7 @@ fn bench_time_operations(c: &mut Criterion) {
             black_box(elapsed);
         });
     });
-    
+
     group.finish();
 }
 
@@ -214,4 +216,4 @@ criterion_group!(
     bench_time_operations
 );
 
-criterion_main!(benches); 
+criterion_main!(benches);

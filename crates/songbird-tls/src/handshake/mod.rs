@@ -128,7 +128,7 @@ impl HandshakeStateMachine {
         // Select cipher suite (for now, just take first supported)
         let cipher_suite = client_hello
             .cipher_suites
-            .get(0)
+            .first()
             .copied()
             .ok_or_else(|| TlsError::HandshakeFailure("No cipher suites".to_string()))?;
 

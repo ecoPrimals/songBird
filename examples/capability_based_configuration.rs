@@ -9,9 +9,7 @@
 //! - **Zero Hardcoding**: No hardcoded addresses or primal names
 //! - **Environment Aware**: Configuration adapts to environment
 
-use songbird_config::defaults::hosts_evolved::{
-    Environment, ServiceLocator, SelfAwareConfig,
-};
+use songbird_config::defaults::hosts_evolved::{Environment, SelfAwareConfig, ServiceLocator};
 
 /// Old pattern (deprecated) - hardcoded configuration
 #[allow(dead_code)]
@@ -20,7 +18,7 @@ fn old_pattern_hardcoded() {
     let _orchestrator_host = "127.0.0.1:8080";
     let _beardog_host = "127.0.0.1:3000";
     let _toadstool_host = "127.0.0.1:5000";
-    
+
     println!("❌ Old Pattern: Hardcoded addresses - not maintainable!");
 }
 
@@ -28,9 +26,8 @@ fn old_pattern_hardcoded() {
 #[allow(dead_code)]
 fn old_pattern_with_env_vars() {
     // ⚠️ OLD PATTERN: Environment variables with hardcoded fallbacks
-    let _host = std::env::var("SONGBIRD_HOST")
-        .unwrap_or_else(|_| "127.0.0.1".to_string());
-    
+    let _host = std::env::var("SONGBIRD_HOST").unwrap_or_else(|_| "127.0.0.1".to_string());
+
     println!("⚠️ Improved but still has hardcoded fallbacks");
 }
 
@@ -41,7 +38,7 @@ fn modern_pattern_self_aware() {
 
     // ✅ Service knows only itself
     let config = SelfAwareConfig::from_environment();
-    
+
     println!("Self-Knowledge:");
     println!("  Environment: {:?}", config.environment);
     println!("  Bind Address: {}", config.bind_address());
@@ -81,25 +78,25 @@ async fn modern_pattern_capability_discovery() {
     println!("=============================================\n");
 
     let locator = ServiceLocator::new();
-    
+
     println!("Discovering services by CAPABILITY (not by name!):");
-    
+
     // ✅ No hardcoded primal names!
     // ✅ No hardcoded addresses!
     // ✅ Discover by what services CAN DO, not what they're CALLED
-    
+
     let storage_services = locator.discover_by_capability("storage").await;
     println!("  Storage capability: {} providers found", storage_services.len());
-    
+
     let compute_services = locator.discover_by_capability("compute").await;
     println!("  Compute capability: {} providers found", compute_services.len());
-    
+
     let ai_services = locator.discover_by_capability("ai").await;
     println!("  AI capability: {} providers found", ai_services.len());
-    
+
     let security_services = locator.discover_by_capability("security").await;
     println!("  Security capability: {} providers found", security_services.len());
-    
+
     println!();
     println!("Benefits:");
     println!("  ✅ Zero hardcoded primal names");
@@ -115,30 +112,25 @@ async fn modern_pattern_self_registration() -> Result<(), Box<dyn std::error::Er
     println!("=====================================\n");
 
     let locator = ServiceLocator::new();
-    
+
     // ✅ Service registers itself with capabilities
     // ✅ Other services discover it by querying for those capabilities
-    let capabilities = vec![
-        "orchestration",
-        "service-mesh", 
-        "load-balancing",
-        "discovery",
-    ];
-    
+    let capabilities = vec!["orchestration", "service-mesh", "load-balancing", "discovery"];
+
     println!("Registering self with capabilities:");
     for cap in &capabilities {
         println!("  - {}", cap);
     }
-    
+
     locator.register_self(&capabilities).await?;
-    
+
     println!();
     println!("Self-Registration Complete!");
     println!("  ✅ Announced advertise address");
     println!("  ✅ Tagged with capabilities");
     println!("  ✅ Health check endpoint active");
     println!("  ✅ Other services can now discover us");
-    
+
     Ok(())
 }
 
@@ -183,15 +175,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Show the evolution
     comparison();
-    
+
     // Demonstrate modern patterns
     modern_pattern_self_aware();
     modern_pattern_capability_discovery().await;
     modern_pattern_self_registration().await?;
-    
+
     println!("\n✅ Modern capability-based configuration demonstrated!");
     println!("   See code for implementation details.\n");
-    
+
     Ok(())
 }
-

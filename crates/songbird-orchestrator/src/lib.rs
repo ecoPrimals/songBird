@@ -153,7 +153,9 @@ pub use songbird_types::{SongbirdError, SongbirdResult};
 pub use songbird_universal::PrimalType;
 
 // Re-export UniBin public API for easy access
-pub use bin_interface::{run_config, run_doctor, run_server, ConfigCommands, DoctorArgs, ServerArgs};
+pub use bin_interface::{
+    run_config, run_doctor, run_server, ConfigCommands, DoctorArgs, ServerArgs,
+};
 
 // Re-export connection types (progressive trust)
 pub use connections::{

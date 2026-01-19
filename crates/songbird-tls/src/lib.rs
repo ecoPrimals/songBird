@@ -75,7 +75,7 @@ pub use record_layer::RecordLayer;
 pub use server::{TlsAcceptor, TlsServerConfig, TlsStream};
 
 // Certificate generation (hybrid standalone + BearDog)
-pub use cert::generator::{CertificateGenerator, CertGenerationMode};
+pub use cert::generator::{CertGenerationMode, CertificateGenerator};
 
 /// TLS 1.3 protocol version (0x0304)
 pub const TLS_VERSION_1_3: u16 = 0x0304;

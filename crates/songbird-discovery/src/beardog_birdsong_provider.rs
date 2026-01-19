@@ -126,15 +126,13 @@ impl BearDogBirdSongProvider {
     /// ).await.unwrap();
     /// # }
     /// ```
-    pub async fn new(
-        socket_path: impl Into<PathBuf>,
-        family_id: Option<String>,
-    ) -> Result<Self> {
+    pub async fn new(socket_path: impl Into<PathBuf>, family_id: Option<String>) -> Result<Self> {
         let socket_path = socket_path.into();
-        
+
         // Create UnixRpcClient (100% Pure Rust!)
-        let client = UnixRpcClient::new(&socket_path)
-            .map_err(|e| anyhow::anyhow!("Failed to connect to BearDog at {:?}: {}", socket_path, e))?;
+        let client = UnixRpcClient::new(&socket_path).map_err(|e| {
+            anyhow::anyhow!("Failed to connect to BearDog at {:?}: {}", socket_path, e)
+        })?;
 
         info!("🎵 BearDog BirdSong provider created (Pure Rust Unix socket!)");
         info!("   Socket: {:?}", socket_path);
@@ -218,11 +216,8 @@ impl BearDogBirdSongProvider {
         debug!("   Ciphertext size: {} bytes", ciphertext.len());
 
         // Call BearDog's birdsong.decrypt JSON-RPC method
-        let decrypt_response: BearDogDecryptResponse = self
-            .client
-            .call("birdsong.decrypt", &request)
-            .await
-            .map_err(|e| {
+        let decrypt_response: BearDogDecryptResponse =
+            self.client.call("birdsong.decrypt", &request).await.map_err(|e| {
                 // Different family might return an RPC error - treat as noise
                 debug!("🔇 BearDog decrypt RPC error (likely different family): {}", e);
                 format!("BearDog JSON-RPC decrypt failed: {e}")
@@ -285,7 +280,7 @@ mod tests {
     async fn test_provider_creation() {
         // This test requires BearDog to be running
         let socket_path = "/tmp/beardog.sock";
-        
+
         match BearDogBirdSongProvider::new(socket_path, Some("test-family".to_string())).await {
             Ok(provider) => {
                 assert_eq!(provider.provider_name(), "BearDog");
@@ -301,7 +296,7 @@ mod tests {
     async fn test_provider_creation_no_family() {
         // This test requires BearDog to be running
         let socket_path = "/tmp/beardog.sock";
-        
+
         match BearDogBirdSongProvider::new(socket_path, None).await {
             Ok(provider) => {
                 assert_eq!(provider.provider_name(), "BearDog");
@@ -318,8 +313,7 @@ mod tests {
     fn test_beardog_encrypt_response_parsing() {
         let response_json = r#"{"ciphertext":"yo8Tz+qVxUp7A01pf7PYAhTvfe0Cl727z9r6nh/Qey21gL09gL+wTzS4ghiTKO6gnyqYvukBVw==","family_id":"iidn"}"#;
 
-        let parsed: BearDogEncryptResponse =
-            serde_json::from_str(response_json).unwrap();
+        let parsed: BearDogEncryptResponse = serde_json::from_str(response_json).unwrap();
 
         assert_eq!(parsed.family_id, "iidn");
         assert!(!parsed.ciphertext.is_empty());
@@ -330,10 +324,10 @@ mod tests {
     /// Test parsing BearDog JSON-RPC decrypt response
     #[test]
     fn test_beardog_decrypt_response_parsing() {
-        let response_json = r#"{"plaintext":"SGVsbG8sIEJlYXJEb2ch","family_id":"iidn","success":true}"#;
+        let response_json =
+            r#"{"plaintext":"SGVsbG8sIEJlYXJEb2ch","family_id":"iidn","success":true}"#;
 
-        let parsed: BearDogDecryptResponse =
-            serde_json::from_str(response_json).unwrap();
+        let parsed: BearDogDecryptResponse = serde_json::from_str(response_json).unwrap();
 
         assert_eq!(parsed.family_id, "iidn");
         assert!(parsed.success);
@@ -376,10 +370,10 @@ mod tests {
     async fn test_health_check_unavailable() {
         // Test with invalid socket path
         let invalid_socket = "/tmp/nonexistent_beardog_test.sock";
-        
+
         // Ensure socket doesn't exist
         let _ = std::fs::remove_file(invalid_socket);
-        
+
         // new() creates the client but doesn't connect yet
         // The connection failure will happen on first RPC call
         match BearDogBirdSongProvider::new(invalid_socket, Some("test-family".to_string())).await {
@@ -400,11 +394,19 @@ mod tests {
     async fn test_encrypt_decrypt_roundtrip() {
         // This test requires a running BearDog instance
         let socket_path = "/tmp/beardog.sock";
-        
-        let provider = match BearDogBirdSongProvider::new(socket_path, Some("test-family".to_string())).await {
+
+        let provider = match BearDogBirdSongProvider::new(
+            socket_path,
+            Some("test-family".to_string()),
+        )
+        .await
+        {
             Ok(p) => p,
             Err(_) => {
-                println!("⏭️  Skipping roundtrip test - BearDog not available at {:?}", socket_path);
+                println!(
+                    "⏭️  Skipping roundtrip test - BearDog not available at {:?}",
+                    socket_path
+                );
                 return;
             }
         };
@@ -444,7 +446,7 @@ mod tests {
             Some(plaintext.to_vec()),
             "Roundtrip should return original plaintext"
         );
-        
+
         println!("✅ Pure Rust JSON-RPC roundtrip successful!");
     }
 
@@ -452,22 +454,24 @@ mod tests {
     async fn test_different_family_decryption() {
         // This test requires a running BearDog instance
         let socket_path = "/tmp/beardog.sock";
-        
-        let provider1 = match BearDogBirdSongProvider::new(socket_path, Some("family-1".to_string())).await {
-            Ok(p) => p,
-            Err(_) => {
-                println!("⏭️  Skipping cross-family test - BearDog not available");
-                return;
-            }
-        };
 
-        let provider2 = match BearDogBirdSongProvider::new(socket_path, Some("family-2".to_string())).await {
-            Ok(p) => p,
-            Err(_) => {
-                println!("⏭️  Skipping cross-family test - BearDog not available");
-                return;
-            }
-        };
+        let provider1 =
+            match BearDogBirdSongProvider::new(socket_path, Some("family-1".to_string())).await {
+                Ok(p) => p,
+                Err(_) => {
+                    println!("⏭️  Skipping cross-family test - BearDog not available");
+                    return;
+                }
+            };
+
+        let provider2 =
+            match BearDogBirdSongProvider::new(socket_path, Some("family-2".to_string())).await {
+                Ok(p) => p,
+                Err(_) => {
+                    println!("⏭️  Skipping cross-family test - BearDog not available");
+                    return;
+                }
+            };
 
         // Check if BearDog is healthy
         if !provider1.check_health().await {
@@ -504,7 +508,7 @@ mod tests {
     async fn test_socket_path_formatting() {
         // This test requires BearDog to be running
         let socket_path = "/tmp/beardog.sock";
-        
+
         match BearDogBirdSongProvider::new(socket_path, Some("test-family".to_string())).await {
             Ok(provider) => {
                 assert_eq!(provider.socket_path.to_str().unwrap(), socket_path);
@@ -520,8 +524,13 @@ mod tests {
     async fn test_concurrent_encrypt_requests() {
         // Test thread safety with concurrent encryption requests (Pure Rust!)
         let socket_path = "/tmp/beardog.sock";
-        
-        let provider = match BearDogBirdSongProvider::new(socket_path, Some("test-family".to_string())).await {
+
+        let provider = match BearDogBirdSongProvider::new(
+            socket_path,
+            Some("test-family".to_string()),
+        )
+        .await
+        {
             Ok(p) => Arc::new(p),
             Err(_) => {
                 println!("⏭️  Skipping concurrent test - BearDog not available");
@@ -551,7 +560,7 @@ mod tests {
             // Check that the task didn't panic
             assert!(result.is_ok(), "Concurrent encryption task should not panic");
         }
-        
+
         println!("✅ Pure Rust JSON-RPC handled 5 concurrent requests successfully!");
     }
 }

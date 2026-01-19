@@ -264,4 +264,3 @@ fn run_rendezvous(args: Vec<String>) -> Result<()> {
         std::process::exit(1);
     }
 }
-

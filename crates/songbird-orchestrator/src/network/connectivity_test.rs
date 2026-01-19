@@ -117,7 +117,6 @@ impl ConnectivityTester {
 
         // Build a permissive HTTPS client for testing (accepts self-signed certs)
         let client = reqwest::Client::builder()
-            .danger_accept_invalid_certs(true)
             .timeout(self.test_timeout)
             .build()
             .map_err(|e| anyhow!("Failed to build HTTPS client: {}", e))?;

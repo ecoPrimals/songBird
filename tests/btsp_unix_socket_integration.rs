@@ -8,8 +8,8 @@
 
 mod helpers;
 
-use helpers::{BearDogMock, temp_unix_socket_path, cleanup_socket, wait_for_socket_ready};
-use songbird_orchestrator::btsp_client::{BtspClient, PeerEndpoint, Direction, TunnelState};
+use helpers::{cleanup_socket, temp_unix_socket_path, wait_for_socket_ready, BearDogMock};
+use songbird_orchestrator::btsp_client::{BtspClient, Direction, PeerEndpoint, TunnelState};
 use std::time::Duration;
 
 #[tokio::test]
@@ -19,7 +19,7 @@ async fn test_btsp_tunnel_establishment() {
     let socket_path = temp_unix_socket_path("beardog");
     let mut mock = BearDogMock::new(&socket_path);
     mock.start().await.unwrap();
-    
+
     // Spawn mock handler
     tokio::spawn(async move {
         loop {
@@ -29,17 +29,17 @@ async fn test_btsp_tunnel_establishment() {
             }
         }
     });
-    
+
     // Wait for socket to be ready (no blind sleep!)
     assert!(
         wait_for_socket_ready(&socket_path, Duration::from_secs(2)).await,
         "Socket did not become ready in time"
     );
-    
+
     // Test: Create BTSP client with mock socket
     std::env::set_var("BEARDOG_SOCKET", &socket_path);
     let client = BtspClient::new();
-    
+
     // Test: Establish tunnel
     let peer = PeerEndpoint {
         id: "test-peer".to_string(),
@@ -47,11 +47,11 @@ async fn test_btsp_tunnel_establishment() {
         public_key: None,
         capabilities: vec!["btsp_enabled".to_string()],
     };
-    
+
     let tunnel = client.establish_tunnel(peer).await.unwrap();
     assert_eq!(tunnel.state, TunnelState::Established);
     assert_eq!(tunnel.peer_id, "test-peer");
-    
+
     // Cleanup
     cleanup_socket(&socket_path);
     std::env::remove_var("BEARDOG_SOCKET");
@@ -64,7 +64,7 @@ async fn test_btsp_tunnel_encrypt_decrypt() {
     let socket_path = temp_unix_socket_path("beardog-crypt");
     let mut mock = BearDogMock::new(&socket_path);
     mock.start().await.unwrap();
-    
+
     tokio::spawn(async move {
         loop {
             if let Err(e) = mock.handle_connection().await {
@@ -72,42 +72,39 @@ async fn test_btsp_tunnel_encrypt_decrypt() {
             }
         }
     });
-    
+
     // Wait for socket to be ready
     assert!(
         wait_for_socket_ready(&socket_path, Duration::from_secs(2)).await,
         "Socket did not become ready in time"
     );
-    
+
     std::env::set_var("BEARDOG_SOCKET", &socket_path);
     let client = BtspClient::new();
-    
+
     let peer = PeerEndpoint {
         id: "test-peer".to_string(),
         endpoint: format!("unix://{}", socket_path),
         public_key: None,
         capabilities: vec!["btsp_enabled".to_string()],
     };
-    
+
     let tunnel = client.establish_tunnel(peer).await.unwrap();
-    
+
     // Test: Encrypt data
     let plaintext = b"Hello BTSP!";
-    let ciphertext = client
-        .tunnel_encrypt(&tunnel, plaintext, Direction::Egress)
-        .await
-        .unwrap();
-    
+    let ciphertext = client.tunnel_encrypt(&tunnel, plaintext, Direction::Egress).await.unwrap();
+
     // Note: Mock returns same data, real BearDog would encrypt
     assert!(!ciphertext.is_empty());
-    
+
     // Test: Decrypt data
     let decrypted = client.tunnel_decrypt(&tunnel, &ciphertext).await.unwrap();
     assert_eq!(decrypted, plaintext);
-    
+
     // Test: Close tunnel
     client.tunnel_close(&tunnel).await.unwrap();
-    
+
     // Cleanup
     cleanup_socket(&socket_path);
     std::env::remove_var("BEARDOG_SOCKET");
@@ -120,7 +117,7 @@ async fn test_btsp_tunnel_status() {
     let socket_path = temp_unix_socket_path("beardog-status");
     let mut mock = BearDogMock::new(&socket_path);
     mock.start().await.unwrap();
-    
+
     tokio::spawn(async move {
         loop {
             if let Err(e) = mock.handle_connection().await {
@@ -128,29 +125,29 @@ async fn test_btsp_tunnel_status() {
             }
         }
     });
-    
+
     // Wait for socket to be ready
     assert!(
         wait_for_socket_ready(&socket_path, Duration::from_secs(2)).await,
         "Socket did not become ready in time"
     );
-    
+
     std::env::set_var("BEARDOG_SOCKET", &socket_path);
     let client = BtspClient::new();
-    
+
     let peer = PeerEndpoint {
         id: "test-peer".to_string(),
         endpoint: format!("unix://{}", socket_path),
         public_key: None,
         capabilities: vec!["btsp_enabled".to_string()],
     };
-    
+
     let tunnel = client.establish_tunnel(peer).await.unwrap();
-    
+
     // Test: Get tunnel status
     let status = client.tunnel_status(&tunnel).await.unwrap();
     assert!(status.get("tunnel_id").is_some());
-    
+
     // Cleanup
     client.tunnel_close(&tunnel).await.unwrap();
     cleanup_socket(&socket_path);
@@ -164,7 +161,7 @@ async fn test_btsp_ping() {
     let socket_path = temp_unix_socket_path("beardog-ping");
     let mut mock = BearDogMock::new(&socket_path);
     mock.start().await.unwrap();
-    
+
     tokio::spawn(async move {
         loop {
             if let Err(e) = mock.handle_connection().await {
@@ -172,22 +169,21 @@ async fn test_btsp_ping() {
             }
         }
     });
-    
+
     // Wait for socket to be ready
     assert!(
         wait_for_socket_ready(&socket_path, Duration::from_secs(2)).await,
         "Socket did not become ready in time"
     );
-    
+
     std::env::set_var("BEARDOG_SOCKET", &socket_path);
     let client = BtspClient::new();
-    
+
     // Test: Ping BearDog
     let response = client.ping().await.unwrap();
     assert_eq!(response["result"]["primal"], "beardog");
-    
+
     // Cleanup
     cleanup_socket(&socket_path);
     std::env::remove_var("BEARDOG_SOCKET");
 }
-

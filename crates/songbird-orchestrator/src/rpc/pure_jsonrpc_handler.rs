@@ -15,7 +15,6 @@
 use super::pure_jsonrpc_types::{JsonRpcError, JsonRpcRequest, JsonRpcResponse};
 use anyhow::Result;
 use serde_json::json;
-use std::sync::Arc;
 use tracing::{debug, warn};
 
 /// Handle a JSON-RPC 2.0 request
@@ -57,7 +56,7 @@ pub async fn handle_jsonrpc_request(request: &JsonRpcRequest) -> JsonRpcResponse
         }
         Err(e) => {
             warn!("❌ JSON-RPC Error: method={}, error={}", request.method, e);
-            
+
             // Detect error type and use appropriate error code
             let error = if e.contains("Unknown method") || e.contains("Method not found") {
                 JsonRpcError::method_not_found(&request.method)
@@ -74,7 +73,7 @@ pub async fn handle_jsonrpc_request(request: &JsonRpcRequest) -> JsonRpcResponse
             } else {
                 JsonRpcError::internal_error(e)
             };
-            
+
             JsonRpcResponse::error(error, id)
         }
     }
@@ -100,24 +99,24 @@ async fn route_method(
         "ping" => handle_ping(params).await,
         "health" => handle_health(params).await,
         "version" => handle_version(params).await,
-        
+
         // Service discovery
         "discover_services" => handle_discover_services(params).await,
         "register_service" => handle_register_service(params).await,
         "unregister_service" => handle_unregister_service(params).await,
         "list_services" => handle_list_services(params).await,
-        
+
         // Connection management
         "get_connection_status" => handle_get_connection_status(params).await,
         "list_connections" => handle_list_connections(params).await,
-        
+
         // Configuration
         "get_config" => handle_get_config(params).await,
         "validate_config" => handle_validate_config(params).await,
-        
+
         // Metrics
         "get_metrics" => handle_metrics(params).await,
-        
+
         // Unknown method
         _ => Err(format!("Unknown method: {}", method)),
     }
@@ -171,13 +170,11 @@ async fn handle_register_service(
     params: Option<&serde_json::Value>,
 ) -> Result<serde_json::Value, String> {
     let params = params.ok_or("Missing required params")?;
-    
+
     // Extract service name (example - adapt to actual needs)
-    let _service_name = params
-        .get("name")
-        .and_then(|v| v.as_str())
-        .ok_or("Missing required param: name")?;
-    
+    let _service_name =
+        params.get("name").and_then(|v| v.as_str()).ok_or("Missing required param: name")?;
+
     // TODO: Implement actual registration
     Ok(json!({
         "registered": true,
@@ -190,12 +187,10 @@ async fn handle_unregister_service(
     params: Option<&serde_json::Value>,
 ) -> Result<serde_json::Value, String> {
     let params = params.ok_or("Missing required params")?;
-    
-    let _service_name = params
-        .get("name")
-        .and_then(|v| v.as_str())
-        .ok_or("Missing required param: name")?;
-    
+
+    let _service_name =
+        params.get("name").and_then(|v| v.as_str()).ok_or("Missing required param: name")?;
+
     // TODO: Implement actual unregistration
     Ok(json!({
         "unregistered": true,
@@ -262,9 +257,7 @@ async fn handle_validate_config(
 }
 
 /// Handle metrics request
-async fn handle_metrics(
-    _params: Option<&serde_json::Value>,
-) -> Result<serde_json::Value, String> {
+async fn handle_metrics(_params: Option<&serde_json::Value>) -> Result<serde_json::Value, String> {
     // TODO: Implement actual metrics
     Ok(json!({
         "requests_total": 0,
@@ -332,4 +325,3 @@ mod tests {
         assert_eq!(resp.error.unwrap().code, JsonRpcError::METHOD_NOT_FOUND);
     }
 }
-

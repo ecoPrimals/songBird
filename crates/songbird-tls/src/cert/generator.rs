@@ -61,7 +61,8 @@ impl CertificateGenerator {
                         if matches!(mode, CertGenerationMode::BearDog) {
                             return Err(anyhow::anyhow!(
                                 "BearDog mode requested but BearDog not available"
-                            ).into());
+                            )
+                            .into());
                         }
                         None
                     }
@@ -129,12 +130,7 @@ impl CertificateGenerator {
 
         // Create certificate with Ed25519 public key
         let cert_entry = CertificateEntry {
-            cert_data: create_simple_cert_der(
-                domain,
-                &verifying_key,
-                &not_before,
-                &not_after,
-            )?,
+            cert_data: create_simple_cert_der(domain, &verifying_key, &not_before, &not_after)?,
             extensions: Vec::new(),
         };
 
@@ -215,14 +211,11 @@ mod tests {
 
     #[tokio::test]
     async fn test_standalone_cert_generation() {
-        let generator = CertificateGenerator::with_mode(CertGenerationMode::Standalone)
-            .await
-            .unwrap();
+        let generator =
+            CertificateGenerator::with_mode(CertGenerationMode::Standalone).await.unwrap();
 
-        let (cert, signing_key) = generator
-            .generate_self_signed("test.songbird.local", 365)
-            .await
-            .unwrap();
+        let (cert, signing_key) =
+            generator.generate_self_signed("test.songbird.local", 365).await.unwrap();
 
         assert!(!cert.certificate_list.is_empty());
         assert!(!cert.certificate_list[0].cert_data.is_empty());
@@ -234,28 +227,21 @@ mod tests {
         // Auto mode should work even without BearDog
         let generator = CertificateGenerator::new().await.unwrap();
 
-        let (cert, _) = generator
-            .generate_self_signed("auto.songbird.local", 90)
-            .await
-            .unwrap();
+        let (cert, _) = generator.generate_self_signed("auto.songbird.local", 90).await.unwrap();
 
         assert!(!cert.certificate_list.is_empty());
     }
 
     #[tokio::test]
     async fn test_standalone_multiple_certs() {
-        let generator = CertificateGenerator::with_mode(CertGenerationMode::Standalone)
-            .await
-            .unwrap();
+        let generator =
+            CertificateGenerator::with_mode(CertGenerationMode::Standalone).await.unwrap();
 
         // Generate multiple certificates
         let domains = vec!["test1.local", "test2.local", "test3.local"];
 
         for domain in domains {
-            let (cert, _) = generator
-                .generate_self_signed(domain, 365)
-                .await
-                .unwrap();
+            let (cert, _) = generator.generate_self_signed(domain, 365).await.unwrap();
 
             assert!(!cert.certificate_list.is_empty());
         }
@@ -263,18 +249,14 @@ mod tests {
 
     #[tokio::test]
     async fn test_cert_validity_period() {
-        let generator = CertificateGenerator::with_mode(CertGenerationMode::Standalone)
-            .await
-            .unwrap();
+        let generator =
+            CertificateGenerator::with_mode(CertGenerationMode::Standalone).await.unwrap();
 
         let validity_days = 30;
-        let (_cert, _key) = generator
-            .generate_self_signed("validity.local", validity_days)
-            .await
-            .unwrap();
+        let (_cert, _key) =
+            generator.generate_self_signed("validity.local", validity_days).await.unwrap();
 
         // Certificate should be valid for the specified period
         // (validation logic would be in certificate usage, not generation)
     }
 }
-

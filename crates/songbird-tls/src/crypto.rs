@@ -326,6 +326,11 @@ impl BeardogCryptoClient {
 }
 
 // JSON-RPC types
+/// JSON-RPC 2.0 Response
+///
+/// Note: Fields are used during deserialization but not directly accessed in code.
+/// The response is parsed and converted to domain types immediately.
+#[allow(dead_code)]
 #[derive(Debug, Deserialize)]
 struct JsonRpcResponse {
     jsonrpc: String,

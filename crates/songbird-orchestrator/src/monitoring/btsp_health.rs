@@ -55,7 +55,6 @@ impl BtspHealthMonitor {
     pub fn new(check_interval_secs: u64, alert_threshold_ms: u64) -> Self {
         Self {
             client: reqwest::Client::builder()
-                .danger_accept_invalid_certs(true) // For local development
                 .timeout(Duration::from_secs(5))
                 .build()
                 .unwrap_or_else(|_| reqwest::Client::new()),

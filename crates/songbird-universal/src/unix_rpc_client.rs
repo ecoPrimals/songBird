@@ -104,12 +104,12 @@ impl UnixRpcClient {
     /// ```
     pub fn new(socket_path: impl AsRef<Path>) -> Result<Self> {
         let socket_path = socket_path.as_ref().to_path_buf();
-        
+
         // Validate socket path exists (optional, can be deferred to connect time)
         if !socket_path.exists() {
             debug!("Socket path does not exist yet: {:?}", socket_path);
         }
-        
+
         Ok(Self {
             socket_path,
             next_id: std::sync::Arc::new(std::sync::atomic::AtomicU64::new(1)),
@@ -144,9 +144,9 @@ impl UnixRpcClient {
     {
         // Generate request ID
         let id = self.next_id.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
-        
+
         trace!("Calling JSON-RPC method: {} (id: {})", method, id);
-        
+
         // Build request
         let request = JsonRpcRequest {
             jsonrpc: "2.0".to_string(),
@@ -154,39 +154,38 @@ impl UnixRpcClient {
             params,
             id,
         };
-        
+
         // Serialize request
-        let request_bytes = serde_json::to_vec(&request)
-            .context("Failed to serialize JSON-RPC request")?;
-        
+        let request_bytes =
+            serde_json::to_vec(&request).context("Failed to serialize JSON-RPC request")?;
+
         // Connect to Unix socket
         let mut stream = UnixStream::connect(&self.socket_path)
             .await
             .with_context(|| format!("Failed to connect to Unix socket: {:?}", self.socket_path))?;
-        
+
         // Send request
-        stream.write_all(&request_bytes).await
-            .context("Failed to write request to Unix socket")?;
-        
+        stream.write_all(&request_bytes).await.context("Failed to write request to Unix socket")?;
+
         // Add newline delimiter (some servers expect this)
-        stream.write_all(b"\n").await
-            .context("Failed to write delimiter")?;
-        
+        stream.write_all(b"\n").await.context("Failed to write delimiter")?;
+
         // Shutdown write side to signal end of request
-        stream.shutdown().await
-            .context("Failed to shutdown write side")?;
-        
+        stream.shutdown().await.context("Failed to shutdown write side")?;
+
         // Read response
         let mut response_bytes = Vec::new();
-        stream.read_to_end(&mut response_bytes).await
+        stream
+            .read_to_end(&mut response_bytes)
+            .await
             .context("Failed to read response from Unix socket")?;
-        
+
         trace!("Received {} bytes from Unix socket", response_bytes.len());
-        
+
         // Deserialize response
         let response: JsonRpcResponse<R> = serde_json::from_slice(&response_bytes)
             .context("Failed to deserialize JSON-RPC response")?;
-        
+
         // Check for errors
         if let Some(error) = response.error {
             return Err(anyhow::anyhow!(
@@ -195,10 +194,9 @@ impl UnixRpcClient {
                 error.code
             ));
         }
-        
+
         // Extract result
-        response.result
-            .ok_or_else(|| anyhow::anyhow!("JSON-RPC response missing result field"))
+        response.result.ok_or_else(|| anyhow::anyhow!("JSON-RPC response missing result field"))
     }
 
     /// Call a JSON-RPC method with no parameters
@@ -244,23 +242,23 @@ mod tests {
     /// Mock JSON-RPC server for testing
     async fn mock_server(socket_path: PathBuf) {
         let listener = UnixListener::bind(&socket_path).unwrap();
-        
+
         loop {
             match listener.accept().await {
                 Ok((stream, _)) => {
                     tokio::spawn(async move {
                         let mut reader = BufReader::new(stream);
                         let mut request_line = String::new();
-                        
+
                         if reader.read_line(&mut request_line).await.is_ok() {
-                            let request: serde_json::Value = 
+                            let request: serde_json::Value =
                                 serde_json::from_str(&request_line).unwrap();
-                            
+
                             let method = request["method"].as_str().unwrap();
                             let id = request["id"].as_u64().unwrap();
-                            
+
                             let response = if method == "echo" {
-                                let params: EchoRequest = 
+                                let params: EchoRequest =
                                     serde_json::from_value(request["params"].clone()).unwrap();
                                 json!({
                                     "jsonrpc": "2.0",
@@ -277,7 +275,7 @@ mod tests {
                                     "id": id
                                 })
                             };
-                            
+
                             let mut stream = reader.into_inner();
                             let response_bytes = serde_json::to_vec(&response).unwrap();
                             stream.write_all(&response_bytes).await.ok();
@@ -292,64 +290,64 @@ mod tests {
     #[tokio::test]
     async fn test_unix_rpc_client_success() -> Result<()> {
         let socket_path = PathBuf::from("/tmp/test_unix_rpc_success.sock");
-        
+
         // Cleanup old socket
         let _ = std::fs::remove_file(&socket_path);
-        
+
         // Start mock server
         let server_path = socket_path.clone();
         tokio::spawn(async move {
             mock_server(server_path).await;
         });
-        
+
         // Give server time to start
         tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
-        
+
         // Create client
         let client = UnixRpcClient::new(&socket_path)?;
-        
+
         // Call echo method
         let request = EchoRequest {
             message: "Hello, Unix sockets!".to_string(),
         };
         let response: EchoResponse = client.call("echo", request).await?;
-        
+
         assert_eq!(response.echo, "Hello, Unix sockets!");
-        
+
         // Cleanup
         std::fs::remove_file(&socket_path).ok();
-        
+
         Ok(())
     }
 
     #[tokio::test]
     async fn test_unix_rpc_client_error() -> Result<()> {
         let socket_path = PathBuf::from("/tmp/test_unix_rpc_error.sock");
-        
+
         // Cleanup old socket
         let _ = std::fs::remove_file(&socket_path);
-        
+
         // Start mock server
         let server_path = socket_path.clone();
         tokio::spawn(async move {
             mock_server(server_path).await;
         });
-        
+
         // Give server time to start
         tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
-        
+
         // Create client
         let client = UnixRpcClient::new(&socket_path)?;
-        
+
         // Call non-existent method
         let result: Result<EchoResponse> = client.call("nonexistent", json!({})).await;
-        
+
         assert!(result.is_err());
         assert!(result.unwrap_err().to_string().contains("Method not found"));
-        
+
         // Cleanup
         std::fs::remove_file(&socket_path).ok();
-        
+
         Ok(())
     }
 
@@ -357,9 +355,8 @@ mod tests {
     fn test_unix_rpc_client_creation() {
         let client = UnixRpcClient::new("/tmp/test.sock");
         assert!(client.is_ok());
-        
+
         let client = client.unwrap();
         assert_eq!(client.socket_path(), Path::new("/tmp/test.sock"));
     }
 }
-

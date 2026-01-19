@@ -9,12 +9,12 @@
 // Pure Rust JSON-RPC 2.0 Implementation (100% Pure Rust, zero C dependencies!)
 // ============================================================================
 // Ready for full migration when IPC handlers are updated
-pub mod pure_jsonrpc_types;
 pub mod pure_jsonrpc_handler;
+pub mod pure_jsonrpc_types;
 
 // Re-export for convenience
-pub use pure_jsonrpc_types::{JsonRpcRequest, JsonRpcResponse, JsonRpcError};
 pub use pure_jsonrpc_handler::handle_jsonrpc_request;
+pub use pure_jsonrpc_types::{JsonRpcError, JsonRpcRequest, JsonRpcResponse};
 
 // ============================================================================
 // Former jsonrpsee-based implementation (REMOVED - was dead code!)

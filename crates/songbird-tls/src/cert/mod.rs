@@ -4,8 +4,8 @@
 //! For now, implements basic certificate handling with Ed25519 signatures.
 //! Full X.509 parsing will be added as needed.
 
-pub mod test_utils;
-pub mod generator; // Pure Rust certificate generation (hybrid standalone + BearDog)
+pub mod generator;
+pub mod test_utils; // Pure Rust certificate generation (hybrid standalone + BearDog)
 
 use crate::crypto::BeardogCryptoClient;
 use crate::error::{Result, TlsError};

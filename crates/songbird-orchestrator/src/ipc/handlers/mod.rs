@@ -74,7 +74,8 @@ impl IpcHandlers {
     pub async fn register_service(
         &self,
         params: serde_json::Value,
-    ) -> Result<super::types::RegisterServiceResponse, crate::ipc::server_pure_rust::JsonRpcError> {
+    ) -> Result<super::types::RegisterServiceResponse, crate::ipc::server_pure_rust::JsonRpcError>
+    {
         service_registry::register_service(self, params).await
     }
 
@@ -82,8 +83,10 @@ impl IpcHandlers {
     pub async fn discover_by_capability(
         &self,
         params: serde_json::Value,
-    ) -> Result<super::types::DiscoverByCapabilityResponse, crate::ipc::server_pure_rust::JsonRpcError>
-    {
+    ) -> Result<
+        super::types::DiscoverByCapabilityResponse,
+        crate::ipc::server_pure_rust::JsonRpcError,
+    > {
         service_registry::discover_by_capability(self, params).await
     }
 
@@ -130,8 +133,10 @@ impl IpcHandlers {
     pub async fn announce_capabilities(
         &self,
         params: serde_json::Value,
-    ) -> Result<super::types::AnnounceCapabilitiesResponse, crate::ipc::server_pure_rust::JsonRpcError>
-    {
+    ) -> Result<
+        super::types::AnnounceCapabilitiesResponse,
+        crate::ipc::server_pure_rust::JsonRpcError,
+    > {
         p2p_discovery::announce_capabilities(self, params).await
     }
 
@@ -159,7 +164,8 @@ impl IpcHandlers {
     pub async fn suggest_alternatives(
         &self,
         params: serde_json::Value,
-    ) -> Result<crate::graph::AlternativeSuggestions, crate::ipc::server_pure_rust::JsonRpcError> {
+    ) -> Result<crate::graph::AlternativeSuggestions, crate::ipc::server_pure_rust::JsonRpcError>
+    {
         graph_intelligence::suggest_alternatives(self, params).await
     }
 
@@ -167,8 +173,10 @@ impl IpcHandlers {
     pub async fn validate_coordination_pattern(
         &self,
         params: serde_json::Value,
-    ) -> Result<crate::graph::CoordinationValidationResult, crate::ipc::server_pure_rust::JsonRpcError>
-    {
+    ) -> Result<
+        crate::graph::CoordinationValidationResult,
+        crate::ipc::server_pure_rust::JsonRpcError,
+    > {
         graph_intelligence::validate_coordination_pattern(self, params).await
     }
 

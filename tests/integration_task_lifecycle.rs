@@ -6,9 +6,8 @@ use songbird_orchestrator::task_lifecycle::{TaskLifecycleManager, TowerId, UserI
 #[tokio::test]
 async fn test_full_task_lifecycle() {
     // Create manager
-    let manager = TaskLifecycleManager::new("sqlite::memory:")
-        .await
-        .expect("Failed to create manager");
+    let manager =
+        TaskLifecycleManager::new("sqlite::memory:").await.expect("Failed to create manager");
 
     // Create task
     let owner = UserId::from("test-user");
@@ -20,38 +19,23 @@ async fn test_full_task_lifecycle() {
         priority: Priority::High,
     };
 
-    let task_id = manager
-        .create_task(owner.clone(), spec)
-        .await
-        .expect("Failed to create task");
+    let task_id = manager.create_task(owner.clone(), spec).await.expect("Failed to create task");
 
     // Verify task created
-    let task = manager
-        .get_task(task_id)
-        .await
-        .expect("Failed to get task")
-        .expect("Task not found");
+    let task =
+        manager.get_task(task_id).await.expect("Failed to get task").expect("Task not found");
 
     assert_eq!(task.owner, owner);
     assert_eq!(task.progress, 0.0);
 
     // Start task
     let tower = TowerId::from("test-tower");
-    manager
-        .start_task(task_id, tower.clone())
-        .await
-        .expect("Failed to start task");
+    manager.start_task(task_id, tower.clone()).await.expect("Failed to start task");
 
     // Update progress
-    manager
-        .update_progress(task_id, 0.25)
-        .await
-        .expect("Failed to update progress");
+    manager.update_progress(task_id, 0.25).await.expect("Failed to update progress");
 
-    manager
-        .update_progress(task_id, 0.50)
-        .await
-        .expect("Failed to update progress");
+    manager.update_progress(task_id, 0.50).await.expect("Failed to update progress");
 
     // Create checkpoint
     let state = vec![1, 2, 3, 4, 5];
@@ -70,28 +54,16 @@ async fn test_full_task_lifecycle() {
     assert_eq!(resumed_state, state);
 
     // Continue task
-    manager
-        .update_progress(task_id, 0.75)
-        .await
-        .expect("Failed to update progress");
+    manager.update_progress(task_id, 0.75).await.expect("Failed to update progress");
 
-    manager
-        .update_progress(task_id, 1.0)
-        .await
-        .expect("Failed to update progress");
+    manager.update_progress(task_id, 1.0).await.expect("Failed to update progress");
 
     // Complete task
-    manager
-        .complete_task(task_id)
-        .await
-        .expect("Failed to complete task");
+    manager.complete_task(task_id).await.expect("Failed to complete task");
 
     // Verify final state
-    let final_task = manager
-        .get_task(task_id)
-        .await
-        .expect("Failed to get final task")
-        .expect("Task not found");
+    let final_task =
+        manager.get_task(task_id).await.expect("Failed to get final task").expect("Task not found");
 
     assert_eq!(final_task.progress, 1.0);
     assert!(matches!(
@@ -102,9 +74,8 @@ async fn test_full_task_lifecycle() {
 
 #[tokio::test]
 async fn test_task_pause_and_resume() {
-    let manager = TaskLifecycleManager::new("sqlite::memory:")
-        .await
-        .expect("Failed to create manager");
+    let manager =
+        TaskLifecycleManager::new("sqlite::memory:").await.expect("Failed to create manager");
 
     let owner = UserId::from("test-user");
     let spec = TaskSpec {
@@ -134,10 +105,7 @@ async fn test_task_pause_and_resume() {
     ));
 
     // Resume task
-    manager
-        .resume_task(task_id, tower)
-        .await
-        .expect("Failed to resume task");
+    manager.resume_task(task_id, tower).await.expect("Failed to resume task");
 
     let resumed_task = manager.get_task(task_id).await.unwrap().unwrap();
     assert!(matches!(
@@ -149,9 +117,7 @@ async fn test_task_pause_and_resume() {
 
 #[tokio::test]
 async fn test_task_cancellation() {
-    let manager = TaskLifecycleManager::new("sqlite::memory:")
-        .await
-        .unwrap();
+    let manager = TaskLifecycleManager::new("sqlite::memory:").await.unwrap();
 
     let owner = UserId::from("test-user");
     let spec = TaskSpec {
@@ -170,10 +136,7 @@ async fn test_task_cancellation() {
 
     // Cancel with reason
     let reason = "User requested cancellation";
-    manager
-        .cancel_task(task_id, Some(reason.into()))
-        .await
-        .unwrap();
+    manager.cancel_task(task_id, Some(reason.into())).await.unwrap();
 
     let cancelled_task = manager.get_task(task_id).await.unwrap().unwrap();
     assert!(matches!(
@@ -184,9 +147,7 @@ async fn test_task_cancellation() {
 
 #[tokio::test]
 async fn test_multiple_checkpoints() {
-    let manager = TaskLifecycleManager::new("sqlite::memory:")
-        .await
-        .unwrap();
+    let manager = TaskLifecycleManager::new("sqlite::memory:").await.unwrap();
 
     let owner = UserId::from("test-user");
     let spec = TaskSpec {
@@ -202,24 +163,15 @@ async fn test_multiple_checkpoints() {
     manager.start_task(task_id, tower).await.unwrap();
 
     // Create multiple checkpoints
-    let checkpoint1 = manager
-        .create_checkpoint(task_id, vec![1, 2, 3])
-        .await
-        .unwrap();
+    let checkpoint1 = manager.create_checkpoint(task_id, vec![1, 2, 3]).await.unwrap();
 
     manager.update_progress(task_id, 0.5).await.unwrap();
 
-    let checkpoint2 = manager
-        .create_checkpoint(task_id, vec![4, 5, 6])
-        .await
-        .unwrap();
+    let checkpoint2 = manager.create_checkpoint(task_id, vec![4, 5, 6]).await.unwrap();
 
     manager.update_progress(task_id, 0.75).await.unwrap();
 
-    let checkpoint3 = manager
-        .create_checkpoint(task_id, vec![7, 8, 9])
-        .await
-        .unwrap();
+    let checkpoint3 = manager.create_checkpoint(task_id, vec![7, 8, 9]).await.unwrap();
 
     // Verify all checkpoints are different
     assert_ne!(checkpoint1, checkpoint2);
@@ -239,4 +191,3 @@ async fn test_multiple_checkpoints() {
     assert_eq!(state2, vec![4, 5, 6]);
     assert_eq!(state3, vec![7, 8, 9]);
 }
-

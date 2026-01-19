@@ -18,7 +18,7 @@ use songbird_types::{
 /// Benchmark const function performance
 fn bench_const_functions(c: &mut Criterion) {
     let mut group = c.benchmark_group("const_functions");
-    
+
     let config = CanonicalNetworkConfig {
         bind_address: IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)),
         orchestrator_port: 8080,
@@ -39,9 +39,7 @@ fn bench_const_functions(c: &mut Criterion) {
         b.iter(|| black_box(config.discovery_endpoint()))
     });
 
-    group.bench_function("metrics_endpoint", |b| {
-        b.iter(|| black_box(config.metrics_endpoint()))
-    });
+    group.bench_function("metrics_endpoint", |b| b.iter(|| black_box(config.metrics_endpoint())));
 
     group.bench_function("federation_endpoint", |b| {
         b.iter(|| black_box(config.federation_endpoint()))
@@ -53,7 +51,7 @@ fn bench_const_functions(c: &mut Criterion) {
 /// Benchmark error handling performance
 fn bench_error_handling(c: &mut Criterion) {
     let mut group = c.benchmark_group("error_handling");
-    
+
     let error = SongbirdError::Configuration {
         message: "Test configuration error".to_string(),
         field: Some("test_field".to_string()),
@@ -61,13 +59,9 @@ fn bench_error_handling(c: &mut Criterion) {
     };
 
     // Benchmark const error methods
-    group.bench_function("error_category", |b| {
-        b.iter(|| black_box(error.category()))
-    });
+    group.bench_function("error_category", |b| b.iter(|| black_box(error.category())));
 
-    group.bench_function("error_is_recoverable", |b| {
-        b.iter(|| black_box(error.is_recoverable()))
-    });
+    group.bench_function("error_is_recoverable", |b| b.iter(|| black_box(error.is_recoverable())));
 
     group.finish();
 }
@@ -75,18 +69,14 @@ fn bench_error_handling(c: &mut Criterion) {
 /// Benchmark response handling performance
 fn bench_response_handling(c: &mut Criterion) {
     let mut group = c.benchmark_group("response_handling");
-    
+
     let success_response = CanonicalResponse::success("test_data".to_string());
     let error_response = CanonicalResponse::error("test_error".to_string());
 
     // Benchmark const response methods
-    group.bench_function("success_check", |b| {
-        b.iter(|| black_box(success_response.is_success()))
-    });
+    group.bench_function("success_check", |b| b.iter(|| black_box(success_response.is_success())));
 
-    group.bench_function("error_check", |b| {
-        b.iter(|| black_box(error_response.is_error()))
-    });
+    group.bench_function("error_check", |b| b.iter(|| black_box(error_response.is_error())));
 
     // Benchmark response creation
     group.bench_function("success_creation", |b| {
@@ -99,7 +89,7 @@ fn bench_response_handling(c: &mut Criterion) {
 /// Benchmark primal type operations
 fn bench_primal_operations(c: &mut Criterion) {
     let mut group = c.benchmark_group("primal_operations");
-    
+
     let primal_config = CanonicalPrimalConfig {
         primal_type: CanonicalPrimalType::Security,
         instance_id: "test_instance".to_string(),
@@ -110,13 +100,9 @@ fn bench_primal_operations(c: &mut Criterion) {
     };
 
     // Benchmark const primal methods
-    group.bench_function("get_type", |b| {
-        b.iter(|| black_box(primal_config.get_type()))
-    });
+    group.bench_function("get_type", |b| b.iter(|| black_box(primal_config.get_type())));
 
-    group.bench_function("is_security", |b| {
-        b.iter(|| black_box(primal_config.is_security()))
-    });
+    group.bench_function("is_security", |b| b.iter(|| black_box(primal_config.is_security())));
 
     group.finish();
 }
@@ -124,19 +110,15 @@ fn bench_primal_operations(c: &mut Criterion) {
 /// Benchmark throughput with different data sizes
 fn bench_throughput_scaling(c: &mut Criterion) {
     let mut group = c.benchmark_group("throughput_scaling");
-    
+
     // Test with different payload sizes
     for size in [1, 10, 100, 1000, 10000].iter() {
         let data = "x".repeat(*size);
-        
+
         group.throughput(Throughput::Bytes(*size as u64));
-        group.bench_with_input(
-            BenchmarkId::new("response_creation", size),
-            size,
-            |b, &_size| {
-                b.iter(|| black_box(CanonicalResponse::success(data.clone())))
-            },
-        );
+        group.bench_with_input(BenchmarkId::new("response_creation", size), size, |b, &_size| {
+            b.iter(|| black_box(CanonicalResponse::success(data.clone())))
+        });
     }
 
     group.finish();
@@ -145,9 +127,9 @@ fn bench_throughput_scaling(c: &mut Criterion) {
 /// Benchmark zero-copy patterns
 fn bench_zero_copy_patterns(c: &mut Criterion) {
     let mut group = c.benchmark_group("zero_copy");
-    
+
     let large_string = "x".repeat(10000);
-    
+
     // Compare different approaches
     group.bench_function("string_clone", |b| {
         b.iter(|| {
@@ -167,9 +149,9 @@ fn bench_zero_copy_patterns(c: &mut Criterion) {
 /// Benchmark inline function performance
 fn bench_inline_performance(c: &mut Criterion) {
     let mut group = c.benchmark_group("inline_performance");
-    
+
     let config = CanonicalNetworkConfig::default();
-    
+
     // Benchmark calls to inlined functions in a tight loop
     group.bench_function("inline_endpoint_calls", |b| {
         b.iter(|| {
@@ -188,7 +170,7 @@ fn bench_inline_performance(c: &mut Criterion) {
 /// Benchmark memory allocation patterns
 fn bench_memory_patterns(c: &mut Criterion) {
     let mut group = c.benchmark_group("memory_patterns");
-    
+
     // Benchmark stack vs heap allocation patterns
     group.bench_function("stack_allocation", |b| {
         b.iter(|| {
@@ -210,7 +192,7 @@ fn bench_memory_patterns(c: &mut Criterion) {
 /// Comprehensive benchmark suite
 fn bench_comprehensive_suite(c: &mut Criterion) {
     let mut group = c.benchmark_group("comprehensive");
-    
+
     // Real-world scenario: Creating a complete network configuration
     group.bench_function("full_config_creation", |b| {
         b.iter(|| {
@@ -224,7 +206,7 @@ fn bench_comprehensive_suite(c: &mut Criterion) {
                 federation_port: 8005,
                 ..Default::default()
             });
-            
+
             // Use all the const functions
             let _orch = config.orchestrator_endpoint();
             let _disc = config.discovery_endpoint();
@@ -249,4 +231,4 @@ criterion_group!(
     bench_comprehensive_suite
 );
 
-criterion_main!(ultra_pedantic_benches); 
+criterion_main!(ultra_pedantic_benches);

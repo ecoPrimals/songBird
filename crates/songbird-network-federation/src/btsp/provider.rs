@@ -198,8 +198,8 @@ impl BtspProviderFactory {
     /// support will be discovered (`BearDog`, future alternatives, etc.)
     async fn query_local_upa_for_security_provider(&self) -> SongbirdResult<Option<String>> {
         // Query localhost:8080 (local Songbird UPA)
+        // Note: Using HTTP (not HTTPS) for localhost discovery
         let client = reqwest::Client::builder()
-            .danger_accept_invalid_certs(true) // Self-signed certs OK on localhost
             .timeout(std::time::Duration::from_secs(2))
             .build()
             .map_err(|e| SongbirdError::network(format!("HTTP client creation failed: {e}")))?;
@@ -251,8 +251,8 @@ impl BtspProviderFactory {
 
     /// Probe a security provider endpoint to verify it's responsive
     async fn probe_security_provider_endpoint(&self, endpoint: &str) -> SongbirdResult<()> {
+        // Note: Using HTTP (not HTTPS) for service discovery
         let client = reqwest::Client::builder()
-            .danger_accept_invalid_certs(true)
             .timeout(std::time::Duration::from_millis(500))
             .build()
             .map_err(|e| SongbirdError::network(format!("HTTP client creation failed: {e}")))?;

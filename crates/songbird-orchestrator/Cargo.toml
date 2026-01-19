@@ -71,7 +71,7 @@ tokio-stream = "0.1"
 # HTTP server for web dashboard
 axum = { version = "0.7", features = ["multipart", "ws"] }
 # Modern pure Rust TLS stack (no axum-server needed!)
-tokio-rustls = "0.26"  # TLS acceptor for tokio
+# tokio-rustls = "0.26"  # ❌ REMOVED Jan 19, 2026: Replaced with songbird-tls (Pure Rust TLS via BearDog crypto)
 hyper = { version = "1.0", features = ["server", "http1"] }
 hyper-util = { version = "0.1", features = ["tokio"] }
 songbird-tls = { path = "../songbird-tls" }  # ✅ Pure Rust TLS implementation (future)

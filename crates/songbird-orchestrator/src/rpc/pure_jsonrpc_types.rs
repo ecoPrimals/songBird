@@ -32,14 +32,14 @@ use serde::{Deserialize, Serialize};
 pub struct JsonRpcRequest {
     /// JSON-RPC protocol version (must be "2.0")
     pub jsonrpc: String,
-    
+
     /// Method name to invoke
     pub method: String,
-    
+
     /// Optional parameters for the method
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub params: Option<serde_json::Value>,
-    
+
     /// Request identifier (can be null for notifications)
     #[serde(skip_serializing_if = "Option::is_none")]
     pub id: Option<serde_json::Value>,
@@ -47,7 +47,11 @@ pub struct JsonRpcRequest {
 
 impl JsonRpcRequest {
     /// Create a new JSON-RPC request
-    pub fn new(method: impl Into<String>, params: Option<serde_json::Value>, id: impl Into<serde_json::Value>) -> Self {
+    pub fn new(
+        method: impl Into<String>,
+        params: Option<serde_json::Value>,
+        id: impl Into<serde_json::Value>,
+    ) -> Self {
         Self {
             jsonrpc: "2.0".to_string(),
             method: method.into(),
@@ -98,15 +102,15 @@ impl JsonRpcRequest {
 pub struct JsonRpcResponse {
     /// JSON-RPC protocol version (always "2.0")
     pub jsonrpc: String,
-    
+
     /// Result value (present on success)
     #[serde(skip_serializing_if = "Option::is_none")]
     pub result: Option<serde_json::Value>,
-    
+
     /// Error object (present on failure)
     #[serde(skip_serializing_if = "Option::is_none")]
     pub error: Option<JsonRpcError>,
-    
+
     /// Request identifier (matches request id)
     pub id: serde_json::Value,
 }
@@ -140,10 +144,10 @@ impl JsonRpcResponse {
 pub struct JsonRpcError {
     /// Error code (standard or application-defined)
     pub code: i32,
-    
+
     /// Human-readable error message
     pub message: String,
-    
+
     /// Optional additional error data
     #[serde(skip_serializing_if = "Option::is_none")]
     pub data: Option<serde_json::Value>,
@@ -151,33 +155,33 @@ pub struct JsonRpcError {
 
 impl JsonRpcError {
     // Standard JSON-RPC 2.0 error codes
-    
+
     /// Parse error - Invalid JSON
     pub const PARSE_ERROR: i32 = -32700;
-    
+
     /// Invalid request - Request object is not valid
     pub const INVALID_REQUEST: i32 = -32600;
-    
+
     /// Method not found - Method does not exist
     pub const METHOD_NOT_FOUND: i32 = -32601;
-    
+
     /// Invalid params - Invalid method parameters
     pub const INVALID_PARAMS: i32 = -32602;
-    
+
     /// Internal error - Internal JSON-RPC error
     pub const INTERNAL_ERROR: i32 = -32603;
-    
+
     // Application-specific error codes (as per spec, -32000 to -32099)
-    
+
     /// Unauthorized - Authentication required or failed
     pub const UNAUTHORIZED: i32 = -32000;
-    
+
     /// Forbidden - Insufficient permissions
     pub const FORBIDDEN: i32 = -32001;
-    
+
     /// Not found - Resource not found
     pub const NOT_FOUND: i32 = -32002;
-    
+
     /// Timeout - Operation timed out
     pub const TIMEOUT: i32 = -32003;
 
@@ -268,7 +272,8 @@ mod tests {
 
     #[test]
     fn test_success_response() {
-        let resp = JsonRpcResponse::success(serde_json::json!({"pong": true}), serde_json::json!(1));
+        let resp =
+            JsonRpcResponse::success(serde_json::json!({"pong": true}), serde_json::json!(1));
         assert_eq!(resp.jsonrpc, "2.0");
         assert!(resp.result.is_some());
         assert!(resp.error.is_none());
@@ -308,4 +313,3 @@ mod tests {
         assert_eq!(JsonRpcError::INTERNAL_ERROR, -32603);
     }
 }
-

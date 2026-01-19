@@ -28,7 +28,6 @@ use serde_json::Value;
 use songbird_types::TrustLevel;
 use songbird_universal::UnixRpcClient;
 use std::path::PathBuf;
-use std::time::Duration;
 use tracing::{debug, warn};
 
 /// Limited connection for same-family peers (Level 1)

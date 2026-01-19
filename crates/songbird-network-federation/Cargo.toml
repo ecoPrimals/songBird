@@ -30,14 +30,17 @@ uuid = { workspace = true }
 thiserror = { workspace = true }
 anyhow = { workspace = true }
 
-# Networking (✅ Pure Rust TLS!)
-reqwest = { version = "0.11", features = ["json", "rustls-tls"], default-features = false }
+# Networking (✅ 100% Pure Rust - No TLS!)
+# reqwest without TLS features = no C dependencies!
+reqwest = { version = "0.11", features = ["json"], default-features = false }
 url = "2.5"
 
 # TLS/HTTPS support - REMOVED! Using songbird-tls instead (100% Pure Rust!)
-# Was: rustls, rustls-pemfile, tokio-rustls (all had C dependencies via ring/aws-lc-rs)
-# Now: songbird-tls handles all TLS (delegated to BearDog for crypto)
-# rcgen = "0.14"  # ❌ REMOVED: Uses ring (C code). Replaced with songbird-tls::CertificateGenerator - Jan 19, 2026
+# ❌ REMOVED (Jan 19, 2026):
+#   - rustls-tls feature → hyper-rustls → rustls → ring (C code)
+#   - rustls, rustls-pemfile, tokio-rustls (all had C dependencies via ring/aws-lc-rs)
+#   - rcgen (uses ring for crypto)
+# ✅ NOW: songbird-tls handles all TLS (delegated to BearDog for Pure Rust crypto)
 
 # Random number generation (missing dependency that caused errors)
 fastrand = "2.0"

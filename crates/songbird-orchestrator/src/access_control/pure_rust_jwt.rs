@@ -46,8 +46,8 @@ impl Default for JwtHeader {
 pub fn encode<T: Serialize>(claims: &T, secret: &[u8]) -> Result<String> {
     // Create header
     let header = JwtHeader::default();
-    let header_json = serde_json::to_string(&header)
-        .map_err(|e| anyhow!("Failed to serialize header: {}", e))?;
+    let header_json =
+        serde_json::to_string(&header).map_err(|e| anyhow!("Failed to serialize header: {}", e))?;
     let header_b64 = URL_SAFE_NO_PAD.encode(header_json.as_bytes());
 
     // Create payload
@@ -260,4 +260,3 @@ mod tests {
         assert_eq!(decoded, claims);
     }
 }
-

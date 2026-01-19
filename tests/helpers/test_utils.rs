@@ -14,17 +14,17 @@ where
     let start = std::time::Instant::now();
     let mut backoff = Duration::from_millis(1);
     let max_backoff = Duration::from_millis(100);
-    
+
     while start.elapsed() < max_duration {
         if condition() {
             return true;
         }
-        
+
         // Exponential backoff: 1ms, 2ms, 4ms, 8ms, ..., up to 100ms
         tokio::time::sleep(backoff).await;
         backoff = std::cmp::min(backoff * 2, max_backoff);
     }
-    
+
     false
 }
 
@@ -38,13 +38,7 @@ pub fn temp_unix_socket_path(name: &str) -> String {
 /// Modern approach: Checks actual socket readiness instead of blind sleep.
 /// Uses exponential backoff for efficiency.
 pub async fn wait_for_socket_ready(path: &str, max_duration: Duration) -> bool {
-    wait_for(
-        || {
-            std::path::Path::new(path).exists()
-        },
-        max_duration,
-    )
-    .await
+    wait_for(|| std::path::Path::new(path).exists(), max_duration).await
 }
 
 /// Clean up Unix socket file
@@ -55,41 +49,38 @@ pub fn cleanup_socket(path: &str) {
 #[cfg(test)]
 mod tests {
     use super::*;
-    
+
     #[tokio::test]
     async fn test_wait_for_success() {
         let mut counter = 0;
-        
+
         let result = wait_for(
             || {
                 counter += 1;
                 counter >= 5
             },
             Duration::from_secs(1),
-        ).await;
-        
+        )
+        .await;
+
         assert!(result);
         assert!(counter >= 5);
     }
-    
+
     #[tokio::test]
     async fn test_wait_for_timeout() {
-        let result = wait_for(
-            || false,
-            Duration::from_millis(100),
-        ).await;
-        
+        let result = wait_for(|| false, Duration::from_millis(100)).await;
+
         assert!(!result);
     }
-    
+
     #[test]
     fn test_temp_unix_socket_path() {
         let path1 = temp_unix_socket_path("test");
         let path2 = temp_unix_socket_path("test");
-        
+
         assert!(path1.starts_with("/tmp/songbird-test-test-"));
         assert!(path2.starts_with("/tmp/songbird-test-test-"));
         assert_ne!(path1, path2); // Should be unique
     }
 }
-

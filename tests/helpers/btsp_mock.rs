@@ -26,11 +26,18 @@ pub enum FaultMode {
     /// Simulate network partition (connection drops)
     NetworkPartition,
     /// Simulate slow responses
-    SlowResponse { delay_ms: u64 },
+    SlowResponse {
+        delay_ms: u64,
+    },
     /// Simulate connection drop after N bytes
-    ConnectionDrop { after_bytes: usize },
+    ConnectionDrop {
+        after_bytes: usize,
+    },
     /// Simulate JSON-RPC error responses
-    JsonRpcError { code: i32, message: String },
+    JsonRpcError {
+        code: i32,
+        message: String,
+    },
 }
 
 impl BearDogMock {
@@ -45,57 +52,63 @@ impl BearDogMock {
             fault_mode: FaultMode::None,
         }
     }
-    
+
     /// Start the mock server
     pub async fn start(&mut self) -> Result<()> {
         // Clean up old socket if exists
         let _ = std::fs::remove_file(&self.socket_path);
-        
+
         // Bind to Unix socket
         let listener = UnixListener::bind(&self.socket_path)?;
         info!("🐻 BearDog mock started on {:?}", self.socket_path);
-        
+
         self.listener = Some(listener);
         Ok(())
     }
-    
+
     /// Accept a single connection and handle it
     pub async fn handle_connection(&self) -> Result<()> {
-        let listener = self.listener.as_ref()
-            .ok_or_else(|| anyhow!("Mock server not started"))?;
-        
+        let listener = self.listener.as_ref().ok_or_else(|| anyhow!("Mock server not started"))?;
+
         let (stream, _) = listener.accept().await?;
         debug!("🐻 BearDog mock accepted connection");
-        
+
         self.handle_stream(stream).await
     }
-    
+
     /// Handle a Unix stream connection
     async fn handle_stream(&self, mut stream: UnixStream) -> Result<()> {
         let mut buffer = Vec::new();
         let mut reader = BufReader::new(&mut stream);
-        
+
         // Read JSON-RPC request
         reader.read_until(b'\n', &mut buffer).await?;
-        
+
         let request: Value = serde_json::from_slice(&buffer)?;
         debug!("🐻 BearDog mock received request: {:?}", request);
-        
+
         // Inject faults if configured
         match self.fault_mode {
             FaultMode::NetworkPartition => {
                 // Simulate network partition (drop connection)
                 return Ok(());
             }
-            FaultMode::SlowResponse { delay_ms } => {
+            FaultMode::SlowResponse {
+                delay_ms,
+            } => {
                 tokio::time::sleep(tokio::time::Duration::from_millis(delay_ms)).await;
             }
-            FaultMode::ConnectionDrop { after_bytes } => {
+            FaultMode::ConnectionDrop {
+                after_bytes,
+            } => {
                 if buffer.len() >= after_bytes {
                     return Ok(()); // Drop connection
                 }
             }
-            FaultMode::JsonRpcError { code, ref message } => {
+            FaultMode::JsonRpcError {
+                code,
+                ref message,
+            } => {
                 let error_response = json!({
                     "jsonrpc": "2.0",
                     "id": request.get("id"),
@@ -104,7 +117,7 @@ impl BearDogMock {
                         "message": message
                     }
                 });
-                
+
                 let response_bytes = serde_json::to_vec(&error_response)?;
                 stream.write_all(&response_bytes).await?;
                 stream.write_all(b"\n").await?;
@@ -112,12 +125,13 @@ impl BearDogMock {
             }
             FaultMode::None => {}
         }
-        
+
         // Extract method from request
-        let method = request.get("method")
+        let method = request
+            .get("method")
             .and_then(|m| m.as_str())
             .ok_or_else(|| anyhow!("Missing method in request"))?;
-        
+
         // Handle different BTSP methods
         let response = match method {
             "ping" => self.handle_ping(&request),
@@ -136,15 +150,15 @@ impl BearDogMock {
                 }
             }),
         };
-        
+
         // Send response
         let response_bytes = serde_json::to_vec(&response)?;
         stream.write_all(&response_bytes).await?;
         stream.write_all(b"\n").await?;
-        
+
         Ok(())
     }
-    
+
     /// Handle ping request
     fn handle_ping(&self, request: &Value) -> Value {
         json!({
@@ -157,7 +171,7 @@ impl BearDogMock {
             }
         })
     }
-    
+
     /// Handle tunnel establishment
     fn handle_tunnel_establish(&self, request: &Value) -> Value {
         json!({
@@ -170,15 +184,16 @@ impl BearDogMock {
             }
         })
     }
-    
+
     /// Handle tunnel encryption
     fn handle_tunnel_encrypt(&self, request: &Value) -> Value {
         // For testing, just return the data as-is (mock encryption)
-        let data = request.get("params")
+        let data = request
+            .get("params")
             .and_then(|p| p.get("data"))
             .and_then(|d| d.as_str())
             .unwrap_or("");
-        
+
         json!({
             "jsonrpc": "2.0",
             "id": request.get("id"),
@@ -187,15 +202,16 @@ impl BearDogMock {
             }
         })
     }
-    
+
     /// Handle tunnel decryption
     fn handle_tunnel_decrypt(&self, request: &Value) -> Value {
         // For testing, just return the data as-is (mock decryption)
-        let data = request.get("params")
+        let data = request
+            .get("params")
             .and_then(|p| p.get("data"))
             .and_then(|d| d.as_str())
             .unwrap_or("");
-        
+
         json!({
             "jsonrpc": "2.0",
             "id": request.get("id"),
@@ -204,7 +220,7 @@ impl BearDogMock {
             }
         })
     }
-    
+
     /// Handle tunnel status
     fn handle_tunnel_status(&self, request: &Value) -> Value {
         json!({
@@ -218,7 +234,7 @@ impl BearDogMock {
             }
         })
     }
-    
+
     /// Handle tunnel close
     fn handle_tunnel_close(&self, request: &Value) -> Value {
         json!({
@@ -229,7 +245,7 @@ impl BearDogMock {
             }
         })
     }
-    
+
     /// Handle contact exchange
     fn handle_contact_exchange(&self, request: &Value) -> Value {
         json!({
@@ -242,17 +258,17 @@ impl BearDogMock {
             }
         })
     }
-    
+
     /// Set fault injection mode
     pub fn set_fault_mode(&mut self, mode: FaultMode) {
         self.fault_mode = mode;
     }
-    
+
     /// Clear fault injection
     pub fn clear_faults(&mut self) {
         self.fault_mode = FaultMode::None;
     }
-    
+
     /// Stop the mock server and clean up
     pub fn stop(self) -> Result<()> {
         drop(self.listener);
@@ -265,13 +281,13 @@ impl BearDogMock {
 #[cfg(test)]
 mod tests {
     use super::*;
-    
+
     #[tokio::test]
     async fn test_beardog_mock_creation() {
         let mock = BearDogMock::new("/tmp/test-beardog-mock.sock");
         assert_eq!(mock.socket_path, PathBuf::from("/tmp/test-beardog-mock.sock"));
     }
-    
+
     #[tokio::test]
     async fn test_beardog_mock_start_stop() {
         let mut mock = BearDogMock::new("/tmp/test-beardog-mock-2.sock");
@@ -280,4 +296,3 @@ mod tests {
         mock.stop().unwrap();
     }
 }
-

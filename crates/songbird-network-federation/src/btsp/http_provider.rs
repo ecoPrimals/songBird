@@ -40,13 +40,18 @@ impl HttpBtspProvider {
     /// * `provider_name` - Name of the provider for logging (e.g., "beardog")
     pub fn new(base_url: String, provider_name: String) -> SongbirdResult<Self> {
         // Convert base_url to socket path or use env var
-        let socket_path = std::env::var(format!("{}_BTSP_SOCKET_PATH", provider_name.to_uppercase()))
-            .or_else(|_| std::env::var("BTSP_SOCKET_PATH"))
-            .map(PathBuf::from)
-            .unwrap_or_else(|_| PathBuf::from(format!("/tmp/{}_btsp.sock", provider_name)));
+        let socket_path =
+            std::env::var(format!("{}_BTSP_SOCKET_PATH", provider_name.to_uppercase()))
+                .or_else(|_| std::env::var("BTSP_SOCKET_PATH"))
+                .map(PathBuf::from)
+                .unwrap_or_else(|_| PathBuf::from(format!("/tmp/{}_btsp.sock", provider_name)));
 
-        let rpc_client = UnixRpcClient::new(&socket_path)
-            .map_err(|e| SongbirdError::network(format!("Failed to create RPC client for {}: {}", provider_name, e)))?;
+        let rpc_client = UnixRpcClient::new(&socket_path).map_err(|e| {
+            SongbirdError::network(format!(
+                "Failed to create RPC client for {}: {}",
+                provider_name, e
+            ))
+        })?;
 
         info!("🔒 Created RPC BTSP provider for {} at {:?}", provider_name, socket_path);
 
@@ -62,12 +67,13 @@ impl HttpBtspProvider {
         debug!("🔍 Verifying RPC connection to {} at {:?}", self.provider_name, self.socket_path);
 
         // Call health check via JSON-RPC
-        let _response: serde_json::Value = self.rpc_client.call_no_params("health").await.map_err(|e| {
-            SongbirdError::network(format!(
-                "Failed to connect to security provider {} at {:?}: {}",
-                self.provider_name, self.socket_path, e
-            ))
-        })?;
+        let _response: serde_json::Value =
+            self.rpc_client.call_no_params("health").await.map_err(|e| {
+                SongbirdError::network(format!(
+                    "Failed to connect to security provider {} at {:?}: {}",
+                    self.provider_name, self.socket_path, e
+                ))
+            })?;
 
         info!("✅ RPC connection to {} verified", self.provider_name);
         Ok(())
@@ -212,7 +218,9 @@ impl BtspProvider for HttpBtspProvider {
         // Call RPC method - ignore errors as tunnel might already be closed
         match self.rpc_client.call::<_, serde_json::Value>("btsp.tunnel.close", &request).await {
             Ok(_) => info!("✅ Tunnel {} closed", handle.id),
-            Err(e) => warn!("⚠️ Failed to close tunnel {}: {} (may already be closed)", handle.id, e),
+            Err(e) => {
+                warn!("⚠️ Failed to close tunnel {}: {} (may already be closed)", handle.id, e)
+            }
         }
 
         Ok(())

@@ -2,8 +2,8 @@
 //!
 //! Tests adapter behavior under extreme and unexpected conditions
 
-use songbird_universal::capabilities::{DiscoveryConfig, UniversalCapabilityAdapter};
 use songbird_types::{CapabilityRequest, PrimalType, ServiceInfo};
+use songbird_universal::capabilities::{DiscoveryConfig, UniversalCapabilityAdapter};
 use std::sync::Arc;
 use std::time::Duration;
 use tokio::time::sleep;
@@ -12,13 +12,13 @@ use tokio::time::sleep;
 async fn chaos_adapter_creation_stress() {
     // Create 500 adapters rapidly
     let mut adapters = Vec::new();
-    
+
     for _ in 0..500 {
         let config = DiscoveryConfig::default();
         let adapter = UniversalCapabilityAdapter::new(config);
         adapters.push(adapter);
     }
-    
+
     // All should be functional
     assert_eq!(adapters.len(), 500, "Should create 500 adapters");
 }
@@ -26,7 +26,7 @@ async fn chaos_adapter_creation_stress() {
 #[tokio::test]
 async fn chaos_adapter_concurrent_creation() {
     let mut handles = vec![];
-    
+
     // Spawn 100 concurrent adapter creators
     for _ in 0..100 {
         let handle = tokio::spawn(async move {
@@ -36,7 +36,7 @@ async fn chaos_adapter_concurrent_creation() {
         });
         handles.push(handle);
     }
-    
+
     // Wait for all creations
     for handle in handles {
         handle.await.unwrap();
@@ -47,7 +47,7 @@ async fn chaos_adapter_concurrent_creation() {
 async fn chaos_adapter_empty_capability_request() {
     let config = DiscoveryConfig::default();
     let adapter = UniversalCapabilityAdapter::new(config);
-    
+
     // Request with empty strings
     let request = CapabilityRequest {
         capability: "".to_string(),
@@ -55,7 +55,7 @@ async fn chaos_adapter_empty_capability_request() {
         parameters: Default::default(),
         timeout: Duration::from_secs(1),
     };
-    
+
     // Should handle empty request gracefully
     let result = adapter.execute_capability_request(request).await;
     assert!(result.is_ok() || result.is_err(), "Should handle empty capability gracefully");
@@ -65,7 +65,7 @@ async fn chaos_adapter_empty_capability_request() {
 async fn chaos_adapter_extreme_timeout() {
     let config = DiscoveryConfig::default();
     let adapter = UniversalCapabilityAdapter::new(config);
-    
+
     // Request with 1 nanosecond timeout
     let request = CapabilityRequest {
         capability: "compute".to_string(),
@@ -73,7 +73,7 @@ async fn chaos_adapter_extreme_timeout() {
         parameters: Default::default(),
         timeout: Duration::from_nanos(1),
     };
-    
+
     // Should handle extreme timeout
     let result = adapter.execute_capability_request(request).await;
     assert!(result.is_ok() || result.is_err(), "Should handle extreme timeout");
@@ -83,16 +83,10 @@ async fn chaos_adapter_extreme_timeout() {
 async fn chaos_adapter_unicode_capability_names() {
     let config = DiscoveryConfig::default();
     let adapter = UniversalCapabilityAdapter::new(config);
-    
+
     // Test with various unicode strings
-    let test_capabilities = vec![
-        "🚀compute",
-        "データ処理",
-        "计算能力",
-        "вычисления",
-        "حَاسِب",
-    ];
-    
+    let test_capabilities = vec!["🚀compute", "データ処理", "计算能力", "вычисления", "حَاسِب"];
+
     for capability in test_capabilities {
         let request = CapabilityRequest {
             capability: capability.to_string(),
@@ -100,7 +94,7 @@ async fn chaos_adapter_unicode_capability_names() {
             parameters: Default::default(),
             timeout: Duration::from_secs(1),
         };
-        
+
         let result = adapter.execute_capability_request(request).await;
         assert!(result.is_ok() || result.is_err(), "Should handle unicode capability names");
     }
@@ -110,17 +104,17 @@ async fn chaos_adapter_unicode_capability_names() {
 async fn chaos_adapter_very_long_capability_name() {
     let config = DiscoveryConfig::default();
     let adapter = UniversalCapabilityAdapter::new(config);
-    
+
     // 10KB capability name
     let long_capability = "a".repeat(10_000);
-    
+
     let request = CapabilityRequest {
         capability: long_capability,
         operation: "test".to_string(),
         parameters: Default::default(),
         timeout: Duration::from_secs(1),
     };
-    
+
     // Should handle long names gracefully
     let result = adapter.execute_capability_request(request).await;
     assert!(result.is_ok() || result.is_err(), "Should handle very long capability names");
@@ -130,7 +124,7 @@ async fn chaos_adapter_very_long_capability_name() {
 async fn chaos_adapter_rapid_request_flood() {
     let config = DiscoveryConfig::default();
     let adapter = Arc::new(UniversalCapabilityAdapter::new(config));
-    
+
     // Send 1000 requests as fast as possible
     let mut handles = vec![];
     for i in 0..1000 {
@@ -146,7 +140,7 @@ async fn chaos_adapter_rapid_request_flood() {
         });
         handles.push(handle);
     }
-    
+
     // Wait for flood to complete
     for handle in handles {
         handle.await.unwrap();
@@ -157,7 +151,7 @@ async fn chaos_adapter_rapid_request_flood() {
 async fn chaos_adapter_service_registration_stress() {
     let config = DiscoveryConfig::default();
     let adapter = UniversalCapabilityAdapter::new(config);
-    
+
     // Register 100 services rapidly
     for i in 0..100 {
         let service = ServiceInfo {
@@ -169,7 +163,7 @@ async fn chaos_adapter_service_registration_stress() {
             health_check_path: Some("/health".to_string()),
             metadata: Default::default(),
         };
-        
+
         let result = adapter.register_service(service).await;
         assert!(result.is_ok() || result.is_err(), "Should handle rapid service registration");
     }
@@ -179,9 +173,9 @@ async fn chaos_adapter_service_registration_stress() {
 async fn chaos_adapter_concurrent_service_operations() {
     let config = DiscoveryConfig::default();
     let adapter = Arc::new(UniversalCapabilityAdapter::new(config));
-    
+
     let mut handles = vec![];
-    
+
     // Concurrent registrations
     for i in 0..50 {
         let adapter_clone = Arc::clone(&adapter);
@@ -199,7 +193,7 @@ async fn chaos_adapter_concurrent_service_operations() {
         });
         handles.push(handle);
     }
-    
+
     // Concurrent deregistrations
     for i in 0..50 {
         let adapter_clone = Arc::clone(&adapter);
@@ -208,7 +202,7 @@ async fn chaos_adapter_concurrent_service_operations() {
         });
         handles.push(handle);
     }
-    
+
     // Wait for all operations
     for handle in handles {
         handle.await.unwrap();
@@ -219,9 +213,9 @@ async fn chaos_adapter_concurrent_service_operations() {
 async fn chaos_adapter_malformed_parameters() {
     let config = DiscoveryConfig::default();
     let adapter = UniversalCapabilityAdapter::new(config);
-    
+
     use serde_json::json;
-    
+
     // Test with various malformed parameters
     let test_params = vec![
         json!(null),
@@ -229,7 +223,7 @@ async fn chaos_adapter_malformed_parameters() {
         json!({"nested": {"deeply": {"nested": {"value": 123}}}}),
         json!({"key": "\u{0000}control\u{001F}chars"}),
     ];
-    
+
     for params in test_params {
         let request = CapabilityRequest {
             capability: "test".to_string(),
@@ -237,7 +231,7 @@ async fn chaos_adapter_malformed_parameters() {
             parameters: params,
             timeout: Duration::from_secs(1),
         };
-        
+
         let result = adapter.execute_capability_request(request).await;
         assert!(result.is_ok() || result.is_err(), "Should handle malformed parameters");
     }
@@ -266,7 +260,7 @@ async fn chaos_adapter_discovery_config_extremes() {
             ..Default::default()
         },
     ];
-    
+
     for config in configs {
         let adapter = UniversalCapabilityAdapter::new(config);
         // Should create without panic
@@ -278,7 +272,7 @@ async fn chaos_adapter_discovery_config_extremes() {
 async fn chaos_adapter_service_with_no_capabilities() {
     let config = DiscoveryConfig::default();
     let adapter = UniversalCapabilityAdapter::new(config);
-    
+
     // Register service with empty capabilities
     let service = ServiceInfo {
         id: "no_caps".to_string(),
@@ -289,7 +283,7 @@ async fn chaos_adapter_service_with_no_capabilities() {
         health_check_path: None,
         metadata: Default::default(),
     };
-    
+
     let result = adapter.register_service(service).await;
     assert!(result.is_ok() || result.is_err(), "Should handle service with no capabilities");
 }
@@ -298,7 +292,7 @@ async fn chaos_adapter_service_with_no_capabilities() {
 async fn chaos_adapter_duplicate_service_registration() {
     let config = DiscoveryConfig::default();
     let adapter = UniversalCapabilityAdapter::new(config);
-    
+
     let service = ServiceInfo {
         id: "duplicate".to_string(),
         name: "Duplicate Service".to_string(),
@@ -308,7 +302,7 @@ async fn chaos_adapter_duplicate_service_registration() {
         health_check_path: Some("/health".to_string()),
         metadata: Default::default(),
     };
-    
+
     // Register same service 100 times
     for _ in 0..100 {
         let result = adapter.register_service(service.clone()).await;
@@ -322,7 +316,7 @@ async fn chaos_adapter_memory_leak_check() {
     for _ in 0..1000 {
         let config = DiscoveryConfig::default();
         let adapter = UniversalCapabilityAdapter::new(config);
-        
+
         // Do some operations
         let service = ServiceInfo {
             id: format!("leak_check_{}", fastrand::u64(..)),
@@ -333,13 +327,13 @@ async fn chaos_adapter_memory_leak_check() {
             health_check_path: None,
             metadata: Default::default(),
         };
-        
+
         let _ = adapter.register_service(service).await;
-        
+
         // Drop adapter (should clean up)
         drop(adapter);
     }
-    
+
     // If we get here without OOM, no obvious leak
     assert!(true, "No memory leak detected");
 }
@@ -348,7 +342,7 @@ async fn chaos_adapter_memory_leak_check() {
 async fn chaos_adapter_special_characters_in_ids() {
     let config = DiscoveryConfig::default();
     let adapter = UniversalCapabilityAdapter::new(config);
-    
+
     // Test IDs with special characters
     let test_ids = vec![
         "id with spaces",
@@ -358,7 +352,7 @@ async fn chaos_adapter_special_characters_in_ids() {
         "id\twith\ttabs",
         "id\"with\"quotes",
     ];
-    
+
     for id in test_ids {
         let service = ServiceInfo {
             id: id.to_string(),
@@ -369,9 +363,8 @@ async fn chaos_adapter_special_characters_in_ids() {
             health_check_path: None,
             metadata: Default::default(),
         };
-        
+
         let result = adapter.register_service(service).await;
         assert!(result.is_ok() || result.is_err(), "Should handle special characters in IDs");
     }
 }
-

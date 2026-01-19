@@ -3,8 +3,8 @@
 //! ✅ Pure Rust JWT implementation using RustCrypto (hmac + sha2)
 //! Zero C dependencies - 100% ecoBin compliant!
 
-use super::Role;
 use super::pure_rust_jwt;
+use super::Role;
 use anyhow::{anyhow, Result};
 use serde::{Deserialize, Serialize};
 

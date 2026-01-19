@@ -395,7 +395,6 @@ impl EnhancedCapabilityRouter {
         info!("🚀 Executing task on registered service {} at {}", service_id, endpoint);
 
         let client = reqwest::Client::builder()
-            .danger_accept_invalid_certs(true) // Dev mode
             .timeout(Duration::from_secs(300))
             .build()
             .map_err(|e| SongbirdError::Network {

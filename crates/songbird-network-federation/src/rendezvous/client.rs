@@ -88,10 +88,8 @@ impl RendezvousClient {
             },
         };
 
-        let reg_response: RegisterPresenceResponse = self
-            .rpc_client
-            .call("rendezvous.register", &msg)
-            .await?;
+        let reg_response: RegisterPresenceResponse =
+            self.rpc_client.call("rendezvous.register", &msg).await?;
 
         let session_id = reg_response.session_id.clone();
         *self.session_id.write().await = Some(session_id.clone());
@@ -118,10 +116,8 @@ impl RendezvousClient {
             signature: None,
         };
 
-        let _hb_response: serde_json::Value = self
-            .rpc_client
-            .call("rendezvous.heartbeat", &msg)
-            .await?;
+        let _hb_response: serde_json::Value =
+            self.rpc_client.call("rendezvous.heartbeat", &msg).await?;
 
         debug!("💓 Heartbeat acknowledged");
         Ok(())
@@ -158,10 +154,8 @@ impl RendezvousClient {
             filters: None,
         };
 
-        let query_response: QueryPeersResponse = self
-            .rpc_client
-            .call("rendezvous.query", &msg)
-            .await?;
+        let query_response: QueryPeersResponse =
+            self.rpc_client.call("rendezvous.query", &msg).await?;
 
         info!("🔍 Found {} peers via rendezvous", query_response.peers.len());
 

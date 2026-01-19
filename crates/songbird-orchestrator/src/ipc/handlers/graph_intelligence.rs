@@ -25,13 +25,8 @@ pub async fn validate_graph(
 ) -> Result<ValidationResult, JsonRpcError> {
     debug!("🔍 Graph Intelligence API: graph.validate");
 
-    let graph: crate::graph::Graph = serde_json::from_value(params).map_err(|e| {
-        JsonRpcError::custom(
-            -32602,
-            format!("Failed to parse graph: {}", e),
-            None,
-        )
-    })?;
+    let graph: crate::graph::Graph = serde_json::from_value(params)
+        .map_err(|e| JsonRpcError::custom(-32602, format!("Failed to parse graph: {}", e), None))?;
 
     let result = handlers.graph_validator.validate(&graph);
 
@@ -49,20 +44,11 @@ pub async fn check_availability(
 ) -> Result<AvailabilityReport, JsonRpcError> {
     debug!("🔍 Graph Intelligence API: graph.check_availability");
 
-    let graph: crate::graph::Graph = serde_json::from_value(params).map_err(|e| {
-        JsonRpcError::custom(
-            -32602,
-            format!("Failed to parse graph: {}", e),
-            None,
-        )
-    })?;
+    let graph: crate::graph::Graph = serde_json::from_value(params)
+        .map_err(|e| JsonRpcError::custom(-32602, format!("Failed to parse graph: {}", e), None))?;
 
     let report = handlers.availability_checker.check_availability(&graph).await.map_err(|e| {
-        JsonRpcError::custom(
-            -32603,
-            format!("Availability check failed: {}", e),
-            None,
-        )
+        JsonRpcError::custom(-32603, format!("Availability check failed: {}", e), None)
     })?;
 
     info!(
@@ -84,20 +70,12 @@ pub async fn suggest_alternatives(
     debug!("🔍 Graph Intelligence API: graph.suggest_alternatives");
 
     let node: crate::graph::GraphNode = serde_json::from_value(params).map_err(|e| {
-        JsonRpcError::custom(
-            -32602,
-            format!("Failed to parse graph node: {}", e),
-            None,
-        )
+        JsonRpcError::custom(-32602, format!("Failed to parse graph node: {}", e), None)
     })?;
 
     let suggestions =
         handlers.availability_checker.suggest_alternatives(&node).await.map_err(|e| {
-            JsonRpcError::custom(
-                -32603,
-                format!("Failed to suggest alternatives: {}", e),
-                None,
-            )
+            JsonRpcError::custom(-32603, format!("Failed to suggest alternatives: {}", e), None)
         })?;
 
     info!(
@@ -118,20 +96,11 @@ pub async fn validate_coordination_pattern(
 ) -> Result<CoordinationValidationResult, JsonRpcError> {
     debug!("🔍 Graph Intelligence API: coordination.validate_pattern");
 
-    let graph: crate::graph::Graph = serde_json::from_value(params).map_err(|e| {
-        JsonRpcError::custom(
-            -32602,
-            format!("Failed to parse graph: {}", e),
-            None,
-        )
-    })?;
+    let graph: crate::graph::Graph = serde_json::from_value(params)
+        .map_err(|e| JsonRpcError::custom(-32602, format!("Failed to parse graph: {}", e), None))?;
 
     let result = handlers.coordination_validator.validate_pattern(&graph).await.map_err(|e| {
-        JsonRpcError::custom(
-            -32603,
-            format!("Coordination validation failed: {}", e),
-            None,
-        )
+        JsonRpcError::custom(-32603, format!("Coordination validation failed: {}", e), None)
     })?;
 
     info!(

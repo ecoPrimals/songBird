@@ -29,11 +29,7 @@ pub async fn discover_by_family(
     info!("🔍 P2P Discovery API: discover_by_family");
 
     let request: DiscoverByFamilyRequest = serde_json::from_value(params).map_err(|e| {
-        JsonRpcError::custom(
-            -32602,
-            format!("Failed to parse params: {}", e),
-            None,
-        )
+        JsonRpcError::custom(-32602, format!("Failed to parse params: {}", e), None)
     })?;
 
     if let Some(_listener) = &handlers.discovery_listener {
@@ -61,11 +57,7 @@ pub async fn create_genetic_tunnel(
     info!("🔗 P2P Discovery API: create_genetic_tunnel");
 
     let request: CreateGeneticTunnelRequest = serde_json::from_value(params).map_err(|e| {
-        JsonRpcError::custom(
-            -32602,
-            format!("Failed to parse params: {}", e),
-            None,
-        )
+        JsonRpcError::custom(-32602, format!("Failed to parse params: {}", e), None)
     })?;
 
     // Get peer endpoint from request or fail
@@ -150,11 +142,7 @@ pub async fn announce_capabilities(
     info!("📢 P2P Discovery API: announce_capabilities");
 
     let request: AnnounceCapabilitiesRequest = serde_json::from_value(params).map_err(|e| {
-        JsonRpcError::custom(
-            -32602,
-            format!("Failed to parse params: {}", e),
-            None,
-        )
+        JsonRpcError::custom(-32602, format!("Failed to parse params: {}", e), None)
     })?;
 
     // TODO v3.19.3: Implement broadcaster.update_capabilities() method
