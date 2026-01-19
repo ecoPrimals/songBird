@@ -19,21 +19,25 @@
 //! ```
 
 use chrono::{DateTime, Utc};
-use reqwest::Client;
 use serde::{Deserialize, Serialize};
 use songbird_config::capability_endpoints::{CapabilityEndpointResolver, CapabilityType};
 use songbird_types::errors::{SongbirdError, SongbirdResult};
+use songbird_universal::UnixRpcClient;
 use std::collections::HashMap;
+use std::path::PathBuf;
 use std::time::Duration;
 use tracing::{debug, info};
 
 /// Security capability client (replaces BeardogPrimal)
-#[derive(Debug)]
+///
+/// **Pure Rust Implementation**: Uses Unix socket JSON-RPC for inter-primal communication,
+/// eliminating HTTP overhead and `reqwest` dependency (ring-free!).
+#[derive(Debug, Clone)]
 pub struct SecurityCapabilityClient {
-    /// Capability endpoint resolver
+    /// Capability endpoint resolver (for discovery)
     resolver: CapabilityEndpointResolver,
-    /// HTTP client for requests
-    http_client: Client,
+    /// JSON-RPC client for Unix socket communication (Pure Rust!)
+    rpc_client: UnixRpcClient,
     /// Client configuration
     config: SecurityClientConfig,
 }
@@ -174,22 +178,39 @@ impl SecurityCapabilityClient {
     
     /// Create security client with custom configuration
     pub async fn with_config(config: SecurityClientConfig) -> SongbirdResult<Self> {
-        info!("🔒 Creating security capability client (zero hardcoding)");
+        info!("🔒 Creating security capability client (Pure Rust Unix socket!)");
         
-        let http_client = Client::builder()
-            .timeout(config.timeout)
-            .build()
+        // Discover Unix socket path for security capability
+        let socket_path = Self::discover_socket_path()?;
+        
+        // Create UnixRpcClient (100% Pure Rust!)
+        let rpc_client = UnixRpcClient::new(&socket_path)
             .map_err(|e| SongbirdError::Configuration {
-                message: format!("Failed to create HTTP client: {}", e),
-                field: Some("http_client".to_string()),
-                suggestion: Some("Check network configuration".to_string()),
+                message: format!("Failed to create Unix RPC client for {:?}: {}", socket_path, e),
+                field: Some("rpc_client".to_string()),
+                suggestion: Some("Ensure security primal is running and socket exists".to_string()),
             })?;
+        
+        info!("✅ Security capability client connected to {:?}", socket_path);
         
         Ok(Self {
             resolver: CapabilityEndpointResolver::new(),
-            http_client,
+            rpc_client,
             config,
         })
+    }
+    
+    /// Discover Unix socket path for security capability
+    ///
+    /// Priority:
+    /// 1. SECURITY_SOCKET_PATH environment variable
+    /// 2. BEARDOG_SOCKET_PATH environment variable (legacy)
+    /// 3. Default: /tmp/beardog.sock
+    fn discover_socket_path() -> SongbirdResult<PathBuf> {
+        std::env::var("SECURITY_SOCKET_PATH")
+            .or_else(|_| std::env::var("BEARDOG_SOCKET_PATH"))
+            .map(PathBuf::from)
+            .or_else(|_| Ok(PathBuf::from("/tmp/beardog.sock")))
     }
     
     /// Generate authentication token
@@ -221,140 +242,70 @@ impl SecurityCapabilityClient {
     /// # }
     /// ```
     pub async fn generate_token(&self, request: TokenRequest) -> SongbirdResult<TokenResponse> {
-        debug!("🔑 Generating token for subject: {}", request.subject);
+        debug!("🔑 Generating token via JSON-RPC for subject: {}", request.subject);
         
-        // Discover security capability provider
-        let endpoint = self.resolver.get_endpoint(CapabilityType::Security).await?;
-        
-        let response = self.http_client
-            .post(format!("{}/tokens", endpoint))
-            .json(&request)
-            .send()
+        // Call security.generate_token JSON-RPC method
+        let response: TokenResponse = self.rpc_client
+            .call("security.generate_token", &request)
             .await
             .map_err(|e| SongbirdError::Network {
-                message: format!("Token generation request failed: {}", e),
-                source: Some(endpoint.clone()),
+                message: format!("Token generation RPC failed: {}", e),
+                source: Some("security.generate_token".to_string()),
             })?;
         
-        if response.status().is_success() {
-            let result: TokenResponse = response.json().await
-                .map_err(|e| SongbirdError::Parsing {
-                    message: format!("Failed to parse token response: {}", e),
-                    expected: "TokenResponse".to_string(),
-                })?;
-            
-            info!("✅ Token generated successfully");
-            Ok(result)
-        } else {
-            let status = response.status();
-            let error_text = response.text().await.unwrap_or_default();
-            Err(SongbirdError::External {
-                service: "security_capability".to_string(),
-                message: format!("Token generation failed with status {}: {}", status, error_text),
-            })
-        }
+        info!("✅ Token generated successfully (Pure Rust RPC!)");
+        Ok(response)
     }
     
     /// Validate authentication token
     pub async fn validate_token(&self, request: ValidateTokenRequest) -> SongbirdResult<ValidateTokenResponse> {
-        debug!("🔍 Validating token");
+        debug!("🔍 Validating token via JSON-RPC");
         
-        let endpoint = self.resolver.get_endpoint(CapabilityType::Security).await?;
-        
-        let response = self.http_client
-            .post(format!("{}/tokens/validate", endpoint))
-            .json(&request)
-            .send()
+        // Call security.validate_token JSON-RPC method
+        let response: ValidateTokenResponse = self.rpc_client
+            .call("security.validate_token", &request)
             .await
             .map_err(|e| SongbirdError::Network {
-                message: format!("Token validation request failed: {}", e),
-                source: Some(endpoint.clone()),
+                message: format!("Token validation RPC failed: {}", e),
+                source: Some("security.validate_token".to_string()),
             })?;
         
-        if response.status().is_success() {
-            response.json().await
-                .map_err(|e| SongbirdError::Parsing {
-                    message: format!("Failed to parse validation response: {}", e),
-                    expected: "ValidateTokenResponse".to_string(),
-                })
-        } else {
-            let status = response.status();
-            let error_text = response.text().await.unwrap_or_default();
-            Err(SongbirdError::External {
-                service: "security_capability".to_string(),
-                message: format!("Token validation failed with status {}: {}", status, error_text),
-            })
-        }
+        info!("✅ Token validated successfully (Pure Rust RPC!)");
+        Ok(response)
     }
     
     /// Encrypt data
     pub async fn encrypt(&self, request: EncryptRequest) -> SongbirdResult<EncryptResponse> {
-        debug!("🔐 Encrypting data");
+        debug!("🔐 Encrypting data via JSON-RPC");
         
-        let endpoint = self.resolver.get_endpoint(CapabilityType::Security).await?;
-        
-        let response = self.http_client
-            .post(format!("{}/encrypt", endpoint))
-            .json(&request)
-            .send()
+        // Call security.encrypt JSON-RPC method
+        let response: EncryptResponse = self.rpc_client
+            .call("security.encrypt", &request)
             .await
             .map_err(|e| SongbirdError::Network {
-                message: format!("Encryption request failed: {}", e),
-                source: Some(endpoint.clone()),
+                message: format!("Encryption RPC failed: {}", e),
+                source: Some("security.encrypt".to_string()),
             })?;
         
-        if response.status().is_success() {
-            let result: EncryptResponse = response.json().await
-                .map_err(|e| SongbirdError::Parsing {
-                    message: format!("Failed to parse encryption response: {}", e),
-                    expected: "EncryptResponse".to_string(),
-                })?;
-            
-            info!("✅ Data encrypted successfully");
-            Ok(result)
-        } else {
-            let status = response.status();
-            let error_text = response.text().await.unwrap_or_default();
-            Err(SongbirdError::External {
-                service: "security_capability".to_string(),
-                message: format!("Encryption failed with status {}: {}", status, error_text),
-            })
-        }
+        info!("✅ Data encrypted successfully (Pure Rust RPC!)");
+        Ok(response)
     }
     
     /// Decrypt data
     pub async fn decrypt(&self, request: DecryptRequest) -> SongbirdResult<DecryptResponse> {
-        debug!("🔓 Decrypting data");
+        debug!("🔓 Decrypting data via JSON-RPC");
         
-        let endpoint = self.resolver.get_endpoint(CapabilityType::Security).await?;
-        
-        let response = self.http_client
-            .post(format!("{}/decrypt", endpoint))
-            .json(&request)
-            .send()
+        // Call security.decrypt JSON-RPC method
+        let response: DecryptResponse = self.rpc_client
+            .call("security.decrypt", &request)
             .await
             .map_err(|e| SongbirdError::Network {
-                message: format!("Decryption request failed: {}", e),
-                source: Some(endpoint.clone()),
+                message: format!("Decryption RPC failed: {}", e),
+                source: Some("security.decrypt".to_string()),
             })?;
         
-        if response.status().is_success() {
-            let result: DecryptResponse = response.json().await
-                .map_err(|e| SongbirdError::Parsing {
-                    message: format!("Failed to parse decryption response: {}", e),
-                    expected: "DecryptResponse".to_string(),
-                })?;
-            
-            info!("✅ Data decrypted successfully");
-            Ok(result)
-        } else {
-            let status = response.status();
-            let error_text = response.text().await.unwrap_or_default();
-            Err(SongbirdError::External {
-                service: "security_capability".to_string(),
-                message: format!("Decryption failed with status {}: {}", status, error_text),
-            })
-        }
+        info!("✅ Data decrypted successfully (Pure Rust RPC!)");
+        Ok(response)
     }
     
     /// Check if security capability is available
