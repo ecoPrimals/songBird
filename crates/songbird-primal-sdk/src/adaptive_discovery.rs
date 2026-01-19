@@ -199,26 +199,12 @@ impl AdaptivePrimalDiscovery {
         T: serde::Serialize + Send + Sync,
         R: for<'de> serde::Deserialize<'de> + Send + Sync,
     {
-        use reqwest;
         use serde_json::json;
+        use songbird_universal::UnixRpcClient;
+        use std::path::PathBuf;
 
-        // Create HTTP client with timeout
-        let client = reqwest::Client::builder()
-            .timeout(std::time::Duration::from_secs(30))
-            .build()
-            .map_err(|e| SongbirdError::Network {
-                message: format!("HTTP request failed: {}", e),
-                operation: None,
-                suggestion: None,
-            })?;
-
-        // Construct the endpoint URL for the capability and operation
-        let endpoint_url = format!(
-            "{}/api/v1/capabilities/{}/{}",
-            primal.endpoint.trim_end_matches('/'),
-            capability,
-            operation
-        );
+        // Create JSON-RPC method name from capability and operation
+        let method = format!("{}.{}", capability, operation);
 
         // Create the request payload with metadata
         let request_payload = json!({
@@ -227,49 +213,36 @@ impl AdaptivePrimalDiscovery {
             "operation": operation,
             "payload": payload,
             "metadata": {
-                "source": "songbird-universal-orchestrator ",
+                "source": "songbird-universal-orchestrator",
                 "timestamp": chrono::Utc::now().to_rfc3339(),
                 "request_id": uuid::Uuid::new_v4().to_string()
             }
         });
 
-        // Make the HTTP request
-        let response = client
-            .post(&endpoint_url)
-            .header("Content-Type", "application/json")
-            .header("User-Agent", "Songbird-Universal-Orchestrator/1.0")
-            .json(&request_payload)
-            .send()
-            .await
+        // Discover Unix socket path from primal endpoint
+        // Format: Convert HTTP endpoint to socket path or use PRIMAL_SOCKET_PATH env var
+        let socket_path = std::env::var(format!("{}_SOCKET_PATH", primal.id.to_uppercase()))
+            .or_else(|_| std::env::var("ADAPTIVE_DISCOVERY_SOCKET_PATH"))
+            .map(PathBuf::from)
+            .unwrap_or_else(|_| PathBuf::from(format!("/tmp/{}.sock", primal.id)));
+
+        // Create UnixRpcClient
+        let client = UnixRpcClient::new(&socket_path)
             .map_err(|e| SongbirdError::Network {
-                message: format!("HTTP request failed: {}", e),
+                message: format!("Failed to create RPC client for {}: {}", primal.id, e),
                 operation: None,
-                suggestion: None,
+                suggestion: Some(format!("Ensure primal {} is running with Unix socket at {:?}", primal.id, socket_path)),
             })?;
 
-        // Check if the response was successful
-        if !response.status().is_success() {
-            let status = response.status();
-            let error_text = response
-                .text()
-                .await
-                .unwrap_or_else(|_| "Unknown error".to_string());
-            return Err(SongbirdError::operation_error(format!(
-                "Primal {} returned error {}: {}",
-                primal.id, status, error_text
-            )));
-        }
-
-        // Parse the response
-        let result: R =
-            response
-                .json()
-                .await
-                .map_err(|e| SongbirdError::Network {
-                    message: format!("Failed to parse response: {}", e),
-                    operation: None,
-                    suggestion: None,
-                })?;
+        // Make the JSON-RPC call
+        let result: R = client
+            .call(&method, &request_payload)
+            .await
+            .map_err(|e| SongbirdError::Network {
+                message: format!("RPC call to {} failed: {}", primal.id, e),
+                operation: Some(method.clone()),
+                suggestion: None,
+            })?;
 
         Ok(success(result))
     }
@@ -685,12 +658,18 @@ impl DiscoveryChannel for EnvironmentDiscoveryChannel {
 
 impl EnvironmentDiscoveryChannel {
     async fn discover_primal_at_endpoint(&self) -> SongbirdResult<DiscoveredPrimal> {
-        // Try to get primal info from endpoint
-        let client = reqwest::Client::new();
-        let info_url = format!("{}/api/v1/info", endpoint);
-
-        let response = client.get(&info_url).send().await.map_err(|e| SongbirdError::Network {
-                message: e.to_string(),
+        use songbird_universal::UnixRpcClient;
+        use std::path::PathBuf;
+        
+        // Try to get primal info via Unix socket
+        // Convert endpoint to socket path (extract primal name)
+        let socket_path = std::env::var("DISCOVERY_SOCKET_PATH")
+            .map(PathBuf::from)
+            .unwrap_or_else(|_| PathBuf::from("/tmp/discovery.sock"));
+        
+        let client = UnixRpcClient::new(&socket_path)
+            .map_err(|e| SongbirdError::Network {
+                message: format!("Failed to create discovery RPC client: {}", e),
                 interface: None,
                 suggestion: Some("Check primal endpoint availability".to_string()),
             })?;
