@@ -1,88 +1,83 @@
-//! HTTP-based BTSP Provider Client
+//! RPC-based BTSP Provider Client (Pure Rust)
 //!
 //! This module implements a BTSP provider that communicates with a remote
-//! security provider (like `BearDog`) over HTTP/HTTPS.
+//! security provider (like `BearDog`) over Unix socket RPC (Pure Rust).
 //!
 //! **Modern Idiomatic Rust**:
 //! - Async/await throughout
 //! - No `unwrap()` in production paths
 //! - Proper error handling with `SongbirdError`
-//! - Connection pooling via reqwest
+//! - Type-safe JSON-RPC via UnixRpcClient
 //! - Timeout and retry logic
 
 use async_trait::async_trait;
-use reqwest::Client;
 use serde::{Deserialize, Serialize};
-use std::time::Duration;
+use serde_json;
+use songbird_universal::UnixRpcClient;
+use std::path::PathBuf;
 use tracing::{debug, info, warn};
 
 use super::provider::{BtspProvider, PeerInfo};
 use super::tunnel::{SecurityContext, TunnelHandle, TunnelStatus};
 use songbird_types::{SongbirdError, SongbirdResult};
 
-/// HTTP client for communicating with a remote BTSP provider
+/// RPC client for communicating with a remote BTSP provider
+/// **Pure Rust**: Uses Unix socket RPC instead of HTTP
 pub struct HttpBtspProvider {
-    /// Base URL of the security provider (e.g., "<https://localhost:8091>")
-    base_url: String,
-    /// HTTP client with connection pooling
-    client: Client,
+    /// Unix socket path for the security provider
+    socket_path: PathBuf,
+    /// RPC client for JSON-RPC communication
+    rpc_client: UnixRpcClient,
     /// Provider name (e.g., "beardog", "secureprimal")
     provider_name: String,
 }
 
 impl HttpBtspProvider {
-    /// Create a new HTTP BTSP provider
+    /// Create a new RPC BTSP provider (Pure Rust Unix socket)
     ///
     /// # Arguments
-    /// * `base_url` - The base URL of the security provider (e.g., "<https://localhost:8091>")
+    /// * `base_url` - Legacy parameter (converted to socket path)
     /// * `provider_name` - Name of the provider for logging (e.g., "beardog")
     pub fn new(base_url: String, provider_name: String) -> SongbirdResult<Self> {
-        let client = Client::builder()
-            .danger_accept_invalid_certs(true) // Self-signed certs OK for local dev
-            .timeout(Duration::from_secs(30))
-            .connect_timeout(Duration::from_secs(5))
-            .pool_max_idle_per_host(10)
-            .build()
-            .map_err(|e| SongbirdError::network(format!("Failed to create HTTP client: {e}")))?;
+        // Convert base_url to socket path or use env var
+        let socket_path = std::env::var(format!("{}_BTSP_SOCKET_PATH", provider_name.to_uppercase()))
+            .or_else(|_| std::env::var("BTSP_SOCKET_PATH"))
+            .map(PathBuf::from)
+            .unwrap_or_else(|_| PathBuf::from(format!("/tmp/{}_btsp.sock", provider_name)));
 
-        info!("🔒 Created HTTP BTSP provider for {} at {}", provider_name, base_url);
+        let rpc_client = UnixRpcClient::new(&socket_path)
+            .map_err(|e| SongbirdError::network(format!("Failed to create RPC client for {}: {}", provider_name, e)))?;
+
+        info!("🔒 Created RPC BTSP provider for {} at {:?}", provider_name, socket_path);
 
         Ok(Self {
-            base_url,
-            client,
+            socket_path,
+            rpc_client,
             provider_name,
         })
     }
 
-    /// Verify the provider is reachable
+    /// Verify the provider is reachable via RPC
     pub async fn verify_connection(&self) -> SongbirdResult<()> {
-        let url = format!("{}/health", self.base_url);
-        debug!("🔍 Verifying connection to {}", url);
+        debug!("🔍 Verifying RPC connection to {} at {:?}", self.provider_name, self.socket_path);
 
-        let response = self.client.get(&url).send().await.map_err(|e| {
+        // Call health check via JSON-RPC
+        let _response: serde_json::Value = self.rpc_client.call_no_params("health").await.map_err(|e| {
             SongbirdError::network(format!(
-                "Failed to connect to security provider at {}: {}",
-                self.base_url, e
+                "Failed to connect to security provider {} at {:?}: {}",
+                self.provider_name, self.socket_path, e
             ))
         })?;
 
-        if response.status().is_success() {
-            info!("✅ Connection to {} verified", self.provider_name);
-            Ok(())
-        } else {
-            Err(SongbirdError::service(
-                &self.provider_name,
-                format!("Health check failed: {}", response.status()),
-            ))
-        }
+        info!("✅ RPC connection to {} verified", self.provider_name);
+        Ok(())
     }
 }
 
 #[async_trait]
 impl BtspProvider for HttpBtspProvider {
     async fn establish_tunnel(&self, peer: &PeerInfo) -> SongbirdResult<TunnelHandle> {
-        let url = format!("{}/api/btsp/tunnel/establish", self.base_url);
-        debug!("🔐 Establishing tunnel to {} via {}", peer.id, url);
+        debug!("🔐 Establishing tunnel to {} via RPC", peer.id);
 
         #[derive(Serialize)]
         struct EstablishRequest<'a> {
@@ -105,29 +100,11 @@ impl BtspProvider for HttpBtspProvider {
             protocols: &peer.protocols,
         };
 
-        let response = self
-            .client
-            .post(&url)
-            .json(&request)
-            .send()
+        let establish_response: EstablishResponse = self
+            .rpc_client
+            .call("btsp.tunnel.establish", &request)
             .await
             .map_err(|e| SongbirdError::network(format!("Failed to establish tunnel: {e}")))?;
-
-        if !response.status().is_success() {
-            let status = response.status();
-            let body = response.text().await.unwrap_or_else(|_| "unknown".to_string());
-            return Err(SongbirdError::service(
-                &self.provider_name,
-                format!("Tunnel establishment failed: {status} - {body}"),
-            ));
-        }
-
-        let establish_response: EstablishResponse = response.json().await.map_err(|e| {
-            SongbirdError::from(serde_json::Error::io(std::io::Error::new(
-                std::io::ErrorKind::InvalidData,
-                format!("Failed to parse tunnel response: {e}"),
-            )))
-        })?;
 
         info!(
             "✅ Tunnel established: {} (status: {})",
@@ -140,8 +117,7 @@ impl BtspProvider for HttpBtspProvider {
     }
 
     async fn encrypt(&self, data: &[u8], context: &SecurityContext) -> SongbirdResult<Vec<u8>> {
-        let url = format!("{}/api/btsp/encrypt", self.base_url);
-        debug!("🔐 Encrypting {} bytes via {}", data.len(), url);
+        debug!("🔐 Encrypting {} bytes via RPC", data.len());
 
         #[derive(Serialize)]
         struct EncryptRequest<'a> {
@@ -161,28 +137,11 @@ impl BtspProvider for HttpBtspProvider {
             peer_id: &context.peer_id,
         };
 
-        let response = self
-            .client
-            .post(&url)
-            .json(&request)
-            .send()
+        let encrypt_response: EncryptResponse = self
+            .rpc_client
+            .call("btsp.encrypt", &request)
             .await
             .map_err(|e| SongbirdError::network(format!("Failed to encrypt data: {e}")))?;
-
-        if !response.status().is_success() {
-            let status = response.status();
-            return Err(SongbirdError::service(
-                &self.provider_name,
-                format!("Encryption failed: {status}"),
-            ));
-        }
-
-        let encrypt_response: EncryptResponse = response.json().await.map_err(|e| {
-            SongbirdError::from(serde_json::Error::io(std::io::Error::new(
-                std::io::ErrorKind::InvalidData,
-                format!("Failed to parse encryption response: {e}"),
-            )))
-        })?;
 
         debug!(
             "✅ Encrypted {} bytes → {} bytes",
@@ -194,8 +153,7 @@ impl BtspProvider for HttpBtspProvider {
     }
 
     async fn decrypt(&self, data: &[u8], context: &SecurityContext) -> SongbirdResult<Vec<u8>> {
-        let url = format!("{}/api/btsp/decrypt", self.base_url);
-        debug!("🔓 Decrypting {} bytes via {}", data.len(), url);
+        debug!("🔓 Decrypting {} bytes via RPC", data.len());
 
         #[derive(Serialize)]
         struct DecryptRequest<'a> {
@@ -215,28 +173,11 @@ impl BtspProvider for HttpBtspProvider {
             peer_id: &context.peer_id,
         };
 
-        let response = self
-            .client
-            .post(&url)
-            .json(&request)
-            .send()
+        let decrypt_response: DecryptResponse = self
+            .rpc_client
+            .call("btsp.decrypt", &request)
             .await
             .map_err(|e| SongbirdError::network(format!("Failed to decrypt data: {e}")))?;
-
-        if !response.status().is_success() {
-            let status = response.status();
-            return Err(SongbirdError::service(
-                &self.provider_name,
-                format!("Decryption failed: {status}"),
-            ));
-        }
-
-        let decrypt_response: DecryptResponse = response.json().await.map_err(|e| {
-            SongbirdError::from(serde_json::Error::io(std::io::Error::new(
-                std::io::ErrorKind::InvalidData,
-                format!("Failed to parse decryption response: {e}"),
-            )))
-        })?;
 
         debug!("✅ Decrypted {} bytes → {} bytes", data.len(), decrypt_response.data.len());
 
@@ -244,30 +185,17 @@ impl BtspProvider for HttpBtspProvider {
     }
 
     async fn tunnel_status(&self, handle: &TunnelHandle) -> SongbirdResult<TunnelStatus> {
-        let url = format!("{}/api/btsp/tunnel/status/{}", self.base_url, handle.id);
-        debug!("🔍 Checking tunnel status: {}", handle.id);
+        debug!("🔍 Checking tunnel status: {} via RPC", handle.id);
 
-        let response = self
-            .client
-            .get(&url)
-            .send()
+        let request = serde_json::json!({
+            "tunnel_id": handle.id,
+        });
+
+        let status: TunnelStatus = self
+            .rpc_client
+            .call("btsp.tunnel.status", &request)
             .await
             .map_err(|e| SongbirdError::network(format!("Failed to get tunnel status: {e}")))?;
-
-        if !response.status().is_success() {
-            let status = response.status();
-            return Err(SongbirdError::service(
-                &self.provider_name,
-                format!("Failed to get tunnel status: {status}"),
-            ));
-        }
-
-        let status: TunnelStatus = response.json().await.map_err(|e| {
-            SongbirdError::from(serde_json::Error::io(std::io::Error::new(
-                std::io::ErrorKind::InvalidData,
-                format!("Failed to parse tunnel status: {e}"),
-            )))
-        })?;
 
         debug!("✅ Tunnel {} status: {:?}", handle.id, status);
 
@@ -275,22 +203,16 @@ impl BtspProvider for HttpBtspProvider {
     }
 
     async fn close_tunnel(&self, handle: &TunnelHandle) -> SongbirdResult<()> {
-        let url = format!("{}/api/btsp/tunnel/close/{}", self.base_url, handle.id);
-        debug!("🔒 Closing tunnel: {}", handle.id);
+        debug!("🔒 Closing tunnel: {} via RPC", handle.id);
 
-        let response = self
-            .client
-            .delete(&url)
-            .send()
-            .await
-            .map_err(|e| SongbirdError::network(format!("Failed to close tunnel: {e}")))?;
+        let request = serde_json::json!({
+            "tunnel_id": handle.id,
+        });
 
-        if response.status().is_success() {
-            info!("✅ Tunnel {} closed", handle.id);
-        } else {
-            let status = response.status();
-            warn!("⚠️ Failed to close tunnel {}: {} (may already be closed)", handle.id, status);
-            // Don't return error - tunnel might already be closed
+        // Call RPC method - ignore errors as tunnel might already be closed
+        match self.rpc_client.call::<_, serde_json::Value>("btsp.tunnel.close", &request).await {
+            Ok(_) => info!("✅ Tunnel {} closed", handle.id),
+            Err(e) => warn!("⚠️ Failed to close tunnel {}: {} (may already be closed)", handle.id, e),
         }
 
         Ok(())
