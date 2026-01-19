@@ -30,7 +30,7 @@ async fn test_chaos_rapid_register_unregister() {
             .expect("Failed to register");
 
         // Immediately unregister
-        // ipc::unregister (not implemented yet)(&primal_id)
+        ipc::unregister(&primal_id)
             .await
             .expect("Failed to unregister");
     }
@@ -148,7 +148,7 @@ async fn test_chaos_concurrent_registration() {
 
     let concurrent_primals = providers
         .iter()
-        .filter(|p| p.id == primal_id)
+        .filter(|p| p.primal_id == primal_id)
         .count();
     assert_eq!(concurrent_primals, 1, "Should have exactly one registration");
 }
@@ -164,7 +164,7 @@ async fn test_chaos_discovery_during_changes() {
             let primal_id = format!("churn-{}", i % 5);
             let _ = ipc::register(&primal_id, vec!["churn".to_string()]).await;
             tokio::time::sleep(Duration::from_millis(10)).await;
-            let _ = // ipc::unregister (not implemented yet)(&primal_id).await;
+            let _ = ipc::unregister(&primal_id).await;
         }
     });
 
@@ -353,7 +353,7 @@ async fn test_chaos_memory_pressure() {
     // Cleanup all
     for i in 0..100 {
         let primal_id = format!("mem-primal-{}", i);
-        let _ = // ipc::unregister (not implemented yet)(&primal_id).await;
+        let _ = ipc::unregister(&primal_id).await;
     }
 }
 

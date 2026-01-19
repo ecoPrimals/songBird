@@ -48,7 +48,7 @@ async fn test_e2e_full_primal_lifecycle() {
         .expect("Failed to discover providers");
 
     assert!(!providers.is_empty(), "Should find at least one crypto provider");
-    assert_eq!(providers[0].id, "test-primal-e2e");
+    assert_eq!(providers[0].primal_id, "test-primal-e2e");
 
     // Client: Connect and communicate
     let mut stream = ipc::connect(&endpoint.path)
@@ -93,7 +93,7 @@ async fn test_e2e_multi_primal_discovery() {
     .expect("Failed to register multi primal");
 
     // Discover crypto providers
-    let crypto_providers = discovery::discover_all("crypto")
+    let crypto_providers = capability::discover_all("crypto")
         .await
         .expect("Failed to discover crypto providers");
 
@@ -104,7 +104,7 @@ async fn test_e2e_multi_primal_discovery() {
     );
 
     // Discover storage providers
-    let storage_providers = discovery::discover_all("storage")
+    let storage_providers = capability::discover_all("storage")
         .await
         .expect("Failed to discover storage providers");
 
@@ -117,10 +117,10 @@ async fn test_e2e_multi_primal_discovery() {
     // Verify multi-primal appears in both
     let multi_in_crypto = crypto_providers
         .iter()
-        .any(|p| p.id == "multi-primal");
+        .any(|p| p.primal_id == "multi-primal");
     let multi_in_storage = storage_providers
         .iter()
-        .any(|p| p.id == "multi-primal");
+        .any(|p| p.primal_id == "multi-primal");
 
     assert!(multi_in_crypto, "Multi-primal should be in crypto");
     assert!(multi_in_storage, "Multi-primal should be in storage");
@@ -195,18 +195,18 @@ async fn test_e2e_unregister_cleanup() {
         .expect("Failed to register primal");
 
     // Verify it's discoverable
-    let providers = discovery::discover_all("temp")
+    let providers = capability::discover_all("temp")
         .await
         .expect("Failed to discover");
     assert_eq!(providers.len(), 1);
 
     // Unregister
-    // ipc::unregister (not implemented yet)("temp-primal")
+    ipc::unregister("temp-primal")
         .await
         .expect("Failed to unregister");
 
     // Verify it's no longer discoverable
-    let providers = discovery::discover_all("temp")
+    let providers = capability::discover_all("temp")
         .await
         .expect("Failed to discover");
     assert_eq!(providers.len(), 0, "Should not find unregistered primal");
@@ -287,27 +287,27 @@ async fn test_e2e_capability_filtering() {
         .expect("Failed to register");
 
     // Discover crypto (should find 2)
-    let crypto = discovery::discover_all("crypto")
+    let crypto = capability::discover_all("crypto")
         .await
         .expect("Failed to discover");
     assert_eq!(crypto.len(), 2);
 
     // Discover advanced (should find 1)
-    let advanced = discovery::discover_all("advanced")
+    let advanced = capability::discover_all("advanced")
         .await
         .expect("Failed to discover");
     assert_eq!(advanced.len(), 1);
-    assert_eq!(advanced[0].id, "primal-2");
+    assert_eq!(advanced[0].primal_id, "primal-2");
 
     // Discover storage (should find 1)
-    let storage = discovery::discover_all("storage")
+    let storage = capability::discover_all("storage")
         .await
         .expect("Failed to discover");
     assert_eq!(storage.len(), 1);
-    assert_eq!(storage[0].id, "primal-3");
+    assert_eq!(storage[0].primal_id, "primal-3");
 
     // Discover non-existent (should find 0)
-    let none = discovery::discover_all("nonexistent")
+    let none = capability::discover_all("nonexistent")
         .await
         .expect("Failed to discover");
     assert_eq!(none.len(), 0);

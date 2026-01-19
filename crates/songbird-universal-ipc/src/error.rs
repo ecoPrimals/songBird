@@ -47,6 +47,10 @@ pub enum IpcError {
     #[error("NestGate error: {0}")]
     NestGateError(String),
 
+    /// RPC error
+    #[error("RPC error: {0}")]
+    RpcError(String),
+
     /// Other error
     #[error("Other error: {0}")]
     Other(String),

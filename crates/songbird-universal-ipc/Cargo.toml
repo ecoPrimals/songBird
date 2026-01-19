@@ -24,6 +24,9 @@ tracing = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
 
+# Time handling
+chrono = { version = "0.4", features = ["serde"] }
+
 # Windows named pipes (only on Windows)
 [target.'cfg(windows)'.dependencies]
 tokio = { workspace = true, features = ["net"] }

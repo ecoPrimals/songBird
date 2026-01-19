@@ -110,6 +110,8 @@ pub mod endpoint;
 pub mod error;
 pub mod platform;
 pub mod registry;
+pub mod service; // ✨ NEW: IPC Service (JSON-RPC broker)
+pub mod tower_atomic; // ✨ NEW: JSON-RPC over Universal IPC
 
 // Public API
 pub mod ipc;

@@ -37,7 +37,7 @@ async fn test_fault_connect_nonexistent() {
 async fn test_fault_discover_nonexistent_capability() {
     ipc::init().expect("Failed to initialize IPC");
 
-    let providers = discovery::discover_all("nonexistent-capability-xyz")
+    let providers = capability::discover_all("nonexistent-capability-xyz")
         .await
         .expect("Discovery should not error");
 
@@ -87,7 +87,7 @@ async fn test_fault_invalid_primal_id_chars() {
             );
 
             // Cleanup
-            let _ = // ipc::unregister (not implemented yet)(id).await;
+            let _ = ipc::unregister(id).await;
         }
     }
 }
@@ -102,20 +102,20 @@ async fn test_fault_empty_capabilities() {
     // Should either fail or succeed with no capabilities
     if let Ok(_endpoint) = result {
         // If it succeeds, verify it's not discoverable by any capability
-        let providers = discovery::discover_all("any")
+        let providers = capability::discover_all("any")
             .await
             .expect("Discovery failed");
 
         let found = providers
             .iter()
-            .any(|p| p.id == "empty-cap-primal");
+            .any(|p| p.primal_id == "empty-cap-primal");
         assert!(
             !found,
             "Primal with no capabilities should not be discoverable"
         );
 
         // Cleanup
-        let _ = // ipc::unregister (not implemented yet)("empty-cap-primal").await;
+        let _ = ipc::unregister("empty-cap-primal").await;
     }
 }
 
@@ -220,7 +220,7 @@ async fn test_fault_write_closed_connection() {
 async fn test_fault_unregister_nonexistent() {
     ipc::init().expect("Failed to initialize IPC");
 
-    let result = // ipc::unregister (not implemented yet)("nonexistent-primal").await;
+    let result = ipc::unregister("nonexistent-primal").await;
 
     // Should either succeed (idempotent) or fail gracefully
     assert!(
@@ -247,10 +247,10 @@ async fn test_fault_double_registration() {
     // Should either fail or succeed with last-write-wins
     if let Ok(endpoint2) = result2 {
         // If it succeeds, verify only one is registered
-        let providers = discovery::discover_all("test1")
+        let providers = capability::discover_all("test1")
             .await
             .expect("Discovery failed");
-        let providers2 = discovery::discover_all("test2")
+        let providers2 = capability::discover_all("test2")
             .await
             .expect("Discovery failed");
 
@@ -261,7 +261,7 @@ async fn test_fault_double_registration() {
         );
 
         // Cleanup
-        let _ = // ipc::unregister (not implemented yet)(primal_id).await;
+        let _ = ipc::unregister(primal_id).await;
     } else {
         // First registration should still work
         let mut stream = ipc::connect(&endpoint1.path)
@@ -270,7 +270,7 @@ async fn test_fault_double_registration() {
         let _ = stream.write_all(b"test").await;
 
         // Cleanup
-        let _ = // ipc::unregister (not implemented yet)(primal_id).await;
+        let _ = ipc::unregister(primal_id).await;
     }
 }
 
@@ -287,7 +287,7 @@ async fn test_fault_long_primal_id() {
     // Should either fail or truncate
     if let Ok(_endpoint) = result {
         // Cleanup
-        let _ = // ipc::unregister (not implemented yet)(&long_id).await;
+        let _ = ipc::unregister(&long_id).await;
     }
 
     // System should still work
@@ -308,10 +308,10 @@ async fn test_fault_long_capability_name() {
     // Should either fail or handle gracefully
     if let Ok(_endpoint) = result {
         // Try to discover
-        let _ = discovery::discover_all(&long_cap).await;
+        let _ = capability::discover_all(&long_cap).await;
 
         // Cleanup
-        let _ = // ipc::unregister (not implemented yet)("long-cap-primal").await;
+        let _ = ipc::unregister("long-cap-primal").await;
     }
 }
 
@@ -328,13 +328,13 @@ async fn test_fault_excessive_capabilities() {
     // Should either fail or succeed
     if let Ok(_endpoint) = result {
         // Verify at least some are discoverable
-        let providers = discovery::discover_all("cap-0")
+        let providers = capability::discover_all("cap-0")
             .await
             .expect("Discovery failed");
         assert!(!providers.is_empty(), "Should find at least one");
 
         // Cleanup
-        let _ = // ipc::unregister (not implemented yet)("excessive-cap-primal").await;
+        let _ = ipc::unregister("excessive-cap-primal").await;
     }
 }
 
@@ -379,7 +379,7 @@ async fn test_fault_concurrent_unregister() {
     for _ in 0..10 {
         let id = primal_id.to_string();
         let handle = tokio::spawn(async move {
-            let _ = // ipc::unregister (not implemented yet)(&id).await;
+            let _ = ipc::unregister(&id).await;
         });
         handles.push(handle);
     }
@@ -389,11 +389,11 @@ async fn test_fault_concurrent_unregister() {
     }
 
     // Verify it's unregistered
-    let providers = discovery::discover_all("test")
+    let providers = capability::discover_all("test")
         .await
         .expect("Discovery failed");
 
-    let found = providers.iter().any(|p| p.id == primal_id);
+    let found = providers.iter().any(|p| p.primal_id == primal_id);
     assert!(!found, "Primal should be unregistered");
 }
 
@@ -430,9 +430,9 @@ async fn test_fault_system_recovery() {
 
     // Cause various errors
     let _ = ipc::register("", vec!["test".to_string()]).await; // Invalid ID
-    let _ = // ipc::unregister (not implemented yet)("nonexistent").await; // Nonexistent
+    let _ = ipc::unregister("nonexistent").await; // Nonexistent
     let _ = ipc::connect("/invalid/path").await; // Invalid path
-    let _ = discovery::discover_all("").await; // Empty capability
+    let _ = capability::discover_all("").await; // Empty capability
 
     // System should still work
     let endpoint = ipc::register("recovery-primal", vec!["test".to_string()])
