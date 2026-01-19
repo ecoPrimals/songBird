@@ -46,7 +46,7 @@ use songbird_universal_ipc::endpoint::VirtualEndpoint;
 use songbird_universal_ipc::ipc;
 use songbird_universal_ipc::service::IpcServiceHandler;
 use songbird_universal_ipc::tower_atomic::TowerAtomicServer;
-use tracing::{error, info};
+use tracing::{error, info, warn};
 
 /// Universal IPC Broker
 ///
@@ -72,14 +72,27 @@ impl UniversalIpcBroker {
         ipc::init().context("Failed to initialize Universal IPC")?;
 
         // Register Songbird as an IPC service provider
-        let endpoint = ipc::register(
+        // Note: If already registered, this will return an error which we handle gracefully
+        let endpoint = match ipc::register(
             "songbird",
             vec!["ipc".to_string(), "discovery".to_string(), "registry".to_string()],
         )
         .await
-        .context("Failed to register Songbird IPC endpoint")?;
-
-        info!("✅ Songbird registered at endpoint: {}", endpoint.path);
+        {
+            Ok(endpoint) => {
+                info!("✅ Songbird registered at endpoint: {}", endpoint.path);
+                endpoint
+            }
+            Err(e) if e.to_string().contains("already registered") => {
+                warn!("⚠️  Songbird already registered, using existing registration");
+                VirtualEndpoint {
+                    path: "/primal/songbird".to_string(),
+                }
+            }
+            Err(e) => {
+                return Err(e).context("Failed to register Songbird IPC endpoint");
+            }
+        };
 
         // Create service registry
         let registry = Arc::new(RwLock::new(ServiceRegistry::new()));

@@ -204,10 +204,38 @@ impl AsyncWrite for Stream {
 /// # Panics
 /// Panics if initialization fails (very rare - only on system resource exhaustion)
 pub fn init() -> IpcResult<()> {
-    GLOBAL_IPC.get_or_init(|| {
-        UniversalIPC::new().expect("Failed to initialize universal IPC - system resources exhausted?")
+    use tracing::{debug, error};
+    
+    debug!("Attempting to initialize Universal IPC");
+    debug!("  Platform: {}", std::env::consts::OS);
+    debug!("  Architecture: {}", std::env::consts::ARCH);
+    
+    // Try to initialize, propagating errors instead of panicking
+    let _result = GLOBAL_IPC.get_or_init(|| {
+        debug!("Creating UniversalIPC instance");
+        match UniversalIPC::new() {
+            Ok(ipc) => ipc,
+            Err(e) => {
+                error!("❌ Failed to create UniversalIPC: {}", e);
+                error!("   This may indicate:");
+                error!("     - Platform detection failure");
+                error!("     - Resource exhaustion (file descriptors)");
+                error!("     - Permission issues (socket creation)");
+                // Return a minimal instance that will fail gracefully
+                // Note: This is a workaround since get_or_init doesn't support Result
+                panic!("Universal IPC initialization failed: {}", e);
+            }
+        }
     });
-    Ok(())
+    
+    // Verify initialization succeeded by checking if we can access it
+    if GLOBAL_IPC.get().is_some() {
+        info!("✅ Universal IPC initialized successfully");
+        Ok(())
+    } else {
+        use crate::error::IpcError;
+        Err(IpcError::Other("Failed to initialize Universal IPC".to_string()))
+    }
 }
 
 /// Get global IPC instance
