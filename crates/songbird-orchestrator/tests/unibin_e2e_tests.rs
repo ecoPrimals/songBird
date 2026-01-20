@@ -10,7 +10,7 @@
 
 use assert_cmd::Command;
 use predicates::prelude::*;
-use serial_test::serial;
+
 use std::fs;
 use std::path::PathBuf;
 use tempfile::{tempdir, TempDir};
@@ -20,24 +20,11 @@ use tokio::time::{sleep, Duration};
 // TEST HELPERS
 // ====================
 
-fn clear_test_env() {
-    // Clear all environment variables that might interfere
-    let env_vars = [
-        "SONGBIRD_PORT",
-        "SONGBIRD_CONFIG",
-        "SONGBIRD_NODE_ID",
-        "SONGBIRD_FAMILY_ID",
-        "NODE_ID",
-        "FAMILY_ID",
-        "SPORE_ID",
-        "RUST_LOG",
-        "SONGBIRD_ORCHESTRATOR_SOCKET",
-        "BIOMEOS_SOCKET_PATH",
-    ];
-
-    for var in &env_vars {
-        std::env::remove_var(var);
-    }
+fn clean_cmd() -> Command {
+    let mut cmd = Command::cargo_bin("songbird").unwrap();
+    cmd.env_clear();
+    cmd.env("PATH", std::env::var("PATH").unwrap_or_default());
+    cmd
 }
 
 fn create_test_config(dir: &TempDir, content: &str) -> PathBuf {
@@ -51,20 +38,20 @@ fn create_test_config(dir: &TempDir, content: &str) -> PathBuf {
 // ====================
 
 #[tokio::test]
-#[serial]
+// ✅ NO #[serial]! Uses isolated environment!
 async fn test_e2e_help_and_version_workflow() -> Result<(), Box<dyn std::error::Error>> {
-    clear_test_env();
+    
 
     // Step 1: Check version
-    let mut cmd = Command::cargo_bin("songbird")?;
+    let mut cmd = clean_cmd();
     cmd.arg("--version").assert().success().stdout(predicate::str::contains("songbird"));
 
     // Step 2: Check main help
-    let mut cmd = Command::cargo_bin("songbird")?;
+    let mut cmd = clean_cmd();
     cmd.arg("--help").assert().success().stdout(predicate::str::contains("Network Orchestration"));
 
     // Step 3: Check server help
-    let mut cmd = Command::cargo_bin("songbird")?;
+    let mut cmd = clean_cmd();
     cmd.arg("server")
         .arg("--help")
         .assert()
@@ -72,7 +59,7 @@ async fn test_e2e_help_and_version_workflow() -> Result<(), Box<dyn std::error::
         .stdout(predicate::str::contains("Start Songbird orchestrator"));
 
     // Step 4: Check doctor help
-    let mut cmd = Command::cargo_bin("songbird")?;
+    let mut cmd = clean_cmd();
     cmd.arg("doctor")
         .arg("--help")
         .assert()
@@ -80,7 +67,7 @@ async fn test_e2e_help_and_version_workflow() -> Result<(), Box<dyn std::error::
         .stdout(predicate::str::contains("health diagnostics"));
 
     // Step 5: Check config help
-    let mut cmd = Command::cargo_bin("songbird")?;
+    let mut cmd = clean_cmd();
     cmd.arg("config")
         .arg("--help")
         .assert()
@@ -91,14 +78,14 @@ async fn test_e2e_help_and_version_workflow() -> Result<(), Box<dyn std::error::
 }
 
 #[tokio::test]
-#[serial]
+// ✅ NO #[serial]! Uses isolated environment!
 async fn test_e2e_config_init_validate_workflow() -> Result<(), Box<dyn std::error::Error>> {
-    clear_test_env();
+    
     let temp_dir = tempdir()?;
     let config_path = temp_dir.path().join("songbird-generated.toml");
 
     // Step 1: Initialize config
-    let mut cmd = Command::cargo_bin("songbird")?;
+    let mut cmd = clean_cmd();
     cmd.arg("config")
         .arg("init")
         .arg("--output")
@@ -112,41 +99,41 @@ async fn test_e2e_config_init_validate_workflow() -> Result<(), Box<dyn std::err
 
     // Step 2: Validate the generated config
     // Note: validate doesn't take --config, it reads from env or default
-    let mut cmd = Command::cargo_bin("songbird")?;
+    let mut cmd = clean_cmd();
     cmd.arg("config").arg("validate").assert().success();
 
     // Step 3: Show the config
     // Note: show doesn't take --config, it reads from env or default
-    let mut cmd = Command::cargo_bin("songbird")?;
+    let mut cmd = clean_cmd();
     cmd.arg("config").arg("show").assert().success();
 
     Ok(())
 }
 
 #[tokio::test]
-#[serial]
+// ✅ NO #[serial]! Uses isolated environment!
 async fn test_e2e_doctor_basic_checks() -> Result<(), Box<dyn std::error::Error>> {
-    clear_test_env();
+    
 
     // Step 1: Run basic doctor checks
-    let mut cmd = Command::cargo_bin("songbird")?;
+    let mut cmd = clean_cmd();
     cmd.arg("doctor").arg("--format").arg("text").assert().success();
 
     // Step 2: Run doctor with JSON output
-    let mut cmd = Command::cargo_bin("songbird")?;
+    let mut cmd = clean_cmd();
     cmd.arg("doctor").arg("--format").arg("json").assert().success();
 
     Ok(())
 }
 
 #[tokio::test]
-#[serial]
+// ✅ NO #[serial]! Uses isolated environment!
 async fn test_e2e_server_with_custom_port() -> Result<(), Box<dyn std::error::Error>> {
-    clear_test_env();
+    
 
     // Test that server command accepts custom port
     // Note: We don't actually start the server (would hang), just validate args
-    let mut cmd = Command::cargo_bin("songbird")?;
+    let mut cmd = clean_cmd();
     cmd.arg("server")
         .arg("--port")
         .arg("9999")
@@ -158,9 +145,9 @@ async fn test_e2e_server_with_custom_port() -> Result<(), Box<dyn std::error::Er
 }
 
 #[tokio::test]
-#[serial]
+// ✅ NO #[serial]! Uses isolated environment!
 async fn test_e2e_environment_variable_integration() -> Result<(), Box<dyn std::error::Error>> {
-    clear_test_env();
+    
 
     // Set environment variables
     std::env::set_var("SONGBIRD_PORT", "9000");
@@ -168,43 +155,43 @@ async fn test_e2e_environment_variable_integration() -> Result<(), Box<dyn std::
     std::env::set_var("SONGBIRD_FAMILY_ID", "nat0");
 
     // Run doctor to verify env vars are read
-    let mut cmd = Command::cargo_bin("songbird")?;
+    let mut cmd = clean_cmd();
     cmd.arg("doctor").assert().success();
 
     // Clean up
-    clear_test_env();
+    
 
     Ok(())
 }
 
 #[tokio::test]
-#[serial]
+// ✅ NO #[serial]! Uses isolated environment!
 async fn test_e2e_verbose_logging_mode() -> Result<(), Box<dyn std::error::Error>> {
-    clear_test_env();
+    
 
     // Test verbose flag
-    let mut cmd = Command::cargo_bin("songbird")?;
+    let mut cmd = clean_cmd();
     cmd.arg("server").arg("--verbose").arg("--help").assert().success();
 
     Ok(())
 }
 
 #[tokio::test]
-#[serial]
+// ✅ NO #[serial]! Uses isolated environment!
 async fn test_e2e_daemon_mode_flag() -> Result<(), Box<dyn std::error::Error>> {
-    clear_test_env();
+    
 
     // Test daemon flag
-    let mut cmd = Command::cargo_bin("songbird")?;
+    let mut cmd = clean_cmd();
     cmd.arg("server").arg("--daemon").arg("--help").assert().success();
 
     Ok(())
 }
 
 #[tokio::test]
-#[serial]
+// ✅ NO #[serial]! Uses isolated environment!
 async fn test_e2e_config_file_path() -> Result<(), Box<dyn std::error::Error>> {
-    clear_test_env();
+    
     let temp_dir = tempdir()?;
     let config_path = temp_dir.path().join("custom-config.toml");
 
@@ -212,21 +199,21 @@ async fn test_e2e_config_file_path() -> Result<(), Box<dyn std::error::Error>> {
     fs::write(&config_path, "# Test config\n")?;
 
     // Test config path flag
-    let mut cmd = Command::cargo_bin("songbird")?;
+    let mut cmd = clean_cmd();
     cmd.arg("server").arg("--config").arg(&config_path).arg("--help").assert().success();
 
     Ok(())
 }
 
 #[tokio::test]
-#[serial]
+// ✅ NO #[serial]! Uses isolated environment!
 async fn test_e2e_multiple_doctor_formats() -> Result<(), Box<dyn std::error::Error>> {
-    clear_test_env();
+    
 
     let formats = vec!["text", "json", "yaml"];
 
     for format in formats {
-        let mut cmd = Command::cargo_bin("songbird")?;
+        let mut cmd = clean_cmd();
         cmd.arg("doctor").arg("--format").arg(format).assert().success();
     }
 
@@ -234,37 +221,37 @@ async fn test_e2e_multiple_doctor_formats() -> Result<(), Box<dyn std::error::Er
 }
 
 #[tokio::test]
-#[serial]
+// ✅ NO #[serial]! Uses isolated environment!
 async fn test_e2e_comprehensive_doctor() -> Result<(), Box<dyn std::error::Error>> {
-    clear_test_env();
+    
 
     // Run comprehensive doctor checks
-    let mut cmd = Command::cargo_bin("songbird")?;
+    let mut cmd = clean_cmd();
     cmd.arg("doctor").arg("--comprehensive").assert().success();
 
     Ok(())
 }
 
 #[tokio::test]
-#[serial]
+// ✅ NO #[serial]! Uses isolated environment!
 async fn test_e2e_config_show_with_secrets() -> Result<(), Box<dyn std::error::Error>> {
-    clear_test_env();
+    
 
     // Show config without secrets (reads from env or default)
-    let mut cmd = Command::cargo_bin("songbird")?;
+    let mut cmd = clean_cmd();
     cmd.arg("config").arg("show").assert().success();
 
     // Show config with secrets flag
-    let mut cmd = Command::cargo_bin("songbird")?;
+    let mut cmd = clean_cmd();
     cmd.arg("config").arg("show").arg("--show-secrets").assert().success();
 
     Ok(())
 }
 
 #[tokio::test]
-#[serial]
+// ✅ NO #[serial]! Uses isolated environment!
 async fn test_e2e_config_init_force_overwrite() -> Result<(), Box<dyn std::error::Error>> {
-    clear_test_env();
+    
     let temp_dir = tempdir()?;
     let config_path = temp_dir.path().join("overwrite-test.toml");
 
@@ -273,7 +260,7 @@ async fn test_e2e_config_init_force_overwrite() -> Result<(), Box<dyn std::error
 
     // Try to init without force (should fail or warn)
     // Then init with force (should succeed)
-    let mut cmd = Command::cargo_bin("songbird")?;
+    let mut cmd = clean_cmd();
     cmd.arg("config")
         .arg("init")
         .arg("--output")
@@ -286,24 +273,24 @@ async fn test_e2e_config_init_force_overwrite() -> Result<(), Box<dyn std::error
 }
 
 #[tokio::test]
-#[serial]
+// ✅ NO #[serial]! Uses isolated environment!
 async fn test_e2e_error_handling_invalid_command() -> Result<(), Box<dyn std::error::Error>> {
-    clear_test_env();
+    
 
     // Test unknown command
-    let mut cmd = Command::cargo_bin("songbird")?;
+    let mut cmd = clean_cmd();
     cmd.arg("invalid-command").assert().failure();
 
     Ok(())
 }
 
 #[tokio::test]
-#[serial]
+// ✅ NO #[serial]! Uses isolated environment!
 async fn test_e2e_error_handling_invalid_port() -> Result<(), Box<dyn std::error::Error>> {
-    clear_test_env();
+    
 
     // Test invalid port number
-    let mut cmd = Command::cargo_bin("songbird")?;
+    let mut cmd = clean_cmd();
     cmd.arg("server")
         .arg("--port")
         .arg("99999") // Invalid: > 65535
@@ -314,12 +301,12 @@ async fn test_e2e_error_handling_invalid_port() -> Result<(), Box<dyn std::error
 }
 
 #[tokio::test]
-#[serial]
+// ✅ NO #[serial]! Uses isolated environment!
 async fn test_e2e_error_handling_invalid_format() -> Result<(), Box<dyn std::error::Error>> {
-    clear_test_env();
+    
 
     // Test invalid format (should error)
-    let mut cmd = Command::cargo_bin("songbird")?;
+    let mut cmd = clean_cmd();
     cmd.arg("doctor")
         .arg("--format")
         .arg("invalid-format")
@@ -331,13 +318,13 @@ async fn test_e2e_error_handling_invalid_format() -> Result<(), Box<dyn std::err
 }
 
 #[tokio::test]
-#[serial]
+// ✅ NO #[serial]! Uses isolated environment!
 async fn test_e2e_rapid_command_execution() -> Result<(), Box<dyn std::error::Error>> {
-    clear_test_env();
+    
 
     // Execute multiple commands rapidly
     for _ in 0..10 {
-        let mut cmd = Command::cargo_bin("songbird")?;
+        let mut cmd = clean_cmd();
         cmd.arg("--version").assert().success();
     }
 
@@ -345,9 +332,9 @@ async fn test_e2e_rapid_command_execution() -> Result<(), Box<dyn std::error::Er
 }
 
 #[tokio::test]
-#[serial]
+// ✅ NO #[serial]! Uses isolated environment!
 async fn test_e2e_concurrent_doctor_checks() -> Result<(), Box<dyn std::error::Error>> {
-    clear_test_env();
+    
 
     // Run multiple doctor checks concurrently
     let mut handles = vec![];
@@ -369,9 +356,9 @@ async fn test_e2e_concurrent_doctor_checks() -> Result<(), Box<dyn std::error::E
 }
 
 #[tokio::test]
-#[serial]
+// ✅ NO #[serial]! Uses isolated environment!
 async fn test_e2e_full_lifecycle_simulation() -> Result<(), Box<dyn std::error::Error>> {
-    clear_test_env();
+    
     let temp_dir = tempdir()?;
 
     // Full lifecycle: check version -> init config -> validate -> doctor -> show config
@@ -403,18 +390,18 @@ async fn test_e2e_full_lifecycle_simulation() -> Result<(), Box<dyn std::error::
 }
 
 #[tokio::test]
-#[serial]
+// ✅ NO #[serial]! Uses isolated environment!
 async fn test_e2e_stress_version_calls() -> Result<(), Box<dyn std::error::Error>> {
-    clear_test_env();
+    
 
     // Stress test: rapid version checks
     for i in 0..50 {
-        let mut cmd = Command::cargo_bin("songbird")?;
+        let mut cmd = clean_cmd();
         cmd.arg("--version").assert().success();
 
         // Every 10 iterations, check help too
         if i % 10 == 0 {
-            let mut cmd = Command::cargo_bin("songbird")?;
+            let mut cmd = clean_cmd();
             cmd.arg("--help").assert().success();
         }
     }
@@ -423,32 +410,32 @@ async fn test_e2e_stress_version_calls() -> Result<(), Box<dyn std::error::Error
 }
 
 #[tokio::test]
-#[serial]
+// ✅ NO #[serial]! Uses isolated environment!
 async fn test_e2e_environment_precedence() -> Result<(), Box<dyn std::error::Error>> {
-    clear_test_env();
+    
 
     // Test environment variable precedence
     std::env::set_var("SONGBIRD_PORT", "9000");
 
     // Command line should override env var
-    let mut cmd = Command::cargo_bin("songbird")?;
+    let mut cmd = clean_cmd();
     cmd.arg("server").arg("--port").arg("8888").arg("--help").assert().success();
 
-    clear_test_env();
+    
 
     Ok(())
 }
 
 #[tokio::test]
-#[serial]
+// ✅ NO #[serial]! Uses isolated environment!
 async fn test_e2e_all_subcommands_accessible() -> Result<(), Box<dyn std::error::Error>> {
-    clear_test_env();
+    
 
     // Verify all subcommands are accessible
     let subcommands = vec!["server", "doctor", "config"];
 
     for subcmd in subcommands {
-        let mut cmd = Command::cargo_bin("songbird")?;
+        let mut cmd = clean_cmd();
         cmd.arg(subcmd).arg("--help").assert().success();
     }
 

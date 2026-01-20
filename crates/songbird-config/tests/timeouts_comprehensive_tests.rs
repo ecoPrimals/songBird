@@ -3,7 +3,7 @@
 
 //! Comprehensive tests for timeout configuration
 
-use serial_test::serial;
+
 use songbird_config::defaults::timeouts::*;
 use std::env;
 use std::time::Duration;
@@ -121,7 +121,6 @@ fn test_discovery_timeout_from_env() {
 }
 
 #[test]
-#[serial]
 fn test_connection_timeout_default_value() {
     env::remove_var("SONGBIRD_CONNECTION_TIMEOUT_MS");
     env::remove_var("SONGBIRD_ENV");
@@ -135,7 +134,6 @@ fn test_connection_timeout_default_value() {
 }
 
 #[test]
-#[serial]
 fn test_connection_timeout_from_env() {
     env::set_var("SONGBIRD_CONNECTION_TIMEOUT_MS", "15000");
     let timeout = connection_timeout();

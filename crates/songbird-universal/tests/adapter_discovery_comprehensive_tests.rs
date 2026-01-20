@@ -13,14 +13,13 @@
 //! - DNS SRV lookups
 //! - Graceful fallbacks
 
-use serial_test::serial;
+
 use songbird_test_utils::{test_bind_address, test_metrics_port, test_orchestrator_port};
 use songbird_types::{SongbirdError, SongbirdResult};
 use songbird_universal::adapters::{AIAdapter, ComputeAdapter, SecurityAdapter, StorageAdapter};
 use std::env;
 
 #[tokio::test]
-#[serial]
 async fn test_ai_adapter_discovery_from_environment() {
     // Set environment variable for AI capability
     env::set_var(
@@ -41,7 +40,6 @@ async fn test_ai_adapter_discovery_from_environment() {
 }
 
 #[tokio::test]
-#[serial]
 async fn test_compute_adapter_discovery_from_environment() {
     env::set_var(
         "CAPABILITY_COMPUTE_ENDPOINT",
@@ -58,7 +56,6 @@ async fn test_compute_adapter_discovery_from_environment() {
 }
 
 #[tokio::test]
-#[serial]
 async fn test_security_adapter_discovery_from_environment() {
     env::set_var("CAPABILITY_SECURITY_ENDPOINT", "https://security-provider:8443");
 
@@ -72,7 +69,6 @@ async fn test_security_adapter_discovery_from_environment() {
 }
 
 #[tokio::test]
-#[serial]
 async fn test_storage_adapter_discovery_from_environment() {
     env::set_var("CAPABILITY_STORAGE_ENDPOINT", "http://storage-provider:9000");
 
@@ -87,7 +83,6 @@ async fn test_storage_adapter_discovery_from_environment() {
 }
 
 #[tokio::test]
-#[serial]
 async fn test_adapter_discovery_fallback_to_default() {
     // Remove all possible endpoint environment variables
     env::remove_var("CAPABILITY_AI_ENDPOINT");
@@ -114,7 +109,6 @@ async fn test_adapter_discovery_fallback_to_default() {
 }
 
 #[tokio::test]
-#[serial]
 async fn test_adapter_endpoint_validation() {
     // Test with valid HTTP endpoint
     env::set_var("CAPABILITY_AI_ENDPOINT", format!("http://valid:{}", test_orchestrator_port()));
@@ -130,7 +124,6 @@ async fn test_adapter_endpoint_validation() {
 }
 
 #[tokio::test]
-#[serial]
 async fn test_multiple_adapter_discovery_independence() {
     // Set different endpoints for different capabilities
     env::set_var("CAPABILITY_AI_ENDPOINT", format!("http://ai:{}", test_orchestrator_port()));
@@ -158,7 +151,6 @@ async fn test_multiple_adapter_discovery_independence() {
 }
 
 #[tokio::test]
-#[serial]
 async fn test_adapter_discovery_with_custom_timeout() {
     env::set_var("CAPABILITY_AI_ENDPOINT", format!("http://ai:{}", test_orchestrator_port()));
     env::set_var("DISCOVERY_TIMEOUT_SECS", "5");
@@ -172,7 +164,6 @@ async fn test_adapter_discovery_with_custom_timeout() {
 }
 
 #[tokio::test]
-#[serial]
 async fn test_adapter_discovery_priority_order() {
     // Set multiple discovery methods - environment should win
     env::set_var(
@@ -192,7 +183,6 @@ async fn test_adapter_discovery_priority_order() {
 }
 
 #[tokio::test]
-#[serial]
 async fn test_compute_adapter_direct_construction() {
     // Test direct construction with explicit endpoint
     let adapter =
@@ -204,7 +194,6 @@ async fn test_compute_adapter_direct_construction() {
 }
 
 #[tokio::test]
-#[serial]
 async fn test_adapter_endpoint_formats() {
     // Test various valid endpoint formats
     let test_cases = vec![
@@ -227,7 +216,6 @@ async fn test_adapter_endpoint_formats() {
 }
 
 #[tokio::test]
-#[serial]
 async fn test_adapter_discovery_cache_behavior() {
     env::set_var("CAPABILITY_AI_ENDPOINT", format!("http://ai:{}", test_orchestrator_port()));
     env::set_var("DISCOVERY_CACHE_TTL_SECS", "60");
@@ -245,7 +233,6 @@ async fn test_adapter_discovery_cache_behavior() {
 }
 
 #[tokio::test]
-#[serial]
 async fn test_adapter_concurrent_discovery() {
     env::set_var("CAPABILITY_AI_ENDPOINT", format!("http://ai:{}", test_orchestrator_port()));
     env::set_var("CAPABILITY_COMPUTE_ENDPOINT", format!("http://compute:{}", test_metrics_port()));
@@ -269,7 +256,6 @@ async fn test_adapter_concurrent_discovery() {
 }
 
 #[tokio::test]
-#[serial]
 async fn test_adapter_discovery_with_explicit_host_port() {
     // Clear primary discovery sources but set fallback host/port
     env::remove_var("CAPABILITY_AI_ENDPOINT");

@@ -2,12 +2,12 @@
 //!
 //! Tests JWT provisioning under fault conditions.
 
-use serial_test::serial;
+
 use songbird_orchestrator::auth::provision_jwt_secret;
 use std::time::Duration;
 
 #[tokio::test]
-#[serial]
+// ✅ NO #[serial]! Concurrent-safe function calls!
 async fn test_fault_invalid_socket_path() {
     // Test with various invalid socket paths
     println!("💥 FAULT: Testing invalid socket paths...");
@@ -34,7 +34,7 @@ async fn test_fault_invalid_socket_path() {
 }
 
 #[tokio::test]
-#[serial]
+// ✅ NO #[serial]! Concurrent-safe function calls!
 async fn test_fault_socket_connection_refused() {
     // Test with socket that exists but refuses connection
     println!("💥 FAULT: Testing connection refused...");
@@ -51,7 +51,7 @@ async fn test_fault_socket_connection_refused() {
 }
 
 #[tokio::test]
-#[serial]
+// ✅ NO #[serial]! Concurrent-safe function calls!
 async fn test_fault_empty_purpose() {
     // Test with empty purpose string
     println!("💥 FAULT: Testing empty purpose...");
@@ -64,7 +64,7 @@ async fn test_fault_empty_purpose() {
 }
 
 #[tokio::test]
-#[serial]
+// ✅ NO #[serial]! Concurrent-safe function calls!
 async fn test_fault_very_long_purpose() {
     // Test with very long purpose string
     println!("💥 FAULT: Testing very long purpose...");
@@ -79,7 +79,7 @@ async fn test_fault_very_long_purpose() {
 }
 
 #[tokio::test]
-#[serial]
+// ✅ NO #[serial]! Concurrent-safe function calls!
 async fn test_fault_special_characters_in_purpose() {
     // Test with special characters in purpose
     println!("💥 FAULT: Testing special characters in purpose...");
@@ -136,7 +136,7 @@ async fn test_fault_special_characters_in_purpose() {
 }
 
 #[tokio::test]
-#[serial]
+// ✅ NO #[serial]! Concurrent-safe function calls!
 async fn test_fault_concurrent_failures() {
     // Test concurrent provisioning where some fail
     println!("💥 FAULT: Testing concurrent failures...");
@@ -174,7 +174,7 @@ async fn test_fault_concurrent_failures() {
 }
 
 #[tokio::test]
-#[serial]
+// ✅ NO #[serial]! Concurrent-safe function calls!
 async fn test_fault_rapid_socket_changes() {
     // Test rapid socket path changes
     println!("💥 FAULT: Testing rapid socket changes...");
@@ -207,7 +207,7 @@ async fn test_fault_rapid_socket_changes() {
 }
 
 #[tokio::test]
-#[serial]
+// ✅ NO #[serial]! Concurrent-safe function calls!
 async fn test_fault_timeout_recovery() {
     // Test recovery from timeouts
     println!("💥 FAULT: Testing timeout recovery...");
@@ -238,7 +238,7 @@ async fn test_fault_timeout_recovery() {
 }
 
 #[tokio::test]
-#[serial]
+// ✅ NO #[serial]! Concurrent-safe function calls!
 async fn test_fault_resource_exhaustion() {
     // Test under resource exhaustion conditions
     println!("💥 FAULT: Testing resource exhaustion...");
