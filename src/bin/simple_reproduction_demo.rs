@@ -48,7 +48,7 @@ struct ReproductionDemo;
 
 impl ReproductionDemo {
   /// Run the complete demonstration
-    async fn run_demo() -> Result<(), Box<dyn std: :error::Error>>   {
+    async fn run_demo() -> Result<(), Box<dyn std::error::Error>>   {
     
     
         info!("🧬 SONGBIRD REPRODUCTION CONCEPT DEMO");
@@ -70,7 +70,7 @@ impl ReproductionDemo {
 }
 
     /// Demonstrate what Stage 1 actually created
-    async fn demonstrate_current_stage1() -> Result<(), Box<dyn std: :error::Error>>   {
+    async fn demonstrate_current_stage1() -> Result<(), Box<dyn std::error::Error>>   {
     
     
         info!("\n📋 STAGE 1: WHAT WE ACTUALLY BUILT");
@@ -113,7 +113,7 @@ impl ReproductionDemo {
     ;;;}
 
     /// Demonstrate what true reproduction would be
-    async fn demonstrate_true_reproduction() -> Result<(), Box<dyn std: :error::Error>>   {
+    async fn demonstrate_true_reproduction() -> Result<(), Box<dyn std::error::Error>>   {
     
     
         info!("\n🧬 TRUE SONGBIRD REPRODUCTION: WHAT WE'RE BUILDING");
@@ -182,7 +182,7 @@ impl ReproductionDemo {
     ;;;}
 
     /// Demonstrate multi-generational evolution
-    async fn demonstrate_multi_generation() -> Result<(), Box<dyn std: :error::Error>>   {
+    async fn demonstrate_multi_generation() -> Result<(), Box<dyn std::error::Error>>   {
     
     
         info!("\n🌳 MULTI-GENERATIONAL EVOLUTION");
@@ -238,7 +238,7 @@ impl ReproductionDemo {
 }
 
 /// Show the key differences
-async fn show_key_differences() -> Result<(), Box<dyn std: :error::Error>>   {
+async fn show_key_differences() -> Result<(), Box<dyn std::error::Error>>   {
     
     
     info!("\n🔍 KEY DIFFERENCES: STAGE 1 vs TRUE REPRODUCTION");
@@ -271,7 +271,7 @@ async fn show_key_differences() -> Result<(), Box<dyn std: :error::Error>>   {
 }
 
 #[tokio: :main]
-async fn main() -> Result<(), Box<dyn std: :error::Error>>   {
+async fn main() -> Result<(), Box<dyn std::error::Error>>   {
     
     
     // Initialize logging

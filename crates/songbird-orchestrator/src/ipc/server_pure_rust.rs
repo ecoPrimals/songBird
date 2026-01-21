@@ -455,6 +455,13 @@ impl UnixSocketServer {
                     let response_json = serde_json::to_string(&response)?;
                     writer.write_all(response_json.as_bytes()).await?;
                     writer.write_all(b"\n").await?;
+                    writer.flush().await?;
+                    
+                    // BIOME OS FIX: Close connection after one request/response
+                    // Squirrel's UniversalAiAdapter uses read_to_end() which waits for EOF
+                    // Each RPC call should be independent (no persistent connections)
+                    debug!("✅ Response sent, closing connection");
+                    break;
                 }
                 Err(e) => {
                     error!("❌ Failed to read from socket: {}", e);
@@ -501,6 +508,11 @@ impl UnixSocketServer {
                 self.handlers.validate_coordination_pattern_json(request.params).await
             }
 
+            // Squirrel Integration (Jan 20, 2026) - Upstream from biomeOS
+            "discover_capabilities" => Self::handle_discover_capabilities().await,
+            "http.request" => Self::handle_http_request(request.params).await,
+            "health" => Self::handle_health().await,
+
             // Unknown method
             _ => Err(JsonRpcError::method_not_found(&request.method)),
         };
@@ -537,6 +549,148 @@ impl UnixSocketServer {
 
         info!("✅ Unix socket server stopped");
         Ok(())
+    }
+
+    /// Handle discover_capabilities - Return Songbird's capabilities
+    ///
+    /// NEW (Jan 20, 2026): Upstream integration from biomeOS.
+    /// Allows Squirrel to discover that Songbird provides HTTP delegation.
+    async fn handle_discover_capabilities() -> Result<serde_json::Value, JsonRpcError> {
+        info!("🔍 Capability discovery request received");
+        
+        // Get family ID from environment or use default
+        let family_id = std::env::var("SONGBIRD_FAMILY_ID").unwrap_or_else(|_| "nat0".to_string());
+        
+        // Songbird's capabilities for inter-primal communication
+        let capabilities = vec![
+            "http.post",           // POST requests
+            "http.get",            // GET requests
+            "http.request",        // Generic HTTP requests
+            "discovery.announce",  // Service announcement
+            "discovery.query",     // Service discovery
+            "security.verify",     // JWT verification (via BearDog delegation)
+        ];
+        
+        Ok(serde_json::json!({
+            "capabilities": capabilities,
+            "metadata": {
+                "primal_name": "songbird",
+                "version": env!("CARGO_PKG_VERSION"),
+                "family_id": family_id
+            }
+        }))
+    }
+
+    /// Handle http.request - Delegate HTTP requests to external services
+    ///
+    /// NEW (Jan 20, 2026): Upstream integration from biomeOS.
+    /// Enables Squirrel's Anthropic adapter to delegate HTTP requests through Songbird.
+    async fn handle_http_request(params: Option<serde_json::Value>) -> Result<serde_json::Value, JsonRpcError> {
+        use serde::Deserialize;
+        
+        #[derive(Deserialize)]
+        struct HttpRequestParams {
+            method: String,
+            url: String,
+            #[serde(default)]
+            headers: std::collections::HashMap<String, String>,
+            #[serde(default)]
+            body: Option<serde_json::Value>,
+        }
+        
+        let params: HttpRequestParams = match params {
+            Some(p) => serde_json::from_value(p)
+                .map_err(|e| JsonRpcError::invalid_params(e.to_string()))?,
+            None => return Err(JsonRpcError::invalid_params("Missing params")),
+        };
+        
+        info!("🌐 HTTP delegation: {} {}", params.method, params.url);
+        
+        // Create HTTP client with timeout
+        let client = reqwest::Client::builder()
+            .timeout(std::time::Duration::from_secs(60))
+            .connect_timeout(std::time::Duration::from_secs(10))
+            .build()
+            .map_err(|e| JsonRpcError::internal_error(&format!("Failed to build HTTP client: {}", e)))?;
+        
+        // Build request
+        let mut request = match params.method.to_uppercase().as_str() {
+            "GET" => client.get(&params.url),
+            "POST" => client.post(&params.url),
+            "PUT" => client.put(&params.url),
+            "DELETE" => client.delete(&params.url),
+            "PATCH" => client.patch(&params.url),
+            _ => return Err(JsonRpcError::invalid_params(&format!("Unsupported HTTP method: {}", params.method))),
+        };
+        
+        // Add headers
+        for (key, value) in params.headers {
+            request = request.header(&key, &value);
+        }
+        
+        // Add body if present
+        if let Some(body) = params.body {
+            request = request.json(&body);
+        }
+        
+        // Send request
+        let response = request
+            .send()
+            .await
+            .map_err(|e| JsonRpcError::internal_error(&format!("HTTP request failed: {}", e)))?;
+        
+        // Extract response details
+        let status = response.status().as_u16();
+        
+        // Extract headers
+        let mut response_headers = std::collections::HashMap::new();
+        for (key, value) in response.headers() {
+            if let Ok(value_str) = value.to_str() {
+                response_headers.insert(key.as_str().to_string(), value_str.to_string());
+            }
+        }
+        
+        // Extract body
+        let body: serde_json::Value = if let Some(content_type) = response.headers().get("content-type") {
+            if content_type.to_str().unwrap_or("").contains("application/json") {
+                // Parse JSON response
+                response.json().await
+                    .map_err(|e| JsonRpcError::internal_error(&format!("Failed to parse JSON response: {}", e)))?
+            } else {
+                // Return text as string
+                let text = response.text().await
+                    .map_err(|e| JsonRpcError::internal_error(&format!("Failed to read response text: {}", e)))?;
+                serde_json::json!(text)
+            }
+        } else {
+            // No content-type, try JSON first
+            match response.json().await {
+                Ok(json) => json,
+                Err(_) => {
+                    // Fallback to text
+                    serde_json::json!("")
+                }
+            }
+        };
+        
+        info!("✅ HTTP delegation complete: {} (status: {})", params.url, status);
+        
+        Ok(serde_json::json!({
+            "status": status,
+            "headers": response_headers,
+            "body": body
+        }))
+    }
+
+    /// Handle health - Simple health check
+    ///
+    /// NEW (Jan 20, 2026): Required by Squirrel's is_available() check.
+    async fn handle_health() -> Result<serde_json::Value, JsonRpcError> {
+        Ok(serde_json::json!({
+            "status": "healthy",
+            "primal": "songbird",
+            "version": env!("CARGO_PKG_VERSION")
+        }))
     }
 }
 

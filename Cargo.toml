@@ -52,6 +52,9 @@ members = [
     
     # 🌍 UNIVERSAL IPC (NEW!) - Platform-agnostic IPC
     "crates/songbird-universal-ipc",
+    
+    # 🌐 HTTP CLIENT (NEW!) - Pure Rust HTTP/HTTPS with BearDog crypto
+    "crates/songbird-http-client",
 ]
 
 [workspace.package]

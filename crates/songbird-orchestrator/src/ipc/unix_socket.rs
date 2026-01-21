@@ -46,6 +46,7 @@ use tracing::{debug, error, info, warn};
 
 use super::primal_registry::PrimalRegistry;
 use crate::app::connection_manager::ConnectionManager;
+use songbird_http_client::SongbirdHttpClient;  // ✅ Pure Rust HTTP/HTTPS client
 
 /// Unix socket IPC server for inter-primal communication
 pub struct UnixSocketIpcServer {
@@ -894,81 +895,31 @@ async fn handle_http_request(params: Option<Value>) -> Result<Value, JsonRpcErro
         None => return Err(JsonRpcError::invalid_params("Missing params")),
     };
     
-    info!("🌐 HTTP delegation: {} {}", params.method, params.url);
+    info!("🌐 HTTP delegation (Pure Rust): {} {}", params.method, params.url);
     
-    // Create HTTP client with timeout
-    let client = reqwest::Client::builder()
-        .timeout(std::time::Duration::from_secs(60))
-        .connect_timeout(std::time::Duration::from_secs(10))
-        .build()
-        .map_err(|e| JsonRpcError::internal_error(&format!("Failed to build HTTP client: {}", e)))?;
+    // ✅ NEW: Use Pure Rust HTTP client with BearDog crypto delegation
+    let beardog_socket = std::env::var("SONGBIRD_SECURITY_PROVIDER")
+        .unwrap_or_else(|_| "/tmp/beardog-nat0.sock".to_string());
     
-    // Build request
-    let mut request = match params.method.to_uppercase().as_str() {
-        "GET" => client.get(&params.url),
-        "POST" => client.post(&params.url),
-        "PUT" => client.put(&params.url),
-        "DELETE" => client.delete(&params.url),
-        "PATCH" => client.patch(&params.url),
-        _ => return Err(JsonRpcError::invalid_params(&format!("Unsupported HTTP method: {}", params.method))),
-    };
+    let client = SongbirdHttpClient::new(beardog_socket);
     
-    // Add headers
-    for (key, value) in params.headers {
-        request = request.header(&key, &value);
-    }
-    
-    // Add body if present
-    if let Some(body) = params.body {
-        request = request.json(&body);
-    }
-    
-    // Send request
-    let response = request
-        .send()
+    // Make request via Pure Rust client
+    let response = client
+        .request(
+            &params.method,
+            &params.url,
+            params.headers,
+            params.body,
+        )
         .await
         .map_err(|e| JsonRpcError::internal_error(&format!("HTTP request failed: {}", e)))?;
     
-    // Extract response details
-    let status = response.status().as_u16();
-    
-    // Extract headers
-    let mut response_headers = std::collections::HashMap::new();
-    for (key, value) in response.headers() {
-        if let Ok(value_str) = value.to_str() {
-            response_headers.insert(key.as_str().to_string(), value_str.to_string());
-        }
-    }
-    
-    // Extract body
-    let body: Value = if let Some(content_type) = response.headers().get("content-type") {
-        if content_type.to_str().unwrap_or("").contains("application/json") {
-            // Parse JSON response
-            response.json().await
-                .map_err(|e| JsonRpcError::internal_error(&format!("Failed to parse JSON response: {}", e)))?
-        } else {
-            // Return text as string
-            let text = response.text().await
-                .map_err(|e| JsonRpcError::internal_error(&format!("Failed to read response text: {}", e)))?;
-            serde_json::json!(text)
-        }
-    } else {
-        // No content-type, try JSON first
-        match response.json().await {
-            Ok(json) => json,
-            Err(_) => {
-                // Fallback to text
-                serde_json::json!("")
-            }
-        }
-    };
-    
-    info!("✅ HTTP delegation complete: {} (status: {})", params.url, status);
+    info!("✅ HTTP delegation complete (Pure Rust): {} (status: {})", params.url, response.status);
     
     Ok(serde_json::json!({
-        "status": status,
-        "headers": response_headers,
-        "body": body
+        "status": response.status,
+        "headers": response.headers,
+        "body": response.body
     }))
 }
 

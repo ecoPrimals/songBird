@@ -1,0 +1,51 @@
+[package]
+name = "songbird-http-client"
+version = "0.1.0"
+edition = "2021"
+authors = ["ecoPrimals <contact@ecoprimals.dev>"]
+description = "Pure Rust HTTP/HTTPS client using BearDog crypto delegation (Tower Atomic)"
+license = "AGPL-3.0"
+repository = "https://github.com/ecoPrimals/SongBird"
+homepage = "https://songbird-gaming.ecoprimals.dev"
+keywords = ["http", "https", "tls", "pure-rust", "tower-atomic"]
+categories = ["network-programming", "web-programming::http-client"]
+
+[dependencies]
+# HTTP protocol (Pure Rust)
+hyper = { version = "1.0", features = ["client", "http1", "http2"] }
+hyper-util = { version = "0.1", features = ["client", "client-legacy", "tokio"] }
+http = "1.0"
+http-body-util = "0.1"
+tower = "0.4"
+
+# Async runtime
+tokio = { workspace = true, features = ["net", "io-util", "rt", "macros"] }
+
+# Serialization
+serde = { workspace = true, features = ["derive"] }
+serde_json = { workspace = true }
+
+# Utilities
+tracing = { workspace = true }
+thiserror = "1.0"
+base64 = "0.21"
+bytes = "1.0"
+anyhow = "1.0"
+
+# NO reqwest, NO rustls, NO ring!
+# Pure Rust only - crypto delegated to BearDog
+
+[dev-dependencies]
+tokio = { workspace = true, features = ["full", "test-util"] }
+tempfile = "3.0"
+wiremock = "0.6"
+tracing-subscriber = { workspace = true }
+
+[[example]]
+name = "simple_get"
+path = "examples/simple_get.rs"
+
+[[example]]
+name = "https_test"
+path = "examples/https_test.rs"
+
