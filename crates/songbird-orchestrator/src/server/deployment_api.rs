@@ -448,14 +448,15 @@ async fn deploy_binary(
     debug!("   Binary size: {} bytes", binary_data.len());
     debug!("   Environment vars: {}", env_vars.len());
 
-    // Create deployment directory
-    let deploy_dir = format!("/tmp/songbird-deployments/{}", deployment_id);
+    // Create deployment directory (TRUE PRIMAL: self-knowledge via env_config)
+    let base_deploy_dir = crate::env_config::deployment_dir();
+    let deploy_dir = base_deploy_dir.join(&deployment_id);
     fs::create_dir_all(&deploy_dir).await.map_err(|e| {
         (StatusCode::INTERNAL_SERVER_ERROR, format!("Directory creation failed: {}", e))
     })?;
 
     // Write binary
-    let binary_path = format!("{}/service", deploy_dir);
+    let binary_path = deploy_dir.join("service");
     fs::write(&binary_path, &binary_data)
         .await
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("Binary write failed: {}", e)))?;
@@ -476,7 +477,7 @@ async fn deploy_binary(
             .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("Chmod failed: {}", e)))?;
     }
 
-    info!("✅ Binary deployed to: {}", binary_path);
+    info!("✅ Binary deployed to: {}", binary_path.display());
 
     // Extract port from env vars
     let port = env_vars
@@ -488,7 +489,7 @@ async fn deploy_binary(
     let mut deployment = DeploymentInfo {
         deployment_id: deployment_id.clone(),
         service_name: service_name.clone(),
-        binary_path: binary_path.clone(),
+        binary_path: binary_path.to_string_lossy().to_string(),
         env_vars: env_vars.clone(),
         status: DeploymentStatus::Deploying,
         deployed_at: chrono::Utc::now().to_rfc3339(),
@@ -498,7 +499,7 @@ async fn deploy_binary(
 
     // Start service if requested
     if auto_start {
-        match start_service(&binary_path, &env_vars).await {
+        match start_service(&binary_path.to_string_lossy(), &env_vars).await {
             Ok(pid) => {
                 info!("✅ Service started with PID: {}", pid);
                 deployment.status = DeploymentStatus::Running;

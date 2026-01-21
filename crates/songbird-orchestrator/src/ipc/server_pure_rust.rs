@@ -266,12 +266,10 @@ impl UnixSocketServer {
         // Priority order for family ID:
         let family_id = Self::get_family_id();
 
-        // Default: /tmp/songbird-{family_id}.sock (BiomeOS standard)
-        // Note: BiomeOS expects /tmp/ by default, NOT /run/user/{uid}/
-        let socket_path = PathBuf::from(format!("/tmp/songbird-{}.sock", family_id));
+        // Default: Use env_config for TRUE PRIMAL self-knowledge
+        let socket_path = crate::env_config::socket_path();
         info!(
-            "📍 Using default socket path with family '{}': {}",
-            family_id,
+            "📍 Using socket path (TRUE PRIMAL self-knowledge): {}",
             socket_path.display()
         );
         socket_path

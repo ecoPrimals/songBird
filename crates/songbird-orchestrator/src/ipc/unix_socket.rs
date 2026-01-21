@@ -897,11 +897,11 @@ async fn handle_http_request(params: Option<Value>) -> Result<Value, JsonRpcErro
     
     info!("🌐 HTTP delegation (Pure Rust): {} {}", params.method, params.url);
     
-    // ✅ NEW: Use Pure Rust HTTP client with BearDog crypto delegation
-    let beardog_socket = std::env::var("SONGBIRD_SECURITY_PROVIDER")
-        .unwrap_or_else(|_| "/tmp/beardog-nat0.sock".to_string());
+    // ✅ NEW: Use Pure Rust HTTP client with capability-based crypto discovery (TRUE PRIMAL)
+    let crypto_socket = crate::primal_discovery::discover_crypto_provider().await
+        .map_err(|e| JsonRpcError::internal_error(&format!("Failed to discover crypto provider: {}", e)))?;
     
-    let client = SongbirdHttpClient::new(beardog_socket);
+    let client = SongbirdHttpClient::new(crypto_socket);
     
     // Make request via Pure Rust client
     let response = client

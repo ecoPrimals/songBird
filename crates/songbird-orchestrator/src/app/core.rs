@@ -237,7 +237,7 @@ impl SongbirdOrchestrator {
                 }
             }
         } else {
-            debug!("No security provider configured (SONGBIRD_SECURITY_PROVIDER not set)");
+            debug!("No security provider configured (capability-based discovery did not find security provider)");
             debug!("Continuing without encryption tags");
         }
 

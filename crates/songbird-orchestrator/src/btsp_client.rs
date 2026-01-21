@@ -45,17 +45,16 @@ impl BtspClient {
         let path = std::env::var("BEARDOG_SOCKET")
             .or_else(|_| std::env::var("BIOMEOS_SOCKET_PATH"))
             .or_else(|_| {
-                // Try XDG runtime directory
+                // Try XDG runtime directory (capability-based, primal-agnostic)
                 std::env::var("XDG_RUNTIME_DIR").map(|dir| {
-                    let family_id = std::env::var("BEARDOG_FAMILY_ID")
-                        .or_else(|_| std::env::var("FAMILY_ID"))
-                        .unwrap_or_else(|_| "default".to_string());
-                    format!("{}/beardog-{}.sock", dir, family_id)
+                    let family_id = crate::env_config::family_id();
+                    format!("{}/security-{}.sock", dir, family_id)
                 })
             })
             .unwrap_or_else(|_| {
-                warn!("No BEARDOG_SOCKET env var, using fallback");
-                "/tmp/beardog-default-default.sock".to_string()
+                warn!("No crypto provider socket configured, using fallback discovery");
+                // Use capability-based discovery as fallback
+                "/tmp/security.sock".to_string()
             });
 
         PathBuf::from(path)

@@ -275,8 +275,8 @@ impl CryptoProvider for UnixSocketCryptoProvider {
 /// * `Ok(provider)` - Discovered crypto provider
 /// * `Err` - No crypto provider found
 pub async fn discover_crypto_provider() -> Result<Arc<dyn CryptoProvider>> {
-    // Use existing discovery (already capability-based in spirit)
-    let socket_path = super::discovery::get_beardog_crypto_socket().await?;
+    // Use primal-agnostic discovery (TRUE PRIMAL)
+    let socket_path = crate::primal_discovery::discover_crypto_provider().await?;
 
     Ok(Arc::new(UnixSocketCryptoProvider::new(socket_path)))
 }

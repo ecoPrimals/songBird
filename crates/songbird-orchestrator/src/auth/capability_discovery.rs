@@ -94,14 +94,14 @@ pub fn discover_beardog_socket() -> Option<PathBuf> {
 pub fn discover_beardog_socket_for_family(family_id: &str) -> Option<PathBuf> {
     info!("🔍 Discovering security provider for family '{}'...", family_id);
 
-    // Check family-specific socket
-    let family_socket = format!("/tmp/beardog-{}.sock", family_id);
+    // Check family-specific socket (capability-based, primal-agnostic)
+    let family_socket = format!("/tmp/security-{}.sock", family_id);
     if std::path::Path::new(&family_socket).exists() {
-        info!("   ✅ Found family-specific BearDog socket: {}", family_socket);
+        info!("   ✅ Found family-specific security socket: {}", family_socket);
         return Some(PathBuf::from(family_socket));
     }
 
-    // Fall back to generic discovery
+    // Fall back to generic discovery (TRUE PRIMAL)
     discover_beardog_socket()
 }
 

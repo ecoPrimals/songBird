@@ -116,15 +116,15 @@ pub async fn get_beardog_crypto_socket() -> Result<String> {
 pub async fn get_beardog_crypto_socket_for_family(family_id: &str) -> Result<String> {
     info!("🔍 Discovering crypto provider for family '{}'...", family_id);
 
-    // Check family-specific socket
-    let family_socket = format!("/tmp/beardog-{}.sock", family_id);
+    // Check family-specific socket (capability-based, primal-agnostic)
+    let family_socket = format!("/tmp/crypto-{}.sock", family_id);
     if std::path::Path::new(&family_socket).exists() {
-        info!("   ✅ Found family-specific BearDog socket: {}", family_socket);
+        info!("   ✅ Found family-specific crypto socket: {}", family_socket);
         return Ok(family_socket);
     }
 
-    // Fall back to generic discovery
-    get_beardog_crypto_socket().await
+    // Fall back to generic discovery (TRUE PRIMAL)
+    crate::primal_discovery::discover_crypto_provider().await
 }
 
 /// Check if BearDog crypto is available
