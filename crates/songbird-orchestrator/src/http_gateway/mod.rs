@@ -58,6 +58,7 @@ use anyhow::Result;
 use serde_json::Value;
 use std::sync::Arc;
 use tracing::info;
+use songbird_http_client::SongbirdHttpClient; // ✅ Pure Rust HTTP (Tower Atomic)
 
 /// HTTP Gateway Service - Universal HTTP proxy for pure Rust ecosystem
 ///
@@ -78,8 +79,8 @@ pub struct HttpGatewayService {
     /// Credential manager for API keys
     credentials: Arc<CredentialManager>,
 
-    /// HTTP client for external requests (pure Rust!)
-    http_client: reqwest::Client,
+    /// HTTP client for external requests (Tower Atomic: Pure Rust + BearDog crypto!)
+    http_client: SongbirdHttpClient,
 }
 
 impl HttpGatewayService {
@@ -92,12 +93,12 @@ impl HttpGatewayService {
     pub fn new() -> Result<Self> {
         info!("🌐 Initializing HTTP Gateway Service");
 
-        // Create HTTP client (pure Rust with rustls!)
-        let http_client = reqwest::Client::builder()
-            .timeout(std::time::Duration::from_secs(30))
-            .connect_timeout(std::time::Duration::from_secs(5))
-            .pool_max_idle_per_host(10)
-            .build()?;
+        // ✅ TOWER ATOMIC: Pure Rust HTTP client with BearDog crypto delegation
+        let crypto_socket = std::env::var("CRYPTO_PROVIDER_SOCKET")
+            .or_else(|_| std::env::var("BEARDOG_SOCKET"))
+            .unwrap_or_else(|_| "/tmp/beardog-nat0.sock".to_string());
+        
+        let http_client = SongbirdHttpClient::new(crypto_socket);
 
         // Create rate limiter (100 requests per minute default)
         let rate_limiter = Arc::new(RateLimiter::new(100, std::time::Duration::from_secs(60)));
@@ -108,10 +109,11 @@ impl HttpGatewayService {
         // Create credential manager
         let credentials = Arc::new(CredentialManager::new());
 
-        info!("✅ HTTP Gateway Service initialized");
+        info!("✅ HTTP Gateway Service initialized (Tower Atomic)");
         info!("   Rate limit: 100 req/min per client");
         info!("   Cache size: 100MB");
-        info!("   TLS: Pure Rust (rustls)");
+        info!("   TLS: Pure Rust (BearDog crypto delegation)");
+        info!("   HTTP: Zero C dependencies");
 
         Ok(Self {
             rate_limiter,

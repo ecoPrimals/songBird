@@ -130,7 +130,7 @@ pub struct UnixSocketListener {
     rate_limiter: Arc<RateLimiter>,
     cache: Arc<ResponseCache>,
     credentials: Arc<CredentialManager>,
-    http_client: reqwest::Client,
+    http_client: songbird_http_client::SongbirdHttpClient,
     active_connections: Arc<RwLock<usize>>,
 }
 
@@ -143,7 +143,7 @@ impl UnixSocketListener {
         rate_limiter: Arc<RateLimiter>,
         cache: Arc<ResponseCache>,
         credentials: Arc<CredentialManager>,
-        http_client: reqwest::Client,
+        http_client: songbird_http_client::SongbirdHttpClient,
     ) -> Self {
         info!(
             "Creating Unix socket listener for capability '{}' at {:?}",

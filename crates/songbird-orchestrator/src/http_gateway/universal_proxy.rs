@@ -34,10 +34,11 @@ use anyhow::{anyhow, Result};
 use serde_json::Value;
 use std::sync::Arc;
 use tracing::{debug, error, info, trace, warn};
+use songbird_http_client::SongbirdHttpClient; // ✅ Pure Rust HTTP (Tower Atomic)
 
 /// Universal HTTP Proxy - Works with any provider
 pub struct UniversalProxy {
-    http_client: reqwest::Client,
+    http_client: SongbirdHttpClient,
     rate_limiter: Arc<RateLimiter>,
     cache: Arc<ResponseCache>,
     credentials: Arc<CredentialManager>,
@@ -47,7 +48,7 @@ impl UniversalProxy {
     /// Create a new universal proxy
     #[must_use]
     pub fn new(
-        http_client: reqwest::Client,
+        http_client: SongbirdHttpClient,
         rate_limiter: Arc<RateLimiter>,
         cache: Arc<ResponseCache>,
         credentials: Arc<CredentialManager>,
