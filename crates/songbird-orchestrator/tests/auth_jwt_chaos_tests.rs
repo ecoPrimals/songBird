@@ -1,15 +1,16 @@
 //! Chaos Tests for BearDog JWT Delegation
 //!
 //! Tests JWT provisioning under chaotic conditions.
+//!
+//! **Evolution**: Removed #[serial] - these tests are concurrent-safe!
 
-use serial_test::serial;
 use songbird_orchestrator::auth::provision_jwt_secret;
 use std::sync::Arc;
 use std::time::Duration;
 use tokio::sync::Barrier;
 
 #[tokio::test]
-#[serial]
+// ✅ NO #[serial]! Concurrent chaos testing!
 async fn test_chaos_jwt_provisioning_under_load() {
     // Test JWT provisioning under heavy concurrent load
     println!("🌪️  CHAOS: Testing JWT provisioning under load...");
@@ -53,27 +54,31 @@ async fn test_chaos_jwt_provisioning_under_load() {
 }
 
 #[tokio::test]
-#[serial]
-async fn test_chaos_jwt_provisioning_with_env_mutations() {
-    // Test JWT provisioning while environment variables are being mutated
-    println!("🌪️  CHAOS: Testing with environment mutations...");
+// ✅ NO #[serial]! Concurrent chaos testing!
+// NOTE: Removed global env mutations - provision_jwt_secret uses discovery, not env vars
+async fn test_chaos_jwt_provisioning_with_varying_paths() {
+    // Test JWT provisioning with varying socket paths (simulating discovery changes)
+    println!("🌪️  CHAOS: Testing with varying socket paths...");
 
-    let mutation_handle = tokio::spawn(async {
-        for i in 0..50 {
-            std::env::set_var("SECURITY_PROVIDER", format!("/tmp/chaos-{}.sock", i));
-            tokio::time::sleep(Duration::from_millis(10)).await;
-            std::env::remove_var("SECURITY_PROVIDER");
-            tokio::time::sleep(Duration::from_millis(10)).await;
-        }
-    });
-
+    // Simulate chaotic socket path variations by passing explicit paths
     let provision_handles: Vec<_> = (0..100)
         .map(|i| {
             tokio::spawn(async move {
+                // Introduce chaos: some delay before provisioning
                 tokio::time::sleep(Duration::from_millis(i % 20)).await;
-                provision_jwt_secret(None, &format!("chaos_env_{}", i))
+                
+                // Test with various socket paths (will fall back to secure random)
+                let socket_path = if i % 3 == 0 {
+                    format!("/tmp/chaos-{}.sock", i)
+                } else {
+                    String::new()
+                };
+                
+                let socket = if !socket_path.is_empty() { Some(socket_path.as_str()) } else { None };
+                
+                provision_jwt_secret(socket, &format!("chaos_path_{}", i))
                     .await
-                    .expect("Should succeed despite env mutations")
+                    .expect("Should succeed with varying paths")
             })
         })
         .collect();
@@ -84,23 +89,18 @@ async fn test_chaos_jwt_provisioning_with_env_mutations() {
         .map(|r| r.expect("Task should not panic"))
         .collect();
 
-    mutation_handle.await.expect("Mutation task should complete");
-
-    println!("✅ Generated {} secrets during env mutations", secrets.len());
+    println!("✅ Generated {} secrets with varying paths", secrets.len());
 
     // All should be valid
     for secret in &secrets {
         assert!(secret.len() >= 85);
     }
 
-    // Cleanup
-    std::env::remove_var("SECURITY_PROVIDER");
-
-    println!("✅ CHAOS: Environment mutation test passed!");
+    println!("✅ CHAOS: Varying paths test passed!");
 }
 
 #[tokio::test]
-#[serial]
+// ✅ NO #[serial]! Concurrent chaos testing!
 async fn test_chaos_jwt_provisioning_rapid_fire() {
     // Test rapid-fire JWT provisioning (stress test)
     println!("🌪️  CHAOS: Testing rapid-fire provisioning...");
@@ -142,7 +142,7 @@ async fn test_chaos_jwt_provisioning_rapid_fire() {
 }
 
 #[tokio::test]
-#[serial]
+// ✅ NO #[serial]! Concurrent chaos testing!
 async fn test_chaos_jwt_provisioning_with_timeouts() {
     // Test JWT provisioning with aggressive timeouts
     println!("🌪️  CHAOS: Testing with aggressive timeouts...");
@@ -173,7 +173,7 @@ async fn test_chaos_jwt_provisioning_with_timeouts() {
 }
 
 #[tokio::test]
-#[serial]
+// ✅ NO #[serial]! Concurrent chaos testing!
 async fn test_chaos_jwt_provisioning_memory_stress() {
     // Test JWT provisioning while allocating lots of memory
     println!("🌪️  CHAOS: Testing under memory stress...");
