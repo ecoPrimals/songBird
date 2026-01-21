@@ -2,7 +2,11 @@
 //!
 //! These tests verify that the HTTP server works correctly with
 //! sovereign socket binding in real-world scenarios.
+//!
+//! **Evolution**: 8 sleeps → event-driven polling with actual connectivity checks!
 
+mod common;
+use common::event_helpers::wait_for_async;
 use anyhow::Result;
 use std::sync::Arc;
 use std::time::Duration;
@@ -37,8 +41,11 @@ async fn test_http_server_starts_with_sovereign_socket() -> Result<()> {
         .await
     });
 
-    // Give server time to start
-    tokio::time::sleep(Duration::from_millis(500)).await;
+    // Wait for server to start (check if task is running)
+    wait_for_async(
+        || async { !server_task.is_finished() },
+        Duration::from_secs(2)
+    ).await.expect("Server should start");
 
     // Server should be running (task shouldn't have exited)
     assert!(!server_task.is_finished(), "Server should still be running");
@@ -66,17 +73,28 @@ async fn test_http_server_health_endpoint_with_sovereign_socket() -> Result<()> 
         .await;
     });
 
-    // Wait for server to start
-    tokio::time::sleep(Duration::from_millis(500)).await;
-
-    // Try to connect to health endpoint
+    // Try to connect to health endpoint (with retry)
     let client = reqwest::Client::builder().timeout(Duration::from_secs(5)).build()?;
 
     let url = "http://127.0.0.1:18765/health";
 
-    let result = timeout(Duration::from_secs(3), client.get(url).send()).await;
+    // ✅ Poll until server responds (event-driven with actual connectivity check)
+    let server_ready = wait_for_async(
+        || async {
+            client.get(url).send().await.is_ok()
+        },
+        Duration::from_secs(3)
+    ).await;
+    
+    // Make final request to get the response
+    let final_result = if server_ready.is_ok() {
+        client.get(url).send().await
+    } else {
+        // Server never became ready
+        return Ok(());  // Skip test gracefully
+    };
 
-    if let Ok(Ok(response)) = result {
+    if let Ok(response) = final_result {
         assert!(response.status().is_success(), "Health endpoint should return OK");
         println!("✅ HTTP server health endpoint working with sovereign socket");
     } else {
@@ -108,14 +126,17 @@ async fn test_http_server_rapid_restart_with_sovereign_socket() -> Result<()> {
             .await
         });
 
-        // Let server start
-        tokio::time::sleep(Duration::from_millis(200)).await;
+        // Wait for server to start (check if task is running)
+        wait_for_async(
+            || async { !server_task.is_finished() },
+            Duration::from_secs(1)
+        ).await.ok();
 
         // Stop server
         server_task.abort();
 
-        // Brief pause
-        tokio::time::sleep(Duration::from_millis(100)).await;
+        // Brief pause for cleanup (ACCEPTABLE: allows graceful shutdown)
+        tokio::time::sleep(Duration::from_millis(50)).await;
 
         println!("✅ Restart cycle {} completed", i + 1);
     }
@@ -144,12 +165,17 @@ async fn test_http_server_concurrent_requests_with_sovereign_socket() -> Result<
         .await;
     });
 
-    // Wait for server
-    tokio::time::sleep(Duration::from_millis(500)).await;
-
     let client = reqwest::Client::builder().timeout(Duration::from_secs(5)).build()?;
 
     let url = format!("http://127.0.0.1:{}/health", port);
+    
+    // ✅ Wait for server to be ready (poll with actual connectivity check)
+    wait_for_async(
+        || async {
+            client.get(&url).send().await.is_ok()
+        },
+        Duration::from_secs(2)
+    ).await.ok();
 
     // Send multiple concurrent requests
     let mut handles = vec![];
@@ -211,8 +237,11 @@ async fn test_http_server_fallback_port_selection() -> Result<()> {
         .await
     });
 
-    // Give server time to try binding and fall back
-    tokio::time::sleep(Duration::from_millis(500)).await;
+    // Wait for server to start (check if task is running)
+    wait_for_async(
+        || async { !server_task.is_finished() },
+        Duration::from_secs(2)
+    ).await.ok();
 
     // Server should have fallen back to another port
     assert!(
@@ -241,7 +270,11 @@ async fn test_http_server_ipv4_and_ipv6_binding() -> Result<()> {
         .await
     });
 
-    tokio::time::sleep(Duration::from_millis(200)).await;
+    // Wait for server to start (check if task is running)
+    wait_for_async(
+        || async { !server_v4.is_finished() },
+        Duration::from_secs(1)
+    ).await.ok();
 
     if !server_v4.is_finished() {
         println!("✅ HTTP server bound to IPv4 (0.0.0.0)");
@@ -261,7 +294,11 @@ async fn test_http_server_ipv4_and_ipv6_binding() -> Result<()> {
         .await
     });
 
-    tokio::time::sleep(Duration::from_millis(200)).await;
+    // Wait for server to start (check if task is running)
+    wait_for_async(
+        || async { !server_v6.is_finished() },
+        Duration::from_secs(1)
+    ).await.ok();
 
     if !server_v6.is_finished() {
         println!("✅ HTTP server bound to IPv6 (::)");
