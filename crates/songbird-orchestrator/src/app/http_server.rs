@@ -117,7 +117,7 @@ fn build_router(
     Router::new()
         .nest(
             "/api/federation",
-            crate::server::federation_api::federation_routes(
+            crate::server::federation::federation_routes(
                 Arc::clone(&federation_state),
                 Arc::clone(&federated_service_registry),
             ),

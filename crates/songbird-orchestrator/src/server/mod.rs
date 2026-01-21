@@ -20,7 +20,7 @@ pub mod consent_api; // ✅ NEW: Consent Management API (Dec 18, 2025 - Week 5 M
 pub mod deployment_api;
 pub mod events; // ✅ NEW: Real-Time Event Broadcasting (Nov 11, 2025 - Phase 4)
 pub mod execution_api;
-pub mod federation_api;
+pub mod federation; // ✅ REFACTORED: Domain-driven module (Jan 21, 2026 - 971 → 4 files)
 pub mod intelligent_protocol_router; // ✅ NEW: Intelligent Protocol Selection (Dec 18, 2025)
 pub mod jsonrpc_api; // ✅ NEW: JSON-RPC 2.0 Universal Gateway (Nov 11, 2025)
 pub mod protocol_api; // ✅ NEW: Progressive Protocol Enhancement API (Nov 11, 2025)
