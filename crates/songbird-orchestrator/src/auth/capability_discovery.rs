@@ -3,7 +3,6 @@
 //! Discovers BearDog via capability-based discovery, maintaining TRUE PRIMAL self-knowledge.
 //! Songbird only knows itself - it discovers BearDog at runtime via "security" capability.
 
-// use anyhow::{Context, Result};  // Unused (no Result needed)
 use std::path::PathBuf;
 use tracing::{debug, info, warn};
 

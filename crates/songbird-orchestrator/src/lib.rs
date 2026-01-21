@@ -105,7 +105,7 @@ pub mod resource_management; // Resource management & fairness (Week 2 - Dec 18,
 pub mod rpc; // Multi-protocol RPC (JSON-RPC, tarpc)
 pub mod env_config; // Environment configuration - self-knowledge (TRUE PRIMAL) (Jan 21, 2026)
 pub mod primal_discovery; // Agnostic primal discovery (TRUE PRIMAL) (Jan 21, 2026)
-pub mod security_capability_client; // Security capability client (provider-agnostic) (Jan 1, 2026) - TODO: Migrate to Pure Rust HTTP
+pub mod security_capability_client; // Security capability client (provider-agnostic) - ✅ Pure Rust HTTP (Jan 21, 2026)
 pub mod self_knowledge; // Self-knowledge about this primal (zero hardcoding!) (Jan 1, 2026)
 pub mod server;
 pub mod service_registry; // Universal Port Authority (Dec 20, 2025) - Inter-primal service registration
@@ -127,31 +127,19 @@ pub use universal_adapter::{CapabilityQuery, DiscoveredProvider, UniversalAdapte
 // Re-export self-knowledge (what we know about ourselves!)
 // self_knowledge exports removed - module provides functions, not types
 
-// Backward compatibility alias (deprecated - encourage migration!)
-#[deprecated(note = "Use SecurityCapabilityClient instead - no primal name hardcoding!")]
-// Type alias for backward compatibility (deprecated in v3.15.0)
-// Use SecurityCapabilityClient directly for new code
-pub use security_capability_client::SecurityCapabilityClient as BearDogClient;
-
 // Re-export MVP orchestrator integration
 pub use orchestrator::{HealthStatus, OrchestratorConfig, SongbirdOrchestrator as MvpOrchestrator};
 
 // Re-export all functionality from crates (consolidated from songbird-lib)
-// pub use songbird_cli as cli_crate;
 pub use songbird_config as config;
 pub use songbird_discovery as discovery;
-// pub use songbird_security_errors as errors;
-// pub use songbird_observability as observability; // Commented out - using new observability module (Week 4)
 pub use songbird_registry as registry;
-// pub use songbird_security_errors as security;
-// pub use songbird_universal_primals as primals;
 
 // Re-export commonly used types
 pub use songbird_types::config::CanonicalSongbirdConfig;
 pub use songbird_types::{SongbirdError, SongbirdResult};
 
 // Re-export key types that are commonly used
-// pub use songbird_universal_primals::{PrimalCapability, PrimalProvider};
 pub use songbird_universal::PrimalType;
 
 // Re-export UniBin public API for easy access

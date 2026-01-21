@@ -23,8 +23,7 @@ pub use pure_jsonrpc_types::{JsonRpcError, JsonRpcRequest, JsonRpcResponse};
 // Production uses UnixSocketIpcServer (Pure Rust, v3.22.0)
 // See: ipc/server_pure_rust.rs for the actual implementation
 // See: PHASE4_JSONRPSEE_ANALYSIS_JAN_19_2026.md for analysis
-// pub mod jsonrpc; // REMOVED: Dead code (not instantiated anywhere)
-// pub use self::jsonrpc::{JsonRpcConfig, JsonRpcServer}; // REMOVED
+// Note: jsonrpc module was removed as dead code (not instantiated anywhere)
 
 // ============================================================================
 // tarpc RPC (100% Pure Rust, production-ready)
