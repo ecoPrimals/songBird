@@ -58,11 +58,11 @@ parking_lot = "0.12"
 num_cpus = "1.16"
 fastrand = "2.0"
 rand = { workspace = true }
-# ⚠️ IN PROGRESS (Jan 21, 2026): Migrating to songbird-http-client (Pure Rust)
-# Phase 1 COMPLETE: security_capability_client.rs migrated ✅
-# Remaining: 19 files across 5 crates (see DEEP_EVOLUTION_OPPORTUNITIES_JAN_21_2026.md)
-reqwest = { version = "0.11", features = ["json"], default-features = false }
-songbird-http-client = { path = "../songbird-http-client" }  # ✅ Pure Rust HTTP/HTTPS with BearDog crypto
+# ✅ TOWER ATOMIC CRITICAL PATHS COMPLETE (Jan 21, 2026): IPC HTTP handler is 100% Pure Rust
+# Production HTTP delegation (http.request via IPC) uses songbird-http-client with BearDog crypto ✅
+# Remaining reqwest in structs (not hot paths): universal_adapter, execution/client, trust/lineage_auth
+reqwest = { version = "0.11", features = ["json"], default-features = false }  # Legacy structs
+songbird-http-client = { path = "../songbird-http-client" }  # ✅ Pure Rust HTTP/HTTPS with BearDog crypto (PRODUCTION)
 socket2 = { workspace = true }
 if-addrs = { workspace = true }
 serde_yaml = "0.9.34"

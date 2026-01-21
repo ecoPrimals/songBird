@@ -200,23 +200,24 @@ impl SongbirdOrchestrator {
                                 let connectivity_check = tokio::time::timeout(
                                 tokio::time::Duration::from_secs(3),
                                 async {
-                                    // ✅ EVOLVED: Proper error handling instead of unwrap
-                                    let client = reqwest::Client::builder()
-                                        .build()
+                                    // ✅ TOWER ATOMIC: Pure Rust HTTP with BearDog crypto
+                                    let crypto_socket = crate::primal_discovery::discover_crypto_provider().await
                                         .map_err(|e| {
-                                            warn!("Failed to build HTTP client for connectivity check: {}", e);
-                                            e
+                                            warn!("Failed to discover crypto provider for connectivity check: {}", e);
+                                            anyhow::anyhow!("Crypto discovery failed: {}", e)
                                         })?;
+
+                                    let client = songbird_http_client::SongbirdHttpClient::new(crypto_socket);
 
                                     client
                                         .get(&health_url)
-                                        .send()
                                         .await
+                                        .map_err(|e| anyhow::anyhow!("HTTP GET failed: {}", e))
                                 }
                             ).await;
 
                                 match connectivity_check {
-                                    Ok(Ok(response)) if response.status().is_success() => {
+                                    Ok(Ok(response)) if response.status >= 200 && response.status < 300 => {
                                         info!(
                                             "✅ Peer '{}' (v{}) is reachable at {}",
                                             node_name, peer.version, endpoint
@@ -224,7 +225,7 @@ impl SongbirdOrchestrator {
                                         true
                                     }
                                     Ok(Ok(response)) => {
-                                        warn!("⚠️  Peer '{}' returned HTTP {} - connectivity check failed", node_name, response.status());
+                                        warn!("⚠️  Peer '{}' returned HTTP {} - connectivity check failed", node_name, response.status);
                                         false
                                     }
                                     Ok(Err(e)) => {
