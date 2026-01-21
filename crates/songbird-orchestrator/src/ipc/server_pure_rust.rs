@@ -34,6 +34,7 @@ use super::handlers::IpcHandlers;
 use super::registry::ServiceRegistry;
 use crate::app::connection_manager::ConnectionManager;
 use songbird_discovery::anonymous::AnonymousDiscoveryListener;
+use songbird_http_client::SongbirdHttpClient; // ✅ Pure Rust HTTP/HTTPS client (Tower Atomic)
 
 /// JSON-RPC 2.0 Request
 #[derive(Debug, Clone, Deserialize)]
@@ -581,8 +582,13 @@ impl UnixSocketServer {
 
     /// Handle http.request - Delegate HTTP requests to external services
     ///
-    /// NEW (Jan 20, 2026): Upstream integration from biomeOS.
+    /// EVOLVED (Jan 21, 2026): Pure Rust HTTP via Tower Atomic (BearDog crypto delegation)
     /// Enables Squirrel's Anthropic adapter to delegate HTTP requests through Songbird.
+    ///
+    /// ## Architecture (Tower Atomic)
+    /// ```
+    /// Primal → Songbird (TLS/HTTP) → BearDog (Crypto) → External HTTPS
+    /// ```
     async fn handle_http_request(params: Option<serde_json::Value>) -> Result<serde_json::Value, JsonRpcError> {
         use serde::Deserialize;
         
@@ -602,81 +608,31 @@ impl UnixSocketServer {
             None => return Err(JsonRpcError::invalid_params("Missing params")),
         };
         
-        info!("🌐 HTTP delegation: {} {}", params.method, params.url);
+        info!("🌐 HTTP delegation (Pure Rust): {} {}", params.method, params.url);
         
-        // Create HTTP client with timeout
-        let client = reqwest::Client::builder()
-            .timeout(std::time::Duration::from_secs(60))
-            .connect_timeout(std::time::Duration::from_secs(10))
-            .build()
-            .map_err(|e| JsonRpcError::internal_error(&format!("Failed to build HTTP client: {}", e)))?;
+        // ✅ TOWER ATOMIC: Use Pure Rust HTTP client with BearDog crypto delegation
+        let crypto_socket = crate::primal_discovery::discover_crypto_provider().await
+            .map_err(|e| JsonRpcError::internal_error(&format!("Failed to discover crypto provider: {}", e)))?;
         
-        // Build request
-        let mut request = match params.method.to_uppercase().as_str() {
-            "GET" => client.get(&params.url),
-            "POST" => client.post(&params.url),
-            "PUT" => client.put(&params.url),
-            "DELETE" => client.delete(&params.url),
-            "PATCH" => client.patch(&params.url),
-            _ => return Err(JsonRpcError::invalid_params(&format!("Unsupported HTTP method: {}", params.method))),
-        };
+        let client = SongbirdHttpClient::new(crypto_socket);
         
-        // Add headers
-        for (key, value) in params.headers {
-            request = request.header(&key, &value);
-        }
-        
-        // Add body if present
-        if let Some(body) = params.body {
-            request = request.json(&body);
-        }
-        
-        // Send request
-        let response = request
-            .send()
+        // Make request via Pure Rust client (NO reqwest, NO ring, NO C!)
+        let response = client
+            .request(
+                &params.method,
+                &params.url,
+                params.headers,
+                params.body,
+            )
             .await
             .map_err(|e| JsonRpcError::internal_error(&format!("HTTP request failed: {}", e)))?;
         
-        // Extract response details
-        let status = response.status().as_u16();
-        
-        // Extract headers
-        let mut response_headers = std::collections::HashMap::new();
-        for (key, value) in response.headers() {
-            if let Ok(value_str) = value.to_str() {
-                response_headers.insert(key.as_str().to_string(), value_str.to_string());
-            }
-        }
-        
-        // Extract body
-        let body: serde_json::Value = if let Some(content_type) = response.headers().get("content-type") {
-            if content_type.to_str().unwrap_or("").contains("application/json") {
-                // Parse JSON response
-                response.json().await
-                    .map_err(|e| JsonRpcError::internal_error(&format!("Failed to parse JSON response: {}", e)))?
-            } else {
-                // Return text as string
-                let text = response.text().await
-                    .map_err(|e| JsonRpcError::internal_error(&format!("Failed to read response text: {}", e)))?;
-                serde_json::json!(text)
-            }
-        } else {
-            // No content-type, try JSON first
-            match response.json().await {
-                Ok(json) => json,
-                Err(_) => {
-                    // Fallback to text
-                    serde_json::json!("")
-                }
-            }
-        };
-        
-        info!("✅ HTTP delegation complete: {} (status: {})", params.url, status);
+        info!("✅ HTTP delegation complete (Pure Rust): {} (status: {})", params.url, response.status);
         
         Ok(serde_json::json!({
-            "status": status,
-            "headers": response_headers,
-            "body": body
+            "status": response.status,
+            "headers": response.headers,
+            "body": response.body
         }))
     }
 
