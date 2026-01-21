@@ -109,7 +109,7 @@ netdev = "0.40.0"
 
 [dev-dependencies]
 songbird-test-utils = { path = "../songbird-test-utils" }
-serial_test = "3.0"
+# serial_test = "3.0"  # ✅ REMOVED Jan 21, 2026: All #[serial] eliminated (20 total across 2 files)
 tokio-tungstenite = "0.24"
 assert_cmd = "2.0"  # UniBin CLI testing
 predicates = "3.0"  # UniBin assertion helpers

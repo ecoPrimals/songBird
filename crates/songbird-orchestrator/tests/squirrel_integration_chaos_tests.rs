@@ -5,7 +5,11 @@
 //! - Rapid connection/disconnection
 //! - Resource exhaustion
 //! - Race conditions
+//!
+//! **Evolution**: 10 sleeps → event-driven (ReadyNotifier)!
 
+mod common;
+use common::event_helpers::ReadyNotifier;
 use serde_json::json;
 use std::sync::Arc;
 use std::time::Duration;
@@ -14,11 +18,16 @@ use tokio::net::{UnixListener, UnixStream};
 use tokio::sync::Semaphore;
 use tokio::task::JoinSet;
 
-/// Helper: Start mock server with configurable behavior
-async fn start_chaos_server(socket_path: &str, delay_ms: u64) -> tokio::task::JoinHandle<()> {
+/// Helper: Start mock server with configurable behavior + ready notification
+async fn start_chaos_server(
+    socket_path: &str,
+    delay_ms: u64,
+    notifier: ReadyNotifier,
+) -> tokio::task::JoinHandle<()> {
     let socket_path = socket_path.to_string();
     tokio::spawn(async move {
         let listener = UnixListener::bind(&socket_path).unwrap();
+        notifier.signal_ready();  // ✅ Signal ready immediately after bind
         
         while let Ok((mut stream, _)) = listener.accept().await {
             let delay = delay_ms;
@@ -27,7 +36,7 @@ async fn start_chaos_server(socket_path: &str, delay_ms: u64) -> tokio::task::Jo
                 let mut line = String::new();
                 
                 if reader.read_line(&mut line).await.is_ok() {
-                    // Simulate processing delay
+                    // Simulate processing delay (LEGITIMATE chaos timing)
                     if delay > 0 {
                         tokio::time::sleep(Duration::from_millis(delay)).await;
                     }
@@ -55,8 +64,9 @@ async fn test_chaos_request_storm() {
     let socket_path = "/tmp/test-songbird-chaos-storm.sock";
     let _ = std::fs::remove_file(socket_path);
     
-    let server = start_chaos_server(socket_path, 0).await;
-    tokio::time::sleep(Duration::from_millis(100)).await;
+    let (notifier, ready) = ReadyNotifier::new();
+    let server = start_chaos_server(socket_path, 0, notifier).await;
+    ready.notified().await;  // ✅ Event-driven! No polling!
     
     let mut join_set = JoinSet::new();
     
@@ -106,8 +116,9 @@ async fn test_chaos_rapid_connect_disconnect() {
     let socket_path = "/tmp/test-songbird-chaos-rapid.sock";
     let _ = std::fs::remove_file(socket_path);
     
-    let server = start_chaos_server(socket_path, 0).await;
-    tokio::time::sleep(Duration::from_millis(100)).await;
+    let (notifier, ready) = ReadyNotifier::new();
+    let server = start_chaos_server(socket_path, 0, notifier).await;
+    ready.notified().await;  // ✅ Event-driven! No polling!
     
     for _ in 0..50 {
         let stream = UnixStream::connect(socket_path).await;
@@ -126,8 +137,9 @@ async fn test_chaos_connection_churn() {
     let socket_path = "/tmp/test-songbird-chaos-churn.sock";
     let _ = std::fs::remove_file(socket_path);
     
-    let server = start_chaos_server(socket_path, 0).await;
-    tokio::time::sleep(Duration::from_millis(100)).await;
+    let (notifier, ready) = ReadyNotifier::new();
+    let server = start_chaos_server(socket_path, 0, notifier).await;
+    ready.notified().await;  // ✅ Event-driven! No polling!
     
     let mut join_set = JoinSet::new();
     
@@ -169,8 +181,9 @@ async fn test_chaos_mixed_methods() {
     let socket_path = "/tmp/test-songbird-chaos-mixed.sock";
     let _ = std::fs::remove_file(socket_path);
     
-    let server = start_chaos_server(socket_path, 0).await;
-    tokio::time::sleep(Duration::from_millis(100)).await;
+    let (notifier, ready) = ReadyNotifier::new();
+    let server = start_chaos_server(socket_path, 0, notifier).await;
+    ready.notified().await;  // ✅ Event-driven! No polling!
     
     let mut join_set = JoinSet::new();
     
@@ -229,8 +242,9 @@ async fn test_chaos_slow_server_timeouts() {
     let socket_path = "/tmp/test-songbird-chaos-slow.sock";
     let _ = std::fs::remove_file(socket_path);
     
-    let server = start_chaos_server(socket_path, 5000).await; // 5s delay
-    tokio::time::sleep(Duration::from_millis(100)).await;
+    let (notifier, ready) = ReadyNotifier::new();
+    let server = start_chaos_server(socket_path, 5000, notifier).await; // 5s delay
+    ready.notified().await;  // ✅ Event-driven! No polling!
     
     // Try to connect with 1s timeout
     let result = tokio::time::timeout(
@@ -271,8 +285,9 @@ async fn test_chaos_large_payload() {
     let socket_path = "/tmp/test-songbird-chaos-large.sock";
     let _ = std::fs::remove_file(socket_path);
     
-    let server = start_chaos_server(socket_path, 0).await;
-    tokio::time::sleep(Duration::from_millis(100)).await;
+    let (notifier, ready) = ReadyNotifier::new();
+    let server = start_chaos_server(socket_path, 0, notifier).await;
+    ready.notified().await;  // ✅ Event-driven! No polling!
     
     // Create large payload (1MB of data)
     let large_text = "A".repeat(1024 * 1024);
@@ -305,8 +320,9 @@ async fn test_chaos_connection_limit() {
     let socket_path = "/tmp/test-songbird-chaos-limit.sock";
     let _ = std::fs::remove_file(socket_path);
     
-    let server = start_chaos_server(socket_path, 0).await;
-    tokio::time::sleep(Duration::from_millis(100)).await;
+    let (notifier, ready) = ReadyNotifier::new();
+    let server = start_chaos_server(socket_path, 0, notifier).await;
+    ready.notified().await;  // ✅ Event-driven! No polling!
     
     let semaphore = Arc::new(Semaphore::new(200));
     let mut join_set = JoinSet::new();
@@ -318,7 +334,7 @@ async fn test_chaos_connection_limit() {
         join_set.spawn(async move {
             let _permit = sem.acquire().await.unwrap();
             let stream = UnixStream::connect(&path).await;
-            tokio::time::sleep(Duration::from_millis(100)).await; // Hold connection
+            tokio::time::sleep(Duration::from_millis(100)).await; // LEGITIMATE: Hold connection (chaos test)
             stream
         });
     }
@@ -344,8 +360,9 @@ async fn test_chaos_malformed_json() {
     let socket_path = "/tmp/test-songbird-chaos-malformed.sock";
     let _ = std::fs::remove_file(socket_path);
     
-    let server = start_chaos_server(socket_path, 0).await;
-    tokio::time::sleep(Duration::from_millis(100)).await;
+    let (notifier, ready) = ReadyNotifier::new();
+    let server = start_chaos_server(socket_path, 0, notifier).await;
+    ready.notified().await;  // ✅ Event-driven! No polling!
     
     for _ in 0..10 {
         let mut stream = UnixStream::connect(socket_path).await.unwrap();
@@ -373,8 +390,9 @@ async fn test_chaos_rapid_method_switching() {
     let socket_path = "/tmp/test-songbird-chaos-switch.sock";
     let _ = std::fs::remove_file(socket_path);
     
-    let server = start_chaos_server(socket_path, 0).await;
-    tokio::time::sleep(Duration::from_millis(100)).await;
+    let (notifier, ready) = ReadyNotifier::new();
+    let server = start_chaos_server(socket_path, 0, notifier).await;
+    ready.notified().await;  // ✅ Event-driven! No polling!
     
     for i in 0..10 {
         let mut stream = UnixStream::connect(socket_path).await.unwrap();
@@ -417,8 +435,9 @@ async fn test_chaos_zero_byte_writes() {
     let socket_path = "/tmp/test-songbird-chaos-zero.sock";
     let _ = std::fs::remove_file(socket_path);
     
-    let server = start_chaos_server(socket_path, 0).await;
-    tokio::time::sleep(Duration::from_millis(100)).await;
+    let (notifier, ready) = ReadyNotifier::new();
+    let server = start_chaos_server(socket_path, 0, notifier).await;
+    ready.notified().await;  // ✅ Event-driven! No polling!
     
     let mut stream = UnixStream::connect(socket_path).await.unwrap();
     

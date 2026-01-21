@@ -45,6 +45,7 @@ use tokio::task::JoinHandle;
 use tracing::{debug, trace};
 
 /// Server readiness notification
+#[derive(Clone)]
 pub struct ReadyNotifier {
     notify: Arc<Notify>,
 }
