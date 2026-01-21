@@ -58,8 +58,9 @@ parking_lot = "0.12"
 num_cpus = "1.16"
 fastrand = "2.0"
 rand = { workspace = true }
-# reqwest = { version = "0.11", features = ["json"], default-features = false }  # ❌ REMOVED: Has transitive C dependencies
-songbird-http-client = { path = "../songbird-http-client" }  # ✅ Pure Rust HTTP/HTTPS with BearDog crypto
+reqwest = { version = "0.11", features = ["json"], default-features = false }  # ⚠️ TEMPORARY: Used by security_capability_client (Phase 1.5 feature, non-critical)
+                                                                                 # TODO(Jan 21, 2026): Migrate security_capability_client to songbird-http-client
+songbird-http-client = { path = "../songbird-http-client" }  # ✅ Pure Rust HTTP/HTTPS with BearDog crypto (PRIMARY for critical paths)
 socket2 = { workspace = true }
 if-addrs = { workspace = true }
 serde_yaml = "0.9.34"

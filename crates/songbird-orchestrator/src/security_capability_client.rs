@@ -48,6 +48,8 @@
 //! ```
 
 use anyhow::{Context, Result};
+// TODO(Jan 21, 2026): Migrate to songbird-http-client (Pure Rust)
+// This file is Phase 1.5 (lineage/genetic features) and not on critical path for Squirrel AI
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
 use serde_json::json;

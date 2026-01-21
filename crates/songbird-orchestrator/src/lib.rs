@@ -103,7 +103,7 @@ pub mod process_manager; // Process lifecycle & multi-instance support (Jan 4, 2
 pub mod registration; // Node registration with genetic lineage (Jan 1, 2026) - biomeOS integration
 pub mod resource_management; // Resource management & fairness (Week 2 - Dec 18, 2025)
 pub mod rpc; // Multi-protocol RPC (JSON-RPC, tarpc)
-pub mod security_capability_client; // Security capability client (provider-agnostic) (Jan 1, 2026)
+pub mod security_capability_client; // Security capability client (provider-agnostic) (Jan 1, 2026) - TODO: Migrate to Pure Rust HTTP
 pub mod self_knowledge; // Self-knowledge about this primal (zero hardcoding!) (Jan 1, 2026)
 pub mod server;
 pub mod service_registry; // Universal Port Authority (Dec 20, 2025) - Inter-primal service registration
