@@ -38,20 +38,34 @@ struct JsonRpcError {
     message: String,
 }
 
-/// BearDog RPC client
+/// BearDog RPC client (routes through Neural API for capability translation)
 #[derive(Debug)]
 pub struct BearDogClient {
-    socket_path: String,
+    neural_api_socket: String,
     request_id: std::sync::atomic::AtomicU64,
 }
 
 impl BearDogClient {
-    /// Create a new BearDog client
-    pub fn new(socket_path: impl Into<String>) -> Self {
+    /// Create a new BearDog client that routes through Neural API
+    /// 
+    /// This client uses Neural API's capability translation to convert
+    /// semantic capability names (e.g., "crypto.generate_keypair") to
+    /// actual provider method names (e.g., "x25519_generate_ephemeral").
+    /// 
+    /// # Arguments
+    /// * `neural_api_socket` - Path to Neural API socket (e.g., "/tmp/neural-api-nat0.sock")
+    pub fn new(neural_api_socket: impl Into<String>) -> Self {
         Self {
-            socket_path: socket_path.into(),
+            neural_api_socket: neural_api_socket.into(),
             request_id: std::sync::atomic::AtomicU64::new(1),
         }
+    }
+    
+    /// Create from environment variable (fallback to default)
+    pub fn from_env() -> Self {
+        let socket = std::env::var("NEURAL_API_SOCKET")
+            .unwrap_or_else(|_| "/tmp/neural-api-nat0.sock".to_string());
+        Self::new(socket)
     }
 
     /// Generate x25519 keypair
@@ -172,23 +186,36 @@ impl BearDogClient {
             .map_err(|e| Error::BearDogRpc(format!("Invalid plaintext base64: {}", e)))
     }
 
-    /// Call BearDog RPC method
-    async fn call(&self, method: &str, params: Value) -> Result<Value> {
+    /// Call BearDog capability via Neural API translation
+    /// 
+    /// This method sends a `capability.call` request to Neural API, which:
+    /// 1. Translates the semantic capability (e.g., "crypto.generate_keypair")
+    /// 2. Looks up the actual provider (BearDog)
+    /// 3. Routes the call to the actual method (e.g., "x25519_generate_ephemeral")
+    /// 4. Returns the result transparently
+    async fn call(&self, capability: &str, args: Value) -> Result<Value> {
         let id = self.request_id.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
         
+        // Build capability.call request for Neural API
         let request = JsonRpcRequest {
             jsonrpc: "2.0".to_string(),
-            method: method.to_string(),
-            params,
+            method: "capability.call".to_string(),
+            params: json!({
+                "capability": capability,
+                "args": args
+            }),
             id,
         };
 
-        trace!("→ BearDog RPC: {} (id={})", method, id);
+        trace!("→ Neural API capability.call: {} (id={})", capability, id);
 
-        // Connect to BearDog
-        let mut stream = UnixStream::connect(&self.socket_path)
+        // Connect to Neural API
+        let mut stream = UnixStream::connect(&self.neural_api_socket)
             .await
-            .map_err(|e| Error::BearDogRpc(format!("Failed to connect to BearDog at {}: {}", self.socket_path, e)))?;
+            .map_err(|e| Error::BearDogRpc(format!(
+                "Failed to connect to Neural API at {}: {}", 
+                self.neural_api_socket, e
+            )))?;
 
         // Send request
         let request_json = serde_json::to_string(&request)?;
@@ -201,13 +228,16 @@ impl BearDogClient {
         stream.read_to_end(&mut buffer).await?;
 
         let response: JsonRpcResponse = serde_json::from_slice(&buffer)
-            .map_err(|e| Error::BearDogRpc(format!("Failed to parse BearDog response: {}", e)))?;
+            .map_err(|e| Error::BearDogRpc(format!("Failed to parse Neural API response: {}", e)))?;
 
-        trace!("← BearDog RPC: {} result (id={})", method, response.id);
+        trace!("← Neural API result for {} (id={})", capability, response.id);
 
         // Check for errors
         if let Some(error) = response.error {
-            return Err(Error::BearDogRpc(format!("{} (code: {})", error.message, error.code)));
+            return Err(Error::BearDogRpc(format!(
+                "Neural API error for {}: {} (code: {})", 
+                capability, error.message, error.code
+            )));
         }
 
         response.result.ok_or_else(|| Error::BearDogRpc("Missing result in response".to_string()))
@@ -229,16 +259,33 @@ mod tests {
 
     #[test]
     fn test_beardog_client_creation() {
-        let client = BearDogClient::new("/tmp/beardog.sock");
-        assert_eq!(client.socket_path, "/tmp/beardog.sock");
+        let client = BearDogClient::new("/tmp/neural-api-nat0.sock");
+        assert_eq!(client.neural_api_socket, "/tmp/neural-api-nat0.sock");
     }
 
     #[test]
     fn test_request_id_increment() {
-        let client = BearDogClient::new("/tmp/beardog.sock");
+        let client = BearDogClient::new("/tmp/neural-api-nat0.sock");
         let id1 = client.request_id.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
         let id2 = client.request_id.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
         assert_eq!(id2, id1 + 1);
+    }
+    
+    #[test]
+    fn test_from_env_default() {
+        // When NEURAL_API_SOCKET is not set, should use default
+        std::env::remove_var("NEURAL_API_SOCKET");
+        let client = BearDogClient::from_env();
+        assert_eq!(client.neural_api_socket, "/tmp/neural-api-nat0.sock");
+    }
+    
+    #[test]
+    fn test_from_env_custom() {
+        // When NEURAL_API_SOCKET is set, should use it
+        std::env::set_var("NEURAL_API_SOCKET", "/custom/path.sock");
+        let client = BearDogClient::from_env();
+        assert_eq!(client.neural_api_socket, "/custom/path.sock");
+        std::env::remove_var("NEURAL_API_SOCKET");
     }
 }
 

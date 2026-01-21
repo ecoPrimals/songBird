@@ -405,13 +405,18 @@ pub async fn handle_http_request(params: Option<Value>) -> Result<Value, JsonRpc
         None => return Err(JsonRpcError::invalid_params("Missing params")),
     };
     
-    info!("🌐 HTTP delegation (Pure Rust): {} {}", params.method, params.url);
+    info!("🌐 HTTP delegation (Pure Rust with Neural API capability translation): {} {}", params.method, params.url);
     
-    // ✅ NEW: Use Pure Rust HTTP client with capability-based crypto discovery (TRUE PRIMAL)
-    let crypto_socket = crate::primal_discovery::discover_crypto_provider().await
-        .map_err(|e| JsonRpcError::internal_error(&format!("Failed to discover crypto provider: {}", e)))?;
+    // ✅ EVOLVED: Use Pure Rust HTTP client with Neural API capability translation (TRUE PRIMAL v2)
+    // Instead of discovering crypto provider directly, we route through Neural API which:
+    // 1. Translates semantic capabilities (crypto.generate_keypair) to actual methods (x25519_generate_ephemeral)
+    // 2. Routes to the appropriate provider (BearDog)
+    // 3. Returns results transparently
+    // This enables zero cross-primal coupling and provider-agnostic capability routing.
+    let neural_api_socket = std::env::var("NEURAL_API_SOCKET")
+        .unwrap_or_else(|_| "/tmp/neural-api-nat0.sock".to_string());
     
-    let client = SongbirdHttpClient::new(crypto_socket);
+    let client = SongbirdHttpClient::new(neural_api_socket);
     
     // Make request via Pure Rust client
     let response = client

@@ -20,14 +20,27 @@ pub struct SongbirdHttpClient {
 }
 
 impl SongbirdHttpClient {
-    /// Create a new Songbird HTTP client
+    /// Create a new Songbird HTTP client with Neural API capability translation
     ///
     /// # Arguments
     ///
-    /// * `beardog_socket` - Path to BearDog Unix socket
-    pub fn new(beardog_socket: impl Into<String>) -> Self {
+    /// * `neural_api_socket` - Path to Neural API Unix socket (e.g., "/tmp/neural-api-nat0.sock")
+    ///
+    /// # Note
+    ///
+    /// This client routes crypto capabilities through Neural API, which translates
+    /// semantic capability names to actual provider methods. This enables TRUE PRIMAL
+    /// pattern with zero cross-primal coupling.
+    pub fn new(neural_api_socket: impl Into<String>) -> Self {
         Self {
-            beardog: Arc::new(BearDogClient::new(beardog_socket)),
+            beardog: Arc::new(BearDogClient::new(neural_api_socket)),
+        }
+    }
+    
+    /// Create from environment variable (fallback to default Neural API socket)
+    pub fn from_env() -> Self {
+        Self {
+            beardog: Arc::new(BearDogClient::from_env()),
         }
     }
 
