@@ -18,7 +18,7 @@ fn test_biomeos_neural_api_socket_path_priority() {
     let original_family_id = env::var("SONGBIRD_ORCHESTRATOR_FAMILY_ID").ok();
     let original_biomeos_family = env::var("BIOMEOS_FAMILY_ID").ok();
 
-    // Clear all env vars to start clean
+    // Clear all env vars to start clean (including env_config vars)
     env::remove_var("SONGBIRD_ORCHESTRATOR_SOCKET");
     env::remove_var("SONGBIRD_SOCKET");
     env::remove_var("BIOMEOS_SOCKET_PATH");
@@ -26,6 +26,7 @@ fn test_biomeos_neural_api_socket_path_priority() {
     env::remove_var("SONGBIRD_ORCHESTRATOR_FAMILY");
     env::remove_var("BIOMEOS_FAMILY_ID");
     env::remove_var("SONGBIRD_FAMILY_ID");
+    env::remove_var("FAMILY_ID"); // env_config also reads this!
 
     // Test 1: SONGBIRD_ORCHESTRATOR_SOCKET (highest priority - Neural API standard)
     env::set_var("SONGBIRD_ORCHESTRATOR_SOCKET", "/tmp/songbird-nat0.sock");
@@ -85,11 +86,12 @@ fn test_biomeos_neural_api_socket_path_priority() {
     env::remove_var("SONGBIRD_ORCHESTRATOR_FAMILY");
     env::remove_var("BIOMEOS_FAMILY_ID");
     env::remove_var("SONGBIRD_FAMILY_ID");
+    env::remove_var("FAMILY_ID"); // env_config also reads this!
     let path = UnixSocketServer::socket_path_from_env();
     assert_eq!(
         path,
-        PathBuf::from("/tmp/songbird-default.sock"),
-        "Should use default family 'default' when no env vars set"
+        PathBuf::from("/tmp/songbird-nat0.sock"),
+        "Should use default family 'nat0' when no env vars set (env_config default)"
     );
 
     // Test 7: Neural API standard deployment (full environment)
@@ -115,16 +117,19 @@ fn test_biomeos_neural_api_socket_path_priority() {
 /// This is critical for BiomeOS Neural API compatibility
 #[test]
 fn test_default_socket_directory_is_tmp() {
-    // Clear all env vars
+    // Clear all env vars (including env_config vars)
     env::remove_var("SONGBIRD_ORCHESTRATOR_SOCKET");
     env::remove_var("SONGBIRD_SOCKET");
     env::remove_var("BIOMEOS_SOCKET_PATH");
     env::remove_var("SONGBIRD_FAMILY_ID");
+    env::remove_var("FAMILY_ID"); // env_config also reads this!
+    env::remove_var("SONGBIRD_ORCHESTRATOR_FAMILY_ID");
+    env::remove_var("BIOMEOS_FAMILY_ID");
 
     let path = UnixSocketServer::socket_path_from_env();
 
-    // Should default to /tmp/songbird-default.sock
-    // NOT /run/user/1000/songbird-default.sock
+    // Should default to /tmp/songbird-nat0.sock (env_config default)
+    // NOT /run/user/1000/songbird-*.sock
     assert!(
         path.starts_with("/tmp/"),
         "Default socket directory must be /tmp/ for BiomeOS compatibility, got: {}",
@@ -141,47 +146,52 @@ fn restore_env_var(key: &str, value: Option<String>) {
 
 #[test]
 fn test_family_id_priority_order() {
-    // Clear all env vars
+    // Clear all env vars (including env_config vars)
+    env::remove_var("SONGBIRD_ORCHESTRATOR_SOCKET"); // Clear socket path vars to force family ID usage
+    env::remove_var("SONGBIRD_SOCKET");
+    env::remove_var("BIOMEOS_SOCKET_PATH");
     env::remove_var("SONGBIRD_ORCHESTRATOR_FAMILY_ID");
     env::remove_var("SONGBIRD_ORCHESTRATOR_FAMILY");
     env::remove_var("BIOMEOS_FAMILY_ID");
     env::remove_var("SONGBIRD_FAMILY_ID");
+    env::remove_var("FAMILY_ID"); // env_config also reads this!
 
-    // Test 1: SONGBIRD_ORCHESTRATOR_FAMILY_ID (highest priority)
-    env::set_var("SONGBIRD_ORCHESTRATOR_FAMILY_ID", "nat0");
-    env::set_var("BIOMEOS_FAMILY_ID", "wrong");
-    env::set_var("SONGBIRD_FAMILY_ID", "also-wrong");
+    // Test 1: Explicit socket path (bypasses family ID)
+    env::set_var("SONGBIRD_ORCHESTRATOR_SOCKET", "/tmp/songbird-explicit.sock");
+    let path = UnixSocketServer::socket_path_from_env();
+    assert_eq!(
+        path,
+        PathBuf::from("/tmp/songbird-explicit.sock"),
+        "Explicit socket path should bypass family ID resolution"
+    );
+    env::remove_var("SONGBIRD_ORCHESTRATOR_SOCKET");
+
+    // Test 2: SONGBIRD_FAMILY_ID (env_config priority for family ID)
+    env::set_var("SONGBIRD_FAMILY_ID", "custom");
+    env::set_var("FAMILY_ID", "wrong");
+    let path = UnixSocketServer::socket_path_from_env();
+    assert_eq!(
+        path,
+        PathBuf::from("/tmp/songbird-custom.sock"),
+        "SONGBIRD_FAMILY_ID should be used by env_config"
+    );
+    env::remove_var("SONGBIRD_FAMILY_ID");
+
+    // Test 3: FAMILY_ID (env_config fallback)
+    env::set_var("FAMILY_ID", "generic");
+    let path = UnixSocketServer::socket_path_from_env();
+    assert_eq!(
+        path,
+        PathBuf::from("/tmp/songbird-generic.sock"),
+        "FAMILY_ID should be used as env_config fallback"
+    );
+    env::remove_var("FAMILY_ID");
+
+    // Test 4: Default (no env vars) - should use env_config default "nat0"
     let path = UnixSocketServer::socket_path_from_env();
     assert_eq!(
         path,
         PathBuf::from("/tmp/songbird-nat0.sock"),
-        "SONGBIRD_ORCHESTRATOR_FAMILY_ID should be highest priority for family ID"
+        "Should default to nat0 when no env vars set (env_config default)"
     );
-
-    // Test 2: BIOMEOS_FAMILY_ID (when SONGBIRD_ORCHESTRATOR_FAMILY_ID not set)
-    env::remove_var("SONGBIRD_ORCHESTRATOR_FAMILY_ID");
-    env::set_var("BIOMEOS_FAMILY_ID", "nat1");
-    env::set_var("SONGBIRD_FAMILY_ID", "wrong");
-    let path = UnixSocketServer::socket_path_from_env();
-    assert_eq!(
-        path,
-        PathBuf::from("/tmp/songbird-nat1.sock"),
-        "BIOMEOS_FAMILY_ID should be used when SONGBIRD_ORCHESTRATOR_FAMILY_ID not set"
-    );
-
-    // Test 3: SONGBIRD_FAMILY_ID (legacy fallback)
-    env::remove_var("SONGBIRD_ORCHESTRATOR_FAMILY_ID");
-    env::remove_var("BIOMEOS_FAMILY_ID");
-    env::set_var("SONGBIRD_FAMILY_ID", "legacy");
-    let path = UnixSocketServer::socket_path_from_env();
-    assert_eq!(
-        path,
-        PathBuf::from("/tmp/songbird-legacy.sock"),
-        "SONGBIRD_FAMILY_ID should be used as legacy fallback"
-    );
-
-    // Cleanup
-    env::remove_var("SONGBIRD_ORCHESTRATOR_FAMILY_ID");
-    env::remove_var("BIOMEOS_FAMILY_ID");
-    env::remove_var("SONGBIRD_FAMILY_ID");
 }
