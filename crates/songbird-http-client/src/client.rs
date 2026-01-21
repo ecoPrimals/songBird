@@ -14,7 +14,7 @@ use tokio::net::TcpStream;
 use tracing::{debug, info, trace};
 
 /// Songbird HTTP client
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct SongbirdHttpClient {
     beardog: Arc<BearDogClient>,
 }
@@ -264,6 +264,37 @@ impl SongbirdHttpClient {
             headers,
             body,
         })
+    }
+
+    /// Convenience method for GET requests
+    pub async fn get(&self, url: &str) -> Result<HttpResponse> {
+        self.request("GET", url, HashMap::new(), None).await
+    }
+
+    /// Convenience method for POST requests
+    pub async fn post(&self, url: &str, body: serde_json::Value) -> Result<HttpResponse> {
+        let mut headers = HashMap::new();
+        headers.insert("Content-Type".to_string(), "application/json".to_string());
+        self.request("POST", url, headers, Some(body)).await
+    }
+
+    /// Convenience method for PUT requests
+    pub async fn put(&self, url: &str, body: serde_json::Value) -> Result<HttpResponse> {
+        let mut headers = HashMap::new();
+        headers.insert("Content-Type".to_string(), "application/json".to_string());
+        self.request("PUT", url, headers, Some(body)).await
+    }
+
+    /// Convenience method for DELETE requests
+    pub async fn delete(&self, url: &str) -> Result<HttpResponse> {
+        self.request("DELETE", url, HashMap::new(), None).await
+    }
+
+    /// Convenience method for PATCH requests
+    pub async fn patch(&self, url: &str, body: serde_json::Value) -> Result<HttpResponse> {
+        let mut headers = HashMap::new();
+        headers.insert("Content-Type".to_string(), "application/json".to_string());
+        self.request("PATCH", url, headers, Some(body)).await
     }
 }
 

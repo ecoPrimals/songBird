@@ -413,38 +413,37 @@ impl UnixSocketListener {
             None
         };
 
-        // Build request
-        let client_builder = match method {
-            "GET" => self.http_client.get(&backend.base_url),
-            "POST" => self.http_client.post(&backend.base_url),
-            "PUT" => self.http_client.put(&backend.base_url),
-            "DELETE" => self.http_client.delete(&backend.base_url),
-            _ => return Err(anyhow!("Unsupported HTTP method: {}", method)),
-        };
-
-        let mut request = client_builder;
+        // Build headers
+        let mut headers = std::collections::HashMap::new();
 
         // Add API key header if present
         if let Some(key) = api_key {
-            request = request.bearer_auth(key);
+            headers.insert("Authorization".to_string(), format!("Bearer {}", key));
         }
 
         // Add custom headers
         for (name, value) in &backend.headers {
-            request = request.header(name, value);
+            headers.insert(name.clone(), value.clone());
         }
 
-        // Add payload if present
-        if let Some(data) = payload {
-            request = request.json(data);
+        // Add content-type if not specified and payload present
+        if !backend.headers.contains_key("content-type") && payload.is_some() {
+            headers.insert("Content-Type".to_string(), "application/json".to_string());
         }
 
-        // Send request
-        let response = request.send().await?;
-        let status = response.status();
-        let body = response.json::<serde_json::Value>().await?;
+        // Send request using Pure Rust HTTP client
+        let response = self.http_client.request(
+            method,
+            &backend.base_url,
+            headers,
+            payload.cloned(),
+        ).await?;
 
-        if !status.is_success() {
+        // Extract status and body from Pure Rust HTTP response
+        let status = response.status;
+        let body = response.body;
+
+        if status < 200 || status >= 300 {
             return Err(anyhow!("External API returned error: {} - {:?}", status, body));
         }
 

@@ -129,56 +129,43 @@ impl UniversalProxy {
             None
         };
 
-        // Build request
-        let request_builder = match method.to_uppercase().as_str() {
-            "GET" => self.http_client.get(&backend.base_url),
-            "POST" => self.http_client.post(&backend.base_url),
-            "PUT" => self.http_client.put(&backend.base_url),
-            "DELETE" => self.http_client.delete(&backend.base_url),
-            "PATCH" => self.http_client.patch(&backend.base_url),
-            _ => return Err(anyhow!("Unsupported HTTP method: {}", method)),
-        };
-
-        let mut request = request_builder;
-
+        // Build headers
+        let mut headers = std::collections::HashMap::new();
+        
         // Add API key (provider-agnostic - works with any auth scheme)
         if let Some(key) = api_key {
-            request = request.bearer_auth(key);
+            headers.insert("Authorization".to_string(), format!("Bearer {}", key));
         }
 
         // Add custom headers from configuration
         for (name, value) in &backend.headers {
-            request = request.header(name, value);
+            headers.insert(name.clone(), value.clone());
         }
 
         // Add content-type if not specified
         if !backend.headers.contains_key("content-type") && payload.is_some() {
-            request = request.header("content-type", "application/json");
+            headers.insert("Content-Type".to_string(), "application/json".to_string());
         }
 
-        // Add payload if present
-        if let Some(data) = payload {
-            request = request.json(data);
-        }
+        // Send request using Pure Rust HTTP client
+        let response = self.http_client.request(
+            &method.to_uppercase(),
+            &backend.base_url,
+            headers,
+            payload.cloned(),
+        ).await?;
 
-        // Send request
-        let response = request.send().await?;
-        let status = response.status();
-
-        // Read response body
-        let body = response.text().await?;
-
-        // Parse as JSON
-        let json: Value = serde_json::from_str(&body)
-            .map_err(|e| anyhow!("Failed to parse response as JSON: {} (body: {})", e, body))?;
+        // Extract status and body from Pure Rust HTTP response
+        let status = response.status;
+        let json = response.body;
 
         // Check for errors
-        if !status.is_success() {
+        if status < 200 || status >= 300 {
             error!("External API returned error: {} - {:?}", status, json);
             return Err(anyhow!("External API error: {} - {:?}", status, json));
         }
 
-        trace!("External request successful: {} bytes", body.len());
+        trace!("External request successful: status {}", status);
         Ok(json)
     }
 
@@ -320,7 +307,7 @@ mod tests {
 
     #[test]
     fn test_cache_key_generation() {
-        let http_client = reqwest::Client::new();
+        let http_client = SongbirdHttpClient::new("/tmp/beardog-test.sock");
         let rate_limiter = Arc::new(RateLimiter::new(100, std::time::Duration::from_secs(60)));
         let cache = Arc::new(ResponseCache::new(100 * 1024 * 1024));
         let credentials = Arc::new(CredentialManager::new());
@@ -338,7 +325,7 @@ mod tests {
 
     #[test]
     fn test_request_transformation() {
-        let http_client = reqwest::Client::new();
+        let http_client = SongbirdHttpClient::new("/tmp/beardog-test.sock");
         let rate_limiter = Arc::new(RateLimiter::new(100, std::time::Duration::from_secs(60)));
         let cache = Arc::new(ResponseCache::new(100 * 1024 * 1024));
         let credentials = Arc::new(CredentialManager::new());
@@ -357,7 +344,7 @@ mod tests {
 
     #[test]
     fn test_response_transformation() {
-        let http_client = reqwest::Client::new();
+        let http_client = SongbirdHttpClient::new("/tmp/beardog-test.sock");
         let rate_limiter = Arc::new(RateLimiter::new(100, std::time::Duration::from_secs(60)));
         let cache = Arc::new(ResponseCache::new(100 * 1024 * 1024));
         let credentials = Arc::new(CredentialManager::new());
