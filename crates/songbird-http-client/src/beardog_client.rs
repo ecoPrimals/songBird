@@ -222,10 +222,42 @@ impl BearDogClient {
         stream.write_all(request_json.as_bytes()).await?;
         stream.write_all(b"\n").await?;
         stream.flush().await?;
+        
+        // Shutdown write to signal we're done
+        stream.shutdown().await?;
 
-        // Read response
+        // Read response with JSON-aware reading (Neural API keeps socket open)
+        use tokio::time::{timeout, Duration};
         let mut buffer = Vec::new();
-        stream.read_to_end(&mut buffer).await?;
+        let mut temp_buf = [0u8; 4096];
+        let read_timeout = Duration::from_millis(100);
+        
+        loop {
+            match timeout(read_timeout, stream.read(&mut temp_buf)).await {
+                Ok(Ok(0)) => break, // EOF
+                Ok(Ok(n)) => {
+                    buffer.extend_from_slice(&temp_buf[..n]);
+                    // Check for complete JSON
+                    if let Ok(s) = std::str::from_utf8(&buffer) {
+                        if serde_json::from_str::<Value>(s).is_ok() {
+                            break; // Complete JSON received!
+                        }
+                    }
+                }
+                Ok(Err(e)) => return Err(Error::BearDogRpc(format!("Socket read error: {}", e))),
+                Err(_) => {
+                    // Timeout - check if we have valid JSON
+                    if !buffer.is_empty() {
+                        if let Ok(s) = std::str::from_utf8(&buffer) {
+                            if serde_json::from_str::<Value>(s).is_ok() {
+                                break;
+                            }
+                        }
+                    }
+                    return Err(Error::BearDogRpc("Timeout reading from Neural API".to_string()));
+                }
+            }
+        }
 
         let response: JsonRpcResponse = serde_json::from_slice(&buffer)
             .map_err(|e| Error::BearDogRpc(format!("Failed to parse Neural API response: {}", e)))?;
