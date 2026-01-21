@@ -38,7 +38,7 @@ impl HttpBtspProvider {
     /// # Arguments
     /// * `base_url` - Legacy parameter (converted to socket path)
     /// * `provider_name` - Name of the provider for logging (e.g., "beardog")
-    pub fn new(base_url: String, provider_name: String) -> SongbirdResult<Self> {
+    pub fn new(_base_url: String, provider_name: String) -> SongbirdResult<Self> {
         // Convert base_url to socket path or use env var
         let socket_path =
             std::env::var(format!("{}_BTSP_SOCKET_PATH", provider_name.to_uppercase()))
