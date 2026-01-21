@@ -5,18 +5,23 @@
 //! - HTTP delegation workflow
 //! - Real API calls (with mocking)
 //! - Error handling
+//!
+//! **Evolution**: 7 sleeps → event-driven (ReadyNotifier)!
 
+mod common;
+use common::event_helpers::ReadyNotifier;
 use serde_json::json;
 use std::time::Duration;
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
 use tokio::net::{UnixListener, UnixStream};
 use tokio::time::timeout;
 
-/// Helper: Start a mock Songbird server for testing
-async fn start_mock_server(socket_path: &str) -> tokio::task::JoinHandle<()> {
+/// Helper: Start a mock Songbird server for testing + ready notification
+async fn start_mock_server(socket_path: &str, notifier: ReadyNotifier) -> tokio::task::JoinHandle<()> {
     let socket_path = socket_path.to_string();
     tokio::spawn(async move {
         let listener = UnixListener::bind(&socket_path).unwrap();
+        notifier.signal_ready();  // ✅ Signal ready immediately after bind
         
         while let Ok((mut stream, _)) = listener.accept().await {
             tokio::spawn(async move {
@@ -102,8 +107,9 @@ async fn test_e2e_capability_discovery_flow() {
     let socket_path = "/tmp/test-songbird-e2e-discovery.sock";
     let _ = std::fs::remove_file(socket_path);
     
-    let server = start_mock_server(socket_path).await;
-    tokio::time::sleep(Duration::from_millis(100)).await;
+    let (notifier, ready) = ReadyNotifier::new();
+    let server = start_mock_server(socket_path, notifier).await;
+    ready.notified().await;  // ✅ Event-driven! No polling!
     
     // Step 1: Squirrel connects and discovers capabilities
     let result = timeout(
@@ -133,8 +139,9 @@ async fn test_e2e_http_delegation_workflow() {
     let socket_path = "/tmp/test-songbird-e2e-http.sock";
     let _ = std::fs::remove_file(socket_path);
     
-    let server = start_mock_server(socket_path).await;
-    tokio::time::sleep(Duration::from_millis(100)).await;
+    let (notifier, ready) = ReadyNotifier::new();
+    let server = start_mock_server(socket_path, notifier).await;
+    ready.notified().await;  // ✅ Event-driven! No polling!
     
     // Step 1: Discover capabilities
     let discover_result = send_request(socket_path, "discover_capabilities", json!({})).await;
@@ -173,8 +180,9 @@ async fn test_e2e_sequential_requests() {
     let socket_path = "/tmp/test-songbird-e2e-sequential.sock";
     let _ = std::fs::remove_file(socket_path);
     
-    let server = start_mock_server(socket_path).await;
-    tokio::time::sleep(Duration::from_millis(100)).await;
+    let (notifier, ready) = ReadyNotifier::new();
+    let server = start_mock_server(socket_path, notifier).await;
+    ready.notified().await;  // ✅ Event-driven! No polling!
     
     // Make 5 sequential requests
     for i in 0..5 {
@@ -203,8 +211,9 @@ async fn test_e2e_connection_reuse() {
     let socket_path = "/tmp/test-songbird-e2e-reuse.sock";
     let _ = std::fs::remove_file(socket_path);
     
-    let server = start_mock_server(socket_path).await;
-    tokio::time::sleep(Duration::from_millis(100)).await;
+    let (notifier, ready) = ReadyNotifier::new();
+    let server = start_mock_server(socket_path, notifier).await;
+    ready.notified().await;  // ✅ Event-driven! No polling!
     
     // Connect once
     let stream = UnixStream::connect(socket_path).await;
@@ -227,8 +236,9 @@ async fn test_e2e_invalid_method() {
     let socket_path = "/tmp/test-songbird-e2e-invalid.sock";
     let _ = std::fs::remove_file(socket_path);
     
-    let server = start_mock_server(socket_path).await;
-    tokio::time::sleep(Duration::from_millis(100)).await;
+    let (notifier, ready) = ReadyNotifier::new();
+    let server = start_mock_server(socket_path, notifier).await;
+    ready.notified().await;  // ✅ Event-driven! No polling!
     
     let result = send_request(socket_path, "unknown_method", json!({})).await;
     assert!(result.is_ok());
@@ -255,7 +265,7 @@ async fn test_e2e_timeout_handling() {
     // Should either timeout OR get connection error (both are acceptable)
     assert!(result1.is_err() || (result1.is_ok() && result1.unwrap().is_err()));
     
-    // Test 2: Just verify timeout mechanism works
+    // Test 2: Just verify timeout mechanism works (LEGITIMATE: testing timeout)
     let result2 = timeout(
         Duration::from_millis(10),
         tokio::time::sleep(Duration::from_secs(1))
@@ -271,8 +281,9 @@ async fn test_e2e_large_response() {
     let socket_path = "/tmp/test-songbird-e2e-large.sock";
     let _ = std::fs::remove_file(socket_path);
     
-    let server = start_mock_server(socket_path).await;
-    tokio::time::sleep(Duration::from_millis(100)).await;
+    let (notifier, ready) = ReadyNotifier::new();
+    let server = start_mock_server(socket_path, notifier).await;
+    ready.notified().await;  // ✅ Event-driven! No polling!
     
     // Request that would produce large response
     let params = json!({
@@ -300,8 +311,9 @@ async fn test_e2e_concurrent_clients() {
     let socket_path = "/tmp/test-songbird-e2e-concurrent.sock";
     let _ = std::fs::remove_file(socket_path);
     
-    let server = start_mock_server(socket_path).await;
-    tokio::time::sleep(Duration::from_millis(100)).await;
+    let (notifier, ready) = ReadyNotifier::new();
+    let server = start_mock_server(socket_path, notifier).await;
+    ready.notified().await;  // ✅ Event-driven! No polling!
     
     // Spawn 3 concurrent clients
     let mut handles = vec![];
