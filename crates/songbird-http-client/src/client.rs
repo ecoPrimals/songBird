@@ -14,6 +14,7 @@ use tokio::net::TcpStream;
 use tracing::{debug, info, trace};
 
 /// Songbird HTTP client
+#[derive(Debug)]
 pub struct SongbirdHttpClient {
     beardog: Arc<BearDogClient>,
 }
