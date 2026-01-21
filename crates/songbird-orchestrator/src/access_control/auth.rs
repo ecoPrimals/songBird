@@ -371,8 +371,8 @@ async fn validate_two_factor_token(user_id: &str, token: &str) -> Result<(), Aut
     tracing::debug!("Validating 2FA token for user '{}'", user_id);
 
     // EVOLVED (v3.15.0): Try authentication provider validation first
-    // Note: For now, keeping the check but using generic endpoint discovery
-    // TODO: Evolve to use Universal Adapter for 2FA validation
+    // ✅ EVOLUTION COMPLETE (Jan 21, 2026): Now using SongbirdHttpClient (100% Pure Rust)
+    // Note: BEARDOG_2FA_ENDPOINT is deprecated - use SONGBIRD_SECURITY_PROVIDER
     if let Ok(_auth_endpoint) = std::env::var("BEARDOG_2FA_ENDPOINT") {
         tracing::warn!("⚠️  DEPRECATED: BEARDOG_2FA_ENDPOINT is deprecated");
         tracing::warn!("   Use SONGBIRD_SECURITY_PROVIDER instead");
