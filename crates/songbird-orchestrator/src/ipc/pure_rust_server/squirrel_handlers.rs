@@ -106,11 +106,10 @@ pub async fn handle_http_request(params: Option<serde_json::Value>) -> Result<se
     
     info!("🌐 HTTP delegation (Pure Rust): {} {}", params.method, params.url);
     
-    // ✅ TOWER ATOMIC: Use Pure Rust HTTP client with BearDog crypto delegation
-    let crypto_socket = crate::primal_discovery::discover_crypto_provider().await
-        .map_err(|e| JsonRpcError::internal_error(&format!("Failed to discover crypto provider: {}", e)))?;
-    
-    let client = SongbirdHttpClient::new(crypto_socket);
+    // ✅ NEW v2.0.0: Use Neural API for capability translation
+    // SongbirdHttpClient routes crypto calls through Neural API, which translates
+    // semantic capabilities to actual provider methods. This enables TRUE PRIMAL pattern.
+    let client = SongbirdHttpClient::from_env(); // Uses NEURAL_API_SOCKET env var
     
     // Make request via Pure Rust client (NO reqwest, NO ring, NO C!)
     let response = client
