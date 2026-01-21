@@ -11,13 +11,15 @@
 //! 5. announce_capabilities API
 //! 6. Error handling
 
+mod common;
+use common::event_helpers::wait_for;
+
 use anyhow::Result;
 use serde_json::{json, Value};
 use std::io::{BufRead, BufReader, Write};
 use std::os::unix::net::UnixStream;
 use std::path::Path;
 use std::time::Duration;
-use tokio::time::sleep;
 
 /// Simple Unix socket JSON-RPC client for testing
 struct UnixSocketClient {
@@ -70,16 +72,17 @@ impl UnixSocketClient {
 
 /// Test helper: Wait for socket file to exist
 async fn wait_for_socket(socket_path: &str, timeout_secs: u64) -> Result<()> {
-    let start = std::time::Instant::now();
-    while start.elapsed().as_secs() < timeout_secs {
-        if Path::new(socket_path).exists() {
-            // Give server a moment to start listening
-            sleep(Duration::from_millis(100)).await;
-            return Ok(());
-        }
-        sleep(Duration::from_millis(100)).await;
-    }
-    anyhow::bail!("Socket did not appear within {} seconds", timeout_secs)
+    let socket_path_owned = socket_path.to_string();
+    
+    // ✅ Event-driven check! No polling sleep!
+    wait_for(
+        || Path::new(&socket_path_owned).exists(),
+        Duration::from_secs(timeout_secs)
+    ).await?;
+    
+    // Brief moment for server to finish binding
+    tokio::time::sleep(Duration::from_millis(50)).await;
+    Ok(())
 }
 
 #[tokio::test]

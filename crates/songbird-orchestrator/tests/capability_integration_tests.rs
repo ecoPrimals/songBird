@@ -246,8 +246,8 @@ where
         if condition(&providers) {
             return true;
         }
-        // Short polling interval
-        tokio::time::sleep(Duration::from_millis(50)).await;
+        // ✅ Brief yield for cooperative multitasking (event-driven!)
+        tokio::task::yield_now().await;
     }
     false
 }
@@ -360,7 +360,7 @@ async fn test_provider_selection_prefers_healthy() {
 
     // By now, provider-2 has been without heartbeat for >1s, should be unhealthy
     // Provider-1 should still be healthy
-    // Wait a bit longer to ensure health monitor has processed the timeout
+    // ⏰ LEGITIMATE: Waiting for health monitor timeout behavior (testing actual timeout)
     tokio::time::sleep(tokio::time::Duration::from_millis(500)).await;
 
     let providers = registry
@@ -429,7 +429,7 @@ async fn test_registry_health_monitor_lifecycle() {
     assert_eq!(providers.len(), 1, "Provider should remain registered with heartbeats");
 
     // Stop sending heartbeats and wait for removal
-    // Wait for the health monitor to detect the missing heartbeat
+    // ⏰ LEGITIMATE: Waiting for health monitor timeout behavior (testing actual timeout)
     // Give extra time for health monitor to process
     tokio::time::sleep(tokio::time::Duration::from_secs(3)).await;
 

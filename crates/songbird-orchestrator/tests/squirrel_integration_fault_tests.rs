@@ -6,18 +6,22 @@
 //! - Resource exhaustion
 //! - Edge cases
 
+mod common;
+use common::event_helpers::ReadyNotifier;
+
 use serde_json::json;
 use std::time::Duration;
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
 use tokio::net::{UnixListener, UnixStream};
 
 /// Helper: Start fault-injecting server
-async fn start_fault_server(socket_path: &str, fail_mode: &str) -> tokio::task::JoinHandle<()> {
+async fn start_fault_server(socket_path: &str, fail_mode: &str, notifier: ReadyNotifier) -> tokio::task::JoinHandle<()> {
     let socket_path = socket_path.to_string();
     let fail_mode = fail_mode.to_string();
     
     tokio::spawn(async move {
         let listener = UnixListener::bind(&socket_path).unwrap();
+        notifier.signal_ready(); // ✅ Signal ready immediately after bind
         
         while let Ok((mut stream, _)) = listener.accept().await {
             let mode = fail_mode.clone();
@@ -162,8 +166,9 @@ async fn test_fault_server_error_response() {
     let socket_path = "/tmp/test-songbird-fault-error.sock";
     let _ = std::fs::remove_file(socket_path);
     
-    let server = start_fault_server(socket_path, "error").await;
-    tokio::time::sleep(Duration::from_millis(100)).await;
+    let (notifier, notify_tx) = ReadyNotifier::new();
+    let server = start_fault_server(socket_path, "error", notifier).await;
+    notify_tx.notified().await; // ✅ Event-driven! No polling!
     
     let mut stream = UnixStream::connect(socket_path).await.unwrap();
     
@@ -205,8 +210,9 @@ async fn test_fault_server_disconnect() {
     let socket_path = "/tmp/test-songbird-fault-disconnect.sock";
     let _ = std::fs::remove_file(socket_path);
     
-    let server = start_fault_server(socket_path, "disconnect").await;
-    tokio::time::sleep(Duration::from_millis(100)).await;
+    let (notifier, notify_tx) = ReadyNotifier::new();
+    let server = start_fault_server(socket_path, "disconnect", notifier).await;
+    notify_tx.notified().await; // ✅ Event-driven! No polling!
     
     let mut stream = UnixStream::connect(socket_path).await.unwrap();
     
@@ -240,8 +246,9 @@ async fn test_fault_invalid_json_response() {
     let socket_path = "/tmp/test-songbird-fault-invalid.sock";
     let _ = std::fs::remove_file(socket_path);
     
-    let server = start_fault_server(socket_path, "invalid_response").await;
-    tokio::time::sleep(Duration::from_millis(100)).await;
+    let (notifier, notify_tx) = ReadyNotifier::new();
+    let server = start_fault_server(socket_path, "invalid_response", notifier).await;
+    notify_tx.notified().await; // ✅ Event-driven! No polling!
     
     let mut stream = UnixStream::connect(socket_path).await.unwrap();
     
@@ -405,8 +412,9 @@ async fn test_fault_partial_write() {
     let socket_path = "/tmp/test-songbird-fault-partial.sock";
     let _ = std::fs::remove_file(socket_path);
     
-    let server = start_fault_server(socket_path, "normal").await;
-    tokio::time::sleep(Duration::from_millis(100)).await;
+    let (notifier, notify_tx) = ReadyNotifier::new();
+    let server = start_fault_server(socket_path, "normal", notifier).await;
+    notify_tx.notified().await; // ✅ Event-driven! No polling!
     
     let mut stream = UnixStream::connect(socket_path).await.unwrap();
     
@@ -414,7 +422,7 @@ async fn test_fault_partial_write() {
     let _ = stream.write_all(b"{\"jsonrpc\":\"2.0\"").await;
     let _ = stream.flush().await;
     
-    // Wait a bit
+    // Wait a bit (⏰ LEGITIMATE: Testing partial write timing behavior)
     tokio::time::sleep(Duration::from_millis(100)).await;
     
     // Complete the JSON

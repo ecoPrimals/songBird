@@ -10,6 +10,9 @@
 //! - Port fallback behavior
 //! - Concurrent binding attempts
 
+mod common;
+use common::event_helpers::wait_for_async;
+
 use axum::Router;
 use std::time::Duration;
 use tokio::net::TcpListener;
@@ -80,12 +83,22 @@ mod https_server_binding_tests {
             axum::serve(listener, app).await.expect("Server failed to start");
         });
 
-        // Wait a bit for server to start
-        tokio::time::sleep(Duration::from_millis(100)).await;
-
-        // Try to connect
-        let client = reqwest::Client::new();
+        // Try to connect (with event-driven readiness check)
+        let client = reqwest::Client::builder()
+            .timeout(Duration::from_secs(2))
+            .build()
+            .expect("Failed to build client");
         let url = format!("http://{}/health", addr);
+
+        // ✅ Event-driven readiness check! No polling!
+        let url_clone = url.clone();
+        let client_clone = client.clone();
+        wait_for_async(
+            || async {
+                client_clone.get(&url_clone).send().await.is_ok()
+            },
+            Duration::from_secs(3)
+        ).await.expect("Server did not become ready in time");
 
         let result = timeout(Duration::from_secs(2), client.get(&url).send()).await;
 
@@ -141,11 +154,22 @@ mod https_server_binding_tests {
             axum::serve(listener, app).await.expect("Server failed to start");
         });
 
-        tokio::time::sleep(Duration::from_millis(100)).await;
-
         // Spawn multiple concurrent requests
-        let client = reqwest::Client::new();
+        let client = reqwest::Client::builder()
+            .timeout(Duration::from_secs(2))
+            .build()
+            .expect("Failed to build client");
         let url = format!("http://{}/health", addr);
+
+        // ✅ Event-driven readiness check! No polling!
+        let url_clone = url.clone();
+        let client_clone = client.clone();
+        wait_for_async(
+            || async {
+                client_clone.get(&url_clone).send().await.is_ok()
+            },
+            Duration::from_secs(3)
+        ).await.expect("Server did not become ready in time");
 
         let mut handles = vec![];
         for _ in 0..10 {
@@ -311,11 +335,21 @@ mod https_server_integration_tests {
             axum::serve(listener, app).await.expect("Server failed to start");
         });
 
-        // Wait for server to be ready
-        tokio::time::sleep(Duration::from_millis(100)).await;
-
-        let client = reqwest::Client::new();
+        let client = reqwest::Client::builder()
+            .timeout(Duration::from_secs(2))
+            .build()
+            .expect("Failed to build client");
         let base_url = format!("http://{}", addr);
+
+        // ✅ Event-driven readiness check! No polling!
+        let health_url = format!("{}/health", base_url);
+        let client_clone = client.clone();
+        wait_for_async(
+            || async {
+                client_clone.get(&health_url).send().await.is_ok()
+            },
+            Duration::from_secs(3)
+        ).await.expect("Server did not become ready in time");
 
         // Test health endpoint
         let health_response =
@@ -356,16 +390,24 @@ mod https_server_integration_tests {
             axum::serve(listener, app).await.expect("Server failed to start");
         });
 
-        // Wait for server to start
-        tokio::time::sleep(Duration::from_millis(100)).await;
-
         // Verify server is running
         let client = reqwest::Client::builder()
             .timeout(Duration::from_millis(500))
             .build()
             .expect("Failed to build client");
+        
+        // ✅ Event-driven readiness check! No polling!
+        let health_url = format!("http://{}/health", addr);
+        let client_clone = client.clone();
+        wait_for_async(
+            || async {
+                client_clone.get(&health_url).send().await.is_ok()
+            },
+            Duration::from_secs(3)
+        ).await.expect("Server did not become ready in time");
+
         let response = client
-            .get(format!("http://{}/health", addr))
+            .get(&health_url)
             .send()
             .await
             .expect("Server not responding");
@@ -374,8 +416,13 @@ mod https_server_integration_tests {
         // Abort the server
         server_handle.abort();
 
-        // Wait for shutdown to propagate
-        tokio::time::sleep(Duration::from_millis(200)).await;
+        // ✅ Event-driven shutdown check! No polling!
+        wait_for_async(
+            || async {
+                client.get(&health_url).send().await.is_err()
+            },
+            Duration::from_secs(3)
+        ).await.ok(); // OK if this times out - server may already be down
 
         // Server should no longer respond (may get connection refused or timeout)
         let result = client.get(format!("http://{}/health", addr)).send().await;

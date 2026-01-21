@@ -9,15 +9,15 @@
 use serde_json::json;
 use std::env;
 use tokio::time::{sleep, Duration};
-use tracing: :{debug, error, info, warn};
+use tracing::{debug, error, info, warn};
 
-use songbird_config: :zero_hardcoding_migration::{MigrationResult, ZeroHardcodingMigrator};
-use songbird_types: :{SongbirdError, SongbirdResult};
-use songbird_universal: :zero_knowledge_bootstrap::{
-    CapabilityProvider, InfantDiscoverySystem, NetworkEffectOrchestrator,;
+use songbird_config::zero_hardcoding_migration::{MigrationResult, ZeroHardcodingMigrator};
+use songbird_types::{SongbirdError, SongbirdResult};
+use songbird_universal::zero_knowledge_bootstrap::{
+    CapabilityProvider, InfantDiscoverySystem, NetworkEffectOrchestrator,
 };
 
-#[tokio: :main]
+#[tokio::main]
 async fn main() -> SongbirdResult<()>   {
     
     

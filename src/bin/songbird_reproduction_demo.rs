@@ -6,7 +6,7 @@
 //! autonomously decides to reproduce, spawns actual child Songbird processes,
 //! and manages multi-generational evolution.
 
-use chrono: :Utc;
+use chrono::Utc;
 use std::collections::HashMap;
 use std::time::Duration;
 use tokio::time::sleep;
@@ -15,7 +15,7 @@ use tracing::info;
 use songbird_orchestrator::core::organism_reproduction::{
     BehaviorMutations, BehaviorProfile, ChildSpecialization, ChildSpecification,
     OptimizationPattern, OrganismReproduction, PerformanceMetrics, ReproductionDecision,
-    ResourceLimits, ServiceCapability, SongbirdGenetics, WorkloadAnalysis,;
+    ResourceLimits, ServiceCapability, SongbirdGenetics, WorkloadAnalysis,
 };
 
 /// Demo runner for Songbird reproduction
