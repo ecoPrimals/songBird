@@ -1,11 +1,6 @@
-//! Pure Rust Unix Socket JSON-RPC Server for Inter-Primal IPC
+//! Pure Rust Unix Socket Server Infrastructure
 //!
 //! v3.22.0: Evolved from jsonrpsee to pure Rust implementation (BearDog pattern)
-//!
-//! ## Evolution Rationale
-//!
-//! **Problem**: `jsonrpsee` has complex Unix socket requirements causing "invalid socket address" errors
-//! **Solution**: Pure Rust implementation using `tokio::net::UnixListener` (proven by BearDog v0.16.1)
 //!
 //! ## Design Principles
 //!
@@ -15,13 +10,8 @@
 //! 4. **Thread-Safe**: Arc + atomic readiness flags
 //! 5. **Observable**: Structured logging
 //! 6. **Graceful Shutdown**: Cleanup on drop
-//!
-//! ## Inspired By
-//!
-//! BearDog v0.16.1's proven Unix socket IPC implementation (production-tested).
 
 use anyhow::{Context, Result};
-use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
@@ -30,97 +20,12 @@ use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
 use tokio::net::{UnixListener, UnixStream};
 use tracing::{debug, error, info, warn};
 
-use super::handlers::IpcHandlers;
-use super::registry::ServiceRegistry;
+use super::protocol::{JsonRpcError, JsonRpcRequest, JsonRpcResponse};
+use super::squirrel_handlers;
 use crate::app::connection_manager::ConnectionManager;
+use crate::ipc::handlers::IpcHandlers;
+use crate::ipc::registry::ServiceRegistry;
 use songbird_discovery::anonymous::AnonymousDiscoveryListener;
-use songbird_http_client::SongbirdHttpClient; // ✅ Pure Rust HTTP/HTTPS client (Tower Atomic)
-
-/// JSON-RPC 2.0 Request
-#[derive(Debug, Clone, Deserialize)]
-pub struct JsonRpcRequest {
-    pub jsonrpc: String,
-    pub method: String,
-    #[serde(default)]
-    pub params: Option<serde_json::Value>,
-    pub id: Option<serde_json::Value>,
-}
-
-/// JSON-RPC 2.0 Response
-#[derive(Debug, Clone, Serialize)]
-pub struct JsonRpcResponse {
-    pub jsonrpc: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub result: Option<serde_json::Value>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub error: Option<JsonRpcError>,
-    pub id: serde_json::Value,
-}
-
-/// JSON-RPC 2.0 Error
-#[derive(Debug, Clone, Serialize)]
-pub struct JsonRpcError {
-    pub code: i32,
-    pub message: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub data: Option<serde_json::Value>,
-}
-
-impl JsonRpcError {
-    /// Standard JSON-RPC 2.0 error codes
-    pub const PARSE_ERROR: i32 = -32700;
-    pub const INVALID_REQUEST: i32 = -32600;
-    pub const METHOD_NOT_FOUND: i32 = -32601;
-    pub const INVALID_PARAMS: i32 = -32602;
-    pub const INTERNAL_ERROR: i32 = -32603;
-
-    /// Create a parse error
-    pub fn parse_error(message: impl Into<String>) -> Self {
-        Self {
-            code: Self::PARSE_ERROR,
-            message: message.into(),
-            data: None,
-        }
-    }
-
-    /// Create a method not found error
-    pub fn method_not_found(method: impl Into<String>) -> Self {
-        Self {
-            code: Self::METHOD_NOT_FOUND,
-            message: format!("Method not found: {}", method.into()),
-            data: None,
-        }
-    }
-
-    /// Create an invalid params error
-    pub fn invalid_params(message: impl Into<String>) -> Self {
-        Self {
-            code: Self::INVALID_PARAMS,
-            message: message.into(),
-            data: None,
-        }
-    }
-
-    /// Create an internal error
-    pub fn internal_error(message: impl Into<String>) -> Self {
-        Self {
-            code: Self::INTERNAL_ERROR,
-            message: message.into(),
-            data: None,
-        }
-    }
-
-    /// Create a custom error with code, message, and optional data
-    ///
-    /// This is a compatibility helper for migrating from jsonrpsee::types::ErrorObject::owned
-    pub fn custom(code: i32, message: impl Into<String>, data: Option<String>) -> Self {
-        Self {
-            code,
-            message: message.into(),
-            data: data.map(serde_json::Value::String),
-        }
-    }
-}
 
 /// Pure Rust Unix socket JSON-RPC server for inter-primal communication
 ///
@@ -130,12 +35,7 @@ impl JsonRpcError {
 /// Primals → Unix Socket → JSON-RPC 2.0 → Songbird APIs
 /// ```
 ///
-/// ## Evolution (v3.22.0)
-///
-/// **Before**: `jsonrpsee::Server` (complex, Unix socket issues)
-/// **After**: `tokio::net::UnixListener` (simple, proven by BearDog)
-///
-/// ## APIs Exposed (11 total)
+/// ## APIs Exposed (14 total)
 ///
 /// ### P2P Discovery (3 APIs)
 /// - `discover_by_family`: Filter discovered peers by genetic family tags
@@ -153,6 +53,11 @@ impl JsonRpcError {
 /// - `graph.check_availability`: Check primal availability
 /// - `graph.suggest_alternatives`: Suggest alternative primals
 /// - `coordination.validate_pattern`: Validate coordination patterns
+///
+/// ### Squirrel Integration (3 APIs)
+/// - `discover_capabilities`: Advertise Songbird's capabilities
+/// - `http.request`: Delegate HTTP/HTTPS requests
+/// - `health`: Simple health check
 pub struct UnixSocketServer {
     /// Socket path (e.g., /run/user/{uid}/songbird-{family_id}.sock)
     socket_path: PathBuf,
@@ -200,29 +105,6 @@ impl UnixSocketServer {
         }
     }
 
-    /// Derive socket path from environment (zero hardcoding!)
-    ///
-    /// **v3.23.0**: BiomeOS Neural API compatibility (Jan 15, 2026)
-    ///
-    /// ## Priority Order (BiomeOS-compliant):
-    ///
-    /// Socket Path:
-    /// 1. `SONGBIRD_ORCHESTRATOR_SOCKET` (Neural API standard)
-    /// 2. `SONGBIRD_SOCKET` (alternative naming)
-    /// 3. `BIOMEOS_SOCKET_PATH` (generic orchestrator)
-    /// 4. Default: `/tmp/songbird-{family_id}.sock`
-    ///
-    /// Family ID:
-    /// 1. `SONGBIRD_ORCHESTRATOR_FAMILY_ID` (Neural API standard)
-    /// 2. `SONGBIRD_ORCHESTRATOR_FAMILY` (alternative)
-    /// 3. `BIOMEOS_FAMILY_ID` (generic orchestrator)
-    /// 4. `SONGBIRD_FAMILY_ID` (legacy)
-    /// 5. Default: `"default"`
-    ///
-    /// ## BiomeOS Discovery
-    ///
-    /// BiomeOS Neural API sets environment variables and expects primals
-    /// to honor them. This enables zero-configuration multi-family deployments.
     /// Derive socket path from environment variables (BiomeOS Neural API compatible)
     ///
     /// ## Priority Order (BiomeOS Standard)
@@ -262,10 +144,6 @@ impl UnixSocketServer {
             info!("📍 Using BIOMEOS_SOCKET_PATH: {}", socket_path);
             return PathBuf::from(socket_path);
         }
-
-        // No explicit socket path - construct from family ID
-        // Priority order for family ID:
-        let family_id = Self::get_family_id();
 
         // Default: Use env_config for TRUE PRIMAL self-knowledge
         let socket_path = crate::env_config::socket_path();
@@ -385,7 +263,7 @@ impl UnixSocketServer {
 
         info!("✅ Unix socket JSON-RPC server listening: {}", self.socket_path.display());
         info!("   Protocol: JSON-RPC 2.0 (pure Rust)");
-        info!("   APIs: 11 (3 P2P + 4 registry + 4 graph intelligence)");
+        info!("   APIs: 14 (3 P2P + 4 registry + 4 graph + 3 Squirrel)");
         info!("   Status: READY ✅ (atomic flag set)");
 
         // Accept connections loop (checks is_running for graceful shutdown)
@@ -507,10 +385,10 @@ impl UnixSocketServer {
                 self.handlers.validate_coordination_pattern_json(request.params).await
             }
 
-            // Squirrel Integration (Jan 20, 2026) - Upstream from biomeOS
-            "discover_capabilities" => Self::handle_discover_capabilities().await,
-            "http.request" => Self::handle_http_request(request.params).await,
-            "health" => Self::handle_health().await,
+            // Squirrel Integration APIs (3)
+            "discover_capabilities" => squirrel_handlers::handle_discover_capabilities().await,
+            "http.request" => squirrel_handlers::handle_http_request(request.params).await,
+            "health" => squirrel_handlers::handle_health().await,
 
             // Unknown method
             _ => Err(JsonRpcError::method_not_found(&request.method)),
@@ -548,103 +426,6 @@ impl UnixSocketServer {
 
         info!("✅ Unix socket server stopped");
         Ok(())
-    }
-
-    /// Handle discover_capabilities - Return Songbird's capabilities
-    ///
-    /// NEW (Jan 20, 2026): Upstream integration from biomeOS.
-    /// Allows Squirrel to discover that Songbird provides HTTP delegation.
-    async fn handle_discover_capabilities() -> Result<serde_json::Value, JsonRpcError> {
-        info!("🔍 Capability discovery request received");
-        
-        // Get family ID from environment or use default
-        let family_id = std::env::var("SONGBIRD_FAMILY_ID").unwrap_or_else(|_| "nat0".to_string());
-        
-        // Songbird's capabilities for inter-primal communication
-        let capabilities = vec![
-            "http.post",           // POST requests
-            "http.get",            // GET requests
-            "http.request",        // Generic HTTP requests
-            "discovery.announce",  // Service announcement
-            "discovery.query",     // Service discovery
-            "security.verify",     // JWT verification (via BearDog delegation)
-        ];
-        
-        Ok(serde_json::json!({
-            "capabilities": capabilities,
-            "metadata": {
-                "primal_name": "songbird",
-                "version": env!("CARGO_PKG_VERSION"),
-                "family_id": family_id
-            }
-        }))
-    }
-
-    /// Handle http.request - Delegate HTTP requests to external services
-    ///
-    /// EVOLVED (Jan 21, 2026): Pure Rust HTTP via Tower Atomic (BearDog crypto delegation)
-    /// Enables Squirrel's Anthropic adapter to delegate HTTP requests through Songbird.
-    ///
-    /// ## Architecture (Tower Atomic)
-    /// ```
-    /// Primal → Songbird (TLS/HTTP) → BearDog (Crypto) → External HTTPS
-    /// ```
-    async fn handle_http_request(params: Option<serde_json::Value>) -> Result<serde_json::Value, JsonRpcError> {
-        use serde::Deserialize;
-        
-        #[derive(Deserialize)]
-        struct HttpRequestParams {
-            method: String,
-            url: String,
-            #[serde(default)]
-            headers: std::collections::HashMap<String, String>,
-            #[serde(default)]
-            body: Option<serde_json::Value>,
-        }
-        
-        let params: HttpRequestParams = match params {
-            Some(p) => serde_json::from_value(p)
-                .map_err(|e| JsonRpcError::invalid_params(e.to_string()))?,
-            None => return Err(JsonRpcError::invalid_params("Missing params")),
-        };
-        
-        info!("🌐 HTTP delegation (Pure Rust): {} {}", params.method, params.url);
-        
-        // ✅ TOWER ATOMIC: Use Pure Rust HTTP client with BearDog crypto delegation
-        let crypto_socket = crate::primal_discovery::discover_crypto_provider().await
-            .map_err(|e| JsonRpcError::internal_error(&format!("Failed to discover crypto provider: {}", e)))?;
-        
-        let client = SongbirdHttpClient::new(crypto_socket);
-        
-        // Make request via Pure Rust client (NO reqwest, NO ring, NO C!)
-        let response = client
-            .request(
-                &params.method,
-                &params.url,
-                params.headers,
-                params.body,
-            )
-            .await
-            .map_err(|e| JsonRpcError::internal_error(&format!("HTTP request failed: {}", e)))?;
-        
-        info!("✅ HTTP delegation complete (Pure Rust): {} (status: {})", params.url, response.status);
-        
-        Ok(serde_json::json!({
-            "status": response.status,
-            "headers": response.headers,
-            "body": response.body
-        }))
-    }
-
-    /// Handle health - Simple health check
-    ///
-    /// NEW (Jan 20, 2026): Required by Squirrel's is_available() check.
-    async fn handle_health() -> Result<serde_json::Value, JsonRpcError> {
-        Ok(serde_json::json!({
-            "status": "healthy",
-            "primal": "songbird",
-            "version": env!("CARGO_PKG_VERSION")
-        }))
     }
 }
 
@@ -808,3 +589,4 @@ mod tests {
         }
     }
 }
+

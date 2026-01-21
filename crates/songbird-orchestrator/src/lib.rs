@@ -105,7 +105,8 @@ pub mod resource_management; // Resource management & fairness (Week 2 - Dec 18,
 pub mod rpc; // Multi-protocol RPC (JSON-RPC, tarpc)
 pub mod env_config; // Environment configuration - self-knowledge (TRUE PRIMAL) (Jan 21, 2026)
 pub mod primal_discovery; // Agnostic primal discovery (TRUE PRIMAL) (Jan 21, 2026)
-pub mod security_capability_client; // Security capability client (provider-agnostic) - ✅ Pure Rust HTTP (Jan 21, 2026)
+pub mod security_client; // Security capability client (refactored v4.9.0) - ✅ Pure Rust HTTP (Jan 21, 2026)
+pub use security_client as security_capability_client; // Backward compatibility alias
 pub mod self_knowledge; // Self-knowledge about this primal (zero hardcoding!) (Jan 1, 2026)
 pub mod server;
 pub mod service_registry; // Universal Port Authority (Dec 20, 2025) - Inter-primal service registration

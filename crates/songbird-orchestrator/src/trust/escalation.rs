@@ -5,7 +5,7 @@
 use super::types::{
     CapabilityProof, HardwareAttestation, IdentityProof, TrustLevel, TrustRelationship,
 };
-use crate::security_capability_client::SecurityCapabilityClient;
+use crate::security_client::client::SecurityCapabilityClient;
 use anyhow::{anyhow, Result};
 use std::collections::HashMap;
 use std::sync::Arc;

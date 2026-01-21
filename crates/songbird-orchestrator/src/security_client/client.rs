@@ -1,80 +1,24 @@
-//! Security capability client for cryptographic trust evaluation
+//! Security capability client implementation
 //!
 //! **MODERNIZED v3.12.3**: Now uses protocol-agnostic SecurityAdapter!
 //!
-//! This module provides a protocol-agnostic API for discovering and using security capabilities
-//! without hardcoding specific primal names. Works with ANY primal that provides
-//! security capabilities (identity, encryption, trust-evaluation) via ANY protocol.
-//!
-//! ## Modern Architecture (v3.12.3)
-//!
-//! - **Security Provider**: ANY primal offering security capabilities (discovered at runtime)
-//! - **Protocol Detection**: Automatic (tarpc → JSON-RPC → HTTP)
-//! - **Performance**: 10-50x faster with tarpc/JSON-RPC
-//! - **Deployment**: Fractal (same code, any protocol)
-//!
-//! ## Usage (Protocol-Agnostic)
-//!
-//! ```rust,no_run
-//! use songbird_orchestrator::security_capability_client::{SecurityCapabilityClient, TrustEvaluationRequest};
-//!
-//! # async fn example() -> anyhow::Result<()> {
-//! // Discover security provider at runtime (NO hardcoded endpoint!)
-//! let endpoint = discover_capability("security").await?;
-//! let client = SecurityCapabilityClient::from_endpoint(endpoint);
-//!
-//! // Get our identity
-//! let identity = client.get_identity().await?;
-//! println!("Our tag: {}", identity.encryption_tag);
-//!
-//! // Evaluate peer trust
-//! let request = TrustEvaluationRequest {
-//!     peer_id: "tower2".to_string(),
-//!     peer_family: Some("a3f2".to_string()),
-//!     peer_tags: vec!["beardog:family:a3f2".to_string()],
-//!     connection_info: None,
-//!     context: None,
-//! };
-//!
-//! let decision = client.evaluate_trust(&request).await?;
-//! match decision.decision.as_str() {
-//!     "auto_accept" => println!("✅ Auto-accepting peer"),
-//!     "prompt_user" => println!("⚠️ Prompting user for consent"),
-//!     "reject" => println!("❌ Rejecting peer"),
-//!     _ => println!("Unknown decision"),
-//! }
-//! # Ok(())
-//! # }
-//! ```
+//! This module provides the main SecurityCapabilityClient struct that handles
+//! communication with security providers for trust evaluation and identity attestation.
 
 use anyhow::{Context, Result};
-// ✅ MIGRATED (Jan 21, 2026): Now using songbird-http-client (Pure Rust)
-// This file is Phase 1.5 (lineage/genetic features) and not on critical path for Squirrel AI
-use songbird_http_client::SongbirdHttpClient;
-use std::sync::Arc;
-use serde::{Deserialize, Serialize};
 use serde_json::json;
+use songbird_http_client::SongbirdHttpClient;
 use songbird_types::{LineageId, LineageProof};
 use songbird_universal::adapters::SecurityAdapter;
 use std::collections::HashMap;
+use std::sync::Arc;
 use tracing::{debug, error, info, warn};
 
+use super::types::*;
 use crate::trust::universal_trust_api::{
     IdentityAttestation as UniversalIdentityAttestation, UniversalTrustRequest,
     UniversalTrustResponse,
 };
-
-/// Wrapper for potentially wrapped API responses (Agnostic Pattern - Jan 3, 2026)
-///
-/// Some security providers wrap their responses in `{"success": true, "data": {...}}`.
-/// This allows graceful handling of both wrapped and unwrapped formats during transition.
-#[derive(Debug, Clone, Deserialize)]
-struct ApiResponseWrapper<T> {
-    pub success: bool,
-    pub data: T,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub error: Option<String>,
-}
 
 /// Security capability client for trust evaluation
 ///
@@ -196,16 +140,6 @@ impl SecurityCapabilityClient {
 
     /// Get our identity from security provider
     ///
-    /// Returns our encryption tag and capabilities.
-    /// Results are cached to avoid repeated queries.
-    ///
-    /// **Agnostic Pattern**: Works with wrapped or unwrapped responses.
-    ///
-    /// # Errors
-    ///
-    /// Returns error if security provider is unreachable or returns invalid response.
-    /// Get our identity from security provider
-    ///
     /// **MODERNIZED v3.12.3**: Protocol-agnostic! Uses tarpc/JSON-RPC/HTTP automatically.
     pub async fn get_identity(&mut self) -> Result<IdentityResponse> {
         // Return cached if available
@@ -238,17 +172,6 @@ impl SecurityCapabilityClient {
     /// Evaluate trust for a discovered peer
     ///
     /// **MODERNIZED v3.12.3**: Protocol-agnostic! Uses tarpc/JSON-RPC/HTTP automatically.
-    ///
-    /// Asks security provider: "Should I trust this peer?"
-    /// Provider responds with auto_accept, prompt_user, or reject.
-    ///
-    /// # Arguments
-    ///
-    /// * `request` - Peer information and tags
-    ///
-    /// # Errors
-    ///
-    /// Returns error if security provider is unreachable or returns invalid response.
     pub async fn evaluate_trust(
         &self,
         request: &TrustEvaluationRequest,
@@ -265,7 +188,7 @@ impl SecurityCapabilityClient {
 
         let universal_req = songbird_universal::TrustEvaluationRequest {
             peer_id: request.peer_id.clone(),
-            peer_family: request.peer_family.clone(), // ✅ Pass peer_family (v3.14.1)
+            peer_family: request.peer_family.clone(),
             peer_tags: request.peer_tags.clone(),
             connection_info: connection_info_map,
             context: request.context.clone(),
@@ -277,10 +200,10 @@ impl SecurityCapabilityClient {
                 // Convert from universal format to local format
                 TrustEvaluationResponse {
                     decision: universal_resp.decision,
-                    trust_level: universal_resp.trust_level.name().to_string(), // Convert TrustLevel enum to string
-                    confidence: 0.0, // Not in universal format yet
+                    trust_level: universal_resp.trust_level.name().to_string(),
+                    confidence: 0.0,
                     reason: universal_resp.reason,
-                    encryption_tag: None, // Not in universal format yet
+                    encryption_tag: None,
                     metadata: universal_resp
                         .metadata
                         .unwrap_or_default()
@@ -340,8 +263,6 @@ impl SecurityCapabilityClient {
     /// Check if security provider is available
     ///
     /// **MODERNIZED v3.12.3**: Protocol-agnostic! Uses tarpc/JSON-RPC/HTTP automatically.
-    ///
-    /// Returns true if security provider responds to health checks.
     pub async fn is_available(&self) -> bool {
         (self.adapter.check_health().await).is_ok()
     }
@@ -355,8 +276,6 @@ impl SecurityCapabilityClient {
     }
 
     /// Convert identity response to universal attestations
-    ///
-    /// Creates generic identity attestations from provider-specific identity.
     pub fn identity_to_attestations(
         identity: &IdentityResponse,
     ) -> Vec<UniversalIdentityAttestation> {
@@ -383,10 +302,7 @@ impl SecurityCapabilityClient {
         attestations
     }
 
-    /// Convert identity response to discovery attestations (CRITICAL FIX - Jan 3, 2026)
-    ///
-    /// Creates discovery `IdentityAttestation` for inclusion in UDP discovery packets.
-    /// This enables genetic lineage auto-trust across the network.
+    /// Convert identity response to discovery attestations
     pub fn identity_to_discovery_attestations(
         identity: &IdentityResponse,
     ) -> Vec<songbird_discovery::IdentityAttestation> {
@@ -398,7 +314,7 @@ impl SecurityCapabilityClient {
                 "tags": vec![identity.encryption_tag.clone()]
             });
 
-            // Add family_id if present (CRITICAL for auto-trust)
+            // Add family_id if present
             if let Some(ref family_id) = identity.family_id {
                 data["family_id"] = json!(family_id);
             }
@@ -414,16 +330,6 @@ impl SecurityCapabilityClient {
     }
 
     /// Evaluate trust using universal API format
-    ///
-    /// Generic trust evaluation that works with any security provider.
-    ///
-    /// # Arguments
-    ///
-    /// * `request` - Universal trust evaluation request
-    ///
-    /// # Returns
-    ///
-    /// Universal trust response with decision, confidence, and reason.
     pub async fn evaluate_trust_universal(
         &self,
         request: &UniversalTrustRequest,
@@ -440,13 +346,11 @@ impl SecurityCapabilityClient {
             .context("Failed to connect to security provider for trust evaluation")?;
 
         // ✅ AGNOSTIC: Gracefully handles wrapped or unwrapped format
-        // Falls back to legacy format if universal format fails
         let body_str = http_response.body.to_string();
         let trust_response = match self.parse_response_body::<UniversalTrustResponse>(http_response.status, &body_str) {
             Ok(response) => response,
             Err(e) => {
                 warn!("Universal trust evaluation failed: {}. Trying legacy fallback...", e);
-                // Try legacy format (for backward compatibility during transition)
                 self.evaluate_trust_legacy_fallback(request).await?
             }
         };
@@ -460,8 +364,6 @@ impl SecurityCapabilityClient {
     }
 
     /// Fallback to legacy trust evaluation format
-    ///
-    /// Used during transition period when provider hasn't updated to universal API yet.
     async fn evaluate_trust_legacy_fallback(
         &self,
         universal_request: &UniversalTrustRequest,
@@ -485,13 +387,13 @@ impl SecurityCapabilityClient {
         // Build legacy request
         let legacy_request = TrustEvaluationRequest {
             peer_id: universal_request.evaluator.peer_id.clone(),
-            peer_family: None, // ✅ v3.14.1: Family extraction implemented in evaluate_peer_trust()
+            peer_family: None,
             peer_tags: tags,
             connection_info: Some(ConnectionInfo {
                 endpoint: universal_request.context.endpoint.clone(),
                 protocol: "tarpc".to_string(),
             }),
-            context: None, // Legacy format doesn't use structured context
+            context: None,
         };
 
         // Call legacy API
@@ -511,7 +413,7 @@ impl SecurityCapabilityClient {
             decision,
             confidence: legacy_response.confidence,
             reason: legacy_response.reason.clone(),
-            reason_code: legacy_response.reason.clone(), // Use reason as code
+            reason_code: legacy_response.reason.clone(),
             metadata: legacy_response.metadata.iter().map(|(k, v)| (k.clone(), json!(v))).collect(),
             expires_at: None,
             custom: HashMap::new(),
@@ -520,20 +422,11 @@ impl SecurityCapabilityClient {
 
     /// Backward compatibility: alias for from_endpoint
     #[deprecated(note = "Use from_endpoint instead for clarity")]
-    /// Create from endpoint (legacy wrapper)
-    ///
-    /// **MODERNIZED v3.12.3**: Now returns Result due to protocol detection
     pub fn new(endpoint: impl Into<String>) -> Result<Self> {
         Self::from_endpoint(endpoint)
     }
 
     /// Get our current genetic lineage from security provider
-    ///
-    /// Returns our lineage ID and proof if available.
-    ///
-    /// # Errors
-    ///
-    /// Returns error if security provider is unreachable or returns invalid response.
     pub async fn get_current_lineage(&self) -> Result<Option<CurrentLineageInfo>> {
         let url = format!("{}/api/v1/lineage/current", self.adapter.endpoint());
         debug!("Querying security provider for current lineage: {}", url);
@@ -559,12 +452,6 @@ impl SecurityCapabilityClient {
     }
 
     /// Verify a peer's lineage proof
-    ///
-    /// Asks security provider to cryptographically verify the lineage proof.
-    ///
-    /// # Errors
-    ///
-    /// Returns error if security provider is unreachable or returns invalid response.
     pub async fn verify_lineage(&self, proof: &LineageProof) -> Result<VerificationResult> {
         let url = format!("{}/api/v1/lineage/verify", self.adapter.endpoint());
         debug!("Verifying lineage proof with security provider: {}", url);
@@ -603,23 +490,17 @@ impl SecurityCapabilityClient {
     }
 
     /// Check if two lineages are from the same genetic family
-    ///
-    /// Asks security provider to compare lineage origins.
-    ///
-    /// # Errors
-    ///
-    /// Returns error if security provider is unreachable or returns invalid response.
     pub async fn same_family(&self, lineage_a: &LineageId, lineage_b: &LineageId) -> Result<bool> {
         let url = format!("{}/api/v1/lineage/same_family", self.adapter.endpoint());
         debug!("Checking if lineages are from same family: {} vs {}", lineage_a, lineage_b);
 
-        #[derive(Serialize)]
+        #[derive(serde::Serialize)]
         struct SameFamilyRequest {
             lineage_a: String,
             lineage_b: String,
         }
 
-        #[derive(Debug, Deserialize)]
+        #[derive(Debug, serde::Deserialize)]
         struct SameFamilyResponse {
             same_family: bool,
             confidence: f64,
@@ -661,148 +542,6 @@ impl SecurityCapabilityClient {
     }
 }
 
-/// Identity response from security provider
-///
-/// Contains our encryption tag and capabilities.
-/// Orchestrator doesn't need to understand the tag format,
-/// just includes it in discovery packets.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct IdentityResponse {
-    /// Encryption tag for this node
-    ///
-    /// Format: `{provider}:family:{family_id}:{node_id}` (provider-agnostic!)
-    /// Example: `crypto-provider:family:a3f2:tower1`
-    pub encryption_tag: String,
-
-    /// Security provider capabilities
-    ///
-    /// Example: `["identity", "encryption", "trust-evaluation"]`
-    pub capabilities: Vec<String>,
-
-    /// Family ID (optional)
-    ///
-    /// Example: `ecoPrimals-20260101-a3f2`
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub family_id: Option<String>,
-}
-
-/// Trust evaluation request to security provider
-///
-/// Orchestrator sends peer information to security provider,
-/// asking "should I trust this peer?"
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct TrustEvaluationRequest {
-    /// Peer node ID
-    pub peer_id: String,
-
-    /// Peer family ID (v3.14.1 - tag-based identity)
-    ///
-    /// Extracted from peer tags (e.g., "beardog:family:nat0" → "nat0")
-    /// Songbird doesn't interpret this - just extracts and passes to security provider
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub peer_family: Option<String>,
-
-    /// Peer tags (includes security provider encryption tag if present)
-    ///
-    /// Example: `["crypto:family:a3f2", "encryption_enabled"]`
-    pub peer_tags: Vec<String>,
-
-    /// Connection information (optional)
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub connection_info: Option<ConnectionInfo>,
-
-    /// Discovery context (optional, flattened HashMap for security provider compatibility)
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub context: Option<HashMap<String, String>>,
-}
-
-/// Connection information for peer
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ConnectionInfo {
-    /// Peer endpoint
-    pub endpoint: String,
-
-    /// Protocol used
-    pub protocol: String,
-}
-
-/// Discovery context
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct DiscoveryContext {
-    /// How peer was discovered
-    pub discovery_method: String,
-
-    /// When peer was first seen (Unix timestamp as string for JSON compatibility)
-    pub first_seen_at: String,
-
-    /// Additional metadata
-    #[serde(default)]
-    pub metadata: std::collections::HashMap<String, String>,
-}
-
-/// Trust evaluation response from security provider
-///
-/// Provider's decision on whether to trust the peer.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct TrustEvaluationResponse {
-    /// Decision: "auto_accept", "prompt_user", or "reject"
-    pub decision: String,
-
-    /// Trust level: "high", "medium", "low", or "none"
-    pub trust_level: String,
-
-    /// Confidence score (0.0-1.0)
-    pub confidence: f64,
-
-    /// Human-readable reason
-    pub reason: String,
-
-    /// Encryption tag for establishing secure connection
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub encryption_tag: Option<String>,
-
-    /// Additional metadata
-    #[serde(default)]
-    pub metadata: HashMap<String, String>,
-}
-
-impl TrustEvaluationResponse {
-    /// Check if decision is to auto-accept
-    #[must_use]
-    pub fn is_auto_accept(&self) -> bool {
-        self.decision == "auto_accept"
-    }
-
-    /// Check if decision requires user prompt
-    #[must_use]
-    pub fn requires_prompt(&self) -> bool {
-        self.decision == "prompt_user"
-    }
-
-    /// Check if decision is to reject
-    #[must_use]
-    pub fn is_reject(&self) -> bool {
-        self.decision == "reject"
-    }
-}
-
-/// Current lineage information from security provider
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct CurrentLineageInfo {
-    pub lineage_id: LineageId,
-    pub proof: LineageProof,
-    pub genesis_timestamp: u64,
-}
-
-/// Verification result from security provider
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct VerificationResult {
-    pub valid: bool,
-    pub same_genesis: bool,
-    pub lineage_id: LineageId,
-    pub messages: Vec<String>,
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -812,87 +551,5 @@ mod tests {
         // No hardcoded endpoint! Discovered at runtime
         let client = SecurityCapabilityClient::from_endpoint("http://discovered-security-provider");
         assert_eq!(client.unwrap().endpoint(), "http://discovered-security-provider");
-    }
-
-    #[test]
-    fn test_trust_decision_helpers() {
-        let auto_accept = TrustEvaluationResponse {
-            decision: "auto_accept".to_string(),
-            trust_level: "high".to_string(),
-            confidence: 1.0,
-            reason: "same_family".to_string(),
-            encryption_tag: Some("crypto-provider:family:a3f2".to_string()),
-            metadata: HashMap::new(),
-        };
-
-        assert!(auto_accept.is_auto_accept());
-        assert!(!auto_accept.requires_prompt());
-        assert!(!auto_accept.is_reject());
-
-        let prompt = TrustEvaluationResponse {
-            decision: "prompt_user".to_string(),
-            trust_level: "low".to_string(),
-            confidence: 0.5,
-            reason: "different_family".to_string(),
-            encryption_tag: None,
-            metadata: HashMap::new(),
-        };
-
-        assert!(!prompt.is_auto_accept());
-        assert!(prompt.requires_prompt());
-        assert!(!prompt.is_reject());
-
-        let reject = TrustEvaluationResponse {
-            decision: "reject".to_string(),
-            trust_level: "none".to_string(),
-            confidence: 0.0,
-            reason: "no_lineage".to_string(),
-            encryption_tag: None,
-            metadata: HashMap::new(),
-        };
-
-        assert!(!reject.is_auto_accept());
-        assert!(!reject.requires_prompt());
-        assert!(reject.is_reject());
-    }
-
-    #[test]
-    fn test_identity_response_serialization() {
-        let identity = IdentityResponse {
-            encryption_tag: "crypto-provider:family:a3f2:tower1".to_string(),
-            capabilities: vec!["identity".to_string(), "encryption".to_string()],
-            family_id: Some("ecoPrimals-20260101-a3f2".to_string()),
-        };
-
-        let json = serde_json::to_string(&identity).unwrap();
-        let deserialized: IdentityResponse = serde_json::from_str(&json).unwrap();
-
-        assert_eq!(identity.encryption_tag, deserialized.encryption_tag);
-        assert_eq!(identity.capabilities, deserialized.capabilities);
-        assert_eq!(identity.family_id, deserialized.family_id);
-    }
-
-    #[test]
-    fn test_trust_request_serialization() {
-        let mut context = HashMap::new();
-        context.insert("discovery_method".to_string(), "udp_multicast".to_string());
-        context.insert("first_seen_at".to_string(), "2024-01-01T12:00:00Z".to_string());
-
-        let request = TrustEvaluationRequest {
-            peer_id: "tower2".to_string(),
-            peer_family: Some("a3f2".to_string()), // Extracted from tags
-            peer_tags: vec!["crypto-provider:family:a3f2".to_string()],
-            connection_info: Some(ConnectionInfo {
-                endpoint: "https://192.168.1.134:8080".to_string(),
-                protocol: "tarpc".to_string(),
-            }),
-            context: Some(context),
-        };
-
-        let json = serde_json::to_string(&request).unwrap();
-        let deserialized: TrustEvaluationRequest = serde_json::from_str(&json).unwrap();
-
-        assert_eq!(request.peer_id, deserialized.peer_id);
-        assert_eq!(request.peer_tags, deserialized.peer_tags);
     }
 }

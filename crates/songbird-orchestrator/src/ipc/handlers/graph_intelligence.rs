@@ -9,7 +9,7 @@ use super::IpcHandlers;
 use crate::graph::{
     AlternativeSuggestions, AvailabilityReport, CoordinationValidationResult, ValidationResult,
 };
-use crate::ipc::server_pure_rust::JsonRpcError;
+use crate::ipc::pure_rust_server::JsonRpcError;
 use tracing::{debug, info};
 
 // ============================================================================

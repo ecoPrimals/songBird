@@ -74,7 +74,7 @@ impl IpcHandlers {
     pub async fn register_service(
         &self,
         params: serde_json::Value,
-    ) -> Result<super::types::RegisterServiceResponse, crate::ipc::server_pure_rust::JsonRpcError>
+    ) -> Result<super::types::RegisterServiceResponse, crate::ipc::pure_rust_server::JsonRpcError>
     {
         service_registry::register_service(self, params).await
     }
@@ -85,7 +85,7 @@ impl IpcHandlers {
         params: serde_json::Value,
     ) -> Result<
         super::types::DiscoverByCapabilityResponse,
-        crate::ipc::server_pure_rust::JsonRpcError,
+        crate::ipc::pure_rust_server::JsonRpcError,
     > {
         service_registry::discover_by_capability(self, params).await
     }
@@ -94,7 +94,7 @@ impl IpcHandlers {
     pub async fn get_service_health(
         &self,
         params: serde_json::Value,
-    ) -> Result<super::types::GetServiceHealthResponse, crate::ipc::server_pure_rust::JsonRpcError>
+    ) -> Result<super::types::GetServiceHealthResponse, crate::ipc::pure_rust_server::JsonRpcError>
     {
         service_registry::get_service_health(self, params).await
     }
@@ -103,7 +103,7 @@ impl IpcHandlers {
     pub async fn health_check(
         &self,
         params: serde_json::Value,
-    ) -> Result<super::types::HealthCheckResponse, crate::ipc::server_pure_rust::JsonRpcError> {
+    ) -> Result<super::types::HealthCheckResponse, crate::ipc::pure_rust_server::JsonRpcError> {
         service_registry::health_check(self, params).await
     }
 
@@ -115,7 +115,7 @@ impl IpcHandlers {
     pub async fn discover_by_family(
         &self,
         params: serde_json::Value,
-    ) -> Result<super::types::DiscoverByFamilyResponse, crate::ipc::server_pure_rust::JsonRpcError>
+    ) -> Result<super::types::DiscoverByFamilyResponse, crate::ipc::pure_rust_server::JsonRpcError>
     {
         p2p_discovery::discover_by_family(self, params).await
     }
@@ -124,7 +124,7 @@ impl IpcHandlers {
     pub async fn create_genetic_tunnel(
         &self,
         params: serde_json::Value,
-    ) -> Result<super::types::CreateGeneticTunnelResponse, crate::ipc::server_pure_rust::JsonRpcError>
+    ) -> Result<super::types::CreateGeneticTunnelResponse, crate::ipc::pure_rust_server::JsonRpcError>
     {
         p2p_discovery::create_genetic_tunnel(self, params).await
     }
@@ -135,7 +135,7 @@ impl IpcHandlers {
         params: serde_json::Value,
     ) -> Result<
         super::types::AnnounceCapabilitiesResponse,
-        crate::ipc::server_pure_rust::JsonRpcError,
+        crate::ipc::pure_rust_server::JsonRpcError,
     > {
         p2p_discovery::announce_capabilities(self, params).await
     }
@@ -148,7 +148,7 @@ impl IpcHandlers {
     pub async fn validate_graph(
         &self,
         params: serde_json::Value,
-    ) -> Result<crate::graph::ValidationResult, crate::ipc::server_pure_rust::JsonRpcError> {
+    ) -> Result<crate::graph::ValidationResult, crate::ipc::pure_rust_server::JsonRpcError> {
         graph_intelligence::validate_graph(self, params).await
     }
 
@@ -156,7 +156,7 @@ impl IpcHandlers {
     pub async fn check_availability(
         &self,
         params: serde_json::Value,
-    ) -> Result<crate::graph::AvailabilityReport, crate::ipc::server_pure_rust::JsonRpcError> {
+    ) -> Result<crate::graph::AvailabilityReport, crate::ipc::pure_rust_server::JsonRpcError> {
         graph_intelligence::check_availability(self, params).await
     }
 
@@ -164,7 +164,7 @@ impl IpcHandlers {
     pub async fn suggest_alternatives(
         &self,
         params: serde_json::Value,
-    ) -> Result<crate::graph::AlternativeSuggestions, crate::ipc::server_pure_rust::JsonRpcError>
+    ) -> Result<crate::graph::AlternativeSuggestions, crate::ipc::pure_rust_server::JsonRpcError>
     {
         graph_intelligence::suggest_alternatives(self, params).await
     }
@@ -175,7 +175,7 @@ impl IpcHandlers {
         params: serde_json::Value,
     ) -> Result<
         crate::graph::CoordinationValidationResult,
-        crate::ipc::server_pure_rust::JsonRpcError,
+        crate::ipc::pure_rust_server::JsonRpcError,
     > {
         graph_intelligence::validate_coordination_pattern(self, params).await
     }
@@ -188,7 +188,7 @@ impl IpcHandlers {
     pub async fn register_service_json(
         &self,
         params: Option<serde_json::Value>,
-    ) -> Result<serde_json::Value, crate::ipc::server_pure_rust::JsonRpcError> {
+    ) -> Result<serde_json::Value, crate::ipc::pure_rust_server::JsonRpcError> {
         service_registry::register_service_json(self, params).await
     }
 
@@ -196,7 +196,7 @@ impl IpcHandlers {
     pub async fn discover_by_capability_json(
         &self,
         params: Option<serde_json::Value>,
-    ) -> Result<serde_json::Value, crate::ipc::server_pure_rust::JsonRpcError> {
+    ) -> Result<serde_json::Value, crate::ipc::pure_rust_server::JsonRpcError> {
         service_registry::discover_by_capability_json(self, params).await
     }
 
@@ -204,14 +204,14 @@ impl IpcHandlers {
     pub async fn get_service_health_json(
         &self,
         params: Option<serde_json::Value>,
-    ) -> Result<serde_json::Value, crate::ipc::server_pure_rust::JsonRpcError> {
+    ) -> Result<serde_json::Value, crate::ipc::pure_rust_server::JsonRpcError> {
         service_registry::get_service_health_json(self, params).await
     }
 
     /// Service Registry: health_check (pure JSON adapter)
     pub async fn health_check_json(
         &self,
-    ) -> Result<serde_json::Value, crate::ipc::server_pure_rust::JsonRpcError> {
+    ) -> Result<serde_json::Value, crate::ipc::pure_rust_server::JsonRpcError> {
         service_registry::health_check_json(self).await
     }
 
@@ -219,7 +219,7 @@ impl IpcHandlers {
     pub async fn discover_by_family_json(
         &self,
         params: Option<serde_json::Value>,
-    ) -> Result<serde_json::Value, crate::ipc::server_pure_rust::JsonRpcError> {
+    ) -> Result<serde_json::Value, crate::ipc::pure_rust_server::JsonRpcError> {
         p2p_discovery::discover_by_family_json(self, params).await
     }
 
@@ -227,7 +227,7 @@ impl IpcHandlers {
     pub async fn create_genetic_tunnel_json(
         &self,
         params: Option<serde_json::Value>,
-    ) -> Result<serde_json::Value, crate::ipc::server_pure_rust::JsonRpcError> {
+    ) -> Result<serde_json::Value, crate::ipc::pure_rust_server::JsonRpcError> {
         p2p_discovery::create_genetic_tunnel_json(self, params).await
     }
 
@@ -235,7 +235,7 @@ impl IpcHandlers {
     pub async fn announce_capabilities_json(
         &self,
         params: Option<serde_json::Value>,
-    ) -> Result<serde_json::Value, crate::ipc::server_pure_rust::JsonRpcError> {
+    ) -> Result<serde_json::Value, crate::ipc::pure_rust_server::JsonRpcError> {
         p2p_discovery::announce_capabilities_json(self, params).await
     }
 
@@ -243,7 +243,7 @@ impl IpcHandlers {
     pub async fn validate_graph_json(
         &self,
         params: Option<serde_json::Value>,
-    ) -> Result<serde_json::Value, crate::ipc::server_pure_rust::JsonRpcError> {
+    ) -> Result<serde_json::Value, crate::ipc::pure_rust_server::JsonRpcError> {
         graph_intelligence::validate_graph_json(self, params).await
     }
 
@@ -251,7 +251,7 @@ impl IpcHandlers {
     pub async fn check_availability_json(
         &self,
         params: Option<serde_json::Value>,
-    ) -> Result<serde_json::Value, crate::ipc::server_pure_rust::JsonRpcError> {
+    ) -> Result<serde_json::Value, crate::ipc::pure_rust_server::JsonRpcError> {
         graph_intelligence::check_availability_json(self, params).await
     }
 
@@ -259,7 +259,7 @@ impl IpcHandlers {
     pub async fn suggest_alternatives_json(
         &self,
         params: Option<serde_json::Value>,
-    ) -> Result<serde_json::Value, crate::ipc::server_pure_rust::JsonRpcError> {
+    ) -> Result<serde_json::Value, crate::ipc::pure_rust_server::JsonRpcError> {
         graph_intelligence::suggest_alternatives_json(self, params).await
     }
 
@@ -267,7 +267,7 @@ impl IpcHandlers {
     pub async fn validate_coordination_pattern_json(
         &self,
         params: Option<serde_json::Value>,
-    ) -> Result<serde_json::Value, crate::ipc::server_pure_rust::JsonRpcError> {
+    ) -> Result<serde_json::Value, crate::ipc::pure_rust_server::JsonRpcError> {
         graph_intelligence::validate_coordination_pattern_json(self, params).await
     }
 }

@@ -1,29 +1,28 @@
 //! Multi-protocol RPC module for Songbird
 //!
 //! Provides multiple RPC protocols for different use cases:
-//! - JSON-RPC 2.0: Universal, language-agnostic access
+//! - JSON-RPC 2.0: Universal, language-agnostic access (see server/jsonrpc_api.rs)
 //! - tarpc: High-performance binary RPC for primal-to-primal
 //! - Protocol negotiation: Automatic protocol escalation (Phase 2)
 
 // ============================================================================
-// Pure Rust JSON-RPC 2.0 Implementation (100% Pure Rust, zero C dependencies!)
+// JSON-RPC 2.0 Production Implementations
 // ============================================================================
-// Ready for full migration when IPC handlers are updated
-pub mod pure_jsonrpc_handler;
-pub mod pure_jsonrpc_types;
-
-// Re-export for convenience
-pub use pure_jsonrpc_handler::handle_jsonrpc_request;
-pub use pure_jsonrpc_types::{JsonRpcError, JsonRpcRequest, JsonRpcResponse};
-
-// ============================================================================
-// Former jsonrpsee-based implementation (REMOVED - was dead code!)
-// ============================================================================
-// NOTE: JsonRpcServer was never actually used in production
-// Production uses UnixSocketIpcServer (Pure Rust, v3.22.0)
-// See: ipc/server_pure_rust.rs for the actual implementation
-// See: PHASE4_JSONRPSEE_ANALYSIS_JAN_19_2026.md for analysis
-// Note: jsonrpc module was removed as dead code (not instantiated anywhere)
+// 1. HTTP Gateway: crates/songbird-orchestrator/src/server/jsonrpc_api.rs
+//    - Universal language-agnostic access over HTTP
+//    - Full JSON-RPC 2.0 spec compliance
+//    - Production-ready, actively used
+//
+// 2. Unix Socket Server: crates/songbird-orchestrator/src/ipc/pure_rust_server/
+//    - JSON-RPC 2.0 over Unix sockets for IPC
+//    - 100% Pure Rust, zero C dependencies
+//    - Active in production for inter-primal communication
+//
+// Former pure_jsonrpc_handler.rs (ARCHIVED JAN 21, 2026):
+//   - Was exported but never actually called
+//   - All handlers were TODO stubs
+//   - Superseded by the two implementations above
+//   - See: ARCHIVE_CLEANUP_PLAN_JAN_21_2026.md
 
 // ============================================================================
 // tarpc RPC (100% Pure Rust, production-ready)

@@ -6,7 +6,7 @@
 //! v3.22.1: Extracted from monolithic handlers.rs (Jan 12, 2026)
 
 use super::IpcHandlers;
-use crate::ipc::server_pure_rust::JsonRpcError;
+use crate::ipc::pure_rust_server::JsonRpcError;
 use crate::ipc::types::{
     AnnounceCapabilitiesRequest, AnnounceCapabilitiesResponse, CreateGeneticTunnelRequest,
     CreateGeneticTunnelResponse, DiscoverByFamilyRequest, DiscoverByFamilyResponse,

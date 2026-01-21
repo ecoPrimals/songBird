@@ -9,7 +9,7 @@ use std::time::SystemTime;
 use tracing::{debug, info};
 
 use crate::ipc::handlers::IpcHandlers;
-use crate::ipc::server_pure_rust::JsonRpcError;
+use crate::ipc::pure_rust_server::JsonRpcError;
 use crate::ipc::types::{
     system_time_to_iso8601, DiscoverByCapabilityRequest, DiscoverByCapabilityResponse,
     GetServiceHealthRequest, GetServiceHealthResponse, HealthCheckResponse, HealthStatus,
@@ -211,16 +211,16 @@ pub async fn health_check(
 pub async fn register_service_json(
     handlers: &IpcHandlers,
     params: Option<serde_json::Value>,
-) -> Result<serde_json::Value, crate::ipc::server_pure_rust::JsonRpcError> {
+) -> Result<serde_json::Value, crate::ipc::pure_rust_server::JsonRpcError> {
     let request: RegisterServiceRequest = match params {
         Some(p) => serde_json::from_value(p).map_err(|e| {
-            crate::ipc::server_pure_rust::JsonRpcError::invalid_params(format!(
+            crate::ipc::pure_rust_server::JsonRpcError::invalid_params(format!(
                 "Invalid params: {}",
                 e
             ))
         })?,
         None => {
-            return Err(crate::ipc::server_pure_rust::JsonRpcError::invalid_params(
+            return Err(crate::ipc::pure_rust_server::JsonRpcError::invalid_params(
                 "params required",
             ))
         }
@@ -237,7 +237,7 @@ pub async fn register_service_json(
         )
         .await
         .map_err(|e| {
-            crate::ipc::server_pure_rust::JsonRpcError::internal_error(format!(
+            crate::ipc::pure_rust_server::JsonRpcError::internal_error(format!(
                 "Failed to register service: {}",
                 e
             ))
@@ -250,7 +250,7 @@ pub async fn register_service_json(
     };
 
     serde_json::to_value(resp).map_err(|e| {
-        crate::ipc::server_pure_rust::JsonRpcError::internal_error(format!(
+        crate::ipc::pure_rust_server::JsonRpcError::internal_error(format!(
             "Failed to serialize response: {}",
             e
         ))
@@ -261,16 +261,16 @@ pub async fn register_service_json(
 pub async fn discover_by_capability_json(
     handlers: &IpcHandlers,
     params: Option<serde_json::Value>,
-) -> Result<serde_json::Value, crate::ipc::server_pure_rust::JsonRpcError> {
+) -> Result<serde_json::Value, crate::ipc::pure_rust_server::JsonRpcError> {
     let request: DiscoverByCapabilityRequest = match params {
         Some(p) => serde_json::from_value(p).map_err(|e| {
-            crate::ipc::server_pure_rust::JsonRpcError::invalid_params(format!(
+            crate::ipc::pure_rust_server::JsonRpcError::invalid_params(format!(
                 "Invalid params: {}",
                 e
             ))
         })?,
         None => {
-            return Err(crate::ipc::server_pure_rust::JsonRpcError::invalid_params(
+            return Err(crate::ipc::pure_rust_server::JsonRpcError::invalid_params(
                 "params required",
             ))
         }
@@ -281,7 +281,7 @@ pub async fn discover_by_capability_json(
         .discover_by_capability(&request.capability, request.protocol.as_deref())
         .await
         .map_err(|e| {
-            crate::ipc::server_pure_rust::JsonRpcError::internal_error(format!(
+            crate::ipc::pure_rust_server::JsonRpcError::internal_error(format!(
                 "Failed to discover primals: {}",
                 e
             ))
@@ -292,7 +292,7 @@ pub async fn discover_by_capability_json(
     };
 
     serde_json::to_value(resp).map_err(|e| {
-        crate::ipc::server_pure_rust::JsonRpcError::internal_error(format!(
+        crate::ipc::pure_rust_server::JsonRpcError::internal_error(format!(
             "Failed to serialize response: {}",
             e
         ))
@@ -303,16 +303,16 @@ pub async fn discover_by_capability_json(
 pub async fn get_service_health_json(
     handlers: &IpcHandlers,
     params: Option<serde_json::Value>,
-) -> Result<serde_json::Value, crate::ipc::server_pure_rust::JsonRpcError> {
+) -> Result<serde_json::Value, crate::ipc::pure_rust_server::JsonRpcError> {
     let request: GetServiceHealthRequest = match params {
         Some(p) => serde_json::from_value(p).map_err(|e| {
-            crate::ipc::server_pure_rust::JsonRpcError::invalid_params(format!(
+            crate::ipc::pure_rust_server::JsonRpcError::invalid_params(format!(
                 "Invalid params: {}",
                 e
             ))
         })?,
         None => {
-            return Err(crate::ipc::server_pure_rust::JsonRpcError::invalid_params(
+            return Err(crate::ipc::pure_rust_server::JsonRpcError::invalid_params(
                 "params required",
             ))
         }
@@ -320,7 +320,7 @@ pub async fn get_service_health_json(
 
     let (status, message) =
         handlers.service_registry.get_service_health(&request.service_id).await.map_err(|e| {
-            crate::ipc::server_pure_rust::JsonRpcError::internal_error(format!(
+            crate::ipc::pure_rust_server::JsonRpcError::internal_error(format!(
                 "Failed to get health: {}",
                 e
             ))
@@ -338,7 +338,7 @@ pub async fn get_service_health_json(
     };
 
     serde_json::to_value(resp).map_err(|e| {
-        crate::ipc::server_pure_rust::JsonRpcError::internal_error(format!(
+        crate::ipc::pure_rust_server::JsonRpcError::internal_error(format!(
             "Failed to serialize response: {}",
             e
         ))
@@ -348,7 +348,7 @@ pub async fn get_service_health_json(
 /// Service Registry: health_check (pure JSON adapter)
 pub async fn health_check_json(
     _handlers: &IpcHandlers,
-) -> Result<serde_json::Value, crate::ipc::server_pure_rust::JsonRpcError> {
+) -> Result<serde_json::Value, crate::ipc::pure_rust_server::JsonRpcError> {
     let health = HealthStatus {
         service_id: "songbird".to_string(),
         status: "healthy".to_string(),
@@ -361,7 +361,7 @@ pub async fn health_check_json(
     };
 
     serde_json::to_value(resp).map_err(|e| {
-        crate::ipc::server_pure_rust::JsonRpcError::internal_error(format!(
+        crate::ipc::pure_rust_server::JsonRpcError::internal_error(format!(
             "Failed to serialize response: {}",
             e
         ))
