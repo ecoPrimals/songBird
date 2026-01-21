@@ -60,8 +60,8 @@ fastrand = "2.0"
 rand = { workspace = true }
 # ✅ TOWER ATOMIC CRITICAL PATHS COMPLETE (Jan 21, 2026): IPC HTTP handler is 100% Pure Rust
 # Production HTTP delegation (http.request via IPC) uses songbird-http-client with BearDog crypto ✅
-# Remaining reqwest in structs (not hot paths): universal_adapter, execution/client, trust/lineage_auth
-reqwest = { version = "0.11", features = ["json"], default-features = false }  # Legacy structs
+# ✅ ELIMINATED (Jan 21, 2026): 100% Pure Rust HTTP via SongbirdHttpClient
+# reqwest = { version = "0.11", features = ["json"], default-features = false }  # REMOVED
 songbird-http-client = { path = "../songbird-http-client" }  # ✅ Pure Rust HTTP/HTTPS with BearDog crypto (PRODUCTION)
 socket2 = { workspace = true }
 if-addrs = { workspace = true }

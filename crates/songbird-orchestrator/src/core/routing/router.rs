@@ -251,30 +251,48 @@ impl CapabilityRouter {
     ) -> SongbirdResult<serde_json::Value> {
         info!("Executing task on external provider: {}", endpoint);
 
-        let client = reqwest::Client::new();
-
-        let response = client
-            .post(endpoint)
-            .json(task)
-            .timeout(Duration::from_secs(300)) // 5 minute timeout
-            .send()
+        // ✅ EVOLVED (Jan 21, 2026): 100% Pure Rust HTTP via SongbirdHttpClient
+        let crypto_socket = crate::primal_discovery::discover_crypto_provider()
             .await
+            .map_err(|e| SongbirdError::Network {
+                message: format!("Failed to discover crypto provider: {}", e),
+                interface: None,
+                suggestion: Some("Check BearDog availability".to_string()),
+            })?;
+        
+        let client = songbird_http_client::SongbirdHttpClient::new(crypto_socket);
+        let task_json = serde_json::to_value(task).map_err(|e| SongbirdError::Serialization {
+            format: Some("JSON".to_string()),
+            message: e.to_string(),
+            debug_info: None,
+        })?;
+
+        let response = tokio::time::timeout(
+            Duration::from_secs(300),
+            client.post(endpoint, task_json)
+        )
+            .await
+            .map_err(|_| SongbirdError::Network {
+                message: "Request timeout (5 minutes)".to_string(),
+                interface: Some(endpoint.to_string()),
+                suggestion: Some("Check provider endpoint and network connectivity".to_string()),
+            })?
             .map_err(|e| SongbirdError::Network {
                 message: format!("Failed to send task to external provider: {}", e),
                 interface: Some(endpoint.to_string()),
                 suggestion: Some("Check provider endpoint and network connectivity".to_string()),
             })?;
 
-        if !response.status().is_success() {
+        if response.status < 200 || response.status >= 300 {
             return Err(SongbirdError::Service {
                 service: "external_provider".to_string(),
-                message: format!("Provider returned error status: {}", response.status()),
+                message: format!("Provider returned error status: {}", response.status),
                 suggested_alternatives: vec![],
                 recovery_actions: vec!["retry".to_string(), "route_to_fallback".to_string()],
             });
         }
 
-        let result = response.json().await.map_err(|e| SongbirdError::Serialization {
+        let result = serde_json::from_value(response.body).map_err(|e| SongbirdError::Serialization {
             format: Some("JSON".to_string()),
             message: format!("Failed to parse provider response: {}", e),
             debug_info: None,

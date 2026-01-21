@@ -394,17 +394,33 @@ impl EnhancedCapabilityRouter {
     ) -> SongbirdResult<serde_json::Value> {
         info!("🚀 Executing task on registered service {} at {}", service_id, endpoint);
 
-        let client = reqwest::Client::builder()
-            .timeout(Duration::from_secs(300))
-            .build()
+        // ✅ EVOLVED (Jan 21, 2026): 100% Pure Rust HTTP via SongbirdHttpClient
+        let crypto_socket = crate::primal_discovery::discover_crypto_provider()
+            .await
             .map_err(|e| SongbirdError::Network {
-                message: format!("Failed to create HTTP client: {}", e),
+                message: format!("Failed to discover crypto provider: {}", e),
                 interface: None,
-                suggestion: Some("Check system network configuration".to_string()),
+                suggestion: Some("Check BearDog availability".to_string()),
             })?;
+        
+        let client = songbird_http_client::SongbirdHttpClient::new(crypto_socket);
+        let task_json = serde_json::to_value(task).map_err(|e| SongbirdError::Serialization {
+            format: Some("JSON".to_string()),
+            message: e.to_string(),
+            debug_info: None,
+        })?;
 
-        let response =
-            client.post(format!("{}/execute", endpoint)).json(task).send().await.map_err(|e| {
+        let response = tokio::time::timeout(
+            Duration::from_secs(300),
+            client.post(&format!("{}/execute", endpoint), task_json)
+        )
+            .await
+            .map_err(|_| SongbirdError::Network {
+                message: "Request timeout (5 minutes)".to_string(),
+                interface: Some(endpoint.to_string()),
+                suggestion: Some("Check service health and network connectivity".to_string()),
+            })?
+            .map_err(|e| {
                 SongbirdError::Network {
                     message: format!("Failed to send task to service: {}", e),
                     interface: Some(endpoint.to_string()),
@@ -412,16 +428,16 @@ impl EnhancedCapabilityRouter {
                 }
             })?;
 
-        if !response.status().is_success() {
+        if response.status < 200 || response.status >= 300 {
             return Err(SongbirdError::Service {
                 service: service_id.to_string(),
-                message: format!("Service returned error status: {}", response.status()),
+                message: format!("Service returned error status: {}", response.status),
                 suggested_alternatives: vec![],
                 recovery_actions: vec![],
             });
         }
 
-        let result = response.json().await.map_err(|e| SongbirdError::Service {
+        let result = serde_json::from_value(response.body).map_err(|e| SongbirdError::Service {
             service: service_id.to_string(),
             message: format!("Failed to parse service response: {}", e),
             suggested_alternatives: vec![],

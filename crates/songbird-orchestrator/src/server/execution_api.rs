@@ -20,18 +20,18 @@ pub struct ExecutionApiState {
     manager: Arc<RwLock<ExecutionManager>>,
 }
 
-impl Default for ExecutionApiState {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
 impl ExecutionApiState {
     /// Create new execution API state
-    pub fn new() -> Self {
-        Self {
-            manager: Arc::new(RwLock::new(ExecutionManager::new())),
-        }
+    /// 
+    /// ✅ EVOLVED: Now async due to ExecutionManager async construction
+    pub async fn new() -> Result<Self, String> {
+        let manager = ExecutionManager::new()
+            .await
+            .map_err(|e| format!("Failed to create ExecutionManager: {}", e))?;
+        
+        Ok(Self {
+            manager: Arc::new(RwLock::new(manager)),
+        })
     }
 
     /// Get the execution manager

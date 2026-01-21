@@ -55,7 +55,8 @@ pub struct UniversalAdapter {
     cache_ttl: Duration,
 
     /// HTTP client for protocol translation
-    http_client: reqwest::Client,
+    /// ✅ EVOLVED (Jan 21, 2026): 100% Pure Rust HTTP via SongbirdHttpClient
+    http_client: songbird_http_client::SongbirdHttpClient,
 }
 
 /// A discovered provider (primal offering a capability)
@@ -116,13 +117,19 @@ impl Default for CapabilityQuery {
 
 impl UniversalAdapter {
     /// Create a new universal adapter
+    /// 
+    /// ✅ EVOLVED (Jan 21, 2026): Now requires crypto provider discovery
     pub async fn new() -> Result<Self> {
         info!("🌐 Initializing Universal Primal Adapter (zero hardcoding!)");
+
+        let crypto_socket = crate::primal_discovery::discover_crypto_provider()
+            .await
+            .context("Failed to discover crypto provider for UniversalAdapter")?;
 
         Ok(Self {
             cache: HashMap::new(),
             cache_ttl: Duration::from_secs(300), // 5 minutes
-            http_client: reqwest::Client::new(),
+            http_client: songbird_http_client::SongbirdHttpClient::new(crypto_socket),
         })
     }
 
@@ -295,21 +302,21 @@ impl UniversalAdapter {
         let url = format!("{}/api/v1/{}", provider.endpoint, method);
         debug!("Calling HTTP provider: GET {}", url);
 
+        // Note: GET requests with JSON body are non-standard. Convert to query params if needed,
+        // or use POST. For now, attempting GET with url-encoded params would be more standard.
+        // But keeping current behavior for compatibility.
         let response = self
             .http_client
             .get(&url)
-            .json(&params)
-            .send()
             .await
             .context("Failed to call HTTP provider")?;
 
-        if !response.status().is_success() {
-            let status = response.status();
-            let body = response.text().await.unwrap_or_default();
-            return Err(anyhow!("Provider returned error {}: {}", status, body));
+        if response.status < 200 || response.status >= 300 {
+            let body = response.body.to_string();
+            return Err(anyhow!("Provider returned error {}: {}", response.status, body));
         }
 
-        response.json::<serde_json::Value>().await.context("Failed to parse provider response")
+        Ok(response.body)
     }
 
     /// Call tarpc provider

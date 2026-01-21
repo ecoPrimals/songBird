@@ -140,18 +140,23 @@ struct CachedVerification {
 #[derive(Debug, Clone)]
 pub struct SecurityProviderClient {
     endpoint: String,
-    http_client: reqwest::Client,
+    http_client: songbird_http_client::SongbirdHttpClient,
 }
 
 impl SecurityProviderClient {
     /// Create a new security provider client
     ///
     /// **EVOLVED**: Use `from_discovery()` for capability-based discovery
-    pub fn new(endpoint: impl Into<String>) -> Self {
-        Self {
+    /// **PURE RUST**: Async construction with crypto provider discovery (Jan 21, 2026)
+    pub async fn new(endpoint: impl Into<String>) -> Result<Self> {
+        let crypto_socket = crate::primal_discovery::discover_crypto_provider()
+            .await
+            .context("Failed to discover crypto provider for security client")?;
+        
+        Ok(Self {
             endpoint: endpoint.into(),
-            http_client: reqwest::Client::new(),
-        }
+            http_client: songbird_http_client::SongbirdHttpClient::new(crypto_socket),
+        })
     }
 
     /// Create client via capability-based discovery
@@ -170,7 +175,7 @@ impl SecurityProviderClient {
         match security_setup::discover_security_endpoint(None).await {
             Ok(endpoint) => {
                 info!("✅ Security provider discovered: {}", endpoint);
-                Ok(Self::new(endpoint))
+                Self::new(endpoint).await
             }
             Err(e) => {
                 warn!("⚠️ No security provider available: {}", e);
@@ -189,23 +194,22 @@ impl SecurityProviderClient {
 
         let url = format!("{}/api/v1/lineage/verify", self.endpoint);
 
-        match self.http_client.post(&url).json(proof).send().await {
+        let proof_json = serde_json::to_value(proof)
+            .context("Failed to serialize lineage proof")?;
+        
+        match self.http_client.post(&url, proof_json).await {
             Ok(response) => {
-                if response.status().is_success() {
-                    let result: VerificationResult = response
-                        .json()
-                        .await
+                if response.status >= 200 && response.status < 300 {
+                    let result: VerificationResult = serde_json::from_value(response.body)
                         .context("Failed to parse lineage verification response")?;
 
                     debug!("✅ Lineage verification complete: valid={}", result.valid);
                     Ok(result)
                 } else {
-                    let status = response.status();
-                    let error_text =
-                        response.text().await.unwrap_or_else(|_| "Unknown error".to_string());
+                    let error_text = response.body.to_string();
                     Err(anyhow::anyhow!(
                         "Security provider returned error {}: {}",
-                        status,
+                        response.status,
                         error_text
                     ))
                 }
@@ -238,25 +242,22 @@ impl SecurityProviderClient {
             same_family: bool,
         }
 
-        match self
-            .http_client
-            .post(&url)
-            .json(&SameFamilyRequest {
-                lineage_a: lineage_a.clone(),
-                lineage_b: lineage_b.clone(),
-            })
-            .send()
-            .await
-        {
+        let request_body = serde_json::to_value(&SameFamilyRequest {
+            lineage_a: lineage_a.clone(),
+            lineage_b: lineage_b.clone(),
+        })
+        .context("Failed to serialize same_family request")?;
+        
+        match self.http_client.post(&url, request_body).await {
             Ok(response) => {
-                if response.status().is_success() {
+                if response.status >= 200 && response.status < 300 {
                     let result: SameFamilyResponse =
-                        response.json().await.context("Failed to parse same_family response")?;
+                        serde_json::from_value(response.body).context("Failed to parse same_family response")?;
 
                     debug!("✅ Same family check: {}", result.same_family);
                     Ok(result.same_family)
                 } else {
-                    Err(anyhow::anyhow!("Security provider returned error: {}", response.status()))
+                    Err(anyhow::anyhow!("Security provider returned error: {}", response.status))
                 }
             }
             Err(e) => {
@@ -276,22 +277,20 @@ impl SecurityProviderClient {
 
         let url = format!("{}/api/v1/lineage/current", self.endpoint);
 
-        match self.http_client.get(&url).send().await {
+        match self.http_client.get(&url).await {
             Ok(response) => {
-                if response.status().is_success() {
-                    let info: Option<CurrentLineageInfo> = response
-                        .json()
-                        .await
+                if response.status >= 200 && response.status < 300 {
+                    let info: Option<CurrentLineageInfo> = serde_json::from_value(response.body)
                         .context("Failed to parse current lineage response")?;
 
                     debug!("✅ Current lineage retrieved: {:?}", info.is_some());
                     Ok(info)
-                } else if response.status() == reqwest::StatusCode::NOT_FOUND {
+                } else if response.status == 404 {
                     // No lineage configured - graceful degradation
                     debug!("ℹ️ No current lineage configured");
                     Ok(None)
                 } else {
-                    Err(anyhow::anyhow!("Security provider returned error: {}", response.status()))
+                    Err(anyhow::anyhow!("Security provider returned error: {}", response.status))
                 }
             }
             Err(e) => {

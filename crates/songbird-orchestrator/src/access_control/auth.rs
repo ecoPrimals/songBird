@@ -209,14 +209,15 @@ async fn validate_sso_credential(
         sso_endpoint
     );
 
-    // Create HTTP client with timeout
-    let client = reqwest::Client::builder()
-        .timeout(std::time::Duration::from_secs(10))
-        .build()
+    // ✅ EVOLVED (Jan 21, 2026): 100% Pure Rust HTTP via SongbirdHttpClient
+    let crypto_socket = crate::primal_discovery::discover_crypto_provider()
+        .await
         .map_err(|e| {
-            tracing::error!("Failed to create HTTP client for SSO validation: {}", e);
+            tracing::error!("Failed to discover crypto provider for SSO validation: {}", e);
             AuthError::InvalidToken
         })?;
+    
+    let client = songbird_http_client::SongbirdHttpClient::new(crypto_socket);
 
     // Prepare SSO validation request
     let validation_request = serde_json::json!({
@@ -226,27 +227,28 @@ async fn validate_sso_credential(
     });
 
     // Send validation request to SSO endpoint
-    let response = client
-        .post(format!("{}/validate", sso_endpoint))
-        .json(&validation_request)
-        .send()
+    let response = tokio::time::timeout(
+        std::time::Duration::from_secs(10),
+        client.post(&format!("{}/validate", sso_endpoint), validation_request)
+    )
         .await
+        .map_err(|_| {
+            tracing::error!("SSO validation request timed out for user '{}'", user_id);
+            AuthError::InvalidToken
+        })?
         .map_err(|e| {
             tracing::error!("SSO validation request failed for user '{}': {}", user_id, e);
             AuthError::InvalidToken
         })?;
 
     // Check response status
-    if !response.status().is_success() {
-        tracing::warn!("SSO validation failed for user '{}': HTTP {}", user_id, response.status());
+    if response.status < 200 || response.status >= 300 {
+        tracing::warn!("SSO validation failed for user '{}': HTTP {}", user_id, response.status);
         return Err(AuthError::InvalidToken);
     }
 
     // Parse validation response
-    let validation_result: serde_json::Value = response.json().await.map_err(|e| {
-        tracing::error!("Failed to parse SSO validation response: {}", e);
-        AuthError::InvalidToken
-    })?;
+    let validation_result: serde_json::Value = response.body;
 
     // Check if validation succeeded
     if validation_result.get("valid").and_then(serde_json::Value::as_bool) == Some(true) {
@@ -407,11 +409,12 @@ async fn validate_security_provider_2fa(
 ) -> Result<(), AuthError> {
     tracing::info!("Validating hardware key via security provider for user '{}'", user_id);
 
-    // Create HTTP client
-    let client = reqwest::Client::builder()
-        .timeout(std::time::Duration::from_secs(5))
-        .build()
+    // ✅ EVOLVED (Jan 21, 2026): 100% Pure Rust HTTP via SongbirdHttpClient
+    let crypto_socket = crate::primal_discovery::discover_crypto_provider()
+        .await
         .map_err(|_| AuthError::InvalidToken)?;
+    
+    let client = songbird_http_client::SongbirdHttpClient::new(crypto_socket);
 
     // Prepare validation request
     let validation_request = serde_json::json!({
@@ -421,25 +424,26 @@ async fn validate_security_provider_2fa(
     });
 
     // Send validation request
-    let response = client
-        .post(format!("{}/auth/validate", security_endpoint))
-        .json(&validation_request)
-        .send()
+    let response = tokio::time::timeout(
+        std::time::Duration::from_secs(5),
+        client.post(&format!("{}/auth/validate", security_endpoint), validation_request)
+    )
         .await
+        .map_err(|_| AuthError::InvalidToken)?
         .map_err(|e| {
             tracing::error!("security provider 2FA validation failed: {}", e);
             AuthError::InvalidToken
         })?;
 
     // Check response
-    if response.status().is_success() {
+    if response.status >= 200 && response.status < 300 {
         tracing::info!("security provider 2FA validation successful for user '{}'", user_id);
         Ok(())
     } else {
         tracing::warn!(
             "security provider 2FA validation failed for user '{}': HTTP {}",
             user_id,
-            response.status()
+            response.status
         );
         Err(AuthError::InvalidToken)
     }
@@ -478,11 +482,12 @@ async fn validate_external_2fa(
 ) -> Result<(), AuthError> {
     tracing::info!("Validating 2FA via external service for user '{}'", user_id);
 
-    // Create HTTP client
-    let client = reqwest::Client::builder()
-        .timeout(std::time::Duration::from_secs(10))
-        .build()
+    // ✅ EVOLVED (Jan 21, 2026): 100% Pure Rust HTTP via SongbirdHttpClient
+    let crypto_socket = crate::primal_discovery::discover_crypto_provider()
+        .await
         .map_err(|_| AuthError::InvalidToken)?;
+    
+    let client = songbird_http_client::SongbirdHttpClient::new(crypto_socket);
 
     // Prepare validation request
     let validation_request = serde_json::json!({
@@ -491,25 +496,26 @@ async fn validate_external_2fa(
     });
 
     // Send validation request
-    let response = client
-        .post(format!("{}/verify", service_endpoint))
-        .json(&validation_request)
-        .send()
+    let response = tokio::time::timeout(
+        std::time::Duration::from_secs(10),
+        client.post(&format!("{}/verify", service_endpoint), validation_request)
+    )
         .await
+        .map_err(|_| AuthError::InvalidToken)?
         .map_err(|e| {
             tracing::error!("External 2FA validation failed: {}", e);
             AuthError::InvalidToken
         })?;
 
     // Check response
-    if response.status().is_success() {
+    if response.status >= 200 && response.status < 300 {
         tracing::info!("External 2FA validation successful for user '{}'", user_id);
         Ok(())
     } else {
         tracing::warn!(
             "External 2FA validation failed for user '{}': HTTP {}",
             user_id,
-            response.status()
+            response.status
         );
         Err(AuthError::InvalidToken)
     }

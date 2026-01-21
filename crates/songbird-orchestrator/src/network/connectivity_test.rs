@@ -107,6 +107,8 @@ impl ConnectivityTester {
     }
 
     /// Test HTTPS connectivity to a target
+    /// 
+    /// ✅ EVOLVED (Jan 21, 2026): 100% Pure Rust HTTP via SongbirdHttpClient
     pub async fn test_https_connectivity(
         &self,
         target: SocketAddr,
@@ -115,20 +117,20 @@ impl ConnectivityTester {
 
         let start = std::time::Instant::now();
 
-        // Build a permissive HTTPS client for testing (accepts self-signed certs)
-        let client = reqwest::Client::builder()
-            .timeout(self.test_timeout)
-            .build()
-            .map_err(|e| anyhow!("Failed to build HTTPS client: {}", e))?;
-
+        // Use SongbirdHttpClient for Pure Rust HTTPS testing
+        let crypto_socket = crate::primal_discovery::discover_crypto_provider()
+            .await
+            .map_err(|e| anyhow!("Failed to discover crypto provider: {}", e))?;
+        
+        let client = songbird_http_client::SongbirdHttpClient::new(crypto_socket);
         let url = format!("https://{}/health", target);
 
-        match client.get(&url).send().await {
-            Ok(response) => {
+        match tokio::time::timeout(self.test_timeout, client.get(&url)).await {
+            Ok(Ok(response)) => {
                 let rtt_ms = start.elapsed().as_millis() as u64;
-                let status = response.status();
+                let status = response.status;
 
-                if status.is_success() {
+                if status >= 200 && status < 300 {
                     info!(
                         "✅ HTTPS connection to {} succeeded ({}ms, status: {})",
                         target, rtt_ms, status
@@ -151,18 +153,26 @@ impl ConnectivityTester {
                     })
                 }
             }
-            Err(e) => {
+            Ok(Err(e)) => {
                 warn!("❌ HTTPS connection to {} failed: {}", target, e);
-
-                // Distinguish between TCP failure and HTTPS failure
-                let tcp_reachable = !e.is_connect() && !e.is_timeout();
-
+                
+                // All songbird_http_client errors indicate network/protocol issues
                 Ok(ConnectivityTestResult {
                     target,
-                    tcp_reachable,
+                    tcp_reachable: false,
                     https_reachable: false,
                     rtt_ms: None,
                     error: Some(e.to_string()),
+                })
+            }
+            Err(_) => {
+                warn!("❌ HTTPS connection to {} timed out", target);
+                Ok(ConnectivityTestResult {
+                    target,
+                    tcp_reachable: false,
+                    https_reachable: false,
+                    rtt_ms: None,
+                    error: Some("Timeout".to_string()),
                 })
             }
         }
