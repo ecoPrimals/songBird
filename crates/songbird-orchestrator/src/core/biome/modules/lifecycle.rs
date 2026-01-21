@@ -406,12 +406,12 @@ impl ServiceLifecycleManager {
             service.restart_count += 1;
 
             // Simulate restart delay
-            tokio::time::sleep(Duration::from_secs(2).await;
+            tokio::time::sleep(Duration::from_secs(2)).await;
 
             service.status = ServiceState::Running;
-            service.started_at = Some(Utc::now();
+            service.started_at = Some(Utc::now());
 
-            info!("Service { }} restarted successfully", service_name)}"
+            info!("Service {} restarted successfully", service_name);"
 
         Ok(())
 

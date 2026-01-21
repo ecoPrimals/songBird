@@ -13,6 +13,7 @@ use tracing::{debug, info, warn};
 #[derive(Debug)]
 pub struct LineageServiceDiscovery {
     /// Service name for mDNS
+    #[allow(dead_code)]
     service_name: String,
 
     /// Local node information

@@ -174,17 +174,26 @@ mod tests {
     async fn test_concurrent_subscribers_and_emitters() {
         let manager = Arc::new(EventStreamManager::new());
 
+        // Create subscribers and ready notifiers
+        let (ready_tx, mut ready_rx) = tokio::sync::mpsc::channel(3);
+        
         // Spawn multiple subscriber tasks
         let mut handles = vec![];
         for i in 0..3 {
             let manager_clone = Arc::clone(&manager);
+            let ready_tx_clone = ready_tx.clone();
             let handle = tokio::spawn(async move {
                 let mut receiver = manager_clone.subscribe_filtered(EventFilter::default());
+                
+                // Signal that this subscriber is ready
+                ready_tx_clone.send(()).await.ok();
+                
                 let mut count = 0;
-
                 while count < 10 {
-                    if timeout(Duration::from_secs(2), receiver.recv()).await.is_ok() {
-                        count += 1;
+                    match timeout(Duration::from_secs(2), receiver.recv()).await {
+                        Ok(Ok(_)) => count += 1,
+                        Ok(Err(_)) => break, // Channel closed
+                        Err(_) => break, // Timeout
                     }
                 }
 
@@ -192,8 +201,20 @@ mod tests {
             });
             handles.push(handle);
         }
+        
+        drop(ready_tx); // Drop original sender
 
-        // Emit 10 events
+        // Wait for all subscribers to be ready
+        let mut ready_count = 0;
+        while ready_count < 3 {
+            if timeout(Duration::from_millis(100), ready_rx.recv()).await.is_ok() {
+                ready_count += 1;
+            } else {
+                break;
+            }
+        }
+
+        // Emit 10 events (now that subscribers are ready)
         for j in 0..10 {
             let event = crate::observability::TaskEvent::new(
                 TaskId::new(),
@@ -201,7 +222,8 @@ mod tests {
                 TaskEventType::Started,
             );
             manager.emit(event).await.ok();
-            tokio::time::sleep(Duration::from_millis(10)).await;
+            // Small yield to ensure fair event distribution
+            tokio::task::yield_now().await;
         }
 
         // Wait for all subscribers to receive events

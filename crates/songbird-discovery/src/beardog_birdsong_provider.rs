@@ -94,6 +94,7 @@ struct BearDogDecryptResponse {
 /// eliminating HTTP overhead and `reqwest` dependency (ring-free!).
 pub struct BearDogBirdSongProvider {
     /// `BearDog` Unix socket path
+    #[allow(dead_code)]
     socket_path: PathBuf,
 
     /// JSON-RPC client for BearDog communication (Pure Rust!)

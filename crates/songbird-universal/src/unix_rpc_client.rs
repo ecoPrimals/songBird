@@ -54,11 +54,13 @@ struct JsonRpcRequest<P> {
 /// JSON-RPC 2.0 Response
 #[derive(Debug, Clone, Deserialize)]
 struct JsonRpcResponse<R> {
+    #[allow(dead_code)]
     jsonrpc: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     result: Option<R>,
     #[serde(skip_serializing_if = "Option::is_none")]
     error: Option<JsonRpcError>,
+    #[allow(dead_code)]
     id: u64,
 }
 
@@ -67,6 +69,7 @@ struct JsonRpcResponse<R> {
 struct JsonRpcError {
     code: i32,
     message: String,
+    #[allow(dead_code)]
     #[serde(skip_serializing_if = "Option::is_none")]
     data: Option<serde_json::Value>,
 }
