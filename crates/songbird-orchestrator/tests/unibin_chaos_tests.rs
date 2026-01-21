@@ -7,12 +7,12 @@
 //! - Rapid state changes
 //! - Stress conditions
 //!
-//! Modern, idiomatic, async Rust with deep debt solutions.
+//! **Evolution**: Removed all #[serial] - Commands are process-isolated!
+//! Modern, idiomatic, async Rust with zero global state.
 
 use assert_cmd::Command;
 use predicates::prelude::*;
 use rand::Rng;
-use serial_test::serial;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
 use tokio::time::{sleep, Duration};
@@ -21,32 +21,17 @@ use tokio::time::{sleep, Duration};
 // TEST HELPERS
 // ====================
 
-fn clear_chaos_env() {
-    let env_vars = [
-        "SONGBIRD_PORT",
-        "SONGBIRD_CONFIG",
-        "SONGBIRD_NODE_ID",
-        "SONGBIRD_FAMILY_ID",
-        "NODE_ID",
-        "FAMILY_ID",
-        "SPORE_ID",
-        "RUST_LOG",
-    ];
-
-    for var in &env_vars {
-        std::env::remove_var(var);
-    }
-}
+// ✅ NO clear_chaos_env() needed!
+// Command::cargo_bin() creates isolated child processes.
+// Each process has its own environment - no global state pollution!
 
 // ====================
 // CHAOS TESTS
 // ====================
 
 #[tokio::test]
-#[serial]
+// ✅ NO #[serial]! Commands are process-isolated!
 async fn test_chaos_rapid_fire_commands() -> Result<(), Box<dyn std::error::Error>> {
-    clear_chaos_env();
-
     // Fire 100 commands as fast as possible
     for _ in 0..100 {
         let mut cmd = Command::cargo_bin("songbird")?;
@@ -57,9 +42,8 @@ async fn test_chaos_rapid_fire_commands() -> Result<(), Box<dyn std::error::Erro
 }
 
 #[tokio::test]
-#[serial]
+// ✅ NO #[serial]! Commands are process-isolated!
 async fn test_chaos_random_subcommands() -> Result<(), Box<dyn std::error::Error>> {
-    clear_chaos_env();
 
     let subcommands = vec!["--version", "--help"];
     let mut rng = rand::thread_rng();
@@ -76,9 +60,8 @@ async fn test_chaos_random_subcommands() -> Result<(), Box<dyn std::error::Error
 }
 
 #[tokio::test]
-#[serial]
+// ✅ NO #[serial]! Commands are process-isolated!
 async fn test_chaos_concurrent_version_checks() -> Result<(), Box<dyn std::error::Error>> {
-    clear_chaos_env();
 
     // Spawn 20 concurrent version checks
     let mut handles = vec![];
@@ -100,9 +83,8 @@ async fn test_chaos_concurrent_version_checks() -> Result<(), Box<dyn std::error
 }
 
 #[tokio::test]
-#[serial]
+// ✅ NO #[serial]! Commands are process-isolated!
 async fn test_chaos_concurrent_help_requests() -> Result<(), Box<dyn std::error::Error>> {
-    clear_chaos_env();
 
     // Spam help requests concurrently
     let mut handles = vec![];
@@ -123,9 +105,8 @@ async fn test_chaos_concurrent_help_requests() -> Result<(), Box<dyn std::error:
 }
 
 #[tokio::test]
-#[serial]
+// ✅ NO #[serial]! Commands are process-isolated!
 async fn test_chaos_mixed_concurrent_commands() -> Result<(), Box<dyn std::error::Error>> {
-    clear_chaos_env();
 
     let mut handles = vec![];
     let mut rng = rand::thread_rng();
@@ -161,10 +142,8 @@ async fn test_chaos_mixed_concurrent_commands() -> Result<(), Box<dyn std::error
 }
 
 #[tokio::test]
-#[serial]
+// ✅ NO #[serial]! Commands are process-isolated!
 async fn test_chaos_rapid_doctor_checks() -> Result<(), Box<dyn std::error::Error>> {
-    clear_chaos_env();
-
     // Rapid fire doctor checks
     for _ in 0..30 {
         let mut cmd = Command::cargo_bin("songbird")?;
@@ -175,10 +154,8 @@ async fn test_chaos_rapid_doctor_checks() -> Result<(), Box<dyn std::error::Erro
 }
 
 #[tokio::test]
-#[serial]
+// ✅ NO #[serial]! Commands are process-isolated!
 async fn test_chaos_interleaved_commands() -> Result<(), Box<dyn std::error::Error>> {
-    clear_chaos_env();
-
     // Interleave different command types
     for i in 0..20 {
         match i % 3 {
@@ -198,9 +175,8 @@ async fn test_chaos_interleaved_commands() -> Result<(), Box<dyn std::error::Err
 }
 
 #[tokio::test]
-#[serial]
+// ✅ NO #[serial]! Commands are process-isolated! (sleeps are for chaos timing)
 async fn test_chaos_random_delays() -> Result<(), Box<dyn std::error::Error>> {
-    clear_chaos_env();
     let mut rng = rand::thread_rng();
 
     // Execute commands with random delays
@@ -215,10 +191,8 @@ async fn test_chaos_random_delays() -> Result<(), Box<dyn std::error::Error>> {
 }
 
 #[tokio::test]
-#[serial]
+// ✅ NO #[serial]! Commands are process-isolated! (sleeps are for chaos timing)
 async fn test_chaos_burst_pattern() -> Result<(), Box<dyn std::error::Error>> {
-    clear_chaos_env();
-
     // Burst pattern: rapid commands, then pause, repeat
     for _ in 0..5 {
         // Burst
@@ -234,10 +208,8 @@ async fn test_chaos_burst_pattern() -> Result<(), Box<dyn std::error::Error>> {
 }
 
 #[tokio::test]
-#[serial]
+// ✅ NO #[serial]! Commands are process-isolated!
 async fn test_chaos_concurrent_doctor_formats() -> Result<(), Box<dyn std::error::Error>> {
-    clear_chaos_env();
-
     let formats = vec!["text", "json", "yaml"];
     let mut handles = vec![];
 
@@ -259,9 +231,8 @@ async fn test_chaos_concurrent_doctor_formats() -> Result<(), Box<dyn std::error
 }
 
 #[tokio::test]
-#[serial]
+// ✅ NO #[serial]! env::set_var only affects child processes via Command!
 async fn test_chaos_random_env_vars() -> Result<(), Box<dyn std::error::Error>> {
-    clear_chaos_env();
     let mut rng = rand::thread_rng();
 
     // Set random environment variables and run commands
@@ -278,10 +249,8 @@ async fn test_chaos_random_env_vars() -> Result<(), Box<dyn std::error::Error>> 
 }
 
 #[tokio::test]
-#[serial]
+// ✅ NO #[serial]! Commands are process-isolated!
 async fn test_chaos_stress_help_system() -> Result<(), Box<dyn std::error::Error>> {
-    clear_chaos_env();
-
     let subcommands = vec!["server", "doctor", "config"];
 
     // Stress the help system by requesting help for all subcommands rapidly
@@ -295,10 +264,8 @@ async fn test_chaos_stress_help_system() -> Result<(), Box<dyn std::error::Error
 }
 
 #[tokio::test]
-#[serial]
+// ✅ NO #[serial]! Commands are process-isolated! (Arc<AtomicUsize> is thread-safe)
 async fn test_chaos_concurrent_with_counter() -> Result<(), Box<dyn std::error::Error>> {
-    clear_chaos_env();
-
     let counter = Arc::new(AtomicUsize::new(0));
     let mut handles = vec![];
 
@@ -324,10 +291,8 @@ async fn test_chaos_concurrent_with_counter() -> Result<(), Box<dyn std::error::
 }
 
 #[tokio::test]
-#[serial]
+// ✅ NO #[serial]! Commands are process-isolated!
 async fn test_chaos_alternating_success_patterns() -> Result<(), Box<dyn std::error::Error>> {
-    clear_chaos_env();
-
     // Alternate between different successful commands
     for i in 0..40 {
         if i % 2 == 0 {
@@ -341,10 +306,8 @@ async fn test_chaos_alternating_success_patterns() -> Result<(), Box<dyn std::er
 }
 
 #[tokio::test]
-#[serial]
+// ✅ NO #[serial]! Commands are process-isolated! (sleeps are for chaos timing)
 async fn test_chaos_wave_pattern() -> Result<(), Box<dyn std::error::Error>> {
-    clear_chaos_env();
-
     // Wave pattern: increasing then decreasing load
     let wave = vec![1, 3, 5, 7, 5, 3, 1];
 

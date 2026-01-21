@@ -412,3 +412,4 @@ SONGBIRD_SECURITY_PROVIDER=/tmp/beardog-nat0.sock
 *Awaiting: Squirrel redeployment*  
 *Impact: CRITICAL (unblocks AI integration)*
 
+
