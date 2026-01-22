@@ -281,11 +281,19 @@ impl TlsHandshake {
     pub(crate) fn build_extensions(&self, server_name: &str, public_key: &[u8]) -> Result<Vec<u8>> {
         let mut ext = Vec::new();
 
-        // SNI extension (0x0000)
+        // SNI extension (0x0000) - Server Name Indication
         ext.extend_from_slice(&[0x00, 0x00]); // Extension type
         let sni_data = self.build_sni_extension(server_name);
         ext.extend_from_slice(&(sni_data.len() as u16).to_be_bytes());
         ext.extend_from_slice(&sni_data);
+
+        // ALPN extension (0x0010) - Application-Layer Protocol Negotiation
+        // CRITICAL for HTTPS servers like GitHub, CloudFlare, Google
+        ext.extend_from_slice(&[0x00, 0x10]); // Extension type
+        ext.extend_from_slice(&[0x00, 0x0c]); // Length: 12 bytes
+        ext.extend_from_slice(&[0x00, 0x0a]); // Protocol list length: 10 bytes
+        ext.extend_from_slice(&[0x08]); // Protocol name length: 8 bytes
+        ext.extend_from_slice(b"http/1.1"); // Protocol name
 
         // Supported versions (0x002b)
         ext.extend_from_slice(&[0x00, 0x2b]); // Extension type
@@ -546,6 +554,118 @@ impl TlsHandshake {
         
         random
     }
+
+    /// Encrypt application data for TLS 1.3 with correct AAD construction
+    /// 
+    /// This method constructs a complete TLS APPLICATION_DATA record with:
+    /// - TLS record header (5 bytes)
+    /// - Encrypted content (ciphertext + 16-byte AEAD tag)
+    /// 
+    /// AAD (Additional Authenticated Data) = TLS record header
+    /// Nonce = IV XOR sequence_number (TLS 1.3 nonce construction per RFC 8446)
+    pub async fn encrypt_application_data(
+        &self,
+        plaintext: &[u8],
+        keys: &SessionKeys,
+        sequence_number: u64,
+    ) -> Result<Vec<u8>> {
+        trace!("🔐 Encrypting {} bytes of application data (seq={})", plaintext.len(), sequence_number);
+        
+        // Calculate ciphertext length (plaintext + 16-byte AEAD tag)
+        let ciphertext_length = plaintext.len() + 16;
+        
+        // Construct TLS record header (this becomes the AAD)
+        let record_type = 0x17; // ContentType: APPLICATION_DATA
+        let version = [0x03, 0x03]; // TLS 1.2 (compatibility mode for TLS 1.3)
+        let length = ciphertext_length as u16;
+        
+        let aad = [
+            record_type,
+            version[0],
+            version[1],
+            (length >> 8) as u8,
+            (length & 0xFF) as u8,
+        ];
+        
+        trace!("AAD (TLS record header): {:02x?}", aad);
+        
+        // Construct nonce: IV XOR sequence_number (RFC 8446 Section 5.3)
+        // The sequence number is XORed with the IV (right-aligned)
+        let mut nonce = keys.client_write_iv.clone();
+        let seq_bytes = sequence_number.to_be_bytes();
+        
+        if nonce.len() >= 8 {
+            for (i, &byte) in seq_bytes.iter().enumerate() {
+                let nonce_idx = nonce.len() - 8 + i;
+                nonce[nonce_idx] ^= byte;
+            }
+        }
+        
+        trace!("Nonce (IV XOR seq): {:02x?}", &nonce[..std::cmp::min(12, nonce.len())]);
+        
+        // Encrypt via BearDog
+        let ciphertext = self.beardog.encrypt(
+            &keys.client_write_key,
+            &nonce,
+            plaintext,
+            &aad,
+        ).await?;
+        
+        debug!("✅ Encrypted {} bytes → {} bytes (includes 16-byte tag)", plaintext.len(), ciphertext.len());
+        
+        // Construct complete TLS record: header + ciphertext (includes tag)
+        let mut record = Vec::new();
+        record.extend_from_slice(&aad);
+        record.extend_from_slice(&ciphertext);
+        
+        Ok(record)
+    }
+
+    /// Decrypt application data for TLS 1.3 with correct AAD construction
+    /// 
+    /// This method decrypts a TLS APPLICATION_DATA record using:
+    /// - Record header as AAD
+    /// - Nonce = IV XOR sequence_number (TLS 1.3 nonce construction per RFC 8446)
+    /// 
+    /// The ciphertext parameter should include the 16-byte AEAD tag.
+    pub async fn decrypt_application_data(
+        &self,
+        record_header: &[u8; 5],
+        ciphertext: &[u8],
+        keys: &SessionKeys,
+        sequence_number: u64,
+    ) -> Result<Vec<u8>> {
+        trace!("🔓 Decrypting {} bytes of application data (seq={})", ciphertext.len(), sequence_number);
+        trace!("Record header (AAD): {:02x?}", record_header);
+        
+        // AAD = TLS record header (all 5 bytes: type, version, length)
+        let aad = record_header;
+        
+        // Construct nonce: IV XOR sequence_number (RFC 8446 Section 5.3)
+        let mut nonce = keys.server_write_iv.clone();
+        let seq_bytes = sequence_number.to_be_bytes();
+        
+        if nonce.len() >= 8 {
+            for (i, &byte) in seq_bytes.iter().enumerate() {
+                let nonce_idx = nonce.len() - 8 + i;
+                nonce[nonce_idx] ^= byte;
+            }
+        }
+        
+        trace!("Nonce (IV XOR seq): {:02x?}", &nonce[..std::cmp::min(12, nonce.len())]);
+        
+        // Decrypt via BearDog (will handle AEAD tag validation)
+        let plaintext = self.beardog.decrypt(
+            &keys.server_write_key,
+            &nonce,
+            ciphertext,
+            aad,
+        ).await?;
+        
+        debug!("✅ Decrypted {} bytes → {} bytes (AEAD authentication succeeded)", ciphertext.len(), plaintext.len());
+        
+        Ok(plaintext)
+    }
 }
 
 #[cfg(test)]
@@ -606,7 +726,11 @@ mod tests {
             .expect("Should build extensions");
         
         assert!(!extensions.is_empty(), "Extensions should not be empty");
-        assert!(extensions.len() > 80, "Should contain multiple extensions");
+        assert!(extensions.len() > 90, "Should contain multiple extensions including ALPN");
+        
+        // Verify ALPN extension is present (0x00 0x10)
+        let alpn_present = extensions.windows(2).any(|w| w == [0x00, 0x10]);
+        assert!(alpn_present, "Should contain ALPN extension for HTTPS");
     }
     
     #[test]
