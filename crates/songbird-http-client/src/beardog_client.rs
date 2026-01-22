@@ -79,9 +79,9 @@ impl BearDogClient {
         let public_key = result["public_key"]
             .as_str()
             .ok_or_else(|| Error::BearDogRpc("Missing public_key".to_string()))?;
-        let private_key = result["private_key"]
+        let private_key = result["secret_key"]  // BearDog returns "secret_key", not "private_key"
             .as_str()
-            .ok_or_else(|| Error::BearDogRpc("Missing private_key".to_string()))?;
+            .ok_or_else(|| Error::BearDogRpc("Missing secret_key in BearDog response".to_string()))?;
 
         let public_key = BASE64_STANDARD.decode(public_key)
             .map_err(|e| Error::BearDogRpc(format!("Invalid public_key base64: {}", e)))?;
