@@ -447,15 +447,15 @@ mod tests {
 
     #[test]
     fn test_socket_path_explicit_override() {
-        // Test 1: SONGBIRD_SOCKET env var override (highest priority)
+        // Test 1: SONGBIRD_SOCKET env var override (highest priority via env_config)
         std::env::set_var("SONGBIRD_SOCKET", "/tmp/test-socket.sock");
         std::env::set_var("SONGBIRD_FAMILY_ID", "nat0");
-        std::env::set_var("UID", "1000");
 
         let path = UnixSocketServer::socket_path_from_env();
         assert_eq!(path.to_str().unwrap(), "/tmp/test-socket.sock");
 
         std::env::remove_var("SONGBIRD_SOCKET");
+        std::env::remove_var("SONGBIRD_FAMILY_ID");
     }
 
     #[test]
@@ -487,55 +487,43 @@ mod tests {
 
     #[test]
     fn test_socket_path_fallback_to_tmp() {
-        // Test 3: Fallback to /tmp with node_id
+        // Test 3: TRUE PRIMAL architecture - family-based sockets via env_config
         std::env::remove_var("SONGBIRD_SOCKET");
         std::env::set_var("SONGBIRD_FAMILY_ID", "test0");
-        std::env::set_var("SONGBIRD_NODE_ID", "node1");
-        std::env::set_var("UID", "99999"); // Non-existent UID to force /tmp
 
         let path = UnixSocketServer::socket_path_from_env();
         let path_str = path.to_str().unwrap();
         eprintln!("Fallback path: {}", path_str);
 
-        // Should contain songbird and test0 regardless of path
+        // TRUE PRIMAL: env_config returns /tmp/songbird-{family}.sock
         assert!(
             path_str.contains("songbird") && path_str.contains("test0"),
             "Path should contain 'songbird' and 'test0', got: {}",
             path_str
         );
-
-        // If /run/user/99999 doesn't exist (likely), should fall back to /tmp
-        if !std::path::Path::new("/run/user/99999").exists() {
-            assert!(
-                path_str.starts_with("/tmp/"),
-                "Should use /tmp when XDG unavailable, got: {}",
-                path_str
-            );
-            assert!(
-                path_str.contains("node1"),
-                "/tmp fallback should include node_id, got: {}",
-                path_str
-            );
-        }
+        assert_eq!(path_str, "/tmp/songbird-test0.sock", "Should match env_config format");
+        
+        std::env::remove_var("SONGBIRD_FAMILY_ID");
     }
 
     #[test]
     fn test_socket_path_default_family() {
-        // Test 4: Default family_id and node_id
+        // Test 4: TRUE PRIMAL self-knowledge - default family via env_config
         // Clear all relevant env vars to ensure clean test
         std::env::remove_var("SONGBIRD_SOCKET");
         std::env::remove_var("SONGBIRD_FAMILY_ID");
-        std::env::remove_var("SONGBIRD_NODE_ID");
-        std::env::set_var("UID", "1000");
 
         let path = UnixSocketServer::socket_path_from_env();
         let path_str = path.to_str().unwrap();
         eprintln!("Default path: {}", path_str);
+        
+        // env_config::family_id() defaults to "nat0" when no env var set
         assert!(
-            path_str.contains("songbird") && path_str.contains("default"),
-            "Path should contain 'songbird' and 'default', got: {}",
+            path_str.contains("songbird") && path_str.contains("nat0"),
+            "Path should contain 'songbird' and 'nat0' (default family), got: {}",
             path_str
         );
+        assert_eq!(path_str, "/tmp/songbird-nat0.sock", "Should match env_config default");
     }
 
     #[test]
@@ -567,26 +555,25 @@ mod tests {
 
     #[test]
     fn test_socket_path_node_id_differentiation() {
-        // Test 6: Different node IDs = different socket paths (in /tmp)
+        // Test 6: TRUE PRIMAL architecture - family-based sockets, not node-based
+        // Different families = different socket paths
         std::env::remove_var("SONGBIRD_SOCKET");
-        std::env::set_var("SONGBIRD_FAMILY_ID", "nat0");
-        std::env::set_var("UID", "99999"); // Force /tmp fallback
 
-        std::env::set_var("SONGBIRD_NODE_ID", "alpha");
+        std::env::set_var("SONGBIRD_FAMILY_ID", "nat0");
         let path1 = UnixSocketServer::socket_path_from_env();
 
-        std::env::set_var("SONGBIRD_NODE_ID", "beta");
+        std::env::set_var("SONGBIRD_FAMILY_ID", "lan0");
         let path2 = UnixSocketServer::socket_path_from_env();
 
-        // Paths should be different if using /tmp (XDG doesn't include node_id)
+        // Paths should be different for different families
         let path1_str = path1.to_str().unwrap();
         let path2_str = path2.to_str().unwrap();
 
-        if path1_str.starts_with("/tmp/") && path2_str.starts_with("/tmp/") {
-            assert_ne!(path1, path2);
-            assert!(path1_str.contains("alpha"));
-            assert!(path2_str.contains("beta"));
-        }
+        assert_ne!(path1, path2, "Different families should have different socket paths");
+        assert!(path1_str.contains("nat0"), "Path 1 should contain nat0");
+        assert!(path2_str.contains("lan0"), "Path 2 should contain lan0");
+        
+        std::env::remove_var("SONGBIRD_FAMILY_ID");
     }
 }
 

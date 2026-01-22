@@ -279,8 +279,8 @@ mod tests {
 
         assert!(!token.is_expired());
 
-        // Set expiry to past
-        token.expires_at = chrono::Utc::now().timestamp() - 1000;
+        // Set expiry to past (use 'exp' field, not 'expires_at')
+        token.exp = chrono::Utc::now().timestamp() - 1000;
 
         assert!(token.is_expired());
     }
