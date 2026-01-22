@@ -7,7 +7,7 @@ use crate::tls::session::SessionKeys;
 use std::sync::Arc;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::TcpStream;
-use tracing::trace;
+use tracing::{trace, debug, warn, error, info};
 
 /// TLS record layer
 pub struct TlsRecordLayer {
@@ -34,10 +34,18 @@ impl TlsRecordLayer {
         stream: &mut TcpStream,
         data: &[u8],
     ) -> Result<()> {
-        trace!("📤 Writing {} bytes of application data (write_seq={})", data.len(), self.write_sequence_number);
+        info!("📤 Writing {} bytes of HTTP application data", data.len());
+        debug!("  Write sequence number: {}", self.write_sequence_number);
+        trace!("HTTP request preview: {}", String::from_utf8_lossy(&data[..std::cmp::min(200, data.len())]));
 
-        // Calculate encrypted length (plaintext + 16-byte AEAD tag)
-        let encrypted_length = data.len() + 16;
+        // RFC 8446 Section 5.2: TLS 1.3 encrypted records include ContentType at END of plaintext
+        // Add ContentType byte (0x17 = APPLICATION_DATA) to end of data before encryption
+        let mut plaintext_with_type = data.to_vec();
+        plaintext_with_type.push(content_type::APPLICATION_DATA);
+        debug!("Added ContentType byte (0x17) at end: {} bytes total plaintext", plaintext_with_type.len());
+
+        // Calculate encrypted length (plaintext + ContentType + 16-byte AEAD tag)
+        let encrypted_length = plaintext_with_type.len() + 16;
         
         // Build AAD (TLS record header)
         let aad = [
@@ -47,29 +55,43 @@ impl TlsRecordLayer {
             (encrypted_length & 0xFF) as u8,
         ];
         
-        trace!("AAD (write): {:02x?}", aad);
+        debug!("AAD (TLS record header): {:02x?}", aad);
 
-        // Build nonce: IV XOR write_sequence_number (RFC 8446 Section 5.3)
+        // Build nonce: client_write_iv XOR write_sequence_number (RFC 8446 Section 5.3)
         let nonce = self.build_write_nonce();
-        trace!("Nonce (write): {:02x?}", &nonce[..std::cmp::min(12, nonce.len())]);
+        debug!("Nonce (client_write_iv XOR seq {}): {:02x?}", self.write_sequence_number,
+               &nonce[..std::cmp::min(12, nonce.len())]);
         
-        // Encrypt data
+        // Encrypt data with CLIENT write key (we're writing to server)
+        debug!("🔐 Encrypting with client_write_key (application traffic key)");
         let encrypted = self.beardog
-            .encrypt(&self.keys.client_write_key, &nonce, data, &aad)
-            .await?;
+            .encrypt(&self.keys.client_write_key, &nonce, &plaintext_with_type, &aad)
+            .await.map_err(|e| {
+                error!("❌ Application data encryption failed: {}", e);
+                error!("   Plaintext length: {} bytes", plaintext_with_type.len());
+                error!("   Sequence number: {}", self.write_sequence_number);
+                e
+            })?;
 
-        trace!("Encrypted {} bytes → {} bytes", data.len(), encrypted.len());
+        info!("✅ Encrypted {} bytes → {} bytes", plaintext_with_type.len(), encrypted.len());
 
         // Build complete TLS record
         let mut record = Vec::new();
         record.extend_from_slice(&aad);  // Header (5 bytes)
         record.extend_from_slice(&encrypted);  // Ciphertext + tag
 
+        debug!("Writing TLS record: {} bytes total (5-byte header + {} bytes encrypted)", 
+               record.len(), encrypted.len());
+
         // Write to stream
-        stream.write_all(&record).await?;
+        stream.write_all(&record).await.map_err(|e| {
+            error!("❌ Failed to write TLS record: {}", e);
+            Error::Io(e)
+        })?;
         stream.flush().await?;
 
         self.write_sequence_number += 1;
+        debug!("  → Incremented write sequence number to {}", self.write_sequence_number);
 
         Ok(())
     }
@@ -79,48 +101,122 @@ impl TlsRecordLayer {
         &mut self,
         stream: &mut TcpStream,
     ) -> Result<Vec<u8>> {
-        trace!("📥 Reading application data (read_seq={})", self.read_sequence_number);
+        info!("📥 Reading HTTP application data (APPLICATION DATA phase)");
+        debug!("  Read sequence number: {}", self.read_sequence_number);
 
         // Read record header (5 bytes)
         let mut header = [0u8; 5];
-        stream.read_exact(&mut header).await?;
+        stream.read_exact(&mut header).await.map_err(|e| {
+            error!("❌ Failed to read TLS record header: {}", e);
+            Error::Io(e)
+        })?;
 
         let content_type = header[0];
+        let tls_version = u16::from_be_bytes([header[1], header[2]]);
         let length = u16::from_be_bytes([header[3], header[4]]) as usize;
 
-        trace!("Record header: type={:#04x}, length={}", content_type, length);
+        info!("📋 TLS record header:");
+        info!("  Content type: 0x{:02x} ({})", content_type, 
+              if content_type == 0x17 { "APPLICATION_DATA" } 
+              else if content_type == 0x15 { "ALERT" }
+              else if content_type == 0x16 { "HANDSHAKE" }
+              else { "UNKNOWN" });
+        info!("  TLS version: 0x{:04x}", tls_version);
+        info!("  Encrypted length: {} bytes", length);
+
+        // Check for TLS alerts (close_notify, etc.)
+        if content_type == 0x15 {  // Alert
+            warn!("⚠️  Received TLS ALERT record (not application data)");
+            // Read alert to see what it is
+            if length >= 2 {
+                let mut alert_data = vec![0u8; length];
+                stream.read_exact(&mut alert_data).await?;
+                let alert_level = alert_data[0];
+                let alert_desc = alert_data[1];
+                let level_str = if alert_level == 1 { "Warning" } else { "Fatal" };
+                let desc_str = match alert_desc {
+                    0 => "close_notify",
+                    10 => "unexpected_message",
+                    20 => "bad_record_mac",
+                    _ => "unknown",
+                };
+                warn!("  Alert: {} {} (level={}, desc={})", level_str, desc_str, alert_level, alert_desc);
+                return Err(Error::TlsRecord(format!("Server sent {} alert: {}", level_str, desc_str)));
+            }
+        }
 
         if content_type != content_type::APPLICATION_DATA {
+            error!("❌ Expected APPLICATION_DATA (0x17), got 0x{:02x}", content_type);
             return Err(Error::TlsRecord(format!(
                 "Expected APPLICATION_DATA (0x17), got {:#04x}",
                 content_type
             )));
         }
 
-        // Read encrypted data (includes 16-byte AEAD tag)
+        // Validate length
+        if length < 16 {
+            error!("❌ TLS record too short: {} bytes (need at least 16 for AEAD tag)", length);
+            error!("   This likely indicates a protocol error or incomplete read");
+            return Err(Error::TlsRecord(format!(
+                "TLS record too short: {} bytes (need at least 16 for AEAD tag)",
+                length
+            )));
+        }
+
+        // Read encrypted data (includes ContentType byte + 16-byte AEAD tag)
         let mut encrypted = vec![0u8; length];
-        stream.read_exact(&mut encrypted).await?;
+        stream.read_exact(&mut encrypted).await.map_err(|e| {
+            error!("❌ Failed to read encrypted data ({} bytes): {}", length, e);
+            Error::Io(e)
+        })?;
 
-        trace!("Read {} bytes of encrypted data", encrypted.len());
+        debug!("✅ Read {} bytes of encrypted application data", encrypted.len());
+        trace!("Encrypted data (first 32 bytes): {:02x?}", &encrypted[..std::cmp::min(32, encrypted.len())]);
 
-        // AAD = TLS record header
+        // AAD = TLS record header (5 bytes)
         let aad = &header;
-        trace!("AAD (read): {:02x?}", aad);
+        debug!("AAD (TLS record header): {:02x?}", aad);
 
-        // Build nonce: IV XOR read_sequence_number (RFC 8446 Section 5.3)
+        // Build nonce: server_write_iv XOR read_sequence_number (RFC 8446 Section 5.3)
         let nonce = self.build_read_nonce();
-        trace!("Nonce (read): {:02x?}", &nonce[..std::cmp::min(12, nonce.len())]);
+        debug!("Nonce (server_write_iv XOR seq {}): {:02x?}", self.read_sequence_number, 
+               &nonce[..std::cmp::min(12, nonce.len())]);
 
-        // Decrypt data (BearDog will validate AEAD tag)
+        // Decrypt data with SERVER write key (we're reading from server)
+        debug!("🔓 Decrypting with server_write_key (application traffic key)");
         let decrypted = self.beardog
             .decrypt(&self.keys.server_write_key, &nonce, &encrypted, aad)
-            .await?;
+            .await.map_err(|e| {
+                error!("❌ Application data decryption failed: {}", e);
+                error!("   Encrypted length: {} bytes", encrypted.len());
+                error!("   Sequence number: {}", self.read_sequence_number);
+                e
+            })?;
 
-        trace!("Decrypted {} bytes → {} bytes (AEAD authentication succeeded)", encrypted.len(), decrypted.len());
+        info!("✅ Decrypted {} bytes → {} bytes (AEAD authentication succeeded)", 
+              encrypted.len(), decrypted.len());
+        trace!("Decrypted data (first 64 bytes): {:02x?}", &decrypted[..std::cmp::min(64, decrypted.len())]);
+
+        // RFC 8446 Section 5.2: TLS 1.3 encrypted records have ContentType as last byte
+        // Strip the ContentType byte from the end (just like handshake messages)
+        if decrypted.is_empty() {
+            warn!("⚠️  Empty plaintext after decryption (no ContentType to strip)");
+            self.read_sequence_number += 1;
+            return Ok(decrypted);
+        }
+
+        let content_type_byte = decrypted[decrypted.len() - 1];
+        debug!("ContentType byte at end of plaintext: 0x{:02x}", content_type_byte);
+
+        // Strip ContentType byte
+        let plaintext = decrypted[..decrypted.len() - 1].to_vec();
+        info!("✅ Stripped ContentType byte: {} bytes plaintext (HTTP data)", plaintext.len());
+        trace!("HTTP data preview: {}", String::from_utf8_lossy(&plaintext[..std::cmp::min(200, plaintext.len())]));
 
         self.read_sequence_number += 1;
+        debug!("  → Incremented read sequence number to {}", self.read_sequence_number);
 
-        Ok(decrypted)
+        Ok(plaintext)
     }
 
     /// Build nonce for writing (encryption)
