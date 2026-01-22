@@ -8,7 +8,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::UnixStream;
-use tracing::{debug, trace};
+use tracing::{debug, error, info, trace};
 
 /// JSON-RPC request
 #[derive(Debug, Serialize)]
@@ -28,7 +28,8 @@ struct JsonRpcResponse {
     result: Option<Value>,
     #[serde(skip_serializing_if = "Option::is_none")]
     error: Option<JsonRpcError>,
-    id: u64,
+    /// Request ID (can be null for notifications per JSON-RPC 2.0 spec)
+    id: Option<u64>,
 }
 
 /// JSON-RPC error
@@ -159,34 +160,56 @@ impl BearDogClient {
         client_random: &[u8],
         server_random: &[u8],
     ) -> Result<TlsSecrets> {
-        debug!("🔒 Deriving TLS application traffic secrets via BearDog");
+        info!("🔑 Calling tls_derive_application_secrets via Neural API");
+        debug!("  → pre_master_secret: {} bytes", shared_secret.len());
+        debug!("  → client_random: {} bytes", client_random.len());
+        debug!("  → server_random: {} bytes", server_random.len());
         
         let result = self.call("tls.derive_application_secrets", json!({
             "pre_master_secret": BASE64_STANDARD.encode(shared_secret),
             "client_random": BASE64_STANDARD.encode(client_random),
             "server_random": BASE64_STANDARD.encode(server_random)
-        })).await?;
+        })).await.map_err(|e| {
+            error!("❌ tls_derive_application_secrets RPC call failed: {}", e);
+            e
+        })?;
 
+        debug!("✅ Got response from tls_derive_application_secrets");
+        trace!("  Response JSON: {}", serde_json::to_string_pretty(&result).unwrap_or_else(|_| "unable to serialize".to_string()));
+
+        debug!("📋 Parsing application traffic keys from response...");
+        
+        let client_write_key = BASE64_STANDARD.decode(
+            result["client_write_key"].as_str()
+                .ok_or_else(|| Error::BearDogRpc("Missing client_write_key in response".to_string()))?
+        ).map_err(|e| Error::BearDogRpc(format!("Invalid client_write_key base64: {}", e)))?;
+        debug!("  ✅ client_write_key: {} bytes", client_write_key.len());
+        
+        let server_write_key = BASE64_STANDARD.decode(
+            result["server_write_key"].as_str()
+                .ok_or_else(|| Error::BearDogRpc("Missing server_write_key in response".to_string()))?
+        ).map_err(|e| Error::BearDogRpc(format!("Invalid server_write_key base64: {}", e)))?;
+        debug!("  ✅ server_write_key: {} bytes", server_write_key.len());
+        
+        let client_write_iv = BASE64_STANDARD.decode(
+            result["client_write_iv"].as_str()
+                .ok_or_else(|| Error::BearDogRpc("Missing client_write_iv in response".to_string()))?
+        ).map_err(|e| Error::BearDogRpc(format!("Invalid client_write_iv base64: {}", e)))?;
+        debug!("  ✅ client_write_iv: {} bytes", client_write_iv.len());
+        
+        let server_write_iv = BASE64_STANDARD.decode(
+            result["server_write_iv"].as_str()
+                .ok_or_else(|| Error::BearDogRpc("Missing server_write_iv in response".to_string()))?
+        ).map_err(|e| Error::BearDogRpc(format!("Invalid server_write_iv base64: {}", e)))?;
+        debug!("  ✅ server_write_iv: {} bytes", server_write_iv.len());
+
+        info!("🎉 Application traffic keys successfully derived and parsed");
+        
         Ok(TlsSecrets {
-            client_write_key: BASE64_STANDARD.decode(
-                result["client_write_key"].as_str()
-                    .ok_or_else(|| Error::BearDogRpc("Missing client_write_key".to_string()))?
-            ).map_err(|e| Error::BearDogRpc(format!("Invalid client_write_key: {}", e)))?,
-            
-            server_write_key: BASE64_STANDARD.decode(
-                result["server_write_key"].as_str()
-                    .ok_or_else(|| Error::BearDogRpc("Missing server_write_key".to_string()))?
-            ).map_err(|e| Error::BearDogRpc(format!("Invalid server_write_key: {}", e)))?,
-            
-            client_write_iv: BASE64_STANDARD.decode(
-                result["client_write_iv"].as_str()
-                    .ok_or_else(|| Error::BearDogRpc("Missing client_write_iv".to_string()))?
-            ).map_err(|e| Error::BearDogRpc(format!("Invalid client_write_iv: {}", e)))?,
-            
-            server_write_iv: BASE64_STANDARD.decode(
-                result["server_write_iv"].as_str()
-                    .ok_or_else(|| Error::BearDogRpc("Missing server_write_iv".to_string()))?
-            ).map_err(|e| Error::BearDogRpc(format!("Invalid server_write_iv: {}", e)))?,
+            client_write_key,
+            server_write_key,
+            client_write_iv,
+            server_write_iv,
         })
     }
 
@@ -205,7 +228,8 @@ impl BearDogClient {
 
     /// Encrypt data with ChaCha20-Poly1305
     pub async fn encrypt(&self, key: &[u8], nonce: &[u8], plaintext: &[u8], aad: &[u8]) -> Result<Vec<u8>> {
-        trace!("🔐 Encrypting {} bytes via BearDog", plaintext.len());
+        trace!("🔐 Encrypting {} bytes via BearDog (key={} bytes, nonce={} bytes, aad={} bytes)", 
+               plaintext.len(), key.len(), nonce.len(), aad.len());
         
         let result = self.call("crypto.encrypt", json!({
             "algorithm": "chacha20-poly1305",
@@ -213,26 +237,35 @@ impl BearDogClient {
             "nonce": BASE64_STANDARD.encode(nonce),
             "plaintext": BASE64_STANDARD.encode(plaintext),
             "aad": BASE64_STANDARD.encode(aad)
-        })).await?;
+        })).await.map_err(|e| {
+            error!("❌ crypto.encrypt RPC call failed: {}", e);
+            e
+        })?;
 
         let ciphertext = result["ciphertext"]
             .as_str()
-            .ok_or_else(|| Error::BearDogRpc("Missing ciphertext".to_string()))?;
+            .ok_or_else(|| Error::BearDogRpc("Missing ciphertext in response".to_string()))?;
 
-        BASE64_STANDARD.decode(ciphertext)
-            .map_err(|e| Error::BearDogRpc(format!("Invalid ciphertext base64: {}", e)))
+        let decoded = BASE64_STANDARD.decode(ciphertext)
+            .map_err(|e| Error::BearDogRpc(format!("Invalid ciphertext base64: {}", e)))?;
+        
+        trace!("✅ Encrypted: {} bytes plaintext → {} bytes ciphertext", plaintext.len(), decoded.len());
+        Ok(decoded)
     }
 
     /// Decrypt data with ChaCha20-Poly1305
     pub async fn decrypt(&self, key: &[u8], nonce: &[u8], ciphertext: &[u8], aad: &[u8]) -> Result<Vec<u8>> {
-        trace!("🔓 Decrypting {} bytes via BearDog", ciphertext.len());
+        trace!("🔓 Decrypting {} bytes via BearDog (key={} bytes, nonce={} bytes, aad={} bytes)", 
+               ciphertext.len(), key.len(), nonce.len(), aad.len());
         
         // ChaCha20-Poly1305 AEAD: Last 16 bytes are the authentication tag
         if ciphertext.len() < 16 {
+            error!("❌ Ciphertext too short: {} bytes (need at least 16 for tag)", ciphertext.len());
             return Err(Error::BearDogRpc("Ciphertext too short for ChaCha20-Poly1305 (need at least 16 bytes for tag)".to_string()));
         }
         
         let (actual_ciphertext, tag) = ciphertext.split_at(ciphertext.len() - 16);
+        debug!("  → Splitting ciphertext: {} bytes data + 16 bytes tag", actual_ciphertext.len());
         
         let result = self.call("crypto.decrypt", json!({
             "algorithm": "chacha20-poly1305",
@@ -241,14 +274,20 @@ impl BearDogClient {
             "ciphertext": BASE64_STANDARD.encode(actual_ciphertext),
             "tag": BASE64_STANDARD.encode(tag),
             "aad": BASE64_STANDARD.encode(aad)
-        })).await?;
+        })).await.map_err(|e| {
+            error!("❌ crypto.decrypt RPC call failed: {}", e);
+            e
+        })?;
 
         let plaintext = result["plaintext"]
             .as_str()
-            .ok_or_else(|| Error::BearDogRpc("Missing plaintext".to_string()))?;
+            .ok_or_else(|| Error::BearDogRpc("Missing plaintext in response".to_string()))?;
 
-        BASE64_STANDARD.decode(plaintext)
-            .map_err(|e| Error::BearDogRpc(format!("Invalid plaintext base64: {}", e)))
+        let decoded = BASE64_STANDARD.decode(plaintext)
+            .map_err(|e| Error::BearDogRpc(format!("Invalid plaintext base64: {}", e)))?;
+        
+        trace!("✅ Decrypted: {} bytes ciphertext → {} bytes plaintext", ciphertext.len(), decoded.len());
+        Ok(decoded)
     }
 
     /// Call BearDog capability via Neural API translation
@@ -324,20 +363,42 @@ impl BearDogClient {
             }
         }
 
-        let response: JsonRpcResponse = serde_json::from_slice(&buffer)
-            .map_err(|e| Error::BearDogRpc(format!("Failed to parse Neural API response: {}", e)))?;
+        // Log raw response for debugging
+        if let Ok(response_str) = std::str::from_utf8(&buffer) {
+            trace!("← Raw Neural API response ({} bytes): {}", buffer.len(), 
+                   if response_str.len() > 500 { 
+                       format!("{}... (truncated)", &response_str[..500])
+                   } else {
+                       response_str.to_string()
+                   });
+        }
 
-        trace!("← Neural API result for {} (id={})", capability, response.id);
+        let response: JsonRpcResponse = serde_json::from_slice(&buffer)
+            .map_err(|e| {
+                error!("❌ Failed to parse Neural API response for {}: {}", capability, e);
+                if let Ok(response_str) = std::str::from_utf8(&buffer) {
+                    error!("   Raw response: {}", response_str);
+                }
+                Error::BearDogRpc(format!("Failed to parse Neural API response: {}", e))
+            })?;
+
+        let id_str = response.id.map(|id| id.to_string()).unwrap_or_else(|| "null".to_string());
+        trace!("← Neural API result for {} (id={})", capability, id_str);
 
         // Check for errors
         if let Some(error) = response.error {
+            error!("❌ Neural API error for {}: {} (code: {})", capability, error.message, error.code);
             return Err(Error::BearDogRpc(format!(
                 "Neural API error for {}: {} (code: {})", 
                 capability, error.message, error.code
             )));
         }
 
-        response.result.ok_or_else(|| Error::BearDogRpc("Missing result in response".to_string()))
+        debug!("✅ Neural API call successful: {}", capability);
+        response.result.ok_or_else(|| {
+            error!("❌ Missing result in Neural API response for {}", capability);
+            Error::BearDogRpc("Missing result in response".to_string())
+        })
     }
 }
 
