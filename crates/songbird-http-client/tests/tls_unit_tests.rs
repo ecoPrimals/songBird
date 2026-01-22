@@ -49,7 +49,7 @@ mod handshake_tests {
         // - Name length (2 bytes)
         // - Name (variable)
         
-        assert!(sni.len() > 0, "SNI extension should not be empty");
+        assert!(!sni.is_empty(), "SNI extension should not be empty");
         
         let list_len = u16::from_be_bytes([sni[0], sni[1]]) as usize;
         assert_eq!(list_len, server_name.len() + 3, "SNI list length incorrect");
@@ -182,7 +182,7 @@ mod handshake_tests {
         msg.extend_from_slice(&[0x03, 0x03]); // TLS 1.2
         
         // Random
-        msg.extend_from_slice(&vec![0x42u8; 32]);
+        msg.extend_from_slice(&[0x42u8; 32]);
         
         // Session ID
         msg.push(0x00);
@@ -204,9 +204,9 @@ mod handshake_tests {
     fn build_full_client_hello() -> Vec<u8> {
         // This would include all extensions
         // Simplified for testing
-        let msg = build_minimal_client_hello();
+        
         // Would add extensions here
-        msg
+        build_minimal_client_hello()
     }
 
     fn build_sni_extension(server_name: &str) -> Vec<u8> {

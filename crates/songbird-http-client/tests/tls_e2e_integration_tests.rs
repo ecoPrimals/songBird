@@ -36,7 +36,7 @@ async fn mock_tls_server(port: u16) -> tokio::task::JoinHandle<()> {
         hs_msg.push(0x02); // ServerHello
         hs_msg.extend_from_slice(&[0x00, 0x00, 0x50]); // Length placeholder
         hs_msg.extend_from_slice(&[0x03, 0x03]); // Version
-        hs_msg.extend_from_slice(&vec![0x42u8; 32]); // Server random
+        hs_msg.extend_from_slice(&[0x42u8; 32]); // Server random
         hs_msg.push(0x00); // Session ID length
         hs_msg.extend_from_slice(&[0x13, 0x01]); // Cipher suite
         hs_msg.push(0x00); // Compression
@@ -47,7 +47,7 @@ async fn mock_tls_server(port: u16) -> tokio::task::JoinHandle<()> {
         extensions.extend_from_slice(&[0x00, 0x24]); // Length: 36
         extensions.extend_from_slice(&[0x00, 0x1d]); // x25519
         extensions.extend_from_slice(&[0x00, 0x20]); // Key length: 32
-        extensions.extend_from_slice(&vec![0x88u8; 32]); // Server public key
+        extensions.extend_from_slice(&[0x88u8; 32]); // Server public key
         
         hs_msg.extend_from_slice(&(extensions.len() as u16).to_be_bytes());
         hs_msg.extend_from_slice(&extensions);
@@ -72,7 +72,7 @@ async fn mock_tls_server(port: u16) -> tokio::task::JoinHandle<()> {
         for _ in 0..3 {
             let encrypted = vec![0x17, 0x03, 0x03, 0x00, 0x20]; // ApplicationData header
             socket.write_all(&encrypted).await.unwrap();
-            socket.write_all(&vec![0x99u8; 32]).await.unwrap(); // Encrypted payload
+            socket.write_all(&[0x99u8; 32]).await.unwrap(); // Encrypted payload
             sleep(Duration::from_millis(50)).await;
         }
         
@@ -191,7 +191,7 @@ fn build_minimal_client_hello() -> Vec<u8> {
     hs.push(0x01); // ClientHello
     hs.extend_from_slice(&[0x00, 0x00, 0x00]); // Length placeholder
     hs.extend_from_slice(&[0x03, 0x03]); // Version
-    hs.extend_from_slice(&vec![0x11u8; 32]); // Random
+    hs.extend_from_slice(&[0x11u8; 32]); // Random
     hs.push(0x00); // Session ID length
     hs.extend_from_slice(&[0x00, 0x02, 0x13, 0x01]); // Cipher suites
     hs.push(0x01); // Compression methods length
@@ -239,7 +239,7 @@ mod e2e_scenarios {
             
             // Read ClientHello
             let mut buf = vec![0u8; 1024];
-            socket.read(&mut buf).await.ok();
+            let _ = socket.read(&mut buf).await;
             
             // Wait before responding
             sleep(Duration::from_millis(500)).await;

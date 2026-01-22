@@ -51,7 +51,7 @@ impl TlsHandshake {
         debug!("ClientHello hex dump (first 160 bytes):");
         for (i, chunk) in client_hello.chunks(16).take(10).enumerate() {
             let hex: String = chunk.iter().map(|b| format!("{:02x}", b)).collect::<Vec<_>>().join(" ");
-            let ascii: String = chunk.iter().map(|&b| if b >= 32 && b < 127 { b as char } else { '.' }).collect();
+            let ascii: String = chunk.iter().map(|&b| if (32..127).contains(&b) { b as char } else { '.' }).collect();
             debug!("  {:04x}: {:<47}  {}", i * 16, hex, ascii);
         }
         if client_hello.len() > 160 {
@@ -381,7 +381,7 @@ impl TlsHandshake {
         }
         
         // Validate content type
-        if content_type < 20 || content_type > 23 {
+        if !(20..=23).contains(&content_type) {
             error!("❌ Invalid TLS content type: {:#04x}", content_type);
             return Err(Error::TlsHandshake(format!(
                 "Invalid TLS content type: {:#04x}",
@@ -640,7 +640,7 @@ mod tests {
         server_hello.push(0x02); // HandshakeType: ServerHello
         server_hello.extend_from_slice(&[0x00, 0x00, 0x50]); // Length: 80 bytes
         server_hello.extend_from_slice(&[0x03, 0x03]); // Version: TLS 1.2
-        server_hello.extend_from_slice(&vec![0u8; 32]); // Server random
+        server_hello.extend_from_slice(&[0u8; 32]); // Server random
         server_hello.push(0x00); // Session ID length: 0
         server_hello.extend_from_slice(&[0x13, 0x01]); // Cipher suite
         server_hello.push(0x00); // Compression: none
@@ -652,7 +652,7 @@ mod tests {
         extensions.extend_from_slice(&[0x00, 0x24]); // Extension length: 36
         extensions.extend_from_slice(&[0x00, 0x1d]); // Group: x25519
         extensions.extend_from_slice(&[0x00, 0x20]); // Key length: 32
-        extensions.extend_from_slice(&vec![1u8; 32]); // Server public key
+        extensions.extend_from_slice(&[1u8; 32]); // Server public key
         
         server_hello.extend_from_slice(&(extensions.len() as u16).to_be_bytes());
         server_hello.extend_from_slice(&extensions);

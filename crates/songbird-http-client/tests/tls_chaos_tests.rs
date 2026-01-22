@@ -201,7 +201,7 @@ async fn test_connection_reset_mid_handshake() {
         
         // Read some data
         let mut buf = vec![0u8; 1024];
-        socket.read(&mut buf).await.ok();
+        let _ = socket.read(&mut buf).await;
         
         // Send partial response, then reset
         socket.write_all(&[0x16, 0x03, 0x03]).await.ok();
@@ -241,7 +241,7 @@ async fn test_random_delays_handshake() {
         let (mut socket, _) = listener.accept().await.unwrap();
         
         // Use pseudo-random delays (deterministic, no need for Send rng)
-        let delays = vec![100u64, 200, 150, 300, 250];
+        let delays = [100u64, 200, 150, 300, 250];
         
         // Read with delays
         for (i, &delay_ms) in delays.iter().enumerate().take(5) {
@@ -337,6 +337,7 @@ mod chaos_helpers {
     use std::sync::atomic::{AtomicUsize, Ordering};
     
     /// Helper: Create a server that behaves chaotically (deterministic pattern)
+    #[allow(dead_code)]
     pub async fn spawn_chaos_server(port: u16) -> tokio::task::JoinHandle<()> {
         let counter = std::sync::Arc::new(AtomicUsize::new(0));
         

@@ -195,7 +195,7 @@ async fn test_redirect_handling() {
     assert!(result.is_ok(), "Redirect request should not timeout");
     let response = result.unwrap();
     // We expect either a redirect status or success depending on implementation
-    assert!(response.is_ok() || matches!(response, Err(_)), "Redirect should be handled");
+    assert!(response.is_ok() || response.is_err(), "Redirect should be handled");
 }
 
 #[tokio::test]
