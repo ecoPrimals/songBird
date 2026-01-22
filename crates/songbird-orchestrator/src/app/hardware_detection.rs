@@ -31,7 +31,14 @@ use songbird_types::SafeEnv;
 /// No hardcoded GPU models - all detection is runtime-based.
 /// Users can override via GPU_MODEL environment variable.
 pub fn detect_gpu() -> Option<String> {
-    // Method 1: Try nvidia-smi for NVIDIA GPUs
+    // Priority 1: Check environment variable override (for testing/configuration)
+    if let Ok(gpu_model) = std::env::var("GPU_MODEL") {
+        if !gpu_model.is_empty() {
+            return Some(gpu_model);
+        }
+    }
+    
+    // Method 2: Try nvidia-smi for NVIDIA GPUs
     if let Ok(output) = std::process::Command::new("nvidia-smi")
         .arg("--query-gpu=name")
         .arg("--format=csv,noheader")
@@ -84,7 +91,14 @@ pub fn detect_gpu() -> Option<String> {
 /// No hardcoded storage values - all detection is runtime-based.
 /// Users can override via STORAGE_GB environment variable.
 pub fn detect_storage_capacity() -> Option<usize> {
-    // Method 1: Try to read from df (Linux)
+    // Priority 1: Check environment variable override (for testing/configuration)
+    if let Ok(storage_gb) = std::env::var("STORAGE_GB") {
+        if let Ok(storage) = storage_gb.parse::<usize>() {
+            return Some(storage);
+        }
+    }
+    
+    // Method 2: Try to read from df (Linux)
     #[cfg(target_os = "linux")]
     {
         if let Ok(output) = std::process::Command::new("df").arg("-BG").arg("/").output() {
