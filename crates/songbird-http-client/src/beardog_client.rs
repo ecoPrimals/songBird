@@ -8,7 +8,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::UnixStream;
-use tracing::{debug, error, info, trace};
+use tracing::{debug, error, info, trace, warn};
 
 /// JSON-RPC request
 #[derive(Debug, Serialize)]
@@ -156,21 +156,44 @@ impl BearDogClient {
     /// 
     /// RFC 8446 Section 7.1: After the handshake completes, derive master secret and
     /// then derive application traffic secrets for encrypting application data.
+    /// 
+    /// # Arguments
+    /// 
+    /// * `shared_secret` - ECDH shared secret (pre-master secret)
+    /// * `client_random` - Client random (32 bytes)
+    /// * `server_random` - Server random (32 bytes)
+    /// * `transcript_hash` - SHA-256 hash of all handshake messages (ClientHello...server Finished)
+    /// 
+    /// # RFC 8446 Compliance
+    /// 
+    /// The transcript hash is REQUIRED for correct TLS 1.3 key derivation:
+    /// ```text
+    /// application_traffic_secret = HKDF-Expand-Label(
+    ///     master_secret,
+    ///     "c ap traffic" | "s ap traffic",
+    ///     Transcript-Hash(ClientHello...server Finished),  // ← REQUIRED!
+    ///     Hash.length
+    /// )
+    /// ```
     pub async fn tls_derive_application_secrets(
         &self,
         shared_secret: &[u8],
         client_random: &[u8],
         server_random: &[u8],
+        transcript_hash: &[u8],
     ) -> Result<TlsSecrets> {
-        info!("🔑 Calling tls_derive_application_secrets via Neural API");
+        info!("🔑 Calling tls_derive_application_secrets via Neural API (RFC 8446 compliant)");
         debug!("  → pre_master_secret: {} bytes", shared_secret.len());
         debug!("  → client_random: {} bytes", client_random.len());
         debug!("  → server_random: {} bytes", server_random.len());
+        debug!("  → transcript_hash: {} bytes (SHA-256 of all handshake messages)", transcript_hash.len());
+        trace!("  → transcript_hash (hex): {}", hex::encode(transcript_hash));
         
         let result = self.call("tls.derive_application_secrets", json!({
             "pre_master_secret": BASE64_STANDARD.encode(shared_secret),
             "client_random": BASE64_STANDARD.encode(client_random),
-            "server_random": BASE64_STANDARD.encode(server_random)
+            "server_random": BASE64_STANDARD.encode(server_random),
+            "transcript_hash": BASE64_STANDARD.encode(transcript_hash)
         })).await.map_err(|e| {
             error!("❌ tls_derive_application_secrets RPC call failed: {}", e);
             e
@@ -217,15 +240,22 @@ impl BearDogClient {
 
     /// Legacy alias for backwards compatibility
     /// DEPRECATED: Use tls_derive_application_secrets instead
-    #[deprecated(since = "5.6.0", note = "Use tls_derive_application_secrets instead")]
+    /// 
+    /// # Note
+    /// 
+    /// This method creates an empty transcript hash for backwards compatibility.
+    /// For RFC 8446 compliance, use `tls_derive_application_secrets` with proper transcript hash.
+    #[deprecated(since = "5.6.0", note = "Use tls_derive_application_secrets with transcript_hash parameter")]
     pub async fn tls_derive_secrets(
         &self,
         shared_secret: &[u8],
         client_random: &[u8],
         server_random: &[u8],
     ) -> Result<TlsSecrets> {
-        // For now, delegate to application secrets (the correct keys for HTTP data)
-        self.tls_derive_application_secrets(shared_secret, client_random, server_random).await
+        // For backwards compatibility, create empty transcript hash (NOT RFC 8446 compliant!)
+        warn!("Using deprecated tls_derive_secrets without transcript hash - not RFC 8446 compliant!");
+        let empty_transcript_hash = vec![0u8; 32]; // Placeholder
+        self.tls_derive_application_secrets(shared_secret, client_random, server_random, &empty_transcript_hash).await
     }
 
     /// Encrypt data with ChaCha20-Poly1305

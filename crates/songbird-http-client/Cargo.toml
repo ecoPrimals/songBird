@@ -32,6 +32,10 @@ base64 = "0.21"
 bytes = "1.0"
 anyhow = "1.0"
 
+# Cryptography (Pure Rust)
+sha2 = "0.10"
+hex = "0.4"
+
 # NO reqwest, NO rustls, NO ring!
 # Pure Rust only - crypto delegated to BearDog
 

@@ -98,7 +98,7 @@ impl SongbirdHttpClient {
         debug!("🔒 Performing TLS handshake with {}", host);
 
         // Perform TLS handshake
-        let handshake = TlsHandshake::new(self.beardog.clone());
+        let mut handshake = TlsHandshake::new(self.beardog.clone());
         let session_keys = handshake.handshake(&mut tcp_stream, host).await?;
 
         debug!("✅ TLS handshake complete");

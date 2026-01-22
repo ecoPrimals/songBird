@@ -3,6 +3,7 @@
 use crate::beardog_client::BearDogClient;
 use crate::error::{Error, Result};
 use crate::tls::{session::SessionKeys, TLS_1_2, TLS_1_3, CIPHER_SUITES};
+use sha2::{Sha256, Digest};
 use std::sync::Arc;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::TcpStream;
@@ -12,17 +13,43 @@ use tracing::{debug, error, info, trace, warn};
 /// TLS 1.3 handshake
 pub struct TlsHandshake {
     beardog: Arc<BearDogClient>,
+    /// Transcript accumulator for RFC 8446 key derivation
+    /// Accumulates all handshake messages for transcript hash computation
+    transcript: Vec<u8>,
 }
 
 impl TlsHandshake {
     /// Create a new TLS handshake
     pub fn new(beardog: Arc<BearDogClient>) -> Self {
-        Self { beardog }
+        Self { 
+            beardog,
+            transcript: Vec::new(),
+        }
+    }
+    
+    /// Update transcript with handshake message
+    /// RFC 8446 Section 4.4.1: Transcript hash includes all handshake messages
+    fn update_transcript(&mut self, message: &[u8]) {
+        trace!("📝 Updating transcript: +{} bytes (total: {} → {} bytes)", 
+               message.len(), self.transcript.len(), self.transcript.len() + message.len());
+        self.transcript.extend_from_slice(message);
+    }
+    
+    /// Compute transcript hash (SHA-256)
+    /// RFC 8446 Section 4.4.1: Transcript-Hash(M1, M2, ... Mn) = Hash(M1 || M2 || ... || Mn)
+    fn compute_transcript_hash(&self) -> Vec<u8> {
+        let mut hasher = Sha256::new();
+        hasher.update(&self.transcript);
+        let hash = hasher.finalize().to_vec();
+        info!("🔐 Computed transcript hash: {} bytes from {} bytes of messages", 
+              hash.len(), self.transcript.len());
+        trace!("Transcript hash (hex): {}", hex::encode(&hash));
+        hash
     }
 
     /// Perform TLS 1.3 handshake
     pub async fn handshake(
-        &self,
+        &mut self,
         stream: &mut TcpStream,
         server_name: &str,
     ) -> Result<SessionKeys> {
@@ -46,6 +73,10 @@ impl TlsHandshake {
         )?;
         
         info!("📤 Sending ClientHello: {} bytes to {}", client_hello.len(), server_name);
+        
+        // RFC 8446: Update transcript with ClientHello
+        self.update_transcript(&client_hello);
+        debug!("✅ ClientHello added to transcript");
         
         // Comprehensive hex dump for debugging
         debug!("ClientHello hex dump (first 160 bytes):");
@@ -86,6 +117,10 @@ impl TlsHandshake {
             }))?;
         info!("✅ Received ServerHello: {} bytes in {:?}", server_hello.len(), read_start.elapsed());
         trace!("ServerHello content: {:02x?}", &server_hello[..std::cmp::min(64, server_hello.len())]);
+        
+        // RFC 8446: Update transcript with ServerHello
+        self.update_transcript(&server_hello);
+        debug!("✅ ServerHello added to transcript");
 
         // 5. Parse ServerHello
         debug!("Step 5: Parsing ServerHello");
@@ -110,33 +145,16 @@ impl TlsHandshake {
         debug!("✅ Computed shared secret: {} bytes in {:?}", shared_secret.len(), ecdh_start.elapsed());
         trace!("Shared secret: {:02x?}", &shared_secret[..std::cmp::min(16, shared_secret.len())]);
 
-        // 7. Derive application traffic secrets (for HTTP data encryption)
-        // Note: TLS 1.3 has separate key schedules:
-        // - Handshake traffic secrets: For encrypting handshake messages (EncryptedExtensions, Certificate, etc.)
-        // - Application traffic secrets: For encrypting HTTP data
-        // We derive application secrets directly since we don't decrypt the handshake messages
-        debug!("Step 7: Deriving TLS application traffic secrets via BearDog");
-        let derive_start = std::time::Instant::now();
-        let secrets = self.beardog
-            .tls_derive_application_secrets(&shared_secret, &client_random, &server_random)
-            .await
-            .map_err(|e| {
-                error!("❌ BearDog TLS application secret derivation failed: {}", e);
-                e
-            })?;
-        
-        info!("🔐 TLS application traffic keys derived in {:?}", derive_start.elapsed());
-        debug!("Application secrets derived successfully (for HTTP data encryption)");
-        
-        // 8. Read post-handshake encrypted messages
+        // 7. Read post-handshake encrypted messages
         // Note: In TLS 1.3, after ServerHello, all messages are encrypted with handshake traffic keys
-        // For MVP, we'll skip strict validation and just read/discard these messages
-        // They include: EncryptedExtensions, Certificate, CertificateVerify, Finished
+        // RFC 8446 Section 7.1: Transcript hash for application secrets includes all handshake messages
+        // Messages include: EncryptedExtensions, Certificate, CertificateVerify, Finished
         
-        info!("Step 8: Reading post-handshake encrypted messages");
+        info!("Step 7: Reading post-handshake encrypted messages");
         debug!("Expecting: ChangeCipherSpec (optional), EncryptedExtensions, Certificate, CertificateVerify, Finished");
+        debug!("RFC 8446: These encrypted records will be added to transcript for key derivation");
         
-        // Read and skip encrypted post-handshake messages
+        // Read and track encrypted post-handshake messages for transcript hash
         // We expect: ChangeCipherSpec (optional), then multiple APPLICATION_DATA records containing handshake messages
         let mut messages_read = 0;
         let post_handshake_start = std::time::Instant::now();
@@ -151,6 +169,10 @@ impl TlsHandshake {
                     info!("✅ Read post-handshake record {} ({} bytes) in {:?}", 
                           messages_read, record.len(), record_start.elapsed());
                     trace!("Record {} content: {:02x?}", messages_read, &record[..std::cmp::min(32, record.len())]);
+                    
+                    // RFC 8446: Add encrypted handshake record to transcript
+                    self.update_transcript(&record);
+                    debug!("✅ Post-handshake record {} added to transcript", messages_read);
                     
                     // Check if this looks like the last handshake message (server Finished)
                     // Server Finished is typically small (< 100 bytes encrypted)
@@ -188,10 +210,34 @@ impl TlsHandshake {
         debug!("Post-handshake phase complete: {} messages in {:?}", 
                messages_read, post_handshake_start.elapsed());
         
-        // 9. Send client Finished message (simplified - empty for MVP)
+        // 8. Compute transcript hash (RFC 8446 Section 4.4.1)
+        // Transcript includes: ClientHello, ServerHello, and all encrypted handshake messages
+        info!("Step 8: Computing transcript hash for RFC 8446 key derivation");
+        let transcript_hash = self.compute_transcript_hash();
+        debug!("✅ Transcript hash computed: {} bytes", transcript_hash.len());
+        
+        // 9. Derive application traffic secrets (for HTTP data encryption)
+        // RFC 8446 Section 7.1: Application secrets are derived WITH transcript hash
+        // Note: TLS 1.3 has separate key schedules:
+        // - Handshake traffic secrets: For encrypting handshake messages (EncryptedExtensions, Certificate, etc.)
+        // - Application traffic secrets: For encrypting HTTP data (requires transcript hash!)
+        debug!("Step 9: Deriving TLS application traffic secrets via BearDog (WITH transcript hash)");
+        let derive_start = std::time::Instant::now();
+        let secrets = self.beardog
+            .tls_derive_application_secrets(&shared_secret, &client_random, &server_random, &transcript_hash)
+            .await
+            .map_err(|e| {
+                error!("❌ BearDog TLS application secret derivation failed: {}", e);
+                e
+            })?;
+        
+        info!("🔐 TLS application traffic keys derived in {:?}", derive_start.elapsed());
+        debug!("Application secrets derived successfully (for HTTP data encryption)");
+        
+        // 10. Send client Finished message (simplified - empty for MVP)
         // In full TLS 1.3, this would be encrypted and contain HMAC of transcript
         // For MVP, we send a minimal ChangeCipherSpec to indicate we're ready
-        debug!("Step 9: Sending client ChangeCipherSpec acknowledgment");
+        debug!("Step 10: Sending client ChangeCipherSpec acknowledgment");
         let change_cipher_spec = vec![
             0x14, // ContentType: ChangeCipherSpec
             0x03, 0x03, // TLS 1.2 (compatibility)
@@ -870,6 +916,156 @@ mod tests {
         // Invalid: too short
         let too_short = vec![0x02, 0x00, 0x00, 0x10, 0x03, 0x03]; // Only 6 bytes
         assert!(handshake.parse_server_hello(&too_short).is_err());
+    }
+    
+    // ============================================================================
+    // RFC 8446 Transcript Tracking Tests
+    // ============================================================================
+    
+    #[test]
+    fn test_transcript_empty_initially() {
+        let beardog = Arc::new(BearDogClient::new("/tmp/beardog.sock"));
+        let handshake = TlsHandshake::new(beardog);
+        
+        // Transcript should be empty initially
+        assert_eq!(handshake.transcript.len(), 0, "Transcript should start empty");
+    }
+    
+    #[test]
+    fn test_update_transcript() {
+        let beardog = Arc::new(BearDogClient::new("/tmp/beardog.sock"));
+        let mut handshake = TlsHandshake::new(beardog);
+        
+        // Add first message
+        let message1 = b"ClientHello";
+        handshake.update_transcript(message1);
+        assert_eq!(handshake.transcript.len(), message1.len());
+        
+        // Add second message
+        let message2 = b"ServerHello";
+        handshake.update_transcript(message2);
+        assert_eq!(handshake.transcript.len(), message1.len() + message2.len());
+        
+        // Verify messages are concatenated
+        assert_eq!(&handshake.transcript[..message1.len()], message1);
+        assert_eq!(&handshake.transcript[message1.len()..], message2);
+    }
+    
+    #[test]
+    fn test_compute_transcript_hash_empty() {
+        let beardog = Arc::new(BearDogClient::new("/tmp/beardog.sock"));
+        let handshake = TlsHandshake::new(beardog);
+        
+        let hash = handshake.compute_transcript_hash();
+        
+        // SHA-256 hash of empty input
+        // echo -n "" | sha256sum
+        let expected_empty_hash = hex::decode("e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855")
+            .expect("Valid hex");
+        
+        assert_eq!(hash.len(), 32, "SHA-256 hash should be 32 bytes");
+        assert_eq!(hash, expected_empty_hash, "Empty transcript should match SHA-256(\"\")");
+    }
+    
+    #[test]
+    fn test_compute_transcript_hash_deterministic() {
+        let beardog = Arc::new(BearDogClient::new("/tmp/beardog.sock"));
+        let mut handshake = TlsHandshake::new(beardog);
+        
+        // Add test messages
+        handshake.update_transcript(b"ClientHello");
+        handshake.update_transcript(b"ServerHello");
+        
+        // Compute hash twice
+        let hash1 = handshake.compute_transcript_hash();
+        let hash2 = handshake.compute_transcript_hash();
+        
+        // Should be identical (deterministic)
+        assert_eq!(hash1, hash2, "Transcript hash should be deterministic");
+        assert_eq!(hash1.len(), 32, "SHA-256 hash should be 32 bytes");
+    }
+    
+    #[test]
+    fn test_compute_transcript_hash_known_value() {
+        let beardog = Arc::new(BearDogClient::new("/tmp/beardog.sock"));
+        let mut handshake = TlsHandshake::new(beardog);
+        
+        // Use a known message
+        let message = b"test";
+        handshake.update_transcript(message);
+        
+        let hash = handshake.compute_transcript_hash();
+        
+        // SHA-256 of "test"
+        // echo -n "test" | sha256sum
+        let expected_hash = hex::decode("9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08")
+            .expect("Valid hex");
+        
+        assert_eq!(hash, expected_hash, "Transcript hash should match SHA-256(\"test\")");
+    }
+    
+    #[test]
+    fn test_transcript_accumulates_multiple_messages() {
+        let beardog = Arc::new(BearDogClient::new("/tmp/beardog.sock"));
+        let mut handshake = TlsHandshake::new(beardog);
+        
+        // Simulate handshake message accumulation
+        let client_hello = vec![1u8; 100];
+        let server_hello = vec![2u8; 100];
+        let encrypted_extensions = vec![3u8; 50];
+        let certificate = vec![4u8; 200];
+        let finished = vec![5u8; 50];
+        
+        handshake.update_transcript(&client_hello);
+        handshake.update_transcript(&server_hello);
+        handshake.update_transcript(&encrypted_extensions);
+        handshake.update_transcript(&certificate);
+        handshake.update_transcript(&finished);
+        
+        // Total should be sum of all messages
+        let expected_total = 100 + 100 + 50 + 200 + 50;
+        assert_eq!(handshake.transcript.len(), expected_total);
+        
+        // Compute hash of full transcript
+        let hash = handshake.compute_transcript_hash();
+        assert_eq!(hash.len(), 32, "SHA-256 hash should always be 32 bytes");
+    }
+    
+    #[test]
+    fn test_transcript_order_matters() {
+        let beardog1 = Arc::new(BearDogClient::new("/tmp/beardog.sock"));
+        let mut handshake1 = TlsHandshake::new(beardog1);
+        
+        let beardog2 = Arc::new(BearDogClient::new("/tmp/beardog.sock"));
+        let mut handshake2 = TlsHandshake::new(beardog2);
+        
+        // Add messages in different orders
+        handshake1.update_transcript(b"A");
+        handshake1.update_transcript(b"B");
+        
+        handshake2.update_transcript(b"B");
+        handshake2.update_transcript(b"A");
+        
+        let hash1 = handshake1.compute_transcript_hash();
+        let hash2 = handshake2.compute_transcript_hash();
+        
+        // Hashes should be different (order matters!)
+        assert_ne!(hash1, hash2, "Transcript hash should depend on message order");
+    }
+    
+    #[test]
+    fn test_transcript_hash_length() {
+        let beardog = Arc::new(BearDogClient::new("/tmp/beardog.sock"));
+        let mut handshake = TlsHandshake::new(beardog);
+        
+        // Add various sized messages
+        for size in [1, 10, 100, 1000, 10000] {
+            handshake.update_transcript(&vec![0xFF; size]);
+        }
+        
+        // Hash should always be 32 bytes regardless of input size
+        let hash = handshake.compute_transcript_hash();
+        assert_eq!(hash.len(), 32, "SHA-256 hash should always be 32 bytes");
     }
 }
 

@@ -18,9 +18,10 @@ async fn test_e2e_tls_derive_application_secrets() {
     let pre_master_secret = vec![0u8; 32];
     let client_random = vec![1u8; 32];
     let server_random = vec![2u8; 32];
+    let transcript_hash = vec![3u8; 32]; // SHA-256 hash of handshake transcript
     
     let result = client
-        .tls_derive_application_secrets(&pre_master_secret, &client_random, &server_random)
+        .tls_derive_application_secrets(&pre_master_secret, &client_random, &server_random, &transcript_hash)
         .await;
     
     assert!(result.is_ok(), "Failed to derive application secrets: {:?}", result.err());
@@ -274,7 +275,8 @@ async fn test_chaos_e2e_alternating_operations() {
             let pre_master = vec![0u8; 32];
             let client_random = vec![1u8; 32];
             let server_random = vec![2u8; 32];
-            let _ = client.tls_derive_application_secrets(&pre_master, &client_random, &server_random).await;
+            let transcript_hash = vec![3u8; 32];
+            let _ = client.tls_derive_application_secrets(&pre_master, &client_random, &server_random, &transcript_hash).await;
         }
     }
 }
@@ -369,8 +371,9 @@ async fn test_fault_e2e_wrong_secret_size() {
     let short_secret = vec![0u8; 16];
     let client_random = vec![1u8; 32];
     let server_random = vec![2u8; 32];
+    let transcript_hash = vec![3u8; 32];
     
-    let result = client.tls_derive_application_secrets(&short_secret, &client_random, &server_random).await;
+    let result = client.tls_derive_application_secrets(&short_secret, &client_random, &server_random, &transcript_hash).await;
     // BearDog should reject this
     assert!(result.is_err(), "Should fail with wrong secret size");
 }
