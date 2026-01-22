@@ -112,40 +112,78 @@ impl BearDogClient {
     }
 
     /// Derive TLS handshake traffic secrets (for encrypting handshake messages)
+    /// 
+    /// RFC 8446 Section 7.1: Handshake traffic secrets are derived using:
+    /// - ECDH shared secret
+    /// - Client random
+    /// - Server random  
+    /// - Transcript hash of ClientHello + ServerHello
+    /// 
+    /// These keys are used to encrypt/decrypt handshake messages AFTER ServerHello:
+    /// - EncryptedExtensions
+    /// - Certificate
+    /// - CertificateVerify
+    /// - Finished
     pub async fn tls_derive_handshake_secrets(
         &self,
         shared_secret: &[u8],
         client_random: &[u8],
         server_random: &[u8],
+        transcript_hash: &[u8],
     ) -> Result<TlsSecrets> {
-        debug!("🔒 Deriving TLS handshake traffic secrets via BearDog");
+        info!("🔑 Calling tls_derive_handshake_secrets via Neural API (RFC 8446 Section 7.1)");
+        debug!("  → pre_master_secret: {} bytes", shared_secret.len());
+        debug!("  → client_random: {} bytes", client_random.len());
+        debug!("  → server_random: {} bytes", server_random.len());
+        debug!("  → transcript_hash: {} bytes (SHA-256 of ClientHello + ServerHello)", transcript_hash.len());
+        trace!("  → transcript_hash (hex): {}", hex::encode(transcript_hash));
         
-        let result = self.call("tls.derive_secrets", json!({
+        let result = self.call("tls.derive_handshake_secrets", json!({
             "pre_master_secret": BASE64_STANDARD.encode(shared_secret),
             "client_random": BASE64_STANDARD.encode(client_random),
-            "server_random": BASE64_STANDARD.encode(server_random)
-        })).await?;
+            "server_random": BASE64_STANDARD.encode(server_random),
+            "transcript_hash": BASE64_STANDARD.encode(transcript_hash)
+        })).await.map_err(|e| {
+            error!("❌ tls_derive_handshake_secrets RPC call failed: {}", e);
+            e
+        })?;
 
+        debug!("✅ Got response from tls_derive_handshake_secrets");
+        trace!("  Response JSON: {}", serde_json::to_string_pretty(&result).unwrap_or_else(|_| "unable to serialize".to_string()));
+
+        debug!("📋 Parsing handshake traffic keys from response...");
+        
+        let client_write_key = BASE64_STANDARD.decode(
+            result["client_write_key"].as_str()
+                .ok_or_else(|| Error::BearDogRpc("Missing client_write_key in response".to_string()))?
+        ).map_err(|e| Error::BearDogRpc(format!("Invalid client_write_key base64: {}", e)))?;
+        debug!("  ✅ client_handshake_key: {} bytes", client_write_key.len());
+        
+        let server_write_key = BASE64_STANDARD.decode(
+            result["server_write_key"].as_str()
+                .ok_or_else(|| Error::BearDogRpc("Missing server_write_key in response".to_string()))?
+        ).map_err(|e| Error::BearDogRpc(format!("Invalid server_write_key base64: {}", e)))?;
+        debug!("  ✅ server_handshake_key: {} bytes", server_write_key.len());
+        
+        let client_write_iv = BASE64_STANDARD.decode(
+            result["client_write_iv"].as_str()
+                .ok_or_else(|| Error::BearDogRpc("Missing client_write_iv in response".to_string()))?
+        ).map_err(|e| Error::BearDogRpc(format!("Invalid client_write_iv base64: {}", e)))?;
+        debug!("  ✅ client_handshake_iv: {} bytes", client_write_iv.len());
+        
+        let server_write_iv = BASE64_STANDARD.decode(
+            result["server_write_iv"].as_str()
+                .ok_or_else(|| Error::BearDogRpc("Missing server_write_iv in response".to_string()))?
+        ).map_err(|e| Error::BearDogRpc(format!("Invalid server_write_iv base64: {}", e)))?;
+        debug!("  ✅ server_handshake_iv: {} bytes", server_write_iv.len());
+
+        info!("✅ Handshake traffic secrets derived successfully (RFC 8446 Section 7.1 compliant)");
+        
         Ok(TlsSecrets {
-            client_write_key: BASE64_STANDARD.decode(
-                result["client_write_key"].as_str()
-                    .ok_or_else(|| Error::BearDogRpc("Missing client_write_key".to_string()))?
-            ).map_err(|e| Error::BearDogRpc(format!("Invalid client_write_key: {}", e)))?,
-            
-            server_write_key: BASE64_STANDARD.decode(
-                result["server_write_key"].as_str()
-                    .ok_or_else(|| Error::BearDogRpc("Missing server_write_key".to_string()))?
-            ).map_err(|e| Error::BearDogRpc(format!("Invalid server_write_key: {}", e)))?,
-            
-            client_write_iv: BASE64_STANDARD.decode(
-                result["client_write_iv"].as_str()
-                    .ok_or_else(|| Error::BearDogRpc("Missing client_write_iv".to_string()))?
-            ).map_err(|e| Error::BearDogRpc(format!("Invalid client_write_iv: {}", e)))?,
-            
-            server_write_iv: BASE64_STANDARD.decode(
-                result["server_write_iv"].as_str()
-                    .ok_or_else(|| Error::BearDogRpc("Missing server_write_iv".to_string()))?
-            ).map_err(|e| Error::BearDogRpc(format!("Invalid server_write_iv: {}", e)))?,
+            client_write_key,
+            server_write_key,
+            client_write_iv,
+            server_write_iv,
         })
     }
 

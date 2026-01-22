@@ -91,16 +91,18 @@ impl TlsHandshake {
         // - Handshake message: Type (1) + Length (3) + Content (variable)
         //
         // We must strip the 5-byte TLS record header before adding to transcript!
-        if client_hello.len() > 5 {
+        let client_hello_len = if client_hello.len() > 5 {
             let handshake_message = &client_hello[5..]; // Skip 5-byte TLS record header
             self.update_transcript(handshake_message);
             debug!("✅ ClientHello HANDSHAKE MESSAGE added to transcript ({} bytes, stripped 5-byte TLS header)", 
                    handshake_message.len());
             trace!("Handshake message preview: {:02x?}", &handshake_message[..std::cmp::min(32, handshake_message.len())]);
+            handshake_message.len()
         } else {
             error!("❌ ClientHello too short to contain handshake message!");
             self.update_transcript(&client_hello);
-        }
+            client_hello.len()
+        };
         
         // Comprehensive hex dump for debugging
         debug!("ClientHello hex dump (first 160 bytes):");
@@ -183,34 +185,54 @@ impl TlsHandshake {
         debug!("✅ Computed shared secret: {} bytes in {:?}", shared_secret.len(), ecdh_start.elapsed());
         trace!("Shared secret: {:02x?}", &shared_secret[..std::cmp::min(16, shared_secret.len())]);
 
-        // 7. Derive handshake traffic keys (RFC 8446 Section 7.1)
+        // 7. Compute transcript hash for handshake key derivation
+        // RFC 8446 Section 7.1: Handshake traffic secrets are derived using transcript of ClientHello + ServerHello
+        info!("Step 7: Computing transcript hash for handshake key derivation");
+        debug!("📊 Handshake transcript at this point (for handshake key derivation):");
+        debug!("   Components: ClientHello + ServerHello (both plaintext)");
+        debug!("   Total bytes: {}", self.transcript.len());
+        debug!("   ClientHello was: {} bytes (first message in transcript)", client_hello_len);
+        debug!("   ServerHello was: {} bytes (second message in transcript)", server_hello.len());
+        trace!("   Transcript (first 64 bytes): {}", hex::encode(&self.transcript[..std::cmp::min(64, self.transcript.len())]));
+        trace!("   Transcript (last 64 bytes): {}", hex::encode(&self.transcript[std::cmp::max(0, self.transcript.len() - 64)..]));
+        
+        let handshake_transcript_hash = self.compute_transcript_hash();
+        info!("✅ Handshake transcript hash: {} bytes", handshake_transcript_hash.len());
+        debug!("   SHA-256 hash (hex): {}", hex::encode(&handshake_transcript_hash));
+        debug!("   This hash will be used to derive handshake traffic keys (RFC 8446 Section 7.1)");
+
+        // 8. Derive handshake traffic keys (RFC 8446 Section 7.1)
         // These keys are used to decrypt post-handshake messages (EncryptedExtensions, Certificate, etc.)
-        // CRITICAL: Transcript hash must be computed over PLAINTEXT messages, not encrypted!
-        info!("Step 7: Deriving handshake traffic keys for decrypting post-handshake messages");
-        debug!("RFC 8446: After ServerHello, all handshake messages are encrypted with handshake traffic keys");
+        // CRITICAL: Keys derived with transcript hash of ClientHello + ServerHello!
+        info!("Step 8: Deriving handshake traffic keys for decrypting post-handshake messages");
+        debug!("RFC 8446 Section 7.1: Handshake keys derived from:");
+        debug!("   → ECDH shared secret");
+        debug!("   → Client random");
+        debug!("   → Server random");
+        debug!("   → Transcript hash (ClientHello + ServerHello)");
         let handshake_start = std::time::Instant::now();
         let handshake_keys = self.beardog
-            .tls_derive_handshake_secrets(&shared_secret, &client_random, &server_random)
+            .tls_derive_handshake_secrets(&shared_secret, &client_random, &server_random, &handshake_transcript_hash)
             .await
             .map_err(|e| {
                 error!("❌ Failed to derive handshake traffic keys: {}", e);
                 e
             })?;
         info!("✅ Handshake traffic keys derived in {:?}", handshake_start.elapsed());
-        debug!("  client_write_key: {} bytes", handshake_keys.client_write_key.len());
-        debug!("  server_write_key: {} bytes", handshake_keys.server_write_key.len());
-        debug!("  client_write_iv: {} bytes", handshake_keys.client_write_iv.len());
-        debug!("  server_write_iv: {} bytes", handshake_keys.server_write_iv.len());
+        debug!("  client_handshake_key: {} bytes", handshake_keys.client_write_key.len());
+        debug!("  server_handshake_key: {} bytes", handshake_keys.server_write_key.len());
+        debug!("  client_handshake_iv: {} bytes", handshake_keys.client_write_iv.len());
+        debug!("  server_handshake_iv: {} bytes", handshake_keys.server_write_iv.len());
 
-        // 8. Read and decrypt post-handshake encrypted messages
+        // 9. Read and decrypt post-handshake encrypted messages
         // RFC 8446 Section 4.4.1: Transcript hash is computed over PLAINTEXT handshake messages!
         // Messages to decrypt: EncryptedExtensions, Certificate, CertificateVerify, Finished
-        info!("Step 8: Reading and decrypting post-handshake encrypted messages");
+        info!("Step 9: Reading and decrypting post-handshake encrypted messages");
         debug!("Expecting: ChangeCipherSpec (optional), EncryptedExtensions, Certificate, CertificateVerify, Finished");
         debug!("RFC 8446 CRITICAL: Transcript must contain PLAINTEXT (decrypted) messages, NOT encrypted!");
         
         // Read, decrypt, and track post-handshake messages for transcript hash
-        // We expect: ChangeCipherSpec (optional), then multiple APPLICATION_DATA records containing handshake messages
+           // We expect: ChangeCipherSpec (optional), then multiple APPLICATION_DATA records containing handshake messages
         let mut messages_read = 0;
         let mut sequence_number = 0u64; // Sequence number for AEAD nonce generation
         let post_handshake_start = std::time::Instant::now();
@@ -328,9 +350,9 @@ impl TlsHandshake {
         debug!("Post-handshake phase complete: {} messages decrypted in {:?}", 
                messages_read, post_handshake_start.elapsed());
         
-        // 9. Compute transcript hash (RFC 8446 Section 4.4.1)
+        // 10. Compute final transcript hash for application key derivation (RFC 8446 Section 4.4.1)
         // Transcript includes: ClientHello, ServerHello, and all DECRYPTED handshake messages
-        info!("Step 9: Computing transcript hash for RFC 8446 key derivation");
+        info!("Step 10: Computing final transcript hash for application key derivation");
         debug!("📊 Final transcript: {} bytes total (ALL PLAINTEXT - RFC 8446 compliant!)", self.transcript.len());
         debug!("Transcript hex (first 64 bytes): {}", hex::encode(&self.transcript[..std::cmp::min(64, self.transcript.len())]));
         
@@ -346,12 +368,12 @@ impl TlsHandshake {
         debug!("  Total: {} bytes → SHA-256 → 32 bytes", self.transcript.len());
         debug!("  🎯 CRITICAL: All handshake messages are PLAINTEXT (decrypted)!");
         
-        // 10. Derive application traffic secrets (for HTTP data encryption)
+        // 11. Derive application traffic secrets (for HTTP data encryption)
         // RFC 8446 Section 7.1: Application secrets are derived WITH transcript hash
         // Note: TLS 1.3 has separate key schedules:
         // - Handshake traffic secrets: For decrypting handshake messages (EncryptedExtensions, Certificate, etc.)
         // - Application traffic secrets: For encrypting HTTP data (requires transcript hash!)
-        info!("Step 10: Deriving TLS application traffic secrets via BearDog (WITH transcript hash)");
+        info!("Step 11: Deriving TLS application traffic secrets via BearDog (WITH transcript hash)");
         let derive_start = std::time::Instant::now();
         let secrets = self.beardog
             .tls_derive_application_secrets(&shared_secret, &client_random, &server_random, &transcript_hash)
@@ -364,10 +386,10 @@ impl TlsHandshake {
         info!("🔐 TLS application traffic keys derived in {:?}", derive_start.elapsed());
         debug!("Application secrets derived successfully (for HTTP data encryption)");
         
-        // 10. Send client Finished message (simplified - empty for MVP)
+        // 12. Send client Finished message (simplified - empty for MVP)
         // In full TLS 1.3, this would be encrypted and contain HMAC of transcript
         // For MVP, we send a minimal ChangeCipherSpec to indicate we're ready
-        debug!("Step 10: Sending client ChangeCipherSpec acknowledgment");
+        debug!("Step 12: Sending client ChangeCipherSpec acknowledgment");
         let change_cipher_spec = vec![
             0x14, // ContentType: ChangeCipherSpec
             0x03, 0x03, // TLS 1.2 (compatibility)
