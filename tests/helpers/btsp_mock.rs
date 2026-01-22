@@ -19,7 +19,7 @@ pub struct BearDogMock {
 }
 
 /// Fault injection modes for testing
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum FaultMode {
     /// Normal operation (no faults)
     None,

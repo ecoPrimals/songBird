@@ -44,7 +44,7 @@ fn test_canonical_validation() {
     let service_id = ServiceId::new("valid-service-123");
     assert_eq!(service_id.as_str(), "valid-service-123");
 
-    let bind_addr = test_bind_address();
+    let bind_addr = test_bind_address("test");
     let endpoint = Endpoint::new("http", bind_addr.as_str(), test_orchestrator_port());
     let url = endpoint.to_url();
     assert_eq!(url, format!("http://{}:{}", bind_addr, test_orchestrator_port()));
@@ -98,7 +98,7 @@ fn test_canonical_conversion() {
     assert_eq!(service_id.as_str(), "owned-service");
 
     // Endpoint URL conversion
-    let bind_addr = test_bind_address();
+    let bind_addr = test_bind_address("test");
     let endpoint = Endpoint::new("http", bind_addr.as_str(), test_dashboard_port());
     assert_eq!(endpoint.to_url(), format!("http://{}:{}", bind_addr, test_dashboard_port()));
 }
@@ -141,7 +141,7 @@ fn test_canonical_defaults() {
     assert!(request_id.uuid().to_string().len() == 36); // UUID v4 length
 
     // Endpoint can be created with minimal parameters
-    let endpoint = Endpoint::new("http", test_bind_address(), 8080);
+    let endpoint = Endpoint::new("http", test_bind_address("test").as_str(), 8080);
     assert!(endpoint.path.is_none());
 
     // ServiceId can be created from simple strings

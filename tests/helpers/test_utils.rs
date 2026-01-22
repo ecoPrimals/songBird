@@ -52,19 +52,20 @@ mod tests {
 
     #[tokio::test]
     async fn test_wait_for_success() {
-        let mut counter = 0;
+        use std::sync::atomic::{AtomicUsize, Ordering};
+        let counter = AtomicUsize::new(0);
 
         let result = wait_for(
             || {
-                counter += 1;
-                counter >= 5
+                counter.fetch_add(1, Ordering::SeqCst);
+                counter.load(Ordering::SeqCst) >= 5
             },
             Duration::from_secs(1),
         )
         .await;
 
         assert!(result);
-        assert!(counter >= 5);
+        assert!(counter.load(Ordering::SeqCst) >= 5);
     }
 
     #[tokio::test]
