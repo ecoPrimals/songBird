@@ -150,6 +150,9 @@ mod tests {
 
     #[test]
     fn test_detect_gpu_with_override() {
+        // Clean up first to ensure isolation
+        std::env::remove_var("GPU_MODEL");
+        
         // Set environment override
         std::env::set_var("GPU_MODEL", "TestGPU RTX 9999");
 
@@ -174,6 +177,9 @@ mod tests {
 
     #[test]
     fn test_detect_storage_capacity_with_override() {
+        // Clean up first to ensure isolation
+        std::env::remove_var("STORAGE_GB");
+        
         // Set environment override
         std::env::set_var("STORAGE_GB", "500");
 

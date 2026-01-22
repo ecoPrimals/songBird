@@ -137,7 +137,6 @@ mod tests {
     use super::*;
     use axum::body::Body;
     use axum::http::{Request, StatusCode};
-    use songbird_network_federation::state::NodeRegistration;
     use songbird_types::SongbirdError;
     use tower::ServiceExt;
 

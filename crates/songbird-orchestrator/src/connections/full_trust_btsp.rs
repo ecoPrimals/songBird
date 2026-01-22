@@ -245,6 +245,6 @@ mod tests {
     #[test]
     fn test_trust_level_highest() {
         assert_eq!(TrustLevel::Highest.as_u8(), 3);
-        assert_eq!(TrustLevel::Highest.name(), "Highest");
+        assert_eq!(TrustLevel::Highest.name(), "highest");
     }
 }

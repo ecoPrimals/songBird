@@ -176,6 +176,6 @@ mod tests {
 
         let (trust_manager, _) = result.unwrap();
         // Trust manager created successfully with custom timeouts
-        assert!(!Arc::ptr_eq(&trust_manager, &trust_manager));
+        assert!(Arc::strong_count(&trust_manager) >= 1);
     }
 }

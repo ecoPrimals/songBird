@@ -191,10 +191,17 @@ mod tests {
     async fn test_security_setup_with_fallback() {
         // Remove explicit endpoint
         std::env::remove_var("SECURITY_ENDPOINT");
-        std::env::remove_var("CAPABILITY_SECURITY_ENDPOINT");
+        std::env::remove_var("SONGBIRD_SECURITY_PROVIDER");
+        std::env::remove_var("SONGBIRD_BEARDOG_URL");
+        
+        // Set fallback endpoint
+        std::env::set_var("CAPABILITY_SECURITY_ENDPOINT", "http://localhost:9090");
 
         let result = setup_security().await;
         assert!(result.is_ok());
+        
+        // Clean up
+        std::env::remove_var("CAPABILITY_SECURITY_ENDPOINT");
     }
 
     #[test]
