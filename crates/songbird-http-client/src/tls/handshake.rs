@@ -29,9 +29,17 @@ impl TlsHandshake {
     
     /// Update transcript with handshake message
     /// RFC 8446 Section 4.4.1: Transcript hash includes all handshake messages
+    /// 
+    /// CRITICAL: This method expects handshake messages WITHOUT TLS record framing!
+    /// - ClientHello: Must strip 5-byte TLS record header before calling
+    /// - ServerHello: Already stripped by read_record()
+    /// - Post-handshake messages: Already stripped by read_record()
     fn update_transcript(&mut self, message: &[u8]) {
+        let before = self.transcript.len();
+        let after = before + message.len();
         trace!("📝 Updating transcript: +{} bytes (total: {} → {} bytes)", 
-               message.len(), self.transcript.len(), self.transcript.len() + message.len());
+               message.len(), before, after);
+        trace!("   Message preview: {:02x?}", &message[..std::cmp::min(16, message.len())]);
         self.transcript.extend_from_slice(message);
     }
     
@@ -74,9 +82,25 @@ impl TlsHandshake {
         
         info!("📤 Sending ClientHello: {} bytes to {}", client_hello.len(), server_name);
         
-        // RFC 8446: Update transcript with ClientHello
-        self.update_transcript(&client_hello);
-        debug!("✅ ClientHello added to transcript");
+        // RFC 8446 Section 4.4.1: Update transcript with ClientHello HANDSHAKE MESSAGE ONLY
+        // The transcript includes the handshake message (Type + Length + Content), 
+        // NOT the TLS record framing (ContentType + Version + RecordLength)
+        //
+        // ClientHello structure:
+        // - TLS record header (5 bytes): ContentType (1) + Version (2) + RecordLength (2)
+        // - Handshake message: Type (1) + Length (3) + Content (variable)
+        //
+        // We must strip the 5-byte TLS record header before adding to transcript!
+        if client_hello.len() > 5 {
+            let handshake_message = &client_hello[5..]; // Skip 5-byte TLS record header
+            self.update_transcript(handshake_message);
+            debug!("✅ ClientHello HANDSHAKE MESSAGE added to transcript ({} bytes, stripped 5-byte TLS header)", 
+                   handshake_message.len());
+            trace!("Handshake message preview: {:02x?}", &handshake_message[..std::cmp::min(32, handshake_message.len())]);
+        } else {
+            error!("❌ ClientHello too short to contain handshake message!");
+            self.update_transcript(&client_hello);
+        }
         
         // Comprehensive hex dump for debugging
         debug!("ClientHello hex dump (first 160 bytes):");
@@ -119,8 +143,12 @@ impl TlsHandshake {
         trace!("ServerHello content: {:02x?}", &server_hello[..std::cmp::min(64, server_hello.len())]);
         
         // RFC 8446: Update transcript with ServerHello
+        // Note: read_record() already stripped the 5-byte TLS record header,
+        // so server_hello contains only the handshake message (Type + Length + Content)
         self.update_transcript(&server_hello);
-        debug!("✅ ServerHello added to transcript");
+        debug!("✅ ServerHello added to transcript ({} bytes, TLS header already stripped by read_record)", 
+               server_hello.len());
+        debug!("📊 Transcript now: {} bytes total", self.transcript.len());
 
         // 5. Parse ServerHello
         debug!("Step 5: Parsing ServerHello");
@@ -171,8 +199,11 @@ impl TlsHandshake {
                     trace!("Record {} content: {:02x?}", messages_read, &record[..std::cmp::min(32, record.len())]);
                     
                     // RFC 8446: Add encrypted handshake record to transcript
+                    // Note: read_record() already stripped the 5-byte TLS record header
                     self.update_transcript(&record);
-                    debug!("✅ Post-handshake record {} added to transcript", messages_read);
+                    debug!("✅ Post-handshake record {} added to transcript ({} bytes, TLS header already stripped)", 
+                           messages_read, record.len());
+                    debug!("📊 Transcript now: {} bytes total", self.transcript.len());
                     
                     // Check if this looks like the last handshake message (server Finished)
                     // Server Finished is typically small (< 100 bytes encrypted)
@@ -213,8 +244,19 @@ impl TlsHandshake {
         // 8. Compute transcript hash (RFC 8446 Section 4.4.1)
         // Transcript includes: ClientHello, ServerHello, and all encrypted handshake messages
         info!("Step 8: Computing transcript hash for RFC 8446 key derivation");
+        debug!("📊 Final transcript: {} bytes total", self.transcript.len());
+        debug!("Transcript hex (first 64 bytes): {}", hex::encode(&self.transcript[..std::cmp::min(64, self.transcript.len())]));
+        
         let transcript_hash = self.compute_transcript_hash();
-        debug!("✅ Transcript hash computed: {} bytes", transcript_hash.len());
+        info!("✅ Transcript hash computed: {} bytes (SHA-256)", transcript_hash.len());
+        info!("🔐 Transcript hash (hex): {}", hex::encode(&transcript_hash));
+        
+        // Log transcript composition for debugging
+        debug!("Transcript composition:");
+        debug!("  - ClientHello handshake message (no TLS header)");
+        debug!("  - ServerHello handshake message (no TLS header)");
+        debug!("  - {} post-handshake encrypted messages (no TLS headers)", messages_read);
+        debug!("  Total: {} bytes → SHA-256 → 32 bytes", self.transcript.len());
         
         // 9. Derive application traffic secrets (for HTTP data encryption)
         // RFC 8446 Section 7.1: Application secrets are derived WITH transcript hash
