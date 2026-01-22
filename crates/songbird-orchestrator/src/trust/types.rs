@@ -357,9 +357,10 @@ mod tests {
 
     #[test]
     fn test_capability_proof_verification() {
+        // Valid proof (>= 32 chars)
         let proof = CapabilityProof {
             capabilities: vec!["orchestration".to_string()],
-            proof: "test-proof".to_string(),
+            proof: "0123456789abcdef0123456789abcdef".to_string(),
             timestamp: SystemTime::now(),
         };
 
@@ -368,11 +369,20 @@ mod tests {
         // Empty capabilities should fail
         let invalid_proof = CapabilityProof {
             capabilities: vec![],
-            proof: "test-proof".to_string(),
+            proof: "0123456789abcdef0123456789abcdef".to_string(),
             timestamp: SystemTime::now(),
         };
 
         assert!(!invalid_proof.verify());
+        
+        // Short proof should fail (< 32 chars)
+        let short_proof = CapabilityProof {
+            capabilities: vec!["orchestration".to_string()],
+            proof: "too-short".to_string(),
+            timestamp: SystemTime::now(),
+        };
+        
+        assert!(!short_proof.verify());
     }
 
     #[test]
@@ -384,9 +394,10 @@ mod tests {
             public_key: None,
         };
 
+        // Valid proof (>= 32 chars for identity proofs too)
         let proof = IdentityProof {
             identity,
-            proof: "test-proof".to_string(),
+            proof: "0123456789abcdef0123456789abcdef".to_string(),
             proof_type: "jwt".to_string(),
             timestamp: SystemTime::now(),
         };
@@ -403,7 +414,7 @@ mod tests {
 
         let invalid_proof = IdentityProof {
             identity: invalid_identity,
-            proof: "test-proof".to_string(),
+            proof: "0123456789abcdef0123456789abcdef".to_string(),
             proof_type: "jwt".to_string(),
             timestamp: SystemTime::now(),
         };

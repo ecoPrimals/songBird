@@ -547,10 +547,10 @@ mod tests {
         // Establish anonymous trust first
         manager.establish_anonymous(session_id.clone()).await.unwrap();
 
-        // Create capability proof
+        // Create capability proof (must be >= 32 chars)
         let proof = CapabilityProof {
             capabilities: vec!["orchestration".to_string()],
-            proof: "test-proof".to_string(),
+            proof: "0123456789abcdef0123456789abcdef".to_string(), // 32 chars minimum
             timestamp: SystemTime::now(),
         };
 
@@ -569,16 +569,16 @@ mod tests {
         // Establish anonymous trust
         manager.establish_anonymous(session_id.clone()).await.unwrap();
 
-        // Escalate to capability-verified
+        // Escalate to capability-verified (proof must be >= 32 chars)
         let cap_proof = CapabilityProof {
             capabilities: vec!["orchestration".to_string()],
-            proof: "test-proof".to_string(),
+            proof: "0123456789abcdef0123456789abcdef".to_string(), // 32 chars minimum
             timestamp: SystemTime::now(),
         };
         manager.verify_capabilities(&session_id, cap_proof).await.unwrap();
 
-        // Escalate to role-verified
-        manager.verify_role(&session_id, "admin".to_string()).await.unwrap();
+        // Escalate to role-verified (use "coordinator" not "admin" - admin requires identity first)
+        manager.verify_role(&session_id, "coordinator".to_string()).await.unwrap();
 
         // Escalate to identity-verified
         let identity = TowerIdentity {
@@ -590,7 +590,7 @@ mod tests {
 
         let identity_proof = IdentityProof {
             identity,
-            proof: "test-proof".to_string(),
+            proof: "0123456789abcdef0123456789abcdef".to_string(), // 32 chars minimum
             proof_type: "jwt".to_string(),
             timestamp: SystemTime::now(),
         };
@@ -606,11 +606,11 @@ mod tests {
         let manager = TrustEscalationManager::with_defaults();
         let session_id = "test-session".to_string();
 
-        // Establish capability-verified trust
+        // Establish capability-verified trust (proof must be >= 32 chars)
         manager.establish_anonymous(session_id.clone()).await.unwrap();
         let proof = CapabilityProof {
             capabilities: vec!["orchestration".to_string()],
-            proof: "test-proof".to_string(),
+            proof: "0123456789abcdef0123456789abcdef".to_string(), // 32 chars minimum
             timestamp: SystemTime::now(),
         };
         manager.verify_capabilities(&session_id, proof).await.unwrap();
