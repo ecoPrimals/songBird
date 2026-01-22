@@ -118,7 +118,7 @@ impl BearDogClient {
         debug!("🔒 Deriving TLS secrets via BearDog");
         
         let result = self.call("tls.derive_secrets", json!({
-            "shared_secret": BASE64_STANDARD.encode(shared_secret),
+            "pre_master_secret": BASE64_STANDARD.encode(shared_secret),
             "client_random": BASE64_STANDARD.encode(client_random),
             "server_random": BASE64_STANDARD.encode(server_random)
         })).await?;
@@ -170,11 +170,19 @@ impl BearDogClient {
     pub async fn decrypt(&self, key: &[u8], nonce: &[u8], ciphertext: &[u8], aad: &[u8]) -> Result<Vec<u8>> {
         trace!("🔓 Decrypting {} bytes via BearDog", ciphertext.len());
         
+        // ChaCha20-Poly1305 AEAD: Last 16 bytes are the authentication tag
+        if ciphertext.len() < 16 {
+            return Err(Error::BearDogRpc("Ciphertext too short for ChaCha20-Poly1305 (need at least 16 bytes for tag)".to_string()));
+        }
+        
+        let (actual_ciphertext, tag) = ciphertext.split_at(ciphertext.len() - 16);
+        
         let result = self.call("crypto.decrypt", json!({
             "algorithm": "chacha20-poly1305",
             "key": BASE64_STANDARD.encode(key),
             "nonce": BASE64_STANDARD.encode(nonce),
-            "ciphertext": BASE64_STANDARD.encode(ciphertext),
+            "ciphertext": BASE64_STANDARD.encode(actual_ciphertext),
+            "tag": BASE64_STANDARD.encode(tag),
             "aad": BASE64_STANDARD.encode(aad)
         })).await?;
 
