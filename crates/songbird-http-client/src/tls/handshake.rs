@@ -127,7 +127,7 @@ impl TlsHandshake {
         // 4. Receive ServerHello with timeout
         info!("📥 Waiting for ServerHello (10 second timeout)");
         let read_start = std::time::Instant::now();
-        let server_hello = timeout(
+        let (server_hello_type, server_hello) = timeout(
             Duration::from_secs(10),
             self.read_record(stream)
         ).await
@@ -139,8 +139,18 @@ impl TlsHandshake {
                 error!("❌ Error reading ServerHello after {:?}: {}", read_start.elapsed(), e);
                 e
             }))?;
-        info!("✅ Received ServerHello: {} bytes in {:?}", server_hello.len(), read_start.elapsed());
+        info!("✅ Received ServerHello: type=0x{:02x}, {} bytes in {:?}", 
+              server_hello_type, server_hello.len(), read_start.elapsed());
         trace!("ServerHello content: {:02x?}", &server_hello[..std::cmp::min(64, server_hello.len())]);
+        
+        // Validate this is a Handshake record (0x16)
+        if server_hello_type != 0x16 {
+            error!("❌ Expected Handshake record (0x16) for ServerHello, got 0x{:02x}", server_hello_type);
+            return Err(Error::TlsHandshake(format!(
+                "Expected Handshake record for ServerHello, got type 0x{:02x}",
+                server_hello_type
+            )));
+        }
         
         // RFC 8446: Update transcript with ServerHello
         // Note: read_record() already stripped the 5-byte TLS record header,
@@ -210,9 +220,42 @@ impl TlsHandshake {
             let record_start = std::time::Instant::now();
             
             match timeout(Duration::from_secs(5), self.read_record(stream)).await {
-                Ok(Ok(encrypted_record)) => {
+                Ok(Ok((content_type, encrypted_record))) => {
+                    info!("✅ Read TLS record type=0x{:02x} ({} bytes) in {:?}", 
+                          content_type, encrypted_record.len(), record_start.elapsed());
+                    
+                    // RFC 8446 Section 5: Skip ChangeCipherSpec (legacy compatibility)
+                    // ChangeCipherSpec (0x14) is PLAINTEXT in TLS 1.3, not encrypted!
+                    // It's a 1-byte legacy message (0x01) for middlebox compatibility
+                    // We MUST NOT try to decrypt it (would fail: 1 byte < 16 byte AEAD tag)
+                    if content_type == 0x14 { // CHANGE_CIPHER_SPEC
+                        info!("⏭️  Skipping ChangeCipherSpec (legacy TLS 1.3 compatibility message)");
+                        debug!("   RFC 8446 Section 5: ChangeCipherSpec is PLAINTEXT (not encrypted)");
+                        debug!("   Content: {:02x?}", encrypted_record);
+                        
+                        // Validate it's the expected 1-byte 0x01
+                        if encrypted_record.len() == 1 && encrypted_record[0] == 0x01 {
+                            debug!("   ✅ Valid ChangeCipherSpec (0x01)");
+                        } else {
+                            warn!("   ⚠️  Unexpected ChangeCipherSpec: {} bytes, content={:02x?}", 
+                                  encrypted_record.len(), encrypted_record);
+                        }
+                        
+                        // Do NOT add to transcript (not a handshake message)
+                        // Do NOT try to decrypt (it's plaintext!)
+                        // Just skip and continue to next record
+                        continue;
+                    }
+                    
+                    // For APPLICATION_DATA (0x17): encrypted handshake messages
+                    // (EncryptedExtensions, Certificate, CertificateVerify, Finished)
+                    if content_type != 0x17 {
+                        warn!("⚠️  Unexpected record type after ServerHello: 0x{:02x}", content_type);
+                        continue;
+                    }
+                    
                     messages_read += 1;
-                    info!("✅ Read encrypted post-handshake record {} ({} bytes) in {:?}", 
+                    info!("✅ Read encrypted handshake record {} ({} bytes) in {:?}", 
                           messages_read, encrypted_record.len(), record_start.elapsed());
                     trace!("Encrypted record {} preview: {:02x?}", 
                            messages_read, &encrypted_record[..std::cmp::min(32, encrypted_record.len())]);
@@ -495,7 +538,9 @@ impl TlsHandshake {
     }
 
     /// Read a TLS record (generic, works for any record type)
-    async fn read_record(&self, stream: &mut TcpStream) -> Result<Vec<u8>> {
+    /// Read a TLS record and return (content_type, content)
+    /// Returns the content type byte (e.g., 0x14=ChangeCipherSpec, 0x17=ApplicationData) and the record content
+    async fn read_record(&self, stream: &mut TcpStream) -> Result<(u8, Vec<u8>)> {
         // Read record header
         trace!("Reading TLS record header (5 bytes)");
         let mut header = [0u8; 5];
@@ -597,7 +642,7 @@ impl TlsHandshake {
             )));
         }
 
-        Ok(content)
+        Ok((content_type, content))
     }
 
     /// Decrypt a TLS handshake record with handshake traffic keys
