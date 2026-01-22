@@ -289,11 +289,12 @@ impl TlsHandshake {
 
         // ALPN extension (0x0010) - Application-Layer Protocol Negotiation
         // CRITICAL for HTTPS servers like GitHub, CloudFlare, Google
+        // RFC 7301: ProtocolNameList = length(2) + [length(1) + name(n)]+
         ext.extend_from_slice(&[0x00, 0x10]); // Extension type
-        ext.extend_from_slice(&[0x00, 0x0c]); // Length: 12 bytes
-        ext.extend_from_slice(&[0x00, 0x0a]); // Protocol list length: 10 bytes
+        ext.extend_from_slice(&[0x00, 0x0b]); // Extension length: 11 bytes (2 + 1 + 8)
+        ext.extend_from_slice(&[0x00, 0x09]); // Protocol list length: 9 bytes (1 + 8)
         ext.extend_from_slice(&[0x08]); // Protocol name length: 8 bytes
-        ext.extend_from_slice(b"http/1.1"); // Protocol name
+        ext.extend_from_slice(b"http/1.1"); // Protocol name: "http/1.1"
 
         // Supported versions (0x002b)
         ext.extend_from_slice(&[0x00, 0x2b]); // Extension type
@@ -731,6 +732,67 @@ mod tests {
         // Verify ALPN extension is present (0x00 0x10)
         let alpn_present = extensions.windows(2).any(|w| w == [0x00, 0x10]);
         assert!(alpn_present, "Should contain ALPN extension for HTTPS");
+    }
+    
+    #[test]
+    fn test_alpn_extension_encoding() {
+        // CRITICAL: Validates byte-perfect ALPN encoding to prevent decode_error
+        // This test prevents the exact bug biomeOS found in integration testing
+        let beardog = Arc::new(BearDogClient::new("/tmp/beardog.sock"));
+        let handshake = TlsHandshake::new(beardog);
+        
+        let public_key = vec![1u8; 32];
+        let extensions = handshake.build_extensions("api.github.com", &public_key)
+            .expect("Should build extensions");
+        
+        // Find ALPN extension (0x00 0x10)
+        let mut alpn_start = None;
+        for i in 0..extensions.len() - 1 {
+            if extensions[i] == 0x00 && extensions[i + 1] == 0x10 {
+                alpn_start = Some(i);
+                break;
+            }
+        }
+        
+        let alpn_start = alpn_start.expect("ALPN extension must be present");
+        
+        // Verify ALPN extension structure (RFC 7301)
+        // Format: Type(2) + ExtLength(2) + ListLength(2) + ProtocolLength(1) + Protocol(n)
+        assert_eq!(extensions[alpn_start], 0x00, "ALPN type byte 1");
+        assert_eq!(extensions[alpn_start + 1], 0x10, "ALPN type byte 2");
+        
+        // Extension length should be 11 bytes (0x00 0x0b)
+        assert_eq!(extensions[alpn_start + 2], 0x00, "ALPN extension length MSB");
+        assert_eq!(extensions[alpn_start + 3], 0x0b, "ALPN extension length LSB = 11 bytes");
+        
+        // Protocol list length should be 9 bytes (0x00 0x09)
+        assert_eq!(extensions[alpn_start + 4], 0x00, "ALPN list length MSB");
+        assert_eq!(extensions[alpn_start + 5], 0x09, "ALPN list length LSB = 9 bytes (1 + 8)");
+        
+        // Protocol name length should be 8 bytes (0x08)
+        assert_eq!(extensions[alpn_start + 6], 0x08, "Protocol name length = 8 bytes");
+        
+        // Protocol name should be "http/1.1"
+        let protocol_name = &extensions[alpn_start + 7..alpn_start + 15];
+        assert_eq!(protocol_name, b"http/1.1", "Protocol name should be 'http/1.1'");
+        
+        // Total ALPN extension size validation
+        // Type(2) + ExtLength(2) + ListLength(2) + NameLength(1) + Name(8) = 15 bytes
+        let total_alpn_size = 2 + 2 + 2 + 1 + 8;
+        assert_eq!(total_alpn_size, 15, "Total ALPN extension should be 15 bytes");
+        
+        // Verify extension length field matches actual data
+        let ext_length = u16::from_be_bytes([extensions[alpn_start + 2], extensions[alpn_start + 3]]);
+        assert_eq!(ext_length, 11, "Extension length field should be 11");
+        
+        // Verify list length field matches actual data
+        let list_length = u16::from_be_bytes([extensions[alpn_start + 4], extensions[alpn_start + 5]]);
+        assert_eq!(list_length, 9, "List length field should be 9");
+        
+        // Verify protocol length matches actual protocol
+        let protocol_length = extensions[alpn_start + 6];
+        assert_eq!(protocol_length, 8, "Protocol length should be 8");
+        assert_eq!(b"http/1.1".len(), 8, "Protocol 'http/1.1' is 8 bytes");
     }
     
     #[test]
