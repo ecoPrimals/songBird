@@ -240,7 +240,7 @@ impl TokenValidator {
         // Check blacklist (for revoked tokens)
         // Future enhancement: Implement token blacklist via Redis or database
         // For now, expiry check provides basic security
-        // Blacklist implementation tracking: https://github.com/ecoPrimals/songbird/issues/XXX
+        // TODO: Implement token blacklist functionality in future version
 
         // Return identity
         Ok(Identity {
