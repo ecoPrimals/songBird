@@ -15,6 +15,7 @@ pub struct TlsRecordLayer {
     keys: SessionKeys,
     write_sequence_number: u64,
     read_sequence_number: u64,
+    last_written_size: Option<usize>,  // Track last write for debugging
 }
 
 impl TlsRecordLayer {
@@ -25,6 +26,7 @@ impl TlsRecordLayer {
             keys,
             write_sequence_number: 0,
             read_sequence_number: 0,
+            last_written_size: None,
         }
     }
 
@@ -93,6 +95,10 @@ impl TlsRecordLayer {
         self.write_sequence_number += 1;
         debug!("  → Incremented write sequence number to {}", self.write_sequence_number);
 
+        // Track last written size for debugging
+        self.last_written_size = Some(data.len());
+        debug!("  → Stored last written size: {} bytes (for request/response validation)", data.len());
+
         Ok(())
     }
 
@@ -103,6 +109,13 @@ impl TlsRecordLayer {
     ) -> Result<Vec<u8>> {
         info!("📥 Reading HTTP application data (APPLICATION DATA phase)");
         debug!("  Read sequence number: {}", self.read_sequence_number);
+
+        // Validate TCP stream state
+        if let Ok(peer) = stream.peer_addr() {
+            debug!("TCP stream peer address: {}", peer);
+        } else {
+            warn!("⚠️  Unable to get peer address (stream may be closed)");
+        }
 
         // Read record header (5 bytes)
         let mut header = [0u8; 5];
@@ -172,6 +185,24 @@ impl TlsRecordLayer {
 
         debug!("✅ Read {} bytes of encrypted application data", encrypted.len());
         trace!("Encrypted data (first 32 bytes): {:02x?}", &encrypted[..std::cmp::min(32, encrypted.len())]);
+
+        // VALIDATION: Check if we're suspiciously reading data similar to what we just wrote
+        if let Some(last_write_size) = self.last_written_size {
+            // Compare encrypted length to last written plaintext
+            // Encrypted = plaintext + ContentType(1) + AEAD tag(16)
+            let expected_encrypted_size = last_write_size + 1 + 16;
+            
+            if encrypted.len() == expected_encrypted_size {
+                warn!("⚠️  SUSPICIOUS: Encrypted data length ({} bytes) matches expected size for our last request!", encrypted.len());
+                warn!("   Last written plaintext: {} bytes", last_write_size);
+                warn!("   Expected encrypted size: {} bytes (plaintext + 1 + 16)", expected_encrypted_size);
+                warn!("   Actual encrypted size: {} bytes", encrypted.len());
+                warn!("   → Are we reading our own request instead of server's response?");
+            } else {
+                debug!("✅ Size validation: {} bytes received vs {} bytes sent (different - good!)",
+                       encrypted.len(), expected_encrypted_size);
+            }
+        }
 
         // AAD = TLS record header (5 bytes)
         let aad = &header;

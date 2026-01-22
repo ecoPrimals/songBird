@@ -11,7 +11,7 @@ use hyper_util::rt::TokioIo;
 use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::net::TcpStream;
-use tracing::{debug, info, trace};
+use tracing::{debug, info, error};
 
 /// Songbird HTTP client
 #[derive(Debug, Clone)]
@@ -101,23 +101,54 @@ impl SongbirdHttpClient {
         let mut handshake = TlsHandshake::new(self.beardog.clone());
         let session_keys = handshake.handshake(&mut tcp_stream, host).await?;
 
-        debug!("✅ TLS handshake complete");
+        info!("✅ TLS handshake complete with {}", host);
+        info!("════════════════════════════════════════════════════════════");
+        info!("  APPLICATION DATA PHASE - HTTP Request/Response Exchange");
+        info!("════════════════════════════════════════════════════════════");
 
         // Create TLS record layer
         let mut record_layer = TlsRecordLayer::new(self.beardog.clone(), session_keys);
+        debug!("✅ TLS record layer initialized (sequence numbers at 0)");
 
         // Build HTTP request
         let http_request = self.build_http_request(uri, method, &headers, body.as_ref())?;
-        trace!("HTTP request: {} bytes", http_request.len());
+        info!("🔼 SENDING HTTP REQUEST to server:");
+        info!("   Method: {}", method);
+        info!("   URI: {}", uri);
+        info!("   Size: {} bytes", http_request.len());
+        debug!("HTTP request content:\n{}", String::from_utf8_lossy(&http_request));
+        
+        // Validate TCP stream before sending
+        if let Ok(peer) = tcp_stream.peer_addr() {
+            debug!("TCP stream peer address: {}", peer);
+        }
 
         // Send HTTP request over TLS
-        record_layer.write_application_data(&mut tcp_stream, &http_request).await?;
+        info!("📤 Encrypting and sending HTTP request to server...");
+        record_layer.write_application_data(&mut tcp_stream, &http_request).await.map_err(|e| {
+            error!("❌ Failed to send HTTP request: {}", e);
+            e
+        })?;
+        info!("✅ HTTP request SENT to server (encrypted with application traffic keys)");
+        info!("   Now waiting for server's HTTP response...");
+        info!("────────────────────────────────────────────────────────────");
 
         // Read HTTP response over TLS
-        let response_data = record_layer.read_application_data(&mut tcp_stream).await?;
-        trace!("HTTP response: {} bytes", response_data.len());
+        info!("🔽 READING HTTP RESPONSE from server:");
+        info!("   Waiting for TLS APPLICATION_DATA record from server...");
+        let response_data = record_layer.read_application_data(&mut tcp_stream).await.map_err(|e| {
+            error!("❌ Failed to read HTTP response: {}", e);
+            error!("   This error occurred AFTER successfully sending request");
+            error!("   Request size was: {} bytes", http_request.len());
+            e
+        })?;
+        info!("✅ HTTP response RECEIVED from server:");
+        info!("   Size: {} bytes", response_data.len());
+        debug!("HTTP response content:\n{}", String::from_utf8_lossy(&response_data[..std::cmp::min(500, response_data.len())]));
+        info!("════════════════════════════════════════════════════════════");
 
         // Parse HTTP response
+        debug!("Parsing HTTP response...");
         self.parse_http_response(&response_data)
     }
 
