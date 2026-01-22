@@ -68,7 +68,7 @@ async fn test_server_immediate_disconnect() {
     
     // Should get 0 bytes (EOF) or error
     let result = stream.read(&mut buf).await;
-    assert!(result.is_ok() && result.unwrap() == 0 || result.is_err(), 
+    assert!(matches!(result, Ok(0) | Err(_)), 
             "Should detect disconnection");
 }
 
@@ -363,7 +363,7 @@ mod chaos_helpers {
                         _ => {
                             // Normal-ish behavior
                             let delay = 100 + (behavior * 100);
-                            sleep(Duration::from_millis(delay)).await;
+                            sleep(Duration::from_millis(delay as u64)).await;
                         }
                     }
                 });
