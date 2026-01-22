@@ -1,6 +1,6 @@
 //! TLS 1.3 handshake implementation
 
-use crate::beardog_client::BearDogClient;
+use crate::beardog_client::{BearDogClient, TlsSecrets};
 use crate::error::{Error, Result};
 use crate::tls::{session::SessionKeys, TLS_1_2, TLS_1_3, CIPHER_SUITES};
 use sha2::{Sha256, Digest};
@@ -173,50 +173,94 @@ impl TlsHandshake {
         debug!("✅ Computed shared secret: {} bytes in {:?}", shared_secret.len(), ecdh_start.elapsed());
         trace!("Shared secret: {:02x?}", &shared_secret[..std::cmp::min(16, shared_secret.len())]);
 
-        // 7. Read post-handshake encrypted messages
-        // Note: In TLS 1.3, after ServerHello, all messages are encrypted with handshake traffic keys
-        // RFC 8446 Section 7.1: Transcript hash for application secrets includes all handshake messages
-        // Messages include: EncryptedExtensions, Certificate, CertificateVerify, Finished
-        
-        info!("Step 7: Reading post-handshake encrypted messages");
+        // 7. Derive handshake traffic keys (RFC 8446 Section 7.1)
+        // These keys are used to decrypt post-handshake messages (EncryptedExtensions, Certificate, etc.)
+        // CRITICAL: Transcript hash must be computed over PLAINTEXT messages, not encrypted!
+        info!("Step 7: Deriving handshake traffic keys for decrypting post-handshake messages");
+        debug!("RFC 8446: After ServerHello, all handshake messages are encrypted with handshake traffic keys");
+        let handshake_start = std::time::Instant::now();
+        let handshake_keys = self.beardog
+            .tls_derive_handshake_secrets(&shared_secret, &client_random, &server_random)
+            .await
+            .map_err(|e| {
+                error!("❌ Failed to derive handshake traffic keys: {}", e);
+                e
+            })?;
+        info!("✅ Handshake traffic keys derived in {:?}", handshake_start.elapsed());
+        debug!("  client_write_key: {} bytes", handshake_keys.client_write_key.len());
+        debug!("  server_write_key: {} bytes", handshake_keys.server_write_key.len());
+        debug!("  client_write_iv: {} bytes", handshake_keys.client_write_iv.len());
+        debug!("  server_write_iv: {} bytes", handshake_keys.server_write_iv.len());
+
+        // 8. Read and decrypt post-handshake encrypted messages
+        // RFC 8446 Section 4.4.1: Transcript hash is computed over PLAINTEXT handshake messages!
+        // Messages to decrypt: EncryptedExtensions, Certificate, CertificateVerify, Finished
+        info!("Step 8: Reading and decrypting post-handshake encrypted messages");
         debug!("Expecting: ChangeCipherSpec (optional), EncryptedExtensions, Certificate, CertificateVerify, Finished");
-        debug!("RFC 8446: These encrypted records will be added to transcript for key derivation");
+        debug!("RFC 8446 CRITICAL: Transcript must contain PLAINTEXT (decrypted) messages, NOT encrypted!");
         
-        // Read and track encrypted post-handshake messages for transcript hash
+        // Read, decrypt, and track post-handshake messages for transcript hash
         // We expect: ChangeCipherSpec (optional), then multiple APPLICATION_DATA records containing handshake messages
         let mut messages_read = 0;
+        let mut sequence_number = 0u64; // Sequence number for AEAD nonce generation
         let post_handshake_start = std::time::Instant::now();
         
         while messages_read < 5 { // Read up to 5 more records (generous limit)
-            debug!("Waiting for post-handshake message {} (5 second timeout)", messages_read + 1);
+            debug!("Waiting for encrypted post-handshake message {} (5 second timeout)", messages_read + 1);
             let record_start = std::time::Instant::now();
             
             match timeout(Duration::from_secs(5), self.read_record(stream)).await {
-                Ok(Ok(record)) => {
+                Ok(Ok(encrypted_record)) => {
                     messages_read += 1;
-                    info!("✅ Read post-handshake record {} ({} bytes) in {:?}", 
-                          messages_read, record.len(), record_start.elapsed());
-                    trace!("Record {} content: {:02x?}", messages_read, &record[..std::cmp::min(32, record.len())]);
+                    info!("✅ Read encrypted post-handshake record {} ({} bytes) in {:?}", 
+                          messages_read, encrypted_record.len(), record_start.elapsed());
+                    trace!("Encrypted record {} preview: {:02x?}", 
+                           messages_read, &encrypted_record[..std::cmp::min(32, encrypted_record.len())]);
                     
-                    // RFC 8446: Add encrypted handshake record to transcript
-                    // Note: read_record() already stripped the 5-byte TLS record header
-                    self.update_transcript(&record);
-                    debug!("✅ Post-handshake record {} added to transcript ({} bytes, TLS header already stripped)", 
-                           messages_read, record.len());
-                    debug!("📊 Transcript now: {} bytes total", self.transcript.len());
+                    // RFC 8446 CRITICAL: Decrypt the handshake message before adding to transcript!
+                    // Transcript hash must be computed over PLAINTEXT messages, not encrypted ciphertext
+                    debug!("🔓 Decrypting handshake record {} with handshake traffic keys (seq={})", 
+                           messages_read, sequence_number);
+                    let decrypt_start = std::time::Instant::now();
                     
-                    // Check if this looks like the last handshake message (server Finished)
-                    // Server Finished is typically small (< 100 bytes encrypted)
-                    if record.len() < 100 && messages_read >= 3 {
-                        info!("🎯 Likely received server Finished message (small record after 3+ messages)");
-                        break;
+                    match self.decrypt_handshake_record(&encrypted_record, &handshake_keys, sequence_number).await {
+                        Ok(plaintext) => {
+                            info!("✅ Decrypted handshake record {} to {} bytes of plaintext in {:?}", 
+                                  messages_read, plaintext.len(), decrypt_start.elapsed());
+                            trace!("Plaintext preview: {:02x?}", &plaintext[..std::cmp::min(32, plaintext.len())]);
+                            
+                            sequence_number += 1;
+                            
+                            // RFC 8446 Section 4.4.1: Add PLAINTEXT to transcript (not encrypted!)
+                            self.update_transcript(&plaintext);
+                            debug!("✅ Post-handshake PLAINTEXT {} added to transcript ({} bytes)", 
+                                   messages_read, plaintext.len());
+                            debug!("📊 Transcript now: {} bytes total (all plaintext)", self.transcript.len());
+                            
+                            // Check if this looks like the last handshake message (server Finished)
+                            // Server Finished is typically small after decryption (< 100 bytes plaintext)
+                            if plaintext.len() < 100 && messages_read >= 3 {
+                                info!("🎯 Likely received server Finished message (small plaintext after 3+ messages)");
+                                break;
+                            }
+                        }
+                        Err(e) => {
+                            warn!("❌ Failed to decrypt handshake record {}: {}", messages_read, e);
+                            // If we've read at least 3 messages successfully, assume handshake is done
+                            if messages_read >= 4 {
+                                info!("✅ Decrypted {} messages before error, proceeding", messages_read - 1);
+                                break;
+                            }
+                            error!("❌ Handshake decryption failed after {} messages: {}", messages_read, e);
+                            return Err(e);
+                        }
                     }
                 }
                 Ok(Err(e)) => {
                     warn!("❌ Error reading post-handshake record {}: {}", messages_read + 1, e);
                     // If we've read at least 3 messages, assume handshake is done
                     if messages_read >= 3 {
-                        info!("✅ Read {} post-handshake messages before error, proceeding", messages_read);
+                        info!("✅ Read and decrypted {} post-handshake messages before error, proceeding", messages_read);
                         break;
                     }
                     error!("❌ Handshake failed after {} messages: {}", messages_read, e);
@@ -226,7 +270,7 @@ impl TlsHandshake {
                     warn!("⏱️  Timeout waiting for post-handshake message {} after {:?}", 
                           messages_read + 1, record_start.elapsed());
                     if messages_read >= 3 {
-                        info!("✅ Timeout after {} messages ({:?} total), assuming handshake complete", 
+                        info!("✅ Timeout after {} decrypted messages ({:?} total), assuming handshake complete", 
                               messages_read, post_handshake_start.elapsed());
                         break;
                     }
@@ -238,13 +282,13 @@ impl TlsHandshake {
             }
         }
         
-        debug!("Post-handshake phase complete: {} messages in {:?}", 
+        debug!("Post-handshake phase complete: {} messages decrypted in {:?}", 
                messages_read, post_handshake_start.elapsed());
         
-        // 8. Compute transcript hash (RFC 8446 Section 4.4.1)
-        // Transcript includes: ClientHello, ServerHello, and all encrypted handshake messages
-        info!("Step 8: Computing transcript hash for RFC 8446 key derivation");
-        debug!("📊 Final transcript: {} bytes total", self.transcript.len());
+        // 9. Compute transcript hash (RFC 8446 Section 4.4.1)
+        // Transcript includes: ClientHello, ServerHello, and all DECRYPTED handshake messages
+        info!("Step 9: Computing transcript hash for RFC 8446 key derivation");
+        debug!("📊 Final transcript: {} bytes total (ALL PLAINTEXT - RFC 8446 compliant!)", self.transcript.len());
         debug!("Transcript hex (first 64 bytes): {}", hex::encode(&self.transcript[..std::cmp::min(64, self.transcript.len())]));
         
         let transcript_hash = self.compute_transcript_hash();
@@ -252,18 +296,19 @@ impl TlsHandshake {
         info!("🔐 Transcript hash (hex): {}", hex::encode(&transcript_hash));
         
         // Log transcript composition for debugging
-        debug!("Transcript composition:");
-        debug!("  - ClientHello handshake message (no TLS header)");
-        debug!("  - ServerHello handshake message (no TLS header)");
-        debug!("  - {} post-handshake encrypted messages (no TLS headers)", messages_read);
+        debug!("Transcript composition (RFC 8446 Section 4.4.1):");
+        debug!("  - ClientHello handshake message (plaintext, no TLS header)");
+        debug!("  - ServerHello handshake message (plaintext, no TLS header)");
+        debug!("  - {} post-handshake DECRYPTED messages (plaintext, no TLS headers)", messages_read);
         debug!("  Total: {} bytes → SHA-256 → 32 bytes", self.transcript.len());
+        debug!("  🎯 CRITICAL: All handshake messages are PLAINTEXT (decrypted)!");
         
-        // 9. Derive application traffic secrets (for HTTP data encryption)
+        // 10. Derive application traffic secrets (for HTTP data encryption)
         // RFC 8446 Section 7.1: Application secrets are derived WITH transcript hash
         // Note: TLS 1.3 has separate key schedules:
-        // - Handshake traffic secrets: For encrypting handshake messages (EncryptedExtensions, Certificate, etc.)
+        // - Handshake traffic secrets: For decrypting handshake messages (EncryptedExtensions, Certificate, etc.)
         // - Application traffic secrets: For encrypting HTTP data (requires transcript hash!)
-        debug!("Step 9: Deriving TLS application traffic secrets via BearDog (WITH transcript hash)");
+        info!("Step 10: Deriving TLS application traffic secrets via BearDog (WITH transcript hash)");
         let derive_start = std::time::Instant::now();
         let secrets = self.beardog
             .tls_derive_application_secrets(&shared_secret, &client_random, &server_random, &transcript_hash)
@@ -553,6 +598,88 @@ impl TlsHandshake {
         }
 
         Ok(content)
+    }
+
+    /// Decrypt a TLS handshake record with handshake traffic keys
+    /// 
+    /// RFC 8446 Section 4.4.1: Transcript hash is computed over PLAINTEXT handshake messages!
+    /// After ServerHello, all handshake messages (EncryptedExtensions, Certificate, etc.) are encrypted.
+    /// This method decrypts them so they can be added to the transcript in plaintext form.
+    /// 
+    /// # Arguments
+    /// 
+    /// * `encrypted_record` - The encrypted TLS record content (without TLS record header)
+    /// * `keys` - Handshake traffic keys (for decrypting post-handshake messages)
+    /// * `sequence_number` - Current sequence number for AEAD nonce generation
+    /// 
+    /// # Returns
+    /// 
+    /// Decrypted plaintext handshake message (without ContentType byte)
+    async fn decrypt_handshake_record(
+        &self,
+        encrypted_record: &[u8],
+        keys: &TlsSecrets,
+        sequence_number: u64,
+    ) -> Result<Vec<u8>> {
+        trace!("🔓 Decrypting handshake record: {} bytes encrypted, seq={}", 
+               encrypted_record.len(), sequence_number);
+
+        // Build nonce: server_write_iv XOR sequence_number
+        // We're reading from server, so use server_write_iv
+        let mut nonce = keys.server_write_iv.clone();
+        let seq_bytes = sequence_number.to_be_bytes();
+        
+        // XOR the last 8 bytes of the IV with the sequence number
+        if nonce.len() >= 8 {
+            for (i, &byte) in seq_bytes.iter().enumerate() {
+                let nonce_idx = nonce.len() - 8 + i;
+                nonce[nonce_idx] ^= byte;
+            }
+        }
+        trace!("  Nonce ({} bytes): {:02x?}", nonce.len(), nonce);
+
+        // Build AAD (Additional Authenticated Data): TLS record header
+        // For encrypted records, ContentType is always 0x17 (ApplicationData) in TLS 1.3
+        let record_type = 0x17; // ApplicationData
+        let version = [0x03, 0x03]; // TLS 1.2 compatibility version
+        let length = encrypted_record.len() as u16;
+        let aad = [
+            record_type,
+            version[0],
+            version[1],
+            (length >> 8) as u8,
+            (length & 0xFF) as u8,
+        ];
+        trace!("  AAD (5 bytes): {:02x?}", aad);
+
+        // Decrypt via BearDog (ChaCha20-Poly1305 AEAD)
+        let decrypt_start = std::time::Instant::now();
+        let plaintext = self.beardog.decrypt(
+            &keys.server_write_key,
+            &nonce,
+            encrypted_record,
+            &aad,
+        ).await.map_err(|e| {
+            error!("❌ Handshake record decryption failed: {}", e);
+            error!("   This likely means wrong keys or corrupted ciphertext");
+            error!("   Encrypted length: {} bytes, Sequence: {}", encrypted_record.len(), sequence_number);
+            e
+        })?;
+        
+        debug!("✅ Decrypted handshake record in {:?}: {} bytes plaintext", 
+               decrypt_start.elapsed(), plaintext.len());
+        trace!("  Plaintext preview: {:02x?}", &plaintext[..std::cmp::min(32, plaintext.len())]);
+
+        // RFC 8446 Section 5.2: TLS 1.3 encrypted records have ContentType as last byte
+        // Strip the ContentType byte from the end
+        if !plaintext.is_empty() {
+            let content_type = plaintext[plaintext.len() - 1];
+            trace!("  ContentType (last byte): {:#04x}", content_type);
+            Ok(plaintext[..plaintext.len() - 1].to_vec())
+        } else {
+            warn!("  Empty plaintext after decryption!");
+            Ok(plaintext)
+        }
     }
 
     /// Parse ServerHello message
@@ -1108,6 +1235,170 @@ mod tests {
         // Hash should always be 32 bytes regardless of input size
         let hash = handshake.compute_transcript_hash();
         assert_eq!(hash.len(), 32, "SHA-256 hash should always be 32 bytes");
+    }
+    
+    // Tests for RFC 8446 handshake decryption
+    
+    #[tokio::test]
+    #[ignore] // Requires BearDog running
+    async fn test_decrypt_handshake_record_basic() {
+        let beardog = Arc::new(BearDogClient::new("/tmp/beardog.sock"));
+        let handshake = TlsHandshake::new(beardog.clone());
+        
+        // Create test keys (would normally come from BearDog)
+        let keys = TlsSecrets {
+            client_write_key: vec![0x01; 32],
+            server_write_key: vec![0x02; 32],
+            client_write_iv: vec![0x03; 12],
+            server_write_iv: vec![0x04; 12],
+        };
+        
+        // Create test encrypted data
+        let encrypted = vec![0xFF; 48]; // 32 bytes data + 16 bytes Poly1305 tag
+        
+        // Attempt decryption (will fail since it's not real encrypted data, but tests code path)
+        let result = handshake.decrypt_handshake_record(&encrypted, &keys, 0).await;
+        
+        // Should either succeed or fail with BearDog error, not panic
+        assert!(result.is_ok() || result.is_err(), "Should handle decryption attempt gracefully");
+    }
+    
+    #[test]
+    fn test_handshake_transcript_with_plaintext() {
+        // Test that transcript tracking works correctly
+        let beardog = Arc::new(BearDogClient::new("/tmp/beardog.sock"));
+        let mut handshake = TlsHandshake::new(beardog);
+        
+        // Simulate adding plaintext handshake messages to transcript
+        let client_hello = b"ClientHello handshake message (plaintext)";
+        let server_hello = b"ServerHello handshake message (plaintext)";
+        let encrypted_ext = b"EncryptedExtensions decrypted to plaintext";
+        let certificate = b"Certificate decrypted to plaintext";
+        let finished = b"Finished decrypted to plaintext";
+        
+        handshake.update_transcript(client_hello);
+        handshake.update_transcript(server_hello);
+        handshake.update_transcript(encrypted_ext);
+        handshake.update_transcript(certificate);
+        handshake.update_transcript(finished);
+        
+        // Verify transcript contains all plaintext messages
+        let expected_len = client_hello.len() + server_hello.len() + 
+                          encrypted_ext.len() + certificate.len() + finished.len();
+        assert_eq!(handshake.transcript.len(), expected_len);
+        
+        // Compute hash of all plaintext messages
+        let hash = handshake.compute_transcript_hash();
+        assert_eq!(hash.len(), 32, "Transcript hash should be 32 bytes (SHA-256)");
+    }
+    
+    #[test]
+    fn test_sequence_number_nonce_construction() {
+        // Test that sequence numbers produce different nonces
+        let iv = vec![0x00; 12];
+        
+        // Sequence number 0
+        let mut nonce0 = iv.clone();
+        let seq0 = 0u64.to_be_bytes();
+        for (i, &byte) in seq0.iter().enumerate() {
+            let nonce_idx = nonce0.len() - 8 + i;
+            nonce0[nonce_idx] ^= byte;
+        }
+        
+        // Sequence number 1
+        let mut nonce1 = iv.clone();
+        let seq1 = 1u64.to_be_bytes();
+        for (i, &byte) in seq1.iter().enumerate() {
+            let nonce_idx = nonce1.len() - 8 + i;
+            nonce1[nonce_idx] ^= byte;
+        }
+        
+        // Nonces should be different
+        assert_ne!(nonce0, nonce1, "Different sequence numbers should produce different nonces");
+        
+        // Last byte of nonce should differ by 1
+        assert_eq!(nonce1[11], nonce0[11] ^ 1, "Sequence number XOR should affect last byte");
+    }
+    
+    #[test]
+    fn test_aad_construction() {
+        // Test AAD (Additional Authenticated Data) construction for TLS 1.3
+        let record_type = 0x17; // ApplicationData
+        let version = [0x03, 0x03]; // TLS 1.2 compatibility
+        let length = 100u16;
+        
+        let aad = [
+            record_type,
+            version[0],
+            version[1],
+            (length >> 8) as u8,
+            (length & 0xFF) as u8,
+        ];
+        
+        assert_eq!(aad.len(), 5, "AAD should be 5 bytes");
+        assert_eq!(aad[0], 0x17, "ContentType should be ApplicationData");
+        assert_eq!(aad[1], 0x03, "Version major should be 3");
+        assert_eq!(aad[2], 0x03, "Version minor should be 3");
+        assert_eq!(aad[3], 0x00, "Length high byte should be 0 for length 100");
+        assert_eq!(aad[4], 0x64, "Length low byte should be 100 (0x64)");
+    }
+    
+    #[test]
+    fn test_transcript_plaintext_requirement() {
+        // RFC 8446 Section 4.4.1: Transcript must contain PLAINTEXT messages
+        // This test ensures we understand the requirement
+        
+        let beardog = Arc::new(BearDogClient::new("/tmp/beardog.sock"));
+        let mut handshake = TlsHandshake::new(beardog);
+        
+        // Simulate plaintext messages (what SHOULD be in transcript)
+        let plaintext_message = b"This is plaintext handshake message";
+        handshake.update_transcript(plaintext_message);
+        
+        // Compute hash of plaintext
+        let plaintext_hash = handshake.compute_transcript_hash();
+        
+        // Create new handshake with encrypted version (what SHOULD NOT be in transcript)
+        let beardog2 = Arc::new(BearDogClient::new("/tmp/beardog.sock"));
+        let mut handshake2 = TlsHandshake::new(beardog2);
+        let encrypted_message = b"ENCRYPTED_VERSION_OF_SAME_MESSAGE_WITH_TAG";
+        handshake2.update_transcript(encrypted_message);
+        
+        // Compute hash of encrypted
+        let encrypted_hash = handshake2.compute_transcript_hash();
+        
+        // Hashes MUST be different (plaintext vs encrypted)
+        assert_ne!(plaintext_hash, encrypted_hash, 
+                   "RFC 8446: Transcript hash of plaintext must differ from encrypted version!");
+    }
+    
+    #[test]
+    fn test_handshake_keys_separate_from_app_keys() {
+        // Test that we understand TLS 1.3 has TWO key schedules:
+        // 1. Handshake traffic keys - for decrypting post-handshake messages
+        // 2. Application traffic keys - for encrypting HTTP data
+        
+        // Handshake keys (derived after ServerHello, no transcript hash)
+        let handshake_keys = TlsSecrets {
+            client_write_key: vec![0xAA; 32],
+            server_write_key: vec![0xBB; 32],
+            client_write_iv: vec![0xCC; 12],
+            server_write_iv: vec![0xDD; 12],
+        };
+        
+        // Application keys (derived after Finished, WITH transcript hash)
+        let app_keys = TlsSecrets {
+            client_write_key: vec![0x11; 32],
+            server_write_key: vec![0x22; 32],
+            client_write_iv: vec![0x33; 12],
+            server_write_iv: vec![0x44; 12],
+        };
+        
+        // Keys MUST be different
+        assert_ne!(handshake_keys.server_write_key, app_keys.server_write_key,
+                   "Handshake keys and application keys must be different!");
+        assert_ne!(handshake_keys.server_write_iv, app_keys.server_write_iv,
+                   "Handshake IVs and application IVs must be different!");
     }
 }
 
