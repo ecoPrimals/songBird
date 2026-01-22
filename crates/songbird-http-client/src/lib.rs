@@ -83,7 +83,8 @@ mod tests {
 
     #[test]
     fn test_version() {
-        assert!(!VERSION.is_empty());
+        // VERSION is set from CARGO_PKG_VERSION at compile time and is always non-empty
+        assert!(VERSION.contains('.'), "Version should be in semver format: {}", VERSION);
     }
 }
 

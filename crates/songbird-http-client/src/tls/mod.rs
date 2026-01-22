@@ -55,7 +55,7 @@ mod tests {
 
     #[test]
     fn test_cipher_suites() {
-        assert!(!CIPHER_SUITES.is_empty());
+        assert_eq!(CIPHER_SUITES.len(), 3, "Should have 3 TLS 1.3 cipher suites");
         assert!(CIPHER_SUITES.contains(&0x1303)); // ChaCha20-Poly1305
     }
 }
