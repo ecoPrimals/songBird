@@ -108,14 +108,14 @@ impl BearDogClient {
             .map_err(|e| Error::BearDogRpc(format!("Invalid shared_secret base64: {}", e)))
     }
 
-    /// Derive TLS session secrets
-    pub async fn tls_derive_secrets(
+    /// Derive TLS handshake traffic secrets (for encrypting handshake messages)
+    pub async fn tls_derive_handshake_secrets(
         &self,
         shared_secret: &[u8],
         client_random: &[u8],
         server_random: &[u8],
     ) -> Result<TlsSecrets> {
-        debug!("🔒 Deriving TLS secrets via BearDog");
+        debug!("🔒 Deriving TLS handshake traffic secrets via BearDog");
         
         let result = self.call("tls.derive_secrets", json!({
             "pre_master_secret": BASE64_STANDARD.encode(shared_secret),
@@ -144,6 +144,63 @@ impl BearDogClient {
                     .ok_or_else(|| Error::BearDogRpc("Missing server_write_iv".to_string()))?
             ).map_err(|e| Error::BearDogRpc(format!("Invalid server_write_iv: {}", e)))?,
         })
+    }
+
+    /// Derive TLS application traffic secrets (for encrypting HTTP data)
+    /// 
+    /// This implements the TLS 1.3 key schedule to derive application traffic keys
+    /// from the handshake secret. These keys are used for HTTP data encryption/decryption.
+    /// 
+    /// RFC 8446 Section 7.1: After the handshake completes, derive master secret and
+    /// then derive application traffic secrets for encrypting application data.
+    pub async fn tls_derive_application_secrets(
+        &self,
+        shared_secret: &[u8],
+        client_random: &[u8],
+        server_random: &[u8],
+    ) -> Result<TlsSecrets> {
+        debug!("🔒 Deriving TLS application traffic secrets via BearDog");
+        
+        let result = self.call("tls.derive_application_secrets", json!({
+            "pre_master_secret": BASE64_STANDARD.encode(shared_secret),
+            "client_random": BASE64_STANDARD.encode(client_random),
+            "server_random": BASE64_STANDARD.encode(server_random)
+        })).await?;
+
+        Ok(TlsSecrets {
+            client_write_key: BASE64_STANDARD.decode(
+                result["client_write_key"].as_str()
+                    .ok_or_else(|| Error::BearDogRpc("Missing client_write_key".to_string()))?
+            ).map_err(|e| Error::BearDogRpc(format!("Invalid client_write_key: {}", e)))?,
+            
+            server_write_key: BASE64_STANDARD.decode(
+                result["server_write_key"].as_str()
+                    .ok_or_else(|| Error::BearDogRpc("Missing server_write_key".to_string()))?
+            ).map_err(|e| Error::BearDogRpc(format!("Invalid server_write_key: {}", e)))?,
+            
+            client_write_iv: BASE64_STANDARD.decode(
+                result["client_write_iv"].as_str()
+                    .ok_or_else(|| Error::BearDogRpc("Missing client_write_iv".to_string()))?
+            ).map_err(|e| Error::BearDogRpc(format!("Invalid client_write_iv: {}", e)))?,
+            
+            server_write_iv: BASE64_STANDARD.decode(
+                result["server_write_iv"].as_str()
+                    .ok_or_else(|| Error::BearDogRpc("Missing server_write_iv".to_string()))?
+            ).map_err(|e| Error::BearDogRpc(format!("Invalid server_write_iv: {}", e)))?,
+        })
+    }
+
+    /// Legacy alias for backwards compatibility
+    /// DEPRECATED: Use tls_derive_application_secrets instead
+    #[deprecated(since = "5.6.0", note = "Use tls_derive_application_secrets instead")]
+    pub async fn tls_derive_secrets(
+        &self,
+        shared_secret: &[u8],
+        client_random: &[u8],
+        server_random: &[u8],
+    ) -> Result<TlsSecrets> {
+        // For now, delegate to application secrets (the correct keys for HTTP data)
+        self.tls_derive_application_secrets(shared_secret, client_random, server_random).await
     }
 
     /// Encrypt data with ChaCha20-Poly1305
@@ -285,7 +342,14 @@ impl BearDogClient {
 }
 
 /// TLS session secrets
-#[derive(Debug)]
+/// 
+/// These are the keys and IVs used for TLS record encryption/decryption.
+/// In TLS 1.3, there are separate keys for:
+/// - Handshake traffic (for encrypting handshake messages)
+/// - Application traffic (for encrypting HTTP data)
+/// 
+/// Songbird derives application traffic keys for HTTP data encryption.
+#[derive(Debug, Clone)]
 pub struct TlsSecrets {
     pub client_write_key: Vec<u8>,
     pub server_write_key: Vec<u8>,
@@ -301,6 +365,22 @@ mod tests {
     fn test_beardog_client_creation() {
         let client = BearDogClient::new("/tmp/neural-api-nat0.sock");
         assert_eq!(client.neural_api_socket, "/tmp/neural-api-nat0.sock");
+    }
+
+    #[test]
+    fn test_tls_secrets_clone() {
+        let secrets = TlsSecrets {
+            client_write_key: vec![1, 2, 3],
+            server_write_key: vec![4, 5, 6],
+            client_write_iv: vec![7, 8, 9],
+            server_write_iv: vec![10, 11, 12],
+        };
+        
+        let cloned = secrets.clone();
+        assert_eq!(secrets.client_write_key, cloned.client_write_key);
+        assert_eq!(secrets.server_write_key, cloned.server_write_key);
+        assert_eq!(secrets.client_write_iv, cloned.client_write_iv);
+        assert_eq!(secrets.server_write_iv, cloned.server_write_iv);
     }
 
     #[test]

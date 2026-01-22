@@ -110,19 +110,23 @@ impl TlsHandshake {
         debug!("✅ Computed shared secret: {} bytes in {:?}", shared_secret.len(), ecdh_start.elapsed());
         trace!("Shared secret: {:02x?}", &shared_secret[..std::cmp::min(16, shared_secret.len())]);
 
-        // 7. Derive session secrets
-        debug!("Step 7: Deriving TLS session secrets via BearDog");
+        // 7. Derive application traffic secrets (for HTTP data encryption)
+        // Note: TLS 1.3 has separate key schedules:
+        // - Handshake traffic secrets: For encrypting handshake messages (EncryptedExtensions, Certificate, etc.)
+        // - Application traffic secrets: For encrypting HTTP data
+        // We derive application secrets directly since we don't decrypt the handshake messages
+        debug!("Step 7: Deriving TLS application traffic secrets via BearDog");
         let derive_start = std::time::Instant::now();
         let secrets = self.beardog
-            .tls_derive_secrets(&shared_secret, &client_random, &server_random)
+            .tls_derive_application_secrets(&shared_secret, &client_random, &server_random)
             .await
             .map_err(|e| {
-                error!("❌ BearDog TLS secret derivation failed: {}", e);
+                error!("❌ BearDog TLS application secret derivation failed: {}", e);
                 e
             })?;
         
-        info!("🔐 TLS session keys derived in {:?}", derive_start.elapsed());
-        debug!("Session secrets derived successfully");
+        info!("🔐 TLS application traffic keys derived in {:?}", derive_start.elapsed());
+        debug!("Application secrets derived successfully (for HTTP data encryption)");
         
         // 8. Read post-handshake encrypted messages
         // Note: In TLS 1.3, after ServerHello, all messages are encrypted with handshake traffic keys
