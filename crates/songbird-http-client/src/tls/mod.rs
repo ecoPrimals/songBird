@@ -1,0 +1,63 @@
+//! TLS 1.3 implementation with BearDog crypto delegation
+//!
+//! This module implements a Pure Rust TLS 1.3 client by delegating all
+//! cryptographic operations to BearDog via JSON-RPC.
+
+pub mod handshake;
+pub mod negotiation;
+pub mod record;
+pub mod session;
+
+pub use handshake::TlsHandshake;
+pub use record::TlsRecordLayer;
+pub use session::TlsSession;
+
+/// TLS 1.3 version
+pub const TLS_1_3: u16 = 0x0304;
+
+/// TLS 1.2 version (for compatibility mode)
+pub const TLS_1_2: u16 = 0x0303;
+
+/// Supported cipher suites
+pub const CIPHER_SUITES: &[u16] = &[
+    0x1301, // TLS_AES_128_GCM_SHA256
+    0x1302, // TLS_AES_256_GCM_SHA384
+    0x1303, // TLS_CHACHA20_POLY1305_SHA256
+];
+
+/// Content types
+pub mod content_type {
+    pub const CHANGE_CIPHER_SPEC: u8 = 20;
+    pub const ALERT: u8 = 21;
+    pub const HANDSHAKE: u8 = 22;
+    pub const APPLICATION_DATA: u8 = 23;
+}
+
+/// Handshake types
+pub mod handshake_type {
+    pub const CLIENT_HELLO: u8 = 1;
+    pub const SERVER_HELLO: u8 = 2;
+    pub const ENCRYPTED_EXTENSIONS: u8 = 8;
+    pub const CERTIFICATE: u8 = 11;
+    pub const CERTIFICATE_VERIFY: u8 = 15;
+    pub const FINISHED: u8 = 20;
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_tls_versions() {
+        assert_eq!(TLS_1_3, 0x0304);
+        assert_eq!(TLS_1_2, 0x0303);
+    }
+
+    #[test]
+    fn test_cipher_suites() {
+        assert!(!CIPHER_SUITES.is_empty());
+        assert!(CIPHER_SUITES.contains(&0x1303)); // ChaCha20-Poly1305
+    }
+}
+
+
