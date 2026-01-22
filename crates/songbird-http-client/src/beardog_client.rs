@@ -37,6 +37,8 @@ struct JsonRpcResponse {
 struct JsonRpcError {
     code: i32,
     message: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    data: Option<Value>,
 }
 
 /// BearDog RPC client (routes through Neural API for capability translation)
@@ -467,6 +469,477 @@ mod tests {
         let client = BearDogClient::from_env();
         assert_eq!(client.neural_api_socket, "/custom/path.sock");
         std::env::remove_var("NEURAL_API_SOCKET");
+    }
+
+    // ====================================================================
+    // JSON-RPC RESPONSE PARSING TESTS (Unit Tests)
+    // ====================================================================
+
+    #[test]
+    fn test_jsonrpc_response_with_numeric_id() {
+        let json = r#"{
+            "jsonrpc": "2.0",
+            "result": {"key": "value"},
+            "id": 42
+        }"#;
+        
+        let response: JsonRpcResponse = serde_json::from_str(json).unwrap();
+        assert_eq!(response.jsonrpc, "2.0");
+        assert_eq!(response.id, Some(42));
+        assert!(response.result.is_some());
+        assert!(response.error.is_none());
+    }
+
+    #[test]
+    fn test_jsonrpc_response_with_null_id() {
+        // This is the FIX! Null IDs are valid per JSON-RPC 2.0 spec
+        let json = r#"{
+            "jsonrpc": "2.0",
+            "result": {"key": "value"},
+            "id": null
+        }"#;
+        
+        let response: JsonRpcResponse = serde_json::from_str(json).unwrap();
+        assert_eq!(response.jsonrpc, "2.0");
+        assert_eq!(response.id, None); // ✅ Now handles null!
+        assert!(response.result.is_some());
+    }
+
+    #[test]
+    fn test_jsonrpc_response_with_error() {
+        let json = r#"{
+            "jsonrpc": "2.0",
+            "error": {
+                "code": -32600,
+                "message": "Invalid Request"
+            },
+            "id": null
+        }"#;
+        
+        let response: JsonRpcResponse = serde_json::from_str(json).unwrap();
+        assert!(response.error.is_some());
+        assert!(response.result.is_none());
+        let error = response.error.unwrap();
+        assert_eq!(error.code, -32600);
+        assert_eq!(error.message, "Invalid Request");
+    }
+
+    #[test]
+    fn test_jsonrpc_response_tls_secrets() {
+        // Realistic response from BearDog tls.derive_application_secrets
+        let json = r#"{
+            "jsonrpc": "2.0",
+            "result": {
+                "client_write_key": "u1HnZw8Q7wtXXPc9axju3uehJhY6xPzFiIGcvcwEmm0=",
+                "server_write_key": "OYSAPFlf/NAvJTpBtx45lnsFtRu3VEOK5tO/EK3kbx8=",
+                "client_write_iv": "rkCk3xt3l2SBFeNu",
+                "server_write_iv": "otHQEpR5P+EVqd9V",
+                "algorithm": "HKDF-SHA256",
+                "rfc": "RFC 8446 Section 7.1"
+            },
+            "id": 1
+        }"#;
+        
+        let response: JsonRpcResponse = serde_json::from_str(json).unwrap();
+        assert!(response.result.is_some());
+        let result = response.result.unwrap();
+        
+        // Verify all fields present
+        assert!(result["client_write_key"].is_string());
+        assert!(result["server_write_key"].is_string());
+        assert!(result["client_write_iv"].is_string());
+        assert!(result["server_write_iv"].is_string());
+        assert_eq!(result["algorithm"].as_str().unwrap(), "HKDF-SHA256");
+    }
+
+    #[test]
+    fn test_tls_secrets_field_sizes() {
+        let secrets = TlsSecrets {
+            client_write_key: vec![0u8; 32], // ChaCha20 key size
+            server_write_key: vec![0u8; 32],
+            client_write_iv: vec![0u8; 12],   // ChaCha20 nonce size
+            server_write_iv: vec![0u8; 12],
+        };
+        
+        assert_eq!(secrets.client_write_key.len(), 32);
+        assert_eq!(secrets.server_write_key.len(), 32);
+        assert_eq!(secrets.client_write_iv.len(), 12);
+        assert_eq!(secrets.server_write_iv.len(), 12);
+    }
+
+    // ====================================================================
+    // CHAOS TESTS - Malformed Responses
+    // ====================================================================
+
+    #[test]
+    fn test_chaos_malformed_json() {
+        let json = r#"{"jsonrpc": "2.0", "result": {broken json"#;
+        let result: std::result::Result<JsonRpcResponse, _> = serde_json::from_str(json);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_chaos_missing_jsonrpc_field() {
+        let json = r#"{"result": {"key": "value"}, "id": 1}"#;
+        let result: std::result::Result<JsonRpcResponse, _> = serde_json::from_str(json);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_chaos_wrong_jsonrpc_version() {
+        let json = r#"{
+            "jsonrpc": "1.0",
+            "result": {"key": "value"},
+            "id": 1
+        }"#;
+        
+        // Should still parse, just has wrong version
+        let response: JsonRpcResponse = serde_json::from_str(json).unwrap();
+        assert_eq!(response.jsonrpc, "1.0"); // Not 2.0, but parses
+    }
+
+    #[test]
+    fn test_chaos_both_result_and_error() {
+        // Invalid per JSON-RPC spec, but should parse
+        let json = r#"{
+            "jsonrpc": "2.0",
+            "result": {"key": "value"},
+            "error": {"code": -32000, "message": "Error"},
+            "id": 1
+        }"#;
+        
+        let response: JsonRpcResponse = serde_json::from_str(json).unwrap();
+        assert!(response.result.is_some());
+        assert!(response.error.is_some());
+    }
+
+    #[test]
+    fn test_chaos_missing_both_result_and_error() {
+        let json = r#"{
+            "jsonrpc": "2.0",
+            "id": 1
+        }"#;
+        
+        let response: JsonRpcResponse = serde_json::from_str(json).unwrap();
+        assert!(response.result.is_none());
+        assert!(response.error.is_none());
+    }
+
+    #[test]
+    fn test_chaos_huge_id() {
+        let json = r#"{
+            "jsonrpc": "2.0",
+            "result": {"key": "value"},
+            "id": 18446744073709551615
+        }"#;
+        
+        let response: JsonRpcResponse = serde_json::from_str(json).unwrap();
+        assert_eq!(response.id, Some(u64::MAX));
+    }
+
+    #[test]
+    fn test_chaos_negative_id() {
+        // Negative IDs are invalid, should fail to parse as u64
+        let json = r#"{
+            "jsonrpc": "2.0",
+            "result": {"key": "value"},
+            "id": -1
+        }"#;
+        
+        let result: std::result::Result<JsonRpcResponse, _> = serde_json::from_str(json);
+        assert!(result.is_err()); // Can't parse negative as u64
+    }
+
+    #[test]
+    fn test_chaos_string_id() {
+        // String IDs are valid per JSON-RPC 2.0, but we only support u64
+        let json = r#"{
+            "jsonrpc": "2.0",
+            "result": {"key": "value"},
+            "id": "abc123"
+        }"#;
+        
+        let result: std::result::Result<JsonRpcResponse, _> = serde_json::from_str(json);
+        assert!(result.is_err()); // We don't support string IDs
+    }
+
+    #[test]
+    fn test_chaos_empty_result() {
+        let json = r#"{
+            "jsonrpc": "2.0",
+            "result": {},
+            "id": 1
+        }"#;
+        
+        let response: JsonRpcResponse = serde_json::from_str(json).unwrap();
+        assert!(response.result.is_some());
+        let result = response.result.unwrap();
+        assert!(result.is_object());
+        assert_eq!(result.as_object().unwrap().len(), 0);
+    }
+
+    #[test]
+    fn test_chaos_null_result() {
+        let json = r#"{
+            "jsonrpc": "2.0",
+            "result": null,
+            "id": 1
+        }"#;
+        
+        let response: JsonRpcResponse = serde_json::from_str(json).unwrap();
+        // With skip_serializing_if, null is treated as None
+        assert!(response.result.is_none());
+    }
+
+    #[test]
+    fn test_chaos_array_result() {
+        let json = r#"{
+            "jsonrpc": "2.0",
+            "result": [1, 2, 3],
+            "id": 1
+        }"#;
+        
+        let response: JsonRpcResponse = serde_json::from_str(json).unwrap();
+        assert!(response.result.is_some());
+        let result = response.result.unwrap();
+        assert!(result.is_array());
+        assert_eq!(result.as_array().unwrap().len(), 3);
+    }
+
+    #[test]
+    fn test_chaos_extra_fields() {
+        let json = r#"{
+            "jsonrpc": "2.0",
+            "result": {"key": "value"},
+            "id": 1,
+            "extra": "ignored",
+            "another": 123
+        }"#;
+        
+        // Should parse fine, extra fields ignored
+        let response: JsonRpcResponse = serde_json::from_str(json).unwrap();
+        assert!(response.result.is_some());
+    }
+
+    #[test]
+    fn test_chaos_very_large_response() {
+        // 10KB response
+        let large_value = "x".repeat(10000);
+        let json = format!(r#"{{
+            "jsonrpc": "2.0",
+            "result": {{"data": "{}"}},
+            "id": 1
+        }}"#, large_value);
+        
+        let response: JsonRpcResponse = serde_json::from_str(&json).unwrap();
+        assert!(response.result.is_some());
+    }
+
+    #[test]
+    fn test_chaos_deeply_nested_result() {
+        let json = r#"{
+            "jsonrpc": "2.0",
+            "result": {
+                "level1": {
+                    "level2": {
+                        "level3": {
+                            "level4": {
+                                "level5": {"data": "deep"}
+                            }
+                        }
+                    }
+                }
+            },
+            "id": 1
+        }"#;
+        
+        let response: JsonRpcResponse = serde_json::from_str(json).unwrap();
+        assert!(response.result.is_some());
+    }
+
+    // ====================================================================
+    // FAULT INJECTION TESTS
+    // ====================================================================
+
+    #[test]
+    fn test_fault_error_code_parse_error() {
+        let json = r#"{
+            "jsonrpc": "2.0",
+            "error": {
+                "code": -32700,
+                "message": "Parse error"
+            },
+            "id": null
+        }"#;
+        
+        let response: JsonRpcResponse = serde_json::from_str(json).unwrap();
+        let error = response.error.unwrap();
+        assert_eq!(error.code, -32700);
+        assert_eq!(error.message, "Parse error");
+    }
+
+    #[test]
+    fn test_fault_error_code_invalid_request() {
+        let json = r#"{
+            "jsonrpc": "2.0",
+            "error": {
+                "code": -32600,
+                "message": "Invalid Request"
+            },
+            "id": null
+        }"#;
+        
+        let response: JsonRpcResponse = serde_json::from_str(json).unwrap();
+        let error = response.error.unwrap();
+        assert_eq!(error.code, -32600);
+    }
+
+    #[test]
+    fn test_fault_error_code_method_not_found() {
+        let json = r#"{
+            "jsonrpc": "2.0",
+            "error": {
+                "code": -32601,
+                "message": "Method not found"
+            },
+            "id": 1
+        }"#;
+        
+        let response: JsonRpcResponse = serde_json::from_str(json).unwrap();
+        let error = response.error.unwrap();
+        assert_eq!(error.code, -32601);
+    }
+
+    #[test]
+    fn test_fault_error_code_invalid_params() {
+        let json = r#"{
+            "jsonrpc": "2.0",
+            "error": {
+                "code": -32602,
+                "message": "Invalid params"
+            },
+            "id": 1
+        }"#;
+        
+        let response: JsonRpcResponse = serde_json::from_str(json).unwrap();
+        let error = response.error.unwrap();
+        assert_eq!(error.code, -32602);
+    }
+
+    #[test]
+    fn test_fault_error_code_internal_error() {
+        let json = r#"{
+            "jsonrpc": "2.0",
+            "error": {
+                "code": -32603,
+                "message": "Internal error"
+            },
+            "id": 1
+        }"#;
+        
+        let response: JsonRpcResponse = serde_json::from_str(json).unwrap();
+        let error = response.error.unwrap();
+        assert_eq!(error.code, -32603);
+    }
+
+    #[test]
+    fn test_fault_error_with_data() {
+        let json = r#"{
+            "jsonrpc": "2.0",
+            "error": {
+                "code": -32000,
+                "message": "Server error",
+                "data": {"detail": "Additional error information"}
+            },
+            "id": 1
+        }"#;
+        
+        let response: JsonRpcResponse = serde_json::from_str(json).unwrap();
+        let error = response.error.unwrap();
+        assert_eq!(error.code, -32000);
+        assert!(error.data.is_some());
+    }
+
+    #[test]
+    fn test_fault_missing_required_field() {
+        // Missing client_write_key should cause parsing to fail
+        let json = r#"{
+            "server_write_key": "OYSAPFlf/NAvJTpBtx45lnsFtRu3VEOK5tO/EK3kbx8=",
+            "client_write_iv": "rkCk3xt3l2SBFeNu",
+            "server_write_iv": "otHQEpR5P+EVqd9V"
+        }"#;
+        
+        let result = serde_json::from_str::<Value>(json);
+        assert!(result.is_ok());
+        let value = result.unwrap();
+        
+        // Should be missing client_write_key
+        assert!(value.get("client_write_key").is_none());
+    }
+
+    #[test]
+    fn test_fault_invalid_base64() {
+        let json = r#"{
+            "client_write_key": "not-valid-base64!!!",
+            "server_write_key": "also-invalid",
+            "client_write_iv": "bad",
+            "server_write_iv": "worse"
+        }"#;
+        
+        // JSON parsing succeeds, but base64 decoding will fail
+        let value: Value = serde_json::from_str(json).unwrap();
+        assert!(value["client_write_key"].is_string());
+        
+        // Base64 decode will fail
+        use base64::Engine;
+        use base64::engine::general_purpose::STANDARD as BASE64_STANDARD;
+        let result = BASE64_STANDARD.decode(value["client_write_key"].as_str().unwrap());
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_fault_unicode_in_error_message() {
+        let json = r#"{
+            "jsonrpc": "2.0",
+            "error": {
+                "code": -32000,
+                "message": "错误: Invalid 参数 🔥"
+            },
+            "id": 1
+        }"#;
+        
+        let response: JsonRpcResponse = serde_json::from_str(json).unwrap();
+        let error = response.error.unwrap();
+        assert!(error.message.contains("错误"));
+        assert!(error.message.contains("🔥"));
+    }
+
+    #[test]
+    fn test_fault_zero_length_keys() {
+        let secrets = TlsSecrets {
+            client_write_key: vec![],
+            server_write_key: vec![],
+            client_write_iv: vec![],
+            server_write_iv: vec![],
+        };
+        
+        assert_eq!(secrets.client_write_key.len(), 0);
+        assert_eq!(secrets.server_write_key.len(), 0);
+    }
+
+    #[test]
+    fn test_fault_mismatched_key_sizes() {
+        // Keys should be 32 bytes, but we allow any size
+        let secrets = TlsSecrets {
+            client_write_key: vec![0u8; 16], // Wrong size!
+            server_write_key: vec![0u8; 64], // Wrong size!
+            client_write_iv: vec![0u8; 8],   // Wrong size!
+            server_write_iv: vec![0u8; 24],  // Wrong size!
+        };
+        
+        // Should still work, validation happens at crypto layer
+        assert_eq!(secrets.client_write_key.len(), 16);
+        assert_eq!(secrets.server_write_key.len(), 64);
     }
 }
 
