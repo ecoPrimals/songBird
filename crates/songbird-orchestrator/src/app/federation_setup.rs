@@ -149,8 +149,12 @@ mod tests {
 
     #[test]
     fn test_federation_setup_standalone_mode() {
-        // Without SONGBIRD_FEDERATION_ENABLED, should return None
+        // Clean up first to ensure isolation from other tests
         std::env::remove_var("SONGBIRD_FEDERATION_ENABLED");
+        std::env::remove_var("SONGBIRD_BOOTSTRAP_ADDRESS");
+        std::env::remove_var("SONGBIRD_RENDEZVOUS_URL");
+        std::env::remove_var("SONGBIRD_NODE_ADDRESS");
+        std::env::remove_var("SONGBIRD_PORT");
 
         let node_identity = NodeIdentity::new_or_load(None).expect("Failed to load identity");
         let federation_state = Arc::new(FederationState::new("test".to_string()));
@@ -165,6 +169,13 @@ mod tests {
 
     #[test]
     fn test_federation_setup_enabled() {
+        // Clean up first to ensure isolation from other tests
+        std::env::remove_var("SONGBIRD_FEDERATION_ENABLED");
+        std::env::remove_var("SONGBIRD_BOOTSTRAP_ADDRESS");
+        std::env::remove_var("SONGBIRD_RENDEZVOUS_URL");
+        std::env::remove_var("SONGBIRD_NODE_ADDRESS");
+        std::env::remove_var("SONGBIRD_PORT");
+        
         // Set federation enabled
         std::env::set_var("SONGBIRD_FEDERATION_ENABLED", "true");
 
@@ -191,10 +202,21 @@ mod tests {
 
         // Clean up
         std::env::remove_var("SONGBIRD_FEDERATION_ENABLED");
+        std::env::remove_var("SONGBIRD_BOOTSTRAP_ADDRESS");
+        std::env::remove_var("SONGBIRD_RENDEZVOUS_URL");
+        std::env::remove_var("SONGBIRD_NODE_ADDRESS");
+        std::env::remove_var("SONGBIRD_PORT");
     }
 
     #[test]
     fn test_federation_setup_uses_stable_identity() {
+        // Clean up first to ensure isolation from other tests
+        std::env::remove_var("SONGBIRD_FEDERATION_ENABLED");
+        std::env::remove_var("SONGBIRD_BOOTSTRAP_ADDRESS");
+        std::env::remove_var("SONGBIRD_RENDEZVOUS_URL");
+        std::env::remove_var("SONGBIRD_NODE_ADDRESS");
+        std::env::remove_var("SONGBIRD_PORT");
+        
         std::env::set_var("SONGBIRD_FEDERATION_ENABLED", "true");
 
         let node_identity = NodeIdentity::new_or_load(None).expect("Failed to load identity");
@@ -210,6 +232,11 @@ mod tests {
         let id2 = setup2.config.unwrap().self_registration.unwrap().node_id;
         assert_eq!(id1, id2, "Node ID should be stable across multiple setups");
 
+        // Clean up
         std::env::remove_var("SONGBIRD_FEDERATION_ENABLED");
+        std::env::remove_var("SONGBIRD_BOOTSTRAP_ADDRESS");
+        std::env::remove_var("SONGBIRD_RENDEZVOUS_URL");
+        std::env::remove_var("SONGBIRD_NODE_ADDRESS");
+        std::env::remove_var("SONGBIRD_PORT");
     }
 }
