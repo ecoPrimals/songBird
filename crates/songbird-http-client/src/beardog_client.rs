@@ -181,12 +181,27 @@ impl BearDogClient {
         ).map_err(|e| Error::BearDogRpc(format!("Invalid server_write_iv base64: {}", e)))?;
         debug!("  ✅ server_handshake_iv: {} bytes", server_write_iv.len());
 
+        // NEW: Parse traffic secrets (needed for Finished message - RFC 8446 Section 4.4.4)
+        let client_handshake_secret = BASE64_STANDARD.decode(
+            result["client_handshake_secret"].as_str()
+                .ok_or_else(|| Error::BearDogRpc("Missing client_handshake_secret in response".to_string()))?
+        ).map_err(|e| Error::BearDogRpc(format!("Invalid client_handshake_secret base64: {}", e)))?;
+        debug!("  ✅ client_handshake_secret: {} bytes", client_handshake_secret.len());
+        
+        let server_handshake_secret = BASE64_STANDARD.decode(
+            result["server_handshake_secret"].as_str()
+                .ok_or_else(|| Error::BearDogRpc("Missing server_handshake_secret in response".to_string()))?
+        ).map_err(|e| Error::BearDogRpc(format!("Invalid server_handshake_secret base64: {}", e)))?;
+        debug!("  ✅ server_handshake_secret: {} bytes", server_handshake_secret.len());
+
         // HEX DUMPS for derived keys (cross-verify with RFC 8448 or server expectations)
         info!("🔍 DERIVED HANDSHAKE KEYS - FULL HEX DUMPS:");
         info!("   client_write_key: {}", hex::encode(&client_write_key));
         info!("   server_write_key: {}", hex::encode(&server_write_key));
         info!("   client_write_iv: {}", hex::encode(&client_write_iv));
         info!("   server_write_iv: {}", hex::encode(&server_write_iv));
+        info!("   client_handshake_secret: {}", hex::encode(&client_handshake_secret));
+        info!("   server_handshake_secret: {}", hex::encode(&server_handshake_secret));
 
         info!("✅ Handshake traffic secrets derived successfully (RFC 8446 Section 7.1 compliant)");
         
@@ -195,6 +210,8 @@ impl BearDogClient {
             server_write_key,
             client_write_iv,
             server_write_iv,
+            client_handshake_secret,
+            server_handshake_secret,
         })
     }
 
@@ -284,6 +301,9 @@ impl BearDogClient {
             server_write_key,
             client_write_iv,
             server_write_iv,
+            // Note: Application secrets don't need handshake secrets (those were for Finished message)
+            client_handshake_secret: vec![],
+            server_handshake_secret: vec![],
         })
     }
 
@@ -835,6 +855,9 @@ pub struct TlsSecrets {
     pub server_write_key: Vec<u8>,
     pub client_write_iv: Vec<u8>,
     pub server_write_iv: Vec<u8>,
+    // NEW: Traffic secrets (needed for RFC 8446 Section 4.4.4 Finished message)
+    pub client_handshake_secret: Vec<u8>,
+    pub server_handshake_secret: Vec<u8>,
 }
 
 #[cfg(test)]
@@ -854,6 +877,8 @@ mod tests {
             server_write_key: vec![4, 5, 6],
             client_write_iv: vec![7, 8, 9],
             server_write_iv: vec![10, 11, 12],
+            client_handshake_secret: vec![13, 14, 15],
+            server_handshake_secret: vec![16, 17, 18],
         };
         
         let cloned = secrets.clone();
@@ -976,6 +1001,8 @@ mod tests {
             server_write_key: vec![0u8; 32],
             client_write_iv: vec![0u8; 12],   // ChaCha20 nonce size
             server_write_iv: vec![0u8; 12],
+            client_handshake_secret: vec![0u8; 32],
+            server_handshake_secret: vec![0u8; 32],
         };
         
         assert_eq!(secrets.client_write_key.len(), 32);
@@ -1338,6 +1365,8 @@ mod tests {
             server_write_key: vec![],
             client_write_iv: vec![],
             server_write_iv: vec![],
+            client_handshake_secret: vec![],
+            server_handshake_secret: vec![],
         };
         
         assert_eq!(secrets.client_write_key.len(), 0);
@@ -1352,6 +1381,8 @@ mod tests {
             server_write_key: vec![0u8; 64], // Wrong size!
             client_write_iv: vec![0u8; 8],   // Wrong size!
             server_write_iv: vec![0u8; 24],  // Wrong size!
+            client_handshake_secret: vec![0u8; 48], // Wrong size!
+            server_handshake_secret: vec![0u8; 20], // Wrong size!
         };
         
         // Should still work, validation happens at crypto layer

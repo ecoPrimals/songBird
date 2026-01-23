@@ -1145,7 +1145,7 @@ impl TlsHandshake {
         info!("🔐 Computing verify_data via BearDog...");
         let verify_data = self.beardog
             .tls_compute_finished_verify_data(
-                &handshake_keys.client_write_key,  // client_handshake_traffic_secret (base_key for BearDog)
+                &handshake_keys.client_handshake_secret,  // RFC 8446 client_handshake_traffic_secret (32-byte PRK)
                 &transcript_hash,
                 self.cipher_suite
             )
@@ -1771,6 +1771,8 @@ mod tests {
             server_write_key: vec![0x02; 32],
             client_write_iv: vec![0x03; 12],
             server_write_iv: vec![0x04; 12],
+            client_handshake_secret: vec![0x05; 32],
+            server_handshake_secret: vec![0x06; 32],
         };
         
         // Create test encrypted data
@@ -1904,6 +1906,8 @@ mod tests {
             server_write_key: vec![0xBB; 32],
             client_write_iv: vec![0xCC; 12],
             server_write_iv: vec![0xDD; 12],
+            client_handshake_secret: vec![0xEE; 32],
+            server_handshake_secret: vec![0xFF; 32],
         };
         
         // Application keys (derived after Finished, WITH transcript hash)
@@ -1912,6 +1916,8 @@ mod tests {
             server_write_key: vec![0x22; 32],
             client_write_iv: vec![0x33; 12],
             server_write_iv: vec![0x44; 12],
+            client_handshake_secret: vec![0x55; 32],
+            server_handshake_secret: vec![0x66; 32],
         };
         
         // Keys MUST be different

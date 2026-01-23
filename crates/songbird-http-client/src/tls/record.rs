@@ -65,15 +65,52 @@ impl TlsRecordLayer {
                &nonce[..std::cmp::min(12, nonce.len())]);
         
         // Encrypt data with CLIENT write key (we're writing to server)
+        // RFC 8446: Use the negotiated cipher suite for encryption
         debug!("🔐 Encrypting with client_write_key (application traffic key)");
-        let encrypted = self.beardog
-            .encrypt(&self.keys.client_write_key, &nonce, &plaintext_with_type, &aad)
-            .await.map_err(|e| {
-                error!("❌ Application data encryption failed: {}", e);
-                error!("   Plaintext length: {} bytes", plaintext_with_type.len());
-                error!("   Sequence number: {}", self.write_sequence_number);
-                e
-            })?;
+        debug!("   Cipher suite: 0x{:04x}", self.keys.cipher_suite);
+        
+        let encrypted = match self.keys.cipher_suite {
+            0x1301 => {  // TLS_AES_128_GCM_SHA256
+                debug!("   → Using AES-128-GCM for application data");
+                self.beardog.encrypt_aes_128_gcm(
+                    &self.keys.client_write_key,
+                    &nonce,
+                    &plaintext_with_type,
+                    &aad,
+                ).await
+            }
+            0x1302 => {  // TLS_AES_256_GCM_SHA384
+                debug!("   → Using AES-256-GCM for application data");
+                self.beardog.encrypt_aes_256_gcm(
+                    &self.keys.client_write_key,
+                    &nonce,
+                    &plaintext_with_type,
+                    &aad,
+                ).await
+            }
+            0x1303 => {  // TLS_CHACHA20_POLY1305_SHA256
+                debug!("   → Using ChaCha20-Poly1305 for application data");
+                self.beardog.encrypt(
+                    &self.keys.client_write_key,
+                    &nonce,
+                    &plaintext_with_type,
+                    &aad,
+                ).await
+            }
+            _ => {
+                error!("❌ Unsupported cipher suite for encryption: 0x{:04x}", self.keys.cipher_suite);
+                return Err(Error::TlsRecord(format!(
+                    "Unsupported TLS 1.3 cipher suite: 0x{:04x}",
+                    self.keys.cipher_suite
+                )));
+            }
+        }.map_err(|e| {
+            error!("❌ Application data encryption failed: {}", e);
+            error!("   Plaintext length: {} bytes", plaintext_with_type.len());
+            error!("   Sequence number: {}", self.write_sequence_number);
+            error!("   Cipher suite: 0x{:04x}", self.keys.cipher_suite);
+            e
+        })?;
 
         info!("✅ Encrypted {} bytes → {} bytes", plaintext_with_type.len(), encrypted.len());
 
@@ -214,15 +251,52 @@ impl TlsRecordLayer {
                &nonce[..std::cmp::min(12, nonce.len())]);
 
         // Decrypt data with SERVER write key (we're reading from server)
+        // RFC 8446: Use the negotiated cipher suite for decryption
         debug!("🔓 Decrypting with server_write_key (application traffic key)");
-        let decrypted = self.beardog
-            .decrypt(&self.keys.server_write_key, &nonce, &encrypted, aad)
-            .await.map_err(|e| {
-                error!("❌ Application data decryption failed: {}", e);
-                error!("   Encrypted length: {} bytes", encrypted.len());
-                error!("   Sequence number: {}", self.read_sequence_number);
-                e
-            })?;
+        debug!("   Cipher suite: 0x{:04x}", self.keys.cipher_suite);
+        
+        let decrypted = match self.keys.cipher_suite {
+            0x1301 => {  // TLS_AES_128_GCM_SHA256
+                debug!("   → Using AES-128-GCM for application data");
+                self.beardog.decrypt_aes_128_gcm(
+                    &self.keys.server_write_key,
+                    &nonce,
+                    &encrypted,
+                    aad,
+                ).await
+            }
+            0x1302 => {  // TLS_AES_256_GCM_SHA384
+                debug!("   → Using AES-256-GCM for application data");
+                self.beardog.decrypt_aes_256_gcm(
+                    &self.keys.server_write_key,
+                    &nonce,
+                    &encrypted,
+                    aad,
+                ).await
+            }
+            0x1303 => {  // TLS_CHACHA20_POLY1305_SHA256
+                debug!("   → Using ChaCha20-Poly1305 for application data");
+                self.beardog.decrypt(
+                    &self.keys.server_write_key,
+                    &nonce,
+                    &encrypted,
+                    aad,
+                ).await
+            }
+            _ => {
+                error!("❌ Unsupported cipher suite for decryption: 0x{:04x}", self.keys.cipher_suite);
+                return Err(Error::TlsRecord(format!(
+                    "Unsupported TLS 1.3 cipher suite: 0x{:04x}",
+                    self.keys.cipher_suite
+                )));
+            }
+        }.map_err(|e| {
+            error!("❌ Application data decryption failed: {}", e);
+            error!("   Encrypted length: {} bytes", encrypted.len());
+            error!("   Sequence number: {}", self.read_sequence_number);
+            error!("   Cipher suite: 0x{:04x}", self.keys.cipher_suite);
+            e
+        })?;
 
         info!("✅ Decrypted {} bytes → {} bytes (AEAD authentication succeeded)", 
               encrypted.len(), decrypted.len());
