@@ -16,6 +16,11 @@ pub struct TlsHandshake {
     /// Transcript accumulator for RFC 8446 key derivation
     /// Accumulates all handshake messages for transcript hash computation
     transcript: Vec<u8>,
+    /// Negotiated TLS 1.3 cipher suite from ServerHello
+    /// 0x1301 = TLS_AES_128_GCM_SHA256
+    /// 0x1302 = TLS_AES_256_GCM_SHA384
+    /// 0x1303 = TLS_CHACHA20_POLY1305_SHA256
+    cipher_suite: u16,
 }
 
 impl TlsHandshake {
@@ -24,6 +29,7 @@ impl TlsHandshake {
         Self { 
             beardog,
             transcript: Vec::new(),
+            cipher_suite: 0,  // Will be set after parsing ServerHello
         }
     }
     
@@ -226,12 +232,13 @@ impl TlsHandshake {
 
         // 5. Parse ServerHello
         debug!("Step 5: Parsing ServerHello");
-        let (server_random, server_public) = self.parse_server_hello(&server_hello).map_err(|e| {
+        let (server_random, server_public, cipher_suite) = self.parse_server_hello(&server_hello).map_err(|e| {
             error!("❌ Failed to parse ServerHello: {}", e);
             e
         })?;
-        debug!("✅ Parsed ServerHello - server_random: {} bytes, server_public: {} bytes", 
-               server_random.len(), server_public.len());
+        self.cipher_suite = cipher_suite;  // Store for later AEAD algorithm selection
+        debug!("✅ Parsed ServerHello - cipher_suite: 0x{:04x}, server_random: {} bytes, server_public: {} bytes", 
+               cipher_suite, server_random.len(), server_public.len());
         trace!("Server public key: {:02x?}", &server_public[..std::cmp::min(32, server_public.len())]);
 
         // 6. Perform ECDH
@@ -294,7 +301,7 @@ impl TlsHandshake {
         debug!("   → Transcript hash (ClientHello + ServerHello)");
         let handshake_start = std::time::Instant::now();
         let handshake_keys = self.beardog
-            .tls_derive_handshake_secrets(&shared_secret, &client_random, &server_random, &handshake_transcript_hash)
+            .tls_derive_handshake_secrets(&shared_secret, &client_random, &server_random, &handshake_transcript_hash, self.cipher_suite)
             .await
             .map_err(|e| {
                 error!("❌ Failed to derive handshake traffic keys: {}", e);
@@ -831,21 +838,59 @@ impl TlsHandshake {
         info!("   Ciphertext+Tag: {} bytes", encrypted_record.len());
         info!("   AAD: {} bytes", aad.len());
         debug!("Decryption parameters summary:");
-        debug!("  - Algorithm: ChaCha20-Poly1305 AEAD");
         debug!("  - Key type: Handshake traffic key (server_write_key)");
         debug!("  - Nonce: IV XOR sequence_number");
         debug!("  - AAD: TLS record header");
         debug!("  - Expected: ciphertext[:-16] as plaintext, ciphertext[-16:] as tag");
 
-        // Decrypt via BearDog (ChaCha20-Poly1305 AEAD)
+        // Decrypt via BearDog - use correct AEAD algorithm based on negotiated cipher suite!
         let decrypt_start = std::time::Instant::now();
-        info!("⏳ Calling beardog.decrypt...");
-        let plaintext = self.beardog.decrypt(
-            &keys.server_write_key,
-            &nonce,
-            encrypted_record,
-            &aad,
-        ).await.map_err(|e| {
+        info!("⏳ Calling beardog.decrypt with cipher suite 0x{:04x}...", self.cipher_suite);
+        
+        let plaintext = match self.cipher_suite {
+            0x1301 => {
+                // TLS_AES_128_GCM_SHA256 (most common - GitHub, Google, CloudFlare)
+                // BearDog now derives correct 16-byte keys based on cipher suite!
+                info!("   → Using AES-128-GCM (negotiated cipher suite)");
+                debug!("  - Algorithm: AES-128-GCM AEAD");
+                debug!("  - Key length from BearDog: {} bytes", keys.server_write_key.len());
+                self.beardog.decrypt_aes_128_gcm(
+                    &keys.server_write_key,
+                    &nonce,
+                    encrypted_record,
+                    &aad,
+                ).await
+            }
+            0x1302 => {
+                // TLS_AES_256_GCM_SHA384 (high security)
+                info!("   → Using AES-256-GCM (negotiated cipher suite)");
+                debug!("  - Algorithm: AES-256-GCM AEAD");
+                self.beardog.decrypt_aes_256_gcm(
+                    &keys.server_write_key,
+                    &nonce,
+                    encrypted_record,
+                    &aad,
+                ).await
+            }
+            0x1303 => {
+                // TLS_CHACHA20_POLY1305_SHA256 (software-only, mobile-optimized)
+                info!("   → Using ChaCha20-Poly1305 (negotiated cipher suite)");
+                debug!("  - Algorithm: ChaCha20-Poly1305 AEAD");
+                self.beardog.decrypt(
+                    &keys.server_write_key,
+                    &nonce,
+                    encrypted_record,
+                    &aad,
+                ).await
+            }
+            _ => {
+                error!("❌ Unsupported cipher suite: 0x{:04x}", self.cipher_suite);
+                return Err(Error::TlsHandshake(format!(
+                    "Unsupported TLS 1.3 cipher suite: 0x{:04x}",
+                    self.cipher_suite
+                )));
+            }
+        }.map_err(|e| {
             error!("❌ Handshake record decryption FAILED!");
             error!("   Error: {}", e);
             error!("   AEAD authentication failure - investigating:");
@@ -893,7 +938,9 @@ impl TlsHandshake {
     }
 
     /// Parse ServerHello message
-    pub(crate) fn parse_server_hello(&self, data: &[u8]) -> Result<(Vec<u8>, Vec<u8>)> {
+    /// 
+    /// Returns: (server_random, server_public_key, cipher_suite)
+    pub(crate) fn parse_server_hello(&self, data: &[u8]) -> Result<(Vec<u8>, Vec<u8>, u16)> {
         if data.is_empty() || data[0] != 0x02 {
             return Err(Error::TlsHandshake("Invalid ServerHello".to_string()));
         }
@@ -918,13 +965,28 @@ impl TlsHandshake {
         let session_id_len = data[0] as usize;
         let data = &data[1 + session_id_len..];
 
-        // Skip cipher suite (2 bytes) and compression (1 byte)
+        // Parse cipher suite (2 bytes) - CRITICAL for selecting correct AEAD algorithm!
+        if data.len() < 3 {
+            return Err(Error::TlsHandshake("ServerHello truncated at cipher suite".to_string()));
+        }
+        let cipher_suite = u16::from_be_bytes([data[0], data[1]]);
+        info!("🔐 Server negotiated cipher suite: 0x{:04x}", cipher_suite);
+        
+        // Log which TLS 1.3 cipher suite was chosen
+        match cipher_suite {
+            0x1301 => info!("   → TLS_AES_128_GCM_SHA256 (most common, hardware accelerated)"),
+            0x1302 => info!("   → TLS_AES_256_GCM_SHA384 (high security, hardware accelerated)"),
+            0x1303 => info!("   → TLS_CHACHA20_POLY1305_SHA256 (software-only, mobile-optimized)"),
+            _ => warn!("   → Unknown cipher suite 0x{:04x}", cipher_suite),
+        }
+        
+        // Skip compression (1 byte)
         let data = &data[3..];
 
         // Parse extensions
         let server_public = self.extract_key_share(data)?;
 
-        Ok((server_random, server_public))
+        Ok((server_random, server_public, cipher_suite))
     }
 
     /// Extract public key from key_share extension
