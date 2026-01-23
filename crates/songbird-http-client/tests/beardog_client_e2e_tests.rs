@@ -20,8 +20,9 @@ async fn test_e2e_tls_derive_application_secrets() {
     let server_random = vec![2u8; 32];
     let transcript_hash = vec![3u8; 32]; // SHA-256 hash of handshake transcript
     
+    let cipher_suite = 0x1303; // TLS_CHACHA20_POLY1305_SHA256
     let result = client
-        .tls_derive_application_secrets(&pre_master_secret, &client_random, &server_random, &transcript_hash)
+        .tls_derive_application_secrets(&pre_master_secret, &client_random, &server_random, &transcript_hash, cipher_suite)
         .await;
     
     assert!(result.is_ok(), "Failed to derive application secrets: {:?}", result.err());

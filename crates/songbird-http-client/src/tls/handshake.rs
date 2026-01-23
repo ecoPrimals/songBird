@@ -2088,11 +2088,12 @@ mod tests {
         let handshake = TlsHandshake::new(beardog);
         
         // Build a Finished message: type (0x14) + length (3 bytes) + verify_data (32 bytes) + ContentType (0x16)
-        let mut plaintext = Vec::new();
-        plaintext.push(0x14); // HandshakeType: Finished
-        plaintext.push(0x00); // Length byte 1
-        plaintext.push(0x00); // Length byte 2
-        plaintext.push(0x20); // Length byte 3 (32 bytes)
+        let mut plaintext = vec![
+            0x14, // HandshakeType: Finished
+            0x00, // Length byte 1
+            0x00, // Length byte 2
+            0x20, // Length byte 3 (32 bytes)
+        ];
         plaintext.extend_from_slice(&[0xAA; 32]); // verify_data (dummy)
         plaintext.push(0x16); // ContentType: Handshake
         
@@ -2107,13 +2108,13 @@ mod tests {
         let beardog = std::sync::Arc::new(crate::beardog_client::BearDogClient::new("/tmp/test.sock"));
         let handshake = TlsHandshake::new(beardog);
         
-        let mut plaintext = Vec::new();
-        
         // Message 1: EncryptedExtensions (type 0x08, 92 bytes body)
-        plaintext.push(0x08); // HandshakeType: EncryptedExtensions
-        plaintext.push(0x00); // Length byte 1
-        plaintext.push(0x00); // Length byte 2
-        plaintext.push(0x5C); // Length byte 3 (92 bytes)
+        let mut plaintext = vec![
+            0x08, // HandshakeType: EncryptedExtensions
+            0x00, // Length byte 1
+            0x00, // Length byte 2
+            0x5C, // Length byte 3 (92 bytes)
+        ];
         plaintext.extend_from_slice(&[0xBB; 92]); // body (dummy)
         
         // Message 2: Certificate (type 0x0B, 2512 bytes body)
@@ -2153,13 +2154,13 @@ mod tests {
         let beardog = std::sync::Arc::new(crate::beardog_client::BearDogClient::new("/tmp/test.sock"));
         let handshake = TlsHandshake::new(beardog);
         
-        let mut plaintext = Vec::new();
-        
         // EncryptedExtensions only (no Finished)
-        plaintext.push(0x08); // HandshakeType: EncryptedExtensions
-        plaintext.push(0x00); // Length byte 1
-        plaintext.push(0x00); // Length byte 2
-        plaintext.push(0x5C); // Length byte 3 (92 bytes)
+        let mut plaintext = vec![
+            0x08, // HandshakeType: EncryptedExtensions
+            0x00, // Length byte 1
+            0x00, // Length byte 2
+            0x5C, // Length byte 3 (92 bytes)
+        ];
         plaintext.extend_from_slice(&[0xBB; 92]); // body (dummy)
         plaintext.push(0x16); // ContentType: Handshake
         

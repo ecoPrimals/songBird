@@ -271,10 +271,10 @@ fn test_no_content_length_chunked_encoding() {
     
     // Simulate reading (without Content-Length, read until empty record)
     let mut response_data = Vec::new();
-    let mut records_read = 0;
+    let mut _records_read = 0;
     
     // Record 1: Complete chunked response
-    records_read += 1;
+    _records_read += 1;
     response_data.extend_from_slice(response);
     
     // Check for headers

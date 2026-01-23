@@ -96,12 +96,12 @@ fn test_handshake_message_framing() {
     let body = vec![0xAAu8; 100]; // 100 bytes of data
     let length = body.len() as u32;
     
-    let mut message = vec![];
-    message.push(msg_type);
-    // uint24: 3 bytes, big-endian
-    message.push(((length >> 16) & 0xFF) as u8);
-    message.push(((length >> 8) & 0xFF) as u8);
-    message.push((length & 0xFF) as u8);
+    let mut message = vec![
+        msg_type,                          // HandshakeType
+        ((length >> 16) & 0xFF) as u8,     // uint24 length byte 1
+        ((length >> 8) & 0xFF) as u8,      // uint24 length byte 2
+        (length & 0xFF) as u8,             // uint24 length byte 3
+    ];
     message.extend_from_slice(&body);
     
     // Parse it back
@@ -211,7 +211,7 @@ fn test_contenttype_byte_stripping() {
     // Scenario 3: Empty content (edge case)
     let data3 = vec![0x17u8]; // Just ContentType
     let mut result3 = data3.clone();
-    if result3.len() > 0 {
+    if !result3.is_empty() {
         result3.truncate(result3.len() - 1);
     }
     assert_eq!(result3.len(), 0, "Should handle empty content");

@@ -213,8 +213,6 @@ async fn test_global_stats_aggregation() {
 
 #[cfg(test)]
 mod e2e {
-    use super::*;
-    
     /// E2E: Test that minimal config connects faster
     #[tokio::test]
     #[ignore] // Requires real server connection

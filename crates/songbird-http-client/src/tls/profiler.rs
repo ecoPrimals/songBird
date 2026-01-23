@@ -75,6 +75,12 @@ pub struct GlobalStats {
     pub problematic_extensions: HashMap<ExtensionType, u32>,
 }
 
+impl Default for ServerProfiler {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl ServerProfiler {
     /// Create new profiler
     pub fn new() -> Self {

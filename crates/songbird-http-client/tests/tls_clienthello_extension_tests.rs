@@ -172,9 +172,10 @@ fn test_psk_key_exchange_modes_extension() {
     let psk_dhe_ke = 0x01u8; // PSK with DHE key establishment
     
     // Build extension
-    let mut psk_modes = Vec::new();
-    psk_modes.push(1); // PSK modes list length: 1
-    psk_modes.push(psk_dhe_ke);
+    let psk_modes = [
+        1,           // PSK modes list length: 1
+        psk_dhe_ke,  // psk_dhe_ke (0x01)
+    ];
     
     // Verify
     assert_eq!(psk_modes[0], 1, "Should list 1 PSK mode");
