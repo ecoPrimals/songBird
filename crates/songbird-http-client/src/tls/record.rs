@@ -329,7 +329,53 @@ impl TlsRecordLayer {
 
         info!("✅ Decrypted {} bytes → {} bytes (AEAD authentication succeeded)", 
               encrypted.len(), decrypted.len());
-        trace!("Decrypted data (first 64 bytes): {:02x?}", &decrypted[..std::cmp::min(64, decrypted.len())]);
+        
+        // DIAGNOSTIC: Show exactly what we decrypted
+        info!("════════════════════════════════════════════════════════════");
+        info!("🔍 DECRYPTED CONTENT ANALYSIS (DIAGNOSTIC)");
+        info!("════════════════════════════════════════════════════════════");
+        info!("Ciphertext length: {} bytes (includes 16-byte AEAD tag)", encrypted.len());
+        info!("Plaintext length: {} bytes (after AEAD decryption)", decrypted.len());
+        
+        if !decrypted.is_empty() {
+            // Show first and last bytes
+            info!("First 16 bytes (hex): {}", hex::encode(&decrypted[..std::cmp::min(16, decrypted.len())]));
+            if decrypted.len() > 16 {
+                info!("Last 16 bytes (hex): {}", hex::encode(&decrypted[decrypted.len().saturating_sub(16)..]));
+            }
+            
+            // Try to interpret as UTF-8
+            let utf8_preview = String::from_utf8_lossy(&decrypted[..std::cmp::min(200, decrypted.len())]);
+            info!("UTF-8 preview (first 200 bytes):");
+            info!("  {}", utf8_preview);
+            
+            // Check if this might be a TLS alert
+            let last_byte = *decrypted.last().unwrap_or(&0xFF);
+            if last_byte == 0x15 {
+                warn!("🚨 ALERT DETECTED! Last byte is 0x15 (ALERT ContentType)");
+                if decrypted.len() >= 2 {
+                    let alert_level = decrypted[0];
+                    let alert_desc = decrypted[1];
+                    warn!("   Alert level: 0x{:02x} ({})", alert_level, 
+                          if alert_level == 1 { "Warning" } else { "Fatal" });
+                    warn!("   Alert description: 0x{:02x} ({})", alert_desc,
+                          match alert_desc {
+                              0x28 => "handshake_failure",
+                              0x33 => "decrypt_error",
+                              0x46 => "certificate_required",
+                              0x50 => "protocol_version",
+                              _ => "unknown",
+                          });
+                }
+            } else if last_byte == 0x17 {
+                debug!("✅ Last byte is 0x17 (APPLICATION_DATA ContentType) - as expected");
+            } else if last_byte == 0x16 {
+                debug!("✅ Last byte is 0x16 (HANDSHAKE ContentType)");
+            } else {
+                warn!("⚠️  Last byte is 0x{:02x} (unexpected ContentType!)", last_byte);
+            }
+        }
+        info!("════════════════════════════════════════════════════════════");
 
         // RFC 8446 Section 5.4: TLSInnerPlaintext structure is:
         // [content] [ContentType byte] [padding zeros...]
@@ -353,12 +399,41 @@ impl TlsRecordLayer {
         
         // Step 2: Strip ContentType byte (should be 0x16 for handshake or 0x17 for application data)
         let content_type_byte = plaintext[plaintext.len() - 1];
-        debug!("ContentType byte at end of plaintext: 0x{:02x}", content_type_byte);
+        info!("📋 ContentType byte at end of plaintext: 0x{:02x}", content_type_byte);
         plaintext.truncate(plaintext.len() - 1);
         
-        info!("✅ Stripped ContentType byte (0x{:02x}): {} bytes plaintext (HTTP data)", 
-              content_type_byte, plaintext.len());
-        trace!("HTTP data preview: {}", String::from_utf8_lossy(&plaintext[..std::cmp::min(200, plaintext.len())]));
+        info!("════════════════════════════════════════════════════════════");
+        info!("🎯 FINAL PLAINTEXT AFTER CONTENTTYPE STRIPPING");
+        info!("════════════════════════════════════════════════════════════");
+        info!("ContentType stripped: 0x{:02x} ({})", content_type_byte,
+              match content_type_byte {
+                  0x15 => "ALERT",
+                  0x16 => "HANDSHAKE",
+                  0x17 => "APPLICATION_DATA",
+                  _ => "UNKNOWN",
+              });
+        info!("Final plaintext length: {} bytes (ready for HTTP parser)", plaintext.len());
+        
+        if !plaintext.is_empty() {
+            info!("First 100 bytes (hex): {}", hex::encode(&plaintext[..std::cmp::min(100, plaintext.len())]));
+            let utf8_preview = String::from_utf8_lossy(&plaintext[..std::cmp::min(300, plaintext.len())]);
+            info!("UTF-8 preview (first 300 bytes):");
+            info!("  {}", utf8_preview);
+            
+            // Check if it starts with HTTP
+            if plaintext.len() >= 8 {
+                let start = String::from_utf8_lossy(&plaintext[..8]);
+                if start.starts_with("HTTP/") {
+                    info!("✅ Plaintext starts with 'HTTP/' - looks like valid HTTP response!");
+                } else {
+                    warn!("⚠️  Plaintext does NOT start with 'HTTP/' - may not be HTTP response!");
+                    warn!("   Instead starts with: {:?}", start);
+                }
+            }
+        } else {
+            warn!("⚠️  Final plaintext is EMPTY after ContentType stripping!");
+        }
+        info!("════════════════════════════════════════════════════════════");
 
         self.read_sequence_number += 1;
         debug!("  → Incremented read sequence number to {}", self.read_sequence_number);
