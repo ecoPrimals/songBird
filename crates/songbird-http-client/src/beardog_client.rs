@@ -287,6 +287,57 @@ impl BearDogClient {
         })
     }
 
+    /// Compute TLS 1.3 Finished message verify_data (RFC 8446 Section 4.4.4)
+    /// 
+    /// The Finished message authenticates the entire handshake using HMAC:
+    /// ```text
+    /// verify_data = HMAC(finished_key, Transcript-Hash(Handshake Context))
+    /// ```
+    /// 
+    /// Where `finished_key` is derived from the handshake traffic secret:
+    /// ```text
+    /// finished_key = HKDF-Expand-Label(BaseKey, "finished", "", Hash.length)
+    /// ```
+    /// 
+    /// # Arguments
+    /// 
+    /// * `transcript_hash` - SHA-256 hash of all handshake messages up to and including server Finished
+    /// * `cipher_suite` - Negotiated TLS 1.3 cipher suite (0x1301, 0x1302, or 0x1303)
+    /// 
+    /// # Returns
+    /// 
+    /// 32-byte verify_data for SHA-256-based cipher suites (0x1301, 0x1303) or
+    /// 48-byte verify_data for SHA-384-based cipher suites (0x1302)
+    pub async fn tls_compute_finished_verify_data(
+        &self,
+        transcript_hash: &[u8],
+        cipher_suite: u16,
+    ) -> Result<Vec<u8>> {
+        info!("🔐 Computing TLS 1.3 Finished verify_data (RFC 8446 Section 4.4.4)");
+        debug!("  → transcript_hash: {} bytes", transcript_hash.len());
+        debug!("  → cipher_suite: 0x{:04x}", cipher_suite);
+        trace!("  → transcript_hash (hex): {}", hex::encode(transcript_hash));
+        
+        let result = self.call("tls.compute_finished_verify_data", json!({
+            "transcript_hash": BASE64_STANDARD.encode(transcript_hash),
+            "cipher_suite": format!("0x{:04x}", cipher_suite)
+        })).await.map_err(|e| {
+            error!("❌ tls_compute_finished_verify_data RPC call failed: {}", e);
+            e
+        })?;
+
+        let verify_data = result["verify_data"]
+            .as_str()
+            .ok_or_else(|| Error::BearDogRpc("Missing verify_data in response".to_string()))?;
+
+        let decoded = BASE64_STANDARD.decode(verify_data)
+            .map_err(|e| Error::BearDogRpc(format!("Invalid verify_data base64: {}", e)))?;
+        
+        info!("✅ Finished verify_data computed: {} bytes", decoded.len());
+        debug!("   Verify data (hex): {}", hex::encode(&decoded));
+        Ok(decoded)
+    }
+
     /// Legacy alias for backwards compatibility
     /// DEPRECATED: Use tls_derive_application_secrets instead
     /// 
@@ -331,6 +382,102 @@ impl BearDogClient {
             .map_err(|e| Error::BearDogRpc(format!("Invalid ciphertext base64: {}", e)))?;
         
         trace!("✅ Encrypted: {} bytes plaintext → {} bytes ciphertext", plaintext.len(), decoded.len());
+        Ok(decoded)
+    }
+
+    /// Encrypt data with AES-128-GCM (for TLS_AES_128_GCM_SHA256 cipher suite)
+    /// 
+    /// # Arguments
+    /// 
+    /// * `key` - 16-byte AES-128 key
+    /// * `nonce` - 12-byte nonce (IV for GCM mode)
+    /// * `plaintext` - Data to encrypt
+    /// * `aad` - Additional Authenticated Data (TLS record header)
+    pub async fn encrypt_aes_128_gcm(
+        &self,
+        key: &[u8],
+        nonce: &[u8],
+        plaintext: &[u8],
+        aad: &[u8],
+    ) -> Result<Vec<u8>> {
+        trace!("🔐 Encrypting {} bytes with AES-128-GCM via BearDog", plaintext.len());
+        
+        // Validate lengths
+        if key.len() != 16 {
+            error!("❌ Wrong key size: {} bytes (need 16 for AES-128)", key.len());
+            return Err(Error::BearDogRpc(format!("AES-128-GCM requires 16-byte key, got {}", key.len())));
+        }
+        if nonce.len() != 12 {
+            error!("❌ Wrong nonce size: {} bytes (need 12 for GCM)", nonce.len());
+            return Err(Error::BearDogRpc(format!("GCM nonce must be 12 bytes, got {}", nonce.len())));
+        }
+        
+        let result = self.call("crypto.encrypt_aes_128_gcm", json!({
+            "key": BASE64_STANDARD.encode(key),
+            "nonce": BASE64_STANDARD.encode(nonce),
+            "plaintext": BASE64_STANDARD.encode(plaintext),
+            "aad": BASE64_STANDARD.encode(aad)
+        })).await.map_err(|e| {
+            error!("❌ crypto.encrypt_aes_128_gcm RPC call failed: {}", e);
+            e
+        })?;
+
+        let ciphertext = result["ciphertext"]
+            .as_str()
+            .ok_or_else(|| Error::BearDogRpc("Missing ciphertext in response".to_string()))?;
+
+        let decoded = BASE64_STANDARD.decode(ciphertext)
+            .map_err(|e| Error::BearDogRpc(format!("Invalid ciphertext base64: {}", e)))?;
+        
+        trace!("✅ Encrypted: {} bytes plaintext → {} bytes ciphertext+tag", plaintext.len(), decoded.len());
+        Ok(decoded)
+    }
+
+    /// Encrypt data with AES-256-GCM (for TLS_AES_256_GCM_SHA384 cipher suite)
+    /// 
+    /// # Arguments
+    /// 
+    /// * `key` - 32-byte AES-256 key
+    /// * `nonce` - 12-byte nonce (IV for GCM mode)
+    /// * `plaintext` - Data to encrypt
+    /// * `aad` - Additional Authenticated Data (TLS record header)
+    pub async fn encrypt_aes_256_gcm(
+        &self,
+        key: &[u8],
+        nonce: &[u8],
+        plaintext: &[u8],
+        aad: &[u8],
+    ) -> Result<Vec<u8>> {
+        trace!("🔐 Encrypting {} bytes with AES-256-GCM via BearDog", plaintext.len());
+        
+        // Validate lengths
+        if key.len() != 32 {
+            error!("❌ Wrong key size: {} bytes (need 32 for AES-256)", key.len());
+            return Err(Error::BearDogRpc(format!("AES-256-GCM requires 32-byte key, got {}", key.len())));
+        }
+        if nonce.len() != 12 {
+            error!("❌ Wrong nonce size: {} bytes (need 12 for GCM)", nonce.len());
+            return Err(Error::BearDogRpc(format!("GCM nonce must be 12 bytes, got {}", nonce.len())));
+        }
+        
+        let result = self.call("crypto.encrypt_aes_256_gcm", json!({
+            "key": BASE64_STANDARD.encode(key),
+            "nonce": BASE64_STANDARD.encode(nonce),
+            "plaintext": BASE64_STANDARD.encode(plaintext),
+            "aad": BASE64_STANDARD.encode(aad)
+        })).await.map_err(|e| {
+            error!("❌ crypto.encrypt_aes_256_gcm RPC call failed: {}", e);
+            e
+        })?;
+
+        let ciphertext = result["ciphertext"]
+            .as_str()
+            .ok_or_else(|| Error::BearDogRpc("Missing ciphertext in response".to_string()))?;
+
+        let decoded = BASE64_STANDARD.decode(ciphertext)
+            .map_err(|e| Error::BearDogRpc(format!("Invalid ciphertext base64: {}", e)))?;
+        
+        trace!("✅ Encrypted: {} bytes plaintext → {} bytes ciphertext+tag", plaintext.len(), decoded.len());
         Ok(decoded)
     }
 
@@ -468,7 +615,7 @@ impl BearDogClient {
         debug!("   Ciphertext+Tag ({} bytes): {}", ciphertext.len(), hex::encode(ciphertext));
         debug!("   AAD (5 bytes): {}", hex::encode(aad));
         
-        let result = self.call("crypto.aes128_gcm_decrypt", json!({
+        let result = self.call("crypto.decrypt_aes_128_gcm", json!({
             "key": BASE64_STANDARD.encode(key),
             "nonce": BASE64_STANDARD.encode(nonce),
             "ciphertext": BASE64_STANDARD.encode(ciphertext),  // FULL ciphertext WITH tag!
@@ -536,7 +683,7 @@ impl BearDogClient {
         info!("   Per BearDog: RustCrypto aes-gcm expects [encrypted_data] + [16-byte tag]");
         info!("   Total bytes being passed: {} (includes tag)", ciphertext.len());
         
-        let result = self.call("crypto.aes256_gcm_decrypt", json!({
+        let result = self.call("crypto.decrypt_aes_256_gcm", json!({
             "key": BASE64_STANDARD.encode(key),
             "nonce": BASE64_STANDARD.encode(nonce),
             "ciphertext": BASE64_STANDARD.encode(ciphertext),  // FULL ciphertext WITH tag!

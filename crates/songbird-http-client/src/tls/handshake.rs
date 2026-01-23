@@ -391,12 +391,21 @@ impl TlsHandshake {
                                    messages_read, plaintext.len());
                             debug!("📊 Transcript now: {} bytes total (all plaintext)", self.transcript.len());
                             
-                            // Check if this looks like the last handshake message (server Finished)
-                            // Server Finished is typically small after decryption (< 100 bytes plaintext)
-                            if plaintext.len() < 100 && messages_read >= 3 {
-                                info!("🎯 Likely received server Finished message (small plaintext after 3+ messages)");
-                                break;
+                            // RFC 8446 Section 4.4: Detect server Finished message (HandshakeType 0x14)
+                            // CRITICAL: We MUST send client Finished IMMEDIATELY after receiving server Finished!
+                            if !plaintext.is_empty() && plaintext[0] == 0x14 {
+                                info!("🎯 SERVER FINISHED DETECTED! (HandshakeType 0x14)");
+                                info!("   Server handshake complete - NOW sending OUR Finished!");
+                                
+                                // Send client Finished message IMMEDIATELY (RFC 8446 requirement)
+                                self.send_client_finished(stream, &handshake_keys).await?;
+                                
+                                info!("✅ Client Finished sent - handshake complete!");
+                                break;  // Exit handshake loop - server will now respond to HTTP requests!
                             }
+                            
+                            // If not Finished, log message type and continue reading
+                            debug!("   Message type: 0x{:02x} (not Finished yet, continuing...)", plaintext[0]);
                         }
                         Err(e) => {
                             warn!("❌ Failed to decrypt handshake record {}: {}", messages_read, e);
@@ -475,28 +484,9 @@ impl TlsHandshake {
         info!("🔐 TLS application traffic keys derived in {:?}", derive_start.elapsed());
         debug!("Application secrets derived successfully (for HTTP data encryption)");
         
-        // 12. Send client Finished message (simplified - empty for MVP)
-        // In full TLS 1.3, this would be encrypted and contain HMAC of transcript
-        // For MVP, we send a minimal ChangeCipherSpec to indicate we're ready
-        debug!("Step 12: Sending client ChangeCipherSpec acknowledgment");
-        let change_cipher_spec = vec![
-            0x14, // ContentType: ChangeCipherSpec
-            0x03, 0x03, // TLS 1.2 (compatibility)
-            0x00, 0x01, // Length: 1
-            0x01, // CCS payload
-        ];
-        
-        info!("📤 Sending ChangeCipherSpec acknowledgment ({} bytes)", change_cipher_spec.len());
-        trace!("ChangeCipherSpec: {:02x?}", change_cipher_spec);
-        
-        stream.write_all(&change_cipher_spec).await.map_err(|e| {
-            error!("❌ Failed to write ChangeCipherSpec: {}", e);
-            Error::Io(e)
-        })?;
-        stream.flush().await.map_err(|e| {
-            error!("❌ Failed to flush ChangeCipherSpec: {}", e);
-            Error::Io(e)
-        })?;
+        // 12. Client Finished will be sent when we detect server Finished (in the message loop above)
+        // RFC 8446 Section 4.4.4: Client must send Finished IMMEDIATELY after receiving server Finished
+        // (Already handled in the decrypt loop when we detect HandshakeType 0x14)
         
         let total_time = handshake_start.elapsed();
         info!("🎉 ✅ TLS 1.3 handshake complete in {:?}", total_time);
@@ -508,6 +498,7 @@ impl TlsHandshake {
             server_write_key: secrets.server_write_key,
             client_write_iv: secrets.client_write_iv,
             server_write_iv: secrets.server_write_iv,
+            cipher_suite: self.cipher_suite,  // Pass negotiated cipher suite to session
         })
     }
 
@@ -1111,6 +1102,183 @@ impl TlsHandshake {
         record.extend_from_slice(&ciphertext);
         
         Ok(record)
+    }
+
+    /// Send client Finished message (RFC 8446 Section 4.4.4)
+    /// 
+    /// The Finished message is sent by the client after receiving and verifying the server's
+    /// Finished message. It contains a verify_data field that authenticates the entire handshake.
+    /// 
+    /// RFC 8446 Section 4.4.4:
+    /// ```text
+    /// struct {
+    ///     opaque verify_data[Hash.length];
+    /// } Finished;
+    /// ```
+    /// 
+    /// The verify_data is computed as:
+    /// ```text
+    /// verify_data = HMAC(finished_key, Transcript-Hash(Handshake Context))
+    /// ```
+    /// 
+    /// # Arguments
+    /// 
+    /// * `stream` - TCP stream to send the Finished message on
+    /// * `handshake_keys` - Handshake traffic keys for encrypting the message
+    async fn send_client_finished(
+        &mut self,
+        stream: &mut TcpStream,
+        handshake_keys: &TlsSecrets,
+    ) -> Result<()> {
+        info!("🔐 Step 12: Building and sending client Finished message (RFC 8446 Section 4.4.4)");
+        
+        // 1. Compute transcript hash of all handshake messages
+        // Includes: ClientHello, ServerHello, EncryptedExtensions, Certificate, CertificateVerify, server Finished
+        let transcript_hash = self.compute_transcript_hash();
+        info!("📊 Transcript hash for Finished: {} bytes", transcript_hash.len());
+        debug!("   Transcript hash (hex): {}", hex::encode(&transcript_hash));
+        
+        // 2. Call BearDog to compute verify_data (RFC 8446 Section 4.4.4)
+        // BearDog implements: HMAC(finished_key, transcript_hash)
+        // where finished_key is derived from the handshake traffic secret
+        info!("🔐 Computing verify_data via BearDog...");
+        let verify_data = self.beardog
+            .tls_compute_finished_verify_data(&transcript_hash, self.cipher_suite)
+            .await
+            .map_err(|e| {
+                error!("❌ Failed to compute Finished verify_data: {}", e);
+                e
+            })?;
+        
+        info!("✅ Finished verify_data computed: {} bytes", verify_data.len());
+        debug!("   Verify data (hex): {}", hex::encode(&verify_data));
+        
+        // 3. Build Finished handshake message
+        // Format: HandshakeType (1 byte) + Length (3 bytes) + verify_data (32 bytes for SHA-256)
+        let mut finished_msg = Vec::new();
+        finished_msg.push(0x14); // HandshakeType: Finished
+        
+        // Length (3 bytes, big-endian)
+        let length = verify_data.len();
+        finished_msg.push(((length >> 16) & 0xFF) as u8);
+        finished_msg.push(((length >> 8) & 0xFF) as u8);
+        finished_msg.push((length & 0xFF) as u8);
+        
+        // Verify data
+        finished_msg.extend_from_slice(&verify_data);
+        
+        info!("📝 Built Finished message: {} bytes total", finished_msg.len());
+        debug!("   Finished message (hex): {}", hex::encode(&finished_msg));
+        
+        // 4. Add ContentType byte for TLS 1.3 encryption (RFC 8446 Section 5.2)
+        // In TLS 1.3, the ContentType (0x16 = Handshake) is encrypted as part of the payload
+        let mut plaintext = finished_msg.clone();
+        plaintext.push(0x16); // ContentType: Handshake
+        
+        info!("📝 Plaintext with ContentType: {} bytes", plaintext.len());
+        debug!("   Last byte (ContentType): 0x{:02x}", plaintext[plaintext.len() - 1]);
+        
+        // 5. Encrypt with handshake traffic keys
+        // We use client_write_key since we're the client sending this message
+        // Sequence number for client Finished is 0 (first message we send with handshake keys)
+        let sequence_number = 0u64;
+        
+        info!("🔐 Encrypting client Finished with handshake traffic keys (seq={})", sequence_number);
+        
+        // Build nonce: client_write_iv XOR sequence_number (RFC 8446 Section 5.3)
+        let mut nonce = handshake_keys.client_write_iv.clone();
+        let seq_bytes = sequence_number.to_be_bytes();
+        
+        if nonce.len() >= 8 {
+            for (i, &byte) in seq_bytes.iter().enumerate() {
+                let nonce_idx = nonce.len() - 8 + i;
+                nonce[nonce_idx] ^= byte;
+            }
+        }
+        
+        debug!("   Nonce (IV XOR seq): {:02x?}", nonce);
+        
+        // Calculate ciphertext length (plaintext + 16-byte AEAD tag)
+        let ciphertext_length = plaintext.len() + 16;
+        
+        // Build AAD (TLS record header)
+        let record_type = 0x17; // APPLICATION_DATA (all encrypted records use 0x17 in TLS 1.3)
+        let version = [0x03, 0x03]; // TLS 1.2 compatibility
+        let aad = [
+            record_type,
+            version[0],
+            version[1],
+            ((ciphertext_length >> 8) & 0xFF) as u8,
+            (ciphertext_length & 0xFF) as u8,
+        ];
+        
+        debug!("   AAD (TLS record header): {:02x?}", aad);
+        
+        // Encrypt via BearDog (uses correct AEAD algorithm based on cipher suite)
+        let ciphertext = match self.cipher_suite {
+            0x1301 => {
+                info!("   → Using AES-128-GCM for client Finished");
+                self.beardog.encrypt_aes_128_gcm(
+                    &handshake_keys.client_write_key,
+                    &nonce,
+                    &plaintext,
+                    &aad,
+                ).await
+            }
+            0x1302 => {
+                info!("   → Using AES-256-GCM for client Finished");
+                self.beardog.encrypt_aes_256_gcm(
+                    &handshake_keys.client_write_key,
+                    &nonce,
+                    &plaintext,
+                    &aad,
+                ).await
+            }
+            0x1303 => {
+                info!("   → Using ChaCha20-Poly1305 for client Finished");
+                self.beardog.encrypt(
+                    &handshake_keys.client_write_key,
+                    &nonce,
+                    &plaintext,
+                    &aad,
+                ).await
+            }
+            _ => {
+                error!("❌ Unsupported cipher suite: 0x{:04x}", self.cipher_suite);
+                return Err(Error::TlsHandshake(format!(
+                    "Unsupported TLS 1.3 cipher suite: 0x{:04x}",
+                    self.cipher_suite
+                )));
+            }
+        }.map_err(|e| {
+            error!("❌ Failed to encrypt client Finished: {}", e);
+            e
+        })?;
+        
+        info!("✅ Encrypted client Finished: {} bytes (includes 16-byte tag)", ciphertext.len());
+        
+        // 6. Build complete TLS record: header + ciphertext
+        let mut tls_record = Vec::new();
+        tls_record.extend_from_slice(&aad);
+        tls_record.extend_from_slice(&ciphertext);
+        
+        info!("📤 Sending client Finished TLS record: {} bytes total", tls_record.len());
+        debug!("   TLS record preview: {:02x?}", &tls_record[..std::cmp::min(32, tls_record.len())]);
+        
+        // 7. Send over TCP
+        stream.write_all(&tls_record).await.map_err(|e| {
+            error!("❌ Failed to write client Finished: {}", e);
+            Error::Io(e)
+        })?;
+        stream.flush().await.map_err(|e| {
+            error!("❌ Failed to flush client Finished: {}", e);
+            Error::Io(e)
+        })?;
+        
+        info!("✅ Client Finished sent successfully!");
+        info!("   Server should now respond to HTTP requests! 🎉");
+        
+        Ok(())
     }
 
     /// Decrypt application data for TLS 1.3 with correct AAD construction
