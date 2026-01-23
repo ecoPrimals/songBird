@@ -185,9 +185,11 @@ impl SongbirdHttpClient {
             // Empty record = connection closed (close_notify or EOF)
             if chunk.is_empty() {
                 if records_read == 1 {
-                    info!("   ℹ️  Connection closed before receiving data (close_notify or server closed)");
+                    warn!("⚠️  Connection closed before receiving any data (close_notify or EOF)");
+                    warn!("   Server may have rejected request or encountered error");
                 } else {
-                    info!("   ✅ Connection closed gracefully (close_notify), response complete");
+                    info!("✅ Server closed connection after sending {} record(s)", records_read - 1);
+                    info!("   Response complete ({} bytes total)", response_data.len());
                 }
                 break;
             }
@@ -265,6 +267,12 @@ impl SongbirdHttpClient {
                 warn!("⚠️  Read {} TLS records, stopping (possible issue)", records_read);
                 break;
             }
+        }
+        
+        // Validate we received data
+        if response_data.is_empty() {
+            error!("❌ No HTTP response data received (server closed connection without sending response)");
+            return Err(Error::HttpProtocol("No response data received from server".to_string()));
         }
         
         info!("✅ HTTP response RECEIVED from server:");

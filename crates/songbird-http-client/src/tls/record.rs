@@ -156,10 +156,18 @@ impl TlsRecordLayer {
 
         // Read record header (5 bytes)
         let mut header = [0u8; 5];
-        stream.read_exact(&mut header).await.map_err(|e| {
-            error!("❌ Failed to read TLS record header: {}", e);
-            Error::Io(e)
-        })?;
+        match stream.read_exact(&mut header).await {
+            Ok(_) => {},
+            Err(e) if e.kind() == std::io::ErrorKind::UnexpectedEof => {
+                // Server closed connection (normal after sending complete response)
+                info!("✅ Server closed connection (EOF) - response complete");
+                return Ok(Vec::new());  // Signal EOF without error
+            }
+            Err(e) => {
+                error!("❌ Failed to read TLS record header: {}", e);
+                return Err(Error::Io(e));
+            }
+        }
 
         let content_type = header[0];
         let tls_version = u16::from_be_bytes([header[1], header[2]]);
