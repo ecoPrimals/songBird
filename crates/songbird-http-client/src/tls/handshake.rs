@@ -97,6 +97,26 @@ impl TlsHandshake {
             info!("   ClientHello total: {} bytes (with TLS header)", client_hello.len());
             info!("   ClientHello handshake message: {} bytes (TLS header stripped)", handshake_message.len());
             debug!("   TLS record header (5 bytes, NOT in transcript): {:02x?}", &client_hello[..5]);
+            
+            // BearDog-requested verification: First 32 bytes should start with 0x01 (ClientHello type)
+            info!("🔍 VERIFICATION: ClientHello handshake message first bytes:");
+            let preview_len = std::cmp::min(32, handshake_message.len());
+            let first_bytes: String = handshake_message[..preview_len].iter()
+                .map(|b| format!("{:02x}", b))
+                .collect::<Vec<_>>()
+                .join(" ");
+            info!("   First {} bytes: {}", preview_len, first_bytes);
+            if !handshake_message.is_empty() {
+                let first_byte = handshake_message[0];
+                if first_byte == 0x01 {
+                    info!("   ✅ CORRECT: First byte is 0x01 (ClientHello handshake type)");
+                } else if first_byte == 0x16 {
+                    error!("   ❌ WRONG: First byte is 0x16 (TLS record header - should be stripped!)");
+                } else {
+                    warn!("   ⚠️  UNEXPECTED: First byte is 0x{:02x} (expected 0x01)", first_byte);
+                }
+            }
+            
             debug!("   Handshake message (first 64 bytes, ADDED to transcript):");
             for (i, chunk) in handshake_message.chunks(16).take(4).enumerate() {
                 let hex: String = chunk.iter().map(|b| format!("{:02x}", b)).collect::<Vec<_>>().join(" ");
@@ -171,6 +191,26 @@ impl TlsHandshake {
         // so server_hello contains only the handshake message (Type + Length + Content)
         info!("📝 TRANSCRIPT UPDATE 2: Adding ServerHello (WITHOUT TLS record header)");
         info!("   ServerHello handshake message: {} bytes (TLS header already stripped)", server_hello.len());
+        
+        // BearDog-requested verification: First 32 bytes should start with 0x02 (ServerHello type)
+        info!("🔍 VERIFICATION: ServerHello handshake message first bytes:");
+        let preview_len = std::cmp::min(32, server_hello.len());
+        let first_bytes: String = server_hello[..preview_len].iter()
+            .map(|b| format!("{:02x}", b))
+            .collect::<Vec<_>>()
+            .join(" ");
+        info!("   First {} bytes: {}", preview_len, first_bytes);
+        if !server_hello.is_empty() {
+            let first_byte = server_hello[0];
+            if first_byte == 0x02 {
+                info!("   ✅ CORRECT: First byte is 0x02 (ServerHello handshake type)");
+            } else if first_byte == 0x16 {
+                error!("   ❌ WRONG: First byte is 0x16 (TLS record header - should be stripped!)");
+            } else {
+                warn!("   ⚠️  UNEXPECTED: First byte is 0x{:02x} (expected 0x02)", first_byte);
+            }
+        }
+        
         debug!("   Handshake message (first 64 bytes, ADDED to transcript):");
         for (i, chunk) in server_hello.chunks(16).take(4).enumerate() {
             let hex: String = chunk.iter().map(|b| format!("{:02x}", b)).collect::<Vec<_>>().join(" ");
@@ -229,12 +269,19 @@ impl TlsHandshake {
         debug!("      4. ONLY the handshake message content (Type + Length + Content)");
         
         info!("🔐 COMPUTING HANDSHAKE TRANSCRIPT HASH (SHA-256 of {} bytes)", self.transcript.len());
+        debug!("   RFC 8446 Section 4.4.1: Transcript-Hash(M1, M2) = Hash(M1 || M2)");
+        debug!("   For handshake keys: M1 = ClientHello, M2 = ServerHello");
+        debug!("   Both messages are handshake message bodies ONLY (no TLS record headers)");
+        
         let handshake_transcript_hash = self.compute_transcript_hash();
+        
         info!("✅ Handshake transcript hash computed!");
-        info!("   Hash: {} bytes (SHA-256)", handshake_transcript_hash.len());
-        info!("   Hash (hex): {}", hex::encode(&handshake_transcript_hash));
-        info!("   This hash will be used to derive handshake traffic keys (RFC 8446 Section 7.1)");
-        debug!("🎯 Key Point: Server computes same hash from same transcript bytes");
+        info!("   Hash length: {} bytes (SHA-256)", handshake_transcript_hash.len());
+        info!("   🎯 Transcript hash (hex): {}", hex::encode(&handshake_transcript_hash));
+        info!("   This hash will be passed to BearDog's tls.derive_handshake_secrets");
+        debug!("🔍 BearDog will use this hash to derive handshake traffic keys (RFC 8446 Section 7.1)");
+        debug!("   Server computes SAME hash from SAME transcript bytes");
+        debug!("   If our hash differs by 1 byte → keys will be completely wrong → AEAD fails");
 
         // 8. Derive handshake traffic keys (RFC 8446 Section 7.1)
         // These keys are used to decrypt post-handshake messages (EncryptedExtensions, Certificate, etc.)
