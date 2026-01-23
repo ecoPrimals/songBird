@@ -122,41 +122,8 @@ impl SongbirdHttpClient {
     ) -> Result<HttpResponse> {
         debug!("🔒 Performing TLS handshake with {}", host);
 
-        // Perform TLS handshake with config and profiler
-        let handshake_start = std::time::Instant::now();
-        let mut handshake = TlsHandshake::with_config(
-            self.beardog.clone(),
-            self.config.clone(),
-            self.profiler.clone(),
-        );
-        
-        let session_keys = match handshake.handshake(&mut tcp_stream, host).await {
-            Ok(keys) => {
-                let handshake_duration = handshake_start.elapsed();
-                info!("✅ TLS handshake complete with {} in {:?}", host, handshake_duration);
-                
-                // Record success with profiler
-                if let Some(profiler) = &self.profiler {
-                    // Note: extension list would be tracked inside handshake
-                    profiler.record_success(host, vec![], keys.cipher_suite, handshake_duration);
-                    debug!("🧠 Profiler updated: success for {}", host);
-                }
-                
-                keys
-            }
-            Err(e) => {
-                let handshake_duration = handshake_start.elapsed();
-                error!("❌ TLS handshake failed with {} after {:?}: {}", host, handshake_duration, e);
-                
-                // Record failure with profiler
-                if let Some(profiler) = &self.profiler {
-                    profiler.record_failure(host, vec![], None, &e.to_string());
-                    debug!("🧠 Profiler updated: failure for {}", host);
-                }
-                
-                return Err(e);
-            }
-        };
+        // Attempt TLS handshake with progressive fallback
+        let session_keys = self.attempt_handshake_with_fallback(&mut tcp_stream, host).await?;
 
         info!("✅ TLS handshake complete with {}", host);
         info!("════════════════════════════════════════════════════════════");
@@ -308,6 +275,122 @@ impl SongbirdHttpClient {
         // Parse HTTP response
         debug!("Parsing HTTP response...");
         self.parse_http_response(&response_data)
+    }
+    
+    /// Attempt TLS handshake with progressive fallback on failure
+    async fn attempt_handshake_with_fallback(
+        &self,
+        tcp_stream: &mut TcpStream,
+        host: &str,
+    ) -> Result<crate::tls::session::SessionKeys> {
+        use crate::tls::config::{ExtensionStrategy, FallbackStrategy};
+        
+        let max_attempts = self.config.max_retries as usize;
+        let mut last_error = None;
+        
+        // Build list of strategies to try based on fallback strategy
+        let strategies_to_try = match self.config.fallback_strategy {
+            FallbackStrategy::None => {
+                // Single attempt with configured strategy
+                vec![self.config.extension_strategy.clone()]
+            }
+            FallbackStrategy::Progressive => {
+                // Try Modern → Standard → Minimal
+                info!("🔄 Progressive fallback enabled: Modern → Standard → Minimal");
+                vec![
+                    ExtensionStrategy::Modern,
+                    ExtensionStrategy::Standard,
+                    ExtensionStrategy::Minimal,
+                ]
+            }
+            FallbackStrategy::Reverse => {
+                // Try Minimal → Standard → Modern
+                info!("🔄 Reverse fallback enabled: Minimal → Standard → Modern");
+                vec![
+                    ExtensionStrategy::Minimal,
+                    ExtensionStrategy::Standard,
+                    ExtensionStrategy::Modern,
+                ]
+            }
+            FallbackStrategy::Exhaustive => {
+                // Try all strategies
+                info!("🔄 Exhaustive fallback enabled: Trying all strategies");
+                vec![
+                    ExtensionStrategy::Modern,
+                    ExtensionStrategy::Standard,
+                    ExtensionStrategy::Minimal,
+                    ExtensionStrategy::MaxCompatibility,
+                ]
+            }
+        };
+        
+        // Try each strategy
+        for (attempt, strategy) in strategies_to_try.iter().enumerate().take(max_attempts) {
+            let attempt_num = attempt + 1;
+            
+            if attempt > 0 {
+                info!("🔄 Retry attempt {}/{} with {:?} strategy", attempt_num, strategies_to_try.len(), strategy);
+            }
+            
+            // Create config with current strategy
+            let mut attempt_config = self.config.clone();
+            attempt_config.extension_strategy = strategy.clone();
+            
+            // Attempt handshake
+            let handshake_start = std::time::Instant::now();
+            let mut handshake = TlsHandshake::with_config(
+                self.beardog.clone(),
+                attempt_config,
+                self.profiler.clone(),
+            );
+            
+            match handshake.handshake(tcp_stream, host).await {
+                Ok(keys) => {
+                    let handshake_duration = handshake_start.elapsed();
+                    info!("✅ TLS handshake succeeded with {:?} strategy in {:?}", strategy, handshake_duration);
+                    
+                    if attempt > 0 {
+                        info!("🎯 Fallback successful after {} attempt(s)", attempt_num);
+                    }
+                    
+                    // Record success with profiler
+                    if let Some(profiler) = &self.profiler {
+                        profiler.record_success(host, vec![], keys.cipher_suite, handshake_duration);
+                        debug!("🧠 Profiler updated: success for {} with {:?}", host, strategy);
+                    }
+                    
+                    return Ok(keys);
+                }
+                Err(e) => {
+                    let handshake_duration = handshake_start.elapsed();
+                    warn!("⚠️  TLS handshake failed with {:?} strategy after {:?}: {}", strategy, handshake_duration, e);
+                    
+                    // Record failure with profiler
+                    if let Some(profiler) = &self.profiler {
+                        profiler.record_failure(host, vec![], None, &e.to_string());
+                        debug!("🧠 Profiler updated: failure for {} with {:?}", host, strategy);
+                    }
+                    
+                    last_error = Some(e);
+                    
+                    // If this was the last attempt, return error
+                    if attempt_num >= strategies_to_try.len() || attempt_num >= max_attempts {
+                        break;
+                    }
+                    
+                    // Otherwise, continue to next strategy
+                    debug!("Trying next fallback strategy...");
+                }
+            }
+        }
+        
+        // All attempts failed
+        let final_error = last_error.unwrap_or_else(|| {
+            Error::Connection("TLS handshake failed with all strategies".to_string())
+        });
+        
+        error!("❌ TLS handshake failed after {} attempt(s) with all strategies", strategies_to_try.len());
+        Err(final_error)
     }
 
     /// Make HTTP request without TLS
