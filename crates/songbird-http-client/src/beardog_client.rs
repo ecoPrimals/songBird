@@ -247,19 +247,22 @@ impl BearDogClient {
         client_random: &[u8],
         server_random: &[u8],
         transcript_hash: &[u8],
+        cipher_suite: u16,
     ) -> Result<TlsSecrets> {
         info!("🔑 Calling tls_derive_application_secrets via Neural API (RFC 8446 compliant)");
         debug!("  → pre_master_secret: {} bytes", shared_secret.len());
         debug!("  → client_random: {} bytes", client_random.len());
         debug!("  → server_random: {} bytes", server_random.len());
         debug!("  → transcript_hash: {} bytes (SHA-256 of all handshake messages)", transcript_hash.len());
+        debug!("  → cipher_suite: 0x{:04x}", cipher_suite);
         trace!("  → transcript_hash (hex): {}", hex::encode(transcript_hash));
         
         let result = self.call("tls.derive_application_secrets", json!({
             "pre_master_secret": BASE64_STANDARD.encode(shared_secret),
             "client_random": BASE64_STANDARD.encode(client_random),
             "server_random": BASE64_STANDARD.encode(server_random),
-            "transcript_hash": BASE64_STANDARD.encode(transcript_hash)
+            "transcript_hash": BASE64_STANDARD.encode(transcript_hash),
+            "cipher_suite": cipher_suite as u64
         })).await.map_err(|e| {
             error!("❌ tls_derive_application_secrets RPC call failed: {}", e);
             e
@@ -378,7 +381,8 @@ impl BearDogClient {
         // For backwards compatibility, create empty transcript hash (NOT RFC 8446 compliant!)
         warn!("Using deprecated tls_derive_secrets without transcript hash - not RFC 8446 compliant!");
         let empty_transcript_hash = vec![0u8; 32]; // Placeholder
-        self.tls_derive_application_secrets(shared_secret, client_random, server_random, &empty_transcript_hash).await
+        let default_cipher_suite = 0x1303; // ChaCha20-Poly1305 (backward compat)
+        self.tls_derive_application_secrets(shared_secret, client_random, server_random, &empty_transcript_hash, default_cipher_suite).await
     }
 
     /// Encrypt data with ChaCha20-Poly1305

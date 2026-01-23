@@ -471,7 +471,7 @@ impl TlsHandshake {
         info!("Step 11: Deriving TLS application traffic secrets via BearDog (WITH transcript hash)");
         let derive_start = std::time::Instant::now();
         let secrets = self.beardog
-            .tls_derive_application_secrets(&shared_secret, &client_random, &server_random, &transcript_hash)
+            .tls_derive_application_secrets(&shared_secret, &client_random, &server_random, &transcript_hash, self.cipher_suite)
             .await
             .map_err(|e| {
                 error!("❌ BearDog TLS application secret derivation failed: {}", e);

@@ -302,20 +302,33 @@ impl TlsRecordLayer {
               encrypted.len(), decrypted.len());
         trace!("Decrypted data (first 64 bytes): {:02x?}", &decrypted[..std::cmp::min(64, decrypted.len())]);
 
-        // RFC 8446 Section 5.2: TLS 1.3 encrypted records have ContentType as last byte
-        // Strip the ContentType byte from the end (just like handshake messages)
+        // RFC 8446 Section 5.4: TLSInnerPlaintext structure is:
+        // [content] [ContentType byte] [padding zeros...]
+        // We need to: 1) strip trailing padding zeros, 2) strip ContentType byte
         if decrypted.is_empty() {
             warn!("⚠️  Empty plaintext after decryption (no ContentType to strip)");
             self.read_sequence_number += 1;
             return Ok(decrypted);
         }
 
-        let content_type_byte = decrypted[decrypted.len() - 1];
+        let mut plaintext = decrypted;
+        
+        // Step 1: Strip any trailing zero bytes (padding)
+        let original_len = plaintext.len();
+        while plaintext.len() > 1 && plaintext[plaintext.len() - 1] == 0x00 {
+            plaintext.truncate(plaintext.len() - 1);
+        }
+        if plaintext.len() < original_len {
+            debug!("🔪 Stripped {} bytes of padding (trailing zeros)", original_len - plaintext.len());
+        }
+        
+        // Step 2: Strip ContentType byte (should be 0x16 for handshake or 0x17 for application data)
+        let content_type_byte = plaintext[plaintext.len() - 1];
         debug!("ContentType byte at end of plaintext: 0x{:02x}", content_type_byte);
-
-        // Strip ContentType byte
-        let plaintext = decrypted[..decrypted.len() - 1].to_vec();
-        info!("✅ Stripped ContentType byte: {} bytes plaintext (HTTP data)", plaintext.len());
+        plaintext.truncate(plaintext.len() - 1);
+        
+        info!("✅ Stripped ContentType byte (0x{:02x}): {} bytes plaintext (HTTP data)", 
+              content_type_byte, plaintext.len());
         trace!("HTTP data preview: {}", String::from_utf8_lossy(&plaintext[..std::cmp::min(200, plaintext.len())]));
 
         self.read_sequence_number += 1;
