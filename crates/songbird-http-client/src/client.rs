@@ -182,12 +182,12 @@ impl SongbirdHttpClient {
                 e
             })?;
             
-            // Empty record or connection closed
+            // Empty record = connection closed (close_notify or EOF)
             if chunk.is_empty() {
                 if records_read == 1 {
-                    warn!("⚠️  Received empty TLS record on first read");
+                    info!("   ℹ️  Connection closed before receiving data (close_notify or server closed)");
                 } else {
-                    debug!("   Received empty TLS record, assuming response complete");
+                    info!("   ✅ Connection closed gracefully (close_notify), response complete");
                 }
                 break;
             }

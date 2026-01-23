@@ -176,7 +176,7 @@ impl TlsRecordLayer {
 
         // Check for TLS alerts (close_notify, etc.)
         if content_type == 0x15 {  // Alert
-            warn!("⚠️  Received TLS ALERT record (not application data)");
+            info!("📢 Received TLS ALERT record");
             // Read alert to see what it is
             if length >= 2 {
                 let mut alert_data = vec![0u8; length];
@@ -188,10 +188,21 @@ impl TlsRecordLayer {
                     0 => "close_notify",
                     10 => "unexpected_message",
                     20 => "bad_record_mac",
+                    40 => "handshake_failure",
+                    51 => "decrypt_error",
                     _ => "unknown",
                 };
-                warn!("  Alert: {} {} (level={}, desc={})", level_str, desc_str, alert_level, alert_desc);
-                return Err(Error::TlsRecord(format!("Server sent {} alert: {}", level_str, desc_str)));
+                
+                // close_notify (0) is a normal connection close - not an error!
+                if alert_desc == 0 {
+                    info!("✅ close_notify: Server closed connection gracefully");
+                    // Return empty vec to signal EOF without error
+                    return Ok(Vec::new());
+                }
+                
+                // All other alerts are errors
+                error!("❌ TLS Alert: {} {} (level={}, desc={})", level_str, desc_str, alert_level, alert_desc);
+                return Err(Error::TlsRecord(format!("Server sent {} alert: {} (code {})", level_str, desc_str, alert_desc)));
             }
         }
 
