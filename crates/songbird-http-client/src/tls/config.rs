@@ -124,6 +124,17 @@ impl TlsConfig {
         }
     }
     
+    /// Create standard config (balanced, good default)
+    pub fn standard() -> Self {
+        Self {
+            extension_strategy: ExtensionStrategy::Standard,
+            cipher_strategy: CipherStrategy::PreferCompatibility,
+            enable_profiling: true,
+            enable_adaptive_learning: false,
+            ..Default::default()
+        }
+    }
+    
     /// Create modern config (latest features, optimal performance)
     pub fn modern() -> Self {
         Self {
