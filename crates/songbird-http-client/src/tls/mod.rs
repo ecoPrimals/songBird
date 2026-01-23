@@ -4,13 +4,17 @@
 //! cryptographic operations to BearDog via JSON-RPC.
 
 pub mod adaptive;
+pub mod config;
 pub mod handshake;
 pub mod negotiation;
+pub mod profiler;
 pub mod record;
 pub mod session;
 
-pub use adaptive::{AdaptiveExtensions, ExtensionStrategy, ExtensionType};
+pub use adaptive::AdaptiveExtensions;
+pub use config::{TlsConfig, ExtensionStrategy, CipherStrategy, FallbackStrategy, ExtensionType, ExtensionSet, CipherSuiteSet};
 pub use handshake::TlsHandshake;
+pub use profiler::{ServerProfiler, ServerProfile};
 pub use record::TlsRecordLayer;
 pub use session::TlsSession;
 
