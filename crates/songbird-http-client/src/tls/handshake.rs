@@ -1505,9 +1505,10 @@ mod tests {
         let result = handshake.parse_server_hello(&server_hello);
         assert!(result.is_ok(), "Should parse valid ServerHello");
         
-        let (server_random, server_public) = result.unwrap();
+        let (server_random, server_public, cipher_suite) = result.unwrap();
         assert_eq!(server_random.len(), 32, "Server random should be 32 bytes");
         assert_eq!(server_public.len(), 32, "Server public key should be 32 bytes");
+        assert_eq!(cipher_suite, 0x1301, "Cipher suite should be 0x1301");
     }
     
     #[test]
