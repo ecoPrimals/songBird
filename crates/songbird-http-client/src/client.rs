@@ -2,7 +2,12 @@
 
 use crate::beardog_client::BearDogClient;
 use crate::error::{Error, Result};
-use crate::tls::{handshake::TlsHandshake, record::TlsRecordLayer};
+use crate::tls::{
+    config::TlsConfig,
+    handshake::TlsHandshake,
+    profiler::ServerProfiler,
+    record::TlsRecordLayer,
+};
 use crate::types::HttpResponse;
 use http_body_util::{BodyExt, Full};
 use hyper::body::Bytes;
@@ -17,6 +22,8 @@ use tracing::{debug, info, warn, error};
 #[derive(Debug, Clone)]
 pub struct SongbirdHttpClient {
     beardog: Arc<BearDogClient>,
+    config: TlsConfig,
+    profiler: Option<Arc<ServerProfiler>>,
 }
 
 impl SongbirdHttpClient {
@@ -32,15 +39,33 @@ impl SongbirdHttpClient {
     /// semantic capability names to actual provider methods. This enables TRUE PRIMAL
     /// pattern with zero cross-primal coupling.
     pub fn new(neural_api_socket: impl Into<String>) -> Self {
-        Self {
-            beardog: Arc::new(BearDogClient::new(neural_api_socket)),
-        }
+        Self::with_config(neural_api_socket, TlsConfig::default(), None)
     }
     
     /// Create from environment variable (fallback to default Neural API socket)
     pub fn from_env() -> Self {
         Self {
             beardog: Arc::new(BearDogClient::from_env()),
+            config: TlsConfig::default(),
+            profiler: None,
+        }
+    }
+    
+    /// Create with custom config and optional profiler
+    pub fn with_config(
+        neural_api_socket: impl Into<String>,
+        config: TlsConfig,
+        profiler: Option<Arc<ServerProfiler>>,
+    ) -> Self {
+        info!("🎛️  Creating Songbird HTTP client with {:?} strategy", config.extension_strategy);
+        if profiler.is_some() {
+            info!("🧠 Adaptive learning enabled (profiler attached)");
+        }
+        
+        Self {
+            beardog: Arc::new(BearDogClient::new(neural_api_socket)),
+            config,
+            profiler,
         }
     }
 
@@ -97,9 +122,41 @@ impl SongbirdHttpClient {
     ) -> Result<HttpResponse> {
         debug!("🔒 Performing TLS handshake with {}", host);
 
-        // Perform TLS handshake
-        let mut handshake = TlsHandshake::new(self.beardog.clone());
-        let session_keys = handshake.handshake(&mut tcp_stream, host).await?;
+        // Perform TLS handshake with config and profiler
+        let handshake_start = std::time::Instant::now();
+        let mut handshake = TlsHandshake::with_config(
+            self.beardog.clone(),
+            self.config.clone(),
+            self.profiler.clone(),
+        );
+        
+        let session_keys = match handshake.handshake(&mut tcp_stream, host).await {
+            Ok(keys) => {
+                let handshake_duration = handshake_start.elapsed();
+                info!("✅ TLS handshake complete with {} in {:?}", host, handshake_duration);
+                
+                // Record success with profiler
+                if let Some(profiler) = &self.profiler {
+                    // Note: extension list would be tracked inside handshake
+                    profiler.record_success(host, vec![], keys.cipher_suite, handshake_duration);
+                    debug!("🧠 Profiler updated: success for {}", host);
+                }
+                
+                keys
+            }
+            Err(e) => {
+                let handshake_duration = handshake_start.elapsed();
+                error!("❌ TLS handshake failed with {} after {:?}: {}", host, handshake_duration, e);
+                
+                // Record failure with profiler
+                if let Some(profiler) = &self.profiler {
+                    profiler.record_failure(host, vec![], None, &e.to_string());
+                    debug!("🧠 Profiler updated: failure for {}", host);
+                }
+                
+                return Err(e);
+            }
+        };
 
         info!("✅ TLS handshake complete with {}", host);
         info!("════════════════════════════════════════════════════════════");
