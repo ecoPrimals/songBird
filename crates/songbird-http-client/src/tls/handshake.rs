@@ -62,7 +62,7 @@ impl TlsHandshake {
         server_name: &str,
     ) -> Result<SessionKeys> {
         info!("🤝 [TLS STEP 0] Starting TLS 1.3 handshake with {}", server_name);
-        let handshake_start = std::time::Instant::now();
+        let _handshake_start = std::time::Instant::now();
 
         // 1. Generate client keypair
         let (client_public, client_private) = self.beardog.generate_keypair().await?;
@@ -688,26 +688,45 @@ impl TlsHandshake {
         keys: &TlsSecrets,
         sequence_number: u64,
     ) -> Result<Vec<u8>> {
-        trace!("🔓 Decrypting handshake record: {} bytes encrypted, seq={}", 
-               encrypted_record.len(), sequence_number);
+        info!("🔓 Decrypting handshake record (COMPREHENSIVE DEBUG):");
+        info!("   Encrypted length: {} bytes", encrypted_record.len());
+        info!("   Sequence number: {}", sequence_number);
+        debug!("Encrypted data (first 32 bytes): {:02x?}", &encrypted_record[..std::cmp::min(32, encrypted_record.len())]);
+        debug!("Encrypted data (last 16 bytes, likely tag): {:02x?}", &encrypted_record[encrypted_record.len().saturating_sub(16)..]);
+
+        // Log keys and IVs
+        info!("🔑 Cryptographic Material:");
+        info!("   Server write key: {} bytes", keys.server_write_key.len());
+        debug!("   Server write key (first 16 bytes): {:02x?}", &keys.server_write_key[..std::cmp::min(16, keys.server_write_key.len())]);
+        info!("   Server write IV: {} bytes", keys.server_write_iv.len());
+        debug!("   Server write IV (full): {:02x?}", keys.server_write_iv);
 
         // Build nonce: server_write_iv XOR sequence_number
+        // RFC 8446 Section 5.3: per_record_nonce = IV XOR sequence_number (right-padded to IV length)
         // We're reading from server, so use server_write_iv
+        info!("🧮 Computing nonce (RFC 8446 Section 5.3):");
         let mut nonce = keys.server_write_iv.clone();
         let seq_bytes = sequence_number.to_be_bytes();
         
+        debug!("   Original IV: {:02x?}", nonce);
+        debug!("   Sequence bytes (8 bytes, big-endian): {:02x?}", seq_bytes);
+        
         // XOR the last 8 bytes of the IV with the sequence number
+        // TLS 1.3: nonce = IV[0..4] || (IV[4..12] XOR sequence_number)
         if nonce.len() >= 8 {
             for (i, &byte) in seq_bytes.iter().enumerate() {
                 let nonce_idx = nonce.len() - 8 + i;
                 nonce[nonce_idx] ^= byte;
             }
         }
-        trace!("  Nonce ({} bytes): {:02x?}", nonce.len(), nonce);
+        info!("   Computed nonce: {:02x?}", nonce);
+        debug!("   Nonce construction: IV XOR sequence_number (last 8 bytes)");
 
         // Build AAD (Additional Authenticated Data): TLS record header
+        // RFC 8446 Section 5.2: AAD = TLS record header (5 bytes)
         // For encrypted records, ContentType is always 0x17 (ApplicationData) in TLS 1.3
-        let record_type = 0x17; // ApplicationData
+        info!("📋 Building AAD (Additional Authenticated Data):");
+        let record_type = 0x17; // ApplicationData (ALL encrypted records use 0x17 in TLS 1.3)
         let version = [0x03, 0x03]; // TLS 1.2 compatibility version
         let length = encrypted_record.len() as u16;
         let aad = [
@@ -717,34 +736,76 @@ impl TlsHandshake {
             (length >> 8) as u8,
             (length & 0xFF) as u8,
         ];
-        trace!("  AAD (5 bytes): {:02x?}", aad);
+        info!("   AAD (TLS record header): {:02x?}", aad);
+        debug!("   Breakdown:");
+        debug!("     - ContentType: 0x{:02x} (APPLICATION_DATA)", record_type);
+        debug!("     - Version: 0x{:02x}{:02x} (TLS 1.2 compat)", version[0], version[1]);
+        debug!("     - Length: {} bytes (0x{:04x})", length, length);
+
+        // Log comprehensive decryption parameters
+        info!("🎯 Calling BearDog crypto.decrypt with:");
+        info!("   Key: server_write_key ({} bytes)", keys.server_write_key.len());
+        info!("   Nonce: {} bytes", nonce.len());
+        info!("   Ciphertext+Tag: {} bytes", encrypted_record.len());
+        info!("   AAD: {} bytes", aad.len());
+        debug!("Decryption parameters summary:");
+        debug!("  - Algorithm: ChaCha20-Poly1305 AEAD");
+        debug!("  - Key type: Handshake traffic key (server_write_key)");
+        debug!("  - Nonce: IV XOR sequence_number");
+        debug!("  - AAD: TLS record header");
+        debug!("  - Expected: ciphertext[:-16] as plaintext, ciphertext[-16:] as tag");
 
         // Decrypt via BearDog (ChaCha20-Poly1305 AEAD)
         let decrypt_start = std::time::Instant::now();
+        info!("⏳ Calling beardog.decrypt...");
         let plaintext = self.beardog.decrypt(
             &keys.server_write_key,
             &nonce,
             encrypted_record,
             &aad,
         ).await.map_err(|e| {
-            error!("❌ Handshake record decryption failed: {}", e);
-            error!("   This likely means wrong keys or corrupted ciphertext");
-            error!("   Encrypted length: {} bytes, Sequence: {}", encrypted_record.len(), sequence_number);
+            error!("❌ Handshake record decryption FAILED!");
+            error!("   Error: {}", e);
+            error!("   AEAD authentication failure - investigating:");
+            error!("");
+            error!("   📊 Decryption Context:");
+            error!("     • Encrypted length: {} bytes", encrypted_record.len());
+            error!("     • Sequence number: {}", sequence_number);
+            error!("     • Key: server_write_key ({} bytes)", keys.server_write_key.len());
+            error!("     • IV: {:02x?}", keys.server_write_iv);
+            error!("     • Nonce: {:02x?}", nonce);
+            error!("     • AAD: {:02x?}", aad);
+            error!("");
+            error!("   🔍 Possible Causes:");
+            error!("     1. Wrong key (key derivation mismatch)");
+            error!("     2. Wrong nonce (sequence number or IV mismatch)");
+            error!("     3. Wrong AAD (record header construction mismatch)");
+            error!("     4. Corrupted ciphertext (network issue)");
+            error!("     5. Tag split incorrectly (should be last 16 bytes)");
+            error!("");
+            error!("   🎯 Next Steps:");
+            error!("     • Verify handshake key derivation includes transcript hash");
+            error!("     • Verify sequence number starts at 0");
+            error!("     • Verify AAD matches TLS record header exactly");
+            error!("     • Compare with RFC 8448 test vectors");
             e
         })?;
         
-        debug!("✅ Decrypted handshake record in {:?}: {} bytes plaintext", 
-               decrypt_start.elapsed(), plaintext.len());
-        trace!("  Plaintext preview: {:02x?}", &plaintext[..std::cmp::min(32, plaintext.len())]);
+        info!("✅ Decrypted handshake record successfully in {:?}", decrypt_start.elapsed());
+        info!("   Plaintext length: {} bytes", plaintext.len());
+        debug!("Plaintext preview (first 32 bytes): {:02x?}", &plaintext[..std::cmp::min(32, plaintext.len())]);
+        debug!("Plaintext preview (last 16 bytes): {:02x?}", &plaintext[plaintext.len().saturating_sub(16)..]);
 
         // RFC 8446 Section 5.2: TLS 1.3 encrypted records have ContentType as last byte
         // Strip the ContentType byte from the end
         if !plaintext.is_empty() {
             let content_type = plaintext[plaintext.len() - 1];
-            trace!("  ContentType (last byte): {:#04x}", content_type);
-            Ok(plaintext[..plaintext.len() - 1].to_vec())
+            debug!("ContentType (last byte of plaintext): 0x{:02x}", content_type);
+            let message = plaintext[..plaintext.len() - 1].to_vec();
+            info!("📤 Returning handshake message: {} bytes (ContentType stripped)", message.len());
+            Ok(message)
         } else {
-            warn!("  Empty plaintext after decryption!");
+            warn!("⚠️  Empty plaintext after decryption!");
             Ok(plaintext)
         }
     }

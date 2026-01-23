@@ -38,6 +38,7 @@ struct JsonRpcError {
     code: i32,
     message: String,
     #[serde(skip_serializing_if = "Option::is_none")]
+    #[allow(dead_code)]
     data: Option<Value>,
 }
 
@@ -325,8 +326,17 @@ impl BearDogClient {
 
     /// Decrypt data with ChaCha20-Poly1305
     pub async fn decrypt(&self, key: &[u8], nonce: &[u8], ciphertext: &[u8], aad: &[u8]) -> Result<Vec<u8>> {
-        trace!("🔓 Decrypting {} bytes via BearDog (key={} bytes, nonce={} bytes, aad={} bytes)", 
-               ciphertext.len(), key.len(), nonce.len(), aad.len());
+        info!("🔓 BearDog crypto.decrypt call (COMPREHENSIVE DEBUG):");
+        info!("   Total ciphertext+tag: {} bytes", ciphertext.len());
+        info!("   Key: {} bytes", key.len());
+        info!("   Nonce: {} bytes", nonce.len());
+        info!("   AAD: {} bytes", aad.len());
+        debug!("Decrypt parameters:");
+        debug!("  Key (first 16 bytes): {:02x?}", &key[..std::cmp::min(16, key.len())]);
+        debug!("  Nonce (full): {:02x?}", nonce);
+        debug!("  AAD (full): {:02x?}", aad);
+        debug!("  Ciphertext+Tag (first 32 bytes): {:02x?}", &ciphertext[..std::cmp::min(32, ciphertext.len())]);
+        debug!("  Ciphertext+Tag (last 16 bytes): {:02x?}", &ciphertext[ciphertext.len().saturating_sub(16)..]);
         
         // ChaCha20-Poly1305 AEAD: Last 16 bytes are the authentication tag
         if ciphertext.len() < 16 {
@@ -335,7 +345,19 @@ impl BearDogClient {
         }
         
         let (actual_ciphertext, tag) = ciphertext.split_at(ciphertext.len() - 16);
-        debug!("  → Splitting ciphertext: {} bytes data + 16 bytes tag", actual_ciphertext.len());
+        info!("📊 Splitting ciphertext+tag:");
+        info!("   Ciphertext: {} bytes", actual_ciphertext.len());
+        info!("   Tag: 16 bytes");
+        debug!("Tag (hex): {:02x?}", tag);
+        
+        info!("📞 Calling BearDog RPC: crypto.decrypt");
+        debug!("RPC payload:");
+        debug!("  algorithm: chacha20-poly1305");
+        debug!("  key: {} bytes (base64)", key.len());
+        debug!("  nonce: {} bytes (base64)", nonce.len());
+        debug!("  ciphertext: {} bytes (base64)", actual_ciphertext.len());
+        debug!("  tag: 16 bytes (base64)");
+        debug!("  aad: {} bytes (base64)", aad.len());
         
         let result = self.call("crypto.decrypt", json!({
             "algorithm": "chacha20-poly1305",
@@ -345,7 +367,23 @@ impl BearDogClient {
             "tag": BASE64_STANDARD.encode(tag),
             "aad": BASE64_STANDARD.encode(aad)
         })).await.map_err(|e| {
-            error!("❌ crypto.decrypt RPC call failed: {}", e);
+            error!("❌ BearDog crypto.decrypt RPC call FAILED!");
+            error!("   Error: {}", e);
+            error!("");
+            error!("   📊 Context:");
+            error!("     • Ciphertext: {} bytes", actual_ciphertext.len());
+            error!("     • Tag: 16 bytes");
+            error!("     • Key: {} bytes", key.len());
+            error!("     • Nonce: {} bytes", nonce.len());
+            error!("     • AAD: {} bytes", aad.len());
+            error!("");
+            error!("   🔍 This is likely an AEAD authentication failure!");
+            error!("   Possible causes:");
+            error!("     1. Key mismatch (derived incorrectly)");
+            error!("     2. Nonce mismatch (sequence number or IV wrong)");
+            error!("     3. AAD mismatch (TLS record header wrong)");
+            error!("     4. Tag corruption (network issue)");
+            error!("     5. Ciphertext corruption (network issue)");
             e
         })?;
 
@@ -356,7 +394,9 @@ impl BearDogClient {
         let decoded = BASE64_STANDARD.decode(plaintext)
             .map_err(|e| Error::BearDogRpc(format!("Invalid plaintext base64: {}", e)))?;
         
-        trace!("✅ Decrypted: {} bytes ciphertext → {} bytes plaintext", ciphertext.len(), decoded.len());
+        info!("✅ BearDog crypto.decrypt SUCCESS!");
+        info!("   Ciphertext: {} bytes → Plaintext: {} bytes", ciphertext.len(), decoded.len());
+        debug!("Plaintext (first 32 bytes): {:02x?}", &decoded[..std::cmp::min(32, decoded.len())]);
         Ok(decoded)
     }
 
