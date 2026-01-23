@@ -391,18 +391,18 @@ impl TlsHandshake {
                                    messages_read, plaintext.len());
                             debug!("📊 Transcript now: {} bytes total (all plaintext)", self.transcript.len());
                             
-                            // RFC 8446 Section 4.4: Detect server Finished message (HandshakeType 0x14)
-                            // CRITICAL: We MUST send client Finished IMMEDIATELY after receiving server Finished!
-                            if !plaintext.is_empty() && plaintext[0] == 0x14 {
-                                info!("🎯 SERVER FINISHED DETECTED! (HandshakeType 0x14)");
+                            // RFC 8446 Section 4.4 & 5.1: Detect server Finished message (HandshakeType 0x14)
+                            // CRITICAL: Server may send multiple handshake messages in ONE TLS record!
+                            // We must parse the message framing to find Finished at any offset
+                            if self.contains_finished_message(&plaintext) {
                                 info!("   Server handshake complete - deriving application keys and sending client Finished!");
                                 
                                 // Exit loop to derive application keys before sending client Finished
                                 break;
                             }
                             
-                            // If not Finished, log message type and continue reading
-                            debug!("   Message type: 0x{:02x} (not Finished yet, continuing...)", plaintext[0]);
+                            // If not Finished, continue reading more records
+                            debug!("   No Finished message in this record yet, continuing...");
                         }
                         Err(e) => {
                             warn!("❌ Failed to decrypt handshake record {}: {}", messages_read, e);
@@ -1281,6 +1281,81 @@ impl TlsHandshake {
         Ok(())
     }
 
+    /// Check if decrypted handshake record contains a Finished message (HandshakeType 0x14)
+    /// 
+    /// RFC 8446 Section 5.1: Multiple handshake messages MAY be coalesced into a single TLS record.
+    /// 
+    /// Server may send multiple handshake messages in ONE encrypted TLS ApplicationData record:
+    /// - EncryptedExtensions (type 0x08)
+    /// - Certificate (type 0x0B)
+    /// - CertificateVerify (type 0x0F)
+    /// - Finished (type 0x14) ← We need to find THIS!
+    /// 
+    /// Each handshake message has RFC 8446 framing:
+    /// - HandshakeType msg_type (1 byte)
+    /// - uint24 length (3 bytes, big-endian)
+    /// - opaque body (variable length)
+    /// 
+    /// This method parses the framing to locate the Finished message at any offset.
+    fn contains_finished_message(&self, plaintext: &[u8]) -> bool {
+        let mut offset = 0;
+        
+        // Skip ContentType byte at end (0x16 for handshake, added during encryption)
+        let data_len = plaintext.len().saturating_sub(1);
+        
+        debug!("🔍 Parsing handshake messages in {} byte plaintext blob", plaintext.len());
+        
+        while offset < data_len {
+            // Check message type at current offset
+            if plaintext[offset] == 0x14 {
+                info!("🎯 SERVER FINISHED DETECTED! (HandshakeType 0x14 at offset {})", offset);
+                return true;
+            }
+            
+            // Parse handshake message header: type (1 byte) + length (3 bytes, big-endian)
+            if offset + 4 > data_len {
+                debug!("   End of handshake messages at offset {} (header incomplete)", offset);
+                break;
+            }
+            
+            let msg_type = plaintext[offset];
+            let msg_len = u32::from_be_bytes([
+                0,
+                plaintext[offset + 1],
+                plaintext[offset + 2],
+                plaintext[offset + 3],
+            ]) as usize;
+            
+            // Log the message type for debugging
+            let msg_name = match msg_type {
+                0x08 => "EncryptedExtensions",
+                0x0B => "Certificate",
+                0x0F => "CertificateVerify",
+                0x14 => "Finished",
+                _ => "Unknown",
+            };
+            debug!("   Handshake message at offset {}: type=0x{:02x} ({}), length={} bytes", 
+                   offset, msg_type, msg_name, msg_len);
+            
+            // Skip to next message: header (4 bytes) + body (msg_len bytes)
+            offset += 4 + msg_len;
+            
+            // Safety check: prevent infinite loop on malformed data
+            if msg_len > 65536 {
+                warn!("   Stopping parse: suspicious message length {} at offset {}", msg_len, offset);
+                break;
+            }
+            
+            if offset > data_len {
+                debug!("   Stopping parse: offset {} exceeds data length {}", offset, data_len);
+                break;
+            }
+        }
+        
+        debug!("   No Finished message found in {} byte plaintext", plaintext.len());
+        false
+    }
+
     /// Decrypt application data for TLS 1.3 with correct AAD construction
     /// 
     /// This method decrypts a TLS APPLICATION_DATA record using:
@@ -1841,5 +1916,132 @@ mod tests {
         assert_ne!(handshake_keys.server_write_iv, app_keys.server_write_iv,
                    "Handshake IVs and application IVs must be different!");
     }
+    
+    #[test]
+    fn test_contains_finished_message_single() {
+        // Test detecting Finished message when it's the only message in the record
+        let handshake = TlsHandshake {
+            beardog: std::sync::Arc::new(crate::beardog_client::BearDogClient::new("/tmp/test.sock")),
+            cipher_suite: 0x1301,
+            transcript: Vec::new(),
+        };
+        
+        // Build a Finished message: type (0x14) + length (3 bytes) + verify_data (32 bytes) + ContentType (0x16)
+        let mut plaintext = Vec::new();
+        plaintext.push(0x14); // HandshakeType: Finished
+        plaintext.push(0x00); // Length byte 1
+        plaintext.push(0x00); // Length byte 2
+        plaintext.push(0x20); // Length byte 3 (32 bytes)
+        plaintext.extend_from_slice(&[0xAA; 32]); // verify_data (dummy)
+        plaintext.push(0x16); // ContentType: Handshake
+        
+        assert!(handshake.contains_finished_message(&plaintext),
+                "Should detect Finished message at offset 0");
+    }
+    
+    #[test]
+    fn test_contains_finished_message_multiple() {
+        // Test detecting Finished message when multiple messages are coalesced
+        // This simulates real-world behavior from Google, GitHub, CloudFlare, etc.
+        let handshake = TlsHandshake {
+            beardog: std::sync::Arc::new(crate::beardog_client::BearDogClient::new("/tmp/test.sock")),
+            cipher_suite: 0x1301,
+            transcript: Vec::new(),
+        };
+        
+        let mut plaintext = Vec::new();
+        
+        // Message 1: EncryptedExtensions (type 0x08, 92 bytes body)
+        plaintext.push(0x08); // HandshakeType: EncryptedExtensions
+        plaintext.push(0x00); // Length byte 1
+        plaintext.push(0x00); // Length byte 2
+        plaintext.push(0x5C); // Length byte 3 (92 bytes)
+        plaintext.extend_from_slice(&[0xBB; 92]); // body (dummy)
+        
+        // Message 2: Certificate (type 0x0B, 2512 bytes body)
+        plaintext.push(0x0B); // HandshakeType: Certificate
+        plaintext.push(0x00); // Length byte 1
+        plaintext.push(0x09); // Length byte 2
+        plaintext.push(0xD0); // Length byte 3 (2512 bytes = 0x09D0)
+        plaintext.extend_from_slice(&[0xCC; 2512]); // body (dummy)
+        
+        // Message 3: CertificateVerify (type 0x0F, 264 bytes body)
+        plaintext.push(0x0F); // HandshakeType: CertificateVerify
+        plaintext.push(0x00); // Length byte 1
+        plaintext.push(0x01); // Length byte 2
+        plaintext.push(0x08); // Length byte 3 (264 bytes = 0x0108)
+        plaintext.extend_from_slice(&[0xDD; 264]); // body (dummy)
+        
+        // Message 4: Finished (type 0x14, 32 bytes body) ← THE ONE WE'RE LOOKING FOR!
+        plaintext.push(0x14); // HandshakeType: Finished
+        plaintext.push(0x00); // Length byte 1
+        plaintext.push(0x00); // Length byte 2
+        plaintext.push(0x20); // Length byte 3 (32 bytes)
+        plaintext.extend_from_slice(&[0xEE; 32]); // verify_data (dummy)
+        
+        // ContentType byte at end (added during decryption)
+        plaintext.push(0x16); // ContentType: Handshake
+        
+        // Total: 96 + 2516 + 268 + 36 + 1 = 2917 bytes (similar to real Google responses)
+        assert_eq!(plaintext.len(), 2917, "Plaintext should be 2917 bytes");
+        
+        assert!(handshake.contains_finished_message(&plaintext),
+                "Should detect Finished message at offset 2880 in multi-message record");
+    }
+    
+    #[test]
+    fn test_contains_finished_message_not_present() {
+        // Test that we correctly return false when Finished is not present
+        let handshake = TlsHandshake {
+            beardog: std::sync::Arc::new(crate::beardog_client::BearDogClient::new("/tmp/test.sock")),
+            cipher_suite: 0x1301,
+            transcript: Vec::new(),
+        };
+        
+        let mut plaintext = Vec::new();
+        
+        // EncryptedExtensions only (no Finished)
+        plaintext.push(0x08); // HandshakeType: EncryptedExtensions
+        plaintext.push(0x00); // Length byte 1
+        plaintext.push(0x00); // Length byte 2
+        plaintext.push(0x5C); // Length byte 3 (92 bytes)
+        plaintext.extend_from_slice(&[0xBB; 92]); // body (dummy)
+        plaintext.push(0x16); // ContentType: Handshake
+        
+        assert!(!handshake.contains_finished_message(&plaintext),
+                "Should NOT detect Finished message when not present");
+    }
+    
+    #[test]
+    fn test_contains_finished_message_empty() {
+        // Test edge case: empty plaintext
+        let handshake = TlsHandshake {
+            beardog: std::sync::Arc::new(crate::beardog_client::BearDogClient::new("/tmp/test.sock")),
+            cipher_suite: 0x1301,
+            transcript: Vec::new(),
+        };
+        
+        let plaintext = Vec::new();
+        
+        assert!(!handshake.contains_finished_message(&plaintext),
+                "Should return false for empty plaintext");
+    }
+    
+    #[test]
+    fn test_contains_finished_message_malformed() {
+        // Test resilience to malformed data
+        let handshake = TlsHandshake {
+            beardog: std::sync::Arc::new(crate::beardog_client::BearDogClient::new("/tmp/test.sock")),
+            cipher_suite: 0x1301,
+            transcript: Vec::new(),
+        };
+        
+        // Truncated message header (only 2 bytes instead of 4)
+        let plaintext = vec![0x08, 0x00];
+        
+        assert!(!handshake.contains_finished_message(&plaintext),
+                "Should handle truncated message header gracefully");
+    }
 }
+
 
