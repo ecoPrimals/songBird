@@ -11,7 +11,7 @@ use hyper_util::rt::TokioIo;
 use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::net::TcpStream;
-use tracing::{debug, info, error};
+use tracing::{debug, info, warn, error};
 
 /// Songbird HTTP client
 #[derive(Debug, Clone)]
@@ -133,17 +133,118 @@ impl SongbirdHttpClient {
         info!("   Now waiting for server's HTTP response...");
         info!("────────────────────────────────────────────────────────────");
 
-        // Read HTTP response over TLS
+        // Read HTTP response over TLS (may span multiple APPLICATION_DATA records!)
+        // RFC 8446 Section 5.1: Records can be max 2^14 bytes (16384) of plaintext
+        // Large HTTP responses will be fragmented across multiple TLS records
         info!("🔽 READING HTTP RESPONSE from server:");
-        info!("   Waiting for TLS APPLICATION_DATA record from server...");
-        let response_data = record_layer.read_application_data(&mut tcp_stream).await.map_err(|e| {
-            error!("❌ Failed to read HTTP response: {}", e);
-            error!("   This error occurred AFTER successfully sending request");
-            error!("   Request size was: {} bytes", http_request.len());
-            e
-        })?;
+        info!("   Response may span multiple TLS APPLICATION_DATA records...");
+        
+        let mut response_data = Vec::new();
+        let mut records_read = 0;
+        let mut headers_complete = false;
+        let max_response_size = 10_000_000; // 10 MB safety limit
+        
+        // Read TLS records until we have a complete HTTP response
+        loop {
+            records_read += 1;
+            debug!("   Reading TLS APPLICATION_DATA record #{}...", records_read);
+            
+            let chunk = record_layer.read_application_data(&mut tcp_stream).await.map_err(|e| {
+                error!("❌ Failed to read HTTP response (record #{}): {}", records_read, e);
+                if records_read == 1 {
+                    error!("   This error occurred AFTER successfully sending request");
+                    error!("   Request size was: {} bytes", http_request.len());
+                }
+                e
+            })?;
+            
+            // Empty record or connection closed
+            if chunk.is_empty() {
+                if records_read == 1 {
+                    warn!("⚠️  Received empty TLS record on first read");
+                } else {
+                    debug!("   Received empty TLS record, assuming response complete");
+                }
+                break;
+            }
+            
+            debug!("   ✅ Record #{}: {} bytes", records_read, chunk.len());
+            response_data.extend_from_slice(&chunk);
+            
+            // Check if we have complete HTTP headers (\r\n\r\n)
+            if !headers_complete {
+                if let Some(headers_end) = response_data.windows(4).position(|w| w == b"\r\n\r\n") {
+                    headers_complete = true;
+                    debug!("   📋 HTTP headers complete ({} bytes)", headers_end);
+                    
+                    // Parse Content-Length to know how much body to expect
+                    let headers_str = String::from_utf8_lossy(&response_data[..headers_end]);
+                    if let Some(content_length_line) = headers_str.lines()
+                        .find(|line| line.to_lowercase().starts_with("content-length:"))
+                    {
+                        if let Some(content_length) = content_length_line
+                            .split(':')
+                            .nth(1)
+                            .and_then(|val| val.trim().parse::<usize>().ok())
+                        {
+                            let body_start = headers_end + 4;
+                            let total_expected = body_start + content_length;
+                            debug!("   📊 Content-Length: {} bytes, expecting {} total", 
+                                   content_length, total_expected);
+                            
+                            // If we already have the complete response, we're done
+                            if response_data.len() >= total_expected {
+                                debug!("   ✅ Complete response received in {} record(s)", records_read);
+                                break;
+                            }
+                            
+                            // Continue reading until we have the full body
+                            continue;
+                        }
+                    } else {
+                        // No Content-Length header (chunked encoding or connection close)
+                        debug!("   ⚠️  No Content-Length header, will read until connection closes");
+                    }
+                }
+            } else {
+                // Headers complete, check if we have enough body
+                if let Some(headers_end) = response_data.windows(4).position(|w| w == b"\r\n\r\n") {
+                    let headers_str = String::from_utf8_lossy(&response_data[..headers_end]);
+                    if let Some(content_length) = headers_str.lines()
+                        .find(|line| line.to_lowercase().starts_with("content-length:"))
+                        .and_then(|line| line.split(':').nth(1))
+                        .and_then(|val| val.trim().parse::<usize>().ok())
+                    {
+                        let body_start = headers_end + 4;
+                        let total_expected = body_start + content_length;
+                        
+                        if response_data.len() >= total_expected {
+                            debug!("   ✅ Complete response received ({} bytes) in {} record(s)", 
+                                   response_data.len(), records_read);
+                            break;
+                        } else {
+                            debug!("   📥 Still reading body: {}/{} bytes", 
+                                   response_data.len() - body_start, content_length);
+                        }
+                    }
+                }
+            }
+            
+            // Safety: Prevent infinite loops or memory exhaustion
+            if response_data.len() > max_response_size {
+                warn!("⚠️  HTTP response exceeds {} MB limit, stopping read", max_response_size / 1_000_000);
+                break;
+            }
+            
+            // Safety: Prevent reading too many records
+            if records_read > 100 {
+                warn!("⚠️  Read {} TLS records, stopping (possible issue)", records_read);
+                break;
+            }
+        }
+        
         info!("✅ HTTP response RECEIVED from server:");
-        info!("   Size: {} bytes", response_data.len());
+        info!("   Total size: {} bytes across {} TLS record(s)", response_data.len(), records_read);
         debug!("HTTP response content:\n{}", String::from_utf8_lossy(&response_data[..std::cmp::min(500, response_data.len())]));
         info!("════════════════════════════════════════════════════════════");
 

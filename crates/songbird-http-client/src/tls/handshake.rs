@@ -321,7 +321,7 @@ impl TlsHandshake {
         debug!("RFC 8446 CRITICAL: Transcript must contain PLAINTEXT (decrypted) messages, NOT encrypted!");
         
         // Read, decrypt, and track post-handshake messages for transcript hash
-           // We expect: ChangeCipherSpec (optional), then multiple APPLICATION_DATA records containing handshake messages
+        // We expect: ChangeCipherSpec (optional), then multiple APPLICATION_DATA records containing handshake messages
         let mut messages_read = 0;
         let mut sequence_number = 0u64; // Sequence number for AEAD nonce generation
         let post_handshake_start = std::time::Instant::now();
@@ -398,7 +398,7 @@ impl TlsHandshake {
                                 info!("   Server handshake complete - deriving application keys and sending client Finished!");
                                 
                                 // Exit loop to derive application keys before sending client Finished
-                                break;
+                        break;
                             }
                             
                             // If not Finished, continue reading more records
@@ -659,11 +659,11 @@ impl TlsHandshake {
         let length = u16::from_be_bytes([header[3], header[4]]) as usize;
         
         let content_type_name = match content_type {
-            0x14 => "ChangeCipherSpec",
-            0x15 => "Alert",
-            0x16 => "Handshake",
-            0x17 => "ApplicationData",
-            _ => "Unknown"
+                   0x14 => "ChangeCipherSpec",
+                   0x15 => "Alert",
+                   0x16 => "Handshake",
+                   0x17 => "ApplicationData",
+                   _ => "Unknown"
         };
         
         debug!("📥 TLS record: type={:#04x} ({}), version={:#06x}, length={} bytes", 
@@ -702,7 +702,7 @@ impl TlsHandshake {
         })?;
         debug!("✅ Read {} bytes in {:?}", length, content_start.elapsed());
         trace!("Content preview: {:02x?}", &content[..std::cmp::min(32, content.len())]);
-        
+
         // Decode Alert if applicable
         if content_type == 0x15 && content.len() >= 2 {
             let alert_level = content[0];
