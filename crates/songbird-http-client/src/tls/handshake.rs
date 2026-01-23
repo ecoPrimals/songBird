@@ -91,12 +91,24 @@ impl TlsHandshake {
         // - Handshake message: Type (1) + Length (3) + Content (variable)
         //
         // We must strip the 5-byte TLS record header before adding to transcript!
+        info!("📝 TRANSCRIPT UPDATE 1: Adding ClientHello (WITHOUT TLS record header)");
         let client_hello_len = if client_hello.len() > 5 {
             let handshake_message = &client_hello[5..]; // Skip 5-byte TLS record header
+            info!("   ClientHello total: {} bytes (with TLS header)", client_hello.len());
+            info!("   ClientHello handshake message: {} bytes (TLS header stripped)", handshake_message.len());
+            debug!("   TLS record header (5 bytes, NOT in transcript): {:02x?}", &client_hello[..5]);
+            debug!("   Handshake message (first 64 bytes, ADDED to transcript):");
+            for (i, chunk) in handshake_message.chunks(16).take(4).enumerate() {
+                let hex: String = chunk.iter().map(|b| format!("{:02x}", b)).collect::<Vec<_>>().join(" ");
+                debug!("     {:04x}: {}", i * 16, hex);
+            }
+            if handshake_message.len() > 64 {
+                debug!("     ... ({} more bytes)", handshake_message.len() - 64);
+            }
+            
             self.update_transcript(handshake_message);
-            debug!("✅ ClientHello HANDSHAKE MESSAGE added to transcript ({} bytes, stripped 5-byte TLS header)", 
-                   handshake_message.len());
-            trace!("Handshake message preview: {:02x?}", &handshake_message[..std::cmp::min(32, handshake_message.len())]);
+            info!("✅ ClientHello handshake message added to transcript ({} bytes)", handshake_message.len());
+            debug!("📊 Transcript now: {} bytes (ClientHello only)", self.transcript.len());
             handshake_message.len()
         } else {
             error!("❌ ClientHello too short to contain handshake message!");
@@ -157,10 +169,20 @@ impl TlsHandshake {
         // RFC 8446: Update transcript with ServerHello
         // Note: read_record() already stripped the 5-byte TLS record header,
         // so server_hello contains only the handshake message (Type + Length + Content)
+        info!("📝 TRANSCRIPT UPDATE 2: Adding ServerHello (WITHOUT TLS record header)");
+        info!("   ServerHello handshake message: {} bytes (TLS header already stripped)", server_hello.len());
+        debug!("   Handshake message (first 64 bytes, ADDED to transcript):");
+        for (i, chunk) in server_hello.chunks(16).take(4).enumerate() {
+            let hex: String = chunk.iter().map(|b| format!("{:02x}", b)).collect::<Vec<_>>().join(" ");
+            debug!("     {:04x}: {}", i * 16, hex);
+        }
+        if server_hello.len() > 64 {
+            debug!("     ... ({} more bytes)", server_hello.len() - 64);
+        }
+        
         self.update_transcript(&server_hello);
-        debug!("✅ ServerHello added to transcript ({} bytes, TLS header already stripped by read_record)", 
-               server_hello.len());
-        debug!("📊 Transcript now: {} bytes total", self.transcript.len());
+        info!("✅ ServerHello handshake message added to transcript ({} bytes)", server_hello.len());
+        debug!("📊 Transcript now: {} bytes total (ClientHello + ServerHello)", self.transcript.len());
 
         // 5. Parse ServerHello
         debug!("Step 5: Parsing ServerHello");
@@ -191,15 +213,28 @@ impl TlsHandshake {
         debug!("📊 Handshake transcript at this point (for handshake key derivation):");
         debug!("   Components: ClientHello + ServerHello (both plaintext)");
         debug!("   Total bytes: {}", self.transcript.len());
-        debug!("   ClientHello was: {} bytes (first message in transcript)", client_hello_len);
-        debug!("   ServerHello was: {} bytes (second message in transcript)", server_hello.len());
-        trace!("   Transcript (first 64 bytes): {}", hex::encode(&self.transcript[..std::cmp::min(64, self.transcript.len())]));
-        trace!("   Transcript (last 64 bytes): {}", hex::encode(&self.transcript[std::cmp::max(0, self.transcript.len() - 64)..]));
+        info!("📊 TRANSCRIPT SNAPSHOT (before computing handshake hash):");
+        info!("   Total transcript: {} bytes (ClientHello + ServerHello)", self.transcript.len());
+        info!("   ClientHello was: {} bytes (first message in transcript)", client_hello_len);
+        info!("   ServerHello was: {} bytes (second message in transcript)", server_hello.len());
+        debug!("   Full transcript (hex, all {} bytes):", self.transcript.len());
+        for (i, chunk) in self.transcript.chunks(32).enumerate() {
+            let hex: String = chunk.iter().map(|b| format!("{:02x}", b)).collect::<Vec<_>>().join(" ");
+            debug!("     {:04x}: {}", i * 32, hex);
+        }
+        debug!("   ⚠️  CRITICAL: This transcript should contain:");
+        debug!("      1. ClientHello handshake message (without TLS record header)");
+        debug!("      2. ServerHello handshake message (without TLS record header)");
+        debug!("      3. NO TLS record headers (no [16 03 03 ...] prefixes)");
+        debug!("      4. ONLY the handshake message content (Type + Length + Content)");
         
+        info!("🔐 COMPUTING HANDSHAKE TRANSCRIPT HASH (SHA-256 of {} bytes)", self.transcript.len());
         let handshake_transcript_hash = self.compute_transcript_hash();
-        info!("✅ Handshake transcript hash: {} bytes", handshake_transcript_hash.len());
-        debug!("   SHA-256 hash (hex): {}", hex::encode(&handshake_transcript_hash));
-        debug!("   This hash will be used to derive handshake traffic keys (RFC 8446 Section 7.1)");
+        info!("✅ Handshake transcript hash computed!");
+        info!("   Hash: {} bytes (SHA-256)", handshake_transcript_hash.len());
+        info!("   Hash (hex): {}", hex::encode(&handshake_transcript_hash));
+        info!("   This hash will be used to derive handshake traffic keys (RFC 8446 Section 7.1)");
+        debug!("🎯 Key Point: Server computes same hash from same transcript bytes");
 
         // 8. Derive handshake traffic keys (RFC 8446 Section 7.1)
         // These keys are used to decrypt post-handshake messages (EncryptedExtensions, Certificate, etc.)
