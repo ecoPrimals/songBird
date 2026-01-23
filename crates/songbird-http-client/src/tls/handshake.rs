@@ -395,13 +395,10 @@ impl TlsHandshake {
                             // CRITICAL: We MUST send client Finished IMMEDIATELY after receiving server Finished!
                             if !plaintext.is_empty() && plaintext[0] == 0x14 {
                                 info!("🎯 SERVER FINISHED DETECTED! (HandshakeType 0x14)");
-                                info!("   Server handshake complete - NOW sending OUR Finished!");
+                                info!("   Server handshake complete - deriving application keys and sending client Finished!");
                                 
-                                // Send client Finished message IMMEDIATELY (RFC 8446 requirement)
-                                self.send_client_finished(stream, &handshake_keys).await?;
-                                
-                                info!("✅ Client Finished sent - handshake complete!");
-                                break;  // Exit handshake loop - server will now respond to HTTP requests!
+                                // Exit loop to derive application keys before sending client Finished
+                                break;
                             }
                             
                             // If not Finished, log message type and continue reading
@@ -484,9 +481,13 @@ impl TlsHandshake {
         info!("🔐 TLS application traffic keys derived in {:?}", derive_start.elapsed());
         debug!("Application secrets derived successfully (for HTTP data encryption)");
         
-        // 12. Client Finished will be sent when we detect server Finished (in the message loop above)
-        // RFC 8446 Section 4.4.4: Client must send Finished IMMEDIATELY after receiving server Finished
-        // (Already handled in the decrypt loop when we detect HandshakeType 0x14)
+        // 12. Send client Finished NOW that application keys are derived
+        // RFC 8446 Section 4.4.4: Client must send Finished after receiving server Finished
+        // CRITICAL: Application keys MUST be derived BEFORE sending client Finished!
+        info!("Step 12: Sending client Finished message (RFC 8446 Section 4.4.4)");
+        self.send_client_finished(stream, &handshake_keys).await?;
+        info!("✅ Client Finished sent - handshake complete!");
+        info!("   Server should now respond to HTTP requests! 🎉");
         
         let total_time = handshake_start.elapsed();
         info!("🎉 ✅ TLS 1.3 handshake complete in {:?}", total_time);
@@ -1130,7 +1131,7 @@ impl TlsHandshake {
         stream: &mut TcpStream,
         handshake_keys: &TlsSecrets,
     ) -> Result<()> {
-        info!("🔐 Step 12: Building and sending client Finished message (RFC 8446 Section 4.4.4)");
+        info!("🔐 Building client Finished message (RFC 8446 Section 4.4.4)");
         
         // 1. Compute transcript hash of all handshake messages
         // Includes: ClientHello, ServerHello, EncryptedExtensions, Certificate, CertificateVerify, server Finished
@@ -1275,8 +1276,7 @@ impl TlsHandshake {
             Error::Io(e)
         })?;
         
-        info!("✅ Client Finished sent successfully!");
-        info!("   Server should now respond to HTTP requests! 🎉");
+        info!("✅ Client Finished TLS record sent successfully to server");
         
         Ok(())
     }
