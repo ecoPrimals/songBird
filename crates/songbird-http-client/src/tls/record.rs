@@ -71,8 +71,46 @@ impl TlsRecordLayer {
 
         // Build nonce: client_write_iv XOR write_sequence_number (RFC 8446 Section 5.3)
         let nonce = self.build_write_nonce();
-        debug!("Nonce (client_write_iv XOR seq {}): {:02x?}", self.write_sequence_number,
-               &nonce[..std::cmp::min(12, nonce.len())]);
+        
+        // DIAGNOSTIC: Show encryption parameters
+        info!("════════════════════════════════════════════════════════════");
+        info!("🔐 HTTP REQUEST ENCRYPTION PARAMETERS (DIAGNOSTIC)");
+        info!("════════════════════════════════════════════════════════════");
+        info!("Plaintext (HTTP request + ContentType): {} bytes", plaintext_with_type.len());
+        info!("  HTTP request: {} bytes", data.len());
+        info!("  ContentType byte: 0x17 (APPLICATION_DATA)");
+        info!("  Total plaintext: {} bytes (before AEAD encryption)", plaintext_with_type.len());
+        info!("");
+        info!("Sequence number: {} (write_sequence_number)", self.write_sequence_number);
+        info!("  ⚠️  CRITICAL: Should be 0 for first HTTP request!");
+        info!("");
+        info!("Nonce construction (RFC 8446 Section 5.3):");
+        info!("  client_write_iv (12 bytes): {}", hex::encode(&self.keys.client_write_iv));
+        info!("  Sequence (u64): {}", self.write_sequence_number);
+        info!("  Sequence (padded to 12 bytes, big-endian):");
+        let mut seq_bytes = [0u8; 12];
+        seq_bytes[4..12].copy_from_slice(&self.write_sequence_number.to_be_bytes());
+        info!("    {}", hex::encode(&seq_bytes));
+        info!("  Nonce = IV XOR Sequence:");
+        info!("    {}", hex::encode(&nonce));
+        info!("");
+        info!("AAD (Additional Authenticated Data):");
+        info!("  ContentType: 0x{:02x} (APPLICATION_DATA)", aad[0]);
+        info!("  TLS version: 0x{:02x} 0x{:02x} (1.2 compatibility)", aad[1], aad[2]);
+        info!("  Length: {} bytes (encrypted_length = plaintext + 16-byte tag)", encrypted_length);
+        info!("  Length bytes: 0x{:02x} 0x{:02x}", aad[3], aad[4]);
+        info!("  Full AAD: {}", hex::encode(&aad));
+        info!("");
+        info!("Cipher suite: 0x{:04x} ({})", self.keys.cipher_suite,
+              match self.keys.cipher_suite {
+                  0x1301 => "TLS_AES_128_GCM_SHA256",
+                  0x1302 => "TLS_AES_256_GCM_SHA384",
+                  0x1303 => "TLS_CHACHA20_POLY1305_SHA256",
+                  _ => "UNKNOWN",
+              });
+        info!("Client write key (application traffic key): {} bytes", self.keys.client_write_key.len());
+        info!("  Key (first 8 bytes): {}", hex::encode(&self.keys.client_write_key[..std::cmp::min(8, self.keys.client_write_key.len())]));
+        info!("════════════════════════════════════════════════════════════");
         
         // Encrypt data with CLIENT write key (we're writing to server)
         // RFC 8446: Use the negotiated cipher suite for encryption
@@ -412,6 +450,68 @@ impl TlsRecordLayer {
                   0x17 => "APPLICATION_DATA",
                   _ => "UNKNOWN",
               });
+        
+        // Check if server sent an alert
+        if content_type_byte == 0x15 {
+            error!("════════════════════════════════════════════════════════════");
+            error!("🚨 SERVER SENT TLS ALERT!");
+            error!("════════════════════════════════════════════════════════════");
+            if plaintext.len() >= 2 {
+                let alert_level = plaintext[0];
+                let alert_desc = plaintext[1];
+                error!("Alert level: 0x{:02x} ({})", alert_level,
+                       if alert_level == 0x01 { "Warning" } else { "Fatal" });
+                error!("Alert description: 0x{:02x} ({})", alert_desc,
+                       match alert_desc {
+                           0x00 => "close_notify",
+                           0x0A => "unexpected_message",
+                           0x14 => "bad_record_mac",
+                           0x15 => "decryption_failed",
+                           0x16 => "record_overflow",
+                           0x28 => "handshake_failure",
+                           0x29 => "no_certificate",
+                           0x2A => "bad_certificate",
+                           0x2B => "unsupported_certificate",
+                           0x2C => "certificate_revoked",
+                           0x2D => "certificate_expired",
+                           0x2E => "certificate_unknown",
+                           0x2F => "illegal_parameter",
+                           0x30 => "unknown_ca",
+                           0x31 => "access_denied",
+                           0x32 => "decode_error",
+                           0x33 => "decrypt_error",
+                           0x3C => "unrecognized_name",
+                           0x46 => "certificate_required",
+                           0x50 => "protocol_version",
+                           0x56 => "insufficient_security",
+                           0x5A => "internal_error",
+                           0x5F => "user_canceled",
+                           0x6D => "no_renegotiation",
+                           0x6E => "missing_extension",
+                           _ => "unknown",
+                       });
+                error!("════════════════════════════════════════════════════════════");
+                
+                // Return a descriptive error
+                return Err(Error::TlsAlert(format!(
+                    "Server sent {} alert: {} (0x{:02x})",
+                    if alert_level == 0x01 { "Warning" } else { "Fatal" },
+                    match alert_desc {
+                        0x00 => "close_notify",
+                        0x28 => "handshake_failure",
+                        0x33 => "decrypt_error",
+                        0x50 => "protocol_version",
+                        _ => "unknown",
+                    },
+                    alert_desc
+                )));
+            } else {
+                error!("Alert is too short ({} bytes) - malformed!", plaintext.len());
+                error!("════════════════════════════════════════════════════════════");
+                return Err(Error::TlsAlert("Server sent malformed TLS alert".to_string()));
+            }
+        }
+        
         info!("Final plaintext length: {} bytes (ready for HTTP parser)", plaintext.len());
         
         if !plaintext.is_empty() {

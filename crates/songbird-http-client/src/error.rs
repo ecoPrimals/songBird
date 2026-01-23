@@ -20,6 +20,10 @@ pub enum Error {
     #[error("TLS record layer error: {0}")]
     TlsRecord(String),
 
+    /// TLS alert received from server
+    #[error("TLS alert: {0}")]
+    TlsAlert(String),
+
     /// HTTP protocol error
     #[error("HTTP protocol error: {0}")]
     HttpProtocol(String),
