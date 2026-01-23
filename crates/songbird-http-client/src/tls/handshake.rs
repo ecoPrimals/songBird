@@ -1141,10 +1141,14 @@ impl TlsHandshake {
         
         // 2. Call BearDog to compute verify_data (RFC 8446 Section 4.4.4)
         // BearDog implements: HMAC(finished_key, transcript_hash)
-        // where finished_key is derived from the handshake traffic secret
+        // where finished_key is derived from the handshake traffic secret (base_key)
         info!("🔐 Computing verify_data via BearDog...");
         let verify_data = self.beardog
-            .tls_compute_finished_verify_data(&transcript_hash, self.cipher_suite)
+            .tls_compute_finished_verify_data(
+                &handshake_keys.client_write_key,  // client_handshake_traffic_secret (base_key for BearDog)
+                &transcript_hash,
+                self.cipher_suite
+            )
             .await
             .map_err(|e| {
                 error!("❌ Failed to compute Finished verify_data: {}", e);

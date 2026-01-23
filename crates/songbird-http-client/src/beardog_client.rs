@@ -310,15 +310,18 @@ impl BearDogClient {
     /// 48-byte verify_data for SHA-384-based cipher suites (0x1302)
     pub async fn tls_compute_finished_verify_data(
         &self,
+        client_handshake_traffic_secret: &[u8],
         transcript_hash: &[u8],
         cipher_suite: u16,
     ) -> Result<Vec<u8>> {
         info!("🔐 Computing TLS 1.3 Finished verify_data (RFC 8446 Section 4.4.4)");
+        debug!("  → client_handshake_traffic_secret: {} bytes", client_handshake_traffic_secret.len());
         debug!("  → transcript_hash: {} bytes", transcript_hash.len());
         debug!("  → cipher_suite: 0x{:04x}", cipher_suite);
         trace!("  → transcript_hash (hex): {}", hex::encode(transcript_hash));
         
         let result = self.call("tls.compute_finished_verify_data", json!({
+            "base_key": BASE64_STANDARD.encode(client_handshake_traffic_secret),
             "transcript_hash": BASE64_STANDARD.encode(transcript_hash),
             "cipher_suite": format!("0x{:04x}", cipher_suite)
         })).await.map_err(|e| {
