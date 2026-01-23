@@ -247,7 +247,6 @@ async fn test_connection_drop_during_handshake() {
 async fn test_concurrent_mixed_outcomes() {
     let client = std::sync::Arc::new(
         SongbirdHttpClient::new("/tmp/beardog.sock")
-            .expect("Failed to create HTTP client")
     );
 
     // Launch multiple concurrent requests

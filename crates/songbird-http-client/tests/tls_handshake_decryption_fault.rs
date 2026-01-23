@@ -106,8 +106,7 @@ async fn test_slow_beardog_responses() {
 /// Expected: Connection error
 #[tokio::test]
 async fn test_tcp_connection_failure() {
-    let client = SongbirdHttpClient::new("/tmp/beardog.sock")
-        .expect("Failed to create HTTP client");
+    let client = SongbirdHttpClient::new("/tmp/beardog.sock");
 
     // Try to connect to non-existent server
     let result = timeout(
@@ -128,8 +127,7 @@ async fn test_tcp_connection_failure() {
 /// Expected: DNS resolution error
 #[tokio::test]
 async fn test_dns_resolution_failure() {
-    let client = SongbirdHttpClient::new("/tmp/beardog.sock")
-        .expect("Failed to create HTTP client");
+    let client = SongbirdHttpClient::new("/tmp/beardog.sock");
 
     // Try invalid hostname
     let result = timeout(
@@ -282,8 +280,7 @@ async fn test_concurrent_handshakes_same_host() {
 #[tokio::test]
 #[ignore] // Requires BearDog and test servers
 async fn test_handshake_recovery_after_failure() {
-    let client = SongbirdHttpClient::new("/tmp/beardog.sock")
-        .expect("Failed to create HTTP client");
+    let client = SongbirdHttpClient::new("/tmp/beardog.sock");
 
     // First attempt: likely to fail
     let _result1 = client.get("https://192.0.2.1/").await;

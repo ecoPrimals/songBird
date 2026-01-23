@@ -28,8 +28,7 @@ use tokio::time::timeout;
 #[ignore] // Requires BearDog and real HTTPS server
 async fn test_full_https_with_handshake_decryption() {
     // Initialize client
-    let client = SongbirdHttpClient::new("/tmp/beardog.sock")
-        .expect("Failed to create HTTP client");
+    let client = SongbirdHttpClient::new("/tmp/beardog.sock");
 
     // Make HTTPS request to real server
     let result = timeout(
@@ -52,8 +51,7 @@ async fn test_full_https_with_handshake_decryption() {
 #[tokio::test]
 #[ignore] // Requires BearDog and internet connection
 async fn test_https_github_api_with_decryption() {
-    let client = SongbirdHttpClient::new("/tmp/beardog.sock")
-        .expect("Failed to create HTTP client");
+    let client = SongbirdHttpClient::new("/tmp/beardog.sock");
 
     let result = timeout(
         Duration::from_secs(30),
@@ -74,8 +72,7 @@ async fn test_https_github_api_with_decryption() {
 #[tokio::test]
 #[ignore] // Requires BearDog and internet connection
 async fn test_https_google_with_decryption() {
-    let client = SongbirdHttpClient::new("/tmp/beardog.sock")
-        .expect("Failed to create HTTP client");
+    let client = SongbirdHttpClient::new("/tmp/beardog.sock");
 
     let result = timeout(
         Duration::from_secs(30),
@@ -95,8 +92,7 @@ async fn test_https_google_with_decryption() {
 #[tokio::test]
 #[ignore] // Requires BearDog and internet connection
 async fn test_multiple_https_requests_sequential() {
-    let client = SongbirdHttpClient::new("/tmp/beardog.sock")
-        .expect("Failed to create HTTP client");
+    let client = SongbirdHttpClient::new("/tmp/beardog.sock");
 
     // Make 3 sequential requests
     for i in 1..=3 {
@@ -121,8 +117,7 @@ async fn test_multiple_https_requests_sequential() {
 #[tokio::test]
 #[ignore] // Requires BearDog and internet connection
 async fn test_https_cloudflare_with_decryption() {
-    let client = SongbirdHttpClient::new("/tmp/beardog.sock")
-        .expect("Failed to create HTTP client");
+    let client = SongbirdHttpClient::new("/tmp/beardog.sock");
 
     let result = timeout(
         Duration::from_secs(30),
@@ -142,8 +137,7 @@ async fn test_https_cloudflare_with_decryption() {
 #[tokio::test]
 #[ignore] // Requires BearDog and internet connection
 async fn test_https_post_with_decryption() {
-    let client = SongbirdHttpClient::new("/tmp/beardog.sock")
-        .expect("Failed to create HTTP client");
+    let client = SongbirdHttpClient::new("/tmp/beardog.sock");
 
     let result = timeout(
         Duration::from_secs(30),
@@ -164,8 +158,7 @@ async fn test_https_post_with_decryption() {
 #[tokio::test]
 #[ignore] // Requires BearDog and internet connection
 async fn test_https_connection_reuse() {
-    let client = SongbirdHttpClient::new("/tmp/beardog.sock")
-        .expect("Failed to create HTTP client");
+    let client = SongbirdHttpClient::new("/tmp/beardog.sock");
 
     // Make two requests to same host
     let result1 = client.get("https://httpbin.org/get").await;
@@ -181,8 +174,7 @@ async fn test_https_connection_reuse() {
 #[tokio::test]
 #[ignore] // Requires BearDog and internet connection
 async fn test_https_cipher_suite_negotiation() {
-    let client = SongbirdHttpClient::new("/tmp/beardog.sock")
-        .expect("Failed to create HTTP client");
+    let client = SongbirdHttpClient::new("/tmp/beardog.sock");
 
     // Try different servers that may negotiate different cipher suites
     let servers = [

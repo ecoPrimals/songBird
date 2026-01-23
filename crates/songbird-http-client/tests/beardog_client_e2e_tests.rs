@@ -276,7 +276,8 @@ async fn test_chaos_e2e_alternating_operations() {
             let client_random = vec![1u8; 32];
             let server_random = vec![2u8; 32];
             let transcript_hash = vec![3u8; 32];
-            let _ = client.tls_derive_application_secrets(&pre_master, &client_random, &server_random, &transcript_hash).await;
+            let cipher_suite = 0x1303; // ChaCha20-Poly1305
+            let _ = client.tls_derive_application_secrets(&pre_master, &client_random, &server_random, &transcript_hash, cipher_suite).await;
         }
     }
 }
@@ -372,8 +373,9 @@ async fn test_fault_e2e_wrong_secret_size() {
     let client_random = vec![1u8; 32];
     let server_random = vec![2u8; 32];
     let transcript_hash = vec![3u8; 32];
+    let cipher_suite = 0x1303; // ChaCha20-Poly1305
     
-    let result = client.tls_derive_application_secrets(&short_secret, &client_random, &server_random, &transcript_hash).await;
+    let result = client.tls_derive_application_secrets(&short_secret, &client_random, &server_random, &transcript_hash, cipher_suite).await;
     // BearDog should reject this
     assert!(result.is_err(), "Should fail with wrong secret size");
 }
