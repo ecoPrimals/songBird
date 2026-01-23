@@ -29,6 +29,16 @@ impl TlsRecordLayer {
             last_written_size: None,
         }
     }
+    
+    /// Get session keys (for diagnostic logging)
+    pub fn keys(&self) -> &SessionKeys {
+        &self.keys
+    }
+    
+    /// Get write sequence number (for diagnostic logging)
+    pub fn write_sequence_number(&self) -> u64 {
+        self.write_sequence_number
+    }
 
     /// Write application data
     pub async fn write_application_data(

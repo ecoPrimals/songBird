@@ -483,12 +483,22 @@ impl TlsHandshake {
         info!("🔐 Transcript hash (hex): {}", hex::encode(&transcript_hash));
         
         // Log transcript composition for debugging
-        debug!("Transcript composition (RFC 8446 Section 4.4.1):");
-        debug!("  - ClientHello handshake message (plaintext, no TLS header)");
-        debug!("  - ServerHello handshake message (plaintext, no TLS header)");
-        debug!("  - {} post-handshake DECRYPTED messages (plaintext, no TLS headers)", messages_read);
-        debug!("  Total: {} bytes → SHA-256 → 32 bytes", self.transcript.len());
-        debug!("  🎯 CRITICAL: All handshake messages are PLAINTEXT (decrypted)!");
+        info!("════════════════════════════════════════════════════════════");
+        info!("📊 TRANSCRIPT FOR APPLICATION KEY DERIVATION (DIAGNOSTIC)");
+        info!("════════════════════════════════════════════════════════════");
+        info!("Transcript composition (RFC 8446 Section 4.4.1):");
+        info!("  ✅ 1. ClientHello handshake message (plaintext, no TLS header)");
+        info!("  ✅ 2. ServerHello handshake message (plaintext, no TLS header)");
+        info!("  ✅ 3-{}. {} post-handshake DECRYPTED messages (plaintext, no TLS headers)", 
+              2 + messages_read, messages_read);
+        info!("     (EncryptedExtensions, Certificate, CertificateVerify, server Finished)");
+        info!("  ❌ NOT INCLUDED: client Finished (will be sent AFTER key derivation)");
+        info!("  Total transcript: {} bytes → SHA-256 → {} bytes", 
+              self.transcript.len(), transcript_hash.len());
+        info!("  🎯 CRITICAL: All handshake messages are PLAINTEXT (decrypted)!");
+        debug!("Full transcript (hex): {}", hex::encode(&self.transcript));
+        debug!("Transcript hash (hex): {}", hex::encode(&transcript_hash));
+        info!("════════════════════════════════════════════════════════════");
         
         // 11. Derive application traffic secrets (for HTTP data encryption)
         // RFC 8446 Section 7.1: Application secrets are derived WITH transcript hash
@@ -1342,7 +1352,15 @@ impl TlsHandshake {
         // Sequence number for client Finished is 0 (first message we send with handshake keys)
         let sequence_number = 0u64;
         
-        info!("🔐 Encrypting client Finished with handshake traffic keys (seq={})", sequence_number);
+        info!("════════════════════════════════════════════════════════════");
+        info!("🔐 ENCRYPTING CLIENT FINISHED (HANDSHAKE MESSAGE)");
+        info!("════════════════════════════════════════════════════════════");
+        info!("Using: HANDSHAKE traffic keys (client_handshake_traffic_secret)");
+        info!("Sequence number: {} (first handshake message sent by client)", sequence_number);
+        info!("Cipher suite: 0x{:04x}", self.cipher_suite);
+        debug!("Handshake key length: {} bytes", handshake_keys.client_write_key.len());
+        debug!("Handshake IV length: {} bytes", handshake_keys.client_write_iv.len());
+        info!("⚠️  NOTE: HTTP requests will use APPLICATION traffic keys (different!)");
         
         // Build nonce: client_write_iv XOR sequence_number (RFC 8446 Section 5.3)
         let mut nonce = handshake_keys.client_write_iv.clone();
@@ -1356,6 +1374,7 @@ impl TlsHandshake {
         }
         
         debug!("   Nonce (IV XOR seq): {:02x?}", nonce);
+        info!("════════════════════════════════════════════════════════════");
         
         // Calculate ciphertext length (plaintext + 16-byte AEAD tag)
         let ciphertext_length = plaintext.len() + 16;

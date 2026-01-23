@@ -148,7 +148,19 @@ impl SongbirdHttpClient {
         }
 
         // Send HTTP request over TLS
-        info!("📤 Encrypting and sending HTTP request to server...");
+        info!("════════════════════════════════════════════════════════════");
+        info!("📤 SENDING HTTP REQUEST (DIAGNOSTIC INFO)");
+        info!("════════════════════════════════════════════════════════════");
+        info!("Cipher suite: 0x{:04x}", record_layer.keys().cipher_suite);
+        info!("HTTP request size: {} bytes", http_request.len());
+        info!("Write sequence number: {}", record_layer.write_sequence_number());
+        info!("Using: APPLICATION traffic keys (NOT handshake keys)");
+        debug!("Client write key length: {} bytes", record_layer.keys().client_write_key.len());
+        debug!("Client write IV length: {} bytes", record_layer.keys().client_write_iv.len());
+        debug!("Client write key (hex): {}", hex::encode(&record_layer.keys().client_write_key));
+        debug!("Client write IV (hex): {}", hex::encode(&record_layer.keys().client_write_iv));
+        info!("════════════════════════════════════════════════════════════");
+        
         record_layer.write_application_data(&mut tcp_stream, &http_request).await.map_err(|e| {
             error!("❌ Failed to send HTTP request: {}", e);
             e
