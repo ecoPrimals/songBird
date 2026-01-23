@@ -612,6 +612,23 @@ impl TlsHandshake {
         ext.extend_from_slice(&[0x06, 0x01]); // rsa_pkcs1_sha512
         ext.extend_from_slice(&[0x08, 0x04]); // rsa_pss_rsae_sha256
 
+        // PSK Key Exchange Modes (0x002d) - Required by many TLS 1.3 servers!
+        // RFC 8446 Section 4.2.9: Even if not using PSK, servers expect this
+        ext.extend_from_slice(&[0x00, 0x2d]); // Extension type
+        ext.extend_from_slice(&[0x00, 0x02]); // Length: 2 bytes
+        ext.extend_from_slice(&[0x01]); // PSK modes list length: 1
+        ext.extend_from_slice(&[0x01]); // psk_dhe_ke (PSK with DHE key establishment)
+
+        // Supported Groups Extension (0x000a) - Add more groups for compatibility
+        // Already added x25519 above, but let's ensure we list all common groups
+        // Note: We already have this, keeping it as is (x25519 only for now)
+
+        // Compress Certificate (0x001b) - Optional, helps with large certificates
+        // Skipping for now, not critical
+
+        // Record Size Limit (0x001c) - Optional
+        // Skipping for now, not critical
+
         Ok(ext)
     }
 
