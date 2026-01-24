@@ -122,4 +122,3 @@ pub use endpoint::{NativeEndpoint, VirtualEndpoint};
 pub use error::{IpcError, IpcResult};
 pub use platform::{AsyncStream, PlatformIPC};
 pub use registry::{ServiceMetadata, ServiceRegistry};
-

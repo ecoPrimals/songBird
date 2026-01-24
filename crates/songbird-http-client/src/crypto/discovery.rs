@@ -26,11 +26,8 @@ use super::capability::CryptoCapability;
 use crate::error::{Error, Result};
 
 /// Well-known default socket paths (in order of preference)
-const DEFAULT_SOCKET_PATHS: &[&str] = &[
-    "/tmp/beardog.sock",
-    "/run/user/1000/beardog-default.sock",
-    "/var/run/beardog.sock",
-];
+const DEFAULT_SOCKET_PATHS: &[&str] =
+    &["/tmp/beardog.sock", "/run/user/1000/beardog-default.sock", "/var/run/beardog.sock"];
 
 /// Discover crypto capability at runtime
 ///
@@ -51,7 +48,7 @@ const DEFAULT_SOCKET_PATHS: &[&str] = &[
 /// ```
 pub async fn discover_crypto_capability() -> Result<Arc<dyn CryptoCapability>> {
     info!("🔍 Discovering crypto capability provider...");
-    
+
     // 1. Try CRYPTO_CAPABILITY_SOCKET env var
     if let Ok(socket_path) = std::env::var("CRYPTO_CAPABILITY_SOCKET") {
         info!("   Found CRYPTO_CAPABILITY_SOCKET: {}", socket_path);
@@ -62,7 +59,7 @@ pub async fn discover_crypto_capability() -> Result<Arc<dyn CryptoCapability>> {
         }
         warn!("⚠️  CRYPTO_CAPABILITY_SOCKET set but provider not available");
     }
-    
+
     // 2. Try BEARDOG_SOCKET env var (backward compatibility)
     if let Ok(socket_path) = std::env::var("BEARDOG_SOCKET") {
         info!("   Found BEARDOG_SOCKET: {}", socket_path);
@@ -73,17 +70,17 @@ pub async fn discover_crypto_capability() -> Result<Arc<dyn CryptoCapability>> {
         }
         warn!("⚠️  BEARDOG_SOCKET set but provider not available");
     }
-    
+
     // 3. Try well-known default paths
     for socket_path in DEFAULT_SOCKET_PATHS {
         debug!("   Trying well-known path: {}", socket_path);
-        
+
         // Check if socket file exists
         if !std::path::Path::new(socket_path).exists() {
             debug!("   Socket not found: {}", socket_path);
             continue;
         }
-        
+
         let provider = BearDogProvider::new(*socket_path);
         if provider.is_available().await {
             info!("✅ Using crypto provider at {} (well-known path)", socket_path);
@@ -91,13 +88,13 @@ pub async fn discover_crypto_capability() -> Result<Arc<dyn CryptoCapability>> {
         }
         debug!("   Socket exists but provider not responding: {}", socket_path);
     }
-    
+
     // 4. Future: Try Neural API capability query
     // TODO: Implement when Neural API is available
     // if let Some(provider) = discover_via_neural_api().await {
     //     return Ok(provider);
     // }
-    
+
     Err(Error::BearDogRpc(
         "No crypto capability provider found. Set CRYPTO_CAPABILITY_SOCKET or ensure BearDog is running.".to_string()
     ))
@@ -114,13 +111,11 @@ pub async fn discover_crypto_capability() -> Result<Arc<dyn CryptoCapability>> {
 /// ```
 pub async fn discover_crypto_capability_at(socket_path: &str) -> Result<Arc<dyn CryptoCapability>> {
     let provider = BearDogProvider::new(socket_path);
-    
+
     if provider.is_available().await {
         Ok(Arc::new(provider))
     } else {
-        Err(Error::BearDogRpc(format!(
-            "Crypto provider at {} is not available", socket_path
-        )))
+        Err(Error::BearDogRpc(format!("Crypto provider at {} is not available", socket_path)))
     }
 }
 
@@ -134,22 +129,21 @@ pub fn create_crypto_capability(socket_path: &str) -> Arc<dyn CryptoCapability> 
 #[cfg(test)]
 mod tests {
     use super::*;
-    
+
     #[test]
     fn test_create_crypto_capability() {
         let crypto = create_crypto_capability("/tmp/test.sock");
         assert_eq!(crypto.name(), "BearDog");
     }
-    
+
     #[tokio::test]
     async fn test_discover_fails_gracefully() {
         // Should fail gracefully when no provider available
         std::env::remove_var("CRYPTO_CAPABILITY_SOCKET");
         std::env::remove_var("BEARDOG_SOCKET");
-        
+
         // This will fail if no BearDog is running, which is expected in unit tests
         let result = discover_crypto_capability_at("/nonexistent/path.sock").await;
         assert!(result.is_err());
     }
 }
-

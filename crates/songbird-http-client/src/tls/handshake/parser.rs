@@ -28,7 +28,7 @@
 //! ```rust,ignore
 //! let decrypted_record = decrypt_tls_record(&encrypted)?;
 //! let messages = parse_handshake_messages(&decrypted_record)?;
-//! 
+//!
 //! for (msg_type, msg_data) in messages {
 //!     match msg_type {
 //!         0x08 => handle_encrypted_extensions(&msg_data)?,
@@ -39,7 +39,7 @@
 //! ```
 
 use crate::error::Result;
-use tracing::{info, debug, warn, error};
+use tracing::{debug, error, info, warn};
 
 /// Parsed handshake message
 ///
@@ -48,10 +48,10 @@ use tracing::{info, debug, warn, error};
 pub struct HandshakeMessage {
     /// Message type (RFC 8446 Section 4)
     pub msg_type: u8,
-    
+
     /// Message length (body only, not including type + length header)
     pub length: usize,
-    
+
     /// Complete message data (type + length + body)
     /// This is what should be added to the transcript.
     pub data: Vec<u8>,
@@ -75,7 +75,7 @@ impl HandshakeMessage {
 
     /// Get message body (without type and length header)
     pub fn body(&self) -> &[u8] {
-        &self.data[4..]  // Skip type (1) + length (3)
+        &self.data[4..] // Skip type (1) + length (3)
     }
 }
 
@@ -101,7 +101,7 @@ impl HandshakeMessage {
 /// ```rust,ignore
 /// let decrypted = decrypt_record(&encrypted)?;
 /// let messages = parse_handshake_messages(&decrypted)?;
-/// 
+///
 /// for msg in messages {
 ///     println!("Message: {} ({} bytes)", msg.type_name(), msg.data.len());
 /// }
@@ -109,14 +109,14 @@ impl HandshakeMessage {
 pub fn parse_handshake_messages(data: &[u8]) -> Result<Vec<HandshakeMessage>> {
     let mut messages = Vec::new();
     let mut offset = 0;
-    
+
     info!("════════════════════════════════════════════════════════════");
     info!("📦 PARSING HANDSHAKE MESSAGES FROM DECRYPTED RECORD");
     info!("════════════════════════════════════════════════════════════");
     info!("Total decrypted data: {} bytes", data.len());
     info!("Parsing individual RFC 8446 handshake messages...");
     info!("");
-    
+
     // 🔍 HEX DUMP: Show first/last bytes to identify extra bytes
     info!("🔍 HEX DUMP OF DECRYPTED DATA:");
     info!("   First 64 bytes: {}", hex::encode(&data[..std::cmp::min(64, data.len())]));
@@ -127,7 +127,7 @@ pub fn parse_handshake_messages(data: &[u8]) -> Result<Vec<HandshakeMessage>> {
         info!("   Last 64 bytes: {}", hex::encode(&data[data.len().saturating_sub(64)..]));
     }
     info!("");
-    
+
     while offset < data.len() {
         // Read message type (1 byte)
         if offset >= data.len() {
@@ -135,63 +135,80 @@ pub fn parse_handshake_messages(data: &[u8]) -> Result<Vec<HandshakeMessage>> {
             break;
         }
         let msg_type = data[offset];
-        
+
         // Check if this looks like a valid handshake message type
         if msg_type == 0x00 || msg_type > 0x18 {
-            warn!("⚠️  Stopping parse: invalid message type 0x{:02x} at offset {}", msg_type, offset);
+            warn!(
+                "⚠️  Stopping parse: invalid message type 0x{:02x} at offset {}",
+                msg_type, offset
+            );
             warn!("   This might be padding or extra bytes!");
-            warn!("   Remaining {} bytes: {}", data.len() - offset, 
-                  hex::encode(&data[offset..std::cmp::min(offset + 32, data.len())]));
+            warn!(
+                "   Remaining {} bytes: {}",
+                data.len() - offset,
+                hex::encode(&data[offset..std::cmp::min(offset + 32, data.len())])
+            );
             break;
         }
-        
+
         offset += 1;
-        
+
         // Read length (3 bytes, big-endian)
         if offset + 3 > data.len() {
-            warn!("⚠️  Truncated handshake message: not enough bytes for length at offset {}", offset);
+            warn!(
+                "⚠️  Truncated handshake message: not enough bytes for length at offset {}",
+                offset
+            );
             break;
         }
-        let length = u32::from_be_bytes([
-            0,
-            data[offset],
-            data[offset + 1],
-            data[offset + 2],
-        ]) as usize;
+        let length =
+            u32::from_be_bytes([0, data[offset], data[offset + 1], data[offset + 2]]) as usize;
         offset += 3;
-        
+
         // Read body
         if offset + length > data.len() {
-            warn!("⚠️  Truncated handshake message: expected {} bytes, got {} at offset {}", 
-                  length, data.len() - offset, offset);
+            warn!(
+                "⚠️  Truncated handshake message: expected {} bytes, got {} at offset {}",
+                length,
+                data.len() - offset,
+                offset
+            );
             break;
         }
-        
+
         // Extract complete message (type + length + body)
-        let message_start = offset - 4;  // Go back to include type (1) + length (3)
+        let message_start = offset - 4; // Go back to include type (1) + length (3)
         let message_data = data[message_start..offset + length].to_vec();
-        
+
         let msg = HandshakeMessage {
             msg_type,
             length,
             data: message_data,
         };
-        
-        info!("✅ Parsed message #{}: {} (type 0x{:02x}, length {} bytes, total {} bytes)", 
-              messages.len() + 1, msg.type_name(), msg_type, length, msg.data.len());
+
+        info!(
+            "✅ Parsed message #{}: {} (type 0x{:02x}, length {} bytes, total {} bytes)",
+            messages.len() + 1,
+            msg.type_name(),
+            msg_type,
+            length,
+            msg.data.len()
+        );
         info!("   Message offset: {} to {} (in decrypted blob)", message_start, offset + length);
-        info!("   First 32 bytes of message: {}", 
-              hex::encode(&msg.data[..std::cmp::min(32, msg.data.len())]));
-        
+        info!(
+            "   First 32 bytes of message: {}",
+            hex::encode(&msg.data[..std::cmp::min(32, msg.data.len())])
+        );
+
         messages.push(msg);
         offset += length;
     }
-    
+
     info!("");
     info!("📋 Parsing complete:");
     info!("   Total messages parsed: {}", messages.len());
     info!("   Bytes consumed: {} out of {} bytes", offset, data.len());
-    
+
     // 🔍 CRITICAL CHECK: Are there extra bytes after the last message?
     if offset < data.len() {
         let extra_bytes = data.len() - offset;
@@ -205,14 +222,14 @@ pub fn parse_handshake_messages(data: &[u8]) -> Result<Vec<HandshakeMessage>> {
     } else {
         info!("✅ All bytes consumed - no extra bytes detected");
     }
-    
+
     info!("════════════════════════════════════════════════════════════");
     info!("");
-    
+
     if messages.is_empty() {
         warn!("⚠️  No handshake messages parsed from {} bytes of data!", data.len());
     }
-    
+
     Ok(messages)
 }
 
@@ -228,13 +245,14 @@ pub fn parse_handshake_messages(data: &[u8]) -> Result<Vec<HandshakeMessage>> {
 /// * `Err` - If parsing fails or multiple messages found
 pub fn parse_single_handshake_message(data: &[u8]) -> Result<HandshakeMessage> {
     let messages = parse_handshake_messages(data)?;
-    
+
     if messages.len() != 1 {
-        return Err(crate::error::Error::TlsHandshake(
-            format!("Expected 1 handshake message, found {}", messages.len())
-        ));
+        return Err(crate::error::Error::TlsHandshake(format!(
+            "Expected 1 handshake message, found {}",
+            messages.len()
+        )));
     }
-    
+
     Ok(messages.into_iter().next().unwrap())
 }
 
@@ -246,33 +264,33 @@ mod tests {
     fn test_parse_single_message() {
         // Handshake message: type 0x14 (Finished), length 0x000020 (32 bytes)
         let mut data = vec![0x14, 0x00, 0x00, 0x20];
-        data.extend_from_slice(&[0u8; 32]);  // 32 bytes of body
-        
+        data.extend_from_slice(&[0u8; 32]); // 32 bytes of body
+
         let messages = parse_handshake_messages(&data).unwrap();
         assert_eq!(messages.len(), 1);
         assert_eq!(messages[0].msg_type, 0x14);
         assert_eq!(messages[0].length, 32);
-        assert_eq!(messages[0].data.len(), 36);  // 4 header + 32 body
+        assert_eq!(messages[0].data.len(), 36); // 4 header + 32 body
     }
 
     #[test]
     fn test_parse_multiple_messages() {
         let mut data = Vec::new();
-        
+
         // Message 1: type 0x08, length 10
         data.extend_from_slice(&[0x08, 0x00, 0x00, 0x0A]);
         data.extend_from_slice(&[1u8; 10]);
-        
+
         // Message 2: type 0x14, length 32
         data.extend_from_slice(&[0x14, 0x00, 0x00, 0x20]);
         data.extend_from_slice(&[2u8; 32]);
-        
+
         let messages = parse_handshake_messages(&data).unwrap();
         assert_eq!(messages.len(), 2);
-        
+
         assert_eq!(messages[0].msg_type, 0x08);
         assert_eq!(messages[0].length, 10);
-        
+
         assert_eq!(messages[1].msg_type, 0x14);
         assert_eq!(messages[1].length, 32);
     }
@@ -284,7 +302,7 @@ mod tests {
             length: 32,
             data: vec![0x14, 0x00, 0x00, 0x20],
         };
-        
+
         assert_eq!(msg.type_name(), "Finished");
     }
 
@@ -292,13 +310,13 @@ mod tests {
     fn test_message_body() {
         let mut data = vec![0x14, 0x00, 0x00, 0x04];
         data.extend_from_slice(b"test");
-        
+
         let msg = HandshakeMessage {
             msg_type: 0x14,
             length: 4,
             data: data.clone(),
         };
-        
+
         assert_eq!(msg.body(), b"test");
     }
 
@@ -306,7 +324,7 @@ mod tests {
     fn test_parse_with_invalid_type() {
         // Invalid message type 0xFF
         let data = vec![0xFF, 0x00, 0x00, 0x10];
-        
+
         let messages = parse_handshake_messages(&data).unwrap();
         // Should stop parsing at invalid type
         assert_eq!(messages.len(), 0);
@@ -315,12 +333,11 @@ mod tests {
     #[test]
     fn test_parse_truncated_message() {
         // Message says it's 100 bytes but only 10 bytes provided
-        let mut data = vec![0x14, 0x00, 0x00, 0x64];  // length = 100
-        data.extend_from_slice(&[0u8; 10]);  // only 10 bytes
-        
+        let mut data = vec![0x14, 0x00, 0x00, 0x64]; // length = 100
+        data.extend_from_slice(&[0u8; 10]); // only 10 bytes
+
         let messages = parse_handshake_messages(&data).unwrap();
         // Should stop at truncated message
         assert_eq!(messages.len(), 0);
     }
 }
-

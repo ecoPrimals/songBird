@@ -107,7 +107,7 @@ impl ConnectivityTester {
     }
 
     /// Test HTTPS connectivity to a target
-    /// 
+    ///
     /// ✅ EVOLVED (Jan 21, 2026): 100% Pure Rust HTTP via SongbirdHttpClient
     pub async fn test_https_connectivity(
         &self,
@@ -121,7 +121,7 @@ impl ConnectivityTester {
         let crypto_socket = crate::primal_discovery::discover_crypto_provider()
             .await
             .map_err(|e| anyhow!("Failed to discover crypto provider: {}", e))?;
-        
+
         let client = songbird_http_client::SongbirdHttpClient::new(crypto_socket);
         let url = format!("https://{}/health", target);
 
@@ -155,7 +155,7 @@ impl ConnectivityTester {
             }
             Ok(Err(e)) => {
                 warn!("❌ HTTPS connection to {} failed: {}", target, e);
-                
+
                 // All songbird_http_client errors indicate network/protocol issues
                 Ok(ConnectivityTestResult {
                     target,

@@ -92,7 +92,10 @@ pub fn federation_routes_with_capabilities(
         // Capability registration (NEW)
         .route("/register", post(capability_endpoints::register_capability_provider))
         .route("/capability/heartbeat", post(capability_endpoints::capability_provider_heartbeat))
-        .route("/register/:provider_id", delete(capability_endpoints::unregister_capability_provider))
+        .route(
+            "/register/:provider_id",
+            delete(capability_endpoints::unregister_capability_provider),
+        )
         .route("/providers", get(capability_endpoints::list_capability_providers))
         .with_state(app_state)
 }
@@ -127,7 +130,10 @@ pub fn federation_routes_with_trust(
         // Capability registration (if available)
         .route("/register", post(capability_endpoints::register_capability_provider))
         .route("/capability/heartbeat", post(capability_endpoints::capability_provider_heartbeat))
-        .route("/register/:provider_id", delete(capability_endpoints::unregister_capability_provider))
+        .route(
+            "/register/:provider_id",
+            delete(capability_endpoints::unregister_capability_provider),
+        )
         .route("/providers", get(capability_endpoints::list_capability_providers))
         .with_state(app_state)
 }
@@ -170,9 +176,8 @@ mod tests {
     #[tokio::test]
     async fn test_federation_nodes_endpoint_empty() -> Result<(), Box<dyn std::error::Error>> {
         let state = create_test_state();
-        let app = Router::new()
-            .route("/nodes", get(node_endpoints::federation_nodes))
-            .with_state(state);
+        let app =
+            Router::new().route("/nodes", get(node_endpoints::federation_nodes)).with_state(state);
 
         let response = app
             .oneshot(Request::builder().uri("/nodes").body(Body::empty()).map_err(|e| {
@@ -209,4 +214,3 @@ mod tests {
         assert_eq!(stats.total_services, 0);
     }
 }
-

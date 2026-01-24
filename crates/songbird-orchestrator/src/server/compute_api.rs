@@ -367,10 +367,14 @@ async fn submit_compute_task(
                 }
 
                 // Send task to registered service (Pure Rust HTTP via Tower Atomic)
-                let crypto_socket = match crate::primal_discovery::discover_crypto_provider().await {
+                let crypto_socket = match crate::primal_discovery::discover_crypto_provider().await
+                {
                     Ok(socket) => socket,
                     Err(e) => {
-                        warn!("Failed to discover crypto provider: {}, task {} may fail", e, job_id);
+                        warn!(
+                            "Failed to discover crypto provider: {}, task {} may fail",
+                            e, job_id
+                        );
                         // Update job status to failed
                         let mut jobs = active_jobs_clone.write().await;
                         if let Some(status) = jobs.get_mut(&job_id) {
@@ -380,10 +384,10 @@ async fn submit_compute_task(
                         return;
                     }
                 };
-                
+
                 let client = songbird_http_client::SongbirdHttpClient::new(crypto_socket);
                 let service_url = format!("http://{}:{}/execute", endpoint_clone, port_clone);
-                
+
                 let task_json = match serde_json::to_value(&task_clone) {
                     Ok(json) => json,
                     Err(e) => {
@@ -397,9 +401,7 @@ async fn submit_compute_task(
                     }
                 };
 
-                let result = client
-                    .post(&service_url, task_json)
-                    .await;
+                let result = client.post(&service_url, task_json).await;
 
                 // Update job status with result
                 let mut jobs = active_jobs_clone.write().await;
@@ -414,14 +416,11 @@ async fn submit_compute_task(
                             status.status = JobStatusType::Failed;
                             status.error = Some(format!(
                                 "Service {} returned error: {}",
-                                service_name_clone,
-                                response.status
+                                service_name_clone, response.status
                             ));
                             warn!(
                                 "Task {} failed on service {}: {}",
-                                job_id,
-                                service_name_clone,
-                                response.status
+                                job_id, service_name_clone, response.status
                             );
                         }
                         Err(e) => {
@@ -460,7 +459,8 @@ async fn submit_compute_task(
                 }
 
                 // Forward task via HTTP POST to peer's /task endpoint (Pure Rust HTTP)
-                let crypto_socket = match crate::primal_discovery::discover_crypto_provider().await {
+                let crypto_socket = match crate::primal_discovery::discover_crypto_provider().await
+                {
                     Ok(socket) => socket,
                     Err(e) => {
                         warn!("Failed to discover crypto provider for peer forward: {}", e);
@@ -472,10 +472,10 @@ async fn submit_compute_task(
                         return;
                     }
                 };
-                
+
                 let client = songbird_http_client::SongbirdHttpClient::new(crypto_socket);
                 let forward_url = format!("{}/task", endpoint_clone);
-                
+
                 let task_json = match serde_json::to_value(&task_clone) {
                     Ok(json) => json,
                     Err(e) => {
@@ -492,8 +492,9 @@ async fn submit_compute_task(
                 // Note: SongbirdHttpClient doesn't need .send() - post() returns the future directly
                 let result = tokio::time::timeout(
                     tokio::time::Duration::from_secs(300),
-                    client.post(&forward_url, task_json)
-                ).await;
+                    client.post(&forward_url, task_json),
+                )
+                .await;
 
                 // Update job status with result
                 let mut jobs = active_jobs_clone.write().await;
@@ -511,28 +512,23 @@ async fn submit_compute_task(
                             status.completed_at = Some(chrono::Utc::now());
                             warn!(
                                 "Task {} failed on peer {}: {}",
-                                job_id,
-                                node_id_clone,
-                                response.status
+                                job_id, node_id_clone, response.status
                             );
                         }
                         Ok(Err(e)) => {
                             status.status = JobStatusType::Failed;
                             status.error = Some(format!("HTTP request to peer failed: {}", e));
                             status.completed_at = Some(chrono::Utc::now());
-                            warn!(
-                                "Task {} HTTP error to peer {}: {}",
-                                job_id, node_id_clone, e
-                            );
+                            warn!("Task {} HTTP error to peer {}: {}", job_id, node_id_clone, e);
                         }
                         Err(_timeout) => {
                             status.status = JobStatusType::Failed;
-                            status.error = Some(format!("Forward to peer {} timed out after 300s", node_id_clone));
+                            status.error = Some(format!(
+                                "Forward to peer {} timed out after 300s",
+                                node_id_clone
+                            ));
                             status.completed_at = Some(chrono::Utc::now());
-                            warn!(
-                                "Task {} forward to peer {} timed out",
-                                job_id, node_id_clone
-                            );
+                            warn!("Task {} forward to peer {} timed out", job_id, node_id_clone);
                         }
                     }
                 }

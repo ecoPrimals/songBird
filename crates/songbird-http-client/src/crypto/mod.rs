@@ -22,17 +22,13 @@
 //! let crypto = BearDogProvider::new("/tmp/beardog.sock");
 //! ```
 
-mod capability;
 mod beardog_provider;
+mod capability;
 mod discovery;
 
 pub use capability::{
-    CryptoCapability,
-    CryptoProvider,
-    TlsHandshakeSecrets,
-    TlsApplicationSecrets,
+    CryptoCapability, CryptoProvider, TlsApplicationSecrets, TlsHandshakeSecrets,
 };
 
 pub use beardog_provider::BearDogProvider;
 pub use discovery::discover_crypto_capability;
-

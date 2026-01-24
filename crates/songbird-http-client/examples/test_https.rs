@@ -15,9 +15,7 @@ use tracing_subscriber;
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     // Initialize logging
-    tracing_subscriber::fmt()
-        .with_max_level(tracing::Level::INFO)
-        .init();
+    tracing_subscriber::fmt().with_max_level(tracing::Level::INFO).init();
 
     info!("");
     info!("═══════════════════════════════════════════════════════════════");
@@ -57,7 +55,7 @@ async fn main() -> anyhow::Result<()> {
     info!("");
     info!("Status: {}", result.status);
     info!("Headers: {} headers received", result.headers.len());
-    
+
     // Show some key headers
     if let Some(content_type) = result.headers.get("content-type") {
         info!("  Content-Type: {}", content_type);
@@ -68,10 +66,10 @@ async fn main() -> anyhow::Result<()> {
     if let Some(server) = result.headers.get("server") {
         info!("  Server: {}", server);
     }
-    
+
     info!("");
     info!("Body: {} bytes", result.body.to_string().len());
-    
+
     // Show first 200 chars of body
     let body_str = result.body.to_string();
     let preview = if body_str.len() > 200 {
@@ -90,4 +88,3 @@ async fn main() -> anyhow::Result<()> {
 
     Ok(())
 }
-

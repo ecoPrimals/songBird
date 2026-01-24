@@ -37,10 +37,7 @@ pub trait PlatformIPC: Send + Sync {
     ///
     /// # Returns
     /// Platform-specific listener
-    async fn listen(
-        &self,
-        endpoint: &NativeEndpoint,
-    ) -> IpcResult<Box<dyn PlatformListener>>;
+    async fn listen(&self, endpoint: &NativeEndpoint) -> IpcResult<Box<dyn PlatformListener>>;
 
     /// Connect to a native endpoint
     ///
@@ -94,4 +91,3 @@ pub fn get_platform_ipc() -> Box<dyn PlatformIPC> {
         Box::new(fallback::FallbackIPC)
     }
 }
-

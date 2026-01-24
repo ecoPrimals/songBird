@@ -23,30 +23,20 @@ impl PlatformIPC for FallbackIPC {
         // Assign a unique port for this primal
         let port = PORT_COUNTER.fetch_add(1, Ordering::SeqCst);
 
-        debug!(
-            "Creating TCP localhost endpoint for '{}': port {}",
-            primal_name, port
-        );
+        debug!("Creating TCP localhost endpoint for '{}': port {}", primal_name, port);
 
-        warn!(
-            "Using fallback TCP localhost for '{}' - platform lacks native IPC",
-            primal_name
-        );
+        warn!("Using fallback TCP localhost for '{}' - platform lacks native IPC", primal_name);
 
         Ok(NativeEndpoint::TcpLocal(port))
     }
 
-    async fn listen(
-        &self,
-        endpoint: &NativeEndpoint,
-    ) -> IpcResult<Box<dyn PlatformListener>> {
+    async fn listen(&self, endpoint: &NativeEndpoint) -> IpcResult<Box<dyn PlatformListener>> {
         match endpoint {
             NativeEndpoint::TcpLocal(port) => {
                 debug!("Creating TCP listener on: 127.0.0.1:{}", port);
 
-                let listener = TcpListener::bind(format!("127.0.0.1:{}", port))
-                    .await
-                    .map_err(|e| {
+                let listener =
+                    TcpListener::bind(format!("127.0.0.1:{}", port)).await.map_err(|e| {
                         IpcError::ListenerFailed(format!(
                             "Failed to bind TCP localhost at port {}: {}",
                             port, e
@@ -55,11 +45,11 @@ impl PlatformIPC for FallbackIPC {
 
                 info!("TCP localhost listener created: 127.0.0.1:{}", port);
 
-                Ok(Box::new(TcpListenerWrapper { inner: listener }))
+                Ok(Box::new(TcpListenerWrapper {
+                    inner: listener,
+                }))
             }
-            _ => Err(IpcError::PlatformError(
-                "Invalid endpoint for fallback platform".to_string(),
-            )),
+            _ => Err(IpcError::PlatformError("Invalid endpoint for fallback platform".to_string())),
         }
     }
 
@@ -68,9 +58,8 @@ impl PlatformIPC for FallbackIPC {
             NativeEndpoint::TcpLocal(port) => {
                 debug!("Connecting to TCP localhost: 127.0.0.1:{}", port);
 
-                let stream = TcpStream::connect(format!("127.0.0.1:{}", port))
-                    .await
-                    .map_err(|e| {
+                let stream =
+                    TcpStream::connect(format!("127.0.0.1:{}", port)).await.map_err(|e| {
                         IpcError::ConnectionFailed(format!(
                             "Failed to connect to TCP localhost at port {}: {}",
                             port, e
@@ -81,9 +70,7 @@ impl PlatformIPC for FallbackIPC {
 
                 Ok(Box::new(stream))
             }
-            _ => Err(IpcError::PlatformError(
-                "Invalid endpoint for fallback platform".to_string(),
-            )),
+            _ => Err(IpcError::PlatformError("Invalid endpoint for fallback platform".to_string())),
         }
     }
 
@@ -158,4 +145,3 @@ mod tests {
         assert_eq!(&buf, b"hello");
     }
 }
-

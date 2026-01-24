@@ -108,7 +108,10 @@ impl UniversalIpcBroker {
         info!("   Protocol: JSON-RPC 2.0");
         info!("   Methods: ipc.register, ipc.resolve, ipc.discover, ipc.list");
 
-        Ok(Self { endpoint, server })
+        Ok(Self {
+            endpoint,
+            server,
+        })
     }
 
     /// Start the Universal IPC Broker
@@ -123,10 +126,7 @@ impl UniversalIpcBroker {
         info!("   Waiting for primal connections...");
 
         // Start Tower Atomic server (runs forever)
-        self.server
-            .serve(self.endpoint)
-            .await
-            .context("Universal IPC Broker server error")?;
+        self.server.serve(self.endpoint).await.context("Universal IPC Broker server error")?;
 
         Ok(())
     }
@@ -155,9 +155,8 @@ pub async fn start_broker() -> Result<()> {
     info!("🌍 Starting Universal IPC Broker (service-based architecture)");
 
     // Create broker
-    let broker = UniversalIpcBroker::new()
-        .await
-        .context("Failed to create Universal IPC Broker")?;
+    let broker =
+        UniversalIpcBroker::new().await.context("Failed to create Universal IPC Broker")?;
 
     info!("✅ Universal IPC Broker created successfully");
 
@@ -191,7 +190,7 @@ mod tests {
         //
         // In production, only one broker instance is created at startup.
         let broker = UniversalIpcBroker::new().await;
-        
+
         // Either succeeds or fails with "already registered" (both OK)
         match broker {
             Ok(_) => {
@@ -200,7 +199,8 @@ mod tests {
             Err(e) => {
                 let err_msg = e.to_string();
                 assert!(
-                    err_msg.contains("already registered") || err_msg.contains("Service already registered"),
+                    err_msg.contains("already registered")
+                        || err_msg.contains("Service already registered"),
                     "Unexpected error: {}",
                     err_msg
                 );
@@ -208,4 +208,3 @@ mod tests {
         }
     }
 }
-

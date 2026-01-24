@@ -37,7 +37,7 @@ pub fn detect_gpu() -> Option<String> {
             return Some(gpu_model);
         }
     }
-    
+
     // Method 2: Try nvidia-smi for NVIDIA GPUs
     if let Ok(output) = std::process::Command::new("nvidia-smi")
         .arg("--query-gpu=name")
@@ -97,7 +97,7 @@ pub fn detect_storage_capacity() -> Option<usize> {
             return Some(storage);
         }
     }
-    
+
     // Method 2: Try to read from df (Linux)
     #[cfg(target_os = "linux")]
     {
@@ -152,7 +152,7 @@ mod tests {
     fn test_detect_gpu_with_override() {
         // Clean up first to ensure isolation
         std::env::remove_var("GPU_MODEL");
-        
+
         // Set environment override
         std::env::set_var("GPU_MODEL", "TestGPU RTX 9999");
 
@@ -179,7 +179,7 @@ mod tests {
     fn test_detect_storage_capacity_with_override() {
         // Clean up first to ensure isolation
         std::env::remove_var("STORAGE_GB");
-        
+
         // Set environment override
         std::env::set_var("STORAGE_GB", "500");
 

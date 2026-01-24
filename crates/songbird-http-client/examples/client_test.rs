@@ -1,5 +1,5 @@
 //! Songbird TLS Client Test Binary
-//! 
+//!
 //! Purpose: Used by self-test harness to validate client+server transcript matching
 //! Strategy: biomeOS validated approach (18+ hour debugging session)
 
@@ -125,4 +125,3 @@ async fn main() -> anyhow::Result<()> {
     info!("🏁 Client shutting down (self-test complete)");
     Ok(())
 }
-

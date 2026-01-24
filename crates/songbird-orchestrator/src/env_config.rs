@@ -30,8 +30,7 @@ use std::path::PathBuf;
 
 /// Get this primal's name (self-knowledge)
 pub fn primal_name() -> String {
-    std::env::var("PRIMAL_NAME")
-        .unwrap_or_else(|_| "songbird".to_string())
+    std::env::var("PRIMAL_NAME").unwrap_or_else(|_| "songbird".to_string())
 }
 
 /// Get family/biome ID (self-knowledge)
@@ -102,8 +101,7 @@ pub fn cache_dir() -> PathBuf {
 /// 1. `SONGBIRD_HTTP_ADDR` (explicit override)
 /// 2. `0.0.0.0:8080` (default - bind all interfaces)
 pub fn http_bind_address() -> String {
-    std::env::var("SONGBIRD_HTTP_ADDR")
-        .unwrap_or_else(|_| "0.0.0.0:8080".to_string())
+    std::env::var("SONGBIRD_HTTP_ADDR").unwrap_or_else(|_| "0.0.0.0:8080".to_string())
 }
 
 /// Get HTTP server port (self-knowledge)
@@ -205,7 +203,7 @@ mod tests {
         // Clean environment first
         std::env::remove_var("SONGBIRD_HTTP_PORT");
         std::env::remove_var("SONGBIRD_HTTP_ADDR");
-        
+
         std::env::set_var("SONGBIRD_HTTP_ADDR", "0.0.0.0:9090");
         let port = http_port();
         std::env::remove_var("SONGBIRD_HTTP_ADDR");
@@ -226,4 +224,3 @@ mod tests {
         assert_eq!(log_level(), "info");
     }
 }
-

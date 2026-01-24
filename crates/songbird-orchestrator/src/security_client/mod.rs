@@ -58,6 +58,6 @@ pub mod types;
 // Re-export main types
 pub use client::SecurityCapabilityClient;
 pub use types::{
-    ConnectionInfo, CurrentLineageInfo, DiscoveryContext, IdentityResponse,
-    TrustEvaluationRequest, TrustEvaluationResponse, VerificationResult,
+    ConnectionInfo, CurrentLineageInfo, DiscoveryContext, IdentityResponse, TrustEvaluationRequest,
+    TrustEvaluationResponse, VerificationResult,
 };

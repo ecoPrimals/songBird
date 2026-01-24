@@ -44,14 +44,14 @@ struct JsonRpcError {
 }
 
 /// BearDog communication mode
-/// 
+///
 /// Songbird supports two modes of communication with BearDog:
 /// - **Direct mode**: Talk directly to BearDog (testing, simple deployments)
 /// - **Neural API mode**: Route through Neural API (production, orchestration)
 #[derive(Debug, Clone)]
 pub enum BearDogMode {
     /// Direct RPC to BearDog (testing, simple deployments)
-    /// 
+    ///
     /// - Fast (no routing overhead)
     /// - Simple (no discovery needed)
     /// - Fixed topology (you know what you need)
@@ -59,9 +59,9 @@ pub enum BearDogMode {
     Direct {
         socket_path: String,
     },
-    
+
     /// Via Neural API (production, orchestration, evolution)
-    /// 
+    ///
     /// - Capability discovery
     /// - Semantic translation
     /// - Evolution support
@@ -73,7 +73,7 @@ pub enum BearDogMode {
 }
 
 /// BearDog RPC client with dual-mode support
-/// 
+///
 /// Routes through Neural API for capability translation in NeuralApi mode,
 /// or talks directly to BearDog in Direct mode.
 #[derive(Debug)]
@@ -84,10 +84,10 @@ pub struct BearDogClient {
 
 impl BearDogClient {
     /// Create client in Direct mode (testing, simple deployments)
-    /// 
+    ///
     /// Talks directly to BearDog via Unix socket.
     /// Uses actual BearDog method names (e.g., "x25519_generate_ephemeral").
-    /// 
+    ///
     /// # Example
     /// ```rust
     /// let beardog = BearDogClient::new_direct("/tmp/beardog.sock");
@@ -101,12 +101,12 @@ impl BearDogClient {
             request_id: AtomicU64::new(1),
         }
     }
-    
+
     /// Create client in Neural API mode (production, orchestration)
-    /// 
+    ///
     /// Routes through Neural API for capability discovery and translation.
     /// Uses semantic capability names (e.g., "crypto.generate_keypair").
-    /// 
+    ///
     /// # Example
     /// ```rust
     /// let beardog = BearDogClient::new_neural_api("/tmp/neural-api.sock");
@@ -120,21 +120,20 @@ impl BearDogClient {
             request_id: AtomicU64::new(1),
         }
     }
-    
+
     /// Existing constructor (backward compatible)
     /// Defaults to Neural API mode for compatibility
     pub fn new(neural_api_socket: impl Into<String>) -> Self {
         Self::new_neural_api(neural_api_socket)
     }
-    
+
     /// Create from environment variable
     /// Checks BEARDOG_MODE env var to determine mode:
     /// - "direct" → Direct mode (BEARDOG_SOCKET)
     /// - "neural" or default → Neural API mode (NEURAL_API_SOCKET)
     pub fn from_env() -> Self {
-        let mode = std::env::var("BEARDOG_MODE")
-            .unwrap_or_else(|_| "neural".to_string());
-        
+        let mode = std::env::var("BEARDOG_MODE").unwrap_or_else(|_| "neural".to_string());
+
         match mode.as_str() {
             "direct" => {
                 let socket = std::env::var("BEARDOG_SOCKET")
@@ -150,7 +149,7 @@ impl BearDogClient {
             }
         }
     }
-    
+
     /// Map semantic capability names to actual BearDog method names
     /// (Used only in Direct mode)
     fn semantic_to_actual(&self, capability: &str) -> Result<&'static str> {
@@ -160,41 +159,52 @@ impl BearDogClient {
             "crypto.ecdh_derive" => "crypto.x25519_derive_secret",
             "crypto.encrypt" => "crypto.chacha20_poly1305_encrypt",
             "crypto.decrypt" => "crypto.chacha20_poly1305_decrypt",
-            "crypto.encrypt_aes_128_gcm" => "crypto.aes128_gcm_encrypt",      // Note: no underscore between aes and 128
-            "crypto.decrypt_aes_128_gcm" => "crypto.aes128_gcm_decrypt",      // Note: no underscore between aes and 128
-            "crypto.encrypt_aes_256_gcm" => "crypto.aes256_gcm_encrypt",      // Note: no underscore between aes and 256
-            "crypto.decrypt_aes_256_gcm" => "crypto.aes256_gcm_decrypt",      // Note: no underscore between aes and 256
-            
+            "crypto.encrypt_aes_128_gcm" => "crypto.aes128_gcm_encrypt", // Note: no underscore between aes and 128
+            "crypto.decrypt_aes_128_gcm" => "crypto.aes128_gcm_decrypt", // Note: no underscore between aes and 128
+            "crypto.encrypt_aes_256_gcm" => "crypto.aes256_gcm_encrypt", // Note: no underscore between aes and 256
+            "crypto.decrypt_aes_256_gcm" => "crypto.aes256_gcm_decrypt", // Note: no underscore between aes and 256
+
             // TLS key derivation - already correct
             "tls.derive_handshake_secrets" => "tls.derive_handshake_secrets",
             "tls.derive_application_secrets" => "tls.derive_application_secrets",
             "tls.compute_finished_verify_data" => "tls.compute_finished_verify_data",
-            
-            _ => return Err(Error::BearDogRpc(format!(
-                "Unknown capability: {}. Add mapping to semantic_to_actual()", 
-                capability
-            ))),
+
+            _ => {
+                return Err(Error::BearDogRpc(format!(
+                    "Unknown capability: {}. Add mapping to semantic_to_actual()",
+                    capability
+                )))
+            }
         })
     }
 
     /// Generate x25519 keypair
     pub async fn generate_keypair(&self) -> Result<(Vec<u8>, Vec<u8>)> {
         debug!("🔑 Generating x25519 keypair via BearDog");
-        
-        let result = self.call("crypto.generate_keypair", json!({
-            "algorithm": "x25519"
-        })).await?;
+
+        let result = self
+            .call(
+                "crypto.generate_keypair",
+                json!({
+                    "algorithm": "x25519"
+                }),
+            )
+            .await?;
 
         let public_key = result["public_key"]
             .as_str()
             .ok_or_else(|| Error::BearDogRpc("Missing public_key".to_string()))?;
-        let private_key = result["secret_key"]  // BearDog returns "secret_key", not "private_key"
+        let private_key = result["secret_key"] // BearDog returns "secret_key", not "private_key"
             .as_str()
-            .ok_or_else(|| Error::BearDogRpc("Missing secret_key in BearDog response".to_string()))?;
+            .ok_or_else(|| {
+                Error::BearDogRpc("Missing secret_key in BearDog response".to_string())
+            })?;
 
-        let public_key = BASE64_STANDARD.decode(public_key)
+        let public_key = BASE64_STANDARD
+            .decode(public_key)
             .map_err(|e| Error::BearDogRpc(format!("Invalid public_key base64: {}", e)))?;
-        let private_key = BASE64_STANDARD.decode(private_key)
+        let private_key = BASE64_STANDARD
+            .decode(private_key)
             .map_err(|e| Error::BearDogRpc(format!("Invalid private_key base64: {}", e)))?;
 
         Ok((public_key, private_key))
@@ -203,29 +213,35 @@ impl BearDogClient {
     /// Perform ECDH key exchange
     pub async fn ecdh_derive(&self, private_key: &[u8], public_key: &[u8]) -> Result<Vec<u8>> {
         debug!("🔐 Performing ECDH via BearDog");
-        
+
         // BearDog expects: "our_secret" and "their_public"
-        let result = self.call("crypto.ecdh_derive", json!({
-            "our_secret": BASE64_STANDARD.encode(private_key),
-            "their_public": BASE64_STANDARD.encode(public_key)
-        })).await?;
+        let result = self
+            .call(
+                "crypto.ecdh_derive",
+                json!({
+                    "our_secret": BASE64_STANDARD.encode(private_key),
+                    "their_public": BASE64_STANDARD.encode(public_key)
+                }),
+            )
+            .await?;
 
         let shared_secret = result["shared_secret"]
             .as_str()
             .ok_or_else(|| Error::BearDogRpc("Missing shared_secret".to_string()))?;
 
-        BASE64_STANDARD.decode(shared_secret)
+        BASE64_STANDARD
+            .decode(shared_secret)
             .map_err(|e| Error::BearDogRpc(format!("Invalid shared_secret base64: {}", e)))
     }
 
     /// Derive TLS handshake traffic secrets (for encrypting handshake messages)
-    /// 
+    ///
     /// RFC 8446 Section 7.1: Handshake traffic secrets are derived using:
     /// - ECDH shared secret
     /// - Client random
     /// - Server random  
     /// - Transcript hash of ClientHello + ServerHello
-    /// 
+    ///
     /// These keys are used to encrypt/decrypt handshake messages AFTER ServerHello:
     /// - EncryptedExtensions
     /// - Certificate
@@ -243,61 +259,84 @@ impl BearDogClient {
         debug!("  → pre_master_secret: {} bytes", shared_secret.len());
         debug!("  → client_random: {} bytes", client_random.len());
         debug!("  → server_random: {} bytes", server_random.len());
-        debug!("  → transcript_hash: {} bytes (SHA-256 of ClientHello + ServerHello)", transcript_hash.len());
+        debug!(
+            "  → transcript_hash: {} bytes (SHA-256 of ClientHello + ServerHello)",
+            transcript_hash.len()
+        );
         debug!("  → cipher_suite: 0x{:04x}", cipher_suite);
         trace!("  → transcript_hash (hex): {}", hex::encode(transcript_hash));
-        
-        let result = self.call("tls.derive_handshake_secrets", json!({
-            "pre_master_secret": BASE64_STANDARD.encode(shared_secret),
-            "client_random": BASE64_STANDARD.encode(client_random),
-            "server_random": BASE64_STANDARD.encode(server_random),
-            "transcript_hash": BASE64_STANDARD.encode(transcript_hash),
-            "cipher_suite": cipher_suite
-        })).await.map_err(|e| {
-            error!("❌ tls_derive_handshake_secrets RPC call failed: {}", e);
-            e
-        })?;
+
+        let result = self
+            .call(
+                "tls.derive_handshake_secrets",
+                json!({
+                    "pre_master_secret": BASE64_STANDARD.encode(shared_secret),
+                    "client_random": BASE64_STANDARD.encode(client_random),
+                    "server_random": BASE64_STANDARD.encode(server_random),
+                    "transcript_hash": BASE64_STANDARD.encode(transcript_hash),
+                    "cipher_suite": cipher_suite
+                }),
+            )
+            .await
+            .map_err(|e| {
+                error!("❌ tls_derive_handshake_secrets RPC call failed: {}", e);
+                e
+            })?;
 
         debug!("✅ Got response from tls_derive_handshake_secrets");
-        trace!("  Response JSON: {}", serde_json::to_string_pretty(&result).unwrap_or_else(|_| "unable to serialize".to_string()));
+        trace!(
+            "  Response JSON: {}",
+            serde_json::to_string_pretty(&result)
+                .unwrap_or_else(|_| "unable to serialize".to_string())
+        );
 
         debug!("📋 Parsing handshake traffic keys from response...");
-        
-        let client_write_key = BASE64_STANDARD.decode(
-            result["client_write_key"].as_str()
-                .ok_or_else(|| Error::BearDogRpc("Missing client_write_key in response".to_string()))?
-        ).map_err(|e| Error::BearDogRpc(format!("Invalid client_write_key base64: {}", e)))?;
+
+        let client_write_key = BASE64_STANDARD
+            .decode(result["client_write_key"].as_str().ok_or_else(|| {
+                Error::BearDogRpc("Missing client_write_key in response".to_string())
+            })?)
+            .map_err(|e| Error::BearDogRpc(format!("Invalid client_write_key base64: {}", e)))?;
         debug!("  ✅ client_handshake_key: {} bytes", client_write_key.len());
-        
-        let server_write_key = BASE64_STANDARD.decode(
-            result["server_write_key"].as_str()
-                .ok_or_else(|| Error::BearDogRpc("Missing server_write_key in response".to_string()))?
-        ).map_err(|e| Error::BearDogRpc(format!("Invalid server_write_key base64: {}", e)))?;
+
+        let server_write_key = BASE64_STANDARD
+            .decode(result["server_write_key"].as_str().ok_or_else(|| {
+                Error::BearDogRpc("Missing server_write_key in response".to_string())
+            })?)
+            .map_err(|e| Error::BearDogRpc(format!("Invalid server_write_key base64: {}", e)))?;
         debug!("  ✅ server_handshake_key: {} bytes", server_write_key.len());
-        
-        let client_write_iv = BASE64_STANDARD.decode(
-            result["client_write_iv"].as_str()
-                .ok_or_else(|| Error::BearDogRpc("Missing client_write_iv in response".to_string()))?
-        ).map_err(|e| Error::BearDogRpc(format!("Invalid client_write_iv base64: {}", e)))?;
+
+        let client_write_iv = BASE64_STANDARD
+            .decode(result["client_write_iv"].as_str().ok_or_else(|| {
+                Error::BearDogRpc("Missing client_write_iv in response".to_string())
+            })?)
+            .map_err(|e| Error::BearDogRpc(format!("Invalid client_write_iv base64: {}", e)))?;
         debug!("  ✅ client_handshake_iv: {} bytes", client_write_iv.len());
-        
-        let server_write_iv = BASE64_STANDARD.decode(
-            result["server_write_iv"].as_str()
-                .ok_or_else(|| Error::BearDogRpc("Missing server_write_iv in response".to_string()))?
-        ).map_err(|e| Error::BearDogRpc(format!("Invalid server_write_iv base64: {}", e)))?;
+
+        let server_write_iv = BASE64_STANDARD
+            .decode(result["server_write_iv"].as_str().ok_or_else(|| {
+                Error::BearDogRpc("Missing server_write_iv in response".to_string())
+            })?)
+            .map_err(|e| Error::BearDogRpc(format!("Invalid server_write_iv base64: {}", e)))?;
         debug!("  ✅ server_handshake_iv: {} bytes", server_write_iv.len());
 
         // NEW: Parse traffic secrets (needed for Finished message - RFC 8446 Section 4.4.4)
-        let client_handshake_secret = BASE64_STANDARD.decode(
-            result["client_handshake_secret"].as_str()
-                .ok_or_else(|| Error::BearDogRpc("Missing client_handshake_secret in response".to_string()))?
-        ).map_err(|e| Error::BearDogRpc(format!("Invalid client_handshake_secret base64: {}", e)))?;
+        let client_handshake_secret = BASE64_STANDARD
+            .decode(result["client_handshake_secret"].as_str().ok_or_else(|| {
+                Error::BearDogRpc("Missing client_handshake_secret in response".to_string())
+            })?)
+            .map_err(|e| {
+                Error::BearDogRpc(format!("Invalid client_handshake_secret base64: {}", e))
+            })?;
         debug!("  ✅ client_handshake_secret: {} bytes", client_handshake_secret.len());
-        
-        let server_handshake_secret = BASE64_STANDARD.decode(
-            result["server_handshake_secret"].as_str()
-                .ok_or_else(|| Error::BearDogRpc("Missing server_handshake_secret in response".to_string()))?
-        ).map_err(|e| Error::BearDogRpc(format!("Invalid server_handshake_secret base64: {}", e)))?;
+
+        let server_handshake_secret = BASE64_STANDARD
+            .decode(result["server_handshake_secret"].as_str().ok_or_else(|| {
+                Error::BearDogRpc("Missing server_handshake_secret in response".to_string())
+            })?)
+            .map_err(|e| {
+                Error::BearDogRpc(format!("Invalid server_handshake_secret base64: {}", e))
+            })?;
         debug!("  ✅ server_handshake_secret: {} bytes", server_handshake_secret.len());
 
         // HEX DUMPS for derived keys (cross-verify with RFC 8448 or server expectations)
@@ -310,7 +349,7 @@ impl BearDogClient {
         info!("   server_handshake_secret: {}", hex::encode(&server_handshake_secret));
 
         info!("✅ Handshake traffic secrets derived successfully (RFC 8446 Section 7.1 compliant)");
-        
+
         Ok(TlsSecrets {
             client_write_key,
             server_write_key,
@@ -322,22 +361,22 @@ impl BearDogClient {
     }
 
     /// Derive TLS application traffic secrets (for encrypting HTTP data)
-    /// 
+    ///
     /// This implements the TLS 1.3 key schedule to derive application traffic keys
     /// from the handshake secret. These keys are used for HTTP data encryption/decryption.
-    /// 
+    ///
     /// RFC 8446 Section 7.1: After the handshake completes, derive master secret and
     /// then derive application traffic secrets for encrypting application data.
-    /// 
+    ///
     /// # Arguments
-    /// 
+    ///
     /// * `shared_secret` - ECDH shared secret (pre-master secret)
     /// * `client_random` - Client random (32 bytes)
     /// * `server_random` - Server random (32 bytes)
     /// * `transcript_hash` - SHA-256 hash of all handshake messages (ClientHello...server Finished)
-    /// 
+    ///
     /// # RFC 8446 Compliance
-    /// 
+    ///
     /// The transcript hash is REQUIRED for correct TLS 1.3 key derivation:
     /// ```text
     /// application_traffic_secret = HKDF-Expand-Label(
@@ -359,48 +398,65 @@ impl BearDogClient {
         debug!("  → pre_master_secret: {} bytes", shared_secret.len());
         debug!("  → client_random: {} bytes", client_random.len());
         debug!("  → server_random: {} bytes", server_random.len());
-        debug!("  → transcript_hash: {} bytes (SHA-256 of all handshake messages)", transcript_hash.len());
+        debug!(
+            "  → transcript_hash: {} bytes (SHA-256 of all handshake messages)",
+            transcript_hash.len()
+        );
         debug!("  → cipher_suite: 0x{:04x}", cipher_suite);
         trace!("  → transcript_hash (hex): {}", hex::encode(transcript_hash));
-        
-        let result = self.call("tls.derive_application_secrets", json!({
-            "pre_master_secret": BASE64_STANDARD.encode(shared_secret),
-            "client_random": BASE64_STANDARD.encode(client_random),
-            "server_random": BASE64_STANDARD.encode(server_random),
-            "transcript_hash": BASE64_STANDARD.encode(transcript_hash),
-            "cipher_suite": cipher_suite as u64
-        })).await.map_err(|e| {
-            error!("❌ tls_derive_application_secrets RPC call failed: {}", e);
-            e
-        })?;
+
+        let result = self
+            .call(
+                "tls.derive_application_secrets",
+                json!({
+                    "pre_master_secret": BASE64_STANDARD.encode(shared_secret),
+                    "client_random": BASE64_STANDARD.encode(client_random),
+                    "server_random": BASE64_STANDARD.encode(server_random),
+                    "transcript_hash": BASE64_STANDARD.encode(transcript_hash),
+                    "cipher_suite": cipher_suite as u64
+                }),
+            )
+            .await
+            .map_err(|e| {
+                error!("❌ tls_derive_application_secrets RPC call failed: {}", e);
+                e
+            })?;
 
         debug!("✅ Got response from tls_derive_application_secrets");
-        trace!("  Response JSON: {}", serde_json::to_string_pretty(&result).unwrap_or_else(|_| "unable to serialize".to_string()));
+        trace!(
+            "  Response JSON: {}",
+            serde_json::to_string_pretty(&result)
+                .unwrap_or_else(|_| "unable to serialize".to_string())
+        );
 
         debug!("📋 Parsing application traffic keys from response...");
-        
-        let client_write_key = BASE64_STANDARD.decode(
-            result["client_write_key"].as_str()
-                .ok_or_else(|| Error::BearDogRpc("Missing client_write_key in response".to_string()))?
-        ).map_err(|e| Error::BearDogRpc(format!("Invalid client_write_key base64: {}", e)))?;
+
+        let client_write_key = BASE64_STANDARD
+            .decode(result["client_write_key"].as_str().ok_or_else(|| {
+                Error::BearDogRpc("Missing client_write_key in response".to_string())
+            })?)
+            .map_err(|e| Error::BearDogRpc(format!("Invalid client_write_key base64: {}", e)))?;
         debug!("  ✅ client_write_key: {} bytes", client_write_key.len());
-        
-        let server_write_key = BASE64_STANDARD.decode(
-            result["server_write_key"].as_str()
-                .ok_or_else(|| Error::BearDogRpc("Missing server_write_key in response".to_string()))?
-        ).map_err(|e| Error::BearDogRpc(format!("Invalid server_write_key base64: {}", e)))?;
+
+        let server_write_key = BASE64_STANDARD
+            .decode(result["server_write_key"].as_str().ok_or_else(|| {
+                Error::BearDogRpc("Missing server_write_key in response".to_string())
+            })?)
+            .map_err(|e| Error::BearDogRpc(format!("Invalid server_write_key base64: {}", e)))?;
         debug!("  ✅ server_write_key: {} bytes", server_write_key.len());
-        
-        let client_write_iv = BASE64_STANDARD.decode(
-            result["client_write_iv"].as_str()
-                .ok_or_else(|| Error::BearDogRpc("Missing client_write_iv in response".to_string()))?
-        ).map_err(|e| Error::BearDogRpc(format!("Invalid client_write_iv base64: {}", e)))?;
+
+        let client_write_iv = BASE64_STANDARD
+            .decode(result["client_write_iv"].as_str().ok_or_else(|| {
+                Error::BearDogRpc("Missing client_write_iv in response".to_string())
+            })?)
+            .map_err(|e| Error::BearDogRpc(format!("Invalid client_write_iv base64: {}", e)))?;
         debug!("  ✅ client_write_iv: {} bytes", client_write_iv.len());
-        
-        let server_write_iv = BASE64_STANDARD.decode(
-            result["server_write_iv"].as_str()
-                .ok_or_else(|| Error::BearDogRpc("Missing server_write_iv in response".to_string()))?
-        ).map_err(|e| Error::BearDogRpc(format!("Invalid server_write_iv base64: {}", e)))?;
+
+        let server_write_iv = BASE64_STANDARD
+            .decode(result["server_write_iv"].as_str().ok_or_else(|| {
+                Error::BearDogRpc("Missing server_write_iv in response".to_string())
+            })?)
+            .map_err(|e| Error::BearDogRpc(format!("Invalid server_write_iv base64: {}", e)))?;
         debug!("  ✅ server_write_iv: {} bytes", server_write_iv.len());
 
         // DIAGNOSTIC: Show key derivation details for "invisible 0.5%" investigation
@@ -445,7 +501,7 @@ impl BearDogClient {
         info!("════════════════════════════════════════════════════════════");
 
         info!("🎉 Application traffic keys successfully derived and parsed");
-        
+
         Ok(TlsSecrets {
             client_write_key,
             server_write_key,
@@ -458,24 +514,24 @@ impl BearDogClient {
     }
 
     /// Compute TLS 1.3 Finished message verify_data (RFC 8446 Section 4.4.4)
-    /// 
+    ///
     /// The Finished message authenticates the entire handshake using HMAC:
     /// ```text
     /// verify_data = HMAC(finished_key, Transcript-Hash(Handshake Context))
     /// ```
-    /// 
+    ///
     /// Where `finished_key` is derived from the handshake traffic secret:
     /// ```text
     /// finished_key = HKDF-Expand-Label(BaseKey, "finished", "", Hash.length)
     /// ```
-    /// 
+    ///
     /// # Arguments
-    /// 
+    ///
     /// * `transcript_hash` - SHA-256 hash of all handshake messages up to and including server Finished
     /// * `cipher_suite` - Negotiated TLS 1.3 cipher suite (0x1301, 0x1302, or 0x1303)
-    /// 
+    ///
     /// # Returns
-    /// 
+    ///
     /// 32-byte verify_data for SHA-256-based cipher suites (0x1301, 0x1303) or
     /// 48-byte verify_data for SHA-384-based cipher suites (0x1302)
     pub async fn tls_compute_finished_verify_data(
@@ -485,27 +541,37 @@ impl BearDogClient {
         cipher_suite: u16,
     ) -> Result<Vec<u8>> {
         info!("🔐 Computing TLS 1.3 Finished verify_data (RFC 8446 Section 4.4.4)");
-        debug!("  → client_handshake_traffic_secret: {} bytes", client_handshake_traffic_secret.len());
+        debug!(
+            "  → client_handshake_traffic_secret: {} bytes",
+            client_handshake_traffic_secret.len()
+        );
         debug!("  → transcript_hash: {} bytes", transcript_hash.len());
         debug!("  → cipher_suite: 0x{:04x}", cipher_suite);
         trace!("  → transcript_hash (hex): {}", hex::encode(transcript_hash));
-        
-        let result = self.call("tls.compute_finished_verify_data", json!({
-            "base_key": BASE64_STANDARD.encode(client_handshake_traffic_secret),
-            "transcript_hash": BASE64_STANDARD.encode(transcript_hash),
-            "cipher_suite": format!("0x{:04x}", cipher_suite)
-        })).await.map_err(|e| {
-            error!("❌ tls_compute_finished_verify_data RPC call failed: {}", e);
-            e
-        })?;
+
+        let result = self
+            .call(
+                "tls.compute_finished_verify_data",
+                json!({
+                    "base_key": BASE64_STANDARD.encode(client_handshake_traffic_secret),
+                    "transcript_hash": BASE64_STANDARD.encode(transcript_hash),
+                    "cipher_suite": format!("0x{:04x}", cipher_suite)
+                }),
+            )
+            .await
+            .map_err(|e| {
+                error!("❌ tls_compute_finished_verify_data RPC call failed: {}", e);
+                e
+            })?;
 
         let verify_data = result["verify_data"]
             .as_str()
             .ok_or_else(|| Error::BearDogRpc("Missing verify_data in response".to_string()))?;
 
-        let decoded = BASE64_STANDARD.decode(verify_data)
+        let decoded = BASE64_STANDARD
+            .decode(verify_data)
             .map_err(|e| Error::BearDogRpc(format!("Invalid verify_data base64: {}", e)))?;
-        
+
         info!("✅ Finished verify_data computed: {} bytes", decoded.len());
         debug!("   Verify data (hex): {}", hex::encode(&decoded));
         Ok(decoded)
@@ -513,12 +579,15 @@ impl BearDogClient {
 
     /// Legacy alias for backwards compatibility
     /// DEPRECATED: Use tls_derive_application_secrets instead
-    /// 
+    ///
     /// # Note
-    /// 
+    ///
     /// This method creates an empty transcript hash for backwards compatibility.
     /// For RFC 8446 compliance, use `tls_derive_application_secrets` with proper transcript hash.
-    #[deprecated(since = "5.6.0", note = "Use tls_derive_application_secrets with transcript_hash parameter")]
+    #[deprecated(
+        since = "5.6.0",
+        note = "Use tls_derive_application_secrets with transcript_hash parameter"
+    )]
     pub async fn tls_derive_secrets(
         &self,
         shared_secret: &[u8],
@@ -526,43 +595,74 @@ impl BearDogClient {
         server_random: &[u8],
     ) -> Result<TlsSecrets> {
         // For backwards compatibility, create empty transcript hash (NOT RFC 8446 compliant!)
-        warn!("Using deprecated tls_derive_secrets without transcript hash - not RFC 8446 compliant!");
+        warn!(
+            "Using deprecated tls_derive_secrets without transcript hash - not RFC 8446 compliant!"
+        );
         let empty_transcript_hash = vec![0u8; 32]; // Placeholder
         let default_cipher_suite = 0x1303; // ChaCha20-Poly1305 (backward compat)
-        self.tls_derive_application_secrets(shared_secret, client_random, server_random, &empty_transcript_hash, default_cipher_suite).await
+        self.tls_derive_application_secrets(
+            shared_secret,
+            client_random,
+            server_random,
+            &empty_transcript_hash,
+            default_cipher_suite,
+        )
+        .await
     }
 
     /// Encrypt data with ChaCha20-Poly1305
-    pub async fn encrypt(&self, key: &[u8], nonce: &[u8], plaintext: &[u8], aad: &[u8]) -> Result<Vec<u8>> {
-        trace!("🔐 Encrypting {} bytes via BearDog (key={} bytes, nonce={} bytes, aad={} bytes)", 
-               plaintext.len(), key.len(), nonce.len(), aad.len());
-        
-        let result = self.call("crypto.encrypt", json!({
-            "algorithm": "chacha20-poly1305",
-            "key": BASE64_STANDARD.encode(key),
-            "nonce": BASE64_STANDARD.encode(nonce),
-            "plaintext": BASE64_STANDARD.encode(plaintext),
-            "aad": BASE64_STANDARD.encode(aad)
-        })).await.map_err(|e| {
-            error!("❌ crypto.encrypt RPC call failed: {}", e);
-            e
-        })?;
+    pub async fn encrypt(
+        &self,
+        key: &[u8],
+        nonce: &[u8],
+        plaintext: &[u8],
+        aad: &[u8],
+    ) -> Result<Vec<u8>> {
+        trace!(
+            "🔐 Encrypting {} bytes via BearDog (key={} bytes, nonce={} bytes, aad={} bytes)",
+            plaintext.len(),
+            key.len(),
+            nonce.len(),
+            aad.len()
+        );
+
+        let result = self
+            .call(
+                "crypto.encrypt",
+                json!({
+                    "algorithm": "chacha20-poly1305",
+                    "key": BASE64_STANDARD.encode(key),
+                    "nonce": BASE64_STANDARD.encode(nonce),
+                    "plaintext": BASE64_STANDARD.encode(plaintext),
+                    "aad": BASE64_STANDARD.encode(aad)
+                }),
+            )
+            .await
+            .map_err(|e| {
+                error!("❌ crypto.encrypt RPC call failed: {}", e);
+                e
+            })?;
 
         let ciphertext = result["ciphertext"]
             .as_str()
             .ok_or_else(|| Error::BearDogRpc("Missing ciphertext in response".to_string()))?;
 
-        let decoded = BASE64_STANDARD.decode(ciphertext)
+        let decoded = BASE64_STANDARD
+            .decode(ciphertext)
             .map_err(|e| Error::BearDogRpc(format!("Invalid ciphertext base64: {}", e)))?;
-        
-        trace!("✅ Encrypted: {} bytes plaintext → {} bytes ciphertext", plaintext.len(), decoded.len());
+
+        trace!(
+            "✅ Encrypted: {} bytes plaintext → {} bytes ciphertext",
+            plaintext.len(),
+            decoded.len()
+        );
         Ok(decoded)
     }
 
     /// Encrypt data with AES-128-GCM (for TLS_AES_128_GCM_SHA256 cipher suite)
-    /// 
+    ///
     /// # Arguments
-    /// 
+    ///
     /// * `key` - 16-byte AES-128 key
     /// * `nonce` - 12-byte nonce (IV for GCM mode)
     /// * `plaintext` - Data to encrypt
@@ -575,42 +675,59 @@ impl BearDogClient {
         aad: &[u8],
     ) -> Result<Vec<u8>> {
         trace!("🔐 Encrypting {} bytes with AES-128-GCM via BearDog", plaintext.len());
-        
+
         // Validate lengths
         if key.len() != 16 {
             error!("❌ Wrong key size: {} bytes (need 16 for AES-128)", key.len());
-            return Err(Error::BearDogRpc(format!("AES-128-GCM requires 16-byte key, got {}", key.len())));
+            return Err(Error::BearDogRpc(format!(
+                "AES-128-GCM requires 16-byte key, got {}",
+                key.len()
+            )));
         }
         if nonce.len() != 12 {
             error!("❌ Wrong nonce size: {} bytes (need 12 for GCM)", nonce.len());
-            return Err(Error::BearDogRpc(format!("GCM nonce must be 12 bytes, got {}", nonce.len())));
+            return Err(Error::BearDogRpc(format!(
+                "GCM nonce must be 12 bytes, got {}",
+                nonce.len()
+            )));
         }
-        
-        let result = self.call("crypto.encrypt_aes_128_gcm", json!({
-            "key": BASE64_STANDARD.encode(key),
-            "nonce": BASE64_STANDARD.encode(nonce),
-            "plaintext": BASE64_STANDARD.encode(plaintext),
-            "aad": BASE64_STANDARD.encode(aad)
-        })).await.map_err(|e| {
-            error!("❌ crypto.encrypt_aes_128_gcm RPC call failed: {}", e);
-            e
-        })?;
+
+        let result = self
+            .call(
+                "crypto.encrypt_aes_128_gcm",
+                json!({
+                    "key": BASE64_STANDARD.encode(key),
+                    "nonce": BASE64_STANDARD.encode(nonce),
+                    "plaintext": BASE64_STANDARD.encode(plaintext),
+                    "aad": BASE64_STANDARD.encode(aad)
+                }),
+            )
+            .await
+            .map_err(|e| {
+                error!("❌ crypto.encrypt_aes_128_gcm RPC call failed: {}", e);
+                e
+            })?;
 
         let ciphertext = result["ciphertext"]
             .as_str()
             .ok_or_else(|| Error::BearDogRpc("Missing ciphertext in response".to_string()))?;
 
-        let decoded = BASE64_STANDARD.decode(ciphertext)
+        let decoded = BASE64_STANDARD
+            .decode(ciphertext)
             .map_err(|e| Error::BearDogRpc(format!("Invalid ciphertext base64: {}", e)))?;
-        
-        trace!("✅ Encrypted: {} bytes plaintext → {} bytes ciphertext+tag", plaintext.len(), decoded.len());
+
+        trace!(
+            "✅ Encrypted: {} bytes plaintext → {} bytes ciphertext+tag",
+            plaintext.len(),
+            decoded.len()
+        );
         Ok(decoded)
     }
 
     /// Encrypt data with AES-256-GCM (for TLS_AES_256_GCM_SHA384 cipher suite)
-    /// 
+    ///
     /// # Arguments
-    /// 
+    ///
     /// * `key` - 32-byte AES-256 key
     /// * `nonce` - 12-byte nonce (IV for GCM mode)
     /// * `plaintext` - Data to encrypt
@@ -623,43 +740,66 @@ impl BearDogClient {
         aad: &[u8],
     ) -> Result<Vec<u8>> {
         trace!("🔐 Encrypting {} bytes with AES-256-GCM via BearDog", plaintext.len());
-        
+
         // Validate lengths
         if key.len() != 32 {
             error!("❌ Wrong key size: {} bytes (need 32 for AES-256)", key.len());
-            return Err(Error::BearDogRpc(format!("AES-256-GCM requires 32-byte key, got {}", key.len())));
+            return Err(Error::BearDogRpc(format!(
+                "AES-256-GCM requires 32-byte key, got {}",
+                key.len()
+            )));
         }
         if nonce.len() != 12 {
             error!("❌ Wrong nonce size: {} bytes (need 12 for GCM)", nonce.len());
-            return Err(Error::BearDogRpc(format!("GCM nonce must be 12 bytes, got {}", nonce.len())));
+            return Err(Error::BearDogRpc(format!(
+                "GCM nonce must be 12 bytes, got {}",
+                nonce.len()
+            )));
         }
-        
-        let result = self.call("crypto.encrypt_aes_256_gcm", json!({
-            "key": BASE64_STANDARD.encode(key),
-            "nonce": BASE64_STANDARD.encode(nonce),
-            "plaintext": BASE64_STANDARD.encode(plaintext),
-            "aad": BASE64_STANDARD.encode(aad)
-        })).await.map_err(|e| {
-            error!("❌ crypto.encrypt_aes_256_gcm RPC call failed: {}", e);
-            e
-        })?;
+
+        let result = self
+            .call(
+                "crypto.encrypt_aes_256_gcm",
+                json!({
+                    "key": BASE64_STANDARD.encode(key),
+                    "nonce": BASE64_STANDARD.encode(nonce),
+                    "plaintext": BASE64_STANDARD.encode(plaintext),
+                    "aad": BASE64_STANDARD.encode(aad)
+                }),
+            )
+            .await
+            .map_err(|e| {
+                error!("❌ crypto.encrypt_aes_256_gcm RPC call failed: {}", e);
+                e
+            })?;
 
         let ciphertext = result["ciphertext"]
             .as_str()
             .ok_or_else(|| Error::BearDogRpc("Missing ciphertext in response".to_string()))?;
 
-        let decoded = BASE64_STANDARD.decode(ciphertext)
+        let decoded = BASE64_STANDARD
+            .decode(ciphertext)
             .map_err(|e| Error::BearDogRpc(format!("Invalid ciphertext base64: {}", e)))?;
-        
-        trace!("✅ Encrypted: {} bytes plaintext → {} bytes ciphertext+tag", plaintext.len(), decoded.len());
+
+        trace!(
+            "✅ Encrypted: {} bytes plaintext → {} bytes ciphertext+tag",
+            plaintext.len(),
+            decoded.len()
+        );
         Ok(decoded)
     }
 
     /// Decrypt data with ChaCha20-Poly1305 (TLS 1.3 cipher suite 0x1303)
-    /// 
+    ///
     /// NOTE: ChaCha20-Poly1305 RPC expects SEPARATE ciphertext and tag parameters!
     /// This is different from AES-GCM which expects them combined.
-    pub async fn decrypt(&self, key: &[u8], nonce: &[u8], ciphertext: &[u8], aad: &[u8]) -> Result<Vec<u8>> {
+    pub async fn decrypt(
+        &self,
+        key: &[u8],
+        nonce: &[u8],
+        ciphertext: &[u8],
+        aad: &[u8],
+    ) -> Result<Vec<u8>> {
         info!("🔓 BearDog crypto.decrypt call (COMPREHENSIVE DEBUG):");
         info!("   Total ciphertext+tag: {} bytes", ciphertext.len());
         info!("   Key: {} bytes", key.len());
@@ -669,28 +809,44 @@ impl BearDogClient {
         debug!("  Key (first 16 bytes): {:02x?}", &key[..std::cmp::min(16, key.len())]);
         debug!("  Nonce (full): {:02x?}", nonce);
         debug!("  AAD (full): {:02x?}", aad);
-        debug!("  Ciphertext+Tag (first 32 bytes): {:02x?}", &ciphertext[..std::cmp::min(32, ciphertext.len())]);
-        debug!("  Ciphertext+Tag (last 16 bytes): {:02x?}", &ciphertext[ciphertext.len().saturating_sub(16)..]);
-        
+        debug!(
+            "  Ciphertext+Tag (first 32 bytes): {:02x?}",
+            &ciphertext[..std::cmp::min(32, ciphertext.len())]
+        );
+        debug!(
+            "  Ciphertext+Tag (last 16 bytes): {:02x?}",
+            &ciphertext[ciphertext.len().saturating_sub(16)..]
+        );
+
         // ChaCha20-Poly1305 AEAD: Last 16 bytes are the authentication tag
         if ciphertext.len() < 16 {
-            error!("❌ Ciphertext too short: {} bytes (need at least 16 for tag)", ciphertext.len());
-            return Err(Error::BearDogRpc("Ciphertext too short for ChaCha20-Poly1305 (need at least 16 bytes for tag)".to_string()));
+            error!(
+                "❌ Ciphertext too short: {} bytes (need at least 16 for tag)",
+                ciphertext.len()
+            );
+            return Err(Error::BearDogRpc(
+                "Ciphertext too short for ChaCha20-Poly1305 (need at least 16 bytes for tag)"
+                    .to_string(),
+            ));
         }
-        
+
         let (actual_ciphertext, tag) = ciphertext.split_at(ciphertext.len() - 16);
         info!("📊 Splitting ciphertext+tag:");
         info!("   Ciphertext: {} bytes", actual_ciphertext.len());
         info!("   Tag: 16 bytes");
-        
+
         // HEX DUMPS for deep debugging
         info!("🔍 FULL HEX DUMPS (for BearDog cross-verification):");
         info!("   Key (32 bytes): {}", hex::encode(key));
         info!("   Nonce (12 bytes): {}", hex::encode(nonce));
-        info!("   Ciphertext ({} bytes): {}", actual_ciphertext.len(), hex::encode(actual_ciphertext));
+        info!(
+            "   Ciphertext ({} bytes): {}",
+            actual_ciphertext.len(),
+            hex::encode(actual_ciphertext)
+        );
         info!("   Tag (16 bytes): {}", hex::encode(tag));
         info!("   AAD (5 bytes): {}", hex::encode(aad));
-        
+
         info!("📞 Calling BearDog RPC: crypto.decrypt");
         debug!("RPC payload:");
         debug!("  algorithm: chacha20-poly1305");
@@ -699,42 +855,49 @@ impl BearDogClient {
         debug!("  ciphertext: {} bytes (base64)", actual_ciphertext.len());
         debug!("  tag: 16 bytes (base64)");
         debug!("  aad: {} bytes (base64)", aad.len());
-        
-        let result = self.call("crypto.decrypt", json!({
-            "algorithm": "chacha20-poly1305",
-            "key": BASE64_STANDARD.encode(key),
-            "nonce": BASE64_STANDARD.encode(nonce),
-            "ciphertext": BASE64_STANDARD.encode(actual_ciphertext),
-            "tag": BASE64_STANDARD.encode(tag),
-            "aad": BASE64_STANDARD.encode(aad)
-        })).await.map_err(|e| {
-            error!("❌ BearDog crypto.decrypt RPC call FAILED!");
-            error!("   Error: {}", e);
-            error!("");
-            error!("   📊 Context:");
-            error!("     • Ciphertext: {} bytes", actual_ciphertext.len());
-            error!("     • Tag: 16 bytes");
-            error!("     • Key: {} bytes", key.len());
-            error!("     • Nonce: {} bytes", nonce.len());
-            error!("     • AAD: {} bytes", aad.len());
-            error!("");
-            error!("   🔍 This is likely an AEAD authentication failure!");
-            error!("   Possible causes:");
-            error!("     1. Key mismatch (derived incorrectly)");
-            error!("     2. Nonce mismatch (sequence number or IV wrong)");
-            error!("     3. AAD mismatch (TLS record header wrong)");
-            error!("     4. Tag corruption (network issue)");
-            error!("     5. Ciphertext corruption (network issue)");
-            e
-        })?;
+
+        let result = self
+            .call(
+                "crypto.decrypt",
+                json!({
+                    "algorithm": "chacha20-poly1305",
+                    "key": BASE64_STANDARD.encode(key),
+                    "nonce": BASE64_STANDARD.encode(nonce),
+                    "ciphertext": BASE64_STANDARD.encode(actual_ciphertext),
+                    "tag": BASE64_STANDARD.encode(tag),
+                    "aad": BASE64_STANDARD.encode(aad)
+                }),
+            )
+            .await
+            .map_err(|e| {
+                error!("❌ BearDog crypto.decrypt RPC call FAILED!");
+                error!("   Error: {}", e);
+                error!("");
+                error!("   📊 Context:");
+                error!("     • Ciphertext: {} bytes", actual_ciphertext.len());
+                error!("     • Tag: 16 bytes");
+                error!("     • Key: {} bytes", key.len());
+                error!("     • Nonce: {} bytes", nonce.len());
+                error!("     • AAD: {} bytes", aad.len());
+                error!("");
+                error!("   🔍 This is likely an AEAD authentication failure!");
+                error!("   Possible causes:");
+                error!("     1. Key mismatch (derived incorrectly)");
+                error!("     2. Nonce mismatch (sequence number or IV wrong)");
+                error!("     3. AAD mismatch (TLS record header wrong)");
+                error!("     4. Tag corruption (network issue)");
+                error!("     5. Ciphertext corruption (network issue)");
+                e
+            })?;
 
         let plaintext = result["plaintext"]
             .as_str()
             .ok_or_else(|| Error::BearDogRpc("Missing plaintext in response".to_string()))?;
 
-        let decoded = BASE64_STANDARD.decode(plaintext)
+        let decoded = BASE64_STANDARD
+            .decode(plaintext)
             .map_err(|e| Error::BearDogRpc(format!("Invalid plaintext base64: {}", e)))?;
-        
+
         info!("✅ BearDog crypto.decrypt SUCCESS!");
         info!("   Ciphertext: {} bytes → Plaintext: {} bytes", ciphertext.len(), decoded.len());
         debug!("Plaintext (first 32 bytes): {:02x?}", &decoded[..std::cmp::min(32, decoded.len())]);
@@ -742,9 +905,9 @@ impl BearDogClient {
     }
 
     /// Decrypt data with AES-128-GCM (for TLS_AES_128_GCM_SHA256 cipher suite)
-    /// 
+    ///
     /// # Arguments
-    /// 
+    ///
     /// * `key` - 16-byte AES-128 key
     /// * `nonce` - 12-byte nonce (IV for GCM mode)
     /// * `ciphertext` - Encrypted data + 16-byte authentication tag
@@ -761,65 +924,81 @@ impl BearDogClient {
         info!("   Key: {} bytes (expect 16 for AES-128)", key.len());
         info!("   Nonce: {} bytes (expect 12 for GCM)", nonce.len());
         info!("   AAD: {} bytes", aad.len());
-        
+
         // Validate lengths
         if ciphertext.len() < 16 {
-            error!("❌ Ciphertext too short: {} bytes (need at least 16 for GCM tag)", ciphertext.len());
+            error!(
+                "❌ Ciphertext too short: {} bytes (need at least 16 for GCM tag)",
+                ciphertext.len()
+            );
             return Err(Error::BearDogRpc("Ciphertext too short for AES-128-GCM".to_string()));
         }
         if key.len() != 16 {
             error!("❌ Wrong key size: {} bytes (need 16 for AES-128)", key.len());
-            return Err(Error::BearDogRpc(format!("AES-128-GCM requires 16-byte key, got {}", key.len())));
+            return Err(Error::BearDogRpc(format!(
+                "AES-128-GCM requires 16-byte key, got {}",
+                key.len()
+            )));
         }
         if nonce.len() != 12 {
             error!("❌ Wrong nonce size: {} bytes (need 12 for GCM)", nonce.len());
-            return Err(Error::BearDogRpc(format!("GCM nonce must be 12 bytes, got {}", nonce.len())));
+            return Err(Error::BearDogRpc(format!(
+                "GCM nonce must be 12 bytes, got {}",
+                nonce.len()
+            )));
         }
-        
+
         // CRITICAL FIX: Do NOT split ciphertext and tag!
         // BearDog's aes-gcm crate expects the FULL ciphertext with tag appended
         info!("🔧 CRITICAL FIX: Passing FULL ciphertext (NOT splitting tag)");
         info!("   Per BearDog: RustCrypto aes-gcm expects [encrypted_data] + [16-byte tag]");
         info!("   Total bytes being passed: {} (includes tag)", ciphertext.len());
-        
+
         // HEX DUMPS for verification
         debug!("🔍 Full parameters (for BearDog cross-verification):");
         debug!("   Key (16 bytes): {}", hex::encode(key));
         debug!("   Nonce (12 bytes): {}", hex::encode(nonce));
         debug!("   Ciphertext+Tag ({} bytes): {}", ciphertext.len(), hex::encode(ciphertext));
         debug!("   AAD (5 bytes): {}", hex::encode(aad));
-        
-        let result = self.call("crypto.decrypt_aes_128_gcm", json!({
-            "key": BASE64_STANDARD.encode(key),
-            "nonce": BASE64_STANDARD.encode(nonce),
-            "ciphertext": BASE64_STANDARD.encode(ciphertext),  // FULL ciphertext WITH tag!
-            "aad": BASE64_STANDARD.encode(aad)
-        })).await.map_err(|e| {
-            error!("❌ BearDog crypto.aes128_gcm_decrypt RPC call FAILED!");
-            error!("   Error: {}", e);
-            error!("   Ciphertext+Tag: {} bytes", ciphertext.len());
-            error!("   Key: {} bytes", key.len());
-            error!("   Nonce: {} bytes", nonce.len());
-            error!("   AAD: {} bytes", aad.len());
-            e
-        })?;
+
+        let result = self
+            .call(
+                "crypto.decrypt_aes_128_gcm",
+                json!({
+                    "key": BASE64_STANDARD.encode(key),
+                    "nonce": BASE64_STANDARD.encode(nonce),
+                    "ciphertext": BASE64_STANDARD.encode(ciphertext),  // FULL ciphertext WITH tag!
+                    "aad": BASE64_STANDARD.encode(aad)
+                }),
+            )
+            .await
+            .map_err(|e| {
+                error!("❌ BearDog crypto.aes128_gcm_decrypt RPC call FAILED!");
+                error!("   Error: {}", e);
+                error!("   Ciphertext+Tag: {} bytes", ciphertext.len());
+                error!("   Key: {} bytes", key.len());
+                error!("   Nonce: {} bytes", nonce.len());
+                error!("   AAD: {} bytes", aad.len());
+                e
+            })?;
 
         let plaintext = result["plaintext"]
             .as_str()
             .ok_or_else(|| Error::BearDogRpc("Missing plaintext in response".to_string()))?;
 
-        let decoded = BASE64_STANDARD.decode(plaintext)
+        let decoded = BASE64_STANDARD
+            .decode(plaintext)
             .map_err(|e| Error::BearDogRpc(format!("Invalid plaintext base64: {}", e)))?;
-        
+
         info!("✅ BearDog crypto.aes128_gcm_decrypt SUCCESS!");
         info!("   Ciphertext+Tag: {} bytes → Plaintext: {} bytes", ciphertext.len(), decoded.len());
         Ok(decoded)
     }
 
     /// Decrypt data with AES-256-GCM (for TLS_AES_256_GCM_SHA384 cipher suite)
-    /// 
+    ///
     /// # Arguments
-    /// 
+    ///
     /// * `key` - 32-byte AES-256 key
     /// * `nonce` - 12-byte nonce (IV for GCM mode)
     /// * `ciphertext` - Encrypted data + 16-byte authentication tag
@@ -836,108 +1015,128 @@ impl BearDogClient {
         info!("   Key: {} bytes (expect 32 for AES-256)", key.len());
         info!("   Nonce: {} bytes (expect 12 for GCM)", nonce.len());
         info!("   AAD: {} bytes", aad.len());
-        
+
         // Validate lengths
         if ciphertext.len() < 16 {
-            error!("❌ Ciphertext too short: {} bytes (need at least 16 for GCM tag)", ciphertext.len());
+            error!(
+                "❌ Ciphertext too short: {} bytes (need at least 16 for GCM tag)",
+                ciphertext.len()
+            );
             return Err(Error::BearDogRpc("Ciphertext too short for AES-256-GCM".to_string()));
         }
         if key.len() != 32 {
             error!("❌ Wrong key size: {} bytes (need 32 for AES-256)", key.len());
-            return Err(Error::BearDogRpc(format!("AES-256-GCM requires 32-byte key, got {}", key.len())));
+            return Err(Error::BearDogRpc(format!(
+                "AES-256-GCM requires 32-byte key, got {}",
+                key.len()
+            )));
         }
         if nonce.len() != 12 {
             error!("❌ Wrong nonce size: {} bytes (need 12 for GCM)", nonce.len());
-            return Err(Error::BearDogRpc(format!("GCM nonce must be 12 bytes, got {}", nonce.len())));
+            return Err(Error::BearDogRpc(format!(
+                "GCM nonce must be 12 bytes, got {}",
+                nonce.len()
+            )));
         }
-        
+
         // CRITICAL FIX: Do NOT split ciphertext and tag!
         // BearDog's aes-gcm crate expects the FULL ciphertext with tag appended
         info!("🔧 CRITICAL FIX: Passing FULL ciphertext (NOT splitting tag)");
         info!("   Per BearDog: RustCrypto aes-gcm expects [encrypted_data] + [16-byte tag]");
         info!("   Total bytes being passed: {} (includes tag)", ciphertext.len());
-        
-        let result = self.call("crypto.decrypt_aes_256_gcm", json!({
-            "key": BASE64_STANDARD.encode(key),
-            "nonce": BASE64_STANDARD.encode(nonce),
-            "ciphertext": BASE64_STANDARD.encode(ciphertext),  // FULL ciphertext WITH tag!
-            "aad": BASE64_STANDARD.encode(aad)
-        })).await.map_err(|e| {
-            error!("❌ BearDog crypto.aes256_gcm_decrypt RPC call FAILED!");
-            error!("   Error: {}", e);
-            e
-        })?;
+
+        let result = self
+            .call(
+                "crypto.decrypt_aes_256_gcm",
+                json!({
+                    "key": BASE64_STANDARD.encode(key),
+                    "nonce": BASE64_STANDARD.encode(nonce),
+                    "ciphertext": BASE64_STANDARD.encode(ciphertext),  // FULL ciphertext WITH tag!
+                    "aad": BASE64_STANDARD.encode(aad)
+                }),
+            )
+            .await
+            .map_err(|e| {
+                error!("❌ BearDog crypto.aes256_gcm_decrypt RPC call FAILED!");
+                error!("   Error: {}", e);
+                e
+            })?;
 
         let plaintext = result["plaintext"]
             .as_str()
             .ok_or_else(|| Error::BearDogRpc("Missing plaintext in response".to_string()))?;
 
-        let decoded = BASE64_STANDARD.decode(plaintext)
+        let decoded = BASE64_STANDARD
+            .decode(plaintext)
             .map_err(|e| Error::BearDogRpc(format!("Invalid plaintext base64: {}", e)))?;
-        
+
         info!("✅ BearDog crypto.aes256_gcm_decrypt SUCCESS!");
         info!("   Ciphertext+Tag: {} bytes → Plaintext: {} bytes", ciphertext.len(), decoded.len());
         Ok(decoded)
     }
 
     /// Call BearDog (direct or via Neural API based on mode)
-    /// 
+    ///
     /// In Direct mode: Calls BearDog directly using actual method names
     /// In Neural API mode: Routes through Neural API for capability translation
     async fn call(&self, capability: &str, args: Value) -> Result<Value> {
         let id = self.request_id.fetch_add(1, Ordering::SeqCst);
-        
+
         match &self.mode {
-            BearDogMode::Direct { socket_path } => {
+            BearDogMode::Direct {
+                socket_path,
+            } => {
                 // DIRECT RPC to BearDog
                 let method = self.semantic_to_actual(capability)?;
-                
+
                 let request = JsonRpcRequest {
                     jsonrpc: "2.0".to_string(),
                     method: method.to_string(),
                     params: args,
                     id,
                 };
-                
+
                 trace!("→ BearDog direct RPC: {} (id={})", method, id);
-                
+
                 // Connect to BearDog directly
-                let mut stream = UnixStream::connect(socket_path)
-                    .await
-                    .map_err(|e| Error::BearDogRpc(format!(
-                        "Failed to connect to BearDog at {}: {}", 
+                let mut stream = UnixStream::connect(socket_path).await.map_err(|e| {
+                    Error::BearDogRpc(format!(
+                        "Failed to connect to BearDog at {}: {}",
                         socket_path, e
-                    )))?;
-                
+                    ))
+                })?;
+
                 // Send request
                 let request_json = serde_json::to_string(&request)?;
                 stream.write_all(request_json.as_bytes()).await?;
                 stream.write_all(b"\n").await?;
                 stream.flush().await?;
-                
+
                 // Shutdown write to signal we're done
                 stream.shutdown().await?;
-                
+
                 // Read response
                 let mut buffer = Vec::new();
                 stream.read_to_end(&mut buffer).await?;
-                
+
                 let response: JsonRpcResponse = serde_json::from_slice(&buffer)
                     .map_err(|e| Error::BearDogRpc(format!("Invalid JSON response: {}", e)))?;
-                
+
                 if let Some(error) = response.error {
                     return Err(Error::BearDogRpc(format!(
-                        "BearDog error: {} (code: {})", 
+                        "BearDog error: {} (code: {})",
                         error.message, error.code
                     )));
                 }
-                
-                response.result.ok_or_else(|| {
-                    Error::BearDogRpc("No result in response".to_string())
-                })
+
+                response
+                    .result
+                    .ok_or_else(|| Error::BearDogRpc("No result in response".to_string()))
             }
-            
-            BearDogMode::NeuralApi { socket_path } => {
+
+            BearDogMode::NeuralApi {
+                socket_path,
+            } => {
                 // VIA NEURAL API (existing logic)
                 let request = JsonRpcRequest {
                     jsonrpc: "2.0".to_string(),
@@ -948,32 +1147,32 @@ impl BearDogClient {
                     }),
                     id,
                 };
-                
+
                 trace!("→ Neural API capability.call: {} (id={})", capability, id);
-                
+
                 // Connect to Neural API
-                let mut stream = UnixStream::connect(socket_path)
-                    .await
-                    .map_err(|e| Error::BearDogRpc(format!(
-                        "Failed to connect to Neural API at {}: {}", 
+                let mut stream = UnixStream::connect(socket_path).await.map_err(|e| {
+                    Error::BearDogRpc(format!(
+                        "Failed to connect to Neural API at {}: {}",
                         socket_path, e
-                    )))?;
-                
+                    ))
+                })?;
+
                 // Send request
                 let request_json = serde_json::to_string(&request)?;
                 stream.write_all(request_json.as_bytes()).await?;
                 stream.write_all(b"\n").await?;
                 stream.flush().await?;
-                
+
                 // Shutdown write to signal we're done
                 stream.shutdown().await?;
-                
+
                 // Read response with JSON-aware reading (Neural API keeps socket open)
                 use tokio::time::{timeout, Duration};
                 let mut buffer = Vec::new();
                 let mut temp_buf = [0u8; 4096];
                 let read_timeout = Duration::from_millis(100);
-                
+
                 loop {
                     match timeout(read_timeout, stream.read(&mut temp_buf)).await {
                         Ok(Ok(0)) => break, // EOF
@@ -986,7 +1185,9 @@ impl BearDogClient {
                                 }
                             }
                         }
-                        Ok(Err(e)) => return Err(Error::BearDogRpc(format!("Socket read error: {}", e))),
+                        Ok(Err(e)) => {
+                            return Err(Error::BearDogRpc(format!("Socket read error: {}", e)))
+                        }
                         Err(_) => {
                             // Timeout - check if we have valid JSON
                             if !buffer.is_empty() {
@@ -996,42 +1197,50 @@ impl BearDogClient {
                                     }
                                 }
                             }
-                            return Err(Error::BearDogRpc("Timeout reading from Neural API".to_string()));
+                            return Err(Error::BearDogRpc(
+                                "Timeout reading from Neural API".to_string(),
+                            ));
                         }
                     }
                 }
-                
+
                 // Log raw response for debugging
                 if let Ok(response_str) = std::str::from_utf8(&buffer) {
-                    trace!("← Raw Neural API response ({} bytes): {}", buffer.len(), 
-                           if response_str.len() > 500 { 
-                               format!("{}... (truncated)", &response_str[..500])
-                           } else {
-                               response_str.to_string()
-                           });
-                }
-                
-                let response: JsonRpcResponse = serde_json::from_slice(&buffer)
-                    .map_err(|e| {
-                        error!("❌ Failed to parse Neural API response for {}: {}", capability, e);
-                        if let Ok(response_str) = std::str::from_utf8(&buffer) {
-                            error!("   Raw response: {}", response_str);
+                    trace!(
+                        "← Raw Neural API response ({} bytes): {}",
+                        buffer.len(),
+                        if response_str.len() > 500 {
+                            format!("{}... (truncated)", &response_str[..500])
+                        } else {
+                            response_str.to_string()
                         }
-                        Error::BearDogRpc(format!("Failed to parse Neural API response: {}", e))
-                    })?;
-                
-                let id_str = response.id.map(|id| id.to_string()).unwrap_or_else(|| "null".to_string());
+                    );
+                }
+
+                let response: JsonRpcResponse = serde_json::from_slice(&buffer).map_err(|e| {
+                    error!("❌ Failed to parse Neural API response for {}: {}", capability, e);
+                    if let Ok(response_str) = std::str::from_utf8(&buffer) {
+                        error!("   Raw response: {}", response_str);
+                    }
+                    Error::BearDogRpc(format!("Failed to parse Neural API response: {}", e))
+                })?;
+
+                let id_str =
+                    response.id.map(|id| id.to_string()).unwrap_or_else(|| "null".to_string());
                 trace!("← Neural API result for {} (id={})", capability, id_str);
-                
+
                 // Check for errors
                 if let Some(error) = response.error {
-                    error!("❌ Neural API error for {}: {} (code: {})", capability, error.message, error.code);
+                    error!(
+                        "❌ Neural API error for {}: {} (code: {})",
+                        capability, error.message, error.code
+                    );
                     return Err(Error::BearDogRpc(format!(
-                        "Neural API error for {}: {} (code: {})", 
+                        "Neural API error for {}: {} (code: {})",
                         capability, error.message, error.code
                     )));
                 }
-                
+
                 debug!("✅ Neural API call successful: {}", capability);
                 response.result.ok_or_else(|| {
                     error!("❌ Missing result in Neural API response for {}", capability);
@@ -1043,12 +1252,12 @@ impl BearDogClient {
 }
 
 /// TLS session secrets
-/// 
+///
 /// These are the keys and IVs used for TLS record encryption/decryption.
 /// In TLS 1.3, there are separate keys for:
 /// - Handshake traffic (for encrypting handshake messages)
 /// - Application traffic (for encrypting HTTP data)
-/// 
+///
 /// Songbird derives application traffic keys for HTTP data encryption.
 #[derive(Debug, Clone)]
 pub struct TlsSecrets {
@@ -1086,37 +1295,37 @@ mod tests {
     #[test]
     fn test_semantic_to_actual_mapping() {
         let client = BearDogClient::new_direct("/tmp/test.sock");
-        
+
         assert_eq!(
             client.semantic_to_actual("crypto.generate_keypair").unwrap(),
             "crypto.x25519_generate_ephemeral"
         );
-        
+
         assert_eq!(
             client.semantic_to_actual("crypto.ecdh_derive").unwrap(),
             "crypto.x25519_derive_secret"
         );
-        
+
         assert_eq!(
             client.semantic_to_actual("crypto.encrypt").unwrap(),
             "crypto.chacha20_poly1305_encrypt"
         );
-        
+
         assert_eq!(
             client.semantic_to_actual("crypto.decrypt").unwrap(),
             "crypto.chacha20_poly1305_decrypt"
         );
-        
+
         assert_eq!(
             client.semantic_to_actual("tls.derive_handshake_secrets").unwrap(),
             "tls.derive_handshake_secrets"
         );
-        
+
         assert_eq!(
             client.semantic_to_actual("tls.derive_application_secrets").unwrap(),
             "tls.derive_application_secrets"
         );
-        
+
         assert!(client.semantic_to_actual("unknown.capability").is_err());
     }
 
@@ -1124,10 +1333,10 @@ mod tests {
     fn test_from_env_direct() {
         std::env::set_var("BEARDOG_MODE", "direct");
         std::env::set_var("BEARDOG_SOCKET", "/tmp/test-beardog.sock");
-        
+
         let client = BearDogClient::from_env();
         assert!(matches!(client.mode, BearDogMode::Direct { .. }));
-        
+
         std::env::remove_var("BEARDOG_MODE");
         std::env::remove_var("BEARDOG_SOCKET");
     }
@@ -1136,10 +1345,10 @@ mod tests {
     fn test_from_env_neural() {
         std::env::set_var("BEARDOG_MODE", "neural");
         std::env::set_var("NEURAL_API_SOCKET", "/tmp/test-neural.sock");
-        
+
         let client = BearDogClient::from_env();
         assert!(matches!(client.mode, BearDogMode::NeuralApi { .. }));
-        
+
         std::env::remove_var("BEARDOG_MODE");
         std::env::remove_var("NEURAL_API_SOCKET");
     }
@@ -1149,7 +1358,7 @@ mod tests {
         // No BEARDOG_MODE set, should default to Neural API
         std::env::remove_var("BEARDOG_MODE");
         std::env::remove_var("NEURAL_API_SOCKET");
-        
+
         let client = BearDogClient::from_env();
         assert!(matches!(client.mode, BearDogMode::NeuralApi { .. }));
     }
@@ -1164,7 +1373,7 @@ mod tests {
             client_handshake_secret: vec![13, 14, 15],
             server_handshake_secret: vec![16, 17, 18],
         };
-        
+
         let cloned = secrets.clone();
         assert_eq!(secrets.client_write_key, cloned.client_write_key);
         assert_eq!(secrets.server_write_key, cloned.server_write_key);
@@ -1191,7 +1400,7 @@ mod tests {
             "result": {"key": "value"},
             "id": 42
         }"#;
-        
+
         let response: JsonRpcResponse = serde_json::from_str(json).unwrap();
         assert_eq!(response.jsonrpc, "2.0");
         assert_eq!(response.id, Some(42));
@@ -1207,7 +1416,7 @@ mod tests {
             "result": {"key": "value"},
             "id": null
         }"#;
-        
+
         let response: JsonRpcResponse = serde_json::from_str(json).unwrap();
         assert_eq!(response.jsonrpc, "2.0");
         assert_eq!(response.id, None); // ✅ Now handles null!
@@ -1224,7 +1433,7 @@ mod tests {
             },
             "id": null
         }"#;
-        
+
         let response: JsonRpcResponse = serde_json::from_str(json).unwrap();
         assert!(response.error.is_some());
         assert!(response.result.is_none());
@@ -1248,11 +1457,11 @@ mod tests {
             },
             "id": 1
         }"#;
-        
+
         let response: JsonRpcResponse = serde_json::from_str(json).unwrap();
         assert!(response.result.is_some());
         let result = response.result.unwrap();
-        
+
         // Verify all fields present
         assert!(result["client_write_key"].is_string());
         assert!(result["server_write_key"].is_string());
@@ -1266,12 +1475,12 @@ mod tests {
         let secrets = TlsSecrets {
             client_write_key: vec![0u8; 32], // ChaCha20 key size
             server_write_key: vec![0u8; 32],
-            client_write_iv: vec![0u8; 12],   // ChaCha20 nonce size
+            client_write_iv: vec![0u8; 12], // ChaCha20 nonce size
             server_write_iv: vec![0u8; 12],
             client_handshake_secret: vec![0u8; 32],
             server_handshake_secret: vec![0u8; 32],
         };
-        
+
         assert_eq!(secrets.client_write_key.len(), 32);
         assert_eq!(secrets.server_write_key.len(), 32);
         assert_eq!(secrets.client_write_iv.len(), 12);
@@ -1303,7 +1512,7 @@ mod tests {
             "result": {"key": "value"},
             "id": 1
         }"#;
-        
+
         // Should still parse, just has wrong version
         let response: JsonRpcResponse = serde_json::from_str(json).unwrap();
         assert_eq!(response.jsonrpc, "1.0"); // Not 2.0, but parses
@@ -1318,7 +1527,7 @@ mod tests {
             "error": {"code": -32000, "message": "Error"},
             "id": 1
         }"#;
-        
+
         let response: JsonRpcResponse = serde_json::from_str(json).unwrap();
         assert!(response.result.is_some());
         assert!(response.error.is_some());
@@ -1330,7 +1539,7 @@ mod tests {
             "jsonrpc": "2.0",
             "id": 1
         }"#;
-        
+
         let response: JsonRpcResponse = serde_json::from_str(json).unwrap();
         assert!(response.result.is_none());
         assert!(response.error.is_none());
@@ -1343,7 +1552,7 @@ mod tests {
             "result": {"key": "value"},
             "id": 18446744073709551615
         }"#;
-        
+
         let response: JsonRpcResponse = serde_json::from_str(json).unwrap();
         assert_eq!(response.id, Some(u64::MAX));
     }
@@ -1356,7 +1565,7 @@ mod tests {
             "result": {"key": "value"},
             "id": -1
         }"#;
-        
+
         let result: std::result::Result<JsonRpcResponse, _> = serde_json::from_str(json);
         assert!(result.is_err()); // Can't parse negative as u64
     }
@@ -1369,7 +1578,7 @@ mod tests {
             "result": {"key": "value"},
             "id": "abc123"
         }"#;
-        
+
         let result: std::result::Result<JsonRpcResponse, _> = serde_json::from_str(json);
         assert!(result.is_err()); // We don't support string IDs
     }
@@ -1381,7 +1590,7 @@ mod tests {
             "result": {},
             "id": 1
         }"#;
-        
+
         let response: JsonRpcResponse = serde_json::from_str(json).unwrap();
         assert!(response.result.is_some());
         let result = response.result.unwrap();
@@ -1396,7 +1605,7 @@ mod tests {
             "result": null,
             "id": 1
         }"#;
-        
+
         let response: JsonRpcResponse = serde_json::from_str(json).unwrap();
         // With skip_serializing_if, null is treated as None
         assert!(response.result.is_none());
@@ -1409,7 +1618,7 @@ mod tests {
             "result": [1, 2, 3],
             "id": 1
         }"#;
-        
+
         let response: JsonRpcResponse = serde_json::from_str(json).unwrap();
         assert!(response.result.is_some());
         let result = response.result.unwrap();
@@ -1426,7 +1635,7 @@ mod tests {
             "extra": "ignored",
             "another": 123
         }"#;
-        
+
         // Should parse fine, extra fields ignored
         let response: JsonRpcResponse = serde_json::from_str(json).unwrap();
         assert!(response.result.is_some());
@@ -1436,12 +1645,15 @@ mod tests {
     fn test_chaos_very_large_response() {
         // 10KB response
         let large_value = "x".repeat(10000);
-        let json = format!(r#"{{
+        let json = format!(
+            r#"{{
             "jsonrpc": "2.0",
             "result": {{"data": "{}"}},
             "id": 1
-        }}"#, large_value);
-        
+        }}"#,
+            large_value
+        );
+
         let response: JsonRpcResponse = serde_json::from_str(&json).unwrap();
         assert!(response.result.is_some());
     }
@@ -1463,7 +1675,7 @@ mod tests {
             },
             "id": 1
         }"#;
-        
+
         let response: JsonRpcResponse = serde_json::from_str(json).unwrap();
         assert!(response.result.is_some());
     }
@@ -1482,7 +1694,7 @@ mod tests {
             },
             "id": null
         }"#;
-        
+
         let response: JsonRpcResponse = serde_json::from_str(json).unwrap();
         let error = response.error.unwrap();
         assert_eq!(error.code, -32700);
@@ -1499,7 +1711,7 @@ mod tests {
             },
             "id": null
         }"#;
-        
+
         let response: JsonRpcResponse = serde_json::from_str(json).unwrap();
         let error = response.error.unwrap();
         assert_eq!(error.code, -32600);
@@ -1515,7 +1727,7 @@ mod tests {
             },
             "id": 1
         }"#;
-        
+
         let response: JsonRpcResponse = serde_json::from_str(json).unwrap();
         let error = response.error.unwrap();
         assert_eq!(error.code, -32601);
@@ -1531,7 +1743,7 @@ mod tests {
             },
             "id": 1
         }"#;
-        
+
         let response: JsonRpcResponse = serde_json::from_str(json).unwrap();
         let error = response.error.unwrap();
         assert_eq!(error.code, -32602);
@@ -1547,7 +1759,7 @@ mod tests {
             },
             "id": 1
         }"#;
-        
+
         let response: JsonRpcResponse = serde_json::from_str(json).unwrap();
         let error = response.error.unwrap();
         assert_eq!(error.code, -32603);
@@ -1564,7 +1776,7 @@ mod tests {
             },
             "id": 1
         }"#;
-        
+
         let response: JsonRpcResponse = serde_json::from_str(json).unwrap();
         let error = response.error.unwrap();
         assert_eq!(error.code, -32000);
@@ -1579,11 +1791,11 @@ mod tests {
             "client_write_iv": "rkCk3xt3l2SBFeNu",
             "server_write_iv": "otHQEpR5P+EVqd9V"
         }"#;
-        
+
         let result = serde_json::from_str::<Value>(json);
         assert!(result.is_ok());
         let value = result.unwrap();
-        
+
         // Should be missing client_write_key
         assert!(value.get("client_write_key").is_none());
     }
@@ -1596,14 +1808,14 @@ mod tests {
             "client_write_iv": "bad",
             "server_write_iv": "worse"
         }"#;
-        
+
         // JSON parsing succeeds, but base64 decoding will fail
         let value: Value = serde_json::from_str(json).unwrap();
         assert!(value["client_write_key"].is_string());
-        
+
         // Base64 decode will fail
-        use base64::Engine;
         use base64::engine::general_purpose::STANDARD as BASE64_STANDARD;
+        use base64::Engine;
         let result = BASE64_STANDARD.decode(value["client_write_key"].as_str().unwrap());
         assert!(result.is_err());
     }
@@ -1618,7 +1830,7 @@ mod tests {
             },
             "id": 1
         }"#;
-        
+
         let response: JsonRpcResponse = serde_json::from_str(json).unwrap();
         let error = response.error.unwrap();
         assert!(error.message.contains("错误"));
@@ -1635,7 +1847,7 @@ mod tests {
             client_handshake_secret: vec![],
             server_handshake_secret: vec![],
         };
-        
+
         assert_eq!(secrets.client_write_key.len(), 0);
         assert_eq!(secrets.server_write_key.len(), 0);
     }
@@ -1644,18 +1856,16 @@ mod tests {
     fn test_fault_mismatched_key_sizes() {
         // Keys should be 32 bytes, but we allow any size
         let secrets = TlsSecrets {
-            client_write_key: vec![0u8; 16], // Wrong size!
-            server_write_key: vec![0u8; 64], // Wrong size!
-            client_write_iv: vec![0u8; 8],   // Wrong size!
-            server_write_iv: vec![0u8; 24],  // Wrong size!
+            client_write_key: vec![0u8; 16],        // Wrong size!
+            server_write_key: vec![0u8; 64],        // Wrong size!
+            client_write_iv: vec![0u8; 8],          // Wrong size!
+            server_write_iv: vec![0u8; 24],         // Wrong size!
             client_handshake_secret: vec![0u8; 48], // Wrong size!
             server_handshake_secret: vec![0u8; 20], // Wrong size!
         };
-        
+
         // Should still work, validation happens at crypto layer
         assert_eq!(secrets.client_write_key.len(), 16);
         assert_eq!(secrets.server_write_key.len(), 64);
     }
 }
-
-

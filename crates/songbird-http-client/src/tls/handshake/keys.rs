@@ -39,10 +39,10 @@ use tracing::{debug, info};
 pub enum CipherSuite {
     /// TLS_AES_128_GCM_SHA256 (0x1301)
     Aes128GcmSha256 = 0x1301,
-    
+
     /// TLS_AES_256_GCM_SHA384 (0x1302)
     Aes256GcmSha384 = 0x1302,
-    
+
     /// TLS_CHACHA20_POLY1305_SHA256 (0x1303)
     ChaCha20Poly1305Sha256 = 0x1303,
 }
@@ -57,12 +57,12 @@ impl CipherSuite {
             _ => Err(Error::TlsHandshake(format!("Unsupported cipher suite: 0x{:04x}", value))),
         }
     }
-    
+
     /// Convert to u16 wire format
     pub fn to_u16(self) -> u16 {
         self as u16
     }
-    
+
     /// Get encryption key length in bytes
     pub fn key_len(&self) -> usize {
         match self {
@@ -71,30 +71,30 @@ impl CipherSuite {
             CipherSuite::ChaCha20Poly1305Sha256 => 32,
         }
     }
-    
+
     /// Get AEAD IV (nonce) length in bytes
-    /// 
+    ///
     /// All TLS 1.3 cipher suites use 12-byte IVs (RFC 8446 Section 5.3)
     pub fn iv_len(&self) -> usize {
         12
     }
-    
+
     /// Get hash algorithm output length in bytes
     pub fn hash_len(&self) -> usize {
         match self {
-            CipherSuite::Aes128GcmSha256 => 32,  // SHA-256
-            CipherSuite::Aes256GcmSha384 => 48,  // SHA-384
-            CipherSuite::ChaCha20Poly1305Sha256 => 32,  // SHA-256
+            CipherSuite::Aes128GcmSha256 => 32,        // SHA-256
+            CipherSuite::Aes256GcmSha384 => 48,        // SHA-384
+            CipherSuite::ChaCha20Poly1305Sha256 => 32, // SHA-256
         }
     }
-    
+
     /// Get AEAD authentication tag length in bytes
-    /// 
+    ///
     /// All TLS 1.3 cipher suites use 16-byte tags
     pub fn tag_len(&self) -> usize {
         16
     }
-    
+
     /// Get human-readable name
     pub fn name(&self) -> &'static str {
         match self {
@@ -113,13 +113,13 @@ impl CipherSuite {
 pub struct TrafficKeys {
     /// Key for encrypting client → server data
     pub client_write_key: Vec<u8>,
-    
+
     /// IV for encrypting client → server data
     pub client_write_iv: Vec<u8>,
-    
+
     /// Key for decrypting server → client data
     pub server_write_key: Vec<u8>,
-    
+
     /// IV for decrypting server → client data
     pub server_write_iv: Vec<u8>,
 }
@@ -135,37 +135,43 @@ impl TrafficKeys {
     ) -> Result<Self> {
         let expected_key_len = cipher_suite.key_len();
         let expected_iv_len = cipher_suite.iv_len();
-        
+
         // Validate key lengths
         if client_write_key.len() != expected_key_len {
             return Err(Error::TlsHandshake(format!(
                 "Invalid client_write_key length: got {} bytes, expected {} for {:?}",
-                client_write_key.len(), expected_key_len, cipher_suite
+                client_write_key.len(),
+                expected_key_len,
+                cipher_suite
             )));
         }
-        
+
         if server_write_key.len() != expected_key_len {
             return Err(Error::TlsHandshake(format!(
                 "Invalid server_write_key length: got {} bytes, expected {} for {:?}",
-                server_write_key.len(), expected_key_len, cipher_suite
+                server_write_key.len(),
+                expected_key_len,
+                cipher_suite
             )));
         }
-        
+
         // Validate IV lengths
         if client_write_iv.len() != expected_iv_len {
             return Err(Error::TlsHandshake(format!(
                 "Invalid client_write_iv length: got {} bytes, expected {}",
-                client_write_iv.len(), expected_iv_len
+                client_write_iv.len(),
+                expected_iv_len
             )));
         }
-        
+
         if server_write_iv.len() != expected_iv_len {
             return Err(Error::TlsHandshake(format!(
                 "Invalid server_write_iv length: got {} bytes, expected {}",
-                server_write_iv.len(), expected_iv_len
+                server_write_iv.len(),
+                expected_iv_len
             )));
         }
-        
+
         Ok(Self {
             client_write_key,
             client_write_iv,
@@ -173,26 +179,34 @@ impl TrafficKeys {
             server_write_iv,
         })
     }
-    
+
     /// Log key information (for debugging)
     pub fn log_info(&self, stage: &str, cipher_suite: CipherSuite) {
         info!("════════════════════════════════════════════════════════════");
         info!("🔑 {} KEYS (Cipher: {})", stage.to_uppercase(), cipher_suite.name());
         info!("════════════════════════════════════════════════════════════");
-        info!("client_write_key ({} bytes): {}", 
-              self.client_write_key.len(), 
-              hex::encode(&self.client_write_key));
-        info!("client_write_iv ({} bytes): {}", 
-              self.client_write_iv.len(), 
-              hex::encode(&self.client_write_iv));
-        info!("server_write_key ({} bytes): {}", 
-              self.server_write_key.len(), 
-              hex::encode(&self.server_write_key));
-        info!("server_write_iv ({} bytes): {}", 
-              self.server_write_iv.len(), 
-              hex::encode(&self.server_write_iv));
+        info!(
+            "client_write_key ({} bytes): {}",
+            self.client_write_key.len(),
+            hex::encode(&self.client_write_key)
+        );
+        info!(
+            "client_write_iv ({} bytes): {}",
+            self.client_write_iv.len(),
+            hex::encode(&self.client_write_iv)
+        );
+        info!(
+            "server_write_key ({} bytes): {}",
+            self.server_write_key.len(),
+            hex::encode(&self.server_write_key)
+        );
+        info!(
+            "server_write_iv ({} bytes): {}",
+            self.server_write_iv.len(),
+            hex::encode(&self.server_write_iv)
+        );
         info!("════════════════════════════════════════════════════════════");
-        
+
         debug!("Key validation:");
         debug!("  Expected key length: {} bytes", cipher_suite.key_len());
         debug!("  Expected IV length: {} bytes", cipher_suite.iv_len());
@@ -206,14 +220,8 @@ mod tests {
 
     #[test]
     fn test_cipher_suite_from_u16() {
-        assert!(matches!(
-            CipherSuite::from_u16(0x1301).unwrap(),
-            CipherSuite::Aes128GcmSha256
-        ));
-        assert!(matches!(
-            CipherSuite::from_u16(0x1302).unwrap(),
-            CipherSuite::Aes256GcmSha384
-        ));
+        assert!(matches!(CipherSuite::from_u16(0x1301).unwrap(), CipherSuite::Aes128GcmSha256));
+        assert!(matches!(CipherSuite::from_u16(0x1302).unwrap(), CipherSuite::Aes256GcmSha384));
         assert!(matches!(
             CipherSuite::from_u16(0x1303).unwrap(),
             CipherSuite::ChaCha20Poly1305Sha256
@@ -245,39 +253,34 @@ mod tests {
 
     #[test]
     fn test_cipher_suite_hash_lengths() {
-        assert_eq!(CipherSuite::Aes128GcmSha256.hash_len(), 32);  // SHA-256
-        assert_eq!(CipherSuite::Aes256GcmSha384.hash_len(), 48);  // SHA-384
-        assert_eq!(CipherSuite::ChaCha20Poly1305Sha256.hash_len(), 32);  // SHA-256
+        assert_eq!(CipherSuite::Aes128GcmSha256.hash_len(), 32); // SHA-256
+        assert_eq!(CipherSuite::Aes256GcmSha384.hash_len(), 48); // SHA-384
+        assert_eq!(CipherSuite::ChaCha20Poly1305Sha256.hash_len(), 32); // SHA-256
     }
 
     #[test]
     fn test_traffic_keys_validation() {
         let cipher = CipherSuite::Aes128GcmSha256;
-        
+
         // Valid keys (16-byte keys, 12-byte IVs for AES-128-GCM)
-        let keys = TrafficKeys::new(
-            vec![0u8; 16],
-            vec![0u8; 12],
-            vec![0u8; 16],
-            vec![0u8; 12],
-            cipher,
-        );
+        let keys =
+            TrafficKeys::new(vec![0u8; 16], vec![0u8; 12], vec![0u8; 16], vec![0u8; 12], cipher);
         assert!(keys.is_ok());
-        
+
         // Invalid client key length
         let keys = TrafficKeys::new(
-            vec![0u8; 32],  // Wrong! Should be 16 for AES-128
+            vec![0u8; 32], // Wrong! Should be 16 for AES-128
             vec![0u8; 12],
             vec![0u8; 16],
             vec![0u8; 12],
             cipher,
         );
         assert!(keys.is_err());
-        
+
         // Invalid IV length
         let keys = TrafficKeys::new(
             vec![0u8; 16],
-            vec![0u8; 16],  // Wrong! Should be 12
+            vec![0u8; 16], // Wrong! Should be 12
             vec![0u8; 16],
             vec![0u8; 12],
             cipher,
@@ -288,15 +291,10 @@ mod tests {
     #[test]
     fn test_traffic_keys_aes_256() {
         let cipher = CipherSuite::Aes256GcmSha384;
-        
+
         // Valid keys (32-byte keys, 12-byte IVs for AES-256-GCM)
-        let keys = TrafficKeys::new(
-            vec![0u8; 32],
-            vec![0u8; 12],
-            vec![0u8; 32],
-            vec![0u8; 12],
-            cipher,
-        );
+        let keys =
+            TrafficKeys::new(vec![0u8; 32], vec![0u8; 12], vec![0u8; 32], vec![0u8; 12], cipher);
         assert!(keys.is_ok());
     }
 
@@ -307,4 +305,3 @@ mod tests {
         assert_eq!(CipherSuite::ChaCha20Poly1305Sha256.name(), "TLS_CHACHA20_POLY1305_SHA256");
     }
 }
-

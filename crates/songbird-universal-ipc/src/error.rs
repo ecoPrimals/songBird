@@ -58,4 +58,3 @@ pub enum IpcError {
 
 /// Result type for universal IPC operations
 pub type IpcResult<T> = Result<T, IpcError>;
-

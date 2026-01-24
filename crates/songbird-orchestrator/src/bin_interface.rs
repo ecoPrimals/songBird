@@ -196,7 +196,6 @@ pub async fn run_doctor(args: DoctorArgs) -> Result<()> {
 
 /// Run doctor in text format
 async fn run_doctor_text(comprehensive: bool) -> Result<()> {
-    
     use crate::process_manager::ProcessManager;
     use songbird_types::config::CanonicalSongbirdConfig;
 

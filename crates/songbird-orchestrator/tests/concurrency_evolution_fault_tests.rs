@@ -10,8 +10,8 @@
 
 use assert_cmd::Command;
 use predicates::prelude::*;
-use std::sync::Arc;
 use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::Arc;
 use tokio::task::JoinSet;
 
 // ====================
@@ -34,21 +34,18 @@ fn clean_cmd() -> Command {
 async fn fault_test_concurrent_invalid_commands() {
     // FAULT: All commands are invalid
     let mut join_set = JoinSet::new();
-    
+
     for i in 0..50 {
         join_set.spawn(async move {
-            clean_cmd()
-                .arg(format!("invalid-command-{}", i))
-                .assert()
-                .failure();
+            clean_cmd().arg(format!("invalid-command-{}", i)).assert().failure();
         });
     }
-    
+
     let mut failure_count = 0;
     while let Some(_) = join_set.join_next().await {
         failure_count += 1;
     }
-    
+
     assert_eq!(failure_count, 50, "All invalid commands should fail");
 }
 
@@ -56,16 +53,14 @@ async fn fault_test_concurrent_invalid_commands() {
 async fn fault_test_empty_command_args() {
     // FAULT: Commands with no arguments
     let mut join_set = JoinSet::new();
-    
+
     for _ in 0..20 {
         join_set.spawn(async {
             // No arguments provided (should show help or fail gracefully)
-            clean_cmd()
-                .assert()
-                .code(predicate::ne(255));  // Should not panic/crash
+            clean_cmd().assert().code(predicate::ne(255)); // Should not panic/crash
         });
     }
-    
+
     while let Some(_) = join_set.join_next().await {}
 }
 
@@ -79,9 +74,9 @@ async fn fault_test_malformed_arguments() {
         vec!["server", "--unknown-flag"],
         vec!["--", "--", "--"],
     ];
-    
+
     let mut join_set = JoinSet::new();
-    
+
     for args in malformed_args {
         join_set.spawn(async move {
             let mut cmd = clean_cmd();
@@ -91,7 +86,7 @@ async fn fault_test_malformed_arguments() {
             cmd.assert().failure();
         });
     }
-    
+
     while let Some(_) = join_set.join_next().await {}
 }
 
@@ -103,18 +98,18 @@ async fn fault_test_malformed_arguments() {
 async fn fault_test_missing_path_env() {
     // FAULT: Command with no PATH environment variable
     let mut join_set = JoinSet::new();
-    
+
     for _ in 0..20 {
         join_set.spawn(async {
             let mut cmd = Command::cargo_bin("songbird").unwrap();
             cmd.env_clear();
             // Deliberately NO PATH set (unlike clean_cmd)
-            
+
             // Should still work (or fail gracefully)
             let _ = cmd.arg("--version").assert();
         });
     }
-    
+
     while let Some(_) = join_set.join_next().await {}
 }
 
@@ -122,22 +117,22 @@ async fn fault_test_missing_path_env() {
 async fn fault_test_corrupted_environment_values() {
     // FAULT: Environment with corrupted/invalid values
     let mut join_set = JoinSet::new();
-    
+
     for i in 0..20 {
         join_set.spawn(async move {
             let mut cmd = clean_cmd();
-            
+
             // Various corrupted values
             cmd.env("SONGBIRD_PORT", "not_a_number");
-            cmd.env("SONGBIRD_CONFIG", "\0\0\0");  // Null bytes
-            cmd.env("SONGBIRD_NODE_ID", &"x".repeat(10000));  // Huge value
+            cmd.env("SONGBIRD_CONFIG", "\0\0\0"); // Null bytes
+            cmd.env("SONGBIRD_NODE_ID", &"x".repeat(10000)); // Huge value
             cmd.env("CORRUPTED", format!("{}_{}", i, "\n\r\t"));
-            
+
             // Should handle gracefully
             cmd.arg("--version").assert();
         });
     }
-    
+
     while let Some(_) = join_set.join_next().await {}
 }
 
@@ -150,28 +145,21 @@ async fn fault_test_all_fail_concurrently() {
     // FAULT: All concurrent operations fail
     let mut join_set = JoinSet::new();
     let failure_count = Arc::new(AtomicUsize::new(0));
-    
+
     for _ in 0..100 {
         let failure_count = failure_count.clone();
         join_set.spawn(async move {
-            let result = clean_cmd()
-                .arg("guaranteed-to-fail")
-                .assert()
-                .try_failure();
-            
+            let result = clean_cmd().arg("guaranteed-to-fail").assert().try_failure();
+
             if result.is_ok() {
                 failure_count.fetch_add(1, Ordering::SeqCst);
             }
         });
     }
-    
+
     while let Some(_) = join_set.join_next().await {}
-    
-    assert_eq!(
-        failure_count.load(Ordering::SeqCst),
-        100,
-        "All operations should fail as expected"
-    );
+
+    assert_eq!(failure_count.load(Ordering::SeqCst), 100, "All operations should fail as expected");
 }
 
 #[tokio::test]
@@ -180,11 +168,11 @@ async fn fault_test_mixed_success_failure_isolation() {
     let mut join_set = JoinSet::new();
     let success_count = Arc::new(AtomicUsize::new(0));
     let failure_count = Arc::new(AtomicUsize::new(0));
-    
+
     for i in 0..100 {
         let success_count = success_count.clone();
         let failure_count = failure_count.clone();
-        
+
         join_set.spawn(async move {
             if i % 2 == 0 {
                 // Should succeed
@@ -197,9 +185,9 @@ async fn fault_test_mixed_success_failure_isolation() {
             }
         });
     }
-    
+
     while let Some(_) = join_set.join_next().await {}
-    
+
     // Verify isolation: failures didn't corrupt successes
     assert_eq!(success_count.load(Ordering::SeqCst), 50);
     assert_eq!(failure_count.load(Ordering::SeqCst), 50);
@@ -214,17 +202,17 @@ async fn fault_test_rapid_creation_destruction() {
     // FAULT: Rapid cycles of creation/destruction (resource stress)
     for _ in 0..100 {
         let mut join_set = JoinSet::new();
-        
+
         for _ in 0..10 {
             join_set.spawn(async {
                 let _cmd = clean_cmd();
                 // Immediate drop
             });
         }
-        
+
         while let Some(_) = join_set.join_next().await {}
     }
-    
+
     // If we survived 1000 rapid cycles, we're robust
 }
 
@@ -232,21 +220,21 @@ async fn fault_test_rapid_creation_destruction() {
 async fn fault_test_command_handle_leaks() {
     // FAULT: Verify no handle leaks over many iterations
     let mut successful = 0;
-    
+
     for _ in 0..100 {
         let mut join_set = JoinSet::new();
-        
+
         for _ in 0..10 {
             join_set.spawn(async {
                 clean_cmd().arg("--version").assert().success();
             });
         }
-        
+
         while let Some(_) = join_set.join_next().await {
             successful += 1;
         }
     }
-    
+
     assert_eq!(successful, 1000, "All iterations should succeed (no leaks)");
 }
 
@@ -258,18 +246,18 @@ async fn fault_test_command_handle_leaks() {
 async fn fault_test_zero_environment_variables() {
     // FAULT: Minimal possible environment
     let mut join_set = JoinSet::new();
-    
+
     for _ in 0..20 {
         join_set.spawn(async {
             let mut cmd = Command::cargo_bin("songbird").unwrap();
             cmd.env_clear();
             // Absolutely nothing in environment
-            
+
             // Should handle gracefully
             let _ = cmd.arg("--version").assert();
         });
     }
-    
+
     while let Some(_) = join_set.join_next().await {}
 }
 
@@ -277,16 +265,16 @@ async fn fault_test_zero_environment_variables() {
 async fn fault_test_maximum_argument_length() {
     // FAULT: Arguments at system limits
     let mut join_set = JoinSet::new();
-    
+
     for i in 0..20 {
         join_set.spawn(async move {
             clean_cmd()
-                .arg(&"x".repeat(1000 + i * 100))  // Very long argument
+                .arg(&"x".repeat(1000 + i * 100)) // Very long argument
                 .assert()
-                .failure();  // Should fail, but gracefully
+                .failure(); // Should fail, but gracefully
         });
     }
-    
+
     while let Some(_) = join_set.join_next().await {}
 }
 
@@ -305,9 +293,9 @@ async fn fault_test_special_characters_in_env() {
         "value&with&ampersand",
         "value|with|pipe",
     ];
-    
+
     let mut join_set = JoinSet::new();
-    
+
     for (i, value) in special_values.iter().enumerate() {
         let value = value.to_string();
         join_set.spawn(async move {
@@ -316,7 +304,7 @@ async fn fault_test_special_characters_in_env() {
             cmd.arg("--version").assert().success();
         });
     }
-    
+
     while let Some(result) = join_set.join_next().await {
         result.unwrap();
     }
@@ -330,16 +318,16 @@ async fn fault_test_special_characters_in_env() {
 async fn fault_test_recovery_after_failures() {
     // FAULT: Verify system recovers after failures
     let mut join_set = JoinSet::new();
-    
+
     // Phase 1: Cause failures
     for _ in 0..20 {
         join_set.spawn(async {
             clean_cmd().arg("invalid").assert().failure();
         });
     }
-    
+
     while let Some(_) = join_set.join_next().await {}
-    
+
     // Phase 2: Verify recovery (should work normally)
     let mut join_set = JoinSet::new();
     for _ in 0..20 {
@@ -347,7 +335,7 @@ async fn fault_test_recovery_after_failures() {
             clean_cmd().arg("--version").assert().success();
         });
     }
-    
+
     while let Some(result) = join_set.join_next().await {
         result.unwrap();
     }
@@ -358,7 +346,7 @@ async fn fault_test_interleaved_success_failure_recovery() {
     // FAULT: Interleave success/failure/recovery patterns
     for _ in 0..10 {
         let mut join_set = JoinSet::new();
-        
+
         // Mix of patterns
         for i in 0..30 {
             join_set.spawn(async move {
@@ -378,7 +366,7 @@ async fn fault_test_interleaved_success_failure_recovery() {
                 }
             });
         }
-        
+
         while let Some(_) = join_set.join_next().await {}
     }
 }
@@ -397,15 +385,15 @@ async fn fault_test_single_command() {
 async fn fault_test_two_commands() {
     // FAULT: Edge case - minimal concurrency (2)
     let mut join_set = JoinSet::new();
-    
+
     join_set.spawn(async {
         clean_cmd().arg("--version").assert().success();
     });
-    
+
     join_set.spawn(async {
         clean_cmd().arg("--help").assert().success();
     });
-    
+
     while let Some(result) = join_set.join_next().await {
         result.unwrap();
     }
@@ -415,19 +403,20 @@ async fn fault_test_two_commands() {
 async fn fault_test_odd_number_concurrent() {
     // FAULT: Edge case - odd number (not power of 2)
     let mut join_set = JoinSet::new();
-    
-    for _ in 0..13 {  // Prime-ish number
+
+    for _ in 0..13 {
+        // Prime-ish number
         join_set.spawn(async {
             clean_cmd().arg("--version").assert().success();
         });
     }
-    
+
     let mut count = 0;
     while let Some(result) = join_set.join_next().await {
         result.unwrap();
         count += 1;
     }
-    
+
     assert_eq!(count, 13);
 }
 
@@ -439,19 +428,18 @@ async fn fault_test_odd_number_concurrent() {
 #[tokio::test]
 async fn fault_test_pattern_documentation() {
     // ✅ CORRECT PATTERN: Isolated fault handling
-    
+
     let mut join_set = JoinSet::new();
-    
+
     // Each failure is isolated
     join_set.spawn(async {
         clean_cmd().arg("invalid1").assert().failure();
     });
-    
+
     join_set.spawn(async {
         clean_cmd().arg("invalid2").assert().failure();
     });
-    
+
     // Failures don't affect each other
     while let Some(_) = join_set.join_next().await {}
 }
-

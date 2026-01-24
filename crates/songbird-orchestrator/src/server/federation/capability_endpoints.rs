@@ -250,4 +250,3 @@ pub async fn list_capability_providers(
         }),
     )
 }
-

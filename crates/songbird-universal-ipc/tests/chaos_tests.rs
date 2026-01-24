@@ -7,8 +7,7 @@
 //! - Race conditions
 //! - Concurrent access patterns
 
-use songbird_universal_ipc::{capability, ipc};
-use songbird_universal_ipc::capability::discovery;
+use songbird_universal_ipc::ipc;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
 use std::time::Duration;
@@ -25,20 +24,15 @@ async fn test_chaos_rapid_register_unregister() {
         let primal_id = format!("chaos-primal-{}", i);
 
         // Register
-        let _endpoint = ipc::register(&primal_id, vec!["chaos".to_string()])
-            .await
-            .expect("Failed to register");
+        let _endpoint =
+            ipc::register(&primal_id, vec!["chaos".to_string()]).await.expect("Failed to register");
 
         // Immediately unregister
-        ipc::unregister(&primal_id)
-            .await
-            .expect("Failed to unregister");
+        ipc::unregister(&primal_id).await.expect("Failed to unregister");
     }
 
     // Verify all cleaned up
-    let providers = capability::discover_all("chaos")
-        .await
-        .expect("Failed to discover");
+    let providers = ipc::find_by_capability("chaos").await;
     assert_eq!(providers.len(), 0, "All primals should be unregistered");
 }
 
@@ -51,9 +45,7 @@ async fn test_chaos_connection_storm() {
         .await
         .expect("Failed to register primal");
 
-    let mut listener = ipc::listen(endpoint.clone())
-        .await
-        .expect("Failed to create listener");
+    let mut listener = ipc::listen(endpoint.clone()).await.expect("Failed to create listener");
 
     let connection_count = Arc::new(AtomicUsize::new(0));
     let count_clone = Arc::clone(&connection_count);
@@ -101,11 +93,7 @@ async fn test_chaos_connection_storm() {
     tokio::time::sleep(Duration::from_millis(100)).await;
 
     let final_count = connection_count.load(Ordering::SeqCst);
-    assert!(
-        final_count >= 80,
-        "Should handle most connections (got {})",
-        final_count
-    );
+    assert!(final_count >= 80, "Should handle most connections (got {})", final_count);
 
     server_handle.abort();
 }
@@ -123,10 +111,7 @@ async fn test_chaos_concurrent_registration() {
     for _ in 0..10 {
         let count = Arc::clone(&success_count);
         let handle = tokio::spawn(async move {
-            if ipc::register(primal_id, vec!["test".to_string()])
-                .await
-                .is_ok()
-            {
+            if ipc::register(primal_id, vec!["test".to_string()]).await.is_ok() {
                 count.fetch_add(1, Ordering::SeqCst);
             }
         });
@@ -142,14 +127,9 @@ async fn test_chaos_concurrent_registration() {
     assert!(count >= 1, "At least one registration should succeed");
 
     // Verify only one is registered
-    let providers = capability::discover_all("test")
-        .await
-        .expect("Failed to discover");
+    let services = ipc::find_by_capability("test").await;
 
-    let concurrent_primals = providers
-        .iter()
-        .filter(|p| p.primal_id == primal_id)
-        .count();
+    let concurrent_primals = services.iter().filter(|path| path.contains(&primal_id)).count();
     assert_eq!(concurrent_primals, 1, "Should have exactly one registration");
 }
 
@@ -173,7 +153,7 @@ async fn test_chaos_discovery_during_changes() {
     for _ in 0..10 {
         let handle = tokio::spawn(async {
             for _ in 0..20 {
-                let _ = capability::discover_all("churn").await;
+                let _ = ipc::find_by_capability("churn").await;
                 tokio::time::sleep(Duration::from_millis(5)).await;
             }
         });
@@ -201,9 +181,7 @@ async fn test_chaos_listener_drop() {
         .await
         .expect("Failed to register primal");
 
-    let listener = ipc::listen(endpoint.clone())
-        .await
-        .expect("Failed to create listener");
+    let listener = ipc::listen(endpoint.clone()).await.expect("Failed to create listener");
 
     // Drop listener immediately
     drop(listener);
@@ -234,10 +212,8 @@ async fn test_chaos_massive_capabilities() {
 
     // Verify all capabilities are discoverable
     for cap in &capabilities {
-        let providers = capability::discover_all(cap)
-            .await
-            .expect("Failed to discover");
-        assert_eq!(providers.len(), 1, "Should find primal for {}", cap);
+        let services = ipc::find_by_capability(cap).await;
+        assert_eq!(services.len(), 1, "Should find primal for {}", cap);
     }
 }
 
@@ -259,10 +235,8 @@ async fn test_chaos_concurrent_discovery() {
         let cap = format!("cap-{}", i);
         let handle = tokio::spawn(async move {
             for _ in 0..20 {
-                let providers = capability::discover_all(&cap)
-                    .await
-                    .expect("Discovery failed");
-                assert!(!providers.is_empty(), "Should find providers for {}", cap);
+                let services = ipc::find_by_capability(&cap).await;
+                assert!(!services.is_empty(), "Should find providers for {}", cap);
             }
         });
         handles.push(handle);
@@ -282,9 +256,7 @@ async fn test_chaos_rapid_connect_disconnect() {
         .await
         .expect("Failed to register primal");
 
-    let mut listener = ipc::listen(endpoint.clone())
-        .await
-        .expect("Failed to create listener");
+    let mut listener = ipc::listen(endpoint.clone()).await.expect("Failed to create listener");
 
     // Server: Accept connections rapidly
     let server_handle = tokio::spawn(async move {
@@ -312,9 +284,7 @@ async fn test_chaos_rapid_connect_disconnect() {
     server_handle.abort();
 
     // System should still work
-    let mut stream = ipc::connect(&endpoint.path)
-        .await
-        .expect("Should still be able to connect");
+    let mut stream = ipc::connect(&endpoint.path).await.expect("Should still be able to connect");
     let _ = stream.write_all(b"test").await;
 }
 
@@ -341,14 +311,8 @@ async fn test_chaos_memory_pressure() {
     }
 
     // Verify all registered
-    let providers = capability::discover_all("memory")
-        .await
-        .expect("Failed to discover");
-    assert!(
-        providers.len() >= 90,
-        "Should register most primals (got {})",
-        providers.len()
-    );
+    let services = ipc::find_by_capability("memory").await;
+    assert!(services.len() >= 90, "Should register most primals (got {})", services.len());
 
     // Cleanup all
     for i in 0..100 {
@@ -356,4 +320,3 @@ async fn test_chaos_memory_pressure() {
         let _ = ipc::unregister(&primal_id).await;
     }
 }
-

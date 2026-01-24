@@ -147,10 +147,7 @@ impl UnixSocketServer {
 
         // Default: Use env_config for TRUE PRIMAL self-knowledge
         let socket_path = crate::env_config::socket_path();
-        info!(
-            "📍 Using socket path (TRUE PRIMAL self-knowledge): {}",
-            socket_path.display()
-        );
+        info!("📍 Using socket path (TRUE PRIMAL self-knowledge): {}", socket_path.display());
         socket_path
     }
 
@@ -333,7 +330,7 @@ impl UnixSocketServer {
                     writer.write_all(response_json.as_bytes()).await?;
                     writer.write_all(b"\n").await?;
                     writer.flush().await?;
-                    
+
                     // BIOME OS FIX: Close connection after one request/response
                     // Squirrel's UniversalAiAdapter uses read_to_end() which waits for EOF
                     // Each RPC call should be independent (no persistent connections)
@@ -502,7 +499,7 @@ mod tests {
             path_str
         );
         assert_eq!(path_str, "/tmp/songbird-test0.sock", "Should match env_config format");
-        
+
         std::env::remove_var("SONGBIRD_FAMILY_ID");
     }
 
@@ -516,7 +513,7 @@ mod tests {
         let path = UnixSocketServer::socket_path_from_env();
         let path_str = path.to_str().unwrap();
         eprintln!("Default path: {}", path_str);
-        
+
         // env_config::family_id() defaults to "nat0" when no env var set
         assert!(
             path_str.contains("songbird") && path_str.contains("nat0"),
@@ -572,8 +569,7 @@ mod tests {
         assert_ne!(path1, path2, "Different families should have different socket paths");
         assert!(path1_str.contains("nat0"), "Path 1 should contain nat0");
         assert!(path2_str.contains("lan0"), "Path 2 should contain lan0");
-        
+
         std::env::remove_var("SONGBIRD_FAMILY_ID");
     }
 }
-

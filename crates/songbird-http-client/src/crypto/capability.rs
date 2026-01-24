@@ -43,8 +43,8 @@
 //! let shared = crypto.derive_x25519_shared_secret(&private, &peer_public).await?;
 //! ```
 
-use async_trait::async_trait;
 use crate::error::Result;
+use async_trait::async_trait;
 
 /// TLS 1.3 Handshake Secrets (RFC 8446 Section 7.1)
 #[derive(Debug, Clone)]
@@ -104,19 +104,19 @@ pub struct TlsApplicationSecrets {
 pub trait CryptoCapability: Send + Sync + std::fmt::Debug {
     /// Provider name for debugging/logging
     fn name(&self) -> &str;
-    
+
     /// Check if the provider is available and healthy
     async fn is_available(&self) -> bool;
-    
+
     // ═══════════════════════════════════════════════════════════════════
     // Key Exchange (X25519)
     // ═══════════════════════════════════════════════════════════════════
-    
+
     /// Generate X25519 key pair
     ///
     /// Returns (public_key, private_key) as 32-byte arrays.
     async fn generate_x25519_keypair(&self) -> Result<(Vec<u8>, Vec<u8>)>;
-    
+
     /// Derive shared secret using X25519 ECDH
     ///
     /// # Arguments
@@ -130,11 +130,11 @@ pub trait CryptoCapability: Send + Sync + std::fmt::Debug {
         our_secret: &[u8],
         their_public: &[u8],
     ) -> Result<Vec<u8>>;
-    
+
     // ═══════════════════════════════════════════════════════════════════
     // AEAD Encryption (AES-GCM, ChaCha20-Poly1305)
     // ═══════════════════════════════════════════════════════════════════
-    
+
     /// AES-128-GCM encryption
     async fn aes128_gcm_encrypt(
         &self,
@@ -143,7 +143,7 @@ pub trait CryptoCapability: Send + Sync + std::fmt::Debug {
         plaintext: &[u8],
         aad: &[u8],
     ) -> Result<Vec<u8>>;
-    
+
     /// AES-128-GCM decryption
     async fn aes128_gcm_decrypt(
         &self,
@@ -152,7 +152,7 @@ pub trait CryptoCapability: Send + Sync + std::fmt::Debug {
         ciphertext: &[u8],
         aad: &[u8],
     ) -> Result<Vec<u8>>;
-    
+
     /// AES-256-GCM encryption
     async fn aes256_gcm_encrypt(
         &self,
@@ -161,7 +161,7 @@ pub trait CryptoCapability: Send + Sync + std::fmt::Debug {
         plaintext: &[u8],
         aad: &[u8],
     ) -> Result<Vec<u8>>;
-    
+
     /// AES-256-GCM decryption
     async fn aes256_gcm_decrypt(
         &self,
@@ -170,7 +170,7 @@ pub trait CryptoCapability: Send + Sync + std::fmt::Debug {
         ciphertext: &[u8],
         aad: &[u8],
     ) -> Result<Vec<u8>>;
-    
+
     /// ChaCha20-Poly1305 encryption
     async fn chacha20_poly1305_encrypt(
         &self,
@@ -179,7 +179,7 @@ pub trait CryptoCapability: Send + Sync + std::fmt::Debug {
         plaintext: &[u8],
         aad: &[u8],
     ) -> Result<Vec<u8>>;
-    
+
     /// ChaCha20-Poly1305 decryption
     async fn chacha20_poly1305_decrypt(
         &self,
@@ -188,31 +188,31 @@ pub trait CryptoCapability: Send + Sync + std::fmt::Debug {
         ciphertext: &[u8],
         aad: &[u8],
     ) -> Result<Vec<u8>>;
-    
+
     // ═══════════════════════════════════════════════════════════════════
     // Hashing (SHA-256, SHA-384)
     // ═══════════════════════════════════════════════════════════════════
-    
+
     /// SHA-256 hash
     async fn sha256(&self, data: &[u8]) -> Result<Vec<u8>>;
-    
+
     /// SHA-384 hash
     async fn sha384(&self, data: &[u8]) -> Result<Vec<u8>>;
-    
+
     // ═══════════════════════════════════════════════════════════════════
     // Key Derivation (HKDF)
     // ═══════════════════════════════════════════════════════════════════
-    
+
     /// HKDF-Extract
     async fn hkdf_extract(&self, salt: &[u8], ikm: &[u8]) -> Result<Vec<u8>>;
-    
+
     /// HKDF-Expand
     async fn hkdf_expand(&self, prk: &[u8], info: &[u8], length: usize) -> Result<Vec<u8>>;
-    
+
     // ═══════════════════════════════════════════════════════════════════
     // TLS 1.3 Specific Operations (RFC 8446)
     // ═══════════════════════════════════════════════════════════════════
-    
+
     /// Derive TLS 1.3 handshake secrets
     ///
     /// RFC 8446 Section 7.1: Key Schedule
@@ -221,7 +221,7 @@ pub trait CryptoCapability: Send + Sync + std::fmt::Debug {
         shared_secret: &[u8],
         transcript_hash: &[u8],
     ) -> Result<TlsHandshakeSecrets>;
-    
+
     /// Derive TLS 1.3 application secrets
     ///
     /// RFC 8446 Section 7.1: Key Schedule
@@ -230,7 +230,7 @@ pub trait CryptoCapability: Send + Sync + std::fmt::Debug {
         handshake_secret: &[u8],
         transcript_hash: &[u8],
     ) -> Result<TlsApplicationSecrets>;
-    
+
     /// Compute TLS 1.3 Finished verify_data
     ///
     /// RFC 8446 Section 4.4.4
@@ -239,11 +239,11 @@ pub trait CryptoCapability: Send + Sync + std::fmt::Debug {
         base_key: &[u8],
         transcript_hash: &[u8],
     ) -> Result<Vec<u8>>;
-    
+
     // ═══════════════════════════════════════════════════════════════════
     // Generic Encryption (cipher-agnostic)
     // ═══════════════════════════════════════════════════════════════════
-    
+
     /// Generic encrypt (uses default cipher - ChaCha20-Poly1305)
     async fn encrypt(
         &self,
@@ -254,7 +254,7 @@ pub trait CryptoCapability: Send + Sync + std::fmt::Debug {
     ) -> Result<Vec<u8>> {
         self.chacha20_poly1305_encrypt(key, nonce, plaintext, aad).await
     }
-    
+
     /// Generic decrypt (uses default cipher - ChaCha20-Poly1305)
     async fn decrypt(
         &self,
@@ -273,8 +273,7 @@ pub type CryptoProvider = dyn CryptoCapability;
 #[cfg(test)]
 mod tests {
     use super::*;
-    
+
     // Test that trait is object-safe
     fn _assert_object_safe(_: &dyn CryptoCapability) {}
 }
-

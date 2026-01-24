@@ -48,4 +48,3 @@ pub mod strategy;
 pub use provider::{Provider, ProviderMetadata};
 pub use registry::CapabilityRegistry;
 pub use strategy::{DiscoveryStrategy, EnvironmentStrategy, FilesystemStrategy};
-

@@ -111,16 +111,12 @@ impl SimpleIpcClient {
         reader.read_line(&mut response_line).await?;
 
         // Parse response
-        let response: JsonRpcResponse = serde_json::from_str(&response_line)
-            .context("Failed to parse JSON-RPC response")?;
+        let response: JsonRpcResponse =
+            serde_json::from_str(&response_line).context("Failed to parse JSON-RPC response")?;
 
         // Check for errors
         if let Some(error) = response.error {
-            anyhow::bail!(
-                "JSON-RPC error {}: {}",
-                error.code,
-                error.message
-            );
+            anyhow::bail!("JSON-RPC error {}: {}", error.code, error.message);
         }
 
         // Return result
@@ -188,4 +184,3 @@ async fn main() -> Result<()> {
 
     Ok(())
 }
-

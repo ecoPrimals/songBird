@@ -86,7 +86,7 @@ impl SecurityCapabilityClient {
         let crypto_socket = std::env::var("CRYPTO_PROVIDER_SOCKET")
             .or_else(|_| std::env::var("BEARDOG_SOCKET"))
             .unwrap_or_else(|_| "/tmp/beardog-nat0.sock".to_string());
-        
+
         let http_client = Arc::new(SongbirdHttpClient::new(crypto_socket));
 
         Ok(Self {
@@ -103,7 +103,7 @@ impl SecurityCapabilityClient {
     /// - Try unwrapped format first (idiomatic, clean)
     /// - Fall back to wrapped format (backward compatibility)
     /// - Works with any security provider during transition
-    /// 
+    ///
     /// **✅ PURE RUST** (Jan 21, 2026): Now uses songbird-http-client responses
     fn parse_response_body<T>(&self, status: u16, body: &str) -> Result<T>
     where
@@ -347,7 +347,9 @@ impl SecurityCapabilityClient {
 
         // ✅ AGNOSTIC: Gracefully handles wrapped or unwrapped format
         let body_str = http_response.body.to_string();
-        let trust_response = match self.parse_response_body::<UniversalTrustResponse>(http_response.status, &body_str) {
+        let trust_response = match self
+            .parse_response_body::<UniversalTrustResponse>(http_response.status, &body_str)
+        {
             Ok(response) => response,
             Err(e) => {
                 warn!("Universal trust evaluation failed: {}. Trying legacy fallback...", e);
@@ -445,7 +447,8 @@ impl SecurityCapabilityClient {
 
         // Parse response using our agnostic parser
         let body_str = response.body.to_string();
-        let lineage_info = self.parse_response_body::<CurrentLineageInfo>(response.status, &body_str)?;
+        let lineage_info =
+            self.parse_response_body::<CurrentLineageInfo>(response.status, &body_str)?;
 
         info!("✅ Retrieved current lineage from security provider: {}", lineage_info.lineage_id);
         Ok(Some(lineage_info))
@@ -466,7 +469,10 @@ impl SecurityCapabilityClient {
 
         // Return invalid verification result on error
         if response.status < 200 || response.status >= 300 {
-            error!("Security provider lineage verification failed: {} - {}", response.status, response.body);
+            error!(
+                "Security provider lineage verification failed: {} - {}",
+                response.status, response.body
+            );
             let invalid_lineage = LineageId::new("error-invalid".to_string());
             return Ok(VerificationResult {
                 valid: false,
@@ -477,7 +483,8 @@ impl SecurityCapabilityClient {
         }
 
         let body_str = response.body.to_string();
-        let result = self.parse_response_body::<VerificationResult>(response.status, &body_str)
+        let result = self
+            .parse_response_body::<VerificationResult>(response.status, &body_str)
             .context("Failed to parse security provider verification response")?;
 
         if result.valid {
@@ -526,7 +533,8 @@ impl SecurityCapabilityClient {
         }
 
         let body_str = response.body.to_string();
-        let result = self.parse_response_body::<SameFamilyResponse>(response.status, &body_str)
+        let result = self
+            .parse_response_body::<SameFamilyResponse>(response.status, &body_str)
             .context("Failed to parse security provider family check response")?;
 
         if result.same_family {

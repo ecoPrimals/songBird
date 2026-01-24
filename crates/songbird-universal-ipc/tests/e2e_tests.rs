@@ -6,8 +6,7 @@
 //! - Cross-platform compatibility
 //! - Real-world usage patterns
 
-use songbird_universal_ipc::{capability, ipc};
-use songbird_universal_ipc::capability::discovery;
+use songbird_universal_ipc::ipc;
 use std::time::Duration;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::time::timeout;
@@ -19,14 +18,13 @@ async fn test_e2e_full_primal_lifecycle() {
     ipc::init().expect("Failed to initialize IPC");
 
     // Register a primal with capabilities
-    let endpoint = ipc::register("test-primal-e2e", vec!["crypto".to_string(), "storage".to_string()])
-        .await
-        .expect("Failed to register primal");
+    let endpoint =
+        ipc::register("test-primal-e2e", vec!["crypto".to_string(), "storage".to_string()])
+            .await
+            .expect("Failed to register primal");
 
     // Start listener
-    let mut listener = ipc::listen(endpoint.clone())
-        .await
-        .expect("Failed to create listener");
+    let mut listener = ipc::listen(endpoint.clone()).await.expect("Failed to create listener");
 
     // Spawn server task
     let server_handle = tokio::spawn(async move {
@@ -43,17 +41,13 @@ async fn test_e2e_full_primal_lifecycle() {
     tokio::time::sleep(Duration::from_millis(50)).await;
 
     // Client: Discover by capability
-    let providers = discovery::discover_all("crypto")
-        .await
-        .expect("Failed to discover providers");
+    let services = ipc::find_by_capability("crypto").await;
 
-    assert!(!providers.is_empty(), "Should find at least one crypto provider");
-    assert_eq!(providers[0].primal_id, "test-primal-e2e");
+    assert!(!services.is_empty(), "Should find at least one crypto provider");
+    assert!(services.iter().any(|s| s.contains("test-primal-e2e")));
 
     // Client: Connect and communicate
-    let mut stream = ipc::connect(&endpoint.path)
-        .await
-        .expect("Failed to connect");
+    let mut stream = ipc::connect(&endpoint.path).await.expect("Failed to connect");
 
     // Send message
     stream.write_all(b"hello").await.expect("Failed to write");
@@ -85,42 +79,26 @@ async fn test_e2e_multi_primal_discovery() {
         .await
         .expect("Failed to register storage primal");
 
-    let _multi_endpoint = ipc::register(
-        "multi-primal",
-        vec!["crypto".to_string(), "storage".to_string()],
-    )
-    .await
-    .expect("Failed to register multi primal");
+    let _multi_endpoint =
+        ipc::register("multi-primal", vec!["crypto".to_string(), "storage".to_string()])
+            .await
+            .expect("Failed to register multi primal");
 
     // Discover crypto providers
-    let crypto_providers = capability::discover_all("crypto")
-        .await
-        .expect("Failed to discover crypto providers");
+    let crypto_providers =
+        capability::discover_all("crypto").await.expect("Failed to discover crypto providers");
 
-    assert_eq!(
-        crypto_providers.len(),
-        2,
-        "Should find 2 crypto providers"
-    );
+    assert_eq!(crypto_providers.len(), 2, "Should find 2 crypto providers");
 
     // Discover storage providers
-    let storage_providers = capability::discover_all("storage")
-        .await
-        .expect("Failed to discover storage providers");
+    let storage_providers =
+        capability::discover_all("storage").await.expect("Failed to discover storage providers");
 
-    assert_eq!(
-        storage_providers.len(),
-        2,
-        "Should find 2 storage providers"
-    );
+    assert_eq!(storage_providers.len(), 2, "Should find 2 storage providers");
 
     // Verify multi-primal appears in both
-    let multi_in_crypto = crypto_providers
-        .iter()
-        .any(|p| p.primal_id == "multi-primal");
-    let multi_in_storage = storage_providers
-        .iter()
-        .any(|p| p.primal_id == "multi-primal");
+    let multi_in_crypto = crypto_providers.iter().any(|p| p.primal_id == "multi-primal");
+    let multi_in_storage = storage_providers.iter().any(|p| p.primal_id == "multi-primal");
 
     assert!(multi_in_crypto, "Multi-primal should be in crypto");
     assert!(multi_in_storage, "Multi-primal should be in storage");
@@ -135,9 +113,7 @@ async fn test_e2e_concurrent_connections() {
         .await
         .expect("Failed to register primal");
 
-    let mut listener = ipc::listen(endpoint.clone())
-        .await
-        .expect("Failed to create listener");
+    let mut listener = ipc::listen(endpoint.clone()).await.expect("Failed to create listener");
 
     // Spawn server that handles multiple connections
     let server_handle = tokio::spawn(async move {
@@ -163,10 +139,7 @@ async fn test_e2e_concurrent_connections() {
             let mut stream = ipc::connect(&path).await.expect("Failed to connect");
 
             let msg = format!("client-{}", i);
-            stream
-                .write_all(msg.as_bytes())
-                .await
-                .expect("Failed to write");
+            stream.write_all(msg.as_bytes()).await.expect("Failed to write");
 
             let mut buf = vec![0u8; 1024];
             let n = stream.read(&mut buf).await.expect("Failed to read");
@@ -195,20 +168,14 @@ async fn test_e2e_unregister_cleanup() {
         .expect("Failed to register primal");
 
     // Verify it's discoverable
-    let providers = capability::discover_all("temp")
-        .await
-        .expect("Failed to discover");
+    let providers = capability::discover_all("temp").await.expect("Failed to discover");
     assert_eq!(providers.len(), 1);
 
     // Unregister
-    ipc::unregister("temp-primal")
-        .await
-        .expect("Failed to unregister");
+    ipc::unregister("temp-primal").await.expect("Failed to unregister");
 
     // Verify it's no longer discoverable
-    let providers = capability::discover_all("temp")
-        .await
-        .expect("Failed to discover");
+    let providers = capability::discover_all("temp").await.expect("Failed to discover");
     assert_eq!(providers.len(), 0, "Should not find unregistered primal");
 
     // Verify connection fails
@@ -225,9 +192,7 @@ async fn test_e2e_large_message_transfer() {
         .await
         .expect("Failed to register primal");
 
-    let mut listener = ipc::listen(endpoint.clone())
-        .await
-        .expect("Failed to create listener");
+    let mut listener = ipc::listen(endpoint.clone()).await.expect("Failed to create listener");
 
     // Server: Echo large messages
     let server_handle = tokio::spawn(async move {
@@ -242,15 +207,10 @@ async fn test_e2e_large_message_transfer() {
     tokio::time::sleep(Duration::from_millis(50)).await;
 
     // Client: Send large message (100 KB)
-    let mut stream = ipc::connect(&endpoint.path)
-        .await
-        .expect("Failed to connect");
+    let mut stream = ipc::connect(&endpoint.path).await.expect("Failed to connect");
 
     let large_msg = vec![0x42u8; 100 * 1024]; // 100 KB
-    stream
-        .write_all(&large_msg)
-        .await
-        .expect("Failed to write large message");
+    stream.write_all(&large_msg).await.expect("Failed to write large message");
 
     // Receive echo
     let mut buf = vec![0u8; 1024 * 1024];
@@ -271,45 +231,32 @@ async fn test_e2e_capability_filtering() {
     ipc::init().expect("Failed to initialize IPC");
 
     // Register primals with different capability sets
-    let _p1 = ipc::register("primal-1", vec!["crypto".to_string()])
+    let _p1 =
+        ipc::register("primal-1", vec!["crypto".to_string()]).await.expect("Failed to register");
+
+    let _p2 = ipc::register("primal-2", vec!["crypto".to_string(), "advanced".to_string()])
         .await
         .expect("Failed to register");
 
-    let _p2 = ipc::register(
-        "primal-2",
-        vec!["crypto".to_string(), "advanced".to_string()],
-    )
-    .await
-    .expect("Failed to register");
-
-    let _p3 = ipc::register("primal-3", vec!["storage".to_string()])
-        .await
-        .expect("Failed to register");
+    let _p3 =
+        ipc::register("primal-3", vec!["storage".to_string()]).await.expect("Failed to register");
 
     // Discover crypto (should find 2)
-    let crypto = capability::discover_all("crypto")
-        .await
-        .expect("Failed to discover");
+    let crypto = capability::discover_all("crypto").await.expect("Failed to discover");
     assert_eq!(crypto.len(), 2);
 
     // Discover advanced (should find 1)
-    let advanced = capability::discover_all("advanced")
-        .await
-        .expect("Failed to discover");
+    let advanced = capability::discover_all("advanced").await.expect("Failed to discover");
     assert_eq!(advanced.len(), 1);
     assert_eq!(advanced[0].primal_id, "primal-2");
 
     // Discover storage (should find 1)
-    let storage = capability::discover_all("storage")
-        .await
-        .expect("Failed to discover");
+    let storage = capability::discover_all("storage").await.expect("Failed to discover");
     assert_eq!(storage.len(), 1);
     assert_eq!(storage[0].primal_id, "primal-3");
 
     // Discover non-existent (should find 0)
-    let none = capability::discover_all("nonexistent")
-        .await
-        .expect("Failed to discover");
+    let none = capability::discover_all("nonexistent").await.expect("Failed to discover");
     assert_eq!(none.len(), 0);
 }
 
@@ -322,9 +269,7 @@ async fn test_e2e_reconnection() {
         .await
         .expect("Failed to register primal");
 
-    let mut listener = ipc::listen(endpoint.clone())
-        .await
-        .expect("Failed to create listener");
+    let mut listener = ipc::listen(endpoint.clone()).await.expect("Failed to create listener");
 
     // Server: Accept multiple connections
     let server_handle = tokio::spawn(async move {
@@ -344,9 +289,7 @@ async fn test_e2e_reconnection() {
 
     // Connect, disconnect, reconnect
     for i in 0..3 {
-        let mut stream = ipc::connect(&endpoint.path)
-            .await
-            .expect("Failed to connect");
+        let mut stream = ipc::connect(&endpoint.path).await.expect("Failed to connect");
 
         let msg = format!("attempt-{}", i);
         stream.write_all(msg.as_bytes()).await.expect("Write failed");
@@ -363,4 +306,3 @@ async fn test_e2e_reconnection() {
 
     server_handle.abort();
 }
-

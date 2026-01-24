@@ -3,7 +3,6 @@
 
 //! Comprehensive tests for timeout configuration
 
-
 use songbird_config::defaults::timeouts::*;
 use std::env;
 use std::time::Duration;

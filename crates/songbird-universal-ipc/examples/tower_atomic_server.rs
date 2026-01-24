@@ -95,10 +95,7 @@ impl JsonRpcHandler for MathService {
 #[tokio::main]
 async fn main() -> IpcResult<()> {
     // Initialize tracing
-    tracing_subscriber::fmt()
-        .with_max_level(Level::INFO)
-        .with_target(false)
-        .init();
+    tracing_subscriber::fmt().with_max_level(Level::INFO).with_target(false).init();
 
     info!("🚀 Starting Tower Atomic Math Service");
 
@@ -106,11 +103,8 @@ async fn main() -> IpcResult<()> {
     ipc::init()?;
 
     // Register service with capabilities
-    let endpoint = ipc::register(
-        "math-service",
-        vec!["math".to_string(), "arithmetic".to_string()],
-    )
-    .await?;
+    let endpoint =
+        ipc::register("math-service", vec!["math".to_string(), "arithmetic".to_string()]).await?;
 
     info!("✅ Registered at: {}", endpoint.path);
     info!("📡 Listening for JSON-RPC requests...");
@@ -122,4 +116,3 @@ async fn main() -> IpcResult<()> {
 
     Ok(())
 }
-

@@ -152,7 +152,7 @@ impl SecurityProviderClient {
         let crypto_socket = crate::primal_discovery::discover_crypto_provider()
             .await
             .context("Failed to discover crypto provider for security client")?;
-        
+
         Ok(Self {
             endpoint: endpoint.into(),
             http_client: songbird_http_client::SongbirdHttpClient::new(crypto_socket),
@@ -194,9 +194,9 @@ impl SecurityProviderClient {
 
         let url = format!("{}/api/v1/lineage/verify", self.endpoint);
 
-        let proof_json = serde_json::to_value(proof)
-            .context("Failed to serialize lineage proof")?;
-        
+        let proof_json =
+            serde_json::to_value(proof).context("Failed to serialize lineage proof")?;
+
         match self.http_client.post(&url, proof_json).await {
             Ok(response) => {
                 if response.status >= 200 && response.status < 300 {
@@ -247,12 +247,12 @@ impl SecurityProviderClient {
             lineage_b: lineage_b.clone(),
         })
         .context("Failed to serialize same_family request")?;
-        
+
         match self.http_client.post(&url, request_body).await {
             Ok(response) => {
                 if response.status >= 200 && response.status < 300 {
-                    let result: SameFamilyResponse =
-                        serde_json::from_value(response.body).context("Failed to parse same_family response")?;
+                    let result: SameFamilyResponse = serde_json::from_value(response.body)
+                        .context("Failed to parse same_family response")?;
 
                     debug!("✅ Same family check: {}", result.same_family);
                     Ok(result.same_family)

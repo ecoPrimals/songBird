@@ -32,9 +32,9 @@ use super::credentials::CredentialManager;
 use super::rate_limiter::RateLimiter;
 use anyhow::{anyhow, Result};
 use serde_json::Value;
+use songbird_http_client::SongbirdHttpClient;
 use std::sync::Arc;
-use tracing::{debug, error, info, trace, warn};
-use songbird_http_client::SongbirdHttpClient; // ✅ Pure Rust HTTP (Tower Atomic)
+use tracing::{debug, error, info, trace, warn}; // ✅ Pure Rust HTTP (Tower Atomic)
 
 /// Universal HTTP Proxy - Works with any provider
 pub struct UniversalProxy {
@@ -131,7 +131,7 @@ impl UniversalProxy {
 
         // Build headers
         let mut headers = std::collections::HashMap::new();
-        
+
         // Add API key (provider-agnostic - works with any auth scheme)
         if let Some(key) = api_key {
             headers.insert("Authorization".to_string(), format!("Bearer {}", key));
@@ -148,12 +148,10 @@ impl UniversalProxy {
         }
 
         // Send request using Pure Rust HTTP client
-        let response = self.http_client.request(
-            &method.to_uppercase(),
-            &backend.base_url,
-            headers,
-            payload.cloned(),
-        ).await?;
+        let response = self
+            .http_client
+            .request(&method.to_uppercase(), &backend.base_url, headers, payload.cloned())
+            .await?;
 
         // Extract status and body from Pure Rust HTTP response
         let status = response.status;

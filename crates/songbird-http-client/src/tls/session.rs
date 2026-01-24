@@ -83,7 +83,7 @@ mod tests {
             server_write_key: vec![4, 5, 6],
             client_write_iv: vec![7, 8, 9],
             server_write_iv: vec![10, 11, 12],
-            cipher_suite: 0x1303,  // ChaCha20-Poly1305 for test
+            cipher_suite: 0x1303, // ChaCha20-Poly1305 for test
             initial_read_sequence: 0,
         };
 
@@ -92,4 +92,3 @@ mod tests {
         assert!(retrieved.is_some());
     }
 }
-

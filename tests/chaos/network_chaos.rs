@@ -7,15 +7,17 @@
 //! Migrated from timing-based synchronization (sleep) to event-driven
 //! patterns using ReadinessSignal for 5x faster, more reliable tests.
 
+use rand::Rng;
 use songbird_test_utils::{
-    fixtures::*, mocks::*, chaos_engineering::*,
-    concurrent_helpers::{ReadinessSignal, CompletionWaiter, RetryPolicy},
+    chaos_engineering::*,
+    concurrent_helpers::{CompletionWaiter, ReadinessSignal, RetryPolicy},
+    fixtures::*,
+    mocks::*,
 };
 use songbird_types::{CapabilityRequest, HealthStatus};
 use songbird_universal::UniversalCapabilityAdapter;
-use std::time::Duration;
 use std::sync::Arc;
-use rand::Rng;
+use std::time::Duration;
 
 /// Test random network delays
 #[tokio::test]
@@ -25,13 +27,10 @@ async fn test_random_network_delays() {
         .expect("Failed to create adapter");
 
     let service = compute_service_fixture();
-    
+
     // Event-driven registration tracking
     let registered = Arc::new(ReadinessSignal::new());
-    adapter
-        .register_service(service)
-        .await
-        .expect("Register failed");
+    adapter.register_service(service).await.expect("Register failed");
     registered.signal();
     registered.wait().await.expect("Registration should complete");
 
@@ -154,15 +153,9 @@ async fn test_network_partition() {
         timeout: Duration::from_secs(10),
     };
 
-    let response = adapter
-        .execute_capability_request(request)
-        .await
-        .expect("Request failed");
+    let response = adapter.execute_capability_request(request).await.expect("Request failed");
 
-    assert!(
-        response.success,
-        "System should function during partition with available region"
-    );
+    assert!(response.success, "System should function during partition with available region");
 }
 
 /// Test asymmetric network failures
@@ -202,10 +195,7 @@ async fn test_asymmetric_network_failure() {
         timeout: Duration::from_secs(10),
     };
 
-    let response = adapter
-        .execute_capability_request(request)
-        .await
-        .expect("Request failed");
+    let response = adapter.execute_capability_request(request).await.expect("Request failed");
 
     assert!(response.success, "Should handle asymmetric network failure");
 }
@@ -223,7 +213,7 @@ async fn test_dns_failure_handling() {
 
     // System should handle registration gracefully
     let result = adapter.register_service(service).await;
-    
+
     // Either succeeds with warning or fails gracefully
     match result {
         Ok(_) => {
@@ -259,10 +249,7 @@ async fn test_intermittent_connectivity() {
 
     // Event-driven registration
     let registered = Arc::new(ReadinessSignal::new());
-    adapter
-        .register_service(service)
-        .await
-        .expect("Register failed");
+    adapter.register_service(service).await.expect("Register failed");
     registered.signal();
     registered.wait().await.expect("Registration should complete");
 
@@ -288,10 +275,7 @@ async fn test_intermittent_connectivity() {
     }
 
     // System should stabilize
-    let health = adapter
-        .get_service_health(&service_id)
-        .await
-        .expect("Failed to get health");
+    let health = adapter.get_service_health(&service_id).await.expect("Failed to get health");
 
     assert_eq!(
         health.status,
@@ -308,13 +292,10 @@ async fn test_bandwidth_throttling() {
         .expect("Failed to create adapter");
 
     let service = storage_service_fixture();
-    
+
     // Event-driven registration
     let registered = Arc::new(ReadinessSignal::new());
-    adapter
-        .register_service(service)
-        .await
-        .expect("Register failed");
+    adapter.register_service(service).await.expect("Register failed");
     registered.signal();
     registered.wait().await.expect("Registration should complete");
 
@@ -328,9 +309,7 @@ async fn test_bandwidth_throttling() {
         let request = CapabilityRequest {
             capability: "storage".to_string(),
             operation: "transfer_large_data".to_string(),
-            parameters: vec![("size".to_string(), "1000000".to_string())]
-                .into_iter()
-                .collect(),
+            parameters: vec![("size".to_string(), "1000000".to_string())].into_iter().collect(),
             timeout: Duration::from_secs(30),
         };
 
@@ -441,15 +420,9 @@ async fn test_routing_failure() {
         timeout: Duration::from_secs(10),
     };
 
-    let response = adapter
-        .execute_capability_request(request)
-        .await
-        .expect("Request failed");
+    let response = adapter.execute_capability_request(request).await.expect("Request failed");
 
-    assert!(
-        response.success,
-        "Should route to backup when primary is unreachable"
-    );
+    assert!(response.success, "Should route to backup when primary is unreachable");
 }
 
 /// Test TLS handshake failures

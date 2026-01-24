@@ -1,0 +1,27 @@
+#!/bin/bash
+# Quick Reference Commands for Songbird Development
+
+echo "🚀 Songbird Quick Reference"
+echo ""
+echo "📊 Status:"
+cargo --version
+echo "Files: $(find crates -name '*.rs' -type f | wc -l) Rust files"
+echo "Build: $(cargo build --workspace 2>&1 | grep -q 'Finished' && echo '✅ PASSING' || echo '❌ FAILING')"
+echo ""
+echo "🔧 Common Commands:"
+echo "  Build:    cargo build --workspace"
+echo "  Test:     cargo test --workspace"
+echo "  Format:   cargo fmt --all"
+echo "  Lint:     cargo clippy --all-targets --all-features"
+echo "  Docs:     cargo doc --workspace --no-deps --open"
+echo "  Coverage: cargo llvm-cov --workspace --html"
+echo ""
+echo "📚 Documentation:"
+echo "  - AUDIT_REPORT_JAN_2026.md  (Full audit results)"
+echo "  - NEXT_ACTIONS.md           (Action guide)"
+echo "  - STATUS.md                 (Project status)"
+echo ""
+echo "📂 Archived (to restore):"
+echo "  - archive/corrupted-benches-jan-2026/     (5 files)"
+echo "  - archive/corrupted-examples-jan-2026/    (34 files)"
+echo "  - archive/corrupted-tests-jan-2026/       (42 files)"

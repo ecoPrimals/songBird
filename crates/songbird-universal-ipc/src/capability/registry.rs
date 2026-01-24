@@ -113,19 +113,12 @@ impl CapabilityRegistry {
                     debug!("   ⏭️  Strategy '{}' found no providers", strategy.name());
                 }
                 Err(e) => {
-                    warn!(
-                        "   ⚠️  Strategy '{}' failed: {}",
-                        strategy.name(),
-                        e
-                    );
+                    warn!("   ⚠️  Strategy '{}' failed: {}", strategy.name(), e);
                 }
             }
         }
 
-        Err(IpcError::ServiceNotFound(format!(
-            "No providers found for capability: {}",
-            capability
-        )))
+        Err(IpcError::ServiceNotFound(format!("No providers found for capability: {}", capability)))
     }
 
     /// Discover all providers offering a capability
@@ -136,10 +129,7 @@ impl CapabilityRegistry {
     /// # Returns
     /// All providers found (may be empty)
     pub async fn discover_all(&self, capability: &str) -> IpcResult<Vec<Provider>> {
-        info!(
-            "🔍 Discovering ALL providers for capability: {}",
-            capability
-        );
+        info!("🔍 Discovering ALL providers for capability: {}", capability);
 
         let mut all_providers = Vec::new();
 
@@ -156,19 +146,14 @@ impl CapabilityRegistry {
                 }
                 Ok(_) => {}
                 Err(e) => {
-                    warn!(
-                        "   ⚠️  Strategy '{}' failed: {}",
-                        strategy.name(),
-                        e
-                    );
+                    warn!("   ⚠️  Strategy '{}' failed: {}", strategy.name(), e);
                 }
             }
         }
 
         if !all_providers.is_empty() {
             // Cache all providers
-            self.cache_providers(capability, all_providers.clone())
-                .await;
+            self.cache_providers(capability, all_providers.clone()).await;
         }
 
         Ok(all_providers)
@@ -304,4 +289,3 @@ mod tests {
         std::env::remove_var("CRYPTO_PROVIDER_SOCKET");
     }
 }
-

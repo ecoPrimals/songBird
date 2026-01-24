@@ -14,17 +14,17 @@ pub struct ExecutionManager {
 
 impl ExecutionManager {
     /// Create a new execution manager
-    /// 
+    ///
     /// ✅ EVOLVED: Now async due to ExecutionClient async construction
     pub async fn new() -> Result<Self, String> {
         let client = ExecutionClient::new()
             .await
             .map_err(|e| format!("Failed to create ExecutionClient: {}", e))?;
-        
+
         let broadcast = BroadcastExecutor::new()
             .await
             .map_err(|e| format!("Failed to create BroadcastExecutor: {}", e))?;
-        
+
         Ok(Self {
             client,
             broadcast: Arc::new(RwLock::new(broadcast)),
@@ -77,7 +77,9 @@ mod tests {
     async fn test_register_tower() {
         // Note: Will fail without crypto provider
         if let Ok(manager) = ExecutionManager::new().await {
-            manager.register_tower("test-tower".to_string(), "http://localhost:9020".to_string()).await;
+            manager
+                .register_tower("test-tower".to_string(), "http://localhost:9020".to_string())
+                .await;
         }
     }
 }

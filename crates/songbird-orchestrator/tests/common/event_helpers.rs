@@ -88,9 +88,8 @@ impl ReadyNotifier {
 /// info!("Server listening on port {}", port);
 /// ```
 pub async fn bind_ephemeral() -> Result<(TcpListener, u16)> {
-    let listener = TcpListener::bind("127.0.0.1:0")
-        .await
-        .context("Failed to bind ephemeral port")?;
+    let listener =
+        TcpListener::bind("127.0.0.1:0").await.context("Failed to bind ephemeral port")?;
     let port = listener.local_addr()?.port();
     debug!("🔌 Bound to ephemeral port: {}", port);
     Ok((listener, port))
@@ -98,9 +97,8 @@ pub async fn bind_ephemeral() -> Result<(TcpListener, u16)> {
 
 /// Bind to an ephemeral TCP port with specific address
 pub async fn bind_ephemeral_addr(addr: &str) -> Result<(TcpListener, SocketAddr)> {
-    let listener = TcpListener::bind(format!("{}:0", addr))
-        .await
-        .context("Failed to bind ephemeral port")?;
+    let listener =
+        TcpListener::bind(format!("{}:0", addr)).await.context("Failed to bind ephemeral port")?;
     let sock_addr = listener.local_addr()?;
     debug!("🔌 Bound to ephemeral address: {}", sock_addr);
     Ok((listener, sock_addr))
@@ -113,7 +111,9 @@ pub async fn bind_ephemeral_addr(addr: &str) -> Result<(TcpListener, SocketAddr)
 pub fn temp_unix_socket() -> Result<TempUnixSocket> {
     let path = std::env::temp_dir().join(format!("songbird-test-{}.sock", uuid::Uuid::new_v4()));
     debug!("🔌 Created temp Unix socket: {}", path.display());
-    Ok(TempUnixSocket { path })
+    Ok(TempUnixSocket {
+        path,
+    })
 }
 
 /// Temporary Unix socket that auto-cleans up
@@ -316,10 +316,7 @@ pub fn response_channel<T>() -> (oneshot::Sender<T>, oneshot::Receiver<T>) {
 ///     }
 /// }
 /// ```
-pub async fn select_first<F1, F2, T1, T2>(
-    future1: F1,
-    future2: F2,
-) -> Result<Either<T1, T2>>
+pub async fn select_first<F1, F2, T1, T2>(future1: F1, future2: F2) -> Result<Either<T1, T2>>
 where
     F1: std::future::Future<Output = Result<T1>>,
     F2: std::future::Future<Output = Result<T2>>,
@@ -366,9 +363,7 @@ mod tests {
         });
 
         // Wait for ready (should be fast!)
-        ReadyNotifier::wait_ready(ready, Duration::from_secs(1))
-            .await
-            .unwrap();
+        ReadyNotifier::wait_ready(ready, Duration::from_secs(1)).await.unwrap();
     }
 
     #[tokio::test]
@@ -390,9 +385,7 @@ mod tests {
         });
 
         // Wait for flag (event-driven, no polling sleep!)
-        wait_for(|| flag.load(Ordering::SeqCst), Duration::from_secs(1))
-            .await
-            .unwrap();
+        wait_for(|| flag.load(Ordering::SeqCst), Duration::from_secs(1)).await.unwrap();
     }
 
     #[tokio::test]
@@ -428,4 +421,3 @@ mod tests {
         tokio::task::yield_now().await;
     }
 }
-

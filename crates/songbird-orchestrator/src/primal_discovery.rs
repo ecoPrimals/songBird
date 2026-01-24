@@ -79,32 +79,16 @@ impl Capability {
     /// Get common socket path patterns for this capability
     fn socket_patterns(&self) -> Vec<&'static str> {
         match self {
-            Capability::Crypto => vec![
-                "/tmp/crypto.sock",
-                "/tmp/beardog-crypto.sock",
-                "/tmp/beardog-nat0.sock",
-            ],
-            Capability::Security => vec![
-                "/tmp/security.sock",
-                "/tmp/beardog-nat0.sock",
-                "/tmp/songbird-nat0.sock",
-            ],
-            Capability::Http => vec![
-                "/tmp/http.sock",
-                "/tmp/songbird-nat0.sock",
-            ],
-            Capability::Ai => vec![
-                "/tmp/ai.sock",
-                "/tmp/squirrel-nat0.sock",
-            ],
-            Capability::Storage => vec![
-                "/tmp/storage.sock",
-                "/tmp/nestgate-nat0.sock",
-            ],
-            Capability::Messaging => vec![
-                "/tmp/messaging.sock",
-                "/tmp/messenger-nat0.sock",
-            ],
+            Capability::Crypto => {
+                vec!["/tmp/crypto.sock", "/tmp/beardog-crypto.sock", "/tmp/beardog-nat0.sock"]
+            }
+            Capability::Security => {
+                vec!["/tmp/security.sock", "/tmp/beardog-nat0.sock", "/tmp/songbird-nat0.sock"]
+            }
+            Capability::Http => vec!["/tmp/http.sock", "/tmp/songbird-nat0.sock"],
+            Capability::Ai => vec!["/tmp/ai.sock", "/tmp/squirrel-nat0.sock"],
+            Capability::Storage => vec!["/tmp/storage.sock", "/tmp/nestgate-nat0.sock"],
+            Capability::Messaging => vec!["/tmp/messaging.sock", "/tmp/messenger-nat0.sock"],
         }
     }
 }
@@ -256,7 +240,5 @@ pub fn get_family_id() -> String {
 
 /// Get primal name from environment (self-knowledge)
 pub fn get_primal_name() -> String {
-    std::env::var("PRIMAL_NAME")
-        .unwrap_or_else(|_| "songbird".to_string())
+    std::env::var("PRIMAL_NAME").unwrap_or_else(|_| "songbird".to_string())
 }
-

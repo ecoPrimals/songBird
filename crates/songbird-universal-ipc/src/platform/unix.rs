@@ -17,18 +17,11 @@ impl PlatformIPC for UnixIPC {
         // Use /tmp/primal-{name}.sock
         let path = PathBuf::from(format!("/tmp/primal-{}.sock", primal_name));
 
-        debug!(
-            "Creating Unix socket endpoint for '{}': {}",
-            primal_name,
-            path.display()
-        );
+        debug!("Creating Unix socket endpoint for '{}': {}", primal_name, path.display());
 
         // Clean up old socket if it exists
         if path.exists() {
-            warn!(
-                "Socket file already exists, removing: {}",
-                path.display()
-            );
+            warn!("Socket file already exists, removing: {}", path.display());
             tokio::fs::remove_file(&path).await.map_err(|e| {
                 IpcError::PlatformError(format!("Failed to remove old socket: {}", e))
             })?;
@@ -37,10 +30,7 @@ impl PlatformIPC for UnixIPC {
         Ok(NativeEndpoint::UnixSocket(path))
     }
 
-    async fn listen(
-        &self,
-        endpoint: &NativeEndpoint,
-    ) -> IpcResult<Box<dyn PlatformListener>> {
+    async fn listen(&self, endpoint: &NativeEndpoint) -> IpcResult<Box<dyn PlatformListener>> {
         match endpoint {
             NativeEndpoint::UnixSocket(path) => {
                 debug!("Creating Unix listener on: {}", path.display());
@@ -55,11 +45,11 @@ impl PlatformIPC for UnixIPC {
 
                 info!("Unix listener created: {}", path.display());
 
-                Ok(Box::new(UnixListenerWrapper { inner: listener }))
+                Ok(Box::new(UnixListenerWrapper {
+                    inner: listener,
+                }))
             }
-            _ => Err(IpcError::PlatformError(
-                "Invalid endpoint for Unix platform".to_string(),
-            )),
+            _ => Err(IpcError::PlatformError("Invalid endpoint for Unix platform".to_string())),
         }
     }
 
@@ -80,9 +70,7 @@ impl PlatformIPC for UnixIPC {
 
                 Ok(Box::new(stream))
             }
-            _ => Err(IpcError::PlatformError(
-                "Invalid endpoint for Unix platform".to_string(),
-            )),
+            _ => Err(IpcError::PlatformError("Invalid endpoint for Unix platform".to_string())),
         }
     }
 
@@ -199,4 +187,3 @@ mod tests {
         }
     }
 }
-

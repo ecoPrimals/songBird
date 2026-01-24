@@ -1,5 +1,5 @@
 //! Client for communicating with remote execution agents
-//! 
+//!
 //! ✅ EVOLVED (Jan 21, 2026): 100% Pure Rust HTTP via SongbirdHttpClient
 
 use serde::{Deserialize, Serialize};
@@ -15,13 +15,14 @@ pub struct ExecutionClient {
 
 impl ExecutionClient {
     /// Create a new execution client
-    /// 
+    ///
     /// ✅ EVOLVED: Async construction with crypto discovery
     pub async fn new() -> Result<Self, ExecutionError> {
-        let crypto_socket = crate::primal_discovery::discover_crypto_provider()
-            .await
-            .map_err(|e| ExecutionError::Network(format!("Crypto provider discovery failed: {}", e)))?;
-        
+        let crypto_socket =
+            crate::primal_discovery::discover_crypto_provider().await.map_err(|e| {
+                ExecutionError::Network(format!("Crypto provider discovery failed: {}", e))
+            })?;
+
         Ok(Self {
             http_client: songbird_http_client::SongbirdHttpClient::new(crypto_socket),
         })
@@ -61,11 +62,8 @@ impl ExecutionClient {
     ) -> Result<JobInfo, ExecutionError> {
         let url = format!("{}/api/v1/execution/jobs/{}", tower_endpoint, job_id);
 
-        let response = self
-            .http_client
-            .get(&url)
-            .await
-            .map_err(|e| ExecutionError::Network(e.to_string()))?;
+        let response =
+            self.http_client.get(&url).await.map_err(|e| ExecutionError::Network(e.to_string()))?;
 
         if response.status < 200 || response.status >= 300 {
             let error_text = response.body.to_string();

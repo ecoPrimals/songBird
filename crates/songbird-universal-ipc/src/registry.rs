@@ -44,11 +44,7 @@ impl ServiceEntry {
     /// Convert to metadata for persistent storage
     pub fn to_metadata(&self) -> ServiceMetadata {
         ServiceMetadata {
-            name: self
-                .virtual_endpoint
-                .primal_name()
-                .unwrap_or("unknown")
-                .to_string(),
+            name: self.virtual_endpoint.primal_name().unwrap_or("unknown").to_string(),
             virtual_path: self.virtual_endpoint.path.clone(),
             native_endpoint_display: self.native_endpoint.display(),
             capabilities: self.capabilities.clone(),
@@ -111,11 +107,7 @@ impl ServiceRegistry {
 
         services.insert(name.to_string(), entry);
 
-        info!(
-            "Registered service '{}' with {} capabilities",
-            name,
-            capabilities.len()
-        );
+        info!("Registered service '{}' with {} capabilities", name, capabilities.len());
         debug!("Service capabilities: {:?}", capabilities);
 
         Ok(virtual_endpoint)
@@ -213,10 +205,7 @@ impl ServiceRegistry {
     /// Get all service metadata (for persistence)
     pub async fn get_all_metadata(&self) -> Vec<ServiceMetadata> {
         let services = self.services.read().await;
-        services
-            .values()
-            .map(|entry| entry.to_metadata())
-            .collect()
+        services.values().map(|entry| entry.to_metadata()).collect()
     }
 }
 
@@ -242,10 +231,8 @@ mod tests {
         #[cfg(not(unix))]
         let endpoint = NativeEndpoint::TcpLocal(8080);
 
-        let virtual_endpoint = registry
-            .register("test-primal", endpoint, vec!["test".to_string()])
-            .await
-            .unwrap();
+        let virtual_endpoint =
+            registry.register("test-primal", endpoint, vec!["test".to_string()]).await.unwrap();
 
         assert_eq!(virtual_endpoint.path, "/primal/test-primal");
     }
@@ -260,10 +247,7 @@ mod tests {
         #[cfg(not(unix))]
         let endpoint = NativeEndpoint::TcpLocal(8080);
 
-        registry
-            .register("test-primal", endpoint, vec![])
-            .await
-            .unwrap();
+        registry.register("test-primal", endpoint, vec![]).await.unwrap();
 
         let resolved = registry.resolve("/primal/test-primal").await.unwrap();
 
@@ -297,17 +281,10 @@ mod tests {
         #[cfg(not(unix))]
         let endpoint2 = NativeEndpoint::TcpLocal(8081);
 
-        registry
-            .register("primal1", endpoint1, vec!["crypto".to_string()])
-            .await
-            .unwrap();
+        registry.register("primal1", endpoint1, vec!["crypto".to_string()]).await.unwrap();
 
         registry
-            .register(
-                "primal2",
-                endpoint2,
-                vec!["crypto".to_string(), "storage".to_string()],
-            )
+            .register("primal2", endpoint2, vec!["crypto".to_string(), "storage".to_string()])
             .await
             .unwrap();
 
@@ -328,10 +305,7 @@ mod tests {
         #[cfg(not(unix))]
         let endpoint = NativeEndpoint::TcpLocal(8080);
 
-        registry
-            .register("test-primal", endpoint, vec![])
-            .await
-            .unwrap();
+        registry.register("test-primal", endpoint, vec![]).await.unwrap();
 
         assert!(registry.get_service("test-primal").await.is_some());
 
@@ -340,4 +314,3 @@ mod tests {
         assert!(registry.get_service("test-primal").await.is_none());
     }
 }
-

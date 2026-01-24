@@ -66,16 +66,20 @@ async fn test_chaos_jwt_provisioning_with_varying_paths() {
             tokio::spawn(async move {
                 // Introduce chaos: some delay before provisioning
                 tokio::time::sleep(Duration::from_millis(i % 20)).await;
-                
+
                 // Test with various socket paths (will fall back to secure random)
                 let socket_path = if i % 3 == 0 {
                     format!("/tmp/chaos-{}.sock", i)
                 } else {
                     String::new()
                 };
-                
-                let socket = if !socket_path.is_empty() { Some(socket_path.as_str()) } else { None };
-                
+
+                let socket = if !socket_path.is_empty() {
+                    Some(socket_path.as_str())
+                } else {
+                    None
+                };
+
                 provision_jwt_secret(socket, &format!("chaos_path_{}", i))
                     .await
                     .expect("Should succeed with varying paths")

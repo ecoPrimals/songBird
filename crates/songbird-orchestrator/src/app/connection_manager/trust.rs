@@ -2,9 +2,9 @@
 
 use super::btsp::BtspConnectionFactory;
 use super::peer::PeerRegistry;
-use anyhow::{anyhow, Result};
 use crate::connections::*;
 use crate::trust::peer_trust::PeerTrustDecision;
+use anyhow::{anyhow, Result};
 use songbird_types::TrustLevel;
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -52,15 +52,14 @@ impl TrustEvaluator {
                 info!("✅ Auto-accept: {} (confidence: {:.2})", peer_id, confidence);
 
                 // Determine trust level from decision
-                let trust_level = if reason.contains("same_genetic_family")
-                    || reason.contains("same_family")
-                {
-                    TrustLevel::Limited
-                } else if confidence >= &0.9 {
-                    TrustLevel::Elevated
-                } else {
-                    TrustLevel::Limited
-                };
+                let trust_level =
+                    if reason.contains("same_genetic_family") || reason.contains("same_family") {
+                        TrustLevel::Limited
+                    } else if confidence >= &0.9 {
+                        TrustLevel::Elevated
+                    } else {
+                        TrustLevel::Limited
+                    };
 
                 self.establish_connection(
                     peer_id,
@@ -98,7 +97,10 @@ impl TrustEvaluator {
                 .await
             }
 
-            PeerTrustDecision::Reject { reason, .. } => {
+            PeerTrustDecision::Reject {
+                reason,
+                ..
+            } => {
                 info!("❌ Rejecting peer '{}': {}", peer_id, reason);
                 peer_registry.reject(peer_id, reason.clone()).await;
                 Ok(())
@@ -158,13 +160,7 @@ impl TrustEvaluator {
 
         // Register peer metadata
         peer_registry
-            .register(
-                peer_id.clone(),
-                endpoint,
-                trust_level,
-                discovery_method,
-                capabilities,
-            )
+            .register(peer_id.clone(), endpoint, trust_level, discovery_method, capabilities)
             .await;
 
         // Store connection
@@ -214,4 +210,3 @@ impl Default for TrustEvaluator {
         Self::new()
     }
 }
-

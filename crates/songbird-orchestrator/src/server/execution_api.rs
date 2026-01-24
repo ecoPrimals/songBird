@@ -22,13 +22,13 @@ pub struct ExecutionApiState {
 
 impl ExecutionApiState {
     /// Create new execution API state
-    /// 
+    ///
     /// ✅ EVOLVED: Now async due to ExecutionManager async construction
     pub async fn new() -> Result<Self, String> {
         let manager = ExecutionManager::new()
             .await
             .map_err(|e| format!("Failed to create ExecutionManager: {}", e))?;
-        
+
         Ok(Self {
             manager: Arc::new(RwLock::new(manager)),
         })

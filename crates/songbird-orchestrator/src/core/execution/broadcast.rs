@@ -13,13 +13,13 @@ pub struct BroadcastExecutor {
 
 impl BroadcastExecutor {
     /// Create a new broadcast executor
-    /// 
+    ///
     /// ✅ EVOLVED: Now async due to ExecutionClient async construction
     pub async fn new() -> Result<Self, String> {
         let client = ExecutionClient::new()
             .await
             .map_err(|e| format!("Failed to create ExecutionClient: {}", e))?;
-        
+
         Ok(Self {
             client,
             tower_registry: HashMap::new(),

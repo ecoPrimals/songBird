@@ -178,7 +178,7 @@ mod tests {
 
         // Create subscribers and ready notifiers
         let (ready_tx, mut ready_rx) = tokio::sync::mpsc::channel(3);
-        
+
         // Spawn multiple subscriber tasks
         let mut handles = vec![];
         for i in 0..3 {
@@ -186,16 +186,16 @@ mod tests {
             let ready_tx_clone = ready_tx.clone();
             let handle = tokio::spawn(async move {
                 let mut receiver = manager_clone.subscribe_filtered(EventFilter::default());
-                
+
                 // Signal that this subscriber is ready
                 ready_tx_clone.send(()).await.ok();
-                
+
                 let mut count = 0;
                 while count < 10 {
                     match timeout(Duration::from_secs(2), receiver.recv()).await {
                         Ok(Ok(_)) => count += 1,
                         Ok(Err(_)) => break, // Channel closed
-                        Err(_) => break, // Timeout
+                        Err(_) => break,     // Timeout
                     }
                 }
 
@@ -203,7 +203,7 @@ mod tests {
             });
             handles.push(handle);
         }
-        
+
         drop(ready_tx); // Drop original sender
 
         // Wait for all subscribers to be ready

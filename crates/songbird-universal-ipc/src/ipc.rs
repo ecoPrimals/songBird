@@ -33,10 +33,7 @@ impl UniversalIPC {
     pub fn new() -> IpcResult<Self> {
         let platform = get_platform_ipc();
 
-        info!(
-            "Universal IPC initialized for platform: {}",
-            std::env::consts::OS
-        );
+        info!("Universal IPC initialized for platform: {}", std::env::consts::OS);
 
         Ok(Self {
             registry: ServiceRegistry::new(),
@@ -61,9 +58,7 @@ impl UniversalIPC {
         let native_endpoint = self.platform.create_endpoint(name).await?;
 
         // Register in service registry
-        self.registry
-            .register(name, native_endpoint, capabilities)
-            .await
+        self.registry.register(name, native_endpoint, capabilities).await
     }
 
     /// Listen on a virtual endpoint
@@ -80,7 +75,9 @@ impl UniversalIPC {
         // Create platform-specific listener
         let inner = self.platform.listen(&native_endpoint).await?;
 
-        Ok(Listener { inner })
+        Ok(Listener {
+            inner,
+        })
     }
 
     /// Connect to a virtual endpoint
@@ -97,7 +94,9 @@ impl UniversalIPC {
         // Connect using platform-specific implementation
         let inner = self.platform.connect(&native_endpoint).await?;
 
-        Ok(Stream { inner })
+        Ok(Stream {
+            inner,
+        })
     }
 
     /// Find services by capability
@@ -147,7 +146,9 @@ impl Listener {
     /// Connected stream
     pub async fn accept(&mut self) -> IpcResult<Stream> {
         let inner = self.inner.accept().await?;
-        Ok(Stream { inner })
+        Ok(Stream {
+            inner,
+        })
     }
 }
 
@@ -205,11 +206,11 @@ impl AsyncWrite for Stream {
 /// Panics if initialization fails (very rare - only on system resource exhaustion)
 pub fn init() -> IpcResult<()> {
     use tracing::{debug, error};
-    
+
     debug!("Attempting to initialize Universal IPC");
     debug!("  Platform: {}", std::env::consts::OS);
     debug!("  Architecture: {}", std::env::consts::ARCH);
-    
+
     // Try to initialize, propagating errors instead of panicking
     let _result = GLOBAL_IPC.get_or_init(|| {
         debug!("Creating UniversalIPC instance");
@@ -227,7 +228,7 @@ pub fn init() -> IpcResult<()> {
             }
         }
     });
-    
+
     // Verify initialization succeeded by checking if we can access it
     if GLOBAL_IPC.get().is_some() {
         info!("✅ Universal IPC initialized successfully");
@@ -243,9 +244,7 @@ pub fn init() -> IpcResult<()> {
 /// # Panics
 /// Panics if `init()` hasn't been called yet.
 pub fn global() -> &'static UniversalIPC {
-    GLOBAL_IPC
-        .get()
-        .expect("Universal IPC not initialized. Call ipc::init() first!")
+    GLOBAL_IPC.get().expect("Universal IPC not initialized. Call ipc::init() first!")
 }
 
 /// Register this primal (convenience function)
@@ -280,6 +279,14 @@ pub async fn list_services() -> Vec<String> {
     global().list_services().await
 }
 
+/// Unregister a service (convenience function)
+///
+/// # Arguments
+/// * `name` - Service name to unregister
+pub async fn unregister(name: &str) -> IpcResult<()> {
+    global().unregister(name).await
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -300,9 +307,7 @@ mod tests {
         init().unwrap();
 
         // Register and listen
-        let endpoint = register("test-primal", vec!["test".to_string()])
-            .await
-            .unwrap();
+        let endpoint = register("test-primal", vec!["test".to_string()]).await.unwrap();
 
         let mut listener = listen(endpoint).await.unwrap();
 
@@ -338,17 +343,11 @@ mod tests {
         init().unwrap();
 
         // Register services with capabilities
-        register("service1", vec!["crypto".to_string()])
-            .await
-            .unwrap();
+        register("service1", vec!["crypto".to_string()]).await.unwrap();
 
-        register("service2", vec!["crypto".to_string(), "storage".to_string()])
-            .await
-            .unwrap();
+        register("service2", vec!["crypto".to_string(), "storage".to_string()]).await.unwrap();
 
-        register("service3", vec!["storage".to_string()])
-            .await
-            .unwrap();
+        register("service3", vec!["storage".to_string()]).await.unwrap();
 
         // Find by capability
         let crypto_services = find_by_capability("crypto").await;
@@ -358,4 +357,3 @@ mod tests {
         assert_eq!(storage_services.len(), 2);
     }
 }
-

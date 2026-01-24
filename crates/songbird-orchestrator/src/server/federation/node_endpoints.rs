@@ -230,4 +230,3 @@ fn filter_node_by_trust(node: &NodeRegistration, trust_level: &TrustLevel) -> Va
         }
     }
 }
-

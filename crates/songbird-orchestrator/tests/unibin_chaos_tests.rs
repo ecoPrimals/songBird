@@ -44,7 +44,6 @@ async fn test_chaos_rapid_fire_commands() -> Result<(), Box<dyn std::error::Erro
 #[tokio::test]
 // ✅ NO #[serial]! Commands are process-isolated!
 async fn test_chaos_random_subcommands() -> Result<(), Box<dyn std::error::Error>> {
-
     let subcommands = vec!["--version", "--help"];
     let mut rng = rand::thread_rng();
 
@@ -62,7 +61,6 @@ async fn test_chaos_random_subcommands() -> Result<(), Box<dyn std::error::Error
 #[tokio::test]
 // ✅ NO #[serial]! Commands are process-isolated!
 async fn test_chaos_concurrent_version_checks() -> Result<(), Box<dyn std::error::Error>> {
-
     // Spawn 20 concurrent version checks
     let mut handles = vec![];
 
@@ -85,7 +83,6 @@ async fn test_chaos_concurrent_version_checks() -> Result<(), Box<dyn std::error
 #[tokio::test]
 // ✅ NO #[serial]! Commands are process-isolated!
 async fn test_chaos_concurrent_help_requests() -> Result<(), Box<dyn std::error::Error>> {
-
     // Spam help requests concurrently
     let mut handles = vec![];
 
@@ -107,7 +104,6 @@ async fn test_chaos_concurrent_help_requests() -> Result<(), Box<dyn std::error:
 #[tokio::test]
 // ✅ NO #[serial]! Commands are process-isolated!
 async fn test_chaos_mixed_concurrent_commands() -> Result<(), Box<dyn std::error::Error>> {
-
     let mut handles = vec![];
     let mut rng = rand::thread_rng();
 

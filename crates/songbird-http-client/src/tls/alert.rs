@@ -132,82 +132,69 @@ impl AlertDescription {
     /// Get human-readable explanation of this alert
     pub fn explanation(&self) -> &'static str {
         match self {
-            AlertDescription::CloseNotify => 
-                "Connection is being closed normally",
-            AlertDescription::UnexpectedMessage => 
-                "Received unexpected message in current state",
-            AlertDescription::BadRecordMac => 
-                "Message authentication code validation failed",
-            AlertDescription::RecordOverflow => 
-                "TLS record exceeded maximum allowed size",
-            AlertDescription::HandshakeFailure => 
-                "Handshake negotiation failed (generic)",
-            AlertDescription::BadCertificate => 
-                "Certificate is corrupt or invalid",
-            AlertDescription::UnsupportedCertificate => 
-                "Certificate type is not supported",
-            AlertDescription::CertificateRevoked => 
-                "Certificate has been revoked",
-            AlertDescription::CertificateExpired => 
-                "Certificate has expired",
-            AlertDescription::CertificateUnknown => 
-                "Certificate validation failed for unknown reason",
-            AlertDescription::IllegalParameter => 
-                "Field in handshake message is incorrect or inconsistent",
-            AlertDescription::UnknownCa => 
-                "Certificate authority is not recognized",
-            AlertDescription::AccessDenied => 
-                "Valid certificate but access denied",
-            AlertDescription::DecodeError => 
-                "Message could not be decoded",
-            AlertDescription::DecryptError => 
-                "Decryption or signature verification failed",
-            AlertDescription::ProtocolVersion => 
-                "Protocol version is not supported",
-            AlertDescription::InsufficientSecurity => 
-                "Security parameters are inadequate",
-            AlertDescription::InternalError => 
-                "Server internal error occurred",
-            AlertDescription::InappropriateFallback => 
-                "Inappropriate protocol version fallback detected",
-            AlertDescription::UserCanceled => 
-                "Handshake canceled by user",
-            AlertDescription::MissingExtension => 
-                "Required TLS extension is missing",
-            AlertDescription::UnsupportedExtension => 
-                "Extension is not supported",
-            AlertDescription::UnrecognizedName => 
-                "Server name (SNI) is not recognized",
-            AlertDescription::BadCertificateStatusResponse => 
-                "OCSP response is invalid",
-            AlertDescription::UnknownPskIdentity => 
-                "PSK identity is unknown",
-            AlertDescription::CertificateRequired => 
-                "Client certificate is required but not provided",
-            AlertDescription::NoApplicationProtocol => 
-                "No application protocol (ALPN) could be negotiated",
+            AlertDescription::CloseNotify => "Connection is being closed normally",
+            AlertDescription::UnexpectedMessage => "Received unexpected message in current state",
+            AlertDescription::BadRecordMac => "Message authentication code validation failed",
+            AlertDescription::RecordOverflow => "TLS record exceeded maximum allowed size",
+            AlertDescription::HandshakeFailure => "Handshake negotiation failed (generic)",
+            AlertDescription::BadCertificate => "Certificate is corrupt or invalid",
+            AlertDescription::UnsupportedCertificate => "Certificate type is not supported",
+            AlertDescription::CertificateRevoked => "Certificate has been revoked",
+            AlertDescription::CertificateExpired => "Certificate has expired",
+            AlertDescription::CertificateUnknown => {
+                "Certificate validation failed for unknown reason"
+            }
+            AlertDescription::IllegalParameter => {
+                "Field in handshake message is incorrect or inconsistent"
+            }
+            AlertDescription::UnknownCa => "Certificate authority is not recognized",
+            AlertDescription::AccessDenied => "Valid certificate but access denied",
+            AlertDescription::DecodeError => "Message could not be decoded",
+            AlertDescription::DecryptError => "Decryption or signature verification failed",
+            AlertDescription::ProtocolVersion => "Protocol version is not supported",
+            AlertDescription::InsufficientSecurity => "Security parameters are inadequate",
+            AlertDescription::InternalError => "Server internal error occurred",
+            AlertDescription::InappropriateFallback => {
+                "Inappropriate protocol version fallback detected"
+            }
+            AlertDescription::UserCanceled => "Handshake canceled by user",
+            AlertDescription::MissingExtension => "Required TLS extension is missing",
+            AlertDescription::UnsupportedExtension => "Extension is not supported",
+            AlertDescription::UnrecognizedName => "Server name (SNI) is not recognized",
+            AlertDescription::BadCertificateStatusResponse => "OCSP response is invalid",
+            AlertDescription::UnknownPskIdentity => "PSK identity is unknown",
+            AlertDescription::CertificateRequired => {
+                "Client certificate is required but not provided"
+            }
+            AlertDescription::NoApplicationProtocol => {
+                "No application protocol (ALPN) could be negotiated"
+            }
         }
     }
 
     /// Get suggested action for this alert
     pub fn suggested_action(&self) -> &'static str {
         match self {
-            AlertDescription::ProtocolVersion => 
-                "Server may not support TLS 1.3. Try TLS 1.2 or check server capabilities.",
-            AlertDescription::HandshakeFailure => 
-                "Check cipher suites, extensions, and protocol version compatibility.",
-            AlertDescription::UnsupportedExtension => 
-                "Try minimal extension set or adjust ClientHello extensions.",
-            AlertDescription::MissingExtension => 
-                "Add required extension (check server requirements).",
-            AlertDescription::NoApplicationProtocol => 
-                "Adjust ALPN extension or remove if not required.",
-            AlertDescription::UnrecognizedName => 
-                "Check SNI hostname or try without SNI extension.",
-            AlertDescription::InsufficientSecurity => 
-                "Use stronger cipher suites or key sizes.",
-            AlertDescription::IllegalParameter => 
-                "Check ClientHello format and field values.",
+            AlertDescription::ProtocolVersion => {
+                "Server may not support TLS 1.3. Try TLS 1.2 or check server capabilities."
+            }
+            AlertDescription::HandshakeFailure => {
+                "Check cipher suites, extensions, and protocol version compatibility."
+            }
+            AlertDescription::UnsupportedExtension => {
+                "Try minimal extension set or adjust ClientHello extensions."
+            }
+            AlertDescription::MissingExtension => {
+                "Add required extension (check server requirements)."
+            }
+            AlertDescription::NoApplicationProtocol => {
+                "Adjust ALPN extension or remove if not required."
+            }
+            AlertDescription::UnrecognizedName => {
+                "Check SNI hostname or try without SNI extension."
+            }
+            AlertDescription::InsufficientSecurity => "Use stronger cipher suites or key sizes.",
+            AlertDescription::IllegalParameter => "Check ClientHello format and field values.",
             _ => "Review server logs or try different configuration.",
         }
     }
@@ -296,7 +283,11 @@ impl TlsAlert {
             "{} Alert: {} ({})\n  Code: Level={}, Description={}\n  Explanation: {}\n  Action: {}",
             self.level,
             self.description,
-            if self.is_fatal() { "connection terminated" } else { "warning" },
+            if self.is_fatal() {
+                "connection terminated"
+            } else {
+                "warning"
+            },
             self.raw_level,
             self.raw_description,
             self.description.explanation(),
@@ -371,10 +362,10 @@ mod tests {
     fn test_display_formats() {
         let data = [2, 40]; // Fatal, handshake_failure
         let alert = TlsAlert::parse(&data).unwrap();
-        
+
         assert!(alert.to_string().contains("Fatal"));
         assert!(alert.to_string().contains("handshake_failure"));
-        
+
         let detailed = alert.to_detailed_string();
         assert!(detailed.contains("Explanation"));
         assert!(detailed.contains("Action"));
@@ -387,4 +378,3 @@ mod tests {
         assert!(desc.suggested_action().contains("TLS 1.3"));
     }
 }
-

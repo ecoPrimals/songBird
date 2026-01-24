@@ -29,9 +29,9 @@
 use anyhow::{Context, Result};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
+use std::path::PathBuf;
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
 use tokio::net::{UnixListener, UnixStream};
-use std::path::PathBuf;
 
 /// JSON-RPC 2.0 Request
 #[derive(Debug, Serialize, Deserialize)]
@@ -139,8 +139,8 @@ impl ExamplePrimal {
         }
 
         // Create Unix socket listener
-        let listener = UnixListener::bind(&self.socket_path)
-            .context("Failed to bind Unix socket")?;
+        let listener =
+            UnixListener::bind(&self.socket_path).context("Failed to bind Unix socket")?;
 
         println!("✅ Server started, waiting for connections...");
 
@@ -255,10 +255,8 @@ impl ExamplePrimal {
         let result = response.result.context("No result")?;
         let providers = result["providers"].as_array().context("No providers")?;
 
-        let primal_ids: Vec<String> = providers
-            .iter()
-            .filter_map(|p| p["primal_id"].as_str().map(String::from))
-            .collect();
+        let primal_ids: Vec<String> =
+            providers.iter().filter_map(|p| p["primal_id"].as_str().map(String::from)).collect();
 
         println!("   Found {} provider(s): {:?}", primal_ids.len(), primal_ids);
 
@@ -313,4 +311,3 @@ async fn main() -> Result<()> {
 
     Ok(())
 }
-

@@ -210,13 +210,11 @@ async fn validate_sso_credential(
     );
 
     // ✅ EVOLVED (Jan 21, 2026): 100% Pure Rust HTTP via SongbirdHttpClient
-    let crypto_socket = crate::primal_discovery::discover_crypto_provider()
-        .await
-        .map_err(|e| {
-            tracing::error!("Failed to discover crypto provider for SSO validation: {}", e);
-            AuthError::InvalidToken
-        })?;
-    
+    let crypto_socket = crate::primal_discovery::discover_crypto_provider().await.map_err(|e| {
+        tracing::error!("Failed to discover crypto provider for SSO validation: {}", e);
+        AuthError::InvalidToken
+    })?;
+
     let client = songbird_http_client::SongbirdHttpClient::new(crypto_socket);
 
     // Prepare SSO validation request
@@ -229,17 +227,17 @@ async fn validate_sso_credential(
     // Send validation request to SSO endpoint
     let response = tokio::time::timeout(
         std::time::Duration::from_secs(10),
-        client.post(&format!("{}/validate", sso_endpoint), validation_request)
+        client.post(&format!("{}/validate", sso_endpoint), validation_request),
     )
-        .await
-        .map_err(|_| {
-            tracing::error!("SSO validation request timed out for user '{}'", user_id);
-            AuthError::InvalidToken
-        })?
-        .map_err(|e| {
-            tracing::error!("SSO validation request failed for user '{}': {}", user_id, e);
-            AuthError::InvalidToken
-        })?;
+    .await
+    .map_err(|_| {
+        tracing::error!("SSO validation request timed out for user '{}'", user_id);
+        AuthError::InvalidToken
+    })?
+    .map_err(|e| {
+        tracing::error!("SSO validation request failed for user '{}': {}", user_id, e);
+        AuthError::InvalidToken
+    })?;
 
     // Check response status
     if response.status < 200 || response.status >= 300 {
@@ -413,7 +411,7 @@ async fn validate_security_provider_2fa(
     let crypto_socket = crate::primal_discovery::discover_crypto_provider()
         .await
         .map_err(|_| AuthError::InvalidToken)?;
-    
+
     let client = songbird_http_client::SongbirdHttpClient::new(crypto_socket);
 
     // Prepare validation request
@@ -426,14 +424,14 @@ async fn validate_security_provider_2fa(
     // Send validation request
     let response = tokio::time::timeout(
         std::time::Duration::from_secs(5),
-        client.post(&format!("{}/auth/validate", security_endpoint), validation_request)
+        client.post(&format!("{}/auth/validate", security_endpoint), validation_request),
     )
-        .await
-        .map_err(|_| AuthError::InvalidToken)?
-        .map_err(|e| {
-            tracing::error!("security provider 2FA validation failed: {}", e);
-            AuthError::InvalidToken
-        })?;
+    .await
+    .map_err(|_| AuthError::InvalidToken)?
+    .map_err(|e| {
+        tracing::error!("security provider 2FA validation failed: {}", e);
+        AuthError::InvalidToken
+    })?;
 
     // Check response
     if response.status >= 200 && response.status < 300 {
@@ -486,7 +484,7 @@ async fn validate_external_2fa(
     let crypto_socket = crate::primal_discovery::discover_crypto_provider()
         .await
         .map_err(|_| AuthError::InvalidToken)?;
-    
+
     let client = songbird_http_client::SongbirdHttpClient::new(crypto_socket);
 
     // Prepare validation request
@@ -498,14 +496,14 @@ async fn validate_external_2fa(
     // Send validation request
     let response = tokio::time::timeout(
         std::time::Duration::from_secs(10),
-        client.post(&format!("{}/verify", service_endpoint), validation_request)
+        client.post(&format!("{}/verify", service_endpoint), validation_request),
     )
-        .await
-        .map_err(|_| AuthError::InvalidToken)?
-        .map_err(|e| {
-            tracing::error!("External 2FA validation failed: {}", e);
-            AuthError::InvalidToken
-        })?;
+    .await
+    .map_err(|_| AuthError::InvalidToken)?
+    .map_err(|e| {
+        tracing::error!("External 2FA validation failed: {}", e);
+        AuthError::InvalidToken
+    })?;
 
     // Check response
     if response.status >= 200 && response.status < 300 {

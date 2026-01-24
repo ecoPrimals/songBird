@@ -27,9 +27,7 @@ pub mod systemtime_as_secs {
     where
         S: Serializer,
     {
-        let duration = time
-            .duration_since(UNIX_EPOCH)
-            .map_err(serde::ser::Error::custom)?;
+        let duration = time.duration_since(UNIX_EPOCH).map_err(serde::ser::Error::custom)?;
         serializer.serialize_u64(duration.as_secs())
     }
 
@@ -41,4 +39,3 @@ pub mod systemtime_as_secs {
         Ok(UNIX_EPOCH + std::time::Duration::from_secs(secs))
     }
 }
-

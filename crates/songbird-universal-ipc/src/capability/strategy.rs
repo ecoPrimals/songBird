@@ -132,12 +132,16 @@ impl FilesystemStrategy {
         // Add system runtime directory
         search_paths.push(PathBuf::from("/var/run"));
 
-        Self { search_paths }
+        Self {
+            search_paths,
+        }
     }
 
     /// Create with custom search paths
     pub fn with_paths(search_paths: Vec<PathBuf>) -> Self {
-        Self { search_paths }
+        Self {
+            search_paths,
+        }
     }
 }
 
@@ -169,11 +173,7 @@ impl DiscoveryStrategy for FilesystemStrategy {
                         // Look for sockets matching capability pattern
                         if file_name.contains(capability) && file_name.ends_with(".sock") {
                             let path = entry.path();
-                            info!(
-                                "   ✅ Found {} socket at: {}",
-                                capability,
-                                path.display()
-                            );
+                            info!("   ✅ Found {} socket at: {}", capability, path.display());
 
                             let provider_id = extract_provider_id(path.to_string_lossy().as_ref());
 
@@ -207,11 +207,7 @@ impl DiscoveryStrategy for FilesystemStrategy {
 /// - `/tmp/beardog-nat0.sock` → `beardog-nat0`
 /// - `/run/user/1000/crypto.sock` → `crypto`
 fn extract_provider_id(socket_path: &str) -> String {
-    PathBuf::from(socket_path)
-        .file_stem()
-        .and_then(|s| s.to_str())
-        .unwrap_or("unknown")
-        .to_string()
+    PathBuf::from(socket_path).file_stem().and_then(|s| s.to_str()).unwrap_or("unknown").to_string()
 }
 
 #[cfg(test)]
@@ -221,10 +217,7 @@ mod tests {
     #[test]
     fn test_extract_provider_id() {
         assert_eq!(extract_provider_id("/tmp/beardog.sock"), "beardog");
-        assert_eq!(
-            extract_provider_id("/tmp/beardog-nat0.sock"),
-            "beardog-nat0"
-        );
+        assert_eq!(extract_provider_id("/tmp/beardog-nat0.sock"), "beardog-nat0");
         assert_eq!(extract_provider_id("/run/user/1000/crypto.sock"), "crypto");
         assert_eq!(extract_provider_id("nestgate.sock"), "nestgate");
     }
@@ -254,4 +247,3 @@ mod tests {
         assert!(result.is_ok());
     }
 }
-

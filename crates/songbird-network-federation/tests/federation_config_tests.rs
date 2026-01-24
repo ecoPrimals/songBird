@@ -14,7 +14,6 @@ fn test_default_federation_config() {
 #[test]
 fn test_federation_config_creation() {
     let config = FederationConfig {
-        _legacy_test_fields: (),
         discovery_mode: None,
         rendezvous_url: None,
         enabled: true,

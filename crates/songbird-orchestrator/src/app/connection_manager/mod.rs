@@ -1,7 +1,7 @@
 //! Connection Manager - Domain-driven modular architecture
 //!
 //! Manages peer connections with trust-based capability enforcement.
-//! 
+//!
 //! **Architecture** (v3.21.0 - Jan 19, 2026):
 //! - `peer`: Peer metadata and lifecycle management
 //! - `trust`: Trust evaluation and establishment
@@ -16,19 +16,19 @@ use std::sync::Arc;
 use tokio::sync::RwLock;
 
 // Re-export public types
-pub use types::{PeerMetadata, systemtime_as_secs};
+pub use btsp::BtspConnectionFactory;
 pub use peer::PeerRegistry;
 pub use trust::TrustEvaluator;
-pub use btsp::BtspConnectionFactory;
+pub use types::{systemtime_as_secs, PeerMetadata};
 
 use crate::btsp_client::BtspClient;
 use crate::connections::Connection;
 use crate::trust::peer_trust::PeerTrustDecision;
 
-mod types;
+mod btsp;
 mod peer;
 mod trust;
-mod btsp;
+mod types;
 
 #[cfg(test)]
 mod tests;
@@ -43,13 +43,13 @@ mod tests;
 pub struct ConnectionManager {
     /// Active connections by peer_id
     connections: Arc<RwLock<HashMap<String, Connection>>>,
-    
+
     /// Peer registry (metadata, lifecycle)
     peer_registry: PeerRegistry,
-    
+
     /// Trust evaluator
     trust_evaluator: TrustEvaluator,
-    
+
     /// BTSP connection factory
     btsp_factory: BtspConnectionFactory,
 }
@@ -69,12 +69,12 @@ impl ConnectionManager {
             btsp_factory: BtspConnectionFactory::new(),
         }
     }
-    
+
     /// Get BTSP client (lazily initialized)
     async fn btsp_client(&self) -> Result<Arc<BtspClient>> {
         self.btsp_factory.get_or_init_client().await
     }
-    
+
     /// Handle trust decision for discovered peer
     ///
     /// **v3.21.0**: Refactored to domain modules
@@ -88,19 +88,21 @@ impl ConnectionManager {
         trust_decision: &PeerTrustDecision,
         discovery_method: String,
     ) -> Result<()> {
-        self.trust_evaluator.handle_decision(
-            peer_id,
-            endpoint,
-            capabilities,
-            peer_tags,
-            trust_decision,
-            discovery_method,
-            &self.connections,
-            &self.peer_registry,
-            &self.btsp_factory,
-        ).await
+        self.trust_evaluator
+            .handle_decision(
+                peer_id,
+                endpoint,
+                capabilities,
+                peer_tags,
+                trust_decision,
+                discovery_method,
+                &self.connections,
+                &self.peer_registry,
+                &self.btsp_factory,
+            )
+            .await
     }
-    
+
     /// Establish connection at specified trust level
     ///
     /// **v3.21.0**: Refactored to domain modules
@@ -114,76 +116,78 @@ impl ConnectionManager {
         trust_level: TrustLevel,
         discovery_method: String,
     ) -> Result<()> {
-        self.trust_evaluator.establish_connection(
-            peer_id,
-            endpoint,
-            trust_level,
-            discovery_method,
-            capabilities,
-            peer_tags,
-            &self.connections,
-            &self.peer_registry,
-            &self.btsp_factory,
-        ).await
+        self.trust_evaluator
+            .establish_connection(
+                peer_id,
+                endpoint,
+                trust_level,
+                discovery_method,
+                capabilities,
+                peer_tags,
+                &self.connections,
+                &self.peer_registry,
+                &self.btsp_factory,
+            )
+            .await
     }
-    
+
     /// Call peer with operation
     pub async fn call_peer(&self, peer_id: &str, operation: &str, request: Value) -> Result<Value> {
         let connections = self.connections.read().await;
         let connection = connections
             .get(peer_id)
             .ok_or_else(|| anyhow::anyhow!("Peer not connected: {}", peer_id))?;
-        
+
         connection.call(operation, request).await
     }
-    
+
     /// Get connection trust level
     pub async fn get_connection(&self, peer_id: &str) -> Option<TrustLevel> {
         let connections = self.connections.read().await;
         connections.get(peer_id).map(|c| c.trust_level())
     }
-    
+
     /// List all connected peers
     pub async fn list_peers(&self) -> Vec<(String, TrustLevel)> {
         self.peer_registry.list_connected_peers(&self.connections).await
     }
-    
+
     /// Get peer metadata
     pub async fn get_peer_metadata(&self, peer_id: &str) -> Option<PeerMetadata> {
         self.peer_registry.get_metadata(peer_id).await
     }
-    
+
     /// Get all peer metadata
     pub async fn get_all_peers(&self) -> Vec<PeerMetadata> {
         self.peer_registry.get_all_metadata().await
     }
-    
+
     /// Get peer count
     pub async fn get_peer_count(&self) -> usize {
         self.peer_registry.count().await
     }
-    
+
     /// Get rejected peers
     pub async fn get_rejected_peers(&self) -> HashMap<String, String> {
         self.peer_registry.get_rejected().await
     }
-    
+
     /// Close connection to peer
     pub async fn close_connection(&self, peer_id: &str) -> Result<()> {
         let mut connections = self.connections.write().await;
         connections.remove(peer_id);
         Ok(())
     }
-    
+
     /// Get connection statistics by trust level
     pub async fn connection_stats(&self) -> HashMap<TrustLevel, usize> {
         let connections = self.connections.read().await;
         let mut stats = HashMap::new();
-        
+
         for connection in connections.values() {
             *stats.entry(connection.trust_level()).or_insert(0) += 1;
         }
-        
+
         stats
     }
 }
@@ -193,4 +197,3 @@ impl Default for ConnectionManager {
         Self::new()
     }
 }
-

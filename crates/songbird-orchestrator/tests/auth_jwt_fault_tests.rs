@@ -2,7 +2,6 @@
 //!
 //! Tests JWT provisioning under fault conditions.
 
-
 use songbird_orchestrator::auth::provision_jwt_secret;
 use std::time::Duration;
 

@@ -151,14 +151,8 @@ mod tests {
             "/primal/test".to_string(),
         );
 
-        assert!(provider.has_capabilities(&[
-            "crypto".to_string(),
-            "signing".to_string()
-        ]));
-        assert!(!provider.has_capabilities(&[
-            "crypto".to_string(),
-            "storage".to_string()
-        ]));
+        assert!(provider.has_capabilities(&["crypto".to_string(), "signing".to_string()]));
+        assert!(!provider.has_capabilities(&["crypto".to_string(), "storage".to_string()]));
     }
 
     #[test]
@@ -179,4 +173,3 @@ mod tests {
         assert!(!provider.is_usable());
     }
 }
-

@@ -9,20 +9,15 @@ async fn main() -> anyhow::Result<()> {
     tracing_subscriber::fmt::init();
 
     // Create client
-    let beardog_socket = std::env::var("BEARDOG_SOCKET")
-        .unwrap_or_else(|_| "/tmp/beardog-nat0.sock".to_string());
-    
+    let beardog_socket =
+        std::env::var("BEARDOG_SOCKET").unwrap_or_else(|_| "/tmp/beardog-nat0.sock".to_string());
+
     let client = SongbirdHttpClient::new(beardog_socket);
 
     // Make GET request
     println!("Making GET request to httpbin.org...");
-    
-    let response = client.request(
-        "GET",
-        "http://httpbin.org/get",
-        HashMap::new(),
-        None,
-    ).await?;
+
+    let response = client.request("GET", "http://httpbin.org/get", HashMap::new(), None).await?;
 
     println!("Status: {}", response.status);
     println!("Headers: {:#?}", response.headers);
@@ -30,4 +25,3 @@ async fn main() -> anyhow::Result<()> {
 
     Ok(())
 }
-

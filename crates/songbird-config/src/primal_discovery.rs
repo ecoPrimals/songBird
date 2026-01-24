@@ -329,7 +329,7 @@ mod tests {
             // If it succeeded via runtime discovery, that's also valid behavior
             return;
         }
-        
+
         assert!(result.is_err());
 
         if let Err(SongbirdError::Configuration {

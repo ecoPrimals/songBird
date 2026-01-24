@@ -148,14 +148,14 @@ impl AdaptiveExtensions {
     /// Adaptive extension set based on server profile
     fn adaptive_extensions(&self, hostname: &str) -> Vec<ExtensionType> {
         let profiles = self.profiles.read().unwrap();
-        
+
         if let Some(profile) = profiles.get(hostname) {
             // Use known successful extension set
             if profile.success_count > 0 {
                 return profile.successful_extensions.clone();
             }
         }
-        
+
         // Default to modern if no profile exists
         drop(profiles);
         self.modern_extensions()
@@ -164,18 +164,16 @@ impl AdaptiveExtensions {
     /// Record successful handshake
     pub fn record_success(&self, hostname: &str, extensions: Vec<ExtensionType>) {
         let mut profiles = self.profiles.write().unwrap();
-        
-        let profile = profiles.entry(hostname.to_string()).or_insert_with(|| {
-            ServerProfile {
-                hostname: hostname.to_string(),
-                successful_extensions: Vec::new(),
-                failed_extensions: Vec::new(),
-                success_count: 0,
-                failure_count: 0,
-                last_updated: std::time::SystemTime::now(),
-            }
+
+        let profile = profiles.entry(hostname.to_string()).or_insert_with(|| ServerProfile {
+            hostname: hostname.to_string(),
+            successful_extensions: Vec::new(),
+            failed_extensions: Vec::new(),
+            success_count: 0,
+            failure_count: 0,
+            last_updated: std::time::SystemTime::now(),
         });
-        
+
         profile.successful_extensions = extensions;
         profile.success_count += 1;
         profile.last_updated = std::time::SystemTime::now();
@@ -184,18 +182,16 @@ impl AdaptiveExtensions {
     /// Record failed handshake
     pub fn record_failure(&self, hostname: &str, extensions: Vec<ExtensionType>) {
         let mut profiles = self.profiles.write().unwrap();
-        
-        let profile = profiles.entry(hostname.to_string()).or_insert_with(|| {
-            ServerProfile {
-                hostname: hostname.to_string(),
-                successful_extensions: Vec::new(),
-                failed_extensions: Vec::new(),
-                success_count: 0,
-                failure_count: 0,
-                last_updated: std::time::SystemTime::now(),
-            }
+
+        let profile = profiles.entry(hostname.to_string()).or_insert_with(|| ServerProfile {
+            hostname: hostname.to_string(),
+            successful_extensions: Vec::new(),
+            failed_extensions: Vec::new(),
+            success_count: 0,
+            failure_count: 0,
+            last_updated: std::time::SystemTime::now(),
         });
-        
+
         profile.failed_extensions = extensions;
         profile.failure_count += 1;
         profile.last_updated = std::time::SystemTime::now();
@@ -237,7 +233,7 @@ mod tests {
     fn test_modern_extensions() {
         let adaptive = AdaptiveExtensions::new(ExtensionStrategy::Modern);
         let extensions = adaptive.get_extensions("example.com");
-        
+
         assert_eq!(extensions.len(), 6);
         assert!(extensions.contains(&ExtensionType::Sni));
         assert!(extensions.contains(&ExtensionType::Alpn));
@@ -249,7 +245,7 @@ mod tests {
     fn test_minimal_extensions() {
         let adaptive = AdaptiveExtensions::new(ExtensionStrategy::Minimal);
         let extensions = adaptive.get_extensions("example.com");
-        
+
         assert_eq!(extensions.len(), 4);
         assert!(extensions.contains(&ExtensionType::Sni));
         assert!(extensions.contains(&ExtensionType::SupportedVersions));
@@ -261,7 +257,7 @@ mod tests {
     fn test_max_compatibility_extensions() {
         let adaptive = AdaptiveExtensions::new(ExtensionStrategy::MaxCompatibility);
         let extensions = adaptive.get_extensions("example.com");
-        
+
         assert_eq!(extensions.len(), 7);
         assert!(extensions.contains(&ExtensionType::PskKeyExchangeModes));
     }
@@ -269,11 +265,11 @@ mod tests {
     #[test]
     fn test_adaptive_learning() {
         let adaptive = AdaptiveExtensions::new(ExtensionStrategy::Adaptive);
-        
+
         // First call - no profile, should use modern defaults
         let extensions1 = adaptive.get_extensions("github.com");
         assert_eq!(extensions1.len(), 6);
-        
+
         // Record successful handshake with minimal set
         let minimal = vec![
             ExtensionType::Sni,
@@ -282,7 +278,7 @@ mod tests {
             ExtensionType::SignatureAlgorithms,
         ];
         adaptive.record_success("github.com", minimal.clone());
-        
+
         // Second call - should use learned profile
         let extensions2 = adaptive.get_extensions("github.com");
         assert_eq!(extensions2.len(), 4);
@@ -292,10 +288,10 @@ mod tests {
     #[test]
     fn test_profile_recording() {
         let adaptive = AdaptiveExtensions::new(ExtensionStrategy::Adaptive);
-        
+
         let extensions = vec![ExtensionType::Sni, ExtensionType::Alpn];
         adaptive.record_success("example.com", extensions.clone());
-        
+
         let profile = adaptive.get_profile("example.com").unwrap();
         assert_eq!(profile.hostname, "example.com");
         assert_eq!(profile.success_count, 1);
@@ -306,10 +302,10 @@ mod tests {
     #[test]
     fn test_failure_recording() {
         let adaptive = AdaptiveExtensions::new(ExtensionStrategy::Adaptive);
-        
+
         let extensions = vec![ExtensionType::Alpn];
         adaptive.record_failure("badserver.com", extensions.clone());
-        
+
         let profile = adaptive.get_profile("badserver.com").unwrap();
         assert_eq!(profile.failure_count, 1);
         assert_eq!(profile.failed_extensions, extensions);
@@ -333,10 +329,10 @@ mod tests {
     #[test]
     fn test_clear_profiles() {
         let adaptive = AdaptiveExtensions::new(ExtensionStrategy::Adaptive);
-        
+
         adaptive.record_success("example.com", vec![ExtensionType::Sni]);
         assert_eq!(adaptive.profile_count(), 1);
-        
+
         adaptive.clear_profiles();
         assert_eq!(adaptive.profile_count(), 0);
     }
@@ -344,18 +340,17 @@ mod tests {
     #[test]
     fn test_multiple_servers() {
         let adaptive = AdaptiveExtensions::new(ExtensionStrategy::Adaptive);
-        
+
         adaptive.record_success("github.com", vec![ExtensionType::Sni]);
         adaptive.record_success("google.com", vec![ExtensionType::Alpn]);
         adaptive.record_success("cloudflare.com", vec![ExtensionType::KeyShare]);
-        
+
         assert_eq!(adaptive.profile_count(), 3);
-        
+
         let github_profile = adaptive.get_profile("github.com").unwrap();
         assert_eq!(github_profile.successful_extensions, vec![ExtensionType::Sni]);
-        
+
         let google_profile = adaptive.get_profile("google.com").unwrap();
         assert_eq!(google_profile.successful_extensions, vec![ExtensionType::Alpn]);
     }
 }
-

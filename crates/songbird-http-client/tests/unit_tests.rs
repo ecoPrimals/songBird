@@ -7,7 +7,7 @@ fn test_http_request_builder() {
     let req = HttpRequest::get("https://example.com/api")
         .header("authorization", "Bearer token123")
         .header("user-agent", "songbird/1.0");
-    
+
     assert_eq!(req.method, "GET");
     assert_eq!(req.url, "https://example.com/api");
     assert_eq!(req.headers.get("authorization"), Some(&"Bearer token123".to_string()));
@@ -19,7 +19,7 @@ fn test_http_request_builder() {
 fn test_http_post_request() {
     let body = serde_json::json!({"key": "value", "number": 42});
     let req = HttpRequest::post("https://api.example.com/data", body.clone());
-    
+
     assert_eq!(req.method, "POST");
     assert_eq!(req.url, "https://api.example.com/data");
     assert!(req.headers.contains_key("content-type"));
@@ -29,9 +29,8 @@ fn test_http_post_request() {
 #[test]
 fn test_http_request_with_body() {
     let body = serde_json::json!({"test": true});
-    let req = HttpRequest::get("https://example.com")
-        .with_body(body.clone());
-    
+    let req = HttpRequest::get("https://example.com").with_body(body.clone());
+
     assert_eq!(req.body, Some(body));
 }
 
@@ -49,4 +48,3 @@ fn test_version() {
     // Should be semantic versioning
     assert!(version.contains('.'));
 }
-

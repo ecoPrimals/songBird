@@ -112,7 +112,9 @@ pub struct IpcServiceHandler {
 impl IpcServiceHandler {
     /// Create a new IPC service handler
     pub fn new(registry: Arc<RwLock<ServiceRegistry>>) -> Self {
-        Self { registry }
+        Self {
+            registry,
+        }
     }
 
     /// Handle `ipc.register` method
@@ -120,10 +122,7 @@ impl IpcServiceHandler {
         let params: RegisterParams =
             serde_json::from_value(params).map_err(|e| format!("Invalid params: {}", e))?;
 
-        info!(
-            "Registering primal: {} at {}",
-            params.primal_id, params.endpoint
-        );
+        info!("Registering primal: {} at {}", params.primal_id, params.endpoint);
 
         // Parse native endpoint
         let native_endpoint = if params.endpoint.starts_with("/") {
@@ -289,10 +288,7 @@ mod tests {
             "capabilities": ["crypto"],
             "endpoint": "/tmp/primal-beardog.sock"
         });
-        handler
-            .handle("ipc.register", register_params)
-            .await
-            .unwrap();
+        handler.handle("ipc.register", register_params).await.unwrap();
 
         // Then resolve
         let resolve_params = json!({
@@ -304,10 +300,7 @@ mod tests {
 
         let result_value = result.unwrap();
         assert_eq!(result_value["virtual_endpoint"], "/primal/beardog");
-        assert!(result_value["native_endpoint"]
-            .as_str()
-            .unwrap()
-            .contains("beardog"));
+        assert!(result_value["native_endpoint"].as_str().unwrap().contains("beardog"));
     }
 
     #[tokio::test]
@@ -321,10 +314,7 @@ mod tests {
             "capabilities": ["crypto", "btsp"],
             "endpoint": "/tmp/primal-beardog.sock"
         });
-        handler
-            .handle("ipc.register", register_params)
-            .await
-            .unwrap();
+        handler.handle("ipc.register", register_params).await.unwrap();
 
         // Discover by capability
         let discover_params = json!({

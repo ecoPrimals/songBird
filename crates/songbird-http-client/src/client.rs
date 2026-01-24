@@ -3,10 +3,7 @@
 use crate::crypto::{BearDogProvider, CryptoCapability};
 use crate::error::{Error, Result};
 use crate::tls::{
-    config::TlsConfig,
-    handshake::TlsHandshake,
-    profiler::ServerProfiler,
-    record::TlsRecordLayer,
+    config::TlsConfig, handshake::TlsHandshake, profiler::ServerProfiler, record::TlsRecordLayer,
 };
 use crate::types::HttpResponse;
 use http_body_util::{BodyExt, Full};
@@ -16,7 +13,7 @@ use hyper_util::rt::TokioIo;
 use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::net::TcpStream;
-use tracing::{debug, info, warn, error};
+use tracing::{debug, error, info, warn};
 
 /// Songbird HTTP client
 #[derive(Clone)]
@@ -49,22 +46,22 @@ impl SongbirdHttpClient {
     pub fn new(socket_path: impl Into<String>) -> Self {
         Self::with_config(socket_path, TlsConfig::default(), None)
     }
-    
+
     /// Create from environment variable
-    /// 
+    ///
     /// Checks CRYPTO_CAPABILITY_SOCKET, then BEARDOG_SOCKET, then defaults.
     pub fn from_env() -> Self {
         let socket_path = std::env::var("CRYPTO_CAPABILITY_SOCKET")
             .or_else(|_| std::env::var("BEARDOG_SOCKET"))
             .unwrap_or_else(|_| "/tmp/beardog.sock".to_string());
-        
+
         Self {
             crypto: Arc::new(BearDogProvider::new(socket_path)),
             config: TlsConfig::default(),
             profiler: None,
         }
     }
-    
+
     /// Create with custom config and optional profiler
     pub fn with_config(
         socket_path: impl Into<String>,
@@ -75,14 +72,14 @@ impl SongbirdHttpClient {
         if profiler.is_some() {
             info!("🧠 Adaptive learning enabled (profiler attached)");
         }
-        
+
         Self {
             crypto: Arc::new(BearDogProvider::new(socket_path)),
             config,
             profiler,
         }
     }
-    
+
     /// Create with explicit crypto capability provider
     ///
     /// Use this when you want to provide your own CryptoCapability implementation.
@@ -95,7 +92,7 @@ impl SongbirdHttpClient {
         if profiler.is_some() {
             info!("🧠 Adaptive learning enabled (profiler attached)");
         }
-        
+
         Self {
             crypto,
             config,
@@ -122,10 +119,15 @@ impl SongbirdHttpClient {
 
         // Parse URL
         let uri: Uri = url.parse().map_err(|e| Error::InvalidUrl(format!("{}", e)))?;
-        
-        let scheme = uri.scheme_str().ok_or_else(|| Error::InvalidUrl("Missing scheme".to_string()))?;
+
+        let scheme =
+            uri.scheme_str().ok_or_else(|| Error::InvalidUrl("Missing scheme".to_string()))?;
         let host = uri.host().ok_or_else(|| Error::InvalidUrl("Missing host".to_string()))?;
-        let port = uri.port_u16().unwrap_or(if scheme == "https" { 443 } else { 80 });
+        let port = uri.port_u16().unwrap_or(if scheme == "https" {
+            443
+        } else {
+            80
+        });
 
         debug!("Connecting to {}:{}", host, port);
 
@@ -175,7 +177,7 @@ impl SongbirdHttpClient {
         info!("   URI: {}", uri);
         info!("   Size: {} bytes", http_request.len());
         debug!("HTTP request content:\n{}", String::from_utf8_lossy(&http_request));
-        
+
         // Validate TCP stream before sending
         if let Ok(peer) = tcp_stream.peer_addr() {
             debug!("TCP stream peer address: {}", peer);
@@ -194,7 +196,7 @@ impl SongbirdHttpClient {
         debug!("Client write key (hex): {}", hex::encode(&record_layer.keys().client_write_key));
         debug!("Client write IV (hex): {}", hex::encode(&record_layer.keys().client_write_iv));
         info!("════════════════════════════════════════════════════════════");
-        
+
         record_layer.write_application_data(&mut tcp_stream, &http_request).await.map_err(|e| {
             error!("❌ Failed to send HTTP request: {}", e);
             e
@@ -208,17 +210,17 @@ impl SongbirdHttpClient {
         // Large HTTP responses will be fragmented across multiple TLS records
         info!("🔽 READING HTTP RESPONSE from server:");
         info!("   Response may span multiple TLS APPLICATION_DATA records...");
-        
+
         let mut response_data = Vec::new();
         let mut records_read = 0;
         let mut headers_complete = false;
         let max_response_size = 10_000_000; // 10 MB safety limit
-        
+
         // Read TLS records until we have a complete HTTP response
         loop {
             records_read += 1;
             debug!("   Reading TLS APPLICATION_DATA record #{}...", records_read);
-            
+
             let chunk = record_layer.read_application_data(&mut tcp_stream).await.map_err(|e| {
                 error!("❌ Failed to read HTTP response (record #{}): {}", records_read, e);
                 if records_read == 1 {
@@ -227,31 +229,35 @@ impl SongbirdHttpClient {
                 }
                 e
             })?;
-            
+
             // Empty record = connection closed (close_notify or EOF)
             if chunk.is_empty() {
                 if records_read == 1 {
                     warn!("⚠️  Connection closed before receiving any data (close_notify or EOF)");
                     warn!("   Server may have rejected request or encountered error");
                 } else {
-                    info!("✅ Server closed connection after sending {} record(s)", records_read - 1);
+                    info!(
+                        "✅ Server closed connection after sending {} record(s)",
+                        records_read - 1
+                    );
                     info!("   Response complete ({} bytes total)", response_data.len());
                 }
                 break;
             }
-            
+
             debug!("   ✅ Record #{}: {} bytes", records_read, chunk.len());
             response_data.extend_from_slice(&chunk);
-            
+
             // Check if we have complete HTTP headers (\r\n\r\n)
             if !headers_complete {
                 if let Some(headers_end) = response_data.windows(4).position(|w| w == b"\r\n\r\n") {
                     headers_complete = true;
                     debug!("   📋 HTTP headers complete ({} bytes)", headers_end);
-                    
+
                     // Parse Content-Length to know how much body to expect
                     let headers_str = String::from_utf8_lossy(&response_data[..headers_end]);
-                    if let Some(content_length_line) = headers_str.lines()
+                    if let Some(content_length_line) = headers_str
+                        .lines()
                         .find(|line| line.to_lowercase().starts_with("content-length:"))
                     {
                         if let Some(content_length) = content_length_line
@@ -261,76 +267,96 @@ impl SongbirdHttpClient {
                         {
                             let body_start = headers_end + 4;
                             let total_expected = body_start + content_length;
-                            debug!("   📊 Content-Length: {} bytes, expecting {} total", 
-                                   content_length, total_expected);
-                            
+                            debug!(
+                                "   📊 Content-Length: {} bytes, expecting {} total",
+                                content_length, total_expected
+                            );
+
                             // If we already have the complete response, we're done
                             if response_data.len() >= total_expected {
-                                debug!("   ✅ Complete response received in {} record(s)", records_read);
+                                debug!(
+                                    "   ✅ Complete response received in {} record(s)",
+                                    records_read
+                                );
                                 break;
                             }
-                            
+
                             // Continue reading until we have the full body
                             continue;
                         }
                     } else {
                         // No Content-Length header (chunked encoding or connection close)
-                        debug!("   ⚠️  No Content-Length header, will read until connection closes");
+                        debug!(
+                            "   ⚠️  No Content-Length header, will read until connection closes"
+                        );
                     }
                 }
             } else {
                 // Headers complete, check if we have enough body
                 if let Some(headers_end) = response_data.windows(4).position(|w| w == b"\r\n\r\n") {
                     let headers_str = String::from_utf8_lossy(&response_data[..headers_end]);
-                    if let Some(content_length) = headers_str.lines()
+                    if let Some(content_length) = headers_str
+                        .lines()
                         .find(|line| line.to_lowercase().starts_with("content-length:"))
                         .and_then(|line| line.split(':').nth(1))
                         .and_then(|val| val.trim().parse::<usize>().ok())
                     {
                         let body_start = headers_end + 4;
                         let total_expected = body_start + content_length;
-                        
+
                         if response_data.len() >= total_expected {
-                            debug!("   ✅ Complete response received ({} bytes) in {} record(s)", 
-                                   response_data.len(), records_read);
+                            debug!(
+                                "   ✅ Complete response received ({} bytes) in {} record(s)",
+                                response_data.len(),
+                                records_read
+                            );
                             break;
                         } else {
-                            debug!("   📥 Still reading body: {}/{} bytes", 
-                                   response_data.len() - body_start, content_length);
+                            debug!(
+                                "   📥 Still reading body: {}/{} bytes",
+                                response_data.len() - body_start,
+                                content_length
+                            );
                         }
                     }
                 }
             }
-            
+
             // Safety: Prevent infinite loops or memory exhaustion
             if response_data.len() > max_response_size {
-                warn!("⚠️  HTTP response exceeds {} MB limit, stopping read", max_response_size / 1_000_000);
+                warn!(
+                    "⚠️  HTTP response exceeds {} MB limit, stopping read",
+                    max_response_size / 1_000_000
+                );
                 break;
             }
-            
+
             // Safety: Prevent reading too many records
             if records_read > 100 {
                 warn!("⚠️  Read {} TLS records, stopping (possible issue)", records_read);
                 break;
             }
         }
-        
+
         // Validate we received data
         if response_data.is_empty() {
             error!("❌ No HTTP response data received (server closed connection without sending response)");
             return Err(Error::HttpProtocol("No response data received from server".to_string()));
         }
-        
+
         info!("✅ HTTP response RECEIVED from server:");
         info!("   Total size: {} bytes across {} TLS record(s)", response_data.len(), records_read);
-        debug!("HTTP response content:\n{}", String::from_utf8_lossy(&response_data[..std::cmp::min(500, response_data.len())]));
+        debug!(
+            "HTTP response content:\n{}",
+            String::from_utf8_lossy(&response_data[..std::cmp::min(500, response_data.len())])
+        );
         info!("════════════════════════════════════════════════════════════");
 
         // Parse HTTP response
         debug!("Parsing HTTP response...");
         self.parse_http_response(&response_data)
     }
-    
+
     /// Attempt TLS handshake with progressive fallback on failure
     async fn attempt_handshake_with_fallback(
         &self,
@@ -338,10 +364,10 @@ impl SongbirdHttpClient {
         host: &str,
     ) -> Result<crate::tls::session::SessionKeys> {
         use crate::tls::config::{ExtensionStrategy, FallbackStrategy};
-        
+
         let max_attempts = self.config.max_retries as usize;
         let mut last_error = None;
-        
+
         // Build list of strategies to try based on fallback strategy
         let strategies_to_try = match self.config.fallback_strategy {
             FallbackStrategy::None => {
@@ -377,19 +403,24 @@ impl SongbirdHttpClient {
                 ]
             }
         };
-        
+
         // Try each strategy
         for (attempt, strategy) in strategies_to_try.iter().enumerate().take(max_attempts) {
             let attempt_num = attempt + 1;
-            
+
             if attempt > 0 {
-                info!("🔄 Retry attempt {}/{} with {:?} strategy", attempt_num, strategies_to_try.len(), strategy);
+                info!(
+                    "🔄 Retry attempt {}/{} with {:?} strategy",
+                    attempt_num,
+                    strategies_to_try.len(),
+                    strategy
+                );
             }
-            
+
             // Create config with current strategy
             let mut attempt_config = self.config.clone();
             attempt_config.extension_strategy = strategy.clone();
-            
+
             // Attempt handshake
             let handshake_start = std::time::Instant::now();
             let mut handshake = TlsHandshake::with_config(
@@ -397,53 +428,67 @@ impl SongbirdHttpClient {
                 attempt_config,
                 self.profiler.clone(),
             );
-            
+
             match handshake.handshake(tcp_stream, host).await {
                 Ok(keys) => {
                     let handshake_duration = handshake_start.elapsed();
-                    info!("✅ TLS handshake succeeded with {:?} strategy in {:?}", strategy, handshake_duration);
-                    
+                    info!(
+                        "✅ TLS handshake succeeded with {:?} strategy in {:?}",
+                        strategy, handshake_duration
+                    );
+
                     if attempt > 0 {
                         info!("🎯 Fallback successful after {} attempt(s)", attempt_num);
                     }
-                    
+
                     // Record success with profiler
                     if let Some(profiler) = &self.profiler {
-                        profiler.record_success(host, vec![], keys.cipher_suite, handshake_duration);
+                        profiler.record_success(
+                            host,
+                            vec![],
+                            keys.cipher_suite,
+                            handshake_duration,
+                        );
                         debug!("🧠 Profiler updated: success for {} with {:?}", host, strategy);
                     }
-                    
+
                     return Ok(keys);
                 }
                 Err(e) => {
                     let handshake_duration = handshake_start.elapsed();
-                    warn!("⚠️  TLS handshake failed with {:?} strategy after {:?}: {}", strategy, handshake_duration, e);
-                    
+                    warn!(
+                        "⚠️  TLS handshake failed with {:?} strategy after {:?}: {}",
+                        strategy, handshake_duration, e
+                    );
+
                     // Record failure with profiler
                     if let Some(profiler) = &self.profiler {
                         profiler.record_failure(host, vec![], None, &e.to_string());
                         debug!("🧠 Profiler updated: failure for {} with {:?}", host, strategy);
                     }
-                    
+
                     last_error = Some(e);
-                    
+
                     // If this was the last attempt, return error
                     if attempt_num >= strategies_to_try.len() || attempt_num >= max_attempts {
                         break;
                     }
-                    
+
                     // Otherwise, continue to next strategy
                     debug!("Trying next fallback strategy...");
                 }
             }
         }
-        
+
         // All attempts failed
         let final_error = last_error.unwrap_or_else(|| {
             Error::Connection("TLS handshake failed with all strategies".to_string())
         });
-        
-        error!("❌ TLS handshake failed after {} attempt(s) with all strategies", strategies_to_try.len());
+
+        error!(
+            "❌ TLS handshake failed after {} attempt(s) with all strategies",
+            strategies_to_try.len()
+        );
         Err(final_error)
     }
 
@@ -471,9 +516,7 @@ impl SongbirdHttpClient {
         });
 
         // Build request
-        let mut req_builder = Request::builder()
-            .method(method)
-            .uri(uri);
+        let mut req_builder = Request::builder().method(method).uri(uri);
 
         // Add headers
         for (key, value) in headers {
@@ -497,9 +540,7 @@ impl SongbirdHttpClient {
         let response_headers: HashMap<String, String> = response
             .headers()
             .iter()
-            .filter_map(|(k, v)| {
-                v.to_str().ok().map(|s| (k.as_str().to_string(), s.to_string()))
-            })
+            .filter_map(|(k, v)| v.to_str().ok().map(|s| (k.as_str().to_string(), s.to_string())))
             .collect();
 
         let body_bytes = response.into_body().collect().await?.to_bytes();
@@ -545,7 +586,8 @@ impl SongbirdHttpClient {
         // Body
         if let Some(b) = body {
             let body_bytes = serde_json::to_vec(b)?;
-            request.extend_from_slice(format!("Content-Length: {}\r\n", body_bytes.len()).as_bytes());
+            request
+                .extend_from_slice(format!("Content-Length: {}\r\n", body_bytes.len()).as_bytes());
             request.extend_from_slice(b"\r\n");
             request.extend_from_slice(&body_bytes);
         } else {
@@ -560,18 +602,22 @@ impl SongbirdHttpClient {
         // Debug: Log first bytes to understand any corruption
         debug!("📝 parse_http_response: {} bytes total", data.len());
         debug!("📝 First 50 bytes (hex): {:?}", &data[..std::cmp::min(50, data.len())]);
-        debug!("📝 First 50 bytes (str): {:?}", String::from_utf8_lossy(&data[..std::cmp::min(50, data.len())]));
-        
+        debug!(
+            "📝 First 50 bytes (str): {:?}",
+            String::from_utf8_lossy(&data[..std::cmp::min(50, data.len())])
+        );
+
         let response = String::from_utf8_lossy(data);
         let mut lines = response.lines();
 
         // Status line
-        let status_line = lines.next().ok_or_else(|| Error::InvalidResponse("Empty response".to_string()))?;
-        
+        let status_line =
+            lines.next().ok_or_else(|| Error::InvalidResponse("Empty response".to_string()))?;
+
         // Debug: Log the status line to understand parsing issues
         debug!("📝 Parsing status line: {:?}", status_line);
         debug!("📝 Status line bytes: {:?}", status_line.as_bytes());
-        
+
         let status = status_line
             .split_whitespace()
             .nth(1)
@@ -579,36 +625,33 @@ impl SongbirdHttpClient {
                 debug!("📝 Extracted status code string: {:?}", s);
                 s.parse::<u16>().ok()
             })
-            .ok_or_else(|| Error::InvalidResponse(format!("Invalid status line: {:?}", status_line)))?;
+            .ok_or_else(|| {
+                Error::InvalidResponse(format!("Invalid status line: {:?}", status_line))
+            })?;
 
         // Headers
         let mut headers = HashMap::new();
         let mut body_start = 0;
-        
+
         for (idx, line) in lines.enumerate() {
             if line.is_empty() {
                 body_start = idx + 2; // +2 for status line and empty line
                 break;
             }
-            
+
             if let Some((key, value)) = line.split_once(':') {
-                headers.insert(
-                    key.trim().to_lowercase(),
-                    value.trim().to_string(),
-                );
+                headers.insert(key.trim().to_lowercase(), value.trim().to_string());
             }
         }
 
         // Body
         let body_lines: Vec<&str> = response.lines().skip(body_start).collect();
         let body_str = body_lines.join("\n");
-        
+
         let body: serde_json::Value = if body_str.is_empty() {
             serde_json::json!("")
         } else {
-            serde_json::from_str(&body_str).unwrap_or_else(|_| {
-                serde_json::json!(body_str)
-            })
+            serde_json::from_str(&body_str).unwrap_or_else(|_| serde_json::json!(body_str))
         };
 
         Ok(HttpResponse {
@@ -665,10 +708,10 @@ mod tests {
         let client = SongbirdHttpClient::new("/tmp/beardog.sock");
         let uri: Uri = "http://example.com/test".parse().unwrap();
         let headers = HashMap::new();
-        
+
         let request = client.build_http_request(&uri, "GET", &headers, None).unwrap();
         let request_str = String::from_utf8_lossy(&request);
-        
+
         assert!(request_str.contains("GET /test HTTP/1.1"));
         assert!(request_str.contains("Host: example.com"));
     }
@@ -676,11 +719,11 @@ mod tests {
     #[test]
     fn test_parse_http_response() {
         let client = SongbirdHttpClient::new("/tmp/beardog.sock");
-        let response_data = b"HTTP/1.1 200 OK\r\nContent-Type: application/json\r\n\r\n{\"result\":\"ok\"}";
-        
+        let response_data =
+            b"HTTP/1.1 200 OK\r\nContent-Type: application/json\r\n\r\n{\"result\":\"ok\"}";
+
         let response = client.parse_http_response(response_data).unwrap();
         assert_eq!(response.status, 200);
         assert_eq!(response.headers.get("content-type"), Some(&"application/json".to_string()));
     }
 }
-

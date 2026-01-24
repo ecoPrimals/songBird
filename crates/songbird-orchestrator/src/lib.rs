@@ -89,6 +89,7 @@ pub mod connections; // Progressive trust connection management (Jan 2026)
 pub mod consent_management;
 pub mod core; // Consolidated core functionality
 pub mod crypto; // Pure Rust TLS via BearDog crypto delegation (Jan 18, 2026) - Path to 100% ecoBin!
+pub mod env_config; // Environment configuration - self-knowledge (TRUE PRIMAL) (Jan 21, 2026)
 pub mod error_recovery; // Error recovery & resilience (Week 3 - Dec 18, 2025)
 pub mod graph; // Graph validation for Collaborative Intelligence (Jan 11, 2026)
 pub mod http_gateway; // HTTP gateway for universal pure Rust ecosystem (Jan 16, 2026)
@@ -98,13 +99,12 @@ pub mod network; // Network binding & endpoint management (Dec 20, 2025) - Zero-
 pub mod node_identity;
 pub mod observability; // Basic observability (Week 4 - Dec 18, 2025)
 pub mod orchestrator; // MVP Integration (Week 1-5 - Dec 18, 2025)
+pub mod primal_discovery; // Agnostic primal discovery (TRUE PRIMAL) (Jan 21, 2026)
 pub mod privilege; // Secure privilege management (Dec 20, 2025) - CAP_NET_ADMIN, no sudo prompts
 pub mod process_manager; // Process lifecycle & multi-instance support (Jan 4, 2026) - Enables fractal scaling
 pub mod registration; // Node registration with genetic lineage (Jan 1, 2026) - biomeOS integration
 pub mod resource_management; // Resource management & fairness (Week 2 - Dec 18, 2025)
 pub mod rpc; // Multi-protocol RPC (JSON-RPC, tarpc)
-pub mod env_config; // Environment configuration - self-knowledge (TRUE PRIMAL) (Jan 21, 2026)
-pub mod primal_discovery; // Agnostic primal discovery (TRUE PRIMAL) (Jan 21, 2026)
 pub mod security_client; // Security capability client (refactored v4.9.0) - ✅ Pure Rust HTTP (Jan 21, 2026)
 pub use security_client as security_capability_client; // Backward compatibility alias
 pub mod self_knowledge; // Self-knowledge about this primal (zero hardcoding!) (Jan 1, 2026)

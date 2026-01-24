@@ -39,20 +39,20 @@ use songbird_http_client::SongbirdHttpClient;
 /// ```
 pub async fn handle_discover_capabilities() -> Result<serde_json::Value, JsonRpcError> {
     info!("🔍 Capability discovery request received");
-    
+
     // Get family ID from environment or use default
     let family_id = std::env::var("SONGBIRD_FAMILY_ID").unwrap_or_else(|_| "nat0".to_string());
-    
+
     // Songbird's capabilities for inter-primal communication
     let capabilities = vec![
-        "http.post",           // POST requests
-        "http.get",            // GET requests
-        "http.request",        // Generic HTTP requests
-        "discovery.announce",  // Service announcement
-        "discovery.query",     // Service discovery
-        "security.verify",     // JWT verification (via BearDog delegation)
+        "http.post",          // POST requests
+        "http.get",           // GET requests
+        "http.request",       // Generic HTTP requests
+        "discovery.announce", // Service announcement
+        "discovery.query",    // Service discovery
+        "security.verify",    // JWT verification (via BearDog delegation)
     ];
-    
+
     Ok(serde_json::json!({
         "capabilities": capabilities,
         "metadata": {
@@ -85,9 +85,11 @@ pub async fn handle_discover_capabilities() -> Result<serde_json::Value, JsonRpc
 ///   "body": { ... }
 /// }
 /// ```
-pub async fn handle_http_request(params: Option<serde_json::Value>) -> Result<serde_json::Value, JsonRpcError> {
+pub async fn handle_http_request(
+    params: Option<serde_json::Value>,
+) -> Result<serde_json::Value, JsonRpcError> {
     use serde::Deserialize;
-    
+
     #[derive(Deserialize)]
     struct HttpRequestParams {
         method: String,
@@ -97,33 +99,30 @@ pub async fn handle_http_request(params: Option<serde_json::Value>) -> Result<se
         #[serde(default)]
         body: Option<serde_json::Value>,
     }
-    
+
     let params: HttpRequestParams = match params {
-        Some(p) => serde_json::from_value(p)
-            .map_err(|e| JsonRpcError::invalid_params(e.to_string()))?,
+        Some(p) => {
+            serde_json::from_value(p).map_err(|e| JsonRpcError::invalid_params(e.to_string()))?
+        }
         None => return Err(JsonRpcError::invalid_params("Missing params")),
     };
-    
+
     info!("🌐 HTTP delegation (Pure Rust): {} {}", params.method, params.url);
-    
+
     // ✅ NEW v2.0.0: Use Neural API for capability translation
     // SongbirdHttpClient routes crypto calls through Neural API, which translates
     // semantic capabilities to actual provider methods. This enables TRUE PRIMAL pattern.
     let client = SongbirdHttpClient::from_env(); // Uses NEURAL_API_SOCKET env var
-    
+
     // Make request via Pure Rust client (NO reqwest, NO ring, NO C!)
-    let response = client
-        .request(
-            &params.method,
-            &params.url,
-            params.headers,
-            params.body,
-        )
-        .await
-        .map_err(|e| JsonRpcError::internal_error(&format!("HTTP request failed: {}", e)))?;
-    
+    let response =
+        client
+            .request(&params.method, &params.url, params.headers, params.body)
+            .await
+            .map_err(|e| JsonRpcError::internal_error(&format!("HTTP request failed: {}", e)))?;
+
     info!("✅ HTTP delegation complete (Pure Rust): {} (status: {})", params.url, response.status);
-    
+
     Ok(serde_json::json!({
         "status": response.status,
         "headers": response.headers,
@@ -150,4 +149,3 @@ pub async fn handle_health() -> Result<serde_json::Value, JsonRpcError> {
         "version": env!("CARGO_PKG_VERSION")
     }))
 }
-

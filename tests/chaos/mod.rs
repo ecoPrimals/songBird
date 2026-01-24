@@ -14,26 +14,26 @@
 pub mod network_chaos;
 pub mod resource_chaos;
 pub mod timing_chaos;
-pub mod state_chaos;
+// pub mod state_chaos; // ARCHIVED: Corrupted file - needs rewrite
 
 /// Common chaos testing utilities
 pub mod common {
     use std::time::Duration;
-    
+
     /// Chaos injection configuration
     pub struct ChaosConfig {
         pub failure_rate: f64,
         pub duration: Duration,
         pub impact_radius: ImpactRadius,
     }
-    
+
     /// Scope of chaos injection
     pub enum ImpactRadius {
-        Single,      // Single component
-        Service,     // Entire service
-        System,      // Entire system
+        Single,  // Single component
+        Service, // Entire service
+        System,  // Entire system
     }
-    
+
     impl Default for ChaosConfig {
         fn default() -> Self {
             Self {
@@ -44,4 +44,3 @@ pub mod common {
         }
     }
 }
-

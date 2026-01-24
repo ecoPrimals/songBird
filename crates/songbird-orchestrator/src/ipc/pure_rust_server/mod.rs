@@ -23,6 +23,5 @@ pub mod server;
 pub mod squirrel_handlers;
 
 // Re-export the main types for convenience
-pub use protocol::{JsonRpcRequest, JsonRpcResponse, JsonRpcError};
+pub use protocol::{JsonRpcError, JsonRpcRequest, JsonRpcResponse};
 pub use server::UnixSocketServer;
-

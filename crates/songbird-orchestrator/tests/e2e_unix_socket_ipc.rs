@@ -73,13 +73,10 @@ impl UnixSocketClient {
 /// Test helper: Wait for socket file to exist
 async fn wait_for_socket(socket_path: &str, timeout_secs: u64) -> Result<()> {
     let socket_path_owned = socket_path.to_string();
-    
+
     // ✅ Event-driven check! No polling sleep!
-    wait_for(
-        || Path::new(&socket_path_owned).exists(),
-        Duration::from_secs(timeout_secs)
-    ).await?;
-    
+    wait_for(|| Path::new(&socket_path_owned).exists(), Duration::from_secs(timeout_secs)).await?;
+
     // Brief moment for server to finish binding
     tokio::time::sleep(Duration::from_millis(50)).await;
     Ok(())

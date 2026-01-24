@@ -35,4 +35,3 @@ pub struct FederationHeartbeatResponse {
     pub acknowledged: bool,
     pub federation_status: String,
 }
-

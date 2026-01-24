@@ -76,4 +76,3 @@ impl From<anyhow::Error> for Error {
         Error::Other(err.to_string())
     }
 }
-

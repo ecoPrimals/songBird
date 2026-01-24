@@ -117,7 +117,7 @@ impl Default for CapabilityQuery {
 
 impl UniversalAdapter {
     /// Create a new universal adapter
-    /// 
+    ///
     /// ✅ EVOLVED (Jan 21, 2026): Now requires crypto provider discovery
     pub async fn new() -> Result<Self> {
         info!("🌐 Initializing Universal Primal Adapter (zero hardcoding!)");
@@ -305,11 +305,7 @@ impl UniversalAdapter {
         // Note: GET requests with JSON body are non-standard. Convert to query params if needed,
         // or use POST. For now, attempting GET with url-encoded params would be more standard.
         // But keeping current behavior for compatibility.
-        let response = self
-            .http_client
-            .get(&url)
-            .await
-            .context("Failed to call HTTP provider")?;
+        let response = self.http_client.get(&url).await.context("Failed to call HTTP provider")?;
 
         if response.status < 200 || response.status >= 300 {
             let body = response.body.to_string();

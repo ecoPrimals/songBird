@@ -203,7 +203,7 @@ fn test_network_config_defaults() {
 #[test]
 fn test_network_config_tls_enabled() {
     let config = NetworkConfig {
-        bind_address: test_bind_address(),
+        bind_address: test_bind_address("test"),
         enable_tls: true,
         tls_cert_path: Some("/path/to/cert.pem".to_string()),
         tls_key_path: Some("/path/to/key.pem".to_string()),
@@ -421,7 +421,7 @@ fn test_development_environment_config() {
             custom_tags: HashMap::new(),
         },
         network: NetworkConfig {
-            bind_address: test_bind_address(),
+            bind_address: test_bind_address("test"),
             enable_tls: false,
             tls_cert_path: None,
             tls_key_path: None,

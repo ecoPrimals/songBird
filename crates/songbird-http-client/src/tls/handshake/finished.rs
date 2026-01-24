@@ -14,7 +14,7 @@
 //! The `verify_data` is computed as:
 //! ```text
 //! verify_data = HMAC(finished_key, Transcript-Hash(Handshake Context, Certificate*, CertificateVerify*))
-//! 
+//!
 //! where finished_key is derived from the appropriate traffic secret:
 //! finished_key = HKDF-Expand-Label(Base Key, "finished", "", Hash.length)
 //! ```
@@ -53,32 +53,33 @@ pub fn build_finished_message(verify_data: &[u8]) -> Result<Vec<u8>> {
     if verify_data.is_empty() {
         return Err(Error::TlsHandshake("verify_data is empty".to_string()));
     }
-    
+
     if verify_data.len() != 32 && verify_data.len() != 48 {
-        return Err(Error::TlsHandshake(
-            format!("Invalid verify_data length: {} bytes (expected 32 or 48)", verify_data.len())
-        ));
+        return Err(Error::TlsHandshake(format!(
+            "Invalid verify_data length: {} bytes (expected 32 or 48)",
+            verify_data.len()
+        )));
     }
-    
+
     debug!("Building Finished message with {} bytes of verify_data", verify_data.len());
-    
+
     // Build Finished handshake message
     // Format: HandshakeType (1 byte) + Length (3 bytes) + verify_data
     let mut finished_msg = Vec::new();
     finished_msg.push(0x14); // HandshakeType: Finished
-    
+
     // Length (3 bytes, big-endian)
     let length = verify_data.len();
     finished_msg.push(((length >> 16) & 0xFF) as u8);
     finished_msg.push(((length >> 8) & 0xFF) as u8);
     finished_msg.push((length & 0xFF) as u8);
-    
+
     // Verify data
     finished_msg.extend_from_slice(verify_data);
-    
+
     info!("✅ Built Finished message: {} bytes total", finished_msg.len());
     debug!("   Finished message (hex): {}", hex::encode(&finished_msg));
-    
+
     Ok(finished_msg)
 }
 
@@ -98,42 +99,45 @@ pub fn build_finished_message(verify_data: &[u8]) -> Result<Vec<u8>> {
 /// ```
 pub fn parse_finished_message(data: &[u8]) -> Result<Vec<u8>> {
     debug!("Parsing Finished message: {} bytes", data.len());
-    
+
     // Validate handshake message type
     if data.is_empty() || data[0] != 0x14 {
-        return Err(Error::TlsHandshake(
-            format!("Invalid Finished message: expected type 0x14, got 0x{:02x}", 
-                    data.first().copied().unwrap_or(0xFF))
-        ));
+        return Err(Error::TlsHandshake(format!(
+            "Invalid Finished message: expected type 0x14, got 0x{:02x}",
+            data.first().copied().unwrap_or(0xFF)
+        )));
     }
 
     // Parse length (3 bytes, big-endian)
     if data.len() < 4 {
         return Err(Error::TlsHandshake("Finished message too short for header".to_string()));
     }
-    
+
     let length = ((data[1] as usize) << 16) | ((data[2] as usize) << 8) | (data[3] as usize);
     debug!("Finished message body length: {} bytes", length);
-    
+
     // Validate length
     if length != 32 && length != 48 {
-        return Err(Error::TlsHandshake(
-            format!("Invalid Finished verify_data length: {} bytes (expected 32 or 48)", length)
-        ));
+        return Err(Error::TlsHandshake(format!(
+            "Invalid Finished verify_data length: {} bytes (expected 32 or 48)",
+            length
+        )));
     }
-    
+
     // Extract verify_data
     if data.len() < 4 + length {
-        return Err(Error::TlsHandshake(
-            format!("Finished message truncated: expected {} bytes, got {}", 4 + length, data.len())
-        ));
+        return Err(Error::TlsHandshake(format!(
+            "Finished message truncated: expected {} bytes, got {}",
+            4 + length,
+            data.len()
+        )));
     }
-    
+
     let verify_data = data[4..4 + length].to_vec();
-    
+
     debug!("Extracted verify_data: {} bytes", verify_data.len());
     debug!("  verify_data (hex): {}", hex::encode(&verify_data));
-    
+
     Ok(verify_data)
 }
 
@@ -151,26 +155,31 @@ pub fn parse_finished_message(data: &[u8]) -> Result<Vec<u8>> {
 /// * `Err` - If verify_data doesn't match (handshake failure)
 pub fn validate_verify_data(received: &[u8], expected: &[u8]) -> Result<()> {
     if received.len() != expected.len() {
-        error!("verify_data length mismatch: received {} bytes, expected {} bytes", 
-               received.len(), expected.len());
-        return Err(Error::TlsHandshake(
-            format!("verify_data length mismatch: {} != {}", received.len(), expected.len())
-        ));
+        error!(
+            "verify_data length mismatch: received {} bytes, expected {} bytes",
+            received.len(),
+            expected.len()
+        );
+        return Err(Error::TlsHandshake(format!(
+            "verify_data length mismatch: {} != {}",
+            received.len(),
+            expected.len()
+        )));
     }
-    
+
     // Constant-time comparison (important for security!)
     let mut differences = 0u8;
     for (a, b) in received.iter().zip(expected.iter()) {
         differences |= a ^ b;
     }
-    
+
     if differences != 0 {
         error!("❌ verify_data mismatch!");
         error!("   Received: {}", hex::encode(received));
         error!("   Expected: {}", hex::encode(expected));
         return Err(Error::TlsHandshake("verify_data mismatch - handshake failed".to_string()));
     }
-    
+
     info!("✅ verify_data validated successfully");
     Ok(())
 }
@@ -188,10 +197,10 @@ pub fn validate_verify_data(received: &[u8], expected: &[u8]) -> Result<()> {
 pub fn prepare_for_encryption(finished_msg: &[u8]) -> Vec<u8> {
     let mut plaintext = finished_msg.to_vec();
     plaintext.push(0x16); // ContentType: Handshake
-    
+
     debug!("Prepared Finished for encryption: {} bytes (includes ContentType)", plaintext.len());
     debug!("   Last byte (ContentType): 0x{:02x}", plaintext[plaintext.len() - 1]);
-    
+
     plaintext
 }
 
@@ -203,12 +212,12 @@ mod tests {
     fn test_build_finished_message() {
         let verify_data = vec![0x42; 32]; // 32 bytes for SHA-256
         let finished = build_finished_message(&verify_data).unwrap();
-        
+
         // Check structure: type (1) + length (3) + verify_data (32) = 36 bytes
         assert_eq!(finished.len(), 36);
         assert_eq!(finished[0], 0x14); // HandshakeType: Finished
         assert_eq!(finished[1], 0x00); // Length MSB
-        assert_eq!(finished[2], 0x00); // Length 
+        assert_eq!(finished[2], 0x00); // Length
         assert_eq!(finished[3], 0x20); // Length LSB (32)
         assert_eq!(&finished[4..], &verify_data[..]);
     }
@@ -217,7 +226,7 @@ mod tests {
     fn test_build_finished_message_sha384() {
         let verify_data = vec![0x42; 48]; // 48 bytes for SHA-384
         let finished = build_finished_message(&verify_data).unwrap();
-        
+
         // Check structure: type (1) + length (3) + verify_data (48) = 52 bytes
         assert_eq!(finished.len(), 52);
         assert_eq!(finished[0], 0x14);
@@ -241,11 +250,11 @@ mod tests {
     #[test]
     fn test_parse_finished_message() {
         let mut msg = vec![
-            0x14,       // HandshakeType: Finished
+            0x14, // HandshakeType: Finished
             0x00, 0x00, 0x20, // Length: 32 bytes
         ];
         msg.extend_from_slice(&[0x42; 32]); // verify_data
-        
+
         let verify_data = parse_finished_message(&msg).unwrap();
         assert_eq!(verify_data.len(), 32);
         assert_eq!(verify_data, vec![0x42; 32]);
@@ -292,9 +301,8 @@ mod tests {
     fn test_prepare_for_encryption() {
         let finished = vec![0x14, 0x00, 0x00, 0x20];
         let plaintext = prepare_for_encryption(&finished);
-        
+
         assert_eq!(plaintext.len(), finished.len() + 1);
         assert_eq!(plaintext[plaintext.len() - 1], 0x16); // ContentType: Handshake
     }
 }
-

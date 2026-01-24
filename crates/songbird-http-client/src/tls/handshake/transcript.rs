@@ -29,7 +29,7 @@
 //! ```
 
 use sha2::{Digest, Sha256};
-use tracing::{info, debug, error};
+use tracing::{debug, error, info};
 
 /// Transcript tracker for TLS 1.3 handshakes
 ///
@@ -81,7 +81,7 @@ impl Transcript {
         let before = self.messages.len();
         let after = before + message.len();
         self.messages.extend_from_slice(message);
-        
+
         debug!("Transcript updated: {} → {} bytes (+{} bytes)", before, after, message.len());
     }
 
@@ -96,7 +96,7 @@ impl Transcript {
     /// * `was_decrypted` - Whether this message was AEAD-decrypted
     pub fn update_with_logging(&mut self, message: &[u8], message_type: &str, was_decrypted: bool) {
         let before = self.messages.len();
-        
+
         // Log comprehensive details
         info!("════════════════════════════════════════════════════════════");
         info!("📝 TRANSCRIPT UPDATE: {}", message_type);
@@ -104,28 +104,37 @@ impl Transcript {
         info!("Message type: {}", message_type);
         info!("Message length: {} bytes", message.len());
         info!("Was decrypted: {}", was_decrypted);
-        
+
         if !message.is_empty() {
             let first_byte = message[0];
-            info!("First byte: 0x{:02x} ({})", first_byte, 
-                  match first_byte {
-                      0x01 => "ClientHello ✅",
-                      0x02 => "ServerHello ✅",
-                      0x08 => "EncryptedExtensions ✅",
-                      0x0B => "Certificate ✅",
-                      0x0F => "CertificateVerify ✅",
-                      0x14 => "Finished ✅",
-                      0x16 => "TLS Record Header ❌ (SHOULD BE STRIPPED!)",
-                      0x17 => "ContentType Byte ❌ (SHOULD BE STRIPPED!)",
-                      _ => "Unknown",
-                  });
-            
+            info!(
+                "First byte: 0x{:02x} ({})",
+                first_byte,
+                match first_byte {
+                    0x01 => "ClientHello ✅",
+                    0x02 => "ServerHello ✅",
+                    0x08 => "EncryptedExtensions ✅",
+                    0x0B => "Certificate ✅",
+                    0x0F => "CertificateVerify ✅",
+                    0x14 => "Finished ✅",
+                    0x16 => "TLS Record Header ❌ (SHOULD BE STRIPPED!)",
+                    0x17 => "ContentType Byte ❌ (SHOULD BE STRIPPED!)",
+                    _ => "Unknown",
+                }
+            );
+
             // 🔍 ENHANCED HEX DUMP: Show first/last bytes to identify extra bytes
-            info!("First 32 bytes (hex): {}", hex::encode(&message[..std::cmp::min(32, message.len())]));
+            info!(
+                "First 32 bytes (hex): {}",
+                hex::encode(&message[..std::cmp::min(32, message.len())])
+            );
             if message.len() > 64 {
-                info!("Last 32 bytes (hex): {}", hex::encode(&message[message.len().saturating_sub(32)..]));
+                info!(
+                    "Last 32 bytes (hex): {}",
+                    hex::encode(&message[message.len().saturating_sub(32)..])
+                );
             }
-            
+
             // 🚨 CRITICAL VALIDATION: Check for common errors
             if first_byte == 0x16 {
                 error!("⚠️  CRITICAL: TLS record header (0x16) detected!");
@@ -136,12 +145,16 @@ impl Transcript {
                 error!("   This should be stripped after AEAD decryption!");
             }
         }
-        
+
         self.messages.extend_from_slice(message);
         let after = self.messages.len();
-        
-        info!("Cumulative transcript length: {} bytes → {} bytes (+{} bytes)", 
-              before, after, message.len());
+
+        info!(
+            "Cumulative transcript length: {} bytes → {} bytes (+{} bytes)",
+            before,
+            after,
+            message.len()
+        );
         info!("════════════════════════════════════════════════════════════");
         info!("");
     }
@@ -163,11 +176,11 @@ impl Transcript {
     /// Includes comprehensive logging for debugging.
     pub fn compute_hash_with_logging(&self) -> Vec<u8> {
         let hash = self.compute_hash();
-        
+
         info!("🔐 Transcript Hash Computation");
         info!("   Transcript length: {} bytes", self.messages.len());
         info!("   SHA-256 hash: {}", hex::encode(&hash));
-        
+
         hash
     }
 
@@ -212,10 +225,10 @@ mod tests {
     #[test]
     fn test_transcript_update() {
         let mut transcript = Transcript::new();
-        
+
         transcript.update(b"ClientHello");
         assert_eq!(transcript.len(), 11);
-        
+
         transcript.update(b"ServerHello");
         assert_eq!(transcript.len(), 22);
     }
@@ -224,7 +237,7 @@ mod tests {
     fn test_transcript_hash() {
         let mut transcript = Transcript::new();
         transcript.update(b"test message");
-        
+
         let hash = transcript.compute_hash();
         assert_eq!(hash.len(), 32); // SHA-256 is 32 bytes
     }
@@ -234,12 +247,11 @@ mod tests {
         let mut t1 = Transcript::new();
         t1.update(b"message1");
         t1.update(b"message2");
-        
+
         let mut t2 = Transcript::new();
         t2.update(b"message1");
         t2.update(b"message2");
-        
+
         assert_eq!(t1.compute_hash(), t2.compute_hash());
     }
 }
-

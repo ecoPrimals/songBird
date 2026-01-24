@@ -15,14 +15,14 @@ fn test_client_creation() {
 #[test]
 fn test_http_request_params() {
     use serde_json::json;
-    
+
     let params = json!({
         "method": "GET",
         "url": "https://example.com",
         "headers": {},
         "body": null
     });
-    
+
     assert_eq!(params["method"], "GET");
     assert_eq!(params["url"], "https://example.com");
 }
@@ -30,15 +30,15 @@ fn test_http_request_params() {
 /// Test HTTP response structure
 #[test]
 fn test_http_response_structure() {
-    use songbird_http_client::HttpResponse;
     use serde_json::json;
-    
+    use songbird_http_client::HttpResponse;
+
     let response = HttpResponse {
         status: 200,
         headers: HashMap::new(),
         body: json!({"result": "ok"}),
     };
-    
+
     assert_eq!(response.status, 200);
     assert_eq!(response.body["result"], "ok");
 }
@@ -56,4 +56,3 @@ fn test_version_info() {
     assert!(!version.is_empty());
     assert!(version.starts_with("0."));
 }
-

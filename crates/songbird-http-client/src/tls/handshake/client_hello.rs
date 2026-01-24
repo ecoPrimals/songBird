@@ -44,16 +44,16 @@ pub const CIPHER_SUITES: &[u16] = &[
 pub enum ExtensionStrategy {
     /// Minimal (3 extensions, ~50ms): SNI, SupportedVersions, KeyShare
     Minimal,
-    
+
     /// Standard (7 extensions, ~80ms): Minimal + ALPN, Groups, SigAlgs, PSK
     Standard,
-    
+
     /// Modern (10+ extensions, ~100ms): Standard + OCSP, SCT, etc.
     Modern,
-    
+
     /// Maximum compatibility (12+ extensions): Everything
     MaxCompatibility,
-    
+
     /// Adaptive (learns from server): Uses profiler data
     Adaptive,
 }
@@ -69,9 +69,11 @@ pub struct ClientHelloBuilder {
 impl ClientHelloBuilder {
     /// Create a new ClientHello builder with the given strategy
     pub fn new(strategy: ExtensionStrategy) -> Self {
-        Self { strategy }
+        Self {
+            strategy,
+        }
     }
-    
+
     /// Build a complete ClientHello TLS record
     ///
     /// Returns the complete TLS record including:
@@ -94,14 +96,14 @@ impl ClientHelloBuilder {
         // TLS Record header (5 bytes)
         msg.push(0x16); // ContentType: Handshake
         msg.extend_from_slice(&TLS_1_2.to_be_bytes()); // Legacy version (0x0303)
-        
+
         // Record length (placeholder, fill in later)
         let length_pos = msg.len();
         msg.extend_from_slice(&[0, 0]);
 
         // Handshake header (4 bytes)
         msg.push(0x01); // HandshakeType: ClientHello
-        
+
         // Handshake length (placeholder, fill in later)
         let handshake_length_pos = msg.len();
         msg.extend_from_slice(&[0, 0, 0]);
@@ -143,7 +145,7 @@ impl ClientHelloBuilder {
 
         Ok(msg)
     }
-    
+
     /// Build extensions based on strategy
     fn build_extensions(&self, server_name: &str, public_key: &[u8]) -> Result<Vec<u8>> {
         match &self.strategy {
@@ -262,7 +264,7 @@ fn build_extensions_modern(server_name: &str, public_key: &[u8]) -> Result<Vec<u
     let mut ext = build_extensions_standard(server_name, public_key)?;
 
     // Add modern extensions
-    
+
     // 8. Status Request (OCSP stapling, 0x0005)
     ext.extend_from_slice(&[0x00, 0x05]);
     ext.extend_from_slice(&[0x00, 0x05]);
@@ -287,7 +289,7 @@ fn build_extensions_maxcompat(server_name: &str, public_key: &[u8]) -> Result<Ve
     let mut ext = build_extensions_modern(server_name, public_key)?;
 
     // Add compatibility extensions
-    
+
     // 11. Supported Groups (extended list, 0x000a)
     // Already included in standard, but could be extended
 
@@ -301,32 +303,32 @@ fn build_extensions_maxcompat(server_name: &str, public_key: &[u8]) -> Result<Ve
 /// Build SNI (Server Name Indication) extension
 fn build_sni_extension(server_name: &str) -> Vec<u8> {
     let mut sni = Vec::new();
-    
+
     // SNI list length
     let list_len = 2 + 1 + 2 + server_name.len();
     sni.extend_from_slice(&(list_len as u16).to_be_bytes());
-    
+
     // SNI entry
     sni.push(0x00); // name_type: host_name
     sni.extend_from_slice(&(server_name.len() as u16).to_be_bytes());
     sni.extend_from_slice(server_name.as_bytes());
-    
+
     sni
 }
 
 /// Build Key Share extension (x25519)
 fn build_key_share_extension(public_key: &[u8]) -> Vec<u8> {
     let mut key_share = Vec::new();
-    
+
     // KeyShareEntry list length
     let entry_len = 2 + 2 + public_key.len();
     key_share.extend_from_slice(&(entry_len as u16).to_be_bytes());
-    
+
     // KeyShareEntry
     key_share.extend_from_slice(&[0x00, 0x1d]); // group: x25519
     key_share.extend_from_slice(&(public_key.len() as u16).to_be_bytes());
     key_share.extend_from_slice(public_key);
-    
+
     key_share
 }
 
@@ -339,14 +341,14 @@ mod tests {
         let builder = ClientHelloBuilder::new(ExtensionStrategy::Minimal);
         let random = vec![0u8; 32];
         let pubkey = vec![1u8; 32];
-        
+
         let hello = builder.build(&random, &pubkey, "example.com").unwrap();
-        
+
         // Check TLS record header
         assert_eq!(hello[0], 0x16); // Handshake
         assert_eq!(hello[1], 0x03); // TLS 1.2 (legacy)
         assert_eq!(hello[2], 0x03);
-        
+
         // Check handshake type
         assert_eq!(hello[5], 0x01); // ClientHello
     }
@@ -377,13 +379,12 @@ mod tests {
     fn test_key_share_extension() {
         let pubkey = vec![42u8; 32];
         let key_share = build_key_share_extension(&pubkey);
-        
+
         // Should contain x25519 group (0x001d)
         assert_eq!(key_share[2], 0x00);
         assert_eq!(key_share[3], 0x1d);
-        
+
         // Should contain our public key
         assert!(key_share.windows(32).any(|w| w == &pubkey[..]));
     }
 }
-

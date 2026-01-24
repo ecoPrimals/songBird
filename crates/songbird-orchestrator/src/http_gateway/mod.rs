@@ -56,9 +56,9 @@ pub use unix_listener::{UnixListenerConfig, UnixSocketListener};
 
 use anyhow::Result;
 use serde_json::Value;
+use songbird_http_client::SongbirdHttpClient;
 use std::sync::Arc;
-use tracing::info;
-use songbird_http_client::SongbirdHttpClient; // ✅ Pure Rust HTTP (Tower Atomic)
+use tracing::info; // ✅ Pure Rust HTTP (Tower Atomic)
 
 /// HTTP Gateway Service - Universal HTTP proxy for pure Rust ecosystem
 ///
@@ -97,7 +97,7 @@ impl HttpGatewayService {
         let crypto_socket = std::env::var("CRYPTO_PROVIDER_SOCKET")
             .or_else(|_| std::env::var("BEARDOG_SOCKET"))
             .unwrap_or_else(|_| "/tmp/beardog-nat0.sock".to_string());
-        
+
         let http_client = SongbirdHttpClient::new(crypto_socket);
 
         // Create rate limiter (100 requests per minute default)

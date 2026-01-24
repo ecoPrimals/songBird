@@ -96,8 +96,8 @@ use crate::ipc;
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use std::sync::Arc;
 use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::Arc;
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
 use tokio::sync::Mutex;
 use tracing::{debug, error};
@@ -260,10 +260,7 @@ impl<H: JsonRpcHandler + 'static> TowerAtomicServer<H> {
     }
 
     /// Handle a single client connection
-    async fn handle_connection(
-        stream: crate::ipc::Stream,
-        handler: Arc<H>,
-    ) -> IpcResult<()> {
+    async fn handle_connection(stream: crate::ipc::Stream, handler: Arc<H>) -> IpcResult<()> {
         let (reader, mut writer) = tokio::io::split(stream);
         let mut reader = BufReader::new(reader);
         let mut line = String::new();
@@ -304,10 +301,7 @@ impl<H: JsonRpcHandler + 'static> TowerAtomicServer<H> {
                         .write_all(response_json.as_bytes())
                         .await
                         .map_err(|e| IpcError::Other(e.to_string()))?;
-                    writer
-                        .write_all(b"\n")
-                        .await
-                        .map_err(|e| IpcError::Other(e.to_string()))?;
+                    writer.write_all(b"\n").await.map_err(|e| IpcError::Other(e.to_string()))?;
                 }
                 Err(e) => {
                     error!("Failed to read from socket: {}", e);
@@ -405,18 +399,12 @@ impl TowerAtomicClient {
             .write_all(request_json.as_bytes())
             .await
             .map_err(|e| IpcError::Other(e.to_string()))?;
-        stream
-            .write_all(b"\n")
-            .await
-            .map_err(|e| IpcError::Other(e.to_string()))?;
+        stream.write_all(b"\n").await.map_err(|e| IpcError::Other(e.to_string()))?;
 
         // Read response
         let mut reader = BufReader::new(&mut *stream);
         let mut response_line = String::new();
-        reader
-            .read_line(&mut response_line)
-            .await
-            .map_err(|e| IpcError::Other(e.to_string()))?;
+        reader.read_line(&mut response_line).await.map_err(|e| IpcError::Other(e.to_string()))?;
 
         debug!("Received JSON-RPC response: {}", response_line);
 
@@ -430,9 +418,7 @@ impl TowerAtomicClient {
         }
 
         // Return result
-        response
-            .result
-            .ok_or_else(|| IpcError::Other("Missing result in response".to_string()))
+        response.result.ok_or_else(|| IpcError::Other("Missing result in response".to_string()))
     }
 
     /// Call a JSON-RPC method without parameters
@@ -498,10 +484,8 @@ mod tests {
         let handler = MathService;
 
         // Test add
-        let result = handler
-            .handle("add", json!({"a": 5, "b": 3}))
-            .await
-            .expect("Add should succeed");
+        let result =
+            handler.handle("add", json!({"a": 5, "b": 3})).await.expect("Add should succeed");
         assert_eq!(result, json!(8));
 
         // Test multiply
@@ -516,4 +500,3 @@ mod tests {
         assert!(result.is_err());
     }
 }
-

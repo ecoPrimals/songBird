@@ -89,10 +89,7 @@ impl PeerRegistry {
         connections: &Arc<RwLock<HashMap<String, Connection>>>,
     ) -> Vec<(String, TrustLevel)> {
         let conns = connections.read().await;
-        conns
-            .iter()
-            .map(|(id, conn)| (id.clone(), conn.trust_level()))
-            .collect()
+        conns.iter().map(|(id, conn)| (id.clone(), conn.trust_level())).collect()
     }
 }
 
@@ -101,4 +98,3 @@ impl Default for PeerRegistry {
         Self::new()
     }
 }
-

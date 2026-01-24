@@ -1,8 +1,8 @@
 //! BTSP connection factory and client management
 
-use anyhow::Result;
 use crate::btsp_client::BtspClient;
 use crate::connections::*;
+use anyhow::Result;
 use songbird_types::TrustLevel;
 use std::sync::Arc;
 use tokio::sync::OnceCell;
@@ -98,9 +98,9 @@ impl BtspConnectionFactory {
                 let conn = FederatedBtspConnection::new(peer_id, peer_tags, client, vec![]).await?;
                 Ok(Connection::FederatedBtsp(conn))
             }
-            TrustLevel::None => Err(anyhow::anyhow!(
-                "Cannot create BTSP connection at trust level None"
-            )),
+            TrustLevel::None => {
+                Err(anyhow::anyhow!("Cannot create BTSP connection at trust level None"))
+            }
         }
     }
 }
@@ -110,4 +110,3 @@ impl Default for BtspConnectionFactory {
         Self::new()
     }
 }
-

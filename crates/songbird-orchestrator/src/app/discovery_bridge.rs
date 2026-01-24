@@ -217,7 +217,9 @@ impl SongbirdOrchestrator {
                             ).await;
 
                                 match connectivity_check {
-                                    Ok(Ok(response)) if response.status >= 200 && response.status < 300 => {
+                                    Ok(Ok(response))
+                                        if response.status >= 200 && response.status < 300 =>
+                                    {
                                         info!(
                                             "✅ Peer '{}' (v{}) is reachable at {}",
                                             node_name, peer.version, endpoint

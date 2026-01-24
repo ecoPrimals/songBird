@@ -1,7 +1,7 @@
 //! Endpoint types - Virtual and Native
 
-use std::path::PathBuf;
 use serde::{Deserialize, Serialize};
+use std::path::PathBuf;
 
 /// Virtual endpoint (platform-agnostic path)
 ///
@@ -131,4 +131,3 @@ mod tests {
         assert_eq!(endpoint.display(), "tcp://127.0.0.1:8080");
     }
 }
-

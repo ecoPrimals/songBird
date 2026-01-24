@@ -252,14 +252,15 @@ impl CapabilityRouter {
         info!("Executing task on external provider: {}", endpoint);
 
         // ✅ EVOLVED (Jan 21, 2026): 100% Pure Rust HTTP via SongbirdHttpClient
-        let crypto_socket = crate::primal_discovery::discover_crypto_provider()
-            .await
-            .map_err(|e| SongbirdError::Network {
-                message: format!("Failed to discover crypto provider: {}", e),
-                interface: None,
-                suggestion: Some("Check BearDog availability".to_string()),
+        let crypto_socket =
+            crate::primal_discovery::discover_crypto_provider().await.map_err(|e| {
+                SongbirdError::Network {
+                    message: format!("Failed to discover crypto provider: {}", e),
+                    interface: None,
+                    suggestion: Some("Check BearDog availability".to_string()),
+                }
             })?;
-        
+
         let client = songbird_http_client::SongbirdHttpClient::new(crypto_socket);
         let task_json = serde_json::to_value(task).map_err(|e| SongbirdError::Serialization {
             format: Some("JSON".to_string()),
@@ -267,21 +268,23 @@ impl CapabilityRouter {
             debug_info: None,
         })?;
 
-        let response = tokio::time::timeout(
-            Duration::from_secs(300),
-            client.post(endpoint, task_json)
-        )
-            .await
-            .map_err(|_| SongbirdError::Network {
-                message: "Request timeout (5 minutes)".to_string(),
-                interface: Some(endpoint.to_string()),
-                suggestion: Some("Check provider endpoint and network connectivity".to_string()),
-            })?
-            .map_err(|e| SongbirdError::Network {
-                message: format!("Failed to send task to external provider: {}", e),
-                interface: Some(endpoint.to_string()),
-                suggestion: Some("Check provider endpoint and network connectivity".to_string()),
-            })?;
+        let response =
+            tokio::time::timeout(Duration::from_secs(300), client.post(endpoint, task_json))
+                .await
+                .map_err(|_| SongbirdError::Network {
+                    message: "Request timeout (5 minutes)".to_string(),
+                    interface: Some(endpoint.to_string()),
+                    suggestion: Some(
+                        "Check provider endpoint and network connectivity".to_string(),
+                    ),
+                })?
+                .map_err(|e| SongbirdError::Network {
+                    message: format!("Failed to send task to external provider: {}", e),
+                    interface: Some(endpoint.to_string()),
+                    suggestion: Some(
+                        "Check provider endpoint and network connectivity".to_string(),
+                    ),
+                })?;
 
         if response.status < 200 || response.status >= 300 {
             return Err(SongbirdError::Service {
@@ -292,11 +295,12 @@ impl CapabilityRouter {
             });
         }
 
-        let result = serde_json::from_value(response.body).map_err(|e| SongbirdError::Serialization {
-            format: Some("JSON".to_string()),
-            message: format!("Failed to parse provider response: {}", e),
-            debug_info: None,
-        })?;
+        let result =
+            serde_json::from_value(response.body).map_err(|e| SongbirdError::Serialization {
+                format: Some("JSON".to_string()),
+                message: format!("Failed to parse provider response: {}", e),
+                debug_info: None,
+            })?;
 
         info!("Task execution completed successfully on external provider");
         Ok(result)

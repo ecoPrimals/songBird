@@ -15,10 +15,13 @@ pub mod server_complete; // Complete TLS 1.3 server implementation
 pub mod session;
 
 pub use adaptive::AdaptiveExtensions;
-pub use alert::{TlsAlert, AlertLevel, AlertDescription};
-pub use config::{TlsConfig, ExtensionStrategy, CipherStrategy, FallbackStrategy, ExtensionType, ExtensionSet, CipherSuiteSet};
+pub use alert::{AlertDescription, AlertLevel, TlsAlert};
+pub use config::{
+    CipherStrategy, CipherSuiteSet, ExtensionSet, ExtensionStrategy, ExtensionType,
+    FallbackStrategy, TlsConfig,
+};
 pub use handshake::TlsHandshake;
-pub use profiler::{ServerProfiler, ServerProfile};
+pub use profiler::{ServerProfile, ServerProfiler};
 pub use record::TlsRecordLayer;
 pub use server::TlsServer;
 pub use server_complete::TlsServer as TlsServerComplete; // Complete implementation
@@ -71,5 +74,3 @@ mod tests {
         assert!(CIPHER_SUITES.contains(&0x1303)); // ChaCha20-Poly1305
     }
 }
-
-

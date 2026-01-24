@@ -56,10 +56,7 @@ async fn test_reject_decision() {
     assert_eq!(trust_level, None);
 
     let rejected = manager.get_rejected_peers().await;
-    assert_eq!(
-        rejected.get("rejected_peer"),
-        Some(&"different_family".to_string())
-    );
+    assert_eq!(rejected.get("rejected_peer"), Some(&"different_family".to_string()));
 }
 
 // ========================================================================
@@ -234,10 +231,7 @@ async fn test_rejected_peer_single() {
 
     let rejected = manager.get_rejected_peers().await;
     assert_eq!(rejected.len(), 1);
-    assert_eq!(
-        rejected.get("rogue_device"),
-        Some(&"different_family".to_string())
-    );
+    assert_eq!(rejected.get("rogue_device"), Some(&"different_family".to_string()));
 }
 
 #[tokio::test]
@@ -355,4 +349,3 @@ async fn test_btsp_connection_all_trust_levels() {
     let peers = manager.get_all_peers().await;
     assert_eq!(peers.len(), 3);
 }
-

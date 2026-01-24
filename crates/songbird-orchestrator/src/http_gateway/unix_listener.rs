@@ -432,12 +432,8 @@ impl UnixSocketListener {
         }
 
         // Send request using Pure Rust HTTP client
-        let response = self.http_client.request(
-            method,
-            &backend.base_url,
-            headers,
-            payload.cloned(),
-        ).await?;
+        let response =
+            self.http_client.request(method, &backend.base_url, headers, payload.cloned()).await?;
 
         // Extract status and body from Pure Rust HTTP response
         let status = response.status;

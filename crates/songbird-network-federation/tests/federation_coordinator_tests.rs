@@ -27,7 +27,6 @@ fn test_federation_config_default() {
 #[test]
 fn test_federation_config_enabled() {
     let config = FederationConfig {
-        _legacy_test_fields: (),
         discovery_mode: None,
         rendezvous_url: None,
         enabled: true,
@@ -61,7 +60,6 @@ fn test_federation_config_with_node_info() {
     };
 
     let config = FederationConfig {
-        _legacy_test_fields: (),
         discovery_mode: None,
         rendezvous_url: None,
         enabled: true,
@@ -81,7 +79,6 @@ fn test_federation_config_clone() {
     let node_reg = create_test_registration("node-1");
 
     let config = FederationConfig {
-        _legacy_test_fields: (),
         discovery_mode: None,
         rendezvous_url: None,
         enabled: true,
@@ -114,7 +111,6 @@ fn test_federation_config_serialization() {
     let node_reg = create_test_registration("test-node");
 
     let config = FederationConfig {
-        _legacy_test_fields: (),
         discovery_mode: None,
         rendezvous_url: None,
         enabled: true,
@@ -136,7 +132,6 @@ fn test_federation_config_serialization() {
 #[test]
 fn test_federation_config_enabled_states() {
     let enabled = FederationConfig {
-        _legacy_test_fields: (),
         discovery_mode: None,
         rendezvous_url: None,
         enabled: true,
@@ -287,7 +282,6 @@ fn test_federation_config_json_serialization() {
     let node_reg = create_test_registration("test-node-456");
 
     let config = FederationConfig {
-        _legacy_test_fields: (),
         discovery_mode: None,
         rendezvous_url: None,
         enabled: true,
@@ -319,7 +313,6 @@ async fn test_full_federation_workflow() {
     let node_reg = create_test_registration("primary-node");
 
     let config = FederationConfig {
-        _legacy_test_fields: (),
         discovery_mode: None,
         rendezvous_url: None,
         enabled: true,

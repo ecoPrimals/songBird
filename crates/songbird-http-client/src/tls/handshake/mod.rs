@@ -27,25 +27,25 @@
 //!
 //! All modules follow RFC 8446 (TLS 1.3) specifications precisely.
 
-pub mod transcript;
-pub mod parser;
-pub mod keys;
 pub mod client_hello;
-pub mod server_hello;
 pub mod finished;
+pub mod keys;
+pub mod parser;
+pub mod server_hello;
+pub mod transcript;
 
 // Re-export key types for convenience
-pub use transcript::Transcript;
-pub use parser::{HandshakeMessage, parse_handshake_messages, parse_single_handshake_message};
-pub use keys::{CipherSuite, TrafficKeys};
 pub use client_hello::{ClientHelloBuilder, ExtensionStrategy, CIPHER_SUITES};
-pub use server_hello::{ServerHello, parse_server_hello};
-pub use finished::{build_finished_message, parse_finished_message, validate_verify_data, prepare_for_encryption};
+pub use finished::{
+    build_finished_message, parse_finished_message, prepare_for_encryption, validate_verify_data,
+};
+pub use keys::{CipherSuite, TrafficKeys};
+pub use parser::{parse_handshake_messages, parse_single_handshake_message, HandshakeMessage};
+pub use server_hello::{parse_server_hello, ServerHello};
+pub use transcript::Transcript;
 
 // Re-export the main TlsHandshake from legacy file (to be refactored)
 // This maintains backward compatibility while we refactor
 #[path = "../handshake_legacy.rs"]
 mod handshake_legacy;
 pub use handshake_legacy::TlsHandshake;
-
-

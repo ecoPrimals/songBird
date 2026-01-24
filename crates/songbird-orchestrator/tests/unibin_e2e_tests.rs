@@ -40,8 +40,6 @@ fn create_test_config(dir: &TempDir, content: &str) -> PathBuf {
 #[tokio::test]
 // ✅ NO #[serial]! Uses isolated environment!
 async fn test_e2e_help_and_version_workflow() -> Result<(), Box<dyn std::error::Error>> {
-    
-
     // Step 1: Check version
     let mut cmd = clean_cmd();
     cmd.arg("--version").assert().success().stdout(predicate::str::contains("songbird"));
@@ -80,7 +78,6 @@ async fn test_e2e_help_and_version_workflow() -> Result<(), Box<dyn std::error::
 #[tokio::test]
 // ✅ NO #[serial]! Uses isolated environment!
 async fn test_e2e_config_init_validate_workflow() -> Result<(), Box<dyn std::error::Error>> {
-    
     let temp_dir = tempdir()?;
     let config_path = temp_dir.path().join("songbird-generated.toml");
 
@@ -113,8 +110,6 @@ async fn test_e2e_config_init_validate_workflow() -> Result<(), Box<dyn std::err
 #[tokio::test]
 // ✅ NO #[serial]! Uses isolated environment!
 async fn test_e2e_doctor_basic_checks() -> Result<(), Box<dyn std::error::Error>> {
-    
-
     // Step 1: Run basic doctor checks
     let mut cmd = clean_cmd();
     cmd.arg("doctor").arg("--format").arg("text").assert().success();
@@ -129,8 +124,6 @@ async fn test_e2e_doctor_basic_checks() -> Result<(), Box<dyn std::error::Error>
 #[tokio::test]
 // ✅ NO #[serial]! Uses isolated environment!
 async fn test_e2e_server_with_custom_port() -> Result<(), Box<dyn std::error::Error>> {
-    
-
     // Test that server command accepts custom port
     // Note: We don't actually start the server (would hang), just validate args
     let mut cmd = clean_cmd();
@@ -147,8 +140,6 @@ async fn test_e2e_server_with_custom_port() -> Result<(), Box<dyn std::error::Er
 #[tokio::test]
 // ✅ NO #[serial]! Uses isolated environment!
 async fn test_e2e_environment_variable_integration() -> Result<(), Box<dyn std::error::Error>> {
-    
-
     // Set environment variables
     std::env::set_var("SONGBIRD_PORT", "9000");
     std::env::set_var("SONGBIRD_NODE_ID", "e2e-test-node");
@@ -159,7 +150,6 @@ async fn test_e2e_environment_variable_integration() -> Result<(), Box<dyn std::
     cmd.arg("doctor").assert().success();
 
     // Clean up
-    
 
     Ok(())
 }
@@ -167,8 +157,6 @@ async fn test_e2e_environment_variable_integration() -> Result<(), Box<dyn std::
 #[tokio::test]
 // ✅ NO #[serial]! Uses isolated environment!
 async fn test_e2e_verbose_logging_mode() -> Result<(), Box<dyn std::error::Error>> {
-    
-
     // Test verbose flag
     let mut cmd = clean_cmd();
     cmd.arg("server").arg("--verbose").arg("--help").assert().success();
@@ -179,8 +167,6 @@ async fn test_e2e_verbose_logging_mode() -> Result<(), Box<dyn std::error::Error
 #[tokio::test]
 // ✅ NO #[serial]! Uses isolated environment!
 async fn test_e2e_daemon_mode_flag() -> Result<(), Box<dyn std::error::Error>> {
-    
-
     // Test daemon flag
     let mut cmd = clean_cmd();
     cmd.arg("server").arg("--daemon").arg("--help").assert().success();
@@ -191,7 +177,6 @@ async fn test_e2e_daemon_mode_flag() -> Result<(), Box<dyn std::error::Error>> {
 #[tokio::test]
 // ✅ NO #[serial]! Uses isolated environment!
 async fn test_e2e_config_file_path() -> Result<(), Box<dyn std::error::Error>> {
-    
     let temp_dir = tempdir()?;
     let config_path = temp_dir.path().join("custom-config.toml");
 
@@ -208,8 +193,6 @@ async fn test_e2e_config_file_path() -> Result<(), Box<dyn std::error::Error>> {
 #[tokio::test]
 // ✅ NO #[serial]! Uses isolated environment!
 async fn test_e2e_multiple_doctor_formats() -> Result<(), Box<dyn std::error::Error>> {
-    
-
     let formats = vec!["text", "json", "yaml"];
 
     for format in formats {
@@ -223,8 +206,6 @@ async fn test_e2e_multiple_doctor_formats() -> Result<(), Box<dyn std::error::Er
 #[tokio::test]
 // ✅ NO #[serial]! Uses isolated environment!
 async fn test_e2e_comprehensive_doctor() -> Result<(), Box<dyn std::error::Error>> {
-    
-
     // Run comprehensive doctor checks
     let mut cmd = clean_cmd();
     cmd.arg("doctor").arg("--comprehensive").assert().success();
@@ -235,8 +216,6 @@ async fn test_e2e_comprehensive_doctor() -> Result<(), Box<dyn std::error::Error
 #[tokio::test]
 // ✅ NO #[serial]! Uses isolated environment!
 async fn test_e2e_config_show_with_secrets() -> Result<(), Box<dyn std::error::Error>> {
-    
-
     // Show config without secrets (reads from env or default)
     let mut cmd = clean_cmd();
     cmd.arg("config").arg("show").assert().success();
@@ -251,7 +230,6 @@ async fn test_e2e_config_show_with_secrets() -> Result<(), Box<dyn std::error::E
 #[tokio::test]
 // ✅ NO #[serial]! Uses isolated environment!
 async fn test_e2e_config_init_force_overwrite() -> Result<(), Box<dyn std::error::Error>> {
-    
     let temp_dir = tempdir()?;
     let config_path = temp_dir.path().join("overwrite-test.toml");
 
@@ -275,8 +253,6 @@ async fn test_e2e_config_init_force_overwrite() -> Result<(), Box<dyn std::error
 #[tokio::test]
 // ✅ NO #[serial]! Uses isolated environment!
 async fn test_e2e_error_handling_invalid_command() -> Result<(), Box<dyn std::error::Error>> {
-    
-
     // Test unknown command
     let mut cmd = clean_cmd();
     cmd.arg("invalid-command").assert().failure();
@@ -287,8 +263,6 @@ async fn test_e2e_error_handling_invalid_command() -> Result<(), Box<dyn std::er
 #[tokio::test]
 // ✅ NO #[serial]! Uses isolated environment!
 async fn test_e2e_error_handling_invalid_port() -> Result<(), Box<dyn std::error::Error>> {
-    
-
     // Test invalid port number
     let mut cmd = clean_cmd();
     cmd.arg("server")
@@ -303,8 +277,6 @@ async fn test_e2e_error_handling_invalid_port() -> Result<(), Box<dyn std::error
 #[tokio::test]
 // ✅ NO #[serial]! Uses isolated environment!
 async fn test_e2e_error_handling_invalid_format() -> Result<(), Box<dyn std::error::Error>> {
-    
-
     // Test invalid format (should error)
     let mut cmd = clean_cmd();
     cmd.arg("doctor")
@@ -320,8 +292,6 @@ async fn test_e2e_error_handling_invalid_format() -> Result<(), Box<dyn std::err
 #[tokio::test]
 // ✅ NO #[serial]! Uses isolated environment!
 async fn test_e2e_rapid_command_execution() -> Result<(), Box<dyn std::error::Error>> {
-    
-
     // Execute multiple commands rapidly
     for _ in 0..10 {
         let mut cmd = clean_cmd();
@@ -334,8 +304,6 @@ async fn test_e2e_rapid_command_execution() -> Result<(), Box<dyn std::error::Er
 #[tokio::test]
 // ✅ NO #[serial]! Uses isolated environment!
 async fn test_e2e_concurrent_doctor_checks() -> Result<(), Box<dyn std::error::Error>> {
-    
-
     // Run multiple doctor checks concurrently
     let mut handles = vec![];
 
@@ -358,7 +326,6 @@ async fn test_e2e_concurrent_doctor_checks() -> Result<(), Box<dyn std::error::E
 #[tokio::test]
 // ✅ NO #[serial]! Uses isolated environment!
 async fn test_e2e_full_lifecycle_simulation() -> Result<(), Box<dyn std::error::Error>> {
-    
     let temp_dir = tempdir()?;
 
     // Full lifecycle: check version -> init config -> validate -> doctor -> show config
@@ -392,8 +359,6 @@ async fn test_e2e_full_lifecycle_simulation() -> Result<(), Box<dyn std::error::
 #[tokio::test]
 // ✅ NO #[serial]! Uses isolated environment!
 async fn test_e2e_stress_version_calls() -> Result<(), Box<dyn std::error::Error>> {
-    
-
     // Stress test: rapid version checks
     for i in 0..50 {
         let mut cmd = clean_cmd();
@@ -412,8 +377,6 @@ async fn test_e2e_stress_version_calls() -> Result<(), Box<dyn std::error::Error
 #[tokio::test]
 // ✅ NO #[serial]! Uses isolated environment!
 async fn test_e2e_environment_precedence() -> Result<(), Box<dyn std::error::Error>> {
-    
-
     // Test environment variable precedence
     std::env::set_var("SONGBIRD_PORT", "9000");
 
@@ -421,16 +384,12 @@ async fn test_e2e_environment_precedence() -> Result<(), Box<dyn std::error::Err
     let mut cmd = clean_cmd();
     cmd.arg("server").arg("--port").arg("8888").arg("--help").assert().success();
 
-    
-
     Ok(())
 }
 
 #[tokio::test]
 // ✅ NO #[serial]! Uses isolated environment!
 async fn test_e2e_all_subcommands_accessible() -> Result<(), Box<dyn std::error::Error>> {
-    
-
     // Verify all subcommands are accessible
     let subcommands = vec!["server", "doctor", "config"];
 

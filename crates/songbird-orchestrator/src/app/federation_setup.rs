@@ -175,7 +175,7 @@ mod tests {
         std::env::remove_var("SONGBIRD_RENDEZVOUS_URL");
         std::env::remove_var("SONGBIRD_NODE_ADDRESS");
         std::env::remove_var("SONGBIRD_PORT");
-        
+
         // Set federation enabled
         std::env::set_var("SONGBIRD_FEDERATION_ENABLED", "true");
 
@@ -216,7 +216,7 @@ mod tests {
         std::env::remove_var("SONGBIRD_RENDEZVOUS_URL");
         std::env::remove_var("SONGBIRD_NODE_ADDRESS");
         std::env::remove_var("SONGBIRD_PORT");
-        
+
         std::env::set_var("SONGBIRD_FEDERATION_ENABLED", "true");
 
         let node_identity = NodeIdentity::new_or_load(None).expect("Failed to load identity");

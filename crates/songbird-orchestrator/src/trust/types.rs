@@ -374,14 +374,14 @@ mod tests {
         };
 
         assert!(!invalid_proof.verify());
-        
+
         // Short proof should fail (< 32 chars)
         let short_proof = CapabilityProof {
             capabilities: vec!["orchestration".to_string()],
             proof: "too-short".to_string(),
             timestamp: SystemTime::now(),
         };
-        
+
         assert!(!short_proof.verify());
     }
 

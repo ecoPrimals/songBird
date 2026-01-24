@@ -15,20 +15,16 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Register some services with capabilities
     println!("📝 Registering services...");
 
-    ipc::register("beardog", vec!["crypto".to_string(), "btsp".to_string()])
-        .await?;
+    ipc::register("beardog", vec!["crypto".to_string(), "btsp".to_string()]).await?;
     println!("✅ Registered beardog [crypto, btsp]");
 
-    ipc::register("squirrel", vec!["ai".to_string(), "nlp".to_string()])
-        .await?;
+    ipc::register("squirrel", vec!["ai".to_string(), "nlp".to_string()]).await?;
     println!("✅ Registered squirrel [ai, nlp]");
 
-    ipc::register("toadstool", vec!["compute".to_string(), "container".to_string()])
-        .await?;
+    ipc::register("toadstool", vec!["compute".to_string(), "container".to_string()]).await?;
     println!("✅ Registered toadstool [compute, container]");
 
-    ipc::register("nestgate", vec!["storage".to_string(), "kv".to_string()])
-        .await?;
+    ipc::register("nestgate", vec!["storage".to_string(), "kv".to_string()]).await?;
     println!("✅ Registered nestgate [storage, kv]");
 
     println!();
@@ -61,4 +57,3 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     Ok(())
 }
-

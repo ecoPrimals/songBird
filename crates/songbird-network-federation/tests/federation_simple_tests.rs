@@ -50,7 +50,6 @@ fn test_multiple_nodes() {
 #[test]
 fn test_federation_config_enabled() {
     let config = FederationConfig {
-        _legacy_test_fields: (),
         discovery_mode: None,
         rendezvous_url: None,
         enabled: true,
@@ -58,6 +57,7 @@ fn test_federation_config_enabled() {
         self_registration: None,
         heartbeat_interval_secs: 30,
         node_timeout_secs: 60,
+        ..Default::default()
     };
     assert!(config.enabled);
 }
@@ -100,7 +100,6 @@ fn test_bootstrap_address() {
 fn test_heartbeat_interval() {
     for interval in [10, 20, 30, 60, 120] {
         let config = FederationConfig {
-            _legacy_test_fields: (),
             discovery_mode: None,
             rendezvous_url: None,
             enabled: true,
@@ -118,7 +117,6 @@ fn test_heartbeat_interval() {
 fn test_node_timeout() {
     for timeout in [30, 60, 120, 300] {
         let config = FederationConfig {
-            _legacy_test_fields: (),
             discovery_mode: None,
             rendezvous_url: None,
             enabled: true,

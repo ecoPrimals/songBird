@@ -1,12 +1,9 @@
 //! Songbird TLS Server Test Binary
-//! 
+//!
 //! Purpose: Used by self-test harness to validate client+server transcript matching
 //! Strategy: biomeOS validated approach (18+ hour debugging session)
 
-use songbird_http_client::{
-    beardog_client::BearDogClient,
-    tls::server_complete::TlsServer,
-};
+use songbird_http_client::{beardog_client::BearDogClient, tls::server_complete::TlsServer};
 use std::sync::Arc;
 use tokio::net::TcpListener;
 use tracing::{error, info};
@@ -109,11 +106,11 @@ async fn main() -> anyhow::Result<()> {
         .map_err(|e| anyhow::anyhow!("Failed to read certificate: {}", e))?;
     let key_pem = std::fs::read_to_string(&key_file)
         .map_err(|e| anyhow::anyhow!("Failed to read private key: {}", e))?;
-    
+
     // Parse PEM (simple extraction of base64 content)
     let cert_chain = parse_pem(&cert_pem)?;
     let private_key = parse_pem(&key_pem)?;
-    
+
     info!("✅ Certificate chain: {} bytes", cert_chain.len());
     info!("✅ Private key: {} bytes", private_key.len());
     info!("");
@@ -182,16 +179,14 @@ async fn main() -> anyhow::Result<()> {
 
 /// Simple PEM parser - extracts base64 content and decodes
 fn parse_pem(pem: &str) -> anyhow::Result<Vec<u8>> {
-    let lines: Vec<&str> = pem.lines()
-        .filter(|line| !line.starts_with("-----"))
-        .collect();
-    
+    let lines: Vec<&str> = pem.lines().filter(|line| !line.starts_with("-----")).collect();
+
     let base64_content = lines.join("");
-    
-    use base64::{Engine as _, engine::general_purpose};
-    let decoded = general_purpose::STANDARD.decode(&base64_content)
+
+    use base64::{engine::general_purpose, Engine as _};
+    let decoded = general_purpose::STANDARD
+        .decode(&base64_content)
         .map_err(|e| anyhow::anyhow!("Failed to decode PEM: {}", e))?;
-    
+
     Ok(decoded)
 }
-

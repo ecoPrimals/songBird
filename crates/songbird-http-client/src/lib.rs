@@ -67,11 +67,8 @@ pub use types::{HttpRequest, HttpResponse};
 
 // Re-export crypto capability types for agnostic usage
 pub use crypto::{
-    CryptoCapability,
-    BearDogProvider,
-    discover_crypto_capability,
+    discover_crypto_capability, BearDogProvider, CryptoCapability, TlsApplicationSecrets,
     TlsHandshakeSecrets,
-    TlsApplicationSecrets,
 };
 
 // Re-export BearDogClient for backward compatibility
@@ -100,4 +97,3 @@ mod tests {
         assert!(VERSION.contains('.'), "Version should be in semver format: {}", VERSION);
     }
 }
-

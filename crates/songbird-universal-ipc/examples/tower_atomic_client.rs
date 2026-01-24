@@ -24,10 +24,7 @@ use tracing_subscriber;
 #[tokio::main]
 async fn main() -> IpcResult<()> {
     // Initialize tracing
-    tracing_subscriber::fmt()
-        .with_max_level(Level::INFO)
-        .with_target(false)
-        .init();
+    tracing_subscriber::fmt().with_max_level(Level::INFO).with_target(false).init();
 
     info!("🔍 Tower Atomic Client Example");
 
@@ -47,7 +44,7 @@ async fn main() -> IpcResult<()> {
     // Get service info
     info!("\n📋 Getting service info...");
     let info_result = client.call_no_params("info").await?;
-    info!("Service info: {}", serde_json::to_string_pretty(&info_result)?);
+    info!("Service info: {}", serde_json::to_string_pretty(&info_result).unwrap_or_else(|_| "Error formatting".to_string()));
 
     // Test addition
     info!("\n➕ Testing addition: 15 + 27");
@@ -87,4 +84,3 @@ async fn main() -> IpcResult<()> {
 
     Ok(())
 }
-

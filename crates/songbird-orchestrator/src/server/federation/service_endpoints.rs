@@ -81,4 +81,3 @@ pub async fn service_stats(State(state): State<Arc<FederationAppState>>) -> impl
     let stats = state.service_registry.get_stats().await;
     (StatusCode::OK, Json(stats))
 }
-
