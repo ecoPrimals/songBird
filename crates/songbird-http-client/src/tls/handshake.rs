@@ -691,6 +691,58 @@ impl TlsHandshake {
         // Transcript includes: ClientHello, ServerHello, and all DECRYPTED handshake messages
         info!("Step 10: Computing final transcript hash for application key derivation");
         
+        // 🔬 COMPLETE TRANSCRIPT HEX DUMP (biomeOS v5.12.9 byte-level forensics)
+        info!("════════════════════════════════════════════════════════════");
+        info!("🔬 COMPLETE TRANSCRIPT HEX DUMP (BYTE-LEVEL FORENSICS)");
+        info!("════════════════════════════════════════════════════════════");
+        info!("Total transcript length: {} bytes", self.transcript.len());
+        info!("");
+        info!("📊 This hex dump can be compared with:");
+        info!("   • Wireshark capture (with SSLKEYLOGFILE)");
+        info!("   • OpenSSL reference implementation");
+        info!("   • RFC 8448 test vectors");
+        info!("");
+        
+        // First 256 bytes (should cover ClientHello + start of ServerHello)
+        info!("📝 First 256 bytes:");
+        let first_chunk_len = std::cmp::min(256, self.transcript.len());
+        info!("{}", hex::encode(&self.transcript[..first_chunk_len]));
+        info!("");
+        
+        // Last 256 bytes (should cover end of Certificate + CertificateVerify + Finished)
+        info!("📝 Last 256 bytes:");
+        let last_chunk_start = self.transcript.len().saturating_sub(256);
+        info!("{}", hex::encode(&self.transcript[last_chunk_start..]));
+        info!("");
+        
+        // Full transcript if < 8KB (most handshakes are < 8KB)
+        if self.transcript.len() < 8192 {
+            info!("📝 Full transcript (broken into 64-byte lines for readability):");
+            info!("");
+            for (i, chunk) in self.transcript.chunks(64).enumerate() {
+                info!("{:04x}: {}", i * 64, hex::encode(chunk));
+            }
+        } else {
+            info!("📝 Full transcript too large to print ({} bytes > 8KB)", self.transcript.len());
+            info!("   Printing first 4KB and last 4KB instead:");
+            info!("");
+            info!("First 4KB:");
+            for (i, chunk) in self.transcript[..4096].chunks(64).enumerate() {
+                info!("{:04x}: {}", i * 64, hex::encode(chunk));
+            }
+            info!("");
+            info!("... ({} bytes in middle) ...", self.transcript.len() - 8192);
+            info!("");
+            info!("Last 4KB:");
+            let last_4kb_start = self.transcript.len() - 4096;
+            for (i, chunk) in self.transcript[last_4kb_start..].chunks(64).enumerate() {
+                info!("{:04x}: {}", last_4kb_start + i * 64, hex::encode(chunk));
+            }
+        }
+        info!("");
+        info!("════════════════════════════════════════════════════════════");
+        info!("");
+        
         // COMPREHENSIVE TRANSCRIPT VALIDATION (biomeOS v5.12.6 investigation)
         info!("════════════════════════════════════════════════════════════");
         info!("📊 TRANSCRIPT HASH FOR APPLICATION KEY DERIVATION");
