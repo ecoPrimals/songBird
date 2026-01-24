@@ -76,6 +76,59 @@ impl TlsHandshake {
         self.transcript.extend_from_slice(message);
     }
     
+    /// Update transcript with comprehensive logging for debugging
+    /// 
+    /// This enhanced version logs detailed information about each message
+    /// to help diagnose transcript hash issues (biomeOS v5.12.6 investigation)
+    fn update_transcript_with_logging(&mut self, message: &[u8], message_type: &str, was_decrypted: bool) {
+        let before = self.transcript.len();
+        
+        // Log comprehensive details
+        info!("════════════════════════════════════════════════════════════");
+        info!("📝 TRANSCRIPT UPDATE: {}", message_type);
+        info!("════════════════════════════════════════════════════════════");
+        info!("Message type: {}", message_type);
+        info!("Message length: {} bytes", message.len());
+        info!("Was decrypted: {}", was_decrypted);
+        
+        if !message.is_empty() {
+            let first_byte = message[0];
+            info!("First byte: 0x{:02x} ({})", first_byte, 
+                  match first_byte {
+                      0x01 => "ClientHello ✅",
+                      0x02 => "ServerHello ✅",
+                      0x08 => "EncryptedExtensions ✅",
+                      0x0B => "Certificate ✅",
+                      0x0F => "CertificateVerify ✅",
+                      0x14 => "Finished ✅",
+                      0x16 => "TLS Record Header ❌ (SHOULD BE STRIPPED!)",
+                      0x17 => "ContentType Byte ❌ (SHOULD BE STRIPPED!)",
+                      _ => "Unknown",
+                  });
+            
+            info!("First 16 bytes: {}", hex::encode(&message[..std::cmp::min(16, message.len())]));
+            
+            // Warn if TLS record header or ContentType byte detected
+            if first_byte == 0x16 {
+                error!("⚠️  CRITICAL: TLS record header (0x16) detected!");
+                error!("   This message should have the 5-byte TLS record header stripped!");
+                error!("   Expected first byte: handshake message type (0x01, 0x02, 0x08, 0x0B, 0x0F, 0x14)");
+            } else if first_byte == 0x17 {
+                error!("⚠️  CRITICAL: ContentType byte (0x17) detected!");
+                error!("   This should be stripped after AEAD decryption!");
+            }
+        }
+        
+        // Add to transcript
+        self.transcript.extend_from_slice(message);
+        let after = self.transcript.len();
+        
+        info!("Cumulative transcript length: {} bytes → {} bytes (+{} bytes)", 
+              before, after, message.len());
+        info!("════════════════════════════════════════════════════════════");
+        info!("");
+    }
+    
     /// Compute transcript hash (SHA-256)
     /// RFC 8446 Section 4.4.1: Transcript-Hash(M1, M2, ... Mn) = Hash(M1 || M2 || ... || Mn)
     fn compute_transcript_hash(&self) -> Vec<u8> {
@@ -159,13 +212,13 @@ impl TlsHandshake {
                 debug!("     ... ({} more bytes)", handshake_message.len() - 64);
             }
             
-            self.update_transcript(handshake_message);
+            self.update_transcript_with_logging(handshake_message, "ClientHello", false);
             info!("✅ ClientHello handshake message added to transcript ({} bytes)", handshake_message.len());
             debug!("📊 Transcript now: {} bytes (ClientHello only)", self.transcript.len());
             handshake_message.len()
         } else {
             error!("❌ ClientHello too short to contain handshake message!");
-            self.update_transcript(&client_hello);
+            self.update_transcript_with_logging(&client_hello, "ClientHello (full, with TLS header)", false);
             client_hello.len()
         };
         
@@ -253,7 +306,7 @@ impl TlsHandshake {
             debug!("     ... ({} more bytes)", server_hello.len() - 64);
         }
         
-        self.update_transcript(&server_hello);
+        self.update_transcript_with_logging(&server_hello, "ServerHello", false);
         info!("✅ ServerHello handshake message added to transcript ({} bytes)", server_hello.len());
         debug!("📊 Transcript now: {} bytes total (ClientHello + ServerHello)", self.transcript.len());
 
@@ -413,7 +466,20 @@ impl TlsHandshake {
                             sequence_number += 1;
                             
                             // RFC 8446 Section 4.4.1: Add PLAINTEXT to transcript (not encrypted!)
-                            self.update_transcript(&plaintext);
+                            // Determine message type for logging
+                            let message_type = if !plaintext.is_empty() {
+                                match plaintext[0] {
+                                    0x08 => "EncryptedExtensions",
+                                    0x0B => "Certificate",
+                                    0x0F => "CertificateVerify",
+                                    0x14 => "Server Finished",
+                                    _ => "Unknown Handshake Message",
+                                }
+                            } else {
+                                "Empty Message"
+                            };
+                            
+                            self.update_transcript_with_logging(&plaintext, message_type, true);
                             debug!("✅ Post-handshake PLAINTEXT {} added to transcript ({} bytes)", 
                                    messages_read, plaintext.len());
                             debug!("📊 Transcript now: {} bytes total (all plaintext)", self.transcript.len());
@@ -475,12 +541,54 @@ impl TlsHandshake {
         // 10. Compute final transcript hash for application key derivation (RFC 8446 Section 4.4.1)
         // Transcript includes: ClientHello, ServerHello, and all DECRYPTED handshake messages
         info!("Step 10: Computing final transcript hash for application key derivation");
+        
+        // COMPREHENSIVE TRANSCRIPT VALIDATION (biomeOS v5.12.6 investigation)
+        info!("════════════════════════════════════════════════════════════");
+        info!("📊 TRANSCRIPT HASH FOR APPLICATION KEY DERIVATION");
+        info!("════════════════════════════════════════════════════════════");
+        info!("Total transcript length: {} bytes", self.transcript.len());
+        info!("");
+        info!("Expected to include (in this order):");
+        info!("  1. ClientHello (raw handshake message, no TLS header)");
+        info!("     • First byte should be: 0x01 (ClientHello message type)");
+        info!("     • Should NOT start with: 0x16 (TLS record header)");
+        info!("  2. ServerHello (raw handshake message, no TLS header)");
+        info!("     • First byte should be: 0x02 (ServerHello message type)");
+        info!("     • Should NOT start with: 0x16 (TLS record header)");
+        info!("  3. EncryptedExtensions (DECRYPTED plaintext)");
+        info!("     • First byte should be: 0x08 (EncryptedExtensions message type)");
+        info!("     • Must be decrypted BEFORE adding to transcript!");
+        info!("     • Should NOT start with: 0x16 or 0x17 (record header or ContentType)");
+        info!("  4. Certificate (DECRYPTED plaintext)");
+        info!("     • First byte should be: 0x0B (Certificate message type)");
+        info!("     • Must be decrypted BEFORE adding to transcript!");
+        info!("  5. CertificateVerify (DECRYPTED plaintext)");
+        info!("     • First byte should be: 0x0F (CertificateVerify message type)");
+        info!("     • Must be decrypted BEFORE adding to transcript!");
+        info!("  6. Server Finished (DECRYPTED plaintext)");
+        info!("     • First byte should be: 0x14 (Finished message type)");
+        info!("     • Must be decrypted BEFORE adding to transcript!");
+        info!("");
+        info!("Should NOT include:");
+        info!("  ❌ Client Finished (happens AFTER app key derivation!)");
+        info!("  ❌ TLS record headers (5 bytes: type, version, length)");
+        info!("  ❌ ContentType bytes (0x16 for encrypted handshake, 0x17 for app data)");
+        info!("  ❌ Padding zeros");
+        info!("");
+        info!("⚠️  VALIDATION CHECKLIST:");
+        info!("  • All messages added as PLAINTEXT (encrypted messages decrypted first)");
+        info!("  • No TLS record headers (first byte is handshake type, not 0x16)");
+        info!("  • No ContentType bytes (0x16/0x17) at start of messages");
+        info!("  • Message count: 6 total (ClientHello, ServerHello, + 4 encrypted)");
+        info!("");
         debug!("📊 Final transcript: {} bytes total (ALL PLAINTEXT - RFC 8446 compliant!)", self.transcript.len());
         debug!("Transcript hex (first 64 bytes): {}", hex::encode(&self.transcript[..std::cmp::min(64, self.transcript.len())]));
         
         let transcript_hash = self.compute_transcript_hash();
         info!("✅ Transcript hash computed: {} bytes (SHA-256)", transcript_hash.len());
         info!("🔐 Transcript hash (hex): {}", hex::encode(&transcript_hash));
+        info!("════════════════════════════════════════════════════════════");
+        info!("");
         
         // Log transcript composition for debugging
         info!("════════════════════════════════════════════════════════════");
