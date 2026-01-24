@@ -129,6 +129,93 @@ impl TlsHandshake {
         info!("");
     }
     
+    /// Parse multiple handshake messages from a decrypted TLS record
+    /// 
+    /// RFC 8446 Section 4: Handshake messages have the format:
+    /// - HandshakeType msg_type (1 byte)
+    /// - uint24 length (3 bytes, big-endian)
+    /// - opaque body[length]
+    /// 
+    /// A single TLS record may contain MULTIPLE handshake messages concatenated together!
+    /// This function parses them individually so they can be added to the transcript separately.
+    fn parse_handshake_messages(&self, data: &[u8]) -> Result<Vec<(u8, Vec<u8>)>> {
+        let mut messages = Vec::new();
+        let mut offset = 0;
+        
+        info!("════════════════════════════════════════════════════════════");
+        info!("📦 PARSING HANDSHAKE MESSAGES FROM DECRYPTED RECORD");
+        info!("════════════════════════════════════════════════════════════");
+        info!("Total decrypted data: {} bytes", data.len());
+        info!("Parsing individual RFC 8446 handshake messages...");
+        info!("");
+        
+        while offset < data.len() {
+            // Read message type (1 byte)
+            if offset >= data.len() {
+                debug!("Reached end of data at offset {}", offset);
+                break;
+            }
+            let msg_type = data[offset];
+            
+            // Check if this looks like a valid handshake message type
+            if msg_type == 0x00 || msg_type > 0x18 {
+                debug!("Stopping parse: invalid message type 0x{:02x} at offset {}", msg_type, offset);
+                break;
+            }
+            
+            offset += 1;
+            
+            // Read length (3 bytes, big-endian)
+            if offset + 3 > data.len() {
+                warn!("⚠️  Truncated handshake message: not enough bytes for length at offset {}", offset);
+                break;
+            }
+            let length = u32::from_be_bytes([
+                0,
+                data[offset],
+                data[offset + 1],
+                data[offset + 2],
+            ]) as usize;
+            offset += 3;
+            
+            // Read body
+            if offset + length > data.len() {
+                warn!("⚠️  Truncated handshake message: expected {} bytes, got {} at offset {}", 
+                      length, data.len() - offset, offset);
+                break;
+            }
+            
+            // Extract complete message (type + length + body)
+            let message_start = offset - 4;  // Go back to include type (1) + length (3)
+            let full_message = &data[message_start..offset + length];
+            
+            let msg_name = match msg_type {
+                0x08 => "EncryptedExtensions",
+                0x0B => "Certificate",
+                0x0F => "CertificateVerify",
+                0x14 => "Finished",
+                _ => "Unknown",
+            };
+            
+            info!("✅ Parsed message #{}: {} (type 0x{:02x}, length {} bytes, total {} bytes)", 
+                  messages.len() + 1, msg_name, msg_type, length, full_message.len());
+            
+            messages.push((msg_type, full_message.to_vec()));
+            offset += length;
+        }
+        
+        info!("");
+        info!("📋 Total messages parsed: {}", messages.len());
+        info!("════════════════════════════════════════════════════════════");
+        info!("");
+        
+        if messages.is_empty() {
+            warn!("⚠️  No handshake messages parsed from {} bytes of data!", data.len());
+        }
+        
+        Ok(messages)
+    }
+    
     /// Compute transcript hash (SHA-256)
     /// RFC 8446 Section 4.4.1: Transcript-Hash(M1, M2, ... Mn) = Hash(M1 || M2 || ... || Mn)
     fn compute_transcript_hash(&self) -> Vec<u8> {
@@ -466,22 +553,28 @@ impl TlsHandshake {
                             sequence_number += 1;
                             
                             // RFC 8446 Section 4.4.1: Add PLAINTEXT to transcript (not encrypted!)
-                            // Determine message type for logging
-                            let message_type = if !plaintext.is_empty() {
-                                match plaintext[0] {
+                            // CRITICAL FIX: Parse INDIVIDUAL handshake messages from the decrypted blob!
+                            // A single TLS record may contain MULTIPLE handshake messages (EncryptedExtensions,
+                            // Certificate, CertificateVerify, Finished) concatenated together.
+                            // RFC 8446 requires each message to be added to the transcript SEPARATELY!
+                            
+                            info!("🔬 CRITICAL: Parsing individual handshake messages from decrypted record");
+                            let parsed_messages = self.parse_handshake_messages(&plaintext)?;
+                            
+                            info!("📝 Adding {} individual messages to transcript (NOT as one blob!)", parsed_messages.len());
+                            for (msg_type, msg_data) in parsed_messages {
+                                let message_type = match msg_type {
                                     0x08 => "EncryptedExtensions",
                                     0x0B => "Certificate",
                                     0x0F => "CertificateVerify",
                                     0x14 => "Server Finished",
                                     _ => "Unknown Handshake Message",
-                                }
-                            } else {
-                                "Empty Message"
-                            };
+                                };
+                                
+                                self.update_transcript_with_logging(&msg_data, message_type, true);
+                            }
                             
-                            self.update_transcript_with_logging(&plaintext, message_type, true);
-                            debug!("✅ Post-handshake PLAINTEXT {} added to transcript ({} bytes)", 
-                                   messages_read, plaintext.len());
+                            debug!("✅ Post-handshake messages {} parsed and added to transcript", messages_read);
                             debug!("📊 Transcript now: {} bytes total (all plaintext)", self.transcript.len());
                             
                             // RFC 8446 Section 4.4 & 5.1: Detect server Finished message (HandshakeType 0x14)
