@@ -918,6 +918,52 @@ impl TlsHandshake {
         info!("✅ Client Finished sent - handshake complete!");
         info!("   Server should now respond to HTTP requests! 🎉");
         
+        // 13. Read any post-handshake messages (RFC 8446 Section 4.6)
+        // RFC 8446: Server MAY send NewSessionTicket after handshake completes
+        // We MUST read these to avoid stream desync when sending HTTP requests
+        info!("Step 13: Reading any post-handshake messages (NewSessionTicket, etc.)");
+        info!("   ⏱️  Will wait up to 500ms for server to send post-handshake data...");
+        
+        // Use a short timeout to check for post-handshake messages
+        // without blocking indefinitely if server doesn't send any
+        match timeout(Duration::from_millis(500), self.read_record(stream)).await {
+            Ok(Ok((content_type, data))) => {
+                info!("✅ Received post-handshake message: type=0x{:02x}, {} bytes", 
+                     content_type, data.len());
+                match content_type {
+                    0x17 => {  // APPLICATION_DATA (encrypted post-handshake message)
+                        info!("   📨 Post-handshake APPLICATION_DATA message (likely NewSessionTicket)");
+                        // Decrypt using APPLICATION traffic keys (server_write_key)
+                        // Note: NewSessionTicket doesn't affect our HTTP requests, so we can safely ignore it
+                        // TODO: If we want session resumption, parse and store the ticket
+                        info!("   ℹ️  Ignoring post-handshake message (not needed for HTTP requests)");
+                    }
+                    0x15 => {  // ALERT
+                        warn!("⚠️  Received TLS alert after handshake!");
+                        use crate::tls::alert::TlsAlert;
+                        if let Ok(alert) = TlsAlert::parse(&data) {
+                            error!("🚨 Post-handshake alert: {}", alert.to_detailed_string());
+                            return Err(Error::TlsHandshake(format!(
+                                "Server sent alert after handshake: {}",
+                                alert.to_detailed_string()
+                            )));
+                        }
+                    }
+                    _ => {
+                        info!("   ℹ️  Ignoring unexpected post-handshake message type: 0x{:02x}", content_type);
+                    }
+                }
+            }
+            Ok(Err(e)) => {
+                warn!("⚠️  Error reading post-handshake message: {}", e);
+                warn!("   Continuing anyway (might be OK if server doesn't send any)");
+            }
+            Err(_) => {
+                info!("   ⏱️  Timeout - no post-handshake messages received (this is OK)");
+                info!("   Server is ready for HTTP requests!");
+            }
+        }
+        
         let total_time = handshake_start.elapsed();
         info!("🎉 ✅ TLS 1.3 handshake complete in {:?}", total_time);
         debug!("Handshake summary: {} post-handshake messages, cipher: TLS_CHACHA20_POLY1305_SHA256", 
