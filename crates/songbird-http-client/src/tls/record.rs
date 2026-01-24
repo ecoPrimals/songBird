@@ -1,6 +1,6 @@
 //! TLS 1.3 record layer
 
-use crate::beardog_client::BearDogClient;
+use crate::crypto::CryptoCapability;
 use crate::error::{Error, Result};
 use crate::tls::content_type;
 use crate::tls::session::SessionKeys;
@@ -11,7 +11,7 @@ use tracing::{trace, debug, warn, error, info};
 
 /// TLS record layer
 pub struct TlsRecordLayer {
-    beardog: Arc<BearDogClient>,
+    crypto: Arc<dyn CryptoCapability>,
     keys: SessionKeys,
     write_sequence_number: u64,
     read_sequence_number: u64,
@@ -20,12 +20,14 @@ pub struct TlsRecordLayer {
 
 impl TlsRecordLayer {
     /// Create a new TLS record layer
-    pub fn new(beardog: Arc<BearDogClient>, keys: SessionKeys) -> Self {
+    pub fn new(crypto: Arc<dyn CryptoCapability>, keys: SessionKeys) -> Self {
+        let initial_read_seq = keys.initial_read_sequence;
+        info!("📊 TlsRecordLayer initialized with read_sequence_number = {} (from handshake)", initial_read_seq);
         Self {
-            beardog,
+            crypto,
             keys,
             write_sequence_number: 0,
-            read_sequence_number: 0,
+            read_sequence_number: initial_read_seq,  // Start where handshake left off
             last_written_size: None,
         }
     }
@@ -120,7 +122,7 @@ impl TlsRecordLayer {
         let encrypted = match self.keys.cipher_suite {
             0x1301 => {  // TLS_AES_128_GCM_SHA256
                 debug!("   → Using AES-128-GCM for application data");
-                self.beardog.encrypt_aes_128_gcm(
+                self.crypto.aes128_gcm_encrypt(
                     &self.keys.client_write_key,
                     &nonce,
                     &plaintext_with_type,
@@ -129,7 +131,7 @@ impl TlsRecordLayer {
             }
             0x1302 => {  // TLS_AES_256_GCM_SHA384
                 debug!("   → Using AES-256-GCM for application data");
-                self.beardog.encrypt_aes_256_gcm(
+                self.crypto.aes256_gcm_encrypt(
                     &self.keys.client_write_key,
                     &nonce,
                     &plaintext_with_type,
@@ -138,7 +140,7 @@ impl TlsRecordLayer {
             }
             0x1303 => {  // TLS_CHACHA20_POLY1305_SHA256
                 debug!("   → Using ChaCha20-Poly1305 for application data");
-                self.beardog.encrypt(
+                self.crypto.encrypt(
                     &self.keys.client_write_key,
                     &nonce,
                     &plaintext_with_type,
@@ -325,7 +327,7 @@ impl TlsRecordLayer {
         let decrypted = match self.keys.cipher_suite {
             0x1301 => {  // TLS_AES_128_GCM_SHA256
                 debug!("   → Using AES-128-GCM for application data");
-                self.beardog.decrypt_aes_128_gcm(
+                self.crypto.aes128_gcm_decrypt(
                     &self.keys.server_write_key,
                     &nonce,
                     &encrypted,
@@ -334,7 +336,7 @@ impl TlsRecordLayer {
             }
             0x1302 => {  // TLS_AES_256_GCM_SHA384
                 debug!("   → Using AES-256-GCM for application data");
-                self.beardog.decrypt_aes_256_gcm(
+                self.crypto.aes256_gcm_decrypt(
                     &self.keys.server_write_key,
                     &nonce,
                     &encrypted,
@@ -343,7 +345,7 @@ impl TlsRecordLayer {
             }
             0x1303 => {  // TLS_CHACHA20_POLY1305_SHA256
                 debug!("   → Using ChaCha20-Poly1305 for application data");
-                self.beardog.decrypt(
+                self.crypto.decrypt(
                     &self.keys.server_write_key,
                     &nonce,
                     &encrypted,
@@ -450,6 +452,28 @@ impl TlsRecordLayer {
                   0x17 => "APPLICATION_DATA",
                   _ => "UNKNOWN",
               });
+        
+        // Check for handshake messages (like NewSessionTicket) - we need to skip them
+        // and read the NEXT record to get actual HTTP data
+        if content_type_byte == 0x16 {
+            info!("📝 Received HANDSHAKE message in APPLICATION_DATA (likely NewSessionTicket) - reading next record...");
+            if !plaintext.is_empty() {
+                let hs_type = plaintext[0];
+                info!("   Handshake type: 0x{:02x} ({})", hs_type,
+                      match hs_type {
+                          0x04 => "NewSessionTicket",
+                          0x08 => "EncryptedExtensions",
+                          0x0b => "Certificate",
+                          0x0f => "CertificateVerify",
+                          0x14 => "Finished",
+                          _ => "Unknown",
+                      });
+            }
+            // Increment sequence number and RECURSE to read the next record
+            self.read_sequence_number += 1;
+            // Use Box::pin for async recursion
+            return Box::pin(self.read_application_data(stream)).await;
+        }
         
         // Check if server sent an alert
         if content_type_byte == 0x15 {
@@ -581,19 +605,21 @@ impl TlsRecordLayer {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::crypto::BearDogProvider;
 
     #[test]
     fn test_build_write_nonce() {
-        let beardog = Arc::new(BearDogClient::new("/tmp/beardog.sock"));
+        let crypto: Arc<dyn CryptoCapability> = Arc::new(BearDogProvider::new("/tmp/beardog.sock"));
         let keys = SessionKeys {
             client_write_key: vec![0; 32],
             server_write_key: vec![0; 32],
             client_write_iv: vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12],
             server_write_iv: vec![0; 12],
             cipher_suite: 0x1303,  // ChaCha20-Poly1305 for test
+            initial_read_sequence: 0,
         };
         
-        let mut layer = TlsRecordLayer::new(beardog, keys);
+        let mut layer = TlsRecordLayer::new(crypto, keys);
         let nonce = layer.build_write_nonce();
         assert_eq!(nonce.len(), 12);
         
@@ -605,16 +631,17 @@ mod tests {
 
     #[test]
     fn test_build_read_nonce() {
-        let beardog = Arc::new(BearDogClient::new("/tmp/beardog.sock"));
+        let crypto: Arc<dyn CryptoCapability> = Arc::new(BearDogProvider::new("/tmp/beardog.sock"));
         let keys = SessionKeys {
             client_write_key: vec![0; 32],
             server_write_key: vec![0; 32],
             client_write_iv: vec![0; 12],
             server_write_iv: vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12],
             cipher_suite: 0x1303,  // ChaCha20-Poly1305 for test
+            initial_read_sequence: 0,
         };
         
-        let mut layer = TlsRecordLayer::new(beardog, keys);
+        let mut layer = TlsRecordLayer::new(crypto, keys);
         let nonce = layer.build_read_nonce();
         assert_eq!(nonce.len(), 12);
         
@@ -626,16 +653,17 @@ mod tests {
 
     #[test]
     fn test_separate_sequence_numbers() {
-        let beardog = Arc::new(BearDogClient::new("/tmp/beardog.sock"));
+        let crypto: Arc<dyn CryptoCapability> = Arc::new(BearDogProvider::new("/tmp/beardog.sock"));
         let keys = SessionKeys {
             client_write_key: vec![0; 32],
             server_write_key: vec![0; 32],
             client_write_iv: vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12],
             server_write_iv: vec![2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13],
             cipher_suite: 0x1303,  // ChaCha20-Poly1305 for test
+            initial_read_sequence: 0,
         };
         
-        let mut layer = TlsRecordLayer::new(beardog, keys);
+        let mut layer = TlsRecordLayer::new(crypto, keys);
         
         // Write and read should use different nonces due to different IVs
         let write_nonce = layer.build_write_nonce();

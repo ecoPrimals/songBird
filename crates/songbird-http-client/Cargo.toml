@@ -31,6 +31,7 @@ thiserror = "1.0"
 base64 = "0.21"
 bytes = "1.0"
 anyhow = "1.0"
+async-trait = { workspace = true }
 
 # Cryptography (Pure Rust)
 sha2 = "0.10"

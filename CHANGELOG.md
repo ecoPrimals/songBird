@@ -7,6 +7,71 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [5.23.0] - 2026-01-24 - Production Clean 🧹
+
+### Changed
+- **Logging Cleanup**: Converted verbose diagnostic `info!` logs to `trace!`
+  - Hex dumps and byte-level output now at `trace!` level
+  - Production output is clean and focused
+  - `RUST_LOG=trace` enables full diagnostics when needed
+- `info!` statements reduced from 300+ to 117
+
+### Fixed
+- Production log noise reduced significantly
+
+---
+
+## [5.22.0] - 2026-01-24 - Full TLS Migration to CryptoCapability 🔀
+
+### Changed
+- **`handshake_legacy.rs`**: Now uses `Arc<dyn CryptoCapability>`
+- **`record.rs`**: Now uses `Arc<dyn CryptoCapability>`
+- **`client.rs`**: Now uses `Arc<dyn CryptoCapability>`
+- All method calls updated to trait method names:
+  - `generate_keypair()` → `generate_x25519_keypair()`
+  - `ecdh_derive()` → `derive_x25519_shared_secret()`
+  - `encrypt_aes_128_gcm()` → `aes128_gcm_encrypt()`
+  - `decrypt_aes_128_gcm()` → `aes128_gcm_decrypt()`
+
+### Added
+- `SongbirdHttpClient::with_crypto()` constructor for explicit provider injection
+- `TlsSecrets` type alias for backward compatibility
+
+---
+
+## [5.21.0] - 2026-01-24 - CryptoCapability Abstraction 🔌
+
+### Added
+- **`crypto/` module** - New agnostic crypto abstraction
+  - `capability.rs` - `CryptoCapability` trait (220+ lines)
+  - `beardog_provider.rs` - BearDog implementation (400+ lines)
+  - `discovery.rs` - Runtime discovery via env vars
+- **`TlsHandshakeSecrets`** and **`TlsApplicationSecrets`** structs
+- **`discover_crypto_capability()`** - Auto-discover crypto providers
+- Re-exports in `lib.rs` for public API
+
+### Design
+- Agnostic: No hardcoded provider names
+- Discoverable: Environment variables and well-known paths
+- Async: All operations async for IPC flexibility
+- Provider-swappable: BearDog today, Neural API tomorrow
+
+---
+
+## [5.20.0] - 2026-01-24 - HTTPS Fully Working! 🎉
+
+### Fixed
+- **Post-Handshake Sequence Tracking**: Fixed nonce calculation after NewSessionTickets
+- **NewSessionTicket Handling**: Properly skip handshake messages in APPLICATION_DATA records
+- **HKDF Label Fix**: Added "tls13 " prefix for correct Finished verify_data computation
+
+### Verified
+- ✅ cloudflare.com - TLS 1.3, HTTP 301
+- ✅ google.com - TLS 1.3, HTTP 301
+- ✅ github.com - TLS 1.3, HTTP 200, 137KB response
+
+---
+
 ## [3.11.0] - 2026-01-06 - Protocol-Agnostic Evolution 🔌🚀
 
 ### Added - Unix Sockets PRIMARY, HTTP FALLBACK

@@ -24,6 +24,8 @@ pub struct SessionKeys {
     pub server_write_iv: Vec<u8>,
     /// TLS 1.3 cipher suite (0x1301=AES-128-GCM, 0x1302=AES-256-GCM, 0x1303=ChaCha20-Poly1305)
     pub cipher_suite: u16,
+    /// Initial read sequence number (accounts for post-handshake messages consumed during handshake)
+    pub initial_read_sequence: u64,
 }
 
 impl TlsSession {
@@ -82,6 +84,7 @@ mod tests {
             client_write_iv: vec![7, 8, 9],
             server_write_iv: vec![10, 11, 12],
             cipher_suite: 0x1303,  // ChaCha20-Poly1305 for test
+            initial_read_sequence: 0,
         };
 
         session.set_keys(keys.clone()).await;

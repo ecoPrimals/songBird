@@ -1,6 +1,6 @@
 //! TLS 1.3 handshake implementation
 
-use crate::beardog_client::{BearDogClient, TlsSecrets};
+use crate::crypto::CryptoCapability;
 use crate::error::{Error, Result};
 use crate::tls::{
     config::TlsConfig,
@@ -17,9 +17,12 @@ use tokio::net::TcpStream;
 use tokio::time::{timeout, Duration};
 use tracing::{debug, error, info, trace, warn};
 
+/// TLS handshake secrets - alias for CryptoCapability TlsHandshakeSecrets
+pub use crate::crypto::TlsHandshakeSecrets as TlsSecrets;
+
 /// TLS 1.3 handshake
 pub struct TlsHandshake {
-    beardog: Arc<BearDogClient>,
+    crypto: Arc<dyn CryptoCapability>,
     /// Transcript accumulator for RFC 8446 key derivation
     /// Accumulates all handshake messages for transcript hash computation
     transcript: Vec<u8>,
@@ -36,13 +39,13 @@ pub struct TlsHandshake {
 
 impl TlsHandshake {
     /// Create a new TLS handshake with default config
-    pub fn new(beardog: Arc<BearDogClient>) -> Self {
-        Self::with_config(beardog, TlsConfig::default(), None)
+    pub fn new(crypto: Arc<dyn CryptoCapability>) -> Self {
+        Self::with_config(crypto, TlsConfig::default(), None)
     }
     
     /// Create a new TLS handshake with custom config and optional profiler
     pub fn with_config(
-        beardog: Arc<BearDogClient>,
+        crypto: Arc<dyn CryptoCapability>,
         config: TlsConfig,
         profiler: Option<Arc<ServerProfiler>>,
     ) -> Self {
@@ -52,7 +55,7 @@ impl TlsHandshake {
         }
         
         Self { 
-            beardog,
+            crypto,
             transcript: Vec::new(),
             cipher_suite: 0,  // Will be set after parsing ServerHello
             config,
@@ -85,9 +88,9 @@ impl TlsHandshake {
         let before = self.transcript.len();
         
         // Log comprehensive details
-        info!("════════════════════════════════════════════════════════════");
+        trace!("════════════════════════════════════════════════════════════");
         info!("📝 TRANSCRIPT UPDATE: {}", message_type);
-        info!("════════════════════════════════════════════════════════════");
+        trace!("════════════════════════════════════════════════════════════");
         info!("Message type: {}", message_type);
         info!("Message length: {} bytes", message.len());
         info!("Was decrypted: {}", was_decrypted);
@@ -108,9 +111,9 @@ impl TlsHandshake {
                   });
             
             // 🔍 ENHANCED HEX DUMP: Show first/last bytes to identify extra bytes
-            info!("First 32 bytes (hex): {}", hex::encode(&message[..std::cmp::min(32, message.len())]));
+            trace!("First 32 bytes (hex): {}", hex::encode(&message[..std::cmp::min(32, message.len())]));
             if message.len() > 64 {
-                info!("Last 32 bytes (hex): {}", hex::encode(&message[message.len().saturating_sub(32)..]));
+                trace!("Last 32 bytes (hex): {}", hex::encode(&message[message.len().saturating_sub(32)..]));
             }
             
             // 🔍 CHECK: Length field in message (bytes 1-3 for handshake messages)
@@ -118,8 +121,8 @@ impl TlsHandshake {
                 let declared_length = u32::from_be_bytes([0, message[1], message[2], message[3]]) as usize;
                 let actual_length = message.len() - 4;  // Minus type (1) + length (3)
                 info!("📏 Length validation:");
-                info!("   Declared length (bytes 1-3): {} bytes", declared_length);
-                info!("   Actual body length: {} bytes", actual_length);
+                trace!("   Declared length (bytes 1-3): {} bytes", declared_length);
+                trace!("   Actual body length: {} bytes", actual_length);
                 if declared_length != actual_length {
                     error!("🚨 LENGTH MISMATCH!");
                     error!("   Declared: {} bytes", declared_length);
@@ -127,7 +130,7 @@ impl TlsHandshake {
                     error!("   Difference: {} bytes", (actual_length as i64 - declared_length as i64).abs());
                     error!("   💡 This might be the source of the 2-byte discrepancy!");
                 } else {
-                    info!("   ✅ Length match - message is correct size");
+                    trace!("   ✅ Length match - message is correct size");
                 }
             }
             
@@ -148,7 +151,7 @@ impl TlsHandshake {
         
         info!("Cumulative transcript length: {} bytes → {} bytes (+{} bytes)", 
               before, after, message.len());
-        info!("════════════════════════════════════════════════════════════");
+        trace!("════════════════════════════════════════════════════════════");
         info!("");
     }
     
@@ -165,21 +168,21 @@ impl TlsHandshake {
         let mut messages = Vec::new();
         let mut offset = 0;
         
-        info!("════════════════════════════════════════════════════════════");
+        trace!("════════════════════════════════════════════════════════════");
         info!("📦 PARSING HANDSHAKE MESSAGES FROM DECRYPTED RECORD");
-        info!("════════════════════════════════════════════════════════════");
+        trace!("════════════════════════════════════════════════════════════");
         info!("Total decrypted data: {} bytes", data.len());
         info!("Parsing individual RFC 8446 handshake messages...");
         info!("");
         
         // 🔍 HEX DUMP: Show first 64 bytes and last 64 bytes to identify extra bytes
         info!("🔍 HEX DUMP OF DECRYPTED DATA:");
-        info!("   First 64 bytes: {}", hex::encode(&data[..std::cmp::min(64, data.len())]));
+        trace!("   First 64 bytes: {}", hex::encode(&data[..std::cmp::min(64, data.len())]));
         if data.len() > 128 {
-            info!("   ... ({} bytes in middle) ...", data.len() - 128);
+            trace!("   ... ({} bytes in middle) ...", data.len() - 128);
         }
         if data.len() > 64 {
-            info!("   Last 64 bytes: {}", hex::encode(&data[data.len().saturating_sub(64)..]));
+            trace!("   Last 64 bytes: {}", hex::encode(&data[data.len().saturating_sub(64)..]));
         }
         info!("");
         
@@ -237,8 +240,8 @@ impl TlsHandshake {
             
             info!("✅ Parsed message #{}: {} (type 0x{:02x}, length {} bytes, total {} bytes)", 
                   messages.len() + 1, msg_name, msg_type, length, full_message.len());
-            info!("   Message offset: {} to {} (in decrypted blob)", message_start, offset + length);
-            info!("   First 32 bytes of message: {}", hex::encode(&full_message[..std::cmp::min(32, full_message.len())]));
+            trace!("   Message offset: {} to {} (in decrypted blob)", message_start, offset + length);
+            trace!("   First 32 bytes of message: {}", hex::encode(&full_message[..std::cmp::min(32, full_message.len())]));
             
             messages.push((msg_type, full_message.to_vec()));
             offset += length;
@@ -246,8 +249,8 @@ impl TlsHandshake {
         
         info!("");
         info!("📋 Parsing complete:");
-        info!("   Total messages parsed: {}", messages.len());
-        info!("   Bytes consumed: {} out of {} bytes", offset, data.len());
+        trace!("   Total messages parsed: {}", messages.len());
+        trace!("   Bytes consumed: {} out of {} bytes", offset, data.len());
         
         // 🔍 CRITICAL CHECK: Are there extra bytes after the last message?
         if offset < data.len() {
@@ -263,7 +266,7 @@ impl TlsHandshake {
             info!("✅ All bytes consumed - no extra bytes detected");
         }
         
-        info!("════════════════════════════════════════════════════════════");
+        trace!("════════════════════════════════════════════════════════════");
         info!("");
         
         if messages.is_empty() {
@@ -295,7 +298,7 @@ impl TlsHandshake {
         let _handshake_start = std::time::Instant::now();
 
         // 1. Generate client keypair
-        let (client_public, client_private) = self.beardog.generate_keypair().await?;
+        let (client_public, client_private) = self.crypto.generate_x25519_keypair().await?;
         trace!("Generated client keypair: {} bytes public", client_public.len());
 
         // 2. Generate client random
@@ -313,15 +316,15 @@ impl TlsHandshake {
         info!("📤 Sending ClientHello: {} bytes to {}", client_hello.len(), server_name);
         
         // 🔬 WIRE CAPTURE: Log complete ClientHello for analysis
-        info!("════════════════════════════════════════════════════════════");
-        info!("🔬 COMPLETE CLIENTHELLO HEX DUMP (FOR WIRE ANALYSIS)");
-        info!("════════════════════════════════════════════════════════════");
-        info!("Total length: {} bytes", client_hello.len());
+        trace!("════════════════════════════════════════════════════════════");
+        trace!("🔬 COMPLETE CLIENTHELLO HEX DUMP (FOR WIRE ANALYSIS)");
+        trace!("════════════════════════════════════════════════════════════");
+        trace!("Total length: {} bytes", client_hello.len());
         info!("");
         for (i, chunk) in client_hello.chunks(32).enumerate() {
             info!("{:04x}: {}", i * 32, hex::encode(chunk));
         }
-        info!("════════════════════════════════════════════════════════════");
+        trace!("════════════════════════════════════════════════════════════");
         info!("");
         
         // RFC 8446 Section 4.4.1: Update transcript with ClientHello HANDSHAKE MESSAGE ONLY
@@ -336,22 +339,22 @@ impl TlsHandshake {
         info!("📝 TRANSCRIPT UPDATE 1: Adding ClientHello (WITHOUT TLS record header)");
         let client_hello_len = if client_hello.len() > 5 {
             let handshake_message = &client_hello[5..]; // Skip 5-byte TLS record header
-            info!("   ClientHello total: {} bytes (with TLS header)", client_hello.len());
-            info!("   ClientHello handshake message: {} bytes (TLS header stripped)", handshake_message.len());
+            trace!("   ClientHello total: {} bytes (with TLS header)", client_hello.len());
+            trace!("   ClientHello handshake message: {} bytes (TLS header stripped)", handshake_message.len());
             debug!("   TLS record header (5 bytes, NOT in transcript): {:02x?}", &client_hello[..5]);
             
             // BearDog-requested verification: First 32 bytes should start with 0x01 (ClientHello type)
-            info!("🔍 VERIFICATION: ClientHello handshake message first bytes:");
+            trace!("🔍 VERIFICATION: ClientHello handshake message first bytes:");
             let preview_len = std::cmp::min(32, handshake_message.len());
             let first_bytes: String = handshake_message[..preview_len].iter()
                 .map(|b| format!("{:02x}", b))
                 .collect::<Vec<_>>()
                 .join(" ");
-            info!("   First {} bytes: {}", preview_len, first_bytes);
+            trace!("   First {} bytes: {}", preview_len, first_bytes);
             if !handshake_message.is_empty() {
                 let first_byte = handshake_message[0];
                 if first_byte == 0x01 {
-                    info!("   ✅ CORRECT: First byte is 0x01 (ClientHello handshake type)");
+                    trace!("   ✅ CORRECT: First byte is 0x01 (ClientHello handshake type)");
                 } else if first_byte == 0x16 {
                     error!("   ❌ WRONG: First byte is 0x16 (TLS record header - should be stripped!)");
                 } else {
@@ -489,20 +492,20 @@ impl TlsHandshake {
         // Note: read_record() already stripped the 5-byte TLS record header,
         // so server_hello contains only the handshake message (Type + Length + Content)
         info!("📝 TRANSCRIPT UPDATE 2: Adding ServerHello (WITHOUT TLS record header)");
-        info!("   ServerHello handshake message: {} bytes (TLS header already stripped)", server_hello.len());
+        trace!("   ServerHello handshake message: {} bytes (TLS header already stripped)", server_hello.len());
         
         // BearDog-requested verification: First 32 bytes should start with 0x02 (ServerHello type)
-        info!("🔍 VERIFICATION: ServerHello handshake message first bytes:");
+        trace!("🔍 VERIFICATION: ServerHello handshake message first bytes:");
         let preview_len = std::cmp::min(32, server_hello.len());
         let first_bytes: String = server_hello[..preview_len].iter()
             .map(|b| format!("{:02x}", b))
             .collect::<Vec<_>>()
             .join(" ");
-        info!("   First {} bytes: {}", preview_len, first_bytes);
+        trace!("   First {} bytes: {}", preview_len, first_bytes);
         if !server_hello.is_empty() {
             let first_byte = server_hello[0];
             if first_byte == 0x02 {
-                info!("   ✅ CORRECT: First byte is 0x02 (ServerHello handshake type)");
+                trace!("   ✅ CORRECT: First byte is 0x02 (ServerHello handshake type)");
             } else if first_byte == 0x16 {
                 error!("   ❌ WRONG: First byte is 0x16 (TLS record header - should be stripped!)");
             } else {
@@ -537,8 +540,8 @@ impl TlsHandshake {
         // 6. Perform ECDH
         debug!("Step 6: Computing shared secret via BearDog ECDH");
         let ecdh_start = std::time::Instant::now();
-        let shared_secret = self.beardog
-            .ecdh_derive(&client_private, &server_public)
+        let shared_secret = self.crypto
+            .derive_x25519_shared_secret(&client_private, &server_public)
             .await
             .map_err(|e| {
                 error!("❌ BearDog ECDH derivation failed: {}", e);
@@ -554,9 +557,9 @@ impl TlsHandshake {
         debug!("   Components: ClientHello + ServerHello (both plaintext)");
         debug!("   Total bytes: {}", self.transcript.len());
         info!("📊 TRANSCRIPT SNAPSHOT (before computing handshake hash):");
-        info!("   Total transcript: {} bytes (ClientHello + ServerHello)", self.transcript.len());
-        info!("   ClientHello was: {} bytes (first message in transcript)", client_hello_len);
-        info!("   ServerHello was: {} bytes (second message in transcript)", server_hello.len());
+        trace!("   Total transcript: {} bytes (ClientHello + ServerHello)", self.transcript.len());
+        trace!("   ClientHello was: {} bytes (first message in transcript)", client_hello_len);
+        trace!("   ServerHello was: {} bytes (second message in transcript)", server_hello.len());
         debug!("   Full transcript (hex, all {} bytes):", self.transcript.len());
         for (i, chunk) in self.transcript.chunks(32).enumerate() {
             let hex: String = chunk.iter().map(|b| format!("{:02x}", b)).collect::<Vec<_>>().join(" ");
@@ -576,9 +579,9 @@ impl TlsHandshake {
         let handshake_transcript_hash = self.compute_transcript_hash();
         
         info!("✅ Handshake transcript hash computed!");
-        info!("   Hash length: {} bytes (SHA-256)", handshake_transcript_hash.len());
-        info!("   🎯 Transcript hash (hex): {}", hex::encode(&handshake_transcript_hash));
-        info!("   This hash will be passed to BearDog's tls.derive_handshake_secrets");
+        trace!("   Hash length: {} bytes (SHA-256)", handshake_transcript_hash.len());
+        trace!("   🎯 Transcript hash (hex): {}", hex::encode(&handshake_transcript_hash));
+        trace!("   This hash will be passed to BearDog's tls.derive_handshake_secrets");
         debug!("🔍 BearDog will use this hash to derive handshake traffic keys (RFC 8446 Section 7.1)");
         debug!("   Server computes SAME hash from SAME transcript bytes");
         debug!("   If our hash differs by 1 byte → keys will be completely wrong → AEAD fails");
@@ -593,8 +596,8 @@ impl TlsHandshake {
         debug!("   → Server random");
         debug!("   → Transcript hash (ClientHello + ServerHello)");
         let handshake_start = std::time::Instant::now();
-        let handshake_keys = self.beardog
-            .tls_derive_handshake_secrets(&shared_secret, &client_random, &server_random, &handshake_transcript_hash, self.cipher_suite)
+        let handshake_keys = self.crypto
+            .tls_derive_handshake_secrets(&shared_secret, &handshake_transcript_hash)
             .await
             .map_err(|e| {
                 error!("❌ Failed to derive handshake traffic keys: {}", e);
@@ -707,7 +710,7 @@ impl TlsHandshake {
                             // CRITICAL: Server may send multiple handshake messages in ONE TLS record!
                             // We must parse the message framing to find Finished at any offset
                             if self.contains_finished_message(&plaintext) {
-                                info!("   Server handshake complete - deriving application keys and sending client Finished!");
+                                trace!("   Server handshake complete - deriving application keys and sending client Finished!");
                                 
                                 // Exit loop to derive application keys before sending client Finished
                         break;
@@ -762,83 +765,83 @@ impl TlsHandshake {
         info!("Step 10: Computing final transcript hash for application key derivation");
         
         // 🔬 COMPLETE TRANSCRIPT HEX DUMP (biomeOS v5.12.9 - byte-level forensics)
-        info!("════════════════════════════════════════════════════════════");
+        trace!("════════════════════════════════════════════════════════════");
         info!("🔬 COMPLETE TRANSCRIPT HEX DUMP (BYTE-LEVEL FORENSICS)");
-        info!("════════════════════════════════════════════════════════════");
+        trace!("════════════════════════════════════════════════════════════");
         info!("Total transcript length: {} bytes", self.transcript.len());
         info!("");
-        info!("📝 Full transcript (hex):");
+        trace!("📝 Full transcript (hex):");
         for (i, chunk) in self.transcript.chunks(64).enumerate() {
             info!("{:04x}: {}", i * 64, hex::encode(chunk));
         }
-        info!("════════════════════════════════════════════════════════════");
+        trace!("════════════════════════════════════════════════════════════");
         info!("");
         
         // COMPREHENSIVE TRANSCRIPT VALIDATION (biomeOS v5.12.6 investigation)
-        info!("════════════════════════════════════════════════════════════");
+        trace!("════════════════════════════════════════════════════════════");
         info!("📊 TRANSCRIPT HASH FOR APPLICATION KEY DERIVATION");
-        info!("════════════════════════════════════════════════════════════");
+        trace!("════════════════════════════════════════════════════════════");
         info!("Total transcript length: {} bytes", self.transcript.len());
         info!("");
         info!("Expected to include (in this order):");
-        info!("  1. ClientHello (raw handshake message, no TLS header)");
-        info!("     • First byte should be: 0x01 (ClientHello message type)");
-        info!("     • Should NOT start with: 0x16 (TLS record header)");
-        info!("  2. ServerHello (raw handshake message, no TLS header)");
-        info!("     • First byte should be: 0x02 (ServerHello message type)");
-        info!("     • Should NOT start with: 0x16 (TLS record header)");
-        info!("  3. EncryptedExtensions (DECRYPTED plaintext)");
-        info!("     • First byte should be: 0x08 (EncryptedExtensions message type)");
-        info!("     • Must be decrypted BEFORE adding to transcript!");
-        info!("     • Should NOT start with: 0x16 or 0x17 (record header or ContentType)");
-        info!("  4. Certificate (DECRYPTED plaintext)");
-        info!("     • First byte should be: 0x0B (Certificate message type)");
-        info!("     • Must be decrypted BEFORE adding to transcript!");
-        info!("  5. CertificateVerify (DECRYPTED plaintext)");
-        info!("     • First byte should be: 0x0F (CertificateVerify message type)");
-        info!("     • Must be decrypted BEFORE adding to transcript!");
-        info!("  6. Server Finished (DECRYPTED plaintext)");
-        info!("     • First byte should be: 0x14 (Finished message type)");
-        info!("     • Must be decrypted BEFORE adding to transcript!");
+        trace!("  1. ClientHello (raw handshake message, no TLS header)");
+        trace!("     • First byte should be: 0x01 (ClientHello message type)");
+        trace!("     • Should NOT start with: 0x16 (TLS record header)");
+        trace!("  2. ServerHello (raw handshake message, no TLS header)");
+        trace!("     • First byte should be: 0x02 (ServerHello message type)");
+        trace!("     • Should NOT start with: 0x16 (TLS record header)");
+        trace!("  3. EncryptedExtensions (DECRYPTED plaintext)");
+        trace!("     • First byte should be: 0x08 (EncryptedExtensions message type)");
+        trace!("     • Must be decrypted BEFORE adding to transcript!");
+        trace!("     • Should NOT start with: 0x16 or 0x17 (record header or ContentType)");
+        trace!("  4. Certificate (DECRYPTED plaintext)");
+        trace!("     • First byte should be: 0x0B (Certificate message type)");
+        trace!("     • Must be decrypted BEFORE adding to transcript!");
+        trace!("  5. CertificateVerify (DECRYPTED plaintext)");
+        trace!("     • First byte should be: 0x0F (CertificateVerify message type)");
+        trace!("     • Must be decrypted BEFORE adding to transcript!");
+        trace!("  6. Server Finished (DECRYPTED plaintext)");
+        trace!("     • First byte should be: 0x14 (Finished message type)");
+        trace!("     • Must be decrypted BEFORE adding to transcript!");
         info!("");
         info!("Should NOT include:");
-        info!("  ❌ Client Finished (happens AFTER app key derivation!)");
-        info!("  ❌ TLS record headers (5 bytes: type, version, length)");
-        info!("  ❌ ContentType bytes (0x16 for encrypted handshake, 0x17 for app data)");
-        info!("  ❌ Padding zeros");
+        trace!("  ❌ Client Finished (happens AFTER app key derivation!)");
+        trace!("  ❌ TLS record headers (5 bytes: type, version, length)");
+        trace!("  ❌ ContentType bytes (0x16 for encrypted handshake, 0x17 for app data)");
+        trace!("  ❌ Padding zeros");
         info!("");
         info!("⚠️  VALIDATION CHECKLIST:");
-        info!("  • All messages added as PLAINTEXT (encrypted messages decrypted first)");
-        info!("  • No TLS record headers (first byte is handshake type, not 0x16)");
-        info!("  • No ContentType bytes (0x16/0x17) at start of messages");
-        info!("  • Message count: 6 total (ClientHello, ServerHello, + 4 encrypted)");
+        trace!("  • All messages added as PLAINTEXT (encrypted messages decrypted first)");
+        trace!("  • No TLS record headers (first byte is handshake type, not 0x16)");
+        trace!("  • No ContentType bytes (0x16/0x17) at start of messages");
+        trace!("  • Message count: 6 total (ClientHello, ServerHello, + 4 encrypted)");
         info!("");
         debug!("📊 Final transcript: {} bytes total (ALL PLAINTEXT - RFC 8446 compliant!)", self.transcript.len());
         debug!("Transcript hex (first 64 bytes): {}", hex::encode(&self.transcript[..std::cmp::min(64, self.transcript.len())]));
         
         let transcript_hash = self.compute_transcript_hash();
         info!("✅ Transcript hash computed: {} bytes (SHA-256)", transcript_hash.len());
-        info!("🔐 Transcript hash (hex): {}", hex::encode(&transcript_hash));
-        info!("════════════════════════════════════════════════════════════");
+        trace!("🔐 Transcript hash (hex): {}", hex::encode(&transcript_hash));
+        trace!("════════════════════════════════════════════════════════════");
         info!("");
         
         // Log transcript composition for debugging
-        info!("════════════════════════════════════════════════════════════");
+        trace!("════════════════════════════════════════════════════════════");
         info!("📊 TRANSCRIPT FOR APPLICATION KEY DERIVATION (DIAGNOSTIC)");
-        info!("════════════════════════════════════════════════════════════");
+        trace!("════════════════════════════════════════════════════════════");
         info!("Transcript composition (RFC 8446 Section 4.4.1):");
-        info!("  ✅ 1. ClientHello handshake message (plaintext, no TLS header)");
-        info!("  ✅ 2. ServerHello handshake message (plaintext, no TLS header)");
-        info!("  ✅ 3-{}. {} post-handshake DECRYPTED messages (plaintext, no TLS headers)", 
+        trace!("  ✅ 1. ClientHello handshake message (plaintext, no TLS header)");
+        trace!("  ✅ 2. ServerHello handshake message (plaintext, no TLS header)");
+        trace!("  ✅ 3-{}. {} post-handshake DECRYPTED messages (plaintext, no TLS headers)", 
               2 + messages_read, messages_read);
-        info!("     (EncryptedExtensions, Certificate, CertificateVerify, server Finished)");
-        info!("  ❌ NOT INCLUDED: client Finished (will be sent AFTER key derivation)");
-        info!("  Total transcript: {} bytes → SHA-256 → {} bytes", 
+        trace!("     (EncryptedExtensions, Certificate, CertificateVerify, server Finished)");
+        trace!("  ❌ NOT INCLUDED: client Finished (will be sent AFTER key derivation)");
+        trace!("  Total transcript: {} bytes → SHA-256 → {} bytes", 
               self.transcript.len(), transcript_hash.len());
-        info!("  🎯 CRITICAL: All handshake messages are PLAINTEXT (decrypted)!");
+        trace!("  🎯 CRITICAL: All handshake messages are PLAINTEXT (decrypted)!");
         debug!("Full transcript (hex): {}", hex::encode(&self.transcript));
         debug!("Transcript hash (hex): {}", hex::encode(&transcript_hash));
-        info!("════════════════════════════════════════════════════════════");
+        trace!("════════════════════════════════════════════════════════════");
         
         // 11. Derive application traffic secrets (for HTTP data encryption)
         // RFC 8446 Section 7.1: Application secrets are derived WITH transcript hash
@@ -847,8 +850,8 @@ impl TlsHandshake {
         // - Application traffic secrets: For encrypting HTTP data (requires transcript hash!)
         info!("Step 11: Deriving TLS application traffic secrets via BearDog (WITH transcript hash)");
         let derive_start = std::time::Instant::now();
-        let secrets = self.beardog
-            .tls_derive_application_secrets(&shared_secret, &client_random, &server_random, &transcript_hash, self.cipher_suite)
+        let secrets = self.crypto
+            .tls_derive_application_secrets(&handshake_keys.handshake_secret, &transcript_hash)
             .await
             .map_err(|e| {
                 error!("❌ BearDog TLS application secret derivation failed: {}", e);
@@ -858,22 +861,22 @@ impl TlsHandshake {
         info!("🔐 TLS application traffic keys derived in {:?}", derive_start.elapsed());
         
         // DIAGNOSTIC: Show key derivation details (biomeOS investigation)
-        info!("════════════════════════════════════════════════════════════");
+        trace!("════════════════════════════════════════════════════════════");
         info!("🔑 APPLICATION KEY DERIVATION RESULTS (DIAGNOSTIC)");
-        info!("════════════════════════════════════════════════════════════");
+        trace!("════════════════════════════════════════════════════════════");
         info!("This is the 'invisible 0.5%' - verifying key expansion:");
         info!("");
         info!("Input to HKDF-Expand-Label (in BearDog):");
-        info!("  • CLIENT_TRAFFIC_SECRET_0 (from tls_derive_application_secrets)");
-        info!("  • Label: 'tls13 key' (for write key)");
-        info!("  • Label: 'tls13 iv' (for write IV)");
-        info!("  • Cipher suite: 0x{:04x}", self.cipher_suite);
+        trace!("  • CLIENT_TRAFFIC_SECRET_0 (from tls_derive_application_secrets)");
+        trace!("  • Label: 'tls13 key' (for write key)");
+        trace!("  • Label: 'tls13 iv' (for write IV)");
+        trace!("  • Cipher suite: 0x{:04x}", self.cipher_suite);
         info!("");
         info!("Output (what we'll use for HTTP request encryption):");
-        info!("  client_write_key ({} bytes): {}", 
+        trace!("  client_write_key ({} bytes): {}", 
               secrets.client_write_key.len(), 
               hex::encode(&secrets.client_write_key));
-        info!("  client_write_iv ({} bytes): {}", 
+        trace!("  client_write_iv ({} bytes): {}", 
               secrets.client_write_iv.len(), 
               hex::encode(&secrets.client_write_iv));
         info!("");
@@ -905,10 +908,10 @@ impl TlsHandshake {
         }
         info!("");
         info!("These keys will be used with:");
-        info!("  • Sequence number: 0 (for first HTTP request)");
-        info!("  • Nonce: client_write_iv XOR sequence_number");
-        info!("  • AAD: TLS record header (ContentType 0x17, version, length)");
-        info!("════════════════════════════════════════════════════════════");
+        trace!("  • Sequence number: 0 (for first HTTP request)");
+        trace!("  • Nonce: client_write_iv XOR sequence_number");
+        trace!("  • AAD: TLS record header (ContentType 0x17, version, length)");
+        trace!("════════════════════════════════════════════════════════════");
         
         // 12. Send client Finished NOW that application keys are derived
         // RFC 8446 Section 4.4.4: Client must send Finished after receiving server Finished
@@ -916,7 +919,7 @@ impl TlsHandshake {
         info!("Step 12: Sending client Finished message (RFC 8446 Section 4.4.4)");
         self.send_client_finished(stream, &handshake_keys).await?;
         info!("✅ Client Finished sent - handshake complete!");
-        info!("   Server should now respond to HTTP requests! 🎉");
+        trace!("   Server should now respond to HTTP requests! 🎉");
         
         // 13. Read ALL post-handshake messages (RFC 8446 Section 4.6)
         // RFC 8446: Server MAY send MULTIPLE NewSessionTicket messages after handshake
@@ -925,7 +928,7 @@ impl TlsHandshake {
         //   2. Detect if server is sending an encrypted alert (decrypt_error, etc.)
         // IMPORTANT: In TLS 1.3, post-handshake alerts are ENCRYPTED with application keys!
         info!("Step 13: Reading ALL post-handshake messages (NewSessionTicket, etc.)");
-        info!("   ⏱️  Will read and decrypt until timeout (200ms between messages)...");
+        trace!("   ⏱️  Will read and decrypt until timeout (200ms between messages)...");
         
         let mut post_handshake_count = 0;
         let mut read_sequence_number: u64 = 0;  // Separate sequence for reading (starts at 0)
@@ -942,7 +945,7 @@ impl TlsHandshake {
                     match content_type {
                         0x17 => {  // APPLICATION_DATA (encrypted post-handshake message)
                             // DECRYPT the message using APPLICATION traffic keys (server_write_key)
-                            info!("   🔐 Decrypting with server_write_key (application traffic key)...");
+                            trace!("   🔐 Decrypting with server_write_key (application traffic key)...");
                             
                             // Build nonce: server_write_iv XOR read_sequence_number
                             let mut nonce = secrets.server_write_iv.clone();
@@ -960,13 +963,13 @@ impl TlsHandshake {
                             
                             // Decrypt based on cipher suite
                             let plaintext_result = match self.cipher_suite {
-                                0x1301 => self.beardog.decrypt_aes_128_gcm(
+                                0x1301 => self.crypto.aes128_gcm_decrypt(
                                     &secrets.server_write_key, &nonce, &encrypted_data, &aad
                                 ).await,
-                                0x1302 => self.beardog.decrypt_aes_256_gcm(
+                                0x1302 => self.crypto.aes256_gcm_decrypt(
                                     &secrets.server_write_key, &nonce, &encrypted_data, &aad
                                 ).await,
-                                _ => self.beardog.decrypt(
+                                _ => self.crypto.decrypt(
                                     &secrets.server_write_key, &nonce, &encrypted_data, &aad
                                 ).await,
                             };
@@ -978,15 +981,15 @@ impl TlsHandshake {
                                     // RFC 8446: TLSInnerPlaintext has ContentType as last non-zero byte
                                     if let Some(&inner_type) = plaintext.last() {
                                         let content = &plaintext[..plaintext.len()-1];
-                                        info!("   📨 Decrypted: {} bytes, inner type=0x{:02x}", 
+                                        trace!("   📨 Decrypted: {} bytes, inner type=0x{:02x}", 
                                               content.len(), inner_type);
                                         
                                         match inner_type {
                                             0x16 => {  // Handshake (NewSessionTicket is type 0x04)
                                                 if !content.is_empty() && content[0] == 0x04 {
-                                                    info!("   🎟️  NewSessionTicket #{} (ignored for now)", post_handshake_count);
+                                                    trace!("   🎟️  NewSessionTicket #{} (ignored for now)", post_handshake_count);
                                                 } else {
-                                                    info!("   📋 Handshake message type 0x{:02x}", 
+                                                    trace!("   📋 Handshake message type 0x{:02x}", 
                                                           content.first().unwrap_or(&0));
                                                 }
                                             }
@@ -1009,10 +1012,10 @@ impl TlsHandshake {
                                                 }
                                             }
                                             0x17 => {
-                                                info!("   📦 Application data (unexpected at this stage)");
+                                                trace!("   📦 Application data (unexpected at this stage)");
                                             }
                                             _ => {
-                                                info!("   ❓ Unknown inner type: 0x{:02x}", inner_type);
+                                                trace!("   ❓ Unknown inner type: 0x{:02x}", inner_type);
                                             }
                                         }
                                     }
@@ -1036,7 +1039,7 @@ impl TlsHandshake {
                             }
                         }
                         _ => {
-                            info!("   ℹ️  Ignoring unexpected message type: 0x{:02x}", content_type);
+                            trace!("   ℹ️  Ignoring unexpected message type: 0x{:02x}", content_type);
                         }
                     }
                 }
@@ -1050,9 +1053,9 @@ impl TlsHandshake {
                 }
                 Err(_) => {
                     if post_handshake_count == 0 {
-                        info!("   ⏱️  Timeout - no post-handshake messages (this is OK)");
+                        trace!("   ⏱️  Timeout - no post-handshake messages (this is OK)");
                     } else {
-                        info!("   ⏱️  Timeout after {} post-handshake messages", post_handshake_count);
+                        trace!("   ⏱️  Timeout after {} post-handshake messages", post_handshake_count);
                     }
                     break;
                 }
@@ -1072,6 +1075,7 @@ impl TlsHandshake {
             client_write_iv: secrets.client_write_iv,
             server_write_iv: secrets.server_write_iv,
             cipher_suite: self.cipher_suite,  // Pass negotiated cipher suite to session
+            initial_read_sequence: read_sequence_number,  // Account for post-handshake messages consumed
         })
     }
 
@@ -1466,16 +1470,16 @@ impl TlsHandshake {
         sequence_number: u64,
     ) -> Result<Vec<u8>> {
         info!("🔓 Decrypting handshake record (COMPREHENSIVE DEBUG):");
-        info!("   Encrypted length: {} bytes", encrypted_record.len());
-        info!("   Sequence number: {}", sequence_number);
+        trace!("   Encrypted length: {} bytes", encrypted_record.len());
+        trace!("   Sequence number: {}", sequence_number);
         debug!("Encrypted data (first 32 bytes): {:02x?}", &encrypted_record[..std::cmp::min(32, encrypted_record.len())]);
         debug!("Encrypted data (last 16 bytes, likely tag): {:02x?}", &encrypted_record[encrypted_record.len().saturating_sub(16)..]);
 
         // Log keys and IVs
         info!("🔑 Cryptographic Material:");
-        info!("   Server write key: {} bytes", keys.server_write_key.len());
+        trace!("   Server write key: {} bytes", keys.server_write_key.len());
         debug!("   Server write key (first 16 bytes): {:02x?}", &keys.server_write_key[..std::cmp::min(16, keys.server_write_key.len())]);
-        info!("   Server write IV: {} bytes", keys.server_write_iv.len());
+        trace!("   Server write IV: {} bytes", keys.server_write_iv.len());
         debug!("   Server write IV (full): {:02x?}", keys.server_write_iv);
 
         // Build nonce: server_write_iv XOR sequence_number
@@ -1496,7 +1500,7 @@ impl TlsHandshake {
                 nonce[nonce_idx] ^= byte;
             }
         }
-        info!("   Computed nonce: {:02x?}", nonce);
+        trace!("   Computed nonce: {:02x?}", nonce);
         debug!("   Nonce construction: IV XOR sequence_number (last 8 bytes)");
 
         // Build AAD (Additional Authenticated Data): TLS record header
@@ -1513,7 +1517,7 @@ impl TlsHandshake {
             (length >> 8) as u8,
             (length & 0xFF) as u8,
         ];
-        info!("   AAD (TLS record header): {:02x?}", aad);
+        trace!("   AAD (TLS record header): {:02x?}", aad);
         debug!("   Breakdown:");
         debug!("     - ContentType: 0x{:02x} (APPLICATION_DATA)", record_type);
         debug!("     - Version: 0x{:02x}{:02x} (TLS 1.2 compat)", version[0], version[1]);
@@ -1521,10 +1525,10 @@ impl TlsHandshake {
 
         // Log comprehensive decryption parameters
         info!("🎯 Calling BearDog crypto.decrypt with:");
-        info!("   Key: server_write_key ({} bytes)", keys.server_write_key.len());
-        info!("   Nonce: {} bytes", nonce.len());
-        info!("   Ciphertext+Tag: {} bytes", encrypted_record.len());
-        info!("   AAD: {} bytes", aad.len());
+        trace!("   Key: server_write_key ({} bytes)", keys.server_write_key.len());
+        trace!("   Nonce: {} bytes", nonce.len());
+        trace!("   Ciphertext+Tag: {} bytes", encrypted_record.len());
+        trace!("   AAD: {} bytes", aad.len());
         debug!("Decryption parameters summary:");
         debug!("  - Key type: Handshake traffic key (server_write_key)");
         debug!("  - Nonce: IV XOR sequence_number");
@@ -1539,10 +1543,10 @@ impl TlsHandshake {
             0x1301 => {
                 // TLS_AES_128_GCM_SHA256 (most common - GitHub, Google, CloudFlare)
                 // BearDog now derives correct 16-byte keys based on cipher suite!
-                info!("   → Using AES-128-GCM (negotiated cipher suite)");
+                trace!("   → Using AES-128-GCM (negotiated cipher suite)");
                 debug!("  - Algorithm: AES-128-GCM AEAD");
                 debug!("  - Key length from BearDog: {} bytes", keys.server_write_key.len());
-                self.beardog.decrypt_aes_128_gcm(
+                self.crypto.aes128_gcm_decrypt(
                     &keys.server_write_key,
                     &nonce,
                     encrypted_record,
@@ -1551,9 +1555,9 @@ impl TlsHandshake {
             }
             0x1302 => {
                 // TLS_AES_256_GCM_SHA384 (high security)
-                info!("   → Using AES-256-GCM (negotiated cipher suite)");
+                trace!("   → Using AES-256-GCM (negotiated cipher suite)");
                 debug!("  - Algorithm: AES-256-GCM AEAD");
-                self.beardog.decrypt_aes_256_gcm(
+                self.crypto.aes256_gcm_decrypt(
                     &keys.server_write_key,
                     &nonce,
                     encrypted_record,
@@ -1562,9 +1566,9 @@ impl TlsHandshake {
             }
             0x1303 => {
                 // TLS_CHACHA20_POLY1305_SHA256 (software-only, mobile-optimized)
-                info!("   → Using ChaCha20-Poly1305 (negotiated cipher suite)");
+                trace!("   → Using ChaCha20-Poly1305 (negotiated cipher suite)");
                 debug!("  - Algorithm: ChaCha20-Poly1305 AEAD");
-                self.beardog.decrypt(
+                self.crypto.decrypt(
                     &keys.server_write_key,
                     &nonce,
                     encrypted_record,
@@ -1607,7 +1611,7 @@ impl TlsHandshake {
         })?;
         
         info!("✅ Decrypted handshake record successfully in {:?}", decrypt_start.elapsed());
-        info!("   Plaintext length: {} bytes", plaintext.len());
+        trace!("   Plaintext length: {} bytes", plaintext.len());
         debug!("Plaintext preview (first 32 bytes): {:02x?}", &plaintext[..std::cmp::min(32, plaintext.len())]);
         debug!("Plaintext preview (last 16 bytes): {:02x?}", &plaintext[plaintext.len().saturating_sub(16)..]);
 
@@ -1662,9 +1666,9 @@ impl TlsHandshake {
         
         // Log which TLS 1.3 cipher suite was chosen
         match cipher_suite {
-            0x1301 => info!("   → TLS_AES_128_GCM_SHA256 (most common, hardware accelerated)"),
-            0x1302 => info!("   → TLS_AES_256_GCM_SHA384 (high security, hardware accelerated)"),
-            0x1303 => info!("   → TLS_CHACHA20_POLY1305_SHA256 (software-only, mobile-optimized)"),
+            0x1301 => trace!("   → TLS_AES_128_GCM_SHA256 (most common, hardware accelerated)"),
+            0x1302 => trace!("   → TLS_AES_256_GCM_SHA384 (high security, hardware accelerated)"),
+            0x1303 => trace!("   → TLS_CHACHA20_POLY1305_SHA256 (software-only, mobile-optimized)"),
             _ => warn!("   → Unknown cipher suite 0x{:04x}", cipher_suite),
         }
         
@@ -1784,7 +1788,7 @@ impl TlsHandshake {
         trace!("Nonce (IV XOR seq): {:02x?}", &nonce[..std::cmp::min(12, nonce.len())]);
         
         // Encrypt via BearDog
-        let ciphertext = self.beardog.encrypt(
+        let ciphertext = self.crypto.encrypt(
             &keys.client_write_key,
             &nonce,
             plaintext,
@@ -1838,12 +1842,11 @@ impl TlsHandshake {
         // 2. Call BearDog to compute verify_data (RFC 8446 Section 4.4.4)
         // BearDog implements: HMAC(finished_key, transcript_hash)
         // where finished_key is derived from the handshake traffic secret (base_key)
-        info!("🔐 Computing verify_data via BearDog...");
-        let verify_data = self.beardog
+        info!("🔐 Computing verify_data via CryptoCapability...");
+        let verify_data = self.crypto
             .tls_compute_finished_verify_data(
                 &handshake_keys.client_handshake_secret,  // RFC 8446 client_handshake_traffic_secret (32-byte PRK)
-                &transcript_hash,
-                self.cipher_suite
+                &transcript_hash
             )
             .await
             .map_err(|e| {
@@ -1884,9 +1887,9 @@ impl TlsHandshake {
         // Sequence number for client Finished is 0 (first message we send with handshake keys)
         let sequence_number = 0u64;
         
-        info!("════════════════════════════════════════════════════════════");
+        trace!("════════════════════════════════════════════════════════════");
         info!("🔐 ENCRYPTING CLIENT FINISHED (HANDSHAKE MESSAGE)");
-        info!("════════════════════════════════════════════════════════════");
+        trace!("════════════════════════════════════════════════════════════");
         info!("Using: HANDSHAKE traffic keys (client_handshake_traffic_secret)");
         info!("Sequence number: {} (first handshake message sent by client)", sequence_number);
         info!("Cipher suite: 0x{:04x}", self.cipher_suite);
@@ -1906,7 +1909,7 @@ impl TlsHandshake {
         }
         
         debug!("   Nonce (IV XOR seq): {:02x?}", nonce);
-        info!("════════════════════════════════════════════════════════════");
+        trace!("════════════════════════════════════════════════════════════");
         
         // Calculate ciphertext length (plaintext + 16-byte AEAD tag)
         let ciphertext_length = plaintext.len() + 16;
@@ -1927,24 +1930,24 @@ impl TlsHandshake {
         // Encrypt via BearDog (uses correct AEAD algorithm based on cipher suite)
         // DIAGNOSTIC: Log BOTH client and server keys to detect swapping
         info!("🔑 CLIENT FINISHED ENCRYPTION KEY (DIAGNOSTIC):");
-        info!("   client_write_key (hex): {}", hex::encode(&handshake_keys.client_write_key));
-        info!("   server_write_key (hex): {}", hex::encode(&handshake_keys.server_write_key));
-        info!("   client_write_iv (hex): {}", hex::encode(&handshake_keys.client_write_iv));
-        info!("   server_write_iv (hex): {}", hex::encode(&handshake_keys.server_write_iv));
-        info!("   Nonce (IV XOR seq): {}", hex::encode(&nonce));
-        info!("   AAD (hex): {}", hex::encode(&aad));
-        info!("   Plaintext length: {} bytes", plaintext.len());
-        info!("   ⚠️  HYPOTHESIS: If server_write_key == server's expected client_write_key,");
-        info!("      then BearDog is swapping client/server labels!");
+        trace!("   client_write_key (hex): {}", hex::encode(&handshake_keys.client_write_key));
+        trace!("   server_write_key (hex): {}", hex::encode(&handshake_keys.server_write_key));
+        trace!("   client_write_iv (hex): {}", hex::encode(&handshake_keys.client_write_iv));
+        trace!("   server_write_iv (hex): {}", hex::encode(&handshake_keys.server_write_iv));
+        trace!("   Nonce (IV XOR seq): {}", hex::encode(&nonce));
+        trace!("   AAD (hex): {}", hex::encode(&aad));
+        trace!("   Plaintext length: {} bytes", plaintext.len());
+        trace!("   ⚠️  HYPOTHESIS: If server_write_key == server's expected client_write_key,");
+        trace!("      then BearDog is swapping client/server labels!");
         
         // Use client_write_key for client→server encryption (correct per RFC 8446)
         let encryption_key = &handshake_keys.client_write_key;
-        info!("   🔑 USING KEY: client_write_key (correct per RFC 8446)");
+        trace!("   🔑 USING KEY: client_write_key (correct per RFC 8446)");
         
         let ciphertext = match self.cipher_suite {
             0x1301 => {
-                info!("   → Using AES-128-GCM for client Finished");
-                self.beardog.encrypt_aes_128_gcm(
+                trace!("   → Using AES-128-GCM for client Finished");
+                self.crypto.aes128_gcm_encrypt(
                     encryption_key,
                     &nonce,
                     &plaintext,
@@ -1952,8 +1955,8 @@ impl TlsHandshake {
                 ).await
             }
             0x1302 => {
-                info!("   → Using AES-256-GCM for client Finished");
-                self.beardog.encrypt_aes_256_gcm(
+                trace!("   → Using AES-256-GCM for client Finished");
+                self.crypto.aes256_gcm_encrypt(
                     encryption_key,
                     &nonce,
                     &plaintext,
@@ -1961,8 +1964,8 @@ impl TlsHandshake {
                 ).await
             }
             0x1303 => {
-                info!("   → Using ChaCha20-Poly1305 for client Finished");
-                self.beardog.encrypt(
+                trace!("   → Using ChaCha20-Poly1305 for client Finished");
+                self.crypto.encrypt(
                     encryption_key,
                     &nonce,
                     &plaintext,
@@ -2115,7 +2118,7 @@ impl TlsHandshake {
         trace!("Nonce (IV XOR seq): {:02x?}", &nonce[..std::cmp::min(12, nonce.len())]);
         
         // Decrypt via BearDog (will handle AEAD tag validation)
-        let plaintext = self.beardog.decrypt(
+        let plaintext = self.crypto.decrypt(
             &keys.server_write_key,
             &nonce,
             ciphertext,
@@ -2134,7 +2137,7 @@ mod tests {
 
     #[test]
     fn test_generate_random() {
-        let beardog = Arc::new(BearDogClient::new("/tmp/beardog.sock"));
+        let beardog = std::sync::Arc::new(crate::crypto::BearDogProvider::new("/tmp/beardog.sock")) as std::sync::Arc<dyn CryptoCapability>;
         let handshake = TlsHandshake::new(beardog);
         
         let random = handshake.generate_random();
@@ -2146,7 +2149,7 @@ mod tests {
 
     #[test]
     fn test_build_sni_extension() {
-        let beardog = Arc::new(BearDogClient::new("/tmp/beardog.sock"));
+        let beardog = std::sync::Arc::new(crate::crypto::BearDogProvider::new("/tmp/beardog.sock")) as std::sync::Arc<dyn CryptoCapability>;
         let handshake = TlsHandshake::new(beardog);
         
         let sni = handshake.build_sni_extension("example.com");
@@ -2162,7 +2165,7 @@ mod tests {
 
     #[test]
     fn test_build_key_share_extension() {
-        let beardog = Arc::new(BearDogClient::new("/tmp/beardog.sock"));
+        let beardog = std::sync::Arc::new(crate::crypto::BearDogProvider::new("/tmp/beardog.sock")) as std::sync::Arc<dyn CryptoCapability>;
         let handshake = TlsHandshake::new(beardog);
         
         let public_key = vec![1u8; 32];
@@ -2178,7 +2181,7 @@ mod tests {
     
     #[test]
     fn test_build_extensions() {
-        let beardog = Arc::new(BearDogClient::new("/tmp/beardog.sock"));
+        let beardog = std::sync::Arc::new(crate::crypto::BearDogProvider::new("/tmp/beardog.sock")) as std::sync::Arc<dyn CryptoCapability>;
         let handshake = TlsHandshake::new(beardog);
         
         let public_key = vec![1u8; 32];
@@ -2197,7 +2200,7 @@ mod tests {
     fn test_alpn_extension_encoding() {
         // CRITICAL: Validates byte-perfect ALPN encoding to prevent decode_error
         // This test prevents the exact bug biomeOS found in integration testing
-        let beardog = Arc::new(BearDogClient::new("/tmp/beardog.sock"));
+        let beardog = std::sync::Arc::new(crate::crypto::BearDogProvider::new("/tmp/beardog.sock")) as std::sync::Arc<dyn CryptoCapability>;
         let handshake = TlsHandshake::new(beardog);
         
         let public_key = vec![1u8; 32];
@@ -2256,7 +2259,7 @@ mod tests {
     
     #[test]
     fn test_build_client_hello() {
-        let beardog = Arc::new(BearDogClient::new("/tmp/beardog.sock"));
+        let beardog = std::sync::Arc::new(crate::crypto::BearDogProvider::new("/tmp/beardog.sock")) as std::sync::Arc<dyn CryptoCapability>;
         let handshake = TlsHandshake::new(beardog);
         
         let client_random = vec![0u8; 32];
@@ -2277,7 +2280,7 @@ mod tests {
     
     #[test]
     fn test_parse_server_hello_structure() {
-        let beardog = Arc::new(BearDogClient::new("/tmp/beardog.sock"));
+        let beardog = std::sync::Arc::new(crate::crypto::BearDogProvider::new("/tmp/beardog.sock")) as std::sync::Arc<dyn CryptoCapability>;
         let handshake = TlsHandshake::new(beardog);
         
         // Minimal valid ServerHello structure
@@ -2313,7 +2316,7 @@ mod tests {
     
     #[test]
     fn test_parse_server_hello_invalid() {
-        let beardog = Arc::new(BearDogClient::new("/tmp/beardog.sock"));
+        let beardog = std::sync::Arc::new(crate::crypto::BearDogProvider::new("/tmp/beardog.sock")) as std::sync::Arc<dyn CryptoCapability>;
         let handshake = TlsHandshake::new(beardog);
         
         // Invalid: empty
@@ -2334,7 +2337,7 @@ mod tests {
     
     #[test]
     fn test_transcript_empty_initially() {
-        let beardog = Arc::new(BearDogClient::new("/tmp/beardog.sock"));
+        let beardog = std::sync::Arc::new(crate::crypto::BearDogProvider::new("/tmp/beardog.sock")) as std::sync::Arc<dyn CryptoCapability>;
         let handshake = TlsHandshake::new(beardog);
         
         // Transcript should be empty initially
@@ -2343,7 +2346,7 @@ mod tests {
     
     #[test]
     fn test_update_transcript() {
-        let beardog = Arc::new(BearDogClient::new("/tmp/beardog.sock"));
+        let beardog = std::sync::Arc::new(crate::crypto::BearDogProvider::new("/tmp/beardog.sock")) as std::sync::Arc<dyn CryptoCapability>;
         let mut handshake = TlsHandshake::new(beardog);
         
         // Add first message
@@ -2363,7 +2366,7 @@ mod tests {
     
     #[test]
     fn test_compute_transcript_hash_empty() {
-        let beardog = Arc::new(BearDogClient::new("/tmp/beardog.sock"));
+        let beardog = std::sync::Arc::new(crate::crypto::BearDogProvider::new("/tmp/beardog.sock")) as std::sync::Arc<dyn CryptoCapability>;
         let handshake = TlsHandshake::new(beardog);
         
         let hash = handshake.compute_transcript_hash();
@@ -2379,7 +2382,7 @@ mod tests {
     
     #[test]
     fn test_compute_transcript_hash_deterministic() {
-        let beardog = Arc::new(BearDogClient::new("/tmp/beardog.sock"));
+        let beardog = std::sync::Arc::new(crate::crypto::BearDogProvider::new("/tmp/beardog.sock")) as std::sync::Arc<dyn CryptoCapability>;
         let mut handshake = TlsHandshake::new(beardog);
         
         // Add test messages
@@ -2397,7 +2400,7 @@ mod tests {
     
     #[test]
     fn test_compute_transcript_hash_known_value() {
-        let beardog = Arc::new(BearDogClient::new("/tmp/beardog.sock"));
+        let beardog = std::sync::Arc::new(crate::crypto::BearDogProvider::new("/tmp/beardog.sock")) as std::sync::Arc<dyn CryptoCapability>;
         let mut handshake = TlsHandshake::new(beardog);
         
         // Use a known message
@@ -2416,7 +2419,7 @@ mod tests {
     
     #[test]
     fn test_transcript_accumulates_multiple_messages() {
-        let beardog = Arc::new(BearDogClient::new("/tmp/beardog.sock"));
+        let beardog = std::sync::Arc::new(crate::crypto::BearDogProvider::new("/tmp/beardog.sock")) as std::sync::Arc<dyn CryptoCapability>;
         let mut handshake = TlsHandshake::new(beardog);
         
         // Simulate handshake message accumulation
@@ -2443,10 +2446,10 @@ mod tests {
     
     #[test]
     fn test_transcript_order_matters() {
-        let beardog1 = Arc::new(BearDogClient::new("/tmp/beardog.sock"));
+        let beardog1 = std::sync::Arc::new(crate::crypto::BearDogProvider::new("/tmp/beardog.sock")) as std::sync::Arc<dyn CryptoCapability>;
         let mut handshake1 = TlsHandshake::new(beardog1);
         
-        let beardog2 = Arc::new(BearDogClient::new("/tmp/beardog.sock"));
+        let beardog2 = std::sync::Arc::new(crate::crypto::BearDogProvider::new("/tmp/beardog.sock")) as std::sync::Arc<dyn CryptoCapability>;
         let mut handshake2 = TlsHandshake::new(beardog2);
         
         // Add messages in different orders
@@ -2465,7 +2468,7 @@ mod tests {
     
     #[test]
     fn test_transcript_hash_length() {
-        let beardog = Arc::new(BearDogClient::new("/tmp/beardog.sock"));
+        let beardog = std::sync::Arc::new(crate::crypto::BearDogProvider::new("/tmp/beardog.sock")) as std::sync::Arc<dyn CryptoCapability>;
         let mut handshake = TlsHandshake::new(beardog);
         
         // Add various sized messages
@@ -2483,10 +2486,10 @@ mod tests {
     #[tokio::test]
     #[ignore] // Requires BearDog running
     async fn test_decrypt_handshake_record_basic() {
-        let beardog = Arc::new(BearDogClient::new("/tmp/beardog.sock"));
+        let beardog = std::sync::Arc::new(crate::crypto::BearDogProvider::new("/tmp/beardog.sock")) as std::sync::Arc<dyn CryptoCapability>;
         let handshake = TlsHandshake::new(beardog.clone());
         
-        // Create test keys (would normally come from BearDog)
+        // Create test keys (would normally come from CryptoCapability)
         let keys = TlsSecrets {
             client_write_key: vec![0x01; 32],
             server_write_key: vec![0x02; 32],
@@ -2494,6 +2497,7 @@ mod tests {
             server_write_iv: vec![0x04; 12],
             client_handshake_secret: vec![0x05; 32],
             server_handshake_secret: vec![0x06; 32],
+            handshake_secret: vec![0x07; 32],
         };
         
         // Create test encrypted data
@@ -2509,7 +2513,7 @@ mod tests {
     #[test]
     fn test_handshake_transcript_with_plaintext() {
         // Test that transcript tracking works correctly
-        let beardog = Arc::new(BearDogClient::new("/tmp/beardog.sock"));
+        let beardog = std::sync::Arc::new(crate::crypto::BearDogProvider::new("/tmp/beardog.sock")) as std::sync::Arc<dyn CryptoCapability>;
         let mut handshake = TlsHandshake::new(beardog);
         
         // Simulate adding plaintext handshake messages to transcript
@@ -2591,7 +2595,7 @@ mod tests {
         // RFC 8446 Section 4.4.1: Transcript must contain PLAINTEXT messages
         // This test ensures we understand the requirement
         
-        let beardog = Arc::new(BearDogClient::new("/tmp/beardog.sock"));
+        let beardog = std::sync::Arc::new(crate::crypto::BearDogProvider::new("/tmp/beardog.sock")) as std::sync::Arc<dyn CryptoCapability>;
         let mut handshake = TlsHandshake::new(beardog);
         
         // Simulate plaintext messages (what SHOULD be in transcript)
@@ -2602,7 +2606,7 @@ mod tests {
         let plaintext_hash = handshake.compute_transcript_hash();
         
         // Create new handshake with encrypted version (what SHOULD NOT be in transcript)
-        let beardog2 = Arc::new(BearDogClient::new("/tmp/beardog.sock"));
+        let beardog2 = std::sync::Arc::new(crate::crypto::BearDogProvider::new("/tmp/beardog.sock")) as std::sync::Arc<dyn CryptoCapability>;
         let mut handshake2 = TlsHandshake::new(beardog2);
         let encrypted_message = b"ENCRYPTED_VERSION_OF_SAME_MESSAGE_WITH_TAG";
         handshake2.update_transcript(encrypted_message);
@@ -2629,6 +2633,7 @@ mod tests {
             server_write_iv: vec![0xDD; 12],
             client_handshake_secret: vec![0xEE; 32],
             server_handshake_secret: vec![0xFF; 32],
+            handshake_secret: vec![0x77; 32],
         };
         
         // Application keys (derived after Finished, WITH transcript hash)
@@ -2639,6 +2644,7 @@ mod tests {
             server_write_iv: vec![0x44; 12],
             client_handshake_secret: vec![0x55; 32],
             server_handshake_secret: vec![0x66; 32],
+            handshake_secret: vec![0x88; 32],
         };
         
         // Keys MUST be different
@@ -2651,7 +2657,7 @@ mod tests {
     #[test]
     fn test_contains_finished_message_single() {
         // Test detecting Finished message when it's the only message in the record
-        let beardog = std::sync::Arc::new(crate::beardog_client::BearDogClient::new("/tmp/test.sock"));
+        let beardog = std::sync::Arc::new(crate::crypto::BearDogProvider::new("/tmp/test.sock")) as std::sync::Arc<dyn CryptoCapability>;
         let handshake = TlsHandshake::new(beardog);
         
         // Build a Finished message: type (0x14) + length (3 bytes) + verify_data (32 bytes) + ContentType (0x16)
@@ -2672,7 +2678,7 @@ mod tests {
     fn test_contains_finished_message_multiple() {
         // Test detecting Finished message when multiple messages are coalesced
         // This simulates real-world behavior from Google, GitHub, CloudFlare, etc.
-        let beardog = std::sync::Arc::new(crate::beardog_client::BearDogClient::new("/tmp/test.sock"));
+        let beardog = std::sync::Arc::new(crate::crypto::BearDogProvider::new("/tmp/test.sock")) as std::sync::Arc<dyn CryptoCapability>;
         let handshake = TlsHandshake::new(beardog);
         
         // Message 1: EncryptedExtensions (type 0x08, 92 bytes body)
@@ -2718,8 +2724,8 @@ mod tests {
     #[test]
     fn test_contains_finished_message_not_present() {
         // Test that we correctly return false when Finished is not present
-        let beardog = std::sync::Arc::new(crate::beardog_client::BearDogClient::new("/tmp/test.sock"));
-        let handshake = TlsHandshake::new(beardog);
+        let crypto: std::sync::Arc<dyn CryptoCapability> = std::sync::Arc::new(crate::crypto::BearDogProvider::new("/tmp/test.sock"));
+        let handshake = TlsHandshake::new(crypto);
         
         // EncryptedExtensions only (no Finished)
         let mut plaintext = vec![
@@ -2738,8 +2744,8 @@ mod tests {
     #[test]
     fn test_contains_finished_message_empty() {
         // Test edge case: empty plaintext
-        let beardog = std::sync::Arc::new(crate::beardog_client::BearDogClient::new("/tmp/test.sock"));
-        let handshake = TlsHandshake::new(beardog);
+        let crypto: std::sync::Arc<dyn CryptoCapability> = std::sync::Arc::new(crate::crypto::BearDogProvider::new("/tmp/test.sock"));
+        let handshake = TlsHandshake::new(crypto);
         
         let plaintext = Vec::new();
         
@@ -2750,8 +2756,8 @@ mod tests {
     #[test]
     fn test_contains_finished_message_malformed() {
         // Test resilience to malformed data
-        let beardog = std::sync::Arc::new(crate::beardog_client::BearDogClient::new("/tmp/test.sock"));
-        let handshake = TlsHandshake::new(beardog);
+        let crypto: std::sync::Arc<dyn CryptoCapability> = std::sync::Arc::new(crate::crypto::BearDogProvider::new("/tmp/test.sock"));
+        let handshake = TlsHandshake::new(crypto);
         
         // Truncated message header (only 2 bytes instead of 4)
         let plaintext = vec![0x08, 0x00];

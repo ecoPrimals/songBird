@@ -1,6 +1,6 @@
 //! HTTP/HTTPS client implementation
 
-use crate::beardog_client::BearDogClient;
+use crate::crypto::{BearDogProvider, CryptoCapability};
 use crate::error::{Error, Result};
 use crate::tls::{
     config::TlsConfig,
@@ -19,33 +19,47 @@ use tokio::net::TcpStream;
 use tracing::{debug, info, warn, error};
 
 /// Songbird HTTP client
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct SongbirdHttpClient {
-    beardog: Arc<BearDogClient>,
+    crypto: Arc<dyn CryptoCapability>,
     config: TlsConfig,
     profiler: Option<Arc<ServerProfiler>>,
 }
 
+impl std::fmt::Debug for SongbirdHttpClient {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("SongbirdHttpClient")
+            .field("config", &self.config)
+            .field("profiler", &self.profiler.is_some())
+            .finish()
+    }
+}
+
 impl SongbirdHttpClient {
-    /// Create a new Songbird HTTP client with Neural API capability translation
+    /// Create a new Songbird HTTP client with crypto capability discovery
     ///
     /// # Arguments
     ///
-    /// * `neural_api_socket` - Path to Neural API Unix socket (e.g., "/tmp/neural-api-nat0.sock")
+    /// * `socket_path` - Path to crypto provider socket (e.g., "/tmp/beardog.sock")
     ///
     /// # Note
     ///
-    /// This client routes crypto capabilities through Neural API, which translates
-    /// semantic capability names to actual provider methods. This enables TRUE PRIMAL
-    /// pattern with zero cross-primal coupling.
-    pub fn new(neural_api_socket: impl Into<String>) -> Self {
-        Self::with_config(neural_api_socket, TlsConfig::default(), None)
+    /// This client uses the CryptoCapability trait for agnostic crypto operations.
+    /// The underlying provider can be BearDog or any other implementation.
+    pub fn new(socket_path: impl Into<String>) -> Self {
+        Self::with_config(socket_path, TlsConfig::default(), None)
     }
     
-    /// Create from environment variable (fallback to default Neural API socket)
+    /// Create from environment variable
+    /// 
+    /// Checks CRYPTO_CAPABILITY_SOCKET, then BEARDOG_SOCKET, then defaults.
     pub fn from_env() -> Self {
+        let socket_path = std::env::var("CRYPTO_CAPABILITY_SOCKET")
+            .or_else(|_| std::env::var("BEARDOG_SOCKET"))
+            .unwrap_or_else(|_| "/tmp/beardog.sock".to_string());
+        
         Self {
-            beardog: Arc::new(BearDogClient::from_env()),
+            crypto: Arc::new(BearDogProvider::new(socket_path)),
             config: TlsConfig::default(),
             profiler: None,
         }
@@ -53,7 +67,7 @@ impl SongbirdHttpClient {
     
     /// Create with custom config and optional profiler
     pub fn with_config(
-        neural_api_socket: impl Into<String>,
+        socket_path: impl Into<String>,
         config: TlsConfig,
         profiler: Option<Arc<ServerProfiler>>,
     ) -> Self {
@@ -63,7 +77,27 @@ impl SongbirdHttpClient {
         }
         
         Self {
-            beardog: Arc::new(BearDogClient::new(neural_api_socket)),
+            crypto: Arc::new(BearDogProvider::new(socket_path)),
+            config,
+            profiler,
+        }
+    }
+    
+    /// Create with explicit crypto capability provider
+    ///
+    /// Use this when you want to provide your own CryptoCapability implementation.
+    pub fn with_crypto(
+        crypto: Arc<dyn CryptoCapability>,
+        config: TlsConfig,
+        profiler: Option<Arc<ServerProfiler>>,
+    ) -> Self {
+        info!("🎛️  Creating Songbird HTTP client with custom crypto provider");
+        if profiler.is_some() {
+            info!("🧠 Adaptive learning enabled (profiler attached)");
+        }
+        
+        Self {
+            crypto,
             config,
             profiler,
         }
@@ -131,7 +165,7 @@ impl SongbirdHttpClient {
         info!("════════════════════════════════════════════════════════════");
 
         // Create TLS record layer
-        let mut record_layer = TlsRecordLayer::new(self.beardog.clone(), session_keys);
+        let mut record_layer = TlsRecordLayer::new(self.crypto.clone(), session_keys);
         debug!("✅ TLS record layer initialized (sequence numbers at 0)");
 
         // Build HTTP request
@@ -359,7 +393,7 @@ impl SongbirdHttpClient {
             // Attempt handshake
             let handshake_start = std::time::Instant::now();
             let mut handshake = TlsHandshake::with_config(
-                self.beardog.clone(),
+                self.crypto.clone(),
                 attempt_config,
                 self.profiler.clone(),
             );
@@ -523,16 +557,29 @@ impl SongbirdHttpClient {
 
     /// Parse HTTP response bytes
     fn parse_http_response(&self, data: &[u8]) -> Result<HttpResponse> {
+        // Debug: Log first bytes to understand any corruption
+        debug!("📝 parse_http_response: {} bytes total", data.len());
+        debug!("📝 First 50 bytes (hex): {:?}", &data[..std::cmp::min(50, data.len())]);
+        debug!("📝 First 50 bytes (str): {:?}", String::from_utf8_lossy(&data[..std::cmp::min(50, data.len())]));
+        
         let response = String::from_utf8_lossy(data);
         let mut lines = response.lines();
 
         // Status line
         let status_line = lines.next().ok_or_else(|| Error::InvalidResponse("Empty response".to_string()))?;
+        
+        // Debug: Log the status line to understand parsing issues
+        debug!("📝 Parsing status line: {:?}", status_line);
+        debug!("📝 Status line bytes: {:?}", status_line.as_bytes());
+        
         let status = status_line
             .split_whitespace()
             .nth(1)
-            .and_then(|s| s.parse::<u16>().ok())
-            .ok_or_else(|| Error::InvalidResponse("Invalid status line".to_string()))?;
+            .and_then(|s| {
+                debug!("📝 Extracted status code string: {:?}", s);
+                s.parse::<u16>().ok()
+            })
+            .ok_or_else(|| Error::InvalidResponse(format!("Invalid status line: {:?}", status_line)))?;
 
         // Headers
         let mut headers = HashMap::new();

@@ -1,7 +1,7 @@
 //! # Songbird HTTP Client - Pure Rust Tower Atomic
 //!
-//! A Pure Rust HTTP/HTTPS client that delegates all cryptographic operations
-//! to BearDog via JSON-RPC over Unix sockets.
+//! A Pure Rust HTTP/HTTPS client with capability-based crypto delegation.
+//! Uses the `CryptoCapability` trait for agnostic provider support.
 //!
 //! ## Architecture
 //!
@@ -12,14 +12,13 @@
 //! │  - Custom TLS 1.3 implementation                        │
 //! │  - Zero C dependencies                                  │
 //! └───────────────────┬──────────────────────────────────────┘
-//!                     │ Unix Socket JSON-RPC
-//!                     │ (crypto.*, tls.* methods)
+//!                     │ CryptoCapability trait
+//!                     │ (agnostic crypto operations)
 //! ┌───────────────────▼──────────────────────────────────────┐
-//! │             BearDog Crypto Provider                      │
-//! │  - x25519 (ECDH)                                        │
-//! │  - ChaCha20-Poly1305 (AEAD)                             │
-//! │  - ed25519 (signatures)                                 │
-//! │  - BLAKE3 (hashing)                                     │
+//! │          Crypto Provider (discovered at runtime)         │
+//! │  - BearDog (default)                                    │
+//! │  - Future: Neural API semantic translation              │
+//! │  - Future: Other providers                              │
 //! └──────────────────────────────────────────────────────────┘
 //! ```
 //!
@@ -30,8 +29,8 @@
 //! use std::collections::HashMap;
 //!
 //! # async fn example() -> anyhow::Result<()> {
-//! // Create client with BearDog socket path
-//! let client = SongbirdHttpClient::new("/tmp/beardog-nat0.sock");
+//! // Create client with automatic crypto discovery
+//! let client = SongbirdHttpClient::new("/tmp/beardog.sock");
 //!
 //! // Make HTTPS request
 //! let response = client.request(
@@ -49,13 +48,15 @@
 //! ## Features
 //!
 //! - ✅ Pure Rust (zero C dependencies)
-//! - ✅ TLS 1.3 with BearDog crypto delegation
+//! - ✅ TLS 1.3 with capability-based crypto delegation
 //! - ✅ HTTP/1.1 and HTTP/2 support
 //! - ✅ Tower Atomic architecture
 //! - ✅ TRUE ecoBin compliant
+//! - ✅ Agnostic crypto provider support
 
 pub mod beardog_client;
 pub mod client;
+pub mod crypto;
 pub mod error;
 pub mod tls;
 pub mod types;
@@ -63,6 +64,18 @@ pub mod types;
 pub use client::SongbirdHttpClient;
 pub use error::{Error, Result};
 pub use types::{HttpRequest, HttpResponse};
+
+// Re-export crypto capability types for agnostic usage
+pub use crypto::{
+    CryptoCapability,
+    BearDogProvider,
+    discover_crypto_capability,
+    TlsHandshakeSecrets,
+    TlsApplicationSecrets,
+};
+
+// Re-export BearDogClient for backward compatibility
+pub use beardog_client::BearDogClient;
 
 /// Library version
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");
