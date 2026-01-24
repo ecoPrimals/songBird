@@ -516,7 +516,59 @@ impl TlsHandshake {
             })?;
         
         info!("🔐 TLS application traffic keys derived in {:?}", derive_start.elapsed());
-        debug!("Application secrets derived successfully (for HTTP data encryption)");
+        
+        // DIAGNOSTIC: Show key derivation details (biomeOS investigation)
+        info!("════════════════════════════════════════════════════════════");
+        info!("🔑 APPLICATION KEY DERIVATION RESULTS (DIAGNOSTIC)");
+        info!("════════════════════════════════════════════════════════════");
+        info!("This is the 'invisible 0.5%' - verifying key expansion:");
+        info!("");
+        info!("Input to HKDF-Expand-Label (in BearDog):");
+        info!("  • CLIENT_TRAFFIC_SECRET_0 (from tls_derive_application_secrets)");
+        info!("  • Label: 'tls13 key' (for write key)");
+        info!("  • Label: 'tls13 iv' (for write IV)");
+        info!("  • Cipher suite: 0x{:04x}", self.cipher_suite);
+        info!("");
+        info!("Output (what we'll use for HTTP request encryption):");
+        info!("  client_write_key ({} bytes): {}", 
+              secrets.client_write_key.len(), 
+              hex::encode(&secrets.client_write_key));
+        info!("  client_write_iv ({} bytes): {}", 
+              secrets.client_write_iv.len(), 
+              hex::encode(&secrets.client_write_iv));
+        info!("");
+        info!("Expected key length for cipher 0x{:04x}: {} bytes", 
+              self.cipher_suite,
+              match self.cipher_suite {
+                  0x1301 => 16,  // AES-128-GCM
+                  0x1302 => 32,  // AES-256-GCM
+                  0x1303 => 32,  // ChaCha20-Poly1305
+                  _ => 0,
+              });
+        info!("Expected IV length: 12 bytes (all TLS 1.3 ciphers)");
+        info!("");
+        info!("⚠️  CRITICAL CHECK:");
+        if secrets.client_write_key.len() != match self.cipher_suite {
+            0x1301 => 16, 0x1302 => 32, 0x1303 => 32, _ => 0
+        } {
+            error!("❌ client_write_key length MISMATCH! Expected {} bytes, got {} bytes",
+                   match self.cipher_suite { 0x1301 => 16, 0x1302 => 32, 0x1303 => 32, _ => 0 },
+                   secrets.client_write_key.len());
+        } else {
+            info!("✅ client_write_key length is CORRECT ({} bytes)", secrets.client_write_key.len());
+        }
+        if secrets.client_write_iv.len() != 12 {
+            error!("❌ client_write_iv length MISMATCH! Expected 12 bytes, got {} bytes",
+                   secrets.client_write_iv.len());
+        } else {
+            info!("✅ client_write_iv length is CORRECT (12 bytes)");
+        }
+        info!("");
+        info!("These keys will be used with:");
+        info!("  • Sequence number: 0 (for first HTTP request)");
+        info!("  • Nonce: client_write_iv XOR sequence_number");
+        info!("  • AAD: TLS record header (ContentType 0x17, version, length)");
+        info!("════════════════════════════════════════════════════════════");
         
         // 12. Send client Finished NOW that application keys are derived
         // RFC 8446 Section 4.4.4: Client must send Finished after receiving server Finished

@@ -297,6 +297,47 @@ impl BearDogClient {
         ).map_err(|e| Error::BearDogRpc(format!("Invalid server_write_iv base64: {}", e)))?;
         debug!("  ✅ server_write_iv: {} bytes", server_write_iv.len());
 
+        // DIAGNOSTIC: Show key derivation details for "invisible 0.5%" investigation
+        info!("════════════════════════════════════════════════════════════");
+        info!("🔬 BEARDOG APPLICATION KEY DERIVATION (DIAGNOSTIC)");
+        info!("════════════════════════════════════════════════════════════");
+        info!("BearDog RPC call: tls.derive_application_secrets");
+        info!("");
+        info!("Inputs (sent to BearDog):");
+        info!("  pre_master_secret: {} bytes", shared_secret.len());
+        info!("    {}", hex::encode(shared_secret));
+        info!("  client_random: {} bytes", client_random.len());
+        info!("    {}", hex::encode(client_random));
+        info!("  server_random: {} bytes", server_random.len());
+        info!("    {}", hex::encode(server_random));
+        info!("  transcript_hash: {} bytes (SHA-256)", transcript_hash.len());
+        info!("    {}", hex::encode(transcript_hash));
+        info!("  cipher_suite: 0x{:04x}", cipher_suite);
+        info!("");
+        info!("⚠️  CRITICAL: BearDog should derive:");
+        info!("  1. Master Secret (from pre_master_secret + transcript_hash)");
+        info!("  2. CLIENT_TRAFFIC_SECRET_0 (HKDF-Expand-Label)");
+        info!("  3. SERVER_TRAFFIC_SECRET_0 (HKDF-Expand-Label)");
+        info!("  4. client_write_key (HKDF-Expand-Label from CLIENT_TRAFFIC_SECRET_0)");
+        info!("  5. client_write_iv (HKDF-Expand-Label from CLIENT_TRAFFIC_SECRET_0)");
+        info!("");
+        info!("Outputs (received from BearDog):");
+        info!("  client_write_key: {} bytes", client_write_key.len());
+        info!("    {}", hex::encode(&client_write_key));
+        info!("  server_write_key: {} bytes", server_write_key.len());
+        info!("    {}", hex::encode(&server_write_key));
+        info!("  client_write_iv: {} bytes", client_write_iv.len());
+        info!("    {}", hex::encode(&client_write_iv));
+        info!("  server_write_iv: {} bytes", server_write_iv.len());
+        info!("    {}", hex::encode(&server_write_iv));
+        info!("");
+        info!("🧪 RFC 8448 Test Vector Comparison:");
+        info!("  If CLIENT_TRAFFIC_SECRET_0 = 48d566dbe8bb07d33ab06fc01a71a8fe...");
+        info!("  Then client_write_key should = 02ba47f1a767ba883ee776e329080865");
+        info!("  And client_write_iv should = 0393d92b4ff5ee2768bd4f4a");
+        info!("  (Compare with your output above!)");
+        info!("════════════════════════════════════════════════════════════");
+
         info!("🎉 Application traffic keys successfully derived and parsed");
         
         Ok(TlsSecrets {
