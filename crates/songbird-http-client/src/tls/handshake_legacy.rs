@@ -408,11 +408,68 @@ impl TlsHandshake {
         trace!("ServerHello content: {:02x?}", &server_hello[..std::cmp::min(64, server_hello.len())]);
         
         // Validate this is a Handshake record (0x16)
+        // Check if we received a TLS alert instead of ServerHello
+        if server_hello_type == 0x15 {
+            // TLS Alert record (RFC 8446 Section 6)
+            use crate::tls::alert::TlsAlert;
+            
+            warn!("⚠️  Received TLS Alert instead of ServerHello");
+            
+            // Parse the alert message (skip TLS record header if present)
+            let alert_data = if server_hello.len() >= 5 {
+                &server_hello[5..]  // Skip 5-byte TLS record header
+            } else {
+                &server_hello[..]   // Use all data if too short
+            };
+            
+            match TlsAlert::parse(alert_data) {
+                Ok(alert) => {
+                    error!("");
+                    error!("════════════════════════════════════════════════════════════");
+                    error!("🚨 TLS ALERT RECEIVED FROM SERVER");
+                    error!("════════════════════════════════════════════════════════════");
+                    error!("");
+                    error!("{}", alert.to_detailed_string());
+                    error!("");
+                    error!("════════════════════════════════════════════════════════════");
+                    error!("");
+                    
+                    return Err(Error::TlsHandshake(format!(
+                        "Server sent {} ({}). {}",
+                        alert,
+                        alert.description.explanation(),
+                        alert.description.suggested_action()
+                    )));
+                }
+                Err(e) => {
+                    error!("❌ Failed to parse TLS alert: {}", e);
+                    error!("   Alert data length: {} bytes", alert_data.len());
+                    if !alert_data.is_empty() {
+                        error!("   Alert bytes: {:02x?}", &alert_data[..std::cmp::min(2, alert_data.len())]);
+                    }
+                    return Err(Error::TlsHandshake(format!(
+                        "Server sent TLS alert but parsing failed: {}",
+                        e
+                    )));
+                }
+            }
+        }
+        
         if server_hello_type != 0x16 {
             error!("❌ Expected Handshake record (0x16) for ServerHello, got 0x{:02x}", server_hello_type);
+            
+            // Provide helpful context for common unexpected types
+            let type_hint = match server_hello_type {
+                0x14 => "Change Cipher Spec (TLS 1.2 legacy)",
+                0x15 => "Alert (should have been caught above)",
+                0x17 => "Application Data (server may think we're resuming a session)",
+                _ => "Unknown record type",
+            };
+            error!("   Record type 0x{:02x} = {}", server_hello_type, type_hint);
+            
             return Err(Error::TlsHandshake(format!(
-                "Expected Handshake record for ServerHello, got type 0x{:02x}",
-                server_hello_type
+                "Expected Handshake record for ServerHello, got type 0x{:02x} ({})",
+                server_hello_type, type_hint
             )));
         }
         

@@ -4,6 +4,7 @@
 //! cryptographic operations to BearDog via JSON-RPC.
 
 pub mod adaptive;
+pub mod alert;
 pub mod config;
 pub mod handshake;
 pub mod negotiation;
@@ -14,6 +15,7 @@ pub mod server_complete; // Complete TLS 1.3 server implementation
 pub mod session;
 
 pub use adaptive::AdaptiveExtensions;
+pub use alert::{TlsAlert, AlertLevel, AlertDescription};
 pub use config::{TlsConfig, ExtensionStrategy, CipherStrategy, FallbackStrategy, ExtensionType, ExtensionSet, CipherSuiteSet};
 pub use handshake::TlsHandshake;
 pub use profiler::{ServerProfiler, ServerProfile};
