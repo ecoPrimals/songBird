@@ -918,51 +918,148 @@ impl TlsHandshake {
         info!("✅ Client Finished sent - handshake complete!");
         info!("   Server should now respond to HTTP requests! 🎉");
         
-        // 13. Read any post-handshake messages (RFC 8446 Section 4.6)
-        // RFC 8446: Server MAY send NewSessionTicket after handshake completes
-        // We MUST read these to avoid stream desync when sending HTTP requests
-        info!("Step 13: Reading any post-handshake messages (NewSessionTicket, etc.)");
-        info!("   ⏱️  Will wait up to 500ms for server to send post-handshake data...");
+        // 13. Read ALL post-handshake messages (RFC 8446 Section 4.6)
+        // RFC 8446: Server MAY send MULTIPLE NewSessionTicket messages after handshake
+        // We MUST read and DECRYPT these to:
+        //   1. Avoid stream desync when sending HTTP requests
+        //   2. Detect if server is sending an encrypted alert (decrypt_error, etc.)
+        // IMPORTANT: In TLS 1.3, post-handshake alerts are ENCRYPTED with application keys!
+        info!("Step 13: Reading ALL post-handshake messages (NewSessionTicket, etc.)");
+        info!("   ⏱️  Will read and decrypt until timeout (200ms between messages)...");
         
-        // Use a short timeout to check for post-handshake messages
-        // without blocking indefinitely if server doesn't send any
-        match timeout(Duration::from_millis(500), self.read_record(stream)).await {
-            Ok(Ok((content_type, data))) => {
-                info!("✅ Received post-handshake message: type=0x{:02x}, {} bytes", 
-                     content_type, data.len());
-                match content_type {
-                    0x17 => {  // APPLICATION_DATA (encrypted post-handshake message)
-                        info!("   📨 Post-handshake APPLICATION_DATA message (likely NewSessionTicket)");
-                        // Decrypt using APPLICATION traffic keys (server_write_key)
-                        // Note: NewSessionTicket doesn't affect our HTTP requests, so we can safely ignore it
-                        // TODO: If we want session resumption, parse and store the ticket
-                        info!("   ℹ️  Ignoring post-handshake message (not needed for HTTP requests)");
-                    }
-                    0x15 => {  // ALERT
-                        warn!("⚠️  Received TLS alert after handshake!");
-                        use crate::tls::alert::TlsAlert;
-                        if let Ok(alert) = TlsAlert::parse(&data) {
-                            error!("🚨 Post-handshake alert: {}", alert.to_detailed_string());
-                            return Err(Error::TlsHandshake(format!(
-                                "Server sent alert after handshake: {}",
-                                alert.to_detailed_string()
-                            )));
+        let mut post_handshake_count = 0;
+        let mut read_sequence_number: u64 = 0;  // Separate sequence for reading (starts at 0)
+        
+        // Loop to read ALL post-handshake messages
+        // Use shorter timeout (200ms) between messages since server sends them quickly
+        loop {
+            match timeout(Duration::from_millis(200), self.read_record(stream)).await {
+                Ok(Ok((content_type, encrypted_data))) => {
+                    post_handshake_count += 1;
+                    info!("✅ Post-handshake message #{}: type=0x{:02x}, {} bytes (encrypted)", 
+                         post_handshake_count, content_type, encrypted_data.len());
+                    
+                    match content_type {
+                        0x17 => {  // APPLICATION_DATA (encrypted post-handshake message)
+                            // DECRYPT the message using APPLICATION traffic keys (server_write_key)
+                            info!("   🔐 Decrypting with server_write_key (application traffic key)...");
+                            
+                            // Build nonce: server_write_iv XOR read_sequence_number
+                            let mut nonce = secrets.server_write_iv.clone();
+                            let seq_bytes = read_sequence_number.to_be_bytes();
+                            for i in 0..8 {
+                                nonce[4 + i] ^= seq_bytes[i];
+                            }
+                            
+                            // Build AAD (record header)
+                            let aad = [
+                                0x17, 0x03, 0x03,
+                                (encrypted_data.len() >> 8) as u8,
+                                (encrypted_data.len() & 0xFF) as u8,
+                            ];
+                            
+                            // Decrypt based on cipher suite
+                            let plaintext_result = match self.cipher_suite {
+                                0x1301 => self.beardog.decrypt_aes_128_gcm(
+                                    &secrets.server_write_key, &nonce, &encrypted_data, &aad
+                                ).await,
+                                0x1302 => self.beardog.decrypt_aes_256_gcm(
+                                    &secrets.server_write_key, &nonce, &encrypted_data, &aad
+                                ).await,
+                                _ => self.beardog.decrypt(
+                                    &secrets.server_write_key, &nonce, &encrypted_data, &aad
+                                ).await,
+                            };
+                            
+                            read_sequence_number += 1;  // Increment for next message
+                            
+                            match plaintext_result {
+                                Ok(plaintext) => {
+                                    // RFC 8446: TLSInnerPlaintext has ContentType as last non-zero byte
+                                    if let Some(&inner_type) = plaintext.last() {
+                                        let content = &plaintext[..plaintext.len()-1];
+                                        info!("   📨 Decrypted: {} bytes, inner type=0x{:02x}", 
+                                              content.len(), inner_type);
+                                        
+                                        match inner_type {
+                                            0x16 => {  // Handshake (NewSessionTicket is type 0x04)
+                                                if !content.is_empty() && content[0] == 0x04 {
+                                                    info!("   🎟️  NewSessionTicket #{} (ignored for now)", post_handshake_count);
+                                                } else {
+                                                    info!("   📋 Handshake message type 0x{:02x}", 
+                                                          content.first().unwrap_or(&0));
+                                                }
+                                            }
+                                            0x15 => {  // ALERT (inside encrypted envelope!)
+                                                use crate::tls::alert::TlsAlert;
+                                                if content.len() >= 2 {
+                                                    if let Ok(alert) = TlsAlert::parse(content) {
+                                                        error!("");
+                                                        error!("════════════════════════════════════════════════════════════");
+                                                        error!("🚨 SERVER SENT ENCRYPTED ALERT AFTER HANDSHAKE!");
+                                                        error!("════════════════════════════════════════════════════════════");
+                                                        error!("{}", alert.to_detailed_string());
+                                                        error!("════════════════════════════════════════════════════════════");
+                                                        error!("");
+                                                        return Err(Error::TlsHandshake(format!(
+                                                            "Server sent encrypted alert: {}",
+                                                            alert.to_detailed_string()
+                                                        )));
+                                                    }
+                                                }
+                                            }
+                                            0x17 => {
+                                                info!("   📦 Application data (unexpected at this stage)");
+                                            }
+                                            _ => {
+                                                info!("   ❓ Unknown inner type: 0x{:02x}", inner_type);
+                                            }
+                                        }
+                                    }
+                                }
+                                Err(e) => {
+                                    warn!("   ⚠️  Failed to decrypt post-handshake message: {}", e);
+                                    warn!("   This might indicate a key derivation issue");
+                                    // Don't fail - might be able to continue
+                                }
+                            }
+                        }
+                        0x15 => {  // Unencrypted ALERT (shouldn't happen in TLS 1.3 after handshake)
+                            warn!("⚠️  Received UNENCRYPTED TLS alert (unusual for TLS 1.3)!");
+                            use crate::tls::alert::TlsAlert;
+                            if let Ok(alert) = TlsAlert::parse(&encrypted_data) {
+                                error!("🚨 Alert: {}", alert.to_detailed_string());
+                                return Err(Error::TlsHandshake(format!(
+                                    "Server sent unencrypted alert: {}",
+                                    alert.to_detailed_string()
+                                )));
+                            }
+                        }
+                        _ => {
+                            info!("   ℹ️  Ignoring unexpected message type: 0x{:02x}", content_type);
                         }
                     }
-                    _ => {
-                        info!("   ℹ️  Ignoring unexpected post-handshake message type: 0x{:02x}", content_type);
+                }
+                Ok(Err(e)) => {
+                    if post_handshake_count == 0 {
+                        warn!("⚠️  Error reading first post-handshake message: {}", e);
+                    } else {
+                        debug!("   Error reading message #{}: {} (might be normal)", post_handshake_count + 1, e);
                     }
+                    break;
+                }
+                Err(_) => {
+                    if post_handshake_count == 0 {
+                        info!("   ⏱️  Timeout - no post-handshake messages (this is OK)");
+                    } else {
+                        info!("   ⏱️  Timeout after {} post-handshake messages", post_handshake_count);
+                    }
+                    break;
                 }
             }
-            Ok(Err(e)) => {
-                warn!("⚠️  Error reading post-handshake message: {}", e);
-                warn!("   Continuing anyway (might be OK if server doesn't send any)");
-            }
-            Err(_) => {
-                info!("   ⏱️  Timeout - no post-handshake messages received (this is OK)");
-                info!("   Server is ready for HTTP requests!");
-            }
         }
+        
+        info!("✅ Consumed {} post-handshake messages - stream ready for HTTP!", post_handshake_count);
         
         let total_time = handshake_start.elapsed();
         info!("🎉 ✅ TLS 1.3 handshake complete in {:?}", total_time);
@@ -1828,11 +1925,27 @@ impl TlsHandshake {
         debug!("   AAD (TLS record header): {:02x?}", aad);
         
         // Encrypt via BearDog (uses correct AEAD algorithm based on cipher suite)
+        // DIAGNOSTIC: Log BOTH client and server keys to detect swapping
+        info!("🔑 CLIENT FINISHED ENCRYPTION KEY (DIAGNOSTIC):");
+        info!("   client_write_key (hex): {}", hex::encode(&handshake_keys.client_write_key));
+        info!("   server_write_key (hex): {}", hex::encode(&handshake_keys.server_write_key));
+        info!("   client_write_iv (hex): {}", hex::encode(&handshake_keys.client_write_iv));
+        info!("   server_write_iv (hex): {}", hex::encode(&handshake_keys.server_write_iv));
+        info!("   Nonce (IV XOR seq): {}", hex::encode(&nonce));
+        info!("   AAD (hex): {}", hex::encode(&aad));
+        info!("   Plaintext length: {} bytes", plaintext.len());
+        info!("   ⚠️  HYPOTHESIS: If server_write_key == server's expected client_write_key,");
+        info!("      then BearDog is swapping client/server labels!");
+        
+        // Use client_write_key for client→server encryption (correct per RFC 8446)
+        let encryption_key = &handshake_keys.client_write_key;
+        info!("   🔑 USING KEY: client_write_key (correct per RFC 8446)");
+        
         let ciphertext = match self.cipher_suite {
             0x1301 => {
                 info!("   → Using AES-128-GCM for client Finished");
                 self.beardog.encrypt_aes_128_gcm(
-                    &handshake_keys.client_write_key,
+                    encryption_key,
                     &nonce,
                     &plaintext,
                     &aad,
@@ -1841,7 +1954,7 @@ impl TlsHandshake {
             0x1302 => {
                 info!("   → Using AES-256-GCM for client Finished");
                 self.beardog.encrypt_aes_256_gcm(
-                    &handshake_keys.client_write_key,
+                    encryption_key,
                     &nonce,
                     &plaintext,
                     &aad,
@@ -1850,7 +1963,7 @@ impl TlsHandshake {
             0x1303 => {
                 info!("   → Using ChaCha20-Poly1305 for client Finished");
                 self.beardog.encrypt(
-                    &handshake_keys.client_write_key,
+                    encryption_key,
                     &nonce,
                     &plaintext,
                     &aad,
