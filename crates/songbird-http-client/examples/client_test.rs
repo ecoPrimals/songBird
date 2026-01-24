@@ -81,9 +81,12 @@ async fn main() -> anyhow::Result<()> {
     info!("   BearDog Socket: {}", beardog_socket);
     info!("");
 
-    // Create HTTPS client
+    // Create HTTPS client (uses BearDogClient::from_env() for mode detection)
     info!("🏗️  Creating HTTPS client...");
-    let client = SongbirdHttpClient::new(&beardog_socket);
+    info!("   Mode: Controlled by BEARDOG_MODE env var");
+    info!("   - BEARDOG_MODE=direct → Direct RPC to BearDog");
+    info!("   - BEARDOG_MODE=neural → Via Neural API (default)");
+    let client = SongbirdHttpClient::from_env();
     info!("✅ Client ready");
     info!("");
 

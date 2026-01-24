@@ -118,10 +118,10 @@ async fn main() -> anyhow::Result<()> {
     info!("✅ Private key: {} bytes", private_key.len());
     info!("");
 
-    // Connect to BearDog
-    info!("🐻 Connecting to BearDog...");
-    let beardog = Arc::new(BearDogClient::new(&beardog_socket));
-    info!("✅ BearDog connected");
+    // Connect to BearDog (DIRECT MODE for self-test!)
+    info!("🐻 Connecting to BearDog in DIRECT MODE...");
+    let beardog = Arc::new(BearDogClient::new_direct(&beardog_socket));
+    info!("✅ BearDog connected (direct RPC, no Neural API needed)");
     info!("");
 
     // Create TLS server

@@ -134,7 +134,7 @@ echo ""
 
 # Step 3: Start Songbird Server
 echo "═══════════════════════════════════════════════════════════════"
-echo "🔒 Step 3: Starting Songbird TLS Server..."
+echo "🔒 Step 3: Starting Songbird TLS Server (DIRECT MODE)..."
 echo "═══════════════════════════════════════════════════════════════"
 
 # Check if server binary exists (we need to build it)
@@ -143,12 +143,16 @@ if [ ! -f "target/release/songbird-server" ] && [ ! -f "target/debug/songbird-se
     cargo build --package songbird-http-client --example server_test
 fi
 
+echo "   Mode: DIRECT (no Neural API needed)"
 echo "   Port: $SERVER_PORT"
 echo "   Logging to: $SERVER_LOG"
 echo "   Certificate: $CERT_FILE"
 
-# Start server in background with full logging
-RUST_LOG=info cargo run --package songbird-http-client --example server_test -- \
+# Start server in background with full logging (DIRECT MODE!)
+RUST_LOG=info \
+BEARDOG_MODE=direct \
+BEARDOG_SOCKET=$BEARDOG_SOCKET \
+cargo run --package songbird-http-client --example server_test -- \
     --port $SERVER_PORT \
     --cert $CERT_FILE \
     --key $KEY_FILE \
@@ -171,14 +175,18 @@ echo ""
 
 # Step 4: Run Songbird Client
 echo "═══════════════════════════════════════════════════════════════"
-echo "🔗 Step 4: Connecting with Songbird TLS Client..."
+echo "🔗 Step 4: Connecting with Songbird TLS Client (DIRECT MODE)..."
 echo "═══════════════════════════════════════════════════════════════"
 
+echo "   Mode: DIRECT (no Neural API needed)"
 echo "   Target: https://localhost:$SERVER_PORT"
 echo "   Logging to: $CLIENT_LOG"
 
-# Run client and capture logs
-RUST_LOG=info cargo run --package songbird-http-client --example client_test -- \
+# Run client and capture logs (DIRECT MODE!)
+RUST_LOG=info \
+BEARDOG_MODE=direct \
+BEARDOG_SOCKET=$BEARDOG_SOCKET \
+cargo run --package songbird-http-client --example client_test -- \
     --url https://localhost:$SERVER_PORT \
     --skip-verify \
     > $CLIENT_LOG 2>&1 || true
