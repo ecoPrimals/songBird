@@ -10,12 +10,11 @@
 //!
 //! **Critical**: Uses EXACT same transcript logic as client for validation!
 
-use crate::beardog_client::{BearDogClient, TlsSecrets};
+use crate::beardog_client::BearDogClient;
 use crate::error::{Error, Result};
 use crate::tls::{
     handshake::{
         keys::{CipherSuite, TrafficKeys},
-        parser::parse_handshake_messages,
         transcript::Transcript,
     },
     TLS_1_2, TLS_1_3,
@@ -24,7 +23,7 @@ use crate::tls::{
 use std::sync::Arc;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::TcpStream;
-use tracing::{debug, error, info, trace, warn};
+use tracing::{debug, error, info};
 
 /// TLS 1.3 Server
 ///
@@ -55,6 +54,13 @@ pub struct TlsServer {
     /// Server keypair for ECDH
     server_private_key: Option<Vec<u8>>,
     server_public_key: Option<Vec<u8>>,
+    
+    /// Randoms for key derivation
+    client_random: Option<Vec<u8>>,
+    server_random: Option<Vec<u8>>,
+    
+    /// Shared secret for key derivation
+    shared_secret: Option<Vec<u8>>,
 }
 
 impl TlsServer {
@@ -78,6 +84,9 @@ impl TlsServer {
             application_keys: None,
             server_private_key: None,
             server_public_key: None,
+            client_random: None,
+            server_random: None,
+            shared_secret: None,
         }
     }
     
@@ -113,6 +122,9 @@ impl TlsServer {
         let (client_random, client_public_key, client_cipher_suites) = 
             self.parse_client_hello(&client_hello)?;
         
+        // Store client_random for later key derivation
+        self.client_random = Some(client_random.clone());
+        
         // Step 2: Generate server keypair
         info!("");
         info!("🔑 Step 2: Generating server ECDH keypair...");
@@ -129,12 +141,16 @@ impl TlsServer {
         info!("");
         info!("🔐 Step 3: Selecting cipher suite...");
         self.cipher_suite = self.select_cipher_suite(&client_cipher_suites)?;
-        info!("✅ Selected: {}", self.cipher_suite);
+        info!("✅ Selected: 0x{:04x}", self.cipher_suite.to_u16());
         
         // Step 4: Build and send ServerHello
         info!("");
         info!("📤 Step 4: Building and sending ServerHello...");
         let server_random = self.generate_random();
+        
+        // Store server_random for later key derivation
+        self.server_random = Some(server_random.clone());
+        
         let server_hello = self.build_server_hello(
             &server_random,
             &server_public_key,
@@ -142,7 +158,7 @@ impl TlsServer {
         )?;
         
         // Add ServerHello to transcript BEFORE sending (SAME as client!)
-        self.transcript.update_transcript_with_logging(
+        self.transcript.update_with_logging(
             &server_hello,
             "ServerHello (server sending)",
             false,
@@ -164,12 +180,19 @@ impl TlsServer {
             .await
             .map_err(|e| Error::TlsHandshake(format!("ECDH failed: {}", e)))?;
         
+        // Store shared_secret for later application key derivation
+        self.shared_secret = Some(shared_secret.clone());
+        
+        // Compute transcript hash (only ClientHello + ServerHello at this point)
+        let transcript_hash_for_handshake = self.transcript.compute_hash();
+        
         let handshake_secrets = self.beardog
             .tls_derive_handshake_secrets(
                 &shared_secret,
                 &client_random,
                 &server_random,
-                self.cipher_suite,
+                &transcript_hash_for_handshake,
+                self.cipher_suite.to_u16(),
             )
             .await
             .map_err(|e| Error::TlsHandshake(format!("Handshake key derivation failed: {}", e)))?;
@@ -192,7 +215,7 @@ impl TlsServer {
         
         // 6a. EncryptedExtensions
         let encrypted_extensions = self.build_encrypted_extensions()?;
-        self.transcript.update_transcript_with_logging(
+        self.transcript.update_with_logging(
             &encrypted_extensions,
             "EncryptedExtensions (server)",
             false,
@@ -202,7 +225,7 @@ impl TlsServer {
         
         // 6b. Certificate
         let certificate = self.build_certificate()?;
-        self.transcript.update_transcript_with_logging(
+        self.transcript.update_with_logging(
             &certificate,
             "Certificate (server)",
             false,
@@ -212,7 +235,7 @@ impl TlsServer {
         
         // 6c. CertificateVerify
         let certificate_verify = self.build_certificate_verify().await?;
-        self.transcript.update_transcript_with_logging(
+        self.transcript.update_with_logging(
             &certificate_verify,
             "CertificateVerify (server)",
             false,
@@ -222,7 +245,7 @@ impl TlsServer {
         
         // 6d. Server Finished
         let server_finished = self.build_finished(&handshake_secrets.server_handshake_secret).await?;
-        self.transcript.update_transcript_with_logging(
+        self.transcript.update_with_logging(
             &server_finished,
             "Finished (server)",
             false,
@@ -233,15 +256,17 @@ impl TlsServer {
         // Step 7: Derive application traffic keys
         info!("");
         info!("🔐 Step 7: Deriving application traffic keys...");
-        let transcript_hash = self.transcript.compute_transcript_hash();
+        let transcript_hash = self.transcript.compute_hash();
         info!("   Transcript hash: {} bytes", transcript_hash.len());
         debug!("   Hash (hex): {}", hex::encode(&transcript_hash));
         
         let app_secrets = self.beardog
             .tls_derive_application_secrets(
-                &handshake_secrets.server_handshake_secret,
+                self.shared_secret.as_ref().unwrap(),
+                self.client_random.as_ref().unwrap(),
+                self.server_random.as_ref().unwrap(),
                 &transcript_hash,
-                self.cipher_suite,
+                self.cipher_suite.to_u16(),
             )
             .await
             .map_err(|e| Error::TlsHandshake(format!("Application key derivation failed: {}", e)))?;
@@ -263,18 +288,19 @@ impl TlsServer {
         info!("📥 Step 8: Receiving client Finished...");
         let client_finished_encrypted = self.receive_tls_record(stream).await?;
         
-        // Decrypt client Finished
-        let app_keys = self.application_keys.as_ref().unwrap();
-        let client_finished_plaintext = self.record_layer.decrypt_record(
+        // Decrypt client Finished with application keys
+        let app_keys = self.application_keys.as_ref()
+            .ok_or_else(|| Error::TlsHandshake("Application keys not available".to_string()))?;
+        
+        let client_finished_plaintext = self.decrypt_application_data(
             &client_finished_encrypted,
             &app_keys.client_write_key,
             &app_keys.client_write_iv,
-            self.cipher_suite,
             0, // First application data record from client
-        )?;
+        ).await?;
         
         // Add to transcript
-        self.transcript.update_transcript_with_logging(
+        self.transcript.update_with_logging(
             &client_finished_plaintext,
             "Finished (client)",
             true,
@@ -285,7 +311,7 @@ impl TlsServer {
         // Step 9: Log complete transcript for comparison
         info!("");
         info!("📊 Step 9: Logging complete transcript...");
-        self.transcript.log_transcript_hex_dump();
+        self.transcript.log_hex_dump();
         
         info!("");
         info!("════════════════════════════════════════════════════════════");
@@ -329,7 +355,7 @@ impl TlsServer {
         info!("✅ ClientHello received: {} bytes", payload.len());
         
         // Add to transcript (SAME as client!)
-        self.transcript.update_transcript_with_logging(
+        self.transcript.update_with_logging(
             &payload,
             "ClientHello (server receiving)",
             false,
@@ -424,7 +450,7 @@ impl TlsServer {
                     return Err(Error::TlsHandshake("key_share extension too short".to_string()));
                 }
                 
-                let entries_len = u16::from_be_bytes([ext_data[0], ext_data[1]]) as usize;
+                let _entries_len = u16::from_be_bytes([ext_data[0], ext_data[1]]) as usize;
                 let mut entry_offset = 2;
                 
                 // Parse first KeyShareEntry
@@ -649,14 +675,14 @@ impl TlsServer {
     /// Build Finished message
     async fn build_finished(&self, handshake_secret: &[u8]) -> Result<Vec<u8>> {
         // Compute transcript hash
-        let transcript_hash = self.transcript.compute_transcript_hash();
+        let transcript_hash = self.transcript.compute_hash();
         
-        // Compute verify_data via BearDog
+        // Compute verify_data via BearDog (expects u16 for cipher_suite)
         let verify_data = self.beardog
             .tls_compute_finished_verify_data(
                 handshake_secret,
                 &transcript_hash,
-                self.cipher_suite,
+                self.cipher_suite.to_u16(), // Convert to u16
             )
             .await
             .map_err(|e| Error::TlsHandshake(format!("Failed to compute verify_data: {}", e)))?;
@@ -678,6 +704,141 @@ impl TlsServer {
         Ok(msg)
     }
     
+    /// Encrypt handshake message with handshake traffic keys
+    /// 
+    /// Reference: RFC 8446 Section 5.2 (Record Payload Protection)
+    async fn encrypt_handshake_message(
+        &self,
+        plaintext: &[u8],
+        key: &[u8],
+        iv: &[u8],
+        sequence_number: u64,
+    ) -> Result<Vec<u8>> {
+        // Build nonce (IV XOR sequence_number)
+        let mut nonce = iv.to_vec();
+        let seq_bytes = sequence_number.to_be_bytes();
+        
+        if nonce.len() >= 8 {
+            for (i, &byte) in seq_bytes.iter().enumerate() {
+                let nonce_idx = nonce.len() - 8 + i;
+                nonce[nonce_idx] ^= byte;
+            }
+        }
+        
+        debug!("   Nonce (IV XOR seq {}): {:02x?}", sequence_number, nonce);
+        
+        // Calculate ciphertext length (plaintext + 16-byte AEAD tag)
+        let ciphertext_length = plaintext.len() + 16;
+        
+        // Build AAD (TLS record header)
+        let record_type = 0x17; // APPLICATION_DATA (all encrypted records use 0x17 in TLS 1.3)
+        let version = [0x03, 0x03]; // TLS 1.2 compatibility
+        let aad = [
+            record_type,
+            version[0],
+            version[1],
+            ((ciphertext_length >> 8) & 0xFF) as u8,
+            (ciphertext_length & 0xFF) as u8,
+        ];
+        
+        debug!("   AAD (TLS record header): {:02x?}", aad);
+        
+        // Encrypt via BearDog (uses correct AEAD algorithm based on cipher suite)
+        let ciphertext = match self.cipher_suite {
+            CipherSuite::Aes128GcmSha256 => {
+                debug!("   → Using AES-128-GCM");
+                self.beardog.encrypt_aes_128_gcm(key, &nonce, plaintext, &aad).await
+            }
+            CipherSuite::Aes256GcmSha384 => {
+                debug!("   → Using AES-256-GCM");
+                self.beardog.encrypt_aes_256_gcm(key, &nonce, plaintext, &aad).await
+            }
+            CipherSuite::ChaCha20Poly1305Sha256 => {
+                debug!("   → Using ChaCha20-Poly1305");
+                self.beardog.encrypt(key, &nonce, plaintext, &aad).await
+            }
+        }.map_err(|e| {
+            error!("❌ Encryption failed: {}", e);
+            Error::TlsHandshake(format!("Failed to encrypt: {}", e))
+        })?;
+        
+        debug!("✅ Encrypted {} bytes → {} bytes (includes 16-byte tag)", plaintext.len(), ciphertext.len());
+        
+        Ok(ciphertext)
+    }
+    
+    /// Decrypt application data with application traffic keys
+    /// 
+    /// Reference: RFC 8446 Section 5.2 (Record Payload Protection)
+    async fn decrypt_application_data(
+        &self,
+        ciphertext: &[u8],
+        key: &[u8],
+        iv: &[u8],
+        sequence_number: u64,
+    ) -> Result<Vec<u8>> {
+        // Build nonce (IV XOR sequence_number)
+        let mut nonce = iv.to_vec();
+        let seq_bytes = sequence_number.to_be_bytes();
+        
+        if nonce.len() >= 8 {
+            for (i, &byte) in seq_bytes.iter().enumerate() {
+                let nonce_idx = nonce.len() - 8 + i;
+                nonce[nonce_idx] ^= byte;
+            }
+        }
+        
+        debug!("   Nonce (IV XOR seq {}): {:02x?}", sequence_number, nonce);
+        
+        // Build AAD (TLS record header)
+        let ciphertext_length = ciphertext.len();
+        let record_type = 0x17; // APPLICATION_DATA
+        let version = [0x03, 0x03]; // TLS 1.2 compatibility
+        let aad = [
+            record_type,
+            version[0],
+            version[1],
+            ((ciphertext_length >> 8) & 0xFF) as u8,
+            (ciphertext_length & 0xFF) as u8,
+        ];
+        
+        debug!("   AAD (TLS record header): {:02x?}", aad);
+        
+        // Decrypt via BearDog
+        let plaintext = match self.cipher_suite {
+            CipherSuite::Aes128GcmSha256 => {
+                debug!("   → Using AES-128-GCM");
+                self.beardog.decrypt_aes_128_gcm(key, &nonce, ciphertext, &aad).await
+            }
+            CipherSuite::Aes256GcmSha384 => {
+                debug!("   → Using AES-256-GCM");
+                self.beardog.decrypt_aes_256_gcm(key, &nonce, ciphertext, &aad).await
+            }
+            CipherSuite::ChaCha20Poly1305Sha256 => {
+                debug!("   → Using ChaCha20-Poly1305");
+                self.beardog.decrypt(key, &nonce, ciphertext, &aad).await
+            }
+        }.map_err(|e| {
+            error!("❌ Decryption failed: {}", e);
+            error!("   AEAD authentication failure");
+            Error::TlsHandshake(format!("Failed to decrypt: {}", e))
+        })?;
+        
+        debug!("✅ Decrypted {} bytes → {} bytes", ciphertext.len(), plaintext.len());
+        
+        // Strip ContentType byte (last byte)
+        if plaintext.is_empty() {
+            return Err(Error::TlsHandshake("Decrypted plaintext is empty".to_string()));
+        }
+        
+        let content_type_byte = plaintext[plaintext.len() - 1];
+        let content = &plaintext[..plaintext.len() - 1];
+        
+        debug!("   ContentType: 0x{:02x}", content_type_byte);
+        
+        Ok(content.to_vec())
+    }
+    
     /// Send encrypted handshake message
     async fn send_encrypted_handshake_message(
         &self,
@@ -692,14 +853,13 @@ impl TlsServer {
         let mut inner_plaintext = plaintext.to_vec();
         inner_plaintext.push(content_type::HANDSHAKE);
         
-        // Encrypt
-        let ciphertext = self.record_layer.encrypt_record(
+        // Encrypt using helper
+        let ciphertext = self.encrypt_handshake_message(
             &inner_plaintext,
             &handshake_keys.server_write_key,
             &handshake_keys.server_write_iv,
-            self.cipher_suite,
             sequence_number,
-        )?;
+        ).await?;
         
         // Wrap in TLS record
         let record = self.wrap_in_tls_record(content_type::APPLICATION_DATA, &ciphertext);
