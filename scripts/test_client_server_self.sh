@@ -75,7 +75,7 @@ echo "🐻 Step 1: Starting BearDog (crypto provider)..."
 echo "═══════════════════════════════════════════════════════════════"
 
 # Check if BearDog binary exists
-if [ ! -f "target/release/beardog" ] && [ ! -f "target/debug/beardog" ]; then
+if [ ! -f "../beardog/target/release/beardog" ] && [ ! -f "../beardog/target/debug/beardog" ]; then
     echo -e "${RED}❌ BearDog binary not found!${NC}"
     echo "   Please build BearDog first:"
     echo "   cd ../beardog && cargo build --release"
@@ -83,9 +83,9 @@ if [ ! -f "target/release/beardog" ] && [ ! -f "target/debug/beardog" ]; then
 fi
 
 # Use release if available, otherwise debug
-BEARDOG_BIN="target/release/beardog"
+BEARDOG_BIN="../beardog/target/release/beardog"
 if [ ! -f "$BEARDOG_BIN" ]; then
-    BEARDOG_BIN="target/debug/beardog"
+    BEARDOG_BIN="../beardog/target/debug/beardog"
 fi
 
 echo "   Using: $BEARDOG_BIN"
