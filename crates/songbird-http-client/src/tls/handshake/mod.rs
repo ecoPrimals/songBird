@@ -32,6 +32,7 @@ pub mod parser;
 pub mod keys;
 pub mod client_hello;
 pub mod server_hello;
+pub mod finished;
 
 // Re-export key types for convenience
 pub use transcript::Transcript;
@@ -39,6 +40,7 @@ pub use parser::{HandshakeMessage, parse_handshake_messages, parse_single_handsh
 pub use keys::{CipherSuite, TrafficKeys};
 pub use client_hello::{ClientHelloBuilder, ExtensionStrategy, CIPHER_SUITES};
 pub use server_hello::{ServerHello, parse_server_hello};
+pub use finished::{build_finished_message, parse_finished_message, validate_verify_data, prepare_for_encryption};
 
 // Re-export the main TlsHandshake from legacy file (to be refactored)
 // This maintains backward compatibility while we refactor
