@@ -106,7 +106,29 @@ impl TlsHandshake {
                       _ => "Unknown",
                   });
             
-            info!("First 16 bytes: {}", hex::encode(&message[..std::cmp::min(16, message.len())]));
+            // 🔍 ENHANCED HEX DUMP: Show first/last bytes to identify extra bytes
+            info!("First 32 bytes (hex): {}", hex::encode(&message[..std::cmp::min(32, message.len())]));
+            if message.len() > 64 {
+                info!("Last 32 bytes (hex): {}", hex::encode(&message[message.len().saturating_sub(32)..]));
+            }
+            
+            // 🔍 CHECK: Length field in message (bytes 1-3 for handshake messages)
+            if message.len() >= 4 {
+                let declared_length = u32::from_be_bytes([0, message[1], message[2], message[3]]) as usize;
+                let actual_length = message.len() - 4;  // Minus type (1) + length (3)
+                info!("📏 Length validation:");
+                info!("   Declared length (bytes 1-3): {} bytes", declared_length);
+                info!("   Actual body length: {} bytes", actual_length);
+                if declared_length != actual_length {
+                    error!("🚨 LENGTH MISMATCH!");
+                    error!("   Declared: {} bytes", declared_length);
+                    error!("   Actual: {} bytes", actual_length);
+                    error!("   Difference: {} bytes", (actual_length as i64 - declared_length as i64).abs());
+                    error!("   💡 This might be the source of the 2-byte discrepancy!");
+                } else {
+                    info!("   ✅ Length match - message is correct size");
+                }
+            }
             
             // Warn if TLS record header or ContentType byte detected
             if first_byte == 0x16 {
@@ -149,6 +171,19 @@ impl TlsHandshake {
         info!("Parsing individual RFC 8446 handshake messages...");
         info!("");
         
+        // 🔍 HEX DUMP: Show first 64 bytes and last 64 bytes to identify extra bytes
+        info!("🔍 HEX DUMP OF DECRYPTED DATA:");
+        info!("   First 64 bytes: {}", hex::encode(&data[..std::cmp::min(64, data.len())]));
+        if data.len() > 128 {
+            info!("   ... ({} bytes in middle) ...", data.len() - 128);
+        }
+        if data.len() > 64 {
+            info!("   Last 64 bytes: {}", hex::encode(&data[data.len().saturating_sub(64)..]));
+        }
+        info!("");
+        
+        let data_before_parse = data.len();
+        
         while offset < data.len() {
             // Read message type (1 byte)
             if offset >= data.len() {
@@ -159,7 +194,9 @@ impl TlsHandshake {
             
             // Check if this looks like a valid handshake message type
             if msg_type == 0x00 || msg_type > 0x18 {
-                debug!("Stopping parse: invalid message type 0x{:02x} at offset {}", msg_type, offset);
+                warn!("⚠️  Stopping parse: invalid message type 0x{:02x} at offset {}", msg_type, offset);
+                warn!("   This might be padding or extra bytes!");
+                warn!("   Remaining {} bytes: {}", data.len() - offset, hex::encode(&data[offset..std::cmp::min(offset + 32, data.len())]));
                 break;
             }
             
@@ -199,13 +236,32 @@ impl TlsHandshake {
             
             info!("✅ Parsed message #{}: {} (type 0x{:02x}, length {} bytes, total {} bytes)", 
                   messages.len() + 1, msg_name, msg_type, length, full_message.len());
+            info!("   Message offset: {} to {} (in decrypted blob)", message_start, offset + length);
+            info!("   First 32 bytes of message: {}", hex::encode(&full_message[..std::cmp::min(32, full_message.len())]));
             
             messages.push((msg_type, full_message.to_vec()));
             offset += length;
         }
         
         info!("");
-        info!("📋 Total messages parsed: {}", messages.len());
+        info!("📋 Parsing complete:");
+        info!("   Total messages parsed: {}", messages.len());
+        info!("   Bytes consumed: {} out of {} bytes", offset, data.len());
+        
+        // 🔍 CRITICAL CHECK: Are there extra bytes after the last message?
+        if offset < data.len() {
+            let extra_bytes = data.len() - offset;
+            error!("🚨 EXTRA BYTES DETECTED!");
+            error!("   {} extra bytes after last handshake message!", extra_bytes);
+            error!("   Extra bytes (hex): {}", hex::encode(&data[offset..]));
+            error!("   Extra bytes (ASCII): {:?}", String::from_utf8_lossy(&data[offset..]));
+            error!("");
+            error!("   💡 These extra bytes should NOT be added to transcript!");
+            error!("   💡 They are likely padding or TLS framing!");
+        } else {
+            info!("✅ All bytes consumed - no extra bytes detected");
+        }
+        
         info!("════════════════════════════════════════════════════════════");
         info!("");
         
