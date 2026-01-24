@@ -1,0 +1,92 @@
+//! TLS session management
+
+use crate::beardog_client::BearDogClient;
+use std::sync::Arc;
+use tokio::sync::RwLock;
+
+/// TLS session state
+#[derive(Debug)]
+pub struct TlsSession {
+    /// BearDog client for crypto operations
+    beardog: Arc<BearDogClient>,
+    /// Session keys
+    keys: Arc<RwLock<Option<SessionKeys>>>,
+    /// Server name (SNI)
+    server_name: String,
+}
+
+/// Session keys
+#[derive(Debug, Clone)]
+pub struct SessionKeys {
+    pub client_write_key: Vec<u8>,
+    pub server_write_key: Vec<u8>,
+    pub client_write_iv: Vec<u8>,
+    pub server_write_iv: Vec<u8>,
+    /// TLS 1.3 cipher suite (0x1301=AES-128-GCM, 0x1302=AES-256-GCM, 0x1303=ChaCha20-Poly1305)
+    pub cipher_suite: u16,
+}
+
+impl TlsSession {
+    /// Create a new TLS session
+    pub fn new(beardog: Arc<BearDogClient>, server_name: String) -> Self {
+        Self {
+            beardog,
+            keys: Arc::new(RwLock::new(None)),
+            server_name,
+        }
+    }
+
+    /// Get server name
+    pub fn server_name(&self) -> &str {
+        &self.server_name
+    }
+
+    /// Set session keys
+    pub async fn set_keys(&self, keys: SessionKeys) {
+        let mut guard = self.keys.write().await;
+        *guard = Some(keys);
+    }
+
+    /// Get session keys
+    pub async fn keys(&self) -> Option<SessionKeys> {
+        let guard = self.keys.read().await;
+        guard.clone()
+    }
+
+    /// Get BearDog client
+    pub fn beardog(&self) -> &BearDogClient {
+        &self.beardog
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn test_session_creation() {
+        let beardog = Arc::new(BearDogClient::new("/tmp/beardog.sock"));
+        let session = TlsSession::new(beardog, "example.com".to_string());
+        assert_eq!(session.server_name(), "example.com");
+        assert!(session.keys().await.is_none());
+    }
+
+    #[tokio::test]
+    async fn test_session_keys() {
+        let beardog = Arc::new(BearDogClient::new("/tmp/beardog.sock"));
+        let session = TlsSession::new(beardog, "example.com".to_string());
+
+        let keys = SessionKeys {
+            client_write_key: vec![1, 2, 3],
+            server_write_key: vec![4, 5, 6],
+            client_write_iv: vec![7, 8, 9],
+            server_write_iv: vec![10, 11, 12],
+            cipher_suite: 0x1303,  // ChaCha20-Poly1305 for test
+        };
+
+        session.set_keys(keys.clone()).await;
+        let retrieved = session.keys().await;
+        assert!(retrieved.is_some());
+    }
+}
+

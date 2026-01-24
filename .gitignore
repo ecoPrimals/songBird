@@ -48,7 +48,6 @@ Icon?
 *.keystore
 private_key*
 public_key*
-tls/
 ssl/
 certs/
 
