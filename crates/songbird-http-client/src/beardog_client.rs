@@ -155,17 +155,17 @@ impl BearDogClient {
     /// (Used only in Direct mode)
     fn semantic_to_actual(&self, capability: &str) -> Result<&'static str> {
         Ok(match capability {
-            // Crypto operations - map to BearDog's full capability names
+            // Crypto operations - map to BearDog's actual method names
             "crypto.generate_keypair" => "crypto.x25519_generate_ephemeral",
             "crypto.ecdh_derive" => "crypto.x25519_derive_secret",
             "crypto.encrypt" => "crypto.chacha20_poly1305_encrypt",
             "crypto.decrypt" => "crypto.chacha20_poly1305_decrypt",
-            "crypto.encrypt_aes_128_gcm" => "crypto.aes_128_gcm_encrypt",
-            "crypto.decrypt_aes_128_gcm" => "crypto.aes_128_gcm_decrypt",
-            "crypto.encrypt_aes_256_gcm" => "crypto.aes_256_gcm_encrypt",
-            "crypto.decrypt_aes_256_gcm" => "crypto.aes_256_gcm_decrypt",
+            "crypto.encrypt_aes_128_gcm" => "crypto.aes128_gcm_encrypt",      // Note: no underscore between aes and 128
+            "crypto.decrypt_aes_128_gcm" => "crypto.aes128_gcm_decrypt",      // Note: no underscore between aes and 128
+            "crypto.encrypt_aes_256_gcm" => "crypto.aes256_gcm_encrypt",      // Note: no underscore between aes and 256
+            "crypto.decrypt_aes_256_gcm" => "crypto.aes256_gcm_decrypt",      // Note: no underscore between aes and 256
             
-            // TLS key derivation - map to BearDog's full capability names
+            // TLS key derivation - already correct
             "tls.derive_handshake_secrets" => "tls.derive_handshake_secrets",
             "tls.derive_application_secrets" => "tls.derive_application_secrets",
             "tls.compute_finished_verify_data" => "tls.compute_finished_verify_data",
@@ -204,9 +204,10 @@ impl BearDogClient {
     pub async fn ecdh_derive(&self, private_key: &[u8], public_key: &[u8]) -> Result<Vec<u8>> {
         debug!("🔐 Performing ECDH via BearDog");
         
+        // BearDog expects: "our_secret" and "their_public"
         let result = self.call("crypto.ecdh_derive", json!({
-            "private_key": BASE64_STANDARD.encode(private_key),
-            "public_key": BASE64_STANDARD.encode(public_key)
+            "our_secret": BASE64_STANDARD.encode(private_key),
+            "their_public": BASE64_STANDARD.encode(public_key)
         })).await?;
 
         let shared_secret = result["shared_secret"]
