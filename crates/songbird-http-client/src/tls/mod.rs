@@ -10,6 +10,7 @@ pub mod negotiation;
 pub mod profiler;
 pub mod record;
 pub mod server;
+pub mod server_complete; // Complete TLS 1.3 server implementation
 pub mod session;
 
 pub use adaptive::AdaptiveExtensions;
@@ -18,6 +19,7 @@ pub use handshake::TlsHandshake;
 pub use profiler::{ServerProfiler, ServerProfile};
 pub use record::TlsRecordLayer;
 pub use server::TlsServer;
+pub use server_complete::TlsServer as TlsServerComplete; // Complete implementation
 pub use session::TlsSession;
 
 /// TLS 1.3 version
