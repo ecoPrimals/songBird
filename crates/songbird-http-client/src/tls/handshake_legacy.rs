@@ -312,6 +312,18 @@ impl TlsHandshake {
         
         info!("📤 Sending ClientHello: {} bytes to {}", client_hello.len(), server_name);
         
+        // 🔬 WIRE CAPTURE: Log complete ClientHello for analysis
+        info!("════════════════════════════════════════════════════════════");
+        info!("🔬 COMPLETE CLIENTHELLO HEX DUMP (FOR WIRE ANALYSIS)");
+        info!("════════════════════════════════════════════════════════════");
+        info!("Total length: {} bytes", client_hello.len());
+        info!("");
+        for (i, chunk) in client_hello.chunks(32).enumerate() {
+            info!("{:04x}: {}", i * 32, hex::encode(chunk));
+        }
+        info!("════════════════════════════════════════════════════════════");
+        info!("");
+        
         // RFC 8446 Section 4.4.1: Update transcript with ClientHello HANDSHAKE MESSAGE ONLY
         // The transcript includes the handshake message (Type + Length + Content), 
         // NOT the TLS record framing (ContentType + Version + RecordLength)
@@ -1123,14 +1135,11 @@ impl TlsHandshake {
         ext.extend_from_slice(&[0x00, 0x00]); // responder_id_list: empty
         ext.extend_from_slice(&[0x00, 0x00]); // request_extensions: empty
 
-        // 9. Extended Master Secret (0x0017)
-        ext.extend_from_slice(&[0x00, 0x17]);
-        ext.extend_from_slice(&[0x00, 0x00]); // Empty
-
-        // 10. Renegotiation Info (0xff01)
-        ext.extend_from_slice(&[0xff, 0x01]);
-        ext.extend_from_slice(&[0x00, 0x01]);
-        ext.extend_from_slice(&[0x00]); // Empty renegotiation info
+        // RFC 8446 NOTE: We do NOT add TLS 1.2 legacy extensions like:
+        // - extended_master_secret (0x0017) - causes servers to confuse us with TLS 1.2
+        // - renegotiation_info (0xff01) - not applicable in TLS 1.3
+        // These were causing real-world servers (cloudflare, google) to send Application Data
+        // instead of ServerHello, as they thought we were trying session resumption.
 
         Ok(ext)
     }
