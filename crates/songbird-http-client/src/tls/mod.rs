@@ -1,6 +1,6 @@
 //! TLS 1.3 implementation with BearDog crypto delegation
 //!
-//! This module implements a Pure Rust TLS 1.3 client by delegating all
+//! This module implements a Pure Rust TLS 1.3 client AND server by delegating all
 //! cryptographic operations to BearDog via JSON-RPC.
 
 pub mod adaptive;
@@ -9,6 +9,7 @@ pub mod handshake;
 pub mod negotiation;
 pub mod profiler;
 pub mod record;
+pub mod server;
 pub mod session;
 
 pub use adaptive::AdaptiveExtensions;
@@ -16,6 +17,7 @@ pub use config::{TlsConfig, ExtensionStrategy, CipherStrategy, FallbackStrategy,
 pub use handshake::TlsHandshake;
 pub use profiler::{ServerProfiler, ServerProfile};
 pub use record::TlsRecordLayer;
+pub use server::TlsServer;
 pub use session::TlsSession;
 
 /// TLS 1.3 version

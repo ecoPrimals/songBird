@@ -67,6 +67,7 @@ impl TlsHandshake {
     /// - ClientHello: Must strip 5-byte TLS record header before calling
     /// - ServerHello: Already stripped by read_record()
     /// - Post-handshake messages: Already stripped by read_record()
+    #[allow(dead_code)]
     fn update_transcript(&mut self, message: &[u8]) {
         let before = self.transcript.len();
         let after = before + message.len();
@@ -182,7 +183,7 @@ impl TlsHandshake {
         }
         info!("");
         
-        let data_before_parse = data.len();
+        let _data_before_parse = data.len();
         
         while offset < data.len() {
             // Read message type (1 byte)
