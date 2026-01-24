@@ -155,20 +155,20 @@ impl BearDogClient {
     /// (Used only in Direct mode)
     fn semantic_to_actual(&self, capability: &str) -> Result<&'static str> {
         Ok(match capability {
-            // Crypto operations
-            "crypto.generate_keypair" => "x25519_generate_ephemeral",
-            "crypto.ecdh_derive" => "x25519_compute_shared_secret",
-            "crypto.encrypt" => "crypto_chacha20_poly1305_encrypt",
-            "crypto.decrypt" => "crypto_chacha20_poly1305_decrypt",
-            "crypto.encrypt_aes_128_gcm" => "crypto_aes128_gcm_encrypt",
-            "crypto.decrypt_aes_128_gcm" => "crypto_aes128_gcm_decrypt",
-            "crypto.encrypt_aes_256_gcm" => "crypto_aes256_gcm_encrypt",
-            "crypto.decrypt_aes_256_gcm" => "crypto_aes256_gcm_decrypt",
+            // Crypto operations - map to BearDog's full capability names
+            "crypto.generate_keypair" => "crypto.x25519_generate_ephemeral",
+            "crypto.ecdh_derive" => "crypto.x25519_derive_secret",
+            "crypto.encrypt" => "crypto.chacha20_poly1305_encrypt",
+            "crypto.decrypt" => "crypto.chacha20_poly1305_decrypt",
+            "crypto.encrypt_aes_128_gcm" => "crypto.aes_128_gcm_encrypt",
+            "crypto.decrypt_aes_128_gcm" => "crypto.aes_128_gcm_decrypt",
+            "crypto.encrypt_aes_256_gcm" => "crypto.aes_256_gcm_encrypt",
+            "crypto.decrypt_aes_256_gcm" => "crypto.aes_256_gcm_decrypt",
             
-            // TLS key derivation
-            "tls.derive_handshake_secrets" => "tls_derive_handshake_secrets",
-            "tls.derive_application_secrets" => "tls_derive_application_secrets",
-            "tls.compute_finished_verify_data" => "tls_compute_finished_verify_data",
+            // TLS key derivation - map to BearDog's full capability names
+            "tls.derive_handshake_secrets" => "tls.derive_handshake_secrets",
+            "tls.derive_application_secrets" => "tls.derive_application_secrets",
+            "tls.compute_finished_verify_data" => "tls.compute_finished_verify_data",
             
             _ => return Err(Error::BearDogRpc(format!(
                 "Unknown capability: {}. Add mapping to semantic_to_actual()", 
@@ -1088,32 +1088,32 @@ mod tests {
         
         assert_eq!(
             client.semantic_to_actual("crypto.generate_keypair").unwrap(),
-            "x25519_generate_ephemeral"
+            "crypto.x25519_generate_ephemeral"
         );
         
         assert_eq!(
             client.semantic_to_actual("crypto.ecdh_derive").unwrap(),
-            "x25519_compute_shared_secret"
+            "crypto.x25519_derive_secret"
         );
         
         assert_eq!(
             client.semantic_to_actual("crypto.encrypt").unwrap(),
-            "crypto_chacha20_poly1305_encrypt"
+            "crypto.chacha20_poly1305_encrypt"
         );
         
         assert_eq!(
             client.semantic_to_actual("crypto.decrypt").unwrap(),
-            "crypto_chacha20_poly1305_decrypt"
+            "crypto.chacha20_poly1305_decrypt"
         );
         
         assert_eq!(
             client.semantic_to_actual("tls.derive_handshake_secrets").unwrap(),
-            "tls_derive_handshake_secrets"
+            "tls.derive_handshake_secrets"
         );
         
         assert_eq!(
             client.semantic_to_actual("tls.derive_application_secrets").unwrap(),
-            "tls_derive_application_secrets"
+            "tls.derive_application_secrets"
         );
         
         assert!(client.semantic_to_actual("unknown.capability").is_err());
