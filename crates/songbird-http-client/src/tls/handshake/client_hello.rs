@@ -30,7 +30,7 @@
 
 use crate::error::Result;
 use crate::tls::{TLS_1_2, TLS_1_3};
-use tracing::{debug, info};
+use tracing::debug;
 
 /// TLS 1.3 cipher suites (RFC 8446 Appendix B.4)
 pub const CIPHER_SUITES: &[u16] = &[
