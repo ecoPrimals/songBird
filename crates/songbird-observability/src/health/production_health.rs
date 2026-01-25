@@ -3,7 +3,7 @@
 //! Real service health monitoring replacing mock implementations
 
 use chrono::{DateTime, Utc};
-use reqwest::Client;
+use songbird_http_client::SongbirdHttpClient;
 use serde::{Deserialize, Serialize};
 use songbird_types::{ServiceResult, SongbirdError};
 use std::collections::HashMap;

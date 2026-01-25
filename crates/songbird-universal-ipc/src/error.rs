@@ -50,6 +50,14 @@ pub enum IpcError {
     /// RPC error
     #[error("RPC error: {0}")]
     RpcError(String),
+    
+    /// Invalid parameters
+    #[error("Invalid parameters: {0}")]
+    InvalidParams(String),
+    
+    /// Internal error
+    #[error("Internal error: {0}")]
+    Internal(String),
 
     /// Other error
     #[error("Other error: {0}")]

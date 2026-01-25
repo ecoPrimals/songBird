@@ -27,6 +27,16 @@ pub struct ServerArgs {
     /// Enable verbose logging
     #[arg(long, short)]
     pub verbose: bool,
+
+    /// Unix socket path for IPC (JSON-RPC 2.0)
+    /// Enables external primals to access HTTP/HTTPS capabilities
+    /// Example: /tmp/songbird-nat0.sock
+    #[arg(long)]
+    pub socket: Option<String>,
+
+    /// BearDog socket path for crypto operations (defaults based on family_id)
+    #[arg(long)]
+    pub beardog_socket: Option<String>,
 }
 
 /// Doctor mode arguments
@@ -140,6 +150,32 @@ pub async fn run_server(args: ServerArgs) -> Result<()> {
     tracing::info!("✅ Songbird ready!");
     tracing::info!("   Unix Socket IPC: /tmp/songbird-*.sock (see logs for actual path)");
     tracing::info!("   Protocol: JSON-RPC 2.0 over Unix sockets");
+    tracing::info!("");
+
+    // Step 4.5: Start IPC server if socket is provided (NEW for biomeOS integration)
+    let ipc_handle = if let Some(socket_path) = args.socket {
+        tracing::info!("🌐 Starting IPC Server (for biomeOS integration)...");
+        tracing::info!("   Socket: {}", socket_path);
+
+        // Determine BearDog socket
+        let beardog_socket = args.beardog_socket.unwrap_or_else(|| {
+            let family_id = family_identity.as_deref().unwrap_or("nat0");
+            format!("/tmp/beardog-{}.sock", family_id)
+        });
+        tracing::info!("   BearDog: {}", beardog_socket);
+
+        // Spawn IPC server in background task
+        let socket_clone = socket_path.clone();
+        Some(tokio::spawn(async move {
+            match start_ipc_server(&socket_clone, &beardog_socket).await {
+                Ok(_) => tracing::info!("IPC server stopped gracefully"),
+                Err(e) => tracing::error!("IPC server error: {}", e),
+            }
+        }))
+    } else {
+        tracing::info!("💡 Tip: Use --socket /tmp/songbird-nat0.sock to enable IPC for biomeOS");
+        None
+    };
     tracing::info!("");
     tracing::info!("💡 Press Ctrl+C to stop gracefully");
 
@@ -484,4 +520,109 @@ SONGBIRD_LOG_LEVEL=info
     println!();
 
     Ok(())
+}
+
+/// Start IPC server for external primal access to HTTP/HTTPS capabilities
+///
+/// This enables biomeOS and other primals to make HTTP/HTTPS requests via JSON-RPC
+/// without embedding Songbird code (TRUE PRIMAL architecture).
+async fn start_ipc_server(socket_path: &str, beardog_socket: &str) -> Result<()> {
+    use songbird_universal_ipc::handlers::http_handler::HttpHandler;
+    use songbird_universal_ipc::tower_atomic::{
+        JsonRpcError, JsonRpcHandler, JsonRpcRequest, JsonRpcResponse,
+    };
+    use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
+
+    // Remove old socket if exists
+    let _ = std::fs::remove_file(socket_path);
+
+    // Create HTTP handler with default discovery
+    let handler = HttpHandler::with_default_discovery();
+
+    tracing::info!("✅ IPC server listening on {}", socket_path);
+    tracing::info!("   Methods available:");
+    tracing::info!("     • http.request - Full HTTP/HTTPS request");
+    tracing::info!("     • http.get - GET request shorthand");
+    tracing::info!("     • http.post - POST request shorthand");
+
+    // Bind to Unix socket
+    let listener = tokio::net::UnixListener::bind(socket_path)
+        .map_err(|e| anyhow::anyhow!("Failed to bind to {}: {}", socket_path, e))?;
+
+    // Accept connections in a loop
+    loop {
+        match listener.accept().await {
+            Ok((stream, _)) => {
+                tracing::debug!("New IPC connection accepted");
+
+                // Clone handler for the spawned task
+                let handler_clone = HttpHandler::with_default_discovery();
+
+                tokio::spawn(async move {
+                    // Handle connection
+                    let (reader, mut writer) = tokio::io::split(stream);
+                    let mut reader = BufReader::new(reader);
+                    let mut line = String::new();
+
+                    loop {
+                        line.clear();
+                        match reader.read_line(&mut line).await {
+                            Ok(0) => {
+                                tracing::debug!("IPC client disconnected");
+                                break;
+                            }
+                            Ok(_) => {
+                                if line.trim().is_empty() {
+                                    continue;
+                                }
+
+                                // Parse JSON-RPC request
+                                let response = match serde_json::from_str::<JsonRpcRequest>(&line) {
+                                    Ok(request) => {
+                                        tracing::debug!("IPC JSON-RPC request: {}", request.method);
+                                        match handler_clone
+                                            .handle(
+                                                &request.method,
+                                                request.params.unwrap_or(serde_json::Value::Null),
+                                            )
+                                            .await
+                                        {
+                                            Ok(result) => {
+                                                JsonRpcResponse::success(result, request.id)
+                                            }
+                                            Err(message) => JsonRpcResponse::error(
+                                                JsonRpcError::internal_error(message),
+                                                request.id,
+                                            ),
+                                        }
+                                    }
+                                    Err(e) => JsonRpcResponse::error(
+                                        JsonRpcError {
+                                            code: JsonRpcError::PARSE_ERROR,
+                                            message: format!("Failed to parse request: {}", e),
+                                            data: None,
+                                        },
+                                        serde_json::Value::Null,
+                                    ),
+                                };
+
+                                // Send response
+                                if let Ok(response_json) = serde_json::to_string(&response) {
+                                    let _ = writer.write_all(response_json.as_bytes()).await;
+                                    let _ = writer.write_all(b"\n").await;
+                                }
+                            }
+                            Err(e) => {
+                                tracing::error!("Failed to read from IPC socket: {}", e);
+                                break;
+                            }
+                        }
+                    }
+                });
+            }
+            Err(e) => {
+                tracing::error!("Failed to accept IPC connection: {}", e);
+            }
+        }
+    }
 }

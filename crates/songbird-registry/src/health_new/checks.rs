@@ -23,19 +23,16 @@ impl HttpCheck {
 
     /// Perform the health check
     pub async fn check(&self) -> SongbirdResult<HealthStatus> {
+        use songbird_http_client::SongbirdHttpClient;
+        
         let start = Instant::now();
 
-        // Perform actual HTTP health check
-        let client = reqwest::Client::builder()
-            .timeout(std::time::Duration::from_secs(5))
-            .build()
-            .map_err(|e| {
-                songbird_types::SongbirdError::network(format!("Failed to create HTTP client: {e}"))
-            })?;
+        // ✅ EVOLVED: Use Pure Rust HTTP client (ecoBin compliant!)
+        let client = SongbirdHttpClient::from_env();
 
-        match client.get(&self.url).send().await {
+        match client.get(&self.url).await {
             Ok(response) => {
-                let status = response.status().as_u16();
+                let status = response.status;
                 let elapsed = start.elapsed();
 
                 if status == self.expected_status {

@@ -167,12 +167,14 @@ impl RuntimeEndpointResolver {
     /// 2. Response time (if available)
     /// 3. Recency
     fn select_best_endpoint(endpoints: &[ServiceEndpoint]) -> &ServiceEndpoint {
+        // SAFETY: Caller guarantees endpoints is non-empty
+        // This is enforced at call site (line 109: `if !endpoints.is_empty()`)
         endpoints
             .iter()
             .max_by(|a, b| {
                 a.health_score.partial_cmp(&b.health_score).unwrap_or(std::cmp::Ordering::Equal)
             })
-            .expect("endpoints is non-empty")
+            .expect("BUG: select_best_endpoint called with empty endpoints - logic error at call site (line 109)")
     }
 
     /// Default fallback endpoints

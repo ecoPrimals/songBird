@@ -246,14 +246,16 @@ pub fn parse_handshake_messages(data: &[u8]) -> Result<Vec<HandshakeMessage>> {
 pub fn parse_single_handshake_message(data: &[u8]) -> Result<HandshakeMessage> {
     let messages = parse_handshake_messages(data)?;
 
-    if messages.len() != 1 {
-        return Err(crate::error::Error::TlsHandshake(format!(
+    match messages.len() {
+        1 => {
+            // Safe: We just verified length is exactly 1
+            Ok(messages.into_iter().next().expect("BUG: messages.len() == 1 but no first element"))
+        }
+        n => Err(crate::error::Error::TlsHandshake(format!(
             "Expected 1 handshake message, found {}",
-            messages.len()
-        )));
+            n
+        ))),
     }
-
-    Ok(messages.into_iter().next().unwrap())
 }
 
 #[cfg(test)]

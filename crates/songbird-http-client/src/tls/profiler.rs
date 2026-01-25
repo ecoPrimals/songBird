@@ -92,7 +92,10 @@ impl ServerProfiler {
 
     /// Get profile for a server (or create new)
     pub fn get_profile(&self, hostname: &str) -> Option<ServerProfile> {
-        let profiles = self.profiles.read().unwrap();
+        let profiles = self
+            .profiles
+            .read()
+            .expect("BUG: TLS profiler lock poisoned - indicates panic during profile update");
         profiles.get(hostname).cloned()
     }
 
@@ -106,7 +109,10 @@ impl ServerProfiler {
     ) {
         // Update server profile
         {
-            let mut profiles = self.profiles.write().unwrap();
+            let mut profiles = self
+                .profiles
+                .write()
+                .expect("BUG: TLS profiler lock poisoned - indicates panic during profile update");
             let profile = profiles
                 .entry(hostname.to_string())
                 .or_insert_with(|| ServerProfile::new(hostname));
@@ -130,7 +136,9 @@ impl ServerProfiler {
 
         // Update global stats
         {
-            let mut stats = self.stats.write().unwrap();
+            let mut stats = self.stats.write().expect(
+                "BUG: TLS profiler stats lock poisoned - indicates panic during stats update",
+            );
             stats.total_successes += 1;
 
             // Update best extension set if this is more successful
@@ -152,7 +160,10 @@ impl ServerProfiler {
     ) {
         // Update server profile
         {
-            let mut profiles = self.profiles.write().unwrap();
+            let mut profiles = self
+                .profiles
+                .write()
+                .expect("BUG: TLS profiler lock poisoned - indicates panic during profile update");
             let profile = profiles
                 .entry(hostname.to_string())
                 .or_insert_with(|| ServerProfile::new(hostname));
@@ -185,7 +196,9 @@ impl ServerProfiler {
 
         // Update global stats
         {
-            let mut stats = self.stats.write().unwrap();
+            let mut stats = self.stats.write().expect(
+                "BUG: TLS profiler stats lock poisoned - indicates panic during stats update",
+            );
             stats.total_failures += 1;
 
             // Track problematic extensions
@@ -206,7 +219,10 @@ impl ServerProfiler {
         }
 
         // Fall back to global best extension set
-        let stats = self.stats.read().unwrap();
+        let stats = self
+            .stats
+            .read()
+            .expect("BUG: TLS profiler stats lock poisoned - indicates panic during stats update");
         if !stats.best_extension_set.is_empty() {
             return stats.best_extension_set.clone();
         }
@@ -225,29 +241,46 @@ impl ServerProfiler {
         }
 
         // Fall back to global best cipher
-        let stats = self.stats.read().unwrap();
+        let stats = self
+            .stats
+            .read()
+            .expect("BUG: TLS profiler stats lock poisoned - indicates panic during stats update");
         stats.best_cipher
     }
 
     /// Get global statistics
     pub fn get_stats(&self) -> GlobalStats {
-        self.stats.read().unwrap().clone()
+        self.stats
+            .read()
+            .expect("BUG: TLS profiler stats lock poisoned - indicates panic during stats update")
+            .clone()
     }
 
     /// Get all profiles (for debugging/analysis)
     pub fn get_all_profiles(&self) -> HashMap<String, ServerProfile> {
-        self.profiles.read().unwrap().clone()
+        self.profiles
+            .read()
+            .expect("BUG: TLS profiler lock poisoned - indicates panic during profile update")
+            .clone()
     }
 
     /// Clear all profiles (reset learning)
     pub fn clear(&self) {
-        self.profiles.write().unwrap().clear();
-        *self.stats.write().unwrap() = GlobalStats::default();
+        self.profiles
+            .write()
+            .expect("BUG: TLS profiler lock poisoned - indicates panic during profile update")
+            .clear();
+        *self.stats.write().expect(
+            "BUG: TLS profiler stats lock poisoned - indicates panic during stats update",
+        ) = GlobalStats::default();
     }
 
     /// Get profile count
     pub fn profile_count(&self) -> usize {
-        self.profiles.read().unwrap().len()
+        self.profiles
+            .read()
+            .expect("BUG: TLS profiler lock poisoned - indicates panic during profile update")
+            .len()
     }
 }
 

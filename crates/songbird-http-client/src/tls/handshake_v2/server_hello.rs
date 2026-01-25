@@ -28,7 +28,7 @@
 //! This module is designed to be reusable for any TLS 1.3 client implementation.
 
 use crate::error::{Error, Result};
-use crate::tls::handshake::keys::CipherSuite;
+use crate::tls::handshake_v2::keys::CipherSuite;
 use tracing::{debug, info, warn};
 
 /// Parsed ServerHello data

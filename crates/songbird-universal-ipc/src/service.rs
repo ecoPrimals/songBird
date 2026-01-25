@@ -25,6 +25,7 @@
 //! ```
 
 use crate::endpoint::NativeEndpoint;
+use crate::handlers::http_handler::{HttpHandler, HttpRequestParams};
 use crate::registry::ServiceRegistry;
 use crate::tower_atomic::JsonRpcHandler;
 use async_trait::async_trait;
@@ -107,13 +108,27 @@ pub struct ServiceInfo {
 /// **TRUE PRIMAL**: Zero code embedding, pure service protocol!
 pub struct IpcServiceHandler {
     registry: Arc<RwLock<ServiceRegistry>>,
+    http_handler: Arc<HttpHandler>,
 }
 
 impl IpcServiceHandler {
     /// Create a new IPC service handler
     pub fn new(registry: Arc<RwLock<ServiceRegistry>>) -> Self {
+        let http_handler = Arc::new(HttpHandler::with_default_discovery());
         Self {
             registry,
+            http_handler,
+        }
+    }
+    
+    /// Create with custom HTTP handler (for testing/DI)
+    pub fn with_http_handler(
+        registry: Arc<RwLock<ServiceRegistry>>,
+        http_handler: Arc<HttpHandler>,
+    ) -> Self {
+        Self {
+            registry,
+            http_handler,
         }
     }
 
@@ -239,16 +254,84 @@ impl IpcServiceHandler {
 
         Ok(serde_json::to_value(result).map_err(|e| format!("Serialization error: {}", e))?)
     }
+    
+    /// Handle `http.request` method - Full HTTP/HTTPS request
+    async fn handle_http_request(&self, params: Value) -> Result<Value, String> {
+        let params: HttpRequestParams =
+            serde_json::from_value(params).map_err(|e| format!("Invalid params: {}", e))?;
+        
+        info!("HTTP request via IPC: {} {}", params.method, params.url);
+        
+        let result = self
+            .http_handler
+            .handle_request(params)
+            .await
+            .map_err(|e| format!("HTTP request failed: {}", e))?;
+        
+        Ok(serde_json::to_value(result).map_err(|e| format!("Serialization error: {}", e))?)
+    }
+    
+    /// Handle `http.get` method - GET request shorthand
+    async fn handle_http_get(&self, params: Value) -> Result<Value, String> {
+        let url = params
+            .get("url")
+            .and_then(|v| v.as_str())
+            .ok_or_else(|| "Missing 'url' parameter".to_string())?;
+        
+        info!("HTTP GET via IPC: {}", url);
+        
+        let result = self
+            .http_handler
+            .handle_get(url)
+            .await
+            .map_err(|e| format!("HTTP GET failed: {}", e))?;
+        
+        Ok(serde_json::to_value(result).map_err(|e| format!("Serialization error: {}", e))?)
+    }
+    
+    /// Handle `http.post` method - POST request shorthand
+    async fn handle_http_post(&self, params: Value) -> Result<Value, String> {
+        let url = params
+            .get("url")
+            .and_then(|v| v.as_str())
+            .ok_or_else(|| "Missing 'url' parameter".to_string())?;
+        
+        let body = params
+            .get("body")
+            .and_then(|v| v.as_str())
+            .ok_or_else(|| "Missing 'body' parameter".to_string())?;
+        
+        let content_type = params
+            .get("content_type")
+            .and_then(|v| v.as_str());
+        
+        info!("HTTP POST via IPC: {}", url);
+        
+        let result = self
+            .http_handler
+            .handle_post(url, body, content_type)
+            .await
+            .map_err(|e| format!("HTTP POST failed: {}", e))?;
+        
+        Ok(serde_json::to_value(result).map_err(|e| format!("Serialization error: {}", e))?)
+    }
 }
 
 #[async_trait]
 impl JsonRpcHandler for IpcServiceHandler {
     async fn handle(&self, method: &str, params: Value) -> Result<Value, String> {
         match method {
+            // IPC registry methods
             "ipc.register" => self.handle_register(params).await,
             "ipc.resolve" => self.handle_resolve(params).await,
             "ipc.discover" => self.handle_discover(params).await,
             "ipc.list" => self.handle_list(params).await,
+            
+            // HTTP/HTTPS methods (NEW!)
+            "http.request" => self.handle_http_request(params).await,
+            "http.get" => self.handle_http_get(params).await,
+            "http.post" => self.handle_http_post(params).await,
+            
             _ => Err(format!("Unknown method: {}", method)),
         }
     }

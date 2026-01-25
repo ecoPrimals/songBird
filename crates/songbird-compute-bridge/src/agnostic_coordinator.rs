@@ -105,7 +105,12 @@ impl AgnosticComputeCoordinator {
         tracing::info!("🔍 Attempting dynamic compute provider discovery");
 
         // Use get_compute_endpoint for 4-tier discovery
-        match songbird_config::primal_discovery::get_compute_endpoint().await {
+        // Modern async pattern: DiscoveryOptions::from_env() (v5.22.0 - Jan 25, 2026)
+        match songbird_config::primal_discovery::get_compute_endpoint(
+            songbird_config::primal_discovery::DiscoveryOptions::from_env(),
+        )
+        .await
+        {
             Ok(endpoint) => {
                 tracing::info!("✅ Discovered compute provider at: {}", endpoint);
                 Ok(ComputeProvider {

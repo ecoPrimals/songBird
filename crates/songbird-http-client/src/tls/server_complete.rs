@@ -14,10 +14,8 @@ use crate::beardog_client::BearDogClient;
 use crate::error::{Error, Result};
 use crate::tls::{
     content_type,
-    handshake::{
-        keys::{CipherSuite, TrafficKeys},
-        transcript::Transcript,
-    },
+    handshake_legacy::{TlsHandshakeSecrets}, // TODO: Move to handshake_v2::keys
+    handshake_v2::transcript::Transcript,
     handshake_type, TLS_1_2, TLS_1_3,
 };
 use std::sync::Arc;

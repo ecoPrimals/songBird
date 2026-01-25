@@ -44,7 +44,11 @@ async fn main() -> IpcResult<()> {
     // Get service info
     info!("\n📋 Getting service info...");
     let info_result = client.call_no_params("info").await?;
-    info!("Service info: {}", serde_json::to_string_pretty(&info_result).unwrap_or_else(|_| "Error formatting".to_string()));
+    info!(
+        "Service info: {}",
+        serde_json::to_string_pretty(&info_result)
+            .unwrap_or_else(|_| "Error formatting".to_string())
+    );
 
     // Test addition
     info!("\n➕ Testing addition: 15 + 27");

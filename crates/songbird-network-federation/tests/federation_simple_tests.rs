@@ -65,7 +65,6 @@ fn test_federation_config_enabled() {
 #[test]
 fn test_federation_config_disabled() {
     let config = FederationConfig {
-        _legacy_test_fields: (),
         discovery_mode: None,
         rendezvous_url: None,
         enabled: false,
@@ -80,7 +79,6 @@ fn test_federation_config_disabled() {
 #[test]
 fn test_bootstrap_address() {
     let config = FederationConfig {
-        _legacy_test_fields: (),
         discovery_mode: None,
         rendezvous_url: None,
         enabled: true,
@@ -133,7 +131,6 @@ fn test_node_timeout() {
 #[test]
 fn test_minimal_federation_config() {
     let config = FederationConfig {
-        _legacy_test_fields: (),
         discovery_mode: None,
         rendezvous_url: None,
         enabled: true,

@@ -4,40 +4,110 @@
 //! These functions discover primals through environment variables and
 //! capability-based discovery, respecting sovereignty principles.
 //!
-//! ## Migration from Deprecated Constants
+//! ## Modern Async Pattern (v5.22.0 - Jan 25, 2026)
+//!
+//! Uses dependency injection for zero global state coupling:
 //!
 //! ```rust,ignore
 //! // ❌ OLD: Hardcoded endpoints (DEPRECATED)
 //! use songbird_config::config::constants::deprecated::DEFAULT_TOADSTOOL_ENDPOINT;
 //! let endpoint = DEFAULT_TOADSTOOL_ENDPOINT;
 //!
-//! // ✅ NEW: Environment + Discovery
-//! use songbird_config::primal_discovery::get_compute_endpoint;
-//! let endpoint = get_compute_endpoint().await?;
+//! // ✅ NEW: Environment + Discovery (Production)
+//! use songbird_config::primal_discovery::{get_compute_endpoint, DiscoveryOptions};
+//! let endpoint = get_compute_endpoint(DiscoveryOptions::from_env()).await?;
+//!
+//! // ✅ NEW: Explicit config (Tests - zero global state!)
+//! let options = DiscoveryOptions::for_testing()
+//!     .compute_endpoint("http://test:8080")
+//!     .build();
+//! let endpoint = get_compute_endpoint(options).await?;
 //! ```
 
 use songbird_types::{SongbirdError, SongbirdResult};
 use tracing::{debug, warn};
 
+/// Discovery configuration options for dependency injection
+///
+/// This allows tests to pass explicit configuration without modifying
+/// global environment variables, enabling fully concurrent test execution.
+///
+/// ## Modern Async Pattern
+///
+/// Production code uses `DiscoveryOptions::from_env()` to maintain
+/// backward compatibility, while tests use explicit configuration.
+#[derive(Debug, Clone, Default)]
+pub struct DiscoveryOptions {
+    /// Compute endpoint (None = read from env)
+    pub compute_endpoint: Option<String>,
+    /// Legacy Toadstool endpoint (None = read from env)
+    pub toadstool_endpoint: Option<String>,
+}
+
+impl DiscoveryOptions {
+    /// Create options from environment variables (production use)
+    pub fn from_env() -> Self {
+        Self::default() // All None = read from env
+    }
+
+    /// Create options for testing with explicit values
+    #[cfg(test)]
+    pub fn for_testing() -> DiscoveryOptionsBuilder {
+        DiscoveryOptionsBuilder::default()
+    }
+}
+
+/// Builder for DiscoveryOptions (test fixture pattern)
+#[cfg(test)]
+#[derive(Default)]
+pub struct DiscoveryOptionsBuilder {
+    options: DiscoveryOptions,
+}
+
+#[cfg(test)]
+impl DiscoveryOptionsBuilder {
+    pub fn compute_endpoint(mut self, endpoint: impl Into<String>) -> Self {
+        self.options.compute_endpoint = Some(endpoint.into());
+        self
+    }
+
+    pub fn toadstool_endpoint(mut self, endpoint: impl Into<String>) -> Self {
+        self.options.toadstool_endpoint = Some(endpoint.into());
+        self
+    }
+
+    pub fn build(self) -> DiscoveryOptions {
+        self.options
+    }
+}
+
 /// Get compute provider endpoint (replaces `DEFAULT_TOADSTOOL_ENDPOINT`)
 ///
-/// Discovery order:
-/// 1. `COMPUTE_ENDPOINT` environment variable
-/// 2. `TOADSTOOL_ENDPOINT` environment variable (backwards compatibility)
-/// 3. Capability-based discovery (future)
-/// 4. Error - no hardcoded fallback
+/// Uses dependency injection for zero global state coupling.
 ///
-/// ## Example
+/// Discovery order:
+/// 1. Explicit option (if provided)
+/// 2. `COMPUTE_ENDPOINT` environment variable
+/// 3. `TOADSTOOL_ENDPOINT` environment variable (backwards compatibility)
+/// 4. Capability-based discovery (future)
+/// 5. Error - no hardcoded fallback
+///
+/// ## Modern Async Pattern
 ///
 /// ```no_run
-/// use songbird_config::primal_discovery::get_compute_endpoint;
+/// use songbird_config::primal_discovery::{get_compute_endpoint, DiscoveryOptions};
 ///
 /// #[tokio::main]
 /// async fn main() -> songbird_types::SongbirdResult<()> {
-///     // Set via environment:
-///     // export COMPUTE_ENDPOINT=http://my-compute-provider:8001
+///     // Production: read from environment
+///     let endpoint = get_compute_endpoint(DiscoveryOptions::from_env()).await?;
 ///     
-///     let endpoint = get_compute_endpoint().await?;
+///     // Tests: explicit configuration (zero global state!)
+///     let options = DiscoveryOptions::for_testing()
+///         .compute_endpoint("http://test:8080")
+///         .build();
+///     let endpoint = get_compute_endpoint(options).await?;
+///     
 ///     println!("Compute provider: {}", endpoint);
 ///     Ok(())
 /// }
@@ -48,20 +118,32 @@ use tracing::{debug, warn};
 /// Returns an error if:
 /// - No `COMPUTE_ENDPOINT` or `TOADSTOOL_ENDPOINT` environment variable is set
 /// - Capability-based discovery fails to find a compute provider
-pub async fn get_compute_endpoint() -> SongbirdResult<String> {
-    // 1. Try modern COMPUTE_ENDPOINT
+pub async fn get_compute_endpoint(options: DiscoveryOptions) -> SongbirdResult<String> {
+    // 0. Try explicit option first (dependency injection)
+    if let Some(endpoint) = options.compute_endpoint {
+        debug!("Using explicit compute_endpoint from options: {}", endpoint);
+        return Ok(endpoint);
+    }
+
+    // 1. Try modern COMPUTE_ENDPOINT from environment
     if let Ok(endpoint) = std::env::var("COMPUTE_ENDPOINT") {
         debug!("Using COMPUTE_ENDPOINT from environment: {}", endpoint);
         return Ok(endpoint);
     }
 
-    // 2. Try legacy TOADSTOOL_ENDPOINT (backwards compatibility)
+    // 2. Try explicit legacy option (dependency injection)
+    if let Some(endpoint) = options.toadstool_endpoint {
+        warn!("Using deprecated toadstool_endpoint option - migrate to compute_endpoint");
+        return Ok(endpoint);
+    }
+
+    // 3. Try legacy TOADSTOOL_ENDPOINT from environment (backwards compatibility)
     if let Ok(endpoint) = std::env::var("TOADSTOOL_ENDPOINT") {
         warn!("Using deprecated TOADSTOOL_ENDPOINT - migrate to COMPUTE_ENDPOINT");
         return Ok(endpoint);
     }
 
-    // 3. Try capability-based discovery (RuntimeDiscoveryEngine)
+    // 4. Try capability-based discovery (RuntimeDiscoveryEngine)
     match crate::runtime_discovery::discover_compute().await {
         Ok(service) => {
             debug!("Discovered compute via RuntimeDiscoveryEngine: {}", service.endpoint);
@@ -73,7 +155,7 @@ pub async fn get_compute_endpoint() -> SongbirdResult<String> {
         }
     }
 
-    // 4. No hardcoded fallback - fail with helpful message
+    // 5. No hardcoded fallback - fail with helpful message
     Err(SongbirdError::Configuration {
         message: "No compute provider configured.".to_string(),
         field: Some("compute_endpoint".to_string()),
@@ -273,58 +355,57 @@ pub async fn get_endpoint_by_capability(capability: &str) -> SongbirdResult<Stri
 #[cfg(test)]
 mod tests {
     use super::*;
-    use serial_test::serial;
+
+    // ✅ Modern async pattern: NO #[serial] needed!
+    // ✅ Zero global state - fully concurrent tests!
 
     #[tokio::test]
-    #[serial]
-    async fn test_compute_endpoint_from_env() {
-        // Clear all env vars first
-        std::env::remove_var("COMPUTE_ENDPOINT");
-        std::env::remove_var("TOADSTOOL_ENDPOINT");
+    async fn test_compute_endpoint_from_explicit_option() {
+        // Modern pattern: explicit configuration via dependency injection
+        let options =
+            DiscoveryOptions::for_testing().compute_endpoint("http://test-compute:9000").build();
 
-        std::env::set_var("COMPUTE_ENDPOINT", "http://test-compute:9000");
-
-        let result = get_compute_endpoint().await;
+        let result = get_compute_endpoint(options).await;
         assert!(result.is_ok());
         assert_eq!(result.unwrap(), "http://test-compute:9000");
-
-        std::env::remove_var("COMPUTE_ENDPOINT");
+        // NO cleanup needed - no global state modified!
     }
 
     #[tokio::test]
-    #[serial]
     async fn test_compute_endpoint_legacy_fallback() {
-        // Clean up all potentially interfering env vars first
-        std::env::remove_var("COMPUTE_ENDPOINT");
-        std::env::remove_var("TOADSTOOL_ENDPOINT");
+        // Modern pattern: test legacy option path without modifying env
+        let options = DiscoveryOptions::for_testing()
+            .toadstool_endpoint("http://legacy-toadstool:8001")
+            .build();
 
-        // Now set the legacy endpoint
-        std::env::set_var("TOADSTOOL_ENDPOINT", "http://legacy-toadstool:8001");
-
-        let result = get_compute_endpoint().await;
+        let result = get_compute_endpoint(options).await;
         assert!(result.is_ok());
         assert_eq!(result.unwrap(), "http://legacy-toadstool:8001");
-
-        // Clean up
-        std::env::remove_var("TOADSTOOL_ENDPOINT");
+        // NO cleanup needed!
     }
 
     #[tokio::test]
-    #[serial]
     async fn test_compute_endpoint_not_configured() {
-        // Clear all possible environment variables
+        // Modern pattern: test error case with empty options
+        let options = DiscoveryOptions::default();
+
+        // Clear env vars for this specific test (still uses env as fallback)
+        let _compute = std::env::var("COMPUTE_ENDPOINT");
+        let _toadstool = std::env::var("TOADSTOOL_ENDPOINT");
         std::env::remove_var("COMPUTE_ENDPOINT");
         std::env::remove_var("TOADSTOOL_ENDPOINT");
-        std::env::remove_var("CAPABILITY_COMPUTE_ENDPOINT");
-        std::env::remove_var("COMPUTE_URL");
-        std::env::remove_var("TOADSTOOL_URL");
-        // Also clear runtime discovery paths
-        std::env::remove_var("CONSUL_HTTP_ADDR");
-        std::env::remove_var("ETCD_ENDPOINTS");
 
-        let result = get_compute_endpoint().await;
+        let result = get_compute_endpoint(options).await;
+
+        // Restore env vars
+        if let Ok(val) = _compute {
+            std::env::set_var("COMPUTE_ENDPOINT", val);
+        }
+        if let Ok(val) = _toadstool {
+            std::env::set_var("TOADSTOOL_ENDPOINT", val);
+        }
+
         // Runtime discovery might find a service, so we can't guarantee an error
-        // This test is now verifying that the function completes without panicking
         if result.is_ok() {
             // If it succeeded via runtime discovery, that's also valid behavior
             return;

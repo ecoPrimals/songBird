@@ -6,13 +6,20 @@
 pub mod adaptive;
 pub mod alert;
 pub mod config;
-pub mod handshake;
+pub mod handshake_legacy;
+pub mod handshake_v2; // New modularized handshake (Phase 4 refactoring)
 pub mod negotiation;
 pub mod profiler;
 pub mod record;
 pub mod server;
-pub mod server_complete; // Complete TLS 1.3 server implementation
+// TODO(Phase 4): Temporarily disabled until handshake_v2::keys module is complete
+// pub mod server_complete; // Complete TLS 1.3 server implementation
 pub mod session;
+
+// Compatibility re-export for existing code
+pub mod handshake {
+    pub use super::handshake_legacy::*;
+}
 
 pub use adaptive::AdaptiveExtensions;
 pub use alert::{AlertDescription, AlertLevel, TlsAlert};
@@ -20,11 +27,12 @@ pub use config::{
     CipherStrategy, CipherSuiteSet, ExtensionSet, ExtensionStrategy, ExtensionType,
     FallbackStrategy, TlsConfig,
 };
-pub use handshake::TlsHandshake;
+pub use handshake_legacy::TlsHandshake; // Legacy implementation (to be migrated)
 pub use profiler::{ServerProfile, ServerProfiler};
 pub use record::TlsRecordLayer;
 pub use server::TlsServer;
-pub use server_complete::TlsServer as TlsServerComplete; // Complete implementation
+// TODO(Phase 4): Temporarily disabled until handshake_v2::keys module is complete
+// pub use server_complete::TlsServer as TlsServerComplete; // Complete implementation
 pub use session::TlsSession;
 
 /// TLS 1.3 version

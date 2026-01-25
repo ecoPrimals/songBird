@@ -20,17 +20,24 @@
 //! let handshake = TlsHandshake::new(crypto);
 //! ```
 
+//! TLS 1.3 handshake implementation (modularized)
+//!
+//! This module provides a production-grade TLS 1.3 handshake implementation
+//! following RFC 8446, refactored into focused sub-modules for maintainability.
+
+pub mod client_hello;
+pub mod finished;
+pub mod keys;
+pub mod parser;
 pub mod protocol;
+pub mod server_hello;
 pub mod transcript;
 
 // Re-export main types
+pub use client_hello::{ClientHelloBuilder, generate_random};
 pub use transcript::Transcript;
 
-// TODO: Continue modularization
-// - client_hello.rs - ClientHello construction
-// - server_hello.rs - ServerHello parsing
-// - certificates.rs - Certificate processing
-// - finished.rs - Finished message handling
-// - keys.rs - Key derivation helpers
-// - encryption.rs - Application data encryption
+// TODO: Integrate remaining modules into main handshake flow
+// - encryption.rs - Application data encryption  
 // - decryption.rs - Application data decryption
+// - certificates.rs - Certificate processing (may be in parser.rs)

@@ -298,22 +298,17 @@ async fn perform_custom_check(check: &CustomHealthCheck) -> Result<f64>  {match 
 
 /// Perform HTTP health check
 async fn perform_http_check(service_id: &str, path: &str) -> Result<()> {
-    use reqwest;
+    use songbird_http_client::SongbirdHttpClient;
     use tokio::time::{timeout, Duration};
 
     tracing::debug!("HTTP health check for {} at {}", service_id, path);
 
-    // Create HTTP client with timeout
-    let client =
-        reqwest::Client::builder().timeout(Duration::from_secs(5)).build().map_err(|e| {
-            SongbirdError::service(
-                "registry ",
-                format!("Failed to create HTTP client: {}", e),
-            )
-        })?;
+    // ✅ EVOLVED: Use Pure Rust HTTP client (ecoBin compliant!)
+    // Discovers BearDog via environment (BEARDOG_SOCKET or default)
+    let client = SongbirdHttpClient::from_env();
 
     // Perform the health check request
-    let response = timeout(Duration::from_secs(10), client.get(path).send())
+    let response = timeout(Duration::from_secs(10), client.get(path))
         .await
         .map_err(|_| SongbirdError::service(
                 "registry ",
@@ -327,13 +322,13 @@ async fn perform_http_check(service_id: &str, path: &str) -> Result<()> {
             )
         })?;
 
-    if response.status().is_success() {
-        tracing::debug!("HTTP health check for {} passed: {}", service_id, response.status());
+    if response.status >= 200 && response.status < 300 {
+        tracing::debug!("HTTP health check for {} passed: {}", service_id, response.status);
         Ok(())
     } else {
         Err(SongbirdError::service(
             "registry ",
-            format!("HTTP health check for {} failed: {}", service_id, response.status()),
+            format!("HTTP health check for {} failed: {}", service_id, response.status),
         ))
     }
 }

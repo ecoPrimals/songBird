@@ -131,9 +131,14 @@ impl SongbirdOrchestrator {
         // ✅ SMART REFACTORING (v3.10.3 - Jan 6, 2026): Setup federation coordinator
         // Extracted to federation_setup module for clarity and testability.
         // This reduces core.rs by ~65 lines while improving separation of concerns.
+        //
+        // ✅ MODERN ASYNC PATTERN (v5.22.0 - Jan 25, 2026): Dependency injection
+        // Production reads from environment via FederationOptions::from_env()
+        // Tests pass explicit config - zero global state coupling!
         let federation_setup = super::federation_setup::setup_federation(
             &node_identity,
             Arc::clone(&federation_state),
+            super::federation_setup::FederationOptions::from_env(),
         )?;
         let federation_coordinator = federation_setup.coordinator;
         let federation_config = federation_setup.config;

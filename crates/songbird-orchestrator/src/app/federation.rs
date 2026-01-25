@@ -54,23 +54,18 @@ pub async fn initialize_federation() -> Result<(
         node_identity.node_name, node_identity.node_id
     );
 
-    // Check if federation is enabled
-    let (federation_coordinator, federation_config) =
-        if SafeEnv::get_bool("SONGBIRD_FEDERATION_ENABLED", false) {
-            info!("🌐 Federation mode enabled");
-
-            let (coordinator, config) =
-                create_federation_coordinator(&node_identity, Arc::clone(&federation_state))?;
-
-            (Some(coordinator), Some(config))
-        } else {
-            info!("🏠 Running in standalone mode (federation disabled)");
-            (None, None)
-        };
+    // ✅ SMART REFACTORING (v5.22.0 - Jan 25, 2026): Use shared setup_federation
+    // Eliminates code duplication with federation_setup module
+    // Modern async pattern with dependency injection
+    let setup = super::federation_setup::setup_federation(
+        &node_identity,
+        Arc::clone(&federation_state),
+        super::federation_setup::FederationOptions::from_env(),
+    )?;
 
     Ok((
-        federation_coordinator,
-        federation_config,
+        setup.coordinator,
+        setup.config,
         federation_state,
         federated_service_registry,
         node_identity,
@@ -247,7 +242,12 @@ mod tests {
     #[tokio::test]
     async fn test_federation_initialization_standalone() {
         // Test standalone mode (federation disabled)
+        // Ensure complete isolation by removing ALL federation-related env vars
         std::env::remove_var("SONGBIRD_FEDERATION_ENABLED");
+        std::env::remove_var("SONGBIRD_BOOTSTRAP_ADDRESS");
+        std::env::remove_var("SONGBIRD_RENDEZVOUS_URL");
+        std::env::remove_var("SONGBIRD_NODE_ADDRESS");
+        std::env::remove_var("SONGBIRD_PORT");
 
         let result = initialize_federation().await;
         assert!(result.is_ok());
@@ -256,5 +256,12 @@ mod tests {
         assert!(coordinator.is_none(), "Coordinator should be None in standalone mode");
         assert!(config.is_none(), "Config should be None in standalone mode");
         assert!(!identity.node_id.is_nil(), "Node identity should be loaded");
+
+        // Clean up
+        std::env::remove_var("SONGBIRD_FEDERATION_ENABLED");
+        std::env::remove_var("SONGBIRD_BOOTSTRAP_ADDRESS");
+        std::env::remove_var("SONGBIRD_RENDEZVOUS_URL");
+        std::env::remove_var("SONGBIRD_NODE_ADDRESS");
+        std::env::remove_var("SONGBIRD_PORT");
     }
 }

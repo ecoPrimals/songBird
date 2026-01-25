@@ -27,6 +27,9 @@ serde_json = { workspace = true }
 # Time handling
 chrono = { version = "0.4", features = ["serde"] }
 
+# HTTP client (for IPC handlers)
+songbird-http-client = { path = "../songbird-http-client" }
+
 # Windows named pipes (only on Windows)
 [target.'cfg(windows)'.dependencies]
 tokio = { workspace = true, features = ["net"] }

@@ -8,14 +8,18 @@
 //!
 //! ## Zero Hardcoding Philosophy
 //!
-//! Federation setup discovers configuration at runtime via environment variables.
+//! Federation setup discovers configuration at runtime via environment variables
+//! OR accepts explicit configuration via dependency injection.
 //! No hardcoded endpoints - all configuration is external and dynamic.
 //!
 //! ## Modern Rust Patterns
 //!
 //! This module follows modern Rust practices:
+//! - Dependency injection via FederationOptions
+//! - Builder pattern for test fixtures
+//! - Zero global state coupling
+//! - Fully concurrent and async-safe
 //! - Clear Option handling for conditional federation
-//! - Safe environment variable access via SafeEnv
 //! - Proper Arc wrapping after configuration complete
 
 use anyhow::Result;
@@ -30,6 +34,76 @@ use crate::app::core::SongbirdOrchestrator;
 use crate::app::network::detect_primary_ip;
 use crate::node_identity::NodeIdentity;
 
+/// Federation configuration options for dependency injection
+///
+/// This allows tests to pass explicit configuration without modifying
+/// global environment variables, enabling fully concurrent test execution.
+#[derive(Debug, Clone, Default)]
+pub struct FederationOptions {
+    /// Enable federation (None = read from env)
+    pub enabled: Option<bool>,
+    /// Bootstrap node address (None = read from env)
+    pub bootstrap_address: Option<String>,
+    /// Rendezvous server URL (None = read from env)
+    pub rendezvous_url: Option<String>,
+    /// Node's public address (None = read from env or auto-detect)
+    pub node_address: Option<String>,
+    /// Node's port (None = read from env or use default)
+    pub port: Option<u16>,
+}
+
+impl FederationOptions {
+    /// Create options from environment variables (production use)
+    pub fn from_env() -> Self {
+        Self::default() // All None = read from env
+    }
+
+    /// Create options for testing with explicit values
+    #[cfg(test)]
+    pub fn for_testing() -> FederationOptionsBuilder {
+        FederationOptionsBuilder::default()
+    }
+}
+
+/// Builder for FederationOptions (test fixture pattern)
+#[cfg(test)]
+#[derive(Default)]
+pub struct FederationOptionsBuilder {
+    options: FederationOptions,
+}
+
+#[cfg(test)]
+impl FederationOptionsBuilder {
+    pub fn enabled(mut self, enabled: bool) -> Self {
+        self.options.enabled = Some(enabled);
+        self
+    }
+
+    pub fn bootstrap_address(mut self, addr: impl Into<String>) -> Self {
+        self.options.bootstrap_address = Some(addr.into());
+        self
+    }
+
+    pub fn rendezvous_url(mut self, url: impl Into<String>) -> Self {
+        self.options.rendezvous_url = Some(url.into());
+        self
+    }
+
+    pub fn node_address(mut self, addr: impl Into<String>) -> Self {
+        self.options.node_address = Some(addr.into());
+        self
+    }
+
+    pub fn port(mut self, port: u16) -> Self {
+        self.options.port = Some(port);
+        self
+    }
+
+    pub fn build(self) -> FederationOptions {
+        self.options
+    }
+}
+
 /// Federation setup result containing coordinator and config
 pub struct FederationSetup {
     pub coordinator: Option<Arc<FederationCoordinator>>,
@@ -38,18 +112,33 @@ pub struct FederationSetup {
 
 /// Setup federation coordinator and configuration
 ///
-/// Creates the federation coordinator if federation is enabled via
-/// `SONGBIRD_FEDERATION_ENABLED` environment variable. Discovers
-/// all configuration at runtime - no hardcoding.
+/// Creates the federation coordinator if federation is enabled.
+/// Configuration can be provided explicitly (for tests) or read from
+/// environment variables (for production).
+///
+/// # Modern Dependency Injection Pattern
+///
+/// ```rust
+/// // Production: read from environment
+/// let setup = setup_federation(&identity, state, FederationOptions::from_env())?;
+///
+/// // Tests: explicit configuration (zero global state!)
+/// let setup = setup_federation(
+///     &identity,
+///     state,
+///     FederationOptions::for_testing()
+///         .enabled(true)
+///         .bootstrap_address("http://localhost:8000")
+///         .build()
+/// )?;
+/// ```
 ///
 /// # Zero Hardcoding
 ///
-/// All configuration comes from environment:
-/// - `SONGBIRD_FEDERATION_ENABLED`: Enable/disable federation
-/// - `SONGBIRD_BOOTSTRAP_ADDRESS`: Bootstrap node address
-/// - `SONGBIRD_RENDEZVOUS_URL`: Rendezvous server URL
-/// - `SONGBIRD_NODE_ADDRESS`: Node's public address
-/// - `SONGBIRD_PORT`: Node's port
+/// All configuration comes from:
+/// 1. Explicit options (dependency injection)
+/// 2. Environment variables (if options are None)
+/// 3. Auto-detection (for IP/port)
 ///
 /// # Returns
 ///
@@ -58,8 +147,13 @@ pub struct FederationSetup {
 pub fn setup_federation(
     node_identity: &NodeIdentity,
     federation_state: Arc<FederationState>,
+    options: FederationOptions,
 ) -> Result<FederationSetup> {
-    if !SafeEnv::get_bool("SONGBIRD_FEDERATION_ENABLED", false) {
+    // Resolve federation enabled from options OR env
+    let enabled =
+        options.enabled.unwrap_or_else(|| SafeEnv::get_bool("SONGBIRD_FEDERATION_ENABLED", false));
+
+    if !enabled {
         info!("🏠 Running in standalone mode (federation disabled)");
         return Ok(FederationSetup {
             coordinator: None,
@@ -69,22 +163,30 @@ pub fn setup_federation(
 
     info!("🌐 Federation mode enabled");
 
+    // Resolve node address from options OR env OR auto-detect
+    let node_address = options.node_address.unwrap_or_else(|| {
+        SafeEnv::get_or_default(
+            "SONGBIRD_NODE_ADDRESS",
+            detect_primary_ip().unwrap_or_else(|| "127.0.0.1".to_string()),
+        )
+    });
+
+    // Resolve port from options OR env OR default
+    let port = options.port.unwrap_or_else(|| {
+        SafeEnv::get_or_default(
+            "SONGBIRD_PORT",
+            songbird_config::defaults::ports::orchestrator_port().to_string(),
+        )
+        .parse::<u16>()
+        .unwrap_or_else(|_| songbird_config::defaults::ports::orchestrator_port())
+    });
+
     // Build self registration using STABLE node_id
     // This ensures the node has consistent identity across restarts
     let self_registration = NodeRegistration {
         node_id: node_identity.node_id.to_string(),
         node_name: node_identity.node_name.clone(),
-        node_address: format!(
-            "{}:{}",
-            SafeEnv::get_or_default(
-                "SONGBIRD_NODE_ADDRESS",
-                detect_primary_ip().unwrap_or_else(|| "127.0.0.1".to_string())
-            ),
-            SafeEnv::get_or_default(
-                "SONGBIRD_PORT",
-                songbird_config::defaults::ports::orchestrator_port().to_string()
-            )
-        ),
+        node_address: format!("{}:{}", node_address, port),
         endpoints: None, // Will be populated in start() after we know the actual port
         capabilities: vec!["orchestrator".to_string()],
         cpu_cores: num_cpus::get(),
@@ -96,14 +198,23 @@ pub fn setup_federation(
         last_heartbeat: chrono::Utc::now(),
     };
 
+    // Resolve bootstrap address from options OR env
+    let bootstrap_address = options
+        .bootstrap_address
+        .or_else(|| SafeEnv::get_required("SONGBIRD_BOOTSTRAP_ADDRESS").ok());
+
+    // Resolve rendezvous URL from options OR env
+    let rendezvous_url =
+        options.rendezvous_url.or_else(|| SafeEnv::get_required("SONGBIRD_RENDEZVOUS_URL").ok());
+
     // Create federation config
     let config = FederationConfig {
         enabled: true,
-        bootstrap_address: SafeEnv::get_required("SONGBIRD_BOOTSTRAP_ADDRESS").ok(),
+        bootstrap_address,
         self_registration: Some(self_registration),
         heartbeat_interval_secs: 30,
         node_timeout_secs: 60,
-        rendezvous_url: SafeEnv::get_required("SONGBIRD_RENDEZVOUS_URL").ok(),
+        rendezvous_url,
         discovery_mode: None, // Auto-detect based on security provider availability
     };
 
@@ -149,17 +260,14 @@ mod tests {
 
     #[test]
     fn test_federation_setup_standalone_mode() {
-        // Clean up first to ensure isolation from other tests
-        std::env::remove_var("SONGBIRD_FEDERATION_ENABLED");
-        std::env::remove_var("SONGBIRD_BOOTSTRAP_ADDRESS");
-        std::env::remove_var("SONGBIRD_RENDEZVOUS_URL");
-        std::env::remove_var("SONGBIRD_NODE_ADDRESS");
-        std::env::remove_var("SONGBIRD_PORT");
+        // Modern pattern: explicit config via dependency injection
+        // NO global state modification - fully concurrent!
+        let options = FederationOptions::for_testing().enabled(false).build();
 
         let node_identity = NodeIdentity::new_or_load(None).expect("Failed to load identity");
         let federation_state = Arc::new(FederationState::new("test".to_string()));
 
-        let result = setup_federation(&node_identity, federation_state);
+        let result = setup_federation(&node_identity, federation_state, options);
         assert!(result.is_ok());
 
         let setup = result.unwrap();
@@ -169,20 +277,20 @@ mod tests {
 
     #[test]
     fn test_federation_setup_enabled() {
-        // Clean up first to ensure isolation from other tests
-        std::env::remove_var("SONGBIRD_FEDERATION_ENABLED");
-        std::env::remove_var("SONGBIRD_BOOTSTRAP_ADDRESS");
-        std::env::remove_var("SONGBIRD_RENDEZVOUS_URL");
-        std::env::remove_var("SONGBIRD_NODE_ADDRESS");
-        std::env::remove_var("SONGBIRD_PORT");
-
-        // Set federation enabled
-        std::env::set_var("SONGBIRD_FEDERATION_ENABLED", "true");
+        // Modern pattern: explicit config via builder
+        // Zero coupling to global environment!
+        let options = FederationOptions::for_testing()
+            .enabled(true)
+            .bootstrap_address("http://localhost:8000")
+            .rendezvous_url("http://localhost:8001")
+            .node_address("127.0.0.1")
+            .port(8080)
+            .build();
 
         let node_identity = NodeIdentity::new_or_load(None).expect("Failed to load identity");
         let federation_state = Arc::new(FederationState::new("test".to_string()));
 
-        let result = setup_federation(&node_identity, federation_state);
+        let result = setup_federation(&node_identity, federation_state, options);
         assert!(result.is_ok());
 
         let setup = result.unwrap();
@@ -200,43 +308,45 @@ mod tests {
         assert_eq!(self_reg.node_name, node_identity.node_name);
         assert!(!self_reg.capabilities.is_empty(), "Should have capabilities");
 
-        // Clean up
-        std::env::remove_var("SONGBIRD_FEDERATION_ENABLED");
-        std::env::remove_var("SONGBIRD_BOOTSTRAP_ADDRESS");
-        std::env::remove_var("SONGBIRD_RENDEZVOUS_URL");
-        std::env::remove_var("SONGBIRD_NODE_ADDRESS");
-        std::env::remove_var("SONGBIRD_PORT");
+        // Verify bootstrap and rendezvous from options
+        assert_eq!(config.bootstrap_address, Some("http://localhost:8000".to_string()));
+        assert_eq!(config.rendezvous_url, Some("http://localhost:8001".to_string()));
     }
 
     #[test]
     fn test_federation_setup_uses_stable_identity() {
-        // Clean up first to ensure isolation from other tests
-        std::env::remove_var("SONGBIRD_FEDERATION_ENABLED");
-        std::env::remove_var("SONGBIRD_BOOTSTRAP_ADDRESS");
-        std::env::remove_var("SONGBIRD_RENDEZVOUS_URL");
-        std::env::remove_var("SONGBIRD_NODE_ADDRESS");
-        std::env::remove_var("SONGBIRD_PORT");
-
-        std::env::set_var("SONGBIRD_FEDERATION_ENABLED", "true");
+        // Modern pattern: dependency injection
+        // Multiple calls in parallel would work fine!
+        let options = FederationOptions::for_testing()
+            .enabled(true)
+            .bootstrap_address("http://localhost:8000")
+            .rendezvous_url("http://localhost:8001")
+            .node_address("127.0.0.1")
+            .port(8080)
+            .build();
 
         let node_identity = NodeIdentity::new_or_load(None).expect("Failed to load identity");
         let federation_state = Arc::new(FederationState::new("test".to_string()));
 
-        let setup1 = setup_federation(&node_identity, Arc::clone(&federation_state))
-            .expect("First setup should succeed");
-        let setup2 = setup_federation(&node_identity, Arc::clone(&federation_state))
+        let setup1 =
+            setup_federation(&node_identity, Arc::clone(&federation_state), options.clone())
+                .expect("First setup should succeed");
+        let setup2 = setup_federation(&node_identity, Arc::clone(&federation_state), options)
             .expect("Second setup should succeed");
 
         // Both should have the same node_id (stable)
-        let id1 = setup1.config.unwrap().self_registration.unwrap().node_id;
-        let id2 = setup2.config.unwrap().self_registration.unwrap().node_id;
+        let id1 = setup1
+            .config
+            .as_ref()
+            .and_then(|c| c.self_registration.as_ref())
+            .map(|r| r.node_id.clone())
+            .expect("Expected federation config with node_id");
+        let id2 = setup2
+            .config
+            .as_ref()
+            .and_then(|c| c.self_registration.as_ref())
+            .map(|r| r.node_id.clone())
+            .expect("Expected federation config with node_id");
         assert_eq!(id1, id2, "Node ID should be stable across multiple setups");
-
-        // Clean up
-        std::env::remove_var("SONGBIRD_FEDERATION_ENABLED");
-        std::env::remove_var("SONGBIRD_BOOTSTRAP_ADDRESS");
-        std::env::remove_var("SONGBIRD_RENDEZVOUS_URL");
-        std::env::remove_var("SONGBIRD_NODE_ADDRESS");
-        std::env::remove_var("SONGBIRD_PORT");
     }
 }
