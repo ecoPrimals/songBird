@@ -66,6 +66,7 @@ pub enum HealthStatus {
 
 impl Provider {
     /// Create a new provider
+    #[must_use]
     pub fn new(id: String, capabilities: Vec<String>, virtual_endpoint: String) -> Self {
         Self {
             id,
@@ -77,11 +78,13 @@ impl Provider {
     }
 
     /// Check if provider offers a specific capability
+    #[must_use]
     pub fn has_capability(&self, capability: &str) -> bool {
         self.capabilities.iter().any(|c| c == capability)
     }
 
     /// Check if provider offers all required capabilities
+    #[must_use]
     pub fn has_capabilities(&self, required: &[String]) -> bool {
         required.iter().all(|req| self.has_capability(req))
     }
@@ -92,6 +95,7 @@ impl Provider {
     }
 
     /// Check if provider is usable (healthy or degraded)
+    #[must_use]
     pub fn is_usable(&self) -> bool {
         matches!(
             self.metadata.health,

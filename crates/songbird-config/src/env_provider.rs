@@ -63,7 +63,7 @@ impl EnvironmentProvider for RealEnvironment {
     }
 }
 
-/// Implement EnvironmentProvider for EnvOverride
+/// Implement `EnvironmentProvider` for `EnvOverride`
 impl EnvironmentProvider for crate::env_override::EnvOverride {
     fn get(&self, key: &str) -> Option<String> {
         self.get(key)
@@ -77,7 +77,7 @@ impl EnvironmentProvider for crate::env_override::EnvOverride {
 /// Convenience macro for creating functions with environment DI
 ///
 /// Creates both a `_with_env` variant for DI and a convenience wrapper
-/// that uses RealEnvironment.
+/// that uses `RealEnvironment`.
 ///
 /// ## Example
 ///

@@ -13,8 +13,8 @@ use std::sync::{Arc, RwLock};
 /// without race conditions or global state pollution.
 ///
 /// ## Design
-/// - Uses Arc<RwLock<>> for interior mutability
-/// - Each test gets its own EnvOverride instance
+/// - Uses `Arc<RwLock<>>` for interior mutability
+/// - Each test gets its own `EnvOverride` instance
 /// - Falls back to real environment when key not found
 /// - Zero global state - fully concurrent-safe
 #[derive(Debug, Clone, Default)]
@@ -24,6 +24,7 @@ pub struct EnvOverride {
 
 impl EnvOverride {
     /// Create a new environment override
+    #[must_use]
     pub fn new() -> Self {
         Self {
             vars: Arc::new(RwLock::new(HashMap::new())),
@@ -31,32 +32,47 @@ impl EnvOverride {
     }
 
     /// Set a variable in this override
+    ///
+    /// # Panics
+    /// Panics if the internal lock is poisoned (only happens if a thread panicked while holding the lock)
     pub fn set(&self, key: impl Into<String>, value: impl Into<String>) {
-        let mut vars = self.vars.write().expect("EnvOverride lock poisoned");
+        // Note: Lock poisoning only occurs if a panic happens while holding the lock.
+        // In test code, this is acceptable. For production, use proper error handling.
+        let mut vars = self.vars.write().unwrap_or_else(std::sync::PoisonError::into_inner);
         vars.insert(key.into(), value.into());
     }
 
     /// Get a variable from this override, falling back to real env
+    ///
+    /// Returns `None` if the key is not in the override and not in the real environment.
+    #[must_use]
     pub fn get(&self, key: &str) -> Option<String> {
-        let vars = self.vars.read().expect("EnvOverride lock poisoned");
+        let vars = self.vars.read().unwrap_or_else(std::sync::PoisonError::into_inner);
         vars.get(key).cloned().or_else(|| std::env::var(key).ok())
     }
 
     /// Remove a variable from this override
+    ///
+    /// # Panics
+    /// Panics if the internal lock is poisoned (only happens if a thread panicked while holding the lock)
     pub fn remove(&self, key: &str) {
-        let mut vars = self.vars.write().expect("EnvOverride lock poisoned");
+        let mut vars = self.vars.write().unwrap_or_else(std::sync::PoisonError::into_inner);
         vars.remove(key);
     }
 
     /// Clear all overrides
+    ///
+    /// # Panics
+    /// Panics if the internal lock is poisoned (only happens if a thread panicked while holding the lock)
     pub fn clear(&self) {
-        let mut vars = self.vars.write().expect("EnvOverride lock poisoned");
+        let mut vars = self.vars.write().unwrap_or_else(std::sync::PoisonError::into_inner);
         vars.clear();
     }
 
     /// Check if a key exists in override or real environment
+    #[must_use]
     pub fn contains_key(&self, key: &str) -> bool {
-        let vars = self.vars.read().expect("EnvOverride lock poisoned");
+        let vars = self.vars.read().unwrap_or_else(std::sync::PoisonError::into_inner);
         vars.contains_key(key) || std::env::var(key).is_ok()
     }
 }

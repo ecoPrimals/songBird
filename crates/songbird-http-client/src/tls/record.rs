@@ -102,7 +102,7 @@ impl TlsRecordLayer {
         info!("  Sequence (padded to 12 bytes, big-endian):");
         let mut seq_bytes = [0u8; 12];
         seq_bytes[4..12].copy_from_slice(&self.write_sequence_number.to_be_bytes());
-        info!("    {}", hex::encode(&seq_bytes));
+        info!("    {}", hex::encode(seq_bytes));
         info!("  Nonce = IV XOR Sequence:");
         info!("    {}", hex::encode(&nonce));
         info!("");
@@ -111,7 +111,7 @@ impl TlsRecordLayer {
         info!("  TLS version: 0x{:02x} 0x{:02x} (1.2 compatibility)", aad[1], aad[2]);
         info!("  Length: {} bytes (encrypted_length = plaintext + 16-byte tag)", encrypted_length);
         info!("  Length bytes: 0x{:02x} 0x{:02x}", aad[3], aad[4]);
-        info!("  Full AAD: {}", hex::encode(&aad));
+        info!("  Full AAD: {}", hex::encode(aad));
         info!("");
         info!(
             "Cipher suite: 0x{:04x} ({})",

@@ -13,6 +13,7 @@
 use serde::{Deserialize, Serialize};
 use songbird_types::{SongbirdError, SongbirdResult};
 use std::collections::HashMap;
+use std::path::Path;
 use std::sync::Arc;
 use std::time::Duration;
 use tokio::sync::RwLock;
@@ -441,21 +442,25 @@ impl CapabilityDiscovery {
         // Read configuration file
         let config_content =
             tokio::fs::read_to_string(config_path).await.map_err(|e| SongbirdError::Discovery {
-                message: format!("Failed to read config file: {}", e),
+                message: format!("Failed to read config file: {e}"),
                 backend: Some("config_file".to_string()),
                 retry_strategy: Some("Check file path and permissions".to_string()),
             })?;
 
-        // Parse based on file extension
-        let endpoints = if config_path.ends_with(".toml") {
-            self.parse_toml_config(&config_content, capability)?
-        } else if config_path.ends_with(".json") {
-            self.parse_json_config(&config_content, capability)?
-        } else if config_path.ends_with(".yaml") || config_path.ends_with(".yml") {
-            self.parse_yaml_config(&config_content, capability)?
+        // Parse based on file extension using Path for case-insensitive comparison
+        let path = Path::new(config_path);
+        let endpoints = if path.extension().is_some_and(|ext| ext.eq_ignore_ascii_case("toml")) {
+            Self::parse_toml_config(&config_content, capability)?
+        } else if path.extension().is_some_and(|ext| ext.eq_ignore_ascii_case("json")) {
+            Self::parse_json_config(&config_content, capability)?
+        } else if path
+            .extension()
+            .is_some_and(|ext| ext.eq_ignore_ascii_case("yaml") || ext.eq_ignore_ascii_case("yml"))
+        {
+            Self::parse_yaml_config(&config_content, capability)?
         } else {
             return Err(SongbirdError::Discovery {
-                message: format!("Unsupported config file format: {}", config_path),
+                message: format!("Unsupported config file format: {config_path}"),
                 backend: Some("config_file".to_string()),
                 retry_strategy: Some("Use .toml, .json, or .yaml file".to_string()),
             });
@@ -475,59 +480,46 @@ impl CapabilityDiscovery {
     }
 
     /// Parse TOML configuration
-    fn parse_toml_config(
-        &self,
-        content: &str,
-        capability: &str,
-    ) -> SongbirdResult<Vec<ServiceEndpoint>> {
+    fn parse_toml_config(content: &str, capability: &str) -> SongbirdResult<Vec<ServiceEndpoint>> {
         let config: toml::Value =
             toml::from_str(content).map_err(|e| SongbirdError::Discovery {
-                message: format!("Failed to parse TOML: {}", e),
+                message: format!("Failed to parse TOML: {e}"),
                 backend: Some("config_file".to_string()),
                 retry_strategy: Some("Check TOML syntax".to_string()),
             })?;
 
-        self.extract_endpoints_from_config(&config, capability)
+        Ok(Self::extract_endpoints_from_config(&config, capability))
     }
 
     /// Parse JSON configuration
-    fn parse_json_config(
-        &self,
-        content: &str,
-        capability: &str,
-    ) -> SongbirdResult<Vec<ServiceEndpoint>> {
+    fn parse_json_config(content: &str, capability: &str) -> SongbirdResult<Vec<ServiceEndpoint>> {
         let config: serde_json::Value =
             serde_json::from_str(content).map_err(|e| SongbirdError::Discovery {
-                message: format!("Failed to parse JSON: {}", e),
+                message: format!("Failed to parse JSON: {e}"),
                 backend: Some("config_file".to_string()),
                 retry_strategy: Some("Check JSON syntax".to_string()),
             })?;
 
-        self.extract_endpoints_from_json(&config, capability)
+        Ok(Self::extract_endpoints_from_json(&config, capability))
     }
 
     /// Parse YAML configuration
-    fn parse_yaml_config(
-        &self,
-        content: &str,
-        capability: &str,
-    ) -> SongbirdResult<Vec<ServiceEndpoint>> {
+    fn parse_yaml_config(content: &str, capability: &str) -> SongbirdResult<Vec<ServiceEndpoint>> {
         let config: serde_yaml::Value =
             serde_yaml::from_str(content).map_err(|e| SongbirdError::Discovery {
-                message: format!("Failed to parse YAML: {}", e),
+                message: format!("Failed to parse YAML: {e}"),
                 backend: Some("config_file".to_string()),
                 retry_strategy: Some("Check YAML syntax".to_string()),
             })?;
 
-        self.extract_endpoints_from_yaml(&config, capability)
+        Ok(Self::extract_endpoints_from_yaml(&config, capability))
     }
 
     /// Extract endpoints from TOML config
     fn extract_endpoints_from_config(
-        &self,
         config: &toml::Value,
         capability: &str,
-    ) -> SongbirdResult<Vec<ServiceEndpoint>> {
+    ) -> Vec<ServiceEndpoint> {
         let mut endpoints = Vec::new();
 
         if let Some(services) = config.get("services").and_then(|s| s.as_table()) {
@@ -546,7 +538,7 @@ impl CapabilityDiscovery {
                                     .collect(),
                                 health_score: service_config
                                     .get("health_score")
-                                    .and_then(|h| h.as_float())
+                                    .and_then(toml::Value::as_float)
                                     .unwrap_or(1.0),
                                 last_seen: std::time::SystemTime::now(),
                             });
@@ -556,15 +548,14 @@ impl CapabilityDiscovery {
             }
         }
 
-        Ok(endpoints)
+        endpoints
     }
 
     /// Extract endpoints from JSON config
     fn extract_endpoints_from_json(
-        &self,
         config: &serde_json::Value,
         capability: &str,
-    ) -> SongbirdResult<Vec<ServiceEndpoint>> {
+    ) -> Vec<ServiceEndpoint> {
         let mut endpoints = Vec::new();
 
         if let Some(services) = config.get("services").and_then(|s| s.as_object()) {
@@ -583,7 +574,7 @@ impl CapabilityDiscovery {
                                     .collect(),
                                 health_score: service_config
                                     .get("health_score")
-                                    .and_then(|h| h.as_f64())
+                                    .and_then(serde_json::Value::as_f64)
                                     .unwrap_or(1.0),
                                 last_seen: std::time::SystemTime::now(),
                             });
@@ -593,15 +584,14 @@ impl CapabilityDiscovery {
             }
         }
 
-        Ok(endpoints)
+        endpoints
     }
 
     /// Extract endpoints from YAML config
     fn extract_endpoints_from_yaml(
-        &self,
         config: &serde_yaml::Value,
         capability: &str,
-    ) -> SongbirdResult<Vec<ServiceEndpoint>> {
+    ) -> Vec<ServiceEndpoint> {
         let mut endpoints = Vec::new();
 
         if let Some(services) = config.get("services").and_then(|s| s.as_mapping()) {
@@ -624,7 +614,7 @@ impl CapabilityDiscovery {
                                     .collect(),
                                 health_score: service_config
                                     .get("health_score")
-                                    .and_then(|h| h.as_f64())
+                                    .and_then(serde_yaml::Value::as_f64)
                                     .unwrap_or(1.0),
                                 last_seen: std::time::SystemTime::now(),
                             });
@@ -634,7 +624,7 @@ impl CapabilityDiscovery {
             }
         }
 
-        Ok(endpoints)
+        endpoints
     }
 
     /// Clear cache for a specific capability

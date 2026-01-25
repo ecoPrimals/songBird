@@ -630,7 +630,7 @@ pub fn get_canonical_cors_origins() -> Vec<String> {
             } else {
                 // Development: Calculate from bind address
                 let bind_addr = get_bind_address();
-                let default_ports = vec![3000, 8080, 8081];
+                let default_ports = [3000, 8080, 8081];
 
                 default_ports
                     .iter()
@@ -695,7 +695,7 @@ pub fn node_id() -> String {
 ///
 /// SOVEREIGNTY EVOLUTION: Hardcoded values removed. Use functions instead.
 pub mod network {
-    use super::*;
+    use super::{get_bind_address, SafeEnv};
     use std::time::Duration;
 
     /// Get default host for current environment
@@ -722,11 +722,11 @@ pub mod network {
     // DEPRECATED MIGRATION HELPERS (will be removed in v0.3.0)
     // These return function calls for backwards compatibility
 
-    /// DEPRECATED: Use network::default_host() instead
+    /// DEPRECATED: Use `network::default_host()` instead
     #[deprecated(since = "0.2.0", note = "Use network::default_host() function instead")]
     pub const DEFAULT_HOST: &str = "localhost";
 
-    /// DEPRECATED: Use get_bind_address() instead  
+    /// DEPRECATED: Use `get_bind_address()` instead  
     #[deprecated(since = "0.2.0", note = "Use get_bind_address() function instead")]
     pub const DEFAULT_HOST_V4: &str = "127.0.0.1";
 }

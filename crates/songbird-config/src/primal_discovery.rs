@@ -46,6 +46,7 @@ pub struct DiscoveryOptions {
 
 impl DiscoveryOptions {
     /// Create options from environment variables (production use)
+    #[must_use]
     pub fn from_env() -> Self {
         Self::default() // All None = read from env
     }

@@ -59,12 +59,7 @@ impl Transcript {
     ///
     /// This enhanced version logs detailed information about each message
     /// to help diagnose transcript hash issues
-    pub fn update_with_logging(
-        &mut self,
-        message: &[u8],
-        message_type: &str,
-        was_decrypted: bool,
-    ) {
+    pub fn update_with_logging(&mut self, message: &[u8], message_type: &str, was_decrypted: bool) {
         let before = self.messages.len();
 
         // Log comprehensive details
@@ -128,7 +123,7 @@ impl Transcript {
 
         // Add to transcript
         self.messages.extend_from_slice(message);
-        
+
         let after = self.messages.len();
         info!("✅ Transcript updated: {} → {} bytes", before, after);
         debug!("Current transcript hash: {}", hex::encode(self.compute_hash()));
@@ -174,9 +169,9 @@ mod tests {
     fn test_update_transcript() {
         let mut transcript = Transcript::new();
         let message = b"test message";
-        
+
         transcript.update(message);
-        
+
         assert_eq!(transcript.len(), message.len());
         assert_eq!(transcript.messages(), message);
     }
@@ -185,12 +180,13 @@ mod tests {
     fn test_compute_transcript_hash_empty() {
         let transcript = Transcript::new();
         let hash = transcript.compute_hash();
-        
+
         // SHA-256 of empty string:
         // echo -n "" | sha256sum
-        let expected = hex::decode("e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855")
-            .expect("Valid hex");
-        
+        let expected =
+            hex::decode("e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855")
+                .expect("Valid hex");
+
         assert_eq!(hash, expected);
     }
 
@@ -198,10 +194,10 @@ mod tests {
     fn test_compute_transcript_hash_deterministic() {
         let mut t1 = Transcript::new();
         let mut t2 = Transcript::new();
-        
+
         t1.update(b"test");
         t2.update(b"test");
-        
+
         assert_eq!(t1.compute_hash(), t2.compute_hash());
     }
 
@@ -209,37 +205,37 @@ mod tests {
     fn test_compute_transcript_hash_known_value() {
         let mut transcript = Transcript::new();
         transcript.update(b"test");
-        
+
         let hash = transcript.compute_hash();
-        
+
         // SHA-256 of "test"
         // echo -n "test" | sha256sum
         let expected_hash =
             hex::decode("9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08")
                 .expect("Valid hex");
-        
+
         assert_eq!(hash, expected_hash);
     }
 
     #[test]
     fn test_transcript_accumulates_multiple_messages() {
         let mut transcript = Transcript::new();
-        
+
         let client_hello = vec![1u8; 100];
         let server_hello = vec![2u8; 100];
         let encrypted_extensions = vec![3u8; 50];
         let certificate = vec![4u8; 200];
         let finished = vec![5u8; 50];
-        
+
         transcript.update(&client_hello);
         transcript.update(&server_hello);
         transcript.update(&encrypted_extensions);
         transcript.update(&certificate);
         transcript.update(&finished);
-        
+
         let expected_total = 100 + 100 + 50 + 200 + 50;
         assert_eq!(transcript.len(), expected_total);
-        
+
         let hash = transcript.compute_hash();
         assert_eq!(hash.len(), 32, "SHA-256 hash should always be 32 bytes");
     }
@@ -248,17 +244,17 @@ mod tests {
     fn test_transcript_order_matters() {
         let mut t1 = Transcript::new();
         let mut t2 = Transcript::new();
-        
+
         // Add messages in different orders
         t1.update(b"A");
         t1.update(b"B");
-        
+
         t2.update(b"B");
         t2.update(b"A");
-        
+
         let hash1 = t1.compute_hash();
         let hash2 = t2.compute_hash();
-        
+
         // Hashes should be different (order matters!)
         assert_ne!(hash1, hash2);
     }
@@ -266,12 +262,12 @@ mod tests {
     #[test]
     fn test_transcript_hash_length() {
         let mut transcript = Transcript::new();
-        
+
         // Add various sized messages
         for size in [1, 10, 100, 1000, 10000] {
             transcript.update(&vec![0xFF; size]);
         }
-        
+
         // Hash should always be 32 bytes regardless of input size
         let hash = transcript.compute_hash();
         assert_eq!(hash.len(), 32);
@@ -281,16 +277,16 @@ mod tests {
     fn test_transcript_plaintext_vs_encrypted() {
         let mut t_plain = Transcript::new();
         let mut t_encrypted = Transcript::new();
-        
+
         let plaintext = b"PLAINTEXT_MESSAGE";
         let encrypted = b"ENCRYPTED_VERSION_OF_SAME_MESSAGE_WITH_TAG";
-        
+
         t_plain.update(plaintext);
         t_encrypted.update(encrypted);
-        
+
         let hash_plain = t_plain.compute_hash();
         let hash_encrypted = t_encrypted.compute_hash();
-        
+
         // RFC 8446: Transcript hash of plaintext must differ from encrypted version!
         assert_ne!(hash_plain, hash_encrypted);
     }

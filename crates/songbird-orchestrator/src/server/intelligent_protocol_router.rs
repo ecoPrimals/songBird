@@ -326,7 +326,7 @@ impl IntelligentProtocolRouter {
         let (best_protocol, confidence, reason) = scores
             .first()
             .cloned()
-            .unwrap_or_else(|| ("http".to_string(), 50, "Default fallback".to_string()));
+            .unwrap_or_else(|| ("json-rpc".to_string(), 50, "Default fallback (JSON-RPC first per wateringHole)".to_string()));
 
         // Get alternatives
         let alternatives: Vec<String> = scores.iter().skip(1).map(|(p, _, _)| p.clone()).collect();
@@ -374,10 +374,15 @@ impl IntelligentProtocolRouter {
             }
         }
 
-        // Rule 3: JSON data → prefer HTTP/JSON-RPC
+        // Rule 3: JSON data → prefer JSON-RPC (PRIMARY), then HTTP
         if workload.data_type == DataType::Json && perf.json_efficient {
-            score += 20;
-            reasons.push("native JSON support");
+            if protocol == "json-rpc" {
+                score += 25; // Primary JSON protocol
+                reasons.push("primary JSON RPC protocol");
+            } else {
+                score += 20; // Other JSON-capable protocols
+                reasons.push("native JSON support");
+            }
         }
 
         // Rule 4: Large payloads → prefer high throughput
@@ -414,12 +419,15 @@ impl IntelligentProtocolRouter {
             reasons.push("universal access for monitoring");
         }
 
-        // Rule 7: RPC operations → prefer tarpc or JSON-RPC
-        if workload.operation == OperationType::Rpc
-            && (protocol == "tarpc" || protocol == "json-rpc")
-        {
-            score += 20;
-            reasons.push("native RPC protocol");
+        // Rule 7: RPC operations → prefer JSON-RPC (PRIMARY), tarpc (secondary)
+        if workload.operation == OperationType::Rpc {
+            if protocol == "json-rpc" {
+                score += 25; // Primary RPC protocol (wateringHole standard)
+                reasons.push("primary RPC protocol (JSON-RPC first)");
+            } else if protocol == "tarpc" {
+                score += 20; // Secondary (high-performance fallback)
+                reasons.push("high-performance binary RPC");
+            }
         }
 
         // Rule 8: Network type consideration

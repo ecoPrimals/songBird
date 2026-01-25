@@ -11,9 +11,11 @@ use super::registry::ServiceRegistry;
 use crate::app::connection_manager::ConnectionManager;
 use crate::graph::{AvailabilityChecker, CoordinationValidator, GraphValidator};
 use songbird_discovery::anonymous::AnonymousDiscoveryListener;
+use songbird_http_client::BearDogClient;
 
 // Domain-focused handler modules
 pub mod graph_intelligence;
+pub mod http;
 pub mod p2p_discovery;
 pub mod service_registry;
 
@@ -23,6 +25,7 @@ pub mod service_registry;
 /// v3.20.0: Added service registry for capability-based discovery
 /// v3.21.0: Added graph validator for Collaborative Intelligence
 /// v3.22.1: Refactored into domain modules for <1000 lines per file
+/// v5.27.0: Added HTTP handler for Tower Atomic (Jan 25, 2026)
 pub struct IpcHandlers {
     /// Service registry (v3.20.0)
     pub(crate) service_registry: Arc<ServiceRegistry>,
@@ -41,6 +44,9 @@ pub struct IpcHandlers {
 
     /// Coordination validator for Collaborative Intelligence (v3.21.0 Week 3)
     pub(crate) coordination_validator: Arc<CoordinationValidator>,
+
+    /// HTTP handler for Tower Atomic HTTPS requests (v5.27.0)
+    pub(crate) http_handler: Arc<http::HttpHandler>,
 }
 
 impl IpcHandlers {
@@ -49,13 +55,17 @@ impl IpcHandlers {
     /// v3.19.2: Modern Rust - pass only what's needed, not whole orchestrator
     /// v3.20.0: Added service_registry parameter
     /// v3.21.0: Added graph_validator
+    /// v5.27.0: Added beardog_client for HTTP handler
     pub fn new(
         service_registry: Arc<ServiceRegistry>,
         discovery_listener: Option<Arc<AnonymousDiscoveryListener>>,
         connection_manager: Arc<ConnectionManager>,
+        beardog_client: Arc<BearDogClient>,
     ) -> Self {
         let availability_checker = Arc::new(AvailabilityChecker::new(service_registry.clone()));
         let coordination_validator = Arc::new(CoordinationValidator::new(service_registry.clone()));
+        let http_handler = Arc::new(http::HttpHandler::new(beardog_client));
+
         Self {
             service_registry,
             discovery_listener,
@@ -63,6 +73,7 @@ impl IpcHandlers {
             graph_validator: Arc::new(GraphValidator::new()),
             availability_checker,
             coordination_validator,
+            http_handler,
         }
     }
 
@@ -269,5 +280,86 @@ impl IpcHandlers {
         params: Option<serde_json::Value>,
     ) -> Result<serde_json::Value, crate::ipc::pure_rust_server::JsonRpcError> {
         graph_intelligence::validate_coordination_pattern_json(self, params).await
+    }
+
+    // ========================================================================
+    // HTTP/HTTPS APIs (v5.27.0) - Tower Atomic Pure Rust TLS 1.3
+    // ========================================================================
+
+    /// Handle `http.request` RPC call (Pure Rust TLS 1.3, v5.27.0)
+    ///
+    /// Makes HTTP/HTTPS requests using Pure Rust Tower Atomic pattern.
+    /// Zero C dependencies - delegates crypto to BearDog via RPC.
+    ///
+    /// # Method
+    ///
+    /// `http.request`
+    ///
+    /// # Parameters
+    ///
+    /// - `method`: HTTP method (GET, POST, PUT, DELETE, HEAD, PATCH)
+    /// - `url`: Target URL (http:// or https://)
+    /// - `headers`: Optional headers object
+    /// - `body`: Optional body (base64-encoded)
+    ///
+    /// # Returns
+    ///
+    /// Response with:
+    /// - `status`: HTTP status code
+    /// - `headers`: Response headers
+    /// - `body`: Response body (base64-encoded)
+    ///
+    /// # Example
+    ///
+    /// ```json
+    /// {
+    ///     "jsonrpc": "2.0",
+    ///     "method": "http.request",
+    ///     "params": {
+    ///         "method": "GET",
+    ///         "url": "https://api.github.com/",
+    ///         "headers": {},
+    ///         "body": null
+    ///     },
+    ///     "id": 1
+    /// }
+    /// ```
+    pub async fn http_request(
+        &self,
+        params: serde_json::Value,
+    ) -> Result<serde_json::Value, crate::ipc::pure_rust_server::JsonRpcError> {
+        self.http_handler.handle_request(params).await
+    }
+
+    /// Handle `http.get` convenience method (v5.27.0)
+    pub async fn http_get(
+        &self,
+        params: serde_json::Value,
+    ) -> Result<serde_json::Value, crate::ipc::pure_rust_server::JsonRpcError> {
+        self.http_handler.handle_get(params).await
+    }
+
+    /// Handle `http.post` convenience method (v5.27.0)
+    pub async fn http_post(
+        &self,
+        params: serde_json::Value,
+    ) -> Result<serde_json::Value, crate::ipc::pure_rust_server::JsonRpcError> {
+        self.http_handler.handle_post(params).await
+    }
+
+    /// Handle `http.put` convenience method (v5.27.0)
+    pub async fn http_put(
+        &self,
+        params: serde_json::Value,
+    ) -> Result<serde_json::Value, crate::ipc::pure_rust_server::JsonRpcError> {
+        self.http_handler.handle_put(params).await
+    }
+
+    /// Handle `http.delete` convenience method (v5.27.0)
+    pub async fn http_delete(
+        &self,
+        params: serde_json::Value,
+    ) -> Result<serde_json::Value, crate::ipc::pure_rust_server::JsonRpcError> {
+        self.http_handler.handle_delete(params).await
     }
 }

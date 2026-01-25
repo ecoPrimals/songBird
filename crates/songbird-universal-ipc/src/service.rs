@@ -120,7 +120,7 @@ impl IpcServiceHandler {
             http_handler,
         }
     }
-    
+
     /// Create with custom HTTP handler (for testing/DI)
     pub fn with_http_handler(
         registry: Arc<RwLock<ServiceRegistry>>,
@@ -135,15 +135,15 @@ impl IpcServiceHandler {
     /// Handle `ipc.register` method
     async fn handle_register(&self, params: Value) -> Result<Value, String> {
         let params: RegisterParams =
-            serde_json::from_value(params).map_err(|e| format!("Invalid params: {}", e))?;
+            serde_json::from_value(params).map_err(|e| format!("Invalid params: {e}"))?;
 
         info!("Registering primal: {} at {}", params.primal_id, params.endpoint);
 
         // Parse native endpoint
-        let native_endpoint = if params.endpoint.starts_with("/") {
+        let native_endpoint = if params.endpoint.starts_with('/') {
             // Unix socket path
             NativeEndpoint::UnixSocket(params.endpoint.into())
-        } else if params.endpoint.starts_with("127.0.0.1:") || params.endpoint.contains(":") {
+        } else if params.endpoint.starts_with("127.0.0.1:") || params.endpoint.contains(':') {
             // TCP localhost
             let port: u16 = params
                 .endpoint
@@ -161,20 +161,20 @@ impl IpcServiceHandler {
         let virtual_endpoint = registry
             .register(&params.primal_id, native_endpoint, params.capabilities)
             .await
-            .map_err(|e| format!("Registration failed: {}", e))?;
+            .map_err(|e| format!("Registration failed: {e}"))?;
 
         let result = RegisterResult {
             virtual_endpoint: virtual_endpoint.path,
             registered_at: chrono::Utc::now().to_rfc3339(),
         };
 
-        Ok(serde_json::to_value(result).map_err(|e| format!("Serialization error: {}", e))?)
+        serde_json::to_value(result).map_err(|e| format!("Serialization error: {e}"))
     }
 
     /// Handle `ipc.resolve` method
     async fn handle_resolve(&self, params: Value) -> Result<Value, String> {
         let params: ResolveParams =
-            serde_json::from_value(params).map_err(|e| format!("Invalid params: {}", e))?;
+            serde_json::from_value(params).map_err(|e| format!("Invalid params: {e}"))?;
 
         debug!("Resolving primal: {}", params.primal_id);
 
@@ -191,13 +191,13 @@ impl IpcServiceHandler {
             capabilities: entry.capabilities,
         };
 
-        Ok(serde_json::to_value(result).map_err(|e| format!("Serialization error: {}", e))?)
+        serde_json::to_value(result).map_err(|e| format!("Serialization error: {e}"))
     }
 
     /// Handle `ipc.discover` method
     async fn handle_discover(&self, params: Value) -> Result<Value, String> {
         let params: DiscoverParams =
-            serde_json::from_value(params).map_err(|e| format!("Invalid params: {}", e))?;
+            serde_json::from_value(params).map_err(|e| format!("Invalid params: {e}"))?;
 
         debug!("Discovering capability: {}", params.capability);
 
@@ -225,7 +225,7 @@ impl IpcServiceHandler {
             providers: provider_infos,
         };
 
-        Ok(serde_json::to_value(result).map_err(|e| format!("Serialization error: {}", e))?)
+        serde_json::to_value(result).map_err(|e| format!("Serialization error: {e}"))
     }
 
     /// Handle `ipc.list` method
@@ -252,68 +252,63 @@ impl IpcServiceHandler {
             services: service_infos,
         };
 
-        Ok(serde_json::to_value(result).map_err(|e| format!("Serialization error: {}", e))?)
+        serde_json::to_value(result).map_err(|e| format!("Serialization error: {e}"))
     }
-    
+
     /// Handle `http.request` method - Full HTTP/HTTPS request
     async fn handle_http_request(&self, params: Value) -> Result<Value, String> {
         let params: HttpRequestParams =
-            serde_json::from_value(params).map_err(|e| format!("Invalid params: {}", e))?;
-        
+            serde_json::from_value(params).map_err(|e| format!("Invalid params: {e}"))?;
+
         info!("HTTP request via IPC: {} {}", params.method, params.url);
-        
+
         let result = self
             .http_handler
             .handle_request(params)
             .await
-            .map_err(|e| format!("HTTP request failed: {}", e))?;
-        
-        Ok(serde_json::to_value(result).map_err(|e| format!("Serialization error: {}", e))?)
+            .map_err(|e| format!("HTTP request failed: {e}"))?;
+
+        serde_json::to_value(result).map_err(|e| format!("Serialization error: {e}"))
     }
-    
+
     /// Handle `http.get` method - GET request shorthand
     async fn handle_http_get(&self, params: Value) -> Result<Value, String> {
         let url = params
             .get("url")
             .and_then(|v| v.as_str())
             .ok_or_else(|| "Missing 'url' parameter".to_string())?;
-        
+
         info!("HTTP GET via IPC: {}", url);
-        
-        let result = self
-            .http_handler
-            .handle_get(url)
-            .await
-            .map_err(|e| format!("HTTP GET failed: {}", e))?;
-        
-        Ok(serde_json::to_value(result).map_err(|e| format!("Serialization error: {}", e))?)
+
+        let result =
+            self.http_handler.handle_get(url).await.map_err(|e| format!("HTTP GET failed: {e}"))?;
+
+        serde_json::to_value(result).map_err(|e| format!("Serialization error: {e}"))
     }
-    
+
     /// Handle `http.post` method - POST request shorthand
     async fn handle_http_post(&self, params: Value) -> Result<Value, String> {
         let url = params
             .get("url")
             .and_then(|v| v.as_str())
             .ok_or_else(|| "Missing 'url' parameter".to_string())?;
-        
+
         let body = params
             .get("body")
             .and_then(|v| v.as_str())
             .ok_or_else(|| "Missing 'body' parameter".to_string())?;
-        
-        let content_type = params
-            .get("content_type")
-            .and_then(|v| v.as_str());
-        
+
+        let content_type = params.get("content_type").and_then(|v| v.as_str());
+
         info!("HTTP POST via IPC: {}", url);
-        
+
         let result = self
             .http_handler
             .handle_post(url, body, content_type)
             .await
-            .map_err(|e| format!("HTTP POST failed: {}", e))?;
-        
-        Ok(serde_json::to_value(result).map_err(|e| format!("Serialization error: {}", e))?)
+            .map_err(|e| format!("HTTP POST failed: {e}"))?;
+
+        serde_json::to_value(result).map_err(|e| format!("Serialization error: {e}"))
     }
 }
 
@@ -326,13 +321,13 @@ impl JsonRpcHandler for IpcServiceHandler {
             "ipc.resolve" => self.handle_resolve(params).await,
             "ipc.discover" => self.handle_discover(params).await,
             "ipc.list" => self.handle_list(params).await,
-            
+
             // HTTP/HTTPS methods (NEW!)
             "http.request" => self.handle_http_request(params).await,
             "http.get" => self.handle_http_get(params).await,
             "http.post" => self.handle_http_post(params).await,
-            
-            _ => Err(format!("Unknown method: {}", method)),
+
+            _ => Err(format!("Unknown method: {method}")),
         }
     }
 }
@@ -423,7 +418,7 @@ mod tests {
             let params = json!({
                 "primal_id": id,
                 "capabilities": caps,
-                "endpoint": format!("/tmp/primal-{}.sock", id)
+                "endpoint": format!("/tmp/primal-{id}.sock")
             });
             handler.handle("ipc.register", params).await.unwrap();
         }

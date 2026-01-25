@@ -34,8 +34,19 @@ pub fn primal_name() -> String {
 }
 
 /// Get family/biome ID (self-knowledge)
+///
+/// Priority order (BiomeOS Neural API compatible):
+/// 1. `SONGBIRD_ORCHESTRATOR_FAMILY_ID` (highest - Neural API standard)
+/// 2. `SONGBIRD_ORCHESTRATOR_FAMILY` (alternative)
+/// 3. `BIOMEOS_FAMILY_ID` (generic orchestrator)
+/// 4. `SONGBIRD_FAMILY_ID` (legacy)
+/// 5. `FAMILY_ID` (generic)
+/// 6. Default: `"nat0"` (NAT-friendly network family 0)
 pub fn family_id() -> String {
-    std::env::var("SONGBIRD_FAMILY_ID")
+    std::env::var("SONGBIRD_ORCHESTRATOR_FAMILY_ID")
+        .or_else(|_| std::env::var("SONGBIRD_ORCHESTRATOR_FAMILY"))
+        .or_else(|_| std::env::var("BIOMEOS_FAMILY_ID"))
+        .or_else(|_| std::env::var("SONGBIRD_FAMILY_ID"))
         .or_else(|_| std::env::var("FAMILY_ID"))
         .unwrap_or_else(|_| "nat0".to_string())
 }
@@ -179,6 +190,14 @@ mod tests {
 
     #[test]
     fn test_socket_path_custom_family() {
+        // Clear all env vars first
+        std::env::remove_var("SONGBIRD_SOCKET");
+        std::env::remove_var("SONGBIRD_FAMILY_ID");
+        std::env::remove_var("SONGBIRD_ORCHESTRATOR_FAMILY_ID");
+        std::env::remove_var("SONGBIRD_ORCHESTRATOR_FAMILY");
+        std::env::remove_var("BIOMEOS_FAMILY_ID");
+        std::env::remove_var("FAMILY_ID");
+        
         std::env::set_var("SONGBIRD_FAMILY_ID", "prod");
         let path = socket_path();
         std::env::remove_var("SONGBIRD_FAMILY_ID");

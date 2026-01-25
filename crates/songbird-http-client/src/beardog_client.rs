@@ -1331,32 +1331,45 @@ mod tests {
 
     #[test]
     fn test_from_env_direct() {
+        // Setup: Clear all env vars first
+        std::env::remove_var("BEARDOG_MODE");
+        std::env::remove_var("BEARDOG_SOCKET");
+        std::env::remove_var("NEURAL_API_SOCKET");
+        
         std::env::set_var("BEARDOG_MODE", "direct");
         std::env::set_var("BEARDOG_SOCKET", "/tmp/test-beardog.sock");
 
         let client = BearDogClient::from_env();
         assert!(matches!(client.mode, BearDogMode::Direct { .. }));
 
+        // Teardown
         std::env::remove_var("BEARDOG_MODE");
         std::env::remove_var("BEARDOG_SOCKET");
     }
 
     #[test]
     fn test_from_env_neural() {
+        // Setup: Clear all env vars first
+        std::env::remove_var("BEARDOG_MODE");
+        std::env::remove_var("BEARDOG_SOCKET");
+        std::env::remove_var("NEURAL_API_SOCKET");
+        
         std::env::set_var("BEARDOG_MODE", "neural");
         std::env::set_var("NEURAL_API_SOCKET", "/tmp/test-neural.sock");
 
         let client = BearDogClient::from_env();
         assert!(matches!(client.mode, BearDogMode::NeuralApi { .. }));
 
+        // Teardown
         std::env::remove_var("BEARDOG_MODE");
         std::env::remove_var("NEURAL_API_SOCKET");
     }
 
     #[test]
     fn test_from_env_default_neural() {
-        // No BEARDOG_MODE set, should default to Neural API
+        // Setup: Clear all env vars first to test default
         std::env::remove_var("BEARDOG_MODE");
+        std::env::remove_var("BEARDOG_SOCKET");
         std::env::remove_var("NEURAL_API_SOCKET");
 
         let client = BearDogClient::from_env();

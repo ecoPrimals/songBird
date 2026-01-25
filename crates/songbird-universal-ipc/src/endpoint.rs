@@ -21,9 +21,10 @@ impl VirtualEndpoint {
     ///
     /// # Returns
     /// Virtual endpoint with path `/primal/{name}`
+    #[must_use]
     pub fn new(primal_name: &str) -> Self {
         Self {
-            path: format!("/primal/{}", primal_name),
+            path: format!("/primal/{primal_name}"),
         }
     }
 
@@ -31,11 +32,13 @@ impl VirtualEndpoint {
     ///
     /// # Returns
     /// Primal name, or None if path format is invalid
+    #[must_use]
     pub fn primal_name(&self) -> Option<&str> {
         self.path.strip_prefix("/primal/")
     }
 
     /// Validate virtual path format
+    #[must_use]
     pub fn is_valid(&self) -> bool {
         self.primal_name().is_some()
     }
@@ -63,6 +66,7 @@ pub enum NativeEndpoint {
 
 impl NativeEndpoint {
     /// Get display string for logging
+    #[must_use]
     pub fn display(&self) -> String {
         match self {
             #[cfg(unix)]
@@ -74,13 +78,14 @@ impl NativeEndpoint {
                 format!("pipe://{}", name)
             }
             NativeEndpoint::TcpLocal(port) => {
-                format!("tcp://127.0.0.1:{}", port)
+                format!("tcp://127.0.0.1:{port}")
             }
         }
     }
 
     /// Check if endpoint exists/is accessible
     #[cfg(unix)]
+    #[must_use]
     pub fn exists(&self) -> bool {
         match self {
             NativeEndpoint::UnixSocket(path) => path.exists(),

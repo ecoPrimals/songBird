@@ -122,8 +122,8 @@ impl JsonRpcClient {
     /// ```
     pub fn new(endpoint: &str) -> SongbirdResult<Self> {
         // Parse endpoint - strip unix:// prefix if present
-        let socket_path = if endpoint.starts_with("unix://") {
-            PathBuf::from(&endpoint[7..]) // Skip "unix://"
+        let socket_path = if let Some(path) = endpoint.strip_prefix("unix://") {
+            PathBuf::from(path)
         } else {
             PathBuf::from(endpoint)
         };
@@ -227,7 +227,7 @@ impl JsonRpcClient {
         Ok(json!({
             "jsonrpc": "2.0",
             "result": result,
-            "id": request.get("id").cloned().unwrap_or(json!(1))
+            "id": request.get("id").cloned().unwrap_or_else(|| json!(1))
         }))
     }
 

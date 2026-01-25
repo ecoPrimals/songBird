@@ -34,7 +34,7 @@ pub struct EnvironmentStrategy;
 
 #[async_trait]
 impl DiscoveryStrategy for EnvironmentStrategy {
-    fn name(&self) -> &str {
+    fn name(&self) -> &'static str {
         "environment"
     }
 
@@ -54,9 +54,9 @@ impl DiscoveryStrategy for EnvironmentStrategy {
             let mut provider = Provider::new(
                 provider_id.clone(),
                 vec![capability.to_string()],
-                format!("/primal/{}", provider_id),
+                format!("/primal/{provider_id}"),
             );
-            provider.metadata.discovery_method = format!("env:{}", env_var_socket);
+            provider.metadata.discovery_method = format!("env:{env_var_socket}");
 
             providers.push(provider);
         }
@@ -73,9 +73,9 @@ impl DiscoveryStrategy for EnvironmentStrategy {
                 let mut provider = Provider::new(
                     provider_id.clone(),
                     vec![capability.to_string()],
-                    format!("/primal/{}", provider_id),
+                    format!("/primal/{provider_id}"),
                 );
-                provider.metadata.discovery_method = format!("env:{}", env_var);
+                provider.metadata.discovery_method = format!("env:{env_var}");
 
                 providers.push(provider);
             }
@@ -92,9 +92,9 @@ impl DiscoveryStrategy for EnvironmentStrategy {
                 let mut provider = Provider::new(
                     provider_id.clone(),
                     vec![capability.to_string()],
-                    format!("/primal/{}", provider_id),
+                    format!("/primal/{provider_id}"),
                 );
-                provider.metadata.discovery_method = format!("env:{}", generic_env);
+                provider.metadata.discovery_method = format!("env:{generic_env}");
 
                 providers.push(provider);
             }
@@ -121,12 +121,13 @@ pub struct FilesystemStrategy {
 
 impl FilesystemStrategy {
     /// Create new filesystem strategy with default search paths
+    #[must_use]
     pub fn new() -> Self {
         let mut search_paths = vec![PathBuf::from("/tmp")];
 
         // Add user runtime directory if available
         if let Ok(uid) = std::env::var("UID") {
-            search_paths.push(PathBuf::from(format!("/run/user/{}", uid)));
+            search_paths.push(PathBuf::from(format!("/run/user/{uid}")));
         }
 
         // Add system runtime directory
@@ -138,6 +139,7 @@ impl FilesystemStrategy {
     }
 
     /// Create with custom search paths
+    #[must_use]
     pub fn with_paths(search_paths: Vec<PathBuf>) -> Self {
         Self {
             search_paths,
@@ -153,7 +155,7 @@ impl Default for FilesystemStrategy {
 
 #[async_trait]
 impl DiscoveryStrategy for FilesystemStrategy {
-    fn name(&self) -> &str {
+    fn name(&self) -> &'static str {
         "filesystem"
     }
 
@@ -171,7 +173,9 @@ impl DiscoveryStrategy for FilesystemStrategy {
                 for entry in entries.flatten() {
                     if let Ok(file_name) = entry.file_name().into_string() {
                         // Look for sockets matching capability pattern
-                        if file_name.contains(capability) && file_name.ends_with(".sock") {
+                        if file_name.contains(capability)
+                            && file_name.to_lowercase().ends_with(".sock")
+                        {
                             let path = entry.path();
                             info!("   ✅ Found {} socket at: {}", capability, path.display());
 
@@ -180,7 +184,7 @@ impl DiscoveryStrategy for FilesystemStrategy {
                             let mut provider = Provider::new(
                                 provider_id.clone(),
                                 vec![capability.to_string()],
-                                format!("/primal/{}", provider_id),
+                                format!("/primal/{provider_id}"),
                             );
                             provider.metadata.discovery_method =
                                 format!("filesystem:{}", search_path.display());

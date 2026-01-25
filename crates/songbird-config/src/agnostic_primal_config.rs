@@ -64,7 +64,7 @@ pub struct CapabilityDiscoveryConfig {
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
 pub enum DiscoveryMethod {
-    /// Environment variables (CAPABILITY_SECURITY_ENDPOINT, etc.)
+    /// Environment variables (`CAPABILITY_SECURITY_ENDPOINT`, etc.)
     Environment,
 
     /// DNS SRV records (_security._tcp.local, etc.)
@@ -135,7 +135,7 @@ impl AgnosticPrimalConfig {
             let env_var = format!("CAPABILITY_{}_ENDPOINT", capability.to_uppercase());
             if let Ok(endpoint) = std::env::var(&env_var) {
                 tracing::info!("Discovered {} capability at: {}", capability, endpoint);
-                endpoints.insert(capability.to_string(), endpoint);
+                endpoints.insert((*capability).to_string(), endpoint);
             }
         }
 
@@ -146,10 +146,10 @@ impl AgnosticPrimalConfig {
                     .trim_start_matches("CAPABILITY_")
                     .trim_end_matches("_ENDPOINT")
                     .to_lowercase();
-                if !endpoints.contains_key(&capability) {
+                endpoints.entry(capability.clone()).or_insert_with(|| {
                     tracing::info!("Discovered custom {} capability at: {}", capability, value);
-                    endpoints.insert(capability, value);
-                }
+                    value
+                });
             }
         }
 
@@ -260,7 +260,7 @@ impl AgnosticPrimalConfig {
         }
 
         Err(SongbirdError::Configuration {
-            message: format!("Capability '{}' not available", capability),
+            message: format!("Capability '{capability}' not available"),
             field: Some("capability".to_string()),
             suggestion: Some(format!(
                 "Set CAPABILITY_{}_ENDPOINT environment variable",

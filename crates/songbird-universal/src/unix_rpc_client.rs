@@ -163,9 +163,9 @@ impl UnixRpcClient {
             serde_json::to_vec(&request).context("Failed to serialize JSON-RPC request")?;
 
         // Connect to Unix socket
-        let mut stream = UnixStream::connect(&self.socket_path)
-            .await
-            .with_context(|| format!("Failed to connect to Unix socket: {:?}", self.socket_path))?;
+        let mut stream = UnixStream::connect(&self.socket_path).await.with_context(|| {
+            format!("Failed to connect to Unix socket: {}", self.socket_path.display())
+        })?;
 
         // Send request
         stream.write_all(&request_bytes).await.context("Failed to write request to Unix socket")?;

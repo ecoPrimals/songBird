@@ -17,8 +17,9 @@ fn test_biomeos_neural_api_socket_path_priority() {
     let original_biomeos_path = env::var("BIOMEOS_SOCKET_PATH").ok();
     let original_family_id = env::var("SONGBIRD_ORCHESTRATOR_FAMILY_ID").ok();
     let original_biomeos_family = env::var("BIOMEOS_FAMILY_ID").ok();
+    let original_songbird_family = env::var("SONGBIRD_FAMILY_ID").ok();
 
-    // Clear all env vars to start clean
+    // Clear ALL env vars to start completely clean
     env::remove_var("SONGBIRD_ORCHESTRATOR_SOCKET");
     env::remove_var("SONGBIRD_SOCKET");
     env::remove_var("BIOMEOS_SOCKET_PATH");
@@ -26,6 +27,7 @@ fn test_biomeos_neural_api_socket_path_priority() {
     env::remove_var("SONGBIRD_ORCHESTRATOR_FAMILY");
     env::remove_var("BIOMEOS_FAMILY_ID");
     env::remove_var("SONGBIRD_FAMILY_ID");
+    env::remove_var("FAMILY_ID");
 
     // Test 1: SONGBIRD_ORCHESTRATOR_SOCKET (highest priority - Neural API standard)
     env::set_var("SONGBIRD_ORCHESTRATOR_SOCKET", "/tmp/songbird-nat0.sock");
@@ -81,8 +83,8 @@ fn test_biomeos_neural_api_socket_path_priority() {
     let path = UnixSocketServer::socket_path_from_env();
     assert_eq!(
         path,
-        PathBuf::from("/tmp/songbird-default.sock"),
-        "Should use default family 'default' when no env vars set"
+        PathBuf::from("/tmp/songbird-nat0.sock"),
+        "Should use default family 'nat0' when no env vars set (nat-friendly network)"
     );
 
     // Test 7: Neural API standard deployment (full environment)
@@ -102,6 +104,7 @@ fn test_biomeos_neural_api_socket_path_priority() {
     restore_env_var("BIOMEOS_SOCKET_PATH", original_biomeos_path);
     restore_env_var("SONGBIRD_ORCHESTRATOR_FAMILY_ID", original_family_id);
     restore_env_var("BIOMEOS_FAMILY_ID", original_biomeos_family);
+    restore_env_var("SONGBIRD_FAMILY_ID", original_songbird_family);
 }
 
 /// Test that socket path defaults to /tmp/ (NOT /run/user/{uid}/)
@@ -134,11 +137,15 @@ fn restore_env_var(key: &str, value: Option<String>) {
 
 #[test]
 fn test_family_id_priority_order() {
-    // Clear all env vars
+    // Clear ALL env vars to ensure complete isolation
+    env::remove_var("SONGBIRD_ORCHESTRATOR_SOCKET");
+    env::remove_var("SONGBIRD_SOCKET");
+    env::remove_var("BIOMEOS_SOCKET_PATH");
     env::remove_var("SONGBIRD_ORCHESTRATOR_FAMILY_ID");
     env::remove_var("SONGBIRD_ORCHESTRATOR_FAMILY");
     env::remove_var("BIOMEOS_FAMILY_ID");
     env::remove_var("SONGBIRD_FAMILY_ID");
+    env::remove_var("FAMILY_ID");
 
     // Test 1: SONGBIRD_ORCHESTRATOR_FAMILY_ID (highest priority)
     env::set_var("SONGBIRD_ORCHESTRATOR_FAMILY_ID", "nat0");

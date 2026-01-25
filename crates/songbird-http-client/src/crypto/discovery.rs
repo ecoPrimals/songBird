@@ -109,6 +109,7 @@ pub async fn discover_crypto_capability() -> Result<Arc<dyn CryptoCapability>> {
 /// ```rust,ignore
 /// let crypto = discover_crypto_capability_at("/custom/path/crypto.sock").await?;
 /// ```
+#[allow(dead_code)] // Used in tests and available for external callers
 pub async fn discover_crypto_capability_at(socket_path: &str) -> Result<Arc<dyn CryptoCapability>> {
     let provider = BearDogProvider::new(socket_path);
 
@@ -122,6 +123,7 @@ pub async fn discover_crypto_capability_at(socket_path: &str) -> Result<Arc<dyn 
 /// Create crypto capability without availability check (for testing)
 ///
 /// Use this in tests where you control the provider lifecycle.
+#[allow(dead_code)]
 pub fn create_crypto_capability(socket_path: &str) -> Arc<dyn CryptoCapability> {
     Arc::new(BearDogProvider::new(socket_path))
 }

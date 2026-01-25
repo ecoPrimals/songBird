@@ -15,7 +15,7 @@ pub struct UnixIPC;
 impl PlatformIPC for UnixIPC {
     async fn create_endpoint(&self, primal_name: &str) -> IpcResult<NativeEndpoint> {
         // Use /tmp/primal-{name}.sock
-        let path = PathBuf::from(format!("/tmp/primal-{}.sock", primal_name));
+        let path = PathBuf::from(format!("/tmp/primal-{primal_name}.sock"));
 
         debug!("Creating Unix socket endpoint for '{}': {}", primal_name, path.display());
 
@@ -23,7 +23,7 @@ impl PlatformIPC for UnixIPC {
         if path.exists() {
             warn!("Socket file already exists, removing: {}", path.display());
             tokio::fs::remove_file(&path).await.map_err(|e| {
-                IpcError::PlatformError(format!("Failed to remove old socket: {}", e))
+                IpcError::PlatformError(format!("Failed to remove old socket: {e}"))
             })?;
         }
 
@@ -49,7 +49,9 @@ impl PlatformIPC for UnixIPC {
                     inner: listener,
                 }))
             }
-            _ => Err(IpcError::PlatformError("Invalid endpoint for Unix platform".to_string())),
+            NativeEndpoint::TcpLocal(_) => {
+                Err(IpcError::PlatformError("Invalid endpoint for Unix platform".to_string()))
+            }
         }
     }
 
@@ -70,7 +72,9 @@ impl PlatformIPC for UnixIPC {
 
                 Ok(Box::new(stream))
             }
-            _ => Err(IpcError::PlatformError("Invalid endpoint for Unix platform".to_string())),
+            NativeEndpoint::TcpLocal(_) => {
+                Err(IpcError::PlatformError("Invalid endpoint for Unix platform".to_string()))
+            }
         }
     }
 
@@ -92,12 +96,12 @@ impl PlatformIPC for UnixIPC {
                 }
                 Ok(())
             }
-            _ => Ok(()), // Not a Unix socket, nothing to cleanup
+            NativeEndpoint::TcpLocal(_) => Ok(()), // Not a Unix socket, nothing to cleanup
         }
     }
 }
 
-/// Wrapper for UnixListener to implement PlatformListener
+/// Wrapper for `UnixListener` to implement `PlatformListener`
 struct UnixListenerWrapper {
     inner: UnixListener,
 }
@@ -106,7 +110,7 @@ struct UnixListenerWrapper {
 impl PlatformListener for UnixListenerWrapper {
     async fn accept(&mut self) -> IpcResult<Box<dyn AsyncStream>> {
         let (stream, addr) = self.inner.accept().await.map_err(|e| {
-            IpcError::ConnectionFailed(format!("Failed to accept Unix connection: {}", e))
+            IpcError::ConnectionFailed(format!("Failed to accept Unix connection: {e}"))
         })?;
 
         debug!("Accepted Unix connection from: {:?}", addr);

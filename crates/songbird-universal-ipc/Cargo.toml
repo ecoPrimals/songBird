@@ -5,6 +5,7 @@ edition = "2021"
 authors = ["ecoPrimals <contact@ecoprimals.dev>"]
 description = "Universal IPC abstraction for ecoPrimals - works on ALL platforms"
 license = "AGPL-3.0"
+repository = "https://github.com/ecoPrimals/SongBird"
 keywords = ["ipc", "unix-socket", "named-pipe", "universal", "platform-agnostic"]
 categories = ["os", "network-programming"]
 

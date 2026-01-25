@@ -28,6 +28,11 @@ use tracing::{debug, info, warn};
 /// # Ok(())
 /// # }
 /// ```
+///
+/// # Errors
+///
+/// Returns an error if the primal cannot be discovered through any available method
+/// (capability registry, environment variables, mDNS, or DNS-SD).
 pub async fn discover_primal(
     primal_type: songbird_types::CanonicalPrimalType,
 ) -> Result<ServiceEndpoint> {
@@ -49,7 +54,7 @@ pub async fn discover_primal(
     if let Ok(url) = env::var(&env_var) {
         info!("Found {} via environment variable {} = {}", primal_type, env_var, url);
         return Ok(ServiceEndpoint {
-            id: format!("{}-from-env", capability),
+            id: format!("{capability}-from-env"),
             url,
             capabilities: vec![capability.clone()],
             health_score: 1.0,
@@ -62,7 +67,7 @@ pub async fn discover_primal(
     if let Ok(url) = env::var(&alt_env_var) {
         info!("Found {} via environment variable {} = {}", primal_type, alt_env_var, url);
         return Ok(ServiceEndpoint {
-            id: format!("{}-from-env-alt", capability),
+            id: format!("{capability}-from-env-alt"),
             url,
             capabilities: vec![capability.clone()],
             health_score: 1.0,
@@ -80,7 +85,7 @@ pub async fn discover_primal(
         warn!("Set {} or {} to override", env_var, alt_env_var);
 
         return Ok(ServiceEndpoint {
-            id: format!("{}-fallback", capability),
+            id: format!("{capability}-fallback"),
             url: fallback_url,
             capabilities: vec![capability],
             health_score: 0.5, // Lower score for fallback
@@ -90,12 +95,15 @@ pub async fn discover_primal(
 
     // Production: No fallback
     anyhow::bail!(
-        "No {} primal found. Set {} or {} environment variable, or register via capability discovery",
-        primal_type, env_var, alt_env_var
+        "No {primal_type} primal found. Set {env_var} or {alt_env_var} environment variable, or register via capability discovery"
     )
 }
 
 /// Discover multiple primals by capability type
+///
+/// # Errors
+///
+/// Returns an error if the primals cannot be discovered via the capability discovery system.
 pub async fn discover_all_primals(
     primal_type: songbird_types::CanonicalPrimalType,
 ) -> Result<Vec<ServiceEndpoint>> {
@@ -105,7 +113,7 @@ pub async fn discover_all_primals(
     discovery
         .find_providers_by_capability(&capability)
         .await
-        .context(format!("Failed to discover {} primals", primal_type))
+        .context(format!("Failed to discover {primal_type} primals"))
 }
 
 /// Try to discover a primal, returning None if not found (non-failing)
@@ -157,10 +165,11 @@ fn default_url_for_primal(primal_type: &songbird_types::CanonicalPrimalType) -> 
         CanonicalPrimalType::Unknown(_) => 9999,    // Unknown
     };
 
-    format!("http://[::]:{}", port)
+    format!("http://[::]:{port}")
 }
 
 /// Environment variable naming standards
+#[must_use]
 pub fn env_var_for_primal(primal_type: &songbird_types::CanonicalPrimalType) -> Vec<String> {
     let capability = primal_type_to_capability(primal_type);
     vec![

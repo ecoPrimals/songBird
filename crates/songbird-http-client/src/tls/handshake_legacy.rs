@@ -2213,7 +2213,7 @@ impl TlsHandshake {
         trace!("   client_write_iv (hex): {}", hex::encode(&handshake_keys.client_write_iv));
         trace!("   server_write_iv (hex): {}", hex::encode(&handshake_keys.server_write_iv));
         trace!("   Nonce (IV XOR seq): {}", hex::encode(&nonce));
-        trace!("   AAD (hex): {}", hex::encode(&aad));
+        trace!("   AAD (hex): {}", hex::encode(aad));
         trace!("   Plaintext length: {} bytes", plaintext.len());
         trace!("   ⚠️  HYPOTHESIS: If server_write_key == server's expected client_write_key,");
         trace!("      then BearDog is swapping client/server labels!");

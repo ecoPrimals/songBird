@@ -21,7 +21,9 @@ pub struct ClientHelloBuilder {
 impl ClientHelloBuilder {
     /// Create a new ClientHello builder with the given extension strategy
     pub fn new(extension_strategy: ExtensionStrategy) -> Self {
-        Self { extension_strategy }
+        Self {
+            extension_strategy,
+        }
     }
 
     /// Build a complete ClientHello message including TLS record framing
@@ -259,10 +261,7 @@ pub fn generate_random() -> Vec<u8> {
     let mut random = Vec::with_capacity(32);
 
     // Use timestamp for first 4 bytes
-    let timestamp = SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .unwrap()
-        .as_secs() as u32;
+    let timestamp = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs() as u32;
     random.extend_from_slice(&timestamp.to_be_bytes());
 
     // Fill rest with pseudo-random
@@ -294,11 +293,11 @@ mod tests {
 
         // Should contain the server name
         assert!(sni.len() > "example.com".len());
-        
+
         // Verify structure
         let list_len = u16::from_be_bytes([sni[0], sni[1]]) as usize;
         assert_eq!(list_len, "example.com".len() + 3);
-        
+
         // Verify type
         assert_eq!(sni[2], 0x00); // host_name
     }
@@ -310,7 +309,7 @@ mod tests {
 
         // Should have proper structure
         assert!(ks.len() > 32);
-        
+
         // Verify it contains the public key
         assert!(ks.windows(32).any(|w| w == public_key.as_slice()));
     }
@@ -325,12 +324,12 @@ mod tests {
         assert!(result.is_ok());
 
         let client_hello = result.unwrap();
-        
+
         // Should have TLS record header
         assert_eq!(client_hello[0], 0x16); // Handshake
         assert_eq!(client_hello[1], 0x03); // TLS 1.2 (legacy)
         assert_eq!(client_hello[2], 0x03);
-        
+
         // Should have ClientHello type
         assert_eq!(client_hello[5], 0x01);
     }
@@ -345,11 +344,11 @@ mod tests {
         assert!(result.is_ok());
 
         let client_hello = result.unwrap();
-        
+
         // Standard should be longer than minimal (more extensions)
         let minimal_builder = ClientHelloBuilder::new(ExtensionStrategy::Minimal);
         let minimal = minimal_builder.build(&random, &public_key, "example.com").unwrap();
-        
+
         assert!(client_hello.len() > minimal.len());
     }
 
@@ -361,11 +360,10 @@ mod tests {
         let server_name = "test.example.com";
 
         let client_hello = builder.build(&random, &public_key, server_name).unwrap();
-        
+
         // Should contain the server name in SNI extension
         let name_bytes = server_name.as_bytes();
-        assert!(client_hello.windows(name_bytes.len())
-            .any(|w| w == name_bytes));
+        assert!(client_hello.windows(name_bytes.len()).any(|w| w == name_bytes));
     }
 
     #[test]
@@ -375,7 +373,7 @@ mod tests {
         let public_key = vec![0x42; 32];
 
         let client_hello = builder.build(&random, &public_key, "example.com").unwrap();
-        
+
         // Should contain all cipher suites
         // TLS_AES_128_GCM_SHA256 = 0x1301
         assert!(client_hello.windows(2).any(|w| w == &[0x13, 0x01]));

@@ -154,7 +154,7 @@ impl Listener {
 
 /// Platform-agnostic stream
 ///
-/// Provides AsyncRead + AsyncWrite for communication.
+/// Provides `AsyncRead` + `AsyncWrite` for communication.
 pub struct Stream {
     inner: Box<dyn AsyncStream>,
 }
@@ -224,7 +224,7 @@ pub fn init() -> IpcResult<()> {
                 error!("     - Permission issues (socket creation)");
                 // Return a minimal instance that will fail gracefully
                 // Note: This is a workaround since get_or_init doesn't support Result
-                panic!("Universal IPC initialization failed: {}", e);
+                panic!("Universal IPC initialization failed: {e}");
             }
         }
     });
@@ -307,14 +307,14 @@ mod tests {
         init().unwrap();
 
         // Register and listen
-        let endpoint = register("test-primal", vec!["test".to_string()]).await.unwrap();
+        let endpoint = register("test-primal-register-connect", vec!["test".to_string()]).await.unwrap();
 
         let mut listener = listen(endpoint).await.unwrap();
 
         // Connect in background
         let connect_handle = tokio::spawn(async move {
             tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
-            connect("/primal/test-primal").await
+            connect("/primal/test-primal-register-connect").await
         });
 
         // Accept connection

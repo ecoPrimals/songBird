@@ -77,6 +77,7 @@ impl UnixSocketServer {
     ///
     /// **Zero Hardcoding**: Socket path derived from env vars
     /// **v3.22.0**: Pure Rust implementation (no jsonrpsee)
+    /// **v5.27.0**: Added BearDog client for HTTP handler (Tower Atomic)
     ///
     /// ## Example
     ///
@@ -85,6 +86,7 @@ impl UnixSocketServer {
     ///     service_registry,
     ///     discovery_listener,
     ///     connection_manager,
+    ///     beardog_client,
     /// );
     /// server.start().await?;
     /// ```
@@ -92,10 +94,15 @@ impl UnixSocketServer {
         service_registry: Arc<ServiceRegistry>,
         discovery_listener: Option<Arc<AnonymousDiscoveryListener>>,
         connection_manager: Arc<ConnectionManager>,
+        beardog_client: Arc<songbird_http_client::BearDogClient>,
     ) -> Self {
         let socket_path = Self::socket_path_from_env();
-        let handlers =
-            Arc::new(IpcHandlers::new(service_registry, discovery_listener, connection_manager));
+        let handlers = Arc::new(IpcHandlers::new(
+            service_registry,
+            discovery_listener,
+            connection_manager,
+            beardog_client,
+        ));
 
         Self {
             socket_path,
@@ -382,9 +389,25 @@ impl UnixSocketServer {
                 self.handlers.validate_coordination_pattern_json(request.params).await
             }
 
-            // Squirrel Integration APIs (3)
+            // HTTP/HTTPS APIs - Pure Rust Tower Atomic (v5.27.0)
+            "http.request" => {
+                self.handlers.http_request(request.params.unwrap_or(serde_json::json!({}))).await
+            }
+            "http.get" => {
+                self.handlers.http_get(request.params.unwrap_or(serde_json::json!({}))).await
+            }
+            "http.post" => {
+                self.handlers.http_post(request.params.unwrap_or(serde_json::json!({}))).await
+            }
+            "http.put" => {
+                self.handlers.http_put(request.params.unwrap_or(serde_json::json!({}))).await
+            }
+            "http.delete" => {
+                self.handlers.http_delete(request.params.unwrap_or(serde_json::json!({}))).await
+            }
+
+            // Squirrel Integration APIs (2) - Kept for backward compat
             "discover_capabilities" => squirrel_handlers::handle_discover_capabilities().await,
-            "http.request" => squirrel_handlers::handle_http_request(request.params).await,
             "health" => squirrel_handlers::handle_health().await,
 
             // Unknown method

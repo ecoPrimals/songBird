@@ -276,16 +276,30 @@ mod tests {
 
     #[test]
     fn test_discover_identity_tags_from_family() {
+        // Clear all env vars first
+        std::env::remove_var("SONGBIRD_FAMILY_ID");
+        std::env::remove_var("SONGBIRD_TAGS");
+        std::env::remove_var("SONGBIRD_ORG_ID");
+        std::env::remove_var("SONGBIRD_ORCHESTRATOR_FAMILY_ID");
+        std::env::remove_var("SONGBIRD_ORCHESTRATOR_FAMILY");
+        std::env::remove_var("BIOMEOS_FAMILY_ID");
+        
         std::env::set_var("SONGBIRD_FAMILY_ID", "test_family");
 
         let tags = discover_identity_tags();
-        assert!(tags.contains(&"beardog:family:test_family".to_string()));
+        assert!(tags.contains(&"beardog:family:test_family".to_string()), "Expected tag not found. Got: {:?}", tags);
 
         std::env::remove_var("SONGBIRD_FAMILY_ID");
     }
 
     #[test]
     fn test_discover_identity_tags_explicit() {
+        // Clear all env vars first
+        std::env::remove_var("SONGBIRD_FAMILY_ID");
+        std::env::remove_var("SONGBIRD_TAGS");
+        std::env::remove_var("SONGBIRD_ORCHESTRATOR_FAMILY_ID");
+        std::env::remove_var("BIOMEOS_FAMILY_ID");
+        
         std::env::set_var("SONGBIRD_TAGS", "custom:tag:value1,another:tag:value2");
 
         let tags = discover_identity_tags();

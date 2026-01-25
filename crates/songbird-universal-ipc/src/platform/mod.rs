@@ -68,13 +68,14 @@ pub trait PlatformListener: Send {
 /// Unified stream trait
 ///
 /// This trait unifies all platform-specific streams (Unix sockets, named pipes, TCP)
-/// into a single interface that implements AsyncRead + AsyncWrite.
+/// into a single interface that implements `AsyncRead` + `AsyncWrite`.
 pub trait AsyncStream: AsyncRead + AsyncWrite + Send + Unpin + 'static {}
 
 // Blanket implementation: any type that implements the required traits is an AsyncStream
 impl<T> AsyncStream for T where T: AsyncRead + AsyncWrite + Send + Unpin + 'static {}
 
 /// Get the default platform IPC implementation
+#[must_use]
 pub fn get_platform_ipc() -> Box<dyn PlatformIPC> {
     #[cfg(unix)]
     {

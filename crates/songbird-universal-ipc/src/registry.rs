@@ -23,7 +23,7 @@ pub struct ServiceEntry {
     pub last_seen: Instant,
 }
 
-/// Metadata for persistent storage (optional NestGate integration)
+/// Metadata for persistent storage (optional `NestGate` integration)
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ServiceMetadata {
     /// Service name
@@ -42,6 +42,7 @@ pub struct ServiceMetadata {
 
 impl ServiceEntry {
     /// Convert to metadata for persistent storage
+    #[must_use]
     pub fn to_metadata(&self) -> ServiceMetadata {
         ServiceMetadata {
             name: self.virtual_endpoint.primal_name().unwrap_or("unknown").to_string(),
@@ -60,7 +61,7 @@ impl ServiceEntry {
 /// In-memory service registry
 ///
 /// Tracks all registered services and their endpoints.
-/// Thread-safe via RwLock for concurrent access.
+/// Thread-safe via `RwLock` for concurrent access.
 pub struct ServiceRegistry {
     /// Services by name
     services: RwLock<HashMap<String, ServiceEntry>>,
@@ -68,6 +69,7 @@ pub struct ServiceRegistry {
 
 impl ServiceRegistry {
     /// Create a new service registry
+    #[must_use]
     pub fn new() -> Self {
         Self {
             services: RwLock::new(HashMap::new()),
@@ -205,7 +207,7 @@ impl ServiceRegistry {
     /// Get all service metadata (for persistence)
     pub async fn get_all_metadata(&self) -> Vec<ServiceMetadata> {
         let services = self.services.read().await;
-        services.values().map(|entry| entry.to_metadata()).collect()
+        services.values().map(ServiceEntry::to_metadata).collect()
     }
 }
 

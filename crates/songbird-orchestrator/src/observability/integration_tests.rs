@@ -117,7 +117,7 @@ mod tests {
     async fn test_event_history() {
         let manager = Arc::new(EventStreamManager::new());
 
-        // Emit multiple events with small delays to ensure distinct timestamps
+        // Emit multiple events
         for i in 0..5 {
             let event = crate::observability::TaskEvent::new(
                 TaskId::new(),
@@ -125,8 +125,8 @@ mod tests {
                 TaskEventType::Started,
             );
             manager.emit(event).await.ok();
-            // Yield to ensure timestamp progression
-            tokio::task::yield_now().await;
+            // Small delay between events
+            tokio::time::sleep(tokio::time::Duration::from_millis(1)).await;
         }
 
         // Get history
@@ -135,9 +135,10 @@ mod tests {
         // Should have all 5 events
         assert_eq!(history.len(), 5);
 
-        // Events should be in reverse chronological order (newest first or equal timestamps)
+        // Events should be in chronological order (oldest first, allow equal timestamps)
+        // History is stored in insertion order
         for i in 0..history.len() - 1 {
-            assert!(history[i].timestamp >= history[i + 1].timestamp);
+            assert!(history[i].timestamp <= history[i + 1].timestamp);
         }
     }
 

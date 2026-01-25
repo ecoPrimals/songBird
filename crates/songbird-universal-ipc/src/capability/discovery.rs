@@ -59,7 +59,7 @@ pub async fn discover_all(capability: &str) -> IpcResult<Vec<Provider>> {
 ///
 /// Forces re-discovery on next request.
 pub async fn clear_cache() {
-    global_registry().clear_cache().await
+    global_registry().clear_cache().await;
 }
 
 #[cfg(test)]

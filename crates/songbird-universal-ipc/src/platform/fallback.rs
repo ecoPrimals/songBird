@@ -36,10 +36,9 @@ impl PlatformIPC for FallbackIPC {
                 debug!("Creating TCP listener on: 127.0.0.1:{}", port);
 
                 let listener =
-                    TcpListener::bind(format!("127.0.0.1:{}", port)).await.map_err(|e| {
+                    TcpListener::bind(format!("127.0.0.1:{port}")).await.map_err(|e| {
                         IpcError::ListenerFailed(format!(
-                            "Failed to bind TCP localhost at port {}: {}",
-                            port, e
+                            "Failed to bind TCP localhost at port {port}: {e}"
                         ))
                     })?;
 
@@ -49,7 +48,9 @@ impl PlatformIPC for FallbackIPC {
                     inner: listener,
                 }))
             }
-            _ => Err(IpcError::PlatformError("Invalid endpoint for fallback platform".to_string())),
+            NativeEndpoint::UnixSocket(_) => {
+                Err(IpcError::PlatformError("Invalid endpoint for fallback platform".to_string()))
+            }
         }
     }
 
@@ -59,10 +60,9 @@ impl PlatformIPC for FallbackIPC {
                 debug!("Connecting to TCP localhost: 127.0.0.1:{}", port);
 
                 let stream =
-                    TcpStream::connect(format!("127.0.0.1:{}", port)).await.map_err(|e| {
+                    TcpStream::connect(format!("127.0.0.1:{port}")).await.map_err(|e| {
                         IpcError::ConnectionFailed(format!(
-                            "Failed to connect to TCP localhost at port {}: {}",
-                            port, e
+                            "Failed to connect to TCP localhost at port {port}: {e}"
                         ))
                     })?;
 
@@ -70,7 +70,9 @@ impl PlatformIPC for FallbackIPC {
 
                 Ok(Box::new(stream))
             }
-            _ => Err(IpcError::PlatformError("Invalid endpoint for fallback platform".to_string())),
+            NativeEndpoint::UnixSocket(_) => {
+                Err(IpcError::PlatformError("Invalid endpoint for fallback platform".to_string()))
+            }
         }
     }
 
@@ -80,7 +82,7 @@ impl PlatformIPC for FallbackIPC {
     }
 }
 
-/// Wrapper for TcpListener to implement PlatformListener
+/// Wrapper for `TcpListener` to implement `PlatformListener`
 struct TcpListenerWrapper {
     inner: TcpListener,
 }
@@ -89,7 +91,7 @@ struct TcpListenerWrapper {
 impl PlatformListener for TcpListenerWrapper {
     async fn accept(&mut self) -> IpcResult<Box<dyn AsyncStream>> {
         let (stream, addr) = self.inner.accept().await.map_err(|e| {
-            IpcError::ConnectionFailed(format!("Failed to accept TCP connection: {}", e))
+            IpcError::ConnectionFailed(format!("Failed to accept TCP connection: {e}"))
         })?;
 
         debug!("Accepted TCP connection from: {}", addr);

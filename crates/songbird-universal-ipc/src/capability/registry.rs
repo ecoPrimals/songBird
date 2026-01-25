@@ -40,6 +40,7 @@ struct CachedProvider {
 
 impl CapabilityRegistry {
     /// Create a new capability registry with default strategies
+    #[must_use]
     pub fn new() -> Self {
         Self::with_strategies(vec![
             Box::new(EnvironmentStrategy),
@@ -48,6 +49,7 @@ impl CapabilityRegistry {
     }
 
     /// Create with custom strategies
+    #[must_use]
     pub fn with_strategies(strategies: Vec<Box<dyn DiscoveryStrategy>>) -> Self {
         Self {
             cache: Arc::new(RwLock::new(HashMap::new())),
@@ -57,6 +59,7 @@ impl CapabilityRegistry {
     }
 
     /// Set cache TTL
+    #[must_use]
     pub fn with_cache_ttl(mut self, ttl: Duration) -> Self {
         self.cache_ttl = ttl;
         self
@@ -105,7 +108,9 @@ impl CapabilityRegistry {
                     self.cache_providers(capability, providers.clone()).await;
 
                     // Return first usable provider
-                    if let Some(provider) = providers.into_iter().find(|p| p.is_usable()) {
+                    if let Some(provider) =
+                        providers.into_iter().find(super::provider::Provider::is_usable)
+                    {
                         return Ok(provider);
                     }
                 }
@@ -118,7 +123,7 @@ impl CapabilityRegistry {
             }
         }
 
-        Err(IpcError::ServiceNotFound(format!("No providers found for capability: {}", capability)))
+        Err(IpcError::ServiceNotFound(format!("No providers found for capability: {capability}")))
     }
 
     /// Discover all providers offering a capability

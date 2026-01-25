@@ -137,6 +137,7 @@ pub struct JsonRpcResponse {
 
 impl JsonRpcResponse {
     /// Create a success response
+    #[must_use]
     pub fn success(result: Value, id: Value) -> Self {
         Self {
             jsonrpc: "2.0".to_string(),
@@ -147,6 +148,7 @@ impl JsonRpcResponse {
     }
 
     /// Create an error response
+    #[must_use]
     pub fn error(error: JsonRpcError, id: Value) -> Self {
         Self {
             jsonrpc: "2.0".to_string(),
@@ -176,9 +178,10 @@ impl JsonRpcError {
 
     /// Create a method not found error
     pub fn method_not_found(method: impl Into<String>) -> Self {
+        let method = method.into();
         Self {
             code: Self::METHOD_NOT_FOUND,
-            message: format!("Method not found: {}", method.into()),
+            message: format!("Method not found: {method}"),
             data: None,
         }
     }
@@ -286,7 +289,7 @@ impl<H: JsonRpcHandler + 'static> TowerAtomicServer<H> {
                         Err(e) => JsonRpcResponse::error(
                             JsonRpcError {
                                 code: JsonRpcError::PARSE_ERROR,
-                                message: format!("Failed to parse request: {}", e),
+                                message: format!("Failed to parse request: {e}"),
                                 data: None,
                             },
                             Value::Null,
@@ -388,7 +391,7 @@ impl TowerAtomicClient {
 
         // Serialize request
         let request_json = serde_json::to_string(&request)
-            .map_err(|e| IpcError::Other(format!("Failed to serialize request: {}", e)))?;
+            .map_err(|e| IpcError::Other(format!("Failed to serialize request: {e}")))?;
 
         debug!("Sending JSON-RPC request: {}", request_json);
 
@@ -410,7 +413,7 @@ impl TowerAtomicClient {
 
         // Parse response
         let response: JsonRpcResponse = serde_json::from_str(&response_line)
-            .map_err(|e| IpcError::Other(format!("Failed to parse response: {}", e)))?;
+            .map_err(|e| IpcError::Other(format!("Failed to parse response: {e}")))?;
 
         // Check for error
         if let Some(error) = response.error {
@@ -449,7 +452,7 @@ mod tests {
                     let b = params["b"].as_i64().ok_or("Missing b")?;
                     Ok(json!(a * b))
                 }
-                _ => Err(format!("Unknown method: {}", method)),
+                _ => Err(format!("Unknown method: {method}")),
             }
         }
     }

@@ -34,10 +34,10 @@ pub mod server_hello;
 pub mod transcript;
 
 // Re-export main types
-pub use client_hello::{ClientHelloBuilder, generate_random};
+pub use client_hello::{generate_random, ClientHelloBuilder};
 pub use transcript::Transcript;
 
 // TODO: Integrate remaining modules into main handshake flow
-// - encryption.rs - Application data encryption  
+// - encryption.rs - Application data encryption
 // - decryption.rs - Application data decryption
 // - certificates.rs - Certificate processing (may be in parser.rs)

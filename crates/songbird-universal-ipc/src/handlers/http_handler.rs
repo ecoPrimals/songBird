@@ -13,7 +13,7 @@
 //!
 //! ## Design Principles
 //!
-//! 1. **Capability-Based Discovery** - No hardcoded BearDog endpoints
+//! 1. **Capability-Based Discovery** - No hardcoded `BearDog` endpoints
 //! 2. **Factory Pattern** - Dependency injection for testability
 //! 3. **Trait-Based Abstraction** - Not concrete types
 //! 4. **Proper Error Handling** - No unwrap/expect
@@ -37,19 +37,19 @@ use tracing::{debug, error, info, instrument};
 pub struct HttpRequestParams {
     /// Target URL (http:// or https://)
     pub url: String,
-    
+
     /// HTTP method (GET, POST, PUT, DELETE, etc.)
     #[serde(default = "default_method")]
     pub method: String,
-    
+
     /// HTTP headers
     #[serde(default)]
     pub headers: HashMap<String, String>,
-    
+
     /// Request body (optional)
     #[serde(default)]
     pub body: Option<String>,
-    
+
     /// Timeout in milliseconds
     #[serde(default = "default_timeout_ms")]
     pub timeout_ms: u64,
@@ -68,13 +68,13 @@ fn default_timeout_ms() -> u64 {
 pub struct HttpResponseResult {
     /// HTTP status code
     pub status_code: u16,
-    
+
     /// Response headers
     pub headers: HashMap<String, String>,
-    
+
     /// Response body as string
     pub body: String,
-    
+
     /// Request elapsed time in milliseconds
     pub elapsed_ms: u128,
 }
@@ -116,7 +116,7 @@ pub struct HttpResponse {
 /// Trait for discovering crypto capabilities at runtime
 ///
 /// This enables:
-/// - No hardcoded BearDog endpoints
+/// - No hardcoded `BearDog` endpoints
 /// - Capability-based discovery
 /// - Multiple discovery backends (env, IPC, mDNS)
 #[async_trait]
@@ -151,10 +151,11 @@ pub struct SongbirdHttpClient {
 }
 
 impl SongbirdHttpClient {
-    /// Create new client with BearDog crypto provider at socket path
+    /// Create new client with `BearDog` crypto provider at socket path
+    #[must_use]
     pub fn new(beardog_socket: &str) -> Self {
         let inner = songbird_http_client::SongbirdHttpClient::new(beardog_socket);
-        
+
         Self {
             inner: Arc::new(inner),
         }
@@ -172,7 +173,7 @@ impl HttpClientCapability for SongbirdHttpClient {
         body: Option<&[u8]>,
     ) -> IpcResult<HttpResponse> {
         debug!("Making HTTP request: {} {}", method, url);
-        
+
         // Use Pure Rust TLS 1.3 via Tower Atomic pattern
         let response = match method.to_uppercase().as_str() {
             "GET" => self.inner.get(url).await,
@@ -180,29 +181,29 @@ impl HttpClientCapability for SongbirdHttpClient {
                 let body_json = body
                     .and_then(|b| std::str::from_utf8(b).ok())
                     .and_then(|s| serde_json::from_str(s).ok())
-                    .unwrap_or(serde_json::Value::String("".to_string()));
+                    .unwrap_or(serde_json::Value::String(String::new()));
                 self.inner.post(url, body_json).await
             }
             "PUT" => {
                 let body_json = body
                     .and_then(|b| std::str::from_utf8(b).ok())
                     .and_then(|s| serde_json::from_str(s).ok())
-                    .unwrap_or(serde_json::Value::String("".to_string()));
+                    .unwrap_or(serde_json::Value::String(String::new()));
                 self.inner.put(url, body_json).await
             }
             "DELETE" => self.inner.delete(url).await,
             _ => {
                 error!("Unsupported HTTP method: {}", method);
-                return Err(crate::error::IpcError::InvalidParams(
-                    format!("Unsupported HTTP method: {}", method)
-                ));
+                return Err(crate::error::IpcError::InvalidParams(format!(
+                    "Unsupported HTTP method: {method}"
+                )));
             }
         }
         .map_err(|e| {
             error!("HTTP request failed: {}", e);
-            crate::error::IpcError::Internal(format!("HTTP request failed: {}", e))
+            crate::error::IpcError::Internal(format!("HTTP request failed: {e}"))
         })?;
-        
+
         Ok(HttpResponse {
             status_code: response.status,
             headers: response.headers,
@@ -222,7 +223,9 @@ pub struct DefaultHttpClientFactory {
 
 impl DefaultHttpClientFactory {
     pub fn new(discovery: Arc<dyn CryptoCapabilityDiscovery>) -> Self {
-        Self { discovery }
+        Self {
+            discovery,
+        }
     }
 }
 
@@ -231,12 +234,10 @@ impl HttpClientFactory for DefaultHttpClientFactory {
     #[instrument(skip(self))]
     async fn create_client(&self) -> IpcResult<Arc<dyn HttpClientCapability>> {
         // Discover crypto provider at runtime (capability-based!)
-        let beardog_socket = self.discovery
-            .discover("crypto.signing")
-            .await?;
-        
+        let beardog_socket = self.discovery.discover("crypto.signing").await?;
+
         info!("Discovered crypto provider at: {}", beardog_socket);
-        
+
         let client = SongbirdHttpClient::new(&beardog_socket);
         Ok(Arc::new(client))
     }
@@ -249,8 +250,8 @@ impl HttpClientFactory for DefaultHttpClientFactory {
 /// Discovers crypto capability via environment variables
 ///
 /// Priority:
-/// 1. CRYPTO_ENDPOINT env var
-/// 2. BEARDOG_SOCKET env var
+/// 1. `CRYPTO_ENDPOINT` env var
+/// 2. `BEARDOG_SOCKET` env var
 /// 3. Default: /primal/beardog
 pub struct EnvCryptoDiscovery;
 
@@ -258,20 +259,20 @@ pub struct EnvCryptoDiscovery;
 impl CryptoCapabilityDiscovery for EnvCryptoDiscovery {
     async fn discover(&self, capability: &str) -> IpcResult<String> {
         debug!("Discovering capability via environment: {}", capability);
-        
+
         // Try capability-based env var first
         let env_key = format!("{}_ENDPOINT", capability.to_uppercase().replace('.', "_"));
         if let Ok(endpoint) = std::env::var(&env_key) {
             info!("Found {} at {} (via {})", capability, endpoint, env_key);
             return Ok(endpoint);
         }
-        
+
         // Fall back to BEARDOG_SOCKET
         if let Ok(socket) = std::env::var("BEARDOG_SOCKET") {
             info!("Found crypto provider at {} (via BEARDOG_SOCKET)", socket);
             return Ok(socket);
         }
-        
+
         // Default to standard primal namespace
         let default = "/primal/beardog".to_string();
         info!("Using default crypto provider: {}", default);
@@ -296,42 +297,43 @@ pub struct HttpHandler {
 impl HttpHandler {
     /// Create new handler with given factory (dependency injection)
     pub fn new(factory: Arc<dyn HttpClientFactory>) -> Self {
-        Self { factory }
+        Self {
+            factory,
+        }
     }
-    
+
     /// Create handler with default environment-based discovery
+    #[must_use]
     pub fn with_default_discovery() -> Self {
         let discovery = Arc::new(EnvCryptoDiscovery);
         let factory = Arc::new(DefaultHttpClientFactory::new(discovery));
         Self::new(factory)
     }
-    
+
     /// Handle http.request method
     #[instrument(skip(self), fields(url = %params.url, method = %params.method))]
     pub async fn handle_request(&self, params: HttpRequestParams) -> IpcResult<HttpResponseResult> {
         let start = Instant::now();
-        
+
         info!("IPC http.request: {} {}", params.method, params.url);
         debug!("Headers: {:?}", params.headers);
-        
+
         // Create client via factory (capability discovery happens here)
         let client = self.factory.create_client().await?;
-        
+
         // Make request via Pure Rust TLS
-        let body = params.body.as_ref().map(|s| s.as_bytes());
-        let response = client
-            .request(&params.method, &params.url, &params.headers, body)
-            .await?;
-        
+        let body = params.body.as_ref().map(std::string::String::as_bytes);
+        let response = client.request(&params.method, &params.url, &params.headers, body).await?;
+
         let elapsed = start.elapsed();
-        
+
         info!(
             "IPC http.request completed: {} {} in {}ms",
             response.status_code,
             params.url,
             elapsed.as_millis()
         );
-        
+
         Ok(HttpResponseResult {
             status_code: response.status_code,
             headers: response.headers,
@@ -339,7 +341,7 @@ impl HttpHandler {
             elapsed_ms: elapsed.as_millis(),
         })
     }
-    
+
     /// Handle http.get method (convenience)
     #[instrument(skip(self), fields(url = %url))]
     pub async fn handle_get(&self, url: &str) -> IpcResult<HttpResponseResult> {
@@ -350,10 +352,10 @@ impl HttpHandler {
             body: None,
             timeout_ms: 30_000,
         };
-        
+
         self.handle_request(params).await
     }
-    
+
     /// Handle http.post method (convenience)
     #[instrument(skip(self, body), fields(url = %url))]
     pub async fn handle_post(
@@ -366,7 +368,7 @@ impl HttpHandler {
         if let Some(ct) = content_type {
             headers.insert("Content-Type".to_string(), ct.to_string());
         }
-        
+
         let params = HttpRequestParams {
             url: url.to_string(),
             method: "POST".to_string(),
@@ -374,7 +376,7 @@ impl HttpHandler {
             body: Some(body.to_string()),
             timeout_ms: 30_000,
         };
-        
+
         self.handle_request(params).await
     }
 }
@@ -388,52 +390,42 @@ impl crate::tower_atomic::JsonRpcHandler for HttpHandler {
     async fn handle(&self, method: &str, params: Value) -> Result<Value, String> {
         match method {
             "http.request" => {
-                let params: HttpRequestParams = serde_json::from_value(params)
-                    .map_err(|e| format!("Invalid params: {}", e))?;
-                
-                let result = self.handle_request(params)
-                    .await
-                    .map_err(|e| e.to_string())?;
-                
-                serde_json::to_value(result)
-                    .map_err(|e| format!("Serialization error: {}", e))
+                let params: HttpRequestParams =
+                    serde_json::from_value(params).map_err(|e| format!("Invalid params: {e}"))?;
+
+                let result = self.handle_request(params).await.map_err(|e| e.to_string())?;
+
+                serde_json::to_value(result).map_err(|e| format!("Serialization error: {e}"))
             }
             "http.get" => {
                 let url = params
                     .get("url")
                     .and_then(|v| v.as_str())
                     .ok_or_else(|| "Missing 'url' parameter".to_string())?;
-                
-                let result = self.handle_get(url)
-                    .await
-                    .map_err(|e| e.to_string())?;
-                
-                serde_json::to_value(result)
-                    .map_err(|e| format!("Serialization error: {}", e))
+
+                let result = self.handle_get(url).await.map_err(|e| e.to_string())?;
+
+                serde_json::to_value(result).map_err(|e| format!("Serialization error: {e}"))
             }
             "http.post" => {
                 let url = params
                     .get("url")
                     .and_then(|v| v.as_str())
                     .ok_or_else(|| "Missing 'url' parameter".to_string())?;
-                
+
                 let body = params
                     .get("body")
                     .and_then(|v| v.as_str())
                     .ok_or_else(|| "Missing 'body' parameter".to_string())?;
-                
-                let content_type = params
-                    .get("content_type")
-                    .and_then(|v| v.as_str());
-                
-                let result = self.handle_post(url, body, content_type)
-                    .await
-                    .map_err(|e| e.to_string())?;
-                
-                serde_json::to_value(result)
-                    .map_err(|e| format!("Serialization error: {}", e))
+
+                let content_type = params.get("content_type").and_then(|v| v.as_str());
+
+                let result =
+                    self.handle_post(url, body, content_type).await.map_err(|e| e.to_string())?;
+
+                serde_json::to_value(result).map_err(|e| format!("Serialization error: {e}"))
             }
-            _ => Err(format!("Unknown method: {}", method)),
+            _ => Err(format!("Unknown method: {method}")),
         }
     }
 }
@@ -446,13 +438,13 @@ impl crate::tower_atomic::JsonRpcHandler for HttpHandler {
 mod tests {
     use super::*;
     use std::sync::atomic::{AtomicUsize, Ordering};
-    
+
     // Mock HTTP client for testing
     struct MockHttpClient {
         responses: Vec<HttpResponse>,
         call_count: AtomicUsize,
     }
-    
+
     impl MockHttpClient {
         fn new(responses: Vec<HttpResponse>) -> Self {
             Self {
@@ -461,7 +453,7 @@ mod tests {
             }
         }
     }
-    
+
     #[async_trait]
     impl HttpClientCapability for MockHttpClient {
         async fn request(
@@ -475,19 +467,19 @@ mod tests {
             Ok(self.responses[count % self.responses.len()].clone())
         }
     }
-    
+
     // Mock factory for testing
     struct MockClientFactory {
         client: Arc<dyn HttpClientCapability>,
     }
-    
+
     #[async_trait]
     impl HttpClientFactory for MockClientFactory {
         async fn create_client(&self) -> IpcResult<Arc<dyn HttpClientCapability>> {
             Ok(Arc::clone(&self.client))
         }
     }
-    
+
     #[tokio::test]
     async fn test_handle_get_request() {
         // Arrange
@@ -496,23 +488,23 @@ mod tests {
             headers: HashMap::new(),
             body: serde_json::json!("Hello, World!"),
         };
-        
+
         let mock_client = Arc::new(MockHttpClient::new(vec![mock_response]));
         let factory = Arc::new(MockClientFactory {
             client: mock_client,
         });
         let handler = HttpHandler::new(factory);
-        
+
         // Act
         let result = handler.handle_get("https://example.com").await;
-        
+
         // Assert
         assert!(result.is_ok());
         let response = result.unwrap();
         assert_eq!(response.status_code, 200);
         assert_eq!(response.body, "\"Hello, World!\"");
     }
-    
+
     #[tokio::test]
     async fn test_handle_post_request() {
         // Arrange
@@ -521,52 +513,55 @@ mod tests {
             headers: HashMap::new(),
             body: serde_json::json!("Created"),
         };
-        
+
         let mock_client = Arc::new(MockHttpClient::new(vec![mock_response]));
         let factory = Arc::new(MockClientFactory {
             client: mock_client,
         });
         let handler = HttpHandler::new(factory);
-        
+
         // Act
         let result = handler
             .handle_post("https://api.example.com", r#"{"key":"value"}"#, Some("application/json"))
             .await;
-        
+
         // Assert
         assert!(result.is_ok());
         let response = result.unwrap();
         assert_eq!(response.status_code, 201);
         assert_eq!(response.body, "\"Created\"");
     }
-    
+
     #[tokio::test]
     async fn test_environment_discovery() {
-        // Arrange
+        // Arrange - Clear all env vars first
+        std::env::remove_var("CRYPTO_SIGNING_ENDPOINT");
+        std::env::remove_var("BEARDOG_SOCKET");
+        
         std::env::set_var("CRYPTO_SIGNING_ENDPOINT", "/test/beardog");
         let discovery = EnvCryptoDiscovery;
-        
+
         // Act
         let result = discovery.discover("crypto.signing").await;
-        
+
         // Assert
         assert!(result.is_ok());
         assert_eq!(result.unwrap(), "/test/beardog");
-        
+
         // Cleanup
         std::env::remove_var("CRYPTO_SIGNING_ENDPOINT");
     }
-    
+
     #[tokio::test]
     async fn test_default_discovery_fallback() {
         // Arrange - Clear any existing env vars
         std::env::remove_var("CRYPTO_SIGNING_ENDPOINT");
         std::env::remove_var("BEARDOG_SOCKET");
         let discovery = EnvCryptoDiscovery;
-        
+
         // Act
         let result = discovery.discover("crypto.signing").await;
-        
+
         // Assert
         assert!(result.is_ok());
         assert_eq!(result.unwrap(), "/primal/beardog");

@@ -39,6 +39,7 @@ pub struct RuntimeEndpointResolver {
 
 impl RuntimeEndpointResolver {
     /// Create new resolver with default discovery
+    #[must_use]
     pub fn new() -> Self {
         Self {
             discovery: Arc::new(CapabilityDiscovery::new()),
@@ -48,6 +49,7 @@ impl RuntimeEndpointResolver {
     }
 
     /// Create with custom discovery engine
+    #[must_use]
     pub fn with_discovery(discovery: CapabilityDiscovery) -> Self {
         Self {
             discovery: Arc::new(discovery),
@@ -59,6 +61,10 @@ impl RuntimeEndpointResolver {
     /// Register local service (self-knowledge)
     ///
     /// Each primal registers only its own services.
+    ///
+    /// # Errors
+    ///
+    /// Currently always succeeds, but returns `Result` for future extensibility.
     pub async fn register_local_service(
         &self,
         capability: impl Into<String>,
@@ -89,6 +95,11 @@ impl RuntimeEndpointResolver {
     /// let compute_endpoint = resolver.resolve_capability("compute").await?;
     /// let storage_endpoint = resolver.resolve_capability("storage").await?;
     /// ```
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the capability cannot be resolved through any discovery method
+    /// (local services, environment variables, runtime discovery, or fallbacks).
     pub async fn resolve_capability(&self, capability: &str) -> SongbirdResult<String> {
         debug!("🔍 Resolving capability: {}", capability);
 
@@ -99,7 +110,7 @@ impl RuntimeEndpointResolver {
         }
 
         // 2. Check environment variables
-        if let Some(endpoint) = self.try_env_resolution(capability) {
+        if let Some(endpoint) = Self::try_env_resolution(capability) {
             info!("✅ Resolved {} from environment: {}", capability, endpoint);
             return Ok(endpoint);
         }
@@ -122,8 +133,7 @@ impl RuntimeEndpointResolver {
         }
 
         Err(SongbirdError::discovery(format!(
-            "Could not resolve capability '{}' through any discovery method",
-            capability
+            "Could not resolve capability '{capability}' through any discovery method"
         )))
     }
 
@@ -132,15 +142,15 @@ impl RuntimeEndpointResolver {
     /// Supports multiple naming conventions:
     /// - `{CAPABILITY}_ENDPOINT` (e.g., `COMPUTE_ENDPOINT`)
     /// - `SONGBIRD_{CAPABILITY}_URL` (e.g., `SONGBIRD_COMPUTE_URL`)
-    fn try_env_resolution(&self, capability: &str) -> Option<String> {
+    fn try_env_resolution(capability: &str) -> Option<String> {
         let capability_upper = capability.to_uppercase();
 
         // Try various env var patterns
         let env_keys = [
-            format!("{}_ENDPOINT", capability_upper),
-            format!("SONGBIRD_{}_URL", capability_upper),
-            format!("SONGBIRD_{}_ENDPOINT", capability_upper),
-            format!("{}_URL", capability_upper),
+            format!("{capability_upper}_ENDPOINT"),
+            format!("SONGBIRD_{capability_upper}_URL"),
+            format!("SONGBIRD_{capability_upper}_ENDPOINT"),
+            format!("{capability_upper}_URL"),
         ];
 
         for key in env_keys {
@@ -166,9 +176,13 @@ impl RuntimeEndpointResolver {
     /// 1. Health score
     /// 2. Response time (if available)
     /// 3. Recency
+    ///
+    /// # Panics
+    ///
+    /// Panics if called with an empty `endpoints` slice. The caller must ensure the slice
+    /// is non-empty before calling this function.
+    #[allow(clippy::expect_used)] // Invariant enforced at call site (line 109)
     fn select_best_endpoint(endpoints: &[ServiceEndpoint]) -> &ServiceEndpoint {
-        // SAFETY: Caller guarantees endpoints is non-empty
-        // This is enforced at call site (line 109: `if !endpoints.is_empty()`)
         endpoints
             .iter()
             .max_by(|a, b| {
@@ -218,6 +232,7 @@ pub struct EndpointMigrationHelper {
 
 impl EndpointMigrationHelper {
     /// Create new migration helper
+    #[must_use]
     pub fn new(resolver: RuntimeEndpointResolver) -> Self {
         Self {
             resolver: Arc::new(resolver),
@@ -235,6 +250,10 @@ impl EndpointMigrationHelper {
     ///     "orchestrator"
     /// ).await?;
     /// ```
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the capability cannot be resolved through any discovery method.
     pub async fn migrate_endpoint(
         &self,
         _hardcoded: &str, // For documentation/logging only

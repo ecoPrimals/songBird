@@ -100,13 +100,13 @@ pub fn construct_aad(content_type: u8, length: u16) -> [u8; 5] {
 pub fn construct_nonce(iv: &[u8], sequence_number: u64) -> Vec<u8> {
     let mut nonce = iv.to_vec();
     let seq_bytes = sequence_number.to_be_bytes();
-    
+
     // XOR the last 8 bytes of the nonce with the sequence number
     for (i, &byte) in seq_bytes.iter().enumerate() {
         let nonce_idx = nonce.len() - 8 + i;
         nonce[nonce_idx] ^= byte;
     }
-    
+
     nonce
 }
 
@@ -146,10 +146,10 @@ mod tests {
         let iv = vec![0x00; 12];
         let nonce0 = construct_nonce(&iv, 0);
         let nonce1 = construct_nonce(&iv, 1);
-        
+
         // Different sequence numbers should produce different nonces
         assert_ne!(nonce0, nonce1);
-        
+
         // Last byte should differ by 1
         assert_eq!(nonce1[11], nonce0[11] ^ 1);
     }
@@ -159,9 +159,8 @@ mod tests {
         let iv = vec![0x00; 12];
         let nonce_max = construct_nonce(&iv, u64::MAX);
         let nonce_zero = construct_nonce(&iv, 0);
-        
+
         // Should produce different nonces
         assert_ne!(nonce_max, nonce_zero);
     }
 }
-

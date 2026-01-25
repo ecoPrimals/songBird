@@ -24,7 +24,7 @@ impl HttpCheck {
     /// Perform the health check
     pub async fn check(&self) -> SongbirdResult<HealthStatus> {
         use songbird_http_client::SongbirdHttpClient;
-        
+
         let start = Instant::now();
 
         // ✅ EVOLVED: Use Pure Rust HTTP client (ecoBin compliant!)

@@ -117,7 +117,7 @@ impl MdnsDiscovery {
             capability: capability.to_string(),
             required_features: Vec::new(),
             optional_features: Vec::new(),
-            preferences: Default::default(),
+            preferences: Vec::default(),
             min_sla: None,
         };
 

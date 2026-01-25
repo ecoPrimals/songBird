@@ -361,7 +361,12 @@ impl SongbirdOrchestrator {
                         })
                         .collect(),
                 ),
-                capabilities: vec!["orchestrator".to_string()],
+                capabilities: vec![
+                    "orchestrator".to_string(),
+                    "secure_http".to_string(), // Pure Rust HTTP/HTTPS client
+                    "http.request".to_string(), // JSON-RPC http.request
+                    "tls.1.3".to_string(),     // TLS 1.3 via Tower Atomic
+                ],
                 cpu_cores: num_cpus::get(),
                 memory_gb: {
                     #[cfg(target_os = "linux")]
@@ -396,7 +401,15 @@ impl SongbirdOrchestrator {
             node_identity.detect_all_endpoints(actual_https_port)?;
 
             // Start discovery broadcaster (v3.0 with multi-endpoint)
-            let capabilities = vec!["orchestration".to_string(), "federation".to_string()];
+            let capabilities = vec![
+                "orchestration".to_string(),
+                "federation".to_string(),
+                "secure_http".to_string(), // Pure Rust HTTP/HTTPS client via Tower Atomic
+                "http.request".to_string(), // JSON-RPC http.request method
+                "http.get".to_string(),    // Convenience: GET requests
+                "http.post".to_string(),   // Convenience: POST requests
+                "tls.1.3".to_string(),     // TLS 1.3 via BearDog delegation
+            ];
 
             // Convert endpoints to discovery message format
             // CRITICAL FIX (Dec 20, 2025): Include full address (IP:port) instead of just port
@@ -559,11 +572,26 @@ impl SongbirdOrchestrator {
         let discovery_listener_clone = self.discovery_listener.clone();
         let connection_manager_clone = Arc::clone(&self.connection_manager);
 
+        // v5.27.0: Create BearDog client for HTTP handler (Tower Atomic)
+        // Discover BearDog socket via capability-based discovery (zero hardcoding)
+        let beardog_socket = std::env::var("BEARDOG_SOCKET")
+            .or_else(|_| std::env::var("SONGBIRD_BEARDOG_SOCKET"))
+            .unwrap_or_else(|_| {
+                let family_id = std::env::var("SONGBIRD_FAMILY_ID")
+                    .or_else(|_| std::env::var("FAMILY_ID"))
+                    .unwrap_or_else(|_| "default".to_string());
+                format!("/tmp/beardog-{}.sock", family_id)
+            });
+
+        info!("🔐 HTTP Handler: Using BearDog crypto at {}", beardog_socket);
+        let beardog_client = Arc::new(songbird_http_client::BearDogClient::new(beardog_socket));
+
         // v3.20.0: Create Unix socket server with service registry
         let server = Arc::new(UnixSocketServer::new(
             service_registry,
             discovery_listener_clone,
             connection_manager_clone,
+            beardog_client,
         ));
 
         // Start server in background task (pure Rust server runs forever)

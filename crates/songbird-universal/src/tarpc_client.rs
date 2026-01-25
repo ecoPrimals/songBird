@@ -421,7 +421,7 @@ impl TarpcClient {
         );
 
         // Create client
-        let client = SongbirdRpcClient::new(Default::default(), transport).spawn();
+        let client = SongbirdRpcClient::new(tarpc::client::Config::default(), transport).spawn();
 
         info!("🚀 tarpc client ready for {}", self.endpoint);
 
