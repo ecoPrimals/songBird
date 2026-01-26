@@ -222,15 +222,15 @@ impl BearDogProvider {
             "crypto.generate_keypair" => ("crypto", "generate_keypair"),
             "crypto.ecdh_derive" => ("crypto", "derive_secret"),
 
-            // AEAD Encryption
-            "crypto.encrypt_aes_128_gcm" => ("crypto", "encrypt"),
-            "crypto.encrypt_aes_256_gcm" => ("crypto", "encrypt"),
-            "crypto.encrypt_chacha20_poly1305" => ("crypto", "encrypt"),
+            // AEAD Encryption - keep specific algorithm for Neural API semantic translation
+            "crypto.encrypt_aes_128_gcm" => ("crypto", "encrypt_aes_128_gcm"),
+            "crypto.encrypt_aes_256_gcm" => ("crypto", "encrypt_aes_256_gcm"),
+            "crypto.encrypt_chacha20_poly1305" => ("crypto", "encrypt_chacha20_poly1305"),
             
-            // AEAD Decryption
-            "crypto.decrypt_aes_128_gcm" => ("crypto", "decrypt"),
-            "crypto.decrypt_aes_256_gcm" => ("crypto", "decrypt"),
-            "crypto.decrypt_chacha20_poly1305" => ("crypto", "decrypt"),
+            // AEAD Decryption - keep specific algorithm for Neural API semantic translation
+            "crypto.decrypt_aes_128_gcm" => ("crypto", "decrypt_aes_128_gcm"),
+            "crypto.decrypt_aes_256_gcm" => ("crypto", "decrypt_aes_256_gcm"),
+            "crypto.decrypt_chacha20_poly1305" => ("crypto", "decrypt_chacha20_poly1305"),
 
             // Hashing
             "crypto.sha256" => ("crypto", "sha256"),
@@ -240,10 +240,10 @@ impl BearDogProvider {
             "crypto.hkdf_extract" => ("crypto", "hkdf_extract"),
             "crypto.hkdf_expand" => ("crypto", "hkdf_expand"),
 
-            // TLS specific
-            "tls.derive_handshake_secrets" => ("tls_crypto", "derive_secrets"),
-            "tls.derive_application_secrets" => ("tls_crypto", "derive_secrets"),
-            "tls.compute_finished_verify_data" => ("tls_crypto", "compute_finished"),
+            // TLS specific - keep full method names for correct routing
+            "tls.derive_handshake_secrets" => ("tls_crypto", "derive_handshake_secrets"),
+            "tls.derive_application_secrets" => ("tls_crypto", "derive_application_secrets"),
+            "tls.compute_finished_verify_data" => ("tls_crypto", "compute_finished_verify_data"),
 
             // Default: unknown operation
             _ => {
@@ -636,16 +636,21 @@ impl CryptoCapability for BearDogProvider {
             )
             .await?;
 
+        // BearDog returns field names matching RFC 8446 terminology:
+        // - client_handshake_secret (not client_handshake_traffic_secret)
+        // - client_write_key (not client_key)
+        // - etc.
         Ok(TlsHandshakeSecrets {
             client_handshake_secret: self
-                .extract_b64_field(&result, "client_handshake_traffic_secret")?,
+                .extract_b64_field(&result, "client_handshake_secret")?,
             server_handshake_secret: self
-                .extract_b64_field(&result, "server_handshake_traffic_secret")?,
-            client_write_key: self.extract_b64_field(&result, "client_key")?,
-            client_write_iv: self.extract_b64_field(&result, "client_iv")?,
-            server_write_key: self.extract_b64_field(&result, "server_key")?,
-            server_write_iv: self.extract_b64_field(&result, "server_iv")?,
-            handshake_secret: self.extract_b64_field(&result, "handshake_secret")?,
+                .extract_b64_field(&result, "server_handshake_secret")?,
+            client_write_key: self.extract_b64_field(&result, "client_write_key")?,
+            client_write_iv: self.extract_b64_field(&result, "client_write_iv")?,
+            server_write_key: self.extract_b64_field(&result, "server_write_key")?,
+            server_write_iv: self.extract_b64_field(&result, "server_write_iv")?,
+            // BearDog doesn't return a separate handshake_secret - derive from client_handshake_secret
+            handshake_secret: self.extract_b64_field(&result, "client_handshake_secret")?,
         })
     }
 
