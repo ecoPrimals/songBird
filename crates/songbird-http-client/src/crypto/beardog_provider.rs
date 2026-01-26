@@ -326,10 +326,11 @@ impl CryptoCapability for BearDogProvider {
             .ok_or_else(|| Error::BearDogRpc("Missing public_key in response".to_string()))?;
 
         let private_b64 = result
-            .get("private_key")
+            .get("secret_key")       // BearDog's standard field name
+            .or_else(|| result.get("private_key"))
             .or_else(|| result.get("secret"))
             .and_then(|v| v.as_str())
-            .ok_or_else(|| Error::BearDogRpc("Missing private_key in response".to_string()))?;
+            .ok_or_else(|| Error::BearDogRpc("Missing secret_key/private_key in response".to_string()))?;
 
         let public = BASE64_STANDARD
             .decode(public_b64)

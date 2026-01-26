@@ -44,6 +44,12 @@ impl TlsHandshake {
 
     /// Build minimal extensions (only required, ~60ms handshake)
     /// Best for testing and minimal attack surface
+    ///
+    /// RFC 8446 Section 4.2: Minimum required extensions for TLS 1.3:
+    /// - supported_versions (tells server we want TLS 1.3)
+    /// - supported_groups (which curves we support)
+    /// - signature_algorithms (which signatures we accept)
+    /// - key_share (our X25519 public key)
     fn build_extensions_minimal(&self, server_name: &str, public_key: &[u8]) -> Result<Vec<u8>> {
         let mut ext = Vec::new();
 
@@ -53,13 +59,27 @@ impl TlsHandshake {
         ext.extend_from_slice(&(sni_data.len() as u16).to_be_bytes());
         ext.extend_from_slice(&sni_data);
 
-        // 2. Supported versions (0x002b) - REQUIRED for TLS 1.3
+        // 2. Supported Groups (0x000a) - MUST come before key_share per RFC 8446
+        ext.extend_from_slice(&[0x00, 0x0a]);
+        ext.extend_from_slice(&[0x00, 0x04]); // Extension length
+        ext.extend_from_slice(&[0x00, 0x02]); // Named group list length
+        ext.extend_from_slice(&[0x00, 0x1d]); // x25519
+
+        // 3. Signature algorithms (0x000d) - REQUIRED for TLS 1.3
+        ext.extend_from_slice(&[0x00, 0x0d]);
+        ext.extend_from_slice(&[0x00, 0x08]); // Extension length (minimal set)
+        ext.extend_from_slice(&[0x00, 0x06]); // List length
+        ext.extend_from_slice(&[0x04, 0x03]); // ecdsa_secp256r1_sha256
+        ext.extend_from_slice(&[0x08, 0x04]); // rsa_pss_rsae_sha256
+        ext.extend_from_slice(&[0x04, 0x01]); // rsa_pkcs1_sha256
+
+        // 4. Supported versions (0x002b) - REQUIRED for TLS 1.3
         ext.extend_from_slice(&[0x00, 0x2b]);
         ext.extend_from_slice(&[0x00, 0x03]);
         ext.extend_from_slice(&[0x02]);
-        ext.extend_from_slice(&TLS_1_3.to_be_bytes());
+        ext.extend_from_slice(&TLS_1_3.to_be_bytes()); // Only TLS 1.3!
 
-        // 3. Key share (0x0033) - REQUIRED for TLS 1.3
+        // 5. Key share (0x0033) - REQUIRED for TLS 1.3 fresh handshake
         ext.extend_from_slice(&[0x00, 0x33]);
         let key_share_data = self.build_key_share_extension(public_key);
         ext.extend_from_slice(&(key_share_data.len() as u16).to_be_bytes());
@@ -69,45 +89,30 @@ impl TlsHandshake {
     }
 
     /// Build standard extensions (balanced, ~80ms handshake)
-    /// Current production-tested set
+    /// Current production-tested set for fresh TLS 1.3 handshakes
+    ///
+    /// RFC 8446 Section 4.2: Extension ordering and content matters!
+    /// - key_share MUST come BEFORE psk (if present)
+    /// - We do NOT include pre_shared_key since we're not resuming
     fn build_extensions_standard(&self, server_name: &str, public_key: &[u8]) -> Result<Vec<u8>> {
         let mut ext = Vec::new();
 
-        // 1. SNI extension (0x0000)
+        // 1. SNI extension (0x0000) - REQUIRED for virtual hosting
         ext.extend_from_slice(&[0x00, 0x00]);
         let sni_data = self.build_sni_extension(server_name);
         ext.extend_from_slice(&(sni_data.len() as u16).to_be_bytes());
         ext.extend_from_slice(&sni_data);
 
-        // 2. ALPN extension (0x0010) - CRITICAL for HTTPS
-        ext.extend_from_slice(&[0x00, 0x10]);
-        ext.extend_from_slice(&[0x00, 0x0b]);
-        ext.extend_from_slice(&[0x00, 0x09]);
-        ext.extend_from_slice(&[0x08]);
-        ext.extend_from_slice(b"http/1.1");
-
-        // 3. Supported versions (0x002b)
-        ext.extend_from_slice(&[0x00, 0x2b]);
-        ext.extend_from_slice(&[0x00, 0x03]);
-        ext.extend_from_slice(&[0x02]);
-        ext.extend_from_slice(&TLS_1_3.to_be_bytes());
-
-        // 4. Key share (0x0033)
-        ext.extend_from_slice(&[0x00, 0x33]);
-        let key_share_data = self.build_key_share_extension(public_key);
-        ext.extend_from_slice(&(key_share_data.len() as u16).to_be_bytes());
-        ext.extend_from_slice(&key_share_data);
-
-        // 5. Supported groups (0x000a)
+        // 2. Supported Groups (0x000a) - MUST come before key_share per RFC 8446
         ext.extend_from_slice(&[0x00, 0x0a]);
-        ext.extend_from_slice(&[0x00, 0x04]);
-        ext.extend_from_slice(&[0x00, 0x02]);
+        ext.extend_from_slice(&[0x00, 0x04]); // Extension length
+        ext.extend_from_slice(&[0x00, 0x02]); // Named group list length
         ext.extend_from_slice(&[0x00, 0x1d]); // x25519
 
-        // 6. Signature algorithms (0x000d)
+        // 3. Signature algorithms (0x000d) - REQUIRED for TLS 1.3
         ext.extend_from_slice(&[0x00, 0x0d]);
-        ext.extend_from_slice(&[0x00, 0x14]);
-        ext.extend_from_slice(&[0x00, 0x12]);
+        ext.extend_from_slice(&[0x00, 0x14]); // Extension length
+        ext.extend_from_slice(&[0x00, 0x12]); // List length
         ext.extend_from_slice(&[0x04, 0x03]); // ecdsa_secp256r1_sha256
         ext.extend_from_slice(&[0x05, 0x03]); // ecdsa_secp384r1_sha384
         ext.extend_from_slice(&[0x06, 0x03]); // ecdsa_secp521r1_sha512
@@ -118,11 +123,34 @@ impl TlsHandshake {
         ext.extend_from_slice(&[0x06, 0x01]); // rsa_pkcs1_sha512
         ext.extend_from_slice(&[0x08, 0x04]); // rsa_pss_rsae_sha256
 
-        // 7. PSK Key Exchange Modes (0x002d) - REQUIRED by many servers
-        ext.extend_from_slice(&[0x00, 0x2d]);
-        ext.extend_from_slice(&[0x00, 0x02]);
-        ext.extend_from_slice(&[0x01]);
-        ext.extend_from_slice(&[0x01]); // psk_dhe_ke
+        // 4. Supported versions (0x002b) - REQUIRED for TLS 1.3
+        // RFC 8446: This is how servers know we want TLS 1.3
+        ext.extend_from_slice(&[0x00, 0x2b]);
+        ext.extend_from_slice(&[0x00, 0x03]); // Extension length
+        ext.extend_from_slice(&[0x02]);       // Versions list length
+        ext.extend_from_slice(&TLS_1_3.to_be_bytes()); // Only TLS 1.3!
+
+        // 5. Key share (0x0033) - REQUIRED for TLS 1.3 fresh handshake
+        ext.extend_from_slice(&[0x00, 0x33]);
+        let key_share_data = self.build_key_share_extension(public_key);
+        ext.extend_from_slice(&(key_share_data.len() as u16).to_be_bytes());
+        ext.extend_from_slice(&key_share_data);
+
+        // 6. ALPN extension (0x0010) - CRITICAL for HTTPS
+        ext.extend_from_slice(&[0x00, 0x10]);
+        ext.extend_from_slice(&[0x00, 0x0b]); // Extension length
+        ext.extend_from_slice(&[0x00, 0x09]); // Protocol list length
+        ext.extend_from_slice(&[0x08]);       // Protocol name length
+        ext.extend_from_slice(b"http/1.1");
+
+        // NOTE: We deliberately OMIT these extensions for fresh handshakes:
+        // - psk_key_exchange_modes (0x002d): Only needed if we include pre_shared_key
+        // - pre_shared_key (0x0029): We're not resuming, so no PSK
+        // - session_ticket (0x0023): We're not resuming, so no ticket
+        //
+        // Including psk_key_exchange_modes WITHOUT pre_shared_key can confuse some
+        // servers into thinking we want to resume (causing Application Data 0x17
+        // response instead of ServerHello 0x16).
 
         Ok(ext)
     }
