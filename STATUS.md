@@ -80,6 +80,15 @@
 - `handshake_refactored/*.rs`: 1 safe (SystemTime) ✅
 - Most unwraps in deprecated/test code ✅
 
+**Test Coverage**: 809+ tests passing
+
+| Crate | Passed | Status |
+|-------|--------|--------|
+| songbird-http-client | 226 | ✅ |
+| songbird-genesis | 12 | ✅ |
+| songbird-orchestrator | 571 | ✅ (2 flaky) |
+| songbird-universal | - | ⚠️ 58 async errors |
+
 ### Phase 2: TLS Server Mode (Future)
 
 **Goal**: Songbird can ACCEPT TLS connections (primal-to-primal HTTPS)
