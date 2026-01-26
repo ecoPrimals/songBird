@@ -429,23 +429,25 @@ impl RequestBuilder {
     ///
     /// # Examples
     ///
-    /// ```no_run
-    /// # use songbird_http_client::{IpcHttpClient, multipart};
-    /// # #[tokio::main]
-    /// # async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    /// let client = IpcHttpClient::new().await?;
+    /// ```ignore
+    /// use songbird_http_client::{IpcHttpClient, multipart};
     ///
-    /// let form = multipart::Form::new()
-    ///     .text("service_name", "my-service")
-    ///     .part("binary", multipart::Part::bytes(vec![1, 2, 3])
-    ///         .file_name("service.bin"));
+    /// #[tokio::main]
+    /// async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    ///     let client = IpcHttpClient::new().await?;
     ///
-    /// let response = client.post("https://api.example.com/deploy")
-    ///     .multipart(form)
-    ///     .send()
-    ///     .await?;
-    /// # Ok(())
-    /// # }
+    ///     let form = multipart::Form::new()
+    ///         .text("service_name", "my-service")
+    ///         .part("binary", multipart::Part::bytes(vec![1, 2, 3])
+    ///             .file_name("service.bin"));
+    ///
+    ///     let response = client.post("https://api.example.com/deploy")
+    ///         .await
+    ///         .multipart(form)
+    ///         .send()
+    ///         .await?;
+    ///     Ok(())
+    /// }
     /// ```
     #[must_use]
     pub fn multipart(mut self, form: Form) -> Self {

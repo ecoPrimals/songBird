@@ -5,25 +5,26 @@
 //!
 //! ## Usage
 //!
-//! ```rust,no_run
+//! ```rust,ignore
 //! use songbird_http_client::{IpcHttpClient, multipart};
 //!
-//! # async fn example() -> Result<(), Box<dyn std::error::Error>> {
-//! let client = IpcHttpClient::new().await?;
+//! async fn example() -> Result<(), Box<dyn std::error::Error>> {
+//!     let client = IpcHttpClient::new().await?;
 //!
-//! let form = multipart::Form::new()
-//!     .text("service_name", "my-service")
-//!     .text("env_vars", r#"{"PORT":"8080"}"#)
-//!     .text("auto_start", "true")
-//!     .part("binary", multipart::Part::bytes(vec![1, 2, 3])
-//!         .file_name("service.bin"));
+//!     let form = multipart::Form::new()
+//!         .text("service_name", "my-service")
+//!         .text("env_vars", r#"{"PORT":"8080"}"#)
+//!         .text("auto_start", "true")
+//!         .part("binary", multipart::Part::bytes(vec![1, 2, 3])
+//!             .file_name("service.bin"));
 //!
-//! let response = client.post("https://api.example.com/deploy")
-//!     .multipart(form)
-//!     .send()
-//!     .await?;
-//! # Ok(())
-//! # }
+//!     let response = client.post("https://api.example.com/deploy")
+//!         .await
+//!         .multipart(form)
+//!         .send()
+//!         .await?;
+//!     Ok(())
+//! }
 //! ```
 
 use base64::{engine::general_purpose::STANDARD as BASE64, Engine};

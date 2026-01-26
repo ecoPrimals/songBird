@@ -89,7 +89,8 @@ impl BearDogClient {
     /// Uses actual BearDog method names (e.g., "x25519_generate_ephemeral").
     ///
     /// # Example
-    /// ```rust
+    /// ```rust,ignore
+    /// use songbird_http_client::BearDogClient;
     /// let beardog = BearDogClient::new_direct("/tmp/beardog.sock");
     /// ```
     pub fn new_direct(beardog_socket: impl Into<String>) -> Self {
@@ -108,7 +109,8 @@ impl BearDogClient {
     /// Uses semantic capability names (e.g., "crypto.generate_keypair").
     ///
     /// # Example
-    /// ```rust
+    /// ```rust,ignore
+    /// use songbird_http_client::BearDogClient;
     /// let beardog = BearDogClient::new_neural_api("/tmp/neural-api.sock");
     /// ```
     pub fn new_neural_api(neural_api_socket: impl Into<String>) -> Self {

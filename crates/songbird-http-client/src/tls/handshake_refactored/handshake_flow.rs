@@ -32,7 +32,7 @@ use crate::crypto::TlsHandshakeSecrets as TlsSecrets;
 use crate::error::{Error, Result};
 use crate::tls::session::SessionKeys;
 use crate::tls::{TLS_1_2, CIPHER_SUITES};
-use tokio::io::{AsyncReadExt, AsyncWriteExt};
+use tokio::io::AsyncWriteExt;
 use tokio::net::TcpStream;
 use tokio::time::{timeout, Duration};
 use tracing::{debug, error, info, trace, warn};

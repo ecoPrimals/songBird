@@ -2,24 +2,39 @@
 //!
 //! This module implements a Pure Rust TLS 1.3 client AND server by delegating all
 //! cryptographic operations to BearDog via JSON-RPC.
+//!
+//! ## Architecture (Smart Refactored - January 26, 2026)
+//!
+//! The TLS handshake implementation has been refactored from a 3,128-line monolith
+//! into a clean modular architecture:
+//!
+//! - `handshake_refactored/core.rs` - TlsHandshake struct and constructors (84 lines)
+//! - `handshake_refactored/transcript.rs` - Transcript management (459 lines)
+//! - `handshake_refactored/extensions.rs` - Extension builders (438 lines)
+//! - `handshake_refactored/record_io.rs` - TLS record I/O (423 lines)
+//! - `handshake_refactored/handshake_flow.rs` - Main handshake logic (1,364 lines)
+//! - `handshake_refactored/application_data.rs` - App data crypto (115 lines)
+//!
+//! The legacy `handshake_legacy.rs` is preserved as a fossil record.
 
 pub mod adaptive;
 pub mod alert;
 pub mod config;
-pub mod handshake_legacy;
-pub mod handshake_v2; // New modularized handshake (Phase 4 refactoring)
-pub mod handshake_refactored; // Smart refactored handshake (in progress)
+pub mod handshake_refactored; // ✅ ACTIVE: Smart refactored handshake (production)
+pub mod handshake_v2; // Alternative modularized handshake
 pub mod negotiation;
 pub mod profiler;
 pub mod record;
 pub mod server;
-// TODO(Phase 4): Temporarily disabled until handshake_v2::keys module is complete
-// pub mod server_complete; // Complete TLS 1.3 server implementation
 pub mod session;
+
+// Legacy preserved for fossil record (3,128 lines → archived)
+#[allow(dead_code)]
+pub mod handshake_legacy;
 
 // Compatibility re-export for existing code
 pub mod handshake {
-    pub use super::handshake_legacy::*;
+    pub use super::handshake_refactored::*;
 }
 
 pub use adaptive::AdaptiveExtensions;
@@ -28,12 +43,11 @@ pub use config::{
     CipherStrategy, CipherSuiteSet, ExtensionSet, ExtensionStrategy, ExtensionType,
     FallbackStrategy, TlsConfig,
 };
-pub use handshake_legacy::TlsHandshake; // Legacy implementation (to be migrated)
+pub use handshake_refactored::TlsHandshake; // ✅ ACTIVE: Refactored implementation
+pub use handshake_refactored::TlsSecrets;
 pub use profiler::{ServerProfile, ServerProfiler};
 pub use record::TlsRecordLayer;
 pub use server::TlsServer;
-// TODO(Phase 4): Temporarily disabled until handshake_v2::keys module is complete
-// pub use server_complete::TlsServer as TlsServerComplete; // Complete implementation
 pub use session::TlsSession;
 
 /// TLS 1.3 version
