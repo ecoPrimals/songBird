@@ -43,22 +43,37 @@ Pure Rust:    ✅ 100% (no OpenSSL, no C deps)
 - PubMed, arXiv, GitHub, Google Cloud
 - Cloudflare, PyPI, crates.io (403), npm (403)
 
-**Remaining 5%**:
-- `close_notify` alert handling (graceful close)
-- AES-256-GCM cipher support (some servers prefer 0x1302)
+**Remaining 5%** (1 endpoint - requires BearDog SHA-384):
+- ✅ `close_notify` alert handling **FIXED!**
+- ⏳ AES-256-GCM cipher (0x1302) - **Blocked on BearDog SHA-384 support**
 
 📖 **[TLS Fixes Session](sessions/TCP_REUSE_FIX_JAN_26_2026.md)** | 📊 **[Full Status](STATUS.md)**
 
 ---
 
-## 🚀 Evolution Roadmap
+## 🚀 Path to 100% TLS
 
-### Phase 1: Complete TLS Client (95% → 100%)
-| Task | Priority | Effort |
-|------|----------|--------|
-| Handle close_notify gracefully | P0 | 2 hours |
-| Add AES-256-GCM support | P1 | 4 hours |
-| Large response streaming | P2 | 8 hours |
+### Blocker: Cipher Suite 0x1302 (TLS_AES_256_GCM_SHA384)
+
+Some servers require cipher 0x1302 which uses **SHA-384** for HKDF key derivation.
+Current implementation is hardcoded to SHA-256.
+
+| Component | Task | Status |
+|-----------|------|--------|
+| **BearDog** | Add `crypto.hash_for_cipher` | ⏳ Upstream |
+| **BearDog** | HKDF-SHA384 in key derivation | ⏳ Upstream |
+| **Songbird** | Use cipher-aware hashing | 🔜 After BearDog |
+
+**Effort**: ~10 hours total (BearDog: 6h, Songbird: 2h, Testing: 2h)
+
+### Evolution Roadmap
+
+| Phase | Goal | Status |
+|-------|------|--------|
+| 1 | 100% TLS Client | 95% ✅ (waiting BearDog SHA-384) |
+| 2 | TLS Server Mode | 🔜 Future |
+| 3 | TLS Relay/Proxy | 🔜 Future |
+| 4 | Full Gateway | 🔜 Vision |
 
 ### Phase 2: TLS Server Mode
 Songbird accepts TLS connections (primal-to-primal HTTPS)

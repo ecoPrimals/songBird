@@ -43,15 +43,42 @@
 
 ## 🚀 Evolution Roadmap
 
-### Phase 1: Complete TLS Client (Current → 100%)
+### Phase 1: Complete TLS Client (95% → 100%)
 
 **Goal**: 100% validation success for all HTTPS endpoints
 
-| Task | Priority | Status |
-|------|----------|--------|
-| Handle close_notify gracefully | P0 | ✅ **COMPLETE** |
-| Add AES-256-GCM support | P1 | 🔜 4 hours (needs BearDog SHA-384) |
-| Large response streaming | P2 | 🔜 8 hours |
+| Task | Priority | Status | Owner |
+|------|----------|--------|-------|
+| Handle close_notify gracefully | P0 | ✅ **COMPLETE** | Songbird |
+| Add AES-256-GCM (0x1302) support | P1 | ⏳ Blocked on BearDog | BearDog + Songbird |
+| Large response streaming | P2 | 🔜 8 hours | Songbird |
+
+### 🔧 Path to 100% TLS: SHA-384 Evolution
+
+**Current Blocker**: Cipher suite 0x1302 (TLS_AES_256_GCM_SHA384) requires SHA-384 for HKDF.
+
+**BearDog P0 Tasks** (upstream handoff received Jan 26, 2026):
+1. Add `crypto.hash_for_cipher` method (cipher-aware hashing)
+2. Update `tls.derive_handshake_secrets` to use HKDF-SHA384 for 0x1302
+3. Update `tls.derive_application_secrets` to use HKDF-SHA384 for 0x1302
+
+**Songbird P1 Tasks** (after BearDog):
+1. Update transcript hashing to use `hash_for_cipher`
+2. Pass cipher_suite to all derivation calls
+
+**Architecture** (TRUE PRIMAL pattern):
+```
+Songbird                    BearDog
+   │                           │
+   ├─capability.call───────────►│
+   │  crypto.hash_for_cipher    │
+   │  { cipher_suite: 0x1302 }  │
+   │                           │
+   │◄──────────────────────────┤
+   │  48-byte SHA-384 hash     │
+```
+
+**Effort**: ~10 hours total (BearDog: 6h, Songbird: 2h, Testing: 2h)
 
 ### Today's Progress (January 26, 2026 - Deep Debt Session)
 
