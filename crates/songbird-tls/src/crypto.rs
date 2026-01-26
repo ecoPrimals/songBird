@@ -21,14 +21,16 @@ pub struct BeardogCryptoClient {
 impl BeardogCryptoClient {
     /// Create a new BearDog crypto client
     ///
-    /// Uses runtime discovery to find the BearDog socket.
+    /// Uses runtime discovery to find the Neural API socket for capability.call.
     pub async fn new() -> Result<Self> {
         let socket_path = Self::discover_socket()?;
+
+        tracing::info!("🌐 BeardogCryptoClient using socket: {}", socket_path);
 
         // Verify socket exists
         if !Path::new(&socket_path).exists() {
             return Err(TlsError::CryptoError(format!(
-                "BearDog socket not found at: {}",
+                "Socket not found at: {}",
                 socket_path
             )));
         }
@@ -45,21 +47,42 @@ impl BeardogCryptoClient {
         }
     }
 
-    /// Discover BearDog crypto socket
+    /// Discover Neural API socket for capability.call routing
     ///
-    /// Uses capability-based discovery (no hardcoding!)
+    /// Uses capability-based discovery (TRUE PRIMAL pattern)
     fn discover_socket() -> Result<String> {
-        // Strategy 1: Environment variable (highest priority)
+        // Strategy 1: Neural API socket (TRUE PRIMAL pattern - production)
+        if let Ok(path) = std::env::var("NEURAL_API_SOCKET") {
+            return Ok(path);
+        }
+
+        if let Ok(path) = std::env::var("NEURALS_SOCKET") {
+            return Ok(path);
+        }
+
+        // Strategy 2: Legacy fallback - direct BearDog (testing only)
         if let Ok(path) = std::env::var("SONGBIRD_CRYPTO_SOCKET") {
             return Ok(path);
         }
 
-        // Strategy 2: BearDog-specific environment variable
         if let Ok(path) = std::env::var("BEARDOG_CRYPTO_SOCKET") {
             return Ok(path);
         }
 
-        // Strategy 3: Default paths
+        // Strategy 3: Default Neural API paths (production)
+        let neural_paths = vec![
+            "/tmp/neural-api.sock",
+            "/tmp/neural-api-nat0.sock",
+            "/var/run/neural-api/socket",
+        ];
+
+        for path in neural_paths {
+            if Path::new(path).exists() {
+                return Ok(path.to_string());
+            }
+        }
+
+        // Strategy 4: Legacy BearDog paths (testing fallback)
         let default_paths = vec![
             "/tmp/beardog-crypto.sock",
             "/var/run/beardog/crypto.sock",
@@ -72,24 +95,73 @@ impl BeardogCryptoClient {
             }
         }
 
-        // Strategy 4: Search /tmp for any crypto socket
-        if let Ok(entries) = std::fs::read_dir("/tmp") {
-            for entry in entries.flatten() {
-                let path = entry.path();
-                if let Some(name) = path.file_name() {
-                    if name.to_string_lossy().contains("crypto")
-                        && name.to_string_lossy().ends_with(".sock")
-                    {
-                        return Ok(path.to_string_lossy().to_string());
-                    }
-                }
-            }
-        }
-
-        Err(TlsError::CryptoError("Could not discover BearDog crypto socket".to_string()))
+        Err(TlsError::CryptoError("Could not discover Neural API or BearDog socket".to_string()))
     }
 
-    /// Make a JSON-RPC call to BearDog
+    /// Make a capability.call to Neural API (TRUE PRIMAL pattern)
+    async fn call_capability(
+        &self,
+        capability: &str,
+        operation: &str,
+        args: serde_json::Value,
+    ) -> Result<serde_json::Value> {
+        // Connect to Unix socket (Neural API or BearDog)
+        let mut stream = UnixStream::connect(&self.socket_path)
+            .await
+            .map_err(|e| TlsError::CryptoError(format!("Failed to connect to socket: {}", e)))?;
+
+        // Build capability.call JSON-RPC request
+        let request = serde_json::json!({
+            "jsonrpc": "2.0",
+            "method": "capability.call",
+            "params": {
+                "capability": capability,
+                "operation": operation,
+                "args": args
+            },
+            "id": 1
+        });
+
+        // Serialize request
+        let request_str = serde_json::to_string(&request)
+            .map_err(|e| TlsError::InternalError(format!("Failed to serialize request: {}", e)))?;
+
+        // Send request (with newline delimiter)
+        stream
+            .write_all(request_str.as_bytes())
+            .await
+            .map_err(|e| TlsError::CryptoError(format!("Failed to send request: {}", e)))?;
+        stream
+            .write_all(b"\n")
+            .await
+            .map_err(|e| TlsError::CryptoError(format!("Failed to send newline: {}", e)))?;
+
+        // Read response
+        let mut response_buf = Vec::new();
+        stream
+            .read_to_end(&mut response_buf)
+            .await
+            .map_err(|e| TlsError::CryptoError(format!("Failed to read response: {}", e)))?;
+
+        // Parse JSON-RPC response
+        let response: JsonRpcResponse = serde_json::from_slice(&response_buf)
+            .map_err(|e| TlsError::CryptoError(format!("Failed to parse response: {}", e)))?;
+
+        // Check for errors
+        if let Some(error) = response.error {
+            return Err(TlsError::CryptoError(format!(
+                "Capability call error: {} (code {})",
+                error.message, error.code
+            )));
+        }
+
+        response.result.ok_or_else(|| {
+            TlsError::CryptoError("Capability call response missing result field".to_string())
+        })
+    }
+
+    /// Make a JSON-RPC call (legacy/testing)
+    #[allow(dead_code)]
     async fn call_jsonrpc(
         &self,
         method: &str,
@@ -154,7 +226,7 @@ impl BeardogCryptoClient {
             "purpose": "tls_handshake"
         });
 
-        let result = self.call_jsonrpc("crypto.x25519_generate_ephemeral", params).await?;
+        let result = self.call_capability("crypto", "generate_keypair", params).await?;
 
         // Extract public_key and secret_key (base64 encoded)
         let public_key_b64 = result["public_key"]
@@ -187,7 +259,7 @@ impl BeardogCryptoClient {
             "their_public": general_purpose::STANDARD.encode(their_public)
         });
 
-        let result = self.call_jsonrpc("crypto.x25519_derive_secret", params).await?;
+        let result = self.call_capability("crypto", "derive_secret", params).await?;
 
         let shared_secret_b64 = result["shared_secret"].as_str().ok_or_else(|| {
             TlsError::CryptoError("Missing shared_secret in response".to_string())
@@ -219,7 +291,7 @@ impl BeardogCryptoClient {
             params["aad"] = serde_json::json!(general_purpose::STANDARD.encode(aad_data));
         }
 
-        let result = self.call_jsonrpc("crypto.chacha20_poly1305_encrypt", params).await?;
+        let result = self.call_capability("crypto", "encrypt", params).await?;
 
         let ciphertext_b64 = result["ciphertext"]
             .as_str()
@@ -266,7 +338,7 @@ impl BeardogCryptoClient {
             params["aad"] = serde_json::json!(general_purpose::STANDARD.encode(aad_data));
         }
 
-        let result = self.call_jsonrpc("crypto.chacha20_poly1305_decrypt", params).await?;
+        let result = self.call_capability("crypto", "decrypt", params).await?;
 
         let plaintext_b64 = result["plaintext"]
             .as_str()
@@ -289,7 +361,7 @@ impl BeardogCryptoClient {
             "purpose": "certificate_signing"
         });
 
-        let result = self.call_jsonrpc("crypto.sign_ed25519", params).await?;
+        let result = self.call_capability("crypto", "sign", params).await?;
 
         let signature_b64 = result["signature"]
             .as_str()
@@ -311,7 +383,7 @@ impl BeardogCryptoClient {
             "key": general_purpose::STANDARD.encode(key)
         });
 
-        let result = self.call_jsonrpc("crypto.hmac_sha256", params).await?;
+        let result = self.call_capability("crypto", "hmac_sha256", params).await?;
 
         let mac_b64 = result["mac"]
             .as_str()

@@ -66,7 +66,7 @@ impl SongbirdHttpClient {
 
     /// Create with custom config and optional profiler
     pub fn with_config(
-        socket_path: impl Into<String>,
+        _socket_path: impl Into<String>,
         config: TlsConfig,
         profiler: Option<Arc<ServerProfiler>>,
     ) -> Self {
@@ -75,8 +75,11 @@ impl SongbirdHttpClient {
             info!("🧠 Adaptive learning enabled (profiler attached)");
         }
 
+        // v5.28.0: ALWAYS use environment-based routing (TRUE PRIMAL pattern)
+        // This ensures capability.call routing via Neural API
+        // The socket_path parameter is ignored - routing determined by BEARDOG_MODE
         Self {
-            crypto: Arc::new(BearDogProvider::new(socket_path)),
+            crypto: Arc::new(BearDogProvider::from_env()),
             config,
             profiler,
         }
