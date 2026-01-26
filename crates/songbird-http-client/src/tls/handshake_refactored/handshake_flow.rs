@@ -383,17 +383,22 @@ impl TlsHandshake {
         debug!("      4. ONLY the handshake message content (Type + Length + Content)");
 
         info!(
-            "🔐 COMPUTING HANDSHAKE TRANSCRIPT HASH (SHA-256 of {} bytes)",
+            "🔐 COMPUTING CIPHER-AWARE TRANSCRIPT HASH for 0x{:04x} ({} bytes of transcript)",
+            cipher_suite,
             self.transcript.len()
         );
         debug!("   RFC 8446 Section 4.4.1: Transcript-Hash(M1, M2) = Hash(M1 || M2)");
         debug!("   For handshake keys: M1 = ClientHello, M2 = ServerHello");
         debug!("   Both messages are handshake message bodies ONLY (no TLS record headers)");
+        debug!("   Cipher 0x1301/0x1303 → SHA-256 (32 bytes), 0x1302 → SHA-384 (48 bytes)");
 
-        let handshake_transcript_hash = self.compute_transcript_hash();
+        let handshake_transcript_hash = self.compute_transcript_hash_for_cipher(cipher_suite).await?;
 
         info!("✅ Handshake transcript hash computed!");
-        trace!("   Hash length: {} bytes (SHA-256)", handshake_transcript_hash.len());
+        trace!("   Hash length: {} bytes ({})", 
+            handshake_transcript_hash.len(),
+            if handshake_transcript_hash.len() == 32 { "SHA-256" } else { "SHA-384" }
+        );
         trace!("   🎯 Transcript hash (hex): {}", hex::encode(&handshake_transcript_hash));
         trace!("   This hash will be passed to BearDog's tls.derive_handshake_secrets");
         debug!(
@@ -712,8 +717,11 @@ impl TlsHandshake {
             hex::encode(&self.transcript[..std::cmp::min(64, self.transcript.len())])
         );
 
-        let transcript_hash = self.compute_transcript_hash();
-        info!("✅ Transcript hash computed: {} bytes (SHA-256)", transcript_hash.len());
+        let transcript_hash = self.compute_transcript_hash_for_cipher(self.cipher_suite).await?;
+        info!("✅ Transcript hash computed: {} bytes ({})", 
+            transcript_hash.len(),
+            if transcript_hash.len() == 32 { "SHA-256" } else { "SHA-384" }
+        );
         trace!("🔐 Transcript hash (hex): {}", hex::encode(&transcript_hash));
         trace!("════════════════════════════════════════════════════════════");
         info!("");
@@ -1124,8 +1132,11 @@ impl TlsHandshake {
 
         // 1. Compute transcript hash of all handshake messages
         // Includes: ClientHello, ServerHello, EncryptedExtensions, Certificate, CertificateVerify, server Finished
-        let transcript_hash = self.compute_transcript_hash();
-        info!("📊 Transcript hash for Finished: {} bytes", transcript_hash.len());
+        let transcript_hash = self.compute_transcript_hash_for_cipher(self.cipher_suite).await?;
+        info!("📊 Transcript hash for Finished: {} bytes ({})", 
+            transcript_hash.len(),
+            if transcript_hash.len() == 32 { "SHA-256" } else { "SHA-384" }
+        );
         debug!("   Transcript hash (hex): {}", hex::encode(&transcript_hash));
 
         // 2. Call BearDog to compute verify_data (RFC 8446 Section 4.4.4)

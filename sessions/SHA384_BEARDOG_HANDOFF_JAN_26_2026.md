@@ -1,98 +1,117 @@
 # 🐻 BearDog SHA-384 Handoff - January 26, 2026
 
-**Status**: ⏳ Waiting for BearDog Evolution  
+**Status**: ✅ **BEARDOG READY - SONGBIRD IMPLEMENTATION NEEDED**  
 **Impact**: 95% → 100% TLS Validation  
 **Upstream Doc**: Received from biomeOS
 
 ---
 
-## 🎯 Summary
+## 🎉 BEARDOG SHA-384 EVOLUTION COMPLETE!
 
-Songbird has achieved **95% TLS 1.3 validation** (20/21 endpoints).
-The remaining 5% requires **SHA-384 support** from BearDog for cipher suite 0x1302.
-
----
-
-## 📊 The Problem
-
-**Cipher Suite 0x1302** (TLS_AES_256_GCM_SHA384) requires SHA-384 for:
-- Transcript hashing
-- HKDF key derivation
-- HMAC operations
-
-**Current**: Both BearDog and Songbird are hardcoded to SHA-256.
-
----
-
-## 🔧 BearDog Tasks Required
-
-### P0: Add `crypto.hash_for_cipher` Method
+**Tested Jan 26, 2026** - BearDog's new method returns 48-byte SHA-384 hashes:
 
 ```json
 // Request
 {
   "method": "crypto.hash_for_cipher",
   "params": {
-    "data": "base64-encoded-data",
-    "cipher_suite": 4866  // 0x1302
+    "data": "dGVzdA==",
+    "cipher_suite": 4866
   }
 }
 
-// Response (48-byte SHA-384 hash)
+// Response ✅ WORKING!
 {
   "result": {
-    "hash": "base64-encoded-48-byte-sha384-hash"
+    "algorithm": "SHA-384",
+    "cipher_suite": 4866,
+    "hash": "doQSMg97CqWBL85CjcRwazyuUOAqZMqhangiSb/o78S37xzLEmJV0ZYEff7fF6Cp",
+    "hash_length": 48
   }
 }
 ```
 
-### P0: Update `tls.derive_handshake_secrets`
-
-Select HKDF based on cipher_suite:
-- 0x1301, 0x1303 → HKDF-SHA256
-- 0x1302 → HKDF-SHA384
-
-### P0: Update `tls.derive_application_secrets`
-
-Same pattern - cipher-aware HKDF selection.
-
 ---
 
-## 🎵 Songbird Tasks (After BearDog)
+## 🎵 SONGBIRD TASKS (READY TO IMPLEMENT NOW)
 
-### P1: Update Transcript Hashing
+### P0: Update Transcript Hashing (PRIMARY FIX)
+
+**File**: `crates/songbird-http-client/src/tls/handshake_refactored/transcript.rs`
 
 ```rust
-// Change from:
-let hash = Sha256::digest(&transcript);
+// CURRENT (line 276-278) - HARDCODED SHA-256
+pub(super) fn compute_transcript_hash(&self) -> Vec<u8> {
+    let mut hasher = Sha256::new();
+    hasher.update(&self.transcript);
+    let hash = hasher.finalize().to_vec();
+    // Returns 32 bytes ALWAYS
+}
 
-// To:
-let hash = crypto.hash_for_cipher(&transcript, cipher_suite).await?;
+// REQUIRED - Cipher-aware hashing via BearDog
+pub(super) async fn compute_transcript_hash(&self, cipher_suite: u16) -> Result<Vec<u8>> {
+    // Use BearDog's crypto.hash_for_cipher for cipher-aware hashing
+    let hash = self.crypto.hash_for_cipher(&self.transcript, cipher_suite).await?;
+    // Returns 32 bytes for 0x1301/0x1303, 48 bytes for 0x1302
+    Ok(hash)
+}
 ```
 
-### P1: Pass cipher_suite to Derivation Calls
+### P0: Add `hash_for_cipher` to CryptoCapability Trait
 
-Already passing cipher_suite in params, just need BearDog to use it.
+**File**: `crates/songbird-http-client/src/crypto/capability.rs`
+
+```rust
+#[async_trait]
+pub trait CryptoCapability: Send + Sync {
+    // ... existing methods ...
+    
+    /// Cipher-suite aware hashing (BearDog selects SHA-256 or SHA-384)
+    async fn hash_for_cipher(&self, data: &[u8], cipher_suite: u16) -> Result<Vec<u8>>;
+}
+```
+
+### P0: Implement in BearDogProvider
+
+**File**: `crates/songbird-http-client/src/crypto/beardog_provider.rs`
+
+```rust
+async fn hash_for_cipher(&self, data: &[u8], cipher_suite: u16) -> Result<Vec<u8>> {
+    let params = json!({
+        "data": BASE64_STANDARD.encode(data),
+        "cipher_suite": cipher_suite
+    });
+    
+    let result = self.call("crypto.hash_for_cipher", Some(params)).await?;
+    self.extract_b64_field(&result, "hash")
+}
+```
 
 ---
 
-## ✅ Songbird Ready State
+## 📁 Files to Modify
 
-| Component | Status |
-|-----------|--------|
-| cipher_suite passed in params | ✅ Ready |
-| transcript data available | ✅ Ready |
-| capability.call integration | ✅ Ready |
-| Error handling | ✅ Ready |
+| File | Change |
+|------|--------|
+| `crypto/capability.rs` | Add `hash_for_cipher` to trait |
+| `crypto/beardog_provider.rs` | Implement `hash_for_cipher` |
+| `tls/handshake_refactored/transcript.rs` | Use cipher-aware hashing |
+| `tls/handshake_refactored/handshake_flow.rs` | Pass `cipher_suite` to transcript hash |
 
 ---
 
-## 📁 Files to Modify (After BearDog)
+## 🧪 Test After Implementation
 
-**Songbird**:
-- `crates/songbird-http-client/src/tls/handshake_refactored/transcript.rs`
-- `crates/songbird-http-client/src/crypto/capability.rs`
-- `crates/songbird-http-client/src/crypto/beardog_provider.rs`
+```bash
+# Sites that use cipher 0x1302 (TLS_AES_256_GCM_SHA384)
+# These currently fail with "transcript_hash must be 48 bytes"
+
+# NCBI
+echo '{"jsonrpc":"2.0","method":"http.request","params":{"method":"GET","url":"https://www.ncbi.nlm.nih.gov","headers":{}},"id":1}' | nc -U /tmp/songbird-nat0.sock
+
+# Azure
+echo '{"jsonrpc":"2.0","method":"http.request","params":{"method":"GET","url":"https://azure.microsoft.com","headers":{}},"id":1}' | nc -U /tmp/songbird-nat0.sock
+```
 
 ---
 
@@ -100,22 +119,39 @@ Already passing cipher_suite in params, just need BearDog to use it.
 
 | Test | Current | Target |
 |------|---------|--------|
-| TLS validation | 95% | 100% |
-| 0x1301 (AES-128-GCM) | ✅ | ✅ |
-| 0x1302 (AES-256-GCM) | ❌ | ✅ |
-| 0x1303 (ChaCha20) | ✅ | ✅ |
+| TLS validation | 85% | 100% |
+| 0x1301 (AES-128-GCM-SHA256) | ✅ | ✅ |
+| 0x1302 (AES-256-GCM-SHA384) | ❌ 48-byte hash needed | ✅ |
+| 0x1303 (ChaCha20-Poly1305-SHA256) | ✅ | ✅ |
 
 ---
 
-## 📞 Coordination
+## ⏱️ Estimated Effort
 
-- **BearDog Path**: `/home/eastgate/Development/ecoPrimals/phase1/beardog`
-- **biomeOS Graph**: `tower_atomic_bootstrap.toml`
-- **Standards**: `/home/eastgate/Development/ecoPrimals/wateringHole/`
+| Task | Time |
+|------|------|
+| Add trait method | 5 min |
+| Implement provider | 10 min |
+| Update transcript module | 30 min |
+| Update handshake flow | 20 min |
+| Testing | 30 min |
+| **Total** | **~2 hours** |
+
+---
+
+## 📞 BearDog API Reference
+
+**Validated Capabilities** (Jan 26, 2026):
+
+| Method | Status |
+|--------|--------|
+| `crypto.hash_for_cipher` | ✅ Returns 48 bytes for 0x1302 |
+| `tls.derive_handshake_secrets` | ✅ Uses cipher-aware HKDF |
+| `tls.derive_application_secrets` | ✅ Uses cipher-aware HKDF |
 
 ---
 
 **Created**: January 26, 2026  
-**Waiting On**: BearDog SHA-384 evolution  
-**Songbird Status**: ✅ Ready to integrate when BearDog complete
-
+**Updated**: January 26, 2026 - BearDog evolution confirmed!  
+**BearDog Status**: ✅ COMPLETE  
+**Songbird Status**: 🔧 IMPLEMENTATION NEEDED

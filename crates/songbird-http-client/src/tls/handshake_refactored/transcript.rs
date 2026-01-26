@@ -271,8 +271,11 @@ impl TlsHandshake {
         Ok(messages)
     }
 
-    /// Compute transcript hash (SHA-256)
+    /// Compute transcript hash (SHA-256) - legacy/sync version
     /// RFC 8446 Section 4.4.1: Transcript-Hash(M1, M2, ... Mn) = Hash(M1 || M2 || ... || Mn)
+    /// 
+    /// NOTE: This uses local SHA-256 only. For cipher-aware hashing (SHA-384 for 0x1302),
+    /// use `compute_transcript_hash_for_cipher` instead.
     pub(super) fn compute_transcript_hash(&self) -> Vec<u8> {
         let mut hasher = Sha256::new();
         hasher.update(&self.transcript);
@@ -284,6 +287,32 @@ impl TlsHandshake {
         );
         trace!("   Transcript hash (hex): {}", hex::encode(&hash));
         hash
+    }
+
+    /// Compute cipher-aware transcript hash via BearDog
+    /// 
+    /// RFC 8446 Section 4.4.1: Different cipher suites use different hash algorithms:
+    /// - 0x1301 (TLS_AES_128_GCM_SHA256): SHA-256 (32 bytes)
+    /// - 0x1302 (TLS_AES_256_GCM_SHA384): SHA-384 (48 bytes) 
+    /// - 0x1303 (TLS_CHACHA20_POLY1305_SHA256): SHA-256 (32 bytes)
+    ///
+    /// This method delegates to BearDog's `crypto.hash_for_cipher` capability.
+    pub(super) async fn compute_transcript_hash_for_cipher(&self, cipher_suite: u16) -> crate::error::Result<Vec<u8>> {
+        info!(
+            "🔐 Computing cipher-aware transcript hash for 0x{:04x} from {} bytes",
+            cipher_suite, self.transcript.len()
+        );
+        
+        let hash = self.crypto.hash_for_cipher(&self.transcript, cipher_suite).await?;
+        
+        info!(
+            "   → Hash: {} bytes ({})",
+            hash.len(),
+            if hash.len() == 32 { "SHA-256" } else if hash.len() == 48 { "SHA-384" } else { "Unknown" }
+        );
+        trace!("   Hash (hex): {}", hex::encode(&hash));
+        
+        Ok(hash)
     }
 }
 

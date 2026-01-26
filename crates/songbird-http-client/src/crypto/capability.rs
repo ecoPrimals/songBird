@@ -190,7 +190,7 @@ pub trait CryptoCapability: Send + Sync + std::fmt::Debug {
     ) -> Result<Vec<u8>>;
 
     // ═══════════════════════════════════════════════════════════════════
-    // Hashing (SHA-256, SHA-384)
+    // Hashing (SHA-256, SHA-384, Cipher-Aware)
     // ═══════════════════════════════════════════════════════════════════
 
     /// SHA-256 hash
@@ -198,6 +198,16 @@ pub trait CryptoCapability: Send + Sync + std::fmt::Debug {
 
     /// SHA-384 hash
     async fn sha384(&self, data: &[u8]) -> Result<Vec<u8>>;
+
+    /// Cipher-suite aware hashing (RFC 8446 compliant)
+    ///
+    /// Returns the appropriate hash for TLS 1.3 transcript computation:
+    /// - 0x1301 (TLS_AES_128_GCM_SHA256): SHA-256 (32 bytes)
+    /// - 0x1302 (TLS_AES_256_GCM_SHA384): SHA-384 (48 bytes)
+    /// - 0x1303 (TLS_CHACHA20_POLY1305_SHA256): SHA-256 (32 bytes)
+    ///
+    /// This is critical for correct transcript hash computation in TLS 1.3.
+    async fn hash_for_cipher(&self, data: &[u8], cipher_suite: u16) -> Result<Vec<u8>>;
 
     // ═══════════════════════════════════════════════════════════════════
     // Key Derivation (HKDF)

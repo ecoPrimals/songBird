@@ -235,6 +235,7 @@ impl BearDogProvider {
             // Hashing
             "crypto.sha256" => ("crypto", "sha256"),
             "crypto.sha384" => ("crypto", "sha384"),
+            "crypto.hash_for_cipher" => ("crypto", "hash_for_cipher"),
 
             // HKDF
             "crypto.hkdf_extract" => ("crypto", "hkdf_extract"),
@@ -555,6 +556,35 @@ impl CryptoCapability for BearDogProvider {
         BASE64_STANDARD
             .decode(hash_b64)
             .map_err(|e| Error::BearDogRpc(format!("Invalid base64 hash: {}", e)))
+    }
+
+    async fn hash_for_cipher(&self, data: &[u8], cipher_suite: u16) -> Result<Vec<u8>> {
+        debug!("🔐 hash_for_cipher: cipher_suite=0x{:04x}, data={} bytes", cipher_suite, data.len());
+        
+        let result = self
+            .call(
+                "crypto.hash_for_cipher",
+                json!({
+                    "data": BASE64_STANDARD.encode(data),
+                    "cipher_suite": cipher_suite
+                }),
+            )
+            .await?;
+
+        let hash_b64 = result
+            .get("hash")
+            .and_then(|v| v.as_str())
+            .ok_or_else(|| Error::BearDogRpc("Missing hash in response".to_string()))?;
+
+        let hash = BASE64_STANDARD
+            .decode(hash_b64)
+            .map_err(|e| Error::BearDogRpc(format!("Invalid base64 hash: {}", e)))?;
+
+        // Log the result for debugging
+        let algorithm = result.get("algorithm").and_then(|v| v.as_str()).unwrap_or("unknown");
+        debug!("  → algorithm={}, hash_length={} bytes", algorithm, hash.len());
+        
+        Ok(hash)
     }
 
     // ═══════════════════════════════════════════════════════════════════
