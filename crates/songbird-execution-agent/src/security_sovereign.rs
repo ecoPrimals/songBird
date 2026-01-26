@@ -28,6 +28,7 @@
 //! - Internet/public: utilize network effect of multiple primals
 
 use serde::{Deserialize, Serialize};
+use songbird_http_client::IpcHttpClient;
 use songbird_types::{SongbirdError, SongbirdResult};
 use std::sync::Arc;
 use tokio::sync::RwLock;
@@ -205,7 +206,7 @@ struct BearDogIntegration {
     /// BearDog security endpoint URL
     endpoint: String,
     /// HTTP client for BearDog requests
-    client: reqwest::Client,
+    client: IpcHttpClient,
     /// Request timeout for security operations
     timeout: std::time::Duration,
 }
@@ -226,19 +227,15 @@ impl BearDogIntegration {
             .or_else(|_| std::env::var("SONGBIRD_SECURITY_ENDPOINT"))
             .unwrap_or_else(|_| "http://localhost:8443".to_string());
 
-        // Create HTTP client with reasonable defaults
-        let client = reqwest::Client::builder()
-            .timeout(std::time::Duration::from_secs(10))
-            .connect_timeout(std::time::Duration::from_secs(5))
-            .build()
-            .map_err(|e| {
-                SongbirdError::configuration(format!("Failed to create BearDog client: {e}"))
-            })?;
+        // Create HTTP client
+        let client = IpcHttpClient::new().await.map_err(|e| {
+            SongbirdError::configuration(format!("Failed to create HTTP client: {e}"))
+        })?;
 
         // Verify BearDog is reachable (non-blocking health check)
         let health_url = format!("{endpoint}/health");
-        match client.get(&health_url).timeout(std::time::Duration::from_secs(2)).send().await {
-            Ok(response) if response.status().is_success() => {
+        match client.get(&health_url).await {
+            Ok(response) if response.is_success() => {
                 info!("🔗 Successfully connected to BearDog at {endpoint}");
             }
             Ok(response) => {
@@ -278,8 +275,13 @@ impl BearDogIntegration {
         });
 
         // Call BearDog security validation API
-        match self.client.post(&url).json(&payload).timeout(self.timeout).send().await {
-            Ok(response) if response.status().is_success() => {
+        let request_builder = self.client.post(&url).await;
+        let request_with_body = request_builder.json(&payload).map_err(|e| {
+            SongbirdError::configuration(format!("Failed to build request: {e}"))
+        })?;
+        
+        match request_with_body.send().await {
+            Ok(response) if response.is_success() => {
                 // Parse BearDog's security decision
                 match response.json::<SecurityDecision>().await {
                     Ok(decision) => {
@@ -335,10 +337,8 @@ impl BearDogIntegration {
 
         self.client
             .get(&url)
-            .timeout(std::time::Duration::from_secs(2))
-            .send()
             .await
-            .map(|r| r.status().is_success())
+            .map(|r| r.is_success())
             .unwrap_or(false)
     }
 
@@ -350,17 +350,8 @@ impl BearDogIntegration {
     }
 }
 
-impl Default for BearDogIntegration {
-    fn default() -> Self {
-        // Synchronous default - use localhost endpoint
-        // For production, use connect() async method instead
-        Self {
-            endpoint: "http://localhost:8443".to_string(),
-            client: reqwest::Client::new(),
-            timeout: std::time::Duration::from_secs(5),
-        }
-    }
-}
+// Note: Default trait removed - use connect() async method instead.
+// This enforces modern async patterns and proper error handling.
 
 /// Check for dangerous command patterns (Songbird sovereign check)
 fn check_dangerous_patterns(command: &str) -> Option<String> {

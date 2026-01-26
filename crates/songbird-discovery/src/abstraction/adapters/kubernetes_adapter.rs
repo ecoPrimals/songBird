@@ -7,6 +7,7 @@
 
 #![allow(async_fn_in_trait)]
 use futures::stream::{self, Stream};
+use songbird_http_client::IpcHttpClient;
 use std::any::Any;
 use std::collections::HashMap;
 use std::pin::Pin;
@@ -86,12 +87,12 @@ impl ProviderFactory for KubernetesProviderFactory {
 pub struct KubernetesProviderAdapter {
     metadata: ProviderMetadata,
     _namespace: String,
-    _client: reqwest::Client,
+    _client: IpcHttpClient,
 }
 
 impl KubernetesProviderAdapter {
     /// Create new native kubernetes adapter
-    pub fn new_native(id: String, namespace: String) -> Self {
+    pub async fn new_native(id: String, namespace: String) -> Result<Self> {
         let metadata = ProviderMetadata {
             id: id.clone(),
             name: format!("Kubernetes Provider ({})", id),
@@ -118,11 +119,15 @@ impl KubernetesProviderAdapter {
             load_score: 0.4, // K8s has moderate load
         };
 
-        Self {
+        let client = IpcHttpClient::new()
+            .await
+            .map_err(|e| SongbirdError::network(format!("Failed to create HTTP client: {e}")))?;
+
+        Ok(Self {
             metadata,
             _namespace: namespace,
-            _client: reqwest::Client::new(),
-        }
+            _client: client,
+        })
     }
 }
 

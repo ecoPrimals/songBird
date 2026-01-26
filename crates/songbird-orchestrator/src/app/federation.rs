@@ -61,7 +61,7 @@ pub async fn initialize_federation() -> Result<(
         &node_identity,
         Arc::clone(&federation_state),
         super::federation_setup::FederationOptions::from_env(),
-    )?;
+    ).await?;
 
     Ok((
         setup.coordinator,
@@ -73,7 +73,7 @@ pub async fn initialize_federation() -> Result<(
 }
 
 /// Create federation coordinator with node registration
-fn create_federation_coordinator(
+async fn create_federation_coordinator(
     node_identity: &NodeIdentity,
     federation_state: Arc<FederationState>,
 ) -> Result<(Arc<FederationCoordinator>, FederationConfig)> {
@@ -96,10 +96,10 @@ fn create_federation_coordinator(
         info!("🔗 Will join federation via bootstrap: {}", bootstrap);
     }
 
-    // Create coordinator with state
-    let coordinator = Arc::new(FederationCoordinator::with_state(federation_state));
+    // Create coordinator with state (with_state is now async and returns Result)
+    let coordinator = FederationCoordinator::with_state(federation_state).await?;
 
-    Ok((coordinator, config))
+    Ok((Arc::new(coordinator), config))
 }
 
 /// Build self-registration with node capabilities

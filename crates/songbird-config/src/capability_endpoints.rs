@@ -30,6 +30,7 @@
 //! - `DISCOVERY_TIMEOUT_SECS` - Discovery timeout (default: 30)
 
 use serde::{Deserialize, Serialize};
+use songbird_http_client::IpcHttpClient;
 use songbird_types::{SongbirdError, SongbirdResult};
 use std::collections::HashMap;
 use std::convert::Infallible;
@@ -264,16 +265,15 @@ impl CapabilityEndpointResolver {
         // Query registry for services providing this capability
         // Supports Consul, Eureka, and other HTTP-based registries
 
-        let client = reqwest::Client::builder()
-            .timeout(Duration::from_secs(5))
-            .build()
+        let client = IpcHttpClient::new()
+            .await
             .map_err(|e| SongbirdError::network(format!("Failed to create HTTP client: {e}")))?;
 
         // Try Consul-style query first
         let consul_url =
             format!("{}/v1/catalog/service/{}", registry_endpoint, capability.as_str());
-        match client.get(&consul_url).send().await {
-            Ok(response) if response.status().is_success() => {
+        match client.get(&consul_url).await {
+            Ok(response) if response.is_success() => {
                 // Parse Consul service catalog response
                 if let Ok(services) = response.json::<Vec<serde_json::Value>>().await {
                     if let Some(service) = services.first() {
@@ -337,17 +337,16 @@ impl CapabilityEndpointResolver {
         // Query container orchestrator for services providing this capability
         // Supports Kubernetes, Docker Swarm, Nomad, etc.
 
-        let client = reqwest::Client::builder()
-            .timeout(Duration::from_secs(5))
-            .build()
+        let client = IpcHttpClient::new()
+            .await
             .map_err(|e| SongbirdError::network(format!("Failed to create HTTP client: {e}")))?;
 
         // Try Kubernetes service discovery
         let service_name = format!("{}-service", capability.as_str().to_lowercase());
         let k8s_url = format!("{metadata_api}/api/v1/services/{service_name}");
 
-        match client.get(&k8s_url).send().await {
-            Ok(response) if response.status().is_success() => {
+        match client.get(&k8s_url).await {
+            Ok(response) if response.is_success() => {
                 // Parse Kubernetes service response
                 if let Ok(service) = response.json::<serde_json::Value>().await {
                     // Extract cluster IP and port

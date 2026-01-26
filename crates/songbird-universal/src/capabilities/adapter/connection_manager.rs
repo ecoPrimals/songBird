@@ -76,13 +76,12 @@ impl ConnectionManager {
         let health_endpoint = format!("{}{}", connection.endpoint, HEALTH_PATH);
         debug!("🏥 Testing health: {}", health_endpoint);
 
-        let client = reqwest::Client::builder()
-            .timeout(std::time::Duration::from_secs(5))
-            .build()
+        let client = songbird_http_client::IpcHttpClient::new()
+            .await
             .map_err(|e| CapabilityError::NetworkError(format!("HTTP client error: {}", e)))?;
 
-        match client.get(&health_endpoint).send().await {
-            Ok(response) if response.status().is_success() => {
+        match client.get(&health_endpoint).await {
+            Ok(response) if response.is_success() => {
                 debug!("✅ Health check passed for {}", connection.name);
                 Ok(())
             }

@@ -8,6 +8,7 @@
 #![allow(async_fn_in_trait)]
 
 use serde::{Deserialize, Serialize};
+use songbird_http_client::IpcHttpClient;
 use songbird_types::{SafeEnv, SongbirdError, SongbirdResult};
 use std::time::Duration;
 use tracing::{debug, warn};
@@ -196,7 +197,7 @@ enum SecurityProtocol {
     /// JSON-RPC 2.0 over Unix socket (SECONDARY - port-free, universal)
     JsonRpc(crate::JsonRpcClient),
     /// HTTP/HTTPS protocol (FALLBACK - network only)
-    Http(reqwest::Client),
+    Http(IpcHttpClient),
 }
 
 /// **CAPABILITY-BASED SECURITY ADAPTER**
@@ -255,7 +256,7 @@ impl SecurityAdapter {
         match resolver.get_endpoint(CapabilityType::Security).await {
             Ok(endpoint) => {
                 debug!("✅ Security capability discovered via resolver: {}", endpoint);
-                Self::new(endpoint)
+                Self::new(endpoint).await
             }
             Err(discovery_err) => {
                 debug!("🔍 Primary discovery failed, trying legacy fallbacks: {}", discovery_err);
@@ -266,7 +267,7 @@ impl SecurityAdapter {
                     .or_else(|_| SafeEnv::get_required("BEARDOG_ENDPOINT"))
                 {
                     debug!("⚠️ Using legacy environment variable for security endpoint");
-                    return Self::new(endpoint);
+                    return Self::new(endpoint).await;
                 }
 
                 // Fallback 2: Construct from host + port
@@ -281,7 +282,7 @@ impl SecurityAdapter {
                 let discovered_endpoint = format!("{endpoint}:{port}");
 
                 debug!("🔄 Using fallback security endpoint: {}", discovered_endpoint);
-                Self::new(discovered_endpoint)
+                Self::new(discovered_endpoint).await
             }
         }
     }
@@ -319,7 +320,7 @@ impl SecurityAdapter {
     /// # Errors
     ///
     /// Returns an error if the client cannot be created.
-    pub fn new(endpoint: String) -> SongbirdResult<Self> {
+    pub async fn new(endpoint: String) -> SongbirdResult<Self> {
         // Detect protocol based on endpoint scheme (v3.12.0 - tarpc PRIMARY)
         let protocol = if endpoint.starts_with("tarpc://") {
             // tarpc - HIGH-PERFORMANCE binary RPC (PRIMARY)
@@ -339,7 +340,7 @@ impl SecurityAdapter {
             // HTTP/HTTPS protocol (FALLBACK)
             debug!("🌐 Protocol detected: HTTP (FALLBACK - network only)");
             let client =
-                reqwest::Client::builder().timeout(Duration::from_secs(10)).build().map_err(
+                IpcHttpClient::new().await.map_err(
                     |e| SongbirdError::configuration(format!("Failed to create HTTP client: {e}")),
                 )?;
             SecurityProtocol::Http(client)
@@ -420,15 +421,15 @@ impl SecurityAdapter {
                 debug!("🌐 Using HTTP (FALLBACK protocol)");
                 let url = format!("{}/metrics/security", self.endpoint);
 
-                let response =
-                    client.get(&url).timeout(self.timeout).send().await.map_err(|e| {
-                        warn!("Failed to reach security capability provider: {e}");
-                        songbird_types::SongbirdError::network(format!(
-                            "Failed to reach security provider: {e}"
-                        ))
-                    })?;
+                // IpcHttpClient::get() returns Result<Response> directly (no .send() needed)
+                let response = client.get(&url).await.map_err(|e| {
+                    warn!("Failed to reach security capability provider: {e}");
+                    songbird_types::SongbirdError::network(format!(
+                        "Failed to reach security provider: {e}"
+                    ))
+                })?;
 
-                if !response.status().is_success() {
+                if !response.is_success() {
                     let status = response.status();
                     warn!("Security capability provider returned error status: {}", status);
                     return Err(songbird_types::SongbirdError::security(format!(
@@ -518,10 +519,12 @@ impl SecurityAdapter {
                 debug!("🌐 Using HTTP (FALLBACK protocol)");
                 let url = format!("{}/auth/verify", self.endpoint);
 
-                let response = client
-                    .post(&url)
+                // IpcHttpClient: .post() returns RequestBuilder directly
+                let request_builder = client.post(&url).await;
+                
+                let response = request_builder
                     .json(&serde_json::json!({ "token": token }))
-                    .timeout(self.timeout)
+                    .map_err(|e| songbird_types::SongbirdError::serialization(e.to_string()))?
                     .send()
                     .await
                     .map_err(|e| {
@@ -531,7 +534,7 @@ impl SecurityAdapter {
                         ))
                     })?;
 
-                if !response.status().is_success() {
+                if !response.is_success() {
                     return Ok(AuthResult::Unauthorized);
                 }
 
@@ -636,20 +639,27 @@ impl SecurityAdapter {
                 debug!("🌐 Using HTTP for {} (FALLBACK - 500-1000μs)", method);
                 let url = format!("{}/{}", self.endpoint, method);
 
-                let response =
-                    tokio::time::timeout(self.timeout, client.post(&url).json(&params).send())
-                        .await
-                        .map_err(|_| {
-                            SongbirdError::network(format!("Timeout calling method '{}'", method))
-                        })?
-                        .map_err(|e| {
-                            SongbirdError::network(format!(
-                                "HTTP request failed for '{}': {}",
-                                method, e
-                            ))
-                        })?;
+                // IpcHttpClient: .post() is async, returns Future<RequestBuilder>
+                // Pattern: await post(), then json(), then send().await
+                // IpcHttpClient: .post() returns RequestBuilder directly
+                let request_builder = client.post(&url).await;
+                
+                let response = tokio::time::timeout(
+                    self.timeout,
+                    request_builder.json(&params).map_err(|e| SongbirdError::serialization(e.to_string()))?.send(),
+                )
+                .await
+                .map_err(|_| {
+                    SongbirdError::network(format!("Timeout calling method '{}'", method))
+                })?
+                .map_err(|e| {
+                    SongbirdError::network(format!(
+                        "HTTP request failed for '{}': {}",
+                        method, e
+                    ))
+                })?;
 
-                if !response.status().is_success() {
+                if !response.is_success() {
                     return Err(SongbirdError::network(format!(
                         "Method '{}' failed: {}",
                         method,
@@ -727,17 +737,23 @@ impl SecurityAdapter {
                 debug!("🌐 Using HTTP for trust evaluation (FALLBACK protocol)");
                 let url = format!("{}/api/v1/trust/evaluate", self.endpoint);
 
-                let response =
-                    client.post(&url).timeout(self.timeout).json(request).send().await.map_err(
-                        |e| {
-                            warn!("Failed to reach security provider for trust evaluation: {e}");
-                            SongbirdError::network(format!(
-                                "Failed to reach security provider: {e}"
+                // IpcHttpClient: .post() is async, returns Future<RequestBuilder>
+                // Pattern: await post(), then json(), then send().await
+                // IpcHttpClient: .post() returns RequestBuilder directly
+                let request_builder = client.post(&url).await;
+                
+                let response = request_builder
+                    .json(request)
+                    .map_err(|e| SongbirdError::serialization(e.to_string()))?
+                    .send().await.map_err(|e| {
+                    warn!("Failed to reach security provider for trust evaluation: {e}");
+                    SongbirdError::network(format!(
+                        "Failed to reach security provider: {e}"
                             ))
                         },
                     )?;
 
-                if !response.status().is_success() {
+                if !response.is_success() {
                     let status = response.status();
                     let body = response.text().await.unwrap_or_default();
                     warn!(
@@ -805,13 +821,13 @@ impl SecurityAdapter {
                 debug!("🌐 Using HTTP for identity (FALLBACK protocol)");
                 let url = format!("{}/api/v1/identity", self.endpoint);
 
-                let response =
-                    client.get(&url).timeout(self.timeout).send().await.map_err(|e| {
-                        warn!("Failed to reach security provider for identity: {e}");
-                        SongbirdError::network(format!("Failed to reach security provider: {e}"))
-                    })?;
+                // IpcHttpClient::get() returns Result<Response> directly (no .send() needed)
+                let response = client.get(&url).await.map_err(|e| {
+                    warn!("Failed to reach security provider for identity: {e}");
+                    SongbirdError::network(format!("Failed to reach security provider: {e}"))
+                })?;
 
-                if !response.status().is_success() {
+                if !response.is_success() {
                     let status = response.status();
                     let body = response.text().await.unwrap_or_default();
                     warn!("Security provider returned error for identity: {} - {}", status, body);

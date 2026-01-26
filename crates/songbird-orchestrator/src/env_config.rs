@@ -197,7 +197,7 @@ mod tests {
         std::env::remove_var("SONGBIRD_ORCHESTRATOR_FAMILY");
         std::env::remove_var("BIOMEOS_FAMILY_ID");
         std::env::remove_var("FAMILY_ID");
-        
+
         std::env::set_var("SONGBIRD_FAMILY_ID", "prod");
         let path = socket_path();
         std::env::remove_var("SONGBIRD_FAMILY_ID");

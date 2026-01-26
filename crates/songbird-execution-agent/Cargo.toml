@@ -43,8 +43,8 @@ uuid = { workspace = true, features = ["v4", "serde"] }
 # Process management
 nix = { version = "0.29", features = ["process", "signal"] }
 
-# HTTP client (for BearDog integration)
-reqwest = { workspace = true }
+# HTTP client (✅ 100% Pure Rust!)
+songbird-http-client = { path = "../songbird-http-client" }
 
 [dev-dependencies]
-reqwest = { workspace = true }
+songbird-http-client = { path = "../songbird-http-client" }

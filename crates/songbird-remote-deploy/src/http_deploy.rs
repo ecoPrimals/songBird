@@ -4,8 +4,8 @@
 //! method selection based on node capabilities.
 
 use anyhow::{anyhow, Result};
-use reqwest::{multipart, Client};
 use serde::{Deserialize, Serialize};
+use songbird_http_client::{Form, IpcHttpClient, Part};
 use std::collections::HashMap;
 use std::path::Path;
 use tokio::fs;
@@ -201,17 +201,14 @@ struct FinalizeRequest {
 pub async fn query_capabilities(tower_endpoint: &str) -> Result<DeploymentCapabilities> {
     debug!("📊 Querying capabilities from {}", tower_endpoint);
 
-    let client = Client::new();
+    let client = IpcHttpClient::new()
+        .await
+        .map_err(|e| anyhow!("Failed to create HTTP client: {}", e))?;
     let url = format!("{}/api/deployment/capabilities", tower_endpoint);
 
-    let response = client
-        .get(&url)
-        .timeout(std::time::Duration::from_secs(5))
-        .send()
-        .await
-        .map_err(|e| anyhow!("Failed to query capabilities: {}", e))?;
+    let response = client.get(&url).await.map_err(|e| anyhow!("Failed to query capabilities: {}", e))?;
 
-    if !response.status().is_success() {
+    if !response.is_success() {
         return Err(anyhow!("Capabilities query failed with status {}", response.status()));
     }
 
@@ -361,7 +358,9 @@ async fn deploy_via_http_chunked(
 
     info!("   Binary size: {:.2}MB", binary_size_mb);
 
-    let client = Client::new();
+    let client = IpcHttpClient::new()
+        .await
+        .map_err(|e| anyhow!("Failed to create HTTP client: {}", e))?;
 
     // Step 1: Negotiate
     info!("🤝 Step 1: Negotiating chunked upload...");
@@ -405,7 +404,7 @@ async fn deploy_via_http_chunked(
 
 /// Negotiate chunked upload with server
 async fn negotiate_chunked_upload(
-    client: &Client,
+    client: &IpcHttpClient,
     tower_endpoint: &str,
     binary_size_mb: f64,
     service_name: &str,
@@ -420,12 +419,13 @@ async fn negotiate_chunked_upload(
 
     let response = client
         .post(&url)
-        .json(&request)
+        .await
+        .json(&request)?
         .send()
         .await
         .map_err(|e| anyhow!("Negotiation request failed: {}", e))?;
 
-    if !response.status().is_success() {
+    if !response.is_success() {
         let status = response.status();
         let error_text = response.text().await.unwrap_or_else(|_| "Unknown error".to_string());
         return Err(anyhow!("Negotiation failed with status {}: {}", status, error_text));
@@ -441,7 +441,7 @@ async fn negotiate_chunked_upload(
 
 /// Upload a single chunk
 async fn upload_chunk(
-    client: &Client,
+    client: &IpcHttpClient,
     tower_endpoint: &str,
     negotiation_id: &str,
     chunk_index: usize,
@@ -449,19 +449,20 @@ async fn upload_chunk(
 ) -> Result<()> {
     let url = format!("{}/api/deployment/chunk/{}/{}", tower_endpoint, negotiation_id, chunk_index);
 
-    let form = multipart::Form::new().part(
+    let form = Form::new().part(
         "chunk",
-        multipart::Part::bytes(chunk_data.to_vec()).file_name(format!("chunk-{:04}", chunk_index)),
+        Part::bytes(chunk_data.to_vec()).file_name(format!("chunk-{:04}", chunk_index)),
     );
 
     let response = client
         .post(&url)
+        .await
         .multipart(form)
         .send()
         .await
         .map_err(|e| anyhow!("Chunk upload failed: {}", e))?;
 
-    if !response.status().is_success() {
+    if !response.is_success() {
         let status = response.status();
         let error_text = response.text().await.unwrap_or_else(|_| "Unknown error".to_string());
         return Err(anyhow!(
@@ -477,7 +478,7 @@ async fn upload_chunk(
 
 /// Finalize chunked upload
 async fn finalize_chunked_upload(
-    client: &Client,
+    client: &IpcHttpClient,
     tower_endpoint: &str,
     negotiation_id: &str,
     service_name: &str,
@@ -493,12 +494,13 @@ async fn finalize_chunked_upload(
 
     let response = client
         .post(&url)
-        .json(&request)
+        .await
+        .json(&request)?
         .send()
         .await
         .map_err(|e| anyhow!("Finalize request failed: {}", e))?;
 
-    if !response.status().is_success() {
+    if !response.is_success() {
         let status = response.status();
         let error_text = response.text().await.unwrap_or_else(|_| "Unknown error".to_string());
         return Err(anyhow!("Finalize failed with status {}: {}", status, error_text));
@@ -532,26 +534,29 @@ pub async fn deploy_via_http(
     info!("   Environment vars: {}", env_vars.len());
 
     // Build multipart form
-    let form = multipart::Form::new()
+    let form = Form::new()
         .text("service_name", service_name.to_string())
         .text("env_vars", serde_json::to_string(&env_vars)?)
         .text("auto_start", "true")
-        .part("binary", multipart::Part::bytes(binary_data).file_name(binary_filename.to_string()));
+        .part("binary", Part::bytes(binary_data).file_name(binary_filename.to_string()));
 
     // Send deployment request
-    let client = Client::new();
+    let client = IpcHttpClient::new()
+        .await
+        .map_err(|e| anyhow!("Failed to create HTTP client: {}", e))?;
     let url = format!("{}/api/deployment/binary", tower_endpoint);
 
     info!("📡 Sending deployment request to {}", url);
 
     let response = client
         .post(&url)
+        .await
         .multipart(form)
         .send()
         .await
         .map_err(|e| anyhow!("HTTP request failed: {}", e))?;
 
-    if !response.status().is_success() {
+    if !response.is_success() {
         let status = response.status();
         let error_text = response.text().await.unwrap_or_else(|_| "Unknown error".to_string());
         return Err(anyhow!("Deployment failed with status {}: {}", status, error_text));
@@ -575,13 +580,15 @@ pub async fn get_deployment_status(
     tower_endpoint: &str,
     deployment_id: &str,
 ) -> Result<DeploymentInfo> {
-    let client = Client::new();
+    let client = IpcHttpClient::new()
+        .await
+        .map_err(|e| anyhow!("Failed to create HTTP client: {}", e))?;
     let url = format!("{}/api/deployment/status/{}", tower_endpoint, deployment_id);
 
     let response =
-        client.get(&url).send().await.map_err(|e| anyhow!("HTTP request failed: {}", e))?;
+        client.get(&url).await.map_err(|e| anyhow!("HTTP request failed: {}", e))?;
 
-    if !response.status().is_success() {
+    if !response.is_success() {
         return Err(anyhow!("Failed to get deployment status: {}", response.status()));
     }
 
@@ -596,13 +603,15 @@ pub async fn get_deployment_status(
 /// Future: implement deployment lifecycle management
 #[allow(dead_code)]
 pub async fn stop_deployment(tower_endpoint: &str, deployment_id: &str) -> Result<()> {
-    let client = Client::new();
+    let client = IpcHttpClient::new()
+        .await
+        .map_err(|e| anyhow!("Failed to create HTTP client: {}", e))?;
     let url = format!("{}/api/deployment/{}", tower_endpoint, deployment_id);
 
     let response =
-        client.delete(&url).send().await.map_err(|e| anyhow!("HTTP request failed: {}", e))?;
+        client.delete(&url).await.map_err(|e| anyhow!("HTTP request failed: {}", e))?;
 
-    if !response.status().is_success() {
+    if !response.is_success() {
         return Err(anyhow!("Failed to stop deployment: {}", response.status()));
     }
 
@@ -616,13 +625,15 @@ pub async fn stop_deployment(tower_endpoint: &str, deployment_id: &str) -> Resul
 /// Future: implement deployment inventory
 #[allow(dead_code)]
 pub async fn list_deployments(tower_endpoint: &str) -> Result<Vec<DeploymentInfo>> {
-    let client = Client::new();
+    let client = IpcHttpClient::new()
+        .await
+        .map_err(|e| anyhow!("Failed to create HTTP client: {}", e))?;
     let url = format!("{}/api/deployment/list", tower_endpoint);
 
     let response =
-        client.get(&url).send().await.map_err(|e| anyhow!("HTTP request failed: {}", e))?;
+        client.get(&url).await.map_err(|e| anyhow!("HTTP request failed: {}", e))?;
 
-    if !response.status().is_success() {
+    if !response.is_success() {
         return Err(anyhow!("Failed to list deployments: {}", response.status()));
     }
 

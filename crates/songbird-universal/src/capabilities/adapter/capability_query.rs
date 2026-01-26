@@ -117,9 +117,8 @@ impl CapabilityQuery {
     /// HTTP query for capabilities
     async fn http_query_capabilities(endpoint: &str) -> Result<Vec<Capability>, CapabilityError> {
         // Create HTTP client
-        let client = reqwest::Client::builder()
-            .timeout(std::time::Duration::from_secs(5))
-            .build()
+        let client = songbird_http_client::IpcHttpClient::new()
+            .await
             .map_err(|e| CapabilityError::NetworkError(format!("HTTP client error: {}", e)))?;
 
         // Try different capability endpoint patterns
@@ -130,8 +129,8 @@ impl CapabilityQuery {
         ];
 
         for cap_endpoint in &capability_endpoints {
-            match client.get(cap_endpoint).send().await {
-                Ok(response) if response.status().is_success() => {
+            match client.get(cap_endpoint).await {
+                Ok(response) if response.is_success() => {
                     match response.json::<Vec<Capability>>().await {
                         Ok(capabilities) => return Ok(capabilities),
                         Err(e) => {

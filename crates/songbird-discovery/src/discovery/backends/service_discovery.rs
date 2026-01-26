@@ -11,6 +11,7 @@
 
 #![allow(async_fn_in_trait, clippy::unused_async, clippy::missing_errors_doc, clippy::unused_self)]
 use futures_util::Stream;
+use songbird_http_client::IpcHttpClient;
 use std::collections::HashMap;
 use std::pin::Pin;
 use tracing::{debug, info};
@@ -265,9 +266,14 @@ impl UniversalServiceDiscovery {
         // Try common service registry endpoints
         let test_paths = vec!["/v1/catalog/services", "/eureka/apps", "/api/v1/services"];
 
+        let client = match IpcHttpClient::new().await {
+            Ok(c) => c,
+            Err(_) => return false,
+        };
+
         for path in test_paths {
             let url = format!("{}{}", endpoint.trim_end_matches('/'), path);
-            if (reqwest::get(&url).await).is_ok() {
+            if client.get(&url).await.is_ok() {
                 return true;
             }
         }
@@ -377,6 +383,10 @@ impl UniversalServiceDiscovery {
         // This is a universal HTTP discovery that adapts to different registry APIs
         debug!("Discovering services from HTTP registry: {}", endpoint);
 
+        let client = IpcHttpClient::new()
+            .await
+            .map_err(|e| songbird_types::SongbirdError::network(format!("Failed to create HTTP client: {e}")))?;
+
         // Try different API endpoints
         let api_paths = vec![
             "/v1/catalog/services", // Consul
@@ -386,7 +396,7 @@ impl UniversalServiceDiscovery {
 
         for path in api_paths {
             let url = format!("{}{}", endpoint.trim_end_matches('/'), path);
-            if let Ok(response) = reqwest::get(&url).await {
+            if let Ok(response) = client.get(&url).await {
                 if let Ok(data) = response.json::<serde_json::Value>().await {
                     return self.parse_universal_service_response(&data);
                 }

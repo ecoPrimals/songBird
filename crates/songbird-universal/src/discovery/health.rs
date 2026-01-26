@@ -14,8 +14,7 @@ const HEALTH_PATHS: &[&str] = &["/health", "/api/v1/health", "/api/health", "/st
 pub struct HealthChecker {
     /// Timeout for health checks
     timeout: Duration,
-    /// HTTP client for health checks
-    client: reqwest::Client,
+    // Note: HTTP client created on-demand to support async initialization
 }
 
 impl HealthChecker {
@@ -23,10 +22,6 @@ impl HealthChecker {
     pub fn new(check_timeout: Duration) -> Self {
         Self {
             timeout: check_timeout,
-            client: reqwest::Client::builder()
-                .timeout(check_timeout)
-                .build()
-                .unwrap_or_else(|_| reqwest::Client::new()),
         }
     }
 
@@ -37,11 +32,17 @@ impl HealthChecker {
     ) -> Result<PrimalHealth, DiscoveryError> {
         let base_url = &primal.endpoint;
 
+        // Create client on-demand
+        let client = songbird_http_client::IpcHttpClient::new()
+            .await
+            .map_err(|e| DiscoveryError::NetworkError(format!("Failed to create HTTP client: {}", e)))?;
+
         for health_path in HEALTH_PATHS {
             let url = format!("{}{}", base_url, health_path);
 
-            match timeout(self.timeout, self.client.get(&url).send()).await {
-                Ok(Ok(response)) if response.status().is_success() => {
+            // Pass the future (not awaited) to timeout, then await the whole thing
+            match timeout(self.timeout, client.get(&url)).await {
+                Ok(Ok(response)) if response.is_success() => {
                     debug!("✅ Health check passed for {} at {}", primal.name, url);
                     primal.health = PrimalHealth::Healthy;
                     return Ok(PrimalHealth::Healthy);

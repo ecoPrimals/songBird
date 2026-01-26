@@ -129,29 +129,45 @@ impl BearDogClient {
 
     /// Create from environment variable
     /// Checks BEARDOG_MODE env var to determine mode:
-    /// - "direct" → Direct mode (BEARDOG_SOCKET)
-    /// - "neural" or default → Neural API mode (NEURAL_API_SOCKET)
+    /// - "direct" → Direct mode (BEARDOG_SOCKET) - DEPRECATED for production
+    /// - "neural" or default → Neural API mode (NEURAL_API_SOCKET) - TRUE PRIMAL pattern
     pub fn from_env() -> Self {
         let mode = std::env::var("BEARDOG_MODE").unwrap_or_else(|_| "neural".to_string());
 
         match mode.as_str() {
             "direct" => {
+                warn!("⚠️  BEARDOG_MODE=direct is DEPRECATED for production use");
+                warn!("⚠️  Direct mode bypasses Neural API semantic routing");
+                warn!("⚠️  Switch to BEARDOG_MODE=neural for TRUE PRIMAL architecture");
                 let socket = std::env::var("BEARDOG_SOCKET")
                     .unwrap_or_else(|_| "/tmp/beardog.sock".to_string());
-                info!("🔧 from_env(): DIRECT mode → {}", socket);
+                info!("🔧 from_env(): DIRECT mode (deprecated) → {}", socket);
                 Self::new_direct(socket)
             }
             _ => {
+                // Default to Neural API (TRUE PRIMAL pattern)
                 let socket = std::env::var("NEURAL_API_SOCKET")
+                    .or_else(|_| std::env::var("NEURALS_SOCKET"))
                     .unwrap_or_else(|_| "/tmp/neural-api-nat0.sock".to_string());
-                info!("🌐 from_env(): NEURAL API mode → {}", socket);
+                info!("🌐 from_env(): NEURAL API mode (TRUE PRIMAL) → {}", socket);
                 Self::new_neural_api(socket)
             }
         }
     }
 
     /// Map semantic capability names to actual BearDog method names
+    /// 
+    /// **DEPRECATED**: This mapping is only used in Direct mode for backward compatibility.
+    /// In production (Neural API mode), semantic translation is handled by Neural API's
+    /// capability registry, allowing BearDog to evolve its API independently.
+    /// 
+    /// This method will be removed in a future version when Direct mode is fully deprecated.
+    /// 
     /// (Used only in Direct mode)
+    #[deprecated(
+        since = "0.2.0",
+        note = "Use Neural API's capability.call for semantic routing in production. Direct mode is for testing only."
+    )]
     fn semantic_to_actual(&self, capability: &str) -> Result<&'static str> {
         Ok(match capability {
             // Crypto operations - map to BearDog's actual method names
@@ -1087,6 +1103,8 @@ impl BearDogClient {
                 socket_path,
             } => {
                 // DIRECT RPC to BearDog
+                // Note: Direct mode is deprecated for production use
+                #[allow(deprecated)]
                 let method = self.semantic_to_actual(capability)?;
 
                 let request = JsonRpcRequest {
@@ -1137,18 +1155,28 @@ impl BearDogClient {
             BearDogMode::NeuralApi {
                 socket_path,
             } => {
-                // VIA NEURAL API (existing logic)
+                // TRUE PRIMAL: Use capability.call for semantic routing
+                // Split semantic name into capability + operation
+                // e.g., "crypto.generate_keypair" → capability:"crypto", operation:"generate_keypair"
+                let parts: Vec<&str> = capability.split('.').collect();
+                let (cap, op) = if parts.len() >= 2 {
+                    (parts[0], parts[1..].join("."))
+                } else {
+                    ("crypto", capability.to_string())
+                };
+
                 let request = JsonRpcRequest {
                     jsonrpc: "2.0".to_string(),
                     method: "capability.call".to_string(),
                     params: json!({
-                        "capability": capability,
+                        "capability": cap,
+                        "operation": op,
                         "args": args
                     }),
                     id,
                 };
 
-                trace!("→ Neural API capability.call: {} (id={})", capability, id);
+                trace!("→ Neural API capability.call: {}.{} (id={})", cap, op, id);
 
                 // Connect to Neural API
                 let mut stream = UnixStream::connect(socket_path).await.map_err(|e| {
@@ -1335,7 +1363,7 @@ mod tests {
         std::env::remove_var("BEARDOG_MODE");
         std::env::remove_var("BEARDOG_SOCKET");
         std::env::remove_var("NEURAL_API_SOCKET");
-        
+
         std::env::set_var("BEARDOG_MODE", "direct");
         std::env::set_var("BEARDOG_SOCKET", "/tmp/test-beardog.sock");
 
@@ -1353,7 +1381,7 @@ mod tests {
         std::env::remove_var("BEARDOG_MODE");
         std::env::remove_var("BEARDOG_SOCKET");
         std::env::remove_var("NEURAL_API_SOCKET");
-        
+
         std::env::set_var("BEARDOG_MODE", "neural");
         std::env::set_var("NEURAL_API_SOCKET", "/tmp/test-neural.sock");
 

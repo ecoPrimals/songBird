@@ -6,12 +6,13 @@
 use anyhow::{Context, Result};
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
+use songbird_http_client::IpcHttpClient;
 
 /// Security capability client for cryptographic operations
 #[derive(Debug, Clone)]
 pub struct SecurityCapabilityClient {
     base_url: String,
-    http_client: reqwest::Client,
+    http_client: IpcHttpClient,
 }
 
 impl SecurityCapabilityClient {
@@ -24,9 +25,8 @@ impl SecurityCapabilityClient {
     pub async fn new() -> Result<Self> {
         let base_url = Self::discover_endpoint().await?;
 
-        let http_client = reqwest::Client::builder()
-            .timeout(std::time::Duration::from_secs(10))
-            .build()
+        let http_client = IpcHttpClient::new()
+            .await
             .context("Failed to create HTTP client")?;
 
         tracing::info!("🔐 Security capability client created for endpoint: {}", base_url);
@@ -38,11 +38,10 @@ impl SecurityCapabilityClient {
     }
 
     /// Create client with explicit endpoint
-    pub fn with_endpoint(endpoint: impl Into<String>) -> Result<Self> {
+    pub async fn with_endpoint(endpoint: impl Into<String>) -> Result<Self> {
         let base_url = endpoint.into();
-        let http_client = reqwest::Client::builder()
-            .timeout(std::time::Duration::from_secs(10))
-            .build()
+        let http_client = IpcHttpClient::new()
+            .await
             .context("Failed to create HTTP client")?;
 
         Ok(Self {
@@ -68,12 +67,13 @@ impl SecurityCapabilityClient {
         let response = self
             .http_client
             .post(&url)
-            .json(&request)
+            .await
+            .json(&request)?
             .send()
             .await
             .context("Failed to send sign request to BearDog")?;
 
-        if !response.status().is_success() {
+        if !response.is_success() {
             let status = response.status();
             let error_text = response.text().await.unwrap_or_default();
             anyhow::bail!("BearDog sign request failed ({}): {}", status, error_text);
@@ -107,12 +107,13 @@ impl SecurityCapabilityClient {
         let response = self
             .http_client
             .post(&url)
-            .json(&request)
+            .await
+            .json(&request)?
             .send()
             .await
             .context("Failed to send verify request to BearDog")?;
 
-        if !response.status().is_success() {
+        if !response.is_success() {
             let status = response.status();
             let error_text = response.text().await.unwrap_or_default();
             anyhow::bail!("BearDog verify request failed ({}): {}", status, error_text);
@@ -135,11 +136,10 @@ impl SecurityCapabilityClient {
         let response = self
             .http_client
             .get(&url)
-            .send()
             .await
             .context("Failed to fetch public key fingerprint from BearDog")?;
 
-        if !response.status().is_success() {
+        if !response.is_success() {
             // Fallback: Generate deterministic fingerprint from node_id
             tracing::warn!("Failed to fetch public key from BearDog, using deterministic fallback");
             return Ok(Self::generate_deterministic_fingerprint(node_id));
@@ -180,12 +180,13 @@ impl SecurityCapabilityClient {
         let response = self
             .http_client
             .post(&url)
-            .json(&request)
+            .await
+            .json(&request)?
             .send()
             .await
             .context("Failed to send create lineage request to BearDog")?;
 
-        if !response.status().is_success() {
+        if !response.is_success() {
             let status = response.status();
             let error_text = response.text().await.unwrap_or_default();
             anyhow::bail!("BearDog create lineage request failed ({}): {}", status, error_text);

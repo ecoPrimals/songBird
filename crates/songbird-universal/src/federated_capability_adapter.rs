@@ -95,9 +95,7 @@ impl Default for FederatedCapabilityAdapter {
 pub struct FederationClient {
     /// Base URL of the federation API (e.g., "<http://localhost:8080>")
     base_url: String,
-
-    /// HTTP client
-    client: reqwest::Client,
+    // Note: HTTP client created on-demand to support async initialization
 }
 
 impl FederationClient {
@@ -106,7 +104,6 @@ impl FederationClient {
     pub fn new(base_url: String) -> Self {
         Self {
             base_url,
-            client: reqwest::Client::new(),
         }
     }
 
@@ -125,15 +122,17 @@ impl FederationClient {
 
         debug!("📡 Querying federation services: {}", url);
 
-        let response = self
-            .client
+        // Create client on-demand
+        let client = songbird_http_client::IpcHttpClient::new()
+            .await
+            .map_err(|e| UniversalAdapterError::NetworkError(format!("Failed to create HTTP client: {}", e)))?;
+
+        let response = client
             .get(&url)
-            .timeout(std::time::Duration::from_secs(5))
-            .send()
             .await
             .map_err(|e| UniversalAdapterError::NetworkError(e.to_string()))?;
 
-        if !response.status().is_success() {
+        if !response.is_success() {
             return Err(UniversalAdapterError::NetworkError(format!(
                 "Federation API returned status: {}",
                 response.status()

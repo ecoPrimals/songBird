@@ -307,7 +307,8 @@ mod tests {
         init().unwrap();
 
         // Register and listen
-        let endpoint = register("test-primal-register-connect", vec!["test".to_string()]).await.unwrap();
+        let endpoint =
+            register("test-primal-register-connect", vec!["test".to_string()]).await.unwrap();
 
         let mut listener = listen(endpoint).await.unwrap();
 

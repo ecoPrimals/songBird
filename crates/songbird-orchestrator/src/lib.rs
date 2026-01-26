@@ -84,6 +84,7 @@ pub mod app;
 pub mod auth; // JWT authentication via BearDog delegation (Pure Rust!) (Jan 17, 2026)
 pub mod bin_interface; // ✅ UniBin public API (Jan 19, 2026)
 pub mod btsp_client; // BTSP Unix socket client for BearDog tunnels (Jan 16, 2026)
+pub mod capability_registration; // Neural API capability registration (TRUE PRIMAL) (Jan 25, 2026)
 pub mod cli;
 pub mod connections; // Progressive trust connection management (Jan 2026)
 pub mod consent_management;
@@ -151,4 +152,9 @@ pub use bin_interface::{
 // Re-export connection types (progressive trust)
 pub use connections::{
     Connection, FederatedConnection, FullTrustConnection, LimitedConnection, PeerConnection,
+};
+
+// Re-export capability registration (Neural API integration)
+pub use capability_registration::{
+    check_neural_api_available, register_capabilities, unregister_capabilities,
 };

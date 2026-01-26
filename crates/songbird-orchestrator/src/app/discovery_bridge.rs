@@ -270,7 +270,7 @@ impl SongbirdOrchestrator {
                                     let security_client =
                                         match SecurityCapabilityClient::from_endpoint(
                                             sec_endpoint.clone(),
-                                        ) {
+                                        ).await {
                                             Ok(client) => client,
                                             Err(e) => {
                                                 warn!(

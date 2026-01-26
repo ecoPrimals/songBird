@@ -3,6 +3,7 @@
 //! **ZERO HARDCODING**: Replaces hardcoded Toadstool references with capability-based compute discovery
 
 use serde::{Deserialize, Serialize};
+use songbird_http_client::IpcHttpClient;
 use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::RwLock;
@@ -145,12 +146,9 @@ impl AgnosticComputeCoordinator {
         );
 
         // Implement actual deployment via HTTP to compute provider
-        let client = reqwest::Client::builder()
-            .timeout(std::time::Duration::from_secs(30))
-            .build()
-            .map_err(|e| {
-                ComputeError::DeploymentFailed(format!("Failed to create HTTP client: {}", e))
-            })?;
+        let client = IpcHttpClient::new().await.map_err(|e| {
+            ComputeError::DeploymentFailed(format!("Failed to create HTTP client: {}", e))
+        })?;
 
         let deployment_request = serde_json::json!({
             "workload_id": workload.id,
@@ -160,8 +158,12 @@ impl AgnosticComputeCoordinator {
 
         let url = format!("{}/v1/deploy", provider.endpoint);
 
-        match client.post(&url).json(&deployment_request).send().await {
-            Ok(response) if response.status().is_success() => {
+        let request = client.post(&url).await.json(&deployment_request).map_err(|e| {
+            ComputeError::DeploymentFailed(format!("Failed to build request: {}", e))
+        })?;
+
+        match request.send().await {
+            Ok(response) if response.is_success() => {
                 // Parse deployment response
                 #[derive(serde::Deserialize)]
                 struct DeploymentResponse {

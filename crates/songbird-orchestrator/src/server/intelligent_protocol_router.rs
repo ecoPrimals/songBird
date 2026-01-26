@@ -323,10 +323,13 @@ impl IntelligentProtocolRouter {
         scores.sort_by(|a, b| b.1.cmp(&a.1));
 
         // Get best protocol
-        let (best_protocol, confidence, reason) = scores
-            .first()
-            .cloned()
-            .unwrap_or_else(|| ("json-rpc".to_string(), 50, "Default fallback (JSON-RPC first per wateringHole)".to_string()));
+        let (best_protocol, confidence, reason) = scores.first().cloned().unwrap_or_else(|| {
+            (
+                "json-rpc".to_string(),
+                50,
+                "Default fallback (JSON-RPC first per wateringHole)".to_string(),
+            )
+        });
 
         // Get alternatives
         let alternatives: Vec<String> = scores.iter().skip(1).map(|(p, _, _)| p.clone()).collect();

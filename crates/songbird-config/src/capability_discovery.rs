@@ -11,6 +11,7 @@
 //! 4. **Capability-Based**: Route by what you need, not who provides it
 
 use serde::{Deserialize, Serialize};
+use songbird_http_client::IpcHttpClient;
 use songbird_types::{SongbirdError, SongbirdResult};
 use std::collections::HashMap;
 use std::path::Path;
@@ -391,12 +392,14 @@ impl CapabilityDiscovery {
         debug!("Querying registry at {} for capability: {}", registry_endpoint, capability);
 
         // Query Songbird's capability registry
-        let client = reqwest::Client::new();
+        let client = IpcHttpClient::new().await.map_err(|e| {
+            SongbirdError::network(format!("Failed to create HTTP client: {e}"))
+        })?;
         let url = format!("{registry_endpoint}/api/capabilities/{capability}");
 
-        match client.get(&url).send().await {
+        match client.get(&url).await {
             Ok(response) => {
-                if response.status().is_success() {
+                if response.is_success() {
                     match response.json::<Vec<ServiceEndpoint>>().await {
                         Ok(endpoints) => {
                             info!(

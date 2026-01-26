@@ -46,9 +46,7 @@ songbird-bluetooth = { path = "../songbird-bluetooth", optional = true, features
 songbird-primal-coordination = { path = "../songbird-primal-coordination", optional = true }
 songbird-config = { path = "../songbird-config", optional = true }
 songbird-types = { path = "../songbird-types", optional = true }
-
-# HTTP client for BearDog communication (✅ Pure Rust TLS!)
-reqwest = { version = "0.11", features = ["json"], default-features = false }  # ✅ No TLS (Pure Rust!)
+songbird-http-client = { path = "../songbird-http-client" }  # ✅ 100% Pure Rust!
 
 # Cryptography
 sha2 = "0.10"

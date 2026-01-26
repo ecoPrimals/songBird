@@ -77,8 +77,9 @@ impl SecurityCapabilityClient {
     /// # Errors
     ///
     /// Returns error if endpoint URL is invalid or protocol cannot be determined
-    pub fn from_endpoint(endpoint: impl Into<String>) -> Result<Self> {
+    pub async fn from_endpoint(endpoint: impl Into<String>) -> Result<Self> {
         let adapter = SecurityAdapter::new(endpoint.into())
+            .await
             .context("Failed to create protocol-agnostic security adapter")?;
 
         // Create Pure Rust HTTP client for lineage methods (Phase 1.5) ✅
@@ -424,8 +425,8 @@ impl SecurityCapabilityClient {
 
     /// Backward compatibility: alias for from_endpoint
     #[deprecated(note = "Use from_endpoint instead for clarity")]
-    pub fn new(endpoint: impl Into<String>) -> Result<Self> {
-        Self::from_endpoint(endpoint)
+    pub async fn new(endpoint: impl Into<String>) -> Result<Self> {
+        Self::from_endpoint(endpoint).await
     }
 
     /// Get our current genetic lineage from security provider
@@ -554,10 +555,10 @@ impl SecurityCapabilityClient {
 mod tests {
     use super::*;
 
-    #[test]
-    fn test_client_creation() {
+    #[tokio::test]
+    async fn test_client_creation() {
         // No hardcoded endpoint! Discovered at runtime
-        let client = SecurityCapabilityClient::from_endpoint("http://discovered-security-provider");
+        let client = SecurityCapabilityClient::from_endpoint("http://discovered-security-provider").await;
         assert_eq!(client.unwrap().endpoint(), "http://discovered-security-provider");
     }
 }

@@ -3,6 +3,7 @@
 //! `BearDog` provides lineage (genetic) services to Songbird.
 
 use serde::{Deserialize, Serialize};
+use songbird_http_client::IpcHttpClient;
 
 /// Lineage provider interface
 ///
@@ -136,9 +137,8 @@ impl LineageChain {
         tracing::debug!("Verifying {} lineage signatures via BearDog", self.links.len());
 
         // Build HTTP client
-        let client = reqwest::Client::builder()
-            .timeout(std::time::Duration::from_secs(30))
-            .build()
+        let client = IpcHttpClient::new()
+            .await
             .map_err(|e| anyhow::anyhow!("Failed to build HTTP client: {e}"))?;
 
         // Verify each link's signature
@@ -151,12 +151,13 @@ impl LineageChain {
 
             let response = client
                 .post(format!("{beardog_endpoint}/api/v1/verify-signature"))
-                .json(&verify_request)
+                .await
+                .json(&verify_request)?
                 .send()
                 .await
                 .map_err(|e| anyhow::anyhow!("Signature verification request failed: {e}"))?;
 
-            if !response.status().is_success() {
+            if !response.is_success() {
                 tracing::warn!(
                     "Signature verification failed for link {}->{}: {}",
                     link.parent_id,

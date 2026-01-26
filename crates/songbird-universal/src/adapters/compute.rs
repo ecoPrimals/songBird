@@ -30,6 +30,7 @@
 
 use crate::JsonRpcClient;
 use serde::{Deserialize, Serialize};
+use songbird_http_client::IpcHttpClient;
 use songbird_types::{SafeEnv, SongbirdError, SongbirdResult};
 use std::time::Duration;
 use tracing::{debug, warn};
@@ -107,7 +108,7 @@ pub enum HealthStatus {
 enum Protocol {
     Tarpc(crate::TarpcClient), // PRIMARY - high-performance binary RPC
     JsonRpc(JsonRpcClient),    // SECONDARY - universal, port-free
-    Http(reqwest::Client),     // FALLBACK - network only
+    Http(IpcHttpClient),       // FALLBACK - network only
 }
 
 impl std::fmt::Debug for Protocol {
@@ -170,7 +171,7 @@ impl ComputeAdapter {
         match resolver.get_endpoint(CapabilityType::Compute).await {
             Ok(endpoint) => {
                 debug!("✅ Compute capability discovered via resolver: {}", endpoint);
-                Self::new(endpoint)
+                Self::new(endpoint).await
             }
             Err(discovery_err) => {
                 debug!("🔍 Primary discovery failed, trying legacy fallbacks: {}", discovery_err);
@@ -181,7 +182,7 @@ impl ComputeAdapter {
                     .or_else(|_| SafeEnv::get_required("TOADSTOOL_ENDPOINT"))
                 {
                     debug!("⚠️ Using legacy environment variable for compute endpoint");
-                    return Self::new(endpoint);
+                    return Self::new(endpoint).await;
                 }
 
                 // Fallback 2: Construct from host + port
@@ -194,7 +195,7 @@ impl ComputeAdapter {
                 let endpoint = format!("{host}:{port}");
 
                 debug!("🔄 Using fallback compute endpoint: {}", endpoint);
-                Self::new(endpoint)
+                Self::new(endpoint).await
             }
         }
     }
@@ -228,7 +229,7 @@ impl ComputeAdapter {
     /// # Errors
     ///
     /// Returns an error if the protocol client cannot be created.
-    pub fn new(endpoint: String) -> SongbirdResult<Self> {
+    pub async fn new(endpoint: String) -> SongbirdResult<Self> {
         // Protocol detection (v3.12.0 - tarpc PRIMARY)
         let protocol = if endpoint.starts_with("tarpc://") {
             debug!("🚀 Detected tarpc endpoint for compute (PRIMARY): {}", endpoint);
@@ -239,7 +240,7 @@ impl ComputeAdapter {
         } else {
             debug!("🌐 Detected HTTP endpoint for compute (FALLBACK): {}", endpoint);
             Protocol::Http(
-                reqwest::Client::builder().timeout(Duration::from_secs(10)).build().map_err(
+                IpcHttpClient::new().await.map_err(
                     |e| SongbirdError::configuration(format!("Failed to create HTTP client: {e}")),
                 )?,
             )
@@ -296,13 +297,13 @@ impl ComputeAdapter {
                 debug!("🌐 Using HTTP (FALLBACK protocol)");
                 let url = format!("{}/metrics/compute", self.endpoint);
 
-                let response =
-                    client.get(&url).timeout(self.timeout).send().await.map_err(|e| {
-                        warn!("Failed to reach compute service via HTTP: {e}");
-                        SongbirdError::network(format!("Failed to reach compute service: {e}"))
+                // IpcHttpClient::get() returns Result<Response> directly (no .send() needed)
+                let response = client.get(&url).await.map_err(|e| {
+                    warn!("Failed to reach compute service via HTTP: {e}");
+                    SongbirdError::network(format!("Failed to reach compute service: {e}"))
                     })?;
 
-                if !response.status().is_success() {
+                if !response.is_success() {
                     let status = response.status();
                     warn!("Compute service returned error status: {}", status);
                     return Err(SongbirdError::service(

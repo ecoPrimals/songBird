@@ -4,6 +4,7 @@
 
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
+use songbird_http_client::IpcHttpClient;
 use std::sync::Arc;
 
 use super::tunnel::{SecurityContext, TunnelHandle, TunnelStatus};
@@ -199,15 +200,14 @@ impl BtspProviderFactory {
     async fn query_local_upa_for_security_provider(&self) -> SongbirdResult<Option<String>> {
         // Query localhost:8080 (local Songbird UPA)
         // Note: Using HTTP (not HTTPS) for localhost discovery
-        let client = reqwest::Client::builder()
-            .timeout(std::time::Duration::from_secs(2))
-            .build()
+        let client = IpcHttpClient::new()
+            .await
             .map_err(|e| SongbirdError::network(format!("HTTP client creation failed: {e}")))?;
 
         let url = "https://localhost:8080/api/v1/services/query/security";
 
-        match client.get(url).send().await {
-            Ok(response) if response.status().is_success() => {
+        match client.get(url).await {
+            Ok(response) if response.is_success() => {
                 if let Ok(services) = response.json::<Vec<serde_json::Value>>().await {
                     // Find ANY primal with security capability and BTSP support
                     for service in services {
@@ -252,16 +252,15 @@ impl BtspProviderFactory {
     /// Probe a security provider endpoint to verify it's responsive
     async fn probe_security_provider_endpoint(&self, endpoint: &str) -> SongbirdResult<()> {
         // Note: Using HTTP (not HTTPS) for service discovery
-        let client = reqwest::Client::builder()
-            .timeout(std::time::Duration::from_millis(500))
-            .build()
+        let client = IpcHttpClient::new()
+            .await
             .map_err(|e| SongbirdError::network(format!("HTTP client creation failed: {e}")))?;
 
         // Try to hit a health endpoint
         let url = format!("{endpoint}/health");
 
-        match client.get(&url).send().await {
-            Ok(response) if response.status().is_success() => Ok(()),
+        match client.get(&url).await {
+            Ok(response) if response.is_success() => Ok(()),
             _ => Err(SongbirdError::service("security", "Endpoint probe failed")),
         }
     }

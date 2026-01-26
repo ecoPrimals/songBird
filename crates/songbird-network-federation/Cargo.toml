@@ -30,9 +30,8 @@ uuid = { workspace = true }
 thiserror = { workspace = true }
 anyhow = { workspace = true }
 
-# Networking (✅ 100% Pure Rust - No TLS!)
-# reqwest without TLS features = no C dependencies!
-reqwest = { version = "0.11", features = ["json"], default-features = false }
+# Networking (✅ 100% Pure Rust!)
+songbird-http-client = { path = "../songbird-http-client" }
 url = "2.5"
 
 # TLS/HTTPS support - REMOVED! Using songbird-tls instead (100% Pure Rust!)

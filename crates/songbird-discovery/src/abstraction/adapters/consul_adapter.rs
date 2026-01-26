@@ -7,6 +7,7 @@
 
 #![allow(async_fn_in_trait)]
 use futures::stream::{self, Stream};
+use songbird_http_client::IpcHttpClient;
 use std::any::Any;
 use std::collections::HashMap;
 use std::pin::Pin;
@@ -121,12 +122,12 @@ impl ProviderFactory for ConsulProviderFactory {
 pub struct ConsulProviderAdapter {
     metadata: ProviderMetadata,
     consul_url: String,
-    client: reqwest::Client,
+    client: IpcHttpClient,
 }
 
 impl ConsulProviderAdapter {
     /// Create new native consul adapter
-    pub fn new_native(id: String, consul_url: String) -> Self {
+    pub async fn new_native(id: String, consul_url: String) -> Result<Self> {
         // Determine protocol from URL
         let protocol = if consul_url.starts_with("https://") {
             "https"
@@ -163,11 +164,15 @@ impl ConsulProviderAdapter {
             load_score: 0.5, // Medium load score - configurable via ConsulConfig
         };
 
-        Self {
+        let client = IpcHttpClient::new()
+            .await
+            .map_err(|e| SongbirdError::network(format!("Failed to create HTTP client: {e}")))?;
+
+        Ok(Self {
             metadata,
             consul_url,
-            client: reqwest::Client::new(),
-        }
+            client,
+        })
     }
 
     /// Convert ServiceInfo to ServiceInstance for legacy backend

@@ -2,6 +2,7 @@
 
 use crate::{error::*, identity::*, physical_channels::*, types::*, witness::*};
 use chrono::Utc;
+use songbird_http_client::IpcHttpClient;
 use std::time::Duration;
 use tracing::{debug, info};
 use uuid::Uuid;
@@ -188,12 +189,9 @@ impl PrimalCoordinator {
         debug!("Requesting lineage from {} at {}", self.primal_name, self.endpoint);
 
         // Try HTTP request to primal's genesis endpoint
-        let client = reqwest::Client::builder()
-            .timeout(std::time::Duration::from_secs(10))
-            .build()
-            .map_err(|e| {
-                GenesisError::CoordinationFailed(format!("Failed to create HTTP client: {}", e))
-            })?;
+        let client = IpcHttpClient::new().await.map_err(|e| {
+            GenesisError::CoordinationFailed(format!("Failed to create HTTP client: {}", e))
+        })?;
 
         let request_body = serde_json::json!({
             "primal_name": self.primal_name,
@@ -204,8 +202,8 @@ impl PrimalCoordinator {
 
         let url = format!("{}/genesis/lineage", self.endpoint);
 
-        match client.post(&url).json(&request_body).send().await {
-            Ok(response) if response.status().is_success() => {
+        match client.post(&url).await.json(&request_body)?.send().await {
+            Ok(response) if response.is_success() => {
                 // Parse lineage response
                 #[derive(serde::Deserialize)]
                 struct LineageResponse {

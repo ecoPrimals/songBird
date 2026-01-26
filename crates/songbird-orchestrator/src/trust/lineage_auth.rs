@@ -375,7 +375,7 @@ impl LineageAuthenticator {
             security_endpoint
         );
 
-        let client = SecurityCapabilityClient::from_endpoint(security_endpoint)?;
+        let client = SecurityCapabilityClient::from_endpoint(security_endpoint).await?;
 
         // Try to get our local lineage
         if let Ok(Some(lineage_info)) = client.get_current_lineage().await {

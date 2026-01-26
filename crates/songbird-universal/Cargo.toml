@@ -33,7 +33,6 @@ async-trait = "0.1"
 chrono = { version = "0.4", features = ["serde"] } 
 futures = "0.3"
 rand = "0.8"
-reqwest = { version = "0.11", features = ["json"], default-features = false }  # ✅ No TLS (Pure Rust!)
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 thiserror = "1.0"
@@ -53,6 +52,7 @@ tokio-serde = { version = "0.8.0", features = ["bincode"] }
 songbird-config = { path = "../songbird-config" }
 # songbird-security-errors = { path = "../songbird-security-errors" }  # REMOVED: Using unified errors from songbird-types
 songbird-types = { path = "../songbird-types" }
+songbird-http-client = { path = "../songbird-http-client" }  # ✅ 100% Pure Rust!
 
 # Optional: Discovery backend dependencies
 mdns = { version = "3.0", optional = true }

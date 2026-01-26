@@ -153,6 +153,7 @@ pub async fn run_server(args: ServerArgs) -> Result<()> {
     tracing::info!("");
 
     // Step 4.5: Start IPC server if socket is provided (NEW for biomeOS integration)
+    let socket_path_for_registration = args.socket.clone(); // Clone for later use
     let ipc_handle = if let Some(socket_path) = args.socket {
         tracing::info!("🌐 Starting IPC Server (for biomeOS integration)...");
         tracing::info!("   Socket: {}", socket_path);
@@ -176,6 +177,18 @@ pub async fn run_server(args: ServerArgs) -> Result<()> {
         tracing::info!("💡 Tip: Use --socket /tmp/songbird-nat0.sock to enable IPC for biomeOS");
         None
     };
+
+    // Step 4.6: Register capabilities with Neural API (if available)
+    if socket_path_for_registration.is_some() {
+        tracing::info!("");
+        tracing::info!("🌟 Registering capabilities with Neural API...");
+        if let Err(e) = crate::capability_registration::register_capabilities().await {
+            tracing::warn!("⚠️  Failed to register capabilities: {}", e);
+            tracing::warn!("   Songbird will continue without Neural API registration");
+            tracing::warn!("   Direct socket connections will still work");
+        }
+    }
+
     tracing::info!("");
     tracing::info!("💡 Press Ctrl+C to stop gracefully");
 
@@ -207,6 +220,12 @@ pub async fn run_server(args: ServerArgs) -> Result<()> {
 
     // Step 7: Graceful shutdown
     tracing::info!("🧹 Stopping orchestrator components...");
+
+    // Unregister capabilities from Neural API (if registered)
+    if socket_path_for_registration.is_some() {
+        let _ = crate::capability_registration::unregister_capabilities().await;
+    }
+
     orchestrator.stop().await?;
     tracing::info!("   Orchestrator: ✅ Stopped");
 

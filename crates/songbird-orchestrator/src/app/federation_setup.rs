@@ -144,7 +144,7 @@ pub struct FederationSetup {
 ///
 /// - `Some(coordinator, config)` if federation enabled
 /// - `None` if federation disabled (standalone mode)
-pub fn setup_federation(
+pub async fn setup_federation(
     node_identity: &NodeIdentity,
     federation_state: Arc<FederationState>,
     options: FederationOptions,
@@ -223,11 +223,11 @@ pub fn setup_federation(
         info!("🔗 Will join federation via bootstrap: {}", bootstrap);
     }
 
-    // Create coordinator with state
-    let coordinator = Arc::new(FederationCoordinator::with_state(Arc::clone(&federation_state)));
+    // Create coordinator with state (with_state is now async and returns Result)
+    let coordinator = FederationCoordinator::with_state(Arc::clone(&federation_state)).await?;
 
     Ok(FederationSetup {
-        coordinator: Some(coordinator),
+        coordinator: Some(Arc::new(coordinator)),
         config: Some(config),
     })
 }
@@ -258,8 +258,8 @@ mod tests {
         assert!(memory < 1024, "Memory should be less than 1TB");
     }
 
-    #[test]
-    fn test_federation_setup_standalone_mode() {
+    #[tokio::test]
+    async fn test_federation_setup_standalone_mode() {
         // Modern pattern: explicit config via dependency injection
         // NO global state modification - fully concurrent!
         let options = FederationOptions::for_testing().enabled(false).build();
@@ -267,7 +267,7 @@ mod tests {
         let node_identity = NodeIdentity::new_or_load(None).expect("Failed to load identity");
         let federation_state = Arc::new(FederationState::new("test".to_string()));
 
-        let result = setup_federation(&node_identity, federation_state, options);
+        let result = setup_federation(&node_identity, federation_state, options).await;
         assert!(result.is_ok());
 
         let setup = result.unwrap();
@@ -275,8 +275,8 @@ mod tests {
         assert!(setup.config.is_none(), "Config should be None in standalone mode");
     }
 
-    #[test]
-    fn test_federation_setup_enabled() {
+    #[tokio::test]
+    async fn test_federation_setup_enabled() {
         // Modern pattern: explicit config via builder
         // Zero coupling to global environment!
         let options = FederationOptions::for_testing()
@@ -290,7 +290,7 @@ mod tests {
         let node_identity = NodeIdentity::new_or_load(None).expect("Failed to load identity");
         let federation_state = Arc::new(FederationState::new("test".to_string()));
 
-        let result = setup_federation(&node_identity, federation_state, options);
+        let result = setup_federation(&node_identity, federation_state, options).await;
         assert!(result.is_ok());
 
         let setup = result.unwrap();
@@ -313,8 +313,8 @@ mod tests {
         assert_eq!(config.rendezvous_url, Some("http://localhost:8001".to_string()));
     }
 
-    #[test]
-    fn test_federation_setup_uses_stable_identity() {
+    #[tokio::test]
+    async fn test_federation_setup_uses_stable_identity() {
         // Modern pattern: dependency injection
         // Multiple calls in parallel would work fine!
         let options = FederationOptions::for_testing()
@@ -329,9 +329,9 @@ mod tests {
         let federation_state = Arc::new(FederationState::new("test".to_string()));
 
         let setup1 =
-            setup_federation(&node_identity, Arc::clone(&federation_state), options.clone())
+            setup_federation(&node_identity, Arc::clone(&federation_state), options.clone()).await
                 .expect("First setup should succeed");
-        let setup2 = setup_federation(&node_identity, Arc::clone(&federation_state), options)
+        let setup2 = setup_federation(&node_identity, Arc::clone(&federation_state), options).await
             .expect("Second setup should succeed");
 
         // Both should have the same node_id (stable)

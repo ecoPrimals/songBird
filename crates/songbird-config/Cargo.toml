@@ -27,6 +27,7 @@ dns-sd = []
 
 [dependencies]
 songbird-types = { path = "../songbird-types" }
+songbird-http-client = { path = "../songbird-http-client" }  # ✅ 100% Pure Rust!
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 serde_yaml = "0.9"
@@ -44,7 +45,6 @@ num_cpus = "1.16"
 chrono = { version = "0.4", features = ["serde"] }
 url = "2.5"
 gethostname = "0.4"
-reqwest = { version = "0.11", features = ["json"], default-features = false }  # ✅ No TLS (Pure Rust!)
 hickory-resolver = "0.24"
 mdns-sd = "0.10"
 trust-dns-resolver = "0.23"

@@ -131,7 +131,7 @@ async fn fetch_identity_attestations(
     if let Ok(url) = crate::app::security_setup::discover_security_endpoint(None).await {
         info!("🔐 Fetching identity attestations from security provider: {}", url);
         let security_client =
-            crate::security_capability_client::SecurityCapabilityClient::from_endpoint(url);
+            crate::security_capability_client::SecurityCapabilityClient::from_endpoint(url).await;
 
         match security_client?.get_identity().await {
             Ok(identity) => {

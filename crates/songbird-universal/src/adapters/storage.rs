@@ -12,6 +12,7 @@
 
 use crate::JsonRpcClient;
 use serde::{Deserialize, Serialize};
+use songbird_http_client::IpcHttpClient;
 use songbird_types::{SafeEnv, SongbirdError, SongbirdResult};
 use std::time::Duration;
 use tracing::{debug, warn};
@@ -87,10 +88,11 @@ pub enum StorageHealth {
 }
 
 /// Protocol for communication (v3.12.0 - tarpc PRIMARY)
+/// Protocol for communication (v3.12.0 - tarpc PRIMARY)
 enum Protocol {
     Tarpc(crate::TarpcClient), // PRIMARY - high-performance binary RPC
     JsonRpc(JsonRpcClient),    // SECONDARY - universal, port-free
-    Http(reqwest::Client),     // FALLBACK - network only
+    Http(IpcHttpClient),       // FALLBACK - network only
 }
 
 impl std::fmt::Debug for Protocol {
@@ -154,7 +156,7 @@ impl StorageAdapter {
         match resolver.get_endpoint(CapabilityType::Storage).await {
             Ok(endpoint) => {
                 debug!("✅ Storage capability discovered via resolver: {}", endpoint);
-                Self::new(endpoint)
+                Self::new(endpoint).await
             }
             Err(discovery_err) => {
                 debug!("🔍 Primary discovery failed, trying legacy fallbacks: {}", discovery_err);
@@ -165,7 +167,7 @@ impl StorageAdapter {
                     .or_else(|_| SafeEnv::get_required("NESTGATE_ENDPOINT"))
                 {
                     debug!("⚠️ Using legacy environment variable for storage endpoint");
-                    return Self::new(endpoint);
+                    return Self::new(endpoint).await;
                 }
 
                 // Fallback 2: Construct from host + port
@@ -178,7 +180,7 @@ impl StorageAdapter {
                 let discovered_endpoint = format!("{endpoint}:{port}");
 
                 debug!("🔄 Using fallback storage endpoint: {}", discovered_endpoint);
-                Self::new(discovered_endpoint)
+                Self::new(discovered_endpoint).await
             }
         }
     }
@@ -197,7 +199,7 @@ impl StorageAdapter {
     /// # Errors
     ///
     /// Returns an error if the protocol client cannot be created.
-    pub fn new(endpoint: String) -> SongbirdResult<Self> {
+    pub async fn new(endpoint: String) -> SongbirdResult<Self> {
         // Protocol detection (v3.12.0 - tarpc PRIMARY)
         let protocol = if endpoint.starts_with("tarpc://") {
             debug!("🚀 Detected tarpc endpoint for storage (PRIMARY): {}", endpoint);
@@ -208,7 +210,7 @@ impl StorageAdapter {
         } else {
             debug!("🌐 Detected HTTP endpoint for storage (FALLBACK): {}", endpoint);
             Protocol::Http(
-                reqwest::Client::builder().timeout(Duration::from_secs(10)).build().map_err(
+                IpcHttpClient::new().await.map_err(
                     |e| SongbirdError::configuration(format!("Failed to create HTTP client: {e}")),
                 )?,
             )
@@ -265,13 +267,13 @@ impl StorageAdapter {
                 debug!("🌐 Using HTTP (FALLBACK protocol)");
                 let url = format!("{}/metrics/storage", self.endpoint);
 
-                let response =
-                    client.get(&url).timeout(self.timeout).send().await.map_err(|e| {
-                        warn!("Failed to reach storage capability provider via HTTP: {e}");
-                        SongbirdError::network(format!("Failed to reach storage provider: {e}"))
+                // IpcHttpClient::get() returns Result<Response> directly (no .send() needed)
+                let response = client.get(&url).await.map_err(|e| {
+                    warn!("Failed to reach storage capability provider via HTTP: {e}");
+                    SongbirdError::network(format!("Failed to reach storage provider: {e}"))
                     })?;
 
-                if !response.status().is_success() {
+                if !response.is_success() {
                     let status = response.status();
                     warn!("Storage capability provider returned error status: {}", status);
                     return Err(SongbirdError::service(

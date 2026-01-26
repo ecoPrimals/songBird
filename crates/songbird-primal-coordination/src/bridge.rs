@@ -4,6 +4,7 @@
 
 use crate::{error::Result, types::*};
 use async_trait::async_trait;
+use songbird_http_client::IpcHttpClient;
 use std::sync::Arc;
 use tokio::sync::RwLock;
 
@@ -56,16 +57,13 @@ impl PrimalConnection {
             self.connection_id
         );
 
-        // Build HTTP client with timeout
-        let client = reqwest::Client::builder()
-            .timeout(std::time::Duration::from_secs(30))
-            .build()
-            .map_err(|e| {
-                crate::error::PrimalCoordinationError::Internal(format!(
-                    "Failed to build HTTP client: {}",
-                    e
-                ))
-            })?;
+        // Build HTTP client
+        let client = IpcHttpClient::new().await.map_err(|e| {
+            crate::error::PrimalCoordinationError::Internal(format!(
+                "Failed to create HTTP client: {}",
+                e
+            ))
+        })?;
 
         // Determine endpoint path based on request type
         let path = match &request {
@@ -84,7 +82,7 @@ impl PrimalConnection {
         let url = format!("{}{}", self.endpoint, path);
 
         // Send POST request with JSON body
-        let response = client.post(&url).json(&request).send().await.map_err(|e| {
+        let response = client.post(&url).await.json(&request)?.send().await.map_err(|e| {
             crate::error::PrimalCoordinationError::Internal(format!(
                 "Network request failed: {}",
                 e
@@ -92,7 +90,7 @@ impl PrimalConnection {
         })?;
 
         // Check for HTTP errors
-        if !response.status().is_success() {
+        if !response.is_success() {
             return Err(crate::error::PrimalCoordinationError::Internal(format!(
                 "HTTP error: {}",
                 response.status()

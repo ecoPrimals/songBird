@@ -21,6 +21,7 @@
 use crate::traits::discovery::ServiceHealthStatus;
 use crate::traits::service::{ServiceInfo, ServiceStatus};
 use crate::traits::{ServiceDiscovery, ServiceEvent, ServiceQuery};
+use songbird_http_client::IpcHttpClient;
 use songbird_types::errors::SongbirdResult;
 use std::collections::HashMap;
 use std::pin::Pin;
@@ -394,10 +395,15 @@ impl UniversalContainerOrchestration {
         // Try common Kubernetes API endpoints
         let test_paths = vec!["/api/v1", "/apis", "/version"];
 
+        let client = match IpcHttpClient::new().await {
+            Ok(c) => c,
+            Err(_) => return false,
+        };
+
         for path in test_paths {
             let url = format!("{}{}", endpoint.trim_end_matches('/'), path);
             // In a real implementation, this would handle authentication
-            if (reqwest::get(&url).await).is_ok() {
+            if client.get(&url).await.is_ok() {
                 return true;
             }
         }

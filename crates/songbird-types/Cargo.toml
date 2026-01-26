@@ -16,7 +16,7 @@ categories = ["data-structures", "api-bindings", "development-tools"]
 workspace = true
 
 [features]
-default = ["serde", "chrono", "reqwest"]
+default = ["serde", "chrono"]
 serde = ["dep:serde", "dep:serde_json"]
 chrono = ["dep:chrono"]
 reqwest = ["dep:reqwest"]

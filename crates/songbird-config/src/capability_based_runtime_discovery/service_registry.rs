@@ -4,6 +4,7 @@
 //! Integrates with songbird-registry for dynamic service discovery.
 
 use super::{CapabilityProvider, CapabilityRequest, Protocol};
+use songbird_http_client::IpcHttpClient;
 use songbird_types::{SongbirdError, SongbirdResult};
 use std::collections::HashMap;
 use std::time::Duration;
@@ -106,19 +107,17 @@ impl ServiceRegistryDiscovery {
             self.registry_endpoint, request.capability
         );
 
-        // Use reqwest for HTTP queries (production-ready)
-        let client = reqwest::Client::builder()
-            .timeout(self.timeout)
-            .build()
+        // Use IpcHttpClient for HTTP queries (100% Pure Rust!)
+        let client = IpcHttpClient::new()
+            .await
             .map_err(|e| SongbirdError::network(format!("Failed to create HTTP client: {e}")))?;
 
         let response = client
             .get(&query_url)
-            .send()
             .await
             .map_err(|e| SongbirdError::network(format!("Registry query failed: {e}")))?;
 
-        if !response.status().is_success() {
+        if !response.is_success() {
             return Err(SongbirdError::discovery(format!(
                 "Registry returned error: {}",
                 response.status()

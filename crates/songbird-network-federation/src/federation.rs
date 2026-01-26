@@ -3,6 +3,7 @@
 //! **MODERN FEDERATION SYSTEM** ✅
 
 use serde::{Deserialize, Serialize};
+use songbird_http_client::IpcHttpClient;
 use songbird_types::{SongbirdError, SongbirdResult};
 use std::sync::Arc;
 use std::time::Duration;
@@ -18,7 +19,7 @@ use crate::state::{FederationState, NodeRegistration};
 #[derive(Clone)]
 pub struct FederationCoordinator {
     state: Arc<FederationState>,
-    client: reqwest::Client,
+    client: IpcHttpClient,
     rendezvous_client: Arc<RwLock<Option<Arc<RendezvousClient>>>>,
     beardog_provider: Arc<RwLock<Option<Box<dyn BearDogProvider>>>>,
 }
@@ -35,32 +36,39 @@ impl std::fmt::Debug for FederationCoordinator {
     }
 }
 
-impl Default for FederationCoordinator {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
 impl FederationCoordinator {
-    #[must_use]
-    pub fn new() -> Self {
-        Self {
+    /// Create a new federation coordinator
+    /// 
+    /// # Errors
+    /// Returns error if HTTP client creation fails
+    pub async fn new() -> SongbirdResult<Self> {
+        let client = IpcHttpClient::new()
+            .await
+            .map_err(|e| SongbirdError::network(format!("Failed to create HTTP client: {e}")))?;
+        
+        Ok(Self {
             state: Arc::new(FederationState::new("default".to_string())),
-            client: reqwest::Client::new(),
+            client,
             rendezvous_client: Arc::new(RwLock::new(None)),
             beardog_provider: Arc::new(RwLock::new(None)),
-        }
+        })
     }
 
     /// Create coordinator with existing state
-    #[must_use]
-    pub fn with_state(state: Arc<FederationState>) -> Self {
-        Self {
+    /// 
+    /// # Errors
+    /// Returns error if HTTP client creation fails
+    pub async fn with_state(state: Arc<FederationState>) -> SongbirdResult<Self> {
+        let client = IpcHttpClient::new()
+            .await
+            .map_err(|e| SongbirdError::network(format!("Failed to create HTTP client: {e}")))?;
+        
+        Ok(Self {
             state,
-            client: reqwest::Client::new(),
+            client,
             rendezvous_client: Arc::new(RwLock::new(None)),
             beardog_provider: Arc::new(RwLock::new(None)),
-        }
+        })
     }
 
     /// Check if `BearDog` is available
@@ -183,8 +191,9 @@ impl FederationCoordinator {
         let response = self
             .client
             .post(&url)
+            .await
             .json(registration)
-            .timeout(Duration::from_secs(10))
+            .map_err(|e| SongbirdError::network(format!("Failed to serialize request: {e}")))?
             .send()
             .await
             .map_err(|e| SongbirdError::Network {
@@ -193,7 +202,7 @@ impl FederationCoordinator {
                 suggestion: Some("Check bootstrap node is running and accessible".to_string()),
             })?;
 
-        if !response.status().is_success() {
+        if !response.is_success() {
             let status = response.status();
             return Err(SongbirdError::Network {
                 message: format!("Bootstrap node rejected join request: {status}"),
@@ -272,21 +281,24 @@ impl FederationCoordinator {
 
                         match client
                             .post(&url)
-                            .json(&heartbeat)
-                            .timeout(Duration::from_secs(5))
-                            .send()
                             .await
+                            .json(&heartbeat)
                         {
-                            Ok(resp) if resp.status().is_success() => {
-                                debug!("💓 Heartbeat sent to {}", node.node_name);
-                            }
-                            Ok(resp) => {
-                                warn!(
-                                    "⚠️  Heartbeat failed to {}: {}",
-                                    node.node_name,
-                                    resp.status()
-                                );
-                            }
+                            Ok(builder) => match builder.send().await {
+                                Ok(resp) if resp.is_success() => {
+                                    debug!("💓 Heartbeat sent to {}", node.node_name);
+                                }
+                                Ok(resp) => {
+                                    warn!(
+                                        "⚠️  Heartbeat failed to {}: {}",
+                                        node.node_name,
+                                        resp.status()
+                                    );
+                                }
+                                Err(e) => {
+                                    warn!("⚠️  Heartbeat send failed to {}: {e}", node.node_name);
+                                }
+                            },
                             Err(e) => {
                                 warn!("⚠️  Heartbeat error to {}: {}", node.node_name, e);
                             }

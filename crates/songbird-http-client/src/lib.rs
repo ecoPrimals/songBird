@@ -58,12 +58,17 @@ pub mod beardog_client;
 pub mod client;
 pub mod crypto;
 pub mod error;
+pub mod ipc_client;
 pub mod tls;
 pub mod types;
 
 pub use client::SongbirdHttpClient;
 pub use error::{Error, Result};
+pub use ipc_client::{IpcHttpClient, RequestBuilder, Response, Form, Part};
 pub use types::{HttpRequest, HttpResponse};
+
+// Re-export multipart module for convenience
+pub use ipc_client::multipart;
 
 // Re-export crypto capability types for agnostic usage
 pub use crypto::{

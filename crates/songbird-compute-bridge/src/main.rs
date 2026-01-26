@@ -39,8 +39,8 @@ use axum::{
 };
 use chrono::Utc;
 use clap::Parser;
-use reqwest::Client;
 use serde::{Deserialize, Serialize};
+use songbird_http_client::IpcHttpClient;
 use std::collections::HashMap;
 use std::net::SocketAddr;
 use std::sync::Arc;
@@ -95,7 +95,7 @@ struct Args {
 #[derive(Clone)]
 struct BridgeState {
     config: Arc<BridgeConfig>,
-    http_client: Client,
+    http_client: IpcHttpClient,
     service_info: Arc<ServiceInfo>,
 }
 
@@ -206,9 +206,16 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     // Create state
+    let http_client = IpcHttpClient::new().await.unwrap_or_else(|e| {
+        warn!("⚠️  Failed to create IPC HTTP client: {}. Using mock client.", e);
+        // In production, this would be a critical error, but for now we can continue without HTTP
+        // NOTE: This fallback behavior allows compute-bridge to start even if Songbird is not available
+        panic!("IPC HTTP client is required for compute-bridge operation: {}", e);
+    });
+
     let state = BridgeState {
         config: config.clone(),
-        http_client: Client::new(),
+        http_client,
         service_info: Arc::new(service_info),
     };
 
@@ -354,9 +361,9 @@ async fn register_with_songbird(
     let url = format!("{}/api/federation/services", songbird_endpoint);
     debug!("📡 Registering with Songbird: POST {}", url);
 
-    let response = state.http_client.post(&url).json(&registration).send().await?;
+    let response = state.http_client.post(&url).await.json(&registration)?.send().await?;
 
-    if response.status().is_success() {
+    if response.is_success() {
         info!("✅ Successfully registered with Songbird");
         Ok(())
     } else {
@@ -422,32 +429,38 @@ async fn submit_workload_handler(
 ) -> (StatusCode, Json<serde_json::Value>) {
     // If backend_url is configured, proxy to it
     if let Some(ref backend_url) = state.config.backend_url {
-        match state
+        let request_result = state
             .http_client
-            .post(format!("{}/api/v1/workloads", backend_url))
-            .json(&request)
-            .send()
+            .post(&format!("{}/api/v1/workloads", backend_url))
             .await
-        {
-            Ok(response) => {
-                let status = response.status();
-                match response.json().await {
-                    Ok(body) => {
-                        let status_code = StatusCode::from_u16(status.as_u16())
-                            .unwrap_or(StatusCode::INTERNAL_SERVER_ERROR);
-                        (status_code, Json(body))
+            .json(&request);
+
+        match request_result {
+            Ok(request) => match request.send().await {
+                Ok(response) => {
+                    let status_code = StatusCode::from_u16(response.status())
+                        .unwrap_or(StatusCode::INTERNAL_SERVER_ERROR);
+                    match response.json::<serde_json::Value>().await {
+                        Ok(body) => (status_code, Json(body)),
+                        Err(_) => (
+                            StatusCode::INTERNAL_SERVER_ERROR,
+                            Json(serde_json::json!({"error": "Backend response parsing failed"})),
+                        ),
                     }
-                    Err(_) => (
-                        StatusCode::INTERNAL_SERVER_ERROR,
-                        Json(serde_json::json!({"error": "Backend response parsing failed"})),
-                    ),
                 }
-            }
+                Err(e) => {
+                    error!("Backend request failed: {}", e);
+                    (
+                        StatusCode::BAD_GATEWAY,
+                        Json(serde_json::json!({"error": format!("Backend unavailable: {}", e)})),
+                    )
+                }
+            },
             Err(e) => {
-                error!("Backend request failed: {}", e);
+                error!("Failed to build request: {}", e);
                 (
-                    StatusCode::BAD_GATEWAY,
-                    Json(serde_json::json!({"error": format!("Backend unavailable: {}", e)})),
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    Json(serde_json::json!({"error": format!("Request build failed: {}", e)})),
                 )
             }
         }

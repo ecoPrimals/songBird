@@ -29,12 +29,10 @@ tracing = "0.1"
 # Time and UUIDs
 uuid = { version = "1", features = ["v4", "serde"] }
 
-# HTTP client (✅ Pure Rust TLS!)
-reqwest = { version = "0.12", features = ["json"], default-features = false }  # ✅ No TLS (Pure Rust!)
-
 # Internal dependencies
 songbird-types = { path = "../songbird-types" }
 songbird-discovery = { path = "../songbird-discovery" }
+songbird-http-client = { path = "../songbird-http-client" }  # ✅ 100% Pure Rust!
 
 [dev-dependencies]
 tokio-test = "0.4"

@@ -537,7 +537,7 @@ mod tests {
         // Arrange - Clear all env vars first
         std::env::remove_var("CRYPTO_SIGNING_ENDPOINT");
         std::env::remove_var("BEARDOG_SOCKET");
-        
+
         std::env::set_var("CRYPTO_SIGNING_ENDPOINT", "/test/beardog");
         let discovery = EnvCryptoDiscovery;
 

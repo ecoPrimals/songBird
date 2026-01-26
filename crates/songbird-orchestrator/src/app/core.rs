@@ -139,7 +139,7 @@ impl SongbirdOrchestrator {
             &node_identity,
             Arc::clone(&federation_state),
             super::federation_setup::FederationOptions::from_env(),
-        )?;
+        ).await?;
         let federation_coordinator = federation_setup.coordinator;
         let federation_config = federation_setup.config;
 
@@ -223,7 +223,7 @@ impl SongbirdOrchestrator {
             info!("🔐 Security provider configured: {}", url);
 
             // Query for identity
-            let security_client = SecurityCapabilityClient::from_endpoint(url);
+            let security_client = SecurityCapabilityClient::from_endpoint(url).await;
 
             match security_client?.get_identity().await {
                 Ok(identity) => {

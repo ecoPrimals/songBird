@@ -35,8 +35,7 @@ pub struct UnifiedUniversalAdapter {
     service_connections: Arc<RwLock<HashMap<String, ServiceConnection>>>,
     /// Adapter configuration
     config: UnifiedAdapterConfig,
-    /// HTTP client for service communication
-    http_client: reqwest::Client,
+    // Note: HTTP client created on-demand in methods to support async initialization
 }
 
 /// **UNIFIED**: Capability registry for discovered services
@@ -128,7 +127,7 @@ impl UnifiedUniversalAdapter {
             capability_registry: Arc::new(RwLock::new(CapabilityRegistry::default())),
             service_connections: Arc::new(RwLock::new(HashMap::new())),
             config,
-            http_client: reqwest::Client::new(),
+            // HTTP client created on-demand in methods
         }
     }
 
@@ -240,16 +239,22 @@ impl UnifiedUniversalAdapter {
     ) -> Result<UniversalResponse, UniversalAdapterError> {
         let url = format!("{}/api/v1/{}", service.endpoint, request.action);
 
-        let response = self
-            .http_client
-            .post(&url)
+        // Create HTTP client on-demand
+        let client = songbird_http_client::IpcHttpClient::new()
+            .await
+            .map_err(|e| UniversalAdapterError::NetworkError(format!("Failed to create HTTP client: {}", e)))?;
+
+        // IpcHttpClient::post() returns RequestBuilder directly
+        let request_builder = client.post(&url).await;
+        
+        let response = request_builder
             .json(&request)
-            .timeout(self.config.discovery_timeout)
+            .map_err(|e| UniversalAdapterError::NetworkError(e.to_string()))?
             .send()
             .await
             .map_err(|e| UniversalAdapterError::NetworkError(e.to_string()))?;
 
-        if response.status().is_success() {
+        if response.is_success() {
             let universal_response: UniversalResponse = response
                 .json()
                 .await
@@ -267,15 +272,17 @@ impl UnifiedUniversalAdapter {
     ) -> Result<Vec<ServiceInfo>, UniversalAdapterError> {
         debug!("Discovering services from endpoint: {}", endpoint);
 
-        let response = self
-            .http_client
+        // Create HTTP client on-demand
+        let client = songbird_http_client::IpcHttpClient::new()
+            .await
+            .map_err(|e| UniversalAdapterError::NetworkError(format!("Failed to create HTTP client: {}", e)))?;
+
+        let response = client
             .get(endpoint)
-            .timeout(self.config.discovery_timeout)
-            .send()
             .await
             .map_err(|e| UniversalAdapterError::NetworkError(e.to_string()))?;
 
-        if response.status().is_success() {
+        if response.is_success() {
             let services: Vec<ServiceInfo> = response
                 .json()
                 .await
