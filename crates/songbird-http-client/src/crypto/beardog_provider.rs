@@ -721,13 +721,20 @@ impl CryptoCapability for BearDogProvider {
         &self,
         base_key: &[u8],
         transcript_hash: &[u8],
+        cipher_suite: u16,
     ) -> Result<Vec<u8>> {
+        debug!(
+            "🔐 tls_compute_finished_verify_data: cipher=0x{:04x}, hash={} bytes",
+            cipher_suite, transcript_hash.len()
+        );
+        
         let result = self
             .call(
                 "tls.compute_finished_verify_data",
                 json!({
                     "base_key": BASE64_STANDARD.encode(base_key),
-                    "transcript_hash": BASE64_STANDARD.encode(transcript_hash)
+                    "transcript_hash": BASE64_STANDARD.encode(transcript_hash),
+                    "cipher_suite": cipher_suite
                 }),
             )
             .await?;
