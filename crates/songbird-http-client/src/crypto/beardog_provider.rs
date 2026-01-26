@@ -783,9 +783,10 @@ mod tests {
             provider.method_to_capability("crypto.sha256"),
             ("crypto", "sha256")
         );
+        // Fixed: Keep full method names for Neural API semantic translation
         assert_eq!(
             provider.method_to_capability("tls.derive_handshake_secrets"),
-            ("tls_crypto", "derive_secrets")
+            ("tls_crypto", "derive_handshake_secrets")
         );
     }
 
