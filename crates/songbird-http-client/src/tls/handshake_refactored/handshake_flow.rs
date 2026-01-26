@@ -748,12 +748,12 @@ impl TlsHandshake {
         // - Handshake traffic secrets: For decrypting handshake messages (EncryptedExtensions, Certificate, etc.)
         // - Application traffic secrets: For encrypting HTTP data (requires transcript hash!)
         info!(
-            "Step 11: Deriving TLS application traffic secrets via BearDog (WITH transcript hash)"
+            "Step 11: Deriving TLS application traffic secrets via BearDog (WITH transcript hash, cipher: 0x{:04x})", self.cipher_suite
         );
         let derive_start = std::time::Instant::now();
         let secrets = self
             .crypto
-            .tls_derive_application_secrets(&handshake_keys.handshake_secret, &transcript_hash)
+            .tls_derive_application_secrets(&handshake_keys.handshake_secret, &transcript_hash, self.cipher_suite)
             .await
             .map_err(|e| {
                 error!("❌ BearDog TLS application secret derivation failed: {}", e);

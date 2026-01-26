@@ -658,22 +658,27 @@ impl CryptoCapability for BearDogProvider {
         &self,
         handshake_secret: &[u8],
         transcript_hash: &[u8],
+        cipher_suite: u16,
     ) -> Result<TlsApplicationSecrets> {
+        info!("🔑 Deriving TLS 1.3 application secrets (cipher suite: 0x{:04x})", cipher_suite);
         let result = self
             .call(
                 "tls.derive_application_secrets",
                 json!({
                     "handshake_secret": BASE64_STANDARD.encode(handshake_secret),
-                    "transcript_hash": BASE64_STANDARD.encode(transcript_hash)
+                    "transcript_hash": BASE64_STANDARD.encode(transcript_hash),
+                    "cipher_suite": cipher_suite
                 }),
             )
             .await?;
 
+        // BearDog returns shorter field names per RFC 8446 terminology:
+        // - client_application_secret (not client_application_traffic_secret)
         Ok(TlsApplicationSecrets {
             client_traffic_secret: self
-                .extract_b64_field(&result, "client_application_traffic_secret")?,
+                .extract_b64_field(&result, "client_application_secret")?,
             server_traffic_secret: self
-                .extract_b64_field(&result, "server_application_traffic_secret")?,
+                .extract_b64_field(&result, "server_application_secret")?,
             client_write_key: self.extract_b64_field(&result, "client_write_key")?,
             client_write_iv: self.extract_b64_field(&result, "client_write_iv")?,
             server_write_key: self.extract_b64_field(&result, "server_write_key")?,

@@ -1066,7 +1066,7 @@ impl TlsHandshake {
         let derive_start = std::time::Instant::now();
         let secrets = self
             .crypto
-            .tls_derive_application_secrets(&handshake_keys.handshake_secret, &transcript_hash)
+            .tls_derive_application_secrets(&handshake_keys.handshake_secret, &transcript_hash, self.cipher_suite)
             .await
             .map_err(|e| {
                 error!("❌ BearDog TLS application secret derivation failed: {}", e);

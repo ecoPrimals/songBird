@@ -235,10 +235,12 @@ pub trait CryptoCapability: Send + Sync + std::fmt::Debug {
     /// Derive TLS 1.3 application secrets
     ///
     /// RFC 8446 Section 7.1: Key Schedule
+    /// cipher_suite is required to derive correct key lengths (16 bytes for AES-128, 32 for AES-256/ChaCha)
     async fn tls_derive_application_secrets(
         &self,
         handshake_secret: &[u8],
         transcript_hash: &[u8],
+        cipher_suite: u16,
     ) -> Result<TlsApplicationSecrets>;
 
     /// Compute TLS 1.3 Finished verify_data
