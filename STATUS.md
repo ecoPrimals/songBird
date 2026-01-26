@@ -107,14 +107,16 @@ Songbird                    BearDog
 - `handshake_refactored/*.rs`: 1 safe (SystemTime) ✅
 - Most unwraps in deprecated/test code ✅
 
-**Test Coverage**: 809+ tests passing
+**Test Coverage**: 1,420+ tests passing (core crates)
 
 | Crate | Passed | Status |
 |-------|--------|--------|
 | songbird-http-client | 226 | ✅ |
+| songbird-orchestrator | 573 | ✅ (flaky fixed!) |
+| songbird-config | 385 | ✅ |
+| songbird-types | 225 | ✅ |
 | songbird-genesis | 12 | ✅ |
-| songbird-orchestrator | 571 | ✅ (2 flaky) |
-| songbird-universal | - | ⚠️ 58 async errors |
+| songbird-universal | - | ⚠️ 58 async errors (deferred) |
 
 ### Phase 2: TLS Server Mode (Future)
 

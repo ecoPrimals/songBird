@@ -177,8 +177,14 @@ mod tests {
 
     #[tokio::test]
     async fn test_security_setup_with_explicit_endpoint() {
-        // Set explicit endpoint
-        std::env::set_var("SECURITY_ENDPOINT", "https://security provider.local:8443");
+        // Clear ALL higher-priority vars to ensure SECURITY_ENDPOINT is used
+        std::env::remove_var("SONGBIRD_SECURITY_PROVIDER");
+        std::env::remove_var("SECURITY_ENDPOINT");
+        std::env::remove_var("SONGBIRD_BEARDOG_URL");
+        std::env::remove_var("CAPABILITY_SECURITY_ENDPOINT");
+        
+        // Set explicit endpoint (Priority 2)
+        std::env::set_var("SECURITY_ENDPOINT", "https://security-provider.local:8443");
 
         let result = setup_security().await;
         assert!(result.is_ok());
