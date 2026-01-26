@@ -104,10 +104,12 @@ async fn test_adapter_creation() {
    - Convert `#[test]` to `#[tokio::test]`
    - Add `.await` to adapter constructors
 
-### P2 (Lower Priority)
-1. `handshake_flow.rs` refactor (1,370 lines)
-   - Consider extracting message processing
-   - Keep debug logging for now
+### P2 (Analyzed - No Action Needed)
+1. `handshake_flow.rs` (1,370 lines) - **ACCEPTABLE**
+   - 327 log lines (24%) - essential for TLS debugging
+   - RFC 8446 state machine - complexity is inherent
+   - Already modular (transcript, extensions, record_io extracted)
+   - Further splitting would hurt debuggability without benefit
 
 ### P3 (Deferred)
 1. sqlx → redb Pure Rust storage
