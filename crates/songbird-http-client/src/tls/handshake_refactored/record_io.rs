@@ -50,6 +50,29 @@ impl TlsHandshake {
 
         // Validate content type
         if !(20..=23).contains(&content_type) {
+            // Special detection for HTTP responses (server not using TLS)
+            // 0x48 = 'H' (start of "HTTP/1.1"), 0x47 = 'G' (start of "GET"), etc.
+            if content_type == 0x48 || content_type == 0x47 {
+                // Read more bytes to show what was received
+                let mut more_data = vec![0u8; 50];
+                let _ = stream.read(&mut more_data).await;
+                let combined: Vec<u8> = header.iter().chain(more_data.iter()).cloned().collect();
+                let as_str = String::from_utf8_lossy(&combined);
+                
+                error!("❌ Received HTTP response instead of TLS!");
+                error!("   Content type 0x{:02x} = ASCII '{}'", content_type, content_type as char);
+                error!("   First 50 bytes: {:?}", as_str.trim());
+                error!("   This usually means:");
+                error!("     1. Connected to port 80 instead of 443");
+                error!("     2. Server redirected to HTTP");
+                error!("     3. Server doesn't support TLS");
+                
+                return Err(Error::TlsHandshake(format!(
+                    "Server responded with HTTP instead of TLS (got '{}'). Check port and URL.",
+                    as_str.chars().take(30).collect::<String>()
+                )));
+            }
+            
             error!("❌ Invalid TLS content type: {:#04x}", content_type);
             return Err(Error::TlsHandshake(format!(
                 "Invalid TLS content type: {:#04x}",

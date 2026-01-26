@@ -134,10 +134,18 @@ impl SongbirdHttpClient {
             80
         });
 
-        debug!("Connecting to {}:{}", host, port);
+        // Enhanced logging for debugging port issues
+        info!("🔌 Connection details:");
+        info!("   URL: {}", url);
+        info!("   Scheme: {}", scheme);
+        info!("   Host: {}", host);
+        info!("   Port: {} ({})", port, if uri.port_u16().is_some() { "explicit" } else { "default" });
 
         // For HTTPS, perform TLS handshake (TCP connection created inside with fallback)
         if scheme == "https" {
+            if port != 443 {
+                warn!("⚠️  Non-standard HTTPS port: {} (expected 443)", port);
+            }
             return self.https_request(host, port, &uri, method, headers, body).await;
         }
 
@@ -432,7 +440,20 @@ impl SongbirdHttpClient {
             // This prevents reading stale buffered data from previous attempts.
             let mut tcp_stream = match TcpStream::connect(addr).await {
                 Ok(stream) => {
-                    debug!("✅ Fresh TCP connection established to {}", addr);
+                    // Log connection details for debugging
+                    let local = stream.local_addr().map(|a| a.to_string()).unwrap_or_else(|_| "unknown".into());
+                    let peer = stream.peer_addr().map(|a| a.to_string()).unwrap_or_else(|_| "unknown".into());
+                    info!("✅ TCP connection established:");
+                    info!("   Local: {}", local);
+                    info!("   Remote: {} (expected: {})", peer, addr);
+                    
+                    // Verify we connected to the right port
+                    if let Ok(peer_addr) = stream.peer_addr() {
+                        if peer_addr.port() != 443 && addr.contains(":443") {
+                            warn!("⚠️  Connected to port {} but expected 443!", peer_addr.port());
+                        }
+                    }
+                    
                     stream
                 }
                 Err(e) => {
