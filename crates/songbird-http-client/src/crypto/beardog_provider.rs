@@ -15,7 +15,7 @@ use serde_json::{json, Value};
 use std::sync::atomic::{AtomicU64, Ordering};
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::UnixStream;
-use tracing::{debug, error, info, trace, warn};
+use tracing::{debug, info, trace, warn};
 
 use super::capability::{CryptoCapability, TlsApplicationSecrets, TlsHandshakeSecrets};
 use crate::error::{Error, Result};
