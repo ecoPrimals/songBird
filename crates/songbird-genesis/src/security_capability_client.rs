@@ -320,10 +320,10 @@ mod tests {
 
     #[tokio::test]
     async fn test_client_creation_with_explicit_endpoint() {
-        let client = SecurityCapabilityClient::with_endpoint("http://localhost:9999");
+        let client = SecurityCapabilityClient::with_endpoint("http://localhost:9999").await;
         assert!(client.is_ok());
 
-        let client = client.unwrap();
+        let client = client.expect("Failed to create client");
         assert_eq!(client.base_url, "http://localhost:9999");
     }
 }
