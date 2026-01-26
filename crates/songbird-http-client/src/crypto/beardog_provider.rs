@@ -48,22 +48,37 @@ struct JsonRpcError {
     data: Option<Value>,
 }
 
+/// Routing mode for BearDog provider
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum RoutingMode {
+    /// Direct RPC to BearDog (testing)
+    Direct,
+    /// Route through Neural API with capability.call (production)
+    NeuralApi,
+}
+
 /// BearDog implementation of CryptoCapability
 ///
 /// Communicates with BearDog via JSON-RPC 2.0 over Unix sockets.
 /// All cryptographic operations are delegated to BearDog.
+///
+/// Supports dual-mode routing:
+/// - Direct mode: Direct RPC calls to BearDog
+/// - Neural API mode: Uses capability.call for semantic routing
 #[derive(Debug)]
 pub struct BearDogProvider {
     socket_path: String,
     request_id: AtomicU64,
+    mode: RoutingMode,
 }
 
 impl BearDogProvider {
-    /// Create new BearDog provider with explicit socket path
+    /// Create new BearDog provider with explicit socket path (Direct mode)
     pub fn new(socket_path: impl Into<String>) -> Self {
         Self {
             socket_path: socket_path.into(),
             request_id: AtomicU64::new(1),
+            mode: RoutingMode::Direct,
         }
     }
 
@@ -86,15 +101,23 @@ impl BearDogProvider {
                 let socket = std::env::var("BEARDOG_SOCKET")
                     .unwrap_or_else(|_| "/tmp/beardog.sock".to_string());
                 info!("🔧 BearDog provider: DIRECT mode → {}", socket);
-                Self::new(socket)
+                Self {
+                    socket_path: socket,
+                    request_id: AtomicU64::new(1),
+                    mode: RoutingMode::Direct,
+                }
             }
             _ => {
                 // Default to Neural API (TRUE PRIMAL pattern)
                 let socket = std::env::var("NEURAL_API_SOCKET")
                     .or_else(|_| std::env::var("NEURALS_SOCKET"))
                     .unwrap_or_else(|_| "/tmp/neural-api-nat0.sock".to_string());
-                info!("🌐 BearDog provider: NEURAL API mode → {}", socket);
-                Self::new(socket)
+                info!("🌐 BearDog provider: NEURAL API mode (capability.call) → {}", socket);
+                Self {
+                    socket_path: socket,
+                    request_id: AtomicU64::new(1),
+                    mode: RoutingMode::NeuralApi,
+                }
             }
         }
     }
@@ -104,24 +127,46 @@ impl BearDogProvider {
         &self.socket_path
     }
 
-    /// Make JSON-RPC call to BearDog
+    /// Make JSON-RPC call to BearDog (or via Neural API)
     async fn call(&self, method: &str, params: Value) -> Result<Value> {
         let id = self.request_id.fetch_add(1, Ordering::SeqCst);
 
-        // Map semantic method names to BearDog's actual method names
-        let actual_method = self.semantic_to_actual(method);
-
-        let request = JsonRpcRequest {
-            jsonrpc: "2.0".to_string(),
-            method: actual_method.to_string(),
-            params,
-            id,
+        let request = match self.mode {
+            RoutingMode::Direct => {
+                // Direct mode: Map semantic names to BearDog's actual method names
+                let actual_method = self.semantic_to_actual(method);
+                JsonRpcRequest {
+                    jsonrpc: "2.0".to_string(),
+                    method: actual_method.to_string(),
+                    params,
+                    id,
+                }
+            }
+            RoutingMode::NeuralApi => {
+                // Neural API mode: Use capability.call for semantic routing
+                let (capability, operation) = self.method_to_capability(method);
+                
+                trace!("🌐 Neural API: capability.call({}, {})", capability, operation);
+                
+                JsonRpcRequest {
+                    jsonrpc: "2.0".to_string(),
+                    method: "capability.call".to_string(),
+                    params: json!({
+                        "capability": capability,
+                        "operation": operation,
+                        "args": params
+                    }),
+                    id,
+                }
+            }
         };
 
         let request_json = serde_json::to_string(&request)
             .map_err(|e| Error::BearDogRpc(format!("Failed to serialize request: {}", e)))?;
 
-        trace!("BearDog RPC request: {}", request_json);
+        trace!("BearDog RPC request ({}): {}", 
+            if self.mode == RoutingMode::NeuralApi { "Neural API" } else { "Direct" },
+            request_json);
 
         // Connect to BearDog
         let mut stream = UnixStream::connect(&self.socket_path).await.map_err(|e| {
@@ -166,7 +211,49 @@ impl BearDogProvider {
         response.result.ok_or_else(|| Error::BearDogRpc("BearDog returned null result".to_string()))
     }
 
-    /// Map semantic method names to BearDog's actual method names
+    /// Map semantic method names to (capability, operation) pairs for Neural API
+    ///
+    /// This mapping enables TRUE PRIMAL loose coupling via capability.call.
+    /// Neural API will translate these semantic names to actual BearDog methods
+    /// using the graph in tower_atomic_bootstrap.toml.
+    fn method_to_capability(&self, method: &str) -> (&'static str, &'static str) {
+        match method {
+            // Key exchange
+            "crypto.generate_keypair" => ("crypto", "generate_keypair"),
+            "crypto.ecdh_derive" => ("crypto", "derive_secret"),
+
+            // AEAD Encryption
+            "crypto.encrypt_aes_128_gcm" => ("crypto", "encrypt"),
+            "crypto.encrypt_aes_256_gcm" => ("crypto", "encrypt"),
+            "crypto.encrypt_chacha20_poly1305" => ("crypto", "encrypt"),
+            
+            // AEAD Decryption
+            "crypto.decrypt_aes_128_gcm" => ("crypto", "decrypt"),
+            "crypto.decrypt_aes_256_gcm" => ("crypto", "decrypt"),
+            "crypto.decrypt_chacha20_poly1305" => ("crypto", "decrypt"),
+
+            // Hashing
+            "crypto.sha256" => ("crypto", "sha256"),
+            "crypto.sha384" => ("crypto", "sha384"),
+
+            // HKDF
+            "crypto.hkdf_extract" => ("crypto", "hkdf_extract"),
+            "crypto.hkdf_expand" => ("crypto", "hkdf_expand"),
+
+            // TLS specific
+            "tls.derive_handshake_secrets" => ("tls_crypto", "derive_secrets"),
+            "tls.derive_application_secrets" => ("tls_crypto", "derive_secrets"),
+            "tls.compute_finished_verify_data" => ("tls_crypto", "compute_finished"),
+
+            // Default: unknown operation
+            _ => {
+                warn!("Unknown method for capability mapping: {}, using generic operation", method);
+                ("crypto", "unknown")
+            }
+        }
+    }
+
+    /// Map semantic method names to BearDog's actual method names (Direct mode only)
     fn semantic_to_actual<'a>(&self, method: &'a str) -> &'a str {
         match method {
             // Key exchange
@@ -641,6 +728,7 @@ mod tests {
         let provider = BearDogProvider::new("/tmp/beardog.sock");
         assert_eq!(provider.name(), "BearDog");
         assert_eq!(provider.socket_path(), "/tmp/beardog.sock");
+        assert_eq!(provider.mode, RoutingMode::Direct);
     }
 
     #[test]
@@ -652,5 +740,47 @@ mod tests {
             "x25519_generate_ephemeral"
         );
         assert_eq!(provider.semantic_to_actual("crypto.ecdh_derive"), "x25519_diffie_hellman");
+    }
+
+    #[test]
+    fn test_capability_mapping() {
+        let provider = BearDogProvider::new("/tmp/beardog.sock");
+
+        assert_eq!(
+            provider.method_to_capability("crypto.generate_keypair"),
+            ("crypto", "generate_keypair")
+        );
+        assert_eq!(
+            provider.method_to_capability("crypto.ecdh_derive"),
+            ("crypto", "derive_secret")
+        );
+        assert_eq!(
+            provider.method_to_capability("crypto.sha256"),
+            ("crypto", "sha256")
+        );
+        assert_eq!(
+            provider.method_to_capability("tls.derive_handshake_secrets"),
+            ("tls_crypto", "derive_secrets")
+        );
+    }
+
+    #[test]
+    fn test_neural_api_mode() {
+        std::env::set_var("BEARDOG_MODE", "neural");
+        std::env::set_var("NEURAL_API_SOCKET", "/tmp/neural-api.sock");
+        
+        let provider = BearDogProvider::from_env();
+        assert_eq!(provider.mode, RoutingMode::NeuralApi);
+        assert_eq!(provider.socket_path(), "/tmp/neural-api.sock");
+    }
+
+    #[test]
+    fn test_direct_mode() {
+        std::env::set_var("BEARDOG_MODE", "direct");
+        std::env::set_var("BEARDOG_SOCKET", "/tmp/beardog.sock");
+        
+        let provider = BearDogProvider::from_env();
+        assert_eq!(provider.mode, RoutingMode::Direct);
+        assert_eq!(provider.socket_path(), "/tmp/beardog.sock");
     }
 }
