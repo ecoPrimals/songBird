@@ -1,10 +1,11 @@
 # Songbird Status Report
 
-**Version**: v8.4.0  
-**Date**: January 26, 2026 (Adaptive HTTP + 100% TLS Ready!)  
-**Status**: 🎉 **100% TLS READY** - Full cipher support + adaptive HTTP!  
+**Version**: v8.5.0  
+**Date**: January 26, 2026 (TLS Version Config + Deep Debt Complete!)  
+**Status**: 🎉 **100% TLS READY** - Full cipher support + version config!  
 **ecoBin**: 🏆 **99.7% Pure Rust** - Only sqlx/libsqlite3-sys remaining!  
 **TLS 1.3**: 🎊 **100% CIPHER SUPPORT** - 0x1301, 0x1302, 0x1303 all supported!  
+**TLS Config**: 🔧 **UNIFIED** - Version policy + extensions + ciphers in one struct!  
 **HTTP Config**: 🌐 **ADAPTIVE** - User-Agent + domain routing + bot bypass!  
 **IPC**: ✅ **HTTP/HTTPS READY** - JSON-RPC PRIMARY Protocol + Tower Atomic Self-Delegation  
 **Code Quality**: 🎯 **100% CLIPPY CLEAN** - Core crates warning-free  
@@ -125,6 +126,52 @@ let client = SongbirdHttpClient::with_http_config(
 
 **Remaining 6%**: TLS 1.2 only sites (Hacker News, elastic.co, postgresql.org)
 
+### 🔧 TLS Version Configuration: COMPLETE!
+
+**Unified TLS configuration with version policy:**
+
+```rust
+// Default: TLS 1.3 preferred + secure 1.2 fallback
+let config = TlsConfig::default();
+
+// Maximum security (may fail on legacy servers)
+let config = TlsConfig::tls_1_3_only();
+
+// Legacy compatible (Hacker News, etc.)
+let config = TlsConfig::legacy_compatible();
+
+// Custom with builder pattern
+let config = TlsConfig::standard()
+    .with_minimum_version(TlsVersion::Tls13)
+    .with_security_policy(SecurityPolicy::Strict);
+```
+
+**Security Policies**:
+| Policy | TLS 1.3 | TLS 1.2 | Ciphers |
+|--------|---------|---------|---------|
+| Strict | ✅ | ❌ | Modern only |
+| Balanced | ✅ | ✅ (secure) | ECDHE+AEAD |
+| Legacy | ✅ | ✅ (extended) | +DHE |
+
+**TLS 1.2 Security**: Only allows ECDHE/DHE key exchange (forward secrecy) + AEAD ciphers. NO RSA key exchange, NO CBC mode, NO weak ciphers.
+
+### 🔍 Deep Debt Scan: COMPLETE!
+
+| Check | Result | Details |
+|-------|--------|---------|
+| `unsafe {}` blocks | ✅ **NONE** | Zero unsafe in production |
+| Mocks in production | ✅ **NONE** | All `#[cfg(test)]` isolated |
+| Large files (>1000) | ✅ **OK** | Legacy archived, active justified |
+| Hardcoding | ✅ **CLEAN** | Agnostic + capability-based |
+
+**File Size Audit**:
+| File | Lines | Status |
+|------|-------|--------|
+| `handshake_legacy.rs` | 3,135 | 📚 Archived fossil |
+| `beardog_client_legacy.rs` | 2,032 | 📚 Archived fossil |
+| `handshake_flow.rs` | 1,382 | ✅ Justified (TLS 1.3 RFC) |
+| `server_complete.rs` | 1,037 | ✅ Complete server impl |
+
 ### Today's Progress (January 26, 2026 - Deep Debt Session)
 
 **Dependency Analysis**: Complete audit of all 350 crates
@@ -152,11 +199,11 @@ let client = SongbirdHttpClient::with_http_config(
 - `handshake_refactored/*.rs`: 1 safe (SystemTime) ✅
 - Most unwraps in deprecated/test code ✅
 
-**Test Coverage**: 1,430+ tests passing (core crates)
+**Test Coverage**: 1,440+ tests passing (core crates)
 
 | Crate | Passed | Status |
 |-------|--------|--------|
-| songbird-http-client | 237 | ✅ (+11 http_config tests) |
+| songbird-http-client | 246 | ✅ (+20 new tests: http_config, version) |
 | songbird-orchestrator | 573 | ✅ (flaky fixed!) |
 | songbird-config | 385 | ✅ |
 | songbird-types | 225 | ✅ |
