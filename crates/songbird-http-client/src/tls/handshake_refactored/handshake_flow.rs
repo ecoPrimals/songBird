@@ -414,7 +414,13 @@ impl TlsHandshake {
         let handshake_start = std::time::Instant::now();
         let handshake_keys = self
             .crypto
-            .tls_derive_handshake_secrets(&shared_secret, &handshake_transcript_hash)
+            .tls_derive_handshake_secrets(
+                &shared_secret,
+                &client_random,
+                &server_random,
+                &handshake_transcript_hash,
+                cipher_suite,
+            )
             .await
             .map_err(|e| {
                 error!("❌ Failed to derive handshake traffic keys: {}", e);

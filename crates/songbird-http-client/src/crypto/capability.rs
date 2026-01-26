@@ -216,10 +216,20 @@ pub trait CryptoCapability: Send + Sync + std::fmt::Debug {
     /// Derive TLS 1.3 handshake secrets
     ///
     /// RFC 8446 Section 7.1: Key Schedule
+    ///
+    /// # Parameters
+    /// - `shared_secret`: ECDH shared secret (pre_master_secret)
+    /// - `client_random`: 32-byte client random from ClientHello
+    /// - `server_random`: 32-byte server random from ServerHello
+    /// - `transcript_hash`: Hash of ClientHello + ServerHello
+    /// - `cipher_suite`: Negotiated cipher suite (e.g., 0x1301 for TLS_AES_128_GCM_SHA256)
     async fn tls_derive_handshake_secrets(
         &self,
         shared_secret: &[u8],
+        client_random: &[u8],
+        server_random: &[u8],
         transcript_hash: &[u8],
+        cipher_suite: u16,
     ) -> Result<TlsHandshakeSecrets>;
 
     /// Derive TLS 1.3 application secrets

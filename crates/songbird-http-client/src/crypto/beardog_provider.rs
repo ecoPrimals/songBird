@@ -15,7 +15,7 @@ use serde_json::{json, Value};
 use std::sync::atomic::{AtomicU64, Ordering};
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::UnixStream;
-use tracing::{debug, trace, warn};
+use tracing::{debug, error, info, trace, warn};
 
 use super::capability::{CryptoCapability, TlsApplicationSecrets, TlsHandshakeSecrets};
 use crate::error::{Error, Result};
@@ -611,14 +611,27 @@ impl CryptoCapability for BearDogProvider {
     async fn tls_derive_handshake_secrets(
         &self,
         shared_secret: &[u8],
+        client_random: &[u8],
+        server_random: &[u8],
         transcript_hash: &[u8],
+        cipher_suite: u16,
     ) -> Result<TlsHandshakeSecrets> {
+        info!("🔑 Deriving TLS 1.3 handshake secrets (RFC 8446 Section 7.1)");
+        debug!("  → pre_master_secret: {} bytes", shared_secret.len());
+        debug!("  → client_random: {} bytes", client_random.len());
+        debug!("  → server_random: {} bytes", server_random.len());
+        debug!("  → transcript_hash: {} bytes", transcript_hash.len());
+        debug!("  → cipher_suite: 0x{:04x}", cipher_suite);
+
         let result = self
             .call(
                 "tls.derive_handshake_secrets",
                 json!({
-                    "shared_secret": BASE64_STANDARD.encode(shared_secret),
-                    "transcript_hash": BASE64_STANDARD.encode(transcript_hash)
+                    "pre_master_secret": BASE64_STANDARD.encode(shared_secret),
+                    "client_random": BASE64_STANDARD.encode(client_random),
+                    "server_random": BASE64_STANDARD.encode(server_random),
+                    "transcript_hash": BASE64_STANDARD.encode(transcript_hash),
+                    "cipher_suite": cipher_suite
                 }),
             )
             .await?;
