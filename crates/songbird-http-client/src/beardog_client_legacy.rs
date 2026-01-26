@@ -1,6 +1,18 @@
-//! BearDog RPC client for crypto operations
+//! BearDog RPC client for crypto operations (LEGACY - DEPRECATED)
 //!
-//! Communicates with BearDog via JSON-RPC 2.0 over Unix sockets.
+//! ⚠️  **DEPRECATED**: This file is the original 2,020-line monolithic implementation.
+//! It has been refactored into the `beardog_client/` module with 7 logical sub-modules.
+//!
+//! **Status**: Kept for reference and fossil record. Use `beardog_client/` for new code.
+//!
+//! **Refactor Complete**: January 26, 2026
+//! - Module breakdown: types, core, rpc, key_exchange, tls_secrets, aead, hash
+//! - Zero behavioral changes
+//! - Production-ready modular architecture
+//!
+//! See: `crates/songbird-http-client/src/beardog_client/` for the new implementation.
+
+#![allow(dead_code)] // Legacy file kept for reference
 
 use crate::error::{Error, Result};
 use base64::prelude::*;

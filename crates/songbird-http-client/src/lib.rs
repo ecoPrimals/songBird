@@ -54,7 +54,7 @@
 //! - ✅ TRUE ecoBin compliant
 //! - ✅ Agnostic crypto provider support
 
-pub mod beardog_client;
+pub mod beardog_client;     // ✅ ACTIVE: Smart refactored module (7 sub-modules)
 pub mod client;
 pub mod crypto;
 pub mod error;
@@ -62,9 +62,13 @@ pub mod ipc_client;
 pub mod tls;
 pub mod types;
 
+// Legacy preserved for fossil record (2,020 lines → archived)
+#[allow(dead_code)]
+pub mod beardog_client_legacy;
+
 pub use client::SongbirdHttpClient;
 pub use error::{Error, Result};
-pub use ipc_client::{IpcHttpClient, RequestBuilder, Response, Form, Part};
+pub use ipc_client::{Form, IpcHttpClient, Part, RequestBuilder, Response};
 pub use types::{HttpRequest, HttpResponse};
 
 // Re-export multipart module for convenience
@@ -76,8 +80,8 @@ pub use crypto::{
     TlsHandshakeSecrets,
 };
 
-// Re-export BearDogClient for backward compatibility
-pub use beardog_client::BearDogClient;
+// Re-export BearDogClient and types
+pub use beardog_client::{BearDogClient, BearDogMode, TlsSecrets};
 
 /// Library version
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");
