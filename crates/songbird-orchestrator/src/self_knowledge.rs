@@ -298,17 +298,24 @@ mod tests {
 
     #[test]
     fn test_discover_identity_tags_explicit() {
-        // Clear all env vars first
-        std::env::remove_var("SONGBIRD_FAMILY_ID");
-        std::env::remove_var("SONGBIRD_TAGS");
-        std::env::remove_var("SONGBIRD_ORCHESTRATOR_FAMILY_ID");
-        std::env::remove_var("BIOMEOS_FAMILY_ID");
-
+        // Note: Tests run in parallel and may have env var pollution from other tests.
+        // This test verifies that explicit SONGBIRD_TAGS are included, even if other
+        // tags exist from env vars set by other parallel tests.
         std::env::set_var("SONGBIRD_TAGS", "custom:tag:value1,another:tag:value2");
 
         let tags = discover_identity_tags();
-        assert!(tags.contains(&"custom:tag:value1".to_string()));
-        assert!(tags.contains(&"another:tag:value2".to_string()));
+        
+        // Verify our explicit tags are present (other tags may also exist from parallel tests)
+        assert!(
+            tags.contains(&"custom:tag:value1".to_string()),
+            "Expected custom:tag:value1 in tags. Got: {:?}",
+            tags
+        );
+        assert!(
+            tags.contains(&"another:tag:value2".to_string()),
+            "Expected another:tag:value2 in tags. Got: {:?}",
+            tags
+        );
 
         std::env::remove_var("SONGBIRD_TAGS");
     }

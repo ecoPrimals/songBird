@@ -368,10 +368,16 @@ mod tests {
 
     #[test]
     fn test_socket_path_discovery() {
-        // Test with explicit env var
-        std::env::set_var("BEARDOG_SOCKET", "/custom/path.sock");
+        // Use unique path to avoid collision with parallel tests
+        let unique_path = format!("/tmp/test_socket_{}.sock", std::process::id());
+        
+        std::env::set_var("BEARDOG_SOCKET", &unique_path);
         let client = BtspClient::new();
-        assert_eq!(client.socket_path, PathBuf::from("/custom/path.sock"));
+        assert_eq!(
+            client.socket_path,
+            PathBuf::from(&unique_path),
+            "Socket path should match the env var we set"
+        );
         std::env::remove_var("BEARDOG_SOCKET");
     }
 
