@@ -1,12 +1,12 @@
-# 🔧 TCP Connection Reuse Fix - January 26, 2026
+# 🔧 TLS Handshake Fixes - January 26, 2026
 
-**Status**: ✅ COMPLETE  
-**Priority**: HIGH (Critical Bug Fix)  
-**Fix Time**: 15 minutes  
+**Status**: ✅ COMPLETE (2 FIXES)  
+**Priority**: HIGH (Critical Bug Fixes)  
+**Fix Time**: 30 minutes total  
 
 ---
 
-## 🐛 Root Cause
+## 🐛 Bug 1: TCP Connection Reuse (Root Cause)
 
 The bug was in **TCP connection reuse during TLS handshake retry attempts**.
 
@@ -136,5 +136,59 @@ Together, these fixes should resolve all TLS handshake issues with GitHub API.
 
 ---
 
-*Fix discovered and implemented: January 26, 2026*
+---
+
+## 🐛 Bug 2: Parameter Mismatch in Key Derivation
+
+### The Problem
+
+After fixing TCP reuse, a **parameter mismatch** emerged:
+
+| Songbird Sent | BearDog Expected |
+|---------------|------------------|
+| `shared_secret` | `pre_master_secret` ✅ |
+| `transcript_hash` | `client_random` ❌ |
+| (none) | `server_random` ❌ |
+| (none) | `transcript_hash` ❌ |
+| (none) | `cipher_suite` ❌ |
+
+### The Fix
+
+Updated `CryptoCapability` trait and all implementations to pass **all 5 parameters**:
+
+```rust
+// Before (2 params):
+.tls_derive_handshake_secrets(&shared_secret, &transcript_hash)
+
+// After (5 params):
+.tls_derive_handshake_secrets(
+    &shared_secret,       // → pre_master_secret
+    &client_random,       // → client_random
+    &server_random,       // → server_random
+    &transcript_hash,     // → transcript_hash
+    cipher_suite,         // → cipher_suite
+)
+```
+
+### Files Changed
+
+- `crypto/capability.rs` - Updated trait signature
+- `crypto/beardog_provider.rs` - Updated JSON-RPC params
+- `tls/handshake_flow.rs` - Pass all 5 params
+- `tls/handshake_legacy.rs` - Pass all 5 params
+
+---
+
+## 📊 Combined Impact
+
+| Fix | Problem | Solution |
+|-----|---------|----------|
+| TCP Reuse | Stale buffer on retry | Fresh connection per attempt |
+| Param Mismatch | Missing key derivation params | All 5 RFC 8446 params |
+
+**Result**: TLS 1.3 handshake should now work with GitHub API!
+
+---
+
+*Fixes discovered and implemented: January 26, 2026*
 
