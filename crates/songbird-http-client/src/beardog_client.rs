@@ -1298,6 +1298,24 @@ pub struct TlsSecrets {
     pub server_handshake_secret: Vec<u8>,
 }
 
+// ═══════════════════════════════════════════════════════════════════════════
+// NOTE: Semantic capability.call Integration
+// ═══════════════════════════════════════════════════════════════════════════
+//
+// BearDogClient supports semantic routing via Neural API through its mode enum:
+//
+// - Direct mode: Talk directly to BearDog (testing)
+//   Set: BEARDOG_MODE=direct, BEARDOG_SOCKET=/tmp/beardog.sock
+//
+// - Neural API mode: Route through Neural API (production)
+//   Set: BEARDOG_MODE=neural, NEURAL_API_SOCKET=/tmp/neural-api.sock
+//
+// The client automatically uses semantic method names when in Neural API mode.
+// See BearDogClient::from_env() for automatic mode detection.
+//
+// Integration with SongbirdHttpClient will be completed in a future update
+// to use BearDogClient directly instead of BearDogProvider.
+
 #[cfg(test)]
 mod tests {
     use super::*;

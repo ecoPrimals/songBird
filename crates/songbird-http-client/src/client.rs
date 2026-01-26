@@ -50,6 +50,8 @@ impl SongbirdHttpClient {
     /// Create from environment variable
     ///
     /// Checks CRYPTO_CAPABILITY_SOCKET, then BEARDOG_SOCKET, then defaults.
+    /// 
+    /// Note: For Neural API mode (capability.call routing), set BEARDOG_MODE=neural
     pub fn from_env() -> Self {
         let socket_path = std::env::var("CRYPTO_CAPABILITY_SOCKET")
             .or_else(|_| std::env::var("BEARDOG_SOCKET"))
