@@ -190,5 +190,66 @@ Updated `CryptoCapability` trait and all implementations to pass **all 5 paramet
 
 ---
 
+## 🐛 Bug 3: BearDog Response Field Names
+
+### The Problem
+
+BearDog returns different field names than expected:
+
+| Expected | BearDog Returns |
+|----------|-----------------|
+| `client_handshake_traffic_secret` | `client_handshake_secret` |
+| `server_handshake_traffic_secret` | `server_handshake_secret` |
+| `client_key` | `client_write_key` |
+| `client_iv` | `client_write_iv` |
+| `server_key` | `server_write_key` |
+| `server_iv` | `server_write_iv` |
+
+### The Fix
+
+Updated `beardog_provider.rs` to match BearDog's actual response field names:
+
+```rust
+// Before:
+client_handshake_secret: self.extract_b64_field(&result, "client_handshake_traffic_secret")?,
+
+// After:
+client_handshake_secret: self.extract_b64_field(&result, "client_handshake_secret")?,
+```
+
+Also fixed semantic mappings to keep specific algorithm names for Neural API translation:
+- `encrypt_aes_128_gcm` instead of generic `encrypt`
+- `derive_handshake_secrets` instead of generic `derive_secrets`
+
+**Commit**: `5f834d14a`
+
+---
+
+## ⚠️ PENDING: BearDog API Mismatch (Not Songbird Fix)
+
+BearDog's `tls.derive_application_secrets` has wrong API:
+
+| Parameter | Songbird Sends (RFC 8446) | BearDog Expects (Wrong) |
+|-----------|---------------------------|-------------------------|
+| Input Secret | `handshake_secret` ✅ | `pre_master_secret` ❌ |
+
+**BearDog Fix Required**: `crates/beardog-tunnel/src/unix_socket_ipc/handlers/crypto/tls/key_derivation.rs` line 495
+
+This is a BearDog issue, not Songbird. Songbird is sending the correct RFC 8446 data.
+
+---
+
+## 📊 All TLS Fixes Summary
+
+| Fix # | Bug | Root Cause | Status |
+|-------|-----|------------|--------|
+| 1 | PSK modes in fresh handshake | `psk_key_exchange_modes` without PSK key | ✅ Fixed |
+| 2 | TCP stream reuse | Same stream for retries | ✅ Fixed |
+| 3 | Key derivation params | Missing 3 of 5 required params | ✅ Fixed |
+| 4 | Response field names | Mismatch with BearDog output | ✅ Fixed |
+| 5 | Application secrets API | BearDog expects wrong input | ⏳ BearDog fix needed |
+
+---
+
 *Fixes discovered and implemented: January 26, 2026*
 
