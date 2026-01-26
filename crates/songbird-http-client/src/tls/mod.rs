@@ -27,6 +27,7 @@ pub mod profiler;
 pub mod record;
 pub mod server;
 pub mod session;
+pub mod version; // ✅ NEW: TLS version config (1.3 + secure 1.2 fallback)
 
 // Legacy preserved for fossil record (3,128 lines → archived)
 // Note: Module has inner #![allow(dead_code)] attribute
@@ -49,6 +50,11 @@ pub use profiler::{ServerProfile, ServerProfiler};
 pub use record::TlsRecordLayer;
 pub use server::TlsServer;
 pub use session::TlsSession;
+pub use version::{
+    NegotiatedVersion, SecurityPolicy, TlsVersion, TlsVersionConfig,
+    TLS_1_2_EXTENDED_CIPHERS, TLS_1_2_SECURE_CIPHERS,
+    detect_server_version, tls_1_2_cipher_name,
+};
 
 /// TLS 1.3 version
 pub const TLS_1_3: u16 = 0x0304;
