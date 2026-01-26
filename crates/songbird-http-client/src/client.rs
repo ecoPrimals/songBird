@@ -136,26 +136,26 @@ impl SongbirdHttpClient {
 
         debug!("Connecting to {}:{}", host, port);
 
-        // Establish TCP connection
+        // For HTTPS, perform TLS handshake (TCP connection created inside with fallback)
+        if scheme == "https" {
+            return self.https_request(host, port, &uri, method, headers, body).await;
+        }
+
+        // For HTTP, establish plain TCP connection
         let addr = format!("{}:{}", host, port);
         let tcp_stream = TcpStream::connect(&addr)
             .await
             .map_err(|e| Error::Connection(format!("Failed to connect to {}: {}", addr, e)))?;
 
-        // For HTTPS, perform TLS handshake
-        if scheme == "https" {
-            return self.https_request(tcp_stream, host, &uri, method, headers, body).await;
-        }
-
-        // For HTTP, use plain connection
+        // Use plain connection for HTTP
         self.http_request(tcp_stream, &uri, method, headers, body).await
     }
 
     /// Make HTTPS request with TLS
     async fn https_request(
         &self,
-        mut tcp_stream: TcpStream,
         host: &str,
+        port: u16,
         uri: &Uri,
         method: &str,
         headers: HashMap<String, String>,
@@ -164,7 +164,10 @@ impl SongbirdHttpClient {
         debug!("🔒 Performing TLS handshake with {}", host);
 
         // Attempt TLS handshake with progressive fallback
-        let session_keys = self.attempt_handshake_with_fallback(&mut tcp_stream, host).await?;
+        // CRITICAL FIX: Each retry creates a FRESH TCP connection to avoid reading stale data!
+        let addr = format!("{}:{}", host, port);
+        let (mut tcp_stream, session_keys) =
+            self.attempt_handshake_with_fallback(&addr, host).await?;
 
         info!("✅ TLS handshake complete with {}", host);
         info!("════════════════════════════════════════════════════════════");
@@ -363,11 +366,14 @@ impl SongbirdHttpClient {
     }
 
     /// Attempt TLS handshake with progressive fallback on failure
+    ///
+    /// CRITICAL FIX (Jan 26, 2026): Each retry attempt creates a FRESH TCP connection!
+    /// Bug was: reusing the same TCP stream caused reading stale buffered data on retries.
     async fn attempt_handshake_with_fallback(
         &self,
-        tcp_stream: &mut TcpStream,
+        addr: &str,
         host: &str,
-    ) -> Result<crate::tls::session::SessionKeys> {
+    ) -> Result<(TcpStream, crate::tls::session::SessionKeys)> {
         use crate::tls::config::{ExtensionStrategy, FallbackStrategy};
 
         let max_attempts = self.config.max_retries as usize;
@@ -409,24 +415,41 @@ impl SongbirdHttpClient {
             }
         };
 
-        // Try each strategy
+        // Try each strategy with FRESH TCP connection
         for (attempt, strategy) in strategies_to_try.iter().enumerate().take(max_attempts) {
             let attempt_num = attempt + 1;
 
             if attempt > 0 {
                 info!(
-                    "🔄 Retry attempt {}/{} with {:?} strategy",
+                    "🔄 Retry attempt {}/{} with {:?} strategy (FRESH TCP connection)",
                     attempt_num,
                     strategies_to_try.len(),
                     strategy
                 );
             }
 
+            // CRITICAL: Create FRESH TCP connection for each attempt!
+            // This prevents reading stale buffered data from previous attempts.
+            let mut tcp_stream = match TcpStream::connect(addr).await {
+                Ok(stream) => {
+                    debug!("✅ Fresh TCP connection established to {}", addr);
+                    stream
+                }
+                Err(e) => {
+                    warn!("⚠️  Failed to connect to {}: {}", addr, e);
+                    last_error = Some(Error::Connection(format!(
+                        "Failed to connect to {}: {}",
+                        addr, e
+                    )));
+                    continue; // Try next strategy with fresh connection
+                }
+            };
+
             // Create config with current strategy
             let mut attempt_config = self.config.clone();
             attempt_config.extension_strategy = strategy.clone();
 
-            // Attempt handshake
+            // Attempt handshake on FRESH connection
             let handshake_start = std::time::Instant::now();
             let mut handshake = TlsHandshake::with_config(
                 self.crypto.clone(),
@@ -434,7 +457,7 @@ impl SongbirdHttpClient {
                 self.profiler.clone(),
             );
 
-            match handshake.handshake(tcp_stream, host).await {
+            match handshake.handshake(&mut tcp_stream, host).await {
                 Ok(keys) => {
                     let handshake_duration = handshake_start.elapsed();
                     info!(
@@ -457,7 +480,8 @@ impl SongbirdHttpClient {
                         debug!("🧠 Profiler updated: success for {} with {:?}", host, strategy);
                     }
 
-                    return Ok(keys);
+                    // Return BOTH the successful stream AND the keys
+                    return Ok((tcp_stream, keys));
                 }
                 Err(e) => {
                     let handshake_duration = handshake_start.elapsed();
@@ -473,14 +497,15 @@ impl SongbirdHttpClient {
                     }
 
                     last_error = Some(e);
+                    // tcp_stream dropped here, connection closed cleanly
 
-                    // If this was the last attempt, return error
+                    // If this was the last attempt, break
                     if attempt_num >= strategies_to_try.len() || attempt_num >= max_attempts {
                         break;
                     }
 
-                    // Otherwise, continue to next strategy
-                    debug!("Trying next fallback strategy...");
+                    // Otherwise, continue to next strategy with fresh connection
+                    debug!("Closing failed connection, will try next strategy with fresh TCP...");
                 }
             }
         }
