@@ -499,21 +499,39 @@ impl TlsServer {
         )))
     }
 
-    /// Generate 32-byte random value
+    /// Generate 32-byte cryptographically secure random value
+    ///
+    /// Uses OS-provided CSPRNG via getrandom for 28 bytes of randomness,
+    /// with first 4 bytes as Unix timestamp per RFC 8446 format.
     fn generate_random(&self) -> Vec<u8> {
         use std::time::{SystemTime, UNIX_EPOCH};
 
         let mut random = Vec::with_capacity(32);
 
         // First 4 bytes: Unix time (seconds since epoch)
+        // Note: In TLS 1.3, this is optional but helps prevent replay attacks
         let time =
             SystemTime::now().duration_since(UNIX_EPOCH).expect("Time went backwards").as_secs()
                 as u32;
         random.extend_from_slice(&time.to_be_bytes());
 
-        // Remaining 28 bytes: random (for now, use a simple pattern - TODO: use proper RNG)
-        for i in 0..28 {
-            random.push((i * 7 + 42) as u8);
+        // Remaining 28 bytes: cryptographically secure random from OS
+        // Uses getrandom crate which provides CSPRNG from:
+        // - Linux: getrandom(2) syscall or /dev/urandom
+        // - macOS: SecRandomCopyBytes
+        // - Windows: BCryptGenRandom
+        let mut random_bytes = [0u8; 28];
+        if getrandom::fill(&mut random_bytes).is_ok() {
+            random.extend_from_slice(&random_bytes);
+        } else {
+            // Fallback: use time-seeded fastrand if getrandom fails
+            // This is less secure but still better than predictable pattern
+            let seed = time as u64 ^ std::process::id() as u64;
+            let rng = fastrand::Rng::with_seed(seed);
+            for _ in 0..28 {
+                random.push(rng.u8(..));
+            }
+            tracing::warn!("Using fallback RNG - getrandom unavailable");
         }
 
         random
@@ -642,9 +660,67 @@ impl TlsServer {
     }
 
     /// Build CertificateVerify message
+    ///
+    /// # Current Status (January 2026)
+    ///
+    /// **BLOCKED**: Requires BearDog signing API integration
+    ///
+    /// Per RFC 8446 Section 4.4.3, CertificateVerify contains a signature over:
+    /// - 64 spaces (0x20)
+    /// - Context string ("TLS 1.3, server CertificateVerify")
+    /// - 0x00 separator
+    /// - Transcript hash up to this point
+    ///
+    /// ## Required BearDog API
+    ///
+    /// Need `crypto.sign_ecdsa_p256_sha256` or `crypto.sign_ed25519` method:
+    /// ```json
+    /// {
+    ///   "method": "crypto.sign",
+    ///   "params": {
+    ///     "algorithm": "ecdsa_secp256r1_sha256",
+    ///     "private_key": "<base64>",
+    ///     "data": "<base64-transcript-context>"
+    ///   }
+    /// }
+    /// ```
+    ///
+    /// ## Workaround for Testing
+    ///
+    /// Currently returns zero-filled placeholder signature. This allows
+    /// the handshake flow to complete for protocol testing, but will fail
+    /// signature verification by any real TLS client.
     async fn build_certificate_verify(&self) -> Result<Vec<u8>> {
-        // For now, return a placeholder
-        // TODO: Implement proper signature using private key via BearDog
+        // Build the data to be signed (RFC 8446 Section 4.4.3)
+        let mut to_sign = Vec::new();
+        
+        // 64 spaces (0x20)
+        to_sign.extend_from_slice(&[0x20; 64]);
+        
+        // Context string
+        to_sign.extend_from_slice(b"TLS 1.3, server CertificateVerify");
+        
+        // Single 0x00 separator
+        to_sign.push(0x00);
+        
+        // Transcript hash
+        let transcript_hash = self.transcript.compute_hash();
+        to_sign.extend_from_slice(&transcript_hash);
+        
+        // TODO(P0): Add BearDog signing integration
+        // Once BearDog exposes `crypto.sign` API, implement:
+        // ```
+        // let signature = self.beardog.sign(
+        //     SignatureAlgorithm::EcdsaSecp256r1Sha256,
+        //     &self.private_key,
+        //     &to_sign,
+        // ).await?;
+        // ```
+        //
+        // For now, use placeholder that will fail real verification
+        debug!("⚠️ CertificateVerify using placeholder signature (BearDog signing API pending)");
+        let signature = vec![0u8; 64]; // Placeholder - will fail verification
+        
         let mut msg = Vec::new();
 
         // Handshake type: CertificateVerify
@@ -657,8 +733,7 @@ impl TlsServer {
         // Signature algorithm: ecdsa_secp256r1_sha256 (0x0403)
         msg.extend_from_slice(&[0x04, 0x03]);
 
-        // Signature (placeholder - 64 bytes for ECDSA)
-        let signature = vec![0u8; 64]; // TODO: Compute actual signature
+        // Signature
         msg.extend_from_slice(&(signature.len() as u16).to_be_bytes());
         msg.extend_from_slice(&signature);
 

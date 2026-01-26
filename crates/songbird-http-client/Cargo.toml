@@ -37,6 +37,10 @@ async-trait = { workspace = true }
 sha2 = "0.10"
 hex = "0.4"
 
+# Secure random number generation (Pure Rust)
+getrandom = { workspace = true }  # OS-provided CSPRNG
+fastrand = { workspace = true }    # Fast fallback RNG
+
 # NO reqwest, NO rustls, NO ring!
 # Pure Rust only - crypto delegated to BearDog
 
