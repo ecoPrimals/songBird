@@ -8,6 +8,7 @@ pub mod alert;
 pub mod config;
 pub mod handshake_legacy;
 pub mod handshake_v2; // New modularized handshake (Phase 4 refactoring)
+pub mod handshake_refactored; // Smart refactored handshake (in progress)
 pub mod negotiation;
 pub mod profiler;
 pub mod record;
