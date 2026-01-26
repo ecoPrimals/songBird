@@ -67,6 +67,38 @@ impl BearDogProvider {
         }
     }
 
+    /// Create from environment (supports both Direct and Neural API modes)
+    ///
+    /// Uses BEARDOG_MODE environment variable:
+    /// - "neural" (default): Connects to Neural API for capability.call routing
+    /// - "direct": Connects directly to BearDog (testing only)
+    ///
+    /// Sockets:
+    /// - Neural API mode: NEURAL_API_SOCKET or /tmp/neural-api-nat0.sock
+    /// - Direct mode: BEARDOG_SOCKET or /tmp/beardog.sock
+    pub fn from_env() -> Self {
+        use tracing::info;
+        
+        let mode = std::env::var("BEARDOG_MODE").unwrap_or_else(|_| "neural".to_string());
+
+        match mode.as_str() {
+            "direct" => {
+                let socket = std::env::var("BEARDOG_SOCKET")
+                    .unwrap_or_else(|_| "/tmp/beardog.sock".to_string());
+                info!("🔧 BearDog provider: DIRECT mode → {}", socket);
+                Self::new(socket)
+            }
+            _ => {
+                // Default to Neural API (TRUE PRIMAL pattern)
+                let socket = std::env::var("NEURAL_API_SOCKET")
+                    .or_else(|_| std::env::var("NEURALS_SOCKET"))
+                    .unwrap_or_else(|_| "/tmp/neural-api-nat0.sock".to_string());
+                info!("🌐 BearDog provider: NEURAL API mode → {}", socket);
+                Self::new(socket)
+            }
+        }
+    }
+
     /// Get the socket path
     pub fn socket_path(&self) -> &str {
         &self.socket_path

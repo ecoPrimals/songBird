@@ -1277,6 +1277,97 @@ impl BearDogClient {
             }
         }
     }
+
+    // ═══════════════════════════════════════════════════════════════════
+    // Hashing Operations
+    // ═══════════════════════════════════════════════════════════════════
+
+    /// Compute SHA-256 hash
+    pub async fn sha256(&self, data: &[u8]) -> Result<Vec<u8>> {
+        let result = self
+            .call(
+                "crypto.sha256",
+                json!({
+                    "data": BASE64_STANDARD.encode(data)
+                }),
+            )
+            .await?;
+
+        let hash_b64 = result["hash"]
+            .as_str()
+            .ok_or_else(|| Error::BearDogRpc("Missing hash in SHA-256 response".to_string()))?;
+
+        BASE64_STANDARD
+            .decode(hash_b64)
+            .map_err(|e| Error::BearDogRpc(format!("Invalid base64 hash: {}", e)))
+    }
+
+    /// Compute SHA-384 hash
+    pub async fn sha384(&self, data: &[u8]) -> Result<Vec<u8>> {
+        let result = self
+            .call(
+                "crypto.sha384",
+                json!({
+                    "data": BASE64_STANDARD.encode(data)
+                }),
+            )
+            .await?;
+
+        let hash_b64 = result["hash"]
+            .as_str()
+            .ok_or_else(|| Error::BearDogRpc("Missing hash in SHA-384 response".to_string()))?;
+
+        BASE64_STANDARD
+            .decode(hash_b64)
+            .map_err(|e| Error::BearDogRpc(format!("Invalid base64 hash: {}", e)))
+    }
+
+    // ═══════════════════════════════════════════════════════════════════
+    // HKDF Key Derivation
+    // ═══════════════════════════════════════════════════════════════════
+
+    /// HKDF Extract phase
+    pub async fn hkdf_extract(&self, salt: &[u8], ikm: &[u8]) -> Result<Vec<u8>> {
+        let result = self
+            .call(
+                "crypto.hkdf_extract",
+                json!({
+                    "salt": BASE64_STANDARD.encode(salt),
+                    "ikm": BASE64_STANDARD.encode(ikm)
+                }),
+            )
+            .await?;
+
+        let prk_b64 = result["prk"]
+            .as_str()
+            .ok_or_else(|| Error::BearDogRpc("Missing prk in HKDF Extract response".to_string()))?;
+
+        BASE64_STANDARD
+            .decode(prk_b64)
+            .map_err(|e| Error::BearDogRpc(format!("Invalid base64 prk: {}", e)))
+    }
+
+    /// HKDF Expand phase
+    pub async fn hkdf_expand(&self, prk: &[u8], info: &[u8], length: usize) -> Result<Vec<u8>> {
+        let result = self
+            .call(
+                "crypto.hkdf_expand",
+                json!({
+                    "prk": BASE64_STANDARD.encode(prk),
+                    "info": BASE64_STANDARD.encode(info),
+                    "length": length
+                }),
+            )
+            .await?;
+
+        let okm_b64 = result["okm"]
+            .as_str()
+            .ok_or_else(|| Error::BearDogRpc("Missing okm in HKDF Expand response".to_string()))?;
+
+        BASE64_STANDARD
+            .decode(okm_b64)
+            .map_err(|e| Error::BearDogRpc(format!("Invalid base64 okm: {}", e)))
+    }
 }
 
 /// TLS session secrets
@@ -1312,9 +1403,6 @@ pub struct TlsSecrets {
 //
 // The client automatically uses semantic method names when in Neural API mode.
 // See BearDogClient::from_env() for automatic mode detection.
-//
-// Integration with SongbirdHttpClient will be completed in a future update
-// to use BearDogClient directly instead of BearDogProvider.
 
 #[cfg(test)]
 mod tests {

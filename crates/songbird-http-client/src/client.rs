@@ -49,16 +49,16 @@ impl SongbirdHttpClient {
 
     /// Create from environment variable
     ///
-    /// Checks CRYPTO_CAPABILITY_SOCKET, then BEARDOG_SOCKET, then defaults.
+    /// Automatically detects Neural API mode or Direct mode based on environment:
+    /// - BEARDOG_MODE=neural (default): Routes through Neural API for capability.call
+    /// - BEARDOG_MODE=direct (testing): Direct connection to BearDog
     /// 
-    /// Note: For Neural API mode (capability.call routing), set BEARDOG_MODE=neural
+    /// Uses NEURAL_API_SOCKET or BEARDOG_SOCKET accordingly.
     pub fn from_env() -> Self {
-        let socket_path = std::env::var("CRYPTO_CAPABILITY_SOCKET")
-            .or_else(|_| std::env::var("BEARDOG_SOCKET"))
-            .unwrap_or_else(|_| "/tmp/beardog.sock".to_string());
-
+        info!("🌐 Creating Songbird HTTP client from environment");
+        
         Self {
-            crypto: Arc::new(BearDogProvider::new(socket_path)),
+            crypto: Arc::new(BearDogProvider::from_env()),
             config: TlsConfig::default(),
             profiler: None,
         }
