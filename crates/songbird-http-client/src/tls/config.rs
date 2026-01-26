@@ -2,12 +2,21 @@
 //!
 //! Provides agnostic, adaptive TLS configuration that learns and evolves.
 //! Eliminates hardcoded values in favor of strategy-based, server-adaptive behavior.
+//!
+//! ## TLS Version Support
+//!
+//! - TLS 1.3: Full support (default, preferred)
+//! - TLS 1.2: Secure fallback (ECDHE + AEAD only)
 
+use crate::tls::version::{SecurityPolicy, TlsVersion, TlsVersionConfig};
 use std::time::Duration;
 
 /// TLS connection configuration
 #[derive(Debug, Clone)]
 pub struct TlsConfig {
+    /// TLS version configuration (1.3 preferred, 1.2 secure fallback)
+    pub version_config: TlsVersionConfig,
+
     /// Extension negotiation strategy
     pub extension_strategy: ExtensionStrategy,
 
@@ -39,6 +48,7 @@ pub struct TlsConfig {
 impl Default for TlsConfig {
     fn default() -> Self {
         Self {
+            version_config: TlsVersionConfig::balanced(), // TLS 1.3 + secure 1.2 fallback
             extension_strategy: ExtensionStrategy::Adaptive,
             cipher_strategy: CipherStrategy::PreferModern,
             timeout: Duration::from_secs(30),
@@ -170,6 +180,52 @@ impl TlsConfig {
             fallback_strategy: FallbackStrategy::Progressive,
             ..Default::default()
         }
+    }
+
+    /// Create TLS 1.3 only config (maximum security, may fail on legacy servers)
+    pub fn tls_1_3_only() -> Self {
+        Self {
+            version_config: TlsVersionConfig::strict(),
+            extension_strategy: ExtensionStrategy::Modern,
+            cipher_strategy: CipherStrategy::PreferModern,
+            enable_profiling: true,
+            enable_adaptive_learning: true,
+            ..Default::default()
+        }
+    }
+
+    /// Create legacy-compatible config (TLS 1.3 + secure 1.2 fallback)
+    pub fn legacy_compatible() -> Self {
+        Self {
+            version_config: TlsVersionConfig::legacy(),
+            extension_strategy: ExtensionStrategy::MaxCompatibility,
+            cipher_strategy: CipherStrategy::PreferCompatibility,
+            max_retries: 5,
+            fallback_strategy: FallbackStrategy::Exhaustive,
+            enable_profiling: true,
+            enable_adaptive_learning: true,
+            ..Default::default()
+        }
+    }
+
+    // Builder methods
+
+    /// Set TLS version configuration
+    pub fn with_version_config(mut self, config: TlsVersionConfig) -> Self {
+        self.version_config = config;
+        self
+    }
+
+    /// Set security policy (controls TLS version selection)
+    pub fn with_security_policy(mut self, policy: SecurityPolicy) -> Self {
+        self.version_config = self.version_config.with_policy(policy);
+        self
+    }
+
+    /// Set minimum TLS version
+    pub fn with_minimum_version(mut self, version: TlsVersion) -> Self {
+        self.version_config = self.version_config.with_minimum_version(version);
+        self
     }
 }
 
