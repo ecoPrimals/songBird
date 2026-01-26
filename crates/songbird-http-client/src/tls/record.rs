@@ -621,11 +621,11 @@ impl TlsRecordLayer {
                     "Server sent {} alert: {} (0x{:02x})",
                     level_str, desc_str, alert_desc
                 )));
-            } else {
-                error!("Alert is too short ({} bytes) - malformed!", plaintext.len());
-                error!("════════════════════════════════════════════════════════════");
-                return Err(Error::TlsAlert("Server sent malformed TLS alert".to_string()));
             }
+            // Alert too short - malformed
+            error!("Alert is too short ({} bytes) - malformed!", plaintext.len());
+            error!("════════════════════════════════════════════════════════════");
+            return Err(Error::TlsAlert("Server sent malformed TLS alert".to_string()));
         }
 
         info!("Final plaintext length: {} bytes (ready for HTTP parser)", plaintext.len());

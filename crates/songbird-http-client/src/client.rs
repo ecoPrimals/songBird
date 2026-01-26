@@ -224,13 +224,13 @@ impl SongbirdHttpClient {
     ) -> Result<HttpResponse> {
         info!("🌐 HTTP {} {}", method, url);
 
-        // Parse URL
-        let uri: Uri = url.parse().map_err(|e| Error::InvalidUrl(format!("{}", e)))?;
+        // Parse URL into URI
+        let parsed_uri: Uri = url.parse().map_err(|e| Error::InvalidUrl(format!("{}", e)))?;
 
         let scheme =
-            uri.scheme_str().ok_or_else(|| Error::InvalidUrl("Missing scheme".to_string()))?;
-        let host = uri.host().ok_or_else(|| Error::InvalidUrl("Missing host".to_string()))?;
-        let port = uri.port_u16().unwrap_or(if scheme == "https" {
+            parsed_uri.scheme_str().ok_or_else(|| Error::InvalidUrl("Missing scheme".to_string()))?;
+        let host = parsed_uri.host().ok_or_else(|| Error::InvalidUrl("Missing host".to_string()))?;
+        let port = parsed_uri.port_u16().unwrap_or(if scheme == "https" {
             443
         } else {
             80
@@ -241,14 +241,14 @@ impl SongbirdHttpClient {
         info!("   URL: {}", url);
         info!("   Scheme: {}", scheme);
         info!("   Host: {}", host);
-        info!("   Port: {} ({})", port, if uri.port_u16().is_some() { "explicit" } else { "default" });
+        info!("   Port: {} ({})", port, if parsed_uri.port_u16().is_some() { "explicit" } else { "default" });
 
         // For HTTPS, perform TLS handshake (TCP connection created inside with fallback)
         if scheme == "https" {
             if port != 443 {
                 warn!("⚠️  Non-standard HTTPS port: {} (expected 443)", port);
             }
-            return self.https_request(host, port, &uri, method, headers, body).await;
+            return self.https_request(host, port, &parsed_uri, method, headers, body).await;
         }
 
         // For HTTP, establish plain TCP connection
@@ -258,7 +258,7 @@ impl SongbirdHttpClient {
             .map_err(|e| Error::Connection(format!("Failed to connect to {}: {}", addr, e)))?;
 
         // Use plain connection for HTTP
-        self.http_request(tcp_stream, &uri, method, headers, body).await
+        self.http_request(tcp_stream, &parsed_uri, method, headers, body).await
     }
 
     /// Make HTTPS request with TLS
@@ -462,13 +462,12 @@ impl SongbirdHttpClient {
                                 records_read
                             );
                             break;
-                        } else {
-                            debug!(
-                                "   📥 Still reading body: {}/{} bytes",
-                                response_data.len() - body_start,
-                                content_length
-                            );
                         }
+                        debug!(
+                            "   📥 Still reading body: {}/{} bytes",
+                            response_data.len() - body_start,
+                            content_length
+                        );
                     }
                 }
             }
