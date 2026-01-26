@@ -270,9 +270,23 @@ impl SongbirdHttpClient {
                     headers_complete = true;
                     debug!("   📋 HTTP headers complete ({} bytes)", headers_end);
 
-                    // Parse Content-Length to know how much body to expect
+                    // Parse headers to determine response type
                     let headers_str = String::from_utf8_lossy(&response_data[..headers_end]);
-                    if let Some(content_length_line) = headers_str
+                    let headers_lower = headers_str.to_lowercase();
+                    
+                    // Check for Transfer-Encoding: chunked
+                    let is_chunked = headers_lower.contains("transfer-encoding: chunked") ||
+                                    headers_lower.contains("transfer-encoding:chunked");
+                    
+                    // Check for Connection: close
+                    let connection_close = headers_lower.contains("connection: close") ||
+                                          headers_lower.contains("connection:close");
+                    
+                    if is_chunked {
+                        info!("   📦 Transfer-Encoding: chunked detected");
+                        // For chunked responses, look for terminator: 0\r\n\r\n
+                        // This indicates end of chunked body
+                    } else if let Some(content_length_line) = headers_str
                         .lines()
                         .find(|line| line.to_lowercase().starts_with("content-length:"))
                     {
@@ -300,16 +314,35 @@ impl SongbirdHttpClient {
                             // Continue reading until we have the full body
                             continue;
                         }
+                    } else if connection_close {
+                        debug!("   🔌 Connection: close - will read until server closes");
                     } else {
-                        // No Content-Length header (chunked encoding or connection close)
-                        debug!(
-                            "   ⚠️  No Content-Length header, will read until connection closes"
-                        );
+                        // No Content-Length, no chunked, no connection close
+                        debug!("   ⚠️  No Content-Length or chunked encoding, reading until close");
                     }
                 }
-            } else {
-                // Headers complete, check if we have enough body
+            }
+            
+            // Check for chunked encoding termination: 0\r\n\r\n
+            // This is the final chunk marker indicating end of chunked body
+            if headers_complete {
+                // Look for the chunked encoding terminator anywhere in the body
+                // The terminator is: "0\r\n\r\n" (zero-length chunk followed by empty trailer)
+                // Some servers also send "0\r\n\r\n" variations with trailers
                 if let Some(headers_end) = response_data.windows(4).position(|w| w == b"\r\n\r\n") {
+                    let body = &response_data[headers_end + 4..];
+                    
+                    // Check for chunked terminator patterns
+                    let has_terminator = body.windows(5).any(|w| w == b"0\r\n\r\n") ||
+                                        body.ends_with(b"0\r\n\r\n") ||
+                                        body.ends_with(b"\r\n0\r\n\r\n");
+                    
+                    if has_terminator {
+                        info!("   ✅ Chunked encoding terminator (0\\r\\n\\r\\n) found");
+                        break;
+                    }
+                    
+                    // Also check Content-Length completion
                     let headers_str = String::from_utf8_lossy(&response_data[..headers_end]);
                     if let Some(content_length) = headers_str
                         .lines()
