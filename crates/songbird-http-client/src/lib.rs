@@ -58,6 +58,7 @@ pub mod beardog_client;     // ✅ ACTIVE: Smart refactored module (7 sub-module
 pub mod client;
 pub mod crypto;
 pub mod error;
+pub mod http_config;        // ✅ NEW: Adaptive HTTP configuration (User-Agent, routing, etc.)
 pub mod ipc_client;
 pub mod tls;
 pub mod types;
@@ -82,6 +83,12 @@ pub use crypto::{
 
 // Re-export BearDogClient and types
 pub use beardog_client::{BearDogClient, BearDogMode, TlsSecrets};
+
+// Re-export HTTP configuration types for adaptive behavior
+pub use http_config::{
+    DomainPattern, HeaderRule, HttpClientConfig, RedirectMode,
+    default_user_agent, SONGBIRD_VERSION,
+};
 
 /// Library version
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");

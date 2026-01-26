@@ -1,7 +1,16 @@
 //! HTTP/HTTPS client implementation
+//!
+//! ## Features
+//!
+//! - Adaptive User-Agent headers
+//! - Domain-based header routing
+//! - Bot protection bypass
+//! - Optional redirect following
+//! - Configurable timeouts
 
 use crate::crypto::{BearDogProvider, CryptoCapability};
 use crate::error::{Error, Result};
+use crate::http_config::HttpClientConfig;
 use crate::tls::{
     config::TlsConfig, handshake::TlsHandshake, profiler::ServerProfiler, record::TlsRecordLayer,
 };
@@ -13,20 +22,30 @@ use hyper_util::rt::TokioIo;
 use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::net::TcpStream;
-use tracing::{debug, error, info, warn};
+use tracing::{debug, error, info, trace, warn};
 
-/// Songbird HTTP client
+/// Songbird HTTP client with adaptive behavior
+///
+/// ## Configuration
+///
+/// The client supports multiple configuration modes:
+/// - `standard()` - Sensible defaults with User-Agent and domain rules
+/// - `browser_like()` - Mimics browser behavior for web scraping
+/// - `api()` - Optimized for REST API calls
+/// - `minimal()` - No default headers
 #[derive(Clone)]
 pub struct SongbirdHttpClient {
     crypto: Arc<dyn CryptoCapability>,
-    config: TlsConfig,
+    tls_config: TlsConfig,
+    http_config: HttpClientConfig,
     profiler: Option<Arc<ServerProfiler>>,
 }
 
 impl std::fmt::Debug for SongbirdHttpClient {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("SongbirdHttpClient")
-            .field("config", &self.config)
+            .field("tls_config", &self.tls_config)
+            .field("http_config", &format_args!("HttpClientConfig(ua={})", self.http_config.user_agent.len()))
             .field("profiler", &self.profiler.is_some())
             .finish()
     }
@@ -34,6 +53,8 @@ impl std::fmt::Debug for SongbirdHttpClient {
 
 impl SongbirdHttpClient {
     /// Create a new Songbird HTTP client with crypto capability discovery
+    ///
+    /// Uses standard HTTP configuration with adaptive User-Agent and domain rules.
     ///
     /// # Arguments
     ///
@@ -44,10 +65,10 @@ impl SongbirdHttpClient {
     /// This client uses the CryptoCapability trait for agnostic crypto operations.
     /// The underlying provider can be BearDog or any other implementation.
     pub fn new(socket_path: impl Into<String>) -> Self {
-        Self::with_config(socket_path, TlsConfig::default(), None)
+        Self::with_tls_config(socket_path, TlsConfig::default(), None)
     }
 
-    /// Create from environment variable
+    /// Create from environment variable with standard HTTP config
     ///
     /// Automatically detects Neural API mode or Direct mode based on environment:
     /// - BEARDOG_MODE=neural (default): Routes through Neural API for capability.call
@@ -59,18 +80,19 @@ impl SongbirdHttpClient {
         
         Self {
             crypto: Arc::new(BearDogProvider::from_env()),
-            config: TlsConfig::default(),
+            tls_config: TlsConfig::default(),
+            http_config: HttpClientConfig::standard(),
             profiler: None,
         }
     }
 
-    /// Create with custom config and optional profiler
-    pub fn with_config(
+    /// Create with custom TLS config and optional profiler (uses standard HTTP config)
+    pub fn with_tls_config(
         _socket_path: impl Into<String>,
-        config: TlsConfig,
+        tls_config: TlsConfig,
         profiler: Option<Arc<ServerProfiler>>,
     ) -> Self {
-        info!("🎛️  Creating Songbird HTTP client with {:?} strategy", config.extension_strategy);
+        info!("🎛️  Creating Songbird HTTP client with {:?} strategy", tls_config.extension_strategy);
         if profiler.is_some() {
             info!("🧠 Adaptive learning enabled (profiler attached)");
         }
@@ -80,7 +102,64 @@ impl SongbirdHttpClient {
         // The socket_path parameter is ignored - routing determined by BEARDOG_MODE
         Self {
             crypto: Arc::new(BearDogProvider::from_env()),
-            config,
+            tls_config,
+            http_config: HttpClientConfig::standard(),
+            profiler,
+        }
+    }
+
+    /// Create with custom HTTP configuration
+    ///
+    /// Use this for granular control over User-Agent, headers, and routing behavior.
+    ///
+    /// # Examples
+    ///
+    /// ```rust,no_run
+    /// use songbird_http_client::{SongbirdHttpClient, HttpClientConfig};
+    ///
+    /// // Browser-like behavior for web scraping
+    /// let client = SongbirdHttpClient::with_http_config(HttpClientConfig::browser_like());
+    ///
+    /// // API-focused with JSON defaults
+    /// let client = SongbirdHttpClient::with_http_config(HttpClientConfig::api());
+    ///
+    /// // Custom configuration
+    /// let client = SongbirdHttpClient::with_http_config(
+    ///     HttpClientConfig::standard()
+    ///         .with_user_agent("MyApp/1.0")
+    ///         .with_default_header("X-API-Key", "secret")
+    /// );
+    /// ```
+    pub fn with_http_config(http_config: HttpClientConfig) -> Self {
+        info!("🎛️  Creating Songbird HTTP client with custom HTTP config");
+        info!("   User-Agent: {}", http_config.user_agent);
+        info!("   Default headers: {}", http_config.default_headers.len());
+        info!("   Domain rules: {}", http_config.header_rules.len());
+        info!("   Redirect mode: {:?}", http_config.redirect_mode);
+
+        Self {
+            crypto: Arc::new(BearDogProvider::from_env()),
+            tls_config: TlsConfig::default(),
+            http_config,
+            profiler: None,
+        }
+    }
+
+    /// Create with both TLS and HTTP configuration
+    pub fn with_full_config(
+        tls_config: TlsConfig,
+        http_config: HttpClientConfig,
+        profiler: Option<Arc<ServerProfiler>>,
+    ) -> Self {
+        info!("🎛️  Creating Songbird HTTP client with full custom config");
+        if profiler.is_some() {
+            info!("🧠 Adaptive learning enabled (profiler attached)");
+        }
+
+        Self {
+            crypto: Arc::new(BearDogProvider::from_env()),
+            tls_config,
+            http_config,
             profiler,
         }
     }
@@ -90,7 +169,8 @@ impl SongbirdHttpClient {
     /// Use this when you want to provide your own CryptoCapability implementation.
     pub fn with_crypto(
         crypto: Arc<dyn CryptoCapability>,
-        config: TlsConfig,
+        tls_config: TlsConfig,
+        http_config: HttpClientConfig,
         profiler: Option<Arc<ServerProfiler>>,
     ) -> Self {
         info!("🎛️  Creating Songbird HTTP client with custom crypto provider");
@@ -100,9 +180,31 @@ impl SongbirdHttpClient {
 
         Self {
             crypto,
-            config,
+            tls_config,
+            http_config,
             profiler,
         }
+    }
+
+    // Backward compatibility alias
+    #[doc(hidden)]
+    #[deprecated(since = "0.2.0", note = "Use with_tls_config instead")]
+    pub fn with_config(
+        socket_path: impl Into<String>,
+        config: TlsConfig,
+        profiler: Option<Arc<ServerProfiler>>,
+    ) -> Self {
+        Self::with_tls_config(socket_path, config, profiler)
+    }
+
+    /// Get the current HTTP configuration
+    pub fn http_config(&self) -> &HttpClientConfig {
+        &self.http_config
+    }
+
+    /// Get mutable reference to HTTP configuration
+    pub fn http_config_mut(&mut self) -> &mut HttpClientConfig {
+        &mut self.http_config
     }
 
     /// Make an HTTP/HTTPS request
@@ -417,14 +519,14 @@ impl SongbirdHttpClient {
     ) -> Result<(TcpStream, crate::tls::session::SessionKeys)> {
         use crate::tls::config::{ExtensionStrategy, FallbackStrategy};
 
-        let max_attempts = self.config.max_retries as usize;
+        let max_attempts = self.tls_config.max_retries as usize;
         let mut last_error = None;
 
         // Build list of strategies to try based on fallback strategy
-        let strategies_to_try = match self.config.fallback_strategy {
+        let strategies_to_try = match self.tls_config.fallback_strategy {
             FallbackStrategy::None => {
                 // Single attempt with configured strategy
-                vec![self.config.extension_strategy.clone()]
+                vec![self.tls_config.extension_strategy.clone()]
             }
             FallbackStrategy::Progressive => {
                 // Try Modern → Standard → Minimal
@@ -500,7 +602,7 @@ impl SongbirdHttpClient {
             };
 
             // Create config with current strategy
-            let mut attempt_config = self.config.clone();
+            let mut attempt_config = self.tls_config.clone();
             attempt_config.extension_strategy = strategy.clone();
 
             // Attempt handshake on FRESH connection
@@ -643,12 +745,17 @@ impl SongbirdHttpClient {
         })
     }
 
-    /// Build HTTP request bytes
+    /// Build HTTP request bytes with adaptive headers
+    ///
+    /// Uses HttpClientConfig to apply:
+    /// - Default User-Agent
+    /// - Domain-specific header rules
+    /// - Caller-provided headers (override everything)
     fn build_http_request(
         &self,
         uri: &Uri,
         method: &str,
-        headers: &HashMap<String, String>,
+        caller_headers: &HashMap<String, String>,
         body: Option<&serde_json::Value>,
     ) -> Result<Vec<u8>> {
         let mut request = Vec::new();
@@ -657,13 +764,30 @@ impl SongbirdHttpClient {
         let path = uri.path_and_query().map(|pq| pq.as_str()).unwrap_or("/");
         request.extend_from_slice(format!("{} {} HTTP/1.1\r\n", method, path).as_bytes());
 
-        // Host header
-        if let Some(host) = uri.host() {
-            request.extend_from_slice(format!("Host: {}\r\n", host).as_bytes());
-        }
+        // Get host for header routing
+        let host = uri.host().unwrap_or("unknown");
+        
+        // Host header (always first)
+        request.extend_from_slice(format!("Host: {}\r\n", host).as_bytes());
 
-        // Headers
-        for (key, value) in headers {
+        // Get merged headers from config (defaults + rules + caller)
+        let headers = self.http_config.headers_for_domain(host, caller_headers);
+        
+        // Log applied headers for debugging
+        if self.http_config.is_bot_protected(host) {
+            trace!("🛡️  {} is bot-protected - applying adaptive headers", host);
+        }
+        trace!("📋 Applying {} headers for {}", headers.len(), host);
+
+        // Headers (sorted for deterministic output in tests)
+        let mut header_pairs: Vec<_> = headers.iter().collect();
+        header_pairs.sort_by(|a, b| a.0.cmp(b.0));
+        
+        for (key, value) in header_pairs {
+            // Skip Host (already added)
+            if key.eq_ignore_ascii_case("host") {
+                continue;
+            }
             request.extend_from_slice(format!("{}: {}\r\n", key, value).as_bytes());
         }
 
