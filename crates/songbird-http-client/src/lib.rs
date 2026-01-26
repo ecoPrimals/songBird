@@ -63,7 +63,7 @@ pub mod tls;
 pub mod types;
 
 // Legacy preserved for fossil record (2,020 lines → archived)
-#[allow(dead_code)]
+// Note: Module has inner #![allow(dead_code)] attribute
 pub mod beardog_client_legacy;
 
 pub use client::SongbirdHttpClient;

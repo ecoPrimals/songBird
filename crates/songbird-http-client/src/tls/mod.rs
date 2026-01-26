@@ -29,7 +29,7 @@ pub mod server;
 pub mod session;
 
 // Legacy preserved for fossil record (3,128 lines → archived)
-#[allow(dead_code)]
+// Note: Module has inner #![allow(dead_code)] attribute
 pub mod handshake_legacy;
 
 // Compatibility re-export for existing code
