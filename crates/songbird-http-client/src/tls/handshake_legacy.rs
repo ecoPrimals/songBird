@@ -1,4 +1,18 @@
-//! TLS 1.3 handshake implementation
+//! TLS 1.3 handshake implementation (LEGACY - DEPRECATED)
+//!
+//! ⚠️  **DEPRECATED**: This file is the original 3,086-line monolithic implementation.
+//! It has been refactored into the `handshake_refactored` module with 6 logical modules.
+//!
+//! **Status**: Kept for reference and fossil record. Use `handshake_refactored` for new code.
+//!
+//! **Refactor Complete**: January 26, 2026
+//! - Session 1-5: All modules extracted
+//! - Zero behavioral changes
+//! - Production-ready modular architecture
+//!
+//! See: `crates/songbird-http-client/src/tls/handshake_refactored/` for the new implementation.
+
+#![allow(dead_code)] // Legacy file kept for reference
 
 use crate::crypto::CryptoCapability;
 use crate::error::{Error, Result};
