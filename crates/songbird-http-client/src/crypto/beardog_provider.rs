@@ -649,8 +649,9 @@ impl CryptoCapability for BearDogProvider {
             client_write_iv: self.extract_b64_field(&result, "client_write_iv")?,
             server_write_key: self.extract_b64_field(&result, "server_write_key")?,
             server_write_iv: self.extract_b64_field(&result, "server_write_iv")?,
-            // BearDog doesn't return a separate handshake_secret - derive from client_handshake_secret
-            handshake_secret: self.extract_b64_field(&result, "client_handshake_secret")?,
+            // BearDog now returns the raw handshake_secret (needed for application secrets derivation)
+            // This is the intermediate value in RFC 8446 key schedule, NOT the traffic secrets
+            handshake_secret: self.extract_b64_field(&result, "handshake_secret")?,
         })
     }
 
