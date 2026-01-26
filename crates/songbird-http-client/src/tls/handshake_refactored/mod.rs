@@ -22,6 +22,7 @@
 mod core;
 mod transcript;
 mod extensions;
+mod record_io;
 
 // Re-export main types
 pub use core::TlsHandshake;
