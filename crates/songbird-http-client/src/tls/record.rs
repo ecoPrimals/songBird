@@ -565,71 +565,61 @@ impl TlsRecordLayer {
 
         // Check if server sent an alert
         if content_type_byte == 0x15 {
-            error!("════════════════════════════════════════════════════════════");
-            error!("🚨 SERVER SENT TLS ALERT!");
-            error!("════════════════════════════════════════════════════════════");
             if plaintext.len() >= 2 {
                 let alert_level = plaintext[0];
                 let alert_desc = plaintext[1];
-                error!(
-                    "Alert level: 0x{:02x} ({})",
-                    alert_level,
-                    if alert_level == 0x01 {
-                        "Warning"
-                    } else {
-                        "Fatal"
-                    }
-                );
-                error!(
-                    "Alert description: 0x{:02x} ({})",
-                    alert_desc,
-                    match alert_desc {
-                        0x00 => "close_notify",
-                        0x0A => "unexpected_message",
-                        0x14 => "bad_record_mac",
-                        0x15 => "decryption_failed",
-                        0x16 => "record_overflow",
-                        0x28 => "handshake_failure",
-                        0x29 => "no_certificate",
-                        0x2A => "bad_certificate",
-                        0x2B => "unsupported_certificate",
-                        0x2C => "certificate_revoked",
-                        0x2D => "certificate_expired",
-                        0x2E => "certificate_unknown",
-                        0x2F => "illegal_parameter",
-                        0x30 => "unknown_ca",
-                        0x31 => "access_denied",
-                        0x32 => "decode_error",
-                        0x33 => "decrypt_error",
-                        0x3C => "unrecognized_name",
-                        0x46 => "certificate_required",
-                        0x50 => "protocol_version",
-                        0x56 => "insufficient_security",
-                        0x5A => "internal_error",
-                        0x5F => "user_canceled",
-                        0x6D => "no_renegotiation",
-                        0x6E => "missing_extension",
-                        _ => "unknown",
-                    }
-                );
+                let level_str = if alert_level == 0x01 { "Warning" } else { "Fatal" };
+                let desc_str = match alert_desc {
+                    0x00 => "close_notify",
+                    0x0A => "unexpected_message",
+                    0x14 => "bad_record_mac",
+                    0x15 => "decryption_failed",
+                    0x16 => "record_overflow",
+                    0x28 => "handshake_failure",
+                    0x29 => "no_certificate",
+                    0x2A => "bad_certificate",
+                    0x2B => "unsupported_certificate",
+                    0x2C => "certificate_revoked",
+                    0x2D => "certificate_expired",
+                    0x2E => "certificate_unknown",
+                    0x2F => "illegal_parameter",
+                    0x30 => "unknown_ca",
+                    0x31 => "access_denied",
+                    0x32 => "decode_error",
+                    0x33 => "decrypt_error",
+                    0x3C => "unrecognized_name",
+                    0x46 => "certificate_required",
+                    0x50 => "protocol_version",
+                    0x56 => "insufficient_security",
+                    0x5A => "internal_error",
+                    0x5F => "user_canceled",
+                    0x6D => "no_renegotiation",
+                    0x6E => "missing_extension",
+                    _ => "unknown",
+                };
+
+                // CRITICAL FIX: close_notify (0x00) is GRACEFUL close, not an error!
+                // RFC 8446 Section 6.1: close_notify indicates orderly connection closure
+                if alert_desc == 0x00 {
+                    info!("════════════════════════════════════════════════════════════");
+                    info!("✅ close_notify: Server closed connection gracefully");
+                    info!("   This is NORMAL after receiving complete HTTP response");
+                    info!("════════════════════════════════════════════════════════════");
+                    // Return empty vec to signal clean EOF - NOT an error
+                    return Ok(Vec::new());
+                }
+
+                // All other alerts are errors
+                error!("════════════════════════════════════════════════════════════");
+                error!("🚨 SERVER SENT TLS ALERT!");
+                error!("════════════════════════════════════════════════════════════");
+                error!("Alert level: 0x{:02x} ({})", alert_level, level_str);
+                error!("Alert description: 0x{:02x} ({})", alert_desc, desc_str);
                 error!("════════════════════════════════════════════════════════════");
 
-                // Return a descriptive error
                 return Err(Error::TlsAlert(format!(
                     "Server sent {} alert: {} (0x{:02x})",
-                    if alert_level == 0x01 {
-                        "Warning"
-                    } else {
-                        "Fatal"
-                    },
-                    match alert_desc {
-                        0x00 => "close_notify",
-                        0x28 => "handshake_failure",
-                        0x33 => "decrypt_error",
-                        0x50 => "protocol_version",
-                        _ => "unknown",
-                    },
-                    alert_desc
+                    level_str, desc_str, alert_desc
                 )));
             } else {
                 error!("Alert is too short ({} bytes) - malformed!", plaintext.len());
