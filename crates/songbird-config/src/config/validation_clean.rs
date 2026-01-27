@@ -330,7 +330,7 @@ mod tests {
         config.insert("instance_id".to_string(), "test-instance".to_string());
         config.insert("environment".to_string(), "development".to_string());
         config.insert("bind_address".to_string(), &crate::constants::network::DEFAULT_HOST.to_string());
-        config.insert("orchestrator_port".to_string(), &crate::constants::network::DEFAULT_ORCHESTRATOR_PORT.to_string().to_string());
+        config.insert("orchestrator_port".to_string(), &crate::constants::network::DEFAULT_ORCHESTRATOR_PORT.to_string());
 
         let result = validate_configuration_completeness(&config);
         assert!(result.is_success());
