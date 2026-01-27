@@ -380,8 +380,6 @@ impl tokio::io::AsyncWrite for TlsStream {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-
     #[test]
     fn test_tls_acceptor_creation() {
         // Test will use mock BearDog client

@@ -177,7 +177,6 @@ pub mod bytes {
 #[cfg(test)]
 mod tests {
     use super::bytes::*;
-    use super::*;
 
     #[test]
     fn test_write_read_u8() {

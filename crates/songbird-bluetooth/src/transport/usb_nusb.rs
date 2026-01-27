@@ -28,12 +28,15 @@ use tracing::{debug, info};
 const USB_CLASS_WIRELESS_CONTROLLER: u8 = 0xE0;
 
 /// HCI event endpoint (Interrupt IN)
+#[allow(dead_code)] // Reserved for future streaming support
 const HCI_EVENT_ENDPOINT: u8 = 0x81;
 
 /// HCI ACL data IN endpoint (Bulk IN)
+#[allow(dead_code)] // Reserved for future streaming support
 const HCI_ACL_IN_ENDPOINT: u8 = 0x82;
 
 /// HCI ACL data OUT endpoint (Bulk OUT)
+#[allow(dead_code)] // Reserved for future streaming support
 const HCI_ACL_OUT_ENDPOINT: u8 = 0x02;
 
 /// Default timeout for USB operations
@@ -51,11 +54,19 @@ pub struct UsbTransport {
 
 impl UsbTransport {
     /// Create new USB transport
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if no compatible Bluetooth USB device is found
     pub async fn new() -> Result<Self> {
         Self::with_filter(None, None).await
     }
 
     /// Create USB transport with vendor/product ID filter
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if no matching Bluetooth device is found
     pub async fn with_filter(vendor_id: Option<u16>, product_id: Option<u16>) -> Result<Self> {
         // List all USB devices
         let devices: Vec<DeviceInfo> = nusb::list_devices()
@@ -136,7 +147,7 @@ impl Transport for UsbTransport {
                     recipient: Recipient::Interface,
                     request: 0x00,
                     value: 0,
-                    index: self.interface_num as u16,
+                    index: u16::from(self.interface_num),
                     data,
                 },
                 USB_TIMEOUT,
@@ -162,7 +173,7 @@ impl Transport for UsbTransport {
                     recipient: Recipient::Interface,
                     request: 0x01, // Get event
                     value: 0,
-                    index: self.interface_num as u16,
+                    index: u16::from(self.interface_num),
                     length: 256,
                 },
                 USB_TIMEOUT,
@@ -171,7 +182,7 @@ impl Transport for UsbTransport {
             .map_err(|e| TransportError::Usb(format!("Failed to receive HCI event: {e}")))?;
 
         debug!("Received HCI event: {} bytes", data.len());
-        Ok(data.to_vec())
+        Ok(data)
     }
 
     async fn send_acl(&mut self, data: &[u8]) -> Result<()> {
@@ -188,7 +199,7 @@ impl Transport for UsbTransport {
                     recipient: Recipient::Interface,
                     request: 0x02, // Send ACL
                     value: 0,
-                    index: self.interface_num as u16,
+                    index: u16::from(self.interface_num),
                     data,
                 },
                 USB_TIMEOUT,
@@ -215,7 +226,7 @@ impl Transport for UsbTransport {
                     recipient: Recipient::Interface,
                     request: 0x03, // Get ACL
                     value: 0,
-                    index: self.interface_num as u16,
+                    index: u16::from(self.interface_num),
                     length: 1024,
                 },
                 USB_TIMEOUT,
@@ -224,7 +235,7 @@ impl Transport for UsbTransport {
             .map_err(|e| TransportError::Usb(format!("Failed to receive ACL data: {e}")))?;
 
         debug!("Received ACL data: {} bytes", data.len());
-        Ok(data.to_vec())
+        Ok(data)
     }
 
     fn is_connected(&self) -> bool {

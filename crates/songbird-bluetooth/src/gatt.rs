@@ -271,7 +271,7 @@ impl<T: Transport + 'static> GattClient<T> {
     }
 
     /// Send ATT request and receive response
-    async fn send_att_request(&mut self, request: &[u8]) -> Result<Vec<u8>> {
+    async fn send_att_request(&self, request: &[u8]) -> Result<Vec<u8>> {
         trace!("Sending ATT request: {} bytes", request.len());
 
         // Build L2CAP packet
@@ -455,6 +455,7 @@ impl<T: Transport + 'static> GattClient<T> {
     /// # Errors
     ///
     /// Returns error if service not found
+    #[allow(clippy::unused_async)] // TODO: Will be async when implementing actual GATT operations
     pub async fn find_service(&self, uuid: &Uuid) -> Result<&Service> {
         self.services
             .iter()
@@ -467,6 +468,7 @@ impl<T: Transport + 'static> GattClient<T> {
     /// # Errors
     ///
     /// Returns error if characteristic discovery fails
+    #[allow(clippy::unused_async)] // TODO: Will be async when implementing actual GATT operations
     pub async fn discover_characteristics(&mut self, service_uuid: &Uuid) -> Result<()> {
         debug!("Discovering characteristics for service: {}", service_uuid);
 
@@ -622,6 +624,7 @@ impl<T: Transport + 'static> GattClient<T> {
     /// - Characteristic not found
     /// - Read not supported
     /// - Read fails
+    #[allow(clippy::unused_async)] // TODO: Will be async when implementing actual GATT operations
     pub async fn read_characteristic(&self, uuid: &Uuid) -> Result<Vec<u8>> {
         debug!("Reading characteristic: {}", uuid);
 
@@ -691,6 +694,7 @@ impl<T: Transport + 'static> GattClient<T> {
     /// - Characteristic not found
     /// - Write not supported
     /// - Write fails
+    #[allow(clippy::unused_async)] // TODO: Will be async when implementing actual GATT operations
     pub async fn write_characteristic(&self, uuid: &Uuid, data: &[u8]) -> Result<()> {
         debug!("Writing {} bytes to characteristic: {}", data.len(), uuid);
 
@@ -787,6 +791,7 @@ impl<T: Transport + 'static> GattClient<T> {
     /// - Characteristic not found
     /// - Notifications not supported
     /// - Subscription fails
+    #[allow(clippy::unused_async)] // TODO: Will be async when implementing actual GATT operations
     pub async fn subscribe_notifications(
         &self,
         uuid: &Uuid,

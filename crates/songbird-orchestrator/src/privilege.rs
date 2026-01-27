@@ -121,12 +121,9 @@ impl PrivilegeManager {
                 .args(["-C", "INPUT", "-p", "udp", "--dport", &port.to_string(), "-j", "ACCEPT"])
                 .output();
 
-            if tcp_check.is_err() || udp_check.is_err() {
-                return false;
-            }
-
-            if !tcp_check.unwrap().status.success() || !udp_check.unwrap().status.success() {
-                return false;
+            match (tcp_check, udp_check) {
+                (Ok(tcp), Ok(udp)) if tcp.status.success() && udp.status.success() => {}
+                _ => return false,
             }
         }
 

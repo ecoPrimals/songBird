@@ -13,12 +13,14 @@ use uuid::Uuid;
 
 mod checkpoint;
 mod manager;
-mod storage;
+// mod storage;  // ❌ REMOVED Jan 27, 2026: sqlx-based storage (migrated to sled)
+mod storage_sled; // ✅ NEW: Pure Rust sled-based storage (TRUE ecoBin!)
 pub mod types; // Made public for cross-module access
 
 pub use checkpoint::*;
 pub use manager::TaskLifecycleManager;
-pub use storage::*;
+// pub use storage::*;  // ❌ OLD sqlx storage
+pub use storage_sled::*; // ✅ NEW sled storage (100% Pure Rust!)
 pub use types::*;
 
 /// Task identifier (UUID v7 for time-ordered IDs)
@@ -34,6 +36,15 @@ impl TaskId {
     /// Create from existing UUID
     pub fn from_uuid(uuid: Uuid) -> Self {
         Self(uuid)
+    }
+
+    /// Create from string (convenience method)
+    ///
+    /// # Errors
+    ///
+    /// Returns error if string is not a valid UUID
+    pub fn from_string(s: &str) -> anyhow::Result<Self> {
+        Ok(Self(Uuid::parse_str(s)?))
     }
 
     /// Get UUID value

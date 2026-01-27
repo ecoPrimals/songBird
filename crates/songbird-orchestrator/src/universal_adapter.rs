@@ -217,12 +217,10 @@ impl UniversalAdapter {
     ///
     /// Format: CAPABILITY_PROVIDERS='security=http://192.168.1.10:9000,storage=http://192.168.1.20:8000'
     async fn discover_from_environment(&self, capability: &str) -> Result<Vec<DiscoveredProvider>> {
-        let env_var = std::env::var("CAPABILITY_PROVIDERS").ok();
-        if env_var.is_none() {
+        let Some(env_var) = std::env::var("CAPABILITY_PROVIDERS").ok() else {
             return Ok(vec![]);
-        }
+        };
 
-        let env_var = env_var.unwrap();
         let mut providers = Vec::new();
 
         for entry in env_var.split(',') {

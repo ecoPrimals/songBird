@@ -43,7 +43,10 @@ pub fn discover_node_id() -> Result<Uuid> {
         Ok(node_id)
     } else {
         let node_id = Uuid::new_v4();
-        fs::create_dir_all(identity_path.parent().unwrap()).context(format!(
+        let parent = identity_path
+            .parent()
+            .context(format!("Identity path has no parent: {}", identity_path.display()))?;
+        fs::create_dir_all(parent).context(format!(
             "Failed to create config directory for {}",
             identity_path.display()
         ))?;

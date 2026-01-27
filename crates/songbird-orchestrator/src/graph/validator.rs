@@ -242,10 +242,11 @@ impl GraphValidator {
                     }
                 } else if rec_stack.contains(neighbor) {
                     // Found a cycle - extract it from the path
-                    let cycle_start = path.iter().position(|n| n == neighbor).unwrap();
-                    let mut cycle = path[cycle_start..].to_vec();
-                    cycle.push(neighbor.to_string());
-                    return Some(cycle);
+                    if let Some(cycle_start) = path.iter().position(|n| n == neighbor) {
+                        let mut cycle = path[cycle_start..].to_vec();
+                        cycle.push(neighbor.to_string());
+                        return Some(cycle);
+                    }
                 }
             }
         }

@@ -301,6 +301,7 @@ pub struct TaskFilter {
     pub priority: Option<Priority>,
     pub created_after: Option<DateTime<Utc>>,
     pub created_before: Option<DateTime<Utc>>,
+    pub limit: Option<usize>, // Maximum number of results
 }
 
 #[cfg(test)]

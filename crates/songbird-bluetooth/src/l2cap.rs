@@ -84,11 +84,15 @@ impl L2capChannel {
         packet.extend_from_slice(&handle_and_flags.to_le_bytes());
 
         // ACL data length
-        packet.extend_from_slice(&(acl_data_length as u16).to_le_bytes());
+        packet.extend_from_slice(&u16::try_from(acl_data_length)
+            .unwrap_or(u16::MAX)
+            .to_le_bytes());
 
         // L2CAP Header
         // PDU length (payload only, not including L2CAP header)
-        packet.extend_from_slice(&(l2cap_length as u16).to_le_bytes());
+        packet.extend_from_slice(&u16::try_from(l2cap_length)
+            .unwrap_or(u16::MAX)
+            .to_le_bytes());
 
         // Channel ID
         packet.extend_from_slice(&self.channel_id.to_le_bytes());
@@ -212,17 +216,20 @@ impl L2capManager {
     ///
     /// Returns error if channel already exists
     pub async fn create_att_channel(&self, connection_handle: u16) -> Result<L2capChannel> {
-        let mut channels = self.channels.lock().await;
+        let channel = {
+            let mut channels = self.channels.lock().await;
 
-        // Check if channel already exists
-        if channels.iter().any(|c| c.connection_handle == connection_handle) {
-            return Err(BluetoothError::InvalidOperation(format!(
-                "ATT channel already exists for handle 0x{connection_handle:04X}"
-            )));
-        }
+            // Check if channel already exists
+            if channels.iter().any(|c| c.connection_handle == connection_handle) {
+                return Err(BluetoothError::InvalidOperation(format!(
+                    "ATT channel already exists for handle 0x{connection_handle:04X}"
+                )));
+            }
 
-        let channel = L2capChannel::new_att(connection_handle);
-        channels.push(channel.clone());
+            let channel = L2capChannel::new_att(connection_handle);
+            channels.push(channel.clone());
+            channel
+        }; // Lock dropped here
 
         debug!("Created ATT channel for handle 0x{:04X}", connection_handle);
 
@@ -248,8 +255,7 @@ impl L2capManager {
 
     /// Remove channel for a connection
     pub async fn remove_channel(&self, connection_handle: u16) {
-        let mut channels = self.channels.lock().await;
-        channels.retain(|c| c.connection_handle != connection_handle);
+        self.channels.lock().await.retain(|c| c.connection_handle != connection_handle);
         debug!("Removed channel for handle 0x{:04X}", connection_handle);
     }
 

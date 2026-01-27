@@ -95,7 +95,10 @@ pub async fn create_genetic_tunnel(
     let tunnel_id = format!(
         "tunnel-{}-{}",
         request.peer_node_id,
-        SystemTime::now().duration_since(SystemTime::UNIX_EPOCH).unwrap().as_secs()
+        SystemTime::now()
+            .duration_since(SystemTime::UNIX_EPOCH)
+            .unwrap_or_default()
+            .as_secs()
     );
 
     match result {
@@ -109,7 +112,7 @@ pub async fn create_genetic_tunnel(
                 encryption: Some("ChaCha20-Poly1305".to_string()),
                 created_at: SystemTime::now()
                     .duration_since(SystemTime::UNIX_EPOCH)
-                    .unwrap()
+                    .unwrap_or_default()
                     .as_secs()
                     .to_string(),
             })
@@ -124,7 +127,7 @@ pub async fn create_genetic_tunnel(
                 encryption: None,
                 created_at: SystemTime::now()
                     .duration_since(SystemTime::UNIX_EPOCH)
-                    .unwrap()
+                    .unwrap_or_default()
                     .as_secs()
                     .to_string(),
             })
@@ -232,8 +235,11 @@ pub async fn create_genetic_tunnel_json(
         )
         .await;
 
-    let timestamp =
-        SystemTime::now().duration_since(SystemTime::UNIX_EPOCH).unwrap().as_secs().to_string();
+    let timestamp = SystemTime::now()
+        .duration_since(SystemTime::UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_secs()
+        .to_string();
 
     let tunnel_id = format!("tunnel-{}-{}", request.peer_node_id, timestamp);
 

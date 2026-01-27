@@ -19,13 +19,16 @@ mod enforcement;
 mod preferences;
 mod request;
 mod rules;
-mod storage;
+// ✅ MIGRATED TO PURE RUST (Jan 27, 2026)
+// Old: mod storage;  // sqlx-based (had C dependency)
+mod storage_sled; // 100% Pure Rust sled-based!
+pub use storage_sled::ConsentStorage; // Re-export for compatibility
 
 pub use enforcement::*;
 pub use preferences::*;
 pub use request::*;
 pub use rules::*;
-pub use storage::*;
+// pub use storage::*;  // ❌ REMOVED: old sqlx storage
 
 /// Consent status
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]

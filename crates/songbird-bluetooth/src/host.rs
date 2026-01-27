@@ -284,7 +284,7 @@ impl<T: Transport + 'static> BluetoothHost<T> {
 
             match event_result {
                 Ok(Ok(event)) => {
-                    if let Some(device) = self.parse_advertisement(&event) {
+                    if let Some(device) = Self::parse_advertisement(&event) {
                         devices.entry(device.address).or_insert(device);
                     }
                 }
@@ -309,7 +309,7 @@ impl<T: Transport + 'static> BluetoothHost<T> {
     }
 
     /// Parse BLE advertisement event
-    fn parse_advertisement(&self, event: &[u8]) -> Option<DeviceInfo> {
+    fn parse_advertisement(event: &[u8]) -> Option<DeviceInfo> {
         // Check for LE Advertising Report event
         if event.len() < 12 || event[0] != 0x3E {
             return None;
@@ -335,7 +335,7 @@ impl<T: Transport + 'static> BluetoothHost<T> {
         let rssi = event.last().copied().map(|b| b as i8);
 
         // Parse device name from advertisement data (if present)
-        let name = self.parse_device_name(event);
+        let name = Self::parse_device_name(event);
 
         let mut info = DeviceInfo::new(address);
         if let Some(n) = name {
@@ -358,7 +358,7 @@ impl<T: Transport + 'static> BluetoothHost<T> {
     /// - Length (1 byte): Length of Type + Data
     /// - Type (1 byte): AD Type
     /// - Data (variable): AD Data
-    fn parse_device_name(&self, event: &[u8]) -> Option<String> {
+    fn parse_device_name(event: &[u8]) -> Option<String> {
         // Minimum event size check
         if event.len() < 2 {
             return None;
@@ -440,8 +440,7 @@ impl<T: Transport + 'static> BluetoothHost<T> {
         let device = Arc::new(Device::new(info, handle));
 
         // Store connection
-        let mut connections = self.connections.write().await;
-        connections.insert(address, Arc::clone(&device));
+        self.connections.write().await.insert(address, Arc::clone(&device));
 
         info!("Connected to {} (handle: 0x{:04X})", address, handle);
         Ok(device)
@@ -609,8 +608,7 @@ impl<T: Transport + 'static> BluetoothHost<T> {
         self.l2cap_manager.remove_channel(handle).await;
 
         // Remove from connections map
-        let mut connections = self.connections.write().await;
-        connections.remove(&address);
+        self.connections.write().await.remove(&address);
 
         info!("Disconnected from {} (handle: 0x{:04X})", address, handle);
         Ok(())
@@ -692,10 +690,10 @@ impl<T: Transport + 'static> BluetoothHost<T> {
     ///
     /// Returns error if device not connected
     pub async fn gatt_client(&self, address: Address) -> Result<GattClient<T>> {
-        let connections = self.connections.read().await;
-        let device = connections
+        let device = self.connections.read().await
             .get(&address)
-            .ok_or_else(|| BluetoothError::device(format!("Device not connected: {address}")))?;
+            .ok_or_else(|| BluetoothError::device(format!("Device not connected: {address}")))?
+            .clone();
 
         // Create or get L2CAP ATT channel for this connection
         let l2cap_channel = match self.l2cap_manager.get_att_channel(device.handle()).await {
@@ -703,7 +701,7 @@ impl<T: Transport + 'static> BluetoothHost<T> {
             Err(_) => self.l2cap_manager.create_att_channel(device.handle()).await?,
         };
 
-        Ok(GattClient::new(Arc::clone(device), l2cap_channel, Arc::clone(&self.transport)))
+        Ok(GattClient::new(device, l2cap_channel, Arc::clone(&self.transport)))
     }
 
     /// Get number of active connections

@@ -115,13 +115,12 @@ pub async fn login(Json(req): Json<LoginRequest>) -> Result<Json<LoginResponse>,
 
     // For admin roles, require 2FA
     if matches!(req.role.as_str(), "admin" | "remote-admin") {
-        if req.two_factor_token.is_none() {
+        let two_factor_token = req.two_factor_token.as_ref().ok_or_else(|| {
             tracing::warn!("Admin login attempt for user '{}' without 2FA token", req.user_id);
-            return Err(AuthError::InsufficientPermissions);
-        }
+            AuthError::InsufficientPermissions
+        })?;
 
         // Validate 2FA token
-        let two_factor_token = req.two_factor_token.as_ref().unwrap();
         validate_two_factor_token(&req.user_id, two_factor_token).await?;
     }
 
