@@ -10,7 +10,7 @@
 //!
 //! **Critical**: Uses EXACT same transcript logic as client for validation!
 
-use crate::beardog_client::BearDogClient;
+use crate::crypto::CryptoCapability;
 use crate::error::{Error, Result};
 use crate::tls::{
     content_type,
@@ -28,8 +28,8 @@ use tracing::{debug, error, info};
 /// Implements RFC 8446 TLS 1.3 server by reusing client components.
 /// **Critical**: Uses SAME transcript logic as client for self-testing!
 pub struct TlsServer {
-    /// Shared BearDog client for crypto operations
-    beardog: Arc<BearDogClient>,
+    /// Shared crypto provider (BearDog or any CryptoCapability impl)
+    crypto: Arc<dyn CryptoCapability>,
 
     /// Transcript tracking (SAME as client!)
     transcript: Transcript,
@@ -63,13 +63,13 @@ pub struct TlsServer {
 
 impl TlsServer {
     /// Create new TLS server with certificate and private key
-    pub fn new(beardog: Arc<BearDogClient>, cert_chain: Vec<u8>, private_key: Vec<u8>) -> Self {
+    pub fn new(crypto: Arc<dyn CryptoCapability>, cert_chain: Vec<u8>, private_key: Vec<u8>) -> Self {
         info!("🔐 Creating TLS 1.3 server (RFC 8446)");
         info!("   Certificate chain: {} bytes", cert_chain.len());
         info!("   Private key: {} bytes", private_key.len());
 
         Self {
-            beardog,
+            crypto,
             transcript: Transcript::new(),
             cert_chain,
             private_key,
@@ -123,7 +123,7 @@ impl TlsServer {
         info!("");
         info!("🔑 Step 2: Generating server ECDH keypair...");
         let (server_private_key, server_public_key) = self
-            .beardog
+            .crypto
             .generate_keypair()
             .await
             .map_err(|e| Error::TlsHandshake(format!("Failed to generate keypair: {}", e)))?;
@@ -161,7 +161,7 @@ impl TlsServer {
         info!("");
         info!("🔐 Step 5: Deriving handshake traffic keys...");
         let shared_secret = self
-            .beardog
+            .crypto
             .ecdh_derive(&server_private_key, &client_public_key)
             .await
             .map_err(|e| Error::TlsHandshake(format!("ECDH failed: {}", e)))?;
@@ -173,7 +173,7 @@ impl TlsServer {
         let transcript_hash_for_handshake = self.transcript.compute_hash();
 
         let handshake_secrets = self
-            .beardog
+            .crypto
             .tls_derive_handshake_secrets(
                 &shared_secret,
                 &client_random,
@@ -241,7 +241,7 @@ impl TlsServer {
         debug!("   Hash (hex): {}", hex::encode(&transcript_hash));
 
         let app_secrets = self
-            .beardog
+            .crypto
             .tls_derive_application_secrets(
                 self.shared_secret.as_ref().unwrap(),
                 self.client_random.as_ref().unwrap(),
@@ -710,7 +710,7 @@ impl TlsServer {
         // TODO(P0): Add BearDog signing integration
         // Once BearDog exposes `crypto.sign` API, implement:
         // ```
-        // let signature = self.beardog.sign(
+        // let signature = self.crypto.sign(
         //     SignatureAlgorithm::EcdsaSecp256r1Sha256,
         //     &self.private_key,
         //     &to_sign,
@@ -753,7 +753,7 @@ impl TlsServer {
 
         // Compute verify_data via BearDog (expects u16 for cipher_suite)
         let verify_data = self
-            .beardog
+            .crypto
             .tls_compute_finished_verify_data(
                 handshake_secret,
                 &transcript_hash,
@@ -822,15 +822,15 @@ impl TlsServer {
         let ciphertext = match self.cipher_suite {
             CipherSuite::Aes128GcmSha256 => {
                 debug!("   → Using AES-128-GCM");
-                self.beardog.encrypt_aes_128_gcm(key, &nonce, plaintext, &aad).await
+                self.crypto.encrypt_aes_128_gcm(key, &nonce, plaintext, &aad).await
             }
             CipherSuite::Aes256GcmSha384 => {
                 debug!("   → Using AES-256-GCM");
-                self.beardog.encrypt_aes_256_gcm(key, &nonce, plaintext, &aad).await
+                self.crypto.encrypt_aes_256_gcm(key, &nonce, plaintext, &aad).await
             }
             CipherSuite::ChaCha20Poly1305Sha256 => {
                 debug!("   → Using ChaCha20-Poly1305");
-                self.beardog.encrypt(key, &nonce, plaintext, &aad).await
+                self.crypto.encrypt(key, &nonce, plaintext, &aad).await
             }
         }
         .map_err(|e| {
@@ -888,15 +888,15 @@ impl TlsServer {
         let plaintext = match self.cipher_suite {
             CipherSuite::Aes128GcmSha256 => {
                 debug!("   → Using AES-128-GCM");
-                self.beardog.decrypt_aes_128_gcm(key, &nonce, ciphertext, &aad).await
+                self.crypto.decrypt_aes_128_gcm(key, &nonce, ciphertext, &aad).await
             }
             CipherSuite::Aes256GcmSha384 => {
                 debug!("   → Using AES-256-GCM");
-                self.beardog.decrypt_aes_256_gcm(key, &nonce, ciphertext, &aad).await
+                self.crypto.decrypt_aes_256_gcm(key, &nonce, ciphertext, &aad).await
             }
             CipherSuite::ChaCha20Poly1305Sha256 => {
                 debug!("   → Using ChaCha20-Poly1305");
-                self.beardog.decrypt(key, &nonce, ciphertext, &aad).await
+                self.crypto.decrypt(key, &nonce, ciphertext, &aad).await
             }
         }
         .map_err(|e| {
