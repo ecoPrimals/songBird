@@ -148,7 +148,7 @@ pub async fn announce_capabilities(
         JsonRpcError::custom(-32602, format!("Failed to parse params: {}", e), None)
     })?;
 
-    // TODO v3.19.3: Implement broadcaster.update_capabilities() method
+    // TODO: Implement broadcaster.update_capabilities() method
     // For now, just log the intent
     info!(
         "✅ Would announce capabilities: {:?}, sub_federations: {:?}, families: {:?}",
@@ -276,7 +276,7 @@ pub async fn announce_capabilities_json(
         return Err(JsonRpcError::invalid_params("Missing params for announce_capabilities"));
     };
 
-    // TODO v3.19.3: Implement broadcaster.update_capabilities() method
+    // TODO: Implement broadcaster.update_capabilities() method
     let response = AnnounceCapabilitiesResponse {
         status: "updated".to_string(),
         broadcasting: true,

@@ -125,10 +125,10 @@ impl FullTrustBtspConnection {
 
         debug!("📡 Sending RPC over BTSP tunnel {}: {}", tunnel_id, operation);
 
-        // TODO(v3.18.1): Implement bidirectional BTSP communication
+        // TODO: Implement bidirectional BTSP communication
+        // Requires BearDog v0.16.0+ and BtspClient.send_data_over_tunnel()
         Err(anyhow!(
             "BTSP bidirectional communication not yet implemented. \
-             This requires BearDog v0.16.0+ and BtspClient.send_data_over_tunnel(). \
              Current implementation establishes tunnels only."
         ))
     }

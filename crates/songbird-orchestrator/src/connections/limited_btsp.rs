@@ -188,7 +188,7 @@ impl LimitedBtspConnection {
         // This is a deep debt that requires BearDog v0.16.0+
         // For now, we'll document this as a TODO for Phase 2
 
-        // TODO(v3.18.1): Implement bidirectional BTSP communication
+        // TODO: Implement bidirectional BTSP communication
         // self.btsp_client.send_data_over_tunnel(&tunnel_id, &request_bytes).await?;
 
         // For v3.18.0, return error indicating feature not yet implemented

@@ -56,10 +56,14 @@
 
 pub mod beardog_client; // ✅ ACTIVE: Smart refactored module (7 sub-modules)
 pub mod client;
+mod connection; // ✅ NEW: Connection management (HTTP/HTTPS) (extracted from client.rs)
 pub mod crypto;
 pub mod error;
 pub mod http_config; // ✅ NEW: Adaptive HTTP configuration (User-Agent, routing, etc.)
 pub mod ipc_client;
+mod redirect; // ✅ NEW: HTTP redirect handling (extracted from client.rs)
+mod request; // ✅ NEW: HTTP request building (extracted from client.rs)
+mod response; // ✅ NEW: HTTP response parsing (extracted from client.rs)
 pub mod tls;
 pub mod types;
 
