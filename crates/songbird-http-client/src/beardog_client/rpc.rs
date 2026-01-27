@@ -62,12 +62,12 @@ impl BearDogClient {
         let id = self.request_id.fetch_add(1, Ordering::SeqCst);
 
         match &self.mode {
-            BearDogMode::Direct { socket_path } => {
-                self.call_direct(socket_path, capability, args, id).await
-            }
-            BearDogMode::NeuralApi { socket_path } => {
-                self.call_neural_api(socket_path, capability, args, id).await
-            }
+            BearDogMode::Direct {
+                socket_path,
+            } => self.call_direct(socket_path, capability, args, id).await,
+            BearDogMode::NeuralApi {
+                socket_path,
+            } => self.call_neural_api(socket_path, capability, args, id).await,
         }
     }
 
@@ -94,10 +94,7 @@ impl BearDogClient {
 
         // Connect to BearDog directly
         let mut stream = UnixStream::connect(socket_path).await.map_err(|e| {
-            Error::BearDogRpc(format!(
-                "Failed to connect to BearDog at {}: {}",
-                socket_path, e
-            ))
+            Error::BearDogRpc(format!("Failed to connect to BearDog at {}: {}", socket_path, e))
         })?;
 
         // Send request
@@ -123,9 +120,7 @@ impl BearDogClient {
             )));
         }
 
-        response
-            .result
-            .ok_or_else(|| Error::BearDogRpc("No result in response".to_string()))
+        response.result.ok_or_else(|| Error::BearDogRpc("No result in response".to_string()))
     }
 
     /// TRUE PRIMAL: Route through Neural API for semantic capability resolution
@@ -160,10 +155,7 @@ impl BearDogClient {
 
         // Connect to Neural API
         let mut stream = UnixStream::connect(socket_path).await.map_err(|e| {
-            Error::BearDogRpc(format!(
-                "Failed to connect to Neural API at {}: {}",
-                socket_path, e
-            ))
+            Error::BearDogRpc(format!("Failed to connect to Neural API at {}: {}", socket_path, e))
         })?;
 
         // Send request
@@ -202,9 +194,7 @@ impl BearDogClient {
                             }
                         }
                     }
-                    return Err(Error::BearDogRpc(
-                        "Timeout reading from Neural API".to_string(),
-                    ));
+                    return Err(Error::BearDogRpc("Timeout reading from Neural API".to_string()));
                 }
             }
         }
@@ -223,20 +213,14 @@ impl BearDogClient {
         }
 
         let response: JsonRpcResponse = serde_json::from_slice(&buffer).map_err(|e| {
-            error!(
-                "❌ Failed to parse Neural API response for {}: {}",
-                capability, e
-            );
+            error!("❌ Failed to parse Neural API response for {}: {}", capability, e);
             if let Ok(response_str) = std::str::from_utf8(&buffer) {
                 error!("   Raw response: {}", response_str);
             }
             Error::BearDogRpc(format!("Failed to parse Neural API response: {}", e))
         })?;
 
-        let id_str = response
-            .id
-            .map(|id| id.to_string())
-            .unwrap_or_else(|| "null".to_string());
+        let id_str = response.id.map(|id| id.to_string()).unwrap_or_else(|| "null".to_string());
         trace!("← Neural API result for {} (id={})", capability, id_str);
 
         // Check for errors
@@ -253,10 +237,7 @@ impl BearDogClient {
 
         debug!("✅ Neural API call successful: {}", capability);
         response.result.ok_or_else(|| {
-            error!(
-                "❌ Missing result in Neural API response for {}",
-                capability
-            );
+            error!("❌ Missing result in Neural API response for {}", capability);
             Error::BearDogRpc("Missing result in response".to_string())
         })
     }
@@ -290,4 +271,3 @@ mod tests {
         assert!(result.is_err());
     }
 }
-

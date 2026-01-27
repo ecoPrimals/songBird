@@ -201,12 +201,12 @@ struct FinalizeRequest {
 pub async fn query_capabilities(tower_endpoint: &str) -> Result<DeploymentCapabilities> {
     debug!("📊 Querying capabilities from {}", tower_endpoint);
 
-    let client = IpcHttpClient::new()
-        .await
-        .map_err(|e| anyhow!("Failed to create HTTP client: {}", e))?;
+    let client =
+        IpcHttpClient::new().await.map_err(|e| anyhow!("Failed to create HTTP client: {}", e))?;
     let url = format!("{}/api/deployment/capabilities", tower_endpoint);
 
-    let response = client.get(&url).await.map_err(|e| anyhow!("Failed to query capabilities: {}", e))?;
+    let response =
+        client.get(&url).await.map_err(|e| anyhow!("Failed to query capabilities: {}", e))?;
 
     if !response.is_success() {
         return Err(anyhow!("Capabilities query failed with status {}", response.status()));
@@ -358,9 +358,8 @@ async fn deploy_via_http_chunked(
 
     info!("   Binary size: {:.2}MB", binary_size_mb);
 
-    let client = IpcHttpClient::new()
-        .await
-        .map_err(|e| anyhow!("Failed to create HTTP client: {}", e))?;
+    let client =
+        IpcHttpClient::new().await.map_err(|e| anyhow!("Failed to create HTTP client: {}", e))?;
 
     // Step 1: Negotiate
     info!("🤝 Step 1: Negotiating chunked upload...");
@@ -541,9 +540,8 @@ pub async fn deploy_via_http(
         .part("binary", Part::bytes(binary_data).file_name(binary_filename.to_string()));
 
     // Send deployment request
-    let client = IpcHttpClient::new()
-        .await
-        .map_err(|e| anyhow!("Failed to create HTTP client: {}", e))?;
+    let client =
+        IpcHttpClient::new().await.map_err(|e| anyhow!("Failed to create HTTP client: {}", e))?;
     let url = format!("{}/api/deployment/binary", tower_endpoint);
 
     info!("📡 Sending deployment request to {}", url);
@@ -580,13 +578,11 @@ pub async fn get_deployment_status(
     tower_endpoint: &str,
     deployment_id: &str,
 ) -> Result<DeploymentInfo> {
-    let client = IpcHttpClient::new()
-        .await
-        .map_err(|e| anyhow!("Failed to create HTTP client: {}", e))?;
+    let client =
+        IpcHttpClient::new().await.map_err(|e| anyhow!("Failed to create HTTP client: {}", e))?;
     let url = format!("{}/api/deployment/status/{}", tower_endpoint, deployment_id);
 
-    let response =
-        client.get(&url).await.map_err(|e| anyhow!("HTTP request failed: {}", e))?;
+    let response = client.get(&url).await.map_err(|e| anyhow!("HTTP request failed: {}", e))?;
 
     if !response.is_success() {
         return Err(anyhow!("Failed to get deployment status: {}", response.status()));
@@ -603,13 +599,11 @@ pub async fn get_deployment_status(
 /// Future: implement deployment lifecycle management
 #[allow(dead_code)]
 pub async fn stop_deployment(tower_endpoint: &str, deployment_id: &str) -> Result<()> {
-    let client = IpcHttpClient::new()
-        .await
-        .map_err(|e| anyhow!("Failed to create HTTP client: {}", e))?;
+    let client =
+        IpcHttpClient::new().await.map_err(|e| anyhow!("Failed to create HTTP client: {}", e))?;
     let url = format!("{}/api/deployment/{}", tower_endpoint, deployment_id);
 
-    let response =
-        client.delete(&url).await.map_err(|e| anyhow!("HTTP request failed: {}", e))?;
+    let response = client.delete(&url).await.map_err(|e| anyhow!("HTTP request failed: {}", e))?;
 
     if !response.is_success() {
         return Err(anyhow!("Failed to stop deployment: {}", response.status()));
@@ -625,13 +619,11 @@ pub async fn stop_deployment(tower_endpoint: &str, deployment_id: &str) -> Resul
 /// Future: implement deployment inventory
 #[allow(dead_code)]
 pub async fn list_deployments(tower_endpoint: &str) -> Result<Vec<DeploymentInfo>> {
-    let client = IpcHttpClient::new()
-        .await
-        .map_err(|e| anyhow!("Failed to create HTTP client: {}", e))?;
+    let client =
+        IpcHttpClient::new().await.map_err(|e| anyhow!("Failed to create HTTP client: {}", e))?;
     let url = format!("{}/api/deployment/list", tower_endpoint);
 
-    let response =
-        client.get(&url).await.map_err(|e| anyhow!("HTTP request failed: {}", e))?;
+    let response = client.get(&url).await.map_err(|e| anyhow!("HTTP request failed: {}", e))?;
 
     if !response.is_success() {
         return Err(anyhow!("Failed to list deployments: {}", response.status()));

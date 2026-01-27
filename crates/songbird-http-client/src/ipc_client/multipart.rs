@@ -51,7 +51,9 @@ pub struct FormPart {
 #[serde(tag = "type")]
 enum PartContent {
     #[serde(rename = "text")]
-    Text { value: String },
+    Text {
+        value: String,
+    },
     #[serde(rename = "bytes")]
     Bytes {
         /// Base64-encoded bytes for IPC transfer
@@ -84,7 +86,9 @@ impl Form {
     ///     .text("field2", "value2");
     /// ```
     pub fn new() -> Self {
-        Self { parts: Vec::new() }
+        Self {
+            parts: Vec::new(),
+        }
     }
 
     /// Add a text field to the form
@@ -162,13 +166,19 @@ impl Form {
 
             // Write Content-Disposition header
             match &part.content {
-                PartContent::Text { .. } => {
+                PartContent::Text {
+                    ..
+                } => {
                     body.extend_from_slice(
                         format!("Content-Disposition: form-data; name=\"{}\"\r\n", part.name)
                             .as_bytes(),
                     );
                 }
-                PartContent::Bytes { file_name, mime, .. } => {
+                PartContent::Bytes {
+                    file_name,
+                    mime,
+                    ..
+                } => {
                     if let Some(fname) = file_name {
                         body.extend_from_slice(
                             format!(
@@ -198,10 +208,15 @@ impl Form {
 
             // Write content
             match &part.content {
-                PartContent::Text { value } => {
+                PartContent::Text {
+                    value,
+                } => {
                     body.extend_from_slice(value.as_bytes());
                 }
-                PartContent::Bytes { data, .. } => {
+                PartContent::Bytes {
+                    data,
+                    ..
+                } => {
                     // Decode base64 back to bytes
                     if let Ok(bytes) = BASE64.decode(data) {
                         body.extend_from_slice(&bytes);
@@ -298,7 +313,8 @@ impl Part {
         S: Into<String>,
     {
         if let PartContent::Bytes {
-            ref mut file_name, ..
+            ref mut file_name,
+            ..
         } = self.content
         {
             *file_name = Some(name.into());
@@ -321,7 +337,11 @@ impl Part {
     where
         M: Into<String>,
     {
-        if let PartContent::Bytes { ref mut mime, .. } = self.content {
+        if let PartContent::Bytes {
+            ref mut mime,
+            ..
+        } = self.content
+        {
             *mime = Some(mime_value.into());
         }
         self
@@ -334,10 +354,8 @@ impl Part {
 fn generate_boundary() -> String {
     use std::time::SystemTime;
 
-    let nanos = SystemTime::now()
-        .duration_since(SystemTime::UNIX_EPOCH)
-        .map(|d| d.as_nanos())
-        .unwrap_or(0);
+    let nanos =
+        SystemTime::now().duration_since(SystemTime::UNIX_EPOCH).map(|d| d.as_nanos()).unwrap_or(0);
 
     format!("----SongbirdBoundary{:x}", nanos)
 }
@@ -374,7 +392,10 @@ mod tests {
         let part = Part::bytes(vec![1, 2, 3]).file_name("test.bin");
 
         match part.content {
-            PartContent::Bytes { file_name, .. } => {
+            PartContent::Bytes {
+                file_name,
+                ..
+            } => {
                 assert_eq!(file_name, Some("test.bin".to_string()));
             }
             _ => panic!("Expected Bytes content"),
@@ -386,7 +407,10 @@ mod tests {
         let part = Part::bytes(vec![1, 2, 3]).mime_str("application/octet-stream");
 
         match part.content {
-            PartContent::Bytes { mime, .. } => {
+            PartContent::Bytes {
+                mime,
+                ..
+            } => {
                 assert_eq!(mime, Some("application/octet-stream".to_string()));
             }
             _ => panic!("Expected Bytes content"),
@@ -429,7 +453,8 @@ mod tests {
 
         assert!(body_str.contains(&boundary));
         assert!(body_str.contains("Content-Disposition: form-data; name=\"name\""));
-        assert!(body_str.contains("Content-Disposition: form-data; name=\"file\"; filename=\"test.bin\""));
+        assert!(body_str
+            .contains("Content-Disposition: form-data; name=\"file\"; filename=\"test.bin\""));
         assert!(body_str.contains("Content-Type: application/octet-stream"));
     }
 
@@ -442,4 +467,3 @@ mod tests {
         assert!(json.get("parts").is_some());
     }
 }
-

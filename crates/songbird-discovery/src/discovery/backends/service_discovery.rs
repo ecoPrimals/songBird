@@ -383,9 +383,9 @@ impl UniversalServiceDiscovery {
         // This is a universal HTTP discovery that adapts to different registry APIs
         debug!("Discovering services from HTTP registry: {}", endpoint);
 
-        let client = IpcHttpClient::new()
-            .await
-            .map_err(|e| songbird_types::SongbirdError::network(format!("Failed to create HTTP client: {e}")))?;
+        let client = IpcHttpClient::new().await.map_err(|e| {
+            songbird_types::SongbirdError::network(format!("Failed to create HTTP client: {e}"))
+        })?;
 
         // Try different API endpoints
         let api_paths = vec![

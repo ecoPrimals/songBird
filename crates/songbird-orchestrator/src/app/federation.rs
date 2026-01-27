@@ -61,7 +61,8 @@ pub async fn initialize_federation() -> Result<(
         &node_identity,
         Arc::clone(&federation_state),
         super::federation_setup::FederationOptions::from_env(),
-    ).await?;
+    )
+    .await?;
 
     Ok((
         setup.coordinator,

@@ -29,18 +29,18 @@ use std::time::Duration;
 // ADAPTER CREATION TESTS
 // ============================================================================
 
-#[test]
-fn test_security_adapter_new_success() {
+#[tokio::test]
+async fn test_security_adapter_new_success() {
     let endpoint = "http://localhost:8081".to_string();
-    let adapter = SecurityAdapter::new(endpoint.clone());
+    let adapter = SecurityAdapter::new(endpoint.clone()).await;
 
     assert!(adapter.is_ok(), "Should create adapter successfully");
     let adapter = adapter.expect("test precondition");
     assert_eq!(adapter.endpoint(), &endpoint);
 }
 
-#[test]
-fn test_security_adapter_new_various_endpoints() {
+#[tokio::test]
+async fn test_security_adapter_new_various_endpoints() {
     let endpoints = vec![
         "http://localhost:8081",
         "https://security.example.com",
@@ -49,15 +49,15 @@ fn test_security_adapter_new_various_endpoints() {
     ];
 
     for endpoint in endpoints {
-        let adapter = SecurityAdapter::new(endpoint.to_string());
+        let adapter = SecurityAdapter::new(endpoint.to_string()).await;
         assert!(adapter.is_ok(), "Should handle endpoint: {}", endpoint);
     }
 }
 
-#[test]
-fn test_security_adapter_with_timeout() {
+#[tokio::test]
+async fn test_security_adapter_with_timeout() {
     let endpoint = "http://localhost:8081".to_string();
-    let adapter = SecurityAdapter::new(endpoint).expect("test precondition");
+    let adapter = SecurityAdapter::new(endpoint).await.expect("test precondition").await;
 
     let custom_timeout = Duration::from_secs(15);
     let _adapter_with_timeout = adapter.with_timeout(custom_timeout);
@@ -65,8 +65,8 @@ fn test_security_adapter_with_timeout() {
     // Adapter should be created successfully with custom timeout
 }
 
-#[test]
-fn test_security_adapter_with_various_timeouts() {
+#[tokio::test]
+async fn test_security_adapter_with_various_timeouts() {
     let endpoint = "http://localhost:8081".to_string();
 
     let timeouts = vec![
@@ -84,10 +84,10 @@ fn test_security_adapter_with_various_timeouts() {
     }
 }
 
-#[test]
-fn test_security_adapter_endpoint_getter() {
+#[tokio::test]
+async fn test_security_adapter_endpoint_getter() {
     let endpoint = "http://security-provider:8081".to_string();
-    let adapter = SecurityAdapter::new(endpoint.clone()).expect("test precondition");
+    let adapter = SecurityAdapter::new(endpoint.clone()).expect("test precondition").await;
 
     assert_eq!(adapter.endpoint(), &endpoint);
     assert_eq!(adapter.endpoint(), "http://security-provider:8081");
@@ -97,8 +97,8 @@ fn test_security_adapter_endpoint_getter() {
 // SECURITY METRICS TESTS
 // ============================================================================
 
-#[test]
-fn test_security_metrics_healthy_state() {
+#[tokio::test]
+async fn test_security_metrics_healthy_state() {
     let metrics = SecurityMetrics {
         active_sessions: 50,
         failed_auth_attempts: 2,
@@ -111,8 +111,8 @@ fn test_security_metrics_healthy_state() {
     assert!(!metrics.is_under_attack());
 }
 
-#[test]
-fn test_security_metrics_warning_state_low_score() {
+#[tokio::test]
+async fn test_security_metrics_warning_state_low_score() {
     let metrics = SecurityMetrics {
         active_sessions: 100,
         failed_auth_attempts: 30,
@@ -125,8 +125,8 @@ fn test_security_metrics_warning_state_low_score() {
     assert!(!metrics.is_under_attack());
 }
 
-#[test]
-fn test_security_metrics_warning_state_high_failed_attempts() {
+#[tokio::test]
+async fn test_security_metrics_warning_state_high_failed_attempts() {
     let metrics = SecurityMetrics {
         active_sessions: 100,
         failed_auth_attempts: 60, // > 50 but < 100
@@ -139,8 +139,8 @@ fn test_security_metrics_warning_state_high_failed_attempts() {
     assert!(!metrics.is_under_attack());
 }
 
-#[test]
-fn test_security_metrics_critical_low_score() {
+#[tokio::test]
+async fn test_security_metrics_critical_low_score() {
     let metrics = SecurityMetrics {
         active_sessions: 100,
         failed_auth_attempts: 40,
@@ -152,8 +152,8 @@ fn test_security_metrics_critical_low_score() {
     assert_eq!(metrics.health_status(), SecurityHealth::Critical);
 }
 
-#[test]
-fn test_security_metrics_under_attack_high_failed_auth() {
+#[tokio::test]
+async fn test_security_metrics_under_attack_high_failed_auth() {
     let metrics = SecurityMetrics {
         active_sessions: 50,
         failed_auth_attempts: 150, // > 100
@@ -166,8 +166,8 @@ fn test_security_metrics_under_attack_high_failed_auth() {
     assert_eq!(metrics.health_status(), SecurityHealth::Critical);
 }
 
-#[test]
-fn test_security_metrics_under_attack_high_blocked_ips() {
+#[tokio::test]
+async fn test_security_metrics_under_attack_high_blocked_ips() {
     let metrics = SecurityMetrics {
         active_sessions: 50,
         failed_auth_attempts: 20,
@@ -180,8 +180,8 @@ fn test_security_metrics_under_attack_high_blocked_ips() {
     assert_eq!(metrics.health_status(), SecurityHealth::Critical);
 }
 
-#[test]
-fn test_security_metrics_boundary_exactly_100_failed_attempts() {
+#[tokio::test]
+async fn test_security_metrics_boundary_exactly_100_failed_attempts() {
     let metrics = SecurityMetrics {
         active_sessions: 50,
         failed_auth_attempts: 100, // Exactly at boundary
@@ -195,8 +195,8 @@ fn test_security_metrics_boundary_exactly_100_failed_attempts() {
     assert_eq!(metrics.health_status(), SecurityHealth::Warning);
 }
 
-#[test]
-fn test_security_metrics_boundary_exactly_50_blocked_ips() {
+#[tokio::test]
+async fn test_security_metrics_boundary_exactly_50_blocked_ips() {
     let metrics = SecurityMetrics {
         active_sessions: 50,
         failed_auth_attempts: 20,
@@ -209,8 +209,8 @@ fn test_security_metrics_boundary_exactly_50_blocked_ips() {
     assert!(!metrics.is_under_attack());
 }
 
-#[test]
-fn test_security_metrics_boundary_score_exactly_05() {
+#[tokio::test]
+async fn test_security_metrics_boundary_score_exactly_05() {
     let metrics = SecurityMetrics {
         active_sessions: 50,
         failed_auth_attempts: 10,
@@ -223,8 +223,8 @@ fn test_security_metrics_boundary_score_exactly_05() {
     assert_eq!(metrics.health_status(), SecurityHealth::Warning);
 }
 
-#[test]
-fn test_security_metrics_boundary_score_exactly_07() {
+#[tokio::test]
+async fn test_security_metrics_boundary_score_exactly_07() {
     let metrics = SecurityMetrics {
         active_sessions: 50,
         failed_auth_attempts: 10,
@@ -237,8 +237,8 @@ fn test_security_metrics_boundary_score_exactly_07() {
     assert_eq!(metrics.health_status(), SecurityHealth::Healthy);
 }
 
-#[test]
-fn test_security_metrics_zero_values() {
+#[tokio::test]
+async fn test_security_metrics_zero_values() {
     let metrics = SecurityMetrics {
         active_sessions: 0,
         failed_auth_attempts: 0,
@@ -251,8 +251,8 @@ fn test_security_metrics_zero_values() {
     assert!(!metrics.is_under_attack());
 }
 
-#[test]
-fn test_security_metrics_extreme_values() {
+#[tokio::test]
+async fn test_security_metrics_extreme_values() {
     let metrics = SecurityMetrics {
         active_sessions: u32::MAX,
         failed_auth_attempts: u32::MAX,
@@ -265,8 +265,8 @@ fn test_security_metrics_extreme_values() {
     assert_eq!(metrics.health_status(), SecurityHealth::Critical);
 }
 
-#[test]
-fn test_security_metrics_serialization() {
+#[tokio::test]
+async fn test_security_metrics_serialization() {
     let metrics = SecurityMetrics {
         active_sessions: 100,
         failed_auth_attempts: 5,
@@ -283,8 +283,8 @@ fn test_security_metrics_serialization() {
     assert!(json_str.contains("100"));
 }
 
-#[test]
-fn test_security_metrics_deserialization() {
+#[tokio::test]
+async fn test_security_metrics_deserialization() {
     let json = r#"{
         "active_sessions": 50,
         "failed_auth_attempts": 3,
@@ -303,8 +303,8 @@ fn test_security_metrics_deserialization() {
     assert_eq!(metrics.security_score, 0.98);
 }
 
-#[test]
-fn test_security_metrics_clone() {
+#[tokio::test]
+async fn test_security_metrics_clone() {
     let metrics = SecurityMetrics {
         active_sessions: 75,
         failed_auth_attempts: 10,
@@ -320,8 +320,8 @@ fn test_security_metrics_clone() {
     assert_eq!(cloned.security_score, metrics.security_score);
 }
 
-#[test]
-fn test_security_metrics_debug() {
+#[tokio::test]
+async fn test_security_metrics_debug() {
     let metrics = SecurityMetrics {
         active_sessions: 25,
         failed_auth_attempts: 1,
@@ -339,8 +339,8 @@ fn test_security_metrics_debug() {
 // SECURITY HEALTH TESTS
 // ============================================================================
 
-#[test]
-fn test_security_health_all_variants() {
+#[tokio::test]
+async fn test_security_health_all_variants() {
     let healthy = SecurityHealth::Healthy;
     let warning = SecurityHealth::Warning;
     let critical = SecurityHealth::Critical;
@@ -350,36 +350,36 @@ fn test_security_health_all_variants() {
     assert_ne!(warning, critical);
 }
 
-#[test]
-fn test_security_health_equality() {
+#[tokio::test]
+async fn test_security_health_equality() {
     assert_eq!(SecurityHealth::Healthy, SecurityHealth::Healthy);
     assert_eq!(SecurityHealth::Warning, SecurityHealth::Warning);
     assert_eq!(SecurityHealth::Critical, SecurityHealth::Critical);
 }
 
-#[test]
-fn test_security_health_clone() {
+#[tokio::test]
+async fn test_security_health_clone() {
     let health = SecurityHealth::Warning;
     let cloned = health;
     assert_eq!(health, cloned);
 }
 
-#[test]
-fn test_security_health_copy() {
+#[tokio::test]
+async fn test_security_health_copy() {
     let health = SecurityHealth::Healthy;
     let copied = health; // Copy trait
     assert_eq!(health, copied);
 }
 
-#[test]
-fn test_security_health_debug() {
+#[tokio::test]
+async fn test_security_health_debug() {
     let health = SecurityHealth::Critical;
     let debug_str = format!("{:?}", health);
     assert!(debug_str.contains("Critical"));
 }
 
-#[test]
-fn test_security_health_serialization() {
+#[tokio::test]
+async fn test_security_health_serialization() {
     let states = vec![SecurityHealth::Healthy, SecurityHealth::Warning, SecurityHealth::Critical];
 
     for state in states {
@@ -388,8 +388,8 @@ fn test_security_health_serialization() {
     }
 }
 
-#[test]
-fn test_security_health_deserialization() {
+#[tokio::test]
+async fn test_security_health_deserialization() {
     let json = r#""Healthy""#;
     let health: Result<SecurityHealth, _> = serde_json::from_str(json);
     assert!(health.is_ok());
@@ -410,8 +410,8 @@ fn test_security_health_deserialization() {
 // AUTH RESULT TESTS
 // ============================================================================
 
-#[test]
-fn test_auth_result_all_variants() {
+#[tokio::test]
+async fn test_auth_result_all_variants() {
     let authorized = AuthResult::Authorized;
     let unauthorized = AuthResult::Unauthorized;
     let expired = AuthResult::Expired;
@@ -423,28 +423,28 @@ fn test_auth_result_all_variants() {
     assert_ne!(unauthorized, expired);
 }
 
-#[test]
-fn test_auth_result_equality() {
+#[tokio::test]
+async fn test_auth_result_equality() {
     assert_eq!(AuthResult::Authorized, AuthResult::Authorized);
     assert_eq!(AuthResult::Expired, AuthResult::Expired);
 }
 
-#[test]
-fn test_auth_result_clone() {
+#[tokio::test]
+async fn test_auth_result_clone() {
     let result = AuthResult::Invalid;
     let cloned = result.clone();
     assert_eq!(result, cloned);
 }
 
-#[test]
-fn test_auth_result_debug() {
+#[tokio::test]
+async fn test_auth_result_debug() {
     let result = AuthResult::Unauthorized;
     let debug_str = format!("{:?}", result);
     assert!(debug_str.contains("Unauthorized"));
 }
 
-#[test]
-fn test_auth_result_serialization() {
+#[tokio::test]
+async fn test_auth_result_serialization() {
     let results = vec![
         AuthResult::Authorized,
         AuthResult::Unauthorized,
@@ -458,8 +458,8 @@ fn test_auth_result_serialization() {
     }
 }
 
-#[test]
-fn test_auth_result_deserialization() {
+#[tokio::test]
+async fn test_auth_result_deserialization() {
     let test_cases = vec![
         (r#""Authorized""#, AuthResult::Authorized),
         (r#""Unauthorized""#, AuthResult::Unauthorized),
@@ -474,8 +474,8 @@ fn test_auth_result_deserialization() {
     }
 }
 
-#[test]
-fn test_auth_result_round_trip() {
+#[tokio::test]
+async fn test_auth_result_round_trip() {
     let original = AuthResult::Expired;
     let json = serde_json::to_string(&original).expect("test precondition");
     let deserialized: AuthResult = serde_json::from_str(&json).expect("should parse valid input");
@@ -486,8 +486,8 @@ fn test_auth_result_round_trip() {
 // INTEGRATION-STYLE TESTS (without network)
 // ============================================================================
 
-#[test]
-fn test_security_workflow_healthy_system() {
+#[tokio::test]
+async fn test_security_workflow_healthy_system() {
     // Simulate a healthy security system
     let metrics = SecurityMetrics {
         active_sessions: 100,
@@ -511,8 +511,8 @@ fn test_security_workflow_healthy_system() {
     }
 }
 
-#[test]
-fn test_security_workflow_degrading_system() {
+#[tokio::test]
+async fn test_security_workflow_degrading_system() {
     // System starts healthy
     let mut metrics = SecurityMetrics {
         active_sessions: 100,
@@ -537,8 +537,8 @@ fn test_security_workflow_degrading_system() {
     assert!(metrics.is_under_attack());
 }
 
-#[test]
-fn test_security_adapter_builder_pattern() {
+#[tokio::test]
+async fn test_security_adapter_builder_pattern() {
     let adapter = SecurityAdapter::new("http://localhost:8081".to_string())
         .expect("test precondition")
         .with_timeout(Duration::from_secs(20));
@@ -547,8 +547,8 @@ fn test_security_adapter_builder_pattern() {
     // Timeout is set internally (can't directly verify without exposing field)
 }
 
-#[test]
-fn test_multiple_adapters_independent() {
+#[tokio::test]
+async fn test_multiple_adapters_independent() {
     let adapter1 =
         SecurityAdapter::new("http://security1:8081".to_string()).expect("test precondition");
     let adapter2 =
@@ -563,8 +563,8 @@ fn test_multiple_adapters_independent() {
 // ERROR CONDITION TESTS
 // ============================================================================
 
-#[test]
-fn test_security_metrics_invalid_score_handling() {
+#[tokio::test]
+async fn test_security_metrics_invalid_score_handling() {
     // Score outside 0-1 range (though type allows it)
     let metrics = SecurityMetrics {
         active_sessions: 50,
@@ -578,8 +578,8 @@ fn test_security_metrics_invalid_score_handling() {
     assert_eq!(metrics.health_status(), SecurityHealth::Critical);
 }
 
-#[test]
-fn test_security_metrics_future_timestamp() {
+#[tokio::test]
+async fn test_security_metrics_future_timestamp() {
     let future = chrono::Utc::now() + chrono::Duration::hours(24);
     let metrics = SecurityMetrics {
         active_sessions: 50,
@@ -593,8 +593,8 @@ fn test_security_metrics_future_timestamp() {
     assert_eq!(metrics.health_status(), SecurityHealth::Healthy);
 }
 
-#[test]
-fn test_security_metrics_past_timestamp() {
+#[tokio::test]
+async fn test_security_metrics_past_timestamp() {
     let past = chrono::Utc::now() - chrono::Duration::days(30);
     let metrics = SecurityMetrics {
         active_sessions: 50,
@@ -608,21 +608,21 @@ fn test_security_metrics_past_timestamp() {
     assert_eq!(metrics.health_status(), SecurityHealth::Healthy);
 }
 
-#[test]
-fn test_adapter_endpoint_empty_string() {
+#[tokio::test]
+async fn test_adapter_endpoint_empty_string() {
     // Empty endpoint string (may not be realistic but should handle)
-    let adapter = SecurityAdapter::new(String::new());
+    let adapter = SecurityAdapter::new(String::new()).await;
     assert!(adapter.is_ok(), "Should handle empty endpoint");
 }
 
-#[test]
-fn test_adapter_endpoint_whitespace() {
-    let adapter = SecurityAdapter::new("   ".to_string());
+#[tokio::test]
+async fn test_adapter_endpoint_whitespace() {
+    let adapter = SecurityAdapter::new("   ".to_string()).await;
     assert!(adapter.is_ok(), "Should handle whitespace endpoint");
 }
 
-#[test]
-fn test_adapter_endpoint_special_characters() {
+#[tokio::test]
+async fn test_adapter_endpoint_special_characters() {
     let endpoints = vec![
         "http://security:8081/api/v1",
         "https://security.example.com:443",
@@ -631,7 +631,7 @@ fn test_adapter_endpoint_special_characters() {
     ];
 
     for endpoint in endpoints {
-        let adapter = SecurityAdapter::new(endpoint.to_string());
+        let adapter = SecurityAdapter::new(endpoint.to_string()).await;
         assert!(adapter.is_ok(), "Should handle: {}", endpoint);
     }
 }

@@ -97,7 +97,7 @@ async fn test_collect_metrics_success() {
         .create_async()
         .await;
 
-    let adapter = ComputeAdapter::new(server.url()).expect("test precondition");
+    let adapter = ComputeAdapter::new(server.url()).expect("test precondition").await;
     let metrics = adapter.collect_metrics().await;
 
     assert!(metrics.is_ok(), "Should collect metrics successfully");
@@ -133,7 +133,7 @@ async fn test_collect_metrics_sets_timestamp_if_missing() {
         .create_async()
         .await;
 
-    let adapter = ComputeAdapter::new(server.url()).expect("test precondition");
+    let adapter = ComputeAdapter::new(server.url()).expect("test precondition").await;
     let metrics = adapter.collect_metrics().await;
 
     assert!(metrics.is_ok());
@@ -150,7 +150,8 @@ async fn test_collect_metrics_sets_timestamp_if_missing() {
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_collect_metrics_network_error() {
     // Use invalid endpoint
-    let adapter = ComputeAdapter::new("http://localhost:1".to_string()).expect("test precondition");
+    let adapter =
+        ComputeAdapter::new("http://localhost:1".to_string()).expect("test precondition").await;
 
     let result = adapter.collect_metrics().await;
     assert!(result.is_err(), "Should fail with network error");
@@ -171,7 +172,7 @@ async fn test_collect_metrics_http_error_status() {
         .create_async()
         .await;
 
-    let adapter = ComputeAdapter::new(server.url()).expect("test precondition");
+    let adapter = ComputeAdapter::new(server.url()).expect("test precondition").await;
     let result = adapter.collect_metrics().await;
 
     assert!(result.is_err(), "Should fail with HTTP error");
@@ -194,7 +195,7 @@ async fn test_collect_metrics_invalid_json() {
         .create_async()
         .await;
 
-    let adapter = ComputeAdapter::new(server.url()).expect("test precondition");
+    let adapter = ComputeAdapter::new(server.url()).expect("test precondition").await;
     let result = adapter.collect_metrics().await;
 
     assert!(result.is_err(), "Should fail with parse error");
@@ -261,7 +262,7 @@ async fn test_check_health_healthy() {
         .create_async()
         .await;
 
-    let adapter = ComputeAdapter::new(server.url()).expect("test precondition");
+    let adapter = ComputeAdapter::new(server.url()).expect("test precondition").await;
     let health = adapter.check_health().await;
 
     assert!(health.is_ok());
@@ -293,7 +294,7 @@ async fn test_check_health_degraded_high_cpu() {
         .create_async()
         .await;
 
-    let adapter = ComputeAdapter::new(server.url()).expect("test precondition");
+    let adapter = ComputeAdapter::new(server.url()).expect("test precondition").await;
     let health = adapter.check_health().await;
 
     assert!(health.is_ok());
@@ -325,7 +326,7 @@ async fn test_check_health_degraded_high_memory() {
         .create_async()
         .await;
 
-    let adapter = ComputeAdapter::new(server.url()).expect("test precondition");
+    let adapter = ComputeAdapter::new(server.url()).expect("test precondition").await;
     let health = adapter.check_health().await;
 
     assert!(health.is_ok());
@@ -358,7 +359,7 @@ async fn test_check_health_unhealthy() {
         .create_async()
         .await;
 
-    let adapter = ComputeAdapter::new(server.url()).expect("test precondition");
+    let adapter = ComputeAdapter::new(server.url()).expect("test precondition").await;
     let health = adapter.check_health().await;
 
     assert!(health.is_ok());
@@ -369,7 +370,8 @@ async fn test_check_health_unhealthy() {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_check_health_network_error() {
-    let adapter = ComputeAdapter::new("http://localhost:1".to_string()).expect("test precondition");
+    let adapter =
+        ComputeAdapter::new("http://localhost:1".to_string()).expect("test precondition").await;
 
     let result = adapter.check_health().await;
     assert!(result.is_err(), "Should propagate network error from collect_metrics");
@@ -403,7 +405,7 @@ async fn test_full_compute_workflow() {
         .create_async()
         .await;
 
-    let adapter = ComputeAdapter::new(server.url()).expect("test precondition");
+    let adapter = ComputeAdapter::new(server.url()).expect("test precondition").await;
 
     // 1. Check health
     let health = adapter.check_health().await;
@@ -443,7 +445,7 @@ async fn test_concurrent_requests() {
         .create_async()
         .await;
 
-    let adapter = ComputeAdapter::new(server.url()).expect("test precondition");
+    let adapter = ComputeAdapter::new(server.url()).expect("test precondition").await;
 
     // Fire off 3 concurrent requests
     let futures =
@@ -472,7 +474,7 @@ async fn test_retry_on_transient_failure() {
         .create_async()
         .await;
 
-    let adapter = ComputeAdapter::new(server.url()).expect("test precondition");
+    let adapter = ComputeAdapter::new(server.url()).expect("test precondition").await;
 
     // First attempt should fail
     let result1 = adapter.collect_metrics().await;

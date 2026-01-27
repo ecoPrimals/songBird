@@ -108,4 +108,3 @@ mod tests {
         assert_eq!(48, 384 / 8);
     }
 }
-

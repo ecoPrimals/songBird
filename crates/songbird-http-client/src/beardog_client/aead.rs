@@ -66,10 +66,7 @@ impl BearDogClient {
         plaintext: &[u8],
         aad: &[u8],
     ) -> Result<Vec<u8>> {
-        trace!(
-            "🔐 Encrypting {} bytes with AES-128-GCM via BearDog",
-            plaintext.len()
-        );
+        trace!("🔐 Encrypting {} bytes with AES-128-GCM via BearDog", plaintext.len());
 
         // Validate lengths
         if key.len() != 16 {
@@ -114,10 +111,7 @@ impl BearDogClient {
         plaintext: &[u8],
         aad: &[u8],
     ) -> Result<Vec<u8>> {
-        trace!(
-            "🔐 Encrypting {} bytes with AES-256-GCM via BearDog",
-            plaintext.len()
-        );
+        trace!("🔐 Encrypting {} bytes with AES-256-GCM via BearDog", plaintext.len());
 
         // Validate lengths
         if key.len() != 32 {
@@ -164,10 +158,7 @@ impl BearDogClient {
         ciphertext: &[u8],
         aad: &[u8],
     ) -> Result<Vec<u8>> {
-        info!(
-            "🔓 BearDog crypto.decrypt: {} bytes ciphertext+tag",
-            ciphertext.len()
-        );
+        info!("🔓 BearDog crypto.decrypt: {} bytes ciphertext+tag", ciphertext.len());
         debug!(
             "  Key: {} bytes, Nonce: {} bytes, AAD: {} bytes",
             key.len(),
@@ -184,10 +175,7 @@ impl BearDogClient {
         }
 
         let (actual_ciphertext, tag) = ciphertext.split_at(ciphertext.len() - 16);
-        debug!(
-            "  Split: {} bytes ciphertext + 16 bytes tag",
-            actual_ciphertext.len()
-        );
+        debug!("  Split: {} bytes ciphertext + 16 bytes tag", actual_ciphertext.len());
 
         let result = self
             .call(
@@ -215,11 +203,7 @@ impl BearDogClient {
             .decode(plaintext)
             .map_err(|e| Error::BearDogRpc(format!("Invalid plaintext base64: {}", e)))?;
 
-        info!(
-            "✅ Decrypted: {} bytes → {} bytes",
-            ciphertext.len(),
-            decoded.len()
-        );
+        info!("✅ Decrypted: {} bytes → {} bytes", ciphertext.len(), decoded.len());
         Ok(decoded)
     }
 
@@ -231,16 +215,11 @@ impl BearDogClient {
         ciphertext: &[u8],
         aad: &[u8],
     ) -> Result<Vec<u8>> {
-        info!(
-            "🔓 BearDog AES-128-GCM decrypt: {} bytes ciphertext+tag",
-            ciphertext.len()
-        );
+        info!("🔓 BearDog AES-128-GCM decrypt: {} bytes ciphertext+tag", ciphertext.len());
 
         // Validate lengths
         if ciphertext.len() < 16 {
-            return Err(Error::BearDogRpc(
-                "Ciphertext too short for AES-128-GCM".to_string(),
-            ));
+            return Err(Error::BearDogRpc("Ciphertext too short for AES-128-GCM".to_string()));
         }
         if key.len() != 16 {
             return Err(Error::BearDogRpc(format!(
@@ -286,16 +265,11 @@ impl BearDogClient {
         ciphertext: &[u8],
         aad: &[u8],
     ) -> Result<Vec<u8>> {
-        info!(
-            "🔓 BearDog AES-256-GCM decrypt: {} bytes ciphertext+tag",
-            ciphertext.len()
-        );
+        info!("🔓 BearDog AES-256-GCM decrypt: {} bytes ciphertext+tag", ciphertext.len());
 
         // Validate lengths
         if ciphertext.len() < 16 {
-            return Err(Error::BearDogRpc(
-                "Ciphertext too short for AES-256-GCM".to_string(),
-            ));
+            return Err(Error::BearDogRpc("Ciphertext too short for AES-256-GCM".to_string()));
         }
         if key.len() != 32 {
             return Err(Error::BearDogRpc(format!(
@@ -347,4 +321,3 @@ mod tests {
         assert_eq!(256 / 8, 32);
     }
 }
-

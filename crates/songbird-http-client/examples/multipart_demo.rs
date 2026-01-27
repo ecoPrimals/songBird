@@ -10,7 +10,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Initialize tracing
     tracing_subscriber::fmt()
         .with_env_filter(
-            std::env::var("RUST_LOG").unwrap_or_else(|_| "info,songbird_http_client=debug".to_string()),
+            std::env::var("RUST_LOG")
+                .unwrap_or_else(|_| "info,songbird_http_client=debug".to_string()),
         )
         .init();
 
@@ -33,7 +34,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Example 2: Multipart form with file upload
     println!("\n📦 Example 2: File upload with multipart");
-    
+
     // Simulate binary data (could be from fs::read)
     let binary_data = vec![
         0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, // PNG header
@@ -56,7 +57,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Example 3: Multiple files
     println!("\n📁 Example 3: Multiple file uploads");
-    
+
     let config_data = b"{\"port\": 8080, \"host\": \"0.0.0.0\"}";
     let readme_data = b"# My Service\n\nThis is a test service.";
 
@@ -112,4 +113,3 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     Ok(())
 }
-

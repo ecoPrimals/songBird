@@ -139,7 +139,8 @@ impl SongbirdOrchestrator {
             &node_identity,
             Arc::clone(&federation_state),
             super::federation_setup::FederationOptions::from_env(),
-        ).await?;
+        )
+        .await?;
         let federation_coordinator = federation_setup.coordinator;
         let federation_config = federation_setup.config;
 

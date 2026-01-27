@@ -240,13 +240,13 @@ impl UnifiedUniversalAdapter {
         let url = format!("{}/api/v1/{}", service.endpoint, request.action);
 
         // Create HTTP client on-demand
-        let client = songbird_http_client::IpcHttpClient::new()
-            .await
-            .map_err(|e| UniversalAdapterError::NetworkError(format!("Failed to create HTTP client: {}", e)))?;
+        let client = songbird_http_client::IpcHttpClient::new().await.map_err(|e| {
+            UniversalAdapterError::NetworkError(format!("Failed to create HTTP client: {}", e))
+        })?;
 
         // IpcHttpClient::post() returns RequestBuilder directly
         let request_builder = client.post(&url).await;
-        
+
         let response = request_builder
             .json(&request)
             .map_err(|e| UniversalAdapterError::NetworkError(e.to_string()))?
@@ -273,9 +273,9 @@ impl UnifiedUniversalAdapter {
         debug!("Discovering services from endpoint: {}", endpoint);
 
         // Create HTTP client on-demand
-        let client = songbird_http_client::IpcHttpClient::new()
-            .await
-            .map_err(|e| UniversalAdapterError::NetworkError(format!("Failed to create HTTP client: {}", e)))?;
+        let client = songbird_http_client::IpcHttpClient::new().await.map_err(|e| {
+            UniversalAdapterError::NetworkError(format!("Failed to create HTTP client: {}", e))
+        })?;
 
         let response = client
             .get(endpoint)

@@ -465,10 +465,10 @@ impl RequestBuilder {
         let (body, headers) = if let Some(form) = self.multipart_form {
             let (encoded_body, boundary) = form.encode();
             let content_type = format!("multipart/form-data; boundary={}", boundary);
-            
+
             let mut headers = self.headers.clone();
             headers.insert("Content-Type".to_string(), content_type);
-            
+
             (Some(encoded_body), headers)
         } else {
             (self.body, self.headers)

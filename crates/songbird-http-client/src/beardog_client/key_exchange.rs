@@ -29,7 +29,9 @@ impl BearDogClient {
             .ok_or_else(|| Error::BearDogRpc("Missing public_key".to_string()))?;
         let private_key = result["secret_key"] // BearDog returns "secret_key", not "private_key"
             .as_str()
-            .ok_or_else(|| Error::BearDogRpc("Missing secret_key in BearDog response".to_string()))?;
+            .ok_or_else(|| {
+                Error::BearDogRpc("Missing secret_key in BearDog response".to_string())
+            })?;
 
         let public_key = BASE64_STANDARD
             .decode(public_key)
@@ -81,4 +83,3 @@ mod tests {
         assert_eq!(encoded, "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=");
     }
 }
-

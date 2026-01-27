@@ -13,10 +13,10 @@
 use crate::crypto::CryptoCapability;
 use crate::error::{Error, Result};
 use crate::tls::{
-    content_type,
+    content_type, handshake_type,
     handshake_v2::keys::{CipherSuite, TrafficKeys},
     handshake_v2::transcript::Transcript,
-    handshake_type, TLS_1_2, TLS_1_3,
+    TLS_1_2, TLS_1_3,
 };
 use std::sync::Arc;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
@@ -65,7 +65,11 @@ pub struct TlsServer {
 
 impl TlsServer {
     /// Create new TLS server with certificate and private key
-    pub fn new(crypto: Arc<dyn CryptoCapability>, cert_chain: Vec<u8>, private_key: Vec<u8>) -> Self {
+    pub fn new(
+        crypto: Arc<dyn CryptoCapability>,
+        cert_chain: Vec<u8>,
+        private_key: Vec<u8>,
+    ) -> Self {
         info!("🔐 Creating TLS 1.3 server (RFC 8446)");
         info!("   Certificate chain: {} bytes", cert_chain.len());
         info!("   Private key: {} bytes", private_key.len());
@@ -125,11 +129,11 @@ impl TlsServer {
         info!("");
         info!("🔑 Step 2: Generating server ECDH keypair...");
         // CryptoCapability returns (public_key, private_key)
-        let (server_public_key, server_private_key) = self
-            .crypto
-            .generate_x25519_keypair()
-            .await
-            .map_err(|e| Error::TlsHandshake(format!("Failed to generate keypair: {}", e)))?;
+        let (server_public_key, server_private_key) =
+            self.crypto
+                .generate_x25519_keypair()
+                .await
+                .map_err(|e| Error::TlsHandshake(format!("Failed to generate keypair: {}", e)))?;
 
         self.server_private_key = Some(server_private_key.clone());
         self.server_public_key = Some(server_public_key.clone());
@@ -696,20 +700,20 @@ impl TlsServer {
     async fn build_certificate_verify(&self) -> Result<Vec<u8>> {
         // Build the data to be signed (RFC 8446 Section 4.4.3)
         let mut to_sign = Vec::new();
-        
+
         // 64 spaces (0x20)
         to_sign.extend_from_slice(&[0x20; 64]);
-        
+
         // Context string
         to_sign.extend_from_slice(b"TLS 1.3, server CertificateVerify");
-        
+
         // Single 0x00 separator
         to_sign.push(0x00);
-        
+
         // Transcript hash
         let transcript_hash = self.transcript.compute_hash();
         to_sign.extend_from_slice(&transcript_hash);
-        
+
         // TODO(P0): Add BearDog signing integration
         // Once BearDog exposes `crypto.sign` API, implement:
         // ```
@@ -723,7 +727,7 @@ impl TlsServer {
         // For now, use placeholder that will fail real verification
         debug!("⚠️ CertificateVerify using placeholder signature (BearDog signing API pending)");
         let signature = vec![0u8; 64]; // Placeholder - will fail verification
-        
+
         let mut msg = Vec::new();
 
         // Handshake type: CertificateVerify

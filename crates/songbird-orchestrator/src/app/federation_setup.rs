@@ -329,9 +329,11 @@ mod tests {
         let federation_state = Arc::new(FederationState::new("test".to_string()));
 
         let setup1 =
-            setup_federation(&node_identity, Arc::clone(&federation_state), options.clone()).await
+            setup_federation(&node_identity, Arc::clone(&federation_state), options.clone())
+                .await
                 .expect("First setup should succeed");
-        let setup2 = setup_federation(&node_identity, Arc::clone(&federation_state), options).await
+        let setup2 = setup_federation(&node_identity, Arc::clone(&federation_state), options)
+            .await
             .expect("Second setup should succeed");
 
         // Both should have the same node_id (stable)

@@ -35,12 +35,12 @@
 //! let session_keys = handshake.handshake(&mut stream, "api.github.com").await?;
 //! ```
 
-mod core;
-mod transcript;
-mod extensions;
-mod record_io;
-mod handshake_flow;
 mod application_data;
+mod core;
+mod extensions;
+mod handshake_flow;
+mod record_io;
+mod transcript;
 
 // Re-export main types
 pub use core::TlsHandshake;

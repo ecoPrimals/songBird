@@ -277,10 +277,10 @@ impl BearDogIntegration {
 
         // Call BearDog security validation API
         let request_builder = self.client.post(&url).await;
-        let request_with_body = request_builder.json(&payload).map_err(|e| {
-            SongbirdError::configuration(format!("Failed to build request: {e}"))
-        })?;
-        
+        let request_with_body = request_builder
+            .json(&payload)
+            .map_err(|e| SongbirdError::configuration(format!("Failed to build request: {e}")))?;
+
         match request_with_body.send().await {
             Ok(response) if response.is_success() => {
                 // Parse BearDog's security decision
@@ -336,11 +336,7 @@ impl BearDogIntegration {
     async fn is_available(&self) -> bool {
         let url = format!("{}/health", self.endpoint);
 
-        self.client
-            .get(&url)
-            .await
-            .map(|r| r.is_success())
-            .unwrap_or(false)
+        self.client.get(&url).await.map(|r| r.is_success()).unwrap_or(false)
     }
 
     /// Get BearDog endpoint URL

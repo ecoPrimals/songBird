@@ -123,9 +123,9 @@ impl FederationClient {
         debug!("📡 Querying federation services: {}", url);
 
         // Create client on-demand
-        let client = songbird_http_client::IpcHttpClient::new()
-            .await
-            .map_err(|e| UniversalAdapterError::NetworkError(format!("Failed to create HTTP client: {}", e)))?;
+        let client = songbird_http_client::IpcHttpClient::new().await.map_err(|e| {
+            UniversalAdapterError::NetworkError(format!("Failed to create HTTP client: {}", e))
+        })?;
 
         let response = client
             .get(&url)

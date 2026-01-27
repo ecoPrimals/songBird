@@ -93,7 +93,7 @@ impl BearDogProvider {
     /// - Direct mode: BEARDOG_SOCKET or /tmp/beardog.sock
     pub fn from_env() -> Self {
         use tracing::info;
-        
+
         let mode = std::env::var("BEARDOG_MODE").unwrap_or_else(|_| "neural".to_string());
 
         match mode.as_str() {
@@ -146,9 +146,9 @@ impl BearDogProvider {
             RoutingMode::NeuralApi => {
                 // Neural API mode: Use capability.call for semantic routing
                 let (capability, operation) = self.method_to_capability(method);
-                
+
                 trace!("🌐 Neural API: capability.call({}, {})", capability, operation);
-                
+
                 JsonRpcRequest {
                     jsonrpc: "2.0".to_string(),
                     method: "capability.call".to_string(),
@@ -165,9 +165,15 @@ impl BearDogProvider {
         let request_json = serde_json::to_string(&request)
             .map_err(|e| Error::BearDogRpc(format!("Failed to serialize request: {}", e)))?;
 
-        trace!("BearDog RPC request ({}): {}", 
-            if self.mode == RoutingMode::NeuralApi { "Neural API" } else { "Direct" },
-            request_json);
+        trace!(
+            "BearDog RPC request ({}): {}",
+            if self.mode == RoutingMode::NeuralApi {
+                "Neural API"
+            } else {
+                "Direct"
+            },
+            request_json
+        );
 
         // Connect to BearDog
         let mut stream = UnixStream::connect(&self.socket_path).await.map_err(|e| {
@@ -227,7 +233,7 @@ impl BearDogProvider {
             "crypto.encrypt_aes_128_gcm" => ("crypto", "encrypt_aes_128_gcm"),
             "crypto.encrypt_aes_256_gcm" => ("crypto", "encrypt_aes_256_gcm"),
             "crypto.encrypt_chacha20_poly1305" => ("crypto", "encrypt_chacha20_poly1305"),
-            
+
             // AEAD Decryption - keep specific algorithm for Neural API semantic translation
             "crypto.decrypt_aes_128_gcm" => ("crypto", "decrypt_aes_128_gcm"),
             "crypto.decrypt_aes_256_gcm" => ("crypto", "decrypt_aes_256_gcm"),
@@ -328,11 +334,13 @@ impl CryptoCapability for BearDogProvider {
             .ok_or_else(|| Error::BearDogRpc("Missing public_key in response".to_string()))?;
 
         let private_b64 = result
-            .get("secret_key")       // BearDog's standard field name
+            .get("secret_key") // BearDog's standard field name
             .or_else(|| result.get("private_key"))
             .or_else(|| result.get("secret"))
             .and_then(|v| v.as_str())
-            .ok_or_else(|| Error::BearDogRpc("Missing secret_key/private_key in response".to_string()))?;
+            .ok_or_else(|| {
+                Error::BearDogRpc("Missing secret_key/private_key in response".to_string())
+            })?;
 
         let public = BASE64_STANDARD
             .decode(public_b64)
@@ -560,8 +568,12 @@ impl CryptoCapability for BearDogProvider {
     }
 
     async fn hash_for_cipher(&self, data: &[u8], cipher_suite: u16) -> Result<Vec<u8>> {
-        debug!("🔐 hash_for_cipher: cipher_suite=0x{:04x}, data={} bytes", cipher_suite, data.len());
-        
+        debug!(
+            "🔐 hash_for_cipher: cipher_suite=0x{:04x}, data={} bytes",
+            cipher_suite,
+            data.len()
+        );
+
         let result = self
             .call(
                 "crypto.hash_for_cipher",
@@ -584,7 +596,7 @@ impl CryptoCapability for BearDogProvider {
         // Log the result for debugging
         let algorithm = result.get("algorithm").and_then(|v| v.as_str()).unwrap_or("unknown");
         debug!("  → algorithm={}, hash_length={} bytes", algorithm, hash.len());
-        
+
         Ok(hash)
     }
 
@@ -672,10 +684,8 @@ impl CryptoCapability for BearDogProvider {
         // - client_write_key (not client_key)
         // - etc.
         Ok(TlsHandshakeSecrets {
-            client_handshake_secret: self
-                .extract_b64_field(&result, "client_handshake_secret")?,
-            server_handshake_secret: self
-                .extract_b64_field(&result, "server_handshake_secret")?,
+            client_handshake_secret: self.extract_b64_field(&result, "client_handshake_secret")?,
+            server_handshake_secret: self.extract_b64_field(&result, "server_handshake_secret")?,
             client_write_key: self.extract_b64_field(&result, "client_write_key")?,
             client_write_iv: self.extract_b64_field(&result, "client_write_iv")?,
             server_write_key: self.extract_b64_field(&result, "server_write_key")?,
@@ -707,10 +717,8 @@ impl CryptoCapability for BearDogProvider {
         // BearDog returns shorter field names per RFC 8446 terminology:
         // - client_application_secret (not client_application_traffic_secret)
         Ok(TlsApplicationSecrets {
-            client_traffic_secret: self
-                .extract_b64_field(&result, "client_application_secret")?,
-            server_traffic_secret: self
-                .extract_b64_field(&result, "server_application_secret")?,
+            client_traffic_secret: self.extract_b64_field(&result, "client_application_secret")?,
+            server_traffic_secret: self.extract_b64_field(&result, "server_application_secret")?,
             client_write_key: self.extract_b64_field(&result, "client_write_key")?,
             client_write_iv: self.extract_b64_field(&result, "client_write_iv")?,
             server_write_key: self.extract_b64_field(&result, "server_write_key")?,
@@ -726,9 +734,10 @@ impl CryptoCapability for BearDogProvider {
     ) -> Result<Vec<u8>> {
         debug!(
             "🔐 tls_compute_finished_verify_data: cipher=0x{:04x}, hash={} bytes",
-            cipher_suite, transcript_hash.len()
+            cipher_suite,
+            transcript_hash.len()
         );
-        
+
         let result = self
             .call(
                 "tls.compute_finished_verify_data",
@@ -817,10 +826,7 @@ mod tests {
             provider.method_to_capability("crypto.ecdh_derive"),
             ("crypto", "derive_secret")
         );
-        assert_eq!(
-            provider.method_to_capability("crypto.sha256"),
-            ("crypto", "sha256")
-        );
+        assert_eq!(provider.method_to_capability("crypto.sha256"), ("crypto", "sha256"));
         // Fixed: Keep full method names for Neural API semantic translation
         assert_eq!(
             provider.method_to_capability("tls.derive_handshake_secrets"),
@@ -832,7 +838,7 @@ mod tests {
     fn test_neural_api_mode() {
         std::env::set_var("BEARDOG_MODE", "neural");
         std::env::set_var("NEURAL_API_SOCKET", "/tmp/neural-api.sock");
-        
+
         let provider = BearDogProvider::from_env();
         assert_eq!(provider.mode, RoutingMode::NeuralApi);
         assert_eq!(provider.socket_path(), "/tmp/neural-api.sock");
@@ -842,7 +848,7 @@ mod tests {
     fn test_direct_mode() {
         std::env::set_var("BEARDOG_MODE", "direct");
         std::env::set_var("BEARDOG_SOCKET", "/tmp/beardog.sock");
-        
+
         let provider = BearDogProvider::from_env();
         assert_eq!(provider.mode, RoutingMode::Direct);
         assert_eq!(provider.socket_path(), "/tmp/beardog.sock");

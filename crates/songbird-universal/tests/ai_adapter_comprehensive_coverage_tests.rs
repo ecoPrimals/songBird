@@ -22,8 +22,8 @@ use std::time::Duration;
 // AI METRICS COMPREHENSIVE TESTS
 // ============================================================================
 
-#[test]
-fn test_ai_metrics_healthy_system() {
+#[tokio::test]
+async fn test_ai_metrics_healthy_system() {
     let metrics = AIMetrics {
         active_models: 3,
         total_requests: 1000,
@@ -38,8 +38,8 @@ fn test_ai_metrics_healthy_system() {
     assert_eq!(metrics.health_status(), AIHealth::Healthy);
 }
 
-#[test]
-fn test_ai_metrics_degraded_high_gpu() {
+#[tokio::test]
+async fn test_ai_metrics_degraded_high_gpu() {
     let metrics = AIMetrics {
         active_models: 4,
         total_requests: 1500,
@@ -54,8 +54,8 @@ fn test_ai_metrics_degraded_high_gpu() {
     assert_eq!(metrics.health_status(), AIHealth::Degraded);
 }
 
-#[test]
-fn test_ai_metrics_degraded_high_latency() {
+#[tokio::test]
+async fn test_ai_metrics_degraded_high_latency() {
     let metrics = AIMetrics {
         active_models: 3,
         total_requests: 1200,
@@ -70,8 +70,8 @@ fn test_ai_metrics_degraded_high_latency() {
     assert_eq!(metrics.health_status(), AIHealth::Degraded);
 }
 
-#[test]
-fn test_ai_metrics_overloaded_extreme_gpu() {
+#[tokio::test]
+async fn test_ai_metrics_overloaded_extreme_gpu() {
     let metrics = AIMetrics {
         active_models: 5,
         total_requests: 2000,
@@ -84,8 +84,8 @@ fn test_ai_metrics_overloaded_extreme_gpu() {
     assert_eq!(metrics.health_status(), AIHealth::Overloaded);
 }
 
-#[test]
-fn test_ai_metrics_overloaded_extreme_latency() {
+#[tokio::test]
+async fn test_ai_metrics_overloaded_extreme_latency() {
     let metrics = AIMetrics {
         active_models: 4,
         total_requests: 1800,
@@ -99,8 +99,8 @@ fn test_ai_metrics_overloaded_extreme_latency() {
 }
 
 // Boundary tests for GPU load
-#[test]
-fn test_ai_metrics_boundary_gpu_90_percent() {
+#[tokio::test]
+async fn test_ai_metrics_boundary_gpu_90_percent() {
     let metrics = AIMetrics {
         active_models: 3,
         total_requests: 1000,
@@ -115,8 +115,8 @@ fn test_ai_metrics_boundary_gpu_90_percent() {
     assert_eq!(metrics.health_status(), AIHealth::Healthy);
 }
 
-#[test]
-fn test_ai_metrics_boundary_gpu_91_percent() {
+#[tokio::test]
+async fn test_ai_metrics_boundary_gpu_91_percent() {
     let metrics = AIMetrics {
         active_models: 3,
         total_requests: 1000,
@@ -130,8 +130,8 @@ fn test_ai_metrics_boundary_gpu_91_percent() {
     assert_eq!(metrics.health_status(), AIHealth::Degraded);
 }
 
-#[test]
-fn test_ai_metrics_boundary_gpu_98_percent() {
+#[tokio::test]
+async fn test_ai_metrics_boundary_gpu_98_percent() {
     let metrics = AIMetrics {
         active_models: 4,
         total_requests: 1500,
@@ -145,8 +145,8 @@ fn test_ai_metrics_boundary_gpu_98_percent() {
     assert_eq!(metrics.health_status(), AIHealth::Degraded);
 }
 
-#[test]
-fn test_ai_metrics_boundary_gpu_99_percent() {
+#[tokio::test]
+async fn test_ai_metrics_boundary_gpu_99_percent() {
     let metrics = AIMetrics {
         active_models: 4,
         total_requests: 1500,
@@ -160,8 +160,8 @@ fn test_ai_metrics_boundary_gpu_99_percent() {
 }
 
 // Boundary tests for latency
-#[test]
-fn test_ai_metrics_boundary_latency_1000ms() {
+#[tokio::test]
+async fn test_ai_metrics_boundary_latency_1000ms() {
     let metrics = AIMetrics {
         active_models: 3,
         total_requests: 1000,
@@ -176,8 +176,8 @@ fn test_ai_metrics_boundary_latency_1000ms() {
     assert_eq!(metrics.health_status(), AIHealth::Healthy);
 }
 
-#[test]
-fn test_ai_metrics_boundary_latency_1001ms() {
+#[tokio::test]
+async fn test_ai_metrics_boundary_latency_1001ms() {
     let metrics = AIMetrics {
         active_models: 3,
         total_requests: 1000,
@@ -191,8 +191,8 @@ fn test_ai_metrics_boundary_latency_1001ms() {
     assert_eq!(metrics.health_status(), AIHealth::Degraded);
 }
 
-#[test]
-fn test_ai_metrics_boundary_latency_2000ms() {
+#[tokio::test]
+async fn test_ai_metrics_boundary_latency_2000ms() {
     let metrics = AIMetrics {
         active_models: 3,
         total_requests: 1200,
@@ -206,8 +206,8 @@ fn test_ai_metrics_boundary_latency_2000ms() {
     assert_eq!(metrics.health_status(), AIHealth::Degraded);
 }
 
-#[test]
-fn test_ai_metrics_boundary_latency_2001ms() {
+#[tokio::test]
+async fn test_ai_metrics_boundary_latency_2001ms() {
     let metrics = AIMetrics {
         active_models: 3,
         total_requests: 1200,
@@ -220,8 +220,8 @@ fn test_ai_metrics_boundary_latency_2001ms() {
     assert_eq!(metrics.health_status(), AIHealth::Overloaded);
 }
 
-#[test]
-fn test_ai_metrics_zero_values() {
+#[tokio::test]
+async fn test_ai_metrics_zero_values() {
     let metrics = AIMetrics {
         active_models: 0,
         total_requests: 0,
@@ -236,8 +236,8 @@ fn test_ai_metrics_zero_values() {
     assert_eq!(metrics.health_status(), AIHealth::Healthy);
 }
 
-#[test]
-fn test_ai_metrics_extreme_values() {
+#[tokio::test]
+async fn test_ai_metrics_extreme_values() {
     let metrics = AIMetrics {
         active_models: 100,
         total_requests: u64::MAX,
@@ -252,8 +252,8 @@ fn test_ai_metrics_extreme_values() {
     assert_eq!(metrics.health_status(), AIHealth::Overloaded);
 }
 
-#[test]
-fn test_ai_metrics_serialization() {
+#[tokio::test]
+async fn test_ai_metrics_serialization() {
     let metrics = AIMetrics {
         active_models: 3,
         total_requests: 1000,
@@ -270,8 +270,8 @@ fn test_ai_metrics_serialization() {
     assert!(json_str.contains("1000"));
 }
 
-#[test]
-fn test_ai_metrics_deserialization() {
+#[tokio::test]
+async fn test_ai_metrics_deserialization() {
     let json = r#"{
         "active_models": 4,
         "total_requests": 1500,
@@ -288,8 +288,8 @@ fn test_ai_metrics_deserialization() {
     assert_eq!(metrics.total_requests, 1500);
 }
 
-#[test]
-fn test_ai_metrics_clone() {
+#[tokio::test]
+async fn test_ai_metrics_clone() {
     let metrics = AIMetrics {
         active_models: 2,
         total_requests: 800,
@@ -304,8 +304,8 @@ fn test_ai_metrics_clone() {
     assert_eq!(cloned.total_requests, metrics.total_requests);
 }
 
-#[test]
-fn test_ai_metrics_debug() {
+#[tokio::test]
+async fn test_ai_metrics_debug() {
     let metrics = AIMetrics {
         active_models: 3,
         total_requests: 1000,
@@ -323,8 +323,8 @@ fn test_ai_metrics_debug() {
 // AI HEALTH TESTS
 // ============================================================================
 
-#[test]
-fn test_ai_health_all_variants() {
+#[tokio::test]
+async fn test_ai_health_all_variants() {
     let healthy = AIHealth::Healthy;
     let degraded = AIHealth::Degraded;
     let overloaded = AIHealth::Overloaded;
@@ -334,36 +334,36 @@ fn test_ai_health_all_variants() {
     assert_ne!(degraded, overloaded);
 }
 
-#[test]
-fn test_ai_health_equality() {
+#[tokio::test]
+async fn test_ai_health_equality() {
     assert_eq!(AIHealth::Healthy, AIHealth::Healthy);
     assert_eq!(AIHealth::Degraded, AIHealth::Degraded);
     assert_eq!(AIHealth::Overloaded, AIHealth::Overloaded);
 }
 
-#[test]
-fn test_ai_health_clone() {
+#[tokio::test]
+async fn test_ai_health_clone() {
     let health = AIHealth::Degraded;
     let cloned = health;
     assert_eq!(health, cloned);
 }
 
-#[test]
-fn test_ai_health_copy() {
+#[tokio::test]
+async fn test_ai_health_copy() {
     let health = AIHealth::Healthy;
     let copied = health;
     assert_eq!(health, copied);
 }
 
-#[test]
-fn test_ai_health_debug() {
+#[tokio::test]
+async fn test_ai_health_debug() {
     let health = AIHealth::Overloaded;
     let debug_str = format!("{:?}", health);
     assert!(debug_str.contains("Overloaded"));
 }
 
-#[test]
-fn test_ai_health_serialization() {
+#[tokio::test]
+async fn test_ai_health_serialization() {
     let states = vec![AIHealth::Healthy, AIHealth::Degraded, AIHealth::Overloaded];
 
     for state in states {
@@ -372,8 +372,8 @@ fn test_ai_health_serialization() {
     }
 }
 
-#[test]
-fn test_ai_health_deserialization() {
+#[tokio::test]
+async fn test_ai_health_deserialization() {
     let test_cases = vec![
         (r#""Healthy""#, AIHealth::Healthy),
         (r#""Degraded""#, AIHealth::Degraded),
@@ -391,8 +391,8 @@ fn test_ai_health_deserialization() {
 // MODEL TYPE TESTS
 // ============================================================================
 
-#[test]
-fn test_model_type_all_variants() {
+#[tokio::test]
+async fn test_model_type_all_variants() {
     let llm = ModelType::Llm;
     let vision = ModelType::Vision;
     let audio = ModelType::Audio;
@@ -404,37 +404,37 @@ fn test_model_type_all_variants() {
     assert_ne!(vision, audio);
 }
 
-#[test]
-fn test_model_type_equality() {
+#[tokio::test]
+async fn test_model_type_equality() {
     assert_eq!(ModelType::Llm, ModelType::Llm);
     assert_eq!(ModelType::Vision, ModelType::Vision);
     assert_eq!(ModelType::Audio, ModelType::Audio);
     assert_eq!(ModelType::Embedding, ModelType::Embedding);
 }
 
-#[test]
-fn test_model_type_clone() {
+#[tokio::test]
+async fn test_model_type_clone() {
     let model = ModelType::Vision;
     let cloned = model;
     assert_eq!(model, cloned);
 }
 
-#[test]
-fn test_model_type_copy() {
+#[tokio::test]
+async fn test_model_type_copy() {
     let model = ModelType::Audio;
     let copied = model;
     assert_eq!(model, copied);
 }
 
-#[test]
-fn test_model_type_debug() {
+#[tokio::test]
+async fn test_model_type_debug() {
     let model = ModelType::Llm;
     let debug_str = format!("{:?}", model);
     assert!(debug_str.contains("Llm"));
 }
 
-#[test]
-fn test_model_type_serialization() {
+#[tokio::test]
+async fn test_model_type_serialization() {
     let types = vec![ModelType::Llm, ModelType::Vision, ModelType::Audio, ModelType::Embedding];
 
     for model_type in types {
@@ -447,18 +447,18 @@ fn test_model_type_serialization() {
 // ADAPTER CREATION TESTS
 // ============================================================================
 
-#[test]
-fn test_adapter_new_success() {
+#[tokio::test]
+async fn test_adapter_new_success() {
     let endpoint = "http://localhost:8082".to_string();
-    let adapter = AIAdapter::new(endpoint.clone());
+    let adapter = AIAdapter::new(endpoint.clone()).await;
 
     assert!(adapter.is_ok());
     let adapter = adapter.expect("test precondition");
     assert_eq!(adapter.endpoint(), &endpoint);
 }
 
-#[test]
-fn test_adapter_new_various_endpoints() {
+#[tokio::test]
+async fn test_adapter_new_various_endpoints() {
     let endpoints = vec![
         "http://localhost:8082",
         "https://ai.example.com",
@@ -467,30 +467,30 @@ fn test_adapter_new_various_endpoints() {
     ];
 
     for endpoint in endpoints {
-        let adapter = AIAdapter::new(endpoint.to_string());
+        let adapter = AIAdapter::new(endpoint.to_string()).await;
         assert!(adapter.is_ok(), "Should handle endpoint: {}", endpoint);
     }
 }
 
-#[test]
-fn test_adapter_with_timeout() {
+#[tokio::test]
+async fn test_adapter_with_timeout() {
     let endpoint = "http://localhost:8082".to_string();
-    let adapter = AIAdapter::new(endpoint).expect("test precondition");
+    let adapter = AIAdapter::new(endpoint).await.expect("test precondition").await;
 
     let custom_timeout = Duration::from_secs(30);
     let _adapter_with_timeout = adapter.with_timeout(custom_timeout);
 }
 
-#[test]
-fn test_adapter_endpoint_getter() {
+#[tokio::test]
+async fn test_adapter_endpoint_getter() {
     let endpoint = "http://ai-service:8082".to_string();
-    let adapter = AIAdapter::new(endpoint.clone()).expect("test precondition");
+    let adapter = AIAdapter::new(endpoint.clone()).expect("test precondition").await;
 
     assert_eq!(adapter.endpoint(), &endpoint);
 }
 
-#[test]
-fn test_adapter_builder_pattern() {
+#[tokio::test]
+async fn test_adapter_builder_pattern() {
     let adapter = AIAdapter::new("http://localhost:8082".to_string())
         .expect("test precondition")
         .with_timeout(Duration::from_secs(25));
@@ -498,8 +498,8 @@ fn test_adapter_builder_pattern() {
     assert_eq!(adapter.endpoint(), "http://localhost:8082");
 }
 
-#[test]
-fn test_multiple_adapters_independent() {
+#[tokio::test]
+async fn test_multiple_adapters_independent() {
     let adapter1 = AIAdapter::new("http://ai1:8082".to_string()).expect("test precondition");
     let adapter2 = AIAdapter::new("http://ai2:8083".to_string()).expect("test precondition");
 
@@ -512,8 +512,8 @@ fn test_multiple_adapters_independent() {
 // WORKFLOW TESTS
 // ============================================================================
 
-#[test]
-fn test_ai_workflow_normal_operation() {
+#[tokio::test]
+async fn test_ai_workflow_normal_operation() {
     let metrics = AIMetrics {
         active_models: 3,
         total_requests: 1000,
@@ -528,8 +528,8 @@ fn test_ai_workflow_normal_operation() {
     assert!(!metrics.is_high_latency());
 }
 
-#[test]
-fn test_ai_workflow_degrading_system() {
+#[tokio::test]
+async fn test_ai_workflow_degrading_system() {
     // System starts healthy
     let mut metrics = AIMetrics {
         active_models: 2,

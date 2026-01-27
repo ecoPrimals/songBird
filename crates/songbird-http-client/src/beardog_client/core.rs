@@ -121,8 +121,12 @@ impl BearDogClient {
     #[allow(dead_code)]
     pub(super) fn socket_path(&self) -> &str {
         match &self.mode {
-            BearDogMode::Direct { socket_path } => socket_path,
-            BearDogMode::NeuralApi { socket_path } => socket_path,
+            BearDogMode::Direct {
+                socket_path,
+            } => socket_path,
+            BearDogMode::NeuralApi {
+                socket_path,
+            } => socket_path,
         }
     }
 
@@ -176,4 +180,3 @@ mod tests {
         assert!(neural.is_neural_api());
     }
 }
-

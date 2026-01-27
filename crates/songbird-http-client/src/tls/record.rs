@@ -568,7 +568,11 @@ impl TlsRecordLayer {
             if plaintext.len() >= 2 {
                 let alert_level = plaintext[0];
                 let alert_desc = plaintext[1];
-                let level_str = if alert_level == 0x01 { "Warning" } else { "Fatal" };
+                let level_str = if alert_level == 0x01 {
+                    "Warning"
+                } else {
+                    "Fatal"
+                };
                 let desc_str = match alert_desc {
                     0x00 => "close_notify",
                     0x0A => "unexpected_message",

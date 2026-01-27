@@ -47,7 +47,10 @@ impl std::fmt::Debug for SongbirdHttpClient {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("SongbirdHttpClient")
             .field("tls_config", &self.tls_config)
-            .field("http_config", &format_args!("HttpClientConfig(ua={})", self.http_config.user_agent.len()))
+            .field(
+                "http_config",
+                &format_args!("HttpClientConfig(ua={})", self.http_config.user_agent.len()),
+            )
             .field("profiler", &self.profiler.is_some())
             .finish()
     }
@@ -75,11 +78,11 @@ impl SongbirdHttpClient {
     /// Automatically detects Neural API mode or Direct mode based on environment:
     /// - BEARDOG_MODE=neural (default): Routes through Neural API for capability.call
     /// - BEARDOG_MODE=direct (testing): Direct connection to BearDog
-    /// 
+    ///
     /// Uses NEURAL_API_SOCKET or BEARDOG_SOCKET accordingly.
     pub fn from_env() -> Self {
         info!("🌐 Creating Songbird HTTP client from environment");
-        
+
         Self {
             crypto: Arc::new(BearDogProvider::from_env()),
             tls_config: TlsConfig::default(),
@@ -94,7 +97,10 @@ impl SongbirdHttpClient {
         tls_config: TlsConfig,
         profiler: Option<Arc<ServerProfiler>>,
     ) -> Self {
-        info!("🎛️  Creating Songbird HTTP client with {:?} strategy", tls_config.extension_strategy);
+        info!(
+            "🎛️  Creating Songbird HTTP client with {:?} strategy",
+            tls_config.extension_strategy
+        );
         if profiler.is_some() {
             info!("🧠 Adaptive learning enabled (profiler attached)");
         }
@@ -217,6 +223,15 @@ impl SongbirdHttpClient {
     /// * `url` - Full URL
     /// * `headers` - Request headers
     /// * `body` - Optional request body
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if:
+    /// - URL parsing fails
+    /// - DNS resolution fails
+    /// - TLS handshake fails
+    /// - Connection cannot be established
+    /// - Request or response is malformed
     pub async fn request(
         &self,
         method: &str,
@@ -229,9 +244,11 @@ impl SongbirdHttpClient {
         // Parse URL into URI
         let parsed_uri: Uri = url.parse().map_err(|e| Error::InvalidUrl(format!("{}", e)))?;
 
-        let scheme =
-            parsed_uri.scheme_str().ok_or_else(|| Error::InvalidUrl("Missing scheme".to_string()))?;
-        let host = parsed_uri.host().ok_or_else(|| Error::InvalidUrl("Missing host".to_string()))?;
+        let scheme = parsed_uri
+            .scheme_str()
+            .ok_or_else(|| Error::InvalidUrl("Missing scheme".to_string()))?;
+        let host =
+            parsed_uri.host().ok_or_else(|| Error::InvalidUrl("Missing host".to_string()))?;
         let port = parsed_uri.port_u16().unwrap_or(if scheme == "https" {
             443
         } else {
@@ -243,7 +260,15 @@ impl SongbirdHttpClient {
         info!("   URL: {}", url);
         info!("   Scheme: {}", scheme);
         info!("   Host: {}", host);
-        info!("   Port: {} ({})", port, if parsed_uri.port_u16().is_some() { "explicit" } else { "default" });
+        info!(
+            "   Port: {} ({})",
+            port,
+            if parsed_uri.port_u16().is_some() {
+                "explicit"
+            } else {
+                "default"
+            }
+        );
 
         // For HTTPS, perform TLS handshake (TCP connection created inside with fallback)
         if scheme == "https" {
@@ -280,6 +305,11 @@ impl SongbirdHttpClient {
     /// - `RedirectMode::None`: Returns redirect response as-is
     /// - `RedirectMode::Follow`: Follows all redirects (max configured)
     /// - `RedirectMode::SameOrigin`: Only follows redirects to same origin
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the request fails (see [`request`](Self::request) for details)
+    /// or if maximum redirect limit is exceeded.
     pub async fn request_follow_redirects(
         &self,
         method: &str,
@@ -292,13 +322,12 @@ impl SongbirdHttpClient {
         let mut current_url = url.to_string();
         let mut redirects_followed = 0;
         let max_redirects = self.http_config.max_redirects;
-        let original_host = Uri::try_from(url)
-            .ok()
-            .and_then(|u| u.host().map(|h| h.to_string()));
+        let original_host = Uri::try_from(url).ok().and_then(|u| u.host().map(|h| h.to_string()));
 
         loop {
             // Make the request
-            let response = self.request(method, &current_url, headers.clone(), body.clone()).await?;
+            let response =
+                self.request(method, &current_url, headers.clone(), body.clone()).await?;
 
             // Check if this is a redirect status
             let is_redirect = matches!(response.status, 301 | 302 | 303 | 307 | 308);
@@ -310,7 +339,10 @@ impl SongbirdHttpClient {
             // Check redirect mode
             match self.http_config.redirect_mode {
                 RedirectMode::None => {
-                    info!("↩️  Redirect received ({}), returning as-is (redirect_mode=None)", response.status);
+                    info!(
+                        "↩️  Redirect received ({}), returning as-is (redirect_mode=None)",
+                        response.status
+                    );
                     return Ok(response);
                 }
                 RedirectMode::Follow => {
@@ -338,10 +370,9 @@ impl SongbirdHttpClient {
             }
 
             // Extract Location header
-            let location = response
-                .headers
-                .get("location")
-                .ok_or_else(|| Error::HttpProtocol("Redirect without Location header".to_string()))?;
+            let location = response.headers.get("location").ok_or_else(|| {
+                Error::HttpProtocol("Redirect without Location header".to_string())
+            })?;
 
             // Resolve relative URLs
             let new_url = self.resolve_redirect_url(&current_url, location)?;
@@ -369,9 +400,7 @@ impl SongbirdHttpClient {
         }
 
         // If relative URL, use base URL's host
-        Uri::try_from(base_url)
-            .ok()
-            .and_then(|u| u.host().map(|h| h.to_string()))
+        Uri::try_from(base_url).ok().and_then(|u| u.host().map(|h| h.to_string()))
     }
 
     /// Resolve a redirect URL (handles relative and absolute URLs)
@@ -382,12 +411,12 @@ impl SongbirdHttpClient {
         }
 
         // Parse base URL to get scheme and host
-        let base: Uri = base_url
-            .parse()
-            .map_err(|e| Error::InvalidUrl(format!("Invalid base URL: {}", e)))?;
+        let base: Uri =
+            base_url.parse().map_err(|e| Error::InvalidUrl(format!("Invalid base URL: {}", e)))?;
 
         let scheme = base.scheme_str().unwrap_or("https");
-        let host = base.host().ok_or_else(|| Error::InvalidUrl("Missing host in base URL".to_string()))?;
+        let host =
+            base.host().ok_or_else(|| Error::InvalidUrl("Missing host in base URL".to_string()))?;
         let port = base.port_u16();
 
         // Build new URL
@@ -524,15 +553,15 @@ impl SongbirdHttpClient {
                     // Parse headers to determine response type
                     let headers_str = String::from_utf8_lossy(&response_data[..headers_end]);
                     let headers_lower = headers_str.to_lowercase();
-                    
+
                     // Check for Transfer-Encoding: chunked
-                    let is_chunked = headers_lower.contains("transfer-encoding: chunked") ||
-                                    headers_lower.contains("transfer-encoding:chunked");
-                    
+                    let is_chunked = headers_lower.contains("transfer-encoding: chunked")
+                        || headers_lower.contains("transfer-encoding:chunked");
+
                     // Check for Connection: close
-                    let connection_close = headers_lower.contains("connection: close") ||
-                                          headers_lower.contains("connection:close");
-                    
+                    let connection_close = headers_lower.contains("connection: close")
+                        || headers_lower.contains("connection:close");
+
                     if is_chunked {
                         info!("   📦 Transfer-Encoding: chunked detected");
                         // For chunked responses, look for terminator: 0\r\n\r\n
@@ -573,7 +602,7 @@ impl SongbirdHttpClient {
                     }
                 }
             }
-            
+
             // Check for chunked encoding termination: 0\r\n\r\n
             // This is the final chunk marker indicating end of chunked body
             if headers_complete {
@@ -582,17 +611,17 @@ impl SongbirdHttpClient {
                 // Some servers also send "0\r\n\r\n" variations with trailers
                 if let Some(headers_end) = response_data.windows(4).position(|w| w == b"\r\n\r\n") {
                     let body = &response_data[headers_end + 4..];
-                    
+
                     // Check for chunked terminator patterns
-                    let has_terminator = body.windows(5).any(|w| w == b"0\r\n\r\n") ||
-                                        body.ends_with(b"0\r\n\r\n") ||
-                                        body.ends_with(b"\r\n0\r\n\r\n");
-                    
+                    let has_terminator = body.windows(5).any(|w| w == b"0\r\n\r\n")
+                        || body.ends_with(b"0\r\n\r\n")
+                        || body.ends_with(b"\r\n0\r\n\r\n");
+
                     if has_terminator {
                         info!("   ✅ Chunked encoding terminator (0\\r\\n\\r\\n) found");
                         break;
                     }
-                    
+
                     // Also check Content-Length completion
                     let headers_str = String::from_utf8_lossy(&response_data[..headers_end]);
                     if let Some(content_length) = headers_str
@@ -724,27 +753,31 @@ impl SongbirdHttpClient {
             let mut tcp_stream = match TcpStream::connect(addr).await {
                 Ok(stream) => {
                     // Log connection details for debugging
-                    let local = stream.local_addr().map(|a| a.to_string()).unwrap_or_else(|_| "unknown".into());
-                    let peer = stream.peer_addr().map(|a| a.to_string()).unwrap_or_else(|_| "unknown".into());
+                    let local = stream
+                        .local_addr()
+                        .map(|a| a.to_string())
+                        .unwrap_or_else(|_| "unknown".into());
+                    let peer = stream
+                        .peer_addr()
+                        .map(|a| a.to_string())
+                        .unwrap_or_else(|_| "unknown".into());
                     info!("✅ TCP connection established:");
                     info!("   Local: {}", local);
                     info!("   Remote: {} (expected: {})", peer, addr);
-                    
+
                     // Verify we connected to the right port
                     if let Ok(peer_addr) = stream.peer_addr() {
                         if peer_addr.port() != 443 && addr.contains(":443") {
                             warn!("⚠️  Connected to port {} but expected 443!", peer_addr.port());
                         }
                     }
-                    
+
                     stream
                 }
                 Err(e) => {
                     warn!("⚠️  Failed to connect to {}: {}", addr, e);
-                    last_error = Some(Error::Connection(format!(
-                        "Failed to connect to {}: {}",
-                        addr, e
-                    )));
+                    last_error =
+                        Some(Error::Connection(format!("Failed to connect to {}: {}", addr, e)));
                     continue; // Try next strategy with fresh connection
                 }
             };
@@ -914,13 +947,13 @@ impl SongbirdHttpClient {
 
         // Get host for header routing
         let host = uri.host().unwrap_or("unknown");
-        
+
         // Host header (always first)
         request.extend_from_slice(format!("Host: {}\r\n", host).as_bytes());
 
         // Get merged headers from config (defaults + rules + caller)
         let headers = self.http_config.headers_for_domain(host, caller_headers);
-        
+
         // Log applied headers for debugging
         if self.http_config.is_bot_protected(host) {
             trace!("🛡️  {} is bot-protected - applying adaptive headers", host);
@@ -930,7 +963,7 @@ impl SongbirdHttpClient {
         // Headers (sorted for deterministic output in tests)
         let mut header_pairs: Vec<_> = headers.iter().collect();
         header_pairs.sort_by(|a, b| a.0.cmp(b.0));
-        
+
         for (key, value) in header_pairs {
             // Skip Host (already added)
             if key.eq_ignore_ascii_case("host") {
@@ -1018,11 +1051,19 @@ impl SongbirdHttpClient {
     }
 
     /// Convenience method for GET requests
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the request fails (see [`request`](Self::request) for details).
     pub async fn get(&self, url: &str) -> Result<HttpResponse> {
         self.request("GET", url, HashMap::new(), None).await
     }
 
     /// Convenience method for POST requests
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the request fails (see [`request`](Self::request) for details).
     pub async fn post(&self, url: &str, body: serde_json::Value) -> Result<HttpResponse> {
         let mut headers = HashMap::new();
         headers.insert("Content-Type".to_string(), "application/json".to_string());
@@ -1030,6 +1071,10 @@ impl SongbirdHttpClient {
     }
 
     /// Convenience method for PUT requests
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the request fails (see [`request`](Self::request) for details).
     pub async fn put(&self, url: &str, body: serde_json::Value) -> Result<HttpResponse> {
         let mut headers = HashMap::new();
         headers.insert("Content-Type".to_string(), "application/json".to_string());
@@ -1037,11 +1082,19 @@ impl SongbirdHttpClient {
     }
 
     /// Convenience method for DELETE requests
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the request fails (see [`request`](Self::request) for details).
     pub async fn delete(&self, url: &str) -> Result<HttpResponse> {
         self.request("DELETE", url, HashMap::new(), None).await
     }
 
     /// Convenience method for PATCH requests
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the request fails (see [`request`](Self::request) for details).
     pub async fn patch(&self, url: &str, body: serde_json::Value) -> Result<HttpResponse> {
         let mut headers = HashMap::new();
         headers.insert("Content-Type".to_string(), "application/json".to_string());
@@ -1089,10 +1142,7 @@ mod tests {
 
         // Absolute URL should be returned as-is
         let resolved = client
-            .resolve_redirect_url(
-                "https://example.com/path",
-                "https://other.com/new-path",
-            )
+            .resolve_redirect_url("https://example.com/path", "https://other.com/new-path")
             .unwrap();
         assert_eq!(resolved, "https://other.com/new-path");
     }
@@ -1102,12 +1152,8 @@ mod tests {
         let client = SongbirdHttpClient::new("/tmp/beardog.sock");
 
         // Absolute path (starts with /) should use base's scheme and host
-        let resolved = client
-            .resolve_redirect_url(
-                "https://example.com/old-path",
-                "/new-path",
-            )
-            .unwrap();
+        let resolved =
+            client.resolve_redirect_url("https://example.com/old-path", "/new-path").unwrap();
         assert_eq!(resolved, "https://example.com/new-path");
     }
 
@@ -1116,12 +1162,8 @@ mod tests {
         let client = SongbirdHttpClient::new("/tmp/beardog.sock");
 
         // Relative path should be resolved relative to base
-        let resolved = client
-            .resolve_redirect_url(
-                "https://example.com/path/to/page",
-                "other-page",
-            )
-            .unwrap();
+        let resolved =
+            client.resolve_redirect_url("https://example.com/path/to/page", "other-page").unwrap();
         assert_eq!(resolved, "https://example.com/path/to/other-page");
     }
 
@@ -1130,12 +1172,8 @@ mod tests {
         let client = SongbirdHttpClient::new("/tmp/beardog.sock");
 
         // Preserve port in redirect
-        let resolved = client
-            .resolve_redirect_url(
-                "https://example.com:8443/path",
-                "/new-path",
-            )
-            .unwrap();
+        let resolved =
+            client.resolve_redirect_url("https://example.com:8443/path", "/new-path").unwrap();
         assert_eq!(resolved, "https://example.com:8443/new-path");
     }
 
@@ -1144,17 +1182,12 @@ mod tests {
         let client = SongbirdHttpClient::new("/tmp/beardog.sock");
 
         // Absolute URL
-        let host = client.extract_host_from_location(
-            "https://other.com/path",
-            "https://example.com",
-        );
+        let host =
+            client.extract_host_from_location("https://other.com/path", "https://example.com");
         assert_eq!(host, Some("other.com".to_string()));
 
         // Relative URL should use base host
-        let host = client.extract_host_from_location(
-            "/new-path",
-            "https://example.com/old-path",
-        );
+        let host = client.extract_host_from_location("/new-path", "https://example.com/old-path");
         assert_eq!(host, Some("example.com".to_string()));
     }
 }

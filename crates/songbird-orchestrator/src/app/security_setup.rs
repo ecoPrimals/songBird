@@ -182,7 +182,7 @@ mod tests {
         std::env::remove_var("SECURITY_ENDPOINT");
         std::env::remove_var("SONGBIRD_BEARDOG_URL");
         std::env::remove_var("CAPABILITY_SECURITY_ENDPOINT");
-        
+
         // Set explicit endpoint (Priority 2)
         std::env::set_var("SECURITY_ENDPOINT", "https://security-provider.local:8443");
 
@@ -199,7 +199,7 @@ mod tests {
         std::env::remove_var("SONGBIRD_SECURITY_PROVIDER");
         std::env::remove_var("SECURITY_ENDPOINT");
         std::env::remove_var("SONGBIRD_BEARDOG_URL");
-        
+
         // Set fallback endpoint (Priority 5)
         std::env::set_var("CAPABILITY_SECURITY_ENDPOINT", "http://localhost:9090");
 

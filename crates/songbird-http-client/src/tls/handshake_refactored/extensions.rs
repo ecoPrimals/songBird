@@ -9,14 +9,14 @@
 
 use super::core::TlsHandshake;
 use crate::error::Result;
-use crate::tls::{TLS_1_3};
-use tracing::{debug};
+use crate::tls::TLS_1_3;
+use tracing::debug;
 
 impl TlsHandshake {
     /// Build extensions based on configured strategy
     pub(super) fn build_extensions(&self, server_name: &str, public_key: &[u8]) -> Result<Vec<u8>> {
         debug!("Building extensions with {:?} strategy", self.config.extension_strategy);
-        
+
         match self.config.extension_strategy {
             crate::tls::config::ExtensionStrategy::Minimal => {
                 self.build_extensions_minimal(server_name, public_key)
@@ -127,7 +127,7 @@ impl TlsHandshake {
         // RFC 8446: This is how servers know we want TLS 1.3
         ext.extend_from_slice(&[0x00, 0x2b]);
         ext.extend_from_slice(&[0x00, 0x03]); // Extension length
-        ext.extend_from_slice(&[0x02]);       // Versions list length
+        ext.extend_from_slice(&[0x02]); // Versions list length
         ext.extend_from_slice(&TLS_1_3.to_be_bytes()); // Only TLS 1.3!
 
         // 5. Key share (0x0033) - REQUIRED for TLS 1.3 fresh handshake
@@ -140,7 +140,7 @@ impl TlsHandshake {
         ext.extend_from_slice(&[0x00, 0x10]);
         ext.extend_from_slice(&[0x00, 0x0b]); // Extension length
         ext.extend_from_slice(&[0x00, 0x09]); // Protocol list length
-        ext.extend_from_slice(&[0x08]);       // Protocol name length
+        ext.extend_from_slice(&[0x08]); // Protocol name length
         ext.extend_from_slice(b"http/1.1");
 
         // NOTE: We deliberately OMIT these extensions for fresh handshakes:
@@ -232,7 +232,7 @@ impl TlsHandshake {
 mod tests {
     use super::*;
     use crate::crypto::CryptoCapability;
-    use crate::tls::config::{TlsConfig, ExtensionStrategy};
+    use crate::tls::config::{ExtensionStrategy, TlsConfig};
 
     #[test]
     fn test_build_sni_extension() {
@@ -269,7 +269,7 @@ mod tests {
         // First 2 bytes: client shares length
         let shares_length = u16::from_be_bytes([ks[0], ks[1]]) as usize;
         assert_eq!(shares_length, 32 + 4); // 32-byte key + 4 bytes overhead
-        // Next 2 bytes: group (0x001d = x25519)
+                                           // Next 2 bytes: group (0x001d = x25519)
         assert_eq!(ks[2], 0x00);
         assert_eq!(ks[3], 0x1d);
         // Next 2 bytes: key exchange length
@@ -415,4 +415,3 @@ mod tests {
         assert!(modern.len() < maxcompat.len());
     }
 }
-

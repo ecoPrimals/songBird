@@ -78,4 +78,3 @@ mod tests {
         assert_eq!(handshake.cipher_suite, 0);
     }
 }
-

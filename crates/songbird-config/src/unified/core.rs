@@ -123,3 +123,118 @@ impl UnifiedCoreConfig {
 pub fn get_unified_config() -> Result<UnifiedCoreConfig, String> {
     Ok(UnifiedCoreConfig::from_env())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_service_config_default() {
+        let config = ServiceConfig::default();
+        assert_eq!(config.name, "songbird");
+        assert!(!config.version.is_empty());
+        assert!(config.instance_id.starts_with("instance-"));
+        assert_eq!(config.tags.len(), 1);
+        assert_eq!(config.tags[0], "songbird");
+    }
+
+    #[test]
+    fn test_environment_config_default() {
+        let config = EnvironmentConfig::default();
+        assert!(!config.environment.is_empty());
+        assert!(!config.log_level.is_empty());
+        // Debug format should work
+        assert!(format!("{:?}", config).contains("environment"));
+    }
+
+    #[test]
+    fn test_observability_config_default() {
+        let config = CanonicalObservabilityConfig::default();
+        assert!(config.metrics_enabled);
+        assert!(config.tracing_enabled);
+        assert!(config.health_check_enabled);
+        assert!(config.metrics_port > 0);
+    }
+
+    #[test]
+    fn test_unified_core_config_from_env() {
+        let config = UnifiedCoreConfig::from_env();
+        assert_eq!(config.service.name, "songbird");
+        assert!(config.observability.metrics_enabled);
+        assert!(config.extensions.is_empty());
+    }
+
+    #[test]
+    fn test_unified_core_config_is_production() {
+        let mut config = UnifiedCoreConfig::from_env();
+
+        // Test development
+        config.environment.environment = "development".to_string();
+        assert!(!config.is_production());
+
+        // Test production
+        config.environment.environment = "production".to_string();
+        assert!(config.is_production());
+
+        // Test staging (not production)
+        config.environment.environment = "staging".to_string();
+        assert!(!config.is_production());
+    }
+
+    #[test]
+    fn test_get_unified_config() {
+        let result = get_unified_config();
+        assert!(result.is_ok());
+
+        let config = result.expect("should return config");
+        assert_eq!(config.service.name, "songbird");
+    }
+
+    #[test]
+    fn test_unified_core_config_extensions() {
+        let mut config = UnifiedCoreConfig::from_env();
+
+        // Test empty extensions
+        assert!(config.extensions.is_empty());
+
+        // Add extension
+        config.extensions.insert("custom_key".to_string(), serde_json::json!({"value": 42}));
+        assert_eq!(config.extensions.len(), 1);
+        assert!(config.extensions.contains_key("custom_key"));
+    }
+
+    #[test]
+    fn test_serde_unified_core_config() {
+        let config = UnifiedCoreConfig::from_env();
+
+        // Test serialization
+        let json = serde_json::to_string(&config).expect("should serialize");
+        assert!(!json.is_empty());
+        assert!(json.contains("songbird"));
+
+        // Test deserialization
+        let deserialized: UnifiedCoreConfig =
+            serde_json::from_str(&json).expect("should deserialize");
+        assert_eq!(deserialized.service.name, config.service.name);
+        assert_eq!(
+            deserialized.observability.metrics_enabled,
+            config.observability.metrics_enabled
+        );
+    }
+
+    #[test]
+    fn test_songbird_config_type_alias() {
+        // Test that type alias works
+        let _config: SongbirdConfig = UnifiedCoreConfig::from_env();
+        // If this compiles, the type alias is correct
+    }
+
+    #[test]
+    fn test_service_config_clone() {
+        let config = ServiceConfig::default();
+        let cloned = config.clone();
+        assert_eq!(cloned.name, config.name);
+        assert_eq!(cloned.version, config.version);
+        assert_eq!(cloned.instance_id, config.instance_id);
+    }
+}

@@ -33,9 +33,9 @@ impl HealthChecker {
         let base_url = &primal.endpoint;
 
         // Create client on-demand
-        let client = songbird_http_client::IpcHttpClient::new()
-            .await
-            .map_err(|e| DiscoveryError::NetworkError(format!("Failed to create HTTP client: {}", e)))?;
+        let client = songbird_http_client::IpcHttpClient::new().await.map_err(|e| {
+            DiscoveryError::NetworkError(format!("Failed to create HTTP client: {}", e))
+        })?;
 
         for health_path in HEALTH_PATHS {
             let url = format!("{}{}", base_url, health_path);

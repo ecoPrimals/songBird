@@ -17,37 +17,37 @@ use std::time::Duration;
 // ADAPTER CREATION & CONFIGURATION TESTS
 // ============================================================================
 
-#[test]
-fn test_security_adapter_new() -> SongbirdResult<()> {
-    let adapter = SecurityAdapter::new("http://localhost:8081".to_string())?;
+#[tokio::test]
+async fn test_security_adapter_new() -> SongbirdResult<()> {
+    let adapter = SecurityAdapter::new("http://localhost:8081".to_string())?.await;
     assert_eq!(adapter.endpoint(), "http://localhost:8081");
     Ok(())
 }
 
-#[test]
-fn test_security_adapter_with_custom_timeout() -> SongbirdResult<()> {
+#[tokio::test]
+async fn test_security_adapter_with_custom_timeout() -> SongbirdResult<()> {
     let adapter = SecurityAdapter::new("http://localhost:8081".to_string())?
         .with_timeout(Duration::from_secs(30));
     assert_eq!(adapter.endpoint(), "http://localhost:8081");
     Ok(())
 }
 
-#[test]
-fn test_security_adapter_endpoint_with_https() -> SongbirdResult<()> {
-    let adapter = SecurityAdapter::new("https://security.example.com".to_string())?;
+#[tokio::test]
+async fn test_security_adapter_endpoint_with_https() -> SongbirdResult<()> {
+    let adapter = SecurityAdapter::new("https://security.example.com".to_string())?.await;
     assert_eq!(adapter.endpoint(), "https://security.example.com");
     Ok(())
 }
 
-#[test]
-fn test_security_adapter_endpoint_with_port() -> SongbirdResult<()> {
-    let adapter = SecurityAdapter::new("http://security-service:9443".to_string())?;
+#[tokio::test]
+async fn test_security_adapter_endpoint_with_port() -> SongbirdResult<()> {
+    let adapter = SecurityAdapter::new("http://security-service:9443".to_string())?.await;
     assert_eq!(adapter.endpoint(), "http://security-service:9443");
     Ok(())
 }
 
-#[test]
-fn test_security_adapter_builder_pattern() -> SongbirdResult<()> {
+#[tokio::test]
+async fn test_security_adapter_builder_pattern() -> SongbirdResult<()> {
     let adapter = SecurityAdapter::new("http://localhost:8081".to_string())?
         .with_timeout(Duration::from_secs(15));
 
@@ -59,8 +59,8 @@ fn test_security_adapter_builder_pattern() -> SongbirdResult<()> {
 // SECURITY METRICS TESTS
 // ============================================================================
 
-#[test]
-fn test_security_metrics_healthy_state() {
+#[tokio::test]
+async fn test_security_metrics_healthy_state() {
     let metrics = SecurityMetrics {
         active_sessions: 50,
         failed_auth_attempts: 5,
@@ -73,8 +73,8 @@ fn test_security_metrics_healthy_state() {
     assert!(!metrics.is_under_attack());
 }
 
-#[test]
-fn test_security_metrics_warning_state() {
+#[tokio::test]
+async fn test_security_metrics_warning_state() {
     let metrics = SecurityMetrics {
         active_sessions: 100,
         failed_auth_attempts: 55,
@@ -87,8 +87,8 @@ fn test_security_metrics_warning_state() {
     assert!(!metrics.is_under_attack());
 }
 
-#[test]
-fn test_security_metrics_critical_state() {
+#[tokio::test]
+async fn test_security_metrics_critical_state() {
     let metrics = SecurityMetrics {
         active_sessions: 200,
         failed_auth_attempts: 150,
@@ -101,8 +101,8 @@ fn test_security_metrics_critical_state() {
     assert!(metrics.is_under_attack());
 }
 
-#[test]
-fn test_security_metrics_under_attack_high_failed_attempts() {
+#[tokio::test]
+async fn test_security_metrics_under_attack_high_failed_attempts() {
     let metrics = SecurityMetrics {
         active_sessions: 50,
         failed_auth_attempts: 101, // Just over threshold
@@ -115,8 +115,8 @@ fn test_security_metrics_under_attack_high_failed_attempts() {
     assert_eq!(metrics.health_status(), SecurityHealth::Critical);
 }
 
-#[test]
-fn test_security_metrics_under_attack_high_blocked_ips() {
+#[tokio::test]
+async fn test_security_metrics_under_attack_high_blocked_ips() {
     let metrics = SecurityMetrics {
         active_sessions: 50,
         failed_auth_attempts: 20,
@@ -129,8 +129,8 @@ fn test_security_metrics_under_attack_high_blocked_ips() {
     assert_eq!(metrics.health_status(), SecurityHealth::Critical);
 }
 
-#[test]
-fn test_security_metrics_boundary_warning() {
+#[tokio::test]
+async fn test_security_metrics_boundary_warning() {
     let metrics = SecurityMetrics {
         active_sessions: 30,
         failed_auth_attempts: 50, // Exactly at warning threshold
@@ -144,8 +144,8 @@ fn test_security_metrics_boundary_warning() {
     assert_eq!(metrics.health_status(), SecurityHealth::Healthy);
 }
 
-#[test]
-fn test_security_metrics_boundary_critical_score() {
+#[tokio::test]
+async fn test_security_metrics_boundary_critical_score() {
     let metrics = SecurityMetrics {
         active_sessions: 20,
         failed_auth_attempts: 10,
@@ -157,8 +157,8 @@ fn test_security_metrics_boundary_critical_score() {
     assert_eq!(metrics.health_status(), SecurityHealth::Critical);
 }
 
-#[test]
-fn test_security_metrics_edge_case_zero_values() {
+#[tokio::test]
+async fn test_security_metrics_edge_case_zero_values() {
     let metrics = SecurityMetrics {
         active_sessions: 0,
         failed_auth_attempts: 0,
@@ -171,8 +171,8 @@ fn test_security_metrics_edge_case_zero_values() {
     assert_eq!(metrics.health_status(), SecurityHealth::Healthy);
 }
 
-#[test]
-fn test_security_metrics_high_active_sessions() {
+#[tokio::test]
+async fn test_security_metrics_high_active_sessions() {
     let metrics = SecurityMetrics {
         active_sessions: 10_000,
         failed_auth_attempts: 5,
@@ -190,8 +190,8 @@ fn test_security_metrics_high_active_sessions() {
 // AUTH RESULT TESTS
 // ============================================================================
 
-#[test]
-fn test_auth_result_variants() {
+#[tokio::test]
+async fn test_auth_result_variants() {
     let authorized = AuthResult::Authorized;
     let unauthorized = AuthResult::Unauthorized;
     let expired = AuthResult::Expired;
@@ -203,16 +203,16 @@ fn test_auth_result_variants() {
     assert_ne!(authorized, invalid);
 }
 
-#[test]
-fn test_auth_result_equality() {
+#[tokio::test]
+async fn test_auth_result_equality() {
     assert_eq!(AuthResult::Authorized, AuthResult::Authorized);
     assert_eq!(AuthResult::Unauthorized, AuthResult::Unauthorized);
     assert_eq!(AuthResult::Expired, AuthResult::Expired);
     assert_eq!(AuthResult::Invalid, AuthResult::Invalid);
 }
 
-#[test]
-fn test_auth_result_clone() {
+#[tokio::test]
+async fn test_auth_result_clone() {
     let result1 = AuthResult::Authorized;
     let result2 = result1.clone();
     assert_eq!(result1, result2);
@@ -222,8 +222,8 @@ fn test_auth_result_clone() {
 // SECURITY HEALTH TESTS
 // ============================================================================
 
-#[test]
-fn test_security_health_variants() {
+#[tokio::test]
+async fn test_security_health_variants() {
     let healthy = SecurityHealth::Healthy;
     let warning = SecurityHealth::Warning;
     let critical = SecurityHealth::Critical;
@@ -233,8 +233,8 @@ fn test_security_health_variants() {
     assert_ne!(healthy, critical);
 }
 
-#[test]
-fn test_security_health_copy() {
+#[tokio::test]
+async fn test_security_health_copy() {
     let health = SecurityHealth::Critical;
     let health_copy = health;
     assert_eq!(health, health_copy);
@@ -244,22 +244,22 @@ fn test_security_health_copy() {
 // ADAPTER ERROR HANDLING TESTS
 // ============================================================================
 
-#[test]
-fn test_adapter_creation_with_empty_endpoint() {
+#[tokio::test]
+async fn test_adapter_creation_with_empty_endpoint() {
     let result = SecurityAdapter::new(String::new());
     // Empty endpoint should be allowed (for testing), actual connection will fail later
     assert!(result.is_ok());
 }
 
-#[test]
-fn test_adapter_creation_with_invalid_url_format() {
+#[tokio::test]
+async fn test_adapter_creation_with_invalid_url_format() {
     // Invalid URLs are acceptable at creation time - they'll fail at connection time
     let result = SecurityAdapter::new("not-a-url".to_string());
     assert!(result.is_ok());
 }
 
-#[test]
-fn test_adapter_multiple_timeout_changes() -> SongbirdResult<()> {
+#[tokio::test]
+async fn test_adapter_multiple_timeout_changes() -> SongbirdResult<()> {
     let adapter = SecurityAdapter::new("http://localhost:8081".to_string())?
         .with_timeout(Duration::from_secs(5))
         .with_timeout(Duration::from_secs(10))
@@ -273,8 +273,8 @@ fn test_adapter_multiple_timeout_changes() -> SongbirdResult<()> {
 // EDGE CASE TESTS
 // ============================================================================
 
-#[test]
-fn test_security_metrics_serialization() {
+#[tokio::test]
+async fn test_security_metrics_serialization() {
     let metrics = SecurityMetrics {
         active_sessions: 50,
         failed_auth_attempts: 10,
@@ -287,22 +287,22 @@ fn test_security_metrics_serialization() {
     assert!(json.is_ok());
 }
 
-#[test]
-fn test_auth_result_serialization() {
+#[tokio::test]
+async fn test_auth_result_serialization() {
     let result = AuthResult::Authorized;
     let json = serde_json::to_string(&result);
     assert!(json.is_ok());
 }
 
-#[test]
-fn test_security_health_serialization() {
+#[tokio::test]
+async fn test_security_health_serialization() {
     let health = SecurityHealth::Healthy;
     let json = serde_json::to_string(&health);
     assert!(json.is_ok());
 }
 
-#[test]
-fn test_security_metrics_with_future_timestamp() {
+#[tokio::test]
+async fn test_security_metrics_with_future_timestamp() {
     use chrono::Duration as ChronoDuration;
 
     let future = chrono::Utc::now() + ChronoDuration::hours(1);
@@ -317,8 +317,8 @@ fn test_security_metrics_with_future_timestamp() {
     assert_eq!(metrics.health_status(), SecurityHealth::Healthy);
 }
 
-#[test]
-fn test_security_metrics_with_past_timestamp() {
+#[tokio::test]
+async fn test_security_metrics_with_past_timestamp() {
     use chrono::Duration as ChronoDuration;
 
     let past = chrono::Utc::now() - ChronoDuration::days(1);
@@ -337,8 +337,8 @@ fn test_security_metrics_with_past_timestamp() {
 // COMPREHENSIVE SCENARIO TESTS
 // ============================================================================
 
-#[test]
-fn test_security_degradation_scenario() {
+#[tokio::test]
+async fn test_security_degradation_scenario() {
     // Healthy state
     let metrics1 = SecurityMetrics {
         active_sessions: 50,
@@ -370,8 +370,8 @@ fn test_security_degradation_scenario() {
     assert_eq!(metrics3.health_status(), SecurityHealth::Critical);
 }
 
-#[test]
-fn test_security_recovery_scenario() {
+#[tokio::test]
+async fn test_security_recovery_scenario() {
     // Critical state
     let metrics1 = SecurityMetrics {
         active_sessions: 200,
@@ -406,8 +406,8 @@ fn test_security_recovery_scenario() {
     assert!(!metrics3.is_under_attack());
 }
 
-#[test]
-fn test_multiple_adapters_different_endpoints() -> SongbirdResult<()> {
+#[tokio::test]
+async fn test_multiple_adapters_different_endpoints() -> SongbirdResult<()> {
     let adapter1 = SecurityAdapter::new("http://security1:8081".to_string())?;
     let adapter2 = SecurityAdapter::new("http://security2:8082".to_string())?;
     let adapter3 = SecurityAdapter::new("https://security3:8443".to_string())?;
@@ -423,17 +423,17 @@ fn test_multiple_adapters_different_endpoints() -> SongbirdResult<()> {
 // STRESS TESTS
 // ============================================================================
 
-#[test]
-fn test_create_multiple_adapters() -> SongbirdResult<()> {
+#[tokio::test]
+async fn test_create_multiple_adapters() -> SongbirdResult<()> {
     for i in 0..100 {
-        let adapter = SecurityAdapter::new(format!("http://security{}:8081", i))?;
+        let adapter = SecurityAdapter::new(format!("http://security{}:8081", i))?.await;
         assert_eq!(adapter.endpoint(), format!("http://security{}:8081", i));
     }
     Ok(())
 }
 
-#[test]
-fn test_security_metrics_extreme_values() {
+#[tokio::test]
+async fn test_security_metrics_extreme_values() {
     let metrics = SecurityMetrics {
         active_sessions: u32::MAX,
         failed_auth_attempts: u32::MAX,
@@ -446,8 +446,8 @@ fn test_security_metrics_extreme_values() {
     assert_eq!(metrics.health_status(), SecurityHealth::Critical);
 }
 
-#[test]
-fn test_security_score_precision() {
+#[tokio::test]
+async fn test_security_score_precision() {
     // Test various security scores around boundaries
     let scores = vec![0.0, 0.49, 0.5, 0.69, 0.7, 0.99, 1.0];
 

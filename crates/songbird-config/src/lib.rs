@@ -91,6 +91,9 @@ pub mod capability_based_runtime_discovery;
 /// Port discovery - Dynamic port allocation
 pub mod port_discovery;
 
+/// Capability-based port configuration (zero hardcoding)
+pub mod capability_port_config;
+
 // ============================================================================
 // LEGACY MODULES - BEING CONSOLIDATED
 // ============================================================================

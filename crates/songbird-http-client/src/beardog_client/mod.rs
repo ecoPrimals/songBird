@@ -35,17 +35,17 @@
 //! let (public_key, private_key) = client.generate_keypair().await?;
 //! ```
 
-mod types;
-mod core;
-mod rpc;
-mod key_exchange;
-mod tls_secrets;
 mod aead;
+mod core;
 mod hash;
+mod key_exchange;
+mod rpc;
+mod tls_secrets;
+mod types;
 
 // Re-export public API
-pub use types::TlsSecrets;
 pub use core::{BearDogClient, BearDogMode};
+pub use types::TlsSecrets;
 
 // ═══════════════════════════════════════════════════════════════════════════
 // NOTE: Semantic capability.call Integration
@@ -61,4 +61,3 @@ pub use core::{BearDogClient, BearDogMode};
 //
 // The client automatically uses semantic method names when in Neural API mode.
 // See BearDogClient::from_env() for automatic mode detection.
-

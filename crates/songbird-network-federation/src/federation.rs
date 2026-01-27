@@ -38,14 +38,14 @@ impl std::fmt::Debug for FederationCoordinator {
 
 impl FederationCoordinator {
     /// Create a new federation coordinator
-    /// 
+    ///
     /// # Errors
     /// Returns error if HTTP client creation fails
     pub async fn new() -> SongbirdResult<Self> {
         let client = IpcHttpClient::new()
             .await
             .map_err(|e| SongbirdError::network(format!("Failed to create HTTP client: {e}")))?;
-        
+
         Ok(Self {
             state: Arc::new(FederationState::new("default".to_string())),
             client,
@@ -55,14 +55,14 @@ impl FederationCoordinator {
     }
 
     /// Create coordinator with existing state
-    /// 
+    ///
     /// # Errors
     /// Returns error if HTTP client creation fails
     pub async fn with_state(state: Arc<FederationState>) -> SongbirdResult<Self> {
         let client = IpcHttpClient::new()
             .await
             .map_err(|e| SongbirdError::network(format!("Failed to create HTTP client: {e}")))?;
-        
+
         Ok(Self {
             state,
             client,
@@ -279,11 +279,7 @@ impl FederationCoordinator {
                             "metrics": {}
                         });
 
-                        match client
-                            .post(&url)
-                            .await
-                            .json(&heartbeat)
-                        {
+                        match client.post(&url).await.json(&heartbeat) {
                             Ok(builder) => match builder.send().await {
                                 Ok(resp) if resp.is_success() => {
                                     debug!("💓 Heartbeat sent to {}", node.node_name);

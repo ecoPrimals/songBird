@@ -74,11 +74,11 @@ impl fmt::Display for TlsVersion {
 pub enum SecurityPolicy {
     /// TLS 1.3 only - Maximum security, may fail on legacy servers
     Strict,
-    
+
     /// TLS 1.3 preferred, secure TLS 1.2 fallback (ECDHE+AEAD only)
     #[default]
     Balanced,
-    
+
     /// TLS 1.3 preferred, broader TLS 1.2 support (still no weak ciphers)
     /// Use only when necessary for specific legacy systems
     Legacy,
@@ -110,13 +110,13 @@ impl SecurityPolicy {
 pub struct TlsVersionConfig {
     /// Security policy
     pub policy: SecurityPolicy,
-    
+
     /// Minimum acceptable version
     pub minimum_version: TlsVersion,
-    
+
     /// Enable version downgrade detection
     pub downgrade_protection: bool,
-    
+
     /// Log warnings when falling back to 1.2
     pub warn_on_fallback: bool,
 }
@@ -160,11 +160,7 @@ impl TlsVersionConfig {
 
     /// Get supported versions in preference order
     pub fn supported_versions(&self) -> Vec<TlsVersion> {
-        self.policy
-            .allowed_versions()
-            .into_iter()
-            .filter(|v| *v >= self.minimum_version)
-            .collect()
+        self.policy.allowed_versions().into_iter().filter(|v| *v >= self.minimum_version).collect()
     }
 
     /// Check if a version is acceptable
@@ -213,7 +209,6 @@ pub const TLS_1_2_SECURE_CIPHERS: &[u16] = &[
     0xC02F, // TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256
     0xC030, // TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384
     0xCCA8, // TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256
-    
     // ECDHE-ECDSA with AEAD
     0xC02B, // TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256
     0xC02C, // TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384
@@ -229,12 +224,10 @@ pub const TLS_1_2_EXTENDED_CIPHERS: &[u16] = &[
     0xC02F, // TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256
     0xC030, // TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384
     0xCCA8, // TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256
-    
     // ECDHE-ECDSA with AEAD
     0xC02B, // TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256
     0xC02C, // TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384
     0xCCA9, // TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305_SHA256
-    
     // DHE-RSA with AEAD (fallback for servers without ECDHE)
     0x009E, // TLS_DHE_RSA_WITH_AES_128_GCM_SHA256
     0x009F, // TLS_DHE_RSA_WITH_AES_256_GCM_SHA384
@@ -295,22 +288,22 @@ pub fn detect_server_version(server_hello: &[u8]) -> Option<NegotiatedVersion> {
 
     // Legacy version at offset 0
     let legacy_version = u16::from_be_bytes([data[0], data[1]]);
-    
+
     // Skip to session_id_length (after random)
     let session_id_len = data[34] as usize;
     let mut offset = 35 + session_id_len;
-    
+
     if offset + 2 > data.len() {
         return None;
     }
-    
+
     // Cipher suite
     let cipher_suite = u16::from_be_bytes([data[offset], data[offset + 1]]);
     offset += 2;
-    
+
     // Skip compression method
     offset += 1;
-    
+
     // Parse extensions to find supported_versions
     if offset + 2 > data.len() {
         // No extensions - use legacy version
@@ -321,36 +314,36 @@ pub fn detect_server_version(server_hello: &[u8]) -> Option<NegotiatedVersion> {
             downgrade_detected: false,
         });
     }
-    
+
     let extensions_len = u16::from_be_bytes([data[offset], data[offset + 1]]) as usize;
     offset += 2;
-    
+
     let extensions_end = offset + extensions_len;
-    
+
     // Search for supported_versions extension (0x002b)
     while offset + 4 <= extensions_end {
         let ext_type = u16::from_be_bytes([data[offset], data[offset + 1]]);
         let ext_len = u16::from_be_bytes([data[offset + 2], data[offset + 3]]) as usize;
         offset += 4;
-        
+
         if ext_type == 0x002b && ext_len >= 2 {
             // supported_versions extension found
             let actual_version = u16::from_be_bytes([data[offset], data[offset + 1]]);
             let version = TlsVersion::from_bytes([data[offset], data[offset + 1]])?;
-            
+
             // Check for downgrade
             let downgrade_detected = legacy_version == 0x0303 && actual_version == 0x0304;
-            
+
             return Some(NegotiatedVersion {
                 version,
                 cipher_suite,
                 downgrade_detected,
             });
         }
-        
+
         offset += ext_len;
     }
-    
+
     // No supported_versions - this is TLS 1.2 or earlier
     let version = TlsVersion::from_bytes(legacy_version.to_be_bytes())?;
     Some(NegotiatedVersion {
@@ -381,10 +374,7 @@ mod tests {
         assert_eq!(strict.allowed_versions(), vec![TlsVersion::Tls13]);
 
         let balanced = SecurityPolicy::Balanced;
-        assert_eq!(
-            balanced.allowed_versions(),
-            vec![TlsVersion::Tls13, TlsVersion::Tls12]
-        );
+        assert_eq!(balanced.allowed_versions(), vec![TlsVersion::Tls13, TlsVersion::Tls12]);
     }
 
     #[test]
@@ -422,14 +412,8 @@ mod tests {
 
     #[test]
     fn test_tls_1_2_cipher_names() {
-        assert_eq!(
-            tls_1_2_cipher_name(0xC02F),
-            "TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256"
-        );
-        assert_eq!(
-            tls_1_2_cipher_name(0xCCA9),
-            "TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305_SHA256"
-        );
+        assert_eq!(tls_1_2_cipher_name(0xC02F), "TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256");
+        assert_eq!(tls_1_2_cipher_name(0xCCA9), "TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305_SHA256");
     }
 
     #[test]
@@ -459,4 +443,3 @@ mod tests {
         }
     }
 }
-

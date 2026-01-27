@@ -87,6 +87,7 @@
 //! 4. **IPv6 Ready**: All host configs support dual-stack IPv4/IPv6
 //! 5. **Zero Trust**: No hardcoded credentials, tokens, or secrets
 
+use crate::capability_port_config::{CapabilityPortRegistry, PortSource, RegistryBuilder};
 use serde::{Deserialize, Serialize};
 use songbird_types::{SongbirdError, SongbirdResult};
 use std::collections::HashMap;
@@ -375,6 +376,85 @@ impl PortConfig {
     #[must_use]
     pub fn dynamic_range(&self) -> (u16, u16) {
         (self.dynamic_range_start, self.dynamic_range_end)
+    }
+
+    /// Convert to capability-based port registry
+    ///
+    /// Creates a `CapabilityPortRegistry` from this configuration,
+    /// enabling capability-based port discovery throughout the system.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if registry construction fails.
+    pub fn to_capability_registry(&self) -> Result<CapabilityPortRegistry, String> {
+        RegistryBuilder::new()
+            .with_port_and_description(
+                "orchestrator",
+                self.orchestrator,
+                PortSource::ConfigFile,
+                "Orchestrator service port".to_string(),
+            )
+            .with_port_and_description(
+                "discovery",
+                self.discovery,
+                PortSource::ConfigFile,
+                "Discovery service port (mDNS, DNS-SD)".to_string(),
+            )
+            .with_port_and_description(
+                "registry",
+                self.registry,
+                PortSource::ConfigFile,
+                "Service registry port".to_string(),
+            )
+            .with_port_and_description(
+                "security",
+                self.security,
+                PortSource::ConfigFile,
+                "Security/authentication service port".to_string(),
+            )
+            .with_port_and_description(
+                "storage",
+                self.storage,
+                PortSource::ConfigFile,
+                "Storage service port".to_string(),
+            )
+            .with_port_and_description(
+                "compute",
+                self.compute,
+                PortSource::ConfigFile,
+                "Compute/execution service port".to_string(),
+            )
+            .with_port_and_description(
+                "ai",
+                self.ai,
+                PortSource::ConfigFile,
+                "AI service port".to_string(),
+            )
+            .with_port_and_description(
+                "gaming",
+                self.gaming,
+                PortSource::ConfigFile,
+                "Gaming service port".to_string(),
+            )
+            .with_port_and_description(
+                "dashboard",
+                self.dashboard,
+                PortSource::ConfigFile,
+                "Dashboard UI port".to_string(),
+            )
+            .with_port_and_description(
+                "metrics",
+                self.metrics,
+                PortSource::ConfigFile,
+                "Metrics/Prometheus port".to_string(),
+            )
+            .with_port_and_description(
+                "health",
+                self.health,
+                PortSource::ConfigFile,
+                "Health check endpoint port".to_string(),
+            )
+            .build()
     }
 
     /// Convert port to socket address with given host

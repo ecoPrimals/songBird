@@ -27,8 +27,8 @@ use std::time::Duration;
 // COMPUTE METRICS COMPREHENSIVE TESTS
 // ============================================================================
 
-#[test]
-fn test_compute_metrics_healthy_system() {
+#[tokio::test]
+async fn test_compute_metrics_healthy_system() {
     let metrics = ComputeMetrics {
         cpu_usage_percent: 45.0,
         memory_usage_bytes: 2_000_000_000,
@@ -45,8 +45,8 @@ fn test_compute_metrics_healthy_system() {
     assert_eq!(metrics.health_status(), ComputeHealth::Healthy);
 }
 
-#[test]
-fn test_compute_metrics_degraded_high_cpu() {
+#[tokio::test]
+async fn test_compute_metrics_degraded_high_cpu() {
     let metrics = ComputeMetrics {
         cpu_usage_percent: 85.0, // Just above 80% threshold
         memory_usage_bytes: 2_000_000_000,
@@ -61,8 +61,8 @@ fn test_compute_metrics_degraded_high_cpu() {
     assert_eq!(metrics.health_status(), ComputeHealth::Degraded);
 }
 
-#[test]
-fn test_compute_metrics_degraded_high_memory() {
+#[tokio::test]
+async fn test_compute_metrics_degraded_high_memory() {
     let metrics = ComputeMetrics {
         cpu_usage_percent: 50.0,
         memory_usage_bytes: 7_000_000_000, // 87.5% usage
@@ -77,8 +77,8 @@ fn test_compute_metrics_degraded_high_memory() {
     assert_eq!(metrics.health_status(), ComputeHealth::Degraded);
 }
 
-#[test]
-fn test_compute_metrics_degraded_high_queue() {
+#[tokio::test]
+async fn test_compute_metrics_degraded_high_queue() {
     let metrics = ComputeMetrics {
         cpu_usage_percent: 50.0,
         memory_usage_bytes: 3_000_000_000,
@@ -93,8 +93,8 @@ fn test_compute_metrics_degraded_high_queue() {
     assert_eq!(metrics.health_status(), ComputeHealth::Degraded);
 }
 
-#[test]
-fn test_compute_metrics_unhealthy_extreme_cpu() {
+#[tokio::test]
+async fn test_compute_metrics_unhealthy_extreme_cpu() {
     let metrics = ComputeMetrics {
         cpu_usage_percent: 98.0, // Above 95% threshold
         memory_usage_bytes: 3_000_000_000,
@@ -108,8 +108,8 @@ fn test_compute_metrics_unhealthy_extreme_cpu() {
     assert_eq!(metrics.health_status(), ComputeHealth::Unhealthy);
 }
 
-#[test]
-fn test_compute_metrics_unhealthy_extreme_memory() {
+#[tokio::test]
+async fn test_compute_metrics_unhealthy_extreme_memory() {
     let metrics = ComputeMetrics {
         cpu_usage_percent: 60.0,
         memory_usage_bytes: 7_800_000_000, // 97.5% usage
@@ -123,8 +123,8 @@ fn test_compute_metrics_unhealthy_extreme_memory() {
     assert_eq!(metrics.health_status(), ComputeHealth::Unhealthy);
 }
 
-#[test]
-fn test_compute_metrics_boundary_cpu_80_percent() {
+#[tokio::test]
+async fn test_compute_metrics_boundary_cpu_80_percent() {
     let metrics = ComputeMetrics {
         cpu_usage_percent: 80.0, // Exactly at boundary
         memory_usage_bytes: 2_000_000_000,
@@ -140,8 +140,8 @@ fn test_compute_metrics_boundary_cpu_80_percent() {
     assert_eq!(metrics.health_status(), ComputeHealth::Healthy);
 }
 
-#[test]
-fn test_compute_metrics_boundary_cpu_81_percent() {
+#[tokio::test]
+async fn test_compute_metrics_boundary_cpu_81_percent() {
     let metrics = ComputeMetrics {
         cpu_usage_percent: 81.0, // Just over boundary
         memory_usage_bytes: 2_000_000_000,
@@ -156,8 +156,8 @@ fn test_compute_metrics_boundary_cpu_81_percent() {
     assert_eq!(metrics.health_status(), ComputeHealth::Degraded);
 }
 
-#[test]
-fn test_compute_metrics_boundary_memory_85_percent() {
+#[tokio::test]
+async fn test_compute_metrics_boundary_memory_85_percent() {
     let metrics = ComputeMetrics {
         cpu_usage_percent: 50.0,
         memory_usage_bytes: 6_800_000_000, // Exactly 85%
@@ -172,8 +172,8 @@ fn test_compute_metrics_boundary_memory_85_percent() {
     assert!(!metrics.is_high_load());
 }
 
-#[test]
-fn test_compute_metrics_boundary_memory_86_percent() {
+#[tokio::test]
+async fn test_compute_metrics_boundary_memory_86_percent() {
     let metrics = ComputeMetrics {
         cpu_usage_percent: 50.0,
         memory_usage_bytes: 6_880_000_000, // 86%
@@ -188,8 +188,8 @@ fn test_compute_metrics_boundary_memory_86_percent() {
     assert_eq!(metrics.health_status(), ComputeHealth::Degraded);
 }
 
-#[test]
-fn test_compute_metrics_boundary_queue_10() {
+#[tokio::test]
+async fn test_compute_metrics_boundary_queue_10() {
     let metrics = ComputeMetrics {
         cpu_usage_percent: 50.0,
         memory_usage_bytes: 3_000_000_000,
@@ -204,8 +204,8 @@ fn test_compute_metrics_boundary_queue_10() {
     assert!(!metrics.is_high_load());
 }
 
-#[test]
-fn test_compute_metrics_boundary_queue_11() {
+#[tokio::test]
+async fn test_compute_metrics_boundary_queue_11() {
     let metrics = ComputeMetrics {
         cpu_usage_percent: 50.0,
         memory_usage_bytes: 3_000_000_000,
@@ -220,8 +220,8 @@ fn test_compute_metrics_boundary_queue_11() {
     assert_eq!(metrics.health_status(), ComputeHealth::Degraded);
 }
 
-#[test]
-fn test_compute_metrics_boundary_cpu_95_percent() {
+#[tokio::test]
+async fn test_compute_metrics_boundary_cpu_95_percent() {
     let metrics = ComputeMetrics {
         cpu_usage_percent: 95.0, // Exactly at unhealthy boundary
         memory_usage_bytes: 3_000_000_000,
@@ -236,8 +236,8 @@ fn test_compute_metrics_boundary_cpu_95_percent() {
     assert_eq!(metrics.health_status(), ComputeHealth::Degraded);
 }
 
-#[test]
-fn test_compute_metrics_boundary_cpu_96_percent() {
+#[tokio::test]
+async fn test_compute_metrics_boundary_cpu_96_percent() {
     let metrics = ComputeMetrics {
         cpu_usage_percent: 96.0, // Just over unhealthy boundary
         memory_usage_bytes: 3_000_000_000,
@@ -251,8 +251,8 @@ fn test_compute_metrics_boundary_cpu_96_percent() {
     assert_eq!(metrics.health_status(), ComputeHealth::Unhealthy);
 }
 
-#[test]
-fn test_compute_metrics_boundary_memory_95_percent() {
+#[tokio::test]
+async fn test_compute_metrics_boundary_memory_95_percent() {
     let metrics = ComputeMetrics {
         cpu_usage_percent: 50.0,
         memory_usage_bytes: 7_600_000_000, // Exactly 95%
@@ -267,8 +267,8 @@ fn test_compute_metrics_boundary_memory_95_percent() {
     assert_eq!(metrics.health_status(), ComputeHealth::Degraded);
 }
 
-#[test]
-fn test_compute_metrics_boundary_memory_96_percent() {
+#[tokio::test]
+async fn test_compute_metrics_boundary_memory_96_percent() {
     let metrics = ComputeMetrics {
         cpu_usage_percent: 50.0,
         memory_usage_bytes: 7_680_000_000, // 96%
@@ -282,8 +282,8 @@ fn test_compute_metrics_boundary_memory_96_percent() {
     assert_eq!(metrics.health_status(), ComputeHealth::Unhealthy);
 }
 
-#[test]
-fn test_compute_metrics_zero_memory() {
+#[tokio::test]
+async fn test_compute_metrics_zero_memory() {
     let metrics = ComputeMetrics {
         cpu_usage_percent: 50.0,
         memory_usage_bytes: 0,
@@ -299,8 +299,8 @@ fn test_compute_metrics_zero_memory() {
     assert!(!metrics.is_high_load());
 }
 
-#[test]
-fn test_compute_metrics_extreme_values() {
+#[tokio::test]
+async fn test_compute_metrics_extreme_values() {
     let metrics = ComputeMetrics {
         cpu_usage_percent: 100.0,
         memory_usage_bytes: u64::MAX / 2,
@@ -315,8 +315,8 @@ fn test_compute_metrics_extreme_values() {
     assert_eq!(metrics.health_status(), ComputeHealth::Unhealthy);
 }
 
-#[test]
-fn test_compute_metrics_serialization() {
+#[tokio::test]
+async fn test_compute_metrics_serialization() {
     let metrics = ComputeMetrics {
         cpu_usage_percent: 45.0,
         memory_usage_bytes: 2_000_000_000,
@@ -335,8 +335,8 @@ fn test_compute_metrics_serialization() {
     assert!(json_str.contains("45"));
 }
 
-#[test]
-fn test_compute_metrics_deserialization() {
+#[tokio::test]
+async fn test_compute_metrics_deserialization() {
     let json = r#"{
         "cpu_usage_percent": 55.5,
         "memory_usage_bytes": 3000000000,
@@ -355,8 +355,8 @@ fn test_compute_metrics_deserialization() {
     assert_eq!(metrics.active_containers, 15);
 }
 
-#[test]
-fn test_compute_metrics_clone() {
+#[tokio::test]
+async fn test_compute_metrics_clone() {
     let metrics = ComputeMetrics {
         cpu_usage_percent: 60.0,
         memory_usage_bytes: 4_000_000_000,
@@ -372,8 +372,8 @@ fn test_compute_metrics_clone() {
     assert_eq!(cloned.active_containers, metrics.active_containers);
 }
 
-#[test]
-fn test_compute_metrics_debug() {
+#[tokio::test]
+async fn test_compute_metrics_debug() {
     let metrics = ComputeMetrics {
         cpu_usage_percent: 45.0,
         memory_usage_bytes: 2_000_000_000,
@@ -393,8 +393,8 @@ fn test_compute_metrics_debug() {
 // HEALTH STATUS TESTS
 // ============================================================================
 
-#[test]
-fn test_health_status_all_variants() {
+#[tokio::test]
+async fn test_health_status_all_variants() {
     let healthy = ComputeHealth::Healthy;
     let degraded = ComputeHealth::Degraded;
     let unhealthy = ComputeHealth::Unhealthy;
@@ -404,36 +404,36 @@ fn test_health_status_all_variants() {
     assert_ne!(degraded, unhealthy);
 }
 
-#[test]
-fn test_health_status_equality() {
+#[tokio::test]
+async fn test_health_status_equality() {
     assert_eq!(ComputeHealth::Healthy, ComputeHealth::Healthy);
     assert_eq!(ComputeHealth::Degraded, ComputeHealth::Degraded);
     assert_eq!(ComputeHealth::Unhealthy, ComputeHealth::Unhealthy);
 }
 
-#[test]
-fn test_health_status_clone() {
+#[tokio::test]
+async fn test_health_status_clone() {
     let health = ComputeHealth::Degraded;
     let cloned = health.clone();
     assert_eq!(health, cloned);
 }
 
-#[test]
-fn test_health_status_copy() {
+#[tokio::test]
+async fn test_health_status_copy() {
     let health = ComputeHealth::Healthy;
     let copied = health; // Copy trait
     assert_eq!(health, copied);
 }
 
-#[test]
-fn test_health_status_debug() {
+#[tokio::test]
+async fn test_health_status_debug() {
     let health = ComputeHealth::Unhealthy;
     let debug_str = format!("{:?}", health);
     assert!(debug_str.contains("Unhealthy"));
 }
 
-#[test]
-fn test_health_status_serialization() {
+#[tokio::test]
+async fn test_health_status_serialization() {
     let states = vec![ComputeHealth::Healthy, ComputeHealth::Degraded, ComputeHealth::Unhealthy];
 
     for state in states {
@@ -442,8 +442,8 @@ fn test_health_status_serialization() {
     }
 }
 
-#[test]
-fn test_health_status_deserialization() {
+#[tokio::test]
+async fn test_health_status_deserialization() {
     let test_cases = vec![
         (r#""Healthy""#, ComputeHealth::Healthy),
         (r#""Degraded""#, ComputeHealth::Degraded),
@@ -461,18 +461,18 @@ fn test_health_status_deserialization() {
 // ADAPTER CREATION TESTS
 // ============================================================================
 
-#[test]
-fn test_adapter_new_success() {
+#[tokio::test]
+async fn test_adapter_new_success() {
     let endpoint = "http://localhost:8080".to_string();
-    let adapter = ComputeAdapter::new(endpoint.clone());
+    let adapter = ComputeAdapter::new(endpoint.clone()).await;
 
     assert!(adapter.is_ok(), "Should create adapter successfully");
     let adapter = adapter.expect("test precondition");
     assert_eq!(adapter.endpoint(), &endpoint);
 }
 
-#[test]
-fn test_adapter_new_various_endpoints() {
+#[tokio::test]
+async fn test_adapter_new_various_endpoints() {
     let endpoints = vec![
         "http://localhost:8080",
         "https://compute.example.com",
@@ -481,23 +481,23 @@ fn test_adapter_new_various_endpoints() {
     ];
 
     for endpoint in endpoints {
-        let adapter = ComputeAdapter::new(endpoint.to_string());
+        let adapter = ComputeAdapter::new(endpoint.to_string()).await;
         assert!(adapter.is_ok(), "Should handle endpoint: {}", endpoint);
     }
 }
 
-#[test]
-fn test_adapter_with_timeout() {
+#[tokio::test]
+async fn test_adapter_with_timeout() {
     let endpoint = "http://localhost:8080".to_string();
-    let adapter = ComputeAdapter::new(endpoint).expect("test precondition");
+    let adapter = ComputeAdapter::new(endpoint).await.expect("test precondition").await;
 
     let custom_timeout = Duration::from_secs(20);
     let _adapter_with_timeout = adapter.with_timeout(custom_timeout);
     // Adapter should be created successfully with custom timeout
 }
 
-#[test]
-fn test_adapter_with_various_timeouts() {
+#[tokio::test]
+async fn test_adapter_with_various_timeouts() {
     let endpoint = "http://localhost:8080".to_string();
 
     let timeouts = vec![
@@ -514,17 +514,17 @@ fn test_adapter_with_various_timeouts() {
     }
 }
 
-#[test]
-fn test_adapter_endpoint_getter() {
+#[tokio::test]
+async fn test_adapter_endpoint_getter() {
     let endpoint = "http://compute-service:8080".to_string();
-    let adapter = ComputeAdapter::new(endpoint.clone()).expect("test precondition");
+    let adapter = ComputeAdapter::new(endpoint.clone()).expect("test precondition").await;
 
     assert_eq!(adapter.endpoint(), &endpoint);
     assert_eq!(adapter.endpoint(), "http://compute-service:8080");
 }
 
-#[test]
-fn test_adapter_builder_pattern() {
+#[tokio::test]
+async fn test_adapter_builder_pattern() {
     let adapter = ComputeAdapter::new("http://localhost:8080".to_string())
         .expect("test precondition")
         .with_timeout(Duration::from_secs(15));
@@ -532,8 +532,8 @@ fn test_adapter_builder_pattern() {
     assert_eq!(adapter.endpoint(), "http://localhost:8080");
 }
 
-#[test]
-fn test_multiple_adapters_independent() {
+#[tokio::test]
+async fn test_multiple_adapters_independent() {
     let adapter1 =
         ComputeAdapter::new("http://compute1:8080".to_string()).expect("test precondition");
     let adapter2 =
@@ -548,8 +548,8 @@ fn test_multiple_adapters_independent() {
 // WORKFLOW TESTS
 // ============================================================================
 
-#[test]
-fn test_compute_workflow_normal_operation() {
+#[tokio::test]
+async fn test_compute_workflow_normal_operation() {
     let metrics = ComputeMetrics {
         cpu_usage_percent: 45.0,
         memory_usage_bytes: 2_000_000_000,
@@ -575,8 +575,8 @@ fn test_compute_workflow_normal_operation() {
     }
 }
 
-#[test]
-fn test_compute_workflow_degrading_system() {
+#[tokio::test]
+async fn test_compute_workflow_degrading_system() {
     // System starts healthy
     let mut metrics = ComputeMetrics {
         cpu_usage_percent: 50.0,
@@ -603,8 +603,8 @@ fn test_compute_workflow_degrading_system() {
     assert_eq!(metrics.health_status(), ComputeHealth::Unhealthy);
 }
 
-#[test]
-fn test_adapter_endpoint_special_characters() {
+#[tokio::test]
+async fn test_adapter_endpoint_special_characters() {
     let endpoints = vec![
         "http://compute:8080/api/v1",
         "https://compute.example.com:443",
@@ -613,7 +613,7 @@ fn test_adapter_endpoint_special_characters() {
     ];
 
     for endpoint in endpoints {
-        let adapter = ComputeAdapter::new(endpoint.to_string());
+        let adapter = ComputeAdapter::new(endpoint.to_string()).await;
         assert!(adapter.is_ok(), "Should handle: {}", endpoint);
     }
 }

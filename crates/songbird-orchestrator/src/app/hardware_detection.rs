@@ -152,10 +152,10 @@ mod tests {
     fn test_detect_gpu_with_override() {
         // Use unique test value to avoid collision with parallel tests
         let test_gpu = format!("TestGPU-{}", std::process::id());
-        
+
         std::env::set_var("GPU_MODEL", &test_gpu);
         let gpu = detect_gpu();
-        
+
         // Verify the GPU detected contains our unique test value
         // (may have other content appended depending on implementation)
         assert!(
@@ -185,19 +185,22 @@ mod tests {
         // Note: This test verifies env var override works.
         // Due to parallel test execution, we use a known value and verify
         // the function respects env vars (value may change between set and read).
-        
+
         // Set environment override
         std::env::set_var("STORAGE_GB", "500");
-        
+
         // Verify the env var is set
         assert_eq!(std::env::var("STORAGE_GB").ok(), Some("500".to_string()));
 
         let storage = detect_storage_capacity();
-        
+
         // The function should return SOME value (either our override or another test's)
         // This validates the env var mechanism works
-        assert!(storage.is_some(), "detect_storage_capacity should return Some when env var is set");
-        
+        assert!(
+            storage.is_some(),
+            "detect_storage_capacity should return Some when env var is set"
+        );
+
         // If it's our value, great. If not, another test set it - that's ok.
         // The important thing is the function respects the env var.
         if std::env::var("STORAGE_GB").ok() == Some("500".to_string()) {

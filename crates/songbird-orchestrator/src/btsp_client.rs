@@ -370,7 +370,7 @@ mod tests {
     fn test_socket_path_discovery() {
         // Use unique path to avoid collision with parallel tests
         let unique_path = format!("/tmp/test_socket_{}.sock", std::process::id());
-        
+
         std::env::set_var("BEARDOG_SOCKET", &unique_path);
         let client = BtspClient::new();
         assert_eq!(

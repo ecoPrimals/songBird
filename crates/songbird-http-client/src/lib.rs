@@ -54,18 +54,18 @@
 //! - ✅ TRUE ecoBin compliant
 //! - ✅ Agnostic crypto provider support
 
-pub mod beardog_client;     // ✅ ACTIVE: Smart refactored module (7 sub-modules)
+pub mod beardog_client; // ✅ ACTIVE: Smart refactored module (7 sub-modules)
 pub mod client;
 pub mod crypto;
 pub mod error;
-pub mod http_config;        // ✅ NEW: Adaptive HTTP configuration (User-Agent, routing, etc.)
+pub mod http_config; // ✅ NEW: Adaptive HTTP configuration (User-Agent, routing, etc.)
 pub mod ipc_client;
 pub mod tls;
 pub mod types;
 
-// Legacy preserved for fossil record (2,020 lines → archived)
-// Note: Module has inner #![allow(dead_code)] attribute
-pub mod beardog_client_legacy;
+// Legacy implementation moved to archive/legacy_implementations/beardog_client_jan_26_2026/
+// Refactored into beardog_client/ module (7 sub-modules) on January 26, 2026
+// Use beardog_client module for all new code
 
 pub use client::SongbirdHttpClient;
 pub use error::{Error, Result};
@@ -86,8 +86,7 @@ pub use beardog_client::{BearDogClient, BearDogMode, TlsSecrets};
 
 // Re-export HTTP configuration types for adaptive behavior
 pub use http_config::{
-    DomainPattern, HeaderRule, HttpClientConfig, RedirectMode,
-    default_user_agent, SONGBIRD_VERSION,
+    default_user_agent, DomainPattern, HeaderRule, HttpClientConfig, RedirectMode, SONGBIRD_VERSION,
 };
 
 /// Library version

@@ -31,7 +31,7 @@ use super::core::TlsHandshake;
 use crate::crypto::TlsHandshakeSecrets as TlsSecrets;
 use crate::error::{Error, Result};
 use crate::tls::session::SessionKeys;
-use crate::tls::{TLS_1_2, CIPHER_SUITES};
+use crate::tls::{CIPHER_SUITES, TLS_1_2};
 use tokio::io::AsyncWriteExt;
 use tokio::net::TcpStream;
 use tokio::time::{timeout, Duration};
@@ -392,12 +392,18 @@ impl TlsHandshake {
         debug!("   Both messages are handshake message bodies ONLY (no TLS record headers)");
         debug!("   Cipher 0x1301/0x1303 → SHA-256 (32 bytes), 0x1302 → SHA-384 (48 bytes)");
 
-        let handshake_transcript_hash = self.compute_transcript_hash_for_cipher(cipher_suite).await?;
+        let handshake_transcript_hash =
+            self.compute_transcript_hash_for_cipher(cipher_suite).await?;
 
         info!("✅ Handshake transcript hash computed!");
-        trace!("   Hash length: {} bytes ({})", 
+        trace!(
+            "   Hash length: {} bytes ({})",
             handshake_transcript_hash.len(),
-            if handshake_transcript_hash.len() == 32 { "SHA-256" } else { "SHA-384" }
+            if handshake_transcript_hash.len() == 32 {
+                "SHA-256"
+            } else {
+                "SHA-384"
+            }
         );
         trace!("   🎯 Transcript hash (hex): {}", hex::encode(&handshake_transcript_hash));
         trace!("   This hash will be passed to BearDog's tls.derive_handshake_secrets");
@@ -718,9 +724,14 @@ impl TlsHandshake {
         );
 
         let transcript_hash = self.compute_transcript_hash_for_cipher(self.cipher_suite).await?;
-        info!("✅ Transcript hash computed: {} bytes ({})", 
+        info!(
+            "✅ Transcript hash computed: {} bytes ({})",
             transcript_hash.len(),
-            if transcript_hash.len() == 32 { "SHA-256" } else { "SHA-384" }
+            if transcript_hash.len() == 32 {
+                "SHA-256"
+            } else {
+                "SHA-384"
+            }
         );
         trace!("🔐 Transcript hash (hex): {}", hex::encode(&transcript_hash));
         trace!("════════════════════════════════════════════════════════════");
@@ -761,7 +772,11 @@ impl TlsHandshake {
         let derive_start = std::time::Instant::now();
         let secrets = self
             .crypto
-            .tls_derive_application_secrets(&handshake_keys.handshake_secret, &transcript_hash, self.cipher_suite)
+            .tls_derive_application_secrets(
+                &handshake_keys.handshake_secret,
+                &transcript_hash,
+                self.cipher_suite,
+            )
             .await
             .map_err(|e| {
                 error!("❌ BearDog TLS application secret derivation failed: {}", e);
@@ -1133,16 +1148,24 @@ impl TlsHandshake {
         // 1. Compute transcript hash of all handshake messages
         // Includes: ClientHello, ServerHello, EncryptedExtensions, Certificate, CertificateVerify, server Finished
         let transcript_hash = self.compute_transcript_hash_for_cipher(self.cipher_suite).await?;
-        info!("📊 Transcript hash for Finished: {} bytes ({})", 
+        info!(
+            "📊 Transcript hash for Finished: {} bytes ({})",
             transcript_hash.len(),
-            if transcript_hash.len() == 32 { "SHA-256" } else { "SHA-384" }
+            if transcript_hash.len() == 32 {
+                "SHA-256"
+            } else {
+                "SHA-384"
+            }
         );
         debug!("   Transcript hash (hex): {}", hex::encode(&transcript_hash));
 
         // 2. Call BearDog to compute verify_data (RFC 8446 Section 4.4.4)
         // BearDog implements: HMAC(finished_key, transcript_hash)
         // where finished_key is derived from the handshake traffic secret (base_key)
-        info!("🔐 Computing verify_data via CryptoCapability (cipher: 0x{:04x})...", self.cipher_suite);
+        info!(
+            "🔐 Computing verify_data via CryptoCapability (cipher: 0x{:04x})...",
+            self.cipher_suite
+        );
         let verify_data = self
             .crypto
             .tls_compute_finished_verify_data(

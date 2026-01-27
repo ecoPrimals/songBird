@@ -215,13 +215,9 @@ impl AIAdapter {
             Protocol::JsonRpc(JsonRpcClient::new(&endpoint)?)
         } else {
             debug!("🌐 Detected HTTP endpoint for AI (FALLBACK): {}", endpoint);
-            Protocol::Http(
-                IpcHttpClient::new()
-                    .await
-                    .map_err(|e| {
-                        SongbirdError::configuration(format!("Failed to create HTTP client: {e}"))
-                    })?,
-            )
+            Protocol::Http(IpcHttpClient::new().await.map_err(|e| {
+                SongbirdError::configuration(format!("Failed to create HTTP client: {e}"))
+            })?)
         };
 
         Ok(Self {

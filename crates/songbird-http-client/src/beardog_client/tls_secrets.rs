@@ -104,10 +104,7 @@ impl BearDogClient {
             .map_err(|e| {
                 Error::BearDogRpc(format!("Invalid client_handshake_secret base64: {}", e))
             })?;
-        debug!(
-            "  ✅ client_handshake_secret: {} bytes",
-            client_handshake_secret.len()
-        );
+        debug!("  ✅ client_handshake_secret: {} bytes", client_handshake_secret.len());
 
         let server_handshake_secret = BASE64_STANDARD
             .decode(result["server_handshake_secret"].as_str().ok_or_else(|| {
@@ -116,10 +113,7 @@ impl BearDogClient {
             .map_err(|e| {
                 Error::BearDogRpc(format!("Invalid server_handshake_secret base64: {}", e))
             })?;
-        debug!(
-            "  ✅ server_handshake_secret: {} bytes",
-            server_handshake_secret.len()
-        );
+        debug!("  ✅ server_handshake_secret: {} bytes", server_handshake_secret.len());
 
         // HEX DUMPS for derived keys (cross-verify with RFC 8448 or server expectations)
         info!("🔍 DERIVED HANDSHAKE KEYS - FULL HEX DUMPS:");
@@ -127,14 +121,8 @@ impl BearDogClient {
         info!("   server_write_key: {}", hex::encode(&server_write_key));
         info!("   client_write_iv: {}", hex::encode(&client_write_iv));
         info!("   server_write_iv: {}", hex::encode(&server_write_iv));
-        info!(
-            "   client_handshake_secret: {}",
-            hex::encode(&client_handshake_secret)
-        );
-        info!(
-            "   server_handshake_secret: {}",
-            hex::encode(&server_handshake_secret)
-        );
+        info!("   client_handshake_secret: {}", hex::encode(&client_handshake_secret));
+        info!("   server_handshake_secret: {}", hex::encode(&server_handshake_secret));
 
         info!("✅ Handshake traffic secrets derived successfully (RFC 8446 Section 7.1 compliant)");
 
@@ -310,8 +298,8 @@ impl BearDogClient {
             shared_secret,
             client_random,
             server_random,
-            &[],     // Empty transcript hash
-            0x1303,  // Default to ChaCha20-Poly1305
+            &[],    // Empty transcript hash
+            0x1303, // Default to ChaCha20-Poly1305
         )
         .await
     }
@@ -336,4 +324,3 @@ mod tests {
         assert_eq!(secrets.client_write_iv.len(), 12);
     }
 }
-

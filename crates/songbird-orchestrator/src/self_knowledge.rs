@@ -304,7 +304,7 @@ mod tests {
         std::env::set_var("SONGBIRD_TAGS", "custom:tag:value1,another:tag:value2");
 
         let tags = discover_identity_tags();
-        
+
         // Verify our explicit tags are present (other tags may also exist from parallel tests)
         assert!(
             tags.contains(&"custom:tag:value1".to_string()),

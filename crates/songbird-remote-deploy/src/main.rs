@@ -302,9 +302,7 @@ async fn get_tower_info(songbird_endpoint: &str, tower_id: &str) -> Result<NodeI
     let url = format!("{}/api/federation/nodes", songbird_endpoint);
     debug!("Fetching tower info from: {}", url);
 
-    let client = IpcHttpClient::new()
-        .await
-        .context("Failed to create HTTP client")?;
+    let client = IpcHttpClient::new().await.context("Failed to create HTTP client")?;
     let nodes: Vec<NodeInfo> = client
         .get(&url)
         .await
@@ -406,13 +404,8 @@ async fn verify_service_health(host: &str, port: u16) -> Result<()> {
     let url = format!("http://{}:{}/health", host, port);
     debug!("Health check: {}", url);
 
-    let client = IpcHttpClient::new()
-        .await
-        .context("Failed to create HTTP client")?;
-    let response = client
-        .get(&url)
-        .await
-        .context("Health check request failed")?;
+    let client = IpcHttpClient::new().await.context("Failed to create HTTP client")?;
+    let response = client.get(&url).await.context("Health check request failed")?;
 
     if response.is_success() {
         Ok(())
@@ -425,9 +418,7 @@ async fn verify_service_health(host: &str, port: u16) -> Result<()> {
 async fn list_towers(songbird_endpoint: &str, detailed: bool) -> Result<()> {
     let url = format!("{}/api/federation/nodes", songbird_endpoint);
 
-    let client = IpcHttpClient::new()
-        .await
-        .context("Failed to create HTTP client")?;
+    let client = IpcHttpClient::new().await.context("Failed to create HTTP client")?;
     let nodes: Vec<NodeInfo> = client
         .get(&url)
         .await
@@ -472,9 +463,7 @@ async fn check_status(songbird_endpoint: &str, tower_id: &str, port: Option<u16>
     } else {
         // Query federation for services on this tower
         let url = format!("{}/api/federation/services", songbird_endpoint);
-        let client = IpcHttpClient::new()
-            .await
-            .context("Failed to create HTTP client")?;
+        let client = IpcHttpClient::new().await.context("Failed to create HTTP client")?;
 
         #[derive(Deserialize)]
         struct ServiceInfo {

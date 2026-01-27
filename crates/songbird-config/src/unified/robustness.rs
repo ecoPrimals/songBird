@@ -244,3 +244,131 @@ impl Default for ZeroCostRouterConfig {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_robustness_config_default() {
+        let config = RobustnessConfig::default();
+        // Circuit breaker default comes from canonical::resilience
+        assert!(config.rate_limiting.enabled);
+        assert!(config.bulkhead.enabled);
+        assert_eq!(config.load_balancer.algorithm, LoadBalancingAlgorithm::RoundRobin);
+        assert!(config.zero_cost_router.enabled);
+    }
+
+    #[test]
+    fn test_rate_limiting_config_default() {
+        let config = RateLimitingConfig::default();
+        assert!(config.enabled);
+        assert_eq!(config.max_requests_per_second, 1000);
+        assert_eq!(config.burst_capacity, 2000);
+        assert_eq!(config.window_size, Duration::from_secs(60));
+        assert!(config.per_client_enabled);
+        assert_eq!(config.per_client_max_requests, 100);
+    }
+
+    #[test]
+    fn test_bulkhead_config_default() {
+        let config = BulkheadConfig::default();
+        assert!(config.enabled);
+        assert_eq!(config.max_concurrent_operations, 100);
+        assert_eq!(config.queue_size, 1000);
+        assert_eq!(config.operation_timeout, Duration::from_secs(30));
+        assert_eq!(config.thread_pool_size, 10);
+    }
+
+    #[test]
+    fn test_load_balancer_config_default() {
+        let config = LoadBalancerConfig::default();
+        assert_eq!(config.algorithm, LoadBalancingAlgorithm::RoundRobin);
+        assert!(!config.sticky_sessions);
+        assert_eq!(config.session_timeout, Duration::from_secs(300));
+        assert_eq!(config.max_connections_per_backend, 100);
+        assert_eq!(config.connection_timeout, Duration::from_secs(30));
+        assert!(config.fail_fast);
+    }
+
+    #[test]
+    fn test_zero_cost_router_config_default() {
+        let config = ZeroCostRouterConfig::default();
+        assert!(config.enabled);
+        assert_eq!(config.route_cache_size, 10000);
+        assert_eq!(config.route_cache_ttl, Duration::from_secs(300));
+        assert!(config.optimize_routes);
+        assert_eq!(config.max_route_depth, 10);
+        assert_eq!(config.discovery_timeout, Duration::from_secs(30));
+    }
+
+    #[test]
+    fn test_load_balancing_algorithm_variants() {
+        let algorithms = vec![
+            LoadBalancingAlgorithm::RoundRobin,
+            LoadBalancingAlgorithm::LeastConnections,
+            LoadBalancingAlgorithm::WeightedRoundRobin,
+            LoadBalancingAlgorithm::Random,
+            LoadBalancingAlgorithm::IpHash,
+            LoadBalancingAlgorithm::CapabilityBased,
+            LoadBalancingAlgorithm::HealthBased,
+        ];
+
+        for algo in algorithms {
+            // Test Debug implementation
+            let debug_str = format!("{:?}", algo);
+            assert!(!debug_str.is_empty());
+
+            // Test Clone
+            let cloned = algo.clone();
+            assert_eq!(algo, cloned);
+        }
+    }
+
+    #[test]
+    fn test_rate_limit_algorithm_variants() {
+        use RateLimitAlgorithm::*;
+        let algorithms = vec![TokenBucket, LeakyBucket, FixedWindow, SlidingWindow];
+
+        for algo in algorithms {
+            let debug_str = format!("{:?}", algo);
+            assert!(!debug_str.is_empty());
+        }
+    }
+
+    #[test]
+    fn test_isolation_strategy_variants() {
+        use IsolationStrategy::*;
+        let strategies = vec![ThreadPool, Semaphore, Queue];
+
+        for strategy in strategies {
+            let debug_str = format!("{:?}", strategy);
+            assert!(!debug_str.is_empty());
+        }
+    }
+
+    #[test]
+    fn test_backoff_strategy_variants() {
+        use BackoffStrategy::*;
+        let strategies = vec![Fixed, Linear, Exponential, ExponentialWithJitter];
+
+        for strategy in strategies {
+            let debug_str = format!("{:?}", strategy);
+            assert!(!debug_str.is_empty());
+        }
+    }
+
+    #[test]
+    fn test_serde_robustness_config() {
+        let config = RobustnessConfig::default();
+
+        // Test serialization
+        let json = serde_json::to_string(&config).expect("should serialize");
+        assert!(!json.is_empty());
+
+        // Test deserialization
+        let deserialized: RobustnessConfig =
+            serde_json::from_str(&json).expect("should deserialize");
+        assert_eq!(deserialized.rate_limiting.enabled, config.rate_limiting.enabled);
+    }
+}

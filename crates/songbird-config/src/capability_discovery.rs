@@ -392,9 +392,9 @@ impl CapabilityDiscovery {
         debug!("Querying registry at {} for capability: {}", registry_endpoint, capability);
 
         // Query Songbird's capability registry
-        let client = IpcHttpClient::new().await.map_err(|e| {
-            SongbirdError::network(format!("Failed to create HTTP client: {e}"))
-        })?;
+        let client = IpcHttpClient::new()
+            .await
+            .map_err(|e| SongbirdError::network(format!("Failed to create HTTP client: {e}")))?;
         let url = format!("{registry_endpoint}/api/capabilities/{capability}");
 
         match client.get(&url).await {

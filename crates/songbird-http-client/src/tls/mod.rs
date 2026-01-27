@@ -30,9 +30,9 @@ pub mod server_complete; // ✅ INTEGRATED: Full TLS 1.3 server using CryptoCapa
 pub mod session;
 pub mod version; // ✅ NEW: TLS version config (1.3 + secure 1.2 fallback)
 
-// Legacy preserved for fossil record (3,128 lines → archived)
-// Note: Module has inner #![allow(dead_code)] attribute
-pub mod handshake_legacy;
+// Legacy implementation moved to archive/legacy_implementations/tls_handshake_jan_26_2026/
+// Refactored into handshake_refactored/ module (6 sub-modules) on January 26, 2026
+// Use handshake_refactored module for all new code
 
 // Compatibility re-export for existing code
 pub mod handshake {
@@ -52,9 +52,8 @@ pub use record::TlsRecordLayer;
 pub use server_complete::TlsServer; // ✅ Full implementation using CryptoCapability
 pub use session::TlsSession;
 pub use version::{
-    NegotiatedVersion, SecurityPolicy, TlsVersion, TlsVersionConfig,
-    TLS_1_2_EXTENDED_CIPHERS, TLS_1_2_SECURE_CIPHERS,
-    detect_server_version, tls_1_2_cipher_name,
+    detect_server_version, tls_1_2_cipher_name, NegotiatedVersion, SecurityPolicy, TlsVersion,
+    TlsVersionConfig, TLS_1_2_EXTENDED_CIPHERS, TLS_1_2_SECURE_CIPHERS,
 };
 
 /// TLS 1.3 version

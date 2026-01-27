@@ -256,7 +256,7 @@ pub trait CryptoCapability: Send + Sync + std::fmt::Debug {
     /// Compute TLS 1.3 Finished verify_data
     ///
     /// RFC 8446 Section 4.4.4
-    /// 
+    ///
     /// # Parameters
     /// - `base_key`: Handshake traffic secret
     /// - `transcript_hash`: Hash of handshake transcript (32 or 48 bytes)

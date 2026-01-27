@@ -25,9 +25,7 @@ impl SecurityCapabilityClient {
     pub async fn new() -> Result<Self> {
         let base_url = Self::discover_endpoint().await?;
 
-        let http_client = IpcHttpClient::new()
-            .await
-            .context("Failed to create HTTP client")?;
+        let http_client = IpcHttpClient::new().await.context("Failed to create HTTP client")?;
 
         tracing::info!("🔐 Security capability client created for endpoint: {}", base_url);
 
@@ -40,9 +38,7 @@ impl SecurityCapabilityClient {
     /// Create client with explicit endpoint
     pub async fn with_endpoint(endpoint: impl Into<String>) -> Result<Self> {
         let base_url = endpoint.into();
-        let http_client = IpcHttpClient::new()
-            .await
-            .context("Failed to create HTTP client")?;
+        let http_client = IpcHttpClient::new().await.context("Failed to create HTTP client")?;
 
         Ok(Self {
             base_url,

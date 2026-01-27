@@ -4,16 +4,16 @@
 //! Implements RFC 8446 record layer protocol with comprehensive logging.
 
 use super::core::TlsHandshake;
-use crate::error::{Error, Result};
 use crate::crypto::TlsHandshakeSecrets as TlsSecrets;
+use crate::error::{Error, Result};
 use tokio::io::AsyncReadExt;
 use tokio::net::TcpStream;
 use tracing::{debug, error, info, trace, warn};
 
 impl TlsHandshake {
     /// Read a TLS record (generic, works for any record type)
-    /// 
-    /// Returns the content type byte (e.g., 0x14=ChangeCipherSpec, 0x17=ApplicationData) 
+    ///
+    /// Returns the content type byte (e.g., 0x14=ChangeCipherSpec, 0x17=ApplicationData)
     /// and the record content
     pub(super) async fn read_record(&self, stream: &mut TcpStream) -> Result<(u8, Vec<u8>)> {
         // Read record header
@@ -58,7 +58,7 @@ impl TlsHandshake {
                 let _ = stream.read(&mut more_data).await;
                 let combined: Vec<u8> = header.iter().chain(more_data.iter()).cloned().collect();
                 let as_str = String::from_utf8_lossy(&combined);
-                
+
                 error!("❌ Received HTTP response instead of TLS!");
                 error!("   Content type 0x{:02x} = ASCII '{}'", content_type, content_type as char);
                 error!("   First 50 bytes: {:?}", as_str.trim());
@@ -66,13 +66,13 @@ impl TlsHandshake {
                 error!("     1. Connected to port 80 instead of 443");
                 error!("     2. Server redirected to HTTP");
                 error!("     3. Server doesn't support TLS");
-                
+
                 return Err(Error::TlsHandshake(format!(
                     "Server responded with HTTP instead of TLS (got '{}'). Check port and URL.",
                     as_str.chars().take(30).collect::<String>()
                 )));
             }
-            
+
             error!("❌ Invalid TLS content type: {:#04x}", content_type);
             return Err(Error::TlsHandshake(format!(
                 "Invalid TLS content type: {:#04x}",
@@ -198,13 +198,7 @@ impl TlsHandshake {
         let record_type = 0x17; // ApplicationData (ALL encrypted records use 0x17 in TLS 1.3)
         let version = [0x03, 0x03]; // TLS 1.2 compatibility version
         let length = encrypted_record.len() as u16;
-        let aad = [
-            record_type,
-            version[0],
-            version[1],
-            (length >> 8) as u8,
-            (length & 0xFF) as u8,
-        ];
+        let aad = [record_type, version[0], version[1], (length >> 8) as u8, (length & 0xFF) as u8];
         trace!("   AAD (TLS record header): {:02x?}", aad);
 
         // Decrypt via BearDog - use correct AEAD algorithm based on negotiated cipher suite!
@@ -229,9 +223,7 @@ impl TlsHandshake {
             0x1303 => {
                 // TLS_CHACHA20_POLY1305_SHA256 (software-only, mobile-optimized)
                 trace!("   → Using ChaCha20-Poly1305 (negotiated cipher suite)");
-                self.crypto
-                    .decrypt(&keys.server_write_key, &nonce, encrypted_record, &aad)
-                    .await
+                self.crypto.decrypt(&keys.server_write_key, &nonce, encrypted_record, &aad).await
             }
             _ => {
                 error!("❌ Unsupported cipher suite: 0x{:04x}", self.cipher_suite);
@@ -248,10 +240,7 @@ impl TlsHandshake {
             e
         })?;
 
-        info!(
-            "✅ Decrypted handshake record successfully in {:?}",
-            decrypt_start.elapsed()
-        );
+        info!("✅ Decrypted handshake record successfully in {:?}", decrypt_start.elapsed());
         trace!("   Plaintext length: {} bytes", plaintext.len());
 
         // RFC 8446 Section 5.2: TLS 1.3 encrypted records have ContentType as last byte
@@ -260,10 +249,7 @@ impl TlsHandshake {
             let content_type = plaintext[plaintext.len() - 1];
             debug!("ContentType (last byte of plaintext): 0x{:02x}", content_type);
             let message = plaintext[..plaintext.len() - 1].to_vec();
-            info!(
-                "📤 Returning handshake message: {} bytes (ContentType stripped)",
-                message.len()
-            );
+            info!("📤 Returning handshake message: {} bytes (ContentType stripped)", message.len());
             Ok(message)
         } else {
             warn!("⚠️  Empty plaintext after decryption!");
@@ -301,9 +287,7 @@ impl TlsHandshake {
 
         // Parse cipher suite (2 bytes) - CRITICAL for selecting correct AEAD algorithm!
         if data.len() < 3 {
-            return Err(Error::TlsHandshake(
-                "ServerHello truncated at cipher suite".to_string(),
-            ));
+            return Err(Error::TlsHandshake("ServerHello truncated at cipher suite".to_string()));
         }
         let cipher_suite = u16::from_be_bytes([data[0], data[1]]);
         info!("🔐 Server negotiated cipher suite: 0x{:04x}", cipher_suite);
@@ -370,10 +354,7 @@ impl TlsHandshake {
         let mut random = Vec::with_capacity(32);
 
         // Use timestamp for first 4 bytes (not cryptographically secure, but good enough for testing)
-        let timestamp = SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .unwrap()
-            .as_secs() as u32;
+        let timestamp = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs() as u32;
         random.extend_from_slice(&timestamp.to_be_bytes());
 
         // Fill rest with pseudo-random (in production, BearDog should provide this)
@@ -446,4 +427,3 @@ mod tests {
         assert!(result.unwrap_err().to_string().contains("too short"));
     }
 }
-

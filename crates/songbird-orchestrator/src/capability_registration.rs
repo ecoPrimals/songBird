@@ -524,10 +524,7 @@ mod tests {
 
         // Should still succeed (fail-safe)
         let result = register_capabilities().await;
-        assert!(
-            result.is_ok(),
-            "Should handle socket disappearance gracefully (fail-safe)"
-        );
+        assert!(result.is_ok(), "Should handle socket disappearance gracefully (fail-safe)");
 
         drop(server_task);
         env::remove_var("NEURAL_API_SOCKET");
@@ -713,8 +710,7 @@ mod tests {
                     let mut line = String::new();
                     if reader.read_line(&mut line).await.is_ok() {
                         // Send JSON-RPC error
-                        let response =
-                            r#"{"jsonrpc":"2.0","error":{"code":-32600,"message":"Invalid Request"},"id":1}"#;
+                        let response = r#"{"jsonrpc":"2.0","error":{"code":-32600,"message":"Invalid Request"},"id":1}"#;
                         let _ = stream.write_all(format!("{}\n", response).as_bytes()).await;
                     }
                 }
@@ -785,10 +781,7 @@ mod tests {
 
         // Should handle permission errors gracefully (fail-safe)
         let result = register_capabilities().await;
-        assert!(
-            result.is_ok(),
-            "Should handle permission denied gracefully (fail-safe)"
-        );
+        assert!(result.is_ok(), "Should handle permission denied gracefully (fail-safe)");
 
         env::remove_var("NEURAL_API_SOCKET");
         env::remove_var("SONGBIRD_SOCKET_PATH");
@@ -828,9 +821,7 @@ mod tests {
         // Spawn 3 concurrent registration attempts
         let mut handles = vec![];
         for _ in 0..3 {
-            let handle = tokio::spawn(async {
-                register_capabilities().await
-            });
+            let handle = tokio::spawn(async { register_capabilities().await });
             handles.push(handle);
         }
 

@@ -558,7 +558,8 @@ mod tests {
     #[tokio::test]
     async fn test_client_creation() {
         // No hardcoded endpoint! Discovered at runtime
-        let client = SecurityCapabilityClient::from_endpoint("http://discovered-security-provider").await;
+        let client =
+            SecurityCapabilityClient::from_endpoint("http://discovered-security-provider").await;
         assert_eq!(client.unwrap().endpoint(), "http://discovered-security-provider");
     }
 }

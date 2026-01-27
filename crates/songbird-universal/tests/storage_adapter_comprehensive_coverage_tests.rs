@@ -22,8 +22,8 @@ use std::time::Duration;
 // STORAGE METRICS COMPREHENSIVE TESTS
 // ============================================================================
 
-#[test]
-fn test_storage_metrics_healthy_system() {
+#[tokio::test]
+async fn test_storage_metrics_healthy_system() {
     let metrics = StorageMetrics {
         total_capacity_bytes: 1_000_000_000_000, // 1TB
         used_bytes: 400_000_000_000,             // 400GB (40%)
@@ -40,8 +40,8 @@ fn test_storage_metrics_healthy_system() {
     assert_eq!(metrics.health_status(), StorageHealth::Healthy);
 }
 
-#[test]
-fn test_storage_metrics_usage_calculation() {
+#[tokio::test]
+async fn test_storage_metrics_usage_calculation() {
     let metrics = StorageMetrics {
         total_capacity_bytes: 1000,
         used_bytes: 750, // 75%
@@ -55,8 +55,8 @@ fn test_storage_metrics_usage_calculation() {
     assert_eq!(metrics.usage_percent(), 75.0);
 }
 
-#[test]
-fn test_storage_metrics_warning_high_usage() {
+#[tokio::test]
+async fn test_storage_metrics_warning_high_usage() {
     let metrics = StorageMetrics {
         total_capacity_bytes: 1_000_000_000_000,
         used_bytes: 870_000_000_000, // 87%
@@ -70,8 +70,8 @@ fn test_storage_metrics_warning_high_usage() {
     assert_eq!(metrics.health_status(), StorageHealth::Warning);
 }
 
-#[test]
-fn test_storage_metrics_warning_high_read_latency() {
+#[tokio::test]
+async fn test_storage_metrics_warning_high_read_latency() {
     let metrics = StorageMetrics {
         total_capacity_bytes: 1_000_000_000_000,
         used_bytes: 400_000_000_000, // 40%
@@ -86,8 +86,8 @@ fn test_storage_metrics_warning_high_read_latency() {
     assert_eq!(metrics.health_status(), StorageHealth::Warning);
 }
 
-#[test]
-fn test_storage_metrics_warning_high_write_latency() {
+#[tokio::test]
+async fn test_storage_metrics_warning_high_write_latency() {
     let metrics = StorageMetrics {
         total_capacity_bytes: 1_000_000_000_000,
         used_bytes: 400_000_000_000,
@@ -102,8 +102,8 @@ fn test_storage_metrics_warning_high_write_latency() {
     assert_eq!(metrics.health_status(), StorageHealth::Warning);
 }
 
-#[test]
-fn test_storage_metrics_critical_usage() {
+#[tokio::test]
+async fn test_storage_metrics_critical_usage() {
     let metrics = StorageMetrics {
         total_capacity_bytes: 1_000_000_000_000,
         used_bytes: 960_000_000_000, // 96%
@@ -117,8 +117,8 @@ fn test_storage_metrics_critical_usage() {
     assert_eq!(metrics.health_status(), StorageHealth::Critical);
 }
 
-#[test]
-fn test_storage_metrics_critical_write_latency() {
+#[tokio::test]
+async fn test_storage_metrics_critical_write_latency() {
     let metrics = StorageMetrics {
         total_capacity_bytes: 1_000_000_000_000,
         used_bytes: 500_000_000_000, // 50%
@@ -133,8 +133,8 @@ fn test_storage_metrics_critical_write_latency() {
 }
 
 // Boundary tests for storage usage
-#[test]
-fn test_storage_metrics_boundary_usage_85() {
+#[tokio::test]
+async fn test_storage_metrics_boundary_usage_85() {
     let metrics = StorageMetrics {
         total_capacity_bytes: 1000,
         used_bytes: 850, // Exactly 85%
@@ -149,8 +149,8 @@ fn test_storage_metrics_boundary_usage_85() {
     assert_eq!(metrics.health_status(), StorageHealth::Healthy);
 }
 
-#[test]
-fn test_storage_metrics_boundary_usage_86() {
+#[tokio::test]
+async fn test_storage_metrics_boundary_usage_86() {
     let metrics = StorageMetrics {
         total_capacity_bytes: 1000,
         used_bytes: 860, // 86%
@@ -164,8 +164,8 @@ fn test_storage_metrics_boundary_usage_86() {
     assert_eq!(metrics.health_status(), StorageHealth::Warning);
 }
 
-#[test]
-fn test_storage_metrics_boundary_usage_90() {
+#[tokio::test]
+async fn test_storage_metrics_boundary_usage_90() {
     let metrics = StorageMetrics {
         total_capacity_bytes: 1000,
         used_bytes: 900, // Exactly 90%
@@ -180,8 +180,8 @@ fn test_storage_metrics_boundary_usage_90() {
     assert!(!metrics.is_nearly_full());
 }
 
-#[test]
-fn test_storage_metrics_boundary_usage_91() {
+#[tokio::test]
+async fn test_storage_metrics_boundary_usage_91() {
     let metrics = StorageMetrics {
         total_capacity_bytes: 1000,
         used_bytes: 910, // 91%
@@ -195,8 +195,8 @@ fn test_storage_metrics_boundary_usage_91() {
     assert!(metrics.is_nearly_full());
 }
 
-#[test]
-fn test_storage_metrics_boundary_usage_95() {
+#[tokio::test]
+async fn test_storage_metrics_boundary_usage_95() {
     let metrics = StorageMetrics {
         total_capacity_bytes: 1000,
         used_bytes: 950, // Exactly 95%
@@ -211,8 +211,8 @@ fn test_storage_metrics_boundary_usage_95() {
     assert_eq!(metrics.health_status(), StorageHealth::Warning);
 }
 
-#[test]
-fn test_storage_metrics_boundary_usage_96() {
+#[tokio::test]
+async fn test_storage_metrics_boundary_usage_96() {
     let metrics = StorageMetrics {
         total_capacity_bytes: 1000,
         used_bytes: 960, // 96%
@@ -227,8 +227,8 @@ fn test_storage_metrics_boundary_usage_96() {
 }
 
 // Boundary tests for read latency
-#[test]
-fn test_storage_metrics_boundary_read_latency_100() {
+#[tokio::test]
+async fn test_storage_metrics_boundary_read_latency_100() {
     let metrics = StorageMetrics {
         total_capacity_bytes: 1000,
         used_bytes: 500,
@@ -243,8 +243,8 @@ fn test_storage_metrics_boundary_read_latency_100() {
     assert!(!metrics.is_high_latency());
 }
 
-#[test]
-fn test_storage_metrics_boundary_read_latency_101() {
+#[tokio::test]
+async fn test_storage_metrics_boundary_read_latency_101() {
     let metrics = StorageMetrics {
         total_capacity_bytes: 1000,
         used_bytes: 500,
@@ -260,8 +260,8 @@ fn test_storage_metrics_boundary_read_latency_101() {
 }
 
 // Boundary tests for write latency
-#[test]
-fn test_storage_metrics_boundary_write_latency_200() {
+#[tokio::test]
+async fn test_storage_metrics_boundary_write_latency_200() {
     let metrics = StorageMetrics {
         total_capacity_bytes: 1000,
         used_bytes: 500,
@@ -276,8 +276,8 @@ fn test_storage_metrics_boundary_write_latency_200() {
     assert!(!metrics.is_high_latency());
 }
 
-#[test]
-fn test_storage_metrics_boundary_write_latency_201() {
+#[tokio::test]
+async fn test_storage_metrics_boundary_write_latency_201() {
     let metrics = StorageMetrics {
         total_capacity_bytes: 1000,
         used_bytes: 500,
@@ -292,8 +292,8 @@ fn test_storage_metrics_boundary_write_latency_201() {
     assert_eq!(metrics.health_status(), StorageHealth::Warning);
 }
 
-#[test]
-fn test_storage_metrics_boundary_write_latency_500() {
+#[tokio::test]
+async fn test_storage_metrics_boundary_write_latency_500() {
     let metrics = StorageMetrics {
         total_capacity_bytes: 1000,
         used_bytes: 500,
@@ -308,8 +308,8 @@ fn test_storage_metrics_boundary_write_latency_500() {
     assert_eq!(metrics.health_status(), StorageHealth::Warning);
 }
 
-#[test]
-fn test_storage_metrics_boundary_write_latency_501() {
+#[tokio::test]
+async fn test_storage_metrics_boundary_write_latency_501() {
     let metrics = StorageMetrics {
         total_capacity_bytes: 1000,
         used_bytes: 500,
@@ -323,8 +323,8 @@ fn test_storage_metrics_boundary_write_latency_501() {
     assert_eq!(metrics.health_status(), StorageHealth::Critical);
 }
 
-#[test]
-fn test_storage_metrics_zero_capacity() {
+#[tokio::test]
+async fn test_storage_metrics_zero_capacity() {
     let metrics = StorageMetrics {
         total_capacity_bytes: 0,
         used_bytes: 0,
@@ -339,8 +339,8 @@ fn test_storage_metrics_zero_capacity() {
     assert!(!metrics.is_nearly_full());
 }
 
-#[test]
-fn test_storage_metrics_extreme_values() {
+#[tokio::test]
+async fn test_storage_metrics_extreme_values() {
     let metrics = StorageMetrics {
         total_capacity_bytes: u64::MAX,
         used_bytes: u64::MAX - 1000,
@@ -356,8 +356,8 @@ fn test_storage_metrics_extreme_values() {
     assert_eq!(metrics.health_status(), StorageHealth::Critical);
 }
 
-#[test]
-fn test_storage_metrics_serialization() {
+#[tokio::test]
+async fn test_storage_metrics_serialization() {
     let metrics = StorageMetrics {
         total_capacity_bytes: 1_000_000_000_000,
         used_bytes: 400_000_000_000,
@@ -374,8 +374,8 @@ fn test_storage_metrics_serialization() {
     assert!(json_str.contains("total_capacity_bytes"));
 }
 
-#[test]
-fn test_storage_metrics_deserialization() {
+#[tokio::test]
+async fn test_storage_metrics_deserialization() {
     let json = r#"{
         "total_capacity_bytes": 2000000000000,
         "used_bytes": 800000000000,
@@ -392,8 +392,8 @@ fn test_storage_metrics_deserialization() {
     assert_eq!(metrics.object_count, 50000);
 }
 
-#[test]
-fn test_storage_metrics_clone() {
+#[tokio::test]
+async fn test_storage_metrics_clone() {
     let metrics = StorageMetrics {
         total_capacity_bytes: 1000,
         used_bytes: 400,
@@ -409,8 +409,8 @@ fn test_storage_metrics_clone() {
     assert_eq!(cloned.object_count, metrics.object_count);
 }
 
-#[test]
-fn test_storage_metrics_debug() {
+#[tokio::test]
+async fn test_storage_metrics_debug() {
     let metrics = StorageMetrics {
         total_capacity_bytes: 1000,
         used_bytes: 400,
@@ -429,8 +429,8 @@ fn test_storage_metrics_debug() {
 // STORAGE HEALTH TESTS
 // ============================================================================
 
-#[test]
-fn test_storage_health_all_variants() {
+#[tokio::test]
+async fn test_storage_health_all_variants() {
     let healthy = StorageHealth::Healthy;
     let warning = StorageHealth::Warning;
     let critical = StorageHealth::Critical;
@@ -440,36 +440,36 @@ fn test_storage_health_all_variants() {
     assert_ne!(warning, critical);
 }
 
-#[test]
-fn test_storage_health_equality() {
+#[tokio::test]
+async fn test_storage_health_equality() {
     assert_eq!(StorageHealth::Healthy, StorageHealth::Healthy);
     assert_eq!(StorageHealth::Warning, StorageHealth::Warning);
     assert_eq!(StorageHealth::Critical, StorageHealth::Critical);
 }
 
-#[test]
-fn test_storage_health_clone() {
+#[tokio::test]
+async fn test_storage_health_clone() {
     let health = StorageHealth::Warning;
     let cloned = health;
     assert_eq!(health, cloned);
 }
 
-#[test]
-fn test_storage_health_copy() {
+#[tokio::test]
+async fn test_storage_health_copy() {
     let health = StorageHealth::Healthy;
     let copied = health;
     assert_eq!(health, copied);
 }
 
-#[test]
-fn test_storage_health_debug() {
+#[tokio::test]
+async fn test_storage_health_debug() {
     let health = StorageHealth::Critical;
     let debug_str = format!("{:?}", health);
     assert!(debug_str.contains("Critical"));
 }
 
-#[test]
-fn test_storage_health_serialization() {
+#[tokio::test]
+async fn test_storage_health_serialization() {
     let states = vec![StorageHealth::Healthy, StorageHealth::Warning, StorageHealth::Critical];
 
     for state in states {
@@ -478,8 +478,8 @@ fn test_storage_health_serialization() {
     }
 }
 
-#[test]
-fn test_storage_health_deserialization() {
+#[tokio::test]
+async fn test_storage_health_deserialization() {
     let test_cases = vec![
         (r#""Healthy""#, StorageHealth::Healthy),
         (r#""Warning""#, StorageHealth::Warning),
@@ -497,18 +497,18 @@ fn test_storage_health_deserialization() {
 // ADAPTER CREATION TESTS
 // ============================================================================
 
-#[test]
-fn test_adapter_new_success() {
+#[tokio::test]
+async fn test_adapter_new_success() {
     let endpoint = "http://localhost:8084".to_string();
-    let adapter = StorageAdapter::new(endpoint.clone());
+    let adapter = StorageAdapter::new(endpoint.clone()).await;
 
     assert!(adapter.is_ok());
     let adapter = adapter.expect("test precondition");
     assert_eq!(adapter.endpoint(), &endpoint);
 }
 
-#[test]
-fn test_adapter_new_various_endpoints() {
+#[tokio::test]
+async fn test_adapter_new_various_endpoints() {
     let endpoints = vec![
         "http://localhost:8084",
         "https://storage.example.com",
@@ -517,30 +517,30 @@ fn test_adapter_new_various_endpoints() {
     ];
 
     for endpoint in endpoints {
-        let adapter = StorageAdapter::new(endpoint.to_string());
+        let adapter = StorageAdapter::new(endpoint.to_string()).await;
         assert!(adapter.is_ok(), "Should handle endpoint: {}", endpoint);
     }
 }
 
-#[test]
-fn test_adapter_with_timeout() {
+#[tokio::test]
+async fn test_adapter_with_timeout() {
     let endpoint = "http://localhost:8084".to_string();
-    let adapter = StorageAdapter::new(endpoint).expect("test precondition");
+    let adapter = StorageAdapter::new(endpoint).await.expect("test precondition").await;
 
     let custom_timeout = Duration::from_secs(45);
     let _adapter_with_timeout = adapter.with_timeout(custom_timeout);
 }
 
-#[test]
-fn test_adapter_endpoint_getter() {
+#[tokio::test]
+async fn test_adapter_endpoint_getter() {
     let endpoint = "http://storage-service:8084".to_string();
-    let adapter = StorageAdapter::new(endpoint.clone()).expect("test precondition");
+    let adapter = StorageAdapter::new(endpoint.clone()).expect("test precondition").await;
 
     assert_eq!(adapter.endpoint(), &endpoint);
 }
 
-#[test]
-fn test_adapter_builder_pattern() {
+#[tokio::test]
+async fn test_adapter_builder_pattern() {
     let adapter = StorageAdapter::new("http://localhost:8084".to_string())
         .expect("test precondition")
         .with_timeout(Duration::from_secs(60));
@@ -552,8 +552,8 @@ fn test_adapter_builder_pattern() {
 // WORKFLOW TESTS
 // ============================================================================
 
-#[test]
-fn test_storage_workflow_normal_operation() {
+#[tokio::test]
+async fn test_storage_workflow_normal_operation() {
     let metrics = StorageMetrics {
         total_capacity_bytes: 1_000_000_000_000,
         used_bytes: 400_000_000_000,
@@ -569,8 +569,8 @@ fn test_storage_workflow_normal_operation() {
     assert!(!metrics.is_high_latency());
 }
 
-#[test]
-fn test_storage_workflow_degrading_system() {
+#[tokio::test]
+async fn test_storage_workflow_degrading_system() {
     // System starts healthy
     let mut metrics = StorageMetrics {
         total_capacity_bytes: 1_000_000_000_000,

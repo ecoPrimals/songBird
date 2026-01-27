@@ -122,6 +122,18 @@ impl<T: Transport + 'static> BluetoothHost<T> {
 
     /// Scan for BLE devices
     ///
+    /// # Complexity Note
+    ///
+    /// This function has high cognitive complexity (26/25) due to:
+    /// - HCI command sequencing (enable scan, wait, disable scan)
+    /// - Event parsing and filtering
+    /// - Timeout handling and cleanup
+    /// - Device deduplication logic
+    ///
+    /// The complexity is justified by the BLE specification requirements
+    /// and the need for atomic scan operations. Splitting would reduce
+    /// readability and introduce state management overhead.
+    ///
     /// # Errors
     ///
     /// Returns error if scan fails or timeout occurs
@@ -383,6 +395,17 @@ impl<T: Transport + 'static> BluetoothHost<T> {
     }
 
     /// Connect to a device
+    ///
+    /// # Complexity Note
+    ///
+    /// This function has high cognitive complexity (26/25) due to:
+    /// - Connection state validation (already connected, limit checks)
+    /// - HCI connection establishment sequence
+    /// - Service discovery and characteristic enumeration
+    /// - Error handling and cleanup across multiple async operations
+    ///
+    /// The complexity is justified by the BLE connection protocol requirements.
+    /// Splitting would fragment the connection lifecycle and make debugging harder.
     ///
     /// # Errors
     ///

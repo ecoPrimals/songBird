@@ -209,11 +209,9 @@ impl StorageAdapter {
             Protocol::JsonRpc(JsonRpcClient::new(&endpoint)?)
         } else {
             debug!("🌐 Detected HTTP endpoint for storage (FALLBACK): {}", endpoint);
-            Protocol::Http(
-                IpcHttpClient::new().await.map_err(
-                    |e| SongbirdError::configuration(format!("Failed to create HTTP client: {e}")),
-                )?,
-            )
+            Protocol::Http(IpcHttpClient::new().await.map_err(|e| {
+                SongbirdError::configuration(format!("Failed to create HTTP client: {e}"))
+            })?)
         };
 
         Ok(Self {
@@ -271,7 +269,7 @@ impl StorageAdapter {
                 let response = client.get(&url).await.map_err(|e| {
                     warn!("Failed to reach storage capability provider via HTTP: {e}");
                     SongbirdError::network(format!("Failed to reach storage provider: {e}"))
-                    })?;
+                })?;
 
                 if !response.is_success() {
                     let status = response.status();

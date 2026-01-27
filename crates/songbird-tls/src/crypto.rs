@@ -29,10 +29,7 @@ impl BeardogCryptoClient {
 
         // Verify socket exists
         if !Path::new(&socket_path).exists() {
-            return Err(TlsError::CryptoError(format!(
-                "Socket not found at: {}",
-                socket_path
-            )));
+            return Err(TlsError::CryptoError(format!("Socket not found at: {}", socket_path)));
         }
 
         Ok(Self {
@@ -70,11 +67,8 @@ impl BeardogCryptoClient {
         }
 
         // Strategy 3: Default Neural API paths (production)
-        let neural_paths = vec![
-            "/tmp/neural-api.sock",
-            "/tmp/neural-api-nat0.sock",
-            "/var/run/neural-api/socket",
-        ];
+        let neural_paths =
+            vec!["/tmp/neural-api.sock", "/tmp/neural-api-nat0.sock", "/var/run/neural-api/socket"];
 
         for path in neural_paths {
             if Path::new(path).exists() {
