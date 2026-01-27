@@ -207,7 +207,8 @@ struct BearDogIntegration {
     endpoint: String,
     /// HTTP client for BearDog requests
     client: IpcHttpClient,
-    /// Request timeout for security operations
+    /// Request timeout for security operations (reserved for timeout enforcement)
+    #[allow(dead_code)]
     timeout: std::time::Duration,
 }
 

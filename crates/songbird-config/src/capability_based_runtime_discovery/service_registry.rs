@@ -18,7 +18,8 @@ use tracing::{debug, info};
 pub struct ServiceRegistryDiscovery {
     /// Registry endpoint
     registry_endpoint: String,
-    /// Query timeout
+    /// Query timeout (reserved for async timeout implementation)
+    #[allow(dead_code)]
     timeout: Duration,
     /// Cache TTL for future caching implementation
     ///
