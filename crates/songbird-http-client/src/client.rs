@@ -263,6 +263,153 @@ impl SongbirdHttpClient {
         self.http_request(tcp_stream, &parsed_uri, method, headers, body).await
     }
 
+    /// Make an HTTP/HTTPS request with automatic redirect following
+    ///
+    /// This method wraps `request()` and automatically follows HTTP redirects
+    /// (301, 302, 303, 307, 308) based on the configured `redirect_mode`.
+    ///
+    /// # Arguments
+    ///
+    /// * `method` - HTTP method (GET, POST, etc.)
+    /// * `url` - Full URL
+    /// * `headers` - Request headers
+    /// * `body` - Optional request body
+    ///
+    /// # Redirect Behavior
+    ///
+    /// - `RedirectMode::None`: Returns redirect response as-is
+    /// - `RedirectMode::Follow`: Follows all redirects (max configured)
+    /// - `RedirectMode::SameOrigin`: Only follows redirects to same origin
+    pub async fn request_follow_redirects(
+        &self,
+        method: &str,
+        url: &str,
+        headers: HashMap<String, String>,
+        body: Option<serde_json::Value>,
+    ) -> Result<HttpResponse> {
+        use crate::http_config::RedirectMode;
+
+        let mut current_url = url.to_string();
+        let mut redirects_followed = 0;
+        let max_redirects = self.http_config.max_redirects;
+        let original_host = Uri::try_from(url)
+            .ok()
+            .and_then(|u| u.host().map(|h| h.to_string()));
+
+        loop {
+            // Make the request
+            let response = self.request(method, &current_url, headers.clone(), body.clone()).await?;
+
+            // Check if this is a redirect status
+            let is_redirect = matches!(response.status, 301 | 302 | 303 | 307 | 308);
+
+            if !is_redirect {
+                return Ok(response);
+            }
+
+            // Check redirect mode
+            match self.http_config.redirect_mode {
+                RedirectMode::None => {
+                    info!("↩️  Redirect received ({}), returning as-is (redirect_mode=None)", response.status);
+                    return Ok(response);
+                }
+                RedirectMode::Follow => {
+                    // Continue to follow redirect
+                }
+                RedirectMode::SameOrigin => {
+                    // Check if redirect is to same origin
+                    if let Some(location) = response.headers.get("location") {
+                        let redirect_host = self.extract_host_from_location(location, &current_url);
+                        if redirect_host != original_host {
+                            info!(
+                                "↩️  Cross-origin redirect to {:?}, returning as-is (redirect_mode=SameOrigin)",
+                                redirect_host
+                            );
+                            return Ok(response);
+                        }
+                    }
+                }
+            }
+
+            // Check redirect limit
+            if redirects_followed >= max_redirects {
+                warn!("⚠️  Maximum redirects ({}) reached", max_redirects);
+                return Ok(response);
+            }
+
+            // Extract Location header
+            let location = response
+                .headers
+                .get("location")
+                .ok_or_else(|| Error::HttpProtocol("Redirect without Location header".to_string()))?;
+
+            // Resolve relative URLs
+            let new_url = self.resolve_redirect_url(&current_url, location)?;
+
+            info!(
+                "↪️  Following redirect {}/{}: {} -> {}",
+                redirects_followed + 1,
+                max_redirects,
+                response.status,
+                new_url
+            );
+
+            current_url = new_url;
+            redirects_followed += 1;
+        }
+    }
+
+    /// Extract host from a Location header value
+    fn extract_host_from_location(&self, location: &str, base_url: &str) -> Option<String> {
+        // Try to parse location as absolute URL
+        if let Ok(uri) = Uri::try_from(location) {
+            if let Some(host) = uri.host() {
+                return Some(host.to_string());
+            }
+        }
+
+        // If relative URL, use base URL's host
+        Uri::try_from(base_url)
+            .ok()
+            .and_then(|u| u.host().map(|h| h.to_string()))
+    }
+
+    /// Resolve a redirect URL (handles relative and absolute URLs)
+    fn resolve_redirect_url(&self, base_url: &str, location: &str) -> Result<String> {
+        // If location is absolute, use it directly
+        if location.starts_with("http://") || location.starts_with("https://") {
+            return Ok(location.to_string());
+        }
+
+        // Parse base URL to get scheme and host
+        let base: Uri = base_url
+            .parse()
+            .map_err(|e| Error::InvalidUrl(format!("Invalid base URL: {}", e)))?;
+
+        let scheme = base.scheme_str().unwrap_or("https");
+        let host = base.host().ok_or_else(|| Error::InvalidUrl("Missing host in base URL".to_string()))?;
+        let port = base.port_u16();
+
+        // Build new URL
+        let new_url = if location.starts_with('/') {
+            // Absolute path relative to host
+            match port {
+                Some(p) => format!("{}://{}:{}{}", scheme, host, p, location),
+                None => format!("{}://{}{}", scheme, host, location),
+            }
+        } else {
+            // Relative path - append to base path
+            let base_path = base.path();
+            let parent = base_path.rsplit_once('/').map(|(p, _)| p).unwrap_or("");
+            match port {
+                Some(p) => format!("{}://{}:{}{}/{}", scheme, host, p, parent, location),
+                None => format!("{}://{}{}/{}", scheme, host, parent, location),
+            }
+        };
+
+        Ok(new_url)
+    }
+
     /// Make HTTPS request with TLS
     async fn https_request(
         &self,
@@ -934,5 +1081,80 @@ mod tests {
         let response = client.parse_http_response(response_data).unwrap();
         assert_eq!(response.status, 200);
         assert_eq!(response.headers.get("content-type"), Some(&"application/json".to_string()));
+    }
+
+    #[test]
+    fn test_resolve_redirect_url_absolute() {
+        let client = SongbirdHttpClient::new("/tmp/beardog.sock");
+
+        // Absolute URL should be returned as-is
+        let resolved = client
+            .resolve_redirect_url(
+                "https://example.com/path",
+                "https://other.com/new-path",
+            )
+            .unwrap();
+        assert_eq!(resolved, "https://other.com/new-path");
+    }
+
+    #[test]
+    fn test_resolve_redirect_url_absolute_path() {
+        let client = SongbirdHttpClient::new("/tmp/beardog.sock");
+
+        // Absolute path (starts with /) should use base's scheme and host
+        let resolved = client
+            .resolve_redirect_url(
+                "https://example.com/old-path",
+                "/new-path",
+            )
+            .unwrap();
+        assert_eq!(resolved, "https://example.com/new-path");
+    }
+
+    #[test]
+    fn test_resolve_redirect_url_relative_path() {
+        let client = SongbirdHttpClient::new("/tmp/beardog.sock");
+
+        // Relative path should be resolved relative to base
+        let resolved = client
+            .resolve_redirect_url(
+                "https://example.com/path/to/page",
+                "other-page",
+            )
+            .unwrap();
+        assert_eq!(resolved, "https://example.com/path/to/other-page");
+    }
+
+    #[test]
+    fn test_resolve_redirect_url_with_port() {
+        let client = SongbirdHttpClient::new("/tmp/beardog.sock");
+
+        // Preserve port in redirect
+        let resolved = client
+            .resolve_redirect_url(
+                "https://example.com:8443/path",
+                "/new-path",
+            )
+            .unwrap();
+        assert_eq!(resolved, "https://example.com:8443/new-path");
+    }
+
+    #[test]
+    fn test_extract_host_from_location() {
+        let client = SongbirdHttpClient::new("/tmp/beardog.sock");
+
+        // Absolute URL
+        let host = client.extract_host_from_location(
+            "https://other.com/path",
+            "https://example.com",
+        );
+        assert_eq!(host, Some("other.com".to_string()));
+
+        // Relative URL should use base host
+        let host = client.extract_host_from_location(
+            "/new-path",
+            "https://example.com/old-path",
+        );
+        assert_eq!(host, Some("example.com".to_string()));
     }
 }
