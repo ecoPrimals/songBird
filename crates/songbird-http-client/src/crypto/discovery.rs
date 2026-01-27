@@ -89,8 +89,10 @@ pub async fn discover_crypto_capability() -> Result<Arc<dyn CryptoCapability>> {
         debug!("   Socket exists but provider not responding: {}", socket_path);
     }
 
-    // 4. Future: Try Neural API capability query
-    // TODO: Implement when Neural API is available
+    // 4. Future: Try Neural API capability discovery
+    // Note: BearDogProvider already supports Neural API mode for calls,
+    // but discovery still uses direct socket detection.
+    // TODO(P2): Add capability.discover("crypto") via Neural API
     // if let Some(provider) = discover_via_neural_api().await {
     //     return Ok(provider);
     // }
