@@ -122,7 +122,8 @@ impl BearDogProvider {
         }
     }
 
-    /// Get the socket path
+    /// Get the socket path (for diagnostics/debugging)
+    #[allow(dead_code)]
     pub fn socket_path(&self) -> &str {
         &self.socket_path
     }

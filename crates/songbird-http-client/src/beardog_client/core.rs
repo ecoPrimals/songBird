@@ -117,7 +117,8 @@ impl BearDogClient {
         }
     }
 
-    /// Get socket path based on mode
+    /// Get socket path based on mode (for diagnostics/debugging)
+    #[allow(dead_code)]
     pub(super) fn socket_path(&self) -> &str {
         match &self.mode {
             BearDogMode::Direct { socket_path } => socket_path,
@@ -125,7 +126,8 @@ impl BearDogClient {
         }
     }
 
-    /// Check if in Neural API mode
+    /// Check if in Neural API mode (for diagnostics/debugging)
+    #[allow(dead_code)]
     pub(super) fn is_neural_api(&self) -> bool {
         matches!(self.mode, BearDogMode::NeuralApi { .. })
     }

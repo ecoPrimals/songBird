@@ -38,6 +38,8 @@ pub struct SongbirdHttpClient {
     crypto: Arc<dyn CryptoCapability>,
     tls_config: TlsConfig,
     http_config: HttpClientConfig,
+    /// Profiler for adaptive server learning (future feature)
+    #[allow(dead_code)]
     profiler: Option<Arc<ServerProfiler>>,
 }
 

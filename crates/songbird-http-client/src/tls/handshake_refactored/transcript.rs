@@ -276,6 +276,7 @@ impl TlsHandshake {
     /// 
     /// NOTE: This uses local SHA-256 only. For cipher-aware hashing (SHA-384 for 0x1302),
     /// use `compute_transcript_hash_for_cipher` instead.
+    #[allow(dead_code)]
     pub(super) fn compute_transcript_hash(&self) -> Vec<u8> {
         let mut hasher = Sha256::new();
         hasher.update(&self.transcript);

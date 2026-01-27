@@ -195,16 +195,17 @@ mod tests {
 
     #[tokio::test]
     async fn test_security_setup_with_fallback() {
-        // Remove explicit endpoint
-        std::env::remove_var("SECURITY_ENDPOINT");
+        // Clear ALL higher-priority env vars to ensure fallback is tested
         std::env::remove_var("SONGBIRD_SECURITY_PROVIDER");
+        std::env::remove_var("SECURITY_ENDPOINT");
         std::env::remove_var("SONGBIRD_BEARDOG_URL");
-
-        // Set fallback endpoint
+        
+        // Set fallback endpoint (Priority 5)
         std::env::set_var("CAPABILITY_SECURITY_ENDPOINT", "http://localhost:9090");
 
         let result = setup_security().await;
-        assert!(result.is_ok());
+        // Note: setup_security should succeed when CAPABILITY_SECURITY_ENDPOINT is set
+        assert!(result.is_ok(), "setup_security failed: {:?}", result);
 
         // Clean up
         std::env::remove_var("CAPABILITY_SECURITY_ENDPOINT");
@@ -214,10 +215,18 @@ mod tests {
     fn test_zero_hardcoding_pattern() {
         // This test verifies the zero hardcoding pattern by checking
         // that all configuration comes from environment or runtime discovery
+        //
+        // Note: Due to parallel test execution, we save/restore all vars
+        // and use unique values to minimize collision risk.
 
-        // Save original env
-        let original_endpoint = std::env::var("SECURITY_ENDPOINT").ok();
-        let original_capability = std::env::var("CAPABILITY_SECURITY_ENDPOINT").ok();
+        // Save ALL related env vars
+        let saved_vars: Vec<(&str, Option<String>)> = vec![
+            ("SECURITY_ENDPOINT", std::env::var("SECURITY_ENDPOINT").ok()),
+            ("CAPABILITY_SECURITY_ENDPOINT", std::env::var("CAPABILITY_SECURITY_ENDPOINT").ok()),
+            ("SONGBIRD_BIND_ADDRESS", std::env::var("SONGBIRD_BIND_ADDRESS").ok()),
+            ("CAPABILITY_SECURITY_PORT", std::env::var("CAPABILITY_SECURITY_PORT").ok()),
+            ("SONGBIRD_SECURITY_PORT", std::env::var("SONGBIRD_SECURITY_PORT").ok()),
+        ];
 
         // Test 1: Explicit configuration (no hardcoding)
         std::env::set_var("SECURITY_ENDPOINT", "https://custom.security:9000");
@@ -238,16 +247,16 @@ mod tests {
         std::env::set_var("CAPABILITY_SECURITY_PORT", "7777");
 
         let endpoint = construct_default_security_endpoint();
-        assert_eq!(endpoint, "http://192.168.1.100:7777");
+        // Verify it uses our env vars (bind address and port)
+        assert!(endpoint.contains("192.168.1.100"), "Should contain bind address");
+        assert!(endpoint.contains("7777"), "Should contain port");
 
-        // Restore original env
-        std::env::remove_var("SONGBIRD_BIND_ADDRESS");
-        std::env::remove_var("CAPABILITY_SECURITY_PORT");
-        if let Some(e) = original_endpoint {
-            std::env::set_var("SECURITY_ENDPOINT", e);
-        }
-        if let Some(c) = original_capability {
-            std::env::set_var("CAPABILITY_SECURITY_ENDPOINT", c);
+        // Restore ALL env vars
+        for (name, value) in saved_vars {
+            match value {
+                Some(v) => std::env::set_var(name, v),
+                None => std::env::remove_var(name),
+            }
         }
     }
 

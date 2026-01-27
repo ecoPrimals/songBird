@@ -10,7 +10,7 @@
 //!
 //! **Critical**: Uses EXACT same transcript logic as client for validation!
 
-use crate::crypto::{CryptoCapability, TlsHandshakeSecrets};
+use crate::crypto::CryptoCapability;
 use crate::error::{Error, Result};
 use crate::tls::{
     content_type,
@@ -38,6 +38,8 @@ pub struct TlsServer {
     cert_chain: Vec<u8>,
 
     /// Server private key (DER encoded)
+    /// Used for certificate verification and signing (future implementation)
+    #[allow(dead_code)]
     private_key: Vec<u8>,
 
     /// Negotiated cipher suite
@@ -336,7 +338,7 @@ impl TlsServer {
         if payload.is_empty() || payload[0] != handshake_type::CLIENT_HELLO {
             return Err(Error::TlsHandshake(format!(
                 "Expected ClientHello (0x01), got 0x{:02x}",
-                payload.get(0).unwrap_or(&0)
+                payload.first().unwrap_or(&0)
             )));
         }
 

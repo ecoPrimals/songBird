@@ -467,7 +467,10 @@ mod tests {
 
     #[test]
     fn test_socket_path_explicit_override() {
-        // Test 1: SONGBIRD_SOCKET env var override (highest priority via env_config)
+        // Test: SONGBIRD_SOCKET env var override
+        // Clear all higher-priority env vars first to ensure test isolation
+        std::env::remove_var("SONGBIRD_ORCHESTRATOR_SOCKET");
+        std::env::remove_var("BIOMEOS_SOCKET_PATH");
         std::env::set_var("SONGBIRD_SOCKET", "/tmp/test-socket.sock");
         std::env::set_var("SONGBIRD_FAMILY_ID", "nat0");
 

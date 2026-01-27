@@ -141,7 +141,8 @@ impl Form {
         self
     }
 
-    /// Get the parts of this form
+    /// Get the parts of this form (for inspection/debugging)
+    #[allow(dead_code)]
     pub(crate) fn parts(&self) -> &[FormPart] {
         &self.parts
     }
@@ -223,6 +224,7 @@ impl Form {
     /// Serialize the form for IPC transfer
     ///
     /// Returns a JSON-serializable representation that can be sent over IPC.
+    #[allow(dead_code)]
     pub(crate) fn serialize_for_ipc(&self) -> serde_json::Value {
         serde_json::to_value(self).unwrap_or(serde_json::Value::Null)
     }

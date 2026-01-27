@@ -18,7 +18,8 @@ pub struct TlsHandshake {
     pub(super) cipher_suite: u16,
     /// Configuration (strategy-based, not hardcoded)
     pub(super) config: TlsConfig,
-    /// Optional server profiler for adaptive learning
+    /// Optional server profiler for adaptive learning (future feature)
+    #[allow(dead_code)]
     pub(super) profiler: Option<Arc<ServerProfiler>>,
 }
 

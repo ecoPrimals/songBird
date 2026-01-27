@@ -337,6 +337,8 @@ impl TlsHandshake {
 
     /// Compute transcript hash (SHA-256)
     /// RFC 8446 Section 4.4.1: Transcript-Hash(M1, M2, ... Mn) = Hash(M1 || M2 || ... || Mn)
+    /// NOTE: Kept for reference; cipher-aware hashing uses `compute_transcript_hash_for_cipher`
+    #[allow(dead_code)]
     fn compute_transcript_hash(&self) -> Vec<u8> {
         let mut hasher = Sha256::new();
         hasher.update(&self.transcript);
