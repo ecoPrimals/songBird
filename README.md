@@ -1,50 +1,50 @@
 # 🐦 Songbird - Network Orchestration & Discovery Primal
 
-**Version**: v8.7.0 - **🚀 TLS Server Integrated | 100% Cipher Support!** 🏆  
+**Version**: v8.10.0 - **🗃️ Dead Code Archived | 24K Lines Cleaned!** 🏆  
 **Status**: 🎉 **PRODUCTION READY** - TLS 1.3 Client + Server Modes!  
-**Architecture**: UniBin ✅ | TRUE ecoBin (99.7%!) ✅ | Pure Rust ✅ | Zero Unsafe ✅ | Clippy Pedantic Clean ✅  
-**TLS 1.3 Client**: 🎊 **100% CIPHER SUPPORT** | 0x1301, 0x1302, 0x1303 | No OpenSSL!  
+**Architecture**: UniBin ✅ | TRUE ecoBin (99.7%!) ✅ | Pure Rust ✅ | Zero Unsafe* ✅ | Release Build Clean ✅  
+**TLS 1.3 Client**: 🎊 **93% SUCCESS** | 81/87 sites validated by biomeOS!  
 **TLS 1.3 Server**: 🚀 **INTEGRATED** | Uses CryptoCapability trait | Same arch as client!  
-**Safety**: Zero Unsafe Code ✅ | 0 Clippy Warnings ✅ | JSON-RPC PRIMARY ✅ | Neural API Integrated ✅  
-**Tests**: 1,048+ passing | 250 http-client + 573 orchestrator + 225 supporting
+**HTTP Features**: ↪️ Redirect Following | 🌐 Adaptive User-Agent | 📍 Domain-Based Routing  
+**Safety**: Zero Unsafe Code* ✅ | 0 Release Warnings ✅ | JSON-RPC PRIMARY ✅ | Neural API Integrated ✅  
+**Tests**: 1,078+ passing | 255 http-client + 573 orchestrator + 250 supporting  
+**Active Code**: 21 crates | 363,606 lines (24,122 archived)
+
+> \* Only justified `unsafe` is `GlobalAlloc` impl in `quantum_allocator.rs` - delegates to system allocator.
 
 Songbird is the universal network orchestrator for the ecoPrimals ecosystem, managing service discovery, connection management, and inter-primal communication. **First production-grade Pure Rust TLS 1.3 implementation** via the groundbreaking **Tower Atomic pattern** - achieving what many thought impossible: TLS without rustls/ring while maintaining TRUE ecoBin compliance.
 
-**Latest**: **🚀 TLS Server Fully Integrated!** (Jan 27, 2026) - Client + Server share CryptoCapability!
+**Latest**: **🗃️ Dead Code Archived!** (Jan 27, 2026) - 24,122 lines of orphaned code cleaned!
 
 📚 **[Full Documentation Index](ROOT_DOCS_INDEX.md)** | 🗺️ **[12-Week Roadmap](ROADMAP.md)** | 📊 **[Current Status](STATUS.md)** | 📖 **[TLS Evolution](sessions/TLS_EVOLUTION_ANALYSIS_JAN_26_2026.md)**
 
 ---
 
-## 🚀 Latest: TLS Server Fully Integrated! (Jan 27, 2026)
+## 🗃️ Latest: Deep Debt Cleanup Complete! (Jan 27, 2026)
 
-### ✅ TRUE PRIMAL Architecture: Client + Server Share CryptoCapability!
+### ✅ 24,122 Lines of Dead Code Archived!
 
-**TLS Architecture**:
+**Cleanup Summary**:
 ```
 ┌─────────────────────────────────────────┐
-│           CryptoCapability Trait        │
-│  (BearDog, Neural API, or any impl)     │
-└─────────────────┬───────────────────────┘
-                  │
-    ┌─────────────┴─────────────┐
-    │                           │
-┌───┴───┐                   ┌───┴───┐
-│ TLS   │                   │ TLS   │
-│Client │                   │Server │
-│ ✅     │                   │ ✅     │
-└───────┘                   └───────┘
+│      Orphaned Crates Archived           │
+├─────────────────────────────────────────┤
+│ songbird-primal-sdk/     78 files  ~1MB │
+│ songbird-universal-primals/  1 file 32K │
+│ network_endpoints.rs     1 file         │
+└─────────────────────────────────────────┘
+         ↓ Moved to archive/
 ```
 
 **What's New** (Jan 27, 2026):
 
 | Feature | Description | Status |
 |---------|-------------|--------|
-| **TLS Server** | Full RFC 8446 server mode | ✅ INTEGRATED |
-| CryptoCapability | Shared trait for client + server | ✅ COMPLETE |
-| Shared types | CipherSuite, TrafficKeys from handshake_v2 | ✅ COMPLETE |
-| Test suite | 1,048+ tests passing (+4 server tests) | ✅ COMPLETE |
-| Clippy Pedantic | Modern idiomatic Rust | ✅ CLEAN |
+| **Dead Code Archived** | 24,122 lines → archive/ | ✅ COMPLETE |
+| **HTTP Redirect Following** | RedirectMode (None, Follow, SameOrigin) | ✅ NEW |
+| **Release Build Clean** | 0 warnings in release build | ✅ COMPLETE |
+| **Test Isolation** | Env var handling improved | ✅ FIXED |
+| **Clippy Clean** | All dead_code warnings fixed | ✅ CLEAN |
 
 **Cipher Support** (100%):
 - ✅ TLS_AES_128_GCM_SHA256 (0x1301) - SHA-256
