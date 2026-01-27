@@ -10,11 +10,11 @@
 //!
 //! **Critical**: Uses EXACT same transcript logic as client for validation!
 
-use crate::crypto::CryptoCapability;
+use crate::crypto::{CryptoCapability, TlsHandshakeSecrets};
 use crate::error::{Error, Result};
 use crate::tls::{
     content_type,
-    handshake_legacy::{TlsHandshakeSecrets}, // TODO: Move to handshake_v2::keys
+    handshake_v2::keys::{CipherSuite, TrafficKeys},
     handshake_v2::transcript::Transcript,
     handshake_type, TLS_1_2, TLS_1_3,
 };
@@ -122,9 +122,10 @@ impl TlsServer {
         // Step 2: Generate server keypair
         info!("");
         info!("🔑 Step 2: Generating server ECDH keypair...");
-        let (server_private_key, server_public_key) = self
+        // CryptoCapability returns (public_key, private_key)
+        let (server_public_key, server_private_key) = self
             .crypto
-            .generate_keypair()
+            .generate_x25519_keypair()
             .await
             .map_err(|e| Error::TlsHandshake(format!("Failed to generate keypair: {}", e)))?;
 
@@ -162,7 +163,7 @@ impl TlsServer {
         info!("🔐 Step 5: Deriving handshake traffic keys...");
         let shared_secret = self
             .crypto
-            .ecdh_derive(&server_private_key, &client_public_key)
+            .derive_x25519_shared_secret(&server_private_key, &client_public_key)
             .await
             .map_err(|e| Error::TlsHandshake(format!("ECDH failed: {}", e)))?;
 
@@ -240,12 +241,11 @@ impl TlsServer {
         info!("   Transcript hash: {} bytes", transcript_hash.len());
         debug!("   Hash (hex): {}", hex::encode(&transcript_hash));
 
+        // Use handshake_secret from handshake derivation (not raw shared_secret)
         let app_secrets = self
             .crypto
             .tls_derive_application_secrets(
-                self.shared_secret.as_ref().unwrap(),
-                self.client_random.as_ref().unwrap(),
-                self.server_random.as_ref().unwrap(),
+                &handshake_secrets.handshake_secret,
                 &transcript_hash,
                 self.cipher_suite.to_u16(),
             )
@@ -293,8 +293,9 @@ impl TlsServer {
 
         // Step 9: Log complete transcript for comparison
         info!("");
-        info!("📊 Step 9: Logging complete transcript...");
-        self.transcript.log_hex_dump();
+        info!("📊 Step 9: Complete transcript logged");
+        info!("   Total bytes: {}", self.transcript.len());
+        debug!("   Hash: {}", hex::encode(self.transcript.compute_hash()));
 
         info!("");
         info!("════════════════════════════════════════════════════════════");
@@ -527,7 +528,7 @@ impl TlsServer {
             // Fallback: use time-seeded fastrand if getrandom fails
             // This is less secure but still better than predictable pattern
             let seed = time as u64 ^ std::process::id() as u64;
-            let rng = fastrand::Rng::with_seed(seed);
+            let mut rng = fastrand::Rng::with_seed(seed);
             for _ in 0..28 {
                 random.push(rng.u8(..));
             }
@@ -822,11 +823,11 @@ impl TlsServer {
         let ciphertext = match self.cipher_suite {
             CipherSuite::Aes128GcmSha256 => {
                 debug!("   → Using AES-128-GCM");
-                self.crypto.encrypt_aes_128_gcm(key, &nonce, plaintext, &aad).await
+                self.crypto.aes128_gcm_encrypt(key, &nonce, plaintext, &aad).await
             }
             CipherSuite::Aes256GcmSha384 => {
                 debug!("   → Using AES-256-GCM");
-                self.crypto.encrypt_aes_256_gcm(key, &nonce, plaintext, &aad).await
+                self.crypto.aes256_gcm_encrypt(key, &nonce, plaintext, &aad).await
             }
             CipherSuite::ChaCha20Poly1305Sha256 => {
                 debug!("   → Using ChaCha20-Poly1305");
@@ -888,11 +889,11 @@ impl TlsServer {
         let plaintext = match self.cipher_suite {
             CipherSuite::Aes128GcmSha256 => {
                 debug!("   → Using AES-128-GCM");
-                self.crypto.decrypt_aes_128_gcm(key, &nonce, ciphertext, &aad).await
+                self.crypto.aes128_gcm_decrypt(key, &nonce, ciphertext, &aad).await
             }
             CipherSuite::Aes256GcmSha384 => {
                 debug!("   → Using AES-256-GCM");
-                self.crypto.decrypt_aes_256_gcm(key, &nonce, ciphertext, &aad).await
+                self.crypto.aes256_gcm_decrypt(key, &nonce, ciphertext, &aad).await
             }
             CipherSuite::ChaCha20Poly1305Sha256 => {
                 debug!("   → Using ChaCha20-Poly1305");
@@ -986,14 +987,19 @@ impl TlsServer {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::crypto::BearDogProvider;
+
+    fn create_test_crypto() -> Arc<dyn CryptoCapability> {
+        Arc::new(BearDogProvider::new("/tmp/beardog.sock"))
+    }
 
     #[test]
     fn test_server_creation() {
-        let beardog = Arc::new(BearDogClient::new("http://localhost:3000".to_string()));
+        let crypto = create_test_crypto();
         let cert = vec![1, 2, 3];
         let key = vec![4, 5, 6];
 
-        let server = TlsServer::new(beardog, cert.clone(), key.clone());
+        let server = TlsServer::new(crypto, cert.clone(), key.clone());
 
         assert_eq!(server.cert_chain, cert);
         assert_eq!(server.private_key, key);
@@ -1002,8 +1008,8 @@ mod tests {
 
     #[test]
     fn test_generate_random() {
-        let beardog = Arc::new(BearDogClient::new("http://localhost:3000".to_string()));
-        let server = TlsServer::new(beardog, vec![], vec![]);
+        let crypto = create_test_crypto();
+        let server = TlsServer::new(crypto, vec![], vec![]);
 
         let random = server.generate_random();
 
@@ -1012,8 +1018,8 @@ mod tests {
 
     #[test]
     fn test_select_cipher_suite() {
-        let beardog = Arc::new(BearDogClient::new("http://localhost:3000".to_string()));
-        let server = TlsServer::new(beardog, vec![], vec![]);
+        let crypto = create_test_crypto();
+        let server = TlsServer::new(crypto, vec![], vec![]);
 
         // Client supports AES-128-GCM and ChaCha20
         let client_suites = vec![0x1301, 0x1303];
@@ -1024,8 +1030,8 @@ mod tests {
 
     #[test]
     fn test_wrap_in_tls_record() {
-        let beardog = Arc::new(BearDogClient::new("http://localhost:3000".to_string()));
-        let server = TlsServer::new(beardog, vec![], vec![]);
+        let crypto = create_test_crypto();
+        let server = TlsServer::new(crypto, vec![], vec![]);
 
         let data = vec![1, 2, 3, 4];
         let record = server.wrap_in_tls_record(content_type::HANDSHAKE, &data);
