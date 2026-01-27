@@ -25,9 +25,14 @@ pub mod handshake_v2; // Alternative modularized handshake
 pub mod negotiation;
 pub mod profiler;
 pub mod record;
-pub mod server;
+pub mod server; // Basic TLS server foundation
 pub mod session;
 pub mod version; // ✅ NEW: TLS version config (1.3 + secure 1.2 fallback)
+
+// NOTE: server_complete.rs exists but needs integration work:
+// - Local CipherSuite/TrafficKeys types need extraction to shared module
+// - CryptoCapability trait needs generate_keypair, ecdh_derive methods
+// - Estimated: 4-6 hours to fully integrate
 
 // Legacy preserved for fossil record (3,128 lines → archived)
 // Note: Module has inner #![allow(dead_code)] attribute
