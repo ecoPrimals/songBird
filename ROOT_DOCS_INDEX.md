@@ -46,21 +46,22 @@
 
 ---
 
-## ✅ **RESOLVED: HTTP Headers Fix (Jan 28 Late Evening)**
+## ✅ **RESOLVED: HTTP Headers BOTH Fixes (Jan 28 Late Night)**
 
-### Squirrel AI Integration Unblocked!
+### Squirrel AI Integration FULLY Unblocked!
 
-**Priority**: 🔴 **HIGH** → 🟢 **RESOLVED**
+**Priority**: 🔴 **CRITICAL** → 🟢 **FULLY RESOLVED**
 
 | Document | Description | Status |
 |----------|-------------|--------|
-| **[HTTP_HEADERS_FIX_COMPLETE_JAN_28_2026.md](HTTP_HEADERS_FIX_COMPLETE_JAN_28_2026.md)** | Complete fix documentation | ✅ Done |
-| **[SQUIRREL_AI_HEADERS_HANDOFF_JAN_28_2026.md](SQUIRREL_AI_HEADERS_HANDOFF_JAN_28_2026.md)** | Investigation + Fix summary | ✅ Done |
+| **[HTTP_CLIENT_HEADERS_FIX_JAN_28_2026.md](HTTP_CLIENT_HEADERS_FIX_JAN_28_2026.md)** | Issue #2: HTTP client wrapper fix | ✅ Done |
+| **[HTTP_HEADERS_FIX_COMPLETE_JAN_28_2026.md](HTTP_HEADERS_FIX_COMPLETE_JAN_28_2026.md)** | Issue #1: IPC layer fix | ✅ Done |
+| **[SQUIRREL_AI_HEADERS_HANDOFF_JAN_28_2026.md](SQUIRREL_AI_HEADERS_HANDOFF_JAN_28_2026.md)** | Investigation + Both fixes summary | ✅ Done |
 | **[HTTP_HEADERS_DEBUG_JAN_28_2026.md](HTTP_HEADERS_DEBUG_JAN_28_2026.md)** | Debug logging (historical) | 📚 Reference |
 
-**Root Cause**: `songbird-universal-ipc` handlers created empty HashMap for headers  
-**Fix**: Updated `handle_post` to accept `caller_headers` parameter (Commit `a6d702dcd`)  
-**Impact**: 🟢 Squirrel AI providers now fully operational (Anthropic, OpenAI, HuggingFace)
+**Issue #1**: IPC layer created empty HashMap for headers → Fixed (Commit `a6d702dcd`)  
+**Issue #2**: HTTP client wrapper called convenience methods without headers → Fixed (Commit `2fec947bc`)  
+**Impact**: 🟢 Full end-to-end header flow working (Anthropic, OpenAI, HuggingFace ready)
 
 ---
 

@@ -7,11 +7,11 @@
 
 ---
 
-## ✅ **FIX COMPLETE!** (Jan 28, 2026 - Late Evening)
+## ✅ **BOTH FIXES COMPLETE!** (Jan 28, 2026 - Late Night)
 
-### Root Cause Found by biomeOS Team
+### Issue #1: IPC Layer ✅ FIXED
 
-**Location**: `songbird-universal-ipc/src/handlers/http_handler.rs` (NOT `songbird-orchestrator`)
+**Root Cause Found by biomeOS Team**: `songbird-universal-ipc/src/handlers/http_handler.rs` (NOT `songbird-orchestrator`)
 
 **The Bug**:
 1. `http.post` match arm (lines 410-424): Did not extract headers from params
@@ -21,12 +21,35 @@
 1. Updated `handle_post` signature to accept `caller_headers` parameter
 2. Updated `http.post` match arm to extract headers from params
 3. Updated `service.rs` to extract and pass headers
-4. Build verified: ✅ Clean release (56.47s)
-5. Tests verified: ✅ 40 passing
 
-**Impact**: 🟢 Squirrel AI integration **UNBLOCKED**
+📖 **See [HTTP_HEADERS_FIX_COMPLETE_JAN_28_2026.md](HTTP_HEADERS_FIX_COMPLETE_JAN_28_2026.md) for Issue #1 details**
 
-📖 **See [HTTP_HEADERS_FIX_COMPLETE_JAN_28_2026.md](HTTP_HEADERS_FIX_COMPLETE_JAN_28_2026.md) for complete details**
+### Issue #2: HTTP Client Wrapper ✅ FIXED
+
+**Root Cause**: `songbird-universal-ipc/src/handlers/http_handler.rs` line 167-201
+
+**The Bug**:
+- `HttpClientCapability::request()` called convenience methods (`.post()`, `.put()`)
+- Convenience methods don't accept headers parameter
+- Headers were discarded, only defaults sent to server
+
+**The Fix** (Commit `2fec947bc`):
+1. Call `.inner.request(method, url, headers, body)` directly
+2. Removed method-specific logic (simplified 35 lines → 25 lines)
+3. Headers now preserved through entire stack
+
+📖 **See [HTTP_CLIENT_HEADERS_FIX_JAN_28_2026.md](HTTP_CLIENT_HEADERS_FIX_JAN_28_2026.md) for Issue #2 details**
+
+### Complete Impact
+
+**Before**: 🔴 Headers lost at TWO layers (IPC + HTTP client)  
+**After**: 🟢 Full end-to-end header flow working
+
+**Build**: ✅ Clean release (57.85s)  
+**Tests**: ✅ 40 passing  
+**Integration**: ✅ Ready for Anthropic/OpenAI testing
+
+🎉 **Squirrel AI Integration FULLY UNBLOCKED!** 🎉
 
 ---
 
