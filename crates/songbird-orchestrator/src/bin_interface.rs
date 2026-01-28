@@ -12,9 +12,28 @@ pub use crate::app::start_orchestrator;
 /// Server mode arguments
 #[derive(Args, Debug, Clone)]
 pub struct ServerArgs {
-    /// HTTP server port
+    /// HTTP server port (external discovery gateway)
+    /// 
+    /// Songbird operates in dual-mode:
+    /// • External TCP port (for LAN discovery beacons) ← this flag
+    /// • Internal Unix socket (for inter-primal IPC) ← see --socket
+    /// 
+    /// This port is used for:
+    /// - Broadcasting discovery beacons to peers
+    /// - Initial peer handshake
+    /// - Federation negotiation
+    /// - External API access
+    /// 
+    /// Required when discovery is enabled (default).
     #[arg(long, short, default_value = "8080")]
     pub port: u16,
+
+    /// Federation port (alias for --port, clearer intent)
+    /// 
+    /// Use this flag when explicitly configuring for LAN discovery/federation.
+    /// If both --port and --federation-port are specified, --federation-port takes precedence.
+    #[arg(long)]
+    pub federation_port: Option<u16>,
 
     /// Run as daemon (background process)
     #[arg(long, short)]
@@ -29,12 +48,25 @@ pub struct ServerArgs {
     pub verbose: bool,
 
     /// Unix socket path for IPC (JSON-RPC 2.0)
-    /// Enables external primals to access HTTP/HTTPS capabilities
-    /// Example: /tmp/songbird-nat0.sock
+    /// 
+    /// Enables external primals to access HTTP/HTTPS capabilities via Unix socket.
+    /// This is the INTERNAL interface for inter-primal communication.
+    /// 
+    /// Songbird operates in dual-mode:
+    /// • External TCP port (for LAN discovery) ← see --port
+    /// • Internal Unix socket (for inter-primal IPC) ← this flag
+    /// 
+    /// XDG-compliant path example: /run/user/1000/biomeos/songbird-nat0.sock
+    /// Legacy fallback: /tmp/songbird-nat0.sock
     #[arg(long)]
     pub socket: Option<String>,
 
     /// BearDog socket path for crypto operations (defaults based on family_id)
+    /// 
+    /// If not specified, uses XDG-compliant discovery:
+    /// 1. $BEARDOG_SOCKET env var
+    /// 2. $XDG_RUNTIME_DIR/biomeos/beardog-$FAMILY_ID.sock
+    /// 3. /tmp/beardog-nat0.sock (fallback)
     #[arg(long)]
     pub beardog_socket: Option<String>,
 }
@@ -99,6 +131,9 @@ pub async fn run_server(args: ServerArgs) -> Result<()> {
         tracing_subscriber::fmt::init();
     }
 
+    // Determine the actual port to use (federation_port takes precedence)
+    let actual_port = args.federation_port.unwrap_or(args.port);
+    
     // Log startup with mode information
     tracing::info!("🚀 Songbird v{} - Server Mode", env!("CARGO_PKG_VERSION"));
     tracing::info!(
@@ -109,7 +144,10 @@ pub async fn run_server(args: ServerArgs) -> Result<()> {
             "(foreground)"
         }
     );
-    tracing::info!("   Port: {}", args.port);
+    tracing::info!("   External Port: {} (LAN discovery/federation)", actual_port);
+    if let Some(ref socket) = args.socket {
+        tracing::info!("   Internal Socket: {} (inter-primal IPC)", socket);
+    }
     tracing::info!("   Process ID: {}", std::process::id());
 
     // ✅ Step 1: Acquire instance lock FIRST (before any resources)
@@ -135,7 +173,7 @@ pub async fn run_server(args: ServerArgs) -> Result<()> {
 
     // Step 3: Load configuration
     tracing::info!("📋 Loading configuration...");
-    let config = if let Some(path) = args.config {
+    let mut config = if let Some(path) = args.config {
         tracing::info!("   Config file: {}", path);
         CanonicalSongbirdConfig::from_env()
             .map_err(|e| anyhow::anyhow!("Failed to load configuration from file: {}", e))?
@@ -144,7 +182,10 @@ pub async fn run_server(args: ServerArgs) -> Result<()> {
         CanonicalSongbirdConfig::from_env()
             .map_err(|e| anyhow::anyhow!("Failed to load configuration from environment: {}", e))?
     };
-    tracing::info!("   Configuration: ✅ Loaded");
+    
+    // Override port from CLI (CLI takes precedence over config/env)
+    config.network.base_port = actual_port;
+    tracing::info!("   Configuration: ✅ Loaded (port override: {})", actual_port);
 
     // Step 4: Start the orchestrator (non-blocking, returns handle)
     tracing::info!("🔧 Starting orchestrator components...");

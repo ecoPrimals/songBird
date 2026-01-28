@@ -192,8 +192,29 @@ impl CanonicalSongbirdConfig {
         }
 
         // Validate network configuration
+        // Validate base port
         if self.network.base_port == 0 {
-            return Err("Network base port must be greater than 0".to_string());
+            // Check if discovery is enabled - if so, this is a critical error
+            if self.discovery.mode.is_enabled() {
+                return Err(
+                    "❌ Discovery requires external TCP port (network.base_port > 0).\n\
+                     \n\
+                     Songbird operates in dual-mode:\n\
+                     • External TCP port (for LAN discovery beacons)\n\
+                     • Internal Unix socket (for inter-primal IPC)\n\
+                     \n\
+                     Fix: Set network.base_port = 8080 or disable discovery.\n\
+                     \n\
+                     Example:\n\
+                       ./songbird server --port 8080 --socket /run/user/1000/biomeos/songbird-nat0.sock\n\
+                     \n\
+                     Or disable discovery:\n\
+                       [discovery]\n\
+                       mode = \"Disabled\"".to_string()
+                );
+            } else {
+                return Err("Network base port must be greater than 0 (use 8080 for default)".to_string());
+            }
         }
 
         // All validations passed
@@ -399,5 +420,67 @@ impl CanonicalConfigBuilder {
 
         config.validate()?;
         Ok(config)
+    }
+}
+
+// ============================================================================
+// TESTS
+// ============================================================================
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::config::consolidated_canonical::discovery::DiscoveryMode;
+
+    #[test]
+    fn test_validate_port_zero_with_discovery_enabled() {
+        // Create a config with discovery enabled and port = 0 (invalid)
+        let mut config = CanonicalSongbirdConfig::default();
+        config.network.base_port = 0;
+        config.discovery.mode = DiscoveryMode::Anonymous;
+
+        // Should fail validation
+        let result = config.validate();
+        assert!(result.is_err());
+        
+        let err_msg = result.unwrap_err();
+        assert!(err_msg.contains("Discovery requires external TCP port"));
+        assert!(err_msg.contains("dual-mode"));
+    }
+
+    #[test]
+    fn test_validate_port_zero_with_discovery_disabled() {
+        // Create a config with discovery disabled and port = 0 (still invalid, but different error)
+        let mut config = CanonicalSongbirdConfig::default();
+        config.network.base_port = 0;
+        config.discovery.mode = DiscoveryMode::Disabled;
+
+        // Should fail validation with generic message
+        let result = config.validate();
+        assert!(result.is_err());
+        
+        let err_msg = result.unwrap_err();
+        assert!(err_msg.contains("Network base port must be greater than 0"));
+        assert!(!err_msg.contains("dual-mode")); // Discovery-specific message shouldn't appear
+    }
+
+    #[test]
+    fn test_validate_port_nonzero_with_discovery_enabled() {
+        // Create a config with discovery enabled and port > 0 (valid)
+        let mut config = CanonicalSongbirdConfig::default();
+        config.network.base_port = 8080;
+        config.discovery.mode = DiscoveryMode::Anonymous;
+
+        // Should pass validation
+        let result = config.validate();
+        assert!(result.is_ok(), "Expected validation to pass, got: {:?}", result);
+    }
+
+    #[test]
+    fn test_default_config_is_valid() {
+        // Default configuration should pass validation
+        let config = CanonicalSongbirdConfig::default();
+        let result = config.validate();
+        assert!(result.is_ok(), "Default config should be valid, got: {:?}", result);
     }
 }

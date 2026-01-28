@@ -83,6 +83,7 @@ impl RedirectHandler {
     /// # Returns
     ///
     /// Hostname if it can be extracted
+    #[allow(dead_code)]
     pub fn extract_host(&self, location: &str, base_url: &str) -> Option<String> {
         // Try to parse location as absolute URL
         if let Ok(uri) = Uri::try_from(location) {
