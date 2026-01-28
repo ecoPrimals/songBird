@@ -172,37 +172,23 @@ impl HttpClientCapability for SongbirdHttpClient {
         headers: &HashMap<String, String>,
         body: Option<&[u8]>,
     ) -> IpcResult<HttpResponse> {
-        debug!("Making HTTP request: {} {}", method, url);
+        debug!("Making HTTP request: {} {} with {} headers", method, url, headers.len());
+
+        // FIX: Parse body once, then call request() with headers (Issue #2 - Jan 28, 2026)
+        let body_json = body
+            .and_then(|b| std::str::from_utf8(b).ok())
+            .and_then(|s| serde_json::from_str(s).ok());
 
         // Use Pure Rust TLS 1.3 via Tower Atomic pattern
-        let response = match method.to_uppercase().as_str() {
-            "GET" => self.inner.get(url).await,
-            "POST" => {
-                let body_json = body
-                    .and_then(|b| std::str::from_utf8(b).ok())
-                    .and_then(|s| serde_json::from_str(s).ok())
-                    .unwrap_or(serde_json::Value::String(String::new()));
-                self.inner.post(url, body_json).await
-            }
-            "PUT" => {
-                let body_json = body
-                    .and_then(|b| std::str::from_utf8(b).ok())
-                    .and_then(|s| serde_json::from_str(s).ok())
-                    .unwrap_or(serde_json::Value::String(String::new()));
-                self.inner.put(url, body_json).await
-            }
-            "DELETE" => self.inner.delete(url).await,
-            _ => {
-                error!("Unsupported HTTP method: {}", method);
-                return Err(crate::error::IpcError::InvalidParams(format!(
-                    "Unsupported HTTP method: {method}"
-                )));
-            }
-        }
-        .map_err(|e| {
-            error!("HTTP request failed: {}", e);
-            crate::error::IpcError::Internal(format!("HTTP request failed: {e}"))
-        })?;
+        // FIX: Call request() directly (NOT convenience methods like post()) to preserve headers
+        let response = self
+            .inner
+            .request(method, url, headers.clone(), body_json)
+            .await
+            .map_err(|e| {
+                error!("HTTP request failed: {}", e);
+                crate::error::IpcError::Internal(format!("HTTP request failed: {e}"))
+            })?;
 
         Ok(HttpResponse {
             status_code: response.status,
