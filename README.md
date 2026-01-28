@@ -15,7 +15,8 @@
 
 Songbird is the universal network orchestrator for the ecoPrimals ecosystem, managing service discovery, connection management, and inter-primal communication. **First production-grade Pure Rust TLS 1.3 implementation** via the groundbreaking **Tower Atomic pattern** - achieving what many thought impossible: TLS without rustls/ring while maintaining TRUE ecoBin compliance.
 
-**Latest**: **🎊 Port:0 Fix Complete!** (Jan 28, 2026 - Evening) - biomeOS integration unblocked! Dual-mode architecture validated.
+**Latest**: **🔍 HTTP Headers Investigation** (Jan 28, 2026 - Late Evening) - Debug logging added for Squirrel AI integration (headers not reaching servers). **See [SQUIRREL_AI_HEADERS_HANDOFF_JAN_28_2026.md](SQUIRREL_AI_HEADERS_HANDOFF_JAN_28_2026.md) for testing.**  
+**Previous**: **🎊 Port:0 Fix Complete!** (Jan 28, 2026 - Evening) - biomeOS integration unblocked! Dual-mode architecture validated.
 
 📚 **[Full Documentation Index](ROOT_DOCS_INDEX.md)** | 🗺️ **[12-Week Roadmap](ROADMAP.md)** | 📊 **[Current Status](STATUS.md)** | 📖 **[TLS Evolution](sessions/TLS_EVOLUTION_ANALYSIS_JAN_26_2026.md)**
 

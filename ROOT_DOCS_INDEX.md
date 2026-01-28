@@ -1,8 +1,8 @@
 # 📚 Root Documentation Index - Songbird
 
-**Last Updated**: January 28, 2026 (Evening - Exceptional Day Complete!)  
-**Status**: Production Ready (A++ Grade)  
-**Quick Access**: [README](README.md) | [Status](STATUS.md) | [Roadmap](ROADMAP.md) | [Jan 28 Archive](archive/jan-2026-stun-relay-implementation/) | [Jan 27 Archive](archive/jan-2026-async-modernization/)
+**Last Updated**: January 28, 2026 (Late Evening - HTTP Headers Debug)  
+**Status**: Production Ready (A++ Grade) + Debug Logging Active  
+**Quick Access**: [README](README.md) | [Status](STATUS.md) | [Roadmap](ROADMAP.md) | [**HTTP Headers Debug**](SQUIRREL_AI_HEADERS_HANDOFF_JAN_28_2026.md) | [Jan 28 Archive](archive/jan-2026-stun-relay-implementation/) | [Jan 27 Archive](archive/jan-2026-async-modernization/)
 
 ---
 
@@ -43,6 +43,23 @@
 | **TLS Evolution** | TLS 1.3 implementation journey | [sessions/TLS_EVOLUTION_ANALYSIS_JAN_26_2026.md](sessions/TLS_EVOLUTION_ANALYSIS_JAN_26_2026.md) |
 | **Architecture Docs** | System design and patterns | [docs/architecture/](docs/architecture/) |
 | **Technical Specs** | Detailed specifications | [specs/](specs/) |
+
+---
+
+## 🔍 **Active Investigation: HTTP Headers (Jan 28 Evening)**
+
+### Issue: Squirrel AI Integration Blocked
+
+**Priority**: 🔴 **HIGH** - All AI API calls fail with 401
+
+| Document | Description | Status |
+|----------|-------------|--------|
+| **[SQUIRREL_AI_HEADERS_HANDOFF_JAN_28_2026.md](SQUIRREL_AI_HEADERS_HANDOFF_JAN_28_2026.md)** | Quick test guide and diagnosis | 🔍 Active |
+| **[HTTP_HEADERS_DEBUG_JAN_28_2026.md](HTTP_HEADERS_DEBUG_JAN_28_2026.md)** | Comprehensive debug documentation | 🔍 Active |
+
+**Commit**: `79bbd3371` - Debug logging added across 5 layers  
+**Next**: Run test commands to identify which layer loses headers  
+**Impact**: Unblocks Squirrel AI providers (Anthropic, OpenAI, HuggingFace)
 
 ---
 
