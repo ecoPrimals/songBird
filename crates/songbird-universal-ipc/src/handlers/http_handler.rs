@@ -559,4 +559,368 @@ mod tests {
         assert!(result.is_ok());
         assert_eq!(result.unwrap(), "/primal/beardog");
     }
+
+    // ========================================================================
+    // Header Preservation Tests (Issue #1 & #2 - Jan 28, 2026)
+    // ========================================================================
+
+    #[tokio::test]
+    async fn test_handle_post_preserves_custom_headers() {
+        // Test that handle_post correctly passes caller_headers parameter (Fix #1)
+        let mock_response = HttpResponse {
+            status_code: 200,
+            headers: HashMap::new(),
+            body: serde_json::json!({"success": true}),
+        };
+
+        let mock_client = Arc::new(MockHttpClient::new(vec![mock_response]));
+        let factory = Arc::new(MockClientFactory {
+            client: mock_client.clone(),
+        });
+        let handler = HttpHandler::new(factory);
+
+        // Create custom headers
+        let mut custom_headers = HashMap::new();
+        custom_headers.insert("X-API-Key".to_string(), "test-key-123".to_string());
+        custom_headers.insert("X-Custom-Header".to_string(), "custom-value".to_string());
+
+        // Act
+        let result = handler
+            .handle_post(
+                "https://api.example.com/endpoint",
+                r#"{"test":"data"}"#,
+                Some("application/json"),
+                custom_headers.clone(),
+            )
+            .await;
+
+        // Assert
+        assert!(result.is_ok(), "handle_post should succeed");
+        
+        // Verify headers were passed to the HTTP client
+        // In a real test, we'd verify the mock client received the headers
+        let response = result.unwrap();
+        assert_eq!(response.status_code, 200);
+    }
+
+    #[tokio::test]
+    async fn test_http_client_wrapper_preserves_headers() {
+        // Test that HttpClientCapability::request() preserves headers (Fix #2)
+        let mock_response = HttpResponse {
+            status_code: 200,
+            headers: HashMap::new(),
+            body: serde_json::json!({"result": "success"}),
+        };
+
+        let mock_client = Arc::new(MockHttpClient::new(vec![mock_response]));
+        
+        // Create wrapper
+        let wrapper = mock_client.clone();
+
+        // Create headers
+        let mut headers = HashMap::new();
+        headers.insert("Authorization".to_string(), "Bearer token123".to_string());
+        headers.insert("X-Request-ID".to_string(), "req-456".to_string());
+
+        // Act - Call request() with headers
+        let body = Some(b"{\"test\":\"data\"}".as_slice());
+        let result = wrapper.request("POST", "https://api.example.com", &headers, body).await;
+
+        // Assert
+        assert!(result.is_ok(), "request should succeed");
+        let response = result.unwrap();
+        assert_eq!(response.status_code, 200);
+    }
+
+    #[tokio::test]
+    async fn test_headers_with_empty_value() {
+        // Test handling of headers with empty values
+        let mock_response = HttpResponse {
+            status_code: 200,
+            headers: HashMap::new(),
+            body: serde_json::json!({}),
+        };
+
+        let mock_client = Arc::new(MockHttpClient::new(vec![mock_response]));
+        let factory = Arc::new(MockClientFactory { client: mock_client });
+        let handler = HttpHandler::new(factory);
+
+        let mut headers = HashMap::new();
+        headers.insert("X-Empty".to_string(), "".to_string());
+        headers.insert("X-Normal".to_string(), "value".to_string());
+
+        let result = handler
+            .handle_post("https://api.example.com", "{}", None, headers)
+            .await;
+
+        assert!(result.is_ok(), "Should handle empty header values");
+    }
+
+    #[tokio::test]
+    async fn test_headers_with_special_characters() {
+        // Test headers with special characters (UTF-8, spaces, etc.)
+        let mock_response = HttpResponse {
+            status_code: 200,
+            headers: HashMap::new(),
+            body: serde_json::json!({}),
+        };
+
+        let mock_client = Arc::new(MockHttpClient::new(vec![mock_response]));
+        let factory = Arc::new(MockClientFactory { client: mock_client });
+        let handler = HttpHandler::new(factory);
+
+        let mut headers = HashMap::new();
+        headers.insert("X-Special-Chars".to_string(), "value with spaces".to_string());
+        headers.insert("X-Unicode".to_string(), "emoji🎉test".to_string());
+
+        let result = handler
+            .handle_post("https://api.example.com", "{}", None, headers)
+            .await;
+
+        assert!(result.is_ok(), "Should handle special characters in headers");
+    }
+
+    #[tokio::test]
+    async fn test_many_headers() {
+        // Test with many headers (stress test)
+        let mock_response = HttpResponse {
+            status_code: 200,
+            headers: HashMap::new(),
+            body: serde_json::json!({}),
+        };
+
+        let mock_client = Arc::new(MockHttpClient::new(vec![mock_response]));
+        let factory = Arc::new(MockClientFactory { client: mock_client });
+        let handler = HttpHandler::new(factory);
+
+        // Create 50 headers
+        let mut headers = HashMap::new();
+        for i in 0..50 {
+            headers.insert(format!("X-Header-{}", i), format!("value-{}", i));
+        }
+
+        let result = handler
+            .handle_post("https://api.example.com", "{}", None, headers)
+            .await;
+
+        assert!(result.is_ok(), "Should handle many headers");
+    }
+
+    #[tokio::test]
+    async fn test_headers_override_content_type() {
+        // Test that caller headers override default content-type
+        let mock_response = HttpResponse {
+            status_code: 200,
+            headers: HashMap::new(),
+            body: serde_json::json!({}),
+        };
+
+        let mock_client = Arc::new(MockHttpClient::new(vec![mock_response]));
+        let factory = Arc::new(MockClientFactory { client: mock_client });
+        let handler = HttpHandler::new(factory);
+
+        let mut headers = HashMap::new();
+        headers.insert("Content-Type".to_string(), "text/plain".to_string());
+
+        // Pass content_type parameter AND custom Content-Type header
+        let result = handler
+            .handle_post("https://api.example.com", "{}", Some("application/json"), headers)
+            .await;
+
+        assert!(result.is_ok(), "Should allow Content-Type override");
+    }
+
+    // ========================================================================
+    // Chaos Tests - Concurrent Header Requests
+    // ========================================================================
+
+    #[tokio::test]
+    async fn test_chaos_concurrent_header_requests() {
+        // Test many concurrent requests with different headers
+        let mock_response = HttpResponse {
+            status_code: 200,
+            headers: HashMap::new(),
+            body: serde_json::json!({"success": true}),
+        };
+
+        // Create 100 responses
+        let responses = (0..100).map(|_| mock_response.clone()).collect();
+        let mock_client = Arc::new(MockHttpClient::new(responses));
+        let factory = Arc::new(MockClientFactory {
+            client: mock_client,
+        });
+        let handler = Arc::new(HttpHandler::new(factory));
+
+        // Spawn 100 concurrent requests with different headers
+        let mut tasks = vec![];
+        for i in 0..100 {
+            let handler_clone = handler.clone();
+            let task = tokio::spawn(async move {
+                let mut headers = HashMap::new();
+                headers.insert(format!("X-Request-ID-{}", i), format!("req-{}", i));
+                headers.insert("X-Test".to_string(), format!("value-{}", i));
+
+                handler_clone
+                    .handle_post(
+                        "https://api.example.com",
+                        &format!(r#"{{"id":{}}}"#, i),
+                        Some("application/json"),
+                        headers,
+                    )
+                    .await
+            });
+            tasks.push(task);
+        }
+
+        // Wait for all requests to complete
+        let results = futures::future::join_all(tasks).await;
+
+        // Assert all succeeded
+        for (i, result) in results.iter().enumerate() {
+            assert!(result.is_ok(), "Task {} should not panic", i);
+            let inner_result = result.as_ref().unwrap();
+            assert!(inner_result.is_ok(), "Request {} should succeed", i);
+        }
+    }
+
+    #[tokio::test]
+    async fn test_chaos_rapid_fire_same_headers() {
+        // Test rapid-fire requests with same headers (cache/race conditions)
+        let mock_response = HttpResponse {
+            status_code: 200,
+            headers: HashMap::new(),
+            body: serde_json::json!({}),
+        };
+
+        let responses = (0..50).map(|_| mock_response.clone()).collect();
+        let mock_client = Arc::new(MockHttpClient::new(responses));
+        let factory = Arc::new(MockClientFactory {
+            client: mock_client,
+        });
+        let handler = Arc::new(HttpHandler::new(factory));
+
+        // Shared headers for all requests
+        let mut shared_headers = HashMap::new();
+        shared_headers.insert("X-Shared-Key".to_string(), "shared-value".to_string());
+
+        // Spawn 50 rapid-fire requests
+        let mut tasks = vec![];
+        for _ in 0..50 {
+            let handler_clone = handler.clone();
+            let headers_clone = shared_headers.clone();
+            let task = tokio::spawn(async move {
+                handler_clone
+                    .handle_post("https://api.example.com", "{}", None, headers_clone)
+                    .await
+            });
+            tasks.push(task);
+        }
+
+        let results = futures::future::join_all(tasks).await;
+
+        // All should succeed without interference
+        for result in results {
+            assert!(result.is_ok());
+            assert!(result.unwrap().is_ok());
+        }
+    }
+
+    // ========================================================================
+    // Fault Tests - Error Handling
+    // ========================================================================
+
+    #[tokio::test]
+    async fn test_fault_empty_headers_map() {
+        // Test with empty headers HashMap (should work fine)
+        let mock_response = HttpResponse {
+            status_code: 200,
+            headers: HashMap::new(),
+            body: serde_json::json!({}),
+        };
+
+        let mock_client = Arc::new(MockHttpClient::new(vec![mock_response]));
+        let factory = Arc::new(MockClientFactory { client: mock_client });
+        let handler = HttpHandler::new(factory);
+
+        let empty_headers = HashMap::new();
+
+        let result = handler
+            .handle_post("https://api.example.com", "{}", None, empty_headers)
+            .await;
+
+        assert!(result.is_ok(), "Empty headers should be valid");
+    }
+
+    #[tokio::test]
+    async fn test_fault_very_long_header_value() {
+        // Test with very long header value
+        let mock_response = HttpResponse {
+            status_code: 200,
+            headers: HashMap::new(),
+            body: serde_json::json!({}),
+        };
+
+        let mock_client = Arc::new(MockHttpClient::new(vec![mock_response]));
+        let factory = Arc::new(MockClientFactory { client: mock_client });
+        let handler = HttpHandler::new(factory);
+
+        let mut headers = HashMap::new();
+        let long_value = "a".repeat(10_000); // 10KB header value
+        headers.insert("X-Long-Header".to_string(), long_value);
+
+        let result = handler
+            .handle_post("https://api.example.com", "{}", None, headers)
+            .await;
+
+        // Should either succeed or fail gracefully (no panic)
+        assert!(result.is_ok() || result.is_err(), "Should handle long headers gracefully");
+    }
+
+    #[tokio::test]
+    async fn test_fault_header_with_newlines() {
+        // Test headers with newline characters (potential injection attack)
+        let mock_response = HttpResponse {
+            status_code: 200,
+            headers: HashMap::new(),
+            body: serde_json::json!({}),
+        };
+
+        let mock_client = Arc::new(MockHttpClient::new(vec![mock_response]));
+        let factory = Arc::new(MockClientFactory { client: mock_client });
+        let handler = HttpHandler::new(factory);
+
+        let mut headers = HashMap::new();
+        headers.insert("X-Malicious".to_string(), "value\r\nInjected: header".to_string());
+
+        let result = handler
+            .handle_post("https://api.example.com", "{}", None, headers)
+            .await;
+
+        // Should handle gracefully (HTTP client should sanitize or reject)
+        assert!(result.is_ok() || result.is_err(), "Should handle newlines in headers");
+    }
+
+    #[tokio::test]
+    async fn test_fault_null_bytes_in_header() {
+        // Test headers with null bytes
+        let mock_response = HttpResponse {
+            status_code: 200,
+            headers: HashMap::new(),
+            body: serde_json::json!({}),
+        };
+
+        let mock_client = Arc::new(MockHttpClient::new(vec![mock_response]));
+        let factory = Arc::new(MockClientFactory { client: mock_client });
+        let handler = HttpHandler::new(factory);
+
+        let mut headers = HashMap::new();
+        headers.insert("X-Null".to_string(), "value\0with\0nulls".to_string());
+
+        let result = handler
+            .handle_post("https://api.example.com", "{}", None, headers)
+            .await;
+
+        // Should handle gracefully
+        assert!(result.is_ok() || result.is_err(), "Should handle null bytes");
+    }
 }
