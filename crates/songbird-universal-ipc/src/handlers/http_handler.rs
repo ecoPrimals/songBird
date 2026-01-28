@@ -363,8 +363,9 @@ impl HttpHandler {
         url: &str,
         body: &str,
         content_type: Option<&str>,
+        caller_headers: HashMap<String, String>,
     ) -> IpcResult<HttpResponseResult> {
-        let mut headers = HashMap::new();
+        let mut headers = caller_headers; // FIX: Use caller's headers instead of empty HashMap
         if let Some(ct) = content_type {
             headers.insert("Content-Type".to_string(), ct.to_string());
         }
@@ -420,8 +421,14 @@ impl crate::tower_atomic::JsonRpcHandler for HttpHandler {
 
                 let content_type = params.get("content_type").and_then(|v| v.as_str());
 
+                // FIX: Extract headers from params (Issue #1 - Jan 28, 2026)
+                let headers: HashMap<String, String> = params
+                    .get("headers")
+                    .and_then(|v| serde_json::from_value(v.clone()).ok())
+                    .unwrap_or_default();
+
                 let result =
-                    self.handle_post(url, body, content_type).await.map_err(|e| e.to_string())?;
+                    self.handle_post(url, body, content_type, headers).await.map_err(|e| e.to_string())?;
 
                 serde_json::to_value(result).map_err(|e| format!("Serialization error: {e}"))
             }
@@ -522,7 +529,7 @@ mod tests {
 
         // Act
         let result = handler
-            .handle_post("https://api.example.com", r#"{"key":"value"}"#, Some("application/json"))
+            .handle_post("https://api.example.com", r#"{"key":"value"}"#, Some("application/json"), HashMap::new())
             .await;
 
         // Assert
