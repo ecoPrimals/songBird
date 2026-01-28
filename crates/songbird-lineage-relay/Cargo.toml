@@ -24,6 +24,7 @@ futures = "0.3"
 # Internal dependencies
 songbird-types = { path = "../songbird-types" }
 songbird-primal-coordination = { path = "../songbird-primal-coordination" }
+songbird-stun = { path = "../songbird-stun" }
 
 [dev-dependencies]
 tokio-test = "0.4"

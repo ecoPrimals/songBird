@@ -1,0 +1,36 @@
+[package]
+name = "songbird-stun"
+version = "0.1.0"
+edition = "2021"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/ecoPrimals/songbird"
+readme = "README.md"
+keywords = ["stun", "nat", "p2p", "pure-rust", "rfc5389"]
+categories = ["network-programming"]
+description = "Pure Rust STUN (RFC 5389) client for NAT traversal - zero C dependencies"
+authors = ["ecoPrimals Team"]
+
+[dependencies]
+tokio = { version = "1", features = ["net", "time", "sync"] }
+async-trait = "0.1"
+serde = { version = "1.0", features = ["derive"] }
+thiserror = "1.0"
+tracing = "0.1"
+bytes = "1.5"
+rand = "0.8"
+futures = "0.3"
+
+# Internal dependencies
+songbird-types = { path = "../songbird-types" }
+
+[dev-dependencies]
+tokio = { version = "1", features = ["full", "test-util"] }
+tokio-test = "0.4"
+
+[lib]
+path = "src/lib.rs"
+
+[[test]]
+name = "stun_client_tests"
+path = "tests/stun_client_tests.rs"
+

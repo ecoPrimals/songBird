@@ -25,6 +25,7 @@
 mod beardog_provider;
 mod capability;
 mod discovery;
+mod socket_discovery;
 
 pub use capability::{
     CryptoCapability, CryptoProvider, TlsApplicationSecrets, TlsHandshakeSecrets,

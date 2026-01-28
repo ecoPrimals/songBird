@@ -83,9 +83,11 @@
 pub mod birdsong;
 pub mod coordinator;
 pub mod error;
+pub mod multi_tier_coordinator;
 pub mod relay;
 pub mod session;
 pub mod types;
+pub mod udp_hole_punch;
 pub mod universal_coordinator_adapter;
 
 // Mock BearDog implementations for testing
@@ -95,7 +97,9 @@ pub mod beardog;
 pub use birdsong::{BirdSongBroadcaster, BirdSongMessage, LineageHint};
 pub use coordinator::LineageRelayCoordinator;
 pub use error::{LineageRelayError, Result};
+pub use multi_tier_coordinator::{ConnectionResult, MultiTierCoordinator, TierQualityReport};
 pub use relay::{RelayDiscovery, RelaySession};
 pub use session::ConnectionSession;
 pub use types::*;
+pub use udp_hole_punch::{coordinated_hole_punch, create_hole_punch_socket, udp_hole_punch, HolePunchConfig};
 pub use universal_coordinator_adapter::{LineageRelayAdapter, LineageRelayPrimalConnection};

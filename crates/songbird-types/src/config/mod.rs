@@ -18,6 +18,7 @@ pub mod orchestration;
 pub mod performance;
 pub mod security;
 pub mod storage;
+pub mod stun_relay;
 pub mod system;
 pub mod unified;
 
@@ -68,6 +69,11 @@ pub use orchestration::CanonicalOrchestrationConfig;
 pub use performance::CanonicalPerformanceConfig;
 pub use security::CanonicalSecurityConfig;
 pub use storage::CanonicalStorageConfig;
+pub use stun_relay::{
+    AdvancedStunConfig, CustomRendezvousConfig, DiscordRendezvousConfig, LineageRelayConfig,
+    PrivacyConfig, PublicStunConfig, RelayOfferMode, RendezvousConfig, SteamRendezvousConfig,
+    StunProtocol, StunRelayConfig, StunServerConfig, StunStrategy,
+};
 pub use system::CanonicalSystemConfig;
 pub use unified::UnifiedSongbirdConfig;
 

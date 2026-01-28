@@ -3,10 +3,16 @@
 //! Implements `CryptoCapability` trait using BearDog via JSON-RPC 2.0
 //! over Unix sockets.
 //!
-//! ## Note
+//! ## Socket Discovery
 //!
-//! This provider knows HOW to talk to BearDog, but doesn't hardcode
-//! WHERE BearDog is. Discovery is handled by the `discovery` module.
+//! **XDG-Compliant | Zero Hardcoding | Runtime Discovery**
+//!
+//! Uses intelligent socket discovery via `socket_discovery` module:
+//! 1. Environment variables (e.g., `$BEARDOG_SOCKET`)
+//! 2. XDG Runtime Dir (`/run/user/$UID/biomeos/`)
+//! 3. Legacy `/tmp` paths (fallback)
+//!
+//! This enables automated Tower Atomic deployment via biomeOS Neural API.
 
 use async_trait::async_trait;
 use base64::prelude::*;
@@ -18,6 +24,7 @@ use tokio::net::UnixStream;
 use tracing::{debug, info, trace, warn};
 
 use super::capability::{CryptoCapability, TlsApplicationSecrets, TlsHandshakeSecrets};
+use super::socket_discovery;
 use crate::error::{Error, Result};
 
 /// JSON-RPC request
@@ -84,22 +91,24 @@ impl BearDogProvider {
 
     /// Create from environment (supports both Direct and Neural API modes)
     ///
-    /// Uses BEARDOG_MODE environment variable:
+    /// **XDG-Compliant Socket Discovery** (Jan 28, 2026):
+    /// - Priority 1: Environment variables (`$BEARDOG_SOCKET`, `$NEURAL_API_SOCKET`)
+    /// - Priority 2: XDG Runtime Dir (`/run/user/$UID/biomeos/beardog-$FAMILY_ID.sock`)
+    /// - Priority 3: Legacy `/tmp` paths (fallback with warning)
+    ///
+    /// Modes (via `$BEARDOG_MODE`):
     /// - "neural" (default): Connects to Neural API for capability.call routing
     /// - "direct": Connects directly to BearDog (testing only)
     ///
-    /// Sockets:
-    /// - Neural API mode: NEURAL_API_SOCKET or /tmp/neural-api-nat0.sock
-    /// - Direct mode: BEARDOG_SOCKET or /tmp/beardog.sock
+    /// This enables automated Tower Atomic deployment via biomeOS Neural API
+    /// while maintaining backward compatibility.
     pub fn from_env() -> Self {
-        use tracing::info;
-
         let mode = std::env::var("BEARDOG_MODE").unwrap_or_else(|_| "neural".to_string());
 
         match mode.as_str() {
             "direct" => {
-                let socket = std::env::var("BEARDOG_SOCKET")
-                    .unwrap_or_else(|_| "/tmp/beardog.sock".to_string());
+                // Direct mode: Discover BearDog socket with XDG fallback
+                let socket = socket_discovery::discover_beardog_socket();
                 info!("🔧 BearDog provider: DIRECT mode → {}", socket);
                 Self {
                     socket_path: socket,
@@ -108,10 +117,8 @@ impl BearDogProvider {
                 }
             }
             _ => {
-                // Default to Neural API (TRUE PRIMAL pattern)
-                let socket = std::env::var("NEURAL_API_SOCKET")
-                    .or_else(|_| std::env::var("NEURALS_SOCKET"))
-                    .unwrap_or_else(|_| "/tmp/neural-api-nat0.sock".to_string());
+                // Neural API mode (TRUE PRIMAL pattern): Discover Neural API socket
+                let socket = socket_discovery::discover_neural_api_socket();
                 info!("🌐 BearDog provider: NEURAL API mode (capability.call) → {}", socket);
                 Self {
                     socket_path: socket,

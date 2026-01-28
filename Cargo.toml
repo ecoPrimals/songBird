@@ -47,6 +47,9 @@ members = [
     # 🧬 LINEAGE RELAY - Evolution beyond NAT/STUN/TURN
     "crates/songbird-lineage-relay",
     
+    # 🌐 STUN CLIENT (NEW!) - Pure Rust STUN (RFC 5389) for NAT traversal
+    "crates/songbird-stun",
+    
     # 🦀 PURE RUST TLS 1.3 (NEW!)
     "crates/songbird-tls",
     

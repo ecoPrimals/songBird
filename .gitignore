@@ -179,4 +179,4 @@ proxy/secrets/
 
 # Federation private keys
 federation/private/
-federation/*.key 
+federation/*.key sqlite::memory:/
