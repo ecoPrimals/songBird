@@ -84,15 +84,11 @@ impl L2capChannel {
         packet.extend_from_slice(&handle_and_flags.to_le_bytes());
 
         // ACL data length
-        packet.extend_from_slice(&u16::try_from(acl_data_length)
-            .unwrap_or(u16::MAX)
-            .to_le_bytes());
+        packet.extend_from_slice(&u16::try_from(acl_data_length).unwrap_or(u16::MAX).to_le_bytes());
 
         // L2CAP Header
         // PDU length (payload only, not including L2CAP header)
-        packet.extend_from_slice(&u16::try_from(l2cap_length)
-            .unwrap_or(u16::MAX)
-            .to_le_bytes());
+        packet.extend_from_slice(&u16::try_from(l2cap_length).unwrap_or(u16::MAX).to_le_bytes());
 
         // Channel ID
         packet.extend_from_slice(&self.channel_id.to_le_bytes());

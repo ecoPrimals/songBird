@@ -1,6 +1,6 @@
 //! Tests for SecurityAdapter trust evaluation methods
 
-use super::*;
+// Removed unused import: use super::*;
 
 #[tokio::test]
 async fn test_trust_evaluation_request_creation() {

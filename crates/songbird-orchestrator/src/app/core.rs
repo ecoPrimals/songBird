@@ -301,8 +301,20 @@ impl SongbirdOrchestrator {
 
         // ✅ DEPLOYMENT FIX (Dec 20, 2025): Start HTTP server FIRST to get actual port
         // This ensures discovery broadcasts the correct port even if fallback occurs
+        // ✅ DISCOVERY FIX (Jan 28, 2026): Call actual HTTP server module (not stub)
+        // The stub start_http_server() returns 0, which breaks discovery beacons
         info!("🌐 Starting HTTP server...");
-        let actual_https_port = self.start_http_server().await?;
+        let bind_address = format!("{}:{}", 
+            self._config.network.bind_host,
+            self._config.network.base_port
+        ).parse().map_err(|e| anyhow::anyhow!("Invalid bind address: {}", e))?;
+        
+        let actual_https_port = crate::app::http_server::start_http_server(
+            Arc::clone(&self.federation_state),
+            Arc::clone(&self.federated_service_registry),
+            Arc::clone(&self.service_registry),
+            bind_address,
+        ).await?;
         info!("✅ HTTP server started on port {}", actual_https_port);
 
         // 🎧 NEW (Jan 4, 2026): Start Unix Socket IPC Server for inter-primal communication
@@ -427,13 +439,12 @@ impl SongbirdOrchestrator {
                     })
                     .collect();
 
-            let broadcast_addrs: Vec<std::net::SocketAddr> = self
-                ._config
-                .discovery
-                .broadcast_addresses
-                .iter()
-                .filter_map(|addr| addr.parse().ok())
-                .collect();
+            // ✅ DISCOVERY FIX (Jan 28, 2026): Capability-based broadcast addresses
+            // Supports environment-based configuration for cross-interface discovery
+            // Automatically adds subnet broadcast fallback to handle eth ↔ wifi boundaries
+            let broadcast_addrs = Self::discover_broadcast_addresses(
+                &self._config.discovery.broadcast_addresses
+            );
 
             // ✅ SMART REFACTORING (v3.10.3 - Jan 6, 2026): Discovery system startup
             // Extracted to discovery_startup module for clarity, testability, and maintainability.
@@ -523,20 +534,96 @@ impl SongbirdOrchestrator {
         Ok(())
     }
 
-    /// IPC server is the ONLY communication mechanism
+    /// DEPRECATED (Jan 28, 2026): This stub method is no longer used
     ///
-    /// Deep Debt Solution: Unix sockets ONLY for internal communication
-    /// HTTP/TLS is handled by external gateway component (Concentrated Gap strategy)
+    /// The actual HTTP server is started via `crate::app::http_server::start_http_server()`
+    /// which properly binds TCP and returns the actual port for discovery beacons.
     ///
-    /// This method is kept for API compatibility but does nothing.
-    /// IPC server (Unix sockets) is started elsewhere.
+    /// **Historical Context**: This was originally a stub for Unix-socket-only mode,
+    /// but caused discovery beacons to advertise port 0, breaking peer connections.
+    ///
+    /// **Fix**: The start() method now calls the real HTTP server module directly.
+    #[deprecated(since = "8.11.0", note = "Use http_server::start_http_server() directly")]
     async fn start_http_server(&self) -> Result<u16> {
-        // Unix sockets ONLY - no TCP binding
-        info!("🔒 Songbird uses Unix sockets ONLY (Concentrated Gap strategy)");
-        info!("   Internal: Unix domain sockets (IPC)");
-        info!("   External: HTTP/TLS gateway component (separate)");
+        warn!("⚠️  Deprecated stub start_http_server() called - use http_server module instead");
+        Ok(0) // No longer used
+    }
 
-        Ok(0) // No port used
+    /// Discover broadcast addresses with capability-based fallback (NEW - Jan 28, 2026)
+    ///
+    /// **Zero Hardcoding Philosophy**: Discovers broadcast addresses at runtime from:
+    /// 1. Environment variable: `SONGBIRD_BROADCAST_ADDRESSES` (comma-separated)
+    /// 2. Configuration file: `discovery.broadcast_addresses`
+    /// 3. Automatic fallback: Subnet broadcast for cross-interface discovery
+    ///
+    /// **Cross-Interface Discovery**: Automatically adds subnet broadcast addresses
+    /// to handle eth ↔ wifi boundaries that multicast can't cross on consumer routers.
+    ///
+    /// # Environment Variable Format
+    ///
+    /// ```bash
+    /// export SONGBIRD_BROADCAST_ADDRESSES="224.0.0.251:2300,192.168.1.255:2300"
+    /// ```
+    ///
+    /// # Arguments
+    ///
+    /// * `configured_addrs` - Addresses from configuration file
+    ///
+    /// # Returns
+    ///
+    /// Vec of socket addresses including multicast + subnet broadcast fallback
+    fn discover_broadcast_addresses(configured_addrs: &[String]) -> Vec<std::net::SocketAddr> {
+        use std::net::SocketAddr;
+
+        // Priority 1: Environment variable (runtime override)
+        if let Ok(env_addrs) = std::env::var("SONGBIRD_BROADCAST_ADDRESSES") {
+            if !env_addrs.is_empty() {
+                info!("🌐 Using broadcast addresses from SONGBIRD_BROADCAST_ADDRESSES");
+                let addrs: Vec<SocketAddr> = env_addrs
+                    .split(',')
+                    .filter_map(|s| s.trim().parse().ok())
+                    .collect();
+                
+                if !addrs.is_empty() {
+                    info!("   Addresses: {:?}", addrs);
+                    return addrs;
+                }
+            }
+        }
+
+        // Priority 2: Configuration file
+        let mut addrs: Vec<SocketAddr> = configured_addrs
+            .iter()
+            .filter_map(|addr| addr.parse().ok())
+            .collect();
+
+        // Priority 3: Add subnet broadcast fallback if not already present
+        // This enables cross-interface discovery (eth ↔ wifi) on consumer routers
+        let default_fallbacks = [
+            "192.168.1.255:2300",  // Common home subnet
+            "192.168.0.255:2300",  // Alternative home subnet
+            "10.0.0.255:2300",     // Corporate subnet
+        ];
+
+        for fallback in &default_fallbacks {
+            if let Ok(fallback_addr) = fallback.parse::<SocketAddr>() {
+                // Only add if not already configured
+                if !addrs.iter().any(|a| a.ip() == fallback_addr.ip()) {
+                    addrs.push(fallback_addr);
+                }
+            }
+        }
+
+        if addrs.is_empty() {
+            warn!("⚠️  No broadcast addresses configured, using defaults");
+            addrs = vec![
+                "224.0.0.251:2300".parse().unwrap(), // Primary: multicast
+                "192.168.1.255:2300".parse().unwrap(), // Fallback: common subnet
+            ];
+        }
+
+        info!("🌐 Discovery broadcast addresses: {:?}", addrs);
+        addrs
     }
 
     /// Start Unix Socket IPC server for inter-primal communication (Jan 4, 2026)

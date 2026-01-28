@@ -381,4 +381,203 @@ mod tests {
         record_layer.increment_write_sequence();
         assert_eq!(record_layer.write_sequence(), 0); // Wrapped to 0
     }
+
+    // ========================================
+    // NEW COMPREHENSIVE RECORD LAYER TESTS
+    // Added: January 27, 2026 (Evening)
+    // Goal: Increase coverage from 12% → 70%
+    // ========================================
+
+    #[test]
+    fn test_multiple_content_types() {
+        let mut record_layer = RecordLayer::new();
+        let payload = b"test";
+
+        // Test all content types
+        let types = vec![ContentType::Alert, ContentType::Handshake, ContentType::ApplicationData];
+
+        for content_type in types {
+            let record = record_layer.frame_plaintext(content_type, payload).unwrap();
+            let (parsed_type, parsed_payload, _) = record_layer.parse_record(&record).unwrap();
+
+            assert_eq!(parsed_type, content_type);
+            assert_eq!(parsed_payload, payload);
+        }
+    }
+
+    #[test]
+    fn test_frame_empty_payload() {
+        let mut record_layer = RecordLayer::new();
+        let payload = b"";
+
+        let record = record_layer.frame_plaintext(ContentType::Alert, payload).unwrap();
+
+        // Should have 5-byte header + 0 payload
+        assert_eq!(record.len(), 5);
+        assert_eq!(record[0], ContentType::Alert as u8);
+    }
+
+    #[test]
+    fn test_frame_maximum_size_payload() {
+        let mut record_layer = RecordLayer::new();
+        let payload = vec![42u8; MAX_RECORD_SIZE];
+
+        let result = record_layer.frame_plaintext(ContentType::ApplicationData, &payload);
+
+        // Should succeed (exactly at max)
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_parse_record_with_extra_data() {
+        let mut record_layer = RecordLayer::new();
+
+        // Create a record with extra data after it
+        let mut buf = record_layer.frame_plaintext(ContentType::Handshake, b"Hello").unwrap();
+        buf.extend_from_slice(b"Extra data");
+
+        let (_, _, bytes_consumed) = record_layer.parse_record(&buf).unwrap();
+
+        // Should only consume the record, not the extra data
+        assert!(bytes_consumed < buf.len());
+    }
+
+    #[test]
+    fn test_sequence_independence() {
+        let mut record_layer = RecordLayer::new();
+
+        // Write and read sequences should be independent
+        record_layer.increment_write_sequence();
+        record_layer.increment_write_sequence();
+        assert_eq!(record_layer.write_sequence(), 2);
+        assert_eq!(record_layer.read_sequence(), 0);
+
+        record_layer.increment_read_sequence();
+        assert_eq!(record_layer.write_sequence(), 2);
+        assert_eq!(record_layer.read_sequence(), 1);
+    }
+
+    #[test]
+    fn test_encryption_flag_persistence() {
+        let mut record_layer = RecordLayer::new();
+        assert!(!record_layer.encrypted);
+
+        record_layer.enable_encryption();
+        assert!(record_layer.encrypted);
+
+        // Enable again (should still be true)
+        record_layer.enable_encryption();
+        assert!(record_layer.encrypted);
+    }
+
+    #[test]
+    fn test_parse_alert_record() {
+        let mut record_layer = RecordLayer::new();
+        let alert_payload = vec![2u8, 50u8]; // Level: Fatal (2), Description: Decode error (50)
+
+        let record = record_layer.frame_plaintext(ContentType::Alert, &alert_payload).unwrap();
+        let (content_type, payload, _) = record_layer.parse_record(&record).unwrap();
+
+        assert_eq!(content_type, ContentType::Alert);
+        assert_eq!(payload, alert_payload.as_slice());
+    }
+
+    #[test]
+    fn test_large_sequence_numbers() {
+        let mut record_layer = RecordLayer::new();
+
+        // Set high sequence numbers
+        record_layer.write_sequence = 1_000_000;
+        record_layer.read_sequence = 2_000_000;
+
+        assert_eq!(record_layer.write_sequence(), 1_000_000);
+        assert_eq!(record_layer.read_sequence(), 2_000_000);
+
+        record_layer.increment_write_sequence();
+        assert_eq!(record_layer.write_sequence(), 1_000_001);
+    }
+
+    #[test]
+    fn test_read_sequence_wrapping() {
+        let mut record_layer = RecordLayer::new();
+        record_layer.read_sequence = u64::MAX;
+
+        record_layer.increment_read_sequence();
+        assert_eq!(record_layer.read_sequence(), 0); // Wrapped to 0
+    }
+
+    #[test]
+    fn test_parse_record_zero_length() {
+        let mut record_layer = RecordLayer::new();
+
+        // Create a record with zero-length payload
+        let buf = vec![0x17, 0x03, 0x03, 0x00, 0x00]; // ApplicationData, TLS 1.2, length 0
+
+        let (content_type, payload, bytes_consumed) = record_layer.parse_record(&buf).unwrap();
+
+        assert_eq!(content_type, ContentType::ApplicationData);
+        assert_eq!(payload.len(), 0);
+        assert_eq!(bytes_consumed, 5);
+    }
+
+    #[test]
+    fn test_multiple_records_sequential() {
+        let mut record_layer = RecordLayer::new();
+
+        // Create multiple records
+        let record1 = record_layer.frame_plaintext(ContentType::Handshake, b"First").unwrap();
+        let record2 = record_layer.frame_plaintext(ContentType::Handshake, b"Second").unwrap();
+
+        // Parse first
+        let (_, payload1, consumed1) = record_layer.parse_record(&record1).unwrap();
+        assert_eq!(payload1, b"First");
+        assert_eq!(consumed1, record1.len());
+
+        // Parse second
+        let (_, payload2, consumed2) = record_layer.parse_record(&record2).unwrap();
+        assert_eq!(payload2, b"Second");
+        assert_eq!(consumed2, record2.len());
+    }
+
+    #[test]
+    fn test_frame_different_payload_sizes() {
+        let mut record_layer = RecordLayer::new();
+
+        let sizes = vec![1, 10, 100, 1000, 5000];
+
+        for size in sizes {
+            let payload = vec![0xAAu8; size];
+            let record =
+                record_layer.frame_plaintext(ContentType::ApplicationData, &payload).unwrap();
+
+            // Verify record size
+            assert_eq!(record.len(), 5 + size);
+
+            // Verify length field in header
+            let length = u16::from_be_bytes([record[3], record[4]]);
+            assert_eq!(length as usize, size);
+        }
+    }
+
+    #[test]
+    fn test_encryption_with_sequence_increment() {
+        let mut record_layer = RecordLayer::new();
+        record_layer.enable_encryption();
+
+        let initial_seq = record_layer.write_sequence();
+
+        // Mock encryption function
+        let encrypt_fn = |data: &[u8], seq: u64| {
+            let mut result = data.to_vec();
+            result.extend_from_slice(&seq.to_be_bytes());
+            Ok(result)
+        };
+
+        // Encrypt a record
+        let _encrypted =
+            record_layer.encrypt_record(ContentType::ApplicationData, b"test", encrypt_fn).unwrap();
+
+        // Sequence should have incremented
+        assert_eq!(record_layer.write_sequence(), initial_seq + 1);
+    }
 }

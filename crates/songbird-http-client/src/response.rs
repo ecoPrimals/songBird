@@ -32,10 +32,7 @@ impl ResponseParser {
     pub fn parse(data: &[u8]) -> Result<HttpResponse> {
         // Debug: Log first bytes to understand any corruption
         debug!("📝 parse_http_response: {} bytes total", data.len());
-        debug!(
-            "📝 First 50 bytes (hex): {:?}",
-            &data[..std::cmp::min(50, data.len())]
-        );
+        debug!("📝 First 50 bytes (hex): {:?}", &data[..std::cmp::min(50, data.len())]);
         debug!(
             "📝 First 50 bytes (str): {:?}",
             String::from_utf8_lossy(&data[..std::cmp::min(50, data.len())])
@@ -45,9 +42,8 @@ impl ResponseParser {
         let mut lines = response.lines();
 
         // Status line
-        let status_line = lines
-            .next()
-            .ok_or_else(|| Error::InvalidResponse("Empty response".to_string()))?;
+        let status_line =
+            lines.next().ok_or_else(|| Error::InvalidResponse("Empty response".to_string()))?;
 
         // Debug: Log the status line to understand parsing issues
         debug!("📝 Parsing status line: {:?}", status_line);
@@ -121,9 +117,10 @@ mod tests {
 
     #[test]
     fn test_parse_simple_response() {
-        let response = b"HTTP/1.1 200 OK\r\nContent-Type: application/json\r\n\r\n{\"status\":\"ok\"}";
+        let response =
+            b"HTTP/1.1 200 OK\r\nContent-Type: application/json\r\n\r\n{\"status\":\"ok\"}";
         let parsed = ResponseParser::parse(response).unwrap();
-        
+
         assert_eq!(parsed.status, 200);
         assert_eq!(parsed.headers.get("content-type"), Some(&"application/json".to_string()));
         assert_eq!(parsed.body, serde_json::json!({"status": "ok"}));
@@ -133,7 +130,10 @@ mod tests {
     fn test_parse_status_line() {
         assert_eq!(ResponseParser::parse_status_line("HTTP/1.1 200 OK").unwrap(), 200);
         assert_eq!(ResponseParser::parse_status_line("HTTP/1.1 404 Not Found").unwrap(), 404);
-        assert_eq!(ResponseParser::parse_status_line("HTTP/1.1 500 Internal Server Error").unwrap(), 500);
+        assert_eq!(
+            ResponseParser::parse_status_line("HTTP/1.1 500 Internal Server Error").unwrap(),
+            500
+        );
     }
 
     #[test]
@@ -147,9 +147,8 @@ mod tests {
     fn test_parse_response_no_body() {
         let response = b"HTTP/1.1 204 No Content\r\n\r\n";
         let parsed = ResponseParser::parse(response).unwrap();
-        
+
         assert_eq!(parsed.status, 204);
         assert_eq!(parsed.body, serde_json::json!(""));
     }
 }
-

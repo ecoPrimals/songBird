@@ -95,7 +95,7 @@ async fn test_collect_metrics_success() {
         .mount(&mock_server)
         .await;
 
-    let adapter = ComputeAdapter::new(mock_server.uri()).unwrap();
+    let adapter = ComputeAdapter::new(mock_server.uri()).await.unwrap();
     let result = adapter.collect_metrics().await;
 
     assert!(result.is_ok());
@@ -108,6 +108,7 @@ async fn test_collect_metrics_success() {
 #[tokio::test]
 async fn test_collect_metrics_network_error() {
     let adapter = ComputeAdapter::new("http://invalid-host-xyz:9999")
+        .await
         .unwrap()
         .with_timeout(Duration::from_millis(100));
 
@@ -126,7 +127,7 @@ async fn test_collect_metrics_http_500() {
         .mount(&mock_server)
         .await;
 
-    let adapter = ComputeAdapter::new(mock_server.uri()).unwrap();
+    let adapter = ComputeAdapter::new(mock_server.uri()).await.unwrap();
     let result = adapter.collect_metrics().await;
 
     assert!(result.is_err());
@@ -142,7 +143,7 @@ async fn test_collect_metrics_invalid_json() {
         .mount(&mock_server)
         .await;
 
-    let adapter = ComputeAdapter::new(mock_server.uri()).unwrap();
+    let adapter = ComputeAdapter::new(mock_server.uri()).await.unwrap();
     let result = adapter.collect_metrics().await;
 
     assert!(result.is_err());
@@ -166,7 +167,7 @@ async fn test_collect_metrics_missing_timestamp() {
         .mount(&mock_server)
         .await;
 
-    let adapter = ComputeAdapter::new(mock_server.uri()).unwrap();
+    let adapter = ComputeAdapter::new(mock_server.uri()).await.unwrap();
     let result = adapter.collect_metrics().await;
 
     assert!(result.is_ok());
@@ -196,7 +197,7 @@ async fn test_check_health_healthy() {
         .mount(&mock_server)
         .await;
 
-    let adapter = ComputeAdapter::new(mock_server.uri()).unwrap();
+    let adapter = ComputeAdapter::new(mock_server.uri()).await.unwrap();
     let result = adapter.check_health().await;
 
     assert!(result.is_ok());
@@ -221,7 +222,7 @@ async fn test_check_health_degraded() {
         .mount(&mock_server)
         .await;
 
-    let adapter = ComputeAdapter::new(mock_server.uri()).unwrap();
+    let adapter = ComputeAdapter::new(mock_server.uri()).await.unwrap();
     let result = adapter.check_health().await;
 
     assert!(result.is_ok());
@@ -246,7 +247,7 @@ async fn test_check_health_unhealthy() {
         .mount(&mock_server)
         .await;
 
-    let adapter = ComputeAdapter::new(mock_server.uri()).unwrap();
+    let adapter = ComputeAdapter::new(mock_server.uri()).await.unwrap();
     let result = adapter.check_health().await;
 
     assert!(result.is_ok());
@@ -256,6 +257,7 @@ async fn test_check_health_unhealthy() {
 #[tokio::test]
 async fn test_check_health_network_failure() {
     let adapter = ComputeAdapter::new("http://unreachable:9999")
+        .await
         .unwrap()
         .with_timeout(Duration::from_millis(100));
 
@@ -286,7 +288,7 @@ async fn test_metrics_calculations() {
         .mount(&mock_server)
         .await;
 
-    let adapter = ComputeAdapter::new(mock_server.uri()).unwrap();
+    let adapter = ComputeAdapter::new(mock_server.uri()).await.unwrap();
     let result = adapter.collect_metrics().await;
 
     assert!(result.is_ok());
@@ -315,7 +317,7 @@ async fn test_metrics_high_load_detection() {
         .mount(&mock_server)
         .await;
 
-    let adapter = ComputeAdapter::new(mock_server.uri()).unwrap();
+    let adapter = ComputeAdapter::new(mock_server.uri()).await.unwrap();
     let result = adapter.collect_metrics().await;
 
     assert!(result.is_ok());
@@ -346,7 +348,7 @@ async fn test_compute_metrics_provider_trait() {
         .mount(&mock_server)
         .await;
 
-    let adapter = ComputeAdapter::new(mock_server.uri()).unwrap();
+    let adapter = ComputeAdapter::new(mock_server.uri()).await.unwrap();
     let result = ComputeMetricsProvider::collect_compute_metrics(&adapter).await;
 
     assert!(result.is_ok());
@@ -371,7 +373,7 @@ async fn test_compute_metrics_provider_check_health() {
         .mount(&mock_server)
         .await;
 
-    let adapter = ComputeAdapter::new(mock_server.uri()).unwrap();
+    let adapter = ComputeAdapter::new(mock_server.uri()).await.unwrap();
     let result = ComputeMetricsProvider::check_compute_health(&adapter).await;
 
     assert!(result.is_ok());
@@ -415,7 +417,7 @@ async fn test_adapter_multiple_sequential_requests() {
         .mount(&mock_server)
         .await;
 
-    let adapter = ComputeAdapter::new(mock_server.uri()).unwrap();
+    let adapter = ComputeAdapter::new(mock_server.uri()).await.unwrap();
 
     for _ in 0..10 {
         let result = adapter.collect_metrics().await;
@@ -441,7 +443,7 @@ async fn test_adapter_concurrent_requests() {
         .mount(&mock_server)
         .await;
 
-    let adapter = ComputeAdapter::new(mock_server.uri()).unwrap();
+    let adapter = ComputeAdapter::new(mock_server.uri()).await.unwrap();
     let adapter_ref = &adapter;
 
     let futures: Vec<_> =

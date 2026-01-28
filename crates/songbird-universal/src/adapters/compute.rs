@@ -410,11 +410,12 @@ mod tests {
         Ok(())
     }
 
-    #[test]
-    fn test_adapter_creation() -> Result<(), Box<dyn std::error::Error>> {
-        let adapter = ComputeAdapter::new("http://localhost:8080".to_string()).map_err(|e| {
-            SongbirdError::configuration(format!("Adapter creation should succeed: {}", e))
-        })?;
+    #[tokio::test]
+    async fn test_adapter_creation() -> Result<(), Box<dyn std::error::Error>> {
+        let adapter =
+            ComputeAdapter::new("http://localhost:8080".to_string()).await.map_err(|e| {
+                SongbirdError::configuration(format!("Adapter creation should succeed: {}", e))
+            })?;
         assert_eq!(adapter.endpoint(), "http://localhost:8080");
         Ok(())
     }
@@ -666,9 +667,10 @@ mod tests {
         Ok(())
     }
 
-    #[test]
-    fn test_adapter_with_timeout() -> SongbirdResult<()> {
+    #[tokio::test]
+    async fn test_adapter_with_timeout() -> SongbirdResult<()> {
         let adapter = ComputeAdapter::new("http://compute-service:8080".to_string())
+            .await
             .map_err(|e| {
                 SongbirdError::configuration(format!("Adapter creation should succeed: {}", e))
             })?
@@ -677,28 +679,29 @@ mod tests {
         Ok(())
     }
 
-    #[test]
-    fn test_adapter_default_timeout() -> SongbirdResult<()> {
+    #[tokio::test]
+    async fn test_adapter_default_timeout() -> SongbirdResult<()> {
         let adapter =
-            ComputeAdapter::new("http://compute-service:8080".to_string()).map_err(|e| {
+            ComputeAdapter::new("http://compute-service:8080".to_string()).await.map_err(|e| {
                 SongbirdError::configuration(format!("Adapter creation should succeed: {}", e))
             })?;
         assert_eq!(adapter.timeout, Duration::from_secs(5));
         Ok(())
     }
 
-    #[test]
-    fn test_adapter_endpoint_access() -> SongbirdResult<()> {
-        let adapter = ComputeAdapter::new("http://test-compute:9000".to_string()).map_err(|e| {
-            SongbirdError::configuration(format!("Adapter creation should succeed: {}", e))
-        })?;
+    #[tokio::test]
+    async fn test_adapter_endpoint_access() -> SongbirdResult<()> {
+        let adapter =
+            ComputeAdapter::new("http://test-compute:9000".to_string()).await.map_err(|e| {
+                SongbirdError::configuration(format!("Adapter creation should succeed: {}", e))
+            })?;
         assert_eq!(adapter.endpoint(), "http://test-compute:9000");
         Ok(())
     }
 
-    #[test]
-    fn test_adapter_debug_format() -> SongbirdResult<()> {
-        let adapter = ComputeAdapter::new("http://compute:8080".to_string()).map_err(|e| {
+    #[tokio::test]
+    async fn test_adapter_debug_format() -> SongbirdResult<()> {
+        let adapter = ComputeAdapter::new("http://compute:8080".to_string()).await.map_err(|e| {
             SongbirdError::configuration(format!("Adapter creation should succeed: {}", e))
         })?;
         let debug_str = format!("{:?}", adapter);

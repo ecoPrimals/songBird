@@ -292,4 +292,208 @@ mod tests {
         let result = hsm.process_client_hello(client_hello2);
         assert!(result.is_err());
     }
+
+    // ========================================
+    // NEW COMPREHENSIVE HANDSHAKE FLOW TESTS
+    // Added: January 27, 2026 (Evening)
+    // Goal: Increase coverage from 12% → 70%
+    // ========================================
+
+    #[test]
+    fn test_handshake_state_transitions() {
+        let mut hsm = HandshakeStateMachine::new();
+
+        // Initial state
+        assert_eq!(hsm.state(), HandshakeState::Start);
+        assert!(!hsm.is_connected());
+
+        // After ClientHello
+        let client_hello = create_test_client_hello();
+        hsm.process_client_hello(client_hello).unwrap();
+        assert_eq!(hsm.state(), HandshakeState::ReceivedClientHello);
+        assert!(!hsm.is_connected());
+    }
+
+    #[test]
+    fn test_client_hello_with_multiple_cipher_suites() {
+        let mut hsm = HandshakeStateMachine::new();
+
+        let random = [123u8; 32];
+        let cipher_suites = vec![0x1301, 0x1302, 0x1303]; // AES-128-GCM, AES-256-GCM, ChaCha20-Poly1305
+        let extensions = vec![
+            crate::messages::Extension::SupportedVersions(vec![0x0304]),
+            crate::messages::Extension::KeyShare(vec![1, 2, 3, 4]),
+        ];
+
+        let client_hello = ClientHello::new(random, cipher_suites, extensions);
+        let result = hsm.process_client_hello(client_hello);
+        assert!(result.is_ok());
+        assert_eq!(hsm.state(), HandshakeState::ReceivedClientHello);
+    }
+
+    #[test]
+    fn test_client_hello_with_sni_extension() {
+        let mut hsm = HandshakeStateMachine::new();
+
+        let random = [200u8; 32];
+        let cipher_suites = vec![0x1303];
+        let extensions = vec![
+            crate::messages::Extension::SupportedVersions(vec![0x0304]),
+            crate::messages::Extension::KeyShare(vec![1, 2, 3, 4]),
+            crate::messages::Extension::ServerName("example.com".to_string()),
+        ];
+
+        let client_hello = ClientHello::new(random, cipher_suites, extensions);
+        let result = hsm.process_client_hello(client_hello);
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_client_hello_missing_required_extensions() {
+        let mut hsm = HandshakeStateMachine::new();
+
+        let random = [250u8; 32];
+        let cipher_suites = vec![0x1303];
+        let extensions = vec![]; // Missing required extensions
+
+        let client_hello = ClientHello::new(random, cipher_suites, extensions);
+        let result = hsm.process_client_hello(client_hello);
+        // Should fail validation due to missing extensions
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_client_hello_with_legacy_version() {
+        let mut hsm = HandshakeStateMachine::new();
+
+        let random = [77u8; 32];
+        let cipher_suites = vec![0x1303];
+        let extensions = vec![
+            crate::messages::Extension::SupportedVersions(vec![0x0303]), // TLS 1.2, not 1.3
+            crate::messages::Extension::KeyShare(vec![1, 2, 3, 4]),
+        ];
+
+        let client_hello = ClientHello::new(random, cipher_suites, extensions);
+        let result = hsm.process_client_hello(client_hello);
+        // Currently accepts any version during processing (validation happens later in handshake)
+        // This test documents current behavior
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_client_hello_no_cipher_suites() {
+        let mut hsm = HandshakeStateMachine::new();
+
+        let random = [88u8; 32];
+        let cipher_suites = vec![]; // No cipher suites
+        let extensions = vec![
+            crate::messages::Extension::SupportedVersions(vec![0x0304]),
+            crate::messages::Extension::KeyShare(vec![1, 2, 3, 4]),
+        ];
+
+        let client_hello = ClientHello::new(random, cipher_suites, extensions);
+        let result = hsm.process_client_hello(client_hello);
+        // Should fail validation
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_handshake_key_schedule_initialization() {
+        let hsm = HandshakeStateMachine::new();
+        // Key schedule should be initialized
+        assert_eq!(hsm.state(), HandshakeState::Start);
+        // Crypto client is optional (may be None for testing)
+        assert!(hsm.crypto_client.is_none());
+    }
+
+    #[test]
+    fn test_set_crypto_client() {
+        let mut hsm = HandshakeStateMachine::new();
+
+        // Create a mock crypto client (using explicit socket path for testing)
+        let crypto_client =
+            BeardogCryptoClient::with_socket_path("/tmp/test-beardog.sock".to_string());
+        hsm.set_crypto_client(crypto_client);
+
+        assert!(hsm.crypto_client.is_some());
+    }
+
+    #[test]
+    fn test_handshake_error_state() {
+        let mut hsm = HandshakeStateMachine::new();
+        hsm.state = HandshakeState::Error;
+
+        // Attempting operations in error state should fail
+        let client_hello = create_test_client_hello();
+        let result = hsm.process_client_hello(client_hello);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_handshake_state_display() {
+        let states = [
+            HandshakeState::Start,
+            HandshakeState::ReceivedClientHello,
+            HandshakeState::SentServerHello,
+            HandshakeState::Connected,
+            HandshakeState::Error,
+        ];
+
+        // Verify all states are distinct
+        for (i, state1) in states.iter().enumerate() {
+            for (j, state2) in states.iter().enumerate() {
+                if i == j {
+                    assert_eq!(state1, state2);
+                } else {
+                    assert_ne!(state1, state2);
+                }
+            }
+        }
+    }
+
+    #[tokio::test]
+    async fn test_server_hello_generation_without_crypto_client() {
+        let mut hsm = HandshakeStateMachine::new();
+
+        // Process ClientHello first
+        let client_hello = create_test_client_hello();
+        hsm.process_client_hello(client_hello).unwrap();
+
+        // Try to generate ServerHello without crypto client
+        let result = hsm.generate_server_hello().await;
+        // Should fail gracefully
+        assert!(result.is_err());
+    }
+
+    #[tokio::test]
+    async fn test_complete_handshake_without_messages() {
+        let mut hsm = HandshakeStateMachine::new();
+
+        // Try to complete handshake without processing any messages
+        let result = hsm.complete_handshake();
+        assert!(result.is_err());
+        assert_eq!(hsm.state(), HandshakeState::Start);
+    }
+
+    #[test]
+    fn test_handshake_clone() {
+        let hsm1 = HandshakeStateMachine::new();
+        let state_clone = hsm1.state();
+
+        // State should be cloneable
+        let _state_copy = state_clone;
+        assert_eq!(hsm1.state(), HandshakeState::Start);
+    }
+
+    // Helper function for creating test ClientHello
+    fn create_test_client_hello() -> ClientHello {
+        let random = [42u8; 32];
+        let cipher_suites = vec![0x1303];
+        let extensions = vec![
+            crate::messages::Extension::SupportedVersions(vec![0x0304]),
+            crate::messages::Extension::KeyShare(vec![1, 2, 3, 4]),
+        ];
+
+        ClientHello::new(random, cipher_suites, extensions)
+    }
 }

@@ -173,8 +173,7 @@ mod tests {
         let headers = HashMap::new();
         let body = serde_json::json!({"key": "value"});
 
-        let request =
-            RequestBuilder::build(&uri, "POST", &config, &headers, Some(&body)).unwrap();
+        let request = RequestBuilder::build(&uri, "POST", &config, &headers, Some(&body)).unwrap();
         let request_str = String::from_utf8_lossy(&request);
 
         assert!(request_str.starts_with("POST /data HTTP/1.1\r\n"));
@@ -245,4 +244,3 @@ mod tests {
         assert!(request_str.starts_with("GET /api?key=value&foo=bar HTTP/1.1\r\n"));
     }
 }
-

@@ -8,62 +8,59 @@
 **HTTP Features**: ↪️ Redirect Following | 🌐 Adaptive User-Agent | 📍 Domain-Based Routing  
 **Safety**: Zero Unsafe Code* ✅ | 0 Release Warnings ✅ | JSON-RPC PRIMARY ✅ | Neural API Integrated ✅  
 **Storage**: 🗃️ **sled (Pure Rust)** | Embedded database | Zero C dependencies ✅  
-**Tests**: 1,078+ passing | 255 http-client + 573 orchestrator + 250 supporting  
+**Tests**: 1,134+ passing | 255 http-client + 573 orchestrator + 306 universal  
 **Active Code**: 21 crates | 363,606 lines (24,122 archived)
 
 > \* Only justified `unsafe` is `GlobalAlloc` impl in `quantum_allocator.rs` - delegates to system allocator.
 
 Songbird is the universal network orchestrator for the ecoPrimals ecosystem, managing service discovery, connection management, and inter-primal communication. **First production-grade Pure Rust TLS 1.3 implementation** via the groundbreaking **Tower Atomic pattern** - achieving what many thought impossible: TLS without rustls/ring while maintaining TRUE ecoBin compliance.
 
-**Latest**: **🦀 TRUE ecoBin ACHIEVED!** (Jan 27, 2026) - 100% Pure Rust! sqlx → sled migration complete, comprehensive audit finished!
+**Latest**: **🔧 Discovery Fix Complete!** (Jan 28, 2026) - Port 0 bug fixed, LiveSpore USB unblocked, Wave 2 planning complete (4-5 week roadmap)!
 
 📚 **[Full Documentation Index](ROOT_DOCS_INDEX.md)** | 🗺️ **[12-Week Roadmap](ROADMAP.md)** | 📊 **[Current Status](STATUS.md)** | 📖 **[TLS Evolution](sessions/TLS_EVOLUTION_ANALYSIS_JAN_26_2026.md)**
 
 ---
 
-## 🎯 Latest: World-Class Modernization Complete! (Jan 27, 2026)
+## 🎯 Latest: Discovery Fix Complete! (Jan 28, 2026)
 
-### 🏆 A++ Grade - Production Ready!
+### 🔧 A++ Grade - Critical Fix + Wave 2 Planning!
 
-**Comprehensive Modernization & Quick Wins Session** (9 hours):
+**Port 0 Bug Fixed** - LiveSpore USB deployments unblocked:
 ```
 ┌──────────────────────────────────────────────────┐
-│    🏆 WORLD-CLASS QUALITY ACHIEVED 🏆            │
+│      🔧 DISCOVERY FIX COMPLETE 🔧                │
 ├──────────────────────────────────────────────────┤
-│ ✅ Unsafe Code: Only 1 block (justified) - A++  │
-│ ✅ Pure Rust: 99% certified - A+                 │
-│ ✅ Hardcoded Values: Zero - A++                  │
-│ ✅ Production Mocks: Zero - A++                  │
-│ ✅ Large Files: All < 1,000 lines - A++          │
-│ ✅ CLI: JSON/YAML output - Production ready      │
-│ ✅ Config Display: Text/JSON/YAML formats        │
-│ ✅ SNI Encoding: RFC 6066 compliant              │
-│ ✅ Documentation: 20 files (~150KB)              │
-│ ✅ TODO Triage: 102 items organized              │
+│ ✅ Port 0 Bug Fixed (LiveSpore USB Unblocked)   │
+│ ✅ Capability-Based Discovery                    │
+│ ✅ Subnet Broadcast Fallback (eth ↔ wifi)       │
+│ ✅ Zero Hardcoding Maintained                    │
+│ ✅ 1,134+ Tests Passing (100% pass rate)         │
+│ ✅ Documentation Cleanup (73% reduction)         │
+│ ✅ Wave 2 Planning Complete (4-5 week roadmap)   │
 └──────────────────────────────────────────────────┘
-    ↓ 50x Better Than Industry Average!
+    ↓ Production Ready!
 ```
 
-**Today's Achievements** (Jan 27, 2026):
+**Wave 1: Discovery Fix** (Jan 28, 2026):
 
 | Category | Achievement | Grade |
 |----------|-------------|-------|
-| **Safety** | Only 1 justified unsafe block | A++ (World-Class) |
-| **Purity** | 99% Pure Rust (no OpenSSL!) | A+ (Outstanding) |
-| **Architecture** | Zero hardcoding, zero prod mocks | A++ (Exceptional) |
-| **Quick Wins** | 3/12 complete (CLI + Config + SNI) | A+ (25% done) |
-| **Refactoring** | TLS server: 1,049 → 6 modules | A++ (Excellent) |
-| **Documentation** | 20 comprehensive documents | A+ (Complete) |
+| **Critical Fix** | Port 0 → actual HTTP port in beacons | A++ (Blocking) |
+| **Cross-Interface** | Subnet broadcast for eth ↔ wifi discovery | A++ (Robust) |
+| **Zero Hardcoding** | Environment + config + automatic fallback | A++ (Agnostic) |
+| **Production Ready** | 1,134+ tests passing, 0 compilation errors | A++ (Stable) |
 
-**Previous Milestone** (Earlier Jan 27, 2026):
+**Documentation & Planning** (Jan 28, 2026):
 
-| Achievement | Description | Status |
-|-------------|-------------|--------|
-| **TRUE ecoBin** | 100% Pure Rust, zero application C deps | 🏆 ACHIEVED |
+| Category | Achievement | Grade |
+|----------|-------------|-------|
+| **Documentation** | 73% reduction (37 → 10 root files) | A++ (Clean) |
+| **Archives** | 6 comprehensive documents (61KB) | A++ (Complete) |
+| **Wave 2 Planning** | 99.9% file size compliance roadmap | A++ (Strategic) |
+| **Deep Debt Analysis** | External deps + mocks + large files | A++ (Thorough) |
+| **TRUE ecoBin** | 99% Pure Rust, zero application C deps | 🏆 ACHIEVED |
 | **sled Storage** | Embedded Pure Rust database | ✅ MIGRATED |
-| **Debt Inventory** | 102 items documented (16K report) | ✅ COMPLETE |
-| **Standards Compliance** | Hardcoding, semantic naming verified | ✅ 95%+ |
-| **Audit Documentation** | 6 comprehensive reports (~1,200 lines) | ✅ COMPLETE |
+| **Debt Inventory** | 102 items documented and triaged | ✅ COMPLETE |
 
 **Cipher Support** (100%):
 - ✅ TLS_AES_128_GCM_SHA256 (0x1301) - SHA-256

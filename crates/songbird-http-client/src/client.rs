@@ -10,23 +10,18 @@
 
 use crate::connection::{HttpConnection, HttpsConnection};
 use crate::crypto::{BearDogProvider, CryptoCapability};
+use crate::error::{Error, Result};
+use crate::http_config::HttpClientConfig;
 use crate::redirect::RedirectHandler;
 use crate::request::RequestBuilder;
 use crate::response::ResponseParser;
-use crate::error::{Error, Result};
-use crate::http_config::HttpClientConfig;
-use crate::tls::{
-    config::TlsConfig, handshake::TlsHandshake, profiler::ServerProfiler, record::TlsRecordLayer,
-};
+use crate::tls::{config::TlsConfig, profiler::ServerProfiler};
 use crate::types::HttpResponse;
-use http_body_util::{BodyExt, Full};
-use hyper::body::Bytes;
-use hyper::{Request, Uri};
-use hyper_util::rt::TokioIo;
+use hyper::Uri;
 use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::net::TcpStream;
-use tracing::{debug, error, info, trace, warn};
+use tracing::{info, warn};
 
 /// Songbird HTTP client with adaptive behavior
 ///
@@ -333,7 +328,11 @@ impl SongbirdHttpClient {
                 self.request(method, &current_url, headers.clone(), body.clone()).await?;
 
             // Check if we should follow this redirect
-            if !redirect_handler.should_follow(&response, redirects_followed, &self.http_config.redirect_mode) {
+            if !redirect_handler.should_follow(
+                &response,
+                redirects_followed,
+                &self.http_config.redirect_mode,
+            ) {
                 // Check if it's actually a redirect that we chose not to follow
                 if RedirectHandler::is_redirect_status(response.status) {
                     match self.http_config.redirect_mode {
@@ -345,8 +344,12 @@ impl SongbirdHttpClient {
                         }
                         RedirectMode::SameOrigin => {
                             if let Some(location) = response.headers.get("location") {
-                                let new_url = redirect_handler.resolve_url(&current_url, location)?;
-                                if !redirect_handler.is_same_origin(&current_url, &new_url).unwrap_or(false) {
+                                let new_url =
+                                    redirect_handler.resolve_url(&current_url, location)?;
+                                if !redirect_handler
+                                    .is_same_origin(&current_url, &new_url)
+                                    .unwrap_or(false)
+                                {
                                     info!(
                                         "↩️  Cross-origin redirect, returning as-is (redirect_mode=SameOrigin)"
                                     );
@@ -355,7 +358,10 @@ impl SongbirdHttpClient {
                         }
                         RedirectMode::Follow => {
                             if redirects_followed >= self.http_config.max_redirects as usize {
-                                warn!("⚠️  Maximum redirects ({}) reached", self.http_config.max_redirects);
+                                warn!(
+                                    "⚠️  Maximum redirects ({}) reached",
+                                    self.http_config.max_redirects
+                                );
                             }
                         }
                     }
@@ -400,16 +406,18 @@ impl SongbirdHttpClient {
             self.profiler.clone(),
         );
 
-        https_conn.execute(
-            host,
-            port,
-            uri,
-            method,
-            headers,
-            body,
-            |uri, method, headers, body| self.build_http_request(uri, method, headers, body),
-            |data| self.parse_http_response(data),
-        ).await
+        https_conn
+            .execute(
+                host,
+                port,
+                uri,
+                method,
+                headers,
+                body,
+                |uri, method, headers, body| self.build_http_request(uri, method, headers, body),
+                |data| self.parse_http_response(data),
+            )
+            .await
     }
 
     /// Attempt TLS handshake with progressive fallback on failure
@@ -540,9 +548,8 @@ mod tests {
         let handler = RedirectHandler::new(10);
 
         // Absolute URL should be returned as-is
-        let resolved = handler
-            .resolve_url("https://example.com/path", "https://other.com/new-path")
-            .unwrap();
+        let resolved =
+            handler.resolve_url("https://example.com/path", "https://other.com/new-path").unwrap();
         assert_eq!(resolved, "https://other.com/new-path");
     }
 
@@ -551,8 +558,7 @@ mod tests {
         let handler = RedirectHandler::new(10);
 
         // Absolute path (starts with /) should use base's scheme and host
-        let resolved =
-            handler.resolve_url("https://example.com/old-path", "/new-path").unwrap();
+        let resolved = handler.resolve_url("https://example.com/old-path", "/new-path").unwrap();
         assert_eq!(resolved, "https://example.com/new-path");
     }
 
@@ -571,8 +577,7 @@ mod tests {
         let handler = RedirectHandler::new(10);
 
         // Preserve port in redirect
-        let resolved =
-            handler.resolve_url("https://example.com:8443/path", "/new-path").unwrap();
+        let resolved = handler.resolve_url("https://example.com:8443/path", "/new-path").unwrap();
         assert_eq!(resolved, "https://example.com:8443/new-path");
     }
 
@@ -581,8 +586,7 @@ mod tests {
         let handler = RedirectHandler::new(10);
 
         // Absolute URL
-        let host =
-            handler.extract_host("https://other.com/path", "https://example.com");
+        let host = handler.extract_host("https://other.com/path", "https://example.com");
         assert_eq!(host, Some("other.com".to_string()));
 
         // Relative URL should use base host

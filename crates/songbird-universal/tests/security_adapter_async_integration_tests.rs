@@ -98,7 +98,7 @@ async fn test_collect_metrics_success() {
         .create_async()
         .await;
 
-    let adapter = SecurityAdapter::new(server.url()).expect("test precondition");
+    let adapter = SecurityAdapter::new(server.url()).await.expect("test precondition");
     let metrics = adapter.collect_metrics().await;
 
     assert!(metrics.is_ok(), "Should collect metrics successfully");
@@ -132,7 +132,7 @@ async fn test_collect_metrics_sets_timestamp_if_missing() {
         .create_async()
         .await;
 
-    let adapter = SecurityAdapter::new(server.url()).expect("test precondition");
+    let adapter = SecurityAdapter::new(server.url()).await.expect("test precondition");
     let metrics = adapter.collect_metrics().await;
 
     assert!(metrics.is_ok());
@@ -150,7 +150,7 @@ async fn test_collect_metrics_sets_timestamp_if_missing() {
 async fn test_collect_metrics_network_error() {
     // Use invalid endpoint
     let adapter =
-        SecurityAdapter::new("http://localhost:1".to_string()).expect("test precondition");
+        SecurityAdapter::new("http://localhost:1".to_string()).await.expect("test precondition");
 
     let result = adapter.collect_metrics().await;
     assert!(result.is_err(), "Should fail with network error");
@@ -171,7 +171,7 @@ async fn test_collect_metrics_http_error_status() {
         .create_async()
         .await;
 
-    let adapter = SecurityAdapter::new(server.url()).expect("test precondition");
+    let adapter = SecurityAdapter::new(server.url()).await.expect("test precondition");
     let result = adapter.collect_metrics().await;
 
     assert!(result.is_err(), "Should fail with HTTP error");
@@ -194,7 +194,7 @@ async fn test_collect_metrics_invalid_json() {
         .create_async()
         .await;
 
-    let adapter = SecurityAdapter::new(server.url()).expect("test precondition");
+    let adapter = SecurityAdapter::new(server.url()).await.expect("test precondition");
     let result = adapter.collect_metrics().await;
 
     assert!(result.is_err(), "Should fail with parse error");
@@ -224,6 +224,7 @@ async fn test_collect_metrics_with_timeout() {
         .await;
 
     let adapter = SecurityAdapter::new(server.url())
+        .await
         .expect("test precondition")
         .with_timeout(Duration::from_millis(100)); // Very short timeout
 
@@ -251,7 +252,7 @@ async fn test_verify_auth_authorized() {
         .create_async()
         .await;
 
-    let adapter = SecurityAdapter::new(server.url()).expect("test precondition");
+    let adapter = SecurityAdapter::new(server.url()).await.expect("test precondition");
     let result = adapter.verify_auth("valid-token").await;
 
     assert!(result.is_ok());
@@ -267,7 +268,7 @@ async fn test_verify_auth_unauthorized() {
     // Return 401 for invalid token
     let mock = server.mock("POST", "/auth/verify").with_status(401).create_async().await;
 
-    let adapter = SecurityAdapter::new(server.url()).expect("test precondition");
+    let adapter = SecurityAdapter::new(server.url()).await.expect("test precondition");
     let result = adapter.verify_auth("invalid-token").await;
 
     assert!(result.is_ok());
@@ -288,7 +289,7 @@ async fn test_verify_auth_expired() {
         .create_async()
         .await;
 
-    let adapter = SecurityAdapter::new(server.url()).expect("test precondition");
+    let adapter = SecurityAdapter::new(server.url()).await.expect("test precondition");
     let result = adapter.verify_auth("expired-token").await;
 
     assert!(result.is_ok());
@@ -309,7 +310,7 @@ async fn test_verify_auth_invalid() {
         .create_async()
         .await;
 
-    let adapter = SecurityAdapter::new(server.url()).expect("test precondition");
+    let adapter = SecurityAdapter::new(server.url()).await.expect("test precondition");
     let result = adapter.verify_auth("malformed-token").await;
 
     assert!(result.is_ok());
@@ -341,7 +342,7 @@ async fn test_verify_auth_invalid_json_response() {
         .create_async()
         .await;
 
-    let adapter = SecurityAdapter::new(server.url()).expect("test precondition");
+    let adapter = SecurityAdapter::new(server.url()).await.expect("test precondition");
     let result = adapter.verify_auth("some-token").await;
 
     assert!(result.is_err(), "Should fail with parse error");
@@ -376,7 +377,7 @@ async fn test_check_health_healthy() {
         .create_async()
         .await;
 
-    let adapter = SecurityAdapter::new(server.url()).expect("test precondition");
+    let adapter = SecurityAdapter::new(server.url()).await.expect("test precondition");
     let health = adapter.check_health().await;
 
     assert!(health.is_ok());
@@ -406,7 +407,7 @@ async fn test_check_health_warning() {
         .create_async()
         .await;
 
-    let adapter = SecurityAdapter::new(server.url()).expect("test precondition");
+    let adapter = SecurityAdapter::new(server.url()).await.expect("test precondition");
     let health = adapter.check_health().await;
 
     assert!(health.is_ok());
@@ -436,7 +437,7 @@ async fn test_check_health_critical() {
         .create_async()
         .await;
 
-    let adapter = SecurityAdapter::new(server.url()).expect("test precondition");
+    let adapter = SecurityAdapter::new(server.url()).await.expect("test precondition");
     let health = adapter.check_health().await;
 
     assert!(health.is_ok());
@@ -487,7 +488,7 @@ async fn test_full_security_workflow() {
         .create_async()
         .await;
 
-    let adapter = SecurityAdapter::new(server.url()).expect("test precondition");
+    let adapter = SecurityAdapter::new(server.url()).await.expect("test precondition");
 
     // 1. Check health
     let health = adapter.check_health().await;
@@ -531,7 +532,7 @@ async fn test_concurrent_requests() {
         .create_async()
         .await;
 
-    let adapter = SecurityAdapter::new(server.url()).expect("test precondition");
+    let adapter = SecurityAdapter::new(server.url()).await.expect("test precondition");
 
     // Fire off 3 concurrent requests
     let futures =
@@ -560,7 +561,7 @@ async fn test_retry_on_transient_failure() {
         .create_async()
         .await;
 
-    let adapter = SecurityAdapter::new(server.url()).expect("test precondition");
+    let adapter = SecurityAdapter::new(server.url()).await.expect("test precondition");
 
     // First attempt should fail
     let result1 = adapter.collect_metrics().await;

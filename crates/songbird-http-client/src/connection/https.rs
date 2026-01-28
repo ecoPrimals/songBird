@@ -80,7 +80,12 @@ impl HttpsConnection {
         method: &str,
         headers: HashMap<String, String>,
         body: Option<serde_json::Value>,
-        build_http_request: impl Fn(&Uri, &str, &HashMap<String, String>, Option<&serde_json::Value>) -> Result<Vec<u8>>,
+        build_http_request: impl Fn(
+            &Uri,
+            &str,
+            &HashMap<String, String>,
+            Option<&serde_json::Value>,
+        ) -> Result<Vec<u8>>,
         parse_http_response: impl Fn(&[u8]) -> Result<HttpResponse>,
     ) -> Result<HttpResponse> {
         debug!("🔒 Performing TLS handshake with {}", host);
@@ -141,7 +146,8 @@ impl HttpsConnection {
         info!("🔽 READING HTTP RESPONSE from server:");
         info!("   Response may span multiple TLS APPLICATION_DATA records...");
 
-        let response_data = self.read_tls_response(&mut record_layer, &mut tcp_stream, &http_request).await?;
+        let response_data =
+            self.read_tls_response(&mut record_layer, &mut tcp_stream, &http_request).await?;
 
         // Validate we received data
         if response_data.is_empty() {
@@ -515,4 +521,3 @@ impl HttpsConnection {
 
 // Note: Full integration tests for HttpsConnection are in the main client tests
 // since they require actual TLS handshakes and HTTPS servers
-

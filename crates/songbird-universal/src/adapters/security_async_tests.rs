@@ -118,7 +118,7 @@ async fn test_collect_metrics_success() {
         .mount(&mock_server)
         .await;
 
-    let adapter = SecurityAdapter::new(mock_server.uri()).unwrap();
+    let adapter = SecurityAdapter::new(mock_server.uri()).await.unwrap();
 
     // ACT: Collect metrics
     let result = adapter.collect_metrics().await;
@@ -136,6 +136,7 @@ async fn test_collect_metrics_success() {
 async fn test_collect_metrics_network_error() {
     // ARRANGE: Adapter pointing to non-existent server
     let adapter = SecurityAdapter::new("http://invalid-nonexistent-host-12345:9999")
+        .await
         .unwrap()
         .with_timeout(Duration::from_millis(100)); // Short timeout
 
@@ -163,7 +164,7 @@ async fn test_collect_metrics_http_error_status() {
         .mount(&mock_server)
         .await;
 
-    let adapter = SecurityAdapter::new(mock_server.uri()).unwrap();
+    let adapter = SecurityAdapter::new(mock_server.uri()).await.unwrap();
 
     // ACT: Collect metrics
     let result = adapter.collect_metrics().await;
@@ -189,7 +190,7 @@ async fn test_collect_metrics_invalid_json() {
         .mount(&mock_server)
         .await;
 
-    let adapter = SecurityAdapter::new(mock_server.uri()).unwrap();
+    let adapter = SecurityAdapter::new(mock_server.uri()).await.unwrap();
 
     // ACT: Collect metrics
     let result = adapter.collect_metrics().await;
@@ -221,7 +222,7 @@ async fn test_collect_metrics_missing_timestamp() {
         .mount(&mock_server)
         .await;
 
-    let adapter = SecurityAdapter::new(mock_server.uri()).unwrap();
+    let adapter = SecurityAdapter::new(mock_server.uri()).await.unwrap();
 
     // ACT: Collect metrics
     let result = adapter.collect_metrics().await;
@@ -236,6 +237,7 @@ async fn test_collect_metrics_missing_timestamp() {
 async fn test_collect_metrics_with_custom_timeout() {
     // ARRANGE: Adapter with very short timeout
     let adapter = SecurityAdapter::new("http://slow-nonexistent-host:9999")
+        .await
         .unwrap()
         .with_timeout(Duration::from_millis(50));
 
@@ -261,7 +263,7 @@ async fn test_verify_auth_authorized() {
         .mount(&mock_server)
         .await;
 
-    let adapter = SecurityAdapter::new(mock_server.uri()).unwrap();
+    let adapter = SecurityAdapter::new(mock_server.uri()).await.unwrap();
 
     // ACT: Verify valid token
     let result = adapter.verify_auth("valid-token-123").await;
@@ -282,7 +284,7 @@ async fn test_verify_auth_unauthorized() {
         .mount(&mock_server)
         .await;
 
-    let adapter = SecurityAdapter::new(mock_server.uri()).unwrap();
+    let adapter = SecurityAdapter::new(mock_server.uri()).await.unwrap();
 
     // ACT: Verify invalid token
     let result = adapter.verify_auth("invalid-token").await;
@@ -303,7 +305,7 @@ async fn test_verify_auth_expired() {
         .mount(&mock_server)
         .await;
 
-    let adapter = SecurityAdapter::new(mock_server.uri()).unwrap();
+    let adapter = SecurityAdapter::new(mock_server.uri()).await.unwrap();
 
     // ACT: Verify expired token
     let result = adapter.verify_auth("expired-token").await;
@@ -324,7 +326,7 @@ async fn test_verify_auth_invalid() {
         .mount(&mock_server)
         .await;
 
-    let adapter = SecurityAdapter::new(mock_server.uri()).unwrap();
+    let adapter = SecurityAdapter::new(mock_server.uri()).await.unwrap();
 
     // ACT: Verify malformed token
     let result = adapter.verify_auth("malformed-token").await;
@@ -338,6 +340,7 @@ async fn test_verify_auth_invalid() {
 async fn test_verify_auth_network_error() {
     // ARRANGE: Adapter pointing to non-existent server
     let adapter = SecurityAdapter::new("http://invalid-auth-host:9999")
+        .await
         .unwrap()
         .with_timeout(Duration::from_millis(100));
 
@@ -365,7 +368,7 @@ async fn test_verify_auth_invalid_response_json() {
         .mount(&mock_server)
         .await;
 
-    let adapter = SecurityAdapter::new(mock_server.uri()).unwrap();
+    let adapter = SecurityAdapter::new(mock_server.uri()).await.unwrap();
 
     // ACT: Verify auth
     let result = adapter.verify_auth("token").await;
@@ -391,7 +394,7 @@ async fn test_verify_auth_empty_token() {
         .mount(&mock_server)
         .await;
 
-    let adapter = SecurityAdapter::new(mock_server.uri()).unwrap();
+    let adapter = SecurityAdapter::new(mock_server.uri()).await.unwrap();
 
     // ACT: Verify empty token
     let result = adapter.verify_auth("").await;
@@ -422,7 +425,7 @@ async fn test_check_health_healthy() {
         .mount(&mock_server)
         .await;
 
-    let adapter = SecurityAdapter::new(mock_server.uri()).unwrap();
+    let adapter = SecurityAdapter::new(mock_server.uri()).await.unwrap();
 
     // ACT: Check health
     let result = adapter.check_health().await;
@@ -449,7 +452,7 @@ async fn test_check_health_warning() {
         .mount(&mock_server)
         .await;
 
-    let adapter = SecurityAdapter::new(mock_server.uri()).unwrap();
+    let adapter = SecurityAdapter::new(mock_server.uri()).await.unwrap();
 
     // ACT: Check health
     let result = adapter.check_health().await;
@@ -476,7 +479,7 @@ async fn test_check_health_critical() {
         .mount(&mock_server)
         .await;
 
-    let adapter = SecurityAdapter::new(mock_server.uri()).unwrap();
+    let adapter = SecurityAdapter::new(mock_server.uri()).await.unwrap();
 
     // ACT: Check health
     let result = adapter.check_health().await;
@@ -523,7 +526,7 @@ async fn test_security_provider_implementation_collect_metrics() {
         .mount(&mock_server)
         .await;
 
-    let adapter = SecurityAdapter::new(mock_server.uri()).unwrap();
+    let adapter = SecurityAdapter::new(mock_server.uri()).await.unwrap();
 
     // ACT: Use trait method implementation
     let result = SecurityProvider::collect_security_metrics(&adapter).await;
@@ -545,7 +548,7 @@ async fn test_security_provider_implementation_verify_auth() {
         .mount(&mock_server)
         .await;
 
-    let adapter = SecurityAdapter::new(mock_server.uri()).unwrap();
+    let adapter = SecurityAdapter::new(mock_server.uri()).await.unwrap();
 
     // ACT: Use trait method implementation
     let result = SecurityProvider::verify_authentication(&adapter, "token-123").await;
@@ -572,7 +575,7 @@ async fn test_security_provider_implementation_check_health() {
         .mount(&mock_server)
         .await;
 
-    let adapter = SecurityAdapter::new(mock_server.uri()).unwrap();
+    let adapter = SecurityAdapter::new(mock_server.uri()).await.unwrap();
 
     // ACT: Use trait default method
     let result = SecurityProvider::check_security_health(&adapter).await;
@@ -625,7 +628,7 @@ async fn test_adapter_multiple_sequential_requests() {
         .mount(&mock_server)
         .await;
 
-    let adapter = SecurityAdapter::new(mock_server.uri()).unwrap();
+    let adapter = SecurityAdapter::new(mock_server.uri()).await.unwrap();
 
     // ACT: Make multiple requests
     for _ in 0..10 {
@@ -653,7 +656,7 @@ async fn test_adapter_concurrent_requests() {
         .mount(&mock_server)
         .await;
 
-    let adapter = SecurityAdapter::new(mock_server.uri()).unwrap();
+    let adapter = SecurityAdapter::new(mock_server.uri()).await.unwrap();
     let adapter_ref = &adapter;
 
     // ACT: Make concurrent requests

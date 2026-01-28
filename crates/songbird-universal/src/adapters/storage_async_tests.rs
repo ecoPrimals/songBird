@@ -62,7 +62,7 @@ async fn test_collect_metrics_success() {
         .mount(&mock_server)
         .await;
 
-    let adapter = StorageAdapter::new(mock_server.uri()).unwrap();
+    let adapter = StorageAdapter::new(mock_server.uri()).await.unwrap();
     let result = adapter.collect_metrics().await;
     assert!(result.is_ok());
     let metrics = result.unwrap();
@@ -73,6 +73,7 @@ async fn test_collect_metrics_success() {
 #[tokio::test]
 async fn test_collect_metrics_network_error() {
     let adapter = StorageAdapter::new("http://invalid:9999")
+        .await
         .unwrap()
         .with_timeout(Duration::from_millis(100));
     let result = adapter.collect_metrics().await;
@@ -88,7 +89,7 @@ async fn test_collect_metrics_http_500() {
         .mount(&mock_server)
         .await;
 
-    let adapter = StorageAdapter::new(mock_server.uri()).unwrap();
+    let adapter = StorageAdapter::new(mock_server.uri()).await.unwrap();
     let result = adapter.collect_metrics().await;
     assert!(result.is_err());
 }
@@ -102,7 +103,7 @@ async fn test_collect_metrics_invalid_json() {
         .mount(&mock_server)
         .await;
 
-    let adapter = StorageAdapter::new(mock_server.uri()).unwrap();
+    let adapter = StorageAdapter::new(mock_server.uri()).await.unwrap();
     let result = adapter.collect_metrics().await;
     assert!(result.is_err());
 }
@@ -128,7 +129,7 @@ async fn test_check_health_healthy() {
         .mount(&mock_server)
         .await;
 
-    let adapter = StorageAdapter::new(mock_server.uri()).unwrap();
+    let adapter = StorageAdapter::new(mock_server.uri()).await.unwrap();
     let result = adapter.check_health().await;
     assert!(result.is_ok());
     assert_eq!(result.unwrap(), StorageHealth::Healthy);
@@ -151,7 +152,7 @@ async fn test_check_health_degraded() {
         .mount(&mock_server)
         .await;
 
-    let adapter = StorageAdapter::new(mock_server.uri()).unwrap();
+    let adapter = StorageAdapter::new(mock_server.uri()).await.unwrap();
     let result = adapter.check_health().await;
     assert!(result.is_ok());
     assert_eq!(result.unwrap(), StorageHealth::Warning);
@@ -174,7 +175,7 @@ async fn test_check_health_critical() {
         .mount(&mock_server)
         .await;
 
-    let adapter = StorageAdapter::new(mock_server.uri()).unwrap();
+    let adapter = StorageAdapter::new(mock_server.uri()).await.unwrap();
     let result = adapter.check_health().await;
     assert!(result.is_ok());
     assert_eq!(result.unwrap(), StorageHealth::Critical);
@@ -201,7 +202,7 @@ async fn test_storage_provider_trait() {
         .mount(&mock_server)
         .await;
 
-    let adapter = StorageAdapter::new(mock_server.uri()).unwrap();
+    let adapter = StorageAdapter::new(mock_server.uri()).await.unwrap();
     let result = StorageProvider::collect_storage_metrics(&adapter).await;
     assert!(result.is_ok());
 }
@@ -284,7 +285,7 @@ async fn test_concurrent_operations() {
         .mount(&mock_server)
         .await;
 
-    let adapter = StorageAdapter::new(mock_server.uri()).unwrap();
+    let adapter = StorageAdapter::new(mock_server.uri()).await.unwrap();
     let adapter_ref = &adapter;
 
     let futures: Vec<_> =

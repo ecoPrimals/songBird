@@ -25,8 +25,7 @@ pub mod handshake_v2; // Alternative modularized handshake
 pub mod negotiation;
 pub mod profiler;
 pub mod record;
-pub mod server; // Basic TLS server foundation
-pub mod server_complete; // ✅ INTEGRATED: Full TLS 1.3 server using CryptoCapability
+pub mod server; // ✅ REFACTORED: Modular TLS 1.3 server (6 focused modules)
 pub mod session;
 pub mod version; // ✅ NEW: TLS version config (1.3 + secure 1.2 fallback)
 
@@ -49,7 +48,7 @@ pub use handshake_refactored::TlsHandshake; // ✅ ACTIVE: Refactored implementa
 pub use handshake_refactored::TlsSecrets;
 pub use profiler::{ServerProfile, ServerProfiler};
 pub use record::TlsRecordLayer;
-pub use server_complete::TlsServer; // ✅ Full implementation using CryptoCapability
+pub use server::TlsServer; // ✅ Refactored modular implementation
 pub use session::TlsSession;
 pub use version::{
     detect_server_version, tls_1_2_cipher_name, NegotiatedVersion, SecurityPolicy, TlsVersion,

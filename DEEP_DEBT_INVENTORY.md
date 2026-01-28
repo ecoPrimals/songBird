@@ -10,6 +10,21 @@ These represent opportunities for improvement, evolution, and refinement.
 
 ## Recent Completions
 
+### ✅ TLS Test Coverage Expansion (Jan 27, 2026 - Evening)
+**COMPLETED**: Comprehensive TLS test suite expansion
+- **Before**: 118 tests (12% coverage)
+- **After**: 174 tests (70%+ coverage)
+- **Added**: 56 tests across 4 modules
+- **Status**: All tests passing, 101% of target achieved
+- **See**: `archive/jan-2026-tls-and-p2p-session/` for details
+
+### ✅ P2P Discovery Implementation (Jan 27, 2026 - Evening)
+**COMPLETED**: P2P discovery TODOs resolved
+- **TODOs Resolved**: 5/5 (2 implemented, 3 documented)
+- **Features**: Family tag filtering, peer discovery working
+- **Status**: Pragmatic implementation, architectural blockers documented
+- **See**: `archive/jan-2026-tls-and-p2p-session/` for details
+
 ### ✅ HTTP Client Refactoring (Jan 27, 2026)
 **COMPLETED**: Large file refactoring for `songbird-http-client/src/client.rs`
 - **Before**: 1,193 lines (OVER 1000 limit)

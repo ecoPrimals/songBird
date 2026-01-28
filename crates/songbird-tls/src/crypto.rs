@@ -436,5 +436,177 @@ mod tests {
         assert_eq!(client.socket_path, "/tmp/custom.sock");
     }
 
+    // ========================================
+    // NEW COMPREHENSIVE CRYPTO CLIENT TESTS
+    // Added: January 27, 2026 (Evening)
+    // Goal: Increase coverage from 12% → 70%
+    // ========================================
+
+    #[test]
+    fn test_discover_socket_neural_api_priority() {
+        // Set both Neural API and legacy sockets
+        std::env::set_var("NEURAL_API_SOCKET", "/tmp/neural.sock");
+        std::env::set_var("BEARDOG_CRYPTO_SOCKET", "/tmp/beardog.sock");
+
+        let result = BeardogCryptoClient::discover_socket();
+        assert!(result.is_ok());
+
+        // Should prioritize Neural API
+        assert_eq!(result.unwrap(), "/tmp/neural.sock");
+
+        // Cleanup
+        std::env::remove_var("NEURAL_API_SOCKET");
+        std::env::remove_var("BEARDOG_CRYPTO_SOCKET");
+    }
+
+    #[test]
+    fn test_discover_socket_neurals_socket() {
+        // Test NEURALS_SOCKET environment variable
+        std::env::set_var("NEURALS_SOCKET", "/tmp/neurals.sock");
+
+        let result = BeardogCryptoClient::discover_socket();
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap(), "/tmp/neurals.sock");
+
+        // Cleanup
+        std::env::remove_var("NEURALS_SOCKET");
+    }
+
+    #[test]
+    fn test_discover_socket_fallback_to_legacy() {
+        // Remove all Neural API vars, set only legacy
+        std::env::remove_var("NEURAL_API_SOCKET");
+        std::env::remove_var("NEURALS_SOCKET");
+        std::env::set_var("SONGBIRD_CRYPTO_SOCKET", "/tmp/legacy.sock");
+
+        let result = BeardogCryptoClient::discover_socket();
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap(), "/tmp/legacy.sock");
+
+        // Cleanup
+        std::env::remove_var("SONGBIRD_CRYPTO_SOCKET");
+    }
+
+    #[test]
+    fn test_discover_socket_beardog_crypto_socket() {
+        // Test BEARDOG_CRYPTO_SOCKET environment variable
+        std::env::remove_var("SONGBIRD_CRYPTO_SOCKET");
+        std::env::set_var("BEARDOG_CRYPTO_SOCKET", "/tmp/beardog-test.sock");
+
+        let result = BeardogCryptoClient::discover_socket();
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap(), "/tmp/beardog-test.sock");
+
+        // Cleanup
+        std::env::remove_var("BEARDOG_CRYPTO_SOCKET");
+    }
+
+    #[test]
+    fn test_discover_socket_no_env_vars() {
+        // Remove all environment variables
+        std::env::remove_var("NEURAL_API_SOCKET");
+        std::env::remove_var("NEURALS_SOCKET");
+        std::env::remove_var("SONGBIRD_CRYPTO_SOCKET");
+        std::env::remove_var("BEARDOG_CRYPTO_SOCKET");
+
+        let result = BeardogCryptoClient::discover_socket();
+
+        // Should either succeed (if default paths exist) or fail gracefully
+        // We don't know if default paths exist in test environment
+        // So we just verify it returns a Result (no panic)
+        let _outcome = result;
+    }
+
+    #[test]
+    fn test_with_socket_path_clone() {
+        let client1 = BeardogCryptoClient::with_socket_path("/tmp/test1.sock".to_string());
+        let client2 = client1.clone();
+
+        assert_eq!(client1.socket_path, client2.socket_path);
+    }
+
+    #[test]
+    fn test_with_socket_path_custom_location() {
+        let custom_paths = vec![
+            "/var/run/custom/socket.sock",
+            "/tmp/my-app.sock",
+            "/run/beardog/test.sock",
+            "/home/user/.local/share/socket.sock",
+        ];
+
+        for path in custom_paths {
+            let client = BeardogCryptoClient::with_socket_path(path.to_string());
+            assert_eq!(client.socket_path, path);
+        }
+    }
+
+    #[test]
+    fn test_client_clone_preserves_socket_path() {
+        let original = BeardogCryptoClient::with_socket_path("/tmp/original.sock".to_string());
+        let cloned = original.clone();
+
+        assert_eq!(original.socket_path, cloned.socket_path);
+        assert_eq!(cloned.socket_path, "/tmp/original.sock");
+    }
+
+    #[tokio::test]
+    async fn test_new_with_nonexistent_socket() {
+        // Set to a path that definitely doesn't exist
+        std::env::set_var("SONGBIRD_CRYPTO_SOCKET", "/tmp/nonexistent-socket-12345.sock");
+
+        let result = BeardogCryptoClient::new().await;
+
+        // Should fail because socket doesn't exist
+        assert!(result.is_err());
+
+        if let Err(e) = result {
+            let error_msg = format!("{:?}", e);
+            assert!(
+                error_msg.contains("Socket not found") || error_msg.contains("Could not discover")
+            );
+        }
+
+        // Cleanup
+        std::env::remove_var("SONGBIRD_CRYPTO_SOCKET");
+    }
+
+    #[test]
+    fn test_discover_socket_priority_order() {
+        // Test that Neural API has highest priority
+        std::env::set_var("NEURAL_API_SOCKET", "/tmp/neural-priority.sock");
+        std::env::set_var("NEURALS_SOCKET", "/tmp/neurals-priority.sock");
+        std::env::set_var("SONGBIRD_CRYPTO_SOCKET", "/tmp/songbird-priority.sock");
+        std::env::set_var("BEARDOG_CRYPTO_SOCKET", "/tmp/beardog-priority.sock");
+
+        let result = BeardogCryptoClient::discover_socket();
+        assert!(result.is_ok());
+
+        // Should use NEURAL_API_SOCKET (highest priority)
+        assert_eq!(result.unwrap(), "/tmp/neural-priority.sock");
+
+        // Cleanup
+        std::env::remove_var("NEURAL_API_SOCKET");
+        std::env::remove_var("NEURALS_SOCKET");
+        std::env::remove_var("SONGBIRD_CRYPTO_SOCKET");
+        std::env::remove_var("BEARDOG_CRYPTO_SOCKET");
+    }
+
+    #[test]
+    fn test_discover_socket_fallback_chain() {
+        // Test fallback when higher priority vars are not set
+        std::env::remove_var("NEURAL_API_SOCKET");
+        std::env::remove_var("NEURALS_SOCKET");
+        std::env::remove_var("SONGBIRD_CRYPTO_SOCKET");
+        std::env::set_var("BEARDOG_CRYPTO_SOCKET", "/tmp/fallback-test.sock");
+
+        let result = BeardogCryptoClient::discover_socket();
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap(), "/tmp/fallback-test.sock");
+
+        // Cleanup
+        std::env::remove_var("BEARDOG_CRYPTO_SOCKET");
+    }
+
     // Note: Integration tests with live BearDog are in tests/ directory
+    // These test actual crypto operations (keypair generation, ECDH, encryption, etc.)
 }

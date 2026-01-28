@@ -475,7 +475,7 @@ async fn test_adapter_new_various_endpoints() {
 #[tokio::test]
 async fn test_adapter_with_timeout() {
     let endpoint = "http://localhost:8082".to_string();
-    let adapter = AIAdapter::new(endpoint).await.expect("test precondition").await;
+    let adapter = AIAdapter::new(endpoint).await.expect("test precondition");
 
     let custom_timeout = Duration::from_secs(30);
     let _adapter_with_timeout = adapter.with_timeout(custom_timeout);
@@ -484,7 +484,7 @@ async fn test_adapter_with_timeout() {
 #[tokio::test]
 async fn test_adapter_endpoint_getter() {
     let endpoint = "http://ai-service:8082".to_string();
-    let adapter = AIAdapter::new(endpoint.clone()).expect("test precondition").await;
+    let adapter = AIAdapter::new(endpoint.clone()).await.expect("test precondition");
 
     assert_eq!(adapter.endpoint(), &endpoint);
 }

@@ -22,7 +22,9 @@ impl RedirectHandler {
     ///
     /// * `max_redirects` - Maximum number of redirects to follow
     pub fn new(max_redirects: usize) -> Self {
-        Self { max_redirects }
+        Self {
+            max_redirects,
+        }
     }
 
     /// Check if a status code indicates a redirect
@@ -90,9 +92,7 @@ impl RedirectHandler {
         }
 
         // If relative URL, use base URL's host
-        Uri::try_from(base_url)
-            .ok()
-            .and_then(|u| u.host().map(|h| h.to_string()))
+        Uri::try_from(base_url).ok().and_then(|u| u.host().map(|h| h.to_string()))
     }
 
     /// Resolve a redirect URL (handles relative and absolute URLs)
@@ -118,14 +118,12 @@ impl RedirectHandler {
         }
 
         // Parse base URL to get scheme and host
-        let base: Uri = base_url
-            .parse()
-            .map_err(|e| Error::InvalidUrl(format!("Invalid base URL: {}", e)))?;
+        let base: Uri =
+            base_url.parse().map_err(|e| Error::InvalidUrl(format!("Invalid base URL: {}", e)))?;
 
         let scheme = base.scheme_str().unwrap_or("https");
-        let host = base
-            .host()
-            .ok_or_else(|| Error::InvalidUrl("Missing host in base URL".to_string()))?;
+        let host =
+            base.host().ok_or_else(|| Error::InvalidUrl("Missing host in base URL".to_string()))?;
         let port = base.port_u16();
 
         // Build new URL
@@ -194,69 +192,61 @@ mod tests {
     #[test]
     fn test_resolve_absolute_url() {
         let handler = RedirectHandler::new(10);
-        let result = handler
-            .resolve_url("https://example.com/path", "https://other.com/new")
-            .unwrap();
+        let result =
+            handler.resolve_url("https://example.com/path", "https://other.com/new").unwrap();
         assert_eq!(result, "https://other.com/new");
     }
 
     #[test]
     fn test_resolve_absolute_path() {
         let handler = RedirectHandler::new(10);
-        let result = handler
-            .resolve_url("https://example.com/old/path", "/new/path")
-            .unwrap();
+        let result = handler.resolve_url("https://example.com/old/path", "/new/path").unwrap();
         assert_eq!(result, "https://example.com/new/path");
     }
 
     #[test]
     fn test_resolve_relative_path() {
         let handler = RedirectHandler::new(10);
-        let result = handler
-            .resolve_url("https://example.com/dir/page", "other")
-            .unwrap();
+        let result = handler.resolve_url("https://example.com/dir/page", "other").unwrap();
         assert_eq!(result, "https://example.com/dir/other");
     }
 
     #[test]
     fn test_extract_host() {
         let handler = RedirectHandler::new(10);
-        
+
         // Absolute URL
         assert_eq!(
             handler.extract_host("https://example.com/path", "https://base.com"),
             Some("example.com".to_string())
         );
-        
+
         // Relative path (uses base)
-        assert_eq!(
-            handler.extract_host("/path", "https://base.com"),
-            Some("base.com".to_string())
-        );
+        assert_eq!(handler.extract_host("/path", "https://base.com"), Some("base.com".to_string()));
     }
 
     #[test]
     fn test_should_follow() {
         let handler = RedirectHandler::new(5);
-        
+
         let mut headers = HashMap::new();
         headers.insert("location".to_string(), "/new".to_string());
-        
+
         let response = HttpResponse {
             status: 302,
             headers: headers.clone(),
             body: serde_json::json!(""),
         };
-        
+
         // Should follow with Follow mode
         assert!(handler.should_follow(&response, 0, &RedirectMode::Follow));
-        
+
         // Should not follow with None mode
         assert!(!handler.should_follow(&response, 0, &RedirectMode::None));
-        
+
         // Should not follow when max redirects reached
         assert!(!handler.should_follow(&response, 5, &RedirectMode::Follow));
-        
+
         // Should not follow non-redirect status
         let non_redirect = HttpResponse {
             status: 200,
@@ -269,26 +259,25 @@ mod tests {
     #[test]
     fn test_is_same_origin() {
         let handler = RedirectHandler::new(10);
-        
+
         // Same origin
         assert!(handler
             .is_same_origin("https://example.com/path1", "https://example.com/path2")
             .unwrap());
-        
+
         // Different host
         assert!(!handler
             .is_same_origin("https://example.com/path", "https://other.com/path")
             .unwrap());
-        
+
         // Different scheme
         assert!(!handler
             .is_same_origin("http://example.com/path", "https://example.com/path")
             .unwrap());
-        
+
         // Different port
         assert!(!handler
             .is_same_origin("https://example.com:8080/path", "https://example.com/path")
             .unwrap());
     }
 }
-

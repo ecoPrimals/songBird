@@ -45,6 +45,7 @@ pub struct AnonymousDiscoveryBroadcaster {
     port: u16,
 
     /// Multicast/broadcast addresses to send to
+    /// Includes multicast (224.0.0.251) + subnet broadcast fallback for cross-interface discovery
     broadcast_addresses: Vec<SocketAddr>,
 
     /// Known peer addresses for direct discovery (bypasses multicast)

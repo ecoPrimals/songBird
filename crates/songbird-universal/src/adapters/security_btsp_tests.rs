@@ -10,7 +10,7 @@ async fn test_call_generic_with_tarpc_endpoint() {
     // Test that call_generic works with tarpc endpoint
     // Note: tarpc requires valid IP:port format, not hostname
     let endpoint = "tarpc://127.0.0.1:9001".to_string();
-    let adapter = SecurityAdapter::new(endpoint);
+    let adapter = SecurityAdapter::new(endpoint).await;
 
     // Should successfully create adapter with tarpc protocol
     assert!(adapter.is_ok());
@@ -20,7 +20,7 @@ async fn test_call_generic_with_tarpc_endpoint() {
 async fn test_call_generic_with_json_rpc_endpoint() {
     // Test that call_generic works with JSON-RPC endpoint
     let endpoint = "unix:///tmp/test-security.sock".to_string();
-    let adapter = SecurityAdapter::new(endpoint);
+    let adapter = SecurityAdapter::new(endpoint).await;
 
     // Should successfully create adapter with JSON-RPC protocol
     assert!(adapter.is_ok());
@@ -30,7 +30,7 @@ async fn test_call_generic_with_json_rpc_endpoint() {
 async fn test_call_generic_with_http_endpoint() {
     // Test that call_generic works with HTTP endpoint
     let endpoint = "http://localhost:9000".to_string();
-    let adapter = SecurityAdapter::new(endpoint);
+    let adapter = SecurityAdapter::new(endpoint).await;
 
     // Should successfully create adapter with HTTP protocol
     assert!(adapter.is_ok());
@@ -172,7 +172,7 @@ async fn test_error_handling_timeout() {
     use std::time::Duration;
 
     let endpoint = "http://localhost:9999".to_string(); // Non-existent
-    let adapter = SecurityAdapter::new(endpoint).unwrap();
+    let adapter = SecurityAdapter::new(endpoint).await.unwrap();
     let adapter_with_short_timeout = adapter.with_timeout(Duration::from_millis(1));
 
     let params = json!({"test": "data"});
@@ -195,11 +195,11 @@ fn test_zero_hardcoding_principle() {
     assert!(code.contains("security provider") || code.contains("security_provider"));
 }
 
-#[test]
-fn test_modern_rust_async_await() {
+#[tokio::test]
+async fn test_modern_rust_async_await() {
     // Test that call_generic uses modern async/await (not callbacks)
     let endpoint = "http://localhost:9000".to_string();
-    let adapter = SecurityAdapter::new(endpoint);
+    let adapter = SecurityAdapter::new(endpoint).await;
 
     // Should successfully create adapter
     assert!(adapter.is_ok());

@@ -49,19 +49,20 @@ fn test_security_warning() -> SongbirdResult<()> {
     Ok(())
 }
 
-#[test]
-fn test_adapter_creation() -> Result<(), Box<dyn std::error::Error>> {
+#[tokio::test]
+async fn test_adapter_creation() -> Result<(), Box<dyn std::error::Error>> {
     let adapter =
-        SecurityAdapter::new("http://security-provider:8081".to_string()).map_err(|e| {
+        SecurityAdapter::new("http://security-provider:8081".to_string()).await.map_err(|e| {
             SongbirdError::configuration(format!("Adapter creation should succeed: {}", e))
         })?;
     assert_eq!(adapter.endpoint(), "http://security-provider:8081");
     Ok(())
 }
 
-#[test]
-fn test_adapter_with_timeout() -> Result<(), Box<dyn std::error::Error>> {
+#[tokio::test]
+async fn test_adapter_with_timeout() -> Result<(), Box<dyn std::error::Error>> {
     let adapter = SecurityAdapter::new("http://security-provider:8081".to_string())
+        .await
         .map_err(|e| {
             SongbirdError::configuration(format!("Adapter creation should succeed: {}", e))
         })?
@@ -94,10 +95,10 @@ fn test_security_health_critical_low_score() {
     );
 }
 
-#[test]
-fn test_security_adapter_endpoint_accessor() -> Result<(), Box<dyn std::error::Error>> {
+#[tokio::test]
+async fn test_security_adapter_endpoint_accessor() -> Result<(), Box<dyn std::error::Error>> {
     let endpoint = "http://test-security:9999".to_string();
-    let adapter = SecurityAdapter::new(endpoint.clone())?;
+    let adapter = SecurityAdapter::new(endpoint.clone()).await?;
     assert_eq!(adapter.endpoint(), &endpoint);
     Ok(())
 }
@@ -351,10 +352,10 @@ fn test_security_health_serialization() -> SongbirdResult<()> {
     Ok(())
 }
 
-#[test]
-fn test_adapter_endpoint_access() -> Result<(), Box<dyn std::error::Error>> {
+#[tokio::test]
+async fn test_adapter_endpoint_access() -> Result<(), Box<dyn std::error::Error>> {
     let endpoint = "http://test-security:9000";
-    let adapter = SecurityAdapter::new(endpoint.to_string()).map_err(|e| {
+    let adapter = SecurityAdapter::new(endpoint.to_string()).await.map_err(|e| {
         SongbirdError::configuration(format!("Adapter creation should succeed: {}", e))
     })?;
 
@@ -362,9 +363,10 @@ fn test_adapter_endpoint_access() -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
-#[test]
-fn test_adapter_timeout_configuration() -> Result<(), Box<dyn std::error::Error>> {
+#[tokio::test]
+async fn test_adapter_timeout_configuration() -> Result<(), Box<dyn std::error::Error>> {
     let adapter = SecurityAdapter::new("http://test:8080".to_string())
+        .await
         .map_err(|e| {
             SongbirdError::configuration(format!("Adapter creation should succeed: {}", e))
         })?
@@ -374,9 +376,9 @@ fn test_adapter_timeout_configuration() -> Result<(), Box<dyn std::error::Error>
     Ok(())
 }
 
-#[test]
-fn test_adapter_default_timeout() -> Result<(), Box<dyn std::error::Error>> {
-    let adapter = SecurityAdapter::new("http://test:8080".to_string()).map_err(|e| {
+#[tokio::test]
+async fn test_adapter_default_timeout() -> Result<(), Box<dyn std::error::Error>> {
+    let adapter = SecurityAdapter::new("http://test:8080".to_string()).await.map_err(|e| {
         SongbirdError::configuration(format!("Adapter creation should succeed: {}", e))
     })?;
 
@@ -419,17 +421,17 @@ fn test_security_metrics_max_values() {
     assert_eq!(metrics.health_status(), SecurityHealth::Critical, "Worst case should be Critical");
 }
 
-#[test]
-fn test_adapter_with_various_endpoints() {
+#[tokio::test]
+async fn test_adapter_with_various_endpoints() {
     // Test empty endpoint (currently accepted, may want to validate later)
-    let result = SecurityAdapter::new(String::new());
+    let result = SecurityAdapter::new(String::new()).await;
     assert!(result.is_ok(), "Empty endpoint creates adapter (validation could be added)");
 
     // Test various endpoint formats
-    let result = SecurityAdapter::new("http://localhost:8080".to_string());
+    let result = SecurityAdapter::new("http://localhost:8080".to_string()).await;
     assert!(result.is_ok(), "Valid HTTP endpoint should work");
 
-    let result = SecurityAdapter::new("https://security.example.com".to_string());
+    let result = SecurityAdapter::new("https://security.example.com".to_string()).await;
     assert!(result.is_ok(), "Valid HTTPS endpoint should work");
 }
 
@@ -651,9 +653,10 @@ fn test_auth_result_all_variants_unique() -> SongbirdResult<()> {
     Ok(())
 }
 
-#[test]
-fn test_adapter_chained_timeout_configuration() -> Result<(), Box<dyn std::error::Error>> {
+#[tokio::test]
+async fn test_adapter_chained_timeout_configuration() -> Result<(), Box<dyn std::error::Error>> {
     let adapter = SecurityAdapter::new("http://test:8080".to_string())
+        .await
         .map_err(|e| {
             SongbirdError::configuration(format!("Adapter creation should succeed: {}", e))
         })?
@@ -664,9 +667,10 @@ fn test_adapter_chained_timeout_configuration() -> Result<(), Box<dyn std::error
     Ok(())
 }
 
-#[test]
-fn test_adapter_zero_timeout() -> Result<(), Box<dyn std::error::Error>> {
+#[tokio::test]
+async fn test_adapter_zero_timeout() -> Result<(), Box<dyn std::error::Error>> {
     let adapter = SecurityAdapter::new("http://test:8080".to_string())
+        .await
         .map_err(|e| {
             SongbirdError::configuration(format!("Adapter creation should succeed: {}", e))
         })?
@@ -680,9 +684,10 @@ fn test_adapter_zero_timeout() -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
-#[test]
-fn test_adapter_very_long_timeout() -> Result<(), Box<dyn std::error::Error>> {
+#[tokio::test]
+async fn test_adapter_very_long_timeout() -> Result<(), Box<dyn std::error::Error>> {
     let adapter = SecurityAdapter::new("http://test:8080".to_string())
+        .await
         .map_err(|e| {
             SongbirdError::configuration(format!("Adapter creation should succeed: {}", e))
         })?
@@ -782,9 +787,9 @@ fn test_security_metrics_warning_score_0_69_with_50_attempts() -> SongbirdResult
     Ok(())
 }
 
-#[test]
-fn test_adapter_endpoint_with_trailing_slash() -> Result<(), Box<dyn std::error::Error>> {
-    let adapter = SecurityAdapter::new("http://security:8080/".to_string()).map_err(|e| {
+#[tokio::test]
+async fn test_adapter_endpoint_with_trailing_slash() -> Result<(), Box<dyn std::error::Error>> {
+    let adapter = SecurityAdapter::new("http://security:8080/".to_string()).await.map_err(|e| {
         SongbirdError::configuration(format!("Adapter creation should succeed: {}", e))
     })?;
 
@@ -792,9 +797,9 @@ fn test_adapter_endpoint_with_trailing_slash() -> Result<(), Box<dyn std::error:
     Ok(())
 }
 
-#[test]
-fn test_adapter_endpoint_with_path() -> Result<(), Box<dyn std::error::Error>> {
-    let adapter = SecurityAdapter::new("http://security:8080/api/v1".to_string()).map_err(|e| {
+#[tokio::test]
+async fn test_adapter_endpoint_with_path() -> Result<(), Box<dyn std::error::Error>> {
+    let adapter = SecurityAdapter::new("http://security:8080/api/v1".to_string()).await.map_err(|e| {
         SongbirdError::configuration(format!("Adapter creation should succeed: {}", e))
     })?;
 
@@ -866,9 +871,9 @@ fn test_security_metrics_with_score_above_1() -> SongbirdResult<()> {
     Ok(())
 }
 
-#[test]
-fn test_adapter_builder_pattern_immutability() -> Result<(), Box<dyn std::error::Error>> {
-    let adapter1 = SecurityAdapter::new("http://test:8080".to_string()).map_err(|e| {
+#[tokio::test]
+async fn test_adapter_builder_pattern_immutability() -> Result<(), Box<dyn std::error::Error>> {
+    let adapter1 = SecurityAdapter::new("http://test:8080".to_string()).await.map_err(|e| {
         SongbirdError::configuration(format!("Adapter creation should succeed: {}", e))
     })?;
 

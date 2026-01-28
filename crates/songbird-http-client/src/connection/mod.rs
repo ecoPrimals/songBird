@@ -7,4 +7,3 @@ pub mod https;
 
 pub use http::HttpConnection;
 pub use https::HttpsConnection;
-

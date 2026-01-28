@@ -396,19 +396,20 @@ mod tests {
         assert_eq!(metrics.health_status(), StorageHealth::Warning);
     }
 
-    #[test]
-    fn test_adapter_creation() -> Result<(), Box<dyn std::error::Error>> {
+    #[tokio::test]
+    async fn test_adapter_creation() -> Result<(), Box<dyn std::error::Error>> {
         let adapter =
-            StorageAdapter::new("http://storage-provider:8082".to_string()).map_err(|e| {
+            StorageAdapter::new("http://storage-provider:8082".to_string()).await.map_err(|e| {
                 SongbirdError::configuration(format!("Adapter creation should succeed: {}", e))
             })?;
         assert_eq!(adapter.endpoint(), "http://storage-provider:8082");
         Ok(())
     }
 
-    #[test]
-    fn test_adapter_with_timeout() -> Result<(), Box<dyn std::error::Error>> {
+    #[tokio::test]
+    async fn test_adapter_with_timeout() -> Result<(), Box<dyn std::error::Error>> {
         let adapter = StorageAdapter::new("http://storage-provider:8082".to_string())
+            .await
             .map_err(|e| {
                 SongbirdError::configuration(format!("Adapter creation should succeed: {}", e))
             })?
@@ -663,30 +664,32 @@ mod tests {
         Ok(())
     }
 
-    #[test]
-    fn test_adapter_default_timeout() -> SongbirdResult<()> {
+    #[tokio::test]
+    async fn test_adapter_default_timeout() -> SongbirdResult<()> {
         let adapter =
-            StorageAdapter::new("http://storage-service:8082".to_string()).map_err(|e| {
+            StorageAdapter::new("http://storage-service:8082".to_string()).await.map_err(|e| {
                 SongbirdError::configuration(format!("Adapter creation should succeed: {}", e))
             })?;
         assert_eq!(adapter.timeout, Duration::from_secs(5));
         Ok(())
     }
 
-    #[test]
-    fn test_adapter_endpoint_access() -> SongbirdResult<()> {
-        let adapter = StorageAdapter::new("http://test-storage:9000".to_string()).map_err(|e| {
-            SongbirdError::configuration(format!("Adapter creation should succeed: {}", e))
-        })?;
+    #[tokio::test]
+    async fn test_adapter_endpoint_access() -> SongbirdResult<()> {
+        let adapter =
+            StorageAdapter::new("http://test-storage:9000".to_string()).await.map_err(|e| {
+                SongbirdError::configuration(format!("Adapter creation should succeed: {}", e))
+            })?;
         assert_eq!(adapter.endpoint(), "http://test-storage:9000");
         Ok(())
     }
 
-    #[test]
-    fn test_adapter_debug_format() -> SongbirdResult<()> {
-        let adapter = StorageAdapter::new("http://storage:8082".to_string()).map_err(|e| {
-            SongbirdError::configuration(format!("Adapter creation should succeed: {}", e))
-        })?;
+    #[tokio::test]
+    async fn test_adapter_debug_format() -> SongbirdResult<()> {
+        let adapter =
+            StorageAdapter::new("http://storage:8082".to_string()).await.map_err(|e| {
+                SongbirdError::configuration(format!("Adapter creation should succeed: {}", e))
+            })?;
         let debug_str = format!("{:?}", adapter);
         assert!(debug_str.contains("StorageAdapter"));
         assert!(debug_str.contains("http://storage:8082"));
@@ -841,9 +844,10 @@ mod tests {
         assert!(debug_str.contains("Critical"));
     }
 
-    #[test]
-    fn test_adapter_chained_timeout() -> SongbirdResult<()> {
+    #[tokio::test]
+    async fn test_adapter_chained_timeout() -> SongbirdResult<()> {
         let adapter = StorageAdapter::new("http://storage:8082".to_string())
+            .await
             .map_err(|e| {
                 SongbirdError::configuration(format!("Adapter creation should succeed: {}", e))
             })?

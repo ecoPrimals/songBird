@@ -489,7 +489,7 @@ async fn test_adapter_new_various_endpoints() {
 #[tokio::test]
 async fn test_adapter_with_timeout() {
     let endpoint = "http://localhost:8080".to_string();
-    let adapter = ComputeAdapter::new(endpoint).await.expect("test precondition").await;
+    let adapter = ComputeAdapter::new(endpoint).await.expect("test precondition");
 
     let custom_timeout = Duration::from_secs(20);
     let _adapter_with_timeout = adapter.with_timeout(custom_timeout);
@@ -517,7 +517,7 @@ async fn test_adapter_with_various_timeouts() {
 #[tokio::test]
 async fn test_adapter_endpoint_getter() {
     let endpoint = "http://compute-service:8080".to_string();
-    let adapter = ComputeAdapter::new(endpoint.clone()).expect("test precondition").await;
+    let adapter = ComputeAdapter::new(endpoint.clone()).await.expect("test precondition");
 
     assert_eq!(adapter.endpoint(), &endpoint);
     assert_eq!(adapter.endpoint(), "http://compute-service:8080");

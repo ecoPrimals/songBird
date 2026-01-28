@@ -690,7 +690,10 @@ impl<T: Transport + 'static> BluetoothHost<T> {
     ///
     /// Returns error if device not connected
     pub async fn gatt_client(&self, address: Address) -> Result<GattClient<T>> {
-        let device = self.connections.read().await
+        let device = self
+            .connections
+            .read()
+            .await
             .get(&address)
             .ok_or_else(|| BluetoothError::device(format!("Device not connected: {address}")))?
             .clone();

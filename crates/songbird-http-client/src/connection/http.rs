@@ -130,4 +130,3 @@ mod tests {
     // Note: Integration tests for HttpConnection are in the main client tests
     // since they require actual TCP connections and servers
 }
-

@@ -57,7 +57,7 @@ async fn test_security_adapter_new_various_endpoints() {
 #[tokio::test]
 async fn test_security_adapter_with_timeout() {
     let endpoint = "http://localhost:8081".to_string();
-    let adapter = SecurityAdapter::new(endpoint).await.expect("test precondition").await;
+    let adapter = SecurityAdapter::new(endpoint).await.expect("test precondition");
 
     let custom_timeout = Duration::from_secs(15);
     let _adapter_with_timeout = adapter.with_timeout(custom_timeout);
@@ -87,7 +87,7 @@ async fn test_security_adapter_with_various_timeouts() {
 #[tokio::test]
 async fn test_security_adapter_endpoint_getter() {
     let endpoint = "http://security-provider:8081".to_string();
-    let adapter = SecurityAdapter::new(endpoint.clone()).expect("test precondition").await;
+    let adapter = SecurityAdapter::new(endpoint.clone()).await.expect("test precondition");
 
     assert_eq!(adapter.endpoint(), &endpoint);
     assert_eq!(adapter.endpoint(), "http://security-provider:8081");

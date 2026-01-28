@@ -29,10 +29,22 @@ impl Encode for Extension {
                 write_vec16(&mut data, key_data)?;
                 data
             }
-            Extension::ServerName(_name) => {
+            Extension::ServerName(name) => {
                 let mut data = Vec::new();
-                write_vec16(&mut data, &[])?; // Server name list
-                                              // TODO: Implement full SNI encoding
+                let name_bytes = name.as_bytes();
+
+                // SNI extension format (RFC 6066 Section 3):
+                // - Server name list length (u16)
+                // - Server name type (u8): 0x00 = host_name
+                // - Host name length (u16)
+                // - Host name bytes
+
+                // Server name list length = type (1) + length (2) + name bytes
+                write_u16(&mut data, (name_bytes.len() + 3) as u16);
+                write_u8(&mut data, 0x00); // Type: host_name
+                write_u16(&mut data, name_bytes.len() as u16);
+                data.extend_from_slice(name_bytes);
+
                 data
             }
             Extension::SignatureAlgorithms(algs) => {
@@ -66,7 +78,10 @@ impl Encode for Extension {
         4 + match self {
             Extension::SupportedVersions(v) => 1 + v.len() * 2,
             Extension::KeyShare(k) => 2 + 2 + k.len(),
-            Extension::ServerName(_) => 2,
+            Extension::ServerName(name) => {
+                // list_length (2) + type (1) + name_length (2) + name_bytes
+                2 + 1 + 2 + name.len()
+            }
             Extension::SignatureAlgorithms(a) => 2 + a.len() * 2,
             Extension::SupportedGroups(g) => 2 + g.len() * 2,
             Extension::Unknown {
@@ -385,5 +400,64 @@ mod tests {
         // Should contain: type (2) + length (2) + group (2) + key_length (2) + key_data
         assert!(buf.len() > 8);
         assert_eq!(&buf[0..2], &[0x00, 0x33]); // EXT_KEY_SHARE = 51
+    }
+
+    #[test]
+    fn test_extension_server_name_encode() {
+        // Test SNI encoding for "example.com"
+        let server_name = "example.com".to_string();
+        let ext = Extension::ServerName(server_name.clone());
+        let mut buf = Vec::new();
+        ext.encode(&mut buf).unwrap();
+
+        // Expected format (RFC 6066 Section 3):
+        // - Extension type (u16): 0x0000 (server_name)
+        // - Extension length (u16): list_length + 2
+        // - Server name list length (u16): type + name_length + name_bytes
+        // - Name type (u8): 0x00 (host_name)
+        // - Name length (u16): len("example.com") = 11
+        // - Name bytes: "example.com"
+
+        let name_bytes = server_name.as_bytes();
+        let expected_list_len = 1 + 2 + name_bytes.len(); // type (1) + length (2) + name
+        let expected_ext_len = 2 + expected_list_len; // list_length field (2) + list content
+
+        // Total: type (2) + ext_length (2) + list_length (2) + type (1) + name_length (2) + name
+        let expected_total = 2 + 2 + 2 + 1 + 2 + name_bytes.len();
+
+        assert_eq!(buf.len(), expected_total);
+
+        // Verify extension type (SNI = 0x0000)
+        assert_eq!(&buf[0..2], &[0x00, 0x00]);
+
+        // Verify extension length
+        let ext_len = u16::from_be_bytes([buf[2], buf[3]]) as usize;
+        assert_eq!(ext_len, expected_ext_len);
+
+        // Verify server name list length
+        let list_len = u16::from_be_bytes([buf[4], buf[5]]) as usize;
+        assert_eq!(list_len, expected_list_len);
+
+        // Verify name type (host_name = 0x00)
+        assert_eq!(buf[6], 0x00);
+
+        // Verify name length
+        let name_len = u16::from_be_bytes([buf[7], buf[8]]) as usize;
+        assert_eq!(name_len, name_bytes.len());
+
+        // Verify name bytes
+        assert_eq!(&buf[9..9 + name_bytes.len()], name_bytes);
+    }
+
+    #[test]
+    fn test_extension_server_name_encoded_size() {
+        let server_name = "example.com".to_string();
+        let ext = Extension::ServerName(server_name.clone());
+
+        let mut buf = Vec::new();
+        ext.encode(&mut buf).unwrap();
+
+        // Verify encoded_size() matches actual encoded length
+        assert_eq!(ext.encoded_size(), buf.len());
     }
 }

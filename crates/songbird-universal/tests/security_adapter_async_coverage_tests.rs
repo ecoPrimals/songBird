@@ -115,7 +115,7 @@ async fn test_collect_metrics_success() {
         .mount(&mock_server)
         .await;
 
-    let adapter = SecurityAdapter::new(mock_server.uri()).expect("test precondition");
+    let adapter = SecurityAdapter::new(mock_server.uri()).await.expect("test precondition");
     let metrics = adapter.collect_metrics().await;
 
     assert!(metrics.is_ok(), "Should collect metrics successfully");
@@ -130,6 +130,7 @@ async fn test_collect_metrics_success() {
 async fn test_collect_metrics_network_error() {
     // Use a non-existent endpoint to trigger network error
     let adapter = SecurityAdapter::new("http://localhost:1".to_string())
+        .await
         .expect("test precondition")
         .with_timeout(Duration::from_millis(100));
 
@@ -151,7 +152,7 @@ async fn test_collect_metrics_http_error() {
         .mount(&mock_server)
         .await;
 
-    let adapter = SecurityAdapter::new(mock_server.uri()).expect("test precondition");
+    let adapter = SecurityAdapter::new(mock_server.uri()).await.expect("test precondition");
     let result = adapter.collect_metrics().await;
 
     assert!(result.is_err(), "Should fail with HTTP error");
@@ -170,7 +171,7 @@ async fn test_collect_metrics_invalid_json() {
         .mount(&mock_server)
         .await;
 
-    let adapter = SecurityAdapter::new(mock_server.uri()).expect("test precondition");
+    let adapter = SecurityAdapter::new(mock_server.uri()).await.expect("test precondition");
     let result = adapter.collect_metrics().await;
 
     assert!(result.is_err(), "Should fail parsing invalid JSON");
@@ -195,7 +196,7 @@ async fn test_collect_metrics_missing_timestamp() {
         .mount(&mock_server)
         .await;
 
-    let adapter = SecurityAdapter::new(mock_server.uri()).expect("test precondition");
+    let adapter = SecurityAdapter::new(mock_server.uri()).await.expect("test precondition");
     let result = adapter.collect_metrics().await;
 
     assert!(result.is_ok(), "Should handle missing timestamp");
@@ -238,7 +239,7 @@ async fn test_verify_auth_authorized() {
         .mount(&mock_server)
         .await;
 
-    let adapter = SecurityAdapter::new(mock_server.uri()).expect("test precondition");
+    let adapter = SecurityAdapter::new(mock_server.uri()).await.expect("test precondition");
     let result = adapter.verify_auth("valid_token").await;
 
     assert!(result.is_ok(), "Should verify auth successfully");
@@ -256,7 +257,7 @@ async fn test_verify_auth_unauthorized() {
         .mount(&mock_server)
         .await;
 
-    let adapter = SecurityAdapter::new(mock_server.uri()).expect("test precondition");
+    let adapter = SecurityAdapter::new(mock_server.uri()).await.expect("test precondition");
     let result = adapter.verify_auth("invalid_token").await;
 
     assert!(result.is_ok(), "Should handle unauthorized gracefully");
@@ -274,7 +275,7 @@ async fn test_verify_auth_expired() {
         .mount(&mock_server)
         .await;
 
-    let adapter = SecurityAdapter::new(mock_server.uri()).expect("test precondition");
+    let adapter = SecurityAdapter::new(mock_server.uri()).await.expect("test precondition");
     let result = adapter.verify_auth("expired_token").await;
 
     assert!(result.is_ok(), "Should handle expired token");
@@ -292,7 +293,7 @@ async fn test_verify_auth_invalid() {
         .mount(&mock_server)
         .await;
 
-    let adapter = SecurityAdapter::new(mock_server.uri()).expect("test precondition");
+    let adapter = SecurityAdapter::new(mock_server.uri()).await.expect("test precondition");
     let result = adapter.verify_auth("malformed_token").await;
 
     assert!(result.is_ok(), "Should handle invalid token");
@@ -302,6 +303,7 @@ async fn test_verify_auth_invalid() {
 #[tokio::test]
 async fn test_verify_auth_network_error() {
     let adapter = SecurityAdapter::new("http://localhost:1".to_string())
+        .await
         .expect("test precondition")
         .with_timeout(Duration::from_millis(100));
 
@@ -320,7 +322,7 @@ async fn test_verify_auth_invalid_json_response() {
         .mount(&mock_server)
         .await;
 
-    let adapter = SecurityAdapter::new(mock_server.uri()).expect("test precondition");
+    let adapter = SecurityAdapter::new(mock_server.uri()).await.expect("test precondition");
     let result = adapter.verify_auth("token").await;
 
     assert!(result.is_err(), "Should fail parsing invalid JSON");
@@ -347,7 +349,7 @@ async fn test_check_health_healthy() {
         .mount(&mock_server)
         .await;
 
-    let adapter = SecurityAdapter::new(mock_server.uri()).expect("test precondition");
+    let adapter = SecurityAdapter::new(mock_server.uri()).await.expect("test precondition");
     let result = adapter.check_health().await;
 
     assert!(result.is_ok(), "Should check health successfully");
@@ -371,7 +373,7 @@ async fn test_check_health_warning() {
         .mount(&mock_server)
         .await;
 
-    let adapter = SecurityAdapter::new(mock_server.uri()).expect("test precondition");
+    let adapter = SecurityAdapter::new(mock_server.uri()).await.expect("test precondition");
     let result = adapter.check_health().await;
 
     assert!(result.is_ok(), "Should check health successfully");
@@ -395,7 +397,7 @@ async fn test_check_health_critical() {
         .mount(&mock_server)
         .await;
 
-    let adapter = SecurityAdapter::new(mock_server.uri()).expect("test precondition");
+    let adapter = SecurityAdapter::new(mock_server.uri()).await.expect("test precondition");
     let result = adapter.check_health().await;
 
     assert!(result.is_ok(), "Should check health successfully");
@@ -405,6 +407,7 @@ async fn test_check_health_critical() {
 #[tokio::test]
 async fn test_check_health_network_failure() {
     let adapter = SecurityAdapter::new("http://localhost:1".to_string())
+        .await
         .expect("test precondition")
         .with_timeout(Duration::from_millis(100));
 
@@ -435,7 +438,7 @@ async fn test_security_provider_collect_security_metrics() {
         .mount(&mock_server)
         .await;
 
-    let adapter = SecurityAdapter::new(mock_server.uri()).expect("test precondition");
+    let adapter = SecurityAdapter::new(mock_server.uri()).await.expect("test precondition");
 
     // Call trait method directly (SecurityAdapter implements SecurityProvider)
     let result = SecurityProvider::collect_security_metrics(&adapter).await;
@@ -454,7 +457,7 @@ async fn test_security_provider_verify_authentication() {
         .mount(&mock_server)
         .await;
 
-    let adapter = SecurityAdapter::new(mock_server.uri()).expect("test precondition");
+    let adapter = SecurityAdapter::new(mock_server.uri()).await.expect("test precondition");
 
     // Call trait method directly
     let result = SecurityProvider::verify_authentication(&adapter, "token").await;
@@ -478,7 +481,7 @@ async fn test_security_provider_check_security_health() {
         .mount(&mock_server)
         .await;
 
-    let adapter = SecurityAdapter::new(mock_server.uri()).expect("test precondition");
+    let adapter = SecurityAdapter::new(mock_server.uri()).await.expect("test precondition");
 
     // Call trait method directly
     let result = SecurityProvider::check_security_health(&adapter).await;
@@ -509,7 +512,7 @@ async fn test_collect_metrics_with_extra_fields() {
         .mount(&mock_server)
         .await;
 
-    let adapter = SecurityAdapter::new(mock_server.uri()).expect("test precondition");
+    let adapter = SecurityAdapter::new(mock_server.uri()).await.expect("test precondition");
     let result = adapter.collect_metrics().await;
 
     assert!(result.is_ok(), "Should handle extra fields gracefully");
@@ -530,7 +533,7 @@ async fn test_collect_metrics_with_various_status_codes() {
             .mount(&mock_server)
             .await;
 
-        let adapter = SecurityAdapter::new(mock_server.uri()).expect("test precondition");
+        let adapter = SecurityAdapter::new(mock_server.uri()).await.expect("test precondition");
         let result = adapter.collect_metrics().await;
 
         assert!(result.is_err(), "Should fail for status code {}", status_code);
@@ -550,7 +553,7 @@ async fn test_verify_auth_with_various_http_error_codes() {
             .mount(&mock_server)
             .await;
 
-        let adapter = SecurityAdapter::new(mock_server.uri()).expect("test precondition");
+        let adapter = SecurityAdapter::new(mock_server.uri()).await.expect("test precondition");
         let result = adapter.verify_auth("token").await;
 
         assert!(result.is_ok(), "Should return Unauthorized for status {}", status_code);

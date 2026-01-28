@@ -348,6 +348,236 @@ mod tests {
         assert!(ks.crypto_client.is_none());
     }
 
-    // Note: Full key schedule tests require BearDog integration
-    // These are in integration tests with live BearDog
+    // ========================================
+    // NEW COMPREHENSIVE KEY SCHEDULE TESTS
+    // Added: January 27, 2026 (Evening)
+    // Goal: Increase coverage from 12% → 70%
+    // ========================================
+
+    #[test]
+    fn test_key_schedule_initialization() {
+        let ks = KeySchedule::new();
+
+        // Initial secret should be 32 bytes (SHA-256 length)
+        assert_eq!(ks.current_secret.len(), 32);
+
+        // All bytes should be zeros initially (PSK = 0)
+        assert!(ks.current_secret.iter().all(|&b| b == 0));
+
+        // Transcript should be empty
+        assert!(ks.transcript_hash().is_empty());
+
+        // No crypto client initially
+        assert!(ks.crypto_client.is_none());
+
+        // No server secret key initially
+        assert!(ks.server_secret_key().is_none());
+    }
+
+    #[test]
+    fn test_set_crypto_client() {
+        let mut ks = KeySchedule::new();
+
+        // Create mock crypto client
+        let client = BeardogCryptoClient::with_socket_path("/tmp/test-ks.sock".to_string());
+
+        // Set client
+        ks.set_crypto_client(client);
+
+        // Should now have a crypto client
+        assert!(ks.crypto_client.is_some());
+    }
+
+    #[test]
+    fn test_set_and_get_server_secret_key() {
+        let mut ks = KeySchedule::new();
+
+        // Create test secret key (32 bytes for X25519)
+        let secret_key = vec![42u8; 32];
+
+        // Set secret key
+        ks.set_server_secret_key(secret_key.clone());
+
+        // Verify we can retrieve it
+        assert_eq!(ks.server_secret_key(), Some(secret_key.as_slice()));
+    }
+
+    #[test]
+    fn test_update_transcript_multiple_times() {
+        let mut ks = KeySchedule::new();
+
+        // Update transcript with multiple messages
+        ks.update_transcript(b"ClientHello");
+        ks.update_transcript(b"ServerHello");
+        ks.update_transcript(b"Certificate");
+
+        // Transcript should contain all messages concatenated
+        let expected = b"ClientHelloServerHelloCertificate";
+        assert_eq!(ks.transcript_hash(), expected);
+    }
+
+    #[test]
+    fn test_transcript_hash_empty_initially() {
+        let ks = KeySchedule::new();
+        assert!(ks.transcript_hash().is_empty());
+        assert_eq!(ks.transcript_hash().len(), 0);
+    }
+
+    #[test]
+    fn test_transcript_hash_preserves_data() {
+        let mut ks = KeySchedule::new();
+
+        let data = b"Test Data 12345";
+        ks.update_transcript(data);
+
+        assert_eq!(ks.transcript_hash(), data);
+    }
+
+    #[test]
+    fn test_default_trait() {
+        let ks = KeySchedule::default();
+
+        // Default should be same as new()
+        assert_eq!(ks.current_secret.len(), 32);
+        assert!(ks.transcript_hash().is_empty());
+        assert!(ks.crypto_client.is_none());
+    }
+
+    #[test]
+    fn test_current_secret_initial_state() {
+        let ks = KeySchedule::new();
+
+        // Current secret starts as all zeros (no PSK)
+        let expected_zeros = vec![0u8; 32];
+        assert_eq!(ks.current_secret, expected_zeros);
+    }
+
+    #[tokio::test]
+    async fn test_hkdf_extract_requires_crypto_client() {
+        let ks = KeySchedule::new();
+
+        let salt = b"test salt";
+        let ikm = b"input keying material";
+
+        // Should fail without crypto client
+        let result = ks.hkdf_extract(salt, ikm).await;
+        assert!(result.is_err());
+
+        // Error should mention crypto client
+        if let Err(e) = result {
+            assert!(format!("{:?}", e).contains("Crypto client not set"));
+        }
+    }
+
+    #[tokio::test]
+    async fn test_hkdf_expand_requires_crypto_client() {
+        let ks = KeySchedule::new();
+
+        let prk = vec![1u8; 32];
+        let info = b"test info";
+
+        // Should fail without crypto client
+        let result = ks.hkdf_expand(&prk, info, 32).await;
+        assert!(result.is_err());
+    }
+
+    #[tokio::test]
+    async fn test_derive_secret_requires_crypto_client() {
+        let ks = KeySchedule::new();
+
+        let secret = vec![1u8; 32];
+        let label = "test label";
+        let context = b"test context";
+
+        // Should fail without crypto client
+        let result = ks.derive_secret(&secret, label, context).await;
+        assert!(result.is_err());
+    }
+
+    #[tokio::test]
+    async fn test_compute_handshake_secret_requires_crypto_client() {
+        let mut ks = KeySchedule::new();
+
+        let ecdhe_secret = vec![2u8; 32];
+
+        // Should fail without crypto client
+        let result = ks.compute_handshake_secret(&ecdhe_secret).await;
+        assert!(result.is_err());
+    }
+
+    #[tokio::test]
+    async fn test_derive_handshake_traffic_keys_requires_crypto_client() {
+        let ks = KeySchedule::new();
+
+        // Should fail without crypto client
+        let result = ks.derive_handshake_traffic_keys().await;
+        assert!(result.is_err());
+    }
+
+    #[tokio::test]
+    async fn test_compute_master_secret_requires_crypto_client() {
+        let mut ks = KeySchedule::new();
+
+        // Should fail without crypto client
+        let result = ks.compute_master_secret().await;
+        assert!(result.is_err());
+    }
+
+    #[tokio::test]
+    async fn test_derive_application_traffic_keys_requires_crypto_client() {
+        let ks = KeySchedule::new();
+
+        // Should fail without crypto client
+        let result = ks.derive_application_traffic_keys().await;
+        assert!(result.is_err());
+    }
+
+    #[tokio::test]
+    async fn test_derive_traffic_keys_requires_crypto_client() {
+        let ks = KeySchedule::new();
+
+        let traffic_secret = vec![3u8; 32];
+
+        // Should fail without crypto client
+        let result = ks.derive_traffic_keys(&traffic_secret).await;
+        assert!(result.is_err());
+    }
+
+    #[tokio::test]
+    async fn test_compute_finished_verify_data_requires_crypto_client() {
+        let ks = KeySchedule::new();
+
+        let base_key = vec![4u8; 32];
+
+        // Should fail without crypto client
+        let result = ks.compute_finished_verify_data(&base_key).await;
+        assert!(result.is_err());
+
+        // Error should mention crypto client
+        if let Err(e) = result {
+            assert!(format!("{:?}", e).contains("Crypto client not set"));
+        }
+    }
+
+    #[test]
+    fn test_server_secret_key_none_initially() {
+        let ks = KeySchedule::new();
+        assert!(ks.server_secret_key().is_none());
+    }
+
+    #[test]
+    fn test_multiple_transcript_updates_order() {
+        let mut ks = KeySchedule::new();
+
+        // Add messages in order
+        ks.update_transcript(b"First");
+        ks.update_transcript(b"Second");
+        ks.update_transcript(b"Third");
+
+        // Order should be preserved
+        assert_eq!(ks.transcript_hash(), b"FirstSecondThird");
+    }
+
+    // Note: Full key schedule tests with live crypto operations require BearDog integration
+    // These are in integration tests with a live BearDog instance
 }
