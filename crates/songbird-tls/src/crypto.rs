@@ -48,48 +48,47 @@ impl BeardogCryptoClient {
     ///
     /// Uses capability-based discovery (TRUE PRIMAL pattern)
     fn discover_socket() -> Result<String> {
-        // Strategy 1: Neural API socket (TRUE PRIMAL pattern - production)
-        if let Ok(path) = std::env::var("NEURAL_API_SOCKET") {
-            return Ok(path);
+        use crate::socket_discovery::{discover_beardog_socket, discover_neural_api_socket};
+
+        // Strategy 1: Try BearDog socket (checks env vars + XDG + fallback)
+        // This includes BEARDOG_SOCKET, BEARDOG_CRYPTO_SOCKET, SONGBIRD_CRYPTO_SOCKET
+        let beardog_socket = discover_beardog_socket(None);
+        if Path::new(&beardog_socket).exists() {
+            tracing::info!("✅ Discovered BearDog socket: {}", beardog_socket);
+            return Ok(beardog_socket);
         }
 
-        if let Ok(path) = std::env::var("NEURALS_SOCKET") {
-            return Ok(path);
+        // Strategy 2: Try Neural API socket (checks env vars + XDG + fallback)
+        // This includes NEURAL_API_SOCKET, NEURALS_SOCKET
+        let neural_socket = discover_neural_api_socket(None);
+        if Path::new(&neural_socket).exists() {
+            tracing::info!("✅ Discovered Neural API socket: {}", neural_socket);
+            return Ok(neural_socket);
         }
 
-        // Strategy 2: Legacy fallback - direct BearDog (testing only)
-        if let Ok(path) = std::env::var("SONGBIRD_CRYPTO_SOCKET") {
-            return Ok(path);
-        }
-
-        if let Ok(path) = std::env::var("BEARDOG_CRYPTO_SOCKET") {
-            return Ok(path);
-        }
-
-        // Strategy 3: Default Neural API paths (production)
-        let neural_paths =
-            vec!["/tmp/neural-api.sock", "/tmp/neural-api-nat0.sock", "/var/run/neural-api/socket"];
-
-        for path in neural_paths {
-            if Path::new(path).exists() {
-                return Ok(path.to_string());
-            }
-        }
-
-        // Strategy 4: Legacy BearDog paths (testing fallback)
-        let default_paths = vec![
-            "/tmp/beardog-crypto.sock",
+        // Strategy 3: Legacy fallback paths (for backward compatibility)
+        let legacy_paths = vec![
+            "/var/run/neural-api/socket",
             "/var/run/beardog/crypto.sock",
             "/run/beardog/crypto.sock",
         ];
 
-        for path in default_paths {
+        for path in legacy_paths {
             if Path::new(path).exists() {
+                tracing::warn!("⚠️  Using legacy socket path: {}", path);
                 return Ok(path.to_string());
             }
         }
 
-        Err(TlsError::CryptoError("Could not discover Neural API or BearDog socket".to_string()))
+        Err(TlsError::CryptoError(format!(
+            "Could not discover BearDog or Neural API socket. Tried:\n\
+             - BearDog: {} (not found)\n\
+             - Neural API: {} (not found)\n\
+             - Legacy paths: /var/run/neural-api/socket, /var/run/beardog/crypto.sock (not found)\n\
+             \n\
+             Set one of: BEARDOG_SOCKET, NEURAL_API_SOCKET, or XDG_RUNTIME_DIR + FAMILY_ID",
+            beardog_socket, neural_socket
+        )))
     }
 
     /// Make a capability.call to Neural API (TRUE PRIMAL pattern)

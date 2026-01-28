@@ -63,6 +63,7 @@ pub mod key_schedule;
 pub mod messages;
 pub mod record_layer;
 pub mod server; // NEW: High-level server API
+pub mod socket_discovery; // NEW: XDG-compliant socket discovery
 
 // Error types
 pub mod error;
