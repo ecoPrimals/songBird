@@ -13,6 +13,11 @@
 //! - No hardcoded paths, only fallback defaults.
 //! - Uses `FAMILY_ID` for multi-instance support.
 //!
+//! ## Concurrency
+//! - Thread-safe: Uses dependency injection for env var reading
+//! - No global mutable state in tests
+//! - Fully concurrent test execution (no `#[ignore]` needed)
+//!
 //! ## Compatibility
 //! This is a duplicate of the socket_discovery module from songbird-http-client,
 //! kept separate to avoid circular dependencies between crates.
@@ -20,12 +25,63 @@
 use std::path::PathBuf;
 use tracing::{debug, trace, warn};
 
+/// Trait for reading environment variables (dependency injection for testing)
+pub trait EnvReader: Send + Sync {
+    /// Read an environment variable
+    fn var(&self, key: &str) -> Result<String, std::env::VarError>;
+}
+
+/// Real environment variable reader (production)
+#[derive(Debug, Clone, Copy)]
+pub struct SystemEnv;
+
+impl EnvReader for SystemEnv {
+    fn var(&self, key: &str) -> Result<String, std::env::VarError> {
+        std::env::var(key)
+    }
+}
+
+/// Mock environment variable reader for testing (thread-safe, no global state)
+#[cfg(test)]
+#[derive(Debug, Clone)]
+pub struct MockEnv {
+    vars: std::collections::HashMap<String, String>,
+}
+
+#[cfg(test)]
+impl MockEnv {
+    pub fn new() -> Self {
+        Self {
+            vars: std::collections::HashMap::new(),
+        }
+    }
+
+    pub fn set(mut self, key: impl Into<String>, value: impl Into<String>) -> Self {
+        self.vars.insert(key.into(), value.into());
+        self
+    }
+}
+
+#[cfg(test)]
+impl EnvReader for MockEnv {
+    fn var(&self, key: &str) -> Result<String, std::env::VarError> {
+        self.vars
+            .get(key)
+            .cloned()
+            .ok_or(std::env::VarError::NotPresent)
+    }
+}
+
 /// Discover an XDG-compliant socket path for a given primal.
 ///
 /// Constructs a path like `/run/user/<UID>/biomeos/<primal>-<family_id>.sock`
 /// if `XDG_RUNTIME_DIR` and `FAMILY_ID` are set.
-fn discover_xdg_socket(primal_name: &str, family_id: &str) -> Option<String> {
-    if let Ok(runtime_dir) = std::env::var("XDG_RUNTIME_DIR") {
+fn discover_xdg_socket_with_env(
+    primal_name: &str,
+    family_id: &str,
+    env: &impl EnvReader,
+) -> Option<String> {
+    if let Ok(runtime_dir) = env.var("XDG_RUNTIME_DIR") {
         let path = PathBuf::from(runtime_dir)
             .join("biomeos")
             .join(format!("{}-{}.sock", primal_name, family_id));
@@ -42,14 +98,11 @@ fn discover_xdg_socket(primal_name: &str, family_id: &str) -> Option<String> {
     None
 }
 
-/// Discover the BearDog socket path.
-///
-/// Prioritizes:
-/// 1. `explicit_path` (from CLI)
-/// 2. `BEARDOG_SOCKET` or `BEARDOG_CRYPTO_SOCKET` env vars
-/// 3. XDG_RUNTIME_DIR + `FAMILY_ID`
-/// 4. `/tmp/beardog-nat0.sock` (fallback)
-pub fn discover_beardog_socket(explicit_path: Option<&PathBuf>) -> String {
+/// Internal: Discover the BearDog socket path with custom env reader (for testing)
+fn discover_beardog_socket_with_env(
+    explicit_path: Option<&PathBuf>,
+    env: &impl EnvReader,
+) -> String {
     if let Some(path) = explicit_path {
         let path_str = path.to_string_lossy().into_owned();
         debug!("Using explicit BearDog socket path: {}", path_str);
@@ -57,14 +110,14 @@ pub fn discover_beardog_socket(explicit_path: Option<&PathBuf>) -> String {
     }
 
     // Check both BEARDOG_SOCKET and BEARDOG_CRYPTO_SOCKET for TLS compatibility
-    if let Ok(env_path) = std::env::var("BEARDOG_SOCKET") {
+    if let Ok(env_path) = env.var("BEARDOG_SOCKET") {
         if !env_path.is_empty() {
             debug!("Using BEARDOG_SOCKET env var: {}", env_path);
             return env_path;
         }
     }
 
-    if let Ok(env_path) = std::env::var("BEARDOG_CRYPTO_SOCKET") {
+    if let Ok(env_path) = env.var("BEARDOG_CRYPTO_SOCKET") {
         if !env_path.is_empty() {
             debug!("Using BEARDOG_CRYPTO_SOCKET env var: {}", env_path);
             return env_path;
@@ -72,15 +125,15 @@ pub fn discover_beardog_socket(explicit_path: Option<&PathBuf>) -> String {
     }
 
     // Also check SONGBIRD_CRYPTO_SOCKET for backward compatibility
-    if let Ok(env_path) = std::env::var("SONGBIRD_CRYPTO_SOCKET") {
+    if let Ok(env_path) = env.var("SONGBIRD_CRYPTO_SOCKET") {
         if !env_path.is_empty() {
             debug!("Using SONGBIRD_CRYPTO_SOCKET env var: {}", env_path);
             return env_path;
         }
     }
 
-    if let Ok(family_id) = std::env::var("FAMILY_ID") {
-        if let Some(xdg_path) = discover_xdg_socket("beardog", &family_id) {
+    if let Ok(family_id) = env.var("FAMILY_ID") {
+        if let Some(xdg_path) = discover_xdg_socket_with_env("beardog", &family_id, env) {
             return xdg_path;
         }
     }
@@ -90,36 +143,44 @@ pub fn discover_beardog_socket(explicit_path: Option<&PathBuf>) -> String {
     fallback
 }
 
-/// Discover the Neural API socket path.
+/// Discover the BearDog socket path (production API).
 ///
 /// Prioritizes:
 /// 1. `explicit_path` (from CLI)
-/// 2. `NEURAL_API_SOCKET` or `NEURALS_SOCKET` env vars
+/// 2. `BEARDOG_SOCKET` or `BEARDOG_CRYPTO_SOCKET` env vars
 /// 3. XDG_RUNTIME_DIR + `FAMILY_ID`
-/// 4. `/tmp/neural-api-nat0.sock` (fallback)
-pub fn discover_neural_api_socket(explicit_path: Option<&PathBuf>) -> String {
+/// 4. `/tmp/beardog-nat0.sock` (fallback)
+pub fn discover_beardog_socket(explicit_path: Option<&PathBuf>) -> String {
+    discover_beardog_socket_with_env(explicit_path, &SystemEnv)
+}
+
+/// Internal: Discover the Neural API socket path with custom env reader (for testing)
+fn discover_neural_api_socket_with_env(
+    explicit_path: Option<&PathBuf>,
+    env: &impl EnvReader,
+) -> String {
     if let Some(path) = explicit_path {
         let path_str = path.to_string_lossy().into_owned();
         debug!("Using explicit Neural API socket path: {}", path_str);
         return path_str;
     }
 
-    if let Ok(env_path) = std::env::var("NEURAL_API_SOCKET") {
+    if let Ok(env_path) = env.var("NEURAL_API_SOCKET") {
         if !env_path.is_empty() {
             debug!("Using NEURAL_API_SOCKET env var: {}", env_path);
             return env_path;
         }
     }
 
-    if let Ok(env_path) = std::env::var("NEURALS_SOCKET") {
+    if let Ok(env_path) = env.var("NEURALS_SOCKET") {
         if !env_path.is_empty() {
             debug!("Using NEURALS_SOCKET env var: {}", env_path);
             return env_path;
         }
     }
 
-    if let Ok(family_id) = std::env::var("FAMILY_ID") {
-        if let Some(xdg_path) = discover_xdg_socket("neural-api", &family_id) {
+    if let Ok(family_id) = env.var("FAMILY_ID") {
+        if let Some(xdg_path) = discover_xdg_socket_with_env("neural-api", &family_id, env) {
             return xdg_path;
         }
     }
@@ -129,10 +190,20 @@ pub fn discover_neural_api_socket(explicit_path: Option<&PathBuf>) -> String {
     fallback
 }
 
+/// Discover the Neural API socket path (production API).
+///
+/// Prioritizes:
+/// 1. `explicit_path` (from CLI)
+/// 2. `NEURAL_API_SOCKET` or `NEURALS_SOCKET` env vars
+/// 3. XDG_RUNTIME_DIR + `FAMILY_ID`
+/// 4. `/tmp/neural-api-nat0.sock` (fallback)
+pub fn discover_neural_api_socket(explicit_path: Option<&PathBuf>) -> String {
+    discover_neural_api_socket_with_env(explicit_path, &SystemEnv)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::env;
     use std::fs;
     use std::path::Path;
 
@@ -144,148 +215,169 @@ mod tests {
         fs::File::create(path).unwrap();
     }
 
+    // ============================================================================
+    // ✅ ALL TESTS BELOW RUN CONCURRENTLY!
+    // ============================================================================
+    //
+    // These tests use dependency injection (MockEnv) instead of modifying global
+    // environment variables, making them fully thread-safe and concurrent.
+    //
+    // This is the idiomatic Rust approach: no shared mutable state, no #[ignore],
+    // no sleep(), no serial execution. Just pure concurrent correctness.
+    // ============================================================================
+
     #[test]
     fn test_explicit_path_priority() {
+        let env = MockEnv::new(); // Empty env, explicit path takes priority
+
         let custom_path = PathBuf::from("/custom/explicit/beardog.sock");
-        let discovered = discover_beardog_socket(Some(&custom_path));
+        let discovered = discover_beardog_socket_with_env(Some(&custom_path), &env);
         assert_eq!(discovered, "/custom/explicit/beardog.sock");
 
         let custom_path = PathBuf::from("/custom/explicit/neural.sock");
-        let discovered = discover_neural_api_socket(Some(&custom_path));
+        let discovered = discover_neural_api_socket_with_env(Some(&custom_path), &env);
         assert_eq!(discovered, "/custom/explicit/neural.sock");
     }
 
     #[test]
     fn test_env_var_priority_beardog() {
-        env::remove_var("BEARDOG_SOCKET");
-        env::remove_var("BEARDOG_CRYPTO_SOCKET");
-        env::remove_var("SONGBIRD_CRYPTO_SOCKET");
-        env::remove_var("XDG_RUNTIME_DIR");
-        env::remove_var("FAMILY_ID");
-
-        env::set_var("BEARDOG_SOCKET", "/env/beardog.sock");
-        let discovered = discover_beardog_socket(None);
+        // Test BEARDOG_SOCKET priority
+        let env = MockEnv::new().set("BEARDOG_SOCKET", "/env/beardog.sock");
+        let discovered = discover_beardog_socket_with_env(None, &env);
         assert_eq!(discovered, "/env/beardog.sock");
-        env::remove_var("BEARDOG_SOCKET");
 
-        env::set_var("BEARDOG_CRYPTO_SOCKET", "/env/beardog-crypto.sock");
-        let discovered = discover_beardog_socket(None);
+        // Test BEARDOG_CRYPTO_SOCKET priority (when BEARDOG_SOCKET not set)
+        let env = MockEnv::new().set("BEARDOG_CRYPTO_SOCKET", "/env/beardog-crypto.sock");
+        let discovered = discover_beardog_socket_with_env(None, &env);
         assert_eq!(discovered, "/env/beardog-crypto.sock");
-        env::remove_var("BEARDOG_CRYPTO_SOCKET");
 
-        env::set_var("SONGBIRD_CRYPTO_SOCKET", "/env/songbird-crypto.sock");
-        let discovered = discover_beardog_socket(None);
+        // Test SONGBIRD_CRYPTO_SOCKET priority (when others not set)
+        let env = MockEnv::new().set("SONGBIRD_CRYPTO_SOCKET", "/env/songbird-crypto.sock");
+        let discovered = discover_beardog_socket_with_env(None, &env);
         assert_eq!(discovered, "/env/songbird-crypto.sock");
-        env::remove_var("SONGBIRD_CRYPTO_SOCKET");
+
+        // Test priority order: BEARDOG_SOCKET > BEARDOG_CRYPTO_SOCKET
+        let env = MockEnv::new()
+            .set("BEARDOG_SOCKET", "/env/beardog.sock")
+            .set("BEARDOG_CRYPTO_SOCKET", "/env/beardog-crypto.sock");
+        let discovered = discover_beardog_socket_with_env(None, &env);
+        assert_eq!(discovered, "/env/beardog.sock");
     }
 
     #[test]
     fn test_env_var_priority_neural() {
-        env::remove_var("NEURAL_API_SOCKET");
-        env::remove_var("NEURALS_SOCKET");
-        env::remove_var("XDG_RUNTIME_DIR");
-        env::remove_var("FAMILY_ID");
-
-        env::set_var("NEURAL_API_SOCKET", "/env/neural.sock");
-        let discovered = discover_neural_api_socket(None);
+        // Test NEURAL_API_SOCKET priority
+        let env = MockEnv::new().set("NEURAL_API_SOCKET", "/env/neural.sock");
+        let discovered = discover_neural_api_socket_with_env(None, &env);
         assert_eq!(discovered, "/env/neural.sock");
-        env::remove_var("NEURAL_API_SOCKET");
 
-        env::set_var("NEURALS_SOCKET", "/env/neurals.sock");
-        let discovered = discover_neural_api_socket(None);
+        // Test NEURALS_SOCKET priority (when NEURAL_API_SOCKET not set)
+        let env = MockEnv::new().set("NEURALS_SOCKET", "/env/neurals.sock");
+        let discovered = discover_neural_api_socket_with_env(None, &env);
         assert_eq!(discovered, "/env/neurals.sock");
-        env::remove_var("NEURALS_SOCKET");
+
+        // Test priority order: NEURAL_API_SOCKET > NEURALS_SOCKET
+        let env = MockEnv::new()
+            .set("NEURAL_API_SOCKET", "/env/neural.sock")
+            .set("NEURALS_SOCKET", "/env/neurals.sock");
+        let discovered = discover_neural_api_socket_with_env(None, &env);
+        assert_eq!(discovered, "/env/neural.sock");
     }
 
     #[test]
     fn test_xdg_path_construction() {
-        env::remove_var("BEARDOG_SOCKET");
-        env::remove_var("BEARDOG_CRYPTO_SOCKET");
-        env::remove_var("SONGBIRD_CRYPTO_SOCKET");
-        env::remove_var("NEURAL_API_SOCKET");
-        env::remove_var("NEURALS_SOCKET");
+        // Thread-safe test using MockEnv (no global state modification)
+        use std::sync::atomic::{AtomicU32, Ordering};
+        static TEST_COUNTER: AtomicU32 = AtomicU32::new(0);
+        let test_id = TEST_COUNTER.fetch_add(1, Ordering::SeqCst);
 
-        env::set_var("XDG_RUNTIME_DIR", "/tmp/test_xdg_runtime_tls");
-        env::set_var("FAMILY_ID", "testfam");
+        let test_dir = format!("/tmp/test_xdg_runtime_tls_{}", test_id);
+        let family_id = format!("testfam_{}", test_id);
 
-        let beardog_xdg_path = PathBuf::from("/tmp/test_xdg_runtime_tls/biomeos/beardog-testfam.sock");
+        let env = MockEnv::new()
+            .set("XDG_RUNTIME_DIR", &test_dir)
+            .set("FAMILY_ID", &family_id);
+
+        let beardog_xdg_path = PathBuf::from(format!("{}/biomeos/beardog-{}.sock", test_dir, family_id));
         create_dummy_socket(&beardog_xdg_path);
 
-        let discovered = discover_beardog_socket(None);
+        let discovered = discover_beardog_socket_with_env(None, &env);
         assert_eq!(discovered, beardog_xdg_path.to_string_lossy().into_owned());
 
-        let neural_xdg_path =
-            PathBuf::from("/tmp/test_xdg_runtime_tls/biomeos/neural-api-testfam.sock");
+        let neural_xdg_path = PathBuf::from(format!("{}/biomeos/neural-api-{}.sock", test_dir, family_id));
         create_dummy_socket(&neural_xdg_path);
 
-        let discovered = discover_neural_api_socket(None);
+        let discovered = discover_neural_api_socket_with_env(None, &env);
         assert_eq!(discovered, neural_xdg_path.to_string_lossy().into_owned());
 
+        // Cleanup
         fs::remove_file(&beardog_xdg_path).unwrap();
         fs::remove_file(&neural_xdg_path).unwrap();
-        fs::remove_dir_all("/tmp/test_xdg_runtime_tls/biomeos").unwrap();
-        fs::remove_dir_all("/tmp/test_xdg_runtime_tls").unwrap();
-        env::remove_var("XDG_RUNTIME_DIR");
-        env::remove_var("FAMILY_ID");
+        fs::remove_dir_all(format!("{}/biomeos", test_dir)).unwrap();
+        fs::remove_dir_all(&test_dir).unwrap();
     }
 
     #[test]
     fn test_legacy_fallback() {
-        // Ensure no env vars or XDG_RUNTIME_DIR are set
-        env::remove_var("BEARDOG_SOCKET");
-        env::remove_var("BEARDOG_CRYPTO_SOCKET");
-        env::remove_var("SONGBIRD_CRYPTO_SOCKET");
-        env::remove_var("NEURAL_API_SOCKET");
-        env::remove_var("NEURALS_SOCKET");
-        env::remove_var("XDG_RUNTIME_DIR");
-        env::remove_var("FAMILY_ID");
+        // Thread-safe test using MockEnv with empty environment
+        let env = MockEnv::new(); // No env vars set
 
-        let discovered = discover_beardog_socket(None);
+        let discovered = discover_beardog_socket_with_env(None, &env);
         assert_eq!(discovered, "/tmp/beardog-nat0.sock");
 
-        let discovered = discover_neural_api_socket(None);
+        let discovered = discover_neural_api_socket_with_env(None, &env);
         assert_eq!(discovered, "/tmp/neural-api-nat0.sock");
     }
 
     #[test]
-    #[ignore] // Run with: cargo test --package songbird-tls test_empty_env_var_ignored -- --ignored --test-threads=1
     fn test_empty_env_var_ignored() {
-        // NOTE: This test modifies environment variables and may fail when run in parallel
-        // with other tests due to env var sharing. Run with --test-threads=1 for reliable results.
+        // ✅ NO MORE #[ignore]! This test now runs concurrently!
+        // Thread-safe test using MockEnv - no global state modification
         use std::sync::atomic::{AtomicU32, Ordering};
         static TEST_COUNTER: AtomicU32 = AtomicU32::new(0);
         let test_id = TEST_COUNTER.fetch_add(1, Ordering::SeqCst);
-        
-        // Clear all related env vars first
-        env::remove_var("BEARDOG_SOCKET");
-        env::remove_var("BEARDOG_CRYPTO_SOCKET");
-        env::remove_var("SONGBIRD_CRYPTO_SOCKET");
-        env::remove_var("NEURAL_API_SOCKET");
-        env::remove_var("NEURALS_SOCKET");
-        env::remove_var("XDG_RUNTIME_DIR");
-        env::remove_var("FAMILY_ID");
 
         let test_dir = format!("/tmp/test_xdg_runtime_empty_tls_{}", test_id);
         let family_id = format!("testfam_empty_{}", test_id);
 
-        // Set empty BEARDOG_SOCKET (should be ignored)
-        env::set_var("BEARDOG_SOCKET", "");
-        env::set_var("XDG_RUNTIME_DIR", &test_dir);
-        env::set_var("FAMILY_ID", &family_id);
+        // Empty BEARDOG_SOCKET should be ignored, XDG should be used
+        let env = MockEnv::new()
+            .set("BEARDOG_SOCKET", "") // Empty - should be ignored
+            .set("XDG_RUNTIME_DIR", &test_dir)
+            .set("FAMILY_ID", &family_id);
 
-        let beardog_xdg_path =
-            PathBuf::from(format!("{}/biomeos/beardog-{}.sock", test_dir, family_id));
+        let beardog_xdg_path = PathBuf::from(format!("{}/biomeos/beardog-{}.sock", test_dir, family_id));
         create_dummy_socket(&beardog_xdg_path);
 
-        let discovered = discover_beardog_socket(None);
+        let discovered = discover_beardog_socket_with_env(None, &env);
         assert_eq!(discovered, beardog_xdg_path.to_string_lossy().into_owned());
 
+        // Cleanup
         fs::remove_file(&beardog_xdg_path).unwrap();
         fs::remove_dir_all(format!("{}/biomeos", test_dir)).unwrap();
         fs::remove_dir_all(&test_dir).unwrap();
-        env::remove_var("BEARDOG_SOCKET");
-        env::remove_var("XDG_RUNTIME_DIR");
-        env::remove_var("FAMILY_ID");
+    }
+
+    #[test]
+    fn test_concurrent_discovery() {
+        // ✅ NEW TEST: Demonstrates true concurrent execution!
+        // Multiple threads discovering sockets simultaneously with no race conditions
+        use std::thread;
+
+        let handles: Vec<_> = (0..10)
+            .map(|i| {
+                thread::spawn(move || {
+                    let env = MockEnv::new()
+                        .set("BEARDOG_SOCKET", format!("/env/beardog-{}.sock", i));
+                    let discovered = discover_beardog_socket_with_env(None, &env);
+                    assert_eq!(discovered, format!("/env/beardog-{}.sock", i));
+                })
+            })
+            .collect();
+
+        for handle in handles {
+            handle.join().unwrap();
+        }
     }
 }
 
