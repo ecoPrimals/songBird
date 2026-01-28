@@ -179,6 +179,9 @@ impl HttpHandler {
     /// - Network error occurs
     /// - TLS handshake fails
     pub async fn handle_request(&self, params: Value) -> Result<Value, JsonRpcError> {
+        // DEBUG: Log incoming params (Issue #1 & #2 investigation - Jan 28, 2026)
+        tracing::info!("🔍 handle_request → params: {}", serde_json::to_string(&params).unwrap_or_else(|_| "invalid json".to_string()));
+        
         // 1. Parse parameters
         let method_str = params
             .get("method")
@@ -200,6 +203,9 @@ impl HttpHandler {
                     .collect()
             })
             .unwrap_or_default();
+        
+        // DEBUG: Log parsed headers (Issue #1 & #2 investigation - Jan 28, 2026)
+        tracing::info!("🔍 handle_request → method: {}, url: {}, headers: {:?}", method_str, url, headers);
 
         // Parse body (optional, base64-encoded)
         let body = params
@@ -274,8 +280,15 @@ impl HttpHandler {
     ///
     /// Returns error if request fails
     pub async fn handle_post(&self, params: Value) -> Result<Value, JsonRpcError> {
+        // DEBUG: Log http.post invocation (Issue #1 investigation - Jan 28, 2026)
+        tracing::info!("🔍 handle_post → incoming params: {}", serde_json::to_string(&params).unwrap_or_else(|_| "invalid json".to_string()));
+        
         let mut req_params = params;
         req_params["method"] = json!("POST");
+        
+        // DEBUG: Log modified params (Issue #1 investigation - Jan 28, 2026)
+        tracing::info!("🔍 handle_post → modified params: {}", serde_json::to_string(&req_params).unwrap_or_else(|_| "invalid json".to_string()));
+        
         self.handle_request(req_params).await
     }
 

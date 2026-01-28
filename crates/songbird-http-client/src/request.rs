@@ -67,6 +67,10 @@ impl RequestBuilder {
         // Get merged headers from config (defaults + domain rules + caller overrides)
         let headers = config.headers_for_domain(host, caller_headers);
 
+        // DEBUG: Log caller headers vs merged headers (Issue #2 investigation - Jan 28, 2026)
+        tracing::info!("🔍 RequestBuilder → caller_headers: {:?}", caller_headers);
+        tracing::info!("🔍 RequestBuilder → merged_headers: {:?}", headers);
+
         // Log applied headers for debugging
         Self::log_header_application(config, host, &headers);
 
@@ -75,6 +79,20 @@ impl RequestBuilder {
 
         // Write body with Content-Length if present
         Self::write_body(&mut request, body)?;
+
+        // DEBUG: Log final HTTP request (Issue #2 investigation - Jan 28, 2026)
+        if let Ok(request_str) = std::str::from_utf8(&request) {
+            let lines: Vec<&str> = request_str.lines().collect();
+            tracing::info!("🔍 Final HTTP request ({} lines):", lines.len());
+            for (i, line) in lines.iter().enumerate() {
+                if i < 20 { // Log first 20 lines to avoid flooding logs
+                    tracing::info!("  {}: {}", i+1, line);
+                }
+            }
+            if lines.len() > 20 {
+                tracing::info!("  ... ({} more lines)", lines.len() - 20);
+            }
+        }
 
         Ok(request)
     }
@@ -113,6 +131,13 @@ impl RequestBuilder {
         // Sort headers for deterministic output
         let mut header_pairs: Vec<_> = headers.iter().collect();
         header_pairs.sort_by(|a, b| a.0.cmp(b.0));
+
+        // DEBUG: Log each header being written (Issue #2 investigation - Jan 28, 2026)
+        for (key, value) in &header_pairs {
+            if !key.eq_ignore_ascii_case("host") {
+                tracing::debug!("🔍 Writing header: {}: {}", key, value);
+            }
+        }
 
         for (key, value) in header_pairs {
             // Skip Host (already written)
