@@ -43,11 +43,29 @@ pub async fn start_http_server(
 
     // ✅ TLS support (Dec 17, 2025) - ENABLED BY DEFAULT (fail-secure)
     // Set SONGBIRD_TLS_ENABLED=false to explicitly opt-out (e.g., for local dev)
+    // ✅ EVOLUTION (Jan 29, 2026): Graceful degradation - fall back to HTTP if TLS fails
     let tls_enabled = SafeEnv::get_bool("SONGBIRD_TLS_ENABLED", true);
 
     if tls_enabled {
         info!("🔐 TLS enabled - configuring HTTPS server (fail-secure by default)");
-        start_https_server(app, listener, actual_addr).await?;
+        match start_https_server(app.clone(), listener, actual_addr).await {
+            Ok(()) => {
+                info!("✅ HTTPS server started successfully");
+            }
+            Err(e) => {
+                // ✅ GRACEFUL DEGRADATION: If HTTPS fails (e.g., BearDog unavailable),
+                // fall back to plain HTTP so the server still starts
+                warn!("⚠️  HTTPS server failed to start: {}", e);
+                warn!("   Most likely cause: BearDog crypto provider not available");
+                warn!("   DEGRADING TO PLAIN HTTP (insecure, but functional)");
+                warn!("   To resolve: Start BearDog or set SONGBIRD_TLS_ENABLED=false");
+                
+                // Rebind the port since the listener was consumed
+                let (fallback_listener, fallback_addr) = bind_with_fallback(&bind_addr).await?;
+                info!("🌐 HTTP server (fallback) listening on {}", fallback_addr);
+                start_http_server_plain(app, fallback_listener).await?;
+            }
+        }
     } else {
         warn!("⚠️  TLS DISABLED - Using plain HTTP (insecure)");
         warn!("   This should only be used for local development on trusted networks");
