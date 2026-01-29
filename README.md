@@ -1,10 +1,10 @@
 # 🐦 Songbird - Network Orchestration & Discovery Primal
 
-**Version**: v8.16.0 - **🦀 100% Pure Rust - TRUE ecoBin ACHIEVED!** 🏆  
-**Status**: 🎉 **PRODUCTION READY** - Complete Dark Forest Protocol!  
+**Version**: v8.17.0 - **🦀 100% Pure Rust - TRUE ecoBin ACHIEVED!** 🏆  
+**Status**: 🎉 **PRODUCTION READY** - Complete Dark Forest + TCP Gateway Fix!  
 **Architecture**: UniBin ✅ | TRUE ecoBin (100%!) ✅ | Pure Rust ✅ | Zero Unsafe* ✅ | Release Build Clean ✅  
 **TLS 1.3 Client**: 🎊 **93% SUCCESS** | 81/87 sites validated by biomeOS!  
-**TLS 1.3 Server**: 🚀 **INTEGRATED** | Uses CryptoCapability trait | Same arch as client!  
+**TLS 1.3 Server**: 🚀 **INTEGRATED** | Uses CryptoCapability trait | Graceful HTTP fallback ✅  
 **HTTP Features**: ↪️ Redirect Following | 🌐 Adaptive User-Agent | 📍 Domain-Based Routing  
 **Safety**: Zero Unsafe Code* ✅ | 0 Release Warnings ✅ | JSON-RPC PRIMARY ✅ | Neural API Integrated ✅  
 **Storage**: 🗃️ **sled (Pure Rust)** | Embedded database | Zero C dependencies ✅  
@@ -15,16 +15,52 @@
 
 Songbird is the universal network orchestrator for the ecoPrimals ecosystem, managing service discovery, connection management, and inter-primal communication. **First production-grade Pure Rust TLS 1.3 implementation** via the groundbreaking **Tower Atomic pattern** - achieving what many thought impossible: TLS without rustls/ring while maintaining TRUE ecoBin compliance.
 
-**Latest**: **🎉 Complete Dark Forest Protocol!** (Jan 29, 2026) - ALL 6 methods **COMPLETE**! Phase 1: STUN/Discovery (3 methods), Phase 2: Rendezvous/Peer (3 methods). Full NAT traversal, peer discovery, hole punching. 28 new tests today, 81 passing total. A++ quality. **See [BIOMEOS_DARK_FOREST_COMPLETE_JAN_29_2026.md](BIOMEOS_DARK_FOREST_COMPLETE_JAN_29_2026.md) for deployment guide!**  
-**Previous**: **🌐 STUN/Discovery Phase 1!** (Jan 29 morning) - 3 methods + runtime discovery. **See [STUN_DISCOVERY_COMPLETE_RUNTIME_JAN_29_2026.md](STUN_DISCOVERY_COMPLETE_RUNTIME_JAN_29_2026.md).**
+**Latest**: **🚀 TCP Gateway Fix + Complete Dark Forest!** (Jan 29, 2026) - **CRITICAL FIX**: HTTP server now starts even without BearDog (graceful HTTP fallback)! Federation **UNBLOCKED**! PLUS all 6 Dark Forest methods complete. Phase 1: STUN/Discovery (3 methods), Phase 2: Rendezvous/Peer (3 methods). **See [BIOMEOS_TCP_GATEWAY_FIX_JAN_29_2026.md](BIOMEOS_TCP_GATEWAY_FIX_JAN_29_2026.md) for fix details and [BIOMEOS_DARK_FOREST_COMPLETE_JAN_29_2026.md](BIOMEOS_DARK_FOREST_COMPLETE_JAN_29_2026.md) for Dark Forest guide!**  
+**Previous**: **🎉 Complete Dark Forest Protocol!** (Jan 29 afternoon) - All 6 methods complete. **See [BIOMEOS_DARK_FOREST_COMPLETE_JAN_29_2026.md](BIOMEOS_DARK_FOREST_COMPLETE_JAN_29_2026.md).**
 
 📚 **[Full Documentation Index](ROOT_DOCS_INDEX.md)** | 🗺️ **[12-Week Roadmap](ROADMAP.md)** | 📊 **[Current Status](STATUS.md)** | 📖 **[TLS Evolution](sessions/TLS_EVOLUTION_ANALYSIS_JAN_26_2026.md)**
 
 ---
 
-## 🎯 Latest: Complete Dark Forest Protocol! (Jan 29, 2026)
+## 🎯 Latest: TCP Gateway Fix + Complete Dark Forest! (Jan 29, 2026)
 
-### 🎉 A++ Grade - ALL 6 Methods Complete!
+### 🚀 CRITICAL FIX: HTTP Server Now Starts Without BearDog!
+
+**Production-Critical TCP Gateway Fix** (v8.17.0):
+```
+┌──────────────────────────────────────────────────────┐
+│   🚀 TCP GATEWAY GRACEFUL DEGRADATION 🚀         │
+├──────────────────────────────────────────────────────┤
+│ 🔴 PROBLEM: HTTP server wouldn't start          │
+│    • No TCP listener on port 8081               │
+│    • Federation completely blocked               │
+│    • Only UDP discovery working                  │
+│                                                  │
+│ ✅ ROOT CAUSE FOUND:                            │
+│    • HTTPS setup required BearDog                │
+│    • If BearDog unavailable → server failed      │
+│    • `?` operator blocked entire startup         │
+│                                                  │
+│ ✅ SOLUTION: Graceful HTTP Fallback             │
+│    • Try HTTPS first (preferred)                 │
+│    • Fall back to HTTP if BearDog unavailable    │
+│    • Server ALWAYS starts now                    │
+│    • Clear warnings explain degradation          │
+│                                                  │
+│ ✅ RESULT: Federation UNBLOCKED!                │
+│    • TCP listener on port 8081 ✅               │
+│    • HTTP server responding ✅                   │
+│    • Cross-spore communication working ✅        │
+│    • Zero config changes required ✅             │
+└──────────────────────────────────────────────────────┘
+    ↓ HTTP Gateway Working! Federation Ready! 🚀
+```
+
+**See**: [BIOMEOS_TCP_GATEWAY_FIX_JAN_29_2026.md](BIOMEOS_TCP_GATEWAY_FIX_JAN_29_2026.md) - Complete fix analysis and deployment guide
+
+---
+
+### 🎉 PLUS: Complete Dark Forest Protocol - ALL 6 Methods!
 
 **Production-Ready Dark Forest Protocol - Full Implementation**:
 ```
