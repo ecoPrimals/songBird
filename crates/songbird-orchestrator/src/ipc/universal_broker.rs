@@ -14,10 +14,12 @@
 //! │ │ Listens on: /primal/songbird                        │ │
 //! │ │                                                      │ │
 //! │ │ JSON-RPC Methods:                                   │ │
-//! │ │  • ipc.register   - Register a service             │ │
-//! │ │  • ipc.resolve    - Resolve service endpoint       │ │
-//! │ │  • ipc.discover   - Discover by capability         │ │
-//! │ │  • ipc.list       - List all services              │ │
+//! │ │  • ipc.*          - Service registration/discovery │ │
+//! │ │  • http.*         - HTTP/HTTPS requests            │ │
+//! │ │  • stun.*         - NAT traversal (Dark Forest)    │ │
+//! │ │  • discovery.*    - Peer discovery (Dark Forest)   │ │
+//! │ │  • rendezvous.*   - Relay server (Dark Forest)     │ │
+//! │ │  • peer.*         - Hole punching (Dark Forest)    │ │
 //! │ └─────────────────────────────────────────────────────┘ │
 //! │                                                           │
 //! │ Uses internally:                                          │
@@ -143,7 +145,7 @@ impl UniversalIpcBroker {
         info!("✅ Universal IPC Broker initialized");
         info!("   Endpoint: {}", endpoint.path);
         info!("   Protocol: JSON-RPC 2.0");
-        info!("   Methods: ipc.*, http.*, stun.*, discovery.*");
+        info!("   Methods: ipc.*, http.*, stun.*, discovery.*, rendezvous.*, peer.*");
 
         Ok(Self {
             endpoint,
@@ -231,7 +233,7 @@ pub async fn start_broker_with_discovery(
 
     info!("✅ Universal IPC Broker started in background");
     info!("   Other primals can now connect to /primal/songbird");
-    info!("   Methods: ipc.*, http.*, stun.*, discovery.*");
+    info!("   Methods: ipc.*, http.*, stun.*, discovery.*, rendezvous.*, peer.*");
     info!("   NOTE: Service layer handles platform abstraction internally");
 
     Ok(())

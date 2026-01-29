@@ -789,23 +789,28 @@ SONGBIRD_LOG_LEVEL=info
 /// This enables biomeOS and other primals to make HTTP/HTTPS requests via JSON-RPC
 /// without embedding Songbird code (TRUE PRIMAL architecture).
 async fn start_ipc_server(socket_path: &str, beardog_socket: &str) -> Result<()> {
-    use songbird_universal_ipc::handlers::http_handler::HttpHandler;
+    use songbird_universal_ipc::service::IpcServiceHandler;
+    use songbird_universal_ipc::registry::ServiceRegistry;
     use songbird_universal_ipc::tower_atomic::{
         JsonRpcError, JsonRpcHandler, JsonRpcRequest, JsonRpcResponse,
     };
     use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
+    use tokio::sync::RwLock;
+    use std::sync::Arc;
 
     // Remove old socket if exists
     let _ = std::fs::remove_file(socket_path);
 
-    // Create HTTP handler with default discovery
-    let handler = HttpHandler::with_default_discovery();
+    // Create IPC service handler with all methods (HTTP + STUN + Discovery + Rendezvous + Peer)
+    let registry = Arc::new(RwLock::new(ServiceRegistry::new()));
 
     tracing::info!("✅ IPC server listening on {}", socket_path);
     tracing::info!("   Methods available:");
-    tracing::info!("     • http.request - Full HTTP/HTTPS request");
-    tracing::info!("     • http.get - GET request shorthand");
-    tracing::info!("     • http.post - POST request shorthand");
+    tracing::info!("     • http.request, http.get, http.post - HTTP/HTTPS requests");
+    tracing::info!("     • stun.get_public_address, stun.bind - NAT traversal");
+    tracing::info!("     • discovery.peers - Real-time peer discovery");
+    tracing::info!("     • rendezvous.register, rendezvous.lookup - Relay server");
+    tracing::info!("     • peer.connect - UDP hole punching");
 
     // Bind to Unix socket
     let listener = tokio::net::UnixListener::bind(socket_path)
@@ -817,8 +822,8 @@ async fn start_ipc_server(socket_path: &str, beardog_socket: &str) -> Result<()>
             Ok((stream, _)) => {
                 tracing::debug!("New IPC connection accepted");
 
-                // Clone handler for the spawned task
-                let handler_clone = HttpHandler::with_default_discovery();
+                // Create handler for this connection
+                let handler_clone = IpcServiceHandler::new(registry.clone());
 
                 tokio::spawn(async move {
                     // Handle connection
