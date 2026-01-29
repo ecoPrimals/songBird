@@ -25,7 +25,9 @@
 //! ```
 
 use crate::endpoint::NativeEndpoint;
+use crate::handlers::discovery_handler::DiscoveryHandler;
 use crate::handlers::http_handler::{HttpHandler, HttpRequestParams};
+use crate::handlers::stun_handler::StunHandler;
 use crate::registry::ServiceRegistry;
 use crate::tower_atomic::JsonRpcHandler;
 use async_trait::async_trait;
@@ -109,15 +111,21 @@ pub struct ServiceInfo {
 pub struct IpcServiceHandler {
     registry: Arc<RwLock<ServiceRegistry>>,
     http_handler: Arc<HttpHandler>,
+    stun_handler: Arc<StunHandler>,
+    discovery_handler: Arc<DiscoveryHandler>,
 }
 
 impl IpcServiceHandler {
     /// Create a new IPC service handler
     pub fn new(registry: Arc<RwLock<ServiceRegistry>>) -> Self {
         let http_handler = Arc::new(HttpHandler::with_default_discovery());
+        let stun_handler = Arc::new(StunHandler::new());
+        let discovery_handler = Arc::new(DiscoveryHandler::new());
         Self {
             registry,
             http_handler,
+            stun_handler,
+            discovery_handler,
         }
     }
 
@@ -126,9 +134,13 @@ impl IpcServiceHandler {
         registry: Arc<RwLock<ServiceRegistry>>,
         http_handler: Arc<HttpHandler>,
     ) -> Self {
+        let stun_handler = Arc::new(StunHandler::new());
+        let discovery_handler = Arc::new(DiscoveryHandler::new());
         Self {
             registry,
             http_handler,
+            stun_handler,
+            discovery_handler,
         }
     }
 
@@ -316,6 +328,39 @@ impl IpcServiceHandler {
 
         serde_json::to_value(result).map_err(|e| format!("Serialization error: {e}"))
     }
+
+    /// Handle `stun.get_public_address` method
+    async fn handle_stun_get_public_address(&self, params: Value) -> Result<Value, String> {
+        let result = self
+            .stun_handler
+            .handle_get_public_address(params)
+            .await
+            .map_err(|e| format!("STUN get_public_address failed: {e}"))?;
+
+        serde_json::to_value(result).map_err(|e| format!("Serialization error: {e}"))
+    }
+
+    /// Handle `stun.bind` method
+    async fn handle_stun_bind(&self, params: Value) -> Result<Value, String> {
+        let result = self
+            .stun_handler
+            .handle_bind(params)
+            .await
+            .map_err(|e| format!("STUN bind failed: {e}"))?;
+
+        serde_json::to_value(result).map_err(|e| format!("Serialization error: {e}"))
+    }
+
+    /// Handle `discovery.peers` method
+    async fn handle_discovery_peers(&self, params: Value) -> Result<Value, String> {
+        let result = self
+            .discovery_handler
+            .handle_list_peers(params)
+            .await
+            .map_err(|e| format!("Discovery peers failed: {e}"))?;
+
+        serde_json::to_value(result).map_err(|e| format!("Serialization error: {e}"))
+    }
 }
 
 #[async_trait]
@@ -328,10 +373,17 @@ impl JsonRpcHandler for IpcServiceHandler {
             "ipc.discover" => self.handle_discover(params).await,
             "ipc.list" => self.handle_list(params).await,
 
-            // HTTP/HTTPS methods (NEW!)
+            // HTTP/HTTPS methods
             "http.request" => self.handle_http_request(params).await,
             "http.get" => self.handle_http_get(params).await,
             "http.post" => self.handle_http_post(params).await,
+
+            // STUN/NAT traversal methods (NEW - Jan 29, 2026)
+            "stun.get_public_address" => self.handle_stun_get_public_address(params).await,
+            "stun.bind" => self.handle_stun_bind(params).await,
+
+            // Discovery methods (NEW - Jan 29, 2026)
+            "discovery.peers" => self.handle_discovery_peers(params).await,
 
             _ => Err(format!("Unknown method: {method}")),
         }

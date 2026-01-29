@@ -31,6 +31,12 @@ chrono = { version = "0.4", features = ["serde"] }
 # HTTP client (for IPC handlers)
 songbird-http-client = { path = "../songbird-http-client" }
 
+# STUN client (for NAT traversal)
+songbird-stun = { path = "../songbird-stun" }
+
+# UUID generation
+uuid = { version = "1.0", features = ["v4"] }
+
 # Windows named pipes (only on Windows)
 [target.'cfg(windows)'.dependencies]
 tokio = { workspace = true, features = ["net"] }
