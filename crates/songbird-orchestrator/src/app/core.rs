@@ -323,10 +323,18 @@ impl SongbirdOrchestrator {
         info!("✅ Unix Socket IPC server started");
 
         // 🌍 NEW (Jan 19, 2026): Start Universal IPC Broker for service-based inter-primal IPC
+        // ✅ EVOLUTION (Jan 29, 2026): Wire up discovery listener for runtime peer discovery
         info!("🌍 Starting Universal IPC Broker...");
-        match crate::ipc::universal_broker::start_broker().await {
+        match crate::ipc::universal_broker::start_broker_with_discovery(
+            self.discovery_listener.clone()
+        )
+        .await
+        {
             Ok(_) => {
                 info!("✅ Universal IPC Broker started");
+                if self.discovery_listener.is_some() {
+                    info!("   🌉 Discovery bridge: ENABLED (real-time peer discovery)");
+                }
             }
             Err(e) => {
                 warn!("⚠️  Universal IPC Broker failed to start: {}", e);

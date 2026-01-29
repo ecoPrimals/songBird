@@ -42,10 +42,13 @@
 //! - ✅ Runtime discovery (capability-based)
 
 use anyhow::{Context, Result};
+use songbird_discovery::anonymous::AnonymousDiscoveryListener;
 use songbird_universal_ipc::endpoint::VirtualEndpoint;
+use songbird_universal_ipc::handlers::{DiscoveryListenerBridge, PeerRegistry};
 use songbird_universal_ipc::ipc;
 use songbird_universal_ipc::service::IpcServiceHandler;
 use songbird_universal_ipc::tower_atomic::TowerAtomicServer;
+use std::sync::Arc;
 use tracing::{error, info, warn};
 
 /// Universal IPC Broker
@@ -62,8 +65,24 @@ impl UniversalIpcBroker {
     /// This initializes the service handler, registers the songbird endpoint,
     /// and creates a Tower Atomic server for handling JSON-RPC requests.
     pub async fn new() -> Result<Self> {
+        Self::with_discovery_listener(None).await
+    }
+
+    /// Create a new Universal IPC Broker with discovery listener
+    ///
+    /// When a discovery listener is provided, the broker will expose real peer
+    /// discovery data via the `discovery.peers` JSON-RPC method.
+    ///
+    /// ## Runtime Discovery (Zero Hardcoding)
+    ///
+    /// This follows the TRUE PRIMAL pattern:
+    /// - No hardcoding: discovers peers at runtime
+    /// - Capability-based: uses trait-based dependency injection
+    /// - Smart refactoring: bridge pattern, not tight coupling
+    pub async fn with_discovery_listener(
+        discovery_listener: Option<Arc<AnonymousDiscoveryListener>>,
+    ) -> Result<Self> {
         use songbird_universal_ipc::registry::ServiceRegistry;
-        use std::sync::Arc;
         use tokio::sync::RwLock;
 
         info!("🌍 Initializing Universal IPC Broker");
@@ -75,7 +94,12 @@ impl UniversalIpcBroker {
         // Note: If already registered, this will return an error which we handle gracefully
         let endpoint = match ipc::register(
             "songbird",
-            vec!["ipc".to_string(), "discovery".to_string(), "registry".to_string()],
+            vec![
+                "ipc".to_string(),
+                "discovery".to_string(),
+                "registry".to_string(),
+                "stun".to_string(),  // NEW: STUN methods
+            ],
         )
         .await
         {
@@ -97,8 +121,21 @@ impl UniversalIpcBroker {
         // Create service registry
         let registry = Arc::new(RwLock::new(ServiceRegistry::new()));
 
-        // Create service handler (not async!)
-        let handler = IpcServiceHandler::new(registry);
+        // Create service handler with discovery bridge if listener provided
+        let handler = if let Some(listener) = discovery_listener {
+            info!("🌉 Wiring up discovery listener bridge for runtime peer discovery");
+            
+            // Create bridge from listener to PeerRegistry trait
+            let bridge: Arc<dyn PeerRegistry> = Arc::new(DiscoveryListenerBridge::new(listener));
+            
+            // Create handler with discovery registry
+            IpcServiceHandler::with_discovery_registry(registry, bridge)
+        } else {
+            info!("⚠️  No discovery listener provided, discovery.peers will return empty");
+            
+            // Create handler without discovery (testing mode)
+            IpcServiceHandler::new(registry)
+        };
 
         // Create Tower Atomic server
         let server = TowerAtomicServer::new(handler);
@@ -106,7 +143,7 @@ impl UniversalIpcBroker {
         info!("✅ Universal IPC Broker initialized");
         info!("   Endpoint: {}", endpoint.path);
         info!("   Protocol: JSON-RPC 2.0");
-        info!("   Methods: ipc.register, ipc.resolve, ipc.discover, ipc.list");
+        info!("   Methods: ipc.*, http.*, stun.*, discovery.*");
 
         Ok(Self {
             endpoint,
@@ -137,6 +174,11 @@ impl UniversalIpcBroker {
 /// This is the main entry point for integrating the Universal IPC Broker
 /// into the Songbird orchestrator startup sequence.
 ///
+/// ## Runtime Discovery
+///
+/// Pass a discovery listener to enable real-time peer discovery via JSON-RPC.
+/// Without it, `discovery.peers` returns empty (testing mode).
+///
 /// ## Usage
 ///
 /// ```no_run
@@ -144,19 +186,36 @@ impl UniversalIpcBroker {
 ///
 /// #[tokio::main]
 /// async fn main() -> anyhow::Result<()> {
-///     // Start the Universal IPC Broker
-///     universal_broker::start_broker().await?;
+///     // Start the Universal IPC Broker with discovery
+///     universal_broker::start_broker_with_discovery(None).await?;
 ///     
 ///     // Broker now runs in background, handling JSON-RPC requests
 ///     Ok(())
 /// }
 /// ```
 pub async fn start_broker() -> Result<()> {
+    start_broker_with_discovery(None).await
+}
+
+/// Start the Universal IPC Broker with discovery listener
+///
+/// Enables real-time peer discovery when a listener is provided.
+/// This is the recommended way to start the broker in production.
+pub async fn start_broker_with_discovery(
+    discovery_listener: Option<Arc<AnonymousDiscoveryListener>>,
+) -> Result<()> {
     info!("🌍 Starting Universal IPC Broker (service-based architecture)");
 
-    // Create broker
-    let broker =
-        UniversalIpcBroker::new().await.context("Failed to create Universal IPC Broker")?;
+    if discovery_listener.is_some() {
+        info!("   Runtime discovery: ✅ ENABLED (real peer data)");
+    } else {
+        info!("   Runtime discovery: ⚠️  DISABLED (testing mode)");
+    }
+
+    // Create broker with discovery listener
+    let broker = UniversalIpcBroker::with_discovery_listener(discovery_listener)
+        .await
+        .context("Failed to create Universal IPC Broker")?;
 
     info!("✅ Universal IPC Broker created successfully");
 
@@ -172,7 +231,7 @@ pub async fn start_broker() -> Result<()> {
 
     info!("✅ Universal IPC Broker started in background");
     info!("   Other primals can now connect to /primal/songbird");
-    info!("   Methods: ipc.register, ipc.resolve, ipc.discover, ipc.list");
+    info!("   Methods: ipc.*, http.*, stun.*, discovery.*");
     info!("   NOTE: Service layer handles platform abstraction internally");
 
     Ok(())
