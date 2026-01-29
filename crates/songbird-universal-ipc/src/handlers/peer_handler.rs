@@ -122,18 +122,16 @@ impl PeerHandler {
 }
 
 // ============================================================================
-// Mock Implementation (For Testing and Default Initialization)
+// Mock Implementation (Testing Only - Deep Debt Compliant)
 // ============================================================================
 
-/// Mock peer connector for testing and default initialization
-///
-/// In production, this should be replaced with a real UDP hole punching client
-/// via dependency injection at orchestrator startup.
+#[cfg(test)]
 pub struct MockPeerConnector {
     // Simulate success/failure behavior
     should_succeed: std::sync::RwLock<bool>,
 }
 
+#[cfg(test)]
 impl MockPeerConnector {
     pub fn new() -> Self {
         Self {
@@ -141,12 +139,12 @@ impl MockPeerConnector {
         }
     }
 
-    #[cfg(test)]
     pub fn set_should_succeed(&self, succeed: bool) {
         *self.should_succeed.write().unwrap() = succeed;
     }
 }
 
+#[cfg(test)]
 #[async_trait]
 impl PeerConnector for MockPeerConnector {
     async fn connect(

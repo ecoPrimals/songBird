@@ -28,8 +28,10 @@ use crate::endpoint::NativeEndpoint;
 use crate::handlers::discovery_handler::{DiscoveryHandler, PeerRegistry};
 use crate::handlers::http_handler::{HttpHandler, HttpRequestParams};
 use crate::handlers::stun_handler::StunHandler;
-use crate::handlers::rendezvous_handler::{RendezvousHandler, MockRendezvousClient};
-use crate::handlers::peer_handler::{PeerHandler, MockPeerConnector};
+use crate::handlers::rendezvous_handler::RendezvousHandler;
+use crate::handlers::peer_handler::PeerHandler;
+use crate::handlers::http_rendezvous_client::HttpRendezvousClient;
+use crate::handlers::udp_peer_connector::UdpPeerConnector;
 use crate::registry::ServiceRegistry;
 use crate::tower_atomic::JsonRpcHandler;
 use async_trait::async_trait;
@@ -121,12 +123,20 @@ pub struct IpcServiceHandler {
 
 impl IpcServiceHandler {
     /// Create a new IPC service handler
+    ///
+    /// ✅ DEEP DEBT COMPLIANT (Jan 29, 2026):
+    /// - Real implementations (HttpRendezvousClient, UdpPeerConnector)
+    /// - Mocks isolated to #[cfg(test)] only
+    /// - Production-ready defaults
     pub fn new(registry: Arc<RwLock<ServiceRegistry>>) -> Self {
         let http_handler = Arc::new(HttpHandler::with_default_discovery());
         let stun_handler = Arc::new(StunHandler::new());
         let discovery_handler = Arc::new(DiscoveryHandler::new());
-        let rendezvous_handler = Arc::new(RendezvousHandler::new(Arc::new(MockRendezvousClient::new())));
-        let peer_handler = Arc::new(PeerHandler::new(Arc::new(MockPeerConnector::new())));
+        
+        // ✅ Production implementations (not mocks!)
+        let rendezvous_handler = Arc::new(RendezvousHandler::new(Arc::new(HttpRendezvousClient::new())));
+        let peer_handler = Arc::new(PeerHandler::new(Arc::new(UdpPeerConnector::new())));
+        
         Self {
             registry,
             http_handler,
@@ -138,6 +148,11 @@ impl IpcServiceHandler {
     }
 
     /// Create with discovery peer registry (for connecting to orchestrator's listener)
+    ///
+    /// ✅ DEEP DEBT COMPLIANT (Jan 29, 2026):
+    /// - Real implementations (HttpRendezvousClient, UdpPeerConnector)
+    /// - Runtime peer discovery via PeerRegistry trait
+    /// - Zero hardcoding
     pub fn with_discovery_registry(
         registry: Arc<RwLock<ServiceRegistry>>,
         peer_registry: Arc<dyn PeerRegistry>,
@@ -145,8 +160,11 @@ impl IpcServiceHandler {
         let http_handler = Arc::new(HttpHandler::with_default_discovery());
         let stun_handler = Arc::new(StunHandler::new());
         let discovery_handler = Arc::new(DiscoveryHandler::with_registry(peer_registry));
-        let rendezvous_handler = Arc::new(RendezvousHandler::new(Arc::new(MockRendezvousClient::new())));
-        let peer_handler = Arc::new(PeerHandler::new(Arc::new(MockPeerConnector::new())));
+        
+        // ✅ Production implementations (not mocks!)
+        let rendezvous_handler = Arc::new(RendezvousHandler::new(Arc::new(HttpRendezvousClient::new())));
+        let peer_handler = Arc::new(PeerHandler::new(Arc::new(UdpPeerConnector::new())));
+        
         Self {
             registry,
             http_handler,
@@ -164,8 +182,11 @@ impl IpcServiceHandler {
     ) -> Self {
         let stun_handler = Arc::new(StunHandler::new());
         let discovery_handler = Arc::new(DiscoveryHandler::new());
-        let rendezvous_handler = Arc::new(RendezvousHandler::new(Arc::new(MockRendezvousClient::new())));
-        let peer_handler = Arc::new(PeerHandler::new(Arc::new(MockPeerConnector::new())));
+        
+        // ✅ Production implementations (not mocks!)
+        let rendezvous_handler = Arc::new(RendezvousHandler::new(Arc::new(HttpRendezvousClient::new())));
+        let peer_handler = Arc::new(PeerHandler::new(Arc::new(UdpPeerConnector::new())));
+        
         Self {
             registry,
             http_handler,

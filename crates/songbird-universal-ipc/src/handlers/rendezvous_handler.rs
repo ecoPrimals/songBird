@@ -159,18 +159,16 @@ impl RendezvousHandler {
 }
 
 // ============================================================================
-// Mock Implementation (For Testing and Default Initialization)
+// Mock Implementation (Testing Only - Deep Debt Compliant)
 // ============================================================================
 
-/// Mock rendezvous client for testing and default initialization
-///
-/// In production, this should be replaced with a real HTTP-based client
-/// via dependency injection at orchestrator startup.
+#[cfg(test)]
 pub struct MockRendezvousClient {
     // Simulated registered peers
     registered: std::sync::RwLock<Vec<(String, String, String, String)>>, // (node_id, family_id, public_address, token)
 }
 
+#[cfg(test)]
 impl MockRendezvousClient {
     pub fn new() -> Self {
         Self {
@@ -178,7 +176,7 @@ impl MockRendezvousClient {
         }
     }
 
-    fn add_peer(&self, node_id: &str, family_id: &str, public_address: &str, token: &str) {
+    pub fn add_peer(&self, node_id: &str, family_id: &str, public_address: &str, token: &str) {
         let mut registered = self.registered.write().unwrap();
         registered.push((
             node_id.to_string(),
@@ -189,6 +187,7 @@ impl MockRendezvousClient {
     }
 }
 
+#[cfg(test)]
 #[async_trait]
 impl RendezvousClient for MockRendezvousClient {
     async fn register(
