@@ -25,7 +25,7 @@
 //! ```
 
 use crate::endpoint::NativeEndpoint;
-use crate::handlers::discovery_handler::DiscoveryHandler;
+use crate::handlers::discovery_handler::{DiscoveryHandler, PeerRegistry};
 use crate::handlers::http_handler::{HttpHandler, HttpRequestParams};
 use crate::handlers::stun_handler::StunHandler;
 use crate::registry::ServiceRegistry;
@@ -121,6 +121,22 @@ impl IpcServiceHandler {
         let http_handler = Arc::new(HttpHandler::with_default_discovery());
         let stun_handler = Arc::new(StunHandler::new());
         let discovery_handler = Arc::new(DiscoveryHandler::new());
+        Self {
+            registry,
+            http_handler,
+            stun_handler,
+            discovery_handler,
+        }
+    }
+
+    /// Create with discovery peer registry (for connecting to orchestrator's listener)
+    pub fn with_discovery_registry(
+        registry: Arc<RwLock<ServiceRegistry>>,
+        peer_registry: Arc<dyn PeerRegistry>,
+    ) -> Self {
+        let http_handler = Arc::new(HttpHandler::with_default_discovery());
+        let stun_handler = Arc::new(StunHandler::new());
+        let discovery_handler = Arc::new(DiscoveryHandler::with_registry(peer_registry));
         Self {
             registry,
             http_handler,

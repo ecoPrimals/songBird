@@ -8,11 +8,14 @@
 //! - **HTTP Handler** - HTTP/HTTPS requests via Pure Rust TLS 1.3
 //! - **STUN Handler** - NAT traversal and public address discovery
 //! - **Discovery Handler** - Peer discovery from UDP beacons
+//! - **Discovery Bridge** - Connects orchestrator's listener to IPC
 
+pub mod discovery_bridge;
 pub mod discovery_handler;
 pub mod http_handler;
 pub mod stun_handler;
 
+pub use discovery_bridge::*;
 pub use discovery_handler::*;
 pub use http_handler::*;
 pub use stun_handler::*;
