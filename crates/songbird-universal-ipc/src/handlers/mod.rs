@@ -9,13 +9,19 @@
 //! - **STUN Handler** - NAT traversal and public address discovery
 //! - **Discovery Handler** - Peer discovery from UDP beacons
 //! - **Discovery Bridge** - Connects orchestrator's listener to IPC
+//! - **Rendezvous Handler** - Relay server registration and lookup
+//! - **Peer Handler** - Direct peer connections via hole punching
 
 pub mod discovery_bridge;
 pub mod discovery_handler;
 pub mod http_handler;
 pub mod stun_handler;
+pub mod rendezvous_handler;
+pub mod peer_handler;
 
 pub use discovery_bridge::*;
 pub use discovery_handler::*;
 pub use http_handler::*;
 pub use stun_handler::*;
+pub use rendezvous_handler::*;
+pub use peer_handler::*;

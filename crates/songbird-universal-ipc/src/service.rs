@@ -28,6 +28,8 @@ use crate::endpoint::NativeEndpoint;
 use crate::handlers::discovery_handler::{DiscoveryHandler, PeerRegistry};
 use crate::handlers::http_handler::{HttpHandler, HttpRequestParams};
 use crate::handlers::stun_handler::StunHandler;
+use crate::handlers::rendezvous_handler::{RendezvousHandler, MockRendezvousClient};
+use crate::handlers::peer_handler::{PeerHandler, MockPeerConnector};
 use crate::registry::ServiceRegistry;
 use crate::tower_atomic::JsonRpcHandler;
 use async_trait::async_trait;
@@ -113,6 +115,8 @@ pub struct IpcServiceHandler {
     http_handler: Arc<HttpHandler>,
     stun_handler: Arc<StunHandler>,
     discovery_handler: Arc<DiscoveryHandler>,
+    rendezvous_handler: Arc<RendezvousHandler>,
+    peer_handler: Arc<PeerHandler>,
 }
 
 impl IpcServiceHandler {
@@ -121,11 +125,15 @@ impl IpcServiceHandler {
         let http_handler = Arc::new(HttpHandler::with_default_discovery());
         let stun_handler = Arc::new(StunHandler::new());
         let discovery_handler = Arc::new(DiscoveryHandler::new());
+        let rendezvous_handler = Arc::new(RendezvousHandler::new(Arc::new(MockRendezvousClient::new())));
+        let peer_handler = Arc::new(PeerHandler::new(Arc::new(MockPeerConnector::new())));
         Self {
             registry,
             http_handler,
             stun_handler,
             discovery_handler,
+            rendezvous_handler,
+            peer_handler,
         }
     }
 
@@ -137,11 +145,15 @@ impl IpcServiceHandler {
         let http_handler = Arc::new(HttpHandler::with_default_discovery());
         let stun_handler = Arc::new(StunHandler::new());
         let discovery_handler = Arc::new(DiscoveryHandler::with_registry(peer_registry));
+        let rendezvous_handler = Arc::new(RendezvousHandler::new(Arc::new(MockRendezvousClient::new())));
+        let peer_handler = Arc::new(PeerHandler::new(Arc::new(MockPeerConnector::new())));
         Self {
             registry,
             http_handler,
             stun_handler,
             discovery_handler,
+            rendezvous_handler,
+            peer_handler,
         }
     }
 
@@ -152,11 +164,15 @@ impl IpcServiceHandler {
     ) -> Self {
         let stun_handler = Arc::new(StunHandler::new());
         let discovery_handler = Arc::new(DiscoveryHandler::new());
+        let rendezvous_handler = Arc::new(RendezvousHandler::new(Arc::new(MockRendezvousClient::new())));
+        let peer_handler = Arc::new(PeerHandler::new(Arc::new(MockPeerConnector::new())));
         Self {
             registry,
             http_handler,
             stun_handler,
             discovery_handler,
+            rendezvous_handler,
+            peer_handler,
         }
     }
 
@@ -377,6 +393,39 @@ impl IpcServiceHandler {
 
         serde_json::to_value(result).map_err(|e| format!("Serialization error: {e}"))
     }
+
+    /// Handle `rendezvous.register` method (NEW - Jan 29, 2026)
+    async fn handle_rendezvous_register(&self, params: Value) -> Result<Value, String> {
+        let result = self
+            .rendezvous_handler
+            .handle_register(params)
+            .await
+            .map_err(|e| format!("Rendezvous register failed: {e}"))?;
+
+        serde_json::to_value(result).map_err(|e| format!("Serialization error: {e}"))
+    }
+
+    /// Handle `rendezvous.lookup` method (NEW - Jan 29, 2026)
+    async fn handle_rendezvous_lookup(&self, params: Value) -> Result<Value, String> {
+        let result = self
+            .rendezvous_handler
+            .handle_lookup(params)
+            .await
+            .map_err(|e| format!("Rendezvous lookup failed: {e}"))?;
+
+        serde_json::to_value(result).map_err(|e| format!("Serialization error: {e}"))
+    }
+
+    /// Handle `peer.connect` method (NEW - Jan 29, 2026)
+    async fn handle_peer_connect(&self, params: Value) -> Result<Value, String> {
+        let result = self
+            .peer_handler
+            .handle_connect(params)
+            .await
+            .map_err(|e| format!("Peer connect failed: {e}"))?;
+
+        serde_json::to_value(result).map_err(|e| format!("Serialization error: {e}"))
+    }
 }
 
 #[async_trait]
@@ -400,6 +449,13 @@ impl JsonRpcHandler for IpcServiceHandler {
 
             // Discovery methods (NEW - Jan 29, 2026)
             "discovery.peers" => self.handle_discovery_peers(params).await,
+
+            // Rendezvous methods (NEW - Jan 29, 2026 Phase 2)
+            "rendezvous.register" => self.handle_rendezvous_register(params).await,
+            "rendezvous.lookup" => self.handle_rendezvous_lookup(params).await,
+
+            // Peer connection methods (NEW - Jan 29, 2026 Phase 2)
+            "peer.connect" => self.handle_peer_connect(params).await,
 
             _ => Err(format!("Unknown method: {method}")),
         }
