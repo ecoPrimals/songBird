@@ -129,7 +129,7 @@ impl RendezvousHandler {
                 &params.public_address,
             )
             .await
-            .map_err(|e| IpcError::Internal(format!("Rendezvous registration failed: {}", e)))?;
+            .map_err(|e| IpcError::Internal(format!("Rendezvous registration failed: {e}")))?;
 
         info!("✅ Registered with rendezvous server (registration_id: {})", result.registration_id);
 
@@ -150,7 +150,7 @@ impl RendezvousHandler {
             .client
             .lookup(&params.server, &params.target)
             .await
-            .map_err(|e| IpcError::Internal(format!("Rendezvous lookup failed: {}", e)))?;
+            .map_err(|e| IpcError::Internal(format!("Rendezvous lookup failed: {e}")))?;
 
         info!("✅ Found {} peers via rendezvous", peers.len());
 

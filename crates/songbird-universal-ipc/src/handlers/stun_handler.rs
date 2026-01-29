@@ -36,6 +36,7 @@ pub struct StunHandler {
 
 impl StunHandler {
     /// Create a new STUN handler
+    #[must_use] 
     pub fn new() -> Self {
         Self {
             client: Arc::new(StunClient::new()),
@@ -44,6 +45,7 @@ impl StunHandler {
     }
 
     /// Create STUN handler with custom timeout
+    #[must_use] 
     pub fn with_timeout(timeout: Duration) -> Self {
         Self {
             client: Arc::new(StunClient::with_timeout(timeout)),
@@ -60,7 +62,7 @@ impl StunHandler {
     ) -> IpcResult<StunGetPublicAddressResult> {
         let params: StunGetPublicAddressParams =
             serde_json::from_value(params).map_err(|e| {
-                IpcError::InvalidParams(format!("Failed to parse params: {}", e))
+                IpcError::InvalidParams(format!("Failed to parse params: {e}"))
             })?;
 
         debug!(
@@ -79,7 +81,7 @@ impl StunHandler {
             .client
             .discover_public_address(stun_server)
             .await
-            .map_err(|e| IpcError::Internal(format!("STUN request failed: {}", e)))?;
+            .map_err(|e| IpcError::Internal(format!("STUN request failed: {e}")))?;
 
         // Get local address (best effort)
         let local_addr = format!("0.0.0.0:{}", params.local_port.unwrap_or(0));
@@ -102,7 +104,7 @@ impl StunHandler {
     /// Creates and maintains a STUN binding for hole punching.
     pub async fn handle_bind(&self, params: Value) -> IpcResult<StunBindResult> {
         let params: StunBindParams = serde_json::from_value(params).map_err(|e| {
-            IpcError::InvalidParams(format!("Failed to parse params: {}", e))
+            IpcError::InvalidParams(format!("Failed to parse params: {e}"))
         })?;
 
         debug!(
@@ -115,7 +117,7 @@ impl StunHandler {
             .client
             .discover_public_address(&params.server)
             .await
-            .map_err(|e| IpcError::Internal(format!("STUN bind failed: {}", e)))?;
+            .map_err(|e| IpcError::Internal(format!("STUN bind failed: {e}")))?;
 
         // Generate binding ID
         let binding_id = format!("stun-{}", uuid::Uuid::new_v4());

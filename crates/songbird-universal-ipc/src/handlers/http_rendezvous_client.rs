@@ -1,6 +1,6 @@
 //! HTTP-based Rendezvous Client
 //!
-//! Production implementation of RendezvousClient using HTTP for relay server communication.
+//! Production implementation of `RendezvousClient` using HTTP for relay server communication.
 //!
 //! ## Deep Debt Compliance
 //! - Zero hardcoding: Configurable server URLs
@@ -20,6 +20,12 @@ use tracing::{info, warn};
 pub struct HttpRendezvousClient {
     // In a full implementation, this would include HTTP client configuration
     // For now, we'll use a simple structure
+}
+
+impl Default for HttpRendezvousClient {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl HttpRendezvousClient {
@@ -52,8 +58,7 @@ impl RendezvousClient for HttpRendezvousClient {
         warn!("   For LAN-only operation, use direct peer discovery instead");
         
         Err(format!(
-            "Rendezvous server not configured. Server: {}. Use STUN/Discovery for LAN peers.",
-            server
+            "Rendezvous server not configured. Server: {server}. Use STUN/Discovery for LAN peers."
         ))
     }
 

@@ -1,7 +1,7 @@
-//! Discovery Bridge - Connects orchestrator's AnonymousDiscoveryListener to IPC
+//! Discovery Bridge - Connects orchestrator's `AnonymousDiscoveryListener` to IPC
 //!
 //! This module provides a bridge between the orchestrator's discovery listener
-//! and the Discovery Handler's PeerRegistry trait.
+//! and the Discovery Handler's `PeerRegistry` trait.
 //!
 //! **TRUE PRIMAL**: Runtime discovery, no hardcoding, capability-based.
 
@@ -15,7 +15,7 @@ use tracing::{debug, info};
 pub use songbird_discovery::anonymous::peer::DiscoveredPeer;
 pub use songbird_discovery::anonymous::AnonymousDiscoveryListener;
 
-/// Bridge between orchestrator's AnonymousDiscoveryListener and PeerRegistry trait
+/// Bridge between orchestrator's `AnonymousDiscoveryListener` and `PeerRegistry` trait
 ///
 /// This enables the Discovery Handler to access real discovered peers from
 /// the UDP beacon listener without tight coupling.
@@ -24,7 +24,7 @@ pub struct DiscoveryListenerBridge {
 }
 
 impl DiscoveryListenerBridge {
-    /// Create a new bridge from an AnonymousDiscoveryListener
+    /// Create a new bridge from an `AnonymousDiscoveryListener`
     pub fn new(listener: Arc<AnonymousDiscoveryListener>) -> Self {
         info!("🌉 Discovery bridge: Connected to Anonymous Discovery Listener");
         Self { listener }
@@ -44,7 +44,7 @@ impl PeerRegistry for DiscoveryListenerBridge {
         // Convert from DiscoveredPeer to DiscoveredPeerInfo (JSON-RPC compatible)
         let peer_infos = peers
             .into_iter()
-            .map(|peer| convert_discovered_peer(peer))
+            .map(convert_discovered_peer)
             .collect();
 
         Ok(peer_infos)
@@ -72,7 +72,7 @@ impl PeerRegistry for DiscoveryListenerBridge {
     }
 }
 
-/// Convert from discovery's DiscoveredPeer to JSON-RPC DiscoveredPeerInfo
+/// Convert from discovery's `DiscoveredPeer` to JSON-RPC `DiscoveredPeerInfo`
 fn convert_discovered_peer(peer: DiscoveredPeer) -> DiscoveredPeerInfo {
     // Use node_id if available (v3.0+), otherwise session_id (v2.x)
     let node_id = peer
@@ -88,9 +88,7 @@ fn convert_discovered_peer(peer: DiscoveredPeer) -> DiscoveredPeerInfo {
         .last_seen
         .duration_since(std::time::UNIX_EPOCH)
         .ok()
-        .and_then(|d| chrono::DateTime::from_timestamp(d.as_secs() as i64, 0))
-        .map(|dt| dt.to_rfc3339())
-        .unwrap_or_else(|| chrono::Utc::now().to_rfc3339());
+        .and_then(|d| chrono::DateTime::from_timestamp(d.as_secs() as i64, 0)).map_or_else(|| chrono::Utc::now().to_rfc3339(), |dt| dt.to_rfc3339());
 
     // Calculate signal quality based on timestamp freshness
     let quality = calculate_quality(&peer);
@@ -108,7 +106,7 @@ fn convert_discovered_peer(peer: DiscoveredPeer) -> DiscoveredPeerInfo {
     }
 }
 
-/// Extract family_id from tags (Dark Forest encrypted lineage)
+/// Extract `family_id` from tags (Dark Forest encrypted lineage)
 fn extract_family_id(peer: &DiscoveredPeer) -> Option<String> {
     // Check tags for family_id hint
     peer.tags.as_ref().and_then(|tags| {

@@ -30,6 +30,7 @@ pub struct DiscoveryHandler {
 
 impl DiscoveryHandler {
     /// Create a new discovery handler
+    #[must_use] 
     pub fn new() -> Self {
         Self {
             peer_registry: None,
@@ -74,7 +75,7 @@ impl DiscoveryHandler {
         params: Value,
     ) -> IpcResult<Option<DiscoveredPeerInfo>> {
         let params: DiscoveryGetPeerParams = serde_json::from_value(params).map_err(|e| {
-            IpcError::InvalidParams(format!("Failed to parse params: {}", e))
+            IpcError::InvalidParams(format!("Failed to parse params: {e}"))
         })?;
 
         debug!("Discovery: get_peer (peer_id: {})", params.peer_id);
@@ -115,7 +116,7 @@ pub trait PeerRegistry: Send + Sync {
 /// Parameters for `discovery.get_peer`
 #[derive(Debug, Clone, Deserialize)]
 pub struct DiscoveryGetPeerParams {
-    /// Peer ID (node_id or session_id)
+    /// Peer ID (`node_id` or `session_id`)
     pub peer_id: String,
 }
 

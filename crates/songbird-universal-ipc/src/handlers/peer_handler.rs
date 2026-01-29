@@ -108,7 +108,7 @@ impl PeerHandler {
                 params.rendezvous_token.as_deref(),
             )
             .await
-            .map_err(|e| IpcError::Internal(format!("Peer connection failed: {}", e)))?;
+            .map_err(|e| IpcError::Internal(format!("Peer connection failed: {e}")))?;
 
         match result.state.as_str() {
             "connected" => info!("✅ Peer connected successfully (connection_id: {})", result.connection_id),

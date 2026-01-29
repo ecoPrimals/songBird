@@ -1,6 +1,6 @@
 //! UDP Peer Connector
 //!
-//! Production implementation of PeerConnector using UDP hole punching.
+//! Production implementation of `PeerConnector` using UDP hole punching.
 //!
 //! ## Deep Debt Compliance
 //! - Zero hardcoding: Runtime configuration
@@ -20,6 +20,12 @@ pub struct UdpPeerConnector {
     // - STUN client reference
     // - Active binding manager
     // - Hole punching state machine
+}
+
+impl Default for UdpPeerConnector {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl UdpPeerConnector {

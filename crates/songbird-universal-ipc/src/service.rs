@@ -125,7 +125,7 @@ impl IpcServiceHandler {
     /// Create a new IPC service handler
     ///
     /// ✅ DEEP DEBT COMPLIANT (Jan 29, 2026):
-    /// - Real implementations (HttpRendezvousClient, UdpPeerConnector)
+    /// - Real implementations (`HttpRendezvousClient`, `UdpPeerConnector`)
     /// - Mocks isolated to #[cfg(test)] only
     /// - Production-ready defaults
     pub fn new(registry: Arc<RwLock<ServiceRegistry>>) -> Self {
@@ -150,8 +150,8 @@ impl IpcServiceHandler {
     /// Create with discovery peer registry (for connecting to orchestrator's listener)
     ///
     /// ✅ DEEP DEBT COMPLIANT (Jan 29, 2026):
-    /// - Real implementations (HttpRendezvousClient, UdpPeerConnector)
-    /// - Runtime peer discovery via PeerRegistry trait
+    /// - Real implementations (`HttpRendezvousClient`, `UdpPeerConnector`)
+    /// - Runtime peer discovery via `PeerRegistry` trait
     /// - Zero hardcoding
     pub fn with_discovery_registry(
         registry: Arc<RwLock<ServiceRegistry>>,
