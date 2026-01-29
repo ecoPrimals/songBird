@@ -1,7 +1,7 @@
 # 🐦 Songbird - Network Orchestration & Discovery Primal
 
-**Version**: v8.18.0 - **🦀 100% Pure Rust - TRUE ecoBin ACHIEVED!** 🏆  
-**Status**: 🎉 **PRODUCTION READY** - Dark Forest + TCP Fix + Deep Debt A++!  
+**Version**: v8.19.0 - **🦀 100% Pure Rust - TRUE ecoBin ACHIEVED!** 🏆  
+**Status**: 🎉 **PRODUCTION READY** - Dark Forest 100% Wired + TCP Fix + Deep Debt A++!  
 **Architecture**: UniBin ✅ | TRUE ecoBin (100%!) ✅ | Pure Rust ✅ | Zero Unsafe* ✅ | Deep Debt A++ ✅  
 **TLS 1.3 Client**: 🎊 **93% SUCCESS** | 81/87 sites validated by biomeOS!  
 **TLS 1.3 Server**: 🚀 **INTEGRATED** | Uses CryptoCapability trait | Graceful HTTP fallback ✅  
@@ -9,14 +9,15 @@
 **Safety**: Zero Unsafe Code* ✅ | 0 Release Warnings ✅ | JSON-RPC PRIMARY ✅ | Mocks Isolated ✅  
 **Storage**: 🗃️ **sled (Pure Rust)** | Embedded database | Zero C dependencies ✅  
 **Tests**: 1,247+ passing | 88 universal-ipc (37 new today!) + 255 http-client + 577 orchestrator + 306 universal + 21 STUN/relay  
-**Active Code**: 22 crates | 369,900+ lines (24,122 archived)
+**Active Code**: 22 crates | 369,900+ lines (24,122 archived)  
+**Dark Forest**: 🌲 **ALL 6 Methods Wired** | Both IPC paths operational ✅
 
 > \* Only justified `unsafe` is `GlobalAlloc` impl in `quantum_allocator.rs` - delegates to system allocator.
 
 Songbird is the universal network orchestrator for the ecoPrimals ecosystem, managing service discovery, connection management, and inter-primal communication. **First production-grade Pure Rust TLS 1.3 implementation** via the groundbreaking **Tower Atomic pattern** - achieving what many thought impossible: TLS without rustls/ring while maintaining TRUE ecoBin compliance.
 
-**Latest**: **🏆 Deep Debt A++ Complete!** (Jan 29, 2026) - **4 RELEASES + FINAL POLISH!** Phase 1: STUN/Discovery (3 methods), Phase 2: Rendezvous/Peer (3 methods), Phase 3: TCP Gateway Fix (graceful fallback), **Phase 4: Deep Debt Evolution (mocks isolated)** ✅, **Final Polish: Clippy pedantic (33 fixes)** ✅. ALL principles applied: Zero hardcoding ✅, Mocks test-only ✅, Smart refactoring ✅, Zero unsafe ✅, Capability-based ✅, Modern Rust ✅, Code quality A++ ✅. **88 tests passing, production ready!** **See commits fc4840b86 (deep debt) and 2f7bb0fc3 (polish).**  
-**Previous**: **🚀 TCP Gateway Fix!** (Jan 29 evening) - HTTP fallback, federation unblocked. **See [BIOMEOS_TCP_GATEWAY_FIX_JAN_29_2026.md](BIOMEOS_TCP_GATEWAY_FIX_JAN_29_2026.md).**
+**Latest**: **🌲 Dark Forest 100% Wired!** (Jan 29, 2026 - Evening Final) - **CRITICAL FIX**: All 6 Dark Forest methods now accessible via both IPC paths! `bin_interface.rs` was using `HttpHandler` (only http.*), now uses `IpcServiceHandler` (all 6 methods) ✅. Universal IPC Broker already had all methods, logs updated to reflect. **Both paths operational!** **See [DARK_FOREST_WIRING_FIX_JAN_29_2026.md](DARK_FOREST_WIRING_FIX_JAN_29_2026.md) + commit c3bf49df1.**  
+**Previous**: **🏆 Deep Debt A++ Complete!** (Jan 29, 2026) - Phase 1-4 + Final Polish. STUN/Discovery (3), Rendezvous/Peer (3), TCP Fix, Deep Debt (mocks isolated), Clippy pedantic (33 fixes). **See commits fc4840b86, 2f7bb0fc3.**
 
 📚 **[Full Documentation Index](ROOT_DOCS_INDEX.md)** | 🗺️ **[12-Week Roadmap](ROADMAP.md)** | 📊 **[Current Status](STATUS.md)** | 📖 **[TLS Evolution](sessions/TLS_EVOLUTION_ANALYSIS_JAN_26_2026.md)**
 
