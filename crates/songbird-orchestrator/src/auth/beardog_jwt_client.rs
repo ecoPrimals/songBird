@@ -8,7 +8,22 @@ use anyhow::{Context, Result};
 use serde::{Deserialize, Serialize};
 // use serde_json::json;  // Unused (JSON-RPC handled manually)
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
-use tokio::net::UnixStream;
+// Platform-agnostic IPC transport
+#[cfg(unix)]
+use tokio::net::UnixStream as PlatformStream;
+#[cfg(windows)]
+use tokio::net::TcpStream as PlatformStream;
+
+/// Platform-agnostic connection helper
+#[cfg(unix)]
+async fn connect_platform(path: &str) -> std::io::Result<PlatformStream> {
+    PlatformStream::connect(path).await
+}
+
+#[cfg(windows)]
+async fn connect_platform(address: &str) -> std::io::Result<PlatformStream> {
+    PlatformStream::connect(address).await
+}
 use tracing::{info, warn};
 
 /// Request for JWT secret generation
@@ -59,8 +74,8 @@ pub async fn fetch_jwt_secret_from_beardog(socket_path: &str, purpose: &str) -> 
     info!("🔐 Fetching JWT secret from BearDog at: {}", socket_path);
     info!("   Purpose: {}", purpose);
 
-    // Connect to BearDog via Unix socket
-    let mut stream = UnixStream::connect(socket_path)
+    // Connect to BearDog (platform-agnostic)
+    let mut stream = connect_platform(socket_path)
         .await
         .context(format!("Failed to connect to BearDog at {}", socket_path))?;
 

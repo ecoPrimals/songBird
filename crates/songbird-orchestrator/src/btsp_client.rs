@@ -8,8 +8,24 @@ use serde::{Deserialize, Serialize};
 use serde_json::json;
 use std::path::PathBuf;
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
-use tokio::net::UnixStream;
+// Platform-agnostic IPC transport
+#[cfg(unix)]
+use tokio::net::UnixStream as PlatformStream;
+#[cfg(windows)]
+use tokio::net::TcpStream as PlatformStream;
 use tracing::{debug, info, warn};
+
+/// Platform-agnostic connection helper
+#[cfg(unix)]
+async fn connect_platform(path: &PathBuf) -> std::io::Result<PlatformStream> {
+    PlatformStream::connect(path).await
+}
+
+#[cfg(windows)]
+async fn connect_platform(path: &PathBuf) -> std::io::Result<PlatformStream> {
+    let addr = path.to_string_lossy();
+    PlatformStream::connect(addr.as_ref()).await
+}
 
 /// BTSP Client for communicating with BearDog via Unix socket
 ///
@@ -273,8 +289,8 @@ impl BtspClient {
     /// * JSON-RPC protocol errors
     /// * Timeout errors
     async fn send_request(&self, request: serde_json::Value) -> Result<serde_json::Value> {
-        // Connect to BearDog's Unix socket
-        let mut stream = UnixStream::connect(&self.socket_path).await.map_err(|e| {
+        // Connect to BearDog (platform-agnostic)
+        let mut stream = connect_platform(&self.socket_path).await.map_err(|e| {
             anyhow!("Failed to connect to BearDog socket {:?}: {}", self.socket_path, e)
         })?;
 

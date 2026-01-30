@@ -41,8 +41,23 @@ use anyhow::{Context, Result};
 use serde_json::json;
 use std::env;
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
-use tokio::net::UnixStream;
+// Platform-agnostic IPC transport
+#[cfg(unix)]
+use tokio::net::UnixStream as PlatformStream;
+#[cfg(windows)]
+use tokio::net::TcpStream as PlatformStream;
 use tracing::{info, warn};
+
+/// Platform-agnostic connection helper
+#[cfg(unix)]
+async fn connect_platform(path: &str) -> std::io::Result<PlatformStream> {
+    PlatformStream::connect(path).await
+}
+
+#[cfg(windows)]
+async fn connect_platform(address: &str) -> std::io::Result<PlatformStream> {
+    PlatformStream::connect(address).await
+}
 
 /// Register Songbird's capabilities with the Neural API
 ///
@@ -134,8 +149,8 @@ pub async fn register_capabilities() -> Result<()> {
         "id": 1
     });
 
-    // Connect to Neural API
-    let mut stream = match UnixStream::connect(&neural_socket).await {
+    // Connect to Neural API (platform-agnostic)
+    let mut stream = match connect_platform(&neural_socket).await {
         Ok(s) => s,
         Err(e) => {
             warn!("⚠️  Failed to connect to Neural API at {}: {}", neural_socket, e);
@@ -231,8 +246,8 @@ pub async fn unregister_capabilities() -> Result<()> {
         "id": 2
     });
 
-    // Try to connect and unregister
-    match UnixStream::connect(&neural_socket).await {
+    // Try to connect and unregister (platform-agnostic)
+    match connect_platform(&neural_socket).await {
         Ok(mut stream) => {
             let request = format!("{}\n", unregister);
             match stream.write_all(request.as_bytes()).await {
@@ -267,7 +282,7 @@ pub async fn check_neural_api_available() -> bool {
     let neural_socket =
         env::var("NEURAL_API_SOCKET").unwrap_or_else(|_| "/tmp/neural-api-nat0.sock".to_string());
 
-    match UnixStream::connect(&neural_socket).await {
+    match connect_platform(&neural_socket).await {
         Ok(_) => {
             info!("✅ Neural API available at {}", neural_socket);
             true
@@ -283,6 +298,7 @@ pub async fn check_neural_api_available() -> bool {
 mod tests {
     use super::*;
     use std::sync::Mutex;
+    #[cfg(unix)]
     use tokio::net::UnixListener;
 
     // Global lock to prevent env var test interference

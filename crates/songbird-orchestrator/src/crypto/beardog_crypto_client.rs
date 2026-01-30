@@ -14,7 +14,22 @@
 use anyhow::{Context, Result};
 use serde::{Deserialize, Serialize};
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
-use tokio::net::UnixStream;
+// Platform-agnostic IPC transport
+#[cfg(unix)]
+use tokio::net::UnixStream as PlatformStream;
+#[cfg(windows)]
+use tokio::net::TcpStream as PlatformStream;
+
+/// Platform-agnostic connection helper
+#[cfg(unix)]
+async fn connect_platform(path: &str) -> std::io::Result<PlatformStream> {
+    PlatformStream::connect(path).await
+}
+
+#[cfg(windows)]
+async fn connect_platform(address: &str) -> std::io::Result<PlatformStream> {
+    PlatformStream::connect(address).await
+}
 use tracing::debug;
 
 // ============================================================================
@@ -68,7 +83,7 @@ pub async fn sign_ed25519(
     debug!("🔐 Signing with Ed25519 via BearDog (key: {})", key_id);
 
     // Connect to BearDog
-    let mut stream = UnixStream::connect(socket_path)
+    let mut stream = connect_platform(socket_path)
         .await
         .context(format!("Failed to connect to BearDog crypto at {}", socket_path))?;
 
@@ -162,7 +177,7 @@ pub async fn verify_ed25519(
     debug!("🔍 Verifying Ed25519 signature via BearDog");
 
     // Connect to BearDog
-    let mut stream = UnixStream::connect(socket_path)
+    let mut stream = connect_platform(socket_path)
         .await
         .context(format!("Failed to connect to BearDog crypto at {}", socket_path))?;
 
@@ -251,7 +266,7 @@ pub async fn x25519_generate_ephemeral(
     debug!("🔑 Generating X25519 ephemeral key pair via BearDog");
 
     // Connect to BearDog
-    let mut stream = UnixStream::connect(socket_path)
+    let mut stream = connect_platform(socket_path)
         .await
         .context(format!("Failed to connect to BearDog crypto at {}", socket_path))?;
 
@@ -338,7 +353,7 @@ pub async fn x25519_derive_secret(
     debug!("🤝 Deriving X25519 shared secret via BearDog");
 
     // Connect to BearDog
-    let mut stream = UnixStream::connect(socket_path)
+    let mut stream = connect_platform(socket_path)
         .await
         .context(format!("Failed to connect to BearDog crypto at {}", socket_path))?;
 
@@ -437,7 +452,7 @@ pub async fn chacha20_poly1305_encrypt(
     debug!("🔒 Encrypting with ChaCha20-Poly1305 via BearDog ({} bytes)", plaintext.len());
 
     // Connect to BearDog
-    let mut stream = UnixStream::connect(socket_path)
+    let mut stream = connect_platform(socket_path)
         .await
         .context(format!("Failed to connect to BearDog crypto at {}", socket_path))?;
 
@@ -544,7 +559,7 @@ pub async fn chacha20_poly1305_decrypt(
     debug!("🔓 Decrypting with ChaCha20-Poly1305 via BearDog ({} bytes)", ciphertext.len());
 
     // Connect to BearDog
-    let mut stream = UnixStream::connect(socket_path)
+    let mut stream = connect_platform(socket_path)
         .await
         .context(format!("Failed to connect to BearDog crypto at {}", socket_path))?;
 
@@ -635,7 +650,7 @@ pub async fn blake3_hash(socket_path: &str, data: &[u8]) -> Result<Vec<u8>> {
     debug!("# Hashing with Blake3 via BearDog ({} bytes)", data.len());
 
     // Connect to BearDog
-    let mut stream = UnixStream::connect(socket_path)
+    let mut stream = connect_platform(socket_path)
         .await
         .context(format!("Failed to connect to BearDog crypto at {}", socket_path))?;
 
@@ -719,7 +734,7 @@ pub async fn hmac_sha256(socket_path: &str, key: &[u8], data: &[u8]) -> Result<V
     debug!("🔏 Computing HMAC-SHA256 via BearDog ({} bytes)", data.len());
 
     // Connect to BearDog
-    let mut stream = UnixStream::connect(socket_path)
+    let mut stream = connect_platform(socket_path)
         .await
         .context(format!("Failed to connect to BearDog crypto at {}", socket_path))?;
 
@@ -764,10 +779,10 @@ pub async fn hmac_sha256(socket_path: &str, key: &[u8], data: &[u8]) -> Result<V
 // Helper Functions
 // ============================================================================
 
-/// Read a JSON-RPC response from a Unix stream
+/// Read a JSON-RPC response from a stream (platform-agnostic)
 ///
 /// Reads until newline, handles buffering and EOF correctly.
-async fn read_json_rpc_response(stream: &mut UnixStream) -> Result<String> {
+async fn read_json_rpc_response(stream: &mut PlatformStream) -> Result<String> {
     let mut response_buffer = Vec::new();
     let mut read_buffer = [0u8; 4096];
 

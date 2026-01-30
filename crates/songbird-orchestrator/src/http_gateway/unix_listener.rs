@@ -26,6 +26,8 @@ use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 use std::sync::Arc;
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
+// Platform-agnostic (Unix-only gateway, conditional compilation)
+#[cfg(unix)]
 use tokio::net::{UnixListener, UnixStream};
 use tokio::sync::RwLock;
 use tracing::{debug, error, info, trace, warn};

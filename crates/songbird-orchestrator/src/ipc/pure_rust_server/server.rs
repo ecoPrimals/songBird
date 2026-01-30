@@ -10,6 +10,10 @@
 //! 4. **Thread-Safe**: Arc + atomic readiness flags
 //! 5. **Observable**: Structured logging
 //! 6. **Graceful Shutdown**: Cleanup on drop
+//!
+//! **Platform:** Unix-only (uses Unix domain sockets)
+
+#![cfg(unix)]
 
 use anyhow::{Context, Result};
 use std::path::{Path, PathBuf};
@@ -17,6 +21,8 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use std::time::Duration;
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
+// Platform-agnostic (Unix-only server, conditional compilation)
+#[cfg(unix)]
 use tokio::net::{UnixListener, UnixStream};
 use tracing::{debug, error, info, warn};
 
