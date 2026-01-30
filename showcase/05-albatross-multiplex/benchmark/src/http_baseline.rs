@@ -47,16 +47,14 @@ async fn main() -> Result<()> {
     println!("  Warmup:       {}", config.warmup_requests);
     println!();
 
-    // Create HTTP client with connection pooling
-    let client = reqwest::Client::builder()
-        .danger_accept_invalid_certs(true) // For self-signed certs
-        .pool_max_idle_per_host(10)
-        .build()?;
+    // Create Pure Rust HTTP client via Songbird IPC
+    // Note: IpcHttpClient delegates to Songbird's own HTTP service (Pure Rust!)
+    let client = songbird_http_client::IpcHttpClient::new().await?;
 
     // Warmup
     println!("{}", "Warming up...".bright_blue());
     for _ in 0..config.warmup_requests {
-        let _ = client.get(format!("{}/health", config.target_url)).send().await;
+        let _ = client.get(format!("{}/health", config.target_url)).await;
     }
     println!("{}", "✅ Warmup complete".bright_green());
     println!();
@@ -82,12 +80,10 @@ async fn main() -> Result<()> {
         let url = format!("{}/health", config.target_url);
 
         let (result, latency_us) = measure_latency(|| async move {
-            client_clone
-                .get(&url)
-                .send()
-                .await?
-                .error_for_status()
-                .map_err(|e| anyhow::anyhow!(e))?;
+            let response = client_clone.get(&url).await?;
+            if !response.is_success() {
+                return Err(anyhow::anyhow!("HTTP error: status {}", response.status()));
+            }
             Ok(())
         })
         .await;

@@ -65,11 +65,9 @@ async fn main() -> Result<()> {
     println!("  Warmup:       {}", config.warmup_requests);
     println!();
 
-    // Create HTTP client
-    let client = reqwest::Client::builder()
-        .danger_accept_invalid_certs(true)
-        .pool_max_idle_per_host(10)
-        .build()?;
+    // Create Pure Rust HTTP client via Songbird IPC
+    // Note: IpcHttpClient delegates to Songbird's own HTTP service (Pure Rust!)
+    let client = songbird_http_client::IpcHttpClient::new().await?;
 
     let jsonrpc_url = format!("{}/jsonrpc", config.target_url);
 
@@ -82,7 +80,7 @@ async fn main() -> Result<()> {
             params: serde_json::json!({}),
             id: i as u64,
         };
-        let _ = client.post(&jsonrpc_url).json(&request).send().await;
+        let _ = client.post(&jsonrpc_url).await.json(&request)?.send().await;
     }
     println!("{}", "✅ Warmup complete".bright_green());
     println!();
@@ -115,14 +113,18 @@ async fn main() -> Result<()> {
         };
 
         let (result, latency_us) = measure_latency(|| async move {
-            let response: JsonRpcResponse = client_clone
+            let http_response = client_clone
                 .post(&url)
-                .json(&request)
+                .await
+                .json(&request)?
                 .send()
-                .await?
-                .error_for_status()?
-                .json()
                 .await?;
+
+            if !http_response.is_success() {
+                return Err(anyhow::anyhow!("HTTP error: status {}", http_response.status()));
+            }
+
+            let response: JsonRpcResponse = http_response.json().await?;
 
             if response.id != request.id {
                 return Err(anyhow::anyhow!("ID mismatch"));
