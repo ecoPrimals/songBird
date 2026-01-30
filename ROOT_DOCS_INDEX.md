@@ -1,8 +1,8 @@
 # 📚 Root Documentation Index - Songbird
 
-**Last Updated**: January 31, 2026  
-**Version**: v8.20.0+ (TRUE ecoBin #4 + genomeBin Week 1!)  
-**Status**: 🌟 **LEGENDARY** - genomeBin Week 1 COMPLETE | 100% Priority Targets | Systematic Deep Debt Evolution Mastery
+**Last Updated**: January 31, 2026 (Evening)  
+**Version**: v8.20.0+ (TRUE ecoBin #4 + genomeBin Week 1 + Week 2!)  
+**Status**: 🌟 **LEGENDARY** - genomeBin Week 1+2 COMPLETE | 100% Build + Deploy | Universal Infrastructure
 
 ---
 
@@ -14,61 +14,68 @@
 3. **[SESSION_WRAP_UP_JAN_30_2026.md](SESSION_WRAP_UP_JAN_30_2026.md)** ⭐ - Latest comprehensive session
 4. **[ROADMAP.md](ROADMAP.md)** - Future plans and 12-week roadmap
 
-### Latest: genomeBin Week 1 COMPLETE! 🌟🏆 (Jan 31, 2026)
+### Latest: genomeBin Week 1+2 COMPLETE! 🌟🏆🚀 (Jan 31, 2026)
 
-**LEGENDARY Achievement**: 100% Priority Targets + Systematic Deep Debt Evolution!
+**LEGENDARY Achievement**: 100% Priority Targets + Universal Deployment Infrastructure!
 
 | Priority | Document | Description |
 |----------|----------|-------------|
-| **🌟 #1** | **[GENOMEBIN_WEEK1_VICTORY_JAN_31_2026.md](GENOMEBIN_WEEK1_VICTORY_JAN_31_2026.md)** | **LEGENDARY VICTORY!** 100% priority targets (musl, Android, Windows, Linux) + 11+ crates evolved! |
-| **🏆 #2** | **[TRUE_ECOBIN_4_CERTIFIED_100_PERCENT_PURE_RUST_JAN_30_2026.md](TRUE_ECOBIN_4_CERTIFIED_100_PERCENT_PURE_RUST_JAN_30_2026.md)** | TRUE ecoBin #4 CERTIFIED (100% Pure Rust, ZERO C deps!) |
-| **📊 #3** | **[CROSS_COMPILATION_PROGRESS_JAN_31_2026.md](CROSS_COMPILATION_PROGRESS_JAN_31_2026.md)** | Cross-compilation results (4/4 priority targets built!) |
-| **🌍 #4** | **[GENOMEBIN_EVOLUTION_ANALYSIS_JAN_31_2026.md](GENOMEBIN_EVOLUTION_ANALYSIS_JAN_31_2026.md)** | genomeBin evolution roadmap (deployment wrappers, Week 2+) |
-| **🦀 #3** | **[TRUE_ECOBIN_V2_PHASE1_100_PERCENT_JAN_30_2026.md](TRUE_ECOBIN_V2_PHASE1_100_PERCENT_JAN_30_2026.md)** | Phase 1 COMPLETE! (WindowsIPC + 7+ platforms) |
-| **📋 #4** | **[DEPENDENCY_EVOLUTION_PURE_RUST_JAN_30_2026.md](DEPENDENCY_EVOLUTION_PURE_RUST_JAN_30_2026.md)** | Pure Rust evolution strategy & plan |
-| **📊 #5** | **[BIOMEOS_SOCKET_STANDARD_COMPLIANCE_JAN_30_2026.md](BIOMEOS_SOCKET_STANDARD_COMPLIANCE_JAN_30_2026.md)** | Socket standard compliance & XDG paths |
-| **⭐ #6** | **[SESSION_WRAP_UP_JAN_30_2026.md](SESSION_WRAP_UP_JAN_30_2026.md)** | Complete session summary (10.5 hours, A+ grade) |
-| #6 | [COMPREHENSIVE_CODEBASE_AUDIT_JAN_30_2026.md](COMPREHENSIVE_CODEBASE_AUDIT_JAN_30_2026.md) | Full 13-area audit against ALL ecoPrimals standards |
-| #7 | [DEEP_DEBT_EXECUTION_JAN_30_2026.md](DEEP_DEBT_EXECUTION_JAN_30_2026.md) | Execution strategy and philosophy validation |
-| #8 | [SESSION_JAN_30_EVENING_TRUE_ECOBIN_V2.md](SESSION_JAN_30_EVENING_TRUE_ECOBIN_V2.md) | Evening session (~3 hours, Outstanding work) |
-| #9 | [TRUE_ECOBIN_V2_MIGRATION_PLAN_JAN_30_2026.md](TRUE_ECOBIN_V2_MIGRATION_PLAN_JAN_30_2026.md) | Q1 2026 migration plan (800 lines) |
-| #10 | [DEPENDENCY_MIGRATION_50_PERCENT_JAN_30_2026.md](DEPENDENCY_MIGRATION_50_PERCENT_JAN_30_2026.md) | Dependency migration progress milestone |
+| **🚀 #1** | **[GENOMEBIN_WEEK2_DEPLOYMENT_COMPLETE_JAN_31_2026.md](GENOMEBIN_WEEK2_DEPLOYMENT_COMPLETE_JAN_31_2026.md)** | **WEEK 2 COMPLETE!** Production deployment infrastructure |
+| **🌟 #2** | **[GENOMEBIN_WEEK1_VICTORY_JAN_31_2026.md](GENOMEBIN_WEEK1_VICTORY_JAN_31_2026.md)** | **WEEK 1 COMPLETE!** 100% priority targets + 11+ crates evolved |
+| **📊 #3** | **[CROSS_COMPILATION_PROGRESS_JAN_31_2026.md](CROSS_COMPILATION_PROGRESS_JAN_31_2026.md)** | Cross-compilation results (4/4 targets built) |
+| **🏆 #4** | **[TRUE_ECOBIN_4_CERTIFIED_100_PERCENT_PURE_RUST_JAN_30_2026.md](TRUE_ECOBIN_4_CERTIFIED_100_PERCENT_PURE_RUST_JAN_30_2026.md)** | TRUE ecoBin #4 CERTIFIED (100% Pure Rust) |
+| **🌍 #5** | **[GENOMEBIN_EVOLUTION_ANALYSIS_JAN_31_2026.md](GENOMEBIN_EVOLUTION_ANALYSIS_JAN_31_2026.md)** | genomeBin evolution roadmap & analysis |
 
-**🏆 LEGENDARY Session Achievements (Jan 30, 2026):**
+### Additional Documentation
 
-**TRUE ecoBin #4: CERTIFIED! 🦀**
-- ✅ **100% Pure Rust** - ZERO C dependencies workspace-wide!
-- ✅ **OpenSSL**: Completely eliminated (cargo tree: no matches)
-- ✅ **native-tls**: Completely eliminated (cargo tree: no matches)
-- ✅ **Grade: A+** (Perfect Score - LEGENDARY!)
+| Document | Description |
+|----------|-------------|
+| [SESSION_WRAP_UP_JAN_30_2026.md](SESSION_WRAP_UP_JAN_30_2026.md) | Jan 30 session summary (10.5 hours, A+ grade) |
+| [COMPREHENSIVE_CODEBASE_AUDIT_JAN_30_2026.md](COMPREHENSIVE_CODEBASE_AUDIT_JAN_30_2026.md) | Full 13-area audit against ALL standards |
+| [TRUE_ECOBIN_V2_PHASE1_100_PERCENT_JAN_30_2026.md](TRUE_ECOBIN_V2_PHASE1_100_PERCENT_JAN_30_2026.md) | Phase 1 WindowsIPC + 7+ platforms |
+| [DEPENDENCY_EVOLUTION_PURE_RUST_JAN_30_2026.md](DEPENDENCY_EVOLUTION_PURE_RUST_JAN_30_2026.md) | Pure Rust evolution strategy |
+| [BIOMEOS_SOCKET_STANDARD_COMPLIANCE_JAN_30_2026.md](BIOMEOS_SOCKET_STANDARD_COMPLIANCE_JAN_30_2026.md) | Socket standard & XDG paths |
 
-**Platform Coverage: 100% Complete! 🌍**
-- ✅ **7+ Platforms**: Linux, Android, Windows, macOS, iOS, WASM, embedded
-- ✅ **WindowsIPC**: Pure Rust named pipes (~290 lines, 8 tests passing)
-- ✅ **Multi-transport**: Runtime discovery with graceful fallback
-- ✅ **XDG Compliance**: Pure Rust path resolution (no libc!)
-- ✅ **117 tests passing** (songbird-universal-ipc, 0 failures)
+**🏆 LEGENDARY Session Achievements (Jan 30-31, 2026):**
 
-**Dependency Evolution: 100% Complete! 🦀**
-- ✅ **4/4 crates migrated** to Pure Rust HTTP (reqwest → IpcHttpClient)
-  - songbird-cli (production code)
-  - songbird-rendezvous (dev-dependency removed)
-  - albatross-benchmark (HTTP + JSON-RPC benchmarks)
-  - songbird-genesis (webauthn-rs removed - unused)
-- ✅ **IPC delegation pattern** (smart architectural solution)
-- ✅ **~46 lines changed** (massive impact, minimal code changes)
+**genomeBin Week 1+2: COMPLETE! 🌟🚀**
+- ✅ **4/4 Priority Targets Building** (musl, Android, Windows, Linux)
+- ✅ **4/4 Deployment Wrappers** (systemd, USB, Windows, Android)
+- ✅ **11+ Crates Evolved** (platform-agnostic architecture)
+- ✅ **10 Deployment Files** (~3,170 lines infrastructure)
+- ✅ **Universal Config System** (XDG-compliant TOML)
+- ✅ **100% Pure Rust Verified** (all targets)
+
+**Cross-Compilation: 100% Priority Targets! 🌍**
+- ✅ **x86_64-unknown-linux-musl** (29MB) - USB Live Spore ready
+- ✅ **aarch64-linux-android** (28MB) - Pixel 8a ready
+- ✅ **x86_64-pc-windows-gnu** (49MB) - Windows x64 ready
+- ✅ **x86_64-unknown-linux-gnu** (27MB) - Production deployed
+
+**Deep Debt Evolution: Systematic Mastery! 🦀**
+- ✅ **Evolution #1**: Android network (if_addrs → netdev)
+- ✅ **Evolution #2**: Platform-agnostic IPC (24+ files, 150+ conversions)
+- ✅ **Consistent Patterns**: UnixStream → PlatformStream across 11+ crates
+- ✅ **Smart Refactoring**: Architectural improvement, not quick fixes
+
+**Deployment Infrastructure: Production-Ready! 🚀**
+- ✅ **Linux systemd**: Single + multi-instance, security-hardened
+- ✅ **USB Live Spore**: Fully portable bash launcher
+- ✅ **Windows**: PowerShell launcher + Phase 2 roadmap
+- ✅ **Android**: Termux + ADB deployment guide
+- ✅ **Config Templates**: XDG-compliant TOML
 
 **Documentation Excellence: 📚**
-- ✅ **17 comprehensive reports** (~9,800 lines total!)
-- ✅ **Complete audit trail** (architecture, migration, testing)
-- ✅ **Philosophy validation** (deep debt solutions, smart refactoring)
+- ✅ **~9,370 lines total** (Week 1: ~6,200 + Week 2: ~3,170)
+- ✅ **13 comprehensive commits** (~3,500 lines commit messages)
+- ✅ **5 major reports** (victory, progress, analysis)
+- ✅ **10 deployment guides** (systemd, USB, Windows, Android, config)
 
-**Quality Metrics:**
-- ✅ **Comprehensive audit**: A+ grade, 13 areas analyzed
-- ✅ **Zero production unsafe code** verified
-- ✅ **160+ files** evolved to modern idiomatic Rust
-- ✅ **Phase 1**: Platform abstraction (100%)
-- ✅ **Phase 2**: Dependency evolution (100%)
+**TRUE ecoBin #4: CERTIFIED! 🦀**
+- ✅ **100% Pure Rust** - ZERO C dependencies workspace-wide
+- ✅ **OpenSSL**: Completely eliminated
+- ✅ **native-tls**: Completely eliminated
+- ✅ **Grade: A+** (Perfect Score)
 
 ---
 
@@ -90,6 +97,7 @@
 | **[docs/architecture/](docs/architecture/)** | System design and patterns |
 | **[docs/tls/](docs/tls/)** | TLS 1.3 implementation |
 | **[docs/operations/](docs/operations/)** | Deployment guides |
+| **[deployment/](deployment/)** | **NEW!** Production deployment wrappers (10 files, 4 platforms) |
 
 ---
 
@@ -431,3 +439,41 @@ cat CONTRIBUTING.md
 ---
 
 **🏆 Songbird v8.20.0+ - TRUE ecoBin #4 CERTIFIED! - 100% Pure Rust - ZERO C Dependencies - LEGENDARY! 🦀🌍**
+
+---
+
+## 🚀 **Deployment Infrastructure** (genomeBin Week 2)
+
+### Production-Ready Deployment Wrappers
+
+**All 4 priority targets have complete deployment infrastructure!**
+
+| Platform | Deployment Method | Status | Files | Quick Start |
+|----------|------------------|--------|-------|-------------|
+| **Linux** | systemd service | ✅ Complete | 3 files | `sudo systemctl enable songbird` |
+| **Linux** | USB Live Spore | ✅ Complete | 2 files | `./deployment/usb-live-spore/launch-songbird.sh` |
+| **Windows** | PowerShell | ✅ Complete | 2 files | `.\deployment\windows-service\launch-songbird.ps1` |
+| **Android** | Termux/ADB | ✅ Complete | 1 file | `chmod +x ~/songbird && ./songbird` |
+| **Universal** | Config Templates | ✅ Complete | 2 files | `~/.config/songbird/songbird.toml` |
+
+### Deployment Documentation
+
+| Guide | Description | Lines |
+|-------|-------------|-------|
+| **[deployment/systemd/README.md](deployment/systemd/README.md)** | Linux systemd deployment (single + multi-instance) | ~350 |
+| **[deployment/usb-live-spore/README.md](deployment/usb-live-spore/README.md)** | Portable USB deployment guide | ~300 |
+| **[deployment/windows-service/README.md](deployment/windows-service/README.md)** | Windows deployment (Phase 1 + Phase 2 roadmap) | ~250 |
+| **[deployment/android/README.md](deployment/android/README.md)** | Android deployment (Termux + ADB) | ~450 |
+| **[deployment/config/README.md](deployment/config/README.md)** | XDG-compliant configuration guide | ~350 |
+
+### Features
+
+✅ **Platform-Agnostic Design** - Consistent patterns across all platforms  
+✅ **Security Hardening** - systemd 12+ protections, minimal privileges  
+✅ **Multi-Instance Support** - Family-based isolation (systemd templates)  
+✅ **XDG Compliance** - Standard directory conventions  
+✅ **Zero Hardcoding** - Runtime discovery, environment-based config  
+✅ **Auto-Cleanup** - Proper resource management and signal handling  
+✅ **Comprehensive Docs** - Installation, troubleshooting, optimization
+
+---
