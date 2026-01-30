@@ -54,7 +54,9 @@ tokio = { workspace = true }
 fastrand = { workspace = true }
 clap = { version = "4.0", features = ["derive"] }
 colored = "2.0"
-reqwest = { version = "0.11", features = ["json"], default-features = false }  # ✅ No TLS (Pure Rust!)
+# REMOVED: reqwest (C dependency via native-tls/OpenSSL)
+# REPLACED WITH: songbird-http-client (Pure Rust IPC delegation)
+songbird-http-client = { path = "../songbird-http-client" }  # ✅ Pure Rust HTTP via IPC!
 tracing = "0.1"
 dialoguer = "0.11"
 console = "0.15"
@@ -70,8 +72,7 @@ rustls = { version = "0.23", default-features = false, features = ["ring"] }  # 
 anyhow = "1.0"   # ✅ ADDED: For error handling
 
 [features]
-default = ["reqwest"]
-reqwest = []
+default = []
 
 [dev-dependencies]
 tempfile = "3.8"

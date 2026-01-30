@@ -4,7 +4,7 @@
 
 use clap::{Arg, Command};
 use colored::Colorize;
-use reqwest::Client;
+use songbird_http_client::IpcHttpClient; // Pure Rust HTTP client via Songbird IPC
 use songbird_types::{SongbirdError, SongbirdResult};
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
@@ -48,7 +48,7 @@ impl Default for TestConfig {
 /// Test runner implementation
 pub struct TestRunner {
     config: TestConfig,
-    client: Client,
+    client: IpcHttpClient,
     passed: Arc<AtomicUsize>,
     failed: Arc<AtomicUsize>,
     total: Arc<AtomicUsize>,
@@ -59,11 +59,12 @@ impl TestRunner {
     ///
     /// # Errors
     /// Returns error if HTTP client cannot be created
-    pub fn new(config: TestConfig) -> Result<Self, String> {
-        let client = Client::builder()
-            .timeout(Duration::from_secs(config.timeout_seconds))
-            .build()
-            .map_err(|e| format!("Failed to create HTTP client: {e}"))?;
+    pub async fn new(config: TestConfig) -> Result<Self, String> {
+        // Create Pure Rust IPC HTTP client (delegates to Songbird's HTTP service)
+        // Timeout is handled at test level (line 118), not client level
+        let client = IpcHttpClient::new()
+            .await
+            .map_err(|e| format!("Failed to create IPC HTTP client: {e}"))?;
 
         Ok(Self {
             config,
@@ -162,14 +163,14 @@ impl TestRunner {
 
     /// Check if Songbird is running
     async fn check_songbird_health(&self) -> SongbirdResult<()> {
+        // IpcHttpClient::get() returns Response directly (no .send() needed)
         let response = self
             .client
             .get(format!("{}/api/health ", self.config.songbird_url))
-            .send()
             .await
             .map_err(|e| SongbirdError::network(format!("Health check request failed: {e}")))?;
 
-        if response.status().is_success() {
+        if response.is_success() {
             let text = response
                 .text()
                 .await
@@ -199,11 +200,10 @@ impl TestRunner {
                 let response = self
                     .client
                     .get(format!("{}/api/metrics", self.config.songbird_url))
-                    .send()
                     .await
                     .map_err(|e| SongbirdError::network(format!("Metrics request failed: {e}")))?;
 
-                if response.status().is_success() {
+                if response.is_success() {
                     let text = response.text().await.map_err(|e| {
                         SongbirdError::network(format!("Failed to read response: {e}"))
                     })?;
@@ -336,7 +336,8 @@ async fn main() -> SongbirdResult<()> {
         quiet: matches.get_flag("quiet"),
     };
 
-    let runner = TestRunner::new(config)?;
+    // Create test runner (async, connects to Songbird IPC)
+    let runner = TestRunner::new(config).await?;
 
     // Run quick validation (same for both branches)
     let results = runner.run_quick_validation().await;
