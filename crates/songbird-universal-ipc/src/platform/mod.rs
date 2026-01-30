@@ -97,9 +97,8 @@ pub fn get_platform_ipc() -> Box<dyn PlatformIPC> {
 
     #[cfg(windows)]
     {
-        // Windows: Named pipes (when implemented, fallback to TCP for now)
-        // TODO: Check if WindowsIPC is fully implemented
-        Box::new(fallback::FallbackIPC) // Temporary until WindowsIPC complete
+        // Windows: Named pipes (Pure Rust implementation!)
+        Box::new(windows::WindowsIPC)
     }
 
     #[cfg(target_family = "wasm")]
@@ -161,9 +160,8 @@ pub fn get_platform_transports() -> Vec<(&'static str, Box<dyn PlatformIPC>)> {
 
     #[cfg(windows)]
     {
-        // Windows: Named pipes (when fully implemented)
-        // TODO: Uncomment when WindowsIPC is complete
-        // transports.push(("windows-pipe", Box::new(windows::WindowsIPC) as Box<dyn PlatformIPC>));
+        // Windows: Named pipes (Pure Rust, tokio-based!)
+        transports.push(("windows-pipe", Box::new(windows::WindowsIPC) as Box<dyn PlatformIPC>));
     }
 
     #[cfg(target_family = "wasm")]

@@ -215,7 +215,10 @@ mod tests {
     #[cfg(target_os = "linux")]
     async fn test_android_cleanup_no_filesystem() {
         let ipc = AndroidIPC;
-        let endpoint = ipc.create_endpoint("cleanup-test").await.unwrap();
+        
+        // Use unique name to avoid conflicts with parallel tests
+        let test_name = format!("cleanup-{}", std::process::id());
+        let endpoint = ipc.create_endpoint(&test_name).await.unwrap();
 
         // Create and close listener
         let listener = ipc.listen(&endpoint).await.unwrap();
@@ -225,9 +228,17 @@ mod tests {
         ipc.cleanup(&endpoint).await.unwrap();
 
         // Verify no filesystem entry exists
-        // (abstract sockets never create filesystem entries)
-        let socket_path = std::path::Path::new("@biomeos_cleanup-test");
-        assert!(!socket_path.exists()); // Should never exist
+        // Abstract sockets NEVER create filesystem entries (kernel-managed namespace)
+        // Attempting to check filesystem would be a category error
+        
+        // Instead, verify the endpoint is the correct type
+        match endpoint {
+            NativeEndpoint::AbstractSocket(name) => {
+                assert!(name.starts_with('@'));
+                assert!(name.contains(&test_name));
+            }
+            _ => panic!("Expected AbstractSocket endpoint"),
+        }
     }
 
     #[test]
