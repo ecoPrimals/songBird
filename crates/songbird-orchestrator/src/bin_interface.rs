@@ -214,14 +214,25 @@ pub async fn run_server(args: ServerArgs) -> Result<()> {
         tracing::info!("   BearDog: {}", beardog_socket);
         tracing::info!("   Capabilities: http, discovery, secure_http");
 
-        // Spawn IPC server in background task
-        let socket_clone = socket_path.clone();
-        Some(tokio::spawn(async move {
-            match start_ipc_server(&socket_clone, &beardog_socket).await {
-                Ok(_) => tracing::info!("IPC server stopped gracefully"),
-                Err(e) => tracing::error!("IPC server error: {}", e),
-            }
-        }))
+        // Spawn IPC server in background task (Unix only)
+        #[cfg(unix)]
+        let ipc_task = {
+            let socket_clone = socket_path.clone();
+            Some(tokio::spawn(async move {
+                match start_ipc_server(&socket_clone, &beardog_socket).await {
+                    Ok(_) => tracing::info!("IPC server stopped gracefully"),
+                    Err(e) => tracing::error!("IPC server error: {}", e),
+                }
+            }))
+        };
+        
+        #[cfg(not(unix))]
+        let ipc_task = {
+            tracing::info!("IPC server: Windows TCP fallback (coming in Phase 2)");
+            None
+        };
+        
+        ipc_task
     } else {
         tracing::info!("");
         tracing::info!("💡 Tip: Use --socket to enable IPC for biomeOS integration");
@@ -794,6 +805,7 @@ SONGBIRD_LOG_LEVEL=info
 ///
 /// This enables biomeOS and other primals to make HTTP/HTTPS requests via JSON-RPC
 /// without embedding Songbird code (TRUE PRIMAL architecture).
+#[cfg(unix)]
 async fn start_ipc_server(socket_path: &str, beardog_socket: &str) -> Result<()> {
     use songbird_universal_ipc::registry::ServiceRegistry;
     use songbird_universal_ipc::service::IpcServiceHandler;

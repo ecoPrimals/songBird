@@ -318,10 +318,11 @@ impl SongbirdOrchestrator {
         .await?;
         info!("✅ HTTP server started on port {}", actual_https_port);
 
-        // 🎧 NEW (Jan 4, 2026): Start Unix Socket IPC Server for inter-primal communication
-        info!("🎧 Starting Unix Socket IPC server...");
+        // 🎧 NEW (Jan 4, 2026): Start IPC Server for inter-primal communication
+        // Unix: Unix domain sockets, Windows: TCP fallback
+        info!("🎧 Starting IPC server...");
         self.start_ipc_server().await?;
-        info!("✅ Unix Socket IPC server started");
+        info!("✅ IPC server started");
 
         // 🌍 NEW (Jan 19, 2026): Start Universal IPC Broker for service-based inter-primal IPC
         // ✅ EVOLUTION (Jan 29, 2026): Wire up discovery listener for runtime peer discovery
@@ -647,6 +648,7 @@ impl SongbirdOrchestrator {
     ///
     /// This ensures multiple Songbird instances (spores) can run on the same machine
     /// without socket path conflicts, following security provider's pattern.
+    #[cfg(unix)]
     async fn start_ipc_server(&mut self) -> Result<()> {
         use crate::ipc::{ServiceRegistry, UnixSocketServer};
 
