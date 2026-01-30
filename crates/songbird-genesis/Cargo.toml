@@ -20,7 +20,8 @@ serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 
 # Cryptography & Hardware Keys
-webauthn-rs = { version = "0.4", optional = true }           # FIDO2/WebAuthn for SoloKey
+# REMOVED: webauthn-rs (C dependency via OpenSSL, not actually used - placeholder only)
+# Future: SoloKey support will use Pure Rust FIDO2/WebAuthn implementation
 
 # Physical Channels
 qrcode = { version = "0.13", optional = true }               # QR code generation
@@ -58,7 +59,7 @@ mockall = "0.12"
 
 [features]
 default = ["solokey", "qr", "pure-bluetooth", "capability-discovery"]  # Pure Rust - zero system deps!
-solokey = ["webauthn-rs"]
+solokey = []  # Placeholder for future Pure Rust FIDO2/WebAuthn support
 qr = ["qrcode", "image", "rqrr"]
 bluetooth = ["btleplug"]  # Legacy: Linux requires libdbus-1-dev
 pure-bluetooth = ["songbird-bluetooth"]  # Pure Rust BLE - universal!

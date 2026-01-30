@@ -7,9 +7,16 @@ use chrono::Utc;
 use super::PhysicalChannelProvider;
 
 /// SoloKey hardware key channel
+///
+/// **Status:** Placeholder implementation for future Pure Rust FIDO2/WebAuthn support
+///
+/// **Future Implementation:**
+/// - Use Pure Rust FIDO2/WebAuthn library (when available)
+/// - Or delegate to BearDog for hardware key operations via IPC
+/// - Zero C dependencies (no OpenSSL)
 #[derive(Debug)]
 pub struct SoloKeyChannel {
-    // TODO: Add webauthn-rs integration
+    // Future: Add Pure Rust FIDO2/WebAuthn integration
 }
 
 impl SoloKeyChannel {
