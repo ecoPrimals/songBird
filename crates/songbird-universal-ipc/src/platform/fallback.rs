@@ -48,9 +48,9 @@ impl PlatformIPC for FallbackIPC {
                     inner: listener,
                 }))
             }
-            NativeEndpoint::UnixSocket(_) => {
-                Err(IpcError::PlatformError("Invalid endpoint for fallback platform".to_string()))
-            }
+            _ => Err(IpcError::PlatformError(
+                "FallbackIPC requires TcpLocal endpoint".to_string(),
+            )),
         }
     }
 
@@ -70,9 +70,9 @@ impl PlatformIPC for FallbackIPC {
 
                 Ok(Box::new(stream))
             }
-            NativeEndpoint::UnixSocket(_) => {
-                Err(IpcError::PlatformError("Invalid endpoint for fallback platform".to_string()))
-            }
+            _ => Err(IpcError::PlatformError(
+                "FallbackIPC requires TcpLocal endpoint".to_string(),
+            )),
         }
     }
 

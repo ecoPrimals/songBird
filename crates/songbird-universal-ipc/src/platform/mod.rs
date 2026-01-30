@@ -6,13 +6,16 @@ use async_trait::async_trait;
 use tokio::io::{AsyncRead, AsyncWrite};
 
 // Platform-specific implementations
-#[cfg(unix)]
-pub mod unix;
+// 
+// **TRUE ecoBin v2.0**: All modules available on all platforms.
+// Selection happens at runtime via get_platform_ipc() and multi-transport support.
 
-#[cfg(windows)]
-pub mod windows;
-
-pub mod fallback;
+pub mod unix;      // Unix domain sockets (Linux, macOS, BSD)
+pub mod android;   // Abstract sockets (Android, Linux)
+pub mod windows;   // Named pipes (Windows)
+pub mod ios;       // XPC (iOS, macOS)
+pub mod wasm;      // In-process (WASM)
+pub mod fallback;  // TCP localhost (universal)
 
 /// Platform-specific IPC trait
 ///

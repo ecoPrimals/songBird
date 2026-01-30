@@ -46,59 +46,206 @@ impl VirtualEndpoint {
 
 /// Native endpoint (platform-specific)
 ///
-/// This is the actual endpoint used by the OS:
-/// - Unix: `/tmp/primal-beardog.sock`
-/// - Windows: `\\.\pipe\primal-beardog`
-/// - Fallback: `127.0.0.1:{port}`
+/// **Platform-Agnostic Design** (TRUE ecoBin v2.0):
+/// All variants available on all platforms. Selection happens at runtime,
+/// not compile-time. This eliminates platform guards and enables true portability.
+///
+/// Platform-to-transport mapping:
+/// - Linux: `UnixSocket` (filesystem) or `AbstractSocket` (namespace)
+/// - Android: `AbstractSocket` (SELinux-safe, no filesystem)
+/// - Windows: `NamedPipe` (`\\.\pipe\biomeos_{name}`)
+/// - macOS: `UnixSocket` (filesystem)
+/// - iOS: `XPC` (Apple IPC) or `UnixSocket` fallback
+/// - WASM: `InProcess` (same runtime, no real IPC)
+/// - Embedded: `SharedMemory` (low-level IPC)
+/// - Universal fallback: `TcpLocal` (works anywhere)
 #[derive(Debug, Clone)]
 pub enum NativeEndpoint {
-    /// Unix domain socket (Linux, macOS, BSD, etc.)
-    #[cfg(unix)]
+    /// Unix domain socket (filesystem-based)
+    /// - Linux, macOS, BSD: `/run/user/$UID/biomeos/{primal}.sock`
+    /// - XDG-compliant, no hardcoded `/tmp/`
     UnixSocket(PathBuf),
 
+    /// Abstract Unix socket (Linux namespace-based, Android-preferred)
+    /// - Linux: `@biomeos_{primal}` (abstract namespace)
+    /// - Android: `@biomeos_{primal}` (SELinux-safe, no filesystem)
+    /// - No filesystem overhead, automatically cleaned up
+    AbstractSocket(String),
+
     /// Windows named pipe
-    #[cfg(windows)]
+    /// - Windows: `\\.\pipe\biomeos_{primal}`
+    /// - Requires tokio named pipe support
     NamedPipe(String),
 
-    /// TCP localhost (fallback for platforms without Unix sockets or named pipes)
+    /// XPC service (iOS/macOS)
+    /// - iOS: `org.biomeos.{primal}` (required for iOS)
+    /// - macOS: Optional, can use UnixSocket instead
+    /// - Requires platform-specific XPC bindings
+    XPC(String),
+
+    /// In-process channel (WASM, single-runtime)
+    /// - WASM: All primals in same runtime, no real IPC needed
+    /// - Uses async channels, zero overhead
+    /// - Port is a logical identifier, not a real port
+    InProcess(u16),
+
+    /// Shared memory IPC (embedded, bare-metal)
+    /// - Embedded: Direct memory access
+    /// - Name identifies shared memory region
+    /// - Requires platform-specific memory mapping
+    SharedMemory(String),
+
+    /// TCP localhost (universal fallback)
+    /// - Works on ANY platform (ultimate fallback)
+    /// - Port dynamically assigned (50000+)
+    /// - Less performant but always available
     TcpLocal(u16),
 }
 
 impl NativeEndpoint {
     /// Get display string for logging
+    ///
+    /// **Platform-Agnostic**: Works on all platforms, no `#[cfg]` guards
     #[must_use]
     pub fn display(&self) -> String {
         match self {
-            #[cfg(unix)]
             NativeEndpoint::UnixSocket(path) => {
                 format!("unix://{}", path.display())
             }
-            #[cfg(windows)]
+            NativeEndpoint::AbstractSocket(name) => {
+                format!("abstract://{}", name)
+            }
             NativeEndpoint::NamedPipe(name) => {
                 format!("pipe://{}", name)
             }
-            NativeEndpoint::TcpLocal(port) => {
-                format!("tcp://127.0.0.1:{port}")
+            NativeEndpoint::XPC(service) => {
+                format!("xpc://{}", service)
             }
+            NativeEndpoint::InProcess(id) => {
+                format!("inprocess://{}", id)
+            }
+            NativeEndpoint::SharedMemory(region) => {
+                format!("shmem://{}", region)
+            }
+            NativeEndpoint::TcpLocal(port) => {
+                format!("tcp://127.0.0.1:{}", port)
+            }
+        }
+    }
+
+    /// Get transport type name (for metrics/logging)
+    #[must_use]
+    pub fn transport_type(&self) -> &'static str {
+        match self {
+            NativeEndpoint::UnixSocket(_) => "unix",
+            NativeEndpoint::AbstractSocket(_) => "abstract",
+            NativeEndpoint::NamedPipe(_) => "pipe",
+            NativeEndpoint::XPC(_) => "xpc",
+            NativeEndpoint::InProcess(_) => "inprocess",
+            NativeEndpoint::SharedMemory(_) => "shmem",
+            NativeEndpoint::TcpLocal(_) => "tcp",
         }
     }
 
     /// Check if endpoint exists/is accessible
-    #[cfg(unix)]
+    ///
+    /// **Platform-Agnostic**: Returns best-effort result on all platforms
     #[must_use]
     pub fn exists(&self) -> bool {
         match self {
             NativeEndpoint::UnixSocket(path) => path.exists(),
-            NativeEndpoint::TcpLocal(_) => true, // TCP always "exists"
+            NativeEndpoint::AbstractSocket(_) => {
+                // Abstract sockets don't have filesystem presence
+                // Can't check without attempting connection
+                true
+            }
+            NativeEndpoint::NamedPipe(_) => {
+                // Named pipes don't have simple "exists" check
+                // Would require platform-specific API call
+                true
+            }
+            NativeEndpoint::XPC(_) => {
+                // XPC services registered with launchd
+                // Would require platform-specific query
+                true
+            }
+            NativeEndpoint::InProcess(_) => {
+                // In-process always "exists" in same runtime
+                true
+            }
+            NativeEndpoint::SharedMemory(_) => {
+                // Shared memory requires platform-specific check
+                true
+            }
+            NativeEndpoint::TcpLocal(_) => {
+                // TCP localhost always "exists"
+                true
+            }
         }
     }
 
-    #[cfg(windows)]
-    pub fn exists(&self) -> bool {
-        // Named pipes don't have a simple "exists" check
-        // We'd need to try opening, which is expensive
-        // For now, assume exists
-        true
+    /// Get performance tier (for automatic transport selection)
+    ///
+    /// Lower is better (faster, lower latency, higher throughput)
+    #[must_use]
+    pub fn performance_tier(&self) -> u8 {
+        match self {
+            NativeEndpoint::SharedMemory(_) => 0,    // ~1μs, 50GB/s
+            NativeEndpoint::InProcess(_) => 1,       // ~0.1μs (same process)
+            NativeEndpoint::UnixSocket(_) => 2,      // ~5μs, 10GB/s
+            NativeEndpoint::AbstractSocket(_) => 2,  // ~5μs, 10GB/s (same as Unix)
+            NativeEndpoint::XPC(_) => 3,             // ~10μs
+            NativeEndpoint::NamedPipe(_) => 3,       // ~10μs, 5GB/s
+            NativeEndpoint::TcpLocal(_) => 4,        // ~50μs, 1GB/s
+        }
+    }
+
+    /// Check if transport is native to current platform (optimal)
+    #[must_use]
+    pub fn is_native(&self) -> bool {
+        #[cfg(target_os = "linux")]
+        {
+            matches!(self, NativeEndpoint::UnixSocket(_) | NativeEndpoint::AbstractSocket(_))
+        }
+
+        #[cfg(target_os = "android")]
+        {
+            // Android prefers abstract sockets (SELinux-safe)
+            matches!(self, NativeEndpoint::AbstractSocket(_))
+        }
+
+        #[cfg(target_os = "windows")]
+        {
+            matches!(self, NativeEndpoint::NamedPipe(_))
+        }
+
+        #[cfg(target_os = "macos")]
+        {
+            matches!(self, NativeEndpoint::UnixSocket(_) | NativeEndpoint::XPC(_))
+        }
+
+        #[cfg(target_os = "ios")]
+        {
+            matches!(self, NativeEndpoint::XPC(_))
+        }
+
+        #[cfg(target_family = "wasm")]
+        {
+            matches!(self, NativeEndpoint::InProcess(_))
+        }
+
+        #[cfg(not(any(
+            target_os = "linux",
+            target_os = "android",
+            target_os = "windows",
+            target_os = "macos",
+            target_os = "ios",
+            target_family = "wasm"
+        )))]
+        {
+            // Unknown platform, TCP is universal fallback
+            matches!(self, NativeEndpoint::TcpLocal(_))
+        }
     }
 }
 
@@ -124,15 +271,68 @@ mod tests {
     }
 
     #[test]
-    #[cfg(unix)]
     fn test_native_endpoint_display_unix() {
-        let endpoint = NativeEndpoint::UnixSocket(PathBuf::from("/tmp/test.sock"));
-        assert_eq!(endpoint.display(), "unix:///tmp/test.sock");
+        let endpoint = NativeEndpoint::UnixSocket(PathBuf::from("/run/user/1000/biomeos/test.sock"));
+        assert_eq!(endpoint.display(), "unix:///run/user/1000/biomeos/test.sock");
+    }
+
+    #[test]
+    fn test_native_endpoint_display_abstract() {
+        let endpoint = NativeEndpoint::AbstractSocket("@biomeos_test".to_string());
+        assert_eq!(endpoint.display(), "abstract://@biomeos_test");
+    }
+
+    #[test]
+    fn test_native_endpoint_display_pipe() {
+        let endpoint = NativeEndpoint::NamedPipe(r"\\.\pipe\biomeos_test".to_string());
+        assert_eq!(endpoint.display(), r"pipe://\\.\pipe\biomeos_test");
+    }
+
+    #[test]
+    fn test_native_endpoint_display_xpc() {
+        let endpoint = NativeEndpoint::XPC("org.biomeos.test".to_string());
+        assert_eq!(endpoint.display(), "xpc://org.biomeos.test");
+    }
+
+    #[test]
+    fn test_native_endpoint_display_inprocess() {
+        let endpoint = NativeEndpoint::InProcess(12345);
+        assert_eq!(endpoint.display(), "inprocess://12345");
+    }
+
+    #[test]
+    fn test_native_endpoint_display_shmem() {
+        let endpoint = NativeEndpoint::SharedMemory("biomeos_test_region".to_string());
+        assert_eq!(endpoint.display(), "shmem://biomeos_test_region");
     }
 
     #[test]
     fn test_native_endpoint_display_tcp() {
         let endpoint = NativeEndpoint::TcpLocal(8080);
         assert_eq!(endpoint.display(), "tcp://127.0.0.1:8080");
+    }
+
+    #[test]
+    fn test_native_endpoint_transport_type() {
+        assert_eq!(NativeEndpoint::UnixSocket(PathBuf::from("/tmp/test.sock")).transport_type(), "unix");
+        assert_eq!(NativeEndpoint::AbstractSocket("@test".to_string()).transport_type(), "abstract");
+        assert_eq!(NativeEndpoint::NamedPipe("pipe".to_string()).transport_type(), "pipe");
+        assert_eq!(NativeEndpoint::XPC("xpc".to_string()).transport_type(), "xpc");
+        assert_eq!(NativeEndpoint::InProcess(1).transport_type(), "inprocess");
+        assert_eq!(NativeEndpoint::SharedMemory("mem".to_string()).transport_type(), "shmem");
+        assert_eq!(NativeEndpoint::TcpLocal(8080).transport_type(), "tcp");
+    }
+
+    #[test]
+    fn test_native_endpoint_performance_tier() {
+        // Verify performance ordering (lower = better)
+        assert!(NativeEndpoint::SharedMemory("m".to_string()).performance_tier() 
+            < NativeEndpoint::InProcess(1).performance_tier());
+        assert!(NativeEndpoint::InProcess(1).performance_tier() 
+            < NativeEndpoint::UnixSocket(PathBuf::from("/tmp/test.sock")).performance_tier());
+        assert!(NativeEndpoint::UnixSocket(PathBuf::from("/tmp/test.sock")).performance_tier() 
+            < NativeEndpoint::NamedPipe("p".to_string()).performance_tier());
+        assert!(NativeEndpoint::NamedPipe("p".to_string()).performance_tier() 
+            < NativeEndpoint::TcpLocal(8080).performance_tier());
     }
 }
