@@ -1,0 +1,109 @@
+# Songbird Configuration File (TOML)
+# genomeBin-compliant XDG configuration
+#
+# Location (Linux):
+#   ~/.config/songbird/songbird.toml
+#   /etc/songbird/songbird.toml (system-wide)
+#
+# Location (Windows):
+#   %APPDATA%\songbird\songbird.toml
+#
+# Location (Android/Termux):
+#   ~/.config/songbird/songbird.toml
+
+[general]
+# Family identifier (instance isolation)
+family_id = "default"
+
+# Operation mode (daemon, console, usb-live-spore, android)
+mode = "daemon"
+
+# Logging level (trace, debug, info, warn, error)
+log_level = "info"
+
+[network]
+# HTTP server port (if enabled)
+http_port = 8080
+
+# Enable mDNS discovery
+mdns_enabled = true
+
+# Discovery port
+discovery_port = 5353
+
+# P2P listen addresses (optional, auto-detect if empty)
+# listen_addresses = ["0.0.0.0:0"]
+
+[ipc]
+# Socket path (Unix) - uses XDG_RUNTIME_DIR if not specified
+# socket_path = "/run/user/1000/songbird/songbird.sock"
+
+# TCP fallback address (Windows)
+tcp_address = "127.0.0.1:9876"
+
+# Enable IPC server
+ipc_enabled = true
+
+[beardog]
+# BearDog integration (auto-discover if not specified)
+# socket_path = "/run/user/1000/beardog/beardog.sock"
+
+# Enable BearDog crypto delegation
+enabled = true
+
+[security]
+# Enable TLS
+tls_enabled = true
+
+# TLS certificate path (optional, auto-generate if not specified)
+# cert_path = "/var/lib/songbird/cert.pem"
+# key_path = "/var/lib/songbird/key.pem"
+
+# Enable BTSP (BearDog Tunnel Security Protocol)
+btsp_enabled = true
+
+[federation]
+# Enable federation with other Songbird instances
+enabled = true
+
+# Federation discovery method (mdns, neural-api, manual)
+discovery_method = "mdns"
+
+# Manual federation peers (optional)
+# peers = ["192.168.1.100:5353", "192.168.1.101:5353"]
+
+[monitoring]
+# Enable health check endpoint
+health_check_enabled = true
+
+# Health check interval (seconds)
+health_check_interval = 30
+
+# Prometheus metrics endpoint
+# metrics_enabled = false
+# metrics_port = 9090
+
+[performance]
+# Connection pool size
+connection_pool_size = 100
+
+# Request timeout (milliseconds)
+request_timeout_ms = 30000
+
+# Max concurrent requests
+max_concurrent_requests = 1000
+
+[storage]
+# State directory (persistent data)
+# Uses $XDG_STATE_HOME/songbird or /var/lib/songbird if not specified
+# state_dir = "/var/lib/songbird"
+
+# Cache directory (temporary data)
+# Uses $XDG_CACHE_HOME/songbird or /var/cache/songbird if not specified
+# cache_dir = "/var/cache/songbird"
+
+# Cache TTL (seconds)
+cache_ttl = 3600
+
+# Max cache size (MB)
+max_cache_size_mb = 100

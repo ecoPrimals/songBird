@@ -1,0 +1,101 @@
+# Songbird systemd Service Unit (Multi-Instance Template)
+# genomeBin-compliant deployment wrapper for running multiple Songbird instances
+#
+# Usage:
+#   systemctl start songbird@family1.service
+#   systemctl start songbird@family2.service
+#   systemctl start songbird@pixelgame.service
+#
+# Installation:
+#   sudo cp songbird@.service /etc/systemd/system/
+#   sudo systemctl daemon-reload
+#
+# Each instance gets its own:
+#   - Socket path: /run/songbird-%i/songbird.sock
+#   - State directory: /var/lib/songbird-%i
+#   - Cache directory: /var/cache/songbird-%i
+#   - Log identifier: songbird@%i
+
+[Unit]
+Description=Songbird Network Gaming Bridge (Family: %i)
+Documentation=https://github.com/ecoPrimals/songbird
+After=network-online.target
+Wants=network-online.target
+# Optional: Wait for BearDog instance
+After=beardog@%i.service
+Wants=beardog@%i.service
+
+[Service]
+Type=notify
+NotifyAccess=main
+
+# Binary location
+ExecStart=/usr/local/bin/songbird
+
+# Instance-specific runtime directories (XDG-compliant)
+RuntimeDirectory=songbird-%i
+RuntimeDirectoryMode=0755
+
+# Instance-specific state directory
+StateDirectory=songbird-%i
+StateDirectoryMode=0700
+
+# Instance-specific cache directory
+CacheDirectory=songbird-%i
+CacheDirectoryMode=0700
+
+# Instance-specific configuration directory
+ConfigurationDirectory=songbird-%i
+ConfigurationDirectoryMode=0755
+
+# Environment variables (instance-specific family ID!)
+Environment="SONGBIRD_FAMILY_ID=%i"
+Environment="RUST_LOG=info"
+Environment="SONGBIRD_MODE=daemon"
+Environment="SONGBIRD_INSTANCE=%i"
+
+# Security Hardening (TRUE ecoBin security standards)
+PrivateTmp=yes
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+ReadWritePaths=/var/lib/songbird-%i /var/cache/songbird-%i
+
+# Namespace isolation
+PrivateDevices=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+
+# System call filtering
+SystemCallArchitectures=native
+SystemCallFilter=@system-service
+SystemCallFilter=~@privileged @resources
+
+# Restrict address families
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+
+# Capabilities
+CapabilityBoundingSet=CAP_NET_BIND_SERVICE
+AmbientCapabilities=CAP_NET_BIND_SERVICE
+
+# Resource limits
+LimitNOFILE=65536
+LimitNPROC=512
+
+# Restart policy
+Restart=on-failure
+RestartSec=5s
+StartLimitInterval=60s
+StartLimitBurst=3
+
+# Watchdog
+WatchdogSec=30s
+
+# Logging (instance-specific identifier)
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=songbird@%i
+
+[Install]
+WantedBy=multi-user.target
