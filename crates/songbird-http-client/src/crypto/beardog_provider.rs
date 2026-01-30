@@ -20,7 +20,11 @@ use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use std::sync::atomic::{AtomicU64, Ordering};
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
-use tokio::net::UnixStream;
+// Platform-agnostic IPC transport
+#[cfg(unix)]
+use tokio::net::UnixStream as PlatformStream;
+#[cfg(windows)]
+use tokio::net::TcpStream as PlatformStream;
 use tracing::{debug, info, trace, warn};
 
 use super::capability::{CryptoCapability, TlsApplicationSecrets, TlsHandshakeSecrets};
@@ -135,6 +139,25 @@ impl BearDogProvider {
         &self.socket_path
     }
 
+    /// Platform-agnostic connection helper
+    ///
+    /// - Unix/macOS/Android: Unix domain sockets
+    /// - Windows: TCP localhost
+    #[cfg(unix)]
+    async fn connect_platform_static(path: &str) -> std::io::Result<PlatformStream> {
+        PlatformStream::connect(path).await
+    }
+
+    #[cfg(windows)]
+    async fn connect_platform_static(address: &str) -> std::io::Result<PlatformStream> {
+        PlatformStream::connect(address).await
+    }
+
+    #[cfg(not(any(unix, windows)))]
+    async fn connect_platform_static(address: &str) -> std::io::Result<tokio::net::TcpStream> {
+        tokio::net::TcpStream::connect(address).await
+    }
+
     /// Make JSON-RPC call to BearDog (or via Neural API)
     async fn call(&self, method: &str, params: Value) -> Result<Value> {
         let id = self.request_id.fetch_add(1, Ordering::SeqCst);
@@ -182,8 +205,8 @@ impl BearDogProvider {
             request_json
         );
 
-        // Connect to BearDog
-        let mut stream = UnixStream::connect(&self.socket_path).await.map_err(|e| {
+        // Connect to BearDog (platform-agnostic)
+        let mut stream = Self::connect_platform_static(&self.socket_path).await.map_err(|e| {
             Error::BearDogRpc(format!(
                 "Failed to connect to BearDog at {}: {}",
                 self.socket_path, e

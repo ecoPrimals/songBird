@@ -87,7 +87,12 @@ use serde_json::{json, Value};
 use std::collections::HashMap;
 use std::path::PathBuf;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
-use tokio::net::UnixStream;
+
+// Platform-agnostic IPC transport
+#[cfg(unix)]
+use tokio::net::UnixStream as PlatformStream;
+#[cfg(windows)]
+use tokio::net::TcpStream as PlatformStream;
 
 use super::multipart::Form;
 
@@ -186,6 +191,29 @@ impl IpcHttpClient {
         Ok(fallback)
     }
 
+    /// Platform-agnostic connection helper
+    ///
+    /// Connects to Songbird IPC using platform-specific transport:
+    /// - Unix/macOS/Android: Unix domain sockets
+    /// - Windows: TCP localhost (future: named pipes via universal IPC)
+    #[cfg(unix)]
+    async fn connect_platform(path: &PathBuf) -> std::io::Result<PlatformStream> {
+        PlatformStream::connect(path).await
+    }
+
+    #[cfg(windows)]
+    async fn connect_platform(address: &PathBuf) -> std::io::Result<PlatformStream> {
+        // On Windows, interpret as TCP address
+        let addr_str = address.to_string_lossy();
+        PlatformStream::connect(addr_str.as_ref()).await
+    }
+
+    #[cfg(not(any(unix, windows)))]
+    async fn connect_platform(address: &PathBuf) -> std::io::Result<tokio::net::TcpStream> {
+        let addr_str = address.to_string_lossy();
+        tokio::net::TcpStream::connect(addr_str.as_ref()).await
+    }
+
     /// Make HTTP GET request
     ///
     /// # Errors
@@ -245,10 +273,10 @@ impl IpcHttpClient {
         headers: Option<HashMap<String, String>>,
         body: Option<Vec<u8>>,
     ) -> Result<Response> {
-        // Connect to Songbird IPC socket
-        let mut stream = UnixStream::connect(&self.socket_path)
+        // Connect to Songbird IPC (platform-agnostic)
+        let mut stream = Self::connect_platform(&self.socket_path)
             .await
-            .context(format!("Failed to connect to Songbird IPC socket: {:?}", self.socket_path))?;
+            .context(format!("Failed to connect to Songbird IPC: {:?}", self.socket_path))?;
 
         // Prepare request
         let request_id = self.request_id.fetch_add(1, std::sync::atomic::Ordering::SeqCst);

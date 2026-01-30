@@ -8,7 +8,11 @@ use crate::error::{Error, Result};
 use serde_json::{json, Value};
 use std::sync::atomic::Ordering;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
-use tokio::net::UnixStream;
+// Platform-agnostic IPC transport
+#[cfg(unix)]
+use tokio::net::UnixStream as PlatformStream;
+#[cfg(windows)]
+use tokio::net::TcpStream as PlatformStream;
 use tokio::time::{timeout, Duration};
 use tracing::{debug, error, trace};
 
@@ -54,6 +58,25 @@ impl BearDogClient {
         })
     }
 
+    /// Platform-agnostic connection helper
+    ///
+    /// - Unix/macOS/Android: Unix domain sockets
+    /// - Windows: TCP localhost
+    #[cfg(unix)]
+    async fn connect_platform(path: &str) -> std::io::Result<PlatformStream> {
+        PlatformStream::connect(path).await
+    }
+
+    #[cfg(windows)]
+    async fn connect_platform(address: &str) -> std::io::Result<PlatformStream> {
+        PlatformStream::connect(address).await
+    }
+
+    #[cfg(not(any(unix, windows)))]
+    async fn connect_platform(address: &str) -> std::io::Result<tokio::net::TcpStream> {
+        tokio::net::TcpStream::connect(address).await
+    }
+
     /// Make an RPC call to BearDog
     ///
     /// In Direct mode: Calls BearDog directly using actual method names
@@ -92,8 +115,8 @@ impl BearDogClient {
 
         trace!("→ BearDog direct RPC: {} (id={})", method, id);
 
-        // Connect to BearDog directly
-        let mut stream = UnixStream::connect(socket_path).await.map_err(|e| {
+        // Connect to BearDog directly (platform-agnostic)
+        let mut stream = Self::connect_platform(socket_path).await.map_err(|e| {
             Error::BearDogRpc(format!("Failed to connect to BearDog at {}: {}", socket_path, e))
         })?;
 
@@ -153,8 +176,8 @@ impl BearDogClient {
 
         trace!("→ Neural API capability.call: {}.{} (id={})", cap, op, id);
 
-        // Connect to Neural API
-        let mut stream = UnixStream::connect(socket_path).await.map_err(|e| {
+        // Connect to Neural API (platform-agnostic)
+        let mut stream = Self::connect_platform(socket_path).await.map_err(|e| {
             Error::BearDogRpc(format!("Failed to connect to Neural API at {}: {}", socket_path, e))
         })?;
 
