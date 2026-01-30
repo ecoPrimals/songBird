@@ -44,14 +44,18 @@ pub mod cache;
 pub mod capability_router;
 pub mod credentials;
 pub mod rate_limiter;
-pub mod universal_proxy;
+#[cfg(unix)]
 pub mod unix_listener;
+
+pub mod universal_proxy;
 
 pub use cache::ResponseCache;
 pub use capability_router::{Capability, CapabilityRouter, ProviderConfig};
 pub use credentials::CredentialManager;
 pub use rate_limiter::RateLimiter;
 pub use universal_proxy::UniversalProxy;
+
+#[cfg(unix)]
 pub use unix_listener::{UnixListenerConfig, UnixSocketListener};
 
 use anyhow::Result;

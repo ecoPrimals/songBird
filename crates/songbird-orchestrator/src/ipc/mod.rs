@@ -50,7 +50,9 @@ pub mod universal_broker; // v4.1.0: Universal IPC broker (service-based)
 // #[deprecated(note = "Use UnixSocketServer from pure_rust_server instead")]
 // pub mod server_pure_rust;
 
-pub use pure_rust_server::UnixSocketServer; // v4.9.0: Refactored module structure
+#[cfg(unix)]
+pub use pure_rust_server::UnixSocketServer; // v4.9.0: Refactored module structure (Unix-only)
+
 pub use registry::ServiceRegistry;
 pub use types::{
     // P2P Discovery (v3.19)

@@ -717,6 +717,19 @@ impl SongbirdOrchestrator {
         Ok(())
     }
 
+    /// Start the IPC server (Windows stub)
+    ///
+    /// Windows: TCP localhost fallback
+    /// Future: Named pipes via songbird-universal-ipc
+    #[cfg(not(unix))]
+    async fn start_ipc_server(&mut self) -> Result<()> {
+        info!("🎧 IPC server (Windows): TCP fallback mode");
+        warn!("⚠️  Windows IPC: TCP localhost fallback (named pipes coming in Phase 2)");
+        // TODO: Implement TCP fallback server for Windows
+        // For now, just skip IPC server on Windows
+        Ok(())
+    }
+
     /// tarpc server removed - Unix sockets ONLY
     ///
     /// Deep Debt Solution: Completely removed tarpc TCP binding
