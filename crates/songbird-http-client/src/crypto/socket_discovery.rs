@@ -39,11 +39,7 @@ use tracing::{debug, info, warn};
 /// # Returns
 ///
 /// Socket path to use, guaranteed to exist or be the specified fallback.
-pub fn discover_socket(
-    env_var: &str,
-    primal_name: &str,
-    legacy_path: &str,
-) -> String {
+pub fn discover_socket(env_var: &str, primal_name: &str, legacy_path: &str) -> String {
     debug!("🔍 Socket discovery for {}", primal_name);
     debug!("   Checking: 1) ${}", env_var);
     debug!("            2) XDG Runtime Dir");
@@ -66,8 +62,7 @@ pub fn discover_socket(
     // Priority 3: Legacy /tmp path (development fallback)
     warn!("⚠️  Using legacy /tmp socket: {}", legacy_path);
     warn!("   Consider setting ${} or XDG_RUNTIME_DIR", env_var);
-    warn!("   Example: {}=/run/user/$UID/biomeos/{}-$FAMILY_ID.sock", 
-        env_var, primal_name);
+    warn!("   Example: {}=/run/user/$UID/biomeos/{}-$FAMILY_ID.sock", env_var, primal_name);
 
     legacy_path.to_string()
 }
@@ -125,9 +120,9 @@ fn discover_xdg_socket(primal_name: &str) -> Option<String> {
 /// Try specific XDG socket path
 fn try_xdg_socket(runtime_dir: &str, primal_name: &str, family_id: &str) -> Option<String> {
     let socket_path = format!("{}/biomeos/{}-{}.sock", runtime_dir, primal_name, family_id);
-    
+
     debug!("   Checking XDG: {}", socket_path);
-    
+
     if Path::new(&socket_path).exists() {
         debug!("   ✅ Found XDG socket");
         Some(socket_path)
@@ -144,11 +139,7 @@ fn try_xdg_socket(runtime_dir: &str, primal_name: &str, family_id: &str) -> Opti
 /// 2. `$XDG_RUNTIME_DIR/biomeos/beardog-$FAMILY_ID.sock`
 /// 3. `/tmp/beardog.sock` (legacy)
 pub fn discover_beardog_socket() -> String {
-    discover_socket(
-        "BEARDOG_SOCKET",
-        "beardog",
-        "/tmp/beardog.sock",
-    )
+    discover_socket("BEARDOG_SOCKET", "beardog", "/tmp/beardog.sock")
 }
 
 /// Discover Neural API socket with full fallback chain
@@ -165,7 +156,7 @@ pub fn discover_neural_api_socket() -> String {
             return socket;
         }
     }
-    
+
     if let Ok(socket) = std::env::var("NEURALS_SOCKET") {
         if !socket.is_empty() {
             info!("✅ Socket discovered via $NEURALS_SOCKET: {}", socket);
@@ -192,13 +183,9 @@ mod tests {
     #[test]
     fn test_env_var_priority() {
         env::set_var("TEST_SOCKET", "/custom/path.sock");
-        
-        let socket = discover_socket(
-            "TEST_SOCKET",
-            "test-primal",
-            "/tmp/fallback.sock",
-        );
-        
+
+        let socket = discover_socket("TEST_SOCKET", "test-primal", "/tmp/fallback.sock");
+
         assert_eq!(socket, "/custom/path.sock");
         env::remove_var("TEST_SOCKET");
     }
@@ -208,13 +195,9 @@ mod tests {
         env::remove_var("TEST_SOCKET");
         env::remove_var("XDG_RUNTIME_DIR");
         env::remove_var("FAMILY_ID");
-        
-        let socket = discover_socket(
-            "TEST_SOCKET",
-            "test-primal",
-            "/tmp/fallback.sock",
-        );
-        
+
+        let socket = discover_socket("TEST_SOCKET", "test-primal", "/tmp/fallback.sock");
+
         assert_eq!(socket, "/tmp/fallback.sock");
     }
 
@@ -222,10 +205,10 @@ mod tests {
     fn test_xdg_path_construction() {
         env::set_var("XDG_RUNTIME_DIR", "/run/user/1000");
         env::set_var("FAMILY_ID", "nat0");
-        
+
         // Note: This test doesn't check if socket exists, just path construction
         // In real scenario, socket must exist for XDG discovery to succeed
-        
+
         env::remove_var("XDG_RUNTIME_DIR");
         env::remove_var("FAMILY_ID");
     }
@@ -235,10 +218,10 @@ mod tests {
         env::remove_var("NEURAL_API_SOCKET");
         env::remove_var("NEURALS_SOCKET");
         env::set_var("NEURALS_SOCKET", "/custom/neurals.sock");
-        
+
         let socket = discover_neural_api_socket();
         assert_eq!(socket, "/custom/neurals.sock");
-        
+
         env::remove_var("NEURALS_SOCKET");
     }
 
@@ -246,17 +229,12 @@ mod tests {
     fn test_empty_env_var_ignored() {
         env::set_var("TEST_SOCKET", "");
         env::remove_var("XDG_RUNTIME_DIR");
-        
-        let socket = discover_socket(
-            "TEST_SOCKET",
-            "test-primal",
-            "/tmp/fallback.sock",
-        );
-        
+
+        let socket = discover_socket("TEST_SOCKET", "test-primal", "/tmp/fallback.sock");
+
         // Empty env var should be ignored, fall back to legacy
         assert_eq!(socket, "/tmp/fallback.sock");
-        
+
         env::remove_var("TEST_SOCKET");
     }
 }
-

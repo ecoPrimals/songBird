@@ -907,6 +907,49 @@ firefox target/coverage/index.html
 
 Songbird uses environment-driven configuration with zero hardcoding:
 
+### Socket Path Configuration (biomeOS Standard)
+
+**Socket Naming Standard**: `songbird.sock` (primal name only, NOT binary name)
+
+```bash
+# Socket path configuration (XDG-compliant)
+# Priority 1: Explicit socket path override
+export SONGBIRD_SOCKET=/run/user/1000/biomeos/songbird.sock
+
+# Priority 2: Shared socket directory (biomeOS standard)
+export BIOMEOS_SOCKET_DIR=/run/user/1000/biomeos  # Creates: ${BIOMEOS_SOCKET_DIR}/songbird.sock
+
+# Priority 3: Automatic (recommended for biomeOS)
+# Uses XDG_RUNTIME_DIR: /run/user/$UID/biomeos/songbird.sock
+# Fallback to /tmp/songbird.sock if XDG unavailable
+
+# BearDog integration (crypto provider)
+export BEARDOG_SOCKET=/run/user/1000/biomeos/beardog.sock
+```
+
+**Quick Start (biomeOS)**:
+```bash
+# Start with automatic XDG-compliant socket
+./songbird server --socket /run/user/$(id -u)/biomeos/songbird.sock
+
+# Or let Songbird create default location
+./songbird server --socket $(echo $SONGBIRD_SOCKET)
+```
+
+**Expected Output**:
+```
+✅ Songbird ready!
+
+🌐 Starting IPC Server (biomeOS integration)...
+   Socket: /run/user/1000/biomeos/songbird.sock
+   Protocol: JSON-RPC 2.0 over Unix sockets
+   Family: nat0
+   BearDog: /run/user/1000/biomeos/beardog.sock
+   Capabilities: http, discovery, secure_http
+```
+
+### General Configuration
+
 ```bash
 # Port configuration (0 = OS auto-select)
 export HTTP_PORT=0

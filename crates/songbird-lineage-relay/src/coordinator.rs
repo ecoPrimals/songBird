@@ -215,9 +215,7 @@ impl LineageRelayCoordinator {
             }
             Err(_) => {
                 warn!("⏱️  Direct connection timeout after {:?}", self.config.direct_timeout);
-                Err(LineageRelayError::Timeout(
-                    "Direct connection attempt timed out".to_string(),
-                ))
+                Err(LineageRelayError::Timeout("Direct connection attempt timed out".to_string()))
             }
         }
     }
@@ -227,7 +225,9 @@ impl LineageRelayCoordinator {
     /// # Returns
     ///
     /// Quality metrics for each STUN/relay tier, or None if multi-tier disabled.
-    pub async fn get_tier_quality(&self) -> Option<crate::multi_tier_coordinator::TierQualityReport> {
+    pub async fn get_tier_quality(
+        &self,
+    ) -> Option<crate::multi_tier_coordinator::TierQualityReport> {
         if let Some(multi_tier) = &self.multi_tier {
             Some(multi_tier.check_tier_quality().await)
         } else {

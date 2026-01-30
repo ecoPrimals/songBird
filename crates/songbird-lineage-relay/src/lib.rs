@@ -101,5 +101,7 @@ pub use multi_tier_coordinator::{ConnectionResult, MultiTierCoordinator, TierQua
 pub use relay::{RelayDiscovery, RelaySession};
 pub use session::ConnectionSession;
 pub use types::*;
-pub use udp_hole_punch::{coordinated_hole_punch, create_hole_punch_socket, udp_hole_punch, HolePunchConfig};
+pub use udp_hole_punch::{
+    coordinated_hole_punch, create_hole_punch_socket, udp_hole_punch, HolePunchConfig,
+};
 pub use universal_coordinator_adapter::{LineageRelayAdapter, LineageRelayPrimalConnection};

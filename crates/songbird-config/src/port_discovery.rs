@@ -238,7 +238,7 @@ mod tests {
         let (start, end) = get_recommended_port_range();
         assert!(start < end);
         assert!(start >= 80); // At least this low
-        assert!(end <= 65535); // Max port number
+                              // Note: end is u16, so always <= 65535 (type guarantees this)
     }
 
     #[test]

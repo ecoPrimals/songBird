@@ -500,8 +500,8 @@ async fn test_adapter_builder_pattern() {
 
 #[tokio::test]
 async fn test_multiple_adapters_independent() {
-    let adapter1 = AIAdapter::new("http://ai1:8082".to_string()).expect("test precondition");
-    let adapter2 = AIAdapter::new("http://ai2:8083".to_string()).expect("test precondition");
+    let adapter1 = AIAdapter::new("http://ai1:8082".to_string()).await.expect("test precondition");
+    let adapter2 = AIAdapter::new("http://ai2:8083".to_string()).await.expect("test precondition");
 
     assert_eq!(adapter1.endpoint(), "http://ai1:8082");
     assert_eq!(adapter2.endpoint(), "http://ai2:8083");

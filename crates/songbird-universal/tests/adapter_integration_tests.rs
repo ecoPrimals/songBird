@@ -482,7 +482,7 @@ mod integration_tests {
         assert_eq!(time_series.average_cpu_usage(), 50.0); // (30+40+50+60+70)/5
         assert!(time_series
             .is_trending_up()
-            .map_err(|e| SongbirdError::configuration(format!("trend check failed: {}", e)))?);
+            .map_err(|_e| SongbirdError::configuration(format!("trend check failed: {}", e)))?);
         Ok(())
     }
 }

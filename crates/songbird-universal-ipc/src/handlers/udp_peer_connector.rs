@@ -43,14 +43,11 @@ impl PeerConnector for UdpPeerConnector {
         our_binding: Option<&str>,
         _rendezvous_token: Option<&str>,
     ) -> Result<PeerConnectResult, String> {
-        info!(
-            "🔗 UDP Peer Connect: Initiating to {} (binding: {:?})",
-            target_address, our_binding
-        );
+        info!("🔗 UDP Peer Connect: Initiating to {} (binding: {:?})", target_address, our_binding);
 
         // TODO: Real UDP hole punching implementation
         // For now, return graceful status indicating connection in progress
-        
+
         warn!("⚠️  UDP Peer Connect: Real hole punching implementation pending");
         warn!("   For LAN peers, use direct TCP connections via discovered addresses");
 
@@ -105,10 +102,8 @@ mod tests {
     #[tokio::test]
     async fn test_connect_returns_connecting_state() {
         let connector = UdpPeerConnector::new();
-        
-        let result = connector
-            .connect("203.0.113.100:6000", Some("0.0.0.0:5000"), None)
-            .await;
+
+        let result = connector.connect("203.0.113.100:6000", Some("0.0.0.0:5000"), None).await;
 
         // Should return "connecting" state (graceful degradation)
         assert!(result.is_ok());
@@ -120,10 +115,8 @@ mod tests {
     #[tokio::test]
     async fn test_connect_without_binding() {
         let connector = UdpPeerConnector::new();
-        
-        let result = connector
-            .connect("203.0.113.100:6000", None, None)
-            .await;
+
+        let result = connector.connect("203.0.113.100:6000", None, None).await;
 
         // Should work without binding (uses ephemeral port)
         assert!(result.is_ok());
@@ -132,13 +125,10 @@ mod tests {
     #[tokio::test]
     async fn test_connect_with_rendezvous_token() {
         let connector = UdpPeerConnector::new();
-        
-        let result = connector
-            .connect("203.0.113.100:6000", None, Some("token-abc123"))
-            .await;
+
+        let result = connector.connect("203.0.113.100:6000", None, Some("token-abc123")).await;
 
         // Should accept rendezvous token (for future use)
         assert!(result.is_ok());
     }
 }
-

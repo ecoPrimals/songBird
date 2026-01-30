@@ -278,7 +278,8 @@ mod jsonrpc_e2e_tests {
         //
         // Run with: cargo test --features e2e test_jsonrpc_collect_metrics_e2e -- --ignored
 
-        let adapter = SecurityAdapter::new("unix:///tmp/beardog-test.sock".to_string()).await.unwrap();
+        let adapter =
+            SecurityAdapter::new("unix:///tmp/beardog-test.sock".to_string()).await.unwrap();
 
         let metrics = adapter.collect_metrics().await.expect("Should collect metrics via JSON-RPC");
 
@@ -298,7 +299,8 @@ mod jsonrpc_e2e_tests {
         //
         // Run with: cargo test --features e2e test_jsonrpc_verify_auth_e2e -- --ignored
 
-        let adapter = SecurityAdapter::new("unix:///tmp/beardog-test.sock".to_string()).await.unwrap();
+        let adapter =
+            SecurityAdapter::new("unix:///tmp/beardog-test.sock".to_string()).await.unwrap();
 
         // Test with valid token (configure BearDog to accept "test-valid-token")
         let result = adapter.verify_auth("test-valid-token").await.unwrap();

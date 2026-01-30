@@ -213,7 +213,9 @@ impl CanonicalSongbirdConfig {
                        mode = \"Disabled\"".to_string()
                 );
             } else {
-                return Err("Network base port must be greater than 0 (use 8080 for default)".to_string());
+                return Err(
+                    "Network base port must be greater than 0 (use 8080 for default)".to_string()
+                );
             }
         }
 
@@ -442,7 +444,7 @@ mod tests {
         // Should fail validation
         let result = config.validate();
         assert!(result.is_err());
-        
+
         let err_msg = result.unwrap_err();
         assert!(err_msg.contains("Discovery requires external TCP port"));
         assert!(err_msg.contains("dual-mode"));
@@ -458,7 +460,7 @@ mod tests {
         // Should fail validation with generic message
         let result = config.validate();
         assert!(result.is_err());
-        
+
         let err_msg = result.unwrap_err();
         assert!(err_msg.contains("Network base port must be greater than 0"));
         assert!(!err_msg.contains("dual-mode")); // Discovery-specific message shouldn't appear

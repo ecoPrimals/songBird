@@ -799,9 +799,10 @@ async fn test_adapter_endpoint_with_trailing_slash() -> Result<(), Box<dyn std::
 
 #[tokio::test]
 async fn test_adapter_endpoint_with_path() -> Result<(), Box<dyn std::error::Error>> {
-    let adapter = SecurityAdapter::new("http://security:8080/api/v1".to_string()).await.map_err(|e| {
-        SongbirdError::configuration(format!("Adapter creation should succeed: {}", e))
-    })?;
+    let adapter =
+        SecurityAdapter::new("http://security:8080/api/v1".to_string()).await.map_err(|e| {
+            SongbirdError::configuration(format!("Adapter creation should succeed: {}", e))
+        })?;
 
     assert_eq!(adapter.endpoint(), "http://security:8080/api/v1");
     Ok(())

@@ -152,7 +152,8 @@ async fn test_collect_metrics_sets_timestamp_if_missing() {
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_collect_metrics_network_error() {
     // Use invalid endpoint
-    let adapter = StorageAdapter::new("http://localhost:1".to_string()).await.expect("test precondition");
+    let adapter =
+        StorageAdapter::new("http://localhost:1".to_string()).await.expect("test precondition");
 
     let result = adapter.collect_metrics().await;
     assert!(result.is_err(), "Should fail with network error");
@@ -370,7 +371,8 @@ async fn test_check_health_critical() {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_check_health_network_error() {
-    let adapter = StorageAdapter::new("http://localhost:1".to_string()).expect("test precondition");
+    let adapter =
+        StorageAdapter::new("http://localhost:1".to_string()).await.expect("test precondition");
 
     let result = adapter.check_health().await;
     assert!(result.is_err(), "Should propagate network error from collect_metrics");

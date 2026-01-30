@@ -30,7 +30,7 @@ pub struct DiscoveryHandler {
 
 impl DiscoveryHandler {
     /// Create a new discovery handler
-    #[must_use] 
+    #[must_use]
     pub fn new() -> Self {
         Self {
             peer_registry: None,
@@ -70,13 +70,9 @@ impl DiscoveryHandler {
     /// Handle `discovery.get_peer` JSON-RPC method
     ///
     /// Gets a specific peer by ID.
-    pub async fn handle_get_peer(
-        &self,
-        params: Value,
-    ) -> IpcResult<Option<DiscoveredPeerInfo>> {
-        let params: DiscoveryGetPeerParams = serde_json::from_value(params).map_err(|e| {
-            IpcError::InvalidParams(format!("Failed to parse params: {e}"))
-        })?;
+    pub async fn handle_get_peer(&self, params: Value) -> IpcResult<Option<DiscoveredPeerInfo>> {
+        let params: DiscoveryGetPeerParams = serde_json::from_value(params)
+            .map_err(|e| IpcError::InvalidParams(format!("Failed to parse params: {e}")))?;
 
         debug!("Discovery: get_peer (peer_id: {})", params.peer_id);
 
@@ -178,11 +174,7 @@ impl PeerRegistry for MockPeerRegistry {
     }
 
     async fn get_peer(&self, peer_id: &str) -> IpcResult<Option<DiscoveredPeerInfo>> {
-        Ok(self
-            .peers
-            .iter()
-            .find(|p| p.node_id == peer_id)
-            .cloned())
+        Ok(self.peers.iter().find(|p| p.node_id == peer_id).cloned())
     }
 }
 
@@ -296,8 +288,7 @@ mod tests {
     #[tokio::test]
     async fn test_get_peer_params_parsing() {
         let params = json!({"peer_id": "node-test"});
-        let parsed: DiscoveryGetPeerParams =
-            serde_json::from_value(params).expect("Should parse");
+        let parsed: DiscoveryGetPeerParams = serde_json::from_value(params).expect("Should parse");
         assert_eq!(parsed.peer_id, "node-test");
     }
 
@@ -321,4 +312,3 @@ mod tests {
         assert_eq!(json["tcp_port"], 8080);
     }
 }
-

@@ -304,17 +304,18 @@ impl SongbirdOrchestrator {
         // ✅ DISCOVERY FIX (Jan 28, 2026): Call actual HTTP server module (not stub)
         // The stub start_http_server() returns 0, which breaks discovery beacons
         info!("🌐 Starting HTTP server...");
-        let bind_address = format!("{}:{}", 
-            self._config.network.bind_host,
-            self._config.network.base_port
-        ).parse().map_err(|e| anyhow::anyhow!("Invalid bind address: {}", e))?;
-        
+        let bind_address =
+            format!("{}:{}", self._config.network.bind_host, self._config.network.base_port)
+                .parse()
+                .map_err(|e| anyhow::anyhow!("Invalid bind address: {}", e))?;
+
         let actual_https_port = crate::app::http_server::start_http_server(
             Arc::clone(&self.federation_state),
             Arc::clone(&self.federated_service_registry),
             Arc::clone(&self.service_registry),
             bind_address,
-        ).await?;
+        )
+        .await?;
         info!("✅ HTTP server started on port {}", actual_https_port);
 
         // 🎧 NEW (Jan 4, 2026): Start Unix Socket IPC Server for inter-primal communication
@@ -326,7 +327,7 @@ impl SongbirdOrchestrator {
         // ✅ EVOLUTION (Jan 29, 2026): Wire up discovery listener for runtime peer discovery
         info!("🌍 Starting Universal IPC Broker...");
         match crate::ipc::universal_broker::start_broker_with_discovery(
-            self.discovery_listener.clone()
+            self.discovery_listener.clone(),
         )
         .await
         {
@@ -450,9 +451,8 @@ impl SongbirdOrchestrator {
             // ✅ DISCOVERY FIX (Jan 28, 2026): Capability-based broadcast addresses
             // Supports environment-based configuration for cross-interface discovery
             // Automatically adds subnet broadcast fallback to handle eth ↔ wifi boundaries
-            let broadcast_addrs = Self::discover_broadcast_addresses(
-                &self._config.discovery.broadcast_addresses
-            );
+            let broadcast_addrs =
+                Self::discover_broadcast_addresses(&self._config.discovery.broadcast_addresses);
 
             // ✅ SMART REFACTORING (v3.10.3 - Jan 6, 2026): Discovery system startup
             // Extracted to discovery_startup module for clarity, testability, and maintainability.
@@ -587,11 +587,9 @@ impl SongbirdOrchestrator {
         if let Ok(env_addrs) = std::env::var("SONGBIRD_BROADCAST_ADDRESSES") {
             if !env_addrs.is_empty() {
                 info!("🌐 Using broadcast addresses from SONGBIRD_BROADCAST_ADDRESSES");
-                let addrs: Vec<SocketAddr> = env_addrs
-                    .split(',')
-                    .filter_map(|s| s.trim().parse().ok())
-                    .collect();
-                
+                let addrs: Vec<SocketAddr> =
+                    env_addrs.split(',').filter_map(|s| s.trim().parse().ok()).collect();
+
                 if !addrs.is_empty() {
                     info!("   Addresses: {:?}", addrs);
                     return addrs;
@@ -600,17 +598,15 @@ impl SongbirdOrchestrator {
         }
 
         // Priority 2: Configuration file
-        let mut addrs: Vec<SocketAddr> = configured_addrs
-            .iter()
-            .filter_map(|addr| addr.parse().ok())
-            .collect();
+        let mut addrs: Vec<SocketAddr> =
+            configured_addrs.iter().filter_map(|addr| addr.parse().ok()).collect();
 
         // Priority 3: Add subnet broadcast fallback if not already present
         // This enables cross-interface discovery (eth ↔ wifi) on consumer routers
         let default_fallbacks = [
-            "192.168.1.255:2300",  // Common home subnet
-            "192.168.0.255:2300",  // Alternative home subnet
-            "10.0.0.255:2300",     // Corporate subnet
+            "192.168.1.255:2300", // Common home subnet
+            "192.168.0.255:2300", // Alternative home subnet
+            "10.0.0.255:2300",    // Corporate subnet
         ];
 
         for fallback in &default_fallbacks {
@@ -625,7 +621,7 @@ impl SongbirdOrchestrator {
         if addrs.is_empty() {
             warn!("⚠️  No broadcast addresses configured, using defaults");
             addrs = vec![
-                "224.0.0.251:2300".parse().unwrap(), // Primary: multicast
+                "224.0.0.251:2300".parse().unwrap(),   // Primary: multicast
                 "192.168.1.255:2300".parse().unwrap(), // Fallback: common subnet
             ];
         }

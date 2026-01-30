@@ -48,4 +48,3 @@ pub mod types;
 pub use client::StunClient;
 pub use error::{StunError, StunResult};
 pub use types::{NatType, PublicEndpoint};
-

@@ -26,7 +26,7 @@ use crate::types::NodeId;
 use std::net::SocketAddr;
 use std::time::Duration;
 use tokio::net::UdpSocket;
-use tokio::time::{timeout, sleep};
+use tokio::time::{sleep, timeout};
 use tracing::{debug, info, warn};
 
 /// UDP hole punch configuration
@@ -34,13 +34,13 @@ use tracing::{debug, info, warn};
 pub struct HolePunchConfig {
     /// Maximum attempts for hole punching
     pub max_attempts: u32,
-    
+
     /// Timeout per attempt
     pub attempt_timeout: Duration,
-    
+
     /// Delay between attempts
     pub attempt_delay: Duration,
-    
+
     /// Overall timeout for entire hole punch process
     pub total_timeout: Duration,
 }
@@ -88,20 +88,23 @@ pub async fn udp_hole_punch(
     config: HolePunchConfig,
 ) -> Result<DirectConnection> {
     info!("🔗 Attempting UDP hole punch to {} ({})", peer_id, peer_addr);
-    debug!("   Local address: {}", local_socket.local_addr().unwrap_or_else(|_| "unknown".parse().unwrap()));
+    debug!(
+        "   Local address: {}",
+        local_socket.local_addr().unwrap_or_else(|_| "unknown".parse().unwrap())
+    );
     debug!("   Max attempts: {}", config.max_attempts);
-    
+
     let punch_message = b"SONGBIRD_PUNCH_V1";
     let mut recv_buf = vec![0u8; 1024];
-    
+
     let mut attempts = 0;
-    
+
     // Wrap in overall timeout
     let result = timeout(config.total_timeout, async {
         while attempts < config.max_attempts {
             attempts += 1;
             debug!("   Hole punch attempt {}/{}", attempts, config.max_attempts);
-            
+
             // Send punch packet
             match local_socket.send_to(punch_message, peer_addr).await {
                 Ok(sent) => {
@@ -113,24 +116,27 @@ pub async fn udp_hole_punch(
                     continue;
                 }
             }
-            
+
             // Try to receive response with short timeout
             match timeout(config.attempt_timeout, local_socket.recv_from(&mut recv_buf)).await {
                 Ok(Ok((len, addr))) => {
                     debug!("     Received {} bytes from {}", len, addr);
-                    
+
                     // Verify it's from the expected peer
                     if addr.ip() == peer_addr.ip() {
                         // Port might differ due to NAT, but IP should match
                         info!("✅ UDP hole punch successful! Connected to {}", addr);
-                        
+
                         // Create direct connection
                         // Note: DirectConnection expects NodeId and SocketAddr
                         // The socket is dropped here; in production, we'd pass ownership
                         return Ok(DirectConnection::new(peer_id, addr));
                     } else {
-                        debug!("     Received from unexpected address: {} (expected IP: {})", 
-                            addr, peer_addr.ip());
+                        debug!(
+                            "     Received from unexpected address: {} (expected IP: {})",
+                            addr,
+                            peer_addr.ip()
+                        );
                     }
                 }
                 Ok(Err(e)) => {
@@ -141,17 +147,18 @@ pub async fn udp_hole_punch(
                     debug!("     Receive timeout (attempt {}/{})", attempts, config.max_attempts);
                 }
             }
-            
+
             // Delay before next attempt (prevents flooding)
             sleep(config.attempt_delay).await;
         }
-        
+
         Err(LineageRelayError::DirectConnectionFailed(format!(
             "UDP hole punch failed after {} attempts to {}",
             config.max_attempts, peer_addr
         )))
-    }).await;
-    
+    })
+    .await;
+
     match result {
         Ok(conn) => conn,
         Err(_) => {
@@ -195,7 +202,7 @@ pub async fn coordinated_hole_punch(
     info!("🤝 Coordinated UDP hole punch");
     info!("   My public address: {}", my_public_addr);
     info!("   Peer public address: {}", peer_public_addr);
-    
+
     // Both peers attempt hole punch simultaneously
     udp_hole_punch(local_socket, peer_id, peer_public_addr, config).await
 }
@@ -211,7 +218,7 @@ pub async fn coordinated_hole_punch(
 /// Bound UDP socket ready for hole punching.
 pub async fn create_hole_punch_socket(bind_addr: Option<SocketAddr>) -> Result<UdpSocket> {
     let addr = bind_addr.unwrap_or_else(|| "0.0.0.0:0".parse().unwrap());
-    
+
     UdpSocket::bind(addr)
         .await
         .map_err(|e| LineageRelayError::NetworkError(format!("Failed to bind UDP socket: {}", e)))
@@ -234,7 +241,7 @@ mod tests {
     async fn test_create_hole_punch_socket() {
         let socket = create_hole_punch_socket(None).await.unwrap();
         let local_addr = socket.local_addr().unwrap();
-        
+
         // Should bind to any address with OS-assigned port
         assert_eq!(local_addr.ip().to_string(), "0.0.0.0");
         assert!(local_addr.port() > 0);
@@ -245,40 +252,35 @@ mod tests {
     async fn test_udp_hole_punch_loopback() {
         // This test demonstrates the hole punch logic but won't actually
         // punch through NAT since it's loopback. Use for logic verification only.
-        
-        let socket1 = create_hole_punch_socket(Some("127.0.0.1:0".parse().unwrap()))
-            .await
-            .unwrap();
+
+        let socket1 = create_hole_punch_socket(Some("127.0.0.1:0".parse().unwrap())).await.unwrap();
         let addr1 = socket1.local_addr().unwrap();
-        
-        let socket2 = create_hole_punch_socket(Some("127.0.0.1:0".parse().unwrap()))
-            .await
-            .unwrap();
+
+        let socket2 = create_hole_punch_socket(Some("127.0.0.1:0".parse().unwrap())).await.unwrap();
         let addr2 = socket2.local_addr().unwrap();
-        
+
         let peer1 = NodeId::from("test-peer-1");
         let peer2 = NodeId::from("test-peer-2");
-        
+
         // Spawn concurrent hole punch attempts
         let handle1 = tokio::spawn(async move {
             let config = HolePunchConfig::default();
             udp_hole_punch(socket1, peer2, addr2, config).await
         });
-        
+
         // Slight delay to simulate simultaneous attempts
         sleep(Duration::from_millis(10)).await;
-        
+
         let handle2 = tokio::spawn(async move {
             let config = HolePunchConfig::default();
             udp_hole_punch(socket2, peer1, addr1, config).await
         });
-        
+
         // Wait for results
         let result1 = handle1.await.unwrap();
         let result2 = handle2.await.unwrap();
-        
+
         // At least one should succeed (loopback is permissive)
         assert!(result1.is_ok() || result2.is_ok());
     }
 }
-

@@ -67,12 +67,12 @@ async fn test_stun_get_public_address_with_params() {
             // Validate response structure
             assert!(response.is_object(), "Response should be JSON object");
             let obj = response.as_object().unwrap();
-            
+
             // Expected fields (may be present or error)
-            let has_address_fields = obj.contains_key("public_address") 
+            let has_address_fields = obj.contains_key("public_address")
                 || obj.contains_key("local_address")
                 || obj.contains_key("error");
-            
+
             assert!(has_address_fields, "Response should have address or error fields");
         }
         Err(e) => {
@@ -97,7 +97,7 @@ async fn test_stun_bind_routing() {
             assert!(response.is_object());
             // Expected fields for bind
             let obj = response.as_object().unwrap();
-            let has_bind_fields = obj.contains_key("binding_id") 
+            let has_bind_fields = obj.contains_key("binding_id")
                 || obj.contains_key("mapped_address")
                 || obj.contains_key("error");
             assert!(has_bind_fields, "Bind response should have binding fields");
@@ -125,8 +125,11 @@ async fn test_stun_bind_missing_params() {
         Err(e) => {
             assert!(!e.contains("Unknown method"), "Should be routed even with bad params");
             // Should mention missing parameter
-            assert!(e.contains("server") || e.contains("local_port") || e.contains("parameter"), 
-                   "Error should mention missing params: {}", e);
+            assert!(
+                e.contains("server") || e.contains("local_port") || e.contains("parameter"),
+                "Error should mention missing params: {}",
+                e
+            );
         }
     }
 }
@@ -146,11 +149,11 @@ async fn test_discovery_peers_routing() {
         Ok(response) => {
             assert!(response.is_object());
             let obj = response.as_object().unwrap();
-            
+
             // Should have peers array and count
             assert!(obj.contains_key("peers"), "Should have 'peers' field");
             assert!(obj.contains_key("total_count"), "Should have 'total_count' field");
-            
+
             // Validate structure
             assert!(obj["peers"].is_array(), "peers should be array");
             assert!(obj["total_count"].is_number(), "total_count should be number");
@@ -170,11 +173,11 @@ async fn test_discovery_peers_returns_empty_initially() {
 
     // Should succeed with empty list initially
     assert!(result.is_ok(), "discovery.peers should work: {:?}", result);
-    
+
     let response = result.unwrap();
     let peers = response["peers"].as_array().unwrap();
     let count = response["total_count"].as_u64().unwrap();
-    
+
     assert_eq!(peers.len(), count as usize, "Peers length should match total_count");
 }
 
@@ -198,20 +201,27 @@ async fn test_rendezvous_register_routing() {
         Ok(response) => {
             assert!(response.is_object());
             let obj = response.as_object().unwrap();
-            
+
             // Expected registration fields
-            let has_reg_fields = obj.contains_key("registration_id") 
+            let has_reg_fields = obj.contains_key("registration_id")
                 || obj.contains_key("expires_at")
                 || obj.contains_key("rendezvous_token")
                 || obj.contains_key("error");
-            
+
             assert!(has_reg_fields, "Registration should have expected fields");
         }
         Err(e) => {
             assert!(!e.contains("Unknown method"), "rendezvous.register should be routed: {}", e);
             // Allow "not yet implemented", "not configured", or parameter errors
-            assert!(e.contains("not yet") || e.contains("implement") || e.contains("parameter") || e.contains("not configured") || e.contains("Rendezvous"), 
-                   "Error should be specific: {}", e);
+            assert!(
+                e.contains("not yet")
+                    || e.contains("implement")
+                    || e.contains("parameter")
+                    || e.contains("not configured")
+                    || e.contains("Rendezvous"),
+                "Error should be specific: {}",
+                e
+            );
         }
     }
 }
@@ -230,8 +240,14 @@ async fn test_rendezvous_register_missing_params() {
         Err(e) => {
             assert!(!e.contains("Unknown method"), "Should be routed");
             // Should mention missing parameters
-            assert!(e.contains("node_id") || e.contains("family_id") || e.contains("public_address") || e.contains("parameter"),
-                   "Should mention missing params: {}", e);
+            assert!(
+                e.contains("node_id")
+                    || e.contains("family_id")
+                    || e.contains("public_address")
+                    || e.contains("parameter"),
+                "Should mention missing params: {}",
+                e
+            );
         }
         Ok(_) => {
             // OK if it has defaults
@@ -254,7 +270,7 @@ async fn test_rendezvous_lookup_routing() {
         Ok(response) => {
             assert!(response.is_object());
             let obj = response.as_object().unwrap();
-            
+
             // Should have peers array
             assert!(obj.contains_key("peers"), "Lookup should return peers array");
             assert!(obj["peers"].is_array(), "peers should be array");
@@ -277,10 +293,10 @@ async fn test_rendezvous_lookup_returns_empty_for_unknown() {
 
     // Should succeed with empty list
     assert!(result.is_ok(), "Lookup should work even for unknown targets");
-    
+
     let response = result.unwrap();
     let peers = response["peers"].as_array().unwrap();
-    
+
     // Should be empty for nonexistent target
     assert_eq!(peers.len(), 0, "Should return empty list for unknown target");
 }
@@ -302,13 +318,13 @@ async fn test_peer_connect_routing() {
         Ok(response) => {
             assert!(response.is_object());
             let obj = response.as_object().unwrap();
-            
+
             // Expected connection fields
-            let has_conn_fields = obj.contains_key("connection_id") 
+            let has_conn_fields = obj.contains_key("connection_id")
                 || obj.contains_key("state")
                 || obj.contains_key("channel")
                 || obj.contains_key("error");
-            
+
             assert!(has_conn_fields, "Connect should have connection fields");
         }
         Err(e) => {
@@ -333,8 +349,11 @@ async fn test_peer_connect_with_optional_params() {
             assert!(response.is_object());
             // Validate state field
             if let Some(state) = response["state"].as_str() {
-                assert!(["connecting", "connected", "failed"].contains(&state), 
-                       "State should be valid: {}", state);
+                assert!(
+                    ["connecting", "connected", "failed"].contains(&state),
+                    "State should be valid: {}",
+                    state
+                );
             }
         }
         Err(e) => {
@@ -353,8 +372,11 @@ async fn test_peer_connect_missing_target() {
     match result {
         Err(e) => {
             assert!(!e.contains("Unknown method"), "Should be routed");
-            assert!(e.contains("target_address") || e.contains("parameter"), 
-                   "Should mention missing target: {}", e);
+            assert!(
+                e.contains("target_address") || e.contains("parameter"),
+                "Should mention missing target: {}",
+                e
+            );
         }
         Ok(_) => {
             // OK if it has default
@@ -375,14 +397,17 @@ async fn test_all_six_methods_route_correctly() {
         ("stun.get_public_address", json!({})),
         ("stun.bind", json!({"server": "stun.example.com:3478", "local_port": 12345})),
         ("discovery.peers", json!({})),
-        ("rendezvous.register", json!({"server": "http://relay.example.com", "node_id": "test", "family_id": "nat0", "public_address": "1.2.3.4:5678"})),
+        (
+            "rendezvous.register",
+            json!({"server": "http://relay.example.com", "node_id": "test", "family_id": "nat0", "public_address": "1.2.3.4:5678"}),
+        ),
         ("rendezvous.lookup", json!({"server": "http://relay.example.com", "target": "test"})),
         ("peer.connect", json!({"target_address": "1.2.3.4:5678"})),
     ];
 
     for (method, params) in methods {
         let result = handler.handle(method, params).await;
-        
+
         // None should return "Unknown method"
         match result {
             Ok(_) => {
@@ -390,8 +415,12 @@ async fn test_all_six_methods_route_correctly() {
                 assert!(true, "{} routed successfully", method);
             }
             Err(e) => {
-                assert!(!e.contains("Unknown method"), 
-                       "{} should be routed (got error: {})", method, e);
+                assert!(
+                    !e.contains("Unknown method"),
+                    "{} should be routed (got error: {})",
+                    method,
+                    e
+                );
             }
         }
     }
@@ -402,7 +431,7 @@ async fn test_unknown_method_returns_error() {
     let handler = create_test_handler();
 
     let result = handler.handle("unknown.method", json!({})).await;
-    
+
     assert!(result.is_err(), "Unknown methods should error");
     let error = result.unwrap_err();
     assert!(error.contains("Unknown method"), "Should indicate unknown method: {}", error);
@@ -414,7 +443,7 @@ async fn test_method_case_sensitivity() {
 
     // JSON-RPC methods are case-sensitive
     let result = handler.handle("STUN.GET_PUBLIC_ADDRESS", json!({})).await;
-    
+
     assert!(result.is_err(), "Wrong case should error");
     assert!(result.unwrap_err().contains("Unknown method"), "Should be unknown method");
 }
@@ -430,15 +459,15 @@ async fn test_handler_is_stateless_between_calls() {
     // First call
     let result1 = handler.handle("discovery.peers", json!({})).await;
     assert!(result1.is_ok());
-    
+
     // Second call should not be affected
     let result2 = handler.handle("discovery.peers", json!({})).await;
     assert!(result2.is_ok());
-    
+
     // Both should return same structure
     let peers1 = result1.unwrap()["peers"].as_array().unwrap().len();
     let peers2 = result2.unwrap()["peers"].as_array().unwrap().len();
-    
+
     // Should be consistent (both empty initially)
     assert_eq!(peers1, peers2, "Calls should be independent");
 }
@@ -449,7 +478,7 @@ async fn test_concurrent_method_calls() {
 
     // Spawn multiple concurrent calls
     let mut handles = vec![];
-    
+
     for i in 0..10 {
         let handler_clone = Arc::clone(&handler);
         let handle = tokio::spawn(async move {
@@ -461,15 +490,19 @@ async fn test_concurrent_method_calls() {
                 4 => "rendezvous.lookup",
                 _ => "peer.connect",
             };
-            
+
             let params = match method {
                 "stun.bind" => json!({"server": "stun.example.com:3478", "local_port": 12345}),
-                "rendezvous.register" => json!({"server": "http://relay.example.com", "node_id": "test", "family_id": "nat0", "public_address": "1.2.3.4:5678"}),
-                "rendezvous.lookup" => json!({"server": "http://relay.example.com", "target": "test"}),
+                "rendezvous.register" => {
+                    json!({"server": "http://relay.example.com", "node_id": "test", "family_id": "nat0", "public_address": "1.2.3.4:5678"})
+                }
+                "rendezvous.lookup" => {
+                    json!({"server": "http://relay.example.com", "target": "test"})
+                }
                 "peer.connect" => json!({"target_address": "1.2.3.4:5678"}),
                 _ => json!({}),
             };
-            
+
             handler_clone.handle(method, params).await
         });
         handles.push(handle);
@@ -478,11 +511,15 @@ async fn test_concurrent_method_calls() {
     // Wait for all to complete
     for handle in handles {
         let result = handle.await.unwrap();
-        
+
         // All should either succeed or have specific error (not "Unknown method")
         match result {
             Ok(_) => assert!(true),
-            Err(e) => assert!(!e.contains("Unknown method"), "Concurrent call failed with unknown method: {}", e),
+            Err(e) => assert!(
+                !e.contains("Unknown method"),
+                "Concurrent call failed with unknown method: {}",
+                e
+            ),
         }
     }
 }
@@ -497,7 +534,7 @@ async fn test_json_rpc_null_params() {
 
     // Some methods should handle null params
     let result = handler.handle("discovery.peers", serde_json::Value::Null).await;
-    
+
     match result {
         Ok(_) => assert!(true, "Should handle null params"),
         Err(e) => {
@@ -513,7 +550,7 @@ async fn test_json_rpc_array_params() {
 
     // Array params (non-standard but should handle gracefully)
     let result = handler.handle("discovery.peers", json!([])).await;
-    
+
     match result {
         Ok(_) => assert!(true),
         Err(e) => {
@@ -522,4 +559,3 @@ async fn test_json_rpc_array_params() {
         }
     }
 }
-

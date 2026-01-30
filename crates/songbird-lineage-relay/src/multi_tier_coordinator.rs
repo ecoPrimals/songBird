@@ -114,18 +114,14 @@ impl MultiTierCoordinator {
         // Tier 2: User-provided STUN
         if !self.config.user_provided.is_empty() {
             info!("   Tier 2: Trying user-provided STUN servers...");
-            
+
             // Try each user-provided server
             for user_stun in &self.config.user_provided {
                 if !user_stun.enabled {
                     continue;
                 }
-                
-                match self
-                    .stun_client
-                    .discover_public_address(&user_stun.address)
-                    .await
-                {
+
+                match self.stun_client.discover_public_address(&user_stun.address).await {
                     Ok(addr) => {
                         info!("✅ User-provided STUN successful ({}): {}", user_stun.address, addr);
                         return Ok(addr);
@@ -144,11 +140,7 @@ impl MultiTierCoordinator {
 
             // Try each public STUN server
             for public_server in &self.config.public_stun.servers {
-                match self
-                    .stun_client
-                    .discover_public_address(&public_server.address)
-                    .await
-                {
+                match self.stun_client.discover_public_address(&public_server.address).await {
                     Ok(addr) => {
                         info!("✅ Public STUN successful ({}): {}", public_server.address, addr);
                         return Ok(addr);
@@ -163,9 +155,7 @@ impl MultiTierCoordinator {
         }
 
         // All tiers failed
-        Err(LineageRelayError::NoRelayAvailable(
-            "All STUN discovery tiers failed".to_string(),
-        ))
+        Err(LineageRelayError::NoRelayAvailable("All STUN discovery tiers failed".to_string()))
     }
 
     /// Fastest-first strategy: Try all tiers in parallel
@@ -182,7 +172,7 @@ impl MultiTierCoordinator {
                 if !user_stun.enabled {
                     continue;
                 }
-                
+
                 let client = Arc::clone(&self.stun_client);
                 tasks.push(tokio::spawn(async move {
                     info!("   Tier 2: Trying user-provided STUN ({})...", user_stun.address);
@@ -244,9 +234,7 @@ impl MultiTierCoordinator {
 
         // For now, return placeholder
         // Real implementation would integrate with LineageRelayCoordinator
-        Err(LineageRelayError::Other(
-            "Multi-tier connection not yet fully integrated".to_string(),
-        ))
+        Err(LineageRelayError::Other("Multi-tier connection not yet fully integrated".to_string()))
     }
 
     /// Check connection quality across tiers
@@ -263,12 +251,7 @@ impl MultiTierCoordinator {
         if let Some(user_stun) = self.config.user_provided.iter().find(|s| s.enabled) {
             let start = std::time::Instant::now();
 
-            if self
-                .stun_client
-                .discover_public_address(&user_stun.address)
-                .await
-                .is_ok()
-            {
+            if self.stun_client.discover_public_address(&user_stun.address).await.is_ok() {
                 let latency = start.elapsed();
                 report.user_provided_latency = Some(latency);
                 info!("   User-provided STUN latency: {:?}", latency);
@@ -280,12 +263,7 @@ impl MultiTierCoordinator {
             if let Some(public_server) = self.config.public_stun.servers.first() {
                 let start = std::time::Instant::now();
 
-                if self
-                    .stun_client
-                    .discover_public_address(&public_server.address)
-                    .await
-                    .is_ok()
-                {
+                if self.stun_client.discover_public_address(&public_server.address).await.is_ok() {
                     let latency = start.elapsed();
                     report.public_stun_latency = Some(latency);
                     info!("   Public STUN latency: {:?}", latency);
@@ -382,4 +360,3 @@ mod tests {
         assert!(report.public_stun_latency.is_none());
     }
 }
-

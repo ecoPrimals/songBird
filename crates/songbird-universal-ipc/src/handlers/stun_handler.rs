@@ -36,7 +36,7 @@ pub struct StunHandler {
 
 impl StunHandler {
     /// Create a new STUN handler
-    #[must_use] 
+    #[must_use]
     pub fn new() -> Self {
         Self {
             client: Arc::new(StunClient::new()),
@@ -45,7 +45,7 @@ impl StunHandler {
     }
 
     /// Create STUN handler with custom timeout
-    #[must_use] 
+    #[must_use]
     pub fn with_timeout(timeout: Duration) -> Self {
         Self {
             client: Arc::new(StunClient::with_timeout(timeout)),
@@ -60,21 +60,13 @@ impl StunHandler {
         &self,
         params: Value,
     ) -> IpcResult<StunGetPublicAddressResult> {
-        let params: StunGetPublicAddressParams =
-            serde_json::from_value(params).map_err(|e| {
-                IpcError::InvalidParams(format!("Failed to parse params: {e}"))
-            })?;
+        let params: StunGetPublicAddressParams = serde_json::from_value(params)
+            .map_err(|e| IpcError::InvalidParams(format!("Failed to parse params: {e}")))?;
 
-        debug!(
-            "STUN: get_public_address (server: {:?})",
-            params.server
-        );
+        debug!("STUN: get_public_address (server: {:?})", params.server);
 
         // Use provided server or default to Nextcloud STUN (vetted)
-        let stun_server = params
-            .server
-            .as_deref()
-            .unwrap_or("stun.nextcloud.com:3478");
+        let stun_server = params.server.as_deref().unwrap_or("stun.nextcloud.com:3478");
 
         // Discover public address
         let public_addr = self
@@ -86,10 +78,7 @@ impl StunHandler {
         // Get local address (best effort)
         let local_addr = format!("0.0.0.0:{}", params.local_port.unwrap_or(0));
 
-        info!(
-            "✅ STUN: Discovered public address: {} (via {})",
-            public_addr, stun_server
-        );
+        info!("✅ STUN: Discovered public address: {} (via {})", public_addr, stun_server);
 
         Ok(StunGetPublicAddressResult {
             public_address: public_addr.to_string(),
@@ -103,14 +92,10 @@ impl StunHandler {
     ///
     /// Creates and maintains a STUN binding for hole punching.
     pub async fn handle_bind(&self, params: Value) -> IpcResult<StunBindResult> {
-        let params: StunBindParams = serde_json::from_value(params).map_err(|e| {
-            IpcError::InvalidParams(format!("Failed to parse params: {e}"))
-        })?;
+        let params: StunBindParams = serde_json::from_value(params)
+            .map_err(|e| IpcError::InvalidParams(format!("Failed to parse params: {e}")))?;
 
-        debug!(
-            "STUN: bind (server: {}, local_port: {})",
-            params.server, params.local_port
-        );
+        debug!("STUN: bind (server: {}, local_port: {})", params.server, params.local_port);
 
         // Discover public address
         let public_addr = self
@@ -135,10 +120,7 @@ impl StunHandler {
 
         self.bindings.write().await.insert(binding_id.clone(), binding);
 
-        info!(
-            "✅ STUN: Created binding {} (mapped: {})",
-            binding_id, public_addr
-        );
+        info!("✅ STUN: Created binding {} (mapped: {})", binding_id, public_addr);
 
         Ok(StunBindResult {
             binding_id,
@@ -351,4 +333,3 @@ mod tests {
         }
     }
 }
-

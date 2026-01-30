@@ -51,9 +51,10 @@ async fn test_find_capability_providers_no_matching_capability() -> Result<(), U
     let adapter = UnifiedUniversalAdapter::new();
 
     // Search for capability that doesn't exist
-    let providers = adapter.find_capability_providers("ai_model_inference").await.map_err(|e| {
-        UniversalAdapterError::NetworkError("Missing performance configuration".to_string())
-    })?;
+    let providers =
+        adapter.find_capability_providers("ai_model_inference").await.map_err(|_e| {
+            UniversalAdapterError::NetworkError("Missing performance configuration".to_string())
+        })?;
 
     // No providers should be found
     assert!(providers.is_empty());
@@ -178,13 +179,13 @@ async fn test_concurrent_find_capability_providers() -> Result<(), UniversalAdap
         tokio::spawn(async move { adapter3.find_capability_providers("capability3").await });
 
     // All should complete without deadlock
-    let result1 = task1.await.map_err(|e| {
+    let result1 = task1.await.map_err(|_e| {
         UniversalAdapterError::NetworkError("Missing performance configuration".to_string())
     })?;
-    let result2 = task2.await.map_err(|e| {
+    let result2 = task2.await.map_err(|_e| {
         UniversalAdapterError::NetworkError("Missing performance configuration".to_string())
     })?;
-    let result3 = task3.await.map_err(|e| {
+    let result3 = task3.await.map_err(|_e| {
         UniversalAdapterError::NetworkError("Missing performance configuration".to_string())
     })?;
 
@@ -258,13 +259,13 @@ async fn test_concurrent_discover_operations() -> Result<(), UniversalAdapterErr
     let task3 = tokio::spawn(async move { adapter3.discover_services().await });
 
     // All should complete without deadlock
-    let result1 = task1.await.map_err(|e| {
+    let result1 = task1.await.map_err(|_e| {
         UniversalAdapterError::NetworkError("Failed to discover services".to_string())
     })?;
-    let result2 = task2.await.map_err(|e| {
+    let result2 = task2.await.map_err(|_e| {
         UniversalAdapterError::NetworkError("Failed to discover services".to_string())
     })?;
-    let result3 = task3.await.map_err(|e| {
+    let result3 = task3.await.map_err(|_e| {
         UniversalAdapterError::NetworkError("Failed to discover services".to_string())
     })?;
 
@@ -542,7 +543,7 @@ async fn test_concurrent_stats_requests() -> Result<(), UniversalAdapterError> {
 
     // All should complete without deadlock
     for task in tasks {
-        let stats = task.await.map_err(|e| {
+        let stats = task.await.map_err(|_e| {
             UniversalAdapterError::NetworkError("Missing performance configuration".to_string())
         })?;
         assert_eq!(stats.total_services, 0);
@@ -569,16 +570,16 @@ async fn test_mixed_concurrent_operations() -> Result<(), UniversalAdapterError>
     let task4 = tokio::spawn(async move { adapter4.get_registry_stats().await });
 
     // All should complete successfully
-    let stats1 = task1.await.map_err(|e| {
+    let stats1 = task1.await.map_err(|_e| {
         UniversalAdapterError::NetworkError("Failed to discover services".to_string())
     })?;
-    let providers = task2.await.map_err(|e| {
+    let providers = task2.await.map_err(|_e| {
         UniversalAdapterError::NetworkError("Failed to discover services".to_string())
     })?;
-    let services = task3.await.map_err(|e| {
+    let services = task3.await.map_err(|_e| {
         UniversalAdapterError::NetworkError("Missing performance configuration".to_string())
     })?;
-    let stats2 = task4.await.map_err(|e| {
+    let stats2 = task4.await.map_err(|_e| {
         UniversalAdapterError::NetworkError("Missing performance configuration".to_string())
     })?;
 
@@ -698,7 +699,7 @@ async fn test_concurrent_discovery_operations_high_load() -> Result<(), Universa
 
     // All should complete
     for task in tasks {
-        let result = task.await.map_err(|e| {
+        let result = task.await.map_err(|_e| {
             UniversalAdapterError::NetworkError("Failed to discover services".to_string())
         })?;
         assert!(result.is_ok());
@@ -722,7 +723,7 @@ async fn test_concurrent_find_providers_high_load() -> Result<(), UniversalAdapt
 
     // All should complete successfully
     for task in tasks {
-        let result = task.await.map_err(|e| {
+        let result = task.await.map_err(|_e| {
             UniversalAdapterError::NetworkError("Missing performance configuration".to_string())
         })?;
         assert!(result.is_ok());

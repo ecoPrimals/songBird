@@ -582,6 +582,7 @@ async fn test_adapter_with_custom_timeout_in_requests() {
 
     // Should fail with very short timeout (100ms << 1s delay)
     let adapter_short = SecurityAdapter::new(mock_server.uri())
+        .await
         .expect("test precondition")
         .with_timeout(Duration::from_millis(100));
     let result_short = adapter_short.collect_metrics().await;
@@ -614,7 +615,7 @@ async fn test_endpoint_url_construction_in_requests() {
             .mount(&mock_server)
             .await;
 
-        let adapter = SecurityAdapter::new(endpoint.clone()).expect("test precondition");
+        let adapter = SecurityAdapter::new(endpoint.clone()).await.expect("test precondition");
         // Request should still work despite URL formatting
         let result = adapter.collect_metrics().await;
         // May succeed or fail depending on URL normalization

@@ -32,7 +32,7 @@ async fn test_e2e_json_rpc_to_http_headers() {
     // Act - Call handle_post (simulating what JSON-RPC handler would do)
     let result = handler
         .handle_post(
-            "https://httpbin.org/post",  // Use real endpoint for integration test
+            "https://httpbin.org/post", // Use real endpoint for integration test
             r#"{"test":"end-to-end"}"#,
             Some("application/json"),
             headers.clone(),
@@ -134,18 +134,12 @@ async fn test_e2e_header_case_sensitivity() {
 
     // Test with different case variations
     let mut headers = HashMap::new();
-    headers.insert("X-API-Key".to_string(), "test1".to_string());  // Mixed case
-    headers.insert("x-request-id".to_string(), "test2".to_string());  // Lowercase
-    headers.insert("AUTHORIZATION".to_string(), "test3".to_string());  // Uppercase
+    headers.insert("X-API-Key".to_string(), "test1".to_string()); // Mixed case
+    headers.insert("x-request-id".to_string(), "test2".to_string()); // Lowercase
+    headers.insert("AUTHORIZATION".to_string(), "test3".to_string()); // Uppercase
 
-    let result = handler
-        .handle_post(
-            "https://httpbin.org/post",
-            r#"{"test":"case"}"#,
-            None,
-            headers,
-        )
-        .await;
+    let result =
+        handler.handle_post("https://httpbin.org/post", r#"{"test":"case"}"#, None, headers).await;
 
     // Should handle all case variations
     match result {
@@ -200,20 +194,11 @@ async fn test_e2e_auth_header_patterns() {
             ],
         ),
         // OpenAI pattern
-        (
-            "OpenAI",
-            vec![
-                ("Authorization", "Bearer sk-test"),
-                ("Content-Type", "application/json"),
-            ],
-        ),
+        ("OpenAI", vec![("Authorization", "Bearer sk-test"), ("Content-Type", "application/json")]),
         // HuggingFace pattern
         (
             "HuggingFace",
-            vec![
-                ("Authorization", "Bearer hf_test"),
-                ("Content-Type", "application/json"),
-            ],
+            vec![("Authorization", "Bearer hf_test"), ("Content-Type", "application/json")],
         ),
     ];
 
@@ -224,12 +209,7 @@ async fn test_e2e_auth_header_patterns() {
         }
 
         let result = handler
-            .handle_post(
-                "https://httpbin.org/post",
-                r#"{"test":"auth"}"#,
-                None,
-                headers,
-            )
+            .handle_post("https://httpbin.org/post", r#"{"test":"auth"}"#, None, headers)
             .await;
 
         // Verify handler processes auth headers without error
@@ -256,14 +236,9 @@ async fn test_e2e_security_header_injection() {
 
     // Test potential header injection attacks
     let mut headers = HashMap::new();
-    headers.insert(
-        "X-Normal".to_string(),
-        "value\r\nX-Injected: malicious".to_string(),
-    );
+    headers.insert("X-Normal".to_string(), "value\r\nX-Injected: malicious".to_string());
 
-    let result = handler
-        .handle_post("https://httpbin.org/post", "{}", None, headers)
-        .await;
+    let result = handler.handle_post("https://httpbin.org/post", "{}", None, headers).await;
 
     // Should either sanitize or reject, but not panic
     match result {
@@ -281,36 +256,23 @@ async fn test_e2e_content_type_priority() {
     // Test 1: Only content_type parameter
     let headers1 = HashMap::new();
     let result1 = handler
-        .handle_post(
-            "https://httpbin.org/post",
-            "{}",
-            Some("application/json"),
-            headers1,
-        )
+        .handle_post("https://httpbin.org/post", "{}", Some("application/json"), headers1)
         .await;
     assert!(result1.is_ok() || result1.is_err()); // Just verify no panic
 
     // Test 2: Only Content-Type header
     let mut headers2 = HashMap::new();
     headers2.insert("Content-Type".to_string(), "text/plain".to_string());
-    let result2 = handler
-        .handle_post("https://httpbin.org/post", "{}", None, headers2)
-        .await;
+    let result2 = handler.handle_post("https://httpbin.org/post", "{}", None, headers2).await;
     assert!(result2.is_ok() || result2.is_err());
 
     // Test 3: Both (header should override parameter)
     let mut headers3 = HashMap::new();
     headers3.insert("Content-Type".to_string(), "text/html".to_string());
     let result3 = handler
-        .handle_post(
-            "https://httpbin.org/post",
-            "{}",
-            Some("application/json"),
-            headers3,
-        )
+        .handle_post("https://httpbin.org/post", "{}", Some("application/json"), headers3)
         .await;
     assert!(result3.is_ok() || result3.is_err());
 
     println!("✅ Content-Type priority tests completed");
 }
-

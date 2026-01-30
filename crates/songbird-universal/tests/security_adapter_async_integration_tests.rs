@@ -322,7 +322,7 @@ async fn test_verify_auth_invalid() {
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_verify_auth_network_error() {
     let adapter =
-        SecurityAdapter::new("http://localhost:1".to_string()).expect("test precondition");
+        SecurityAdapter::new("http://localhost:1".to_string()).await.expect("test precondition");
 
     let result = adapter.verify_auth("some-token").await;
     assert!(result.is_err(), "Should fail with network error");
@@ -449,7 +449,7 @@ async fn test_check_health_critical() {
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_check_health_network_error() {
     let adapter =
-        SecurityAdapter::new("http://localhost:1".to_string()).expect("test precondition");
+        SecurityAdapter::new("http://localhost:1".to_string()).await.expect("test precondition");
 
     let result = adapter.check_health().await;
     assert!(result.is_err(), "Should propagate network error from collect_metrics");

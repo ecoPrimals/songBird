@@ -27,10 +27,10 @@
 use crate::endpoint::NativeEndpoint;
 use crate::handlers::discovery_handler::{DiscoveryHandler, PeerRegistry};
 use crate::handlers::http_handler::{HttpHandler, HttpRequestParams};
-use crate::handlers::stun_handler::StunHandler;
-use crate::handlers::rendezvous_handler::RendezvousHandler;
-use crate::handlers::peer_handler::PeerHandler;
 use crate::handlers::http_rendezvous_client::HttpRendezvousClient;
+use crate::handlers::peer_handler::PeerHandler;
+use crate::handlers::rendezvous_handler::RendezvousHandler;
+use crate::handlers::stun_handler::StunHandler;
 use crate::handlers::udp_peer_connector::UdpPeerConnector;
 use crate::registry::ServiceRegistry;
 use crate::tower_atomic::JsonRpcHandler;
@@ -132,11 +132,12 @@ impl IpcServiceHandler {
         let http_handler = Arc::new(HttpHandler::with_default_discovery());
         let stun_handler = Arc::new(StunHandler::new());
         let discovery_handler = Arc::new(DiscoveryHandler::new());
-        
+
         // ✅ Production implementations (not mocks!)
-        let rendezvous_handler = Arc::new(RendezvousHandler::new(Arc::new(HttpRendezvousClient::new())));
+        let rendezvous_handler =
+            Arc::new(RendezvousHandler::new(Arc::new(HttpRendezvousClient::new())));
         let peer_handler = Arc::new(PeerHandler::new(Arc::new(UdpPeerConnector::new())));
-        
+
         Self {
             registry,
             http_handler,
@@ -160,11 +161,12 @@ impl IpcServiceHandler {
         let http_handler = Arc::new(HttpHandler::with_default_discovery());
         let stun_handler = Arc::new(StunHandler::new());
         let discovery_handler = Arc::new(DiscoveryHandler::with_registry(peer_registry));
-        
+
         // ✅ Production implementations (not mocks!)
-        let rendezvous_handler = Arc::new(RendezvousHandler::new(Arc::new(HttpRendezvousClient::new())));
+        let rendezvous_handler =
+            Arc::new(RendezvousHandler::new(Arc::new(HttpRendezvousClient::new())));
         let peer_handler = Arc::new(PeerHandler::new(Arc::new(UdpPeerConnector::new())));
-        
+
         Self {
             registry,
             http_handler,
@@ -182,11 +184,12 @@ impl IpcServiceHandler {
     ) -> Self {
         let stun_handler = Arc::new(StunHandler::new());
         let discovery_handler = Arc::new(DiscoveryHandler::new());
-        
+
         // ✅ Production implementations (not mocks!)
-        let rendezvous_handler = Arc::new(RendezvousHandler::new(Arc::new(HttpRendezvousClient::new())));
+        let rendezvous_handler =
+            Arc::new(RendezvousHandler::new(Arc::new(HttpRendezvousClient::new())));
         let peer_handler = Arc::new(PeerHandler::new(Arc::new(UdpPeerConnector::new())));
-        
+
         Self {
             registry,
             http_handler,

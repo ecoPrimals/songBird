@@ -542,6 +542,7 @@ async fn test_adapter_endpoint_getter() {
 #[tokio::test]
 async fn test_adapter_builder_pattern() {
     let adapter = StorageAdapter::new("http://localhost:8084".to_string())
+        .await
         .expect("test precondition")
         .with_timeout(Duration::from_secs(60));
 

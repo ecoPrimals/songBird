@@ -123,7 +123,7 @@ impl CapabilityPortRegistry {
         description: Option<String>,
     ) -> Result<(), String> {
         let mut ports =
-            self.ports.write().map_err(|e| format!("Failed to acquire write lock: {}", e))?;
+            self.ports.write().map_err(|e| format!("Failed to acquire write lock: {e}"))?;
 
         ports.insert(
             capability,
@@ -145,7 +145,7 @@ impl CapabilityPortRegistry {
     /// - The capability is not registered
     /// - The registry lock is poisoned
     pub fn get_port(&self, capability: &CapabilityId) -> Result<u16, String> {
-        let ports = self.ports.read().map_err(|e| format!("Failed to acquire read lock: {}", e))?;
+        let ports = self.ports.read().map_err(|e| format!("Failed to acquire read lock: {e}"))?;
 
         ports
             .get(capability)
@@ -161,7 +161,7 @@ impl CapabilityPortRegistry {
     /// - The capability is not registered
     /// - The registry lock is poisoned
     pub fn get_config(&self, capability: &CapabilityId) -> Result<PortConfig, String> {
-        let ports = self.ports.read().map_err(|e| format!("Failed to acquire read lock: {}", e))?;
+        let ports = self.ports.read().map_err(|e| format!("Failed to acquire read lock: {e}"))?;
 
         ports
             .get(capability)
@@ -185,12 +185,10 @@ impl CapabilityPortRegistry {
     ) -> Result<u16, String> {
         // Bind to port 0 to get an OS-assigned ephemeral port
         let listener = TcpListener::bind("127.0.0.1:0")
-            .map_err(|e| format!("Failed to bind ephemeral port: {}", e))?;
+            .map_err(|e| format!("Failed to bind ephemeral port: {e}"))?;
 
-        let port = listener
-            .local_addr()
-            .map_err(|e| format!("Failed to get local address: {}", e))?
-            .port();
+        let port =
+            listener.local_addr().map_err(|e| format!("Failed to get local address: {e}"))?.port();
 
         // Drop the listener to free the port
         drop(listener);
@@ -206,7 +204,7 @@ impl CapabilityPortRegistry {
     ///
     /// Returns an error if the registry lock is poisoned.
     pub fn has_capability(&self, capability: &CapabilityId) -> Result<bool, String> {
-        let ports = self.ports.read().map_err(|e| format!("Failed to acquire read lock: {}", e))?;
+        let ports = self.ports.read().map_err(|e| format!("Failed to acquire read lock: {e}"))?;
 
         Ok(ports.contains_key(capability))
     }
@@ -217,7 +215,7 @@ impl CapabilityPortRegistry {
     ///
     /// Returns an error if the registry lock is poisoned.
     pub fn list_capabilities(&self) -> Result<Vec<CapabilityId>, String> {
-        let ports = self.ports.read().map_err(|e| format!("Failed to acquire read lock: {}", e))?;
+        let ports = self.ports.read().map_err(|e| format!("Failed to acquire read lock: {e}"))?;
 
         Ok(ports.keys().cloned().collect())
     }
@@ -229,7 +227,7 @@ impl CapabilityPortRegistry {
     /// Returns an error if the registry lock is poisoned.
     pub fn clear(&self) -> Result<(), String> {
         let mut ports =
-            self.ports.write().map_err(|e| format!("Failed to acquire write lock: {}", e))?;
+            self.ports.write().map_err(|e| format!("Failed to acquire write lock: {e}"))?;
 
         ports.clear();
         Ok(())

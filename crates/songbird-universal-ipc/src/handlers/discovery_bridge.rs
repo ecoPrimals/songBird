@@ -27,7 +27,9 @@ impl DiscoveryListenerBridge {
     /// Create a new bridge from an `AnonymousDiscoveryListener`
     pub fn new(listener: Arc<AnonymousDiscoveryListener>) -> Self {
         info!("🌉 Discovery bridge: Connected to Anonymous Discovery Listener");
-        Self { listener }
+        Self {
+            listener,
+        }
     }
 }
 
@@ -42,10 +44,7 @@ impl PeerRegistry for DiscoveryListenerBridge {
         debug!("Discovery bridge: Found {} peers", peers.len());
 
         // Convert from DiscoveredPeer to DiscoveredPeerInfo (JSON-RPC compatible)
-        let peer_infos = peers
-            .into_iter()
-            .map(convert_discovered_peer)
-            .collect();
+        let peer_infos = peers.into_iter().map(convert_discovered_peer).collect();
 
         Ok(peer_infos)
     }
@@ -75,10 +74,7 @@ impl PeerRegistry for DiscoveryListenerBridge {
 /// Convert from discovery's `DiscoveredPeer` to JSON-RPC `DiscoveredPeerInfo`
 fn convert_discovered_peer(peer: DiscoveredPeer) -> DiscoveredPeerInfo {
     // Use node_id if available (v3.0+), otherwise session_id (v2.x)
-    let node_id = peer
-        .node_id
-        .clone()
-        .unwrap_or_else(|| peer.session_id.clone());
+    let node_id = peer.node_id.clone().unwrap_or_else(|| peer.session_id.clone());
 
     // Extract family_id from tags if available (Dark Forest protocol)
     let family_id = extract_family_id(&peer).unwrap_or_else(|| "unknown".to_string());
@@ -88,7 +84,8 @@ fn convert_discovered_peer(peer: DiscoveredPeer) -> DiscoveredPeerInfo {
         .last_seen
         .duration_since(std::time::UNIX_EPOCH)
         .ok()
-        .and_then(|d| chrono::DateTime::from_timestamp(d.as_secs() as i64, 0)).map_or_else(|| chrono::Utc::now().to_rfc3339(), |dt| dt.to_rfc3339());
+        .and_then(|d| chrono::DateTime::from_timestamp(d.as_secs() as i64, 0))
+        .map_or_else(|| chrono::Utc::now().to_rfc3339(), |dt| dt.to_rfc3339());
 
     // Calculate signal quality based on timestamp freshness
     let quality = calculate_quality(&peer);
@@ -289,4 +286,3 @@ mod tests {
         assert!(quality < 0.6); // Should be lower
     }
 }
-

@@ -85,8 +85,9 @@ impl RequestBuilder {
             let lines: Vec<&str> = request_str.lines().collect();
             tracing::info!("🔍 Final HTTP request ({} lines):", lines.len());
             for (i, line) in lines.iter().enumerate() {
-                if i < 20 { // Log first 20 lines to avoid flooding logs
-                    tracing::info!("  {}: {}", i+1, line);
+                if i < 20 {
+                    // Log first 20 lines to avoid flooding logs
+                    tracing::info!("  {}: {}", i + 1, line);
                 }
             }
             if lines.len() > 20 {

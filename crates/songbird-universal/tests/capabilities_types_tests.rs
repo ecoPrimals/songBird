@@ -126,9 +126,9 @@ fn test_capability_serialization() -> SongbirdResult<()> {
     };
 
     let json = serde_json::to_string(&cap)
-        .map_err(|e| SongbirdError::configuration("Failed to serialize"))?;
+        .map_err(|_e| SongbirdError::configuration("Failed to serialize"))?;
     let deserialized: Capability = serde_json::from_str(&json)
-        .map_err(|e| SongbirdError::configuration("Failed to deserialize"))?;
+        .map_err(|_e| SongbirdError::configuration("Failed to deserialize"))?;
 
     assert_eq!(deserialized.name, cap.name);
     Ok(())
@@ -214,9 +214,9 @@ fn test_qos_metrics_equality() -> SongbirdResult<()> {
 fn test_qos_metrics_serialization() -> SongbirdResult<()> {
     let qos = QoSMetrics::default();
     let json = serde_json::to_string(&qos)
-        .map_err(|e| SongbirdError::configuration("Failed to serialize"))?;
+        .map_err(|_e| SongbirdError::configuration("Failed to serialize"))?;
     let deserialized: QoSMetrics = serde_json::from_str(&json)
-        .map_err(|e| SongbirdError::configuration("Failed to deserialize"))?;
+        .map_err(|_e| SongbirdError::configuration("Failed to deserialize"))?;
 
     assert_eq!(deserialized.latency_ms, qos.latency_ms);
     Ok(())
@@ -304,9 +304,9 @@ fn test_resource_metrics_equality() -> SongbirdResult<()> {
 fn test_resource_metrics_serialization() -> SongbirdResult<()> {
     let metrics = ResourceMetrics::default();
     let json = serde_json::to_string(&metrics)
-        .map_err(|e| SongbirdError::configuration("Failed to serialize"))?;
+        .map_err(|_e| SongbirdError::configuration("Failed to serialize"))?;
     let deserialized: ResourceMetrics = serde_json::from_str(&json)
-        .map_err(|e| SongbirdError::configuration("Failed to deserialize"))?;
+        .map_err(|_e| SongbirdError::configuration("Failed to deserialize"))?;
 
     assert_eq!(deserialized.cpu_percent, metrics.cpu_percent);
     Ok(())

@@ -87,7 +87,9 @@ pub struct PeerHandler {
 impl PeerHandler {
     /// Create new handler with given connector
     pub fn new(connector: Arc<dyn PeerConnector>) -> Self {
-        Self { connector }
+        Self {
+            connector,
+        }
     }
 
     /// Handle peer.connect
@@ -111,9 +113,15 @@ impl PeerHandler {
             .map_err(|e| IpcError::Internal(format!("Peer connection failed: {e}")))?;
 
         match result.state.as_str() {
-            "connected" => info!("✅ Peer connected successfully (connection_id: {})", result.connection_id),
-            "connecting" => info!("🔄 Peer connection in progress (connection_id: {})", result.connection_id),
-            "failed" => warn!("❌ Peer connection failed (connection_id: {})", result.connection_id),
+            "connected" => {
+                info!("✅ Peer connected successfully (connection_id: {})", result.connection_id)
+            }
+            "connecting" => {
+                info!("🔄 Peer connection in progress (connection_id: {})", result.connection_id)
+            }
+            "failed" => {
+                warn!("❌ Peer connection failed (connection_id: {})", result.connection_id)
+            }
             _ => warn!("⚠️  Unknown connection state: {}", result.state),
         }
 
@@ -159,9 +167,8 @@ impl PeerConnector for MockPeerConnector {
 
         if should_succeed {
             // Simulate successful connection
-            let local_address = our_binding
-                .map(|b| b.to_string())
-                .unwrap_or_else(|| "0.0.0.0:0".to_string());
+            let local_address =
+                our_binding.map(|b| b.to_string()).unwrap_or_else(|| "0.0.0.0:0".to_string());
 
             Ok(PeerConnectResult {
                 connection_id,
@@ -298,4 +305,3 @@ mod tests {
         assert_eq!(channel.remote_address, "203.0.113.100:6000");
     }
 }
-

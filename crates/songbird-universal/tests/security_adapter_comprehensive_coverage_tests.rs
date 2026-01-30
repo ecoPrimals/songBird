@@ -540,6 +540,7 @@ async fn test_security_workflow_degrading_system() {
 #[tokio::test]
 async fn test_security_adapter_builder_pattern() {
     let adapter = SecurityAdapter::new("http://localhost:8081".to_string())
+        .await
         .expect("test precondition")
         .with_timeout(Duration::from_secs(20));
 
@@ -550,9 +551,9 @@ async fn test_security_adapter_builder_pattern() {
 #[tokio::test]
 async fn test_multiple_adapters_independent() {
     let adapter1 =
-        SecurityAdapter::new("http://security1:8081".to_string()).expect("test precondition");
+        SecurityAdapter::new("http://security1:8081".to_string()).await.expect("test precondition");
     let adapter2 =
-        SecurityAdapter::new("http://security2:8082".to_string()).expect("test precondition");
+        SecurityAdapter::new("http://security2:8082".to_string()).await.expect("test precondition");
 
     assert_eq!(adapter1.endpoint(), "http://security1:8081");
     assert_eq!(adapter2.endpoint(), "http://security2:8082");

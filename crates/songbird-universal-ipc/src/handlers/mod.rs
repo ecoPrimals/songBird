@@ -20,17 +20,17 @@
 pub mod discovery_bridge;
 pub mod discovery_handler;
 pub mod http_handler;
-pub mod stun_handler;
-pub mod rendezvous_handler;
-pub mod peer_handler;
 pub mod http_rendezvous_client;
+pub mod peer_handler;
+pub mod rendezvous_handler;
+pub mod stun_handler;
 pub mod udp_peer_connector;
 
 pub use discovery_bridge::*;
 pub use discovery_handler::*;
 pub use http_handler::*;
-pub use stun_handler::*;
-pub use rendezvous_handler::*;
-pub use peer_handler::*;
 pub use http_rendezvous_client::*;
+pub use peer_handler::*;
+pub use rendezvous_handler::*;
+pub use stun_handler::*;
 pub use udp_peer_connector::*;

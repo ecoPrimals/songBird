@@ -372,7 +372,7 @@ async fn test_check_health_unhealthy() {
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_check_health_network_error() {
     let adapter =
-        ComputeAdapter::new("http://localhost:1".to_string()).expect("test precondition").await;
+        ComputeAdapter::new("http://localhost:1".to_string()).await.expect("test precondition");
 
     let result = adapter.check_health().await;
     assert!(result.is_err(), "Should propagate network error from collect_metrics");

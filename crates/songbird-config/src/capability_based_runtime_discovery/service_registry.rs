@@ -39,7 +39,7 @@ impl ServiceRegistryDiscovery {
     /// ```no_run
     /// use songbird_config::capability_based_runtime_discovery::service_registry::ServiceRegistryDiscovery;
     ///
-    /// let discovery = ServiceRegistryDiscovery::new("http://registry.local:8500");
+    /// let _discovery = ServiceRegistryDiscovery::new("http://registry.local:8500");
     /// ```
     #[must_use]
     pub fn new(registry_endpoint: impl Into<String>) -> Self {
@@ -309,7 +309,8 @@ mod tests {
 
     #[test]
     fn test_feature_support_check() {
-        let discovery = ServiceRegistryDiscovery::new("http://localhost:8500");
+        let _discovery = ServiceRegistryDiscovery::new("http://localhost:8500");
+        let _ = _discovery; // Suppress unused warning
 
         let service = RegistryService {
             name: "test-service".to_string(),
@@ -336,7 +337,8 @@ mod tests {
 
     #[test]
     fn test_preference_scoring() {
-        let discovery = ServiceRegistryDiscovery::new("http://localhost:8500");
+        let _discovery = ServiceRegistryDiscovery::new("http://localhost:8500");
+        let _ = _discovery; // Suppress unused warning
 
         let service = RegistryService {
             name: "test-service".to_string(),

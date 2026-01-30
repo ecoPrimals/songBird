@@ -13,23 +13,23 @@ pub use crate::app::start_orchestrator;
 #[derive(Args, Debug, Clone)]
 pub struct ServerArgs {
     /// HTTP server port (external discovery gateway)
-    /// 
+    ///
     /// Songbird operates in dual-mode:
     /// • External TCP port (for LAN discovery beacons) ← this flag
     /// • Internal Unix socket (for inter-primal IPC) ← see --socket
-    /// 
+    ///
     /// This port is used for:
     /// - Broadcasting discovery beacons to peers
     /// - Initial peer handshake
     /// - Federation negotiation
     /// - External API access
-    /// 
+    ///
     /// Required when discovery is enabled (default).
     #[arg(long, short, default_value = "8080")]
     pub port: u16,
 
     /// Federation port (alias for --port, clearer intent)
-    /// 
+    ///
     /// Use this flag when explicitly configuring for LAN discovery/federation.
     /// If both --port and --federation-port are specified, --federation-port takes precedence.
     #[arg(long)]
@@ -48,21 +48,21 @@ pub struct ServerArgs {
     pub verbose: bool,
 
     /// Unix socket path for IPC (JSON-RPC 2.0)
-    /// 
+    ///
     /// Enables external primals to access HTTP/HTTPS capabilities via Unix socket.
     /// This is the INTERNAL interface for inter-primal communication.
-    /// 
+    ///
     /// Songbird operates in dual-mode:
     /// • External TCP port (for LAN discovery) ← see --port
     /// • Internal Unix socket (for inter-primal IPC) ← this flag
-    /// 
+    ///
     /// XDG-compliant path example: /run/user/1000/biomeos/songbird-nat0.sock
     /// Legacy fallback: /tmp/songbird-nat0.sock
     #[arg(long)]
     pub socket: Option<String>,
 
     /// BearDog socket path for crypto operations (defaults based on family_id)
-    /// 
+    ///
     /// If not specified, uses XDG-compliant discovery:
     /// 1. $BEARDOG_SOCKET env var
     /// 2. $XDG_RUNTIME_DIR/biomeos/beardog-$FAMILY_ID.sock
@@ -133,7 +133,7 @@ pub async fn run_server(args: ServerArgs) -> Result<()> {
 
     // Determine the actual port to use (federation_port takes precedence)
     let actual_port = args.federation_port.unwrap_or(args.port);
-    
+
     // Log startup with mode information
     tracing::info!("🚀 Songbird v{} - Server Mode", env!("CARGO_PKG_VERSION"));
     tracing::info!(
@@ -182,7 +182,7 @@ pub async fn run_server(args: ServerArgs) -> Result<()> {
         CanonicalSongbirdConfig::from_env()
             .map_err(|e| anyhow::anyhow!("Failed to load configuration from environment: {}", e))?
     };
-    
+
     // Override port from CLI (CLI takes precedence over config/env)
     config.network.base_port = actual_port;
     tracing::info!("   Configuration: ✅ Loaded (port override: {})", actual_port);
@@ -193,15 +193,18 @@ pub async fn run_server(args: ServerArgs) -> Result<()> {
     tracing::info!("   Orchestrator: ✅ Started");
 
     tracing::info!("✅ Songbird ready!");
-    tracing::info!("   Unix Socket IPC: /tmp/songbird-*.sock (see logs for actual path)");
-    tracing::info!("   Protocol: JSON-RPC 2.0 over Unix sockets");
     tracing::info!("");
 
     // Step 4.5: Start IPC server if socket is provided (NEW for biomeOS integration)
     let socket_path_for_registration = args.socket.clone(); // Clone for later use
     let ipc_handle = if let Some(socket_path) = args.socket {
-        tracing::info!("🌐 Starting IPC Server (for biomeOS integration)...");
+        tracing::info!("");
+        tracing::info!("🌐 Starting IPC Server (biomeOS integration)...");
         tracing::info!("   Socket: {}", socket_path);
+        tracing::info!("   Protocol: JSON-RPC 2.0 over Unix sockets");
+        if let Some(ref fam) = family_identity {
+            tracing::info!("   Family: {}", fam);
+        }
 
         // Determine BearDog socket
         let beardog_socket = args.beardog_socket.unwrap_or_else(|| {
@@ -209,6 +212,7 @@ pub async fn run_server(args: ServerArgs) -> Result<()> {
             format!("/tmp/beardog-{}.sock", family_id)
         });
         tracing::info!("   BearDog: {}", beardog_socket);
+        tracing::info!("   Capabilities: http, discovery, secure_http");
 
         // Spawn IPC server in background task
         let socket_clone = socket_path.clone();
@@ -219,7 +223,9 @@ pub async fn run_server(args: ServerArgs) -> Result<()> {
             }
         }))
     } else {
-        tracing::info!("💡 Tip: Use --socket /tmp/songbird-nat0.sock to enable IPC for biomeOS");
+        tracing::info!("");
+        tracing::info!("💡 Tip: Use --socket to enable IPC for biomeOS integration");
+        tracing::info!("   Example: --socket /run/user/$(id -u)/biomeos/songbird.sock");
         None
     };
 
@@ -789,14 +795,14 @@ SONGBIRD_LOG_LEVEL=info
 /// This enables biomeOS and other primals to make HTTP/HTTPS requests via JSON-RPC
 /// without embedding Songbird code (TRUE PRIMAL architecture).
 async fn start_ipc_server(socket_path: &str, beardog_socket: &str) -> Result<()> {
-    use songbird_universal_ipc::service::IpcServiceHandler;
     use songbird_universal_ipc::registry::ServiceRegistry;
+    use songbird_universal_ipc::service::IpcServiceHandler;
     use songbird_universal_ipc::tower_atomic::{
         JsonRpcError, JsonRpcHandler, JsonRpcRequest, JsonRpcResponse,
     };
+    use std::sync::Arc;
     use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
     use tokio::sync::RwLock;
-    use std::sync::Arc;
 
     // Remove old socket if exists
     let _ = std::fs::remove_file(socket_path);

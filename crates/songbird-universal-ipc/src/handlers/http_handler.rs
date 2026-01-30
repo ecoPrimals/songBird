@@ -181,11 +181,8 @@ impl HttpClientCapability for SongbirdHttpClient {
 
         // Use Pure Rust TLS 1.3 via Tower Atomic pattern
         // FIX: Call request() directly (NOT convenience methods like post()) to preserve headers
-        let response = self
-            .inner
-            .request(method, url, headers.clone(), body_json)
-            .await
-            .map_err(|e| {
+        let response =
+            self.inner.request(method, url, headers.clone(), body_json).await.map_err(|e| {
                 error!("HTTP request failed: {}", e);
                 crate::error::IpcError::Internal(format!("HTTP request failed: {e}"))
             })?;
@@ -413,8 +410,10 @@ impl crate::tower_atomic::JsonRpcHandler for HttpHandler {
                     .and_then(|v| serde_json::from_value(v.clone()).ok())
                     .unwrap_or_default();
 
-                let result =
-                    self.handle_post(url, body, content_type, headers).await.map_err(|e| e.to_string())?;
+                let result = self
+                    .handle_post(url, body, content_type, headers)
+                    .await
+                    .map_err(|e| e.to_string())?;
 
                 serde_json::to_value(result).map_err(|e| format!("Serialization error: {e}"))
             }
@@ -515,7 +514,12 @@ mod tests {
 
         // Act
         let result = handler
-            .handle_post("https://api.example.com", r#"{"key":"value"}"#, Some("application/json"), HashMap::new())
+            .handle_post(
+                "https://api.example.com",
+                r#"{"key":"value"}"#,
+                Some("application/json"),
+                HashMap::new(),
+            )
             .await;
 
         // Assert
@@ -596,7 +600,7 @@ mod tests {
 
         // Assert
         assert!(result.is_ok(), "handle_post should succeed");
-        
+
         // Verify headers were passed to the HTTP client
         // In a real test, we'd verify the mock client received the headers
         let response = result.unwrap();
@@ -613,7 +617,7 @@ mod tests {
         };
 
         let mock_client = Arc::new(MockHttpClient::new(vec![mock_response]));
-        
+
         // Create wrapper
         let wrapper = mock_client.clone();
 
@@ -642,16 +646,16 @@ mod tests {
         };
 
         let mock_client = Arc::new(MockHttpClient::new(vec![mock_response]));
-        let factory = Arc::new(MockClientFactory { client: mock_client });
+        let factory = Arc::new(MockClientFactory {
+            client: mock_client,
+        });
         let handler = HttpHandler::new(factory);
 
         let mut headers = HashMap::new();
         headers.insert("X-Empty".to_string(), "".to_string());
         headers.insert("X-Normal".to_string(), "value".to_string());
 
-        let result = handler
-            .handle_post("https://api.example.com", "{}", None, headers)
-            .await;
+        let result = handler.handle_post("https://api.example.com", "{}", None, headers).await;
 
         assert!(result.is_ok(), "Should handle empty header values");
     }
@@ -666,16 +670,16 @@ mod tests {
         };
 
         let mock_client = Arc::new(MockHttpClient::new(vec![mock_response]));
-        let factory = Arc::new(MockClientFactory { client: mock_client });
+        let factory = Arc::new(MockClientFactory {
+            client: mock_client,
+        });
         let handler = HttpHandler::new(factory);
 
         let mut headers = HashMap::new();
         headers.insert("X-Special-Chars".to_string(), "value with spaces".to_string());
         headers.insert("X-Unicode".to_string(), "emoji🎉test".to_string());
 
-        let result = handler
-            .handle_post("https://api.example.com", "{}", None, headers)
-            .await;
+        let result = handler.handle_post("https://api.example.com", "{}", None, headers).await;
 
         assert!(result.is_ok(), "Should handle special characters in headers");
     }
@@ -690,7 +694,9 @@ mod tests {
         };
 
         let mock_client = Arc::new(MockHttpClient::new(vec![mock_response]));
-        let factory = Arc::new(MockClientFactory { client: mock_client });
+        let factory = Arc::new(MockClientFactory {
+            client: mock_client,
+        });
         let handler = HttpHandler::new(factory);
 
         // Create 50 headers
@@ -699,9 +705,7 @@ mod tests {
             headers.insert(format!("X-Header-{}", i), format!("value-{}", i));
         }
 
-        let result = handler
-            .handle_post("https://api.example.com", "{}", None, headers)
-            .await;
+        let result = handler.handle_post("https://api.example.com", "{}", None, headers).await;
 
         assert!(result.is_ok(), "Should handle many headers");
     }
@@ -716,7 +720,9 @@ mod tests {
         };
 
         let mock_client = Arc::new(MockHttpClient::new(vec![mock_response]));
-        let factory = Arc::new(MockClientFactory { client: mock_client });
+        let factory = Arc::new(MockClientFactory {
+            client: mock_client,
+        });
         let handler = HttpHandler::new(factory);
 
         let mut headers = HashMap::new();
@@ -839,14 +845,15 @@ mod tests {
         };
 
         let mock_client = Arc::new(MockHttpClient::new(vec![mock_response]));
-        let factory = Arc::new(MockClientFactory { client: mock_client });
+        let factory = Arc::new(MockClientFactory {
+            client: mock_client,
+        });
         let handler = HttpHandler::new(factory);
 
         let empty_headers = HashMap::new();
 
-        let result = handler
-            .handle_post("https://api.example.com", "{}", None, empty_headers)
-            .await;
+        let result =
+            handler.handle_post("https://api.example.com", "{}", None, empty_headers).await;
 
         assert!(result.is_ok(), "Empty headers should be valid");
     }
@@ -861,16 +868,16 @@ mod tests {
         };
 
         let mock_client = Arc::new(MockHttpClient::new(vec![mock_response]));
-        let factory = Arc::new(MockClientFactory { client: mock_client });
+        let factory = Arc::new(MockClientFactory {
+            client: mock_client,
+        });
         let handler = HttpHandler::new(factory);
 
         let mut headers = HashMap::new();
         let long_value = "a".repeat(10_000); // 10KB header value
         headers.insert("X-Long-Header".to_string(), long_value);
 
-        let result = handler
-            .handle_post("https://api.example.com", "{}", None, headers)
-            .await;
+        let result = handler.handle_post("https://api.example.com", "{}", None, headers).await;
 
         // Should either succeed or fail gracefully (no panic)
         assert!(result.is_ok() || result.is_err(), "Should handle long headers gracefully");
@@ -886,15 +893,15 @@ mod tests {
         };
 
         let mock_client = Arc::new(MockHttpClient::new(vec![mock_response]));
-        let factory = Arc::new(MockClientFactory { client: mock_client });
+        let factory = Arc::new(MockClientFactory {
+            client: mock_client,
+        });
         let handler = HttpHandler::new(factory);
 
         let mut headers = HashMap::new();
         headers.insert("X-Malicious".to_string(), "value\r\nInjected: header".to_string());
 
-        let result = handler
-            .handle_post("https://api.example.com", "{}", None, headers)
-            .await;
+        let result = handler.handle_post("https://api.example.com", "{}", None, headers).await;
 
         // Should handle gracefully (HTTP client should sanitize or reject)
         assert!(result.is_ok() || result.is_err(), "Should handle newlines in headers");
@@ -910,15 +917,15 @@ mod tests {
         };
 
         let mock_client = Arc::new(MockHttpClient::new(vec![mock_response]));
-        let factory = Arc::new(MockClientFactory { client: mock_client });
+        let factory = Arc::new(MockClientFactory {
+            client: mock_client,
+        });
         let handler = HttpHandler::new(factory);
 
         let mut headers = HashMap::new();
         headers.insert("X-Null".to_string(), "value\0with\0nulls".to_string());
 
-        let result = handler
-            .handle_post("https://api.example.com", "{}", None, headers)
-            .await;
+        let result = handler.handle_post("https://api.example.com", "{}", None, headers).await;
 
         // Should handle gracefully
         assert!(result.is_ok() || result.is_err(), "Should handle null bytes");

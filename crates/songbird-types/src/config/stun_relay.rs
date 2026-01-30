@@ -396,7 +396,7 @@ fn default_public_stun_servers() -> Vec<StunServerConfig> {
 ///
 /// Integration with gaming platforms for friend connections.
 /// FUTURE: Requires Steam/Discord API integration.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct RendezvousConfig {
     /// Enable rendezvous STUN
     #[serde(default)]
@@ -415,16 +415,7 @@ pub struct RendezvousConfig {
     pub custom: Vec<CustomRendezvousConfig>,
 }
 
-impl Default for RendezvousConfig {
-    fn default() -> Self {
-        Self {
-            enabled: false,
-            steam: SteamRendezvousConfig::default(),
-            discord: DiscordRendezvousConfig::default(),
-            custom: Vec::new(),
-        }
-    }
-}
+// Default derived automatically - all fields have Default implementations
 
 /// Steam rendezvous configuration (FUTURE)
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -499,6 +490,7 @@ pub struct CustomRendezvousConfig {
 
 /// Advanced STUN configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[allow(clippy::struct_excessive_bools)] // Configuration struct - bools are appropriate for feature flags
 pub struct AdvancedStunConfig {
     /// Try multiple tiers in parallel (for FastestFirst strategy)
     #[serde(default)]
@@ -680,10 +672,7 @@ mod tests {
         // Verify key fields
         assert_eq!(deserialized.strategy, config.strategy);
         assert_eq!(deserialized.lineage.enabled, config.lineage.enabled);
-        assert_eq!(
-            deserialized.public_stun.enabled,
-            config.public_stun.enabled
-        );
+        assert_eq!(deserialized.public_stun.enabled, config.public_stun.enabled);
     }
 
     #[test]
@@ -705,4 +694,3 @@ mod tests {
         }
     }
 }
-

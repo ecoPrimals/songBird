@@ -30,7 +30,9 @@ impl StunClient {
 
     /// Create STUN client with custom timeout
     pub fn with_timeout(timeout: Duration) -> Self {
-        Self { timeout }
+        Self {
+            timeout,
+        }
     }
 
     /// Discover public address via STUN server
@@ -55,7 +57,9 @@ impl StunClient {
             .await
             .map_err(|e| StunError::Network(format!("Failed to resolve STUN server: {}", e)))?
             .next()
-            .ok_or_else(|| StunError::Network(format!("No addresses found for: {}", stun_server)))?;
+            .ok_or_else(|| {
+                StunError::Network(format!("No addresses found for: {}", stun_server))
+            })?;
 
         debug!("  Resolved STUN server: {}", server_addr);
 
@@ -93,15 +97,13 @@ impl StunClient {
 
         // Verify transaction ID matches
         if response.transaction_id != request.transaction_id {
-            return Err(StunError::InvalidResponse(
-                "Transaction ID mismatch".to_string(),
-            ));
+            return Err(StunError::InvalidResponse("Transaction ID mismatch".to_string()));
         }
 
         // Extract mapped address
-        let public_addr = response
-            .get_any_mapped_address()
-            .ok_or_else(|| StunError::InvalidResponse("No mapped address in response".to_string()))?;
+        let public_addr = response.get_any_mapped_address().ok_or_else(|| {
+            StunError::InvalidResponse("No mapped address in response".to_string())
+        })?;
 
         info!("✅ Discovered public address: {}", public_addr);
 
@@ -205,9 +207,7 @@ mod tests {
         let client = StunClient::new();
 
         // Test with Nextcloud STUN (vetted)
-        let result = client
-            .discover_public_address("stun.nextcloud.com:3478")
-            .await;
+        let result = client.discover_public_address("stun.nextcloud.com:3478").await;
 
         match result {
             Ok(addr) => {
@@ -235,4 +235,3 @@ mod tests {
         assert_eq!(client.timeout, Duration::from_secs(5));
     }
 }
-

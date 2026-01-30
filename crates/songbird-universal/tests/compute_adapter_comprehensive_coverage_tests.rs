@@ -508,8 +508,10 @@ async fn test_adapter_with_various_timeouts() {
     ];
 
     for timeout in timeouts {
-        let adapter =
-            ComputeAdapter::new(endpoint.clone()).expect("test precondition").with_timeout(timeout);
+        let adapter = ComputeAdapter::new(endpoint.clone())
+            .await
+            .expect("test precondition")
+            .with_timeout(timeout);
         assert_eq!(adapter.endpoint(), "http://localhost:8080");
     }
 }
@@ -526,6 +528,7 @@ async fn test_adapter_endpoint_getter() {
 #[tokio::test]
 async fn test_adapter_builder_pattern() {
     let adapter = ComputeAdapter::new("http://localhost:8080".to_string())
+        .await
         .expect("test precondition")
         .with_timeout(Duration::from_secs(15));
 
@@ -535,9 +538,9 @@ async fn test_adapter_builder_pattern() {
 #[tokio::test]
 async fn test_multiple_adapters_independent() {
     let adapter1 =
-        ComputeAdapter::new("http://compute1:8080".to_string()).expect("test precondition");
+        ComputeAdapter::new("http://compute1:8080".to_string()).await.expect("test precondition");
     let adapter2 =
-        ComputeAdapter::new("http://compute2:8081".to_string()).expect("test precondition");
+        ComputeAdapter::new("http://compute2:8081".to_string()).await.expect("test precondition");
 
     assert_eq!(adapter1.endpoint(), "http://compute1:8080");
     assert_eq!(adapter2.endpoint(), "http://compute2:8081");

@@ -104,14 +104,13 @@ pub struct RendezvousHandler {
 impl RendezvousHandler {
     /// Create new handler with given client
     pub fn new(client: Arc<dyn RendezvousClient>) -> Self {
-        Self { client }
+        Self {
+            client,
+        }
     }
 
     /// Handle rendezvous.register
-    pub async fn handle_register(
-        &self,
-        params: Value,
-    ) -> IpcResult<RendezvousRegisterResult> {
+    pub async fn handle_register(&self, params: Value) -> IpcResult<RendezvousRegisterResult> {
         let params: RendezvousRegisterParams =
             serde_json::from_value(params).map_err(|e| IpcError::InvalidParams(e.to_string()))?;
 
@@ -122,12 +121,7 @@ impl RendezvousHandler {
 
         let result = self
             .client
-            .register(
-                &params.server,
-                &params.node_id,
-                &params.family_id,
-                &params.public_address,
-            )
+            .register(&params.server, &params.node_id, &params.family_id, &params.public_address)
             .await
             .map_err(|e| IpcError::Internal(format!("Rendezvous registration failed: {e}")))?;
 
@@ -154,7 +148,9 @@ impl RendezvousHandler {
 
         info!("✅ Found {} peers via rendezvous", peers.len());
 
-        Ok(RendezvousLookupResult { peers })
+        Ok(RendezvousLookupResult {
+            peers,
+        })
     }
 }
 
@@ -219,9 +215,7 @@ impl RendezvousClient for MockRendezvousClient {
         // Find peers matching node_id or family_id
         let peers: Vec<RendezvousPeer> = registered
             .iter()
-            .filter(|(node_id, family_id, _, _)| {
-                node_id == target || family_id == target
-            })
+            .filter(|(node_id, family_id, _, _)| node_id == target || family_id == target)
             .map(|(node_id, family_id, public_address, token)| RendezvousPeer {
                 node_id: node_id.clone(),
                 family_id: family_id.clone(),
@@ -365,4 +359,3 @@ mod tests {
         assert_eq!(lookup_result.peers[0].rendezvous_token, register_result.rendezvous_token);
     }
 }
-

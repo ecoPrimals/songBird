@@ -125,7 +125,7 @@ async fn test_discovery_priority_order() -> SongbirdResult<()> {
 
     let adapter = SecurityAdapter::from_discovery()
         .await
-        .map_err(|e| SongbirdError::configuration("Failed to discover security adapter"))?;
+        .map_err(|_e| SongbirdError::configuration("Failed to discover security adapter"))?;
 
     // Verify it uses the CAPABILITY_* endpoint (higher priority)
     // We can't directly check the endpoint, but we verify discovery succeeded
@@ -157,8 +157,8 @@ fn test_explicit_endpoint_creation() {
 #[test]
 fn test_invalid_endpoint_handling() {
     // These should create the adapter successfully (validation happens on use)
-    let compute = ComputeAdapter::new("invalid-url".to_string());
-    let security = SecurityAdapter::new(String::new());
+    let compute = ComputeAdapter::new("invalid-url".to_string()).await;
+    let security = SecurityAdapter::new(String::new()).await;
 
     // Creation should succeed (HTTP client handles invalid URLs on request)
     assert!(compute.is_ok() || compute.is_err()); // Either is valid behavior

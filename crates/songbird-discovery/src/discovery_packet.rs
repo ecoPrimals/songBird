@@ -306,7 +306,7 @@ fn current_timestamp() -> u64 {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use songbird_types::{LineageProof, LineageSignature};
+    use songbird_types::LineageProof;
 
     #[test]
     fn test_discovery_packet_creation() {

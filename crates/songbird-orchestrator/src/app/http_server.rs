@@ -59,7 +59,7 @@ pub async fn start_http_server(
                 warn!("   Most likely cause: BearDog crypto provider not available");
                 warn!("   DEGRADING TO PLAIN HTTP (insecure, but functional)");
                 warn!("   To resolve: Start BearDog or set SONGBIRD_TLS_ENABLED=false");
-                
+
                 // Rebind the port since the listener was consumed
                 let (fallback_listener, fallback_addr) = bind_with_fallback(&bind_addr).await?;
                 info!("🌐 HTTP server (fallback) listening on {}", fallback_addr);

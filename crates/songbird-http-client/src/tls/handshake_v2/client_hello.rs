@@ -376,6 +376,6 @@ mod tests {
 
         // Should contain all cipher suites
         // TLS_AES_128_GCM_SHA256 = 0x1301
-        assert!(client_hello.windows(2).any(|w| w == &[0x13, 0x01]));
+        assert!(client_hello.windows(2).any(|w| w == [0x13, 0x01]));
     }
 }

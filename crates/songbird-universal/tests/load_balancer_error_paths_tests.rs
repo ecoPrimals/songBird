@@ -80,7 +80,7 @@ async fn test_single_endpoint_round_robin() -> SongbirdResult<()> {
 
     // Should consistently return the single endpoint
     for _ in 0..100 {
-        let result = lb.get_next_endpoint().await.map_err(|e| {
+        let result = lb.get_next_endpoint().await.map_err(|_e| {
             SongbirdError::configuration("Missing performance configuration".to_string())
         })?;
         assert_eq!(result, endpoints[0]);
@@ -94,7 +94,7 @@ async fn test_single_endpoint_least_loaded() -> SongbirdResult<()> {
     let lb = LoadBalancer::new(endpoints.clone(), LoadBalancingStrategy::LeastLoaded);
 
     for _ in 0..50 {
-        let result = lb.get_next_endpoint().await.map_err(|e| {
+        let result = lb.get_next_endpoint().await.map_err(|_e| {
             SongbirdError::configuration("Missing performance configuration".to_string())
         })?;
         assert_eq!(result, endpoints[0]);
@@ -108,7 +108,7 @@ async fn test_single_endpoint_health_based() -> SongbirdResult<()> {
     let lb = LoadBalancer::new(endpoints.clone(), LoadBalancingStrategy::HealthBased);
 
     for _ in 0..50 {
-        let result = lb.get_next_endpoint().await.map_err(|e| {
+        let result = lb.get_next_endpoint().await.map_err(|_e| {
             SongbirdError::configuration("Missing performance configuration".to_string())
         })?;
         assert_eq!(result, endpoints[0]);
@@ -122,7 +122,7 @@ async fn test_single_endpoint_random() -> SongbirdResult<()> {
     let lb = LoadBalancer::new(endpoints.clone(), LoadBalancingStrategy::Random);
 
     for _ in 0..50 {
-        let result = lb.get_next_endpoint().await.map_err(|e| {
+        let result = lb.get_next_endpoint().await.map_err(|_e| {
             SongbirdError::configuration("Missing performance configuration".to_string())
         })?;
         assert_eq!(result, endpoints[0]);
@@ -166,10 +166,10 @@ async fn test_endpoint_with_unusual_port() -> SongbirdResult<()> {
     let lb = LoadBalancer::new(endpoints, LoadBalancingStrategy::RoundRobin);
 
     // Should handle edge port numbers
-    let result1 = lb.get_next_endpoint().await.map_err(|e| {
+    let result1 = lb.get_next_endpoint().await.map_err(|_e| {
         SongbirdError::configuration("Missing performance configuration".to_string())
     })?;
-    let result2 = lb.get_next_endpoint().await.map_err(|e| {
+    let result2 = lb.get_next_endpoint().await.map_err(|_e| {
         SongbirdError::configuration("Missing performance configuration".to_string())
     })?;
 
@@ -185,7 +185,7 @@ async fn test_endpoint_with_long_hostname() -> SongbirdResult<()> {
 
     let lb = LoadBalancer::new(vec![endpoint.clone()], LoadBalancingStrategy::RoundRobin);
 
-    let result = lb.get_next_endpoint().await.map_err(|e| {
+    let result = lb.get_next_endpoint().await.map_err(|_e| {
         SongbirdError::configuration("Missing performance configuration".to_string())
     })?;
     assert_eq!(result, endpoint);
@@ -227,7 +227,7 @@ async fn test_concurrent_endpoint_selection() -> SongbirdResult<()> {
 
     // All should succeed
     for handle in handles {
-        let result = handle.await.map_err(|e| {
+        let result = handle.await.map_err(|_e| {
             SongbirdError::configuration("Missing performance configuration".to_string())
         })?;
         assert!(result.is_ok());
@@ -254,7 +254,7 @@ async fn test_concurrent_health_marking() -> SongbirdResult<()> {
     }
 
     for handle in handles {
-        handle.await.map_err(|e| {
+        handle.await.map_err(|_e| {
             SongbirdError::configuration("Missing performance configuration".to_string())
         })?;
     }
@@ -293,7 +293,7 @@ async fn test_concurrent_reads_and_writes() -> SongbirdResult<()> {
 
     // All should complete successfully
     for handle in handles {
-        assert!(handle.await.map_err(|e| SongbirdError::configuration("Error"))?);
+        assert!(handle.await.map_err(|_e| SongbirdError::configuration("Error"))?);
     }
     Ok(())
 }
@@ -356,13 +356,13 @@ async fn test_strategy_with_two_endpoints() -> SongbirdResult<()> {
     let lb = LoadBalancer::new(endpoints.clone(), LoadBalancingStrategy::RoundRobin);
 
     // Should alternate between the two
-    let r1 = lb.get_next_endpoint().await.map_err(|e| {
+    let r1 = lb.get_next_endpoint().await.map_err(|_e| {
         SongbirdError::configuration("Missing performance configuration".to_string())
     })?;
-    let r2 = lb.get_next_endpoint().await.map_err(|e| {
+    let r2 = lb.get_next_endpoint().await.map_err(|_e| {
         SongbirdError::configuration("Missing performance configuration".to_string())
     })?;
-    let r3 = lb.get_next_endpoint().await.map_err(|e| {
+    let r3 = lb.get_next_endpoint().await.map_err(|_e| {
         SongbirdError::configuration("Missing performance configuration".to_string())
     })?;
 
@@ -384,7 +384,7 @@ async fn test_random_strategy_distribution() -> SongbirdResult<()> {
 
     // With random selection, we should eventually see all endpoints
     for _ in 0..100 {
-        let result = lb.get_next_endpoint().await.map_err(|e| {
+        let result = lb.get_next_endpoint().await.map_err(|_e| {
             SongbirdError::configuration("Missing performance configuration".to_string())
         })?;
         seen.insert(result);
@@ -427,7 +427,7 @@ async fn test_endpoint_with_path() -> SongbirdResult<()> {
     let endpoints = vec!["http://endpoint:8080/api/v1".to_string()];
     let lb = LoadBalancer::new(endpoints.clone(), LoadBalancingStrategy::RoundRobin);
 
-    let result = lb.get_next_endpoint().await.map_err(|e| {
+    let result = lb.get_next_endpoint().await.map_err(|_e| {
         SongbirdError::configuration("Missing performance configuration".to_string())
     })?;
     assert_eq!(result, endpoints[0]);
@@ -440,7 +440,7 @@ async fn test_endpoint_with_query_parameters() -> SongbirdResult<()> {
     let endpoints = vec!["http://endpoint:8080?param=value".to_string()];
     let lb = LoadBalancer::new(endpoints.clone(), LoadBalancingStrategy::RoundRobin);
 
-    let result = lb.get_next_endpoint().await.map_err(|e| {
+    let result = lb.get_next_endpoint().await.map_err(|_e| {
         SongbirdError::configuration("Missing performance configuration".to_string())
     })?;
     assert_eq!(result, endpoints[0]);
@@ -456,7 +456,7 @@ async fn test_https_endpoints() -> SongbirdResult<()> {
     let result = lb
         .get_next_endpoint()
         .await
-        .map_err(|e| SongbirdError::configuration("Failed to start orchestrator".to_string()))?;
+        .map_err(|_e| SongbirdError::configuration("Failed to start orchestrator".to_string()))?;
     assert!(result.starts_with("https://"));
     Ok(())
 }
@@ -468,13 +468,13 @@ async fn test_mixed_http_https_endpoints() -> SongbirdResult<()> {
     let lb = LoadBalancer::new(endpoints.clone(), LoadBalancingStrategy::RoundRobin);
 
     // Should handle mixed protocols
-    let r1 = lb.get_next_endpoint().await.map_err(|e| {
+    let r1 = lb.get_next_endpoint().await.map_err(|_e| {
         SongbirdError::configuration("Missing performance configuration".to_string())
     })?;
     let r2 = lb
         .get_next_endpoint()
         .await
-        .map_err(|e| SongbirdError::configuration("Failed to start orchestrator".to_string()))?;
+        .map_err(|_e| SongbirdError::configuration("Failed to start orchestrator".to_string()))?;
 
     assert!(r1.starts_with("http"));
     assert!(r2.starts_with("http"));
@@ -552,7 +552,7 @@ async fn test_concurrent_strategy_switching() -> SongbirdResult<()> {
 
     // All should succeed
     for handle in handles {
-        let result = handle.await.map_err(|e| {
+        let result = handle.await.map_err(|_e| {
             SongbirdError::configuration("Missing performance configuration".to_string())
         })?;
         assert!(result.is_ok());
@@ -575,7 +575,7 @@ async fn test_concurrent_availability_checks() -> SongbirdResult<()> {
     }
 
     for handle in handles {
-        let count = handle.await.map_err(|e| {
+        let count = handle.await.map_err(|_e| {
             SongbirdError::configuration("Missing performance configuration".to_string())
         })?;
         assert!(count <= 10);
@@ -599,7 +599,7 @@ async fn test_high_concurrency_selection() -> SongbirdResult<()> {
 
     // All should succeed
     for handle in handles {
-        let result = handle.await.map_err(|e| {
+        let result = handle.await.map_err(|_e| {
             SongbirdError::configuration("Missing performance configuration".to_string())
         })?;
         assert!(result);
@@ -634,7 +634,7 @@ async fn test_endpoint_url_with_fragment() -> SongbirdResult<()> {
     let endpoints = vec!["http://endpoint:8080#fragment".to_string()];
     let lb = LoadBalancer::new(endpoints.clone(), LoadBalancingStrategy::RoundRobin);
 
-    let result = lb.get_next_endpoint().await.map_err(|e| {
+    let result = lb.get_next_endpoint().await.map_err(|_e| {
         SongbirdError::configuration("Missing performance configuration".to_string())
     })?;
     assert_eq!(result, endpoints[0]);
@@ -646,7 +646,7 @@ async fn test_endpoint_url_with_username() -> SongbirdResult<()> {
     let endpoints = vec!["http://user@endpoint:8080".to_string()];
     let lb = LoadBalancer::new(endpoints.clone(), LoadBalancingStrategy::RoundRobin);
 
-    let result = lb.get_next_endpoint().await.map_err(|e| {
+    let result = lb.get_next_endpoint().await.map_err(|_e| {
         SongbirdError::configuration("Missing performance configuration".to_string())
     })?;
     assert_eq!(result, endpoints[0]);
@@ -658,7 +658,7 @@ async fn test_endpoint_url_with_password() -> SongbirdResult<()> {
     let endpoints = vec!["http://user:pass@endpoint:8080".to_string()];
     let lb = LoadBalancer::new(endpoints.clone(), LoadBalancingStrategy::RoundRobin);
 
-    let result = lb.get_next_endpoint().await.map_err(|e| {
+    let result = lb.get_next_endpoint().await.map_err(|_e| {
         SongbirdError::configuration("Missing performance configuration".to_string())
     })?;
     assert_eq!(result, endpoints[0]);
@@ -672,7 +672,7 @@ async fn test_very_long_url_path() -> SongbirdResult<()> {
 
     let lb = LoadBalancer::new(vec![endpoint.clone()], LoadBalancingStrategy::RoundRobin);
 
-    let result = lb.get_next_endpoint().await.map_err(|e| {
+    let result = lb.get_next_endpoint().await.map_err(|_e| {
         SongbirdError::configuration("Missing performance configuration".to_string())
     })?;
     assert_eq!(result, endpoint);
@@ -685,7 +685,7 @@ async fn test_endpoint_with_international_domain() -> SongbirdResult<()> {
     let endpoints = vec!["http://münchen.de:8080".to_string()];
     let lb = LoadBalancer::new(endpoints.clone(), LoadBalancingStrategy::RoundRobin);
 
-    let result = lb.get_next_endpoint().await.map_err(|e| {
+    let result = lb.get_next_endpoint().await.map_err(|_e| {
         SongbirdError::configuration("Missing performance configuration".to_string())
     })?;
     assert_eq!(result, endpoints[0]);
@@ -790,19 +790,19 @@ async fn test_round_robin_predictable_sequence() -> SongbirdResult<()> {
 
     // Should cycle through in order
     assert_eq!(
-        lb.get_next_endpoint().await.map_err(|e| SongbirdError::configuration("Error"))?,
+        lb.get_next_endpoint().await.map_err(|_e| SongbirdError::configuration("Error"))?,
         endpoints[0]
     );
     assert_eq!(
-        lb.get_next_endpoint().await.map_err(|e| SongbirdError::configuration("Error"))?,
+        lb.get_next_endpoint().await.map_err(|_e| SongbirdError::configuration("Error"))?,
         endpoints[1]
     );
     assert_eq!(
-        lb.get_next_endpoint().await.map_err(|e| SongbirdError::configuration("Error"))?,
+        lb.get_next_endpoint().await.map_err(|_e| SongbirdError::configuration("Error"))?,
         endpoints[2]
     );
     assert_eq!(
-        lb.get_next_endpoint().await.map_err(|e| SongbirdError::configuration("Error"))?,
+        lb.get_next_endpoint().await.map_err(|_e| SongbirdError::configuration("Error"))?,
         endpoints[0]
     );
     Ok(())

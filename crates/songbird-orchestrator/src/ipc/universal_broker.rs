@@ -100,7 +100,7 @@ impl UniversalIpcBroker {
                 "ipc".to_string(),
                 "discovery".to_string(),
                 "registry".to_string(),
-                "stun".to_string(),  // NEW: STUN methods
+                "stun".to_string(), // NEW: STUN methods
             ],
         )
         .await
@@ -126,15 +126,15 @@ impl UniversalIpcBroker {
         // Create service handler with discovery bridge if listener provided
         let handler = if let Some(listener) = discovery_listener {
             info!("🌉 Wiring up discovery listener bridge for runtime peer discovery");
-            
+
             // Create bridge from listener to PeerRegistry trait
             let bridge: Arc<dyn PeerRegistry> = Arc::new(DiscoveryListenerBridge::new(listener));
-            
+
             // Create handler with discovery registry
             IpcServiceHandler::with_discovery_registry(registry, bridge)
         } else {
             info!("⚠️  No discovery listener provided, discovery.peers will return empty");
-            
+
             // Create handler without discovery (testing mode)
             IpcServiceHandler::new(registry)
         };

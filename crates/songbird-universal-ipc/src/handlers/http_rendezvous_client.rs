@@ -8,9 +8,7 @@
 //! - Pure Rust: Uses songbird-http-client (no C deps)
 //! - Modern async: Full async/await
 
-use super::rendezvous_handler::{
-    RendezvousClient, RendezvousPeer, RendezvousRegisterResult,
-};
+use super::rendezvous_handler::{RendezvousClient, RendezvousPeer, RendezvousRegisterResult};
 use async_trait::async_trait;
 use tracing::{info, warn};
 
@@ -52,11 +50,11 @@ impl RendezvousClient for HttpRendezvousClient {
         // TODO: Real HTTP implementation
         // For now, return a graceful error indicating feature not yet implemented
         // This is better than using mocks in production!
-        
+
         warn!("⚠️  HTTP Rendezvous: Real implementation pending");
         warn!("   Rendezvous registration requires a relay server");
         warn!("   For LAN-only operation, use direct peer discovery instead");
-        
+
         Err(format!(
             "Rendezvous server not configured. Server: {server}. Use STUN/Discovery for LAN peers."
         ))
@@ -68,7 +66,7 @@ impl RendezvousClient for HttpRendezvousClient {
         // TODO: Real HTTP implementation
         // For now, return empty results (no relay server available)
         // This is production-safe: system works without rendezvous
-        
+
         warn!("⚠️  HTTP Rendezvous: Real implementation pending");
         warn!("   Returning empty peer list (relay server not available)");
         warn!("   For LAN peers, use discovery.peers method instead");
@@ -79,7 +77,7 @@ impl RendezvousClient for HttpRendezvousClient {
 }
 
 // TODO: Full HTTP implementation
-// 
+//
 // The complete implementation would:
 // 1. Use songbird-http-client for HTTP requests
 // 2. POST to /rendezvous/register endpoint
@@ -112,14 +110,9 @@ mod tests {
     #[tokio::test]
     async fn test_register_returns_graceful_error() {
         let client = HttpRendezvousClient::new();
-        
+
         let result = client
-            .register(
-                "https://relay.example.com",
-                "node-test",
-                "nat0",
-                "203.0.113.1:5000",
-            )
+            .register("https://relay.example.com", "node-test", "nat0", "203.0.113.1:5000")
             .await;
 
         // Should return error (not panic) since real implementation pending
@@ -130,14 +123,11 @@ mod tests {
     #[tokio::test]
     async fn test_lookup_returns_empty() {
         let client = HttpRendezvousClient::new();
-        
-        let result = client
-            .lookup("https://relay.example.com", "node-target")
-            .await;
+
+        let result = client.lookup("https://relay.example.com", "node-target").await;
 
         // Should return empty (not error) - graceful degradation
         assert!(result.is_ok());
         assert_eq!(result.unwrap().len(), 0);
     }
 }
-

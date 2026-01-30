@@ -37,4 +37,3 @@ pub enum StunError {
     #[error("Network error: {0}")]
     Network(String),
 }
-

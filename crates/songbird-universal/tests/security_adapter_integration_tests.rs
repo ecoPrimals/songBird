@@ -408,9 +408,9 @@ async fn test_security_recovery_scenario() {
 
 #[tokio::test]
 async fn test_multiple_adapters_different_endpoints() -> SongbirdResult<()> {
-    let adapter1 = SecurityAdapter::new("http://security1:8081".to_string())?;
-    let adapter2 = SecurityAdapter::new("http://security2:8082".to_string())?;
-    let adapter3 = SecurityAdapter::new("https://security3:8443".to_string())?;
+    let adapter1 = SecurityAdapter::new("http://security1:8081".to_string()).await?;
+    let adapter2 = SecurityAdapter::new("http://security2:8082".to_string()).await?;
+    let adapter3 = SecurityAdapter::new("https://security3:8443".to_string()).await?;
 
     assert_eq!(adapter1.endpoint(), "http://security1:8081");
     assert_eq!(adapter2.endpoint(), "http://security2:8082");
@@ -426,7 +426,7 @@ async fn test_multiple_adapters_different_endpoints() -> SongbirdResult<()> {
 #[tokio::test]
 async fn test_create_multiple_adapters() -> SongbirdResult<()> {
     for i in 0..100 {
-        let adapter = SecurityAdapter::new(format!("http://security{}:8081", i))?.await;
+        let adapter = SecurityAdapter::new(format!("http://security{}:8081", i)).await?;
         assert_eq!(adapter.endpoint(), format!("http://security{}:8081", i));
     }
     Ok(())

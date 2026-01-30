@@ -65,10 +65,7 @@ impl MockEnv {
 #[cfg(test)]
 impl EnvReader for MockEnv {
     fn var(&self, key: &str) -> Result<String, std::env::VarError> {
-        self.vars
-            .get(key)
-            .cloned()
-            .ok_or(std::env::VarError::NotPresent)
+        self.vars.get(key).cloned().ok_or(std::env::VarError::NotPresent)
     }
 }
 
@@ -294,17 +291,17 @@ mod tests {
         let test_dir = format!("/tmp/test_xdg_runtime_tls_{}", test_id);
         let family_id = format!("testfam_{}", test_id);
 
-        let env = MockEnv::new()
-            .set("XDG_RUNTIME_DIR", &test_dir)
-            .set("FAMILY_ID", &family_id);
+        let env = MockEnv::new().set("XDG_RUNTIME_DIR", &test_dir).set("FAMILY_ID", &family_id);
 
-        let beardog_xdg_path = PathBuf::from(format!("{}/biomeos/beardog-{}.sock", test_dir, family_id));
+        let beardog_xdg_path =
+            PathBuf::from(format!("{}/biomeos/beardog-{}.sock", test_dir, family_id));
         create_dummy_socket(&beardog_xdg_path);
 
         let discovered = discover_beardog_socket_with_env(None, &env);
         assert_eq!(discovered, beardog_xdg_path.to_string_lossy().into_owned());
 
-        let neural_xdg_path = PathBuf::from(format!("{}/biomeos/neural-api-{}.sock", test_dir, family_id));
+        let neural_xdg_path =
+            PathBuf::from(format!("{}/biomeos/neural-api-{}.sock", test_dir, family_id));
         create_dummy_socket(&neural_xdg_path);
 
         let discovered = discover_neural_api_socket_with_env(None, &env);
@@ -346,7 +343,8 @@ mod tests {
             .set("XDG_RUNTIME_DIR", &test_dir)
             .set("FAMILY_ID", &family_id);
 
-        let beardog_xdg_path = PathBuf::from(format!("{}/biomeos/beardog-{}.sock", test_dir, family_id));
+        let beardog_xdg_path =
+            PathBuf::from(format!("{}/biomeos/beardog-{}.sock", test_dir, family_id));
         create_dummy_socket(&beardog_xdg_path);
 
         let discovered = discover_beardog_socket_with_env(None, &env);
@@ -367,8 +365,8 @@ mod tests {
         let handles: Vec<_> = (0..10)
             .map(|i| {
                 thread::spawn(move || {
-                    let env = MockEnv::new()
-                        .set("BEARDOG_SOCKET", format!("/env/beardog-{}.sock", i));
+                    let env =
+                        MockEnv::new().set("BEARDOG_SOCKET", format!("/env/beardog-{}.sock", i));
                     let discovered = discover_beardog_socket_with_env(None, &env);
                     assert_eq!(discovered, format!("/env/beardog-{}.sock", i));
                 })
@@ -380,4 +378,3 @@ mod tests {
         }
     }
 }
-

@@ -701,9 +701,10 @@ mod tests {
 
     #[tokio::test]
     async fn test_adapter_debug_format() -> SongbirdResult<()> {
-        let adapter = ComputeAdapter::new("http://compute:8080".to_string()).await.map_err(|e| {
-            SongbirdError::configuration(format!("Adapter creation should succeed: {}", e))
-        })?;
+        let adapter =
+            ComputeAdapter::new("http://compute:8080".to_string()).await.map_err(|e| {
+                SongbirdError::configuration(format!("Adapter creation should succeed: {}", e))
+            })?;
         let debug_str = format!("{:?}", adapter);
         assert!(debug_str.contains("ComputeAdapter"));
         assert!(debug_str.contains("http://compute:8080"));

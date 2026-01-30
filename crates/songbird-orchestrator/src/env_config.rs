@@ -60,17 +60,53 @@ pub fn node_id() -> String {
 
 /// Get this primal's IPC socket path (self-knowledge)
 ///
-/// Resolution order:
-/// 1. `SONGBIRD_SOCKET` (explicit override)
-/// 2. `/tmp/songbird-{family_id}.sock` (BiomeOS standard)
+/// Resolution order (BiomeOS XDG Standard):
+/// 1. `SONGBIRD_SOCKET` (explicit override - full path)
+/// 2. `BIOMEOS_SOCKET_DIR` + `songbird.sock` (shared socket directory)
+/// 3. `/run/user/$UID/biomeos/songbird.sock` (XDG-compliant default)
+/// 4. `/tmp/songbird.sock` (legacy fallback if XDG unavailable)
+///
+/// **Socket Naming Standard**: Uses primal name only (`songbird.sock`),
+/// NOT binary name (`songbird-orchestrator.sock`). Family ID is NOT
+/// included in the socket name for biomeOS compliance.
 pub fn socket_path() -> PathBuf {
+    // Priority 1: Explicit SONGBIRD_SOCKET override
     if let Ok(path) = std::env::var("SONGBIRD_SOCKET") {
         return PathBuf::from(path);
     }
 
-    // BiomeOS standard: /tmp/{primal}-{family}.sock
-    let family = family_id();
-    PathBuf::from(format!("/tmp/songbird-{}.sock", family))
+    // Priority 2: BIOMEOS_SOCKET_DIR + primal name
+    if let Ok(socket_dir) = std::env::var("BIOMEOS_SOCKET_DIR") {
+        let path = PathBuf::from(socket_dir).join("songbird.sock");
+        // Ensure directory exists
+        if let Some(parent) = path.parent() {
+            let _ = std::fs::create_dir_all(parent);
+        }
+        return path;
+    }
+
+    // Priority 3: XDG-compliant default (/run/user/$UID/biomeos/)
+    // Extract UID from XDG_RUNTIME_DIR (Pure Rust, no unsafe!)
+    let xdg_socket = if let Ok(xdg_runtime_dir) = std::env::var("XDG_RUNTIME_DIR") {
+        // XDG_RUNTIME_DIR is typically /run/user/{uid}
+        PathBuf::from(xdg_runtime_dir).join("biomeos/songbird.sock")
+    } else if let Ok(uid_str) = std::env::var("UID") {
+        // Fallback to UID env var
+        PathBuf::from(format!("/run/user/{}/biomeos/songbird.sock", uid_str))
+    } else {
+        // Final fallback: legacy /tmp
+        PathBuf::from("/tmp/songbird.sock")
+    };
+
+    // Ensure directory exists (Pure Rust!)
+    if let Some(parent) = xdg_socket.parent() {
+        if std::fs::create_dir_all(parent).is_ok() {
+            return xdg_socket;
+        }
+    }
+
+    // Priority 4: Legacy /tmp fallback (if XDG unavailable or directory creation failed)
+    PathBuf::from("/tmp/songbird.sock")
 }
 
 /// Get data directory (self-knowledge)
@@ -183,25 +219,37 @@ mod tests {
     #[test]
     fn test_socket_path_default() {
         std::env::remove_var("SONGBIRD_SOCKET");
-        std::env::remove_var("SONGBIRD_FAMILY_ID");
-        std::env::remove_var("FAMILY_ID");
-        assert_eq!(socket_path(), PathBuf::from("/tmp/songbird-nat0.sock"));
+        std::env::remove_var("BIOMEOS_SOCKET_DIR");
+
+        let path = socket_path();
+
+        // Should be either XDG (/run/user/{uid}/biomeos/songbird.sock) or /tmp fallback
+        let path_str = path.to_string_lossy();
+        assert!(
+            path_str.ends_with("/biomeos/songbird.sock") || path_str == "/tmp/songbird.sock",
+            "Expected XDG or /tmp fallback, got: {}",
+            path_str
+        );
     }
 
     #[test]
-    fn test_socket_path_custom_family() {
-        // Clear all env vars first
-        std::env::remove_var("SONGBIRD_SOCKET");
-        std::env::remove_var("SONGBIRD_FAMILY_ID");
-        std::env::remove_var("SONGBIRD_ORCHESTRATOR_FAMILY_ID");
-        std::env::remove_var("SONGBIRD_ORCHESTRATOR_FAMILY");
-        std::env::remove_var("BIOMEOS_FAMILY_ID");
-        std::env::remove_var("FAMILY_ID");
-
-        std::env::set_var("SONGBIRD_FAMILY_ID", "prod");
+    fn test_socket_path_explicit_override() {
+        std::env::set_var("SONGBIRD_SOCKET", "/custom/path/test.sock");
         let path = socket_path();
-        std::env::remove_var("SONGBIRD_FAMILY_ID");
-        assert_eq!(path, PathBuf::from("/tmp/songbird-prod.sock"));
+        std::env::remove_var("SONGBIRD_SOCKET");
+        assert_eq!(path, PathBuf::from("/custom/path/test.sock"));
+    }
+
+    #[test]
+    fn test_socket_path_biomeos_dir() {
+        // Clear explicit override
+        std::env::remove_var("SONGBIRD_SOCKET");
+
+        std::env::set_var("BIOMEOS_SOCKET_DIR", "/tmp/test-biomeos");
+        let path = socket_path();
+        std::env::remove_var("BIOMEOS_SOCKET_DIR");
+
+        assert_eq!(path, PathBuf::from("/tmp/test-biomeos/songbird.sock"));
     }
 
     #[test]
@@ -212,8 +260,11 @@ mod tests {
 
     #[test]
     fn test_http_port_default() {
+        // Clear ALL related env vars to prevent test pollution
         std::env::remove_var("SONGBIRD_HTTP_PORT");
         std::env::remove_var("SONGBIRD_HTTP_ADDR");
+        std::env::remove_var("HTTP_PORT");
+        std::env::remove_var("PORT");
         assert_eq!(http_port(), 8080);
     }
 
