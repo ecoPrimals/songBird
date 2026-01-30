@@ -66,7 +66,8 @@ rand = { workspace = true }
 # reqwest = { version = "0.11", features = ["json"], default-features = false }  # REMOVED
 songbird-http-client = { path = "../songbird-http-client" }  # ✅ Pure Rust HTTP/HTTPS with BearDog crypto (PRODUCTION)
 socket2 = { workspace = true }
-if-addrs = { workspace = true }
+# if-addrs = { workspace = true }  # ❌ REMOVED (Jan 31, 2026): Android-incompatible (getifaddrs/freeifaddrs unavailable)
+# EVOLVED TO: netdev (line 110) - Platform-agnostic network interface discovery (Linux, Android, Windows, macOS, iOS)
 serde_yaml = "0.9.34"
 sysinfo = "0.30"
 hostname = "0.4"

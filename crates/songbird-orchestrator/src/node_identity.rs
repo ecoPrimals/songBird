@@ -3,7 +3,7 @@
 //! Provides stable node identity across network changes, restarts, and interface changes.
 //! A node's identity remains constant regardless of its transport paths.
 
-use anyhow::{anyhow, Result};
+use anyhow::Result;
 use serde::{Deserialize, Serialize};
 use songbird_types::{LineageId, LineageProof};
 use std::fs;
@@ -261,53 +261,93 @@ impl NodeIdentity {
 
     /// Detect all available network interfaces and populate endpoints
     ///
+    /// **EVOLVED (Jan 31, 2026): Platform-agnostic network discovery!**
+    /// - BEFORE: if_addrs (Android-incompatible, uses getifaddrs/freeifaddrs)
+    /// - AFTER: netdev (Pure Rust, Android-compatible, cross-platform!)
+    ///
     /// This scans the system for all active network interfaces and creates
     /// transport endpoints for each. It assigns preferences based on interface type:
     /// - Ethernet: 100 (highest preference)
     /// - WiFi: 80
     /// - Other: 50
     /// - Loopback: 10 (lowest preference)
+    ///
+    /// **Deep Debt Solution:**
+    /// - ✅ Platform-agnostic (Linux, Android, Windows, macOS, iOS)
+    /// - ✅ Modern idiomatic Rust (netdev API)
+    /// - ✅ Runtime capability discovery (no hardcoding)
     pub fn detect_all_endpoints(&mut self, port: u16) -> Result<()> {
-        info!("🔍 Detecting network interfaces...");
+        info!("🔍 Detecting network interfaces (platform-agnostic)...");
 
-        // Get all network interfaces
-        let interfaces = if_addrs::get_if_addrs()
-            .map_err(|e| anyhow!("Failed to enumerate network interfaces: {}", e))?;
+        // Get all network interfaces (platform-agnostic!)
+        // netdev supports: Linux, Android, Windows, macOS, FreeBSD
+        let interfaces = netdev::get_interfaces();
 
         let mut detected_count = 0;
 
         for iface in interfaces {
             // Skip loopback by default (can be enabled explicitly)
-            if iface.is_loopback() {
+            // Skip interfaces without IPs
+            if iface.ipv4.is_empty() && iface.ipv6.is_empty() {
+                debug!("Skipping {} (no IP addresses)", iface.name);
                 continue;
             }
 
             // Determine interface type and preference
             let (interface_type, preference) = Self::classify_interface(&iface.name);
 
-            // Create endpoint
-            let address = match iface.addr {
-                if_addrs::IfAddr::V4(addr) => SocketAddr::new(IpAddr::V4(addr.ip), port),
-                if_addrs::IfAddr::V6(addr) => SocketAddr::new(IpAddr::V6(addr.ip), port),
-            };
+            // Add IPv4 endpoints
+            for ipv4 in &iface.ipv4 {
+                // Skip loopback addresses
+                if ipv4.addr().is_loopback() {
+                    continue;
+                }
 
-            let endpoint = TransportEndpoint {
-                interface_type: interface_type.clone(),
-                address,
-                protocols: vec!["https".to_string(), "tarpc".to_string()],
-                preference,
-            };
+                let address = SocketAddr::new(IpAddr::V4(ipv4.addr()), port);
 
-            self.add_endpoint(endpoint);
-            detected_count += 1;
+                let endpoint = TransportEndpoint {
+                    interface_type: interface_type.clone(),
+                    address,
+                    protocols: vec!["https".to_string(), "tarpc".to_string()],
+                    preference,
+                };
 
-            info!(
-                "  ✅ {} ({}) - {} [preference: {}]",
-                iface.name, interface_type, address, preference
-            );
+                self.add_endpoint(endpoint);
+                detected_count += 1;
+
+                info!(
+                    "  ✅ {} ({}) - {} [preference: {}]",
+                    iface.name, interface_type, address, preference
+                );
+            }
+
+            // Add IPv6 endpoints
+            for ipv6 in &iface.ipv6 {
+                // Skip loopback addresses
+                if ipv6.addr().is_loopback() {
+                    continue;
+                }
+
+                let address = SocketAddr::new(IpAddr::V6(ipv6.addr()), port);
+
+                let endpoint = TransportEndpoint {
+                    interface_type: interface_type.clone(),
+                    address,
+                    protocols: vec!["https".to_string(), "tarpc".to_string()],
+                    preference,
+                };
+
+                self.add_endpoint(endpoint);
+                detected_count += 1;
+
+                info!(
+                    "  ✅ {} ({}) - {} [preference: {}]",
+                    iface.name, interface_type, address, preference
+                );
+            }
         }
 
-        info!("🔍 Detected {} network endpoints", detected_count);
+        info!("🔍 Detected {} network endpoints (platform-agnostic!)", detected_count);
 
         Ok(())
     }

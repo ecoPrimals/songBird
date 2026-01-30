@@ -47,6 +47,7 @@ use crate::endpoint::NativeEndpoint;
 use crate::error::{IpcError, IpcResult};
 use crate::platform::{AsyncStream, PlatformIPC, PlatformListener};
 use async_trait::async_trait;
+use tracing::{debug, info, warn};
 
 /// iOS/macOS IPC implementation
 ///
@@ -57,14 +58,14 @@ pub struct iOSIPC;
 
 #[async_trait]
 impl PlatformIPC for iOSIPC {
-    async fn create_endpoint(&self, _primal_name: &str) -> IpcResult<NativeEndpoint> {
+    async fn create_endpoint(&self, primal_name: &str) -> IpcResult<NativeEndpoint> {
         #[cfg(target_os = "macos")]
         {
             use std::path::PathBuf;
             
             // macOS: Use Unix sockets (XDG-compliant path)
             // /var/tmp is recommended for macOS (persists across reboots)
-            let socket_path = PathBuf::from(format!("/var/tmp/biomeos/{}.sock", _primal_name));
+            let socket_path = PathBuf::from(format!("/var/tmp/biomeos/{}.sock", primal_name));
 
             debug!(
                 "Creating macOS Unix socket endpoint for '{}': {}",
@@ -107,7 +108,7 @@ impl PlatformIPC for iOSIPC {
             // iOS: XPC is preferred but requires platform-specific bindings
             // For now, document the requirement and use fallback
             
-            let xpc_service = format!("org.biomeos.{}", _primal_name);
+            let xpc_service = format!("org.biomeos.{}", primal_name);
             
             warn!(
                 "iOS XPC endpoint documented but not yet implemented: {}",
