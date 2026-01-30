@@ -49,7 +49,11 @@ use songbird_types::{SongbirdError, SongbirdResult};
 use std::path::PathBuf;
 use std::time::Duration;
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
-use tokio::net::UnixStream;
+// Platform-agnostic IPC transport
+#[cfg(unix)]
+use tokio::net::UnixStream as PlatformStream;
+#[cfg(windows)]
+use tokio::net::TcpStream as PlatformStream;
 use tokio::time::timeout;
 use tracing::{debug, info, warn};
 
@@ -157,6 +161,24 @@ impl JsonRpcClient {
         self
     }
 
+    /// Platform-agnostic connection helper
+    #[cfg(unix)]
+    async fn connect_platform(path: &PathBuf) -> std::io::Result<PlatformStream> {
+        PlatformStream::connect(path).await
+    }
+
+    #[cfg(windows)]
+    async fn connect_platform(path: &PathBuf) -> std::io::Result<PlatformStream> {
+        let addr = path.to_string_lossy();
+        PlatformStream::connect(addr.as_ref()).await
+    }
+
+    #[cfg(not(any(unix, windows)))]
+    async fn connect_platform(path: &PathBuf) -> std::io::Result<tokio::net::TcpStream> {
+        let addr = path.to_string_lossy();
+        tokio::net::TcpStream::connect(addr.as_ref()).await
+    }
+
     /// Call a JSON-RPC method with automatic request ID generation
     ///
     /// # Arguments
@@ -247,8 +269,8 @@ impl JsonRpcClient {
 
         debug!("🔌 Connecting to Unix socket: {}", self.socket_path.display());
 
-        // Connect with timeout
-        let stream = timeout(self.timeout, UnixStream::connect(&self.socket_path))
+        // Connect with timeout (platform-agnostic)
+        let stream = timeout(self.timeout, Self::connect_platform(&self.socket_path))
             .await
             .map_err(|_| {
                 SongbirdError::network(format!(

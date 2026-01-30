@@ -129,6 +129,8 @@ impl AnonymousDiscoveryListener {
 
         let socket = Socket::new(Domain::IPV4, Type::DGRAM, Some(Protocol::UDP))?;
         socket.set_reuse_address(true)?;
+        // set_reuse_port is Unix-only (not available on Windows)
+        #[cfg(unix)]
         socket.set_reuse_port(true)?;
 
         // Bind to port on all interfaces

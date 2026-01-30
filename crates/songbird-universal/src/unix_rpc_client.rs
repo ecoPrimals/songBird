@@ -39,7 +39,11 @@ use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use serde_json::json;
 use std::path::{Path, PathBuf};
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
-use tokio::net::UnixStream;
+// Platform-agnostic IPC transport
+#[cfg(unix)]
+use tokio::net::UnixStream as PlatformStream;
+#[cfg(windows)]
+use tokio::net::TcpStream as PlatformStream;
 use tracing::{debug, trace};
 
 /// JSON-RPC 2.0 Request
@@ -140,6 +144,24 @@ impl UnixRpcClient {
     /// ```rust
     /// let result: MyResponse = client.call("my_method", MyParams { ... }).await?;
     /// ```
+    /// Platform-agnostic connection helper
+    #[cfg(unix)]
+    async fn connect_platform(path: &PathBuf) -> std::io::Result<PlatformStream> {
+        PlatformStream::connect(path).await
+    }
+
+    #[cfg(windows)]
+    async fn connect_platform(path: &PathBuf) -> std::io::Result<PlatformStream> {
+        let addr = path.to_string_lossy();
+        PlatformStream::connect(addr.as_ref()).await
+    }
+
+    #[cfg(not(any(unix, windows)))]
+    async fn connect_platform(path: &PathBuf) -> std::io::Result<tokio::net::TcpStream> {
+        let addr = path.to_string_lossy();
+        tokio::net::TcpStream::connect(addr.as_ref()).await
+    }
+
     pub async fn call<P, R>(&self, method: &str, params: P) -> Result<R>
     where
         P: Serialize,
@@ -162,9 +184,9 @@ impl UnixRpcClient {
         let request_bytes =
             serde_json::to_vec(&request).context("Failed to serialize JSON-RPC request")?;
 
-        // Connect to Unix socket
-        let mut stream = UnixStream::connect(&self.socket_path).await.with_context(|| {
-            format!("Failed to connect to Unix socket: {}", self.socket_path.display())
+        // Connect (platform-agnostic)
+        let mut stream = Self::connect_platform(&self.socket_path).await.with_context(|| {
+            format!("Failed to connect to IPC: {}", self.socket_path.display())
         })?;
 
         // Send request

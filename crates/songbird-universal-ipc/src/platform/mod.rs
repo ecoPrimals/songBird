@@ -7,15 +7,25 @@ use tokio::io::{AsyncRead, AsyncWrite};
 
 // Platform-specific implementations
 // 
-// **TRUE ecoBin v2.0**: All modules available on all platforms.
-// Selection happens at runtime via get_platform_ipc() and multi-transport support.
+// **TRUE ecoBin v2.0**: Platform-conditional compilation for native performance
+// Selection happens at compile-time via #[cfg] and runtime discovery.
 
+#[cfg(all(unix, not(target_os = "android"), not(target_os = "ios")))]
 pub mod unix;      // Unix domain sockets (Linux, macOS, BSD)
+
+#[cfg(target_os = "android")]
 pub mod android;   // Abstract sockets (Android, Linux)
+
+#[cfg(windows)]
 pub mod windows;   // Named pipes (Windows)
+
+#[cfg(target_os = "ios")]
 pub mod ios;       // XPC (iOS, macOS)
+
+#[cfg(target_family = "wasm")]
 pub mod wasm;      // In-process (WASM)
-pub mod fallback;  // TCP localhost (universal)
+
+pub mod fallback;  // TCP localhost (universal fallback)
 
 /// Platform-specific IPC trait
 ///
