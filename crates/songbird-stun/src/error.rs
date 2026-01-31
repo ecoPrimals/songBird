@@ -36,4 +36,8 @@ pub enum StunError {
     /// Network error
     #[error("Network error: {0}")]
     Network(String),
+
+    /// All STUN servers failed during concurrent racing
+    #[error("All STUN servers failed: {0}")]
+    AllServersFailed(String),
 }
