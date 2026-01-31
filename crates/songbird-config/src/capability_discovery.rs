@@ -353,7 +353,6 @@ impl CapabilityDiscovery {
     ///     }
     /// }
     /// ```
-    #[allow(clippy::unused_async)] // TODO: Will use .await when implementing mDNS discovery
     async fn discover_via_mdns(&self, capability: &str) -> SongbirdResult<Vec<ServiceEndpoint>> {
         debug!("🌐 Starting mDNS discovery for capability: {}", capability);
 

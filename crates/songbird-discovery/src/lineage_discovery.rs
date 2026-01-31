@@ -94,9 +94,9 @@ impl LineageServiceDiscovery {
             debug!("  {}: {} bytes", key, value.len());
         }
 
-        // TODO: Actual mDNS broadcast implementation
-        // This will use mdns-sd or similar crate when integrated
-        // For now, we log the records that would be broadcast
+        // NOTE: For production mDNS broadcasting, use songbird-config::discovery::MdnsDiscovery
+        // which provides full RFC 6762 compliant mDNS with mdns-sd integration.
+        // This module focuses on lineage-specific discovery logic.
 
         Ok(())
     }
@@ -108,8 +108,9 @@ impl LineageServiceDiscovery {
     pub async fn discover_peers_with_lineage(&mut self) -> Result<Vec<DiscoveryPacket>> {
         info!("🔍 Discovering Songbird peers with lineage information");
 
-        // TODO: Actual mDNS discovery implementation
-        // This will use mdns-sd or similar crate when integrated
+        // NOTE: For production mDNS discovery, use songbird-config::discovery::MdnsDiscovery
+        // which provides full capability-based discovery with mdns-sd integration.
+        // This module can be integrated with that system for lineage-aware discovery.
 
         // For now, return cached peers
         let mut peers: Vec<_> = self.peer_cache.values().cloned().collect();

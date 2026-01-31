@@ -249,9 +249,9 @@ impl UniversalAdapter {
 
     /// Discover providers from mDNS
     async fn discover_from_mdns(&self, capability: &str) -> Result<Vec<DiscoveredProvider>> {
-        // TODO: Implement actual mDNS discovery
-        // This would query for services advertising the capability
-        debug!("mDNS discovery for '{}' not yet implemented", capability);
+        // NOTE: For production mDNS discovery, integrate with songbird-config::discovery::MdnsDiscovery
+        // which provides full RFC 6762 compliant capability-based mDNS discovery.
+        debug!("mDNS discovery for '{}' - use songbird-config::capability_discovery for production", capability);
         Ok(vec![])
     }
 

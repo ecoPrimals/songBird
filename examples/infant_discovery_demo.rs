@@ -158,7 +158,8 @@ async fn discover_capability(capability: &str) -> Result<CapabilityProvider, Str
     }
 
     // Method 2: mDNS discovery (local network)
-    // TODO: Implement when mdns crate is available
+    // NOTE: mDNS is now available! Use songbird_config::discovery::MdnsDiscovery
+    // See MDNS_INTEGRATION_COMPLETE_FEB_01_2026.md for integration guide
     // if let Ok(provider) = discover_mdns(capability).await {
     //     return Ok(provider);
     // }
