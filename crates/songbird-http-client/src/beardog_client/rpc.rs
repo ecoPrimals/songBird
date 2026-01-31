@@ -4,17 +4,21 @@
 
 use super::core::{BearDogClient, BearDogMode};
 use super::types::{JsonRpcRequest, JsonRpcResponse};
+use crate::crypto::socket_discovery::IpcEndpoint;
 use crate::error::{Error, Result};
 use serde_json::{json, Value};
 use std::sync::atomic::Ordering;
-use tokio::io::{AsyncReadExt, AsyncWriteExt};
-// Platform-agnostic IPC transport
-#[cfg(unix)]
-use tokio::net::UnixStream as PlatformStream;
-#[cfg(windows)]
-use tokio::net::TcpStream as PlatformStream;
+use tokio::io::{AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt};
 use tokio::time::{timeout, Duration};
 use tracing::{debug, error, trace};
+
+/// Unified async stream trait for Unix sockets and TCP
+trait AsyncStream: AsyncRead + AsyncWrite + Send + Unpin {}
+
+#[cfg(unix)]
+impl AsyncStream for tokio::net::UnixStream {}
+
+impl AsyncStream for tokio::net::TcpStream {}
 
 impl BearDogClient {
     /// Map semantic capability names to actual BearDog method names
@@ -58,23 +62,32 @@ impl BearDogClient {
         })
     }
 
-    /// Platform-agnostic connection helper
+    /// Connect to IPC endpoint (Unix socket or TCP)
     ///
-    /// - Unix/macOS/Android: Unix domain sockets
-    /// - Windows: TCP localhost
-    #[cfg(unix)]
-    async fn connect_platform(path: &str) -> std::io::Result<PlatformStream> {
-        PlatformStream::connect(path).await
-    }
-
-    #[cfg(windows)]
-    async fn connect_platform(address: &str) -> std::io::Result<PlatformStream> {
-        PlatformStream::connect(address).await
-    }
-
-    #[cfg(not(any(unix, windows)))]
-    async fn connect_platform(address: &str) -> std::io::Result<tokio::net::TcpStream> {
-        tokio::net::TcpStream::connect(address).await
+    /// Isomorphic connection helper that works with both Unix sockets and TCP.
+    async fn connect_endpoint(endpoint: &IpcEndpoint) -> std::io::Result<Box<dyn AsyncStream>> {
+        match endpoint {
+            IpcEndpoint::UnixSocket(path) => {
+                #[cfg(unix)]
+                {
+                    use tokio::net::UnixStream;
+                    let stream = UnixStream::connect(path).await?;
+                    Ok(Box::new(stream) as Box<dyn AsyncStream>)
+                }
+                #[cfg(not(unix))]
+                {
+                    Err(std::io::Error::new(
+                        std::io::ErrorKind::Unsupported,
+                        "Unix sockets not supported on this platform",
+                    ))
+                }
+            }
+            IpcEndpoint::TcpLocal(addr) => {
+                use tokio::net::TcpStream;
+                let stream = TcpStream::connect(addr).await?;
+                Ok(Box::new(stream) as Box<dyn AsyncStream>)
+            }
+        }
     }
 
     /// Make an RPC call to BearDog
@@ -86,18 +99,18 @@ impl BearDogClient {
 
         match &self.mode {
             BearDogMode::Direct {
-                socket_path,
-            } => self.call_direct(socket_path, capability, args, id).await,
+                endpoint,
+            } => self.call_direct(endpoint, capability, args, id).await,
             BearDogMode::NeuralApi {
-                socket_path,
-            } => self.call_neural_api(socket_path, capability, args, id).await,
+                endpoint,
+            } => self.call_neural_api(endpoint, capability, args, id).await,
         }
     }
 
     /// Direct RPC to BearDog (testing, simple deployments)
     async fn call_direct(
         &self,
-        socket_path: &str,
+        endpoint: &IpcEndpoint,
         capability: &str,
         args: Value,
         id: u64,
@@ -113,11 +126,11 @@ impl BearDogClient {
             id,
         };
 
-        trace!("→ BearDog direct RPC: {} (id={})", method, id);
+        trace!("→ BearDog direct RPC: {} (id={}) via {:?}", method, id, endpoint);
 
-        // Connect to BearDog directly (platform-agnostic)
-        let mut stream = Self::connect_platform(socket_path).await.map_err(|e| {
-            Error::BearDogRpc(format!("Failed to connect to BearDog at {}: {}", socket_path, e))
+        // Connect to BearDog (isomorphic: Unix or TCP)
+        let mut stream = Self::connect_endpoint(endpoint).await.map_err(|e| {
+            Error::BearDogRpc(format!("Failed to connect to BearDog at {:?}: {}", endpoint, e))
         })?;
 
         // Send request
@@ -149,7 +162,7 @@ impl BearDogClient {
     /// TRUE PRIMAL: Route through Neural API for semantic capability resolution
     async fn call_neural_api(
         &self,
-        socket_path: &str,
+        endpoint: &IpcEndpoint,
         capability: &str,
         args: Value,
         id: u64,
@@ -174,11 +187,11 @@ impl BearDogClient {
             id,
         };
 
-        trace!("→ Neural API capability.call: {}.{} (id={})", cap, op, id);
+        trace!("→ Neural API capability.call: {}.{} (id={}) via {:?}", cap, op, id, endpoint);
 
-        // Connect to Neural API (platform-agnostic)
-        let mut stream = Self::connect_platform(socket_path).await.map_err(|e| {
-            Error::BearDogRpc(format!("Failed to connect to Neural API at {}: {}", socket_path, e))
+        // Connect to Neural API (isomorphic: Unix or TCP)
+        let mut stream = Self::connect_endpoint(endpoint).await.map_err(|e| {
+            Error::BearDogRpc(format!("Failed to connect to Neural API at {:?}: {}", endpoint, e))
         })?;
 
         // Send request

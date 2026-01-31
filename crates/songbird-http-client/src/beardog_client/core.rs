@@ -2,6 +2,7 @@
 //!
 //! Client struct, mode enum, and constructors.
 
+use crate::crypto::socket_discovery::IpcEndpoint;
 use std::sync::atomic::AtomicU64;
 use tracing::info;
 
@@ -19,7 +20,7 @@ pub enum BearDogMode {
     /// - Fixed topology (you know what you need)
     /// - Uses actual BearDog method names (e.g., "x25519_generate_ephemeral")
     Direct {
-        socket_path: String,
+        endpoint: IpcEndpoint,
     },
 
     /// Via Neural API (production, orchestration, evolution)
@@ -30,7 +31,7 @@ pub enum BearDogMode {
     /// - Load balancing & failover
     /// - Uses semantic capability names (e.g., "crypto.generate_keypair")
     NeuralApi {
-        socket_path: String,
+        endpoint: IpcEndpoint,
     },
 }
 
@@ -47,7 +48,7 @@ pub struct BearDogClient {
 impl BearDogClient {
     /// Create client in Direct mode (testing, simple deployments)
     ///
-    /// Talks directly to BearDog via Unix socket.
+    /// Talks directly to BearDog via Unix socket or TCP (automatic fallback).
     /// Uses actual BearDog method names (e.g., "x25519_generate_ephemeral").
     ///
     /// # Example
@@ -57,9 +58,24 @@ impl BearDogClient {
     /// ```
     pub fn new_direct(beardog_socket: impl Into<String>) -> Self {
         info!("🔧 BearDog client: DIRECT mode (testing/simple deployments)");
+        let socket_path = beardog_socket.into();
+        let endpoint = IpcEndpoint::UnixSocket(socket_path);
         Self {
             mode: BearDogMode::Direct {
-                socket_path: beardog_socket.into(),
+                endpoint,
+            },
+            request_id: AtomicU64::new(1),
+        }
+    }
+
+    /// Create client in Direct mode with explicit endpoint (isomorphic)
+    ///
+    /// Allows specifying TCP or Unix socket explicitly for testing.
+    pub fn new_direct_with_endpoint(endpoint: IpcEndpoint) -> Self {
+        info!("🔧 BearDog client: DIRECT mode (explicit endpoint)");
+        Self {
+            mode: BearDogMode::Direct {
+                endpoint,
             },
             request_id: AtomicU64::new(1),
         }
@@ -77,9 +93,24 @@ impl BearDogClient {
     /// ```
     pub fn new_neural_api(neural_api_socket: impl Into<String>) -> Self {
         info!("🌐 BearDog client: NEURAL API mode (production/orchestration)");
+        let socket_path = neural_api_socket.into();
+        let endpoint = IpcEndpoint::UnixSocket(socket_path);
         Self {
             mode: BearDogMode::NeuralApi {
-                socket_path: neural_api_socket.into(),
+                endpoint,
+            },
+            request_id: AtomicU64::new(1),
+        }
+    }
+
+    /// Create client in Neural API mode with explicit endpoint (isomorphic)
+    ///
+    /// Allows specifying TCP or Unix socket explicitly for production.
+    pub fn new_neural_api_with_endpoint(endpoint: IpcEndpoint) -> Self {
+        info!("🌐 BearDog client: NEURAL API mode (explicit endpoint)");
+        Self {
+            mode: BearDogMode::NeuralApi {
+                endpoint,
             },
             request_id: AtomicU64::new(1),
         }
@@ -91,42 +122,52 @@ impl BearDogClient {
         Self::new_neural_api(neural_api_socket)
     }
 
-    /// Create from environment variable
+    /// Create from environment variable with isomorphic discovery
     ///
     /// Checks BEARDOG_MODE env var to determine mode:
-    /// - "direct" → Direct mode (BEARDOG_SOCKET) - DEPRECATED for production
-    /// - "neural" or default → Neural API mode (NEURAL_API_SOCKET) - TRUE PRIMAL pattern
+    /// - "direct" → Direct mode (discovers BearDog endpoint) - DEPRECATED for production
+    /// - "neural" or default → Neural API mode (discovers Neural API endpoint) - TRUE PRIMAL pattern
+    ///
+    /// Uses isomorphic discovery to automatically find Unix socket or TCP endpoint.
     pub fn from_env() -> Self {
         let mode = std::env::var("BEARDOG_MODE").unwrap_or_else(|_| "neural".to_string());
 
         match mode.to_lowercase().as_str() {
             "direct" => {
-                let socket = std::env::var("BEARDOG_SOCKET")
-                    .unwrap_or_else(|_| "/tmp/beardog.sock".to_string());
-                info!("🔧 BearDog mode from env: DIRECT → {}", socket);
-                Self::new_direct(socket)
+                // Direct mode: Discover BearDog endpoint
+                use crate::crypto::socket_discovery;
+                let endpoint = socket_discovery::discover_ipc_endpoint(
+                    "BEARDOG_SOCKET",
+                    "beardog",
+                    "/tmp/beardog.sock",
+                );
+                info!("🔧 BearDog mode from env: DIRECT → {:?}", endpoint);
+                Self::new_direct_with_endpoint(endpoint)
             }
             _ => {
                 // Default to Neural API (TRUE PRIMAL pattern)
-                let socket = std::env::var("NEURAL_API_SOCKET")
-                    .or_else(|_| std::env::var("NEURALS_SOCKET"))
-                    .unwrap_or_else(|_| "/tmp/neural-api-nat0.sock".to_string());
-                info!("🌐 BearDog mode from env: NEURAL API → {}", socket);
-                Self::new_neural_api(socket)
+                use crate::crypto::socket_discovery;
+                let endpoint = socket_discovery::discover_ipc_endpoint(
+                    "NEURAL_API_SOCKET",
+                    "neural-api",
+                    "/tmp/neural-api-nat0.sock",
+                );
+                info!("🌐 BearDog mode from env: NEURAL API → {:?}", endpoint);
+                Self::new_neural_api_with_endpoint(endpoint)
             }
         }
     }
 
-    /// Get socket path based on mode (for diagnostics/debugging)
+    /// Get endpoint based on mode (for diagnostics/debugging)
     #[allow(dead_code)]
-    pub(super) fn socket_path(&self) -> &str {
+    pub(super) fn endpoint(&self) -> &IpcEndpoint {
         match &self.mode {
             BearDogMode::Direct {
-                socket_path,
-            } => socket_path,
+                endpoint,
+            } => endpoint,
             BearDogMode::NeuralApi {
-                socket_path,
-            } => socket_path,
+                endpoint,
+            } => endpoint,
         }
     }
 
@@ -160,15 +201,15 @@ mod tests {
     }
 
     #[test]
-    fn test_socket_path_direct() {
+    fn test_endpoint_direct() {
         let client = BearDogClient::new_direct("/tmp/test.sock");
-        assert_eq!(client.socket_path(), "/tmp/test.sock");
+        assert!(matches!(client.endpoint(), IpcEndpoint::UnixSocket(_)));
     }
 
     #[test]
-    fn test_socket_path_neural() {
+    fn test_endpoint_neural() {
         let client = BearDogClient::new_neural_api("/tmp/neural.sock");
-        assert_eq!(client.socket_path(), "/tmp/neural.sock");
+        assert!(matches!(client.endpoint(), IpcEndpoint::UnixSocket(_)));
     }
 
     #[test]
@@ -178,5 +219,14 @@ mod tests {
 
         assert!(!direct.is_neural_api());
         assert!(neural.is_neural_api());
+    }
+
+    #[test]
+    fn test_endpoint_tcp_explicit() {
+        use std::net::SocketAddr;
+        let tcp_addr: SocketAddr = "127.0.0.1:12345".parse().unwrap();
+        let endpoint = IpcEndpoint::TcpLocal(tcp_addr);
+        let client = BearDogClient::new_direct_with_endpoint(endpoint.clone());
+        assert!(matches!(client.endpoint(), IpcEndpoint::TcpLocal(_)));
     }
 }

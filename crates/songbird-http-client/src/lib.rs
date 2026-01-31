@@ -81,8 +81,9 @@ pub use ipc_client::multipart;
 
 // Re-export crypto capability types for agnostic usage
 pub use crypto::{
-    discover_crypto_capability, BearDogProvider, CryptoCapability, TlsApplicationSecrets,
-    TlsHandshakeSecrets,
+    discover_beardog_socket, discover_crypto_capability, discover_ipc_endpoint,
+    discover_neural_api_socket, BearDogProvider, CryptoCapability, IpcEndpoint,
+    TlsApplicationSecrets, TlsHandshakeSecrets,
 };
 
 // Re-export BearDogClient and types
