@@ -1,19 +1,31 @@
-//! Pure Rust Unix Socket Server Infrastructure
+//! Pure Rust IPC Server Infrastructure (Isomorphic - TRUE ecoBin v2.0)
 //!
 //! v3.22.0: Evolved from jsonrpsee to pure Rust implementation (BearDog pattern)
+//! v8.23.0: Added automatic TCP fallback (isomorphic adaptation)
 //!
 //! ## Design Principles
 //!
-//! 1. **Zero External RPC Libraries**: Pure `tokio::net::UnixListener` + JSON
-//! 2. **Zero Hardcoding**: Socket path from env vars
+//! 1. **Zero External RPC Libraries**: Pure `tokio::net` + JSON
+//! 2. **Zero Hardcoding**: Socket path from env vars, automatic fallback
 //! 3. **Modern Async**: tokio + async/await
 //! 4. **Thread-Safe**: Arc + atomic readiness flags
 //! 5. **Observable**: Structured logging
 //! 6. **Graceful Shutdown**: Cleanup on drop
+//! 7. **TRUE Isomorphism**: Try → Detect → Adapt → Succeed
 //!
-//! **Platform:** Unix-only (uses Unix domain sockets)
+//! ## Platform Support
+//!
+//! - **Unix/Linux/macOS**: Unix domain sockets (optimal)
+//! - **Android/SELinux**: TCP localhost fallback (automatic)
+//! - **Windows**: TCP localhost (future)
+//!
+//! ## Automatic Adaptation
+//!
+//! Server detects platform constraints (SELinux, permissions) and automatically
+//! falls back to TCP without requiring configuration. Same binary works everywhere!
 
-#![cfg(unix)]
+// Platform-conditional compilation removed - supports both Unix and TCP now!
+// #![cfg(unix)] - REMOVED for isomorphic support
 
 use anyhow::{Context, Result};
 use std::path::{Path, PathBuf};
@@ -21,7 +33,8 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use std::time::Duration;
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
-// Platform-agnostic (Unix-only server, conditional compilation)
+use tokio::net::TcpListener;
+// Unix socket support (when available)
 #[cfg(unix)]
 use tokio::net::{UnixListener, UnixStream};
 use tracing::{debug, error, info, warn};
@@ -230,22 +243,53 @@ impl UnixSocketServer {
         true
     }
 
-    /// Start the Unix socket JSON-RPC server
+    /// Start the IPC server with automatic platform adaptation (TRUE ecoBin v2.0)
     ///
-    /// ## Lifecycle
+    /// ## Isomorphic Pattern: Try → Detect → Adapt → Succeed
     ///
-    /// 1. Remove stale socket file (if exists)
-    /// 2. Create parent directory (if needed)
-    /// 3. Bind Unix socket listener
-    /// 4. Mark as ready (atomic flag)
-    /// 5. Accept connections loop
+    /// 1. **Try** Unix socket first (optimal for most platforms)
+    /// 2. **Detect** if failure is a platform constraint (SELinux, permissions)
+    /// 3. **Adapt** automatically to TCP fallback (zero configuration)
+    /// 4. **Succeed** transparently (same protocol, same APIs)
+    ///
+    /// ## Deep Debt Principles
+    ///
+    /// - ✅ **Runtime Discovery**: Detects platform constraints automatically
+    /// - ✅ **Zero Configuration**: No environment variables or flags needed
+    /// - ✅ **Platform Agnostic**: Same binary adapts to all platforms
+    /// - ✅ **Primal Autonomy**: Self-sufficient, no external config
     ///
     /// ## Returns
     ///
     /// Never returns (runs until cancelled)
     pub async fn start(self: Arc<Self>) -> Result<()> {
-        info!("🔌 Starting pure Rust Unix socket JSON-RPC server...");
+        info!("🔌 Starting IPC server (isomorphic mode)...");
         info!("   Socket path: {}", self.socket_path.display());
+
+        // 1. TRY Unix socket first (optimal)
+        match self.clone().try_unix_server().await {
+            Ok(()) => Ok(()),
+            Err(e) => {
+                // 2. DETECT if it's a platform constraint
+                if self.is_platform_constraint(&e) {
+                    warn!("⚠️  Unix sockets unavailable: {}", e);
+                    warn!("   Platform constraint detected (SELinux/permissions)");
+                    warn!("   Falling back to TCP IPC...");
+                    
+                    // 3. ADAPT automatically to TCP fallback
+                    self.start_tcp_fallback().await
+                } else {
+                    // 4. Real error (not a platform constraint)
+                    Err(e).context("Failed to start IPC server")
+                }
+            }
+        }
+    }
+
+    /// Try to start Unix socket server (existing optimal path)
+    #[cfg(unix)]
+    async fn try_unix_server(self: Arc<Self>) -> Result<()> {
+        info!("   Trying Unix socket IPC (optimal)...");
 
         // Ensure parent directory exists (biomeOS requirement)
         if let Some(parent) = self.socket_path.parent() {
@@ -298,6 +342,237 @@ impl UnixSocketServer {
         }
 
         info!("🛑 Unix socket server stopped gracefully");
+        Ok(())
+    }
+
+    /// Try to start Unix socket server (existing optimal path)
+    #[cfg(not(unix))]
+    async fn try_unix_server(self: Arc<Self>) -> Result<()> {
+        // On non-Unix platforms, immediately return error to trigger TCP fallback
+        Err(anyhow::anyhow!("Unix sockets not supported on this platform"))
+    }
+    ///
+    /// Platform constraints should trigger automatic fallback, not fail.
+    /// Real errors should propagate to the caller.
+    ///
+    /// ## Platform Constraints Detected
+    ///
+    /// - **SELinux blocking** (Android, hardened Linux)
+    /// - **Permission denied** (restricted environments)
+    /// - **Address family not supported** (platform lacks Unix sockets)
+    /// - **Protocol not supported** (platform lacks feature)
+    fn is_platform_constraint(&self, error: &anyhow::Error) -> bool {
+        let error_str = format!("{:#}", error);
+        let lower = error_str.to_lowercase();
+
+        // SELinux blocking (common on Android)
+        if lower.contains("permission denied") {
+            debug!("   Detected permission denied (potential SELinux)");
+            
+            #[cfg(target_os = "android")]
+            {
+                // On Android, permission denied on socket binding is almost always SELinux
+                return true;
+            }
+            
+            #[cfg(not(target_os = "android"))]
+            {
+                // On other platforms, check if SELinux is enforcing
+                if self.is_selinux_enforcing() {
+                    debug!("   Confirmed: SELinux is enforcing");
+                    return true;
+                }
+            }
+        }
+
+        // Platform doesn't support Unix sockets
+        if lower.contains("address family not supported")
+            || lower.contains("protocol not supported")
+            || lower.contains("not supported")
+        {
+            debug!("   Detected unsupported platform feature");
+            return true;
+        }
+
+        false
+    }
+
+    /// Check if SELinux is in enforcing mode
+    ///
+    /// Reads `/sys/fs/selinux/enforce`:
+    /// - `1` = Enforcing (blocks Unix sockets in some contexts)
+    /// - `0` = Permissive (allows)
+    /// - Missing file = SELinux not present
+    fn is_selinux_enforcing(&self) -> bool {
+        std::fs::read_to_string("/sys/fs/selinux/enforce")
+            .ok()
+            .and_then(|s| s.trim().parse::<u8>().ok())
+            .map(|v| v == 1)
+            .unwrap_or(false)
+    }
+
+    /// Start TCP fallback server (isomorphic adaptation)
+    ///
+    /// ## Deep Debt Principles Applied
+    ///
+    /// - ✅ **Same Protocol**: JSON-RPC 2.0 (unchanged)
+    /// - ✅ **Same APIs**: 14 methods (unchanged)
+    /// - ✅ **Runtime Discovery**: Writes discovery file for clients
+    /// - ✅ **Security**: Localhost only (127.0.0.1)
+    /// - ✅ **Zero Config**: Automatic port assignment
+    async fn start_tcp_fallback(self: Arc<Self>) -> Result<()> {
+        info!("🌐 Starting TCP IPC fallback (isomorphic mode)");
+        info!("   Protocol: JSON-RPC 2.0 (same as Unix socket)");
+
+        // 1. Bind to localhost only (security: same as Unix socket)
+        let listener = TcpListener::bind("127.0.0.1:0")
+            .await
+            .context("Failed to bind TCP localhost for IPC fallback")?;
+
+        let bound_addr = listener.local_addr()?;
+        info!("✅ TCP IPC listening on {}", bound_addr);
+
+        // 2. Write port to discoverable location (XDG-compliant)
+        self.write_tcp_discovery_file(bound_addr.port())?;
+
+        // 3. Mark as ready and running (same as Unix server)
+        self.is_running.store(true, Ordering::Release);
+        self.is_ready.store(true, Ordering::Release);
+
+        info!("   APIs: 14 (3 P2P + 4 registry + 4 graph + 3 Squirrel)");
+        info!("   Status: READY ✅ (isomorphic TCP fallback active)");
+
+        // 4. Accept connections loop (same pattern as Unix)
+        while self.is_running() {
+            match tokio::time::timeout(Duration::from_millis(100), listener.accept()).await {
+                Ok(Ok((stream, addr))) => {
+                    debug!("📥 TCP IPC connection from {}", addr);
+                    let server = Arc::clone(&self);
+                    tokio::spawn(async move {
+                        if let Err(e) = server.handle_tcp_connection(stream).await {
+                            error!("❌ TCP connection handler error: {}", e);
+                        }
+                    });
+                }
+                Ok(Err(e)) => {
+                    error!("❌ Failed to accept TCP connection: {}", e);
+                }
+                Err(_) => {
+                    // Timeout - check is_running flag and continue
+                }
+            }
+        }
+
+        info!("🛑 TCP IPC server stopped gracefully");
+        Ok(())
+    }
+
+    /// Handle TCP connection (same protocol as Unix socket - TRUE isomorphism!)
+    ///
+    /// Uses identical JSON-RPC 2.0 protocol:
+    /// - Line-delimited JSON
+    /// - Single request/response per connection
+    /// - Same method routing
+    /// - Same error handling
+    async fn handle_tcp_connection(&self, stream: tokio::net::TcpStream) -> Result<()> {
+        use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
+
+        debug!("📥 New TCP IPC connection");
+
+        let (reader, mut writer) = stream.into_split();
+        let mut reader = BufReader::new(reader);
+        let mut line = String::new();
+
+        loop {
+            line.clear();
+            match reader.read_line(&mut line).await {
+                Ok(0) => {
+                    debug!("📤 TCP client disconnected");
+                    break;
+                }
+                Ok(_) => {
+                    if line.trim().is_empty() {
+                        continue;
+                    }
+
+                    // Same JSON-RPC handling as Unix sockets!
+                    let response = match serde_json::from_str::<JsonRpcRequest>(&line) {
+                        Ok(request) => {
+                            debug!("📨 TCP JSON-RPC request: {}", request.method);
+                            self.handle_jsonrpc_request(request).await
+                        }
+                        Err(e) => JsonRpcResponse {
+                            jsonrpc: "2.0".to_string(),
+                            result: None,
+                            error: Some(JsonRpcError::parse_error(format!(
+                                "Failed to parse JSON-RPC request: {}",
+                                e
+                            ))),
+                            id: serde_json::Value::Null,
+                        },
+                    };
+
+                    // Send response
+                    let response_json = serde_json::to_string(&response)?;
+                    writer.write_all(response_json.as_bytes()).await?;
+                    writer.write_all(b"\n").await?;
+                    writer.flush().await?;
+
+                    // Close after one request/response (same as Unix socket)
+                    debug!("✅ TCP response sent, closing connection");
+                    break;
+                }
+                Err(e) => {
+                    error!("❌ Failed to read from TCP socket: {}", e);
+                    break;
+                }
+            }
+        }
+
+        Ok(())
+    }
+
+    /// Write TCP port to discovery file (XDG-compliant, runtime discovery)
+    ///
+    /// ## Discovery Priority (Deep Debt: Zero Hardcoding)
+    ///
+    /// 1. `$XDG_RUNTIME_DIR/songbird-ipc-port` (preferred, user-specific)
+    /// 2. `$HOME/.local/share/songbird-ipc-port` (fallback, persistent)
+    /// 3. `/tmp/songbird-ipc-port` (last resort, system-wide)
+    ///
+    /// ## File Format
+    ///
+    /// ```
+    /// tcp:127.0.0.1:12345
+    /// ```
+    ///
+    /// Clients parse this to discover the TCP endpoint automatically.
+    fn write_tcp_discovery_file(&self, port: u16) -> Result<()> {
+        // Determine discovery file location (XDG-compliant)
+        let port_file = if let Ok(runtime_dir) = std::env::var("XDG_RUNTIME_DIR") {
+            PathBuf::from(runtime_dir).join("songbird-ipc-port")
+        } else if let Ok(home) = std::env::var("HOME") {
+            let share_dir = PathBuf::from(home).join(".local/share");
+            // Ensure directory exists
+            if let Err(e) = std::fs::create_dir_all(&share_dir) {
+                warn!("⚠️  Failed to create {:?}: {}", share_dir, e);
+                // Fall through to /tmp
+                PathBuf::from("/tmp/songbird-ipc-port")
+            } else {
+                share_dir.join("songbird-ipc-port")
+            }
+        } else {
+            PathBuf::from("/tmp/songbird-ipc-port")
+        };
+
+        // Write port in discoverable format
+        let content = format!("tcp:127.0.0.1:{}", port);
+        std::fs::write(&port_file, content).context(format!(
+            "Failed to write TCP discovery file: {}",
+            port_file.display()
+        ))?;
+
+        info!("   Discovery file: {}", port_file.display());
         Ok(())
     }
 
