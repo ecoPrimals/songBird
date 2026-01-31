@@ -41,11 +41,11 @@ check_binary() {
     local binary_path="${PROJECT_ROOT}/target/${target}/release/${binary_name}"
     
     if [[ -f "${binary_path}" ]]; then
-        echo -e "${GREEN}✓${NC} Found: ${target}/${binary_name}"
+        echo -e "${GREEN}✓${NC} Found: ${target}/${binary_name}" >&2
         echo "${binary_path}"
         return 0
     else
-        echo -e "${YELLOW}⚠${NC}  Missing: ${target}/${binary_name}"
+        echo -e "${YELLOW}⚠${NC}  Missing: ${target}/${binary_name}" >&2
         return 1
     fi
 }
@@ -64,10 +64,11 @@ TARGETS=(
 
 FOUND_COUNT=0
 for target_spec in "${TARGETS[@]}"; do
-    IFS=':' read -r target binary <<< "${target_spec}"
+    target="${target_spec%%:*}"
+    binary="${target_spec##*:}"
     if binary_path=$(check_binary "${target}" "${binary}"); then
         BINARIES["${target}"]="${binary_path}"
-        ((FOUND_COUNT++))
+        ((FOUND_COUNT++)) || true
     fi
 done
 
