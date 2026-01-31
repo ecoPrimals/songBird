@@ -255,16 +255,16 @@ mod tests {
 
         // Verify we got a valid endpoint back
         assert!(!resolved.display().is_empty());
-        
+
         // Verify it's one of the supported types
         match resolved {
-            NativeEndpoint::UnixSocket(_) |
-            NativeEndpoint::AbstractSocket(_) |
-            NativeEndpoint::NamedPipe(_) |
-            NativeEndpoint::XPC(_) |
-            NativeEndpoint::InProcess(_) |
-            NativeEndpoint::SharedMemory(_) |
-            NativeEndpoint::TcpLocal(_) => {
+            NativeEndpoint::UnixSocket(_)
+            | NativeEndpoint::AbstractSocket(_)
+            | NativeEndpoint::NamedPipe(_)
+            | NativeEndpoint::XPC(_)
+            | NativeEndpoint::InProcess(_)
+            | NativeEndpoint::SharedMemory(_)
+            | NativeEndpoint::TcpLocal(_) => {
                 // Valid endpoint type
             }
         }

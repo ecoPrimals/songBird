@@ -164,11 +164,11 @@ impl TestRunner {
     /// Check if Songbird is running
     async fn check_songbird_health(&self) -> SongbirdResult<()> {
         // IpcHttpClient::get() returns Response directly (no .send() needed)
-        let response = self
-            .client
-            .get(format!("{}/api/health ", self.config.songbird_url))
-            .await
-            .map_err(|e| SongbirdError::network(format!("Health check request failed: {e}")))?;
+        let response =
+            self.client
+                .get(format!("{}/api/health ", self.config.songbird_url))
+                .await
+                .map_err(|e| SongbirdError::network(format!("Health check request failed: {e}")))?;
 
         if response.is_success() {
             let text = response

@@ -9,10 +9,10 @@ use serde::{Deserialize, Serialize};
 // use serde_json::json;  // Unused (JSON-RPC handled manually)
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 // Platform-agnostic IPC transport
-#[cfg(unix)]
-use tokio::net::UnixStream as PlatformStream;
 #[cfg(windows)]
 use tokio::net::TcpStream as PlatformStream;
+#[cfg(unix)]
+use tokio::net::UnixStream as PlatformStream;
 
 /// Platform-agnostic connection helper
 #[cfg(unix)]

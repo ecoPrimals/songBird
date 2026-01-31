@@ -48,9 +48,7 @@ impl PlatformIPC for FallbackIPC {
                     inner: listener,
                 }))
             }
-            _ => Err(IpcError::PlatformError(
-                "FallbackIPC requires TcpLocal endpoint".to_string(),
-            )),
+            _ => Err(IpcError::PlatformError("FallbackIPC requires TcpLocal endpoint".to_string())),
         }
     }
 
@@ -70,9 +68,7 @@ impl PlatformIPC for FallbackIPC {
 
                 Ok(Box::new(stream))
             }
-            _ => Err(IpcError::PlatformError(
-                "FallbackIPC requires TcpLocal endpoint".to_string(),
-            )),
+            _ => Err(IpcError::PlatformError("FallbackIPC requires TcpLocal endpoint".to_string())),
         }
     }
 

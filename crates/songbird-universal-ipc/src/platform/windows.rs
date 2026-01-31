@@ -54,9 +54,11 @@ impl PlatformIPC for WindowsIPC {
     async fn create_endpoint(&self, primal_name: &str) -> IpcResult<NativeEndpoint> {
         // Named pipe naming: \\.\pipe\biomeos_{primal_name}
         // The \\.\pipe\ prefix is the Windows named pipe namespace
-        
+
         // Allow override via environment variable (for testing, special deployments)
-        let pipe_name = if let Ok(custom_pipe) = std::env::var(format!("{}_PIPE", primal_name.to_uppercase())) {
+        let pipe_name = if let Ok(custom_pipe) =
+            std::env::var(format!("{}_PIPE", primal_name.to_uppercase()))
+        {
             custom_pipe
         } else if let Ok(custom_dir) = std::env::var("BIOMEOS_PIPE_DIR") {
             format!("{}_biomeos_{}", custom_dir, primal_name)
@@ -65,15 +67,9 @@ impl PlatformIPC for WindowsIPC {
             format!(r"\\.\pipe\biomeos_{}", primal_name)
         };
 
-        debug!(
-            "Creating named pipe endpoint for '{}': {}",
-            primal_name, pipe_name
-        );
+        debug!("Creating named pipe endpoint for '{}': {}", primal_name, pipe_name);
 
-        info!(
-            "Windows named pipe (kernel-managed): {} (no filesystem)",
-            pipe_name
-        );
+        info!("Windows named pipe (kernel-managed): {} (no filesystem)", pipe_name);
 
         Ok(NativeEndpoint::NamedPipe(pipe_name))
     }
@@ -99,7 +95,7 @@ impl PlatformIPC for WindowsIPC {
 
                     info!("Named pipe server created: {} (Windows-optimized)", _name);
 
-                    Ok(Box::new(NamedPipeListenerWrapper { 
+                    Ok(Box::new(NamedPipeListenerWrapper {
                         server,
                         pipe_name: _name.clone(),
                     }))
@@ -107,14 +103,10 @@ impl PlatformIPC for WindowsIPC {
 
                 #[cfg(not(windows))]
                 {
-                    Err(IpcError::PlatformError(
-                        "Named pipes require Windows platform".to_string(),
-                    ))
+                    Err(IpcError::PlatformError("Named pipes require Windows platform".to_string()))
                 }
             }
-            _ => Err(IpcError::PlatformError(
-                "WindowsIPC requires NamedPipe endpoint".to_string(),
-            )),
+            _ => Err(IpcError::PlatformError("WindowsIPC requires NamedPipe endpoint".to_string())),
         }
     }
 
@@ -151,14 +143,10 @@ impl PlatformIPC for WindowsIPC {
 
                 #[cfg(not(windows))]
                 {
-                    Err(IpcError::PlatformError(
-                        "Named pipes require Windows platform".to_string(),
-                    ))
+                    Err(IpcError::PlatformError("Named pipes require Windows platform".to_string()))
                 }
             }
-            _ => Err(IpcError::PlatformError(
-                "WindowsIPC requires NamedPipe endpoint".to_string(),
-            )),
+            _ => Err(IpcError::PlatformError("WindowsIPC requires NamedPipe endpoint".to_string())),
         }
     }
 
@@ -170,9 +158,7 @@ impl PlatformIPC for WindowsIPC {
                 debug!("Named pipe cleanup (automatic): {}", name);
                 Ok(())
             }
-            _ => Err(IpcError::PlatformError(
-                "WindowsIPC requires NamedPipe endpoint".to_string(),
-            )),
+            _ => Err(IpcError::PlatformError("WindowsIPC requires NamedPipe endpoint".to_string())),
         }
     }
 }
@@ -200,14 +186,12 @@ impl PlatformListener for NamedPipeListenerWrapper {
 
         // Create a new server instance for the next connection
         // Windows named pipes require a new server instance per connection
-        let next_server = ServerOptions::new()
-            .create(&self.pipe_name)
-            .map_err(|e| {
-                IpcError::ListenerFailed(format!(
-                    "Failed to create next pipe instance {}: {}",
-                    self.pipe_name, e
-                ))
-            })?;
+        let next_server = ServerOptions::new().create(&self.pipe_name).map_err(|e| {
+            IpcError::ListenerFailed(format!(
+                "Failed to create next pipe instance {}: {}",
+                self.pipe_name, e
+            ))
+        })?;
 
         // Swap out the old server with the new one
         // The old server becomes the connected stream
@@ -242,7 +226,7 @@ mod tests {
         use tokio::io::{AsyncReadExt, AsyncWriteExt};
 
         let ipc = WindowsIPC;
-        
+
         // Use unique name for this test to avoid conflicts
         let test_name = format!("test-listen-{}", std::process::id());
         let endpoint = ipc.create_endpoint(&test_name).await.unwrap();
@@ -314,11 +298,11 @@ mod tests {
     fn test_windows_env_override() {
         // Test environment variable override
         std::env::set_var("TESTPRIMAL_PIPE", r"\\.\pipe\custom_test");
-        
+
         // This would use the custom pipe path
         let custom_name = std::env::var("TESTPRIMAL_PIPE").unwrap();
         assert_eq!(custom_name, r"\\.\pipe\custom_test");
-        
+
         std::env::remove_var("TESTPRIMAL_PIPE");
     }
 

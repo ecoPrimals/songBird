@@ -6,19 +6,19 @@ use async_trait::async_trait;
 use tokio::io::{AsyncRead, AsyncWrite};
 
 // Platform-specific implementations
-// 
+//
 // **TRUE ecoBin v2.0**: All modules available for multi-transport support.
 // Runtime selection via get_platform_ipc() and capability-based discovery.
 //
 // **NOTE:** Modules compile on all platforms for maximum flexibility.
 // The actual platform selection happens at runtime.
 
-pub mod unix;      // Unix domain sockets (Linux, macOS, BSD)
-pub mod android;   // Abstract sockets (Android, Linux)
-pub mod windows;   // Named pipes (Windows)
-pub mod ios;       // XPC (iOS, macOS)
-pub mod wasm;      // In-process (WASM)
-pub mod fallback;  // TCP localhost (universal fallback)
+pub mod android; // Abstract sockets (Android, Linux)
+pub mod fallback;
+pub mod ios; // XPC (iOS, macOS)
+pub mod unix; // Unix domain sockets (Linux, macOS, BSD)
+pub mod wasm; // In-process (WASM)
+pub mod windows; // Named pipes (Windows) // TCP localhost (universal fallback)
 
 /// Platform-specific IPC trait
 ///
@@ -132,7 +132,8 @@ pub fn get_platform_transports() -> Vec<(&'static str, Box<dyn PlatformIPC>)> {
     // Platform-specific native transports (highest priority)
     #[cfg(target_os = "android")]
     {
-        transports.push(("android-abstract", Box::new(android::AndroidIPC) as Box<dyn PlatformIPC>));
+        transports
+            .push(("android-abstract", Box::new(android::AndroidIPC) as Box<dyn PlatformIPC>));
     }
 
     #[cfg(target_os = "linux")]
@@ -140,7 +141,7 @@ pub fn get_platform_transports() -> Vec<(&'static str, Box<dyn PlatformIPC>)> {
         // Linux supports both abstract and filesystem
         #[cfg(not(target_os = "android"))]
         transports.push(("linux-abstract", Box::new(android::AndroidIPC) as Box<dyn PlatformIPC>));
-        
+
         transports.push(("linux-unix", Box::new(unix::UnixIPC) as Box<dyn PlatformIPC>));
     }
 
@@ -155,7 +156,15 @@ pub fn get_platform_transports() -> Vec<(&'static str, Box<dyn PlatformIPC>)> {
         transports.push(("ios-xpc", Box::new(ios::iOSIPC) as Box<dyn PlatformIPC>));
     }
 
-    #[cfg(all(unix, not(any(target_os = "linux", target_os = "macos", target_os = "ios", target_os = "android"))))]
+    #[cfg(all(
+        unix,
+        not(any(
+            target_os = "linux",
+            target_os = "macos",
+            target_os = "ios",
+            target_os = "android"
+        ))
+    ))]
     {
         // Other Unix (BSD, etc.)
         transports.push(("unix", Box::new(unix::UnixIPC) as Box<dyn PlatformIPC>));
@@ -243,7 +252,7 @@ pub async fn try_multi_transport(primal_name: &str) -> IpcResult<(&'static str, 
     use tracing::{debug, info, warn};
 
     let transports = get_platform_transports();
-    
+
     debug!(
         "Trying {} transports for primal '{}' (platform: {})",
         transports.len(),
@@ -255,7 +264,7 @@ pub async fn try_multi_transport(primal_name: &str) -> IpcResult<(&'static str, 
 
     for (name, implementation) in transports {
         debug!("Attempting transport: {}", name);
-        
+
         match implementation.create_endpoint(primal_name).await {
             Ok(endpoint) => {
                 info!(
@@ -263,13 +272,13 @@ pub async fn try_multi_transport(primal_name: &str) -> IpcResult<(&'static str, 
                     name,
                     endpoint.display()
                 );
-                
+
                 if endpoint.is_native() {
                     info!("   Native transport (optimal performance)");
                 } else {
                     warn!("   Non-native transport (acceptable fallback)");
                 }
-                
+
                 return Ok((name, endpoint));
             }
             Err(e) => {
@@ -281,9 +290,7 @@ pub async fn try_multi_transport(primal_name: &str) -> IpcResult<(&'static str, 
     }
 
     // All transports failed
-    Err(last_error.unwrap_or_else(|| {
-        IpcError::Other("No transports available".to_string())
-    }))
+    Err(last_error.unwrap_or_else(|| IpcError::Other("No transports available".to_string())))
 }
 
 #[cfg(test)]
@@ -293,10 +300,10 @@ mod tests {
     #[test]
     fn test_get_platform_transports() {
         let transports = get_platform_transports();
-        
+
         // Should always have at least TCP fallback
         assert!(!transports.is_empty());
-        
+
         // Last transport should always be TCP fallback
         let (last_name, _) = transports.last().unwrap();
         assert_eq!(*last_name, "tcp-fallback");
@@ -305,14 +312,13 @@ mod tests {
     #[test]
     fn test_get_platform_name() {
         let name = get_platform_name();
-        
+
         // Should return a valid platform name
         assert!(!name.is_empty());
-        
+
         // Should be one of the known platforms
-        let known_platforms = vec![
-            "android", "linux", "macos", "ios", "windows", "wasm", "unknown"
-        ];
+        let known_platforms =
+            vec!["android", "linux", "macos", "ios", "windows", "wasm", "unknown"];
         assert!(known_platforms.contains(&name));
     }
 
@@ -320,14 +326,14 @@ mod tests {
     async fn test_try_multi_transport() {
         // Should successfully create an endpoint using available transports
         let result = try_multi_transport("test-primal").await;
-        
+
         assert!(result.is_ok());
-        
+
         let (transport_name, endpoint) = result.unwrap();
-        
+
         // Should have selected a transport
         assert!(!transport_name.is_empty());
-        
+
         // Endpoint should be valid
         assert!(!endpoint.display().is_empty());
     }

@@ -76,10 +76,7 @@ fn get_socket_path(primal_name: &str) -> PathBuf {
     }
 
     // Priority 5: Legacy /tmp fallback (if all else fails)
-    warn!(
-        "No XDG_RUNTIME_DIR or UID found, using legacy /tmp for primal '{}'",
-        primal_name
-    );
+    warn!("No XDG_RUNTIME_DIR or UID found, using legacy /tmp for primal '{}'", primal_name);
     PathBuf::from(format!("/tmp/{}.sock", primal_name))
 }
 
@@ -114,10 +111,7 @@ impl PlatformIPC for UnixIPC {
             })?;
         }
 
-        info!(
-            "Unix socket endpoint: {} (XDG-compliant, no hardcoding)",
-            path.display()
-        );
+        info!("Unix socket endpoint: {} (XDG-compliant, no hardcoding)", path.display());
 
         Ok(NativeEndpoint::UnixSocket(path))
     }
@@ -141,9 +135,7 @@ impl PlatformIPC for UnixIPC {
                     inner: listener,
                 }))
             }
-            _ => Err(IpcError::PlatformError(
-                "UnixIPC requires UnixSocket endpoint".to_string(),
-            )),
+            _ => Err(IpcError::PlatformError("UnixIPC requires UnixSocket endpoint".to_string())),
         }
     }
 
@@ -164,9 +156,7 @@ impl PlatformIPC for UnixIPC {
 
                 Ok(Box::new(stream))
             }
-            _ => Err(IpcError::PlatformError(
-                "UnixIPC requires UnixSocket endpoint".to_string(),
-            )),
+            _ => Err(IpcError::PlatformError("UnixIPC requires UnixSocket endpoint".to_string())),
         }
     }
 
@@ -188,9 +178,7 @@ impl PlatformIPC for UnixIPC {
                 }
                 Ok(())
             }
-            _ => Err(IpcError::PlatformError(
-                "UnixIPC requires UnixSocket endpoint".to_string(),
-            )),
+            _ => Err(IpcError::PlatformError("UnixIPC requires UnixSocket endpoint".to_string())),
         }
     }
 }
@@ -244,10 +232,7 @@ mod tests {
         std::env::remove_var("BIOMEOS_SOCKET_DIR");
         std::env::set_var("XDG_RUNTIME_DIR", "/run/user/1000");
         let path = get_socket_path("testprimal3");
-        assert_eq!(
-            path,
-            PathBuf::from("/run/user/1000/biomeos/testprimal3.sock")
-        );
+        assert_eq!(path, PathBuf::from("/run/user/1000/biomeos/testprimal3.sock"));
         std::env::remove_var("XDG_RUNTIME_DIR");
     }
 
@@ -259,10 +244,7 @@ mod tests {
         std::env::remove_var("XDG_RUNTIME_DIR");
         std::env::set_var("UID", "1000");
         let path = get_socket_path("testprimal4");
-        assert_eq!(
-            path,
-            PathBuf::from("/run/user/1000/biomeos/testprimal4.sock")
-        );
+        assert_eq!(path, PathBuf::from("/run/user/1000/biomeos/testprimal4.sock"));
         std::env::remove_var("UID");
     }
 
@@ -314,7 +296,7 @@ mod tests {
     #[tokio::test]
     async fn test_unix_listen_and_connect() {
         let ipc = UnixIPC;
-        
+
         // Use unique name to avoid test conflicts
         let test_name = format!("test-listen-{}", std::process::id());
         let endpoint = ipc.create_endpoint(&test_name).await.unwrap();
@@ -357,7 +339,7 @@ mod tests {
     #[tokio::test]
     async fn test_unix_cleanup() {
         let ipc = UnixIPC;
-        
+
         // Use unique name
         let test_name = format!("test-cleanup-{}", std::process::id());
         let endpoint = ipc.create_endpoint(&test_name).await.unwrap();

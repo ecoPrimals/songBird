@@ -225,13 +225,13 @@ pub async fn run_server(args: ServerArgs) -> Result<()> {
                 }
             }))
         };
-        
+
         #[cfg(not(unix))]
         let ipc_task: Option<tokio::task::JoinHandle<()>> = {
             tracing::info!("IPC server: Windows TCP fallback (coming in Phase 2)");
             None
         };
-        
+
         ipc_task
     } else {
         tracing::info!("");

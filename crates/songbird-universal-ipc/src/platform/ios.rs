@@ -1,7 +1,7 @@
 //! iOS/macOS IPC implementation
 //!
 //! **Platform**: iOS, macOS (Apple platforms)
-//! **Transport**: 
+//! **Transport**:
 //! - iOS: XPC (Apple IPC) - **TODO: Requires platform-specific bindings**
 //! - macOS: Unix sockets (filesystem-based, works today)
 //!
@@ -62,7 +62,7 @@ impl PlatformIPC for iOSIPC {
         #[cfg(target_os = "macos")]
         {
             use std::path::PathBuf;
-            
+
             // macOS: Use Unix sockets (XDG-compliant path)
             // /var/tmp is recommended for macOS (persists across reboots)
             let socket_path = PathBuf::from(format!("/var/tmp/biomeos/{}.sock", primal_name));
@@ -86,19 +86,13 @@ impl PlatformIPC for iOSIPC {
 
             // Clean up old socket if it exists
             if socket_path.exists() {
-                warn!(
-                    "Socket file already exists, removing: {}",
-                    socket_path.display()
-                );
+                warn!("Socket file already exists, removing: {}", socket_path.display());
                 tokio::fs::remove_file(&socket_path).await.map_err(|e| {
                     IpcError::PlatformError(format!("Failed to remove old socket: {}", e))
                 })?;
             }
 
-            info!(
-                "macOS Unix socket endpoint: {} (XDG-compliant)",
-                socket_path.display()
-            );
+            info!("macOS Unix socket endpoint: {} (XDG-compliant)", socket_path.display());
 
             Ok(NativeEndpoint::UnixSocket(socket_path))
         }
@@ -107,13 +101,10 @@ impl PlatformIPC for iOSIPC {
         {
             // iOS: XPC is preferred but requires platform-specific bindings
             // For now, document the requirement and use fallback
-            
+
             let xpc_service = format!("org.biomeos.{}", primal_name);
-            
-            warn!(
-                "iOS XPC endpoint documented but not yet implemented: {}",
-                xpc_service
-            );
+
+            warn!("iOS XPC endpoint documented but not yet implemented: {}", xpc_service);
             warn!("TODO: Implement XPC transport using Pure Rust bindings");
             warn!("Fallback: Use TCP localhost for iOS deployment");
 
@@ -123,9 +114,7 @@ impl PlatformIPC for iOSIPC {
 
         #[cfg(not(any(target_os = "macos", target_os = "ios")))]
         {
-            Err(IpcError::PlatformError(
-                "iOSIPC is for macOS/iOS only".to_string(),
-            ))
+            Err(IpcError::PlatformError("iOSIPC is for macOS/iOS only".to_string()))
         }
     }
 
@@ -146,7 +135,9 @@ impl PlatformIPC for iOSIPC {
 
                 info!("macOS Unix listener created: {}", path.display());
 
-                Ok(Box::new(MacOSListenerWrapper { inner: listener }))
+                Ok(Box::new(MacOSListenerWrapper {
+                    inner: listener,
+                }))
             }
 
             #[cfg(target_os = "ios")]
@@ -279,7 +270,7 @@ mod tests {
         use tokio::io::{AsyncReadExt, AsyncWriteExt};
 
         let ipc = iOSIPC;
-        
+
         // Use unique name for this test
         let test_name = format!("test-listen-{}", std::process::id());
         let endpoint = ipc.create_endpoint(&test_name).await.unwrap();

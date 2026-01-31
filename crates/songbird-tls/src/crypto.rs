@@ -128,7 +128,7 @@ impl BeardogCryptoClient {
             // Windows: Use TCP localhost fallback
             // TODO (Deep Debt): Use universal IPC service discovery + named pipes
             tracing::warn!("⚠️  Windows: Using TCP localhost fallback for BearDog crypto");
-            
+
             // Try environment variables first
             if let Ok(socket) = std::env::var("BEARDOG_SOCKET") {
                 return Ok(socket);
@@ -138,11 +138,9 @@ impl BeardogCryptoClient {
             }
 
             // Default to TCP localhost (port from env or default)
-            let port = std::env::var("BEARDOG_PORT")
-                .ok()
-                .and_then(|p| p.parse().ok())
-                .unwrap_or(9876);
-            
+            let port =
+                std::env::var("BEARDOG_PORT").ok().and_then(|p| p.parse().ok()).unwrap_or(9876);
+
             Ok(format!("127.0.0.1:{}", port))
         }
 

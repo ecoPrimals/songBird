@@ -4,12 +4,12 @@
 //! Enables service discovery using standard DNS SRV and TXT records.
 
 use super::{CapabilityProvider, CapabilityRequest, Protocol};
+use hickory_resolver::config::{ResolverConfig, ResolverOpts};
+use hickory_resolver::TokioAsyncResolver;
 use songbird_types::{SongbirdError, SongbirdResult};
 use std::collections::HashMap;
 use std::time::Duration;
 use tracing::{debug, info};
-use hickory_resolver::config::{ResolverConfig, ResolverOpts};
-use hickory_resolver::TokioAsyncResolver;
 
 /// DNS-SD discovery backend
 ///

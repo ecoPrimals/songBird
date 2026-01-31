@@ -190,13 +190,13 @@ impl NativeEndpoint {
     #[must_use]
     pub fn performance_tier(&self) -> u8 {
         match self {
-            NativeEndpoint::SharedMemory(_) => 0,    // ~1μs, 50GB/s
-            NativeEndpoint::InProcess(_) => 1,       // ~0.1μs (same process)
-            NativeEndpoint::UnixSocket(_) => 2,      // ~5μs, 10GB/s
-            NativeEndpoint::AbstractSocket(_) => 2,  // ~5μs, 10GB/s (same as Unix)
-            NativeEndpoint::XPC(_) => 3,             // ~10μs
-            NativeEndpoint::NamedPipe(_) => 3,       // ~10μs, 5GB/s
-            NativeEndpoint::TcpLocal(_) => 4,        // ~50μs, 1GB/s
+            NativeEndpoint::SharedMemory(_) => 0,   // ~1μs, 50GB/s
+            NativeEndpoint::InProcess(_) => 1,      // ~0.1μs (same process)
+            NativeEndpoint::UnixSocket(_) => 2,     // ~5μs, 10GB/s
+            NativeEndpoint::AbstractSocket(_) => 2, // ~5μs, 10GB/s (same as Unix)
+            NativeEndpoint::XPC(_) => 3,            // ~10μs
+            NativeEndpoint::NamedPipe(_) => 3,      // ~10μs, 5GB/s
+            NativeEndpoint::TcpLocal(_) => 4,       // ~50μs, 1GB/s
         }
     }
 
@@ -272,7 +272,8 @@ mod tests {
 
     #[test]
     fn test_native_endpoint_display_unix() {
-        let endpoint = NativeEndpoint::UnixSocket(PathBuf::from("/run/user/1000/biomeos/test.sock"));
+        let endpoint =
+            NativeEndpoint::UnixSocket(PathBuf::from("/run/user/1000/biomeos/test.sock"));
         assert_eq!(endpoint.display(), "unix:///run/user/1000/biomeos/test.sock");
     }
 
@@ -314,8 +315,14 @@ mod tests {
 
     #[test]
     fn test_native_endpoint_transport_type() {
-        assert_eq!(NativeEndpoint::UnixSocket(PathBuf::from("/tmp/test.sock")).transport_type(), "unix");
-        assert_eq!(NativeEndpoint::AbstractSocket("@test".to_string()).transport_type(), "abstract");
+        assert_eq!(
+            NativeEndpoint::UnixSocket(PathBuf::from("/tmp/test.sock")).transport_type(),
+            "unix"
+        );
+        assert_eq!(
+            NativeEndpoint::AbstractSocket("@test".to_string()).transport_type(),
+            "abstract"
+        );
         assert_eq!(NativeEndpoint::NamedPipe("pipe".to_string()).transport_type(), "pipe");
         assert_eq!(NativeEndpoint::XPC("xpc".to_string()).transport_type(), "xpc");
         assert_eq!(NativeEndpoint::InProcess(1).transport_type(), "inprocess");
@@ -326,13 +333,21 @@ mod tests {
     #[test]
     fn test_native_endpoint_performance_tier() {
         // Verify performance ordering (lower = better)
-        assert!(NativeEndpoint::SharedMemory("m".to_string()).performance_tier() 
-            < NativeEndpoint::InProcess(1).performance_tier());
-        assert!(NativeEndpoint::InProcess(1).performance_tier() 
-            < NativeEndpoint::UnixSocket(PathBuf::from("/tmp/test.sock")).performance_tier());
-        assert!(NativeEndpoint::UnixSocket(PathBuf::from("/tmp/test.sock")).performance_tier() 
-            < NativeEndpoint::NamedPipe("p".to_string()).performance_tier());
-        assert!(NativeEndpoint::NamedPipe("p".to_string()).performance_tier() 
-            < NativeEndpoint::TcpLocal(8080).performance_tier());
+        assert!(
+            NativeEndpoint::SharedMemory("m".to_string()).performance_tier()
+                < NativeEndpoint::InProcess(1).performance_tier()
+        );
+        assert!(
+            NativeEndpoint::InProcess(1).performance_tier()
+                < NativeEndpoint::UnixSocket(PathBuf::from("/tmp/test.sock")).performance_tier()
+        );
+        assert!(
+            NativeEndpoint::UnixSocket(PathBuf::from("/tmp/test.sock")).performance_tier()
+                < NativeEndpoint::NamedPipe("p".to_string()).performance_tier()
+        );
+        assert!(
+            NativeEndpoint::NamedPipe("p".to_string()).performance_tier()
+                < NativeEndpoint::TcpLocal(8080).performance_tier()
+        );
     }
 }

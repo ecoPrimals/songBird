@@ -40,10 +40,10 @@ use serde_json::json;
 use std::path::{Path, PathBuf};
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 // Platform-agnostic IPC transport
-#[cfg(unix)]
-use tokio::net::UnixStream as PlatformStream;
 #[cfg(windows)]
 use tokio::net::TcpStream as PlatformStream;
+#[cfg(unix)]
+use tokio::net::UnixStream as PlatformStream;
 use tracing::{debug, trace};
 
 /// JSON-RPC 2.0 Request
@@ -185,9 +185,9 @@ impl UnixRpcClient {
             serde_json::to_vec(&request).context("Failed to serialize JSON-RPC request")?;
 
         // Connect (platform-agnostic)
-        let mut stream = Self::connect_platform(&self.socket_path).await.with_context(|| {
-            format!("Failed to connect to IPC: {}", self.socket_path.display())
-        })?;
+        let mut stream = Self::connect_platform(&self.socket_path)
+            .await
+            .with_context(|| format!("Failed to connect to IPC: {}", self.socket_path.display()))?;
 
         // Send request
         stream.write_all(&request_bytes).await.context("Failed to write request to Unix socket")?;

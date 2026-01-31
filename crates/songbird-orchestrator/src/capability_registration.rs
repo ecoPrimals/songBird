@@ -42,10 +42,10 @@ use serde_json::json;
 use std::env;
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
 // Platform-agnostic IPC transport
-#[cfg(unix)]
-use tokio::net::UnixStream as PlatformStream;
 #[cfg(windows)]
 use tokio::net::TcpStream as PlatformStream;
+#[cfg(unix)]
+use tokio::net::UnixStream as PlatformStream;
 use tracing::{info, warn};
 
 /// Platform-agnostic connection helper

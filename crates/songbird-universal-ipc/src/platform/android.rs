@@ -60,15 +60,9 @@ impl PlatformIPC for AndroidIPC {
         // Rust's UnixListener automatically converts @ to null byte
         let abstract_name = format!("@biomeos_{}", primal_name);
 
-        debug!(
-            "Creating abstract socket endpoint for '{}': {}",
-            primal_name, abstract_name
-        );
+        debug!("Creating abstract socket endpoint for '{}': {}", primal_name, abstract_name);
 
-        info!(
-            "Android abstract socket (SELinux-safe): {} (no filesystem)",
-            abstract_name
-        );
+        info!("Android abstract socket (SELinux-safe): {} (no filesystem)", abstract_name);
 
         Ok(NativeEndpoint::AbstractSocket(abstract_name))
     }
@@ -89,7 +83,9 @@ impl PlatformIPC for AndroidIPC {
 
                 info!("Abstract socket listener created: {} (Android-optimized)", name);
 
-                Ok(Box::new(AbstractListenerWrapper { inner: listener }))
+                Ok(Box::new(AbstractListenerWrapper {
+                    inner: listener,
+                }))
             }
             _ => Err(IpcError::PlatformError(
                 "AndroidIPC requires AbstractSocket endpoint".to_string(),
@@ -143,7 +139,10 @@ struct AbstractListenerWrapper {
 impl PlatformListener for AbstractListenerWrapper {
     async fn accept(&mut self) -> IpcResult<Box<dyn AsyncStream>> {
         let (stream, addr) = self.inner.accept().await.map_err(|e| {
-            IpcError::ConnectionFailed(format!("Failed to accept abstract socket connection: {}", e))
+            IpcError::ConnectionFailed(format!(
+                "Failed to accept abstract socket connection: {}",
+                e
+            ))
         })?;
 
         // Log connection details (abstract sockets don't have filesystem paths)
@@ -177,7 +176,7 @@ mod tests {
     #[cfg(target_os = "linux")] // Abstract sockets require Linux kernel
     async fn test_android_listen_and_connect() {
         let ipc = AndroidIPC;
-        
+
         // Use unique name for this test to avoid conflicts
         let test_name = format!("test-listen-{}", std::process::id());
         let endpoint = ipc.create_endpoint(&test_name).await.unwrap();
@@ -215,7 +214,7 @@ mod tests {
     #[cfg(target_os = "linux")]
     async fn test_android_cleanup_no_filesystem() {
         let ipc = AndroidIPC;
-        
+
         // Use unique name to avoid conflicts with parallel tests
         let test_name = format!("cleanup-{}", std::process::id());
         let endpoint = ipc.create_endpoint(&test_name).await.unwrap();
@@ -230,7 +229,7 @@ mod tests {
         // Verify no filesystem entry exists
         // Abstract sockets NEVER create filesystem entries (kernel-managed namespace)
         // Attempting to check filesystem would be a category error
-        
+
         // Instead, verify the endpoint is the correct type
         match endpoint {
             NativeEndpoint::AbstractSocket(name) => {

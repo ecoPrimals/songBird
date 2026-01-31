@@ -21,10 +21,10 @@ use serde_json::{json, Value};
 use std::sync::atomic::{AtomicU64, Ordering};
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 // Platform-agnostic IPC transport
-#[cfg(unix)]
-use tokio::net::UnixStream as PlatformStream;
 #[cfg(windows)]
 use tokio::net::TcpStream as PlatformStream;
+#[cfg(unix)]
+use tokio::net::UnixStream as PlatformStream;
 use tracing::{debug, info, trace, warn};
 
 use super::capability::{CryptoCapability, TlsApplicationSecrets, TlsHandshakeSecrets};

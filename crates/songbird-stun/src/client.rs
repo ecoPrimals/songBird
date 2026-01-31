@@ -175,12 +175,7 @@ impl StunClient {
             let task = tokio::spawn(async move {
                 debug!("🏁 Server {}: Attempting {}", idx, server);
 
-                match timeout(
-                    timeout_duration,
-                    client.discover_public_address(&server),
-                )
-                .await
-                {
+                match timeout(timeout_duration, client.discover_public_address(&server)).await {
                     Ok(Ok(addr)) => {
                         info!("🏆 Server {}: SUCCESS! Discovered {}", idx, addr);
                         Ok((idx, addr))

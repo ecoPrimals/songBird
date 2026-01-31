@@ -77,10 +77,7 @@ impl PlatformIPC for WasmIPC {
         // Assign unique logical ID for this primal
         let endpoint_id = ENDPOINT_ID_COUNTER.fetch_add(1, Ordering::SeqCst);
 
-        debug!(
-            "Creating WASM in-process endpoint for '{}': ID {}",
-            primal_name, endpoint_id
-        );
+        debug!("Creating WASM in-process endpoint for '{}': ID {}", primal_name, endpoint_id);
 
         info!(
             "WASM in-process endpoint (same runtime): {} (ID: {}, zero IPC overhead)",
@@ -110,9 +107,7 @@ impl PlatformIPC for WasmIPC {
                     rx,
                 }))
             }
-            _ => Err(IpcError::PlatformError(
-                "WasmIPC requires InProcess endpoint".to_string(),
-            )),
+            _ => Err(IpcError::PlatformError("WasmIPC requires InProcess endpoint".to_string())),
         }
     }
 
@@ -130,9 +125,7 @@ impl PlatformIPC for WasmIPC {
                     id
                 )))
             }
-            _ => Err(IpcError::PlatformError(
-                "WasmIPC requires InProcess endpoint".to_string(),
-            )),
+            _ => Err(IpcError::PlatformError("WasmIPC requires InProcess endpoint".to_string())),
         }
     }
 
@@ -143,9 +136,7 @@ impl PlatformIPC for WasmIPC {
                 debug!("WASM in-process cleanup (automatic): ID {}", id);
                 Ok(())
             }
-            _ => Err(IpcError::PlatformError(
-                "WasmIPC requires InProcess endpoint".to_string(),
-            )),
+            _ => Err(IpcError::PlatformError("WasmIPC requires InProcess endpoint".to_string())),
         }
     }
 }
@@ -208,12 +199,12 @@ impl AsyncRead for WasmStream {
             Poll::Ready(Some(data)) => {
                 let to_copy = std::cmp::min(buf.remaining(), data.len());
                 buf.put_slice(&data[..to_copy]);
-                
+
                 // Buffer remaining data
                 if to_copy < data.len() {
                     self.read_buf.extend_from_slice(&data[to_copy..]);
                 }
-                
+
                 Poll::Ready(Ok(()))
             }
             Poll::Ready(None) => {
@@ -270,15 +261,27 @@ mod tests {
     #[tokio::test]
     async fn test_wasm_unique_ids() {
         let ipc = WasmIPC;
-        
+
         let endpoint1 = ipc.create_endpoint("primal1").await.unwrap();
         let endpoint2 = ipc.create_endpoint("primal2").await.unwrap();
         let endpoint3 = ipc.create_endpoint("primal3").await.unwrap();
 
         // Extract IDs
-        let id1 = if let NativeEndpoint::InProcess(id) = endpoint1 { id } else { panic!() };
-        let id2 = if let NativeEndpoint::InProcess(id) = endpoint2 { id } else { panic!() };
-        let id3 = if let NativeEndpoint::InProcess(id) = endpoint3 { id } else { panic!() };
+        let id1 = if let NativeEndpoint::InProcess(id) = endpoint1 {
+            id
+        } else {
+            panic!()
+        };
+        let id2 = if let NativeEndpoint::InProcess(id) = endpoint2 {
+            id
+        } else {
+            panic!()
+        };
+        let id3 = if let NativeEndpoint::InProcess(id) = endpoint3 {
+            id
+        } else {
+            panic!()
+        };
 
         // All IDs should be unique
         assert_ne!(id1, id2);
@@ -291,7 +294,7 @@ mod tests {
         // Verify WasmStream implements required traits at compile time
         fn assert_async_read<T: AsyncRead>() {}
         fn assert_async_write<T: AsyncWrite>() {}
-        
+
         assert_async_read::<WasmStream>();
         assert_async_write::<WasmStream>();
     }

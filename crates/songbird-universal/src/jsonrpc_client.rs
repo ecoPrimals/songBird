@@ -50,10 +50,10 @@ use std::path::PathBuf;
 use std::time::Duration;
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
 // Platform-agnostic IPC transport
-#[cfg(unix)]
-use tokio::net::UnixStream as PlatformStream;
 #[cfg(windows)]
 use tokio::net::TcpStream as PlatformStream;
+#[cfg(unix)]
+use tokio::net::UnixStream as PlatformStream;
 use tokio::time::timeout;
 use tracing::{debug, info, warn};
 

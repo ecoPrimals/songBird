@@ -113,12 +113,7 @@ async fn main() -> Result<()> {
         };
 
         let (result, latency_us) = measure_latency(|| async move {
-            let http_response = client_clone
-                .post(&url)
-                .await
-                .json(&request)?
-                .send()
-                .await?;
+            let http_response = client_clone.post(&url).await.json(&request)?.send().await?;
 
             if !http_response.is_success() {
                 return Err(anyhow::anyhow!("HTTP error: status {}", http_response.status()));
