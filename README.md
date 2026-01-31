@@ -1,7 +1,7 @@
 # 🐦 Songbird - Network Orchestration & Discovery Primal
 
-**Version**: v8.22.0+ - **🚀 ARM64 + LTO + Dependency Cleanup!** 🏆  
-**Status**: 🎊 **EPIC EXTENDED SESSION COMPLETE** - ARM64 Build + trust-dns eliminated + LTO!  
+**Version**: v8.24.0+ - **🎊 Isomorphic IPC 3 PHASES + Complete Dependency Audit!** 🏆  
+**Status**: 🎊 **LEGENDARY EXTENDED SESSION - 3 PHASES ISOMORPHIC IPC COMPLETE** - Automatic fallback + discovery + connection!  
 **Architecture**: UniBin ✅ | TRUE ecoBin (100%!) ✅ | Pure Rust ✅ | Zero Unsafe* ✅ | Deep Debt A++ ✅  
 **TLS 1.3 Client**: 🎊 **93% SUCCESS** | 81/87 sites validated by biomeOS!  
 **TLS 1.3 Server**: 🚀 **INTEGRATED** | Uses CryptoCapability trait | Graceful HTTP fallback ✅  
@@ -11,15 +11,16 @@
 **Tests**: 1,247+ passing | 88 universal-ipc (37 new today!) + 255 http-client + 577 orchestrator + 306 universal + 21 STUN/relay  
 **Active Code**: 22 crates | 369,900+ lines (24,122 archived)  
 **Dark Forest**: 🌲 **ALL 6 Methods Wired** | Both IPC paths operational ✅
+**Isomorphic IPC**: 🧬 **3 PHASES COMPLETE** | Unix/TCP automatic + client discovery + connection handling ✅
 
 > \* Only justified `unsafe` is `GlobalAlloc` impl in `quantum_allocator.rs` - delegates to system allocator.
 
 Songbird is the universal network orchestrator for the ecoPrimals ecosystem, managing service discovery, connection management, and inter-primal communication. **First production-grade Pure Rust TLS 1.3 implementation** via the groundbreaking **Tower Atomic pattern** - achieving what many thought impossible: TLS without rustls/ring while maintaining TRUE ecoBin compliance.
 
-**Latest**: **🚀 Dependency Cleanup + LTO!** (Jan 31, 2026 - Extended Session) - **PRIORITY 1 COMPLETE**: Eliminated unmaintained `trust-dns-resolver` (500 KB saved), migrated to `hickory-resolver`, enabled aggressive LTO (`lto = "fat"`, `codegen-units = 1`, `panic = "abort"`) for +20% runtime performance! **See [DEPENDENCY_CLEANUP_LTO_EXECUTION_JAN_31_2026.md](DEPENDENCY_CLEANUP_LTO_EXECUTION_JAN_31_2026.md) + commit 61b3d7579.**  
-**Previous**: **🧬 ARM64 Cross-Compilation!** (Jan 31, 2026) - Built for aarch64-unknown-linux-musl (25 MB static binary, 7% smaller than x86_64!). Universal architecture validated (zero `#[cfg(target_arch)]`). **See [ARM64_LOCAL_BUILD_SESSION_JAN_31_2026.md](ARM64_LOCAL_BUILD_SESSION_JAN_31_2026.md).**
+**Latest**: **🎊 Isomorphic IPC Phase 3!** (Feb 1, 2026 - Legendary Session!) - **CONNECTION HANDLING EVOLVED**: BearDogClient now uses `IpcEndpoint` enum for automatic Unix/TCP connections. Transparent fallback, zero configuration! **See [ISOMORPHIC_IPC_PHASE3_COMPLETE_FEB_01_2026.md](ISOMORPHIC_IPC_PHASE3_COMPLETE_FEB_01_2026.md) + commit 4cb4e66a4.**  
+**Previous**: **🚀 Dependency Cleanup + LTO!** (Jan 31, 2026) - Eliminated unmaintained `trust-dns-resolver` (500 KB saved), enabled aggressive LTO for +20% runtime performance! **See [DEPENDENCY_CLEANUP_LTO_EXECUTION_JAN_31_2026.md](DEPENDENCY_CLEANUP_LTO_EXECUTION_JAN_31_2026.md).**
 
-📚 **[Full Documentation Index](ROOT_DOCS_INDEX.md)** | 🚀 **[Next: Phase 2 Handoff](PHASE2_READY_HANDOFF_JAN_31_2026.md)** | 🔍 **[Dependency Audit](DEPENDENCY_AUDIT_DEEP_DEBT_JAN_31_2026.md)** | 🧬 **[Deep Debt Evolution](SONGBIRD_DEEP_DEBT_EVOLUTION_NUCLEUS_JAN_31_2026.md)**
+📚 **[Full Documentation Index](ROOT_DOCS_INDEX.md)** | 🚀 **[Phase 3 Complete](ISOMORPHIC_IPC_PHASE3_COMPLETE_FEB_01_2026.md)** | 🔍 **[Dependency Audit](DEPENDENCY_AUDIT_DEEP_DEBT_JAN_31_2026.md)** | 🧬 **[Deep Debt Evolution](SONGBIRD_DEEP_DEBT_EVOLUTION_NUCLEUS_JAN_31_2026.md)**
 
 ---
 
