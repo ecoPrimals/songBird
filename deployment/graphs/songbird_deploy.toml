@@ -1,0 +1,179 @@
+# songbird_deploy.toml - Single Songbird Instance Deployment
+#
+# This graph deploys a single Songbird instance with full health checks
+# and rollback capability via biomeOS neuralAPI.
+#
+# Usage:
+#   biomeos deploy --graph songbird_deploy.toml
+#
+# Expected Duration: ~30 seconds
+# Prerequisites: songbird.genome file available
+
+[graph]
+id = "songbird_single_deploy"
+version = "1.0"
+description = "Deploy single Songbird instance with health checks"
+author = "Songbird Team"
+created = "2026-01-31"
+
+# Node 1: Detect Platform & Architecture
+[[nodes]]
+id = "detect_platform"
+type = "platform.detect"
+description = "Auto-detect target platform and architecture"
+
+[nodes.config]
+# Auto-detect based on current system
+detect_arch = true
+detect_os = true
+detect_android = true
+
+[nodes.outputs]
+platform = "string"   # linux, android, darwin, windows
+arch = "string"       # x86_64, aarch64, riscv64
+
+# Node 2: Verify genomeBin Integrity
+[[nodes]]
+id = "verify_genome"
+type = "file.verify"
+description = "Verify songbird.genome integrity before deployment"
+depends_on = ["detect_platform"]
+
+[nodes.config]
+file_path = "songbird.genome"
+verify_checksum = true
+verify_executable = true
+
+[nodes.outputs]
+verified = "bool"
+file_size = "int"
+checksum = "string"
+
+# Node 3: Deploy Songbird genomeBin
+[[nodes]]
+id = "deploy_songbird"
+type = "genome.deploy"
+description = "Extract and deploy Songbird binary"
+depends_on = ["verify_genome"]
+
+[nodes.config]
+genome = "songbird.genome"
+target = "auto"  # Use detected platform
+install_dir = "/opt/biomeos"
+family_id = "default"
+deploy_mode = "systemd"  # systemd, usb, android, manual
+
+[nodes.outputs]
+installed_path = "string"
+binary_path = "string"
+install_success = "bool"
+
+# Node 4: Health Check
+[[nodes]]
+id = "health_check"
+type = "health.check_primal"
+description = "Validate Songbird is operational"
+depends_on = ["deploy_songbird"]
+
+[nodes.config]
+primal = "songbird"
+timeout_ms = 5000
+checks = [
+    "version",      # --version returns successfully
+    "socket",       # Unix socket exists and responds
+    "discovery",    # mDNS discovery is running
+]
+
+[nodes.outputs]
+health_status = "string"  # healthy, degraded, unhealthy
+checks_passed = "int"
+checks_total = "int"
+
+# Node 5: Register Capabilities
+[[nodes]]
+id = "register_capabilities"
+type = "capability.register"
+description = "Register Songbird capabilities with Neural API"
+depends_on = ["health_check"]
+
+[nodes.config]
+primal = "songbird"
+capabilities = [
+    "discovery.mdns",
+    "discovery.stun",
+    "discovery.dark_forest",
+    "federation.peer_management",
+    "networking.service_mesh",
+]
+
+[nodes.outputs]
+registered_capabilities = "array"
+registration_success = "bool"
+
+# Node 6: Success Notification
+[[nodes]]
+id = "notify_success"
+type = "notification.send"
+description = "Notify deployment success"
+depends_on = ["register_capabilities"]
+
+[nodes.config]
+message = "Songbird deployed successfully"
+level = "info"
+channels = ["log", "stdout"]
+
+# Error Handling: Rollback on failure
+
+[[edges]]
+from = "deploy_songbird"
+to = "rollback_deployment"
+condition = "on_error"
+
+[[edges]]
+from = "health_check"
+to = "rollback_deployment"
+condition = "on_error"
+
+# Rollback Node
+[[nodes]]
+id = "rollback_deployment"
+type = "genome.rollback"
+description = "Rollback deployment on failure"
+
+[nodes.config]
+primal = "songbird"
+actions = [
+    "stop_service",
+    "remove_binaries",
+    "clean_runtime_dirs",
+    "unregister_capabilities",
+]
+
+[nodes.outputs]
+rollback_success = "bool"
+cleaned_paths = "array"
+
+# Final failure notification
+[[nodes]]
+id = "notify_failure"
+type = "notification.send"
+description = "Notify deployment failure"
+depends_on = ["rollback_deployment"]
+
+[nodes.config]
+message = "Songbird deployment failed and rolled back"
+level = "error"
+channels = ["log", "stdout", "stderr"]
+
+# Graph execution settings
+[execution]
+mode = "sequential"  # Run nodes in dependency order
+timeout_seconds = 120
+retry_on_failure = false  # Rollback instead of retry
+parallel_where_possible = true  # Parallelize independent nodes
+
+# Observability
+[observability]
+log_level = "info"
+trace_execution = true
+collect_metrics = true

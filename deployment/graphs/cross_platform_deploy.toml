@@ -1,0 +1,285 @@
+# cross_platform_deploy.toml - Deploy Songbird to USB + Android Simultaneously
+#
+# This graph demonstrates parallel cross-platform deployment:
+#   1. Deploy to USB Live Spore (Linux musl)
+#   2. Deploy to Android device (aarch64)
+#   3. Establish Dark Forest handshake between instances
+#
+# This proves TRUE genomeBin: One graph deploys to multiple platforms!
+#
+# Usage:
+#   biomeos deploy --graph cross_platform_deploy.toml \
+#     --usb-device /dev/sdb1 \
+#     --android-device adb
+#
+# Expected Duration: ~90 seconds
+# Prerequisites: songbird.genome, USB drive mounted, Android ADB connected
+
+[graph]
+id = "cross_platform_deploy"
+version = "1.0"
+description = "Deploy Songbird to USB + Android simultaneously with handshake"
+author = "Songbird Team"
+created = "2026-01-31"
+
+# === PHASE 1: PARALLEL DEPLOYMENT (USB + Android) ===
+
+# Deploy to USB Live Spore
+[[nodes]]
+id = "deploy_usb"
+type = "genome.deploy"
+description = "Deploy Songbird to USB Live Spore"
+
+[nodes.config]
+genome = "songbird.genome"
+target = "usb"
+# USB-specific settings
+install_dir = "${USB_MOUNT}/biomeos"  # Portable install
+family_id = "usb-spore"
+deploy_mode = "usb"
+# Musl binary for maximum compatibility
+prefer_target = "x86_64-linux-musl"
+
+[nodes.outputs]
+usb_path = "string"
+usb_socket = "string"
+usb_family_id = "string"
+
+# Deploy to Android device (parallel)
+[[nodes]]
+id = "deploy_android"
+type = "genome.deploy"
+description = "Deploy Songbird to Android device via ADB"
+# NO depends_on = runs in parallel with deploy_usb!
+
+[nodes.config]
+genome = "songbird.genome"
+target = "android"
+# Android-specific settings
+transport = "adb"  # Use ADB to push and execute
+install_dir = "/data/local/tmp/biomeos"
+family_id = "android-mobile"
+deploy_mode = "android"
+# Android ARM64 binary
+prefer_target = "aarch64-linux-android"
+
+[nodes.outputs]
+android_path = "string"
+android_socket = "string"
+android_family_id = "string"
+
+# === PHASE 2: HEALTH CHECKS (Parallel) ===
+
+[[nodes]]
+id = "health_check_usb"
+type = "health.check_primal"
+description = "Validate USB Songbird is operational"
+depends_on = ["deploy_usb"]
+
+[nodes.config]
+primal = "songbird"
+family_id = "usb-spore"
+timeout_ms = 10000
+checks = ["version", "socket", "discovery"]
+
+[nodes.outputs]
+usb_healthy = "bool"
+usb_endpoints = "array"
+
+[[nodes]]
+id = "health_check_android"
+type = "health.check_primal"
+description = "Validate Android Songbird is operational"
+depends_on = ["deploy_android"]
+
+[nodes.config]
+primal = "songbird"
+family_id = "android-mobile"
+timeout_ms = 10000
+transport = "adb"  # Check via ADB
+checks = ["version", "socket", "discovery"]
+
+[nodes.outputs]
+android_healthy = "bool"
+android_endpoints = "array"
+
+# === PHASE 3: CROSS-PLATFORM FEDERATION ===
+
+[[nodes]]
+id = "discover_peers"
+type = "discovery.find_peers"
+description = "USB and Android discover each other"
+depends_on = ["health_check_usb", "health_check_android"]
+
+[nodes.config]
+# Both instances broadcast mDNS
+discovery_methods = ["mdns", "stun"]
+timeout_ms = 15000
+expected_peers = ["usb-spore", "android-mobile"]
+
+[nodes.outputs]
+peers_found = "int"
+peer_endpoints = "map"
+
+# Establish Dark Forest handshake
+[[nodes]]
+id = "establish_handshake"
+type = "federation.handshake"
+description = "Establish Dark Forest secure handshake"
+depends_on = ["discover_peers"]
+
+[nodes.config]
+nodes = [
+    {
+        family_id = "usb-spore",
+        endpoints = "${usb_endpoints}",
+    },
+    {
+        family_id = "android-mobile",
+        endpoints = "${android_endpoints}",
+    },
+]
+protocol = "dark_forest"
+trust_level = "limited"  # Cross-platform initially limited trust
+
+[nodes.outputs]
+handshake_success = "bool"
+federation_id = "string"
+
+# === PHASE 4: VALIDATE FEDERATION ===
+
+[[nodes]]
+id = "test_cross_platform_rpc"
+type = "federation.test_rpc"
+description = "Test RPC call from USB to Android and vice versa"
+depends_on = ["establish_handshake"]
+
+[nodes.config]
+tests = [
+    {
+        from = "usb-spore",
+        to = "android-mobile",
+        method = "ping",
+    },
+    {
+        from = "android-mobile",
+        to = "usb-spore",
+        method = "ping",
+    },
+]
+timeout_ms = 5000
+
+[nodes.outputs]
+rpc_tests_passed = "int"
+rpc_tests_total = "int"
+
+# === PHASE 5: SUCCESS ===
+
+[[nodes]]
+id = "notify_success"
+type = "notification.send"
+description = "Cross-platform deployment successful!"
+depends_on = ["test_cross_platform_rpc"]
+
+[nodes.config]
+message = "🌍 Cross-platform deployment successful! USB ↔ Android federation established."
+level = "info"
+channels = ["log", "stdout"]
+details = {
+    usb_family = "${usb_family_id}",
+    android_family = "${android_family_id}",
+    federation_id = "${federation_id}",
+}
+
+# === ERROR HANDLING: ROLLBACK BOTH PLATFORMS ===
+
+# Rollback USB deployment
+[[edges]]
+from = "deploy_usb"
+to = "rollback_usb"
+condition = "on_error"
+
+[[edges]]
+from = "health_check_usb"
+to = "rollback_usb"
+condition = "on_error"
+
+[[nodes]]
+id = "rollback_usb"
+type = "genome.rollback"
+description = "Rollback USB deployment"
+
+[nodes.config]
+primal = "songbird"
+family_id = "usb-spore"
+target = "usb"
+
+# Rollback Android deployment
+[[edges]]
+from = "deploy_android"
+to = "rollback_android"
+condition = "on_error"
+
+[[edges]]
+from = "health_check_android"
+to = "rollback_android"
+condition = "on_error"
+
+[[nodes]]
+id = "rollback_android"
+type = "genome.rollback"
+description = "Rollback Android deployment"
+
+[nodes.config]
+primal = "songbird"
+family_id = "android-mobile"
+target = "android"
+transport = "adb"
+
+# Rollback federation on handshake failure
+[[edges]]
+from = "establish_handshake"
+to = "rollback_federation"
+condition = "on_error"
+
+[[nodes]]
+id = "rollback_federation"
+type = "federation.teardown"
+description = "Teardown failed federation"
+depends_on = ["rollback_usb", "rollback_android"]
+
+[nodes.config]
+family_ids = ["usb-spore", "android-mobile"]
+
+# Failure notification
+[[nodes]]
+id = "notify_failure"
+type = "notification.send"
+description = "Cross-platform deployment failed"
+depends_on = ["rollback_federation"]
+
+[nodes.config]
+message = "❌ Cross-platform deployment failed and rolled back"
+level = "error"
+channels = ["log", "stdout", "stderr"]
+
+# === EXECUTION SETTINGS ===
+
+[execution]
+mode = "parallel_where_possible"  # USB and Android deploy in parallel!
+timeout_seconds = 180
+retry_on_failure = false
+parallel_where_possible = true
+
+# Parallelization hints
+[execution.parallel_groups]
+# Group 1: Parallel deployment
+deploy = ["deploy_usb", "deploy_android"]
+# Group 2: Parallel health checks
+health = ["health_check_usb", "health_check_android"]
+
+[observability]
+log_level = "debug"  # More verbose for cross-platform debugging
+trace_execution = true
+collect_metrics = true
+export_metrics = ["deployment_time_usb", "deployment_time_android", "federation_latency"]

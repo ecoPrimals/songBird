@@ -1,0 +1,286 @@
+# tower_genome.toml - Deploy TOWER (BearDog + Songbird)
+#
+# This graph deploys the complete TOWER foundation:
+#   1. BearDog (security primal)
+#   2. Songbird (discovery primal)
+#   3. Cross-primal capability wiring
+#
+# The TOWER provides the security and discovery foundation for all other primals.
+#
+# Usage:
+#   biomeos deploy --graph tower_genome.toml
+#
+# Expected Duration: ~60 seconds
+# Prerequisites: beardog.genome, songbird.genome
+
+[graph]
+id = "tower_deploy"
+version = "1.0"
+description = "Deploy TOWER: BearDog + Songbird with cross-primal wiring"
+author = "ecoPrimals Team"
+created = "2026-01-31"
+
+# === PHASE 1: BEARDOG DEPLOYMENT (Security Foundation) ===
+
+[[nodes]]
+id = "detect_platform"
+type = "platform.detect"
+description = "Auto-detect target platform"
+
+[nodes.config]
+detect_arch = true
+detect_os = true
+
+# Deploy BearDog first (security foundation)
+[[nodes]]
+id = "deploy_beardog"
+type = "genome.deploy"
+description = "Deploy BearDog security primal"
+depends_on = ["detect_platform"]
+
+[nodes.config]
+genome = "beardog.genome"
+target = "auto"
+install_dir = "/opt/biomeos"
+family_id = "tower"
+deploy_mode = "systemd"
+
+[nodes.outputs]
+beardog_path = "string"
+beardog_socket = "string"
+
+# Health check BearDog
+[[nodes]]
+id = "health_check_beardog"
+type = "health.check_primal"
+description = "Validate BearDog is operational"
+depends_on = ["deploy_beardog"]
+
+[nodes.config]
+primal = "beardog"
+timeout_ms = 5000
+checks = ["version", "socket", "crypto_ready"]
+
+[nodes.outputs]
+beardog_healthy = "bool"
+
+# === PHASE 2: SONGBIRD DEPLOYMENT (Discovery Foundation) ===
+
+[[nodes]]
+id = "deploy_songbird"
+type = "genome.deploy"
+description = "Deploy Songbird discovery primal"
+depends_on = ["health_check_beardog"]  # Wait for BearDog to be healthy
+
+[nodes.config]
+genome = "songbird.genome"
+target = "auto"
+install_dir = "/opt/biomeos"
+family_id = "tower"
+deploy_mode = "systemd"
+# Environment: Point to BearDog socket
+env = [
+    "SONGBIRD_SECURITY_PROVIDER=${beardog_socket}",
+]
+
+[nodes.outputs]
+songbird_path = "string"
+songbird_socket = "string"
+
+# Health check Songbird
+[[nodes]]
+id = "health_check_songbird"
+type = "health.check_primal"
+description = "Validate Songbird is operational"
+depends_on = ["deploy_songbird"]
+
+[nodes.config]
+primal = "songbird"
+timeout_ms = 5000
+checks = ["version", "socket", "discovery"]
+
+[nodes.outputs]
+songbird_healthy = "bool"
+
+# === PHASE 3: TOWER VALIDATION (Atomic Health Check) ===
+
+[[nodes]]
+id = "verify_tower"
+type = "health.check_atomic"
+description = "Atomic health check: Both BearDog and Songbird operational"
+depends_on = ["health_check_beardog", "health_check_songbird"]
+
+[nodes.config]
+primals = ["beardog", "songbird"]
+require_all = true  # Both must be healthy
+timeout_ms = 10000
+
+[nodes.outputs]
+tower_healthy = "bool"
+primals_status = "map"
+
+# === PHASE 4: CROSS-PRIMAL CAPABILITY WIRING ===
+
+[[nodes]]
+id = "wire_capabilities"
+type = "capability.wire_tower"
+description = "Wire cross-primal capabilities for TOWER"
+depends_on = ["verify_tower"]
+
+[nodes.config]
+tower_primals = ["beardog", "songbird"]
+wiring = [
+    # Songbird uses BearDog for crypto
+    {
+        from = "songbird",
+        to = "beardog",
+        capability = "crypto.sign",
+        protocol = "ipc"
+    },
+    {
+        from = "songbird",
+        to = "beardog",
+        capability = "crypto.verify",
+        protocol = "ipc"
+    },
+    # Songbird uses BearDog for JWT
+    {
+        from = "songbird",
+        to = "beardog",
+        capability = "auth.jwt_provision",
+        protocol = "ipc"
+    },
+    # BearDog discovers other BearDogs via Songbird
+    {
+        from = "beardog",
+        to = "songbird",
+        capability = "discovery.find_primal",
+        protocol = "ipc"
+    },
+]
+
+[nodes.outputs]
+wiring_success = "bool"
+wired_capabilities = "array"
+
+# === PHASE 5: TOWER READY ===
+
+[[nodes]]
+id = "register_tower"
+type = "tower.register"
+description = "Register TOWER as operational in Neural API"
+depends_on = ["wire_capabilities"]
+
+[nodes.config]
+tower_id = "tower-default"
+primals = ["beardog", "songbird"]
+capabilities = [
+    "security.crypto",
+    "security.auth",
+    "discovery.mdns",
+    "discovery.stun",
+    "discovery.dark_forest",
+    "federation.peer_management",
+]
+
+[nodes.outputs]
+tower_registered = "bool"
+tower_id = "string"
+
+# Success notification
+[[nodes]]
+id = "notify_success"
+type = "notification.send"
+description = "TOWER deployment successful"
+depends_on = ["register_tower"]
+
+[nodes.config]
+message = "🏰 TOWER (BearDog + Songbird) deployed successfully!"
+level = "info"
+channels = ["log", "stdout"]
+
+# === ERROR HANDLING: ROLLBACK ON FAILURE ===
+
+# Rollback Songbird if it fails
+[[edges]]
+from = "deploy_songbird"
+to = "rollback_songbird"
+condition = "on_error"
+
+[[edges]]
+from = "health_check_songbird"
+to = "rollback_songbird"
+condition = "on_error"
+
+[[nodes]]
+id = "rollback_songbird"
+type = "genome.rollback"
+description = "Rollback Songbird deployment"
+
+[nodes.config]
+primal = "songbird"
+
+# Rollback BearDog if it fails (critical!)
+[[edges]]
+from = "deploy_beardog"
+to = "rollback_beardog"
+condition = "on_error"
+
+[[edges]]
+from = "health_check_beardog"
+to = "rollback_beardog"
+condition = "on_error"
+
+[[nodes]]
+id = "rollback_beardog"
+type = "genome.rollback"
+description = "Rollback BearDog deployment"
+
+[nodes.config]
+primal = "beardog"
+
+# Rollback TOWER if wiring fails
+[[edges]]
+from = "wire_capabilities"
+to = "rollback_tower"
+condition = "on_error"
+
+[[nodes]]
+id = "rollback_tower"
+type = "tower.rollback"
+description = "Rollback entire TOWER deployment"
+depends_on = ["rollback_songbird", "rollback_beardog"]
+
+[nodes.config]
+tower_primals = ["beardog", "songbird"]
+actions = [
+    "unwire_capabilities",
+    "unregister_tower",
+    "stop_services",
+    "remove_binaries",
+]
+
+# Failure notification
+[[nodes]]
+id = "notify_failure"
+type = "notification.send"
+description = "TOWER deployment failed"
+depends_on = ["rollback_tower"]
+
+[nodes.config]
+message = "❌ TOWER deployment failed and rolled back"
+level = "error"
+channels = ["log", "stdout", "stderr"]
+
+# === EXECUTION SETTINGS ===
+
+[execution]
+mode = "sequential"  # BearDog → Songbird → Wiring
+timeout_seconds = 180
+retry_on_failure = false  # Rollback instead
+parallel_where_possible = true
+
+[observability]
+log_level = "info"
+trace_execution = true
+collect_metrics = true
