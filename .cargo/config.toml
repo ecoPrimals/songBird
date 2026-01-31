@@ -1,30 +1,65 @@
+# Songbird Cross-Compilation Configuration
+# TRUE ecoBin v2.0 → genomeBin Evolution
+# Based on biomeOS + BearDog reference implementations
+# Created: January 30, 2026
+
 [build]
-rustflags = []
+# Use all available cores for parallel compilation
+jobs = 24
+pipelining = true
 
-# Platform-agnostic cross-compilation targets (genomeBin compliance)
-# Following TRUE ecoBin #4: ZERO hardcoding, capability-based discovery
+# Default to x86_64 musl for maximum portability
+target = "x86_64-unknown-linux-musl"
 
+# ============================================================================
+# CROSS-COMPILATION TARGETS (genomeBin Support)
+# ============================================================================
+
+# ARM64 Linux (musl for static linking)
+[target.aarch64-unknown-linux-musl]
+linker = "aarch64-linux-gnu-gcc"
+rustflags = [
+    "-C", "target-feature=+crt-static",
+    "-C", "link-arg=-static",
+    "-C", "link-arg=-lc"
+]
+
+# ARM64 Android (for Pixel 8a / GrapheneOS)
 [target.aarch64-linux-android]
-linker = "aarch64-linux-android21-clang"
-# Uses $ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64/bin/
-# Fallback: Ensure NDK is in PATH or set AR/CC env vars
+linker = "aarch64-linux-android-ld"
+rustflags = [
+    "-C", "target-feature=+crt-static",
+    "-C", "link-arg=-static"
+]
 
-[target.armv7-linux-androideabi]
-linker = "armv7a-linux-androideabi21-clang"
+# x86_64 Linux (musl for static linking - ecoBin v2.0 standard)
+[target.x86_64-unknown-linux-musl]
+rustflags = [
+    "-C", "target-feature=+crt-static",
+    "-C", "link-arg=-static"
+]
 
-[target.x86_64-linux-android]
-linker = "x86_64-linux-android21-clang"
+# ARM64 macOS (Apple Silicon)
+[target.aarch64-apple-darwin]
+rustflags = [
+    "-C", "link-arg=-Wl,-dead_strip"
+]
 
-[target.i686-linux-android]
-linker = "i686-linux-android21-clang"
+# RISC-V (future expansion)
+[target.riscv64gc-unknown-linux-gnu]
+linker = "riscv64-linux-gnu-gcc"
 
-# Windows cross-compilation (Pure Rust, no mingw-w64 dependencies needed!)
+# Windows cross-compilation (Pure Rust)
 [target.x86_64-pc-windows-gnu]
 linker = "x86_64-w64-mingw32-gcc"
 
-# musl (static linking for USB/portable) - already works via rustc defaults!
-# [target.x86_64-unknown-linux-musl]
-# No special config needed - Pure Rust + static linking = perfect!
+# ============================================================================
+# BUILD PROFILES (genomeBin Optimization)
+# ============================================================================
+
+[profile.dev]
+incremental = true
+split-debuginfo = "unpacked"
 
 [test]
 # Skip failing comprehensive tests temporarily to get baseline coverage
