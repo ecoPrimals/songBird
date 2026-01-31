@@ -136,7 +136,7 @@ tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 
 # Configuration
-config = "0.14"
+config = { version = "0.14", default-features = false, features = ["toml", "json", "yaml"] }  # Explicit features (not RON/INI/JSON5)
 toml = "0.8"
 
 # Random number generation
