@@ -107,7 +107,17 @@ workspace = true
 
 [workspace.dependencies]
 # Core async runtime
-tokio = { version = "1.46", features = ["full"] }  # Updated to fix slab vulnerability
+tokio = { version = "1.48", features = [
+    "rt-multi-thread",  # Multi-threaded runtime (spawn, JoinHandle)
+    "net",              # Network types (TcpListener, TcpStream, UnixListener, UnixStream)
+    "io-util",          # AsyncRead, AsyncWrite traits and utilities
+    "macros",           # #[tokio::main], #[tokio::test]
+    "sync",             # Synchronization primitives (mpsc, RwLock, Mutex, Semaphore)
+    "time",             # Time utilities (sleep, timeout, interval)
+    "fs",               # Async filesystem operations
+    "signal",           # Signal handling (Ctrl+C)
+    "process",          # Async process spawning
+] }  # Explicit features (not "full") for smaller binary
 async-trait = "0.1"
 futures-util = "0.3.31"  # Force latest version
 slab = "0.4.11"  # Force secure version to override vulnerable 0.4.10
