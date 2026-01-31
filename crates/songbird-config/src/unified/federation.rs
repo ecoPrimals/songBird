@@ -93,8 +93,8 @@ impl Default for NodeConfig {
 pub enum NodeType {
     /// Standard federation node
     Standard,
-    /// Leader/coordinator node
-    Leader,
+    /// Coordinator node (facilitator, not hierarchical leader)
+    Coordinator,
     /// Read-only replica node
     Replica,
     /// Gateway node for external access
@@ -272,7 +272,7 @@ mod tests {
     #[test]
     fn test_node_type_variants() {
         let types =
-            vec![NodeType::Standard, NodeType::Leader, NodeType::Replica, NodeType::Gateway];
+            vec![NodeType::Standard, NodeType::Coordinator, NodeType::Replica, NodeType::Gateway];
 
         for node_type in types {
             let debug_str = format!("{:?}", node_type);

@@ -173,8 +173,8 @@ pub enum NodeHealthStatus {
 /// Federation roles
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub enum FederationRole {
-    /// Coordination leader
-    Leader,
+    /// Coordination facilitator (not hierarchical control)
+    Coordinator,
     /// Active participant
     Participant,
     /// Observer only
@@ -233,8 +233,8 @@ pub struct NetworkPartition {
 /// Multi-node coordination state
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CoordinationState {
-    /// Current leader node
-    pub leader: Option<String>,
+    /// Current coordinator node (facilitator, not hierarchical leader)
+    pub leader: Option<String>, // Note: field name kept for backward compatibility
     /// Active distributed locks
     pub locks: HashMap<String, DistributedLock>,
     /// Coordination epoch
@@ -439,7 +439,7 @@ impl FederationAwareDiscovery {
         
         // Update coordination state
         let mut state = self.coordination_state.write().await;
-        state.leader = leader.clone());
+        state.leader = leader.clone();
         state.epoch += 1;
         state.last_updated = chrono::Utc::now().timestamp() as u64;
         
@@ -605,9 +605,9 @@ pub const FEDERATION_CONSOLIDATION_SUMMARY: &str = r#"
 🎯 FEDERATION CONSOLIDATION COMPLETE
 
 Enhanced discovery system now includes:
-├── 🔍 Multi-method node discovery (multicast, DNS, K8s, Consul,
+├── 🔍 Multi-method node discovery (multicast, DNS, K8s, Consul)
 ├── 🗺️ Network topology mapping and optimization
-├── 👑 Leader election for coordination
+├── 👑 Coordinator election for facilitation (not hierarchical control)
 ├── 🔒 Distributed locking mechanisms
 ├── 🏛️ Sovereignty-aware routing
 ├── 🤝 Cross-node coordination
