@@ -355,27 +355,45 @@ impl CapabilityDiscovery {
     /// ```
     #[allow(clippy::unused_async)] // TODO: Will use .await when implementing mDNS discovery
     async fn discover_via_mdns(&self, capability: &str) -> SongbirdResult<Vec<ServiceEndpoint>> {
-        let service_name = format!("_{capability}._tcp.local");
-        debug!("Attempting mDNS discovery for: {}", service_name);
+        debug!("🌐 Starting mDNS discovery for capability: {}", capability);
 
-        // mDNS discovery is IMPLEMENTED in crates/songbird-config/src/discovery/mdns_complete.rs
-        // and crates/songbird-config/src/capability_based_runtime_discovery/mdns.rs
-        //
-        // Both implementations are production-ready with tests (19 tests passing)
-        // Integration requires:
-        // 1. Add `thiserror` to Cargo.toml dependencies
-        // 2. Fix string escaping in runtime_engine.rs tests  
-        // 3. Then hook up via: use crate::discovery::MdnsDiscovery;
-        //
-        // For now, returning empty to allow other discovery methods to proceed
+        // Use the production-ready mDNS implementation from discovery module
+        use crate::discovery::MdnsDiscovery;
 
-        warn!(
-            "mDNS discovery available but not integrated for: {}. \
-             See MDNS_ALREADY_COMPLETE_FEB_01_2026.md for integration guide.",
-            service_name
-        );
+        // Create mDNS discovery client
+        let mdns = match MdnsDiscovery::new() {
+            Ok(mdns) => mdns,
+            Err(e) => {
+                warn!("Failed to initialize mDNS discovery: {} - falling back to other methods", e);
+                return Ok(vec![]);
+            }
+        };
 
-        Ok(vec![])
+        // Discover services with this capability (3 second timeout)
+        let timeout = Duration::from_secs(3);
+        match mdns.discover_by_capability(capability, Some(timeout)).await {
+            Ok(services) => {
+                info!("✅ mDNS discovered {} service(s) for capability '{}'", services.len(), capability);
+
+                // Convert mDNS MdnsServiceInfo to our ServiceEndpoint
+                let endpoints: Vec<ServiceEndpoint> = services
+                    .into_iter()
+                    .map(|svc| ServiceEndpoint {
+                        id: format!("mdns-{}", svc.address), // Use address as ID since service_name not in struct
+                        url: format!("http://{}", svc.address), // Convert SocketAddr to URL
+                        capabilities: svc.capabilities,
+                        health_score: 1.0, // Assume healthy if discovered
+                        last_seen: svc.discovered_at,
+                    })
+                    .collect();
+
+                Ok(endpoints)
+            }
+            Err(e) => {
+                debug!("mDNS discovery returned no results for '{}': {} - trying other methods", capability, e);
+                Ok(vec![])
+            }
+        }
     }
 
     /// Discover via central registry (Songbird's capability registry)

@@ -67,6 +67,9 @@ pub mod discovery_helpers;
 pub mod runtime_discovery;
 pub mod runtime_endpoint_resolver;
 
+/// **PRODUCTION-READY**: mDNS and advanced discovery implementations
+pub mod discovery;
+
 /// **MODERN**: Agnostic primal configuration (zero hardcoded primal names)
 pub mod agnostic_primal_config;
 
