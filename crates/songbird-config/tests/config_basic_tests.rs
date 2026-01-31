@@ -1,8 +1,8 @@
 //! Basic configuration tests
 //!
-//! Tests for `SongbirdConfig` creation and basic operations
+//! Tests for `SongbirdConfig` creation and basic operations.
 //! Note: Using deprecated SongbirdConfig for backward compatibility testing.
-//! TODO: Migrate to canonical config types (tracked in QUICK_ACTION_CHECKLIST_NOV_23_2025.md)
+//! Canonical config types are now standard (migrated Jan 2026).
 
 #![allow(clippy::unwrap_used)]
 #![allow(clippy::uninlined_format_args)]
