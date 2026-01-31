@@ -1,70 +1,200 @@
-//! XDG-Compliant Socket Discovery
+//! XDG-Compliant Socket Discovery (Isomorphic - TRUE ecoBin v2.0)
 //!
-//! **Pure Rust | Zero Hardcoding | Runtime Discovery**
+//! **Pure Rust | Zero Hardcoding | Runtime Discovery | Isomorphic Adaptation**
 //!
 //! Implements intelligent socket discovery with proper fallback chain:
 //! 1. Environment variables (explicit configuration)
-//! 2. XDG Runtime Dir (`/run/user/$UID/biomeos/`)
-//! 3. Legacy `/tmp` paths (last resort)
+//! 2. Unix sockets via XDG Runtime Dir (`/run/user/$UID/biomeos/`)
+//! 3. TCP endpoints via discovery files (isomorphic fallback)
+//! 4. Legacy `/tmp` paths (last resort)
+//!
+//! ## Isomorphic IPC Support (v8.23.0+)
+//!
+//! When Unix sockets are unavailable (Android/SELinux, Windows), the server
+//! automatically falls back to TCP localhost and writes a discovery file.
+//! Clients automatically detect this and connect via TCP transparently.
+//!
+//! **Try → Detect → Adapt → Succeed**
 //!
 //! This enables automated Tower Atomic deployment via biomeOS Neural API
 //! while maintaining backward compatibility with manual deployments.
 
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use tracing::{debug, info, warn};
 
-/// Discover socket path with XDG-compliant fallback chain
+/// IPC Endpoint type (isomorphic support)
+#[derive(Debug, Clone, PartialEq)]
+pub enum IpcEndpoint {
+    /// Unix domain socket (optimal)
+    UnixSocket(String),
+    /// TCP localhost (fallback for Android/Windows)
+    TcpLocal(std::net::SocketAddr),
+}
+
+impl IpcEndpoint {
+    /// Get display string for logging
+    pub fn display(&self) -> String {
+        match self {
+            IpcEndpoint::UnixSocket(path) => format!("unix://{}", path),
+            IpcEndpoint::TcpLocal(addr) => format!("tcp://{}", addr),
+        }
+    }
+}
+
+/// Discover IPC endpoint with full isomorphic fallback chain (v8.23.0+)
 ///
-/// # Priority Order
+/// # Priority Order (Isomorphic Discovery)
 ///
 /// 1. **Environment Variable** (highest priority)
 ///    - Direct specification by user/biomeOS
-///    - Example: `BEARDOG_SOCKET=/run/user/1000/biomeos/beardog-nat0.sock`
+///    - Example: `SONGBIRD_SOCKET=/run/user/1000/biomeos/songbird-nat0.sock`
 ///
-/// 2. **XDG Runtime Directory** (recommended for production)
+/// 2. **Unix Socket via XDG** (optimal, when available)
 ///    - Standard Unix location: `$XDG_RUNTIME_DIR/biomeos/{primal}-{family}.sock`
-///    - Example: `/run/user/1000/biomeos/beardog-nat0.sock`
+///    - Example: `/run/user/1000/biomeos/songbird-nat0.sock`
 ///    - Only used if socket exists
 ///
-/// 3. **Legacy /tmp Path** (fallback for development/testing)
-///    - Example: `/tmp/beardog.sock`
+/// 3. **TCP Endpoint via Discovery File** (isomorphic fallback)
+///    - Server writes discovery file when Unix sockets unavailable
+///    - Locations: `$XDG_RUNTIME_DIR/{primal}-ipc-port`, `$HOME/.local/share/`, `/tmp/`
+///    - Format: `tcp:127.0.0.1:12345`
+///    - Transparent fallback for Android/SELinux/Windows
+///
+/// 4. **Legacy /tmp Unix Socket** (fallback for development)
+///    - Example: `/tmp/songbird.sock`
 ///    - Warning logged when used
 ///
 /// # Arguments
 ///
-/// * `env_var` - Environment variable name to check (e.g., "BEARDOG_SOCKET")
-/// * `primal_name` - Primal name for XDG discovery (e.g., "beardog")
+/// * `env_var` - Environment variable name to check (e.g., "SONGBIRD_SOCKET")
+/// * `primal_name` - Primal name for discovery (e.g., "songbird")
 /// * `legacy_path` - Legacy `/tmp` path for backward compatibility
 ///
 /// # Returns
 ///
-/// Socket path to use, guaranteed to exist or be the specified fallback.
-pub fn discover_socket(env_var: &str, primal_name: &str, legacy_path: &str) -> String {
-    debug!("🔍 Socket discovery for {}", primal_name);
-    debug!("   Checking: 1) ${}", env_var);
-    debug!("            2) XDG Runtime Dir");
-    debug!("            3) Legacy {}", legacy_path);
+/// IPC endpoint (Unix socket or TCP) to use for connection.
+///
+/// # Deep Debt Principles
+///
+/// - ✅ **Runtime Discovery**: Detects available transports automatically
+/// - ✅ **Zero Configuration**: No platform-specific flags needed
+/// - ✅ **Platform Agnostic**: Same discovery code for all platforms
+/// - ✅ **Primal Autonomy**: Self-discovers optimal transport
+pub fn discover_ipc_endpoint(env_var: &str, primal_name: &str, legacy_path: &str) -> IpcEndpoint {
+    debug!("🔍 IPC endpoint discovery for {}", primal_name);
+    debug!("   Checking: 1) ${}",env_var);
+    debug!("            2) Unix socket (XDG)");
+    debug!("            3) TCP endpoint (discovery file)");
+    debug!("            4) Legacy {}", legacy_path);
 
     // Priority 1: Environment variable (explicit configuration)
     if let Ok(socket) = std::env::var(env_var) {
         if !socket.is_empty() {
-            info!("✅ Socket discovered via ${}: {}", env_var, socket);
-            return socket;
+            info!("✅ IPC endpoint via ${}: {}", env_var, socket);
+            return IpcEndpoint::UnixSocket(socket);
         }
     }
 
-    // Priority 2: XDG Runtime Directory (production, biomeOS standard)
+    // Priority 2: Unix socket via XDG (optimal when available)
     if let Some(xdg_socket) = discover_xdg_socket(primal_name) {
-        info!("✅ Socket discovered via XDG: {}", xdg_socket);
-        return xdg_socket;
+        info!("✅ Unix socket via XDG: {}", xdg_socket);
+        return IpcEndpoint::UnixSocket(xdg_socket);
     }
 
-    // Priority 3: Legacy /tmp path (development fallback)
+    // Priority 3: TCP endpoint via discovery file (isomorphic fallback)
+    if let Some(tcp_addr) = discover_tcp_endpoint(primal_name) {
+        info!("✅ TCP endpoint via discovery file: {}", tcp_addr);
+        info!("   (Server using isomorphic fallback mode)");
+        return IpcEndpoint::TcpLocal(tcp_addr);
+    }
+
+    // Priority 4: Legacy /tmp path (development fallback)
     warn!("⚠️  Using legacy /tmp socket: {}", legacy_path);
     warn!("   Consider setting ${} or XDG_RUNTIME_DIR", env_var);
     warn!("   Example: {}=/run/user/$UID/biomeos/{}-$FAMILY_ID.sock", env_var, primal_name);
 
-    legacy_path.to_string()
+    IpcEndpoint::UnixSocket(legacy_path.to_string())
+}
+
+/// Discover TCP endpoint via discovery file (isomorphic fallback)
+///
+/// When the server cannot bind Unix sockets (Android/SELinux, Windows),
+/// it automatically falls back to TCP localhost and writes a discovery file.
+/// This function reads that file to find the TCP endpoint.
+///
+/// ## Discovery File Locations (XDG-Compliant Priority)
+///
+/// 1. `$XDG_RUNTIME_DIR/{primal}-ipc-port` (preferred, user-specific)
+/// 2. `$HOME/.local/share/{primal}-ipc-port` (fallback, persistent)
+/// 3. `/tmp/{primal}-ipc-port` (last resort, system-wide)
+///
+/// ## File Format
+///
+/// ```
+/// tcp:127.0.0.1:12345
+/// ```
+///
+/// # Arguments
+///
+/// * `primal_name` - Primal name (e.g., "songbird", "beardog")
+///
+/// # Returns
+///
+/// TCP socket address if discovery file found and parsed, None otherwise.
+///
+/// # Deep Debt Principles
+///
+/// - ✅ **Runtime Discovery**: Reads server-written discovery file
+/// - ✅ **XDG Compliant**: Follows XDG Base Directory specification
+/// - ✅ **Zero Hardcoding**: No hardcoded ports or addresses
+/// - ✅ **Platform Agnostic**: Works on any platform with filesystem
+fn discover_tcp_endpoint(primal_name: &str) -> Option<std::net::SocketAddr> {
+    debug!("   Checking TCP discovery files for {}", primal_name);
+
+    // Discovery file candidates (XDG priority order)
+    let candidates = get_tcp_discovery_file_candidates(primal_name);
+
+    for path in candidates {
+        debug!("      Trying: {}", path.display());
+        
+        if let Ok(content) = std::fs::read_to_string(&path) {
+            // Parse format: "tcp:127.0.0.1:12345"
+            if let Some(addr_str) = content.strip_prefix("tcp:") {
+                if let Ok(addr) = addr_str.trim().parse::<std::net::SocketAddr>() {
+                    debug!("      ✅ Found TCP endpoint: {}", addr);
+                    return Some(addr);
+                } else {
+                    warn!("      ⚠️  Invalid TCP address in {}: {}", path.display(), addr_str);
+                }
+            } else {
+                warn!("      ⚠️  Invalid format in {}: {}", path.display(), content.trim());
+            }
+        }
+    }
+
+    debug!("   ❌ No TCP discovery file found");
+    None
+}
+
+/// Get TCP discovery file candidates in XDG priority order
+fn get_tcp_discovery_file_candidates(primal_name: &str) -> Vec<PathBuf> {
+    let mut candidates = Vec::new();
+    let filename = format!("{}-ipc-port", primal_name);
+
+    // Priority 1: XDG_RUNTIME_DIR (preferred, user-specific, volatile)
+    if let Ok(runtime_dir) = std::env::var("XDG_RUNTIME_DIR") {
+        candidates.push(PathBuf::from(runtime_dir).join(&filename));
+    }
+
+    // Priority 2: HOME/.local/share (persistent, user-specific)
+    if let Ok(home) = std::env::var("HOME") {
+        candidates.push(PathBuf::from(home).join(".local/share").join(&filename));
+    }
+
+    // Priority 3: /tmp (last resort, system-wide)
+    candidates.push(PathBuf::from(format!("/tmp/{}", filename)));
+
+    candidates
 }
 
 /// Discover socket in XDG Runtime Directory
@@ -132,7 +262,38 @@ fn try_xdg_socket(runtime_dir: &str, primal_name: &str, family_id: &str) -> Opti
     }
 }
 
-/// Discover BearDog socket with full fallback chain
+/// Discover socket path with XDG-compliant fallback chain (legacy function)
+///
+/// **Note**: For new code, use `discover_ipc_endpoint()` which supports
+/// isomorphic TCP fallback. This function is kept for backward compatibility.
+///
+/// # Priority Order
+///
+/// 1. **Environment Variable** (highest priority)
+/// 2. **XDG Runtime Directory** (recommended for production)
+/// 3. **Legacy /tmp Path** (fallback for development/testing)
+///
+/// # Arguments
+///
+/// * `env_var` - Environment variable name to check (e.g., "BEARDOG_SOCKET")
+/// * `primal_name` - Primal name for XDG discovery (e.g., "beardog")
+/// * `legacy_path` - Legacy `/tmp` path for backward compatibility
+///
+/// # Returns
+///
+/// Socket path to use, guaranteed to exist or be the specified fallback.
+pub fn discover_socket(env_var: &str, primal_name: &str, legacy_path: &str) -> String {
+    // Use new isomorphic discovery and extract Unix socket path
+    match discover_ipc_endpoint(env_var, primal_name, legacy_path) {
+        IpcEndpoint::UnixSocket(path) => path,
+        IpcEndpoint::TcpLocal(_) => {
+            // Legacy function doesn't support TCP, fall back to legacy path
+            warn!("⚠️  TCP endpoint discovered but legacy discover_socket() doesn't support TCP");
+            warn!("   Consider updating to discover_ipc_endpoint() for isomorphic support");
+            legacy_path.to_string()
+        }
+    }
+}
 ///
 /// Checks in order:
 /// 1. `$BEARDOG_SOCKET`
@@ -182,6 +343,12 @@ mod tests {
 
     #[test]
     fn test_env_var_priority() {
+        // Clean environment first
+        env::remove_var("TEST_SOCKET");
+        env::remove_var("XDG_RUNTIME_DIR");
+        env::remove_var("FAMILY_ID");
+        
+        // Set explicit TEST_SOCKET
         env::set_var("TEST_SOCKET", "/custom/path.sock");
 
         let socket = discover_socket("TEST_SOCKET", "test-primal", "/tmp/fallback.sock");
@@ -227,8 +394,13 @@ mod tests {
 
     #[test]
     fn test_empty_env_var_ignored() {
-        env::set_var("TEST_SOCKET", "");
+        // Clean environment first (test isolation)
+        env::remove_var("TEST_SOCKET");
         env::remove_var("XDG_RUNTIME_DIR");
+        env::remove_var("FAMILY_ID");
+        
+        // Now set empty TEST_SOCKET
+        env::set_var("TEST_SOCKET", "");
 
         let socket = discover_socket("TEST_SOCKET", "test-primal", "/tmp/fallback.sock");
 
@@ -236,5 +408,51 @@ mod tests {
         assert_eq!(socket, "/tmp/fallback.sock");
 
         env::remove_var("TEST_SOCKET");
+    }
+
+    #[test]
+    fn test_ipc_endpoint_unix() {
+        let endpoint = IpcEndpoint::UnixSocket("/tmp/test.sock".to_string());
+        assert_eq!(endpoint.display(), "unix:///tmp/test.sock");
+    }
+
+    #[test]
+    fn test_ipc_endpoint_tcp() {
+        use std::net::{IpAddr, Ipv4Addr};
+        let addr = std::net::SocketAddr::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), 12345);
+        let endpoint = IpcEndpoint::TcpLocal(addr);
+        assert_eq!(endpoint.display(), "tcp://127.0.0.1:12345");
+    }
+
+    #[test]
+    fn test_tcp_discovery_file_candidates() {
+        env::set_var("XDG_RUNTIME_DIR", "/run/user/1000");
+        env::set_var("HOME", "/home/test");
+
+        let candidates = get_tcp_discovery_file_candidates("songbird");
+        
+        assert_eq!(candidates.len(), 3);
+        assert_eq!(candidates[0], PathBuf::from("/run/user/1000/songbird-ipc-port"));
+        assert_eq!(candidates[1], PathBuf::from("/home/test/.local/share/songbird-ipc-port"));
+        assert_eq!(candidates[2], PathBuf::from("/tmp/songbird-ipc-port"));
+
+        env::remove_var("XDG_RUNTIME_DIR");
+        env::remove_var("HOME");
+    }
+
+    #[test]
+    fn test_isomorphic_discovery_priority() {
+        // Clean environment
+        env::remove_var("TEST_SOCKET");
+        env::remove_var("XDG_RUNTIME_DIR");
+        env::remove_var("HOME");
+
+        // Should fall back to legacy Unix socket
+        let endpoint = discover_ipc_endpoint("TEST_SOCKET", "test-primal", "/tmp/fallback.sock");
+        
+        match endpoint {
+            IpcEndpoint::UnixSocket(path) => assert_eq!(path, "/tmp/fallback.sock"),
+            IpcEndpoint::TcpLocal(_) => panic!("Should not discover TCP without discovery file"),
+        }
     }
 }
