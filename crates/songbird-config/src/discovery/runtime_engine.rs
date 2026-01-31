@@ -201,7 +201,7 @@ impl CapabilityDiscoveryEngine {
             let service = DiscoveredService {
                 address: addr,
                 capabilities: vec![capability.to_string()],
-                metadata: [(\"source\".to_string(), \"environment\".to_string())]
+                metadata: [("source".to_string(), "environment".to_string())]
                     .into_iter()
                     .collect(),
                 discovered_at: std::time::SystemTime::now(),
