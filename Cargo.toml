@@ -142,8 +142,7 @@ clap = { version = "4.0", features = ["derive"] }
 colored = "2.0"
 
 # Networking
-hickory-resolver = "0.24"  # Updated from trust-dns-resolver (unmaintained)
-trust-dns-resolver = "0.23"  # Legacy support for migration
+hickory-resolver = "0.24"  # Modern DNS resolver (replaces unmaintained trust-dns)
 socket2 = "0.6"  # Updated to latest version to unify dependencies
 if-addrs = "0.13"  # Network interface enumeration
 
@@ -191,6 +190,14 @@ opt-level = 3
 debug = false
 lto = true
 codegen-units = 1
+
+[profile.release]
+opt-level = 3              # Maximum optimizations
+lto = "fat"                # Full Link Time Optimization (slower build, faster runtime)
+codegen-units = 1          # Single codegen unit (better optimization, slower build)
+strip = false              # Keep symbols for now (can strip later)
+panic = "abort"            # Smaller binary, faster panics
+overflow-checks = false    # Release mode default, explicit for clarity
 
 [profile.release-with-debug]
 inherits = "release"

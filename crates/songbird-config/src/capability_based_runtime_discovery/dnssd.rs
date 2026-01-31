@@ -8,8 +8,8 @@ use songbird_types::{SongbirdError, SongbirdResult};
 use std::collections::HashMap;
 use std::time::Duration;
 use tracing::{debug, info};
-use trust_dns_resolver::config::{ResolverConfig, ResolverOpts};
-use trust_dns_resolver::TokioAsyncResolver;
+use hickory_resolver::config::{ResolverConfig, ResolverOpts};
+use hickory_resolver::TokioAsyncResolver;
 
 /// DNS-SD discovery backend
 ///
@@ -145,8 +145,8 @@ impl DnsSDDiscovery {
 
     /// Parse DNS records into service structure
     fn parse_service(
-        srv: &trust_dns_resolver::proto::rr::rdata::SRV,
-        txt_lookup: Option<trust_dns_resolver::lookup::TxtLookup>,
+        srv: &hickory_resolver::proto::rr::rdata::SRV,
+        txt_lookup: Option<hickory_resolver::lookup::TxtLookup>,
         _request: &CapabilityRequest,
     ) -> DnsService {
         let mut features = Vec::new();
