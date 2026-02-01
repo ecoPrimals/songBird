@@ -128,7 +128,7 @@ pub async fn discover(capability: Capability) -> Result<String> {
         }
     }
 
-    // Strategy 3: Common socket patterns
+    // Strategy 3: Common socket patterns (Unix sockets)
     for pattern in capability.socket_patterns() {
         if Path::new(pattern).exists() {
             info!("   ✅ Found {:?} provider socket at: {}", capability, pattern);
@@ -136,6 +136,14 @@ pub async fn discover(capability: Capability) -> Result<String> {
         } else {
             debug!("   ⏭️  Not found: {}", pattern);
         }
+    }
+
+    // Strategy 3.5: TCP discovery files (isomorphic fallback)
+    // When primals can't use Unix sockets (Android/SELinux, Windows), they automatically
+    // fall back to TCP localhost and write a discovery file. Check for those files.
+    if let Some(tcp_endpoint) = discover_tcp_from_capability(capability) {
+        info!("   ✅ Found {:?} provider via TCP discovery file: {}", capability, tcp_endpoint);
+        return Ok(tcp_endpoint);
     }
 
     // Strategy 4: Socket scanning (last resort)
@@ -172,6 +180,101 @@ fn scan_sockets(capability: Capability) -> Option<String> {
                             return Some(path.to_string_lossy().to_string());
                         }
                     }
+                }
+            }
+        }
+    }
+
+    None
+}
+
+/// Discover TCP endpoint for a capability (isomorphic fallback support)
+///
+/// Checks TCP discovery files for primals that provide this capability.
+/// This enables transparent fallback when Unix sockets are unavailable
+/// (Android/SELinux, Windows).
+///
+/// # Discovery File Format
+///
+/// File: `$XDG_RUNTIME_DIR/{primal}-ipc-port`  
+/// Content: `tcp:127.0.0.1:12345`
+///
+/// # Arguments
+///
+/// * `capability` - The capability to discover (e.g., Crypto, Storage)
+///
+/// # Returns
+///
+/// Socket descriptor string (e.g., "tcp:127.0.0.1:12345") if found, None otherwise.
+///
+/// # Deep Debt Principles
+///
+/// - ✅ **Runtime Discovery**: Detects TCP endpoints automatically
+/// - ✅ **Zero Hardcoding**: No hardcoded ports or addresses
+/// - ✅ **Platform Agnostic**: Works on any platform with filesystem
+/// - ✅ **Isomorphic**: Same discovery code for Unix and TCP
+fn discover_tcp_from_capability(capability: Capability) -> Option<String> {
+    // Map capability to primal names that might provide it
+    let primal_names = match capability {
+        Capability::Crypto | Capability::Security => vec!["beardog"],
+        Capability::Http => vec!["songbird"],
+        Capability::Ai => vec!["squirrel"],
+        Capability::Storage => vec!["nestgate"],
+        Capability::Messaging => vec!["messenger"],
+    };
+
+    // Check TCP discovery files for each potential primal
+    for primal_name in primal_names {
+        if let Some(tcp_addr) = check_tcp_discovery_file(primal_name) {
+            // Return in socket descriptor format for compatibility
+            return Some(format!("tcp:{}", tcp_addr));
+        }
+    }
+
+    None
+}
+
+/// Check TCP discovery file for a specific primal
+///
+/// Checks XDG-compliant locations in priority order:
+/// 1. `$XDG_RUNTIME_DIR/{primal}-ipc-port`
+/// 2. `$HOME/.local/share/{primal}-ipc-port`
+/// 3. `/tmp/{primal}-ipc-port`
+///
+/// # Arguments
+///
+/// * `primal_name` - Primal name (e.g., "beardog", "squirrel")
+///
+/// # Returns
+///
+/// TCP socket address (e.g., "127.0.0.1:12345") if found, None otherwise.
+fn check_tcp_discovery_file(primal_name: &str) -> Option<String> {
+    let filename = format!("{}-ipc-port", primal_name);
+    let mut candidates = Vec::new();
+
+    // Priority 1: XDG_RUNTIME_DIR (preferred)
+    if let Ok(runtime_dir) = std::env::var("XDG_RUNTIME_DIR") {
+        candidates.push(std::path::PathBuf::from(runtime_dir).join(&filename));
+    }
+
+    // Priority 2: HOME/.local/share (fallback)
+    if let Ok(home) = std::env::var("HOME") {
+        candidates.push(std::path::PathBuf::from(home).join(".local/share").join(&filename));
+    }
+
+    // Priority 3: /tmp (last resort)
+    candidates.push(std::path::PathBuf::from(format!("/tmp/{}", filename)));
+
+    // Check each candidate
+    for path in candidates {
+        if let Ok(content) = std::fs::read_to_string(&path) {
+            // Parse format: "tcp:127.0.0.1:12345"
+            if let Some(addr_str) = content.strip_prefix("tcp:") {
+                let addr_trimmed = addr_str.trim();
+                // Validate it's a parseable socket address
+                if addr_trimmed.parse::<std::net::SocketAddr>().is_ok() {
+                    debug!("   Found TCP discovery file: {} -> {}", path.display(), addr_trimmed);
+                    return Some(addr_trimmed.to_string());
                 }
             }
         }
@@ -228,6 +331,77 @@ mod tests {
     fn test_primal_name_default() {
         let primal_name = get_primal_name();
         assert_eq!(primal_name, "songbird");
+    }
+
+    #[test]
+    fn test_tcp_discovery_file_parsing() {
+        use std::io::Write;
+        
+        // Create temp discovery file
+        let temp_dir = std::env::temp_dir();
+        let file_path = temp_dir.join("test-beardog-ipc-port");
+        
+        // Write TCP endpoint
+        let mut file = std::fs::File::create(&file_path).unwrap();
+        file.write_all(b"tcp:127.0.0.1:12345").unwrap();
+        drop(file);
+        
+        // Set XDG_RUNTIME_DIR to temp
+        std::env::set_var("XDG_RUNTIME_DIR", temp_dir.to_str().unwrap());
+        
+        // Test discovery
+        let result = check_tcp_discovery_file("test-beardog");
+        assert_eq!(result, Some("127.0.0.1:12345".to_string()));
+        
+        // Cleanup
+        std::fs::remove_file(file_path).ok();
+        std::env::remove_var("XDG_RUNTIME_DIR");
+    }
+
+    #[test]
+    fn test_tcp_discovery_from_crypto_capability() {
+        use std::io::Write;
+        
+        // Create temp discovery file for beardog
+        let temp_dir = std::env::temp_dir();
+        let file_path = temp_dir.join("beardog-ipc-port");
+        
+        let mut file = std::fs::File::create(&file_path).unwrap();
+        file.write_all(b"tcp:127.0.0.1:33765").unwrap();
+        drop(file);
+        
+        std::env::set_var("XDG_RUNTIME_DIR", temp_dir.to_str().unwrap());
+        
+        // Test Crypto capability maps to beardog
+        let result = discover_tcp_from_capability(Capability::Crypto);
+        assert_eq!(result, Some("tcp:127.0.0.1:33765".to_string()));
+        
+        // Cleanup
+        std::fs::remove_file(file_path).ok();
+        std::env::remove_var("XDG_RUNTIME_DIR");
+    }
+
+    #[test]
+    fn test_tcp_discovery_invalid_format() {
+        use std::io::Write;
+        
+        let temp_dir = std::env::temp_dir();
+        let file_path = temp_dir.join("invalid-beardog-ipc-port");
+        
+        // Write invalid format (missing tcp: prefix)
+        let mut file = std::fs::File::create(&file_path).unwrap();
+        file.write_all(b"127.0.0.1:12345").unwrap();
+        drop(file);
+        
+        std::env::set_var("XDG_RUNTIME_DIR", temp_dir.to_str().unwrap());
+        
+        // Should return None for invalid format
+        let result = check_tcp_discovery_file("invalid-beardog");
+        assert_eq!(result, None);
+        
+        // Cleanup
+        std::fs::remove_file(file_path).ok();
+        std::env::remove_var("XDG_RUNTIME_DIR");
     }
 }
 
