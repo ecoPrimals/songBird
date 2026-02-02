@@ -97,7 +97,7 @@ pub enum LineageHint {
 ///
 /// Derived from lineage, distributed by `BearDog`.
 /// **Phase 3**: Used for `BirdSong` encrypted broadcasts
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct BroadcastKey {
     /// Key identifier (for caching)
     pub key_id: String,
@@ -105,6 +105,7 @@ pub struct BroadcastKey {
     /// The actual key material (kept private)
     /// **Phase 3**: Used by `encrypt_broadcast()` and `decrypt_broadcast()` methods
     #[allow(dead_code)] // Phase 3: BirdSong encryption implementation pending
+    #[serde(skip)]
     pub(crate) key_data: Vec<u8>,
 
     /// When this key becomes valid

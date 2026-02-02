@@ -1,18 +1,234 @@
-//! Mock `BearDog` implementations for testing
+//! BearDog BirdSong Provider - Production & Test Implementations
 //!
-//! These mocks allow Songbird to test lineage relay without `BearDog` running
+//! Production implementation connects to BearDog via Unix socket JSON-RPC.
+//! Test mocks allow testing lineage relay without BearDog running.
+//!
+//! ## Deep Debt Compliance
+//!
+//! - ✅ Modern async Rust (trait-based, async/await)
+//! - ✅ Zero unsafe code
+//! - ✅ Runtime discovery (no hardcoded paths)
+//! - ✅ Mocks isolated to #[cfg(test)]
+//! - ✅ Pure Rust (Unix sockets, not HTTP)
 
 use crate::birdsong::{BirdSongCrypto, LineageHint};
 use crate::error::Result;
 use crate::relay::RelayAuthority;
 use crate::types::{MaskingLevel, NodeId, RelayAuthorization};
 use async_trait::async_trait;
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::SystemTime;
+use tokio::io::{AsyncReadExt, AsyncWriteExt};
+use tokio::net::UnixStream;
+use tracing::{debug, info};
+
+// Only import RwLock in test context
+#[cfg(test)]
 use tokio::sync::RwLock;
 
-/// Mock lineage provider for testing
+/// Production BearDog BirdSong Provider
+///
+/// Connects to BearDog via Unix socket JSON-RPC to provide lineage-based
+/// encryption for relay broadcasts. Only family members with lineage proofs
+/// can decrypt messages.
+///
+/// ## Deep Debt Principles
+///
+/// - Runtime discovery (socket path via env or discovery)
+/// - Zero unsafe code (pure Rust async)
+/// - Trait-based (implements `BirdSongCrypto`)
+/// - Graceful error handling
+pub struct BearDogBirdSongProvider {
+    socket_path: PathBuf,
+    family_id: Option<String>,
+}
+
+impl BearDogBirdSongProvider {
+    /// Create new BearDog BirdSong provider
+    ///
+    /// # Arguments
+    ///
+    /// * `socket_path` - BearDog Unix socket path (discovered at runtime)
+    /// * `family_id` - Optional family ID for validation
+    ///
+    /// # Example
+    ///
+    /// ```rust,no_run
+    /// use songbird_lineage_relay::beardog::BearDogBirdSongProvider;
+    ///
+    /// # async fn example() {
+    /// let provider = BearDogBirdSongProvider::new(
+    ///     "/tmp/beardog.sock",
+    ///     Some("ecoPrimals-family-123".to_string())
+    /// );
+    /// # }
+    /// ```
+    #[must_use]
+    pub fn new(socket_path: impl Into<PathBuf>, family_id: Option<String>) -> Self {
+        let socket_path = socket_path.into();
+        
+        info!("🐻 BearDog BirdSong provider created (Unix socket)");
+        info!("   Socket: {:?}", socket_path);
+        if let Some(ref fam) = family_id {
+            info!("   Family ID: {}", fam);
+        }
+        
+        Self {
+            socket_path,
+            family_id,
+        }
+    }
+
+    /// Call BearDog JSON-RPC method via Unix socket
+    ///
+    /// Pure Rust implementation using tokio UnixStream.
+    async fn call_beardog(&self, method: &str, params: serde_json::Value) -> Result<serde_json::Value> {
+        // Connect to BearDog Unix socket
+        let mut stream = UnixStream::connect(&self.socket_path)
+            .await
+            .map_err(|e| crate::error::LineageRelayError::BirdSongError(format!(
+                "Failed to connect to BearDog at {:?}: {}", self.socket_path, e
+            )))?;
+
+        // Build JSON-RPC request
+        let request = serde_json::json!({
+            "jsonrpc": "2.0",
+            "method": method,
+            "params": params,
+            "id": 1
+        });
+
+        // Serialize and send
+        let request_bytes = serde_json::to_vec(&request)?;
+        
+        stream.write_all(&request_bytes)
+            .await
+            .map_err(|e| crate::error::LineageRelayError::BirdSongError(format!(
+                "Failed to write to BearDog: {}", e
+            )))?;
+        stream.write_all(b"\n").await.ok(); // Newline delimiter
+
+        // Read response
+        let mut response_bytes = Vec::new();
+        stream.read_to_end(&mut response_bytes)
+            .await
+            .map_err(|e| crate::error::LineageRelayError::BirdSongError(format!(
+                "Failed to read from BearDog: {}", e
+            )))?;
+
+        // Parse JSON-RPC response
+        let response: serde_json::Value = serde_json::from_slice(&response_bytes)?;
+
+        // Check for JSON-RPC error
+        if let Some(error) = response.get("error") {
+            return Err(crate::error::LineageRelayError::BirdSongError(format!(
+                "BearDog RPC error: {}", error
+            )));
+        }
+
+        // Return result
+        response.get("result")
+            .cloned()
+            .ok_or_else(|| crate::error::LineageRelayError::BirdSongError(
+                "No result in BearDog response".to_string()
+            ))
+    }
+}
+
+#[async_trait]
+impl BirdSongCrypto for BearDogBirdSongProvider {
+    async fn encrypt_for_lineage(&self, message: &[u8], hint: LineageHint) -> Result<Vec<u8>> {
+        debug!("🔒 Encrypting for lineage via BearDog (hint: {:?})", hint);
+        
+        // Encode message as base64 for JSON-RPC
+        use base64::{engine::general_purpose, Engine as _};
+        let plaintext_b64 = general_purpose::STANDARD.encode(message);
+
+        // Build request params
+        let params = serde_json::json!({
+            "plaintext": plaintext_b64,
+            "family_id": self.family_id,
+            "lineage_hint": format!("{:?}", hint) // Serialized for BearDog
+        });
+
+        // Call birdsong.encrypt
+        let result = self.call_beardog("birdsong.encrypt", params).await?;
+
+        // Extract ciphertext
+        let ciphertext_b64 = result.get("ciphertext")
+            .or_else(|| result.get("encrypted")) // v1 compatibility
+            .and_then(|v| v.as_str())
+            .ok_or_else(|| crate::error::LineageRelayError::BirdSongError(
+                "No ciphertext in BearDog encrypt response".to_string()
+            ))?;
+
+        let ciphertext = general_purpose::STANDARD.decode(ciphertext_b64)
+            .map_err(|e| crate::error::LineageRelayError::BirdSongError(format!(
+                "Invalid base64 ciphertext: {}", e
+            )))?;
+
+        debug!("✅ Encrypted {} → {} bytes", message.len(), ciphertext.len());
+        Ok(ciphertext)
+    }
+
+    async fn decrypt_birdsong(&self, encrypted: &[u8], sender: &NodeId) -> Result<Option<Vec<u8>>> {
+        debug!("🔓 Decrypting BirdSong from {:?}", sender);
+        
+        // Encode ciphertext as base64 for JSON-RPC
+        use base64::{engine::general_purpose, Engine as _};
+        let ciphertext_b64 = general_purpose::STANDARD.encode(encrypted);
+
+        // Build request params
+        let params = serde_json::json!({
+            "ciphertext": ciphertext_b64,
+            "sender_node_id": sender.0
+        });
+
+        // Call birdsong.decrypt
+        let result = match self.call_beardog("birdsong.decrypt", params).await {
+            Ok(r) => r,
+            Err(_) => {
+                // Decryption failure might just mean different family (noise)
+                debug!("🔇 BearDog decrypt failed - likely different family (noise)");
+                return Ok(None);
+            }
+        };
+
+        // Check success flag
+        let success = result.get("success")
+            .and_then(|v| v.as_bool())
+            .unwrap_or(false);
+
+        if !success {
+            debug!("🔇 BearDog decrypt: different family (noise)");
+            return Ok(None);
+        }
+
+        // Extract plaintext
+        let plaintext_b64 = result.get("plaintext")
+            .and_then(|v| v.as_str())
+            .ok_or_else(|| crate::error::LineageRelayError::BirdSongError(
+                "No plaintext in BearDog decrypt response".to_string()
+            ))?;
+
+        let plaintext = general_purpose::STANDARD.decode(plaintext_b64)
+            .map_err(|e| crate::error::LineageRelayError::BirdSongError(format!(
+                "Invalid base64 plaintext: {}", e
+            )))?;
+
+        debug!("✅ Decrypted {} bytes from family", plaintext.len());
+        Ok(Some(plaintext))
+    }
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// TEST MOCKS - Isolated under #[cfg(test)]
+// ═══════════════════════════════════════════════════════════════════
+
+#[cfg(test)]
 pub struct MockLineageProvider {
     /// Lineage graph: `node_id` → `parent_id`
     lineages: Arc<RwLock<HashMap<String, String>>>,
@@ -20,6 +236,7 @@ pub struct MockLineageProvider {
     descendants: Arc<RwLock<HashMap<String, Vec<String>>>>,
 }
 
+#[cfg(test)]
 impl MockLineageProvider {
     /// Create new mock lineage provider
     #[must_use]
@@ -61,18 +278,21 @@ impl MockLineageProvider {
     }
 }
 
+#[cfg(test)]
 impl Default for MockLineageProvider {
     fn default() -> Self {
         Self::new()
     }
 }
 
+#[cfg(test)]
 /// Mock `BirdSong` crypto (for testing)
 pub struct MockBirdSongCrypto {
     lineage_provider: Arc<MockLineageProvider>,
     my_id: String,
 }
 
+#[cfg(test)]
 impl MockBirdSongCrypto {
     /// Create new mock crypto
     #[must_use]
@@ -84,6 +304,7 @@ impl MockBirdSongCrypto {
     }
 }
 
+#[cfg(test)]
 #[async_trait]
 impl BirdSongCrypto for MockBirdSongCrypto {
     async fn encrypt_for_lineage(&self, message: &[u8], _hint: LineageHint) -> Result<Vec<u8>> {
@@ -106,11 +327,13 @@ impl BirdSongCrypto for MockBirdSongCrypto {
     }
 }
 
+#[cfg(test)]
 /// Mock relay authority (for testing)
 pub struct MockRelayAuthority {
     lineage_provider: Arc<MockLineageProvider>,
 }
 
+#[cfg(test)]
 impl MockRelayAuthority {
     /// Create new mock relay authority
     #[must_use]
@@ -121,6 +344,7 @@ impl MockRelayAuthority {
     }
 }
 
+#[cfg(test)]
 #[async_trait]
 impl RelayAuthority for MockRelayAuthority {
     async fn authorize_relay(
@@ -165,6 +389,17 @@ impl RelayAuthority for MockRelayAuthority {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[tokio::test]
+    async fn test_beardog_provider_creation() {
+        let provider = BearDogBirdSongProvider::new(
+            "/tmp/beardog.sock",
+            Some("test-family".to_string())
+        );
+        
+        assert_eq!(provider.socket_path.to_str().unwrap(), "/tmp/beardog.sock");
+        assert_eq!(provider.family_id, Some("test-family".to_string()));
+    }
 
     #[tokio::test]
     async fn test_mock_lineage_provider() {

@@ -8,7 +8,12 @@
 pub mod birdsong;
 pub mod genesis;
 pub mod lineage;
+pub mod noop;
+pub mod production;
 pub mod relay;
+
+#[cfg(test)]
+pub mod mock;
 
 pub use birdsong::{BirdSongCrypto, BroadcastKey, EncryptedBirdSong, LineageHint};
 pub use lineage::{LineageChain, LineageLink, LineageProof, LineageProvider};
@@ -91,60 +96,88 @@ impl BearDogProviderFactory {
         // Query capability registry for "security" capability (BearDog)
         if let Ok(endpoint) = discover_primal(CanonicalPrimalType::Security).await {
             tracing::info!("Discovered BearDog via capability discovery at: {}", endpoint.url);
-            // TODO: Create actual HTTP BearDog client implementation
-            // For now, return no-op that explicitly errors (graceful degradation)
-            tracing::warn!(
-                "BearDog discovered but HTTP client not yet implemented - using NoOp provider"
-            );
-            return Ok(Some(Self::create_noop()));
+            
+            // Extract Unix socket path from URL
+            if let Some(socket_path) = endpoint.url.strip_prefix("unix://") {
+                match crate::beardog::production::ProductionBearDogProvider::new(socket_path).await {
+                    Ok(provider) => {
+                        tracing::info!("✅ Connected to BearDog via Unix socket: {}", socket_path);
+                        return Ok(Some(Box::new(provider)));
+                    }
+                    Err(e) => {
+                        tracing::warn!("Failed to connect to discovered BearDog: {}", e);
+                    }
+                }
+            } else {
+                tracing::warn!("BearDog endpoint is not a Unix socket URL: {}", endpoint.url);
+            }
         }
 
         Ok(None)
     }
 
     async fn discover_via_env() -> anyhow::Result<Option<Box<dyn BearDogProvider>>> {
-        // Check BEARDOG_URL or SECURITY_URL environment variable
+        // Check BEARDOG_SOCKET first (preferred for Unix sockets)
+        if let Ok(socket_path) = std::env::var("BEARDOG_SOCKET") {
+            tracing::info!("Using BearDog socket from BEARDOG_SOCKET: {}", socket_path);
+            match crate::beardog::production::ProductionBearDogProvider::new(&socket_path).await {
+                Ok(provider) => return Ok(Some(Box::new(provider))),
+                Err(e) => tracing::warn!("Failed to connect to BEARDOG_SOCKET: {}", e),
+            }
+        }
+
+        // Check SECURITY_SOCKET (generic)
+        if let Ok(socket_path) = std::env::var("SECURITY_SOCKET") {
+            tracing::info!("Using BearDog socket from SECURITY_SOCKET: {}", socket_path);
+            match crate::beardog::production::ProductionBearDogProvider::new(&socket_path).await {
+                Ok(provider) => return Ok(Some(Box::new(provider))),
+                Err(e) => tracing::warn!("Failed to connect to SECURITY_SOCKET: {}", e),
+            }
+        }
+
+        // Legacy: Check URL-based env vars (convert to socket if possible)
         if std::env::var("BEARDOG_URL").is_ok() || std::env::var("SECURITY_URL").is_ok() {
             let url = std::env::var("BEARDOG_URL").or_else(|_| std::env::var("SECURITY_URL"))?;
             tracing::info!("Found BearDog via environment at: {}", url);
-            // TODO: Create actual HTTP BearDog client implementation
-            tracing::warn!(
-                "BearDog URL configured but HTTP client not yet implemented - using NoOp provider"
-            );
-            return Ok(Some(Self::create_noop()));
+            
+            // Try to extract Unix socket path from URL
+            if let Some(socket_path) = url.strip_prefix("unix://") {
+                match crate::beardog::production::ProductionBearDogProvider::new(socket_path).await {
+                    Ok(provider) => return Ok(Some(Box::new(provider))),
+                    Err(e) => tracing::warn!("Failed to connect via URL: {}", e),
+                }
+            } else {
+                tracing::warn!("BearDog URL is not a Unix socket URL: {}", url);
+                tracing::warn!("Use BEARDOG_SOCKET for Unix socket paths, or prefix with unix://");
+            }
         }
 
         Ok(None)
     }
 
     async fn discover_via_wellknown() -> anyhow::Result<Option<Box<dyn BearDogProvider>>> {
-        // Development fallback: Try localhost:8200 (only in debug builds)
+        // Development fallback: Try /tmp/beardog.sock (only in debug builds)
         #[cfg(debug_assertions)]
         {
-            let default_url = "http://[::]:8200";
-            tracing::warn!("Using development fallback for BearDog: {}", default_url);
-            tracing::warn!("Set BEARDOG_URL or SECURITY_URL for production");
-            // TODO: Create actual HTTP BearDog client implementation
-            tracing::warn!(
-                "Development mode: HTTP client not yet implemented - using NoOp provider"
-            );
-            Ok(Some(Self::create_noop()))
+            let default_socket = "/tmp/beardog.sock";
+            if std::path::Path::new(default_socket).exists() {
+                tracing::warn!("Using development fallback for BearDog: {}", default_socket);
+                tracing::warn!("Set BEARDOG_SOCKET or SECURITY_SOCKET for production");
+                match crate::beardog::production::ProductionBearDogProvider::new(default_socket).await {
+                    Ok(provider) => return Ok(Some(Box::new(provider))),
+                    Err(e) => tracing::warn!("Failed to connect to default socket: {}", e),
+                }
+            }
         }
 
         #[cfg(not(debug_assertions))]
         {
             // Production: No fallback
             tracing::error!(
-                "BearDog not found. Set BEARDOG_URL or SECURITY_URL environment variable"
+                "BearDog not found. Set BEARDOG_SOCKET or SECURITY_SOCKET environment variable"
             );
-            Ok(None)
         }
+        
+        Ok(None)
     }
 }
-
-// No-Op implementation for production when BearDog unavailable
-pub mod noop;
-
-// Mock implementation - TEST ONLY
-#[cfg(test)]
-pub mod mock;
