@@ -40,6 +40,12 @@ songbird-discovery = { path = "../songbird-discovery" }
 # UUID generation
 uuid = { version = "1.0", features = ["v4"] }
 
+# Base64 encoding (for BirdSong beacons)
+base64 = "0.22"
+
+# Unix RPC client (re-export from songbird-universal)
+songbird-universal = { path = "../songbird-universal" }
+
 # Windows named pipes (only on Windows)
 [target.'cfg(windows)'.dependencies]
 tokio = { workspace = true, features = ["net"] }

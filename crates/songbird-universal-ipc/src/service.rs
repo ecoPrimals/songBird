@@ -25,6 +25,7 @@
 //! ```
 
 use crate::endpoint::NativeEndpoint;
+use crate::handlers::birdsong_handler::BirdSongHandler; // BirdSong (Feb 2, 2026)
 use crate::handlers::discovery_handler::{DiscoveryHandler, PeerRegistry};
 use crate::handlers::http_handler::{HttpHandler, HttpRequestParams};
 use crate::handlers::http_rendezvous_client::HttpRendezvousClient;
@@ -119,6 +120,7 @@ pub struct IpcServiceHandler {
     discovery_handler: Arc<DiscoveryHandler>,
     rendezvous_handler: Arc<RendezvousHandler>,
     peer_handler: Arc<PeerHandler>,
+    birdsong_handler: Arc<BirdSongHandler>, // BirdSong (Feb 2, 2026)
 }
 
 impl IpcServiceHandler {
@@ -128,6 +130,10 @@ impl IpcServiceHandler {
     /// - Real implementations (`HttpRendezvousClient`, `UdpPeerConnector`)
     /// - Mocks isolated to #[cfg(test)] only
     /// - Production-ready defaults
+    ///
+    /// ✅ DEEP DEBT UPDATED (Feb 2, 2026):
+    /// - Added BirdSong handler (runtime discovery, no hardcoding)
+    /// - Pure Rust, zero unsafe
     pub fn new(registry: Arc<RwLock<ServiceRegistry>>) -> Self {
         let http_handler = Arc::new(HttpHandler::with_default_discovery());
         let stun_handler = Arc::new(StunHandler::new());
@@ -137,6 +143,7 @@ impl IpcServiceHandler {
         let rendezvous_handler =
             Arc::new(RendezvousHandler::new(Arc::new(HttpRendezvousClient::new())));
         let peer_handler = Arc::new(PeerHandler::new(Arc::new(UdpPeerConnector::new())));
+        let birdsong_handler = Arc::new(BirdSongHandler::new()); // Feb 2, 2026
 
         Self {
             registry,
@@ -145,6 +152,7 @@ impl IpcServiceHandler {
             discovery_handler,
             rendezvous_handler,
             peer_handler,
+            birdsong_handler,
         }
     }
 
@@ -154,6 +162,9 @@ impl IpcServiceHandler {
     /// - Real implementations (`HttpRendezvousClient`, `UdpPeerConnector`)
     /// - Runtime peer discovery via `PeerRegistry` trait
     /// - Zero hardcoding
+    ///
+    /// ✅ DEEP DEBT UPDATED (Feb 2, 2026):
+    /// - Added BirdSong handler
     pub fn with_discovery_registry(
         registry: Arc<RwLock<ServiceRegistry>>,
         peer_registry: Arc<dyn PeerRegistry>,
@@ -166,6 +177,7 @@ impl IpcServiceHandler {
         let rendezvous_handler =
             Arc::new(RendezvousHandler::new(Arc::new(HttpRendezvousClient::new())));
         let peer_handler = Arc::new(PeerHandler::new(Arc::new(UdpPeerConnector::new())));
+        let birdsong_handler = Arc::new(BirdSongHandler::new()); // Feb 2, 2026
 
         Self {
             registry,
@@ -174,6 +186,7 @@ impl IpcServiceHandler {
             discovery_handler,
             rendezvous_handler,
             peer_handler,
+            birdsong_handler,
         }
     }
 
@@ -189,6 +202,7 @@ impl IpcServiceHandler {
         let rendezvous_handler =
             Arc::new(RendezvousHandler::new(Arc::new(HttpRendezvousClient::new())));
         let peer_handler = Arc::new(PeerHandler::new(Arc::new(UdpPeerConnector::new())));
+        let birdsong_handler = Arc::new(BirdSongHandler::new()); // Feb 2, 2026
 
         Self {
             registry,
@@ -197,6 +211,7 @@ impl IpcServiceHandler {
             discovery_handler,
             rendezvous_handler,
             peer_handler,
+            birdsong_handler,
         }
     }
 
@@ -462,12 +477,16 @@ impl IpcServiceHandler {
             "name": "songbird",
             "version": env!("CARGO_PKG_VERSION"),
             "description": "Network Orchestration & Discovery Primal",
-            "capabilities": ["discovery", "stun", "mdns", "http", "ipc", "rendezvous", "peer"],
+            "capabilities": ["discovery", "stun", "mdns", "http", "ipc", "rendezvous", "peer", "birdsong"],
             "role": "network_orchestrator",
-            "discovery_methods": ["mdns", "stun", "udp_broadcast", "tcp_direct"],
+            "discovery_methods": ["mdns", "stun", "udp_broadcast", "tcp_direct", "birdsong_encrypted"],
             "endpoints": {
                 "primary": "runtime_discovered",  // Runtime discovery, no hardcoding
                 "protocols": ["unix_socket", "tcp"]
+            },
+            "security": {
+                "birdsong": "genetic_lineage_encryption",
+                "family_only": true
             }
         });
         Ok(info)
@@ -517,6 +536,14 @@ impl IpcServiceHandler {
                     "operations": ["connect"],
                     "description": "Direct peer-to-peer connection establishment",
                     "transport": "udp"
+                },
+                {
+                    "name": "birdsong",
+                    "operations": ["generate_encrypted_beacon", "decrypt_beacon", "verify_lineage", "get_lineage"],
+                    "description": "Dark Forest encrypted discovery (genetic lineage, family-only)",
+                    "security": "genetic_lineage",
+                    "encryption": "chacha20_poly1305",
+                    "provider": "beardog"
                 }
             ]
         });
@@ -625,6 +652,28 @@ impl IpcServiceHandler {
                     "name": "peer.connect",
                     "description": "Connect to peer directly",
                     "params": ["peer_address", "peer_port"]
+                },
+                
+                // BirdSong encrypted discovery methods (NEW - Feb 2, 2026)
+                {
+                    "name": "birdsong.generate_encrypted_beacon",
+                    "description": "Generate family-encrypted discovery beacon",
+                    "params": ["node_id", "capabilities"]
+                },
+                {
+                    "name": "birdsong.decrypt_beacon",
+                    "description": "Decrypt received beacon (family gate)",
+                    "params": ["encrypted_beacon"]
+                },
+                {
+                    "name": "birdsong.verify_lineage",
+                    "description": "Verify peer lineage via challenge-response",
+                    "params": ["peer_node_id", "our_node_id"]
+                },
+                {
+                    "name": "birdsong.get_lineage",
+                    "description": "Get own lineage info",
+                    "params": []
                 }
             ]
         });
@@ -665,6 +714,20 @@ impl JsonRpcHandler for IpcServiceHandler {
 
             // Peer connection methods (NEW - Jan 29, 2026 Phase 2)
             "peer.connect" => self.handle_peer_connect(params).await,
+
+            // BirdSong encrypted discovery methods (NEW - Feb 2, 2026)
+            "birdsong.generate_encrypted_beacon" => {
+                self.birdsong_handler
+                    .handle_generate_encrypted_beacon(params)
+                    .await
+            }
+            "birdsong.decrypt_beacon" => {
+                self.birdsong_handler.handle_decrypt_beacon(params).await
+            }
+            "birdsong.verify_lineage" => {
+                self.birdsong_handler.handle_verify_lineage(params).await
+            }
+            "birdsong.get_lineage" => self.birdsong_handler.handle_get_lineage(params).await,
 
             _ => Err(format!("Unknown method: {method}")),
         }

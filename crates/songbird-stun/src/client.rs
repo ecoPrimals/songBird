@@ -52,21 +52,43 @@ impl StunClient {
     pub async fn discover_public_address(&self, stun_server: &str) -> StunResult<SocketAddr> {
         info!("🔍 Discovering public address via STUN: {}", stun_server);
 
-        // Resolve STUN server address
-        let server_addr = tokio::net::lookup_host(stun_server)
+        // Resolve STUN server address - PREFER IPv4 to match our socket
+        let mut resolved = tokio::net::lookup_host(stun_server)
             .await
             .map_err(|e| StunError::Network(format!("Failed to resolve STUN server: {}", e)))?
+            .collect::<Vec<_>>();
+
+        info!("  DNS resolved {} addresses for {}", resolved.len(), stun_server);
+        for (i, addr) in resolved.iter().enumerate() {
+            info!("    [{}] {} ({})", i, addr, if addr.is_ipv4() { "IPv4" } else { "IPv6" });
+        }
+
+        // Prefer IPv4 addresses first (match our IPv4 socket binding)
+        resolved.sort_by_key(|addr| if addr.is_ipv4() { 0 } else { 1 });
+
+        let server_addr = resolved
+            .into_iter()
             .next()
             .ok_or_else(|| {
                 StunError::Network(format!("No addresses found for: {}", stun_server))
             })?;
 
-        debug!("  Resolved STUN server: {}", server_addr);
+        info!("  Selected STUN server: {} (family: {})", server_addr, 
+               if server_addr.is_ipv4() { "IPv4" } else { "IPv6" });
 
         // Bind local UDP socket (port 0 = OS assigns)
-        let local_socket = UdpSocket::bind("0.0.0.0:0")
+        // Match socket family to server address to avoid EAFNOSUPPORT (error 97)
+        let bind_addr = if server_addr.is_ipv4() {
+            "0.0.0.0:0"  // IPv4
+        } else {
+            "[::]:0"     // IPv6
+        };
+        
+        info!("  Binding UDP socket to: {} (matches server family)", bind_addr);
+        
+        let local_socket = UdpSocket::bind(bind_addr)
             .await
-            .map_err(|e| StunError::Network(format!("Failed to bind UDP socket: {}", e)))?;
+            .map_err(|e| StunError::Network(format!("Failed to bind UDP socket to {}: {}", bind_addr, e)))?;
 
         debug!("  Local socket bound: {}", local_socket.local_addr()?);
 

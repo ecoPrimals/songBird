@@ -17,6 +17,7 @@
 //! - **HTTP Rendezvous Client** - Production rendezvous via HTTP
 //! - **UDP Peer Connector** - Production hole punching via UDP
 
+pub mod birdsong_handler; // BirdSong encrypted discovery (Feb 2, 2026)
 pub mod discovery_bridge;
 pub mod discovery_handler;
 pub mod http_handler;
@@ -26,6 +27,7 @@ pub mod rendezvous_handler;
 pub mod stun_handler;
 pub mod udp_peer_connector;
 
+pub use birdsong_handler::*; // BirdSong handler (Feb 2, 2026)
 pub use discovery_bridge::*;
 pub use discovery_handler::*;
 pub use http_handler::*;
