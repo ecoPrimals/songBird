@@ -450,12 +450,197 @@ impl IpcServiceHandler {
 
         serde_json::to_value(result).map_err(|e| format!("Serialization error: {e}"))
     }
+
+    /// Handle `primal.info` method - Primal introspection
+    ///
+    /// ✅ DEEP DEBT COMPLIANT (Feb 2, 2026):
+    /// - Self-knowledge only (no hardcoded knowledge of other primals)
+    /// - Runtime discovery enabled
+    /// - Version from Cargo.toml (single source of truth)
+    async fn handle_primal_info(&self, _params: Value) -> Result<Value, String> {
+        let info = serde_json::json!({
+            "name": "songbird",
+            "version": env!("CARGO_PKG_VERSION"),
+            "description": "Network Orchestration & Discovery Primal",
+            "capabilities": ["discovery", "stun", "mdns", "http", "ipc", "rendezvous", "peer"],
+            "role": "network_orchestrator",
+            "discovery_methods": ["mdns", "stun", "udp_broadcast", "tcp_direct"],
+            "endpoints": {
+                "primary": "runtime_discovered",  // Runtime discovery, no hardcoding
+                "protocols": ["unix_socket", "tcp"]
+            }
+        });
+        Ok(info)
+    }
+
+    /// Handle `primal.capabilities` method - Detailed capability introspection
+    ///
+    /// ✅ DEEP DEBT COMPLIANT (Feb 2, 2026):
+    /// - Describes capabilities without hardcoding other primals
+    /// - Each capability is self-contained
+    /// - Operations list enables semantic routing
+    async fn handle_primal_capabilities(&self, _params: Value) -> Result<Value, String> {
+        let capabilities = serde_json::json!({
+            "capabilities": [
+                {
+                    "name": "discovery",
+                    "operations": ["peers", "mdns", "broadcast", "scan"],
+                    "description": "Service discovery and peer finding",
+                    "protocols": ["mdns", "udp_multicast"]
+                },
+                {
+                    "name": "stun",
+                    "operations": ["get_public_address", "bind"],
+                    "description": "NAT traversal via STUN",
+                    "rfc": "RFC 5389"
+                },
+                {
+                    "name": "http",
+                    "operations": ["request", "get", "post"],
+                    "description": "HTTP/HTTPS client with TLS 1.3",
+                    "features": ["redirect_following", "adaptive_user_agent", "tls_1_3"]
+                },
+                {
+                    "name": "ipc",
+                    "operations": ["register", "resolve", "discover", "list"],
+                    "description": "Inter-primal communication registry",
+                    "transport": "unix_socket"
+                },
+                {
+                    "name": "rendezvous",
+                    "operations": ["register", "lookup"],
+                    "description": "Rendezvous protocol for peer coordination",
+                    "protocol": "http_based"
+                },
+                {
+                    "name": "peer",
+                    "operations": ["connect"],
+                    "description": "Direct peer-to-peer connection establishment",
+                    "transport": "udp"
+                }
+            ]
+        });
+        Ok(capabilities)
+    }
+
+    /// Handle `rpc.methods` method - List all available JSON-RPC methods
+    ///
+    /// ✅ DEEP DEBT COMPLIANT (Feb 2, 2026):
+    /// - Self-describing API
+    /// - Enables clients to discover available methods at runtime
+    /// - No external configuration needed
+    async fn handle_rpc_methods(&self, _params: Value) -> Result<Value, String> {
+        let methods = serde_json::json!({
+            "jsonrpc": "2.0",
+            "methods": [
+                // Introspection (NEW - Feb 2, 2026)
+                {
+                    "name": "primal.info",
+                    "description": "Get primal metadata and capabilities",
+                    "params": []
+                },
+                {
+                    "name": "primal.capabilities",
+                    "description": "Get detailed capability descriptions",
+                    "params": []
+                },
+                {
+                    "name": "rpc.methods",
+                    "description": "List all available JSON-RPC methods",
+                    "params": []
+                },
+                
+                // IPC registry methods
+                {
+                    "name": "ipc.register",
+                    "description": "Register a primal in the IPC registry",
+                    "params": ["primal_id", "capabilities", "endpoint"]
+                },
+                {
+                    "name": "ipc.resolve",
+                    "description": "Resolve a primal by ID",
+                    "params": ["primal_id"]
+                },
+                {
+                    "name": "ipc.discover",
+                    "description": "Discover primals by capability",
+                    "params": ["capability"]
+                },
+                {
+                    "name": "ipc.list",
+                    "description": "List all registered primals",
+                    "params": []
+                },
+                
+                // HTTP/HTTPS methods
+                {
+                    "name": "http.request",
+                    "description": "Full HTTP/HTTPS request",
+                    "params": ["method", "url", "headers?", "body?"]
+                },
+                {
+                    "name": "http.get",
+                    "description": "HTTP GET request",
+                    "params": ["url", "headers?"]
+                },
+                {
+                    "name": "http.post",
+                    "description": "HTTP POST request",
+                    "params": ["url", "body", "headers?"]
+                },
+                
+                // STUN/NAT traversal methods
+                {
+                    "name": "stun.get_public_address",
+                    "description": "Get public IP and port via STUN",
+                    "params": ["stun_server?"]
+                },
+                {
+                    "name": "stun.bind",
+                    "description": "Bind to port and get mapping",
+                    "params": ["local_port?", "stun_server?"]
+                },
+                
+                // Discovery methods
+                {
+                    "name": "discovery.peers",
+                    "description": "Discover peers on local network",
+                    "params": []
+                },
+                
+                // Rendezvous methods
+                {
+                    "name": "rendezvous.register",
+                    "description": "Register with rendezvous server",
+                    "params": ["server_url", "peer_id", "connection_info"]
+                },
+                {
+                    "name": "rendezvous.lookup",
+                    "description": "Lookup peer on rendezvous server",
+                    "params": ["server_url", "peer_id"]
+                },
+                
+                // Peer connection methods
+                {
+                    "name": "peer.connect",
+                    "description": "Connect to peer directly",
+                    "params": ["peer_address", "peer_port"]
+                }
+            ]
+        });
+        Ok(methods)
+    }
 }
 
 #[async_trait]
 impl JsonRpcHandler for IpcServiceHandler {
     async fn handle(&self, method: &str, params: Value) -> Result<Value, String> {
         match method {
+            // Introspection methods (NEW - Feb 2, 2026)
+            "primal.info" => self.handle_primal_info(params).await,
+            "primal.capabilities" => self.handle_primal_capabilities(params).await,
+            "rpc.methods" => self.handle_rpc_methods(params).await,
+
             // IPC registry methods
             "ipc.register" => self.handle_register(params).await,
             "ipc.resolve" => self.handle_resolve(params).await,
@@ -560,6 +745,71 @@ mod tests {
         let providers = result_value["providers"].as_array().unwrap();
         assert_eq!(providers.len(), 1);
         assert_eq!(providers[0]["primal_id"], "beardog");
+    }
+
+    #[tokio::test]
+    async fn test_primal_info_introspection() {
+        let registry = Arc::new(RwLock::new(ServiceRegistry::new()));
+        let handler = IpcServiceHandler::new(registry.clone());
+
+        let result = handler.handle("primal.info", json!({})).await;
+        assert!(result.is_ok());
+
+        let info = result.unwrap();
+        assert_eq!(info["name"], "songbird");
+        assert!(info["version"].is_string());
+        assert!(info["capabilities"].is_array());
+        assert!(info["capabilities"].as_array().unwrap().contains(&json!("discovery")));
+        assert!(info["capabilities"].as_array().unwrap().contains(&json!("stun")));
+    }
+
+    #[tokio::test]
+    async fn test_primal_capabilities_introspection() {
+        let registry = Arc::new(RwLock::new(ServiceRegistry::new()));
+        let handler = IpcServiceHandler::new(registry.clone());
+
+        let result = handler.handle("primal.capabilities", json!({})).await;
+        assert!(result.is_ok());
+
+        let caps = result.unwrap();
+        assert!(caps["capabilities"].is_array());
+        
+        let caps_array = caps["capabilities"].as_array().unwrap();
+        assert!(!caps_array.is_empty());
+        
+        // Verify discovery capability exists with operations
+        let discovery_cap = caps_array.iter()
+            .find(|c| c["name"] == "discovery")
+            .expect("discovery capability should exist");
+        
+        assert!(discovery_cap["operations"].is_array());
+        assert!(discovery_cap["description"].is_string());
+    }
+
+    #[tokio::test]
+    async fn test_rpc_methods_introspection() {
+        let registry = Arc::new(RwLock::new(ServiceRegistry::new()));
+        let handler = IpcServiceHandler::new(registry.clone());
+
+        let result = handler.handle("rpc.methods", json!({})).await;
+        assert!(result.is_ok());
+
+        let methods = result.unwrap();
+        assert!(methods["methods"].is_array());
+        
+        let methods_array = methods["methods"].as_array().unwrap();
+        assert!(!methods_array.is_empty());
+        
+        // Verify introspection methods are listed
+        let method_names: Vec<String> = methods_array.iter()
+            .filter_map(|m| m["name"].as_str())
+            .map(String::from)
+            .collect();
+        
+        assert!(method_names.contains(&"primal.info".to_string()));
+        assert!(method_names.contains(&"primal.capabilities".to_string()));
+        assert!(method_names.contains(&"rpc.methods".to_string()));
+        assert!(method_names.contains(&"ipc.register".to_string()));
     }
 
     #[tokio::test]
