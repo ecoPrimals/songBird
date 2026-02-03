@@ -57,6 +57,7 @@
 pub mod beardog_client; // ✅ ACTIVE: Smart refactored module (7 sub-modules)
 pub mod client;
 mod connection; // ✅ NEW: Connection management (HTTP/HTTPS) (extracted from client.rs)
+pub mod connection_pool; // ✅ NEW: Connection pooling for resource optimization (Feb 3, 2026)
 pub mod crypto;
 pub mod error;
 pub mod http_config; // ✅ NEW: Adaptive HTTP configuration (User-Agent, routing, etc.)

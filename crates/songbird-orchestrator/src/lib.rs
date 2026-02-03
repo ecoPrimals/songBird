@@ -92,6 +92,7 @@ pub mod core; // Consolidated core functionality
 pub mod crypto; // Pure Rust TLS via BearDog crypto delegation (Jan 18, 2026) - Path to 100% ecoBin!
 pub mod env_config; // Environment configuration - self-knowledge (TRUE PRIMAL) (Jan 21, 2026)
 pub mod error_recovery; // Error recovery & resilience (Week 3 - Dec 18, 2025)
+pub mod resilience; // Modern resilience patterns (Circuit Breaker, etc.) (Feb 3, 2026)
 pub mod graph; // Graph validation for Collaborative Intelligence (Jan 11, 2026)
 pub mod http_gateway; // HTTP gateway for universal pure Rust ecosystem (Jan 16, 2026)
 pub mod integration;

@@ -198,9 +198,11 @@ impl InfantDiscoveryManager  {/// Create new infant discovery manager with zero 
 
     /// Get or create HTTP client for probing
     async fn get_client(&self) -> Result<songbird_http_client::IpcHttpClient, SongbirdError> {
-        use std::time::Duration;
+        // ✅ DEEP DEBT EVOLUTION (Feb 3, 2026): Configurable timeout
+        // Replaces hardcoded Duration::from_secs(5) with TimeoutConfig
+        let timeout_config = songbird_config::timeouts::TimeoutConfig::from_env();
         songbird_http_client::IpcHttpClient::builder()
-            .timeout(Duration::from_secs(5))
+            .timeout(timeout_config.connect)
             .build()
             .await
             .map_err(|e| SongbirdError::network(format!("Failed to create HTTP client: {}", e)))

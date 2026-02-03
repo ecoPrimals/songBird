@@ -97,6 +97,9 @@ pub mod port_discovery;
 /// Capability-based port configuration (zero hardcoding)
 pub mod capability_port_config;
 
+/// **MODERN**: Timeout configuration (replaces hardcoded Duration::from_secs)
+pub mod timeouts;
+
 // ============================================================================
 // LEGACY MODULES - BEING CONSOLIDATED
 // ============================================================================

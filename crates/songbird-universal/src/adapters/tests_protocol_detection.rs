@@ -43,10 +43,13 @@ mod protocol_detection_unit_tests {
     #[tokio::test]
     async fn test_with_timeout_builder() {
         // Test builder pattern for timeout configuration
+        // ✅ DEEP DEBT EVOLUTION (Feb 3, 2026): Use TimeoutConfig for tests
+        // Replaces hardcoded Duration::from_secs(10) with TimeoutConfig::fast()
+        let timeout_config = songbird_config::timeouts::TimeoutConfig::fast();
         let adapter = SecurityAdapter::new("http://localhost:9000".to_string())
             .await
             .unwrap()
-            .with_timeout(Duration::from_secs(10));
+            .with_timeout(timeout_config.request);
 
         assert_eq!(adapter.endpoint(), "http://localhost:9000");
     }
