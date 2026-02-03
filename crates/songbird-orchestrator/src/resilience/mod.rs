@@ -6,6 +6,7 @@
 //! ## Patterns Implemented
 //!
 //! - **Circuit Breaker**: Prevent cascading failures, provide graceful degradation
+//! - **Health Checks**: Standardized health monitoring for all components
 //! - **Retry**: (Future) Automatic retry with exponential backoff
 //! - **Timeout**: (Future) Bounded operation timeouts
 //! - **Bulkhead**: (Future) Resource isolation
@@ -21,7 +22,17 @@
 //!
 //! ```rust
 //! use songbird_orchestrator::resilience::circuit_breaker::CircuitBreaker;
+//! use songbird_orchestrator::resilience::health::{HealthCheck, HealthStatus};
+//! use async_trait::async_trait;
 //! use std::time::Duration;
+//!
+//! # struct MyService;
+//! #[async_trait]
+//! impl HealthCheck for MyService {
+//!     async fn health(&self) -> HealthStatus {
+//!         HealthStatus::healthy("my-service")
+//!     }
+//! }
 //!
 //! #[tokio::main]
 //! async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -46,6 +57,8 @@
 //! ```
 
 pub mod circuit_breaker;
+pub mod health;
 
 // Re-export main types for convenience
 pub use circuit_breaker::{CircuitBreaker, CircuitBreakerConfig, CircuitBreakerError, CircuitState};
+pub use health::{AggregatedHealth, HealthCheck, HealthChecker, HealthStatus, Status};
