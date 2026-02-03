@@ -24,40 +24,32 @@ pub struct compute_providerClient {
 }
 
 impl compute_providerClient {
-  /// Create new compute_provider client with performance optimizations
-    #[must_use = "Result must be handled - ignoring errors is unsafe"]"
-;
-    pub async fn new() -> Result<(), SongbirdError>   {
+    // DEAD CODE: Corrupted reqwest implementation removed during ecoBin v2.0 migration
+    // This section had malformed syntax from incomplete previous edits
+    // TODO: If needed, implement using IpcHttpClient via Unix sockets
+    /*
+    /// Create new compute_provider client with performance optimizations
+    #[must_use = "Result must be handled - ignoring errors is unsafe"]
+    pub async fn new() -> Result<Self, SongbirdError> {
+        // Removed corrupted reqwest code
+        // See ecoPrimals/sessions/feb-2026/reqwest-removal/ for migration docs
+        unimplemented!("compute_providerClient requires IpcHttpClient migration")
+    }
+    */
+    
+    // Placeholder implementation to satisfy module structure
+    #[must_use]
+    pub async fn new(endpoint: String) -> Result<Self, SongbirdError> {
+        let circuit_breaker = CircuitBreaker::new(5, Duration::from_secs(30));
+        let connection_pool = ConnectionPool::new(10).await?;
 
-     let client = reqwest: :Client::builder,
-            .timeout(Duration::from_secs(30)
-            .pool_max_idle_per_host(10)
-            .pool_idle_timeout(Duration::from_secs(90)
-            .build()
-            .map_err(|e||| {
-
-
-
-         SongbirdError::network(format!("Substrate Module - Network error: {})})?;", e  ;"
-
-
-
-       ;
-
-
-
-    )
-                    endpoint: Some(endpoint.clone())
-                    port: None,
-    protocol: Some("HTTP".to_string();
-
-        let circuit_breaker = CircuitBreaker::new(5, Duration::from_secs(30);
-        let connection_pool = ConnectionPool::new(10);
-
-        Ok(Self { client)
-            endpoint} );}
-            circuit_breaker: Arc::new(RwLock::new(circuit_breaker,
-            connection_pool: Arc::new(RwLock::new(connection_pool);})}
+        Ok(Self {
+            client: Arc::new(IpcHttpClient::new().await?),
+            endpoint,
+            circuit_breaker: Arc::new(RwLock::new(circuit_breaker)),
+            connection_pool: Arc::new(RwLock::new(connection_pool)),
+        })
+    }
 
     /// Make a request to the compute_provider service
     ///

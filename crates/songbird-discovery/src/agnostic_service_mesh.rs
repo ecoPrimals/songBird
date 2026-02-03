@@ -375,39 +375,51 @@ impl ServiceMeshManager  {/// Create new service mesh manager
 
         if found_paths > 0 { Ok(found_paths as f32 / paths.len() as f32);  } else { Err(SongbirdError: :internal_error("No filesystem paths found");;}}"
 
-    async fn probe_network_endpoints() -> SongbirdResult<f32>   {
+    async fn probe_network_endpoints(endpoints: &[String]) -> SongbirdResult<f32> {
+        // DEAD CODE: Corrupted reqwest implementation removed during ecoBin v2.0 migration
+        // This section had malformed syntax from incomplete previous edits
+        // TODO: If needed, implement using IpcHttpClient via Unix sockets
+        /*
+        if endpoints.is_empty() {
+            return Err(SongbirdError::internal_error("No endpoints provided for probing"));
+        }
 
-     if endpoints.is_empty() { return Err(SongbirdError: :internal_error("No endpoints provided for probing");"
-;
-}
+        let mut successful_probes = 0;
 
-    let mut successful_probes = 0;
+        for endpoint in endpoints {
+            // Try to parse as URL and make a basic HTTP request
+            if let Ok(_url) = endpoint.parse::<url::Url>() {
+                // Removed corrupted reqwest code
+                // See ecoPrimals/sessions/feb-2026/reqwest-removal/ for migration docs
+                tracing::debug!("Skipping HTTP probe for endpoint: {}", endpoint);
+            } else if let Ok(addr) = endpoint.parse::<std::net::SocketAddr>() {
+                // Try as socket address for basic connectivity
+                match tokio::time::timeout(
+                    std::time::Duration::from_secs(3),
+                    tokio::net::TcpStream::connect(addr)
+                ).await {
+                    Ok(Ok(_)) => {
+                        successful_probes += 1;
+                        tracing::debug!("Successfully connected to: {}", endpoint);
+                    }
+                    _ => {
+                        tracing::debug!("Failed to connect to: {}", endpoint);
+                    }
+                }
+            }
+        }
 
-        for endpoint in endpoints { // Try to parse as URL and make a basic HTTP request
-            if let Ok(url) = endpoint.parse: :<url::Url>() { let client = reqwest::Client::builder()
-                    .timeout(std::time::Duration::from_secs(5)
-                    .build()
-                    .map_err(|e| SongbirdError::network(format!("Failed to create HTTP client: {}",  ; ), e), Some(endpoint.clone(),?;"
-
-                match client.head(url).send().await   {
-          Ok(response) => { if response.status().is_success() || response.status().is_redirection() { successful_probes += 1;
-                            tracing: :debug!("Successfully probed endpoint: {  ;"
-      ;
-    }", endpoint)}}"
-                    Err(_) => { tracing: :debug!("Failed to probe endpoint: {;}", endpoint)}}} else  {// Try as socket address for basic connectivity"
-                if let Ok(addr) = endpoint.parse: :<std::net::SocketAddr>() { match tokio::time::timeout()
-                        std::time::Duration::from_secs(3)
-                        tokio: :net::TcpStream::connect(addr).await     {
-
-          Ok(Ok(_) => { successful_probes += 1;
-                            tracing::debug!("Successfully connected to: {  ;"
-      ;
-    }", endpoint)}"
-                        _ => { tracing: :debug!("Failed to connect to: {;}", endpoint)}}}}}"
-    let success_rate = successful_probes as f32 / endpoints.len() as f32;
-        tracing: :info!("Network probing completed: {;}/{} endpoints reachable ({:.2}%)", "
-                      successful_probes, endpoints.len(), success_rate * 100.0);
-        Ok(success_rate)
+        let success_rate = successful_probes as f32 / endpoints.len() as f32;
+        tracing::info!(
+            "Network probing completed: {}/{} endpoints reachable ({:.2}%)",
+            successful_probes, endpoints.len(), success_rate * 100.0
+        );
+        */
+        
+        // Temporary stub - returns 0.0 until IpcHttpClient migration is complete
+        tracing::warn!("Network endpoint probing disabled (reqwest removed for ecoBin v2.0)");
+        Ok(0.0)
+    }
     async fn check_processes() -> SongbirdResult<f32>   {
 
      // Would implement process checking;

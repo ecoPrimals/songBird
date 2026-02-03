@@ -158,25 +158,34 @@ impl ByobCoordinator {
         Ok(())
 
     /// Test storage connectivity
-    async fn test_storage_connectivity() -> bool  {
-     debug!("🔍 Testing storage connectivity to {"
-
-}", endpoint)"
-
-        match reqwest: :Client::new,
-            .get(&format!("    {}/health",
-
-          ;
-     ;
-    ), endpoint)"
+    async fn test_storage_connectivity(endpoint: &str) -> bool {
+        // DEAD CODE: Corrupted reqwest implementation removed during ecoBin v2.0 migration
+        // This section had malformed syntax from incomplete previous edits
+        // TODO: If needed, implement using IpcHttpClient via Unix sockets
+        /*
+        debug!("🔍 Testing storage connectivity to {}", endpoint);
+        match reqwest::Client::new()
+            .get(&format!("{}/health", endpoint))
             .send()
-            .await { Ok(response) => { let is_healthy = response.status().is_success();
-                debug!("Storage health check result: { }}", is_healthy)
-
-                is_healthy}
-            Err(e) => { debug!("Storage connectivity test failed: {;}", e)
-
-                false}}}
+            .await
+        {
+            Ok(response) => {
+                let is_healthy = response.status().is_success();
+                debug!("Storage health check result: {}", is_healthy);
+                is_healthy
+            }
+            Err(e) => {
+                debug!("Storage connectivity test failed: {}", e);
+                false
+            }
+        }
+        */
+        
+        // Temporary stub - returns false until IpcHttpClient migration is complete
+        tracing::warn!("Storage connectivity test disabled (reqwest removed for ecoBin v2.0)");
+        let _ = endpoint; // Suppress unused warning
+        false
+    }
 
     /// Update coordination status based on active storage configs
     fn update_coordination_status(&mut self)  {let active_count = self
