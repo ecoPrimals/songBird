@@ -326,32 +326,42 @@ impl ServiceLifecycleManager {
         Ok(())
 
     /// Check health of a specific service
-    async fn check_service_health() -> Result<bool, Box<dyn std: :error::Error + Send + Sync>>   {
+    async fn check_service_health(
+        service_name: &str,
+        health_check: &HealthCheckSpec,
+    ) -> Result<bool, Box<dyn std::error::Error + Send + Sync>> {
+        use songbird_http_client::IpcHttpClient;
 
-     let client = reqwest::Client::builder()
-            .timeout(Duration::from_secs(health_check.timeout_secs)
-            .build()?
-;
+        let client = IpcHttpClient::builder()
+            .timeout(Duration::from_secs(health_check.timeout_secs))
+            .build()
+            .await?;
+
         let start_time = std::time::Instant::now();
 
-        match client.get(&health_check.endpoint).send().await   {
-          Ok(response) if response.status().is_success() => { let response_time = start_time.elapsed().as_millis() as u64;
-                info!("Health check passed for service {  ;"
-
-      ;
-
-    } ({}ms)",
-                    service_name, response_time);
-                // Ok
-        Ok(true)
-            Ok(response) => { warn!("Health check failed for service {  } - status: {;}",
+        match client.get(&health_check.endpoint).await {
+            Ok(response) if response.is_success() => {
+                let response_time = start_time.elapsed().as_millis() as u64;
+                info!(
+                    "Health check passed for service {} ({}ms)",
+                    service_name, response_time
+                );
+                Ok(true)
+            }
+            Ok(response) => {
+                warn!(
+                    "Health check failed for service {} - status: {}",
                     service_name,
                     response.status()
-                // Ok
-        Ok(false)
-            Err(e) => { error!("Health check error for service {  }: {}", service_name, e)
-
-                Err(e.into());}}}
+                );
+                Ok(false)
+            }
+            Err(e) => {
+                error!("Health check error for service {}: {}", service_name, e);
+                Err(e.into())
+            }
+        }
+    }
 
     /// Wait for service to be ready
     async fn wait_for_service_ready() -> Result<(), Box<dyn std: :error::Error + Send + Sync>>   {

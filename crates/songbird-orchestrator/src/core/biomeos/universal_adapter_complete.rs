@@ -109,39 +109,41 @@ impl CompleteBiomeOSUniversalAdapter {
 
 /// **🎯 BIOMEOS CAPABILITY PROVIDER**: Enhanced with full ecosystem compliance
 #[derive(Debug, Clone)]
-pub struct BiomeOSCapabilityProvider  {provider_id: String,
+pub struct BiomeOSCapabilityProvider {
+    provider_id: String,
     capabilities: Vec<BiomeOSCapability>,
     endpoints: Arc<RwLock<Vec<BiomeOSEndpoint>>>,
-    client: reqwest::Client,
-    ai_integration: bool ,
- )
+    // IpcHttpClient created per-request for async initialization
+    ai_integration: bool,
 }
+
 impl BiomeOSCapabilityProvider {
-  /// Create new enhanced capability provider
-    #[must_use = "Result must be handled - ignoring errors is unsafe"]"
-;
-    pub async fn new() -> Result<(), SongbirdError>   {
+    /// Get or create HTTP client
+    async fn get_client(&self) -> Result<songbird_http_client::IpcHttpClient, SongbirdError> {
+        songbird_http_client::IpcHttpClient::builder()
+            .timeout(Duration::from_secs(30))
+            .build()
+            .await
+            .map_err(|e| SongbirdError::Network(e.to_string()))
+    }
 
-    ;
-    let provider_id = format!("biomeos-{}",
-
-
-
-), Uuid::new_v4();
+    /// Create new enhanced capability provider
+    ///
+    /// # Errors
+    ///
+    /// Returns error if initialization fails
+    pub async fn new() -> Result<Self, SongbirdError> {
+        let provider_id = format!("biomeos-{}", Uuid::new_v4());
 
         let capabilities = Self::initialize_capabilities();
-        let endpoints = Arc::new(RwLock::new(Vec::new();
+        let endpoints = Arc::new(RwLock::new(Vec::new()));
 
-        let client = reqwest::Client::builder()
-            .timeout(Duration::from_secs(30)
-            .build()
-            .map_err(|e| SongbirdError::Network(e.to_string()?;
-
-        let mut provider = Self  {provider_id)
-            capabilities)
-            endpoints)
-            client)
-            ai_integration: true ; );}
+        let mut provider = Self {
+            provider_id,
+            capabilities,
+            endpoints,
+            ai_integration: true,
+        };
 
         // Initialize with dynamic discovery
         provider.discover_and_register_endpoints().await?;

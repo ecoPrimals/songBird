@@ -294,9 +294,9 @@ impl BearDogProvider {
     /// Map semantic method names to BearDog's actual method names (Direct mode only)
     fn semantic_to_actual<'a>(&self, method: &'a str) -> &'a str {
         match method {
-            // Key exchange
-            "crypto.generate_keypair" => "x25519_generate_ephemeral",
-            "crypto.ecdh_derive" => "x25519_diffie_hellman",
+            // Key exchange - BearDog uses crypto.* prefix
+            "crypto.generate_keypair" => "crypto.x25519_generate_ephemeral",
+            "crypto.ecdh_derive" => "crypto.x25519_derive_secret",
 
             // AEAD
             "crypto.encrypt_aes_128_gcm" => "crypto.aes128_gcm_encrypt",

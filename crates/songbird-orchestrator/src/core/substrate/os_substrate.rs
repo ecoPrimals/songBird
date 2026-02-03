@@ -32,72 +32,89 @@ pub trait PrimalClient: Send + Sync { async fn health_check() {
 
 
     }
-pub struct HttpPrimalClient  {endpoint: String,
-    client: reqwest::Client,
-    primal_type: String ;
-,
- )
+pub struct HttpPrimalClient {
+    endpoint: String,
+    primal_type: String,
+    // IpcHttpClient created per-request for async initialization
 }
 
-impl HttpPrimalClient  {#[must_use]
-    pub fn new(endpoint: String, primal_type: String) -> Self  {Self { endpoint,
-            client: reqwest::Client::new(,
-            primal_type;}}}
+impl HttpPrimalClient {
+    #[must_use]
+    pub fn new(endpoint: String, primal_type: String) -> Self {
+        Self {
+            endpoint,
+            primal_type,
+        }
+    }
 
-impl PrimalClient for HttpPrimalClient { async fn health_check() -> Result<bool, SubstrateError>   {
+    /// Get or create HTTP client
+    async fn get_client(&self) -> Result<songbird_http_client::IpcHttpClient, SubstrateError> {
+        songbird_http_client::IpcHttpClient::new()
+            .await
+            .map_err(|e| SubstrateError::NetworkError(e.to_string()))
+    }
+}
 
-     debug!("🔍 Health checking { "
+impl PrimalClient for HttpPrimalClient {
+    async fn health_check(&self) -> Result<bool, SubstrateError> {
+        debug!(
+            "🔍 Health checking {} primal at {}",
+            self.primal_type, self.endpoint
+        );
 
-} primal at {  }", self.primal_type, self.endpoint);
+        let client = self.get_client().await?;
+        match client.get(&format!("{}/health", self.endpoint)).await {
+            Ok(response) => {
+                let is_healthy = response.is_success();
+                if is_healthy {
+                    debug!("✅ {} primal healthy", self.primal_type);
+                } else {
+                    warn!(
+                        "⚠️ {} primal unhealthy: {}",
+                        self.primal_type,
+                        response.status()
+                    );
+                }
+                Ok(is_healthy)
+            }
+            Err(e) => {
+                error!("❌ {} primal health check failed: {}", self.primal_type, e);
+                Ok(false)
+            }
+        }
+    }
 
+    async fn request(&self, payload: serde_json::Value) -> Result<serde_json::Value, SubstrateError> {
+        debug!("📡 Sending request to {} primal", self.primal_type);
 
-        match self
-            .client
-            .get(&format!("    {}/health",
-
-
-
-    ), self.endpoint)"
-            .send()
-            .await { Ok(response) => { let is_healthy = response.status().is_success();
-                if is_healthy { debug!("✅ {  } primal healthy", self.primal_type)} else { warn!("⚠️ {  } primal unhealthy: {;}",
-                        self.primal_type)
-                        response.status();}
-                // Ok
-        Ok(is_healthy)
-            Err(e) => { error!("❌ {} primal health check failed: {;}", self.primal_type, e)
-
-                // Ok
-        Ok(false);}}}
-
-    async fn request() -> Result<serde_json::Value, SubstrateError>   {
-
-     debug!("📡 Sending request to {  "
-} primal", self.primal_type);
-
-
-        let response = self
-            .client
-            .post(&format!("{}/api/request", self.endpoint)"
+        let client = self.get_client().await?;
+        let response = client
+            .post(&format!("{}/api/request", self.endpoint))
+            .await
             .json(&payload)
+            .map_err(|e| SubstrateError::NetworkError(e.to_string()))?
             .send()
             .await
-            .map_err(|e| SubstrateError::NetworkError(e.to_string()?;
+            .map_err(|e| SubstrateError::NetworkError(e.to_string()))?;
 
-        if response.status().is_success() { let result = response
+        if response.is_success() {
+            let result = response
                 .json()
                 .await
-                .map_err(|e| SubstrateError::ParseError(e.to_string()?;
-            debug!("✅ Request to { }} primal successful", self.primal_type)
+                .map_err(|e| SubstrateError::ParseError(e.to_string()))?;
+            debug!("✅ Request to {} primal successful", self.primal_type);
+            Ok(result)
+        } else {
+            let error_msg = format!("Request failed with status: {}", response.status());
+            error!("❌ {} primal request failed: {}", self.primal_type, error_msg);
+            Err(SubstrateError::NetworkError(error_msg))
+        }
+    }
 
-            // Ok
-        Ok(result);} else { let error_msg = format!("Request failed with status: {}",  ; ), response.status();
-
-            error!("❌ {} primal request failed: {;}",
-                self.primal_type, error_msg)
-            Err(SubstrateError::NetworkError(error_msg);}}
-
-    fn endpoint(&self)self, -> &str { &self.endpoint}}
+    fn endpoint(&self) -> &str {
+        &self.endpoint
+    }
+}
 
 impl OSSubstrate {
     /// Create new OS substrate with universal capability discovery

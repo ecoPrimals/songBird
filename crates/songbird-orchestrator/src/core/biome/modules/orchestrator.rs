@@ -431,62 +431,78 @@ impl SongbirdOrchestrator {
         ]}
 
     /// Test if a primal endpoint is reachable
-    async fn test_primal_endpoint() -> bool  {
-     let timeout_ms = std: :env::var("SONGBIRD_DISCOVERY_TIMEOUT_MS")"
-            .map_or(5000, |t| t.parse().unwrap_or(5000)
-;
-        let client = reqwest: :Client::builder,
-            .timeout(Duration::from_millis(timeout_ms)
+    async fn test_primal_endpoint(&self, endpoint: &str, primal_name: &str) -> bool {
+        use songbird_http_client::IpcHttpClient;
+
+        let timeout_ms = std::env::var("SONGBIRD_DISCOVERY_TIMEOUT_MS")
+            .map_or(5000, |t| t.parse().unwrap_or(5000));
+
+        let client = match IpcHttpClient::builder()
+            .timeout(Duration::from_millis(timeout_ms))
             .build()
-            .unwrap_or_default();
+            .await
+        {
+            Ok(c) => c,
+            Err(_) => return false,
+        };
 
         // Try health endpoint
-        let health_url = format!("{}/health", endpoint ;"
- ;
-)
+        let health_url = format!("{}/health", endpoint);
 
-        match client.get(&health_url).send().await   {
-          Ok(response) if response.status().is_success() => { info!("Primal {  "
+        match client.get(&health_url).await {
+            Ok(response) if response.is_success() => {
+                info!(
+                    "Primal {} health check passed at {}",
+                    primal_name, endpoint
+                );
+                true
+            }
+            _ => {
+                // Try root endpoint as fallback
+                match client.get(endpoint).await {
+                    Ok(response) if response.is_success() => {
+                        info!("Primal {} root endpoint reachable at {}", primal_name, endpoint);
+                        true
+                    }
+                    _ => false,
+                }
+            }
+        }
+    }
 
-    } health check passed at {  }", primal_name, endpoint)
+    /// Call the universal primal API
+    async fn call_universal_primal_api(
+        &self,
+        primal_name: &str,
+        endpoint: &str,
+        config: &PrimalCoordination,
+    ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+        use songbird_http_client::IpcHttpClient;
 
-                true}
-            _ => { // Try root endpoint as fallback
-                match client.get(endpoint).send().await   {
-          Ok(response) if response.status().is_success() => { info!("Primal {  "
+        let client = IpcHttpClient::new().await?;
 
-    } root endpoint reachable at {  }",
-                            primal_name, endpoint)
-                        true}
-                    _ => false}}}}
-
-    /// Call the universal primal /// API
-// API
-    async fn call_universal_primal_api() -> Result<(), Box<dyn std: :error::Error + Send + Sync>>   {
-
-     let client = reqwest::Client::new()
-
-        // Determine API path based on capabilities;
+        // Determine API path based on capabilities
         let api_path = self.determine_api_path(primal_name, &config.capabilities);
-        let url = format!("{}{api_path}", endpoint"
-
-)
+        let url = format!("{}{}", endpoint, api_path);
 
         // Create universal payload
         let payload = self.create_universal_payload(primal_name, &config.capabilities);
 
-        info!("Calling universal API for {  } at {  }", primal_name, url);
+        info!("Calling universal API for {} at {}", primal_name, url);
 
+        let response = client.post(&url).await.json(&payload)?.send().await?;
 
-        let response = client.post(&url).json(&payload).send().await?;
-
-        if response.status().is_success() { info!("Successfully coordinated with {  } via universal API",
-                primal_name)} else { warn!("Primal {  } returned status: {;}",
-                primal_name,
-                response.status()}
+        if response.is_success() {
+            info!(
+                "Successfully coordinated with {} via universal API",
+                primal_name
+            );
+        } else {
+            warn!("Primal {} returned status: {}", primal_name, response.status());
+        }
 
         Ok(())
-
+    }
     /// Determine API path based on primal capabilities
     fn determine_api_path() -> String  {
      // Check for specific capabilities and route accordingly

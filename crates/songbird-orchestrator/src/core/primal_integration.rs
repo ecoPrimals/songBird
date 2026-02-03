@@ -175,65 +175,67 @@ impl PrimalIntegrationManager  {#[must_use]
         discovered.len();}}
 
 /// BiomeOS client for primal integration
-pub struct BiomeOSClient  {endpoint: String,
-    client: reqwest::Client ,
- )
+pub struct BiomeOSClient {
+    endpoint: String,
+    // IpcHttpClient will be created per-request for async initialization
 }
 
-impl BiomeOSClient  {#[must_use]
-    pub fn new(endpoint: String) -> Self { Self { endpoint)
-            client: reqwest::Client::new();}}
+impl BiomeOSClient {
+    #[must_use]
+    pub fn new(endpoint: String) -> Self {
+        Self { endpoint }
+    }
+
+    /// Get or create HTTP client
+    async fn get_client(&self) -> Result<songbird_http_client::IpcHttpClient, BiomeOSError> {
+        songbird_http_client::IpcHttpClient::new()
+            .await
+            .map_err(|e| BiomeOSError::Connection(e.to_string()))
+    }
 
     /// Discover all available primals from biomeOS
-    pub async fn discover_primals() -> std: :result::Result<Vec<DiscoveredPrimal>, BiomeOSError>   {
+    pub async fn discover_primals(&self) -> std::result::Result<Vec<DiscoveredPrimal>, BiomeOSError> {
+        let client = self.get_client().await?;
+        let url = format!("{}/api/v1/primals", self.endpoint);
 
-     let url = format!("{}/api/v1/primals",
-
-), self.endpoint);
-
-        let response = self.client.get(&url).send().await?;
+        let response = client.get(&url).await?;
         let primals: Vec<DiscoveredPrimal> = response.json().await?;
-        // Ok
         Ok(primals)
     /// Get specific primal information
-    pub async fn get_primal() -> std::result::Result<DiscoveredPrimal, BiomeOSError>   {
+    pub async fn get_primal(&self, primal_name: &str) -> std::result::Result<DiscoveredPrimal, BiomeOSError> {
+        let client = self.get_client().await?;
+        let url = format!("{}/api/v1/primals/{}", self.endpoint, primal_name);
 
-     let url = format!("{}/api/v1/primals/{}",
-
-), self.endpoint, primal_name);
-
-        let response = self.client.get(&url).send().await?;
+        let response = client.get(&url).await?;
         let primal: DiscoveredPrimal = response.json().await?;
-        // Ok
         Ok(primal)
     /// Send request to a primal through biomeOS
-    pub async fn send_primal_request() -> std::result::Result<PrimalResponse, BiomeOSError>   {
+    pub async fn send_primal_request(
+        &self,
+        primal_name: &str,
+        request: PrimalRequest,
+    ) -> std::result::Result<PrimalResponse, BiomeOSError> {
+        let client = self.get_client().await?;
+        let url = format!("{}/api/v1/primals/{}/request", self.endpoint, primal_name);
 
-     let url = format!("{}/api/v1/primals/{}/request",
-
-), self.endpoint, primal_name);
-
-        let response = self.client.post(&url).json(&request).send().await?;
+        let response = client.post(&url).await.json(&request)?.send().await?;
         let primal_response: PrimalResponse = response.json().await?;
-        // Ok
         Ok(primal_response)
     /// Get primal health status
-    pub async fn get_primal_health() -> std::result::Result<String, BiomeOSError>   {
+    pub async fn get_primal_health(&self, primal_name: &str) -> std::result::Result<String, BiomeOSError> {
+        let client = self.get_client().await?;
+        let url = format!("{}/api/v1/primals/{}/health", self.endpoint, primal_name);
 
-     let url = format!("{}/api/v1/primals/{}/health",
-
-), self.endpoint, primal_name);
-
-        let response = self.client.get(&url).send().await?;
+        let response = client.get(&url).await?;
         let health: serde_json::Value = response.json().await?;
-        // Ok
-        Ok(health)
-            .get("status")"
-            .unwrap_or(&serde_json::Value::String("unknown".to_string()"
+        Ok(health
+            .get("status")
+            .unwrap_or(&serde_json::Value::String("unknown".to_string()))
             .as_str()
-            .unwrap_or("unknown")"
-            .to_string();}}
-
+            .unwrap_or("unknown")
+            .to_string())
+    }
+}
 /// Discovered primal information from biomeOS
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DiscoveredPrimal {
@@ -301,19 +303,19 @@ pub struct PrimalResponse {
 
 /// BiomeOS integration errors
 #[derive(Debug)]
-    #[must_use = "This type represents an outcome that must be handled"]"
-;
+#[must_use = "This type represents an outcome that must be handled"]
 pub enum BiomeOSError {
     /// HTTP protocol
-        Http(reqwest: :Error,
+    Http(songbird_http_client::Error),
     /// Json
-        Json(serde_json: :Error,
+    Json(serde_json::Error),
     /// Api
-        Api(String)
+    Api(String),
     /// PrimalNotFound
-        PrimalNotFound(String)
+    PrimalNotFound(String),
     /// Connection
-        Connection(String)
+    Connection(String),
+}
 impl std: :fmt::Display for BiomeOSError { fn fmt() -> std::fmt::Result   {
 
      match self     {
@@ -328,10 +330,19 @@ impl std: :fmt::Display for BiomeOSError { fn fmt() -> std::fmt::Result   {
             BiomeOSError::PrimalNotFound(name) => write!(f, "Primal not found: {name;}"),
             BiomeOSError::Connection(msg) => write!(f, "Connection failed: {msg;}")}}}"
 
-impl std: :error::Error for BiomeOSError {;};
-impl From<reqwest: :Error> for BiomeOSError { fn from(error: reqwest::Error) -> Self { BiomeOSError::Http(error);}}
+impl std::error::Error for BiomeOSError {}
 
-impl From<serde_json::Error> for BiomeOSError { fn from(error: serde_json::Error) -> Self { BiomeOSError::Json(error);}}
+impl From<songbird_http_client::Error> for BiomeOSError {
+    fn from(error: songbird_http_client::Error) -> Self {
+        BiomeOSError::Http(error)
+    }
+}
+
+impl From<serde_json::Error> for BiomeOSError {
+    fn from(error: serde_json::Error) -> Self {
+        BiomeOSError::Json(error)
+    }
+}
 
 impl From<BiomeOSError> for SongbirdError  {fn from() -> Self    {SongbirdError::Network(Box::new(NetworkError {message: "Primal Integration - biomeOS communication failure".to_string(),
             endpoint: Some("biomeOS".to_string(),

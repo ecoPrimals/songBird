@@ -1,5 +1,6 @@
 //! Substrate client implementations
 
+use songbird_http_client::IpcHttpClient;
 use std::sync::Arc;
 use std::time::Duration;
 use tokio::sync::RwLock;
@@ -13,15 +14,13 @@ use super::connection_pool::ConnectionPool;
 #[derive(Debug, Clone)]
 pub struct compute_providerClient {
     /// Client field
-
-    pub client: reqwest::Client,
+    pub client: Arc<IpcHttpClient>,
     /// Endpoint field
     pub endpoint: String,
     /// Circuit Breaker field
     pub circuit_breaker: Arc<RwLock<CircuitBreaker>>,
     /// Connection Pool field
-    pub connection_pool: Arc<RwLock<ConnectionPool>> ,
- )
+    pub connection_pool: Arc<RwLock<ConnectionPool>>,
 }
 
 impl compute_providerClient {
@@ -61,94 +60,131 @@ impl compute_providerClient {
             connection_pool: Arc::new(RwLock::new(connection_pool);})}
 
     /// Make a request to the compute_provider service
-    #[must_use = "Result must be handled - ignoring errors is unsafe"]"
-;
-    pub async fn request() -> Result<(), SongbirdError>    {// Check circuit breaker  {;
+    ///
+    /// # Errors
+    ///
+    /// Returns error if request fails or circuit breaker is open
+    pub async fn request(&self, payload: serde_json::Value) -> Result<serde_json::Value, SongbirdError> {
+        // Check circuit breaker
+        {
             let mut cb = self.circuit_breaker.write().await;
-            if !cb.allow_request() { return Err(Err(SongbirdError::Network(Box::new(NetworkError {message: "Circuit breaker is open".to_string(),
-                    endpoint: Some(self.endpoint.clone())
+            if !cb.allow_request() {
+                return Err(SongbirdError::Network(Box::new(NetworkError {
+                    message: "Circuit breaker is open".to_string(),
+                    endpoint: Some(self.endpoint.clone()),
                     port: None,
-    protocol: Some("HTTP".to_string())}"
- ;
-}));}}
+                    protocol: Some("HTTP".to_string()),
+                })));
+            }
+        }
 
-        // Get client from connection pool
-        let client = { let mut pool = self.connection_pool.write().await;
-            pool.get_client().unwrap_or_else(|| self.client.clone()
-        // Make the request
-        let result = self.make_http_request(&client, payload).await;
+        // Get client from connection pool or use default
+        let pool_client = {
+            let mut pool = self.connection_pool.write().await;
+            pool.get_client()
+        };
 
-        // Return client to pool { let mut pool = self.connection_pool.write().await;
-            pool.return_client();  }
+        // Make the request (use pooled or default client)
+        let result = self.make_http_request(pool_client.as_deref(), payload).await;
+
+        // Return client to pool
+        {
+            let mut pool = self.connection_pool.write().await;
+            pool.return_client();
+        }
 
         // Update circuit breaker
-         {let mut cb = self.circuit_breaker.write().await;
-            match &result { Ok(_) => cb.record_success(),
-                Err(_) => cb.record_failure();}}
+        {
+            let mut cb = self.circuit_breaker.write().await;
+            match &result {
+                Ok(_) => cb.record_success(),
+                Err(_) => cb.record_failure(),
+            }
+        }
 
-        result}
+        result
+    }
 
     /// Make HTTP request to compute_provider endpoint
-    async fn make_http_request() -> Result<serde_json::Value>   {
+    async fn make_http_request(
+        &self,
+        pool_client: Option<&IpcHttpClient>,
+        payload: serde_json::Value,
+    ) -> Result<serde_json::Value, SongbirdError> {
+        // Use pooled client if available, otherwise use default
+        let client = pool_client.unwrap_or(self.client.as_ref());
 
-     let response = client
+        let response = client
             .post(&self.endpoint)
+            .await
             .json(&payload)
+            .map_err(|e| {
+                SongbirdError::Network(Box::new(NetworkError {
+                    message: format!("Failed to prepare request: {}", e),
+                    endpoint: Some(self.endpoint.clone()),
+                    port: None,
+                    protocol: Some("HTTP".to_string()),
+                }))
+            })?
             .send()
             .await
-            .map_err(|e||| {
-
-
-
-         SongbirdError::network(format!("Request failed: {})})?", e ;"
-
-
-      ;
-
-
-    )
-                    endpoint: Some(self.endpoint.clone())
+            .map_err(|e| {
+                SongbirdError::Network(Box::new(NetworkError {
+                    message: format!("Request failed: {}", e),
+                    endpoint: Some(self.endpoint.clone()),
                     port: None,
-    protocol: Some("HTTP".to_string()),
+                    protocol: Some("HTTP".to_string()),
+                }))
+            })?;
 
-        if response.status().is_success() { let body: serde_json::Value = response.json().await.map_err(|e||| {
-
-
-
-         SongbirdError::network(format!("Failed to parse response: {})})?;", e ;"
-
-      ;
-
-    )
-                    endpoint: Some(self.endpoint.clone())
+        if response.is_success() {
+            let body: serde_json::Value = response.json().await.map_err(|e| {
+                SongbirdError::Network(Box::new(NetworkError {
+                    message: format!("Failed to parse response: {}", e),
+                    endpoint: Some(self.endpoint.clone()),
                     port: None,
-    protocol: Some("HTTP".to_string()),
-            // Ok
-        Ok(body);} else { Err(SongbirdError::Network(Box::new(NetworkError {message: format!("HTTP error: {}",  ; ), response.status(),
-                endpoint: Some(self.endpoint.clone())
+                    protocol: Some("HTTP".to_string()),
+                }))
+            })?;
+            Ok(body)
+        } else {
+            Err(SongbirdError::Network(Box::new(NetworkError {
+                message: format!("HTTP error: {}", response.status()),
+                endpoint: Some(self.endpoint.clone()),
                 port: None,
-    protocol: Some("HTTP".to_string());}))}}"
+                protocol: Some("HTTP".to_string()),
+            })))
+        }
+    }"
 
     /// Get client health status
-    #[must_use = "Result must be handled - ignoring errors is unsafe"]"
-;
-    pub async fn health_check() -> Result<(), SongbirdError>   {
-
-    ;
-    let health_payload = serde_json::json!({"action": "health_check"
-;
-});
-        match self.request(health_payload).await  {Ok(_) => // Ok
-        Ok(true)
-            Err(_) => // Ok
-        Ok(false);}}
+    ///
+    /// # Errors
+    ///
+    /// Returns Ok(false) if health check fails, Ok(true) if successful
+    pub async fn health_check(&self) -> Result<bool, SongbirdError> {
+        let health_payload = serde_json::json!({"action": "health_check"});
+        match self.request(health_payload).await {
+            Ok(_) => Ok(true),
+            Err(_) => Ok(false),
+        }
+    }
 
     /// Get circuit breaker status
-    pub async fn circuit_breaker_status(&self)self, -> CircuitState { let cb = self.circuit_breaker.read().await
+    pub async fn circuit_breaker_status(&self) -> CircuitState {
+        let cb = self.circuit_breaker.read().await;
         cb.get_state().clone()
+    }
+
     /// Get connection pool utilization
-    pub async fn pool_utilization(&self)self, -> f64 { let pool = self.connection_pool.read().await
+    pub async fn pool_utilization(&self) -> f64 {
+        let pool = self.connection_pool.read().await;
         pool.utilization()
+    }
+
     /// Reset circuit breaker
-    pub async fn reset_circuit_breaker(&self)self, { let mut cb = self.circuit_breaker.write().await;
-        cb.reset();}}
+    pub async fn reset_circuit_breaker(&self) {
+        let mut cb = self.circuit_breaker.write().await;
+        cb.reset();
+    }
+}

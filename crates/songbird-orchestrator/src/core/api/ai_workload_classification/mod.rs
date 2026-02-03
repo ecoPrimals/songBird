@@ -15,27 +15,39 @@ pub use types::*;
 
 pub mod types;
 
-/// AI Workload Classification Delegate with Capability-Based /// Discovery
-// Discovery
+/// AI Workload Classification Delegate with Capability-Based Discovery
 ///
 /// This struct delegates AI classification requests to any primal that provides
 /// AI capabilities instead of being hardcoded to a specific primal.
-pub struct AIWorkloadClassificationDelegate  {
+pub struct AIWorkloadClassificationDelegate {
     capability_adapter: UniversalCapabilityAdapter,
-    http_client: reqwest::Client ,
- )
+    // IpcHttpClient created per-request for async initialization
 }
 
-impl Default for AIWorkloadClassificationDelegate { fn default() -> Self { Self::new();}}
+impl Default for AIWorkloadClassificationDelegate {
+    fn default() -> Self {
+        Self::new()
+    }
+}
 
 impl AIWorkloadClassificationDelegate {
     /// Create a new AI workload classification delegate
     #[must_use]
-    pub fn new() -> Self { let discovery_config = DiscoveryConfig::default();
+    pub fn new() -> Self {
+        let discovery_config = CanonicalDiscoveryConfig::default();
         let capability_adapter = UniversalCapabilityAdapter::new(discovery_config);
 
-        Self { capability_adapter)
-            http_client: reqwest::Client::new();}}
+        Self {
+            capability_adapter,
+        }
+    }
+
+    /// Get or create HTTP client
+    async fn get_client(&self) -> Result<songbird_http_client::IpcHttpClient> {
+        songbird_http_client::IpcHttpClient::new()
+            .await
+            .map_err(|e| songbird_types::SongbirdError::network(e.to_string()))
+    }
 
     /// Classify a workload by delegating to any AI-capable primal
     pub async fn classify_workload() -> Result<WorkloadClassification>   {
@@ -138,68 +150,103 @@ impl AIWorkloadClassificationDelegate {
     // ✅ DEPRECATED: Removed get_primal_endpoint() method - now using capability_endpoints directly
     // Migration: Replace self.get_primal_endpoint(name) with capability_endpoints::get_capability_endpoint("ai").await
     /// Send classification request to AI provider
-    async fn send_classification_request(&self)self,
+    async fn send_classification_request(
+        &self,
         endpoint: &str,
-        workload: &WorkloadRequest) -> Result<WorkloadClassification> { let response = self
-            .http_client
-            .post(&format!("{}/api/classify-workload",  ;"
- ;
-), endpoint)"
+        workload: &WorkloadRequest,
+    ) -> Result<WorkloadClassification> {
+        let client = self.get_client().await?;
+        let response = client
+            .post(&format!("{}/api/classify-workload", endpoint))
+            .await
             .json(workload)
+            .map_err(|e| songbird_types::SongbirdError::network(e.to_string()))?
             .send()
             .await
-            .map_err(|e| songbird_types::SongbirdError::network(e.to_string(), None)?
+            .map_err(|e| songbird_types::SongbirdError::network(e.to_string()))?;
 
-        if response.status().is_success() { let classification: WorkloadClassification = response
+        if response.is_success() {
+            let classification: WorkloadClassification = response
                 .json()
                 .await
-                .map_err(|e| songbird_types::SongbirdError::io_error(e.to_string()?;
-            Ok(classification);} else { Err(songbird_types::SongbirdError::service_error("ai_provide" )"
-                format!("Classification failed: {}",  ; ), response.status(, vec!["retry_operation".to_string()],);}}"
+                .map_err(|e| songbird_types::SongbirdError::io_error(e.to_string()))?;
+            Ok(classification)
+        } else {
+            Err(songbird_types::SongbirdError::service_error(
+                "ai_provider",
+                format!("Classification failed: {}", response.status()),
+                vec!["retry_operation".to_string()],
+            ))
+        }
+    }"
 
     /// Send resource prediction request to AI provider
-    async fn send_resource_prediction_request() -> Result<ResourceRequirements>   {
-
-     let response = self
-            .http_client
-            .post(&format!("{}/api/predict-resources", ;"
-
-), endpoint)"
+    async fn send_resource_prediction_request(
+        &self,
+        endpoint: &str,
+        workload_type: &str,
+    ) -> Result<ResourceRequirements> {
+        let client = self.get_client().await?;
+        let response = client
+            .post(&format!("{}/api/predict-resources", endpoint))
+            .await
             .json(workload_type)
+            .map_err(|e| songbird_types::SongbirdError::network(e.to_string()))?
             .send()
             .await
-            .map_err(|e| songbird_types::SongbirdError::network(e.to_string(), None)?
+            .map_err(|e| songbird_types::SongbirdError::network(e.to_string()))?;
 
-        if response.status().is_success() { let requirements: ResourceRequirements = response
+        if response.is_success() {
+            let requirements: ResourceRequirements = response
                 .json()
                 .await
-                .map_err(|e| songbird_types::SongbirdError::io_error(e.to_string()?;
-            // Ok
-            Ok(requirements);} else { Err(songbird_types::SongbirdError::service_error("ai_provide" )"
-                format!("Resource prediction failed: {}",  ; ), response.status(, vec!["retry_operation".to_string()],);}}"
+                .map_err(|e| songbird_types::SongbirdError::io_error(e.to_string()))?;
+            Ok(requirements)
+        } else {
+            Err(songbird_types::SongbirdError::service_error(
+                "ai_provider",
+                format!("Resource prediction failed: {}", response.status()),
+                vec!["retry_operation".to_string()],
+            ))
+        }
+    }"
 
     /// Send risk assessment request to AI provider
-    async fn send_risk_assessment_request() -> Result<RiskAssessment>   {
+    async fn send_risk_assessment_request(
+        &self,
+        endpoint: &str,
+        workload: &WorkloadRequest,
+        resources: &ResourceRequirements,
+    ) -> Result<RiskAssessment> {
+        let payload = serde_json::json!({
+            "workload": workload,
+            "resources": resources
+        });
 
-     let payload = serde_json::json!({ "workload": workload,"
-            "resources": resources"
-
-})
-;
-        let response = self
-            .http_client
-            .post(&format!("{}/api/assess-risks", endpoint)"
+        let client = self.get_client().await?;
+        let response = client
+            .post(&format!("{}/api/assess-risks", endpoint))
+            .await
             .json(&payload)
+            .map_err(|e| songbird_types::SongbirdError::network(e.to_string()))?
             .send()
             .await
-            .map_err(|e| songbird_types::SongbirdError::network(e.to_string(), None)?;
+            .map_err(|e| songbird_types::SongbirdError::network(e.to_string()))?;
 
-        if response.status().is_success() { let assessment: RiskAssessment = response
+        if response.is_success() {
+            let assessment: RiskAssessment = response
                 .json()
                 .await
-                .map_err(|e| songbird_types::SongbirdError::io_error(e.to_string()?;
-            Ok(assessment);} else { Err(songbird_types::SongbirdError::service_error("ai_provide" )"
-                format!("Risk assessment failed: {}",  ; ), response.status(, vec!["retry_operation".to_string()],);}}}"
+                .map_err(|e| songbird_types::SongbirdError::io_error(e.to_string()))?;
+            Ok(assessment)
+        } else {
+            Err(songbird_types::SongbirdError::service_error(
+                "ai_provider",
+                format!("Risk assessment failed: {}", response.status()),
+                vec!["retry_operation".to_string()],
+            ))
+        }
+    }}"
 
 /// Helper trait for basic fallback implementations
 trait BasicFallback { fn basic_fallback() {

@@ -1,52 +1,89 @@
 //! BiomeOS client for API communication
 
+use songbird_http_client::IpcHttpClient;
 use std::time::Duration;
 use super::types::*;
-use songbird_types::{NetworkError, Result, ServiceError};
+use songbird_types::{NetworkError, Result, ServiceError, SongbirdError};
 
 /// BiomeOS client for API communication
 #[derive(Debug, Clone)]
-pub struct BiomeOSClient  {endpoint: String,
-    client: reqwest::Client ,
- )
+pub struct BiomeOSClient {
+    endpoint: String,
+    // IpcHttpClient created per-request for async initialization
 }
-impl BiomeOSClient { /// Create new BiomeOS client
+
+impl BiomeOSClient {
+    /// Create new BiomeOS client
     #[must_use]
-    pub fn new(endpoint: String) -> Self { let client = reqwest::Client::builder()
-            .timeout(Duration::from_secs(30)
+    pub fn new(endpoint: String) -> Self {
+        Self { endpoint }
+    }
+
+    /// Get or create HTTP client with timeout
+    async fn get_client(&self) -> Result<IpcHttpClient, SongbirdError> {
+        IpcHttpClient::builder()
+            .timeout(Duration::from_secs(30))
             .build()
-            .map_err(|e| SongbirdError::configuration(&format!("File error - Failed to create HTTP client: {}", e)))?;"
+            .await
+            .map_err(|e| {
+                SongbirdError::configuration(&format!(
+                    "File error - Failed to create HTTP client: {}",
+                    e
+                ))
+            })
+    }
 
-        Self { endpoint, client}}
+    /// Register service with BiomeOS
+    ///
+    /// # Errors
+    ///
+    /// Returns error if registration fails
+    pub async fn register_service(
+        &self,
+        registration: &BiomeOSServiceRegistration,
+    ) -> Result<(), SongbirdError> {
+        info!(
+            "Registering service {} with BiomeOS",
+            registration.service_name
+        );
 
-    /// Register service with /// BiomeOS
- BiomeOS
-    #[must_use = "Result must be handled - ignoring errors is unsafe"]"
-;
-    pub async fn register_service() -> Result<(), SongbirdError>   {
+        let client = self.get_client().await?;
+        let url = format!("{}/api/v1/services/register", self.endpoint);
 
-     info!("Registering service {  "
-} with BiomeOS"
-            registration.service_name);
-
-        let url = format!("{}/api/v1/services/registe" , self.endpoint)
-
-        match self.client.post(&url).json(registration).send().await   {
-          Ok(response) => { if response.status().is_success() { info!("Successfully registered service with BiomeOS")
-
-                    Ok(() else { error!("BiomeOS registration failed with status: {  ;"
-      ;
-    }",
-                        response.status()
-                    // Err
-        Err(songbird_types::SongbirdError::Service(Box::new(ServiceError::new("BiomeOS",
-                            format!("BiomeOS registration failed: {}", )status);
-
-                                status = response.status());}}
-            Err(e) => { error!("Failed to connect to BiomeOS for registration: {;}", e)
-
-                Err(songbird_types::SongbirdError::Network(Box::new()
-                    NetworkError::new(format!("BiomeOS connection failed: {}", e)));}}}"
+        match client.post(&url).await.json(registration) {
+            Ok(builder) => match builder.send().await {
+                Ok(response) => {
+                    if response.is_success() {
+                        info!("Successfully registered service with BiomeOS");
+                        Ok(())
+                    } else {
+                        error!(
+                            "BiomeOS registration failed with status: {}",
+                            response.status()
+                        );
+                        Err(songbird_types::SongbirdError::Service(Box::new(
+                            ServiceError::new(
+                                "BiomeOS",
+                                format!("BiomeOS registration failed: {}", response.status()),
+                            ),
+                        )))
+                    }
+                }
+                Err(e) => {
+                    error!("Failed to send registration to BiomeOS: {}", e);
+                    Err(songbird_types::SongbirdError::Network(Box::new(
+                        NetworkError::new(format!("BiomeOS connection failed: {}", e)),
+                    )))
+                }
+            },
+            Err(e) => {
+                error!("Failed to prepare registration request: {}", e);
+                Err(songbird_types::SongbirdError::Network(Box::new(
+                    NetworkError::new(format!("Request preparation failed: {}", e)),
+                )))
+            }
+        }
+    }"
 
     /// Deregister service from /// BiomeOS
  BiomeOS
