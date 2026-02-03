@@ -58,19 +58,8 @@ pub struct ServerArgs {
     ///
     /// XDG-compliant path example: /run/user/1000/biomeos/songbird-nat0.sock
     /// Legacy fallback: /tmp/songbird-nat0.sock
-    ///
-    /// Mutually exclusive with --listen
-    #[arg(long, conflicts_with = "listen")]
+    #[arg(long)]
     pub socket: Option<String>,
-
-    /// TCP listen address for IPC (universal transport, works on Android)
-    ///
-    /// Alternative to Unix sockets for platforms with restrictions (Android SELinux).
-    /// Examples: 127.0.0.1:9901, [::1]:9901, 0.0.0.0:0 (OS-assigned port)
-    ///
-    /// Mutually exclusive with --socket
-    #[arg(long, conflicts_with = "socket")]
-    pub listen: Option<String>,
 
     /// BearDog socket path for crypto operations (defaults based on family_id)
     ///
@@ -81,12 +70,16 @@ pub struct ServerArgs {
     #[arg(long)]
     pub beardog_socket: Option<String>,
 
-    /// BearDog TCP address (when BearDog is running in TCP mode on Android)
+    /// TCP listen address for IPC (alternative to Unix socket)
     ///
-    /// Example: 127.0.0.1:9900
-    /// Used instead of beardog_socket when BearDog is using TCP transport
+    /// Use this on platforms where Unix sockets are restricted (Android, Windows).
+    /// When specified, Songbird uses TCP instead of Unix socket for inter-primal IPC.
+    ///
+    /// Example: --listen 127.0.0.1:9901
+    ///
+    /// Security: Only binds to localhost by default for same-device IPC.
     #[arg(long)]
-    pub beardog_tcp: Option<String>,
+    pub listen: Option<String>,
 }
 
 /// Doctor mode arguments
@@ -163,7 +156,9 @@ pub async fn run_server(args: ServerArgs) -> Result<()> {
         }
     );
     tracing::info!("   External Port: {} (LAN discovery/federation)", actual_port);
-    if let Some(ref socket) = args.socket {
+    if let Some(ref listen) = args.listen {
+        tracing::info!("   Internal IPC: TCP {} (Android/Universal)", listen);
+    } else if let Some(ref socket) = args.socket {
         tracing::info!("   Internal Socket: {} (inter-primal IPC)", socket);
     }
     tracing::info!("   Process ID: {}", std::process::id());
@@ -213,31 +208,49 @@ pub async fn run_server(args: ServerArgs) -> Result<()> {
     tracing::info!("✅ Songbird ready!");
     tracing::info!("");
 
-    // Step 4.5: Start IPC server (Unix socket or TCP)
-    let ipc_enabled = args.socket.is_some() || args.listen.is_some();
-    let socket_path_for_registration = args.socket.clone(); // Clone for later use
-    let ipc_handle = if let Some(socket_path) = args.socket {
-        // Unix Socket Mode (Linux, macOS preferred)
+    // Step 4.5: Start IPC server (Unix socket or TCP based on args)
+    let socket_path_for_registration = args.socket.clone().or_else(|| args.listen.clone());
+    let ipc_handle = if let Some(ref listen_addr) = args.listen {
+        // TCP IPC mode (Android/Universal)
         tracing::info!("");
-        tracing::info!("🌐 Starting IPC Server (Unix socket)...");
+        tracing::info!("🌐 Starting TCP IPC Server (Android/Universal mode)...");
+        tracing::info!("   Listen: {}", listen_addr);
+        tracing::info!("   Protocol: JSON-RPC 2.0 over TCP");
+        if let Some(ref fam) = family_identity {
+            tracing::info!("   Family: {}", fam);
+        }
+
+        // Determine BearDog socket/address
+        let beardog_socket = args.beardog_socket.clone().unwrap_or_else(|| {
+            let family_id = family_identity.as_deref().unwrap_or("nat0");
+            format!("/tmp/beardog-{}.sock", family_id)
+        });
+        tracing::info!("   BearDog: {}", beardog_socket);
+        tracing::info!("   Capabilities: http, stun, discovery");
+
+        let listen_clone = listen_addr.clone();
+        Some(tokio::spawn(async move {
+            match start_tcp_ipc_server(&listen_clone, &beardog_socket).await {
+                Ok(_) => tracing::info!("TCP IPC server stopped gracefully"),
+                Err(e) => tracing::error!("TCP IPC server error: {}", e),
+            }
+        }))
+    } else if let Some(socket_path) = args.socket {
+        // Unix socket IPC mode (default)
+        tracing::info!("");
+        tracing::info!("🌐 Starting IPC Server (biomeOS integration)...");
         tracing::info!("   Socket: {}", socket_path);
         tracing::info!("   Protocol: JSON-RPC 2.0 over Unix sockets");
         if let Some(ref fam) = family_identity {
             tracing::info!("   Family: {}", fam);
         }
 
-        // Determine BearDog connection
-        let beardog_conn = if let Some(tcp) = args.beardog_tcp {
-            tracing::info!("   BearDog: {} (TCP)", tcp);
-            BearDogConnection::Tcp(tcp)
-        } else {
-            let beardog_socket = args.beardog_socket.unwrap_or_else(|| {
-                let family_id = family_identity.as_deref().unwrap_or("nat0");
-                format!("/tmp/beardog-{}.sock", family_id)
-            });
-            tracing::info!("   BearDog: {} (Unix)", beardog_socket);
-            BearDogConnection::UnixSocket(beardog_socket)
-        };
+        // Determine BearDog socket
+        let beardog_socket = args.beardog_socket.unwrap_or_else(|| {
+            let family_id = family_identity.as_deref().unwrap_or("nat0");
+            format!("/tmp/beardog-{}.sock", family_id)
+        });
+        tracing::info!("   BearDog: {}", beardog_socket);
         tracing::info!("   Capabilities: http, discovery, secure_http");
 
         // Spawn IPC server in background task (Unix only)
@@ -245,7 +258,7 @@ pub async fn run_server(args: ServerArgs) -> Result<()> {
         let ipc_task = {
             let socket_clone = socket_path.clone();
             Some(tokio::spawn(async move {
-                match start_ipc_server(&socket_clone, beardog_conn).await {
+                match start_ipc_server(&socket_clone, &beardog_socket).await {
                     Ok(_) => tracing::info!("IPC server stopped gracefully"),
                     Err(e) => tracing::error!("IPC server error: {}", e),
                 }
@@ -254,57 +267,27 @@ pub async fn run_server(args: ServerArgs) -> Result<()> {
 
         #[cfg(not(unix))]
         let ipc_task: Option<tokio::task::JoinHandle<()>> = {
-            tracing::info!("IPC server: Windows not yet supported");
+            tracing::info!("IPC server: Windows TCP fallback (coming in Phase 2)");
             None
         };
 
         ipc_task
-    } else if let Some(listen_addr) = args.listen {
-        // TCP Mode (Android, universal)
-        tracing::info!("");
-        tracing::info!("🌐 Starting IPC Server (TCP - universal transport)...");
-        tracing::info!("   Listen: {}", listen_addr);
-        tracing::info!("   Protocol: JSON-RPC 2.0 over TCP");
-        if let Some(ref fam) = family_identity {
-            tracing::info!("   Family: {}", fam);
-        }
-
-        // Determine BearDog connection
-        let beardog_conn = if let Some(tcp) = args.beardog_tcp {
-            tracing::info!("   BearDog: {} (TCP)", tcp);
-            BearDogConnection::Tcp(tcp)
-        } else {
-            let beardog_socket = args.beardog_socket.unwrap_or_else(|| {
-                let family_id = family_identity.as_deref().unwrap_or("nat0");
-                format!("/tmp/beardog-{}.sock", family_id)
-            });
-            tracing::info!("   BearDog: {} (Unix fallback)", beardog_socket);
-            BearDogConnection::UnixSocket(beardog_socket)
-        };
-        tracing::info!("   Capabilities: http, discovery, secure_http");
-
-        Some(tokio::spawn(async move {
-            match start_ipc_server_tcp(&listen_addr, beardog_conn).await {
-                Ok(_) => tracing::info!("TCP IPC server stopped gracefully"),
-                Err(e) => tracing::error!("TCP IPC server error: {}", e),
-            }
-        }))
     } else {
         tracing::info!("");
-        tracing::info!("💡 Tip: Use --socket or --listen to enable IPC for biomeOS integration");
-        tracing::info!("   Example: --socket /run/user/$(id -u)/biomeos/songbird.sock");
-        tracing::info!("   Example: --listen 127.0.0.1:9901  (Android-compatible)");
+        tracing::info!("💡 Tip: Use --socket or --listen to enable IPC");
+        tracing::info!("   Unix: --socket /run/user/$(id -u)/biomeos/songbird.sock");
+        tracing::info!("   TCP:  --listen 127.0.0.1:9901 (Android/Universal)");
         None
     };
 
     // Step 4.6: Register capabilities with Neural API (if available)
-    if ipc_enabled {
+    if socket_path_for_registration.is_some() {
         tracing::info!("");
         tracing::info!("🌟 Registering capabilities with Neural API...");
         if let Err(e) = crate::capability_registration::register_capabilities().await {
             tracing::warn!("⚠️  Failed to register capabilities: {}", e);
             tracing::warn!("   Songbird will continue without Neural API registration");
-            tracing::warn!("   Direct connections will still work");
+            tracing::warn!("   Direct socket connections will still work");
         }
     }
 
@@ -341,7 +324,7 @@ pub async fn run_server(args: ServerArgs) -> Result<()> {
     tracing::info!("🧹 Stopping orchestrator components...");
 
     // Unregister capabilities from Neural API (if registered)
-    if ipc_enabled {
+    if socket_path_for_registration.is_some() {
         let _ = crate::capability_registration::unregister_capabilities().await;
     }
 
@@ -858,18 +841,12 @@ SONGBIRD_LOG_LEVEL=info
     Ok(())
 }
 
-/// BearDog connection type (Unix socket or TCP)
-enum BearDogConnection {
-    UnixSocket(String),
-    Tcp(String),
-}
-
 /// Start IPC server for external primal access to HTTP/HTTPS capabilities
 ///
 /// This enables biomeOS and other primals to make HTTP/HTTPS requests via JSON-RPC
 /// without embedding Songbird code (TRUE PRIMAL architecture).
 #[cfg(unix)]
-async fn start_ipc_server(socket_path: &str, _beardog_conn: BearDogConnection) -> Result<()> {
+async fn start_ipc_server(socket_path: &str, beardog_socket: &str) -> Result<()> {
     use songbird_universal_ipc::registry::ServiceRegistry;
     use songbird_universal_ipc::service::IpcServiceHandler;
     use songbird_universal_ipc::tower_atomic::{
@@ -975,10 +952,11 @@ async fn start_ipc_server(socket_path: &str, _beardog_conn: BearDogConnection) -
     }
 }
 
-/// Start TCP IPC server for universal platform support
+/// Start TCP IPC server for external primal access (Android/Universal mode)
 ///
-/// TCP transport works on Android, Windows, and anywhere Unix sockets are restricted.
-async fn start_ipc_server_tcp(listen_addr: &str, _beardog_conn: BearDogConnection) -> Result<()> {
+/// This enables Songbird to work on platforms where Unix sockets are restricted
+/// (Android SELinux, Windows). Same JSON-RPC 2.0 protocol, just over TCP.
+async fn start_tcp_ipc_server(listen_addr: &str, _beardog_socket: &str) -> Result<()> {
     use songbird_universal_ipc::registry::ServiceRegistry;
     use songbird_universal_ipc::service::IpcServiceHandler;
     use songbird_universal_ipc::tower_atomic::{
@@ -989,13 +967,14 @@ async fn start_ipc_server_tcp(listen_addr: &str, _beardog_conn: BearDogConnectio
     use tokio::sync::RwLock;
 
     // Parse listen address
-    let addr: std::net::SocketAddr = listen_addr.parse()
-        .map_err(|e| anyhow::anyhow!("Invalid listen address {}: {}", listen_addr, e))?;
+    let addr: std::net::SocketAddr = listen_addr
+        .parse()
+        .map_err(|e| anyhow::anyhow!("Invalid listen address '{}': {}", listen_addr, e))?;
 
     // Create IPC service handler with all methods
     let registry = Arc::new(RwLock::new(ServiceRegistry::new()));
 
-    tracing::info!("✅ TCP IPC server binding to {}", addr);
+    tracing::info!("✅ TCP IPC server listening on {}", addr);
     tracing::info!("   Methods available:");
     tracing::info!("     • http.request, http.get, http.post - HTTP/HTTPS requests");
     tracing::info!("     • stun.get_public_address, stun.bind - NAT traversal");
@@ -1003,14 +982,10 @@ async fn start_ipc_server_tcp(listen_addr: &str, _beardog_conn: BearDogConnectio
     tracing::info!("     • rendezvous.register, rendezvous.lookup - Relay server");
     tracing::info!("     • peer.connect - UDP hole punching");
 
-    // Bind to TCP
+    // Bind to TCP socket
     let listener = tokio::net::TcpListener::bind(addr)
         .await
-        .map_err(|e| anyhow::anyhow!("Failed to bind TCP to {}: {}", addr, e))?;
-
-    let bound_addr = listener.local_addr()
-        .map_err(|e| anyhow::anyhow!("Failed to get local address: {}", e))?;
-    tracing::info!("✅ TCP IPC server listening on {}", bound_addr);
+        .map_err(|e| anyhow::anyhow!("Failed to bind to {}: {}", addr, e))?;
 
     // Accept connections in a loop
     loop {
@@ -1031,7 +1006,7 @@ async fn start_ipc_server_tcp(listen_addr: &str, _beardog_conn: BearDogConnectio
                         line.clear();
                         match reader.read_line(&mut line).await {
                             Ok(0) => {
-                                tracing::debug!("TCP IPC client disconnected: {}", peer_addr);
+                                tracing::debug!("TCP IPC client {} disconnected", peer_addr);
                                 break;
                             }
                             Ok(_) => {
@@ -1042,7 +1017,7 @@ async fn start_ipc_server_tcp(listen_addr: &str, _beardog_conn: BearDogConnectio
                                 // Parse JSON-RPC request
                                 let response = match serde_json::from_str::<JsonRpcRequest>(&line) {
                                     Ok(request) => {
-                                        tracing::debug!("TCP IPC JSON-RPC request: {} from {}", request.method, peer_addr);
+                                        tracing::debug!("TCP IPC JSON-RPC request: {}", request.method);
                                         match handler_clone
                                             .handle(
                                                 &request.method,
@@ -1076,7 +1051,7 @@ async fn start_ipc_server_tcp(listen_addr: &str, _beardog_conn: BearDogConnectio
                                 }
                             }
                             Err(e) => {
-                                tracing::error!("Failed to read from TCP IPC socket ({}): {}", peer_addr, e);
+                                tracing::error!("Failed to read from TCP IPC socket: {}", e);
                                 break;
                             }
                         }
