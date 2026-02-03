@@ -15,7 +15,7 @@
 //!                       │
 //! ┌─────────────────────▼────────────────────────────────────┐
 //! │  IpcHttpClient (THIS FILE)                               │
-//! │  - Matches reqwest::Client API                           │
+//! │  - Provides HTTP client API                              │
 //! │  - Delegates via JSON-RPC over Unix socket               │
 //! │  - Zero C dependencies                                   │
 //! └─────────────────────┬────────────────────────────────────┘
@@ -55,11 +55,11 @@
 //! }
 //! ```
 //!
-//! ## Migration from reqwest
+//! ## Migration from legacy HTTP clients
 //!
 //! ```rust,ignore
-//! // BEFORE (reqwest - C dependencies)
-//! use reqwest::Client;
+//! // BEFORE (legacy - C dependencies)
+//! use legacy_http::Client;
 //!
 //! let client = Client::new();
 //! let response = client.get(url).send().await?;
@@ -78,7 +78,7 @@
 //! - ✅ **Pure Rust**: Zero C dependencies (TRUE ecoBin compliant)
 //! - ✅ **Self-Delegation**: Reuses Songbird's own HTTP client
 //! - ✅ **Tower Atomic**: BearDog crypto via IPC (no ring/openssl)
-//! - ✅ **Simple Migration**: Drop-in replacement for `reqwest::Client`
+//! - ✅ **Simple Migration**: Drop-in replacement for legacy HTTP clients
 //! - ✅ **Maintained**: Songbird HTTP client is actively developed
 
 use anyhow::{Context, Result};
@@ -98,7 +98,7 @@ use super::multipart::Form;
 
 /// IPC HTTP Client - Pure Rust via Songbird self-delegation
 ///
-/// Provides a `reqwest`-like API that delegates HTTP requests to Songbird's
+/// Provides an HTTP client API that delegates HTTP requests to Songbird's
 /// own Pure Rust HTTP client via JSON-RPC over Unix sockets.
 ///
 /// # Examples
@@ -347,7 +347,7 @@ impl IpcHttpClient {
 
 /// HTTP Response
 ///
-/// Simplified response type matching `reqwest::Response` API surface.
+/// Simplified HTTP response type.
 #[derive(Debug)]
 pub struct Response {
     status: u16,

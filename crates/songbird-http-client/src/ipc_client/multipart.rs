@@ -1,6 +1,6 @@
 //! Multipart form-data support for IpcHttpClient
 //!
-//! Provides a `reqwest::multipart` compatible API for building multipart/form-data
+//! Provides multipart form-data API for building multipart/form-data
 //! requests that can be sent through Songbird's IPC HTTP client.
 //!
 //! ## Usage
@@ -30,7 +30,7 @@
 use base64::{engine::general_purpose::STANDARD as BASE64, Engine};
 use serde::{Deserialize, Serialize};
 
-/// Multipart form builder (reqwest-compatible API)
+/// Multipart form builder
 ///
 /// Builds multipart/form-data requests with text fields and binary parts.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]

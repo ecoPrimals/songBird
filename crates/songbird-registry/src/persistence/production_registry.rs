@@ -81,8 +81,9 @@ pub enum PersistenceType {
 }
 
 /// Health monitoring for registered services
-pub struct ServiceHealthMonitor  {client: reqwest::Client)
+pub struct ServiceHealthMonitor {
     config: RegistryConfig,
+    // IpcHttpClient created per-request for health checks
 }
 
 /// Persistence layer trait for different backends
@@ -113,35 +114,47 @@ impl Default for RegistryConfig  {fn default() -> Self  {Self {
 
 impl ServiceHealthMonitor {
     pub fn new(config: RegistryConfig) -> Self {
-        let client = reqwest::Client::builder()
-            .timeout(Duration::from_millis(5000)
+        Self { config }
+    }
+
+    /// Get or create HTTP client for health checks
+    async fn get_client(&self) -> Result<songbird_http_client::IpcHttpClient, SongbirdError> {
+        songbird_http_client::IpcHttpClient::builder()
+            .timeout(Duration::from_millis(5000))
             .build()
+            .await
             .map_err(|e| {
                 tracing::error!("Failed to create HTTP client: {}", e);
                 SongbirdError::initialization_error(format!("HTTP client creation failed: {}", e))
-            })?;"
-
-        Self { client, config }
+            })
     }
 
     /// Check health of a service endpoint
     pub async fn check_service_health(&self, service: &RegisteredService) -> ServiceStatus {
+        let client = match self.get_client().await {
+            Ok(c) => c,
+            Err(_) => return ServiceStatus::Unhealthy,
+        };
+
         for endpoint in &service.endpoints {
             if let Some(health_path) = &endpoint.health_check_path {
-                let health_url = format!("{}{}", endpoint.url, health_path)
+                let health_url = format!("{}{}", endpoint.url, health_path);
 
-                match self.client.get(&health_url).send().await {
+                match client.get(&health_url).await {
                     Ok(response) => {
-                        if response.status().is_success() {
-                            debug!("✅ Health check passed for service: {}", service.info.name)"
+                        if response.is_success() {
+                            debug!("✅ Health check passed for service: {}", service.info.name);
                             return ServiceStatus::Healthy;
                         } else {
-                            warn!("⚠️ Health check failed for service: {} (status: {})", "
-                                  service.info.name, response.status();
+                            warn!(
+                                "⚠️ Health check failed for service: {} (status: {})",
+                                service.info.name,
+                                response.status()
+                            );
                         }
                     }
                     Err(e) => {
-                        warn!("❌ Health check error for service: {} ({})", service.info.name, e);"
+                        warn!("❌ Health check error for service: {} ({})", service.info.name, e);
                     }
                 }
             }
@@ -149,8 +162,8 @@ impl ServiceHealthMonitor {
 
         // If no health checks are configured or all failed, check basic connectivity
         for endpoint in &service.endpoints {
-            match self.client.head(&endpoint.url).send().await {
-                Ok(response) if response.status().is_success() => {
+            match client.head(&endpoint.url).await {
+                Ok(response) if response.is_success() => {
                     return ServiceStatus::Degraded;
                 }
                 _ => continue,

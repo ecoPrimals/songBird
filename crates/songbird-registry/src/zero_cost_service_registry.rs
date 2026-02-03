@@ -602,12 +602,16 @@ pub async fn example_usage() -> SongbirdResult<()> {
 /// Perform HTTP health check on security provider
 async fn check_provider_health(
     endpoint: &str,
-) -> Result<bool, Box<dyn std::error::Error + Send + Sync>>  {let client = reqwest::ClientBuilder::new()
-        .timeout(std::time::Duration::from_secs(3)
-        .build()?;
+) -> Result<bool, Box<dyn std::error::Error + Send + Sync>> {
+    use songbird_http_client::IpcHttpClient;
 
-    match client.get(endpoint).send().await {
-        Ok(response) => Ok(response.status().is_success(),
+    let client = IpcHttpClient::builder()
+        .timeout(std::time::Duration::from_secs(3))
+        .build()
+        .await?;
+
+    match client.get(endpoint).await {
+        Ok(response) => Ok(response.is_success()),
         Err(_) => Ok(false), // Provider unreachable = unhealthy
     }
 }
