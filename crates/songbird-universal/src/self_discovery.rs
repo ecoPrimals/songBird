@@ -322,39 +322,56 @@ mod tests  {use super: :*;
     use std::sync::Arc;
 use songbird_config;
 
-    struct ProductionUniversalAdapter  {http_client: reqwest::Client)
-        discovered_services: Arc<RwLock<HashMap<String, ServiceInfo>>> )
- )
-}
+    struct ProductionUniversalAdapter {
+        // IpcHttpClient created per-request for testing
+        discovered_services: Arc<RwLock<HashMap<String, ServiceInfo>>>,
+    }
 
-    impl ProductionUniversalAdapter  {fn new() -> Self { Self { http_client: reqwest::Client::new(,
-                discovered_services: Arc::new(RwLock::new(HashMap::new();;}}}
+    impl ProductionUniversalAdapter {
+        fn new() -> Self {
+            Self {
+                discovered_services: Arc::new(RwLock::new(HashMap::new())),
+            }
+        }
 
-    impl UniversalAdapterTrait for ProductionUniversalAdapter { async fn request_capability() -> SongbirdResult<Response>   {
+        /// Get or create HTTP client for tests
+        async fn get_client(&self) -> Result<songbird_http_client::IpcHttpClient, SongbirdError> {
+            songbird_http_client::IpcHttpClient::new()
+                .await
+                .map_err(|e| SongbirdError::network(format!("Test client creation failed: {}", e)))
+        }
+    }
 
-     let services = self.discovered_services.read().await;
+    impl UniversalAdapterTrait for ProductionUniversalAdapter {
+        async fn request_capability(
+            &self,
+            capability: &str,
+            operation: &str,
+            payload: serde_json::Value,
+        ) -> SongbirdResult<Response> {
+            let services = self.discovered_services.read().await;
 
             // Find a service that provides this capability
-            for (service_id, service_info) in services.iter() { if service_info.capabilities.contains(&capability.to_string() { let url = format!("{}/api/v1/{}/{}",  "
+            for (service_id, service_info) in services.iter() {
+                if service_info.capabilities.contains(&capability.to_string()) {
+                    let url = format!(
+                        "{}/api/v1/{}/{}",
+                        service_info.endpoint, capability, operation
+                    );
 
-), service_info.endpoint, capability, operation);"
+                    let client = self.get_client().await?;
+                    match client.post(&url).await.json(&payload) {
+                        Ok(builder) => match builder.send().await {
+                            Ok(response) if response.is_success() => {
+                                let body = response.text().await.map_err(|e| {
+                                    SongbirdError::network_error(
+                                        &format!("Failed to read response: {}", e),
+                                        None,
+                                    )
+                                })?;
 
-                    match self.http_client.post(&url).json(&payload).send().await   {
-          Ok(response) if response.status().is_success() => { let body = response.text().await.map_err(|e||| {
-
-
-
-         SongbirdError: :network_error,
-                                    &format!("Failed to read response: {}",   ;"
-
-
-       ;
-
-
-    ), e),"
-                                    None)})?;
-
-                            return Ok(Response  {entity_id: service_id.clone()
+                                return Ok(Response {
+                                    entity_id: service_id.clone(),
                                 capability: capability.to_string(),
                                 operation: operation.to_string(),
                                 payload: serde_json::from_str(&body,

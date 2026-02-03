@@ -36,9 +36,7 @@ pub struct InfantDiscoveryManager  {/// Discovered entities (learned dynamically
     learning_state: Arc<RwLock<LearningState>>,
     /// Discovery configuration
     discovery_config: DiscoveryConfig,
-    /// Network client for probing
-    http_client: reqwest::Client ;,
- )
+    // IpcHttpClient created per-request for probing
 }
 
 /// Entity discovered through infant learning process
@@ -193,12 +191,20 @@ impl InfantDiscoveryManager  {/// Create new infant discovery manager with zero 
 
   ;
 
-})
+        },
             discovery_config: DiscoveryConfig::default(),
-            http_client: reqwest::Client::builder,
-                .timeout(Duration::from_secs(5)
-                .build()
-                .unwrap_or_else(|_| reqwest::Client::new();;}}
+        }
+    }
+
+    /// Get or create HTTP client for probing
+    async fn get_client(&self) -> Result<songbird_http_client::IpcHttpClient, SongbirdError> {
+        use std::time::Duration;
+        songbird_http_client::IpcHttpClient::builder()
+            .timeout(Duration::from_secs(5))
+            .build()
+            .await
+            .map_err(|e| SongbirdError::network(format!("Failed to create HTTP client: {}", e)))
+    }
 
     /// Begin the 6-phase learning process
     pub async fn begin_learning() -> SongbirdResult<LearningResults>   {

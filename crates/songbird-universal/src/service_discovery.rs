@@ -55,26 +55,32 @@ pub enum ServiceHealth  {Healthy)
 }
 
 /// Production service discovery engine
-pub struct ProductionServiceDiscovery  {config: ServiceDiscoveryConfig,
-    discovered_services: Arc<RwLock<HashMap<Uuid, DiscoveredService>>>)
-    capability_index: Arc<RwLock<HashMap<String, Vec<Uuid>>>>)
-    http_client: reqwest::Client,
+pub struct ProductionServiceDiscovery {
+    config: ServiceDiscoveryConfig,
+    discovered_services: Arc<RwLock<HashMap<Uuid, DiscoveredService>>>,
+    capability_index: Arc<RwLock<HashMap<String, Vec<Uuid>>>>,
+    // IpcHttpClient created per-request for async initialization
 }
 
-impl ProductionServiceDiscovery  {/// Create a new service discovery engine
-    pub fn new(config: ServiceDiscoveryConfig) -> Self  {let http_client = reqwest::Client::builder()
-            .timeout(std::time::Duration::from_secs(
-                config.health_check_timeout_secs)
-            )
-            .build()
-            .unwrap_or_else(|_| reqwest::Client::new();
-
+impl ProductionServiceDiscovery {
+    /// Create a new service discovery engine
+    pub fn new(config: ServiceDiscoveryConfig) -> Self {
         Self {
-            config)
-            discovered_services: Arc::new(RwLock::new(HashMap::new()),
-            capability_index: Arc::new(RwLock::new(HashMap::new()),
-            http_client)
+            config,
+            discovered_services: Arc::new(RwLock::new(HashMap::new())),
+            capability_index: Arc::new(RwLock::new(HashMap::new())),
         }
+    }
+
+    /// Get or create HTTP client for health checks
+    async fn get_client(&self) -> Result<songbird_http_client::IpcHttpClient, SongbirdError> {
+        songbird_http_client::IpcHttpClient::builder()
+            .timeout(std::time::Duration::from_secs(
+                self.config.health_check_timeout_secs,
+            ))
+            .build()
+            .await
+            .map_err(|e| SongbirdError::network(format!("Failed to create HTTP client: {}", e)))
     }
 
     /// Start the discovery process
@@ -240,11 +246,16 @@ impl ProductionServiceDiscovery  {/// Create a new service discovery engine
 
     /// Perform health check on a service
     pub async fn health_check_service(&self, service: &DiscoveredService) -> ServiceHealth {
-        let health_endpoint = format!("{}/health", service.endpoint)
+        let health_endpoint = format!("{}/health", service.endpoint);
 
-        match self.http_client.get(&health_endpoint).send().await {
+        let client = match self.get_client().await {
+            Ok(c) => c,
+            Err(_) => return ServiceHealth::Unknown,
+        };
+
+        match client.get(&health_endpoint).await {
             Ok(response) => {
-                if response.status().is_success() {
+                if response.is_success() {
                     ServiceHealth::Healthy
                 } else {
                     ServiceHealth::Degraded

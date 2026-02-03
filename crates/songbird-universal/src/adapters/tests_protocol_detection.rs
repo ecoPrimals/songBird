@@ -58,7 +58,7 @@ mod protocol_detection_unit_tests {
 
         // Should fail because it doesn't start with unix:// and isn't http(s)://
         // This would be interpreted as HTTP with invalid URL
-        assert!(result.is_ok()); // reqwest::Client creation should still work
+        assert!(result.is_ok()); // IpcHttpClient creation should still work
     }
 }
 

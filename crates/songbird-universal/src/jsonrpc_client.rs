@@ -14,7 +14,7 @@
 //! ## Design
 //!
 //! - Async-first (tokio-based)
-//! - Compatible with `reqwest::Client` interface patterns
+//! - Compatible with `IpcHttpClient` interface patterns
 //! - Clean error handling via `SongbirdError`
 //! - Timeout support
 //! - Connection pooling for Unix sockets

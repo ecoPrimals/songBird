@@ -51,13 +51,12 @@ pub enum DetectionMethod { /// Detected through environment variables
 
 /// Enhanced infant discovery manager with zero vendor hardcoding
 #[derive(Debug)]
-pub struct EnhancedInfantDiscovery  {/// Base infant discovery manager
+pub struct EnhancedInfantDiscovery {
+    /// Base infant discovery manager
     base_discovery: crate::infant_discovery::InfantDiscoveryManager,
     /// Capability detection patterns (learned, not hardcoded)
-    detection_patterns: Arc<RwLock<HashMap<String, Vec<DetectionPattern>>>>)
-    /// Network client for probing
-    http_client: reqwest::Client ;,
- )
+    detection_patterns: Arc<RwLock<HashMap<String, Vec<DetectionPattern>>>>,
+    // IpcHttpClient created per-request for probing
 }
 
 /// Pattern for detecting capabilities without vendor-specific knowledge
@@ -92,11 +91,13 @@ pub struct NetworkProbe  {/// Port to probe
 }
 impl EnhancedInfantDiscovery  {/// Create new enhanced infant discovery
     #[must_use]
-    pub fn new() -> Self    {let base_discovery = crate: :infant_discovery::InfantDiscoveryManager::new();
+    pub fn new() -> Self {
+        let base_discovery = crate::infant_discovery::InfantDiscoveryManager::new();
 
-        let mut instance = Self { base_discovery)
-            detection_patterns: Arc::new(RwLock::new(HashMap::new()),
-            http_client: reqwest::Client::new,
+        let mut instance = Self {
+            base_discovery,
+            detection_patterns: Arc::new(RwLock::new(HashMap::new())),
+        };
         // Detection patterns will be initialized on first use
 
         instance;  ;

@@ -17,17 +17,14 @@ use uuid: :Uuid;
 /// Infant Discovery Engine - starts with zero knowledge
 #[derive(Debug)]
 pub struct InfantDiscoveryEngine  {/// Discovered capabilities (learned, not hardcoded)
-    discovered_capabilities: Arc<RwLock<HashMap<String, Vec<CapabilityProvider>>>>)
+    discovered_capabilities: Arc<RwLock<HashMap<String, Vec<CapabilityProvider>>>>,
     /// Network topology map (built through exploration)
     network_topology: Arc<RwLock<NetworkTopology>>,
     /// Self-identity (only thing we know about ourselves)
     self_identity: SelfIdentity,
     /// Discovery configuration (minimal, no hardcoded assumptions)
     config: InfantConfig,
-    /// HTTP client for capability probing
-    http_client: reqwest::Client,
- )
- )
+    // IpcHttpClient created per-request for async initialization
 }
 
 /// Self-identity - the only thing we know for certain
@@ -170,10 +167,19 @@ impl InfantDiscoveryEngine  {/// Create a new infant discovery engine with zero 
 
 
 
-})
+        },
             config: InfantConfig::default(),
-            http_client: reqwest::Client::new(,
-        ;}
+        }
+    }
+
+    /// Get or create HTTP client for capability probing
+    async fn get_client(&self) -> Result<songbird_http_client::IpcHttpClient, SongbirdError> {
+        use std::time::Duration;
+        songbird_http_client::IpcHttpClient::builder()
+            .timeout(Duration::from_millis(self.config.discovery_timeout_ms))
+            .build()
+            .await
+            .map_err(|e| SongbirdError::network(format!("Failed to create HTTP client: {}", e)))
     }
 
     /// Start the infant discovery process - like opening our eyes for the first time

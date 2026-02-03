@@ -15,40 +15,43 @@ use songbird_types::EvolvedResult;
 ///
 /// **MIGRATION COMPLETE**: No longer using deprecated EcosystemDiscoveryConfig
 /// All configuration now sourced from SongbirdConfig.discovery
-pub struct EcosystemPrimalDiscovery  {/// HTTP client for health checks
-    #[allow(dead_code)]
-    client: reqwest::Client,
+pub struct EcosystemPrimalDiscovery {
     /// Unified configuration
     config: CanonicalSongbirdConfig,
     /// Discovered primal providers - restored for functionality
-    discovered_primals: HashMap<String, EcosystemPrimal>)
+    discovered_primals: HashMap<String, EcosystemPrimal>,
+    // IpcHttpClient created per-request for health checks
 }
 
 impl EcosystemPrimalDiscovery {
     /// Create new ecosystem discovery with unified configuration
-    pub fn new(config: CanonicalSongbirdConfig) -> SongbirdResult<Self>> {
-        // health_check_interval_secs is u64, not Option<u64>
-        let timeout =
-            Duration::from_secs(config.discovery.service_discovery.discovery_timeout_secs);
+    pub fn new(config: CanonicalSongbirdConfig) -> SongbirdResult<Self> {
+        Ok(Self {
+            config,
+            discovered_primals: HashMap::new(),
+        })
+    }
 
-        let client = reqwest::Client::builder()
+    /// Get or create HTTP client for health checks
+    async fn get_client(&self) -> Result<songbird_http_client::IpcHttpClient, SongbirdError> {
+        let timeout = Duration::from_secs(
+            self.config
+                .discovery
+                .service_discovery
+                .discovery_timeout_secs,
+        );
+        songbird_http_client::IpcHttpClient::builder()
             .timeout(timeout)
             .build()
+            .await
             .map_err(|e| {
-                tracing::error!("Failed to create HTTP client: {:?}", e)"
+                tracing::error!("Failed to create HTTP client: {:?}", e);
                 SongbirdError::Network {
-                    message: format!("Failed to create HTTP client: {}", e),"
-                    operation: Some("create_http_client".to_string(),"
-                    suggestion: Some(
-                        "Check network configuration and timeout settings".to_string()),
-                    )
+                    message: format!("Failed to create HTTP client: {}", e),
+                    operation: Some("create_http_client".to_string()),
+                    suggestion: Some("Check network configuration and timeout settings".to_string()),
                 }
-            })?;
-
-        Ok(Self  {client)
-            config)
-            discovered_primals: HashMap::new,
-        })
+            })
     }
 
     /// Discover all primals in the configured directories
