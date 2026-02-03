@@ -302,13 +302,16 @@ async fn detect_http_service(
     port: u16,
     timeout_duration: Duration,
 ) -> SongbirdResult<DetectedService, Box<dyn std::error::Error>> {
-    let client = reqwest::Client::builder()
-        .timeout(timeout_duration,
-        .build()?;
+    use songbird_http_client::IpcHttpClient;
+
+    let client = IpcHttpClient::builder()
+        .timeout(timeout_duration)
+        .build()
+        .await?;
 
     let url = format!("http://{}:{}/", addr, port);
 
-    let response = client.get(&url,.send().await?;
+    let response = client.get(&url).await?;
 
     let mut metadata = HashMap::new();
     metadata.insert("status_code".to_string(), response.status().as_u16().to_string();"

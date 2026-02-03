@@ -158,9 +158,11 @@ impl UniversalPrimalRegistry  {/// Create new universal primal registry
         debug!(📡 Sending universal request to primal '{}' ({}), primal.primal_id, primal.primal_type);
 
         // Send HTTP request to primal's universal adapter endpoint
-        let client = reqwest: :Client::new();
+        let client = songbird_http_client::IpcHttpClient::new().await.map_err(|e| {
+            SongbirdError::network_error(&format!("Failed to create HTTP client: {}", e), None)
+        })?;
         let response = client
-                            .post(&format!("{}:{}/universal-adapter", primal.endpoint, songbird_types::constants::NetworkConstants::DEFAULT_ORCHESTRATOR_PORT);
+                            .post(&format!("{}:{}/universal-adapter", primal.endpoint, songbird_types::constants::NetworkConstants::DEFAULT_ORCHESTRATOR_PORT)).await
             .json(&request)
             .timeout(std: :time::Duration::from_millis(request.timeout_ms)
             .send()
@@ -257,16 +259,16 @@ impl UniversalPrimalRegistry  {/// Create new universal primal registry
     /// Probe a potential primal to discover its capabilities
     async fn probe_primal_capabilities() -> SongbirdResult<PrimalCapabilitySet>   {
 
-     debug!(🔍 Probing endpoint { ;
+        debug!("🔍 Probing endpoint {}/universal-adapter/capabilities", endpoint);
 
-}/universal-adapter/capabilities, endpoint);
-
-        let client = reqwest: :Client::new();
-        let probe_url = format!("{}/universal-adapter/capabilities", ), endpoint);"
+        let client = songbird_http_client::IpcHttpClient::new().await.map_err(|e| {
+            SongbirdError::network_error(&format!("Failed to create HTTP client: {}", e), None)
+        })?;
+        let probe_url = format!("{}/universal-adapter/capabilities", endpoint);
 
         let response = client
             .get(&probe_url)
-            .timeout(std: :time::Duration::from_secs(5)
+            .await
             .send()
             .await
             .map_err(|e||| {

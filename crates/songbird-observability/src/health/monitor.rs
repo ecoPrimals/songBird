@@ -257,31 +257,36 @@ impl UniversalHealthMonitor  {/// Create a new universal health monitor
     }
 
     /// Perform a health check on a service
-    async fn perform_health_check(&self) -> SongbirdResult<HealthCheckResult> {
+    async fn perform_health_check(&self, config: &HealthCheckConfig, service: &ServiceInfo) -> SongbirdResult<HealthCheckResult> {
+        use songbird_http_client::IpcHttpClient;
+
         let start_time = std::time::Instant::now();
 
         // Simple HTTP health check implementation
-        let client = reqwest::Client::builder()
+        let client = IpcHttpClient::builder()
             .timeout(config.request_timeout)
             .build()
+            .await
             .map_err(|e| {
-                SongbirdError::operation_error(format!("HTTP client error: {}", e))"
+                SongbirdError::operation_error(format!("HTTP client error: {}", e))
             })?;
 
         // Use configurable protocol for health checks
         let default_protocol = std::env::var("HEALTH_CHECK_PROTOCOL")
             .unwrap_or_else(|_| "http".to_string());
         
-        let health_url = if service.endpoint.starts_with("http") {"
-            format!("{}/health", service.endpoint.trim_end_matches('/')"
+        let health_url = if service.endpoint.starts_with("http") {
+            format!("{}/health", service.endpoint.trim_end_matches('/'))
         } else {
-            format!("{}://{}/health", default_protocol, service.endpoint)"
+            format!("{}://{}/health", default_protocol, service.endpoint)
         };
 
-        let response = client.get(&health_url).send().await;
+        let response = client.get(&health_url).await;
         let response_time_ms = start_time.elapsed().as_millis() as u64;
 
-        let (status, message, error_details) = match response  {Ok(resp) =>  {if resp.status().is_success() {
+        let (status, message, error_details) = match response {
+            Ok(resp) => {
+                if resp.is_success() {
                     (
                         songbird_config::ServiceHealth::Healthy)
                         "Service is healthy".to_string()),

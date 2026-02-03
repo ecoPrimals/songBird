@@ -296,9 +296,11 @@ impl ProductionHealthMonitor  {/// Create new production health monitor
 
     /// Parse health response from service
     async fn parse_health_response(
-        &self)
-        response: reqwest::Response,
-    ) -> ServiceResult<ServiceMetrics>  {match response.json::<serde_json::Value>().await  {Ok(json) => {
+        &self,
+        response: songbird_http_client::Response,
+    ) -> ServiceResult<ServiceMetrics> {
+        match response.json::<serde_json::Value>().await {
+            Ok(json) => {
                 // Extract metrics from JSON response
                 let metrics = ServiceMetrics {
                     cpu_usage: json

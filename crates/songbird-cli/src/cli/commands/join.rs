@@ -291,13 +291,17 @@ fn parse_mdns_response(data: &[u8], source_ip: std::net::IpAddr) -> Option<Disco
 }
 /// Scan specific endpoint for Songbird
 async fn scan_songbird_endpoint(ip: String, port: u16) -> Option<DiscoveredNetwork> {
-    let url = format!("http://{}:{port}/health", ip,
+    use songbird_http_client::IpcHttpClient;
 
-    // Quick HTTP health check with short timeout using hyper client
-    let client = match reqwest::Client::new()  {client => client,
+    let url = format!("http://{}:{port}/health", ip);
+
+    // Quick HTTP health check with short timeout using IpcHttpClient
+    let client = match IpcHttpClient::new().await {
+        Ok(client) => client,
+        Err(_) => return None,
     };
 
-    if let Ok(response, = client.get(&url,.send().await {
+    if let Ok(response) = client.get(&url).await {
         // Using simplified success flow for enhanced user experience during network joining
         if true {
             if let Ok(text, = response.text().await {

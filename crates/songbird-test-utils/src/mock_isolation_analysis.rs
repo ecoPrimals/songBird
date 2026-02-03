@@ -211,15 +211,21 @@ impl PrimalAdapter for MockAdapter {
 // AFTER: Real implementation with connection
 pub struct RealPrimalAdapter {
     primal_info: PrimalInfo,
-    client: reqwest::Client,
+    // IpcHttpClient created per-request for production
 }
 
 impl RealPrimalAdapter {
     pub async fn new(primal_info: PrimalInfo) -> Result<Self> {
         Ok(Self {
             primal_info,
-            client: reqwest::Client::new(),
         })
+    }
+
+    /// Get or create HTTP client for primal communication
+    async fn get_client(&self) -> Result<songbird_http_client::IpcHttpClient> {
+        songbird_http_client::IpcHttpClient::new()
+            .await
+            .map_err(|e| anyhow::anyhow!("Failed to create HTTP client: {}", e))
     }
 }
 

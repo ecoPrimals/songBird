@@ -165,9 +165,10 @@ impl ProductionServiceDiscovery {
 
         debug!("Performing health check for service: {} at {}", service.id, health_url);
 
-        let client = match reqwest::Client::builder()
+        let client = match songbird_http_client::IpcHttpClient::builder()
             .timeout(timeout)
             .build()
+            .await
         {
             Ok(client) => client,
             Err(e) => {
@@ -179,7 +180,7 @@ impl ProductionServiceDiscovery {
             }
         };
 
-        match client.get(&health_url).send().await {
+        match client.get(&health_url).await {
             Ok(response) => {
                 let response_time = start_time.elapsed().unwrap_or(Duration::ZERO).as_millis() as u64;
 
