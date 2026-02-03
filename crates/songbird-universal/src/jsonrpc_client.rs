@@ -139,9 +139,13 @@ impl JsonRpcClient {
 
         info!("📡 JSON-RPC client initialized for socket: {}", socket_path.display());
 
+        // ✅ DEEP DEBT EVOLUTION (Feb 3, 2026): Use TimeoutConfig
+        // Replaces hardcoded Duration::from_secs(5) with configurable timeout
+        let timeout_config = songbird_config::timeouts::TimeoutConfig::from_env();
+
         Ok(Self {
             socket_path,
-            timeout: Duration::from_secs(5),
+            timeout: timeout_config.request,
             next_id: std::sync::Arc::new(std::sync::atomic::AtomicU64::new(1)),
         })
     }

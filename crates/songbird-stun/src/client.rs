@@ -23,8 +23,12 @@ pub struct StunClient {
 impl StunClient {
     /// Create a new STUN client
     pub fn new() -> Self {
+        // ✅ DEEP DEBT EVOLUTION (Feb 3, 2026): Use TimeoutConfig
+        // Replaces hardcoded Duration::from_secs(5) with configurable timeout
+        let timeout_config = songbird_config::timeouts::TimeoutConfig::from_env();
+        
         Self {
-            timeout: Duration::from_secs(5),
+            timeout: timeout_config.connect,
         }
     }
 

@@ -45,9 +45,13 @@ pub struct ProductionDiscoveryConfig {
 
 impl Default for ProductionDiscoveryConfig {
     fn default() -> Self {
+        // ✅ DEEP DEBT EVOLUTION (Feb 3, 2026): Use TimeoutConfig
+        // Replaces hardcoded Duration::from_secs with configurable timeouts
+        let timeout_config = songbird_config::timeouts::TimeoutConfig::from_env();
+        
         Self {
-            health_check_interval: Duration::from_secs(30),
-            service_timeout: Duration::from_secs(10),
+            health_check_interval: timeout_config.health_check,
+            service_timeout: timeout_config.discovery,
             max_retry_attempts: 3,
             enable_health_checks: true,
         }

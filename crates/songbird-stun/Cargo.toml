@@ -22,6 +22,7 @@ futures = "0.3"
 
 # Internal dependencies
 songbird-types = { path = "../songbird-types" }
+songbird-config = { path = "../songbird-config" }
 
 [dev-dependencies]
 tokio = { version = "1", features = ["full", "test-util"] }
