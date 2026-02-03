@@ -163,7 +163,8 @@ chrono = { version = "0.4", features = ["serde"] }
 rand = "0.8"
 
 # HTTP client (✅ Pure Rust - no TLS needed for internal Unix socket communication!)
-reqwest = { version = "0.11", features = ["json"], default-features = false }
+# REMOVED: reqwest - replaced with songbird-http-client (Pure Rust IPC)
+# reqwest = { version = "0.11", features = ["json"], default-features = false }
 
 # Serialization
 bincode = "1.3"
