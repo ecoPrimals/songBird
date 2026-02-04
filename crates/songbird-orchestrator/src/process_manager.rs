@@ -101,8 +101,9 @@ impl ProcessManager {
     /// - `/var/run/songbird/songbird.pid` (legacy fallback)
     ///
     /// Priority:
-    /// 1. /var/run/songbird/songbird-{family}-{node}.pid (system-wide, requires root)
-    /// 2. ~/.local/share/songbird/songbird-{family}-{node}.pid (user-specific)
+    /// 1. $SONGBIRD_PID_DIR/songbird-{family}-{node}.pid (explicit override, Android)
+    /// 2. /var/run/songbird/songbird-{family}-{node}.pid (system-wide, requires root)
+    /// 3. ~/.local/share/songbird/songbird-{family}-{node}.pid (user-specific)
     fn default_pid_file() -> Result<PathBuf> {
         // Get FAMILY_ID and NODE_ID from environment
         let family_id =
@@ -122,7 +123,18 @@ impl ProcessManager {
 
         let filename = format!("songbird{}.pid", filename_suffix);
 
-        // Try system-wide location first
+        // Priority 1: Explicit override via SONGBIRD_PID_DIR (for Android/restricted environments)
+        if let Ok(pid_dir) = std::env::var("SONGBIRD_PID_DIR") {
+            let custom_path = PathBuf::from(&pid_dir).join(&filename);
+            if let Some(parent) = custom_path.parent() {
+                if fs::create_dir_all(parent).is_ok() {
+                    debug!("Using SONGBIRD_PID_DIR: {}", custom_path.display());
+                    return Ok(custom_path);
+                }
+            }
+        }
+
+        // Priority 2: Try system-wide location first
         let system_path = PathBuf::from("/var/run/songbird").join(&filename);
         if let Some(parent) = system_path.parent() {
             if parent.exists() || fs::create_dir_all(parent).is_ok() {
@@ -130,7 +142,7 @@ impl ProcessManager {
             }
         }
 
-        // Fall back to user-specific location
+        // Priority 3: Fall back to user-specific location
         let home = dirs::home_dir().context("Could not determine home directory")?;
         let user_path = home.join(".local/share/songbird").join(&filename);
 

@@ -207,8 +207,17 @@ impl NodeIdentity {
     }
 
     /// Path to identity file
+    /// 
+    /// Priority:
+    /// 1. $SONGBIRD_DATA_DIR/songbird/node_identity-{node}.json (explicit override, Android)
+    /// 2. dirs::data_local_dir()/songbird/node_identity-{node}.json (standard)
     fn identity_path() -> PathBuf {
-        let data_dir = dirs::data_local_dir().unwrap_or_else(|| PathBuf::from("."));
+        // Priority 1: Explicit override via SONGBIRD_DATA_DIR (for Android/restricted environments)
+        let data_dir = if let Ok(custom_dir) = std::env::var("SONGBIRD_DATA_DIR") {
+            PathBuf::from(custom_dir)
+        } else {
+            dirs::data_local_dir().unwrap_or_else(|| PathBuf::from("."))
+        };
 
         // CRITICAL FIX (Jan 5, 2026): Support multiple instances on same machine
         // Use SONGBIRD_NODE_ID or NODE_ID to create unique identity files
