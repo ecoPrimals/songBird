@@ -184,6 +184,7 @@ impl PoolConfigBuilder {
 pub struct PooledConnection<T: Send + Sync + 'static> {
     inner: Option<T>,
     pool: Arc<ConnectionPoolInner<T>>,
+    #[allow(dead_code)] // Reserved for future connection age tracking
     created_at: Instant,
     last_used: Instant,
 }
@@ -208,6 +209,22 @@ impl<T: Send + Sync + 'static> PooledConnection<T> {
     /// Get a mutable reference to the inner connection
     pub fn inner_mut(&mut self) -> Option<&mut T> {
         self.inner.as_mut()
+    }
+}
+
+// Implement Deref to allow transparent usage as the inner type
+impl<T: Send + Sync + 'static> std::ops::Deref for PooledConnection<T> {
+    type Target = T;
+
+    fn deref(&self) -> &Self::Target {
+        self.inner.as_ref().expect("PooledConnection inner is None")
+    }
+}
+
+// Implement DerefMut to allow mutable transparent usage
+impl<T: Send + Sync + 'static> std::ops::DerefMut for PooledConnection<T> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        self.inner.as_mut().expect("PooledConnection inner is None")
     }
 }
 
