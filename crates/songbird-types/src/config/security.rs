@@ -58,7 +58,7 @@ impl Default for AuthenticationConfig {
 }
 
 /// Authentication method enumeration
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub enum AuthenticationMethod {
     /// No authentication
     None,
@@ -67,15 +67,10 @@ pub enum AuthenticationMethod {
     /// `OAuth2` authentication
     OAuth2,
     /// JWT authentication
+    #[default]
     Jwt,
     /// Multi-factor authentication
     Mfa,
-}
-
-impl Default for AuthenticationMethod {
-    fn default() -> Self {
-        Self::Jwt
-    }
 }
 
 /// Authorization configuration
@@ -154,9 +149,10 @@ impl Default for SecurityProviderConfig {
 }
 
 /// Multi-factor authentication method
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub enum MfaMethod {
     /// Time-based One-Time Password
+    #[default]
     Totp,
     /// SMS verification
     Sms,
@@ -164,12 +160,6 @@ pub enum MfaMethod {
     Email,
     /// Hardware token
     Hardware,
-}
-
-impl Default for MfaMethod {
-    fn default() -> Self {
-        Self::Totp
-    }
 }
 
 /// MFA settings

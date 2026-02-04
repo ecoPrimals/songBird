@@ -119,7 +119,7 @@ pub async fn handle_http_request(
         client
             .request(&params.method, &params.url, params.headers, params.body)
             .await
-            .map_err(|e| JsonRpcError::internal_error(&format!("HTTP request failed: {}", e)))?;
+            .map_err(|e| JsonRpcError::internal_error(format!("HTTP request failed: {}", e)))?;
 
     info!("✅ HTTP delegation complete (Pure Rust): {} (status: {})", params.url, response.status);
 

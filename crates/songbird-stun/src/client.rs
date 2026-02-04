@@ -26,7 +26,7 @@ impl StunClient {
         // ✅ DEEP DEBT EVOLUTION (Feb 3, 2026): Use TimeoutConfig
         // Replaces hardcoded Duration::from_secs(5) with configurable timeout
         let timeout_config = songbird_config::timeouts::TimeoutConfig::from_env();
-        
+
         Self {
             timeout: timeout_config.connect,
         }

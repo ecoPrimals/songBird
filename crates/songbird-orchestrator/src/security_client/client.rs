@@ -14,7 +14,10 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use tracing::{debug, error, info, warn};
 
-use super::types::*;
+use super::types::{
+    ApiResponseWrapper, ConnectionInfo, CurrentLineageInfo, IdentityResponse,
+    TrustEvaluationRequest, TrustEvaluationResponse, VerificationResult,
+};
 use crate::trust::universal_trust_api::{
     IdentityAttestation as UniversalIdentityAttestation, UniversalTrustRequest,
     UniversalTrustResponse,
@@ -111,7 +114,7 @@ impl SecurityCapabilityClient {
         T: serde::de::DeserializeOwned + std::fmt::Debug,
     {
         // ✅ IDIOMATIC REST: HTTP status code is source of truth
-        if status < 200 || status >= 300 {
+        if !(200..300).contains(&status) {
             error!("Security provider returned error: {} - {}", status, body);
             anyhow::bail!("Security provider error: {} - {}", status, body);
         }

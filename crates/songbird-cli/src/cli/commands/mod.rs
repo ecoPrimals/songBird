@@ -111,17 +111,12 @@ pub enum Commands {
 }
 
 /// Gaming-focused log levels
-#[derive(Debug, Clone, PartialEq, Eq, clap::ValueEnum)]
+#[derive(Debug, Clone, PartialEq, Eq, clap::ValueEnum, Default)]
 pub enum LogLevel {
     Error,
     Warn,
+    #[default]
     Info,
     Debug,
     Trace,
-}
-
-impl Default for LogLevel {
-    fn default() -> Self {
-        Self::Info
-    }
 }

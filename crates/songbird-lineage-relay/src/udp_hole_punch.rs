@@ -8,7 +8,7 @@
 //! ## How It Works
 //!
 //! 1. Both peers discover their public addresses (via STUN)
-//! 2. Exchange addresses via BirdSong or existing secure channel
+//! 2. Exchange addresses via `BirdSong` or existing secure channel
 //! 3. Both peers send UDP packets simultaneously to each other
 //! 4. NATs create temporary "holes" in the mapping
 //! 5. Direct P2P connection established!
@@ -131,13 +131,12 @@ pub async fn udp_hole_punch(
                         // Note: DirectConnection expects NodeId and SocketAddr
                         // The socket is dropped here; in production, we'd pass ownership
                         return Ok(DirectConnection::new(peer_id, addr));
-                    } else {
-                        debug!(
-                            "     Received from unexpected address: {} (expected IP: {})",
-                            addr,
-                            peer_addr.ip()
-                        );
                     }
+                    debug!(
+                        "     Received from unexpected address: {} (expected IP: {})",
+                        addr,
+                        peer_addr.ip()
+                    );
                 }
                 Ok(Err(e)) => {
                     debug!("     Receive error: {}", e);
@@ -159,15 +158,14 @@ pub async fn udp_hole_punch(
     })
     .await;
 
-    match result {
-        Ok(conn) => conn,
-        Err(_) => {
-            warn!("⏱️  UDP hole punch timeout after {:?}", config.total_timeout);
-            Err(LineageRelayError::DirectConnectionFailed(format!(
-                "UDP hole punch timeout after {:?}",
-                config.total_timeout
-            )))
-        }
+    if let Ok(conn) = result {
+        conn
+    } else {
+        warn!("⏱️  UDP hole punch timeout after {:?}", config.total_timeout);
+        Err(LineageRelayError::DirectConnectionFailed(format!(
+            "UDP hole punch timeout after {:?}",
+            config.total_timeout
+        )))
     }
 }
 
@@ -189,7 +187,7 @@ pub async fn udp_hole_punch(
 ///
 /// Both peers must call this function simultaneously (or near-simultaneously)
 /// for hole punching to work. Address exchange happens via:
-/// 1. BirdSong encrypted broadcast (for same lineage)
+/// 1. `BirdSong` encrypted broadcast (for same lineage)
 /// 2. Existing secure channel (HTTPS/BTSP)
 /// 3. Out-of-band exchange (manual, for testing)
 pub async fn coordinated_hole_punch(
@@ -221,7 +219,7 @@ pub async fn create_hole_punch_socket(bind_addr: Option<SocketAddr>) -> Result<U
 
     UdpSocket::bind(addr)
         .await
-        .map_err(|e| LineageRelayError::NetworkError(format!("Failed to bind UDP socket: {}", e)))
+        .map_err(|e| LineageRelayError::NetworkError(format!("Failed to bind UDP socket: {e}")))
 }
 
 #[cfg(test)]

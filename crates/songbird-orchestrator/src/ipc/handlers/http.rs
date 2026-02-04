@@ -221,7 +221,7 @@ impl HttpHandler {
             .and_then(|b| b.as_str())
             .map(|b64| BASE64.decode(b64).context("Failed to decode base64 body"))
             .transpose()
-            .map_err(|e| JsonRpcError::invalid_params(&e.to_string()))?
+            .map_err(|e| JsonRpcError::invalid_params(e.to_string()))?
             .map(|bytes| {
                 // Convert bytes to JSON Value (string)
                 String::from_utf8(bytes)
@@ -231,7 +231,7 @@ impl HttpHandler {
 
         // 2. Parse HTTP method
         let method = HttpMethod::from_str(method_str)
-            .map_err(|e| JsonRpcError::invalid_params(&e.to_string()))?;
+            .map_err(|e| JsonRpcError::invalid_params(e.to_string()))?;
 
         // 3. Create HTTP client with BearDog crypto provider
         // Note: SongbirdHttpClient::new takes a socket path string
@@ -250,7 +250,7 @@ impl HttpHandler {
         let response = client
             .request(method.as_str(), url, headers, body)
             .await
-            .map_err(|e| JsonRpcError::internal_error(&format!("HTTP request failed: {}", e)))?;
+            .map_err(|e| JsonRpcError::internal_error(format!("HTTP request failed: {}", e)))?;
 
         // 5. Return response (body as base64)
         // Note: HttpResponse.body is serde_json::Value (already JSON)

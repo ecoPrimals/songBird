@@ -78,7 +78,7 @@ pub trait BirdSongEncryption: Send + Sync {
     // ═══════════════════════════════════════════════════════════════════════
     // Legacy Methods (Backward Compatibility)
     // ═══════════════════════════════════════════════════════════════════════
-    
+
     /// Encrypt discovery packet for same-family peers (LEGACY)
     ///
     /// # Arguments
@@ -131,11 +131,11 @@ pub trait BirdSongEncryption: Send + Sync {
     fn provider_name(&self) -> String {
         "Unknown".to_string()
     }
-    
+
     // ═══════════════════════════════════════════════════════════════════════
     // Dark Forest Methods (Zero Metadata Leakage)
     // ═══════════════════════════════════════════════════════════════════════
-    
+
     /// Encrypt payload for Dark Forest beacon (NEW - Feb 3, 2026)
     ///
     /// Uses beacon seed to encrypt, providing zero metadata leakage.
@@ -168,7 +168,7 @@ pub trait BirdSongEncryption: Send + Sync {
         let nonce = [0u8; 12]; // Placeholder - should be random in real implementation
         Ok((encrypted, nonce))
     }
-    
+
     /// Try to decrypt Dark Forest beacon (NEW - Feb 3, 2026)
     ///
     /// Attempts decryption using our beacon seed.
@@ -196,12 +196,16 @@ pub trait BirdSongEncryption: Send + Sync {
     ///
     /// Falls back to legacy `decrypt_discovery`.
     /// Override this for true Dark Forest support with beacon seeds.
-    async fn try_decrypt_beacon(&self, encrypted: &[u8], _nonce: &[u8; 12]) -> Result<Option<Vec<u8>>> {
+    async fn try_decrypt_beacon(
+        &self,
+        encrypted: &[u8],
+        _nonce: &[u8; 12],
+    ) -> Result<Option<Vec<u8>>> {
         // Default implementation for backward compatibility
         // Ignores nonce and uses legacy decryption
         self.decrypt_discovery(encrypted).await
     }
-    
+
     /// Get our beacon ID derived from beacon seed (NEW - Feb 3, 2026)
     ///
     /// Returns the public beacon identifier derived from our beacon seed.
@@ -225,7 +229,7 @@ pub trait BirdSongEncryption: Send + Sync {
         // Default implementation - beacon genetics not supported
         Ok(None)
     }
-    
+
     /// List known beacon IDs from meetings (NEW - Feb 3, 2026)
     ///
     /// Returns beacon IDs of peers we've "met" and exchanged beacon genetics with.
@@ -250,7 +254,7 @@ pub trait BirdSongEncryption: Send + Sync {
         // Default implementation - no known beacons
         Ok(Vec::new())
     }
-    
+
     /// Check if Dark Forest beacon support is available (NEW - Feb 3, 2026)
     ///
     /// Returns `true` if provider supports Dark Forest beacons:
@@ -299,23 +303,22 @@ pub struct BirdSongConfig {
     ///
     /// Recommended: `true` during migration, `false` in steady state
     pub mixed_mode: bool,
-    
+
     // ✅ NEW (Feb 3, 2026): Dark Forest Beacon Genetics configuration
-    
     /// Enable Dark Forest beacons (fully encrypted, zero metadata leakage)
     ///
     /// When `true`, broadcasts Dark Forest beacons (version 2, fully encrypted).
-    /// When `false`, broadcasts legacy `BirdSongPacket` (version 1.0, plaintext family_id).
+    /// When `false`, broadcasts legacy `BirdSongPacket` (version 1.0, plaintext `family_id`).
     ///
     /// **Privacy Impact**: Dark Forest beacons eliminate metadata leakage.
     /// Legacy format leaks `family_id` in plaintext.
     ///
-    /// Requires BearDog `beacon.*` RPC methods for full functionality.
+    /// Requires `BearDog` `beacon.*` RPC methods for full functionality.
     /// Falls back to legacy if beacon methods unavailable.
     ///
     /// Recommended: `true` for privacy, `false` only for compatibility testing
     pub dark_forest_enabled: bool,
-    
+
     /// Accept legacy `BirdSongPacket` format (backward compatibility)
     ///
     /// When `true`, accepts both Dark Forest beacons AND legacy packets.
@@ -328,7 +331,7 @@ pub struct BirdSongConfig {
     ///
     /// Recommended: `true` during migration, `false` after full rollout
     pub accept_legacy_format: bool,
-    
+
     /// Broadcast legacy format alongside Dark Forest (migration aid)
     ///
     /// When `true`, broadcasts BOTH Dark Forest AND legacy packets.
@@ -354,11 +357,11 @@ impl Default for BirdSongConfig {
             fallback_to_plaintext: true, // Graceful degradation
             security_endpoint: None,     // Auto-discover
             mixed_mode: true,            // Support migration
-            
+
             // Dark Forest configuration (conservative defaults)
-            dark_forest_enabled: false,      // Opt-in (requires BearDog beacon.*)
-            accept_legacy_format: true,      // Backward compatible by default
-            dual_broadcast: false,           // Minimize network overhead
+            dark_forest_enabled: false, // Opt-in (requires BearDog beacon.*)
+            accept_legacy_format: true, // Backward compatible by default
+            dual_broadcast: false,      // Minimize network overhead
         }
     }
 }
@@ -368,34 +371,37 @@ impl BirdSongConfig {
     ///
     /// Broadcasts Dark Forest beacons, accepts legacy for compatibility.
     /// Use this for production deployments with privacy requirements.
+    #[must_use]
     pub fn dark_forest() -> Self {
         Self {
             enabled: true,
             dark_forest_enabled: true,
-            accept_legacy_format: true,  // Still accept legacy for compatibility
-            dual_broadcast: false,       // Only send Dark Forest
+            accept_legacy_format: true, // Still accept legacy for compatibility
+            dual_broadcast: false,      // Only send Dark Forest
             ..Default::default()
         }
     }
-    
+
     /// Create config for migration period (dual format)
     ///
     /// Broadcasts BOTH formats, accepts both.
     /// Use this during early migration (Weeks 1-2) to help peers discover.
+    #[must_use]
     pub fn migration_mode() -> Self {
         Self {
             enabled: true,
             dark_forest_enabled: true,
             accept_legacy_format: true,
-            dual_broadcast: true,        // Send both formats
+            dual_broadcast: true, // Send both formats
             ..Default::default()
         }
     }
-    
+
     /// Create config for legacy-only mode (testing/compatibility)
     ///
     /// Broadcasts legacy format, accepts both.
     /// Use this only for compatibility testing or legacy deployments.
+    #[must_use]
     pub fn legacy_only() -> Self {
         Self {
             enabled: true,
@@ -405,13 +411,14 @@ impl BirdSongConfig {
             ..Default::default()
         }
     }
-    
+
     /// Create config for Dark Forest only (maximum privacy)
     ///
     /// Broadcasts Dark Forest only, rejects legacy.
     /// Use this after full network migration (Phase 3+).
     ///
     /// **Warning**: Incompatible with legacy peers.
+    #[must_use]
     pub fn dark_forest_only() -> Self {
         Self {
             enabled: true,
@@ -422,17 +429,19 @@ impl BirdSongConfig {
             ..Default::default()
         }
     }
-    
+
     /// Check if Dark Forest is fully enabled
     ///
     /// Returns `true` only if both `enabled` and `dark_forest_enabled` are true.
+    #[must_use]
     pub fn is_dark_forest_active(&self) -> bool {
         self.enabled && self.dark_forest_enabled
     }
-    
+
     /// Check if accepting any legacy format
     ///
     /// Returns `true` if either legacy format accepted OR dual broadcast enabled.
+    #[must_use]
     pub fn accepts_legacy(&self) -> bool {
         self.accept_legacy_format || !self.dark_forest_enabled
     }
@@ -714,25 +723,27 @@ impl BirdSongProcessor {
             "Plaintext (disabled)".to_string()
         }
     }
-    
+
     /// Get reference to configuration (read-only)
     ///
     /// Allows external code to check configuration without direct field access.
+    #[must_use]
     pub fn config(&self) -> &BirdSongConfig {
         &self.config
     }
-    
+
     /// Get reference to encryption provider (read-only)
     ///
     /// Returns None if no encryption provider configured.
+    #[must_use]
     pub fn encryption_provider(&self) -> Option<&Arc<dyn BirdSongEncryption>> {
         self.encryption.as_ref()
     }
-    
+
     // ═══════════════════════════════════════════════════════════════════════
     // Dark Forest Beacon Methods (NEW - Feb 3, 2026)
     // ═══════════════════════════════════════════════════════════════════════
-    
+
     /// Try to decrypt Dark Forest beacon with all known beacon seeds
     ///
     /// This is the core Dark Forest mechanism: we try decryption with
@@ -757,8 +768,6 @@ impl BirdSongProcessor {
         &self,
         beacon: &crate::dark_forest_beacon::DarkForestBeacon,
     ) -> Result<Option<(crate::dark_forest_beacon::BeaconPayload, Vec<u8>)>> {
-        use crate::dark_forest_beacon::BeaconPayload;
-        
         // Check if encryption provider available
         let encryption = match &self.encryption {
             Some(enc) if enc.is_available() => enc,
@@ -767,7 +776,7 @@ impl BirdSongProcessor {
                 return Ok(None);
             }
         };
-        
+
         // Check beacon age
         if !beacon.is_recent() {
             debug!(
@@ -777,56 +786,49 @@ impl BirdSongProcessor {
             );
             return Ok(None);
         }
-        
+
         // Try our own beacon seed first (most common case)
-        if let Some(payload) = self.try_decrypt_with_own_beacon(encryption.as_ref(), beacon).await? {
-            let our_id = encryption
-                .get_beacon_id()
-                .await?
-                .unwrap_or_default();
-            
+        if let Some(payload) = self.try_decrypt_with_own_beacon(encryption.as_ref(), beacon).await?
+        {
+            let our_id = encryption.get_beacon_id().await?.unwrap_or_default();
+
             debug!(
                 "✅ Decrypted Dark Forest beacon with our beacon seed (node: {})",
                 payload.node_id
             );
-            
+
             return Ok(Some((payload, our_id)));
         }
-        
+
         // Try all known beacon seeds (peers we've met)
         let known_beacons = encryption.list_known_beacons().await?;
-        
+
         if !known_beacons.is_empty() {
-            debug!(
-                "Trying {} known beacon seeds from meetings",
-                known_beacons.len()
-            );
-            
+            debug!("Trying {} known beacon seeds from meetings", known_beacons.len());
+
             for (idx, beacon_id) in known_beacons.iter().enumerate() {
-                if let Some(payload) = self.try_decrypt_with_beacon_id(
-                    encryption.as_ref(),
-                    beacon,
-                    beacon_id
-                ).await? {
+                if let Some(payload) =
+                    self.try_decrypt_with_beacon_id(encryption.as_ref(), beacon, beacon_id).await?
+                {
                     debug!(
                         "✅ Decrypted with known beacon {} (node: {})",
                         idx + 1,
                         payload.node_id
                     );
-                    
+
                     return Ok(Some((payload, beacon_id.clone())));
                 }
             }
         }
-        
+
         // Cannot decrypt - different beacon family (EXPECTED)
         debug!(
             "Cannot decrypt Dark Forest beacon - different beacon family (Dark Forest working as intended)"
         );
-        
+
         Ok(None)
     }
-    
+
     /// Try to decrypt with our own beacon seed
     async fn try_decrypt_with_own_beacon(
         &self,
@@ -834,24 +836,19 @@ impl BirdSongProcessor {
         beacon: &crate::dark_forest_beacon::DarkForestBeacon,
     ) -> Result<Option<crate::dark_forest_beacon::BeaconPayload>> {
         use crate::dark_forest_beacon::BeaconPayload;
-        
-        match encryption
-            .try_decrypt_beacon(&beacon.encrypted_payload, &beacon.nonce)
-            .await?
-        {
-            Some(plaintext) => {
-                match BeaconPayload::from_bytes(&plaintext) {
-                    Ok(payload) => Ok(Some(payload)),
-                    Err(e) => {
-                        warn!("Failed to parse beacon payload: {}", e);
-                        Ok(None)
-                    }
+
+        match encryption.try_decrypt_beacon(&beacon.encrypted_payload, &beacon.nonce).await? {
+            Some(plaintext) => match BeaconPayload::from_bytes(&plaintext) {
+                Ok(payload) => Ok(Some(payload)),
+                Err(e) => {
+                    warn!("Failed to parse beacon payload: {}", e);
+                    Ok(None)
                 }
-            }
+            },
             None => Ok(None),
         }
     }
-    
+
     /// Try to decrypt with specific beacon ID
     async fn try_decrypt_with_beacon_id(
         &self,
@@ -863,7 +860,7 @@ impl BirdSongProcessor {
         // TODO: Call BearDog's beacon.try_decrypt_with_id when available
         self.try_decrypt_with_own_beacon(encryption, beacon).await
     }
-    
+
     /// Encrypt payload for Dark Forest beacon
     ///
     /// Creates a fully encrypted beacon with zero metadata leakage.
@@ -880,33 +877,29 @@ impl BirdSongProcessor {
         payload: &crate::dark_forest_beacon::BeaconPayload,
     ) -> Result<crate::dark_forest_beacon::DarkForestBeacon> {
         use crate::dark_forest_beacon::DarkForestBeacon;
-        
+
         // Check if encryption provider available
-        let encryption = self.encryption.as_ref()
-            .context("No encryption provider available")?;
-        
+        let encryption = self.encryption.as_ref().context("No encryption provider available")?;
+
         if !encryption.is_available() {
             return Err(anyhow::anyhow!("Encryption provider not available"));
         }
-        
+
         // Serialize payload
-        let payload_bytes = payload.to_bytes()
-            .context("Failed to serialize beacon payload")?;
-        
+        let payload_bytes = payload.to_bytes().context("Failed to serialize beacon payload")?;
+
         // Encrypt with beacon seed
-        let (encrypted, nonce) = encryption
-            .encrypt_beacon(&payload_bytes)
-            .await
-            .context("Failed to encrypt beacon")?;
-        
+        let (encrypted, nonce) =
+            encryption.encrypt_beacon(&payload_bytes).await.context("Failed to encrypt beacon")?;
+
         // Create Dark Forest beacon
         let beacon = DarkForestBeacon::new(encrypted, nonce);
-        
+
         debug!(
             "Created Dark Forest beacon (size: {} bytes, NO metadata)",
             beacon.encrypted_payload.len()
         );
-        
+
         Ok(beacon)
     }
 }

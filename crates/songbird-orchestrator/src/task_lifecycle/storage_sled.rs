@@ -64,26 +64,25 @@ impl TaskStorage {
             let value = bincode::serialize(&task).context("Failed to serialize task")?;
 
             // Store with key: task/{task_id}
-            let key = format!("task/{}", task.id.to_string());
+            let key = format!("task/{}", task.id);
             db.insert(key.as_bytes(), value).context("Failed to save task")?;
 
             // Create indices for efficient queries
 
             // Index by owner: owner_tasks/{owner}/{task_id}
-            let owner_key = format!("owner_tasks/{}/{}", task.owner.as_str(), task.id.to_string());
+            let owner_key = format!("owner_tasks/{}/{}", task.owner.as_str(), task.id);
             db.insert(owner_key.as_bytes(), task.id.to_string().as_bytes())
                 .context("Failed to create owner index")?;
 
             // Index by status: status_tasks/{status}/{task_id}
             let status_str = format!("{:?}", task.status);
-            let status_key = format!("status_tasks/{}/{}", status_str, task.id.to_string());
+            let status_key = format!("status_tasks/{}/{}", status_str, task.id);
             db.insert(status_key.as_bytes(), task.id.to_string().as_bytes())
                 .context("Failed to create status index")?;
 
             // Index by tower if assigned: tower_tasks/{tower_id}/{task_id}
             if let Some(tower_id) = &task.current_tower {
-                let tower_key =
-                    format!("tower_tasks/{}/{}", tower_id.as_str(), task.id.to_string());
+                let tower_key = format!("tower_tasks/{}/{}", tower_id.as_str(), task.id);
                 db.insert(tower_key.as_bytes(), task.id.to_string().as_bytes())
                     .context("Failed to create tower index")?;
             }
@@ -104,7 +103,7 @@ impl TaskStorage {
         let db = Arc::clone(&self.db);
 
         tokio::task::spawn_blocking(move || {
-            let key = format!("task/{}", id.to_string());
+            let key = format!("task/{}", id);
             let value = db.get(key.as_bytes()).context("Failed to fetch task")?;
 
             if let Some(bytes) = value {
@@ -144,7 +143,7 @@ impl TaskStorage {
                     let task_id = TaskId::from_string(&task_id_str)?;
 
                     // Sync read within blocking context
-                    let key = format!("task/{}", task_id.to_string());
+                    let key = format!("task/{}", task_id);
                     if let Some(bytes) = db.get(key.as_bytes())? {
                         let task: TaskLifecycle = bincode::deserialize(&bytes)?;
                         if Self::matches_filter_static(&task, &filter) {
@@ -163,7 +162,7 @@ impl TaskStorage {
                     let task_id = TaskId::from_string(&task_id_str)?;
 
                     // Sync read within blocking context
-                    let key = format!("task/{}", task_id.to_string());
+                    let key = format!("task/{}", task_id);
                     if let Some(bytes) = db.get(key.as_bytes())? {
                         let task: TaskLifecycle = bincode::deserialize(&bytes)?;
                         if Self::matches_filter_static(&task, &filter) {
@@ -231,7 +230,7 @@ impl TaskStorage {
 
         tokio::task::spawn_blocking(move || {
             // Get task first to clean up indices
-            let key = format!("task/{}", id.to_string());
+            let key = format!("task/{}", id);
             if let Some(bytes) = db.get(key.as_bytes())? {
                 let task: TaskLifecycle = bincode::deserialize(&bytes)?;
 
@@ -239,17 +238,17 @@ impl TaskStorage {
                 db.remove(key.as_bytes()).context("Failed to delete task")?;
 
                 // Delete owner index
-                let owner_key = format!("owner_tasks/{}/{}", task.owner.as_str(), id.to_string());
+                let owner_key = format!("owner_tasks/{}/{}", task.owner.as_str(), id);
                 db.remove(owner_key.as_bytes())?;
 
                 // Delete status index
                 let status_str = format!("{:?}", task.status);
-                let status_key = format!("status_tasks/{}/{}", status_str, id.to_string());
+                let status_key = format!("status_tasks/{}/{}", status_str, id);
                 db.remove(status_key.as_bytes())?;
 
                 // Delete tower index if exists
                 if let Some(tower_id) = &task.current_tower {
-                    let tower_key = format!("tower_tasks/{}/{}", tower_id.as_str(), id.to_string());
+                    let tower_key = format!("tower_tasks/{}/{}", tower_id.as_str(), id);
                     db.remove(tower_key.as_bytes())?;
                 }
 
@@ -276,15 +275,11 @@ impl TaskStorage {
                 bincode::serialize(&checkpoint).context("Failed to serialize checkpoint")?;
 
             // Store with key: checkpoint/{checkpoint_id}
-            let key = format!("checkpoint/{}", checkpoint.id.to_string());
+            let key = format!("checkpoint/{}", checkpoint.id);
             db.insert(key.as_bytes(), value).context("Failed to save checkpoint")?;
 
             // Index by task: task_checkpoints/{task_id}/{checkpoint_id}
-            let task_key = format!(
-                "task_checkpoints/{}/{}",
-                checkpoint.task_id.to_string(),
-                checkpoint.id.to_string()
-            );
+            let task_key = format!("task_checkpoints/{}/{}", checkpoint.task_id, checkpoint.id);
             db.insert(task_key.as_bytes(), checkpoint.id.to_string().as_bytes())
                 .context("Failed to create task checkpoint index")?;
 
@@ -331,7 +326,7 @@ impl TaskStorage {
         tokio::task::spawn_blocking(move || {
             debug!("Listing checkpoints for task: {}", task_id.to_string());
 
-            let prefix = format!("task_checkpoints/{}/", task_id.to_string());
+            let prefix = format!("task_checkpoints/{}/", task_id);
             let mut checkpoints = Vec::new();
 
             for item in db.scan_prefix(prefix.as_bytes()) {
@@ -377,8 +372,7 @@ impl TaskStorage {
                 db.remove(key.as_bytes()).context("Failed to delete checkpoint")?;
 
                 // Delete task index
-                let task_key =
-                    format!("task_checkpoints/{}/{}", checkpoint.task_id.to_string(), id);
+                let task_key = format!("task_checkpoints/{}/{}", checkpoint.task_id, id);
                 db.remove(task_key.as_bytes())?;
 
                 debug!("✅ Checkpoint deleted: {}", id);
@@ -415,7 +409,7 @@ impl TaskStorage {
         let db = Arc::clone(&self.db);
 
         tokio::task::spawn_blocking(move || {
-            let prefix = format!("task_checkpoints/{}/", task_id.to_string());
+            let prefix = format!("task_checkpoints/{}/", task_id);
             let mut checkpoints = Vec::new();
 
             // Collect all checkpoints for this task
@@ -439,15 +433,12 @@ impl TaskStorage {
             if checkpoints.len() > keep_count {
                 for checkpoint in checkpoints.iter().skip(keep_count) {
                     // Delete checkpoint
-                    let key = format!("checkpoint/{}", checkpoint.id.to_string());
+                    let key = format!("checkpoint/{}", checkpoint.id);
                     db.remove(key.as_bytes())?;
 
                     // Delete task index
-                    let task_key = format!(
-                        "task_checkpoints/{}/{}",
-                        checkpoint.task_id.to_string(),
-                        checkpoint.id.to_string()
-                    );
+                    let task_key =
+                        format!("task_checkpoints/{}/{}", checkpoint.task_id, checkpoint.id);
                     db.remove(task_key.as_bytes())?;
 
                     debug!("Deleted old checkpoint: {}", checkpoint.id.to_string());
@@ -492,11 +483,8 @@ impl TaskStorage {
                         db.remove(&key)?;
 
                         // Delete task index
-                        let task_key = format!(
-                            "task_checkpoints/{}/{}",
-                            checkpoint.task_id.to_string(),
-                            checkpoint.id.to_string()
-                        );
+                        let task_key =
+                            format!("task_checkpoints/{}/{}", checkpoint.task_id, checkpoint.id);
                         db.remove(task_key.as_bytes())?;
 
                         deleted_count += 1;

@@ -11,8 +11,8 @@
 //!
 //! ## Evolution
 //!
-//! **Refactored**: January 21, 2026 - Split from 971-line monolithic file into 4 cohesive modules  
-//! **Strategy**: Domain-driven (not arbitrary line-count splitting)  
+//! **Refactored**: January 21, 2026 - Split from 971-line monolithic file into 4 cohesive modules\
+//! **Strategy**: Domain-driven (not arbitrary line-count splitting)\
 //! **Result**: Clear separation of concerns, easier testing, better maintainability
 
 use axum::{

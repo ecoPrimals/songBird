@@ -337,9 +337,9 @@ impl IpcHttpClient {
     /// Make HTTP request with full control
     ///
     /// Internal method used by convenience methods.
-    /// 
+    ///
     /// # Connection Pooling
-    /// 
+    ///
     /// If a connection pool is configured, this method will:
     /// 1. Try to acquire a pooled connection
     /// 2. Fall back to creating a new connection if pool is exhausted
@@ -358,17 +358,17 @@ impl IpcHttpClient {
                 Ok(pooled_conn) => {
                     // Connection will be returned to pool when dropped
                     Some(pooled_conn)
-                },
+                }
                 Err(e) => {
                     // Pool exhausted or unhealthy, create new connection and add to pool
                     tracing::debug!("Pool acquisition failed ({}), creating new connection", e);
-                    let new_conn = Self::connect_platform(&self.socket_path)
-                        .await
-                        .context(format!("Failed to connect to Songbird IPC: {:?}", self.socket_path))?;
-                    
+                    let new_conn = Self::connect_platform(&self.socket_path).await.context(
+                        format!("Failed to connect to Songbird IPC: {:?}", self.socket_path),
+                    )?;
+
                     // Try to add to pool for future reuse (best effort)
                     let _ = pool.add_connection(new_conn).await;
-                    
+
                     // Acquire the connection we just added
                     pool.acquire().await.ok()
                 }
@@ -383,20 +383,19 @@ impl IpcHttpClient {
             Direct(PlatformStream),
         }
 
-        let mut connection = if let Some(pooled) = pooled_stream {
-            Connection::Pooled(pooled)
-        } else {
-            // No pooling or pool failed, create standalone connection
-            Connection::Direct(
-                Self::connect_platform(&self.socket_path)
-                    .await
-                    .context(format!("Failed to connect to Songbird IPC: {:?}", self.socket_path))?
-            )
-        };
+        let mut connection =
+            if let Some(pooled) = pooled_stream {
+                Connection::Pooled(pooled)
+            } else {
+                // No pooling or pool failed, create standalone connection
+                Connection::Direct(Self::connect_platform(&self.socket_path).await.context(
+                    format!("Failed to connect to Songbird IPC: {:?}", self.socket_path),
+                )?)
+            };
 
         // Get mutable reference to the underlying stream
         let stream: &mut PlatformStream = match &mut connection {
-            Connection::Pooled(p) => &mut **p,  // Deref twice: once for &mut, once for DerefMut
+            Connection::Pooled(p) => p,
             Connection::Direct(d) => d,
         };
 

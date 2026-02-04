@@ -41,7 +41,7 @@ async fn test_collect_metrics_success() -> SongbirdResult<()> {
         .create_async()
         .await;
 
-    let adapter = SecurityAdapter::new(server.url())?;
+    let adapter = SecurityAdapter::new(server.url()).await?;
     let metrics = adapter.collect_metrics().await?;
 
     mock.assert_async().await;
@@ -56,6 +56,7 @@ async fn test_collect_metrics_success() -> SongbirdResult<()> {
 #[tokio::test]
 async fn test_collect_metrics_network_error() {
     let adapter = SecurityAdapter::new("http://nonexistent-host-12345:9999".to_string())
+        .await
         .expect("test precondition")
         .with_timeout(Duration::from_millis(100));
 
@@ -72,7 +73,7 @@ async fn test_collect_metrics_http_error() -> SongbirdResult<()> {
 
     let _mock = server.mock("GET", "/metrics/security").with_status(500).create_async().await;
 
-    let adapter = SecurityAdapter::new(server.url())?;
+    let adapter = SecurityAdapter::new(server.url()).await?;
     let result = adapter.collect_metrics().await;
 
     assert!(result.is_err());
@@ -93,7 +94,7 @@ async fn test_collect_metrics_invalid_json() -> SongbirdResult<()> {
         .create_async()
         .await;
 
-    let adapter = SecurityAdapter::new(server.url())?;
+    let adapter = SecurityAdapter::new(server.url()).await?;
     let result = adapter.collect_metrics().await;
 
     assert!(result.is_err());
@@ -123,7 +124,7 @@ async fn test_collect_metrics_missing_timestamp() -> SongbirdResult<()> {
         .create_async()
         .await;
 
-    let adapter = SecurityAdapter::new(server.url())?;
+    let adapter = SecurityAdapter::new(server.url()).await?;
     let metrics = adapter.collect_metrics().await?;
 
     // Timestamp should be set to current time when it's zero
@@ -153,7 +154,7 @@ async fn test_collect_metrics_high_values() -> SongbirdResult<()> {
         .create_async()
         .await;
 
-    let adapter = SecurityAdapter::new(server.url())?;
+    let adapter = SecurityAdapter::new(server.url()).await?;
     let metrics = adapter.collect_metrics().await?;
 
     assert!(metrics.is_under_attack());
@@ -178,7 +179,7 @@ async fn test_verify_auth_authorized() -> SongbirdResult<()> {
         .create_async()
         .await;
 
-    let adapter = SecurityAdapter::new(server.url())?;
+    let adapter = SecurityAdapter::new(server.url()).await?;
     let result = adapter.verify_auth("valid_token_123").await?;
 
     assert_eq!(result, AuthResult::Authorized);
@@ -192,7 +193,7 @@ async fn test_verify_auth_unauthorized() -> SongbirdResult<()> {
 
     let _mock = server.mock("POST", "/auth/verify").with_status(401).create_async().await;
 
-    let adapter = SecurityAdapter::new(server.url())?;
+    let adapter = SecurityAdapter::new(server.url()).await?;
     let result = adapter.verify_auth("invalid_token").await?;
 
     assert_eq!(result, AuthResult::Unauthorized);
@@ -212,7 +213,7 @@ async fn test_verify_auth_expired() -> SongbirdResult<()> {
         .create_async()
         .await;
 
-    let adapter = SecurityAdapter::new(server.url())?;
+    let adapter = SecurityAdapter::new(server.url()).await?;
     let result = adapter.verify_auth("expired_token").await?;
 
     assert_eq!(result, AuthResult::Expired);
@@ -232,7 +233,7 @@ async fn test_verify_auth_invalid() -> SongbirdResult<()> {
         .create_async()
         .await;
 
-    let adapter = SecurityAdapter::new(server.url())?;
+    let adapter = SecurityAdapter::new(server.url()).await?;
     let result = adapter.verify_auth("malformed_token").await?;
 
     assert_eq!(result, AuthResult::Invalid);
@@ -243,6 +244,7 @@ async fn test_verify_auth_invalid() -> SongbirdResult<()> {
 #[tokio::test]
 async fn test_verify_auth_network_error() {
     let adapter = SecurityAdapter::new("http://nonexistent-host-67890:9999".to_string())
+        .await
         .expect("test precondition")
         .with_timeout(Duration::from_millis(100));
 
@@ -268,7 +270,7 @@ async fn test_verify_auth_request_body() -> SongbirdResult<()> {
         .create_async()
         .await;
 
-    let adapter = SecurityAdapter::new(server.url())?;
+    let adapter = SecurityAdapter::new(server.url()).await?;
     let result = adapter.verify_auth("test_token_abc").await?;
 
     assert_eq!(result, AuthResult::Authorized);
@@ -287,7 +289,7 @@ async fn test_verify_auth_invalid_json_response() -> SongbirdResult<()> {
         .create_async()
         .await;
 
-    let adapter = SecurityAdapter::new(server.url())?;
+    let adapter = SecurityAdapter::new(server.url()).await?;
     let result = adapter.verify_auth("token").await;
 
     assert!(result.is_err());
@@ -321,7 +323,7 @@ async fn test_check_health_healthy() -> SongbirdResult<()> {
         .create_async()
         .await;
 
-    let adapter = SecurityAdapter::new(server.url())?;
+    let adapter = SecurityAdapter::new(server.url()).await?;
     let health = adapter.check_health().await?;
 
     assert_eq!(health, SecurityHealth::Healthy);
@@ -349,7 +351,7 @@ async fn test_check_health_warning() -> SongbirdResult<()> {
         .create_async()
         .await;
 
-    let adapter = SecurityAdapter::new(server.url())?;
+    let adapter = SecurityAdapter::new(server.url()).await?;
     let health = adapter.check_health().await?;
 
     assert_eq!(health, SecurityHealth::Warning);
@@ -377,7 +379,7 @@ async fn test_check_health_critical() -> SongbirdResult<()> {
         .create_async()
         .await;
 
-    let adapter = SecurityAdapter::new(server.url())?;
+    let adapter = SecurityAdapter::new(server.url()).await?;
     let health = adapter.check_health().await?;
 
     assert_eq!(health, SecurityHealth::Critical);
@@ -388,6 +390,7 @@ async fn test_check_health_critical() -> SongbirdResult<()> {
 #[tokio::test]
 async fn test_check_health_network_failure() {
     let adapter = SecurityAdapter::new("http://nonexistent-host-11111:9999".to_string())
+        .await
         .expect("test precondition")
         .with_timeout(Duration::from_millis(100));
 
@@ -419,7 +422,7 @@ async fn test_collect_metrics_with_custom_timeout() -> SongbirdResult<()> {
         .create_async()
         .await;
 
-    let adapter = SecurityAdapter::new(server.url())?.with_timeout(Duration::from_secs(30));
+    let adapter = SecurityAdapter::new(server.url()).await?.with_timeout(Duration::from_secs(30));
 
     let metrics = adapter.collect_metrics().await?;
     assert_eq!(metrics.active_sessions, 30);
@@ -452,7 +455,7 @@ async fn test_multiple_collect_metrics_calls() -> SongbirdResult<()> {
         .create_async()
         .await;
 
-    let adapter = SecurityAdapter::new(server.url())?;
+    let adapter = SecurityAdapter::new(server.url()).await?;
 
     // Call multiple times
     for _ in 0..3 {
@@ -475,7 +478,7 @@ async fn test_multiple_verify_auth_calls() -> SongbirdResult<()> {
         .create_async()
         .await;
 
-    let adapter = SecurityAdapter::new(server.url())?;
+    let adapter = SecurityAdapter::new(server.url()).await?;
 
     // Verify multiple tokens
     for i in 0..5 {
@@ -496,7 +499,7 @@ async fn test_collect_metrics_404() -> SongbirdResult<()> {
 
     let _mock = server.mock("GET", "/metrics/security").with_status(404).create_async().await;
 
-    let adapter = SecurityAdapter::new(server.url())?;
+    let adapter = SecurityAdapter::new(server.url()).await?;
     let result = adapter.collect_metrics().await;
 
     assert!(result.is_err());
@@ -512,7 +515,7 @@ async fn test_collect_metrics_503() -> SongbirdResult<()> {
 
     let _mock = server.mock("GET", "/metrics/security").with_status(503).create_async().await;
 
-    let adapter = SecurityAdapter::new(server.url())?;
+    let adapter = SecurityAdapter::new(server.url()).await?;
     let result = adapter.collect_metrics().await;
 
     assert!(result.is_err());

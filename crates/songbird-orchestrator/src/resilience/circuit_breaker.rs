@@ -103,13 +103,13 @@ pub enum CircuitState {
         /// Number of consecutive failures
         failures: usize,
     },
-    
+
     /// Circuit is open, requests fail immediately
     Open {
         /// When the circuit was opened
         opened_at: Instant,
     },
-    
+
     /// Circuit is half-open, testing if service recovered
     HalfOpen,
 }
@@ -212,9 +212,11 @@ impl CircuitBreaker {
     /// Create a new circuit breaker with configuration
     pub fn new(config: CircuitBreakerConfig) -> Result<Self, String> {
         config.validate()?;
-        
+
         Ok(Self {
-            state: Arc::new(RwLock::new(CircuitState::Closed { failures: 0 })),
+            state: Arc::new(RwLock::new(CircuitState::Closed {
+                failures: 0,
+            })),
             config,
             successes_in_half_open: Arc::new(RwLock::new(0)),
         })
@@ -239,7 +241,7 @@ impl CircuitBreaker {
     /// # #[tokio::main]
     /// # async fn main() {
     /// let breaker = CircuitBreaker::builder().build().unwrap();
-    /// 
+    ///
     /// let result = breaker.call(|| async {
     ///     // Your async operation
     ///     Ok::<_, std::io::Error>(42)
@@ -256,7 +258,9 @@ impl CircuitBreaker {
         let current_state = {
             let mut state = self.state.write().await;
             match *state {
-                CircuitState::Open { opened_at } => {
+                CircuitState::Open {
+                    opened_at,
+                } => {
                     // Check if timeout has expired
                     if opened_at.elapsed() >= self.config.timeout {
                         debug!("Circuit breaker transitioning from Open to Half-Open");
@@ -298,9 +302,13 @@ impl CircuitBreaker {
     /// Handle successful operation
     async fn on_success(&self, current_state: CircuitState) {
         match current_state {
-            CircuitState::Closed { .. } => {
+            CircuitState::Closed {
+                ..
+            } => {
                 // Reset failure count on success
-                *self.state.write().await = CircuitState::Closed { failures: 0 };
+                *self.state.write().await = CircuitState::Closed {
+                    failures: 0,
+                };
             }
             CircuitState::HalfOpen => {
                 // Increment success count
@@ -310,10 +318,14 @@ impl CircuitBreaker {
                 // If enough successes, close the circuit
                 if *successes >= self.config.success_threshold {
                     info!("Circuit breaker transitioning from Half-Open to Closed (recovered)");
-                    *self.state.write().await = CircuitState::Closed { failures: 0 };
+                    *self.state.write().await = CircuitState::Closed {
+                        failures: 0,
+                    };
                 }
             }
-            CircuitState::Open { .. } => {
+            CircuitState::Open {
+                ..
+            } => {
                 // Should not happen, but handle gracefully
                 warn!("Received success in Open state (unexpected)");
             }
@@ -323,7 +335,9 @@ impl CircuitBreaker {
     /// Handle failed operation
     async fn on_failure(&self, current_state: CircuitState) {
         match current_state {
-            CircuitState::Closed { failures } => {
+            CircuitState::Closed {
+                failures,
+            } => {
                 let new_failures = failures + 1;
                 if new_failures >= self.config.failure_threshold {
                     // Open the circuit
@@ -348,7 +362,9 @@ impl CircuitBreaker {
                     opened_at: Instant::now(),
                 };
             }
-            CircuitState::Open { .. } => {
+            CircuitState::Open {
+                ..
+            } => {
                 // Already open, no state change needed
             }
         }
@@ -359,7 +375,9 @@ impl CircuitBreaker {
     /// Use with caution - typically you want automatic recovery via Half-Open state.
     pub async fn reset(&self) {
         info!("Circuit breaker manually reset to Closed state");
-        *self.state.write().await = CircuitState::Closed { failures: 0 };
+        *self.state.write().await = CircuitState::Closed {
+            failures: 0,
+        };
         *self.successes_in_half_open.write().await = 0;
     }
 
@@ -372,7 +390,9 @@ impl CircuitBreaker {
             success_threshold: self.config.success_threshold,
             timeout: self.config.timeout,
             current_failures: match state {
-                CircuitState::Closed { failures } => failures,
+                CircuitState::Closed {
+                    failures,
+                } => failures,
                 _ => 0,
             },
             current_successes: *self.successes_in_half_open.read().await,
@@ -443,7 +463,9 @@ mod tests {
         // Fail 3 times
         for _ in 0..3 {
             let _ = breaker
-                .call(|| async { Err::<(), _>(std::io::Error::new(std::io::ErrorKind::Other, "test")) })
+                .call(|| async {
+                    Err::<(), _>(std::io::Error::new(std::io::ErrorKind::Other, "test"))
+                })
                 .await;
         }
 
@@ -467,7 +489,7 @@ mod tests {
         // Next call should fail immediately without executing
         let call_count = Arc::new(AtomicUsize::new(0));
         let call_count_clone = Arc::clone(&call_count);
-        
+
         let result = breaker
             .call(|| {
                 let cc = Arc::clone(&call_count_clone);
@@ -512,10 +534,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_circuit_breaker_manual_reset() {
-        let breaker = CircuitBreaker::builder()
-            .failure_threshold(1)
-            .build()
-            .unwrap();
+        let breaker = CircuitBreaker::builder().failure_threshold(1).build().unwrap();
 
         // Fail to open circuit
         let _ = breaker

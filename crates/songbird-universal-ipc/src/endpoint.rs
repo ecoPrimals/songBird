@@ -79,7 +79,7 @@ pub enum NativeEndpoint {
 
     /// XPC service (iOS/macOS)
     /// - iOS: `org.biomeos.{primal}` (required for iOS)
-    /// - macOS: Optional, can use UnixSocket instead
+    /// - macOS: Optional, can use `UnixSocket` instead
     /// - Requires platform-specific XPC bindings
     XPC(String),
 
@@ -113,22 +113,22 @@ impl NativeEndpoint {
                 format!("unix://{}", path.display())
             }
             NativeEndpoint::AbstractSocket(name) => {
-                format!("abstract://{}", name)
+                format!("abstract://{name}")
             }
             NativeEndpoint::NamedPipe(name) => {
-                format!("pipe://{}", name)
+                format!("pipe://{name}")
             }
             NativeEndpoint::XPC(service) => {
-                format!("xpc://{}", service)
+                format!("xpc://{service}")
             }
             NativeEndpoint::InProcess(id) => {
-                format!("inprocess://{}", id)
+                format!("inprocess://{id}")
             }
             NativeEndpoint::SharedMemory(region) => {
-                format!("shmem://{}", region)
+                format!("shmem://{region}")
             }
             NativeEndpoint::TcpLocal(port) => {
-                format!("tcp://127.0.0.1:{}", port)
+                format!("tcp://127.0.0.1:{port}")
             }
         }
     }

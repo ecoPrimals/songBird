@@ -5,7 +5,7 @@
 use serde::{Deserialize, Serialize};
 
 /// Discovery mode for federation broadcasts
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
 pub enum DiscoveryMode {
     /// Plaintext broadcasts (no `BearDog`)
     ///
@@ -15,6 +15,7 @@ pub enum DiscoveryMode {
     /// - Fast, zero-config setup
     ///
     /// Privacy: LOW (everything visible to network observers)
+    #[default]
     Plaintext,
 
     /// Encrypted birdSong broadcasts (with `BearDog`)
@@ -48,13 +49,6 @@ impl DiscoveryMode {
             Self::Plaintext => "Plaintext (trusted LAN only)",
             Self::BirdSong => "BirdSong (privacy-preserving, encrypted)",
         }
-    }
-}
-
-impl Default for DiscoveryMode {
-    fn default() -> Self {
-        // Default to plaintext for backward compatibility
-        Self::Plaintext
     }
 }
 

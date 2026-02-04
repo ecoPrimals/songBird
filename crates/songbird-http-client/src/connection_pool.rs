@@ -175,7 +175,9 @@ impl PoolConfigBuilder {
             max_idle_time: self.max_idle_time.unwrap_or(default.max_idle_time),
             acquire_timeout: self.acquire_timeout.unwrap_or(default.acquire_timeout),
             cleanup_interval: self.cleanup_interval.unwrap_or(default.cleanup_interval),
-            health_check_interval: self.health_check_interval.unwrap_or(default.health_check_interval),
+            health_check_interval: self
+                .health_check_interval
+                .unwrap_or(default.health_check_interval),
         }
     }
 }
@@ -315,7 +317,7 @@ impl<T: Send + Sync + 'static> ConnectionPool<T> {
 
         // Try to get an existing connection
         let mut connections = self.inner.connections.write().await;
-        
+
         while let Some((conn, last_used)) = connections.pop_front() {
             // Check if connection is still healthy
             let age = Instant::now().duration_since(last_used);
@@ -354,7 +356,7 @@ impl<T: Send + Sync + 'static> ConnectionPool<T> {
     pub async fn shutdown(&self) {
         info!("Shutting down connection pool");
         *self.inner.is_shutting_down.write().await = true;
-        
+
         // Clear all connections
         let mut connections = self.inner.connections.write().await;
         connections.clear();
@@ -426,7 +428,7 @@ impl<T: Send + Sync + 'static> ConnectionPoolBuilder<T> {
 
     pub async fn build(self) -> PoolResult<ConnectionPool<T>> {
         // Validate configuration
-        self.config.validate().map_err(|e| PoolError::ConnectionCreation(e))?;
+        self.config.validate().map_err(PoolError::ConnectionCreation)?;
 
         let inner = Arc::new(ConnectionPoolInner {
             connections: RwLock::new(VecDeque::with_capacity(self.config.max_size)),
@@ -487,14 +489,12 @@ mod tests {
 
     #[tokio::test]
     async fn test_add_and_acquire_connection() {
-        let pool = ConnectionPool::builder()
-            .max_size(5)
-            .build()
-            .await
-            .unwrap();
+        let pool = ConnectionPool::builder().max_size(5).build().await.unwrap();
 
         // Add connection
-        let conn = MockConnection { id: 1 };
+        let conn = MockConnection {
+            id: 1,
+        };
         pool.add_connection(conn).await.unwrap();
 
         // Acquire connection
@@ -504,30 +504,38 @@ mod tests {
 
     #[tokio::test]
     async fn test_pool_full() {
-        let pool = ConnectionPool::builder()
-            .max_size(2)
-            .build()
-            .await
-            .unwrap();
+        let pool = ConnectionPool::builder().max_size(2).build().await.unwrap();
 
         // Fill pool
-        pool.add_connection(MockConnection { id: 1 }).await.unwrap();
-        pool.add_connection(MockConnection { id: 2 }).await.unwrap();
+        pool.add_connection(MockConnection {
+            id: 1,
+        })
+        .await
+        .unwrap();
+        pool.add_connection(MockConnection {
+            id: 2,
+        })
+        .await
+        .unwrap();
 
         // Try to add another connection (should fail)
-        let result = pool.add_connection(MockConnection { id: 3 }).await;
+        let result = pool
+            .add_connection(MockConnection {
+                id: 3,
+            })
+            .await;
         assert!(matches!(result, Err(PoolError::PoolFull(2))));
     }
 
     #[tokio::test]
     async fn test_connection_return_on_drop() {
-        let pool = ConnectionPool::builder()
-            .max_size(5)
-            .build()
-            .await
-            .unwrap();
+        let pool = ConnectionPool::builder().max_size(5).build().await.unwrap();
 
-        pool.add_connection(MockConnection { id: 1 }).await.unwrap();
+        pool.add_connection(MockConnection {
+            id: 1,
+        })
+        .await
+        .unwrap();
 
         {
             let _conn = pool.acquire().await.unwrap();

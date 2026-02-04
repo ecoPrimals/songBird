@@ -18,11 +18,17 @@ pub enum DiscoveryBackend {
     /// DNS-SD (DNS Service Discovery)
     DNSSD,
     /// Consul service registry
-    Consul { endpoint: String },
+    Consul {
+        endpoint: String,
+    },
     /// etcd service registry
-    Etcd { endpoints: Vec<String> },
+    Etcd {
+        endpoints: Vec<String>,
+    },
     /// Kubernetes service discovery
-    Kubernetes { namespace: Option<String> },
+    Kubernetes {
+        namespace: Option<String>,
+    },
     /// Environment variable based (for development)
     Environment,
 }
@@ -58,6 +64,7 @@ pub struct DiscoveredService {
 
 impl CapabilityDiscoveryEngine {
     /// Create a new discovery engine with specified backends
+    #[must_use]
     pub fn new(backends: Vec<DiscoveryBackend>, cache_ttl: Duration) -> Self {
         Self {
             backends,
@@ -67,6 +74,7 @@ impl CapabilityDiscoveryEngine {
     }
 
     /// Create engine with default backends (auto-detects environment)
+    #[must_use]
     pub fn with_defaults() -> Self {
         let backends = Self::detect_backends();
         Self::new(backends, Duration::from_secs(60))
@@ -88,16 +96,18 @@ impl CapabilityDiscoveryEngine {
 
         // Check for Consul
         if let Ok(consul_endpoint) = std::env::var("CONSUL_HTTP_ADDR") {
-            backends.push(DiscoveryBackend::Consul { endpoint: consul_endpoint });
+            backends.push(DiscoveryBackend::Consul {
+                endpoint: consul_endpoint,
+            });
         }
 
         // Check for etcd
         if let Ok(etcd_endpoints) = std::env::var("ETCD_ENDPOINTS") {
-            let endpoints: Vec<String> = etcd_endpoints
-                .split(',')
-                .map(|s| s.trim().to_string())
-                .collect();
-            backends.push(DiscoveryBackend::Etcd { endpoints });
+            let endpoints: Vec<String> =
+                etcd_endpoints.split(',').map(|s| s.trim().to_string()).collect();
+            backends.push(DiscoveryBackend::Etcd {
+                endpoints,
+            });
         }
 
         // Try mDNS for local discovery (if not in container)
@@ -121,11 +131,11 @@ impl CapabilityDiscoveryEngine {
     /// # use songbird_config::discovery::CapabilityDiscoveryEngine;
     /// # async fn example() {
     /// let engine = CapabilityDiscoveryEngine::with_defaults();
-    /// 
+    ///
     /// // Discover any service offering "security" capability
     /// // Could be BearDog, or any other security provider
     /// let security_services = engine.discover_by_capability("security").await;
-    /// 
+    ///
     /// // Discover storage providers (NestGate, MinIO, S3, etc.)
     /// let storage_services = engine.discover_by_capability("storage").await;
     /// # }
@@ -171,15 +181,15 @@ impl CapabilityDiscoveryEngine {
             DiscoveryBackend::Environment => self.discover_from_environment(capability).await,
             DiscoveryBackend::MDNS => self.discover_from_mdns(capability).await,
             DiscoveryBackend::DNSSD => self.discover_from_dnssd(capability).await,
-            DiscoveryBackend::Consul { endpoint } => {
-                self.discover_from_consul(endpoint, capability).await
-            }
-            DiscoveryBackend::Etcd { endpoints } => {
-                self.discover_from_etcd(endpoints, capability).await
-            }
-            DiscoveryBackend::Kubernetes { namespace } => {
-                self.discover_from_kubernetes(namespace.as_deref(), capability).await
-            }
+            DiscoveryBackend::Consul {
+                endpoint,
+            } => self.discover_from_consul(endpoint, capability).await,
+            DiscoveryBackend::Etcd {
+                endpoints,
+            } => self.discover_from_etcd(endpoints, capability).await,
+            DiscoveryBackend::Kubernetes {
+                namespace,
+            } => self.discover_from_kubernetes(namespace.as_deref(), capability).await,
         }
     }
 
@@ -189,7 +199,7 @@ impl CapabilityDiscoveryEngine {
         capability: &str,
     ) -> Result<Vec<DiscoveredService>, Box<dyn std::error::Error + Send + Sync>> {
         let env_key = format!("{}_ENDPOINT", capability.to_uppercase());
-        
+
         if let Ok(endpoint) = std::env::var(&env_key) {
             // Parse address
             let addr: SocketAddr = endpoint
@@ -201,9 +211,7 @@ impl CapabilityDiscoveryEngine {
             let service = DiscoveredService {
                 address: addr,
                 capabilities: vec![capability.to_string()],
-                metadata: [("source".to_string(), "environment".to_string())]
-                    .into_iter()
-                    .collect(),
+                metadata: [("source".to_string(), "environment".to_string())].into_iter().collect(),
                 discovered_at: std::time::SystemTime::now(),
             };
 
@@ -220,25 +228,28 @@ impl CapabilityDiscoveryEngine {
     ) -> Result<Vec<DiscoveredService>, Box<dyn std::error::Error + Send + Sync>> {
         // Use our production mDNS implementation
         use super::mdns::MdnsDiscovery;
-        
+
         let mdns = MdnsDiscovery::new()?;
-        let services = mdns.discover_by_capability(capability, Some(std::time::Duration::from_secs(5))).await?;
-        
+        let services = mdns
+            .discover_by_capability(capability, Some(std::time::Duration::from_secs(5)))
+            .await?;
+
         // Convert to DiscoveredService format
-        let discovered: Vec<DiscoveredService> = services.into_iter().map(|s| {
-            DiscoveredService {
+        let discovered: Vec<DiscoveredService> = services
+            .into_iter()
+            .map(|s| DiscoveredService {
                 address: s.address,
                 capabilities: s.capabilities,
                 metadata: s.metadata,
                 discovered_at: s.discovered_at,
-            }
-        }).collect();
-        
+            })
+            .collect();
+
         Ok(discovered)
     }
 
     /// Discover from DNS-SD
-    /// 
+    ///
     /// **Status**: Not yet implemented - returns empty list
     /// **Fallback**: Uses environment variables and defaults instead
     async fn discover_from_dnssd(
@@ -248,7 +259,7 @@ impl CapabilityDiscoveryEngine {
         // NOTE: DNS-SD discovery not yet implemented
         // Query DNS for SRV records like _<capability>._tcp.example.com
         // For now, falls back to environment-based discovery
-        
+
         Ok(Vec::new())
     }
 
@@ -264,7 +275,7 @@ impl CapabilityDiscoveryEngine {
         // NOTE: Consul service discovery not yet implemented
         // Query Consul API for services tagged with capability
         // For now, falls back to environment-based discovery
-        
+
         Ok(Vec::new())
     }
 
@@ -279,7 +290,7 @@ impl CapabilityDiscoveryEngine {
     ) -> Result<Vec<DiscoveredService>, Box<dyn std::error::Error + Send + Sync>> {
         // NOTE: etcd service discovery not yet implemented
         // Query etcd for services with capability key
-        
+
         Ok(Vec::new())
     }
 
@@ -295,7 +306,7 @@ impl CapabilityDiscoveryEngine {
         // NOTE: Kubernetes service discovery not yet implemented
         // Query K8s API for services with capability label
         // For now, falls back to environment-based discovery
-        
+
         Ok(Vec::new())
     }
 
@@ -306,10 +317,7 @@ impl CapabilityDiscoveryEngine {
             // Check if cache is still valid
             let _now = std::time::SystemTime::now();
             let all_valid = services.iter().all(|s| {
-                s.discovered_at
-                    .elapsed()
-                    .map(|elapsed| elapsed < self.cache_ttl)
-                    .unwrap_or(false)
+                s.discovered_at.elapsed().map(|elapsed| elapsed < self.cache_ttl).unwrap_or(false)
             });
 
             if all_valid {
@@ -367,19 +375,25 @@ impl CapabilityDiscoveryEngine {
                 // Would register service via DNS-SD protocol
                 Ok(())
             }
-            DiscoveryBackend::Consul { endpoint } => {
+            DiscoveryBackend::Consul {
+                endpoint,
+            } => {
                 // NOTE: Consul registration not yet implemented
                 // Would register service capabilities with Consul API
                 let _ = (endpoint, capabilities, address);
                 Ok(())
             }
-            DiscoveryBackend::Etcd { endpoints } => {
+            DiscoveryBackend::Etcd {
+                endpoints,
+            } => {
                 // NOTE: etcd registration not yet implemented
                 // Would register service capabilities in etcd
                 let _ = (endpoints, capabilities, address);
                 Ok(())
             }
-            DiscoveryBackend::Kubernetes { .. } => {
+            DiscoveryBackend::Kubernetes {
+                ..
+            } => {
                 // Kubernetes uses service definitions, no dynamic registration needed
                 Ok(())
             }
@@ -394,7 +408,7 @@ mod tests {
     #[tokio::test]
     async fn test_environment_discovery() {
         std::env::set_var("SECURITY_ENDPOINT", "127.0.0.1:8443");
-        
+
         let engine = CapabilityDiscoveryEngine::new(
             vec![DiscoveryBackend::Environment],
             Duration::from_secs(60),
@@ -402,7 +416,7 @@ mod tests {
 
         let services = engine.discover_by_capability("security").await;
         assert!(!services.is_empty(), "Should discover security service from environment");
-        
+
         std::env::remove_var("SECURITY_ENDPOINT");
     }
 
@@ -436,7 +450,7 @@ mod tests {
         // Should re-query after expiration
         let services3 = engine.discover_by_capability("storage").await;
         assert_eq!(services1, services3, "Should still find service after cache expiry");
-        
+
         std::env::remove_var("STORAGE_ENDPOINT");
     }
 
@@ -451,4 +465,3 @@ mod tests {
         );
     }
 }
-

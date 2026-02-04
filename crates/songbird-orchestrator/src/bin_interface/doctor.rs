@@ -57,19 +57,19 @@ async fn run_doctor_text(comprehensive: bool) -> Result<()> {
     }
     println!();
 
-    // Check 3: Network ports
+    // Check 3: Network ports - use environment-aware port discovery
     println!("🌐 Network Ports");
-    let default_port = 8080;
-    match check_port_availability(default_port).await {
+    let configured_port = songbird_config::defaults::ports::orchestrator_port();
+    match check_port_availability(configured_port).await {
         Ok(true) => {
-            println!("   Port {}: ✅ Available", default_port);
+            println!("   Port {}: ✅ Available (from SONGBIRD_ORCHESTRATOR_PORT)", configured_port);
         }
         Ok(false) => {
-            println!("   Port {}: ⚠️  In use", default_port);
+            println!("   Port {}: ⚠️  In use", configured_port);
             println!("   Note: May be used by running Songbird instance");
         }
         Err(e) => {
-            println!("   Port {}: ❌ Check failed: {}", default_port, e);
+            println!("   Port {}: ❌ Check failed: {}", configured_port, e);
         }
     }
     println!();
@@ -165,33 +165,38 @@ async fn gather_health_status(comprehensive: bool) -> Result<DoctorHealthStatus>
         Err(e) => ConfigStatus {
             valid: false,
             source: "environment".to_string(),
-            error: Some(e.to_string()),
+            error: Some(e),
         },
     };
 
-    // Check network ports
+    // Check network ports - use environment-aware port discovery
+    let http_api_port = songbird_config::defaults::ports::orchestrator_port();
+    let metrics_port = songbird_config::defaults::ports::metrics_port();
+    let tarpc_port = songbird_config::defaults::ports::tarpc_port();
+
     let port_checks = vec![
         PortCheck {
-            port: 3030,
+            port: http_api_port,
             name: "HTTP API".to_string(),
-            available: check_port_availability(3030).await?,
+            available: check_port_availability(http_api_port).await?,
         },
         PortCheck {
-            port: 3031,
+            port: metrics_port,
             name: "Metrics".to_string(),
-            available: check_port_availability(3031).await?,
+            available: check_port_availability(metrics_port).await?,
         },
         PortCheck {
-            port: 3032,
-            name: "gRPC".to_string(),
-            available: check_port_availability(3032).await?,
+            port: tarpc_port,
+            name: "tarpc RPC".to_string(),
+            available: check_port_availability(tarpc_port).await?,
         },
     ];
 
-    // Check IPC socket
+    // Check IPC socket - use environment-aware path
+    let socket_path = crate::env_config::socket_path();
     let socket_status = SocketStatus {
-        path: "/tmp/songbird-orchestrator.sock".to_string(),
-        available: true,
+        path: socket_path.to_string_lossy().to_string(),
+        available: socket_path.parent().is_some_and(|p: &std::path::Path| p.exists()),
     };
 
     // Comprehensive checks (if requested)

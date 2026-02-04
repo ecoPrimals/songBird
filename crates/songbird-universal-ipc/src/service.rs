@@ -132,7 +132,7 @@ impl IpcServiceHandler {
     /// - Production-ready defaults
     ///
     /// ✅ DEEP DEBT UPDATED (Feb 2, 2026):
-    /// - Added BirdSong handler (runtime discovery, no hardcoding)
+    /// - Added `BirdSong` handler (runtime discovery, no hardcoding)
     /// - Pure Rust, zero unsafe
     pub fn new(registry: Arc<RwLock<ServiceRegistry>>) -> Self {
         let http_handler = Arc::new(HttpHandler::with_default_discovery());
@@ -164,7 +164,7 @@ impl IpcServiceHandler {
     /// - Zero hardcoding
     ///
     /// ✅ DEEP DEBT UPDATED (Feb 2, 2026):
-    /// - Added BirdSong handler
+    /// - Added `BirdSong` handler
     pub fn with_discovery_registry(
         registry: Arc<RwLock<ServiceRegistry>>,
         peer_registry: Arc<dyn PeerRegistry>,
@@ -576,7 +576,7 @@ impl IpcServiceHandler {
                     "description": "List all available JSON-RPC methods",
                     "params": []
                 },
-                
+
                 // IPC registry methods
                 {
                     "name": "ipc.register",
@@ -598,7 +598,7 @@ impl IpcServiceHandler {
                     "description": "List all registered primals",
                     "params": []
                 },
-                
+
                 // HTTP/HTTPS methods
                 {
                     "name": "http.request",
@@ -615,7 +615,7 @@ impl IpcServiceHandler {
                     "description": "HTTP POST request",
                     "params": ["url", "body", "headers?"]
                 },
-                
+
                 // STUN/NAT traversal methods
                 {
                     "name": "stun.get_public_address",
@@ -627,14 +627,14 @@ impl IpcServiceHandler {
                     "description": "Bind to port and get mapping",
                     "params": ["local_port?", "stun_server?"]
                 },
-                
+
                 // Discovery methods
                 {
                     "name": "discovery.peers",
                     "description": "Discover peers on local network",
                     "params": []
                 },
-                
+
                 // Rendezvous methods
                 {
                     "name": "rendezvous.register",
@@ -646,14 +646,14 @@ impl IpcServiceHandler {
                     "description": "Lookup peer on rendezvous server",
                     "params": ["server_url", "peer_id"]
                 },
-                
+
                 // Peer connection methods
                 {
                     "name": "peer.connect",
                     "description": "Connect to peer directly",
                     "params": ["peer_address", "peer_port"]
                 },
-                
+
                 // BirdSong encrypted discovery methods (NEW - Feb 2, 2026)
                 {
                     "name": "birdsong.generate_encrypted_beacon",
@@ -717,16 +717,10 @@ impl JsonRpcHandler for IpcServiceHandler {
 
             // BirdSong encrypted discovery methods (NEW - Feb 2, 2026)
             "birdsong.generate_encrypted_beacon" => {
-                self.birdsong_handler
-                    .handle_generate_encrypted_beacon(params)
-                    .await
+                self.birdsong_handler.handle_generate_encrypted_beacon(params).await
             }
-            "birdsong.decrypt_beacon" => {
-                self.birdsong_handler.handle_decrypt_beacon(params).await
-            }
-            "birdsong.verify_lineage" => {
-                self.birdsong_handler.handle_verify_lineage(params).await
-            }
+            "birdsong.decrypt_beacon" => self.birdsong_handler.handle_decrypt_beacon(params).await,
+            "birdsong.verify_lineage" => self.birdsong_handler.handle_verify_lineage(params).await,
             "birdsong.get_lineage" => self.birdsong_handler.handle_get_lineage(params).await,
 
             _ => Err(format!("Unknown method: {method}")),
@@ -836,15 +830,16 @@ mod tests {
 
         let caps = result.unwrap();
         assert!(caps["capabilities"].is_array());
-        
+
         let caps_array = caps["capabilities"].as_array().unwrap();
         assert!(!caps_array.is_empty());
-        
+
         // Verify discovery capability exists with operations
-        let discovery_cap = caps_array.iter()
+        let discovery_cap = caps_array
+            .iter()
             .find(|c| c["name"] == "discovery")
             .expect("discovery capability should exist");
-        
+
         assert!(discovery_cap["operations"].is_array());
         assert!(discovery_cap["description"].is_string());
     }
@@ -859,16 +854,14 @@ mod tests {
 
         let methods = result.unwrap();
         assert!(methods["methods"].is_array());
-        
+
         let methods_array = methods["methods"].as_array().unwrap();
         assert!(!methods_array.is_empty());
-        
+
         // Verify introspection methods are listed
-        let method_names: Vec<String> = methods_array.iter()
-            .filter_map(|m| m["name"].as_str())
-            .map(String::from)
-            .collect();
-        
+        let method_names: Vec<String> =
+            methods_array.iter().filter_map(|m| m["name"].as_str()).map(String::from).collect();
+
         assert!(method_names.contains(&"primal.info".to_string()));
         assert!(method_names.contains(&"primal.capabilities".to_string()));
         assert!(method_names.contains(&"rpc.methods".to_string()));

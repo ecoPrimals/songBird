@@ -212,11 +212,10 @@ impl CanonicalSongbirdConfig {
                        [discovery]\n\
                        mode = \"Disabled\"".to_string()
                 );
-            } else {
-                return Err(
-                    "Network base port must be greater than 0 (use 8080 for default)".to_string()
-                );
             }
+            return Err(
+                "Network base port must be greater than 0 (use 8080 for default)".to_string()
+            );
         }
 
         // All validations passed

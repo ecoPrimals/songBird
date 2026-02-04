@@ -61,20 +61,15 @@ impl Default for RetryConfig {
 }
 
 /// Circuit breaker state
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Default)]
 pub enum CircuitBreakerState {
     /// Circuit is closed, requests are allowed
+    #[default]
     Closed,
     /// Circuit is open, requests are rejected
     Open,
     /// Circuit is half-open, limited requests are allowed
     HalfOpen,
-}
-
-impl Default for CircuitBreakerState {
-    fn default() -> Self {
-        Self::Closed
-    }
 }
 
 /// Retry strategy

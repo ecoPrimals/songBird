@@ -8,9 +8,10 @@ use serde::{Deserialize, Serialize};
 /// Canonical hook error handling strategy
 ///
 /// Defines how the hook system should behave when a hook encounters an error.
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Hash, Default)]
 pub enum HookErrorHandling {
     /// Continue executing subsequent hooks even if one fails
+    #[default]
     Continue,
     /// Stop execution on the first hook error
     StopOnError,
@@ -18,12 +19,6 @@ pub enum HookErrorHandling {
     RetryOnError,
     /// Skip failed hooks and continue with remaining hooks
     SkipOnError,
-}
-
-impl Default for HookErrorHandling {
-    fn default() -> Self {
-        Self::Continue
-    }
 }
 
 impl HookErrorHandling {

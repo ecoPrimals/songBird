@@ -433,29 +433,34 @@ async fn gather_health_status(comprehensive: bool) -> Result<DoctorHealthStatus>
         },
     };
 
-    // Check network ports
+    // Check network ports - use environment-aware port discovery
+    let http_api_port = songbird_config::defaults::ports::orchestrator_port();
+    let metrics_port = songbird_config::defaults::ports::metrics_port();
+    let tarpc_port = songbird_config::defaults::ports::tarpc_port();
+
     let port_checks = vec![
         PortCheck {
-            port: 3030,
+            port: http_api_port,
             name: "HTTP API".to_string(),
-            available: check_port_availability(3030).await?,
+            available: check_port_availability(http_api_port).await?,
         },
         PortCheck {
-            port: 3031,
+            port: metrics_port,
             name: "Metrics".to_string(),
-            available: check_port_availability(3031).await?,
+            available: check_port_availability(metrics_port).await?,
         },
         PortCheck {
-            port: 3032,
-            name: "gRPC".to_string(),
-            available: check_port_availability(3032).await?,
+            port: tarpc_port,
+            name: "tarpc RPC".to_string(),
+            available: check_port_availability(tarpc_port).await?,
         },
     ];
 
-    // Check IPC socket
+    // Check IPC socket - use environment-aware path
+    let socket_path = songbird_orchestrator::env_config::socket_path();
     let socket_status = SocketStatus {
-        path: "/tmp/songbird-orchestrator.sock".to_string(),
-        available: true,
+        path: socket_path.to_string_lossy().to_string(),
+        available: socket_path.parent().map_or(false, |p: &std::path::Path| p.exists()),
     };
 
     // Comprehensive checks (if requested)

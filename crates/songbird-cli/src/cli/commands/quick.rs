@@ -79,18 +79,13 @@ impl Default for OrchestratorConfig {
 mod discovery;
 pub mod resources;
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, ValueEnum)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, ValueEnum, Default)]
 pub enum ContributeType {
+    #[default]
     Compute,
     Storage,
     Data,
     All,
-}
-
-impl Default for ContributeType {
-    fn default() -> Self {
-        Self::Compute
-    }
 }
 
 /// System resources detected

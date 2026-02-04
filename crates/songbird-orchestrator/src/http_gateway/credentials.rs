@@ -139,13 +139,13 @@ impl CredentialManager {
             }
         }
 
-        if !loaded.is_empty() {
-            debug!("🔐 Loaded credentials for {} services: {:?}", loaded.len(), loaded);
-        } else {
+        if loaded.is_empty() {
             warn!(
                 "⚠️  No credentials loaded. HTTP gateway will not be able to proxy external APIs."
             );
             warn!("   Set environment variables like OPENAI_API_KEY, HUGGINGFACE_API_KEY, etc.");
+        } else {
+            debug!("🔐 Loaded credentials for {} services: {:?}", loaded.len(), loaded);
         }
 
         loaded

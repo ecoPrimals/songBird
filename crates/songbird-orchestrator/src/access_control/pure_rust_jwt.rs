@@ -63,7 +63,7 @@ pub fn encode<T: Serialize>(claims: &T, secret: &[u8]) -> Result<String> {
         HmacSha256::new_from_slice(secret).map_err(|e| anyhow!("Invalid secret key: {}", e))?;
     mac.update(signing_input.as_bytes());
     let signature = mac.finalize().into_bytes();
-    let signature_b64 = URL_SAFE_NO_PAD.encode(&signature);
+    let signature_b64 = URL_SAFE_NO_PAD.encode(signature);
 
     // Combine into JWT
     Ok(format!("{}.{}", signing_input, signature_b64))

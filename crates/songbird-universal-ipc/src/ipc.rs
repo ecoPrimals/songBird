@@ -202,47 +202,60 @@ impl AsyncWrite for Stream {
 /// This must be called once before using other IPC functions.
 /// It's safe to call multiple times (subsequent calls are no-ops).
 ///
-/// # Panics
-/// Panics if initialization fails (very rare - only on system resource exhaustion)
+/// # Errors
+/// Returns an error if initialization fails due to platform detection failure,
+/// resource exhaustion, or permission issues.
 pub fn init() -> IpcResult<()> {
+    use crate::error::IpcError;
     use tracing::{debug, error};
+
+    // Already initialized - return success
+    if GLOBAL_IPC.get().is_some() {
+        return Ok(());
+    }
 
     debug!("Attempting to initialize Universal IPC");
     debug!("  Platform: {}", std::env::consts::OS);
     debug!("  Architecture: {}", std::env::consts::ARCH);
+    debug!("Creating UniversalIPC instance");
 
-    // Try to initialize, propagating errors instead of panicking
-    let _result = GLOBAL_IPC.get_or_init(|| {
-        debug!("Creating UniversalIPC instance");
-        match UniversalIPC::new() {
-            Ok(ipc) => ipc,
-            Err(e) => {
-                error!("❌ Failed to create UniversalIPC: {}", e);
-                error!("   This may indicate:");
-                error!("     - Platform detection failure");
-                error!("     - Resource exhaustion (file descriptors)");
-                error!("     - Permission issues (socket creation)");
-                // Return a minimal instance that will fail gracefully
-                // Note: This is a workaround since get_or_init doesn't support Result
-                panic!("Universal IPC initialization failed: {e}");
-            }
+    // Attempt initialization with proper error handling
+    let ipc = UniversalIPC::new().map_err(|e| {
+        error!("❌ Failed to create UniversalIPC: {}", e);
+        error!("   This may indicate:");
+        error!("     - Platform detection failure");
+        error!("     - Resource exhaustion (file descriptors)");
+        error!("     - Permission issues (socket creation)");
+        IpcError::Other(format!("Universal IPC initialization failed: {e}"))
+    })?;
+
+    // Try to set the global instance (race-safe: another thread may have set it)
+    match GLOBAL_IPC.set(ipc) {
+        Ok(()) => {
+            info!("✅ Universal IPC initialized successfully");
+            Ok(())
         }
-    });
-
-    // Verify initialization succeeded by checking if we can access it
-    if GLOBAL_IPC.get().is_some() {
-        info!("✅ Universal IPC initialized successfully");
-        Ok(())
-    } else {
-        use crate::error::IpcError;
-        Err(IpcError::Other("Failed to initialize Universal IPC".to_string()))
+        Err(_already_set) => {
+            // Another thread initialized it first - that's fine
+            info!("✅ Universal IPC already initialized by another thread");
+            Ok(())
+        }
     }
+}
+
+/// Try to get global IPC instance
+///
+/// Returns `None` if `init()` hasn't been called yet.
+/// Prefer this over `global()` when you can handle the uninitialized case.
+pub fn try_global() -> Option<&'static UniversalIPC> {
+    GLOBAL_IPC.get()
 }
 
 /// Get global IPC instance
 ///
 /// # Panics
 /// Panics if `init()` hasn't been called yet.
+/// Use `try_global()` if you need to handle the uninitialized case gracefully.
 pub fn global() -> &'static UniversalIPC {
     GLOBAL_IPC.get().expect("Universal IPC not initialized. Call ipc::init() first!")
 }

@@ -1,6 +1,6 @@
 //! Windows named pipe implementation
 //!
-//! **Platform**: Windows (all architectures: x86_64, ARM64)
+//! **Platform**: Windows (all architectures: `x86_64`, ARM64)
 //! **Transport**: Named pipes (Windows native IPC)
 //! **Path Format**: `\\.\pipe\biomeos_{primal_name}`
 //!
@@ -26,13 +26,13 @@
 //!
 //! - ✅ Pure Rust (zero unsafe code in this module)
 //! - ✅ Zero C dependencies (tokio handles Windows API internally)
-//! - ✅ Platform-agnostic (same code works on Windows x86_64, ARM64)
+//! - ✅ Platform-agnostic (same code works on Windows `x86_64`, ARM64)
 //! - ✅ No hardcoding (primal name from runtime, configurable via env vars)
 //!
 //! ## References
 //!
-//! - Windows Named Pipes: https://docs.microsoft.com/en-us/windows/win32/ipc/named-pipes
-//! - tokio named_pipe: https://docs.rs/tokio/latest/tokio/net/windows/named_pipe/
+//! - Windows Named Pipes: <https://docs.microsoft.com/en-us/windows/win32/ipc/named-pipes>
+//! - tokio `named_pipe`: <https://docs.rs/tokio/latest/tokio/net/windows/named_pipe>/
 //! - Platform evolution: ecoPrimals/biomeOS docs/deep-debt/PLATFORM_AGNOSTIC_IPC_EVOLUTION.md
 
 use crate::endpoint::NativeEndpoint;
@@ -46,7 +46,7 @@ use tokio::net::windows::named_pipe::{ClientOptions, ServerOptions};
 
 /// Windows named pipe IPC implementation
 ///
-/// **Platform**: Windows (x86_64, ARM64, any architecture)
+/// **Platform**: Windows (`x86_64`, ARM64, any architecture)
 pub struct WindowsIPC;
 
 #[async_trait]
@@ -61,10 +61,10 @@ impl PlatformIPC for WindowsIPC {
         {
             custom_pipe
         } else if let Ok(custom_dir) = std::env::var("BIOMEOS_PIPE_DIR") {
-            format!("{}_biomeos_{}", custom_dir, primal_name)
+            format!("{custom_dir}_biomeos_{primal_name}")
         } else {
             // Standard Windows named pipe path
-            format!(r"\\.\pipe\biomeos_{}", primal_name)
+            format!(r"\\.\pipe\biomeos_{primal_name}")
         };
 
         debug!("Creating named pipe endpoint for '{}': {}", primal_name, pipe_name);

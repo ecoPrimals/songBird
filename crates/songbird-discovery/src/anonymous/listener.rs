@@ -173,13 +173,16 @@ impl AnonymousDiscoveryListener {
                     if let Some(ref birdsong) = self.birdsong {
                         if birdsong.config().is_dark_forest_active() {
                             // Try to parse as Dark Forest beacon
-                            if let Ok(beacon) = crate::dark_forest_beacon::DarkForestBeacon::from_bytes(data) {
+                            if let Ok(beacon) =
+                                crate::dark_forest_beacon::DarkForestBeacon::from_bytes(data)
+                            {
                                 if beacon.version == 2 {
                                     debug!(
                                         "🌲 Received Dark Forest beacon from {} (size: {} bytes)",
-                                        addr, data.len()
+                                        addr,
+                                        data.len()
                                     );
-                                    
+
                                     // Try to decrypt with all known beacon seeds
                                     match birdsong.decrypt_dark_forest_beacon(&beacon).await {
                                         Ok(Some((payload, beacon_id))) => {
@@ -188,15 +191,15 @@ impl AnonymousDiscoveryListener {
                                                 payload.node_id,
                                                 hex::encode(&beacon_id[..8.min(beacon_id.len())])
                                             );
-                                            
+
                                             // Process Dark Forest beacon payload
                                             self.process_dark_forest_payload(payload, addr).await;
-                                            
+
                                             if let Some(ref stats) = self.stats {
                                                 stats.record_received();
                                                 stats.record_peer_discovered();
                                             }
-                                            
+
                                             continue;
                                         }
                                         Ok(None) => {
@@ -213,11 +216,13 @@ impl AnonymousDiscoveryListener {
                                     }
                                 }
                             }
-                            
+
                             // Not Dark Forest or decryption failed
                             // Try legacy BirdSongPacket if allowed
                             if !birdsong.config().accept_legacy_format {
-                                debug!("Rejecting non-Dark-Forest packet (accept_legacy_format=false)");
+                                debug!(
+                                    "Rejecting non-Dark-Forest packet (accept_legacy_format=false)"
+                                );
                                 continue;
                             }
                         }
@@ -389,11 +394,11 @@ impl AnonymousDiscoveryListener {
             });
         }
     }
-    
+
     // ═══════════════════════════════════════════════════════════════════════
     // Dark Forest Beacon Processing (NEW - Feb 3, 2026)
     // ═══════════════════════════════════════════════════════════════════════
-    
+
     /// Process Dark Forest beacon payload (after successful decryption)
     ///
     /// Converts `BeaconPayload` to `DiscoveredPeer` and stores in peer registry.
@@ -414,7 +419,7 @@ impl AnonymousDiscoveryListener {
         addr: SocketAddr,
     ) {
         use super::messages::TransportEndpointMessage;
-        
+
         // Convert endpoints to TransportEndpointMessage format
         let endpoints: Vec<TransportEndpointMessage> = payload
             .endpoints
@@ -428,7 +433,7 @@ impl AnonymousDiscoveryListener {
                 } else {
                     ("tcp".to_string(), ep.clone())
                 };
-                
+
                 TransportEndpointMessage {
                     interface_type,
                     address,
@@ -437,7 +442,7 @@ impl AnonymousDiscoveryListener {
                 }
             })
             .collect();
-        
+
         // Create DiscoveredPeer from Dark Forest beacon payload
         let peer = DiscoveredPeer {
             session_id: payload.session_id.clone(),
@@ -454,14 +459,14 @@ impl AnonymousDiscoveryListener {
             last_seen: SystemTime::now(),
             version: "dark_forest_v2".to_string(),
         };
-        
+
         info!(
             "🌲 Registered peer from Dark Forest: {} (session: {}, {} endpoints)",
             payload.node_id,
             payload.session_id,
             payload.endpoints.len()
         );
-        
+
         // Store in peer registry
         let mut peers = self.peers.write().await;
         peers.insert(payload.session_id, peer);

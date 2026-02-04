@@ -96,10 +96,11 @@ impl BearDogProviderFactory {
         // Query capability registry for "security" capability (BearDog)
         if let Ok(endpoint) = discover_primal(CanonicalPrimalType::Security).await {
             tracing::info!("Discovered BearDog via capability discovery at: {}", endpoint.url);
-            
+
             // Extract Unix socket path from URL
             if let Some(socket_path) = endpoint.url.strip_prefix("unix://") {
-                match crate::beardog::production::ProductionBearDogProvider::new(socket_path).await {
+                match crate::beardog::production::ProductionBearDogProvider::new(socket_path).await
+                {
                     Ok(provider) => {
                         tracing::info!("✅ Connected to BearDog via Unix socket: {}", socket_path);
                         return Ok(Some(Box::new(provider)));
@@ -139,10 +140,11 @@ impl BearDogProviderFactory {
         if std::env::var("BEARDOG_URL").is_ok() || std::env::var("SECURITY_URL").is_ok() {
             let url = std::env::var("BEARDOG_URL").or_else(|_| std::env::var("SECURITY_URL"))?;
             tracing::info!("Found BearDog via environment at: {}", url);
-            
+
             // Try to extract Unix socket path from URL
             if let Some(socket_path) = url.strip_prefix("unix://") {
-                match crate::beardog::production::ProductionBearDogProvider::new(socket_path).await {
+                match crate::beardog::production::ProductionBearDogProvider::new(socket_path).await
+                {
                     Ok(provider) => return Ok(Some(Box::new(provider))),
                     Err(e) => tracing::warn!("Failed to connect via URL: {}", e),
                 }
@@ -163,7 +165,9 @@ impl BearDogProviderFactory {
             if std::path::Path::new(default_socket).exists() {
                 tracing::warn!("Using development fallback for BearDog: {}", default_socket);
                 tracing::warn!("Set BEARDOG_SOCKET or SECURITY_SOCKET for production");
-                match crate::beardog::production::ProductionBearDogProvider::new(default_socket).await {
+                match crate::beardog::production::ProductionBearDogProvider::new(default_socket)
+                    .await
+                {
                     Ok(provider) => return Ok(Some(Box::new(provider))),
                     Err(e) => tracing::warn!("Failed to connect to default socket: {}", e),
                 }
@@ -177,7 +181,7 @@ impl BearDogProviderFactory {
                 "BearDog not found. Set BEARDOG_SOCKET or SECURITY_SOCKET environment variable"
             );
         }
-        
+
         Ok(None)
     }
 }

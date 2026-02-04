@@ -60,5 +60,7 @@ pub mod circuit_breaker;
 pub mod health;
 
 // Re-export main types for convenience
-pub use circuit_breaker::{CircuitBreaker, CircuitBreakerConfig, CircuitBreakerError, CircuitState};
+pub use circuit_breaker::{
+    CircuitBreaker, CircuitBreakerConfig, CircuitBreakerError, CircuitState,
+};
 pub use health::{AggregatedHealth, HealthCheck, HealthChecker, HealthStatus, Status};

@@ -6,13 +6,13 @@
 //!
 //! ## Why Abstract Sockets for Android?
 //!
-//! Android uses SELinux (Security-Enhanced Linux) which restricts filesystem
+//! Android uses `SELinux` (Security-Enhanced Linux) which restricts filesystem
 //! access. Traditional filesystem-based Unix sockets (`/tmp/socket.sock`)
-//! are blocked by SELinux policies in user-space applications.
+//! are blocked by `SELinux` policies in user-space applications.
 //!
 //! **Abstract sockets** solve this:
 //! - No filesystem overhead (pure namespace-based)
-//! - No SELinux filesystem restrictions
+//! - No `SELinux` filesystem restrictions
 //! - Automatically cleaned up (no stale socket files)
 //! - Same performance as filesystem Unix sockets (~5μs latency)
 //!
@@ -48,7 +48,7 @@ use tracing::{debug, info};
 
 /// Android abstract socket IPC implementation
 ///
-/// **Platform**: Android (ARM64, x86_64, any architecture)
+/// **Platform**: Android (ARM64, `x86_64`, any architecture)
 /// **Also works on**: Linux (abstract sockets are a Linux kernel feature)
 pub struct AndroidIPC;
 
@@ -58,7 +58,7 @@ impl PlatformIPC for AndroidIPC {
         // Abstract socket naming: @biomeos_{primal_name}
         // The @ prefix is a convention for abstract sockets
         // Rust's UnixListener automatically converts @ to null byte
-        let abstract_name = format!("@biomeos_{}", primal_name);
+        let abstract_name = format!("@biomeos_{primal_name}");
 
         debug!("Creating abstract socket endpoint for '{}': {}", primal_name, abstract_name);
 
@@ -75,10 +75,7 @@ impl PlatformIPC for AndroidIPC {
                 // Abstract sockets: path with @ prefix
                 // UnixListener automatically handles null byte conversion
                 let listener = UnixListener::bind(name).map_err(|e| {
-                    IpcError::ListenerFailed(format!(
-                        "Failed to bind abstract socket {}: {}",
-                        name, e
-                    ))
+                    IpcError::ListenerFailed(format!("Failed to bind abstract socket {name}: {e}"))
                 })?;
 
                 info!("Abstract socket listener created: {} (Android-optimized)", name);
@@ -100,8 +97,7 @@ impl PlatformIPC for AndroidIPC {
 
                 let stream = UnixStream::connect(name).await.map_err(|e| {
                     IpcError::ConnectionFailed(format!(
-                        "Failed to connect to abstract socket {}: {}",
-                        name, e
+                        "Failed to connect to abstract socket {name}: {e}"
                     ))
                 })?;
 
@@ -139,10 +135,7 @@ struct AbstractListenerWrapper {
 impl PlatformListener for AbstractListenerWrapper {
     async fn accept(&mut self) -> IpcResult<Box<dyn AsyncStream>> {
         let (stream, addr) = self.inner.accept().await.map_err(|e| {
-            IpcError::ConnectionFailed(format!(
-                "Failed to accept abstract socket connection: {}",
-                e
-            ))
+            IpcError::ConnectionFailed(format!("Failed to accept abstract socket connection: {e}"))
         })?;
 
         // Log connection details (abstract sockets don't have filesystem paths)

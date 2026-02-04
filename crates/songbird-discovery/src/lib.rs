@@ -19,7 +19,7 @@
 #![forbid(unsafe_code)]
 #![warn(clippy::all)]
 #![warn(clippy::pedantic)]
-#![allow(clippy::module_name_repetitions)]  // Allow DarkForestBeacon naming
+#![allow(clippy::module_name_repetitions)] // Allow DarkForestBeacon naming
 //!
 //! ## Architecture
 //!
@@ -133,8 +133,8 @@
 
 pub mod beardog_birdsong_provider; // NEW: BearDog BirdSong encryption provider (Jan 3, 2026)
 pub mod birdsong_integration; // NEW: BirdSong encrypted discovery
-pub mod dark_forest_beacon; // ✅ NEW (Feb 3, 2026): Dark Forest Beacon Genetics (TRUE encrypted discovery, zero metadata leakage)
 pub mod conversion;
+pub mod dark_forest_beacon; // ✅ NEW (Feb 3, 2026): Dark Forest Beacon Genetics (TRUE encrypted discovery, zero metadata leakage)
 pub mod discovery;
 pub mod discovery_packet; // NEW: Enhanced discovery with genetic lineage
 pub mod discovery_stats;

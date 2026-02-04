@@ -1,7 +1,9 @@
 //! BTSP connection factory and client management
 
 use crate::btsp_client::BtspClient;
-use crate::connections::*;
+use crate::connections::{
+    Connection, FederatedBtspConnection, FullTrustBtspConnection, LimitedBtspConnection,
+};
 use anyhow::Result;
 use songbird_types::TrustLevel;
 use std::sync::Arc;

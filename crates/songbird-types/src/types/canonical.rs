@@ -204,11 +204,12 @@ impl CanonicalResponse {
 }
 
 /// **CANONICAL**: Node type for distributed systems
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, Default)]
 pub enum CanonicalNodeType {
     /// Tower node (high-performance compute node)
     Tower,
     /// Edge node (lightweight, distributed)
+    #[default]
     Edge,
     /// Gateway node (entry point)
     Gateway,
@@ -216,12 +217,6 @@ pub enum CanonicalNodeType {
     Storage,
     /// Coordinator node (orchestration)
     Coordinator,
-}
-
-impl Default for CanonicalNodeType {
-    fn default() -> Self {
-        Self::Edge
-    }
 }
 
 impl fmt::Display for CanonicalNodeType {

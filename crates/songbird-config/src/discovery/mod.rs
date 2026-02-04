@@ -42,18 +42,9 @@
 //! # }
 //! ```
 
-pub mod runtime_engine;
 pub mod mdns;
+pub mod runtime_engine;
 
-pub use runtime_engine::{
-    CapabilityDiscoveryEngine, 
-    DiscoveredService, 
-    DiscoveryBackend,
-};
+pub use runtime_engine::{CapabilityDiscoveryEngine, DiscoveredService, DiscoveryBackend};
 
-pub use mdns::{
-    MdnsDiscovery, 
-    MdnsServiceInfo, 
-    MdnsError,
-};
-
+pub use mdns::{MdnsDiscovery, MdnsError, MdnsServiceInfo};

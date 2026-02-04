@@ -186,7 +186,7 @@ impl LineageRelayCoordinator {
         // Create local UDP socket for hole punching
         let socket = create_hole_punch_socket(None).await?;
         let local_addr = socket.local_addr().map_err(|e| {
-            LineageRelayError::NetworkError(format!("Failed to get local address: {}", e))
+            LineageRelayError::NetworkError(format!("Failed to get local address: {e}"))
         })?;
 
         debug!("   Local socket bound: {}", local_addr);
@@ -248,8 +248,8 @@ impl LineageRelayCoordinator {
         info!("Starting relay service on {}", relay_address);
 
         // Listen for relay requests in background
-        let relay_discovery = self.relay_discovery.clone();
-        let my_relay_address = relay_address;
+        let _relay_discovery = self.relay_discovery.clone();
+        let _my_relay_address = relay_address;
 
         // 🚨 DEEP DEBT (v3.10.4 - Jan 6, 2026): Polling loop with sleep
         //

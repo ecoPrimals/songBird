@@ -86,6 +86,7 @@ categories = ["command-line-utilities", "network-programming"]
 [[bin]]
 name = "songbird"
 path = "src/main.rs"
+doc = false  # Avoid doc collision with songbird-orchestrator binary
 
 [dependencies]
 # Core orchestrator (contains server, doctor, config modes)

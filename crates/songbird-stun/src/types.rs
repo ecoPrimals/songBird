@@ -16,7 +16,7 @@ pub struct PublicEndpoint {
 /// NAT type classification
 ///
 /// Determines how aggressive NAT traversal needs to be.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
 pub enum NatType {
     /// No NAT (direct internet connection)
     None,
@@ -43,13 +43,8 @@ pub enum NatType {
     Symmetric,
 
     /// Unknown NAT type
+    #[default]
     Unknown,
-}
-
-impl Default for NatType {
-    fn default() -> Self {
-        Self::Unknown
-    }
 }
 
 impl std::fmt::Display for NatType {

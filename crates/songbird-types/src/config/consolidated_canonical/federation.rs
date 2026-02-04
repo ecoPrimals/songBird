@@ -13,37 +13,27 @@ use std::env;
 // ============================================================================
 
 /// Federation acceptance policy - replaces auto_accept_lan/wan bools
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Default)]
 pub enum FederationAcceptancePolicy {
     /// Manual approval required for all connections
     ManualOnly,
     /// Auto-accept from LAN, manual for WAN
+    #[default]
     LanAutoWanManual,
     /// Auto-accept from both LAN and WAN
     AutoAcceptAll,
 }
 
-impl Default for FederationAcceptancePolicy {
-    fn default() -> Self {
-        Self::LanAutoWanManual // Safe default
-    }
-}
-
 /// Trust escalation policy - replaces multiple escalation bools
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Default)]
 pub enum TrustEscalationPolicy {
     /// No escalation allowed (locked at initial trust level)
     Disabled,
     /// Only capability escalation allowed
     CapabilityOnly,
     /// Both capability and identity escalation allowed
+    #[default]
     Progressive,
-}
-
-impl Default for TrustEscalationPolicy {
-    fn default() -> Self {
-        Self::Progressive // Enable progressive trust by default
-    }
 }
 
 /// **CANONICAL**: Federation configuration

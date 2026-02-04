@@ -53,9 +53,8 @@ pub fn discover_beardog_socket() -> Option<PathBuf> {
         if std::path::Path::new(path).exists() {
             info!("   ✅ Found BearDog socket at: {}", path);
             return Some(PathBuf::from(path));
-        } else {
-            debug!("   ⏭️  Not found: {}", path);
         }
+        debug!("   ⏭️  Not found: {}", path);
     }
 
     // Strategy 4: Search /tmp for any beardog socket

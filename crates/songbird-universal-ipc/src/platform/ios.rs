@@ -34,12 +34,12 @@
 //!
 //! - ✅ Pure Rust (zero unsafe code in this module)
 //! - ⚠️  XPC requires platform-specific bindings (may have unsafe, needs analysis)
-//! - ✅ Zero hardcoding (paths from XDG-compliant env_config)
+//! - ✅ Zero hardcoding (paths from XDG-compliant `env_config`)
 //! - ✅ Runtime discovery (no compile-time assumptions)
 //!
 //! ## References
 //!
-//! - Apple XPC documentation: https://developer.apple.com/documentation/xpc
+//! - Apple XPC documentation: <https://developer.apple.com/documentation/xpc>
 //! - XPC in Rust: Research needed (no mature Pure Rust bindings as of 2026)
 //! - Alternative: `launchd` + Unix sockets (supported on both iOS and macOS)
 
@@ -47,7 +47,6 @@ use crate::endpoint::NativeEndpoint;
 use crate::error::{IpcError, IpcResult};
 use crate::platform::{AsyncStream, PlatformIPC, PlatformListener};
 use async_trait::async_trait;
-use tracing::{debug, info, warn};
 
 /// iOS/macOS IPC implementation
 ///
@@ -58,7 +57,7 @@ pub struct iOSIPC;
 
 #[async_trait]
 impl PlatformIPC for iOSIPC {
-    async fn create_endpoint(&self, primal_name: &str) -> IpcResult<NativeEndpoint> {
+    async fn create_endpoint(&self, _primal_name: &str) -> IpcResult<NativeEndpoint> {
         #[cfg(target_os = "macos")]
         {
             use std::path::PathBuf;

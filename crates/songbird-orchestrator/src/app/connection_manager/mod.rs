@@ -144,7 +144,7 @@ impl ConnectionManager {
     /// Get connection trust level
     pub async fn get_connection(&self, peer_id: &str) -> Option<TrustLevel> {
         let connections = self.connections.read().await;
-        connections.get(peer_id).map(|c| c.trust_level())
+        connections.get(peer_id).map(super::super::connections::Connection::trust_level)
     }
 
     /// List all connected peers

@@ -26,7 +26,7 @@ use tracing::{debug, info, warn};
 ///
 /// Connects to `BearDog`'s Unix socket to provide:
 /// - Lineage management and verification
-/// - BirdSong encryption/decryption
+/// - `BirdSong` encryption/decryption
 /// - Relay session management
 ///
 /// ## Usage
@@ -56,15 +56,13 @@ impl ProductionBearDogProvider {
     /// Returns error if socket connection fails or health check fails
     pub async fn new(socket_path: impl Into<PathBuf>) -> Result<Self> {
         let socket_path = socket_path.into();
-        
+
         info!("🐻 Creating production BearDog provider (Unix socket)");
         info!("   Socket: {:?}", socket_path);
-        
+
         // Verify socket exists and is connectable
-        let _ = UnixStream::connect(&socket_path)
-            .await
-            .context("BearDog socket not accessible")?;
-        
+        let _ = UnixStream::connect(&socket_path).await.context("BearDog socket not accessible")?;
+
         Ok(Self {
             socket_path,
             family_id: None, // Will be queried on first use
@@ -73,10 +71,10 @@ impl ProductionBearDogProvider {
 
     /// Call `BearDog` JSON-RPC method via Unix socket
     ///
-    /// Pure Rust implementation using tokio UnixStream.
+    /// Pure Rust implementation using tokio `UnixStream`.
     async fn call_beardog(&self, method: &str, params: Value) -> Result<Value> {
         debug!("📞 Calling BearDog: {}", method);
-        
+
         // Connect to BearDog Unix socket
         let mut stream = UnixStream::connect(&self.socket_path)
             .await
@@ -105,13 +103,11 @@ impl ProductionBearDogProvider {
 
         // Check for JSON-RPC error
         if let Some(error) = response.get("error") {
-            return Err(anyhow!("BearDog RPC error: {}", error));
+            return Err(anyhow!("BearDog RPC error: {error}"));
         }
 
         // Return result
-        response.get("result")
-            .cloned()
-            .ok_or_else(|| anyhow!("No result in BearDog response"))
+        response.get("result").cloned().ok_or_else(|| anyhow!("No result in BearDog response"))
     }
 }
 
@@ -122,7 +118,7 @@ impl LineageProvider for ProductionBearDogProvider {
             "node_id": node_id,
             "parent_id": parent_id
         });
-        
+
         let result = self.call_beardog("genetic.generate_lineage", params).await?;
         serde_json::from_value(result).context("Failed to parse lineage chain")
     }
@@ -131,10 +127,11 @@ impl LineageProvider for ProductionBearDogProvider {
         let params = serde_json::json!({
             "proof": proof
         });
-        
+
         let result = self.call_beardog("genetic.verify_lineage", params).await?;
-        result.get("valid")
-            .and_then(|v| v.as_bool())
+        result
+            .get("valid")
+            .and_then(serde_json::Value::as_bool)
             .ok_or_else(|| anyhow!("Invalid verify_lineage response"))
     }
 
@@ -142,32 +139,40 @@ impl LineageProvider for ProductionBearDogProvider {
         let params = serde_json::json!({
             "root_id": root_id
         });
-        
+
         let result = self.call_beardog("genetic.get_descendants", params).await?;
         serde_json::from_value(result).context("Failed to parse descendants")
     }
 
-    async fn get_lineage_depth(&self, ancestor_id: &str, descendant_id: &str) -> Result<Option<usize>> {
+    async fn get_lineage_depth(
+        &self,
+        ancestor_id: &str,
+        descendant_id: &str,
+    ) -> Result<Option<usize>> {
         let params = serde_json::json!({
             "ancestor_id": ancestor_id,
             "descendant_id": descendant_id
         });
-        
+
         let result = self.call_beardog("genetic.get_lineage_depth", params).await?;
-        Ok(result.get("depth").and_then(|v| v.as_u64()).map(|d| d as usize))
+        Ok(result.get("depth").and_then(serde_json::Value::as_u64).map(|d| d as usize))
     }
 }
 
 #[async_trait::async_trait]
 impl BirdSongCrypto for ProductionBearDogProvider {
-    async fn encrypt_for_lineage(&self, payload: &[u8], lineage_hint: LineageHint) -> Result<EncryptedBirdSong> {
+    async fn encrypt_for_lineage(
+        &self,
+        payload: &[u8],
+        lineage_hint: LineageHint,
+    ) -> Result<EncryptedBirdSong> {
         use base64::{engine::general_purpose, Engine as _};
-        
+
         let params = serde_json::json!({
             "plaintext": general_purpose::STANDARD.encode(payload),
             "lineage_hint": format!("{:?}", lineage_hint)
         });
-        
+
         let result = self.call_beardog("birdsong.encrypt", params).await?;
         serde_json::from_value(result).context("Failed to parse encrypted birdsong")
     }
@@ -176,38 +181,46 @@ impl BirdSongCrypto for ProductionBearDogProvider {
         let params = serde_json::json!({
             "encrypted": encrypted
         });
-        
+
         let result = self.call_beardog("birdsong.decrypt", params).await?;
-        
-        let success = result.get("success").and_then(|v| v.as_bool()).unwrap_or(false);
+
+        let success = result.get("success").and_then(serde_json::Value::as_bool).unwrap_or(false);
         if !success {
             return Ok(None); // Different family (noise)
         }
-        
+
         use base64::{engine::general_purpose, Engine as _};
-        let plaintext_b64 = result.get("plaintext")
+        let plaintext_b64 = result
+            .get("plaintext")
             .and_then(|v| v.as_str())
             .ok_or_else(|| anyhow!("No plaintext in decrypt response"))?;
-        
+
         let plaintext = general_purpose::STANDARD.decode(plaintext_b64)?;
         Ok(Some(plaintext))
     }
 
-    async fn request_key(&self, lineage_hint: &LineageHint, proof: LineageProof) -> Result<BroadcastKey> {
+    async fn request_key(
+        &self,
+        lineage_hint: &LineageHint,
+        proof: LineageProof,
+    ) -> Result<BroadcastKey> {
         let params = serde_json::json!({
             "lineage_hint": format!("{:?}", lineage_hint),
             "proof": proof
         });
-        
+
         let result = self.call_beardog("birdsong.request_key", params).await?;
         serde_json::from_value(result).context("Failed to parse broadcast key")
     }
 
-    async fn request_keys_batch(&self, requests: Vec<(LineageHint, LineageProof)>) -> Result<Vec<BroadcastKey>> {
+    async fn request_keys_batch(
+        &self,
+        requests: Vec<(LineageHint, LineageProof)>,
+    ) -> Result<Vec<BroadcastKey>> {
         let params = serde_json::json!({
             "requests": requests
         });
-        
+
         let result = self.call_beardog("birdsong.request_keys_batch", params).await?;
         serde_json::from_value(result).context("Failed to parse broadcast keys")
     }
@@ -215,13 +228,18 @@ impl BirdSongCrypto for ProductionBearDogProvider {
 
 #[async_trait::async_trait]
 impl LineageRelay for ProductionBearDogProvider {
-    async fn offer_relay(&self, requester: &str, target: &str, lineage_proof: LineageProof) -> Result<RelaySession> {
+    async fn offer_relay(
+        &self,
+        requester: &str,
+        target: &str,
+        lineage_proof: LineageProof,
+    ) -> Result<RelaySession> {
         let params = serde_json::json!({
             "requester": requester,
             "target": target,
             "lineage_proof": lineage_proof
         });
-        
+
         let result = self.call_beardog("relay.offer", params).await?;
         serde_json::from_value(result).context("Failed to parse relay session")
     }
@@ -232,12 +250,12 @@ impl LineageRelay for ProductionBearDogProvider {
 
     async fn relay_packet(&self, session: &RelaySession, packet: &[u8]) -> Result<()> {
         use base64::{engine::general_purpose, Engine as _};
-        
+
         let params = serde_json::json!({
             "session_id": session.session_id,
             "packet": general_purpose::STANDARD.encode(packet)
         });
-        
+
         self.call_beardog("relay.relay_packet", params).await?;
         Ok(())
     }
@@ -246,7 +264,7 @@ impl LineageRelay for ProductionBearDogProvider {
         let params = serde_json::json!({
             "session_id": session_id
         });
-        
+
         self.call_beardog("relay.revoke", params).await?;
         Ok(())
     }
@@ -258,10 +276,7 @@ impl BearDogProvider for ProductionBearDogProvider {
         // Try health check
         match self.call_beardog("health", serde_json::json!({})).await {
             Ok(result) => {
-                result.get("status")
-                    .and_then(|v| v.as_str())
-                    .map(|s| s == "healthy")
-                    .unwrap_or(false)
+                result.get("status").and_then(|v| v.as_str()).is_some_and(|s| s == "healthy")
             }
             Err(e) => {
                 warn!("BearDog health check failed: {}", e);
@@ -270,7 +285,7 @@ impl BearDogProvider for ProductionBearDogProvider {
         }
     }
 
-    fn version(&self) -> &str {
+    fn version(&self) -> &'static str {
         "production-unix-socket"
     }
 

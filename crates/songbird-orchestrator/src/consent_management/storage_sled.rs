@@ -84,8 +84,7 @@ impl ConsentStorage {
                 .context("Failed to create user index")?;
 
             // Index by task: task_consents/{task_id}/{consent_id}
-            let task_index_key =
-                format!("task_consents/{}/{}", record.task_id.to_string(), record.id);
+            let task_index_key = format!("task_consents/{}/{}", record.task_id, record.id);
             db.insert(task_index_key.as_bytes(), record.id.as_bytes())
                 .context("Failed to create task index")?;
 
@@ -173,7 +172,7 @@ impl ConsentStorage {
         tokio::task::spawn_blocking(move || {
             debug!("Listing consent records for task: {}", task_id.to_string());
 
-            let prefix = format!("task_consents/{}/", task_id.to_string());
+            let prefix = format!("task_consents/{}/", task_id);
             let mut records = Vec::new();
 
             // Scan index
@@ -253,7 +252,7 @@ impl ConsentStorage {
                 db.remove(user_index_key.as_bytes()).context("Failed to delete user index")?;
 
                 // Delete task index
-                let task_index_key = format!("task_consents/{}/{}", record.task_id.to_string(), id);
+                let task_index_key = format!("task_consents/{}/{}", record.task_id, id);
                 db.remove(task_index_key.as_bytes()).context("Failed to delete task index")?;
 
                 debug!("✅ Consent record deleted: {}", id);

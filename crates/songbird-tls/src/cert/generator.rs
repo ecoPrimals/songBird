@@ -15,20 +15,15 @@ use ed25519_dalek::{SigningKey, VerifyingKey};
 use rand::rngs::OsRng;
 
 /// Certificate generation mode
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Default)]
 pub enum CertGenerationMode {
     /// Standalone: Use built-in ed25519-dalek (100% Pure Rust)
     Standalone,
     /// BearDog: Delegate to BearDog for enhanced capabilities
     BearDog,
     /// Auto: Try BearDog, fallback to standalone (default)
+    #[default]
     Auto,
-}
-
-impl Default for CertGenerationMode {
-    fn default() -> Self {
-        Self::Auto
-    }
 }
 
 /// Hybrid certificate generator

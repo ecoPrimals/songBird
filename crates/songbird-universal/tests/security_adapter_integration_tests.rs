@@ -19,14 +19,15 @@ use std::time::Duration;
 
 #[tokio::test]
 async fn test_security_adapter_new() -> SongbirdResult<()> {
-    let adapter = SecurityAdapter::new("http://localhost:8081".to_string())?.await;
+    let adapter = SecurityAdapter::new("http://localhost:8081".to_string()).await?;
     assert_eq!(adapter.endpoint(), "http://localhost:8081");
     Ok(())
 }
 
 #[tokio::test]
 async fn test_security_adapter_with_custom_timeout() -> SongbirdResult<()> {
-    let adapter = SecurityAdapter::new("http://localhost:8081".to_string())?
+    let adapter = SecurityAdapter::new("http://localhost:8081".to_string())
+        .await?
         .with_timeout(Duration::from_secs(30));
     assert_eq!(adapter.endpoint(), "http://localhost:8081");
     Ok(())
@@ -34,21 +35,22 @@ async fn test_security_adapter_with_custom_timeout() -> SongbirdResult<()> {
 
 #[tokio::test]
 async fn test_security_adapter_endpoint_with_https() -> SongbirdResult<()> {
-    let adapter = SecurityAdapter::new("https://security.example.com".to_string())?.await;
+    let adapter = SecurityAdapter::new("https://security.example.com".to_string()).await?;
     assert_eq!(adapter.endpoint(), "https://security.example.com");
     Ok(())
 }
 
 #[tokio::test]
 async fn test_security_adapter_endpoint_with_port() -> SongbirdResult<()> {
-    let adapter = SecurityAdapter::new("http://security-service:9443".to_string())?.await;
+    let adapter = SecurityAdapter::new("http://security-service:9443".to_string()).await?;
     assert_eq!(adapter.endpoint(), "http://security-service:9443");
     Ok(())
 }
 
 #[tokio::test]
 async fn test_security_adapter_builder_pattern() -> SongbirdResult<()> {
-    let adapter = SecurityAdapter::new("http://localhost:8081".to_string())?
+    let adapter = SecurityAdapter::new("http://localhost:8081".to_string())
+        .await?
         .with_timeout(Duration::from_secs(15));
 
     assert_eq!(adapter.endpoint(), "http://localhost:8081");
@@ -246,7 +248,7 @@ async fn test_security_health_copy() {
 
 #[tokio::test]
 async fn test_adapter_creation_with_empty_endpoint() {
-    let result = SecurityAdapter::new(String::new());
+    let result = SecurityAdapter::new(String::new()).await;
     // Empty endpoint should be allowed (for testing), actual connection will fail later
     assert!(result.is_ok());
 }
@@ -254,13 +256,14 @@ async fn test_adapter_creation_with_empty_endpoint() {
 #[tokio::test]
 async fn test_adapter_creation_with_invalid_url_format() {
     // Invalid URLs are acceptable at creation time - they'll fail at connection time
-    let result = SecurityAdapter::new("not-a-url".to_string());
+    let result = SecurityAdapter::new("not-a-url".to_string()).await;
     assert!(result.is_ok());
 }
 
 #[tokio::test]
 async fn test_adapter_multiple_timeout_changes() -> SongbirdResult<()> {
-    let adapter = SecurityAdapter::new("http://localhost:8081".to_string())?
+    let adapter = SecurityAdapter::new("http://localhost:8081".to_string())
+        .await?
         .with_timeout(Duration::from_secs(5))
         .with_timeout(Duration::from_secs(10))
         .with_timeout(Duration::from_secs(15));

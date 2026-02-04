@@ -149,6 +149,7 @@ impl TimeoutConfig {
     /// assert_eq!(config.connect.as_secs(), 3);  // From env
     /// assert_eq!(config.request.as_secs(), 60); // From env
     /// ```
+    #[must_use]
     pub fn from_env() -> Self {
         Self {
             connect: env_duration("SONGBIRD_TIMEOUT_CONNECT", Duration::from_secs(5)),
@@ -170,6 +171,7 @@ impl TimeoutConfig {
     /// - Speed is critical
     ///
     /// Example: Local development, LAN deployments
+    #[must_use]
     pub fn fast() -> Self {
         Self {
             connect: Duration::from_secs(2),
@@ -191,6 +193,7 @@ impl TimeoutConfig {
     /// - Most deployments
     ///
     /// This is the default profile.
+    #[must_use]
     pub fn balanced() -> Self {
         Self {
             connect: Duration::from_secs(5),
@@ -211,7 +214,8 @@ impl TimeoutConfig {
     /// - Failures are expensive
     /// - Reliability is critical
     ///
-    /// Example: Mobile deployments, satellite links, IoT devices
+    /// Example: Mobile deployments, satellite links, `IoT` devices
+    #[must_use]
     pub fn reliable() -> Self {
         Self {
             connect: Duration::from_secs(15),
@@ -241,11 +245,8 @@ impl TimeoutConfig {
     ///     Duration::from_secs(90),  // idle
     /// );
     /// ```
-    pub fn custom(
-        connect: Duration,
-        request: Duration,
-        idle: Duration,
-    ) -> Self {
+    #[must_use]
+    pub fn custom(connect: Duration, request: Duration, idle: Duration) -> Self {
         Self {
             connect,
             request,
@@ -308,8 +309,8 @@ impl TimeoutConfig {
 /// log a warning and return the default.
 fn env_duration(var: &str, default: Duration) -> Duration {
     match std::env::var(var) {
-        Ok(val) => match val.parse::<u64>() {
-            Ok(secs) => {
+        Ok(val) => {
+            if let Ok(secs) = val.parse::<u64>() {
                 if secs == 0 {
                     tracing::warn!(
                         "Invalid timeout {}: value cannot be 0, using default {:?}",
@@ -328,8 +329,7 @@ fn env_duration(var: &str, default: Duration) -> Duration {
                 } else {
                     Duration::from_secs(secs)
                 }
-            }
-            Err(_) => {
+            } else {
                 tracing::warn!(
                     "Invalid timeout {}: '{}' is not a valid number, using default {:?}",
                     var,
@@ -338,7 +338,7 @@ fn env_duration(var: &str, default: Duration) -> Duration {
                 );
                 default
             }
-        },
+        }
         Err(_) => default,
     }
 }

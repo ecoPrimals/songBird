@@ -238,11 +238,12 @@ impl BearDogSecurityValidator {
 }
 
 /// Sovereignty levels (aligned with BearDog)
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Default)]
 pub enum SovereigntyLevel {
     /// Basic sovereignty - minimal trust required
     Basic,
     /// Enhanced sovereignty - moderate trust
+    #[default]
     Enhanced,
     /// Maximum sovereignty - high trust
     Maximum,
@@ -276,12 +277,6 @@ impl SovereigntyLevel {
             Self::Maximum => 0.85,
             Self::Absolute => 0.95,
         }
-    }
-}
-
-impl Default for SovereigntyLevel {
-    fn default() -> Self {
-        Self::Enhanced // Default to moderate sovereignty
     }
 }
 

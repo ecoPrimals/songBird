@@ -114,13 +114,13 @@ impl PeerHandler {
 
         match result.state.as_str() {
             "connected" => {
-                info!("✅ Peer connected successfully (connection_id: {})", result.connection_id)
+                info!("✅ Peer connected successfully (connection_id: {})", result.connection_id);
             }
             "connecting" => {
-                info!("🔄 Peer connection in progress (connection_id: {})", result.connection_id)
+                info!("🔄 Peer connection in progress (connection_id: {})", result.connection_id);
             }
             "failed" => {
-                warn!("❌ Peer connection failed (connection_id: {})", result.connection_id)
+                warn!("❌ Peer connection failed (connection_id: {})", result.connection_id);
             }
             _ => warn!("⚠️  Unknown connection state: {}", result.state),
         }

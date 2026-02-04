@@ -9,24 +9,21 @@ use serde::{Deserialize, Serialize};
 ///
 /// Used for classification and prioritization of errors across the system.
 /// Higher severity levels indicate more critical issues requiring immediate attention.
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(
+    Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord, Hash, Default,
+)]
 pub enum ErrorSeverity {
     /// Informational - no action required
     Info,
     /// Low severity - minor issues
     Low,
     /// Medium severity - notable issues that should be addressed
+    #[default]
     Medium,
     /// High severity - significant issues requiring prompt attention
     High,
     /// Critical severity - system-critical issues requiring immediate action
     Critical,
-}
-
-impl Default for ErrorSeverity {
-    fn default() -> Self {
-        Self::Medium
-    }
 }
 
 impl ErrorSeverity {
@@ -55,20 +52,17 @@ impl ErrorSeverity {
 /// Canonical warning severity levels
 ///
 /// Used for classification of warnings that don't represent errors but require attention.
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(
+    Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord, Hash, Default,
+)]
 pub enum WarningSeverity {
     /// Low severity warning
     Low,
     /// Medium severity warning
+    #[default]
     Medium,
     /// High severity warning
     High,
-}
-
-impl Default for WarningSeverity {
-    fn default() -> Self {
-        Self::Medium
-    }
 }
 
 impl WarningSeverity {

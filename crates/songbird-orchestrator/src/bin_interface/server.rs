@@ -126,7 +126,7 @@ pub async fn run_server(args: ServerArgs) -> Result<()> {
         let listen_clone = listen_addr.clone();
         Some(tokio::spawn(async move {
             match start_tcp_ipc_server(&listen_clone, &beardog_socket).await {
-                Ok(_) => tracing::info!("TCP IPC server stopped gracefully"),
+                Ok(()) => tracing::info!("TCP IPC server stopped gracefully"),
                 Err(e) => tracing::error!("TCP IPC server error: {}", e),
             }
         }))
@@ -151,10 +151,10 @@ pub async fn run_server(args: ServerArgs) -> Result<()> {
         // Spawn IPC server in background task (Unix only)
         #[cfg(unix)]
         let ipc_task = {
-            let socket_clone = socket_path.clone();
+            let socket_clone = socket_path;
             Some(tokio::spawn(async move {
                 match start_ipc_server(&socket_clone, &beardog_socket).await {
-                    Ok(_) => tracing::info!("IPC server stopped gracefully"),
+                    Ok(()) => tracing::info!("IPC server stopped gracefully"),
                     Err(e) => tracing::error!("IPC server error: {}", e),
                 }
             }))
@@ -199,7 +199,7 @@ pub async fn run_server(args: ServerArgs) -> Result<()> {
         _ = tokio::signal::ctrl_c() => {
             tracing::info!("🛑 Received SIGINT (Ctrl+C), initiating graceful shutdown...");
         }
-        _ = async {
+        () = async {
             #[cfg(unix)]
             {
                 let mut sigterm = tokio::signal::unix::signal(tokio::signal::unix::SignalKind::terminate())
@@ -389,7 +389,10 @@ async fn start_tcp_ipc_server(listen_addr: &str, _beardog_socket: &str) -> Resul
                                 // Parse JSON-RPC request
                                 let response = match serde_json::from_str::<JsonRpcRequest>(&line) {
                                     Ok(request) => {
-                                        tracing::debug!("TCP IPC JSON-RPC request: {}", request.method);
+                                        tracing::debug!(
+                                            "TCP IPC JSON-RPC request: {}",
+                                            request.method
+                                        );
                                         match handler_clone
                                             .handle(
                                                 &request.method,

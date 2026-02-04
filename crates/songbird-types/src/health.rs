@@ -7,7 +7,7 @@ use std::collections::HashMap;
 use std::fmt;
 
 /// **CANONICAL**: Health status enumeration
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
 pub enum CanonicalHealthStatus {
     /// System is healthy and operating normally
     Healthy,
@@ -16,13 +16,8 @@ pub enum CanonicalHealthStatus {
     /// System is unhealthy and may not be functional
     Unhealthy,
     /// Health status is unknown
+    #[default]
     Unknown,
-}
-
-impl Default for CanonicalHealthStatus {
-    fn default() -> Self {
-        Self::Unknown
-    }
 }
 
 impl fmt::Display for CanonicalHealthStatus {

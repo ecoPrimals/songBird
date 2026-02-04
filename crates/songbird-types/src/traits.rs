@@ -68,7 +68,7 @@ pub trait CanonicalServiceDiscovery: Send + Sync {
 }
 
 /// Service instance status
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
 pub enum ServiceInstanceStatus {
     /// Service is starting up
     Starting,
@@ -81,6 +81,7 @@ pub enum ServiceInstanceStatus {
     /// Service is stopping
     Stopping,
     /// Service is stopped
+    #[default]
     Stopped,
 }
 
@@ -167,12 +168,6 @@ impl Default for HealthStatus {
             message: "Unknown".to_string(),
             timestamp: chrono::Utc::now(),
         }
-    }
-}
-
-impl Default for ServiceInstanceStatus {
-    fn default() -> Self {
-        Self::Stopped
     }
 }
 

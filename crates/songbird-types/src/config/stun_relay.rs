@@ -79,12 +79,13 @@ impl Default for StunRelayConfig {
 }
 
 /// STUN/relay fallback strategy
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
 #[serde(rename_all = "kebab-case")]
 pub enum StunStrategy {
     /// Try genetic lineage first, then user-provided, then public (default)
     ///
     /// Prioritizes sovereignty and zero external trust.
+    #[default]
     SovereigntyFirst,
 
     /// Try all methods in parallel, use first success
@@ -96,12 +97,6 @@ pub enum StunStrategy {
     ///
     /// Never uses external STUN servers. Fails if lineage unavailable.
     LineageOnly,
-}
-
-impl Default for StunStrategy {
-    fn default() -> Self {
-        Self::SovereigntyFirst
-    }
 }
 
 /// Tier 1: Genetic lineage relay configuration
@@ -152,20 +147,15 @@ impl Default for LineageRelayConfig {
 }
 
 /// Relay offer mode
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
 #[serde(rename_all = "lowercase")]
 pub enum RelayOfferMode {
     /// Offer relay automatically to all descendants
+    #[default]
     Automatic,
 
     /// Require explicit approval per relay request
     Manual,
-}
-
-impl Default for RelayOfferMode {
-    fn default() -> Self {
-        Self::Automatic
-    }
 }
 
 /// STUN server configuration
@@ -202,10 +192,11 @@ pub struct StunServerConfig {
 }
 
 /// STUN protocol
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
 #[serde(rename_all = "lowercase")]
 pub enum StunProtocol {
     /// UDP STUN (RFC 5389, most common)
+    #[default]
     Udp,
 
     /// TCP STUN (for networks that block UDP)
@@ -213,12 +204,6 @@ pub enum StunProtocol {
 
     /// TLS-wrapped STUN (encrypted, but slower)
     Tls,
-}
-
-impl Default for StunProtocol {
-    fn default() -> Self {
-        Self::Udp
-    }
 }
 
 /// Tier 3: Public STUN configuration
@@ -267,129 +252,70 @@ impl Default for PublicStunConfig {
 /// **IMPORTANT**: Most servers are UNVETTED and provided as-is.
 /// Only use if convenience > absolute sovereignty.
 fn default_public_stun_servers() -> Vec<StunServerConfig> {
-    vec![
-        // Tier 3A: Open-source friendly (VETTED)
-        StunServerConfig {
-            address: "stun.nextcloud.com:3478".to_string(),
+    // Data-driven server definitions: (address, priority, vetted, comment)
+    // Tier 3A: Open-source friendly (VETTED)
+    let vetted_servers = [("stun.nextcloud.com:3478", 10, "Nextcloud community (open-source)")];
+
+    // Tier 3B-D: Unvetted servers by priority tier
+    let unvetted_servers = [
+        // Tier 3B: VoIP providers (priority 20-29)
+        ("stun.voipawesome.com:3478", 20, "VoIP provider"),
+        ("stun.counterpath.com:3478", 21, "VoIP provider"),
+        ("stun.3cx.com:3478", 22, "3CX PBX provider"),
+        ("stun.antisip.com:3478", 23, "VoIP provider"),
+        ("stun.callwithus.com:3478", 24, "VoIP provider"),
+        ("stun.voipbuster.com:3478", 25, "VoIP provider"),
+        ("stun.voipstunt.com:3478", 26, "VoIP provider"),
+        ("stun.voxgratia.org:3478", 27, "VoIP provider"),
+        // Tier 3C: European providers (priority 30-39)
+        ("stun.1und1.de:3478", 30, "German ISP (1&1)"),
+        ("stun.acrobits.cz:3478", 31, "Czech provider (Acrobits)"),
+        // Tier 3D: Generic services (priority 40+)
+        ("stun.services:3478", 40, "Generic service"),
+        ("stun.12connect.com:3478", 41, "Generic service"),
+    ];
+
+    let mut servers = Vec::with_capacity(vetted_servers.len() + unvetted_servers.len());
+
+    // Add vetted servers
+    for (addr, priority, comment) in vetted_servers {
+        servers.push(StunServerConfig::new_vetted(addr, priority, comment));
+    }
+
+    // Add unvetted servers
+    for (addr, priority, comment) in unvetted_servers {
+        servers.push(StunServerConfig::new_unvetted(addr, priority, comment));
+    }
+
+    servers
+}
+
+impl StunServerConfig {
+    /// Create a new vetted STUN server config
+    fn new_vetted(address: &str, priority: u32, comment: &str) -> Self {
+        Self {
+            address: address.to_string(),
             protocol: StunProtocol::Udp,
-            priority: 10,
+            priority,
             enabled: true,
             verified: false,
-            vetted: true, // Community-vetted
-            comment: "Nextcloud community STUN server (open-source friendly)".to_string(),
-        },
-        // Tier 3B: VoIP providers (UNVETTED - USE WITH CAUTION)
-        StunServerConfig {
-            address: "stun.voipawesome.com:3478".to_string(),
+            vetted: true,
+            comment: comment.to_string(),
+        }
+    }
+
+    /// Create a new unvetted STUN server config
+    fn new_unvetted(address: &str, priority: u32, description: &str) -> Self {
+        Self {
+            address: address.to_string(),
             protocol: StunProtocol::Udp,
-            priority: 20,
-            enabled: true,
-            verified: false,
-            vetted: false,
-            comment: "UNVETTED - VoIP provider".to_string(),
-        },
-        StunServerConfig {
-            address: "stun.counterpath.com:3478".to_string(),
-            protocol: StunProtocol::Udp,
-            priority: 21,
-            enabled: true,
-            verified: false,
-            vetted: false,
-            comment: "UNVETTED - VoIP provider".to_string(),
-        },
-        StunServerConfig {
-            address: "stun.3cx.com:3478".to_string(),
-            protocol: StunProtocol::Udp,
-            priority: 22,
-            enabled: true,
-            verified: false,
-            vetted: false,
-            comment: "UNVETTED - 3CX PBX provider".to_string(),
-        },
-        StunServerConfig {
-            address: "stun.antisip.com:3478".to_string(),
-            protocol: StunProtocol::Udp,
-            priority: 23,
-            enabled: true,
-            verified: false,
-            vetted: false,
-            comment: "UNVETTED - VoIP provider".to_string(),
-        },
-        StunServerConfig {
-            address: "stun.callwithus.com:3478".to_string(),
-            protocol: StunProtocol::Udp,
-            priority: 24,
-            enabled: true,
-            verified: false,
-            vetted: false,
-            comment: "UNVETTED - VoIP provider".to_string(),
-        },
-        StunServerConfig {
-            address: "stun.voipbuster.com:3478".to_string(),
-            protocol: StunProtocol::Udp,
-            priority: 25,
+            priority,
             enabled: true,
             verified: false,
             vetted: false,
-            comment: "UNVETTED - VoIP provider".to_string(),
-        },
-        StunServerConfig {
-            address: "stun.voipstunt.com:3478".to_string(),
-            protocol: StunProtocol::Udp,
-            priority: 26,
-            enabled: true,
-            verified: false,
-            vetted: false,
-            comment: "UNVETTED - VoIP provider".to_string(),
-        },
-        StunServerConfig {
-            address: "stun.voxgratia.org:3478".to_string(),
-            protocol: StunProtocol::Udp,
-            priority: 27,
-            enabled: true,
-            verified: false,
-            vetted: false,
-            comment: "UNVETTED - VoIP provider".to_string(),
-        },
-        // Tier 3C: European providers (UNVETTED)
-        StunServerConfig {
-            address: "stun.1und1.de:3478".to_string(),
-            protocol: StunProtocol::Udp,
-            priority: 30,
-            enabled: true,
-            verified: false,
-            vetted: false,
-            comment: "UNVETTED - German ISP (1&1)".to_string(),
-        },
-        StunServerConfig {
-            address: "stun.acrobits.cz:3478".to_string(),
-            protocol: StunProtocol::Udp,
-            priority: 31,
-            enabled: true,
-            verified: false,
-            vetted: false,
-            comment: "UNVETTED - Czech provider (Acrobits)".to_string(),
-        },
-        // Tier 3D: Generic services (LOWEST PRIORITY, UNVETTED)
-        StunServerConfig {
-            address: "stun.services:3478".to_string(),
-            protocol: StunProtocol::Udp,
-            priority: 40,
-            enabled: true,
-            verified: false,
-            vetted: false,
-            comment: "UNVETTED - Generic service".to_string(),
-        },
-        StunServerConfig {
-            address: "stun.12connect.com:3478".to_string(),
-            protocol: StunProtocol::Udp,
-            priority: 41,
-            enabled: true,
-            verified: false,
-            vetted: false,
-            comment: "UNVETTED - Generic service".to_string(),
-        },
-    ]
+            comment: format!("UNVETTED - {description}"),
+        }
+    }
 }
 
 /// Tier 4: Rendezvous configuration

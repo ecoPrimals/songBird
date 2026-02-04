@@ -61,7 +61,7 @@ pub trait HealthCheck: Send + Sync {
     /// Optional: Get component name
     ///
     /// Override this to provide a descriptive name for logging and metrics.
-    fn name(&self) -> &str {
+    fn name(&self) -> &'static str {
         "component"
     }
 }
@@ -72,10 +72,10 @@ pub trait HealthCheck: Send + Sync {
 pub enum Status {
     /// Component is fully operational
     Healthy,
-    
+
     /// Component is operational but degraded (e.g., high latency, partial failure)
     Degraded,
-    
+
     /// Component is not operational
     Unhealthy,
 }
@@ -83,25 +83,25 @@ pub enum Status {
 impl Status {
     /// Check if status is healthy
     pub fn is_healthy(&self) -> bool {
-        matches!(self, Status::Healthy)
+        matches!(self, Self::Healthy)
     }
 
     /// Check if status is degraded
     pub fn is_degraded(&self) -> bool {
-        matches!(self, Status::Degraded)
+        matches!(self, Self::Degraded)
     }
 
     /// Check if status is unhealthy
     pub fn is_unhealthy(&self) -> bool {
-        matches!(self, Status::Unhealthy)
+        matches!(self, Self::Unhealthy)
     }
 
     /// Get the worst status between two statuses
-    pub fn worst(&self, other: &Status) -> Status {
+    pub fn worst(&self, other: &Self) -> Self {
         match (self, other) {
-            (Status::Unhealthy, _) | (_, Status::Unhealthy) => Status::Unhealthy,
-            (Status::Degraded, _) | (_, Status::Degraded) => Status::Degraded,
-            _ => Status::Healthy,
+            (Self::Unhealthy, _) | (_, Self::Unhealthy) => Self::Unhealthy,
+            (Self::Degraded, _) | (_, Self::Degraded) => Self::Degraded,
+            _ => Self::Healthy,
         }
     }
 }
@@ -109,9 +109,9 @@ impl Status {
 impl std::fmt::Display for Status {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Status::Healthy => write!(f, "healthy"),
-            Status::Degraded => write!(f, "degraded"),
-            Status::Unhealthy => write!(f, "unhealthy"),
+            Self::Healthy => write!(f, "healthy"),
+            Self::Degraded => write!(f, "degraded"),
+            Self::Unhealthy => write!(f, "unhealthy"),
         }
     }
 }
@@ -123,17 +123,17 @@ impl std::fmt::Display for Status {
 pub struct HealthStatus {
     /// Overall status of the component
     pub status: Status,
-    
+
     /// Component identifier
     pub component: String,
-    
+
     /// Individual health checks
     #[serde(skip_serializing_if = "HashMap::is_empty")]
     pub checks: HashMap<String, CheckResult>,
-    
+
     /// Timestamp of health check
     pub timestamp: SystemTime,
-    
+
     /// Optional error message
     #[serde(skip_serializing_if = "Option::is_none")]
     pub message: Option<String>,
@@ -144,11 +144,11 @@ pub struct HealthStatus {
 pub struct CheckResult {
     /// Status of this check
     pub status: Status,
-    
+
     /// Optional details about the check
     #[serde(skip_serializing_if = "Option::is_none")]
     pub message: Option<String>,
-    
+
     /// Optional latency in milliseconds
     #[serde(skip_serializing_if = "Option::is_none")]
     pub latency_ms: Option<u64>,
@@ -246,7 +246,7 @@ impl HealthStatus {
             .values()
             .map(|check| &check.status)
             .fold(Status::Healthy, |acc, status| acc.worst(status));
-        
+
         self.status = worst_status;
         self
     }
@@ -284,10 +284,10 @@ impl HealthStatus {
 pub struct AggregatedHealth {
     /// Overall status
     pub status: Status,
-    
+
     /// Individual component statuses
     pub components: HashMap<String, HealthStatus>,
-    
+
     /// Timestamp
     pub timestamp: SystemTime,
 }
@@ -347,7 +347,9 @@ pub struct HealthChecker {
 impl HealthChecker {
     /// Create new health checker with timeout
     pub fn new(timeout: std::time::Duration) -> Self {
-        Self { timeout }
+        Self {
+            timeout,
+        }
     }
 
     /// Check health with timeout
@@ -366,10 +368,7 @@ impl HealthChecker {
         let mut health = AggregatedHealth::new();
 
         // Check all components in parallel
-        let futures: Vec<_> = components
-            .iter()
-            .map(|component| self.check(*component))
-            .collect();
+        let futures: Vec<_> = components.iter().map(|component| self.check(*component)).collect();
 
         let results = futures::future::join_all(futures).await;
 
@@ -446,7 +445,7 @@ mod tests {
     async fn test_health_checker() {
         let service = MockHealthyService;
         let checker = HealthChecker::new(std::time::Duration::from_secs(1));
-        
+
         let status = checker.check(&service).await;
         assert!(status.is_healthy());
     }
@@ -460,7 +459,7 @@ mod tests {
 
         assert_eq!(health.status, Status::Unhealthy);
         assert_eq!(health.components.len(), 3);
-        
+
         let (healthy, degraded, unhealthy) = health.component_counts();
         assert_eq!(healthy, 1);
         assert_eq!(degraded, 1);
@@ -469,11 +468,8 @@ mod tests {
 
     #[tokio::test]
     async fn test_check_all() {
-        let services: Vec<&dyn HealthCheck> = vec![
-            &MockHealthyService,
-            &MockDegradedService,
-            &MockUnhealthyService,
-        ];
+        let services: Vec<&dyn HealthCheck> =
+            vec![&MockHealthyService, &MockDegradedService, &MockUnhealthyService];
 
         let checker = HealthChecker::new(std::time::Duration::from_secs(1));
         let health = checker.check_all(&services).await;

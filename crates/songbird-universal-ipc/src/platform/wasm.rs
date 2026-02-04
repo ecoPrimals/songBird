@@ -41,12 +41,12 @@
 //! - No cross-origin IPC (browser security model)
 //! - For browser-to-server IPC, use WebSocket (different layer)
 //!
-//! ## Future: WebWorker IPC
+//! ## Future: `WebWorker` IPC
 //!
-//! For multi-threaded WASM (WebWorkers), could implement:
-//! - MessageChannel API for cross-worker communication
-//! - SharedArrayBuffer for shared memory (if available)
-//! - PostMessage for structured clones
+//! For multi-threaded WASM (`WebWorkers`), could implement:
+//! - `MessageChannel` API for cross-worker communication
+//! - `SharedArrayBuffer` for shared memory (if available)
+//! - `PostMessage` for structured clones
 //!
 //! This would enable true multi-process WASM primals!
 
@@ -121,8 +121,7 @@ impl PlatformIPC for WasmIPC {
                 warn!("WASM in-process connection attempted (ID: {}), but primal discovery not yet implemented", id);
 
                 Err(IpcError::Other(format!(
-                    "WASM in-process connection not yet implemented (ID: {}). Requires global registry.",
-                    id
+                    "WASM in-process connection not yet implemented (ID: {id}). Requires global registry."
                 )))
             }
             _ => Err(IpcError::PlatformError("WasmIPC requires InProcess endpoint".to_string())),
@@ -172,7 +171,7 @@ impl PlatformListener for WasmListenerWrapper {
 
 /// WASM in-process stream (async channel-based)
 ///
-/// Implements AsyncRead + AsyncWrite using tokio channels.
+/// Implements `AsyncRead` + `AsyncWrite` using tokio channels.
 /// **Zero unsafe code** - Pure Rust async I/O abstraction.
 struct WasmStream {
     tx: mpsc::UnboundedSender<Vec<u8>>,
@@ -225,7 +224,7 @@ impl AsyncWrite for WasmStream {
         // Send data through channel
         self.tx
             .send(buf.to_vec())
-            .map(|_| Poll::Ready(Ok(buf.len())))
+            .map(|()| Poll::Ready(Ok(buf.len())))
             .map_err(|_| io::Error::new(io::ErrorKind::BrokenPipe, "WASM channel send failed"))
             .unwrap_or_else(|e| Poll::Ready(Err(e)))
     }

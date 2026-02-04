@@ -7,7 +7,7 @@
 //! - Async/await throughout
 //! - No `unwrap()` in production paths
 //! - Proper error handling with `SongbirdError`
-//! - Type-safe JSON-RPC via UnixRpcClient
+//! - Type-safe JSON-RPC via `UnixRpcClient`
 //! - Timeout and retry logic
 
 use async_trait::async_trait;
@@ -43,14 +43,13 @@ impl HttpBtspProvider {
         let socket_path =
             std::env::var(format!("{}_BTSP_SOCKET_PATH", provider_name.to_uppercase()))
                 .or_else(|_| std::env::var("BTSP_SOCKET_PATH"))
-                .map(PathBuf::from)
-                .unwrap_or_else(|_| PathBuf::from(format!("/tmp/{}_btsp.sock", provider_name)));
+                .map_or_else(
+                    |_| PathBuf::from(format!("/tmp/{provider_name}_btsp.sock")),
+                    PathBuf::from,
+                );
 
         let rpc_client = UnixRpcClient::new(&socket_path).map_err(|e| {
-            SongbirdError::network(format!(
-                "Failed to create RPC client for {}: {}",
-                provider_name, e
-            ))
+            SongbirdError::network(format!("Failed to create RPC client for {provider_name}: {e}"))
         })?;
 
         info!("🔒 Created RPC BTSP provider for {} at {:?}", provider_name, socket_path);
@@ -219,7 +218,7 @@ impl BtspProvider for HttpBtspProvider {
         match self.rpc_client.call::<_, serde_json::Value>("btsp.tunnel.close", &request).await {
             Ok(_) => info!("✅ Tunnel {} closed", handle.id),
             Err(e) => {
-                warn!("⚠️ Failed to close tunnel {}: {} (may already be closed)", handle.id, e)
+                warn!("⚠️ Failed to close tunnel {}: {} (may already be closed)", handle.id, e);
             }
         }
 

@@ -105,9 +105,10 @@ impl OptimizedHost {
 }
 
 /// Endpoint protocol enumeration
-#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, Default)]
 pub enum EndpointProtocol {
     /// HTTP protocol (typically port 80)
+    #[default]
     Http,
     /// HTTPS protocol (typically port 443)
     Https,
@@ -115,12 +116,6 @@ pub enum EndpointProtocol {
     Tarpc,
     /// Custom protocol
     Custom,
-}
-
-impl Default for EndpointProtocol {
-    fn default() -> Self {
-        Self::Http
-    }
 }
 
 /// Memory-optimized endpoint representation

@@ -60,24 +60,22 @@ fn get_socket_path(primal_name: &str) -> PathBuf {
 
     // Priority 2: Shared biomeos socket directory
     if let Ok(socket_dir) = std::env::var("BIOMEOS_SOCKET_DIR") {
-        return PathBuf::from(socket_dir).join(format!("{}.sock", primal_name));
+        return PathBuf::from(socket_dir).join(format!("{primal_name}.sock"));
     }
 
     // Priority 3: XDG_RUNTIME_DIR (XDG standard)
     if let Ok(xdg_runtime_dir) = std::env::var("XDG_RUNTIME_DIR") {
-        return PathBuf::from(xdg_runtime_dir)
-            .join("biomeos")
-            .join(format!("{}.sock", primal_name));
+        return PathBuf::from(xdg_runtime_dir).join("biomeos").join(format!("{primal_name}.sock"));
     }
 
     // Priority 4: Fallback XDG path using UID env var (Pure Rust!)
     if let Ok(uid_str) = std::env::var("UID") {
-        return PathBuf::from(format!("/run/user/{}/biomeos/{}.sock", uid_str, primal_name));
+        return PathBuf::from(format!("/run/user/{uid_str}/biomeos/{primal_name}.sock"));
     }
 
     // Priority 5: Legacy /tmp fallback (if all else fails)
     warn!("No XDG_RUNTIME_DIR or UID found, using legacy /tmp for primal '{}'", primal_name);
-    PathBuf::from(format!("/tmp/{}.sock", primal_name))
+    PathBuf::from(format!("/tmp/{primal_name}.sock"))
 }
 
 #[async_trait]
@@ -107,7 +105,7 @@ impl PlatformIPC for UnixIPC {
         if path.exists() {
             warn!("Socket file already exists, removing: {}", path.display());
             tokio::fs::remove_file(&path).await.map_err(|e| {
-                IpcError::PlatformError(format!("Failed to remove old socket: {}", e))
+                IpcError::PlatformError(format!("Failed to remove old socket: {e}"))
             })?;
         }
 

@@ -251,7 +251,7 @@ pub async fn unregister_capabilities() -> Result<()> {
         Ok(mut stream) => {
             let request = format!("{}\n", unregister);
             match stream.write_all(request.as_bytes()).await {
-                Ok(_) => {
+                Ok(()) => {
                     info!("✅ Capabilities unregistered from Neural API");
                     info!("   Primal ID: {}", primal_id);
                 }

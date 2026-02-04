@@ -78,6 +78,7 @@ async fn test_security_adapter_with_various_timeouts() {
 
     for timeout in timeouts {
         let adapter = SecurityAdapter::new(endpoint.clone())
+            .await
             .expect("test precondition")
             .with_timeout(timeout);
         assert_eq!(adapter.endpoint(), "http://localhost:8081");

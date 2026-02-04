@@ -492,6 +492,7 @@ async fn test_adapter_endpoint_getter() {
 #[tokio::test]
 async fn test_adapter_builder_pattern() {
     let adapter = AIAdapter::new("http://localhost:8082".to_string())
+        .await
         .expect("test precondition")
         .with_timeout(Duration::from_secs(25));
 

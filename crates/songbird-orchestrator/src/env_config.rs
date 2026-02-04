@@ -116,8 +116,7 @@ pub fn socket_path() -> PathBuf {
 /// 2. `/tmp/songbird-data` (default)
 pub fn data_dir() -> PathBuf {
     std::env::var("SONGBIRD_DATA_DIR")
-        .map(PathBuf::from)
-        .unwrap_or_else(|_| PathBuf::from("/tmp/songbird-data"))
+        .map_or_else(|_| PathBuf::from("/tmp/songbird-data"), PathBuf::from)
 }
 
 /// Get deployment directory (self-knowledge)
@@ -127,8 +126,7 @@ pub fn data_dir() -> PathBuf {
 /// 2. `/tmp/songbird-deployments` (default)
 pub fn deployment_dir() -> PathBuf {
     std::env::var("SONGBIRD_DEPLOY_DIR")
-        .map(PathBuf::from)
-        .unwrap_or_else(|_| PathBuf::from("/tmp/songbird-deployments"))
+        .map_or_else(|_| PathBuf::from("/tmp/songbird-deployments"), PathBuf::from)
 }
 
 /// Get cache directory (self-knowledge)
@@ -138,8 +136,7 @@ pub fn deployment_dir() -> PathBuf {
 /// 2. `/tmp/songbird-cache` (default)
 pub fn cache_dir() -> PathBuf {
     std::env::var("SONGBIRD_CACHE_DIR")
-        .map(PathBuf::from)
-        .unwrap_or_else(|_| PathBuf::from("/tmp/songbird-cache"))
+        .map_or_else(|_| PathBuf::from("/tmp/songbird-cache"), PathBuf::from)
 }
 
 /// Get HTTP server bind address (self-knowledge)
@@ -212,10 +209,7 @@ pub fn log_level() -> String {
 ///
 /// **Default**: `false` (opt-in for privacy, requires BearDog beacon.* RPC)
 pub fn dark_forest_enabled() -> bool {
-    std::env::var("SONGBIRD_DARK_FOREST")
-        .ok()
-        .and_then(|v| v.parse().ok())
-        .unwrap_or(false)
+    std::env::var("SONGBIRD_DARK_FOREST").ok().and_then(|v| v.parse().ok()).unwrap_or(false)
 }
 
 /// Check if legacy BirdSongPacket format should be accepted
@@ -242,10 +236,7 @@ pub fn accept_legacy_birdsong() -> bool {
 ///
 /// **Default**: `false` (minimize network overhead)
 pub fn dual_broadcast() -> bool {
-    std::env::var("SONGBIRD_DUAL_BROADCAST")
-        .ok()
-        .and_then(|v| v.parse().ok())
-        .unwrap_or(false)
+    std::env::var("SONGBIRD_DUAL_BROADCAST").ok().and_then(|v| v.parse().ok()).unwrap_or(false)
 }
 
 #[cfg(test)]

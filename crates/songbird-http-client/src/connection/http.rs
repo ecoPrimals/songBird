@@ -68,7 +68,11 @@ impl HttpConnection {
         if !headers.contains_key("host") && !headers.contains_key("Host") {
             if let Some(host) = uri.host() {
                 let scheme = uri.scheme_str().unwrap_or("http");
-                let default_port = if scheme == "https" { 443 } else { 80 };
+                let default_port = if scheme == "https" {
+                    443
+                } else {
+                    80
+                };
                 let host_header = match uri.port_u16() {
                     Some(port) if port != default_port => format!("{}:{}", host, port),
                     _ => host.to_string(),

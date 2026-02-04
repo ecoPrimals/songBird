@@ -73,9 +73,8 @@ pub async fn get_beardog_crypto_socket() -> Result<String> {
         if std::path::Path::new(path).exists() {
             info!("   ✅ Found crypto provider socket at: {}", path);
             return Ok(path.to_string());
-        } else {
-            debug!("   ⏭️  Not found: {}", path);
         }
+        debug!("   ⏭️  Not found: {}", path);
     }
 
     // Strategy 6: Search /tmp for any crypto provider socket
@@ -145,11 +144,8 @@ pub async fn is_beardog_crypto_available() -> bool {
     }
 
     // Check common paths silently
-    let common_paths = vec![
-        "/tmp/beardog-crypto.sock",
-        "/tmp/beardog-nat0.sock",
-        "/tmp/beardog-default-default.sock",
-    ];
+    let common_paths =
+        ["/tmp/beardog-crypto.sock", "/tmp/beardog-nat0.sock", "/tmp/beardog-default-default.sock"];
 
     common_paths.iter().any(|path| std::path::Path::new(path).exists())
 }

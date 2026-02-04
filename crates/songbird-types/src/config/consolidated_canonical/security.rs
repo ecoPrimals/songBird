@@ -12,20 +12,15 @@ use std::env;
 // ============================================================================
 
 /// Security level - replaces enabled bool with explicit levels
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Default)]
 pub enum SecurityLevel {
     /// Minimal security (testing only!)
     Minimal,
     /// Standard security (production)
+    #[default]
     Standard,
     /// Paranoid security (requires 2FA + hardware keys)
     Paranoid,
-}
-
-impl Default for SecurityLevel {
-    fn default() -> Self {
-        Self::Standard // Secure by default
-    }
 }
 
 impl SecurityLevel {
@@ -62,20 +57,15 @@ pub struct CanonicalSecurityConfig {
 }
 
 /// TLS certificate generation policy - replaces multiple bools
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Default)]
 pub enum TlsCertPolicy {
     /// Use provided certificates only (fail if not found)
     ProvidedOnly,
     /// Auto-generate self-signed if not found
     AutoGenerate,
     /// Auto-generate with auto-detected SANs
+    #[default]
     AutoGenerateWithSans,
-}
-
-impl Default for TlsCertPolicy {
-    fn default() -> Self {
-        Self::AutoGenerateWithSans // Convenience for development
-    }
 }
 
 /// TLS/SSL configuration

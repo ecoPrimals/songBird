@@ -332,7 +332,7 @@ impl SongbirdOrchestrator {
         )
         .await
         {
-            Ok(_) => {
+            Ok(()) => {
                 info!("✅ Universal IPC Broker started");
                 if self.discovery_listener.is_some() {
                     info!("   🌉 Discovery bridge: ENABLED (real-time peer discovery)");
@@ -621,9 +621,10 @@ impl SongbirdOrchestrator {
 
         if addrs.is_empty() {
             warn!("⚠️  No broadcast addresses configured, using defaults");
+            // These are constant valid addresses - parse cannot fail
             addrs = vec![
-                "224.0.0.251:2300".parse().unwrap(),   // Primary: multicast
-                "192.168.1.255:2300".parse().unwrap(), // Fallback: common subnet
+                "224.0.0.251:2300".parse().expect("valid multicast address constant"),
+                "192.168.1.255:2300".parse().expect("valid broadcast address constant"),
             ];
         }
 
@@ -720,7 +721,7 @@ impl SongbirdOrchestrator {
     /// Start the IPC server (Windows stub)
     ///
     /// Windows: Not supported (Linux/Unix focus)
-    /// 
+    ///
     /// **Platform Limitation**: Songbird targets Linux/Unix environments with:
     /// - XDG Runtime Directory support
     /// - Unix domain sockets for IPC

@@ -130,7 +130,7 @@ impl ConnectivityTester {
                 let rtt_ms = start.elapsed().as_millis() as u64;
                 let status = response.status;
 
-                if status >= 200 && status < 300 {
+                if (200..300).contains(&status) {
                     info!(
                         "✅ HTTPS connection to {} succeeded ({}ms, status: {})",
                         target, rtt_ms, status

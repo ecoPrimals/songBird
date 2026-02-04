@@ -314,7 +314,7 @@ impl AnonymousDiscoveryBroadcaster {
                     match self.create_and_broadcast_dark_forest_beacon(&socket, birdsong).await {
                         Ok(()) => {
                             debug!("🌲 Dark Forest beacon broadcasted");
-                            
+
                             // If dual broadcast enabled, also send legacy format
                             if birdsong.config().dual_broadcast {
                                 debug!("📢 Dual broadcast: also sending legacy format");
@@ -332,7 +332,10 @@ impl AnonymousDiscoveryBroadcaster {
                             }
                         }
                         Err(e) => {
-                            warn!("⚠️  Dark Forest broadcast failed: {}, falling back to legacy", e);
+                            warn!(
+                                "⚠️  Dark Forest broadcast failed: {}, falling back to legacy",
+                                e
+                            );
                             // Fallback to legacy BirdSong
                             match birdsong.encrypt_packet(&bytes).await {
                                 Ok(encrypted) => {
@@ -344,7 +347,10 @@ impl AnonymousDiscoveryBroadcaster {
                                     encrypted
                                 }
                                 Err(e) => {
-                                    warn!("⚠️  Legacy encryption also failed: {}, using plaintext", e);
+                                    warn!(
+                                        "⚠️  Legacy encryption also failed: {}, using plaintext",
+                                        e
+                                    );
                                     bytes
                                 }
                             }
@@ -410,20 +416,20 @@ impl AnonymousDiscoveryBroadcaster {
             debug!("📡 Broadcast discovery message (session: {})", message.session_id);
         }
     }
-    
+
     // ═══════════════════════════════════════════════════════════════════════
     // Dark Forest Beacon Broadcasting (NEW - Feb 3, 2026)
     // ═══════════════════════════════════════════════════════════════════════
-    
+
     /// Create and broadcast Dark Forest beacon (zero metadata leakage)
     ///
-    /// Unlike legacy BirdSongPacket which has plaintext `family_id`,
+    /// Unlike legacy `BirdSongPacket` which has plaintext `family_id`,
     /// Dark Forest beacons are FULLY encrypted. Observers see only noise.
     ///
     /// # Arguments
     ///
     /// * `socket` - UDP socket for broadcasting
-    /// * `birdsong` - BirdSong processor for encryption
+    /// * `birdsong` - `BirdSong` processor for encryption
     ///
     /// # Returns
     ///
@@ -443,7 +449,7 @@ impl AnonymousDiscoveryBroadcaster {
         birdsong: &crate::birdsong_integration::BirdSongProcessor,
     ) -> Result<(), anyhow::Error> {
         use crate::dark_forest_beacon::BeaconPayload;
-        
+
         // Get our beacon ID (or generate placeholder if not available yet)
         let beacon_id = match birdsong.encryption_provider() {
             Some(enc) if enc.is_available() => {
@@ -454,37 +460,35 @@ impl AnonymousDiscoveryBroadcaster {
             }
             _ => vec![0u8; 16], // Placeholder
         };
-        
+
         // Build endpoints list from our configuration
         let endpoints: Vec<String> = if let Some(ref eps) = self.endpoints {
-            eps.iter()
-                .map(|e| format!("{}:{}", e.interface_type, e.address))
-                .collect()
+            eps.iter().map(|e| format!("{}:{}", e.interface_type, e.address)).collect()
         } else {
             vec![format!("tcp:0.0.0.0:{}", self.port)]
         };
-        
+
         // Create beacon payload
         let payload = BeaconPayload::new(
             beacon_id,
             self.node_id.clone().unwrap_or_else(|| "unknown".to_string()),
             endpoints,
             &self.capabilities,
-            None, // cluster_id - TODO: Add cluster support
+            None,                       // cluster_id - TODO: Add cluster support
             self.generate_session_id(), // Session ID for rotation
         );
-        
+
         // Encrypt payload to create Dark Forest beacon
         let beacon = birdsong
             .encrypt_dark_forest_beacon(&payload)
             .await
-            .map_err(|e| anyhow::anyhow!("Failed to encrypt Dark Forest beacon: {}", e))?;
-        
+            .map_err(|e| anyhow::anyhow!("Failed to encrypt Dark Forest beacon: {e}"))?;
+
         // Serialize beacon to bytes
         let beacon_bytes = beacon
             .to_bytes()
-            .map_err(|e| anyhow::anyhow!("Failed to serialize Dark Forest beacon: {}", e))?;
-        
+            .map_err(|e| anyhow::anyhow!("Failed to serialize Dark Forest beacon: {e}"))?;
+
         // Broadcast to all multicast/broadcast addresses
         for addr in &self.broadcast_addresses {
             match socket.send_to(&beacon_bytes, addr).await {
@@ -502,7 +506,7 @@ impl AnonymousDiscoveryBroadcaster {
                 }
             }
         }
-        
+
         // Send to known peers
         for peer in &self.known_peers {
             match socket.send_to(&beacon_bytes, peer).await {
@@ -520,15 +524,15 @@ impl AnonymousDiscoveryBroadcaster {
                 }
             }
         }
-        
+
         info!(
             "🌲 Broadcasted Dark Forest beacon (size: {} bytes, NO metadata leakage)",
             beacon_bytes.len()
         );
-        
+
         Ok(())
     }
-    
+
     /// Generate session ID for beacon rotation
     ///
     /// Creates a unique session ID that rotates periodically.
@@ -538,17 +542,14 @@ impl AnonymousDiscoveryBroadcaster {
     /// Production: Should rotate every 24 hours
     fn generate_session_id(&self) -> String {
         use std::time::{SystemTime, UNIX_EPOCH};
-        
-        let timestamp = SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .unwrap()
-            .as_secs();
-        
+
+        let timestamp = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs();
+
         // Session ID rotates every hour (3600 seconds)
         // Production: Change to 86400 for daily rotation
         let session_slot = timestamp / 3600;
-        
-        format!("session-{}", session_slot)
+
+        format!("session-{session_slot}")
     }
 }
 

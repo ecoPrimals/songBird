@@ -138,14 +138,14 @@ async fn test_discovery_priority_order() -> SongbirdResult<()> {
 }
 
 /// Test adapter creation with explicit endpoints
-#[test]
-fn test_explicit_endpoint_creation() {
-    // Create adapters with explicit endpoints (synchronous, no discovery)
+#[tokio::test]
+async fn test_explicit_endpoint_creation() {
+    // Create adapters with explicit endpoints
     let compute =
-        ComputeAdapter::new(format!("http://explicit-compute:{}", test_orchestrator_port()));
-    let security = SecurityAdapter::new("http://explicit-security:8443".to_string());
-    let storage = StorageAdapter::new("http://explicit-storage:9000".to_string());
-    let ai = AIAdapter::new("http://explicit-ai:8888".to_string());
+        ComputeAdapter::new(format!("http://explicit-compute:{}", test_orchestrator_port())).await;
+    let security = SecurityAdapter::new("http://explicit-security:8443".to_string()).await;
+    let storage = StorageAdapter::new("http://explicit-storage:9000".to_string()).await;
+    let ai = AIAdapter::new("http://explicit-ai:8888".to_string()).await;
 
     assert!(compute.is_ok(), "Explicit compute creation failed");
     assert!(security.is_ok(), "Explicit security creation failed");
@@ -154,8 +154,8 @@ fn test_explicit_endpoint_creation() {
 }
 
 /// Test that adapters handle invalid endpoints gracefully
-#[test]
-fn test_invalid_endpoint_handling() {
+#[tokio::test]
+async fn test_invalid_endpoint_handling() {
     // These should create the adapter successfully (validation happens on use)
     let compute = ComputeAdapter::new("invalid-url".to_string()).await;
     let security = SecurityAdapter::new(String::new()).await;

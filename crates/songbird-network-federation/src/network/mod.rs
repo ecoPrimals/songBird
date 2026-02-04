@@ -371,7 +371,7 @@ pub struct NetworkHealth {
     pub overall_status: NetworkStatus,
 
     /// Health of individual providers
-    pub provider_health: HashMap<String, NetworkHealth>,
+    pub provider_health: HashMap<String, Self>,
 
     /// Gaming subsystem health
     pub gaming_health: Option<GamingHealth>,

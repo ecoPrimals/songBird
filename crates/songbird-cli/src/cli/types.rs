@@ -24,9 +24,10 @@ pub enum ConfigAction {
 }
 
 /// Export format for configuration
-#[derive(Debug, Clone, ValueEnum)]
+#[derive(Debug, Clone, ValueEnum, Default)]
 pub enum ExportFormat {
     /// TOML format
+    #[default]
     Toml,
     /// JSON format
     Json,
@@ -34,16 +35,11 @@ pub enum ExportFormat {
     Yaml,
 }
 
-impl Default for ExportFormat {
-    fn default() -> Self {
-        Self::Toml
-    }
-}
-
 /// Deployment types for Songbird orchestrator
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, ValueEnum)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, ValueEnum, Default)]
 pub enum DeploymentType {
     /// Home network deployment
+    #[default]
     HomeNetwork,
     /// Research cluster deployment
     ResearchCluster,
@@ -61,16 +57,11 @@ pub enum DeploymentType {
     Cloud,
 }
 
-impl Default for DeploymentType {
-    fn default() -> Self {
-        Self::HomeNetwork
-    }
-}
-
 /// Output format for CLI commands (from core/types.rs)
-#[derive(Debug, Clone, Serialize, Deserialize, ValueEnum, PartialEq, Eq)]
+#[derive(Debug, Clone, Serialize, Deserialize, ValueEnum, PartialEq, Eq, Default)]
 pub enum OutputFormat {
     /// Automatic format selection
+    #[default]
     Auto,
     /// Human-readable table format
     Table,
@@ -80,12 +71,6 @@ pub enum OutputFormat {
     Yaml,
     /// Plain text format
     Text,
-}
-
-impl Default for OutputFormat {
-    fn default() -> Self {
-        Self::Auto
-    }
 }
 
 /// CLI arguments structure

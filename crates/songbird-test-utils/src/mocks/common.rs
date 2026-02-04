@@ -5,9 +5,10 @@ use std::collections::HashMap;
 use std::sync::{Arc, RwLock};
 
 /// Health status for mock services
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
 pub enum HealthStatus {
     /// Service is healthy and accepting requests
+    #[default]
     Healthy,
     /// Service is degraded but still functional
     Degraded,
@@ -15,12 +16,6 @@ pub enum HealthStatus {
     Unhealthy,
     /// Service is starting up
     Starting,
-}
-
-impl Default for HealthStatus {
-    fn default() -> Self {
-        Self::Healthy
-    }
 }
 
 /// Standard mock response structure

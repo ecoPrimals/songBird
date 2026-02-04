@@ -55,20 +55,15 @@ pub enum LineageRelationship {
 }
 
 /// Relay masking level (privacy control)
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
 pub enum MaskingLevel {
     /// Minimal metadata visible (default)
+    #[default]
     Masked,
     /// Some metadata revealed (proven lineage)
     SubMasked,
     /// Full visibility (ancestor privilege)
     FullVisibility,
-}
-
-impl Default for MaskingLevel {
-    fn default() -> Self {
-        Self::Masked
-    }
 }
 
 /// Relay authorization token

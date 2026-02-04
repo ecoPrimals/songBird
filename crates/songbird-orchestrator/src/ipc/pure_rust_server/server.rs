@@ -275,7 +275,7 @@ impl UnixSocketServer {
                     warn!("⚠️  Unix sockets unavailable: {}", e);
                     warn!("   Platform constraint detected (SELinux/permissions)");
                     warn!("   Falling back to TCP IPC...");
-                    
+
                     // 3. ADAPT automatically to TCP fallback
                     self.start_tcp_fallback().await
                 } else {
@@ -368,13 +368,13 @@ impl UnixSocketServer {
         // SELinux blocking (common on Android)
         if lower.contains("permission denied") {
             debug!("   Detected permission denied (potential SELinux)");
-            
+
             #[cfg(target_os = "android")]
             {
                 // On Android, permission denied on socket binding is almost always SELinux
                 return true;
             }
-            
+
             #[cfg(not(target_os = "android"))]
             {
                 // On other platforms, check if SELinux is enforcing
@@ -407,8 +407,7 @@ impl UnixSocketServer {
         std::fs::read_to_string("/sys/fs/selinux/enforce")
             .ok()
             .and_then(|s| s.trim().parse::<u8>().ok())
-            .map(|v| v == 1)
-            .unwrap_or(false)
+            .is_some_and(|v| v == 1)
     }
 
     /// Start TCP fallback server (isomorphic adaptation)
@@ -567,10 +566,8 @@ impl UnixSocketServer {
 
         // Write port in discoverable format
         let content = format!("tcp:127.0.0.1:{}", port);
-        std::fs::write(&port_file, content).context(format!(
-            "Failed to write TCP discovery file: {}",
-            port_file.display()
-        ))?;
+        std::fs::write(&port_file, content)
+            .context(format!("Failed to write TCP discovery file: {}", port_file.display()))?;
 
         info!("   Discovery file: {}", port_file.display());
         Ok(())

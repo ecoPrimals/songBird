@@ -7,9 +7,10 @@ use serde::{Deserialize, Serialize};
 /// **CANONICAL**: Environment type for deployment configuration
 ///
 /// Unified from multiple definitions across the ecosystem
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, Default)]
 pub enum Environment {
     /// Development environment
+    #[default]
     Development,
     /// Staging environment for testing
     Staging,
@@ -19,12 +20,6 @@ pub enum Environment {
     Testing,
     /// Local development
     Local,
-}
-
-impl Default for Environment {
-    fn default() -> Self {
-        Self::Development
-    }
 }
 
 impl std::fmt::Display for Environment {

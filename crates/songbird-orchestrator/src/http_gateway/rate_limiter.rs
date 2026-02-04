@@ -59,7 +59,7 @@ impl TokenBucket {
         let elapsed = now.duration_since(self.last_refill).as_secs_f64();
 
         // Calculate new tokens
-        let new_tokens = self.tokens + (elapsed * self.refill_rate);
+        let new_tokens = elapsed.mul_add(self.refill_rate, self.tokens);
         self.tokens = new_tokens.min(self.capacity);
 
         self.last_refill = now;

@@ -206,12 +206,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     // Create state
-    let http_client = IpcHttpClient::new().await.unwrap_or_else(|e| {
-        warn!("⚠️  Failed to create IPC HTTP client: {}. Using mock client.", e);
-        // In production, this would be a critical error, but for now we can continue without HTTP
-        // NOTE: This fallback behavior allows compute-bridge to start even if Songbird is not available
-        panic!("IPC HTTP client is required for compute-bridge operation: {}", e);
-    });
+    let http_client = IpcHttpClient::new().await.map_err(|e| {
+        error!("❌ Failed to create IPC HTTP client: {}", e);
+        error!("   This is required for compute-bridge operation.");
+        error!("   Ensure Songbird IPC socket is available.");
+        anyhow::anyhow!("IPC HTTP client is required for compute-bridge operation: {}", e)
+    })?;
 
     let state = BridgeState {
         config: config.clone(),

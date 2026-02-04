@@ -130,7 +130,7 @@ impl CircuitBreakerManager {
     /// ```
     pub async fn get_breaker_for_endpoint(&self, endpoint: &str) -> Arc<CircuitBreaker> {
         let domain = Self::extract_domain(endpoint);
-        
+
         // Check if breaker already exists
         {
             let breakers = self.breakers.read().await;
@@ -141,9 +141,9 @@ impl CircuitBreakerManager {
 
         // Create new breaker
         let breaker = CircuitBreaker::with_config(self.config.clone());
-        
+
         let breaker_arc = Arc::new(breaker);
-        
+
         // Store for future use
         {
             let mut breakers = self.breakers.write().await;
@@ -182,10 +182,7 @@ impl CircuitBreakerManager {
 
         // Check if request is allowed
         if !breaker.is_request_allowed().await {
-            return Err(E::from(format!(
-                "Circuit breaker is open for endpoint: {}",
-                endpoint
-            )));
+            return Err(E::from(format!("Circuit breaker is open for endpoint: {}", endpoint)));
         }
 
         // Execute operation
@@ -246,13 +243,13 @@ impl CircuitBreakerManager {
     pub async fn get_all_stats(&self) -> HashMap<String, String> {
         let breakers = self.breakers.read().await;
         let mut stats = HashMap::new();
-        
+
         for (domain, breaker) in breakers.iter() {
             let state = breaker.get_state().await;
             let state_str = format!("{:?}", state);
             stats.insert(domain.clone(), state_str);
         }
-        
+
         stats
     }
 
@@ -273,11 +270,11 @@ impl CircuitBreakerManager {
         // Fallback: extract domain-like pattern from string
         // Handle cases like "api.github.com:443" or "192.168.1.1:8080"
         let parts: Vec<&str> = endpoint.split('/').collect();
-        let domain_part = parts.get(0).unwrap_or(&endpoint);
-        
+        let domain_part = parts.first().unwrap_or(&endpoint);
+
         // Remove port if present
         let domain_no_port: Vec<&str> = domain_part.split(':').collect();
-        domain_no_port.get(0).unwrap_or(domain_part).to_string()
+        domain_no_port.first().unwrap_or(domain_part).to_string()
     }
 }
 
@@ -340,7 +337,7 @@ impl CircuitBreakerManagerBuilder {
     /// Returns error if configuration is invalid.
     pub fn build(self) -> Result<CircuitBreakerManager, String> {
         let mut config = CircuitBreakerConfig::default();
-        
+
         if let Some(threshold) = self.failure_threshold {
             config.failure_threshold = threshold;
         }
@@ -374,27 +371,18 @@ mod tests {
             CircuitBreakerManager::extract_domain("https://api.github.com/repos"),
             "api.github.com"
         );
-        assert_eq!(
-            CircuitBreakerManager::extract_domain("http://localhost:8080/api"),
-            "localhost"
-        );
-        assert_eq!(
-            CircuitBreakerManager::extract_domain("api.example.com"),
-            "api.example.com"
-        );
-        assert_eq!(
-            CircuitBreakerManager::extract_domain("192.168.1.1:8080"),
-            "192.168.1.1"
-        );
+        assert_eq!(CircuitBreakerManager::extract_domain("http://localhost:8080/api"), "localhost");
+        assert_eq!(CircuitBreakerManager::extract_domain("api.example.com"), "api.example.com");
+        assert_eq!(CircuitBreakerManager::extract_domain("192.168.1.1:8080"), "192.168.1.1");
     }
 
     #[tokio::test]
     async fn test_get_breaker_for_endpoint() {
         let manager = CircuitBreakerManager::new();
-        
+
         let breaker1 = manager.get_breaker_for_endpoint("https://api.github.com/repos").await;
         let breaker2 = manager.get_breaker_for_endpoint("https://api.github.com/users").await;
-        
+
         // Should be the same breaker (same domain)
         assert!(Arc::ptr_eq(&breaker1, &breaker2));
     }
@@ -402,10 +390,10 @@ mod tests {
     #[tokio::test]
     async fn test_different_domains_different_breakers() {
         let manager = CircuitBreakerManager::new();
-        
+
         let breaker1 = manager.get_breaker_for_endpoint("https://api.github.com/repos").await;
         let breaker2 = manager.get_breaker_for_endpoint("https://api.gitlab.com/repos").await;
-        
+
         // Should be different breakers (different domains)
         assert!(!Arc::ptr_eq(&breaker1, &breaker2));
     }
@@ -413,12 +401,12 @@ mod tests {
     #[tokio::test]
     async fn test_reset_breaker() {
         let manager = CircuitBreakerManager::new();
-        
+
         let breaker = manager.get_breaker_for_endpoint("https://api.github.com/repos").await;
-        
+
         // Manually set a state (would normally happen via failed calls)
         manager.reset_breaker("api.github.com").await;
-        
+
         // Should not panic
     }
 
@@ -429,7 +417,7 @@ mod tests {
             .timeout(Duration::from_secs(120))
             .build()
             .unwrap();
-        
+
         let breaker = manager.get_breaker_for_endpoint("https://example.com").await;
         assert!(Arc::strong_count(&breaker) >= 1);
     }
@@ -437,10 +425,10 @@ mod tests {
     #[tokio::test]
     async fn test_get_all_stats() {
         let manager = CircuitBreakerManager::new();
-        
+
         let _ = manager.get_breaker_for_endpoint("https://api.github.com").await;
         let _ = manager.get_breaker_for_endpoint("https://api.gitlab.com").await;
-        
+
         let stats = manager.get_all_stats().await;
         assert_eq!(stats.len(), 2);
         assert!(stats.contains_key("api.github.com"));

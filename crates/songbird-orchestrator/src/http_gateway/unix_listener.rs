@@ -443,7 +443,7 @@ impl UnixSocketListener {
         let status = response.status;
         let body = response.body;
 
-        if status < 200 || status >= 300 {
+        if !(200..300).contains(&status) {
             return Err(anyhow!("External API returned error: {} - {:?}", status, body));
         }
 

@@ -97,7 +97,7 @@ pub struct BearDogBirdSongProvider {
     #[allow(dead_code)]
     socket_path: PathBuf,
 
-    /// JSON-RPC client for BearDog communication (Pure Rust!)
+    /// JSON-RPC client for `BearDog` communication (Pure Rust!)
     client: UnixRpcClient,
 
     /// Our family ID (cached from identity query)
@@ -131,9 +131,8 @@ impl BearDogBirdSongProvider {
         let socket_path = socket_path.into();
 
         // Create UnixRpcClient (100% Pure Rust!)
-        let client = UnixRpcClient::new(&socket_path).map_err(|e| {
-            anyhow::anyhow!("Failed to connect to BearDog at {:?}: {}", socket_path, e)
-        })?;
+        let client = UnixRpcClient::new(&socket_path)
+            .map_err(|e| anyhow::anyhow!("Failed to connect to BearDog at {socket_path:?}: {e}"))?;
 
         info!("🎵 BearDog BirdSong provider created (Pure Rust Unix socket!)");
         info!("   Socket: {:?}", socket_path);

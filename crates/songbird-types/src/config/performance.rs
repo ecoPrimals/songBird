@@ -246,7 +246,7 @@ pub struct NetworkPerformanceConfig {
 ///
 /// Each level provides different trade-offs between performance, memory usage,
 /// and CPU utilization to match various deployment scenarios.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub enum NetworkOptimizationLevel {
     /// Disabled optimization for minimal resource usage
     ///
@@ -265,6 +265,7 @@ pub enum NetworkOptimizationLevel {
     /// Enables all performance optimizations including advanced buffer pooling,
     /// connection multiplexing, and zero-copy operations. Use in high-throughput
     /// production environments where performance is critical.
+    #[default]
     Aggressive,
 }
 /// Buffer configuration for network and I/O operations
@@ -295,12 +296,6 @@ impl Default for NetworkPerformanceConfig {
             keepalive_enabled: true,
             keepalive_interval_secs: 60,
         }
-    }
-}
-
-impl Default for NetworkOptimizationLevel {
-    fn default() -> Self {
-        Self::Aggressive
     }
 }
 

@@ -13,22 +13,17 @@ use std::env;
 // ============================================================================
 
 /// Discovery mode - uses enum instead of multiple bools
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Default)]
 pub enum DiscoveryMode {
     /// Discovery disabled
     Disabled,
     /// Anonymous discovery only (default, most secure)
+    #[default]
     Anonymous,
     /// Share capabilities, but not identity
     CapabilityAware,
     /// Full disclosure (identity + capabilities)
     FullDisclosure,
-}
-
-impl Default for DiscoveryMode {
-    fn default() -> Self {
-        Self::Anonymous // Secure by default
-    }
 }
 
 impl DiscoveryMode {

@@ -164,7 +164,7 @@ impl CanonicalServiceType {
 }
 
 /// **CANONICAL**: Service status
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
 pub enum CanonicalServiceStatus {
     /// Service is running and healthy
     Running,
@@ -177,13 +177,8 @@ pub enum CanonicalServiceStatus {
     /// Service is in error state
     Error,
     /// Service status is unknown
+    #[default]
     Unknown,
-}
-
-impl Default for CanonicalServiceStatus {
-    fn default() -> Self {
-        Self::Unknown
-    }
 }
 
 /// **CANONICAL**: Service configuration
@@ -219,9 +214,10 @@ pub struct CanonicalServiceConfigParameter {
 }
 
 /// Allowed values for configuration parameters
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub enum AllowedValues {
     /// Any value is allowed
+    #[default]
     Any,
     /// Only specific values are allowed
     Specific(Vec<String>),
@@ -232,12 +228,6 @@ pub enum AllowedValues {
     },
     /// Pattern-based validation
     Pattern(String),
-}
-
-impl Default for AllowedValues {
-    fn default() -> Self {
-        Self::Any
-    }
 }
 
 #[allow(

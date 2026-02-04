@@ -25,7 +25,7 @@ use super::timeouts::NetworkTimeouts;
 /// - `songbird-config/src/lib.rs`
 /// - `songbird-config/src/unified/network.rs`
 /// - `songbird-network/src/network/discovery/types.rs`
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize, Default)]
 pub enum PeerType {
     /// Client endpoint - initiates connections
     Client,
@@ -38,13 +38,8 @@ pub enum PeerType {
     /// Gateway endpoint - protocol translation and routing
     Gateway,
     /// Unknown or unclassified peer type
+    #[default]
     Unknown,
-}
-
-impl Default for PeerType {
-    fn default() -> Self {
-        Self::Unknown
-    }
 }
 
 impl std::fmt::Display for PeerType {

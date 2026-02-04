@@ -159,7 +159,7 @@ impl UniversalProxy {
         let json = response.body;
 
         // Check for errors
-        if status < 200 || status >= 300 {
+        if !(200..300).contains(&status) {
             error!("External API returned error: {} - {:?}", status, json);
             return Err(anyhow!("External API error: {} - {:?}", status, json));
         }

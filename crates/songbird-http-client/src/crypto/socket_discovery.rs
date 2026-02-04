@@ -82,7 +82,7 @@ impl IpcEndpoint {
 /// - ✅ **Primal Autonomy**: Self-discovers optimal transport
 pub fn discover_ipc_endpoint(env_var: &str, primal_name: &str, legacy_path: &str) -> IpcEndpoint {
     debug!("🔍 IPC endpoint discovery for {}", primal_name);
-    debug!("   Checking: 1) ${}",env_var);
+    debug!("   Checking: 1) ${}", env_var);
     debug!("            2) Unix socket (XDG)");
     debug!("            3) TCP endpoint (discovery file)");
     debug!("            4) Legacy {}", legacy_path);
@@ -156,7 +156,7 @@ fn discover_tcp_endpoint(primal_name: &str) -> Option<std::net::SocketAddr> {
 
     for path in candidates {
         debug!("      Trying: {}", path.display());
-        
+
         if let Ok(content) = std::fs::read_to_string(&path) {
             // Parse format: "tcp:127.0.0.1:12345"
             if let Some(addr_str) = content.strip_prefix("tcp:") {
@@ -347,7 +347,7 @@ mod tests {
         env::remove_var("TEST_SOCKET");
         env::remove_var("XDG_RUNTIME_DIR");
         env::remove_var("FAMILY_ID");
-        
+
         // Set explicit TEST_SOCKET
         env::set_var("TEST_SOCKET", "/custom/path.sock");
 
@@ -398,7 +398,7 @@ mod tests {
         env::remove_var("TEST_SOCKET");
         env::remove_var("XDG_RUNTIME_DIR");
         env::remove_var("FAMILY_ID");
-        
+
         // Now set empty TEST_SOCKET
         env::set_var("TEST_SOCKET", "");
 
@@ -430,7 +430,7 @@ mod tests {
         env::set_var("HOME", "/home/test");
 
         let candidates = get_tcp_discovery_file_candidates("songbird");
-        
+
         assert_eq!(candidates.len(), 3);
         assert_eq!(candidates[0], PathBuf::from("/run/user/1000/songbird-ipc-port"));
         assert_eq!(candidates[1], PathBuf::from("/home/test/.local/share/songbird-ipc-port"));
@@ -449,7 +449,7 @@ mod tests {
 
         // Should fall back to legacy Unix socket
         let endpoint = discover_ipc_endpoint("TEST_SOCKET", "test-primal", "/tmp/fallback.sock");
-        
+
         match endpoint {
             IpcEndpoint::UnixSocket(path) => assert_eq!(path, "/tmp/fallback.sock"),
             IpcEndpoint::TcpLocal(_) => panic!("Should not discover TCP without discovery file"),

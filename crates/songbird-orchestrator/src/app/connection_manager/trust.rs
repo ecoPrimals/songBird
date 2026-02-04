@@ -2,7 +2,7 @@
 
 use super::btsp::BtspConnectionFactory;
 use super::peer::PeerRegistry;
-use crate::connections::*;
+use crate::connections::{Connection, FederatedConnection, FullTrustConnection, LimitedConnection};
 use crate::trust::peer_trust::PeerTrustDecision;
 use anyhow::{anyhow, Result};
 use songbird_types::TrustLevel;

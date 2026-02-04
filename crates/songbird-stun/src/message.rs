@@ -168,7 +168,7 @@ impl StunMessage {
             ));
         }
 
-        let mut buf = &data[..];
+        let mut buf = data;
 
         // Parse header: Message Type (2 bytes)
         let message_type_raw = buf.get_u16();

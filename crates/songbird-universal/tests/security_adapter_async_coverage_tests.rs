@@ -217,6 +217,7 @@ async fn test_collect_metrics_timeout() {
         .await;
 
     let adapter = SecurityAdapter::new(mock_server.uri())
+        .await
         .expect("test precondition")
         .with_timeout(Duration::from_millis(50));
 

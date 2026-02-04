@@ -86,8 +86,7 @@ impl Capability {
         }
 
         // Wildcard match (e.g., "ai:text-generation:*" matches "ai:text-generation")
-        if requested.ends_with(":*") {
-            let prefix = &requested[..requested.len() - 2];
+        if let Some(prefix) = requested.strip_suffix(":*") {
             return self.id.starts_with(prefix);
         }
 

@@ -1,7 +1,7 @@
-//! BearDog BirdSong Provider - Production & Test Implementations
+//! `BearDog` `BirdSong` Provider - Production & Test Implementations
 //!
-//! Production implementation connects to BearDog via Unix socket JSON-RPC.
-//! Test mocks allow testing lineage relay without BearDog running.
+//! Production implementation connects to `BearDog` via Unix socket JSON-RPC.
+//! Test mocks allow testing lineage relay without `BearDog` running.
 //!
 //! ## Deep Debt Compliance
 //!
@@ -13,14 +13,9 @@
 
 use crate::birdsong::{BirdSongCrypto, LineageHint};
 use crate::error::Result;
-use crate::relay::RelayAuthority;
-use crate::types::{MaskingLevel, NodeId, RelayAuthorization};
+use crate::types::NodeId;
 use async_trait::async_trait;
-use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
 use std::path::PathBuf;
-use std::sync::Arc;
-use std::time::SystemTime;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::UnixStream;
 use tracing::{debug, info};
@@ -29,9 +24,9 @@ use tracing::{debug, info};
 #[cfg(test)]
 use tokio::sync::RwLock;
 
-/// Production BearDog BirdSong Provider
+/// Production `BearDog` `BirdSong` Provider
 ///
-/// Connects to BearDog via Unix socket JSON-RPC to provide lineage-based
+/// Connects to `BearDog` via Unix socket JSON-RPC to provide lineage-based
 /// encryption for relay broadcasts. Only family members with lineage proofs
 /// can decrypt messages.
 ///
@@ -47,11 +42,11 @@ pub struct BearDogBirdSongProvider {
 }
 
 impl BearDogBirdSongProvider {
-    /// Create new BearDog BirdSong provider
+    /// Create new `BearDog` `BirdSong` provider
     ///
     /// # Arguments
     ///
-    /// * `socket_path` - BearDog Unix socket path (discovered at runtime)
+    /// * `socket_path` - `BearDog` Unix socket path (discovered at runtime)
     /// * `family_id` - Optional family ID for validation
     ///
     /// # Example
@@ -69,29 +64,34 @@ impl BearDogBirdSongProvider {
     #[must_use]
     pub fn new(socket_path: impl Into<PathBuf>, family_id: Option<String>) -> Self {
         let socket_path = socket_path.into();
-        
+
         info!("🐻 BearDog BirdSong provider created (Unix socket)");
         info!("   Socket: {:?}", socket_path);
         if let Some(ref fam) = family_id {
             info!("   Family ID: {}", fam);
         }
-        
+
         Self {
             socket_path,
             family_id,
         }
     }
 
-    /// Call BearDog JSON-RPC method via Unix socket
+    /// Call `BearDog` JSON-RPC method via Unix socket
     ///
-    /// Pure Rust implementation using tokio UnixStream.
-    async fn call_beardog(&self, method: &str, params: serde_json::Value) -> Result<serde_json::Value> {
+    /// Pure Rust implementation using tokio `UnixStream`.
+    async fn call_beardog(
+        &self,
+        method: &str,
+        params: serde_json::Value,
+    ) -> Result<serde_json::Value> {
         // Connect to BearDog Unix socket
-        let mut stream = UnixStream::connect(&self.socket_path)
-            .await
-            .map_err(|e| crate::error::LineageRelayError::BirdSongError(format!(
-                "Failed to connect to BearDog at {:?}: {}", self.socket_path, e
-            )))?;
+        let mut stream = UnixStream::connect(&self.socket_path).await.map_err(|e| {
+            crate::error::LineageRelayError::BirdSongError(format!(
+                "Failed to connect to BearDog at {:?}: {}",
+                self.socket_path, e
+            ))
+        })?;
 
         // Build JSON-RPC request
         let request = serde_json::json!({
@@ -103,21 +103,21 @@ impl BearDogBirdSongProvider {
 
         // Serialize and send
         let request_bytes = serde_json::to_vec(&request)?;
-        
-        stream.write_all(&request_bytes)
-            .await
-            .map_err(|e| crate::error::LineageRelayError::BirdSongError(format!(
-                "Failed to write to BearDog: {}", e
-            )))?;
+
+        stream.write_all(&request_bytes).await.map_err(|e| {
+            crate::error::LineageRelayError::BirdSongError(format!(
+                "Failed to write to BearDog: {e}"
+            ))
+        })?;
         stream.write_all(b"\n").await.ok(); // Newline delimiter
 
         // Read response
         let mut response_bytes = Vec::new();
-        stream.read_to_end(&mut response_bytes)
-            .await
-            .map_err(|e| crate::error::LineageRelayError::BirdSongError(format!(
-                "Failed to read from BearDog: {}", e
-            )))?;
+        stream.read_to_end(&mut response_bytes).await.map_err(|e| {
+            crate::error::LineageRelayError::BirdSongError(format!(
+                "Failed to read from BearDog: {e}"
+            ))
+        })?;
 
         // Parse JSON-RPC response
         let response: serde_json::Value = serde_json::from_slice(&response_bytes)?;
@@ -125,16 +125,16 @@ impl BearDogBirdSongProvider {
         // Check for JSON-RPC error
         if let Some(error) = response.get("error") {
             return Err(crate::error::LineageRelayError::BirdSongError(format!(
-                "BearDog RPC error: {}", error
+                "BearDog RPC error: {error}"
             )));
         }
 
         // Return result
-        response.get("result")
-            .cloned()
-            .ok_or_else(|| crate::error::LineageRelayError::BirdSongError(
-                "No result in BearDog response".to_string()
-            ))
+        response.get("result").cloned().ok_or_else(|| {
+            crate::error::LineageRelayError::BirdSongError(
+                "No result in BearDog response".to_string(),
+            )
+        })
     }
 }
 
@@ -142,7 +142,7 @@ impl BearDogBirdSongProvider {
 impl BirdSongCrypto for BearDogBirdSongProvider {
     async fn encrypt_for_lineage(&self, message: &[u8], hint: LineageHint) -> Result<Vec<u8>> {
         debug!("🔒 Encrypting for lineage via BearDog (hint: {:?})", hint);
-        
+
         // Encode message as base64 for JSON-RPC
         use base64::{engine::general_purpose, Engine as _};
         let plaintext_b64 = general_purpose::STANDARD.encode(message);
@@ -158,17 +158,21 @@ impl BirdSongCrypto for BearDogBirdSongProvider {
         let result = self.call_beardog("birdsong.encrypt", params).await?;
 
         // Extract ciphertext
-        let ciphertext_b64 = result.get("ciphertext")
+        let ciphertext_b64 = result
+            .get("ciphertext")
             .or_else(|| result.get("encrypted")) // v1 compatibility
             .and_then(|v| v.as_str())
-            .ok_or_else(|| crate::error::LineageRelayError::BirdSongError(
-                "No ciphertext in BearDog encrypt response".to_string()
-            ))?;
+            .ok_or_else(|| {
+                crate::error::LineageRelayError::BirdSongError(
+                    "No ciphertext in BearDog encrypt response".to_string(),
+                )
+            })?;
 
-        let ciphertext = general_purpose::STANDARD.decode(ciphertext_b64)
-            .map_err(|e| crate::error::LineageRelayError::BirdSongError(format!(
-                "Invalid base64 ciphertext: {}", e
-            )))?;
+        let ciphertext = general_purpose::STANDARD.decode(ciphertext_b64).map_err(|e| {
+            crate::error::LineageRelayError::BirdSongError(format!(
+                "Invalid base64 ciphertext: {e}"
+            ))
+        })?;
 
         debug!("✅ Encrypted {} → {} bytes", message.len(), ciphertext.len());
         Ok(ciphertext)
@@ -176,7 +180,7 @@ impl BirdSongCrypto for BearDogBirdSongProvider {
 
     async fn decrypt_birdsong(&self, encrypted: &[u8], sender: &NodeId) -> Result<Option<Vec<u8>>> {
         debug!("🔓 Decrypting BirdSong from {:?}", sender);
-        
+
         // Encode ciphertext as base64 for JSON-RPC
         use base64::{engine::general_purpose, Engine as _};
         let ciphertext_b64 = general_purpose::STANDARD.encode(encrypted);
@@ -188,19 +192,16 @@ impl BirdSongCrypto for BearDogBirdSongProvider {
         });
 
         // Call birdsong.decrypt
-        let result = match self.call_beardog("birdsong.decrypt", params).await {
-            Ok(r) => r,
-            Err(_) => {
-                // Decryption failure might just mean different family (noise)
-                debug!("🔇 BearDog decrypt failed - likely different family (noise)");
-                return Ok(None);
-            }
+        let result = if let Ok(r) = self.call_beardog("birdsong.decrypt", params).await {
+            r
+        } else {
+            // Decryption failure might just mean different family (noise)
+            debug!("🔇 BearDog decrypt failed - likely different family (noise)");
+            return Ok(None);
         };
 
         // Check success flag
-        let success = result.get("success")
-            .and_then(|v| v.as_bool())
-            .unwrap_or(false);
+        let success = result.get("success").and_then(serde_json::Value::as_bool).unwrap_or(false);
 
         if !success {
             debug!("🔇 BearDog decrypt: different family (noise)");
@@ -208,16 +209,15 @@ impl BirdSongCrypto for BearDogBirdSongProvider {
         }
 
         // Extract plaintext
-        let plaintext_b64 = result.get("plaintext")
-            .and_then(|v| v.as_str())
-            .ok_or_else(|| crate::error::LineageRelayError::BirdSongError(
-                "No plaintext in BearDog decrypt response".to_string()
-            ))?;
+        let plaintext_b64 = result.get("plaintext").and_then(|v| v.as_str()).ok_or_else(|| {
+            crate::error::LineageRelayError::BirdSongError(
+                "No plaintext in BearDog decrypt response".to_string(),
+            )
+        })?;
 
-        let plaintext = general_purpose::STANDARD.decode(plaintext_b64)
-            .map_err(|e| crate::error::LineageRelayError::BirdSongError(format!(
-                "Invalid base64 plaintext: {}", e
-            )))?;
+        let plaintext = general_purpose::STANDARD.decode(plaintext_b64).map_err(|e| {
+            crate::error::LineageRelayError::BirdSongError(format!("Invalid base64 plaintext: {e}"))
+        })?;
 
         debug!("✅ Decrypted {} bytes from family", plaintext.len());
         Ok(Some(plaintext))
@@ -392,11 +392,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_beardog_provider_creation() {
-        let provider = BearDogBirdSongProvider::new(
-            "/tmp/beardog.sock",
-            Some("test-family".to_string())
-        );
-        
+        let provider =
+            BearDogBirdSongProvider::new("/tmp/beardog.sock", Some("test-family".to_string()));
+
         assert_eq!(provider.socket_path.to_str().unwrap(), "/tmp/beardog.sock");
         assert_eq!(provider.family_id, Some("test-family".to_string()));
     }

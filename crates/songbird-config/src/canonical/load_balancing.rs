@@ -8,9 +8,10 @@ use serde::{Deserialize, Serialize};
 /// - `songbird-core/src/load_balancer/strategies.rs`
 /// - `songbird-network/src/balancing/mod.rs`
 /// - `songbird-universal/src/load_balancing.rs`
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Default)]
 pub enum LoadBalancingStrategy {
     /// Round-robin distribution
+    #[default]
     RoundRobin,
     /// Weighted round-robin with service capacity
     WeightedRoundRobin {
@@ -43,12 +44,6 @@ pub enum LoadBalancingStrategy {
         name: String,
         config: serde_json::Value,
     },
-}
-
-impl Default for LoadBalancingStrategy {
-    fn default() -> Self {
-        Self::RoundRobin
-    }
 }
 
 impl std::fmt::Display for LoadBalancingStrategy {

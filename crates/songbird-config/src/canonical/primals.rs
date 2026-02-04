@@ -19,7 +19,7 @@ use std::time::Duration;
 /// - `songbird-universal/src/adapters/types.rs`
 /// - `songbird-universal-primals/src/types.rs`
 /// - Various other locations
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize, Default)]
 pub enum PrimalType {
     /// Compute and container orchestration providers
     Compute,
@@ -64,13 +64,8 @@ pub enum PrimalType {
     /// Custom or third-party primal types
     Custom(String),
     /// Unknown or unclassified primal type
+    #[default]
     Unknown,
-}
-
-impl Default for PrimalType {
-    fn default() -> Self {
-        Self::Unknown
-    }
 }
 
 impl std::fmt::Display for PrimalType {
@@ -141,11 +136,12 @@ impl std::str::FromStr for PrimalType {
 }
 
 /// **CANONICAL**: Service category classification
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize, Default)]
 pub enum ServiceCategory {
     /// Core infrastructure services
     Infrastructure,
     /// Application-level services
+    #[default]
     Application,
     /// Data processing services
     Data,
@@ -165,12 +161,6 @@ pub enum ServiceCategory {
     Communication,
     /// Custom service category
     Custom(String),
-}
-
-impl Default for ServiceCategory {
-    fn default() -> Self {
-        Self::Application
-    }
 }
 
 impl std::fmt::Display for ServiceCategory {

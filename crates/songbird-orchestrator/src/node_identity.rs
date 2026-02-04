@@ -176,7 +176,7 @@ impl NodeIdentity {
                     let hash_input = if let Some(ref suffix) = node_id_suffix {
                         format!("{}:{}", mac, suffix)
                     } else {
-                        mac.to_string()
+                        mac.clone()
                     };
                     return Ok(Uuid::new_v5(&Uuid::NAMESPACE_DNS, hash_input.as_bytes()));
                 }
@@ -207,7 +207,7 @@ impl NodeIdentity {
     }
 
     /// Path to identity file
-    /// 
+    ///
     /// Priority:
     /// 1. $SONGBIRD_DATA_DIR/songbird/node_identity-{node}.json (explicit override, Android)
     /// 2. dirs::data_local_dir()/songbird/node_identity-{node}.json (standard)
@@ -404,11 +404,8 @@ impl NodeIdentity {
     }
 }
 
-impl Default for NodeIdentity {
-    fn default() -> Self {
-        Self::new_or_load(None).expect("Failed to create node identity")
-    }
-}
+// Note: NodeIdentity intentionally does not implement Default
+// to force explicit error handling via new_or_load() which returns Result
 
 #[cfg(test)]
 mod tests {

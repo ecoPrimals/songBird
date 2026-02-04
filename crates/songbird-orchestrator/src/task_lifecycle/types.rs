@@ -111,18 +111,13 @@ impl Default for ResourceRequirements {
 }
 
 /// Task priority
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize, Default)]
 pub enum Priority {
     Low = 0,
+    #[default]
     Standard = 1,
     High = 2,
     Critical = 3,
-}
-
-impl Default for Priority {
-    fn default() -> Self {
-        Self::Standard
-    }
 }
 
 /// Complete task lifecycle information

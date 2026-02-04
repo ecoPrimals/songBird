@@ -372,7 +372,11 @@ impl CapabilityDiscovery {
         let timeout = Duration::from_secs(3);
         match mdns.discover_by_capability(capability, Some(timeout)).await {
             Ok(services) => {
-                info!("✅ mDNS discovered {} service(s) for capability '{}'", services.len(), capability);
+                info!(
+                    "✅ mDNS discovered {} service(s) for capability '{}'",
+                    services.len(),
+                    capability
+                );
 
                 // Convert mDNS MdnsServiceInfo to our ServiceEndpoint
                 let endpoints: Vec<ServiceEndpoint> = services
@@ -389,7 +393,10 @@ impl CapabilityDiscovery {
                 Ok(endpoints)
             }
             Err(e) => {
-                debug!("mDNS discovery returned no results for '{}': {} - trying other methods", capability, e);
+                debug!(
+                    "mDNS discovery returned no results for '{}': {} - trying other methods",
+                    capability, e
+                );
                 Ok(vec![])
             }
         }

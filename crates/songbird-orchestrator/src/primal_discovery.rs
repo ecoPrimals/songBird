@@ -55,40 +55,40 @@ impl Capability {
     /// Get environment variable name for this capability
     fn env_var_name(&self) -> &'static str {
         match self {
-            Capability::Crypto => "CRYPTO_PROVIDER_SOCKET",
-            Capability::Security => "SECURITY_PROVIDER_SOCKET",
-            Capability::Http => "HTTP_PROVIDER_SOCKET",
-            Capability::Ai => "AI_PROVIDER_SOCKET",
-            Capability::Storage => "STORAGE_PROVIDER_SOCKET",
-            Capability::Messaging => "MESSAGING_PROVIDER_SOCKET",
+            Self::Crypto => "CRYPTO_PROVIDER_SOCKET",
+            Self::Security => "SECURITY_PROVIDER_SOCKET",
+            Self::Http => "HTTP_PROVIDER_SOCKET",
+            Self::Ai => "AI_PROVIDER_SOCKET",
+            Self::Storage => "STORAGE_PROVIDER_SOCKET",
+            Self::Messaging => "MESSAGING_PROVIDER_SOCKET",
         }
     }
 
     /// Get alternative environment variable names (for compatibility)
     fn alt_env_vars(&self) -> Vec<&'static str> {
         match self {
-            Capability::Crypto => vec!["BEARDOG_CRYPTO_SOCKET", "BEARDOG_SOCKET"],
-            Capability::Security => vec!["SONGBIRD_SECURITY_PROVIDER", "BEARDOG_SOCKET"],
-            Capability::Http => vec!["HTTP_CLIENT_SOCKET", "SONGBIRD_SOCKET"],
-            Capability::Ai => vec!["SQUIRREL_SOCKET", "AI_PROVIDER_SOCKETS"],
-            Capability::Storage => vec!["NESTGATE_SOCKET", "STORAGE_SOCKET"],
-            Capability::Messaging => vec!["MESSENGER_SOCKET", "PUBSUB_SOCKET"],
+            Self::Crypto => vec!["BEARDOG_CRYPTO_SOCKET", "BEARDOG_SOCKET"],
+            Self::Security => vec!["SONGBIRD_SECURITY_PROVIDER", "BEARDOG_SOCKET"],
+            Self::Http => vec!["HTTP_CLIENT_SOCKET", "SONGBIRD_SOCKET"],
+            Self::Ai => vec!["SQUIRREL_SOCKET", "AI_PROVIDER_SOCKETS"],
+            Self::Storage => vec!["NESTGATE_SOCKET", "STORAGE_SOCKET"],
+            Self::Messaging => vec!["MESSENGER_SOCKET", "PUBSUB_SOCKET"],
         }
     }
 
     /// Get common socket path patterns for this capability
     fn socket_patterns(&self) -> Vec<&'static str> {
         match self {
-            Capability::Crypto => {
+            Self::Crypto => {
                 vec!["/tmp/crypto.sock", "/tmp/beardog-crypto.sock", "/tmp/beardog-nat0.sock"]
             }
-            Capability::Security => {
+            Self::Security => {
                 vec!["/tmp/security.sock", "/tmp/beardog-nat0.sock", "/tmp/songbird-nat0.sock"]
             }
-            Capability::Http => vec!["/tmp/http.sock", "/tmp/songbird-nat0.sock"],
-            Capability::Ai => vec!["/tmp/ai.sock", "/tmp/squirrel-nat0.sock"],
-            Capability::Storage => vec!["/tmp/storage.sock", "/tmp/nestgate-nat0.sock"],
-            Capability::Messaging => vec!["/tmp/messaging.sock", "/tmp/messenger-nat0.sock"],
+            Self::Http => vec!["/tmp/http.sock", "/tmp/songbird-nat0.sock"],
+            Self::Ai => vec!["/tmp/ai.sock", "/tmp/squirrel-nat0.sock"],
+            Self::Storage => vec!["/tmp/storage.sock", "/tmp/nestgate-nat0.sock"],
+            Self::Messaging => vec!["/tmp/messaging.sock", "/tmp/messenger-nat0.sock"],
         }
     }
 }
@@ -133,9 +133,8 @@ pub async fn discover(capability: Capability) -> Result<String> {
         if Path::new(pattern).exists() {
             info!("   ✅ Found {:?} provider socket at: {}", capability, pattern);
             return Ok(pattern.to_string());
-        } else {
-            debug!("   ⏭️  Not found: {}", pattern);
         }
+        debug!("   ⏭️  Not found: {}", pattern);
     }
 
     // Strategy 3.5: TCP discovery files (isomorphic fallback)
@@ -196,7 +195,7 @@ fn scan_sockets(capability: Capability) -> Option<String> {
 ///
 /// # Discovery File Format
 ///
-/// File: `$XDG_RUNTIME_DIR/{primal}-ipc-port`  
+/// File: `$XDG_RUNTIME_DIR/{primal}-ipc-port`\
 /// Content: `tcp:127.0.0.1:12345`
 ///
 /// # Arguments
@@ -336,23 +335,23 @@ mod tests {
     #[test]
     fn test_tcp_discovery_file_parsing() {
         use std::io::Write;
-        
+
         // Create temp discovery file
         let temp_dir = std::env::temp_dir();
         let file_path = temp_dir.join("test-beardog-ipc-port");
-        
+
         // Write TCP endpoint
         let mut file = std::fs::File::create(&file_path).unwrap();
         file.write_all(b"tcp:127.0.0.1:12345").unwrap();
         drop(file);
-        
+
         // Set XDG_RUNTIME_DIR to temp
         std::env::set_var("XDG_RUNTIME_DIR", temp_dir.to_str().unwrap());
-        
+
         // Test discovery
         let result = check_tcp_discovery_file("test-beardog");
         assert_eq!(result, Some("127.0.0.1:12345".to_string()));
-        
+
         // Cleanup
         std::fs::remove_file(file_path).ok();
         std::env::remove_var("XDG_RUNTIME_DIR");
@@ -361,21 +360,21 @@ mod tests {
     #[test]
     fn test_tcp_discovery_from_crypto_capability() {
         use std::io::Write;
-        
+
         // Create temp discovery file for beardog
         let temp_dir = std::env::temp_dir();
         let file_path = temp_dir.join("beardog-ipc-port");
-        
+
         let mut file = std::fs::File::create(&file_path).unwrap();
         file.write_all(b"tcp:127.0.0.1:33765").unwrap();
         drop(file);
-        
+
         std::env::set_var("XDG_RUNTIME_DIR", temp_dir.to_str().unwrap());
-        
+
         // Test Crypto capability maps to beardog
         let result = discover_tcp_from_capability(Capability::Crypto);
         assert_eq!(result, Some("tcp:127.0.0.1:33765".to_string()));
-        
+
         // Cleanup
         std::fs::remove_file(file_path).ok();
         std::env::remove_var("XDG_RUNTIME_DIR");
@@ -384,21 +383,21 @@ mod tests {
     #[test]
     fn test_tcp_discovery_invalid_format() {
         use std::io::Write;
-        
+
         let temp_dir = std::env::temp_dir();
         let file_path = temp_dir.join("invalid-beardog-ipc-port");
-        
+
         // Write invalid format (missing tcp: prefix)
         let mut file = std::fs::File::create(&file_path).unwrap();
         file.write_all(b"127.0.0.1:12345").unwrap();
         drop(file);
-        
+
         std::env::set_var("XDG_RUNTIME_DIR", temp_dir.to_str().unwrap());
-        
+
         // Should return None for invalid format
         let result = check_tcp_discovery_file("invalid-beardog");
         assert_eq!(result, None);
-        
+
         // Cleanup
         std::fs::remove_file(file_path).ok();
         std::env::remove_var("XDG_RUNTIME_DIR");

@@ -41,9 +41,10 @@ impl Default for GamingNetworkConfig {
 /// let scale = GamingScale::Home;
 /// assert_eq!(scale.max_players(), 4);
 /// ```
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, Default)]
 pub enum GamingScale {
     /// Home gaming setup (1-4 players)
+    #[default]
     Home,
     /// LAN party setup (5-16 players)
     LanParty,
@@ -51,12 +52,6 @@ pub enum GamingScale {
     Tournament,
     /// Professional setup (65+ players)
     Professional,
-}
-
-impl Default for GamingScale {
-    fn default() -> Self {
-        Self::Home
-    }
 }
 
 impl GamingScale {
