@@ -24,6 +24,7 @@ pub mod adapters;
 pub mod btsp_types; // BTSP (BirdSong Transport Protocol) types (v3.15.1)
 pub mod capabilities;
 pub mod circuit_breaker;
+pub mod circuit_breaker_manager; // ✅ NEW (Feb 3, 2026): Modern circuit breaker manager for external calls
 pub mod discovery;
 pub mod federated_capability_adapter;
 pub mod jsonrpc_client;
