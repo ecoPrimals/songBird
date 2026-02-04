@@ -33,7 +33,7 @@ enum Commands {
     Server {
         /// HTTP server port (environment-aware)
         /// Respects SONGBIRD_HTTP_PORT, SONGBIRD_PORT, or PORT
-        #[arg(long, short, default_value_t = crate::env_config::http_port())]
+        #[arg(long, short, default_value_t = songbird_orchestrator::env_config::http_port())]
         port: u16,
 
         /// Run as daemon (background process)
