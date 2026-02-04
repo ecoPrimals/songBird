@@ -25,7 +25,8 @@ pub struct ServerArgs {
     /// - External API access
     ///
     /// Required when discovery is enabled (default).
-    #[arg(long, short, default_value = "8080")]
+    /// Environment-aware: Respects SONGBIRD_HTTP_PORT, SONGBIRD_PORT, or PORT.
+    #[arg(long, short, default_value_t = crate::env_config::http_port())]
     pub port: u16,
 
     /// Federation port (alias for --port, clearer intent)

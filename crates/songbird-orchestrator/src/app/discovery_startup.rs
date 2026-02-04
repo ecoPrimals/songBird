@@ -215,6 +215,7 @@ async fn initialize_birdsong_processor(
                     fallback_to_plaintext: true,
                     security_endpoint: Some(endpoint.clone()),
                     mixed_mode: true,
+                    ..Default::default()
                 };
                 let processor = songbird_discovery::BirdSongProcessor::new(None, config);
                 info!(
@@ -229,9 +230,10 @@ async fn initialize_birdsong_processor(
         info!("✅ security provider provider healthy");
         let config = songbird_discovery::BirdSongConfig {
             enabled: true,
-            fallback_to_plaintext: true, // Allow mixed-mode for migration
+            fallback_to_plaintext: true,
             security_endpoint: Some(endpoint.clone()),
-            mixed_mode: true, // Support both encrypted and plaintext discovery
+            mixed_mode: true,
+            ..Default::default()
         };
 
         let processor =
@@ -245,6 +247,7 @@ async fn initialize_birdsong_processor(
             fallback_to_plaintext: true,
             security_endpoint: Some(endpoint.clone()),
             mixed_mode: true,
+            ..Default::default()
         };
         let processor = songbird_discovery::BirdSongProcessor::new(None, config);
         info!("📡 BirdSong processor initialized (plaintext fallback): {}", processor.status());

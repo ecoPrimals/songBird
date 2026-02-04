@@ -20,8 +20,9 @@ pub struct NetworkScanArgs  {/// Target network range (CIDR notation,
     #[arg(long, default_value = "auto")]"
     pub ports: String,
 
-    /// Scan timeout in milliseconds
-    #[arg(long, default_value = "5000")]"
+    /// Scan timeout in milliseconds (environment-aware)
+    /// Respects SONGBIRD_SCAN_TIMEOUT_MS for network scanning
+    #[arg(long, default_value = "5000")]
     pub timeout_ms: u64,
 
     /// Number of concurrent scans

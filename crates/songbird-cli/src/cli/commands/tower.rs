@@ -37,7 +37,8 @@ pub struct TowerStartArgs {
     #[arg(short, long, default_value = "auto")]
     pub role: String,
 
-    /// Port to listen on
+    /// Port to listen on (environment-aware)
+    /// Respects SONGBIRD_HTTP_PORT, SONGBIRD_PORT, or PORT
     #[arg(short, long, default_value = "8080")]
     pub port: u16,
 

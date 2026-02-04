@@ -59,12 +59,11 @@ mod tests {
             family_id: Some("test-family".to_string()),
         });
 
-        let config = BirdSongConfig {
-            enabled: true,
-            fallback_to_plaintext: false,
-            security_endpoint: Some("http://localhost:3001".to_string()),
-            mixed_mode: false,
-        };
+        let mut config = BirdSongConfig::default();
+        config.enabled = true;
+        config.fallback_to_plaintext = false;
+        config.security_endpoint = Some("http://localhost:3001".to_string());
+        config.mixed_mode = false;
 
         // Create processor
         let processor = BirdSongProcessor::new(Some(provider), config);
@@ -80,12 +79,10 @@ mod tests {
         let provider = Arc::new(MockBirdSongProvider {
             family_id: Some("test-family".to_string()),
         });
-        let config = BirdSongConfig {
-            enabled: true,
-            fallback_to_plaintext: true,
-            security_endpoint: None,
-            mixed_mode: true,
-        };
+        let mut config = BirdSongConfig::default();
+        config.enabled = true;
+        config.fallback_to_plaintext = true;
+        config.mixed_mode = true;
         let processor = Arc::new(BirdSongProcessor::new(Some(provider), config));
 
         // Create identity attestations
@@ -120,12 +117,10 @@ mod tests {
         let provider = Arc::new(MockBirdSongProvider {
             family_id: Some("test-family".to_string()),
         });
-        let config = BirdSongConfig {
-            enabled: true,
-            fallback_to_plaintext: true,
-            security_endpoint: None,
-            mixed_mode: true,
-        };
+        let mut config = BirdSongConfig::default();
+        config.enabled = true;
+        config.fallback_to_plaintext = true;
+        config.mixed_mode = true;
         let processor = Arc::new(BirdSongProcessor::new(Some(provider), config));
 
         // Create listener with BirdSong (v3.3 fix!)
@@ -145,8 +140,8 @@ mod tests {
         let config = BirdSongConfig {
             enabled: true,
             fallback_to_plaintext: false,
-            security_endpoint: None,
             mixed_mode: false,
+            ..Default::default()
         };
         let processor = Arc::new(BirdSongProcessor::new(Some(provider), config));
 
@@ -201,8 +196,8 @@ mod tests {
         let config1 = BirdSongConfig {
             enabled: true,
             fallback_to_plaintext: false,
-            security_endpoint: None,
             mixed_mode: false,
+            ..Default::default()
         };
         let processor1 = Arc::new(BirdSongProcessor::new(Some(provider1), config1));
 
@@ -213,8 +208,8 @@ mod tests {
         let config2 = BirdSongConfig {
             enabled: true,
             fallback_to_plaintext: false,
-            security_endpoint: None,
             mixed_mode: false,
+            ..Default::default()
         };
         let processor2 = Arc::new(BirdSongProcessor::new(Some(provider2), config2));
 
@@ -251,12 +246,10 @@ mod tests {
         let provider = Arc::new(MockBirdSongProvider {
             family_id: Some("mixed-family".to_string()),
         });
-        let config = BirdSongConfig {
-            enabled: true,
-            fallback_to_plaintext: true,
-            security_endpoint: None,
-            mixed_mode: true,
-        };
+        let mut config = BirdSongConfig::default();
+        config.enabled = true;
+        config.fallback_to_plaintext = true;
+        config.mixed_mode = true;
         let processor = Arc::new(BirdSongProcessor::new(Some(provider), config));
 
         // Test 1: Encrypted packet (normal case)
@@ -302,12 +295,10 @@ mod tests {
     #[tokio::test]
     async fn test_graceful_degradation_no_provider() {
         // Create processor without provider (plaintext fallback)
-        let config = BirdSongConfig {
-            enabled: true,
-            fallback_to_plaintext: true,
-            security_endpoint: None,
-            mixed_mode: true,
-        };
+        let mut config = BirdSongConfig::default();
+        config.enabled = true;
+        config.fallback_to_plaintext = true;
+        config.mixed_mode = true;
         let processor = Arc::new(BirdSongProcessor::new(None, config));
 
         // Create discovery message
@@ -338,8 +329,8 @@ mod tests {
         let config = BirdSongConfig {
             enabled: true,
             fallback_to_plaintext: false,
-            security_endpoint: None,
             mixed_mode: false,
+            ..Default::default()
         };
         let processor = Arc::new(BirdSongProcessor::new(Some(provider), config));
 

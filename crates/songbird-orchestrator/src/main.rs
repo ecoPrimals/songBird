@@ -31,8 +31,9 @@ enum Commands {
     /// This is the primary operational mode that runs the full orchestrator
     /// with discovery, federation, and network services.
     Server {
-        /// HTTP server port
-        #[arg(long, short, default_value = "8080")]
+        /// HTTP server port (environment-aware)
+        /// Respects SONGBIRD_HTTP_PORT, SONGBIRD_PORT, or PORT
+        #[arg(long, short, default_value_t = crate::env_config::http_port())]
         port: u16,
 
         /// Run as daemon (background process)
