@@ -715,6 +715,20 @@ impl BirdSongProcessor {
         }
     }
     
+    /// Get reference to configuration (read-only)
+    ///
+    /// Allows external code to check configuration without direct field access.
+    pub fn config(&self) -> &BirdSongConfig {
+        &self.config
+    }
+    
+    /// Get reference to encryption provider (read-only)
+    ///
+    /// Returns None if no encryption provider configured.
+    pub fn encryption_provider(&self) -> Option<&Arc<dyn BirdSongEncryption>> {
+        self.encryption.as_ref()
+    }
+    
     // ═══════════════════════════════════════════════════════════════════════
     // Dark Forest Beacon Methods (NEW - Feb 3, 2026)
     // ═══════════════════════════════════════════════════════════════════════
@@ -945,8 +959,8 @@ mod tests {
         let config = BirdSongConfig {
             enabled: true,
             fallback_to_plaintext: false,
-            security_endpoint: None,
             mixed_mode: false,
+            ..Default::default()
         };
         let processor = BirdSongProcessor::new(Some(enc), config);
 
@@ -967,8 +981,8 @@ mod tests {
         let config = BirdSongConfig {
             enabled: true,
             fallback_to_plaintext: false,
-            security_endpoint: None,
             mixed_mode: false,
+            ..Default::default()
         };
         let processor = BirdSongProcessor::new(Some(enc), config);
 
@@ -984,8 +998,8 @@ mod tests {
         let config = BirdSongConfig {
             enabled: false,
             fallback_to_plaintext: true,
-            security_endpoint: None,
             mixed_mode: true,
+            ..Default::default()
         };
         let processor = BirdSongProcessor::new(None, config);
 
@@ -1004,10 +1018,10 @@ mod tests {
             available: true,
         });
         let config = BirdSongConfig {
-            enabled: false, // Disabled
+            enabled: false,
             fallback_to_plaintext: true,
-            security_endpoint: None,
             mixed_mode: true,
+            ..Default::default()
         };
         let processor = BirdSongProcessor::new(Some(enc), config);
 
@@ -1026,9 +1040,9 @@ mod tests {
         });
         let config = BirdSongConfig {
             enabled: true,
-            fallback_to_plaintext: true, // Fallback enabled
-            security_endpoint: None,
+            fallback_to_plaintext: true,
             mixed_mode: true,
+            ..Default::default()
         };
         let processor = BirdSongProcessor::new(Some(enc), config);
 
@@ -1046,8 +1060,8 @@ mod tests {
         let config = BirdSongConfig {
             enabled: true,
             fallback_to_plaintext: true,
-            security_endpoint: None,
-            mixed_mode: true, // Mixed mode
+            mixed_mode: true,
+            ..Default::default()
         };
         let processor = BirdSongProcessor::new(Some(enc), config);
 

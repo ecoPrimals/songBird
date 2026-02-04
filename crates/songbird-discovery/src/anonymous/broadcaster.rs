@@ -306,19 +306,65 @@ impl AnonymousDiscoveryBroadcaster {
             };
 
             // 🎵 NEW (Jan 3, 2026): Optional BirdSong encryption for privacy
+            // 🌲 EVOLVED (Feb 3, 2026): Support Dark Forest beacons (zero metadata leakage)
             let bytes = if let Some(ref birdsong) = self.birdsong {
-                match birdsong.encrypt_packet(&bytes).await {
-                    Ok(encrypted) => {
-                        debug!(
-                            "🔒 BirdSong encrypted: {} -> {} bytes",
-                            bytes.len(),
-                            encrypted.len()
-                        );
-                        encrypted
+                // Check if Dark Forest mode is enabled
+                if birdsong.config().is_dark_forest_active() {
+                    // Dark Forest mode - broadcast fully encrypted beacon
+                    match self.create_and_broadcast_dark_forest_beacon(&socket, birdsong).await {
+                        Ok(()) => {
+                            debug!("🌲 Dark Forest beacon broadcasted");
+                            
+                            // If dual broadcast enabled, also send legacy format
+                            if birdsong.config().dual_broadcast {
+                                debug!("📢 Dual broadcast: also sending legacy format");
+                                // Encrypt with legacy BirdSong (has plaintext family_id)
+                                match birdsong.encrypt_packet(&bytes).await {
+                                    Ok(encrypted) => encrypted,
+                                    Err(e) => {
+                                        warn!("⚠️  Legacy encryption failed: {}", e);
+                                        bytes.clone()
+                                    }
+                                }
+                            } else {
+                                // Dark Forest only - skip legacy broadcast
+                                continue;
+                            }
+                        }
+                        Err(e) => {
+                            warn!("⚠️  Dark Forest broadcast failed: {}, falling back to legacy", e);
+                            // Fallback to legacy BirdSong
+                            match birdsong.encrypt_packet(&bytes).await {
+                                Ok(encrypted) => {
+                                    debug!(
+                                        "🔒 BirdSong encrypted (legacy fallback): {} -> {} bytes",
+                                        bytes.len(),
+                                        encrypted.len()
+                                    );
+                                    encrypted
+                                }
+                                Err(e) => {
+                                    warn!("⚠️  Legacy encryption also failed: {}, using plaintext", e);
+                                    bytes
+                                }
+                            }
+                        }
                     }
-                    Err(e) => {
-                        warn!("⚠️  BirdSong encryption failed: {}, using plaintext", e);
-                        bytes
+                } else {
+                    // Legacy BirdSong mode (has plaintext family_id header)
+                    match birdsong.encrypt_packet(&bytes).await {
+                        Ok(encrypted) => {
+                            debug!(
+                                "🔒 BirdSong encrypted (legacy): {} -> {} bytes",
+                                bytes.len(),
+                                encrypted.len()
+                            );
+                            encrypted
+                        }
+                        Err(e) => {
+                            warn!("⚠️  BirdSong encryption failed: {}, using plaintext", e);
+                            bytes
+                        }
                     }
                 }
             } else {
@@ -363,6 +409,146 @@ impl AnonymousDiscoveryBroadcaster {
 
             debug!("📡 Broadcast discovery message (session: {})", message.session_id);
         }
+    }
+    
+    // ═══════════════════════════════════════════════════════════════════════
+    // Dark Forest Beacon Broadcasting (NEW - Feb 3, 2026)
+    // ═══════════════════════════════════════════════════════════════════════
+    
+    /// Create and broadcast Dark Forest beacon (zero metadata leakage)
+    ///
+    /// Unlike legacy BirdSongPacket which has plaintext `family_id`,
+    /// Dark Forest beacons are FULLY encrypted. Observers see only noise.
+    ///
+    /// # Arguments
+    ///
+    /// * `socket` - UDP socket for broadcasting
+    /// * `birdsong` - BirdSong processor for encryption
+    ///
+    /// # Returns
+    ///
+    /// Ok if successfully created and broadcasted Dark Forest beacon
+    ///
+    /// # Privacy Guarantee
+    ///
+    /// Network observers see ONLY:
+    /// - Encrypted blob (random-looking data)
+    /// - Nonce (public, reveals nothing)
+    /// - Timestamp (replay protection, reveals nothing)
+    ///
+    /// NO metadata leakage: family, capabilities, endpoints all encrypted.
+    async fn create_and_broadcast_dark_forest_beacon(
+        &self,
+        socket: &UdpSocket,
+        birdsong: &crate::birdsong_integration::BirdSongProcessor,
+    ) -> Result<(), anyhow::Error> {
+        use crate::dark_forest_beacon::BeaconPayload;
+        
+        // Get our beacon ID (or generate placeholder if not available yet)
+        let beacon_id = match birdsong.encryption_provider() {
+            Some(enc) if enc.is_available() => {
+                enc.get_beacon_id().await?.unwrap_or_else(|| {
+                    // Placeholder if beacon ID not yet available
+                    vec![0u8; 16]
+                })
+            }
+            _ => vec![0u8; 16], // Placeholder
+        };
+        
+        // Build endpoints list from our configuration
+        let endpoints: Vec<String> = if let Some(ref eps) = self.endpoints {
+            eps.iter()
+                .map(|e| format!("{}:{}", e.interface_type, e.address))
+                .collect()
+        } else {
+            vec![format!("tcp:0.0.0.0:{}", self.port)]
+        };
+        
+        // Create beacon payload
+        let payload = BeaconPayload::new(
+            beacon_id,
+            self.node_id.clone().unwrap_or_else(|| "unknown".to_string()),
+            endpoints,
+            &self.capabilities,
+            None, // cluster_id - TODO: Add cluster support
+            self.generate_session_id(), // Session ID for rotation
+        );
+        
+        // Encrypt payload to create Dark Forest beacon
+        let beacon = birdsong
+            .encrypt_dark_forest_beacon(&payload)
+            .await
+            .map_err(|e| anyhow::anyhow!("Failed to encrypt Dark Forest beacon: {}", e))?;
+        
+        // Serialize beacon to bytes
+        let beacon_bytes = beacon
+            .to_bytes()
+            .map_err(|e| anyhow::anyhow!("Failed to serialize Dark Forest beacon: {}", e))?;
+        
+        // Broadcast to all multicast/broadcast addresses
+        for addr in &self.broadcast_addresses {
+            match socket.send_to(&beacon_bytes, addr).await {
+                Ok(sent) => {
+                    debug!("🌲 Dark Forest beacon sent {} bytes to {}", sent, addr);
+                    if let Some(ref stats) = self.stats {
+                        stats.record_broadcast();
+                    }
+                }
+                Err(e) => {
+                    warn!("Failed to send Dark Forest beacon to {}: {}", addr, e);
+                    if let Some(ref stats) = self.stats {
+                        stats.record_error();
+                    }
+                }
+            }
+        }
+        
+        // Send to known peers
+        for peer in &self.known_peers {
+            match socket.send_to(&beacon_bytes, peer).await {
+                Ok(sent) => {
+                    debug!("🌲 Dark Forest beacon sent {} bytes to known peer {}", sent, peer);
+                    if let Some(ref stats) = self.stats {
+                        stats.record_broadcast();
+                    }
+                }
+                Err(e) => {
+                    warn!("Failed to send Dark Forest beacon to peer {}: {}", peer, e);
+                    if let Some(ref stats) = self.stats {
+                        stats.record_error();
+                    }
+                }
+            }
+        }
+        
+        info!(
+            "🌲 Broadcasted Dark Forest beacon (size: {} bytes, NO metadata leakage)",
+            beacon_bytes.len()
+        );
+        
+        Ok(())
+    }
+    
+    /// Generate session ID for beacon rotation
+    ///
+    /// Creates a unique session ID that rotates periodically.
+    /// Prevents long-term tracking by changing session identifiers.
+    ///
+    /// Current implementation: timestamp-based (rotates every ~hour)
+    /// Production: Should rotate every 24 hours
+    fn generate_session_id(&self) -> String {
+        use std::time::{SystemTime, UNIX_EPOCH};
+        
+        let timestamp = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap()
+            .as_secs();
+        
+        // Session ID rotates every hour (3600 seconds)
+        // Production: Change to 86400 for daily rotation
+        let session_slot = timestamp / 3600;
+        
+        format!("session-{}", session_slot)
     }
 }
 
