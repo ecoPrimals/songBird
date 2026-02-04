@@ -351,7 +351,7 @@ impl HealthChecker {
     }
 
     /// Check health with timeout
-    pub async fn check<T: HealthCheck>(&self, component: &T) -> HealthStatus {
+    pub async fn check<T: HealthCheck + ?Sized>(&self, component: &T) -> HealthStatus {
         match tokio::time::timeout(self.timeout, component.health()).await {
             Ok(status) => status,
             Err(_) => HealthStatus::unhealthy(
@@ -362,7 +362,7 @@ impl HealthChecker {
     }
 
     /// Check multiple components in parallel
-    pub async fn check_all<T: HealthCheck>(&self, components: &[&T]) -> AggregatedHealth {
+    pub async fn check_all<T: HealthCheck + ?Sized>(&self, components: &[&T]) -> AggregatedHealth {
         let mut health = AggregatedHealth::new();
 
         // Check all components in parallel

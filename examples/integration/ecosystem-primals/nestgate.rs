@@ -1,5 +1,14 @@
 //! `NestGate` Storage Adapter
 //!
+//! **LEGACY EXAMPLE**: This example uses `reqwest` for demonstration purposes.
+//! For TRUE Pure Rust production code, use `IpcHttpClient` instead (no C dependencies).
+//!
+//! See modern implementation:
+//! - `crates/songbird-http-client/examples/ipc_http_client_demo.rs`
+//! - Migration guide: `ecoPrimals/sessions/feb-2026/reqwest-removal/`
+//!
+//! ---
+//!
 //! Coordinates with `NestGate` primal for storage and data management operations.
 //! This adapter is capability-based and works with any service providing storage
 //! capabilities in the expected format.

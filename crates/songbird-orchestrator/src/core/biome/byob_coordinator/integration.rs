@@ -158,30 +158,11 @@ impl ByobCoordinator {
         Ok(())
 
     /// Test storage connectivity
+    /// 
+    /// Note: Returns false (disabled) - reqwest removed during ecoBin v2.0 migration.
+    /// For production implementation, use IpcHttpClient via Unix sockets.
+    /// See: ecoPrimals/sessions/feb-2026/reqwest-removal/
     async fn test_storage_connectivity(endpoint: &str) -> bool {
-        // DEAD CODE: Corrupted reqwest implementation removed during ecoBin v2.0 migration
-        // This section had malformed syntax from incomplete previous edits
-        // TODO: If needed, implement using IpcHttpClient via Unix sockets
-        /*
-        debug!("🔍 Testing storage connectivity to {}", endpoint);
-        match reqwest::Client::new()
-            .get(&format!("{}/health", endpoint))
-            .send()
-            .await
-        {
-            Ok(response) => {
-                let is_healthy = response.status().is_success();
-                debug!("Storage health check result: {}", is_healthy);
-                is_healthy
-            }
-            Err(e) => {
-                debug!("Storage connectivity test failed: {}", e);
-                false
-            }
-        }
-        */
-        
-        // Temporary stub - returns false until IpcHttpClient migration is complete
         tracing::warn!("Storage connectivity test disabled (reqwest removed for ecoBin v2.0)");
         let _ = endpoint; // Suppress unused warning
         false

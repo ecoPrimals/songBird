@@ -24,20 +24,11 @@ pub struct compute_providerClient {
 }
 
 impl compute_providerClient {
-    // DEAD CODE: Corrupted reqwest implementation removed during ecoBin v2.0 migration
-    // This section had malformed syntax from incomplete previous edits
-    // TODO: If needed, implement using IpcHttpClient via Unix sockets
-    /*
     /// Create new compute_provider client with performance optimizations
-    #[must_use = "Result must be handled - ignoring errors is unsafe"]
-    pub async fn new() -> Result<Self, SongbirdError> {
-        // Removed corrupted reqwest code
-        // See ecoPrimals/sessions/feb-2026/reqwest-removal/ for migration docs
-        unimplemented!("compute_providerClient requires IpcHttpClient migration")
-    }
-    */
-    
-    // Placeholder implementation to satisfy module structure
+    /// 
+    /// Note: Uses placeholder implementation - reqwest removed during ecoBin v2.0 migration.
+    /// For production implementation, use IpcHttpClient via Unix sockets.
+    /// See: ecoPrimals/sessions/feb-2026/reqwest-removal/
     #[must_use]
     pub async fn new(endpoint: String) -> Result<Self, SongbirdError> {
         let circuit_breaker = CircuitBreaker::new(5, Duration::from_secs(30));

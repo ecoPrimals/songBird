@@ -4,6 +4,10 @@
 // Purpose: Provide common test environment for E2E scenarios
 //
 // **MODERN:** Truly concurrent-safe with atomic port allocation and no sleeps!
+//
+// Note: This e2e test environment uses `reqwest` for external HTTP testing.
+// Production code uses IpcHttpClient (100% Pure Rust, no C dependencies).
+// See: crates/songbird-http-client/examples/ipc_http_client_demo.rs
 
 use std::collections::HashMap;
 use std::process::{Child, Command, Stdio};
