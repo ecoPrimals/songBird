@@ -304,7 +304,7 @@ impl CapabilityDiscoveryEngine {
         let cache = self.cache.read().await;
         if let Some(services) = cache.get(capability) {
             // Check if cache is still valid
-            let now = std::time::SystemTime::now();
+            let _now = std::time::SystemTime::now();
             let all_valid = services.iter().all(|s| {
                 s.discovered_at
                     .elapsed()

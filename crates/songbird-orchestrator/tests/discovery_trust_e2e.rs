@@ -129,7 +129,7 @@ fn test_e2e_discovery_to_trust() {
 /// Test: Discovery without security provider (development mode)
 #[test]
 fn test_discovery_without_security_provider() {
-    // When SONGBIRD_BEARDOG_URL is not set, discovery works but has no tags
+    // When SONGBIRD_SECURITY_PROVIDER is not set, discovery works but has no tags
     let message = AnonymousDiscoveryMessage::new(
         vec!["compute".to_string()],
         vec!["https".to_string()],

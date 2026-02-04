@@ -345,7 +345,7 @@ impl SongbirdOrchestrator {
                                 } else {
                                     // No security provider - fall back to anonymous trust (INSECURE - development only)
                                     warn!("⚠️  No security provider configured - using anonymous trust (INSECURE)");
-                                    warn!("   Set SONGBIRD_BEARDOG_URL for secure genetic lineage verification");
+                                    warn!("   Set SONGBIRD_SECURITY_PROVIDER for secure genetic lineage verification");
 
                                     // Use fully qualified path to avoid duplicate import
                                     Some(crate::trust::peer_trust::PeerTrustDecision::AutoAccept {

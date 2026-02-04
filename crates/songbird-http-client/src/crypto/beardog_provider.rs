@@ -837,11 +837,15 @@ mod tests {
     fn test_semantic_mapping() {
         let provider = BearDogProvider::new("/tmp/beardog.sock");
 
+        // semantic_to_actual returns BearDog's actual method names (with crypto. prefix)
         assert_eq!(
             provider.semantic_to_actual("crypto.generate_keypair"),
-            "x25519_generate_ephemeral"
+            "crypto.x25519_generate_ephemeral"
         );
-        assert_eq!(provider.semantic_to_actual("crypto.ecdh_derive"), "x25519_diffie_hellman");
+        assert_eq!(
+            provider.semantic_to_actual("crypto.ecdh_derive"),
+            "crypto.x25519_derive_secret"
+        );
     }
 
     #[test]

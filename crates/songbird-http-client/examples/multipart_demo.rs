@@ -19,12 +19,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("════════════════════════════════");
 
     // Create client (connects to Songbird via IPC)
-    let client = IpcHttpClient::new().await?;
+    let _client = IpcHttpClient::new().await?;
     println!("✅ Connected to Songbird IPC");
 
     // Example 1: Simple multipart form with text fields
     println!("\n📝 Example 1: Text-only multipart form");
-    let form1 = multipart::Form::new()
+    let _form1 = multipart::Form::new()
         .text("username", "alice")
         .text("email", "alice@example.com")
         .text("message", "Hello from Songbird!");
@@ -41,7 +41,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         0x00, 0x00, 0x00, 0x0D, 0x49, 0x48, 0x44, 0x52,
     ];
 
-    let form2 = multipart::Form::new()
+    let _form2 = multipart::Form::new()
         .text("service_name", "my-service")
         .text("description", "A test service deployment")
         .part(
@@ -61,7 +61,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let config_data = b"{\"port\": 8080, \"host\": \"0.0.0.0\"}";
     let readme_data = b"# My Service\n\nThis is a test service.";
 
-    let form3 = multipart::Form::new()
+    let _form3 = multipart::Form::new()
         .text("project_name", "test-project")
         .part(
             "binary",

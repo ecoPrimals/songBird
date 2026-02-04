@@ -40,8 +40,7 @@ pub type SecurityIntegration = Arc<()>;
 /// Priority:
 /// 1. `SONGBIRD_SECURITY_PROVIDER` (NEW - generic capability)
 /// 2. `SECURITY_ENDPOINT` (existing - generic)
-/// 3. `SONGBIRD_BEARDOG_URL` (DEPRECATED - vendor-specific, will be removed in v3.16.0)
-/// 4. Discovery via Universal Adapter (fallback)
+/// 3. Discovery via Universal Adapter (fallback)
 ///
 /// # Arguments
 ///
@@ -66,16 +65,7 @@ pub async fn discover_security_endpoint(
         return Ok(endpoint);
     }
 
-    // Priority 3: DEPRECATED - Vendor-specific env var (backward compat only)
-    if let Ok(endpoint) = std::env::var("SONGBIRD_BEARDOG_URL") {
-        warn!("⚠️  DEPRECATED: SONGBIRD_BEARDOG_URL is deprecated (vendor-specific hardcoding)");
-        warn!("   Please use SONGBIRD_SECURITY_PROVIDER instead (generic capability)");
-        warn!("   SONGBIRD_BEARDOG_URL will be removed in v3.16.0");
-        info!("🔐 Security provider: {} (via SONGBIRD_BEARDOG_URL - DEPRECATED)", endpoint);
-        return Ok(endpoint);
-    }
-
-    // Priority 4: FALLBACK - Discover via Universal Adapter
+    // Priority 3: FALLBACK - Discover via Universal Adapter
     if let Some(adapter) = universal_adapter {
         info!("🔍 No security provider configured, discovering via Universal Adapter...");
         match adapter.discover_capability("security").await {
@@ -198,9 +188,8 @@ mod tests {
         // Clear ALL higher-priority env vars to ensure fallback is tested
         std::env::remove_var("SONGBIRD_SECURITY_PROVIDER");
         std::env::remove_var("SECURITY_ENDPOINT");
-        std::env::remove_var("SONGBIRD_BEARDOG_URL");
 
-        // Set fallback endpoint (Priority 5)
+        // Set fallback endpoint (Priority 4)
         std::env::set_var("CAPABILITY_SECURITY_ENDPOINT", "http://localhost:9090");
 
         let result = setup_security().await;

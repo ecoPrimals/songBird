@@ -10,9 +10,8 @@
 //! ## Zero Hardcoding Philosophy
 //!
 //! This module discovers security providers at runtime via environment:
-//! - `SONGBIRD_SECURITY_PROVIDER`: Security provider URL (NEW - generic capability)
+//! - `SONGBIRD_SECURITY_PROVIDER`: Security provider URL (generic capability)
 //! - `SECURITY_ENDPOINT`: Alternative security endpoint (generic)
-//! - `SONGBIRD_BEARDOG_URL`: DEPRECATED - Use SONGBIRD_SECURITY_PROVIDER instead
 //!
 //! No hardcoded endpoints - all runtime discovery!
 //!
@@ -123,9 +122,8 @@ pub async fn start_discovery_system(
 ///
 /// # Environment Variables (v3.15.0)
 ///
-/// - `SONGBIRD_SECURITY_PROVIDER` (NEW - generic capability)
+/// - `SONGBIRD_SECURITY_PROVIDER` (generic capability)
 /// - `SECURITY_ENDPOINT` (generic)
-/// - `SONGBIRD_BEARDOG_URL` (DEPRECATED - vendor-specific)
 async fn fetch_identity_attestations(
 ) -> Result<Vec<songbird_discovery::IdentityAttestation>, anyhow::Error> {
     if let Ok(url) = crate::app::security_setup::discover_security_endpoint(None).await {
@@ -353,7 +351,6 @@ mod tests {
     #[tokio::test]
     async fn test_fetch_identity_attestations_no_provider() {
         // No security provider configured
-        std::env::remove_var("SONGBIRD_BEARDOG_URL");
         std::env::remove_var("SECURITY_ENDPOINT");
 
         let attestations = fetch_identity_attestations().await.unwrap_or_default();
@@ -379,10 +376,6 @@ mod tests {
         // - Runtime discovery of security provider
 
         // Security provider discovered via environment
-        assert!(
-            std::env::var("SONGBIRD_BEARDOG_URL").is_err()
-                || std::env::var("SONGBIRD_BEARDOG_URL").is_ok()
-        );
         assert!(
             std::env::var("SECURITY_ENDPOINT").is_err()
                 || std::env::var("SECURITY_ENDPOINT").is_ok()

@@ -27,12 +27,12 @@
 //! ```
 
 use std::collections::HashMap;
-use std::net::{IpAddr, Ipv4Addr, SocketAddr};
+use std::net::SocketAddr;
 use std::sync::Arc;
 use std::time::Duration;
 use thiserror::Error;
 use tokio::sync::RwLock;
-use tracing::{debug, info, warn, error};
+use tracing::{debug, info, warn};
 
 /// Service type for Songbird mDNS advertisements
 const SERVICE_TYPE: &str = "_songbird._tcp.local.";
