@@ -351,28 +351,56 @@ async fn handle_request(
     
     // Route to appropriate handler
     let result = match request.method.as_str() {
+        // ========================================================================
+        // biomeOS Standard Methods (Feb 4, 2026)
+        // ========================================================================
+        "health" => handlers::handle_health_standard(Arc::clone(&registry), connection_manager.clone()).await,
+        "identity" => handlers::handle_identity().await,
+        "rpc.discover" => handlers::handle_rpc_discover().await,
+        
+        // ========================================================================
         // Primal registration methods
+        // ========================================================================
         "primal.register" => handlers::handle_primal_register(registry, request.params).await,
         "primal.unregister" => handlers::handle_primal_unregister(registry, request.params).await,
         "primal.get_provider" => handlers::handle_get_provider(registry, request.params).await,
         "primal.list_providers" => handlers::handle_list_providers(registry, request.params).await,
         "primal.list_all" => handlers::handle_list_all_primals(registry).await,
         
-        // Health and diagnostics
+        // Health and diagnostics (legacy)
         "primal.health" => handlers::handle_health(registry).await,
         "primal.ping" => handlers::handle_ping().await,
         
-        // Discovery methods (NEW!)
+        // ========================================================================
+        // Discovery methods
+        // ========================================================================
         "discovery.list_peers" => handlers::handle_discovery_list_peers(connection_manager, request.params).await,
         "discovery.peer_count" => handlers::handle_discovery_peer_count(connection_manager).await,
         "discovery.rejected_peers" => handlers::handle_discovery_rejected_peers(connection_manager).await,
         "discovery.status" => handlers::handle_discovery_status(discovery_status_manager).await,
         "peer.ping" => handlers::handle_peer_ping(connection_manager, request.params).await,
         
-        // Capability discovery (for Squirrel integration - Jan 20, 2026)
+        // ========================================================================
+        // Capability discovery (legacy - backward compat)
+        // ========================================================================
         "discover_capabilities" => handlers::handle_discover_capabilities().await,
         
+        // ========================================================================
+        // Encryption wrappers (biomeOS integration - Feb 4, 2026)
+        // ========================================================================
+        "encrypt_discovery" => handlers::handle_encrypt_discovery(request.params).await,
+        "decrypt_discovery" => handlers::handle_decrypt_discovery(request.params).await,
+        
+        // ========================================================================
+        // Network methods (biomeOS integration - Feb 4, 2026)
+        // ========================================================================
+        "network.beacon_exchange" => handlers::handle_beacon_exchange(connection_manager.clone(), request.params).await,
+        "network.broadcast" => handlers::handle_network_broadcast(request.params).await,
+        "network.listen" => handlers::handle_network_listen(request.params).await,
+        
+        // ========================================================================
         // HTTP delegation (for Squirrel's Anthropic adapter - Jan 20, 2026)
+        // ========================================================================
         "http.request" => handlers::handle_http_request(request.params).await,
         
         // Unknown method
