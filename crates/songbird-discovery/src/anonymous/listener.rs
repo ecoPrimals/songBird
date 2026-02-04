@@ -169,7 +169,61 @@ impl AnonymousDiscoveryListener {
                 Ok((len, addr)) => {
                     let data = &buf[..len];
 
-                    // 🎵 NEW (Jan 3, 2026): Optional BirdSong decryption
+                    // 🌲 NEW (Feb 3, 2026): Try Dark Forest beacon first (zero metadata leakage)
+                    if let Some(ref birdsong) = self.birdsong {
+                        if birdsong.config().is_dark_forest_active() {
+                            // Try to parse as Dark Forest beacon
+                            if let Ok(beacon) = crate::dark_forest_beacon::DarkForestBeacon::from_bytes(data) {
+                                if beacon.version == 2 {
+                                    debug!(
+                                        "🌲 Received Dark Forest beacon from {} (size: {} bytes)",
+                                        addr, data.len()
+                                    );
+                                    
+                                    // Try to decrypt with all known beacon seeds
+                                    match birdsong.decrypt_dark_forest_beacon(&beacon).await {
+                                        Ok(Some((payload, beacon_id))) => {
+                                            info!(
+                                                "🌲✅ Decrypted Dark Forest beacon from {} (beacon_id: {})",
+                                                payload.node_id,
+                                                hex::encode(&beacon_id[..8.min(beacon_id.len())])
+                                            );
+                                            
+                                            // Process Dark Forest beacon payload
+                                            self.process_dark_forest_payload(payload, addr).await;
+                                            
+                                            if let Some(ref stats) = self.stats {
+                                                stats.record_received();
+                                                stats.record_peer_discovered();
+                                            }
+                                            
+                                            continue;
+                                        }
+                                        Ok(None) => {
+                                            // Different beacon family - just noise (EXPECTED)
+                                            debug!(
+                                                "🌲🔇 Dark Forest beacon from different beacon family (privacy working)"
+                                            );
+                                            continue;
+                                        }
+                                        Err(e) => {
+                                            warn!("⚠️  Dark Forest beacon decryption error: {}", e);
+                                            // Fall through to try legacy format
+                                        }
+                                    }
+                                }
+                            }
+                            
+                            // Not Dark Forest or decryption failed
+                            // Try legacy BirdSongPacket if allowed
+                            if !birdsong.config().accept_legacy_format {
+                                debug!("Rejecting non-Dark-Forest packet (accept_legacy_format=false)");
+                                continue;
+                            }
+                        }
+                    }
+
+                    // 🎵 Legacy BirdSong decryption (has plaintext family_id)
                     let data = if let Some(ref birdsong) = self.birdsong {
                         match birdsong.decrypt_packet(data).await {
                             Ok(Some(plaintext)) => {
@@ -334,6 +388,83 @@ impl AnonymousDiscoveryListener {
                 }
             });
         }
+    }
+    
+    // ═══════════════════════════════════════════════════════════════════════
+    // Dark Forest Beacon Processing (NEW - Feb 3, 2026)
+    // ═══════════════════════════════════════════════════════════════════════
+    
+    /// Process Dark Forest beacon payload (after successful decryption)
+    ///
+    /// Converts `BeaconPayload` to `DiscoveredPeer` and stores in peer registry.
+    ///
+    /// # Arguments
+    ///
+    /// * `payload` - Decrypted beacon payload
+    /// * `addr` - Source address of beacon
+    ///
+    /// # Privacy Note
+    ///
+    /// This method is only called AFTER successful decryption, meaning
+    /// we share beacon genetics with the sender. Failed decryptions never
+    /// reach this point (different beacon family = noise, filtered out).
+    async fn process_dark_forest_payload(
+        &self,
+        payload: crate::dark_forest_beacon::BeaconPayload,
+        addr: SocketAddr,
+    ) {
+        use super::messages::TransportEndpointMessage;
+        
+        // Convert endpoints to TransportEndpointMessage format
+        let endpoints: Vec<TransportEndpointMessage> = payload
+            .endpoints
+            .iter()
+            .enumerate()
+            .map(|(idx, ep)| {
+                // Parse endpoint (format: "protocol:address")
+                let parts: Vec<&str> = ep.split(':').collect();
+                let (interface_type, address) = if parts.len() >= 2 {
+                    (parts[0].to_string(), parts[1..].join(":"))
+                } else {
+                    ("tcp".to_string(), ep.clone())
+                };
+                
+                TransportEndpointMessage {
+                    interface_type,
+                    address,
+                    protocols: vec!["https".to_string()],
+                    preference: idx as u8,
+                }
+            })
+            .collect();
+        
+        // Create DiscoveredPeer from Dark Forest beacon payload
+        let peer = DiscoveredPeer {
+            session_id: payload.session_id.clone(),
+            node_id: Some(payload.node_id.clone()),
+            node_name: Some(payload.node_id.clone()),
+            endpoints: Some(endpoints),
+            capabilities: Vec::new(), // Capabilities hash only, full list exchanged later
+            tags: None,
+            timestamp: Some(payload.created_at),
+            identity_attestations: None, // Exchange after trust establishment
+            protocols: vec!["https".to_string()],
+            port: 8080, // Default
+            address: addr,
+            last_seen: SystemTime::now(),
+            version: "dark_forest_v2".to_string(),
+        };
+        
+        info!(
+            "🌲 Registered peer from Dark Forest: {} (session: {}, {} endpoints)",
+            payload.node_id,
+            payload.session_id,
+            payload.endpoints.len()
+        );
+        
+        // Store in peer registry
+        let mut peers = self.peers.write().await;
+        peers.insert(payload.session_id, peer);
     }
 }
 
