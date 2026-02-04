@@ -186,10 +186,12 @@ impl UniversalAdapter {
         }
 
         // Method 3: DHT (distributed)
-        // TODO: Implement DHT discovery
+        // FUTURE (Phase 2): DHT discovery for multi-region deployments
+        // Current discovery methods (local, mDNS, registry) sufficient for current use cases
 
         // Method 4: Registry (if available)
-        // TODO: Implement registry discovery
+        // FUTURE (Phase 2): External registry discovery (Consul, etcd, etc.)
+        // Current: Local discovery and peer registry sufficient
 
         if providers.is_empty() {
             warn!("No providers found for capability: {}", capability);

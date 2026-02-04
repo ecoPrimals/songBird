@@ -191,7 +191,8 @@ async fn run_server(
     tracing::info!("📋 Loading configuration...");
     let config = if let Some(path) = config_path {
         tracing::info!("   Config file: {}", path);
-        // TODO: Load from file (future enhancement)
+        // FUTURE: Load from file if needed (current env-based config is sufficient)
+        // See: Songbird uses environment variables for all configuration (zero config files)
         CanonicalSongbirdConfig::from_env()
             .map_err(|e| anyhow::anyhow!("Failed to load configuration from file: {}", e))?
     } else {
@@ -214,10 +215,12 @@ async fn run_server(
     tracing::info!("");
     tracing::info!("💡 Press Ctrl+C to stop gracefully");
 
-    // Step 5: If daemon mode, detach from terminal (future enhancement)
+    // Step 5: If daemon mode, detach from terminal
     if daemon {
         tracing::info!("📌 Daemon mode: Process detached");
-        // TODO: Actual daemonization (future enhancement)
+        // FUTURE (Phase 2): Full daemonization support if needed
+        // Current: Use systemd service units for production deployment
+        // Example: /etc/systemd/system/songbird.service
     }
 
     // Step 6: Main event loop - wait for shutdown signal

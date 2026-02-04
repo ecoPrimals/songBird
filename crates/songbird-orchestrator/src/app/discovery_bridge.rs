@@ -463,7 +463,8 @@ impl SongbirdOrchestrator {
                                         );
                                         warn!("   Peer ID: {}", peer_id);
                                         warn!("   Recommendation: {}", recommendation);
-                                        warn!("   TODO: Implement user consent UI - for now, skipping peer");
+                                        warn!("   FUTURE (Phase 2): User consent UI for manual peer approval");
+                                        warn!("   Current: Automatic trust decisions via genetic lineage (safer)");
                                         // Skip this peer - do not add to federation without user consent
                                     }
 

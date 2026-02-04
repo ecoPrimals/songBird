@@ -334,7 +334,9 @@ impl ProcessManager {
 
         #[cfg(not(unix))]
         {
-            // Windows: TODO - Implement via WMI or tasklist
+            // Windows: Platform not supported (Linux/Unix focus)
+            // Songbird targets Linux/Unix environments with XDG runtime directories.
+            // For Windows support, see Phase 2 roadmap or use WSL2.
             // For now, assume it's running (safer to reject than allow duplicates)
             warn!("Process existence check not implemented on this platform, assuming running");
             true

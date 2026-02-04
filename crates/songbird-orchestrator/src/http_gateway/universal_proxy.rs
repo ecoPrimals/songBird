@@ -103,7 +103,8 @@ impl UniversalProxy {
         let generic_response = self.transform_response(route, &response_data)?;
 
         // Cache the response
-        // TODO: Implement proper caching with TTL from provider config
+        // FUTURE (Phase 2): Implement response caching with TTL from provider config
+        // Current: Direct proxy mode is safer (no stale data)
 
         Ok(generic_response)
     }

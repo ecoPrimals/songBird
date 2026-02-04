@@ -152,7 +152,8 @@ impl FederatedBtspConnection {
 
         debug!("📡 Sending RPC over BTSP tunnel {}: {}", tunnel_id, operation);
 
-        // TODO: Implement bidirectional BTSP communication
+        // ROADMAP (Phase 2): Bidirectional BTSP Communication
+        // See: BTSP_CONNECTION_EVOLUTION_V3_18_0.md
         Err(anyhow!(
             "BTSP bidirectional communication not yet implemented. \
              This requires BearDog v0.16.0+ and BtspClient.send_data_over_tunnel(). \

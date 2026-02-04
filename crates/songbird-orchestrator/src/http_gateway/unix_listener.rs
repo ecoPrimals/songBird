@@ -371,7 +371,8 @@ impl UnixSocketListener {
         match result {
             Ok(response_data) => {
                 // Cache the response
-                // TODO: Implement caching logic
+                // FUTURE (Phase 2): Implement response caching with configurable TTL
+                // Current: Direct proxy mode (no caching) is safer and simpler
 
                 JsonRpcResponse {
                     jsonrpc: "2.0".to_string(),

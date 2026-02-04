@@ -719,15 +719,23 @@ impl SongbirdOrchestrator {
 
     /// Start the IPC server (Windows stub)
     ///
-    /// Windows: TCP localhost fallback
-    /// Future: Named pipes via songbird-universal-ipc
+    /// Windows: Not supported (Linux/Unix focus)
+    /// 
+    /// **Platform Limitation**: Songbird targets Linux/Unix environments with:
+    /// - XDG Runtime Directory support
+    /// - Unix domain sockets for IPC
+    /// - Standard Linux networking stack
+    ///
+    /// **Alternatives**:
+    /// - Use WSL2 on Windows for full compatibility
+    /// - See Phase 2 roadmap for native Windows support (TCP/Named Pipes)
     #[cfg(not(unix))]
     async fn start_ipc_server(&mut self) -> Result<()> {
-        info!("🎧 IPC server (Windows): TCP fallback mode");
-        warn!("⚠️  Windows IPC: TCP localhost fallback (named pipes coming in Phase 2)");
-        // TODO: Implement TCP fallback server for Windows
-        // For now, just skip IPC server on Windows
-        Ok(())
+        warn!("⚠️  Platform not supported: Songbird requires Linux/Unix");
+        warn!("   Recommended: Use WSL2 or see Phase 2 roadmap for Windows support");
+        Err(anyhow::anyhow!(
+            "IPC server requires Unix domain sockets (Linux/macOS/BSD). Use WSL2 on Windows."
+        ))
     }
 
     /// tarpc server removed - Unix sockets ONLY

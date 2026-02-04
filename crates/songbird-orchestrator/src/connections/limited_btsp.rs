@@ -185,13 +185,17 @@ impl LimitedBtspConnection {
 
         // Send over tunnel
         // NOTE: In v3.18.0, send_data_over_tunnel is not yet implemented in BtspClient
-        // This is a deep debt that requires BearDog v0.16.0+
-        // For now, we'll document this as a TODO for Phase 2
-
-        // TODO: Implement bidirectional BTSP communication
+        // This requires BearDog v0.16.0+ for bidirectional tunnel support.
+        //
+        // ROADMAP (Phase 2): Bidirectional BTSP Communication
+        // - Implement BtspClient.send_data_over_tunnel()
+        // - Add request/response correlation
+        // - Support streaming data transfer
+        // - See: BTSP_CONNECTION_EVOLUTION_V3_18_0.md
+        //
         // self.btsp_client.send_data_over_tunnel(&tunnel_id, &request_bytes).await?;
 
-        // For v3.18.0, return error indicating feature not yet implemented
+        // For v3.18.0, return error indicating Phase 2 feature
         Err(anyhow!(
             "BTSP bidirectional communication not yet implemented. \
              This requires BearDog v0.16.0+ and BtspClient.send_data_over_tunnel(). \

@@ -49,6 +49,9 @@ pub struct UnixSocketIpcServer {
     /// Discovery status manager for observability (optional, Jan 5, 2026)
     discovery_status_manager: Option<Arc<songbird_discovery::DiscoveryStatusManager>>,
     
+    /// Server start time for uptime tracking (Phase 5A, Feb 4, 2026)
+    start_time: Arc<RwLock<std::time::Instant>>,
+    
     /// Atomic flag indicating server is ready to accept connections
     /// This allows other components to wait for readiness without polling the filesystem
     is_ready: Arc<AtomicBool>,
@@ -96,6 +99,7 @@ impl UnixSocketIpcServer {
             registry: Arc::new(RwLock::new(PrimalRegistry::new())),
             connection_manager: None, // Initially none, can be set via set_connection_manager()
             discovery_status_manager: None, // Initially none, can be set via set_discovery_status_manager()
+            start_time: Arc::new(RwLock::new(std::time::Instant::now())),  // ✅ NEW: Track startup time (Phase 5A)
             is_ready: Arc::new(AtomicBool::new(false)),
             ready_notify: Arc::new(Notify::new()),  // ✅ NEW: Event notification
         })
@@ -128,6 +132,13 @@ impl UnixSocketIpcServer {
     /// into a spawn task.
     pub fn readiness_flag(&self) -> Arc<AtomicBool> {
         Arc::clone(&self.is_ready)
+    }
+    
+    /// Get a clone of the start time for uptime calculation
+    ///
+    /// NEW (Phase 5A, Feb 4, 2026): Enables real uptime tracking in health checks
+    pub fn start_time(&self) -> Arc<RwLock<std::time::Instant>> {
+        Arc::clone(&self.start_time)
     }
     
     /// Check if the server is ready to accept connections
@@ -236,10 +247,11 @@ impl UnixSocketIpcServer {
                     let registry = Arc::clone(&self.registry);
                     let conn_mgr = self.connection_manager.clone();
                     let disc_status = self.discovery_status_manager.clone();
+                    let start_time = Arc::clone(&self.start_time);
                     
                     // Spawn a task to handle this connection concurrently
                     tokio::spawn(async move {
-                        if let Err(e) = handle_connection(stream, registry, conn_mgr, disc_status).await {
+                        if let Err(e) = handle_connection(stream, registry, conn_mgr, disc_status, start_time).await {
                             error!("❌ Error handling connection: {}", e);
                         }
                     });
@@ -278,6 +290,7 @@ async fn handle_connection(
     registry: Arc<RwLock<PrimalRegistry>>,
     connection_manager: Option<Arc<ConnectionManager>>,
     discovery_status_manager: Option<Arc<songbird_discovery::DiscoveryStatusManager>>,
+    start_time: Arc<RwLock<std::time::Instant>>,
 ) -> Result<()> {
     debug!("📞 New primal connection established");
     
@@ -315,7 +328,7 @@ async fn handle_connection(
                 };
                 
                 // Handle request
-                let response = handle_request(request, Arc::clone(&registry), connection_manager.clone(), discovery_status_manager.clone()).await;
+                let response = handle_request(request, Arc::clone(&registry), connection_manager.clone(), discovery_status_manager.clone(), Arc::clone(&start_time)).await;
                 
                 // Send response
                 send_response(&mut writer, &response).await?;
@@ -336,6 +349,7 @@ async fn handle_request(
     registry: Arc<RwLock<PrimalRegistry>>,
     connection_manager: Option<Arc<ConnectionManager>>,
     discovery_status_manager: Option<Arc<songbird_discovery::DiscoveryStatusManager>>,
+    start_time: Arc<RwLock<std::time::Instant>>,
 ) -> JsonRpcResponse {
     debug!("🔧 Handling method: {}", request.method);
     
@@ -354,7 +368,7 @@ async fn handle_request(
         // ========================================================================
         // biomeOS Standard Methods (Feb 4, 2026)
         // ========================================================================
-        "health" => handlers::handle_health_standard(Arc::clone(&registry), connection_manager.clone()).await,
+        "health" => handlers::handle_health_standard(Arc::clone(&registry), connection_manager.clone(), Some(Arc::clone(&start_time))).await,
         "identity" => handlers::handle_identity().await,
         "rpc.discover" => handlers::handle_rpc_discover().await,
         
