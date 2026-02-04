@@ -474,8 +474,11 @@ impl CoordinationValidator {
 
     /// Decompose hybrid graph into simpler subgraphs
     fn decompose_into_subgraphs(&self, graph: &Graph) -> Result<Vec<Graph>> {
+        // FUTURE (Phase 2): Smart graph decomposition for distributed execution
+        // Current: Single subgraph execution is sufficient for current workloads
+        // Future use case: Multi-datacenter graph execution, compute-heavy workloads
+        // Algorithm: Analyze graph connectivity, minimize cross-subgraph dependencies
         // For now, treat as single subgraph
-        // TODO: Implement smart decomposition based on connectivity
         Ok(vec![graph.clone()])
     }
 

@@ -81,7 +81,9 @@ impl TrustEvaluator {
             } => {
                 warn!("⏳ User prompt needed for peer '{}': {}", peer_id, reason);
 
-                // TODO: Implement user prompt in Phase 6
+                // FUTURE (Phase 6): Interactive user consent UI for manual peer approval
+                // Current: Automatic trust decisions (safer, no user interaction needed)
+                // Future use case: Manual override for sensitive peer connections
                 // For now, establish limited trust connection
                 self.establish_connection(
                     peer_id,

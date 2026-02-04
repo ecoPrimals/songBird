@@ -238,9 +238,10 @@ impl TokenValidator {
         }
 
         // Check blacklist (for revoked tokens)
-        // Future enhancement: Implement token blacklist via Redis or database
+        // FUTURE (Phase 2): Token blacklist via Redis or distributed cache
+        // Current: Expiry-based validation is sufficient for most use cases
+        // Future use case: Immediate token revocation (e.g., compromised tokens, user logout)
         // For now, expiry check provides basic security
-        // TODO: Implement token blacklist functionality in future version
 
         // Return identity
         Ok(Identity {

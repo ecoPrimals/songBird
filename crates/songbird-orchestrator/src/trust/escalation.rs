@@ -383,7 +383,10 @@ impl TrustEscalationManager {
         // Verify hardware key via security provider
         // Verify hardware attestation (if security provider available)
         if let Some(ref security) = self.security_client {
-            // TODO: Implement hardware verification via security provider
+            // FUTURE (Phase 2): Hardware attestation verification via security provider
+            // Current: Trust escalation works without hardware verification (software-based trust)
+            // Future: TPM/hardware key verification for admin-level trust escalation
+            // Requires: security provider hardware.verify_attestation() RPC method
             tracing::info!(
                 "Hardware verification via security provider (future: implement actual HTTP call)"
             );

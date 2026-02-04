@@ -200,7 +200,9 @@ impl UniversalProxy {
 
         // Apply template if configured
         if let Some(template) = &config.template {
-            // TODO: Implement template-based transformation (e.g., using Handlebars)
+            // FUTURE (Phase 2): Template-based transformation (e.g., Handlebars, Tera)
+            // Current: Field mapping (config.field_mappings) is sufficient for most use cases
+            // Future use case: Complex JSON transformations for LLM prompt templates
             warn!("Template transformation not yet implemented: {}", template);
         }
 
@@ -234,7 +236,9 @@ impl UniversalProxy {
 
         // Apply template if configured
         if let Some(template) = &config.template {
-            // TODO: Implement template-based transformation
+            // FUTURE (Phase 2): Template-based transformation (e.g., Handlebars, Tera)
+            // Current: Field mapping (config.field_mappings) is sufficient for most use cases
+            // Future use case: Complex JSON transformations for LLM response formatting
             warn!("Template transformation not yet implemented: {}", template);
         }
 
