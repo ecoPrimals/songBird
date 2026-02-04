@@ -40,6 +40,7 @@ sha2 = "0.10"  # For session ID generation in anonymous discovery
 anyhow = "1.0"  # For lineage discovery error handling
 hex = "0.4"  # For discovery packet hashing
 socket2 = "0.5"  # For multicast socket configuration
+blake3 = "1.5"  # ✅ NEW (Feb 3, 2026): For Dark Forest beacon capabilities hashing
 
 [dev-dependencies]
 tracing-subscriber = "0.3"
