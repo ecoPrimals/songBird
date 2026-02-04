@@ -58,11 +58,17 @@ impl RequestBuilder {
         // Request line: "GET /path HTTP/1.1\r\n"
         Self::write_request_line(&mut request, method, uri);
 
-        // Get host for header routing
+        // Get host for header routing (include port for non-standard ports per HTTP/1.1)
         let host = uri.host().unwrap_or("unknown");
+        let scheme = uri.scheme_str().unwrap_or("http");
+        let default_port = if scheme == "https" { 443 } else { 80 };
+        let host_header = match uri.port_u16() {
+            Some(port) if port != default_port => format!("{}:{}", host, port),
+            _ => host.to_string(),
+        };
 
         // Host header (always first after request line)
-        Self::write_host_header(&mut request, host);
+        Self::write_host_header(&mut request, &host_header);
 
         // Get merged headers from config (defaults + domain rules + caller overrides)
         let headers = config.headers_for_domain(host, caller_headers);

@@ -63,7 +63,22 @@ impl HttpConnection {
         // Build request
         let mut req_builder = Request::builder().method(method).uri(uri);
 
-        // Add headers
+        // Add Host header if not already provided (required by HTTP/1.1)
+        // Include port for non-standard ports per RFC 7230
+        if !headers.contains_key("host") && !headers.contains_key("Host") {
+            if let Some(host) = uri.host() {
+                let scheme = uri.scheme_str().unwrap_or("http");
+                let default_port = if scheme == "https" { 443 } else { 80 };
+                let host_header = match uri.port_u16() {
+                    Some(port) if port != default_port => format!("{}:{}", host, port),
+                    _ => host.to_string(),
+                };
+                req_builder = req_builder.header("Host", host_header);
+                debug!("📋 Added Host header: {}", uri.host().unwrap_or("unknown"));
+            }
+        }
+
+        // Add caller-provided headers
         for (key, value) in headers {
             req_builder = req_builder.header(&key, &value);
         }
