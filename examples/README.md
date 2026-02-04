@@ -2,6 +2,13 @@
 
 This directory contains examples demonstrating the capabilities of the Songbird Universal Orchestrator.
 
+## 📁 Directory Structure
+
+- **Current Examples** - Modern, production-ready code (100% Pure Rust)
+- **`legacy/`** - Archived pre-ecoBin v2.0 examples (uses reqwest, not recommended)
+
+**For new projects, use the current examples!** Legacy examples are kept for historical reference only.
+
 ## Demo: Universal Orchestration (`demo_orchestration.rs`)
 
 This comprehensive demo showcases the key features implemented in the Songbird Universal Orchestrator:
