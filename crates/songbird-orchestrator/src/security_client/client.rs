@@ -86,10 +86,18 @@ impl SecurityCapabilityClient {
             .context("Failed to create protocol-agnostic security adapter")?;
 
         // Create Pure Rust HTTP client for lineage methods (Phase 1.5) ✅
-        // Uses capability-based discovery for crypto provider
+        // Uses capability-based discovery for crypto provider (XDG-compliant)
         let crypto_socket = std::env::var("CRYPTO_PROVIDER_SOCKET")
             .or_else(|_| std::env::var("BEARDOG_SOCKET"))
-            .unwrap_or_else(|_| "/tmp/beardog-nat0.sock".to_string());
+            .unwrap_or_else(|_| {
+                // XDG-compliant default: $XDG_RUNTIME_DIR/biomeos/beardog.sock
+                if let Ok(runtime_dir) = std::env::var("XDG_RUNTIME_DIR") {
+                    format!("{}/biomeos/beardog.sock", runtime_dir)
+                } else {
+                    // Fallback for environments without XDG
+                    "/tmp/biomeos/beardog.sock".to_string()
+                }
+            });
 
         let http_client = Arc::new(SongbirdHttpClient::new(crypto_socket));
 

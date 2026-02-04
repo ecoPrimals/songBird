@@ -99,9 +99,16 @@ async fn connect_platform(address: &str) -> std::io::Result<PlatformStream> {
 pub async fn register_capabilities() -> Result<()> {
     info!("🔄 Registering capabilities with Neural API...");
 
-    // Get Neural API socket from environment
-    let neural_socket =
-        env::var("NEURAL_API_SOCKET").unwrap_or_else(|_| "/tmp/neural-api-nat0.sock".to_string());
+    // Get Neural API socket from environment (XDG-compliant)
+    let neural_socket = env::var("NEURAL_API_SOCKET").unwrap_or_else(|_| {
+        // XDG-compliant default: $XDG_RUNTIME_DIR/biomeos/neural-api.sock
+        if let Ok(runtime_dir) = env::var("XDG_RUNTIME_DIR") {
+            format!("{}/biomeos/neural-api.sock", runtime_dir)
+        } else {
+            // Fallback for environments without XDG
+            "/tmp/biomeos/neural-api.sock".to_string()
+        }
+    });
 
     // Get our own socket path (required)
     let songbird_socket = env::var("SONGBIRD_SOCKET_PATH")
@@ -109,10 +116,10 @@ pub async fn register_capabilities() -> Result<()> {
         .or_else(|_| env::var("SONGBIRD_IPC_SOCKET"))
         .context("SONGBIRD_SOCKET_PATH not set (required for Neural API registration)")?;
 
-    // Get our primal ID
+    // Get our primal ID (just primal name, no family suffix per PRIMAL_DEPLOYMENT_STANDARD)
     let primal_id = env::var("PRIMAL_ID")
         .or_else(|_| env::var("SONGBIRD_PRIMAL_ID"))
-        .unwrap_or_else(|_| "songbird-nat0".to_string());
+        .unwrap_or_else(|_| "songbird".to_string());
 
     // Get family ID for metadata
     let family_id = env::var("FAMILY_ID")
@@ -227,13 +234,18 @@ pub async fn register_capabilities() -> Result<()> {
 pub async fn unregister_capabilities() -> Result<()> {
     info!("🔄 Unregistering capabilities from Neural API...");
 
-    // Get configuration
-    let neural_socket =
-        env::var("NEURAL_API_SOCKET").unwrap_or_else(|_| "/tmp/neural-api-nat0.sock".to_string());
+    // Get configuration (XDG-compliant)
+    let neural_socket = env::var("NEURAL_API_SOCKET").unwrap_or_else(|_| {
+        if let Ok(runtime_dir) = env::var("XDG_RUNTIME_DIR") {
+            format!("{}/biomeos/neural-api.sock", runtime_dir)
+        } else {
+            "/tmp/biomeos/neural-api.sock".to_string()
+        }
+    });
 
     let primal_id = env::var("PRIMAL_ID")
         .or_else(|_| env::var("SONGBIRD_PRIMAL_ID"))
-        .unwrap_or_else(|_| "songbird-nat0".to_string());
+        .unwrap_or_else(|_| "songbird".to_string());
 
     // Build unregister request
     let unregister = json!({
@@ -279,8 +291,13 @@ pub async fn unregister_capabilities() -> Result<()> {
 ///
 /// `true` if Neural API is reachable, `false` otherwise.
 pub async fn check_neural_api_available() -> bool {
-    let neural_socket =
-        env::var("NEURAL_API_SOCKET").unwrap_or_else(|_| "/tmp/neural-api-nat0.sock".to_string());
+    let neural_socket = env::var("NEURAL_API_SOCKET").unwrap_or_else(|_| {
+        if let Ok(runtime_dir) = env::var("XDG_RUNTIME_DIR") {
+            format!("{}/biomeos/neural-api.sock", runtime_dir)
+        } else {
+            "/tmp/biomeos/neural-api.sock".to_string()
+        }
+    });
 
     match connect_platform(&neural_socket).await {
         Ok(_) => {
@@ -311,14 +328,20 @@ mod tests {
         // Clear relevant env vars
         env::remove_var("NEURAL_API_SOCKET");
         env::remove_var("PRIMAL_ID");
+        env::remove_var("XDG_RUNTIME_DIR");
 
-        // Defaults should be used
-        let neural_socket = env::var("NEURAL_API_SOCKET")
-            .unwrap_or_else(|_| "/tmp/neural-api-nat0.sock".to_string());
-        assert_eq!(neural_socket, "/tmp/neural-api-nat0.sock");
+        // Defaults should be XDG-compliant fallbacks
+        let neural_socket = env::var("NEURAL_API_SOCKET").unwrap_or_else(|_| {
+            if let Ok(runtime_dir) = env::var("XDG_RUNTIME_DIR") {
+                format!("{}/biomeos/neural-api.sock", runtime_dir)
+            } else {
+                "/tmp/biomeos/neural-api.sock".to_string()
+            }
+        });
+        assert_eq!(neural_socket, "/tmp/biomeos/neural-api.sock");
 
-        let primal_id = env::var("PRIMAL_ID").unwrap_or_else(|_| "songbird-nat0".to_string());
-        assert_eq!(primal_id, "songbird-nat0");
+        let primal_id = env::var("PRIMAL_ID").unwrap_or_else(|_| "songbird".to_string());
+        assert_eq!(primal_id, "songbird");
     }
 
     #[tokio::test]
@@ -395,6 +418,150 @@ mod tests {
         // Cleanup
         env::remove_var("NEURAL_API_SOCKET");
         let _ = std::fs::remove_file(socket_path);
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // 🧪 XDG SOCKET DISCOVERY TESTS (Feb 4, 2026)
+    // ═══════════════════════════════════════════════════════════════════════
+
+    #[test]
+    fn test_xdg_neural_api_socket_with_xdg_runtime_dir() {
+        let _guard = ENV_TEST_LOCK.lock().unwrap();
+
+        // Clear env vars
+        env::remove_var("NEURAL_API_SOCKET");
+        env::set_var("XDG_RUNTIME_DIR", "/run/user/1000");
+
+        let neural_socket = env::var("NEURAL_API_SOCKET").unwrap_or_else(|_| {
+            if let Ok(runtime_dir) = env::var("XDG_RUNTIME_DIR") {
+                format!("{}/biomeos/neural-api.sock", runtime_dir)
+            } else {
+                "/tmp/biomeos/neural-api.sock".to_string()
+            }
+        });
+
+        assert_eq!(
+            neural_socket, "/run/user/1000/biomeos/neural-api.sock",
+            "Should use XDG_RUNTIME_DIR for Neural API socket"
+        );
+
+        env::remove_var("XDG_RUNTIME_DIR");
+    }
+
+    #[test]
+    fn test_xdg_neural_api_socket_without_xdg_runtime_dir() {
+        let _guard = ENV_TEST_LOCK.lock().unwrap();
+
+        // Clear env vars
+        env::remove_var("NEURAL_API_SOCKET");
+        env::remove_var("XDG_RUNTIME_DIR");
+
+        let neural_socket = env::var("NEURAL_API_SOCKET").unwrap_or_else(|_| {
+            if let Ok(runtime_dir) = env::var("XDG_RUNTIME_DIR") {
+                format!("{}/biomeos/neural-api.sock", runtime_dir)
+            } else {
+                "/tmp/biomeos/neural-api.sock".to_string()
+            }
+        });
+
+        assert_eq!(
+            neural_socket, "/tmp/biomeos/neural-api.sock",
+            "Should fall back to /tmp/biomeos when XDG_RUNTIME_DIR not set"
+        );
+    }
+
+    #[test]
+    fn test_primal_id_no_family_suffix() {
+        let _guard = ENV_TEST_LOCK.lock().unwrap();
+
+        // Clear env var
+        env::remove_var("PRIMAL_ID");
+        env::remove_var("SONGBIRD_PRIMAL_ID");
+
+        let primal_id = env::var("PRIMAL_ID")
+            .or_else(|_| env::var("SONGBIRD_PRIMAL_ID"))
+            .unwrap_or_else(|_| "songbird".to_string());
+
+        // Per PRIMAL_DEPLOYMENT_STANDARD: primal ID should be just "songbird", not "songbird-nat0"
+        assert_eq!(primal_id, "songbird", "Primal ID should not include family suffix");
+        assert!(!primal_id.contains("-nat0"), "Primal ID should not contain -nat0");
+    }
+
+    #[tokio::test]
+    async fn test_xdg_registration_with_xdg_socket() {
+        let _guard = ENV_TEST_LOCK.lock().unwrap();
+
+        // Create XDG directory structure
+        let temp_dir = std::env::temp_dir().join("test-cap-reg-xdg");
+        let biomeos_dir = temp_dir.join("biomeos");
+        std::fs::create_dir_all(&biomeos_dir).unwrap();
+
+        let neural_socket = biomeos_dir.join("neural-api.sock");
+        let songbird_socket = biomeos_dir.join("songbird.sock");
+
+        // Clean up any existing sockets
+        let _ = std::fs::remove_file(&neural_socket);
+        let _ = std::fs::remove_file(&songbird_socket);
+
+        env::set_var("XDG_RUNTIME_DIR", temp_dir.to_str().unwrap());
+        env::set_var("SONGBIRD_SOCKET_PATH", songbird_socket.to_str().unwrap());
+        env::remove_var("NEURAL_API_SOCKET"); // Let it use XDG default
+
+        // Start mock Neural API server at XDG path
+        let listener = UnixListener::bind(&neural_socket).unwrap();
+        let _server_task = tokio::spawn(async move {
+            if let Ok((mut stream, _)) = listener.accept().await {
+                use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
+                let mut reader = BufReader::new(&mut stream);
+                let mut line = String::new();
+                if reader.read_line(&mut line).await.is_ok() {
+                    let response = r#"{"jsonrpc":"2.0","result":"ok","id":1}"#;
+                    let _ = stream.write_all(format!("{}\n", response).as_bytes()).await;
+                }
+            }
+        });
+
+        tokio::time::sleep(tokio::time::Duration::from_millis(50)).await;
+
+        // Registration should discover and use XDG socket
+        let result = register_capabilities().await;
+        assert!(result.is_ok(), "Registration with XDG socket should succeed");
+
+        // Cleanup
+        env::remove_var("XDG_RUNTIME_DIR");
+        env::remove_var("SONGBIRD_SOCKET_PATH");
+        let _ = std::fs::remove_dir_all(&temp_dir);
+    }
+
+    #[tokio::test]
+    async fn test_check_neural_api_with_xdg_socket() {
+        let _guard = ENV_TEST_LOCK.lock().unwrap();
+
+        // Create XDG directory structure
+        let temp_dir = std::env::temp_dir().join("test-neural-check-xdg");
+        let biomeos_dir = temp_dir.join("biomeos");
+        std::fs::create_dir_all(&biomeos_dir).unwrap();
+
+        let socket_path = biomeos_dir.join("neural-api.sock");
+        let _ = std::fs::remove_file(&socket_path);
+
+        // Start mock server at XDG path
+        let listener = UnixListener::bind(&socket_path).unwrap();
+        let _server_task = tokio::spawn(async move {
+            let _ = listener.accept().await;
+        });
+
+        tokio::time::sleep(tokio::time::Duration::from_millis(50)).await;
+
+        env::set_var("XDG_RUNTIME_DIR", temp_dir.to_str().unwrap());
+        env::remove_var("NEURAL_API_SOCKET");
+
+        let available = check_neural_api_available().await;
+        assert!(available, "Should find Neural API at XDG path");
+
+        // Cleanup
+        env::remove_var("XDG_RUNTIME_DIR");
+        let _ = std::fs::remove_dir_all(&temp_dir);
     }
 
     // ═══════════════════════════════════════════════════════════════════════

@@ -761,24 +761,25 @@ mod tests {
 
     #[test]
     fn test_socket_path_xdg_runtime() {
-        // Test 2: XDG runtime directory (if available)
+        // Test 2: XDG runtime directory (PRIMAL_DEPLOYMENT_STANDARD compliant)
+        // Note: Since XDG_RUNTIME_DIR is typically set by the system, we test the
+        // structure of the returned path
         std::env::remove_var("SONGBIRD_SOCKET");
-        std::env::remove_var("SONGBIRD_NODE_ID"); // Ensure no node_id pollution
-        std::env::set_var("SONGBIRD_FAMILY_ID", "nat0");
-        std::env::set_var("UID", "1000");
+        std::env::remove_var("SONGBIRD_ORCHESTRATOR_SOCKET");
+        std::env::remove_var("BIOMEOS_SOCKET_PATH");
 
         let path = UnixSocketServer::socket_path_from_env();
         let path_str = path.to_str().unwrap();
         eprintln!("XDG path: {}", path_str);
 
-        // Should contain family_id regardless of whether using XDG or /tmp
+        // PRIMAL_DEPLOYMENT_STANDARD: {primal}.sock naming (no family suffix)
         assert!(
-            path_str.contains("songbird") && path_str.contains("nat0"),
-            "Path should contain 'songbird' and 'nat0', got: {}",
+            path_str.ends_with("songbird.sock"),
+            "Path should end with 'songbird.sock' (no family suffix per PRIMAL_DEPLOYMENT_STANDARD), got: {}",
             path_str
         );
 
-        // Path should be reasonable (XDG or /tmp)
+        // Path should be XDG-compliant or /tmp fallback
         assert!(
             path_str.starts_with("/run/user/") || path_str.starts_with("/tmp/"),
             "Path should start with /run/user/ or /tmp/, got: {}",
@@ -788,92 +789,111 @@ mod tests {
 
     #[test]
     fn test_socket_path_fallback_to_tmp() {
-        // Test 3: TRUE PRIMAL architecture - family-based sockets via env_config
+        // Test 3: PRIMAL_DEPLOYMENT_STANDARD - primal name based sockets
+        // When XDG_RUNTIME_DIR is not available, falls back to /tmp
         std::env::remove_var("SONGBIRD_SOCKET");
-        std::env::set_var("SONGBIRD_FAMILY_ID", "test0");
+        std::env::remove_var("SONGBIRD_ORCHESTRATOR_SOCKET");
+        std::env::remove_var("BIOMEOS_SOCKET_PATH");
+        std::env::remove_var("BIOMEOS_SOCKET_DIR");
 
         let path = UnixSocketServer::socket_path_from_env();
         let path_str = path.to_str().unwrap();
         eprintln!("Fallback path: {}", path_str);
 
-        // TRUE PRIMAL: env_config returns /tmp/songbird-{family}.sock
+        // PRIMAL_DEPLOYMENT_STANDARD: socket is {primal}.sock
         assert!(
-            path_str.contains("songbird") && path_str.contains("test0"),
-            "Path should contain 'songbird' and 'test0', got: {}",
+            path_str.ends_with("songbird.sock"),
+            "Path should end with 'songbird.sock', got: {}",
             path_str
         );
-        assert_eq!(path_str, "/tmp/songbird-test0.sock", "Should match env_config format");
 
-        std::env::remove_var("SONGBIRD_FAMILY_ID");
+        // Should be in biomeos directory (XDG or /tmp fallback)
+        assert!(
+            path_str.contains("biomeos") || path_str == "/tmp/songbird.sock",
+            "Path should be in biomeos/ directory or /tmp, got: {}",
+            path_str
+        );
     }
 
     #[test]
     fn test_socket_path_default_family() {
-        // Test 4: TRUE PRIMAL self-knowledge - default family via env_config
+        // Test 4: PRIMAL_DEPLOYMENT_STANDARD - primal-based, not family-based
         // Clear all relevant env vars to ensure clean test
         std::env::remove_var("SONGBIRD_SOCKET");
-        std::env::remove_var("SONGBIRD_FAMILY_ID");
+        std::env::remove_var("SONGBIRD_ORCHESTRATOR_SOCKET");
+        std::env::remove_var("BIOMEOS_SOCKET_PATH");
+        std::env::remove_var("BIOMEOS_SOCKET_DIR");
 
         let path = UnixSocketServer::socket_path_from_env();
         let path_str = path.to_str().unwrap();
         eprintln!("Default path: {}", path_str);
 
-        // env_config::family_id() defaults to "nat0" when no env var set
+        // PRIMAL_DEPLOYMENT_STANDARD: {primal}.sock naming (no family suffix)
         assert!(
-            path_str.contains("songbird") && path_str.contains("nat0"),
-            "Path should contain 'songbird' and 'nat0' (default family), got: {}",
+            path_str.ends_with("songbird.sock"),
+            "Path should end with 'songbird.sock' (PRIMAL_DEPLOYMENT_STANDARD), got: {}",
             path_str
         );
-        assert_eq!(path_str, "/tmp/songbird-nat0.sock", "Should match env_config default");
+        // Family ID is NOT included in socket path (per standard)
+        assert!(
+            !path_str.contains("-nat0") && !path_str.contains("-lan0"),
+            "Path should NOT contain family suffix (per PRIMAL_DEPLOYMENT_STANDARD), got: {}",
+            path_str
+        );
     }
 
     #[test]
     fn test_socket_path_no_hardcoding() {
-        // Test 5: Different family IDs = different socket paths
+        // Test 5: PRIMAL_DEPLOYMENT_STANDARD - primal discovery, not hardcoded paths
+        // All instances of the same primal share one socket per machine
         std::env::remove_var("SONGBIRD_SOCKET");
-        std::env::set_var("UID", "1000");
+        std::env::remove_var("SONGBIRD_ORCHESTRATOR_SOCKET");
+        std::env::remove_var("BIOMEOS_SOCKET_PATH");
+        std::env::remove_var("BIOMEOS_SOCKET_DIR");
 
-        std::env::set_var("SONGBIRD_FAMILY_ID", "nat0");
-        let path1 = UnixSocketServer::socket_path_from_env();
-        eprintln!("Path 1 (nat0): {}", path1.to_str().unwrap());
+        let path = UnixSocketServer::socket_path_from_env();
+        let path_str = path.to_str().unwrap();
+        eprintln!("Primal path: {}", path_str);
 
-        std::env::set_var("SONGBIRD_FAMILY_ID", "lan0");
-        let path2 = UnixSocketServer::socket_path_from_env();
-        eprintln!("Path 2 (lan0): {}", path2.to_str().unwrap());
-
-        assert_ne!(path1, path2);
+        // PRIMAL_DEPLOYMENT_STANDARD: no hardcoded /tmp paths, use XDG
+        // Path should be XDG-compliant (if runtime dir available) or /tmp fallback
         assert!(
-            path1.to_str().unwrap().contains("nat0"),
-            "Path 1 should contain 'nat0', got: {}",
-            path1.to_str().unwrap()
+            path_str.contains("/biomeos/") || path_str.starts_with("/tmp/"),
+            "Path should use biomeos directory structure, got: {}",
+            path_str
         );
+
+        // Must contain primal name
         assert!(
-            path2.to_str().unwrap().contains("lan0"),
-            "Path 2 should contain 'lan0', got: {}",
-            path2.to_str().unwrap()
+            path_str.contains("songbird"),
+            "Path must contain primal name 'songbird', got: {}",
+            path_str
         );
     }
 
     #[test]
     fn test_socket_path_node_id_differentiation() {
-        // Test 6: TRUE PRIMAL architecture - family-based sockets, not node-based
-        // Different families = different socket paths
+        // Test 6: PRIMAL_DEPLOYMENT_STANDARD - primal-based, not node-based
+        // All nodes/families of the same primal use the same socket path
         std::env::remove_var("SONGBIRD_SOCKET");
+        std::env::remove_var("SONGBIRD_ORCHESTRATOR_SOCKET");
+        std::env::remove_var("BIOMEOS_SOCKET_PATH");
+        std::env::remove_var("BIOMEOS_SOCKET_DIR");
 
-        std::env::set_var("SONGBIRD_FAMILY_ID", "nat0");
-        let path1 = UnixSocketServer::socket_path_from_env();
+        let path = UnixSocketServer::socket_path_from_env();
+        let path_str = path.to_str().unwrap();
 
-        std::env::set_var("SONGBIRD_FAMILY_ID", "lan0");
-        let path2 = UnixSocketServer::socket_path_from_env();
-
-        // Paths should be different for different families
-        let path1_str = path1.to_str().unwrap();
-        let path2_str = path2.to_str().unwrap();
-
-        assert_ne!(path1, path2, "Different families should have different socket paths");
-        assert!(path1_str.contains("nat0"), "Path 1 should contain nat0");
-        assert!(path2_str.contains("lan0"), "Path 2 should contain lan0");
-
-        std::env::remove_var("SONGBIRD_FAMILY_ID");
+        // PRIMAL_DEPLOYMENT_STANDARD: single socket per primal per machine
+        // The path should be consistent regardless of family_id
+        assert!(
+            path_str.ends_with("songbird.sock"),
+            "All families use same {{primal}}.sock path, got: {}",
+            path_str
+        );
+        assert!(
+            !path_str.contains("-nat0") && !path_str.contains("-lan0"),
+            "Path should NOT vary by family (per PRIMAL_DEPLOYMENT_STANDARD), got: {}",
+            path_str
+        );
     }
 }
