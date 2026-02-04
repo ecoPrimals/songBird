@@ -124,9 +124,9 @@ mod chaos_engineering_tests {
 
         let config = BirdSongConfig {
             enabled: true,
-            fallback_to_plaintext: true, // Enable fallback
-            security_endpoint: None,
+            fallback_to_plaintext: true,
             mixed_mode: false,
+            ..Default::default()
         };
 
         let processor = Arc::new(BirdSongProcessor::new(Some(provider), config));
@@ -164,8 +164,8 @@ mod chaos_engineering_tests {
         let config = BirdSongConfig {
             enabled: true,
             fallback_to_plaintext: true,
-            security_endpoint: None,
             mixed_mode: false,
+            ..Default::default()
         };
 
         let processor = Arc::new(BirdSongProcessor::new(Some(provider.clone()), config));
@@ -234,8 +234,8 @@ mod chaos_engineering_tests {
         let config = BirdSongConfig {
             enabled: true,
             fallback_to_plaintext: true,
-            security_endpoint: None,
             mixed_mode: false,
+            ..Default::default()
         };
 
         let processor = Arc::new(BirdSongProcessor::new(Some(provider), config));
@@ -319,8 +319,8 @@ mod chaos_engineering_tests {
         let config = BirdSongConfig {
             enabled: true,
             fallback_to_plaintext: true,
-            security_endpoint: None,
-            mixed_mode: true, // Allow mixed mode for recovery
+            mixed_mode: true,
+            ..Default::default()
         };
 
         let processor = Arc::new(BirdSongProcessor::new(Some(provider.clone()), config));
@@ -363,8 +363,8 @@ mod chaos_engineering_tests {
         let config = BirdSongConfig {
             enabled: true,
             fallback_to_plaintext: true,
-            security_endpoint: None,
             mixed_mode: false,
+            ..Default::default()
         };
 
         let processor = Arc::new(BirdSongProcessor::new(Some(provider), config));
@@ -402,8 +402,8 @@ mod chaos_engineering_tests {
         let config = BirdSongConfig {
             enabled: true,
             fallback_to_plaintext: false,
-            security_endpoint: None,
             mixed_mode: false,
+            ..Default::default()
         };
 
         let processor_a = Arc::new(BirdSongProcessor::new(Some(provider_a), config.clone()));
@@ -433,8 +433,8 @@ mod chaos_engineering_tests {
         let config = BirdSongConfig {
             enabled: true,
             fallback_to_plaintext: true,
-            security_endpoint: None,
             mixed_mode: false,
+            ..Default::default()
         };
 
         let processor = Arc::new(BirdSongProcessor::new(Some(provider), config));
@@ -459,8 +459,8 @@ mod chaos_engineering_tests {
         let config = BirdSongConfig {
             enabled: true,
             fallback_to_plaintext: true,
-            security_endpoint: None,
             mixed_mode: true,
+            ..Default::default()
         };
 
         let processor = Arc::new(BirdSongProcessor::new(Some(provider.clone()), config));

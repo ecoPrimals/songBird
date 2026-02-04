@@ -106,9 +106,9 @@ mod fault_injection_tests {
 
         let config = BirdSongConfig {
             enabled: true,
-            fallback_to_plaintext: true, // Enable fallback
-            security_endpoint: None,
+            fallback_to_plaintext: true,
             mixed_mode: false,
+            ..Default::default()
         };
 
         let processor = Arc::new(BirdSongProcessor::new(Some(provider.clone()), config));
@@ -135,9 +135,9 @@ mod fault_injection_tests {
 
         let config = BirdSongConfig {
             enabled: true,
-            fallback_to_plaintext: false, // No fallback
-            security_endpoint: None,
+            fallback_to_plaintext: false,
             mixed_mode: false,
+            ..Default::default()
         };
 
         let processor = Arc::new(BirdSongProcessor::new(Some(provider), config));
@@ -155,9 +155,9 @@ mod fault_injection_tests {
 
         let config = BirdSongConfig {
             enabled: true,
-            fallback_to_plaintext: true, // Enable fallback
-            security_endpoint: None,
+            fallback_to_plaintext: true,
             mixed_mode: false,
+            ..Default::default()
         };
 
         let processor = Arc::new(BirdSongProcessor::new(Some(provider), config));
@@ -242,8 +242,8 @@ mod fault_injection_tests {
         let config = BirdSongConfig {
             enabled: true,
             fallback_to_plaintext: true,
-            security_endpoint: None,
-            mixed_mode: true, // Allow both encrypted and plaintext
+            mixed_mode: true,
+            ..Default::default()
         };
 
         let processor = Arc::new(BirdSongProcessor::new(Some(provider), config));
@@ -268,8 +268,8 @@ mod fault_injection_tests {
         let config_a = BirdSongConfig {
             enabled: true,
             fallback_to_plaintext: false,
-            security_endpoint: None,
             mixed_mode: false,
+            ..Default::default()
         };
         let processor_a = Arc::new(BirdSongProcessor::new(Some(provider_a.clone()), config_a));
 
@@ -280,8 +280,8 @@ mod fault_injection_tests {
         let config_b = BirdSongConfig {
             enabled: true,
             fallback_to_plaintext: false,
-            security_endpoint: None,
             mixed_mode: false,
+            ..Default::default()
         };
         let processor_b = Arc::new(BirdSongProcessor::new(Some(provider_b), config_b));
 
@@ -307,8 +307,8 @@ mod fault_injection_tests {
         let config = BirdSongConfig {
             enabled: true,
             fallback_to_plaintext: true,
-            security_endpoint: None,
             mixed_mode: false,
+            ..Default::default()
         };
 
         let processor = Arc::new(BirdSongProcessor::new(Some(provider.clone()), config));
