@@ -34,7 +34,7 @@ use anyhow::Result;
 use serde::Deserialize;
 use serde_json::{json, Value};
 use songbird_discovery::beardog_birdsong_provider::BearDogBirdSongProvider;
-use songbird_discovery::birdsong_integration::BirdSongEncryption;
+use songbird_discovery::birdsong::BirdSongEncryption;
 use songbird_universal::UnixRpcClient;
 use std::path::PathBuf;
 use std::sync::Arc;
