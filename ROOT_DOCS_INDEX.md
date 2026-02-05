@@ -1,8 +1,8 @@
 # 📚 Songbird Documentation Index
 
-**Version**: v3.23.0  
+**Version**: v3.23.0+  
 **Updated**: February 5, 2026  
-**Status**: ✅ World-Class - All Evolution Complete
+**Status**: ✅ World-Class - All Evolution Complete + STUN Server
 
 ---
 
