@@ -71,16 +71,22 @@ impl BirdSongHandler {
     /// Discover `BearDog` socket at runtime (no hardcoding)
     ///
     /// Discovery order:
-    /// 1. `BEARDOG_SOCKET` environment variable
+    /// 1. `BEARDOG_SOCKET` environment variable (supports `tcp:host:port` format for Android)
     /// 2. `XDG_RUNTIME_DIR/biomeos/beardog.sock`
     /// 3. Well-known fallback: /run/user/$(id -u)/biomeos/beardog.sock
     ///
     /// Deep debt: Runtime discovery, agnostic to deployment
+    /// Android support: TCP sockets via `tcp:host:port` format (Feb 5, 2026)
     async fn discover_beardog_socket(&self) -> Result<PathBuf, String> {
         // Check cache first
         {
             let cached = self.beardog_socket.read().await;
             if let Some(path) = cached.as_ref() {
+                // For TCP sockets (tcp:host:port), skip existence check
+                let path_str = path.to_string_lossy();
+                if path_str.starts_with("tcp:") {
+                    return Ok(path.clone());
+                }
                 if path.exists() {
                     return Ok(path.clone());
                 }
@@ -89,7 +95,7 @@ impl BirdSongHandler {
 
         // Discover at runtime (no hardcoding)
         let socket_path = if let Ok(path) = std::env::var("BEARDOG_SOCKET") {
-            debug!("🔍 Discovering BearDog via BEARDOG_SOCKET env");
+            debug!("🔍 Discovering BearDog via BEARDOG_SOCKET env: {}", path);
             PathBuf::from(path)
         } else if let Ok(xdg) = std::env::var("XDG_RUNTIME_DIR") {
             debug!("🔍 Discovering BearDog via XDG_RUNTIME_DIR");
@@ -115,10 +121,14 @@ impl BirdSongHandler {
             PathBuf::from(format!("/run/user/{uid}/biomeos/beardog.sock"))
         };
 
-        // Verify socket exists
-        if !socket_path.exists() {
+        // Check if this is a TCP socket (tcp:host:port format)
+        let path_str = socket_path.to_string_lossy();
+        let is_tcp = path_str.starts_with("tcp:");
+
+        // Verify socket exists (skip for TCP - can't check file existence for network sockets)
+        if !is_tcp && !socket_path.exists() {
             return Err(format!(
-                "BearDog socket not found at {}. Is BearDog running? Try: BEARDOG_SOCKET=/path/to/beardog.sock",
+                "BearDog socket not found at {}. Is BearDog running? Try: BEARDOG_SOCKET=/path/to/beardog.sock or BEARDOG_SOCKET=tcp:host:port",
                 socket_path.display()
             ));
         }
@@ -129,7 +139,11 @@ impl BirdSongHandler {
             *cached = Some(socket_path.clone());
         }
 
-        info!("✅ Discovered BearDog socket: {}", socket_path.display());
+        if is_tcp {
+            info!("✅ Discovered BearDog TCP socket: {}", path_str);
+        } else {
+            info!("✅ Discovered BearDog Unix socket: {}", socket_path.display());
+        }
         Ok(socket_path)
     }
 

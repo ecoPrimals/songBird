@@ -6,10 +6,13 @@
 
 use anyhow::Result;
 use async_trait::async_trait;
-use serde::{Deserialize, Serialize};
+use serde::{de::DeserializeOwned, Deserialize, Serialize};
+use serde_json::json;
 use songbird_universal::UnixRpcClient;
 use std::path::PathBuf;
-use tracing::{debug, info, warn};
+use tokio::io::{AsyncReadExt, AsyncWriteExt};
+use tokio::net::TcpStream;
+use tracing::{debug, info, trace, warn};
 
 use crate::birdsong::BirdSongEncryption;
 
@@ -68,6 +71,10 @@ struct BearDogDecryptRequest {
     /// Ciphertext to decrypt (base64 encoded automatically)
     #[serde(with = "base64_serde")]
     ciphertext: Vec<u8>,
+
+    /// Family ID for decryption (required by BearDog)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    family_id: Option<String>,
 }
 
 /// `BearDog` decryption response
@@ -84,21 +91,43 @@ struct BearDogDecryptResponse {
     success: bool,
 }
 
+/// Connection type for BearDog (Unix socket or TCP)
+#[derive(Debug, Clone)]
+enum BearDogConnection {
+    /// Unix socket path
+    Unix(PathBuf),
+    /// TCP address (host:port)
+    Tcp(String, u16),
+}
+
 /// `BearDog` `BirdSong` encryption provider
 ///
-/// Connects to `BearDog`'s Unix socket JSON-RPC interface to provide family-based encryption
+/// Connects to `BearDog`'s JSON-RPC interface to provide family-based encryption
 /// for discovery packets. Only peers from the same genetic family can
 /// decrypt each other's packets.
 ///
-/// **Pure Rust Implementation**: Uses Unix sockets for inter-primal communication,
-/// eliminating HTTP overhead and `reqwest` dependency (ring-free!).
+/// **Pure Rust Implementation**: Supports both Unix sockets and TCP connections
+/// for cross-platform compatibility (Android uses TCP due to Unix socket restrictions).
+///
+/// ## Connection Formats
+///
+/// - Unix socket: `/path/to/beardog.sock`
+/// - TCP socket: `tcp:host:port` (e.g., `tcp:127.0.0.1:9900`)
 pub struct BearDogBirdSongProvider {
-    /// `BearDog` Unix socket path
+    /// Connection type (Unix socket or TCP)
+    #[allow(dead_code)]
+    connection: BearDogConnection,
+
+    /// `BearDog` socket path (for backward compatibility)
     #[allow(dead_code)]
     socket_path: PathBuf,
 
     /// JSON-RPC client for `BearDog` communication (Pure Rust!)
-    client: UnixRpcClient,
+    /// For Unix sockets only - TCP uses direct connection per request
+    client: Option<UnixRpcClient>,
+
+    /// TCP endpoint for direct connections (Android support)
+    tcp_endpoint: Option<(String, u16)>,
 
     /// Our family ID (cached from identity query)
     family_id: Option<String>,
@@ -112,7 +141,9 @@ impl BearDogBirdSongProvider {
     ///
     /// # Arguments
     ///
-    /// * `socket_path` - `BearDog` Unix socket path (e.g., "/tmp/beardog.sock")
+    /// * `socket_path` - `BearDog` socket path. Supports:
+    ///   - Unix socket: `/tmp/beardog.sock`
+    ///   - TCP socket: `tcp:host:port` (e.g., `tcp:127.0.0.1:9900`)
     /// * `family_id` - Optional family ID (will query `BearDog` if not provided)
     ///
     /// # Example
@@ -121,16 +152,55 @@ impl BearDogBirdSongProvider {
     /// use songbird_discovery::beardog_birdsong_provider::BearDogBirdSongProvider;
     ///
     /// # async fn example() {
+    /// // Unix socket
     /// let provider = BearDogBirdSongProvider::new(
     ///     "/tmp/beardog.sock",
+    ///     Some("ecoPrimals-family-123".to_string())
+    /// ).await.unwrap();
+    ///
+    /// // TCP socket (Android)
+    /// let provider = BearDogBirdSongProvider::new(
+    ///     "tcp:127.0.0.1:9900",
     ///     Some("ecoPrimals-family-123".to_string())
     /// ).await.unwrap();
     /// # }
     /// ```
     pub async fn new(socket_path: impl Into<PathBuf>, family_id: Option<String>) -> Result<Self> {
         let socket_path = socket_path.into();
+        let path_str = socket_path.to_string_lossy().to_string();
 
-        // Create UnixRpcClient (100% Pure Rust!)
+        // Check if this is a TCP connection (tcp:host:port format)
+        if path_str.starts_with("tcp:") {
+            let addr = &path_str[4..]; // Remove "tcp:" prefix
+            let parts: Vec<&str> = addr.rsplitn(2, ':').collect();
+            
+            if parts.len() != 2 {
+                return Err(anyhow::anyhow!(
+                    "Invalid TCP address format: {}. Expected tcp:host:port",
+                    path_str
+                ));
+            }
+            
+            let port: u16 = parts[0].parse()
+                .map_err(|_| anyhow::anyhow!("Invalid port in TCP address: {}", parts[0]))?;
+            let host = parts[1].to_string();
+
+            info!("🎵 BearDog BirdSong provider created (TCP: {}:{})", host, port);
+            if let Some(ref fam) = family_id {
+                info!("   Family ID: {}", fam);
+            }
+
+            return Ok(Self {
+                connection: BearDogConnection::Tcp(host.clone(), port),
+                socket_path,
+                client: None,
+                tcp_endpoint: Some((host, port)),
+                family_id,
+                available: true,
+            });
+        }
+
+        // Unix socket connection
         let client = UnixRpcClient::new(&socket_path)
             .map_err(|e| anyhow::anyhow!("Failed to connect to BearDog at {socket_path:?}: {e}"))?;
 
@@ -141,11 +211,80 @@ impl BearDogBirdSongProvider {
         }
 
         Ok(Self {
+            connection: BearDogConnection::Unix(socket_path.clone()),
             socket_path,
-            client,
+            client: Some(client),
+            tcp_endpoint: None,
             family_id,
-            available: true, // UnixRpcClient::new() already validated connection
+            available: true,
         })
+    }
+
+    /// Make a JSON-RPC call via TCP
+    ///
+    /// Used for Android deployments where Unix sockets are restricted.
+    async fn tcp_call<P, R>(&self, method: &str, params: P) -> Result<R, String>
+    where
+        P: Serialize,
+        R: DeserializeOwned,
+    {
+        let (host, port) = self.tcp_endpoint.as_ref()
+            .ok_or_else(|| "TCP endpoint not configured".to_string())?;
+
+        trace!("TCP JSON-RPC call to {}:{} method: {}", host, port, method);
+
+        // Build JSON-RPC request
+        let request = json!({
+            "jsonrpc": "2.0",
+            "method": method,
+            "params": params,
+            "id": 1
+        });
+
+        let request_bytes = serde_json::to_vec(&request)
+            .map_err(|e| format!("Failed to serialize request: {e}"))?;
+
+        // Connect via TCP
+        let addr = format!("{}:{}", host, port);
+        let mut stream = TcpStream::connect(&addr).await
+            .map_err(|e| format!("Failed to connect to BearDog at {}: {}", addr, e))?;
+
+        // Send request
+        stream.write_all(&request_bytes).await
+            .map_err(|e| format!("Failed to write request: {e}"))?;
+        stream.write_all(b"\n").await
+            .map_err(|e| format!("Failed to write delimiter: {e}"))?;
+        stream.shutdown().await
+            .map_err(|e| format!("Failed to shutdown write: {e}"))?;
+
+        // Read response
+        let mut response_bytes = Vec::new();
+        stream.read_to_end(&mut response_bytes).await
+            .map_err(|e| format!("Failed to read response: {e}"))?;
+
+        trace!("TCP received {} bytes", response_bytes.len());
+
+        // Parse JSON-RPC response
+        #[derive(Deserialize)]
+        struct JsonRpcResponse<T> {
+            result: Option<T>,
+            error: Option<JsonRpcError>,
+        }
+
+        #[derive(Deserialize)]
+        struct JsonRpcError {
+            code: i32,
+            message: String,
+        }
+
+        let response: JsonRpcResponse<R> = serde_json::from_slice(&response_bytes)
+            .map_err(|e| format!("Failed to parse response: {e}"))?;
+
+        if let Some(error) = response.error {
+            return Err(format!("JSON-RPC error {}: {}", error.code, error.message));
+        }
+
+        response.result.ok_or_else(|| "Missing result in response".to_string())
     }
 
     /// Async health check for `BearDog` availability
@@ -157,7 +296,15 @@ impl BearDogBirdSongProvider {
             status: String,
         }
 
-        match self.client.call_no_params::<HealthResponse>("health").await {
+        let result: Result<HealthResponse, _> = if self.tcp_endpoint.is_some() {
+            self.tcp_call("health", json!({})).await.map_err(|e| anyhow::anyhow!(e))
+        } else if let Some(ref client) = self.client {
+            client.call_no_params::<HealthResponse>("health").await
+        } else {
+            return false;
+        };
+
+        match result {
             Ok(response) => {
                 let is_ok = response.status == "healthy";
                 if is_ok {
@@ -177,6 +324,7 @@ impl BearDogBirdSongProvider {
     /// Encrypt data using `BearDog` family encryption (Pure Rust JSON-RPC!)
     ///
     /// Uses `birdsong.encrypt` JSON-RPC method for inter-primal communication.
+    /// Supports both Unix socket and TCP connections.
     async fn encrypt_internal(&self, plaintext: &[u8]) -> Result<Vec<u8>, String> {
         let request = BearDogEncryptRequest {
             plaintext: plaintext.to_vec(),
@@ -187,12 +335,15 @@ impl BearDogBirdSongProvider {
         debug!("   Plaintext size: {} bytes", plaintext.len());
         debug!("   Family ID: {:?}", self.family_id);
 
-        // Call BearDog's birdsong.encrypt JSON-RPC method
-        let encrypt_response: BearDogEncryptResponse = self
-            .client
-            .call("birdsong.encrypt", &request)
-            .await
-            .map_err(|e| format!("BearDog JSON-RPC encrypt failed: {e}"))?;
+        // Call BearDog's birdsong.encrypt JSON-RPC method (TCP or Unix)
+        let encrypt_response: BearDogEncryptResponse = if self.tcp_endpoint.is_some() {
+            self.tcp_call("birdsong.encrypt", &request).await?
+        } else if let Some(ref client) = self.client {
+            client.call("birdsong.encrypt", &request).await
+                .map_err(|e| format!("BearDog JSON-RPC encrypt failed: {e}"))?
+        } else {
+            return Err("No BearDog connection available".to_string());
+        };
 
         debug!(
             "🔒 BearDog encrypted {} -> {} bytes (family: {})",
@@ -207,21 +358,34 @@ impl BearDogBirdSongProvider {
     /// Decrypt data using `BearDog` family decryption (Pure Rust JSON-RPC!)
     ///
     /// Uses `birdsong.decrypt` JSON-RPC method for inter-primal communication.
+    /// Supports both Unix socket and TCP connections.
     async fn decrypt_internal(&self, ciphertext: &[u8]) -> Result<Option<Vec<u8>>, String> {
         let request = BearDogDecryptRequest {
             ciphertext: ciphertext.to_vec(),
+            family_id: self.family_id.clone(),
         };
 
         debug!("🔓 BearDog decryption via JSON-RPC (Pure Rust!)");
         debug!("   Ciphertext size: {} bytes", ciphertext.len());
 
-        // Call BearDog's birdsong.decrypt JSON-RPC method
-        let decrypt_response: BearDogDecryptResponse =
-            self.client.call("birdsong.decrypt", &request).await.map_err(|e| {
+        // Call BearDog's birdsong.decrypt JSON-RPC method (TCP or Unix)
+        let decrypt_response: BearDogDecryptResponse = if self.tcp_endpoint.is_some() {
+            match self.tcp_call("birdsong.decrypt", &request).await {
+                Ok(r) => r,
+                Err(e) => {
+                    debug!("🔇 BearDog decrypt RPC error (likely different family): {}", e);
+                    return Err(format!("BearDog JSON-RPC decrypt failed: {e}"));
+                }
+            }
+        } else if let Some(ref client) = self.client {
+            client.call("birdsong.decrypt", &request).await.map_err(|e| {
                 // Different family might return an RPC error - treat as noise
                 debug!("🔇 BearDog decrypt RPC error (likely different family): {}", e);
                 format!("BearDog JSON-RPC decrypt failed: {e}")
-            })?;
+            })?
+        } else {
+            return Err("No BearDog connection available".to_string());
+        };
 
         if !decrypt_response.success {
             // Different family - return None (noise)
