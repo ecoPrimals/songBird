@@ -55,18 +55,28 @@ pub enum LineageRelationship {
 }
 
 /// Relay masking level (privacy control)
+///
+/// Determines privacy applied to relayed packets based on lineage relationship.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
 pub enum MaskingLevel {
-    /// Minimal metadata visible (default)
+    /// No masking (direct family: parent ↔ child)
+    None,
+    /// Timing jitter only (close family: siblings)
+    TimingOnly,
+    /// Size obfuscation via padding (extended family)
+    SizeObfuscation,
+    /// Full privacy (distant family)
+    Full,
+    /// Minimal metadata visible (legacy default)
     #[default]
     Masked,
-    /// Some metadata revealed (proven lineage)
+    /// Some metadata revealed (proven lineage - legacy)
     SubMasked,
-    /// Full visibility (ancestor privilege)
+    /// Full visibility (ancestor privilege - legacy)
     FullVisibility,
 }
 
-/// Relay authorization token
+/// Relay authorization token (legacy format)
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct RelayAuthorization {
     pub relay_node: NodeId,
@@ -76,6 +86,57 @@ pub struct RelayAuthorization {
     pub ttl_seconds: u64,
     pub issued_at: SystemTime,
     pub audit_token: String,
+}
+
+impl RelayAuthorization {
+    /// Create authorized relay token
+    pub fn authorized(
+        relay_node: NodeId,
+        requester: NodeId,
+        masking_level: MaskingLevel,
+        ttl_seconds: u64,
+    ) -> Self {
+        Self {
+            relay_node,
+            requester,
+            authorized: true,
+            masking_level,
+            ttl_seconds,
+            issued_at: SystemTime::now(),
+            audit_token: uuid::Uuid::new_v4().to_string(),
+        }
+    }
+    
+    /// Create unauthorized relay token
+    pub fn unauthorized(relay_node: NodeId, requester: NodeId) -> Self {
+        Self {
+            relay_node,
+            requester,
+            authorized: false,
+            masking_level: MaskingLevel::default(),
+            ttl_seconds: 0,
+            issued_at: SystemTime::now(),
+            audit_token: String::new(),
+        }
+    }
+}
+
+/// Simple relay authorization result (for server use)
+#[derive(Debug, Clone)]
+pub struct SimpleRelayAuth {
+    pub authorized: bool,
+    pub masking_level: MaskingLevel,
+    pub ttl: std::time::Duration,
+}
+
+impl From<RelayAuthorization> for SimpleRelayAuth {
+    fn from(auth: RelayAuthorization) -> Self {
+        Self {
+            authorized: auth.authorized,
+            masking_level: auth.masking_level,
+            ttl: std::time::Duration::from_secs(auth.ttl_seconds),
+        }
+    }
 }
 
 /// Connection endpoint

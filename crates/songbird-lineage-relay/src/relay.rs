@@ -4,12 +4,14 @@
 
 use crate::birdsong::{BirdSongBroadcaster, BirdSongType, LineageHint};
 use crate::error::{LineageRelayError, Result};
+use crate::relay_protocol::RelayProtocol;
 use crate::types::{MaskingLevel, NodeId, RelayAuthorization};
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 use std::net::SocketAddr;
 use std::sync::Arc;
 use std::time::{Duration, SystemTime};
+use tokio::net::UdpSocket;
 use tokio::sync::{Mutex, RwLock};
 use tokio::time::timeout;
 use tracing::{debug, info, warn};
@@ -51,7 +53,11 @@ pub struct RelayOffer {
 }
 
 /// Active relay session
-#[derive(Debug, Clone)]
+///
+/// **Pure Rust | Zero Unsafe | Complete Implementation**
+///
+/// Evolution from stub to production-ready relay client.
+#[derive(Debug)]
 pub struct RelaySession {
     pub session_id: uuid::Uuid,
     pub relay_node: NodeId,
@@ -61,19 +67,36 @@ pub struct RelaySession {
     pub masking_level: MaskingLevel,
     pub established_at: SystemTime,
     pub bytes_relayed: Arc<Mutex<u64>>,
+    /// UDP socket for relay communication (created at bind time)
+    socket: Arc<UdpSocket>,
 }
 
 impl RelaySession {
     /// Create new relay session
-    #[must_use]
-    pub fn new(
+    ///
+    /// # Errors
+    ///
+    /// Returns error if UDP socket binding fails.
+    pub async fn new(
         relay_node: NodeId,
         relay_address: SocketAddr,
         requester: NodeId,
         target: NodeId,
         masking_level: MaskingLevel,
-    ) -> Self {
-        Self {
+    ) -> Result<Self> {
+        // Bind to ephemeral port (OS-assigned)
+        let socket = UdpSocket::bind("0.0.0.0:0").await
+            .map_err(|e| LineageRelayError::NetworkError(format!(
+                "Failed to bind UDP socket for relay session: {}", e
+            )))?;
+        
+        // Connect to relay address (sets default destination)
+        socket.connect(relay_address).await
+            .map_err(|e| LineageRelayError::NetworkError(format!(
+                "Failed to connect to relay server: {}", e
+            )))?;
+        
+        Ok(Self {
             session_id: uuid::Uuid::new_v4(),
             relay_node,
             relay_address,
@@ -82,26 +105,97 @@ impl RelaySession {
             masking_level,
             established_at: SystemTime::now(),
             bytes_relayed: Arc::new(Mutex::new(0)),
-        }
+            socket: Arc::new(socket),
+        })
     }
 
     /// Send data through relay
     ///
+    /// **EVOLUTION: Stub → Complete Implementation**
+    ///
+    /// BEFORE (v3.22): Only logged and incremented counter (stub)
+    /// AFTER (v3.23+): Actually forwards packet through UDP to relay server
+    ///
     /// # Errors
     ///
-    /// Returns error if sending fails
+    /// Returns error if network send fails.
     pub async fn send(&self, data: &[u8]) -> Result<()> {
-        // In real implementation, this would send through UDP socket to relay
         debug!(
-            "Sending {} bytes through relay {} (masked: {:?})",
+            "📤 Sending {} bytes through relay {} (session: {}, masked: {:?})",
             data.len(),
             self.relay_node,
+            self.session_id,
             self.masking_level
         );
 
+        // Wrap data in relay protocol
+        let packet = RelayProtocol::DataPacket {
+            session_id: self.session_id,
+            data: data.to_vec(),
+        };
+        
+        // Encode to wire format
+        let encoded = packet.encode();
+        
+        // Send to relay server via UDP
+        self.socket.send(&encoded).await
+            .map_err(|e| LineageRelayError::NetworkError(format!(
+                "Failed to send data through relay: {}", e
+            )))?;
+        
+        // Update statistics
         let mut bytes = self.bytes_relayed.lock().await;
         *bytes += data.len() as u64;
+        
+        info!(
+            "✅ Forwarded {} bytes through relay {} (total: {} bytes)",
+            data.len(),
+            self.relay_node,
+            *bytes
+        );
 
+        Ok(())
+    }
+    
+    /// Refresh session (extend TTL)
+    ///
+    /// # Errors
+    ///
+    /// Returns error if network send fails.
+    pub async fn refresh(&self) -> Result<()> {
+        debug!("🔄 Refreshing relay session {}", self.session_id);
+        
+        let refresh_msg = RelayProtocol::Refresh {
+            session_id: self.session_id,
+        };
+        
+        let encoded = refresh_msg.encode();
+        self.socket.send(&encoded).await
+            .map_err(|e| LineageRelayError::NetworkError(format!(
+                "Failed to refresh relay session: {}", e
+            )))?;
+        
+        Ok(())
+    }
+    
+    /// Close relay session
+    ///
+    /// # Errors
+    ///
+    /// Returns error if network send fails.
+    pub async fn close(&self) -> Result<()> {
+        info!("🛑 Closing relay session {}", self.session_id);
+        
+        let deallocate_msg = RelayProtocol::Deallocate {
+            session_id: self.session_id,
+        };
+        
+        let encoded = deallocate_msg.encode();
+        self.socket.send(&encoded).await
+            .map_err(|e| LineageRelayError::NetworkError(format!(
+                "Failed to close relay session: {}", e
+            )))?;
+        
         Ok(())
     }
 
@@ -116,7 +210,7 @@ pub struct RelayDiscovery {
     broadcaster: Arc<BirdSongBroadcaster>,
     relay_authority: Arc<dyn RelayAuthority>,
     my_id: NodeId,
-    active_sessions: Arc<RwLock<Vec<RelaySession>>>,
+    active_sessions: Arc<RwLock<Vec<Arc<RelaySession>>>>,
 }
 
 impl RelayDiscovery {
@@ -144,7 +238,7 @@ impl RelayDiscovery {
         &self,
         target: NodeId,
         target_address: Option<SocketAddr>,
-    ) -> Result<RelaySession> {
+    ) -> Result<Arc<RelaySession>> {
         info!("Requesting relay for target: {}", target);
 
         // Create relay request
@@ -169,13 +263,13 @@ impl RelayDiscovery {
         let offer = self.wait_for_relay_offer(Duration::from_secs(5)).await?;
 
         // Create relay session
-        let session = RelaySession::new(
+        let session = Arc::new(RelaySession::new(
             offer.relay_node,
             offer.relay_address,
             self.my_id.clone(),
             target,
             offer.authorization.masking_level,
-        );
+        ).await?);
 
         // Store active session
         self.active_sessions.write().await.push(session.clone());
@@ -290,7 +384,7 @@ impl RelayDiscovery {
     }
 
     /// Get active relay sessions
-    pub async fn active_sessions(&self) -> Vec<RelaySession> {
+    pub async fn active_sessions(&self) -> Vec<Arc<RelaySession>> {
         self.active_sessions.read().await.clone()
     }
 }
@@ -330,13 +424,17 @@ mod tests {
 
     #[tokio::test]
     async fn test_relay_session_creation() {
+        // Bind a server first to have a valid address to connect to
+        let server_socket = tokio::net::UdpSocket::bind("127.0.0.1:0").await.unwrap();
+        let server_addr = server_socket.local_addr().unwrap();
+        
         let session = RelaySession::new(
             NodeId::from("relay-1"),
-            "127.0.0.1:8080".parse().unwrap(),
+            server_addr,
             NodeId::from("requester"),
             NodeId::from("target"),
             MaskingLevel::Masked,
-        );
+        ).await.unwrap();
 
         assert_eq!(session.relay_node.0, "relay-1");
         assert_eq!(session.masking_level, MaskingLevel::Masked);
@@ -344,14 +442,19 @@ mod tests {
 
     #[tokio::test]
     async fn test_relay_session_send() {
+        // Bind a server first
+        let server_socket = tokio::net::UdpSocket::bind("127.0.0.1:0").await.unwrap();
+        let server_addr = server_socket.local_addr().unwrap();
+        
         let session = RelaySession::new(
             NodeId::from("relay-1"),
-            "127.0.0.1:8080".parse().unwrap(),
+            server_addr,
             NodeId::from("requester"),
             NodeId::from("target"),
             MaskingLevel::Masked,
-        );
+        ).await.unwrap();
 
+        // Send will succeed (UDP is connectionless, doesn't fail on send)
         session.send(b"test data").await.unwrap();
         assert_eq!(session.stats().await, 9);
     }

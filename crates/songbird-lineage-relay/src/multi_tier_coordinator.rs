@@ -287,7 +287,7 @@ pub enum ConnectionResult {
     /// Relayed connection through genetic lineage
     Relayed {
         /// Relay session details
-        session: RelaySession,
+        session: Arc<RelaySession>,
     },
 }
 

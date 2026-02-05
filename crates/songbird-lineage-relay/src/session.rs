@@ -113,14 +113,14 @@ impl DirectConnection {
 
 /// Relayed connection through ancestor
 pub struct RelayedConnection {
-    relay_session: RelaySession,
+    relay_session: Arc<RelaySession>,
     stats: Arc<Mutex<ConnectionStats>>,
 }
 
 impl RelayedConnection {
     /// Create new relayed connection
     #[must_use]
-    pub fn new(relay_session: RelaySession) -> Self {
+    pub fn new(relay_session: Arc<RelaySession>) -> Self {
         Self {
             relay_session,
             stats: Arc::new(Mutex::new(ConnectionStats {
@@ -160,6 +160,7 @@ impl RelayedConnection {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::sync::Arc;
     use crate::types::MaskingLevel;
 
     #[tokio::test]
@@ -176,15 +177,19 @@ mod tests {
 
     #[tokio::test]
     async fn test_relayed_connection() {
+        // Bind a server first
+        let server_socket = tokio::net::UdpSocket::bind("127.0.0.1:0").await.unwrap();
+        let server_addr = server_socket.local_addr().unwrap();
+        
         let relay_session = RelaySession::new(
             NodeId::from("relay-1"),
-            "127.0.0.1:8080".parse().unwrap(),
+            server_addr,
             NodeId::from("requester"),
             NodeId::from("target"),
             MaskingLevel::Masked,
-        );
+        ).await.unwrap();
 
-        let conn = RelayedConnection::new(relay_session);
+        let conn = RelayedConnection::new(Arc::new(relay_session));
 
         conn.send(b"test data").await.unwrap();
 
