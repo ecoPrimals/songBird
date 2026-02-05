@@ -20,8 +20,11 @@
 
 use crate::error::{Result, TlsError};
 use base64::{engine::general_purpose, Engine as _};
+use pin_project::pin_project;
 use serde::Deserialize;
-use tokio::io::{AsyncReadExt, AsyncWriteExt};
+use std::pin::Pin;
+use std::task::{Context, Poll};
+use tokio::io::{AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt, ReadBuf};
 
 // Platform-agnostic IPC (works on Unix, Windows, etc!)
 #[cfg(unix)]
@@ -31,6 +34,63 @@ use tokio::net::UnixStream as PlatformStream;
 
 #[cfg(windows)]
 use tokio::net::TcpStream as PlatformStream;
+
+/// Stream abstraction for crypto client connections
+///
+/// **EVOLVED (Feb 5, 2026):** Supports both Unix and TCP sockets
+/// to enable cross-platform deployment (especially Android via TCP)
+#[pin_project(project = CryptoStreamProj)]
+pub enum CryptoStream {
+    /// Unix domain socket (Linux/macOS/Android local)
+    #[cfg(unix)]
+    Unix(#[pin] PlatformStream),
+    /// TCP socket (Android cross-device, Windows, or explicit tcp:host:port)
+    Tcp(#[pin] tokio::net::TcpStream),
+}
+
+impl AsyncRead for CryptoStream {
+    fn poll_read(
+        self: Pin<&mut Self>,
+        cx: &mut Context<'_>,
+        buf: &mut ReadBuf<'_>,
+    ) -> Poll<std::io::Result<()>> {
+        match self.project() {
+            #[cfg(unix)]
+            CryptoStreamProj::Unix(stream) => stream.poll_read(cx, buf),
+            CryptoStreamProj::Tcp(stream) => stream.poll_read(cx, buf),
+        }
+    }
+}
+
+impl AsyncWrite for CryptoStream {
+    fn poll_write(
+        self: Pin<&mut Self>,
+        cx: &mut Context<'_>,
+        buf: &[u8],
+    ) -> Poll<std::io::Result<usize>> {
+        match self.project() {
+            #[cfg(unix)]
+            CryptoStreamProj::Unix(stream) => stream.poll_write(cx, buf),
+            CryptoStreamProj::Tcp(stream) => stream.poll_write(cx, buf),
+        }
+    }
+
+    fn poll_flush(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<std::io::Result<()>> {
+        match self.project() {
+            #[cfg(unix)]
+            CryptoStreamProj::Unix(stream) => stream.poll_flush(cx),
+            CryptoStreamProj::Tcp(stream) => stream.poll_flush(cx),
+        }
+    }
+
+    fn poll_shutdown(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<std::io::Result<()>> {
+        match self.project() {
+            #[cfg(unix)]
+            CryptoStreamProj::Unix(stream) => stream.poll_shutdown(cx),
+            CryptoStreamProj::Tcp(stream) => stream.poll_shutdown(cx),
+        }
+    }
+}
 
 /// BearDog crypto client for TLS operations
 ///
@@ -85,6 +145,13 @@ impl BeardogCryptoClient {
             // Strategy 1: Try BearDog socket (checks env vars + XDG + fallback)
             // This includes BEARDOG_SOCKET, BEARDOG_CRYPTO_SOCKET, SONGBIRD_CRYPTO_SOCKET
             let beardog_socket = discover_beardog_socket(None);
+            
+            // Check if it's a TCP socket (tcp:host:port format) - skip file existence check
+            if beardog_socket.starts_with("tcp:") {
+                tracing::info!("✅ Discovered BearDog TCP socket: {}", beardog_socket);
+                return Ok(beardog_socket);
+            }
+            
             if Path::new(&beardog_socket).exists() {
                 tracing::info!("✅ Discovered BearDog socket: {}", beardog_socket);
                 return Ok(beardog_socket);
@@ -93,6 +160,13 @@ impl BeardogCryptoClient {
             // Strategy 2: Try Neural API socket (checks env vars + XDG + fallback)
             // This includes NEURAL_API_SOCKET, NEURALS_SOCKET
             let neural_socket = discover_neural_api_socket(None);
+            
+            // Check if it's a TCP socket
+            if neural_socket.starts_with("tcp:") {
+                tracing::info!("✅ Discovered Neural API TCP socket: {}", neural_socket);
+                return Ok(neural_socket);
+            }
+            
             if Path::new(&neural_socket).exists() {
                 tracing::info!("✅ Discovered Neural API socket: {}", neural_socket);
                 return Ok(neural_socket);
@@ -118,7 +192,7 @@ impl BeardogCryptoClient {
                  - Neural API: {} (not found)\n\
                  - Legacy paths: /var/run/neural-api/socket, /var/run/beardog/crypto.sock (not found)\n\
                  \n\
-                 Set one of: BEARDOG_SOCKET, NEURAL_API_SOCKET, or XDG_RUNTIME_DIR + FAMILY_ID",
+                 Set one of: BEARDOG_SOCKET=tcp:host:port, NEURAL_API_SOCKET, or XDG_RUNTIME_DIR + FAMILY_ID",
                 beardog_socket, neural_socket
             )))
         }
@@ -221,24 +295,48 @@ impl BeardogCryptoClient {
     /// Platform-agnostic connection helper
     ///
     /// **Evolution Strategy:**
-    /// - Unix: Unix domain sockets (filesystem paths)
+    /// - Unix: Unix domain sockets (filesystem paths) OR TCP (tcp:host:port)
     /// - Windows: TCP sockets (parse address from path)
     /// - Future: Use songbird-universal-ipc for full platform abstraction
+    ///
+    /// **EVOLVED (Feb 5, 2026):** Support tcp:host:port format for Android/cross-platform
     #[cfg(unix)]
-    async fn connect_platform(path: &str) -> std::io::Result<PlatformStream> {
-        PlatformStream::connect(path).await
+    async fn connect_platform(path: &str) -> std::io::Result<CryptoStream> {
+        // Check for TCP format (tcp:host:port)
+        if path.starts_with("tcp:") {
+            let addr = &path[4..]; // Remove "tcp:" prefix
+            tracing::debug!("🌐 Connecting to TCP socket: {}", addr);
+            let stream = tokio::net::TcpStream::connect(addr).await?;
+            Ok(CryptoStream::Tcp(stream))
+        } else {
+            tracing::debug!("🔌 Connecting to Unix socket: {}", path);
+            let stream = PlatformStream::connect(path).await?;
+            Ok(CryptoStream::Unix(stream))
+        }
     }
 
     #[cfg(windows)]
-    async fn connect_platform(address: &str) -> std::io::Result<PlatformStream> {
-        // On Windows, the "path" is actually a TCP address (127.0.0.1:port)
-        PlatformStream::connect(address).await
+    async fn connect_platform(address: &str) -> std::io::Result<CryptoStream> {
+        // On Windows, strip tcp: prefix if present
+        let addr = if address.starts_with("tcp:") {
+            &address[4..]
+        } else {
+            address
+        };
+        let stream = PlatformStream::connect(addr).await?;
+        Ok(CryptoStream::Tcp(stream))
     }
 
     #[cfg(not(any(unix, windows)))]
-    async fn connect_platform(address: &str) -> std::io::Result<tokio::net::TcpStream> {
-        // Fallback: TCP
-        tokio::net::TcpStream::connect(address).await
+    async fn connect_platform(address: &str) -> std::io::Result<CryptoStream> {
+        // Strip tcp: prefix if present
+        let addr = if address.starts_with("tcp:") {
+            &address[4..]
+        } else {
+            address
+        };
+        let stream = tokio::net::TcpStream::connect(addr).await?;
+        Ok(CryptoStream::Tcp(stream))
     }
 
     /// Make a JSON-RPC call (legacy/testing)
