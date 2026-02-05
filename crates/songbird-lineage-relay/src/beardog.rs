@@ -226,10 +226,10 @@ impl BirdSongCrypto for BearDogBirdSongProvider {
 }
 
 // ═══════════════════════════════════════════════════════════════════
-// TEST MOCKS - Isolated under #[cfg(test)]
+// TEST MOCKS - Available for unit tests and integration tests
+// Note: Not gated by #[cfg(test)] to allow integration tests to use them
 // ═══════════════════════════════════════════════════════════════════
 
-#[cfg(test)]
 pub struct MockLineageProvider {
     /// Lineage graph: `node_id` → `parent_id`
     lineages: Arc<RwLock<HashMap<String, String>>>,
@@ -237,7 +237,6 @@ pub struct MockLineageProvider {
     descendants: Arc<RwLock<HashMap<String, Vec<String>>>>,
 }
 
-#[cfg(test)]
 impl MockLineageProvider {
     /// Create new mock lineage provider
     #[must_use]
@@ -279,21 +278,18 @@ impl MockLineageProvider {
     }
 }
 
-#[cfg(test)]
 impl Default for MockLineageProvider {
     fn default() -> Self {
         Self::new()
     }
 }
 
-#[cfg(test)]
-/// Mock `BirdSong` crypto (for testing)
+/// Mock `BirdSong` crypto (for testing and integration tests)
 pub struct MockBirdSongCrypto {
     lineage_provider: Arc<MockLineageProvider>,
     my_id: String,
 }
 
-#[cfg(test)]
 impl MockBirdSongCrypto {
     /// Create new mock crypto
     #[must_use]
@@ -305,7 +301,6 @@ impl MockBirdSongCrypto {
     }
 }
 
-#[cfg(test)]
 #[async_trait]
 impl BirdSongCrypto for MockBirdSongCrypto {
     async fn encrypt_for_lineage(&self, message: &[u8], _hint: LineageHint) -> Result<Vec<u8>> {
@@ -328,13 +323,11 @@ impl BirdSongCrypto for MockBirdSongCrypto {
     }
 }
 
-#[cfg(test)]
-/// Mock relay authority (for testing)
+/// Mock relay authority (for testing and integration tests)
 pub struct MockRelayAuthority {
     lineage_provider: Arc<MockLineageProvider>,
 }
 
-#[cfg(test)]
 impl MockRelayAuthority {
     /// Create new mock relay authority
     #[must_use]
@@ -345,7 +338,6 @@ impl MockRelayAuthority {
     }
 }
 
-#[cfg(test)]
 #[async_trait]
 impl RelayAuthority for MockRelayAuthority {
     async fn authorize_relay(
