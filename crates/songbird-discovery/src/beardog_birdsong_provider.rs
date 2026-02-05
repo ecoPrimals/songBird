@@ -11,7 +11,7 @@ use songbird_universal::UnixRpcClient;
 use std::path::PathBuf;
 use tracing::{debug, info, warn};
 
-use crate::birdsong_integration::BirdSongEncryption;
+use crate::birdsong::BirdSongEncryption;
 
 /// `BearDog` encryption request (for JSON-RPC birdsong.encrypt method)
 #[derive(Debug, Clone, Serialize)]

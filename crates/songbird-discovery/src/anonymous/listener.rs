@@ -40,7 +40,7 @@ pub struct AnonymousDiscoveryListener {
     peer_timeout_secs: u64,
 
     /// `BirdSong` decryption processor (optional)
-    birdsong: Option<Arc<crate::birdsong_integration::BirdSongProcessor>>,
+    birdsong: Option<Arc<crate::birdsong::BirdSongProcessor>>,
 
     /// Our own `node_id` for self-filtering (v3.10.2 - Jan 5, 2026)
     ///
@@ -98,7 +98,7 @@ impl AnonymousDiscoveryListener {
     #[must_use]
     pub fn with_birdsong(
         mut self,
-        processor: Arc<crate::birdsong_integration::BirdSongProcessor>,
+        processor: Arc<crate::birdsong::BirdSongProcessor>,
     ) -> Self {
         info!("🎵 BirdSong decryption enabled for discovery listener");
         info!("   Status: {}", processor.status());

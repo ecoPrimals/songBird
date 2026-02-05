@@ -132,7 +132,7 @@
 //! suggestions for common discovery failures.
 
 pub mod beardog_birdsong_provider; // NEW: BearDog BirdSong encryption provider (Jan 3, 2026)
-pub mod birdsong_integration; // NEW: BirdSong encrypted discovery
+pub mod birdsong; // NEW: BirdSong encrypted discovery (REFACTORED v3.22.0 - Feb 5, 2026)
 pub mod conversion;
 pub mod dark_forest_beacon; // ✅ NEW (Feb 3, 2026): Dark Forest Beacon Genetics (TRUE encrypted discovery, zero metadata leakage)
 pub mod discovery;
@@ -169,7 +169,7 @@ mod tests_self_filtering;
 
 // Re-export universal discovery functionality
 pub use beardog_birdsong_provider::BearDogBirdSongProvider; // NEW (Jan 3, 2026)
-pub use birdsong_integration::{BirdSongConfig, BirdSongEncryption, BirdSongProcessor}; // NEW
+pub use birdsong::{BirdSongConfig, BirdSongEncryption, BirdSongProcessor}; // REFACTORED v3.22.0
 pub use discovery::UniversalDiscoveryFactory;
 pub use discovery_packet::{DiscoveryError, DiscoveryPacket, IdentityAttestation}; // NEW
 pub use discovery_stats::{

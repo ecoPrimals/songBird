@@ -66,7 +66,7 @@ pub struct AnonymousDiscoveryBroadcaster {
     identity_attestations: Option<Vec<crate::IdentityAttestation>>,
 
     /// `BirdSong` encryption processor (optional) - NEW (Jan 3, 2026)
-    birdsong: Option<Arc<crate::birdsong_integration::BirdSongProcessor>>,
+    birdsong: Option<Arc<crate::birdsong::BirdSongProcessor>>,
 
     /// Statistics tracker for observability (optional) - NEW (Jan 5, 2026)
     stats: Option<Arc<crate::discovery_stats::DiscoveryStats>>,
@@ -191,7 +191,7 @@ impl AnonymousDiscoveryBroadcaster {
     #[must_use]
     pub fn with_birdsong(
         mut self,
-        processor: Arc<crate::birdsong_integration::BirdSongProcessor>,
+        processor: Arc<crate::birdsong::BirdSongProcessor>,
     ) -> Self {
         info!("🎵 BirdSong encryption enabled for discovery broadcaster");
         info!("   Status: {}", processor.status());
@@ -446,7 +446,7 @@ impl AnonymousDiscoveryBroadcaster {
     async fn create_and_broadcast_dark_forest_beacon(
         &self,
         socket: &UdpSocket,
-        birdsong: &crate::birdsong_integration::BirdSongProcessor,
+        birdsong: &crate::birdsong::BirdSongProcessor,
     ) -> Result<(), anyhow::Error> {
         use crate::dark_forest_beacon::BeaconPayload;
 
