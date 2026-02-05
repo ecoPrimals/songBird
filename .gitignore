@@ -179,4 +179,11 @@ proxy/secrets/
 
 # Federation private keys
 federation/private/
-federation/*.key sqlite::memory:/
+federation/*.key
+
+# Sled database files
+*.sled/
+db/
+
+# Test artifacts (sqlite in-memory snapshots)
+sqlite::memory:*/
