@@ -707,8 +707,11 @@ impl IpcServiceHandler {
     /// Returns primal identity with capabilities.
     /// NEW (Feb 5, 2026) - Matches orchestrator's standard method.
     async fn handle_identity(&self) -> Result<Value, String> {
-        let family_id = std::env::var("SONGBIRD_FAMILY_ID")
-            .or_else(|_| std::env::var("FAMILY_ID"))
+        // Priority: FAMILY_ID > SONGBIRD_FAMILY_ID > NODE_FAMILY_ID > "nat0"
+        // (Matches birdsong_handler.rs priority order - Feb 5, 2026)
+        let family_id = std::env::var("FAMILY_ID")
+            .or_else(|_| std::env::var("SONGBIRD_FAMILY_ID"))
+            .or_else(|_| std::env::var("NODE_FAMILY_ID"))
             .unwrap_or_else(|_| "nat0".to_string());
         
         Ok(serde_json::json!({
