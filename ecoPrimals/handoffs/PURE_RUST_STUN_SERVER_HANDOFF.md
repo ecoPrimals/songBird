@@ -445,48 +445,148 @@ impl StunClient {
 
 ---
 
+## 🎉 STUN Server Already Exists!
+
+**Discovery (Feb 5, 2026)**: Songbird already has a complete pure Rust STUN server!
+
+**Location**: `crates/songbird-stun/src/server.rs`
+
+### What's Already Implemented
+
+| Component | Status | Location |
+|-----------|--------|----------|
+| STUN Server | ✅ **COMPLETE** | `songbird-stun/src/server.rs` |
+| RFC 5389 Compliance | ✅ **COMPLETE** | Binding Request/Response |
+| XOR-MAPPED-ADDRESS | ✅ **COMPLETE** | NAT hairpinning support |
+| Alternate Address | ✅ **COMPLETE** | RFC 5780 NAT detection ready |
+| Statistics | ✅ **COMPLETE** | Request counts, uptime |
+| Zero Unsafe | ✅ **COMPLETE** | `#![forbid(unsafe_code)]` |
+| Async/Await | ✅ **COMPLETE** | tokio-based |
+
+### What's Missing (Remaining Work)
+
+| Component | Status | Effort |
+|-----------|--------|--------|
+| JSON-RPC `stun.serve` | ❌ Not exposed | ~4 hours |
+| JSON-RPC `relay.serve` | ❌ Not implemented | ~1-2 days |
+| Relay packet forwarding | ❌ Stub only | ~1-2 days |
+| Full NAT type detection | ⚠️ Basic only | ~1 day |
+
+---
+
+## Remaining Work: Relay Service
+
+The real gap is **TURN/Relay** functionality. The `RelaySession.send()` method is a stub:
+
+```rust
+// Current (relay.rs:93)
+pub async fn send(&self, data: &[u8]) -> Result<()> {
+    // In real implementation, this would send through UDP socket to relay
+    debug!("Sending {} bytes through relay...", data.len());
+    Ok(())
+}
+```
+
+### Relay Service Requirements
+
+```rust
+/// Pure Rust Relay Service (TURN equivalent)
+pub struct RelayService {
+    socket: Arc<UdpSocket>,
+    sessions: Arc<RwLock<HashMap<Uuid, RelaySessionState>>>,
+    authority: Arc<dyn RelayAuthority>,
+}
+
+impl RelayService {
+    /// Start relay service on specified address
+    pub async fn serve(&self, bind_addr: SocketAddr) -> Result<()>;
+    
+    /// Allocate relay for authorized peer
+    pub async fn allocate(&self, requester: NodeId, target: NodeId) -> Result<RelayAllocation>;
+    
+    /// Forward packet to peer
+    async fn forward_packet(&self, session_id: Uuid, data: &[u8], src: SocketAddr) -> Result<()>;
+}
+```
+
+---
+
+## JSON-RPC Methods Needed
+
+### `stun.serve` - Start STUN server
+
+```json
+// Request
+{"jsonrpc":"2.0","method":"stun.serve","params":{"bind_address":"0.0.0.0:3478"},"id":1}
+
+// Response
+{"jsonrpc":"2.0","result":{"status":"running","bind_address":"0.0.0.0:3478"},"id":1}
+```
+
+### `relay.serve` - Start relay service
+
+```json
+// Request
+{"jsonrpc":"2.0","method":"relay.serve","params":{"bind_address":"0.0.0.0:3479"},"id":1}
+
+// Response
+{"jsonrpc":"2.0","result":{"status":"running","bind_address":"0.0.0.0:3479"},"id":1}
+```
+
+### `relay.allocate` - Request relay for peer
+
+```json
+// Request
+{"jsonrpc":"2.0","method":"relay.allocate","params":{"target":"pixel8a"},"id":2}
+
+// Response
+{"jsonrpc":"2.0","result":{"session_id":"uuid","relay_address":"162.226.225.148:3479","ttl_seconds":300},"id":2}
+```
+
+---
+
 ## Success Criteria
 
 | Criteria | Metric |
 |----------|--------|
-| Binding Response | Returns correct MAPPED-ADDRESS |
-| Performance | <1ms response time |
-| Memory | <1MB for 1000 concurrent clients |
-| Binary Size | <50KB impact on Songbird binary |
-| Test Coverage | >80% for server module |
+| STUN Binding Response | ✅ Already working |
+| Relay packet forwarding | Round-trip <10ms |
+| Memory | <1MB for 1000 concurrent sessions |
+| Binary Size | <100KB impact (STUN+Relay) |
+| Test Coverage | >80% for relay module |
 | Zero Unsafe | No unsafe blocks |
 | ecoBin Compliance | Pure Rust, no C deps |
 
 ---
 
-## Timeline Estimate
+## Timeline (Updated)
 
 | Phase | Scope | Effort |
 |-------|-------|--------|
-| Phase 1 | Basic STUN server (MVP) | ~2-3 days |
-| Phase 2 | NAT type detection | ~1-2 days |
-| Phase 3 | JSON-RPC integration | ~1 day |
-| Phase 4 | Lineage integration | ~2-3 days |
-| Testing | Unit + integration | ~1-2 days |
+| Phase 1 | Expose `stun.serve` JSON-RPC | ~4 hours |
+| Phase 2 | Implement `RelayService` | ~1-2 days |
+| Phase 3 | Expose `relay.serve`, `relay.allocate` | ~4 hours |
+| Phase 4 | Multi-tier coordinator integration | ~1 day |
+| Testing | Unit + integration | ~1 day |
 
-**Total**: ~1-2 weeks for full implementation
+**Total**: ~4-5 days (mostly relay work)
 
 ---
 
 ## References
 
-1. **RFC 5389**: Session Traversal Utilities for NAT (STUN)
-   - https://datatracker.ietf.org/doc/html/rfc5389
+1. **RFC 5389**: STUN - https://datatracker.ietf.org/doc/html/rfc5389
+2. **RFC 5766**: TURN - https://datatracker.ietf.org/doc/html/rfc5766
+3. **RFC 5780**: NAT Behavior Discovery - https://datatracker.ietf.org/doc/html/rfc5780
+4. **Existing Songbird Code**: `crates/songbird-stun/src/server.rs` (STUN server)
+5. **Existing Songbird Code**: `crates/songbird-lineage-relay/src/relay.rs` (Relay discovery)
 
-2. **RFC 5780**: NAT Behavior Discovery Using STUN
-   - https://datatracker.ietf.org/doc/html/rfc5780
+---
 
-3. **Existing Rust STUN crates** (for reference, not dependency):
-   - `stun` crate: https://crates.io/crates/stun
-   - `stun-types`: https://crates.io/crates/stun-types
+## biomeOS Integration Spec
 
-4. **coturn** (bridge solution reference):
-   - https://github.com/coturn/coturn
+Full architecture and deployment scenarios documented in:
+`biomeOS/specs/SOVEREIGN_NAT_TRAVERSAL_EVOLUTION.md`
 
 ---
 
@@ -498,6 +598,6 @@ For questions about biomeOS integration requirements:
 
 ---
 
-**Bridge Solution**: Until pure Rust implementation is ready, use `biomeOS/scripts/setup_coturn.sh` for self-hosted STUN.
+**Bridge Solution**: coturn is running on Tower for testing. Pure Rust relay will replace it.
 
-**Priority**: Medium - coturn works, but pure Rust maintains ecosystem integrity.
+**Priority**: HIGH - Relay service completes sovereign NAT traversal.

@@ -143,23 +143,58 @@ This document tracks upstream requirements from biomeOS and other ecosystem part
 
 ---
 
-### 3. TURN Server (Relay Support)
+### 3. Lineage Relay Server (Packet Forwarding) ⭐ HIGH VALUE
 
-**Status**: 🔍 **INVESTIGATING**  
-**Priority**: Low  
-**Effort**: 2-3 weeks  
-**Value**: Medium
+**Status**: 📋 **PLANNED - Ready for Implementation**  
+**Priority**: HIGH (completes sovereign NAT traversal)  
+**Effort**: 5 days  
+**Value**: HIGH (eliminates coturn, enables symmetric NAT)
 
-**Description**: Full TURN (Traversal Using Relays around NAT) server for symmetric NAT scenarios.
+**Description**: Implement actual packet forwarding in lineage-based relay system, completing pure Rust NAT traversal stack.
 
-**Current Assessment**:
-- STUN covers 80% of NAT traversal needs
-- Lineage relay already provides family-based relay
-- TURN would be for public relay scenarios
+**Current State**:
+- ✅ STUN server: Complete (Feb 5, 2026)
+- ✅ UDP hole punching: Complete (178 lines, working)
+- ✅ Relay discovery: Complete (session management)
+- ✅ Lineage authorization: Complete (BearDog integration)
+- ❌ **Relay forwarding: STUB ONLY** (`RelaySession.send()` doesn't forward)
 
-**Next Steps**: 
-- Gather usage data from STUN deployment
-- Determine if TURN is needed or if lineage relay is sufficient
+**Why This Matters**:
+- Symmetric NAT requires relay (30% of connections)
+- Direct hole punch fails for symmetric-to-symmetric
+- coturn still needed in production
+- Lineage-based relay is unique differentiator
+
+**What Exists (2,910 lines)**:
+| Component | Status |
+|-----------|--------|
+| UDP Hole Punch | ✅ Complete |
+| Relay Discovery | ✅ Complete |
+| Session Management | ✅ Complete |
+| Lineage Authorization | ✅ Complete |
+| **Packet Forwarding** | ❌ **Stub** |
+
+**Deliverables**:
+- [ ] `relay_server.rs` - Core forwarding engine (~500 lines)
+- [ ] `relay_protocol.rs` - Wire protocol (~200 lines)
+- [ ] Update `RelaySession.send()` - Actual forwarding
+- [ ] JSON-RPC methods (`relay.serve`, `relay.allocate`, `relay.status`)
+- [ ] Unit tests (>80% coverage)
+- [ ] Integration tests (round-trip forwarding)
+- [ ] Documentation
+
+**References**:
+- Investigation: [`ecoPrimals/sessions/2026-02-february/RELAY_SERVER_INVESTIGATION_FEB_05_2026.md`](ecoPrimals/sessions/2026-02-february/RELAY_SERVER_INVESTIGATION_FEB_05_2026.md)
+- Existing Code: `crates/songbird-lineage-relay/src/relay.rs` (line 93-105 is stub)
+- Handoff: `ecoPrimals/handoffs/PURE_RUST_STUN_SERVER_HANDOFF.md` (updated with relay)
+
+**Success Criteria**:
+- ✅ Packet forwarding <10ms latency
+- ✅ >10 MB/s throughput
+- ✅ <1MB memory per 1000 sessions
+- ✅ Zero unsafe code
+- ✅ Symmetric NAT traversal working
+- ✅ coturn eliminated
 
 ---
 
@@ -169,22 +204,22 @@ This document tracks upstream requirements from biomeOS and other ecosystem part
 
 | Metric | Value |
 |--------|-------|
-| **Gaps Identified** | 1 (STUN server) |
-| **Gaps Investigated** | 1 (100%) |
-| **Gaps Specified** | 1 (100%) |
-| **Ready to Implement** | 1 (STUN server MVP) |
-| **Recently Completed** | 3 (Unix sockets, family_id, TLS) |
+| **Gaps Identified** | 2 (STUN, Relay) |
+| **Gaps Investigated** | 2 (100%) |
+| **Gaps Specified** | 2 (100%) |
+| **Ready to Implement** | 1 (Relay server) |
+| **Recently Completed** | 4 (Unix sockets, family_id, TLS, STUN) ⭐ |
 
-### Quality Gates
+### Quality Gates (Relay Server)
 
 | Gate | Status |
 |------|--------|
-| **Investigation Complete** | ✅ Yes |
-| **Specification Written** | ✅ Yes |
-| **Dependencies Clear** | ✅ Yes (none new) |
-| **Effort Estimated** | ✅ Yes (3-5 days) |
+| **Investigation Complete** | ✅ Yes (Feb 5, 2026) |
+| **Specification Written** | ✅ Yes (detailed plan) |
+| **Dependencies Clear** | ✅ Yes (reuses existing 2,910 lines) |
+| **Effort Estimated** | ✅ Yes (5 days) |
 | **Tests Planned** | ✅ Yes (>80% coverage) |
-| **Architecture Approved** | ✅ Yes |
+| **Architecture Approved** | ✅ Yes (lineage-based) |
 
 ---
 
@@ -193,23 +228,22 @@ This document tracks upstream requirements from biomeOS and other ecosystem part
 ```
        │  High Value
        │
-   Hig │  STUN Server MVP    ⭐ DO NOW
-   h P │  [3-5 days]
+   Hig │  ✅ STUN (DONE)     Relay Server ⭐ DO NEXT
+   h P │                      [5 days]
    rio │
    rit │
    y   │
        │
-   Med │  
-   ium │
+   Med │  NAT Detection
+   ium │  [2-3 days]
    Pri │
    ori │
    ty  │
        │
-   Low │  NAT Detection     TURN Server
-   Pri │  [2-3 days]        [2-3 weeks]
+   Low │  Lineage STUN      ICE Protocol
+   Pri │  [3-4 days]        [2-3 weeks]
    ori │
-   ty  │  Lineage STUN
-       │  [3-4 days]
+   ty  │
        │
        └───────────────────────────────
          Low Effort  →  High Effort
@@ -221,9 +255,12 @@ This document tracks upstream requirements from biomeOS and other ecosystem part
 
 ### Next Up (Prioritized)
 
-1. **STUN Server MVP** ⭐ (3-5 days) - Eliminate coturn
-2. Monitor biomeOS feedback for new requirements
-3. Evaluate TURN server need based on STUN deployment data
+1. **Lineage Relay Server** ⭐ (5 days) - Complete sovereign NAT traversal
+   - Eliminate coturn completely
+   - Enable symmetric NAT traversal
+   - 80% infrastructure exists, just need forwarding
+2. Monitor STUN server deployment metrics
+3. Gather relay performance data for optimization
 
 ### Watching
 
