@@ -404,26 +404,19 @@ impl IpcServiceHandler {
         serde_json::to_value(result).map_err(|e| format!("Serialization error: {e}"))
     }
 
-    /// Handle `stun.get_public_address` method
-    async fn handle_stun_get_public_address(&self, params: Value) -> Result<Value, String> {
-        let result = self
-            .stun_handler
-            .handle_get_public_address(params)
-            .await
-            .map_err(|e| format!("STUN get_public_address failed: {e}"))?;
-
-        serde_json::to_value(result).map_err(|e| format!("Serialization error: {e}"))
+    /// Handle `stun.serve` method - Start STUN server
+    async fn handle_stun_serve(&self, params: Value) -> Result<Value, String> {
+        self.stun_handler.handle_serve(params).await
     }
 
-    /// Handle `stun.bind` method
-    async fn handle_stun_bind(&self, params: Value) -> Result<Value, String> {
-        let result = self
-            .stun_handler
-            .handle_bind(params)
-            .await
-            .map_err(|e| format!("STUN bind failed: {e}"))?;
+    /// Handle `stun.stop` method - Stop STUN server
+    async fn handle_stun_stop(&self, params: Value) -> Result<Value, String> {
+        self.stun_handler.handle_stop(params).await
+    }
 
-        serde_json::to_value(result).map_err(|e| format!("Serialization error: {e}"))
+    /// Handle `stun.status` method - Get STUN server status
+    async fn handle_stun_status(&self, params: Value) -> Result<Value, String> {
+        self.stun_handler.handle_status(params).await
     }
 
     /// Handle `discovery.peers` method
@@ -774,8 +767,9 @@ impl JsonRpcHandler for IpcServiceHandler {
             "http.post" => self.handle_http_post(params).await,
 
             // STUN/NAT traversal methods (NEW - Jan 29, 2026)
-            "stun.get_public_address" => self.handle_stun_get_public_address(params).await,
-            "stun.bind" => self.handle_stun_bind(params).await,
+            "stun.serve" => self.handle_stun_serve(params).await,
+            "stun.stop" => self.handle_stun_stop(params).await,
+            "stun.status" => self.handle_stun_status(params).await,
 
             // Discovery methods (NEW - Jan 29, 2026)
             "discovery.peers" => self.handle_discovery_peers(params).await,

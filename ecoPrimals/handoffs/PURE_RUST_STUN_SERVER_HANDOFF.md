@@ -31,12 +31,24 @@ biomeOS requires a self-hosted STUN server capability to achieve **maximum sover
 | Multi-tier Config | `songbird-types/src/config/stun_relay.rs` | ✅ Working |
 | **STUN Server** | - | ❌ **Missing** |
 
-### Bridge Solution
+### Bridge Solution (ACTIVE)
 
-Using coturn temporarily:
-- Install: `sudo apt install coturn`
-- Config: `/etc/turnserver.conf`
-- Script: `biomeOS/scripts/setup_coturn.sh`
+coturn is currently running on Tower:
+- **Status**: ✅ Active (`systemctl status coturn`)
+- **Address**: `192.168.1.144:3478` (LAN)
+- **Config**: `/etc/turnserver.conf`
+- **Setup Script**: `biomeOS/scripts/setup_coturn.sh`
+
+**Rust Integration**:
+- `biomeos-core/src/stun_extension.rs` - Optional STUN extension
+- Automatically falls back to public STUN if self-hosted unavailable
+- Zero hard dependency on coturn
+
+**Tested Feb 5, 2026**:
+```
+Self-hosted (coturn): 162.226.225.148:43103 ✅
+Public (Google):      162.226.225.148:53213 ✅
+```
 
 ---
 

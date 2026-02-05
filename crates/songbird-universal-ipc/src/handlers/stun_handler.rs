@@ -1,137 +1,230 @@
-//! STUN/NAT Traversal JSON-RPC Handler
+//! STUN server JSON-RPC handler
 //!
-//! Exposes `songbird-stun` crate via JSON-RPC for NAT traversal and public address discovery.
+//! Provides JSON-RPC methods for managing the integrated STUN server.
 //!
-//! ## Methods
-//! - `stun.get_public_address` - Discover public IP/port via STUN
-//! - `stun.bind` - Create/maintain STUN binding for hole punching
-//!
-//! ## Security Note
-//! STUN servers can observe your public IP/port and connection timing.
-//! Prefer genetic lineage relay (Tier 1) when sovereignty > convenience.
+//! **Methods**:
+//! - `stun.serve` - Start STUN server
+//! - `stun.stop` - Stop STUN server
+//! - `stun.status` - Get server status
 
-use crate::error::{IpcError, IpcResult};
-use serde::{Deserialize, Serialize};
-use serde_json::Value;
-use songbird_stun::StunClient;
-use std::collections::HashMap;
+use serde_json::{json, Value};
+use songbird_stun::StunServer;
 use std::net::SocketAddr;
 use std::sync::Arc;
-use std::time::Duration;
 use tokio::sync::RwLock;
-use tracing::{debug, info};
+use tokio::task::JoinHandle;
+use tracing::{debug, info, warn};
 
-// ============================================================================
-// STUN Handler
-// ============================================================================
-
-/// STUN handler for NAT traversal operations
+/// STUN server handler for JSON-RPC integration
+///
+/// Manages the lifecycle of the integrated STUN server and provides
+/// status information via JSON-RPC methods.
+///
+/// ## Design Principles
+///
+/// - **Self-Contained**: No external primal dependencies
+/// - **Capability-Based**: Exposes capability, not implementation
+/// - **Safe**: All operations use safe Rust
+/// - **Idiomatic**: Modern async/await patterns
+#[derive(Debug)]
 pub struct StunHandler {
-    /// STUN client
-    client: Arc<StunClient>,
+    /// Currently running server instance
+    server_handle: Arc<RwLock<Option<ServerInstance>>>,
+}
 
-    /// Active STUN bindings (`binding_id` -> binding info)
-    bindings: Arc<RwLock<HashMap<String, StunBinding>>>,
+#[derive(Debug)]
+struct ServerInstance {
+    /// Tokio task handle for the running server
+    handle: JoinHandle<()>,
+    
+    /// Bind address the server is listening on
+    bind_addr: SocketAddr,
+    
+    /// Server start time
+    start_time: std::time::Instant,
 }
 
 impl StunHandler {
-    /// Create a new STUN handler
-    #[must_use]
+    /// Create new STUN handler
     pub fn new() -> Self {
         Self {
-            client: Arc::new(StunClient::new()),
-            bindings: Arc::new(RwLock::new(HashMap::new())),
+            server_handle: Arc::new(RwLock::new(None)),
         }
     }
-
-    /// Create STUN handler with custom timeout
-    #[must_use]
-    pub fn with_timeout(timeout: Duration) -> Self {
-        Self {
-            client: Arc::new(StunClient::with_timeout(timeout)),
-            bindings: Arc::new(RwLock::new(HashMap::new())),
+    
+    /// Handle `stun.serve` method - Start STUN server
+    ///
+    /// # Request Example
+    ///
+    /// ```json
+    /// {
+    ///   "jsonrpc": "2.0",
+    ///   "method": "stun.serve",
+    ///   "params": {
+    ///     "bind_addr": "0.0.0.0:3478"
+    ///   },
+    ///   "id": 1
+    /// }
+    /// ```
+    ///
+    /// # Response Example
+    ///
+    /// ```json
+    /// {
+    ///   "jsonrpc": "2.0",
+    ///   "result": {
+    ///     "status": "started",
+    ///     "bind_addr": "0.0.0.0:3478",
+    ///     "comment": "STUN server running in background"
+    ///   },
+    ///   "id": 1
+    /// }
+    /// ```
+    pub async fn handle_serve(&self, params: Value) -> Result<Value, String> {
+        // Check if server is already running
+        {
+            let instance = self.server_handle.read().await;
+            if instance.is_some() {
+                return Err("STUN server is already running (use stun.stop first)".to_string());
+            }
+        }
+        
+        // Parse bind address from params (default to standard STUN port)
+        let bind_addr_str = params
+            .get("bind_addr")
+            .and_then(|v| v.as_str())
+            .unwrap_or("0.0.0.0:3478");
+        
+        let bind_addr: SocketAddr = bind_addr_str.parse()
+            .map_err(|e| format!("Invalid bind address '{}': {}", bind_addr_str, e))?;
+        
+        info!("🌐 Starting STUN server on {}", bind_addr);
+        
+        // Create server
+        let mut server = StunServer::new(bind_addr);
+        
+        // Spawn server in background
+        let handle = tokio::spawn(async move {
+            match server.run().await {
+                Ok(()) => {
+                    info!("✅ STUN server shut down gracefully");
+                }
+                Err(e) => {
+                    warn!("⚠️  STUN server error: {}", e);
+                }
+            }
+        });
+        
+        // Store server instance
+        {
+            let mut instance = self.server_handle.write().await;
+            *instance = Some(ServerInstance {
+                handle,
+                bind_addr,
+                start_time: std::time::Instant::now(),
+            });
+        }
+        
+        debug!("✅ STUN server started successfully");
+        
+        Ok(json!({
+            "status": "started",
+            "bind_addr": bind_addr.to_string(),
+            "comment": "STUN server running in background (use stun.stop to stop)"
+        }))
+    }
+    
+    /// Handle `stun.stop` method - Stop STUN server
+    ///
+    /// # Request Example
+    ///
+    /// ```json
+    /// {
+    ///   "jsonrpc": "2.0",
+    ///   "method": "stun.stop",
+    ///   "params": {},
+    ///   "id": 2
+    /// }
+    /// ```
+    ///
+    /// # Response Example
+    ///
+    /// ```json
+    /// {
+    ///   "jsonrpc": "2.0",
+    ///   "result": {
+    ///     "status": "stopped",
+    ///     "uptime_seconds": 3600,
+    ///     "bind_addr": "0.0.0.0:3478"
+    ///   },
+    ///   "id": 2
+    /// }
+    /// ```
+    pub async fn handle_stop(&self, _params: Value) -> Result<Value, String> {
+        let mut instance_guard = self.server_handle.write().await;
+        
+        if let Some(instance) = instance_guard.take() {
+            let uptime = instance.start_time.elapsed().as_secs();
+            let bind_addr = instance.bind_addr.to_string();
+            
+            info!("🛑 Stopping STUN server (uptime: {}s)", uptime);
+            
+            // Abort the server task
+            instance.handle.abort();
+            
+            Ok(json!({
+                "status": "stopped",
+                "uptime_seconds": uptime,
+                "bind_addr": bind_addr
+            }))
+        } else {
+            Err("STUN server is not running".to_string())
         }
     }
-
-    /// Handle `stun.get_public_address` JSON-RPC method
+    
+    /// Handle `stun.status` method - Get server status
     ///
-    /// Discovers public IP/port via STUN server for NAT traversal.
-    pub async fn handle_get_public_address(
-        &self,
-        params: Value,
-    ) -> IpcResult<StunGetPublicAddressResult> {
-        let params: StunGetPublicAddressParams = serde_json::from_value(params)
-            .map_err(|e| IpcError::InvalidParams(format!("Failed to parse params: {e}")))?;
-
-        debug!("STUN: get_public_address (server: {:?})", params.server);
-
-        // Use provided server or default to Nextcloud STUN (vetted)
-        let stun_server = params.server.as_deref().unwrap_or("stun.nextcloud.com:3478");
-
-        // Discover public address
-        let public_addr = self
-            .client
-            .discover_public_address(stun_server)
-            .await
-            .map_err(|e| IpcError::Internal(format!("STUN request failed: {e}")))?;
-
-        // Get local address (best effort)
-        let local_addr = format!("0.0.0.0:{}", params.local_port.unwrap_or(0));
-
-        info!("✅ STUN: Discovered public address: {} (via {})", public_addr, stun_server);
-
-        Ok(StunGetPublicAddressResult {
-            public_address: public_addr.to_string(),
-            local_address: local_addr,
-            server: stun_server.to_string(),
-            nat_type: Some("unknown".to_string()), // TODO: NAT type detection
-        })
-    }
-
-    /// Handle `stun.bind` JSON-RPC method
+    /// # Request Example
     ///
-    /// Creates and maintains a STUN binding for hole punching.
-    pub async fn handle_bind(&self, params: Value) -> IpcResult<StunBindResult> {
-        let params: StunBindParams = serde_json::from_value(params)
-            .map_err(|e| IpcError::InvalidParams(format!("Failed to parse params: {e}")))?;
-
-        debug!("STUN: bind (server: {}, local_port: {})", params.server, params.local_port);
-
-        // Discover public address
-        let public_addr = self
-            .client
-            .discover_public_address(&params.server)
-            .await
-            .map_err(|e| IpcError::Internal(format!("STUN bind failed: {e}")))?;
-
-        // Generate binding ID
-        let binding_id = format!("stun-{}", uuid::Uuid::new_v4());
-
-        // Store binding
-        let lifetime_secs = params.keepalive_secs.unwrap_or(300); // 5 minutes default
-        let binding = StunBinding {
-            binding_id: binding_id.clone(),
-            server: params.server.clone(),
-            local_port: params.local_port,
-            mapped_address: public_addr,
-            lifetime_secs,
-            created_at: std::time::SystemTime::now(),
-        };
-
-        self.bindings.write().await.insert(binding_id.clone(), binding);
-
-        info!("✅ STUN: Created binding {} (mapped: {})", binding_id, public_addr);
-
-        Ok(StunBindResult {
-            binding_id,
-            mapped_address: public_addr.to_string(),
-            lifetime_secs,
-        })
-    }
-
-    /// List active STUN bindings (internal method)
-    pub async fn list_bindings(&self) -> Vec<StunBinding> {
-        self.bindings.read().await.values().cloned().collect()
+    /// ```json
+    /// {
+    ///   "jsonrpc": "2.0",
+    ///   "method": "stun.status",
+    ///   "params": {},
+    ///   "id": 3
+    /// }
+    /// ```
+    ///
+    /// # Response Example
+    ///
+    /// ```json
+    /// {
+    ///   "jsonrpc": "2.0",
+    ///   "result": {
+    ///     "running": true,
+    ///     "bind_addr": "0.0.0.0:3478",
+    ///     "uptime_seconds": 3600
+    ///   },
+    ///   "id": 3
+    /// }
+    /// ```
+    pub async fn handle_status(&self, _params: Value) -> Result<Value, String> {
+        let instance = self.server_handle.read().await;
+        
+        if let Some(instance) = instance.as_ref() {
+            let uptime = instance.start_time.elapsed().as_secs();
+            
+            Ok(json!({
+                "running": true,
+                "bind_addr": instance.bind_addr.to_string(),
+                "uptime_seconds": uptime
+            }))
+        } else {
+            Ok(json!({
+                "running": false,
+                "comment": "STUN server is not running (use stun.serve to start)"
+            }))
+        }
     }
 }
 
@@ -141,195 +234,137 @@ impl Default for StunHandler {
     }
 }
 
-// ============================================================================
-// Types
-// ============================================================================
-
-/// Parameters for `stun.get_public_address`
-#[derive(Debug, Clone, Deserialize)]
-pub struct StunGetPublicAddressParams {
-    /// STUN server (e.g., "stun.l.google.com:19302")
-    pub server: Option<String>,
-
-    /// Local port to bind (default: ephemeral)
-    pub local_port: Option<u16>,
-}
-
-/// Result for `stun.get_public_address`
-#[derive(Debug, Clone, Serialize)]
-pub struct StunGetPublicAddressResult {
-    /// Public IP:port as seen by STUN server
-    pub public_address: String,
-
-    /// Local bound address
-    pub local_address: String,
-
-    /// STUN server used
-    pub server: String,
-
-    /// NAT type detected (if determinable)
-    pub nat_type: Option<String>,
-}
-
-/// Parameters for `stun.bind`
-#[derive(Debug, Clone, Deserialize)]
-pub struct StunBindParams {
-    /// STUN server
-    pub server: String,
-
-    /// Local port to bind
-    pub local_port: u16,
-
-    /// Keep-alive interval (seconds)
-    pub keepalive_secs: Option<u64>,
-}
-
-/// Result for `stun.bind`
-#[derive(Debug, Clone, Serialize)]
-pub struct StunBindResult {
-    /// Binding ID for reference
-    pub binding_id: String,
-
-    /// Mapped address
-    pub mapped_address: String,
-
-    /// Binding lifetime (seconds)
-    pub lifetime_secs: u64,
-}
-
-/// Active STUN binding
-#[derive(Debug, Clone)]
-pub struct StunBinding {
-    /// Binding ID
-    pub binding_id: String,
-
-    /// STUN server
-    pub server: String,
-
-    /// Local port
-    pub local_port: u16,
-
-    /// Mapped address from STUN
-    pub mapped_address: SocketAddr,
-
-    /// Binding lifetime (seconds)
-    pub lifetime_secs: u64,
-
-    /// When binding was created
-    pub created_at: std::time::SystemTime,
-}
-
-// ============================================================================
-// Tests
-// ============================================================================
-
 #[cfg(test)]
 mod tests {
     use super::*;
-    use serde_json::json;
-
+    
     #[tokio::test]
-    async fn test_stun_handler_creation() {
+    async fn test_handler_creation() {
         let handler = StunHandler::new();
-        assert!(handler.bindings.read().await.is_empty());
-
-        let handler = StunHandler::with_timeout(Duration::from_secs(10));
-        assert!(handler.bindings.read().await.is_empty());
+        
+        // Should not be running initially
+        let status = handler.handle_status(json!({})).await.unwrap();
+        assert_eq!(status["running"], false);
     }
-
+    
     #[tokio::test]
-    async fn test_handle_get_public_address_params_parsing() {
+    async fn test_status_when_not_running() {
         let handler = StunHandler::new();
-
-        // Valid params with server
-        let params = json!({"server": "stun.example.com:3478", "local_port": 1234});
-        let parsed: StunGetPublicAddressParams =
-            serde_json::from_value(params).expect("Should parse");
-        assert_eq!(parsed.server, Some("stun.example.com:3478".to_string()));
-        assert_eq!(parsed.local_port, Some(1234));
-
-        // Valid params without server (should use default)
-        let params = json!({});
-        let parsed: StunGetPublicAddressParams =
-            serde_json::from_value(params).expect("Should parse");
-        assert_eq!(parsed.server, None); // Will use default in handler
-        assert_eq!(parsed.local_port, None);
+        let result = handler.handle_status(json!({})).await.unwrap();
+        
+        assert_eq!(result["running"], false);
+        assert!(result["comment"].as_str().unwrap().contains("not running"));
     }
-
+    
     #[tokio::test]
-    async fn test_handle_bind_params_parsing() {
+    async fn test_stop_when_not_running() {
         let handler = StunHandler::new();
-
-        // Valid params
-        let params = json!({
-            "server": "stun.example.com:3478",
-            "local_port": 5000,
-            "keepalive_secs": 600
-        });
-        let parsed: StunBindParams = serde_json::from_value(params).expect("Should parse");
-        assert_eq!(parsed.server, "stun.example.com:3478");
-        assert_eq!(parsed.local_port, 5000);
-        assert_eq!(parsed.keepalive_secs, Some(600));
-
-        // Valid params without keepalive
-        let params = json!({"server": "stun.example.com:3478", "local_port": 5000});
-        let parsed: StunBindParams = serde_json::from_value(params).expect("Should parse");
-        assert_eq!(parsed.keepalive_secs, None); // Will use default in handler
+        let result = handler.handle_stop(json!({})).await;
+        
+        assert!(result.is_err());
+        assert!(result.unwrap_err().contains("not running"));
     }
-
+    
     #[tokio::test]
-    async fn test_list_bindings_empty() {
+    async fn test_serve_with_default_address() {
         let handler = StunHandler::new();
-        let bindings = handler.list_bindings().await;
-        assert!(bindings.is_empty());
+        
+        // Start server with default params
+        let result = handler.handle_serve(json!({})).await.unwrap();
+        
+        assert_eq!(result["status"], "started");
+        assert!(result["bind_addr"].as_str().unwrap().contains("3478"));
+        
+        // Cleanup
+        let _ = handler.handle_stop(json!({})).await;
     }
-
+    
     #[tokio::test]
-    #[ignore] // Requires network access to public STUN server
-    async fn test_handle_get_public_address_live() {
+    async fn test_serve_with_custom_address() {
         let handler = StunHandler::new();
-        let params = json!({"server": "stun.nextcloud.com:3478"});
-
-        let result = handler.handle_get_public_address(params).await;
-
-        match result {
-            Ok(addr_result) => {
-                println!("Discovered public address: {}", addr_result.public_address);
-                assert!(!addr_result.public_address.is_empty());
-                assert_eq!(addr_result.server, "stun.nextcloud.com:3478");
-            }
-            Err(e) => {
-                eprintln!("STUN request failed (expected if no network): {}", e);
-            }
-        }
+        
+        // Use random port to avoid conflicts
+        let result = handler.handle_serve(json!({
+            "bind_addr": "127.0.0.1:0"
+        })).await.unwrap();
+        
+        assert_eq!(result["status"], "started");
+        
+        // Cleanup
+        let _ = handler.handle_stop(json!({})).await;
     }
-
+    
     #[tokio::test]
-    #[ignore] // Requires network access
-    async fn test_handle_bind_live() {
+    async fn test_serve_twice_fails() {
         let handler = StunHandler::new();
-        let params = json!({
-            "server": "stun.nextcloud.com:3478",
-            "local_port": 0,
-            "keepalive_secs": 300
-        });
-
-        let result = handler.handle_bind(params).await;
-
-        match result {
-            Ok(bind_result) => {
-                println!("Created binding: {}", bind_result.binding_id);
-                assert!(!bind_result.binding_id.is_empty());
-                assert!(bind_result.binding_id.starts_with("stun-"));
-                assert_eq!(bind_result.lifetime_secs, 300);
-
-                // Verify binding is stored
-                let bindings = handler.list_bindings().await;
-                assert_eq!(bindings.len(), 1);
-            }
-            Err(e) => {
-                eprintln!("STUN bind failed (expected if no network): {}", e);
-            }
-        }
+        
+        // Start server
+        let _ = handler.handle_serve(json!({
+            "bind_addr": "127.0.0.1:0"
+        })).await.unwrap();
+        
+        // Try to start again - should fail
+        let result = handler.handle_serve(json!({
+            "bind_addr": "127.0.0.1:0"
+        })).await;
+        
+        assert!(result.is_err());
+        assert!(result.unwrap_err().contains("already running"));
+        
+        // Cleanup
+        let _ = handler.handle_stop(json!({})).await;
+    }
+    
+    #[tokio::test]
+    async fn test_status_when_running() {
+        let handler = StunHandler::new();
+        
+        // Start server
+        let _ = handler.handle_serve(json!({
+            "bind_addr": "127.0.0.1:0"
+        })).await.unwrap();
+        
+        // Check status
+        let status = handler.handle_status(json!({})).await.unwrap();
+        
+        assert_eq!(status["running"], true);
+        assert!(status["bind_addr"].is_string());
+        assert!(status["uptime_seconds"].is_number());
+        
+        // Cleanup
+        let _ = handler.handle_stop(json!({})).await;
+    }
+    
+    #[tokio::test]
+    async fn test_stop_after_start() {
+        let handler = StunHandler::new();
+        
+        // Start server
+        let _ = handler.handle_serve(json!({
+            "bind_addr": "127.0.0.1:0"
+        })).await.unwrap();
+        
+        // Stop server
+        let result = handler.handle_stop(json!({})).await.unwrap();
+        
+        assert_eq!(result["status"], "stopped");
+        assert!(result["uptime_seconds"].is_number());
+        assert!(result["bind_addr"].is_string());
+        
+        // Should not be running anymore
+        let status = handler.handle_status(json!({})).await.unwrap();
+        assert_eq!(status["running"], false);
+    }
+    
+    #[tokio::test]
+    async fn test_invalid_bind_address() {
+        let handler = StunHandler::new();
+        
+        let result = handler.handle_serve(json!({
+            "bind_addr": "invalid_address"
+        })).await;
+        
+        assert!(result.is_err());
+        assert!(result.unwrap_err().contains("Invalid bind address"));
     }
 }

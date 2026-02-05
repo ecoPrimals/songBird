@@ -42,9 +42,11 @@
 pub mod client;
 pub mod error;
 pub mod message;
+pub mod server;
 pub mod types;
 
 // Re-exports
 pub use client::StunClient;
 pub use error::{StunError, StunResult};
+pub use server::{StunServer, StunServerStats};
 pub use types::{NatType, PublicEndpoint};
