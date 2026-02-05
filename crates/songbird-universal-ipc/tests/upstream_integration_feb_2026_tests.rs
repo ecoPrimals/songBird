@@ -10,6 +10,8 @@
 //! - E2E: Full request/response flow
 //! - Chaos: Concurrent connections, rapid requests
 //! - Fault: Invalid JSON, missing params, error paths
+//!
+//! Note: Environment variable tests use a mutex to prevent parallel execution interference.
 
 use serde_json::json;
 use songbird_universal_ipc::endpoint::NativeEndpoint;
@@ -17,8 +19,11 @@ use songbird_universal_ipc::registry::ServiceRegistry;
 use songbird_universal_ipc::service::IpcServiceHandler;
 use songbird_universal_ipc::tower_atomic::JsonRpcHandler;
 use std::path::PathBuf;
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 use tokio::sync::RwLock;
+
+// Global mutex to serialize environment variable tests
+static ENV_TEST_LOCK: Mutex<()> = Mutex::new(());
 
 // ============================================================================
 // UNIT TESTS - Standard Methods
@@ -97,6 +102,9 @@ async fn test_unit_rpc_discover_method() {
 
 #[tokio::test]
 async fn test_unit_family_id_from_environment() {
+    // Serialize with other env tests
+    let _guard = ENV_TEST_LOCK.lock().unwrap();
+    
     // Clean slate - remove all family ID vars first
     std::env::remove_var("FAMILY_ID");
     std::env::remove_var("SONGBIRD_FAMILY_ID");
@@ -515,8 +523,8 @@ async fn test_regression_rpc_methods() {
 
 #[tokio::test]
 async fn test_env_family_id_priority() {
-    // SCOPED TEST: Use unique env var names to avoid pollution
-    // This test verifies the priority order logic without global state conflicts
+    // Serialize with other env tests
+    let _guard = ENV_TEST_LOCK.lock().unwrap();
     
     // Clean slate first
     std::env::remove_var("FAMILY_ID");
@@ -551,6 +559,9 @@ async fn test_env_family_id_priority() {
 
 #[tokio::test]
 async fn test_env_family_id_default() {
+    // Serialize with other env tests
+    let _guard = ENV_TEST_LOCK.lock().unwrap();
+    
     // Clear all family ID env vars
     std::env::remove_var("FAMILY_ID");
     std::env::remove_var("SONGBIRD_FAMILY_ID");
@@ -561,4 +572,9 @@ async fn test_env_family_id_default() {
     
     let result = handler.handle("identity", json!({})).await.unwrap();
     assert_eq!(result["family_id"], "nat0", "Should default to 'nat0'");
+    
+    // Clean up (restore any vars that might have been set before test)
+    std::env::remove_var("FAMILY_ID");
+    std::env::remove_var("SONGBIRD_FAMILY_ID");
+    std::env::remove_var("NODE_FAMILY_ID");
 }
