@@ -14,7 +14,7 @@ mod tests {
         AnonymousDiscoveryBroadcaster, AnonymousDiscoveryListener, AnonymousDiscoveryMessage,
         TransportEndpointMessage,
     };
-    use songbird_discovery::birdsong_integration::{
+    use songbird_discovery::birdsong::{
         BirdSongConfig, BirdSongEncryption, BirdSongProcessor,
     };
     use songbird_discovery::IdentityAttestation;
