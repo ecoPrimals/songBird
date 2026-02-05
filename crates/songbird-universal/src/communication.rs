@@ -2,7 +2,6 @@
 
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
-// use songbird_config::AuthMethod;  // TEMPORARILY DISABLED
 
 // Temporary AuthMethod definition for testing
 #[derive(Debug, Clone, Serialize, Deserialize)]

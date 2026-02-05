@@ -39,18 +39,8 @@ pub mod backends;
 // Universal factory for creating discovery instances (MODERNIZED)
 pub mod factory;
 
-// Enhanced discovery with federation capabilities (NEW)
-// TEMP DISABLED: Has syntax errors (mismatched delimiters) - needs fixing
-// See: lines 260, 304, 339, 410, 414, 471, 480
-// pub mod enhanced_discovery;
-
-// Existing submodules (already well-organized)
+// Core submodules
 pub mod config;
-// TEMP DISABLED: Depend on enhanced_discovery or have syntax issues
-// pub mod monitoring;
-// pub mod network;
-// pub mod resources;
-// pub mod songbird_discovery;
 pub mod types;
 
 // UNIVERSAL DISCOVERY ARCHITECTURE:

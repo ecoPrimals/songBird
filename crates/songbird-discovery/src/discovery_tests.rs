@@ -8,7 +8,6 @@ use crate::{discovery::core::*)
     ServiceEvent, ServiceInfo, ServiceQuery,
 };
 use songbird_types::EvolvedResult;
-// use songbird_universal::  // TEMPORARILY DISABLED - {ServiceInfo as UniversalServiceInfo, UniversalHealthStatus};
 use std::collections::HashMap;
 use tokio_test;
 

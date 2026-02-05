@@ -5,7 +5,6 @@
 use crate::ServiceEvent;
 use futures_util::StreamExt;
 use songbird_types::EvolvedResult;
-// use songbird_universal::  // TEMPORARILY DISABLED - ServiceInfo;
 use tokio::sync::broadcast;
 use tracing::debug;
 
