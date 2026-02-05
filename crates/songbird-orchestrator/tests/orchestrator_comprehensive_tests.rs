@@ -14,6 +14,7 @@ use songbird_types::config::CanonicalSongbirdConfig;
 // ============================================================================
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+#[ignore = "Requires security provider (BearDog)"]
 async fn test_orchestrator_creation_default_config() -> Result<()> {
     let config = CanonicalSongbirdConfig::default();
     let orchestrator = SongbirdOrchestrator::new(config).await?;
@@ -22,6 +23,7 @@ async fn test_orchestrator_creation_default_config() -> Result<()> {
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+#[ignore = "Requires security provider (BearDog)"]
 async fn test_orchestrator_creation_custom_environment() -> Result<()> {
     let mut config = CanonicalSongbirdConfig::default();
     config.environment.name = "test-env".to_string();
@@ -96,6 +98,7 @@ async fn test_lifecycle_multiple_cycles() -> Result<()> {
 // ============================================================================
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+#[ignore = "Requires security provider (BearDog)"]
 async fn test_get_status_basic() -> Result<()> {
     let config = CanonicalSongbirdConfig::default();
     let orchestrator = SongbirdOrchestrator::new(config).await?;
@@ -206,6 +209,7 @@ fn test_config_debug() {
 // ============================================================================
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+#[ignore = "Requires security provider (BearDog)"]
 async fn test_rapid_creation() -> Result<()> {
     // Rapidly create multiple orchestrators (no sleeps, truly concurrent)
     for _ in 0..5 {
@@ -231,6 +235,7 @@ async fn test_rapid_lifecycle_cycles() -> Result<()> {
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+#[ignore = "Requires security provider (BearDog)"]
 async fn test_multiple_status_checks() -> Result<()> {
     let config = CanonicalSongbirdConfig::default();
     let orchestrator = SongbirdOrchestrator::new(config).await?;
@@ -278,6 +283,7 @@ async fn test_orchestrator_services_accessible() -> Result<()> {
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+#[ignore = "Requires security provider (BearDog)"]
 async fn test_orchestrator_environment_check() -> Result<()> {
     let config = CanonicalSongbirdConfig::default();
     let orchestrator = SongbirdOrchestrator::new(config).await?;

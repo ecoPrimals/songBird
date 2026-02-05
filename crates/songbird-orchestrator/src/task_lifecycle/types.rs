@@ -12,8 +12,11 @@ use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 
 /// Task status
+///
+/// NOTE: Using default (externally tagged) serde representation for bincode compatibility.
+/// Internally tagged enums (`#[serde(tag = "...")]`) require `deserialize_any` which
+/// bincode does not support. JSON format is `{"Queued": {}}` or `{"Running": {"started_at": ...}}`.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(tag = "status", rename_all = "lowercase")]
 pub enum TaskStatus {
     /// Task is queued, waiting for resources
     Queued,

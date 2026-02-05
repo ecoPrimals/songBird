@@ -1,8 +1,14 @@
 // BiomeOS Socket Fault Injection Tests
 // January 16, 2026
+// Updated: February 5, 2026 (PRIMAL_DEPLOYMENT_STANDARD compliance)
 //
 // Fault injection tests for BiomeOS socket integration.
 // Tests specific failure scenarios and validates recovery/error handling.
+//
+// PRIMAL_DEPLOYMENT_STANDARD changes (Feb 5, 2026):
+// - Socket names are now {primal}.sock (no family suffix)
+// - XDG_RUNTIME_DIR/biomeos/ is the preferred location
+// - Family ID is NOT included in socket path
 
 use songbird_orchestrator::ipc::UnixSocketServer;
 use std::env;
@@ -24,7 +30,8 @@ fn fault_missing_all_env_vars() {
     let path = UnixSocketServer::socket_path_from_env();
     let family_id = UnixSocketServer::get_family_id();
 
-    assert_eq!(path, PathBuf::from("/tmp/songbird-default.sock"));
+    // PRIMAL_DEPLOYMENT_STANDARD: Socket is {primal}.sock, uses XDG or /tmp fallback
+    assert!(path.to_str().unwrap().ends_with("songbird.sock"));
     assert_eq!(family_id, "default");
 
     // Cleanup
@@ -68,15 +75,16 @@ fn fault_invalid_family_id_special_chars() {
         ("", "/tmp/songbird-.sock"), // Empty string
     ];
 
-    for (family_id, expected_path) in test_cases {
+    for (family_id, _expected_path) in test_cases {
         clear_all_env_vars();
         env::set_var("BIOMEOS_FAMILY_ID", family_id);
 
         let path = UnixSocketServer::socket_path_from_env();
         let derived_family = UnixSocketServer::get_family_id();
 
-        // Should not crash, should construct path with provided ID
-        assert_eq!(path, PathBuf::from(expected_path));
+        // PRIMAL_DEPLOYMENT_STANDARD: Should not crash, socket is always {primal}.sock
+        // Family ID is not included in socket path
+        assert!(path.to_str().unwrap().ends_with("songbird.sock"));
         assert_eq!(derived_family, family_id);
     }
 
@@ -100,16 +108,17 @@ fn fault_empty_string_env_vars() {
     // Empty string is treated as "set to empty", so it's used directly
     assert_eq!(path, PathBuf::from(""));
 
-    // Test 2: Empty family ID (used as-is in path construction)
+    // Test 2: Empty family ID (should work, PRIMAL_DEPLOYMENT_STANDARD uses {primal}.sock)
     clear_all_env_vars();
     env::set_var("BIOMEOS_FAMILY_ID", "");
 
     let family_id = UnixSocketServer::get_family_id();
     let path = UnixSocketServer::socket_path_from_env();
 
-    // Empty family ID is used as-is in path construction
+    // Empty family ID is accepted (but not used in path)
     assert_eq!(family_id, "");
-    assert_eq!(path, PathBuf::from("/tmp/songbird-.sock"));
+    // PRIMAL_DEPLOYMENT_STANDARD: Socket is always {primal}.sock (no family suffix)
+    assert!(path.to_str().unwrap().ends_with("songbird.sock"));
 
     restore_env_state(original);
 }
@@ -256,24 +265,29 @@ fn fault_concurrent_env_changes() {
 /// Fault Test: Family ID without socket path override
 ///
 /// Tests default path construction with various family IDs.
+/// PRIMAL_DEPLOYMENT_STANDARD: Family ID is NOT included in socket path.
 #[test]
 fn fault_family_id_path_construction() {
     let original = save_env_state();
 
     let test_cases = vec![
-        ("nat0", "/tmp/songbird-nat0.sock"),
-        ("production", "/tmp/songbird-production.sock"),
-        ("dev-test", "/tmp/songbird-dev-test.sock"),
-        ("123", "/tmp/songbird-123.sock"),
-        ("_underscore_", "/tmp/songbird-_underscore_.sock"),
+        "nat0",
+        "production",
+        "dev-test",
+        "123",
+        "_underscore_",
     ];
 
-    for (family_id, expected_path) in test_cases {
+    for family_id in test_cases {
         clear_all_env_vars();
         env::set_var("BIOMEOS_FAMILY_ID", family_id);
 
         let path = UnixSocketServer::socket_path_from_env();
-        assert_eq!(path, PathBuf::from(expected_path));
+        let derived_family = UnixSocketServer::get_family_id();
+
+        // PRIMAL_DEPLOYMENT_STANDARD: Socket is {primal}.sock, family_id is separate
+        assert!(path.to_str().unwrap().ends_with("songbird.sock"));
+        assert_eq!(derived_family, family_id);
     }
 
     restore_env_state(original);

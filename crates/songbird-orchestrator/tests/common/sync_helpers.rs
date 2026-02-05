@@ -242,20 +242,23 @@ mod tests {
 
     #[tokio::test]
     async fn test_poll_until_some_eventual() {
-        let value = Arc::new(tokio::sync::RwLock::new(None));
+        use std::sync::atomic::{AtomicI32, Ordering};
+        
+        // Use AtomicI32 instead of RwLock to avoid blocking_read() in async context
+        let value = Arc::new(AtomicI32::new(-1)); // -1 = None
         let value_clone = value.clone();
 
         // Spawn task that sets value
         tokio::spawn(async move {
             tokio::time::sleep(Duration::from_millis(10)).await;
-            *value_clone.write().await = Some(42);
+            value_clone.store(42, Ordering::SeqCst);
         });
 
         // Poll should get value
         let result = poll_until_some(
             || {
-                let v = value.blocking_read();
-                *v
+                let v = value.load(Ordering::SeqCst);
+                if v >= 0 { Some(v) } else { None }
             },
             Duration::from_secs(1),
         )

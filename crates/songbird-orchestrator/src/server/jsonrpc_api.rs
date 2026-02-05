@@ -198,6 +198,11 @@ async fn handle_jsonrpc_request(
         "songbird.health" => handle_health(&state).await,
         "songbird.version" => handle_version().await,
 
+        // biomeOS standard methods (bare names, no prefix)
+        "health" => handle_health_standard(&state).await,
+        "identity" => handle_identity().await,
+        "network.beacon_exchange" => handle_beacon_exchange(request.params).await,
+
         // Unknown method
         _ => {
             warn!("⚠️  Unknown JSON-RPC method: {}", request.method);
@@ -393,6 +398,93 @@ async fn handle_version() -> Result<Value, JsonRpcError> {
         "version": env!("CARGO_PKG_VERSION"),
         "name": "Songbird Universal Orchestrator",
         "architecture": "100% Rust Core + Universal Compatibility"
+    }))
+}
+
+// ============================================================================
+// biomeOS Standard Methods (bare names, no prefix)
+// ============================================================================
+
+/// health - biomeOS-standard health check
+///
+/// Returns health status with uptime and BearDog connectivity.
+/// This is the bare `health` method as required by biomeOS Neural API.
+async fn handle_health_standard(state: &JsonRpcState) -> Result<Value, JsonRpcError> {
+    let start_time = state.start_time.read().await;
+    let uptime_seconds = start_time.elapsed().as_secs();
+
+    // Check BearDog connectivity (best effort)
+    let beardog_connected = {
+        let beardog_socket = std::env::var("BEARDOG_SOCKET")
+            .or_else(|_| std::env::var("CRYPTO_PROVIDER_SOCKET"))
+            .unwrap_or_else(|_| "/tmp/biomeos/beardog.sock".to_string());
+        std::path::Path::new(&beardog_socket).exists()
+    };
+
+    Ok(serde_json::json!({
+        "status": "healthy",
+        "uptime_seconds": uptime_seconds,
+        "beardog_connected": beardog_connected,
+        "version": env!("CARGO_PKG_VERSION")
+    }))
+}
+
+/// identity - Return Songbird's identity and capabilities
+///
+/// Required by biomeOS Neural API for primal identification.
+async fn handle_identity() -> Result<Value, JsonRpcError> {
+    // Get family ID from environment or use default
+    let family_id = std::env::var("SONGBIRD_FAMILY_ID").unwrap_or_else(|_| "nat0".to_string());
+
+    // Songbird's capabilities for biomeOS integration
+    let capabilities = vec![
+        "network.broadcast",
+        "network.listen",
+        "network.beacon_exchange",
+        "encrypt_discovery",
+        "decrypt_discovery",
+        "http.post",
+        "http.get",
+        "http.request",
+        "discovery.announce",
+        "discovery.query",
+        "security.verify",
+    ];
+
+    Ok(serde_json::json!({
+        "primal": "songbird",
+        "version": env!("CARGO_PKG_VERSION"),
+        "family_id": family_id,
+        "capabilities": capabilities
+    }))
+}
+
+/// network.beacon_exchange - Exchange encrypted beacons with peers
+///
+/// Enables secure discovery between family members across networks.
+async fn handle_beacon_exchange(params: Option<Value>) -> Result<Value, JsonRpcError> {
+    let params = params.ok_or_else(|| JsonRpcError::invalid_params("Missing params"))?;
+
+    // Extract beacon from params
+    let beacon = params
+        .get("beacon")
+        .ok_or_else(|| JsonRpcError::invalid_params("Missing 'beacon' parameter"))?;
+
+    // Extract optional peer info
+    let peer_address = params.get("peer_address").and_then(|v| v.as_str());
+
+    debug!("📡 Beacon exchange request received");
+    if let Some(addr) = peer_address {
+        debug!("   Peer: {}", addr);
+    }
+
+    // For now, acknowledge receipt - full implementation requires ConnectionManager
+    // which is not available in HTTP context without significant refactoring
+    Ok(serde_json::json!({
+        "status": "received",
+        "beacon_size": beacon.to_string().len(),
+        "peer_address": peer_address,
+        "message": "Beacon received. Full peer discovery available via IPC socket."
     }))
 }
 

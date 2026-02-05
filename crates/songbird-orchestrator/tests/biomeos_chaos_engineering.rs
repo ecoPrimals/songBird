@@ -1,8 +1,17 @@
 // BiomeOS Socket Chaos Engineering Tests
 // January 16, 2026
+// Updated: February 5, 2026 (PRIMAL_DEPLOYMENT_STANDARD compliance)
 //
 // Chaos tests for BiomeOS socket integration.
 // Tests system behavior under random failures, disruptions, and edge cases.
+//
+// NOTE: These tests modify global environment variables and should be run with:
+//   cargo test --test biomeos_chaos_engineering -- --test-threads=1
+//
+// PRIMAL_DEPLOYMENT_STANDARD changes (Feb 5, 2026):
+// - Socket names are now {primal}.sock (no family suffix)
+// - XDG_RUNTIME_DIR/biomeos/ is the preferred location
+// - Family ID is NOT included in socket path
 
 use rand::Rng;
 use songbird_orchestrator::ipc::UnixSocketServer;
@@ -128,12 +137,13 @@ fn chaos_random_priority_conflicts() {
         assert!(!family.is_empty());
 
         // Verify priority order is respected
-        if env::var("SONGBIRD_ORCHESTRATOR_SOCKET").is_ok() {
-            assert!(path.to_str().unwrap().contains("SONGBIRD_ORCHESTRATOR_SOCKET"));
+        if let Ok(expected) = env::var("SONGBIRD_ORCHESTRATOR_SOCKET") {
+            // Highest priority socket env var should be used directly
+            assert_eq!(path, PathBuf::from(&expected), "SONGBIRD_ORCHESTRATOR_SOCKET should be used when set");
         }
 
-        if env::var("SONGBIRD_ORCHESTRATOR_FAMILY_ID").is_ok() {
-            assert_eq!(family, env::var("SONGBIRD_ORCHESTRATOR_FAMILY_ID").unwrap());
+        if let Ok(expected) = env::var("SONGBIRD_ORCHESTRATOR_FAMILY_ID") {
+            assert_eq!(family, expected, "SONGBIRD_ORCHESTRATOR_FAMILY_ID should have highest priority");
         }
     }
 
@@ -221,9 +231,11 @@ fn chaos_family_id_formats() {
         let derived_family = UnixSocketServer::get_family_id();
         let derived_path = UnixSocketServer::socket_path_from_env();
 
-        // Should accept various formats
+        // Should accept various formats for family ID
         assert_eq!(derived_family, family_id);
-        assert!(derived_path.to_str().unwrap().contains(family_id));
+        // PRIMAL_DEPLOYMENT_STANDARD: Socket path is {primal}.sock (no family suffix)
+        // Family ID is NOT included in socket path per new standard
+        assert!(derived_path.to_str().unwrap().ends_with("songbird.sock"));
     }
 
     restore_env_state(original);
@@ -254,7 +266,8 @@ fn chaos_alternating_clear_set() {
             let path = UnixSocketServer::socket_path_from_env();
             let family = UnixSocketServer::get_family_id();
 
-            assert_eq!(path, PathBuf::from("/tmp/songbird-default.sock"));
+            // PRIMAL_DEPLOYMENT_STANDARD: Uses XDG or /tmp fallback, socket is songbird.sock
+            assert!(path.to_str().unwrap().ends_with("songbird.sock"));
             assert_eq!(family, "default");
         }
     }
@@ -417,6 +430,7 @@ fn clear_all_env_vars() {
     env::remove_var("SONGBIRD_ORCHESTRATOR_SOCKET");
     env::remove_var("SONGBIRD_SOCKET");
     env::remove_var("BIOMEOS_SOCKET_PATH");
+    env::remove_var("BIOMEOS_SOCKET_DIR");
     env::remove_var("SONGBIRD_ORCHESTRATOR_FAMILY_ID");
     env::remove_var("SONGBIRD_ORCHESTRATOR_FAMILY");
     env::remove_var("BIOMEOS_FAMILY_ID");

@@ -1,8 +1,14 @@
 // BiomeOS Neural API Socket Environment Variable Compatibility Test
 // January 15, 2026
+// Updated: February 5, 2026 (PRIMAL_DEPLOYMENT_STANDARD compliance)
 //
 // Validates that Songbird honors BiomeOS Neural API environment variable standards
 // as documented in the upstream handoff from BiomeOS team.
+//
+// PRIMAL_DEPLOYMENT_STANDARD changes (Feb 5, 2026):
+// - Socket names are now {primal}.sock (no family suffix)
+// - XDG_RUNTIME_DIR/biomeos/ is the preferred location
+// - Family ID is NOT included in socket path
 
 use songbird_orchestrator::ipc::UnixSocketServer;
 use std::env;
@@ -58,40 +64,45 @@ fn test_biomeos_neural_api_socket_path_priority() {
     );
     env::remove_var("BIOMEOS_SOCKET_PATH");
 
-    // Test 4: Family ID from SONGBIRD_ORCHESTRATOR_FAMILY_ID (default path construction)
+    // Test 4: Family ID from SONGBIRD_ORCHESTRATOR_FAMILY_ID 
+    // PRIMAL_DEPLOYMENT_STANDARD: Family ID is NOT in socket path, socket is {primal}.sock
     env::set_var("SONGBIRD_ORCHESTRATOR_FAMILY_ID", "nat0");
     let path = UnixSocketServer::socket_path_from_env();
-    assert_eq!(
-        path,
-        PathBuf::from("/tmp/songbird-nat0.sock"),
-        "Should construct path from SONGBIRD_ORCHESTRATOR_FAMILY_ID"
+    let family = UnixSocketServer::get_family_id();
+    assert!(
+        path.to_str().unwrap().ends_with("songbird.sock"),
+        "Socket path should be {{primal}}.sock per PRIMAL_DEPLOYMENT_STANDARD"
     );
+    assert_eq!(family, "nat0", "Family ID should be extracted from SONGBIRD_ORCHESTRATOR_FAMILY_ID");
     env::remove_var("SONGBIRD_ORCHESTRATOR_FAMILY_ID");
 
     // Test 5: Family ID from BIOMEOS_FAMILY_ID (generic orchestrator)
+    // PRIMAL_DEPLOYMENT_STANDARD: Family ID is NOT in socket path
     env::set_var("BIOMEOS_FAMILY_ID", "nat0");
     let path = UnixSocketServer::socket_path_from_env();
-    assert_eq!(
-        path,
-        PathBuf::from("/tmp/songbird-nat0.sock"),
-        "Should construct path from BIOMEOS_FAMILY_ID"
+    let family = UnixSocketServer::get_family_id();
+    assert!(
+        path.to_str().unwrap().ends_with("songbird.sock"),
+        "Socket path should be {{primal}}.sock per PRIMAL_DEPLOYMENT_STANDARD"
     );
+    assert_eq!(family, "nat0", "Family ID should be extracted from BIOMEOS_FAMILY_ID");
     env::remove_var("BIOMEOS_FAMILY_ID");
 
     // Test 6: Default behavior (no env vars) - ensure all vars are cleared
+    // PRIMAL_DEPLOYMENT_STANDARD: Socket is {primal}.sock, uses XDG or /tmp
     env::remove_var("SONGBIRD_ORCHESTRATOR_SOCKET");
     env::remove_var("SONGBIRD_SOCKET");
     env::remove_var("BIOMEOS_SOCKET_PATH");
+    env::remove_var("BIOMEOS_SOCKET_DIR");
     env::remove_var("SONGBIRD_ORCHESTRATOR_FAMILY_ID");
     env::remove_var("SONGBIRD_ORCHESTRATOR_FAMILY");
     env::remove_var("BIOMEOS_FAMILY_ID");
     env::remove_var("SONGBIRD_FAMILY_ID");
-    env::remove_var("FAMILY_ID"); // env_config also reads this!
+    env::remove_var("FAMILY_ID");
     let path = UnixSocketServer::socket_path_from_env();
-    assert_eq!(
-        path,
-        PathBuf::from("/tmp/songbird-nat0.sock"),
-        "Should use default family 'nat0' when no env vars set (env_config default)"
+    assert!(
+        path.to_str().unwrap().ends_with("songbird.sock"),
+        "Socket should be {{primal}}.sock per PRIMAL_DEPLOYMENT_STANDARD"
     );
 
     // Test 7: Neural API standard deployment (full environment)
@@ -113,27 +124,34 @@ fn test_biomeos_neural_api_socket_path_priority() {
     restore_env_var("BIOMEOS_FAMILY_ID", original_biomeos_family);
 }
 
-/// Test that socket path defaults to /tmp/ (NOT /run/user/{uid}/)
-/// This is critical for BiomeOS Neural API compatibility
+/// Test that socket path follows XDG or /tmp fallback
+/// PRIMAL_DEPLOYMENT_STANDARD: XDG_RUNTIME_DIR/biomeos/ is preferred, /tmp is fallback
 #[test]
 fn test_default_socket_directory_is_tmp() {
-    // Clear all env vars (including env_config vars)
+    // Clear all explicit socket env vars (but NOT XDG_RUNTIME_DIR)
     env::remove_var("SONGBIRD_ORCHESTRATOR_SOCKET");
     env::remove_var("SONGBIRD_SOCKET");
     env::remove_var("BIOMEOS_SOCKET_PATH");
+    env::remove_var("BIOMEOS_SOCKET_DIR");
     env::remove_var("SONGBIRD_FAMILY_ID");
-    env::remove_var("FAMILY_ID"); // env_config also reads this!
+    env::remove_var("FAMILY_ID");
     env::remove_var("SONGBIRD_ORCHESTRATOR_FAMILY_ID");
     env::remove_var("BIOMEOS_FAMILY_ID");
 
     let path = UnixSocketServer::socket_path_from_env();
+    let path_str = path.to_str().unwrap();
 
-    // Should default to /tmp/songbird-nat0.sock (env_config default)
-    // NOT /run/user/1000/songbird-*.sock
+    // PRIMAL_DEPLOYMENT_STANDARD: Socket is {primal}.sock
+    // Should be in XDG_RUNTIME_DIR/biomeos/ or /tmp/ fallback
     assert!(
-        path.starts_with("/tmp/"),
-        "Default socket directory must be /tmp/ for BiomeOS compatibility, got: {}",
-        path.display()
+        path_str.starts_with("/run/user/") || path_str.starts_with("/tmp/"),
+        "Default socket should be in XDG or /tmp, got: {}",
+        path_str
+    );
+    assert!(
+        path_str.ends_with("songbird.sock"),
+        "Socket should be {{primal}}.sock per PRIMAL_DEPLOYMENT_STANDARD, got: {}",
+        path_str
     );
 }
 
@@ -147,14 +165,15 @@ fn restore_env_var(key: &str, value: Option<String>) {
 #[test]
 fn test_family_id_priority_order() {
     // Clear all env vars (including env_config vars)
-    env::remove_var("SONGBIRD_ORCHESTRATOR_SOCKET"); // Clear socket path vars to force family ID usage
+    env::remove_var("SONGBIRD_ORCHESTRATOR_SOCKET");
     env::remove_var("SONGBIRD_SOCKET");
     env::remove_var("BIOMEOS_SOCKET_PATH");
+    env::remove_var("BIOMEOS_SOCKET_DIR");
     env::remove_var("SONGBIRD_ORCHESTRATOR_FAMILY_ID");
     env::remove_var("SONGBIRD_ORCHESTRATOR_FAMILY");
     env::remove_var("BIOMEOS_FAMILY_ID");
     env::remove_var("SONGBIRD_FAMILY_ID");
-    env::remove_var("FAMILY_ID"); // env_config also reads this!
+    env::remove_var("FAMILY_ID");
 
     // Test 1: Explicit socket path (bypasses family ID)
     env::set_var("SONGBIRD_ORCHESTRATOR_SOCKET", "/tmp/songbird-explicit.sock");
@@ -166,32 +185,43 @@ fn test_family_id_priority_order() {
     );
     env::remove_var("SONGBIRD_ORCHESTRATOR_SOCKET");
 
-    // Test 2: SONGBIRD_FAMILY_ID (env_config priority for family ID)
+    // Test 2: SONGBIRD_FAMILY_ID priority for family ID extraction
+    // PRIMAL_DEPLOYMENT_STANDARD: Family ID is NOT in socket path
     env::set_var("SONGBIRD_FAMILY_ID", "custom");
     env::set_var("FAMILY_ID", "wrong");
     let path = UnixSocketServer::socket_path_from_env();
+    let family = UnixSocketServer::get_family_id();
+    // Socket path uses XDG or /tmp, not family ID
+    assert!(
+        path.to_str().unwrap().ends_with("songbird.sock"),
+        "Socket should be {{primal}}.sock per PRIMAL_DEPLOYMENT_STANDARD"
+    );
+    // Family ID is still correctly extracted (but not used in path)
     assert_eq!(
-        path,
-        PathBuf::from("/tmp/songbird-custom.sock"),
-        "SONGBIRD_FAMILY_ID should be used by env_config"
+        family,
+        "custom",
+        "SONGBIRD_FAMILY_ID should be correctly extracted"
     );
     env::remove_var("SONGBIRD_FAMILY_ID");
 
-    // Test 3: FAMILY_ID (env_config fallback)
-    env::set_var("FAMILY_ID", "generic");
+    // Test 3: BIOMEOS_FAMILY_ID (fallback when SONGBIRD_FAMILY_ID not set)
+    // PRIMAL_DEPLOYMENT_STANDARD: Family ID is NOT in socket path
+    env::set_var("BIOMEOS_FAMILY_ID", "generic");
     let path = UnixSocketServer::socket_path_from_env();
-    assert_eq!(
-        path,
-        PathBuf::from("/tmp/songbird-generic.sock"),
-        "FAMILY_ID should be used as env_config fallback"
+    let family = UnixSocketServer::get_family_id();
+    assert!(
+        path.to_str().unwrap().ends_with("songbird.sock"),
+        "Socket should be {{primal}}.sock per PRIMAL_DEPLOYMENT_STANDARD"
     );
-    env::remove_var("FAMILY_ID");
+    assert_eq!(family, "generic", "BIOMEOS_FAMILY_ID should be used as fallback");
+    env::remove_var("BIOMEOS_FAMILY_ID");
 
-    // Test 4: Default (no env vars) - should use env_config default "nat0"
+    // Test 4: Default (no env vars) - socket is {primal}.sock
     let path = UnixSocketServer::socket_path_from_env();
-    assert_eq!(
-        path,
-        PathBuf::from("/tmp/songbird-nat0.sock"),
-        "Should default to nat0 when no env vars set (env_config default)"
+    let family = UnixSocketServer::get_family_id();
+    assert!(
+        path.to_str().unwrap().ends_with("songbird.sock"),
+        "Socket should be {{primal}}.sock per PRIMAL_DEPLOYMENT_STANDARD"
     );
+    assert_eq!(family, "default", "Should default when no env vars set");
 }

@@ -269,13 +269,14 @@ async fn test_fault_provider_after_tokio_drop() {
 
 #[tokio::test]
 async fn test_fault_discovery_with_invalid_env() {
-    // Set invalid environment variable
-    std::env::set_var("CRYPTO_PROVIDER_SOCKET", "\0invalid\0path");
+    // Set invalid environment variable (paths that are clearly invalid)
+    // Note: NUL bytes are not allowed in environment variable values on any platform
+    std::env::set_var("CRYPTO_PROVIDER_SOCKET", "///invalid///path///with///too///many///slashes");
 
     let result = discover_crypto_provider().await;
 
     std::env::remove_var("CRYPTO_PROVIDER_SOCKET");
 
-    // Should handle invalid paths gracefully
+    // Should handle invalid paths gracefully (will fail to connect, but won't panic)
     assert!(result.is_ok() || result.is_err());
 }

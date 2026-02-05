@@ -434,7 +434,10 @@ mod tests {
     use crate::task_lifecycle::types::{Priority, ResourceRequirements};
 
     async fn create_test_manager() -> Result<TaskLifecycleManager> {
-        TaskLifecycleManager::new("sqlite::memory:").await
+        // Use a unique temp directory for each test to avoid data persistence
+        let temp_dir = std::env::temp_dir()
+            .join(format!("songbird-test-{}", uuid::Uuid::new_v4()));
+        TaskLifecycleManager::new(temp_dir.to_str().unwrap()).await
     }
 
     #[tokio::test]

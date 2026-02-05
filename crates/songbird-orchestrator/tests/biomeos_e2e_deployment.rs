@@ -144,12 +144,14 @@ async fn test_fallback_to_defaults() {
     let derived_path = UnixSocketServer::socket_path_from_env();
     let family_id = UnixSocketServer::get_family_id();
 
-    // Should default to /tmp/songbird-default.sock
-    assert_eq!(derived_path, PathBuf::from("/tmp/songbird-default.sock"));
+    // PRIMAL_DEPLOYMENT_STANDARD: Socket is {primal}.sock (no family suffix)
+    // Path will be XDG-compliant or /tmp fallback
+    assert!(derived_path.to_str().unwrap().ends_with("songbird.sock"));
     assert_eq!(family_id, "default");
 
-    // Verify path is in /tmp (not /run/user/*)
-    assert!(derived_path.starts_with("/tmp"));
+    // Verify path is in /run/user (XDG) or /tmp (fallback)
+    let path_str = derived_path.to_str().unwrap();
+    assert!(path_str.starts_with("/run/user/") || path_str.starts_with("/tmp/"));
 
     // Cleanup
     restore_env_state(original_vars);
@@ -242,16 +244,22 @@ async fn test_path_construction_from_family_id() {
     env::remove_var("SONGBIRD_ORCHESTRATOR_SOCKET");
     env::remove_var("SONGBIRD_SOCKET");
     env::remove_var("BIOMEOS_SOCKET_PATH");
+    env::remove_var("BIOMEOS_SOCKET_DIR");
 
     // Set only family ID
     env::set_var("BIOMEOS_FAMILY_ID", "test-family");
 
     let derived_path = UnixSocketServer::socket_path_from_env();
+    let family_id = UnixSocketServer::get_family_id();
 
-    // Should construct: /tmp/songbird-{family_id}.sock
-    assert_eq!(derived_path, PathBuf::from("/tmp/songbird-test-family.sock"));
-    assert!(derived_path.starts_with("/tmp"));
-    assert!(derived_path.to_str().unwrap().contains("test-family"));
+    // PRIMAL_DEPLOYMENT_STANDARD: Socket is {primal}.sock (no family suffix)
+    // Family ID is separate from socket path
+    assert!(derived_path.to_str().unwrap().ends_with("songbird.sock"));
+    assert_eq!(family_id, "test-family");
+    
+    // Path should be XDG-compliant or /tmp fallback (not containing family ID)
+    let path_str = derived_path.to_str().unwrap();
+    assert!(path_str.starts_with("/run/user/") || path_str.starts_with("/tmp/"));
 
     // Cleanup
     restore_env_state(original_vars);

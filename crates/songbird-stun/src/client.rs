@@ -56,19 +56,36 @@ impl StunClient {
     pub async fn discover_public_address(&self, stun_server: &str) -> StunResult<SocketAddr> {
         info!("🔍 Discovering public address via STUN: {}", stun_server);
 
-        // Resolve STUN server address
-        let server_addr = tokio::net::lookup_host(stun_server)
+        // Resolve STUN server address - prefer IPv4 for broader NAT compatibility
+        let all_addrs: Vec<SocketAddr> = tokio::net::lookup_host(stun_server)
             .await
             .map_err(|e| StunError::Network(format!("Failed to resolve STUN server: {}", e)))?
-            .next()
+            .collect();
+
+        if all_addrs.is_empty() {
+            return Err(StunError::Network(format!("No addresses found for: {}", stun_server)));
+        }
+
+        // Prefer IPv4 addresses for better NAT compatibility
+        let server_addr = all_addrs
+            .iter()
+            .find(|a| a.is_ipv4())
+            .or_else(|| all_addrs.first())
+            .copied()
             .ok_or_else(|| {
-                StunError::Network(format!("No addresses found for: {}", stun_server))
+                StunError::Network(format!("No usable addresses found for: {}", stun_server))
             })?;
 
-        debug!("  Resolved STUN server: {}", server_addr);
+        debug!("  Resolved STUN server: {} (from {} candidates)", server_addr, all_addrs.len());
 
-        // Bind local UDP socket (port 0 = OS assigns)
-        let local_socket = UdpSocket::bind("0.0.0.0:0")
+        // Bind local UDP socket matching server address family
+        let bind_addr = if server_addr.is_ipv4() {
+            "0.0.0.0:0"
+        } else {
+            "[::]:0"
+        };
+        
+        let local_socket = UdpSocket::bind(bind_addr)
             .await
             .map_err(|e| StunError::Network(format!("Failed to bind UDP socket: {}", e)))?;
 

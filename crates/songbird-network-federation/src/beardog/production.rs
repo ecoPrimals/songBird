@@ -65,8 +65,36 @@ impl ProductionBearDogProvider {
 
         Ok(Self {
             socket_path,
-            family_id: None, // Will be queried on first use
+            family_id: None, // Will be queried from env on first use
         })
+    }
+
+    /// Create new production `BearDog` provider with explicit family_id
+    ///
+    /// Use this when the family_id is known at construction time.
+    pub async fn with_family_id(
+        socket_path: impl Into<PathBuf>,
+        family_id: impl Into<String>,
+    ) -> Result<Self> {
+        let socket_path = socket_path.into();
+        let family_id = family_id.into();
+
+        info!("🐻 Creating production BearDog provider with family_id");
+        info!("   Socket: {:?}", socket_path);
+        info!("   Family: {}", family_id);
+
+        // Verify socket exists and is connectable
+        let _ = UnixStream::connect(&socket_path).await.context("BearDog socket not accessible")?;
+
+        Ok(Self {
+            socket_path,
+            family_id: Some(family_id),
+        })
+    }
+
+    /// Set the family_id for BirdSong operations
+    pub fn set_family_id(&mut self, family_id: impl Into<String>) {
+        self.family_id = Some(family_id.into());
     }
 
     /// Call `BearDog` JSON-RPC method via Unix socket
@@ -168,9 +196,17 @@ impl BirdSongCrypto for ProductionBearDogProvider {
     ) -> Result<EncryptedBirdSong> {
         use base64::{engine::general_purpose, Engine as _};
 
+        // Get family_id from self, env vars, or default
+        let family_id = self.family_id.clone().or_else(|| {
+            std::env::var("SONGBIRD_FAMILY_ID")
+                .or_else(|_| std::env::var("FAMILY_ID"))
+                .ok()
+        }).unwrap_or_else(|| "nat0".to_string());
+
         let params = serde_json::json!({
             "plaintext": general_purpose::STANDARD.encode(payload),
-            "lineage_hint": format!("{:?}", lineage_hint)
+            "lineage_hint": format!("{:?}", lineage_hint),
+            "family_id": family_id
         });
 
         let result = self.call_beardog("birdsong.encrypt", params).await?;
@@ -178,8 +214,16 @@ impl BirdSongCrypto for ProductionBearDogProvider {
     }
 
     async fn decrypt_birdsong(&self, encrypted: &EncryptedBirdSong) -> Result<Option<Vec<u8>>> {
+        // Get family_id from self, env vars, or default
+        let family_id = self.family_id.clone().or_else(|| {
+            std::env::var("SONGBIRD_FAMILY_ID")
+                .or_else(|_| std::env::var("FAMILY_ID"))
+                .ok()
+        }).unwrap_or_else(|| "nat0".to_string());
+
         let params = serde_json::json!({
-            "encrypted": encrypted
+            "encrypted": encrypted,
+            "family_id": family_id
         });
 
         let result = self.call_beardog("birdsong.decrypt", params).await?;

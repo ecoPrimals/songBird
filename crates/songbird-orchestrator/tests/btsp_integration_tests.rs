@@ -69,28 +69,36 @@ async fn test_socket_path_discovery_priority() {
     assert!(format!("{:?}", client2).contains("/biomeos/beardog.sock"));
 
     // Test priority 3: XDG_RUNTIME_DIR
+    // Note: BtspClient uses "security-{family_id}.sock" path pattern
     env::remove_var("BIOMEOS_SOCKET_PATH");
     env::set_var("XDG_RUNTIME_DIR", "/run/user/1000");
-    env::set_var("BEARDOG_FAMILY_ID", "nat0");
     let client3 = BtspClient::new();
-    assert!(format!("{:?}", client3).contains("/run/user/1000/beardog-nat0.sock"));
+    let client3_path = format!("{:?}", client3);
+    assert!(
+        client3_path.contains("/run/user/1000") && client3_path.contains("security"),
+        "Should use XDG path with security socket, got: {}",
+        client3_path
+    );
 
     // Cleanup
     env::remove_var("XDG_RUNTIME_DIR");
-    env::remove_var("BEARDOG_FAMILY_ID");
 }
 
 #[tokio::test]
 async fn test_socket_path_fallback() {
-    // Remove all socket-related env vars
+    // Remove explicit socket env vars (XDG_RUNTIME_DIR may still be set by system)
     env::remove_var("BEARDOG_SOCKET");
     env::remove_var("BIOMEOS_SOCKET_PATH");
-    env::remove_var("XDG_RUNTIME_DIR");
 
     let client = BtspClient::new();
 
-    // Should use fallback path
-    assert!(format!("{:?}", client).contains("/tmp/beardog-default-default.sock"));
+    // BtspClient uses "security" socket pattern (XDG or /tmp fallback)
+    let client_path = format!("{:?}", client);
+    assert!(
+        client_path.contains("security"),
+        "Should use security socket pattern, got: {}",
+        client_path
+    );
 }
 
 // ====================

@@ -256,12 +256,13 @@ async fn start_https_server(
     // Create Pure Rust TLS acceptor (wrap in Arc for sharing across tasks)
     let tls_acceptor = Arc::new(TlsAcceptor::new(tls_config));
 
-    info!("✅ Pure Rust TLS configuration loaded, HTTPS server listening on https://{}", addr);
+    info!("✅ Pure Rust TLS configuration loaded, server listening on {}", addr);
     info!("   Certificate: Generated (test cert for '{}')", node_id);
     info!("   Crypto: BearDog via Unix socket");
     info!("   SANs: {}", sans_display);
     info!("   🔒 100% PURE RUST - Zero C dependencies!");
     info!("   🎯 Protocol: songbird-tls | Crypto: BearDog");
+    info!("   🔄 Protocol Detection: HTTP and HTTPS on same port");
     info!("   💡 To disable TLS (not recommended): export SONGBIRD_TLS_ENABLED=false");
 
     // DEEP DEBT SOLUTION: 100% Pure Rust TLS with songbird-tls
@@ -273,8 +274,9 @@ async fn start_https_server(
     // - Zero C dependencies (TRUE ecoBin)
 
     // Spawn HTTPS server using Pure Rust TLS (songbird-tls)
+    // EVOLUTION (Feb 2026): Protocol detection for HTTP/HTTPS on same port
     tokio::spawn(async move {
-        // Accept loop: convert TCP connections to TLS streams
+        // Accept loop: convert TCP connections to TLS or HTTP streams
         loop {
             let (tcp_stream, remote_addr) = match listener.accept().await {
                 Ok(conn) => conn,
@@ -289,41 +291,75 @@ async fn start_https_server(
 
             // Handle each connection in its own task
             tokio::spawn(async move {
-                // Perform Pure Rust TLS handshake (songbird-tls + BearDog)
-                let tls_stream = match tls_acceptor.accept(tcp_stream).await {
-                    Ok(stream) => stream,
+                // PROTOCOL DETECTION: Peek at first byte to detect TLS vs HTTP
+                // TLS ClientHello starts with 0x16 (Handshake content type)
+                // HTTP requests start with ASCII method (GET=0x47, POST=0x50, PUT=0x50, HEAD=0x48, etc.)
+                let mut peek_buf = [0u8; 1];
+                let peek_result = tcp_stream.peek(&mut peek_buf).await;
+                
+                let is_tls = match peek_result {
+                    Ok(1) => peek_buf[0] == 0x16, // TLS Handshake content type
+                    Ok(0) => {
+                        tracing::debug!("Empty connection from {}, closing", remote_addr);
+                        return;
+                    }
+                    Ok(_) => false, // Shouldn't happen with 1-byte buffer
                     Err(e) => {
-                        error!("🔒 Pure Rust TLS handshake failed from {}: {}", remote_addr, e);
+                        error!("Failed to peek connection from {}: {}", remote_addr, e);
                         return;
                     }
                 };
-
-                // Successfully established Pure Rust TLS connection!
-                tracing::debug!("🔒 Pure Rust TLS connection established from {}", remote_addr);
-
-                // Serve HTTP/1.1 over Pure Rust TLS using axum's tower service
+                
+                // Import shared dependencies
                 use hyper::body::Incoming;
                 use hyper_util::rt::TokioIo;
                 use tower::Service;
-
-                let hyper_service =
-                    hyper::service::service_fn(move |request: hyper::Request<Incoming>| {
-                        // Clone app for this request (cheap - Arc internally)
-                        let mut app = app.clone();
-                        async move {
-                            // Call tower::Service::call (axum Router implements this)
-                            app.call(request).await
+                
+                if is_tls {
+                    // TLS connection: Perform Pure Rust TLS handshake
+                    let tls_stream = match tls_acceptor.accept(tcp_stream).await {
+                        Ok(stream) => stream,
+                        Err(e) => {
+                            error!("🔒 Pure Rust TLS handshake failed from {}: {}", remote_addr, e);
+                            return;
                         }
-                    });
+                    };
 
-                // Serve the connection over Pure Rust TLS
-                if let Err(e) = hyper::server::conn::http1::Builder::new()
-                    .serve_connection(TokioIo::new(tls_stream), hyper_service)
-                    .await
-                {
-                    // Only log if not a normal close
-                    if !e.to_string().contains("connection closed") {
-                        error!("Error serving HTTPS connection from {}: {}", remote_addr, e);
+                    tracing::debug!("🔒 Pure Rust TLS connection established from {}", remote_addr);
+
+                    let hyper_service =
+                        hyper::service::service_fn(move |request: hyper::Request<Incoming>| {
+                            let mut app = app.clone();
+                            async move { app.call(request).await }
+                        });
+
+                    // Serve HTTPS connection
+                    if let Err(e) = hyper::server::conn::http1::Builder::new()
+                        .serve_connection(TokioIo::new(tls_stream), hyper_service)
+                        .await
+                    {
+                        if !e.to_string().contains("connection closed") {
+                            error!("Error serving HTTPS connection from {}: {}", remote_addr, e);
+                        }
+                    }
+                } else {
+                    // HTTP connection: Serve plain HTTP (graceful degradation)
+                    tracing::debug!("📡 Plain HTTP connection from {} (protocol detection)", remote_addr);
+                    
+                    let hyper_service =
+                        hyper::service::service_fn(move |request: hyper::Request<Incoming>| {
+                            let mut app = app.clone();
+                            async move { app.call(request).await }
+                        });
+
+                    // Serve HTTP connection
+                    if let Err(e) = hyper::server::conn::http1::Builder::new()
+                        .serve_connection(TokioIo::new(tcp_stream), hyper_service)
+                        .await
+                    {
+                        if !e.to_string().contains("connection closed") {
+                            error!("Error serving HTTP connection from {}: {}", remote_addr, e);
+                        }
                     }
                 }
             });

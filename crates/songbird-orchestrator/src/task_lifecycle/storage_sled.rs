@@ -8,6 +8,11 @@
 //! - ✅ Crash-safe
 //! - ✅ Simpler than SQL
 //!
+//! **Evolution**: Switched TaskLifecycle storage from bincode to JSON (Feb 5, 2026)
+//! - Bincode doesn't support `serde_json::Value` (requires deserialize_any)
+//! - JSON serialization naturally handles dynamic Value types
+//! - Checkpoints still use bincode (no Value fields)
+//!
 //! Modern async-compatible storage with:
 //! - No unsafe code
 //! - Type-safe serialization
@@ -60,8 +65,8 @@ impl TaskStorage {
         let db = Arc::clone(&self.db);
 
         tokio::task::spawn_blocking(move || {
-            // Serialize task
-            let value = bincode::serialize(&task).context("Failed to serialize task")?;
+            // Serialize task as JSON (bincode doesn't support serde_json::Value)
+            let value = serde_json::to_vec(&task).context("Failed to serialize task")?;
 
             // Store with key: task/{task_id}
             let key = format!("task/{}", task.id);
@@ -108,7 +113,7 @@ impl TaskStorage {
 
             if let Some(bytes) = value {
                 let task: TaskLifecycle =
-                    bincode::deserialize(&bytes).context("Failed to deserialize task")?;
+                    serde_json::from_slice(&bytes).context("Failed to deserialize task")?;
                 Ok(Some(task))
             } else {
                 Ok(None)
@@ -145,7 +150,7 @@ impl TaskStorage {
                     // Sync read within blocking context
                     let key = format!("task/{}", task_id);
                     if let Some(bytes) = db.get(key.as_bytes())? {
-                        let task: TaskLifecycle = bincode::deserialize(&bytes)?;
+                        let task: TaskLifecycle = serde_json::from_slice(&bytes)?;
                         if Self::matches_filter_static(&task, &filter) {
                             tasks.push(task);
                         }
@@ -164,7 +169,7 @@ impl TaskStorage {
                     // Sync read within blocking context
                     let key = format!("task/{}", task_id);
                     if let Some(bytes) = db.get(key.as_bytes())? {
-                        let task: TaskLifecycle = bincode::deserialize(&bytes)?;
+                        let task: TaskLifecycle = serde_json::from_slice(&bytes)?;
                         if Self::matches_filter_static(&task, &filter) {
                             tasks.push(task);
                         }
@@ -175,7 +180,7 @@ impl TaskStorage {
                 for item in db.scan_prefix(b"task/") {
                     let (_key, value) = item.context("Failed to scan tasks")?;
                     let task: TaskLifecycle =
-                        bincode::deserialize(&value).context("Failed to deserialize task")?;
+                        serde_json::from_slice(&value).context("Failed to deserialize task")?;
 
                     if Self::matches_filter_static(&task, &filter) {
                         tasks.push(task);
@@ -232,7 +237,7 @@ impl TaskStorage {
             // Get task first to clean up indices
             let key = format!("task/{}", id);
             if let Some(bytes) = db.get(key.as_bytes())? {
-                let task: TaskLifecycle = bincode::deserialize(&bytes)?;
+                let task: TaskLifecycle = serde_json::from_slice(&bytes)?;
 
                 // Delete main record
                 db.remove(key.as_bytes()).context("Failed to delete task")?;
