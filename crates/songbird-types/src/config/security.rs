@@ -138,11 +138,19 @@ pub struct SecurityProviderConfig {
 impl Default for SecurityProviderConfig {
     fn default() -> Self {
         let security_host = SafeEnv::get_or_default("SECURITY_PROVIDER_HOST", "localhost");
-        let security_port = SafeEnv::get_port("SECURITY_PROVIDER_PORT", 8443);
+        // EVOLVED (Feb 5, 2026): Respect SONGBIRD_TLS_ENABLED for default protocol
+        // When TLS is disabled, use HTTP instead of HTTPS
+        let tls_enabled = SafeEnv::get_bool("SONGBIRD_TLS_ENABLED", true);
+        let (protocol, default_port) = if tls_enabled {
+            ("https", 8443)
+        } else {
+            ("http", 8080)
+        };
+        let security_port = SafeEnv::get_port("SECURITY_PROVIDER_PORT", default_port);
 
         Self {
             name: "default".to_string(),
-            endpoint: format!("https://{security_host}:{security_port}"),
+            endpoint: format!("{protocol}://{security_host}:{security_port}"),
             credentials: HashMap::new(),
         }
     }
