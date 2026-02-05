@@ -1,6 +1,6 @@
 # 📚 Songbird Documentation Index
 
-**Version**: v3.21.0  
+**Version**: v3.22.0  
 **Status**: ✅ **PRODUCTION READY**  
 **Updated**: February 5, 2026
 

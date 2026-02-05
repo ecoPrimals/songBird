@@ -7,6 +7,67 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [3.22.0] - 2026-02-05 - Upstream Integration Complete 🔗
+
+### Added - Standard IPC Methods
+
+#### **Unix Socket JSON-RPC Methods**
+- `health` - Server health with uptime, service count, registry status
+- `identity` - Primal identity with family_id, capabilities, endpoints  
+- `rpc.discover` - Available RPC methods with descriptions
+
+#### **BirdSong family_id Integration**
+- Discovers `family_id` from environment (`FAMILY_ID` → `SONGBIRD_FAMILY_ID` → `NODE_FAMILY_ID`)
+- Passes `family_id` to `BearDogBirdSongProvider` for proper encryption
+- Fixes BearDog encryption failures in `birdsong.encrypt` and `birdsong.decrypt`
+- Logs warning if no `family_id` found
+
+### Added - Comprehensive Test Coverage (27 Tests)
+
+#### **Unit Tests (7)**
+- Standard method responses (`health`, `identity`, `rpc.discover`)
+- Environment variable priority chain validation
+- Uptime tracking validation
+- Default `family_id` ("nat0") handling
+
+#### **E2E Tests (4)**
+- Full request/response cycle simulation
+- Persistent connection handling
+- Multi-request sequential flows
+- Unknown method error handling
+
+#### **Regression Tests (3)**
+- `primal.info` backward compatibility
+- `primal.capabilities` backward compatibility
+- `rpc.methods` backward compatibility
+
+#### **Chaos Tests (4)**
+- 50 concurrent health requests
+- 100 rapid sequential requests
+- 30 concurrent mixed method calls
+- Concurrent service registration + health checks
+
+#### **Fault Injection Tests (9)**
+- Invalid/null parameters
+- Empty/very long method names (10K chars)
+- Special characters (NUL, newline, path traversal)
+- Unicode methods (Chinese, emoji, Cyrillic)
+- Case sensitivity (HEALTH vs health)
+- Leading/trailing/embedded spaces
+- 50 concurrent error requests
+
+### Fixed
+- Environment variable test pollution with mutex serialization
+- Missing standard methods in IPC service
+- `family_id` not passed to BearDog encryption layer
+
+### Quality Metrics
+- ✅ **Tests**: 1,690 passing (27 new + existing)
+- ✅ **Build**: Clean (0 errors, 0 warnings)
+- ✅ **Deep Debt**: 99.4% (maintained)
+
+---
+
 ## [3.21.0] - 2026-02-05 - Deep Debt Evolution Complete 🏗️
 
 ### Fixed - Critical Architectural Issues

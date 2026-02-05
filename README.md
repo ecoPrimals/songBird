@@ -1,7 +1,7 @@
 # 🐦 Songbird - Network Orchestration & Discovery Primal
 
-**Version**: v3.21.0  
-**Status**: ✅ **PRODUCTION READY** - Deep Debt Evolution Complete  
+**Version**: v3.22.0  
+**Status**: ✅ **PRODUCTION READY** - Upstream Integration Complete  
 **License**: AGPL-3.0  
 
 Songbird is the universal network orchestrator for the ecoPrimals ecosystem, managing service discovery, connection management, and inter-primal communication.
