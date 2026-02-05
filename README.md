@@ -16,7 +16,7 @@ Songbird is the universal network orchestrator for the ecoPrimals ecosystem, man
 | **Pure Rust** | ✅ **99%+** | Better than industry standards (Tokio: 98%) |
 | **Capability-Based** | ✅ **95%+** | 6-layer discovery architecture (A Grade) |
 | **Production Mocks** | ✅ **0** | Perfect test isolation |
-| **Tests Passing** | ✅ **1,690+** | 100% passing, comprehensive coverage |
+| **Tests Passing** | ✅ **1,714+** | 100% passing, comprehensive coverage |
 | **Build Status** | ✅ **Clean** | Zero errors, minimal warnings |
 
 ## 🎯 Key Features
@@ -26,6 +26,7 @@ Songbird is the universal network orchestrator for the ecoPrimals ecosystem, man
 | **biomeOS Integration** | ✅ Complete | Unix socket IPC, standard methods, family_id passthrough |
 | **Dark Forest Discovery** | ✅ Complete | Zero metadata leakage, encrypted beacons |
 | **TLS 1.3** | ✅ Complete | RFC 8446 compliant, protocol detection (HTTP/HTTPS same port) |
+| **STUN Server** | ✅ Complete | Pure Rust RFC 5389, zero C dependencies, coturn eliminated |
 | **Capability Discovery** | ✅ Complete | 6-layer strategy, environment-first configuration |
 | **Federation** | ✅ Complete | Zero-trust progressive escalation |
 | **Smart Refactoring** | ✅ Complete | 8 phases, responsibility-based modules |
@@ -75,6 +76,7 @@ export SONGBIRD_METRICS_PORT=9090
 │  • IPC Server (Unix sockets + TCP)                          │
 │  • Discovery (mDNS, DNS-SD, capability-based)               │
 │  • TLS 1.3 (Pure Rust, CryptoCapability trait)              │
+│  • STUN Server (Pure Rust RFC 5389, NAT traversal)          │
 │  • Dark Forest (encrypted beacons, zero leakage)            │
 │  • Federation (peer-to-peer, multi-tier relay)              │
 └─────────────────────────────┬───────────────────────────────┘
