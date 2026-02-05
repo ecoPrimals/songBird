@@ -116,7 +116,6 @@ pub mod config;
 
 // ✅ REMOVED: Environment config helpers (Nov 9, 2025)
 // Consolidated into canonical::environment
-// pub mod environment_config_clean; // REMOVED
 
 // ============================================================================
 // PUBLIC API - PREFER CANONICAL

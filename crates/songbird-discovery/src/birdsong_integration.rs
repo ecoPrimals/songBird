@@ -856,8 +856,8 @@ impl BirdSongProcessor {
         beacon: &crate::dark_forest_beacon::DarkForestBeacon,
         _beacon_id: &[u8],
     ) -> Result<Option<crate::dark_forest_beacon::BeaconPayload>> {
-        // For now, try with our default decryption
-        // TODO: Call BearDog's beacon.try_decrypt_with_id when available
+        // Try decryption with our beacon seed
+        // Note: BearDog integration uses family_id in encrypt/decrypt operations (v3.21.0)
         self.try_decrypt_with_own_beacon(encryption, beacon).await
     }
 

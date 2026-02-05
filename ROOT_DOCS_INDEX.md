@@ -1,8 +1,8 @@
 # 📚 Songbird Documentation Index
 
-**Version**: v3.20.0  
+**Version**: v3.21.0  
 **Status**: ✅ **PRODUCTION READY**  
-**Updated**: February 4, 2026
+**Updated**: February 5, 2026
 
 ---
 
@@ -75,6 +75,7 @@ Historical session documents are archived in `ecoPrimals/sessions/`:
 | `DEEP_DEBT_EVOLUTION_PHASE_5_COMPLETE_FEB_04_2026.md` | Phase 5 summary |
 | `SONGBIRD_BIOMEOS_INTEGRATION_COMPLETE_FEB_04_2026.md` | biomeOS integration |
 | `DARK_FOREST_COMPLETE_FEB_03_2026.md` | Dark Forest implementation |
+| `evolution_feb_2026_tests.rs` | 36 comprehensive evolution tests |
 
 ---
 
@@ -117,7 +118,7 @@ cargo doc --workspace --no-deps  # Generate docs
 | **Deep Debt Score** | 99.4% |
 | **Pure Rust** | 100% |
 | **Safe Rust** | 100% |
-| **Test Pass Rate** | 100% |
+| **Tests** | 1,663+ passing |
 | **Clippy Errors** | 0 |
 
 ---
@@ -144,4 +145,4 @@ cargo doc --workspace --no-deps  # Generate docs
 
 ---
 
-**Last Updated**: February 4, 2026
+**Last Updated**: February 5, 2026

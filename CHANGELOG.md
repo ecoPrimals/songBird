@@ -7,6 +7,67 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [3.21.0] - 2026-02-05 - Deep Debt Evolution Complete 🏗️
+
+### Fixed - Critical Architectural Issues
+
+#### **Sled/Bincode Serialization (CRITICAL)**
+- Changed `TaskLifecycle` serialization from `bincode` to `serde_json`
+- Removed `#[serde(tag = "status")]` from `TaskStatus` enum (bincode incompatible)
+- Fixes "Bincode does not support the serde::Deserializer::deserialize_any method" errors
+- `serde_json::Value` in `TaskSpec.config` now serializes correctly
+
+#### **BirdSong family_id Integration (HIGH)**
+- Added `family_id` parameter to `encrypt_for_lineage()` and `decrypt_birdsong()`
+- Retrieves from `SONGBIRD_FAMILY_ID` → `FAMILY_ID` env vars → defaults to "nat0"
+- Added `with_family_id()` and `set_family_id()` methods to `ProductionBearDogProvider`
+
+#### **TLS Protocol Detection (HIGH)**
+- HTTP and HTTPS now work on the **same port**
+- Peeks first byte: `0x16` = TLS handshake, ASCII = HTTP
+- Eliminates "Server responded with HTTP instead of TLS" errors
+- Graceful degradation when clients don't support TLS
+
+### Added - Standard JSON-RPC Methods
+
+#### **HTTP JSON-RPC Methods**
+- `health` - Server health with version, uptime, components
+- `identity` - Primal identity (songbird, version, capabilities)
+- `network.beacon_exchange` - Encrypted peer beacon exchange
+
+### Added - Comprehensive Test Coverage
+
+#### **Evolution Tests (36 new)**
+- **Unit tests (14)**: TaskStatus serialization, Priority, family_id env vars, JSON-RPC schemas
+- **E2E tests (4)**: Task lifecycle flow, socket naming, XDG compliance
+- **Chaos tests (5)**: Rapid serialization (1000x), concurrent reads (100 threads), large configs
+- **Fault injection (8)**: Invalid JSON, corrupted status, Unicode, long strings
+- **Protocol detection (5)**: TLS/HTTP byte patterns, HTTP methods
+
+#### **Test Fixes (12 files)**
+- Fixed `blocking_read()` in async contexts (`sync_helpers.rs`)
+- Fixed test state pollution with unique temp directories (UUID-based)
+- Added `#[ignore]` for tests requiring external services (BearDog)
+- Updated socket path assertions for `PRIMAL_DEPLOYMENT_STANDARD`
+- Fixed environment variable cleanup in chaos/fault tests
+
+### Quality Metrics
+- **Tests**: 1,663 passing (↑ from 924)
+- **Coverage**: Unit, E2E, chaos, fault injection, protocol detection
+- **Lints**: 0 errors
+- **Build**: Clean
+
+### Files Changed
+- `crates/songbird-network-federation/src/beardog/production.rs` - family_id
+- `crates/songbird-orchestrator/src/app/http_server.rs` - protocol detection
+- `crates/songbird-orchestrator/src/server/jsonrpc_api.rs` - standard methods
+- `crates/songbird-orchestrator/src/task_lifecycle/storage_sled.rs` - JSON serialization
+- `crates/songbird-orchestrator/src/task_lifecycle/types.rs` - externally tagged enum
+- `crates/songbird-orchestrator/tests/evolution_feb_2026_tests.rs` - 36 new tests
+- 12 test files - assertion fixes and test isolation
+
+---
+
 ## [3.20.0] - 2026-02-04 - Production Hardening Complete 🛡️
 
 ### Changed - Production Safety & Idiomatic Rust

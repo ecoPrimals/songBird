@@ -17,7 +17,6 @@ pub mod config_helpers;
 pub mod env_isolation;
 pub mod error_testing;
 pub mod fixtures;
-// REMOVED: fixtures_legacy (Nov 8, 2025) - No active usage, fully deprecated
 pub mod integration;
 pub mod mocks;
 pub mod network_fixtures;

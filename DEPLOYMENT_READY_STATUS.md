@@ -1,7 +1,7 @@
 # 🚀 Songbird - Deployment Ready Status
 
-**Version**: v3.20.0  
-**Date**: February 4, 2026  
+**Version**: v3.21.0  
+**Date**: February 5, 2026  
 **Status**: ✅ **PRODUCTION READY - DEPLOY WITH CONFIDENCE**
 
 ---
@@ -14,12 +14,13 @@
 ╠═══════════════════════════════════════════════════════════╣
 ║                                                           ║
 ║  ✅ Build:           CLEAN (0 errors, 0 warnings)        ║
-║  ✅ Tests:           All passing                          ║
+║  ✅ Tests:           1,663+ passing                       ║
 ║  ✅ Deep Debt:       99.4% (Near-Perfect)                 ║
 ║  ✅ Pure Rust:       100% (ZERO C deps)                   ║
 ║  ✅ Safe Rust:       100% (ZERO unsafe)                   ║
 ║  ✅ License:         AGPL-3.0 ✅                          ║
 ║  ✅ Documentation:   Complete                             ║
+║  ✅ Protocol:        HTTP/HTTPS on same port              ║
 ║                                                           ║
 ║  STATUS: READY FOR PRODUCTION DEPLOYMENT! 🚀             ║
 ╚═══════════════════════════════════════════════════════════╝
@@ -101,7 +102,12 @@ WantedBy=multi-user.target
 
 ## 📊 API Overview
 
-### JSON-RPC Methods (20+)
+### JSON-RPC Methods (25+)
+
+**Standard Methods** (NEW in v3.21.0):
+- `health` - Server health with uptime, version, components
+- `identity` - Primal identity and capabilities
+- `network.beacon_exchange` - Encrypted peer beacon exchange
 
 **Introspection**:
 - `primal.info` - Self-description
@@ -115,9 +121,8 @@ WantedBy=multi-user.target
 - `birdsong.get_lineage` - Get lineage info
 
 **Network**:
-- `network.beacon_exchange` - Encrypted peer exchange
 - `network.broadcast` - UDP multicast
-- `network.listen` - UDP listener
+- `network.listen` - UDP discovery listener
 
 **HTTP Client**:
 - `http.request` - Full HTTP request
@@ -220,4 +225,4 @@ curl -X POST -H "Content-Type: application/json" \
 ---
 
 **Status**: ✅ **PRODUCTION READY**  
-**Last Updated**: February 4, 2026
+**Last Updated**: February 5, 2026

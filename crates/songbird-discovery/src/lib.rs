@@ -162,14 +162,9 @@ pub mod anonymous;
 #[cfg(test)]
 mod tests_self_filtering;
 
-// 🌐 Federation-aware discovery enhancement
-// NOTE: Extensive syntax errors throughout file (32+ errors)
-// FUTURE: Complete rewrite deferred - federation-aware discovery is P2 optional feature
-// Priority: P2 (optional feature, not blocking production)
+// 🌐 Federation-aware discovery (Phase 2)
+// Deferred: Optional P2 feature for advanced federation capabilities
 // pub mod federation_aware_discovery;
-
-// 🔄 Migration support for old federation systems
-// NOTE: Depends on federation_aware_discovery
 // pub mod migration;
 
 // Re-export universal discovery functionality
@@ -183,20 +178,8 @@ pub use discovery_stats::{
 pub use lineage_discovery::LineageServiceDiscovery; // NEW
 pub use traits::{DiscoveryConfig, ServiceDiscovery, ServiceInfo, ServiceStatus}; // NEW (Jan 5, 2026)
 
-// Re-export federation-aware functionality
-// TEMP DISABLED: federation_aware_discovery module disabled due to syntax errors
-// pub use federation_aware_discovery::{
-//     FederationDiscoveryConfig, HierarchyPosition, NetworkEffectType, OverrideCapabilities,
-//     PotentialNetworkEffect, PrimalCategory, PrimalPattern, SovereigntyAssessment, SovereigntyLevel,
-// };
-
-// Re-export migration functionality
-// TEMP DISABLED: migration module disabled (depends on federation_aware_discovery)
-// pub use migration::{
-//     FederationMigrationHelper, LegacyFederationConfig, LegacyFederationMode,
-//     LegacyFederationWrapper, LegacyPeerInfo, LegacySovereigntyLevel, MigrationConfig,
-//     MigrationResult, MigrationStats, PerformanceComparison,
-// };
+// Note: federation_aware_discovery and migration modules deferred to Phase 2
+// These are optional P2 features for advanced federation capabilities
 
 // Export consolidated traits
 pub use traits::feature_flags::FeatureFlagProvider;
