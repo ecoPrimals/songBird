@@ -188,7 +188,7 @@ impl AdvertiseConfig {
     /// 4. Return unspecified (0.0.0.0) to bind all interfaces
     ///
     /// # Philosophy
-    /// This is a **complete production implementation**, not a TODO.
+    /// This is a **complete production implementation**.
     /// Uses zero-dependency standard library APIs for cross-platform support.
     fn detect_from_network_interfaces() -> IpAddr {
         // Check cloud metadata endpoints

@@ -187,3 +187,4 @@ db/
 
 # Test artifacts (sqlite in-memory snapshots)
 sqlite::memory:*/
+primalBins/

@@ -182,7 +182,7 @@ impl BirdSongHandler {
     /// Generates a family-encrypted beacon for broadcast.
     /// Only family members can decrypt this beacon.
     ///
-    /// Deep debt: Production implementation, no TODOs, no mocks
+    /// Deep debt: Production implementation, complete with no mocks
     pub async fn handle_generate_encrypted_beacon(&self, params: Value) -> Result<Value, String> {
         debug!("🌲 RPC: birdsong.generate_encrypted_beacon");
 
