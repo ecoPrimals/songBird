@@ -29,26 +29,39 @@ biomeOS requires a self-hosted STUN server capability to achieve **maximum sover
 | STUN Message Parser | `songbird-stun/src/message.rs` | ✅ Working |
 | STUN Types | `songbird-stun/src/types.rs` | ✅ Working |
 | Multi-tier Config | `songbird-types/src/config/stun_relay.rs` | ✅ Working |
+| UDP Hole Punch | `songbird-lineage-relay/src/udp_hole_punch.rs` | ✅ Working |
 | **STUN Server** | - | ❌ **Missing** |
+| **TURN Server** | - | ❌ **Missing** |
 
-### Bridge Solution (ACTIVE)
+### Bridge Solution (ACTIVE - coturn with STUN + TURN)
 
-coturn is currently running on Tower:
+coturn is currently running on Tower with TURN relay enabled:
 - **Status**: ✅ Active (`systemctl status coturn`)
 - **Address**: `192.168.1.144:3478` (LAN)
 - **Config**: `/etc/turnserver.conf`
 - **Setup Script**: `biomeOS/scripts/setup_coturn.sh`
+- **TURN Enabled**: ✅ Yes (for symmetric NAT traversal)
+- **TURN Credentials**: `biomeos:darkforest2026` (realm: `biomeos.local`)
+- **Relay Ports**: UDP 49152-65535
 
 **Rust Integration**:
 - `biomeos-core/src/stun_extension.rs` - Optional STUN extension
 - Automatically falls back to public STUN if self-hosted unavailable
 - Zero hard dependency on coturn
+- TURN credentials can be derived from beacon seed for family-only access
 
 **Tested Feb 5, 2026**:
 ```
-Self-hosted (coturn): 162.226.225.148:43103 ✅
-Public (Google):      162.226.225.148:53213 ✅
+Self-hosted STUN (coturn):  162.226.225.148:54169 ✅
+Public STUN (Google):       162.226.225.148:53213 ✅
+TURN Relay (coturn):        ✅ Enabled (lt-cred-mech)
 ```
+
+**NAT Traversal Validation**:
+- Tower NAT: Symmetric (port varies per destination)
+- Pixel NAT: Symmetric (iPhone hotspot)
+- Direct Hole Punch: ❌ Not possible (symmetric-to-symmetric)
+- TURN Relay: ✅ Required for these NAT types
 
 ---
 
@@ -66,18 +79,26 @@ Public (Google):      162.226.225.148:53213 ✅
    - Use alternate IP/port when requested
    - Enables clients to detect NAT type
 
-3. **Integration**
+3. **TURN Relay** (RFC 5766 - Required for Symmetric NAT)
+   - Allocate relay addresses for clients
+   - Forward packets between relay and peer
+   - Support long-term credential mechanism
+   - Support CHANNEL-DATA for efficient relay (optional)
+   - Support CreatePermission for peer whitelisting
+
+4. **Integration**
    - Start/stop via Songbird orchestrator
-   - Expose via JSON-RPC method: `stun.serve`
-   - Configurable bind address and port
+   - Expose via JSON-RPC methods: `stun.serve`, `turn.serve`
+   - Configurable bind address, port, and relay port range
+   - TURN credentials via config or derived from beacon seed
 
 ### Non-Functional Requirements
 
 1. **Pure Rust** - No C dependencies (ecoBin v2.0)
 2. **Zero Unsafe** - Maintain safety guarantees
 3. **Async** - tokio-based, non-blocking
-4. **Minimal Footprint** - <50KB binary size impact
-5. **Family-Aware** (Future) - Optional lineage verification
+4. **Minimal Footprint** - <100KB binary size impact (STUN+TURN)
+5. **Family-Aware** - Optional lineage verification for TURN auth
 
 ---
 
