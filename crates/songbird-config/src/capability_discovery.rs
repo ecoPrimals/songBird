@@ -354,10 +354,9 @@ impl CapabilityDiscovery {
     /// }
     /// ```
     async fn discover_via_mdns(&self, capability: &str) -> SongbirdResult<Vec<ServiceEndpoint>> {
-        debug!("🌐 Starting mDNS discovery for capability: {}", capability);
-
-        // Use the production-ready mDNS implementation from discovery module
         use crate::discovery::MdnsDiscovery;
+        
+        debug!("🌐 Starting mDNS discovery for capability: {}", capability);
 
         // Create mDNS discovery client
         let mdns = match MdnsDiscovery::new() {

@@ -267,6 +267,10 @@ impl TimeoutConfig {
     /// - Logical relationships (connect < request, etc.)
     ///
     /// Returns errors describing any validation failures.
+    ///
+    /// # Errors
+    ///
+    /// Returns a vector of validation error messages if any timeouts are invalid.
     pub fn validate(&self) -> Result<(), Vec<String>> {
         let mut errors = Vec::new();
 

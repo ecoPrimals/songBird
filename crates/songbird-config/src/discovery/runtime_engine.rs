@@ -211,7 +211,9 @@ impl CapabilityDiscoveryEngine {
             let service = DiscoveredService {
                 address: addr,
                 capabilities: vec![capability.to_string()],
-                metadata: [("source".to_string(), "environment".to_string())].into_iter().collect(),
+                metadata: std::collections::HashMap::from([
+                    ("source".to_string(), "environment".to_string()),
+                ]),
                 discovered_at: std::time::SystemTime::now(),
             };
 
@@ -338,6 +340,10 @@ impl CapabilityDiscoveryEngine {
     /// # Arguments
     /// * `capabilities` - List of capabilities this service offers
     /// * `address` - Address this service is listening on
+    ///
+    /// # Errors
+    ///
+    /// Returns error if registration with any discovery backend fails.
     pub async fn register_self(
         &self,
         capabilities: &[String],

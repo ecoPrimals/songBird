@@ -35,7 +35,8 @@ use tokio::sync::RwLock;
 use tracing::{debug, info, warn};
 
 /// Service type for Songbird mDNS advertisements
-const SERVICE_TYPE: &str = "_songbird._tcp.local.";
+// Future: mDNS service type for auto-discovery
+// const SERVICE_TYPE: &str = "_songbird._tcp.local.";
 
 /// mDNS discovery backend implementation
 ///
@@ -387,6 +388,10 @@ impl MdnsDiscovery {
     /// Discover all services on local network
     ///
     /// Performs a broad discovery without filtering by capability.
+    ///
+    /// # Errors
+    ///
+    /// Returns `MdnsError` if discovery fails or times out.
     pub async fn discover_all(
         &self,
         timeout: Option<Duration>,
@@ -468,6 +473,9 @@ impl MdnsDiscovery {
     /// Stop advertising this service
     ///
     /// Gracefully removes this service from mDNS announcements by sending goodbye packets.
+    /// # Errors
+    ///
+    /// Returns `MdnsError` if stopping advertisement fails.
     pub async fn stop_advertising(&self) -> Result<(), MdnsError> {
         info!(service = %self.service_name, "Stopping mDNS advertisement");
 
