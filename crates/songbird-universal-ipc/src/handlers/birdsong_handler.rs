@@ -39,7 +39,7 @@ use songbird_universal::UnixRpcClient;
 use std::path::PathBuf;
 use std::sync::Arc;
 use tokio::sync::RwLock;
-use tracing::{debug, error, info};
+use tracing::{debug, error, info, warn};
 
 /// `BirdSong` handler for encrypted discovery
 ///
@@ -148,7 +148,20 @@ impl BirdSongHandler {
         // Discover and create provider
         let socket_path = self.discover_beardog_socket().await?;
 
-        let provider = BearDogBirdSongProvider::new(socket_path, None)
+        // Discover family_id from environment (matches biomeOS pattern)
+        // Priority: FAMILY_ID > SONGBIRD_FAMILY_ID > NODE_FAMILY_ID
+        let family_id = std::env::var("FAMILY_ID")
+            .or_else(|_| std::env::var("SONGBIRD_FAMILY_ID"))
+            .or_else(|_| std::env::var("NODE_FAMILY_ID"))
+            .ok();
+
+        if family_id.is_some() {
+            info!("🔒 Using family_id from environment");
+        } else {
+            warn!("⚠️  No FAMILY_ID environment variable set - BearDog encryption may fail");
+        }
+
+        let provider = BearDogBirdSongProvider::new(socket_path, family_id)
             .await
             .map_err(|e| format!("Failed to create BirdSong provider: {e}"))?;
 

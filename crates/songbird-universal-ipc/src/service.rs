@@ -121,6 +121,7 @@ pub struct IpcServiceHandler {
     rendezvous_handler: Arc<RendezvousHandler>,
     peer_handler: Arc<PeerHandler>,
     birdsong_handler: Arc<BirdSongHandler>, // BirdSong (Feb 2, 2026)
+    start_time: Arc<RwLock<std::time::Instant>>, // Track uptime (Feb 5, 2026)
 }
 
 impl IpcServiceHandler {
@@ -153,6 +154,7 @@ impl IpcServiceHandler {
             rendezvous_handler,
             peer_handler,
             birdsong_handler,
+            start_time: Arc::new(RwLock::new(std::time::Instant::now())),
         }
     }
 
@@ -187,6 +189,7 @@ impl IpcServiceHandler {
             rendezvous_handler,
             peer_handler,
             birdsong_handler,
+            start_time: Arc::new(RwLock::new(std::time::Instant::now())),
         }
     }
 
@@ -212,6 +215,7 @@ impl IpcServiceHandler {
             rendezvous_handler,
             peer_handler,
             birdsong_handler,
+            start_time: Arc::new(RwLock::new(std::time::Instant::now())),
         }
     }
 
@@ -679,6 +683,71 @@ impl IpcServiceHandler {
         });
         Ok(methods)
     }
+
+    /// Handle `health` method (biomeOS standard)
+    ///
+    /// Returns server health status with uptime and service count.
+    /// NEW (Feb 5, 2026) - Matches orchestrator's standard method.
+    async fn handle_health(&self) -> Result<Value, String> {
+        let uptime_secs = self.start_time.read().await.elapsed().as_secs();
+        let registry = self.registry.read().await;
+        let services = registry.list_services().await;
+        
+        Ok(serde_json::json!({
+            "status": "healthy",
+            "primal": "songbird",
+            "version": env!("CARGO_PKG_VERSION"),
+            "uptime_seconds": uptime_secs,
+            "services": services.len(),
+        }))
+    }
+
+    /// Handle `identity` method (biomeOS standard)
+    ///
+    /// Returns primal identity with capabilities.
+    /// NEW (Feb 5, 2026) - Matches orchestrator's standard method.
+    async fn handle_identity(&self) -> Result<Value, String> {
+        let family_id = std::env::var("SONGBIRD_FAMILY_ID")
+            .or_else(|_| std::env::var("FAMILY_ID"))
+            .unwrap_or_else(|_| "nat0".to_string());
+        
+        Ok(serde_json::json!({
+            "primal": "songbird",
+            "version": env!("CARGO_PKG_VERSION"),
+            "family_id": family_id,
+            "capabilities": [
+                "ipc.register", "ipc.resolve", "ipc.discover", "ipc.list",
+                "http.request", "http.get", "http.post",
+                "stun.get_public_address", "stun.bind",
+                "birdsong.generate_encrypted_beacon", "birdsong.decrypt_beacon",
+                "birdsong.verify_lineage", "birdsong.get_lineage",
+                "discovery.peers",
+                "rendezvous.register", "rendezvous.lookup",
+                "peer.connect"
+            ]
+        }))
+    }
+
+    /// Handle `rpc.discover` method (biomeOS standard)
+    ///
+    /// Returns list of available JSON-RPC methods.
+    /// NEW (Feb 5, 2026) - Matches orchestrator's standard method.
+    async fn handle_rpc_discover_standard(&self) -> Result<Value, String> {
+        Ok(serde_json::json!({
+            "methods": [
+                "health", "identity", "rpc.discover",
+                "primal.info", "primal.capabilities", "rpc.methods",
+                "ipc.register", "ipc.resolve", "ipc.discover", "ipc.list",
+                "http.request", "http.get", "http.post",
+                "stun.get_public_address", "stun.bind",
+                "birdsong.generate_encrypted_beacon", "birdsong.decrypt_beacon",
+                "birdsong.verify_lineage", "birdsong.get_lineage",
+                "discovery.peers",
+                "rendezvous.register", "rendezvous.lookup",
+                "peer.connect"
+            ]
+        }))
+    }
 }
 
 #[async_trait]
@@ -722,6 +791,11 @@ impl JsonRpcHandler for IpcServiceHandler {
             "birdsong.decrypt_beacon" => self.birdsong_handler.handle_decrypt_beacon(params).await,
             "birdsong.verify_lineage" => self.birdsong_handler.handle_verify_lineage(params).await,
             "birdsong.get_lineage" => self.birdsong_handler.handle_get_lineage(params).await,
+
+            // biomeOS Standard Methods (NEW - Feb 5, 2026)
+            "health" => self.handle_health().await,
+            "identity" => self.handle_identity().await,
+            "rpc.discover" => self.handle_rpc_discover_standard().await,
 
             _ => Err(format!("Unknown method: {method}")),
         }
