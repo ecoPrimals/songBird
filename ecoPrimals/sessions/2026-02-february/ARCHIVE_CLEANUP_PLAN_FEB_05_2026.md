@@ -1,346 +1,288 @@
-# 🗂️ Archive Cleanup Plan - February 5, 2026
+# 🧹 Archive Cleanup Plan - February 5, 2026
 
 **Date**: February 5, 2026  
-**Status**: 📋 **READY FOR REVIEW**  
-**Goal**: Clean archivable code and outdated documentation
+**Version**: v3.24.0  
+**Objective**: Clean archive code and outdated TODOs
 
 ---
 
-## 📊 Current Analysis
+## 📋 Items Found for Cleanup
 
-### ✅ What's Clean (No Action Needed)
+### 1. Root-Level Completion Docs (Move to ecoPrimals/) ✅
 
-1. **Root Documentation** - ✅ Already cleaned (7 essential files)
-2. **Build Artifacts** - ✅ In `.gitignore` (target/, .DS_Store, etc.)
-3. **No Backup Files** - ✅ No `.bak`, `.old`, `.orig` files found
-4. **No Commented Code** - ✅ No large commented-out blocks
-5. **Legacy Examples** - ✅ Well-documented in `examples/legacy/` (keep for reference)
+These are completion reports that belong in the fossil record:
 
-### 📋 Archive Candidates (Action Recommended)
-
-| Category | Location | Size | Recommendation |
-|----------|----------|------|----------------|
-| **Verification Docs** | `verification/` | 4 files | Move to archive |
-| **Old Session Docs** | `ecoPrimals/sessions/` | 9 folders | Consolidate |
-| **primalBins Binary** | `primalBins/songbird-orchestrator` | 1 binary | Review |
-| **TODOs** | Throughout codebase | 67 instances | Audit |
-
----
-
-## 🔍 Detailed Analysis
-
-### 1. Verification Documents (4 Files)
-
-**Location**: `verification/`
-
-These are **completion reports** from January 2026 that verified evolution phases:
-
-| File | Date | Content | Action |
+| File | Size | Purpose | Action |
 |------|------|---------|--------|
-| `CAPABILITY_REGISTRATION_TEST_COVERAGE_COMPLETE.md` | Jan 25 | Test coverage report | Archive |
-| `HARDCODING_ELIMINATION_VERIFICATION_COMPLETE.md` | Jan 25 | 95%+ capability-based | Archive |
-| `MOCK_ISOLATION_VERIFICATION_COMPLETE.md` | Jan 25 | Mock audit complete | Archive |
-| `UNSAFE_CODE_VERIFICATION_COMPLETE.md` | Jan 25 | 100% Safe Rust | Archive |
+| `ROOT_DOCS_CLEANUP_COMPLETE_FEB_05_2026.md` | 11KB | Root docs cleanup report | Move to `ecoPrimals/sessions/2026-02-february/` |
+| `SESSION_COMPLETE_FEB_05_2026_RELAY_SERVER.md` | 20KB | Relay session completion | Move to `ecoPrimals/sessions/2026-02-february/` |
+| `RELAY_SERVER_COMPLETE_FEB_04_2026.md` | 14KB | Relay implementation report | Move to `ecoPrimals/sessions/2026-02-february/` |
+| `RELAY_IMPLEMENTATION_FINAL_STATUS.md` | 19KB | Relay final status | Move to `ecoPrimals/sessions/2026-02-february/` |
 
-**Recommendation**: Move to `ecoPrimals/sessions/jan-2026-verifications/`
-
-**Rationale**:
-- These were verification checkpoints during evolution
-- Information is now in Feb 05 session docs (99.6% Deep Debt, etc.)
-- Historical value only (fossil record)
+**Total**: 4 files, ~64KB to archive
 
 ---
 
-### 2. Old Session Directories (9 Folders)
+### 2. Outdated "TEMPORARILY DISABLED" Comments 🔍
 
-**Location**: `ecoPrimals/sessions/`
+These comments are from Nov 2025 and should be reviewed:
 
-**Current Structure** (messy):
+#### A. Discovery Module Comments (Outdated)
+
+**File**: `crates/songbird-discovery/src/discovery/mod.rs`
+
+```rust
+// TEMP DISABLED: Has syntax errors (mismatched delimiters) - needs fixing
+// pub mod enhanced_discovery;
+
+// TEMP DISABLED: Depend on enhanced_discovery or have syntax issues
+// pub mod monitoring;
+// pub mod network;
+// pub mod resources;
+// pub mod songbird_discovery;
 ```
-ecoPrimals/sessions/
-├── dec-2025/                    # Dec 25, 2025 sessions
-├── jan-2026/                    # Jan 2026 sessions
-├── jan-2026-complete/           # Duplicate?
-├── jan-31-2026/                 # Single day?
-├── feb-01-2026/                 # Single day?
-├── feb-01-2026-final/           # Duplicate?
-├── feb-01-2026-late/            # Duplicate?
-├── feb-2026/                    # Main Feb work
-└── feb-05-2026-evolution/       # Latest work
+
+**Status**: These modules were disabled due to syntax errors from Nov 2025.  
+**Assessment**: Either fix and re-enable OR remove comments and keep disabled permanently  
+**Recommendation**: **Remove commented modules** - they've been replaced by universal architecture
+
+#### B. Discovery Tests (Can be cleaned)
+
+**File**: `crates/songbird-discovery/src/discovery_tests.rs`
+
+```rust
+// use songbird_universal::  // TEMPORARILY DISABLED - {ServiceInfo as UniversalServiceInfo, UniversalHealthStatus};
 ```
 
-**Issues**:
-1. Multiple folders for same dates (feb-01-2026, feb-01-2026-final, feb-01-2026-late)
-2. Unclear naming (jan-2026 vs jan-2026-complete)
-3. No clear index
+**File**: `crates/songbird-discovery/src/discovery/event_streaming.rs`
 
-**Recommendation**: Consolidate and organize
+```rust
+// use songbird_universal::  // TEMPORARILY DISABLED - ServiceInfo;
+```
 
-**Proposed Structure**:
+**Assessment**: These were likely temporary during refactoring  
+**Recommendation**: **Remove comments** - if imports not needed, clean them up
+
+#### C. Config Module (Nov 2025)
+
+**File**: `crates/songbird-config/src/canonical/mod.rs`
+
+```rust
+// TEMPORARILY DISABLED (Nov 10, 2025): Needs updating for consolidated APIs (~77 errors)
+// TODO: Update testing.rs to match current canonical struct definitions
 ```
-ecoPrimals/sessions/
-├── 2025-12-december/            # Consolidated Dec sessions
-│   ├── README.md               # Index of Dec work
-│   └── ... (all dec-2025 content)
-├── 2026-01-january/             # Consolidated Jan sessions
-│   ├── README.md               # Index of Jan work
-│   ├── verifications/          # Move from /verification
-│   └── ... (all jan sessions)
-├── 2026-02-february/            # Consolidated Feb sessions
-│   ├── README.md               # Index of Feb work
-│   ├── feb-01-reqwest-removal/ # Consolidated Feb 1 work
-│   ├── feb-03-dark-forest/     # Feb 3 work
-│   ├── feb-04-deep-debt/       # Feb 4 work
-│   ├── feb-05-evolution/       # Latest work (already good)
-│   └── general/                # General Feb docs
-└── README.md                   # Master sessions index
+
+**Assessment**: Still valid - testing.rs still needs updates  
+**Recommendation**: **Keep** - this is a legitimate TODO for Phase 2
+
+#### D. Universal Communication (Minor)
+
+**File**: `crates/songbird-universal/src/communication.rs`
+
+```rust
+// use songbird_config::AuthMethod;  // TEMPORARILY DISABLED
 ```
+
+**Assessment**: Unused import  
+**Recommendation**: **Remove entire commented line** if not needed
 
 ---
 
-### 3. primalBins Binary
+### 3. Legitimate TODOs (Keep) ✅
 
-**Location**: `primalBins/songbird-orchestrator`
+These TODOs are valid future work and should be kept:
 
-**Analysis**:
-- 1 executable binary in git repository
-- Likely a compiled test binary
-- Binary size: Unknown (not checked)
+#### Phase 2 / BearDog API Integration (15+ TODOs)
+- `TODO: Use universal IPC service discovery` (crypto.rs)
+- `TODO: Once BearDog adds certificate.generate_self_signed` (cert/generator.rs)
+- `TODO: Add random generation method to BearDog` (handshake/mod.rs)
+- `TODO(P0): Add BearDog signing integration` (messages.rs)
+- Many more awaiting BearDog API additions
 
-**Recommendation**: 
-- ⚠️ Review if needed in git
-- If test binary → add to `.gitignore`
-- If release binary → move to releases/
-- If dev binary → delete and rebuild
+#### Platform-Specific (iOS, WASM) (10+ TODOs)
+- `TODO: Requires platform-specific bindings` (ios.rs)
+- `TODO: Implement XPC transport using Pure Rust bindings` (ios.rs)
+- `TODO: Implement global WASM primal registry` (wasm.rs)
 
-**Action**: Check what it is first
+#### Future Features (20+ TODOs)
+- `TODO: Implement full NAT type detection` (stun/client.rs)
+- `TODO: Replace with watch channel or await-able broadcaster API` (relay.rs)
+- `TODO: Add cluster support` (anonymous/broadcaster.rs)
+- `TODO: Implement actual SoloKey/FIDO2 verification` (solokey.rs)
 
----
-
-### 4. TODO Comments (67 Instances)
-
-**Location**: Throughout codebase (67 files)
-
-**Categories**:
-
-#### ✅ Legitimate TODOs (Keep) - ~40 instances
-Future work that's correctly tracked:
-- `// TODO: Implement full NAT type detection` (stun)
-- `// TODO: Add random generation method to BearDog` (crypto)
-- `// TODO: Full X.509 parsing and validation` (cert)
-- `// TODO: Implement actual federation join logic` (federation)
-
-#### ⚠️ Potential False Positives (Review) - ~15 instances
-Comments that say "TODO" but describe complete implementations:
-- "Production implementation, no TODOs, no mocks" (handlers)
-- "Complete production implementation, not a TODO" (config)
-- "Remaining TODOs" (in migration doc)
-
-#### 📚 Documentation TODOs (Keep) - ~10 instances
-Test/documentation reminders:
-- `// TODO: Add remaining ~750 lines of tests` (test plan)
-- `// TODO: Update testing.rs to match current canonical struct` (docs)
-
-#### 🎯 Opportunity TODOs (Evaluate) - ~2 instances
-Optimization opportunities:
-- `// TODO: Replace with mpsc channel-based request queue` (coordinator)
-- `// TODO: Use bulk endpoint when we add streaming support` (usb)
-
-**Recommendation**: 
-1. Keep 90%+ of TODOs (legitimate future work)
-2. Reword ~5 false positives (remove "TODO" from production code comments)
-3. Track high-value opportunities in GitHub issues
+**Assessment**: All legitimate future work  
+**Recommendation**: **Keep all** - well-documented future enhancements
 
 ---
 
-## 🎯 Recommended Actions
+### 4. False Positives (Ignore) ✅
 
-### Phase 1: Archive Verification Docs ✅
+These are NOT issues:
 
-**Action**: Move verification docs to session archive
+- `TEMP_VAR`, `TEMP_DIR` in tests - legitimate test variables
+- `DEFAULT_RETRY_ATTEMPTS` - legitimate constant name
+- `COMPLETE` in completion report filenames - intentional naming
 
+---
+
+## 🎯 Cleanup Actions
+
+### Priority 1: Archive Completion Docs (High Priority) ✅
+
+**Action**: Move 4 completion docs to `ecoPrimals/sessions/2026-02-february/`
+
+**Commands**:
 ```bash
-mkdir -p ecoPrimals/sessions/2026-01-january/verifications
-mv verification/*.md ecoPrimals/sessions/2026-01-january/verifications/
+mv ROOT_DOCS_CLEANUP_COMPLETE_FEB_05_2026.md \
+   ecoPrimals/sessions/2026-02-february/
+
+mv SESSION_COMPLETE_FEB_05_2026_RELAY_SERVER.md \
+   ecoPrimals/sessions/2026-02-february/
+
+mv RELAY_SERVER_COMPLETE_FEB_04_2026.md \
+   ecoPrimals/sessions/2026-02-february/
+
+mv RELAY_IMPLEMENTATION_FINAL_STATUS.md \
+   ecoPrimals/sessions/2026-02-february/
 ```
 
-**Impact**: Clean up root-level verification/ folder
+**Result**: Root directory cleaner, fossil record preserved ✅
 
 ---
 
-### Phase 2: Consolidate Session Directories ✅
+### Priority 2: Clean Discovery Module Comments (Medium Priority) ⚠️
 
-**Action**: Organize session structure by year-month
+**Option A**: Remove dead commented-out modules (Recommended)
 
-**Steps**:
-1. Create year-month folders (2025-12-december, 2026-01-january, 2026-02-february)
-2. Create README.md index in each
-3. Move and consolidate duplicate session folders
-4. Create master sessions/README.md
+**File**: `crates/songbird-discovery/src/discovery/mod.rs`
 
-**Impact**: 
-- 9 folders → 3 organized folders
-- Clear chronological structure
-- Easy navigation
-
----
-
-### Phase 3: Review primalBins Binary ⚠️
-
-**Action**: Determine purpose and location
-
-```bash
-# Check what it is
-file primalBins/songbird-orchestrator
-ldd primalBins/songbird-orchestrator
-ls -lh primalBins/songbird-orchestrator
-git log --follow primalBins/songbird-orchestrator
+**Change**:
+```diff
+-// Enhanced discovery with federation capabilities (NEW)
+-// TEMP DISABLED: Has syntax errors (mismatched delimiters) - needs fixing
+-// See: lines 260, 304, 339, 410, 414, 471, 480
+-// pub mod enhanced_discovery;
+-
+-// Existing submodules (already well-organized)
+ pub mod config;
+-// TEMP DISABLED: Depend on enhanced_discovery or have syntax issues
+-// pub mod monitoring;
+-// pub mod network;
+-// pub mod resources;
+-// pub mod songbird_discovery;
+ pub mod types;
 ```
 
-**Decisions**:
-- If test binary → remove, add `primalBins/` to `.gitignore`
-- If release → move to dedicated releases location
-- If critical → document why it's in git
+**Rationale**: These modules haven't been used since Nov 2025. Universal architecture has replaced them.
+
+**Option B**: Keep comments as historical reference
+
+**Decision**: Ask user preference
 
 ---
 
-### Phase 4: Audit TODO Comments 📝
+### Priority 3: Remove Orphaned Import Comments (Low Priority) 🔧
 
-**Action**: Review and clean false positives
+**File**: `crates/songbird-universal/src/communication.rs`
 
-**Target Files** (5-10 files to update):
-```
-crates/songbird-universal-ipc/src/handlers/birdsong_handler.rs
-  Line 185: "Production implementation, no TODOs" 
-  → Change: Remove "TODOs" word from comment
-
-crates/songbird-config/src/defaults/hosts_evolved.rs
-  Line 191: "This is a complete production implementation, not a TODO"
-  → Change: Remove "not a TODO" phrase
-
-crates/songbird-config/src/zero_hardcoding_migration.rs
-  Line 118: "Remaining TODOs"
-  → Change: Context is about past TODOs, clarify
-
-crates/songbird-universal/src/discovery/backends/container.rs
-  Line 4: "Evolution from TODO stubs to full production"
-  → Keep: Clear historical context
-
-crates/songbird-universal/src/discovery/backends/network.rs
-  Line 4: "Evolution from TODO stub to full production"
-  → Keep: Clear historical context
+**Change**:
+```diff
+ use songbird_types::{AuthMethod, PrimalIdentity, SongbirdResult};
+-// use songbird_config::AuthMethod;  // TEMPORARILY DISABLED
 ```
 
-**Impact**: Remove ~5 false positive "TODO" mentions from production code
+**File**: `crates/songbird-discovery/src/discovery_tests.rs`
 
----
-
-## 📋 Execution Checklist
-
-### Priority 1: Quick Wins (30 min)
-- [ ] Move verification/ to archive (Phase 1)
-- [ ] Review primalBins binary (Phase 3)
-- [ ] Clean ~5 false positive TODO comments (Phase 4)
-
-### Priority 2: Session Organization (1-2 hours)
-- [ ] Create year-month folder structure
-- [ ] Create README.md indices
-- [ ] Consolidate duplicate session folders (feb-01 variants)
-- [ ] Test all links still work
-
-### Priority 3: Polish
-- [ ] Update ROOT_DOCS_INDEX.md with new structure
-- [ ] Create ecoPrimals/sessions/README.md master index
-- [ ] Final verification
-
----
-
-## 🎊 Expected Results
-
-### Before
-```
-verification/ (4 files cluttering root)
-ecoPrimals/sessions/ (9 folders, messy)
-primalBins/ (unclear purpose)
-67 TODO comments (5 false positives)
+**Change**:
+```diff
+ use super::*;
+-// use songbird_universal::  // TEMPORARILY DISABLED - {ServiceInfo as UniversalServiceInfo, UniversalHealthStatus};
 ```
 
-### After
+**Rationale**: These are remnants from refactoring. Either remove or uncomment if needed.
+
+---
+
+## 📊 Impact Assessment
+
+### Root Directory Before Cleanup
+
 ```
-✅ verification/ moved to archive
-✅ ecoPrimals/sessions/ organized (3 year-month folders)
-✅ primalBins/ clarified or cleaned
-✅ 62 legitimate TODOs, 0 false positives
-✅ Clear documentation structure
+songbird/
+├── README.md                                    (KEEP - essential)
+├── EXECUTIVE_SUMMARY.md                         (KEEP - essential)
+├── CHANGELOG.md                                 (KEEP - essential)
+├── DEPLOYMENT_READY_STATUS.md                   (KEEP - essential)
+├── ROOT_DOCS_INDEX.md                           (KEEP - essential)
+├── UPSTREAM_EVOLUTION_TRACKER.md                (KEEP - active tracking)
+├── NEXT_EVOLUTION_OPPORTUNITIES_FEB_05_2026.md  (KEEP - active roadmap)
+├── FINAL_HANDOFF_FEB_05_2026.md                 (KEEP - integration doc)
+├── ROOT_DOCS_CLEANUP_COMPLETE_FEB_05_2026.md    (MOVE - completion report)
+├── SESSION_COMPLETE_FEB_05_2026_RELAY_SERVER.md (MOVE - session report)
+├── RELAY_SERVER_COMPLETE_FEB_04_2026.md         (MOVE - implementation report)
+├── RELAY_IMPLEMENTATION_FINAL_STATUS.md         (MOVE - status report)
+└── ...
 ```
 
----
+### Root Directory After Cleanup
 
-## 🚫 What We're NOT Cleaning
+```
+songbird/
+├── README.md                                    ✅ (essential)
+├── EXECUTIVE_SUMMARY.md                         ✅ (essential)
+├── CHANGELOG.md                                 ✅ (essential)
+├── DEPLOYMENT_READY_STATUS.md                   ✅ (essential)
+├── ROOT_DOCS_INDEX.md                           ✅ (essential)
+├── UPSTREAM_EVOLUTION_TRACKER.md                ✅ (active tracking)
+├── NEXT_EVOLUTION_OPPORTUNITIES_FEB_05_2026.md  ✅ (active roadmap)
+├── FINAL_HANDOFF_FEB_05_2026.md                 ✅ (integration doc)
+└── ...
 
-### Keep As-Is (Correct)
+(4 completion reports moved to ecoPrimals/sessions/2026-02-february/)
+```
 
-1. **Legacy Examples** (`examples/legacy/`)
-   - Well-documented historical reference
-   - 1,486 lines but valuable for migration understanding
-   - README explains why they're archived
-
-2. **Rendezvous Server** (`rendezvous/`)
-   - Active development
-   - Contains legitimate TODOs for future work
-
-3. **Test Files with Hardcoded Values**
-   - Appropriate for tests
-   - Not production code
-
-4. **Build Artifacts** (already gitignored)
-   - `target/`
-   - `*.swp`, `*.bak`, etc.
-
-5. **Legitimate TODOs** (~60 instances)
-   - Future work correctly tracked in code
-   - Better than GitHub issues for small items
+**Result**: Cleaner, more focused root directory ✅
 
 ---
 
-## 📊 Impact Summary
+## 🎯 Recommendation
 
-| Metric | Before | After | Improvement |
-|--------|--------|-------|-------------|
-| Root-level verification docs | 4 files | 0 files | 100% cleaner |
-| Session folder organization | 9 messy | 3 organized | 67% reduction |
-| Unclear binaries | 1 | 0 | 100% clarity |
-| False positive TODOs | ~5 | 0 | 100% accuracy |
-| Documentation clarity | Good | Excellent | Better navigation |
+### Proceed with:
 
----
+1. ✅ **Move 4 completion docs** to ecoPrimals/sessions/2026-02-february/
+2. ⚠️ **Review discovery module comments** - likely safe to remove
+3. 🔧 **Remove orphaned import comments** - minor cleanup
+4. ✅ **Keep all legitimate TODOs** - document future work
 
-## 🎯 Success Criteria
+### Skip:
 
-1. ✅ No verification/ folder in root
-2. ✅ Clear year-month session structure
-3. ✅ primalBins/ resolved (removed or documented)
-4. ✅ Zero false positive TODO comments
-5. ✅ Easy navigation with README indices
-6. ✅ All links working
-7. ✅ Git history preserved
+- ❌ Don't touch legitimate TODOs (Phase 2, BearDog API, platform-specific)
+- ❌ Don't touch test variables (TEMP_VAR, etc.)
+- ❌ Don't touch canonical/mod.rs TODO (still valid)
 
 ---
 
-## 🔄 Next Steps
+## 📝 Questions for User
 
-1. **User Review**: Get approval for cleanup plan
-2. **Execute Phase 1**: Quick wins (verification + TODO cleanup)
-3. **Execute Phase 2**: Session organization
-4. **Execute Phase 3**: primalBins resolution
-5. **Verify**: Test all links and structure
-6. **Commit**: Push cleaned structure
-7. **Document**: Update ROOT_DOCS_INDEX.md
+1. **Discovery module cleanup**: Remove old commented-out modules (enhanced_discovery, monitoring, network, etc.)?
+   - Recommendation: **Remove** (replaced by universal architecture)
+
+2. **Import comments**: Remove orphaned "TEMPORARILY DISABLED" import comments?
+   - Recommendation: **Remove** (cleanup from old refactoring)
 
 ---
 
-**Created**: February 5, 2026  
-**Status**: Ready for execution  
-**Estimated Time**: 2-3 hours total
+## ✅ Safe to Execute
 
-🦀🧬✨ **Clean Archive, Clean Mind!** ✨🧬🦀
+**Low Risk Actions**:
+1. Move completion docs to ecoPrimals/ (reversible)
+2. Remove orphaned import comments (cosmetic)
+
+**Review Before Action**:
+1. Discovery module commented code (may have historical value)
+
+---
+
+**Status**: ✅ **Ready for cleanup**  
+**Risk**: Low (mostly archiving and comment cleanup)  
+**Impact**: Cleaner root directory, easier navigation

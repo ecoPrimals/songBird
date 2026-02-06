@@ -21,7 +21,6 @@
 
 | Document | Purpose | Audience |
 |----------|---------|----------|
-| [`NAT_TRAVERSAL_VALIDATION_GUIDE.md`](NAT_TRAVERSAL_VALIDATION_GUIDE.md) | Step-by-step testing procedures ⭐ | Testing Team |
 | [`DEPLOYMENT_READY_STATUS.md`](DEPLOYMENT_READY_STATUS.md) | Production deployment guide | Operations |
 | [`FINAL_HANDOFF_FEB_05_2026.md`](FINAL_HANDOFF_FEB_05_2026.md) | biomeOS integration readiness | Integration Team |
 

@@ -104,6 +104,7 @@ export SONGBIRD_METRICS_PORT=9090
 |----------|---------|
 | [`EXECUTIVE_SUMMARY.md`](EXECUTIVE_SUMMARY.md) | High-level status overview |
 | [`ROOT_DOCS_INDEX.md`](ROOT_DOCS_INDEX.md) | Complete documentation map |
+| [`NAT_TRAVERSAL_VALIDATION_GUIDE.md`](NAT_TRAVERSAL_VALIDATION_GUIDE.md) | Validation procedures ⭐ |
 | [`DEPLOYMENT_READY_STATUS.md`](DEPLOYMENT_READY_STATUS.md) | Deploy now guide |
 | [`CHANGELOG.md`](CHANGELOG.md) | Version history |
 
