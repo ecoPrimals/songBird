@@ -59,15 +59,17 @@ songbird-config = { path = "../songbird-config" }
 songbird-universal = { path = "../songbird-universal" }
 # songbird-security-errors = { path = "../songbird-security-errors" }  # REMOVED: Using unified errors from songbird-types
 songbird-discovery = { path = "../songbird-discovery" }
-aes-gcm = "0.10.3"
-generic-array = "1.0"
+# ⚠️ TRUE PRIMAL: Crypto for local BTSP testing only (optional)
+aes-gcm = { version = "0.10.3", optional = true }
+generic-array = { version = "1.0", optional = true }
 rand.workspace = true
 
 [dev-dependencies]
 tokio-test = "0.4"
 
 [features]
-default = ["gaming", "federation"]
+default = ["gaming", "federation", "local-btsp"]  # Include local-btsp for backward compat
 gaming = []
 federation = []
+local-btsp = ["aes-gcm", "generic-array"]  # ⚠️ Local BTSP testing (uses crypto) - production uses BearDog!
 # Removed legacy-compat feature flag - migration complete 

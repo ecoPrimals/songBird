@@ -49,17 +49,24 @@ pub mod service;
 pub mod storage;
 
 // Re-exports - TRUE PRIMAL (BearDog-delegated)
+// ✅ Production exports: ZERO direct crypto, 100% BearDog delegation
 pub use address::{derive_onion_address_via_beardog, validate_onion_address_via_beardog};
 pub use beardog_crypto::{BeardogCryptoClient, Ed25519Keypair, X25519Keypair};
 pub use connector::OnionConnector;
 pub use crypto::{decrypt_data_via_beardog, encrypt_data_via_beardog};
 pub use error::{OnionError, Result};
 pub use keys::OnionIdentity;
-pub use service::OnionService;
 pub use storage::OnionStorage;
 
+// ⚠️ OnionService is a STUB (Phase 3) - requires standalone feature for now
+#[cfg(any(test, feature = "standalone"))]
+pub use service::OnionService;
+
 // Re-exports - Standalone (for testing/offline)
+// ⚠️ These methods use direct crypto - testing only!
 #[cfg(any(test, feature = "standalone"))]
 pub use address::{derive_onion_address, parse_onion_address, validate_onion_address};
 #[cfg(any(test, feature = "standalone"))]
 pub use crypto::{decrypt_data, encrypt_data};
+#[cfg(any(test, feature = "standalone"))]
+pub use storage::OnionStorage as OnionStorageStandalone;  // Standalone storage methods

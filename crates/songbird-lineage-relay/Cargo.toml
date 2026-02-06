@@ -6,7 +6,7 @@ license = "AGPL-3.0"
 repository = "https://github.com/ecoPrimals/songbird"
 readme = "README.md"
 keywords = ["lineage", "relay", "genetic", "p2p", "connectivity"]
-categories = ["network-programming", "cryptography"]
+categories = ["network-programming", "distributed-systems"]  # Removed "cryptography" - delegates to BearDog!
 description = "Genetic lineage-based relay system - evolution beyond NAT/STUN/TURN"
 authors = ["ecoPrimals Team"]
 

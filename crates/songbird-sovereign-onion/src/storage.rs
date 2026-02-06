@@ -87,6 +87,11 @@ impl OnionStorage {
     /// If identity exists in storage, loads it. Otherwise generates new identity
     /// and stores it.
     #[cfg(any(test, feature = "standalone"))]
+    /// Load or generate onion identity (STANDALONE mode - testing only)
+    ///
+    /// ⚠️ **TRUE PRIMAL NOTE**: This method uses direct crypto and should ONLY be
+    /// used for testing! Production code should use `load_or_generate_identity_via_beardog()`.
+    #[cfg(any(test, feature = "standalone"))]
     pub fn load_or_generate_identity(&self) -> Result<OnionIdentity> {
         const IDENTITY_KEY: &[u8] = b"identity/key";
 

@@ -101,6 +101,8 @@ pub enum OnionError {
     CryptoError(String),
 }
 
+// Only available in standalone/test mode (where ed25519_dalek is available)
+#[cfg(any(test, feature = "standalone"))]
 impl From<ed25519_dalek::SignatureError> for OnionError {
     fn from(e: ed25519_dalek::SignatureError) -> Self {
         OnionError::Signature(e.to_string())

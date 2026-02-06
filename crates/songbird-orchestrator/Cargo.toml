@@ -91,16 +91,14 @@ serde_json = "1.0"
 # Access control and authentication
 # jsonwebtoken = "9.3"  # ❌ REMOVED: Uses ring (C code). Replaced with pure_rust_jwt (HMAC-SHA256) - Jan 19, 2026
 
-# 🦀 RustCrypto: Audited pure Rust crypto (BiomeOS Concentrated Gap Strategy)
-# For internal operations (BTSP, BirdSong, auth) - NOT for TLS (ring handles TLS temporarily)
-aes-gcm = "0.10"            # Encryption (NCC Group audited)
-ed25519-dalek = "2.1"       # Signatures (audited)
-x25519-dalek = "2.0"        # Key exchange (Diffie-Hellman)
-# sha2 = "0.10"             # Already present above (line 51) ✅
-hmac = "0.12"               # HMAC authentication (audited)
-argon2 = "0.5"              # Password hashing / Key derivation (audited)
-chacha20poly1305 = "0.10"   # Alternative encryption (NCC Group audited)
-# Note: rand and sha2 already present in dependencies
+# ⚠️ TRUE PRIMAL EXCEPTION (Feb 6, 2026): Minimal JWT Auth Crypto
+# Songbird delegates 100% crypto to BearDog EXCEPT for local JWT auth (HMAC-SHA256)
+# Temporary exception for API authentication (sha2 already present above, adding hmac):
+hmac = "0.12"       # HMAC for JWT signatures (Pure Rust, audited) - ONLY remaining crypto!
+# 
+# ✅ REMOVED 5 UNUSED CRYPTO DEPS: aes-gcm, ed25519-dalek, x25519-dalek, argon2, chacha20poly1305
+# TODO Phase 2: Delegate JWT to BearDog via hmac_sha256 method (BearDog already has this!)
+# See: CRYPTO_PRIMAL_OVERSTEP_CLEANUP_FEB_06_2026.md for cleanup details
 
 # tarpc for high-performance native RPC (Phase 3)
 tarpc = { workspace = true, features = ["full"] }

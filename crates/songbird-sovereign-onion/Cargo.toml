@@ -7,19 +7,22 @@ repository = "https://github.com/ecoPrimals/SongBird"
 readme = "README.md"
 description = "Pure Rust minimal onion service protocol for sovereign device-to-device communication"
 keywords = ["onion", "tor", "p2p", "pure-rust", "sovereignty"]
-categories = ["network-programming", "cryptography"]
+categories = ["network-programming", "distributed-systems"]  # Removed "cryptography" - delegates to BearDog!
 
 [dependencies]
 # Async runtime (Pure Rust)
 tokio = { version = "1.35", features = ["full"] }
 
 # Cryptography (100% Pure Rust - RustCrypto)
-ed25519-dalek = "2.1"        # Identity keys
-x25519-dalek = "2.0"         # Key exchange
-chacha20poly1305 = "0.10"    # AEAD encryption
-sha3 = "0.10"                # For .onion address derivation
-sha2 = "0.10"                # For HKDF
-hmac = "0.12"                # For HKDF
+# ⚠️ TRUE PRIMAL FIX (Feb 6, 2026): Crypto dependencies now OPTIONAL
+# Production: Delegates to BearDog (ZERO crypto in Songbird!)
+# Testing: Uses standalone feature for offline development
+ed25519-dalek = { version = "2.1", optional = true }        # Identity keys (testing only)
+x25519-dalek = { version = "2.0", optional = true }         # Key exchange (testing only)
+chacha20poly1305 = { version = "0.10", optional = true }    # AEAD encryption (testing only)
+sha3 = { version = "0.10", optional = true }                # .onion derivation (testing only)
+sha2 = { version = "0.10", optional = true }                # HKDF (testing only)
+hmac = { version = "0.12", optional = true }                # HKDF (testing only)
 
 # Database (Pure Rust)
 sled = "0.34"                # Embedded database
@@ -45,8 +48,18 @@ tokio-test = "0.4"
 criterion = "0.5"
 
 [features]
-default = ["standalone"]  # Default to standalone for backward compatibility
-standalone = []  # Enable standalone crypto (bypasses BearDog)
+# ✅ TRUE PRIMAL FIX (Feb 6, 2026): NO crypto by default!
+# Production builds: ZERO crypto (delegates to BearDog)
+# Test builds: Use --features standalone for offline testing
+default = []  # ✅ NO CRYPTO (production uses BearDog!)
+standalone = [
+    "ed25519-dalek",
+    "x25519-dalek",
+    "chacha20poly1305",
+    "sha3",
+    "sha2",
+    "hmac"
+]  # Enable standalone crypto for testing/offline development only
 
 [lib]
 name = "songbird_sovereign_onion"

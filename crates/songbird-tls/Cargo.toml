@@ -7,7 +7,7 @@ repository = "https://github.com/ecoPrimals/SongBird"
 readme = "README.md"
 description = "Pure Rust TLS 1.3 implementation with capability-based crypto delegation to BearDog"
 keywords = ["tls", "security", "pure-rust", "capability-based"]
-categories = ["cryptography", "network-programming"]
+categories = ["network-programming", "development-tools::testing"]  # Removed "cryptography" - delegates to BearDog!
 
 [dependencies]
 # Core dependencies (all Pure Rust!)
@@ -26,17 +26,18 @@ base64 = "0.22"
 # Pin projection for async stream abstraction (Pure Rust)
 pin-project = "1.1"
 
-# Pure Rust certificate generation (standalone mode)
-ed25519-dalek = "2.1"  # 100% Pure Rust Ed25519 signatures
-rand = "0.8"           # For key generation
-chrono = "0.4"         # For certificate validity
+# ⚠️ TRUE PRIMAL: Certificate generation for testing only (optional)
+ed25519-dalek = { version = "2.1", optional = true }  # Ed25519 for self-signed certs (testing only)
+rand = { version = "0.8", optional = true }           # For key generation (testing only)
+chrono = { version = "0.4", optional = true }         # For certificate validity (testing only)
 
 [dev-dependencies]
 tokio-test = "0.4"
 criterion = "0.5"
 
 [features]
-default = []
+default = ["local-certs"]  # Include local-certs for backward compat
+local-certs = ["ed25519-dalek", "rand", "chrono"]  # ⚠️ Self-signed cert generation (testing only) - production uses Tower Atomic certs!
 # Future: Add features for different protocol support
 # http2 = []
 # http3 = []

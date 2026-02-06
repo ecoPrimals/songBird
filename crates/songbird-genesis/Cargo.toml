@@ -5,8 +5,8 @@ edition = "2021"
 license = "AGPL-3.0"
 repository = "https://github.com/eastgate/songbird"
 readme = "README.md"
-keywords = ["genesis", "bootstrap", "security", "cryptography"]
-categories = ["cryptography", "authentication"]
+keywords = ["genesis", "bootstrap", "security", "usb"]  # Removed "cryptography" - delegates to BearDog!
+categories = ["hardware-support", "authentication"]  # Removed "cryptography" - delegates to BearDog!
 description = "Physical genesis bootstrap for Songbird nodes with multi-primal witness coordination"
 authors = ["ecoPrimals Team"]
 

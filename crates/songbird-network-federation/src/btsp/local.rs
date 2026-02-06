@@ -1,5 +1,9 @@
 //! Local BTSP Implementation
 //!
+//! ⚠️ **TRUE PRIMAL NOTE**: This module is for TESTING ONLY!
+//! Requires `local-btsp` feature (which includes crypto deps).
+//! Production builds should use BearDog delegation (no crypto in Songbird).
+//!
 //! This module provides a local implementation of BTSP for testing and
 //! development without requiring `BearDog` to be running. It uses standard
 //! Rust cryptography libraries to simulate the BTSP protocol.
@@ -15,6 +19,8 @@
 //! - No threshold key schemes
 //!
 //! When `BearDog` is available, it will be discovered and used automatically.
+
+#![cfg(feature = "local-btsp")]
 
 use async_trait::async_trait;
 use std::collections::HashMap;

@@ -1,12 +1,19 @@
 //! Onion service (listen mode) - STUB for Phase 3
+//!
+//! ⚠️ **TRUE PRIMAL NOTE**: This STUB uses standalone crypto for testing.
+//! Production implementation (Phase 3) will use BearDog delegation.
 
 use crate::error::Result;
 use crate::keys::OnionIdentity;
+
+#[cfg(any(test, feature = "standalone"))]
 use crate::storage::OnionStorage;
 
 /// Onion service (creates reachable .onion address)
 ///
 /// **Status**: STUB - To be implemented in Phase 3
+/// ⚠️ **Requires `standalone` feature** (uses direct crypto for testing)
+#[cfg(any(test, feature = "standalone"))]
 pub struct OnionService {
     identity: OnionIdentity,
     #[allow(dead_code)] // Will be used in Phase 3
@@ -14,6 +21,7 @@ pub struct OnionService {
     port: u16,
 }
 
+#[cfg(any(test, feature = "standalone"))]
 impl OnionService {
     /// Create new onion service
     ///

@@ -1,12 +1,13 @@
 //! Onion identity key management
 
-use crate::address::derive_onion_address;
 use crate::beardog_crypto::BeardogCryptoClient;
 use crate::error::Result;
 use serde::{Deserialize, Serialize};
 use std::time::{SystemTime, UNIX_EPOCH};
 
-// Import dalek types only for standalone/test mode
+// Import dalek types and standalone functions only for test/standalone mode
+#[cfg(any(test, feature = "standalone"))]
+use crate::address::derive_onion_address;
 #[cfg(any(test, feature = "standalone"))]
 use ed25519_dalek::SigningKey;
 
@@ -86,11 +87,15 @@ impl OnionIdentity {
         
         #[cfg(not(any(test, feature = "standalone")))]
         let public_key = {
-            // In production, we must derive via BearDog or fail
-            // For now, use the same test approach
-            // This is a known limitation until BearDog adds public_from_secret
-            let signing_key = ed25519_dalek::SigningKey::from_bytes(secret_key);
-            signing_key.verifying_key().to_bytes()
+            // ⚠️ TRUE PRIMAL: In production, public key must be provided!
+            // Ed25519 public key cannot be derived without the crypto library.
+            // Production code should either:
+            // 1. Store both secret + public bytes in OnionIdentity
+            // 2. Use BearDog to derive public from secret (requires BearDog API extension)
+            // For now, require public_key parameter in production builds
+            return Err(crate::OnionError::CryptoError(
+                "Public key required in production mode (use from_stored_bytes_with_public or BearDog delegation)".to_string()
+            ).into());
         };
         
         let onion_address = crate::address::derive_onion_address_via_beardog(client, &public_key).await?;
