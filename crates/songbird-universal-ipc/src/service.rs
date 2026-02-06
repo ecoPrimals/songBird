@@ -38,6 +38,8 @@ use crate::tower_atomic::JsonRpcHandler;
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
+use songbird_lineage_relay::relay_handler::RelayHandler; // Relay Server (Feb 5, 2026)
+use songbird_lineage_relay::beardog::{MockLineageProvider, MockRelayAuthority}; // Mock for testing (Feb 5, 2026)
 use std::sync::Arc;
 use tokio::sync::RwLock;
 use tracing::{debug, info};
@@ -121,6 +123,7 @@ pub struct IpcServiceHandler {
     rendezvous_handler: Arc<RendezvousHandler>,
     peer_handler: Arc<PeerHandler>,
     birdsong_handler: Arc<BirdSongHandler>, // BirdSong (Feb 2, 2026)
+    relay_handler: Arc<RelayHandler>,       // Relay Server (Feb 5, 2026)
     start_time: Arc<RwLock<std::time::Instant>>, // Track uptime (Feb 5, 2026)
 }
 
@@ -145,6 +148,11 @@ impl IpcServiceHandler {
             Arc::new(RendezvousHandler::new(Arc::new(HttpRendezvousClient::new())));
         let peer_handler = Arc::new(PeerHandler::new(Arc::new(UdpPeerConnector::new())));
         let birdsong_handler = Arc::new(BirdSongHandler::new()); // Feb 2, 2026
+        
+        // ✅ Relay Server (Feb 5, 2026) - Uses mock authority for now
+        // TODO: Wire to BearDog for production lineage verification
+        let mock_lineage = Arc::new(MockLineageProvider::new());
+        let relay_handler = Arc::new(RelayHandler::new(Arc::new(MockRelayAuthority::new(mock_lineage))));
 
         Self {
             registry,
@@ -154,6 +162,7 @@ impl IpcServiceHandler {
             rendezvous_handler,
             peer_handler,
             birdsong_handler,
+            relay_handler,
             start_time: Arc::new(RwLock::new(std::time::Instant::now())),
         }
     }
@@ -180,6 +189,8 @@ impl IpcServiceHandler {
             Arc::new(RendezvousHandler::new(Arc::new(HttpRendezvousClient::new())));
         let peer_handler = Arc::new(PeerHandler::new(Arc::new(UdpPeerConnector::new())));
         let birdsong_handler = Arc::new(BirdSongHandler::new()); // Feb 2, 2026
+        let mock_lineage = Arc::new(MockLineageProvider::new());
+        let relay_handler = Arc::new(RelayHandler::new(Arc::new(MockRelayAuthority::new(mock_lineage)))); // Feb 5, 2026
 
         Self {
             registry,
@@ -189,6 +200,7 @@ impl IpcServiceHandler {
             rendezvous_handler,
             peer_handler,
             birdsong_handler,
+            relay_handler,
             start_time: Arc::new(RwLock::new(std::time::Instant::now())),
         }
     }
@@ -206,6 +218,8 @@ impl IpcServiceHandler {
             Arc::new(RendezvousHandler::new(Arc::new(HttpRendezvousClient::new())));
         let peer_handler = Arc::new(PeerHandler::new(Arc::new(UdpPeerConnector::new())));
         let birdsong_handler = Arc::new(BirdSongHandler::new()); // Feb 2, 2026
+        let mock_lineage = Arc::new(MockLineageProvider::new());
+        let relay_handler = Arc::new(RelayHandler::new(Arc::new(MockRelayAuthority::new(mock_lineage)))); // Feb 5, 2026
 
         Self {
             registry,
@@ -215,6 +229,7 @@ impl IpcServiceHandler {
             rendezvous_handler,
             peer_handler,
             birdsong_handler,
+            relay_handler,
             start_time: Arc::new(RwLock::new(std::time::Instant::now())),
         }
     }
@@ -728,6 +743,7 @@ impl IpcServiceHandler {
     ///
     /// Returns list of available JSON-RPC methods.
     /// NEW (Feb 5, 2026) - Matches orchestrator's standard method.
+    /// UPDATED (Feb 5, 2026) - Added relay.* and stun.serve/stop/status
     async fn handle_rpc_discover_standard(&self) -> Result<Value, String> {
         Ok(serde_json::json!({
             "methods": [
@@ -736,6 +752,8 @@ impl IpcServiceHandler {
                 "ipc.register", "ipc.resolve", "ipc.discover", "ipc.list",
                 "http.request", "http.get", "http.post",
                 "stun.get_public_address", "stun.bind",
+                "stun.serve", "stun.stop", "stun.status",
+                "relay.serve", "relay.stop", "relay.status", "relay.allocate",
                 "birdsong.generate_encrypted_beacon", "birdsong.decrypt_beacon",
                 "birdsong.verify_lineage", "birdsong.get_lineage",
                 "discovery.peers",
@@ -770,6 +788,13 @@ impl JsonRpcHandler for IpcServiceHandler {
             "stun.serve" => self.handle_stun_serve(params).await,
             "stun.stop" => self.handle_stun_stop(params).await,
             "stun.status" => self.handle_stun_status(params).await,
+
+            // Relay Server methods (NEW - Feb 5, 2026)
+            // Completes sovereign NAT traversal - no external dependencies
+            "relay.serve" => self.relay_handler.handle_serve(params).await,
+            "relay.stop" => self.relay_handler.handle_stop(params).await,
+            "relay.status" => self.relay_handler.handle_status(params).await,
+            "relay.allocate" => self.relay_handler.handle_allocate(params).await,
 
             // Discovery methods (NEW - Jan 29, 2026)
             "discovery.peers" => self.handle_discovery_peers(params).await,

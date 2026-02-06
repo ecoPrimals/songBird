@@ -34,6 +34,9 @@ songbird-http-client = { path = "../songbird-http-client" }
 # STUN client (for NAT traversal)
 songbird-stun = { path = "../songbird-stun" }
 
+# Lineage Relay (for sovereign NAT traversal)
+songbird-lineage-relay = { path = "../songbird-lineage-relay" }
+
 # Discovery (for peer registry bridge)
 songbird-discovery = { path = "../songbird-discovery" }
 
