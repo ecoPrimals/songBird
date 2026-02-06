@@ -38,6 +38,9 @@ sha2 = "0.10"
 thiserror = "1.0"
 anyhow = "1.0"
 
+# Static initialization
+lazy_static = "1.4"
+
 # Network
 tokio-tungstenite = "0.21"
 futures-util = "0.3"

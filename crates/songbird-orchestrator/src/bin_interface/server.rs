@@ -240,13 +240,16 @@ async fn start_ipc_server(socket_path: &str, beardog_socket: &str) -> Result<()>
     // Remove old socket if exists
     let _ = std::fs::remove_file(socket_path);
 
-    // Create IPC service handler with all methods (HTTP + STUN + Discovery + Rendezvous + Peer)
+    // Create IPC service handler with all methods (HTTP + STUN + Discovery + Rendezvous + Peer + Relay)
+    // IMPORTANT: Create ONCE and share via Arc - state must persist across connections!
     let registry = Arc::new(RwLock::new(ServiceRegistry::new()));
+    let shared_handler = Arc::new(IpcServiceHandler::new(registry.clone()));
 
     tracing::info!("✅ IPC server listening on {}", socket_path);
     tracing::info!("   Methods available:");
     tracing::info!("     • http.request, http.get, http.post - HTTP/HTTPS requests");
-    tracing::info!("     • stun.get_public_address, stun.bind - NAT traversal");
+    tracing::info!("     • stun.serve, stun.stop, stun.status - STUN server lifecycle");
+    tracing::info!("     • relay.serve, relay.stop, relay.status, relay.allocate - Relay server");
     tracing::info!("     • discovery.peers - Real-time peer discovery");
     tracing::info!("     • rendezvous.register, rendezvous.lookup - Relay server");
     tracing::info!("     • peer.connect - UDP hole punching");
@@ -261,8 +264,8 @@ async fn start_ipc_server(socket_path: &str, beardog_socket: &str) -> Result<()>
             Ok((stream, _)) => {
                 tracing::debug!("New IPC connection accepted");
 
-                // Create handler for this connection
-                let handler_clone = IpcServiceHandler::new(registry.clone());
+                // Clone Arc to share handler across connections (state persists!)
+                let handler_clone = Arc::clone(&shared_handler);
 
                 tokio::spawn(async move {
                     // Handle connection
@@ -344,12 +347,15 @@ async fn start_tcp_ipc_server(listen_addr: &str, _beardog_socket: &str) -> Resul
         .map_err(|e| anyhow::anyhow!("Invalid listen address '{}': {}", listen_addr, e))?;
 
     // Create IPC service handler with all methods
+    // IMPORTANT: Create ONCE and share via Arc - state must persist across connections!
     let registry = Arc::new(RwLock::new(ServiceRegistry::new()));
+    let shared_handler = Arc::new(IpcServiceHandler::new(registry.clone()));
 
     tracing::info!("✅ TCP IPC server listening on {}", addr);
     tracing::info!("   Methods available:");
     tracing::info!("     • http.request, http.get, http.post - HTTP/HTTPS requests");
-    tracing::info!("     • stun.get_public_address, stun.bind - NAT traversal");
+    tracing::info!("     • stun.serve, stun.stop, stun.status - STUN server lifecycle");
+    tracing::info!("     • relay.serve, relay.stop, relay.status, relay.allocate - Relay server");
     tracing::info!("     • discovery.peers - Real-time peer discovery");
     tracing::info!("     • rendezvous.register, rendezvous.lookup - Relay server");
     tracing::info!("     • peer.connect - UDP hole punching");
@@ -365,8 +371,8 @@ async fn start_tcp_ipc_server(listen_addr: &str, _beardog_socket: &str) -> Resul
             Ok((stream, peer_addr)) => {
                 tracing::debug!("New TCP IPC connection from {}", peer_addr);
 
-                // Create handler for this connection
-                let handler_clone = IpcServiceHandler::new(registry.clone());
+                // Clone Arc to share handler across connections (state persists!)
+                let handler_clone = Arc::clone(&shared_handler);
 
                 tokio::spawn(async move {
                     // Handle connection
