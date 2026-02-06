@@ -39,3 +39,6 @@ pub use error::{OnionRelayError, Result};
 pub use signaling::{SignalingMessage, PeerInfo, NatType};
 pub use coordinator::HolePunchCoordinator;
 pub use mesh::{BeaconMesh, RelayEndpoint, EndpointType};
+
+#[cfg(feature = "tor")]
+pub use tor_transport::{TorTransport, TorStream};
