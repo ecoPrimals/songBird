@@ -214,7 +214,7 @@ impl SongbirdOrchestrator {
     ///
     /// This is called on startup to get our encryption tag for USB seed integration.
     /// Discovers security provider via generic capability discovery.
-    async fn query_security_identity(&self) -> Result<()> {
+    pub(crate) async fn query_security_identity(&self) -> Result<()> {
         use crate::security_capability_client::SecurityCapabilityClient;
 
         // EVOLVED: Use capability discovery (not hardcoded vendor name!)
@@ -263,7 +263,7 @@ impl SongbirdOrchestrator {
     ///
     /// * `Ok(String)` - JWT secret (512 bits, base64-encoded)
     /// * `Err` - Only on critical failure (fallback always succeeds)
-    async fn provision_jwt_secret(&self) -> Result<String> {
+    pub(crate) async fn provision_jwt_secret(&self) -> Result<String> {
         use crate::auth::{get_beardog_socket_for_jwt, provision_jwt_secret};
 
         // Discover BearDog via capability-based discovery
@@ -277,270 +277,24 @@ impl SongbirdOrchestrator {
     }
 
     /// Start the orchestrator
+    /// Start the Songbird Orchestrator (7-stage startup sequence)
+    ///
+    /// **Deep Debt Evolution** (Feb 6, 2026): Extracted 275-line method to startup_orchestration module
+    ///
+    /// **Startup Stages**:
+    /// 1. Provision Security - JWT secrets, identity query
+    /// 2. Start Core Servers - HTTP, IPC, tarpc
+    /// 3. Register Self - Federation self-registration
+    /// 4. Start Discovery - Anonymous peer discovery
+    /// 5. Start Federation - Coordinator and trust cleanup
+    /// 6. Start Background Tasks - Health monitoring, cleanup
+    /// 7. Verify Connectivity - Post-startup verification
+    ///
+    /// **See**: `startup_orchestration.rs` for implementation details
     pub async fn start(&mut self) -> Result<()> {
-        info!("🚀 Starting Songbird Orchestrator");
-        info!("   Mode: Production-ready with secure defaults");
-        info!("   Auto-discovery: Secure anonymous capability exchange");
-        info!("   Federation: Zero-trust progressive escalation");
-        info!("   All connections: Encrypted by default (TLS failsafe)");
-
-        // NEW (Jan 17, 2026): Provision JWT secret from BearDog via capability discovery
-        info!("🔐 Provisioning JWT secret from security provider (BearDog)...");
-        let jwt_secret = self.provision_jwt_secret().await?;
-        info!("✅ JWT secret provisioned ({} bytes, Pure Rust delegation!)", jwt_secret.len());
-        // Store JWT secret for HTTP server to use
-        // ✅ JWT secret is now provided to HTTP handlers via capability discovery
-        // HTTP authentication implemented via BearDog delegation (Jan 17, 2026)
-
-        // NEW: Query security provider for our encryption tag (USB seed integration)
-        self.query_security_identity().await?;
-
-        // Start all services
-        // self.federation_manager.start(&federation_config).await?; // Temporarily disabled
-        self.observability_manager.start().await?;
-
-        // ✅ DEPLOYMENT FIX (Dec 20, 2025): Start HTTP server FIRST to get actual port
-        // This ensures discovery broadcasts the correct port even if fallback occurs
-        // ✅ DISCOVERY FIX (Jan 28, 2026): Call actual HTTP server module (not stub)
-        // The stub start_http_server() returns 0, which breaks discovery beacons
-        info!("🌐 Starting HTTP server...");
-        let bind_address =
-            format!("{}:{}", self._config.network.bind_host, self._config.network.base_port)
-                .parse()
-                .map_err(|e| anyhow::anyhow!("Invalid bind address: {}", e))?;
-
-        let actual_https_port = crate::app::http_server::start_http_server(
-            Arc::clone(&self.federation_state),
-            Arc::clone(&self.federated_service_registry),
-            Arc::clone(&self.service_registry),
-            bind_address,
-        )
-        .await?;
-        info!("✅ HTTP server started on port {}", actual_https_port);
-
-        // 🎧 NEW (Jan 4, 2026): Start IPC Server for inter-primal communication
-        // Unix: Unix domain sockets, Windows: TCP fallback
-        info!("🎧 Starting IPC server...");
-        self.start_ipc_server().await?;
-        info!("✅ IPC server started");
-
-        // 🌍 NEW (Jan 19, 2026): Start Universal IPC Broker for service-based inter-primal IPC
-        // ✅ EVOLUTION (Jan 29, 2026): Wire up discovery listener for runtime peer discovery
-        info!("🌍 Starting Universal IPC Broker...");
-        match crate::ipc::universal_broker::start_broker_with_discovery(
-            self.discovery_listener.clone(),
-        )
-        .await
-        {
-            Ok(()) => {
-                info!("✅ Universal IPC Broker started");
-                if self.discovery_listener.is_some() {
-                    info!("   🌉 Discovery bridge: ENABLED (real-time peer discovery)");
-                }
-            }
-            Err(e) => {
-                warn!("⚠️  Universal IPC Broker failed to start: {}", e);
-                warn!("   Continuing without Universal IPC Broker");
-                warn!("   Core functionality (Tower Atomic, HTTP, Unix sockets) still available");
-            }
-        }
-
-        // 🚀 NEW (Jan 6, 2026): Start tarpc Server for high-performance primal-to-primal RPC
-        info!("🚀 Starting tarpc server...");
-        self.start_tarpc_server().await?;
-        info!("✅ tarpc server started");
-
-        // ✅ IDENTITY FIX (Dec 20, 2025): Re-register SELF with actual port and endpoints
-        // This updates the self-registration created during new() with the actual bound port
-        if self.federation_config.is_some() {
-            // Re-load node identity (same stable ID) and detect endpoints with actual port
-            let mut node_identity = crate::node_identity::NodeIdentity::new_or_load(None)?;
-            node_identity.detect_all_endpoints(actual_https_port)?;
-
-            info!("🆔 Re-registering self with actual port {}:", actual_https_port);
-            info!("   ID: {}", node_identity.node_id);
-            info!("   Name: {}", node_identity.node_name);
-            info!("   Endpoints: {}", node_identity.endpoints.len());
-
-            let updated_self_registration = songbird_network_federation::state::NodeRegistration {
-                node_id: node_identity.node_id.to_string(),
-                node_name: node_identity.node_name.clone(),
-                node_address: format!(
-                    "https://{}:{}",
-                    detect_primary_ip().unwrap_or_else(|| "127.0.0.1".to_string()),
-                    actual_https_port
-                ),
-                endpoints: Some(
-                    node_identity
-                        .endpoints
-                        .iter()
-                        .map(|ep| songbird_network_federation::state::TransportEndpointInfo {
-                            interface_type: ep.interface_type.clone(),
-                            address: format!("{}:{}", ep.address.ip(), actual_https_port),
-                            protocols: ep.protocols.clone(),
-                            preference: ep.preference,
-                            status: songbird_network_federation::state::EndpointStatus::Active,
-                            last_check: chrono::Utc::now(),
-                        })
-                        .collect(),
-                ),
-                capabilities: vec![
-                    "orchestrator".to_string(),
-                    "secure_http".to_string(), // Pure Rust HTTP/HTTPS client
-                    "http.request".to_string(), // JSON-RPC http.request
-                    "tls.1.3".to_string(),     // TLS 1.3 via Tower Atomic
-                ],
-                cpu_cores: num_cpus::get(),
-                memory_gb: {
-                    #[cfg(target_os = "linux")]
-                    {
-                        (sysinfo::System::new_all().total_memory() / (1024 * 1024 * 1024)) as usize
-                    }
-                    #[cfg(not(target_os = "linux"))]
-                    {
-                        16
-                    }
-                },
-                gpu_model: Self::detect_gpu(),
-                storage_gb: Self::detect_storage_capacity(),
-                status: songbird_network_federation::state::NodeStatus::Active,
-                joined_at: chrono::Utc::now(),
-                last_heartbeat: chrono::Utc::now(),
-            };
-
-            info!("📝 Updating self-registration in federation");
-            self.federation_state.register_node(updated_self_registration).await;
-        }
-
-        // Start anonymous discovery (if enabled) with ACTUAL port
-        if self._config.discovery.mode.is_enabled() {
-            info!(
-                "🌐 Starting anonymous discovery with actual HTTPS port {}...",
-                actual_https_port
-            );
-
-            // Re-use the SAME node identity (already loaded above)
-            let mut node_identity = crate::node_identity::NodeIdentity::new_or_load(None)?;
-            node_identity.detect_all_endpoints(actual_https_port)?;
-
-            // Start discovery broadcaster (v3.0 with multi-endpoint)
-            let capabilities = vec![
-                "orchestration".to_string(),
-                "federation".to_string(),
-                "secure_http".to_string(), // Pure Rust HTTP/HTTPS client via Tower Atomic
-                "http.request".to_string(), // JSON-RPC http.request method
-                "http.get".to_string(),    // Convenience: GET requests
-                "http.post".to_string(),   // Convenience: POST requests
-                "tls.1.3".to_string(),     // TLS 1.3 via BearDog delegation
-            ];
-
-            // Convert endpoints to discovery message format
-            // CRITICAL FIX (Dec 20, 2025): Include full address (IP:port) instead of just port
-            // This allows receivers to properly coalesce multi-interface nodes under one identity
-            let endpoint_messages: Vec<songbird_discovery::anonymous::TransportEndpointMessage> =
-                node_identity
-                    .endpoints
-                    .iter()
-                    .map(|ep| songbird_discovery::anonymous::TransportEndpointMessage {
-                        interface_type: ep.interface_type.clone(),
-                        address: ep.address.to_string(), // ✅ Full address, not just port!
-                        protocols: ep.protocols.clone(),
-                        preference: ep.preference,
-                    })
-                    .collect();
-
-            // ✅ DISCOVERY FIX (Jan 28, 2026): Capability-based broadcast addresses
-            // Supports environment-based configuration for cross-interface discovery
-            // Automatically adds subnet broadcast fallback to handle eth ↔ wifi boundaries
-            let broadcast_addrs =
-                Self::discover_broadcast_addresses(&self._config.discovery.broadcast_addresses);
-
-            // ✅ SMART REFACTORING (v3.10.3 - Jan 6, 2026): Discovery system startup
-            // Extracted to discovery_startup module for clarity, testability, and maintainability.
-            // This reduces core.rs by ~168 lines while improving separation of concerns.
-            // Demonstrates zero hardcoding, "build then Arc", and modern async patterns.
-            let listener_arc = super::discovery_startup::start_discovery_system(
-                self._config.discovery.port,
-                actual_https_port,
-                &node_identity,
-                endpoint_messages,
-                capabilities,
-                broadcast_addrs,
-                self.discovery_listener_pending.take(),
-                Arc::clone(&self.discovery_status_manager),
-            )
-            .await?;
-
-            // Store the configured listener for bridge polling
-            self.discovery_listener = listener_arc;
-
-            info!(
-                "✅ Anonymous discovery started (UDP port {}, advertising HTTPS port {})",
-                self._config.discovery.port, actual_https_port
-            );
-
-            // Start discovery → federation bridge
-            self.start_discovery_federation_bridge().await?;
-        }
-
-        // Start trust escalation cleanup task
-        let trust_manager_clone = Arc::clone(&self.trust_manager);
-        tokio::spawn(async move {
-            let mut interval = tokio::time::interval(tokio::time::Duration::from_secs(300)); // Every 5 minutes
-            loop {
-                interval.tick().await;
-                let removed = trust_manager_clone.cleanup_expired().await;
-                if removed > 0 {
-                    info!("🧹 Trust cleanup: removed {} expired relationships", removed);
-                }
-            }
-        });
-        info!("✅ Trust escalation cleanup task started");
-
-        // Start federation coordinator (if enabled)
-        if let (Some(ref coordinator), Some(ref config)) =
-            (&self.federation_coordinator, &self.federation_config)
-        {
-            info!("🌐 Starting federation coordinator...");
-            let coordinator_clone = Arc::clone(coordinator);
-            let config_clone = config.clone();
-            tokio::spawn(async move {
-                if let Err(e) = coordinator_clone.coordinate(&config_clone).await {
-                    error!("❌ Federation coordination error: {}", e);
-                } else {
-                    info!("✅ Federation coordinator started successfully");
-                }
-            });
-        }
-
-        // Initialize real security provider security integration
-        info!("🐕 Initializing security provider security integration...");
-        // Temporarily disabled security integration initialization
-        {
-            info!("✅ security provider security integration initialized successfully");
-        }
-
-        // Start health monitoring
-        self.start_health_monitoring().await?;
-
-        // Start session TTL cleanup task (Deep Debt Fix - Dec 20, 2025)
-        self.start_session_ttl_cleanup().await?;
-
-        // Start service registry cleanup task (Universal Port Authority - Dec 20, 2025)
-        self.start_service_registry_cleanup();
-
-        // HTTP server already started above (moved before discovery)
-        // self.start_http_server().await?; // ❌ OLD LOCATION
-
-        // Start tarpc server for high-performance native RPC (Phase 3)
-        self.start_tarpc_server().await?;
-
-        // ✅ POST-STARTUP: Verify external connectivity (Dec 20, 2025)
-        // This helps catch network/firewall issues early
-        self.verify_external_connectivity().await?;
-
-        info!("✅ Songbird Orchestrator started successfully");
-        Ok(())
+        super::startup_orchestration::StartupOrchestrator::new(self)
+            .start()
+            .await
     }
 
     /// DEPRECATED (Jan 28, 2026): This stub method is no longer used
@@ -581,7 +335,7 @@ impl SongbirdOrchestrator {
     /// # Returns
     ///
     /// Vec of socket addresses including multicast + subnet broadcast fallback
-    fn discover_broadcast_addresses(configured_addrs: &[String]) -> Vec<std::net::SocketAddr> {
+    pub(crate) fn discover_broadcast_addresses(configured_addrs: &[String]) -> Vec<std::net::SocketAddr> {
         use std::net::SocketAddr;
 
         // Priority 1: Environment variable (runtime override)
@@ -650,7 +404,7 @@ impl SongbirdOrchestrator {
     /// This ensures multiple Songbird instances (spores) can run on the same machine
     /// without socket path conflicts, following security provider's pattern.
     #[cfg(unix)]
-    async fn start_ipc_server(&mut self) -> Result<()> {
+    pub(crate) async fn start_ipc_server(&mut self) -> Result<()> {
         use crate::ipc::{ServiceRegistry, UnixSocketServer};
 
         info!("🎧 Starting Unix Socket IPC server (v3.20.0 - Service Registry Mode)");
@@ -731,7 +485,7 @@ impl SongbirdOrchestrator {
     /// - Use WSL2 on Windows for full compatibility
     /// - See Phase 2 roadmap for native Windows support (TCP/Named Pipes)
     #[cfg(not(unix))]
-    async fn start_ipc_server(&mut self) -> Result<()> {
+    pub(crate) async fn start_ipc_server(&mut self) -> Result<()> {
         warn!("⚠️  Platform not supported: Songbird requires Linux/Unix");
         warn!("   Recommended: Use WSL2 or see Phase 2 roadmap for Windows support");
         Err(anyhow::anyhow!(
@@ -745,7 +499,7 @@ impl SongbirdOrchestrator {
     /// Use IPC server (Unix sockets) for all primal-to-primal communication
     ///
     /// This method is kept for API compatibility but does nothing.
-    async fn start_tarpc_server(&self) -> Result<()> {
+    pub(crate) async fn start_tarpc_server(&self) -> Result<()> {
         // Unix sockets ONLY - no TCP binding
         info!("🔒 Using IPC (Unix sockets) for primal-to-primal communication");
 
@@ -761,7 +515,7 @@ impl SongbirdOrchestrator {
     /// - TLS configuration issues
     ///
     /// If issues are detected, it provides diagnostics and attempts auto-remediation.
-    async fn verify_external_connectivity(&self) -> Result<()> {
+    pub(crate) async fn verify_external_connectivity(&self) -> Result<()> {
         use crate::network::{ConnectivityRemediator, ConnectivityTester};
 
         info!("🔍 Verifying external connectivity...");
@@ -875,7 +629,7 @@ impl SongbirdOrchestrator {
     /// - TTL: 10 minutes (2x heartbeat interval)
     /// - Graceful cleanup with logging
     /// - Self-healing federation state
-    async fn start_session_ttl_cleanup(&self) -> Result<()> {
+    pub(crate) async fn start_session_ttl_cleanup(&self) -> Result<()> {
         let federation_state = Arc::clone(&self.federation_state);
 
         tokio::spawn(async move {
@@ -902,7 +656,7 @@ impl SongbirdOrchestrator {
     /// Start service registry cleanup task (Universal Port Authority)
     ///
     /// Cleans up stale registered services that have missed heartbeats.
-    fn start_service_registry_cleanup(&self) {
+    pub(crate) fn start_service_registry_cleanup(&self) {
         let registry = Arc::clone(&self.service_registry);
 
         crate::service_registry::spawn_cleanup_task((*registry).clone(), 60); // Clean every minute
@@ -983,53 +737,14 @@ impl SongbirdOrchestrator {
     // See: crates/songbird-orchestrator/src/app/health.rs for implementation
 
     /// Handle incoming CLI commands
+    ///
+    /// **Deep Debt Evolution** (Feb 6, 2026): Extracted to command_handler module
+    ///
+    /// **See**: `command_handler.rs` for implementation details
     pub async fn handle_command(&self, command: String) -> Result<String> {
-        match command.as_str() {
-            "status" => {
-                let status = self.get_status().await?;
-                Ok(format!("Status: {status:?}"))
-            }
-            "health" => {
-                // Comprehensive health check implementation
-                let health_result = self.run_comprehensive_health_check().await;
-                match health_result {
-                    Ok(health_report) => {
-                        let status = if health_report.overall_healthy {
-                            "HEALTHY"
-                        } else {
-                            "UNHEALTHY"
-                        };
-                        Ok(format!(
-                            "Health Check Status: {}\n\nComponent Health:\n- Gaming Manager: {}\n- Federation Manager: {}\n- Observability Manager: {}\n- Security Integration: {}\n\nLast Check: {:?}",
-                            status,
-                            if health_report.gaming_healthy {
-                                "✅ HEALTHY"
-                            } else {
-                                "❌ UNHEALTHY"
-                            },
-                            if health_report.federation_healthy {
-                                "✅ HEALTHY"
-                            } else {
-                                "❌ UNHEALTHY"
-                            },
-                            if health_report.observability_healthy {
-                                "✅ HEALTHY"
-                            } else {
-                                "❌ UNHEALTHY"
-                            },
-                            if health_report.security_healthy {
-                                "✅ HEALTHY"
-                            } else {
-                                "❌ UNHEALTHY"
-                            },
-                            health_report.timestamp
-                        ))
-                    }
-                    Err(e) => Ok(format!("Health check failed: {e}")),
-                }
-            }
-            _ => Ok(format!("Unknown command: {command}")),
-        }
+        super::command_handler::CommandHandler::new(self)
+            .handle(&command)
+            .await
     }
 
     /// Start web dashboard

@@ -1,6 +1,7 @@
 #![allow(dead_code)]
 
 // Module declarations
+pub mod command_handler; // v4.0.0 (Feb 6): Deep Debt - command handling extraction
 pub mod connection_manager; // Progressive trust connection management (Jan 2026)
 pub mod core;
 pub mod discovery;
@@ -15,6 +16,7 @@ pub mod initialization; // v3.10.3 (Jan 6): Smart refactoring - component initia
 pub mod network;
 pub mod security_setup; // v3.10.3 (Jan 6): Smart refactoring - capability-based security discovery
 pub mod startup;
+pub mod startup_orchestration; // v4.0.0 (Feb 6): Deep Debt - 7-stage startup extraction (275→20 lines per stage)
 
 // Test modules (v3.3 - Jan 2026)
 #[cfg(test)]
