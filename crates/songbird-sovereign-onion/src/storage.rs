@@ -7,6 +7,7 @@ use std::path::Path;
 use std::sync::Arc;
 
 /// Persistent storage for onion service
+#[derive(Clone)]
 pub struct OnionStorage {
     db: Arc<sled::Db>,
 }
@@ -56,16 +57,8 @@ impl OnionStorage {
         const IDENTITY_KEY: &[u8] = b"identity/key";
 
         if let Some(bytes) = self.db.get(IDENTITY_KEY)? {
-            // Load existing identity
-            #[cfg(any(test, feature = "standalone"))]
-            {
-                OnionIdentity::from_stored_bytes(&bytes)
-            }
-            #[cfg(not(any(test, feature = "standalone")))]
-            {
-                let (secret_key, created_at) = OnionIdentity::stored_data_from_bytes(&bytes)?;
-                OnionIdentity::from_stored_via_beardog(client, &secret_key, created_at).await
-            }
+            // Load existing identity via BearDog
+            OnionIdentity::from_stored_via_beardog(client, &bytes).await
         } else {
             // Generate new identity
             let identity = OnionIdentity::generate_via_beardog(client).await?;
@@ -82,11 +75,29 @@ impl OnionStorage {
         }
     }
 
-    /// Standalone: Load or generate onion identity (for testing/offline only)
+    /// Load existing identity from storage (production safe)
     ///
-    /// If identity exists in storage, loads it. Otherwise generates new identity
-    /// and stores it.
-    #[cfg(any(test, feature = "standalone"))]
+    /// Returns None if no identity exists yet.
+    pub fn load_identity(&self) -> Result<Option<OnionIdentity>> {
+        const IDENTITY_KEY: &[u8] = b"identity/key";
+
+        if let Some(bytes) = self.db.get(IDENTITY_KEY)? {
+            let identity = OnionIdentity::from_stored_bytes(&bytes)?;
+            Ok(Some(identity))
+        } else {
+            Ok(None)
+        }
+    }
+
+    /// Store identity to persistent storage (production safe)
+    pub fn store_identity(&self, identity: &OnionIdentity) -> Result<()> {
+        const IDENTITY_KEY: &[u8] = b"identity/key";
+        let bytes = identity.to_stored_bytes();
+        self.db.insert(IDENTITY_KEY, bytes)?;
+        self.db.flush()?;
+        Ok(())
+    }
+
     /// Load or generate onion identity (STANDALONE mode - testing only)
     ///
     /// ⚠️ **TRUE PRIMAL NOTE**: This method uses direct crypto and should ONLY be

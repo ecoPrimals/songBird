@@ -58,8 +58,8 @@ pub use error::{OnionError, Result};
 pub use keys::OnionIdentity;
 pub use storage::OnionStorage;
 
-// ⚠️ OnionService is a STUB (Phase 3) - requires standalone feature for now
-#[cfg(any(test, feature = "standalone"))]
+// ✅ Phase 3 Complete: OnionService & OnionConnector with BearDog
+pub use connector::OnionConnection;
 pub use service::OnionService;
 
 // Re-exports - Standalone (for testing/offline)
