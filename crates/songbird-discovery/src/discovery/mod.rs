@@ -93,7 +93,6 @@ pub mod migration_examples {
         crate::discovery::factory::UniversalDiscoveryFactory::create_auto_detect().await
     }
 
-    // DISABLED: federation_aware_discovery module temporarily disabled
     /*
     /// Example: Using federation-aware discovery with canonical traits
     ///
