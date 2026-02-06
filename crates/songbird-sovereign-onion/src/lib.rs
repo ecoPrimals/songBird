@@ -39,6 +39,7 @@
 #![warn(missing_docs)]
 
 pub mod address;
+pub mod beardog_crypto;
 pub mod connector;
 pub mod crypto;
 pub mod error;
@@ -47,10 +48,18 @@ pub mod protocol;
 pub mod service;
 pub mod storage;
 
-// Re-exports
-pub use address::{derive_onion_address, parse_onion_address, validate_onion_address};
+// Re-exports - TRUE PRIMAL (BearDog-delegated)
+pub use address::{derive_onion_address_via_beardog, validate_onion_address_via_beardog};
+pub use beardog_crypto::{BeardogCryptoClient, Ed25519Keypair, X25519Keypair};
 pub use connector::OnionConnector;
+pub use crypto::{decrypt_data_via_beardog, encrypt_data_via_beardog};
 pub use error::{OnionError, Result};
 pub use keys::OnionIdentity;
 pub use service::OnionService;
 pub use storage::OnionStorage;
+
+// Re-exports - Standalone (for testing/offline)
+#[cfg(any(test, feature = "standalone"))]
+pub use address::{derive_onion_address, parse_onion_address, validate_onion_address};
+#[cfg(any(test, feature = "standalone"))]
+pub use crypto::{decrypt_data, encrypt_data};

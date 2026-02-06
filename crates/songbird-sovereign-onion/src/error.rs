@@ -79,6 +79,26 @@ pub enum OnionError {
     /// Generic error
     #[error("Onion error: {0}")]
     Other(String),
+
+    // =========================================================================
+    // BearDog Crypto Client Errors (TRUE PRIMAL pattern)
+    // =========================================================================
+
+    /// JSON-RPC error from BearDog
+    #[error("RPC error: {0}")]
+    RpcError(String),
+
+    /// Connection error to BearDog socket
+    #[error("Connection error: {0}")]
+    ConnectionError(String),
+
+    /// Configuration error (missing socket, env vars, etc.)
+    #[error("Configuration error: {0}")]
+    ConfigError(String),
+
+    /// Generic crypto error
+    #[error("Crypto error: {0}")]
+    CryptoError(String),
 }
 
 impl From<ed25519_dalek::SignatureError> for OnionError {

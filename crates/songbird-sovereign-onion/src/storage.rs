@@ -45,10 +45,48 @@ impl OnionStorage {
         Ok(Self { db: Arc::new(db) })
     }
 
-    /// Load or generate onion identity
+    /// Load or generate onion identity via BearDog (TRUE PRIMAL)
+    ///
+    /// If identity exists in storage, loads it via BearDog. Otherwise generates
+    /// new identity via BearDog and stores it.
+    pub async fn load_or_generate_identity_via_beardog(
+        &self,
+        client: &crate::beardog_crypto::BeardogCryptoClient,
+    ) -> Result<OnionIdentity> {
+        const IDENTITY_KEY: &[u8] = b"identity/key";
+
+        if let Some(bytes) = self.db.get(IDENTITY_KEY)? {
+            // Load existing identity
+            #[cfg(any(test, feature = "standalone"))]
+            {
+                OnionIdentity::from_stored_bytes(&bytes)
+            }
+            #[cfg(not(any(test, feature = "standalone")))]
+            {
+                let (secret_key, created_at) = OnionIdentity::stored_data_from_bytes(&bytes)?;
+                OnionIdentity::from_stored_via_beardog(client, &secret_key, created_at).await
+            }
+        } else {
+            // Generate new identity
+            let identity = OnionIdentity::generate_via_beardog(client).await?;
+            let bytes = identity.to_stored_bytes();
+            self.db.insert(IDENTITY_KEY, bytes)?;
+            self.db.flush()?;
+
+            tracing::info!(
+                onion_address = %identity.onion_address(),
+                "Generated new onion identity via BearDog"
+            );
+
+            Ok(identity)
+        }
+    }
+
+    /// Standalone: Load or generate onion identity (for testing/offline only)
     ///
     /// If identity exists in storage, loads it. Otherwise generates new identity
     /// and stores it.
+    #[cfg(any(test, feature = "standalone"))]
     pub fn load_or_generate_identity(&self) -> Result<OnionIdentity> {
         const IDENTITY_KEY: &[u8] = b"identity/key";
 
@@ -64,7 +102,7 @@ impl OnionStorage {
 
             tracing::info!(
                 onion_address = %identity.onion_address(),
-                "Generated new onion identity"
+                "Generated new onion identity (standalone)"
             );
 
             Ok(identity)

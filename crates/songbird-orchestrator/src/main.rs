@@ -577,7 +577,12 @@ struct PrimalStatus {
 async fn check_port_availability(port: u16) -> Result<bool> {
     use std::net::TcpListener;
 
-    match TcpListener::bind(("127.0.0.1", port)) {
+    // EVOLVED: Use configurable bind address instead of hardcoded 127.0.0.1
+    // Respects SONGBIRD_BIND_HOST environment variable for deployment flexibility
+    let bind_addr = std::env::var("SONGBIRD_BIND_HOST")
+        .unwrap_or_else(|_| "127.0.0.1".to_string());
+
+    match TcpListener::bind((bind_addr.as_str(), port)) {
         Ok(_) => Ok(true),
         Err(e) if e.kind() == std::io::ErrorKind::AddrInUse => Ok(false),
         Err(e) => Err(anyhow::anyhow!("Failed to check port: {}", e)),

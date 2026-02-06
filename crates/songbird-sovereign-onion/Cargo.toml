@@ -26,6 +26,7 @@ sled = "0.34"                # Embedded database
 
 # Encoding (Pure Rust)
 base32 = "0.5"               # For .onion address encoding
+base64 = "0.21"              # For JSON-RPC data encoding
 
 # Utilities (Pure Rust)
 rand = "0.8"                 # Random number generation
@@ -44,7 +45,8 @@ tokio-test = "0.4"
 criterion = "0.5"
 
 [features]
-default = []
+default = ["standalone"]  # Default to standalone for backward compatibility
+standalone = []  # Enable standalone crypto (bypasses BearDog)
 
 [lib]
 name = "songbird_sovereign_onion"

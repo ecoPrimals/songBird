@@ -1,0 +1,528 @@
+//! BearDog Crypto Client - TRUE PRIMAL Crypto Delegation
+//!
+//! All cryptographic operations are delegated to BearDog via JSON-RPC.
+//! This follows the TRUE PRIMAL pattern where primals only have self-knowledge
+//! and discover/use other primal capabilities at runtime.
+//!
+//! ## Usage via biomeOS Neural API
+//!
+//! ```rust,ignore
+//! let client = BeardogCryptoClient::from_env().await?;
+//!
+//! // Generate Ed25519 identity for .onion address
+//! let keypair = client.ed25519_generate_keypair().await?;
+//!
+//! // Derive .onion address checksum (SHA3-256)
+//! let checksum = client.sha3_256(&data).await?;
+//!
+//! // Session key exchange (X25519)
+//! let session_key = client.x25519_derive_secret(&private, &peer_public).await?;
+//!
+//! // Encrypt data (ChaCha20-Poly1305)
+//! let ciphertext = client.chacha20_poly1305_encrypt(&key, &nonce, &plaintext).await?;
+//! ```
+//!
+//! ## Environment Variables
+//!
+//! - `BEARDOG_SOCKET`: Direct BearDog socket path
+//! - `CRYPTO_PROVIDER_SOCKET`: biomeOS-wired crypto provider
+//! - `NEURAL_API_SOCKET`: biomeOS Neural API for capability routing
+
+use crate::error::{OnionError, Result};
+use serde::{Deserialize, Serialize};
+use std::io::{BufRead, BufReader, Write};
+use std::os::unix::net::UnixStream;
+use std::path::PathBuf;
+use std::time::Duration;
+
+/// JSON-RPC request structure
+#[derive(Debug, Serialize)]
+struct JsonRpcRequest<'a, T: Serialize> {
+    jsonrpc: &'static str,
+    method: &'a str,
+    params: T,
+    id: u64,
+}
+
+/// JSON-RPC response structure
+#[derive(Debug, Deserialize)]
+struct JsonRpcResponse<T> {
+    #[allow(dead_code)]
+    jsonrpc: String,
+    result: Option<T>,
+    error: Option<JsonRpcError>,
+    #[allow(dead_code)]
+    id: u64,
+}
+
+#[derive(Debug, Deserialize)]
+struct JsonRpcError {
+    code: i64,
+    message: String,
+}
+
+/// BearDog crypto client for TRUE PRIMAL delegation
+///
+/// Delegates all crypto operations to BearDog via JSON-RPC.
+pub struct BeardogCryptoClient {
+    socket_path: PathBuf,
+    timeout: Duration,
+}
+
+impl BeardogCryptoClient {
+    /// Create client from environment variables
+    ///
+    /// Resolution order:
+    /// 1. `BEARDOG_SOCKET` - Direct BearDog socket
+    /// 2. `CRYPTO_PROVIDER_SOCKET` - biomeOS-wired provider
+    /// 3. XDG fallback paths
+    pub fn from_env() -> Result<Self> {
+        // Try direct BearDog socket
+        if let Ok(socket) = std::env::var("BEARDOG_SOCKET") {
+            return Ok(Self {
+                socket_path: PathBuf::from(socket),
+                timeout: Duration::from_secs(10),
+            });
+        }
+
+        // Try biomeOS-wired crypto provider
+        if let Ok(socket) = std::env::var("CRYPTO_PROVIDER_SOCKET") {
+            return Ok(Self {
+                socket_path: PathBuf::from(socket),
+                timeout: Duration::from_secs(10),
+            });
+        }
+
+        // XDG runtime fallback
+        if let Ok(xdg_runtime) = std::env::var("XDG_RUNTIME_DIR") {
+            let family_id = std::env::var("FAMILY_ID")
+                .or_else(|_| std::env::var("BIOMEOS_FAMILY_ID"))
+                .unwrap_or_else(|_| "default".to_string());
+            let socket_path = format!("{}/biomeos/beardog-{}.sock", xdg_runtime, family_id);
+            if std::path::Path::new(&socket_path).exists() {
+                return Ok(Self {
+                    socket_path: PathBuf::from(socket_path),
+                    timeout: Duration::from_secs(10),
+                });
+            }
+        }
+
+        Err(OnionError::ConfigError(
+            "No BearDog socket found. Set BEARDOG_SOCKET, CRYPTO_PROVIDER_SOCKET, or start BearDog".into()
+        ))
+    }
+
+    /// Create client with explicit socket path
+    pub fn with_socket(socket_path: impl Into<PathBuf>) -> Self {
+        Self {
+            socket_path: socket_path.into(),
+            timeout: Duration::from_secs(10),
+        }
+    }
+
+    /// Set timeout for RPC calls
+    pub fn with_timeout(mut self, timeout: Duration) -> Self {
+        self.timeout = timeout;
+        self
+    }
+
+    /// Internal: Send JSON-RPC request
+    fn call<T: Serialize, R: for<'de> Deserialize<'de>>(
+        &self,
+        method: &str,
+        params: T,
+    ) -> Result<R> {
+        let request = JsonRpcRequest {
+            jsonrpc: "2.0",
+            method,
+            params,
+            id: 1,
+        };
+
+        let mut stream = UnixStream::connect(&self.socket_path).map_err(|e| {
+            OnionError::ConnectionError(format!(
+                "Failed to connect to BearDog at {:?}: {}",
+                self.socket_path, e
+            ))
+        })?;
+
+        stream
+            .set_read_timeout(Some(self.timeout))
+            .map_err(|e| OnionError::ConnectionError(format!("Failed to set timeout: {}", e)))?;
+        stream
+            .set_write_timeout(Some(self.timeout))
+            .map_err(|e| OnionError::ConnectionError(format!("Failed to set timeout: {}", e)))?;
+
+        // Send request
+        let request_bytes = serde_json::to_vec(&request)?;
+        stream.write_all(&request_bytes)?;
+        stream.write_all(b"\n")?;
+        stream.flush()?;
+
+        // Read response (single line JSON-RPC)
+        let mut reader = BufReader::new(&stream);
+        let mut line = String::new();
+        reader.read_line(&mut line)?;
+
+        let response: JsonRpcResponse<R> = serde_json::from_str(&line)?;
+
+        if let Some(error) = response.error {
+            return Err(OnionError::RpcError(format!(
+                "[{}] {}",
+                error.code, error.message
+            )));
+        }
+
+        response
+            .result
+            .ok_or_else(|| OnionError::RpcError("No result in response".into()))
+    }
+
+    // =========================================================================
+    // Ed25519 Operations (Identity Keys)
+    // =========================================================================
+
+    /// Generate Ed25519 keypair for .onion identity
+    ///
+    /// Returns (public_key, secret_key) both as 32-byte arrays
+    pub fn ed25519_generate_keypair(&self) -> Result<Ed25519Keypair> {
+        #[derive(Serialize)]
+        struct Params {}
+
+        #[derive(Deserialize)]
+        struct Response {
+            public_key: String, // base64
+            secret_key: String, // base64
+        }
+
+        let response: Response = self.call("crypto.ed25519_generate_keypair", Params {})?;
+
+        let public_key = base64_decode(&response.public_key)?;
+        let secret_key = base64_decode(&response.secret_key)?;
+
+        Ok(Ed25519Keypair {
+            public_key: public_key.try_into().map_err(|_| {
+                OnionError::CryptoError("Invalid public key length".into())
+            })?,
+            secret_key: secret_key.try_into().map_err(|_| {
+                OnionError::CryptoError("Invalid secret key length".into())
+            })?,
+        })
+    }
+
+    /// Sign data with Ed25519
+    pub fn ed25519_sign(&self, secret_key: &[u8; 32], message: &[u8]) -> Result<[u8; 64]> {
+        #[derive(Serialize)]
+        struct Params {
+            secret_key: String, // base64
+            message: String,    // base64
+        }
+
+        #[derive(Deserialize)]
+        struct Response {
+            signature: String, // base64
+        }
+
+        let response: Response = self.call(
+            "crypto.sign_ed25519",
+            Params {
+                secret_key: base64_encode(secret_key),
+                message: base64_encode(message),
+            },
+        )?;
+
+        let signature = base64_decode(&response.signature)?;
+        signature.try_into().map_err(|_| {
+            OnionError::CryptoError("Invalid signature length".into())
+        })
+    }
+
+    /// Verify Ed25519 signature
+    pub fn ed25519_verify(
+        &self,
+        public_key: &[u8; 32],
+        message: &[u8],
+        signature: &[u8; 64],
+    ) -> Result<bool> {
+        #[derive(Serialize)]
+        struct Params {
+            public_key: String, // base64
+            message: String,    // base64
+            signature: String,  // base64
+        }
+
+        #[derive(Deserialize)]
+        struct Response {
+            valid: bool,
+        }
+
+        let response: Response = self.call(
+            "crypto.verify_ed25519",
+            Params {
+                public_key: base64_encode(public_key),
+                message: base64_encode(message),
+                signature: base64_encode(signature),
+            },
+        )?;
+
+        Ok(response.valid)
+    }
+
+    // =========================================================================
+    // X25519 Operations (Session Keys)
+    // =========================================================================
+
+    /// Generate X25519 ephemeral keypair for session key exchange
+    pub fn x25519_generate_ephemeral(&self) -> Result<X25519Keypair> {
+        #[derive(Serialize)]
+        struct Params {}
+
+        #[derive(Deserialize)]
+        struct Response {
+            public_key: String, // base64
+            secret_key: String, // base64
+        }
+
+        let response: Response = self.call("crypto.x25519_generate_ephemeral", Params {})?;
+
+        let public_key = base64_decode(&response.public_key)?;
+        let secret_key = base64_decode(&response.secret_key)?;
+
+        Ok(X25519Keypair {
+            public_key: public_key.try_into().map_err(|_| {
+                OnionError::CryptoError("Invalid public key length".into())
+            })?,
+            secret_key: secret_key.try_into().map_err(|_| {
+                OnionError::CryptoError("Invalid secret key length".into())
+            })?,
+        })
+    }
+
+    /// Derive shared secret via X25519 ECDH
+    pub fn x25519_derive_secret(
+        &self,
+        our_secret: &[u8; 32],
+        their_public: &[u8; 32],
+    ) -> Result<[u8; 32]> {
+        #[derive(Serialize)]
+        struct Params {
+            secret_key: String, // base64
+            public_key: String, // base64
+        }
+
+        #[derive(Deserialize)]
+        struct Response {
+            shared_secret: String, // base64
+        }
+
+        let response: Response = self.call(
+            "crypto.x25519_derive_secret",
+            Params {
+                secret_key: base64_encode(our_secret),
+                public_key: base64_encode(their_public),
+            },
+        )?;
+
+        let shared = base64_decode(&response.shared_secret)?;
+        shared.try_into().map_err(|_| {
+            OnionError::CryptoError("Invalid shared secret length".into())
+        })
+    }
+
+    // =========================================================================
+    // ChaCha20-Poly1305 Operations (Encryption)
+    // =========================================================================
+
+    /// Encrypt data with ChaCha20-Poly1305
+    pub fn chacha20_poly1305_encrypt(
+        &self,
+        key: &[u8; 32],
+        nonce: &[u8; 12],
+        plaintext: &[u8],
+    ) -> Result<Vec<u8>> {
+        #[derive(Serialize)]
+        struct Params {
+            key: String,       // base64
+            nonce: String,     // base64
+            plaintext: String, // base64
+        }
+
+        #[derive(Deserialize)]
+        struct Response {
+            ciphertext: String, // base64
+        }
+
+        let response: Response = self.call(
+            "crypto.chacha20_poly1305_encrypt",
+            Params {
+                key: base64_encode(key),
+                nonce: base64_encode(nonce),
+                plaintext: base64_encode(plaintext),
+            },
+        )?;
+
+        base64_decode(&response.ciphertext)
+    }
+
+    /// Decrypt data with ChaCha20-Poly1305
+    pub fn chacha20_poly1305_decrypt(
+        &self,
+        key: &[u8; 32],
+        nonce: &[u8; 12],
+        ciphertext: &[u8],
+    ) -> Result<Vec<u8>> {
+        #[derive(Serialize)]
+        struct Params {
+            key: String,        // base64
+            nonce: String,      // base64
+            ciphertext: String, // base64
+        }
+
+        #[derive(Deserialize)]
+        struct Response {
+            plaintext: String, // base64
+        }
+
+        let response: Response = self.call(
+            "crypto.chacha20_poly1305_decrypt",
+            Params {
+                key: base64_encode(key),
+                nonce: base64_encode(nonce),
+                ciphertext: base64_encode(ciphertext),
+            },
+        )?;
+
+        base64_decode(&response.plaintext)
+    }
+
+    // =========================================================================
+    // SHA3-256 Operation (.onion address derivation)
+    // =========================================================================
+
+    /// Compute SHA3-256 hash (needed for .onion address checksum)
+    ///
+    /// NOTE: Requires BearDog to implement `crypto.sha3_256` method.
+    /// See: BEARDOG_ONION_CRYPTO_HANDOFF_FEB06_2026.md
+    pub fn sha3_256(&self, data: &[u8]) -> Result<[u8; 32]> {
+        #[derive(Serialize)]
+        struct Params {
+            data: String, // base64
+        }
+
+        #[derive(Deserialize)]
+        struct Response {
+            hash: String, // base64
+        }
+
+        let response: Response = self.call(
+            "crypto.sha3_256",
+            Params {
+                data: base64_encode(data),
+            },
+        )?;
+
+        let hash = base64_decode(&response.hash)?;
+        hash.try_into().map_err(|_| {
+            OnionError::CryptoError("Invalid hash length".into())
+        })
+    }
+
+    // =========================================================================
+    // HMAC-SHA256 Operations (HKDF)
+    // =========================================================================
+
+    /// Compute HMAC-SHA256 (for HKDF key derivation)
+    pub fn hmac_sha256(&self, key: &[u8], data: &[u8]) -> Result<[u8; 32]> {
+        #[derive(Serialize)]
+        struct Params {
+            key: String,  // base64
+            data: String, // base64
+        }
+
+        #[derive(Deserialize)]
+        struct Response {
+            mac: String, // base64
+        }
+
+        let response: Response = self.call(
+            "crypto.hmac_sha256",
+            Params {
+                key: base64_encode(key),
+                data: base64_encode(data),
+            },
+        )?;
+
+        let mac = base64_decode(&response.mac)?;
+        mac.try_into().map_err(|_| {
+            OnionError::CryptoError("Invalid MAC length".into())
+        })
+    }
+}
+
+// =============================================================================
+// Supporting Types
+// =============================================================================
+
+/// Ed25519 keypair for identity/signing
+#[derive(Debug, Clone)]
+pub struct Ed25519Keypair {
+    /// Ed25519 public key (32 bytes)
+    pub public_key: [u8; 32],
+    /// Ed25519 secret key (32 bytes)
+    pub secret_key: [u8; 32],
+}
+
+/// X25519 keypair for key exchange
+#[derive(Debug, Clone)]
+pub struct X25519Keypair {
+    /// X25519 public key (32 bytes)
+    pub public_key: [u8; 32],
+    /// X25519 secret key (32 bytes)
+    pub secret_key: [u8; 32],
+}
+
+// =============================================================================
+// Helpers
+// =============================================================================
+
+fn base64_encode(data: &[u8]) -> String {
+    use base64::{engine::general_purpose::STANDARD, Engine};
+    STANDARD.encode(data)
+}
+
+fn base64_decode(s: &str) -> Result<Vec<u8>> {
+    use base64::{engine::general_purpose::STANDARD, Engine};
+    STANDARD
+        .decode(s)
+        .map_err(|e| OnionError::CryptoError(format!("Base64 decode error: {}", e)))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_client_from_env_no_socket() {
+        // Clear env vars
+        std::env::remove_var("BEARDOG_SOCKET");
+        std::env::remove_var("CRYPTO_PROVIDER_SOCKET");
+        
+        // Should fail without socket
+        let result = BeardogCryptoClient::from_env();
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_client_with_socket() {
+        let client = BeardogCryptoClient::with_socket("/tmp/test-beardog.sock");
+        assert_eq!(client.socket_path.to_str().unwrap(), "/tmp/test-beardog.sock");
+    }
+
+    #[test]
+    fn test_base64_roundtrip() {
+        let data = b"Hello, BearDog!";
+        let encoded = base64_encode(data);
+        let decoded = base64_decode(&encoded).unwrap();
+        assert_eq!(decoded, data);
+    }
+}

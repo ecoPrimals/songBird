@@ -1,9 +1,111 @@
 //! Onion address derivation and validation (Tor v3 format)
 
+use crate::beardog_crypto::BeardogCryptoClient;
 use crate::error::{OnionError, Result};
+
+// Import dalek/sha3 types only for standalone/test mode
+#[cfg(any(test, feature = "standalone"))]
 use ed25519_dalek::VerifyingKey;
+#[cfg(any(test, feature = "standalone"))]
 use sha3::{Digest, Sha3_256};
 
+/// Derive .onion address via BearDog (TRUE PRIMAL)
+///
+/// Uses BearDog's crypto.sha3_256 for the checksum calculation.
+///
+/// # Example
+///
+/// ```no_run
+/// # use songbird_sovereign_onion::{derive_onion_address_via_beardog, BeardogCryptoClient};
+/// # tokio_test::block_on(async {
+/// let client = BeardogCryptoClient::from_env().unwrap();
+/// let pubkey_bytes = [0u8; 32]; // Your Ed25519 public key
+/// let onion = derive_onion_address_via_beardog(&client, &pubkey_bytes).await.unwrap();
+/// assert!(onion.ends_with(".onion"));
+/// # });
+/// ```
+pub async fn derive_onion_address_via_beardog(
+    client: &BeardogCryptoClient,
+    pubkey_bytes: &[u8; 32],
+) -> Result<String> {
+    let mut data = Vec::with_capacity(35);
+    
+    // 1. Add public key (32 bytes)
+    data.extend_from_slice(pubkey_bytes);
+    
+    // 2. Compute checksum via BearDog: SHA3-256(".onion checksum" || pubkey || 0x03)[0..2]
+    let mut checksum_input = Vec::new();
+    checksum_input.extend_from_slice(b".onion checksum");
+    checksum_input.extend_from_slice(pubkey_bytes);
+    checksum_input.push(0x03); // Version 3
+    
+    let hash = client.sha3_256(&checksum_input)?;
+    let checksum = &hash[..2];
+    
+    // 3. Add checksum (2 bytes)
+    data.extend_from_slice(checksum);
+    
+    // 4. Add version (1 byte)
+    data.push(0x03);
+    
+    // 5. Base32 encode (RFC 4648, lowercase, no padding)
+    let encoded = base32::encode(base32::Alphabet::Rfc4648Lower { padding: false }, &data);
+    
+    Ok(format!("{}.onion", encoded))
+}
+
+/// Validate .onion address via BearDog (TRUE PRIMAL)
+pub async fn validate_onion_address_via_beardog(
+    client: &BeardogCryptoClient,
+    onion: &str,
+) -> Result<[u8; 32]> {
+    // 1. Remove ".onion" suffix
+    let encoded = onion
+        .strip_suffix(".onion")
+        .ok_or(OnionError::InvalidFormat)?;
+
+    // 2. Base32 decode
+    let data = base32::decode(base32::Alphabet::Rfc4648Lower { padding: false }, encoded)
+        .ok_or(OnionError::InvalidEncoding)?;
+
+    // 3. Check length (32 + 2 + 1 = 35 bytes)
+    if data.len() != 35 {
+        return Err(OnionError::InvalidLength(data.len()));
+    }
+
+    // 4. Extract components
+    let pubkey_bytes = &data[..32];
+    let checksum = &data[32..34];
+    let version = data[34];
+
+    // 5. Verify version
+    if version != 0x03 {
+        return Err(OnionError::UnsupportedVersion(version));
+    }
+
+    // 6. Verify checksum via BearDog
+    let mut checksum_input = Vec::new();
+    checksum_input.extend_from_slice(b".onion checksum");
+    checksum_input.extend_from_slice(pubkey_bytes);
+    checksum_input.push(version);
+    
+    let hash = client.sha3_256(&checksum_input)?;
+    let expected_checksum = &hash[..2];
+    
+    if checksum != expected_checksum {
+        return Err(OnionError::ChecksumMismatch);
+    }
+    
+    // 7. Return public key
+    let pubkey_array: [u8; 32] = pubkey_bytes
+        .try_into()
+        .map_err(|_| OnionError::InvalidPublicKey)?;
+    
+    Ok(pubkey_array)
+}
+
+/// Standalone derivation (for testing/offline only)
+///
 /// Derive .onion address from Ed25519 public key (Tor v3 format)
 ///
 /// Format: base32(pubkey || checksum || version).onion
@@ -14,6 +116,8 @@ use sha3::{Digest, Sha3_256};
 /// # Example
 ///
 /// ```
+/// # #[cfg(any(test, feature = "standalone"))]
+/// # {
 /// use ed25519_dalek::SigningKey;
 /// use songbird_sovereign_onion::derive_onion_address;
 ///
@@ -23,7 +127,9 @@ use sha3::{Digest, Sha3_256};
 ///
 /// assert!(onion.ends_with(".onion"));
 /// assert_eq!(onion.len(), 62); // 56 chars + ".onion"
+/// # }
 /// ```
+#[cfg(any(test, feature = "standalone"))]
 pub fn derive_onion_address(pubkey: &VerifyingKey) -> String {
     let mut data = Vec::with_capacity(35);
 
@@ -50,22 +156,26 @@ pub fn derive_onion_address(pubkey: &VerifyingKey) -> String {
     format!("{}.onion", encoded)
 }
 
-/// Parse .onion address to extract Ed25519 public key
+/// Standalone: Parse .onion address to extract Ed25519 public key
 ///
 /// # Example
 ///
 /// ```
+/// # #[cfg(any(test, feature = "standalone"))]
+/// # {
 /// use songbird_sovereign_onion::parse_onion_address;
 ///
 /// let onion = "vww6ybal4bd7szmgncyruucpgfkqahzddi37ktceo3ah7ngmcopnpyyd.onion";
 /// let pubkey = parse_onion_address(onion).unwrap();
 /// assert_eq!(pubkey.as_bytes().len(), 32);
+/// # }
 /// ```
+#[cfg(any(test, feature = "standalone"))]
 pub fn parse_onion_address(onion: &str) -> Result<VerifyingKey> {
     validate_onion_address(onion)
 }
 
-/// Validate .onion address format and checksum
+/// Standalone: Validate .onion address format and checksum
 ///
 /// # Errors
 ///
@@ -76,6 +186,7 @@ pub fn parse_onion_address(onion: &str) -> Result<VerifyingKey> {
 /// - Unsupported version
 /// - Invalid public key
 /// - Checksum mismatch
+#[cfg(any(test, feature = "standalone"))]
 pub fn validate_onion_address(onion: &str) -> Result<VerifyingKey> {
     // 1. Remove ".onion" suffix
     let encoded = onion

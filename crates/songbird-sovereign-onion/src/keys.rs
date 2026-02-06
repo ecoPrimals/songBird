@@ -1,16 +1,22 @@
 //! Onion identity key management
 
 use crate::address::derive_onion_address;
+use crate::beardog_crypto::BeardogCryptoClient;
 use crate::error::Result;
-use ed25519_dalek::{SigningKey, VerifyingKey};
 use serde::{Deserialize, Serialize};
 use std::time::{SystemTime, UNIX_EPOCH};
 
+// Import dalek types only for standalone/test mode
+#[cfg(any(test, feature = "standalone"))]
+use ed25519_dalek::SigningKey;
+
 /// Onion service identity (Ed25519 keypair + derived .onion address)
+///
+/// TRUE PRIMAL: Stores raw bytes, delegates crypto to BearDog
 #[derive(Debug, Clone)]
 pub struct OnionIdentity {
-    signing_key: SigningKey,
-    verifying_key: VerifyingKey,
+    secret_key: [u8; 32],
+    public_key: [u8; 32],
     onion_address: String,
     created_at: u64,
 }
@@ -23,16 +29,85 @@ struct StoredIdentity {
 }
 
 impl OnionIdentity {
-    /// Generate new random onion identity
+    /// Generate new random onion identity via BearDog (TRUE PRIMAL)
     ///
     /// # Example
     ///
-    /// ```
-    /// use songbird_sovereign_onion::OnionIdentity;
-    ///
-    /// let identity = OnionIdentity::generate();
+    /// ```no_run
+    /// # use songbird_sovereign_onion::{OnionIdentity, BeardogCryptoClient};
+    /// # tokio_test::block_on(async {
+    /// let client = BeardogCryptoClient::from_env().unwrap();
+    /// let identity = OnionIdentity::generate_via_beardog(&client).await.unwrap();
     /// println!("Onion address: {}", identity.onion_address());
+    /// # });
     /// ```
+    pub async fn generate_via_beardog(client: &BeardogCryptoClient) -> Result<Self> {
+        let keypair = client.ed25519_generate_keypair()?;
+        
+        // Derive .onion address via BearDog
+        let onion_address = crate::address::derive_onion_address_via_beardog(client, &keypair.public_key).await?;
+        
+        let created_at = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap()
+            .as_secs();
+
+        Ok(Self {
+            secret_key: keypair.secret_key,
+            public_key: keypair.public_key,
+            onion_address,
+            created_at,
+        })
+    }
+
+    /// Load identity from stored bytes via BearDog (TRUE PRIMAL)
+    ///
+    /// # Errors
+    ///
+    /// Returns error if key bytes are invalid
+    pub async fn from_stored_via_beardog(
+        client: &BeardogCryptoClient,
+        secret_key: &[u8; 32],
+        created_at: u64,
+    ) -> Result<Self> {
+        // Derive public key from secret (BearDog should verify this is valid)
+        // For Ed25519, we can derive public key from secret locally
+        // But to fully delegate, we use a test sign operation to verify the key
+        let test_msg = b"test";
+        let _signature = client.ed25519_sign(secret_key, test_msg)?;
+        
+        // For now, derive public key locally (Ed25519 property)
+        // TODO: Add crypto.ed25519_public_from_secret to BearDog
+        #[cfg(any(test, feature = "standalone"))]
+        let public_key = {
+            let signing_key = SigningKey::from_bytes(secret_key);
+            signing_key.verifying_key().to_bytes()
+        };
+        
+        #[cfg(not(any(test, feature = "standalone")))]
+        let public_key = {
+            // In production, we must derive via BearDog or fail
+            // For now, use the same test approach
+            // This is a known limitation until BearDog adds public_from_secret
+            let signing_key = ed25519_dalek::SigningKey::from_bytes(secret_key);
+            signing_key.verifying_key().to_bytes()
+        };
+        
+        let onion_address = crate::address::derive_onion_address_via_beardog(client, &public_key).await?;
+
+        Ok(Self {
+            secret_key: *secret_key,
+            public_key,
+            onion_address,
+            created_at,
+        })
+    }
+
+    /// Standalone generation (for testing/offline only)
+    ///
+    /// This bypasses BearDog and uses local crypto. Only available in test builds
+    /// or with the `standalone` feature.
+    #[cfg(any(test, feature = "standalone"))]
     pub fn generate() -> Self {
         // Generate random 32-byte secret key
         let mut secret_bytes = [0u8; 32];
@@ -47,27 +122,23 @@ impl OnionIdentity {
             .as_secs();
 
         Self {
-            signing_key,
-            verifying_key,
+            secret_key: secret_bytes,
+            public_key: verifying_key.to_bytes(),
             onion_address,
             created_at,
         }
     }
 
-    /// Load identity from stored secret key bytes
-    ///
-    /// # Errors
-    ///
-    /// Returns error if key bytes are invalid
+    /// Standalone loading (for testing/offline only)
+    #[cfg(any(test, feature = "standalone"))]
     pub fn from_stored(secret_bytes: &[u8; 32], created_at: u64) -> Result<Self> {
-        let signing_key =
-            SigningKey::from_bytes(secret_bytes);
+        let signing_key = SigningKey::from_bytes(secret_bytes);
         let verifying_key = signing_key.verifying_key();
         let onion_address = derive_onion_address(&verifying_key);
 
         Ok(Self {
-            signing_key,
-            verifying_key,
+            secret_key: *secret_bytes,
+            public_key: verifying_key.to_bytes(),
             onion_address,
             created_at,
         })
@@ -78,14 +149,14 @@ impl OnionIdentity {
         &self.onion_address
     }
 
-    /// Get Ed25519 verifying (public) key
-    pub fn verifying_key(&self) -> &VerifyingKey {
-        &self.verifying_key
+    /// Get Ed25519 public key bytes
+    pub fn public_key_bytes(&self) -> &[u8; 32] {
+        &self.public_key
     }
 
-    /// Get Ed25519 signing (secret) key
-    pub fn signing_key(&self) -> &SigningKey {
-        &self.signing_key
+    /// Get Ed25519 secret key bytes
+    pub fn secret_key_bytes(&self) -> &[u8; 32] {
+        &self.secret_key
     }
 
     /// Get creation timestamp (Unix seconds)
@@ -96,44 +167,88 @@ impl OnionIdentity {
     /// Serialize for storage
     pub(crate) fn to_stored_bytes(&self) -> Vec<u8> {
         let stored = StoredIdentity {
-            secret_key_bytes: self.signing_key.to_bytes(),
+            secret_key_bytes: self.secret_key,
             created_at: self.created_at,
         };
         serde_json::to_vec(&stored).unwrap()
     }
 
-    /// Deserialize from storage
+    /// Deserialize from storage (standalone mode)
+    #[cfg(any(test, feature = "standalone"))]
     pub(crate) fn from_stored_bytes(bytes: &[u8]) -> Result<Self> {
         let stored: StoredIdentity = serde_json::from_slice(bytes)?;
         Self::from_stored(&stored.secret_key_bytes, stored.created_at)
     }
+
+    /// Deserialize from storage (returns raw data for async BearDog loading)
+    #[cfg(not(any(test, feature = "standalone")))]
+    pub(crate) fn stored_data_from_bytes(bytes: &[u8]) -> Result<([u8; 32], u64)> {
+        let stored: StoredIdentity = serde_json::from_slice(bytes)?;
+        Ok((stored.secret_key_bytes, stored.created_at))
+    }
 }
 
 /// X25519 ephemeral keypair for session key exchange
+///
+/// TRUE PRIMAL: Stores raw bytes, delegates crypto to BearDog
 pub struct EphemeralKeypair {
-    secret: x25519_dalek::EphemeralSecret,
-    public: [u8; 32],
+    secret_key: [u8; 32],
+    public_key: [u8; 32],
 }
 
 impl EphemeralKeypair {
-    /// Generate new random ephemeral keypair
-    pub fn generate() -> Self {
-        let secret = x25519_dalek::EphemeralSecret::random_from_rng(rand::thread_rng());
-        let public = x25519_dalek::PublicKey::from(&secret).to_bytes();
+    /// Generate via BearDog (TRUE PRIMAL)
+    pub fn generate_via_beardog(client: &BeardogCryptoClient) -> Result<Self> {
+        let keypair = client.x25519_generate_ephemeral()?;
+        Ok(Self {
+            secret_key: keypair.secret_key,
+            public_key: keypair.public_key,
+        })
+    }
 
-        Self { secret, public }
+    /// Derive shared secret via BearDog (TRUE PRIMAL)
+    pub fn derive_shared_secret_via_beardog(
+        self,
+        client: &BeardogCryptoClient,
+        peer_public: &[u8; 32],
+    ) -> Result<[u8; 32]> {
+        client.x25519_derive_secret(&self.secret_key, peer_public)
+    }
+
+    /// Standalone generation (for testing/offline only)
+    #[cfg(any(test, feature = "standalone"))]
+    pub fn generate() -> Self {
+        // Generate random secret key bytes
+        let mut secret_key = [0u8; 32];
+        rand::Rng::fill(&mut rand::thread_rng(), &mut secret_key);
+        
+        // Clamp the secret key (X25519 requirement)
+        secret_key[0] &= 248;
+        secret_key[31] &= 127;
+        secret_key[31] |= 64;
+        
+        // Derive public key using x25519 basepoint
+        const X25519_BASEPOINT_BYTES: [u8; 32] = [
+            9, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+        ];
+        let public_key = x25519_dalek::x25519(secret_key, X25519_BASEPOINT_BYTES);
+
+        Self {
+            secret_key,
+            public_key,
+        }
+    }
+
+    /// Standalone ECDH (for testing/offline only)
+    #[cfg(any(test, feature = "standalone"))]
+    pub fn derive_shared_secret(self, peer_public: &[u8; 32]) -> [u8; 32] {
+        x25519_dalek::x25519(self.secret_key, *peer_public)
     }
 
     /// Get public key bytes
     pub fn public_bytes(&self) -> &[u8; 32] {
-        &self.public
-    }
-
-    /// Perform X25519 ECDH to derive shared secret
-    pub fn derive_shared_secret(self, peer_public: &[u8; 32]) -> [u8; 32] {
-        let peer_key = x25519_dalek::PublicKey::from(*peer_public);
-        let shared = self.secret.diffie_hellman(&peer_key);
-        shared.to_bytes()
+        &self.public_key
     }
 }
 
@@ -147,21 +262,51 @@ pub struct SessionKeys {
 }
 
 impl SessionKeys {
-    /// Derive session keys from shared secret using HKDF-SHA256
+    /// Derive session keys via BearDog (TRUE PRIMAL)
     ///
-    /// # Arguments
-    ///
-    /// * `shared_secret` - X25519 ECDH result
-    /// * `client_nonce` - Random nonce from client
-    /// * `server_nonce` - Random nonce from server
-    /// * `is_client` - True if we are the client (affects key assignment)
+    /// Uses BearDog's HMAC-SHA256 to implement HKDF for session key derivation.
+    pub fn derive_via_beardog(
+        client: &BeardogCryptoClient,
+        shared_secret: &[u8; 32],
+        client_nonce: &[u8; 24],
+        server_nonce: &[u8; 24],
+        is_client: bool,
+    ) -> Result<Self> {
+        // 1. HKDF-Extract: PRK = HMAC-SHA256(salt=zeros, IKM=shared_secret)
+        let prk = client.hmac_sha256(&[0u8; 32], shared_secret)?;
+        
+        // 2. HKDF-Expand for client key
+        let mut client_info = Vec::new();
+        client_info.extend_from_slice(b"sovereign-onion client");
+        client_info.extend_from_slice(client_nonce);
+        client_info.extend_from_slice(server_nonce);
+        client_info.push(0x01);
+        let client_key = client.hmac_sha256(&prk, &client_info)?;
+        
+        // 3. HKDF-Expand for server key  
+        let mut server_info = Vec::new();
+        server_info.extend_from_slice(b"sovereign-onion server");
+        server_info.extend_from_slice(client_nonce);
+        server_info.extend_from_slice(server_nonce);
+        server_info.push(0x01);
+        let server_key = client.hmac_sha256(&prk, &server_info)?;
+        
+        if is_client {
+            Ok(Self { send_key: client_key, recv_key: server_key })
+        } else {
+            Ok(Self { send_key: server_key, recv_key: client_key })
+        }
+    }
+
+    /// Standalone derivation (for testing/offline only)
+    #[cfg(any(test, feature = "standalone"))]
     pub fn derive(
         shared_secret: &[u8; 32],
         client_nonce: &[u8; 24],
         server_nonce: &[u8; 24],
         is_client: bool,
     ) -> Self {
-        use hmac::{Hmac, Mac};
+        use hmac::{ Hmac, Mac};
         use sha2::Sha256;
 
         type HmacSha256 = Hmac<Sha256>;
@@ -234,8 +379,8 @@ mod tests {
         assert_eq!(original.onion_address(), restored.onion_address());
         assert_eq!(original.created_at(), restored.created_at());
         assert_eq!(
-            original.verifying_key().as_bytes(),
-            restored.verifying_key().as_bytes()
+            original.public_key_bytes(),
+            restored.public_key_bytes()
         );
     }
 
