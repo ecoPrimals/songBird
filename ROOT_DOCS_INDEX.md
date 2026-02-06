@@ -30,6 +30,7 @@
 |----------|---------|----------|
 | [`UPSTREAM_EVOLUTION_TRACKER.md`](UPSTREAM_EVOLUTION_TRACKER.md) | Issues resolved (5/5) & future work | Product Team |
 | [`NEXT_EVOLUTION_OPPORTUNITIES_FEB_05_2026.md`](NEXT_EVOLUTION_OPPORTUNITIES_FEB_05_2026.md) | Future roadmap & priorities | Planning |
+| [`SOVEREIGN_BEACON_MESH_IMPLEMENTATION_PLAN_FEB_06_2026.md`](SOVEREIGN_BEACON_MESH_IMPLEMENTATION_PLAN_FEB_06_2026.md) | Mesh implementation roadmap ⭐ NEW | Engineering |
 
 ---
 
