@@ -1,9 +1,9 @@
 # 🐦 Songbird - Network Orchestration & Discovery Primal
 
-**Version**: v3.24.0  
-**Status**: ✅ **WORLD-CLASS** - NAT Traversal Stack Complete  
+**Version**: v3.33.0  
+**Status**: ✅ **WORLD-CLASS** - P2P Sovereign Onion Complete  
 **License**: AGPL-3.0  
-**Deep Debt**: **99.6%** (A Grade - Top 1% of Rust Projects)
+**Deep Debt**: **S Tier** (100% BearDog Delegation - Zero Direct Crypto)
 
 Songbird is the universal network orchestrator for the ecoPrimals ecosystem, managing service discovery, connection management, and inter-primal communication.
 
@@ -11,10 +11,11 @@ Songbird is the universal network orchestrator for the ecoPrimals ecosystem, man
 
 | Metric | Status | Achievement |
 |--------|--------|-------------|
-| **Deep Debt Score** | ✅ **99.6%** | Top 1% of Rust projects (A Grade) |
+| **Deep Debt Score** | ✅ **S Tier** | 100% BearDog delegation (TRUE PRIMAL) |
 | **Safe Rust** | ✅ **100%** | Zero `unsafe` blocks in production |
 | **Pure Rust** | ✅ **100%** | coturn eliminated - TRUE ecoBin compliance |
-| **Capability-Based** | ✅ **95%+** | 6-layer discovery architecture (A Grade) |
+| **Crypto Delegation** | ✅ **100%** | Zero direct crypto - all via BearDog |
+| **P2P Sovereign Onion** | ✅ **Complete** | Service + Connector + encrypted comms |
 | **Production Mocks** | ✅ **0** | Perfect test isolation |
 | **Tests Passing** | ✅ **1,763+** | 100% passing, comprehensive coverage |
 | **Build Status** | ✅ **Clean** | Zero errors, minimal warnings |
@@ -31,6 +32,7 @@ Songbird is the universal network orchestrator for the ecoPrimals ecosystem, man
 | **Capability Discovery** | ✅ Complete | 6-layer strategy, environment-first configuration |
 | **Federation** | ✅ Complete | Zero-trust progressive escalation |
 | **Smart Refactoring** | ✅ Complete | 8 phases, responsibility-based modules |
+| **Sovereign Onion P2P** | ✅ Complete | Custom onion service + connector with BearDog crypto |
 
 ## 🚀 Quick Start
 
@@ -81,11 +83,16 @@ export SONGBIRD_METRICS_PORT=9090
 │  • Relay Server (Pure Rust packet forwarding, lineage auth) │
 │  • Dark Forest (encrypted beacons, zero leakage)            │
 │  • Federation (peer-to-peer, multi-tier relay)              │
+│  • Sovereign Onion (P2P service + connector)                │
 └─────────────────────────────┬───────────────────────────────┘
-                              │ Arc<dyn CryptoCapability>
+                              │ 100% BearDog Delegation
                               ▼
 ┌─────────────────────────────────────────────────────────────┐
-│               Crypto Providers (BearDog, etc.)               │
+│                    BearDog Crypto Primal                     │
+│  • Ed25519 (identity, signing)                              │
+│  • X25519 (ECDH key exchange)                               │
+│  • ChaCha20Poly1305 (authenticated encryption)              │
+│  • SHA3-256 (onion address derivation)                      │
 └─────────────────────────────────────────────────────────────┘
 ```
 
@@ -102,9 +109,11 @@ export SONGBIRD_METRICS_PORT=9090
 
 | Document | Purpose |
 |----------|---------|
+| [`ROOT_DOCS_INDEX.md`](ROOT_DOCS_INDEX.md) | Complete documentation map ⭐ START HERE |
+| [`P2P_IMPLEMENTATION_COMPLETE_FEB_06_2026.md`](P2P_IMPLEMENTATION_COMPLETE_FEB_06_2026.md) | P2P completion report ⭐ NEW |
+| [`CONFIGURATION_PATTERNS.md`](CONFIGURATION_PATTERNS.md) | Zero hardcoding standard |
 | [`EXECUTIVE_SUMMARY.md`](EXECUTIVE_SUMMARY.md) | High-level status overview |
-| [`ROOT_DOCS_INDEX.md`](ROOT_DOCS_INDEX.md) | Complete documentation map |
-| [`NAT_TRAVERSAL_VALIDATION_GUIDE.md`](NAT_TRAVERSAL_VALIDATION_GUIDE.md) | Validation procedures ⭐ |
+| [`NAT_TRAVERSAL_VALIDATION_GUIDE.md`](NAT_TRAVERSAL_VALIDATION_GUIDE.md) | Validation procedures |
 | [`DEPLOYMENT_READY_STATUS.md`](DEPLOYMENT_READY_STATUS.md) | Deploy now guide |
 | [`CHANGELOG.md`](CHANGELOG.md) | Version history |
 
@@ -127,10 +136,11 @@ export SONGBIRD_METRICS_PORT=9090
 - `songbird-discovery` - Service discovery
 - `songbird-universal-ipc` - Platform-agnostic IPC
 
-### Security
+### Security & P2P
 - `songbird-tls` - TLS implementation
 - `songbird-genesis` - Trust ceremony
 - `songbird-lineage-relay` - Lineage tracking
+- `songbird-sovereign-onion` - P2P onion service (100% BearDog) ⭐ NEW
 
 ## 🧪 Testing
 
