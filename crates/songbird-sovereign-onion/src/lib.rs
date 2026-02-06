@@ -1,0 +1,56 @@
+//! # Songbird Sovereign Onion
+//!
+//! Pure Rust minimal onion service protocol for sovereign device-to-device communication.
+//!
+//! ## Overview
+//!
+//! Provides cryptographically-derived `.onion` addresses for reachability across NAT
+//! without port forwarding. Inspired by Tor v3 onion services but simplified for
+//! family mesh use cases.
+//!
+//! ## Features
+//!
+//! - **100% Pure Rust** - Zero C dependencies
+//! - **Ed25519 Identity** - Cryptographic device IDs
+//! - **X25519 Key Exchange** - Forward secrecy
+//! - **ChaCha20-Poly1305** - Fast AEAD encryption
+//! - **Sled Persistence** - Identity and peer storage
+//! - **Minimal Protocol** - ~10% of Tor complexity
+//!
+//! ## Example
+//!
+//! ```rust,no_run
+//! use songbird_sovereign_onion::{OnionService, OnionConnector};
+//!
+//! # #[tokio::main]
+//! # async fn main() -> Result<(), Box<dyn std::error::Error>> {
+//! // Create onion service
+//! let service = OnionService::new(9735).await?;
+//! println!("Address: {}", service.onion_address());
+//!
+//! // Connect to onion address
+//! let connector = OnionConnector::new();
+//! let conn = connector.connect("vww6ybal...npyyd.onion", 9735).await?;
+//! # Ok(())
+//! # }
+//! ```
+
+#![forbid(unsafe_code)]
+#![warn(missing_docs)]
+
+pub mod address;
+pub mod connector;
+pub mod crypto;
+pub mod error;
+pub mod keys;
+pub mod protocol;
+pub mod service;
+pub mod storage;
+
+// Re-exports
+pub use address::{derive_onion_address, parse_onion_address, validate_onion_address};
+pub use connector::OnionConnector;
+pub use error::{OnionError, Result};
+pub use keys::OnionIdentity;
+pub use service::OnionService;
+pub use storage::OnionStorage;

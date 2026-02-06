@@ -1,0 +1,56 @@
+[package]
+name = "songbird-sovereign-onion"
+version = "0.1.0"
+edition = "2021"
+license = "AGPL-3.0"
+repository = "https://github.com/ecoPrimals/SongBird"
+readme = "README.md"
+description = "Pure Rust minimal onion service protocol for sovereign device-to-device communication"
+keywords = ["onion", "tor", "p2p", "pure-rust", "sovereignty"]
+categories = ["network-programming", "cryptography"]
+
+[dependencies]
+# Async runtime (Pure Rust)
+tokio = { version = "1.35", features = ["full"] }
+
+# Cryptography (100% Pure Rust - RustCrypto)
+ed25519-dalek = "2.1"        # Identity keys
+x25519-dalek = "2.0"         # Key exchange
+chacha20poly1305 = "0.10"    # AEAD encryption
+sha3 = "0.10"                # For .onion address derivation
+sha2 = "0.10"                # For HKDF
+hmac = "0.12"                # For HKDF
+
+# Database (Pure Rust)
+sled = "0.34"                # Embedded database
+
+# Encoding (Pure Rust)
+base32 = "0.5"               # For .onion address encoding
+
+# Utilities (Pure Rust)
+rand = "0.8"                 # Random number generation
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+tracing = "0.1"
+thiserror = "1.0"
+anyhow = "1.0"
+uuid = { version = "1.6", features = ["v4", "serde"] }
+
+# Internal dependencies
+songbird-types = { path = "../songbird-types" }
+
+[dev-dependencies]
+tokio-test = "0.4"
+criterion = "0.5"
+
+[features]
+default = []
+
+[lib]
+name = "songbird_sovereign_onion"
+path = "src/lib.rs"
+
+# Enforce Pure Rust
+[[package.metadata.enforce]]
+no_unsafe = true
+no_c_dependencies = true

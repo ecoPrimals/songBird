@@ -27,9 +27,10 @@ pub enum OnionRelayError {
     #[error("Invalid message: {0}")]
     InvalidMessage(String),
 
-    #[cfg(feature = "tor")]
-    #[error("Tor error: {0}")]
-    Tor(String),
+    /// Onion service error (Sovereign Onion Service)
+    #[cfg(feature = "onion")]
+    #[error("Onion service error: {0}")]
+    Onion(String),
 
     #[error("IO error: {0}")]
     Io(#[from] std::io::Error),

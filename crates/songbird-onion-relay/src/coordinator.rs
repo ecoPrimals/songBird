@@ -23,6 +23,19 @@ use tokio::time::{sleep, timeout};
 use tracing::{debug, info, warn};
 
 /// Configuration for hole punch attempts
+///
+/// ## STUN Server Configuration
+///
+/// STUN servers are resolved in this order:
+/// 1. Explicitly configured via `stun_servers` field
+/// 2. Environment variable `BIOMEOS_STUN_SERVERS` (comma-separated)
+/// 3. Self-hosted via `BIOMEOS_STUN_SERVER` environment variable
+/// 4. Public STUN servers (default fallback)
+///
+/// For sovereign operation, configure self-hosted STUN:
+/// ```bash
+/// export BIOMEOS_STUN_SERVER="my-stun.local:3478"
+/// ```
 #[derive(Debug, Clone)]
 pub struct HolePunchConfig {
     /// Number of simultaneous punch attempts
@@ -33,8 +46,10 @@ pub struct HolePunchConfig {
     pub packet_interval: Duration,
     /// Total timeout for punch coordination
     pub total_timeout: Duration,
-    /// STUN servers to use for address discovery
+    /// STUN servers to use for address discovery (resolved from env or defaults)
     pub stun_servers: Vec<String>,
+    /// Timeout waiting for punch ack from peer
+    pub ack_timeout: Duration,
 }
 
 impl Default for HolePunchConfig {
@@ -44,11 +59,59 @@ impl Default for HolePunchConfig {
             attempt_timeout: Duration::from_millis(500),
             packet_interval: Duration::from_millis(50),
             total_timeout: Duration::from_secs(10),
-            stun_servers: vec![
-                "stun.l.google.com:19302".to_string(),
-                "stun1.l.google.com:19302".to_string(),
-            ],
+            stun_servers: Self::resolve_stun_servers(),
+            ack_timeout: Duration::from_secs(5),
         }
+    }
+}
+
+impl HolePunchConfig {
+    /// Create with custom STUN servers
+    pub fn with_stun_servers(mut self, servers: Vec<String>) -> Self {
+        self.stun_servers = servers;
+        self
+    }
+    
+    /// Resolve STUN servers from environment or defaults
+    ///
+    /// Resolution order:
+    /// 1. BIOMEOS_STUN_SERVERS (comma-separated)
+    /// 2. BIOMEOS_STUN_SERVER (single self-hosted)
+    /// 3. Default public servers
+    fn resolve_stun_servers() -> Vec<String> {
+        let mut servers = Vec::new();
+        
+        // 1. Self-hosted first (highest priority, maximum sovereignty)
+        if let Ok(self_hosted) = std::env::var("BIOMEOS_STUN_SERVER") {
+            servers.push(self_hosted);
+        }
+        
+        // 2. Custom servers from env
+        if let Ok(custom) = std::env::var("BIOMEOS_STUN_SERVERS") {
+            servers.extend(
+                custom.split(',')
+                    .map(|s| s.trim().to_string())
+                    .filter(|s| !s.is_empty())
+            );
+        }
+        
+        // 3. Public fallback (only if no custom servers)
+        if servers.is_empty() {
+            if std::env::var("BIOMEOS_NO_PUBLIC_STUN").is_err() {
+                servers.extend(Self::default_public_stun_servers());
+            }
+        }
+        
+        servers
+    }
+    
+    /// Default public STUN servers (fallback only)
+    fn default_public_stun_servers() -> Vec<String> {
+        vec![
+            "stun.l.google.com:19302".to_string(),
+            "stun1.l.google.com:19302".to_string(),
+            "stun.cloudflare.com:3478".to_string(),
+        ]
     }
 }
 
@@ -298,15 +361,67 @@ impl HolePunchCoordinator {
         }
     }
     
+    /// Wait for PunchAck from peer via signaling channel
+    ///
+    /// This is a real implementation that:
+    /// 1. Takes the signal_rx receiver
+    /// 2. Waits for matching PunchAck with timeout
+    /// 3. Returns coordinated start time from peer
     async fn wait_for_punch_ack(&self, nonce: &[u8; 16]) -> Result<u64> {
-        // In real impl, this would wait on the signal_rx channel
-        // For now, return a time 100ms in the future
-        let start = SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .unwrap()
-            .as_millis() as u64 + 100;
+        // Take the receiver (one-shot per punch attempt)
+        let rx = {
+            let mut rx_guard = self.signal_rx.write().await;
+            rx_guard.take()
+        };
         
-        Ok(start)
+        let Some(mut rx) = rx else {
+            warn!("⚠️ No signal receiver available - using fallback timing");
+            // Fallback: coordinate 100ms in future
+            return Ok(SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .unwrap()
+                .as_millis() as u64 + 100);
+        };
+        
+        // Wait for matching PunchAck with timeout
+        let result = timeout(self.config.ack_timeout, async {
+            while let Some(msg) = rx.recv().await {
+                match msg {
+                    SignalingMessage::PunchAck { 
+                        from: _, 
+                        nonce: ack_nonce, 
+                        start_at_ms 
+                    } => {
+                        // Check nonce matches
+                        if &ack_nonce == nonce {
+                            debug!("✅ Received PunchAck, start at {}ms", start_at_ms);
+                            return Ok(start_at_ms);
+                        } else {
+                            debug!("⚠️ PunchAck nonce mismatch, continuing...");
+                        }
+                    }
+                    other => {
+                        // Handle other messages through the coordinator
+                        if let Some(response) = self.handle_message(other).await {
+                            let _ = self.signal_tx.send(response).await;
+                        }
+                    }
+                }
+            }
+            Err(OnionRelayError::SignalingTimeout)
+        }).await;
+        
+        // Return receiver for future use
+        *self.signal_rx.write().await = Some(rx);
+        
+        match result {
+            Ok(Ok(start_time)) => Ok(start_time),
+            Ok(Err(e)) => Err(e),
+            Err(_) => {
+                warn!("⚠️ PunchAck timeout after {:?}", self.config.ack_timeout);
+                Err(OnionRelayError::SignalingTimeout)
+            }
+        }
     }
     
     async fn execute_punch(&self, socket: Arc<UdpSocket>, peer_addr: SocketAddr) -> Result<Duration> {

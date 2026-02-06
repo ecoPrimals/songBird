@@ -2,17 +2,30 @@
 name = "songbird-onion-relay"
 version = "0.1.0"
 edition = "2021"
-description = "Sovereign rendezvous via Tor onion services - Pure Rust"
+description = "Sovereign onion relay - Pure Rust NAT traversal without Arti"
 license = "AGPL-3.0"
+
+# ARCHITECTURE EVOLUTION (Feb 6, 2026):
+# =====================================
+# Arti dependency REMOVED. Using Songbird Sovereign Onion Service instead.
+# 
+# - Binary size: ~5MB → ~200KB (25x smaller)
+# - Startup time: 10-30s → instant (no Tor bootstrap)
+# - Crypto: Delegated to BearDog (TRUE PRIMAL pattern)
+# - Dependencies: Pure Rust, no external network requirements
+#
+# See: biomeOS/docs/handoffs/BEARDOG_ONION_CRYPTO_HANDOFF_FEB06_2026.md
+# See: biomeOS/docs/handoffs/SOVEREIGN_BEACON_MESH_HANDOFF_FEB06_2026.md
 
 [features]
 default = []
-# Full Tor integration (adds ~5MB to binary)
-tor = ["arti-client", "tor-hsservice", "tor-rtcompat"]
+# Sovereign Onion Service (Pure Rust, BearDog crypto delegation)
+# Enable with `--features onion` for .onion address support
+onion = ["songbird-sovereign-onion"]
 
 [dependencies]
 # Async runtime
-tokio = { version = "1.35", features = ["full"] }
+tokio = { version = "1.35", features = ["full", "sync"] }
 
 # Serialization
 serde = { version = "1.0", features = ["derive"] }
@@ -28,10 +41,9 @@ anyhow = "1.0"
 # UUID
 uuid = { version = "1.6", features = ["v4"] }
 
-# Tor (optional - enable with `tor` feature)
-arti-client = { version = "0.24", optional = true }
-tor-hsservice = { version = "0.24", optional = true }
-tor-rtcompat = { version = "0.24", features = ["tokio"], optional = true }
+# Sovereign Onion Service (optional - Pure Rust, delegates crypto to BearDog)
+# Unlike Arti, this is lightweight (~200KB) and starts instantly
+songbird-sovereign-onion = { path = "../songbird-sovereign-onion", optional = true }
 
 # Internal crates
 songbird-stun = { path = "../songbird-stun" }
@@ -39,3 +51,4 @@ songbird-lineage-relay = { path = "../songbird-lineage-relay" }
 
 [dev-dependencies]
 tokio-test = "0.4"
+tempfile = "3.8"

@@ -1,0 +1,220 @@
+//! Onion address derivation and validation (Tor v3 format)
+
+use crate::error::{OnionError, Result};
+use ed25519_dalek::VerifyingKey;
+use sha3::{Digest, Sha3_256};
+
+/// Derive .onion address from Ed25519 public key (Tor v3 format)
+///
+/// Format: base32(pubkey || checksum || version).onion
+/// - pubkey: 32-byte Ed25519 public key
+/// - checksum: First 2 bytes of SHA3-256(".onion checksum" || pubkey || version)
+/// - version: 0x03 for v3
+///
+/// # Example
+///
+/// ```
+/// use ed25519_dalek::SigningKey;
+/// use songbird_sovereign_onion::derive_onion_address;
+///
+/// let signing_key = SigningKey::generate(&mut rand::thread_rng());
+/// let public_key = signing_key.verifying_key();
+/// let onion = derive_onion_address(&public_key);
+///
+/// assert!(onion.ends_with(".onion"));
+/// assert_eq!(onion.len(), 62); // 56 chars + ".onion"
+/// ```
+pub fn derive_onion_address(pubkey: &VerifyingKey) -> String {
+    let mut data = Vec::with_capacity(35);
+
+    // 1. Add public key (32 bytes)
+    data.extend_from_slice(pubkey.as_bytes());
+
+    // 2. Compute checksum: SHA3-256(".onion checksum" || pubkey || 0x03)[0..2]
+    let mut hasher = Sha3_256::new();
+    hasher.update(b".onion checksum");
+    hasher.update(pubkey.as_bytes());
+    hasher.update(&[0x03]); // Version 3
+    let hash = hasher.finalize();
+    let checksum = &hash[..2];
+
+    // 3. Add checksum (2 bytes)
+    data.extend_from_slice(checksum);
+
+    // 4. Add version (1 byte)
+    data.push(0x03);
+
+    // 5. Base32 encode (RFC 4648, lowercase, no padding)
+    let encoded = base32::encode(base32::Alphabet::Rfc4648Lower { padding: false }, &data);
+
+    format!("{}.onion", encoded)
+}
+
+/// Parse .onion address to extract Ed25519 public key
+///
+/// # Example
+///
+/// ```
+/// use songbird_sovereign_onion::parse_onion_address;
+///
+/// let onion = "vww6ybal4bd7szmgncyruucpgfkqahzddi37ktceo3ah7ngmcopnpyyd.onion";
+/// let pubkey = parse_onion_address(onion).unwrap();
+/// assert_eq!(pubkey.as_bytes().len(), 32);
+/// ```
+pub fn parse_onion_address(onion: &str) -> Result<VerifyingKey> {
+    validate_onion_address(onion)
+}
+
+/// Validate .onion address format and checksum
+///
+/// # Errors
+///
+/// Returns error if:
+/// - Not ending with ".onion"
+/// - Invalid base32 encoding
+/// - Wrong length (not 35 bytes)
+/// - Unsupported version
+/// - Invalid public key
+/// - Checksum mismatch
+pub fn validate_onion_address(onion: &str) -> Result<VerifyingKey> {
+    // 1. Remove ".onion" suffix
+    let encoded = onion
+        .strip_suffix(".onion")
+        .ok_or(OnionError::InvalidFormat)?;
+
+    // 2. Base32 decode
+    let data = base32::decode(base32::Alphabet::Rfc4648Lower { padding: false }, encoded)
+        .ok_or(OnionError::InvalidEncoding)?;
+
+    // 3. Check length (32 + 2 + 1 = 35 bytes)
+    if data.len() != 35 {
+        return Err(OnionError::InvalidLength(data.len()));
+    }
+
+    // 4. Extract components
+    let pubkey_bytes = &data[..32];
+    let checksum = &data[32..34];
+    let version = data[34];
+
+    // 5. Verify version
+    if version != 0x03 {
+        return Err(OnionError::UnsupportedVersion(version));
+    }
+
+    // 6. Parse public key
+    let pubkey_array: [u8; 32] = pubkey_bytes
+        .try_into()
+        .map_err(|_| OnionError::InvalidPublicKey)?;
+    let pubkey = VerifyingKey::from_bytes(&pubkey_array).map_err(|_| OnionError::InvalidPublicKey)?;
+
+    // 7. Verify checksum
+    let mut hasher = Sha3_256::new();
+    hasher.update(b".onion checksum");
+    hasher.update(pubkey_bytes);
+    hasher.update(&[version]);
+    let hash = hasher.finalize();
+    let expected_checksum = &hash[..2];
+
+    if checksum != expected_checksum {
+        return Err(OnionError::ChecksumMismatch);
+    }
+
+    Ok(pubkey)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use ed25519_dalek::SigningKey;
+
+    #[test]
+    fn test_derive_onion_address() {
+        let mut secret_bytes = [0u8; 32];
+        rand::Rng::fill(&mut rand::thread_rng(), &mut secret_bytes);
+        let signing_key = SigningKey::from_bytes(&secret_bytes);
+        let public_key = signing_key.verifying_key();
+        let onion = derive_onion_address(&public_key);
+
+        // Check format
+        assert!(onion.ends_with(".onion"));
+        assert_eq!(onion.len(), 62); // 56 chars + ".onion"
+
+        // Check lowercase
+        assert_eq!(onion, onion.to_lowercase());
+    }
+
+    #[test]
+    fn test_validate_onion_address_roundtrip() {
+        let mut secret_bytes = [0u8; 32];
+        rand::Rng::fill(&mut rand::thread_rng(), &mut secret_bytes);
+        let signing_key = SigningKey::from_bytes(&secret_bytes);
+        let original_pubkey = signing_key.verifying_key();
+        let onion = derive_onion_address(&original_pubkey);
+
+        // Parse back
+        let parsed_pubkey = validate_onion_address(&onion).unwrap();
+
+        // Should match
+        assert_eq!(original_pubkey.as_bytes(), parsed_pubkey.as_bytes());
+    }
+
+    #[test]
+    fn test_validate_onion_address_invalid_format() {
+        let result = validate_onion_address("invalid");
+        assert!(matches!(result, Err(OnionError::InvalidFormat)));
+    }
+
+    #[test]
+    fn test_validate_onion_address_invalid_encoding() {
+        let result = validate_onion_address("!!!invalid!!!.onion");
+        assert!(matches!(result, Err(OnionError::InvalidEncoding)));
+    }
+
+    #[test]
+    fn test_validate_onion_address_wrong_length() {
+        // Too short
+        let result = validate_onion_address("short.onion");
+        assert!(matches!(result, Err(OnionError::InvalidLength(_))));
+    }
+
+    #[test]
+    fn test_validate_onion_address_checksum_mismatch() {
+        // Generate valid address
+        let mut secret_bytes = [0u8; 32];
+        rand::Rng::fill(&mut rand::thread_rng(), &mut secret_bytes);
+        let signing_key = SigningKey::from_bytes(&secret_bytes);
+        let public_key = signing_key.verifying_key();
+        let onion = derive_onion_address(&public_key);
+
+        // Decode the address to get raw bytes
+        let encoded = onion.strip_suffix(".onion").unwrap();
+        let mut data = base32::decode(base32::Alphabet::Rfc4648Lower { padding: false }, encoded).unwrap();
+        
+        // Corrupt the checksum (bytes 32..34)
+        if data.len() >= 34 {
+            data[32] ^= 0xFF; // Flip all bits in first checksum byte
+        }
+        
+        // Re-encode
+        let corrupted_encoded = base32::encode(base32::Alphabet::Rfc4648Lower { padding: false }, &data);
+        let corrupted = format!("{}.onion", corrupted_encoded);
+
+        let result = validate_onion_address(&corrupted);
+        assert!(matches!(
+            result,
+            Err(OnionError::ChecksumMismatch)
+        ));
+    }
+
+    #[test]
+    fn test_parse_onion_address() {
+        let mut secret_bytes = [0u8; 32];
+        rand::Rng::fill(&mut rand::thread_rng(), &mut secret_bytes);
+        let signing_key = SigningKey::from_bytes(&secret_bytes);
+        let original_pubkey = signing_key.verifying_key();
+        let onion = derive_onion_address(&original_pubkey);
+
+        let parsed_pubkey = parse_onion_address(&onion).unwrap();
+        assert_eq!(original_pubkey.as_bytes(), parsed_pubkey.as_bytes());
+    }
+}
