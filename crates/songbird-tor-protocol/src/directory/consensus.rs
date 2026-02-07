@@ -76,7 +76,7 @@ impl Consensus {
         
         if !response.status().is_success() {
             return Err(Error::Http(reqwest::Error::from(
-                response.error_for_status().unwrap_err()
+                response.error_for_status().expect_err("Status was not success")
             )));
         }
         

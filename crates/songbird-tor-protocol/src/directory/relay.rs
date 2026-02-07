@@ -48,6 +48,8 @@ pub struct RelayInfo {
     pub bandwidth: u64,
     /// ntor onion key (X25519 public key)
     pub ntor_key: Option<[u8; 32]>,
+    /// Tor version
+    pub version: Option<String>,
 }
 
 impl RelayInfo {

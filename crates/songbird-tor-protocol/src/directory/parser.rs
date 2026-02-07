@@ -64,6 +64,7 @@ fn relay_entry(input: &str) -> IResult<&str, RelayInfo> {
         flags,
         bandwidth,
         ntor_key: None, // TODO: Parse from microdescriptors
+        version: None,  // TODO: Parse from v line
     }))
 }
 
