@@ -4,7 +4,6 @@
 //! This crate has ZERO direct crypto implementations.
 
 use crate::error::{Error, Result};
-use std::sync::Arc;
 
 /// BearDog crypto client for Tor protocol operations
 ///
