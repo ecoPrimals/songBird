@@ -37,26 +37,26 @@ pub use crypto::BeardogCryptoClient;
 
 /// Tor client for connecting to .onion addresses
 pub struct TorClient {
-    beardog: BeardogCryptoClient,
+    _beardog: BeardogCryptoClient,
 }
 
 impl TorClient {
     /// Create new Tor client with BearDog delegation
     pub fn new(beardog: BeardogCryptoClient) -> Self {
-        Self { beardog }
+        Self { _beardog: beardog }
     }
 }
 
 /// Tor service for hosting .onion addresses
 pub struct TorService {
-    beardog: BeardogCryptoClient,
-    port: u16,
+    _beardog: BeardogCryptoClient,
+    _port: u16,
 }
 
 impl TorService {
     /// Create new Tor service
     pub async fn new(beardog: BeardogCryptoClient, port: u16) -> Result<Self> {
-        Ok(Self { beardog, port })
+        Ok(Self { _beardog: beardog, _port: port })
     }
     
     /// Get onion address (placeholder)

@@ -4,12 +4,6 @@
 //! This crate has ZERO direct crypto implementations.
 
 use crate::error::{Error, Result};
-use std::net::{IpAddr, Ipv4Addr};
-
-/// Hardcoded directory authority addresses (cannot use parse() in const)
-const fn ipv4(a: u8, b: u8, c: u8, d: u8) -> IpAddr {
-    IpAddr::V4(Ipv4Addr::new(a, b, c, d))
-}
 use std::sync::Arc;
 
 /// BearDog crypto client for Tor protocol operations

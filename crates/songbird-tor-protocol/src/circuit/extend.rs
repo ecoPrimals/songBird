@@ -2,6 +2,4 @@
 //!
 //! **Status**: Phase 2B (TODO)
 
-use crate::error::Result;
-
 // TODO Phase 2B: Implement circuit extension

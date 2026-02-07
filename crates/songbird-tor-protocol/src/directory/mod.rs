@@ -13,4 +13,3 @@ mod parser;
 pub use authorities::DirectoryAuthority;
 pub use consensus::Consensus;
 pub use relay::{RelayInfo, RelayFlags, CircuitPath};
-pub(crate) use parser::parse_consensus;
