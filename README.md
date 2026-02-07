@@ -25,15 +25,15 @@ Songbird is the universal network orchestrator for the ecoPrimals ecosystem, man
 
 | Feature | Status | Description |
 |---------|--------|-------------|
-| **biomeOS Integration** | ✅ Complete | Unix socket IPC, standard methods, family_id passthrough |
-| **Dark Forest Discovery** | ✅ Complete | Zero metadata leakage, encrypted beacons |
+| **Pure Rust Tor (Phase 2A)** | ✅ Complete | Directory protocol, consensus parsing, relay selection |
+| **Sovereign Onion P2P** | ✅ Complete | Custom onion service + connector with BearDog crypto |
 | **TLS 1.3** | ✅ Complete | RFC 8446 compliant, protocol detection (HTTP/HTTPS same port) |
 | **STUN Server** | ✅ Complete | Pure Rust RFC 5389, NAT discovery |
 | **Relay Server** | ✅ Complete | Pure Rust packet forwarding, lineage-based auth, coturn eliminated |
+| **Dark Forest Discovery** | ✅ Complete | Zero metadata leakage, encrypted beacons |
+| **biomeOS Integration** | ✅ Complete | Unix socket IPC, standard methods, family_id passthrough |
 | **Capability Discovery** | ✅ Complete | 6-layer strategy, environment-first configuration |
 | **Federation** | ✅ Complete | Zero-trust progressive escalation |
-| **Smart Refactoring** | ✅ Complete | 8 phases, responsibility-based modules |
-| **Sovereign Onion P2P** | ✅ Complete | Custom onion service + connector with BearDog crypto |
 
 ## 🚀 Quick Start
 
@@ -77,14 +77,24 @@ export SONGBIRD_METRICS_PORT=9090
 ┌─────────────────────────────────────────────────────────────┐
 │                    Songbird Orchestrator                     │
 ├─────────────────────────────────────────────────────────────┤
-│  • IPC Server (Unix sockets + TCP)                          │
-│  • Discovery (mDNS, DNS-SD, capability-based)               │
-│  • TLS 1.3 (Pure Rust, CryptoCapability trait)              │
-│  • STUN Server (Pure Rust RFC 5389, NAT discovery)          │
-│  • Relay Server (Pure Rust packet forwarding, lineage auth) │
-│  • Dark Forest (encrypted beacons, zero leakage)            │
-│  • Federation (peer-to-peer, multi-tier relay)              │
+│  P2P & Tor:                                                 │
+│  • Pure Rust Tor Protocol (Phase 2A ✅, 2B 🟡)             │
 │  • Sovereign Onion (P2P service + connector)                │
+│  • Beacon Mesh (distributed relay network)                  │
+│                                                             │
+│  Networking:                                                │
+│  • IPC Server (Unix sockets + TCP)                          │
+│  • TLS 1.3 (Pure Rust, CryptoCapability trait)              │
+│  • Discovery (Dark Forest, mDNS, DNS-SD)                    │
+│                                                             │
+│  NAT Traversal:                                             │
+│  • STUN Server (Pure Rust RFC 5389)                         │
+│  • Relay Server (Pure Rust, lineage-based auth)             │
+│  • UDP Hole Punching                                        │
+│                                                             │
+│  Federation & Coordination:                                 │
+│  • Peer-to-peer federation                                  │
+│  • Multi-tier relay coordination                            │
 └─────────────────────────────┬───────────────────────────────┘
                               │ 100% BearDog Delegation
                               ▼
@@ -93,7 +103,8 @@ export SONGBIRD_METRICS_PORT=9090
 │  • Ed25519 (identity, signing)                              │
 │  • X25519 (ECDH key exchange)                               │
 │  • ChaCha20Poly1305 (authenticated encryption)              │
-│  • SHA3-256 (onion address derivation)                      │
+│  • SHA3-256 (hashing, KDF)                                  │
+│  • AES-128-CTR (Tor cell encryption) - 🔴 Phase 2B blocker │
 └─────────────────────────────────────────────────────────────┘
 ```
 

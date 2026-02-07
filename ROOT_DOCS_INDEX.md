@@ -1,8 +1,8 @@
 # 📚 Songbird Documentation Index
 
-**Version**: v3.33.0  
-**Updated**: February 6, 2026  
-**Status**: ✅ P2P Sovereign Onion Complete (100% BearDog Delegation - S Tier)
+**Version**: v3.34.0  
+**Updated**: February 7, 2026  
+**Status**: ✅ **Phase 2A Tor Protocol Complete** (S+ Tier - Pure Rust Tor)
 
 ---
 
@@ -10,139 +10,85 @@
 
 ### 🎯 Quick Start (Choose Your Path)
 
-**New to this project?**  
-→ Read [`README.md`](README.md) ⭐⭐⭐ (5 minutes)
+**New to Songbird?**  
+→ Read [`README.md`](README.md) ⭐⭐⭐ (5 minutes)  
+→ Then [`IMPLEMENTATION_GUIDE.md`](IMPLEMENTATION_GUIDE.md) ⭐⭐ (15 minutes)
 
-**P2P Implementation Complete?**  
-→ Read [`P2P_IMPLEMENTATION_COMPLETE_FEB_06_2026.md`](P2P_IMPLEMENTATION_COMPLETE_FEB_06_2026.md) ⭐⭐⭐ **NEW** (10 minutes)
+**Understanding Tor Integration?**  
+→ Read [`COMPLETE_STATUS_REPORT_FEB_07_2026.md`](COMPLETE_STATUS_REPORT_FEB_07_2026.md) ⭐⭐⭐ **LATEST** (15 minutes)  
+→ Then [`TOR_INTEGRATION_ROADMAP_FEB_07_2026.md`](TOR_INTEGRATION_ROADMAP_FEB_07_2026.md) (10 minutes)
 
-**Configuration Standards?**  
-→ Read [`CONFIGURATION_PATTERNS.md`](CONFIGURATION_PATTERNS.md) ⭐⭐ (5 minutes)
+**Contributing to Development?**  
+→ Read [`IMPLEMENTATION_GUIDE.md`](IMPLEMENTATION_GUIDE.md) ⭐⭐⭐ (15 minutes)  
+→ Then [`CONTRIBUTING.md`](CONTRIBUTING.md) (10 minutes)
 
 **Leadership/Decision Makers?**  
-→ Read [`SESSION_SUMMARY_FEB_06_2026_PHASE2.md`](SESSION_SUMMARY_FEB_06_2026_PHASE2.md) ⭐⭐⭐ (10 minutes)
+→ Read [`COMPLETE_STATUS_REPORT_FEB_07_2026.md`](COMPLETE_STATUS_REPORT_FEB_07_2026.md) ⭐⭐⭐ (15 minutes)
 
 ---
 
-## 🎯 P2P Sovereign Onion Implementation (February 6, 2026)
+## 🧅 Tor Protocol Evolution (February 7, 2026)
 
-### What We Achieved Today
+### Current Status
 
-**Status**: ✅ P2P Service + Connector Complete - 100% BearDog Delegation  
-**Quality**: **S Tier** (100% crypto delegation, zero direct crypto)  
-**Implementation**: OnionService (199 lines) + OnionConnector (160 lines) + OnionConnection  
-**Documentation**: [`P2P_IMPLEMENTATION_COMPLETE_FEB_06_2026.md`](P2P_IMPLEMENTATION_COMPLETE_FEB_06_2026.md)  
-**Commits**: `102f30913` + `f49c65e7b` - Pushed to remote ✅
+**Phase 2A**: ✅ **COMPLETE** (Directory Protocol - 100%)  
+**Phase 2B**: 🟡 **DESIGN COMPLETE** (Circuit Building - Blocked)  
+**Quality**: **S+ Tier** (Zero unsafe + Pure Rust Tor)
 
-### P2P Implementation Components
+### What We Achieved
 
-1. **OnionService** (service.rs) - TCP listener with BearDog crypto
-2. **OnionConnector** (connector.rs) - Client connection with encrypted sessions
-3. **OnionConnection** - Send/receive encrypted data via BearDog
-4. **Storage Enhancements** - Production-safe identity load/store
-5. **Identity Improvements** - Simplified BearDog delegation API
+**Phase 2A Implementation** (~800 lines):
+- ✅ 9 Tor directory authorities
+- ✅ Consensus fetching (HTTP with failover)
+- ✅ Consensus parsing (nom-based)
+- ✅ Relay selection (Guard/Middle/HSDir)
+- ✅ BearDog crypto client wrapper
+- ✅ 11/11 tests passing
+- ✅ Zero unsafe code, zero clippy warnings
 
-### Navigation by Role
+**Phase 2B Design** (Ready for implementation):
+- ✅ Complete circuit building architecture
+- ✅ ntor handshake specification
+- ✅ BearDog integration patterns
+- ✅ Test vectors prepared
+- 🔴 **Blocked**: Awaiting BearDog AES-128-CTR + SHA3-256
 
-**If you're reviewing P2P Implementation:**
-1. [`P2P_IMPLEMENTATION_COMPLETE_FEB_06_2026.md`](P2P_IMPLEMENTATION_COMPLETE_FEB_06_2026.md) ⭐ **START HERE**
-2. [`P2P_IMPLEMENTATION_ROADMAP_FEB_06_2026.md`](P2P_IMPLEMENTATION_ROADMAP_FEB_06_2026.md) - Implementation plan
-3. [`crates/songbird-sovereign-onion/`](crates/songbird-sovereign-onion/) - Source code
+### Key Documents
 
-**If you're on Songbird Team:**
-1. [`P2P_IMPLEMENTATION_COMPLETE_FEB_06_2026.md`](P2P_IMPLEMENTATION_COMPLETE_FEB_06_2026.md) ⭐ **START HERE**
-2. [`CONFIGURATION_PATTERNS.md`](CONFIGURATION_PATTERNS.md) - Zero hardcoding standard
-3. Test with: `cargo build -p songbird-sovereign-onion`
+| Document | Purpose | Audience | Status |
+|----------|---------|----------|--------|
+| [`COMPLETE_STATUS_REPORT_FEB_07_2026.md`](COMPLETE_STATUS_REPORT_FEB_07_2026.md) | **Complete status & metrics** | Everyone ⭐ | ✅ Current |
+| [`IMPLEMENTATION_GUIDE.md`](IMPLEMENTATION_GUIDE.md) | **Developer onboarding** | Contributors ⭐ | ✅ Current |
+| [`TOR_INTEGRATION_ROADMAP_FEB_07_2026.md`](TOR_INTEGRATION_ROADMAP_FEB_07_2026.md) | Phase 1 & 2 roadmap | Engineering | ✅ Current |
+| [`TOR_PHASE2_EVOLUTION_TRACKER.md`](TOR_PHASE2_EVOLUTION_TRACKER.md) | Daily progress tracking | Engineering | ✅ Current |
+| [`PHASE_2A_COMPLETE_FEB_07_2026.md`](PHASE_2A_COMPLETE_FEB_07_2026.md) | Phase 2A completion details | Engineering | ✅ Complete |
+| [`PHASE_2B_PREPARATION.md`](PHASE_2B_PREPARATION.md) | Circuit building design | Engineering | ✅ Ready |
+| [`specs/NTOR_HANDSHAKE.md`](specs/NTOR_HANDSHAKE.md) | ntor handshake spec | Engineering | ✅ Complete |
+| [`specs/TOR_PROTOCOL_PURE_RUST.md`](specs/TOR_PROTOCOL_PURE_RUST.md) | Full Tor protocol spec | Engineering | ✅ Complete |
 
-**If you're on BearDog Team:**
-1. Review: 100% crypto delegation (S tier) ✅
-2. All crypto ops: Ed25519, X25519, ChaCha20Poly1305, SHA3-256
-3. IPC methods used: `ed25519_*`, `x25519_*`, `chacha20_poly1305_*`
+### Tor Crate
 
-**If you're reviewing architecture:**
-1. [`P2P_IMPLEMENTATION_COMPLETE_FEB_06_2026.md`](P2P_IMPLEMENTATION_COMPLETE_FEB_06_2026.md) - Protocol flow
-2. [`crates/songbird-sovereign-onion/README.md`](crates/songbird-sovereign-onion/README.md) - Crate docs
-3. TRUE PRIMAL: Songbird has ZERO crypto, 100% BearDog delegation ✅
+**Location**: [`crates/songbird-tor-protocol/`](crates/songbird-tor-protocol/)  
+**Status**: Phase 2A Complete (Phase 2B blocked)  
+**Tests**: 11/11 passing  
+**Example**: `cargo run -p songbird-tor-protocol --example fetch_consensus`
 
-### P2P Implementation Documents
+---
 
-| Document | Purpose | Audience |
-|----------|---------|----------|
-| [`P2P_IMPLEMENTATION_COMPLETE_FEB_06_2026.md`](P2P_IMPLEMENTATION_COMPLETE_FEB_06_2026.md) | **P2P completion report** (production ready) | Everyone ⭐ |
-| [`P2P_IMPLEMENTATION_ROADMAP_FEB_06_2026.md`](P2P_IMPLEMENTATION_ROADMAP_FEB_06_2026.md) | Implementation roadmap & guides | Engineering |
-| [`P2P_SOVEREIGN_ONION_STATUS_FEB_06_2026.md`](P2P_SOVEREIGN_ONION_STATUS_FEB_06_2026.md) | Status before implementation | Engineering |
-| [`SESSION_SUMMARY_FEB_06_2026_PHASE2.md`](SESSION_SUMMARY_FEB_06_2026_PHASE2.md) | **Session summary** (crypto cleanup + P2P) | Everyone |
-| [`CONFIGURATION_PATTERNS.md`](CONFIGURATION_PATTERNS.md) | Zero hardcoding standard | Engineering |
+## 🌐 P2P Sovereign Onion (February 6, 2026)
 
-### Crypto Delegation Improvements
+### Status: ✅ COMPLETE
 
-| Component | Before | After | Status |
-|-----------|--------|-------|--------|
-| **Identity generation** | Direct Ed25519 | BearDog delegation | ✅ |
-| **Key exchange** | Direct X25519 | BearDog delegation | ✅ |
-| **Encryption** | Direct ChaCha20Poly1305 | BearDog delegation | ✅ |
-| **Onion addresses** | Direct SHA3 | BearDog delegation | ✅ |
-| **Crypto score** | B tier (70%) | **S tier (100%)** | ✅ |
+**Components**:
+- `OnionService` - TCP listener + handshake (199 lines)
+- `OnionConnector` - Client connections (160 lines)
+- `OnionConnection` - Encrypted data transfer
+- 100% BearDog crypto delegation (S Tier)
 
-## 🚀 Recent Evolution Sessions (February 6, 2026)
-
-### Session 1: Crypto Cleanup + Deep Debt Analysis
-
-**Location**: `ecoPrimals/sessions/2026-02-february/feb-06-2026-deep-debt-evolution/`  
-**Documents**: 15+ files  
-**Key Achievements**:
-- Crypto primal overstep cleanup (100% BearDog delegation)
-- Deep Debt Phase 4 analysis
-- Configuration patterns standardized
-- HMAC-SHA256 isolated as temporary exception
-
-### Session 2: P2P Sovereign Onion Implementation (Current)
-
-**Location**: Root directory (active session)  
-**Documents**: 3 main files + roadmap  
-**Key Achievements**:
-- OnionService complete (TCP listener + handshake)
-- OnionConnector complete (client + encrypted sessions)
-- 100% BearDog delegation (S tier crypto score)
-- Production ready, tests passing
-
-### Key Metrics Evolution
-
-| Metric | Session 1 | After P2P | Status |
-|--------|-----------|-----------|--------|
-| **Crypto Delegation** | B (70%) | **S (100%)** | **+30%** ✅ |
-| **P2P Implementation** | Stubs | **Complete** | **100%** ✅ |
-| **TRUE PRIMAL Compliance** | 95% | **100%** | **+5%** ✅ |
-| **OnionService** | 58 lines (stub) | **199 lines** | **Complete** ✅ |
-| **OnionConnector** | 23 lines (stub) | **160 lines** | **Complete** ✅ |
-
-### Git Status
-
-| Item | Status | Details |
-|------|--------|---------|
-| **Commit** | ✅ Pushed | `102f30913` (docs) + `f49c65e7b` (impl) |
-| **Branch** | `main` | Up to date with remote |
-| **Remote** | ✅ Success | `github.com:ecoPrimals/songBird.git` |
-| **Files Changed** | 5 files (impl) + 1 doc | +468 insertions, -72 deletions |
-| **Build** | ✅ Success | 0.22s incremental, zero errors |
-
-### Key Implementation Highlights
-
-**🔐 100% BearDog Delegation**:
-- Zero direct crypto in production builds
-- Ed25519: identity generation + signing
-- X25519: ephemeral key exchange (ECDH)
-- ChaCha20Poly1305: authenticated encryption
-- SHA3-256: onion address derivation
-- **Impact**: S tier crypto score (was B tier)!
-
-**🌐 P2P Protocol Flow**:
-1. TCP connection established
-2. X25519 key exchange (via BearDog)
-3. Shared secret derivation (via BearDog)
-4. ChaCha20Poly1305 encrypted data transfer (via BearDog)
-5. Graceful connection closure
-- **Nonce strategy**: 12 bytes (8-byte sequence + 4 reserved)
+**Documentation**:
+- [`P2P_IMPLEMENTATION_COMPLETE_FEB_06_2026.md`](P2P_IMPLEMENTATION_COMPLETE_FEB_06_2026.md) - Completion report
+- [`specs/SOVEREIGN_ONION_PROTOCOL.md`](specs/SOVEREIGN_ONION_PROTOCOL.md) - Protocol spec
+- [`crates/songbird-sovereign-onion/`](crates/songbird-sovereign-onion/) - Source code
 
 ---
 
@@ -150,148 +96,138 @@
 
 ### Essential Documents
 
+| Document | Purpose | Audience | Status |
+|----------|---------|----------|--------|
+| [`README.md`](README.md) | Project overview & quick start | Everyone | ✅ v3.34.0 |
+| [`IMPLEMENTATION_GUIDE.md`](IMPLEMENTATION_GUIDE.md) | **Complete developer guide** | Contributors ⭐ | ✅ Current |
+| [`COMPLETE_STATUS_REPORT_FEB_07_2026.md`](COMPLETE_STATUS_REPORT_FEB_07_2026.md) | **Full status & metrics** | Everyone ⭐ | ✅ Current |
+| [`CHANGELOG.md`](CHANGELOG.md) | Version history | Developers | ✅ Current |
+| [`CONTRIBUTING.md`](CONTRIBUTING.md) | Contribution guide | Contributors | ✅ Current |
+
+### Architecture & Configuration
+
 | Document | Purpose | Audience |
 |----------|---------|----------|
-| [`README.md`](README.md) | Project overview & quick start | Everyone |
-| [`EXECUTIVE_SUMMARY.md`](EXECUTIVE_SUMMARY.md) | Current status & achievements | Leadership |
-| [`CHANGELOG.md`](CHANGELOG.md) | Version history & changes | Developers |
-| [`CONTRIBUTING.md`](CONTRIBUTING.md) | How to contribute | Contributors |
+| [`SOVEREIGN_ONION_TRUE_PRIMAL_ARCHITECTURE.md`](SOVEREIGN_ONION_TRUE_PRIMAL_ARCHITECTURE.md) | TRUE PRIMAL architecture | Architecture |
+| [`CONFIGURATION_PATTERNS.md`](CONFIGURATION_PATTERNS.md) | Zero hardcoding standard | Engineering |
+| [`EXECUTIVE_SUMMARY.md`](EXECUTIVE_SUMMARY.md) | Current status summary | Leadership |
 
 ### Deployment & Operations
 
 | Document | Purpose | Audience |
 |----------|---------|----------|
-| [`DEPLOYMENT_READY_STATUS.md`](DEPLOYMENT_READY_STATUS.md) | Production deployment guide | Operations |
-| [`FINAL_HANDOFF_FEB_05_2026.md`](FINAL_HANDOFF_FEB_05_2026.md) | biomeOS integration readiness | Integration Team |
-| [`NAT_TRAVERSAL_VALIDATION_GUIDE.md`](NAT_TRAVERSAL_VALIDATION_GUIDE.md) | NAT traversal validation | QA/Testing |
+| [`DEPLOYMENT_READY_STATUS.md`](DEPLOYMENT_READY_STATUS.md) | Production deployment | Operations |
+| [`NAT_TRAVERSAL_VALIDATION_GUIDE.md`](NAT_TRAVERSAL_VALIDATION_GUIDE.md) | NAT validation | QA/Testing |
+| [`FINAL_HANDOFF_FEB_05_2026.md`](FINAL_HANDOFF_FEB_05_2026.md) | biomeOS integration | Integration |
 
 ### Planning & Evolution
 
 | Document | Purpose | Audience |
 |----------|---------|----------|
-| [`UPSTREAM_EVOLUTION_TRACKER.md`](UPSTREAM_EVOLUTION_TRACKER.md) | Issues resolved (5/5) & future work | Product Team |
-| [`NEXT_EVOLUTION_OPPORTUNITIES_FEB_05_2026.md`](NEXT_EVOLUTION_OPPORTUNITIES_FEB_05_2026.md) | Future roadmap & priorities | Planning |
-| [`SOVEREIGN_MESH_PROGRESS_TRACKER.md`](SOVEREIGN_MESH_PROGRESS_TRACKER.md) | Mesh progress tracking | Engineering |
-| [`SOVEREIGN_BEACON_MESH_IMPLEMENTATION_PLAN_FEB_06_2026.md`](SOVEREIGN_BEACON_MESH_IMPLEMENTATION_PLAN_FEB_06_2026.md) | Mesh implementation roadmap | Engineering |
-| [`SOVEREIGN_BEACON_MESH_INVESTIGATION_FEB_06_2026.md`](SOVEREIGN_BEACON_MESH_INVESTIGATION_FEB_06_2026.md) | Mesh investigation | Engineering |
+| [`NEXT_EVOLUTION_OPPORTUNITIES_FEB_05_2026.md`](NEXT_EVOLUTION_OPPORTUNITIES_FEB_05_2026.md) | Future roadmap | Planning |
+| [`SOVEREIGN_MESH_PROGRESS_TRACKER.md`](SOVEREIGN_MESH_PROGRESS_TRACKER.md) | Mesh progress | Engineering |
 
 ---
 
 ## 📖 Complete Documentation Structure
 
-### `/docs/` - Implementation Guides
-
-**Location**: `./docs/`  
-**Purpose**: Technical guides for developers
-
-- API references
-- Configuration guides
-- Implementation patterns
-- Architecture deep dives
-
 ### `/specs/` - Technical Specifications
 
 **Location**: `./specs/`  
-**Purpose**: RFC-style specifications (105+ files)
+**Index**: [`specs/00_SPECIFICATIONS_INDEX.md`](specs/00_SPECIFICATIONS_INDEX.md)  
+**Count**: 42+ active specifications
 
-- Protocol specifications
-- Architecture designs
-- Integration contracts
-- **NEW**: [`SOVEREIGN_ONION_PROTOCOL.md`](specs/SOVEREIGN_ONION_PROTOCOL.md) - Onion protocol spec
+**Key Specs**:
+- **Tor Protocol**: `TOR_PROTOCOL_PURE_RUST.md`, `NTOR_HANDSHAKE.md`
+- **P2P**: `SOVEREIGN_ONION_PROTOCOL.md`, `SOVEREIGN_BEACON_MESH_SPECIFICATION.md`
+- **Foundation**: `PRIMAL_SELF_KNOWLEDGE_EVOLUTION_SPEC.md`, `CAPABILITY_BASED_DISCOVERY_SPECIFICATION.md`
+- **Security**: `SECURE_COMMUNICATIONS_PROTOCOL.md`, `SONGBIRD_TLS_13_COMPLETE.md`
+- **NAT**: `STUN_SERVER_CAPABILITY_SPECIFICATION.md`, `RELAY_SERVER_SPECIFICATION.md`
+
+### `/crates/` - Rust Workspace
+
+**Location**: `./crates/`  
+**Count**: 25 crates
+
+**Key Crates**:
+- **P2P & Tor** (~3,800 lines):
+  - `songbird-sovereign-onion/` - Custom onion protocol ✅
+  - `songbird-onion-relay/` - Beacon mesh + hole punch ✅
+  - `songbird-tor-protocol/` - Pure Rust Tor (Phase 2A ✅)
+- **Networking** (~12,000 lines):
+  - `songbird-discovery/` - Peer discovery
+  - `songbird-universal-ipc/` - IPC service + handlers
+  - `songbird-registry/` - Service registry
+- **NAT Traversal** (~2,500 lines):
+  - `songbird-stun/` - STUN server (RFC 5389)
+  - `songbird-lineage-relay/` - Relay server
+- **Security** (~4,000 lines):
+  - `songbird-tls/` - TLS 1.3 implementation
+
+### `/docs/` - Implementation Guides
+
+**Location**: `./docs/`  
+**Purpose**: Technical guides, API references
 
 ### `/examples/` - Code Examples
 
 **Location**: `./examples/`  
 **Purpose**: Working code samples
 
-- Configuration examples
-- Client implementations
-- Integration patterns
-
-### `/crates/` - Rust Workspace
-
-**Location**: `./crates/`  
-**Purpose**: 25 Rust crates
-
-**Notable Crates**:
-- `songbird-orchestrator/` - Main orchestrator
-- `songbird-discovery/` - Service discovery
-- `songbird-universal-ipc/` - IPC layer
-- `songbird-http-client/` - HTTP/TLS client
-- **NEW**: `songbird-sovereign-onion/` - Sovereign onion service (Phase 1)
-- `songbird-onion-relay/` - Onion relay (now integrated with sovereign-onion)
-
 ---
 
-## 🎉 Evolution Documentation (Archive)
+## 🎉 Evolution Documentation
+
+### Session Archive
+
+**Location**: `./archive/sessions-feb-2026/`  
+**Contents**: Redundant session reports (consolidated into COMPLETE_STATUS_REPORT)
+
+**Archived Files**:
+- `COMPLETE_EVOLUTION_SESSION_FEB_07_2026.md`
+- `SESSION_COMPLETE_FEB_07_2026.md`
+- `FINAL_SESSION_STATUS_FEB_07_2026.md`
+- `PROGRESS_FEB_07_2026_PART_2.md`
+- `TOR_PHASE2_DOCUMENTATION_COMPLETE_FEB_07_2026.md`
+
+**Current Summary**: All details in [`COMPLETE_STATUS_REPORT_FEB_07_2026.md`](COMPLETE_STATUS_REPORT_FEB_07_2026.md)
+
+### Complete History
 
 **Location**: `./ecoPrimals/sessions/`  
-**Purpose**: Complete development history from December 2025 to February 2026
-
-### Archive Structure (Organized by Year-Month)
-
-| Period | Location | Focus | Documents |
-|--------|----------|-------|-----------|
-| **Dec 2025** | [`2025-12-december/`](ecoPrimals/sessions/2025-12-december/) | Foundation, biomeOS integration prep | Multiple |
-| **Jan 2026** | [`2026-01-january/`](ecoPrimals/sessions/2026-01-january/) | Quality verifications, production readiness | 4 verifications |
-| **Feb 2026** | [`2026-02-february/`](ecoPrimals/sessions/2026-02-february/) | World-class evolution (99.8% Deep Debt) | 27+ docs |
-
 **Master Index**: [`ecoPrimals/sessions/README.md`](ecoPrimals/sessions/README.md)
 
-### Latest Evolution Session (Feb 06, 2026)
-
-**Location**: Root directory (for easy access)  
-**Documents**: 23 files, 9,226 lines  
-**Focus**: Sovereign Onion Service (Phase 1) + TRUE PRIMAL Architecture
-
-**Key Achievement**: Architecture correction - all crypto moved to BearDog
-
-### Previous Session (Feb 05, 2026)
-
-**Location**: `./ecoPrimals/sessions/2026-02-february/feb-05-2026-evolution/`  
-**Documents**: 27 files including all 8 phases complete  
-**Achievement**: 99.6% Deep Debt Score (A grade)
+| Period | Location | Focus |
+|--------|----------|-------|
+| **Dec 2025** | `2025-12-december/` | Foundation |
+| **Jan 2026** | `2026-01-january/` | Quality verifications |
+| **Feb 2026** | `2026-02-february/` | Tor evolution |
 
 ---
 
-## 🏆 Quality Metrics
+## 🏆 Quality Metrics (v3.34.0)
 
-### Current Status (Feb 06, 2026 - P2P Complete)
+### Current Status
 
 | Metric | Value | Grade | Status |
 |--------|-------|-------|--------|
-| **Crypto Delegation** | **100%** | **S** | **Zero direct crypto** ✅ |
-| **P2P Implementation** | **Complete** | **A++** | **Service + Connector** ✅ |
-| **Safe Rust** | **100%** | **A++** | Zero unsafe blocks |
-| **Pure Rust (Core)** | 100% | A++ | Zero C dependencies |
-| **TRUE PRIMAL** | **100%** | **S** | **BearDog only** ✅ |
-| **Build Time** | 0.22s | A++ | Incremental compile |
-| **Tests** | 1,763+ passing | A++ | Comprehensive |
-| **Build** | ✅ Success | A++ | Zero errors |
+| **Unsafe Code** | **0 blocks** | **S+** | Zero unsafe ✅ |
+| **Crypto Delegation** | **100%** | **S+** | All BearDog ✅ |
+| **Phase 2A** | **Complete** | **A++** | 11/11 tests ✅ |
+| **Phase 2B Design** | **Complete** | **A++** | Ready ✅ |
+| **Tests Passing** | 1,763+ | A++ | Comprehensive ✅ |
+| **Build** | ✅ Success | A++ | Zero errors ✅ |
+| **Documentation** | World-class | A++ | Complete ✅ |
 
-### P2P Implementation Phases (All Complete - 100%)
+### Tor Protocol Progress
 
-1. ✅ **Crypto Cleanup** - Removed direct crypto dependencies
-2. ✅ **OnionService** - TCP listener + handshake via BearDog
-3. ✅ **OnionConnector** - Client connection + encrypted sessions
-4. ✅ **OnionConnection** - Send/receive encrypted data
-5. ✅ **Storage/Identity** - Production-safe load/store methods
-
-### Previous Sessions (Archived in ecoPrimals/)
-
-- ✅ **Deep Debt Evolution** (Phases 1-3, Feb 6 morning)
-- ✅ **Crypto Cleanup** (100% BearDog delegation, Feb 6 morning)
-- ✅ **Sovereign Onion Discovery** (Investigation + planning, Feb 6 early)
-- ✅ **handlers.rs refactored** (1,132 → 8 modules, Feb 5)
-- ✅ **NAT Traversal Stack** (STUN + Relay, Feb 5)
-
-### Upstream Integration (5/5 Resolved)
-
-1. ✅ Unix Socket Standard Methods
-2. ✅ BirdSong family_id Passthrough
-3. ✅ TLS Protocol Detection
-4. ✅ STUN Server (Pure Rust, RFC 5389)
-5. ✅ Relay Server (Pure Rust, coturn eliminated)
+| Phase | Status | Completion | Tests |
+|-------|--------|------------|-------|
+| **Phase 1** | ✅ Complete | 100% | Production ready |
+| **Phase 2A** | ✅ Complete | 100% | 11/11 passing |
+| **Phase 2B** | 🟡 Design | 100% design | Blocked (BearDog) |
+| **Phase 2C** | 📋 Planned | 0% | - |
+| **Phase 2D** | 📋 Planned | 0% | - |
 
 ---
 
@@ -299,27 +235,35 @@
 
 ### Quick Start Path
 
-1. Read [`START_HERE_FEB_06_2026.md`](START_HERE_FEB_06_2026.md) - Navigation guide
-2. Read [`README.md`](README.md) - Project overview
-3. Read [`CONTRIBUTING.md`](CONTRIBUTING.md) - How to contribute
+1. Read [`README.md`](README.md) - Project overview (5 min)
+2. Read [`IMPLEMENTATION_GUIDE.md`](IMPLEMENTATION_GUIDE.md) - Developer guide (15 min)
+3. Read [`CONTRIBUTING.md`](CONTRIBUTING.md) - Contribution guidelines (10 min)
 4. Explore `examples/` - Working code samples
-5. Check `docs/` - Implementation guides
+5. Check `specs/` - Technical specifications
 
-### For biomeOS Integration
+### Setup & Build
 
-1. **Start**: [`FINAL_HANDOFF_FEB_05_2026.md`](FINAL_HANDOFF_FEB_05_2026.md)
-2. **New**: [`ONION_SERVICE_HANDOFF_SUMMARY_FEB_06_2026.md`](ONION_SERVICE_HANDOFF_SUMMARY_FEB_06_2026.md)
-3. **Tests**: Run `cargo test --workspace`
+```bash
+# Clone repository
+git clone https://github.com/ecoPrimals/songBird.git
+cd songbird
 
-### For Understanding Architecture
+# Build workspace
+cargo build --workspace --release
 
-**Primary Document**: [`SOVEREIGN_ONION_TRUE_PRIMAL_ARCHITECTURE.md`](SOVEREIGN_ONION_TRUE_PRIMAL_ARCHITECTURE.md)
+# Run tests
+cargo test --workspace
 
-This document explains:
-- TRUE PRIMAL pattern
-- BearDog + Songbird + biomeOS separation
-- Why Songbird has ZERO crypto
-- How crypto delegation works
+# Run Tor example
+cargo run -p songbird-tor-protocol --example fetch_consensus
+```
+
+### For Tor Development
+
+1. **Phase 2A** (Complete): Study `crates/songbird-tor-protocol/`
+2. **Phase 2B** (Blocked): Read [`PHASE_2B_PREPARATION.md`](PHASE_2B_PREPARATION.md)
+3. **Specs**: Review [`specs/NTOR_HANDSHAKE.md`](specs/NTOR_HANDSHAKE.md)
+4. **Blockers**: See BearDog requirements in status report
 
 ---
 
@@ -327,130 +271,126 @@ This document explains:
 
 ```
 songbird/
-├── README.md                              # Project overview
-├── EXECUTIVE_SUMMARY.md                    # Current status
-├── START_HERE_FEB_06_2026.md              # 🎯 START HERE (NEW)
-├── CHANGELOG.md                            # Version history
-├── ROOT_DOCS_INDEX.md                      # This file
+├── README.md                              # Project overview ⭐
+├── IMPLEMENTATION_GUIDE.md                # Developer guide ⭐⭐⭐
+├── COMPLETE_STATUS_REPORT_FEB_07_2026.md # Complete status ⭐⭐⭐
+├── ROOT_DOCS_INDEX.md                     # This file
 │
-├── *FEB_06_2026*.md                       # Today's documents (multiple sessions)
-│   ├── PHASE3_COMPLETE_AND_PUSHED_...    # Phase 3 completion (NEW) ⭐
-│   ├── SESSION_SUMMARY_FEB_06_2026.md    # Complete session overview (NEW) ⭐
-│   ├── UNSAFE_CODE_VICTORY_...           # 100% safe Rust discovery (NEW) ⭐
-│   ├── PHASE3_REFACTORING_COMPLETE_...   # Smart refactoring report (NEW)
-│   ├── PHASE3_SMART_REFACTORING_PLAN_... # Refactoring plan (NEW)
-│   └── ... (earlier session docs archived)
+├── TOR_*_FEB_07_2026.md                  # Tor protocol documents
+│   ├── TOR_INTEGRATION_ROADMAP_...       # Overall roadmap
+│   ├── TOR_PHASE2_EVOLUTION_TRACKER...   # Progress tracking
+│   ├── PHASE_2A_COMPLETE_...             # Phase 2A details
+│   └── PHASE_2B_PREPARATION.md           # Circuit design
 │
-├── crates/                                 # Rust workspace (25 crates)
-│   ├── songbird-orchestrator/             # Main orchestrator (refactored! ⭐)
-│   │   └── src/app/
-│   │       ├── core.rs                    # 779 lines (was 1064, -27%)
-│   │       ├── startup_orchestration.rs   # 7-stage startup (NEW) ⭐
-│   │       ├── command_handler.rs         # CLI commands (NEW) ⭐
-│   │       └── ...
-│   ├── songbird-sovereign-onion/          # Sovereign onion service
-│   ├── songbird-discovery/                # Service discovery
-│   └── ... (22 more crates)
+├── P2P_*_FEB_06_2026.md                  # P2P documents
+│   ├── P2P_IMPLEMENTATION_COMPLETE_...   # Sovereign Onion
+│   └── P2P_IMPLEMENTATION_ROADMAP_...    # Implementation plan
 │
-├── docs/                                   # Implementation guides
-├── specs/                                  # Technical specifications (105+)
-│   └── SOVEREIGN_ONION_PROTOCOL.md ⭐NEW  # Onion protocol spec
-├── examples/                               # Code examples
-├── tests/                                  # E2E and integration tests
+├── crates/                                # Rust workspace (25 crates)
+│   ├── songbird-tor-protocol/            # Pure Rust Tor ⭐
+│   ├── songbird-sovereign-onion/         # Custom onion protocol
+│   ├── songbird-onion-relay/             # Beacon mesh
+│   ├── songbird-discovery/               # Peer discovery
+│   ├── songbird-universal-ipc/           # IPC service
+│   └── ... (20 more crates)
 │
-├── ecoPrimals/                             # Evolution documentation
-│   └── sessions/
-│       ├── 2025-12-december/              # Dec 2025 sessions
-│       ├── 2026-01-january/               # Jan 2026 sessions + verifications
-│       └── 2026-02-february/              # Feb 2026 sessions
-│           ├── feb-05-2026-evolution/     # Feb 5 session (27 docs)
-│           └── feb-06-2026-sovereign-onion/ # Sovereign Onion (archived)
-│                                           # Deep Debt Phase 3 docs in root ⭐
+├── specs/                                 # Technical specs (42+)
+│   ├── 00_SPECIFICATIONS_INDEX.md        # Specs index
+│   ├── TOR_PROTOCOL_PURE_RUST.md         # Tor spec ⭐
+│   ├── NTOR_HANDSHAKE.md                 # ntor spec ⭐
+│   ├── SOVEREIGN_ONION_PROTOCOL.md       # Onion protocol
+│   └── ... (38 more specs)
 │
-└── verification/                           # Quality verifications
+├── docs/                                  # Implementation guides
+├── examples/                              # Code examples
+├── archive/                               # Archived docs
+│   └── sessions-feb-2026/                # Session reports
+│
+└── ecoPrimals/                            # Complete history
+    └── sessions/
+        ├── 2025-12-december/             # Dec 2025
+        ├── 2026-01-january/              # Jan 2026
+        └── 2026-02-february/             # Feb 2026
 ```
 
 ---
 
 ## 📞 Support & Resources
 
+### Key Commands
+
+```bash
+# Build & Test
+cargo build --workspace --release
+cargo test --workspace
+cargo clippy --workspace
+cargo fmt --all
+
+# Tor Protocol
+cargo test -p songbird-tor-protocol
+cargo run -p songbird-tor-protocol --example fetch_consensus
+
+# Documentation
+cargo doc --open
+```
+
 ### Documentation Types
 
 | Type | Location | Purpose |
 |------|----------|---------|
-| **User Guides** | `docs/` | How to use Songbird |
-| **API Reference** | `docs/` | API documentation |
-| **Specifications** | `specs/` | Technical specs (105+) |
+| **Developer Guide** | `IMPLEMENTATION_GUIDE.md` | Complete onboarding ⭐ |
+| **Status Report** | `COMPLETE_STATUS_REPORT_FEB_07_2026.md` | Full status ⭐ |
+| **Specifications** | `specs/` | Technical specs (42+) |
 | **Examples** | `examples/` | Working code |
-| **Evolution Trail** | `ecoPrimals/sessions/` | Development history |
-| **Today's Phase 3** | Root `PHASE3_*FEB_06_2026*.md` | Deep Debt Evolution (5 docs) ⭐ |
-| **Today's Earlier** | `ecoPrimals/.../feb-06-2026-sovereign-onion/` | Sovereign Onion (archived) |
-
-### Key Commands
-
-- **Test Coverage**: `cargo test --workspace` (1,700+ tests)
-- **Build**: `cargo build --workspace --release`
-- **Linting**: `cargo clippy --workspace`
-- **Formatting**: `cargo fmt --all`
-- **Documentation**: `cargo doc --open`
-
-### Refactored Crate Commands
-
-- **Test Orchestrator**: `cargo test -p songbird-orchestrator --lib` (599/616 passing ✅)
-- **Build Orchestrator**: `cargo build -p songbird-orchestrator --lib` (success ✅)
-- **Check Refactoring**: See `startup_orchestration.rs` and `command_handler.rs` (NEW ⭐)
+| **API Docs** | `cargo doc` | Generated docs |
+| **History** | `ecoPrimals/sessions/` | Development trail |
 
 ---
 
-## ✅ Documentation Status
+## 🎯 Current Blockers
 
-| Category | Status | Last Updated | Count |
-|----------|--------|--------------|-------|
-| Core Docs | ✅ Current | Feb 6, 2026 | 5 |
-| Evolution Trail | ✅ Complete | Feb 6, 2026 | 55+ |
-| Phase 3 Docs | ✅ Complete | Feb 6, 2026 | 5 (NEW) ⭐ |
-| API Docs | ✅ Current | v4.0.0 | Generated |
-| Examples | ✅ Working | v4.0.0 | Multiple |
-| Specifications | ✅ Complete | v4.0.0 | 105+ |
+### Phase 2B: Circuit Building
 
----
+**Status**: Design complete, implementation blocked
 
-## 🎯 What's Next
+**Required from BearDog**:
+1. `aes_128_ctr_encrypt(key: &[u8; 16], iv: &[u8; 16], data: &[u8]) -> Vec<u8>`
+2. `aes_128_ctr_decrypt(key: &[u8; 16], iv: &[u8; 16], data: &[u8]) -> Vec<u8>`
+3. `sha3_256(data: &[u8]) -> [u8; 32]`
 
-### Completed Today ✅
+**Timeline**: Estimated 2-3 days for BearDog implementation
 
-1. ✅ **Crypto Cleanup**: 100% BearDog delegation (S tier)
-2. ✅ **OnionService**: TCP listener + handshake implementation
-3. ✅ **OnionConnector**: Client connection + encrypted sessions
-4. ✅ **Documentation**: P2P completion report + roadmap
-5. ✅ **Commits**: Pushed to remote (`102f30913` + `f49c65e7b`)
-
-### Recommended Next Steps
-
-1. **IPC Integration** (2-3 hours) - Optional
-   - Implement `mesh.*` IPC handlers
-   - Wire up BeaconMesh announcements
-   - Add NAT traversal coordination
-
-2. **Local Testing** (1 hour) - Recommended
-   - Service ↔ Connector ping/pong test
-   - Multi-message data transfer
-   - Concurrent connection stress test
-
-3. **BeaconMesh Integration** (Future)
-   - Replace direct TCP connect with mesh lookup
-   - Integrate rendezvous protocol
-   - Add peer discovery
-
-4. **Production Hardening** (Future)
-   - Connection pooling
-   - Retry logic with exponential backoff
-   - Rate limiting + DoS protection
+**Details**: See [`PHASE_2B_PREPARATION.md`](PHASE_2B_PREPARATION.md) and [`COMPLETE_STATUS_REPORT_FEB_07_2026.md`](COMPLETE_STATUS_REPORT_FEB_07_2026.md)
 
 ---
 
-**Last Updated**: February 6, 2026  
-**Version**: v3.33.0  
-**Status**: ✅ **P2P Sovereign Onion Complete - 100% BearDog Delegation**
+## ✅ What's Next
 
-🧬 **Evolution Over Dependency** | 🔐 **S Tier Crypto (100%)** | 🌐 **P2P Production Ready** | 🐕 **TRUE PRIMAL (BearDog)**
+### Completed ✅
+
+1. ✅ Phase 2A: Directory Protocol (100%)
+2. ✅ Phase 2B: Design Complete (100%)
+3. ✅ Documentation: World-class
+4. ✅ Tests: All passing (11/11 tor-protocol)
+5. ✅ Quality: S+ Tier (zero unsafe)
+
+### Immediate (Blocked)
+
+1. 🔴 Await BearDog crypto extensions
+2. 🟡 Monitor BearDog progress
+3. 📋 Prepare Phase 2B integration tests
+
+### Once Unblocked (3 days)
+
+1. 📋 Implement Phase 2B (Circuit Building)
+2. 📋 Test with live Tor network
+3. 📋 Implement Phase 2C (Onion Client)
+4. 📋 Implement Phase 2D (Onion Service)
+
+---
+
+**Last Updated**: February 7, 2026  
+**Version**: v3.34.0  
+**Status**: ✅ **Phase 2A Complete - S+ Tier Quality**
+
+🧬 **TRUE PRIMAL** | 🔐 **Zero Unsafe** | 🦀 **Pure Rust Tor** | 🐕 **100% BearDog Delegation**
