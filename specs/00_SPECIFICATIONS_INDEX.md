@@ -1,29 +1,38 @@
 # Songbird Specifications Index
 
 **Last Updated:** February 7, 2026  
-**Version:** v3.33.0+  
-**Status:** ✅ **WORLD-CLASS** - P2P Onion Complete + Tor Evolution Active
+**Version:** v3.34.0  
+**Status:** ✅ **WORLD-CLASS** - Phase 2A Tor Protocol Complete
 
 ---
 
 ## 🎉 LATEST: TOR PROTOCOL EVOLUTION (February 7, 2026)
 
-### 🧅 NEW: Pure Rust Tor Protocol (Phase 2)
+### 🧅 Pure Rust Tor Protocol (Phase 2)
 
-1. **[TOR_PROTOCOL_PURE_RUST.md](TOR_PROTOCOL_PURE_RUST.md)** ⭐ **NEW - IN PROGRESS** ⭐
+1. **[TOR_PROTOCOL_PURE_RUST.md](TOR_PROTOCOL_PURE_RUST.md)** ⭐ **SPECIFICATION** ⭐
    - **Pure Rust Tor Protocol** - Minimal implementation for .onion services
-   - 🔄 **PHASE 2A ACTIVE** (Directory protocol - Day 2/2)
+   - ✅ **PHASE 2A COMPLETE** (Directory protocol)
    - Zero external dependencies (no Tor daemon, no Arti, no C)
    - 100% TRUE PRIMAL (BearDog crypto delegation)
    - ~2,600 lines total (vs. Tor's 220k+ lines)
    - Components: Directory, Circuit, Onion Service, Stream protocols
-   - Target: 11 days implementation (Feb 7-18, 2026)
 
-**Status**: 🔄 **PHASE 2A ACTIVE** - Directory protocol implementation in progress
+2. **[NTOR_HANDSHAKE.md](NTOR_HANDSHAKE.md)** ⭐ **NEW** ⭐
+   - **ntor Handshake Protocol** - Detailed CREATE2/CREATED2 specification
+   - Key derivation function (KDF) via SHA3-256
+   - BearDog integration patterns
+   - Test vectors for validation
+   - Ready for Phase 2B implementation
+
+**Status**: ✅ **PHASE 2A COMPLETE** - Directory protocol implemented, tested, pushed  
+**Blocked**: Phase 2B awaiting BearDog AES-128-CTR + SHA3-256 extensions
 
 **Related Documents**:
 - Root: `TOR_INTEGRATION_ROADMAP_FEB_07_2026.md` - Overall roadmap
 - Root: `TOR_PHASE2_EVOLUTION_TRACKER.md` - Daily progress tracking
+- Root: `PHASE_2A_COMPLETE_FEB_07_2026.md` - Phase 2A completion report
+- Root: `PHASE_2B_PREPARATION.md` - Phase 2B design (ready for implementation)
 
 ---
 
