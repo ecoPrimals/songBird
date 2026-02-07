@@ -24,13 +24,22 @@
 //!
 //! ## Environment Variables
 //!
-//! - `BEARDOG_SOCKET`: Direct BearDog socket path
+//! - `BEARDOG_SOCKET`: Direct BearDog socket path (or `tcp:host:port` for TCP)
 //! - `CRYPTO_PROVIDER_SOCKET`: biomeOS-wired crypto provider
 //! - `NEURAL_API_SOCKET`: biomeOS Neural API for capability routing
+//!
+//! ## TCP Support (Android/Universal)
+//!
+//! For platforms without Unix sockets (Android), use TCP transport:
+//! ```bash
+//! export BEARDOG_SOCKET=tcp:127.0.0.1:9900
+//! ```
 
 use crate::error::{OnionError, Result};
 use serde::{Deserialize, Serialize};
 use std::io::{BufRead, BufReader, Write};
+use std::net::TcpStream;
+#[cfg(unix)]
 use std::os::unix::net::UnixStream;
 use std::path::PathBuf;
 use std::time::Duration;
@@ -61,39 +70,89 @@ struct JsonRpcError {
     message: String,
 }
 
+/// Transport type for BearDog connection
+#[derive(Debug, Clone)]
+pub enum BeardogTransport {
+    /// Unix socket (Linux/macOS) - default on desktop
+    #[cfg(unix)]
+    Unix(PathBuf),
+    /// TCP socket (Android/universal fallback)
+    Tcp(String, u16),
+}
+
 /// BearDog crypto client for TRUE PRIMAL delegation
 ///
 /// Delegates all crypto operations to BearDog via JSON-RPC.
+/// Supports both Unix sockets (desktop) and TCP (Android/universal).
 pub struct BeardogCryptoClient {
-    socket_path: PathBuf,
+    transport: BeardogTransport,
     timeout: Duration,
 }
 
 impl BeardogCryptoClient {
+    /// Parse transport from connection string
+    ///
+    /// Formats:
+    /// - `tcp:host:port` - TCP connection
+    /// - `/path/to/socket` - Unix socket (default)
+    fn parse_transport(conn_str: &str) -> Result<BeardogTransport> {
+        if conn_str.starts_with("tcp:") {
+            // TCP format: tcp:host:port
+            let parts: Vec<&str> = conn_str.strip_prefix("tcp:").unwrap().split(':').collect();
+            if parts.len() != 2 {
+                return Err(OnionError::ConfigError(
+                    format!("Invalid TCP format: {}. Use tcp:host:port", conn_str)
+                ));
+            }
+            let host = parts[0].to_string();
+            let port: u16 = parts[1].parse().map_err(|_| {
+                OnionError::ConfigError(format!("Invalid port: {}", parts[1]))
+            })?;
+            Ok(BeardogTransport::Tcp(host, port))
+        } else {
+            // Unix socket path
+            #[cfg(unix)]
+            {
+                Ok(BeardogTransport::Unix(PathBuf::from(conn_str)))
+            }
+            #[cfg(not(unix))]
+            {
+                Err(OnionError::ConfigError(
+                    "Unix sockets not supported on this platform. Use tcp:host:port".into()
+                ))
+            }
+        }
+    }
+
     /// Create client from environment variables
     ///
     /// Resolution order:
-    /// 1. `BEARDOG_SOCKET` - Direct BearDog socket
+    /// 1. `BEARDOG_SOCKET` - Direct BearDog socket (or tcp:host:port)
     /// 2. `CRYPTO_PROVIDER_SOCKET` - biomeOS-wired provider
-    /// 3. XDG fallback paths
+    /// 3. XDG fallback paths (Unix only)
+    ///
+    /// TCP format: `tcp:127.0.0.1:9900`
     pub fn from_env() -> Result<Self> {
-        // Try direct BearDog socket
+        // Try direct BearDog socket (may be tcp:host:port or /path/to/socket)
         if let Ok(socket) = std::env::var("BEARDOG_SOCKET") {
+            let transport = Self::parse_transport(&socket)?;
             return Ok(Self {
-                socket_path: PathBuf::from(socket),
+                transport,
                 timeout: Duration::from_secs(10),
             });
         }
 
         // Try biomeOS-wired crypto provider
         if let Ok(socket) = std::env::var("CRYPTO_PROVIDER_SOCKET") {
+            let transport = Self::parse_transport(&socket)?;
             return Ok(Self {
-                socket_path: PathBuf::from(socket),
+                transport,
                 timeout: Duration::from_secs(10),
             });
         }
 
-        // XDG runtime fallback
+        // XDG runtime fallback (Unix only)
+        #[cfg(unix)]
         if let Ok(xdg_runtime) = std::env::var("XDG_RUNTIME_DIR") {
             let family_id = std::env::var("FAMILY_ID")
                 .or_else(|_| std::env::var("BIOMEOS_FAMILY_ID"))
@@ -101,21 +160,30 @@ impl BeardogCryptoClient {
             let socket_path = format!("{}/biomeos/beardog-{}.sock", xdg_runtime, family_id);
             if std::path::Path::new(&socket_path).exists() {
                 return Ok(Self {
-                    socket_path: PathBuf::from(socket_path),
+                    transport: BeardogTransport::Unix(PathBuf::from(socket_path)),
                     timeout: Duration::from_secs(10),
                 });
             }
         }
 
         Err(OnionError::ConfigError(
-            "No BearDog socket found. Set BEARDOG_SOCKET, CRYPTO_PROVIDER_SOCKET, or start BearDog".into()
+            "No BearDog socket found. Set BEARDOG_SOCKET (tcp:host:port or /path/to/socket)".into()
         ))
     }
 
-    /// Create client with explicit socket path
+    /// Create client with explicit Unix socket path
+    #[cfg(unix)]
     pub fn with_socket(socket_path: impl Into<PathBuf>) -> Self {
         Self {
-            socket_path: socket_path.into(),
+            transport: BeardogTransport::Unix(socket_path.into()),
+            timeout: Duration::from_secs(10),
+        }
+    }
+
+    /// Create client with explicit TCP connection
+    pub fn with_tcp(host: impl Into<String>, port: u16) -> Self {
+        Self {
+            transport: BeardogTransport::Tcp(host.into(), port),
             timeout: Duration::from_secs(10),
         }
     }
@@ -126,7 +194,7 @@ impl BeardogCryptoClient {
         self
     }
 
-    /// Internal: Send JSON-RPC request
+    /// Internal: Send JSON-RPC request over the configured transport
     fn call<T: Serialize, R: for<'de> Deserialize<'de>>(
         &self,
         method: &str,
@@ -139,32 +207,67 @@ impl BeardogCryptoClient {
             id: 1,
         };
 
-        let mut stream = UnixStream::connect(&self.socket_path).map_err(|e| {
-            OnionError::ConnectionError(format!(
-                "Failed to connect to BearDog at {:?}: {}",
-                self.socket_path, e
-            ))
-        })?;
-
-        stream
-            .set_read_timeout(Some(self.timeout))
-            .map_err(|e| OnionError::ConnectionError(format!("Failed to set timeout: {}", e)))?;
-        stream
-            .set_write_timeout(Some(self.timeout))
-            .map_err(|e| OnionError::ConnectionError(format!("Failed to set timeout: {}", e)))?;
-
-        // Send request
         let request_bytes = serde_json::to_vec(&request)?;
-        stream.write_all(&request_bytes)?;
-        stream.write_all(b"\n")?;
-        stream.flush()?;
+        
+        // Connect and communicate based on transport type
+        let response_line = match &self.transport {
+            #[cfg(unix)]
+            BeardogTransport::Unix(socket_path) => {
+                let mut stream = UnixStream::connect(socket_path).map_err(|e| {
+                    OnionError::ConnectionError(format!(
+                        "Failed to connect to BearDog Unix socket at {:?}: {}",
+                        socket_path, e
+                    ))
+                })?;
 
-        // Read response (single line JSON-RPC)
-        let mut reader = BufReader::new(&stream);
-        let mut line = String::new();
-        reader.read_line(&mut line)?;
+                stream
+                    .set_read_timeout(Some(self.timeout))
+                    .map_err(|e| OnionError::ConnectionError(format!("Failed to set timeout: {}", e)))?;
+                stream
+                    .set_write_timeout(Some(self.timeout))
+                    .map_err(|e| OnionError::ConnectionError(format!("Failed to set timeout: {}", e)))?;
 
-        let response: JsonRpcResponse<R> = serde_json::from_str(&line)?;
+                // Send request
+                stream.write_all(&request_bytes)?;
+                stream.write_all(b"\n")?;
+                stream.flush()?;
+
+                // Read response
+                let mut reader = BufReader::new(&stream);
+                let mut line = String::new();
+                reader.read_line(&mut line)?;
+                line
+            }
+            BeardogTransport::Tcp(host, port) => {
+                let addr = format!("{}:{}", host, port);
+                let mut stream = TcpStream::connect(&addr).map_err(|e| {
+                    OnionError::ConnectionError(format!(
+                        "Failed to connect to BearDog TCP at {}: {}",
+                        addr, e
+                    ))
+                })?;
+
+                stream
+                    .set_read_timeout(Some(self.timeout))
+                    .map_err(|e| OnionError::ConnectionError(format!("Failed to set timeout: {}", e)))?;
+                stream
+                    .set_write_timeout(Some(self.timeout))
+                    .map_err(|e| OnionError::ConnectionError(format!("Failed to set timeout: {}", e)))?;
+
+                // Send request
+                stream.write_all(&request_bytes)?;
+                stream.write_all(b"\n")?;
+                stream.flush()?;
+
+                // Read response
+                let mut reader = BufReader::new(&stream);
+                let mut line = String::new();
+                reader.read_line(&mut line)?;
+                line
+            }
+        };
+
+        let response: JsonRpcResponse<R> = serde_json::from_str(&response_line)?;
 
         if let Some(error) = response.error {
             return Err(OnionError::RpcError(format!(
@@ -411,7 +514,7 @@ impl BeardogCryptoClient {
 
         #[derive(Deserialize)]
         struct Response {
-            hash: String, // base64
+            hash_base64: String, // base64 (BearDog field name)
         }
 
         let response: Response = self.call(
@@ -421,7 +524,7 @@ impl BeardogCryptoClient {
             },
         )?;
 
-        let hash = base64_decode(&response.hash)?;
+        let hash = base64_decode(&response.hash_base64)?;
         hash.try_into().map_err(|_| {
             OnionError::CryptoError("Invalid hash length".into())
         })
@@ -513,9 +616,53 @@ mod tests {
     }
 
     #[test]
+    #[cfg(unix)]
     fn test_client_with_socket() {
         let client = BeardogCryptoClient::with_socket("/tmp/test-beardog.sock");
-        assert_eq!(client.socket_path.to_str().unwrap(), "/tmp/test-beardog.sock");
+        match &client.transport {
+            BeardogTransport::Unix(path) => {
+                assert_eq!(path.to_str().unwrap(), "/tmp/test-beardog.sock");
+            }
+            _ => panic!("Expected Unix transport"),
+        }
+    }
+
+    #[test]
+    fn test_client_with_tcp() {
+        let client = BeardogCryptoClient::with_tcp("127.0.0.1", 9900);
+        match &client.transport {
+            BeardogTransport::Tcp(host, port) => {
+                assert_eq!(host, "127.0.0.1");
+                assert_eq!(*port, 9900);
+            }
+            #[cfg(unix)]
+            _ => panic!("Expected TCP transport"),
+        }
+    }
+
+    #[test]
+    fn test_parse_tcp_transport() {
+        let transport = BeardogCryptoClient::parse_transport("tcp:127.0.0.1:9900").unwrap();
+        match transport {
+            BeardogTransport::Tcp(host, port) => {
+                assert_eq!(host, "127.0.0.1");
+                assert_eq!(port, 9900);
+            }
+            #[cfg(unix)]
+            _ => panic!("Expected TCP transport"),
+        }
+    }
+
+    #[test]
+    #[cfg(unix)]
+    fn test_parse_unix_transport() {
+        let transport = BeardogCryptoClient::parse_transport("/tmp/beardog.sock").unwrap();
+        match transport {
+            BeardogTransport::Unix(path) => {
+                assert_eq!(path.to_str().unwrap(), "/tmp/beardog.sock");
+            }
+            _ => panic!("Expected Unix transport"),
+        }
     }
 
     #[test]

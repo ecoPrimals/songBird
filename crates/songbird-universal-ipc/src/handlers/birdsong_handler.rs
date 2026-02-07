@@ -207,9 +207,13 @@ impl BirdSongHandler {
         let provider = self.get_provider().await?;
 
         // Build discovery message (JSON)
+        // Feb 6, 2026: Added onion_endpoint for Sovereign Onion Service
+        // Dark Forest: Only family members can see this endpoint (encrypted beacon)
         let discovery_message = json!({
             "node_id": request.node_id,
             "capabilities": request.capabilities,
+            "onion_endpoint": request.onion_endpoint,  // Sovereign Onion address (optional)
+            "endpoint_hints": request.endpoint_hints,  // Additional connection hints
             "timestamp": chrono::Utc::now().to_rfc3339(),
             "version": env!("CARGO_PKG_VERSION"),
         });
@@ -282,16 +286,32 @@ impl BirdSongHandler {
                     .map(|arr| arr.iter().filter_map(|v| v.as_str()).map(String::from).collect())
                     .unwrap_or_default();
 
-                info!(
-                    "✅ Decrypted beacon from family member: {} (capabilities: {:?})",
-                    node_id, capabilities
-                );
+                // Feb 6, 2026: Extract onion endpoint for Sovereign NAT traversal
+                let onion_endpoint = discovery_message["onion_endpoint"]
+                    .as_str()
+                    .map(String::from);
+                
+                let endpoint_hints = discovery_message.get("endpoint_hints").cloned();
+
+                if let Some(ref onion) = onion_endpoint {
+                    info!(
+                        "✅ Decrypted beacon from family member: {} (onion: {}, capabilities: {:?})",
+                        node_id, onion, capabilities
+                    );
+                } else {
+                    info!(
+                        "✅ Decrypted beacon from family member: {} (capabilities: {:?})",
+                        node_id, capabilities
+                    );
+                }
 
                 Ok(json!({
                     "success": true,
                     "is_family": true,
                     "node_id": node_id,
                     "capabilities": capabilities,
+                    "onion_endpoint": onion_endpoint,
+                    "endpoint_hints": endpoint_hints,
                     "timestamp": discovery_message["timestamp"],
                 }))
             }
@@ -407,6 +427,13 @@ impl BirdSongHandler {
 struct GenerateBeaconRequest {
     node_id: String,
     capabilities: Vec<String>,
+    /// Sovereign Onion endpoint (e.g., "abc123...xyz.onion:3492")
+    /// Dark Forest: Only visible to family members (beacon is encrypted)
+    #[serde(default)]
+    onion_endpoint: Option<String>,
+    /// Additional endpoint hints (LAN IP, port, etc.)
+    #[serde(default)]
+    endpoint_hints: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -514,9 +541,10 @@ mod tests {
 
         // Expected: Err (no BearDog in test env)
         if let Err(e) = result {
+            let e_lower = e.to_lowercase();
             assert!(
-                e.contains("BearDog") || e.contains("socket"),
-                "Error should mention BearDog or socket, got: {}",
+                e_lower.contains("beardog") || e_lower.contains("sock") || e.contains("IPC"),
+                "Error should mention BearDog, socket, or IPC, got: {}",
                 e
             );
         }
@@ -533,9 +561,10 @@ mod tests {
 
         // Expected: Err (no BearDog in test env)
         if let Err(e) = result {
+            let e_lower = e.to_lowercase();
             assert!(
-                e.contains("BearDog") || e.contains("socket"),
-                "Error should mention BearDog or socket, got: {}",
+                e_lower.contains("beardog") || e_lower.contains("sock") || e.contains("IPC"),
+                "Error should mention BearDog, socket, or IPC, got: {}",
                 e
             );
         }

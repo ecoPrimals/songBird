@@ -50,6 +50,7 @@ members = [
     # 🧅 ONION RELAY - Sovereign rendezvous via Tor (optional)
     "crates/songbird-onion-relay",
     "crates/songbird-sovereign-onion",  # Pure Rust minimal onion service protocol
+    "crates/songbird-tor-protocol",     # NEW: Phase 2 Pure Rust Tor
     
     # 🌐 STUN CLIENT (NEW!) - Pure Rust STUN (RFC 5389) for NAT traversal
     "crates/songbird-stun",

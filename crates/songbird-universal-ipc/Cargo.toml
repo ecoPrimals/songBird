@@ -37,6 +37,12 @@ songbird-stun = { path = "../songbird-stun" }
 # Lineage Relay (for sovereign NAT traversal)
 songbird-lineage-relay = { path = "../songbird-lineage-relay" }
 
+# Onion Relay (for beacon mesh and hole punch)
+songbird-onion-relay = { path = "../songbird-onion-relay" }
+
+# Sovereign Onion Service (for NAT traversal via .onion addresses)
+songbird-sovereign-onion = { path = "../songbird-sovereign-onion" }
+
 # Discovery (for peer registry bridge)
 songbird-discovery = { path = "../songbird-discovery" }
 

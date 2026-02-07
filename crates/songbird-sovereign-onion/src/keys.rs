@@ -22,10 +22,19 @@ pub struct OnionIdentity {
     created_at: u64,
 }
 
-/// Serializable format for storing identity
+/// Serializable format for storing identity (v2 - complete storage)
+///
+/// Stores all identity components so no crypto derivation is needed on load.
+/// This ensures production builds work without local crypto dependencies.
 #[derive(Debug, Serialize, Deserialize)]
 struct StoredIdentity {
     secret_key_bytes: [u8; 32],
+    /// v2: Public key for reconstruction without crypto
+    #[serde(default)]
+    public_key_bytes: Option<[u8; 32]>,
+    /// v2: Onion address for reconstruction without crypto
+    #[serde(default)]
+    onion_address: Option<String>,
     created_at: u64,
 }
 
@@ -173,10 +182,15 @@ impl OnionIdentity {
         self.created_at
     }
 
-    /// Serialize for storage (production safe)
+    /// Serialize for storage (production safe - v2 complete storage)
+    ///
+    /// Stores all identity components (secret, public, onion address) so
+    /// no crypto derivation is needed on load.
     pub fn to_stored_bytes(&self) -> Vec<u8> {
         let stored = StoredIdentity {
             secret_key_bytes: self.secret_key,
+            public_key_bytes: Some(self.public_key),
+            onion_address: Some(self.onion_address.clone()),
             created_at: self.created_at,
         };
         serde_json::to_vec(&stored).unwrap()
@@ -184,15 +198,22 @@ impl OnionIdentity {
 
     /// Deserialize from storage (production safe - no crypto needed)
     ///
-    /// Loads identity from raw stored bytes. Since it only deserializes JSON
-    /// and doesn't perform any crypto operations, this is safe for production.
-    /// The crypto was already done during generation/storage.
+    /// Loads identity from raw stored bytes. v2 format includes all components
+    /// so no crypto derivation is needed. Falls back to v1 behavior for old storage.
     pub fn from_stored_bytes(bytes: &[u8]) -> Result<Self> {
         let stored: StoredIdentity = serde_json::from_slice(bytes)?;
         
-        // In production builds, we need public key to be provided or derived
-        // Since storage only has secret key, we need to reconstruct the OnionIdentity
-        // For now, require BearDog for full reconstruction
+        // v2 format: All fields present - no crypto needed
+        if let (Some(public_key), Some(onion_address)) = (stored.public_key_bytes, stored.onion_address) {
+            return Ok(Self {
+                secret_key: stored.secret_key_bytes,
+                public_key,
+                onion_address,
+                created_at: stored.created_at,
+            });
+        }
+        
+        // v1 format fallback: Need to derive public key and address
         #[cfg(any(test, feature = "standalone"))]
         {
             Self::from_stored(&stored.secret_key_bytes, stored.created_at)
@@ -200,9 +221,10 @@ impl OnionIdentity {
         
         #[cfg(not(any(test, feature = "standalone")))]
         {
-            // Production: Return error - use from_stored_via_beardog for full reconstruction
+            // Production with v1 storage: Regenerate via BearDog
+            // Delete old storage and generate fresh identity
             Err(crate::OnionError::CryptoError(
-                "Production builds require from_stored_via_beardog for key derivation".to_string()
+                "Legacy v1 storage format detected. Delete ./data/sovereign-onion to regenerate identity.".to_string()
             ).into())
         }
     }

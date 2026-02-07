@@ -41,21 +41,33 @@ struct JwtSecretParams {
     strength: String,
 }
 
-/// Response from BearDog JWT secret generation
+/// Response from BearDog JWT secret generation (success case)
 #[derive(Debug, Deserialize)]
 struct JwtSecretResponse {
+    #[allow(dead_code)]
     jsonrpc: String,
-    result: JwtSecretResult,
+    result: Option<JwtSecretResult>,
+    error: Option<JsonRpcError>,
+    #[allow(dead_code)]
     id: u64,
+}
+
+/// JSON-RPC error object
+#[derive(Debug, Deserialize)]
+struct JsonRpcError {
+    code: i64,
+    message: String,
 }
 
 #[derive(Debug, Deserialize)]
 struct JwtSecretResult {
     secret: String,
+    #[allow(dead_code)]
     purpose: String,
     strength: String,
     byte_length: usize,
     #[serde(default)]
+    #[allow(dead_code)]
     encoded_length: usize,
     #[serde(default)]
     algorithm: String,
@@ -124,17 +136,30 @@ pub async fn fetch_jwt_secret_from_beardog(socket_path: &str, purpose: &str) -> 
 
     info!("   📥 Received response from BearDog");
 
-    // Parse JSON-RPC response
+    // Parse JSON-RPC response (may be success or error)
     let response: JwtSecretResponse = serde_json::from_str(response_str.trim())
         .context("Failed to parse BearDog JWT response")?;
 
-    // Extract secret
-    let secret = response.result.secret;
+    // Check for JSON-RPC error
+    if let Some(err) = response.error {
+        anyhow::bail!(
+            "BearDog returned error [{}]: {}",
+            err.code,
+            err.message
+        );
+    }
+
+    // Extract secret from result
+    let result = response.result.ok_or_else(|| {
+        anyhow::anyhow!("BearDog response missing both result and error")
+    })?;
+
+    let secret = result.secret;
 
     info!("✅ JWT secret obtained from BearDog");
     info!("   Length: {} characters", secret.len());
-    info!("   Strength: {} ({} bytes)", response.result.strength, response.result.byte_length);
-    info!("   Algorithm: {}", response.result.algorithm);
+    info!("   Strength: {} ({} bytes)", result.strength, result.byte_length);
+    info!("   Algorithm: {}", result.algorithm);
 
     Ok(secret)
 }

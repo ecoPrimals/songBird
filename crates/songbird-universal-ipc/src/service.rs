@@ -29,7 +29,10 @@ use crate::handlers::birdsong_handler::BirdSongHandler; // BirdSong (Feb 2, 2026
 use crate::handlers::discovery_handler::{DiscoveryHandler, PeerRegistry};
 use crate::handlers::http_handler::{HttpHandler, HttpRequestParams};
 use crate::handlers::http_rendezvous_client::HttpRendezvousClient;
+use crate::handlers::mesh_handler::MeshHandler;   // Mesh networking (Feb 4, 2026)
+use crate::handlers::onion_handler::OnionHandler; // Sovereign onion (Feb 4, 2026)
 use crate::handlers::peer_handler::PeerHandler;
+use crate::handlers::punch_handler::PunchHandler; // Hole punch (Feb 4, 2026)
 use crate::handlers::rendezvous_handler::RendezvousHandler;
 use crate::handlers::stun_handler::StunHandler;
 use crate::handlers::udp_peer_connector::UdpPeerConnector;
@@ -124,6 +127,9 @@ pub struct IpcServiceHandler {
     peer_handler: Arc<PeerHandler>,
     birdsong_handler: Arc<BirdSongHandler>, // BirdSong (Feb 2, 2026)
     relay_handler: Arc<RelayHandler>,       // Relay Server (Feb 5, 2026)
+    mesh_handler: Arc<MeshHandler>,         // Mesh networking (Feb 4, 2026)
+    onion_handler: Arc<OnionHandler>,       // Sovereign onion (Feb 4, 2026)
+    punch_handler: Arc<PunchHandler>,       // Hole punch (Feb 4, 2026)
     start_time: Arc<RwLock<std::time::Instant>>, // Track uptime (Feb 5, 2026)
 }
 
@@ -154,6 +160,11 @@ impl IpcServiceHandler {
         let mock_lineage = Arc::new(MockLineageProvider::new());
         let relay_handler = Arc::new(RelayHandler::new(Arc::new(MockRelayAuthority::new(mock_lineage))));
 
+        // ✅ Mesh networking (Feb 4, 2026) - Beacon mesh for distributed relay
+        let mesh_handler = Arc::new(MeshHandler::new());
+        let onion_handler = Arc::new(OnionHandler::new()); // Sovereign onion (Feb 4, 2026)
+        let punch_handler = Arc::new(PunchHandler::new());
+
         Self {
             registry,
             http_handler,
@@ -163,6 +174,9 @@ impl IpcServiceHandler {
             peer_handler,
             birdsong_handler,
             relay_handler,
+            mesh_handler,
+            onion_handler,
+            punch_handler,
             start_time: Arc::new(RwLock::new(std::time::Instant::now())),
         }
     }
@@ -191,6 +205,9 @@ impl IpcServiceHandler {
         let birdsong_handler = Arc::new(BirdSongHandler::new()); // Feb 2, 2026
         let mock_lineage = Arc::new(MockLineageProvider::new());
         let relay_handler = Arc::new(RelayHandler::new(Arc::new(MockRelayAuthority::new(mock_lineage)))); // Feb 5, 2026
+        let mesh_handler = Arc::new(MeshHandler::new());   // Feb 4, 2026
+        let onion_handler = Arc::new(OnionHandler::new()); // Feb 4, 2026
+        let punch_handler = Arc::new(PunchHandler::new()); // Feb 4, 2026
 
         Self {
             registry,
@@ -201,6 +218,9 @@ impl IpcServiceHandler {
             peer_handler,
             birdsong_handler,
             relay_handler,
+            mesh_handler,
+            onion_handler,
+            punch_handler,
             start_time: Arc::new(RwLock::new(std::time::Instant::now())),
         }
     }
@@ -220,6 +240,9 @@ impl IpcServiceHandler {
         let birdsong_handler = Arc::new(BirdSongHandler::new()); // Feb 2, 2026
         let mock_lineage = Arc::new(MockLineageProvider::new());
         let relay_handler = Arc::new(RelayHandler::new(Arc::new(MockRelayAuthority::new(mock_lineage)))); // Feb 5, 2026
+        let mesh_handler = Arc::new(MeshHandler::new());   // Feb 4, 2026
+        let onion_handler = Arc::new(OnionHandler::new()); // Feb 4, 2026
+        let punch_handler = Arc::new(PunchHandler::new()); // Feb 4, 2026
 
         Self {
             registry,
@@ -230,6 +253,9 @@ impl IpcServiceHandler {
             peer_handler,
             birdsong_handler,
             relay_handler,
+            mesh_handler,
+            onion_handler,
+            punch_handler,
             start_time: Arc::new(RwLock::new(std::time::Instant::now())),
         }
     }
@@ -739,11 +765,67 @@ impl IpcServiceHandler {
         }))
     }
 
+    /// Handle `birdsong.advertise` method
+    ///
+    /// Generates an encrypted beacon with the onion endpoint (if running).
+    /// This is the complete Dark Forest beacon - only family can see the .onion address.
+    ///
+    /// NEW (Feb 6, 2026) - Combines onion service and birdsong beacon
+    async fn handle_birdsong_advertise(&self, params: Value) -> Result<Value, String> {
+        // Get node_id and capabilities from params
+        let node_id = params
+            .get("node_id")
+            .and_then(|v| v.as_str())
+            .ok_or("Missing node_id parameter")?
+            .to_string();
+
+        let capabilities: Vec<String> = params
+            .get("capabilities")
+            .and_then(|v| v.as_array())
+            .map(|arr| {
+                arr.iter()
+                    .filter_map(|v| v.as_str().map(String::from))
+                    .collect()
+            })
+            .unwrap_or_default();
+
+        // Get onion address if service is running
+        let onion_status = self.onion_handler.handle_status(serde_json::json!({})).await?;
+        let onion_endpoint = if onion_status.get("running") == Some(&serde_json::json!(true)) {
+            let addr = onion_status.get("onion_address").and_then(|v| v.as_str());
+            let port = onion_status.get("port").and_then(|v| v.as_u64()).unwrap_or(3492);
+            addr.map(|a| format!("{}:{}", a, port))
+        } else {
+            None
+        };
+
+        // Also include any direct endpoint hints
+        let endpoint_hints = params.get("endpoint_hints").cloned();
+
+        // Generate the encrypted beacon with all endpoints
+        let beacon_params = serde_json::json!({
+            "node_id": node_id,
+            "capabilities": capabilities,
+            "onion_endpoint": onion_endpoint,
+            "endpoint_hints": endpoint_hints,
+        });
+
+        let beacon_result = self.birdsong_handler.handle_generate_encrypted_beacon(beacon_params).await?;
+
+        // Return combined result
+        Ok(serde_json::json!({
+            "beacon": beacon_result,
+            "onion_endpoint": onion_endpoint,
+            "onion_running": onion_status.get("running"),
+        }))
+    }
+
     /// Handle `rpc.discover` method (biomeOS standard)
     ///
     /// Returns list of available JSON-RPC methods.
     /// NEW (Feb 5, 2026) - Matches orchestrator's standard method.
     /// UPDATED (Feb 5, 2026) - Added relay.* and stun.serve/stop/status
+    /// UPDATED (Feb 4, 2026) - Added mesh.* and punch.* methods
     async fn handle_rpc_discover_standard(&self) -> Result<Value, String> {
         Ok(serde_json::json!({
             "methods": [
@@ -755,7 +837,12 @@ impl IpcServiceHandler {
                 "stun.serve", "stun.stop", "stun.status",
                 "relay.serve", "relay.stop", "relay.status", "relay.allocate",
                 "birdsong.generate_encrypted_beacon", "birdsong.decrypt_beacon",
-                "birdsong.verify_lineage", "birdsong.get_lineage",
+                "birdsong.verify_lineage", "birdsong.get_lineage", "birdsong.advertise",
+                "mesh.init", "mesh.status", "mesh.find_path",
+                "mesh.announce", "mesh.peers", "mesh.health_check",
+                "punch.request", "punch.status",
+                "onion.start", "onion.stop", "onion.status",
+                "onion.connect", "onion.address",
                 "discovery.peers",
                 "rendezvous.register", "rendezvous.lookup",
                 "peer.connect"
@@ -813,6 +900,30 @@ impl JsonRpcHandler for IpcServiceHandler {
             "birdsong.decrypt_beacon" => self.birdsong_handler.handle_decrypt_beacon(params).await,
             "birdsong.verify_lineage" => self.birdsong_handler.handle_verify_lineage(params).await,
             "birdsong.get_lineage" => self.birdsong_handler.handle_get_lineage(params).await,
+            // Integrated beacon advertising with onion endpoint (NEW - Feb 6, 2026)
+            "birdsong.advertise" => self.handle_birdsong_advertise(params).await,
+
+            // Mesh networking methods (NEW - Feb 4, 2026)
+            // Distributed relay mesh for cross-NAT connectivity
+            "mesh.init" => self.mesh_handler.handle_init(params).await,
+            "mesh.status" => self.mesh_handler.handle_status(params).await,
+            "mesh.find_path" => self.mesh_handler.handle_find_path(params).await,
+            "mesh.announce" => self.mesh_handler.handle_announce(params).await,
+            "mesh.peers" => self.mesh_handler.handle_peers(params).await,
+            "mesh.health_check" => self.mesh_handler.handle_health_check(params).await,
+
+            // Hole punch methods (NEW - Feb 4, 2026)
+            // UDP hole punching for direct P2P connections
+            "punch.request" => self.punch_handler.handle_request(params).await,
+            "punch.status" => self.punch_handler.handle_status(params).await,
+
+            // Sovereign Onion methods (NEW - Feb 4, 2026)
+            // NAT traversal via cryptographic .onion addresses
+            "onion.start" => self.onion_handler.handle_start(params).await,
+            "onion.stop" => self.onion_handler.handle_stop(params).await,
+            "onion.status" => self.onion_handler.handle_status(params).await,
+            "onion.connect" => self.onion_handler.handle_connect(params).await,
+            "onion.address" => self.onion_handler.handle_address(params).await,
 
             // biomeOS Standard Methods (NEW - Feb 5, 2026)
             "health" => self.handle_health().await,
