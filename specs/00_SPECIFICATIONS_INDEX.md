@@ -1,12 +1,55 @@
 # Songbird Specifications Index
 
-**Last Updated:** February 5, 2026  
-**Version:** v3.23.0+  
-**Status:** ✅ **World-Class (99.6% Deep Debt)** - NAT Traversal Stack Specified
+**Last Updated:** February 7, 2026  
+**Version:** v3.33.0+  
+**Status:** ✅ **WORLD-CLASS** - P2P Onion Complete + Tor Evolution Active
 
 ---
 
-## 🎉 LATEST: NAT TRAVERSAL STACK (February 5, 2026)
+## 🎉 LATEST: TOR PROTOCOL EVOLUTION (February 7, 2026)
+
+### 🧅 NEW: Pure Rust Tor Protocol (Phase 2)
+
+1. **[TOR_PROTOCOL_PURE_RUST.md](TOR_PROTOCOL_PURE_RUST.md)** ⭐ **NEW - IN PROGRESS** ⭐
+   - **Pure Rust Tor Protocol** - Minimal implementation for .onion services
+   - 🔄 **PHASE 2A ACTIVE** (Directory protocol - Day 2/2)
+   - Zero external dependencies (no Tor daemon, no Arti, no C)
+   - 100% TRUE PRIMAL (BearDog crypto delegation)
+   - ~2,600 lines total (vs. Tor's 220k+ lines)
+   - Components: Directory, Circuit, Onion Service, Stream protocols
+   - Target: 11 days implementation (Feb 7-18, 2026)
+
+**Status**: 🔄 **PHASE 2A ACTIVE** - Directory protocol implementation in progress
+
+**Related Documents**:
+- Root: `TOR_INTEGRATION_ROADMAP_FEB_07_2026.md` - Overall roadmap
+- Root: `TOR_PHASE2_EVOLUTION_TRACKER.md` - Daily progress tracking
+
+---
+
+## 🎉 RECENT: P2P SOVEREIGN ONION (February 6, 2026)
+
+### 🌐 P2P Service + Connector Complete
+
+1. **[SOVEREIGN_ONION_PROTOCOL.md](SOVEREIGN_ONION_PROTOCOL.md)** ⭐ **COMPLETE** ⭐
+   - **Custom Onion Service Protocol** - P2P encrypted communication
+   - ✅ **IMPLEMENTED** (Feb 6, 2026) - OnionService + OnionConnector
+   - 100% BearDog crypto delegation (Ed25519, X25519, ChaCha20Poly1305)
+   - TCP listener + handshake + encrypted data transfer
+   - Protocol: KeyExchange → Data (encrypted) → Close
+   - 199 lines (service) + 160 lines (connector) + OnionConnection
+   - Zero direct crypto, production ready
+
+**Status**: ✅ **COMPLETE** - Production ready, integrated with Tor Phase 1
+
+**Related Documents**:
+- Root: `P2P_IMPLEMENTATION_COMPLETE_FEB_06_2026.md` - Completion report
+- Root: `P2P_IMPLEMENTATION_ROADMAP_FEB_06_2026.md` - Implementation guide
+- Crate: `crates/songbird-sovereign-onion/` - Source code
+
+---
+
+## 🎉 PREVIOUS: NAT TRAVERSAL STACK (February 5, 2026)
 
 ### 🌐 NEW: Complete Sovereign NAT Traversal
 
