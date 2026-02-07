@@ -239,24 +239,24 @@ fn test_network_federation_bridge_debug() {
 // FederationCoordinator Tests
 // ============================================================================
 
-#[test]
-fn test_coordinator_new() {
-    let coordinator = FederationCoordinator::new();
+#[tokio::test]
+async fn test_coordinator_new() {
+    let coordinator = FederationCoordinator::new().await.expect("Failed to create coordinator");
     // Verify creation
     assert!(format!("{coordinator:?}").contains("FederationCoordinator"));
 }
 
-#[test]
-fn test_coordinator_debug() {
-    let coordinator = FederationCoordinator::new();
+#[tokio::test]
+async fn test_coordinator_debug() {
+    let coordinator = FederationCoordinator::new().await.expect("Failed to create coordinator");
     let debug_str = format!("{coordinator:?}");
     assert!(debug_str.contains("FederationCoordinator"));
 }
 
-#[test]
-fn test_coordinator_clone() {
-    let coordinator = FederationCoordinator::new();
-    let cloned = coordinator;
+#[tokio::test]
+async fn test_coordinator_clone() {
+    let coordinator = FederationCoordinator::new().await.expect("Failed to create coordinator");
+    let cloned = coordinator.clone();
     // Both should have different Arc clones pointing to same state
     assert!(format!("{cloned:?}").contains("FederationCoordinator"));
 }
@@ -324,7 +324,7 @@ async fn test_full_federation_workflow() {
     };
 
     // Create coordinator
-    let coordinator = FederationCoordinator::new();
+    let coordinator = FederationCoordinator::new().await.expect("Failed to create coordinator");
 
     // Create bridge
     let mut bridge = NetworkFederationBridge::new();
@@ -345,7 +345,7 @@ async fn test_federation_disabled() {
     let config = FederationConfig::default();
     assert!(!config.enabled);
 
-    let coordinator = FederationCoordinator::new();
+    let coordinator = FederationCoordinator::new().await.expect("Failed to create coordinator");
 
     // With disabled federation, coordinate should succeed but do nothing
     assert!(coordinator.coordinate(&config).await.is_ok());
