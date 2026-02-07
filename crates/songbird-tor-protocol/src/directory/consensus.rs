@@ -75,9 +75,7 @@ impl Consensus {
         let response = client.get(&url).send().await?;
         
         if !response.status().is_success() {
-            return Err(Error::Http(reqwest::Error::from(
-                response.error_for_status().expect_err("Status was not success")
-            )));
+            return Err(Error::Http(response.error_for_status().expect_err("Status was not success")));
         }
         
         let body = response.text().await?;
