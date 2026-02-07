@@ -1,9 +1,9 @@
 # 🐦 Songbird - Network Orchestration & Discovery Primal
 
-**Version**: v3.33.0  
-**Status**: ✅ **WORLD-CLASS** - P2P Sovereign Onion Complete  
+**Version**: v3.34.0  
+**Status**: ✅ **WORLD-CLASS** - Phase 2A Tor Protocol Complete  
 **License**: AGPL-3.0  
-**Deep Debt**: **S Tier** (100% BearDog Delegation - Zero Direct Crypto)
+**Deep Debt**: **S+ Tier** (100% BearDog Delegation + Pure Rust Tor)
 
 Songbird is the universal network orchestrator for the ecoPrimals ecosystem, managing service discovery, connection management, and inter-primal communication.
 
@@ -16,6 +16,7 @@ Songbird is the universal network orchestrator for the ecoPrimals ecosystem, man
 | **Pure Rust** | ✅ **100%** | coturn eliminated - TRUE ecoBin compliance |
 | **Crypto Delegation** | ✅ **100%** | Zero direct crypto - all via BearDog |
 | **P2P Sovereign Onion** | ✅ **Complete** | Service + Connector + encrypted comms |
+| **Pure Rust Tor (Phase 2A)** | ✅ **Complete** | Directory protocol + consensus parsing |
 | **Production Mocks** | ✅ **0** | Perfect test isolation |
 | **Tests Passing** | ✅ **1,763+** | 100% passing, comprehensive coverage |
 | **Build Status** | ✅ **Clean** | Zero errors, minimal warnings |
