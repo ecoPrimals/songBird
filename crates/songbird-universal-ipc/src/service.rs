@@ -611,6 +611,15 @@ impl IpcServiceHandler {
     async fn handle_rpc_discover_standard(&self) -> Result<Value, String> {
         Ok(crate::introspection::rpc_discover_standard())
     }
+
+    /// Handle discover_capabilities (biomeOS cross-primal scanner protocol)
+    ///
+    /// This is the method that Squirrel (and other primals) send when scanning
+    /// sockets to find capability providers. It returns a flat list of capabilities
+    /// that this primal provides, enabling automatic discovery without env var bypasses.
+    async fn handle_discover_capabilities(&self) -> Result<Value, String> {
+        Ok(crate::introspection::discover_capabilities())
+    }
 }
 
 #[async_trait]
@@ -684,6 +693,7 @@ impl JsonRpcHandler for IpcServiceHandler {
             "mesh.announce" => self.mesh_handler.handle_announce(params).await,
             "mesh.peers" => self.mesh_handler.handle_peers(params).await,
             "mesh.health_check" => self.mesh_handler.handle_health_check(params).await,
+            "mesh.auto_discover" => self.mesh_handler.handle_auto_discover(params).await,
 
             // Hole punch methods (NEW - Feb 4, 2026)
             // UDP hole punching for direct P2P connections
@@ -712,6 +722,12 @@ impl JsonRpcHandler for IpcServiceHandler {
             "health" => self.handle_health().await,
             "identity" => self.handle_identity().await,
             "rpc.discover" => self.handle_rpc_discover_standard().await,
+
+            // biomeOS Cross-Primal Discovery (NEW - Feb 9, 2026)
+            // This is the method other primals (Squirrel, etc.) call when scanning
+            // sockets to discover capability providers. Without this, scanners
+            // time out and fall back to explicit env var bypasses.
+            "discover_capabilities" => self.handle_discover_capabilities().await,
 
             _ => Err(format!("Unknown method: {method}")),
         }
@@ -880,5 +896,29 @@ mod tests {
         let result_value = result.unwrap();
         let services = result_value["services"].as_array().unwrap();
         assert_eq!(services.len(), 2);
+    }
+
+    #[tokio::test]
+    async fn test_discover_capabilities() {
+        let registry = Arc::new(RwLock::new(ServiceRegistry::new()));
+        let handler = IpcServiceHandler::new(registry.clone());
+
+        let result = handler.handle("discover_capabilities", json!({})).await;
+        assert!(result.is_ok());
+
+        let caps = result.unwrap();
+        assert_eq!(caps["primal"], "songbird");
+
+        let capabilities = caps["capabilities"].as_array().unwrap();
+        assert!(!capabilities.is_empty());
+
+        // Verify key capabilities that other primals scan for
+        let cap_strs: Vec<&str> = capabilities.iter().filter_map(|c| c.as_str()).collect();
+        assert!(cap_strs.contains(&"http.request"), "must advertise http.request");
+        assert!(cap_strs.contains(&"secure_http"), "must advertise secure_http");
+        assert!(cap_strs.contains(&"discovery.peers"), "must advertise discovery.peers");
+        assert!(cap_strs.contains(&"stun.detect"), "must advertise stun capability");
+        assert!(cap_strs.contains(&"mesh.status"), "must advertise mesh capability");
+        assert!(cap_strs.contains(&"punch.request"), "must advertise punch capability");
     }
 }

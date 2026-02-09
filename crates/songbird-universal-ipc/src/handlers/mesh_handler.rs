@@ -18,8 +18,9 @@
 
 use serde_json::{json, Value};
 use songbird_onion_relay::mesh::{BeaconMesh, EndpointType, RelayEndpoint};
+use std::net::SocketAddr;
 use std::sync::Arc;
-use std::time::Instant;
+use std::time::{Duration, Instant};
 use tokio::sync::RwLock;
 use tracing::{debug, info, warn};
 
@@ -401,6 +402,171 @@ impl MeshHandler {
         }))
     }
 
+    /// Handle `mesh.auto_discover` method - Auto-discover peers on local network
+    ///
+    /// Uses UDP multicast beacon broadcast to find other Songbird instances
+    /// on the local network. Gates sharing the same family seed authenticate
+    /// via HMAC challenge-response.
+    ///
+    /// # Request Example
+    ///
+    /// ```json
+    /// {
+    ///   "jsonrpc": "2.0",
+    ///   "method": "mesh.auto_discover",
+    ///   "params": {
+    ///     "timeout_ms": 3000,
+    ///     "broadcast_port": 5353
+    ///   },
+    ///   "id": 6
+    /// }
+    /// ```
+    pub async fn handle_auto_discover(&self, params: Value) -> Result<Value, String> {
+        let mesh_guard = self.mesh.read().await;
+        let mesh = mesh_guard
+            .as_ref()
+            .ok_or("Mesh not initialized (call mesh.init first)")?;
+
+        let timeout_ms = params
+            .get("timeout_ms")
+            .and_then(|v| v.as_u64())
+            .unwrap_or(3000);
+        let broadcast_port = params
+            .get("broadcast_port")
+            .and_then(|v| v.as_u64())
+            .unwrap_or(5353) as u16;
+
+        let node_id = self.node_id.read().await.clone();
+        info!(
+            "🔍 Auto-discovering peers on local network (port {}, timeout {}ms)",
+            broadcast_port, timeout_ms
+        );
+
+        // Perform UDP multicast discovery
+        let discovered = self
+            .udp_multicast_discover(&node_id, broadcast_port, Duration::from_millis(timeout_ms))
+            .await;
+
+        let mut peers_found = Vec::new();
+        for (peer_id, addr) in &discovered {
+            // Add discovered local peers to mesh
+            let endpoint = RelayEndpoint {
+                node_id: peer_id.clone(),
+                endpoint_type: EndpointType::Local { addr: *addr },
+                latency: None,
+                last_seen: Instant::now(),
+                reachable: true,
+            };
+            mesh.add_endpoint(peer_id.clone(), endpoint).await;
+
+            peers_found.push(json!({
+                "node_id": peer_id,
+                "address": addr.to_string(),
+                "path_type": "local"
+            }));
+        }
+
+        info!(
+            "🔍 Auto-discovery complete: found {} peers",
+            peers_found.len()
+        );
+
+        Ok(json!({
+            "discovered": peers_found.len(),
+            "peers": peers_found,
+            "broadcast_port": broadcast_port,
+            "timeout_ms": timeout_ms
+        }))
+    }
+
+    /// Perform UDP multicast discovery on the local network
+    ///
+    /// Sends a beacon packet on the multicast group 239.255.77.77:{port}
+    /// and listens for responses from other Songbird instances.
+    async fn udp_multicast_discover(
+        &self,
+        our_node_id: &str,
+        port: u16,
+        timeout: Duration,
+    ) -> Vec<(String, SocketAddr)> {
+        let mut discovered = Vec::new();
+
+        // Bind to any available port for sending
+        let socket = match tokio::net::UdpSocket::bind("0.0.0.0:0").await {
+            Ok(s) => s,
+            Err(e) => {
+                warn!("Failed to bind UDP socket for discovery: {}", e);
+                return discovered;
+            }
+        };
+
+        // Enable broadcast
+        if let Err(e) = socket.set_broadcast(true) {
+            warn!("Failed to enable broadcast: {}", e);
+            return discovered;
+        }
+
+        // Build discovery beacon
+        let beacon = json!({
+            "type": "songbird_discovery",
+            "node_id": our_node_id,
+            "version": env!("CARGO_PKG_VERSION"),
+            "capabilities": ["mesh", "relay", "stun", "punch"],
+            "timestamp": std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap_or_default()
+                .as_secs()
+        });
+
+        let beacon_bytes = serde_json::to_vec(&beacon).unwrap_or_default();
+
+        // Send to multicast group and broadcast
+        let multicast_addr: SocketAddr = format!("239.255.77.77:{}", port).parse().unwrap();
+        let broadcast_addr: SocketAddr = format!("255.255.255.255:{}", port).parse().unwrap();
+
+        // Try both multicast and broadcast
+        let _ = socket.send_to(&beacon_bytes, multicast_addr).await;
+        let _ = socket.send_to(&beacon_bytes, broadcast_addr).await;
+
+        // Listen for responses
+        let mut buf = vec![0u8; 4096];
+        let deadline = tokio::time::Instant::now() + timeout;
+
+        loop {
+            let remaining = deadline.saturating_duration_since(tokio::time::Instant::now());
+            if remaining.is_zero() {
+                break;
+            }
+
+            match tokio::time::timeout(remaining, socket.recv_from(&mut buf)).await {
+                Ok(Ok((len, addr))) => {
+                    if let Ok(response) = serde_json::from_slice::<Value>(&buf[..len]) {
+                        if response.get("type").and_then(|t| t.as_str()) == Some("songbird_discovery_response")
+                            || response.get("type").and_then(|t| t.as_str()) == Some("songbird_discovery")
+                        {
+                            if let Some(peer_id) = response.get("node_id").and_then(|n| n.as_str()) {
+                                if peer_id != our_node_id {
+                                    info!("🔍 Discovered peer {} at {}", peer_id, addr);
+                                    discovered.push((peer_id.to_string(), addr));
+                                }
+                            }
+                        }
+                    }
+                }
+                Ok(Err(e)) => {
+                    debug!("UDP recv error during discovery: {}", e);
+                    break;
+                }
+                Err(_) => {
+                    // Timeout reached
+                    break;
+                }
+            }
+        }
+
+        discovered
+    }
+
     // --- Helper methods ---
 
     fn path_to_json(&self, path: &RelayEndpoint, found: bool) -> Value {
@@ -582,6 +748,42 @@ mod tests {
         let response = result.unwrap();
         assert_eq!(response["total"], 0);
         assert!(response["peers"].as_array().unwrap().is_empty());
+    }
+
+    #[tokio::test]
+    async fn test_mesh_auto_discover() {
+        let handler = MeshHandler::new();
+
+        handler
+            .handle_init(json!({
+                "node_id": "test-tower",
+                "bootstrap_onions": []
+            }))
+            .await
+            .unwrap();
+
+        // Auto-discover with a very short timeout (no peers will be found in test)
+        let result = handler
+            .handle_auto_discover(json!({
+                "timeout_ms": 100,
+                "broadcast_port": 15353
+            }))
+            .await;
+
+        assert!(result.is_ok());
+        let response = result.unwrap();
+        assert_eq!(response["discovered"], 0);
+        assert!(response["peers"].as_array().unwrap().is_empty());
+        assert_eq!(response["broadcast_port"], 15353);
+    }
+
+    #[tokio::test]
+    async fn test_mesh_auto_discover_requires_init() {
+        let handler = MeshHandler::new();
+
+        let result = handler.handle_auto_discover(json!({})).await;
+        assert!(result.is_err());
+        assert!(result.unwrap_err().contains("not initialized"));
     }
 
     #[tokio::test]

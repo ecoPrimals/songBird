@@ -105,8 +105,8 @@ pub fn primal_capabilities() -> Value {
             },
             {
                 "name": "mesh",
-                "operations": ["init", "status", "find_path", "announce", "peers", "health_check"],
-                "description": "Distributed relay mesh for cross-NAT connectivity"
+                "operations": ["init", "status", "find_path", "announce", "peers", "health_check", "auto_discover"],
+                "description": "Distributed relay mesh for cross-NAT connectivity with auto-discovery"
             },
             {
                 "name": "punch",
@@ -138,6 +138,7 @@ pub fn rpc_methods() -> Value {
         "jsonrpc": "2.0",
         "methods": [
             // Introspection
+            {"name": "discover_capabilities", "description": "Cross-primal discovery: list capabilities this primal provides", "params": []},
             {"name": "primal.info", "description": "Get primal metadata and capabilities", "params": []},
             {"name": "primal.capabilities", "description": "Get detailed capability descriptions", "params": []},
             {"name": "rpc.methods", "description": "List all available JSON-RPC methods", "params": []},
@@ -185,6 +186,7 @@ pub fn rpc_discover_standard() -> Value {
     serde_json::json!({
         "methods": [
             "health", "identity", "rpc.discover",
+            "discover_capabilities",
             "primal.info", "primal.capabilities", "rpc.methods",
             "ipc.register", "ipc.resolve", "ipc.discover", "ipc.list",
             "http.request", "http.get", "http.post",
@@ -197,6 +199,7 @@ pub fn rpc_discover_standard() -> Value {
             "birdsong.verify_lineage", "birdsong.get_lineage", "birdsong.advertise",
             "mesh.init", "mesh.status", "mesh.find_path",
             "mesh.announce", "mesh.peers", "mesh.health_check",
+            "mesh.auto_discover",
             "punch.request", "punch.status",
             "onion.start", "onion.stop", "onion.status",
             "onion.connect", "onion.address",
@@ -206,6 +209,47 @@ pub fn rpc_discover_standard() -> Value {
             "discovery.peers",
             "rendezvous.register", "rendezvous.lookup",
             "peer.connect"
+        ]
+    })
+}
+
+/// Generate discover_capabilities response (biomeOS cross-primal scanner protocol)
+///
+/// This is the response format that capability scanners (e.g., Squirrel)
+/// expect when probing sockets. It enables zero-configuration discovery:
+/// instead of setting `HTTP_REQUEST_PROVIDER_SOCKET`, primals simply
+/// scan available sockets and ask each one what capabilities it provides.
+pub fn discover_capabilities() -> Value {
+    serde_json::json!({
+        "primal": "songbird",
+        "capabilities": [
+            "http.request",
+            "http.get",
+            "http.post",
+            "secure_http",
+            "discovery.peers",
+            "relay.serve",
+            "relay.status",
+            "relay.connect",
+            "relay.allocate",
+            "stun.detect",
+            "stun.bind",
+            "stun.serve",
+            "mesh.status",
+            "mesh.find_path",
+            "mesh.peers",
+            "punch.request",
+            "punch.status",
+            "onion.start",
+            "onion.connect",
+            "onion.address",
+            "tor.connect",
+            "tor.circuit.build",
+            "igd.discover",
+            "igd.map_port",
+            "igd.auto_configure",
+            "birdsong.advertise",
+            "birdsong.verify_lineage"
         ]
     })
 }
@@ -230,13 +274,22 @@ pub fn identity(family_id: &str) -> Value {
         "capabilities": [
             "ipc.register", "ipc.resolve", "ipc.discover", "ipc.list",
             "http.request", "http.get", "http.post",
+            "secure_http",
             "stun.get_public_address", "stun.bind",
             "igd.discover", "igd.map_port", "igd.auto_configure",
             "birdsong.generate_encrypted_beacon", "birdsong.decrypt_beacon",
             "birdsong.verify_lineage", "birdsong.get_lineage",
+            "birdsong.advertise",
+            "relay.serve", "relay.status", "relay.allocate",
+            "mesh.status", "mesh.find_path", "mesh.peers",
+            "mesh.auto_discover",
+            "punch.request", "punch.status",
+            "onion.start", "onion.connect", "onion.address",
+            "tor.connect", "tor.circuit.build",
             "discovery.peers",
             "rendezvous.register", "rendezvous.lookup",
-            "peer.connect"
+            "peer.connect",
+            "discover_capabilities"
         ]
     })
 }

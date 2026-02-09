@@ -129,14 +129,44 @@ fn discover_beardog_socket_with_env(
         }
     }
 
+    // Check SONGBIRD_SECURITY_PROVIDER env var (biomeOS standard)
+    if let Ok(env_path) = env.var("SONGBIRD_SECURITY_PROVIDER") {
+        if !env_path.is_empty() {
+            debug!("Using SONGBIRD_SECURITY_PROVIDER env var: {}", env_path);
+            return env_path;
+        }
+    }
+
+    // XDG discovery with FAMILY_ID (e.g., beardog-nat0.sock)
     if let Ok(family_id) = env.var("FAMILY_ID") {
         if let Some(xdg_path) = discover_xdg_socket_with_env("beardog", &family_id, env) {
             return xdg_path;
         }
     }
 
-    let fallback = "/tmp/beardog-nat0.sock".to_string();
-    warn!("Falling back to default BearDog socket path: {}", fallback);
+    // biomeOS standard: $XDG_RUNTIME_DIR/biomeos/beardog.sock (no family ID)
+    if let Ok(runtime_dir) = env.var("XDG_RUNTIME_DIR") {
+        let xdg_standard = PathBuf::from(&runtime_dir).join("biomeos").join("beardog.sock");
+        if xdg_standard.exists() {
+            let path_str = xdg_standard.to_string_lossy().into_owned();
+            debug!("Found biomeOS standard BearDog socket: {}", path_str);
+            return path_str;
+        }
+    }
+
+    // Fallback: /run/user/$UID/biomeos/beardog.sock (without XDG_RUNTIME_DIR)
+    if let Ok(uid) = env.var("UID") {
+        let uid_path = PathBuf::from(format!("/run/user/{}/biomeos/beardog.sock", uid));
+        if uid_path.exists() {
+            let path_str = uid_path.to_string_lossy().into_owned();
+            debug!("Found UID-based BearDog socket: {}", path_str);
+            return path_str;
+        }
+    }
+
+    // Legacy /tmp fallback
+    let fallback = "/tmp/beardog.sock".to_string();
+    warn!("Falling back to legacy BearDog socket path: {}", fallback);
     fallback
 }
 
@@ -144,9 +174,12 @@ fn discover_beardog_socket_with_env(
 ///
 /// Prioritizes:
 /// 1. `explicit_path` (from CLI)
-/// 2. `BEARDOG_SOCKET` or `BEARDOG_CRYPTO_SOCKET` env vars
-/// 3. XDG_RUNTIME_DIR + `FAMILY_ID`
-/// 4. `/tmp/beardog-nat0.sock` (fallback)
+/// 2. `BEARDOG_SOCKET`, `BEARDOG_CRYPTO_SOCKET`, or `SONGBIRD_CRYPTO_SOCKET` env vars
+/// 3. `SONGBIRD_SECURITY_PROVIDER` env var
+/// 4. `$XDG_RUNTIME_DIR/biomeos/beardog-{family_id}.sock` (if FAMILY_ID set)
+/// 5. `$XDG_RUNTIME_DIR/biomeos/beardog.sock` (biomeOS standard)
+/// 6. `/run/user/$UID/biomeos/beardog.sock` (UID fallback)
+/// 7. `/tmp/beardog.sock` (legacy fallback)
 pub fn discover_beardog_socket(explicit_path: Option<&PathBuf>) -> String {
     discover_beardog_socket_with_env(explicit_path, &SystemEnv)
 }
@@ -182,8 +215,28 @@ fn discover_neural_api_socket_with_env(
         }
     }
 
-    let fallback = "/tmp/neural-api-nat0.sock".to_string();
-    warn!("Falling back to default Neural API socket path: {}", fallback);
+    // biomeOS standard: $XDG_RUNTIME_DIR/biomeos/beardog.sock (neural-api is BearDog)
+    if let Ok(runtime_dir) = env.var("XDG_RUNTIME_DIR") {
+        let xdg_standard = PathBuf::from(&runtime_dir).join("biomeos").join("beardog.sock");
+        if xdg_standard.exists() {
+            let path_str = xdg_standard.to_string_lossy().into_owned();
+            debug!("Found biomeOS standard BearDog socket (neural-api): {}", path_str);
+            return path_str;
+        }
+    }
+
+    // Fallback: /run/user/$UID/biomeos/beardog.sock
+    if let Ok(uid) = env.var("UID") {
+        let uid_path = PathBuf::from(format!("/run/user/{}/biomeos/beardog.sock", uid));
+        if uid_path.exists() {
+            let path_str = uid_path.to_string_lossy().into_owned();
+            debug!("Found UID-based BearDog socket (neural-api): {}", path_str);
+            return path_str;
+        }
+    }
+
+    let fallback = "/tmp/beardog.sock".to_string();
+    warn!("Falling back to legacy Neural API socket path: {}", fallback);
     fallback
 }
 
@@ -192,8 +245,10 @@ fn discover_neural_api_socket_with_env(
 /// Prioritizes:
 /// 1. `explicit_path` (from CLI)
 /// 2. `NEURAL_API_SOCKET` or `NEURALS_SOCKET` env vars
-/// 3. XDG_RUNTIME_DIR + `FAMILY_ID`
-/// 4. `/tmp/neural-api-nat0.sock` (fallback)
+/// 3. `$XDG_RUNTIME_DIR/biomeos/neural-api-{family_id}.sock` (if FAMILY_ID set)
+/// 4. `$XDG_RUNTIME_DIR/biomeos/beardog.sock` (biomeOS standard)
+/// 5. `/run/user/$UID/biomeos/beardog.sock` (UID fallback)
+/// 6. `/tmp/beardog.sock` (legacy fallback)
 pub fn discover_neural_api_socket(explicit_path: Option<&PathBuf>) -> String {
     discover_neural_api_socket_with_env(explicit_path, &SystemEnv)
 }
@@ -320,10 +375,41 @@ mod tests {
         let env = MockEnv::new(); // No env vars set
 
         let discovered = discover_beardog_socket_with_env(None, &env);
-        assert_eq!(discovered, "/tmp/beardog-nat0.sock");
+        assert_eq!(discovered, "/tmp/beardog.sock");
 
         let discovered = discover_neural_api_socket_with_env(None, &env);
-        assert_eq!(discovered, "/tmp/neural-api-nat0.sock");
+        assert_eq!(discovered, "/tmp/beardog.sock");
+    }
+
+    #[test]
+    fn test_security_provider_env_var() {
+        // SONGBIRD_SECURITY_PROVIDER takes priority after BEARDOG_* vars
+        let env = MockEnv::new()
+            .set("SONGBIRD_SECURITY_PROVIDER", "/run/user/1000/biomeos/beardog.sock");
+        let discovered = discover_beardog_socket_with_env(None, &env);
+        assert_eq!(discovered, "/run/user/1000/biomeos/beardog.sock");
+    }
+
+    #[test]
+    fn test_xdg_standard_without_family_id() {
+        // biomeOS standard: $XDG_RUNTIME_DIR/biomeos/beardog.sock (no family ID needed)
+        use std::sync::atomic::{AtomicU32, Ordering};
+        static COUNTER: AtomicU32 = AtomicU32::new(0);
+        let test_id = COUNTER.fetch_add(1, Ordering::SeqCst);
+
+        let test_dir = format!("/tmp/test_xdg_standard_{}", test_id);
+        let env = MockEnv::new().set("XDG_RUNTIME_DIR", &test_dir);
+
+        let xdg_path = PathBuf::from(format!("{}/biomeos/beardog.sock", test_dir));
+        create_dummy_socket(&xdg_path);
+
+        let discovered = discover_beardog_socket_with_env(None, &env);
+        assert_eq!(discovered, xdg_path.to_string_lossy().into_owned());
+
+        // Cleanup
+        fs::remove_file(&xdg_path).unwrap();
+        fs::remove_dir_all(format!("{}/biomeos", test_dir)).unwrap();
+        fs::remove_dir_all(&test_dir).unwrap();
     }
 
     #[test]
