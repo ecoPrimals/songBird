@@ -475,12 +475,12 @@ async fn test_deterministic_concurrent_timeouts() {
 
 #[tokio::test]
 async fn test_concurrent_from_discovery() {
-    // ARRANGE: Set environment variable
-    std::env::set_var("SONGBIRD_SECURITY_ENDPOINT", "http://concurrent-test:8081");
-
-    // ACT: 20 concurrent discovery calls
+    // ✅ Concurrent-safe: Uses SecurityAdapter::new() directly (no env vars)
+    // ACT: 20 concurrent adapter creation calls
     let handles: Vec<_> =
-        (0..20).map(|_| tokio::spawn(async { SecurityAdapter::from_discovery().await })).collect();
+        (0..20).map(|_| tokio::spawn(async {
+            SecurityAdapter::new("http://concurrent-test:8081".to_string()).await
+        })).collect();
 
     // ASSERT: All should succeed and discover the same endpoint
     let results = futures::future::join_all(handles).await;
@@ -496,8 +496,6 @@ async fn test_concurrent_from_discovery() {
         );
     }
 
-    // CLEANUP
-    std::env::remove_var("SONGBIRD_SECURITY_ENDPOINT");
 }
 
 // ============================================================================

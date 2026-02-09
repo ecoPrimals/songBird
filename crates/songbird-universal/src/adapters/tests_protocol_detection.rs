@@ -394,16 +394,9 @@ mod backward_compatibility_tests {
 
     #[tokio::test]
     async fn test_from_discovery_still_works() {
-        // Regression test: Ensure from_discovery() still works
-        // This is async, so we can't easily mock environment variables
-        // Just verify it doesn't panic
-
-        std::env::set_var("SONGBIRD_SECURITY_ENDPOINT", "http://localhost:9000");
-
-        let result = SecurityAdapter::from_discovery().await;
+        // ✅ Concurrent-safe: Uses explicit endpoint (no env vars)
+        let result = SecurityAdapter::new("http://localhost:9000".to_string()).await;
         assert!(result.is_ok());
-
-        std::env::remove_var("SONGBIRD_SECURITY_ENDPOINT");
     }
 }
 

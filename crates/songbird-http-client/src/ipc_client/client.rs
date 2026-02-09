@@ -229,20 +229,28 @@ impl IpcHttpClient {
     ///
     /// Uses environment-aware discovery with sensible defaults.
     fn discover_socket_path() -> Result<PathBuf> {
+        Self::discover_socket_path_with(|name| std::env::var(name).ok())
+    }
+
+    /// Discover socket path with injectable env reader (concurrent-safe, testable)
+    fn discover_socket_path_with<F>(env_reader: F) -> Result<PathBuf>
+    where
+        F: Fn(&str) -> Option<String>,
+    {
         // Priority 1: Explicit socket path
-        if let Ok(path) = std::env::var("SONGBIRD_SOCKET") {
+        if let Some(path) = env_reader("SONGBIRD_SOCKET") {
             return Ok(PathBuf::from(path));
         }
-        if let Ok(path) = std::env::var("SONGBIRD_IPC_SOCKET") {
+        if let Some(path) = env_reader("SONGBIRD_IPC_SOCKET") {
             return Ok(PathBuf::from(path));
         }
 
         // Priority 2: Runtime directory (XDG standard)
-        let family_id = std::env::var("SONGBIRD_FAMILY_ID")
-            .or_else(|_| std::env::var("FAMILY_ID"))
-            .unwrap_or_else(|_| "default".to_string());
+        let family_id = env_reader("SONGBIRD_FAMILY_ID")
+            .or_else(|| env_reader("FAMILY_ID"))
+            .unwrap_or_else(|| "default".to_string());
 
-        if let Ok(runtime_dir) = std::env::var("XDG_RUNTIME_DIR") {
+        if let Some(runtime_dir) = env_reader("XDG_RUNTIME_DIR") {
             let path = PathBuf::from(format!("{}/songbird-{}.sock", runtime_dir, family_id));
             if path.exists() {
                 return Ok(path);
@@ -250,7 +258,7 @@ impl IpcHttpClient {
         }
 
         // Priority 3: User runtime dir fallback
-        if let Ok(uid) = std::env::var("UID") {
+        if let Some(uid) = env_reader("UID") {
             let path = PathBuf::from(format!("/run/user/{}/songbird-{}.sock", uid, family_id));
             if path.exists() {
                 return Ok(path);
@@ -747,17 +755,22 @@ mod tests {
 
     #[test]
     fn test_socket_discovery() {
-        // Test with explicit path
-        std::env::set_var("SONGBIRD_SOCKET", "/tmp/test.sock");
-        let path = IpcHttpClient::discover_socket_path().unwrap();
-        assert_eq!(path, PathBuf::from("/tmp/test.sock"));
-        std::env::remove_var("SONGBIRD_SOCKET");
+        // ✅ Concurrent-safe: Uses discover_socket_path_with (no env vars)
+        use std::collections::HashMap;
 
-        // Test with family ID
-        std::env::set_var("SONGBIRD_FAMILY_ID", "test");
-        let path = IpcHttpClient::discover_socket_path().unwrap();
+        // Test with explicit socket path
+        let env1: HashMap<String, String> = HashMap::from([
+            ("SONGBIRD_SOCKET".to_string(), "/tmp/test.sock".to_string()),
+        ]);
+        let path = IpcHttpClient::discover_socket_path_with(|name| env1.get(name).cloned()).unwrap();
+        assert_eq!(path, PathBuf::from("/tmp/test.sock"));
+
+        // Test with family ID (no explicit socket — falls back to /tmp)
+        let env2: HashMap<String, String> = HashMap::from([
+            ("SONGBIRD_FAMILY_ID".to_string(), "test".to_string()),
+        ]);
+        let path = IpcHttpClient::discover_socket_path_with(|name| env2.get(name).cloned()).unwrap();
         assert!(path.to_string_lossy().contains("songbird-test.sock"));
-        std::env::remove_var("SONGBIRD_FAMILY_ID");
     }
 
     #[tokio::test]

@@ -90,11 +90,20 @@ impl CliArgs {
     /// Parse CLI arguments from environment (stub implementation)
     #[must_use]
     pub fn parse_from_env() -> Self {
+        Self::parse_with(|name| std::env::var(name).ok())
+    }
+
+    /// Parse CLI arguments with injectable env reader (concurrent-safe, testable)
+    #[must_use]
+    pub fn parse_with<F>(env_reader: F) -> Self
+    where
+        F: Fn(&str) -> Option<String>,
+    {
         Self {
-            verbose: std::env::var("SONGBIRD_VERBOSE").is_ok(),
-            quiet: std::env::var("SONGBIRD_QUIET").is_ok(),
+            verbose: env_reader("SONGBIRD_VERBOSE").is_some(),
+            quiet: env_reader("SONGBIRD_QUIET").is_some(),
             format: OutputFormat::default(),
-            config: std::env::var("SONGBIRD_CONFIG").ok(),
+            config: env_reader("SONGBIRD_CONFIG"),
         }
     }
 }
@@ -235,13 +244,9 @@ mod tests {
     }
 
     #[test]
-    fn test_cli_args_parse_from_env_defaults() {
-        // Clear relevant env vars for test
-        std::env::remove_var("SONGBIRD_VERBOSE");
-        std::env::remove_var("SONGBIRD_QUIET");
-        std::env::remove_var("SONGBIRD_CONFIG");
-
-        let args = CliArgs::parse_from_env();
+    fn test_cli_args_parse_defaults() {
+        // ✅ Concurrent-safe: Uses parse_with + empty env (no global state)
+        let args = CliArgs::parse_with(|_| None);
 
         assert!(!args.verbose);
         assert!(!args.quiet);
@@ -250,39 +255,30 @@ mod tests {
     }
 
     #[test]
-    fn test_cli_args_parse_from_env_with_verbose() {
-        std::env::set_var("SONGBIRD_VERBOSE", "1");
-        let args = CliArgs::parse_from_env();
+    fn test_cli_args_parse_with_verbose() {
+        // ✅ Concurrent-safe: Injectable env reader
+        let args = CliArgs::parse_with(|name| {
+            if name == "SONGBIRD_VERBOSE" { Some("1".to_string()) } else { None }
+        });
         assert!(args.verbose);
-        std::env::remove_var("SONGBIRD_VERBOSE");
     }
 
     #[test]
-    fn test_cli_args_parse_from_env_with_quiet() {
-        // Clean environment first to avoid test pollution
-        std::env::remove_var("SONGBIRD_QUIET");
-        std::env::remove_var("SONGBIRD_VERBOSE");
-        std::env::remove_var("SONGBIRD_CONFIG");
-
-        // Set quiet flag
-        std::env::set_var("SONGBIRD_QUIET", "1");
-        let args = CliArgs::parse_from_env();
-
-        // Clean up before assertion (in case assertion fails)
-        std::env::remove_var("SONGBIRD_QUIET");
-
+    fn test_cli_args_parse_with_quiet() {
+        // ✅ Concurrent-safe: Injectable env reader
+        let args = CliArgs::parse_with(|name| {
+            if name == "SONGBIRD_QUIET" { Some("1".to_string()) } else { None }
+        });
         assert!(args.quiet, "quiet flag should be true when SONGBIRD_QUIET is set");
     }
 
     #[test]
-    fn test_cli_args_parse_from_env_with_config() {
-        // Note: This test checks the pattern of env var parsing,
-        // but actual value may not be set in test environment
-        std::env::set_var("SONGBIRD_CONFIG", "/etc/songbird.toml");
-        let args = CliArgs::parse_from_env();
-        // Test that config path can be Some or None based on env
-        assert!(args.config.is_some() || args.config.is_none());
-        std::env::remove_var("SONGBIRD_CONFIG");
+    fn test_cli_args_parse_with_config() {
+        // ✅ Concurrent-safe: Injectable env reader
+        let args = CliArgs::parse_with(|name| {
+            if name == "SONGBIRD_CONFIG" { Some("/etc/songbird.toml".to_string()) } else { None }
+        });
+        assert_eq!(args.config, Some("/etc/songbird.toml".to_string()));
     }
 
     #[test]

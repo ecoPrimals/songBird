@@ -142,11 +142,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_discover_fails_gracefully() {
-        // Should fail gracefully when no provider available
-        std::env::remove_var("CRYPTO_CAPABILITY_SOCKET");
-        std::env::remove_var("BEARDOG_SOCKET");
-
-        // This will fail if no BearDog is running, which is expected in unit tests
+        // ✅ Concurrent-safe: Uses explicit path (no env vars needed)
         let result = discover_crypto_capability_at("/nonexistent/path.sock").await;
         assert!(result.is_err());
     }
