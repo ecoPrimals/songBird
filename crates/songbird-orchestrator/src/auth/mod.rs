@@ -27,5 +27,6 @@ pub use beardog_jwt_client::{
 };
 
 pub use capability_discovery::{
-    discover_beardog_socket, discover_beardog_socket_for_family, get_beardog_socket_for_jwt,
+    discover_beardog_socket, discover_beardog_socket_for_family, discover_beardog_socket_with,
+    get_beardog_socket_for_jwt, get_beardog_socket_for_jwt_with,
 };

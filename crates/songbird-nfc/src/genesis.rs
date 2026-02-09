@@ -74,13 +74,29 @@ impl BearDogNfcCrypto {
     }
 
     fn discover_socket() -> PathBuf {
-        if let Ok(path) = std::env::var("BEARDOG_SOCKET") {
-            return PathBuf::from(path);
+        Self::discover_socket_with(|key| std::env::var(key))
+    }
+
+    /// Discover socket with injectable env reader (concurrent-safe, testable)
+    fn discover_socket_with<F>(env_reader: F) -> PathBuf
+    where
+        F: Fn(&str) -> std::result::Result<String, std::env::VarError>,
+    {
+        if let Ok(path) = env_reader("BEARDOG_SOCKET") {
+            if !path.is_empty() {
+                return PathBuf::from(path);
+            }
         }
-        if let Ok(xdg) = std::env::var("XDG_RUNTIME_DIR") {
-            let path = PathBuf::from(xdg).join("beardog").join("beardog.sock");
-            if path.exists() {
-                return path;
+        if let Ok(xdg) = env_reader("XDG_RUNTIME_DIR") {
+            // Try biomeOS standard path first
+            let biomeos_path = PathBuf::from(&xdg).join("biomeos").join("beardog.sock");
+            if biomeos_path.exists() {
+                return biomeos_path;
+            }
+            // Legacy beardog directory
+            let legacy_path = PathBuf::from(&xdg).join("beardog").join("beardog.sock");
+            if legacy_path.exists() {
+                return legacy_path;
             }
         }
         PathBuf::from("/tmp/beardog.sock")
@@ -555,10 +571,38 @@ mod tests {
 
     #[test]
     fn test_beardog_client_env_discovery() {
-        std::env::set_var("BEARDOG_SOCKET", "/tmp/test-beardog-nfc.sock");
-        let path = BearDogNfcCrypto::discover_socket();
+        // ✅ Concurrent-safe: uses injectable env reader (no global state mutation)
+        use std::collections::HashMap;
+        let vars: HashMap<String, String> = HashMap::from([
+            ("BEARDOG_SOCKET".to_string(), "/tmp/test-beardog-nfc.sock".to_string()),
+        ]);
+        let env = move |key: &str| -> std::result::Result<String, std::env::VarError> {
+            vars.get(key).cloned().ok_or(std::env::VarError::NotPresent)
+        };
+        let path = BearDogNfcCrypto::discover_socket_with(env);
         assert_eq!(path, PathBuf::from("/tmp/test-beardog-nfc.sock"));
-        std::env::remove_var("BEARDOG_SOCKET");
+    }
+
+    #[test]
+    fn test_beardog_client_empty_env_ignored() {
+        use std::collections::HashMap;
+        let vars: HashMap<String, String> = HashMap::from([
+            ("BEARDOG_SOCKET".to_string(), String::new()),
+        ]);
+        let env = move |key: &str| -> std::result::Result<String, std::env::VarError> {
+            vars.get(key).cloned().ok_or(std::env::VarError::NotPresent)
+        };
+        let path = BearDogNfcCrypto::discover_socket_with(env);
+        assert_eq!(path, PathBuf::from("/tmp/beardog.sock"));
+    }
+
+    #[test]
+    fn test_beardog_client_no_env_fallback() {
+        let env = |_key: &str| -> std::result::Result<String, std::env::VarError> {
+            Err(std::env::VarError::NotPresent)
+        };
+        let path = BearDogNfcCrypto::discover_socket_with(env);
+        assert_eq!(path, PathBuf::from("/tmp/beardog.sock"));
     }
 
     #[tokio::test]

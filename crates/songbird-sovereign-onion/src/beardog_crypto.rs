@@ -133,34 +133,56 @@ impl BeardogCryptoClient {
     ///
     /// TCP format: `tcp:127.0.0.1:9900`
     pub fn from_env() -> Result<Self> {
+        Self::from_env_with(|key| std::env::var(key))
+    }
+
+    /// Create client with injectable env reader (concurrent-safe, testable)
+    pub fn from_env_with<F>(env_reader: F) -> Result<Self>
+    where
+        F: Fn(&str) -> std::result::Result<String, std::env::VarError>,
+    {
         // Try direct BearDog socket (may be tcp:host:port or /path/to/socket)
-        if let Ok(socket) = std::env::var("BEARDOG_SOCKET") {
-            let transport = Self::parse_transport(&socket)?;
-            return Ok(Self {
-                transport,
-                timeout: Duration::from_secs(10),
-            });
+        if let Ok(socket) = env_reader("BEARDOG_SOCKET") {
+            if !socket.is_empty() {
+                let transport = Self::parse_transport(&socket)?;
+                return Ok(Self {
+                    transport,
+                    timeout: Duration::from_secs(10),
+                });
+            }
         }
 
         // Try biomeOS-wired crypto provider
-        if let Ok(socket) = std::env::var("CRYPTO_PROVIDER_SOCKET") {
-            let transport = Self::parse_transport(&socket)?;
-            return Ok(Self {
-                transport,
-                timeout: Duration::from_secs(10),
-            });
+        if let Ok(socket) = env_reader("CRYPTO_PROVIDER_SOCKET") {
+            if !socket.is_empty() {
+                let transport = Self::parse_transport(&socket)?;
+                return Ok(Self {
+                    transport,
+                    timeout: Duration::from_secs(10),
+                });
+            }
         }
 
-        // XDG runtime fallback (Unix only)
+        // biomeOS standard: $XDG_RUNTIME_DIR/biomeos/beardog.sock (no family ID)
         #[cfg(unix)]
-        if let Ok(xdg_runtime) = std::env::var("XDG_RUNTIME_DIR") {
-            let family_id = std::env::var("FAMILY_ID")
-                .or_else(|_| std::env::var("BIOMEOS_FAMILY_ID"))
-                .unwrap_or_else(|_| "default".to_string());
-            let socket_path = format!("{}/biomeos/beardog-{}.sock", xdg_runtime, family_id);
-            if std::path::Path::new(&socket_path).exists() {
+        if let Ok(xdg_runtime) = env_reader("XDG_RUNTIME_DIR") {
+            // Try family-scoped path first
+            if let Ok(family_id) = env_reader("FAMILY_ID")
+                .or_else(|_| env_reader("BIOMEOS_FAMILY_ID"))
+            {
+                let socket_path = format!("{}/biomeos/beardog-{}.sock", xdg_runtime, family_id);
+                if std::path::Path::new(&socket_path).exists() {
+                    return Ok(Self {
+                        transport: BeardogTransport::Unix(PathBuf::from(socket_path)),
+                        timeout: Duration::from_secs(10),
+                    });
+                }
+            }
+            // Try standard biomeOS path (no family ID)
+            let standard_path = format!("{}/biomeos/beardog.sock", xdg_runtime);
+            if std::path::Path::new(&standard_path).exists() {
                 return Ok(Self {
-                    transport: BeardogTransport::Unix(PathBuf::from(socket_path)),
+                    transport: BeardogTransport::Unix(PathBuf::from(standard_path)),
                     timeout: Duration::from_secs(10),
                 });
             }
@@ -606,13 +628,46 @@ mod tests {
 
     #[test]
     fn test_client_from_env_no_socket() {
-        // Clear env vars
-        std::env::remove_var("BEARDOG_SOCKET");
-        std::env::remove_var("CRYPTO_PROVIDER_SOCKET");
-        
-        // Should fail without socket
-        let result = BeardogCryptoClient::from_env();
+        // ✅ Concurrent-safe: uses injectable env reader (no global state mutation)
+        let env = |_key: &str| -> std::result::Result<String, std::env::VarError> {
+            Err(std::env::VarError::NotPresent)
+        };
+        let result = BeardogCryptoClient::from_env_with(env);
         assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_client_from_env_with_beardog_socket() {
+        use std::collections::HashMap;
+        let vars: HashMap<String, String> = HashMap::from([
+            ("BEARDOG_SOCKET".to_string(), "tcp:127.0.0.1:9900".to_string()),
+        ]);
+        let env = move |key: &str| -> std::result::Result<String, std::env::VarError> {
+            vars.get(key).cloned().ok_or(std::env::VarError::NotPresent)
+        };
+        let result = BeardogCryptoClient::from_env_with(env);
+        assert!(result.is_ok());
+        match &result.unwrap().transport {
+            BeardogTransport::Tcp(host, port) => {
+                assert_eq!(host, "127.0.0.1");
+                assert_eq!(*port, 9900);
+            }
+            #[cfg(unix)]
+            _ => panic!("Expected TCP transport"),
+        }
+    }
+
+    #[test]
+    fn test_client_from_env_empty_var_ignored() {
+        use std::collections::HashMap;
+        let vars: HashMap<String, String> = HashMap::from([
+            ("BEARDOG_SOCKET".to_string(), String::new()),
+        ]);
+        let env = move |key: &str| -> std::result::Result<String, std::env::VarError> {
+            vars.get(key).cloned().ok_or(std::env::VarError::NotPresent)
+        };
+        let result = BeardogCryptoClient::from_env_with(env);
+        assert!(result.is_err()); // Empty should be ignored, no fallback
     }
 
     #[test]

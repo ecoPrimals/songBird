@@ -316,11 +316,24 @@ pub async fn get_ai_endpoint() -> SongbirdResult<String> {
 /// - No `{CAPABILITY}_ENDPOINT` environment variable is set
 /// - Capability-based discovery fails to find a provider with the requested capability
 pub async fn get_endpoint_by_capability(capability: &str) -> SongbirdResult<String> {
+    get_endpoint_by_capability_with(capability, |key| std::env::var(key)).await
+}
+
+/// Get endpoint by capability with injectable env reader (concurrent-safe)
+pub async fn get_endpoint_by_capability_with<F>(
+    capability: &str,
+    env_reader: F,
+) -> SongbirdResult<String>
+where
+    F: Fn(&str) -> std::result::Result<String, std::env::VarError>,
+{
     // 1. Try environment variable {CAPABILITY}_ENDPOINT
     let env_var = format!("{}_ENDPOINT", capability.to_uppercase());
-    if let Ok(endpoint) = std::env::var(&env_var) {
-        debug!("Using {} from environment: {}", env_var, endpoint);
-        return Ok(endpoint);
+    if let Ok(endpoint) = env_reader(&env_var) {
+        if !endpoint.is_empty() {
+            debug!("Using {} from environment: {}", env_var, endpoint);
+            return Ok(endpoint);
+        }
     }
 
     // 2. Try capability-based discovery (RuntimeDiscoveryEngine)
@@ -381,32 +394,16 @@ mod tests {
     #[tokio::test]
     async fn test_compute_endpoint_not_configured() {
         // Modern pattern: test error case with empty options
+        // No env vars set, no explicit endpoint → should fail (unless runtime discovery succeeds)
         let options = DiscoveryOptions::default();
-
-        // Clear env vars for this specific test (still uses env as fallback)
-        let _compute = std::env::var("COMPUTE_ENDPOINT");
-        let _toadstool = std::env::var("TOADSTOOL_ENDPOINT");
-        std::env::remove_var("COMPUTE_ENDPOINT");
-        std::env::remove_var("TOADSTOOL_ENDPOINT");
-
         let result = get_compute_endpoint(options).await;
 
-        // Restore env vars
-        if let Ok(val) = _compute {
-            std::env::set_var("COMPUTE_ENDPOINT", val);
-        }
-        if let Ok(val) = _toadstool {
-            std::env::set_var("TOADSTOOL_ENDPOINT", val);
-        }
-
-        // Runtime discovery might find a service, so we can't guarantee an error
+        // Runtime discovery might find a service on this machine
         if result.is_ok() {
-            // If it succeeded via runtime discovery, that's also valid behavior
-            return;
+            return; // Valid — runtime discovered a compute provider
         }
 
         assert!(result.is_err());
-
         if let Err(SongbirdError::Configuration {
             message,
             suggestion,
@@ -421,13 +418,45 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_capability_based_endpoint() {
-        std::env::set_var("MYSERVICE_ENDPOINT", "http://my-service:5000");
+    async fn test_capability_based_endpoint_with_env() {
+        // ✅ Concurrent-safe: uses injectable env reader instead of set_var
+        use std::collections::HashMap;
 
-        let result = get_endpoint_by_capability("myservice").await;
+        let vars: HashMap<String, String> = HashMap::from([
+            ("MYSERVICE_ENDPOINT".to_string(), "http://my-service:5000".to_string()),
+        ]);
+        let env = move |key: &str| -> std::result::Result<String, std::env::VarError> {
+            vars.get(key)
+                .cloned()
+                .ok_or(std::env::VarError::NotPresent)
+        };
+
+        let result = get_endpoint_by_capability_with("myservice", env).await;
         assert!(result.is_ok());
         assert_eq!(result.unwrap(), "http://my-service:5000");
+    }
 
-        std::env::remove_var("MYSERVICE_ENDPOINT");
+    #[tokio::test]
+    async fn test_capability_empty_env_falls_through() {
+        // Empty env var should be ignored
+        use std::collections::HashMap;
+
+        let vars: HashMap<String, String> = HashMap::from([
+            ("MYSERVICE_ENDPOINT".to_string(), String::new()),
+        ]);
+        let env = move |key: &str| -> std::result::Result<String, std::env::VarError> {
+            vars.get(key)
+                .cloned()
+                .ok_or(std::env::VarError::NotPresent)
+        };
+
+        let result = get_endpoint_by_capability_with("myservice", env).await;
+        // Should fail (empty env var ignored, no runtime discovery)
+        // Unless runtime discovers something on this machine
+        if result.is_err() {
+            if let Err(SongbirdError::Configuration { message, .. }) = result {
+                assert!(message.contains("No provider found"));
+            }
+        }
     }
 }

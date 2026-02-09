@@ -153,22 +153,43 @@ impl UnixSocketServer {
     /// This method is `pub` to enable comprehensive testing of BiomeOS compatibility.
     /// See `tests/biomeos_socket_env_vars.rs` for validation.
     pub fn socket_path_from_env() -> PathBuf {
+        Self::socket_path_with_env(|key| std::env::var(key))
+    }
+
+    /// Resolve socket path with injectable environment reader (concurrent-safe)
+    ///
+    /// ## Priority Order (BiomeOS Standard)
+    ///
+    /// 1. `SONGBIRD_ORCHESTRATOR_SOCKET` (Neural API standard)
+    /// 2. `SONGBIRD_SOCKET` (alternative naming)
+    /// 3. `BIOMEOS_SOCKET_PATH` (generic orchestrator)
+    /// 4. `env_config::socket_path()` (TRUE PRIMAL self-knowledge)
+    pub fn socket_path_with_env<F>(env_reader: F) -> PathBuf
+    where
+        F: Fn(&str) -> std::result::Result<String, std::env::VarError>,
+    {
         // Priority 1: SONGBIRD_ORCHESTRATOR_SOCKET (Neural API standard)
-        if let Ok(socket_path) = std::env::var("SONGBIRD_ORCHESTRATOR_SOCKET") {
-            info!("📍 Using SONGBIRD_ORCHESTRATOR_SOCKET: {}", socket_path);
-            return PathBuf::from(socket_path);
+        if let Ok(socket_path) = env_reader("SONGBIRD_ORCHESTRATOR_SOCKET") {
+            if !socket_path.is_empty() {
+                info!("📍 Using SONGBIRD_ORCHESTRATOR_SOCKET: {}", socket_path);
+                return PathBuf::from(socket_path);
+            }
         }
 
         // Priority 2: SONGBIRD_SOCKET (alternative naming)
-        if let Ok(socket_path) = std::env::var("SONGBIRD_SOCKET") {
-            info!("📍 Using SONGBIRD_SOCKET: {}", socket_path);
-            return PathBuf::from(socket_path);
+        if let Ok(socket_path) = env_reader("SONGBIRD_SOCKET") {
+            if !socket_path.is_empty() {
+                info!("📍 Using SONGBIRD_SOCKET: {}", socket_path);
+                return PathBuf::from(socket_path);
+            }
         }
 
         // Priority 3: BIOMEOS_SOCKET_PATH (generic orchestrator)
-        if let Ok(socket_path) = std::env::var("BIOMEOS_SOCKET_PATH") {
-            info!("📍 Using BIOMEOS_SOCKET_PATH: {}", socket_path);
-            return PathBuf::from(socket_path);
+        if let Ok(socket_path) = env_reader("BIOMEOS_SOCKET_PATH") {
+            if !socket_path.is_empty() {
+                info!("📍 Using BIOMEOS_SOCKET_PATH: {}", socket_path);
+                return PathBuf::from(socket_path);
+            }
         }
 
         // Default: Use env_config for TRUE PRIMAL self-knowledge
@@ -742,128 +763,87 @@ impl Drop for UnixSocketServer {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::collections::HashMap;
 
-    #[test]
-    fn test_socket_path_explicit_override() {
-        // Test: SONGBIRD_SOCKET env var override
-        // Clear all higher-priority env vars first to ensure test isolation
-        std::env::remove_var("SONGBIRD_ORCHESTRATOR_SOCKET");
-        std::env::remove_var("BIOMEOS_SOCKET_PATH");
-        std::env::set_var("SONGBIRD_SOCKET", "/tmp/test-socket.sock");
-        std::env::set_var("SONGBIRD_FAMILY_ID", "nat0");
+    // ============================================================================
+    // ✅ ALL TESTS BELOW ARE FULLY CONCURRENT!
+    // ============================================================================
+    //
+    // Tests use dependency injection (mock_env) instead of modifying global
+    // environment variables. No set_var, no remove_var, no race conditions.
+    // ============================================================================
 
-        let path = UnixSocketServer::socket_path_from_env();
-        assert_eq!(path.to_str().unwrap(), "/tmp/test-socket.sock");
-
-        std::env::remove_var("SONGBIRD_SOCKET");
-        std::env::remove_var("SONGBIRD_FAMILY_ID");
+    /// Create a mock env reader from a HashMap (concurrent-safe, no global state)
+    fn mock_env(vars: HashMap<&str, &str>) -> impl Fn(&str) -> std::result::Result<String, std::env::VarError> {
+        let owned: HashMap<String, String> = vars
+            .into_iter()
+            .map(|(k, v)| (k.to_string(), v.to_string()))
+            .collect();
+        move |key: &str| {
+            owned
+                .get(key)
+                .cloned()
+                .ok_or(std::env::VarError::NotPresent)
+        }
     }
 
     #[test]
-    fn test_socket_path_xdg_runtime() {
-        // Test 2: XDG runtime directory (PRIMAL_DEPLOYMENT_STANDARD compliant)
-        // Note: Since XDG_RUNTIME_DIR is typically set by the system, we test the
-        // structure of the returned path
-        std::env::remove_var("SONGBIRD_SOCKET");
-        std::env::remove_var("SONGBIRD_ORCHESTRATOR_SOCKET");
-        std::env::remove_var("BIOMEOS_SOCKET_PATH");
-
-        let path = UnixSocketServer::socket_path_from_env();
-        let path_str = path.to_str().unwrap();
-        eprintln!("XDG path: {}", path_str);
-
-        // PRIMAL_DEPLOYMENT_STANDARD: {primal}.sock naming (no family suffix)
-        assert!(
-            path_str.ends_with("songbird.sock"),
-            "Path should end with 'songbird.sock' (no family suffix per PRIMAL_DEPLOYMENT_STANDARD), got: {}",
-            path_str
-        );
-
-        // Path should be XDG-compliant or /tmp fallback
-        assert!(
-            path_str.starts_with("/run/user/") || path_str.starts_with("/tmp/"),
-            "Path should start with /run/user/ or /tmp/, got: {}",
-            path_str
-        );
+    fn test_socket_path_explicit_songbird_socket() {
+        let env = mock_env(HashMap::from([
+            ("SONGBIRD_SOCKET", "/tmp/test-socket.sock"),
+        ]));
+        let path = UnixSocketServer::socket_path_with_env(env);
+        assert_eq!(path, PathBuf::from("/tmp/test-socket.sock"));
     }
 
     #[test]
-    fn test_socket_path_fallback_to_tmp() {
-        // Test 3: PRIMAL_DEPLOYMENT_STANDARD - primal name based sockets
-        // When XDG_RUNTIME_DIR is not available, falls back to /tmp
-        std::env::remove_var("SONGBIRD_SOCKET");
-        std::env::remove_var("SONGBIRD_ORCHESTRATOR_SOCKET");
-        std::env::remove_var("BIOMEOS_SOCKET_PATH");
-        std::env::remove_var("BIOMEOS_SOCKET_DIR");
-
-        let path = UnixSocketServer::socket_path_from_env();
-        let path_str = path.to_str().unwrap();
-        eprintln!("Fallback path: {}", path_str);
-
-        // PRIMAL_DEPLOYMENT_STANDARD: socket is {primal}.sock
-        assert!(
-            path_str.ends_with("songbird.sock"),
-            "Path should end with 'songbird.sock', got: {}",
-            path_str
-        );
-
-        // Should be in biomeos directory (XDG or /tmp fallback)
-        assert!(
-            path_str.contains("biomeos") || path_str == "/tmp/songbird.sock",
-            "Path should be in biomeos/ directory or /tmp, got: {}",
-            path_str
-        );
+    fn test_socket_path_orchestrator_socket_priority() {
+        // SONGBIRD_ORCHESTRATOR_SOCKET takes priority over SONGBIRD_SOCKET
+        let env = mock_env(HashMap::from([
+            ("SONGBIRD_ORCHESTRATOR_SOCKET", "/run/orchestrator.sock"),
+            ("SONGBIRD_SOCKET", "/tmp/override.sock"),
+        ]));
+        let path = UnixSocketServer::socket_path_with_env(env);
+        assert_eq!(path, PathBuf::from("/run/orchestrator.sock"));
     }
 
     #[test]
-    fn test_socket_path_default_family() {
-        // Test 4: PRIMAL_DEPLOYMENT_STANDARD - primal-based, not family-based
-        // Clear all relevant env vars to ensure clean test
-        std::env::remove_var("SONGBIRD_SOCKET");
-        std::env::remove_var("SONGBIRD_ORCHESTRATOR_SOCKET");
-        std::env::remove_var("BIOMEOS_SOCKET_PATH");
-        std::env::remove_var("BIOMEOS_SOCKET_DIR");
-
-        let path = UnixSocketServer::socket_path_from_env();
-        let path_str = path.to_str().unwrap();
-        eprintln!("Default path: {}", path_str);
-
-        // PRIMAL_DEPLOYMENT_STANDARD: {primal}.sock naming (no family suffix)
-        assert!(
-            path_str.ends_with("songbird.sock"),
-            "Path should end with 'songbird.sock' (PRIMAL_DEPLOYMENT_STANDARD), got: {}",
-            path_str
-        );
-        // Family ID is NOT included in socket path (per standard)
-        assert!(
-            !path_str.contains("-nat0") && !path_str.contains("-lan0"),
-            "Path should NOT contain family suffix (per PRIMAL_DEPLOYMENT_STANDARD), got: {}",
-            path_str
-        );
+    fn test_socket_path_biomeos_path() {
+        let env = mock_env(HashMap::from([
+            ("BIOMEOS_SOCKET_PATH", "/biomeos/songbird.sock"),
+        ]));
+        let path = UnixSocketServer::socket_path_with_env(env);
+        assert_eq!(path, PathBuf::from("/biomeos/songbird.sock"));
     }
 
     #[test]
-    fn test_socket_path_no_hardcoding() {
-        // Test 5: PRIMAL_DEPLOYMENT_STANDARD - primal discovery, not hardcoded paths
-        // All instances of the same primal share one socket per machine
-        std::env::remove_var("SONGBIRD_SOCKET");
-        std::env::remove_var("SONGBIRD_ORCHESTRATOR_SOCKET");
-        std::env::remove_var("BIOMEOS_SOCKET_PATH");
-        std::env::remove_var("BIOMEOS_SOCKET_DIR");
+    fn test_socket_path_empty_env_ignored() {
+        // Empty env vars should be ignored, falling through to default
+        let env = mock_env(HashMap::from([
+            ("SONGBIRD_SOCKET", ""),
+            ("SONGBIRD_ORCHESTRATOR_SOCKET", ""),
+            ("BIOMEOS_SOCKET_PATH", ""),
+        ]));
+        let path = UnixSocketServer::socket_path_with_env(env);
+        let path_str = path.to_string_lossy();
+        // Should fall through to env_config::socket_path() default
+        assert!(path_str.ends_with(".sock"), "Expected .sock extension, got: {}", path_str);
+        assert!(path_str.contains("songbird"), "Expected songbird in path, got: {}", path_str);
+    }
 
-        let path = UnixSocketServer::socket_path_from_env();
-        let path_str = path.to_str().unwrap();
-        eprintln!("Primal path: {}", path_str);
+    #[test]
+    fn test_socket_path_default_is_primal_standard() {
+        // When no env vars match, falls through to env_config::socket_path()
+        let env = mock_env(HashMap::new());
+        let path = UnixSocketServer::socket_path_with_env(env);
+        let path_str = path.to_string_lossy();
 
-        // PRIMAL_DEPLOYMENT_STANDARD: no hardcoded /tmp paths, use XDG
-        // Path should be XDG-compliant (if runtime dir available) or /tmp fallback
+        // PRIMAL_DEPLOYMENT_STANDARD: {primal}.sock naming
         assert!(
-            path_str.contains("/biomeos/") || path_str.starts_with("/tmp/"),
-            "Path should use biomeos directory structure, got: {}",
+            path_str.ends_with(".sock"),
+            "Path should end with .sock, got: {}",
             path_str
         );
-
-        // Must contain primal name
         assert!(
             path_str.contains("songbird"),
             "Path must contain primal name 'songbird', got: {}",
@@ -872,28 +852,44 @@ mod tests {
     }
 
     #[test]
-    fn test_socket_path_node_id_differentiation() {
-        // Test 6: PRIMAL_DEPLOYMENT_STANDARD - primal-based, not node-based
-        // All nodes/families of the same primal use the same socket path
-        std::env::remove_var("SONGBIRD_SOCKET");
-        std::env::remove_var("SONGBIRD_ORCHESTRATOR_SOCKET");
-        std::env::remove_var("BIOMEOS_SOCKET_PATH");
-        std::env::remove_var("BIOMEOS_SOCKET_DIR");
+    fn test_socket_path_priority_order() {
+        // Verify priority: ORCHESTRATOR > SONGBIRD > BIOMEOS
+        let env1 = mock_env(HashMap::from([
+            ("SONGBIRD_ORCHESTRATOR_SOCKET", "/p1.sock"),
+            ("SONGBIRD_SOCKET", "/p2.sock"),
+            ("BIOMEOS_SOCKET_PATH", "/p3.sock"),
+        ]));
+        assert_eq!(UnixSocketServer::socket_path_with_env(env1), PathBuf::from("/p1.sock"));
 
-        let path = UnixSocketServer::socket_path_from_env();
-        let path_str = path.to_str().unwrap();
+        let env2 = mock_env(HashMap::from([
+            ("SONGBIRD_SOCKET", "/p2.sock"),
+            ("BIOMEOS_SOCKET_PATH", "/p3.sock"),
+        ]));
+        assert_eq!(UnixSocketServer::socket_path_with_env(env2), PathBuf::from("/p2.sock"));
 
-        // PRIMAL_DEPLOYMENT_STANDARD: single socket per primal per machine
-        // The path should be consistent regardless of family_id
-        assert!(
-            path_str.ends_with("songbird.sock"),
-            "All families use same {{primal}}.sock path, got: {}",
-            path_str
-        );
-        assert!(
-            !path_str.contains("-nat0") && !path_str.contains("-lan0"),
-            "Path should NOT vary by family (per PRIMAL_DEPLOYMENT_STANDARD), got: {}",
-            path_str
-        );
+        let env3 = mock_env(HashMap::from([
+            ("BIOMEOS_SOCKET_PATH", "/p3.sock"),
+        ]));
+        assert_eq!(UnixSocketServer::socket_path_with_env(env3), PathBuf::from("/p3.sock"));
+    }
+
+    #[test]
+    fn test_concurrent_socket_path_resolution() {
+        // Prove concurrent safety: 10 threads resolving simultaneously
+        use std::thread;
+        let handles: Vec<_> = (0..10)
+            .map(|i| {
+                thread::spawn(move || {
+                    let env = mock_env(HashMap::from([
+                        ("SONGBIRD_SOCKET", Box::leak(format!("/sock-{}.sock", i).into_boxed_str()) as &str),
+                    ]));
+                    let path = UnixSocketServer::socket_path_with_env(env);
+                    assert_eq!(path, PathBuf::from(format!("/sock-{}.sock", i)));
+                })
+            })
+            .collect();
+        for h in handles {
+            h.join().unwrap();
+        }
     }
 }

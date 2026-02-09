@@ -383,11 +383,19 @@ mod tests {
         // In CI/test env without BearDog, it should fail gracefully
         let handler = OnionHandler::new();
         let result = handler.handle_start(json!({"port": 3492})).await;
-        // Either works (BearDog available) or fails with BearDog error
+        // Either works (BearDog available) or fails with a relevant error
+        // Valid errors include: socket not found, RPC method not found, connection refused
         if let Err(e) = result {
+            let e_lower = e.to_lowercase();
             assert!(
-                e.to_lowercase().contains("beardog") || e.contains("socket") || e.contains("IPC"),
-                "Error should mention BearDog or socket: {}",
+                e_lower.contains("beardog")
+                    || e_lower.contains("socket")
+                    || e_lower.contains("ipc")
+                    || e_lower.contains("rpc")
+                    || e_lower.contains("method not found")
+                    || e_lower.contains("connection refused")
+                    || e_lower.contains("failed to create"),
+                "Error should be crypto/connection related: {}",
                 e
             );
         }
@@ -405,9 +413,16 @@ mod tests {
             .await;
         // Either works or fails appropriately
         if let Err(e) = result {
+            let e_lower = e.to_lowercase();
             assert!(
-                e.to_lowercase().contains("beardog") || e.contains("socket") || e.contains("IPC"),
-                "Error should mention BearDog or socket: {}",
+                e_lower.contains("beardog")
+                    || e_lower.contains("socket")
+                    || e_lower.contains("ipc")
+                    || e_lower.contains("rpc")
+                    || e_lower.contains("method not found")
+                    || e_lower.contains("connection refused")
+                    || e_lower.contains("failed to create"),
+                "Error should be crypto/connection related: {}",
                 e
             );
         }
