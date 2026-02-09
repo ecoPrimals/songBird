@@ -61,7 +61,7 @@ struct JsonRpcError {
 
 /// Routing mode for BearDog provider
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum RoutingMode {
+pub enum RoutingMode {
     /// Direct RPC to BearDog (testing)
     Direct,
     /// Route through Neural API with capability.call (production)

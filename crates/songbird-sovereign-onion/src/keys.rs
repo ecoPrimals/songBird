@@ -82,7 +82,7 @@ impl OnionIdentity {
         // Extract secret key and timestamp from stored bytes
         let stored: StoredIdentity = serde_json::from_slice(bytes)?;
         let secret_key = &stored.secret_key_bytes;
-        let created_at = stored.created_at;
+        let _created_at = stored.created_at;
         
         // Derive public key from secret (BearDog should verify this is valid)
         // For Ed25519, we can derive public key from secret locally
@@ -93,32 +93,31 @@ impl OnionIdentity {
         // For now, derive public key locally (Ed25519 property)
         // TODO: Add crypto.ed25519_public_from_secret to BearDog
         #[cfg(feature = "standalone")]
-        let public_key = {
+        {
             let signing_key = SigningKey::from_bytes(secret_key);
-            signing_key.verifying_key().to_bytes()
-        };
+            let public_key = signing_key.verifying_key().to_bytes();
+            let onion_address = crate::address::derive_onion_address_via_beardog(client, &public_key).await?;
+
+            Ok(Self {
+                secret_key: *secret_key,
+                public_key,
+                onion_address,
+                created_at: _created_at,
+            })
+        }
         
         #[cfg(not(feature = "standalone"))]
-        let public_key = {
+        {
             // ⚠️ TRUE PRIMAL: In production, public key must be provided!
             // Ed25519 public key cannot be derived without the crypto library.
             // Production code should either:
             // 1. Store both secret + public bytes in OnionIdentity
             // 2. Use BearDog to derive public from secret (requires BearDog API extension)
             // For now, require public_key parameter in production builds
-            return Err(crate::OnionError::CryptoError(
+            Err(crate::OnionError::CryptoError(
                 "Public key required in production mode (use from_stored_bytes_with_public or BearDog delegation)".to_string()
-            ).into());
-        };
-        
-        let onion_address = crate::address::derive_onion_address_via_beardog(client, &public_key).await?;
-
-        Ok(Self {
-            secret_key: *secret_key,
-            public_key,
-            onion_address,
-            created_at,
-        })
+            ).into())
+        }
     }
 
     /// Standalone generation (for testing/offline only)

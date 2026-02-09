@@ -10,7 +10,7 @@ use crate::circuit::{Circuit, CircuitHop, CircuitPurpose, KeyMaterial};
 use crate::protocol::{Cell, CellCommand};
 use std::collections::HashMap;
 use std::sync::{Arc, RwLock};
-use tracing::{debug, info, warn};
+use tracing::{debug, info};
 
 /// Circuit manager
 pub struct CircuitManager {

@@ -172,35 +172,45 @@ impl PunchHandler {
         let coordinator = self.coordinator.read().await.clone();
 
         if let Some(coord) = coordinator {
-            // Use the real coordinator
-            let timeout = Duration::from_secs(timeout_seconds);
-            
-            // Spawn the punch attempt in background
+            // ✅ Use the real HolePunchCoordinator (Feb 9, 2026)
+            // Event-driven: coordinator uses signaling channels internally (no polling)
             let attempts_ref = self.attempts.clone();
             let target_id = target_node_id.clone();
-            
+
             tokio::spawn(async move {
-                let start = Instant::now();
-                let mut punch_attempts = 0u32;
-                
-                // Simulate punch attempts (real implementation would use coordinator)
-                while start.elapsed() < timeout && punch_attempts < max_attempts {
-                    punch_attempts += 1;
-                    
-                    // Update attempt count
-                    if let Some(attempt) = attempts_ref.write().await.get_mut(&target_id) {
-                        attempt.attempts = punch_attempts;
-                    }
-                    
-                    // Small delay between attempts
-                    tokio::time::sleep(Duration::from_millis(100)).await;
-                }
-                
-                // Mark as failed (real implementation would set success on connection)
+                // Update attempt status
                 if let Some(attempt) = attempts_ref.write().await.get_mut(&target_id) {
-                    attempt.status = PunchStatus::Failed {
-                        reason: "timeout".to_string(),
-                    };
+                    attempt.attempts = 1;
+                }
+
+                // Use the real coordinator's punch_to_peer
+                match coord.punch_to_peer(&target_id).await {
+                    Ok(songbird_onion_relay::coordinator::PunchResult::Direct {
+                        peer_addr,
+                        latency,
+                        ..
+                    }) => {
+                        if let Some(attempt) = attempts_ref.write().await.get_mut(&target_id) {
+                            attempt.status = PunchStatus::Succeeded;
+                            attempt.connected_address = Some(peer_addr);
+                            attempt.latency = Some(latency);
+                        }
+                    }
+                    Ok(songbird_onion_relay::coordinator::PunchResult::Relay { attempts: punch_count }) => {
+                        if let Some(attempt) = attempts_ref.write().await.get_mut(&target_id) {
+                            attempt.status = PunchStatus::Failed {
+                                reason: format!("fell back to relay after {} attempts", punch_count),
+                            };
+                            attempt.attempts = punch_count;
+                        }
+                    }
+                    Err(e) => {
+                        if let Some(attempt) = attempts_ref.write().await.get_mut(&target_id) {
+                            attempt.status = PunchStatus::Failed {
+                                reason: format!("{}", e),
+                            };
+                        }
+                    }
                 }
             });
 

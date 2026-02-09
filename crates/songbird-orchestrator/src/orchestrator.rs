@@ -372,10 +372,13 @@ impl SongbirdOrchestrator {
     }
 
     /// Simulate task execution (placeholder for real implementation)
+    ///
+    /// In production, real task execution would update progress via channels.
+    /// This placeholder immediately completes to avoid blocking tests.
     async fn simulate_task_execution(&self, task_id: TaskId) -> Result<()> {
-        // Simulate progress updates
+        // Progress updates (instant — no sleep needed for simulation)
         for progress in [0.25, 0.5, 0.75, 1.0] {
-            tokio::time::sleep(Duration::from_millis(100)).await;
+            tokio::task::yield_now().await; // Yield to scheduler without sleeping
             self.lifecycle.update_progress(task_id, progress).await?;
 
             // Emit progress event

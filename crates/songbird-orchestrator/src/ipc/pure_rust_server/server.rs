@@ -89,6 +89,9 @@ pub struct UnixSocketServer {
 
     /// Atomic running flag for graceful shutdown (concurrent-safe)
     is_running: Arc<AtomicBool>,
+
+    /// Notify waiters when server becomes ready (event-driven wait_ready)
+    ready_notify: Arc<tokio::sync::Notify>,
 }
 
 impl UnixSocketServer {
@@ -128,6 +131,7 @@ impl UnixSocketServer {
             handlers,
             is_ready: Arc::new(AtomicBool::new(false)),
             is_running: Arc::new(AtomicBool::new(false)),
+            ready_notify: Arc::new(tokio::sync::Notify::new()),
         }
     }
 
@@ -250,18 +254,32 @@ impl UnixSocketServer {
         self.is_ready.load(Ordering::Acquire)
     }
 
-    /// Wait for the server to be ready (non-blocking async wait)
+    /// Wait for the server to be ready (event-driven async wait)
+    ///
+    /// Uses `tokio::sync::Notify` — wakes instantly when the server signals
+    /// readiness. Zero polling, zero CPU waste.
     ///
     /// Returns `true` if ready within timeout, `false` if timeout expired.
     pub async fn wait_ready(&self, timeout: std::time::Duration) -> bool {
-        let start = std::time::Instant::now();
-        while !self.is_ready() {
-            if start.elapsed() > timeout {
-                return false;
-            }
-            tokio::time::sleep(std::time::Duration::from_millis(10)).await;
+        // Fast path: already ready
+        if self.is_ready() {
+            return true;
         }
-        true
+
+        // Event-driven wait with timeout
+        match tokio::time::timeout(timeout, async {
+            loop {
+                self.ready_notify.notified().await;
+                if self.is_ready() {
+                    return;
+                }
+            }
+        })
+        .await
+        {
+            Ok(()) => true,
+            Err(_) => self.is_ready(), // Final check after timeout
+        }
     }
 
     /// Start the IPC server with automatic platform adaptation (TRUE ecoBin v2.0)
@@ -335,6 +353,7 @@ impl UnixSocketServer {
         // Mark server as ready and running atomically (lock-free!)
         self.is_running.store(true, Ordering::Release);
         self.is_ready.store(true, Ordering::Release);
+        self.ready_notify.notify_waiters(); // Wake any wait_ready() callers
 
         info!("✅ Unix socket JSON-RPC server listening: {}", self.socket_path.display());
         info!("   Protocol: JSON-RPC 2.0 (pure Rust)");
@@ -458,6 +477,7 @@ impl UnixSocketServer {
         // 3. Mark as ready and running (same as Unix server)
         self.is_running.store(true, Ordering::Release);
         self.is_ready.store(true, Ordering::Release);
+        self.ready_notify.notify_waiters(); // Wake any wait_ready() callers
 
         info!("   APIs: 14 (3 P2P + 4 registry + 4 graph + 3 Squirrel)");
         info!("   Status: READY ✅ (isomorphic TCP fallback active)");

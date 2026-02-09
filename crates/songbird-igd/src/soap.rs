@@ -6,7 +6,7 @@
 use crate::error::{IgdError, Result, SoapErrorCode};
 use crate::mapping::PortMappingRequest;
 use std::net::IpAddr;
-use tracing::{debug, trace, warn};
+use tracing::{debug, trace};
 
 /// SOAP client for UPnP IGD control
 pub struct SoapClient {

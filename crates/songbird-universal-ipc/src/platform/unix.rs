@@ -331,10 +331,9 @@ mod tests {
         // Create listener
         let mut listener = ipc.listen(&endpoint).await.unwrap();
 
-        // Connect in background task
+        // Connect in background task (listener already bound — no sleep needed)
         let endpoint_clone = endpoint.clone();
         let connect_handle = tokio::spawn(async move {
-            tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
             let ipc = UnixIPC;
             ipc.connect(&endpoint_clone).await
         });

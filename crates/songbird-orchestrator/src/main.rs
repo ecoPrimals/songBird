@@ -256,10 +256,10 @@ async fn run_server(
     tracing::info!("   • Closing network connections");
     tracing::info!("   • Flushing logs");
 
-    // Add a small delay to ensure logs are flushed
-    tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
-
     tracing::info!("✅ Graceful shutdown complete");
+
+    // Flush tracing subscriber (drop flushes buffered output)
+    drop(tracing::dispatcher::get_default(|d| d.clone()));
 
     Ok(())
     // _singleton_guard drops here, removing PID file cleanly

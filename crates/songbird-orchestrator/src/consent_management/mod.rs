@@ -60,6 +60,9 @@ pub struct ConsentManager {
 
     /// Optional persistent storage (MVP Week 5)
     storage: Option<Arc<ConsentStorage>>,
+
+    /// Notify waiters when a consent decision is made (event-driven)
+    decision_notify: Arc<tokio::sync::Notify>,
 }
 
 impl ConsentManager {
@@ -69,6 +72,7 @@ impl ConsentManager {
             records: Arc::new(RwLock::new(HashMap::new())),
             preferences: Arc::new(RwLock::new(HashMap::new())),
             storage: None,
+            decision_notify: Arc::new(tokio::sync::Notify::new()),
         }
     }
 
@@ -78,6 +82,7 @@ impl ConsentManager {
         Ok(Self {
             records: Arc::new(RwLock::new(HashMap::new())),
             preferences: Arc::new(RwLock::new(HashMap::new())),
+            decision_notify: Arc::new(tokio::sync::Notify::new()),
             storage: Some(Arc::new(storage)),
         })
     }
@@ -165,6 +170,9 @@ impl ConsentManager {
                 let _ = storage.save(record).await; // Best effort
             }
 
+            // Wake any waiters (event-driven consent decision)
+            self.decision_notify.notify_waiters();
+
             true
         } else {
             false
@@ -184,6 +192,9 @@ impl ConsentManager {
             if let Some(ref storage) = self.storage {
                 let _ = storage.save(record).await; // Best effort
             }
+
+            // Wake any waiters (event-driven consent decision)
+            self.decision_notify.notify_waiters();
 
             true
         } else {
@@ -210,25 +221,36 @@ impl ConsentManager {
     }
 
     /// Wait for consent decision (with timeout)
+    ///
+    /// Event-driven: uses `tokio::sync::Notify` to wake instantly when
+    /// `approve()` or `deny()` is called. Zero polling, zero CPU waste.
     pub async fn wait_for_decision(
         &self,
         consent_id: &str,
         timeout: std::time::Duration,
     ) -> Option<ConsentStatus> {
-        let start = std::time::Instant::now();
+        // Check immediately
+        if let Some(status) = self.get_status(consent_id).await {
+            if status != ConsentStatus::Pending {
+                return Some(status);
+            }
+        }
 
-        loop {
-            if let Some(status) = self.get_status(consent_id).await {
-                if status != ConsentStatus::Pending {
-                    return Some(status);
+        // Event-driven wait with timeout
+        match tokio::time::timeout(timeout, async {
+            loop {
+                self.decision_notify.notified().await;
+                if let Some(status) = self.get_status(consent_id).await {
+                    if status != ConsentStatus::Pending {
+                        return status;
+                    }
                 }
             }
-
-            if start.elapsed() >= timeout {
-                return None;
-            }
-
-            tokio::time::sleep(std::time::Duration::from_millis(100)).await;
+        })
+        .await
+        {
+            Ok(status) => Some(status),
+            Err(_) => None, // Timeout
         }
     }
 }
