@@ -5,7 +5,8 @@
 mod create;
 mod extend;
 mod state;
-mod manager;
+/// Circuit manager module
+pub mod manager;
 mod onion;
 
 pub use create::{NtorHandshake, HandshakeState, KeyMaterial};

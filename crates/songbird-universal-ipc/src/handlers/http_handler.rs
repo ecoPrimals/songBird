@@ -241,17 +241,27 @@ pub struct EnvCryptoDiscovery;
 #[async_trait]
 impl CryptoCapabilityDiscovery for EnvCryptoDiscovery {
     async fn discover(&self, capability: &str) -> IpcResult<String> {
+        Self::discover_with(capability, |key| std::env::var(key).ok())
+    }
+}
+
+impl EnvCryptoDiscovery {
+    /// Discover crypto capability with injectable environment reader (concurrent-safe)
+    pub fn discover_with<F>(capability: &str, env_reader: F) -> IpcResult<String>
+    where
+        F: Fn(&str) -> Option<String>,
+    {
         debug!("Discovering capability via environment: {}", capability);
 
         // Try capability-based env var first
         let env_key = format!("{}_ENDPOINT", capability.to_uppercase().replace('.', "_"));
-        if let Ok(endpoint) = std::env::var(&env_key) {
+        if let Some(endpoint) = env_reader(&env_key) {
             info!("Found {} at {} (via {})", capability, endpoint, env_key);
             return Ok(endpoint);
         }
 
         // Fall back to BEARDOG_SOCKET
-        if let Ok(socket) = std::env::var("BEARDOG_SOCKET") {
+        if let Some(socket) = env_reader("BEARDOG_SOCKET") {
             info!("Found crypto provider at {} (via BEARDOG_SOCKET)", socket);
             return Ok(socket);
         }
@@ -531,37 +541,43 @@ mod tests {
 
     #[tokio::test]
     async fn test_environment_discovery() {
-        // Arrange - Clear all env vars first
-        std::env::remove_var("CRYPTO_SIGNING_ENDPOINT");
-        std::env::remove_var("BEARDOG_SOCKET");
+        // ✅ Concurrent-safe: Uses injectable env reader (no global state)
+        let mut env = std::collections::HashMap::new();
+        env.insert("CRYPTO_SIGNING_ENDPOINT".to_string(), "/test/beardog".to_string());
 
-        std::env::set_var("CRYPTO_SIGNING_ENDPOINT", "/test/beardog");
-        let discovery = EnvCryptoDiscovery;
+        let result = EnvCryptoDiscovery::discover_with("crypto.signing", |key| {
+            env.get(key).cloned()
+        });
 
-        // Act
-        let result = discovery.discover("crypto.signing").await;
-
-        // Assert
         assert!(result.is_ok());
         assert_eq!(result.unwrap(), "/test/beardog");
-
-        // Cleanup
-        std::env::remove_var("CRYPTO_SIGNING_ENDPOINT");
     }
 
     #[tokio::test]
     async fn test_default_discovery_fallback() {
-        // Arrange - Clear any existing env vars
-        std::env::remove_var("CRYPTO_SIGNING_ENDPOINT");
-        std::env::remove_var("BEARDOG_SOCKET");
-        let discovery = EnvCryptoDiscovery;
+        // ✅ Concurrent-safe: Empty env falls through to default
+        let empty_env: std::collections::HashMap<String, String> = std::collections::HashMap::new();
 
-        // Act
-        let result = discovery.discover("crypto.signing").await;
+        let result = EnvCryptoDiscovery::discover_with("crypto.signing", |key| {
+            empty_env.get(key).cloned()
+        });
 
-        // Assert
         assert!(result.is_ok());
         assert_eq!(result.unwrap(), "/primal/beardog");
+    }
+
+    #[tokio::test]
+    async fn test_discovery_beardog_socket_fallback() {
+        // ✅ Concurrent-safe: BEARDOG_SOCKET takes priority over default
+        let mut env = std::collections::HashMap::new();
+        env.insert("BEARDOG_SOCKET".to_string(), "/run/user/1000/biomeos/beardog.sock".to_string());
+
+        let result = EnvCryptoDiscovery::discover_with("crypto.signing", |key| {
+            env.get(key).cloned()
+        });
+
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap(), "/run/user/1000/biomeos/beardog.sock");
     }
 
     // ========================================================================

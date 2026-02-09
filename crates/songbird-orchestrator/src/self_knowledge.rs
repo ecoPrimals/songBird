@@ -104,10 +104,18 @@ pub fn discover_capabilities() -> Vec<String> {
 ///
 /// This is **self-knowledge** - we only know our own tags, not what they mean!
 pub fn discover_identity_tags() -> Vec<String> {
+    discover_identity_tags_with(|key| std::env::var(key).ok())
+}
+
+/// Discover identity tags with injectable environment reader (concurrent-safe)
+pub fn discover_identity_tags_with<F>(env_reader: F) -> Vec<String>
+where
+    F: Fn(&str) -> Option<String>,
+{
     let mut tags = Vec::new();
 
     // Option 1: Explicit tags from SONGBIRD_TAGS (comma-separated)
-    if let Ok(tags_env) = std::env::var("SONGBIRD_TAGS") {
+    if let Some(tags_env) = env_reader("SONGBIRD_TAGS") {
         for tag in tags_env.split(',') {
             let tag = tag.trim();
             if !tag.is_empty() {
@@ -121,21 +129,21 @@ pub fn discover_identity_tags() -> Vec<String> {
     // (Songbird still doesn't interpret - just formats!)
 
     // Family ID → beardog:family:{id}
-    if let Ok(family_id) = std::env::var("SONGBIRD_FAMILY_ID") {
+    if let Some(family_id) = env_reader("SONGBIRD_FAMILY_ID") {
         let tag = format!("beardog:family:{}", family_id);
         tags.push(tag.clone());
         debug!("📋 Self-knowledge: Family tag '{}' (security provider will interpret)", tag);
     }
 
     // Org ID → beardog:org:{id}
-    if let Ok(org_id) = std::env::var("SONGBIRD_ORG_ID") {
+    if let Some(org_id) = env_reader("SONGBIRD_ORG_ID") {
         let tag = format!("beardog:org:{}", org_id);
         tags.push(tag.clone());
         debug!("📋 Self-knowledge: Org tag '{}' (security provider will interpret)", tag);
     }
 
     // Role → security provider:role:{role}
-    if let Ok(role) = std::env::var("SONGBIRD_ROLE") {
+    if let Some(role) = env_reader("SONGBIRD_ROLE") {
         let tag = format!("security provider:role:{}", role);
         tags.push(tag.clone());
         debug!("📋 Self-knowledge: Role tag '{}' (security provider will interpret)", tag);
@@ -266,49 +274,38 @@ mod tests {
         assert!(capabilities.contains(&"discovery".to_string()));
     }
 
+    /// Create a mock env reader from a HashMap (concurrent-safe, no global state)
+    fn mock_env(vars: std::collections::HashMap<String, String>) -> impl Fn(&str) -> Option<String> {
+        move |key| vars.get(key).map(|v| v.clone())
+    }
+
     #[test]
     fn test_discover_identity_tags_empty() {
-        // No env vars set
-        std::env::remove_var("SONGBIRD_TAGS");
-        std::env::remove_var("SONGBIRD_FAMILY_ID");
-
-        let tags = discover_identity_tags();
-        // May be empty or have default values
-        assert!(tags.is_empty() || !tags.is_empty());
+        // Empty environment — no tags configured
+        let tags = discover_identity_tags_with(mock_env(std::collections::HashMap::new()));
+        assert!(tags.is_empty());
     }
 
     #[test]
     fn test_discover_identity_tags_from_family() {
-        // Clear all env vars first
-        std::env::remove_var("SONGBIRD_FAMILY_ID");
-        std::env::remove_var("SONGBIRD_TAGS");
-        std::env::remove_var("SONGBIRD_ORG_ID");
-        std::env::remove_var("SONGBIRD_ORCHESTRATOR_FAMILY_ID");
-        std::env::remove_var("SONGBIRD_ORCHESTRATOR_FAMILY");
-        std::env::remove_var("BIOMEOS_FAMILY_ID");
+        let mut env = std::collections::HashMap::new();
+        env.insert("SONGBIRD_FAMILY_ID".to_string(), "test_family".to_string());
 
-        std::env::set_var("SONGBIRD_FAMILY_ID", "test_family");
-
-        let tags = discover_identity_tags();
+        let tags = discover_identity_tags_with(mock_env(env));
         assert!(
             tags.contains(&"beardog:family:test_family".to_string()),
             "Expected tag not found. Got: {:?}",
             tags
         );
-
-        std::env::remove_var("SONGBIRD_FAMILY_ID");
     }
 
     #[test]
     fn test_discover_identity_tags_explicit() {
-        // Note: Tests run in parallel and may have env var pollution from other tests.
-        // This test verifies that explicit SONGBIRD_TAGS are included, even if other
-        // tags exist from env vars set by other parallel tests.
-        std::env::set_var("SONGBIRD_TAGS", "custom:tag:value1,another:tag:value2");
+        let mut env = std::collections::HashMap::new();
+        env.insert("SONGBIRD_TAGS".to_string(), "custom:tag:value1,another:tag:value2".to_string());
 
-        let tags = discover_identity_tags();
+        let tags = discover_identity_tags_with(mock_env(env));
 
-        // Verify our explicit tags are present (other tags may also exist from parallel tests)
         assert!(
             tags.contains(&"custom:tag:value1".to_string()),
             "Expected custom:tag:value1 in tags. Got: {:?}",
@@ -319,8 +316,35 @@ mod tests {
             "Expected another:tag:value2 in tags. Got: {:?}",
             tags
         );
+    }
 
-        std::env::remove_var("SONGBIRD_TAGS");
+    #[test]
+    fn test_discover_identity_tags_org_and_role() {
+        let mut env = std::collections::HashMap::new();
+        env.insert("SONGBIRD_ORG_ID".to_string(), "acme".to_string());
+        env.insert("SONGBIRD_ROLE".to_string(), "relay".to_string());
+
+        let tags = discover_identity_tags_with(mock_env(env));
+
+        assert!(tags.contains(&"beardog:org:acme".to_string()));
+        assert!(tags.contains(&"security provider:role:relay".to_string()));
+    }
+
+    #[test]
+    fn test_discover_identity_tags_all_sources() {
+        let mut env = std::collections::HashMap::new();
+        env.insert("SONGBIRD_TAGS".to_string(), "explicit:tag:1".to_string());
+        env.insert("SONGBIRD_FAMILY_ID".to_string(), "nat0".to_string());
+        env.insert("SONGBIRD_ORG_ID".to_string(), "org1".to_string());
+        env.insert("SONGBIRD_ROLE".to_string(), "edge".to_string());
+
+        let tags = discover_identity_tags_with(mock_env(env));
+
+        assert_eq!(tags.len(), 4);
+        assert!(tags.contains(&"explicit:tag:1".to_string()));
+        assert!(tags.contains(&"beardog:family:nat0".to_string()));
+        assert!(tags.contains(&"beardog:org:org1".to_string()));
+        assert!(tags.contains(&"security provider:role:edge".to_string()));
     }
 
     #[test]

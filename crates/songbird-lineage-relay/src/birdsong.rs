@@ -86,6 +86,8 @@ pub struct BirdSongBroadcaster {
     my_id: NodeId,
     broadcast_addr: SocketAddr,
     received_messages: Arc<RwLock<Vec<BirdSongMessage>>>,
+    /// Notify waiters when a new message arrives (replaces polling anti-pattern)
+    message_notify: Arc<tokio::sync::Notify>,
 }
 
 impl BirdSongBroadcaster {
@@ -111,6 +113,7 @@ impl BirdSongBroadcaster {
             my_id,
             broadcast_addr,
             received_messages: Arc::new(RwLock::new(Vec::new())),
+            message_notify: Arc::new(tokio::sync::Notify::new()),
         })
     }
 
@@ -189,6 +192,10 @@ impl BirdSongBroadcaster {
                     let mut decrypted_message = message;
                     decrypted_message.payload = decrypted_payload;
                     messages.push(decrypted_message);
+                    drop(messages); // Release lock before notifying
+
+                    // Wake any waiters (replaces polling anti-pattern)
+                    self.message_notify.notify_waiters();
                 }
                 None => {
                     // Not in lineage - just noise
@@ -212,6 +219,35 @@ impl BirdSongBroadcaster {
         });
         *messages = remaining;
         matching
+    }
+
+    /// Wait for a message of specific type (event-driven, zero polling)
+    ///
+    /// This replaces the previous polling anti-pattern where callers would
+    /// `sleep(100ms)` in a loop checking `get_messages_by_type()`.
+    ///
+    /// Now callers await this method which is woken instantly when a new
+    /// message arrives, giving zero latency and zero CPU waste.
+    pub async fn wait_for_message_by_type(
+        &self,
+        msg_type: BirdSongType,
+        timeout_duration: std::time::Duration,
+    ) -> Result<Vec<BirdSongMessage>> {
+        tokio::time::timeout(timeout_duration, async {
+            loop {
+                // Check for matching messages
+                let matching = self.get_messages_by_type(msg_type.clone()).await;
+                if !matching.is_empty() {
+                    return Ok(matching);
+                }
+                // Wait for notification (instant wake, no polling)
+                self.message_notify.notified().await;
+            }
+        })
+        .await
+        .map_err(|_| crate::error::LineageRelayError::NoRelayAvailable(
+            "Timed out waiting for message".to_string()
+        ))?
     }
 }
 

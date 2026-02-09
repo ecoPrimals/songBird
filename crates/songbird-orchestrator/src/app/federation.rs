@@ -242,27 +242,29 @@ mod tests {
 
     #[tokio::test]
     async fn test_federation_initialization_standalone() {
-        // Test standalone mode (federation disabled)
-        // Ensure complete isolation by removing ALL federation-related env vars
-        std::env::remove_var("SONGBIRD_FEDERATION_ENABLED");
-        std::env::remove_var("SONGBIRD_BOOTSTRAP_ADDRESS");
-        std::env::remove_var("SONGBIRD_RENDEZVOUS_URL");
-        std::env::remove_var("SONGBIRD_NODE_ADDRESS");
-        std::env::remove_var("SONGBIRD_PORT");
+        // ✅ Concurrent-safe: Uses FederationOptions builder (no global state)
+        // Tests standalone mode (federation disabled) via dependency injection
+        use crate::app::federation_setup;
 
-        let result = initialize_federation().await;
+        let options = federation_setup::FederationOptions::for_testing()
+            .enabled(false)
+            .build();
+
+        let node_identity = NodeIdentity::new_or_load(None).expect("Failed to load identity");
+        let federation_state = Arc::new(FederationState::new("test".to_string()));
+
+        let result: anyhow::Result<federation_setup::FederationSetup> =
+            federation_setup::setup_federation(
+                &node_identity,
+                federation_state,
+                options,
+            )
+            .await;
         assert!(result.is_ok());
 
-        let (coordinator, config, _state, _registry, identity) = result.unwrap();
-        assert!(coordinator.is_none(), "Coordinator should be None in standalone mode");
-        assert!(config.is_none(), "Config should be None in standalone mode");
-        assert!(!identity.node_id.is_nil(), "Node identity should be loaded");
-
-        // Clean up
-        std::env::remove_var("SONGBIRD_FEDERATION_ENABLED");
-        std::env::remove_var("SONGBIRD_BOOTSTRAP_ADDRESS");
-        std::env::remove_var("SONGBIRD_RENDEZVOUS_URL");
-        std::env::remove_var("SONGBIRD_NODE_ADDRESS");
-        std::env::remove_var("SONGBIRD_PORT");
+        let setup = result.unwrap();
+        assert!(setup.coordinator.is_none(), "Coordinator should be None in standalone mode");
+        assert!(setup.config.is_none(), "Config should be None in standalone mode");
+        assert!(!node_identity.node_id.is_nil(), "Node identity should be loaded");
     }
 }

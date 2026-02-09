@@ -87,27 +87,21 @@ impl TorConnection {
         self.state = ConnectionState::Ready;
         info!("Connection ready to {}", self.relay.nickname);
         
-        // Longer delay to let the relay process NETINFO before we send circuits
-        tokio::time::sleep(std::time::Duration::from_millis(500)).await;
-        
-        // Wait a bit before proceeding - relay might still be processing
-        tokio::time::sleep(std::time::Duration::from_millis(200)).await;
-        
-        // Check connection is still alive by trying to read (non-blocking)
+        // Verify connection readiness by probing for relay-initiated data
+        // (replaces hardcoded sleeps with event-driven readiness check)
         if let Some(stream) = self.stream.as_mut() {
-            use tokio::io::AsyncReadExt;
             let mut peek_buf = [0u8; 1];
             match tokio::time::timeout(
-                std::time::Duration::from_millis(100),
+                std::time::Duration::from_millis(500),
                 stream.read(&mut peek_buf)
             ).await {
                 Ok(Ok(0)) => {
                     warn!("Connection closed by relay after NETINFO!");
                     return Err(Error::Network("Relay closed connection after NETINFO".to_string()));
                 }
-                Ok(Ok(n)) => {
-                    // Got some data - this shouldn't happen, but if it does, just continue
-                    warn!("Unexpected byte after NETINFO: {:02x}", peek_buf[0]);
+                Ok(Ok(_n)) => {
+                    // Got some data - relay may be sending padding or certs
+                    debug!("Received post-NETINFO data: {:02x}", peek_buf[0]);
                 }
                 Ok(Err(e)) => {
                     // Connection error
@@ -115,8 +109,8 @@ impl TorConnection {
                     return Err(Error::Network(format!("Connection error: {}", e)));
                 }
                 Err(_) => {
-                    // Timeout is good - means connection is idle and ready
-                    debug!("Connection ready for circuits");
+                    // Timeout is expected - means connection is idle and ready
+                    debug!("Connection ready for circuits (relay idle after NETINFO)");
                 }
             }
         }

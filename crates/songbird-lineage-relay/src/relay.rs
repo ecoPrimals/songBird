@@ -13,7 +13,7 @@ use std::sync::Arc;
 use std::time::{Duration, SystemTime};
 use tokio::net::UdpSocket;
 use tokio::sync::{Mutex, RwLock};
-use tokio::time::timeout;
+
 use tracing::{debug, info, warn};
 
 /// Relay authority provider (implemented by `BearDog`)
@@ -311,27 +311,23 @@ impl RelayDiscovery {
     /// Status: INCOMPLETE - Requires broadcaster architectural changes
     /// Priority: MEDIUM (relay functionality is experimental)
     async fn wait_for_relay_offer(&self, duration: Duration) -> Result<RelayOffer> {
-        timeout(duration, async {
-            loop {
-                // Check for relay offer messages
-                let messages =
-                    self.broadcaster.get_messages_by_type(BirdSongType::RelayOffer).await;
+        // ✅ Event-driven: uses Notify-based wakeup (zero polling, instant latency)
+        let messages = self
+            .broadcaster
+            .wait_for_message_by_type(BirdSongType::RelayOffer, duration)
+            .await?;
 
-                for msg in messages {
-                    // Deserialize offer
-                    if let Ok(offer) = serde_json::from_slice::<RelayOffer>(&msg.payload) {
-                        if offer.authorization.authorized {
-                            return Ok(offer);
-                        }
-                    }
+        for msg in messages {
+            if let Ok(offer) = serde_json::from_slice::<RelayOffer>(&msg.payload) {
+                if offer.authorization.authorized {
+                    return Ok(offer);
                 }
-
-                // TODO: Replace with watch channel or await-able broadcaster API
-                tokio::time::sleep(Duration::from_millis(100)).await; // ❌ POLLING ANTI-PATTERN
             }
-        })
-        .await
-        .map_err(|_| LineageRelayError::NoRelayAvailable("No relay offers received".to_string()))?
+        }
+
+        Err(LineageRelayError::NoRelayAvailable(
+            "No authorized relay offers received".to_string(),
+        ))
     }
 
     /// Offer relay service (as ancestor)
