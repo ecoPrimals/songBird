@@ -167,6 +167,61 @@ Run coverage with:
 cargo llvm-cov --workspace --lib --html
 ```
 
+### Concurrent-Safe Testing (CRITICAL)
+
+**Rule**: Tests MUST NOT use `std::env::set_var` or `std::env::remove_var`.
+
+Environment variables are global state — mutating them in concurrent tests causes race
+conditions and flaky failures. Instead, use injectable environment readers:
+
+```rust
+// ❌ BAD - Global state mutation causes race conditions
+#[tokio::test]
+async fn test_discovery() {
+    std::env::set_var("BEARDOG_SOCKET", "/tmp/test.sock");
+    let result = discover().await;
+    std::env::remove_var("BEARDOG_SOCKET");
+    assert!(result.is_ok());
+}
+
+// ✅ GOOD - Injectable environment reader, fully concurrent
+#[tokio::test]
+async fn test_discovery() {
+    let env = HashMap::from([
+        ("BEARDOG_SOCKET".to_string(), "/tmp/test.sock".to_string()),
+    ]);
+    let mock_env = move |key: &str| env.get(key).cloned();
+    let result = discover_with(mock_env).await;
+    assert!(result.is_ok());
+}
+```
+
+**Pattern**: Add `_with<F: Fn(&str) -> Option<String>>` variants for functions that
+read environment variables. The original function calls `_with(|k| std::env::var(k).ok())`.
+
+### No Polling in Production
+
+**Rule**: Production code MUST NOT use `tokio::time::sleep` for polling.
+
+Use event-driven mechanisms instead:
+
+```rust
+// ❌ BAD - Polling with sleep wastes CPU and adds latency
+loop {
+    if check_ready() { break; }
+    tokio::time::sleep(Duration::from_millis(100)).await;
+}
+
+// ✅ GOOD - Event-driven with Notify (instant wake, zero CPU waste)
+self.ready_notify.notified().await;
+```
+
+Acceptable uses of sleep:
+- Retry backoff (exponential)
+- Rate limiting
+- Periodic renewal (e.g., IGD port mapping)
+- Chaos/fault injection tests
+
 ### Test Structure
 
 ```rust
@@ -176,7 +231,7 @@ mod tests {
 
     fn create_test_config() -> Config {
         Config {
-            // Test configuration
+            // Test configuration — no env vars needed
         }
     }
 
@@ -200,7 +255,7 @@ mod tests {
 1. **Unit Tests**: In `#[cfg(test)]` modules or `tests.rs` files
 2. **Integration Tests**: In `tests/integration/` directory
 3. **E2E Tests**: In `tests/e2e/` directory
-4. **Chaos Tests**: In `tests/chaos/` directory
+4. **Chaos Tests**: In `tests/chaos/` directory (may use `#[serial]`)
 5. **Benchmarks**: In `benches/` directory
 
 ---
@@ -209,23 +264,10 @@ mod tests {
 
 ### Unsafe Code
 
-**Minimize unsafe usage**. When necessary:
+**No unsafe code**. Songbird enforces `#![forbid(unsafe_code)]` across all crates.
 
-1. Document with clear safety comments
-2. Explain invariants being maintained
-3. Get peer review
-4. Consider alternatives first
-
-```rust
-// ✅ GOOD - Documented unsafe
-/// SAFETY: This is safe because:
-/// 1. The pointer is guaranteed to be valid
-/// 2. The lifetime is bounded by 'a
-/// 3. No mutable aliasing occurs
-unsafe {
-    // unsafe operation
-}
-```
+All cryptographic operations are delegated to BearDog via JSON-RPC IPC. This eliminates
+the need for unsafe blocks while maintaining performance through async delegation.
 
 ### Human Dignity & Sovereignty
 

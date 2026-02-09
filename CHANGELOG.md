@@ -7,6 +7,51 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [v3.42.0] - 2026-02-09 - Deep Debt: Event-Driven Architecture + Concurrent Testing
+
+### Changed - Polling Anti-Pattern Elimination
+- **ConsentManager** (`wait_for_decision`): Replaced 100ms polling loop with `tokio::sync::Notify` — instant event-driven wakeup on `approve()`/`deny()` calls
+- **UnixSocketServer** (`wait_ready`): Replaced 10ms polling loop with `tokio::sync::Notify` — instant server readiness signaling
+- **PunchHandler** (`handle_request`): Evolved from simulated 100ms sleep loop to real `HolePunchCoordinator::punch_to_peer()` integration
+- **BirdSongBroadcaster**: Added `tokio::sync::Notify` for instant message arrival notification
+- **Coordinator**: Replaced 1-second polling with event-driven relay request processing
+- **Orchestrator** (`simulate_task_execution`): Replaced 100ms sleep with `tokio::task::yield_now()`
+- **Main** shutdown: Replaced 100ms log flush sleep with proper dispatcher drop
+
+### Changed - Environment Variable Pollution Eliminated
+- 120+ `std::env::set_var`/`remove_var` calls removed from tests across 15+ modules
+- Injectable environment readers (`_with` variants) for concurrent-safe testing:
+  - `discover_identity_tags_with()`, `get_api_key_with()`, `parse_with()`
+  - `discover_socket_path_with()`, `register_capabilities_with()`
+  - `discover_with()`, `check_tcp_discovery_from_candidates()`
+- `CapabilityRegistrationConfig::for_testing()` for test configuration injection
+- `BearDogProvider::with_mode()` for explicit routing mode in tests
+- `BtspClient::with_socket()` for explicit socket path injection
+- All adapter tests (`Security`, `Compute`, `Storage`, `AI`) use explicit constructors
+
+### Changed - Stub Implementations Evolved
+- **HttpRendezvousClient**: Full HTTP register/lookup with retry logic (pure Rust TCP)
+- **UdpPeerConnector**: Real UDP hole punching via `tokio::select!` concurrent send/recv
+- **TorHandler**: Full JSON-RPC handler using `CircuitManager`, `Consensus`, `TorService`
+
+### Removed - Dead Code
+- `core/biome/` directory (10 files, 4,130 lines) — corrupted syntax, shadowed by `biome.rs`, never compiled
+- Unreachable code in `sovereign-onion/keys.rs` (proper `#[cfg]` scoping)
+- Unnecessary `std::env::remove_var` calls in `crypto/discovery.rs`
+
+### Fixed - Compiler Warnings
+- `RoutingMode` made `pub` (was private but exposed via public API)
+- Removed unused imports: `space0`, `warn` in soap.rs and circuit/manager.rs
+- Removed unused import: `OnionError` in sovereign-onion/crypto.rs (conditional)
+
+### Quality
+- 3,504+ lib tests (all passing)
+- Zero polling anti-patterns in production code
+- Zero `std::env::set_var` in tests (injectable readers)
+- Deep Debt S+ Tier (8/8 principles at 100%)
+
+---
+
 ## [v3.41.0] - 2026-02-08 - Deep Debt S+ Tier
 
 ### Added
