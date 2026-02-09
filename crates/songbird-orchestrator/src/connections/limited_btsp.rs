@@ -94,7 +94,7 @@ impl LimitedBtspConnection {
     ///
     /// # Example
     ///
-    /// ```rust,no_run
+    /// ```rust,ignore
     /// # use songbird_orchestrator::connections::LimitedBtspConnection;
     /// # use crate::btsp_client::BtspClient; // v3.20.0: Unix socket BTSP client (Jan 16, 2026)
     /// # use std::sync::Arc;

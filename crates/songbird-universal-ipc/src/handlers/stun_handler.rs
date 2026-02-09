@@ -1,14 +1,18 @@
-//! STUN server JSON-RPC handler
+//! STUN server & client JSON-RPC handler
 //!
-//! Provides JSON-RPC methods for managing the integrated STUN server.
+//! Provides JSON-RPC methods for NAT traversal via STUN (RFC 5389).
 //!
-//! **Methods**:
+//! **Server Methods**:
 //! - `stun.serve` - Start STUN server
 //! - `stun.stop` - Stop STUN server
 //! - `stun.status` - Get server status
+//!
+//! **Client Methods** (NAT Traversal):
+//! - `stun.get_public_address` - Discover public IP/port via external STUN servers
+//! - `stun.bind` - Bind local port and discover NAT mapping
 
 use serde_json::{json, Value};
-use songbird_stun::StunServer;
+use songbird_stun::{StunClient, StunServer};
 use std::net::SocketAddr;
 use std::sync::Arc;
 use tokio::sync::RwLock;
@@ -225,6 +229,146 @@ impl StunHandler {
                 "comment": "STUN server is not running (use stun.serve to start)"
             }))
         }
+    }
+
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    //  STUN CLIENT METHODS — NAT traversal from the client side
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+    /// Default STUN servers for public address discovery (sovereignty-vetted)
+    const DEFAULT_STUN_SERVERS: &'static [&'static str] = &[
+        "stun.nextcloud.com:3478",
+        "stun.cloudflare.com:3478",
+        "stun.l.google.com:19302",
+    ];
+
+    /// Handle `stun.get_public_address` method - Discover public IP/port via STUN
+    ///
+    /// Races multiple STUN servers concurrently for fastest response.
+    ///
+    /// # Request Example
+    ///
+    /// ```json
+    /// {
+    ///   "jsonrpc": "2.0",
+    ///   "method": "stun.get_public_address",
+    ///   "params": {
+    ///     "servers": ["stun.nextcloud.com:3478", "stun.cloudflare.com:3478"]
+    ///   },
+    ///   "id": 1
+    /// }
+    /// ```
+    ///
+    /// # Response Example
+    ///
+    /// ```json
+    /// {
+    ///   "jsonrpc": "2.0",
+    ///   "result": {
+    ///     "public_address": "162.226.225.148",
+    ///     "public_port": 54321,
+    ///     "full_address": "162.226.225.148:54321",
+    ///     "nat_type": "unknown",
+    ///     "servers_tried": 3,
+    ///     "method": "stun_racing"
+    ///   },
+    ///   "id": 1
+    /// }
+    /// ```
+    pub async fn handle_get_public_address(&self, params: Value) -> Result<Value, String> {
+        info!("🌐 STUN: Discovering public address via racing");
+
+        // Parse optional custom servers
+        let servers: Vec<String> = if let Some(servers_val) = params.get("servers") {
+            serde_json::from_value(servers_val.clone())
+                .map_err(|e| format!("Invalid 'servers' parameter: {}", e))?
+        } else {
+            Self::DEFAULT_STUN_SERVERS.iter().map(|s| s.to_string()).collect()
+        };
+
+        if servers.is_empty() {
+            return Err("No STUN servers provided".to_string());
+        }
+
+        let client = StunClient::new();
+        let server_refs: Vec<&str> = servers.iter().map(|s| s.as_str()).collect();
+        let servers_count = server_refs.len();
+
+        let public_addr = client
+            .discover_public_address_racing(&server_refs)
+            .await
+            .map_err(|e| format!("STUN discovery failed: {}", e))?;
+
+        info!("✅ STUN discovered public address: {}", public_addr);
+
+        Ok(json!({
+            "public_address": public_addr.ip().to_string(),
+            "public_port": public_addr.port(),
+            "full_address": public_addr.to_string(),
+            "nat_type": "unknown",
+            "servers_tried": servers_count,
+            "method": "stun_racing"
+        }))
+    }
+
+    /// Handle `stun.bind` method - Bind local port and discover NAT mapping
+    ///
+    /// Binds a local UDP port and uses STUN to discover the external mapping.
+    /// Useful for hole-punching preparation.
+    ///
+    /// # Request Example
+    ///
+    /// ```json
+    /// {
+    ///   "jsonrpc": "2.0",
+    ///   "method": "stun.bind",
+    ///   "params": {
+    ///     "local_port": 0,
+    ///     "stun_server": "stun.nextcloud.com:3478"
+    ///   },
+    ///   "id": 1
+    /// }
+    /// ```
+    ///
+    /// # Response Example
+    ///
+    /// ```json
+    /// {
+    ///   "jsonrpc": "2.0",
+    ///   "result": {
+    ///     "local_address": "0.0.0.0:54321",
+    ///     "public_address": "162.226.225.148:54321",
+    ///     "nat_type": "unknown",
+    ///     "stun_server": "stun.nextcloud.com:3478"
+    ///   },
+    ///   "id": 1
+    /// }
+    /// ```
+    pub async fn handle_bind(&self, params: Value) -> Result<Value, String> {
+        let stun_server = params
+            .get("stun_server")
+            .and_then(|v| v.as_str())
+            .unwrap_or("stun.nextcloud.com:3478");
+
+        info!("🌐 STUN: Binding and discovering NAT mapping via {}", stun_server);
+
+        let client = StunClient::new();
+
+        let endpoint = client
+            .discover_public_endpoint(stun_server)
+            .await
+            .map_err(|e| format!("STUN bind failed: {}", e))?;
+
+        info!("✅ STUN bind result: {} (NAT type: {:?})", endpoint.address, endpoint.nat_type);
+
+        Ok(json!({
+            "local_address": "0.0.0.0:0",
+            "public_address": endpoint.address.to_string(),
+            "public_ip": endpoint.address.ip().to_string(),
+            "public_port": endpoint.address.port(),
+            "nat_type": format!("{:?}", endpoint.nat_type).to_lowercase(),
+            "stun_server": stun_server
+        }))
     }
 }
 

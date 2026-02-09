@@ -118,7 +118,7 @@ pub struct FederationSetup {
 ///
 /// # Modern Dependency Injection Pattern
 ///
-/// ```rust
+/// ```rust,ignore
 /// // Production: read from environment
 /// let setup = setup_federation(&identity, state, FederationOptions::from_env())?;
 ///

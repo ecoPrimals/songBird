@@ -35,6 +35,8 @@ use crate::handlers::peer_handler::PeerHandler;
 use crate::handlers::punch_handler::PunchHandler; // Hole punch (Feb 4, 2026)
 use crate::handlers::rendezvous_handler::RendezvousHandler;
 use crate::handlers::stun_handler::StunHandler;
+use crate::handlers::igd_handler::IgdHandler;      // IGD router config (Feb 8, 2026)
+use crate::handlers::tor_handler::TorHandler;     // Pure Rust Tor (Feb 7, 2026)
 use crate::handlers::udp_peer_connector::UdpPeerConnector;
 use crate::registry::ServiceRegistry;
 use crate::tower_atomic::JsonRpcHandler;
@@ -42,7 +44,7 @@ use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use songbird_lineage_relay::relay_handler::RelayHandler; // Relay Server (Feb 5, 2026)
-use songbird_lineage_relay::beardog::{MockLineageProvider, MockRelayAuthority}; // Mock for testing (Feb 5, 2026)
+use songbird_lineage_relay::beardog::BearDogRelayAuthority; // Production relay auth (Feb 8, 2026)
 use std::sync::Arc;
 use tokio::sync::RwLock;
 use tracing::{debug, info};
@@ -130,6 +132,8 @@ pub struct IpcServiceHandler {
     mesh_handler: Arc<MeshHandler>,         // Mesh networking (Feb 4, 2026)
     onion_handler: Arc<OnionHandler>,       // Sovereign onion (Feb 4, 2026)
     punch_handler: Arc<PunchHandler>,       // Hole punch (Feb 4, 2026)
+    tor_handler: Arc<TorHandler>,           // Pure Rust Tor (Feb 7, 2026)
+    igd_handler: Arc<IgdHandler>,           // IGD router config (Feb 8, 2026)
     start_time: Arc<RwLock<std::time::Instant>>, // Track uptime (Feb 5, 2026)
 }
 
@@ -138,8 +142,12 @@ impl IpcServiceHandler {
     ///
     /// ✅ DEEP DEBT COMPLIANT (Jan 29, 2026):
     /// - Real implementations (`HttpRendezvousClient`, `UdpPeerConnector`)
-    /// - Mocks isolated to #[cfg(test)] only
+    /// - Zero mocks in production (all delegates to BearDog)
     /// - Production-ready defaults
+    ///
+    /// ✅ DEEP DEBT UPDATED (Feb 8, 2026):
+    /// - `BearDogRelayAuthority` replaces `MockRelayAuthority`
+    /// - `IgdHandler` added for router auto-configuration
     ///
     /// ✅ DEEP DEBT UPDATED (Feb 2, 2026):
     /// - Added `BirdSong` handler (runtime discovery, no hardcoding)
@@ -155,15 +163,15 @@ impl IpcServiceHandler {
         let peer_handler = Arc::new(PeerHandler::new(Arc::new(UdpPeerConnector::new())));
         let birdsong_handler = Arc::new(BirdSongHandler::new()); // Feb 2, 2026
         
-        // ✅ Relay Server (Feb 5, 2026) - Uses mock authority for now
-        // TODO: Wire to BearDog for production lineage verification
-        let mock_lineage = Arc::new(MockLineageProvider::new());
-        let relay_handler = Arc::new(RelayHandler::new(Arc::new(MockRelayAuthority::new(mock_lineage))));
+        // ✅ Relay Server (Feb 5, 2026) - Production BearDog relay authority
+        let relay_handler = Arc::new(RelayHandler::new(Arc::new(BearDogRelayAuthority::new())));
 
         // ✅ Mesh networking (Feb 4, 2026) - Beacon mesh for distributed relay
         let mesh_handler = Arc::new(MeshHandler::new());
         let onion_handler = Arc::new(OnionHandler::new()); // Sovereign onion (Feb 4, 2026)
         let punch_handler = Arc::new(PunchHandler::new());
+        let tor_handler = Arc::new(TorHandler::new());     // Pure Rust Tor (Feb 7, 2026)
+        let igd_handler = Arc::new(IgdHandler::new());     // IGD router config (Feb 8, 2026)
 
         Self {
             registry,
@@ -177,6 +185,8 @@ impl IpcServiceHandler {
             mesh_handler,
             onion_handler,
             punch_handler,
+            tor_handler,
+            igd_handler,
             start_time: Arc::new(RwLock::new(std::time::Instant::now())),
         }
     }
@@ -203,11 +213,12 @@ impl IpcServiceHandler {
             Arc::new(RendezvousHandler::new(Arc::new(HttpRendezvousClient::new())));
         let peer_handler = Arc::new(PeerHandler::new(Arc::new(UdpPeerConnector::new())));
         let birdsong_handler = Arc::new(BirdSongHandler::new()); // Feb 2, 2026
-        let mock_lineage = Arc::new(MockLineageProvider::new());
-        let relay_handler = Arc::new(RelayHandler::new(Arc::new(MockRelayAuthority::new(mock_lineage)))); // Feb 5, 2026
+        let relay_handler = Arc::new(RelayHandler::new(Arc::new(BearDogRelayAuthority::new()))); // Feb 5, 2026
         let mesh_handler = Arc::new(MeshHandler::new());   // Feb 4, 2026
         let onion_handler = Arc::new(OnionHandler::new()); // Feb 4, 2026
         let punch_handler = Arc::new(PunchHandler::new()); // Feb 4, 2026
+        let tor_handler = Arc::new(TorHandler::new());     // Feb 7, 2026
+        let igd_handler = Arc::new(IgdHandler::new());     // IGD router config (Feb 8, 2026)
 
         Self {
             registry,
@@ -221,6 +232,8 @@ impl IpcServiceHandler {
             mesh_handler,
             onion_handler,
             punch_handler,
+            tor_handler,
+            igd_handler,
             start_time: Arc::new(RwLock::new(std::time::Instant::now())),
         }
     }
@@ -238,11 +251,12 @@ impl IpcServiceHandler {
             Arc::new(RendezvousHandler::new(Arc::new(HttpRendezvousClient::new())));
         let peer_handler = Arc::new(PeerHandler::new(Arc::new(UdpPeerConnector::new())));
         let birdsong_handler = Arc::new(BirdSongHandler::new()); // Feb 2, 2026
-        let mock_lineage = Arc::new(MockLineageProvider::new());
-        let relay_handler = Arc::new(RelayHandler::new(Arc::new(MockRelayAuthority::new(mock_lineage)))); // Feb 5, 2026
+        let relay_handler = Arc::new(RelayHandler::new(Arc::new(BearDogRelayAuthority::new()))); // Feb 8, 2026
         let mesh_handler = Arc::new(MeshHandler::new());   // Feb 4, 2026
         let onion_handler = Arc::new(OnionHandler::new()); // Feb 4, 2026
         let punch_handler = Arc::new(PunchHandler::new()); // Feb 4, 2026
+        let tor_handler = Arc::new(TorHandler::new());     // Feb 7, 2026
+        let igd_handler = Arc::new(IgdHandler::new());     // IGD router config (Feb 8, 2026)
 
         Self {
             registry,
@@ -256,6 +270,8 @@ impl IpcServiceHandler {
             mesh_handler,
             onion_handler,
             punch_handler,
+            tor_handler,
+            igd_handler,
             start_time: Arc::new(RwLock::new(std::time::Instant::now())),
         }
     }
@@ -504,265 +520,36 @@ impl IpcServiceHandler {
         serde_json::to_value(result).map_err(|e| format!("Serialization error: {e}"))
     }
 
-    /// Handle `primal.info` method - Primal introspection
-    ///
-    /// ✅ DEEP DEBT COMPLIANT (Feb 2, 2026):
-    /// - Self-knowledge only (no hardcoded knowledge of other primals)
-    /// - Runtime discovery enabled
-    /// - Version from Cargo.toml (single source of truth)
+    /// Handle `primal.info` - Primal introspection (delegates to introspection module)
     async fn handle_primal_info(&self, _params: Value) -> Result<Value, String> {
-        let info = serde_json::json!({
-            "name": "songbird",
-            "version": env!("CARGO_PKG_VERSION"),
-            "description": "Network Orchestration & Discovery Primal",
-            "capabilities": ["discovery", "stun", "mdns", "http", "ipc", "rendezvous", "peer", "birdsong"],
-            "role": "network_orchestrator",
-            "discovery_methods": ["mdns", "stun", "udp_broadcast", "tcp_direct", "birdsong_encrypted"],
-            "endpoints": {
-                "primary": "runtime_discovered",  // Runtime discovery, no hardcoding
-                "protocols": ["unix_socket", "tcp"]
-            },
-            "security": {
-                "birdsong": "genetic_lineage_encryption",
-                "family_only": true
-            }
-        });
-        Ok(info)
+        Ok(crate::introspection::primal_info())
     }
 
-    /// Handle `primal.capabilities` method - Detailed capability introspection
-    ///
-    /// ✅ DEEP DEBT COMPLIANT (Feb 2, 2026):
-    /// - Describes capabilities without hardcoding other primals
-    /// - Each capability is self-contained
-    /// - Operations list enables semantic routing
+    /// Handle `primal.capabilities` - Detailed capability descriptions
     async fn handle_primal_capabilities(&self, _params: Value) -> Result<Value, String> {
-        let capabilities = serde_json::json!({
-            "capabilities": [
-                {
-                    "name": "discovery",
-                    "operations": ["peers", "mdns", "broadcast", "scan"],
-                    "description": "Service discovery and peer finding",
-                    "protocols": ["mdns", "udp_multicast"]
-                },
-                {
-                    "name": "stun",
-                    "operations": ["get_public_address", "bind"],
-                    "description": "NAT traversal via STUN",
-                    "rfc": "RFC 5389"
-                },
-                {
-                    "name": "http",
-                    "operations": ["request", "get", "post"],
-                    "description": "HTTP/HTTPS client with TLS 1.3",
-                    "features": ["redirect_following", "adaptive_user_agent", "tls_1_3"]
-                },
-                {
-                    "name": "ipc",
-                    "operations": ["register", "resolve", "discover", "list"],
-                    "description": "Inter-primal communication registry",
-                    "transport": "unix_socket"
-                },
-                {
-                    "name": "rendezvous",
-                    "operations": ["register", "lookup"],
-                    "description": "Rendezvous protocol for peer coordination",
-                    "protocol": "http_based"
-                },
-                {
-                    "name": "peer",
-                    "operations": ["connect"],
-                    "description": "Direct peer-to-peer connection establishment",
-                    "transport": "udp"
-                },
-                {
-                    "name": "birdsong",
-                    "operations": ["generate_encrypted_beacon", "decrypt_beacon", "verify_lineage", "get_lineage"],
-                    "description": "Dark Forest encrypted discovery (genetic lineage, family-only)",
-                    "security": "genetic_lineage",
-                    "encryption": "chacha20_poly1305",
-                    "provider": "beardog"
-                }
-            ]
-        });
-        Ok(capabilities)
+        Ok(crate::introspection::primal_capabilities())
     }
 
-    /// Handle `rpc.methods` method - List all available JSON-RPC methods
-    ///
-    /// ✅ DEEP DEBT COMPLIANT (Feb 2, 2026):
-    /// - Self-describing API
-    /// - Enables clients to discover available methods at runtime
-    /// - No external configuration needed
+    /// Handle `rpc.methods` - List all available JSON-RPC methods
     async fn handle_rpc_methods(&self, _params: Value) -> Result<Value, String> {
-        let methods = serde_json::json!({
-            "jsonrpc": "2.0",
-            "methods": [
-                // Introspection (NEW - Feb 2, 2026)
-                {
-                    "name": "primal.info",
-                    "description": "Get primal metadata and capabilities",
-                    "params": []
-                },
-                {
-                    "name": "primal.capabilities",
-                    "description": "Get detailed capability descriptions",
-                    "params": []
-                },
-                {
-                    "name": "rpc.methods",
-                    "description": "List all available JSON-RPC methods",
-                    "params": []
-                },
-
-                // IPC registry methods
-                {
-                    "name": "ipc.register",
-                    "description": "Register a primal in the IPC registry",
-                    "params": ["primal_id", "capabilities", "endpoint"]
-                },
-                {
-                    "name": "ipc.resolve",
-                    "description": "Resolve a primal by ID",
-                    "params": ["primal_id"]
-                },
-                {
-                    "name": "ipc.discover",
-                    "description": "Discover primals by capability",
-                    "params": ["capability"]
-                },
-                {
-                    "name": "ipc.list",
-                    "description": "List all registered primals",
-                    "params": []
-                },
-
-                // HTTP/HTTPS methods
-                {
-                    "name": "http.request",
-                    "description": "Full HTTP/HTTPS request",
-                    "params": ["method", "url", "headers?", "body?"]
-                },
-                {
-                    "name": "http.get",
-                    "description": "HTTP GET request",
-                    "params": ["url", "headers?"]
-                },
-                {
-                    "name": "http.post",
-                    "description": "HTTP POST request",
-                    "params": ["url", "body", "headers?"]
-                },
-
-                // STUN/NAT traversal methods
-                {
-                    "name": "stun.get_public_address",
-                    "description": "Get public IP and port via STUN",
-                    "params": ["stun_server?"]
-                },
-                {
-                    "name": "stun.bind",
-                    "description": "Bind to port and get mapping",
-                    "params": ["local_port?", "stun_server?"]
-                },
-
-                // Discovery methods
-                {
-                    "name": "discovery.peers",
-                    "description": "Discover peers on local network",
-                    "params": []
-                },
-
-                // Rendezvous methods
-                {
-                    "name": "rendezvous.register",
-                    "description": "Register with rendezvous server",
-                    "params": ["server_url", "peer_id", "connection_info"]
-                },
-                {
-                    "name": "rendezvous.lookup",
-                    "description": "Lookup peer on rendezvous server",
-                    "params": ["server_url", "peer_id"]
-                },
-
-                // Peer connection methods
-                {
-                    "name": "peer.connect",
-                    "description": "Connect to peer directly",
-                    "params": ["peer_address", "peer_port"]
-                },
-
-                // BirdSong encrypted discovery methods (NEW - Feb 2, 2026)
-                {
-                    "name": "birdsong.generate_encrypted_beacon",
-                    "description": "Generate family-encrypted discovery beacon",
-                    "params": ["node_id", "capabilities"]
-                },
-                {
-                    "name": "birdsong.decrypt_beacon",
-                    "description": "Decrypt received beacon (family gate)",
-                    "params": ["encrypted_beacon"]
-                },
-                {
-                    "name": "birdsong.verify_lineage",
-                    "description": "Verify peer lineage via challenge-response",
-                    "params": ["peer_node_id", "our_node_id"]
-                },
-                {
-                    "name": "birdsong.get_lineage",
-                    "description": "Get own lineage info",
-                    "params": []
-                }
-            ]
-        });
-        Ok(methods)
+        Ok(crate::introspection::rpc_methods())
     }
 
     /// Handle `health` method (biomeOS standard)
-    ///
-    /// Returns server health status with uptime and service count.
-    /// NEW (Feb 5, 2026) - Matches orchestrator's standard method.
     async fn handle_health(&self) -> Result<Value, String> {
         let uptime_secs = self.start_time.read().await.elapsed().as_secs();
         let registry = self.registry.read().await;
         let services = registry.list_services().await;
-        
-        Ok(serde_json::json!({
-            "status": "healthy",
-            "primal": "songbird",
-            "version": env!("CARGO_PKG_VERSION"),
-            "uptime_seconds": uptime_secs,
-            "services": services.len(),
-        }))
+        Ok(crate::introspection::health(uptime_secs, services.len()))
     }
 
     /// Handle `identity` method (biomeOS standard)
-    ///
-    /// Returns primal identity with capabilities.
-    /// NEW (Feb 5, 2026) - Matches orchestrator's standard method.
     async fn handle_identity(&self) -> Result<Value, String> {
-        // Priority: FAMILY_ID > SONGBIRD_FAMILY_ID > NODE_FAMILY_ID > "nat0"
-        // (Matches birdsong_handler.rs priority order - Feb 5, 2026)
         let family_id = std::env::var("FAMILY_ID")
             .or_else(|_| std::env::var("SONGBIRD_FAMILY_ID"))
             .or_else(|_| std::env::var("NODE_FAMILY_ID"))
             .unwrap_or_else(|_| "nat0".to_string());
-        
-        Ok(serde_json::json!({
-            "primal": "songbird",
-            "version": env!("CARGO_PKG_VERSION"),
-            "family_id": family_id,
-            "capabilities": [
-                "ipc.register", "ipc.resolve", "ipc.discover", "ipc.list",
-                "http.request", "http.get", "http.post",
-                "stun.get_public_address", "stun.bind",
-                "birdsong.generate_encrypted_beacon", "birdsong.decrypt_beacon",
-                "birdsong.verify_lineage", "birdsong.get_lineage",
-                "discovery.peers",
-                "rendezvous.register", "rendezvous.lookup",
-                "peer.connect"
-            ]
-        }))
+        Ok(crate::introspection::identity(&family_id))
     }
 
     /// Handle `birdsong.advertise` method
@@ -821,33 +608,8 @@ impl IpcServiceHandler {
     }
 
     /// Handle `rpc.discover` method (biomeOS standard)
-    ///
-    /// Returns list of available JSON-RPC methods.
-    /// NEW (Feb 5, 2026) - Matches orchestrator's standard method.
-    /// UPDATED (Feb 5, 2026) - Added relay.* and stun.serve/stop/status
-    /// UPDATED (Feb 4, 2026) - Added mesh.* and punch.* methods
     async fn handle_rpc_discover_standard(&self) -> Result<Value, String> {
-        Ok(serde_json::json!({
-            "methods": [
-                "health", "identity", "rpc.discover",
-                "primal.info", "primal.capabilities", "rpc.methods",
-                "ipc.register", "ipc.resolve", "ipc.discover", "ipc.list",
-                "http.request", "http.get", "http.post",
-                "stun.get_public_address", "stun.bind",
-                "stun.serve", "stun.stop", "stun.status",
-                "relay.serve", "relay.stop", "relay.status", "relay.allocate",
-                "birdsong.generate_encrypted_beacon", "birdsong.decrypt_beacon",
-                "birdsong.verify_lineage", "birdsong.get_lineage", "birdsong.advertise",
-                "mesh.init", "mesh.status", "mesh.find_path",
-                "mesh.announce", "mesh.peers", "mesh.health_check",
-                "punch.request", "punch.status",
-                "onion.start", "onion.stop", "onion.status",
-                "onion.connect", "onion.address",
-                "discovery.peers",
-                "rendezvous.register", "rendezvous.lookup",
-                "peer.connect"
-            ]
-        }))
+        Ok(crate::introspection::rpc_discover_standard())
     }
 }
 
@@ -875,6 +637,17 @@ impl JsonRpcHandler for IpcServiceHandler {
             "stun.serve" => self.handle_stun_serve(params).await,
             "stun.stop" => self.handle_stun_stop(params).await,
             "stun.status" => self.handle_stun_status(params).await,
+            "stun.get_public_address" => self.stun_handler.handle_get_public_address(params).await,
+            "stun.bind" => self.stun_handler.handle_bind(params).await,
+
+            // IGD Router Configuration methods (NEW - Feb 8, 2026)
+            // Automatic port forwarding via UPnP IGD + NAT-PMP
+            "igd.discover" => Ok(self.igd_handler.handle_discover(params).await),
+            "igd.map_port" => Ok(self.igd_handler.handle_map_port(params).await),
+            "igd.unmap_port" => Ok(self.igd_handler.handle_unmap_port(params).await),
+            "igd.status" => Ok(self.igd_handler.handle_status(params).await),
+            "igd.external_ip" => Ok(self.igd_handler.handle_external_ip(params).await),
+            "igd.auto_configure" => Ok(self.igd_handler.handle_auto_configure(params).await),
 
             // Relay Server methods (NEW - Feb 5, 2026)
             // Completes sovereign NAT traversal - no external dependencies
@@ -924,6 +697,16 @@ impl JsonRpcHandler for IpcServiceHandler {
             "onion.status" => self.onion_handler.handle_status(params).await,
             "onion.connect" => self.onion_handler.handle_connect(params).await,
             "onion.address" => self.onion_handler.handle_address(params).await,
+
+            // Pure Rust Tor Protocol methods (NEW - Feb 7, 2026)
+            // Full Tor network integration without external dependencies
+            "tor.status" => self.tor_handler.handle_status(params).await,
+            "tor.connect" => self.tor_handler.handle_connect(params).await,
+            "tor.service.start" => self.tor_handler.handle_service_start(params).await,
+            "tor.service.stop" => self.tor_handler.handle_service_stop(params).await,
+            "tor.consensus.fetch" => self.tor_handler.handle_consensus_fetch(params).await,
+            "tor.circuit.build" => self.tor_handler.handle_circuit_build(params).await,
+            "tor.circuit.close" => self.tor_handler.handle_circuit_close(params).await,
 
             // biomeOS Standard Methods (NEW - Feb 5, 2026)
             "health" => self.handle_health().await,

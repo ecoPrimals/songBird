@@ -1,1 +1,0 @@
-  Requests/Second:    4630 req/s

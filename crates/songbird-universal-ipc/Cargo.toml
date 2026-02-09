@@ -43,8 +43,14 @@ songbird-onion-relay = { path = "../songbird-onion-relay" }
 # Sovereign Onion Service (for NAT traversal via .onion addresses)
 songbird-sovereign-onion = { path = "../songbird-sovereign-onion" }
 
+# Pure Rust Tor Protocol (for symmetric NAT traversal)
+songbird-tor-protocol = { path = "../songbird-tor-protocol" }
+
 # Discovery (for peer registry bridge)
 songbird-discovery = { path = "../songbird-discovery" }
+
+# IGD (for router port forwarding)
+songbird-igd = { path = "../songbird-igd" }
 
 # UUID generation
 uuid = { version = "1.0", features = ["v4"] }

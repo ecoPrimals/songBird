@@ -347,8 +347,8 @@ impl AsyncBarrier {
 ///
 /// ## Pattern
 ///
-/// ```no_run
-/// # use songbird_test_utils::concurrent_helpers::RetryPolicy;
+/// ```rust,ignore
+/// use songbird_test_utils::concurrent_helpers::RetryPolicy;
 /// # #[tokio::main]
 /// # async fn main() -> anyhow::Result<()> {
 /// let policy = RetryPolicy::default();

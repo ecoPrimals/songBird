@@ -27,6 +27,8 @@ pub fn jsonrpc_routes() -> Router<JsonRpcState> {
 
 use songbird_network_federation::service_registry::FederatedServiceRegistry;
 use songbird_network_federation::state::FederationState;
+use songbird_universal_ipc::service::IpcServiceHandler;
+use songbird_universal_ipc::tower_atomic::JsonRpcHandler;
 use std::time::Instant;
 use tokio::sync::RwLock;
 
@@ -39,6 +41,10 @@ pub struct JsonRpcState {
     pub service_registry: Arc<FederatedServiceRegistry>,
     /// Server start time for uptime calculation
     pub start_time: Arc<RwLock<Instant>>,
+    /// Universal IPC handler — full method table for inter-gate communication
+    /// When present, unknown methods on TCP are forwarded to the same handler
+    /// that serves the Unix socket, making TCP equivalent for LAN mesh.
+    pub ipc_handler: Option<Arc<IpcServiceHandler>>,
 }
 
 impl JsonRpcState {
@@ -50,6 +56,25 @@ impl JsonRpcState {
             federation_state,
             service_registry,
             start_time: Arc::new(RwLock::new(Instant::now())),
+            ipc_handler: None,
+        }
+    }
+
+    /// Create with IPC handler for full method forwarding on TCP
+    ///
+    /// This enables inter-gate communication over TCP :3492 by forwarding
+    /// unknown methods to the universal-ipc handler (same as Unix socket).
+    /// Dark Forest gating still applies on all TCP requests.
+    pub fn with_ipc_handler(
+        federation_state: Arc<FederationState>,
+        service_registry: Arc<FederatedServiceRegistry>,
+        ipc_handler: Arc<IpcServiceHandler>,
+    ) -> Self {
+        Self {
+            federation_state,
+            service_registry,
+            start_time: Arc::new(RwLock::new(Instant::now())),
+            ipc_handler: Some(ipc_handler),
         }
     }
 }
@@ -203,10 +228,22 @@ async fn handle_jsonrpc_request(
         "identity" => handle_identity().await,
         "network.beacon_exchange" => handle_beacon_exchange(request.params).await,
 
-        // Unknown method
+        // Forward to universal-ipc handler (full method table)
+        // This makes TCP /jsonrpc equivalent to the Unix socket for inter-gate comms
         _ => {
-            warn!("⚠️  Unknown JSON-RPC method: {}", request.method);
-            Err(JsonRpcError::method_not_found(&request.method))
+            if let Some(ref ipc_handler) = state.ipc_handler {
+                debug!("📡 Forwarding '{}' to universal-ipc handler (TCP→IPC bridge)", request.method);
+                match ipc_handler.handle(&request.method, request.params.clone().unwrap_or(Value::Null)).await {
+                    Ok(value) => Ok(value),
+                    Err(e) => {
+                        warn!("⚠️  IPC handler error for '{}': {}", request.method, e);
+                        Err(JsonRpcError::method_not_found(format!("{}: {}", request.method, e)))
+                    }
+                }
+            } else {
+                warn!("⚠️  Unknown JSON-RPC method: {} (no IPC handler attached)", request.method);
+                Err(JsonRpcError::method_not_found(&request.method))
+            }
         }
     };
 

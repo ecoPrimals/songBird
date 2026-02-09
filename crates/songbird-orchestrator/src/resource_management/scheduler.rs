@@ -77,7 +77,7 @@ impl Ord for QueueEntry {
 ///
 /// # Example
 ///
-/// ```no_run
+/// ```rust,ignore
 /// # use songbird_orchestrator::resource_management::*;
 /// # use songbird_orchestrator::task_lifecycle::*;
 /// # async fn example() -> anyhow::Result<()> {
@@ -140,7 +140,7 @@ impl FairScheduler {
     /// Returns error if queue operations fail
     ///
     /// # Example
-    /// ```no_run
+    /// ```rust,ignore
     /// # use songbird_orchestrator::resource_management::*;
     /// # use songbird_orchestrator::task_lifecycle::*;
     /// # async fn example() -> anyhow::Result<()> {

@@ -1,41 +1,57 @@
-# 🐦 Songbird - Network Orchestration & Discovery Primal
+# Songbird - Network Orchestration & Discovery Primal
 
-**Version**: v3.35.0  
-**Status**: ✅ **WORLD-CLASS** - Phase 2 Pure Rust Tor COMPLETE  
-**License**: AGPL-3.0  
-**Deep Debt**: **S+ Tier** (100% BearDog Delegation + Pure Rust Tor Complete)
+**Version**: v3.41.0  
+**Status**: Production Ready - Deep Debt S+ Tier  
+**License**: AGPL-3.0
 
-Songbird is the universal network orchestrator for the ecoPrimals ecosystem, managing service discovery, connection management, and inter-primal communication.
+Songbird is the universal network orchestrator for the ecoPrimals ecosystem. It manages service discovery, connection management, and inter-primal communication across multiple protocols. All cryptographic operations are delegated to BearDog via JSON-RPC IPC.
 
-## 🏆 Quality Achievements
+## Quality
 
-| Metric | Status | Achievement |
-|--------|--------|-------------|
-| **Deep Debt Score** | ✅ **S Tier** | 100% BearDog delegation (TRUE PRIMAL) |
-| **Safe Rust** | ✅ **100%** | Zero `unsafe` blocks in production |
-| **Pure Rust** | ✅ **100%** | coturn eliminated - TRUE ecoBin compliance |
-| **Crypto Delegation** | ✅ **100%** | Zero direct crypto - all via BearDog |
-| **P2P Sovereign Onion** | ✅ **Complete** | Service + Connector + encrypted comms |
-| **Pure Rust Tor (Phase 2A)** | ✅ **Complete** | Directory protocol + consensus parsing |
-| **Production Mocks** | ✅ **0** | Perfect test isolation |
-| **Tests Passing** | ✅ **1,763+** | 100% passing, comprehensive coverage |
-| **Build Status** | ✅ **Clean** | Zero errors, minimal warnings |
+| Metric | Value |
+|--------|-------|
+| Safe Rust | 100% (`#![forbid(unsafe_code)]` across all crates) |
+| Pure Rust | Zero C dependencies |
+| Crypto Delegation | 100% BearDog via JSON-RPC IPC |
+| Runtime Discovery | All config: env -> XDG -> smart defaults |
+| Production Stubs | Zero (`todo!()` only in `#[cfg(test)]`) |
+| Lib Tests | 1,828+ passing |
+| Build | Clean (zero errors) |
 
-## 🎯 Key Features
+## Architecture
 
-| Feature | Status | Description |
-|---------|--------|-------------|
-| **Pure Rust Tor (Phase 2)** | ✅ Complete | Complete Tor protocol (directory, circuit, stream, onion service) - 3,345 lines |
-| **Sovereign Onion P2P** | ✅ Complete | Custom onion service + connector with BearDog crypto |
-| **TLS 1.3** | ✅ Complete | RFC 8446 compliant, protocol detection (HTTP/HTTPS same port) |
-| **STUN Server** | ✅ Complete | Pure Rust RFC 5389, NAT discovery |
-| **Relay Server** | ✅ Complete | Pure Rust packet forwarding, lineage-based auth, coturn eliminated |
-| **Dark Forest Discovery** | ✅ Complete | Zero metadata leakage, encrypted beacons |
-| **biomeOS Integration** | ✅ Complete | Unix socket IPC, standard methods, family_id passthrough |
-| **Capability Discovery** | ✅ Complete | 6-layer strategy, environment-first configuration |
-| **Federation** | ✅ Complete | Zero-trust progressive escalation |
+```
+Application Layer (biomeOS Neural API, Squirrel, Gorilla)
+    |
+    | JSON-RPC 2.0
+    v
+Songbird Orchestrator
+    |-- Tor Protocol (pure Rust: directory, circuit, stream, onion service)
+    |-- Sovereign Onion (P2P encrypted service + connector)
+    |-- IGD Router Config (UPnP IGD + NAT-PMP, auto port forwarding)
+    |-- QUIC Transport (0-RTT, connection migration, multiplexing)
+    |-- NFC Genesis (Dark Forest mobile pairing, zero metadata leakage)
+    |-- TLS 1.3 (RFC 8446, protocol detection)
+    |-- STUN Server (RFC 5389, NAT discovery)
+    |-- Relay Server (lineage-based auth, packet forwarding)
+    |-- Dark Forest Discovery (encrypted beacons, mDNS, DNS-SD)
+    |-- Universal IPC (Unix sockets, TCP, platform-agnostic)
+    |
+    | BearDog delegation (Ed25519, X25519, ChaCha20, SHA3-256, AES-128-CTR)
+    v
+BearDog Crypto Primal
+```
 
-## 🚀 Quick Start
+### Core Principles
+
+1. **Self-Knowledge Only** - Each primal knows only itself
+2. **Runtime Discovery** - All external services discovered at runtime
+3. **Capability-Based** - Request by capability, not by name
+4. **Zero Hardcoding** - Environment-first configuration
+5. **Pure Rust** - Zero C dependencies
+6. **Safe Rust** - `#![forbid(unsafe_code)]` everywhere
+
+## Quick Start
 
 ```bash
 # Build
@@ -54,153 +70,71 @@ cargo run --bin songbird -- config show
 ### Environment Variables
 
 ```bash
-# Socket configuration (XDG-compliant)
+# BearDog crypto provider
+export BEARDOG_SOCKET=/run/user/$(id -u)/biomeos/beardog.sock
+
+# Network
+export SONGBIRD_PORT=3492
+export SONGBIRD_IGD_ENABLED=true  # Auto router port forwarding
+
+# IPC
 export SONGBIRD_SOCKET=/run/user/$(id -u)/biomeos/songbird.sock
-
-# Or use shared directory
-export BIOMEOS_SOCKET_DIR=/run/user/$(id -u)/biomeos
-
-# Port configuration
-export SONGBIRD_ORCHESTRATOR_PORT=8080
-export SONGBIRD_METRICS_PORT=9090
 ```
 
-## 📦 Architecture
-
-```
-┌─────────────────────────────────────────────────────────────┐
-│                     Application Layer                        │
-│          (biomeOS Neural API, Squirrel, Gorilla)            │
-└─────────────────────────────┬───────────────────────────────┘
-                              │ JSON-RPC 2.0 / tarpc
-                              ▼
-┌─────────────────────────────────────────────────────────────┐
-│                    Songbird Orchestrator                     │
-├─────────────────────────────────────────────────────────────┤
-│  P2P & Tor:                                                 │
-│  • Pure Rust Tor Protocol (Phase 2 ✅ COMPLETE)            │
-│    - Directory protocol (~800 lines)                       │
-│    - Circuit building (~950 lines)                         │
-│    - Stream protocol (~530 lines)                          │
-│    - Onion service (~700 lines)                            │
-│  • Sovereign Onion (P2P service + connector)                │
-│  • Beacon Mesh (distributed relay network)                  │
-│                                                             │
-│  Networking:                                                │
-│  • IPC Server (Unix sockets + TCP)                          │
-│  • TLS 1.3 (Pure Rust, CryptoCapability trait)              │
-│  • Discovery (Dark Forest, mDNS, DNS-SD)                    │
-│                                                             │
-│  NAT Traversal:                                             │
-│  • STUN Server (Pure Rust RFC 5389)                         │
-│  • Relay Server (Pure Rust, lineage-based auth)             │
-│  • UDP Hole Punching                                        │
-│                                                             │
-│  Federation & Coordination:                                 │
-│  • Peer-to-peer federation                                  │
-│  • Multi-tier relay coordination                            │
-└─────────────────────────────┬───────────────────────────────┘
-                              │ 100% BearDog Delegation
-                              ▼
-┌─────────────────────────────────────────────────────────────┐
-│                    BearDog Crypto Primal                     │
-│  • Ed25519 (identity, signing)                              │
-│  • X25519 (ECDH key exchange)                               │
-│  • ChaCha20Poly1305 (authenticated encryption)              │
-│  • SHA3-256 (hashing, KDF)                                  │
-│  • AES-128-CTR (Tor cell encryption) - 🔴 Phase 2B blocker │
-└─────────────────────────────────────────────────────────────┘
-```
-
-### Core Principles
-
-1. **Self-Knowledge Only** - Each primal knows only itself
-2. **Runtime Discovery** - All external services discovered at runtime
-3. **Capability-Based** - Request by capability, not by name
-4. **Zero Hardcoding** - Environment-first configuration
-5. **Pure Rust** - TRUE ecoBin (zero C dependencies, coturn eliminated)
-6. **Safe Rust** - Zero `unsafe` in production
-
-## 📚 Documentation
-
-| Document | Purpose |
-|----------|---------|
-| [`ROOT_DOCS_INDEX.md`](ROOT_DOCS_INDEX.md) | Complete documentation map ⭐ START HERE |
-| [`P2P_IMPLEMENTATION_COMPLETE_FEB_06_2026.md`](P2P_IMPLEMENTATION_COMPLETE_FEB_06_2026.md) | P2P completion report ⭐ NEW |
-| [`CONFIGURATION_PATTERNS.md`](CONFIGURATION_PATTERNS.md) | Zero hardcoding standard |
-| [`EXECUTIVE_SUMMARY.md`](EXECUTIVE_SUMMARY.md) | High-level status overview |
-| [`NAT_TRAVERSAL_VALIDATION_GUIDE.md`](NAT_TRAVERSAL_VALIDATION_GUIDE.md) | Validation procedures |
-| [`DEPLOYMENT_READY_STATUS.md`](DEPLOYMENT_READY_STATUS.md) | Deploy now guide |
-| [`CHANGELOG.md`](CHANGELOG.md) | Version history |
-
-### Key Specifications
-
-- [`specs/`](specs/) - Technical specifications (104+ files)
-- [`docs/`](docs/) - Implementation guides
-- [`examples/`](examples/) - Usage examples
-
-## 📦 Crate Structure
+## Crate Structure
 
 ### Core
-- `songbird-orchestrator` - Main orchestration engine
-- `songbird-cli` - Command-line interface
-- `songbird-config` - Configuration management
+- `songbird-orchestrator` - Main orchestration engine (7-stage startup)
+- `songbird-cli` - Command-line interface (UniBin)
+- `songbird-config` - Configuration management (453 tests)
+- `songbird-types` - Shared type definitions
 
 ### Networking
-- `songbird-http-client` - TLS 1.3 HTTP client
-- `songbird-network-federation` - Peer federation
-- `songbird-discovery` - Service discovery
-- `songbird-universal-ipc` - Platform-agnostic IPC
+- `songbird-universal-ipc` - Platform-agnostic JSON-RPC IPC (156 tests)
+- `songbird-http-client` - Pure Rust TLS 1.3 HTTP client
+- `songbird-network-federation` - Peer federation + rendezvous
+- `songbird-discovery` - Service discovery (202 tests)
+- `songbird-igd` - UPnP IGD + NAT-PMP router config (28 tests)
+
+### Protocols
+- `songbird-tor-protocol` - Pure Rust Tor (directory, circuit, stream, onion) (77 tests)
+- `songbird-tls` - TLS 1.3 implementation (183 tests)
+- `songbird-stun` - STUN server RFC 5389 (13 tests)
+- `songbird-quic` - QUIC transport (0-RTT, migration)
+- `songbird-sovereign-onion` - P2P onion service (30 tests with standalone)
 
 ### Security & P2P
-- `songbird-tls` - TLS implementation
-- `songbird-genesis` - Trust ceremony
-- `songbird-lineage-relay` - Lineage tracking
-- `songbird-sovereign-onion` - P2P onion service (100% BearDog) ⭐ NEW
+- `songbird-lineage-relay` - Lineage relay + BearDog auth (45 tests)
+- `songbird-onion-relay` - Hole punch coordinator (8 tests)
+- `songbird-nfc` - NFC genesis protocol (21 tests)
+- `songbird-bluetooth` - BLE GATT service (18 tests)
 
-## 🧪 Testing
+## Testing
 
 ```bash
-# All tests
-cargo test --workspace
-
-# Library tests only
+# All library tests
 cargo test --workspace --lib
 
 # Specific crate
-cargo test -p songbird-http-client
+cargo test -p songbird-tor-protocol --lib
 
-# Coverage (requires cargo-llvm-cov)
+# Sovereign onion with crypto verification
+cargo test -p songbird-sovereign-onion --features standalone
+
+# Coverage
 cargo llvm-cov --workspace --html
 ```
 
-## 🔧 Development
+## Documentation
 
-```bash
-# Format
-cargo fmt --all
+| Document | Purpose |
+|----------|---------|
+| [`REMAINING_WORK.md`](REMAINING_WORK.md) | Current status and pending work |
+| [`CHANGELOG.md`](CHANGELOG.md) | Version history |
+| [`CONTRIBUTING.md`](CONTRIBUTING.md) | Contribution guidelines |
+| [`specs/`](specs/) | Technical specifications |
+| [`docs/`](docs/) | Architecture guides and session reports |
 
-# Lint
-cargo clippy --workspace --lib
+## License
 
-# Build docs
-cargo doc --workspace --no-deps --open
-```
-
-## 🤝 Contributing
-
-See [`CONTRIBUTING.md`](CONTRIBUTING.md) for guidelines:
-
-- Use `Result<T, E>` in production (no `unwrap()`)
-- Follow async-first patterns
-- Keep files under 1,000 lines
-- Write tests for new functionality
-- No hardcoding (capability-based discovery)
-
-## 📜 License
-
-AGPL-3.0 - See [`LICENSE`](LICENSE)
-
----
-
-**Built with 100% Pure Rust** | **Zero C Dependencies (coturn eliminated!)** | **Production Ready**
+AGPL-3.0

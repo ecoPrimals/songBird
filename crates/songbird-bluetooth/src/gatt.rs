@@ -229,17 +229,17 @@ mod att_uuid {
 ///
 /// # Example
 ///
-/// ```no_run
+/// ```rust,ignore
 /// use songbird_bluetooth::gatt::GattClient;
 /// use songbird_bluetooth::transport::Transport;
 ///
-/// # async fn example<T: Transport>(transport: T) {
-/// let mut client = GattClient::new(transport);
-/// // Discover services
-/// client.discover_services().await.unwrap();
-/// // Read characteristic
-/// let value = client.read_characteristic(uuid).await.unwrap();
-/// # }
+/// async fn example<T: Transport>(transport: T) {
+///     let mut client = GattClient::new(transport);
+///     // Discover services
+///     client.discover_services().await.unwrap();
+///     // Read characteristic by UUID
+///     let value = client.read_characteristic(service_uuid, char_uuid).await.unwrap();
+/// }
 /// ```
 pub struct GattClient<T: Transport> {
     device: Arc<Device>,

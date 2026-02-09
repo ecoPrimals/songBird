@@ -70,6 +70,10 @@ impl<'a> StartupOrchestrator<'a> {
         // Stage 2: Start core servers (returns actual HTTP port)
         let actual_https_port = self.stage_2_start_servers().await?;
 
+        // Stage 2b: IGD auto-configure (optional, non-blocking)
+        // Attempts to forward the Songbird port on the router via UPnP/NAT-PMP
+        self.stage_2b_igd_auto_configure().await;
+
         // Stage 3: Register self in federation (needs actual port)
         self.stage_3_register_self(actual_https_port).await?;
 
@@ -195,6 +199,70 @@ impl<'a> StartupOrchestrator<'a> {
     /// - Load node identity (stable ID)
     /// - Detect all endpoints with actual port
     /// - Create self-registration with capabilities
+    /// Stage 2b: IGD Auto-Configure (optional, non-blocking)
+    ///
+    /// **Purpose**: Attempt to forward the Songbird port on the router
+    ///
+    /// **Actions**:
+    /// - Check if `SONGBIRD_IGD_ENABLED` is set (opt-in)
+    /// - Discover router via UPnP IGD or NAT-PMP
+    /// - Request port forwarding for the Songbird port
+    /// - Log result (success or manual instructions)
+    ///
+    /// **Why after Stage 2**: Port is now bound, forwarding makes it reachable
+    /// **Non-blocking**: Failure here does NOT prevent startup
+    async fn stage_2b_igd_auto_configure(&self) {
+        // Opt-in via environment variable (default: disabled)
+        let enabled = std::env::var("SONGBIRD_IGD_ENABLED")
+            .map(|v| v == "1" || v.eq_ignore_ascii_case("true"))
+            .unwrap_or(false);
+
+        if !enabled {
+            info!("IGD auto-configure: Disabled (set SONGBIRD_IGD_ENABLED=true to enable)");
+            return;
+        }
+
+        info!("IGD auto-configure: Discovering router...");
+
+        let (gateway, diagnostics) = songbird_igd::Gateway::discover_with_diagnostics().await;
+
+        if !gateway.is_available() {
+            warn!("IGD auto-configure: No UPnP/NAT-PMP support detected on gateway {}", diagnostics.gateway_ip);
+            if !diagnostics.manual_instructions.is_empty() {
+                info!("Manual port forwarding instructions:");
+                for step in &diagnostics.manual_instructions {
+                    info!("  {}", step);
+                }
+            }
+            if !diagnostics.alternative_tiers.is_empty() {
+                info!("Alternative connectivity:");
+                for tier in &diagnostics.alternative_tiers {
+                    info!("  {}", tier);
+                }
+            }
+            return;
+        }
+
+        let port = self.orchestrator._config.network.base_port;
+        info!("IGD auto-configure: Mapping port {} on gateway {}...", port, gateway.ip);
+
+        match gateway.map_port(port, port, "TCP", 86400).await {
+            Ok(mapping) => {
+                info!("IGD auto-configure: Port {} forwarded successfully", port);
+                if let Some(ext_ip) = mapping.external_ip {
+                    info!("  External endpoint: {}:{}", ext_ip, mapping.external_port);
+                }
+                info!("  TTL: {} seconds (auto-renew recommended)", mapping.lease_duration);
+            }
+            Err(e) => {
+                warn!("IGD auto-configure: Port mapping failed: {}", e);
+                warn!("  Songbird will continue with other connectivity tiers");
+            }
+        }
+    }
+
+    /// Stage 3: Register self in federation
+    ///
     /// - Register in federation state
     ///
     /// **Why Third**: Needs actual HTTP port from Stage 2

@@ -23,17 +23,20 @@
 
 pub mod directory;
 pub mod circuit;
+pub mod connection;
 pub mod onion_service;
 pub mod stream;
 pub mod crypto;
 pub mod protocol;
 pub mod storage;
 pub mod error;
+pub mod http_fetch;
 
 // Re-export main types
 pub use error::{Error, Result};
 pub use directory::Consensus;
 pub use crypto::BeardogCryptoClient;
+pub use connection::TorConnection;
 
 /// Tor client for connecting to .onion addresses
 pub struct TorClient {

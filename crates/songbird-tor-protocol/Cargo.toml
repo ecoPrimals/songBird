@@ -36,8 +36,16 @@ serde_json = "1"
 # Storage (optional)
 sled = { version = "0.34", optional = true }
 
-# HTTP client for directory fetching
-reqwest = { version = "0.11", default-features = false, features = ["rustls-tls"] }
+# HTTP client for directory fetching (pure Rust, zero ring)
+# Tor directory authorities serve plain HTTP - no TLS needed
+hyper = { version = "1.0", features = ["client", "http1"] }
+hyper-util = { version = "0.1", features = ["client", "client-legacy", "tokio", "http1"] }
+http-body-util = "0.1"
+bytes = "1.0"
+
+# TLS for relay connections (pure Rust, BearDog crypto delegation)
+# songbird-tls delegates all crypto to BearDog - ZERO ring, ZERO C
+songbird-tls = { path = "../songbird-tls" }
 
 # Crypto delegation (NO direct crypto!)
 # All crypto via BearDog IPC

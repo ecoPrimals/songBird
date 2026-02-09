@@ -103,12 +103,20 @@ fn build_router(
     let protocol_router = crate::server::protocol_api::protocol_routes().with_state(protocol_state);
 
     // Create JSON-RPC API state for universal gateway
-    let jsonrpc_state = crate::server::jsonrpc_api::JsonRpcState::new(
+    // ✅ EVOLUTION (Feb 9, 2026): Wire IpcServiceHandler for full method forwarding on TCP
+    // This makes TCP /jsonrpc equivalent to Unix socket for inter-gate mesh communication
+    let ipc_registry = Arc::new(tokio::sync::RwLock::new(
+        songbird_universal_ipc::registry::ServiceRegistry::new(),
+    ));
+    let ipc_handler = Arc::new(songbird_universal_ipc::service::IpcServiceHandler::new(ipc_registry));
+
+    let jsonrpc_state = crate::server::jsonrpc_api::JsonRpcState::with_ipc_handler(
         Arc::clone(&federation_state),
         Arc::clone(&federated_service_registry),
+        ipc_handler,
     );
 
-    // Create JSON-RPC router with state
+    // Create JSON-RPC router with state (now includes full universal-ipc method table)
     let jsonrpc_router = crate::server::jsonrpc_api::jsonrpc_routes().with_state(jsonrpc_state);
 
     // Create event broadcaster for real-time events

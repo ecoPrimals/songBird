@@ -109,6 +109,7 @@ pub mod capability; // ✨ NEW: Capability-based discovery
 pub mod endpoint;
 pub mod error;
 pub mod handlers; // ✨ NEW: IPC method handlers (HTTP, etc.)
+pub mod introspection; // Smart refactor: primal self-description (Feb 8, 2026)
 pub mod platform;
 pub mod registry;
 pub mod service; // ✨ NEW: IPC Service (JSON-RPC broker)

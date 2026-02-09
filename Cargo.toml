@@ -7,62 +7,50 @@ exclude = [
 ]
 
 members = [
-    "crates/songbird-remote-deploy",
-    "crates/songbird-compute-bridge",
-    # 🏗️ FOUNDATION LAYER (4 crates)
+    # Foundation
     "crates/songbird-types",
     "crates/songbird-config",
     "crates/songbird-canonical",
     "crates/songbird-universal",
-    
-    # 🎯 CORE SERVICES (4 crates)
+
+    # Core services
     "crates/songbird-discovery",
     "crates/songbird-registry",
-    "crates/songbird-network-federation",  # CONSOLIDATED: network + federation
-    # "crates/songbird-security-errors",     # REMOVED: Unified into songbird-types
-    
-    # 🚀 APPLICATIONS (2 crates)
-    "crates/songbird-orchestrator",        # ENHANCED: includes core functionality
-    "crates/songbird-cli",                 # ✅ COMPLETE: Fixed all syntax and type errors!
-    
-    # 🔧 DEVELOPMENT (2 crates)
+    "crates/songbird-network-federation",
+    "crates/songbird-orchestrator",
+    "crates/songbird-cli",
+
+    # Development
     "crates/songbird-observability",
     "crates/songbird-test-utils",
-    
-    # 🔐 GENESIS (1 crate) - Physical genesis bootstrap
+
+    # Security & genesis
     "crates/songbird-genesis",
-    
-    # 🌐 INTEGRATION (2 crates) - CONSOLIDATED
-    # "crates/songbird-primal-sdk",        # ⚠️ DEFERRED: Cascading delimiter errors across multiple files (est. 2-4h systematic fix)
-    # "crates/songbird-squirrel-service",  # ⛔ DEPRECATED JAN 16 2026: TRUE PRIMAL violation - use separate phase1/squirrel/ primal
-    "crates/songbird-execution-agent",    # ✅ Command execution
-    
-    # 🔧 TOOLS
-    # "tools/hardcoding-migrator",           # ⚠️ Missing directory
-    
-    # 🦅 ALBATROSS BENCHMARKS
-    "showcase/05-albatross-multiplex/benchmark",
-    "showcase/05-albatross-multiplex/tarpc-servers", "rendezvous", "crates/songbird-bluetooth", "crates/songbird-primal-coordination",
-    
-    # 🧬 LINEAGE RELAY - Evolution beyond NAT/STUN/TURN
-    "crates/songbird-lineage-relay",
-    
-    # 🧅 ONION RELAY - Sovereign rendezvous via Tor (optional)
+    "crates/songbird-execution-agent",
+
+    # Protocols
+    "crates/songbird-tor-protocol",
+    "crates/songbird-sovereign-onion",
     "crates/songbird-onion-relay",
-    "crates/songbird-sovereign-onion",  # Pure Rust minimal onion service protocol
-    "crates/songbird-tor-protocol",     # NEW: Phase 2 Pure Rust Tor
-    
-    # 🌐 STUN CLIENT (NEW!) - Pure Rust STUN (RFC 5389) for NAT traversal
-    "crates/songbird-stun",
-    
-    # 🦀 PURE RUST TLS 1.3 (NEW!)
+    "crates/songbird-quic",
     "crates/songbird-tls",
-    
-    # 🌍 UNIVERSAL IPC (NEW!) - Platform-agnostic IPC
-    "crates/songbird-universal-ipc",
-    
-    # 🌐 HTTP CLIENT (NEW!) - Pure Rust HTTP/HTTPS with BearDog crypto
     "crates/songbird-http-client",
+    "crates/songbird-stun",
+    "crates/songbird-igd",
+    "crates/songbird-nfc",
+    "crates/songbird-bluetooth",
+
+    # NAT traversal & relay
+    "crates/songbird-lineage-relay",
+
+    # IPC
+    "crates/songbird-universal-ipc",
+
+    # Infrastructure
+    "crates/songbird-remote-deploy",
+    "crates/songbird-compute-bridge",
+    "crates/songbird-primal-coordination",
+    "rendezvous",
 ]
 
 [workspace.package]
@@ -73,65 +61,49 @@ authors = ["ecoPrimals <contact@ecoprimals.dev>"]
 repository = "https://github.com/ecoPrimals/SongBird"
 homepage = "https://songbird-gaming.ecoprimals.dev"
 
-# ═══════════════════════════════════════════════════════════════════
-# 🦀 UNIBIN: Single `songbird` Binary (Ecosystem Standard v1.0.0)
-# ═══════════════════════════════════════════════════════════════════
 [package]
 name = "songbird"
-version = "3.33.0"  # Bumped for UniBin compliance
+version = "3.41.0"
 edition = "2021"
 license = "AGPL-3.0"
 authors = ["ecoPrimals <contact@ecoprimals.dev>"]
 repository = "https://github.com/ecoPrimals/SongBird"
 homepage = "https://songbird-gaming.ecoprimals.dev"
-description = "Network Orchestration & Discovery Primal - UniBin Architecture"
-keywords = ["orchestrator", "gaming", "network", "discovery", "unibin"]
+description = "Network Orchestration & Discovery Primal"
+keywords = ["orchestrator", "network", "discovery", "p2p"]
 categories = ["command-line-utilities", "network-programming"]
 
 [[bin]]
 name = "songbird"
 path = "src/main.rs"
-doc = false  # Avoid doc collision with songbird-orchestrator binary
+doc = false
 
 [dependencies]
-# Core orchestrator (contains server, doctor, config modes)
 songbird-orchestrator = { path = "crates/songbird-orchestrator" }
-
-# Core dependencies for CLI routing
 anyhow = { workspace = true }
 clap = { workspace = true }
 tokio = { workspace = true }
-
-# Dependencies for examples (NO Songbird imports!)
 serde = { workspace = true }
 serde_json = { workspace = true }
 
 [lints]
 workspace = true
 
-# ═══════════════════════════════════════════════════════════════════
-
 [workspace.dependencies]
-# Core async runtime
+# Async
 tokio = { version = "1.48", features = [
-    "rt-multi-thread",  # Multi-threaded runtime (spawn, JoinHandle)
-    "net",              # Network types (TcpListener, TcpStream, UnixListener, UnixStream)
-    "io-util",          # AsyncRead, AsyncWrite traits and utilities
-    "macros",           # #[tokio::main], #[tokio::test]
-    "sync",             # Synchronization primitives (mpsc, RwLock, Mutex, Semaphore)
-    "time",             # Time utilities (sleep, timeout, interval)
-    "fs",               # Async filesystem operations
-    "signal",           # Signal handling (Ctrl+C)
-    "process",          # Async process spawning
-] }  # Explicit features (not "full") for smaller binary
+    "rt-multi-thread", "net", "io-util", "macros",
+    "sync", "time", "fs", "signal", "process",
+] }
 async-trait = "0.1"
-futures-util = "0.3.31"  # Force latest version
-slab = "0.4.11"  # Force secure version to override vulnerable 0.4.10
+futures-util = "0.3.31"
+slab = "0.4.11"
 
-# Serialization 
+# Serialization
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 uuid = { version = "1.0", features = ["v4", "serde"] }
+bincode = "1.3"
 
 # Error handling
 thiserror = "1.0"
@@ -142,38 +114,29 @@ tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 
 # Configuration
-config = { version = "0.14", default-features = false, features = ["toml", "json", "yaml"] }  # Explicit features (not RON/INI/JSON5)
+config = { version = "0.14", default-features = false, features = ["toml", "json", "yaml"] }
 toml = "0.8"
 
-# Random number generation
+# Random
 fastrand = "2.0"
-getrandom = "0.3"  # Force latest version to unify dependencies
+getrandom = "0.3"
+rand = "0.8"
 
 # Concurrency
 parking_lot = "0.12"
-bitflags = "2.9"  # Force latest version to unify dependencies
+bitflags = "2.9"
 
 # CLI
 clap = { version = "4.0", features = ["derive"] }
 colored = "2.0"
 
 # Networking
-hickory-resolver = "0.24"  # Modern DNS resolver (replaces unmaintained trust-dns)
-socket2 = "0.6"  # Updated to latest version to unify dependencies
-if-addrs = "0.13"  # Network interface enumeration
+hickory-resolver = "0.24"
+socket2 = "0.6"
+if-addrs = "0.13"
 
 # Time
 chrono = { version = "0.4", features = ["serde"] }
-
-# Random number generation
-rand = "0.8"
-
-# HTTP client (✅ Pure Rust - no TLS needed for internal Unix socket communication!)
-# REMOVED: reqwest - replaced with songbird-http-client (Pure Rust IPC)
-# reqwest = { version = "0.11", features = ["json"], default-features = false }
-
-# Serialization
-bincode = "1.3"
 
 # URL encoding
 urlencoding = "2.1"
@@ -186,21 +149,17 @@ axum = "0.7"
 tower = "0.4"
 tower-http = { version = "0.5", features = ["trace", "cors"] }
 
-# System info (needed by workspace members)
+# System
 sys-info = "0.9"
 num_cpus = "1.0"
-wasi = "0.14"  # Force latest version to unify dependencies
-
-# File/Directory operations
+wasi = "0.14"
 dirs = "5.0"
 
-# Performance testing
+# Testing
 criterion = { version = "0.5", features = ["html_reports"] }
 
-# tarpc for high-performance native RPC (Phase 3)
+# RPC
 tarpc = { version = "0.34", features = ["full"] }
-
-# === ANTI-MONOLITH WORKSPACE COMPLETE ===
 
 [profile.bench]
 opt-level = 3
@@ -225,35 +184,27 @@ unsafe_code = "forbid"
 unused_must_use = "warn"
 
 [workspace.lints.clippy]
-# Lint groups must have lower priority than individual lints
 all = { level = "warn", priority = -1 }
 pedantic = { level = "warn", priority = -1 }
 nursery = { level = "warn", priority = -1 }
 cargo = { level = "warn", priority = -1 }
 
-# Individual pedantic lints we enforce
 too_many_arguments = "warn"
 missing_panics_doc = "warn"
 missing_safety_doc = "warn"
+unwrap_used = "warn"
+expect_used = "warn"
+clone_on_ref_ptr = "warn"
+unnecessary_wraps = "warn"
 
-# 🛡️ PRODUCTION CODE QUALITY ENFORCEMENT (Nov 2025)
-# Prevent unwrap/expect in production code to maintain error handling quality
-# Note: These are allowed in test code via #[cfg(test)] modules
-unwrap_used = "warn"              # Warn on .unwrap() - prefer ? operator
-expect_used = "warn"              # Warn on .expect() - prefer proper error handling
-clone_on_ref_ptr = "warn"         # Catch unnecessary Arc/Rc clones
-unnecessary_wraps = "warn"        # Catch Result<T, E> when E is never used
-
-# Allow some clippy lints that are overly pedantic
-# or don't apply well to our architecture  
-module_name_repetitions = "allow"  # Acceptable for clarity
-missing_const_for_fn = "allow"     # Not always beneficial
-multiple_crate_versions = "allow"  # Dependencies may have version conflicts
-uninlined_format_args = "allow"    # Test readability is more important
-cognitive_complexity = "allow"     # Will refactor in Phase 2
-significant_drop_tightening = "allow" # Will optimize in Phase 2
-must_use_candidate = "allow"       # Will add in Phase 2
-option_if_let_else = "allow"       # Will refactor in Phase 2
-redundant_closure = "allow"        # Will optimize in Phase 2
-missing_errors_doc = "allow"       # Will document in Phase 2
-doc_markdown = "allow"             # Will fix in Phase 2
+module_name_repetitions = "allow"
+missing_const_for_fn = "allow"
+multiple_crate_versions = "allow"
+uninlined_format_args = "allow"
+cognitive_complexity = "allow"
+significant_drop_tightening = "allow"
+must_use_candidate = "allow"
+option_if_let_else = "allow"
+redundant_closure = "allow"
+missing_errors_doc = "allow"
+doc_markdown = "allow"

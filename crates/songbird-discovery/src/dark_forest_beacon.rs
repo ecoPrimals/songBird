@@ -191,11 +191,53 @@ pub struct BeaconPayload {
     /// Recommended rotation: every 24 hours.
     pub session_id: String,
 
+    /// External tunnel endpoints (VPN/WireGuard/etc)
+    ///
+    /// Optional external VPN endpoints for inter-primal communication.
+    /// Enables connectivity through existing VPN infrastructure.
+    /// Encrypted within beacon payload for privacy.
+    pub external_tunnels: Vec<ExternalTunnel>,
+
     /// Timestamp when payload created (UNIX epoch seconds)
     ///
     /// For staleness checks and debugging.
     /// Separate from beacon timestamp (beacon timestamp is outer envelope).
     pub created_at: u64,
+}
+
+/// External tunnel configuration
+///
+/// Describes an external VPN/tunnel endpoint for connectivity.
+/// Used when WireGuard, OpenVPN, or other external tunnels are available.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct ExternalTunnel {
+    /// Tunnel type
+    pub tunnel_type: TunnelType,
+    
+    /// Endpoint address (IP:port or hostname:port)
+    pub endpoint: String,
+    
+    /// Public key (for WireGuard, base64 encoded)
+    pub public_key: Option<String>,
+    
+    /// Optional metadata (protocol-specific)
+    pub metadata: std::collections::HashMap<String, String>,
+}
+
+/// Supported external tunnel types
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub enum TunnelType {
+    /// WireGuard VPN
+    WireGuard,
+    
+    /// OpenVPN
+    OpenVPN,
+    
+    /// IPsec
+    IPsec,
+    
+    /// Future: ZeroTier, Tailscale, etc.
+    Other(String),
 }
 
 impl DarkForestBeacon {
@@ -332,6 +374,7 @@ impl BeaconPayload {
     /// * `capabilities` - List of capabilities (will be hashed)
     /// * `cluster_id` - Optional cluster ID
     /// * `session_id` - Session identifier (should rotate)
+    /// * `external_tunnels` - Optional external tunnel endpoints
     ///
     /// # Returns
     ///
@@ -352,8 +395,30 @@ impl BeaconPayload {
             capabilities_hash: Self::hash_capabilities(capabilities),
             cluster_id,
             session_id,
+            external_tunnels: Vec::new(),  // Empty by default
             created_at: DarkForestBeacon::current_timestamp(),
         }
+    }
+    
+    /// Add external tunnel endpoint
+    #[must_use]
+    pub fn with_external_tunnel(mut self, tunnel: ExternalTunnel) -> Self {
+        self.external_tunnels.push(tunnel);
+        self
+    }
+    
+    /// Add WireGuard tunnel endpoint
+    ///
+    /// Convenience method for adding WireGuard tunnels
+    #[must_use]
+    pub fn with_wireguard(mut self, endpoint: String, public_key: String) -> Self {
+        self.external_tunnels.push(ExternalTunnel {
+            tunnel_type: TunnelType::WireGuard,
+            endpoint,
+            public_key: Some(public_key),
+            metadata: std::collections::HashMap::new(),
+        });
+        self
     }
 
     /// Serialize to JSON bytes
@@ -405,7 +470,29 @@ mod tests {
 
         assert_eq!(payload.node_id, "test-node");
         assert_eq!(payload.endpoints.len(), 1);
+        assert_eq!(payload.external_tunnels.len(), 0);
         assert!(payload.created_at > 0);
+    }
+    
+    #[test]
+    fn test_beacon_payload_with_wireguard() {
+        let payload = BeaconPayload::new(
+            vec![1, 2, 3],
+            "test-node".to_string(),
+            vec!["/ip4/127.0.0.1/tcp/1234".to_string()],
+            &["ai".to_string()],
+            None,
+            "session-123".to_string(),
+        )
+        .with_wireguard(
+            "1.2.3.4:51820".to_string(),
+            "base64_pubkey_here".to_string(),
+        );
+        
+        assert_eq!(payload.external_tunnels.len(), 1);
+        assert_eq!(payload.external_tunnels[0].tunnel_type, TunnelType::WireGuard);
+        assert_eq!(payload.external_tunnels[0].endpoint, "1.2.3.4:51820");
+        assert_eq!(payload.external_tunnels[0].public_key.as_deref(), Some("base64_pubkey_here"));
     }
 
     #[test]
@@ -417,6 +504,7 @@ mod tests {
             capabilities_hash: [0u8; 32],
             cluster_id: Some("cluster-1".to_string()),
             session_id: "session-123".to_string(),
+            external_tunnels: vec![],
             created_at: 1234567890,
         };
 

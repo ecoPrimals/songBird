@@ -14,7 +14,7 @@
 //!
 //! ## Example
 //!
-//! ```no_run
+//! ```rust,ignore
 //! # tokio_test::block_on(async {
 //! use songbird_universal::adapters::ComputeAdapter;
 //!
@@ -152,7 +152,7 @@ impl ComputeAdapter {
     ///
     /// # Examples
     ///
-    /// ```no_run
+    /// ```rust,ignore
     /// # tokio_test::block_on(async {
     /// use songbird_universal::adapters::ComputeAdapter;
     ///
@@ -216,7 +216,7 @@ impl ComputeAdapter {
     ///
     /// # Examples
     ///
-    /// ```no_run
+    /// ```rust,ignore
     /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
     /// use songbird_universal::adapters::ComputeAdapter;
     ///

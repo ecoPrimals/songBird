@@ -78,8 +78,22 @@ impl OnionAddress {
             )));
         }
 
-        // TODO: Verify checksum
-        // checksum = H(".onion checksum" | public_key | version)[:2]
+        // Verify checksum: SHA3-256(".onion checksum" || public_key || version)[0..2]
+        let mut checksum_input = Vec::with_capacity(48);
+        checksum_input.extend_from_slice(b".onion checksum");
+        checksum_input.extend_from_slice(&public_key);
+        checksum_input.push(version);
+
+        let hash = crate::crypto::sha3::sha3_256(&checksum_input);
+        let expected_checksum = [hash[0], hash[1]];
+
+        if checksum != expected_checksum {
+            return Err(Error::Protocol(format!(
+                "Onion address checksum mismatch: expected {:02x}{:02x}, got {:02x}{:02x}",
+                expected_checksum[0], expected_checksum[1],
+                checksum[0], checksum[1]
+            )));
+        }
 
         Ok(Self {
             public_key,
@@ -151,5 +165,88 @@ mod tests {
         let result = OnionAddress::parse(addr);
         // Expected to fail on base32 decode or version check
         assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_valid_onion_address_roundtrip() {
+        // Construct a valid v3 onion address from a known public key
+        let pubkey = [0x42u8; 32];
+        let version: u8 = 0x03;
+
+        // Compute correct checksum
+        let mut checksum_input = Vec::new();
+        checksum_input.extend_from_slice(b".onion checksum");
+        checksum_input.extend_from_slice(&pubkey);
+        checksum_input.push(version);
+        let hash = crate::crypto::sha3::sha3_256(&checksum_input);
+        let checksum = [hash[0], hash[1]];
+
+        // Build 35-byte address
+        let mut addr_bytes = Vec::with_capacity(35);
+        addr_bytes.extend_from_slice(&pubkey);
+        addr_bytes.extend_from_slice(&checksum);
+        addr_bytes.push(version);
+
+        // Encode to base32
+        let encoded = base32::encode(
+            base32::Alphabet::RFC4648 { padding: false },
+            &addr_bytes,
+        );
+
+        // Parse should succeed
+        let parsed = OnionAddress::parse(&encoded).unwrap();
+        assert_eq!(parsed.public_key, pubkey);
+        assert_eq!(parsed.checksum, checksum);
+        assert_eq!(parsed.version, 0x03);
+    }
+
+    #[test]
+    fn test_onion_address_bad_checksum() {
+        // Construct an address with an intentionally wrong checksum
+        let pubkey = [0x42u8; 32];
+        let version: u8 = 0x03;
+        let bad_checksum = [0xFF, 0xFF]; // Wrong
+
+        let mut addr_bytes = Vec::with_capacity(35);
+        addr_bytes.extend_from_slice(&pubkey);
+        addr_bytes.extend_from_slice(&bad_checksum);
+        addr_bytes.push(version);
+
+        let encoded = base32::encode(
+            base32::Alphabet::RFC4648 { padding: false },
+            &addr_bytes,
+        );
+
+        let result = OnionAddress::parse(&encoded);
+        assert!(result.is_err());
+        let err = result.unwrap_err();
+        assert!(format!("{}", err).contains("checksum mismatch"));
+    }
+
+    #[test]
+    fn test_onion_address_with_onion_suffix_roundtrip() {
+        let pubkey = [0x01u8; 32];
+        let version: u8 = 0x03;
+
+        let mut ci = Vec::new();
+        ci.extend_from_slice(b".onion checksum");
+        ci.extend_from_slice(&pubkey);
+        ci.push(version);
+        let hash = crate::crypto::sha3::sha3_256(&ci);
+
+        let mut addr_bytes = Vec::with_capacity(35);
+        addr_bytes.extend_from_slice(&pubkey);
+        addr_bytes.extend_from_slice(&hash[..2]);
+        addr_bytes.push(version);
+
+        let encoded = base32::encode(
+            base32::Alphabet::RFC4648 { padding: false },
+            &addr_bytes,
+        );
+        let full = format!("{}.onion", encoded);
+
+        let parsed = OnionAddress::parse(&full).unwrap();
+        assert_eq!(parsed.public_key, pubkey);
+        assert!(parsed.to_string_with_suffix().ends_with(".onion"));
     }
 }

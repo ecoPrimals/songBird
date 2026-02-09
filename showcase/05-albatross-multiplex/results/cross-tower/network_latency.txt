@@ -1,5 +1,0 @@
-64 bytes from 192.168.1.134: icmp_seq=100 ttl=64 time=0.172 ms
-
---- 192.168.1.134 ping statistics ---
-100 packets transmitted, 100 received, 0% packet loss, time 101394ms
-rtt min/avg/max/mdev = 0.161/0.195/0.498/0.035 ms

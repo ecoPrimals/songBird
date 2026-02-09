@@ -3,7 +3,7 @@
 use crate::beardog_crypto::BeardogCryptoClient;
 use crate::error::{OnionError, Result};
 
-#[cfg(any(test, feature = "standalone"))]
+#[cfg(feature = "standalone")]
 use chacha20poly1305::{
     aead::{Aead, KeyInit},
     ChaCha20Poly1305, Nonce,
@@ -70,7 +70,7 @@ pub fn decrypt_data_via_beardog(
 /// # Returns
 ///
 /// Ciphertext with 16-byte Poly1305 MAC tag appended
-#[cfg(any(test, feature = "standalone"))]
+#[cfg(feature = "standalone")]
 pub fn encrypt_data(key: &[u8; 32], sequence: u64, plaintext: &[u8]) -> Result<Vec<u8>> {
     let cipher = ChaCha20Poly1305::new(key.into());
 
@@ -95,7 +95,7 @@ pub fn encrypt_data(key: &[u8; 32], sequence: u64, plaintext: &[u8]) -> Result<V
 /// # Returns
 ///
 /// Decrypted plaintext (MAC verified)
-#[cfg(any(test, feature = "standalone"))]
+#[cfg(feature = "standalone")]
 pub fn decrypt_data(key: &[u8; 32], sequence: u64, ciphertext: &[u8]) -> Result<Vec<u8>> {
     let cipher = ChaCha20Poly1305::new(key.into());
 
@@ -109,7 +109,7 @@ pub fn decrypt_data(key: &[u8; 32], sequence: u64, ciphertext: &[u8]) -> Result<
         .map_err(|_| OnionError::DecryptionError("ChaCha20-Poly1305 decryption failed (MAC verification failed)".into()))
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "standalone"))]
 mod tests {
     use super::*;
 

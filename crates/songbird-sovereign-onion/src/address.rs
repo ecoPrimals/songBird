@@ -4,9 +4,9 @@ use crate::beardog_crypto::BeardogCryptoClient;
 use crate::error::{OnionError, Result};
 
 // Import dalek/sha3 types only for standalone/test mode
-#[cfg(any(test, feature = "standalone"))]
+#[cfg(feature = "standalone")]
 use ed25519_dalek::VerifyingKey;
-#[cfg(any(test, feature = "standalone"))]
+#[cfg(feature = "standalone")]
 use sha3::{Digest, Sha3_256};
 
 /// Derive .onion address via BearDog (TRUE PRIMAL)
@@ -116,7 +116,7 @@ pub async fn validate_onion_address_via_beardog(
 /// # Example
 ///
 /// ```
-/// # #[cfg(any(test, feature = "standalone"))]
+/// # #[cfg(feature = "standalone")]
 /// # {
 /// use ed25519_dalek::SigningKey;
 /// use songbird_sovereign_onion::derive_onion_address;
@@ -129,7 +129,7 @@ pub async fn validate_onion_address_via_beardog(
 /// assert_eq!(onion.len(), 62); // 56 chars + ".onion"
 /// # }
 /// ```
-#[cfg(any(test, feature = "standalone"))]
+#[cfg(feature = "standalone")]
 pub fn derive_onion_address(pubkey: &VerifyingKey) -> String {
     let mut data = Vec::with_capacity(35);
 
@@ -161,7 +161,7 @@ pub fn derive_onion_address(pubkey: &VerifyingKey) -> String {
 /// # Example
 ///
 /// ```
-/// # #[cfg(any(test, feature = "standalone"))]
+/// # #[cfg(feature = "standalone")]
 /// # {
 /// use songbird_sovereign_onion::parse_onion_address;
 ///
@@ -170,7 +170,7 @@ pub fn derive_onion_address(pubkey: &VerifyingKey) -> String {
 /// assert_eq!(pubkey.as_bytes().len(), 32);
 /// # }
 /// ```
-#[cfg(any(test, feature = "standalone"))]
+#[cfg(feature = "standalone")]
 pub fn parse_onion_address(onion: &str) -> Result<VerifyingKey> {
     validate_onion_address(onion)
 }
@@ -186,7 +186,7 @@ pub fn parse_onion_address(onion: &str) -> Result<VerifyingKey> {
 /// - Unsupported version
 /// - Invalid public key
 /// - Checksum mismatch
-#[cfg(any(test, feature = "standalone"))]
+#[cfg(feature = "standalone")]
 pub fn validate_onion_address(onion: &str) -> Result<VerifyingKey> {
     // 1. Remove ".onion" suffix
     let encoded = onion
@@ -233,7 +233,7 @@ pub fn validate_onion_address(onion: &str) -> Result<VerifyingKey> {
     Ok(pubkey)
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "standalone"))]
 mod tests {
     use super::*;
     use ed25519_dalek::SigningKey;

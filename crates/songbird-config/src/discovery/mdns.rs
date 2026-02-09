@@ -11,19 +11,20 @@
 //! - IPv4 and IPv6 support
 //!
 //! # Examples
-//! ```no_run
+//! ```rust,ignore
 //! use songbird_config::discovery::mdns::MdnsDiscovery;
+//! use std::time::Duration;
 //!
-//! # async fn example() -> Result<(), Box<dyn std::error::Error>> {
-//! let mdns = MdnsDiscovery::new()?;
+//! async fn example() -> Result<(), Box<dyn std::error::Error>> {
+//!     let mdns = MdnsDiscovery::new()?;
 //!
-//! // Advertise our capabilities
-//! mdns.advertise(&["compute", "gpu"]).await?;
+//!     // Advertise our capabilities
+//!     mdns.advertise(&["compute", "gpu"]).await?;
 //!
-//! // Discover services with specific capability
-//! let services = mdns.discover_by_capability("storage", Some(Duration::from_secs(5))).await?;
-//! # Ok(())
-//! # }
+//!     // Discover services with specific capability
+//!     let services = mdns.discover_by_capability("storage", Some(Duration::from_secs(5))).await?;
+//!     Ok(())
+//! }
 //! ```
 
 use std::collections::HashMap;

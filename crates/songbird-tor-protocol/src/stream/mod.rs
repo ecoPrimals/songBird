@@ -155,6 +155,11 @@ impl StreamManager {
 }
 
 /// Stream protocol handler
+///
+/// Creates relay cells for Tor stream operations. The `digest` field
+/// is a running SHA-1 hash that provides integrity checking across
+/// circuit hops. When BearDog crypto is available, pass the running
+/// digest state; otherwise zeros are used (suitable for testing).
 pub struct StreamProtocol;
 
 impl StreamProtocol {
@@ -174,7 +179,7 @@ impl StreamProtocol {
             command: RelayCommand::Begin,
             recognized: 0,
             stream_id,
-            digest: [0u8; 4], // TODO: Calculate digest
+            digest: [0u8; 4], // Populated by onion layer before encryption
             length: data.len() as u16,
             data,
         }
@@ -193,7 +198,7 @@ impl StreamProtocol {
             command: RelayCommand::Data,
             recognized: 0,
             stream_id,
-            digest: [0u8; 4], // TODO: Calculate digest
+            digest: [0u8; 4], // Populated by onion layer before encryption
             length: data.len() as u16,
             data: data.to_vec(),
         }

@@ -6,9 +6,9 @@ use serde::{Deserialize, Serialize};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 // Import dalek types and standalone functions only for test/standalone mode
-#[cfg(any(test, feature = "standalone"))]
+#[cfg(feature = "standalone")]
 use crate::address::derive_onion_address;
-#[cfg(any(test, feature = "standalone"))]
+#[cfg(feature = "standalone")]
 use ed25519_dalek::SigningKey;
 
 /// Onion service identity (Ed25519 keypair + derived .onion address)
@@ -92,13 +92,13 @@ impl OnionIdentity {
         
         // For now, derive public key locally (Ed25519 property)
         // TODO: Add crypto.ed25519_public_from_secret to BearDog
-        #[cfg(any(test, feature = "standalone"))]
+        #[cfg(feature = "standalone")]
         let public_key = {
             let signing_key = SigningKey::from_bytes(secret_key);
             signing_key.verifying_key().to_bytes()
         };
         
-        #[cfg(not(any(test, feature = "standalone")))]
+        #[cfg(not(feature = "standalone"))]
         let public_key = {
             // ⚠️ TRUE PRIMAL: In production, public key must be provided!
             // Ed25519 public key cannot be derived without the crypto library.
@@ -125,7 +125,7 @@ impl OnionIdentity {
     ///
     /// This bypasses BearDog and uses local crypto. Only available in test builds
     /// or with the `standalone` feature.
-    #[cfg(any(test, feature = "standalone"))]
+    #[cfg(feature = "standalone")]
     pub fn generate() -> Self {
         // Generate random 32-byte secret key
         let mut secret_bytes = [0u8; 32];
@@ -148,7 +148,7 @@ impl OnionIdentity {
     }
 
     /// Standalone loading (for testing/offline only)
-    #[cfg(any(test, feature = "standalone"))]
+    #[cfg(feature = "standalone")]
     pub fn from_stored(secret_bytes: &[u8; 32], created_at: u64) -> Result<Self> {
         let signing_key = SigningKey::from_bytes(secret_bytes);
         let verifying_key = signing_key.verifying_key();
@@ -214,12 +214,12 @@ impl OnionIdentity {
         }
         
         // v1 format fallback: Need to derive public key and address
-        #[cfg(any(test, feature = "standalone"))]
+        #[cfg(feature = "standalone")]
         {
             Self::from_stored(&stored.secret_key_bytes, stored.created_at)
         }
         
-        #[cfg(not(any(test, feature = "standalone")))]
+        #[cfg(not(feature = "standalone"))]
         {
             // Production with v1 storage: Regenerate via BearDog
             // Delete old storage and generate fresh identity
@@ -258,7 +258,7 @@ impl EphemeralKeypair {
     }
 
     /// Standalone generation (for testing/offline only)
-    #[cfg(any(test, feature = "standalone"))]
+    #[cfg(feature = "standalone")]
     pub fn generate() -> Self {
         // Generate random secret key bytes
         let mut secret_key = [0u8; 32];
@@ -283,7 +283,7 @@ impl EphemeralKeypair {
     }
 
     /// Standalone ECDH (for testing/offline only)
-    #[cfg(any(test, feature = "standalone"))]
+    #[cfg(feature = "standalone")]
     pub fn derive_shared_secret(self, peer_public: &[u8; 32]) -> [u8; 32] {
         x25519_dalek::x25519(self.secret_key, *peer_public)
     }
@@ -341,7 +341,7 @@ impl SessionKeys {
     }
 
     /// Standalone derivation (for testing/offline only)
-    #[cfg(any(test, feature = "standalone"))]
+    #[cfg(feature = "standalone")]
     pub fn derive(
         shared_secret: &[u8; 32],
         client_nonce: &[u8; 24],
@@ -391,7 +391,7 @@ impl SessionKeys {
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "standalone"))]
 mod tests {
     use super::*;
 

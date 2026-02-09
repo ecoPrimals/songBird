@@ -22,12 +22,14 @@ pub mod discovery_bridge;
 pub mod discovery_handler;
 pub mod http_handler;
 pub mod http_rendezvous_client;
+pub mod igd_handler;    // IGD router configuration (Feb 8, 2026)
 pub mod mesh_handler;   // Beacon mesh networking (Feb 4, 2026)
 pub mod onion_handler;  // Sovereign onion service (Feb 4, 2026)
 pub mod peer_handler;
 pub mod punch_handler;  // Hole punch coordination (Feb 4, 2026)
 pub mod rendezvous_handler;
 pub mod stun_handler;
+pub mod tor_handler;    // Pure Rust Tor protocol (Feb 7, 2026)
 pub mod udp_peer_connector;
 
 pub use birdsong_handler::*; // BirdSong handler (Feb 2, 2026)
@@ -35,10 +37,12 @@ pub use discovery_bridge::*;
 pub use discovery_handler::*;
 pub use http_handler::*;
 pub use http_rendezvous_client::*;
+pub use igd_handler::*;    // IGD handler (Feb 8, 2026)
 pub use mesh_handler::*;   // Mesh handler (Feb 4, 2026)
 pub use onion_handler::*;  // Onion handler (Feb 4, 2026)
 pub use peer_handler::*;
 pub use punch_handler::*;  // Punch handler (Feb 4, 2026)
 pub use rendezvous_handler::*;
 pub use stun_handler::*;
+pub use tor_handler::*;    // Tor handler (Feb 7, 2026)
 pub use udp_peer_connector::*;

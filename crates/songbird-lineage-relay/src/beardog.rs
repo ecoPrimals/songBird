@@ -226,6 +226,226 @@ impl BirdSongCrypto for BearDogBirdSongProvider {
 }
 
 // ═══════════════════════════════════════════════════════════════════
+// PRODUCTION: BearDog Relay Authority
+// Delegates lineage verification to BearDog via Unix socket JSON-RPC.
+// Replaces MockRelayAuthority in all production constructors.
+// ═══════════════════════════════════════════════════════════════════
+
+/// Production relay authority backed by BearDog
+///
+/// Delegates lineage-based relay authorization to BearDog via Unix socket
+/// JSON-RPC. No hardcoded lineage graphs -- BearDog owns the truth.
+///
+/// ## Deep Debt Compliance
+///
+/// - ✅ Real implementation (not a mock)
+/// - ✅ Runtime discovery (socket path via env or discovery)
+/// - ✅ Zero unsafe code
+/// - ✅ Async/await
+pub struct BearDogRelayAuthority {
+    socket_path: PathBuf,
+}
+
+impl BearDogRelayAuthority {
+    /// Create new BearDog relay authority
+    ///
+    /// Discovers BearDog socket path at runtime:
+    /// 1. `BEARDOG_SOCKET` environment variable
+    /// 2. XDG runtime dir: `$XDG_RUNTIME_DIR/beardog/beardog.sock`
+    /// 3. Fallback: `/tmp/beardog.sock`
+    pub fn new() -> Self {
+        let socket_path = Self::discover_socket_path();
+        info!("BearDog relay authority created (socket: {:?})", socket_path);
+        Self { socket_path }
+    }
+
+    /// Create with explicit socket path
+    pub fn with_socket_path(socket_path: impl Into<PathBuf>) -> Self {
+        Self {
+            socket_path: socket_path.into(),
+        }
+    }
+
+    /// Discover BearDog socket path at runtime
+    fn discover_socket_path() -> PathBuf {
+        // 1. Environment variable (highest priority)
+        if let Ok(path) = std::env::var("BEARDOG_SOCKET") {
+            return PathBuf::from(path);
+        }
+
+        // 2. XDG runtime directory
+        if let Ok(xdg) = std::env::var("XDG_RUNTIME_DIR") {
+            let path = PathBuf::from(xdg).join("beardog").join("beardog.sock");
+            if path.exists() {
+                return path;
+            }
+        }
+
+        // 3. Fallback
+        PathBuf::from("/tmp/beardog.sock")
+    }
+
+    /// Call BearDog JSON-RPC method via Unix socket
+    async fn call_beardog(
+        &self,
+        method: &str,
+        params: serde_json::Value,
+    ) -> Result<serde_json::Value> {
+        let mut stream = UnixStream::connect(&self.socket_path).await.map_err(|e| {
+            crate::error::LineageRelayError::BirdSongError(format!(
+                "Failed to connect to BearDog at {:?}: {}",
+                self.socket_path, e
+            ))
+        })?;
+
+        let request = serde_json::json!({
+            "jsonrpc": "2.0",
+            "method": method,
+            "params": params,
+            "id": 1
+        });
+
+        let request_bytes = serde_json::to_vec(&request)?;
+        stream.write_all(&request_bytes).await.map_err(|e| {
+            crate::error::LineageRelayError::BirdSongError(format!(
+                "Failed to write to BearDog: {e}"
+            ))
+        })?;
+        stream.write_all(b"\n").await.ok();
+
+        let mut response_bytes = Vec::new();
+        stream.read_to_end(&mut response_bytes).await.map_err(|e| {
+            crate::error::LineageRelayError::BirdSongError(format!(
+                "Failed to read from BearDog: {e}"
+            ))
+        })?;
+
+        let response: serde_json::Value = serde_json::from_slice(&response_bytes)?;
+
+        if let Some(error) = response.get("error") {
+            return Err(crate::error::LineageRelayError::BirdSongError(format!(
+                "BearDog RPC error: {error}"
+            )));
+        }
+
+        response.get("result").cloned().ok_or_else(|| {
+            crate::error::LineageRelayError::BirdSongError(
+                "No result in BearDog response".to_string(),
+            )
+        })
+    }
+
+    /// Parse masking level from BearDog response string
+    fn parse_masking_level(level: Option<&str>) -> MaskingLevel {
+        match level.unwrap_or("full_visibility") {
+            "none" => MaskingLevel::None,
+            "timing_only" => MaskingLevel::TimingOnly,
+            "size_obfuscation" => MaskingLevel::SizeObfuscation,
+            "full" => MaskingLevel::Full,
+            "masked" => MaskingLevel::Masked,
+            "sub_masked" => MaskingLevel::SubMasked,
+            _ => MaskingLevel::FullVisibility,
+        }
+    }
+}
+
+impl Default for BearDogRelayAuthority {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+#[async_trait]
+impl RelayAuthority for BearDogRelayAuthority {
+    async fn authorize_relay(
+        &self,
+        relay_node: &NodeId,
+        requester: &NodeId,
+    ) -> Result<RelayAuthorization> {
+        debug!(
+            "Authorizing relay: {} -> {} via BearDog",
+            relay_node.0, requester.0
+        );
+
+        let params = serde_json::json!({
+            "relay_node": relay_node.0,
+            "requester": requester.0
+        });
+
+        match self.call_beardog("lineage.authorize_relay", params).await {
+            Ok(result) => {
+                let authorized = result
+                    .get("authorized")
+                    .and_then(|v| v.as_bool())
+                    .unwrap_or(false);
+
+                let masking_level = Self::parse_masking_level(
+                    result.get("masking_level").and_then(|v| v.as_str())
+                );
+
+                let ttl = result
+                    .get("ttl_seconds")
+                    .and_then(|v| v.as_u64())
+                    .unwrap_or(300);
+
+                let audit_token = result
+                    .get("audit_token")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("beardog_auth")
+                    .to_string();
+
+                Ok(RelayAuthorization {
+                    relay_node: relay_node.clone(),
+                    requester: requester.clone(),
+                    authorized,
+                    masking_level,
+                    ttl_seconds: ttl,
+                    issued_at: SystemTime::now(),
+                    audit_token,
+                })
+            }
+            Err(e) => {
+                // BearDog unavailable — deny by default (fail-secure)
+                debug!("BearDog unavailable for relay auth, denying: {}", e);
+                Ok(RelayAuthorization {
+                    relay_node: relay_node.clone(),
+                    requester: requester.clone(),
+                    authorized: false,
+                    masking_level: MaskingLevel::FullVisibility,
+                    ttl_seconds: 0_u64,
+                    issued_at: SystemTime::now(),
+                    audit_token: "beardog_unavailable_deny".to_string(),
+                })
+            }
+        }
+    }
+
+    async fn determine_masking(
+        &self,
+        relay_node: &NodeId,
+        requester: &NodeId,
+    ) -> Result<MaskingLevel> {
+        let params = serde_json::json!({
+            "relay_node": relay_node.0,
+            "requester": requester.0
+        });
+
+        match self.call_beardog("lineage.determine_masking", params).await {
+            Ok(result) => {
+                let level = Self::parse_masking_level(
+                    result.get("masking_level").and_then(|v| v.as_str())
+                );
+                Ok(level)
+            }
+            Err(_) => {
+                // BearDog unavailable — no masking (fail-secure: full visibility)
+                Ok(MaskingLevel::FullVisibility)
+            }
+        }
+    }
+}
+
+// ═══════════════════════════════════════════════════════════════════
 // TEST MOCKS - Available for unit tests and integration tests
 // Note: Not gated by #[cfg(test)] to allow integration tests to use them
 // ═══════════════════════════════════════════════════════════════════
@@ -357,7 +577,7 @@ impl RelayAuthority for MockRelayAuthority {
             } else {
                 MaskingLevel::FullVisibility
             },
-            ttl_seconds: 300,
+            ttl_seconds: 300_u64,
             issued_at: SystemTime::now(),
             audit_token: format!("mock_token_{}", uuid::Uuid::new_v4()),
         })

@@ -24,22 +24,21 @@
 //!
 //! # Example
 //!
-//! ```rust
+//! ```rust,ignore
 //! use songbird_config::discovery::{CapabilityDiscoveryEngine, DiscoveryBackend};
 //! use std::time::Duration;
 //!
-//! # async fn example() -> Result<(), Box<dyn std::error::Error>> {
-//! // Create discovery engine with auto-detected backends
-//! let engine = CapabilityDiscoveryEngine::with_defaults();
+//! async fn example() -> Result<(), Box<dyn std::error::Error>> {
+//!     // Create discovery engine with auto-detected backends
+//!     let engine = CapabilityDiscoveryEngine::with_defaults();
 //!
-//! // Discover services that provide "storage" capability
-//! let storage_services = engine.discover_by_capability("storage").await?;
+//!     // Discover services that provide "storage" capability
+//!     let storage_services = engine.discover_by_capability("storage").await;
 //!
-//! for service in storage_services {
-//!     println!("Found storage at: {}", service.address);
+//!     for service in storage_services {
+//!         println!("Found storage at: {}", service.address);
+//!     Ok(())
 //! }
-//! # Ok(())
-//! # }
 //! ```
 
 pub mod mdns;

@@ -1,3 +1,0 @@
-# Technical Specifications
-
-Technical specifications

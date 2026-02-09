@@ -28,47 +28,9 @@ pub struct DirectoryAuthority {
 /// List of Tor directory authorities (as of February 2026)
 ///
 /// Source: https://consensus-health.torproject.org/
+/// Note: Order matters - put most reliable/fastest first
 pub const DIRECTORY_AUTHORITIES: &[DirectoryAuthority] = &[
-    // moria1 (moria.csail.mit.edu)
-    DirectoryAuthority {
-        nickname: "moria1",
-        address: ipv4(128, 31, 0, 34),
-        dir_port: 9131,
-        or_port: 9101,
-        fingerprint: [
-            0x96, 0x95, 0xDF, 0xC3, 0x5F, 0xFE, 0xB8, 0x61,
-            0x32, 0x9B, 0x9F, 0x1A, 0xB0, 0x4C, 0x46, 0x39,
-            0x70, 0x20, 0xCE, 0x31,
-        ],
-    },
-    
-    // tor26 (tor26.torproject.org)
-    DirectoryAuthority {
-        nickname: "tor26",
-        address: ipv4(86, 59, 21, 38),
-        dir_port: 80,
-        or_port: 443,
-        fingerprint: [
-            0x84, 0x7B, 0x1F, 0x85, 0x03, 0x44, 0xD7, 0x87,
-            0x64, 0x91, 0xA5, 0x48, 0x92, 0xF9, 0x04, 0x93,
-            0x4E, 0x4E, 0xB8, 0x5D,
-        ],
-    },
-    
-    // dizum (dizum.torproject.org)
-    DirectoryAuthority {
-        nickname: "dizum",
-        address: ipv4(45, 66, 33, 45),
-        dir_port: 80,
-        or_port: 443,
-        fingerprint: [
-            0x7E, 0xA6, 0xEA, 0xD6, 0xFD, 0x83, 0x08, 0x3C,
-            0x53, 0x8F, 0x44, 0x03, 0x8B, 0xBF, 0xA0, 0x77,
-            0x58, 0x7D, 0xD7, 0x55,
-        ],
-    },
-    
-    // gabelmoo (gabelmoo.torproject.org)
+    // gabelmoo (gabelmoo.torproject.org) - FIRST: known to be reliable
     DirectoryAuthority {
         nickname: "gabelmoo",
         address: ipv4(131, 188, 40, 189),
@@ -91,6 +53,45 @@ pub const DIRECTORY_AUTHORITIES: &[DirectoryAuthority] = &[
             0x74, 0x85, 0x85, 0x75, 0xC2, 0x88, 0x6B, 0x76,
             0xF6, 0xBE, 0x7E, 0x5C, 0xD0, 0x8D, 0x4F, 0x8B,
             0x6D, 0xE1, 0x0F, 0x24,
+        ],
+    },
+    
+    // bastet (bastet.torproject.org)
+    DirectoryAuthority {
+        nickname: "bastet",
+        address: ipv4(204, 13, 164, 118),
+        dir_port: 80,
+        or_port: 443,
+        fingerprint: [
+            0x27, 0x10, 0x2B, 0xC1, 0x23, 0xE7, 0xDB, 0x31,
+            0x9C, 0x30, 0x97, 0xBA, 0xB8, 0x8D, 0xB8, 0xF9,
+            0x23, 0x44, 0x64, 0x42,
+        ],
+    },
+    
+    // moria1 (moria.csail.mit.edu) - may have connectivity issues
+    DirectoryAuthority {
+        nickname: "moria1",
+        address: ipv4(128, 31, 0, 34),
+        dir_port: 9131,
+        or_port: 9101,
+        fingerprint: [
+            0x96, 0x95, 0xDF, 0xC3, 0x5F, 0xFE, 0xB8, 0x61,
+            0x32, 0x9B, 0x9F, 0x1A, 0xB0, 0x4C, 0x46, 0x39,
+            0x70, 0x20, 0xCE, 0x31,
+        ],
+    },
+    
+    // tor26 (tor26.torproject.org)
+    DirectoryAuthority {
+        nickname: "tor26",
+        address: ipv4(86, 59, 21, 38),
+        dir_port: 80,
+        or_port: 443,
+        fingerprint: [
+            0x84, 0x7B, 0x1F, 0x85, 0x03, 0x44, 0xD7, 0x87,
+            0x64, 0x91, 0xA5, 0x48, 0x92, 0xF9, 0x04, 0x93,
+            0x4E, 0x4E, 0xB8, 0x5D,
         ],
     },
     
@@ -117,19 +118,6 @@ pub const DIRECTORY_AUTHORITIES: &[DirectoryAuthority] = &[
             0x23, 0xD5, 0xAB, 0x88, 0x19, 0x23, 0x95, 0x72,
             0xF7, 0x25, 0x68, 0x68, 0x14, 0x2E, 0x71, 0x5D,
             0x6A, 0x2B, 0xB5, 0xB1,
-        ],
-    },
-    
-    // bastet (bastet.torproject.org)
-    DirectoryAuthority {
-        nickname: "bastet",
-        address: ipv4(204, 13, 164, 118),
-        dir_port: 80,
-        or_port: 443,
-        fingerprint: [
-            0x27, 0x10, 0x2B, 0xC1, 0x23, 0xE7, 0xDB, 0x31,
-            0x9C, 0x30, 0x97, 0xBA, 0xB8, 0x8D, 0xB8, 0xF9,
-            0x23, 0x44, 0x64, 0x42,
         ],
     },
     
@@ -171,15 +159,16 @@ mod tests {
     
     #[test]
     fn test_authorities_count() {
-        assert_eq!(DIRECTORY_AUTHORITIES.len(), 9);
+        assert_eq!(DIRECTORY_AUTHORITIES.len(), 8);
     }
     
     #[test]
     fn test_consensus_url() {
+        // gabelmoo is first (most reliable)
         let auth = &DIRECTORY_AUTHORITIES[0];
         assert_eq!(
             auth.consensus_url(),
-            "http://128.31.0.34:9131/tor/status-vote/current/consensus"
+            "http://131.188.40.189:80/tor/status-vote/current/consensus"
         );
     }
     

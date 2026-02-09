@@ -27,7 +27,7 @@ impl OnionConnector {
     }
 
     /// Create new onion connector (standalone mode - testing only)
-    #[cfg(any(test, feature = "standalone"))]
+    #[cfg(feature = "standalone")]
     pub fn new_standalone() -> Self {
         Self { beardog: None }
     }

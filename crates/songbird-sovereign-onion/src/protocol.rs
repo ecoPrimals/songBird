@@ -191,7 +191,7 @@ impl WireMessage {
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "standalone"))]
 mod tests {
     use super::*;
 

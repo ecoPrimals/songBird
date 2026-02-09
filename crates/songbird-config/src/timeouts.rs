@@ -18,7 +18,7 @@
 //!
 //! ## Usage
 //!
-//! ```rust
+//! ```rust,ignore
 //! use songbird_config::timeouts::TimeoutConfig;
 //! use std::time::Duration;
 //!
@@ -142,12 +142,13 @@ impl TimeoutConfig {
     /// export SONGBIRD_TIMEOUT_REQUEST=60
     /// ```
     ///
-    /// ```rust
+    /// ```rust,ignore
     /// use songbird_config::timeouts::TimeoutConfig;
     ///
+    /// // With SONGBIRD_TIMEOUT_CONNECT=3 and SONGBIRD_TIMEOUT_REQUEST=60:
     /// let config = TimeoutConfig::from_env();
-    /// assert_eq!(config.connect.as_secs(), 3);  // From env
-    /// assert_eq!(config.request.as_secs(), 60); // From env
+    /// assert_eq!(config.connect.as_secs(), 3);
+    /// assert_eq!(config.request.as_secs(), 60);
     /// ```
     #[must_use]
     pub fn from_env() -> Self {

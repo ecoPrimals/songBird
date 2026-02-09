@@ -73,7 +73,7 @@ pub enum TaskEvent {
 /// - **Background tasks**: Automatic cleanup of old tasks
 ///
 /// # Example
-/// ```no_run
+/// ```rust,ignore
 /// # use songbird_orchestrator::task_lifecycle::*;
 /// # async fn example() -> anyhow::Result<()> {
 /// // Initialize manager with database

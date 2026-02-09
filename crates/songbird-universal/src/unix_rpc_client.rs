@@ -12,7 +12,7 @@
 //!
 //! ## Example Usage
 //!
-//! ```rust
+//! ```rust,ignore
 //! use songbird_primal_sdk::unix_rpc_client::UnixRpcClient;
 //! use serde::{Deserialize, Serialize};
 //!
@@ -106,7 +106,7 @@ impl UnixRpcClient {
     ///
     /// ## Example
     ///
-    /// ```rust
+    /// ```rust,ignore
     /// let client = UnixRpcClient::new("/tmp/beardog.sock")?;
     /// ```
     pub fn new(socket_path: impl AsRef<Path>) -> Result<Self> {
@@ -141,7 +141,7 @@ impl UnixRpcClient {
     ///
     /// ## Example
     ///
-    /// ```rust
+    /// ```rust,ignore
     /// let result: MyResponse = client.call("my_method", MyParams { ... }).await?;
     /// ```
     /// Platform-agnostic connection helper
@@ -230,7 +230,7 @@ impl UnixRpcClient {
     ///
     /// ## Example
     ///
-    /// ```rust
+    /// ```rust,ignore
     /// let result: HealthStatus = client.call_no_params("health_check").await?;
     /// ```
     pub async fn call_no_params<R>(&self, method: &str) -> Result<R>

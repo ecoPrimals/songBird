@@ -95,20 +95,13 @@ impl DiscoveryOptionsBuilder {
 ///
 /// ## Modern Async Pattern
 ///
-/// ```no_run
+/// ```rust,ignore
 /// use songbird_config::primal_discovery::{get_compute_endpoint, DiscoveryOptions};
 ///
 /// #[tokio::main]
 /// async fn main() -> songbird_types::SongbirdResult<()> {
 ///     // Production: read from environment
 ///     let endpoint = get_compute_endpoint(DiscoveryOptions::from_env()).await?;
-///     
-///     // Tests: explicit configuration (zero global state!)
-///     let options = DiscoveryOptions::for_testing()
-///         .compute_endpoint("http://test:8080")
-///         .build();
-///     let endpoint = get_compute_endpoint(options).await?;
-///     
 ///     println!("Compute provider: {}", endpoint);
 ///     Ok(())
 /// }

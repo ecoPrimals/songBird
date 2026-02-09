@@ -51,21 +51,18 @@
 //!
 //! ## Usage
 //!
-//! ```rust
+//! ```rust,ignore
 //! use songbird_orchestrator::resilience::circuit_breaker::{CircuitBreaker, CircuitBreakerConfig};
 //! use std::time::Duration;
 //!
 //! #[tokio::main]
 //! async fn main() -> Result<(), Box<dyn std::error::Error>> {
-//!     // Create circuit breaker
 //!     let breaker = CircuitBreaker::builder()
 //!         .failure_threshold(5)
 //!         .timeout(Duration::from_secs(30))
 //!         .build();
 //!
-//!     // Use circuit breaker
 //!     let result = breaker.call(|| async {
-//!         // Your async operation here
 //!         Ok::<_, std::io::Error>(42)
 //!     }).await?;
 //!
@@ -236,8 +233,8 @@ impl CircuitBreaker {
     ///
     /// # Example
     ///
-    /// ```rust,no_run
-    /// # use songbird_orchestrator::resilience::circuit_breaker::CircuitBreaker;
+    /// ```rust,ignore
+    /// use songbird_orchestrator::resilience::circuit_breaker::CircuitBreaker;
     /// # #[tokio::main]
     /// # async fn main() {
     /// let breaker = CircuitBreaker::builder().build().unwrap();

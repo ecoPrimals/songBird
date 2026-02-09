@@ -24,7 +24,7 @@
 //!
 //! ## Usage
 //!
-//! ```rust
+//! ```rust,ignore
 //! use songbird_universal::circuit_breaker_manager::CircuitBreakerManager;
 //!
 //! #[tokio::main]

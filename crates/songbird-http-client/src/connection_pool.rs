@@ -28,7 +28,7 @@
 //!
 //! ## Usage
 //!
-//! ```rust,no_run
+//! ```rust,ignore
 //! use songbird_http_client::connection_pool::{ConnectionPool, PoolConfig};
 //!
 //! #[tokio::main]

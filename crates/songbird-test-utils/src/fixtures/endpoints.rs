@@ -42,7 +42,7 @@ static PORT_REGISTRY: std::sync::LazyLock<Mutex<HashMap<String, u16>>> =
 ///
 /// # Examples
 ///
-/// ```rust
+/// ```rust,ignore
 /// use songbird_test_utils::fixtures::endpoints::test_endpoint;
 ///
 /// // With environment variable:
@@ -84,7 +84,7 @@ pub fn test_endpoint(capability: &str) -> String {
 ///
 /// # Examples
 ///
-/// ```rust
+/// ```rust,ignore
 /// use songbird_test_utils::fixtures::endpoints::test_port;
 ///
 /// // With environment variable:

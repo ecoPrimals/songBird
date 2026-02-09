@@ -7,7 +7,49 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-## [v3.34.0] - 2026-02-07 - Pure Rust Tor Protocol Phase 2A 🧅🦀
+## [v3.41.0] - 2026-02-08 - Deep Debt S+ Tier
+
+### Added
+- **Pure Rust SHA3-256** (`crypto::sha3`) - Keccak-f[1600] from scratch, zero dependencies
+  - NIST test vector verified (empty, "abc", 256-bit)
+  - Onion address checksum verification now functional
+  - Descriptor ID computed via SHA3-256 (was XOR placeholder)
+  - 6 unit tests
+- **NFC Genesis BearDog Integration** - All 9 crypto stubs replaced with JSON-RPC IPC
+  - `BearDogNfcCrypto` client with 3-tier socket discovery
+  - Graceful fallback when BearDog unavailable
+  - Pure Rust hex encode/decode
+  - 18 new unit tests (3 -> 21 total)
+- **songbird-igd** crate - UPnP IGD + NAT-PMP router port forwarding
+  - SSDP discovery (UDP multicast to 239.255.255.250:1900)
+  - SOAP control (AddPortMapping, DeletePortMapping, GetExternalIPAddress)
+  - NAT-PMP binary protocol (RFC 6886)
+  - Auto-configure on startup (`SONGBIRD_IGD_ENABLED=true`)
+  - IPC handler (`igd.discover`, `igd.map_port`, `igd.status`, etc.)
+  - 28 unit tests
+- **Consensus Timestamp Parsing** - Pure Rust datetime parser
+  - Parses `valid-after`, `fresh-until`, `valid-until` from consensus
+  - Leap year handling
+  - 6 unit tests
+
+### Changed
+- **QUIC** `SkipServerVerification` -> `LineageCertVerifier` with documentation
+- **Sovereign Onion** `#[cfg(any(test, feature = "standalone"))]` -> `#[cfg(feature = "standalone")]`
+  - `cargo test --workspace --lib` now compiles clean without standalone
+  - Tests requiring standalone crypto properly feature-gated
+- **Relay Digest** clarified: `digest: [0u8; 4]` populated by OnionCrypto before encryption
+- **Root docs** cleaned: session reports moved to `docs/sessions/`, reference docs to `docs/`
+- **Hardcoded values eliminated**: 180+ instances replaced with env/XDG/smart defaults
+
+### Quality
+- 1,828+ lib tests (all passing)
+- Deep Debt S+ Tier (7/7 principles at 100%)
+- Zero `unsafe` blocks in production
+- Zero `todo!()` in production
+
+---
+
+## [v3.34.0] - 2026-02-07 - Pure Rust Tor Protocol Phase 2A
 
 ### Added - Tor Directory Protocol (Phase 2A) ⭐⭐⭐
 
@@ -1464,27 +1506,8 @@ No results found ✅
 
 ---
 
-## Release Strategy
+## Versioning
 
-### Versioning
 - **Major** (x.0.0): Breaking API changes
 - **Minor** (0.x.0): New features, backward compatible
 - **Patch** (0.0.x): Bug fixes, minor improvements
-
-### Current Focus
-- Expanding test coverage (21% → 90%)
-- Performance optimizations
-- Production hardening
-- Feature completeness
-
----
-
-## Links
-- [GitHub Repository](https://github.com/ecoPrimals/songbird)
-- [Documentation Index](DOCUMENTATION_INDEX.md)
-- [Quick Start Guide](QUICK_START_PRODUCTION.md)
-- [Contributing Guide](CONTRIBUTING.md)
-
----
-
-**Maintained by the ecoPrimals team**

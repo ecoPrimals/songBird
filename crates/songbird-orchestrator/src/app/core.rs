@@ -19,7 +19,7 @@ use super::connection_manager::ConnectionManager;
 use crate::trust::TrustEscalationManager;
 
 // Import from sibling modules
-use super::network::{detect_primary_ip, get_local_ip_for_connectivity_test};
+use super::network::get_local_ip_for_connectivity_test;
 
 /// Main orchestrator application
 ///

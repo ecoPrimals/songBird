@@ -54,10 +54,14 @@ impl OnionServiceKeys {
     fn derive_onion_address(public_key: &[u8; 32]) -> Result<String> {
         let version: u8 = 0x03;
 
-        // Calculate checksum
-        // checksum = H(".onion checksum" | public_key | version)[:2]
-        // TODO: Use BearDog SHA3-256
-        let checksum = [0u8; 2]; // Placeholder
+        // Calculate checksum via pure Rust SHA3-256
+        // checksum = SHA3-256(".onion checksum" || public_key || version)[0..2]
+        let mut checksum_input = Vec::with_capacity(48);
+        checksum_input.extend_from_slice(b".onion checksum");
+        checksum_input.extend_from_slice(public_key);
+        checksum_input.push(version);
+        let hash = crate::crypto::sha3::sha3_256(&checksum_input);
+        let checksum = [hash[0], hash[1]];
 
         // Construct address bytes (35 total)
         let mut addr_bytes = Vec::with_capacity(35);
@@ -113,19 +117,120 @@ impl OnionServiceDescriptor {
         })
     }
 
-    /// Encode descriptor for upload
+    /// Encode descriptor for upload to HSDir
+    ///
+    /// Produces a Tor v3 descriptor in the plaintext format specified
+    /// by rend-spec-v3. The descriptor has three layers:
+    /// 1. Outer wrapper (plaintext, signed)
+    /// 2. Superencrypted layer (encrypted to blinded key)
+    /// 3. Inner encrypted layer (encrypted to subcredential)
+    ///
+    /// Currently produces the outer plaintext wrapper.
+    /// BearDog integration needed for encryption layers and signing.
     pub fn encode(&self) -> Vec<u8> {
-        // TODO: Implement descriptor encoding (binary format)
-        // For now, return placeholder
-        Vec::new()
+        let mut descriptor = String::new();
+
+        // hs-descriptor 3
+        descriptor.push_str("hs-descriptor 3\n");
+
+        // descriptor-lifetime (in minutes)
+        descriptor.push_str(&format!("descriptor-lifetime {}\n", self.lifetime_minutes));
+
+        // descriptor-signing-key-cert (placeholder)
+        descriptor.push_str("descriptor-signing-key-cert\n");
+        descriptor.push_str("-----BEGIN ED25519 CERT-----\n");
+        // In production: BearDog generates a cross-certification
+        // For now, encode the signing key as base64
+        let key_b64 = base64_encode(&self.signing_key);
+        descriptor.push_str(&key_b64);
+        descriptor.push('\n');
+        descriptor.push_str("-----END ED25519 CERT-----\n");
+
+        // revision-counter (monotonically increasing)
+        descriptor.push_str("revision-counter 1\n");
+
+        // superencrypted (placeholder — needs BearDog encryption)
+        descriptor.push_str("superencrypted\n");
+        descriptor.push_str("-----BEGIN MESSAGE-----\n");
+        // In production: encrypted introduction point data
+        // For now, encode introduction points as plaintext
+        for (i, ip) in self.intro_points.iter().enumerate() {
+            let ip_b64 = base64_encode(&ip.relay_identity);
+            descriptor.push_str(&format!("introduction-point {}\n", ip_b64));
+            let _ = i; // suppress unused
+        }
+        descriptor.push_str("-----END MESSAGE-----\n");
+
+        // signature (placeholder — needs BearDog Ed25519)
+        descriptor.push_str("signature ");
+        if self.signature.is_empty() {
+            descriptor.push_str(&base64_encode(&[0u8; 64]));
+        } else {
+            descriptor.push_str(&base64_encode(&self.signature));
+        }
+        descriptor.push('\n');
+
+        descriptor.into_bytes()
     }
 
     /// Calculate descriptor ID for HSDir lookup
+    ///
+    /// The descriptor ID determines which HSDir relays store this descriptor.
+    /// Formula: descriptor_id = SHA3-256(signing_key || time_period || replica)
+    ///
+    /// Uses pure Rust SHA3-256 (zero BearDog dependency for local computation).
+    /// In full Tor spec: H(blinded_public_key || subcredential || time_period || replica)
     pub fn descriptor_id(&self) -> [u8; 32] {
-        // TODO: Calculate descriptor ID
-        // descriptor_id = H(public_key | time_period | replica)
-        [0u8; 32] // Placeholder
+        let time_period = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap_or_default()
+            .as_secs();
+
+        let period_num = time_period / (self.lifetime_minutes as u64 * 60);
+
+        // SHA3-256(signing_key || time_period_bytes)
+        let mut input = Vec::with_capacity(40);
+        input.extend_from_slice(&self.signing_key);
+        input.extend_from_slice(&period_num.to_be_bytes());
+
+        let id = crate::crypto::sha3::sha3_256(&input);
+        id
     }
+}
+
+/// Simple base64 encoding (no external dependency)
+///
+/// Uses standard base64 alphabet (RFC 4648). Sufficient for descriptor encoding.
+fn base64_encode(data: &[u8]) -> String {
+    const ALPHABET: &[u8] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+
+    let mut result = String::with_capacity((data.len() + 2) / 3 * 4);
+    let chunks = data.chunks(3);
+
+    for chunk in chunks {
+        let b0 = chunk[0] as u32;
+        let b1 = if chunk.len() > 1 { chunk[1] as u32 } else { 0 };
+        let b2 = if chunk.len() > 2 { chunk[2] as u32 } else { 0 };
+
+        let triple = (b0 << 16) | (b1 << 8) | b2;
+
+        result.push(ALPHABET[((triple >> 18) & 0x3F) as usize] as char);
+        result.push(ALPHABET[((triple >> 12) & 0x3F) as usize] as char);
+
+        if chunk.len() > 1 {
+            result.push(ALPHABET[((triple >> 6) & 0x3F) as usize] as char);
+        } else {
+            result.push('=');
+        }
+
+        if chunk.len() > 2 {
+            result.push(ALPHABET[(triple & 0x3F) as usize] as char);
+        } else {
+            result.push('=');
+        }
+    }
+
+    result
 }
 
 #[cfg(test)]
@@ -178,9 +283,78 @@ mod tests {
 
         let descriptor = OnionServiceDescriptor::new(&keys, &[])
             .expect("Failed to create descriptor");
-        
+
         let encoded = descriptor.encode();
-        // Placeholder returns empty vec for now
-        assert!(encoded.is_empty() || !encoded.is_empty());
+        let encoded_str = String::from_utf8_lossy(&encoded);
+
+        // Verify descriptor format
+        assert!(encoded_str.starts_with("hs-descriptor 3\n"));
+        assert!(encoded_str.contains("descriptor-lifetime 180\n"));
+        assert!(encoded_str.contains("descriptor-signing-key-cert\n"));
+        assert!(encoded_str.contains("-----BEGIN ED25519 CERT-----\n"));
+        assert!(encoded_str.contains("-----END ED25519 CERT-----\n"));
+        assert!(encoded_str.contains("revision-counter 1\n"));
+        assert!(encoded_str.contains("superencrypted\n"));
+        assert!(encoded_str.contains("-----BEGIN MESSAGE-----\n"));
+        assert!(encoded_str.contains("-----END MESSAGE-----\n"));
+        assert!(encoded_str.contains("signature "));
+    }
+
+    #[test]
+    fn test_descriptor_encoding_with_intro_points() {
+        use crate::onion_service::IntroductionPoint;
+
+        let keys = OnionServiceKeys {
+            identity_secret: [0u8; 32],
+            identity_public: [1u8; 32],
+            encryption_secret: [2u8; 32],
+            encryption_public: [3u8; 32],
+            onion_address: "test".to_string(),
+        };
+
+        let intro_points = vec![
+            IntroductionPoint {
+                relay_identity: [0xAA; 32],
+                onion_key: [0xBB; 32],
+                service_key: [0xCC; 32],
+                circuit_id: 1,
+            },
+        ];
+
+        let descriptor = OnionServiceDescriptor::new(&keys, &intro_points)
+            .expect("Failed to create descriptor");
+
+        let encoded = descriptor.encode();
+        let encoded_str = String::from_utf8_lossy(&encoded);
+
+        assert!(encoded_str.contains("introduction-point "));
+    }
+
+    #[test]
+    fn test_descriptor_id_deterministic_for_same_period() {
+        let keys = OnionServiceKeys {
+            identity_secret: [0u8; 32],
+            identity_public: [1u8; 32],
+            encryption_secret: [2u8; 32],
+            encryption_public: [3u8; 32],
+            onion_address: "test".to_string(),
+        };
+
+        let d1 = OnionServiceDescriptor::new(&keys, &[]).unwrap();
+        let d2 = OnionServiceDescriptor::new(&keys, &[]).unwrap();
+
+        // Same time period should produce same descriptor ID
+        let id1 = d1.descriptor_id();
+        let id2 = d2.descriptor_id();
+        assert_eq!(id1, id2);
+    }
+
+    #[test]
+    fn test_base64_encode() {
+        assert_eq!(base64_encode(b""), "");
+        assert_eq!(base64_encode(b"f"), "Zg==");
+        assert_eq!(base64_encode(b"fo"), "Zm8=");
+        assert_eq!(base64_encode(b"foo"), "Zm9v");
+        assert_eq!(base64_encode(b"foobar"), "Zm9vYmFy");
     }
 }

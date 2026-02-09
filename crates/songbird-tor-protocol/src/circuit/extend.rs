@@ -34,16 +34,21 @@ impl CircuitExtender {
         _circuit: &Circuit,
         next_relay: &RelayInfo,
     ) -> Result<(RelayCell, super::create::HandshakeState)> {
+        // Require ntor key for handshake
+        let relay_ntor_key = next_relay.ntor_key.ok_or_else(|| {
+            Error::Protocol(format!("Relay {} has no ntor_key", next_relay.nickname))
+        })?;
+
         // 1. Generate ephemeral X25519 keypair via BearDog
         let client_ephemeral = self.beardog.x25519_generate_ephemeral()?;
 
         // 2. Construct EXTEND2 relay cell payload
         let mut payload = Vec::new();
         
-        // Link specifiers (simplified)
+        // Link specifiers (2 specifiers: IPv4 address + RSA identity)
         payload.push(2); // Number of link specifiers
         
-        // IPv4 address specifier (type 0)
+        // Link specifier type 0: IPv4 address (6 bytes: IP + port)
         payload.push(0); // Type: IPv4
         payload.push(6); // Length: 6 bytes
         if let IpAddr::V4(ipv4) = next_relay.address {
@@ -53,33 +58,29 @@ impl CircuitExtender {
         }
         payload.extend_from_slice(&next_relay.or_port.to_be_bytes());
         
-        // Identity fingerprint specifier (type 2)
-        payload.push(2); // Type: Ed25519 ID
-        payload.push(32); // Length: 32 bytes
-        // TODO: Get Ed25519 identity from relay descriptor
-        // For now, use SHA1 fingerprint padded/truncated to 32 bytes
-        let mut ed25519_id = [0u8; 32];
-        ed25519_id[..20.min(next_relay.fingerprint.len())]
-            .copy_from_slice(&next_relay.fingerprint[..20.min(next_relay.fingerprint.len())]);
-        payload.extend_from_slice(&ed25519_id);
+        // Link specifier type 2: Legacy RSA identity (20-byte fingerprint)
+        payload.push(2); // Type: RSA identity
+        payload.push(20); // Length: 20 bytes
+        payload.extend_from_slice(&next_relay.fingerprint);
         
-        // Handshake type (ntor)
-        payload.extend_from_slice(&[0x00, 0x02]); // Type: ntor (0x0002)
+        // Handshake type (ntor = 0x0002)
+        payload.extend_from_slice(&[0x00, 0x02]); // Type: ntor
         
-        // Handshake data length
-        payload.extend_from_slice(&[0x00, 0x54]); // Length: 84 bytes
+        // Handshake data length: 84 bytes (20 + 32 + 32)
+        payload.extend_from_slice(&84u16.to_be_bytes()); // Length: 84 bytes
         
-        // Handshake data (same as CREATE2)
-        payload.extend_from_slice(&ed25519_id);               // 32 bytes - relay identity
-        payload.extend_from_slice(&ed25519_id);               // 32 bytes - relay ntor key (TODO: from descriptor)
-        payload.extend_from_slice(&client_ephemeral.public_key); // 32 bytes
+        // Handshake data (same as CREATE2 ntor format)
+        // Format: ID (20 bytes) || B (32 bytes) || X (32 bytes)
+        payload.extend_from_slice(&next_relay.fingerprint);      // 20 bytes - node ID
+        payload.extend_from_slice(&relay_ntor_key);              // 32 bytes - relay ntor key
+        payload.extend_from_slice(&client_ephemeral.public_key); // 32 bytes - client ephemeral
 
         // 3. Save state for EXTENDED2 processing
         let state = super::create::HandshakeState {
             client_ephemeral_secret: client_ephemeral.secret_key,
             client_ephemeral_public: client_ephemeral.public_key,
-            relay_identity: ed25519_id,
-            relay_ntor_key: ed25519_id, // TODO: Get from descriptor
+            node_id: next_relay.fingerprint,
+            relay_ntor_key,
         };
 
         // 4. Create RELAY_EARLY cell (EXTEND2)
@@ -87,7 +88,7 @@ impl CircuitExtender {
             command: RelayCommand::Extend,
             recognized: 0,
             stream_id: 0,
-            digest: [0u8; 4], // TODO: Calculate digest
+            digest: [0u8; 4], // Populated by OnionCrypto before encryption
             length: payload.len() as u16,
             data: payload,
         };

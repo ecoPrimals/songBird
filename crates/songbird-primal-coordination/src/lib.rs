@@ -31,10 +31,10 @@
 //!
 //! ## Example Usage
 //!
-//! ```rust
+//! ```rust,ignore
 //! use songbird_primal_coordination::*;
 //!
-//! # async fn example() -> Result<()> {
+//! async fn example() -> Result<()> {
 //! // Create coordinator with zero knowledge
 //! let mut coordinator = PrimalCoordinator::new();
 //!

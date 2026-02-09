@@ -100,7 +100,7 @@ impl UnixSocketServer {
     ///
     /// ## Example
     ///
-    /// ```rust
+    /// ```rust,ignore
     /// let server = UnixSocketServer::new(
     ///     service_registry,
     ///     discovery_listener,
@@ -541,7 +541,7 @@ impl UnixSocketServer {
     ///
     /// ## File Format
     ///
-    /// ```
+    /// ```text
     /// tcp:127.0.0.1:12345
     /// ```
     ///

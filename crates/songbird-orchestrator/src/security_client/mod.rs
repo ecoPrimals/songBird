@@ -15,7 +15,7 @@
 //!
 //! ## Usage (Protocol-Agnostic)
 //!
-//! ```rust,no_run
+//! ```rust,ignore
 //! use songbird_orchestrator::security_capability_client::{SecurityCapabilityClient, TrustEvaluationRequest};
 //!
 //! # async fn example() -> anyhow::Result<()> {

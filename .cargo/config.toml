@@ -1,5 +1,2 @@
-[target.aarch64-linux-android]
-linker = "/home/eastgate/android-dev/android-ndk-r25c/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android23-clang"
-
 [target.aarch64-unknown-linux-gnu]
 linker = "aarch64-linux-gnu-gcc"

@@ -234,7 +234,7 @@ impl SecurityAdapter {
     ///
     /// # Examples
     ///
-    /// ```no_run
+    /// ```rust,ignore
     /// # tokio_test::block_on(async {
     /// use songbird_universal::adapters::SecurityAdapter;
     ///
@@ -301,7 +301,7 @@ impl SecurityAdapter {
     ///
     /// # Examples
     ///
-    /// ```no_run
+    /// ```rust,ignore
     /// # tokio_test::block_on(async {
     /// use songbird_universal::adapters::SecurityAdapter;
     ///
@@ -594,7 +594,7 @@ impl SecurityAdapter {
     ///
     /// # Example
     ///
-    /// ```no_run
+    /// ```rust,ignore
     /// use songbird_universal::adapters::SecurityAdapter;
     /// use serde_json::json;
     ///

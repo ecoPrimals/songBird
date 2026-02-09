@@ -155,9 +155,16 @@ impl SovereignBinder {
     /// Bind with full sovereignty - tries all strategies to ensure success
     ///
     /// This function will:
-    /// 1. Try IPv4 wildcard (0.0.0.0) - works in most environments
-    /// 2. Try IPv6 wildcard (::) - future-proof
-    /// 3. Try specific interfaces if wildcards fail
+    /// 1. Try IPv6 dual-stack (::) with IPV6_V6ONLY=false - serves BOTH IPv4 and IPv6
+    /// 2. Fall back to IPv4 wildcard (0.0.0.0) - if IPv6 unavailable
+    /// 3. Try localhost only - last resort for restricted environments
+    ///
+    /// # Why IPv6 First?
+    ///
+    /// On Linux, binding IPv6 with `IPV6_V6ONLY=false` creates a dual-stack socket
+    /// that accepts both IPv4 and IPv6 connections on a single socket. If IPv4 binds
+    /// first, it blocks IPv6 from binding the same port. So IPv6 dual-stack MUST go
+    /// first to achieve full reachability.
     ///
     /// # Errors
     ///
@@ -165,10 +172,22 @@ impl SovereignBinder {
     pub async fn bind_sovereign(port: u16) -> Result<(TcpListener, SocketAddr)> {
         info!("🦅 Attempting sovereign bind on port {}", port);
 
-        // Strategy 1: IPv4 wildcard (most compatible)
+        // Strategy 1: IPv6 dual-stack (serves BOTH IPv4 and IPv6 on one socket)
+        match Self::try_ipv6_wildcard(port).await {
+            Ok((listener, addr)) => {
+                info!("✅ Sovereign bind successful: {} (IPv6 dual-stack, serves IPv4+IPv6)", addr);
+                return Ok((listener, addr));
+            }
+            Err(e) => {
+                warn!("IPv6 dual-stack bind failed: {} — falling back to IPv4", e);
+            }
+        }
+
+        // Strategy 2: IPv4 wildcard (fallback if IPv6 unavailable)
         match Self::try_ipv4_wildcard(port).await {
             Ok((listener, addr)) => {
                 info!("✅ Sovereign bind successful: {} (IPv4 wildcard)", addr);
+                warn!("   ⚠️  IPv6 NOT available — IPv4 only");
                 return Ok((listener, addr));
             }
             Err(e) => {
@@ -176,18 +195,7 @@ impl SovereignBinder {
             }
         }
 
-        // Strategy 2: IPv6 wildcard (future-proof, often accepts IPv4 too)
-        match Self::try_ipv6_wildcard(port).await {
-            Ok((listener, addr)) => {
-                info!("✅ Sovereign bind successful: {} (IPv6 wildcard, dual-stack)", addr);
-                return Ok((listener, addr));
-            }
-            Err(e) => {
-                warn!("IPv6 wildcard bind failed: {}", e);
-            }
-        }
-
-        // Strategy 3: Localhost only (fallback for restricted environments)
+        // Strategy 3: Localhost only (last resort for restricted environments)
         match Self::try_localhost(port).await {
             Ok((listener, addr)) => {
                 warn!("⚠️  Bound to localhost only: {}", addr);

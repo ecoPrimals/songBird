@@ -30,6 +30,7 @@ songbird-observability = { path = "../songbird-observability" }
 songbird-registry = { path = "../songbird-registry" }
 songbird-universal = { path = "../songbird-universal" }
 songbird-universal-ipc = { path = "../songbird-universal-ipc" }  # NEW (Jan 19, 2026): Universal IPC broker service
+songbird-igd = { path = "../songbird-igd" }  # IGD router auto-configure (Feb 8, 2026)
 # songbird-primal-sdk = { path = "../songbird-primal-sdk" }  # TEMPORARILY DISABLED: Syntax errors need fixing
 # songbird-cli = { path = "../songbird-cli" }  # TEMPORARILY DISABLED: Syntax errors need fixing
 

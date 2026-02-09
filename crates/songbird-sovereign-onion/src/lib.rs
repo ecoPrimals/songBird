@@ -19,7 +19,7 @@
 //!
 //! ## Example
 //!
-//! ```rust,no_run
+//! ```rust,ignore
 //! use songbird_sovereign_onion::{OnionService, OnionConnector};
 //!
 //! # #[tokio::main]
@@ -64,9 +64,9 @@ pub use service::OnionService;
 
 // Re-exports - Standalone (for testing/offline)
 // ⚠️ These methods use direct crypto - testing only!
-#[cfg(any(test, feature = "standalone"))]
+#[cfg(feature = "standalone")]
 pub use address::{derive_onion_address, parse_onion_address, validate_onion_address};
-#[cfg(any(test, feature = "standalone"))]
+#[cfg(feature = "standalone")]
 pub use crypto::{decrypt_data, encrypt_data};
-#[cfg(any(test, feature = "standalone"))]
+#[cfg(feature = "standalone")]
 pub use storage::OnionStorage as OnionStorageStandalone;  // Standalone storage methods

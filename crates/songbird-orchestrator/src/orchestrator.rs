@@ -68,7 +68,7 @@ impl Default for OrchestratorConfig {
 /// - Human consent enforcement
 ///
 /// # Example
-/// ```no_run
+/// ```rust,ignore
 /// # use songbird_orchestrator::*;
 /// # async fn example() -> anyhow::Result<()> {
 /// // Create orchestrator
@@ -484,12 +484,22 @@ mod tests {
     use crate::task_lifecycle::TaskStatus;
 
     async fn create_test_orchestrator() -> Result<SongbirdOrchestrator> {
+        use std::sync::atomic::{AtomicU32, Ordering};
+        static CTR: AtomicU32 = AtomicU32::new(0);
+        let id = CTR.fetch_add(1, Ordering::SeqCst);
+        let db_path = format!("/tmp/songbird-test-orch-{}-{}", std::process::id(), id);
+
         let config = OrchestratorConfig {
-            database_url: "sqlite::memory:".to_string(),
+            database_url: db_path.clone(),
             ..Default::default()
         };
 
-        SongbirdOrchestrator::new(config).await
+        let result = SongbirdOrchestrator::new(config).await;
+
+        // Clean up temp db on drop (best effort)
+        let _ = std::fs::remove_dir_all(&db_path);
+
+        result
     }
 
     #[tokio::test]

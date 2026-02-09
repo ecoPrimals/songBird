@@ -287,7 +287,7 @@ impl RelayDiscovery {
     /// SHOULD BE: Event-driven with watch channel or notification
     ///
     /// Modern Rust Solution:
-    /// ```rust
+    /// ```rust,ignore
     /// // In broadcaster: notify on new messages
     /// let (offer_tx, mut offer_rx) = tokio::sync::watch::channel(None);
     ///

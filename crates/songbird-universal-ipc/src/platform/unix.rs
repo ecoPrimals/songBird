@@ -52,24 +52,32 @@ pub struct UnixIPC;
 ///
 /// **Pure Rust**: No unsafe code, no `libc::getuid()`. Uses environment variables.
 fn get_socket_path(primal_name: &str) -> PathBuf {
+    resolve_socket_path(primal_name, |key| std::env::var(key))
+}
+
+/// Resolve socket path using an injectable env reader (concurrent-safe, testable)
+fn resolve_socket_path<F>(primal_name: &str, env_reader: F) -> PathBuf
+where
+    F: Fn(&str) -> Result<String, std::env::VarError>,
+{
     // Priority 1: Explicit override (e.g., BEARDOG_SOCKET=/path/to/socket.sock)
     let override_var = format!("{}_SOCKET", primal_name.to_uppercase().replace('-', "_"));
-    if let Ok(path) = std::env::var(&override_var) {
+    if let Ok(path) = env_reader(&override_var) {
         return PathBuf::from(path);
     }
 
     // Priority 2: Shared biomeos socket directory
-    if let Ok(socket_dir) = std::env::var("BIOMEOS_SOCKET_DIR") {
+    if let Ok(socket_dir) = env_reader("BIOMEOS_SOCKET_DIR") {
         return PathBuf::from(socket_dir).join(format!("{primal_name}.sock"));
     }
 
     // Priority 3: XDG_RUNTIME_DIR (XDG standard)
-    if let Ok(xdg_runtime_dir) = std::env::var("XDG_RUNTIME_DIR") {
+    if let Ok(xdg_runtime_dir) = env_reader("XDG_RUNTIME_DIR") {
         return PathBuf::from(xdg_runtime_dir).join("biomeos").join(format!("{primal_name}.sock"));
     }
 
     // Priority 4: Fallback XDG path using UID env var (Pure Rust!)
-    if let Ok(uid_str) = std::env::var("UID") {
+    if let Ok(uid_str) = env_reader("UID") {
         return PathBuf::from(format!("/run/user/{uid_str}/biomeos/{primal_name}.sock"));
     }
 
@@ -203,63 +211,84 @@ impl PlatformListener for UnixListenerWrapper {
 mod tests {
     use super::*;
     use tokio::io::{AsyncReadExt, AsyncWriteExt};
+    use std::collections::HashMap;
+
+    /// Create a mock env reader from a HashMap (concurrent-safe, no global state)
+    fn mock_env(vars: HashMap<&str, &str>) -> impl Fn(&str) -> Result<String, std::env::VarError> {
+        let owned: HashMap<String, String> = vars.into_iter()
+            .map(|(k, v)| (k.to_string(), v.to_string()))
+            .collect();
+        move |key: &str| {
+            owned.get(key)
+                .cloned()
+                .ok_or(std::env::VarError::NotPresent)
+        }
+    }
 
     #[test]
     fn test_get_socket_path_explicit_override() {
         // Priority 1: Explicit override
-        std::env::set_var("TESTPRIMAL_SOCKET", "/custom/path/test.sock");
-        let path = get_socket_path("testprimal");
+        let env = mock_env(HashMap::from([
+            ("TESTPRIMAL_SOCKET", "/custom/path/test.sock"),
+        ]));
+        let path = resolve_socket_path("testprimal", env);
         assert_eq!(path, PathBuf::from("/custom/path/test.sock"));
-        std::env::remove_var("TESTPRIMAL_SOCKET");
     }
 
     #[test]
     fn test_get_socket_path_biomeos_dir() {
         // Priority 2: BIOMEOS_SOCKET_DIR
-        std::env::remove_var("TESTPRIMAL2_SOCKET"); // Clear override
-        std::env::set_var("BIOMEOS_SOCKET_DIR", "/biomeos/sockets");
-        let path = get_socket_path("testprimal2");
+        let env = mock_env(HashMap::from([
+            ("BIOMEOS_SOCKET_DIR", "/biomeos/sockets"),
+        ]));
+        let path = resolve_socket_path("testprimal2", env);
         assert_eq!(path, PathBuf::from("/biomeos/sockets/testprimal2.sock"));
-        std::env::remove_var("BIOMEOS_SOCKET_DIR");
     }
 
     #[test]
     fn test_get_socket_path_xdg_runtime() {
         // Priority 3: XDG_RUNTIME_DIR
-        std::env::remove_var("TESTPRIMAL3_SOCKET");
-        std::env::remove_var("BIOMEOS_SOCKET_DIR");
-        std::env::set_var("XDG_RUNTIME_DIR", "/run/user/1000");
-        let path = get_socket_path("testprimal3");
+        let env = mock_env(HashMap::from([
+            ("XDG_RUNTIME_DIR", "/run/user/1000"),
+        ]));
+        let path = resolve_socket_path("testprimal3", env);
         assert_eq!(path, PathBuf::from("/run/user/1000/biomeos/testprimal3.sock"));
-        std::env::remove_var("XDG_RUNTIME_DIR");
     }
 
     #[test]
     fn test_get_socket_path_uid_fallback() {
         // Priority 4: UID env var (Pure Rust!)
-        std::env::remove_var("TESTPRIMAL4_SOCKET");
-        std::env::remove_var("BIOMEOS_SOCKET_DIR");
-        std::env::remove_var("XDG_RUNTIME_DIR");
-        std::env::set_var("UID", "1000");
-        let path = get_socket_path("testprimal4");
+        let env = mock_env(HashMap::from([
+            ("UID", "1000"),
+        ]));
+        let path = resolve_socket_path("testprimal4", env);
         assert_eq!(path, PathBuf::from("/run/user/1000/biomeos/testprimal4.sock"));
-        std::env::remove_var("UID");
     }
 
     #[test]
     fn test_get_socket_path_legacy_fallback() {
-        // Priority 5: Legacy /tmp fallback
-        std::env::remove_var("TESTPRIMAL5_SOCKET");
-        std::env::remove_var("BIOMEOS_SOCKET_DIR");
-        std::env::remove_var("XDG_RUNTIME_DIR");
-        std::env::remove_var("UID");
-        let path = get_socket_path("testprimal5");
+        // Priority 5: Legacy /tmp fallback (no env vars set)
+        let env = mock_env(HashMap::new());
+        let path = resolve_socket_path("testprimal5", env);
         assert_eq!(path, PathBuf::from("/tmp/testprimal5.sock"));
+    }
+
+    #[test]
+    fn test_get_socket_path_priority_order() {
+        // If both BIOMEOS_SOCKET_DIR and XDG_RUNTIME_DIR are set,
+        // BIOMEOS_SOCKET_DIR wins (higher priority)
+        let env = mock_env(HashMap::from([
+            ("BIOMEOS_SOCKET_DIR", "/biomeos/sockets"),
+            ("XDG_RUNTIME_DIR", "/run/user/1000"),
+        ]));
+        let path = resolve_socket_path("myprimal", env);
+        assert_eq!(path, PathBuf::from("/biomeos/sockets/myprimal.sock"));
     }
 
     #[test]
     fn test_socket_naming_standard() {
         // Verify naming follows biomeOS standard: {primal}.sock (no family)
+        let env = mock_env(HashMap::new()); // uses /tmp fallback
         let test_cases = vec![
             ("beardog", "beardog.sock"),
             ("squirrel", "squirrel.sock"),
@@ -267,7 +296,7 @@ mod tests {
         ];
 
         for (primal_name, expected_filename) in test_cases {
-            let path = get_socket_path(primal_name);
+            let path = resolve_socket_path(primal_name, &env);
             let filename = path.file_name().unwrap().to_string_lossy();
             assert_eq!(filename, expected_filename);
         }

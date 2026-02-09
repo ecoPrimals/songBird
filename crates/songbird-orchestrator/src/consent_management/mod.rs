@@ -300,8 +300,11 @@ mod tests {
 
     #[tokio::test]
     async fn test_consent_workflow_with_storage() {
-        // Create manager with in-memory storage
-        let manager = ConsentManager::with_storage("sqlite::memory:")
+        use std::sync::atomic::{AtomicU32, Ordering};
+        static CTR: AtomicU32 = AtomicU32::new(0);
+        let id = CTR.fetch_add(1, Ordering::SeqCst);
+        let db_path = format!("/tmp/songbird-test-consent-{}-{}", std::process::id(), id);
+        let manager = ConsentManager::with_storage(&db_path)
             .await
             .expect("Failed to create manager with storage");
 
@@ -333,7 +336,11 @@ mod tests {
 
     #[tokio::test]
     async fn test_list_by_user_with_storage() {
-        let manager = ConsentManager::with_storage("sqlite::memory:")
+        use std::sync::atomic::{AtomicU32, Ordering};
+        static CTR: AtomicU32 = AtomicU32::new(0);
+        let id = CTR.fetch_add(1, Ordering::SeqCst);
+        let db_path = format!("/tmp/songbird-test-consent-list-{}-{}", std::process::id(), id);
+        let manager = ConsentManager::with_storage(&db_path)
             .await
             .expect("Failed to create manager with storage");
 

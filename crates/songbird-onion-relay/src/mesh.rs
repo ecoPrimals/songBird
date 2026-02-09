@@ -113,10 +113,11 @@ impl BeaconMesh {
             endpoint.endpoint_type.priority()
         );
         
-        let mut endpoints = self.endpoints.write().await;
-        endpoints.entry(node_id.clone()).or_default().push(endpoint.clone());
-        
-        // Update best path
+        {
+            let mut endpoints = self.endpoints.write().await;
+            endpoints.entry(node_id.clone()).or_default().push(endpoint.clone());
+        }
+        // Write lock dropped before acquiring read lock in update_best_path
         self.update_best_path(&node_id).await;
     }
     

@@ -17,16 +17,16 @@ use tracing::{debug, info, warn};
 ///
 /// # Example
 ///
-/// ```rust,no_run
-/// use songbird_config::discover_primal;
+/// ```rust,ignore
+/// use songbird_config::discovery_helpers::discover_primal;
 /// use songbird_types::CanonicalPrimalType;
 ///
-/// # async fn example() -> anyhow::Result<()> {
-/// // Discover security primal (BearDog)
-/// let endpoint = discover_primal(CanonicalPrimalType::Security).await?;
-/// println!("Found security primal at: {}", endpoint.url);
-/// # Ok(())
-/// # }
+/// async fn example() -> anyhow::Result<()> {
+///     // Discover security primal (BearDog)
+///     let endpoint = discover_primal(CanonicalPrimalType::Security).await?;
+///     println!("Found security primal at: {}", endpoint.url);
+///     Ok(())
+/// }
 /// ```
 ///
 /// # Errors

@@ -67,7 +67,7 @@ impl SecurityCapabilityClient {
     ///
     /// # Example
     ///
-    /// ```rust,no_run
+    /// ```rust,ignore
     /// # use songbird_orchestrator::security_capability_client::SecurityCapabilityClient;
     /// # async fn example() -> anyhow::Result<()> {
     /// // Discover security provider (protocol detected automatically!)

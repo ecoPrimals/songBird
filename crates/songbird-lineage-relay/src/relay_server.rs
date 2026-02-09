@@ -119,7 +119,7 @@ impl RelayServerStats {
 ///
 /// ## Example
 ///
-/// ```no_run
+/// ```rust,ignore
 /// use songbird_lineage_relay::{RelayServer, RelayAuthority};
 /// use std::sync::Arc;
 ///
@@ -176,15 +176,16 @@ impl RelayServer {
     ///
     /// # Example
     ///
-    /// ```no_run
+    /// ```rust,ignore
     /// use songbird_lineage_relay::RelayServer;
-    /// # use std::sync::Arc;
-    /// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
-    /// let bind_addr = "0.0.0.0:3479".parse()?;
-    /// let authority = Arc::new(MyAuthority::new());
-    /// let server = RelayServer::new(bind_addr, authority).await?;
-    /// # Ok(())
-    /// # }
+    /// use std::sync::Arc;
+    ///
+    /// async fn example() -> Result<(), Box<dyn std::error::Error>> {
+    ///     let bind_addr = "0.0.0.0:3479".parse()?;
+    ///     let authority = Arc::new(MyAuthority::new());
+    ///     let server = RelayServer::new(bind_addr, authority).await?;
+    ///     Ok(())
+    /// }
     /// ```
     pub async fn new(
         bind_addr: SocketAddr,

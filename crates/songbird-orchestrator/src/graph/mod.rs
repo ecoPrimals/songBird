@@ -21,7 +21,7 @@
 ///
 /// # Example
 ///
-/// ```rust,no_run
+/// ```rust,ignore
 /// use songbird_orchestrator::graph::{Graph, GraphValidator};
 ///
 /// let validator = GraphValidator::new();

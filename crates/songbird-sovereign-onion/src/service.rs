@@ -60,7 +60,7 @@ impl OnionService {
     /// Create new onion service (standalone mode - testing only)
     ///
     /// ⚠️ **Testing only** - Uses direct crypto without BearDog
-    #[cfg(any(test, feature = "standalone"))]
+    #[cfg(feature = "standalone")]
     pub async fn new_standalone(port: u16) -> Result<Self> {
         let storage = OnionStorage::open("./data/sovereign-onion")?;
         let identity = storage.load_or_generate_identity()?;

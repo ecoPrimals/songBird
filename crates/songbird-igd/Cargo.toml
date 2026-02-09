@@ -1,0 +1,39 @@
+[package]
+name = "songbird-igd"
+version = "0.1.0"
+edition = "2021"
+license = "AGPL-3.0"
+repository = "https://github.com/ecoPrimals/SongBird"
+description = "Pure Rust UPnP IGD and NAT-PMP router configuration for Songbird"
+keywords = ["upnp", "igd", "nat-pmp", "port-forwarding", "pure-rust"]
+categories = ["network-programming"]
+
+[dependencies]
+# Async runtime (Pure Rust)
+tokio = { version = "1.35", features = ["net", "time", "io-util", "macros", "rt"] }
+
+# Serialization
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+
+# Logging
+tracing = "0.1"
+
+# Error handling
+thiserror = "1.0"
+anyhow = "1.0"
+
+# Internal dependencies
+songbird-types = { path = "../songbird-types" }
+
+[dev-dependencies]
+tokio-test = "0.4"
+
+[lib]
+name = "songbird_igd"
+path = "src/lib.rs"
+
+# Enforce Pure Rust - zero unsafe code
+[[package.metadata.enforce]]
+no_unsafe = true
+no_c_dependencies = true

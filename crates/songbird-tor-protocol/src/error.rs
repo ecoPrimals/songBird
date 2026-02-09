@@ -14,7 +14,11 @@ pub enum Error {
     
     /// HTTP request error
     #[error("HTTP error: {0}")]
-    Http(#[from] reqwest::Error),
+    Http(String),
+    
+    /// Network error
+    #[error("Network error: {0}")]
+    Network(String),
     
     /// Parsing error
     #[error("Parse error: {0}")]
