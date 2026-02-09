@@ -1,7 +1,6 @@
-//! Network Discovery Backend - mDNS and DNS-SD
+//! Network Discovery Backend — mDNS and DNS-SD
 //!
-//! COMPLETE IMPLEMENTATION: mDNS service discovery for local network
-//! Evolution from TODO stub to full production implementation
+//! mDNS service discovery for local network primals.
 
 use super::super::errors::DiscoveryError;
 use super::super::types::DiscoveredPrimal;

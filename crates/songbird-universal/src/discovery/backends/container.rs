@@ -1,7 +1,6 @@
 //! Container Orchestration Discovery Backend
 //!
-//! COMPLETE: Kubernetes and Docker discovery implementations
-//! Evolution from TODO stubs to full production implementations
+//! Kubernetes and Docker discovery implementations.
 
 use super::super::errors::DiscoveryError;
 use super::super::types::DiscoveredPrimal;

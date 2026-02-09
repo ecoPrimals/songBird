@@ -50,7 +50,6 @@ members = [
     "crates/songbird-remote-deploy",
     "crates/songbird-compute-bridge",
     "crates/songbird-primal-coordination",
-    "rendezvous",
 ]
 
 [workspace.package]

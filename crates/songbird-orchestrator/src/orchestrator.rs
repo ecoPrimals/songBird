@@ -20,7 +20,6 @@ use crate::{
 };
 use anyhow::{Context, Result};
 use std::sync::Arc;
-use std::time::Duration;
 use tracing::{debug, info, warn};
 
 /// Comprehensive configuration for the orchestrator
@@ -485,6 +484,7 @@ mod tests {
     use super::*;
     use crate::task_lifecycle::types::{Priority, ResourceRequirements};
     use crate::task_lifecycle::TaskStatus;
+    use std::time::Duration;
 
     async fn create_test_orchestrator() -> Result<SongbirdOrchestrator> {
         use std::sync::atomic::{AtomicU32, Ordering};
