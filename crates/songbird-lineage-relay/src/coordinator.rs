@@ -247,38 +247,35 @@ impl LineageRelayCoordinator {
 
         info!("Starting relay service on {}", relay_address);
 
-        // Listen for relay requests in background
-        let _relay_discovery = self.relay_discovery.clone();
-        let _my_relay_address = relay_address;
+        // ✅ Event-driven relay request processing (Feb 9, 2026)
+        // Uses BirdSongBroadcaster's Notify-based wait_for_message_by_type()
+        // Zero polling, zero CPU waste, instant response to incoming requests
+        let relay_discovery = self.relay_discovery.clone();
+        let my_relay_address = relay_address;
+        let broadcaster = self.broadcaster.clone();
 
-        // 🚨 DEEP DEBT (v3.10.4 - Jan 6, 2026): Polling loop with sleep
-        //
-        // CURRENT: Polls every 1 second (blocking, wasteful, high latency)
-        // SHOULD BE: Event-driven with mpsc channel
-        //
-        // Modern Rust Solution:
-        // ```rust
-        // let (request_tx, mut request_rx) = tokio::sync::mpsc::channel(100);
-        // tokio::spawn(async move {
-        //     while let Some(request) = request_rx.recv().await {
-        //         process_relay_request(request).await;
-        //     }
-        // });
-        // ```
-        //
-        // Benefits:
-        // - Zero latency (instant processing)
-        // - No CPU waste (event-driven)
-        // - Proper backpressure (bounded queue)
-        // - Clean shutdown (channel close)
-        //
-        // Status: INCOMPLETE - This module needs architectural evolution
-        // Priority: MEDIUM (relay functionality is experimental)
         tokio::spawn(async move {
             loop {
-                // TODO: Replace with mpsc channel-based request queue
-                tokio::time::sleep(Duration::from_secs(1)).await; // ❌ POLLING ANTI-PATTERN
-                                                                  // Process any pending relay requests here
+                // Wait for relay request messages (event-driven, no polling)
+                match broadcaster.wait_for_message_by_type(
+                    crate::birdsong::BirdSongType::RelayRequest,
+                    Duration::from_secs(300), // 5 min cycle — wakes instantly on message
+                ).await {
+                    Ok(messages) => {
+                        for msg in messages {
+                            if let Ok(request) = serde_json::from_slice::<crate::relay::RelayRequest>(&msg.payload) {
+                                info!("Received relay request from {}", request.requester);
+                                if let Err(e) = relay_discovery.offer_relay(request, my_relay_address).await {
+                                    warn!("Failed to process relay request: {}", e);
+                                }
+                            }
+                        }
+                    }
+                    Err(_) => {
+                        // Timeout — restart wait cycle (normal operation)
+                        debug!("Relay listener cycle complete, restarting");
+                    }
+                }
             }
         });
 

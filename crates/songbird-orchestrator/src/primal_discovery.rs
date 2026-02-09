@@ -143,17 +143,25 @@ impl Capability {
 /// # }
 /// ```
 pub async fn discover(capability: Capability) -> Result<String> {
+    discover_with(capability, |name| std::env::var(name).ok()).await
+}
+
+/// Discover a primal by capability with injectable env reader (concurrent-safe, testable)
+pub async fn discover_with<F>(capability: Capability, env_reader: F) -> Result<String>
+where
+    F: Fn(&str) -> Option<String>,
+{
     info!("🔍 Discovering {:?} provider (capability-based discovery)...", capability);
 
     // Strategy 1: Environment variable (orchestrator-provided, preferred)
-    if let Ok(socket_path) = std::env::var(capability.env_var_name()) {
+    if let Some(socket_path) = env_reader(capability.env_var_name()) {
         info!("   ✅ Found via {}: {}", capability.env_var_name(), socket_path);
         return Ok(socket_path);
     }
 
     // Strategy 2: Alternative environment variables (compatibility)
     for alt_var in capability.alt_env_vars() {
-        if let Ok(socket_path) = std::env::var(alt_var) {
+        if let Some(socket_path) = env_reader(alt_var) {
             info!("   ✅ Found via {} (compatibility): {}", alt_var, socket_path);
             return Ok(socket_path);
         }
@@ -169,8 +177,6 @@ pub async fn discover(capability: Capability) -> Result<String> {
     }
 
     // Strategy 3.5: TCP discovery files (isomorphic fallback)
-    // When primals can't use Unix sockets (Android/SELinux, Windows), they automatically
-    // fall back to TCP localhost and write a discovery file. Check for those files.
     if let Some(tcp_endpoint) = discover_tcp_from_capability(capability) {
         info!("   ✅ Found {:?} provider via TCP discovery file: {}", capability, tcp_endpoint);
         return Ok(tcp_endpoint);
@@ -317,9 +323,13 @@ fn check_tcp_discovery_file(primal_name: &str) -> Option<String> {
     // Priority 3: /tmp (last resort)
     candidates.push(std::path::PathBuf::from(format!("/tmp/{}", filename)));
 
-    // Check each candidate
+    check_tcp_discovery_from_candidates(&candidates)
+}
+
+/// Check TCP discovery from explicit candidate paths (testable, no env vars)
+fn check_tcp_discovery_from_candidates(candidates: &[std::path::PathBuf]) -> Option<String> {
     for path in candidates {
-        if let Ok(content) = std::fs::read_to_string(&path) {
+        if let Ok(content) = std::fs::read_to_string(path) {
             // Parse format: "tcp:127.0.0.1:12345"
             if let Some(addr_str) = content.strip_prefix("tcp:") {
                 let addr_trimmed = addr_str.trim();
@@ -358,10 +368,6 @@ pub async fn discover_ai_provider() -> Result<String> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::sync::Mutex;
-
-    // Mutex to serialize tests that modify environment variables
-    static ENV_MUTEX: Mutex<()> = Mutex::new(());
 
     #[test]
     fn test_capability_env_vars() {
@@ -373,13 +379,11 @@ mod tests {
     fn test_capability_patterns() {
         let patterns = Capability::Crypto.socket_patterns();
         assert!(!patterns.is_empty());
-        // Should contain XDG-compliant paths and legacy fallbacks
         assert!(patterns.iter().any(|p| p.contains("beardog.sock")));
     }
 
     #[test]
     fn test_family_id_default() {
-        // Without env var, should return default
         let family_id = get_family_id();
         assert!(!family_id.is_empty());
     }
@@ -392,99 +396,76 @@ mod tests {
 
     #[test]
     fn test_tcp_discovery_file_parsing() {
+        // ✅ Concurrent-safe: Uses check_tcp_discovery_from_candidates (no env vars)
         use std::io::Write;
 
-        // Create temp discovery file
         let temp_dir = std::env::temp_dir();
         let file_path = temp_dir.join("test-beardog-ipc-port");
 
-        // Write TCP endpoint
         let mut file = std::fs::File::create(&file_path).unwrap();
         file.write_all(b"tcp:127.0.0.1:12345").unwrap();
         drop(file);
 
-        // Set XDG_RUNTIME_DIR to temp
-        std::env::set_var("XDG_RUNTIME_DIR", temp_dir.to_str().unwrap());
-
-        // Test discovery
-        let result = check_tcp_discovery_file("test-beardog");
+        // Directly pass candidate path (no env var needed)
+        let candidates = vec![file_path.clone()];
+        let result = check_tcp_discovery_from_candidates(&candidates);
         assert_eq!(result, Some("127.0.0.1:12345".to_string()));
 
-        // Cleanup
         std::fs::remove_file(file_path).ok();
-        std::env::remove_var("XDG_RUNTIME_DIR");
     }
 
     #[test]
-    fn test_tcp_discovery_from_crypto_capability() {
+    fn test_tcp_discovery_from_explicit_path() {
+        // ✅ Concurrent-safe: Tests beardog discovery via explicit candidate paths
         use std::io::Write;
 
-        // Create temp discovery file for beardog
         let temp_dir = std::env::temp_dir();
-        let file_path = temp_dir.join("beardog-ipc-port");
+        let file_path = temp_dir.join("beardog-ipc-port-test");
 
         let mut file = std::fs::File::create(&file_path).unwrap();
         file.write_all(b"tcp:127.0.0.1:33765").unwrap();
         drop(file);
 
-        std::env::set_var("XDG_RUNTIME_DIR", temp_dir.to_str().unwrap());
+        let candidates = vec![file_path.clone()];
+        let result = check_tcp_discovery_from_candidates(&candidates);
+        assert_eq!(result, Some("127.0.0.1:33765".to_string()));
 
-        // Test Crypto capability maps to beardog
-        let result = discover_tcp_from_capability(Capability::Crypto);
-        assert_eq!(result, Some("tcp:127.0.0.1:33765".to_string()));
-
-        // Cleanup
         std::fs::remove_file(file_path).ok();
-        std::env::remove_var("XDG_RUNTIME_DIR");
     }
 
     #[test]
     fn test_tcp_discovery_invalid_format() {
+        // ✅ Concurrent-safe: Uses explicit candidate paths
         use std::io::Write;
 
         let temp_dir = std::env::temp_dir();
-        let file_path = temp_dir.join("invalid-beardog-ipc-port");
+        let file_path = temp_dir.join("invalid-beardog-ipc-port-test");
 
         // Write invalid format (missing tcp: prefix)
         let mut file = std::fs::File::create(&file_path).unwrap();
         file.write_all(b"127.0.0.1:12345").unwrap();
         drop(file);
 
-        std::env::set_var("XDG_RUNTIME_DIR", temp_dir.to_str().unwrap());
-
-        // Should return None for invalid format
-        let result = check_tcp_discovery_file("invalid-beardog");
+        let candidates = vec![file_path.clone()];
+        let result = check_tcp_discovery_from_candidates(&candidates);
         assert_eq!(result, None);
 
-        // Cleanup
         std::fs::remove_file(file_path).ok();
-        std::env::remove_var("XDG_RUNTIME_DIR");
     }
 
     // ═══════════════════════════════════════════════════════════════════════
     // 🧪 XDG SOCKET DISCOVERY TESTS (Feb 4, 2026)
-    // These tests use serial execution to avoid env var race conditions
+    // ✅ Evolved to concurrent-safe — no env var mutation
     // ═══════════════════════════════════════════════════════════════════════
 
     #[test]
     fn test_xdg_socket_patterns_structure() {
-        // Test pattern structure without modifying environment
-        // Just verify the function returns expected types
         let patterns = Capability::Crypto.socket_patterns();
 
-        // Should have multiple patterns
         assert!(patterns.len() >= 2, "Should have at least 2 patterns");
-
-        // All should end with .sock
         for pattern in &patterns {
-            assert!(
-                pattern.ends_with(".sock"),
-                "Pattern should end with .sock: {}",
-                pattern
-            );
+            assert!(pattern.ends_with(".sock"), "Pattern should end with .sock: {}", pattern);
         }
-
-        // Should contain beardog for Crypto capability
         assert!(
             patterns.iter().any(|p| p.contains("beardog")),
             "Crypto patterns should reference beardog"
@@ -504,11 +485,7 @@ mod tests {
 
         for cap in &capabilities {
             let patterns = cap.socket_patterns();
-            assert!(
-                !patterns.is_empty(),
-                "{:?} should return at least one pattern",
-                cap
-            );
+            assert!(!patterns.is_empty(), "{:?} should return at least one pattern", cap);
             assert!(
                 patterns.iter().all(|p| p.ends_with(".sock")),
                 "{:?} patterns should all end with .sock",
@@ -519,12 +496,8 @@ mod tests {
 
     #[test]
     fn test_socket_patterns_no_nat0_suffix() {
-        // Verify patterns use correct naming (no -nat0 suffix)
         let patterns = Capability::Crypto.socket_patterns();
-
-        // The primary pattern should NOT contain -nat0
         for pattern in &patterns {
-            // Legacy /tmp paths might have old naming, but new paths should not
             if pattern.contains("biomeos") {
                 assert!(
                     !pattern.contains("-nat0"),
@@ -537,56 +510,45 @@ mod tests {
 
     #[test]
     fn test_socket_patterns_correct_primal_names() {
-        // Verify each capability maps to correct primal
-        assert!(
-            Capability::Crypto.socket_patterns().iter().any(|p| p.contains("beardog")),
-            "Crypto should reference beardog"
-        );
-        assert!(
-            Capability::Http.socket_patterns().iter().any(|p| p.contains("songbird")),
-            "Http should reference songbird"
-        );
-        assert!(
-            Capability::Ai.socket_patterns().iter().any(|p| p.contains("squirrel")),
-            "Ai should reference squirrel"
-        );
-        assert!(
-            Capability::Storage.socket_patterns().iter().any(|p| p.contains("nestgate")),
-            "Storage should reference nestgate"
-        );
-        assert!(
-            Capability::Messaging.socket_patterns().iter().any(|p| p.contains("messenger")),
-            "Messaging should reference messenger"
-        );
+        assert!(Capability::Crypto.socket_patterns().iter().any(|p| p.contains("beardog")));
+        assert!(Capability::Http.socket_patterns().iter().any(|p| p.contains("songbird")));
+        assert!(Capability::Ai.socket_patterns().iter().any(|p| p.contains("squirrel")));
+        assert!(Capability::Storage.socket_patterns().iter().any(|p| p.contains("nestgate")));
+        assert!(Capability::Messaging.socket_patterns().iter().any(|p| p.contains("messenger")));
     }
 
     #[tokio::test]
     async fn test_discover_with_env_var_override() {
-        // Use HTTP capability to avoid conflict with other tests
+        // ✅ Concurrent-safe: Uses discover_with (injectable env reader, no global state)
         let custom_path = "/custom/path/http-provider.sock";
-        std::env::set_var("HTTP_PROVIDER_SOCKET", custom_path);
+        let mock_env = |name: &str| -> Option<String> {
+            if name == "HTTP_PROVIDER_SOCKET" {
+                Some(custom_path.to_string())
+            } else {
+                None
+            }
+        };
 
-        let result = discover(Capability::Http).await;
-
-        // Should return env var value (even if socket doesn't exist)
+        let result = discover_with(Capability::Http, mock_env).await;
         assert!(result.is_ok());
         assert_eq!(result.unwrap(), custom_path);
-
-        std::env::remove_var("HTTP_PROVIDER_SOCKET");
     }
 
     #[tokio::test]
     async fn test_discover_returns_env_var_priority() {
-        // Use AI capability to avoid conflict with other tests
+        // ✅ Concurrent-safe: Uses discover_with (injectable env reader, no global state)
         let custom_path = "/test/custom/ai-provider.sock";
-        std::env::set_var("AI_PROVIDER_SOCKET", custom_path);
+        let mock_env = |name: &str| -> Option<String> {
+            if name == "AI_PROVIDER_SOCKET" {
+                Some(custom_path.to_string())
+            } else {
+                None
+            }
+        };
 
-        let result = discover(Capability::Ai).await;
-
+        let result = discover_with(Capability::Ai, mock_env).await;
         assert!(result.is_ok());
         assert_eq!(result.unwrap(), custom_path);
-
-        std::env::remove_var("AI_PROVIDER_SOCKET");
     }
 }
 

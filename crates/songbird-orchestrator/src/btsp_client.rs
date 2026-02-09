@@ -56,6 +56,12 @@ impl BtspClient {
         }
     }
 
+    /// Create BTSP client with explicit socket path (concurrent-safe, testable)
+    #[must_use]
+    pub fn with_socket(socket_path: PathBuf) -> Self {
+        Self { socket_path }
+    }
+
     /// Discover BearDog socket path from environment
     fn discover_socket_path() -> PathBuf {
         let path = std::env::var("BEARDOG_SOCKET")
@@ -384,17 +390,14 @@ mod tests {
 
     #[test]
     fn test_socket_path_discovery() {
-        // Use unique path to avoid collision with parallel tests
+        // ✅ Concurrent-safe: Uses with_socket (no env vars)
         let unique_path = format!("/tmp/test_socket_{}.sock", std::process::id());
-
-        std::env::set_var("BEARDOG_SOCKET", &unique_path);
-        let client = BtspClient::new();
+        let client = BtspClient::with_socket(PathBuf::from(&unique_path));
         assert_eq!(
             client.socket_path,
             PathBuf::from(&unique_path),
-            "Socket path should match the env var we set"
+            "Socket path should match the explicitly provided path"
         );
-        std::env::remove_var("BEARDOG_SOCKET");
     }
 
     #[tokio::test]

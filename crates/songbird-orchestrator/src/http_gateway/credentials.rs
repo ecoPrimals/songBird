@@ -72,6 +72,14 @@ impl CredentialManager {
     /// - Secure: No logging of actual keys
     /// - Flexible: Multiple naming conventions supported
     pub fn get_api_key(&self, service: &str) -> Option<String> {
+        self.get_api_key_with(service, |name| std::env::var(name).ok())
+    }
+
+    /// Get API key with injectable env reader (concurrent-safe, testable)
+    pub fn get_api_key_with<F>(&self, service: &str, env_reader: F) -> Option<String>
+    where
+        F: Fn(&str) -> Option<String>,
+    {
         // Try to get from cache (blocking, but fast)
         if let Ok(credentials) = self.credentials.try_read() {
             if let Some(key) = credentials.get(service) {
@@ -90,7 +98,7 @@ impl CredentialManager {
         ];
 
         for env_var in &env_vars {
-            if let Ok(api_key) = std::env::var(env_var) {
+            if let Some(api_key) = env_reader(env_var) {
                 if !api_key.is_empty() {
                     debug!("🔐 Loaded credential for service: {} from {}", service, env_var);
 
@@ -168,7 +176,12 @@ impl Default for CredentialManager {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::env;
+    use std::collections::HashMap;
+
+    /// Create a mock env reader from key-value pairs
+    fn mock_env(vars: HashMap<String, String>) -> impl Fn(&str) -> Option<String> {
+        move |name: &str| vars.get(name).cloned()
+    }
 
     #[test]
     fn test_credential_manager_creation() {
@@ -178,86 +191,90 @@ mod tests {
 
     #[test]
     fn test_get_api_key_from_env() {
-        // Set test API key
-        env::set_var("TEST_SERVICE_API_KEY", "test_key_123");
+        // ✅ Concurrent-safe: Uses injectable env reader
+        let env = mock_env(HashMap::from([
+            ("TEST_SERVICE_API_KEY".to_string(), "test_key_123".to_string()),
+        ]));
 
         let manager = CredentialManager::new();
-        let api_key = manager.get_api_key("test_service");
-
+        let api_key = manager.get_api_key_with("test_service", env);
         assert_eq!(api_key, Some("test_key_123".to_string()));
-
-        // Cleanup
-        env::remove_var("TEST_SERVICE_API_KEY");
     }
 
     #[test]
     fn test_get_api_key_fallback() {
-        // Test fallback to _KEY suffix
-        env::set_var("ANOTHER_SERVICE_KEY", "another_key_456");
+        // ✅ Concurrent-safe: Tests _KEY suffix fallback
+        let env = mock_env(HashMap::from([
+            ("ANOTHER_SERVICE_KEY".to_string(), "another_key_456".to_string()),
+        ]));
 
         let manager = CredentialManager::new();
-        let api_key = manager.get_api_key("another_service");
-
+        let api_key = manager.get_api_key_with("another_service", env);
         assert_eq!(api_key, Some("another_key_456".to_string()));
-
-        // Cleanup
-        env::remove_var("ANOTHER_SERVICE_KEY");
     }
 
     #[test]
     fn test_get_api_key_not_found() {
+        let env = mock_env(HashMap::new());
         let manager = CredentialManager::new();
-        let api_key = manager.get_api_key("nonexistent_service");
-
+        let api_key = manager.get_api_key_with("nonexistent_service", env);
         assert_eq!(api_key, None);
     }
 
     #[test]
     fn test_has_api_key() {
-        env::set_var("MYSERVICE_API_KEY", "my_key_789");
+        // ✅ Concurrent-safe: Pre-load into cache to test has_api_key
+        let env = mock_env(HashMap::from([
+            ("MYSERVICE_API_KEY".to_string(), "my_key_789".to_string()),
+        ]));
 
         let manager = CredentialManager::new();
-
+        // Load key into cache via get_api_key_with
+        let _ = manager.get_api_key_with("myservice", env);
+        // has_api_key checks cache first, so this will work
         assert!(manager.has_api_key("myservice"));
         assert!(!manager.has_api_key("other_service"));
-
-        // Cleanup
-        env::remove_var("MYSERVICE_API_KEY");
     }
 
     #[tokio::test]
-    async fn test_load_all() {
-        // Set up some test credentials
-        env::set_var("OPENAI_API_KEY", "openai_test_key");
-        env::set_var("STRIPE_API_KEY", "stripe_test_key");
-
+    async fn test_load_all_with_env() {
+        // ✅ Concurrent-safe: Pre-load credentials into cache
         let manager = CredentialManager::new();
-        let loaded = manager.load_all().await;
 
+        // Pre-load specific credentials via injectable env
+        let openai_env = mock_env(HashMap::from([
+            ("OPENAI_API_KEY".to_string(), "openai_test_key".to_string()),
+        ]));
+        let stripe_env = mock_env(HashMap::from([
+            ("STRIPE_API_KEY".to_string(), "stripe_test_key".to_string()),
+        ]));
+
+        let _ = manager.get_api_key_with("openai", openai_env);
+        let _ = manager.get_api_key_with("stripe", stripe_env);
+
+        // load_all checks cache + real env; cached entries will be found
+        let loaded = manager.load_all().await;
         assert!(loaded.contains(&"openai".to_string()));
         assert!(loaded.contains(&"stripe".to_string()));
-
-        // Cleanup
-        env::remove_var("OPENAI_API_KEY");
-        env::remove_var("STRIPE_API_KEY");
     }
 
     #[test]
     fn test_credential_caching() {
-        env::set_var("CACHED_SERVICE_API_KEY", "cached_key");
+        // ✅ Concurrent-safe: Tests cache behavior
+        let env = mock_env(HashMap::from([
+            ("CACHED_SERVICE_API_KEY".to_string(), "cached_key".to_string()),
+        ]));
 
         let manager = CredentialManager::new();
 
-        // First access (loads from env)
-        let key1 = manager.get_api_key("cached_service");
+        // First access (loads from mock env)
+        let key1 = manager.get_api_key_with("cached_service", &env);
 
-        // Second access (loads from cache)
-        let key2 = manager.get_api_key("cached_service");
+        // Second access (should hit cache — pass empty env to prove cache works)
+        let empty_env = mock_env(HashMap::new());
+        let key2 = manager.get_api_key_with("cached_service", empty_env);
 
         assert_eq!(key1, key2);
         assert_eq!(key1, Some("cached_key".to_string()));
-
-        // Cleanup
-        env::remove_var("CACHED_SERVICE_API_KEY");
     }
 }

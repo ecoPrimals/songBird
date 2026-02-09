@@ -93,6 +93,16 @@ impl BearDogProvider {
         }
     }
 
+    /// Create provider with explicit socket path and mode (concurrent-safe, testable)
+    #[must_use]
+    pub fn with_mode(socket_path: impl Into<String>, mode: RoutingMode) -> Self {
+        Self {
+            socket_path: socket_path.into(),
+            request_id: AtomicU64::new(1),
+            mode,
+        }
+    }
+
     /// Create from environment (supports both Direct and Neural API modes)
     ///
     /// **XDG-Compliant Socket Discovery** (Jan 28, 2026):
@@ -870,20 +880,16 @@ mod tests {
 
     #[test]
     fn test_neural_api_mode() {
-        std::env::set_var("BEARDOG_MODE", "neural");
-        std::env::set_var("NEURAL_API_SOCKET", "/tmp/neural-api.sock");
-
-        let provider = BearDogProvider::from_env();
+        // ✅ Concurrent-safe: Uses with_mode constructor (no env vars)
+        let provider = BearDogProvider::with_mode("/tmp/neural-api.sock", RoutingMode::NeuralApi);
         assert_eq!(provider.mode, RoutingMode::NeuralApi);
         assert_eq!(provider.socket_path(), "/tmp/neural-api.sock");
     }
 
     #[test]
     fn test_direct_mode() {
-        std::env::set_var("BEARDOG_MODE", "direct");
-        std::env::set_var("BEARDOG_SOCKET", "/tmp/beardog.sock");
-
-        let provider = BearDogProvider::from_env();
+        // ✅ Concurrent-safe: Uses explicit constructor (no env vars)
+        let provider = BearDogProvider::new("/tmp/beardog.sock");
         assert_eq!(provider.mode, RoutingMode::Direct);
         assert_eq!(provider.socket_path(), "/tmp/beardog.sock");
     }

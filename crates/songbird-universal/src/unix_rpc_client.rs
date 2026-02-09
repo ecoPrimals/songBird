@@ -264,9 +264,11 @@ mod tests {
         echo: String,
     }
 
-    /// Mock JSON-RPC server for testing
-    async fn mock_server(socket_path: PathBuf) {
+    /// Mock JSON-RPC server for testing (signals readiness via oneshot)
+    async fn mock_server(socket_path: PathBuf, ready_tx: tokio::sync::oneshot::Sender<()>) {
         let listener = UnixListener::bind(&socket_path).unwrap();
+        // Signal that the server is ready to accept connections
+        let _ = ready_tx.send(());
 
         loop {
             match listener.accept().await {
@@ -319,14 +321,15 @@ mod tests {
         // Cleanup old socket
         let _ = std::fs::remove_file(&socket_path);
 
-        // Start mock server
+        // Start mock server with readiness signal (no sleep needed)
+        let (ready_tx, ready_rx) = tokio::sync::oneshot::channel();
         let server_path = socket_path.clone();
         tokio::spawn(async move {
-            mock_server(server_path).await;
+            mock_server(server_path, ready_tx).await;
         });
 
-        // Give server time to start
-        tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
+        // Wait for server to be ready (event-driven, instant)
+        ready_rx.await.unwrap();
 
         // Create client
         let client = UnixRpcClient::new(&socket_path)?;
@@ -352,14 +355,15 @@ mod tests {
         // Cleanup old socket
         let _ = std::fs::remove_file(&socket_path);
 
-        // Start mock server
+        // Start mock server with readiness signal (no sleep needed)
+        let (ready_tx, ready_rx) = tokio::sync::oneshot::channel();
         let server_path = socket_path.clone();
         tokio::spawn(async move {
-            mock_server(server_path).await;
+            mock_server(server_path, ready_tx).await;
         });
 
-        // Give server time to start
-        tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
+        // Wait for server to be ready (event-driven, instant)
+        ready_rx.await.unwrap();
 
         // Create client
         let client = UnixRpcClient::new(&socket_path)?;
