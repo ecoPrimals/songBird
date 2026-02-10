@@ -98,7 +98,7 @@ async fn request_consent(
         .manager
         .get_consent(consent_id.as_ref())
         .await
-        .ok_or(ApiError::Internal("Failed to retrieve created consent".into()))?;
+        .ok_or_else(|| ApiError::Internal("Failed to retrieve created consent".into()))?;
 
     info!("Consent requested via API: {} (status: {:?})", consent_id, record.status);
 

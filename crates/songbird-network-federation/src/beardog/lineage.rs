@@ -125,11 +125,9 @@ impl LineageChain {
     /// In development mode without `BearDog`, returns Ok(true) with warning.
     async fn verify_signatures(&self) -> anyhow::Result<bool> {
         // Check if BearDog is available
-        let beardog_endpoint = if let Ok(endpoint) =
+        let Ok(beardog_endpoint) =
             std::env::var("BEARDOG_ENDPOINT").or_else(|_| std::env::var("SECURITY_ENDPOINT"))
-        {
-            endpoint
-        } else {
+        else {
             tracing::warn!("BearDog not configured, skipping signature verification (dev mode)");
             return Ok(true);
         };

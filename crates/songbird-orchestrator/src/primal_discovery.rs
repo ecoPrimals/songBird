@@ -76,51 +76,47 @@ impl Capability {
         }
     }
 
-    /// Get common socket path patterns for this capability
+    /// Get common socket path patterns for this capability.
     ///
-    /// **UPDATED Feb 4, 2026**: Now returns XDG-compliant paths first.
+    /// Returns capability-named sockets first (e.g., `crypto.sock`),
+    /// then known-provider sockets as hints (e.g., `beardog.sock`).
+    ///
     /// Priority order:
-    /// 1. `$XDG_RUNTIME_DIR/biomeos/{primal}.sock` (XDG-compliant)
-    /// 2. `/tmp/biomeos/{primal}.sock` (fallback)
-    /// 3. Legacy `/tmp/{primal}-nat0.sock` (backward compatibility)
+    /// 1. `$XDG_RUNTIME_DIR/biomeos/{capability}.sock` (capability-first)
+    /// 2. `$XDG_RUNTIME_DIR/biomeos/{provider}.sock` (known-provider hint)
+    /// 3. `/tmp/biomeos/{capability}.sock` (fallback)
+    /// 4. `/tmp/{provider}.sock` (legacy)
     fn socket_patterns(&self) -> Vec<String> {
         let xdg_base = std::env::var("XDG_RUNTIME_DIR")
-            .map(|d| format!("{}/biomeos", d))
-            .unwrap_or_else(|_| "/tmp/biomeos".to_string());
+            .map_or_else(|_| "/tmp/biomeos".to_string(), |d| format!("{d}/biomeos"));
 
-        match self {
-            Self::Crypto => vec![
-                format!("{}/beardog.sock", xdg_base),
-                "/tmp/biomeos/beardog.sock".to_string(),
-                "/tmp/beardog.sock".to_string(), // Legacy
-            ],
-            Self::Security => vec![
-                format!("{}/beardog.sock", xdg_base),
-                format!("{}/songbird.sock", xdg_base),
-                "/tmp/biomeos/beardog.sock".to_string(),
-                "/tmp/beardog.sock".to_string(), // Legacy
-            ],
-            Self::Http => vec![
-                format!("{}/songbird.sock", xdg_base),
-                "/tmp/biomeos/songbird.sock".to_string(),
-                "/tmp/songbird.sock".to_string(), // Legacy
-            ],
-            Self::Ai => vec![
-                format!("{}/squirrel.sock", xdg_base),
-                "/tmp/biomeos/squirrel.sock".to_string(),
-                "/tmp/squirrel.sock".to_string(), // Legacy
-            ],
-            Self::Storage => vec![
-                format!("{}/nestgate.sock", xdg_base),
-                "/tmp/biomeos/nestgate.sock".to_string(),
-                "/tmp/nestgate.sock".to_string(), // Legacy
-            ],
-            Self::Messaging => vec![
-                format!("{}/messenger.sock", xdg_base),
-                "/tmp/biomeos/messenger.sock".to_string(),
-                "/tmp/messenger.sock".to_string(), // Legacy
-            ],
+        // (capability_name, known_provider_hints)
+        let (cap_name, hints): (&str, &[&str]) = match self {
+            Self::Crypto => ("crypto", &["beardog"]),
+            Self::Security => ("security", &["beardog"]),
+            Self::Http => ("http", &["songbird"]),
+            Self::Ai => ("ai", &["squirrel"]),
+            Self::Storage => ("storage", &["nestgate"]),
+            Self::Messaging => ("messaging", &["messenger"]),
+        };
+
+        let mut patterns = Vec::with_capacity(6);
+
+        // Capability-named sockets first (any provider offering this capability)
+        patterns.push(format!("{xdg_base}/{cap_name}.sock"));
+        patterns.push(format!("/tmp/biomeos/{cap_name}.sock"));
+        patterns.push(format!("/tmp/{cap_name}.sock"));
+
+        // Known-provider hints (backward compatibility)
+        for hint in hints {
+            if *hint != cap_name {
+                patterns.push(format!("{xdg_base}/{hint}.sock"));
+                patterns.push(format!("/tmp/biomeos/{hint}.sock"));
+                patterns.push(format!("/tmp/{hint}.sock"));
+            }
         }
+
+        patterns
     }
 }
 
@@ -193,17 +189,17 @@ where
     anyhow::bail!("No {:?} provider available", capability)
 }
 
-/// Scan socket directories for sockets matching capability
+/// Scan socket directories for sockets matching capability.
 ///
-/// **UPDATED Feb 4, 2026**: Now scans XDG biomeos directory first.
-/// Priority order:
-/// 1. `$XDG_RUNTIME_DIR/biomeos/` (XDG-compliant)
-/// 2. `/tmp/biomeos/` (fallback)
-/// 3. `/tmp/` (legacy)
+/// Searches using capability terms first (e.g., "crypto"), then
+/// known provider names as secondary hints (e.g., "beardog").
+///
+/// Scan priority: `$XDG_RUNTIME_DIR/biomeos/` → `/tmp/biomeos/` → `/tmp/`
 fn scan_sockets(capability: Capability) -> Option<String> {
+    // Capability terms first, then known-provider hints
     let search_terms = match capability {
         Capability::Crypto => vec!["crypto", "beardog"],
-        Capability::Security => vec!["security", "beardog", "auth"],
+        Capability::Security => vec!["security", "auth", "beardog"],
         Capability::Http => vec!["http", "songbird"],
         Capability::Ai => vec!["ai", "squirrel"],
         Capability::Storage => vec!["storage", "nestgate"],
@@ -229,7 +225,7 @@ fn scan_sockets(capability: Capability) -> Option<String> {
             for entry in entries.flatten() {
                 if let Ok(file_name) = entry.file_name().into_string() {
                     // Check if filename matches any search term
-                    if file_name.ends_with(".sock") {
+                    if file_name.to_ascii_lowercase().ends_with(".sock") {
                         for term in &search_terms {
                             if file_name.contains(term) {
                                 let path = entry.path();
@@ -246,15 +242,15 @@ fn scan_sockets(capability: Capability) -> Option<String> {
     None
 }
 
-/// Discover TCP endpoint for a capability (isomorphic fallback support)
+/// Discover TCP endpoint for a capability (isomorphic fallback support).
 ///
 /// Checks TCP discovery files for primals that provide this capability.
-/// This enables transparent fallback when Unix sockets are unavailable
-/// (Android/SELinux, Windows).
+/// Searches capability-named files first (e.g., `crypto-ipc-port`),
+/// then known-provider files (e.g., `beardog-ipc-port`).
 ///
 /// # Discovery File Format
 ///
-/// File: `$XDG_RUNTIME_DIR/{primal}-ipc-port`\
+/// File: `$XDG_RUNTIME_DIR/{name}-ipc-port`\
 /// Content: `tcp:127.0.0.1:12345`
 ///
 /// # Arguments
@@ -264,28 +260,20 @@ fn scan_sockets(capability: Capability) -> Option<String> {
 /// # Returns
 ///
 /// Socket descriptor string (e.g., "tcp:127.0.0.1:12345") if found, None otherwise.
-///
-/// # Deep Debt Principles
-///
-/// - ✅ **Runtime Discovery**: Detects TCP endpoints automatically
-/// - ✅ **Zero Hardcoding**: No hardcoded ports or addresses
-/// - ✅ **Platform Agnostic**: Works on any platform with filesystem
-/// - ✅ **Isomorphic**: Same discovery code for Unix and TCP
 fn discover_tcp_from_capability(capability: Capability) -> Option<String> {
-    // Map capability to primal names that might provide it
-    let primal_names = match capability {
-        Capability::Crypto | Capability::Security => vec!["beardog"],
-        Capability::Http => vec!["songbird"],
-        Capability::Ai => vec!["squirrel"],
-        Capability::Storage => vec!["nestgate"],
-        Capability::Messaging => vec!["messenger"],
+    // Capability names first, then known-provider hints
+    let names: Vec<&str> = match capability {
+        Capability::Crypto => vec!["crypto", "beardog"],
+        Capability::Security => vec!["security", "beardog"],
+        Capability::Http => vec!["http", "songbird"],
+        Capability::Ai => vec!["ai", "squirrel"],
+        Capability::Storage => vec!["storage", "nestgate"],
+        Capability::Messaging => vec!["messaging", "messenger"],
     };
 
-    // Check TCP discovery files for each potential primal
-    for primal_name in primal_names {
-        if let Some(tcp_addr) = check_tcp_discovery_file(primal_name) {
-            // Return in socket descriptor format for compatibility
-            return Some(format!("tcp:{}", tcp_addr));
+    for name in names {
+        if let Some(tcp_addr) = check_tcp_discovery_file(name) {
+            return Some(format!("tcp:{tcp_addr}"));
         }
     }
 
@@ -376,10 +364,18 @@ mod tests {
     }
 
     #[test]
-    fn test_capability_patterns() {
+    fn test_capability_patterns_capability_first() {
         let patterns = Capability::Crypto.socket_patterns();
         assert!(!patterns.is_empty());
-        assert!(patterns.iter().any(|p| p.contains("beardog.sock")));
+        // Capability-named socket should appear before provider hints
+        let first_cap = patterns.iter().position(|p| p.contains("crypto.sock"));
+        let first_hint = patterns.iter().position(|p| p.contains("beardog.sock"));
+        assert!(first_cap.is_some(), "Should have crypto.sock pattern");
+        assert!(first_hint.is_some(), "Should have beardog.sock hint");
+        assert!(
+            first_cap.unwrap() < first_hint.unwrap(),
+            "Capability name should appear before provider hint"
+        );
     }
 
     #[test]
@@ -467,8 +463,8 @@ mod tests {
             assert!(pattern.ends_with(".sock"), "Pattern should end with .sock: {}", pattern);
         }
         assert!(
-            patterns.iter().any(|p| p.contains("beardog")),
-            "Crypto patterns should reference beardog"
+            patterns.iter().any(|p| p.contains("crypto")),
+            "Crypto patterns should include capability name"
         );
     }
 
@@ -509,7 +505,18 @@ mod tests {
     }
 
     #[test]
-    fn test_socket_patterns_correct_primal_names() {
+    fn test_socket_patterns_include_capability_names() {
+        // Each capability should include its own capability-named socket
+        assert!(Capability::Crypto.socket_patterns().iter().any(|p| p.contains("crypto")));
+        assert!(Capability::Http.socket_patterns().iter().any(|p| p.contains("http")));
+        assert!(Capability::Ai.socket_patterns().iter().any(|p| p.contains("ai")));
+        assert!(Capability::Storage.socket_patterns().iter().any(|p| p.contains("storage")));
+        assert!(Capability::Messaging.socket_patterns().iter().any(|p| p.contains("messaging")));
+    }
+
+    #[test]
+    fn test_socket_patterns_include_provider_hints() {
+        // Known provider hints should still be present for backward compatibility
         assert!(Capability::Crypto.socket_patterns().iter().any(|p| p.contains("beardog")));
         assert!(Capability::Http.socket_patterns().iter().any(|p| p.contains("songbird")));
         assert!(Capability::Ai.socket_patterns().iter().any(|p| p.contains("squirrel")));

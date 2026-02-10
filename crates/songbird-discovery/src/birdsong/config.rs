@@ -1,6 +1,6 @@
-//! BirdSong configuration
+//! `BirdSong` configuration
 //!
-//! Configuration types for BirdSong encrypted discovery.
+//! Configuration types for `BirdSong` encrypted discovery.
 
 use serde::{Deserialize, Serialize};
 

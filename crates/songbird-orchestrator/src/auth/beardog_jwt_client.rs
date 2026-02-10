@@ -94,7 +94,7 @@ pub async fn fetch_jwt_secret_from_beardog(socket_path: &str, purpose: &str) -> 
     // Create JSON-RPC request
     let request = JwtSecretRequest {
         jsonrpc: "2.0".to_string(),
-        method: "beardog.generate_jwt_secret".to_string(),
+        method: "crypto.generate.jwt_secret".to_string(),
         params: JwtSecretParams {
             purpose: purpose.to_string(),
             strength: "high".to_string(), // 512 bits, production-ready
@@ -142,17 +142,13 @@ pub async fn fetch_jwt_secret_from_beardog(socket_path: &str, purpose: &str) -> 
 
     // Check for JSON-RPC error
     if let Some(err) = response.error {
-        anyhow::bail!(
-            "BearDog returned error [{}]: {}",
-            err.code,
-            err.message
-        );
+        anyhow::bail!("BearDog returned error [{}]: {}", err.code, err.message);
     }
 
     // Extract secret from result
-    let result = response.result.ok_or_else(|| {
-        anyhow::anyhow!("BearDog response missing both result and error")
-    })?;
+    let result = response
+        .result
+        .ok_or_else(|| anyhow::anyhow!("BearDog response missing both result and error"))?;
 
     let secret = result.secret;
 

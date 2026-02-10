@@ -12,7 +12,11 @@ use songbird_universal::adapters::security::{
     AuthResult, SecurityAdapter, SecurityHealth, SecurityProvider,
 };
 use std::time::Duration;
+use tokio::sync::Mutex;
 use wiremock::matchers::{method, path};
+
+/// File-local mutex to serialize tests that modify process-wide env vars.
+static ENV_LOCK: Mutex<()> = Mutex::const_new(());
 use wiremock::{Mock, MockServer, ResponseTemplate};
 
 // ============================================================================
@@ -21,6 +25,7 @@ use wiremock::{Mock, MockServer, ResponseTemplate};
 
 #[tokio::test]
 async fn test_from_discovery_with_env_var() {
+    let _guard = ENV_LOCK.lock().await;
     // Setup mock server
     let mock_server = MockServer::start().await;
 
@@ -37,6 +42,7 @@ async fn test_from_discovery_with_env_var() {
 
 #[tokio::test]
 async fn test_from_discovery_fallback_to_security_provider_endpoint() {
+    let _guard = ENV_LOCK.lock().await;
     // Setup mock server
     let mock_server = MockServer::start().await;
 
@@ -54,6 +60,7 @@ async fn test_from_discovery_fallback_to_security_provider_endpoint() {
 
 #[tokio::test]
 async fn test_from_discovery_fallback_to_beardog_endpoint() {
+    let _guard = ENV_LOCK.lock().await;
     // Setup mock server
     let mock_server = MockServer::start().await;
 
@@ -72,6 +79,7 @@ async fn test_from_discovery_fallback_to_beardog_endpoint() {
 
 #[tokio::test]
 async fn test_from_discovery_uses_host_and_port_fallback() {
+    let _guard = ENV_LOCK.lock().await;
     // Remove all security endpoint env vars
     std::env::remove_var("SONGBIRD_SECURITY_ENDPOINT");
     std::env::remove_var("SECURITY_PROVIDER_ENDPOINT");

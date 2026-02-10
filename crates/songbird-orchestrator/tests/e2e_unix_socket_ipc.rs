@@ -74,11 +74,11 @@ impl UnixSocketClient {
 async fn wait_for_socket(socket_path: &str, timeout_secs: u64) -> Result<()> {
     let socket_path_owned = socket_path.to_string();
 
-    // ✅ Event-driven check! No polling sleep!
+    // Event-driven: poll for socket file existence
     wait_for(|| Path::new(&socket_path_owned).exists(), Duration::from_secs(timeout_secs)).await?;
 
-    // Brief moment for server to finish binding
-    tokio::time::sleep(Duration::from_millis(50)).await;
+    // Yield to let server finish binding (socket file exists → listener is ready)
+    tokio::task::yield_now().await;
     Ok(())
 }
 

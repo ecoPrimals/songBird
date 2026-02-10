@@ -11,26 +11,15 @@ mod tests {
     use std::collections::HashMap;
 
     /// Create a mock env reader (concurrent-safe, no global state)
-    fn mock_env(
-        vars: HashMap<&str, &str>,
-    ) -> impl Fn(&str) -> Result<String, std::env::VarError> {
-        let owned: HashMap<String, String> = vars
-            .into_iter()
-            .map(|(k, v)| (k.to_string(), v.to_string()))
-            .collect();
-        move |key: &str| {
-            owned
-                .get(key)
-                .cloned()
-                .ok_or(std::env::VarError::NotPresent)
-        }
+    fn mock_env(vars: HashMap<&str, &str>) -> impl Fn(&str) -> Result<String, std::env::VarError> {
+        let owned: HashMap<String, String> =
+            vars.into_iter().map(|(k, v)| (k.to_string(), v.to_string())).collect();
+        move |key: &str| owned.get(key).cloned().ok_or(std::env::VarError::NotPresent)
     }
 
     #[test]
     fn test_discover_beardog_socket_with_env_var() {
-        let env = mock_env(HashMap::from([
-            ("SECURITY_PROVIDER", "/tmp/test-beardog.sock"),
-        ]));
+        let env = mock_env(HashMap::from([("SECURITY_PROVIDER", "/tmp/test-beardog.sock")]));
         let socket = discover_beardog_socket_with(env);
         assert!(socket.is_some());
         assert_eq!(socket.unwrap().to_str().unwrap(), "/tmp/test-beardog.sock");
@@ -38,9 +27,7 @@ mod tests {
 
     #[test]
     fn test_get_beardog_socket_for_jwt() {
-        let env = mock_env(HashMap::from([
-            ("SECURITY_PROVIDER", "/tmp/jwt-test.sock"),
-        ]));
+        let env = mock_env(HashMap::from([("SECURITY_PROVIDER", "/tmp/jwt-test.sock")]));
         let socket = get_beardog_socket_for_jwt_with(env);
         assert!(socket.is_some());
         assert_eq!(socket.unwrap(), "/tmp/jwt-test.sock");
@@ -71,9 +58,7 @@ mod tests {
         // This test requires BearDog to be running
         // Set BEARDOG_SOCKET to test with real BearDog
         if let Ok(socket) = std::env::var("BEARDOG_SOCKET") {
-            let secret = provision_jwt_secret(Some(&socket), "songbird_test")
-                .await
-                .unwrap();
+            let secret = provision_jwt_secret(Some(&socket), "songbird_test").await.unwrap();
 
             assert!(secret.len() >= 85);
             println!("✅ Got JWT secret from BearDog: {} chars", secret.len());

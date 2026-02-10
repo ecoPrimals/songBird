@@ -11,7 +11,7 @@ pub enum QuicError {
     /// Quinn protocol error
     #[error("QUIC protocol error: {0}")]
     Protocol(#[from] quinn::ConnectionError),
-    
+
     /// Connect error
     #[error("Connect error: {0}")]
     Connect(#[from] quinn::ConnectError),
@@ -28,7 +28,7 @@ pub enum QuicError {
     #[error("Configuration error: {0}")]
     Config(String),
 
-    /// BearDog crypto error
+    /// `BearDog` crypto error
     #[error("BearDog crypto error: {0}")]
     Crypto(String),
 
@@ -39,15 +39,15 @@ pub enum QuicError {
     /// Address parse error
     #[error("Invalid address: {0}")]
     InvalidAddress(#[from] std::net::AddrParseError),
-    
+
     /// Write error
     #[error("Write error: {0}")]
     WriteError(#[from] quinn::WriteError),
-    
+
     /// Read error
     #[error("Read error: {0}")]
     ReadError(#[from] quinn::ReadError),
-    
+
     /// Stream closed
     #[error("Stream closed: {0}")]
     ClosedStream(#[from] quinn::ClosedStream),

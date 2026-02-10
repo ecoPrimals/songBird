@@ -69,8 +69,10 @@ impl HttpBtspProvider {
         let _response: serde_json::Value =
             self.rpc_client.call_no_params("health").await.map_err(|e| {
                 SongbirdError::network(format!(
-                    "Failed to connect to security provider {} at {:?}: {}",
-                    self.provider_name, self.socket_path, e
+                    "Failed to connect to security provider {} at {}: {}",
+                    self.provider_name,
+                    self.socket_path.display(),
+                    e
                 ))
             })?;
 

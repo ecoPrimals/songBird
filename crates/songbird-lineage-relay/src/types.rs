@@ -90,6 +90,7 @@ pub struct RelayAuthorization {
 
 impl RelayAuthorization {
     /// Create authorized relay token
+    #[must_use]
     pub fn authorized(
         relay_node: NodeId,
         requester: NodeId,
@@ -106,8 +107,9 @@ impl RelayAuthorization {
             audit_token: uuid::Uuid::new_v4().to_string(),
         }
     }
-    
+
     /// Create unauthorized relay token
+    #[must_use]
     pub fn unauthorized(relay_node: NodeId, requester: NodeId) -> Self {
         Self {
             relay_node,

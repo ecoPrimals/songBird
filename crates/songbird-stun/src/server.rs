@@ -52,13 +52,13 @@ use tracing::{debug, error, info, warn};
 pub struct StunServerStats {
     /// Total Binding Requests successfully handled
     pub requests_handled: u64,
-    
+
     /// Total errors encountered
     pub errors: u64,
-    
+
     /// Server start time
     pub start_time: Option<Instant>,
-    
+
     /// Last request received time
     pub last_request: Option<Instant>,
 }
@@ -66,15 +66,12 @@ pub struct StunServerStats {
 impl StunServerStats {
     /// Get server uptime in seconds
     pub fn uptime_seconds(&self) -> u64 {
-        self.start_time
-            .map(|start| start.elapsed().as_secs())
-            .unwrap_or(0)
+        self.start_time.map(|start| start.elapsed().as_secs()).unwrap_or(0)
     }
-    
+
     /// Get seconds since last request
     pub fn seconds_since_last_request(&self) -> Option<u64> {
-        self.last_request
-            .map(|last| last.elapsed().as_secs())
+        self.last_request.map(|last| last.elapsed().as_secs())
     }
 }
 
@@ -107,13 +104,13 @@ impl StunServerStats {
 pub struct StunServer {
     /// Bind address for incoming requests
     bind_addr: SocketAddr,
-    
+
     /// Optional alternate address for NAT type detection (RFC 5780)
-    /// 
+    ///
     /// Future enhancement: Used for responding from alternate IP/port
     /// to help clients detect NAT type.
     alternate_addr: Option<SocketAddr>,
-    
+
     /// Server statistics (thread-safe)
     stats: Arc<RwLock<StunServerStats>>,
 }
@@ -139,7 +136,7 @@ impl StunServer {
             stats: Arc::new(RwLock::new(StunServerStats::default())),
         }
     }
-    
+
     /// Create STUN server with alternate address for NAT type detection
     ///
     /// Alternate address is used in RFC 5780 NAT type detection.
@@ -167,7 +164,7 @@ impl StunServer {
             stats: Arc::new(RwLock::new(StunServerStats::default())),
         }
     }
-    
+
     /// Run the STUN server
     ///
     /// Listens for incoming STUN Binding Requests and responds with
@@ -193,35 +190,62 @@ impl StunServer {
     /// }
     /// ```
     pub async fn run(&mut self) -> StunResult<()> {
+        self.run_inner(None).await
+    }
+
+    /// Run the STUN server with a readiness signal.
+    ///
+    /// Same as [`run`](Self::run) but sends the actual bound [`SocketAddr`]
+    /// on `ready_tx` once the socket is bound, allowing callers to
+    /// synchronize without sleeping.
+    pub async fn run_with_ready(
+        &mut self,
+        ready_tx: tokio::sync::oneshot::Sender<SocketAddr>,
+    ) -> StunResult<()> {
+        self.run_inner(Some(ready_tx)).await
+    }
+
+    /// Internal run loop shared by [`run`] and [`run_with_ready`].
+    async fn run_inner(
+        &mut self,
+        ready_tx: Option<tokio::sync::oneshot::Sender<SocketAddr>>,
+    ) -> StunResult<()> {
         // Bind UDP socket
-        let socket = UdpSocket::bind(self.bind_addr).await
+        let socket = UdpSocket::bind(self.bind_addr)
+            .await
             .map_err(|e| StunError::Network(format!("Failed to bind UDP socket: {}", e)))?;
-        
-        let actual_addr = socket.local_addr()
+
+        let actual_addr = socket
+            .local_addr()
             .map_err(|e| StunError::Network(format!("Failed to get local address: {}", e)))?;
-        
+
         info!("🌐 STUN server listening on {}", actual_addr);
-        
+
+        // Signal readiness with actual bound address
+        if let Some(tx) = ready_tx {
+            let _ = tx.send(actual_addr);
+        }
+
         // Update start time
         {
             let mut stats = self.stats.write().await;
             stats.start_time = Some(Instant::now());
         }
-        
+
         // Buffer for incoming packets (MTU size)
         let mut buf = vec![0u8; 1500];
-        
+
         // Main server loop
         loop {
             // Receive packet
             match socket.recv_from(&mut buf).await {
                 Ok((len, src_addr)) => {
                     debug!("📨 Received {} bytes from {}", len, src_addr);
-                    
+
                     // Handle request (fire and forget for performance)
                     if let Err(e) = self.handle_request(&socket, &buf[..len], src_addr).await {
                         warn!("⚠️  Failed to handle request from {}: {}", src_addr, e);
-                        
+
                         // Increment error count
                         let mut stats = self.stats.write().await;
                         stats.errors += 1;
@@ -229,7 +253,7 @@ impl StunServer {
                 }
                 Err(e) => {
                     error!("❌ Failed to receive packet: {}", e);
-                    
+
                     // Increment error count
                     let mut stats = self.stats.write().await;
                     stats.errors += 1;
@@ -237,7 +261,7 @@ impl StunServer {
             }
         }
     }
-    
+
     /// Handle a single STUN request
     ///
     /// Parses the request, validates it's a Binding Request, generates
@@ -256,7 +280,7 @@ impl StunServer {
     ) -> StunResult<()> {
         // Parse STUN message
         let request = StunMessage::decode(data)?;
-        
+
         // Validate message type (must be Binding Request)
         if request.message_type != MessageType::BindingRequest {
             return Err(StunError::InvalidResponse(format!(
@@ -264,31 +288,33 @@ impl StunServer {
                 request.message_type
             )));
         }
-        
+
         debug!("✅ Valid Binding Request from {}", src_addr);
-        
+
         // Create response
         let response = self.create_binding_response(&request, src_addr)?;
-        
+
         // Encode response
         let response_bytes = response.encode();
-        
+
         // Send response
-        socket.send_to(&response_bytes, src_addr).await
+        socket
+            .send_to(&response_bytes, src_addr)
+            .await
             .map_err(|e| StunError::Network(format!("Failed to send response: {}", e)))?;
-        
+
         debug!("📤 Sent {} byte response to {}", response_bytes.len(), src_addr);
-        
+
         // Update statistics
         {
             let mut stats = self.stats.write().await;
             stats.requests_handled += 1;
             stats.last_request = Some(Instant::now());
         }
-        
+
         Ok(())
     }
-    
+
     /// Create STUN Binding Response
     ///
     /// Generates a response message containing the client's public address
@@ -313,26 +339,26 @@ impl StunServer {
             transaction_id: request.transaction_id,
             attributes: Vec::new(),
         };
-        
+
         // Add MAPPED-ADDRESS attribute (RFC 5389 Section 15.1)
         // This is the client's source address as seen by the server
         response.attributes.push(StunAttribute::MappedAddress(client_addr));
-        
+
         // Add XOR-MAPPED-ADDRESS attribute (RFC 5389 Section 15.2)
         // Recommended for NAT hairpinning and obfuscation
         response.attributes.push(StunAttribute::XorMappedAddress(client_addr));
-        
+
         // Future: Add SOFTWARE attribute (RFC 5389 Section 15.10)
         // Would identify server software, but attribute not yet implemented in message.rs
-        
+
         // Future: Add OTHER-ADDRESS for RFC 5780 NAT type detection
         if let Some(alternate) = self.alternate_addr {
             response.attributes.push(StunAttribute::OtherAddress(alternate));
         }
-        
+
         Ok(response)
     }
-    
+
     /// Get current server statistics
     ///
     /// Returns a snapshot of server metrics including requests handled,
@@ -352,14 +378,14 @@ impl StunServer {
     pub async fn stats(&self) -> StunServerStats {
         self.stats.read().await.clone()
     }
-    
+
     /// Get bind address
     ///
     /// Returns the address the server is configured to bind to.
     pub fn bind_addr(&self) -> SocketAddr {
         self.bind_addr
     }
-    
+
     /// Get alternate address
     ///
     /// Returns the alternate address if configured (for NAT type detection).
@@ -372,93 +398,92 @@ impl StunServer {
 mod tests {
     use super::*;
     use crate::message::StunMessage;
-    
+
     #[test]
     fn test_server_creation() {
         let bind_addr: SocketAddr = "127.0.0.1:3478".parse().unwrap();
         let server = StunServer::new(bind_addr);
-        
+
         assert_eq!(server.bind_addr(), bind_addr);
         assert_eq!(server.alternate_addr(), None);
     }
-    
+
     #[test]
     fn test_server_with_alternate() {
         let bind_addr: SocketAddr = "127.0.0.1:3478".parse().unwrap();
         let alternate_addr: SocketAddr = "127.0.0.1:3479".parse().unwrap();
         let server = StunServer::with_alternate(bind_addr, alternate_addr);
-        
+
         assert_eq!(server.bind_addr(), bind_addr);
         assert_eq!(server.alternate_addr(), Some(alternate_addr));
     }
-    
+
     #[test]
     fn test_create_binding_response() {
         let server = StunServer::new("127.0.0.1:3478".parse().unwrap());
         let request = StunMessage::new_binding_request();
         let client_addr: SocketAddr = "192.168.1.100:54321".parse().unwrap();
-        
+
         let response = server.create_binding_response(&request, client_addr).unwrap();
-        
+
         // Should be Binding Response
         assert_eq!(response.message_type, MessageType::BindingResponse);
-        
+
         // Should preserve transaction ID (RFC 5389 requirement)
         assert_eq!(response.transaction_id, request.transaction_id);
-        
+
         // Should include MAPPED-ADDRESS
         assert_eq!(response.get_mapped_address(), Some(client_addr));
-        
+
         // Should include XOR-MAPPED-ADDRESS
         assert_eq!(response.get_xor_mapped_address(), Some(client_addr));
-        
+
         // Should have at least 2 attributes (MAPPED, XOR-MAPPED)
         assert!(response.attributes.len() >= 2);
     }
-    
+
     #[test]
     fn test_create_binding_response_preserves_transaction_id() {
         let server = StunServer::new("127.0.0.1:3478".parse().unwrap());
-        
+
         // Create multiple requests with different transaction IDs
         for _ in 0..10 {
             let request = StunMessage::new_binding_request();
             let client_addr: SocketAddr = "192.168.1.100:54321".parse().unwrap();
-            
+
             let response = server.create_binding_response(&request, client_addr).unwrap();
-            
+
             // Each response must match its request's transaction ID
             assert_eq!(response.transaction_id, request.transaction_id);
         }
     }
-    
+
     #[tokio::test]
     async fn test_stats_initialization() {
         let server = StunServer::new("127.0.0.1:3478".parse().unwrap());
         let stats = server.stats().await;
-        
+
         assert_eq!(stats.requests_handled, 0);
         assert_eq!(stats.errors, 0);
         assert_eq!(stats.start_time, None);
         assert_eq!(stats.last_request, None);
     }
-    
+
     #[tokio::test]
     async fn test_server_with_alternate_includes_other_address() {
         let bind_addr: SocketAddr = "127.0.0.1:3478".parse().unwrap();
         let alternate_addr: SocketAddr = "127.0.0.1:3479".parse().unwrap();
         let server = StunServer::with_alternate(bind_addr, alternate_addr);
-        
+
         let request = StunMessage::new_binding_request();
         let client_addr: SocketAddr = "192.168.1.100:54321".parse().unwrap();
-        
+
         let response = server.create_binding_response(&request, client_addr).unwrap();
-        
+
         // Should include OTHER-ADDRESS attribute when alternate is configured
-        let has_other_address = response.attributes.iter().any(|attr| {
-            matches!(attr, StunAttribute::OtherAddress(_))
-        });
-        
+        let has_other_address =
+            response.attributes.iter().any(|attr| matches!(attr, StunAttribute::OtherAddress(_)));
+
         assert!(has_other_address);
     }
 }

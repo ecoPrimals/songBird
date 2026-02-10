@@ -74,15 +74,15 @@ pub mod gateway;
 pub mod mapping;
 pub mod nat_pmp;
 pub mod renewal;
-pub mod ssdp;
 pub mod soap;
+pub mod ssdp;
 
 pub use error::{IgdError, Result};
 pub use gateway::{Gateway, GatewayProtocol};
 pub use mapping::{PortMapping, PortMappingRequest, Protocol};
 pub use nat_pmp::NatPmpClient;
-pub use ssdp::{SsdpClient, SsdpResponse};
 pub use soap::SoapClient;
+pub use ssdp::{SsdpClient, SsdpResponse};
 
 /// Version of the IGD implementation
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");

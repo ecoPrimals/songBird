@@ -15,7 +15,10 @@
 use anyhow::Result;
 use chrono::Utc;
 use serde_json::Value;
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
+
+/// File-local mutex to serialize tests that modify process-wide env vars.
+static ENV_LOCK: Mutex<()> = Mutex::new(());
 
 // ============================================================================
 // UNIT TESTS: Task Lifecycle Serialization
@@ -57,10 +60,38 @@ mod task_serialization_unit {
             // Verify round-trip (comparing discriminant since times may differ)
             match (&status, &deserialized) {
                 (TaskStatus::Queued, TaskStatus::Queued) => {}
-                (TaskStatus::Running { .. }, TaskStatus::Running { .. }) => {}
-                (TaskStatus::Completed { .. }, TaskStatus::Completed { .. }) => {}
-                (TaskStatus::Failed { .. }, TaskStatus::Failed { .. }) => {}
-                (TaskStatus::Cancelled { .. }, TaskStatus::Cancelled { .. }) => {}
+                (
+                    TaskStatus::Running {
+                        ..
+                    },
+                    TaskStatus::Running {
+                        ..
+                    },
+                ) => {}
+                (
+                    TaskStatus::Completed {
+                        ..
+                    },
+                    TaskStatus::Completed {
+                        ..
+                    },
+                ) => {}
+                (
+                    TaskStatus::Failed {
+                        ..
+                    },
+                    TaskStatus::Failed {
+                        ..
+                    },
+                ) => {}
+                (
+                    TaskStatus::Cancelled {
+                        ..
+                    },
+                    TaskStatus::Cancelled {
+                        ..
+                    },
+                ) => {}
                 _ => panic!("Status mismatch after round-trip"),
             }
         }
@@ -134,9 +165,13 @@ mod task_serialization_unit {
                 priority: Priority::Standard,
             };
 
-            let task = TaskLifecycle::new(UserId::new(format!("config-test-{}", uuid::Uuid::new_v4())), spec);
+            let task = TaskLifecycle::new(
+                UserId::new(format!("config-test-{}", uuid::Uuid::new_v4())),
+                spec,
+            );
             let json = serde_json::to_vec(&task).expect("Should serialize");
-            let deserialized: TaskLifecycle = serde_json::from_slice(&json).expect("Should deserialize");
+            let deserialized: TaskLifecycle =
+                serde_json::from_slice(&json).expect("Should deserialize");
 
             assert_eq!(task.spec.config, deserialized.spec.config);
         }
@@ -145,16 +180,13 @@ mod task_serialization_unit {
     #[test]
     fn test_priority_serialization() {
         // Test Priority enum serialization
-        let priorities = vec![
-            Priority::Low,
-            Priority::Standard,
-            Priority::High,
-            Priority::Critical,
-        ];
+        let priorities =
+            vec![Priority::Low, Priority::Standard, Priority::High, Priority::Critical];
 
         for priority in priorities {
             let json = serde_json::to_string(&priority).expect("Should serialize priority");
-            let deserialized: Priority = serde_json::from_str(&json).expect("Should deserialize priority");
+            let deserialized: Priority =
+                serde_json::from_str(&json).expect("Should deserialize priority");
             assert_eq!(priority, deserialized);
         }
     }
@@ -165,8 +197,11 @@ mod task_serialization_unit {
 // ============================================================================
 
 mod family_id_unit {
+    use super::ENV_LOCK;
+
     #[test]
     fn test_family_id_from_environment_priority() {
+        let _guard = ENV_LOCK.lock().unwrap();
         // Test environment variable priority for family_id
         // Priority: SONGBIRD_FAMILY_ID > FAMILY_ID > default "nat0"
 
@@ -195,6 +230,7 @@ mod family_id_unit {
 
     #[test]
     fn test_family_id_special_characters() {
+        let _guard = ENV_LOCK.lock().unwrap();
         // Test that family_id handles special characters
         let special_ids = vec![
             "nat0",
@@ -340,6 +376,7 @@ mod evolution_e2e {
 
     #[tokio::test]
     async fn test_e2e_family_id_propagation() -> Result<()> {
+        let _guard = ENV_LOCK.lock().unwrap();
         // Test that family_id is properly propagated through the system
         let test_family = format!("test-family-{}", uuid::Uuid::new_v4());
         std::env::set_var("SONGBIRD_FAMILY_ID", &test_family);
@@ -357,18 +394,18 @@ mod evolution_e2e {
     async fn test_e2e_socket_naming_primal_deployment_standard() -> Result<()> {
         // Test that socket naming follows PRIMAL_DEPLOYMENT_STANDARD
         // Socket names should be {primal}.sock without family suffix
-        
+
         let primals = vec!["songbird", "beardog", "squirrel", "biome"];
-        
+
         for primal in primals {
             // Expected socket name per PRIMAL_DEPLOYMENT_STANDARD
             let expected_socket_name = format!("{}.sock", primal);
-            
+
             // Should NOT contain family_id variations
             assert!(!expected_socket_name.contains("nat0"));
             assert!(!expected_socket_name.contains("-default"));
             assert!(!expected_socket_name.contains("_family"));
-            
+
             // Should be simple primal.sock format
             assert!(expected_socket_name.ends_with(".sock"));
             assert_eq!(expected_socket_name, format!("{}.sock", primal));
@@ -383,16 +420,16 @@ mod evolution_e2e {
         let test_dir = std::env::temp_dir().join(format!("xdg-test-{}", uuid::Uuid::new_v4()));
         let biomeos_dir = test_dir.join("biomeos");
         std::fs::create_dir_all(&biomeos_dir)?;
-        
+
         // Expected structure: $XDG_RUNTIME_DIR/biomeos/{primal}.sock
         let expected_path = biomeos_dir.join("songbird.sock");
-        
+
         assert!(expected_path.to_str().unwrap().contains("biomeos"));
         assert!(expected_path.to_str().unwrap().ends_with("songbird.sock"));
-        
+
         // Clean up
         let _ = std::fs::remove_dir_all(&test_dir);
-        
+
         Ok(())
     }
 }
@@ -421,7 +458,8 @@ mod evolution_chaos {
 
             let task = TaskLifecycle::new(UserId::new(format!("chaos-{}", i)), spec);
             let json = serde_json::to_vec(&task).expect("Serialize should not fail");
-            let _: TaskLifecycle = serde_json::from_slice(&json).expect("Deserialize should not fail");
+            let _: TaskLifecycle =
+                serde_json::from_slice(&json).expect("Deserialize should not fail");
         }
     }
 
@@ -549,11 +587,7 @@ mod evolution_fault_injection {
 
         for invalid in invalid_jsons {
             let result: Result<TaskLifecycle, _> = serde_json::from_str(invalid);
-            assert!(
-                result.is_err(),
-                "Should reject invalid JSON: {}",
-                invalid
-            );
+            assert!(result.is_err(), "Should reject invalid JSON: {}", invalid);
         }
     }
 
@@ -580,6 +614,7 @@ mod evolution_fault_injection {
 
     #[test]
     fn test_fault_missing_family_id_graceful_default() {
+        let _guard = ENV_LOCK.lock().unwrap();
         // Ensure missing family_id defaults gracefully
         std::env::remove_var("SONGBIRD_FAMILY_ID");
         std::env::remove_var("FAMILY_ID");
@@ -666,10 +701,7 @@ mod evolution_fault_injection {
         let json = serde_json::to_vec(&task).expect("Should serialize Unicode");
         let deserialized: TaskLifecycle = serde_json::from_slice(&json).unwrap();
 
-        assert_eq!(
-            deserialized.spec.config["emoji"],
-            serde_json::json!("🎵🦅💻")
-        );
+        assert_eq!(deserialized.spec.config["emoji"], serde_json::json!("🎵🦅💻"));
     }
 
     #[test]
@@ -785,9 +817,11 @@ mod protocol_detection {
 
         for (method, first_byte) in http_methods {
             assert_eq!(
-                method.as_bytes()[0], first_byte,
+                method.as_bytes()[0],
+                first_byte,
                 "{} should start with 0x{:02X}",
-                method, first_byte
+                method,
+                first_byte
             );
             assert!(!is_tls_record(first_byte), "{} should not be detected as TLS", method);
         }
@@ -800,7 +834,7 @@ mod protocol_detection {
         assert!(!is_tls_record(0x17), "0x17 is TLS Application Data (not handshake start)");
         assert!(!is_tls_record(0x14), "0x14 is TLS Change Cipher Spec");
         assert!(!is_tls_record(0x15), "0x15 is TLS Alert");
-        
+
         // ASCII printable range (HTTP)
         for byte in 0x20..=0x7E {
             if byte != 0x16 {
@@ -820,10 +854,7 @@ mod protocol_detection {
         ];
 
         for request in http_requests {
-            assert!(
-                !is_tls_record(request[0]),
-                "HTTP request should not be detected as TLS"
-            );
+            assert!(!is_tls_record(request[0]), "HTTP request should not be detected as TLS");
         }
     }
 

@@ -1,23 +1,23 @@
-//! Authentication and authorization for Songbird
+//! Authentication and Authorization — Capability-Based Security Discovery
 //!
-//! This module handles JWT-based authentication via BearDog delegation.
+//! This module handles JWT-based authentication via security provider delegation.
 //!
 //! ## Architecture
 //!
-//! Songbird delegates JWT generation and management to BearDog (security primal):
-//! - **BearDog**: Generates JWT secrets (Pure Rust ed25519-dalek)
+//! Songbird delegates JWT generation and management to the security provider:
+//! - **Security Provider**: Generates JWT secrets (Pure Rust ed25519-dalek)
 //! - **Songbird**: Validates JWTs (ed25519-dalek verification)
 //! - **Communication**: JSON-RPC over Unix socket (Pure Rust!)
 //!
 //! ## Discovery
 //!
-//! Songbird discovers BearDog via capability-based discovery:
-//! - Searches for "security" capability
+//! Songbird discovers security providers via capability-based discovery:
+//! - Searches for "security" capability first
 //! - Falls back to secure random if unavailable
 //! - Maintains self-knowledge (only knows itself)
 
-pub mod beardog_jwt_client; // BearDog JWT delegation (Pure Rust!)
-pub mod capability_discovery; // Capability-based BearDog discovery (TRUE PRIMAL!)
+pub mod beardog_jwt_client; // Security provider JWT delegation (Pure Rust!)
+pub mod capability_discovery; // Capability-based security discovery (TRUE PRIMAL!)
 
 #[cfg(test)]
 mod tests; // Integration tests for JWT delegation
@@ -26,6 +26,13 @@ pub use beardog_jwt_client::{
     fetch_jwt_secret_from_beardog, generate_secure_random_jwt, provision_jwt_secret,
 };
 
+// Capability-based security discovery (preferred API)
+pub use capability_discovery::{
+    discover_security_socket, discover_security_socket_for_family, discover_security_socket_with,
+    get_security_socket_for_jwt, get_security_socket_for_jwt_with,
+};
+
+// Backward-compatible aliases
 pub use capability_discovery::{
     discover_beardog_socket, discover_beardog_socket_for_family, discover_beardog_socket_with,
     get_beardog_socket_for_jwt, get_beardog_socket_for_jwt_with,

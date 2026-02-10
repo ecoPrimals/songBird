@@ -2,6 +2,7 @@
 //!
 //! This crate provides agnostic compute coordination for Songbird, enabling
 //! deployment to ANY compute provider without hardcoded dependencies.
+#![forbid(unsafe_code)]
 
 pub mod agnostic_coordinator;
 pub mod error;

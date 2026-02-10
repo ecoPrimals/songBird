@@ -1,7 +1,7 @@
 //! Cryptographic operations (ChaCha20-Poly1305 AEAD)
 
 use crate::beardog_crypto::BeardogCryptoClient;
-use crate::error::{OnionError, Result};
+use crate::error::Result;
 
 #[cfg(feature = "standalone")]
 use chacha20poly1305::{
@@ -30,7 +30,7 @@ pub fn encrypt_data_via_beardog(
     // Nonce: 12 bytes (8-byte sequence || 4 bytes zero)
     let mut nonce = [0u8; 12];
     nonce[..8].copy_from_slice(&sequence.to_le_bytes());
-    
+
     client.chacha20_poly1305_encrypt(key, &nonce, plaintext)
 }
 
@@ -55,7 +55,7 @@ pub fn decrypt_data_via_beardog(
     // Nonce: 12 bytes (8-byte sequence || 4 bytes zero)
     let mut nonce = [0u8; 12];
     nonce[..8].copy_from_slice(&sequence.to_le_bytes());
-    
+
     client.chacha20_poly1305_decrypt(key, &nonce, ciphertext)
 }
 
@@ -104,9 +104,11 @@ pub fn decrypt_data(key: &[u8; 32], sequence: u64, ciphertext: &[u8]) -> Result<
     nonce_bytes[..8].copy_from_slice(&sequence.to_le_bytes());
     let nonce = Nonce::from(nonce_bytes);
 
-    cipher
-        .decrypt(&nonce, ciphertext)
-        .map_err(|_| OnionError::DecryptionError("ChaCha20-Poly1305 decryption failed (MAC verification failed)".into()))
+    cipher.decrypt(&nonce, ciphertext).map_err(|_| {
+        OnionError::DecryptionError(
+            "ChaCha20-Poly1305 decryption failed (MAC verification failed)".into(),
+        )
+    })
 }
 
 #[cfg(all(test, feature = "standalone"))]

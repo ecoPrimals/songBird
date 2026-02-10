@@ -7,9 +7,9 @@
 
 mod authorities;
 mod consensus;
-mod relay;
 mod parser;
+mod relay;
 
 pub use authorities::DirectoryAuthority;
 pub use consensus::Consensus;
-pub use relay::{RelayInfo, RelayFlags, CircuitPath};
+pub use relay::{CircuitPath, RelayFlags, RelayInfo};

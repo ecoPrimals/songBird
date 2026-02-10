@@ -422,25 +422,28 @@ pub fn get_configured_primal_names() -> Vec<String> {
     primal_names
 }
 
-/// Get common primal service ports from environment
+/// Get common primal service ports from environment.
+///
+/// Dynamically discovers enabled primals via `SONGBIRD_ENABLE_*` env vars
+/// rather than hardcoding specific primal names. Any primal can be enabled
+/// by setting `SONGBIRD_ENABLE_{NAME}=true`.
 #[must_use]
 pub fn get_common_primal_ports() -> Vec<u16> {
     SafeEnv::get_or_default("SONGBIRD_COMMON_PORTS", {
-        // Build dynamic port list based on enabled services
         let mut ports = Vec::new();
         let base_port = get_port_range_start();
 
-        // Add ports for enabled services
-        ports.push(base_port); // Main service
+        // Always include the main service port
+        ports.push(base_port);
 
-        if SafeEnv::get_bool("SONGBIRD_ENABLE_BEARDOG", false) {
-            ports.push(base_port + get_primal_port_offset("beardog"));
-        }
-        if SafeEnv::get_bool("SONGBIRD_ENABLE_NESTGATE", false) {
-            ports.push(base_port + get_primal_port_offset("nestgate"));
-        }
-        if SafeEnv::get_bool("SONGBIRD_ENABLE_TOADSTOOL", false) {
-            ports.push(base_port + get_primal_port_offset("toadstool"));
+        // Dynamically discover enabled primals from env vars
+        for (key, value) in std::env::vars() {
+            if let Some(primal_name) = key.strip_prefix("SONGBIRD_ENABLE_") {
+                if value.eq_ignore_ascii_case("true") || value == "1" {
+                    let name = primal_name.to_lowercase();
+                    ports.push(base_port + get_primal_port_offset(&name));
+                }
+            }
         }
 
         ports.into_iter().map(|p| p.to_string()).collect::<Vec<_>>().join(",")

@@ -162,6 +162,7 @@ impl UnixRpcClient {
         tokio::net::TcpStream::connect(addr.as_ref()).await
     }
 
+    /// Call a JSON-RPC method with the given parameters and return the result.
     pub async fn call<P, R>(&self, method: &str, params: P) -> Result<R>
     where
         P: Serialize,

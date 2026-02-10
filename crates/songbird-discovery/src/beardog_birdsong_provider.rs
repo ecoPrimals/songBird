@@ -72,7 +72,7 @@ struct BearDogDecryptRequest {
     #[serde(with = "base64_serde")]
     ciphertext: Vec<u8>,
 
-    /// Family ID for decryption (required by BearDog)
+    /// Family ID for decryption (required by `BearDog`)
     #[serde(skip_serializing_if = "Option::is_none")]
     family_id: Option<String>,
 }
@@ -91,12 +91,13 @@ struct BearDogDecryptResponse {
     success: bool,
 }
 
-/// Connection type for BearDog (Unix socket or TCP)
+/// Connection type for `BearDog` (Unix socket or TCP)
 #[derive(Debug, Clone)]
+#[allow(dead_code)]
 enum BearDogConnection {
     /// Unix socket path
     Unix(PathBuf),
-    /// TCP address (host:port)
+    /// TCP address (host, port)
     Tcp(String, u16),
 }
 
@@ -170,18 +171,18 @@ impl BearDogBirdSongProvider {
         let path_str = socket_path.to_string_lossy().to_string();
 
         // Check if this is a TCP connection (tcp:host:port format)
-        if path_str.starts_with("tcp:") {
-            let addr = &path_str[4..]; // Remove "tcp:" prefix
+        if let Some(addr) = path_str.strip_prefix("tcp:") {
+            // Remove "tcp:" prefix
             let parts: Vec<&str> = addr.rsplitn(2, ':').collect();
-            
+
             if parts.len() != 2 {
                 return Err(anyhow::anyhow!(
-                    "Invalid TCP address format: {}. Expected tcp:host:port",
-                    path_str
+                    "Invalid TCP address format: {path_str}. Expected tcp:host:port"
                 ));
             }
-            
-            let port: u16 = parts[0].parse()
+
+            let port: u16 = parts[0]
+                .parse()
                 .map_err(|_| anyhow::anyhow!("Invalid port in TCP address: {}", parts[0]))?;
             let host = parts[1].to_string();
 
@@ -201,8 +202,9 @@ impl BearDogBirdSongProvider {
         }
 
         // Unix socket connection
-        let client = UnixRpcClient::new(&socket_path)
-            .map_err(|e| anyhow::anyhow!("Failed to connect to BearDog at {socket_path:?}: {e}"))?;
+        let client = UnixRpcClient::new(&socket_path).map_err(|e| {
+            anyhow::anyhow!("Failed to connect to BearDog at {}: {e}", socket_path.display())
+        })?;
 
         info!("🎵 BearDog BirdSong provider created (Pure Rust Unix socket!)");
         info!("   Socket: {:?}", socket_path);
@@ -228,8 +230,8 @@ impl BearDogBirdSongProvider {
         P: Serialize,
         R: DeserializeOwned,
     {
-        let (host, port) = self.tcp_endpoint.as_ref()
-            .ok_or_else(|| "TCP endpoint not configured".to_string())?;
+        let (host, port) =
+            self.tcp_endpoint.as_ref().ok_or_else(|| "TCP endpoint not configured".to_string())?;
 
         trace!("TCP JSON-RPC call to {}:{} method: {}", host, port, method);
 
@@ -245,21 +247,24 @@ impl BearDogBirdSongProvider {
             .map_err(|e| format!("Failed to serialize request: {e}"))?;
 
         // Connect via TCP
-        let addr = format!("{}:{}", host, port);
-        let mut stream = TcpStream::connect(&addr).await
-            .map_err(|e| format!("Failed to connect to BearDog at {}: {}", addr, e))?;
+        let addr = format!("{host}:{port}");
+        let mut stream = TcpStream::connect(&addr)
+            .await
+            .map_err(|e| format!("Failed to connect to BearDog at {addr}: {e}"))?;
 
         // Send request
-        stream.write_all(&request_bytes).await
+        stream
+            .write_all(&request_bytes)
+            .await
             .map_err(|e| format!("Failed to write request: {e}"))?;
-        stream.write_all(b"\n").await
-            .map_err(|e| format!("Failed to write delimiter: {e}"))?;
-        stream.shutdown().await
-            .map_err(|e| format!("Failed to shutdown write: {e}"))?;
+        stream.write_all(b"\n").await.map_err(|e| format!("Failed to write delimiter: {e}"))?;
+        stream.shutdown().await.map_err(|e| format!("Failed to shutdown write: {e}"))?;
 
         // Read response
         let mut response_bytes = Vec::new();
-        stream.read_to_end(&mut response_bytes).await
+        stream
+            .read_to_end(&mut response_bytes)
+            .await
             .map_err(|e| format!("Failed to read response: {e}"))?;
 
         trace!("TCP received {} bytes", response_bytes.len());
@@ -339,7 +344,9 @@ impl BearDogBirdSongProvider {
         let encrypt_response: BearDogEncryptResponse = if self.tcp_endpoint.is_some() {
             self.tcp_call("birdsong.encrypt", &request).await?
         } else if let Some(ref client) = self.client {
-            client.call("birdsong.encrypt", &request).await
+            client
+                .call("birdsong.encrypt", &request)
+                .await
                 .map_err(|e| format!("BearDog JSON-RPC encrypt failed: {e}"))?
         } else {
             return Err("No BearDog connection available".to_string());

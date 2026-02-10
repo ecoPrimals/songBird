@@ -83,7 +83,6 @@ pub enum OnionError {
     // =========================================================================
     // BearDog Crypto Client Errors (TRUE PRIMAL pattern)
     // =========================================================================
-
     /// JSON-RPC error from BearDog
     #[error("RPC error: {0}")]
     RpcError(String),

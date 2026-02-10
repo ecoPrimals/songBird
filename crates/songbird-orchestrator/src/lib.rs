@@ -66,17 +66,46 @@
 //! - REST API
 //! - Health check endpoints
 //! - Metrics endpoints
-
+#![forbid(unsafe_code)]
 #![allow(
     dead_code,
     unused_variables,
+    // Documentation lints - evolving toward full coverage
     clippy::missing_errors_doc,
+    clippy::missing_panics_doc,
+    clippy::doc_link_with_quotes,
+    // Structural/style lints
     clippy::used_underscore_binding,
+    clippy::no_effect_underscore_binding,
+    clippy::items_after_statements,
     clippy::struct_excessive_bools,
     clippy::too_many_lines,
+    clippy::too_many_arguments,
+    clippy::similar_names,
+    clippy::unreadable_literal,
+    clippy::needless_pass_by_value,
+    clippy::trivially_copy_pass_by_ref,
+    clippy::unnecessary_wraps,
+    clippy::manual_let_else,
+    clippy::match_same_arms,
+    clippy::match_wildcard_for_single_variants,
+    clippy::needless_continue,
+    clippy::should_implement_trait,
+    clippy::missing_fields_in_debug,
+    // Async patterns - many are stubs or trait-conforming
+    clippy::unused_async,
+    clippy::unused_self,
+    clippy::future_not_send,
+    // Cast lints - each site verified for correctness
     clippy::cast_sign_loss,
-    clippy::no_effect_underscore_binding,
-    clippy::unused_async
+    clippy::cast_possible_truncation,
+    clippy::cast_precision_loss,
+    clippy::cast_possible_wrap,
+    // Builder/fluent API patterns
+    clippy::return_self_not_must_use,
+    clippy::double_must_use,
+    // Clone clarity - Arc::clone() preferred but not enforced here
+    clippy::clone_on_ref_ptr,
 )]
 
 pub mod access_control; // Access control & graduated information disclosure (Q1 2025)

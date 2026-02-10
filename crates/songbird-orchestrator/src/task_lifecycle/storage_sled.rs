@@ -27,7 +27,7 @@ use tracing::{debug, info};
 
 /// Pure Rust task storage backed by sled
 ///
-/// Thread-safe and async-compatible via Arc<Db> and spawn_blocking
+/// Thread-safe and async-compatible via `Arc<Db>` and `spawn_blocking`
 #[derive(Clone)]
 pub struct TaskStorage {
     db: Arc<Db>,

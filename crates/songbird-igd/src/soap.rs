@@ -12,7 +12,7 @@ use tracing::{debug, trace};
 pub struct SoapClient {
     /// Control URL for SOAP actions
     control_url: String,
-    
+
     /// Service type (for SOAP namespace)
     service_type: String,
 }
@@ -39,7 +39,7 @@ impl SoapClient {
 
         let body = self.build_add_port_mapping_xml(req);
         let response = self.send_soap_action("AddPortMapping", &body).await?;
-        
+
         // Check for errors in response
         if let Some(error_code) = Self::parse_soap_error(&response) {
             return Err(Self::map_soap_error(error_code, req.external_port));
@@ -55,7 +55,7 @@ impl SoapClient {
 
         let body = self.build_delete_port_mapping_xml(external_port, protocol);
         let response = self.send_soap_action("DeletePortMapping", &body).await?;
-        
+
         // Check for errors
         if let Some(error_code) = Self::parse_soap_error(&response) {
             return Err(IgdError::SoapError(format!(
@@ -77,11 +77,11 @@ impl SoapClient {
 
         let body = self.build_get_external_ip_xml();
         let response = self.send_soap_action("GetExternalIPAddress", &body).await?;
-        
+
         // Parse IP from response
         let ip = Self::parse_external_ip(&response)?;
         debug!("External IP: {}", ip);
-        
+
         Ok(ip)
     }
 
@@ -179,34 +179,31 @@ impl SoapClient {
         use tokio::net::TcpStream;
 
         let addr = format!("{}:{}", host, port);
-        let mut stream = tokio::time::timeout(
-            std::time::Duration::from_secs(5),
-            TcpStream::connect(&addr),
-        )
-        .await
-        .map_err(|_| IgdError::Timeout)?
-        .map_err(|e| {
-            IgdError::SoapError(format!("Failed to connect to {}: {}", addr, e))
-        })?;
+        let mut stream =
+            tokio::time::timeout(std::time::Duration::from_secs(5), TcpStream::connect(&addr))
+                .await
+                .map_err(|_| IgdError::Timeout)?
+                .map_err(|e| {
+                    IgdError::SoapError(format!("Failed to connect to {}: {}", addr, e))
+                })?;
 
-        stream.write_all(request.as_bytes()).await.map_err(|e| {
-            IgdError::SoapError(format!("Failed to send SOAP request: {}", e))
-        })?;
+        stream
+            .write_all(request.as_bytes())
+            .await
+            .map_err(|e| IgdError::SoapError(format!("Failed to send SOAP request: {}", e)))?;
 
         // Read response
         let mut response = Vec::new();
-        stream.read_to_end(&mut response).await.map_err(|e| {
-            IgdError::SoapError(format!("Failed to read SOAP response: {}", e))
-        })?;
+        stream
+            .read_to_end(&mut response)
+            .await
+            .map_err(|e| IgdError::SoapError(format!("Failed to read SOAP response: {}", e)))?;
 
         let response_str = String::from_utf8_lossy(&response).to_string();
         trace!("SOAP Response:\n{}", response_str);
 
         // Extract body from HTTP response (skip headers)
-        let body_start = response_str
-            .find("\r\n\r\n")
-            .map(|i| i + 4)
-            .unwrap_or(0);
+        let body_start = response_str.find("\r\n\r\n").map(|i| i + 4).unwrap_or(0);
         let response_body = &response_str[body_start..];
 
         // Check HTTP status
@@ -217,10 +214,7 @@ impl SoapClient {
                     debug!("SOAP fault received (HTTP 500), parsing error details");
                     return Ok(response_body.to_string());
                 }
-                return Err(IgdError::SoapError(format!(
-                    "HTTP error: {}",
-                    status_line
-                )));
+                return Err(IgdError::SoapError(format!("HTTP error: {}", status_line)));
             }
         }
 
@@ -231,15 +225,9 @@ impl SoapClient {
     ///
     /// Handles: `http://192.168.1.254:5431/ctl/IPConn`
     fn parse_url(url: &str) -> Result<(String, u16, String)> {
-        let url = url
-            .strip_prefix("http://")
-            .or_else(|| url.strip_prefix("HTTP://"))
-            .ok_or_else(|| {
-                IgdError::InvalidParameter(format!(
-                    "Expected http:// URL, got: {}",
-                    url
-                ))
-            })?;
+        let url = url.strip_prefix("http://").or_else(|| url.strip_prefix("HTTP://")).ok_or_else(
+            || IgdError::InvalidParameter(format!("Expected http:// URL, got: {}", url)),
+        )?;
 
         let (host_port, path) = if let Some(idx) = url.find('/') {
             (&url[..idx], &url[idx..])
@@ -250,7 +238,7 @@ impl SoapClient {
         let (host, port) = if let Some(idx) = host_port.rfind(':') {
             let port = host_port[idx + 1..]
                 .parse::<u16>()
-                .map_err(|_| IgdError::InvalidParameter(format!("Invalid port in URL")))?;
+                .map_err(|_| IgdError::InvalidParameter("Invalid port in URL".to_string()))?;
             (&host_port[..idx], port)
         } else {
             (host_port, 80u16)
@@ -285,10 +273,8 @@ impl SoapClient {
                 }
             }
         }
-        
-        Err(IgdError::InvalidResponse(
-            "Could not parse external IP from SOAP response".to_string(),
-        ))
+
+        Err(IgdError::InvalidResponse("Could not parse external IP from SOAP response".to_string()))
     }
 
     /// Map SOAP error code to IgdError
@@ -297,11 +283,7 @@ impl SoapClient {
             Some(SoapErrorCode::ConflictInMappingEntry) => {
                 IgdError::MappingConflict(port, "unknown host".to_string())
             }
-            Some(err) => IgdError::SoapError(format!(
-                "SOAP error {}: {}",
-                code,
-                err.description()
-            )),
+            Some(err) => IgdError::SoapError(format!("SOAP error {}: {}", code, err.description())),
             None => IgdError::SoapError(format!("Unknown SOAP error code: {}", code)),
         }
     }
@@ -343,7 +325,7 @@ mod tests {
         );
 
         let xml = soap.build_add_port_mapping_xml(&req);
-        
+
         assert!(xml.contains("<NewExternalPort>3492</NewExternalPort>"));
         assert!(xml.contains("<NewInternalPort>3492</NewInternalPort>"));
         assert!(xml.contains("<NewInternalClient>192.168.1.144</NewInternalClient>"));
@@ -398,8 +380,7 @@ mod tests {
 
     #[test]
     fn test_parse_url_default_port() {
-        let (host, port, path) =
-            SoapClient::parse_url("http://192.168.1.1/upnp/control").unwrap();
+        let (host, port, path) = SoapClient::parse_url("http://192.168.1.1/upnp/control").unwrap();
         assert_eq!(host, "192.168.1.1");
         assert_eq!(port, 80);
         assert_eq!(path, "/upnp/control");
@@ -407,8 +388,7 @@ mod tests {
 
     #[test]
     fn test_parse_url_no_path() {
-        let (host, port, path) =
-            SoapClient::parse_url("http://10.0.0.1:8080").unwrap();
+        let (host, port, path) = SoapClient::parse_url("http://10.0.0.1:8080").unwrap();
         assert_eq!(host, "10.0.0.1");
         assert_eq!(port, 8080);
         assert_eq!(path, "/");

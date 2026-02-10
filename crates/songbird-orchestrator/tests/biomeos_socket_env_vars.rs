@@ -1,6 +1,6 @@
 // BiomeOS Neural API Socket Environment Variable Compatibility Test
 // January 15, 2026
-// Updated: February 5, 2026 (PRIMAL_DEPLOYMENT_STANDARD compliance)
+// Updated: February 10, 2026 (concurrent-safe with per-file Mutex)
 //
 // Validates that Songbird honors BiomeOS Neural API environment variable standards
 // as documented in the upstream handoff from BiomeOS team.
@@ -9,14 +9,26 @@
 // - Socket names are now {primal}.sock (no family suffix)
 // - XDG_RUNTIME_DIR/biomeos/ is the preferred location
 // - Family ID is NOT included in socket path
+//
+// **Concurrency Evolution**: These tests mutate process-wide env vars.
+// A static Mutex ensures they don't race with each other within this binary.
+// This is NOT a production concern — production reads env vars once at startup.
 
 use songbird_orchestrator::ipc::UnixSocketServer;
 use std::env;
 use std::path::PathBuf;
+use std::sync::Mutex;
+
+/// Serialize all env var tests in this file.
+/// Process env vars are global state — there is no way around serialization here.
+/// This is the correct pattern: env var tests serialize, everything else runs concurrent.
+static ENV_LOCK: Mutex<()> = Mutex::new(());
 
 /// Test socket path derivation with BiomeOS Neural API environment variables
 #[test]
 fn test_biomeos_neural_api_socket_path_priority() {
+    let _guard = ENV_LOCK.lock().unwrap();
+
     // Save original env state
     let original_orchestrator_socket = env::var("SONGBIRD_ORCHESTRATOR_SOCKET").ok();
     let original_socket = env::var("SONGBIRD_SOCKET").ok();
@@ -64,7 +76,7 @@ fn test_biomeos_neural_api_socket_path_priority() {
     );
     env::remove_var("BIOMEOS_SOCKET_PATH");
 
-    // Test 4: Family ID from SONGBIRD_ORCHESTRATOR_FAMILY_ID 
+    // Test 4: Family ID from SONGBIRD_ORCHESTRATOR_FAMILY_ID
     // PRIMAL_DEPLOYMENT_STANDARD: Family ID is NOT in socket path, socket is {primal}.sock
     env::set_var("SONGBIRD_ORCHESTRATOR_FAMILY_ID", "nat0");
     let path = UnixSocketServer::socket_path_from_env();
@@ -73,7 +85,10 @@ fn test_biomeos_neural_api_socket_path_priority() {
         path.to_str().unwrap().ends_with("songbird.sock"),
         "Socket path should be {{primal}}.sock per PRIMAL_DEPLOYMENT_STANDARD"
     );
-    assert_eq!(family, "nat0", "Family ID should be extracted from SONGBIRD_ORCHESTRATOR_FAMILY_ID");
+    assert_eq!(
+        family, "nat0",
+        "Family ID should be extracted from SONGBIRD_ORCHESTRATOR_FAMILY_ID"
+    );
     env::remove_var("SONGBIRD_ORCHESTRATOR_FAMILY_ID");
 
     // Test 5: Family ID from BIOMEOS_FAMILY_ID (generic orchestrator)
@@ -128,6 +143,8 @@ fn test_biomeos_neural_api_socket_path_priority() {
 /// PRIMAL_DEPLOYMENT_STANDARD: XDG_RUNTIME_DIR/biomeos/ is preferred, /tmp is fallback
 #[test]
 fn test_default_socket_directory_is_tmp() {
+    let _guard = ENV_LOCK.lock().unwrap();
+
     // Clear all explicit socket env vars (but NOT XDG_RUNTIME_DIR)
     env::remove_var("SONGBIRD_ORCHESTRATOR_SOCKET");
     env::remove_var("SONGBIRD_SOCKET");
@@ -164,6 +181,8 @@ fn restore_env_var(key: &str, value: Option<String>) {
 
 #[test]
 fn test_family_id_priority_order() {
+    let _guard = ENV_LOCK.lock().unwrap();
+
     // Clear all env vars (including env_config vars)
     env::remove_var("SONGBIRD_ORCHESTRATOR_SOCKET");
     env::remove_var("SONGBIRD_SOCKET");
@@ -197,11 +216,7 @@ fn test_family_id_priority_order() {
         "Socket should be {{primal}}.sock per PRIMAL_DEPLOYMENT_STANDARD"
     );
     // Family ID is still correctly extracted (but not used in path)
-    assert_eq!(
-        family,
-        "custom",
-        "SONGBIRD_FAMILY_ID should be correctly extracted"
-    );
+    assert_eq!(family, "custom", "SONGBIRD_FAMILY_ID should be correctly extracted");
     env::remove_var("SONGBIRD_FAMILY_ID");
 
     // Test 3: BIOMEOS_FAMILY_ID (fallback when SONGBIRD_FAMILY_ID not set)

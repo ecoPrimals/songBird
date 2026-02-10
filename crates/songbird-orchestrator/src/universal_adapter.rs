@@ -387,9 +387,7 @@ mod tests {
             Err(_) => return, // No crypto provider in test env
         };
 
-        let providers = adapter
-            .discover_from_environment("nonexistent-cap")
-            .await;
+        let providers = adapter.discover_from_environment("nonexistent-cap").await;
 
         // With no CAPABILITY_PROVIDERS set for this cap, should return empty or error
         match providers {

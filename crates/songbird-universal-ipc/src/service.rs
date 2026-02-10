@@ -29,22 +29,22 @@ use crate::handlers::birdsong_handler::BirdSongHandler; // BirdSong (Feb 2, 2026
 use crate::handlers::discovery_handler::{DiscoveryHandler, PeerRegistry};
 use crate::handlers::http_handler::{HttpHandler, HttpRequestParams};
 use crate::handlers::http_rendezvous_client::HttpRendezvousClient;
-use crate::handlers::mesh_handler::MeshHandler;   // Mesh networking (Feb 4, 2026)
+use crate::handlers::igd_handler::IgdHandler; // IGD router config (Feb 8, 2026)
+use crate::handlers::mesh_handler::MeshHandler; // Mesh networking (Feb 4, 2026)
 use crate::handlers::onion_handler::OnionHandler; // Sovereign onion (Feb 4, 2026)
 use crate::handlers::peer_handler::PeerHandler;
 use crate::handlers::punch_handler::PunchHandler; // Hole punch (Feb 4, 2026)
 use crate::handlers::rendezvous_handler::RendezvousHandler;
 use crate::handlers::stun_handler::StunHandler;
-use crate::handlers::igd_handler::IgdHandler;      // IGD router config (Feb 8, 2026)
-use crate::handlers::tor_handler::TorHandler;     // Pure Rust Tor (Feb 7, 2026)
+use crate::handlers::tor_handler::TorHandler; // Pure Rust Tor (Feb 7, 2026)
 use crate::handlers::udp_peer_connector::UdpPeerConnector;
 use crate::registry::ServiceRegistry;
 use crate::tower_atomic::JsonRpcHandler;
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use songbird_lineage_relay::relay_handler::RelayHandler; // Relay Server (Feb 5, 2026)
 use songbird_lineage_relay::beardog::BearDogRelayAuthority; // Production relay auth (Feb 8, 2026)
+use songbird_lineage_relay::relay_handler::RelayHandler; // Relay Server (Feb 5, 2026)
 use std::sync::Arc;
 use tokio::sync::RwLock;
 use tracing::{debug, info};
@@ -142,7 +142,7 @@ impl IpcServiceHandler {
     ///
     /// ✅ DEEP DEBT COMPLIANT (Jan 29, 2026):
     /// - Real implementations (`HttpRendezvousClient`, `UdpPeerConnector`)
-    /// - Zero mocks in production (all delegates to BearDog)
+    /// - Zero mocks in production (all delegates to `BearDog`)
     /// - Production-ready defaults
     ///
     /// ✅ DEEP DEBT UPDATED (Feb 8, 2026):
@@ -162,7 +162,7 @@ impl IpcServiceHandler {
             Arc::new(RendezvousHandler::new(Arc::new(HttpRendezvousClient::new())));
         let peer_handler = Arc::new(PeerHandler::new(Arc::new(UdpPeerConnector::new())));
         let birdsong_handler = Arc::new(BirdSongHandler::new()); // Feb 2, 2026
-        
+
         // ✅ Relay Server (Feb 5, 2026) - Production BearDog relay authority
         let relay_handler = Arc::new(RelayHandler::new(Arc::new(BearDogRelayAuthority::new())));
 
@@ -170,8 +170,8 @@ impl IpcServiceHandler {
         let mesh_handler = Arc::new(MeshHandler::new());
         let onion_handler = Arc::new(OnionHandler::new()); // Sovereign onion (Feb 4, 2026)
         let punch_handler = Arc::new(PunchHandler::new());
-        let tor_handler = Arc::new(TorHandler::new());     // Pure Rust Tor (Feb 7, 2026)
-        let igd_handler = Arc::new(IgdHandler::new());     // IGD router config (Feb 8, 2026)
+        let tor_handler = Arc::new(TorHandler::new()); // Pure Rust Tor (Feb 7, 2026)
+        let igd_handler = Arc::new(IgdHandler::new()); // IGD router config (Feb 8, 2026)
 
         Self {
             registry,
@@ -214,11 +214,11 @@ impl IpcServiceHandler {
         let peer_handler = Arc::new(PeerHandler::new(Arc::new(UdpPeerConnector::new())));
         let birdsong_handler = Arc::new(BirdSongHandler::new()); // Feb 2, 2026
         let relay_handler = Arc::new(RelayHandler::new(Arc::new(BearDogRelayAuthority::new()))); // Feb 5, 2026
-        let mesh_handler = Arc::new(MeshHandler::new());   // Feb 4, 2026
+        let mesh_handler = Arc::new(MeshHandler::new()); // Feb 4, 2026
         let onion_handler = Arc::new(OnionHandler::new()); // Feb 4, 2026
         let punch_handler = Arc::new(PunchHandler::new()); // Feb 4, 2026
-        let tor_handler = Arc::new(TorHandler::new());     // Feb 7, 2026
-        let igd_handler = Arc::new(IgdHandler::new());     // IGD router config (Feb 8, 2026)
+        let tor_handler = Arc::new(TorHandler::new()); // Feb 7, 2026
+        let igd_handler = Arc::new(IgdHandler::new()); // IGD router config (Feb 8, 2026)
 
         Self {
             registry,
@@ -252,11 +252,11 @@ impl IpcServiceHandler {
         let peer_handler = Arc::new(PeerHandler::new(Arc::new(UdpPeerConnector::new())));
         let birdsong_handler = Arc::new(BirdSongHandler::new()); // Feb 2, 2026
         let relay_handler = Arc::new(RelayHandler::new(Arc::new(BearDogRelayAuthority::new()))); // Feb 8, 2026
-        let mesh_handler = Arc::new(MeshHandler::new());   // Feb 4, 2026
+        let mesh_handler = Arc::new(MeshHandler::new()); // Feb 4, 2026
         let onion_handler = Arc::new(OnionHandler::new()); // Feb 4, 2026
         let punch_handler = Arc::new(PunchHandler::new()); // Feb 4, 2026
-        let tor_handler = Arc::new(TorHandler::new());     // Feb 7, 2026
-        let igd_handler = Arc::new(IgdHandler::new());     // IGD router config (Feb 8, 2026)
+        let tor_handler = Arc::new(TorHandler::new()); // Feb 7, 2026
+        let igd_handler = Arc::new(IgdHandler::new()); // IGD router config (Feb 8, 2026)
 
         Self {
             registry,
@@ -569,19 +569,15 @@ impl IpcServiceHandler {
         let capabilities: Vec<String> = params
             .get("capabilities")
             .and_then(|v| v.as_array())
-            .map(|arr| {
-                arr.iter()
-                    .filter_map(|v| v.as_str().map(String::from))
-                    .collect()
-            })
+            .map(|arr| arr.iter().filter_map(|v| v.as_str().map(String::from)).collect())
             .unwrap_or_default();
 
         // Get onion address if service is running
         let onion_status = self.onion_handler.handle_status(serde_json::json!({})).await?;
         let onion_endpoint = if onion_status.get("running") == Some(&serde_json::json!(true)) {
             let addr = onion_status.get("onion_address").and_then(|v| v.as_str());
-            let port = onion_status.get("port").and_then(|v| v.as_u64()).unwrap_or(3492);
-            addr.map(|a| format!("{}:{}", a, port))
+            let port = onion_status.get("port").and_then(serde_json::Value::as_u64).unwrap_or(3492);
+            addr.map(|a| format!("{a}:{port}"))
         } else {
             None
         };
@@ -597,7 +593,8 @@ impl IpcServiceHandler {
             "endpoint_hints": endpoint_hints,
         });
 
-        let beacon_result = self.birdsong_handler.handle_generate_encrypted_beacon(beacon_params).await?;
+        let beacon_result =
+            self.birdsong_handler.handle_generate_encrypted_beacon(beacon_params).await?;
 
         // Return combined result
         Ok(serde_json::json!({
@@ -612,7 +609,7 @@ impl IpcServiceHandler {
         Ok(crate::introspection::rpc_discover_standard())
     }
 
-    /// Handle discover_capabilities (biomeOS cross-primal scanner protocol)
+    /// Handle `discover_capabilities` (biomeOS cross-primal scanner protocol)
     ///
     /// This is the method that Squirrel (and other primals) send when scanning
     /// sockets to find capability providers. It returns a flat list of capabilities

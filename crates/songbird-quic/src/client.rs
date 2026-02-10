@@ -10,11 +10,11 @@ use tracing::{debug, info};
 
 /// QUIC client
 ///
-/// Connects to QUIC servers with BearDog crypto delegation
+/// Connects to QUIC servers with `BearDog` crypto delegation
 pub struct QuicClient {
     /// Quinn endpoint
     endpoint: Endpoint,
-    
+
     /// Client configuration
     config: Arc<QuicConfig>,
 }
@@ -29,24 +29,29 @@ impl QuicClient {
     /// # Errors
     ///
     /// Returns error if endpoint creation fails
+    /// # Panics
+    ///
+    /// Panics if the static bind address `[::]:0` cannot be parsed (unreachable).
+    #[allow(clippy::unused_async)] // async retained for API consistency with connect()
     pub async fn new(config: QuicConfig) -> Result<Self> {
         info!("Creating QUIC client");
-        
+
         // Build client configuration
         let client_config = config.build_client_config()?;
-        
+
         // Create endpoint (binds to random port)
+        #[allow(clippy::unwrap_used)] // constant address is always valid
         let mut endpoint = Endpoint::client("[::]:0".parse().unwrap())?;
         endpoint.set_default_client_config(client_config);
-        
+
         debug!("QUIC client bound to {}", endpoint.local_addr()?);
-        
+
         Ok(Self {
             endpoint,
             config: Arc::new(config),
         })
     }
-    
+
     /// Connect to remote server
     ///
     /// # Arguments
@@ -58,32 +63,35 @@ impl QuicClient {
     /// Returns error if connection fails
     pub async fn connect(&self, remote_addr: &str) -> Result<QuicConnection> {
         let addr: SocketAddr = remote_addr.parse()?;
-        
+
         info!("Connecting to {} via QUIC", addr);
-        
+
         // Connect with SNI hostname (use IP for now, will be configurable)
-        let connection = self.endpoint.connect(addr, "songbird.local")?
-            .await?;
-        
+        let connection = self.endpoint.connect(addr, "songbird.local")?.await?;
+
         info!("✅ Connected to {} via QUIC", addr);
-        
+
         Ok(QuicConnection::new(connection, self.config.clone()))
     }
-    
+
     /// Connect with 0-RTT (if enabled)
     ///
     /// Faster reconnection using cached session data
+    ///
+    /// # Errors
+    ///
+    /// Returns error if connection or address parsing fails
     pub async fn connect_0rtt(&self, remote_addr: &str) -> Result<QuicConnection> {
         if !self.config.enable_0rtt {
             return self.connect(remote_addr).await;
         }
-        
+
         let addr: SocketAddr = remote_addr.parse()?;
-        
+
         info!("Connecting to {} via QUIC (0-RTT attempt)", addr);
-        
+
         let connecting = self.endpoint.connect(addr, "songbird.local")?;
-        
+
         // Try 0-RTT first
         match connecting.into_0rtt() {
             Ok((connection, _zero_rtt_accepted)) => {
@@ -99,7 +107,7 @@ impl QuicClient {
             }
         }
     }
-    
+
     /// Close client
     pub async fn close(&self) {
         info!("Closing QUIC client");

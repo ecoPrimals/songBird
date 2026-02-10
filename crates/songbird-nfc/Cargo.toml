@@ -1,34 +1,41 @@
 [package]
 name = "songbird-nfc"
-version = "0.1.0"
-edition = "2021"
-authors = ["BiomeOS Team"]
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+repository.workspace = true
+license.workspace = true
 description = "Dark Forest compliant NFC genesis protocol for Songbird"
-license = "MIT OR Apache-2.0"
+readme = "../README.md"
+keywords = ["nfc", "genesis", "songbird", "proximity", "protocol"]
+categories = ["network-programming", "cryptography"]
+
+[lints]
+workspace = true
 
 [dependencies]
 # Async runtime
-tokio = { version = "1", features = ["full"] }
+tokio = { workspace = true }
 
 # Serialization
-serde = { version = "1", features = ["derive"] }
-serde_json = "1"
+serde = { workspace = true }
+serde_json = { workspace = true }
 
 # Error handling
-thiserror = "2"
-anyhow = "1"
+thiserror = { workspace = true }
+anyhow = { workspace = true }
 
 # Logging
-tracing = "0.1"
+tracing = { workspace = true }
 
 # Time utilities
-chrono = "0.4"
+chrono = { workspace = true }
 
 # Random number generation
-rand = "0.8"
+rand = { workspace = true }
 
 # Async trait
-async-trait = "0.1"
+async-trait = { workspace = true }
 
 # Songbird internal
 songbird-types = { path = "../songbird-types" }

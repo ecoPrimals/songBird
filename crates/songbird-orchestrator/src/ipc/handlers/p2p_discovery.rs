@@ -208,7 +208,7 @@ pub async fn announce_capabilities(
         broadcasting: true,
         updated_at: SystemTime::now()
             .duration_since(SystemTime::UNIX_EPOCH)
-            .unwrap()
+            .unwrap_or_default()
             .as_secs()
             .to_string(),
     })
@@ -371,7 +371,7 @@ pub async fn announce_capabilities_json(
         broadcasting: true,
         updated_at: SystemTime::now()
             .duration_since(SystemTime::UNIX_EPOCH)
-            .unwrap()
+            .unwrap_or_default()
             .as_secs()
             .to_string(),
     };

@@ -175,11 +175,10 @@ fn allocate_available_port() -> u16 {
 ///
 /// # Examples
 ///
-/// ```rust
+/// ```rust,no_run
 /// use songbird_test_utils::fixtures::endpoints::{clear_port_registry, test_port};
 ///
-/// #[test]
-/// fn test_isolated() {
+/// fn example() {
 ///     clear_port_registry();
 ///     let port = test_port("isolated");
 ///     // Fresh allocation

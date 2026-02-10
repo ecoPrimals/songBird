@@ -8,7 +8,7 @@
 #![allow(async_fn_in_trait)]
 
 use serde::{Deserialize, Serialize};
-use songbird_http_client::IpcHttpClient;
+use songbird_http_client::SongbirdHttpClient;
 use songbird_types::{SafeEnv, SongbirdError, SongbirdResult};
 use std::time::Duration;
 use tracing::{debug, warn};
@@ -197,7 +197,7 @@ enum SecurityProtocol {
     /// JSON-RPC 2.0 over Unix socket (SECONDARY - port-free, universal)
     JsonRpc(crate::JsonRpcClient),
     /// HTTP/HTTPS protocol (FALLBACK - network only)
-    Http(IpcHttpClient),
+    Http(SongbirdHttpClient),
 }
 
 /// **CAPABILITY-BASED SECURITY ADAPTER**
@@ -320,6 +320,7 @@ impl SecurityAdapter {
     /// # Errors
     ///
     /// Returns an error if the client cannot be created.
+    #[allow(clippy::unused_async)] // async retained for API stability
     pub async fn new(endpoint: String) -> SongbirdResult<Self> {
         // Detect protocol based on endpoint scheme (v3.12.0 - tarpc PRIMARY)
         let protocol = if endpoint.starts_with("tarpc://") {
@@ -337,12 +338,9 @@ impl SecurityAdapter {
             })?;
             SecurityProtocol::JsonRpc(client)
         } else {
-            // HTTP/HTTPS protocol (FALLBACK)
-            debug!("🌐 Protocol detected: HTTP (FALLBACK - network only)");
-            let client = IpcHttpClient::new().await.map_err(|e| {
-                SongbirdError::configuration(format!("Failed to create HTTP client: {e}"))
-            })?;
-            SecurityProtocol::Http(client)
+            // HTTP/HTTPS protocol (FALLBACK - direct TCP connection)
+            debug!("🌐 Protocol detected: HTTP (FALLBACK - direct connection)");
+            SecurityProtocol::Http(SongbirdHttpClient::from_env())
         };
 
         debug!("✅ SecurityAdapter initialized: endpoint={}", endpoint);
@@ -416,27 +414,34 @@ impl SecurityAdapter {
                 })?
             }
             SecurityProtocol::Http(client) => {
-                // HTTP protocol (FALLBACK - ~500-1000 μs latency)
+                // HTTP protocol (FALLBACK - direct TCP connection)
                 debug!("🌐 Using HTTP (FALLBACK protocol)");
                 let url = format!("{}/metrics/security", self.endpoint);
 
-                // IpcHttpClient::get() returns Result<Response> directly (no .send() needed)
-                let response = client.get(&url).await.map_err(|e| {
-                    warn!("Failed to reach security capability provider: {e}");
-                    songbird_types::SongbirdError::network(format!(
-                        "Failed to reach security provider: {e}"
-                    ))
-                })?;
+                let response = tokio::time::timeout(self.timeout, client.get(&url))
+                    .await
+                    .map_err(|_| {
+                        songbird_types::SongbirdError::network(format!(
+                            "Timeout after {:?} reaching security provider",
+                            self.timeout
+                        ))
+                    })?
+                    .map_err(|e| {
+                        warn!("Failed to reach security capability provider: {e}");
+                        songbird_types::SongbirdError::network(format!(
+                            "Failed to reach security provider: {e}"
+                        ))
+                    })?;
 
-                if !response.is_success() {
-                    let status = response.status();
+                if !(200..300).contains(&response.status) {
+                    let status = response.status;
                     warn!("Security capability provider returned error status: {}", status);
                     return Err(songbird_types::SongbirdError::security(format!(
                         "HTTP {status}: Security metrics unavailable"
                     )));
                 }
 
-                response.json().await.map_err(|e| {
+                serde_json::from_value(response.body).map_err(|e| {
                     warn!("Failed to parse security metrics: {e}");
                     songbird_types::SongbirdError::security(format!(
                         "Failed to parse security metrics: {e}"
@@ -514,17 +519,12 @@ impl SecurityAdapter {
                 })?
             }
             SecurityProtocol::Http(client) => {
-                // HTTP protocol (FALLBACK)
+                // HTTP protocol (FALLBACK - direct TCP connection)
                 debug!("🌐 Using HTTP (FALLBACK protocol)");
                 let url = format!("{}/auth/verify", self.endpoint);
 
-                // IpcHttpClient: .post() returns RequestBuilder directly
-                let request_builder = client.post(&url).await;
-
-                let response = request_builder
-                    .json(&serde_json::json!({ "token": token }))
-                    .map_err(|e| songbird_types::SongbirdError::serialization(e.to_string()))?
-                    .send()
+                let response = client
+                    .post(&url, serde_json::json!({ "token": token }))
                     .await
                     .map_err(|e| {
                         warn!("Auth verification request failed: {e}");
@@ -533,11 +533,11 @@ impl SecurityAdapter {
                         ))
                     })?;
 
-                if !response.is_success() {
+                if !(200..300).contains(&response.status) {
                     return Ok(AuthResult::Unauthorized);
                 }
 
-                response.json().await.map_err(|e| {
+                serde_json::from_value(response.body).map_err(|e| {
                     warn!("Failed to parse auth result: {e}");
                     songbird_types::SongbirdError::security(format!(
                         "Failed to parse auth result: {e}"
@@ -638,35 +638,26 @@ impl SecurityAdapter {
                 debug!("🌐 Using HTTP for {} (FALLBACK - 500-1000μs)", method);
                 let url = format!("{}/{}", self.endpoint, method);
 
-                // IpcHttpClient: .post() is async, returns Future<RequestBuilder>
-                // Pattern: await post(), then json(), then send().await
-                // IpcHttpClient: .post() returns RequestBuilder directly
-                let request_builder = client.post(&url).await;
+                let response = tokio::time::timeout(self.timeout, client.post(&url, params))
+                    .await
+                    .map_err(|_| {
+                        SongbirdError::network(format!("Timeout calling method '{}'", method))
+                    })?
+                    .map_err(|e| {
+                        SongbirdError::network(format!(
+                            "HTTP request failed for '{}': {}",
+                            method, e
+                        ))
+                    })?;
 
-                let response = tokio::time::timeout(
-                    self.timeout,
-                    request_builder
-                        .json(&params)
-                        .map_err(|e| SongbirdError::serialization(e.to_string()))?
-                        .send(),
-                )
-                .await
-                .map_err(|_| {
-                    SongbirdError::network(format!("Timeout calling method '{}'", method))
-                })?
-                .map_err(|e| {
-                    SongbirdError::network(format!("HTTP request failed for '{}': {}", method, e))
-                })?;
-
-                if !response.is_success() {
+                if !(200..300).contains(&response.status) {
                     return Err(SongbirdError::network(format!(
                         "Method '{}' failed: {}",
-                        method,
-                        response.status()
+                        method, response.status
                     )));
                 }
 
-                response.json().await.map_err(|e| {
+                serde_json::from_value(response.body).map_err(|e| {
                     SongbirdError::serialization(format!(
                         "Failed to parse response for '{}': {}",
                         method, e
@@ -732,39 +723,35 @@ impl SecurityAdapter {
                 })
             }
             SecurityProtocol::Http(client) => {
-                // HTTP protocol (FALLBACK - ~500-1000 μs latency)
+                // HTTP protocol (FALLBACK - direct TCP connection)
                 debug!("🌐 Using HTTP for trust evaluation (FALLBACK protocol)");
                 let url = format!("{}/api/v1/trust/evaluate", self.endpoint);
 
-                // IpcHttpClient: .post() is async, returns Future<RequestBuilder>
-                // Pattern: await post(), then json(), then send().await
-                // IpcHttpClient: .post() returns RequestBuilder directly
-                let request_builder = client.post(&url).await;
-
-                let response = request_builder
-                    .json(request)
-                    .map_err(|e| SongbirdError::serialization(e.to_string()))?
-                    .send()
+                let response = client
+                    .post(
+                        &url,
+                        serde_json::to_value(request)
+                            .map_err(|e| SongbirdError::serialization(e.to_string()))?,
+                    )
                     .await
                     .map_err(|e| {
                         warn!("Failed to reach security provider for trust evaluation: {e}");
                         SongbirdError::network(format!("Failed to reach security provider: {e}"))
                     })?;
 
-                if !response.is_success() {
-                    let status = response.status();
-                    let body = response.text().await.unwrap_or_default();
+                if !(200..300).contains(&response.status) {
+                    let status = response.status;
                     warn!(
-                        "Security provider returned error for trust evaluation: {} - {}",
-                        status, body
+                        "Security provider returned error for trust evaluation: {} - {:?}",
+                        status, response.body
                     );
                     return Err(SongbirdError::security(format!(
                         "Trust evaluation failed: {} - {}",
-                        status, body
+                        status, response.body
                     )));
                 }
 
-                response.json().await.map_err(|e| {
+                serde_json::from_value(response.body).map_err(|e| {
                     warn!("Failed to parse trust evaluation response: {e}");
                     SongbirdError::security(format!(
                         "Failed to parse trust evaluation response: {e}"
@@ -815,27 +802,28 @@ impl SecurityAdapter {
                 })
             }
             SecurityProtocol::Http(client) => {
-                // HTTP protocol (FALLBACK)
+                // HTTP protocol (FALLBACK - direct TCP connection)
                 debug!("🌐 Using HTTP for identity (FALLBACK protocol)");
                 let url = format!("{}/api/v1/identity", self.endpoint);
 
-                // IpcHttpClient::get() returns Result<Response> directly (no .send() needed)
                 let response = client.get(&url).await.map_err(|e| {
                     warn!("Failed to reach security provider for identity: {e}");
                     SongbirdError::network(format!("Failed to reach security provider: {e}"))
                 })?;
 
-                if !response.is_success() {
-                    let status = response.status();
-                    let body = response.text().await.unwrap_or_default();
-                    warn!("Security provider returned error for identity: {} - {}", status, body);
+                if !(200..300).contains(&response.status) {
+                    let status = response.status;
+                    warn!(
+                        "Security provider returned error for identity: {} - {:?}",
+                        status, response.body
+                    );
                     return Err(SongbirdError::security(format!(
                         "Identity request failed: {} - {}",
-                        status, body
+                        status, response.body
                     )));
                 }
 
-                response.json().await.map_err(|e| {
+                serde_json::from_value(response.body).map_err(|e| {
                     warn!("Failed to parse identity response: {e}");
                     SongbirdError::security(format!("Failed to parse identity response: {e}"))
                 })

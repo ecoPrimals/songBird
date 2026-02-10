@@ -292,9 +292,7 @@ impl SongbirdOrchestrator {
     ///
     /// **See**: `startup_orchestration.rs` for implementation details
     pub async fn start(&mut self) -> Result<()> {
-        super::startup_orchestration::StartupOrchestrator::new(self)
-            .start()
-            .await
+        super::startup_orchestration::StartupOrchestrator::new(self).start().await
     }
 
     /// DEPRECATED (Jan 28, 2026): This stub method is no longer used
@@ -335,7 +333,9 @@ impl SongbirdOrchestrator {
     /// # Returns
     ///
     /// Vec of socket addresses including multicast + subnet broadcast fallback
-    pub(crate) fn discover_broadcast_addresses(configured_addrs: &[String]) -> Vec<std::net::SocketAddr> {
+    pub(crate) fn discover_broadcast_addresses(
+        configured_addrs: &[String],
+    ) -> Vec<std::net::SocketAddr> {
         use std::net::SocketAddr;
 
         // Priority 1: Environment variable (runtime override)
@@ -375,11 +375,14 @@ impl SongbirdOrchestrator {
 
         if addrs.is_empty() {
             warn!("⚠️  No broadcast addresses configured, using defaults");
-            // These are constant valid addresses - parse cannot fail
-            addrs = vec![
-                "224.0.0.251:2300".parse().expect("valid multicast address constant"),
-                "192.168.1.255:2300".parse().expect("valid broadcast address constant"),
-            ];
+            // These are constant valid addresses — parse is infallible
+            #[allow(clippy::expect_used)]
+            {
+                addrs = vec![
+                    "224.0.0.251:2300".parse().expect("valid multicast address constant"),
+                    "192.168.1.255:2300".parse().expect("valid broadcast address constant"),
+                ];
+            }
         }
 
         info!("🌐 Discovery broadcast addresses: {:?}", addrs);
@@ -404,7 +407,7 @@ impl SongbirdOrchestrator {
     /// This ensures multiple Songbird instances (spores) can run on the same machine
     /// without socket path conflicts, following security provider's pattern.
     #[cfg(unix)]
-    pub(crate) async fn start_ipc_server(&mut self) -> Result<()> {
+    pub(crate) async fn start_ipc_server(&self) -> Result<()> {
         use crate::ipc::{ServiceRegistry, UnixSocketServer};
 
         info!("🎧 Starting Unix Socket IPC server (v3.20.0 - Service Registry Mode)");
@@ -742,9 +745,7 @@ impl SongbirdOrchestrator {
     ///
     /// **See**: `command_handler.rs` for implementation details
     pub async fn handle_command(&self, command: String) -> Result<String> {
-        super::command_handler::CommandHandler::new(self)
-            .handle(&command)
-            .await
+        super::command_handler::CommandHandler::new(self).handle(&command).await
     }
 
     /// Start web dashboard

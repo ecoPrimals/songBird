@@ -1,6 +1,6 @@
 //! Optimized types for request routing with zero-copy patterns
 //!
-//! This module provides Arc<str> based types to eliminate cloning in hot paths.
+//! This module provides `Arc<str>` based types to eliminate cloning in hot paths.
 
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -26,7 +26,7 @@ pub mod header_keys {
 
 /// Zero-copy optimized service request
 ///
-/// Uses Arc<str> for strings that are frequently cloned across async boundaries.
+/// Uses `Arc<str>` for strings that are frequently cloned across async boundaries.
 /// This provides cheap cloning (atomic increment) instead of deep string copies.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ZeroCopyServiceRequest {
@@ -49,7 +49,7 @@ pub struct ZeroCopyServiceRequest {
     /// Request payload (already behind Arc in serde_json::Value)
     pub payload: serde_json::Value,
 
-    /// Request headers (values are Arc<str> for zero-copy)
+    /// Request headers (values are `Arc<str>` for zero-copy)
     #[serde(with = "arc_str_hashmap_serde")]
     pub headers: HashMap<Arc<str>, Arc<str>>,
 
@@ -98,7 +98,7 @@ impl ZeroCopyServiceRequest {
     }
 }
 
-/// Serde support for Arc<str>
+/// Serde support for `Arc<str>`
 mod arc_str_serde {
     use serde::{Deserialize, Deserializer, Serializer};
     use std::sync::Arc;
@@ -119,7 +119,7 @@ mod arc_str_serde {
     }
 }
 
-/// Serde support for HashMap<Arc<str>, Arc<str>>
+/// Serde support for HashMap<`Arc<str>`, `Arc<str>`>
 mod arc_str_hashmap_serde {
     use serde::{Deserialize, Deserializer, Serialize, Serializer};
     use std::collections::HashMap;

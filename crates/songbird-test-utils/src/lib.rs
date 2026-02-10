@@ -6,7 +6,14 @@
 #![forbid(unsafe_code)]
 #![warn(clippy::all)]
 #![warn(clippy::pedantic)]
-#![allow(clippy::uninlined_format_args)] // Test code readability is more important
+#![allow(
+    clippy::uninlined_format_args,
+    clippy::missing_errors_doc,
+    clippy::missing_panics_doc,
+    clippy::clone_on_ref_ptr,
+    clippy::unwrap_used,
+    clippy::expect_used
+)]
 
 pub mod async_helpers;
 pub mod canonical_test_framework;

@@ -245,9 +245,11 @@ impl BirdSongBroadcaster {
             }
         })
         .await
-        .map_err(|_| crate::error::LineageRelayError::NoRelayAvailable(
-            "Timed out waiting for message".to_string()
-        ))?
+        .map_err(|_| {
+            crate::error::LineageRelayError::NoRelayAvailable(
+                "Timed out waiting for message".to_string(),
+            )
+        })?
     }
 }
 

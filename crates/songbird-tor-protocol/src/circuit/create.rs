@@ -15,7 +15,9 @@ pub struct NtorHandshake {
 impl NtorHandshake {
     /// Create new ntor handshake handler
     pub fn new(beardog: BeardogCryptoClient) -> Self {
-        Self { beardog }
+        Self {
+            beardog,
+        }
     }
 
     /// Client side: Create CREATE2 payload
@@ -41,8 +43,8 @@ impl NtorHandshake {
         // - B: relay's ntor onion key
         // - X: client's ephemeral public key
         let mut payload = Vec::with_capacity(84);
-        payload.extend_from_slice(node_id);                      // 20 bytes (node ID)
-        payload.extend_from_slice(relay_ntor_key);               // 32 bytes (B)
+        payload.extend_from_slice(node_id); // 20 bytes (node ID)
+        payload.extend_from_slice(relay_ntor_key); // 32 bytes (B)
         payload.extend_from_slice(&client_ephemeral.public_key); // 32 bytes (X)
 
         // 3. Save state for CREATED2 processing
@@ -78,23 +80,22 @@ impl NtorHandshake {
         }
 
         // Parse response: Y (server ephemeral public) || AUTH (32 bytes)
-        let server_pubkey: [u8; 32] = response[0..32].try_into()
+        let server_pubkey: [u8; 32] = response[0..32]
+            .try_into()
             .map_err(|_| Error::Protocol("Failed to parse server pubkey".to_string()))?;
-        let auth: [u8; 32] = response[32..64].try_into()
+        let auth: [u8; 32] = response[32..64]
+            .try_into()
             .map_err(|_| Error::Protocol("Failed to parse auth".to_string()))?;
 
         // Per Tor ntor spec, compute TWO shared secrets:
         // 1. EXP(Y,x) - our ephemeral secret with server's ephemeral public
         // 2. EXP(B,x) - our ephemeral secret with server's static ntor key
-        let xy = self.beardog.x25519_derive_secret(
-            &state.client_ephemeral_secret,
-            &server_pubkey,
-        )?;
-        
-        let xb = self.beardog.x25519_derive_secret(
-            &state.client_ephemeral_secret,
-            &state.relay_ntor_key,
-        )?;
+        let xy =
+            self.beardog.x25519_derive_secret(&state.client_ephemeral_secret, &server_pubkey)?;
+
+        let xb = self
+            .beardog
+            .x25519_derive_secret(&state.client_ephemeral_secret, &state.relay_ntor_key)?;
 
         // secret_input = EXP(Y,x) || EXP(B,x) || ID || B || X || Y || PROTOID
         // PROTOID = "ntor-curve25519-sha256-1" (uses SHA256, not SHA3)
@@ -107,21 +108,17 @@ impl NtorHandshake {
             &state.client_ephemeral_public[..], // 32 bytes (X)
             &server_pubkey[..],                 // 32 bytes (Y)
             protoid.as_slice(),
-        ].concat();
+        ]
+        .concat();
 
         // KEY_SEED = H(secret_input, t_key) using HMAC-SHA256
         // t_key = "ntor-curve25519-sha256-1:key_extract"
-        let key_seed = self.beardog.hmac_sha256(
-            b"ntor-curve25519-sha256-1:key_extract",
-            &secret_input
-        )?;
+        let key_seed =
+            self.beardog.hmac_sha256(b"ntor-curve25519-sha256-1:key_extract", &secret_input)?;
 
         // verify = H(secret_input, t_verify)
         // t_verify = "ntor-curve25519-sha256-1:verify"
-        let verify = self.beardog.hmac_sha256(
-            b"ntor-curve25519-sha256-1:verify",
-            &secret_input
-        )?;
+        let verify = self.beardog.hmac_sha256(b"ntor-curve25519-sha256-1:verify", &secret_input)?;
 
         // auth_input = verify | ID | B | Y | X | PROTOID | "Server"
         let auth_input = [
@@ -132,14 +129,13 @@ impl NtorHandshake {
             &state.client_ephemeral_public[..], // 32 bytes (X)
             protoid.as_slice(),
             b"Server",
-        ].concat();
+        ]
+        .concat();
 
         // AUTH = H(auth_input, t_mac)
         // t_mac = "ntor-curve25519-sha256-1:mac"
-        let expected_auth = self.beardog.hmac_sha256(
-            b"ntor-curve25519-sha256-1:mac",
-            &auth_input
-        )?;
+        let expected_auth =
+            self.beardog.hmac_sha256(b"ntor-curve25519-sha256-1:mac", &auth_input)?;
 
         if auth != expected_auth {
             return Err(Error::Protocol("ntor auth verification failed".to_string()));
@@ -163,18 +159,18 @@ impl NtorHandshake {
     /// - Kb (16 bytes): backward AES-128 key
     fn derive_circuit_keys(&self, key_seed: &[u8; 32]) -> Result<KeyMaterial> {
         let m_expand = b"ntor-curve25519-sha256-1:key_expand";
-        
+
         // Expand using HMAC-SHA256 with counter (Tor-style HKDF-expand)
         // Need 72 bytes = 3 rounds of SHA256 (32 bytes each)
         let mut expanded = Vec::with_capacity(96);
         let mut prev = Vec::new();
-        
+
         for i in 1u8..=3 {
             // input = prev | m_expand | INT8(i)
             let mut input = prev.clone();
             input.extend_from_slice(m_expand);
             input.push(i);
-            
+
             // K_i = HMAC-SHA256(key_seed, input)
             let k_i = self.beardog.hmac_sha256(key_seed, &input)?;
             expanded.extend_from_slice(&k_i);
@@ -186,16 +182,18 @@ impl NtorHandshake {
         // We pad the digest seeds to 32 bytes for our struct
         let mut forward_digest = [0u8; 32];
         forward_digest[..20].copy_from_slice(&expanded[0..20]);
-        
+
         let mut backward_digest = [0u8; 32];
         backward_digest[..20].copy_from_slice(&expanded[20..40]);
 
         Ok(KeyMaterial {
             forward_digest,
             backward_digest,
-            forward_key: expanded[40..56].try_into()
+            forward_key: expanded[40..56]
+                .try_into()
                 .map_err(|_| Error::Crypto("Failed to extract forward_key".to_string()))?,
-            backward_key: expanded[56..72].try_into()
+            backward_key: expanded[56..72]
+                .try_into()
                 .map_err(|_| Error::Crypto("Failed to extract backward_key".to_string()))?,
         })
     }

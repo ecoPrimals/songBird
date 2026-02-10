@@ -115,8 +115,8 @@ impl Gateway {
 
     /// Discover with full diagnostics
     pub async fn discover_with_diagnostics() -> (Self, DiscoveryDiagnostics) {
-        let gateway_ip = Self::get_default_gateway()
-            .unwrap_or(IpAddr::V4(Ipv4Addr::new(192, 168, 1, 1)));
+        let gateway_ip =
+            Self::get_default_gateway().unwrap_or(IpAddr::V4(Ipv4Addr::new(192, 168, 1, 1)));
 
         let local_ip = Self::get_local_ip().unwrap_or(IpAddr::V4(Ipv4Addr::UNSPECIFIED));
 
@@ -149,9 +149,7 @@ impl Gateway {
         let ssdp_results = ssdp.discover_gateways().await.unwrap_or_default();
 
         for r in &ssdp_results {
-            diagnostics
-                .upnp_devices_found
-                .push(format!("{} ({})", r.service_type, r.source_addr));
+            diagnostics.upnp_devices_found.push(format!("{} ({})", r.service_type, r.source_addr));
         }
 
         let igd_responses: Vec<_> = ssdp_results
@@ -187,11 +185,7 @@ impl Gateway {
         if natpmp.probe().await {
             diagnostics.nat_pmp_responded = true;
 
-            let external_ip = natpmp
-                .get_external_ip()
-                .await
-                .ok()
-                .map(|r| IpAddr::V4(r.ip));
+            let external_ip = natpmp.get_external_ip().await.ok().map(|r| IpAddr::V4(r.ip));
 
             let gateway = Self {
                 ip: gateway_ip,
@@ -257,15 +251,9 @@ impl Gateway {
             }
             GatewayProtocol::NatPmp => {
                 let natpmp = NatPmpClient::new(self.ip);
-                let resp = natpmp
-                    .map_port(internal_port, external_port, proto, ttl)
-                    .await?;
+                let resp = natpmp.map_port(internal_port, external_port, proto, ttl).await?;
 
-                let external_ip = natpmp
-                    .get_external_ip()
-                    .await
-                    .ok()
-                    .map(|r| IpAddr::V4(r.ip));
+                let external_ip = natpmp.get_external_ip().await.ok().map(|r| IpAddr::V4(r.ip));
 
                 let mut mapping = PortMapping::from_request(&req);
                 mapping.external_port = resp.external_port;
@@ -300,9 +288,9 @@ impl Gateway {
                 let natpmp = NatPmpClient::new(self.ip);
                 natpmp.delete_mapping(external_port, proto).await
             }
-            GatewayProtocol::None => Err(IgdError::ProtocolNotSupported(
-                "No IGD protocol available".to_string(),
-            )),
+            GatewayProtocol::None => {
+                Err(IgdError::ProtocolNotSupported("No IGD protocol available".to_string()))
+            }
         }
     }
 
@@ -322,9 +310,9 @@ impl Gateway {
                 let resp = natpmp.get_external_ip().await?;
                 Ok(IpAddr::V4(resp.ip))
             }
-            GatewayProtocol::None => Err(IgdError::ProtocolNotSupported(
-                "No IGD protocol available".to_string(),
-            )),
+            GatewayProtocol::None => {
+                Err(IgdError::ProtocolNotSupported("No IGD protocol available".to_string()))
+            }
         }
     }
 
@@ -367,16 +355,13 @@ impl Gateway {
     /// Get local IP address (the one facing the gateway)
     fn get_local_ip() -> Result<IpAddr> {
         // Connect a UDP socket to the gateway to determine our local IP
-        let socket = std::net::UdpSocket::bind("0.0.0.0:0")
-            .map_err(|e| IgdError::Io(e))?;
-        
+        let socket = std::net::UdpSocket::bind("0.0.0.0:0").map_err(IgdError::Io)?;
+
         // Connect to a well-known address to determine local interface
         // This doesn't actually send data, just determines the route
-        socket
-            .connect("8.8.8.8:53")
-            .map_err(|e| IgdError::Io(e))?;
-        
-        let local_addr = socket.local_addr().map_err(|e| IgdError::Io(e))?;
+        socket.connect("8.8.8.8:53").map_err(IgdError::Io)?;
+
+        let local_addr = socket.local_addr().map_err(IgdError::Io)?;
         Ok(local_addr.ip())
     }
 
@@ -411,11 +396,7 @@ impl Gateway {
                         "Could not fetch device description: {}. Using LOCATION as control URL.",
                         e
                     );
-                    (
-                        location.clone(),
-                        igd.service_type.clone(),
-                        Some(igd.server.clone()),
-                    )
+                    (location.clone(), igd.service_type.clone(), Some(igd.server.clone()))
                 }
             };
 
@@ -456,9 +437,7 @@ impl Gateway {
         };
 
         let (host, port) = if let Some(idx) = host_port.rfind(':') {
-            let port = host_port[idx + 1..]
-                .parse::<u16>()
-                .unwrap_or(80);
+            let port = host_port[idx + 1..].parse::<u16>().unwrap_or(80);
             (&host_port[..idx], port)
         } else {
             (host_port, 80u16)
@@ -471,17 +450,18 @@ impl Gateway {
         );
 
         let addr = format!("{}:{}", host, port);
-        let mut stream = tokio::time::timeout(
-            std::time::Duration::from_secs(5),
-            TcpStream::connect(&addr),
-        )
-        .await
-        .map_err(|_| IgdError::Timeout)?
-        .map_err(|e| IgdError::SoapError(format!("Failed to connect to {}: {}", addr, e)))?;
+        let mut stream =
+            tokio::time::timeout(std::time::Duration::from_secs(5), TcpStream::connect(&addr))
+                .await
+                .map_err(|_| IgdError::Timeout)?
+                .map_err(|e| {
+                    IgdError::SoapError(format!("Failed to connect to {}: {}", addr, e))
+                })?;
 
-        stream.write_all(request.as_bytes()).await.map_err(|e| {
-            IgdError::SoapError(format!("Failed to send HTTP GET: {}", e))
-        })?;
+        stream
+            .write_all(request.as_bytes())
+            .await
+            .map_err(|e| IgdError::SoapError(format!("Failed to send HTTP GET: {}", e)))?;
 
         let mut response = Vec::new();
         stream.read_to_end(&mut response).await.map_err(|e| {
@@ -491,10 +471,7 @@ impl Gateway {
         let body = String::from_utf8_lossy(&response);
 
         // Skip HTTP headers
-        let xml = body
-            .find("\r\n\r\n")
-            .map(|i| &body[i + 4..])
-            .unwrap_or(&body);
+        let xml = body.find("\r\n\r\n").map(|i| &body[i + 4..]).unwrap_or(&body);
 
         debug!("Device description XML length: {} bytes", xml.len());
 
@@ -515,10 +492,7 @@ impl Gateway {
     /// base URL prepended) or absolute.
     fn extract_control_url(xml: &str, base_url: &str) -> Result<String> {
         // Find the WANIPConnection or WANPPPConnection service section
-        let wan_markers = [
-            "WANIPConnection",
-            "WANPPPConnection",
-        ];
+        let wan_markers = ["WANIPConnection", "WANPPPConnection"];
 
         for marker in &wan_markers {
             if let Some(service_pos) = xml.find(marker) {
@@ -592,11 +566,7 @@ impl Gateway {
             return Err(IgdError::NatPmpError("Gateway not responding on port 5351".to_string()));
         }
 
-        let external_ip = natpmp
-            .get_external_ip()
-            .await
-            .ok()
-            .map(|r| IpAddr::V4(r.ip));
+        let external_ip = natpmp.get_external_ip().await.ok().map(|r| IpAddr::V4(r.ip));
 
         Ok(Self {
             ip: gateway_ip,
@@ -659,14 +629,8 @@ mod tests {
             <controlURL>/ctl/IPConn</controlURL>
         </root>"#;
 
-        assert_eq!(
-            Gateway::extract_xml_value(xml, "friendlyName"),
-            Some("BGW320-505".to_string())
-        );
-        assert_eq!(
-            Gateway::extract_xml_value(xml, "controlURL"),
-            Some("/ctl/IPConn".to_string())
-        );
+        assert_eq!(Gateway::extract_xml_value(xml, "friendlyName"), Some("BGW320-505".to_string()));
+        assert_eq!(Gateway::extract_xml_value(xml, "controlURL"), Some("/ctl/IPConn".to_string()));
         assert_eq!(Gateway::extract_xml_value(xml, "nonexistent"), None);
     }
 
@@ -678,13 +642,9 @@ mod tests {
             <controlURL>/ctl/IPConn</controlURL>
         </service>"#;
 
-        let result =
-            Gateway::extract_control_url(xml, "http://192.168.1.254:5431/rootDesc.xml");
+        let result = Gateway::extract_control_url(xml, "http://192.168.1.254:5431/rootDesc.xml");
         assert!(result.is_ok());
-        assert_eq!(
-            result.unwrap(),
-            "http://192.168.1.254:5431/ctl/IPConn"
-        );
+        assert_eq!(result.unwrap(), "http://192.168.1.254:5431/ctl/IPConn");
     }
 
     #[test]
@@ -695,13 +655,9 @@ mod tests {
             <controlURL>http://192.168.1.254:5431/ctl/IPConn</controlURL>
         </service>"#;
 
-        let result =
-            Gateway::extract_control_url(xml, "http://192.168.1.254:5431/rootDesc.xml");
+        let result = Gateway::extract_control_url(xml, "http://192.168.1.254:5431/rootDesc.xml");
         assert!(result.is_ok());
-        assert_eq!(
-            result.unwrap(),
-            "http://192.168.1.254:5431/ctl/IPConn"
-        );
+        assert_eq!(result.unwrap(), "http://192.168.1.254:5431/ctl/IPConn");
     }
 
     #[test]
@@ -713,13 +669,9 @@ mod tests {
             <controlURL>/upnp/control/ppp</controlURL>
         </service>"#;
 
-        let result =
-            Gateway::extract_control_url(xml, "http://192.168.0.1:49000/rootDesc.xml");
+        let result = Gateway::extract_control_url(xml, "http://192.168.0.1:49000/rootDesc.xml");
         assert!(result.is_ok());
-        assert_eq!(
-            result.unwrap(),
-            "http://192.168.0.1:49000/upnp/control/ppp"
-        );
+        assert_eq!(result.unwrap(), "http://192.168.0.1:49000/upnp/control/ppp");
     }
 
     #[test]
@@ -730,8 +682,7 @@ mod tests {
             <controlURL>/ctl/L3F</controlURL>
         </service>"#;
 
-        let result =
-            Gateway::extract_control_url(xml, "http://192.168.1.254:5431/rootDesc.xml");
+        let result = Gateway::extract_control_url(xml, "http://192.168.1.254:5431/rootDesc.xml");
         assert!(result.is_err());
     }
 
@@ -739,10 +690,6 @@ mod tests {
     fn test_extract_xml_value_with_attributes() {
         // XML tags might have attributes
         let xml = r#"<controlURL xmlns="urn:schemas-upnp-org:device-1-0">/ctl/IPConn</controlURL>"#;
-        assert_eq!(
-            Gateway::extract_xml_value(xml, "controlURL"),
-            Some("/ctl/IPConn".to_string())
-        );
+        assert_eq!(Gateway::extract_xml_value(xml, "controlURL"), Some("/ctl/IPConn".to_string()));
     }
 }
-

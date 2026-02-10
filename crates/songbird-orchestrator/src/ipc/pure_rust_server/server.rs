@@ -710,19 +710,29 @@ impl UnixSocketServer {
 
             // HTTP/HTTPS APIs - Pure Rust Tower Atomic (v5.27.0)
             "http.request" => {
-                self.handlers.http_request(request.params.unwrap_or(serde_json::json!({}))).await
+                self.handlers
+                    .http_request(request.params.unwrap_or_else(|| serde_json::json!({})))
+                    .await
             }
             "http.get" => {
-                self.handlers.http_get(request.params.unwrap_or(serde_json::json!({}))).await
+                self.handlers
+                    .http_get(request.params.unwrap_or_else(|| serde_json::json!({})))
+                    .await
             }
             "http.post" => {
-                self.handlers.http_post(request.params.unwrap_or(serde_json::json!({}))).await
+                self.handlers
+                    .http_post(request.params.unwrap_or_else(|| serde_json::json!({})))
+                    .await
             }
             "http.put" => {
-                self.handlers.http_put(request.params.unwrap_or(serde_json::json!({}))).await
+                self.handlers
+                    .http_put(request.params.unwrap_or_else(|| serde_json::json!({})))
+                    .await
             }
             "http.delete" => {
-                self.handlers.http_delete(request.params.unwrap_or(serde_json::json!({}))).await
+                self.handlers
+                    .http_delete(request.params.unwrap_or_else(|| serde_json::json!({})))
+                    .await
             }
 
             // Squirrel Integration APIs (2) - Kept for backward compat
@@ -794,24 +804,17 @@ mod tests {
     // ============================================================================
 
     /// Create a mock env reader from a HashMap (concurrent-safe, no global state)
-    fn mock_env(vars: HashMap<&str, &str>) -> impl Fn(&str) -> std::result::Result<String, std::env::VarError> {
-        let owned: HashMap<String, String> = vars
-            .into_iter()
-            .map(|(k, v)| (k.to_string(), v.to_string()))
-            .collect();
-        move |key: &str| {
-            owned
-                .get(key)
-                .cloned()
-                .ok_or(std::env::VarError::NotPresent)
-        }
+    fn mock_env(
+        vars: HashMap<&str, &str>,
+    ) -> impl Fn(&str) -> std::result::Result<String, std::env::VarError> {
+        let owned: HashMap<String, String> =
+            vars.into_iter().map(|(k, v)| (k.to_string(), v.to_string())).collect();
+        move |key: &str| owned.get(key).cloned().ok_or(std::env::VarError::NotPresent)
     }
 
     #[test]
     fn test_socket_path_explicit_songbird_socket() {
-        let env = mock_env(HashMap::from([
-            ("SONGBIRD_SOCKET", "/tmp/test-socket.sock"),
-        ]));
+        let env = mock_env(HashMap::from([("SONGBIRD_SOCKET", "/tmp/test-socket.sock")]));
         let path = UnixSocketServer::socket_path_with_env(env);
         assert_eq!(path, PathBuf::from("/tmp/test-socket.sock"));
     }
@@ -829,9 +832,7 @@ mod tests {
 
     #[test]
     fn test_socket_path_biomeos_path() {
-        let env = mock_env(HashMap::from([
-            ("BIOMEOS_SOCKET_PATH", "/biomeos/songbird.sock"),
-        ]));
+        let env = mock_env(HashMap::from([("BIOMEOS_SOCKET_PATH", "/biomeos/songbird.sock")]));
         let path = UnixSocketServer::socket_path_with_env(env);
         assert_eq!(path, PathBuf::from("/biomeos/songbird.sock"));
     }
@@ -859,11 +860,7 @@ mod tests {
         let path_str = path.to_string_lossy();
 
         // PRIMAL_DEPLOYMENT_STANDARD: {primal}.sock naming
-        assert!(
-            path_str.ends_with(".sock"),
-            "Path should end with .sock, got: {}",
-            path_str
-        );
+        assert!(path_str.ends_with(".sock"), "Path should end with .sock, got: {}", path_str);
         assert!(
             path_str.contains("songbird"),
             "Path must contain primal name 'songbird', got: {}",
@@ -887,9 +884,7 @@ mod tests {
         ]));
         assert_eq!(UnixSocketServer::socket_path_with_env(env2), PathBuf::from("/p2.sock"));
 
-        let env3 = mock_env(HashMap::from([
-            ("BIOMEOS_SOCKET_PATH", "/p3.sock"),
-        ]));
+        let env3 = mock_env(HashMap::from([("BIOMEOS_SOCKET_PATH", "/p3.sock")]));
         assert_eq!(UnixSocketServer::socket_path_with_env(env3), PathBuf::from("/p3.sock"));
     }
 
@@ -900,9 +895,10 @@ mod tests {
         let handles: Vec<_> = (0..10)
             .map(|i| {
                 thread::spawn(move || {
-                    let env = mock_env(HashMap::from([
-                        ("SONGBIRD_SOCKET", Box::leak(format!("/sock-{}.sock", i).into_boxed_str()) as &str),
-                    ]));
+                    let env = mock_env(HashMap::from([(
+                        "SONGBIRD_SOCKET",
+                        Box::leak(format!("/sock-{}.sock", i).into_boxed_str()) as &str,
+                    )]));
                     let path = UnixSocketServer::socket_path_with_env(env);
                     assert_eq!(path, PathBuf::from(format!("/sock-{}.sock", i)));
                 })

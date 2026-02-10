@@ -1,7 +1,7 @@
 //! IGD (Internet Gateway Device) JSON-RPC handler
 //!
 //! Provides JSON-RPC methods for automatic router port forwarding
-//! via UPnP IGD (RFC 6970) and NAT-PMP (RFC 6886).
+//! via `UPnP` IGD (RFC 6970) and NAT-PMP (RFC 6886).
 //!
 //! **Methods**:
 //! - `igd.discover` - Discover router IGD capabilities
@@ -12,11 +12,11 @@
 //! - `igd.auto_configure` - All-in-one setup + verify
 
 use serde_json::{json, Value};
-use songbird_igd::{Gateway, GatewayProtocol, PortMapping};
 use songbird_igd::renewal::RenewalManager;
+use songbird_igd::{Gateway, GatewayProtocol};
 use std::sync::Arc;
 use tokio::sync::RwLock;
-use tracing::{debug, info, warn};
+use tracing::info;
 
 /// IGD handler for JSON-RPC integration
 ///
@@ -32,6 +32,7 @@ pub struct IgdHandler {
 
 impl IgdHandler {
     /// Create new IGD handler
+    #[must_use]
     pub fn new() -> Self {
         Self {
             gateway: Arc::new(RwLock::new(None)),
@@ -46,7 +47,9 @@ impl IgdHandler {
         let (gateway, diagnostics) = Gateway::discover_with_diagnostics().await;
 
         let protocol_name = match &gateway.protocol {
-            GatewayProtocol::UpnpIgd { .. } => "upnp_igd",
+            GatewayProtocol::UpnpIgd {
+                ..
+            } => "upnp_igd",
             GatewayProtocol::NatPmp => "nat_pmp",
             GatewayProtocol::None => "none",
         };
@@ -55,7 +58,11 @@ impl IgdHandler {
         *self.gateway.write().await = Some(gateway.clone());
 
         match &gateway.protocol {
-            GatewayProtocol::UpnpIgd { control_url, device_name, .. } => {
+            GatewayProtocol::UpnpIgd {
+                control_url,
+                device_name,
+                ..
+            } => {
                 json!({
                     "protocol": protocol_name,
                     "gateway_ip": gateway.ip.to_string(),
@@ -97,44 +104,42 @@ impl IgdHandler {
 
     /// Handle `igd.map_port` - Request port forwarding
     pub async fn handle_map_port(&self, params: Value) -> Value {
-        let external_port = params["external_port"].as_u64().unwrap_or(3492) as u16;
-        let internal_port = params["internal_port"].as_u64().unwrap_or(external_port as u64) as u16;
+        let external_port =
+            u16::try_from(params["external_port"].as_u64().unwrap_or(3492)).unwrap_or(3492);
+        let internal_port =
+            u16::try_from(params["internal_port"].as_u64().unwrap_or(u64::from(external_port)))
+                .unwrap_or(external_port);
         let protocol = params["protocol"].as_str().unwrap_or("TCP");
-        let description = params["description"]
-            .as_str()
-            .unwrap_or("Songbird sovereign beacon");
-        let ttl = params["ttl"].as_u64().unwrap_or(86400) as u32;
+        let _description = params["description"].as_str().unwrap_or("Songbird sovereign beacon");
+        let ttl = u32::try_from(params["ttl"].as_u64().unwrap_or(86400)).unwrap_or(86400);
 
-        info!(
-            "IGD: Mapping port {} {} -> :{}",
-            protocol, external_port, internal_port
-        );
+        info!("IGD: Mapping port {} {} -> :{}", protocol, external_port, internal_port);
 
         let gateway = self.gateway.read().await;
-        let gateway = match gateway.as_ref() {
-            Some(gw) => gw,
-            None => {
-                // Auto-discover if not yet discovered
-                drop(gateway);
-                self.handle_discover(Value::Null).await;
-                let gateway = self.gateway.read().await;
-                match gateway.as_ref() {
-                    Some(gw) => {
-                        if !gw.is_available() {
-                            return json!({
-                                "error": "No IGD-capable gateway found",
-                                "suggestion": "Enable UPnP on your router or forward port manually"
-                            });
-                        }
-                        // Need to drop and re-acquire to avoid borrow issues
-                        drop(gateway);
-                        let gw = self.gateway.read().await;
-                        let gw = gw.as_ref().unwrap();
-                        return self.do_map_port(gw, external_port, internal_port, protocol, ttl).await;
+        #[allow(clippy::manual_let_else)] // complex else branch with side effects
+        let gateway = if let Some(gw) = gateway.as_ref() {
+            gw
+        } else {
+            // Auto-discover if not yet discovered
+            drop(gateway);
+            self.handle_discover(Value::Null).await;
+            let gateway = self.gateway.read().await;
+            match gateway.as_ref() {
+                Some(gw) => {
+                    if !gw.is_available() {
+                        return json!({
+                            "error": "No IGD-capable gateway found",
+                            "suggestion": "Enable UPnP on your router or forward port manually"
+                        });
                     }
-                    None => {
-                        return json!({"error": "Gateway discovery failed"});
-                    }
+                    // Need to drop and re-acquire to avoid borrow issues
+                    drop(gateway);
+                    let gw = self.gateway.read().await;
+                    let gw = gw.as_ref().unwrap();
+                    return self.do_map_port(gw, external_port, internal_port, protocol, ttl).await;
+                }
+                None => {
+                    return json!({"error": "Gateway discovery failed"});
                 }
             }
         };
@@ -183,7 +188,8 @@ impl IgdHandler {
 
     /// Handle `igd.unmap_port` - Remove port forwarding
     pub async fn handle_unmap_port(&self, params: Value) -> Value {
-        let external_port = params["external_port"].as_u64().unwrap_or(3492) as u16;
+        let external_port =
+            u16::try_from(params["external_port"].as_u64().unwrap_or(3492)).unwrap_or(3492);
         let protocol = params["protocol"].as_str().unwrap_or("TCP");
 
         info!("IGD: Unmapping port {} {}", protocol, external_port);
@@ -264,7 +270,7 @@ impl IgdHandler {
 
     /// Handle `igd.auto_configure` - All-in-one setup + verify
     pub async fn handle_auto_configure(&self, params: Value) -> Value {
-        let port = params["port"].as_u64().unwrap_or(3492) as u16;
+        let port = u16::try_from(params["port"].as_u64().unwrap_or(3492)).unwrap_or(3492);
         let protocol = params["protocol"].as_str().unwrap_or("TCP");
 
         info!("IGD: Auto-configuring port {} {}", protocol, port);
@@ -273,15 +279,12 @@ impl IgdHandler {
         let discover_result = self.handle_discover(Value::Null).await;
 
         let gateway = self.gateway.read().await;
-        let gw = match gateway.as_ref() {
-            Some(gw) => gw,
-            None => {
-                return json!({
-                    "configured": false,
-                    "reason": "discovery_failed",
-                    "recommendation": "Check network connectivity"
-                });
-            }
+        let Some(gw) = gateway.as_ref() else {
+            return json!({
+                "configured": false,
+                "reason": "discovery_failed",
+                "recommendation": "Check network connectivity"
+            });
         };
 
         if !gw.is_available() {
@@ -346,11 +349,10 @@ mod tests {
     #[tokio::test]
     async fn test_igd_handler_creation() {
         let handler = IgdHandler::new();
-        
+
         // Status should show no gateway initially
         let status = handler.handle_status(Value::Null).await;
         assert_eq!(status["protocol"], "not_discovered");
         assert_eq!(status["mapping_count"], 0);
     }
 }
-

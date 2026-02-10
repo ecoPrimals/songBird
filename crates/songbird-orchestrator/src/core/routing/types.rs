@@ -32,7 +32,7 @@ pub struct Task {
     pub metadata: HashMap<String, String>,
 }
 
-/// Serde support for Arc<str>
+/// Serde support for `Arc<str>`
 mod arc_str_serde {
     use serde::{Deserialize, Deserializer, Serializer};
     use std::sync::Arc;

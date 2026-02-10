@@ -242,15 +242,14 @@ impl CircuitBreakerManager {
     /// Returns a map of domain to state.
     pub async fn get_all_stats(&self) -> HashMap<String, String> {
         let breakers = self.breakers.read().await;
-        let mut stats = HashMap::new();
+        let mut result = HashMap::new();
 
         for (domain, breaker) in breakers.iter() {
-            let state = breaker.get_state().await;
-            let state_str = format!("{:?}", state);
-            stats.insert(domain.clone(), state_str);
+            let breaker_state = breaker.get_state().await;
+            result.insert(domain.clone(), format!("{breaker_state:?}"));
         }
 
-        stats
+        result
     }
 
     /// Extract domain from URL or endpoint string

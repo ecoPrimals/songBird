@@ -30,7 +30,9 @@ pub struct CommandHandler<'a> {
 impl<'a> CommandHandler<'a> {
     /// Create new command handler
     pub fn new(orchestrator: &'a SongbirdOrchestrator) -> Self {
-        Self { orchestrator }
+        Self {
+            orchestrator,
+        }
     }
 
     /// Handle incoming CLI command

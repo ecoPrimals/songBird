@@ -10,14 +10,16 @@ use base32;
 /// Onion service keys (Ed25519 + X25519)
 #[derive(Debug, Clone)]
 pub struct OnionServiceKeys {
-    /// Ed25519 identity keypair (for signing)
+    /// Ed25519 identity secret key (for signing)
     pub identity_secret: [u8; 32],
+    /// Ed25519 identity public key (for verification)
     pub identity_public: [u8; 32],
-    
-    /// X25519 encryption keypair (for ntor)
+
+    /// X25519 encryption secret key (for ntor handshake)
     pub encryption_secret: [u8; 32],
+    /// X25519 encryption public key (for ntor handshake)
     pub encryption_public: [u8; 32],
-    
+
     /// Onion address (v3, 56 chars)
     pub onion_address: String,
 }
@@ -71,7 +73,9 @@ impl OnionServiceKeys {
 
         // Encode to base32 (56 chars)
         let encoded = base32::encode(
-            base32::Alphabet::RFC4648 { padding: false },
+            base32::Alphabet::RFC4648 {
+                padding: false,
+            },
             &addr_bytes,
         );
 
@@ -83,23 +87,20 @@ impl OnionServiceKeys {
 pub struct OnionServiceDescriptor {
     /// Descriptor signing key (Ed25519)
     pub signing_key: [u8; 32],
-    
+
     /// Descriptor lifetime
     pub lifetime_minutes: u32,
-    
+
     /// Introduction points
     pub intro_points: Vec<IntroductionPoint>,
-    
+
     /// Descriptor signature
     pub signature: Vec<u8>,
 }
 
 impl OnionServiceDescriptor {
     /// Create new descriptor
-    pub fn new(
-        keys: &OnionServiceKeys,
-        intro_points: &[IntroductionPoint],
-    ) -> Result<Self> {
+    pub fn new(keys: &OnionServiceKeys, intro_points: &[IntroductionPoint]) -> Result<Self> {
         // TODO: Generate descriptor signing key (blinded from identity)
         let signing_key = keys.identity_public;
 
@@ -193,8 +194,7 @@ impl OnionServiceDescriptor {
         input.extend_from_slice(&self.signing_key);
         input.extend_from_slice(&period_num.to_be_bytes());
 
-        let id = crate::crypto::sha3::sha3_256(&input);
-        id
+        crate::crypto::sha3::sha3_256(&input)
     }
 }
 
@@ -204,13 +204,21 @@ impl OnionServiceDescriptor {
 fn base64_encode(data: &[u8]) -> String {
     const ALPHABET: &[u8] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 
-    let mut result = String::with_capacity((data.len() + 2) / 3 * 4);
+    let mut result = String::with_capacity(data.len().div_ceil(3) * 4);
     let chunks = data.chunks(3);
 
     for chunk in chunks {
         let b0 = chunk[0] as u32;
-        let b1 = if chunk.len() > 1 { chunk[1] as u32 } else { 0 };
-        let b2 = if chunk.len() > 2 { chunk[2] as u32 } else { 0 };
+        let b1 = if chunk.len() > 1 {
+            chunk[1] as u32
+        } else {
+            0
+        };
+        let b2 = if chunk.len() > 2 {
+            chunk[2] as u32
+        } else {
+            0
+        };
 
         let triple = (b0 << 16) | (b1 << 8) | b2;
 
@@ -241,17 +249,16 @@ mod tests {
     fn test_onion_address_length() {
         // v3 addresses should be 56 characters (base32 of 35 bytes)
         let public_key = [0u8; 32];
-        let address = OnionServiceKeys::derive_onion_address(&public_key)
-            .expect("Failed to derive address");
-        
+        let address =
+            OnionServiceKeys::derive_onion_address(&public_key).expect("Failed to derive address");
+
         assert_eq!(address.len(), 56);
     }
 
     #[test]
     fn test_descriptor_creation() {
-        let beardog = BeardogCryptoClient::from_env()
-            .expect("Failed to create BearDog client");
-        
+        let beardog = BeardogCryptoClient::from_env().expect("Failed to create BearDog client");
+
         // Create placeholder keys
         let keys = OnionServiceKeys {
             identity_secret: [0u8; 32],
@@ -262,12 +269,12 @@ mod tests {
         };
 
         let intro_points = vec![];
-        let descriptor = OnionServiceDescriptor::new(&keys, &intro_points)
-            .expect("Failed to create descriptor");
-        
+        let descriptor =
+            OnionServiceDescriptor::new(&keys, &intro_points).expect("Failed to create descriptor");
+
         assert_eq!(descriptor.lifetime_minutes, 180);
         assert_eq!(descriptor.intro_points.len(), 0);
-        
+
         let _ = beardog; // Suppress unused warning
     }
 
@@ -281,8 +288,8 @@ mod tests {
             onion_address: "test".to_string(),
         };
 
-        let descriptor = OnionServiceDescriptor::new(&keys, &[])
-            .expect("Failed to create descriptor");
+        let descriptor =
+            OnionServiceDescriptor::new(&keys, &[]).expect("Failed to create descriptor");
 
         let encoded = descriptor.encode();
         let encoded_str = String::from_utf8_lossy(&encoded);
@@ -312,17 +319,15 @@ mod tests {
             onion_address: "test".to_string(),
         };
 
-        let intro_points = vec![
-            IntroductionPoint {
-                relay_identity: [0xAA; 32],
-                onion_key: [0xBB; 32],
-                service_key: [0xCC; 32],
-                circuit_id: 1,
-            },
-        ];
+        let intro_points = vec![IntroductionPoint {
+            relay_identity: [0xAA; 32],
+            onion_key: [0xBB; 32],
+            service_key: [0xCC; 32],
+            circuit_id: 1,
+        }];
 
-        let descriptor = OnionServiceDescriptor::new(&keys, &intro_points)
-            .expect("Failed to create descriptor");
+        let descriptor =
+            OnionServiceDescriptor::new(&keys, &intro_points).expect("Failed to create descriptor");
 
         let encoded = descriptor.encode();
         let encoded_str = String::from_utf8_lossy(&encoded);

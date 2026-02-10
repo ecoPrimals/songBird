@@ -10,10 +10,15 @@
 //! - Service locator functionality
 //! - Migration from old patterns
 
+use std::sync::Mutex;
+
 use songbird_config::defaults::{
     hosts_evolved::{AdvertiseConfig, BindConfig, Environment, SelfAwareConfig, ServiceLocator},
     ports_evolved::{PortAllocator, ServicePort},
 };
+
+/// File-local mutex to serialize tests that modify process-wide env vars.
+static ENV_LOCK: Mutex<()> = Mutex::new(());
 
 // ============================================================================
 // Environment Detection Tests
@@ -21,6 +26,7 @@ use songbird_config::defaults::{
 
 #[test]
 fn test_environment_detection_default() {
+    let _guard = ENV_LOCK.lock().unwrap();
     let env = Environment::detect();
     // Should detect without panicking
     assert!(matches!(
@@ -34,6 +40,7 @@ fn test_environment_detection_default() {
 
 #[test]
 fn test_environment_detection_explicit() {
+    let _guard = ENV_LOCK.lock().unwrap();
     std::env::set_var("SONGBIRD_ENVIRONMENT", "production");
     let env = Environment::detect();
     assert_eq!(env, Environment::Production);
@@ -130,34 +137,28 @@ fn test_self_aware_config_creation() {
 #[tokio::test]
 async fn test_self_aware_config_development() {
     // Use modern RAII-based environment isolation
+    // CRITICAL: Use a single ScopedEnv call to avoid deadlocking on the global
+    // ENV_LOCK mutex. Previously this used remove_multiple + set which acquired
+    // the lock twice, causing a deadlock.
     use songbird_test_utils::ScopedEnv;
 
-    // Remove production environment indicators for this test scope
-    let _env_guard = ScopedEnv::remove_multiple([
-        "KUBERNETES_SERVICE_HOST",
-        "DOCKER_HOST",
-        "PRODUCTION",
-        "ECS_CONTAINER_METADATA_URI",
-    ])
-    .await;
-
-    // Set test environment
-    let _test_env = ScopedEnv::set("SONGBIRD_ENVIRONMENT", "development").await;
+    // Setting SONGBIRD_ENVIRONMENT=development is sufficient — Environment::detect()
+    // checks this first and never reaches the production indicator checks.
+    let _env = ScopedEnv::set("SONGBIRD_ENVIRONMENT", "development").await;
 
     let config = SelfAwareConfig::from_environment();
     assert_eq!(config.environment, Environment::Development);
     assert!(config.bind_address().ip().is_loopback());
-
-    // No manual cleanup needed - RAII handles restoration automatically!
 }
 
-#[test]
-fn test_self_aware_config_production() {
-    std::env::set_var("SONGBIRD_ENVIRONMENT", "production");
+#[tokio::test]
+async fn test_self_aware_config_production() {
+    use songbird_test_utils::ScopedEnv;
+    let _env = ScopedEnv::set("SONGBIRD_ENVIRONMENT", "production").await;
+
     let config = SelfAwareConfig::from_environment();
     assert_eq!(config.environment, Environment::Production);
     assert!(config.bind_address().ip().is_unspecified());
-    std::env::remove_var("SONGBIRD_ENVIRONMENT");
 }
 
 // ============================================================================
@@ -345,6 +346,7 @@ fn test_port_allocation_different_capabilities() {
 
 #[test]
 fn test_environment_detection_kubernetes() {
+    let _guard = ENV_LOCK.lock().unwrap();
     // Simulate Kubernetes environment
     std::env::set_var("KUBERNETES_SERVICE_HOST", "10.0.0.1");
     let env = Environment::detect();
@@ -354,6 +356,7 @@ fn test_environment_detection_kubernetes() {
 
 #[test]
 fn test_environment_detection_ecs() {
+    let _guard = ENV_LOCK.lock().unwrap();
     // Clear other environment indicators
     let _k8s = std::env::var("KUBERNETES_SERVICE_HOST");
     let _docker = std::env::var("DOCKER_HOST");

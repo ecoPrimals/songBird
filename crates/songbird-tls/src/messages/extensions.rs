@@ -11,7 +11,7 @@
 pub enum Extension {
     /// supported_versions (RFC 8446 Section 4.2.1)
     ///
-    /// In ClientHello: list of supported versions (e.g., [0x0304] for TLS 1.3)
+    /// In ClientHello: list of supported versions (e.g., `[0x0304]` for TLS 1.3)
     /// In ServerHello: selected version
     SupportedVersions(Vec<u16>),
 

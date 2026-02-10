@@ -53,6 +53,7 @@
 //! - ✅ Tower Atomic architecture
 //! - ✅ TRUE ecoBin compliant
 //! - ✅ Agnostic crypto provider support
+#![forbid(unsafe_code)]
 
 pub mod beardog_client; // ✅ ACTIVE: Smart refactored module (7 sub-modules)
 pub mod client;

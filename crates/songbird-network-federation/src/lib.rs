@@ -12,7 +12,7 @@
 //! - ✅ **Modern Rust**: Latest networking patterns with async/await
 //! - ✅ **Zero Technical Debt**: Clean implementation with no legacy baggage
 //! - ✅ **Gaming Protocols**: Specialized gaming network protocol support
-
+#![forbid(unsafe_code)]
 #![deny(unsafe_code)]
 #![warn(clippy::all)]
 #![warn(clippy::pedantic)]
@@ -20,12 +20,17 @@
 #![allow(clippy::pub_use)] // Re-exports are acceptable for consolidated crates
 #![allow(
     clippy::missing_errors_doc,
+    clippy::missing_panics_doc,
     clippy::upper_case_acronyms,
     clippy::trivially_copy_pass_by_ref,
     clippy::cast_possible_truncation,
     clippy::unused_async,
+    clippy::unused_self,
     clippy::if_same_then_else,
-    clippy::struct_field_names
+    clippy::struct_field_names,
+    clippy::struct_excessive_bools,
+    clippy::items_after_statements,
+    clippy::match_same_arms
 )]
 
 // Core modules

@@ -232,8 +232,14 @@ async fn handle_jsonrpc_request(
         // This makes TCP /jsonrpc equivalent to the Unix socket for inter-gate comms
         _ => {
             if let Some(ref ipc_handler) = state.ipc_handler {
-                debug!("📡 Forwarding '{}' to universal-ipc handler (TCP→IPC bridge)", request.method);
-                match ipc_handler.handle(&request.method, request.params.clone().unwrap_or(Value::Null)).await {
+                debug!(
+                    "📡 Forwarding '{}' to universal-ipc handler (TCP→IPC bridge)",
+                    request.method
+                );
+                match ipc_handler
+                    .handle(&request.method, request.params.clone().unwrap_or(Value::Null))
+                    .await
+                {
                     Ok(value) => Ok(value),
                     Err(e) => {
                         warn!("⚠️  IPC handler error for '{}': {}", request.method, e);

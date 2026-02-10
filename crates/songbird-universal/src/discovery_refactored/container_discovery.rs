@@ -173,16 +173,16 @@ fn build_from_container_metadata(
     })
 }
 
-/// Infer primal type from capabilities (no hardcoding)
+/// Infer primal type from capabilities (capability-based, no hardcoded primal names).
 fn infer_primal_type(capabilities: &[String]) -> PrimalType {
     if capabilities.contains(&"compute".to_string()) {
-        PrimalType::new("toadstool")
+        PrimalType::new("compute")
     } else if capabilities.contains(&"security".to_string()) {
-        PrimalType::new("beardog")
+        PrimalType::new("security")
     } else if capabilities.contains(&"storage".to_string()) {
-        PrimalType::new("squirrel")
+        PrimalType::new("storage")
     } else if capabilities.contains(&"gateway".to_string()) {
-        PrimalType::new("nestgate")
+        PrimalType::new("gateway")
     } else {
         PrimalType::default()
     }

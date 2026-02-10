@@ -46,7 +46,9 @@ impl OnionAddress {
 
         // Decode base32 (RFC 4648)
         let decoded = base32::decode(
-            base32::Alphabet::RFC4648 { padding: false },
+            base32::Alphabet::RFC4648 {
+                padding: false,
+            },
             addr,
         )
         .ok_or_else(|| Error::Protocol("Failed to decode base32 onion address".to_string()))?;
@@ -63,11 +65,11 @@ impl OnionAddress {
         let public_key: [u8; 32] = decoded[0..32]
             .try_into()
             .map_err(|_| Error::Protocol("Failed to extract public key".to_string()))?;
-        
+
         let checksum: [u8; 2] = decoded[32..34]
             .try_into()
             .map_err(|_| Error::Protocol("Failed to extract checksum".to_string()))?;
-        
+
         let version = decoded[34];
 
         // Verify version
@@ -90,8 +92,7 @@ impl OnionAddress {
         if checksum != expected_checksum {
             return Err(Error::Protocol(format!(
                 "Onion address checksum mismatch: expected {:02x}{:02x}, got {:02x}{:02x}",
-                expected_checksum[0], expected_checksum[1],
-                checksum[0], checksum[1]
+                expected_checksum[0], expected_checksum[1], checksum[0], checksum[1]
             )));
         }
 
@@ -141,7 +142,7 @@ mod tests {
         // Valid v3 address (56 chars + .onion)
         let addr = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
         let full_addr = format!("{}.onion", addr);
-        
+
         let result = OnionAddress::parse(&full_addr);
         // Will fail base32 decode (all 'a's), but tests suffix stripping
         assert!(result.is_err() || result.is_ok());
@@ -189,7 +190,9 @@ mod tests {
 
         // Encode to base32
         let encoded = base32::encode(
-            base32::Alphabet::RFC4648 { padding: false },
+            base32::Alphabet::RFC4648 {
+                padding: false,
+            },
             &addr_bytes,
         );
 
@@ -213,7 +216,9 @@ mod tests {
         addr_bytes.push(version);
 
         let encoded = base32::encode(
-            base32::Alphabet::RFC4648 { padding: false },
+            base32::Alphabet::RFC4648 {
+                padding: false,
+            },
             &addr_bytes,
         );
 
@@ -240,7 +245,9 @@ mod tests {
         addr_bytes.push(version);
 
         let encoded = base32::encode(
-            base32::Alphabet::RFC4648 { padding: false },
+            base32::Alphabet::RFC4648 {
+                padding: false,
+            },
             &addr_bytes,
         );
         let full = format!("{}.onion", encoded);

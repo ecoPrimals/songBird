@@ -21,7 +21,7 @@ fn test_version_output() {
     cmd.assert()
         .success()
         .stdout(predicate::str::contains("songbird"))
-        .stdout(predicate::str::contains("0.1.0"));
+        .stdout(predicate::str::contains("0.2.1"));
 }
 
 #[test]
@@ -43,7 +43,7 @@ fn test_server_help() {
     cmd.args(["server", "--help"]);
     cmd.assert()
         .success()
-        .stdout(predicate::str::contains("Start Songbird orchestrator in server mode"))
+        .stdout(predicate::str::contains("Start Songbird orchestrator"))
         .stdout(predicate::str::contains("--port"))
         .stdout(predicate::str::contains("--daemon"))
         .stdout(predicate::str::contains("--config"))

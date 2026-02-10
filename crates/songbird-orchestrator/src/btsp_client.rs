@@ -59,7 +59,9 @@ impl BtspClient {
     /// Create BTSP client with explicit socket path (concurrent-safe, testable)
     #[must_use]
     pub fn with_socket(socket_path: PathBuf) -> Self {
-        Self { socket_path }
+        Self {
+            socket_path,
+        }
     }
 
     /// Discover BearDog socket path from environment
@@ -297,7 +299,7 @@ impl BtspClient {
     async fn send_request(&self, request: serde_json::Value) -> Result<serde_json::Value> {
         // Connect to BearDog (platform-agnostic)
         let mut stream = connect_platform(&self.socket_path).await.map_err(|e| {
-            anyhow!("Failed to connect to BearDog socket {:?}: {}", self.socket_path, e)
+            anyhow!("Failed to connect to BearDog socket {}: {}", self.socket_path.display(), e)
         })?;
 
         // Send request (newline-delimited JSON)

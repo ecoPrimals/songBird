@@ -545,9 +545,8 @@ mod tests {
         let mut env = std::collections::HashMap::new();
         env.insert("CRYPTO_SIGNING_ENDPOINT".to_string(), "/test/beardog".to_string());
 
-        let result = EnvCryptoDiscovery::discover_with("crypto.signing", |key| {
-            env.get(key).cloned()
-        });
+        let result =
+            EnvCryptoDiscovery::discover_with("crypto.signing", |key| env.get(key).cloned());
 
         assert!(result.is_ok());
         assert_eq!(result.unwrap(), "/test/beardog");
@@ -558,9 +557,8 @@ mod tests {
         // ✅ Concurrent-safe: Empty env falls through to default
         let empty_env: std::collections::HashMap<String, String> = std::collections::HashMap::new();
 
-        let result = EnvCryptoDiscovery::discover_with("crypto.signing", |key| {
-            empty_env.get(key).cloned()
-        });
+        let result =
+            EnvCryptoDiscovery::discover_with("crypto.signing", |key| empty_env.get(key).cloned());
 
         assert!(result.is_ok());
         assert_eq!(result.unwrap(), "/primal/beardog");
@@ -572,9 +570,8 @@ mod tests {
         let mut env = std::collections::HashMap::new();
         env.insert("BEARDOG_SOCKET".to_string(), "/run/user/1000/biomeos/beardog.sock".to_string());
 
-        let result = EnvCryptoDiscovery::discover_with("crypto.signing", |key| {
-            env.get(key).cloned()
-        });
+        let result =
+            EnvCryptoDiscovery::discover_with("crypto.signing", |key| env.get(key).cloned());
 
         assert!(result.is_ok());
         assert_eq!(result.unwrap(), "/run/user/1000/biomeos/beardog.sock");

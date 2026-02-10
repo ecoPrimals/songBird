@@ -257,15 +257,22 @@ impl LineageRelayCoordinator {
         tokio::spawn(async move {
             loop {
                 // Wait for relay request messages (event-driven, no polling)
-                match broadcaster.wait_for_message_by_type(
-                    crate::birdsong::BirdSongType::RelayRequest,
-                    Duration::from_secs(300), // 5 min cycle — wakes instantly on message
-                ).await {
+                match broadcaster
+                    .wait_for_message_by_type(
+                        crate::birdsong::BirdSongType::RelayRequest,
+                        Duration::from_secs(300), // 5 min cycle — wakes instantly on message
+                    )
+                    .await
+                {
                     Ok(messages) => {
                         for msg in messages {
-                            if let Ok(request) = serde_json::from_slice::<crate::relay::RelayRequest>(&msg.payload) {
+                            if let Ok(request) =
+                                serde_json::from_slice::<crate::relay::RelayRequest>(&msg.payload)
+                            {
                                 info!("Received relay request from {}", request.requester);
-                                if let Err(e) = relay_discovery.offer_relay(request, my_relay_address).await {
+                                if let Err(e) =
+                                    relay_discovery.offer_relay(request, my_relay_address).await
+                                {
                                     warn!("Failed to process relay request: {}", e);
                                 }
                             }

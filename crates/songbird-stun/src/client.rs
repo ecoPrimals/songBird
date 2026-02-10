@@ -84,7 +84,7 @@ impl StunClient {
         } else {
             "[::]:0"
         };
-        
+
         let local_socket = UdpSocket::bind(bind_addr)
             .await
             .map_err(|e| StunError::Network(format!("Failed to bind UDP socket: {}", e)))?;

@@ -1,13 +1,20 @@
 // BiomeOS Neural API E2E Deployment Tests
 // January 16, 2026
+// Updated: February 10, 2026 (concurrent-safe with per-file Mutex)
 //
 // End-to-end tests validating complete BiomeOS deployment workflows,
 // simulating real-world deployment scenarios with the Neural API orchestrator.
+//
+// **Concurrency Evolution**: These tests mutate process-wide env vars.
+// A static Mutex ensures they don't race with each other within this binary.
 
 use songbird_orchestrator::ipc::UnixSocketServer;
 use std::env;
 use std::path::PathBuf;
 use tempfile::TempDir;
+
+/// Serialize all env var tests in this file (async-safe).
+static ENV_LOCK: tokio::sync::Mutex<()> = tokio::sync::Mutex::const_new(());
 
 /// E2E Test: Complete BiomeOS NUCLEUS deployment simulation
 ///
@@ -20,6 +27,7 @@ use tempfile::TempDir;
 /// 6. Graceful shutdown cleans up
 #[tokio::test]
 async fn test_complete_biomeos_deployment_flow() {
+    let _guard = ENV_LOCK.lock().await;
     // Setup: Create temporary directory for test sockets
     let temp_dir = TempDir::new().expect("Failed to create temp dir");
     let socket_path = temp_dir.path().join("songbird-nat0.sock");
@@ -63,6 +71,7 @@ async fn test_complete_biomeos_deployment_flow() {
 /// in the same deployment (e.g., nat0, nat1, nat2 for different NAT contexts).
 #[tokio::test]
 async fn test_multi_family_deployment() {
+    let _guard = ENV_LOCK.lock().await;
     let temp_dir = TempDir::new().expect("Failed to create temp dir");
     let original_vars = save_env_state();
 
@@ -105,6 +114,7 @@ async fn test_multi_family_deployment() {
 /// not just SONGBIRD_ORCHESTRATOR_* specific ones.
 #[tokio::test]
 async fn test_generic_biomeos_orchestrator() {
+    let _guard = ENV_LOCK.lock().await;
     let temp_dir = TempDir::new().expect("Failed to create temp dir");
     let original_vars = save_env_state();
 
@@ -136,6 +146,7 @@ async fn test_generic_biomeos_orchestrator() {
 /// when no environment variables are set.
 #[tokio::test]
 async fn test_fallback_to_defaults() {
+    let _guard = ENV_LOCK.lock().await;
     let original_vars = save_env_state();
 
     // Clear all env vars
@@ -162,6 +173,7 @@ async fn test_fallback_to_defaults() {
 /// Tests that when multiple env vars are set, the correct priority order is enforced.
 #[tokio::test]
 async fn test_environment_priority_enforcement() {
+    let _guard = ENV_LOCK.lock().await;
     let temp_dir = TempDir::new().expect("Failed to create temp dir");
     let original_vars = save_env_state();
 
@@ -198,6 +210,7 @@ async fn test_environment_priority_enforcement() {
 /// Tests that family ID resolution follows the correct priority order.
 #[tokio::test]
 async fn test_family_id_priority_enforcement() {
+    let _guard = ENV_LOCK.lock().await;
     let original_vars = save_env_state();
 
     // Set all possible family ID env vars
@@ -238,6 +251,7 @@ async fn test_family_id_priority_enforcement() {
 /// Tests that when only family ID is provided, the socket path is correctly constructed.
 #[tokio::test]
 async fn test_path_construction_from_family_id() {
+    let _guard = ENV_LOCK.lock().await;
     let original_vars = save_env_state();
 
     // Clear explicit socket paths
@@ -256,7 +270,7 @@ async fn test_path_construction_from_family_id() {
     // Family ID is separate from socket path
     assert!(derived_path.to_str().unwrap().ends_with("songbird.sock"));
     assert_eq!(family_id, "test-family");
-    
+
     // Path should be XDG-compliant or /tmp fallback (not containing family ID)
     let path_str = derived_path.to_str().unwrap();
     assert!(path_str.starts_with("/run/user/") || path_str.starts_with("/tmp/"));

@@ -326,9 +326,8 @@ mod tests {
         let mut listener = listen(endpoint).await.unwrap();
 
         // Connect in background (listener already bound — no sleep needed)
-        let connect_handle = tokio::spawn(async move {
-            connect("/primal/test-primal-register-connect").await
-        });
+        let connect_handle =
+            tokio::spawn(async move { connect("/primal/test-primal-register-connect").await });
 
         // Accept connection
         let mut server_stream = listener.accept().await.unwrap();

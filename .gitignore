@@ -184,7 +184,11 @@ federation/*.key
 # Sled database files
 *.sled/
 db/
+**/data/sovereign-onion/
 
 # Test artifacts (sqlite in-memory snapshots)
 sqlite::memory:*/
 primalBins/
+
+# Coverage artifacts (llvm-cov)
+**/llvm-cov-target/

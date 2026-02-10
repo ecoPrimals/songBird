@@ -1,6 +1,6 @@
 //! Zero-Copy Federated Service Registry
 //!
-//! Evolved version of `FederatedServiceRegistry` using Arc<str> for zero-copy operations.
+//! Evolved version of `FederatedServiceRegistry` using `Arc<str>` for zero-copy operations.
 //!
 //! **Performance Benefits:**
 //! - 70-85% memory reduction in service lookups
@@ -26,16 +26,16 @@ type CapabilityIndex = Arc<RwLock<HashMap<Arc<str>, Vec<Arc<str>>>>>;
 
 /// Zero-copy federated service registry
 ///
-/// All string operations use Arc<str> for efficient cloning and sharing.
-/// `HashMap` keys are Arc<str> to avoid cloning during lookups.
+/// All string operations use `Arc<str>` for efficient cloning and sharing.
+/// `HashMap` keys are `Arc<str>` to avoid cloning during lookups.
 #[derive(Debug, Clone)]
 pub struct ZeroCopyFederatedRegistry {
     /// Local services (registered on this tower)
-    /// Key is Arc<str> `service_id` for zero-copy lookups
+    /// Key is `Arc<str>` `service_id` for zero-copy lookups
     local_services: Arc<RwLock<HashMap<Arc<str>, Arc<ZeroCopyServiceRegistration>>>>,
 
-    /// Remote services (discovered from other towers)\
-    /// Key is Arc<str> `service_id` for zero-copy lookups
+    /// Remote services (discovered from other towers)
+    /// Key is `Arc<str>` `service_id` for zero-copy lookups
     remote_services: Arc<RwLock<HashMap<Arc<str>, Arc<ZeroCopyServiceRegistration>>>>,
 
     /// Capability index for O(1) capability lookups
@@ -153,7 +153,7 @@ impl ZeroCopyFederatedRegistry {
 
     /// Find service by ID (zero-copy Arc clone)
     ///
-    /// Returns Arc<ZeroCopyServiceRegistration> which can be cloned cheaply (atomic increment)
+    /// Returns `Arc<ZeroCopyServiceRegistration>` which can be cloned cheaply (atomic increment)
     pub async fn find_by_id(
         &self,
         service_id: &Arc<str>,
@@ -325,7 +325,7 @@ pub struct ZeroCopyRegistryStats {
     /// Number of remote services
     pub remote_services: usize,
 
-    /// List of service types (Arc<str> for zero-copy)
+    /// List of service types (`Arc<str>` for zero-copy)
     pub service_types: Vec<Arc<str>>,
 }
 

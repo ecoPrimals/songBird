@@ -10,36 +10,36 @@ use tracing::{error, info};
 async fn main() -> anyhow::Result<()> {
     // Initialize logging
     tracing_subscriber::fmt::init();
-    
+
     info!("🚀 Starting QUIC echo server");
-    
+
     // Create configuration with runtime discovery
     let config = QuicConfig::new()
         .with_idle_timeout(std::time::Duration::from_secs(60))
         .with_0rtt(true)
         .with_migration(true);
-    
+
     info!("BearDog socket: {:?}", config.beardog_socket);
-    
+
     // Bind to IPv6 dual-stack (supports both IPv4 and IPv6)
     let server = QuicServer::new("[::]:4433", config).await?;
-    
+
     info!("📡 QUIC server listening on {}", server.local_addr());
     info!("Features: 0-RTT ✅  Migration ✅  Multiplexing ✅");
-    
+
     // Accept connections
     let mut incoming = server.accept();
-    
+
     while let Some(conn) = incoming.recv().await {
         info!("✅ New connection from {}", conn.remote_address());
-        
+
         tokio::spawn(async move {
             // Handle bidirectional streams
             loop {
                 match conn.accept_bi().await {
                     Ok(mut stream) => {
                         info!("📥 New stream from {}", conn.remote_address());
-                        
+
                         // Echo loop
                         match tokio::spawn(async move {
                             let mut buf = vec![0u8; 4096];
@@ -62,7 +62,9 @@ async fn main() -> anyhow::Result<()> {
                                     }
                                 }
                             }
-                        }).await {
+                        })
+                        .await
+                        {
                             Ok(_) => info!("Stream handler completed"),
                             Err(e) => error!("Stream handler panicked: {}", e),
                         }
@@ -75,6 +77,6 @@ async fn main() -> anyhow::Result<()> {
             }
         });
     }
-    
+
     Ok(())
 }

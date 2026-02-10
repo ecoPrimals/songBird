@@ -265,20 +265,14 @@ async fn test_e2e_capability_registration_discovers_xdg_neural_api() {
     tokio::time::sleep(tokio::time::Duration::from_millis(50)).await;
 
     env::set_var("XDG_RUNTIME_DIR", temp_dir.to_str().unwrap());
-    env::set_var(
-        "SONGBIRD_SOCKET_PATH",
-        songbird_socket_path.to_str().unwrap(),
-    );
+    env::set_var("SONGBIRD_SOCKET_PATH", songbird_socket_path.to_str().unwrap());
     env::remove_var("NEURAL_API_SOCKET"); // Let it discover via XDG
 
     use songbird_orchestrator::capability_registration::register_capabilities;
     let result = register_capabilities().await;
 
     // Should succeed using XDG-discovered Neural API socket
-    assert!(
-        result.is_ok(),
-        "Registration should succeed with XDG Neural API"
-    );
+    assert!(result.is_ok(), "Registration should succeed with XDG Neural API");
 
     // Cleanup
     env::remove_var("XDG_RUNTIME_DIR");
@@ -311,11 +305,7 @@ async fn test_e2e_security_client_discovers_xdg_beardog() {
 
     assert!(result.is_ok(), "Should discover BearDog at XDG path");
     let found = result.unwrap();
-    assert!(
-        found.contains("biomeos/beardog.sock"),
-        "Should use XDG BearDog path, got: {}",
-        found
-    );
+    assert!(found.contains("biomeos/beardog.sock"), "Should use XDG BearDog path, got: {}", found);
 
     // Cleanup
     env::remove_var("XDG_RUNTIME_DIR");
@@ -354,18 +344,11 @@ async fn test_e2e_xdg_directory_structure_compliance() {
     for socket_name in &expected_sockets {
         let socket_path = biomeos_dir.join(socket_name);
         std::fs::write(&socket_path, "").unwrap();
-        assert!(
-            socket_path.exists(),
-            "Socket {} should exist in biomeos dir",
-            socket_name
-        );
+        assert!(socket_path.exists(), "Socket {} should exist in biomeos dir", socket_name);
     }
 
     // Verify structure is correct
-    let entries: Vec<_> = std::fs::read_dir(&biomeos_dir)
-        .unwrap()
-        .filter_map(|e| e.ok())
-        .collect();
+    let entries: Vec<_> = std::fs::read_dir(&biomeos_dir).unwrap().filter_map(|e| e.ok()).collect();
 
     assert_eq!(
         entries.len(),
@@ -376,14 +359,8 @@ async fn test_e2e_xdg_directory_structure_compliance() {
 
     for entry in entries {
         let name = entry.file_name().to_string_lossy().to_string();
-        assert!(
-            name.ends_with(".sock"),
-            "All entries should be .sock files"
-        );
-        assert!(
-            !name.contains("-nat0"),
-            "No sockets should have -nat0 suffix"
-        );
+        assert!(name.ends_with(".sock"), "All entries should be .sock files");
+        assert!(!name.contains("-nat0"), "No sockets should have -nat0 suffix");
     }
 
     // Cleanup
@@ -420,11 +397,7 @@ async fn test_e2e_env_var_overrides_xdg() {
     let found = result.unwrap();
 
     // Env var should take priority over XDG
-    assert_eq!(
-        found,
-        custom_socket.to_str().unwrap(),
-        "Env var should override XDG discovery"
-    );
+    assert_eq!(found, custom_socket.to_str().unwrap(), "Env var should override XDG discovery");
 
     // Cleanup
     env::remove_var("XDG_RUNTIME_DIR");

@@ -8,6 +8,7 @@
 //! 3. Relay server forwards packets to target
 //! 4. Session refresh and deallocation
 
+use async_trait::async_trait;
 use songbird_lineage_relay::{
     error::Result as RelayResult,
     relay::RelayAuthority,
@@ -16,7 +17,6 @@ use songbird_lineage_relay::{
     types::{MaskingLevel, NodeId, RelayAuthorization},
     RelaySession,
 };
-use async_trait::async_trait;
 use std::sync::Arc;
 use std::time::Duration;
 use tokio::net::UdpSocket;
@@ -52,18 +52,14 @@ impl RelayAuthority for TestRelayAuthority {
 async fn test_relay_allocation_flow() {
     // Start relay server
     let authority = Arc::new(TestRelayAuthority);
-    let server = RelayServer::new("127.0.0.1:0".parse().unwrap(), authority)
-        .await
-        .unwrap();
+    let server = RelayServer::new("127.0.0.1:0".parse().unwrap(), authority).await.unwrap();
 
     let relay_addr = server.bind_addr();
 
     // Spawn server task
     let server_handle = tokio::spawn(async move {
         // Run for 2 seconds then shutdown
-        tokio::time::timeout(Duration::from_secs(2), server.run())
-            .await
-            .ok();
+        tokio::time::timeout(Duration::from_secs(2), server.run()).await.ok();
     });
 
     // Give server time to start
@@ -108,9 +104,7 @@ async fn test_relay_allocation_flow() {
 async fn test_relay_packet_forwarding() {
     // Start relay server
     let authority = Arc::new(TestRelayAuthority);
-    let server = RelayServer::new("127.0.0.1:0".parse().unwrap(), authority)
-        .await
-        .unwrap();
+    let server = RelayServer::new("127.0.0.1:0".parse().unwrap(), authority).await.unwrap();
 
     let relay_addr = server.bind_addr();
     let server_clone = Arc::new(server);
@@ -118,9 +112,7 @@ async fn test_relay_packet_forwarding() {
     // Spawn server task
     let server_for_task = server_clone.clone();
     let server_handle = tokio::spawn(async move {
-        tokio::time::timeout(Duration::from_secs(3), server_for_task.run())
-            .await
-            .ok();
+        tokio::time::timeout(Duration::from_secs(3), server_for_task.run()).await.ok();
     });
 
     // Give server time to start
@@ -133,13 +125,8 @@ async fn test_relay_packet_forwarding() {
     let target_addr = target_socket.local_addr().unwrap();
 
     // Send allocation request from requester
-    let request = AllocationRequest::new(
-        "tower".into(),
-        "pixel".into(),
-        target_addr,
-        vec![1, 2, 3],
-        300,
-    );
+    let request =
+        AllocationRequest::new("tower".into(), "pixel".into(), target_addr, vec![1, 2, 3], 300);
 
     let request_msg = RelayProtocol::AllocateRequest(request);
     let encoded = request_msg.encode();
@@ -192,17 +179,13 @@ async fn test_relay_packet_forwarding() {
 async fn test_relay_session_refresh() {
     // Start relay server
     let authority = Arc::new(TestRelayAuthority);
-    let server = RelayServer::new("127.0.0.1:0".parse().unwrap(), authority)
-        .await
-        .unwrap();
+    let server = RelayServer::new("127.0.0.1:0".parse().unwrap(), authority).await.unwrap();
 
     let relay_addr = server.bind_addr();
 
     // Spawn server task
     let server_handle = tokio::spawn(async move {
-        tokio::time::timeout(Duration::from_secs(2), server.run())
-            .await
-            .ok();
+        tokio::time::timeout(Duration::from_secs(2), server.run()).await.ok();
     });
 
     tokio::time::sleep(Duration::from_millis(50)).await;
@@ -219,10 +202,7 @@ async fn test_relay_session_refresh() {
     );
 
     let request_msg = RelayProtocol::AllocateRequest(request);
-    client_socket
-        .send_to(&request_msg.encode(), relay_addr)
-        .await
-        .unwrap();
+    client_socket.send_to(&request_msg.encode(), relay_addr).await.unwrap();
 
     // Receive allocation response
     let mut buf = vec![0u8; 65536];
@@ -235,11 +215,10 @@ async fn test_relay_session_refresh() {
     };
 
     // Send refresh message
-    let refresh_msg = RelayProtocol::Refresh { session_id };
-    client_socket
-        .send_to(&refresh_msg.encode(), relay_addr)
-        .await
-        .unwrap();
+    let refresh_msg = RelayProtocol::Refresh {
+        session_id,
+    };
+    client_socket.send_to(&refresh_msg.encode(), relay_addr).await.unwrap();
 
     // Give server time to process refresh
     tokio::time::sleep(Duration::from_millis(50)).await;
@@ -255,9 +234,7 @@ async fn test_relay_session_refresh() {
 async fn test_relay_session_deallocation() {
     // Start relay server
     let authority = Arc::new(TestRelayAuthority);
-    let server = RelayServer::new("127.0.0.1:0".parse().unwrap(), authority)
-        .await
-        .unwrap();
+    let server = RelayServer::new("127.0.0.1:0".parse().unwrap(), authority).await.unwrap();
 
     let relay_addr = server.bind_addr();
     let server_clone = Arc::new(server);
@@ -265,9 +242,7 @@ async fn test_relay_session_deallocation() {
     // Spawn server task
     let server_for_task = server_clone.clone();
     let server_handle = tokio::spawn(async move {
-        tokio::time::timeout(Duration::from_secs(2), server_for_task.run())
-            .await
-            .ok();
+        tokio::time::timeout(Duration::from_secs(2), server_for_task.run()).await.ok();
     });
 
     tokio::time::sleep(Duration::from_millis(50)).await;
@@ -304,11 +279,10 @@ async fn test_relay_session_deallocation() {
     assert_eq!(stats.sessions_active, 1);
 
     // Send deallocation message
-    let deallocate_msg = RelayProtocol::Deallocate { session_id };
-    client_socket
-        .send_to(&deallocate_msg.encode(), relay_addr)
-        .await
-        .unwrap();
+    let deallocate_msg = RelayProtocol::Deallocate {
+        session_id,
+    };
+    client_socket.send_to(&deallocate_msg.encode(), relay_addr).await.unwrap();
 
     // Give server time to process deallocation
     tokio::time::sleep(Duration::from_millis(200)).await;
@@ -327,17 +301,13 @@ async fn test_relay_session_deallocation() {
 async fn test_relay_client_session_full_lifecycle() {
     // Start relay server
     let authority = Arc::new(TestRelayAuthority);
-    let server = RelayServer::new("127.0.0.1:0".parse().unwrap(), authority)
-        .await
-        .unwrap();
+    let server = RelayServer::new("127.0.0.1:0".parse().unwrap(), authority).await.unwrap();
 
     let relay_addr = server.bind_addr();
 
     // Spawn server task
     let server_handle = tokio::spawn(async move {
-        tokio::time::timeout(Duration::from_secs(3), server.run())
-            .await
-            .ok();
+        tokio::time::timeout(Duration::from_secs(3), server.run()).await.ok();
     });
 
     tokio::time::sleep(Duration::from_millis(100)).await;
@@ -388,26 +358,17 @@ async fn test_unauthorized_relay_request() {
             relay_node: &NodeId,
             requester: &NodeId,
         ) -> RelayResult<RelayAuthorization> {
-            Ok(RelayAuthorization::unauthorized(
-                relay_node.clone(),
-                requester.clone(),
-            ))
+            Ok(RelayAuthorization::unauthorized(relay_node.clone(), requester.clone()))
         }
 
-        async fn determine_masking(
-            &self,
-            _: &NodeId,
-            _: &NodeId,
-        ) -> RelayResult<MaskingLevel> {
+        async fn determine_masking(&self, _: &NodeId, _: &NodeId) -> RelayResult<MaskingLevel> {
             Ok(MaskingLevel::Full)
         }
     }
 
     // Start relay server with deny authority
     let authority = Arc::new(DenyAuthority);
-    let server = RelayServer::new("127.0.0.1:0".parse().unwrap(), authority)
-        .await
-        .unwrap();
+    let server = RelayServer::new("127.0.0.1:0".parse().unwrap(), authority).await.unwrap();
 
     let relay_addr = server.bind_addr();
     let server_clone = Arc::new(server);
@@ -415,9 +376,7 @@ async fn test_unauthorized_relay_request() {
     // Spawn server task
     let server_for_task = server_clone.clone();
     let server_handle = tokio::spawn(async move {
-        tokio::time::timeout(Duration::from_secs(2), server_for_task.run())
-            .await
-            .ok();
+        tokio::time::timeout(Duration::from_secs(2), server_for_task.run()).await.ok();
     });
 
     tokio::time::sleep(Duration::from_millis(50)).await;

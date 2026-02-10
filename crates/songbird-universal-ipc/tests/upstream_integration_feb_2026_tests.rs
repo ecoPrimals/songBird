@@ -38,7 +38,7 @@ async fn test_unit_health_method() {
 
     assert!(result.is_ok(), "health method should succeed");
     let response = result.unwrap();
-    
+
     assert_eq!(response["status"], "healthy");
     assert_eq!(response["primal"], "songbird");
     assert!(response["version"].is_string());
@@ -55,20 +55,19 @@ async fn test_unit_identity_method() {
 
     assert!(result.is_ok(), "identity method should succeed");
     let response = result.unwrap();
-    
+
     assert_eq!(response["primal"], "songbird");
     assert!(response["version"].is_string());
     assert!(response["family_id"].is_string());
     assert!(response["capabilities"].is_array());
-    
+
     let capabilities = response["capabilities"].as_array().unwrap();
     assert!(capabilities.len() > 10, "Should have many capabilities");
-    
+
     // Verify key capabilities present
-    let cap_strings: Vec<String> = capabilities.iter()
-        .map(|v| v.as_str().unwrap().to_string())
-        .collect();
-    
+    let cap_strings: Vec<String> =
+        capabilities.iter().map(|v| v.as_str().unwrap().to_string()).collect();
+
     // Note: "health" is a method, not a capability
     assert!(cap_strings.contains(&"ipc.register".to_string()));
     assert!(cap_strings.contains(&"http.request".to_string()));
@@ -84,17 +83,16 @@ async fn test_unit_rpc_discover_method() {
 
     assert!(result.is_ok(), "rpc.discover method should succeed");
     let response = result.unwrap();
-    
+
     assert!(response["methods"].is_array());
-    
+
     let methods = response["methods"].as_array().unwrap();
     assert!(methods.len() > 15, "Should have many methods");
-    
+
     // Verify standard methods present
-    let method_strings: Vec<String> = methods.iter()
-        .map(|v| v.as_str().unwrap().to_string())
-        .collect();
-    
+    let method_strings: Vec<String> =
+        methods.iter().map(|v| v.as_str().unwrap().to_string()).collect();
+
     assert!(method_strings.contains(&"health".to_string()));
     assert!(method_strings.contains(&"identity".to_string()));
     assert!(method_strings.contains(&"rpc.discover".to_string()));
@@ -104,25 +102,25 @@ async fn test_unit_rpc_discover_method() {
 async fn test_unit_family_id_from_environment() {
     // Serialize with other env tests
     let _guard = ENV_TEST_LOCK.lock().unwrap();
-    
+
     // Clean slate - remove all family ID vars first
     std::env::remove_var("FAMILY_ID");
     std::env::remove_var("SONGBIRD_FAMILY_ID");
     std::env::remove_var("NODE_FAMILY_ID");
-    
+
     // Test FAMILY_ID (highest priority)
     std::env::set_var("FAMILY_ID", "test_family_1");
-    
+
     let registry = Arc::new(RwLock::new(ServiceRegistry::new()));
     let handler = IpcServiceHandler::new(registry);
-    
+
     let result = handler.handle("identity", json!({})).await;
     assert!(result.is_ok());
-    
+
     let response = result.unwrap();
     let family_id = response["family_id"].as_str().unwrap();
     assert_eq!(family_id, "test_family_1", "Should use FAMILY_ID");
-    
+
     // Clean up
     std::env::remove_var("FAMILY_ID");
     std::env::remove_var("SONGBIRD_FAMILY_ID");
@@ -137,14 +135,14 @@ async fn test_unit_uptime_tracking() {
     // First call
     let result1 = handler.handle("health", json!({})).await.unwrap();
     let uptime1 = result1["uptime_seconds"].as_u64().unwrap();
-    
+
     // Wait a bit
     tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
-    
+
     // Second call
     let result2 = handler.handle("health", json!({})).await.unwrap();
     let uptime2 = result2["uptime_seconds"].as_u64().unwrap();
-    
+
     assert!(uptime2 >= uptime1, "Uptime should increase or stay same");
 }
 
@@ -160,10 +158,10 @@ async fn test_e2e_health_via_handler() {
 
     // Send health request
     let result = handler.handle("health", json!({})).await;
-    
+
     assert!(result.is_ok());
     let response = result.unwrap();
-    
+
     // Verify response structure
     assert!(response.is_object());
     assert!(response.get("status").is_some());
@@ -178,35 +176,34 @@ async fn test_e2e_identity_with_capabilities() {
     let handler = IpcServiceHandler::new(registry);
 
     let result = handler.handle("identity", json!({})).await;
-    
+
     assert!(result.is_ok());
     let response = result.unwrap();
-    
+
     // Verify all expected capabilities are present
     let capabilities = response["capabilities"].as_array().unwrap();
-    let cap_set: std::collections::HashSet<String> = capabilities.iter()
-        .map(|v| v.as_str().unwrap().to_string())
-        .collect();
-    
+    let cap_set: std::collections::HashSet<String> =
+        capabilities.iter().map(|v| v.as_str().unwrap().to_string()).collect();
+
     // Standard methods
     assert!(cap_set.contains("ipc.register"));
     assert!(cap_set.contains("ipc.resolve"));
-    
+
     // HTTP methods
     assert!(cap_set.contains("http.request"));
     assert!(cap_set.contains("http.get"));
     assert!(cap_set.contains("http.post"));
-    
+
     // STUN methods
     assert!(cap_set.contains("stun.get_public_address"));
     assert!(cap_set.contains("stun.bind"));
-    
+
     // BirdSong methods
     assert!(cap_set.contains("birdsong.generate_encrypted_beacon"));
     assert!(cap_set.contains("birdsong.decrypt_beacon"));
     assert!(cap_set.contains("birdsong.verify_lineage"));
     assert!(cap_set.contains("birdsong.get_lineage"));
-    
+
     // Discovery methods
     assert!(cap_set.contains("discovery.peers"));
 }
@@ -218,7 +215,7 @@ async fn test_e2e_multiple_sequential_requests() {
 
     // Simulate persistent connection with multiple requests
     let methods = vec!["health", "identity", "rpc.discover", "health"];
-    
+
     for method in methods {
         let result = handler.handle(method, json!({})).await;
         assert!(result.is_ok(), "Method {} should succeed", method);
@@ -231,7 +228,7 @@ async fn test_e2e_unknown_method_error() {
     let handler = IpcServiceHandler::new(registry);
 
     let result = handler.handle("nonexistent.method", json!({})).await;
-    
+
     assert!(result.is_err());
     let error = result.unwrap_err();
     assert!(error.contains("Unknown method"));
@@ -259,7 +256,7 @@ async fn test_chaos_concurrent_health_requests() {
 
     // Wait for all tasks
     let results = futures::future::join_all(tasks).await;
-    
+
     // Verify all succeeded
     for result in results {
         assert!(result.is_ok(), "Task should not panic");
@@ -280,7 +277,7 @@ async fn test_chaos_rapid_sequential_requests() {
             1 => "identity",
             _ => "rpc.discover",
         };
-        
+
         let result = handler.handle(method, json!({})).await;
         assert!(result.is_ok(), "Rapid request {} failed", i);
     }
@@ -293,7 +290,7 @@ async fn test_chaos_interleaved_methods() {
 
     // Spawn tasks that interleave different methods
     let mut tasks = vec![];
-    
+
     for i in 0..30 {
         let handler_clone = Arc::clone(&handler);
         let method = match i % 3 {
@@ -301,14 +298,12 @@ async fn test_chaos_interleaved_methods() {
             1 => "identity",
             _ => "rpc.discover",
         };
-        
-        tasks.push(tokio::spawn(async move {
-            handler_clone.handle(method, json!({})).await
-        }));
+
+        tasks.push(tokio::spawn(async move { handler_clone.handle(method, json!({})).await }));
     }
 
     let results = futures::future::join_all(tasks).await;
-    
+
     // All should succeed
     for (i, result) in results.iter().enumerate() {
         assert!(result.is_ok(), "Task {} panicked", i);
@@ -323,26 +318,27 @@ async fn test_chaos_concurrent_with_service_registration() {
     let handler = Arc::new(IpcServiceHandler::new(registry.clone()));
 
     // Spawn concurrent health checks
-    let health_tasks: Vec<_> = (0..20).map(|_| {
-        let handler_clone = Arc::clone(&handler);
-        tokio::spawn(async move {
-            handler_clone.handle("health", json!({})).await
+    let health_tasks: Vec<_> = (0..20)
+        .map(|_| {
+            let handler_clone = Arc::clone(&handler);
+            tokio::spawn(async move { handler_clone.handle("health", json!({})).await })
         })
-    }).collect();
+        .collect();
 
     // Concurrently register services
-    let reg_tasks: Vec<_> = (0..10).map(|i| {
-        let registry_clone = Arc::clone(&registry);
-        tokio::spawn(async move {
-            let reg = registry_clone.write().await;
-            let endpoint = NativeEndpoint::UnixSocket(PathBuf::from(format!("/tmp/test-{}.sock", i)));
-            let _ = reg.register(
-                &format!("test-service-{}", i),
-                endpoint,
-                vec!["test".to_string()],
-            ).await;
+    let reg_tasks: Vec<_> = (0..10)
+        .map(|i| {
+            let registry_clone = Arc::clone(&registry);
+            tokio::spawn(async move {
+                let reg = registry_clone.write().await;
+                let endpoint =
+                    NativeEndpoint::UnixSocket(PathBuf::from(format!("/tmp/test-{}.sock", i)));
+                let _ = reg
+                    .register(&format!("test-service-{}", i), endpoint, vec!["test".to_string()])
+                    .await;
+            })
         })
-    }).collect();
+        .collect();
 
     // Wait for all
     let _ = futures::future::join_all(health_tasks).await;
@@ -388,7 +384,7 @@ async fn test_fault_very_long_method_name() {
 
     let long_method = "a".repeat(10000);
     let result = handler.handle(&long_method, json!({})).await;
-    
+
     assert!(result.is_err(), "Very long method should fail");
 }
 
@@ -405,7 +401,7 @@ async fn test_fault_method_with_special_characters() {
         "../../../etc/passwd",
         "health; rm -rf /",
     ];
-    
+
     for method in special_methods {
         let result = handler.handle(method, json!({})).await;
         // Should safely fail, not panic
@@ -418,13 +414,8 @@ async fn test_fault_unicode_method_name() {
     let registry = Arc::new(RwLock::new(ServiceRegistry::new()));
     let handler = IpcServiceHandler::new(registry);
 
-    let unicode_methods = vec![
-        "健康",
-        "🎵health",
-        "héalth",
-        "здоровье",
-    ];
-    
+    let unicode_methods = vec!["健康", "🎵health", "héalth", "здоровье"];
+
     for method in unicode_methods {
         let result = handler.handle(method, json!({})).await;
         assert!(result.is_err(), "Unicode method should fail: {}", method);
@@ -438,7 +429,7 @@ async fn test_fault_case_sensitivity() {
 
     // Methods are case-sensitive
     let variations = vec!["HEALTH", "Health", "HeAlTh"];
-    
+
     for method in variations {
         let result = handler.handle(method, json!({})).await;
         assert!(result.is_err(), "Case variation should fail: {}", method);
@@ -450,13 +441,8 @@ async fn test_fault_method_with_spaces() {
     let registry = Arc::new(RwLock::new(ServiceRegistry::new()));
     let handler = IpcServiceHandler::new(registry);
 
-    let space_methods = vec![
-        " health",
-        "health ",
-        " health ",
-        "hea lth",
-    ];
-    
+    let space_methods = vec![" health", "health ", " health ", "hea lth"];
+
     for method in space_methods {
         let result = handler.handle(method, json!({})).await;
         assert!(result.is_err(), "Method with spaces should fail: '{}'", method);
@@ -469,15 +455,17 @@ async fn test_fault_concurrent_errors() {
     let handler = Arc::new(IpcServiceHandler::new(registry));
 
     // Spawn many concurrent requests to nonexistent methods
-    let tasks: Vec<_> = (0..50).map(|i| {
-        let handler_clone = Arc::clone(&handler);
-        tokio::spawn(async move {
-            handler_clone.handle(&format!("nonexistent_{}", i), json!({})).await
+    let tasks: Vec<_> = (0..50)
+        .map(|i| {
+            let handler_clone = Arc::clone(&handler);
+            tokio::spawn(async move {
+                handler_clone.handle(&format!("nonexistent_{}", i), json!({})).await
+            })
         })
-    }).collect();
+        .collect();
 
     let results = futures::future::join_all(tasks).await;
-    
+
     // All should return errors (not panic)
     for (i, result) in results.iter().enumerate() {
         assert!(result.is_ok(), "Task {} should not panic", i);
@@ -525,32 +513,32 @@ async fn test_regression_rpc_methods() {
 async fn test_env_family_id_priority() {
     // Serialize with other env tests
     let _guard = ENV_TEST_LOCK.lock().unwrap();
-    
+
     // Clean slate first
     std::env::remove_var("FAMILY_ID");
     std::env::remove_var("SONGBIRD_FAMILY_ID");
     std::env::remove_var("NODE_FAMILY_ID");
-    
+
     // Test 1: Only FAMILY_ID set (highest priority)
     std::env::set_var("FAMILY_ID", "test_priority_1");
-    
+
     let registry = Arc::new(RwLock::new(ServiceRegistry::new()));
     let handler = IpcServiceHandler::new(registry);
-    
+
     let result = handler.handle("identity", json!({})).await.unwrap();
     assert_eq!(result["family_id"], "test_priority_1");
-    
+
     std::env::remove_var("FAMILY_ID");
-    
+
     // Test 2: Only SONGBIRD_FAMILY_ID set (middle priority)
     std::env::set_var("SONGBIRD_FAMILY_ID", "test_priority_2");
-    
+
     let registry2 = Arc::new(RwLock::new(ServiceRegistry::new()));
     let handler2 = IpcServiceHandler::new(registry2);
-    
+
     let result2 = handler2.handle("identity", json!({})).await.unwrap();
     assert_eq!(result2["family_id"], "test_priority_2");
-    
+
     // Clean up completely
     std::env::remove_var("FAMILY_ID");
     std::env::remove_var("SONGBIRD_FAMILY_ID");
@@ -561,18 +549,18 @@ async fn test_env_family_id_priority() {
 async fn test_env_family_id_default() {
     // Serialize with other env tests
     let _guard = ENV_TEST_LOCK.lock().unwrap();
-    
+
     // Clear all family ID env vars
     std::env::remove_var("FAMILY_ID");
     std::env::remove_var("SONGBIRD_FAMILY_ID");
     std::env::remove_var("NODE_FAMILY_ID");
-    
+
     let registry = Arc::new(RwLock::new(ServiceRegistry::new()));
     let handler = IpcServiceHandler::new(registry);
-    
+
     let result = handler.handle("identity", json!({})).await.unwrap();
     assert_eq!(result["family_id"], "nat0", "Should default to 'nat0'");
-    
+
     // Clean up (restore any vars that might have been set before test)
     std::env::remove_var("FAMILY_ID");
     std::env::remove_var("SONGBIRD_FAMILY_ID");

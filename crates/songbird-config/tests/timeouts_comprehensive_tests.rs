@@ -5,10 +5,15 @@
 
 use songbird_config::defaults::timeouts::*;
 use std::env;
+use std::sync::Mutex;
 use std::time::Duration;
+
+/// File-local mutex to serialize tests that modify process-wide env vars.
+static ENV_LOCK: Mutex<()> = Mutex::new(());
 
 #[test]
 fn test_standard_timeout_default_value() {
+    let _guard = ENV_LOCK.lock().unwrap();
     env::remove_var("SONGBIRD_TIMEOUT_MS");
     let timeout = standard_timeout();
     assert_eq!(timeout, Duration::from_millis(5000));
@@ -17,6 +22,7 @@ fn test_standard_timeout_default_value() {
 
 #[test]
 fn test_standard_timeout_from_env() {
+    let _guard = ENV_LOCK.lock().unwrap();
     env::set_var("SONGBIRD_TIMEOUT_MS", "3000");
     let timeout = standard_timeout();
     assert_eq!(timeout, Duration::from_millis(3000));
@@ -25,6 +31,7 @@ fn test_standard_timeout_from_env() {
 
 #[test]
 fn test_standard_timeout_invalid_env_uses_default() {
+    let _guard = ENV_LOCK.lock().unwrap();
     env::set_var("SONGBIRD_TIMEOUT_MS", "invalid");
     let timeout = standard_timeout();
     assert_eq!(timeout, Duration::from_millis(5000));
@@ -33,6 +40,7 @@ fn test_standard_timeout_invalid_env_uses_default() {
 
 #[test]
 fn test_long_timeout_default_value() {
+    let _guard = ENV_LOCK.lock().unwrap();
     env::remove_var("SONGBIRD_LONG_TIMEOUT_MS");
     let timeout = long_timeout();
     assert_eq!(timeout, Duration::from_millis(30000));
@@ -41,6 +49,7 @@ fn test_long_timeout_default_value() {
 
 #[test]
 fn test_long_timeout_from_env() {
+    let _guard = ENV_LOCK.lock().unwrap();
     env::set_var("SONGBIRD_LONG_TIMEOUT_MS", "45000");
     let timeout = long_timeout();
     assert_eq!(timeout, Duration::from_millis(45000));
@@ -49,6 +58,7 @@ fn test_long_timeout_from_env() {
 
 #[test]
 fn test_long_timeout_invalid_env_uses_default() {
+    let _guard = ENV_LOCK.lock().unwrap();
     env::set_var("SONGBIRD_LONG_TIMEOUT_MS", "not_a_number");
     let timeout = long_timeout();
     assert_eq!(timeout, Duration::from_millis(30000));
@@ -57,6 +67,7 @@ fn test_long_timeout_invalid_env_uses_default() {
 
 #[test]
 fn test_request_timeout_default_value() {
+    let _guard = ENV_LOCK.lock().unwrap();
     env::remove_var("SONGBIRD_REQUEST_TIMEOUT_MS");
     let timeout = request_timeout();
     assert_eq!(timeout, Duration::from_millis(30000));
@@ -64,6 +75,7 @@ fn test_request_timeout_default_value() {
 
 #[test]
 fn test_request_timeout_from_env() {
+    let _guard = ENV_LOCK.lock().unwrap();
     env::set_var("SONGBIRD_REQUEST_TIMEOUT_MS", "20000");
     let timeout = request_timeout();
     assert_eq!(timeout, Duration::from_millis(20000));
@@ -72,6 +84,7 @@ fn test_request_timeout_from_env() {
 
 #[test]
 fn test_cache_expiry_default_value() {
+    let _guard = ENV_LOCK.lock().unwrap();
     env::remove_var("SONGBIRD_CACHE_EXPIRY_MS");
     let expiry = cache_expiry();
     assert_eq!(expiry, Duration::from_millis(300_000));
@@ -81,6 +94,7 @@ fn test_cache_expiry_default_value() {
 #[test]
 #[serial_test::serial] // Prevent parallel test pollution
 fn test_cache_expiry_from_env() {
+    let _guard = ENV_LOCK.lock().unwrap();
     env::remove_var("SONGBIRD_CACHE_EXPIRY_MS"); // Clean first
     env::set_var("SONGBIRD_CACHE_EXPIRY_MS", "600000");
     let expiry = cache_expiry();
@@ -90,6 +104,7 @@ fn test_cache_expiry_from_env() {
 
 #[test]
 fn test_heartbeat_interval_default_value() {
+    let _guard = ENV_LOCK.lock().unwrap();
     env::remove_var("SONGBIRD_HEARTBEAT_INTERVAL_MS");
     let interval = heartbeat_interval();
     assert_eq!(interval, Duration::from_millis(60000));
@@ -98,6 +113,7 @@ fn test_heartbeat_interval_default_value() {
 
 #[test]
 fn test_heartbeat_interval_from_env() {
+    let _guard = ENV_LOCK.lock().unwrap();
     env::set_var("SONGBIRD_HEARTBEAT_INTERVAL_MS", "30000");
     let interval = heartbeat_interval();
     assert_eq!(interval, Duration::from_millis(30000));
@@ -106,6 +122,7 @@ fn test_heartbeat_interval_from_env() {
 
 #[test]
 fn test_discovery_timeout_default_value() {
+    let _guard = ENV_LOCK.lock().unwrap();
     env::remove_var("SONGBIRD_DISCOVERY_TIMEOUT_MS");
     let timeout = discovery_timeout();
     assert_eq!(timeout, Duration::from_millis(5000));
@@ -113,6 +130,7 @@ fn test_discovery_timeout_default_value() {
 
 #[test]
 fn test_discovery_timeout_from_env() {
+    let _guard = ENV_LOCK.lock().unwrap();
     env::set_var("SONGBIRD_DISCOVERY_TIMEOUT_MS", "8000");
     let timeout = discovery_timeout();
     assert_eq!(timeout, Duration::from_millis(8000));
@@ -121,6 +139,7 @@ fn test_discovery_timeout_from_env() {
 
 #[test]
 fn test_connection_timeout_default_value() {
+    let _guard = ENV_LOCK.lock().unwrap();
     env::remove_var("SONGBIRD_CONNECTION_TIMEOUT_MS");
     env::remove_var("SONGBIRD_ENV");
     let timeout = connection_timeout();
@@ -134,6 +153,7 @@ fn test_connection_timeout_default_value() {
 
 #[test]
 fn test_connection_timeout_from_env() {
+    let _guard = ENV_LOCK.lock().unwrap();
     env::set_var("SONGBIRD_CONNECTION_TIMEOUT_MS", "15000");
     let timeout = connection_timeout();
     assert_eq!(timeout, Duration::from_millis(15000));
@@ -143,6 +163,7 @@ fn test_connection_timeout_from_env() {
 
 #[test]
 fn test_retry_backoff_default_value() {
+    let _guard = ENV_LOCK.lock().unwrap();
     env::remove_var("SONGBIRD_RETRY_BACKOFF_MS");
     let backoff = retry_backoff();
     assert_eq!(backoff, Duration::from_millis(1000));
@@ -151,6 +172,7 @@ fn test_retry_backoff_default_value() {
 
 #[test]
 fn test_retry_backoff_from_env() {
+    let _guard = ENV_LOCK.lock().unwrap();
     env::set_var("SONGBIRD_RETRY_BACKOFF_MS", "2000");
     let backoff = retry_backoff();
     assert_eq!(backoff, Duration::from_millis(2000));
@@ -159,6 +181,7 @@ fn test_retry_backoff_from_env() {
 
 #[test]
 fn test_operation_timeout_with_default() {
+    let _guard = ENV_LOCK.lock().unwrap();
     env::remove_var("SONGBIRD_CUSTOM_TIMEOUT_MS");
     let timeout = operation_timeout("CUSTOM", Duration::from_secs(10));
     assert_eq!(timeout.as_secs(), 10);
@@ -166,6 +189,7 @@ fn test_operation_timeout_with_default() {
 
 #[test]
 fn test_operation_timeout_from_env() {
+    let _guard = ENV_LOCK.lock().unwrap();
     env::set_var("SONGBIRD_CUSTOM_TIMEOUT_MS", "15000");
     let timeout = operation_timeout("CUSTOM", Duration::from_secs(10));
     assert_eq!(timeout, Duration::from_millis(15000));
@@ -174,6 +198,7 @@ fn test_operation_timeout_from_env() {
 
 #[test]
 fn test_operation_timeout_lowercase_operation_name() {
+    let _guard = ENV_LOCK.lock().unwrap();
     env::set_var("SONGBIRD_MYOP_TIMEOUT_MS", "7000");
     let timeout = operation_timeout("myop", Duration::from_secs(5));
     assert_eq!(timeout, Duration::from_millis(7000));
@@ -182,6 +207,7 @@ fn test_operation_timeout_lowercase_operation_name() {
 
 #[test]
 fn test_timeout_relationships() {
+    let _guard = ENV_LOCK.lock().unwrap();
     env::remove_var("SONGBIRD_TIMEOUT_MS");
     env::remove_var("SONGBIRD_LONG_TIMEOUT_MS");
 
@@ -193,6 +219,7 @@ fn test_timeout_relationships() {
 
 #[test]
 fn test_all_timeouts_are_positive() {
+    let _guard = ENV_LOCK.lock().unwrap();
     env::remove_var("SONGBIRD_TIMEOUT_MS");
     env::remove_var("SONGBIRD_LONG_TIMEOUT_MS");
     env::remove_var("SONGBIRD_REQUEST_TIMEOUT_MS");
@@ -214,6 +241,7 @@ fn test_all_timeouts_are_positive() {
 
 #[test]
 fn test_timeouts_are_reasonable_for_production() {
+    let _guard = ENV_LOCK.lock().unwrap();
     env::remove_var("SONGBIRD_TIMEOUT_MS");
     env::remove_var("SONGBIRD_LONG_TIMEOUT_MS");
     env::remove_var("SONGBIRD_CONNECTION_TIMEOUT_MS");
@@ -234,6 +262,7 @@ fn test_timeouts_are_reasonable_for_production() {
 
 #[test]
 fn test_cache_expiry_is_longer_than_timeouts() {
+    let _guard = ENV_LOCK.lock().unwrap();
     env::remove_var("SONGBIRD_CACHE_EXPIRY_MS");
     env::remove_var("SONGBIRD_TIMEOUT_MS");
     env::remove_var("SONGBIRD_LONG_TIMEOUT_MS");
@@ -248,6 +277,7 @@ fn test_cache_expiry_is_longer_than_timeouts() {
 
 #[test]
 fn test_heartbeat_interval_reasonable() {
+    let _guard = ENV_LOCK.lock().unwrap();
     env::remove_var("SONGBIRD_HEARTBEAT_INTERVAL_MS");
     let interval = heartbeat_interval();
 
@@ -257,6 +287,7 @@ fn test_heartbeat_interval_reasonable() {
 
 #[test]
 fn test_retry_backoff_less_than_standard_timeout() {
+    let _guard = ENV_LOCK.lock().unwrap();
     env::remove_var("SONGBIRD_RETRY_BACKOFF_MS");
     env::remove_var("SONGBIRD_TIMEOUT_MS");
 
@@ -268,6 +299,7 @@ fn test_retry_backoff_less_than_standard_timeout() {
 
 #[test]
 fn test_env_var_zero_value() {
+    let _guard = ENV_LOCK.lock().unwrap();
     env::set_var("SONGBIRD_TIMEOUT_MS", "0");
     let timeout = standard_timeout();
     assert_eq!(timeout, Duration::from_millis(0));
@@ -276,6 +308,7 @@ fn test_env_var_zero_value() {
 
 #[test]
 fn test_env_var_very_large_value() {
+    let _guard = ENV_LOCK.lock().unwrap();
     env::set_var("SONGBIRD_TIMEOUT_MS", "999999");
     let timeout = standard_timeout();
     assert_eq!(timeout, Duration::from_millis(999_999));
@@ -284,6 +317,7 @@ fn test_env_var_very_large_value() {
 
 #[test]
 fn test_env_var_negative_value_uses_default() {
+    let _guard = ENV_LOCK.lock().unwrap();
     env::set_var("SONGBIRD_TIMEOUT_MS", "-1000");
     let timeout = standard_timeout();
     assert_eq!(timeout, Duration::from_millis(5000)); // Uses default
@@ -292,6 +326,7 @@ fn test_env_var_negative_value_uses_default() {
 
 #[test]
 fn test_env_var_empty_string_uses_default() {
+    let _guard = ENV_LOCK.lock().unwrap();
     env::set_var("SONGBIRD_TIMEOUT_MS", "");
     let timeout = standard_timeout();
     assert_eq!(timeout, Duration::from_millis(5000));
@@ -300,6 +335,7 @@ fn test_env_var_empty_string_uses_default() {
 
 #[test]
 fn test_multiple_timeout_calls_consistent() {
+    let _guard = ENV_LOCK.lock().unwrap();
     env::remove_var("SONGBIRD_TIMEOUT_MS");
 
     let timeout1 = standard_timeout();
@@ -312,6 +348,7 @@ fn test_multiple_timeout_calls_consistent() {
 
 #[test]
 fn test_operation_timeout_with_special_characters() {
+    let _guard = ENV_LOCK.lock().unwrap();
     env::set_var("SONGBIRD_MY_SPECIAL_OP_TIMEOUT_MS", "12000");
     let _timeout = operation_timeout("MY-SPECIAL-OP", Duration::from_secs(5));
     // Should normalize to MY_SPECIAL_OP but env var has MY_SPECIAL_OP
@@ -321,6 +358,7 @@ fn test_operation_timeout_with_special_characters() {
 
 #[test]
 fn test_all_timeouts_concurrent_access() {
+    let _guard = ENV_LOCK.lock().unwrap();
     // Simulate concurrent access by calling all functions rapidly
     for _ in 0..10 {
         let _ = standard_timeout();
@@ -336,6 +374,7 @@ fn test_all_timeouts_concurrent_access() {
 
 #[test]
 fn test_discovery_timeout_equals_standard_by_default() {
+    let _guard = ENV_LOCK.lock().unwrap();
     env::remove_var("SONGBIRD_TIMEOUT_MS");
     env::remove_var("SONGBIRD_DISCOVERY_TIMEOUT_MS");
 
@@ -347,6 +386,7 @@ fn test_discovery_timeout_equals_standard_by_default() {
 
 #[test]
 fn test_request_timeout_equals_long_by_default() {
+    let _guard = ENV_LOCK.lock().unwrap();
     // Clear all timeout env vars to ensure defaults
     env::remove_var("SONGBIRD_LONG_TIMEOUT_MS");
     env::remove_var("SONGBIRD_REQUEST_TIMEOUT_MS");
@@ -363,6 +403,7 @@ fn test_request_timeout_equals_long_by_default() {
 
 #[test]
 fn test_operation_timeout_with_very_long_name() {
+    let _guard = ENV_LOCK.lock().unwrap();
     let very_long_name = "A".repeat(100);
     env::set_var(format!("SONGBIRD_{}_TIMEOUT_MS", very_long_name.to_uppercase()), "5000");
     let timeout = operation_timeout(&very_long_name, Duration::from_secs(1));
@@ -372,6 +413,7 @@ fn test_operation_timeout_with_very_long_name() {
 
 #[test]
 fn test_timeout_precision() {
+    let _guard = ENV_LOCK.lock().unwrap();
     env::set_var("SONGBIRD_TIMEOUT_MS", "1");
     let timeout = standard_timeout();
     assert_eq!(timeout.as_millis(), 1);

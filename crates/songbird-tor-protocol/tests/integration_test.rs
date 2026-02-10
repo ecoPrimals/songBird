@@ -1,27 +1,25 @@
 //! Integration tests for Tor protocol
 
-use songbird_tor_protocol::{Consensus, BeardogCryptoClient, TorConnection};
 use songbird_tor_protocol::directory::RelayInfo;
+use songbird_tor_protocol::{BeardogCryptoClient, Consensus, TorConnection};
 
 #[tokio::test]
 async fn test_fetch_consensus_live() {
     // This test requires network access
     let beardog = BeardogCryptoClient::from_env().expect("BearDog client");
-    
+
     let result = Consensus::fetch(&beardog).await;
-    
+
     // Note: This will fail if no network, but that's OK for integration test
     match result {
         Ok(consensus) => {
             assert!(!consensus.relays.is_empty(), "Consensus should have relays");
             assert!(consensus.is_valid(), "Consensus should be valid");
-            
+
             // Check we can find some guards
-            let guards: Vec<_> = consensus.relays.iter()
-                .filter(|r| r.is_guard())
-                .collect();
+            let guards: Vec<_> = consensus.relays.iter().filter(|r| r.is_guard()).collect();
             assert!(!guards.is_empty(), "Should have at least one guard");
-            
+
             println!("✅ Fetched {} relays ({} guards)", consensus.relays.len(), guards.len());
         }
         Err(e) => {
@@ -38,17 +36,17 @@ fn test_relay_selection_empty() {
         valid_until: std::time::SystemTime::now() + std::time::Duration::from_secs(7200),
         relays: vec![],
     };
-    
+
     let result = consensus.select_path();
     assert!(result.is_err(), "Should fail with empty relay list");
 }
 
 #[test]
 fn test_consensus_freshness() {
-    use std::time::{SystemTime, Duration};
-    
+    use std::time::{Duration, SystemTime};
+
     let now = SystemTime::now();
-    
+
     // Fresh consensus
     let fresh = Consensus {
         valid_after: now - Duration::from_secs(1800),
@@ -58,7 +56,7 @@ fn test_consensus_freshness() {
     };
     assert!(fresh.is_fresh());
     assert!(fresh.is_valid());
-    
+
     // Stale but valid consensus
     let stale = Consensus {
         valid_after: now - Duration::from_secs(3600),
@@ -68,7 +66,7 @@ fn test_consensus_freshness() {
     };
     assert!(!stale.is_fresh());
     assert!(stale.is_valid());
-    
+
     // Invalid consensus
     let invalid = Consensus {
         valid_after: now - Duration::from_secs(7200),
@@ -89,7 +87,7 @@ async fn test_connect_to_relay() {
     use std::net::IpAddr;
 
     let beardog = BeardogCryptoClient::from_env().expect("BearDog client");
-    
+
     // Fetch consensus to get a real relay
     let consensus = match Consensus::fetch(&beardog).await {
         Ok(c) => c,
@@ -100,17 +98,18 @@ async fn test_connect_to_relay() {
     };
 
     // Find a guard relay to connect to
-    let guard = consensus.relays.iter()
+    let guard = consensus
+        .relays
+        .iter()
         .filter(|r| r.is_guard() && r.flags.contains(RelayFlags::RUNNING))
         .next()
         .expect("Should have at least one guard relay");
 
-    println!("🔌 Connecting to guard: {} at {}:{}", 
-             guard.nickname, guard.address, guard.or_port);
+    println!("🔌 Connecting to guard: {} at {}:{}", guard.nickname, guard.address, guard.or_port);
 
     // Create connection
     let mut connection = TorConnection::new(guard.clone());
-    
+
     // Try to connect
     match connection.connect().await {
         Ok(()) => {
@@ -132,7 +131,7 @@ async fn test_build_circuit() {
     use songbird_tor_protocol::circuit::{CircuitManager, CircuitPurpose};
 
     let beardog = BeardogCryptoClient::from_env().expect("BearDog client");
-    
+
     // Fetch consensus
     let consensus = match Consensus::fetch(&beardog).await {
         Ok(c) => c,
@@ -151,17 +150,17 @@ async fn test_build_circuit() {
 
     // Create circuit manager
     let manager = CircuitManager::new(beardog, consensus);
-    
+
     // Try to build a circuit
     match manager.build_circuit(CircuitPurpose::General).await {
         Ok(circuit_id) => {
             println!("✅ Circuit {} built successfully!", circuit_id);
-            
+
             // Verify circuit has 3 hops
             let circuit = manager.get_circuit(circuit_id).expect("Circuit should exist");
             assert_eq!(circuit.hop_count(), 3, "Circuit should have 3 hops");
             assert!(circuit.is_complete(), "Circuit should be complete");
-            
+
             // Close circuit
             manager.close_circuit(circuit_id).await.expect("Should close circuit");
         }

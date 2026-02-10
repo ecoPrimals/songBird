@@ -35,7 +35,9 @@ impl OnionStorage {
     /// ```
     pub fn open<P: AsRef<Path>>(path: P) -> Result<Self> {
         let db = sled::open(path)?;
-        Ok(Self { db: Arc::new(db) })
+        Ok(Self {
+            db: Arc::new(db),
+        })
     }
 
     /// Create in-memory storage (for testing)
@@ -43,7 +45,9 @@ impl OnionStorage {
     pub fn memory() -> Result<Self> {
         let config = sled::Config::new().temporary(true);
         let db = config.open()?;
-        Ok(Self { db: Arc::new(db) })
+        Ok(Self {
+            db: Arc::new(db),
+        })
     }
 
     /// Load or generate onion identity via BearDog (TRUE PRIMAL)
@@ -231,9 +235,7 @@ mod tests {
         assert_eq!(retrieved.actual_addr, peer.actual_addr);
 
         // Update last seen
-        storage
-            .update_peer_last_seen("test.onion", 9999999999)
-            .unwrap();
+        storage.update_peer_last_seen("test.onion", 9999999999).unwrap();
         let updated = storage.get_peer("test.onion").unwrap().unwrap();
         assert_eq!(updated.last_seen, 9999999999);
 

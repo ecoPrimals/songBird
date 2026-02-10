@@ -177,11 +177,12 @@ impl AnonymousDiscoveryMessage {
         let protocols =
             primary_endpoint.map_or_else(|| vec!["https".to_string()], |e| e.protocols.clone());
 
+        let session_id = Self::generate_session_id_from_node(&node_id);
         Self {
             version: "3.0".to_string(),
-            node_id: Some(node_id.clone()),
+            node_id: Some(node_id),
             node_name: Some(node_name),
-            session_id: Self::generate_session_id_from_node(&node_id),
+            session_id,
             endpoints: Some(endpoints),
             capabilities,
             protocols,
@@ -300,7 +301,7 @@ impl AnonymousDiscoveryMessage {
             if self.node_name.is_none() {
                 return Err("v3.0 requires node_name".to_string());
             }
-            if self.endpoints.is_none() || self.endpoints.as_ref().unwrap().is_empty() {
+            if self.endpoints.as_ref().is_none_or(Vec::is_empty) {
                 return Err("v3.0 requires at least one endpoint".to_string());
             }
         }

@@ -157,9 +157,10 @@ impl Default for SecurityProviderConfig {
 }
 
 /// Multi-factor authentication method
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub enum MfaMethod {
     /// Time-based One-Time Password
+    #[default]
     Totp,
     /// SMS verification
     Sms,
@@ -167,12 +168,6 @@ pub enum MfaMethod {
     Email,
     /// Hardware token
     Hardware,
-}
-
-impl Default for MfaMethod {
-    fn default() -> Self {
-        Self::Totp
-    }
 }
 
 /// MFA settings

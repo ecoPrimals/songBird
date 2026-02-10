@@ -191,8 +191,9 @@ async fn start_test_server() -> Result<(u16, tokio::task::JoinHandle<()>)> {
             .await;
     });
 
-    // Give the server a moment to start
-    tokio::time::sleep(Duration::from_millis(50)).await;
+    // Yield to let the spawned server task start accepting.
+    // The listener is already bound, so connections can be accepted immediately.
+    tokio::task::yield_now().await;
 
     Ok((port, handle))
 }

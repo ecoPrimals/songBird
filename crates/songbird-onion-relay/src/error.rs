@@ -10,7 +10,9 @@ pub enum OnionRelayError {
     StunFailed(String),
 
     #[error("Hole punch failed after {attempts} attempts")]
-    HolePunchFailed { attempts: u32 },
+    HolePunchFailed {
+        attempts: u32,
+    },
 
     #[error("Signaling timeout: no response from peer")]
     SignalingTimeout,

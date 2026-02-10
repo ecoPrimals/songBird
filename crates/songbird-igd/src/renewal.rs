@@ -130,10 +130,7 @@ impl RenewalManager {
         let mappings = self.mappings.read().await;
         for mapping in mappings.iter() {
             if mapping.active {
-                match gateway
-                    .unmap_port(mapping.external_port, mapping.protocol.as_str())
-                    .await
-                {
+                match gateway.unmap_port(mapping.external_port, mapping.protocol.as_str()).await {
                     Ok(()) => {
                         info!(
                             "Cleaned up port mapping: {}:{}",
@@ -186,4 +183,3 @@ mod tests {
         assert_eq!(manager.get_mappings().await.len(), 0);
     }
 }
-

@@ -36,9 +36,11 @@
 //! ```
 
 mod application_data;
+mod client_finished;
 mod core;
 mod extensions;
 mod handshake_flow;
+mod post_handshake;
 mod record_io;
 mod transcript;
 

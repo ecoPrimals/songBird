@@ -14,6 +14,7 @@ use tracing::{debug, info};
 /// Connect to onion services
 ///
 /// **Status**: Phase 4 - Complete implementation
+#[derive(Default)]
 pub struct OnionConnector {
     beardog: Option<Arc<BeardogCryptoClient>>,
 }
@@ -29,7 +30,9 @@ impl OnionConnector {
     /// Create new onion connector (standalone mode - testing only)
     #[cfg(feature = "standalone")]
     pub fn new_standalone() -> Self {
-        Self { beardog: None }
+        Self {
+            beardog: None,
+        }
     }
 
     /// Connect to an onion address (via BearDog)
@@ -40,19 +43,13 @@ impl OnionConnector {
     ///
     /// # Returns
     /// Established encrypted connection
-    pub async fn connect(
-        &self,
-        onion_address: &str,
-        port: u16,
-    ) -> Result<OnionConnection> {
-        let beardog = self.beardog.as_ref()
+    pub async fn connect(&self, onion_address: &str, port: u16) -> Result<OnionConnection> {
+        let beardog = self
+            .beardog
+            .as_ref()
             .ok_or_else(|| OnionError::ConfigError("BearDog client required".into()))?;
 
-        info!(
-            onion_address = onion_address,
-            port = port,
-            "Connecting to onion service"
-        );
+        info!(onion_address = onion_address, port = port, "Connecting to onion service");
 
         // For Phase 1: Direct TCP connection (assumes IP known via rendezvous)
         // For Phase 2: Will use BeaconMesh for address resolution
@@ -69,7 +66,7 @@ impl OnionConnector {
         let key_exchange = KeyExchangeMessage::new(*our_ephemeral.public_bytes(), [0u8; 24]);
         let mut send_buf = vec![MessageType::KeyExchange as u8];
         send_buf.extend_from_slice(&key_exchange.encode());
-        
+
         let mut stream = stream;
         stream.write_all(&send_buf).await?;
 
@@ -91,8 +88,8 @@ impl OnionConnector {
         debug!("Received key exchange response");
 
         // Derive shared secret via BearDog
-        let shared_secret = our_ephemeral
-            .derive_shared_secret_via_beardog(beardog, &peer_key_exchange.pubkey)?;
+        let shared_secret =
+            our_ephemeral.derive_shared_secret_via_beardog(beardog, &peer_key_exchange.pubkey)?;
 
         info!("Handshake complete - connection established via BearDog crypto");
 
@@ -102,12 +99,6 @@ impl OnionConnector {
             sequence: 0,
             beardog: Arc::clone(beardog),
         })
-    }
-}
-
-impl Default for OnionConnector {
-    fn default() -> Self {
-        Self { beardog: None }
     }
 }
 
@@ -126,9 +117,7 @@ impl OnionConnection {
         let mut nonce = [0u8; 12];
         nonce[..8].copy_from_slice(&self.sequence.to_be_bytes());
 
-        let encrypted = self
-            .beardog
-            .chacha20_poly1305_encrypt(&self.session_key, &nonce, data)?;
+        let encrypted = self.beardog.chacha20_poly1305_encrypt(&self.session_key, &nonce, data)?;
 
         debug!(
             sequence = self.sequence,
@@ -153,10 +142,7 @@ impl OnionConnection {
 
         let msg_type = MessageType::try_from(type_buf[0])?;
         if msg_type != MessageType::Data {
-            return Err(OnionError::InvalidMessage(format!(
-                "Expected Data, got {:?}",
-                msg_type
-            )));
+            return Err(OnionError::InvalidMessage(format!("Expected Data, got {:?}", msg_type)));
         }
 
         // Read sequence (8 bytes)
@@ -172,9 +158,8 @@ impl OnionConnection {
         let mut nonce = [0u8; 12];
         nonce[..8].copy_from_slice(&msg_sequence.to_be_bytes());
 
-        let plaintext = self
-            .beardog
-            .chacha20_poly1305_decrypt(&self.session_key, &nonce, &encrypted)?;
+        let plaintext =
+            self.beardog.chacha20_poly1305_decrypt(&self.session_key, &nonce, &encrypted)?;
 
         debug!(
             sequence = msg_sequence,

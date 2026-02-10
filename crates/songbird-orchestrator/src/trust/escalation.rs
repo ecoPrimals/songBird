@@ -234,7 +234,7 @@ impl TrustEscalationManager {
 
         // Escalate trust level
         relationship.trust_level = TrustLevel::CapabilityVerified;
-        relationship.verified_capabilities = proof.capabilities.clone();
+        relationship.verified_capabilities.clone_from(&proof.capabilities);
         relationship.last_verified_at = SystemTime::now();
         relationship.expires_at =
             SystemTime::now() + std::time::Duration::from_secs(self.trust_timeouts.capability);

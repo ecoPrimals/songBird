@@ -107,19 +107,20 @@ impl ConnectionManager {
     fn infer_primal_type(name: &str) -> PrimalType {
         let name_lower = name.to_lowercase();
 
-        if name_lower.contains("beardog")
-            || name_lower.contains("security")
+        // Capability terms first, known provider names as secondary hints
+        if name_lower.contains("security")
             || name_lower.contains("auth")
+            || name_lower.contains("beardog")
         {
             PrimalType::Security
-        } else if name_lower.contains("toadstool")
-            || name_lower.contains("compute")
+        } else if name_lower.contains("compute")
             || name_lower.contains("worker")
+            || name_lower.contains("toadstool")
         {
             PrimalType::Compute
-        } else if name_lower.contains("nestgate")
-            || name_lower.contains("storage")
+        } else if name_lower.contains("storage")
             || name_lower.contains("data")
+            || name_lower.contains("nestgate")
         {
             PrimalType::Storage
         } else if name_lower.contains("squirrel")

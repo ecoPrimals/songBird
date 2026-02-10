@@ -89,8 +89,9 @@ impl BearDogBirdSongProvider {
         // Connect to BearDog Unix socket
         let mut stream = UnixStream::connect(&self.socket_path).await.map_err(|e| {
             crate::error::LineageRelayError::BirdSongError(format!(
-                "Failed to connect to BearDog at {:?}: {}",
-                self.socket_path, e
+                "Failed to connect to BearDog at {}: {}",
+                self.socket_path.display(),
+                e
             ))
         })?;
 
@@ -193,9 +194,7 @@ impl BirdSongCrypto for BearDogBirdSongProvider {
         });
 
         // Call birdsong.decrypt
-        let result = if let Ok(r) = self.call_beardog("birdsong.decrypt", params).await {
-            r
-        } else {
+        let Ok(result) = self.call_beardog("birdsong.decrypt", params).await else {
             // Decryption failure might just mean different family (noise)
             debug!("🔇 BearDog decrypt failed - likely different family (noise)");
             return Ok(None);
@@ -231,10 +230,10 @@ impl BirdSongCrypto for BearDogBirdSongProvider {
 // Replaces MockRelayAuthority in all production constructors.
 // ═══════════════════════════════════════════════════════════════════
 
-/// Production relay authority backed by BearDog
+/// Production relay authority backed by `BearDog`
 ///
-/// Delegates lineage-based relay authorization to BearDog via Unix socket
-/// JSON-RPC. No hardcoded lineage graphs -- BearDog owns the truth.
+/// Delegates lineage-based relay authorization to `BearDog` via Unix socket
+/// JSON-RPC. No hardcoded lineage graphs -- `BearDog` owns the truth.
 ///
 /// ## Deep Debt Compliance
 ///
@@ -247,16 +246,18 @@ pub struct BearDogRelayAuthority {
 }
 
 impl BearDogRelayAuthority {
-    /// Create new BearDog relay authority
+    /// Create new `BearDog` relay authority
     ///
-    /// Discovers BearDog socket path at runtime:
+    /// Discovers `BearDog` socket path at runtime:
     /// 1. `BEARDOG_SOCKET` environment variable
     /// 2. XDG runtime dir: `$XDG_RUNTIME_DIR/beardog/beardog.sock`
     /// 3. Fallback: `/tmp/beardog.sock`
     pub fn new() -> Self {
         let socket_path = Self::discover_socket_path();
         info!("BearDog relay authority created (socket: {:?})", socket_path);
-        Self { socket_path }
+        Self {
+            socket_path,
+        }
     }
 
     /// Create with explicit socket path
@@ -266,7 +267,7 @@ impl BearDogRelayAuthority {
         }
     }
 
-    /// Discover BearDog socket path at runtime
+    /// Discover `BearDog` socket path at runtime
     fn discover_socket_path() -> PathBuf {
         // 1. Environment variable (highest priority)
         if let Ok(path) = std::env::var("BEARDOG_SOCKET") {
@@ -285,7 +286,7 @@ impl BearDogRelayAuthority {
         PathBuf::from("/tmp/beardog.sock")
     }
 
-    /// Call BearDog JSON-RPC method via Unix socket
+    /// Call `BearDog` JSON-RPC method via Unix socket
     async fn call_beardog(
         &self,
         method: &str,
@@ -293,8 +294,9 @@ impl BearDogRelayAuthority {
     ) -> Result<serde_json::Value> {
         let mut stream = UnixStream::connect(&self.socket_path).await.map_err(|e| {
             crate::error::LineageRelayError::BirdSongError(format!(
-                "Failed to connect to BearDog at {:?}: {}",
-                self.socket_path, e
+                "Failed to connect to BearDog at {}: {}",
+                self.socket_path.display(),
+                e
             ))
         })?;
 
@@ -335,7 +337,7 @@ impl BearDogRelayAuthority {
         })
     }
 
-    /// Parse masking level from BearDog response string
+    /// Parse masking level from `BearDog` response string
     fn parse_masking_level(level: Option<&str>) -> MaskingLevel {
         match level.unwrap_or("full_visibility") {
             "none" => MaskingLevel::None,
@@ -362,10 +364,7 @@ impl RelayAuthority for BearDogRelayAuthority {
         relay_node: &NodeId,
         requester: &NodeId,
     ) -> Result<RelayAuthorization> {
-        debug!(
-            "Authorizing relay: {} -> {} via BearDog",
-            relay_node.0, requester.0
-        );
+        debug!("Authorizing relay: {} -> {} via BearDog", relay_node.0, requester.0);
 
         let params = serde_json::json!({
             "relay_node": relay_node.0,
@@ -374,19 +373,14 @@ impl RelayAuthority for BearDogRelayAuthority {
 
         match self.call_beardog("lineage.authorize_relay", params).await {
             Ok(result) => {
-                let authorized = result
-                    .get("authorized")
-                    .and_then(|v| v.as_bool())
-                    .unwrap_or(false);
+                let authorized =
+                    result.get("authorized").and_then(serde_json::Value::as_bool).unwrap_or(false);
 
-                let masking_level = Self::parse_masking_level(
-                    result.get("masking_level").and_then(|v| v.as_str())
-                );
+                let masking_level =
+                    Self::parse_masking_level(result.get("masking_level").and_then(|v| v.as_str()));
 
-                let ttl = result
-                    .get("ttl_seconds")
-                    .and_then(|v| v.as_u64())
-                    .unwrap_or(300);
+                let ttl =
+                    result.get("ttl_seconds").and_then(serde_json::Value::as_u64).unwrap_or(300);
 
                 let audit_token = result
                     .get("audit_token")
@@ -432,9 +426,8 @@ impl RelayAuthority for BearDogRelayAuthority {
 
         match self.call_beardog("lineage.determine_masking", params).await {
             Ok(result) => {
-                let level = Self::parse_masking_level(
-                    result.get("masking_level").and_then(|v| v.as_str())
-                );
+                let level =
+                    Self::parse_masking_level(result.get("masking_level").and_then(|v| v.as_str()));
                 Ok(level)
             }
             Err(_) => {

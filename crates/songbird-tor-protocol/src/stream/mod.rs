@@ -97,28 +97,35 @@ impl StreamManager {
 
     /// Allocate new stream ID
     pub fn allocate_stream(&self) -> Result<u16> {
-        let mut next_id = self.next_stream_id.write()
+        let mut next_id = self
+            .next_stream_id
+            .write()
             .map_err(|_| Error::Protocol("Failed to acquire stream ID lock".to_string()))?;
-        
+
         let stream_id = *next_id;
         *next_id = next_id.wrapping_add(1);
-        
+
         // Create stream
         let stream = Stream::new(stream_id, self.circuit_id);
-        
+
         // Store stream
-        let mut streams = self.streams.write()
+        let mut streams = self
+            .streams
+            .write()
             .map_err(|_| Error::Protocol("Failed to acquire streams lock".to_string()))?;
         streams.insert(stream_id, stream);
-        
+
         Ok(stream_id)
     }
 
     /// Get stream
     pub fn get_stream(&self, stream_id: u16) -> Result<Stream> {
-        let streams = self.streams.read()
+        let streams = self
+            .streams
+            .read()
             .map_err(|_| Error::Protocol("Failed to acquire streams lock".to_string()))?;
-        streams.get(&stream_id)
+        streams
+            .get(&stream_id)
             .cloned()
             .ok_or_else(|| Error::Stream(format!("Stream {} not found", stream_id)))
     }
@@ -128,19 +135,24 @@ impl StreamManager {
     where
         F: FnOnce(&mut Stream),
     {
-        let mut streams = self.streams.write()
+        let mut streams = self
+            .streams
+            .write()
             .map_err(|_| Error::Protocol("Failed to acquire streams lock".to_string()))?;
-        
-        let stream = streams.get_mut(&stream_id)
+
+        let stream = streams
+            .get_mut(&stream_id)
             .ok_or_else(|| Error::Stream(format!("Stream {} not found", stream_id)))?;
-        
+
         f(stream);
         Ok(())
     }
 
     /// Remove stream
     pub fn remove_stream(&self, stream_id: u16) -> Result<()> {
-        let mut streams = self.streams.write()
+        let mut streams = self
+            .streams
+            .write()
             .map_err(|_| Error::Protocol("Failed to acquire streams lock".to_string()))?;
         streams.remove(&stream_id);
         Ok(())
@@ -148,9 +160,7 @@ impl StreamManager {
 
     /// Get stream count
     pub fn stream_count(&self) -> usize {
-        self.streams.read()
-            .map(|s| s.len())
-            .unwrap_or(0)
+        self.streams.read().map(|s| s.len()).unwrap_or(0)
     }
 }
 
@@ -250,10 +260,7 @@ impl StreamProtocol {
     /// * Ok if connected, Error otherwise
     pub fn parse_connected(cell: &RelayCell) -> Result<()> {
         if cell.command != RelayCommand::Connected {
-            return Err(Error::Protocol(format!(
-                "Expected CONNECTED, got {:?}",
-                cell.command
-            )));
+            return Err(Error::Protocol(format!("Expected CONNECTED, got {:?}", cell.command)));
         }
         Ok(())
     }
@@ -267,16 +274,13 @@ impl StreamProtocol {
     /// * Reason code for closure
     pub fn parse_end(cell: &RelayCell) -> Result<u8> {
         if cell.command != RelayCommand::End {
-            return Err(Error::Protocol(format!(
-                "Expected END, got {:?}",
-                cell.command
-            )));
+            return Err(Error::Protocol(format!("Expected END, got {:?}", cell.command)));
         }
-        
+
         if cell.data.is_empty() {
             return Ok(0); // Normal close
         }
-        
+
         Ok(cell.data[0])
     }
 }
@@ -298,16 +302,16 @@ mod tests {
     fn test_stream_flow_control() {
         let mut stream = Stream::new(1, 1);
         stream.mark_connected(); // Must be open to send
-        
+
         assert!(stream.can_send());
-        
+
         stream.decrease_send_window(100);
         assert_eq!(stream.send_window, 400);
         assert!(stream.can_send());
-        
+
         stream.increase_send_window(50);
         assert_eq!(stream.send_window, 450);
-        
+
         // Exhaust window
         stream.decrease_send_window(450);
         assert_eq!(stream.send_window, 0);
@@ -317,12 +321,12 @@ mod tests {
     #[test]
     fn test_stream_state_transitions() {
         let mut stream = Stream::new(1, 1);
-        
+
         assert_eq!(stream.state, StreamState::Connecting);
-        
+
         stream.mark_connected();
         assert_eq!(stream.state, StreamState::Open);
-        
+
         stream.mark_closed();
         assert_eq!(stream.state, StreamState::Closed);
     }
@@ -330,14 +334,14 @@ mod tests {
     #[test]
     fn test_stream_manager() {
         let manager = StreamManager::new(1);
-        
+
         let stream_id = manager.allocate_stream().expect("Failed to allocate");
         assert_eq!(stream_id, 1);
         assert_eq!(manager.stream_count(), 1);
-        
+
         let stream = manager.get_stream(stream_id).expect("Stream not found");
         assert_eq!(stream.stream_id, 1);
-        
+
         manager.remove_stream(stream_id).expect("Failed to remove");
         assert_eq!(manager.stream_count(), 0);
     }

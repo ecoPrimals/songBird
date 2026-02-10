@@ -32,7 +32,7 @@ pub struct ClientHello {
     /// List of cipher suites supported by client
     pub cipher_suites: Vec<u16>,
 
-    /// Legacy compression methods (always [0] in TLS 1.3)
+    /// Legacy compression methods (always `[0]` in TLS 1.3)
     pub legacy_compression_methods: Vec<u8>,
 
     /// Extensions (required - must include supported_versions and key_share)

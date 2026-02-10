@@ -41,7 +41,9 @@ pub struct StartupOrchestrator<'a> {
 impl<'a> StartupOrchestrator<'a> {
     /// Create new startup orchestrator
     pub fn new(orchestrator: &'a mut SongbirdOrchestrator) -> Self {
-        Self { orchestrator }
+        Self {
+            orchestrator,
+        }
     }
 
     /// Execute complete startup sequence (7 stages)
@@ -103,7 +105,7 @@ impl<'a> StartupOrchestrator<'a> {
     /// - Start observability manager
     ///
     /// **Why First**: Servers need JWT secrets for authentication
-    async fn stage_1_provision_security(&mut self) -> Result<()> {
+    async fn stage_1_provision_security(&self) -> Result<()> {
         // NEW (Jan 17, 2026): Provision JWT secret from BearDog via capability discovery
         info!("🔐 Provisioning JWT secret from security provider (BearDog)...");
         let jwt_secret = self.orchestrator.provision_jwt_secret().await?;
@@ -133,7 +135,7 @@ impl<'a> StartupOrchestrator<'a> {
     /// **Why Second**: Discovery needs actual HTTP port to advertise
     ///
     /// **Returns**: Actual HTTPS port (may differ from configured if fallback occurs)
-    async fn stage_2_start_servers(&mut self) -> Result<u16> {
+    async fn stage_2_start_servers(&self) -> Result<u16> {
         // ✅ DEPLOYMENT FIX (Dec 20, 2025): Start HTTP server FIRST to get actual port
         // This ensures discovery broadcasts the correct port even if fallback occurs
         // ✅ DISCOVERY FIX (Jan 28, 2026): Call actual HTTP server module (not stub)
@@ -199,7 +201,8 @@ impl<'a> StartupOrchestrator<'a> {
     /// - Load node identity (stable ID)
     /// - Detect all endpoints with actual port
     /// - Create self-registration with capabilities
-    /// Stage 2b: IGD Auto-Configure (optional, non-blocking)
+    ///
+    /// # Stage 2b: IGD Auto-Configure (optional, non-blocking)
     ///
     /// **Purpose**: Attempt to forward the Songbird port on the router
     ///
@@ -227,7 +230,10 @@ impl<'a> StartupOrchestrator<'a> {
         let (gateway, diagnostics) = songbird_igd::Gateway::discover_with_diagnostics().await;
 
         if !gateway.is_available() {
-            warn!("IGD auto-configure: No UPnP/NAT-PMP support detected on gateway {}", diagnostics.gateway_ip);
+            warn!(
+                "IGD auto-configure: No UPnP/NAT-PMP support detected on gateway {}",
+                diagnostics.gateway_ip
+            );
             if !diagnostics.manual_instructions.is_empty() {
                 info!("Manual port forwarding instructions:");
                 for step in &diagnostics.manual_instructions {
@@ -266,7 +272,7 @@ impl<'a> StartupOrchestrator<'a> {
     /// - Register in federation state
     ///
     /// **Why Third**: Needs actual HTTP port from Stage 2
-    async fn stage_3_register_self(&mut self, actual_https_port: u16) -> Result<()> {
+    async fn stage_3_register_self(&self, actual_https_port: u16) -> Result<()> {
         // ✅ IDENTITY FIX (Dec 20, 2025): Re-register SELF with actual port and endpoints
         // This updates the self-registration created during new() with the actual bound port
         if self.orchestrator.federation_config.is_some() {
@@ -429,7 +435,7 @@ impl<'a> StartupOrchestrator<'a> {
     /// - Initialize security provider integration (disabled)
     ///
     /// **Why Fifth**: Needs discovery system running to coordinate federation
-    async fn stage_5_start_federation(&mut self) -> Result<()> {
+    async fn stage_5_start_federation(&self) -> Result<()> {
         // Start trust escalation cleanup task
         let trust_manager_clone = Arc::clone(&self.orchestrator.trust_manager);
         tokio::spawn(async move {
@@ -445,10 +451,9 @@ impl<'a> StartupOrchestrator<'a> {
         info!("✅ Trust escalation cleanup task started");
 
         // Start federation coordinator (if enabled)
-        if let (Some(ref coordinator), Some(ref config)) = (
-            &self.orchestrator.federation_coordinator,
-            &self.orchestrator.federation_config,
-        ) {
+        if let (Some(ref coordinator), Some(ref config)) =
+            (&self.orchestrator.federation_coordinator, &self.orchestrator.federation_config)
+        {
             info!("🌐 Starting federation coordinator...");
             let coordinator_clone = Arc::clone(coordinator);
             let config_clone = config.clone();
@@ -481,7 +486,7 @@ impl<'a> StartupOrchestrator<'a> {
     /// - Start service registry cleanup (removes stale services)
     ///
     /// **Why Sixth**: All core systems running, now start maintenance
-    async fn stage_6_background_tasks(&mut self) -> Result<()> {
+    async fn stage_6_background_tasks(&self) -> Result<()> {
         // Start health monitoring
         self.orchestrator.start_health_monitoring().await?;
 
@@ -504,7 +509,7 @@ impl<'a> StartupOrchestrator<'a> {
     /// - Attempt auto-remediation (firewall rules)
     ///
     /// **Why Last**: All systems running, now verify they're reachable
-    async fn stage_7_verify_connectivity(&mut self) -> Result<()> {
+    async fn stage_7_verify_connectivity(&self) -> Result<()> {
         // ✅ POST-STARTUP: Verify external connectivity (Dec 20, 2025)
         // This helps catch network/firewall issues early
         self.orchestrator.verify_external_connectivity().await?;

@@ -27,7 +27,7 @@ use crate::task_lifecycle::{TaskId, UserId};
 
 /// Consent storage backed by sled (100% Pure Rust!)
 ///
-/// Thread-safe and async-compatible via Arc<Db> and spawn_blocking
+/// Thread-safe and async-compatible via `Arc<Db>` and `spawn_blocking`
 #[derive(Clone)]
 pub struct ConsentStorage {
     db: Arc<Db>,

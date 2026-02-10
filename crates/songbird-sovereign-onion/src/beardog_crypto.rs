@@ -100,14 +100,15 @@ impl BeardogCryptoClient {
             // TCP format: tcp:host:port
             let parts: Vec<&str> = conn_str.strip_prefix("tcp:").unwrap().split(':').collect();
             if parts.len() != 2 {
-                return Err(OnionError::ConfigError(
-                    format!("Invalid TCP format: {}. Use tcp:host:port", conn_str)
-                ));
+                return Err(OnionError::ConfigError(format!(
+                    "Invalid TCP format: {}. Use tcp:host:port",
+                    conn_str
+                )));
             }
             let host = parts[0].to_string();
-            let port: u16 = parts[1].parse().map_err(|_| {
-                OnionError::ConfigError(format!("Invalid port: {}", parts[1]))
-            })?;
+            let port: u16 = parts[1]
+                .parse()
+                .map_err(|_| OnionError::ConfigError(format!("Invalid port: {}", parts[1])))?;
             Ok(BeardogTransport::Tcp(host, port))
         } else {
             // Unix socket path
@@ -118,7 +119,7 @@ impl BeardogCryptoClient {
             #[cfg(not(unix))]
             {
                 Err(OnionError::ConfigError(
-                    "Unix sockets not supported on this platform. Use tcp:host:port".into()
+                    "Unix sockets not supported on this platform. Use tcp:host:port".into(),
                 ))
             }
         }
@@ -167,8 +168,8 @@ impl BeardogCryptoClient {
         #[cfg(unix)]
         if let Ok(xdg_runtime) = env_reader("XDG_RUNTIME_DIR") {
             // Try family-scoped path first
-            if let Ok(family_id) = env_reader("FAMILY_ID")
-                .or_else(|_| env_reader("BIOMEOS_FAMILY_ID"))
+            if let Ok(family_id) =
+                env_reader("FAMILY_ID").or_else(|_| env_reader("BIOMEOS_FAMILY_ID"))
             {
                 let socket_path = format!("{}/biomeos/beardog-{}.sock", xdg_runtime, family_id);
                 if std::path::Path::new(&socket_path).exists() {
@@ -189,7 +190,7 @@ impl BeardogCryptoClient {
         }
 
         Err(OnionError::ConfigError(
-            "No BearDog socket found. Set BEARDOG_SOCKET (tcp:host:port or /path/to/socket)".into()
+            "No BearDog socket found. Set BEARDOG_SOCKET (tcp:host:port or /path/to/socket)".into(),
         ))
     }
 
@@ -230,7 +231,7 @@ impl BeardogCryptoClient {
         };
 
         let request_bytes = serde_json::to_vec(&request)?;
-        
+
         // Connect and communicate based on transport type
         let response_line = match &self.transport {
             #[cfg(unix)]
@@ -242,12 +243,12 @@ impl BeardogCryptoClient {
                     ))
                 })?;
 
-                stream
-                    .set_read_timeout(Some(self.timeout))
-                    .map_err(|e| OnionError::ConnectionError(format!("Failed to set timeout: {}", e)))?;
-                stream
-                    .set_write_timeout(Some(self.timeout))
-                    .map_err(|e| OnionError::ConnectionError(format!("Failed to set timeout: {}", e)))?;
+                stream.set_read_timeout(Some(self.timeout)).map_err(|e| {
+                    OnionError::ConnectionError(format!("Failed to set timeout: {}", e))
+                })?;
+                stream.set_write_timeout(Some(self.timeout)).map_err(|e| {
+                    OnionError::ConnectionError(format!("Failed to set timeout: {}", e))
+                })?;
 
                 // Send request
                 stream.write_all(&request_bytes)?;
@@ -269,12 +270,12 @@ impl BeardogCryptoClient {
                     ))
                 })?;
 
-                stream
-                    .set_read_timeout(Some(self.timeout))
-                    .map_err(|e| OnionError::ConnectionError(format!("Failed to set timeout: {}", e)))?;
-                stream
-                    .set_write_timeout(Some(self.timeout))
-                    .map_err(|e| OnionError::ConnectionError(format!("Failed to set timeout: {}", e)))?;
+                stream.set_read_timeout(Some(self.timeout)).map_err(|e| {
+                    OnionError::ConnectionError(format!("Failed to set timeout: {}", e))
+                })?;
+                stream.set_write_timeout(Some(self.timeout)).map_err(|e| {
+                    OnionError::ConnectionError(format!("Failed to set timeout: {}", e))
+                })?;
 
                 // Send request
                 stream.write_all(&request_bytes)?;
@@ -292,15 +293,10 @@ impl BeardogCryptoClient {
         let response: JsonRpcResponse<R> = serde_json::from_str(&response_line)?;
 
         if let Some(error) = response.error {
-            return Err(OnionError::RpcError(format!(
-                "[{}] {}",
-                error.code, error.message
-            )));
+            return Err(OnionError::RpcError(format!("[{}] {}", error.code, error.message)));
         }
 
-        response
-            .result
-            .ok_or_else(|| OnionError::RpcError("No result in response".into()))
+        response.result.ok_or_else(|| OnionError::RpcError("No result in response".into()))
     }
 
     // =========================================================================
@@ -326,12 +322,12 @@ impl BeardogCryptoClient {
         let secret_key = base64_decode(&response.secret_key)?;
 
         Ok(Ed25519Keypair {
-            public_key: public_key.try_into().map_err(|_| {
-                OnionError::CryptoError("Invalid public key length".into())
-            })?,
-            secret_key: secret_key.try_into().map_err(|_| {
-                OnionError::CryptoError("Invalid secret key length".into())
-            })?,
+            public_key: public_key
+                .try_into()
+                .map_err(|_| OnionError::CryptoError("Invalid public key length".into()))?,
+            secret_key: secret_key
+                .try_into()
+                .map_err(|_| OnionError::CryptoError("Invalid secret key length".into()))?,
         })
     }
 
@@ -357,9 +353,7 @@ impl BeardogCryptoClient {
         )?;
 
         let signature = base64_decode(&response.signature)?;
-        signature.try_into().map_err(|_| {
-            OnionError::CryptoError("Invalid signature length".into())
-        })
+        signature.try_into().map_err(|_| OnionError::CryptoError("Invalid signature length".into()))
     }
 
     /// Verify Ed25519 signature
@@ -414,12 +408,12 @@ impl BeardogCryptoClient {
         let secret_key = base64_decode(&response.secret_key)?;
 
         Ok(X25519Keypair {
-            public_key: public_key.try_into().map_err(|_| {
-                OnionError::CryptoError("Invalid public key length".into())
-            })?,
-            secret_key: secret_key.try_into().map_err(|_| {
-                OnionError::CryptoError("Invalid secret key length".into())
-            })?,
+            public_key: public_key
+                .try_into()
+                .map_err(|_| OnionError::CryptoError("Invalid public key length".into()))?,
+            secret_key: secret_key
+                .try_into()
+                .map_err(|_| OnionError::CryptoError("Invalid secret key length".into()))?,
         })
     }
 
@@ -449,9 +443,9 @@ impl BeardogCryptoClient {
         )?;
 
         let shared = base64_decode(&response.shared_secret)?;
-        shared.try_into().map_err(|_| {
-            OnionError::CryptoError("Invalid shared secret length".into())
-        })
+        shared
+            .try_into()
+            .map_err(|_| OnionError::CryptoError("Invalid shared secret length".into()))
     }
 
     // =========================================================================
@@ -547,9 +541,7 @@ impl BeardogCryptoClient {
         )?;
 
         let hash = base64_decode(&response.hash_base64)?;
-        hash.try_into().map_err(|_| {
-            OnionError::CryptoError("Invalid hash length".into())
-        })
+        hash.try_into().map_err(|_| OnionError::CryptoError("Invalid hash length".into()))
     }
 
     // =========================================================================
@@ -578,9 +570,7 @@ impl BeardogCryptoClient {
         )?;
 
         let mac = base64_decode(&response.mac)?;
-        mac.try_into().map_err(|_| {
-            OnionError::CryptoError("Invalid MAC length".into())
-        })
+        mac.try_into().map_err(|_| OnionError::CryptoError("Invalid MAC length".into()))
     }
 }
 
@@ -617,9 +607,7 @@ fn base64_encode(data: &[u8]) -> String {
 
 fn base64_decode(s: &str) -> Result<Vec<u8>> {
     use base64::{engine::general_purpose::STANDARD, Engine};
-    STANDARD
-        .decode(s)
-        .map_err(|e| OnionError::CryptoError(format!("Base64 decode error: {}", e)))
+    STANDARD.decode(s).map_err(|e| OnionError::CryptoError(format!("Base64 decode error: {}", e)))
 }
 
 #[cfg(test)]
@@ -639,9 +627,8 @@ mod tests {
     #[test]
     fn test_client_from_env_with_beardog_socket() {
         use std::collections::HashMap;
-        let vars: HashMap<String, String> = HashMap::from([
-            ("BEARDOG_SOCKET".to_string(), "tcp:127.0.0.1:9900".to_string()),
-        ]);
+        let vars: HashMap<String, String> =
+            HashMap::from([("BEARDOG_SOCKET".to_string(), "tcp:127.0.0.1:9900".to_string())]);
         let env = move |key: &str| -> std::result::Result<String, std::env::VarError> {
             vars.get(key).cloned().ok_or(std::env::VarError::NotPresent)
         };
@@ -660,9 +647,8 @@ mod tests {
     #[test]
     fn test_client_from_env_empty_var_ignored() {
         use std::collections::HashMap;
-        let vars: HashMap<String, String> = HashMap::from([
-            ("BEARDOG_SOCKET".to_string(), String::new()),
-        ]);
+        let vars: HashMap<String, String> =
+            HashMap::from([("BEARDOG_SOCKET".to_string(), String::new())]);
         let env = move |key: &str| -> std::result::Result<String, std::env::VarError> {
             vars.get(key).cloned().ok_or(std::env::VarError::NotPresent)
         };

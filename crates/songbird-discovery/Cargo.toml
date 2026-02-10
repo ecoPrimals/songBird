@@ -1,6 +1,6 @@
 [package]
 name = "songbird-discovery"
-version = "0.1.0"
+version.workspace = true
 edition = "2021"
 license = "AGPL-3.0"
 authors = ["ecoPrimals <contact@ecoprimals.dev>"]
@@ -41,6 +41,7 @@ anyhow = "1.0"  # For lineage discovery error handling
 hex = "0.4"  # For discovery packet hashing
 socket2 = "0.5"  # For multicast socket configuration
 blake3 = "1.5"  # ✅ NEW (Feb 3, 2026): For Dark Forest beacon capabilities hashing
+hostname = "0.3"  # For primal self-knowledge name introspection
 
 [dev-dependencies]
 tracing-subscriber = "0.3"

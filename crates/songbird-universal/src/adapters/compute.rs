@@ -30,7 +30,7 @@
 
 use crate::JsonRpcClient;
 use serde::{Deserialize, Serialize};
-use songbird_http_client::IpcHttpClient;
+use songbird_http_client::SongbirdHttpClient;
 use songbird_types::{SafeEnv, SongbirdError, SongbirdResult};
 use std::time::Duration;
 use tracing::{debug, warn};
@@ -108,7 +108,7 @@ pub enum HealthStatus {
 enum Protocol {
     Tarpc(crate::TarpcClient), // PRIMARY - high-performance binary RPC
     JsonRpc(JsonRpcClient),    // SECONDARY - universal, port-free
-    Http(IpcHttpClient),       // FALLBACK - network only
+    Http(SongbirdHttpClient),  // FALLBACK - direct HTTP (no IPC delegation)
 }
 
 impl std::fmt::Debug for Protocol {
@@ -229,6 +229,7 @@ impl ComputeAdapter {
     /// # Errors
     ///
     /// Returns an error if the protocol client cannot be created.
+    #[allow(clippy::unused_async)] // async retained for API stability
     pub async fn new(endpoint: String) -> SongbirdResult<Self> {
         // Protocol detection (v3.12.0 - tarpc PRIMARY)
         let protocol = if endpoint.starts_with("tarpc://") {
@@ -239,9 +240,7 @@ impl ComputeAdapter {
             Protocol::JsonRpc(JsonRpcClient::new(&endpoint)?)
         } else {
             debug!("🌐 Detected HTTP endpoint for compute (FALLBACK): {}", endpoint);
-            Protocol::Http(IpcHttpClient::new().await.map_err(|e| {
-                SongbirdError::configuration(format!("Failed to create HTTP client: {e}"))
-            })?)
+            Protocol::Http(SongbirdHttpClient::from_env())
         };
 
         Ok(Self {
@@ -291,18 +290,25 @@ impl ComputeAdapter {
                 })?
             }
             Protocol::Http(client) => {
-                // HTTP protocol (FALLBACK - ~500-1000 μs latency)
+                // HTTP protocol (FALLBACK - direct TCP connection)
                 debug!("🌐 Using HTTP (FALLBACK protocol)");
                 let url = format!("{}/metrics/compute", self.endpoint);
 
-                // IpcHttpClient::get() returns Result<Response> directly (no .send() needed)
-                let response = client.get(&url).await.map_err(|e| {
-                    warn!("Failed to reach compute service via HTTP: {e}");
-                    SongbirdError::network(format!("Failed to reach compute service: {e}"))
-                })?;
+                let response = tokio::time::timeout(self.timeout, client.get(&url))
+                    .await
+                    .map_err(|_| {
+                        SongbirdError::network(format!(
+                            "Timeout after {:?} reaching compute service",
+                            self.timeout
+                        ))
+                    })?
+                    .map_err(|e| {
+                        warn!("Failed to reach compute service via HTTP: {e}");
+                        SongbirdError::network(format!("Failed to reach compute service: {e}"))
+                    })?;
 
-                if !response.is_success() {
-                    let status = response.status();
+                if !(200..300).contains(&response.status) {
+                    let status = response.status;
                     warn!("Compute service returned error status: {}", status);
                     return Err(SongbirdError::service(
                         "compute",
@@ -310,7 +316,7 @@ impl ComputeAdapter {
                     ));
                 }
 
-                response.json().await.map_err(|e| {
+                serde_json::from_value(response.body).map_err(|e| {
                     warn!("Failed to parse compute metrics from HTTP: {e}");
                     SongbirdError::service(
                         "compute",

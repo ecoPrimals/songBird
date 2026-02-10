@@ -243,7 +243,7 @@ mod tests {
     #[tokio::test]
     async fn test_poll_until_some_eventual() {
         use std::sync::atomic::{AtomicI32, Ordering};
-        
+
         // Use AtomicI32 instead of RwLock to avoid blocking_read() in async context
         let value = Arc::new(AtomicI32::new(-1)); // -1 = None
         let value_clone = value.clone();
@@ -258,7 +258,11 @@ mod tests {
         let result = poll_until_some(
             || {
                 let v = value.load(Ordering::SeqCst);
-                if v >= 0 { Some(v) } else { None }
+                if v >= 0 {
+                    Some(v)
+                } else {
+                    None
+                }
             },
             Duration::from_secs(1),
         )

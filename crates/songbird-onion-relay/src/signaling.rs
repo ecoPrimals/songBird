@@ -12,19 +12,19 @@ use std::time::SystemTime;
 pub struct PeerInfo {
     /// Peer's node ID (from lineage)
     pub node_id: String,
-    
+
     /// STUN-discovered public address
     pub public_addr: SocketAddr,
-    
+
     /// Local address (for LAN fallback)
     pub local_addr: Option<SocketAddr>,
-    
+
     /// NAT type if known
     pub nat_type: NatType,
-    
+
     /// Timestamp for freshness
     pub timestamp: SystemTime,
-    
+
     /// Capabilities this peer supports
     pub capabilities: Vec<String>,
 }
@@ -55,19 +55,19 @@ pub enum SignalingMessage {
         /// Encrypted with beacon seed (only family can read)
         encrypted_beacon: Option<String>,
     },
-    
+
     /// Query for a specific peer
     #[serde(rename = "query")]
     Query {
         target_node_id: String,
     },
-    
+
     /// Response to query with peer info
     #[serde(rename = "peer_info")]
     PeerInfoResponse {
         peer_info: Option<PeerInfo>,
     },
-    
+
     /// Request to initiate hole punch
     #[serde(rename = "punch_request")]
     PunchRequest {
@@ -76,7 +76,7 @@ pub enum SignalingMessage {
         /// Nonce for this punch attempt
         nonce: [u8; 16],
     },
-    
+
     /// Acknowledge punch request - start simultaneous open
     #[serde(rename = "punch_ack")]
     PunchAck {
@@ -85,7 +85,7 @@ pub enum SignalingMessage {
         /// When to start punching (coordinated time)
         start_at_ms: u64,
     },
-    
+
     /// Report punch result
     #[serde(rename = "punch_result")]
     PunchResult {
@@ -94,13 +94,13 @@ pub enum SignalingMessage {
         /// If successful, the working address
         connected_addr: Option<SocketAddr>,
     },
-    
+
     /// Heartbeat to keep registration alive
     #[serde(rename = "heartbeat")]
     Heartbeat {
         node_id: String,
     },
-    
+
     /// Relay data through rendezvous (fallback if punch fails)
     #[serde(rename = "relay")]
     RelayData {
@@ -109,7 +109,7 @@ pub enum SignalingMessage {
         /// Encrypted payload
         data: Vec<u8>,
     },
-    
+
     /// Error response
     #[serde(rename = "error")]
     Error {
@@ -123,7 +123,7 @@ impl SignalingMessage {
     pub fn to_json(&self) -> Result<String, serde_json::Error> {
         serde_json::to_string(self)
     }
-    
+
     /// Deserialize from JSON
     pub fn from_json(json: &str) -> Result<Self, serde_json::Error> {
         serde_json::from_str(json)
@@ -142,7 +142,7 @@ impl PeerInfo {
             capabilities: vec!["relay".to_string(), "stun".to_string()],
         }
     }
-    
+
     /// Check if peer info is fresh (within last 60 seconds)
     pub fn is_fresh(&self) -> bool {
         if let Ok(elapsed) = self.timestamp.elapsed() {
@@ -156,35 +156,33 @@ impl PeerInfo {
 #[cfg(test)]
 mod tests {
     use super::*;
-    
+
     #[test]
     fn test_signaling_serialization() {
-        let peer = PeerInfo::new(
-            "tower-123".to_string(),
-            "1.2.3.4:5678".parse().unwrap(),
-        );
-        
+        let peer = PeerInfo::new("tower-123".to_string(), "1.2.3.4:5678".parse().unwrap());
+
         let msg = SignalingMessage::Register {
             peer_info: peer,
             encrypted_beacon: Some("encrypted_data".to_string()),
         };
-        
+
         let json = msg.to_json().unwrap();
         let parsed = SignalingMessage::from_json(&json).unwrap();
-        
-        if let SignalingMessage::Register { peer_info, .. } = parsed {
+
+        if let SignalingMessage::Register {
+            peer_info,
+            ..
+        } = parsed
+        {
             assert_eq!(peer_info.node_id, "tower-123");
         } else {
             panic!("Wrong message type");
         }
     }
-    
+
     #[test]
     fn test_peer_freshness() {
-        let peer = PeerInfo::new(
-            "test".to_string(),
-            "1.1.1.1:1234".parse().unwrap(),
-        );
+        let peer = PeerInfo::new("test".to_string(), "1.1.1.1:1234".parse().unwrap());
         assert!(peer.is_fresh());
     }
 }

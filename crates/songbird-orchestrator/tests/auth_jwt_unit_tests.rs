@@ -1,14 +1,23 @@
 //! Unit Tests for BearDog JWT Delegation
 //!
 //! Tests the JWT provisioning and capability discovery in isolation.
+//!
+//! **Concurrency Evolution**: Tests that mutate env vars use a static Mutex
+//! to prevent race conditions. This is the correct pattern for env var tests.
 
 use songbird_orchestrator::auth::{
     discover_beardog_socket, discover_beardog_socket_for_family, get_beardog_socket_for_jwt,
     provision_jwt_secret,
 };
+use std::sync::Mutex;
+
+/// Serialize env var tests — process env vars are global mutable state.
+static ENV_LOCK: Mutex<()> = Mutex::new(());
 
 #[test]
 fn test_capability_discovery_with_security_provider() {
+    let _guard = ENV_LOCK.lock().unwrap();
+
     // Clean environment
     std::env::remove_var("SECURITY_PROVIDER");
     std::env::remove_var("BEARDOG_SOCKET");
@@ -26,6 +35,8 @@ fn test_capability_discovery_with_security_provider() {
 
 #[test]
 fn test_capability_discovery_with_beardog_socket() {
+    let _guard = ENV_LOCK.lock().unwrap();
+
     // Clean environment
     std::env::remove_var("SECURITY_PROVIDER");
     std::env::remove_var("BEARDOG_SOCKET");
@@ -43,6 +54,8 @@ fn test_capability_discovery_with_beardog_socket() {
 
 #[test]
 fn test_capability_discovery_priority() {
+    let _guard = ENV_LOCK.lock().unwrap();
+
     // Clean environment
     std::env::remove_var("SECURITY_PROVIDER");
     std::env::remove_var("BEARDOG_SOCKET");
@@ -62,6 +75,8 @@ fn test_capability_discovery_priority() {
 
 #[test]
 fn test_family_specific_discovery() {
+    let _guard = ENV_LOCK.lock().unwrap();
+
     // Clean environment
     std::env::remove_var("SECURITY_PROVIDER");
     std::env::remove_var("BEARDOG_SOCKET");
@@ -78,6 +93,8 @@ fn test_family_specific_discovery() {
 
 #[test]
 fn test_get_beardog_socket_for_jwt() {
+    let _guard = ENV_LOCK.lock().unwrap();
+
     // Clean environment
     std::env::remove_var("SECURITY_PROVIDER");
     std::env::remove_var("BEARDOG_SOCKET");
@@ -93,7 +110,7 @@ fn test_get_beardog_socket_for_jwt() {
 
 #[tokio::test]
 async fn test_jwt_provisioning_fallback_secure_random() {
-    // No BearDog available, should fall back to secure random
+    // No env vars needed — tests pure crypto, fully concurrent-safe
     let secret = provision_jwt_secret(None, "test_unit_purpose").await.unwrap();
 
     // Should be base64-encoded (64 bytes → ~88 characters)
@@ -108,7 +125,7 @@ async fn test_jwt_provisioning_fallback_secure_random() {
 
 #[tokio::test]
 async fn test_jwt_provisioning_deterministic_length() {
-    // Secure random should always generate same length
+    // No env vars needed — fully concurrent-safe
     let secret1 = provision_jwt_secret(None, "test1").await.unwrap();
     let secret2 = provision_jwt_secret(None, "test2").await.unwrap();
     let secret3 = provision_jwt_secret(None, "test3").await.unwrap();
@@ -119,6 +136,7 @@ async fn test_jwt_provisioning_deterministic_length() {
 
 #[tokio::test]
 async fn test_jwt_provisioning_base64_validity() {
+    // No env vars needed — fully concurrent-safe
     use base64::Engine;
 
     let secret = provision_jwt_secret(None, "test_base64").await.unwrap();
@@ -133,6 +151,8 @@ async fn test_jwt_provisioning_base64_validity() {
 
 #[test]
 fn test_capability_discovery_no_env_vars() {
+    let _guard = ENV_LOCK.lock().unwrap();
+
     // Clean environment
     std::env::remove_var("SECURITY_PROVIDER");
     std::env::remove_var("BEARDOG_SOCKET");

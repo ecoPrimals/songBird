@@ -38,7 +38,7 @@ pub struct ServiceUpdate {
 
 /// tarpc server implementation (simplified, zero unsafe - v3.12.0)
 ///
-/// **Modern Rust**: This version doesn't require Arc<SongbirdOrchestrator>,
+/// **Modern Rust**: This version doesn't require `Arc<SongbirdOrchestrator>`,
 /// making it simpler and safer. The orchestrator field was never actually used.
 #[derive(Clone)]
 pub struct TarpcServerSimple {
@@ -197,10 +197,7 @@ impl SongbirdRpc for TarpcServerSimple {
                 name: "jsonrpc".to_string(),
                 port: 0, // Unix socket
                 enabled: true,
-                info: [("path".to_string(), "/tmp/songbird.sock".to_string())]
-                    .iter()
-                    .cloned()
-                    .collect(),
+                info: HashMap::from([("path".to_string(), "/tmp/songbird.sock".to_string())]),
             },
             ProtocolInfo {
                 name: "http".to_string(),
@@ -382,7 +379,7 @@ impl SongbirdRpc for TarpcServer {
                 name: "JSON-RPC".to_string(),
                 port: 8443,
                 enabled: true,
-                info: [("path".to_string(), "/jsonrpc".to_string())].iter().cloned().collect(),
+                info: HashMap::from([("path".to_string(), "/jsonrpc".to_string())]),
             },
             ProtocolInfo {
                 name: "tarpc".to_string(),
@@ -398,7 +395,7 @@ impl SongbirdRpc for TarpcServer {
 ///
 /// **v3.12.0**: Zero unsafe blocks - uses TarpcServerSimple without orchestrator dependency
 ///
-/// This is the production version that avoids Arc<SongbirdOrchestrator> complexity.
+/// This is the production version that avoids `Arc<SongbirdOrchestrator>` complexity.
 /// The TarpcServer only needs service_registry, so this version is simpler and safer.
 pub async fn start_tarpc_server_simple(
     service_registry: Arc<FederatedServiceRegistry>,
@@ -458,7 +455,7 @@ pub async fn start_tarpc_server_simple(
 
 /// Start tarpc server on specified address (original version with orchestrator Arc)
 ///
-/// **Legacy**: This version requires Arc<SongbirdOrchestrator> but doesn't actually use it.
+/// **Legacy**: This version requires `Arc<SongbirdOrchestrator>` but doesn't actually use it.
 /// Kept for backward compatibility. New code should use `start_tarpc_server_simple`.
 pub async fn start_tarpc_server(
     orchestrator: Arc<SongbirdOrchestrator>,

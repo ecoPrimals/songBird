@@ -105,7 +105,10 @@ impl NatPmpClient {
 
         debug!("NAT-PMP: External IP = {}, epoch = {}", ip, epoch);
 
-        Ok(NatPmpExternalIp { ip, epoch })
+        Ok(NatPmpExternalIp {
+            ip,
+            epoch,
+        })
     }
 
     /// Request a port mapping
@@ -188,16 +191,8 @@ impl NatPmpClient {
     }
 
     /// Delete a port mapping (set lifetime to 0)
-    pub async fn delete_mapping(
-        &self,
-        internal_port: u16,
-        protocol: Protocol,
-    ) -> Result<()> {
-        debug!(
-            "NAT-PMP: Deleting mapping for {} port {}",
-            protocol.as_str(),
-            internal_port
-        );
+    pub async fn delete_mapping(&self, internal_port: u16, protocol: Protocol) -> Result<()> {
+        debug!("NAT-PMP: Deleting mapping for {} port {}", protocol.as_str(), internal_port);
 
         // Delete = map with lifetime 0 and external port 0
         let _ = self.map_port(internal_port, 0, protocol, 0).await?;
@@ -249,10 +244,7 @@ mod tests {
     fn test_nat_pmp_client_creation() {
         let client = NatPmpClient::new(IpAddr::V4(Ipv4Addr::new(192, 168, 1, 254)));
         assert_eq!(client.gateway.port(), 5351);
-        assert_eq!(
-            client.gateway.ip(),
-            IpAddr::V4(Ipv4Addr::new(192, 168, 1, 254))
-        );
+        assert_eq!(client.gateway.ip(), IpAddr::V4(Ipv4Addr::new(192, 168, 1, 254)));
     }
 
     #[test]
@@ -268,4 +260,3 @@ mod tests {
         assert_eq!(bytes, [0x00, 0x01, 0x51, 0x80]);
     }
 }
-

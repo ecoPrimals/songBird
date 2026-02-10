@@ -1,13 +1,27 @@
 //! Integration tests for task lifecycle management
+//!
+//! **Evolution**: Each test uses an isolated temp directory for its sled database,
+//! enabling fully concurrent execution without file lock contention.
+//! No sleep(), no serial — just isolated state.
 
 use songbird_orchestrator::task_lifecycle::types::{Priority, ResourceRequirements, TaskSpec};
 use songbird_orchestrator::task_lifecycle::{TaskLifecycleManager, TowerId, UserId};
+use tempfile::TempDir;
+
+/// Create an isolated manager with its own temp database directory.
+/// This is the concurrent-safe pattern: each test gets its own sled instance.
+async fn isolated_manager() -> (TaskLifecycleManager, TempDir) {
+    let dir = TempDir::new().expect("Failed to create temp dir");
+    let db_path = dir.path().join("tasks.db");
+    let manager = TaskLifecycleManager::new(db_path.to_str().unwrap())
+        .await
+        .expect("Failed to create manager");
+    (manager, dir) // dir must be kept alive to prevent cleanup
+}
 
 #[tokio::test]
 async fn test_full_task_lifecycle() {
-    // Create manager
-    let manager =
-        TaskLifecycleManager::new("sqlite::memory:").await.expect("Failed to create manager");
+    let (manager, _dir) = isolated_manager().await;
 
     // Create task
     let owner = UserId::from("test-user");
@@ -34,7 +48,6 @@ async fn test_full_task_lifecycle() {
 
     // Update progress
     manager.update_progress(task_id, 0.25).await.expect("Failed to update progress");
-
     manager.update_progress(task_id, 0.50).await.expect("Failed to update progress");
 
     // Create checkpoint
@@ -55,7 +68,6 @@ async fn test_full_task_lifecycle() {
 
     // Continue task
     manager.update_progress(task_id, 0.75).await.expect("Failed to update progress");
-
     manager.update_progress(task_id, 1.0).await.expect("Failed to update progress");
 
     // Complete task
@@ -74,8 +86,7 @@ async fn test_full_task_lifecycle() {
 
 #[tokio::test]
 async fn test_task_pause_and_resume() {
-    let manager =
-        TaskLifecycleManager::new("sqlite::memory:").await.expect("Failed to create manager");
+    let (manager, _dir) = isolated_manager().await;
 
     let owner = UserId::from("test-user");
     let spec = TaskSpec {
@@ -117,7 +128,7 @@ async fn test_task_pause_and_resume() {
 
 #[tokio::test]
 async fn test_task_cancellation() {
-    let manager = TaskLifecycleManager::new("sqlite::memory:").await.unwrap();
+    let (manager, _dir) = isolated_manager().await;
 
     let owner = UserId::from("test-user");
     let spec = TaskSpec {
@@ -147,7 +158,7 @@ async fn test_task_cancellation() {
 
 #[tokio::test]
 async fn test_multiple_checkpoints() {
-    let manager = TaskLifecycleManager::new("sqlite::memory:").await.unwrap();
+    let (manager, _dir) = isolated_manager().await;
 
     let owner = UserId::from("test-user");
     let spec = TaskSpec {

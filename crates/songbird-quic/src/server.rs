@@ -11,14 +11,14 @@ use tracing::{debug, info, warn};
 
 /// QUIC server
 ///
-/// Listens for incoming QUIC connections with BearDog crypto delegation
+/// Listens for incoming QUIC connections with `BearDog` crypto delegation
 pub struct QuicServer {
     /// Quinn endpoint
     endpoint: Endpoint,
-    
+
     /// Server configuration
     config: Arc<QuicConfig>,
-    
+
     /// Local address
     local_addr: SocketAddr,
 }
@@ -34,45 +34,48 @@ impl QuicServer {
     /// # Errors
     ///
     /// Returns error if binding fails or configuration invalid
+    #[allow(clippy::unused_async)] // async retained for API consistency with accept()
     pub async fn new(bind_addr: &str, config: QuicConfig) -> Result<Self> {
         let addr: SocketAddr = bind_addr.parse()?;
-        
+
         info!("Starting QUIC server on {}", addr);
-        
+
         // Build server configuration
         let server_config = config.build_server_config()?;
-        
+
         // Create endpoint
         let endpoint = Endpoint::server(server_config, addr)?;
         let local_addr = endpoint.local_addr()?;
-        
+
         info!("✅ QUIC server listening on {}", local_addr);
-        
+
         Ok(Self {
             endpoint,
             config: Arc::new(config),
             local_addr,
         })
     }
-    
+
     /// Get local address
+    #[must_use]
     pub fn local_addr(&self) -> SocketAddr {
         self.local_addr
     }
-    
+
     /// Accept incoming connections
     ///
     /// Returns channel receiver for new connections
+    #[must_use]
     pub fn accept(&self) -> mpsc::Receiver<QuicConnection> {
         let (tx, rx) = mpsc::channel(100);
         let endpoint = self.endpoint.clone();
         let config = self.config.clone();
-        
+
         tokio::spawn(async move {
             while let Some(incoming) = endpoint.accept().await {
                 let tx = tx.clone();
                 let config = config.clone();
-                
+
                 tokio::spawn(async move {
                     match Self::handle_incoming(incoming, config).await {
                         Ok(conn) => {
@@ -87,22 +90,25 @@ impl QuicServer {
                 });
             }
         });
-        
+
         rx
     }
-    
+
     /// Handle incoming connection
-    async fn handle_incoming(incoming: Incoming, config: Arc<QuicConfig>) -> Result<QuicConnection> {
+    async fn handle_incoming(
+        incoming: Incoming,
+        config: Arc<QuicConfig>,
+    ) -> Result<QuicConnection> {
         let remote_addr = incoming.remote_address();
         debug!("Accepting connection from {}", remote_addr);
-        
+
         let connection = incoming.await?;
-        
+
         info!("✅ Connection established with {}", remote_addr);
-        
+
         Ok(QuicConnection::new(connection, config))
     }
-    
+
     /// Close server
     pub async fn close(&self) {
         info!("Closing QUIC server");

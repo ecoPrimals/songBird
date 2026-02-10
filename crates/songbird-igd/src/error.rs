@@ -124,10 +124,7 @@ mod tests {
 
     #[test]
     fn test_soap_error_codes() {
-        assert_eq!(
-            SoapErrorCode::from_code(718),
-            Some(SoapErrorCode::ConflictInMappingEntry)
-        );
+        assert_eq!(SoapErrorCode::from_code(718), Some(SoapErrorCode::ConflictInMappingEntry));
         assert_eq!(SoapErrorCode::from_code(999), None);
     }
 

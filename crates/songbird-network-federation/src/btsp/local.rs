@@ -2,7 +2,7 @@
 //!
 //! ⚠️ **TRUE PRIMAL NOTE**: This module is for TESTING ONLY!
 //! Requires `local-btsp` feature (which includes crypto deps).
-//! Production builds should use BearDog delegation (no crypto in Songbird).
+//! Production builds should use `BearDog` delegation (no crypto in Songbird).
 //!
 //! This module provides a local implementation of BTSP for testing and
 //! development without requiring `BearDog` to be running. It uses standard

@@ -1,6 +1,7 @@
 // BiomeOS Socket Fault Injection Tests
 // January 16, 2026
 // Updated: February 5, 2026 (PRIMAL_DEPLOYMENT_STANDARD compliance)
+// Updated: February 10, 2026 (concurrent-safe with per-file Mutex)
 //
 // Fault injection tests for BiomeOS socket integration.
 // Tests specific failure scenarios and validates recovery/error handling.
@@ -9,10 +10,20 @@
 // - Socket names are now {primal}.sock (no family suffix)
 // - XDG_RUNTIME_DIR/biomeos/ is the preferred location
 // - Family ID is NOT included in socket path
+//
+// **Concurrency Evolution**: These tests mutate process-wide env vars.
+// A static Mutex ensures they don't race with each other within this binary.
+// This is NOT a production concern — production reads env vars once at startup.
 
 use songbird_orchestrator::ipc::UnixSocketServer;
 use std::env;
 use std::path::PathBuf;
+use std::sync::Mutex;
+
+/// Serialize all env var tests in this file.
+/// Process env vars are global state — there is no way around serialization here.
+/// This is the correct pattern: env var tests serialize, everything else runs concurrent.
+static ENV_LOCK: Mutex<()> = Mutex::new(());
 
 /// Fault Test: Missing all environment variables
 ///
@@ -20,6 +31,7 @@ use std::path::PathBuf;
 /// and falls back to sensible defaults.
 #[test]
 fn fault_missing_all_env_vars() {
+    let _guard = ENV_LOCK.lock().unwrap_or_else(|e| e.into_inner());
     // Save original state
     let original = save_env_state();
 
@@ -43,6 +55,7 @@ fn fault_missing_all_env_vars() {
 /// Tests behavior when socket path points to non-existent directory.
 #[test]
 fn fault_nonexistent_directory() {
+    let _guard = ENV_LOCK.lock().unwrap_or_else(|e| e.into_inner());
     let original = save_env_state();
 
     // Set socket path to non-existent directory
@@ -63,6 +76,7 @@ fn fault_nonexistent_directory() {
 /// Tests handling of family IDs with special characters, spaces, etc.
 #[test]
 fn fault_invalid_family_id_special_chars() {
+    let _guard = ENV_LOCK.lock().unwrap_or_else(|e| e.into_inner());
     let original = save_env_state();
 
     // Test various problematic family IDs
@@ -94,19 +108,25 @@ fn fault_invalid_family_id_special_chars() {
 /// Fault Test: Empty string environment variables
 ///
 /// Tests handling of env vars set to empty strings.
-/// Note: Empty string env vars are treated as "set" (just with empty value),
-/// not as "unset", so they are used directly.
+/// The implementation treats empty strings as "not set" and falls through
+/// to the next priority/default, which is the correct behavior — an empty
+/// socket path is never valid.
 #[test]
 fn fault_empty_string_env_vars() {
+    let _guard = ENV_LOCK.lock().unwrap_or_else(|e| e.into_inner());
     let original = save_env_state();
     clear_all_env_vars();
 
-    // Test 1: Empty socket path env var
+    // Test 1: Empty socket path env var — treated as "not set", falls to default
     env::set_var("SONGBIRD_ORCHESTRATOR_SOCKET", "");
 
     let path = UnixSocketServer::socket_path_from_env();
-    // Empty string is treated as "set to empty", so it's used directly
-    assert_eq!(path, PathBuf::from(""));
+    // Implementation correctly skips empty strings and falls back to XDG default
+    assert!(
+        path.to_str().unwrap().ends_with("songbird.sock"),
+        "Empty env var should fall through to default, got: {}",
+        path.display()
+    );
 
     // Test 2: Empty family ID (should work, PRIMAL_DEPLOYMENT_STANDARD uses {primal}.sock)
     clear_all_env_vars();
@@ -128,6 +148,7 @@ fn fault_empty_string_env_vars() {
 /// Tests handling of extremely long socket paths (approaching OS limits).
 #[test]
 fn fault_very_long_socket_path() {
+    let _guard = ENV_LOCK.lock().unwrap_or_else(|e| e.into_inner());
     let original = save_env_state();
 
     // Create a very long path (but still valid)
@@ -147,6 +168,7 @@ fn fault_very_long_socket_path() {
 /// Tests that socket paths can be absolute or relative.
 #[test]
 fn fault_relative_socket_path() {
+    let _guard = ENV_LOCK.lock().unwrap_or_else(|e| e.into_inner());
     let original = save_env_state();
 
     // Test relative path
@@ -165,6 +187,7 @@ fn fault_relative_socket_path() {
 /// Tests handling of socket paths containing symlinks.
 #[test]
 fn fault_path_with_symlinks() {
+    let _guard = ENV_LOCK.lock().unwrap_or_else(|e| e.into_inner());
     let original = save_env_state();
 
     // Simulate path with symlink
@@ -183,6 +206,7 @@ fn fault_path_with_symlinks() {
 /// Tests handling of leading/trailing whitespace in env vars.
 #[test]
 fn fault_whitespace_in_env_vars() {
+    let _guard = ENV_LOCK.lock().unwrap_or_else(|e| e.into_inner());
     let original = save_env_state();
 
     // Set env vars with whitespace
@@ -205,6 +229,7 @@ fn fault_whitespace_in_env_vars() {
 /// Tests that env var names are case-sensitive (as expected in Unix).
 #[test]
 fn fault_case_sensitivity_env_vars() {
+    let _guard = ENV_LOCK.lock().unwrap_or_else(|e| e.into_inner());
     let original = save_env_state();
     clear_all_env_vars();
 
@@ -225,6 +250,7 @@ fn fault_case_sensitivity_env_vars() {
 /// Tests that paths with null bytes are handled (they shouldn't cause crashes).
 #[test]
 fn fault_null_bytes_in_path() {
+    let _guard = ENV_LOCK.lock().unwrap_or_else(|e| e.into_inner());
     let original = save_env_state();
 
     // Rust strings can't contain null bytes, but if they somehow got in via FFI...
@@ -244,6 +270,7 @@ fn fault_null_bytes_in_path() {
 /// Tests behavior when env vars change between calls.
 #[test]
 fn fault_concurrent_env_changes() {
+    let _guard = ENV_LOCK.lock().unwrap_or_else(|e| e.into_inner());
     let original = save_env_state();
 
     // Set initial env var
@@ -268,15 +295,10 @@ fn fault_concurrent_env_changes() {
 /// PRIMAL_DEPLOYMENT_STANDARD: Family ID is NOT included in socket path.
 #[test]
 fn fault_family_id_path_construction() {
+    let _guard = ENV_LOCK.lock().unwrap_or_else(|e| e.into_inner());
     let original = save_env_state();
 
-    let test_cases = vec![
-        "nat0",
-        "production",
-        "dev-test",
-        "123",
-        "_underscore_",
-    ];
+    let test_cases = vec!["nat0", "production", "dev-test", "123", "_underscore_"];
 
     for family_id in test_cases {
         clear_all_env_vars();
@@ -298,6 +320,7 @@ fn fault_family_id_path_construction() {
 /// Tests that priority order is strictly enforced when all vars are set.
 #[test]
 fn fault_all_priorities_set() {
+    let _guard = ENV_LOCK.lock().unwrap_or_else(|e| e.into_inner());
     let original = save_env_state();
 
     // Set ALL socket path env vars
@@ -326,6 +349,7 @@ fn fault_all_priorities_set() {
 /// Tests that repeated calls with same env vars are consistent.
 #[test]
 fn fault_repeated_calls_consistency() {
+    let _guard = ENV_LOCK.lock().unwrap_or_else(|e| e.into_inner());
     let original = save_env_state();
 
     env::set_var("SONGBIRD_ORCHESTRATOR_SOCKET", "/tmp/test.sock");

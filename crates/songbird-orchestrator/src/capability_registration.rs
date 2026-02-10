@@ -196,7 +196,7 @@ pub async fn register_capabilities_with(config: &CapabilityRegistrationConfig) -
     });
 
     // Connect to Neural API (platform-agnostic)
-    let mut stream = match connect_platform(&neural_socket).await {
+    let mut stream = match connect_platform(neural_socket).await {
         Ok(s) => s,
         Err(e) => {
             warn!("⚠️  Failed to connect to Neural API at {}: {}", neural_socket, e);
@@ -241,17 +241,16 @@ pub async fn register_capabilities_with(config: &CapabilityRegistrationConfig) -
         info!("   Primal ID: {}", primal_id);
         info!("   Socket: {}", songbird_socket);
         info!("   Neural API: {}", neural_socket);
-        Ok(())
     } else if let Some(error) = response_json.get("error") {
         warn!("⚠️  Neural API registration returned error: {:?}", error);
         warn!("   Songbird will continue without registration");
         warn!("   Direct socket connections will still work");
-        Ok(()) // Don't fail startup
     } else {
         warn!("⚠️  Unexpected registration response from Neural API");
         warn!("   Response: {}", response);
-        Ok(()) // Don't fail startup
     }
+
+    Ok(()) // Don't fail startup
 }
 
 /// Unregister capabilities on shutdown (optional but recommended)
@@ -301,7 +300,7 @@ pub async fn unregister_capabilities_with(neural_socket: &str, primal_id: &str) 
     });
 
     // Try to connect and unregister (platform-agnostic)
-    match connect_platform(&neural_socket).await {
+    match connect_platform(neural_socket).await {
         Ok(mut stream) => {
             let request = format!("{}\n", unregister);
             match stream.write_all(request.as_bytes()).await {
@@ -397,11 +396,8 @@ mod tests {
     #[tokio::test]
     async fn test_unregistration_with_unavailable_neural_api_succeeds() {
         // ✅ Concurrent-safe: Uses explicit socket path (no env vars)
-        let result = unregister_capabilities_with(
-            "/tmp/nonexistent-neural-api.sock",
-            "songbird",
-        )
-        .await;
+        let result =
+            unregister_capabilities_with("/tmp/nonexistent-neural-api.sock", "songbird").await;
         assert!(result.is_ok());
     }
 
@@ -444,14 +440,8 @@ mod tests {
             }
         };
 
-        assert_eq!(
-            resolve(Some("/run/user/1000")),
-            "/run/user/1000/biomeos/neural-api.sock",
-        );
-        assert_eq!(
-            resolve(None),
-            "/tmp/biomeos/neural-api.sock",
-        );
+        assert_eq!(resolve(Some("/run/user/1000")), "/run/user/1000/biomeos/neural-api.sock",);
+        assert_eq!(resolve(None), "/tmp/biomeos/neural-api.sock",);
     }
 
     #[test]
@@ -638,7 +628,9 @@ mod tests {
                         let _ = stream.write_all(format!("{}\n", response).as_bytes()).await;
                     }
                 }
-                if i == 1 { break; }
+                if i == 1 {
+                    break;
+                }
             }
         });
 
@@ -813,7 +805,8 @@ mod tests {
     #[tokio::test]
     async fn test_fault_permission_denied_on_socket() {
         // ✅ Concurrent-safe: Uses explicit config
-        let config = chaos_config("/root/nonexistent/test-neural.sock", "/tmp/test-songbird-perm.sock");
+        let config =
+            chaos_config("/root/nonexistent/test-neural.sock", "/tmp/test-songbird-perm.sock");
         let result = register_capabilities_with(&config).await;
         assert!(result.is_ok(), "Should handle permission denied gracefully");
     }

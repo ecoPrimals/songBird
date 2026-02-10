@@ -237,7 +237,7 @@ impl ConsentManager {
         }
 
         // Event-driven wait with timeout
-        match tokio::time::timeout(timeout, async {
+        tokio::time::timeout(timeout, async {
             loop {
                 self.decision_notify.notified().await;
                 if let Some(status) = self.get_status(consent_id).await {
@@ -248,10 +248,7 @@ impl ConsentManager {
             }
         })
         .await
-        {
-            Ok(status) => Some(status),
-            Err(_) => None, // Timeout
-        }
+        .ok()
     }
 }
 

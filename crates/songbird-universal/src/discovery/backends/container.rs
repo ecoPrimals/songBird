@@ -289,23 +289,24 @@ fn infer_capabilities_from_name(name: &str) -> Vec<String> {
     let name_lower = name.to_lowercase();
     let mut capabilities = Vec::new();
 
-    if name_lower.contains("beardog") || name_lower.contains("security") {
+    // Capability terms first, known provider names as secondary hints
+    if name_lower.contains("security") || name_lower.contains("beardog") {
         capabilities.push("security".to_string());
     }
 
-    if name_lower.contains("squirrel") || name_lower.contains("ai") {
+    if name_lower.contains("ai") || name_lower.contains("squirrel") {
         capabilities.push("ai".to_string());
     }
 
-    if name_lower.contains("nestgate") || name_lower.contains("discovery") {
+    if name_lower.contains("discovery") || name_lower.contains("nestgate") {
         capabilities.push("discovery".to_string());
     }
 
-    if name_lower.contains("toadstool") || name_lower.contains("storage") {
+    if name_lower.contains("storage") || name_lower.contains("toadstool") {
         capabilities.push("storage".to_string());
     }
 
-    if name_lower.contains("songbird") || name_lower.contains("orchestrat") {
+    if name_lower.contains("orchestrat") || name_lower.contains("songbird") {
         capabilities.push("orchestration".to_string());
     }
 

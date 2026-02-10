@@ -15,12 +15,12 @@
 //!
 //! ## TRUE PRIMAL Architecture
 //!
-//! All crypto operations are delegated to BearDog via `BeardogCryptoClient`.
+//! All crypto operations are delegated to `BearDog` via `BeardogCryptoClient`.
 //! Zero embedded crypto in Songbird.
 
 use serde_json::{json, Value};
-use songbird_tor_protocol::circuit::CircuitPurpose;
 use songbird_tor_protocol::circuit::manager::CircuitManager;
+use songbird_tor_protocol::circuit::CircuitPurpose;
 use songbird_tor_protocol::crypto::BeardogCryptoClient;
 use songbird_tor_protocol::directory::Consensus;
 use std::sync::Arc;
@@ -34,7 +34,7 @@ use tracing::{error, info, warn};
 ///
 /// ## Design Principles
 ///
-/// - **TRUE PRIMAL**: All crypto via BearDog delegation  
+/// - **TRUE PRIMAL**: All crypto via `BearDog` delegation  
 /// - **Pure Rust**: No external Tor daemon required
 /// - **Safe**: All operations use safe Rust
 /// - **Async**: Modern async/await patterns
@@ -62,12 +62,13 @@ struct TorState {
     service_running: bool,
     /// Service onion address
     service_address: Option<String>,
-    /// BearDog socket path
+    /// `BearDog` socket path
     beardog_socket: Option<String>,
 }
 
 impl TorHandler {
     /// Create a new Tor handler
+    #[must_use]
     pub fn new() -> Self {
         Self {
             state: Arc::new(RwLock::new(TorState::default())),
@@ -75,13 +76,13 @@ impl TorHandler {
         }
     }
 
-    /// Set BearDog socket path
+    /// Set `BearDog` socket path
     pub async fn set_beardog_socket(&self, socket_path: String) {
         let mut state = self.state.write().await;
         state.beardog_socket = Some(socket_path);
     }
 
-    /// Get BearDog socket path from state or environment
+    /// Get `BearDog` socket path from state or environment
     async fn resolve_beardog_socket(&self) -> Option<String> {
         // Check state first (explicitly set)
         let state = self.state.read().await;
@@ -94,7 +95,7 @@ impl TorHandler {
         Self::get_beardog_socket_from_env()
     }
 
-    /// Get BearDog socket path from environment (capability-based discovery)
+    /// Get `BearDog` socket path from environment (capability-based discovery)
     fn get_beardog_socket_from_env() -> Option<String> {
         std::env::var("BEARDOG_SOCKET")
             .or_else(|_| std::env::var("BEARDOG_CRYPTO_SOCKET"))
@@ -103,7 +104,7 @@ impl TorHandler {
             .or_else(|| {
                 // XDG standard path
                 if let Ok(xdg) = std::env::var("XDG_RUNTIME_DIR") {
-                    let path = format!("{}/biomeos/beardog.sock", xdg);
+                    let path = format!("{xdg}/biomeos/beardog.sock");
                     if std::path::Path::new(&path).exists() {
                         return Some(path);
                     }
@@ -132,24 +133,17 @@ impl TorHandler {
 
     /// Handle `tor.connect` - Connect to .onion via Tor network
     ///
-    /// Uses CircuitManager to build a 3-hop circuit, then opens a
+    /// Uses `CircuitManager` to build a 3-hop circuit, then opens a
     /// stream to the target onion address.
     pub async fn handle_connect(&self, params: Value) -> Result<Value, String> {
-        let address = params
-            .get("address")
-            .and_then(|v| v.as_str())
-            .ok_or("Missing 'address' parameter")?;
+        let address =
+            params.get("address").and_then(|v| v.as_str()).ok_or("Missing 'address' parameter")?;
 
-        let port = params
-            .get("port")
-            .and_then(|v| v.as_u64())
-            .unwrap_or(80) as u16;
+        let port =
+            u16::try_from(params.get("port").and_then(serde_json::Value::as_u64).unwrap_or(80))
+                .unwrap_or(80);
 
-        info!(
-            address = address,
-            port = port,
-            "Connecting to .onion via pure Rust Tor"
-        );
+        info!(address = address, port = port, "Connecting to .onion via pure Rust Tor");
 
         // Ensure we have a circuit manager
         let manager = self.circuit_manager.read().await;
@@ -159,7 +153,7 @@ impl TorHandler {
         )?;
 
         // Build a rendezvous circuit for .onion connections
-        let purpose = if address.ends_with(".onion") {
+        let purpose = if address.to_ascii_lowercase().ends_with(".onion") {
             CircuitPurpose::Rendezvous
         } else {
             CircuitPurpose::General
@@ -175,9 +169,7 @@ impl TorHandler {
 
                 info!(
                     circuit_id = circuit_id,
-                    "Circuit built for connection to {}:{}",
-                    address,
-                    port
+                    "Circuit built for connection to {}:{}", address, port
                 );
 
                 Ok(json!({
@@ -211,10 +203,9 @@ impl TorHandler {
             }
         }
 
-        let port = params
-            .get("port")
-            .and_then(|v| v.as_u64())
-            .unwrap_or(80) as u16;
+        let port =
+            u16::try_from(params.get("port").and_then(serde_json::Value::as_u64).unwrap_or(80))
+                .unwrap_or(80);
 
         let _key_id = params.get("private_key_id").and_then(|v| v.as_str());
 
@@ -222,7 +213,7 @@ impl TorHandler {
 
         // Create BearDog client for service key operations
         let beardog = BeardogCryptoClient::from_env()
-            .map_err(|e| format!("BearDog unavailable for service hosting: {}", e))?;
+            .map_err(|e| format!("BearDog unavailable for service hosting: {e}"))?;
 
         // Create Tor service
         match songbird_tor_protocol::TorService::new(beardog, port).await {
@@ -246,7 +237,7 @@ impl TorHandler {
             }
             Err(e) => {
                 error!(error = %e, "Failed to start Tor service");
-                Err(format!("Failed to start Tor service: {}", e))
+                Err(format!("Failed to start Tor service: {e}"))
             }
         }
     }
@@ -278,12 +269,9 @@ impl TorHandler {
     /// Handle `tor.consensus.fetch` - Fetch network consensus
     ///
     /// Fetches the Tor directory consensus and initializes the
-    /// CircuitManager for subsequent circuit building.
+    /// `CircuitManager` for subsequent circuit building.
     pub async fn handle_consensus_fetch(&self, params: Value) -> Result<Value, String> {
-        let force = params
-            .get("force")
-            .and_then(|v| v.as_bool())
-            .unwrap_or(false);
+        let force = params.get("force").and_then(serde_json::Value::as_bool).unwrap_or(false);
 
         // Check if we already have valid consensus
         {
@@ -305,7 +293,7 @@ impl TorHandler {
             Ok(client) => client,
             Err(e) => {
                 error!(error = %e, "Failed to create BearDog client");
-                return Err(format!("BearDog unavailable: {}", e));
+                return Err(format!("BearDog unavailable: {e}"));
             }
         };
 
@@ -326,7 +314,7 @@ impl TorHandler {
                 // Initialize circuit manager with fresh consensus
                 let manager = CircuitManager::new(
                     BeardogCryptoClient::from_env()
-                        .map_err(|e| format!("BearDog for circuit manager: {}", e))?,
+                        .map_err(|e| format!("BearDog for circuit manager: {e}"))?,
                     consensus,
                 );
                 {
@@ -354,23 +342,20 @@ impl TorHandler {
             }
             Err(e) => {
                 error!(error = %e, "Failed to fetch consensus");
-                Err(format!("Consensus fetch failed: {}", e))
+                Err(format!("Consensus fetch failed: {e}"))
             }
         }
     }
 
     /// Handle `tor.circuit.build` - Build a new circuit
     ///
-    /// Uses CircuitManager to build a real 3-hop circuit:
+    /// Uses `CircuitManager` to build a real 3-hop circuit:
     /// 1. SELECT path (guard, middle, exit) from consensus
-    /// 2. CREATE2 to guard (ntor handshake via BearDog)
+    /// 2. CREATE2 to guard (ntor handshake via `BearDog`)
     /// 3. EXTEND2 to middle
     /// 4. EXTEND2 to exit
     pub async fn handle_circuit_build(&self, params: Value) -> Result<Value, String> {
-        let purpose_str = params
-            .get("purpose")
-            .and_then(|v| v.as_str())
-            .unwrap_or("general");
+        let purpose_str = params.get("purpose").and_then(|v| v.as_str()).unwrap_or("general");
 
         let purpose = match purpose_str {
             "general" => CircuitPurpose::General,
@@ -378,8 +363,7 @@ impl TorHandler {
             "rendezvous" => CircuitPurpose::Rendezvous,
             other => {
                 return Err(format!(
-                    "Unknown circuit purpose '{}'. Use: general, hsdir, rendezvous",
-                    other
+                    "Unknown circuit purpose '{other}'. Use: general, hsdir, rendezvous"
                 ));
             }
         };
@@ -413,17 +397,20 @@ impl TorHandler {
             }
             Err(e) => {
                 warn!(error = %e, purpose = purpose_str, "Circuit build failed");
-                Err(format!("Circuit build failed: {}", e))
+                Err(format!("Circuit build failed: {e}"))
             }
         }
     }
 
     /// Handle `tor.circuit.close` - Close a circuit
     pub async fn handle_circuit_close(&self, params: Value) -> Result<Value, String> {
-        let circuit_id = params
-            .get("circuit_id")
-            .and_then(|v| v.as_u64())
-            .ok_or("Missing 'circuit_id' parameter")? as u32;
+        let circuit_id = u32::try_from(
+            params
+                .get("circuit_id")
+                .and_then(serde_json::Value::as_u64)
+                .ok_or("Missing 'circuit_id' parameter")?,
+        )
+        .map_err(|_| "circuit_id exceeds u32 range")?;
 
         info!(circuit_id = circuit_id, "Closing Tor circuit");
 
@@ -500,9 +487,7 @@ mod tests {
     #[tokio::test]
     async fn test_tor_connect_requires_initialization() {
         let handler = TorHandler::new();
-        let result = handler
-            .handle_connect(json!({"address": "test.onion", "port": 80}))
-            .await;
+        let result = handler.handle_connect(json!({"address": "test.onion", "port": 80})).await;
         assert!(result.is_err());
         assert!(result.unwrap_err().contains("not initialized"));
     }
@@ -510,9 +495,7 @@ mod tests {
     #[tokio::test]
     async fn test_tor_circuit_build_requires_consensus() {
         let handler = TorHandler::new();
-        let result = handler
-            .handle_circuit_build(json!({"purpose": "general"}))
-            .await;
+        let result = handler.handle_circuit_build(json!({"purpose": "general"})).await;
         assert!(result.is_err());
         assert!(result.unwrap_err().contains("not initialized"));
     }
@@ -522,18 +505,14 @@ mod tests {
         let handler = TorHandler::new();
         // Even with no manager, invalid purpose should error first
         // But actually the manager check happens first, so test that
-        let result = handler
-            .handle_circuit_build(json!({"purpose": "invalid"}))
-            .await;
+        let result = handler.handle_circuit_build(json!({"purpose": "invalid"})).await;
         assert!(result.is_err());
     }
 
     #[tokio::test]
     async fn test_tor_circuit_close() {
         let handler = TorHandler::new();
-        let result = handler
-            .handle_circuit_close(json!({"circuit_id": 1}))
-            .await;
+        let result = handler.handle_circuit_close(json!({"circuit_id": 1})).await;
         assert!(result.is_ok());
         let response = result.unwrap();
         assert_eq!(response["closed"], true);
@@ -542,14 +521,9 @@ mod tests {
     #[tokio::test]
     async fn test_set_beardog_socket() {
         let handler = TorHandler::new();
-        handler
-            .set_beardog_socket("/tmp/test-beardog.sock".to_string())
-            .await;
+        handler.set_beardog_socket("/tmp/test-beardog.sock".to_string()).await;
 
         let state = handler.state.read().await;
-        assert_eq!(
-            state.beardog_socket,
-            Some("/tmp/test-beardog.sock".to_string())
-        );
+        assert_eq!(state.beardog_socket, Some("/tmp/test-beardog.sock".to_string()));
     }
 }

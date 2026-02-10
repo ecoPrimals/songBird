@@ -4,13 +4,13 @@
 
 mod create;
 mod extend;
-mod state;
 /// Circuit manager module
 pub mod manager;
 mod onion;
+mod state;
 
-pub use create::{NtorHandshake, HandshakeState, KeyMaterial};
+pub use create::{HandshakeState, KeyMaterial, NtorHandshake};
 pub use extend::CircuitExtender;
-pub use state::{Circuit, CircuitHop, CircuitPurpose};
 pub use manager::CircuitManager;
 pub use onion::OnionCrypto;
+pub use state::{Circuit, CircuitHop, CircuitPurpose};

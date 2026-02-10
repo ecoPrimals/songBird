@@ -53,14 +53,12 @@ impl OnionIdentity {
     /// ```
     pub async fn generate_via_beardog(client: &BeardogCryptoClient) -> Result<Self> {
         let keypair = client.ed25519_generate_keypair()?;
-        
+
         // Derive .onion address via BearDog
-        let onion_address = crate::address::derive_onion_address_via_beardog(client, &keypair.public_key).await?;
-        
-        let created_at = SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .unwrap()
-            .as_secs();
+        let onion_address =
+            crate::address::derive_onion_address_via_beardog(client, &keypair.public_key).await?;
+
+        let created_at = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs();
 
         Ok(Self {
             secret_key: keypair.secret_key,
@@ -83,20 +81,21 @@ impl OnionIdentity {
         let stored: StoredIdentity = serde_json::from_slice(bytes)?;
         let secret_key = &stored.secret_key_bytes;
         let _created_at = stored.created_at;
-        
+
         // Derive public key from secret (BearDog should verify this is valid)
         // For Ed25519, we can derive public key from secret locally
         // But to fully delegate, we use a test sign operation to verify the key
         let test_msg = b"test";
         let _signature = client.ed25519_sign(secret_key, test_msg)?;
-        
+
         // For now, derive public key locally (Ed25519 property)
         // TODO: Add crypto.ed25519_public_from_secret to BearDog
         #[cfg(feature = "standalone")]
         {
             let signing_key = SigningKey::from_bytes(secret_key);
             let public_key = signing_key.verifying_key().to_bytes();
-            let onion_address = crate::address::derive_onion_address_via_beardog(client, &public_key).await?;
+            let onion_address =
+                crate::address::derive_onion_address_via_beardog(client, &public_key).await?;
 
             Ok(Self {
                 secret_key: *secret_key,
@@ -105,7 +104,7 @@ impl OnionIdentity {
                 created_at: _created_at,
             })
         }
-        
+
         #[cfg(not(feature = "standalone"))]
         {
             // ⚠️ TRUE PRIMAL: In production, public key must be provided!
@@ -116,7 +115,7 @@ impl OnionIdentity {
             // For now, require public_key parameter in production builds
             Err(crate::OnionError::CryptoError(
                 "Public key required in production mode (use from_stored_bytes_with_public or BearDog delegation)".to_string()
-            ).into())
+            ))
         }
     }
 
@@ -129,14 +128,11 @@ impl OnionIdentity {
         // Generate random 32-byte secret key
         let mut secret_bytes = [0u8; 32];
         rand::Rng::fill(&mut rand::thread_rng(), &mut secret_bytes);
-        
+
         let signing_key = SigningKey::from_bytes(&secret_bytes);
         let verifying_key = signing_key.verifying_key();
         let onion_address = derive_onion_address(&verifying_key);
-        let created_at = SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .unwrap()
-            .as_secs();
+        let created_at = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs();
 
         Self {
             secret_key: secret_bytes,
@@ -201,9 +197,11 @@ impl OnionIdentity {
     /// so no crypto derivation is needed. Falls back to v1 behavior for old storage.
     pub fn from_stored_bytes(bytes: &[u8]) -> Result<Self> {
         let stored: StoredIdentity = serde_json::from_slice(bytes)?;
-        
+
         // v2 format: All fields present - no crypto needed
-        if let (Some(public_key), Some(onion_address)) = (stored.public_key_bytes, stored.onion_address) {
+        if let (Some(public_key), Some(onion_address)) =
+            (stored.public_key_bytes, stored.onion_address)
+        {
             return Ok(Self {
                 secret_key: stored.secret_key_bytes,
                 public_key,
@@ -211,20 +209,20 @@ impl OnionIdentity {
                 created_at: stored.created_at,
             });
         }
-        
+
         // v1 format fallback: Need to derive public key and address
         #[cfg(feature = "standalone")]
         {
             Self::from_stored(&stored.secret_key_bytes, stored.created_at)
         }
-        
+
         #[cfg(not(feature = "standalone"))]
         {
             // Production with v1 storage: Regenerate via BearDog
             // Delete old storage and generate fresh identity
             Err(crate::OnionError::CryptoError(
                 "Legacy v1 storage format detected. Delete ./data/sovereign-onion to regenerate identity.".to_string()
-            ).into())
+            ))
         }
     }
 }
@@ -262,16 +260,16 @@ impl EphemeralKeypair {
         // Generate random secret key bytes
         let mut secret_key = [0u8; 32];
         rand::Rng::fill(&mut rand::thread_rng(), &mut secret_key);
-        
+
         // Clamp the secret key (X25519 requirement)
         secret_key[0] &= 248;
         secret_key[31] &= 127;
         secret_key[31] |= 64;
-        
+
         // Derive public key using x25519 basepoint
         const X25519_BASEPOINT_BYTES: [u8; 32] = [
-            9, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+            9, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0,
         ];
         let public_key = x25519_dalek::x25519(secret_key, X25519_BASEPOINT_BYTES);
 
@@ -315,7 +313,7 @@ impl SessionKeys {
     ) -> Result<Self> {
         // 1. HKDF-Extract: PRK = HMAC-SHA256(salt=zeros, IKM=shared_secret)
         let prk = client.hmac_sha256(&[0u8; 32], shared_secret)?;
-        
+
         // 2. HKDF-Expand for client key
         let mut client_info = Vec::new();
         client_info.extend_from_slice(b"sovereign-onion client");
@@ -323,19 +321,25 @@ impl SessionKeys {
         client_info.extend_from_slice(server_nonce);
         client_info.push(0x01);
         let client_key = client.hmac_sha256(&prk, &client_info)?;
-        
-        // 3. HKDF-Expand for server key  
+
+        // 3. HKDF-Expand for server key
         let mut server_info = Vec::new();
         server_info.extend_from_slice(b"sovereign-onion server");
         server_info.extend_from_slice(client_nonce);
         server_info.extend_from_slice(server_nonce);
         server_info.push(0x01);
         let server_key = client.hmac_sha256(&prk, &server_info)?;
-        
+
         if is_client {
-            Ok(Self { send_key: client_key, recv_key: server_key })
+            Ok(Self {
+                send_key: client_key,
+                recv_key: server_key,
+            })
         } else {
-            Ok(Self { send_key: server_key, recv_key: client_key })
+            Ok(Self {
+                send_key: server_key,
+                recv_key: client_key,
+            })
         }
     }
 
@@ -347,7 +351,7 @@ impl SessionKeys {
         server_nonce: &[u8; 24],
         is_client: bool,
     ) -> Self {
-        use hmac::{ Hmac, Mac};
+        use hmac::{Hmac, Mac};
         use sha2::Sha256;
 
         type HmacSha256 = Hmac<Sha256>;
@@ -403,10 +407,7 @@ mod tests {
         assert_eq!(identity.onion_address().len(), 62);
 
         // Check timestamp
-        let now = SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .unwrap()
-            .as_secs();
+        let now = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs();
         assert!(identity.created_at() <= now);
         assert!(identity.created_at() > now - 10); // Within last 10 seconds
     }
@@ -419,10 +420,7 @@ mod tests {
 
         assert_eq!(original.onion_address(), restored.onion_address());
         assert_eq!(original.created_at(), restored.created_at());
-        assert_eq!(
-            original.public_key_bytes(),
-            restored.public_key_bytes()
-        );
+        assert_eq!(original.public_key_bytes(), restored.public_key_bytes());
     }
 
     #[test]

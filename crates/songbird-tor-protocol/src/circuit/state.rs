@@ -112,7 +112,7 @@ mod tests {
     #[test]
     fn test_circuit_add_hops() {
         let mut circuit = Circuit::new(1, CircuitPurpose::General);
-        
+
         // Add 3 hops
         for i in 0..3 {
             let relay = RelayInfo {
@@ -126,15 +126,10 @@ mod tests {
                 ntor_key: None,
                 version: None,
             };
-            
-            let hop = CircuitHop::new(
-                relay,
-                [i as u8; 32],
-                [i as u8; 32],
-                [i as u8; 16],
-                [i as u8; 16],
-            );
-            
+
+            let hop =
+                CircuitHop::new(relay, [i as u8; 32], [i as u8; 32], [i as u8; 16], [i as u8; 16]);
+
             circuit.add_hop(hop);
         }
 

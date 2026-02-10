@@ -35,7 +35,6 @@ use thiserror::Error;
 use tokio::sync::RwLock;
 use tracing::{debug, info, warn};
 
-/// Service type for Songbird mDNS advertisements
 // Future: mDNS service type for auto-discovery
 // const SERVICE_TYPE: &str = "_songbird._tcp.local.";
 

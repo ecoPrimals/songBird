@@ -7,7 +7,7 @@
 //! - Mocks isolated: Real implementation for production
 //! - Pure Rust: Uses tokio UDP (no C deps)
 //! - Modern async: Full async/await, event-driven
-//! - No polling: Uses tokio::select! for concurrent send/recv
+//! - No polling: Uses `tokio::select`! for concurrent send/recv
 
 use super::peer_handler::{PeerConnectResult, PeerConnector};
 use async_trait::async_trait;
@@ -35,6 +35,7 @@ pub struct UdpPeerConnector {
 
 /// Active UDP binding entry
 #[derive(Debug, Clone)]
+#[allow(dead_code)]
 struct BindingEntry {
     local_addr: SocketAddr,
     connection_id: String,
@@ -58,6 +59,7 @@ impl UdpPeerConnector {
     }
 
     /// Create with custom configuration
+    #[must_use]
     pub fn with_config(timeout: Duration, punch_count: u32, punch_interval: Duration) -> Self {
         Self {
             active_bindings: Arc::new(RwLock::new(Vec::new())),
@@ -70,13 +72,9 @@ impl UdpPeerConnector {
     /// Perform UDP hole punching to target address
     ///
     /// Sends punch packets while simultaneously listening for
-    /// incoming packets from the peer. Uses tokio::select! for
+    /// incoming packets from the peer. Uses `tokio::select`! for
     /// event-driven (zero-polling) operation.
-    async fn hole_punch(
-        &self,
-        socket: &UdpSocket,
-        target: SocketAddr,
-    ) -> Result<bool, String> {
+    async fn hole_punch(&self, socket: &UdpSocket, target: SocketAddr) -> Result<bool, String> {
         // Punch packet: minimal probe with timestamp
         let punch_data = b"SONGBIRD_PUNCH";
 
@@ -114,7 +112,7 @@ impl UdpPeerConnector {
 
         // Race: send punches while listening for response
         tokio::select! {
-            _ = punch_future => {
+            () = punch_future => {
                 debug!("All punch packets sent, waiting for response...");
                 // Give a brief window for final responses
                 let mut buf = [0u8; 1024];
@@ -148,31 +146,27 @@ impl PeerConnector for UdpPeerConnector {
         our_binding: Option<&str>,
         _rendezvous_token: Option<&str>,
     ) -> Result<PeerConnectResult, String> {
-        info!(
-            "🔗 UDP Peer Connect: Initiating to {} (binding: {:?})",
-            target_address, our_binding
-        );
+        info!("🔗 UDP Peer Connect: Initiating to {} (binding: {:?})", target_address, our_binding);
 
         // Parse target address
         let target: SocketAddr = target_address
             .parse()
-            .map_err(|e| format!("Invalid target address '{}': {}", target_address, e))?;
+            .map_err(|e| format!("Invalid target address '{target_address}': {e}"))?;
 
         // Bind our socket
         let bind_addr: SocketAddr = match our_binding {
-            Some(addr) => addr
-                .parse()
-                .map_err(|e| format!("Invalid binding address '{}': {}", addr, e))?,
+            Some(addr) => {
+                addr.parse().map_err(|e| format!("Invalid binding address '{addr}': {e}"))?
+            }
             None => "0.0.0.0:0".parse().unwrap(), // Ephemeral port
         };
 
         let socket = UdpSocket::bind(bind_addr)
             .await
-            .map_err(|e| format!("Failed to bind UDP socket on {}: {}", bind_addr, e))?;
+            .map_err(|e| format!("Failed to bind UDP socket on {bind_addr}: {e}"))?;
 
-        let local_addr = socket
-            .local_addr()
-            .map_err(|e| format!("Failed to get local address: {}", e))?;
+        let local_addr =
+            socket.local_addr().map_err(|e| format!("Failed to get local address: {e}"))?;
 
         info!("🔗 UDP bound to {} -> targeting {}", local_addr, target);
 
@@ -190,9 +184,13 @@ impl PeerConnector for UdpPeerConnector {
         let punched = tokio::time::timeout(self.timeout, self.hole_punch(&socket, target))
             .await
             .map_err(|_| "Hole punch timed out".to_string())?
-            .map_err(|e| format!("Hole punch error: {}", e))?;
+            .map_err(|e| format!("Hole punch error: {e}"))?;
 
-        let state = if punched { "connected" } else { "punching" };
+        let state = if punched {
+            "connected"
+        } else {
+            "punching"
+        };
 
         // Track binding
         {
@@ -203,10 +201,7 @@ impl PeerConnector for UdpPeerConnector {
             });
         }
 
-        info!(
-            "🔗 UDP peer connection {}: {} (local: {})",
-            state, connection_id, local_addr
-        );
+        info!("🔗 UDP peer connection {}: {} (local: {})", state, connection_id, local_addr);
 
         Ok(PeerConnectResult {
             connection_id,
@@ -255,14 +250,9 @@ mod tests {
             }
         });
 
-        let connector = UdpPeerConnector::with_config(
-            Duration::from_secs(3),
-            5,
-            Duration::from_millis(50),
-        );
-        let result = connector
-            .connect(&peer_addr.to_string(), None, None)
-            .await;
+        let connector =
+            UdpPeerConnector::with_config(Duration::from_secs(3), 5, Duration::from_millis(50));
+        let result = connector.connect(&peer_addr.to_string(), None, None).await;
 
         assert!(result.is_ok());
         let connect_result = result.unwrap();
@@ -277,15 +267,10 @@ mod tests {
     #[tokio::test]
     async fn test_connect_without_binding() {
         // Very short timeout and minimal punching to avoid slow tests
-        let connector = UdpPeerConnector::with_config(
-            Duration::from_millis(500),
-            1,
-            Duration::from_millis(10),
-        );
+        let connector =
+            UdpPeerConnector::with_config(Duration::from_millis(500), 1, Duration::from_millis(10));
         // Loopback unreachable port — should complete with "punching" state
-        let result = connector
-            .connect("127.0.0.1:59999", None, None)
-            .await;
+        let result = connector.connect("127.0.0.1:59999", None, None).await;
         // Either success (punching) or timeout error — both are valid
         match result {
             Ok(r) => assert_eq!(r.state, "punching"),
@@ -299,14 +284,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_connect_with_rendezvous_token() {
-        let connector = UdpPeerConnector::with_config(
-            Duration::from_millis(500),
-            1,
-            Duration::from_millis(10),
-        );
-        let result = connector
-            .connect("127.0.0.1:59998", None, Some("token-abc123"))
-            .await;
+        let connector =
+            UdpPeerConnector::with_config(Duration::from_millis(500), 1, Duration::from_millis(10));
+        let result = connector.connect("127.0.0.1:59998", None, Some("token-abc123")).await;
         // Should complete (success or timeout — both valid without peer)
         match result {
             Ok(r) => assert!(r.state == "punching" || r.state == "connected"),

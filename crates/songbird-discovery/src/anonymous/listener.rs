@@ -96,10 +96,7 @@ impl AnonymousDiscoveryListener {
     /// Adds `BirdSong` decryption for privacy-preserving discovery.
     /// Only same-family peers' packets will be decoded.
     #[must_use]
-    pub fn with_birdsong(
-        mut self,
-        processor: Arc<crate::birdsong::BirdSongProcessor>,
-    ) -> Self {
+    pub fn with_birdsong(mut self, processor: Arc<crate::birdsong::BirdSongProcessor>) -> Self {
         info!("🎵 BirdSong decryption enabled for discovery listener");
         info!("   Status: {}", processor.status());
         self.birdsong = Some(processor);
@@ -438,7 +435,7 @@ impl AnonymousDiscoveryListener {
                     interface_type,
                     address,
                     protocols: vec!["https".to_string()],
-                    preference: idx as u8,
+                    preference: u8::try_from(idx).unwrap_or(u8::MAX),
                 }
             })
             .collect();

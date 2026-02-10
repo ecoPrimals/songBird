@@ -17,13 +17,13 @@
 //! 3. **Configuration**: All provider-specific details in config, not code
 //!
 //! # Example
-//! ```rust
+//! ```text
 //! // NO hardcoded vendor logic like this:
 //! // if provider == "openai" { ... }
 //! // if provider == "huggingface" { ... }
 //!
 //! // Instead, universal proxy uses transforms:
-//! // Transform request → Send to provider → Transform response
+//! // Transform request -> Send to provider -> Transform response
 //! ```
 
 use super::cache::ResponseCache;

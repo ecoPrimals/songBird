@@ -759,17 +759,17 @@ mod tests {
         use std::collections::HashMap;
 
         // Test with explicit socket path
-        let env1: HashMap<String, String> = HashMap::from([
-            ("SONGBIRD_SOCKET".to_string(), "/tmp/test.sock".to_string()),
-        ]);
-        let path = IpcHttpClient::discover_socket_path_with(|name| env1.get(name).cloned()).unwrap();
+        let env1: HashMap<String, String> =
+            HashMap::from([("SONGBIRD_SOCKET".to_string(), "/tmp/test.sock".to_string())]);
+        let path =
+            IpcHttpClient::discover_socket_path_with(|name| env1.get(name).cloned()).unwrap();
         assert_eq!(path, PathBuf::from("/tmp/test.sock"));
 
         // Test with family ID (no explicit socket — falls back to /tmp)
-        let env2: HashMap<String, String> = HashMap::from([
-            ("SONGBIRD_FAMILY_ID".to_string(), "test".to_string()),
-        ]);
-        let path = IpcHttpClient::discover_socket_path_with(|name| env2.get(name).cloned()).unwrap();
+        let env2: HashMap<String, String> =
+            HashMap::from([("SONGBIRD_FAMILY_ID".to_string(), "test".to_string())]);
+        let path =
+            IpcHttpClient::discover_socket_path_with(|name| env2.get(name).cloned()).unwrap();
         assert!(path.to_string_lossy().contains("songbird-test.sock"));
     }
 

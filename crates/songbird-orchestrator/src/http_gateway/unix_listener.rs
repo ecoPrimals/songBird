@@ -17,7 +17,6 @@
 //!                  (Standard Protocol)
 //! ```
 
-#![cfg(unix)]
 use super::cache::ResponseCache;
 use super::capability_router::{CapabilityRouter, Route};
 use super::credentials::CredentialManager;

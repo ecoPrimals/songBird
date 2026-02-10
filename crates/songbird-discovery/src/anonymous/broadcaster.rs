@@ -189,10 +189,7 @@ impl AnonymousDiscoveryBroadcaster {
     /// Adds `BirdSong` encryption for privacy-preserving discovery.
     /// Only same-family peers can decrypt discovery packets.
     #[must_use]
-    pub fn with_birdsong(
-        mut self,
-        processor: Arc<crate::birdsong::BirdSongProcessor>,
-    ) -> Self {
+    pub fn with_birdsong(mut self, processor: Arc<crate::birdsong::BirdSongProcessor>) -> Self {
         info!("🎵 BirdSong encryption enabled for discovery broadcaster");
         info!("   Status: {}", processor.status());
         self.birdsong = Some(processor);
@@ -269,9 +266,9 @@ impl AnonymousDiscoveryBroadcaster {
             // Create discovery message (v2.1 or v3.0)
             let mut message = if self.version == "3.0" {
                 AnonymousDiscoveryMessage::new_v3(
-                    self.node_id.clone().unwrap(),
-                    self.node_name.clone().unwrap(),
-                    self.endpoints.clone().unwrap(),
+                    self.node_id.clone().unwrap_or_default(),
+                    self.node_name.clone().unwrap_or_default(),
+                    self.endpoints.clone().unwrap_or_default(),
                     self.capabilities.clone(),
                 )
             } else {
@@ -543,7 +540,7 @@ impl AnonymousDiscoveryBroadcaster {
     fn generate_session_id(&self) -> String {
         use std::time::{SystemTime, UNIX_EPOCH};
 
-        let timestamp = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs();
+        let timestamp = SystemTime::now().duration_since(UNIX_EPOCH).unwrap_or_default().as_secs();
 
         // Session ID rotates every hour (3600 seconds)
         // Production: Change to 86400 for daily rotation

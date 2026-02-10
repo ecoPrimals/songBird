@@ -142,7 +142,7 @@ async fn test_node_identity_with_lineage() -> Result<()> {
     // NodeIdentity::identity_path() uses SONGBIRD_NODE_ID to generate unique filenames
     let unique_node_id = format!("test-identity-{}", uuid::Uuid::new_v4());
     std::env::set_var("SONGBIRD_NODE_ID", &unique_node_id);
-    
+
     let mut identity = NodeIdentity::new_or_load(Some(unique_node_id.clone()))?;
 
     // Initially no lineage (fresh node identity)

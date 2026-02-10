@@ -1,6 +1,6 @@
 [package]
 name = "songbird-remote-deploy"
-version = "0.1.0"
+version.workspace = true
 edition = "2021"
 description = "Agnostic remote service deployment via SSH for Songbird federation"
 license = "AGPL-3.0"

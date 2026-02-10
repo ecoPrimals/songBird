@@ -9,10 +9,10 @@ use crate::protocol::RelayCell;
 pub struct RendezvousPoint {
     /// Relay identity
     pub relay_identity: [u8; 32],
-    
+
     /// Rendezvous cookie (20 bytes, chosen by client)
     pub cookie: [u8; 20],
-    
+
     /// Circuit ID to rendezvous point
     pub circuit_id: u32,
 }
@@ -173,7 +173,7 @@ mod tests {
 
         let handshake = vec![0u8; 64];
         let cell = rp.create_rendezvous1(&handshake);
-        
+
         assert_eq!(cell.command, crate::protocol::RelayCommand::Rendezvous1);
         assert_eq!(cell.data.len(), 84); // 20 (cookie) + 64 (handshake)
     }
@@ -182,7 +182,7 @@ mod tests {
     fn test_establish_rendezvous() {
         let cookie = [5u8; 20];
         let cell = RendezvousPoint::create_establish_rendezvous(&cookie);
-        
+
         assert_eq!(cell.data.len(), 20);
         assert_eq!(cell.data, cookie);
     }
@@ -192,9 +192,9 @@ mod tests {
         let rp = [1u8; 32];
         let cookie = [2u8; 20];
         let client_key = [3u8; 32];
-        
+
         let cell = RendezvousPoint::create_introduce1(&rp, &cookie, &client_key);
-        
+
         assert_eq!(cell.command, crate::protocol::RelayCommand::Introduce1);
         // 20 (legacy_key_id) + 1 (auth_type) + 2 (auth_len) + 32 (auth_key) +
         // 1 (n_ext) + 32 (rp) + 20 (cookie) + 32 (client_pk) = 140

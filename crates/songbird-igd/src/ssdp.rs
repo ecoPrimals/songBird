@@ -21,16 +21,16 @@ pub struct SsdpClient {
 pub struct SsdpResponse {
     /// Device description URL (LOCATION header)
     pub location: String,
-    
+
     /// Server identification string
     pub server: String,
-    
+
     /// Service type (ST header)
     pub service_type: String,
-    
+
     /// Unique service name (USN header)
     pub usn: String,
-    
+
     /// Source address of the response
     pub source_addr: SocketAddr,
 }
@@ -45,7 +45,9 @@ impl SsdpClient {
 
     /// Create SSDP client with custom timeout
     pub fn with_timeout(timeout: Duration) -> Self {
-        Self { timeout }
+        Self {
+            timeout,
+        }
     }
 
     /// Discover UPnP IGD devices on the network
@@ -56,7 +58,7 @@ impl SsdpClient {
 
         // Bind to any available port
         let socket = UdpSocket::bind("0.0.0.0:0").await?;
-        
+
         // Enable broadcast (required for multicast)
         socket.set_broadcast(true)?;
 
@@ -73,9 +75,7 @@ impl SsdpClient {
         );
 
         // Send M-SEARCH to multicast address
-        socket
-            .send_to(search_msg.as_bytes(), crate::SSDP_MULTICAST_ADDR)
-            .await?;
+        socket.send_to(search_msg.as_bytes(), crate::SSDP_MULTICAST_ADDR).await?;
 
         trace!("Sent SSDP M-SEARCH to {}", crate::SSDP_MULTICAST_ADDR);
 
@@ -92,9 +92,7 @@ impl SsdpClient {
             crate::WANIP_SERVICE_TYPE
         );
 
-        socket
-            .send_to(service_search_msg.as_bytes(), crate::SSDP_MULTICAST_ADDR)
-            .await?;
+        socket.send_to(service_search_msg.as_bytes(), crate::SSDP_MULTICAST_ADDR).await?;
 
         trace!("Sent SSDP M-SEARCH for WANIPConnection service");
 
@@ -140,7 +138,7 @@ impl SsdpClient {
     /// Parse SSDP response from raw bytes
     fn parse_response(data: &[u8], source_addr: SocketAddr) -> Option<SsdpResponse> {
         let text = std::str::from_utf8(data).ok()?;
-        
+
         // Must be HTTP response
         if !text.starts_with("HTTP/1.1 200 OK") {
             return None;
@@ -152,12 +150,9 @@ impl SsdpClient {
             if line.is_empty() {
                 break;
             }
-            
+
             if let Some((key, value)) = line.split_once(':') {
-                headers.insert(
-                    key.trim().to_uppercase(),
-                    value.trim().to_string(),
-                );
+                headers.insert(key.trim().to_uppercase(), value.trim().to_string());
             }
         }
 
@@ -168,8 +163,9 @@ impl SsdpClient {
         let usn = headers.get("USN").unwrap_or(&"".to_string()).clone();
 
         // Only return IGD devices or WANIPConnection services
-        if !service_type.contains("InternetGatewayDevice") 
-            && !service_type.contains("WANIPConnection") {
+        if !service_type.contains("InternetGatewayDevice")
+            && !service_type.contains("WANIPConnection")
+        {
             trace!("Ignoring non-IGD device: {}", service_type);
             return None;
         }
@@ -205,10 +201,7 @@ mod tests {
             USN: uuid:12345678-1234-1234-1234-123456789012::urn:schemas-upnp-org:device:InternetGatewayDevice:1\r\n\
             \r\n";
 
-        let addr = SocketAddr::new(
-            std::net::IpAddr::V4(Ipv4Addr::new(192, 168, 1, 254)),
-            1900,
-        );
+        let addr = SocketAddr::new(std::net::IpAddr::V4(Ipv4Addr::new(192, 168, 1, 254)), 1900);
 
         let parsed = SsdpClient::parse_response(response, addr);
         assert!(parsed.is_some());
@@ -225,10 +218,7 @@ mod tests {
             ST: urn:dial-multiscreen-org:service:dial:1\r\n\
             \r\n";
 
-        let addr = SocketAddr::new(
-            std::net::IpAddr::V4(Ipv4Addr::new(192, 168, 1, 100)),
-            1900,
-        );
+        let addr = SocketAddr::new(std::net::IpAddr::V4(Ipv4Addr::new(192, 168, 1, 100)), 1900);
 
         let parsed = SsdpClient::parse_response(response, addr);
         assert!(parsed.is_none(), "Should ignore non-IGD devices");

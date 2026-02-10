@@ -1,6 +1,6 @@
-//! BirdSong type definitions
+//! `BirdSong` type definitions
 //!
-//! Core types for BirdSong encrypted discovery packets.
+//! Core types for `BirdSong` encrypted discovery packets.
 
 use serde::{Deserialize, Serialize};
 
@@ -35,7 +35,8 @@ pub struct BirdSongPacket {
 }
 
 impl BirdSongPacket {
-    /// Create new BirdSong packet
+    /// Create new `BirdSong` packet
+    #[must_use]
     pub fn new(version: String, family_id: String, encrypted_payload: String) -> Self {
         Self {
             version,
@@ -45,16 +46,19 @@ impl BirdSongPacket {
     }
 
     /// Get the protocol version
+    #[must_use]
     pub fn version(&self) -> &str {
         &self.version
     }
 
     /// Get the family ID
+    #[must_use]
     pub fn family_id(&self) -> &str {
         &self.family_id
     }
 
     /// Get the encrypted payload
+    #[must_use]
     pub fn encrypted_payload(&self) -> &str {
         &self.encrypted_payload
     }

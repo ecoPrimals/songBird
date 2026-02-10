@@ -1,24 +1,34 @@
 //! Test utilities for config tests
 //!
-//! Provides ScopedEnv for concurrent test execution without #[serial]
+//! Provides ScopedEnv for serialized test execution of env var tests.
+//!
+//! **Concurrency**: Process env vars are global state. Tests that modify them
+//! MUST serialize. The static mutex ensures mutual exclusion within this binary.
 
 use std::collections::HashMap;
 use std::env;
+use std::sync::{Mutex, MutexGuard};
+
+/// Global lock for env var serialization within this test binary.
+static ENV_LOCK: Mutex<()> = Mutex::new(());
 
 /// RAII guard for environment variables
 ///
-/// Automatically restores previous values on drop.
-/// Enables concurrent tests without #[serial].
+/// Acquires a global lock on construction and restores previous values on drop.
+/// This ensures env var tests don't race with each other.
 pub struct ScopedEnv {
     /// Variables to restore on drop
     restore: HashMap<String, Option<String>>,
+    /// Mutex guard held for the lifetime of this scope
+    _guard: MutexGuard<'static, ()>,
 }
 
 impl ScopedEnv {
-    /// Create a new scoped environment manager
+    /// Create a new scoped environment manager (acquires global env lock)
     pub fn new() -> Self {
         Self {
             restore: HashMap::new(),
+            _guard: ENV_LOCK.lock().unwrap_or_else(|e| e.into_inner()),
         }
     }
 

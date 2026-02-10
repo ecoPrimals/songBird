@@ -1,4 +1,4 @@
-//! BirdSong encryption provider trait
+//! `BirdSong` encryption provider trait
 //!
 //! Defines the interface for security providers to implement encrypted discovery.
 

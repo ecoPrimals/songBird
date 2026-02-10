@@ -14,9 +14,15 @@ use tracing::{debug, info};
 pub use songbird_bluetooth::{Address, BluetoothHost, DeviceInfo, UsbTransport};
 
 /// Genesis service UUID - identifies Songbird Genesis witness devices
+///
+/// Used when BLE service discovery filtering is fully implemented.
+#[allow(dead_code)]
 const GENESIS_SERVICE_UUID: uuid::Uuid = uuid::uuid!("00001234-0000-1000-8000-00805f9b34fb");
 
 /// Genesis credential characteristic UUID
+///
+/// Used when GATT characteristic read/write is fully implemented.
+#[allow(dead_code)]
 const GENESIS_CREDENTIAL_CHAR_UUID: uuid::Uuid =
     uuid::uuid!("00001235-0000-1000-8000-00805f9b34fb");
 
@@ -47,12 +53,14 @@ const GENESIS_CREDENTIAL_CHAR_UUID: uuid::Uuid =
 /// # }
 /// ```
 #[cfg(feature = "pure-bluetooth")]
+#[allow(dead_code)]
 pub struct PureRustBluetoothChannel {
     host: BluetoothHost<UsbTransport>,
     witness_address: Option<Address>,
 }
 
 #[cfg(feature = "pure-bluetooth")]
+#[allow(dead_code)]
 impl PureRustBluetoothChannel {
     /// Create new pure Rust Bluetooth channel with USB transport
     ///

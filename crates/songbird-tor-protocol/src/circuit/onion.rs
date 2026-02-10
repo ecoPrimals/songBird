@@ -2,8 +2,8 @@
 //!
 //! **Phase 2B**: Circuit building
 
-use crate::crypto::BeardogCryptoClient;
 use crate::circuit::CircuitHop;
+use crate::crypto::BeardogCryptoClient;
 use crate::error::Result;
 
 /// Onion encryption handler
@@ -168,18 +168,16 @@ mod tests {
         };
 
         CircuitHop::new(
-            relay,
-            [id; 32],      // forward_digest
-            [id; 32],      // backward_digest
-            [id; 16],      // forward_key
-            [id; 16],      // backward_key
+            relay, [id; 32], // forward_digest
+            [id; 32], // backward_digest
+            [id; 16], // forward_key
+            [id; 16], // backward_key
         )
     }
 
     #[test]
     fn test_iv_generation() {
-        let beardog = BeardogCryptoClient::from_env()
-            .expect("Failed to create BearDog client");
+        let beardog = BeardogCryptoClient::from_env().expect("Failed to create BearDog client");
         let crypto = OnionCrypto::new(beardog);
 
         let iv = crypto.generate_iv(12345, 0);
@@ -201,8 +199,7 @@ mod tests {
 
     #[test]
     fn test_onion_crypto_creation() {
-        let beardog = BeardogCryptoClient::from_env()
-            .expect("Failed to create BearDog client");
+        let beardog = BeardogCryptoClient::from_env().expect("Failed to create BearDog client");
         let crypto = OnionCrypto::new(beardog);
 
         assert_eq!(crypto.forward_sequence(), 0);
@@ -211,10 +208,11 @@ mod tests {
 
     #[test]
     fn test_relay_digest_extraction() {
-        let digest = [0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88,
-                      0x99, 0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF, 0x00,
-                      0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08,
-                      0x09, 0x0A, 0x0B, 0x0C, 0x0D, 0x0E, 0x0F, 0x10];
+        let digest = [
+            0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88, 0x99, 0xAA, 0xBB, 0xCC, 0xDD, 0xEE,
+            0xFF, 0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0A, 0x0B, 0x0C,
+            0x0D, 0x0E, 0x0F, 0x10,
+        ];
 
         let relay_digest = OnionCrypto::extract_relay_digest(&digest);
         assert_eq!(relay_digest, [0x11, 0x22, 0x33, 0x44]);
@@ -223,26 +221,19 @@ mod tests {
     #[test]
     #[ignore = "Requires BearDog AES-128-CTR implementation"]
     fn test_encrypt_decrypt_roundtrip() {
-        let beardog = BeardogCryptoClient::from_env()
-            .expect("Failed to create BearDog client");
+        let beardog = BeardogCryptoClient::from_env().expect("Failed to create BearDog client");
         let crypto = OnionCrypto::new(beardog);
 
-        let hops = vec![
-            create_test_hop(1),
-            create_test_hop(2),
-            create_test_hop(3),
-        ];
+        let hops = vec![create_test_hop(1), create_test_hop(2), create_test_hop(3)];
 
         let plaintext = b"Hello, Tor!";
-        
+
         // Encrypt
-        let encrypted = crypto.encrypt_forward(plaintext, &hops)
-            .expect("Encryption failed");
-        
+        let encrypted = crypto.encrypt_forward(plaintext, &hops).expect("Encryption failed");
+
         // Decrypt
-        let decrypted = crypto.decrypt_backward(&encrypted, &hops)
-            .expect("Decryption failed");
-        
+        let decrypted = crypto.decrypt_backward(&encrypted, &hops).expect("Decryption failed");
+
         assert_eq!(decrypted, plaintext);
     }
 }

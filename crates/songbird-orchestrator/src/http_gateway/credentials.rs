@@ -192,9 +192,10 @@ mod tests {
     #[test]
     fn test_get_api_key_from_env() {
         // ✅ Concurrent-safe: Uses injectable env reader
-        let env = mock_env(HashMap::from([
-            ("TEST_SERVICE_API_KEY".to_string(), "test_key_123".to_string()),
-        ]));
+        let env = mock_env(HashMap::from([(
+            "TEST_SERVICE_API_KEY".to_string(),
+            "test_key_123".to_string(),
+        )]));
 
         let manager = CredentialManager::new();
         let api_key = manager.get_api_key_with("test_service", env);
@@ -204,9 +205,10 @@ mod tests {
     #[test]
     fn test_get_api_key_fallback() {
         // ✅ Concurrent-safe: Tests _KEY suffix fallback
-        let env = mock_env(HashMap::from([
-            ("ANOTHER_SERVICE_KEY".to_string(), "another_key_456".to_string()),
-        ]));
+        let env = mock_env(HashMap::from([(
+            "ANOTHER_SERVICE_KEY".to_string(),
+            "another_key_456".to_string(),
+        )]));
 
         let manager = CredentialManager::new();
         let api_key = manager.get_api_key_with("another_service", env);
@@ -224,9 +226,8 @@ mod tests {
     #[test]
     fn test_has_api_key() {
         // ✅ Concurrent-safe: Pre-load into cache to test has_api_key
-        let env = mock_env(HashMap::from([
-            ("MYSERVICE_API_KEY".to_string(), "my_key_789".to_string()),
-        ]));
+        let env =
+            mock_env(HashMap::from([("MYSERVICE_API_KEY".to_string(), "my_key_789".to_string())]));
 
         let manager = CredentialManager::new();
         // Load key into cache via get_api_key_with
@@ -242,12 +243,14 @@ mod tests {
         let manager = CredentialManager::new();
 
         // Pre-load specific credentials via injectable env
-        let openai_env = mock_env(HashMap::from([
-            ("OPENAI_API_KEY".to_string(), "openai_test_key".to_string()),
-        ]));
-        let stripe_env = mock_env(HashMap::from([
-            ("STRIPE_API_KEY".to_string(), "stripe_test_key".to_string()),
-        ]));
+        let openai_env = mock_env(HashMap::from([(
+            "OPENAI_API_KEY".to_string(),
+            "openai_test_key".to_string(),
+        )]));
+        let stripe_env = mock_env(HashMap::from([(
+            "STRIPE_API_KEY".to_string(),
+            "stripe_test_key".to_string(),
+        )]));
 
         let _ = manager.get_api_key_with("openai", openai_env);
         let _ = manager.get_api_key_with("stripe", stripe_env);
@@ -261,9 +264,10 @@ mod tests {
     #[test]
     fn test_credential_caching() {
         // ✅ Concurrent-safe: Tests cache behavior
-        let env = mock_env(HashMap::from([
-            ("CACHED_SERVICE_API_KEY".to_string(), "cached_key".to_string()),
-        ]));
+        let env = mock_env(HashMap::from([(
+            "CACHED_SERVICE_API_KEY".to_string(),
+            "cached_key".to_string(),
+        )]));
 
         let manager = CredentialManager::new();
 

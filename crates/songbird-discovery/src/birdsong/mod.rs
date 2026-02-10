@@ -15,10 +15,10 @@
 //!
 //! This module was refactored from a 1,089-line monolithic file into 5 focused modules:
 //!
-//! - `types` - BirdSongPacket struct and packet format (~60 lines)
-//! - `trait` - BirdSongEncryption provider trait (~250 lines)
-//! - `config` - BirdSongConfig and builder methods (~180 lines)
-//! - `processor` - BirdSongProcessor implementation + tests (~600 lines)
+//! - `types` - `BirdSongPacket` struct and packet format (~60 lines)
+//! - `trait` - `BirdSongEncryption` provider trait (~250 lines)
+//! - `config` - `BirdSongConfig` and builder methods (~180 lines)
+//! - `processor` - `BirdSongProcessor` implementation + tests (~600 lines)
 //! - `mod` - Module documentation and re-exports (~80 lines)
 //!
 //! **Total**: ~1,170 lines across 5 modules (from 1,089-line monolith)
@@ -34,7 +34,7 @@
 //!
 //! ## Evolution Timeline
 //!
-//! - **v1.0 (Legacy)**: BirdSongPacket with plaintext `family_id` header
+//! - **v1.0 (Legacy)**: `BirdSongPacket` with plaintext `family_id` header
 //! - **v2.0 (Feb 3, 2026)**: Dark Forest beacons (fully encrypted, zero metadata)
 //! - **v3.22.0 (Feb 5, 2026)**: Smart refactoring into focused modules
 

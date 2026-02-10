@@ -264,13 +264,12 @@ impl PrivilegeManager {
                     }
                 }
             }
-
-            Ok(())
         } else {
             info!("No problem! You can run these commands manually later.");
             self.provide_firewall_instructions(ports);
-            Ok(())
         }
+
+        Ok(())
     }
 
     /// Provide user instructions for manual firewall configuration

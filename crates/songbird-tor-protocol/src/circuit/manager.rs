@@ -2,11 +2,11 @@
 //!
 //! **Phase 2B**: Circuit building
 
-use crate::crypto::BeardogCryptoClient;
-use crate::connection::TorConnection;
-use crate::directory::{Consensus, CircuitPath, RelayInfo};
-use crate::error::{Error, Result};
 use crate::circuit::{Circuit, CircuitHop, CircuitPurpose, KeyMaterial};
+use crate::connection::TorConnection;
+use crate::crypto::BeardogCryptoClient;
+use crate::directory::{CircuitPath, Consensus, RelayInfo};
+use crate::error::{Error, Result};
 use crate::protocol::{Cell, CellCommand};
 use std::collections::HashMap;
 use std::sync::{Arc, RwLock};
@@ -51,7 +51,9 @@ impl CircuitManager {
 
         // 2. Select path (3 hops: Guard → Middle → Exit/HSDir)
         let mut path = {
-            let consensus = self.consensus.read()
+            let consensus = self
+                .consensus
+                .read()
                 .map_err(|_| Error::Protocol("Failed to acquire consensus lock".to_string()))?;
             consensus.select_path()?
         };
@@ -65,7 +67,9 @@ impl CircuitManager {
 
         // 4. Store circuit
         {
-            let mut circuits = self.circuits.write()
+            let mut circuits = self
+                .circuits
+                .write()
                 .map_err(|_| Error::Protocol("Failed to acquire circuits lock".to_string()))?;
             circuits.insert(circuit_id, circuit);
         }
@@ -86,8 +90,10 @@ impl CircuitManager {
     async fn create_first_hop(&self, circuit_id: u32, path: &CircuitPath) -> Result<()> {
         // Get guard relay
         let guard = &path.guard;
-        info!("Creating first hop to guard: {} at {}:{}", 
-              guard.nickname, guard.address, guard.or_port);
+        info!(
+            "Creating first hop to guard: {} at {}:{}",
+            guard.nickname, guard.address, guard.or_port
+        );
 
         // 1. Connect to the guard relay
         let mut connection = TorConnection::new(guard.clone());
@@ -95,12 +101,12 @@ impl CircuitManager {
 
         // 2. Generate CREATE2 payload via ntor handshake
         let ntor = super::NtorHandshake::new((*self.beardog).clone());
-        
+
         // Get ntor key from relay (required for ntor handshake)
-        let relay_ntor_key = guard.ntor_key.ok_or_else(|| {
-            Error::Protocol(format!("Guard {} has no ntor_key", guard.nickname))
-        })?;
-        
+        let relay_ntor_key = guard
+            .ntor_key
+            .ok_or_else(|| Error::Protocol(format!("Guard {} has no ntor_key", guard.nickname)))?;
+
         // Node ID is the 20-byte fingerprint (SHA1 of RSA identity key)
         let node_id = &guard.fingerprint;
 
@@ -116,8 +122,11 @@ impl CircuitManager {
         payload.extend_from_slice(&(create2_payload.len() as u16).to_be_bytes()); // HLEN
         payload.extend_from_slice(&create2_payload); // HDATA
 
-        debug!("CREATE2 payload: htype=ntor, hlen={}, hdata_len={}", 
-               create2_payload.len(), create2_payload.len());
+        debug!(
+            "CREATE2 payload: htype=ntor, hlen={}, hdata_len={}",
+            create2_payload.len(),
+            create2_payload.len()
+        );
         debug!("CREATE2 ntor data: node_id[0..4]={:02x?}, ntor_key[0..4]={:02x?}, client_pk[0..4]={:02x?}",
                &node_id[0..4], &relay_ntor_key[0..4], &create2_payload[52..56]);
 
@@ -128,7 +137,11 @@ impl CircuitManager {
         };
 
         // 4. Send CREATE2
-        debug!("Sending CREATE2 cell (circuit_id={}, total_payload={})", circuit_id, cell.payload.len());
+        debug!(
+            "Sending CREATE2 cell (circuit_id={}, total_payload={})",
+            circuit_id,
+            cell.payload.len()
+        );
         connection.send_cell(&cell).await?;
 
         // 5. Receive CREATED2
@@ -136,10 +149,7 @@ impl CircuitManager {
         let response = connection.recv_cell().await?;
 
         if response.command != CellCommand::Created2 {
-            return Err(Error::Protocol(format!(
-                "Expected CREATED2, got {:?}",
-                response.command
-            )));
+            return Err(Error::Protocol(format!("Expected CREATED2, got {:?}", response.command)));
         }
 
         // 6. Parse CREATED2 payload
@@ -150,8 +160,9 @@ impl CircuitManager {
         let hlen = u16::from_be_bytes([response.payload[0], response.payload[1]]) as usize;
         if response.payload.len() < 2 + hlen {
             return Err(Error::Protocol(format!(
-                "CREATED2 hdata too short: {} < {}", 
-                response.payload.len() - 2, hlen
+                "CREATED2 hdata too short: {} < {}",
+                response.payload.len() - 2,
+                hlen
             )));
         }
         let handshake_response = &response.payload[2..2 + hlen];
@@ -169,7 +180,7 @@ impl CircuitManager {
 
         Ok(())
     }
-    
+
     /// Create CircuitHop from key material
     fn create_hop(&self, relay: RelayInfo, keys: &KeyMaterial) -> CircuitHop {
         CircuitHop::new(
@@ -182,7 +193,12 @@ impl CircuitManager {
     }
 
     /// Extend circuit by one hop
-    async fn extend_circuit_hop(&self, circuit_id: u32, path: &CircuitPath, hop_index: usize) -> Result<()> {
+    async fn extend_circuit_hop(
+        &self,
+        circuit_id: u32,
+        path: &CircuitPath,
+        hop_index: usize,
+    ) -> Result<()> {
         let next_relay = match hop_index {
             1 => &path.middle,
             2 => &path.exit,
@@ -194,15 +210,19 @@ impl CircuitManager {
             2 => "exit",
             _ => "unknown",
         };
-        info!("Extending circuit {} to {} ({}): {}:{}", 
-              circuit_id, hop_name, next_relay.nickname, 
-              next_relay.address, next_relay.or_port);
+        info!(
+            "Extending circuit {} to {} ({}): {}:{}",
+            circuit_id, hop_name, next_relay.nickname, next_relay.address, next_relay.or_port
+        );
 
         // Get current circuit
         let circuit = {
-            let circuits = self.circuits.read()
+            let circuits = self
+                .circuits
+                .read()
                 .map_err(|_| Error::Protocol("Failed to acquire circuits lock".to_string()))?;
-            circuits.get(&circuit_id)
+            circuits
+                .get(&circuit_id)
                 .ok_or_else(|| Error::Protocol(format!("Circuit {} not found", circuit_id)))?
                 .clone()
         };
@@ -228,8 +248,9 @@ impl CircuitManager {
         // Get connection and send
         {
             let mut connections = self.connections.write().await;
-            let connection = connections.get_mut(&circuit_id)
-                .ok_or_else(|| Error::Protocol(format!("No connection for circuit {}", circuit_id)))?;
+            let connection = connections.get_mut(&circuit_id).ok_or_else(|| {
+                Error::Protocol(format!("No connection for circuit {}", circuit_id))
+            })?;
 
             debug!("Sending RELAY_EARLY (EXTEND2) cell");
             connection.send_cell(&relay_early_cell).await?;
@@ -246,7 +267,8 @@ impl CircuitManager {
             }
 
             // Decrypt through existing hops
-            let decrypted_payload = onion.decrypt_backward(&response_cell.payload, &circuit.hops)?;
+            let decrypted_payload =
+                onion.decrypt_backward(&response_cell.payload, &circuit.hops)?;
 
             // Parse EXTENDED2 relay cell
             // Relay cell format: command (1) | recognized (2) | stream_id (2) | digest (4) | length (2) | data
@@ -255,14 +277,16 @@ impl CircuitManager {
             }
 
             let relay_command = decrypted_payload[0];
-            if relay_command != 7 { // EXTENDED = 7
+            if relay_command != 7 {
+                // EXTENDED = 7
                 return Err(Error::Protocol(format!(
                     "Expected EXTENDED (7), got relay command {}",
                     relay_command
                 )));
             }
 
-            let data_len = u16::from_be_bytes([decrypted_payload[9], decrypted_payload[10]]) as usize;
+            let data_len =
+                u16::from_be_bytes([decrypted_payload[9], decrypted_payload[10]]) as usize;
             if decrypted_payload.len() < 11 + data_len {
                 return Err(Error::Protocol("EXTENDED2 data too short".to_string()));
             }
@@ -278,7 +302,12 @@ impl CircuitManager {
             };
 
             // Complete handshake and create hop
-            let hop = extender.process_extended2(&circuit, state, &response_relay_cell, next_relay.clone())?;
+            let hop = extender.process_extended2(
+                &circuit,
+                state,
+                &response_relay_cell,
+                next_relay.clone(),
+            )?;
             info!("Extended circuit {} to {}", circuit_id, next_relay.nickname);
 
             // Add hop to circuit
@@ -295,7 +324,9 @@ impl CircuitManager {
     /// with the MSB (bit 31) set to 1. This distinguishes client-initiated
     /// circuits from server-initiated circuits.
     fn allocate_circuit_id(&self) -> Result<u32> {
-        let mut next_id = self.next_circuit_id.write()
+        let mut next_id = self
+            .next_circuit_id
+            .write()
             .map_err(|_| Error::Protocol("Failed to acquire circuit ID lock".to_string()))?;
         // Set MSB to 1 for client-initiated circuits (link v4+ requirement)
         let id = 0x80000000 | *next_id;
@@ -306,21 +337,27 @@ impl CircuitManager {
     /// Add hop to circuit
     #[allow(dead_code)]
     fn add_hop_to_circuit(&self, circuit_id: u32, hop: CircuitHop) -> Result<()> {
-        let mut circuits = self.circuits.write()
+        let mut circuits = self
+            .circuits
+            .write()
             .map_err(|_| Error::Protocol("Failed to acquire circuits lock".to_string()))?;
-        
-        let circuit = circuits.get_mut(&circuit_id)
+
+        let circuit = circuits
+            .get_mut(&circuit_id)
             .ok_or_else(|| Error::Protocol(format!("Circuit {} not found", circuit_id)))?;
-        
+
         circuit.add_hop(hop);
         Ok(())
     }
 
     /// Get circuit
     pub fn get_circuit(&self, circuit_id: u32) -> Result<Circuit> {
-        let circuits = self.circuits.read()
+        let circuits = self
+            .circuits
+            .read()
             .map_err(|_| Error::Protocol("Failed to acquire circuits lock".to_string()))?;
-        circuits.get(&circuit_id)
+        circuits
+            .get(&circuit_id)
             .ok_or_else(|| Error::Circuit(format!("Circuit {} not found", circuit_id)))
             .cloned()
     }
@@ -351,7 +388,8 @@ impl CircuitManager {
                 if let Err(e) = connection.send_cell(&destroy_cell).await {
                     tracing::warn!(
                         "Failed to send DESTROY cell for circuit {}: {} (cleaning up anyway)",
-                        circuit_id, e
+                        circuit_id,
+                        e
                     );
                 } else {
                     tracing::debug!("Sent DESTROY cell for circuit {}", circuit_id);
@@ -366,7 +404,9 @@ impl CircuitManager {
         }
 
         // Remove from circuits
-        let mut circuits = self.circuits.write()
+        let mut circuits = self
+            .circuits
+            .write()
             .map_err(|_| Error::Protocol("Failed to acquire circuits lock".to_string()))?;
         circuits.remove(&circuit_id);
 
@@ -376,9 +416,7 @@ impl CircuitManager {
 
     /// Get active circuit count
     pub fn circuit_count(&self) -> usize {
-        self.circuits.read()
-            .map(|c| c.len())
-            .unwrap_or(0)
+        self.circuits.read().map(|c| c.len()).unwrap_or(0)
     }
 }
 
@@ -390,9 +428,8 @@ mod tests {
     #[test]
     fn test_circuit_manager_creation() {
         use std::time::SystemTime;
-        
-        let beardog = BeardogCryptoClient::from_env()
-            .expect("Failed to create BearDog client");
+
+        let beardog = BeardogCryptoClient::from_env().expect("Failed to create BearDog client");
         let now = SystemTime::now();
         let consensus = Consensus {
             valid_after: now,
@@ -400,7 +437,7 @@ mod tests {
             valid_until: now,
             relays: Vec::new(),
         };
-        
+
         let manager = CircuitManager::new(beardog, consensus);
         assert_eq!(manager.circuit_count(), 0);
     }
@@ -408,9 +445,8 @@ mod tests {
     #[test]
     fn test_circuit_id_allocation() {
         use std::time::SystemTime;
-        
-        let beardog = BeardogCryptoClient::from_env()
-            .expect("Failed to create BearDog client");
+
+        let beardog = BeardogCryptoClient::from_env().expect("Failed to create BearDog client");
         let now = SystemTime::now();
         let consensus = Consensus {
             valid_after: now,
@@ -418,9 +454,9 @@ mod tests {
             valid_until: now,
             relays: Vec::new(),
         };
-        
+
         let manager = CircuitManager::new(beardog, consensus);
-        
+
         let id1 = manager.allocate_circuit_id().expect("Failed to allocate");
         let id2 = manager.allocate_circuit_id().expect("Failed to allocate");
 

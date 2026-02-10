@@ -1,6 +1,6 @@
 //! Zero-Copy Service Registration Types
 //!
-//! This module provides Arc<str>-based types for service registration to eliminate
+//! This module provides `Arc<str>`-based types for service registration to eliminate
 //! cloning in hot paths like service lookup and capability matching.
 //!
 //! **Performance Benefits:**
@@ -166,7 +166,7 @@ impl std::fmt::Display for ServiceHealthStatus {
     }
 }
 
-/// Serde support for Arc<str>
+/// Serde support for `Arc<str>`
 mod arc_str_serde {
     use serde::{Deserialize, Deserializer, Serializer};
     use std::sync::Arc;
@@ -187,7 +187,7 @@ mod arc_str_serde {
     }
 }
 
-/// Serde support for Vec<Arc<str>>
+/// Serde support for `Vec<Arc<str>>`
 mod arc_str_vec_serde {
     use serde::{Deserialize, Deserializer, Serialize, Serializer};
     use std::sync::Arc;
@@ -209,7 +209,7 @@ mod arc_str_vec_serde {
     }
 }
 
-/// Serde support for HashMap<Arc<str>, Arc<str>>
+/// Serde support for `HashMap<Arc<str>, Arc<str>>`
 mod arc_str_hashmap_serde {
     use serde::{Deserialize, Deserializer, Serialize, Serializer};
     use std::collections::HashMap;

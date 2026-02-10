@@ -145,13 +145,13 @@ impl BeardogCryptoClient {
             // Strategy 1: Try BearDog socket (checks env vars + XDG + fallback)
             // This includes BEARDOG_SOCKET, BEARDOG_CRYPTO_SOCKET, SONGBIRD_CRYPTO_SOCKET
             let beardog_socket = discover_beardog_socket(None);
-            
+
             // Check if it's a TCP socket (tcp:host:port format) - skip file existence check
             if beardog_socket.starts_with("tcp:") {
                 tracing::info!("✅ Discovered BearDog TCP socket: {}", beardog_socket);
                 return Ok(beardog_socket);
             }
-            
+
             if Path::new(&beardog_socket).exists() {
                 tracing::info!("✅ Discovered BearDog socket: {}", beardog_socket);
                 return Ok(beardog_socket);
@@ -160,13 +160,13 @@ impl BeardogCryptoClient {
             // Strategy 2: Try Neural API socket (checks env vars + XDG + fallback)
             // This includes NEURAL_API_SOCKET, NEURALS_SOCKET
             let neural_socket = discover_neural_api_socket(None);
-            
+
             // Check if it's a TCP socket
             if neural_socket.starts_with("tcp:") {
                 tracing::info!("✅ Discovered Neural API TCP socket: {}", neural_socket);
                 return Ok(neural_socket);
             }
-            
+
             if Path::new(&neural_socket).exists() {
                 tracing::info!("✅ Discovered Neural API socket: {}", neural_socket);
                 return Ok(neural_socket);
@@ -303,8 +303,8 @@ impl BeardogCryptoClient {
     #[cfg(unix)]
     async fn connect_platform(path: &str) -> std::io::Result<CryptoStream> {
         // Check for TCP format (tcp:host:port)
-        if path.starts_with("tcp:") {
-            let addr = &path[4..]; // Remove "tcp:" prefix
+        if let Some(addr) = path.strip_prefix("tcp:") {
+            // Remove "tcp:" prefix
             tracing::debug!("🌐 Connecting to TCP socket: {}", addr);
             let stream = tokio::net::TcpStream::connect(addr).await?;
             Ok(CryptoStream::Tcp(stream))
@@ -664,7 +664,8 @@ mod tests {
     #[tokio::test]
     async fn test_new_fails_on_nonexistent_socket() {
         // with_socket_path then manually verify socket doesn't exist
-        let client = BeardogCryptoClient::with_socket_path("/tmp/nonexistent-tls-test.sock".to_string());
+        let client =
+            BeardogCryptoClient::with_socket_path("/tmp/nonexistent-tls-test.sock".to_string());
         // The socket_path is set but actual connection would fail
         assert_eq!(client.socket_path, "/tmp/nonexistent-tls-test.sock");
     }
@@ -675,9 +676,10 @@ mod tests {
         let handles: Vec<_> = (0..10)
             .map(|i| {
                 std::thread::spawn(move || {
-                    let client = BeardogCryptoClient::with_socket_path(
-                        format!("/tmp/concurrent-{}.sock", i),
-                    );
+                    let client = BeardogCryptoClient::with_socket_path(format!(
+                        "/tmp/concurrent-{}.sock",
+                        i
+                    ));
                     assert_eq!(client.socket_path, format!("/tmp/concurrent-{}.sock", i));
                 })
             })

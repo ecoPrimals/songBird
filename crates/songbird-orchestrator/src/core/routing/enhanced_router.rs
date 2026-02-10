@@ -322,11 +322,10 @@ impl EnhancedCapabilityRouter {
     /// Route to a peer Songbird instance
     async fn route_to_peer_songbird(&self) -> SongbirdResult<RoutingDecision> {
         let state = self.federation_state.nodes.read().await;
-        let nodes = state.values().cloned().collect::<Vec<_>>();
 
         // Filter to active nodes only
         let active_nodes: Vec<_> =
-            nodes.into_iter().filter(|n| n.status == NodeStatus::Active).collect();
+            state.values().filter(|n| n.status == NodeStatus::Active).cloned().collect();
 
         // Find a healthy peer
         for node in active_nodes {

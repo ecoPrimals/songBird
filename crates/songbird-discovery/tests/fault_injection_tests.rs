@@ -14,9 +14,7 @@
 mod fault_injection_tests {
     use serde_json::json;
     use songbird_discovery::anonymous::{AnonymousDiscoveryMessage, TransportEndpointMessage};
-    use songbird_discovery::birdsong_integration::{
-        BirdSongConfig, BirdSongEncryption, BirdSongProcessor,
-    };
+    use songbird_discovery::birdsong::{BirdSongConfig, BirdSongEncryption, BirdSongProcessor};
     use songbird_discovery::IdentityAttestation;
     use std::sync::atomic::{AtomicUsize, Ordering};
     use std::sync::Arc;

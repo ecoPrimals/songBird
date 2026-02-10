@@ -62,12 +62,12 @@ homepage = "https://songbird-gaming.ecoprimals.dev"
 
 [package]
 name = "songbird"
-version = "3.41.0"
-edition = "2021"
-license = "AGPL-3.0"
-authors = ["ecoPrimals <contact@ecoprimals.dev>"]
-repository = "https://github.com/ecoPrimals/SongBird"
-homepage = "https://songbird-gaming.ecoprimals.dev"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+repository.workspace = true
+homepage.workspace = true
 description = "Network Orchestration & Discovery Primal"
 keywords = ["orchestrator", "network", "discovery", "p2p"]
 categories = ["command-line-utilities", "network-programming"]
@@ -79,11 +79,20 @@ doc = false
 
 [dependencies]
 songbird-orchestrator = { path = "crates/songbird-orchestrator" }
+songbird-discovery = { path = "crates/songbird-discovery" }
+songbird-config = { path = "crates/songbird-config" }
+songbird-types = { path = "crates/songbird-types" }
+songbird-http-client = { path = "crates/songbird-http-client" }
 anyhow = { workspace = true }
 clap = { workspace = true }
 tokio = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+
+[dev-dependencies]
+tempfile = "3.8"
 
 [lints]
 workspace = true

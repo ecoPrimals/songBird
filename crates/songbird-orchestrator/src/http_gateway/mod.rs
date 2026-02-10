@@ -204,6 +204,7 @@ impl HttpGatewayService {
 
 impl Default for HttpGatewayService {
     fn default() -> Self {
+        #[allow(clippy::expect_used)] // Default impl must succeed or is a fatal misconfiguration
         Self::new().expect("Failed to create default HTTP gateway service")
     }
 }

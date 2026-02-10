@@ -384,8 +384,8 @@ mod tests {
     #[test]
     fn test_security_provider_env_var() {
         // SONGBIRD_SECURITY_PROVIDER takes priority after BEARDOG_* vars
-        let env = MockEnv::new()
-            .set("SONGBIRD_SECURITY_PROVIDER", "/run/user/1000/biomeos/beardog.sock");
+        let env =
+            MockEnv::new().set("SONGBIRD_SECURITY_PROVIDER", "/run/user/1000/biomeos/beardog.sock");
         let discovered = discover_beardog_socket_with_env(None, &env);
         assert_eq!(discovered, "/run/user/1000/biomeos/beardog.sock");
     }

@@ -61,7 +61,7 @@ impl RelayInfo {
             && self.flags.contains(RelayFlags::VALID)
             && self.flags.contains(RelayFlags::RUNNING)
     }
-    
+
     /// Check if relay can be used as middle
     pub fn is_middle(&self) -> bool {
         self.flags.contains(RelayFlags::FAST)
@@ -69,7 +69,7 @@ impl RelayInfo {
             && self.flags.contains(RelayFlags::VALID)
             && self.flags.contains(RelayFlags::RUNNING)
     }
-    
+
     /// Check if relay is hidden service directory
     pub fn is_hsdir(&self) -> bool {
         self.flags.contains(RelayFlags::HSDIR)

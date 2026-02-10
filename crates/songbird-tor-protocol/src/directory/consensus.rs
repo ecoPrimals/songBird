@@ -3,9 +3,9 @@
 //! Fetches and parses the Tor network consensus document from directory authorities.
 
 use crate::crypto::BeardogCryptoClient;
-use crate::directory::{DirectoryAuthority, RelayInfo, CircuitPath};
-use crate::error::{Error, Result};
 use crate::directory::authorities::DIRECTORY_AUTHORITIES;
+use crate::directory::{CircuitPath, DirectoryAuthority, RelayInfo};
+use crate::error::{Error, Result};
 use crate::http_fetch;
 use std::time::{Duration, SystemTime};
 use tracing::{debug, info, warn};
@@ -29,11 +29,11 @@ impl Consensus {
     /// Tries multiple authorities until successful.
     pub async fn fetch(beardog: &BeardogCryptoClient) -> Result<Self> {
         info!("Fetching Tor network consensus");
-        
+
         // Try up to 3 authorities
         for authority in DIRECTORY_AUTHORITIES.iter().take(3) {
             debug!("Trying directory authority: {}", authority.nickname);
-            
+
             match Self::fetch_from_authority(authority, beardog).await {
                 Ok(consensus) => {
                     info!(
@@ -53,50 +53,48 @@ impl Consensus {
                 }
             }
         }
-        
-        Err(Error::Consensus(
-            "Failed to fetch consensus from all authorities".to_string()
-        ))
+
+        Err(Error::Consensus("Failed to fetch consensus from all authorities".to_string()))
     }
-    
+
     /// Fetch consensus from specific authority
     async fn fetch_from_authority(
         authority: &DirectoryAuthority,
         _beardog: &BeardogCryptoClient,
     ) -> Result<Self> {
         let url = authority.consensus_url();
-        
+
         debug!("Fetching consensus from: {}", url);
-        
+
         // Pure Rust HTTP GET (all directory authorities serve plain HTTP)
         let body = http_fetch::get(&url, Duration::from_secs(30)).await?;
-        
+
         debug!("Consensus downloaded, size: {} bytes", body.len());
-        
+
         // Parse consensus
         Self::parse(&body)
     }
-    
+
     /// Parse consensus document
     fn parse(data: &str) -> Result<Self> {
         use crate::directory::parser::parse_consensus;
-        
+
         debug!("Parsing consensus document");
-        
+
         // Parse relay entries
         let relays = parse_consensus(data)?;
-        
+
         debug!("Parsed {} relays from consensus", relays.len());
-        
+
         // Parse timestamps from consensus header
         // Format: "valid-after YYYY-MM-DD HH:MM:SS"
         let valid_after = Self::parse_timestamp(data, "valid-after");
         let fresh_until = Self::parse_timestamp(data, "fresh-until");
         let valid_until = Self::parse_timestamp(data, "valid-until");
-        
+
         // Fallback to reasonable defaults if timestamps not found
         let now = SystemTime::now();
-        
+
         Ok(Self {
             valid_after: valid_after.unwrap_or(now),
             fresh_until: fresh_until.unwrap_or(now + Duration::from_secs(3600)),
@@ -104,7 +102,7 @@ impl Consensus {
             relays,
         })
     }
-    
+
     /// Parse a timestamp line from the consensus document
     ///
     /// Looks for lines like: `valid-after 2026-02-08 12:00:00`
@@ -121,30 +119,36 @@ impl Consensus {
         }
         None
     }
-    
+
     /// Select a circuit path (guard -> middle -> exit/hsdir)
     pub fn select_path(&self) -> Result<CircuitPath> {
         // TODO Phase 2A: Implement intelligent relay selection
-        
+
         // For now, require at least 3 relays
         if self.relays.len() < 3 {
             return Err(Error::Consensus("Not enough relays in consensus".to_string()));
         }
-        
+
         // Select guard (must have GUARD flag)
-        let guard = self.relays.iter()
+        let guard = self
+            .relays
+            .iter()
             .find(|r| r.is_guard())
             .ok_or_else(|| Error::Consensus("No suitable guard found".to_string()))?
             .clone();
-        
+
         // Select middle (must be fast + stable)
-        let middle = self.relays.iter()
+        let middle = self
+            .relays
+            .iter()
             .find(|r| r.is_middle() && r.fingerprint != guard.fingerprint)
             .ok_or_else(|| Error::Consensus("No suitable middle found".to_string()))?
             .clone();
-        
+
         // Select exit/hsdir (must have HSDIR flag for onion services)
-        let exit = self.relays.iter()
+        let exit = self
+            .relays
+            .iter()
             .find(|r| {
                 r.is_hsdir()
                     && r.fingerprint != guard.fingerprint
@@ -152,32 +156,34 @@ impl Consensus {
             })
             .ok_or_else(|| Error::Consensus("No suitable hsdir found".to_string()))?
             .clone();
-        
-        Ok(CircuitPath { guard, middle, exit })
+
+        Ok(CircuitPath {
+            guard,
+            middle,
+            exit,
+        })
     }
-    
+
     /// Check if consensus is still fresh
     pub fn is_fresh(&self) -> bool {
         SystemTime::now() < self.fresh_until
     }
-    
+
     /// Check if consensus is still valid
     pub fn is_valid(&self) -> bool {
         SystemTime::now() < self.valid_until
     }
-    
+
     /// Fetch ntor key for a relay from its descriptor
     ///
     /// Returns the 32-byte ntor-onion-key if found.
     pub async fn fetch_relay_ntor_key(relay: &RelayInfo) -> Result<[u8; 32]> {
         // Use STANDARD_NO_PAD since Tor omits base64 padding
-        use base64::{Engine, engine::general_purpose::STANDARD_NO_PAD as BASE64};
-        
+        use base64::{engine::general_purpose::STANDARD_NO_PAD as BASE64, Engine};
+
         // Convert fingerprint to hex
-        let fp_hex: String = relay.fingerprint.iter()
-            .map(|b| format!("{:02X}", b))
-            .collect();
-        
+        let fp_hex: String = relay.fingerprint.iter().map(|b| format!("{:02X}", b)).collect();
+
         // Directory authorities that serve descriptors (DirPort)
         // moria1 (MIT) is reliable and responds quickly
         let dir_servers = [
@@ -185,13 +191,13 @@ impl Consensus {
             ("194.109.206.212", 80), // dizum
             ("199.58.81.140", 80),   // longclaw
         ];
-        
+
         let mut last_error = None;
-        
+
         for (host, port) in dir_servers.iter() {
             let url = format!("http://{}:{}/tor/server/fp/{}", host, port, fp_hex);
             debug!("Trying directory server {}:{} for {}", host, port, relay.nickname);
-            
+
             match http_fetch::get(&url, Duration::from_secs(10)).await {
                 Ok(body) => {
                     debug!("Descriptor body length: {} bytes", body.len());
@@ -200,7 +206,10 @@ impl Consensus {
                     // Note: There's also ntor-onion-key-crosscert, skip that
                     for line in body.lines() {
                         if line.starts_with("ntor-onion-key ") && !line.contains("crosscert") {
-                            let key_str = line.strip_prefix("ntor-onion-key ").unwrap().trim();
+                            let Some(key_str) = line.strip_prefix("ntor-onion-key ") else {
+                                continue;
+                            };
+                            let key_str = key_str.trim();
                             debug!("Found ntor-onion-key line: {}", key_str);
                             match BASE64.decode(key_str) {
                                 Ok(key_bytes) if key_bytes.len() == 32 => {
@@ -211,21 +220,20 @@ impl Consensus {
                                 }
                                 Ok(key_bytes) => {
                                     last_error = Some(format!(
-                                        "ntor key wrong size: {} (expected 32)", 
+                                        "ntor key wrong size: {} (expected 32)",
                                         key_bytes.len()
                                     ));
                                 }
                                 Err(e) => {
-                                    last_error = Some(format!(
-                                        "Failed to decode ntor key: {}", e
-                                    ));
+                                    last_error = Some(format!("Failed to decode ntor key: {}", e));
                                 }
                             }
                         }
                     }
                     if last_error.is_none() {
                         last_error = Some(format!(
-                            "No ntor-onion-key found in descriptor ({} bytes)", body.len()
+                            "No ntor-onion-key found in descriptor ({} bytes)",
+                            body.len()
                         ));
                     }
                 }
@@ -235,20 +243,20 @@ impl Consensus {
                 }
             }
         }
-        
+
         Err(Error::Consensus(format!(
-            "Failed to fetch ntor key for {}: {}", 
-            relay.nickname, 
+            "Failed to fetch ntor key for {}: {}",
+            relay.nickname,
             last_error.unwrap_or_else(|| "Unknown error".to_string())
         )))
     }
-    
+
     /// Fetch ntor keys for path relays
     ///
     /// Updates the path with ntor keys fetched from relay descriptors.
     pub async fn fetch_path_ntor_keys(path: &mut CircuitPath) -> Result<()> {
         info!("Fetching ntor keys for circuit path");
-        
+
         // Fetch for guard
         if path.guard.ntor_key.is_none() {
             match Self::fetch_relay_ntor_key(&path.guard).await {
@@ -256,7 +264,7 @@ impl Consensus {
                 Err(e) => warn!("Failed to fetch guard ntor key: {}", e),
             }
         }
-        
+
         // Fetch for middle
         if path.middle.ntor_key.is_none() {
             match Self::fetch_relay_ntor_key(&path.middle).await {
@@ -264,7 +272,7 @@ impl Consensus {
                 Err(e) => warn!("Failed to fetch middle ntor key: {}", e),
             }
         }
-        
+
         // Fetch for exit
         if path.exit.ntor_key.is_none() {
             match Self::fetch_relay_ntor_key(&path.exit).await {
@@ -272,12 +280,12 @@ impl Consensus {
                 Err(e) => warn!("Failed to fetch exit ntor key: {}", e),
             }
         }
-        
+
         // Check if we got keys for at least the guard (required for first hop)
         if path.guard.ntor_key.is_none() {
             return Err(Error::Consensus("Failed to fetch guard ntor key".to_string()));
         }
-        
+
         Ok(())
     }
 }
@@ -307,7 +315,12 @@ fn parse_datetime_to_unix(s: &str) -> Option<u64> {
     let second: u64 = time_parts[2].parse().ok()?;
 
     // Validate ranges
-    if month < 1 || month > 12 || day < 1 || day > 31 || hour > 23 || minute > 59 || second > 59 {
+    if !(1..=12).contains(&month)
+        || !(1..=31).contains(&day)
+        || hour > 23
+        || minute > 59
+        || second > 59
+    {
         return None;
     }
 
@@ -319,7 +332,11 @@ fn parse_datetime_to_unix(s: &str) -> Option<u64> {
 
     // Years
     for y in 1970..year {
-        days += if is_leap_year(y) { 366 } else { 365 };
+        days += if is_leap_year(y) {
+            366
+        } else {
+            365
+        };
     }
 
     // Months
@@ -336,13 +353,13 @@ fn parse_datetime_to_unix(s: &str) -> Option<u64> {
 
 /// Check if a year is a leap year
 fn is_leap_year(year: u64) -> bool {
-    (year % 4 == 0 && year % 100 != 0) || (year % 400 == 0)
+    (year.is_multiple_of(4) && !year.is_multiple_of(100)) || year.is_multiple_of(400)
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    
+
     #[test]
     fn test_parse_empty() {
         // Empty string will fail since parser expects "r " prefix
@@ -351,7 +368,7 @@ mod tests {
         // This is expected behavior - empty consensus is invalid
         assert!(result.is_err());
     }
-    
+
     #[test]
     fn test_is_fresh() {
         let consensus = Consensus {
@@ -360,7 +377,7 @@ mod tests {
             valid_until: SystemTime::now() + Duration::from_secs(7200),
             relays: vec![],
         };
-        
+
         assert!(consensus.is_fresh());
         assert!(consensus.is_valid());
     }
@@ -398,15 +415,15 @@ mod tests {
     #[test]
     fn test_parse_timestamp_from_consensus() {
         let doc = "network-status-version 3\nvote-status consensus\nvalid-after 2026-02-08 12:00:00\nfresh-until 2026-02-08 13:00:00\nvalid-until 2026-02-08 15:00:00\n";
-        
+
         let va = Consensus::parse_timestamp(doc, "valid-after");
         let fu = Consensus::parse_timestamp(doc, "fresh-until");
         let vu = Consensus::parse_timestamp(doc, "valid-until");
-        
+
         assert!(va.is_some());
         assert!(fu.is_some());
         assert!(vu.is_some());
-        
+
         // fresh-until should be after valid-after
         assert!(fu.unwrap() > va.unwrap());
         // valid-until should be after fresh-until

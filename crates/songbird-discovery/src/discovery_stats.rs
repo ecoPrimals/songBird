@@ -75,16 +75,20 @@ impl DiscoveryStats {
     /// Record a broadcast packet sent
     pub fn record_broadcast(&self) {
         self.broadcasts_sent.fetch_add(1, Ordering::Relaxed);
-        let now =
-            std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_secs();
+        let now = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap_or_default()
+            .as_secs();
         self.last_broadcast_time.store(now, Ordering::Relaxed);
     }
 
     /// Record a packet received
     pub fn record_received(&self) {
         self.packets_received.fetch_add(1, Ordering::Relaxed);
-        let now =
-            std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_secs();
+        let now = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap_or_default()
+            .as_secs();
         self.last_received_time.store(now, Ordering::Relaxed);
     }
 

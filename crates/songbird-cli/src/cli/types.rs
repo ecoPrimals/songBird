@@ -258,7 +258,11 @@ mod tests {
     fn test_cli_args_parse_with_verbose() {
         // ✅ Concurrent-safe: Injectable env reader
         let args = CliArgs::parse_with(|name| {
-            if name == "SONGBIRD_VERBOSE" { Some("1".to_string()) } else { None }
+            if name == "SONGBIRD_VERBOSE" {
+                Some("1".to_string())
+            } else {
+                None
+            }
         });
         assert!(args.verbose);
     }
@@ -267,7 +271,11 @@ mod tests {
     fn test_cli_args_parse_with_quiet() {
         // ✅ Concurrent-safe: Injectable env reader
         let args = CliArgs::parse_with(|name| {
-            if name == "SONGBIRD_QUIET" { Some("1".to_string()) } else { None }
+            if name == "SONGBIRD_QUIET" {
+                Some("1".to_string())
+            } else {
+                None
+            }
         });
         assert!(args.quiet, "quiet flag should be true when SONGBIRD_QUIET is set");
     }
@@ -276,7 +284,11 @@ mod tests {
     fn test_cli_args_parse_with_config() {
         // ✅ Concurrent-safe: Injectable env reader
         let args = CliArgs::parse_with(|name| {
-            if name == "SONGBIRD_CONFIG" { Some("/etc/songbird.toml".to_string()) } else { None }
+            if name == "SONGBIRD_CONFIG" {
+                Some("/etc/songbird.toml".to_string())
+            } else {
+                None
+            }
         });
         assert_eq!(args.config, Some("/etc/songbird.toml".to_string()));
     }

@@ -29,28 +29,33 @@ pub async fn derive_onion_address_via_beardog(
     pubkey_bytes: &[u8; 32],
 ) -> Result<String> {
     let mut data = Vec::with_capacity(35);
-    
+
     // 1. Add public key (32 bytes)
     data.extend_from_slice(pubkey_bytes);
-    
+
     // 2. Compute checksum via BearDog: SHA3-256(".onion checksum" || pubkey || 0x03)[0..2]
     let mut checksum_input = Vec::new();
     checksum_input.extend_from_slice(b".onion checksum");
     checksum_input.extend_from_slice(pubkey_bytes);
     checksum_input.push(0x03); // Version 3
-    
+
     let hash = client.sha3_256(&checksum_input)?;
     let checksum = &hash[..2];
-    
+
     // 3. Add checksum (2 bytes)
     data.extend_from_slice(checksum);
-    
+
     // 4. Add version (1 byte)
     data.push(0x03);
-    
+
     // 5. Base32 encode (RFC 4648, lowercase, no padding)
-    let encoded = base32::encode(base32::Alphabet::Rfc4648Lower { padding: false }, &data);
-    
+    let encoded = base32::encode(
+        base32::Alphabet::Rfc4648Lower {
+            padding: false,
+        },
+        &data,
+    );
+
     Ok(format!("{}.onion", encoded))
 }
 
@@ -60,13 +65,16 @@ pub async fn validate_onion_address_via_beardog(
     onion: &str,
 ) -> Result<[u8; 32]> {
     // 1. Remove ".onion" suffix
-    let encoded = onion
-        .strip_suffix(".onion")
-        .ok_or(OnionError::InvalidFormat)?;
+    let encoded = onion.strip_suffix(".onion").ok_or(OnionError::InvalidFormat)?;
 
     // 2. Base32 decode
-    let data = base32::decode(base32::Alphabet::Rfc4648Lower { padding: false }, encoded)
-        .ok_or(OnionError::InvalidEncoding)?;
+    let data = base32::decode(
+        base32::Alphabet::Rfc4648Lower {
+            padding: false,
+        },
+        encoded,
+    )
+    .ok_or(OnionError::InvalidEncoding)?;
 
     // 3. Check length (32 + 2 + 1 = 35 bytes)
     if data.len() != 35 {
@@ -88,19 +96,18 @@ pub async fn validate_onion_address_via_beardog(
     checksum_input.extend_from_slice(b".onion checksum");
     checksum_input.extend_from_slice(pubkey_bytes);
     checksum_input.push(version);
-    
+
     let hash = client.sha3_256(&checksum_input)?;
     let expected_checksum = &hash[..2];
-    
+
     if checksum != expected_checksum {
         return Err(OnionError::ChecksumMismatch);
     }
-    
+
     // 7. Return public key
-    let pubkey_array: [u8; 32] = pubkey_bytes
-        .try_into()
-        .map_err(|_| OnionError::InvalidPublicKey)?;
-    
+    let pubkey_array: [u8; 32] =
+        pubkey_bytes.try_into().map_err(|_| OnionError::InvalidPublicKey)?;
+
     Ok(pubkey_array)
 }
 
@@ -151,7 +158,12 @@ pub fn derive_onion_address(pubkey: &VerifyingKey) -> String {
     data.push(0x03);
 
     // 5. Base32 encode (RFC 4648, lowercase, no padding)
-    let encoded = base32::encode(base32::Alphabet::Rfc4648Lower { padding: false }, &data);
+    let encoded = base32::encode(
+        base32::Alphabet::Rfc4648Lower {
+            padding: false,
+        },
+        &data,
+    );
 
     format!("{}.onion", encoded)
 }
@@ -189,13 +201,16 @@ pub fn parse_onion_address(onion: &str) -> Result<VerifyingKey> {
 #[cfg(feature = "standalone")]
 pub fn validate_onion_address(onion: &str) -> Result<VerifyingKey> {
     // 1. Remove ".onion" suffix
-    let encoded = onion
-        .strip_suffix(".onion")
-        .ok_or(OnionError::InvalidFormat)?;
+    let encoded = onion.strip_suffix(".onion").ok_or(OnionError::InvalidFormat)?;
 
     // 2. Base32 decode
-    let data = base32::decode(base32::Alphabet::Rfc4648Lower { padding: false }, encoded)
-        .ok_or(OnionError::InvalidEncoding)?;
+    let data = base32::decode(
+        base32::Alphabet::Rfc4648Lower {
+            padding: false,
+        },
+        encoded,
+    )
+    .ok_or(OnionError::InvalidEncoding)?;
 
     // 3. Check length (32 + 2 + 1 = 35 bytes)
     if data.len() != 35 {
@@ -213,10 +228,10 @@ pub fn validate_onion_address(onion: &str) -> Result<VerifyingKey> {
     }
 
     // 6. Parse public key
-    let pubkey_array: [u8; 32] = pubkey_bytes
-        .try_into()
-        .map_err(|_| OnionError::InvalidPublicKey)?;
-    let pubkey = VerifyingKey::from_bytes(&pubkey_array).map_err(|_| OnionError::InvalidPublicKey)?;
+    let pubkey_array: [u8; 32] =
+        pubkey_bytes.try_into().map_err(|_| OnionError::InvalidPublicKey)?;
+    let pubkey =
+        VerifyingKey::from_bytes(&pubkey_array).map_err(|_| OnionError::InvalidPublicKey)?;
 
     // 7. Verify checksum
     let mut hasher = Sha3_256::new();
@@ -299,22 +314,30 @@ mod tests {
 
         // Decode the address to get raw bytes
         let encoded = onion.strip_suffix(".onion").unwrap();
-        let mut data = base32::decode(base32::Alphabet::Rfc4648Lower { padding: false }, encoded).unwrap();
-        
+        let mut data = base32::decode(
+            base32::Alphabet::Rfc4648Lower {
+                padding: false,
+            },
+            encoded,
+        )
+        .unwrap();
+
         // Corrupt the checksum (bytes 32..34)
         if data.len() >= 34 {
             data[32] ^= 0xFF; // Flip all bits in first checksum byte
         }
-        
+
         // Re-encode
-        let corrupted_encoded = base32::encode(base32::Alphabet::Rfc4648Lower { padding: false }, &data);
+        let corrupted_encoded = base32::encode(
+            base32::Alphabet::Rfc4648Lower {
+                padding: false,
+            },
+            &data,
+        );
         let corrupted = format!("{}.onion", corrupted_encoded);
 
         let result = validate_onion_address(&corrupted);
-        assert!(matches!(
-            result,
-            Err(OnionError::ChecksumMismatch)
-        ));
+        assert!(matches!(result, Err(OnionError::ChecksumMismatch)));
     }
 
     #[test]

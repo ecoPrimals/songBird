@@ -14,9 +14,7 @@
 mod chaos_engineering_tests {
     use serde_json::json;
     use songbird_discovery::anonymous::{AnonymousDiscoveryMessage, TransportEndpointMessage};
-    use songbird_discovery::birdsong_integration::{
-        BirdSongConfig, BirdSongEncryption, BirdSongProcessor,
-    };
+    use songbird_discovery::birdsong::{BirdSongConfig, BirdSongEncryption, BirdSongProcessor};
     use songbird_discovery::IdentityAttestation;
     use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
     use std::sync::Arc;

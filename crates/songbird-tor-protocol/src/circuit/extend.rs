@@ -2,11 +2,11 @@
 //!
 //! **Phase 2B**: Circuit building
 
-use crate::crypto::BeardogCryptoClient;
-use crate::protocol::{RelayCell, RelayCommand};
-use crate::error::{Error, Result};
 use crate::circuit::{Circuit, CircuitHop};
+use crate::crypto::BeardogCryptoClient;
 use crate::directory::RelayInfo;
+use crate::error::{Error, Result};
+use crate::protocol::{RelayCell, RelayCommand};
 use std::net::IpAddr;
 
 /// Circuit extension handler
@@ -17,7 +17,9 @@ pub struct CircuitExtender {
 impl CircuitExtender {
     /// Create new circuit extender
     pub fn new(beardog: BeardogCryptoClient) -> Self {
-        Self { beardog }
+        Self {
+            beardog,
+        }
     }
 
     /// Extend circuit by one hop
@@ -44,10 +46,10 @@ impl CircuitExtender {
 
         // 2. Construct EXTEND2 relay cell payload
         let mut payload = Vec::new();
-        
+
         // Link specifiers (2 specifiers: IPv4 address + RSA identity)
         payload.push(2); // Number of link specifiers
-        
+
         // Link specifier type 0: IPv4 address (6 bytes: IP + port)
         payload.push(0); // Type: IPv4
         payload.push(6); // Length: 6 bytes
@@ -57,22 +59,22 @@ impl CircuitExtender {
             return Err(Error::Protocol("IPv6 not yet supported for EXTEND2".to_string()));
         }
         payload.extend_from_slice(&next_relay.or_port.to_be_bytes());
-        
+
         // Link specifier type 2: Legacy RSA identity (20-byte fingerprint)
         payload.push(2); // Type: RSA identity
         payload.push(20); // Length: 20 bytes
         payload.extend_from_slice(&next_relay.fingerprint);
-        
+
         // Handshake type (ntor = 0x0002)
         payload.extend_from_slice(&[0x00, 0x02]); // Type: ntor
-        
+
         // Handshake data length: 84 bytes (20 + 32 + 32)
         payload.extend_from_slice(&84u16.to_be_bytes()); // Length: 84 bytes
-        
+
         // Handshake data (same as CREATE2 ntor format)
         // Format: ID (20 bytes) || B (32 bytes) || X (32 bytes)
-        payload.extend_from_slice(&next_relay.fingerprint);      // 20 bytes - node ID
-        payload.extend_from_slice(&relay_ntor_key);              // 32 bytes - relay ntor key
+        payload.extend_from_slice(&next_relay.fingerprint); // 20 bytes - node ID
+        payload.extend_from_slice(&relay_ntor_key); // 32 bytes - relay ntor key
         payload.extend_from_slice(&client_ephemeral.public_key); // 32 bytes - client ephemeral
 
         // 3. Save state for EXTENDED2 processing
@@ -152,10 +154,9 @@ mod tests {
 
     #[test]
     fn test_circuit_extender_creation() {
-        let beardog = BeardogCryptoClient::from_env()
-            .expect("Failed to create BearDog client");
+        let beardog = BeardogCryptoClient::from_env().expect("Failed to create BearDog client");
         let _extender = CircuitExtender::new(beardog);
-        
+
         // Test passes if it creates successfully
     }
 

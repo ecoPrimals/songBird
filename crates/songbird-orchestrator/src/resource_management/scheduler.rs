@@ -39,23 +39,21 @@ impl Eq for QueueEntry {}
 
 impl PartialOrd for QueueEntry {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        // Primary: Lower virtual_finish_time = higher priority
-        // Secondary: Higher priority_boost = higher priority (for tie-breaking)
-        match other.virtual_finish_time.partial_cmp(&self.virtual_finish_time) {
-            Some(Ordering::Equal) => {
-                // Tie-break by priority level (higher priority_boost wins)
-                self.priority_boost.partial_cmp(&other.priority_boost)
-            }
-            other_ord => other_ord,
-        }
+        Some(self.cmp(other))
     }
 }
 
 impl Ord for QueueEntry {
     fn cmp(&self, other: &Self) -> Ordering {
-        // For scheduling, we need a total ordering even when floats are NaN
+        // Primary: Lower virtual_finish_time = higher priority
+        // Secondary: Higher priority_boost = higher priority (for tie-breaking)
         // NaN values are treated as equal for scheduling purposes
-        self.partial_cmp(other).unwrap_or(Ordering::Equal)
+        match other.virtual_finish_time.partial_cmp(&self.virtual_finish_time) {
+            Some(Ordering::Equal) | None => {
+                self.priority_boost.partial_cmp(&other.priority_boost).unwrap_or(Ordering::Equal)
+            }
+            Some(ord) => ord,
+        }
     }
 }
 

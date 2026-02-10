@@ -31,7 +31,7 @@ pub enum LineageRelayError {
     /// Relay session error
     #[error("Relay session error: {0}")]
     SessionError(String),
-    
+
     /// Relay session not found
     #[error("Relay session not found: {0}")]
     SessionNotFound(String),
@@ -39,7 +39,7 @@ pub enum LineageRelayError {
     /// Network communication error
     #[error("Network error: {0}")]
     NetworkError(String),
-    
+
     /// Invalid protocol message
     #[error("Invalid protocol: {0}")]
     InvalidProtocol(String),

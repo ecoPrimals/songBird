@@ -1,9 +1,14 @@
 [package]
 name = "songbird-onion-relay"
-version = "0.1.0"
-edition = "2021"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+repository.workspace = true
+license.workspace = true
 description = "Sovereign onion relay - Pure Rust NAT traversal without Arti"
-license = "AGPL-3.0"
+readme = "../README.md"
+keywords = ["onion", "relay", "songbird", "nat-traversal", "tor"]
+categories = ["network-programming", "cryptography"]
 
 # ARCHITECTURE EVOLUTION (Feb 6, 2026):
 # =====================================

@@ -222,6 +222,7 @@ impl GraphValidator {
     }
 
     /// DFS helper for cycle detection
+    #[allow(clippy::self_only_used_in_recursion)] // &self needed for method dispatch context
     fn dfs_cycle(
         &self,
         node: &str,
@@ -273,22 +274,17 @@ impl GraphValidator {
         for node in &graph.nodes {
             for input in &node.inputs {
                 // Find edges that provide this input
-                let providers: Vec<_> = graph
-                    .edges
-                    .iter()
-                    .filter(|e| e.to == node.id)
-                    .filter(|e| {
-                        if let Some(ref mapping) = e.data_mapping {
-                            mapping.values().any(|v| v == input)
-                        } else {
-                            outputs
-                                .get(e.from.as_str())
-                                .is_some_and(|outs| outs.contains(input.as_str()))
-                        }
-                    })
-                    .collect();
+                let has_provider = graph.edges.iter().filter(|e| e.to == node.id).any(|e| {
+                    if let Some(ref mapping) = e.data_mapping {
+                        mapping.values().any(|v| v == input)
+                    } else {
+                        outputs
+                            .get(e.from.as_str())
+                            .is_some_and(|outs| outs.contains(input.as_str()))
+                    }
+                });
 
-                if providers.is_empty() && !graph.entry_points().iter().any(|n| n.id == node.id) {
+                if !has_provider && !graph.entry_points().iter().any(|n| n.id == node.id) {
                     issues.push(
                         ValidationIssue::error(
                             "UNSATISFIED_INPUT",

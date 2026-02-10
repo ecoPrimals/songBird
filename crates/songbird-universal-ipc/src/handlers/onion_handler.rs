@@ -12,7 +12,7 @@
 //!
 //! ## TRUE PRIMAL Architecture
 //!
-//! All crypto operations are delegated to BearDog via `BeardogCryptoClient`.
+//! All crypto operations are delegated to `BearDog` via `BeardogCryptoClient`.
 //! Zero embedded crypto in Songbird.
 
 use serde_json::{json, Value};
@@ -28,7 +28,7 @@ use tracing::{info, warn};
 ///
 /// ## Design Principles
 ///
-/// - **TRUE PRIMAL**: All crypto via BearDog delegation
+/// - **TRUE PRIMAL**: All crypto via `BearDog` delegation
 /// - **Self-Sovereign**: No external onion routers needed
 /// - **Safe**: All operations use safe Rust
 /// - **Async**: Modern async/await patterns
@@ -38,12 +38,13 @@ pub struct OnionHandler {
     service: Arc<RwLock<Option<Arc<OnionService>>>>,
     /// Service start time
     start_time: Arc<RwLock<Option<std::time::Instant>>>,
-    /// BearDog socket path (for creating clients on demand)
+    /// `BearDog` socket path (for creating clients on demand)
     beardog_socket: Arc<RwLock<Option<String>>>,
 }
 
 impl OnionHandler {
     /// Create a new onion handler
+    #[must_use]
     pub fn new() -> Self {
         Self {
             service: Arc::new(RwLock::new(None)),
@@ -52,16 +53,16 @@ impl OnionHandler {
         }
     }
 
-    /// Set BearDog socket path (optional - will auto-detect from env)
+    /// Set `BearDog` socket path (optional - will auto-detect from env)
     pub async fn set_beardog_socket(&self, socket_path: String) {
         *self.beardog_socket.write().await = Some(socket_path);
     }
 
-    /// Get or create a BearDog client
+    /// Get or create a `BearDog` client
     fn get_beardog_client(&self) -> Result<BeardogCryptoClient, String> {
         // Try from env first (standard approach)
         BeardogCryptoClient::from_env()
-            .map_err(|e| format!("BearDog client not available: {}. Set BEARDOG_SOCKET or ensure BearDog is running.", e))
+            .map_err(|e| format!("BearDog client not available: {e}. Set BEARDOG_SOCKET or ensure BearDog is running."))
     }
 
     /// Handle `onion.start` - Start the sovereign onion service
@@ -105,17 +106,16 @@ impl OnionHandler {
         let beardog = self.get_beardog_client()?;
 
         // Parse port from params
-        let port = params
-            .get("port")
-            .and_then(|v| v.as_u64())
-            .unwrap_or(3492) as u16;
+        let port =
+            u16::try_from(params.get("port").and_then(serde_json::Value::as_u64).unwrap_or(3492))
+                .unwrap_or(3492);
 
         info!(port = port, "Starting sovereign onion service via BearDog");
 
         // Create onion service
         let service = OnionService::new_via_beardog(port, beardog)
             .await
-            .map_err(|e| format!("Failed to create onion service: {}", e))?;
+            .map_err(|e| format!("Failed to create onion service: {e}"))?;
 
         let onion_address = service.onion_address().to_string();
 
@@ -206,9 +206,7 @@ impl OnionHandler {
         let beardog_available = self.get_beardog_client().is_ok();
 
         if let Some(svc) = service.as_ref() {
-            let uptime = start_time
-                .map(|t| t.elapsed().as_secs())
-                .unwrap_or(0);
+            let uptime = start_time.map(|t| t.elapsed().as_secs()).unwrap_or(0);
 
             Ok(json!({
                 "running": true,
@@ -259,21 +257,14 @@ impl OnionHandler {
         // Get BearDog client (creates fresh from env)
         let beardog = self.get_beardog_client()?;
 
-        let address = params
-            .get("address")
-            .and_then(|v| v.as_str())
-            .ok_or("Missing 'address' parameter")?;
+        let address =
+            params.get("address").and_then(|v| v.as_str()).ok_or("Missing 'address' parameter")?;
 
-        let port = params
-            .get("port")
-            .and_then(|v| v.as_u64())
-            .unwrap_or(3492) as u16;
+        let port =
+            u16::try_from(params.get("port").and_then(serde_json::Value::as_u64).unwrap_or(3492))
+                .unwrap_or(3492);
 
-        info!(
-            address = address,
-            port = port,
-            "Connecting to onion address via BearDog"
-        );
+        info!(address = address, port = port, "Connecting to onion address via BearDog");
 
         // Create connector with BearDog
         let connector = OnionConnector::new_via_beardog(beardog);
@@ -283,11 +274,7 @@ impl OnionHandler {
             Ok(_connection) => {
                 // For now, we just verify connection works
                 // Future: Store connection for send/recv operations
-                info!(
-                    address = address,
-                    port = port,
-                    "Successfully connected to onion service"
-                );
+                info!(address = address, port = port, "Successfully connected to onion service");
 
                 Ok(json!({
                     "connected": true,

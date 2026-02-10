@@ -210,27 +210,20 @@ impl PlatformListener for UnixListenerWrapper {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use tokio::io::{AsyncReadExt, AsyncWriteExt};
     use std::collections::HashMap;
+    use tokio::io::{AsyncReadExt, AsyncWriteExt};
 
     /// Create a mock env reader from a HashMap (concurrent-safe, no global state)
     fn mock_env(vars: HashMap<&str, &str>) -> impl Fn(&str) -> Result<String, std::env::VarError> {
-        let owned: HashMap<String, String> = vars.into_iter()
-            .map(|(k, v)| (k.to_string(), v.to_string()))
-            .collect();
-        move |key: &str| {
-            owned.get(key)
-                .cloned()
-                .ok_or(std::env::VarError::NotPresent)
-        }
+        let owned: HashMap<String, String> =
+            vars.into_iter().map(|(k, v)| (k.to_string(), v.to_string())).collect();
+        move |key: &str| owned.get(key).cloned().ok_or(std::env::VarError::NotPresent)
     }
 
     #[test]
     fn test_get_socket_path_explicit_override() {
         // Priority 1: Explicit override
-        let env = mock_env(HashMap::from([
-            ("TESTPRIMAL_SOCKET", "/custom/path/test.sock"),
-        ]));
+        let env = mock_env(HashMap::from([("TESTPRIMAL_SOCKET", "/custom/path/test.sock")]));
         let path = resolve_socket_path("testprimal", env);
         assert_eq!(path, PathBuf::from("/custom/path/test.sock"));
     }
@@ -238,9 +231,7 @@ mod tests {
     #[test]
     fn test_get_socket_path_biomeos_dir() {
         // Priority 2: BIOMEOS_SOCKET_DIR
-        let env = mock_env(HashMap::from([
-            ("BIOMEOS_SOCKET_DIR", "/biomeos/sockets"),
-        ]));
+        let env = mock_env(HashMap::from([("BIOMEOS_SOCKET_DIR", "/biomeos/sockets")]));
         let path = resolve_socket_path("testprimal2", env);
         assert_eq!(path, PathBuf::from("/biomeos/sockets/testprimal2.sock"));
     }
@@ -248,9 +239,7 @@ mod tests {
     #[test]
     fn test_get_socket_path_xdg_runtime() {
         // Priority 3: XDG_RUNTIME_DIR
-        let env = mock_env(HashMap::from([
-            ("XDG_RUNTIME_DIR", "/run/user/1000"),
-        ]));
+        let env = mock_env(HashMap::from([("XDG_RUNTIME_DIR", "/run/user/1000")]));
         let path = resolve_socket_path("testprimal3", env);
         assert_eq!(path, PathBuf::from("/run/user/1000/biomeos/testprimal3.sock"));
     }
@@ -258,9 +247,7 @@ mod tests {
     #[test]
     fn test_get_socket_path_uid_fallback() {
         // Priority 4: UID env var (Pure Rust!)
-        let env = mock_env(HashMap::from([
-            ("UID", "1000"),
-        ]));
+        let env = mock_env(HashMap::from([("UID", "1000")]));
         let path = resolve_socket_path("testprimal4", env);
         assert_eq!(path, PathBuf::from("/run/user/1000/biomeos/testprimal4.sock"));
     }

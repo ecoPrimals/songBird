@@ -70,7 +70,8 @@ impl ConnectionSession {
 /// Direct connection (no relay)
 pub struct DirectConnection {
     peer: NodeId,
-    address: SocketAddr,
+    /// Remote address (used when relay mode fully implemented)
+    _address: SocketAddr,
     stats: Arc<Mutex<ConnectionStats>>,
 }
 
@@ -80,7 +81,7 @@ impl DirectConnection {
     pub fn new(peer: NodeId, address: SocketAddr) -> Self {
         Self {
             peer,
-            address,
+            _address: address,
             stats: Arc::new(Mutex::new(ConnectionStats {
                 established_at: Some(SystemTime::now()),
                 connection_type: Some(ConnectionType::Direct),
@@ -160,8 +161,8 @@ impl RelayedConnection {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::sync::Arc;
     use crate::types::MaskingLevel;
+    use std::sync::Arc;
 
     #[tokio::test]
     async fn test_direct_connection() {
@@ -180,14 +181,16 @@ mod tests {
         // Bind a server first
         let server_socket = tokio::net::UdpSocket::bind("127.0.0.1:0").await.unwrap();
         let server_addr = server_socket.local_addr().unwrap();
-        
+
         let relay_session = RelaySession::new(
             NodeId::from("relay-1"),
             server_addr,
             NodeId::from("requester"),
             NodeId::from("target"),
             MaskingLevel::Masked,
-        ).await.unwrap();
+        )
+        .await
+        .unwrap();
 
         let conn = RelayedConnection::new(Arc::new(relay_session));
 

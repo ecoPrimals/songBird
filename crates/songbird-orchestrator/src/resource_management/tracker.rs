@@ -144,8 +144,7 @@ impl UsageTracker {
             }
 
             // Track unique tasks
-            if !seen_tasks.contains(&record.task_id) {
-                seen_tasks.insert(record.task_id);
+            if seen_tasks.insert(record.task_id) {
                 task_count += 1;
             }
 

@@ -116,11 +116,9 @@ async fn test_so_reuseaddr_functionality() {
     let (_listener1, addr1) = result1.unwrap();
     let actual_port = addr1.port();
 
-    // Drop first listener (simulates restart)
+    // Drop first listener (simulates restart).
+    // With SO_REUSEADDR, rebind should succeed immediately.
     drop(_listener1);
-
-    // Give OS time to close socket
-    tokio::time::sleep(Duration::from_millis(100)).await;
 
     // Try to bind again to same port (SO_REUSEADDR should allow this)
     let result2 = SovereignBinder::bind_sovereign(actual_port).await;
@@ -165,7 +163,9 @@ async fn test_concurrent_connections() {
     // Bind sovereign socket
     let (listener, addr) = SovereignBinder::bind_sovereign(0).await.expect("Failed to bind");
 
-    // Spawn server in background
+    // Spawn server in background.
+    // The listener is already bound and listening, so the kernel backlog
+    // accepts connections immediately — no readiness sleep needed.
     tokio::spawn(async move {
         loop {
             if let Ok((_stream, _peer_addr)) = listener.accept().await {
@@ -173,9 +173,6 @@ async fn test_concurrent_connections() {
             }
         }
     });
-
-    // Wait for server to be ready
-    tokio::time::sleep(Duration::from_millis(50)).await;
 
     // Try multiple concurrent connections
     let mut handles = vec![];
@@ -316,11 +313,8 @@ async fn test_no_address_already_in_use_error() {
         }
     }
 
-    // Drop first listener
+    // Drop first listener. With SO_REUSEADDR, rebind is immediate.
     drop(_listener1);
-
-    // Give time for cleanup
-    tokio::time::sleep(Duration::from_millis(200)).await;
 
     // Now bind should definitely work (SO_REUSEADDR)
     let result3 = SovereignBinder::bind_sovereign(actual_port).await;

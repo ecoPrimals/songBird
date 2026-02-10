@@ -143,8 +143,8 @@ impl LineageServiceDiscovery {
     /// Process a received mDNS announcement
     ///
     /// Parses TXT records from an mDNS announcement and updates peer cache.
-    pub fn process_announcement(&mut self, txt_records: HashMap<String, String>) -> Result<()> {
-        let packet = DiscoveryPacket::from_txt_records(&txt_records)
+    pub fn process_announcement(&mut self, txt_records: &HashMap<String, String>) -> Result<()> {
+        let packet = DiscoveryPacket::from_txt_records(txt_records)
             .context("Failed to parse discovery packet from TXT records")?;
 
         if packet.has_lineage() {
@@ -264,7 +264,7 @@ mod tests {
         );
 
         let txt_records = packet.to_txt_records();
-        discovery.process_announcement(txt_records).unwrap();
+        discovery.process_announcement(&txt_records).unwrap();
 
         assert_eq!(discovery.peer_cache.len(), 1);
     }

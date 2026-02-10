@@ -20,7 +20,7 @@ use std::net::SocketAddr;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 use tokio::sync::RwLock;
-use tracing::{debug, info, warn};
+use tracing::{info, warn};
 
 /// Status of a punch attempt
 #[derive(Debug, Clone)]
@@ -49,7 +49,9 @@ pub enum PunchStatus {
     /// Punch succeeded - direct connection established
     Succeeded,
     /// Punch failed - will use relay fallback
-    Failed { reason: String },
+    Failed {
+        reason: String,
+    },
 }
 
 /// Punch handler for JSON-RPC integration
@@ -75,6 +77,7 @@ pub struct PunchHandler {
 
 impl PunchHandler {
     /// Create a new punch handler
+    #[must_use]
     pub fn new() -> Self {
         Self {
             attempts: Arc::new(RwLock::new(HashMap::new())),
@@ -135,15 +138,16 @@ impl PunchHandler {
             .ok_or("Missing target_node_id parameter")?
             .to_string();
 
-        let timeout_seconds = params
-            .get("timeout_seconds")
-            .and_then(|v| v.as_u64())
-            .unwrap_or(10);
+        let timeout_seconds =
+            params.get("timeout_seconds").and_then(serde_json::Value::as_u64).unwrap_or(10);
 
-        let max_attempts = params
-            .get("max_attempts")
-            .and_then(|v| v.as_u64())
-            .unwrap_or(self.default_max_attempts as u64) as u32;
+        let max_attempts = u32::try_from(
+            params
+                .get("max_attempts")
+                .and_then(serde_json::Value::as_u64)
+                .unwrap_or(u64::from(self.default_max_attempts)),
+        )
+        .unwrap_or(self.default_max_attempts);
 
         info!(
             "🥊 Starting hole punch to {} (timeout: {}s, max: {} attempts)",
@@ -163,10 +167,7 @@ impl PunchHandler {
             latency: None,
         };
 
-        self.attempts
-            .write()
-            .await
-            .insert(target_node_id.clone(), attempt);
+        self.attempts.write().await.insert(target_node_id.clone(), attempt);
 
         // Check if we have a coordinator
         let coordinator = self.coordinator.read().await.clone();
@@ -196,10 +197,12 @@ impl PunchHandler {
                             attempt.latency = Some(latency);
                         }
                     }
-                    Ok(songbird_onion_relay::coordinator::PunchResult::Relay { attempts: punch_count }) => {
+                    Ok(songbird_onion_relay::coordinator::PunchResult::Relay {
+                        attempts: punch_count,
+                    }) => {
                         if let Some(attempt) = attempts_ref.write().await.get_mut(&target_id) {
                             attempt.status = PunchStatus::Failed {
-                                reason: format!("fell back to relay after {} attempts", punch_count),
+                                reason: format!("fell back to relay after {punch_count} attempts"),
                             };
                             attempt.attempts = punch_count;
                         }
@@ -207,7 +210,7 @@ impl PunchHandler {
                     Err(e) => {
                         if let Some(attempt) = attempts_ref.write().await.get_mut(&target_id) {
                             attempt.status = PunchStatus::Failed {
-                                reason: format!("{}", e),
+                                reason: format!("{e}"),
                             };
                         }
                     }
@@ -268,7 +271,9 @@ impl PunchHandler {
             let (status_str, reason) = match &attempt.status {
                 PunchStatus::InProgress => ("in_progress", None),
                 PunchStatus::Succeeded => ("succeeded", None),
-                PunchStatus::Failed { reason } => ("failed", Some(reason.clone())),
+                PunchStatus::Failed {
+                    reason,
+                } => ("failed", Some(reason.clone())),
             };
 
             let mut response = json!({
@@ -276,7 +281,7 @@ impl PunchHandler {
                 "status": status_str,
                 "attempts": attempt.attempts,
                 "max_attempts": attempt.max_attempts,
-                "elapsed_ms": attempt.started.elapsed().as_millis() as u64
+                "elapsed_ms": u64::try_from(attempt.started.elapsed().as_millis()).unwrap_or(u64::MAX)
             });
 
             if let Some(addr) = attempt.connected_address {
@@ -284,7 +289,8 @@ impl PunchHandler {
             }
 
             if let Some(latency) = attempt.latency {
-                response["latency_ms"] = json!(latency.as_millis() as u64);
+                response["latency_ms"] =
+                    json!(u64::try_from(latency.as_millis()).unwrap_or(u64::MAX));
             }
 
             if let Some(r) = reason {
@@ -331,7 +337,9 @@ impl PunchHandler {
     /// Record a failed punch (called by coordinator callback)
     pub async fn record_failure(&self, target_node_id: &str, reason: String, attempts: u32) {
         if let Some(attempt) = self.attempts.write().await.get_mut(target_node_id) {
-            attempt.status = PunchStatus::Failed { reason: reason.clone() };
+            attempt.status = PunchStatus::Failed {
+                reason: reason.clone(),
+            };
             attempt.attempts = attempts;
 
             warn!(
@@ -364,14 +372,14 @@ mod tests {
     #[tokio::test]
     async fn test_punch_request_no_coordinator() {
         let handler = PunchHandler::new();
-        
+
         let result = handler
             .handle_request(json!({
                 "target_node_id": "test-peer",
                 "timeout_seconds": 5
             }))
             .await;
-        
+
         assert!(result.is_ok());
         let response = result.unwrap();
         assert_eq!(response["success"], false);
@@ -381,13 +389,13 @@ mod tests {
     #[tokio::test]
     async fn test_punch_status_not_found() {
         let handler = PunchHandler::new();
-        
+
         let result = handler
             .handle_status(json!({
                 "target_node_id": "unknown-peer"
             }))
             .await;
-        
+
         assert!(result.is_ok());
         let response = result.unwrap();
         assert_eq!(response["status"], "not_found");
@@ -396,7 +404,7 @@ mod tests {
     #[tokio::test]
     async fn test_punch_record_success() {
         let handler = PunchHandler::new();
-        
+
         // Start a punch request
         handler
             .handle_request(json!({
@@ -405,7 +413,7 @@ mod tests {
             }))
             .await
             .unwrap();
-        
+
         // Record success
         handler
             .record_success(
@@ -415,14 +423,14 @@ mod tests {
                 5,
             )
             .await;
-        
+
         // Check status
         let result = handler
             .handle_status(json!({
                 "target_node_id": "test-peer"
             }))
             .await;
-        
+
         assert!(result.is_ok());
         let response = result.unwrap();
         assert_eq!(response["status"], "succeeded");
@@ -433,7 +441,7 @@ mod tests {
     #[tokio::test]
     async fn test_punch_record_failure() {
         let handler = PunchHandler::new();
-        
+
         // Start a punch request first
         handler
             .handle_request(json!({
@@ -442,19 +450,17 @@ mod tests {
             }))
             .await
             .unwrap();
-        
+
         // Record failure
-        handler
-            .record_failure("test-peer", "symmetric_nat_both_sides".to_string(), 20)
-            .await;
-        
+        handler.record_failure("test-peer", "symmetric_nat_both_sides".to_string(), 20).await;
+
         // Check status
         let result = handler
             .handle_status(json!({
                 "target_node_id": "test-peer"
             }))
             .await;
-        
+
         assert!(result.is_ok());
         let response = result.unwrap();
         assert_eq!(response["status"], "failed");

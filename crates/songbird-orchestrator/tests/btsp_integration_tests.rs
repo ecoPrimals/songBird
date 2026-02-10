@@ -13,6 +13,15 @@
 use anyhow::Result;
 use songbird_orchestrator::btsp_client::{BtspClient, Direction, PeerEndpoint};
 use std::env;
+use std::sync::Mutex;
+
+/// File-local mutex to serialize tests that modify process-wide env vars.
+static ENV_LOCK: Mutex<()> = Mutex::new(());
+
+/// Acquire env lock with poison recovery (prevents cascade failures).
+fn lock_env() -> std::sync::MutexGuard<'static, ()> {
+    ENV_LOCK.lock().unwrap_or_else(|e| e.into_inner())
+}
 
 /// Helper: Check if BearDog is available for testing
 async fn beardog_available() -> bool {
@@ -45,6 +54,7 @@ fn cleanup_test_env() {
 
 #[tokio::test]
 async fn test_btsp_client_creation() {
+    let _guard = lock_env();
     setup_test_env();
 
     let client = BtspClient::new();
@@ -57,16 +67,29 @@ async fn test_btsp_client_creation() {
 
 #[tokio::test]
 async fn test_socket_path_discovery_priority() {
+    let _guard = lock_env();
+
+    // Clean slate for this test
+    env::remove_var("BEARDOG_SOCKET");
+    env::remove_var("BIOMEOS_SOCKET_PATH");
+    let saved_xdg = env::var("XDG_RUNTIME_DIR").ok();
+
     // Test priority 1: BEARDOG_SOCKET
     env::set_var("BEARDOG_SOCKET", "/custom/beardog.sock");
     let client1 = BtspClient::new();
-    assert!(format!("{:?}", client1).contains("/custom/beardog.sock"));
+    let debug1 = format!("{:?}", client1);
+    assert!(debug1.contains("/custom/beardog.sock"), "Should use BEARDOG_SOCKET, got: {}", debug1);
 
     // Test priority 2: BIOMEOS_SOCKET_PATH (when BEARDOG_SOCKET not set)
     env::remove_var("BEARDOG_SOCKET");
     env::set_var("BIOMEOS_SOCKET_PATH", "/biomeos/beardog.sock");
     let client2 = BtspClient::new();
-    assert!(format!("{:?}", client2).contains("/biomeos/beardog.sock"));
+    let debug2 = format!("{:?}", client2);
+    assert!(
+        debug2.contains("/biomeos/beardog.sock"),
+        "Should use BIOMEOS_SOCKET_PATH, got: {}",
+        debug2
+    );
 
     // Test priority 3: XDG_RUNTIME_DIR
     // Note: BtspClient uses "security-{family_id}.sock" path pattern
@@ -80,15 +103,23 @@ async fn test_socket_path_discovery_priority() {
         client3_path
     );
 
-    // Cleanup
-    env::remove_var("XDG_RUNTIME_DIR");
+    // Cleanup — restore original XDG_RUNTIME_DIR
+    env::remove_var("BEARDOG_SOCKET");
+    env::remove_var("BIOMEOS_SOCKET_PATH");
+    if let Some(xdg) = saved_xdg {
+        env::set_var("XDG_RUNTIME_DIR", xdg);
+    } else {
+        env::remove_var("XDG_RUNTIME_DIR");
+    }
 }
 
 #[tokio::test]
 async fn test_socket_path_fallback() {
+    let _guard = lock_env();
     // Remove explicit socket env vars (XDG_RUNTIME_DIR may still be set by system)
     env::remove_var("BEARDOG_SOCKET");
     env::remove_var("BIOMEOS_SOCKET_PATH");
+    env::remove_var("XDG_RUNTIME_DIR");
 
     let client = BtspClient::new();
 
@@ -107,6 +138,7 @@ async fn test_socket_path_fallback() {
 
 #[tokio::test]
 async fn test_btsp_ping_when_beardog_unavailable() {
+    let _guard = lock_env();
     setup_test_env();
 
     let client = BtspClient::new();
@@ -203,6 +235,7 @@ async fn test_establish_tunnel_with_capabilities() -> Result<()> {
 
 #[tokio::test]
 async fn test_establish_tunnel_fails_when_beardog_unavailable() {
+    let _guard = lock_env();
     setup_test_env();
 
     let client = BtspClient::new();
@@ -409,6 +442,7 @@ async fn test_multiple_tunnels_concurrent() -> Result<()> {
 
 #[tokio::test]
 async fn test_invalid_socket_path() {
+    let _guard = lock_env();
     env::set_var("BEARDOG_SOCKET", "/nonexistent/path/to/socket.sock");
 
     let client = BtspClient::new();

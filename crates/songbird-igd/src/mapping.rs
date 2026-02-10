@@ -25,6 +25,7 @@ impl Protocol {
     }
 
     /// Parse from string
+    #[allow(clippy::should_implement_trait)] // returns Option, not Result — intentionally different from FromStr
     pub fn from_str(s: &str) -> Option<Self> {
         match s.to_uppercase().as_str() {
             "TCP" => Some(Protocol::Tcp),
@@ -39,19 +40,19 @@ impl Protocol {
 pub struct PortMappingRequest {
     /// External (WAN) port
     pub external_port: u16,
-    
+
     /// Internal (LAN) port
     pub internal_port: u16,
-    
+
     /// Internal client IP address
     pub internal_client: IpAddr,
-    
+
     /// Protocol (TCP or UDP)
     pub protocol: Protocol,
-    
+
     /// Human-readable description
     pub description: String,
-    
+
     /// Lease duration in seconds (0 = permanent)
     pub lease_duration: u32,
 }
@@ -92,28 +93,28 @@ impl PortMappingRequest {
 pub struct PortMapping {
     /// External (WAN) port
     pub external_port: u16,
-    
+
     /// Internal (LAN) port
     pub internal_port: u16,
-    
+
     /// Internal client IP
     pub internal_client: IpAddr,
-    
+
     /// External (WAN) IP
     pub external_ip: Option<IpAddr>,
-    
+
     /// Protocol
     pub protocol: Protocol,
-    
+
     /// Description
     pub description: String,
-    
+
     /// Lease duration in seconds
     pub lease_duration: u32,
-    
+
     /// When this mapping was created
     pub created_at: Instant,
-    
+
     /// Whether this mapping is currently active
     pub active: bool,
 }
@@ -144,7 +145,7 @@ impl PortMapping {
     pub fn time_until_renewal(&self) -> Duration {
         let half_ttl = Duration::from_secs(self.lease_duration as u64 / 2);
         let elapsed = self.created_at.elapsed();
-        
+
         if elapsed >= half_ttl {
             Duration::from_secs(0)
         } else {
@@ -156,7 +157,7 @@ impl PortMapping {
     pub fn time_until_expiration(&self) -> Duration {
         let ttl = Duration::from_secs(self.lease_duration as u64);
         let elapsed = self.created_at.elapsed();
-        
+
         if elapsed >= ttl {
             Duration::from_secs(0)
         } else {
@@ -184,7 +185,7 @@ mod tests {
     fn test_protocol_conversion() {
         assert_eq!(Protocol::Tcp.as_str(), "TCP");
         assert_eq!(Protocol::Udp.as_str(), "UDP");
-        
+
         assert_eq!(Protocol::from_str("tcp"), Some(Protocol::Tcp));
         assert_eq!(Protocol::from_str("UDP"), Some(Protocol::Udp));
         assert_eq!(Protocol::from_str("invalid"), None);
@@ -215,10 +216,10 @@ mod tests {
             IpAddr::V4(Ipv4Addr::new(192, 168, 1, 144)),
             Protocol::Tcp,
         );
-        
+
         let mut mapping = PortMapping::from_request(&req);
         mapping.lease_duration = 2; // 2 second TTL for testing
-        
+
         assert!(mapping.active);
         assert!(!mapping.is_expired());
     }

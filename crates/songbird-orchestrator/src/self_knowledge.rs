@@ -275,7 +275,9 @@ mod tests {
     }
 
     /// Create a mock env reader from a HashMap (concurrent-safe, no global state)
-    fn mock_env(vars: std::collections::HashMap<String, String>) -> impl Fn(&str) -> Option<String> {
+    fn mock_env(
+        vars: std::collections::HashMap<String, String>,
+    ) -> impl Fn(&str) -> Option<String> {
         move |key| vars.get(key).map(|v| v.clone())
     }
 

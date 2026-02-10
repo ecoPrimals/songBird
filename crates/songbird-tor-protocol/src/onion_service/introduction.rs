@@ -9,13 +9,13 @@ use crate::protocol::RelayCell;
 pub struct IntroductionPoint {
     /// Relay identity (Ed25519)
     pub relay_identity: [u8; 32],
-    
+
     /// Relay onion key (X25519)
     pub onion_key: [u8; 32],
-    
+
     /// Service-side introduction auth key
     pub service_key: [u8; 32],
-    
+
     /// Circuit ID to this intro point
     pub circuit_id: u32,
 }
@@ -189,10 +189,10 @@ impl IntroductionPoint {
 pub struct IntroductionRequest {
     /// Rendezvous point relay identity
     pub rendezvous_point: [u8; 32],
-    
+
     /// Rendezvous cookie (chosen by client)
     pub rendezvous_cookie: [u8; 20],
-    
+
     /// Client's ephemeral public key (for ntor)
     pub client_public_key: [u8; 32],
 }

@@ -15,8 +15,12 @@ use std::sync::Arc;
 // Test Helpers
 // =============================================================================
 
-async fn create_test_manager() -> Result<TaskLifecycleManager> {
-    TaskLifecycleManager::new("sqlite::memory:").await
+async fn create_test_manager() -> Result<(TaskLifecycleManager, tempfile::TempDir)> {
+    let temp_dir = tempfile::tempdir()?;
+    let db_path = temp_dir.path().join("test_sled_db");
+    let manager = TaskLifecycleManager::new(db_path.to_str().unwrap()).await?;
+    // Return TempDir to keep it alive for the test's duration
+    Ok((manager, temp_dir))
 }
 
 fn create_test_spec(task_type: &str) -> TaskSpec {
@@ -52,7 +56,7 @@ fn test_tower() -> TowerId {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_create_task() -> Result<()> {
-    let manager = create_test_manager().await?;
+    let (manager, _dir) = create_test_manager().await?;
     let spec = create_test_spec("test_create");
 
     let task_id = manager.create_task(test_user(), spec).await?;
@@ -66,7 +70,7 @@ async fn test_create_task() -> Result<()> {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_start_task() -> Result<()> {
-    let manager = create_test_manager().await?;
+    let (manager, _dir) = create_test_manager().await?;
     let spec = create_test_spec("test_start");
 
     let task_id = manager.create_task(test_user(), spec).await?;
@@ -80,7 +84,7 @@ async fn test_start_task() -> Result<()> {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_update_progress() -> Result<()> {
-    let manager = create_test_manager().await?;
+    let (manager, _dir) = create_test_manager().await?;
     let spec = create_test_spec("test_progress");
 
     let task_id = manager.create_task(test_user(), spec).await?;
@@ -96,7 +100,7 @@ async fn test_update_progress() -> Result<()> {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_complete_task() -> Result<()> {
-    let manager = create_test_manager().await?;
+    let (manager, _dir) = create_test_manager().await?;
     let spec = create_test_spec("test_complete");
 
     let task_id = manager.create_task(test_user(), spec).await?;
@@ -113,7 +117,7 @@ async fn test_complete_task() -> Result<()> {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_fail_task() -> Result<()> {
-    let manager = create_test_manager().await?;
+    let (manager, _dir) = create_test_manager().await?;
     let spec = create_test_spec("test_fail");
 
     let task_id = manager.create_task(test_user(), spec).await?;
@@ -130,7 +134,7 @@ async fn test_fail_task() -> Result<()> {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_cancel_task() -> Result<()> {
-    let manager = create_test_manager().await?;
+    let (manager, _dir) = create_test_manager().await?;
     let spec = create_test_spec("test_cancel");
 
     let task_id = manager.create_task(test_user(), spec).await?;
@@ -151,7 +155,7 @@ async fn test_cancel_task() -> Result<()> {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_create_checkpoint() -> Result<()> {
-    let manager = create_test_manager().await?;
+    let (manager, _dir) = create_test_manager().await?;
     let spec = create_test_spec("test_checkpoint");
 
     let task_id = manager.create_task(test_user(), spec).await?;
@@ -168,7 +172,7 @@ async fn test_create_checkpoint() -> Result<()> {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_resume_from_checkpoint() -> Result<()> {
-    let manager = create_test_manager().await?;
+    let (manager, _dir) = create_test_manager().await?;
     let spec = create_test_spec("test_resume");
 
     let task_id = manager.create_task(test_user(), spec).await?;
@@ -193,7 +197,8 @@ async fn test_resume_from_checkpoint() -> Result<()> {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_concurrent_task_creation() -> Result<()> {
-    let manager = Arc::new(create_test_manager().await?);
+    let (manager, _dir) = create_test_manager().await?;
+    let manager = Arc::new(manager);
 
     // Create 10 tasks concurrently
     let mut handles = vec![];
@@ -224,7 +229,8 @@ async fn test_concurrent_task_creation() -> Result<()> {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_concurrent_progress_updates() -> Result<()> {
-    let manager = Arc::new(create_test_manager().await?);
+    let (manager, _dir) = create_test_manager().await?;
+    let manager = Arc::new(manager);
     let spec = create_test_spec("concurrent_progress");
     let task_id = manager.create_task(test_user(), spec).await?;
 
@@ -259,7 +265,7 @@ async fn test_concurrent_progress_updates() -> Result<()> {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_get_nonexistent_task() -> Result<()> {
-    let manager = create_test_manager().await?;
+    let (manager, _dir) = create_test_manager().await?;
 
     let fake_id = TaskId::new();
     let task = manager.get_task(fake_id).await?;
@@ -271,7 +277,7 @@ async fn test_get_nonexistent_task() -> Result<()> {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_start_nonexistent_task() -> Result<()> {
-    let manager = create_test_manager().await?;
+    let (manager, _dir) = create_test_manager().await?;
 
     let fake_id = TaskId::new();
     let result = manager.start_task(fake_id, test_tower()).await;
@@ -283,7 +289,7 @@ async fn test_start_nonexistent_task() -> Result<()> {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_complete_nonstarted_task() -> Result<()> {
-    let manager = create_test_manager().await?;
+    let (manager, _dir) = create_test_manager().await?;
     let spec = create_test_spec("test_invalid_complete");
 
     let task_id = manager.create_task(test_user(), spec).await?;
@@ -303,7 +309,7 @@ async fn test_complete_nonstarted_task() -> Result<()> {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_full_lifecycle_with_pause_resume() -> Result<()> {
-    let manager = create_test_manager().await?;
+    let (manager, _dir) = create_test_manager().await?;
     let spec = create_test_spec("test_pause_resume");
 
     // Create and start
@@ -331,7 +337,7 @@ async fn test_full_lifecycle_with_pause_resume() -> Result<()> {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_full_lifecycle_with_checkpoint_resume() -> Result<()> {
-    let manager = create_test_manager().await?;
+    let (manager, _dir) = create_test_manager().await?;
     let spec = create_test_spec("test_checkpoint_resume");
 
     // Create, start, and checkpoint

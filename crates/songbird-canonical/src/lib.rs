@@ -20,7 +20,7 @@
 //! - **Configuration Types**: Unified configuration patterns
 //! - **Async Patterns**: Standard async/await patterns and utilities
 //! - **Universal Adapters**: Primal-agnostic interface patterns
-
+#![forbid(unsafe_code)]
 #![deny(unsafe_code)]
 #![warn(clippy::all)]
 #![warn(clippy::pedantic)]

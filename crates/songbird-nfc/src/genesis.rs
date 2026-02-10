@@ -7,7 +7,10 @@ use crate::error::{NfcError, Result};
 use crate::platform::NfcDevice;
 use crate::protocol::{NfcMessage, NfcProtocol};
 use crate::timing::TimingProtector;
-use crate::*;
+use crate::{
+    MSG_TYPE_GENESIS_REQUEST, MSG_TYPE_GENESIS_RESPONSE, NONCE_SIZE, PUBLIC_KEY_SIZE,
+    SIGNATURE_SIZE,
+};
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 use tracing::{debug, info, warn};
@@ -17,28 +20,30 @@ use tracing::{debug, info, warn};
 pub struct GenesisCredentials {
     /// Primal identity (Ed25519 public key)
     pub identity: Vec<u8>,
-    
+
     /// Family seed (encrypted, shared secret)
     pub family_seed: Vec<u8>,
-    
+
     /// Lineage path (encrypted)
     pub lineage: Vec<String>,
-    
+
     /// Beacon endpoints (encrypted)
     pub beacons: Vec<String>,
-    
+
     /// Timestamp (Unix milliseconds)
     pub timestamp: i64,
 }
 
 /// Genesis exchange protocol
+#[derive(Debug)]
 pub struct GenesisExchange {
     /// Configuration
     config: NfcConfig,
-    
+
     /// Protocol handler
+    #[allow(dead_code)] // reserved for future NFC frame operations
     protocol: NfcProtocol,
-    
+
     /// Timing protector
     timing: TimingProtector,
 
@@ -56,6 +61,7 @@ pub struct GenesisExchange {
 /// - Runtime discovery (env -> XDG -> fallback)
 /// - Zero unsafe code
 /// - Graceful degradation (logs warning if BearDog unavailable)
+#[derive(Debug)]
 struct BearDogNfcCrypto {
     socket_path: PathBuf,
 }
@@ -70,7 +76,9 @@ impl BearDogNfcCrypto {
     fn new() -> Self {
         let socket_path = Self::discover_socket();
         debug!("BearDog NFC crypto client: {:?}", socket_path);
-        Self { socket_path }
+        Self {
+            socket_path,
+        }
     }
 
     fn discover_socket() -> PathBuf {
@@ -117,44 +125,54 @@ impl BearDogNfcCrypto {
             .map_err(|e| NfcError::Crypto(format!("serialize: {}", e)))?;
 
         // Connect to BearDog
-        let mut stream = tokio::net::UnixStream::connect(&self.socket_path)
-            .await
-            .map_err(|e| NfcError::Crypto(format!(
-                "BearDog connect failed ({:?}): {}",
-                self.socket_path, e
-            )))?;
+        let mut stream = tokio::net::UnixStream::connect(&self.socket_path).await.map_err(|e| {
+            NfcError::Crypto(format!(
+                "BearDog connect failed ({}): {}",
+                self.socket_path.display(),
+                e
+            ))
+        })?;
 
-        stream.write_all(&request_bytes).await
+        stream
+            .write_all(&request_bytes)
+            .await
             .map_err(|e| NfcError::Crypto(format!("write: {}", e)))?;
-        stream.write_all(b"\n").await
+        stream
+            .write_all(b"\n")
+            .await
             .map_err(|e| NfcError::Crypto(format!("write newline: {}", e)))?;
-        stream.shutdown().await
-            .map_err(|e| NfcError::Crypto(format!("shutdown write: {}", e)))?;
+        stream.shutdown().await.map_err(|e| NfcError::Crypto(format!("shutdown write: {}", e)))?;
 
         let mut response_buf = Vec::new();
-        stream.read_to_end(&mut response_buf).await
+        stream
+            .read_to_end(&mut response_buf)
+            .await
             .map_err(|e| NfcError::Crypto(format!("read: {}", e)))?;
 
         let response: serde_json::Value = serde_json::from_slice(&response_buf)
             .map_err(|e| NfcError::Crypto(format!("parse response: {}", e)))?;
 
         if let Some(error) = response.get("error") {
-            return Err(NfcError::Crypto(format!(
-                "BearDog error: {}",
-                error
-            )));
+            return Err(NfcError::Crypto(format!("BearDog error: {}", error)));
         }
 
-        response.get("result").cloned().ok_or_else(|| {
-            NfcError::Crypto("BearDog response missing 'result'".to_string())
-        })
+        response
+            .get("result")
+            .cloned()
+            .ok_or_else(|| NfcError::Crypto("BearDog response missing 'result'".to_string()))
     }
 
     /// Generate ephemeral X25519 keypair via BearDog
     async fn generate_x25519_keypair(&self) -> Result<[u8; PUBLIC_KEY_SIZE]> {
-        match self.call("crypto.generate_x25519_keypair", serde_json::json!({
-            "purpose": "nfc_genesis_ephemeral"
-        })).await {
+        match self
+            .call(
+                "crypto.generate_x25519_keypair",
+                serde_json::json!({
+                    "purpose": "nfc_genesis_ephemeral"
+                }),
+            )
+            .await
+        {
             Ok(result) => {
                 if let Some(pk) = result.get("public_key").and_then(|v| v.as_str()) {
                     let bytes = decode_hex_or_b64(pk)?;
@@ -180,9 +198,15 @@ impl BearDogNfcCrypto {
 
     /// Compute X25519 Diffie-Hellman shared secret via BearDog
     async fn x25519_dh(&self, peer_pubkey: &[u8]) -> Result<Vec<u8>> {
-        match self.call("crypto.x25519_dh", serde_json::json!({
-            "peer_public_key": hex::encode(peer_pubkey)
-        })).await {
+        match self
+            .call(
+                "crypto.x25519_dh",
+                serde_json::json!({
+                    "peer_public_key": hex::encode(peer_pubkey)
+                }),
+            )
+            .await
+        {
             Ok(result) => {
                 if let Some(ss) = result.get("shared_secret").and_then(|v| v.as_str()) {
                     decode_hex_or_b64(ss)
@@ -199,10 +223,16 @@ impl BearDogNfcCrypto {
 
     /// Generate random nonce via BearDog
     async fn generate_nonce(&self) -> Result<[u8; NONCE_SIZE]> {
-        match self.call("crypto.generate_random", serde_json::json!({
-            "length": NONCE_SIZE,
-            "purpose": "nfc_genesis_nonce"
-        })).await {
+        match self
+            .call(
+                "crypto.generate_random",
+                serde_json::json!({
+                    "length": NONCE_SIZE,
+                    "purpose": "nfc_genesis_nonce"
+                }),
+            )
+            .await
+        {
             Ok(result) => {
                 if let Some(n) = result.get("bytes").and_then(|v| v.as_str()) {
                     let bytes = decode_hex_or_b64(n)?;
@@ -227,11 +257,17 @@ impl BearDogNfcCrypto {
 
     /// Encrypt with ChaCha20-Poly1305 via BearDog
     async fn encrypt(&self, plaintext: &[u8], key: &[u8], nonce: &[u8]) -> Result<Vec<u8>> {
-        match self.call("crypto.chacha20poly1305_encrypt", serde_json::json!({
-            "plaintext": hex::encode(plaintext),
-            "key": hex::encode(key),
-            "nonce": hex::encode(nonce)
-        })).await {
+        match self
+            .call(
+                "crypto.chacha20poly1305_encrypt",
+                serde_json::json!({
+                    "plaintext": hex::encode(plaintext),
+                    "key": hex::encode(key),
+                    "nonce": hex::encode(nonce)
+                }),
+            )
+            .await
+        {
             Ok(result) => {
                 if let Some(ct) = result.get("ciphertext").and_then(|v| v.as_str()) {
                     decode_hex_or_b64(ct)
@@ -248,11 +284,17 @@ impl BearDogNfcCrypto {
 
     /// Decrypt with ChaCha20-Poly1305 via BearDog
     async fn decrypt(&self, ciphertext: &[u8], key: &[u8], nonce: &[u8]) -> Result<Vec<u8>> {
-        match self.call("crypto.chacha20poly1305_decrypt", serde_json::json!({
-            "ciphertext": hex::encode(ciphertext),
-            "key": hex::encode(key),
-            "nonce": hex::encode(nonce)
-        })).await {
+        match self
+            .call(
+                "crypto.chacha20poly1305_decrypt",
+                serde_json::json!({
+                    "ciphertext": hex::encode(ciphertext),
+                    "key": hex::encode(key),
+                    "nonce": hex::encode(nonce)
+                }),
+            )
+            .await
+        {
             Ok(result) => {
                 if let Some(pt) = result.get("plaintext").and_then(|v| v.as_str()) {
                     decode_hex_or_b64(pt)
@@ -269,10 +311,16 @@ impl BearDogNfcCrypto {
 
     /// Sign with Ed25519 via BearDog
     async fn ed25519_sign(&self, data: &[u8]) -> Result<[u8; SIGNATURE_SIZE]> {
-        match self.call("crypto.ed25519_sign", serde_json::json!({
-            "message": hex::encode(data),
-            "purpose": "nfc_genesis"
-        })).await {
+        match self
+            .call(
+                "crypto.ed25519_sign",
+                serde_json::json!({
+                    "message": hex::encode(data),
+                    "purpose": "nfc_genesis"
+                }),
+            )
+            .await
+        {
             Ok(result) => {
                 if let Some(sig) = result.get("signature").and_then(|v| v.as_str()) {
                     let bytes = decode_hex_or_b64(sig)?;
@@ -294,12 +342,19 @@ impl BearDogNfcCrypto {
 
     /// Verify Ed25519 signature via BearDog
     async fn ed25519_verify(&self, data: &[u8], signature: &[u8]) -> Result<()> {
-        match self.call("crypto.ed25519_verify", serde_json::json!({
-            "message": hex::encode(data),
-            "signature": hex::encode(signature)
-        })).await {
+        match self
+            .call(
+                "crypto.ed25519_verify",
+                serde_json::json!({
+                    "message": hex::encode(data),
+                    "signature": hex::encode(signature)
+                }),
+            )
+            .await
+        {
             Ok(result) => {
-                let valid = result.get("valid").and_then(|v| v.as_bool()).unwrap_or(false);
+                let valid =
+                    result.get("valid").and_then(serde_json::Value::as_bool).unwrap_or(false);
                 if valid {
                     Ok(())
                 } else {
@@ -315,9 +370,15 @@ impl BearDogNfcCrypto {
 
     /// Destroy ephemeral keys via BearDog
     async fn destroy_ephemeral_keys(&self) -> Result<()> {
-        match self.call("crypto.destroy_ephemeral_keys", serde_json::json!({
-            "purpose": "nfc_genesis_ephemeral"
-        })).await {
+        match self
+            .call(
+                "crypto.destroy_ephemeral_keys",
+                serde_json::json!({
+                    "purpose": "nfc_genesis_ephemeral"
+                }),
+            )
+            .await
+        {
             Ok(_) => {
                 debug!("Ephemeral keys destroyed via BearDog");
                 Ok(())
@@ -331,6 +392,7 @@ impl BearDogNfcCrypto {
 }
 
 /// Decode hex or base64 encoded bytes
+#[allow(clippy::unnecessary_wraps)] // Result kept for uniform error propagation at call sites
 fn decode_hex_or_b64(s: &str) -> Result<Vec<u8>> {
     // Try hex first (common for BearDog responses)
     if let Ok(bytes) = hex::decode(s) {
@@ -342,12 +404,17 @@ fn decode_hex_or_b64(s: &str) -> Result<Vec<u8>> {
 
 /// Simple hex encoding (no external dependency needed)
 mod hex {
-    pub fn encode(data: &[u8]) -> String {
-        data.iter().map(|b| format!("{:02x}", b)).collect()
+    pub(super) fn encode(data: &[u8]) -> String {
+        use std::fmt::Write;
+        let mut s = String::with_capacity(data.len() * 2);
+        for b in data {
+            let _ = write!(s, "{b:02x}");
+        }
+        s
     }
 
-    pub fn decode(s: &str) -> std::result::Result<Vec<u8>, String> {
-        if s.len() % 2 != 0 {
+    pub(super) fn decode(s: &str) -> std::result::Result<Vec<u8>, String> {
+        if !s.len().is_multiple_of(2) {
             return Err("odd hex length".to_string());
         }
         (0..s.len())
@@ -363,14 +430,11 @@ mod hex {
 impl GenesisExchange {
     /// Create new genesis exchange
     pub fn new(config: NfcConfig) -> Self {
-        let timing = TimingProtector::new(
-            config.target_exchange_duration,
-            config.max_random_delay,
-        );
-        
+        let timing = TimingProtector::new(config.target_exchange_duration, config.max_random_delay);
+
         let protocol = NfcProtocol::new(config.clone());
         let beardog = BearDogNfcCrypto::new();
-        
+
         Self {
             config,
             protocol,
@@ -378,7 +442,7 @@ impl GenesisExchange {
             beardog,
         }
     }
-    
+
     /// Initiate genesis exchange (as parent/initiator)
     ///
     /// Steps:
@@ -390,36 +454,40 @@ impl GenesisExchange {
     /// 6. Send encrypted genesis
     /// 7. Receive confirmation
     /// 8. Destroy ephemeral keys
-    pub async fn initiate(&mut self, device: &mut NfcDevice, credentials: &GenesisCredentials) -> Result<()> {
+    pub async fn initiate(
+        &mut self,
+        device: &mut NfcDevice,
+        credentials: &GenesisCredentials,
+    ) -> Result<()> {
         info!("🔐 Initiating genesis exchange");
-        
+
         if self.config.timing_protection {
             self.timing.start();
             self.timing.random_delay().await;
         }
-        
+
         // 1. Generate ephemeral X25519 keypair via BearDog
         let ephemeral_pubkey = self.beardog.generate_x25519_keypair().await?;
-        
+
         // 2. Send public key to peer
         debug!("Sending ephemeral public key");
         device.send_raw(&ephemeral_pubkey).await?;
-        
+
         // 3. Receive peer's public key
         let peer_pubkey = device.receive_raw(PUBLIC_KEY_SIZE).await?;
         debug!("Received peer ephemeral public key");
-        
+
         // 4. Compute shared secret via BearDog
         let shared_secret = self.beardog.x25519_dh(&peer_pubkey).await?;
-        
+
         // 5. Encrypt genesis credentials via BearDog
         let nonce = self.beardog.generate_nonce().await?;
         let serialized = serde_json::to_vec(credentials)?;
         let encrypted = self.beardog.encrypt(&serialized, &shared_secret, &nonce).await?;
-        
+
         // 6. Sign and send encrypted genesis
         let signature = self.beardog.ed25519_sign(&encrypted).await?;
-        
+
         let message = NfcMessage::new(
             MSG_TYPE_GENESIS_REQUEST,
             ephemeral_pubkey,
@@ -427,70 +495,73 @@ impl GenesisExchange {
             encrypted,
             signature,
         );
-        
+
         device.send_message(&message).await?;
-        
+
         // 7. Receive confirmation
         let response = device.receive_message().await?;
-        
+
         if response.msg_type != MSG_TYPE_GENESIS_RESPONSE {
             return Err(NfcError::InvalidMessageType(response.msg_type));
         }
-        
+
         info!("Genesis exchange complete");
-        
+
         // 8. Destroy ephemeral keys via BearDog
         self.beardog.destroy_ephemeral_keys().await?;
-        
+
         if self.config.timing_protection {
             self.timing.pad_to_constant_time().await?;
         }
-        
+
         Ok(())
     }
-    
+
     /// Respond to genesis exchange (as child/responder)
     pub async fn respond(&mut self, device: &mut NfcDevice) -> Result<GenesisCredentials> {
         info!("🔓 Responding to genesis exchange");
-        
+
         if self.config.timing_protection {
             self.timing.start();
             self.timing.random_delay().await;
         }
-        
+
         // 1. Generate ephemeral keypair via BearDog
         let ephemeral_pubkey = self.beardog.generate_x25519_keypair().await?;
-        
+
         // 2. Receive peer's public key
         let peer_pubkey = device.receive_raw(PUBLIC_KEY_SIZE).await?;
         debug!("Received peer ephemeral public key");
-        
+
         // 3. Send own public key
         device.send_raw(&ephemeral_pubkey).await?;
         debug!("Sent ephemeral public key");
-        
+
         // 4. Compute shared secret via BearDog
         let shared_secret = self.beardog.x25519_dh(&peer_pubkey).await?;
-        
+
         // 5. Receive encrypted genesis
         let message = device.receive_message().await?;
-        
+
         if message.msg_type != MSG_TYPE_GENESIS_REQUEST {
             return Err(NfcError::InvalidMessageType(message.msg_type));
         }
-        
+
         // 6. Verify signature via BearDog
         self.beardog.ed25519_verify(&message.encrypted_payload, &message.signature).await?;
-        
+
         // 7. Decrypt genesis via BearDog
-        let decrypted = self.beardog.decrypt(&message.encrypted_payload, &shared_secret, &message.nonce).await?;
+        let decrypted = self
+            .beardog
+            .decrypt(&message.encrypted_payload, &shared_secret, &message.nonce)
+            .await?;
         let credentials: GenesisCredentials = serde_json::from_slice(&decrypted)?;
-        
+
         // 8. Send confirmation
         let conf_nonce = self.beardog.generate_nonce().await?;
         let conf_payload = vec![0u8; 16]; // Empty confirmation
         let conf_signature = self.beardog.ed25519_sign(&conf_payload).await?;
-        
+
         let confirmation = NfcMessage::new(
             MSG_TYPE_GENESIS_RESPONSE,
             ephemeral_pubkey,
@@ -498,18 +569,18 @@ impl GenesisExchange {
             conf_payload,
             conf_signature,
         );
-        
+
         device.send_message(&confirmation).await?;
-        
+
         info!("Genesis received");
-        
+
         // 9. Destroy ephemeral keys via BearDog
         self.beardog.destroy_ephemeral_keys().await?;
-        
+
         if self.config.timing_protection {
             self.timing.pad_to_constant_time().await?;
         }
-        
+
         Ok(credentials)
     }
 }
@@ -573,9 +644,10 @@ mod tests {
     fn test_beardog_client_env_discovery() {
         // ✅ Concurrent-safe: uses injectable env reader (no global state mutation)
         use std::collections::HashMap;
-        let vars: HashMap<String, String> = HashMap::from([
-            ("BEARDOG_SOCKET".to_string(), "/tmp/test-beardog-nfc.sock".to_string()),
-        ]);
+        let vars: HashMap<String, String> = HashMap::from([(
+            "BEARDOG_SOCKET".to_string(),
+            "/tmp/test-beardog-nfc.sock".to_string(),
+        )]);
         let env = move |key: &str| -> std::result::Result<String, std::env::VarError> {
             vars.get(key).cloned().ok_or(std::env::VarError::NotPresent)
         };
@@ -586,9 +658,8 @@ mod tests {
     #[test]
     fn test_beardog_client_empty_env_ignored() {
         use std::collections::HashMap;
-        let vars: HashMap<String, String> = HashMap::from([
-            ("BEARDOG_SOCKET".to_string(), String::new()),
-        ]);
+        let vars: HashMap<String, String> =
+            HashMap::from([("BEARDOG_SOCKET".to_string(), String::new())]);
         let env = move |key: &str| -> std::result::Result<String, std::env::VarError> {
             vars.get(key).cloned().ok_or(std::env::VarError::NotPresent)
         };

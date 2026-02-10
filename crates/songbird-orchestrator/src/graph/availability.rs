@@ -112,6 +112,7 @@ impl AvailabilityChecker {
                 (report.summary.available_nodes as f64 / report.summary.total_nodes as f64) * 100.0;
         }
 
+        #[allow(clippy::float_cmp)] // exact 100.0 is an intentional sentinel
         if report.summary.availability_percent == 100.0 {
             info!(
                 "Graph {} has 100% availability ({}/{})",

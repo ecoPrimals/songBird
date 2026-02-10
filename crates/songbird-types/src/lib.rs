@@ -1,6 +1,7 @@
 //! Songbird Types Library
 //!
 //! **CANONICAL**: Core types and configurations for the Songbird ecosystem
+#![forbid(unsafe_code)]
 
 // Re-export all configuration modules
 pub use config::*;
@@ -80,12 +81,12 @@ pub mod errors;
 pub mod health;
 pub mod lineage; // Genetic lineage types
 pub mod memory_optimized;
-pub mod trust;
-pub mod trust_tests; // Progressive trust model types
 pub mod primal;
 pub mod response;
 pub mod service;
 pub mod traits;
+pub mod trust;
+pub mod trust_tests; // Progressive trust model types
 pub mod types;
 pub mod zero_copy;
 pub mod zero_copy_request;

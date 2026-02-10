@@ -1,6 +1,6 @@
 //! # Songbird QUIC Protocol
 //!
-//! Pure Rust QUIC implementation with BearDog crypto delegation.
+//! Pure Rust QUIC implementation with `BearDog` crypto delegation.
 //!
 //! ## Features
 //!
@@ -56,18 +56,18 @@
 #![allow(clippy::module_name_repetitions)]
 
 mod client;
-mod server;
+mod config;
 mod connection;
 mod error;
+mod server;
 mod stream;
-mod config;
 
 pub use client::QuicClient;
-pub use server::QuicServer;
+pub use config::QuicConfig;
 pub use connection::QuicConnection;
 pub use error::{QuicError, Result};
+pub use server::QuicServer;
 pub use stream::QuicStream;
-pub use config::QuicConfig;
 
 /// QUIC protocol version
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");

@@ -69,7 +69,7 @@
 //! - Uses `songbird-network-federation` for gaming protocols
 //! - Uses `songbird-security-errors` for unified error handling
 //! - Uses `songbird-orchestrator` for session coordination
-
+#![forbid(unsafe_code)]
 // unsafe_code is already forbidden at crate level
 #![warn(clippy::all)]
 #![warn(rust_2018_idioms)]

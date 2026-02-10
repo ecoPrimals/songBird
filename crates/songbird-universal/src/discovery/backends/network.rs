@@ -174,14 +174,15 @@ fn parse_mdns_response(
         PrimalType::new(explicit_type)
     } else {
         // Infer from capabilities
+        // Use capability type as the primal type (capability-first)
         if capabilities.iter().any(|c| c.capability_type == "compute") {
-            PrimalType::new("toadstool")
+            PrimalType::new("compute")
         } else if capabilities.iter().any(|c| c.capability_type == "security") {
-            PrimalType::new("beardog")
+            PrimalType::new("security")
         } else if capabilities.iter().any(|c| c.capability_type == "storage") {
-            PrimalType::new("squirrel")
+            PrimalType::new("storage")
         } else if capabilities.iter().any(|c| c.capability_type == "gateway") {
-            PrimalType::new("nestgate")
+            PrimalType::new("gateway")
         } else {
             PrimalType::default()
         }
@@ -300,7 +301,8 @@ fn infer_capabilities_from_name(name: &str) -> Vec<String> {
     let mut capabilities = Vec::new();
 
     // Common naming patterns
-    if name_lower.contains("beardog") || name_lower.contains("security") {
+    // Capability terms first, known provider names as secondary hints
+    if name_lower.contains("security") || name_lower.contains("beardog") {
         capabilities.push("security".to_string());
     }
     if name_lower.contains("squirrel") || name_lower.contains("ai") {

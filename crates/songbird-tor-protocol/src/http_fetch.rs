@@ -32,11 +32,10 @@ use tracing::debug;
 pub async fn get(url: &str, request_timeout: Duration) -> Result<String> {
     debug!("HTTP GET: {}", url);
 
-    let uri: hyper::Uri = url.parse()
-        .map_err(|e| Error::Network(format!("Invalid URL '{}': {}", url, e)))?;
+    let uri: hyper::Uri =
+        url.parse().map_err(|e| Error::Network(format!("Invalid URL '{}': {}", url, e)))?;
 
-    let client = Client::builder(TokioExecutor::new())
-        .build_http::<Empty<Bytes>>();
+    let client = Client::builder(TokioExecutor::new()).build_http::<Empty<Bytes>>();
 
     let request = Request::builder()
         .method("GET")
@@ -55,7 +54,8 @@ pub async fn get(url: &str, request_timeout: Duration) -> Result<String> {
         return Err(Error::Network(format!("HTTP {} from {}", status, url)));
     }
 
-    let body_bytes = response.into_body()
+    let body_bytes = response
+        .into_body()
         .collect()
         .await
         .map_err(|e| Error::Network(format!("Failed to read response body: {}", e)))?

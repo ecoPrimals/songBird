@@ -85,17 +85,17 @@ impl RelaySession {
         masking_level: MaskingLevel,
     ) -> Result<Self> {
         // Bind to ephemeral port (OS-assigned)
-        let socket = UdpSocket::bind("0.0.0.0:0").await
-            .map_err(|e| LineageRelayError::NetworkError(format!(
-                "Failed to bind UDP socket for relay session: {}", e
-            )))?;
-        
+        let socket = UdpSocket::bind("0.0.0.0:0").await.map_err(|e| {
+            LineageRelayError::NetworkError(format!(
+                "Failed to bind UDP socket for relay session: {e}"
+            ))
+        })?;
+
         // Connect to relay address (sets default destination)
-        socket.connect(relay_address).await
-            .map_err(|e| LineageRelayError::NetworkError(format!(
-                "Failed to connect to relay server: {}", e
-            )))?;
-        
+        socket.connect(relay_address).await.map_err(|e| {
+            LineageRelayError::NetworkError(format!("Failed to connect to relay server: {e}"))
+        })?;
+
         Ok(Self {
             session_id: uuid::Uuid::new_v4(),
             relay_node,
@@ -133,20 +133,19 @@ impl RelaySession {
             session_id: self.session_id,
             data: data.to_vec(),
         };
-        
+
         // Encode to wire format
         let encoded = packet.encode();
-        
+
         // Send to relay server via UDP
-        self.socket.send(&encoded).await
-            .map_err(|e| LineageRelayError::NetworkError(format!(
-                "Failed to send data through relay: {}", e
-            )))?;
-        
+        self.socket.send(&encoded).await.map_err(|e| {
+            LineageRelayError::NetworkError(format!("Failed to send data through relay: {e}"))
+        })?;
+
         // Update statistics
         let mut bytes = self.bytes_relayed.lock().await;
         *bytes += data.len() as u64;
-        
+
         info!(
             "✅ Forwarded {} bytes through relay {} (total: {} bytes)",
             data.len(),
@@ -156,7 +155,7 @@ impl RelaySession {
 
         Ok(())
     }
-    
+
     /// Refresh session (extend TTL)
     ///
     /// # Errors
@@ -164,20 +163,19 @@ impl RelaySession {
     /// Returns error if network send fails.
     pub async fn refresh(&self) -> Result<()> {
         debug!("🔄 Refreshing relay session {}", self.session_id);
-        
+
         let refresh_msg = RelayProtocol::Refresh {
             session_id: self.session_id,
         };
-        
+
         let encoded = refresh_msg.encode();
-        self.socket.send(&encoded).await
-            .map_err(|e| LineageRelayError::NetworkError(format!(
-                "Failed to refresh relay session: {}", e
-            )))?;
-        
+        self.socket.send(&encoded).await.map_err(|e| {
+            LineageRelayError::NetworkError(format!("Failed to refresh relay session: {e}"))
+        })?;
+
         Ok(())
     }
-    
+
     /// Close relay session
     ///
     /// # Errors
@@ -185,17 +183,16 @@ impl RelaySession {
     /// Returns error if network send fails.
     pub async fn close(&self) -> Result<()> {
         info!("🛑 Closing relay session {}", self.session_id);
-        
+
         let deallocate_msg = RelayProtocol::Deallocate {
             session_id: self.session_id,
         };
-        
+
         let encoded = deallocate_msg.encode();
-        self.socket.send(&encoded).await
-            .map_err(|e| LineageRelayError::NetworkError(format!(
-                "Failed to close relay session: {}", e
-            )))?;
-        
+        self.socket.send(&encoded).await.map_err(|e| {
+            LineageRelayError::NetworkError(format!("Failed to close relay session: {e}"))
+        })?;
+
         Ok(())
     }
 
@@ -263,13 +260,16 @@ impl RelayDiscovery {
         let offer = self.wait_for_relay_offer(Duration::from_secs(5)).await?;
 
         // Create relay session
-        let session = Arc::new(RelaySession::new(
-            offer.relay_node,
-            offer.relay_address,
-            self.my_id.clone(),
-            target,
-            offer.authorization.masking_level,
-        ).await?);
+        let session = Arc::new(
+            RelaySession::new(
+                offer.relay_node,
+                offer.relay_address,
+                self.my_id.clone(),
+                target,
+                offer.authorization.masking_level,
+            )
+            .await?,
+        );
 
         // Store active session
         self.active_sessions.write().await.push(session.clone());
@@ -312,10 +312,8 @@ impl RelayDiscovery {
     /// Priority: MEDIUM (relay functionality is experimental)
     async fn wait_for_relay_offer(&self, duration: Duration) -> Result<RelayOffer> {
         // ✅ Event-driven: uses Notify-based wakeup (zero polling, instant latency)
-        let messages = self
-            .broadcaster
-            .wait_for_message_by_type(BirdSongType::RelayOffer, duration)
-            .await?;
+        let messages =
+            self.broadcaster.wait_for_message_by_type(BirdSongType::RelayOffer, duration).await?;
 
         for msg in messages {
             if let Ok(offer) = serde_json::from_slice::<RelayOffer>(&msg.payload) {
@@ -325,9 +323,7 @@ impl RelayDiscovery {
             }
         }
 
-        Err(LineageRelayError::NoRelayAvailable(
-            "No authorized relay offers received".to_string(),
-        ))
+        Err(LineageRelayError::NoRelayAvailable("No authorized relay offers received".to_string()))
     }
 
     /// Offer relay service (as ancestor)
@@ -423,14 +419,16 @@ mod tests {
         // Bind a server first to have a valid address to connect to
         let server_socket = tokio::net::UdpSocket::bind("127.0.0.1:0").await.unwrap();
         let server_addr = server_socket.local_addr().unwrap();
-        
+
         let session = RelaySession::new(
             NodeId::from("relay-1"),
             server_addr,
             NodeId::from("requester"),
             NodeId::from("target"),
             MaskingLevel::Masked,
-        ).await.unwrap();
+        )
+        .await
+        .unwrap();
 
         assert_eq!(session.relay_node.0, "relay-1");
         assert_eq!(session.masking_level, MaskingLevel::Masked);
@@ -441,14 +439,16 @@ mod tests {
         // Bind a server first
         let server_socket = tokio::net::UdpSocket::bind("127.0.0.1:0").await.unwrap();
         let server_addr = server_socket.local_addr().unwrap();
-        
+
         let session = RelaySession::new(
             NodeId::from("relay-1"),
             server_addr,
             NodeId::from("requester"),
             NodeId::from("target"),
             MaskingLevel::Masked,
-        ).await.unwrap();
+        )
+        .await
+        .unwrap();
 
         // Send will succeed (UDP is connectionless, doesn't fail on send)
         session.send(b"test data").await.unwrap();

@@ -27,7 +27,7 @@
 //! let new_node_identity = ceremony.conduct().await?;
 //! // New node is born with full lineage and identity!
 //! ```
-
+#![forbid(unsafe_code)]
 #![warn(missing_docs)]
 #![warn(clippy::all)]
 

@@ -5,12 +5,12 @@
 //! This module has been consolidated into `crate::canonical::primals`.
 //!
 //! ## Migration
-//! ```rust,no_run
+//! ```rust,ignore
 //! // OLD (deprecated):
 //! // use songbird_config::config::universal_primals::QosMetrics;
 //!
 //! // NEW (canonical):
-//! // use songbird_config::canonical::primals::QosMetrics;
+//! use songbird_config::canonical::primals::QosMetrics;
 //! ```
 //!
 //! ## Status

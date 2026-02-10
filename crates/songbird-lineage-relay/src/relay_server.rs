@@ -18,7 +18,7 @@
 //!
 //! ## Features
 //!
-//! - ✅ Lineage-based authorization (BearDog integration)
+//! - ✅ Lineage-based authorization (`BearDog` integration)
 //! - ✅ UDP packet forwarding for symmetric NAT
 //! - ✅ Privacy masking based on family relationship
 //! - ✅ Session management (TTL, cleanup)
@@ -43,31 +43,31 @@ use uuid::Uuid;
 pub struct RelaySessionState {
     /// Unique session identifier
     pub session_id: Uuid,
-    
+
     /// Requester's address (peer requesting relay)
     pub requester_addr: SocketAddr,
-    
+
     /// Target's address (peer being relayed to)
     pub target_addr: SocketAddr,
-    
+
     /// Requester node ID
     pub requester_id: NodeId,
-    
+
     /// Target node ID
     pub target_id: NodeId,
-    
+
     /// Privacy masking level
     pub masking_level: MaskingLevel,
-    
+
     /// Session creation time
     pub created_at: SystemTime,
-    
+
     /// Last activity time
     pub last_activity: SystemTime,
-    
+
     /// Total bytes forwarded
     pub bytes_forwarded: u64,
-    
+
     /// Total packets forwarded
     pub packets_forwarded: u64,
 }
@@ -77,30 +77,30 @@ pub struct RelaySessionState {
 pub struct RelayServerStats {
     /// Active sessions
     pub sessions_active: u64,
-    
+
     /// Total sessions allocated (lifetime)
     pub sessions_total: u64,
-    
+
     /// Total bytes forwarded
     pub bytes_forwarded: u64,
-    
+
     /// Total packets forwarded
     pub packets_forwarded: u64,
-    
+
     /// Authorization failures
     pub authorization_failures: u64,
-    
+
     /// Server start time
     pub start_time: Option<SystemTime>,
 }
 
 impl RelayServerStats {
     /// Get server uptime in seconds
+    #[must_use]
     pub fn uptime_seconds(&self) -> u64 {
         self.start_time
             .and_then(|start| SystemTime::now().duration_since(start).ok())
-            .map(|d| d.as_secs())
-            .unwrap_or(0)
+            .map_or(0, |d| d.as_secs())
     }
 }
 
@@ -136,16 +136,16 @@ impl RelayServerStats {
 pub struct RelayServer {
     /// Bind address for relay service
     bind_addr: SocketAddr,
-    
+
     /// Active relay sessions
     sessions: Arc<RwLock<HashMap<Uuid, RelaySessionState>>>,
-    
+
     /// Lineage authority for authorization
     authority: Arc<dyn RelayAuthority>,
-    
+
     /// UDP socket for packet forwarding
     socket: Arc<UdpSocket>,
-    
+
     /// Server statistics
     stats: Arc<RwLock<RelayServerStats>>,
 }
@@ -168,7 +168,7 @@ impl RelayServer {
     /// # Arguments
     ///
     /// * `bind_addr` - Address to bind for relay service
-    /// * `authority` - Lineage authority provider (BearDog)
+    /// * `authority` - Lineage authority provider (`BearDog`)
     ///
     /// # Errors
     ///
@@ -187,20 +187,15 @@ impl RelayServer {
     ///     Ok(())
     /// }
     /// ```
-    pub async fn new(
-        bind_addr: SocketAddr,
-        authority: Arc<dyn RelayAuthority>,
-    ) -> Result<Self> {
-        let socket = UdpSocket::bind(bind_addr).await
-            .map_err(|e| LineageRelayError::NetworkError(format!(
-                "Failed to bind relay server: {}", e
-            )))?;
-        
-        let actual_addr = socket.local_addr()
-            .map_err(|e| LineageRelayError::NetworkError(format!(
-                "Failed to get local address: {}", e
-            )))?;
-        
+    pub async fn new(bind_addr: SocketAddr, authority: Arc<dyn RelayAuthority>) -> Result<Self> {
+        let socket = UdpSocket::bind(bind_addr).await.map_err(|e| {
+            LineageRelayError::NetworkError(format!("Failed to bind relay server: {e}"))
+        })?;
+
+        let actual_addr = socket.local_addr().map_err(|e| {
+            LineageRelayError::NetworkError(format!("Failed to get local address: {e}"))
+        })?;
+
         Ok(Self {
             bind_addr: actual_addr,
             sessions: Arc::new(RwLock::new(HashMap::new())),
@@ -212,7 +207,7 @@ impl RelayServer {
             })),
         })
     }
-    
+
     /// Run relay server
     ///
     /// Listens for allocation requests and data packets, forwarding
@@ -225,17 +220,17 @@ impl RelayServer {
     /// Returns error if fatal network error occurs.
     pub async fn run(&self) -> Result<()> {
         info!("🔄 Relay server listening on {}", self.bind_addr);
-        
+
         // Spawn cleanup task
         let _cleanup_handle = self.spawn_cleanup_task();
-        
+
         let mut buf = vec![0u8; 65536]; // Max UDP datagram size
-        
+
         loop {
             match self.socket.recv_from(&mut buf).await {
                 Ok((len, src_addr)) => {
                     debug!("📨 Received {} bytes from {}", len, src_addr);
-                    
+
                     // Handle packet (fire and forget for performance)
                     let socket = self.socket.clone();
                     let sessions = self.sessions.clone();
@@ -243,16 +238,10 @@ impl RelayServer {
                     let stats = self.stats.clone();
                     let bind_addr = self.bind_addr;
                     let data = buf[..len].to_vec();
-                    
+
                     tokio::spawn(async move {
                         if let Err(e) = Self::handle_packet(
-                            &socket,
-                            &sessions,
-                            &authority,
-                            &stats,
-                            bind_addr,
-                            &data,
-                            src_addr,
+                            &socket, &sessions, &authority, &stats, bind_addr, &data, src_addr,
                         )
                         .await
                         {
@@ -267,7 +256,7 @@ impl RelayServer {
             }
         }
     }
-    
+
     /// Handle single packet
     async fn handle_packet(
         socket: &Arc<UdpSocket>,
@@ -283,22 +272,23 @@ impl RelayServer {
                 Self::handle_allocate(socket, sessions, authority, stats, relay_addr, req, src_addr)
                     .await
             }
-            RelayProtocol::DataPacket { session_id, data } => {
-                Self::forward_packet(socket, sessions, stats, session_id, &data, src_addr).await
-            }
-            RelayProtocol::Refresh { session_id } => {
-                Self::refresh_session(sessions, session_id, src_addr).await
-            }
-            RelayProtocol::Deallocate { session_id } => {
-                Self::deallocate_session(sessions, session_id, src_addr).await
-            }
+            RelayProtocol::DataPacket {
+                session_id,
+                data,
+            } => Self::forward_packet(socket, sessions, stats, session_id, &data, src_addr).await,
+            RelayProtocol::Refresh {
+                session_id,
+            } => Self::refresh_session(sessions, session_id, src_addr).await,
+            RelayProtocol::Deallocate {
+                session_id,
+            } => Self::deallocate_session(sessions, session_id, src_addr).await,
             RelayProtocol::AllocateResponse(_) => {
                 // Server doesn't handle responses (client-only message)
                 Ok(())
             }
         }
     }
-    
+
     /// Handle allocation request
     async fn handle_allocate(
         socket: &Arc<UdpSocket>,
@@ -310,17 +300,15 @@ impl RelayServer {
         src_addr: SocketAddr,
     ) -> Result<()> {
         debug!("🔐 Allocation request from {} for {}", request.requester, request.target_addr);
-        
+
         // Verify lineage authorization
-        let auth_result = authority
-            .authorize_relay(&request.relay_node, &request.requester)
-            .await;
-        
+        let auth_result = authority.authorize_relay(&request.relay_node, &request.requester).await;
+
         let response = match auth_result {
             Ok(auth) if auth.authorized => {
                 // Authorized - create session
                 let session_id = Uuid::new_v4();
-                
+
                 let session = RelaySessionState {
                     session_id,
                     requester_addr: src_addr,
@@ -333,56 +321,55 @@ impl RelayServer {
                     bytes_forwarded: 0,
                     packets_forwarded: 0,
                 };
-                
+
                 // Store session
                 {
                     let mut sessions_guard = sessions.write().await;
                     sessions_guard.insert(session_id, session);
-                    
+
                     let mut stats_guard = stats.write().await;
                     stats_guard.sessions_active = sessions_guard.len() as u64;
                     stats_guard.sessions_total += 1;
                 }
-                
+
                 info!("✅ Allocated relay session {} for {}", session_id, request.requester);
-                
+
                 AllocationResponse::success(session_id, relay_addr, request.ttl_seconds)
             }
             Ok(auth) if !auth.authorized => {
                 // Not authorized
                 warn!("🚫 Unauthorized relay request from {}", request.requester);
-                
+
                 let mut stats_guard = stats.write().await;
                 stats_guard.authorization_failures += 1;
-                
+
                 AllocationResponse::unauthorized("Lineage verification failed")
             }
             Err(e) => {
                 // Authorization check failed
                 warn!("⚠️  Authorization error: {}", e);
-                
+
                 let mut stats_guard = stats.write().await;
                 stats_guard.authorization_failures += 1;
-                
-                AllocationResponse::error(format!("Authorization failed: {}", e))
+
+                AllocationResponse::error(format!("Authorization failed: {e}"))
             }
             _ => unreachable!(), // auth.authorized is always true or false
         };
-        
+
         // Send response
         let response_msg = RelayProtocol::AllocateResponse(response);
         let encoded = response_msg.encode();
-        socket.send_to(&encoded, src_addr).await
-            .map_err(|e| LineageRelayError::NetworkError(format!(
-                "Failed to send allocation response: {}", e
-            )))?;
-        
+        socket.send_to(&encoded, src_addr).await.map_err(|e| {
+            LineageRelayError::NetworkError(format!("Failed to send allocation response: {e}"))
+        })?;
+
         Ok(())
     }
-    
+
     /// Forward packet between peers
     ///
-    /// This is the CORE functionality that replaces the stub in RelaySession.send()
+    /// This is the CORE functionality that replaces the stub in `RelaySession.send()`
     async fn forward_packet(
         socket: &Arc<UdpSocket>,
         sessions: &Arc<RwLock<HashMap<Uuid, RelaySessionState>>>,
@@ -392,11 +379,11 @@ impl RelayServer {
         src_addr: SocketAddr,
     ) -> Result<()> {
         let mut sessions_guard = sessions.write().await;
-        
+
         let session = sessions_guard.get_mut(&session_id).ok_or_else(|| {
-            LineageRelayError::SessionNotFound(format!("Session {} not found", session_id))
+            LineageRelayError::SessionNotFound(format!("Session {session_id} not found"))
         })?;
-        
+
         // Determine destination (the other peer)
         let dest_addr = if src_addr == session.requester_addr {
             // From requester → to target
@@ -413,30 +400,27 @@ impl RelayServer {
             );
             return Ok(()); // Silently drop (don't error, just ignore)
         };
-        
+
         // Update session activity
         session.last_activity = SystemTime::now();
         session.bytes_forwarded += data.len() as u64;
         session.packets_forwarded += 1;
-        
+
         // Apply masking based on lineage relationship
         let masked_data = Self::apply_masking(data, session.masking_level)?;
-        
+
         // Forward packet
-        socket
-            .send_to(&masked_data, dest_addr)
-            .await
-            .map_err(|e| {
-                LineageRelayError::NetworkError(format!("Failed to forward packet: {}", e))
-            })?;
-        
+        socket.send_to(&masked_data, dest_addr).await.map_err(|e| {
+            LineageRelayError::NetworkError(format!("Failed to forward packet: {e}"))
+        })?;
+
         // Update global stats
         {
             let mut stats_guard = stats.write().await;
             stats_guard.bytes_forwarded += data.len() as u64;
             stats_guard.packets_forwarded += 1;
         }
-        
+
         debug!(
             "📦 Forwarded {} bytes: {} → {} (session: {})",
             data.len(),
@@ -444,13 +428,14 @@ impl RelayServer {
             dest_addr,
             session_id
         );
-        
+
         Ok(())
     }
-    
+
     /// Apply privacy masking based on lineage relationship
     ///
     /// Closer family = less masking, distant family = more masking
+    #[allow(clippy::unnecessary_wraps)] // Result kept for future masking errors
     fn apply_masking(data: &[u8], level: MaskingLevel) -> Result<Vec<u8>> {
         match level {
             MaskingLevel::None => {
@@ -466,7 +451,7 @@ impl RelayServer {
                 // Extended family: Pad to fixed sizes
                 let mut padded = data.to_vec();
                 // Pad to next 1KB boundary
-                let target_size = ((data.len() + 1023) / 1024) * 1024;
+                let target_size = data.len().div_ceil(1024) * 1024;
                 padded.resize(target_size, 0);
                 Ok(padded)
             }
@@ -475,7 +460,7 @@ impl RelayServer {
                 // Future: Integrate with BearDog encryption
                 // For now, just pad (encryption is future enhancement)
                 let mut padded = data.to_vec();
-                let target_size = ((data.len() + 1023) / 1024) * 1024;
+                let target_size = data.len().div_ceil(1024) * 1024;
                 padded.resize(target_size, 0);
                 Ok(padded)
             }
@@ -490,7 +475,7 @@ impl RelayServer {
             }
         }
     }
-    
+
     /// Refresh session (extend TTL)
     async fn refresh_session(
         sessions: &Arc<RwLock<HashMap<Uuid, RelaySessionState>>>,
@@ -498,7 +483,7 @@ impl RelayServer {
         src_addr: SocketAddr,
     ) -> Result<()> {
         let mut sessions_guard = sessions.write().await;
-        
+
         if let Some(session) = sessions_guard.get_mut(&session_id) {
             // Verify refresh comes from requester or target
             if src_addr == session.requester_addr || src_addr.ip() == session.target_addr.ip() {
@@ -508,10 +493,10 @@ impl RelayServer {
                 warn!("🚫 Refresh from unauthorized source: {}", src_addr);
             }
         }
-        
+
         Ok(())
     }
-    
+
     /// Deallocate session (close)
     async fn deallocate_session(
         sessions: &Arc<RwLock<HashMap<Uuid, RelaySessionState>>>,
@@ -519,7 +504,7 @@ impl RelayServer {
         src_addr: SocketAddr,
     ) -> Result<()> {
         let mut sessions_guard = sessions.write().await;
-        
+
         if let Some(session) = sessions_guard.get(&session_id) {
             // Verify deallocation comes from requester
             if src_addr == session.requester_addr {
@@ -529,33 +514,32 @@ impl RelayServer {
                 warn!("🚫 Deallocation from unauthorized source: {}", src_addr);
             }
         }
-        
+
         Ok(())
     }
-    
+
     /// Spawn background cleanup task
     ///
     /// Removes sessions idle for >5 minutes
     fn spawn_cleanup_task(&self) -> tokio::task::JoinHandle<()> {
         let sessions = self.sessions.clone();
         let stats = self.stats.clone();
-        
+
         tokio::spawn(async move {
             let mut interval = tokio::time::interval(Duration::from_secs(60));
-            
+
             loop {
                 interval.tick().await;
-                
+
                 let now = SystemTime::now();
                 let mut sessions_guard = sessions.write().await;
-                
+
                 let before_count = sessions_guard.len();
-                
+
                 sessions_guard.retain(|id, session| {
-                    let idle_time = now
-                        .duration_since(session.last_activity)
-                        .unwrap_or(Duration::from_secs(0));
-                    
+                    let idle_time =
+                        now.duration_since(session.last_activity).unwrap_or(Duration::from_secs(0));
+
                     if idle_time > Duration::from_secs(300) {
                         info!("🧹 Cleaning up idle session {} (idle: {:?})", id, idle_time);
                         false
@@ -563,43 +547,44 @@ impl RelayServer {
                         true
                     }
                 });
-                
+
                 let cleaned = before_count - sessions_guard.len();
                 if cleaned > 0 {
                     debug!("🧹 Cleaned up {} expired sessions", cleaned);
                 }
-                
+
                 // Update active count
                 let mut stats_guard = stats.write().await;
                 stats_guard.sessions_active = sessions_guard.len() as u64;
             }
         })
     }
-    
+
     /// Get server statistics
     ///
     /// Returns current snapshot of server metrics.
     pub async fn stats(&self) -> RelayServerStats {
         self.stats.read().await.clone()
     }
-    
+
     /// Get bind address
+    #[must_use]
     pub fn bind_addr(&self) -> SocketAddr {
         self.bind_addr
     }
-    
+
     /// Shutdown gracefully
     ///
     /// Closes all sessions and stops accepting new requests.
     pub async fn shutdown(&self) -> Result<()> {
         info!("🛑 Shutting down relay server");
-        
+
         let mut sessions = self.sessions.write().await;
         let session_count = sessions.len();
         sessions.clear();
-        
+
         info!("✅ Relay server shut down ({} sessions closed)", session_count);
-        
+
         Ok(())
     }
 }
@@ -609,18 +594,20 @@ mod tests {
     use super::*;
     use crate::types::RelayAuthorization;
     use async_trait::async_trait;
-    
+
     /// Mock relay authority for testing
     struct MockRelayAuthority {
         should_authorize: bool,
     }
-    
+
     impl MockRelayAuthority {
         fn new(should_authorize: bool) -> Self {
-            Self { should_authorize }
+            Self {
+                should_authorize,
+            }
         }
     }
-    
+
     #[async_trait]
     impl RelayAuthority for MockRelayAuthority {
         async fn authorize_relay(
@@ -635,7 +622,7 @@ mod tests {
                 300,
             ))
         }
-        
+
         async fn determine_masking(
             &self,
             _relay_node: &NodeId,
@@ -644,59 +631,55 @@ mod tests {
             Ok(MaskingLevel::None)
         }
     }
-    
+
     #[tokio::test]
     async fn test_relay_server_creation() {
         let authority = Arc::new(MockRelayAuthority::new(true));
-        let server = RelayServer::new("127.0.0.1:0".parse().unwrap(), authority)
-            .await
-            .unwrap();
-        
+        let server = RelayServer::new("127.0.0.1:0".parse().unwrap(), authority).await.unwrap();
+
         assert!(server.bind_addr().port() > 0);
     }
-    
+
     #[tokio::test]
     async fn test_relay_server_stats() {
         let authority = Arc::new(MockRelayAuthority::new(true));
-        let server = RelayServer::new("127.0.0.1:0".parse().unwrap(), authority)
-            .await
-            .unwrap();
-        
+        let server = RelayServer::new("127.0.0.1:0".parse().unwrap(), authority).await.unwrap();
+
         let stats = server.stats().await;
-        
+
         assert_eq!(stats.sessions_active, 0);
         assert_eq!(stats.sessions_total, 0);
         assert!(stats.start_time.is_some());
     }
-    
+
     #[tokio::test]
     async fn test_masking_none() {
         let data = b"Hello, World!";
         let masked = RelayServer::apply_masking(data, MaskingLevel::None).unwrap();
-        
+
         assert_eq!(masked, data);
     }
-    
+
     #[tokio::test]
     async fn test_masking_size_obfuscation() {
         let data = b"Hello"; // 5 bytes
         let masked = RelayServer::apply_masking(data, MaskingLevel::SizeObfuscation).unwrap();
-        
+
         // Should be padded to 1KB
         assert_eq!(masked.len(), 1024);
-        
+
         // First 5 bytes should be original data
         assert_eq!(&masked[..5], data);
-        
+
         // Rest should be padding
         assert!(masked[5..].iter().all(|&b| b == 0));
     }
-    
+
     #[tokio::test]
     async fn test_masking_full() {
         let data = b"Secret message";
         let masked = RelayServer::apply_masking(data, MaskingLevel::Full).unwrap();
-        
+
         // Currently same as SizeObfuscation (encryption is future)
         assert!(masked.len() >= data.len());
     }

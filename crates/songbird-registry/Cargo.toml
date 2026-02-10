@@ -1,6 +1,6 @@
 [package]
 name = "songbird-registry"
-version = "0.1.0"
+version.workspace = true
 edition = "2021"
 description = "High-performance universal service registry with zero-cost abstractions and capability-based discovery"
 license = "AGPL-3.0"

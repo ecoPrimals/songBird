@@ -29,8 +29,8 @@
 //! ## Example (Coming in Phase 4)
 //!
 //! ```rust,ignore
-//! // TLS configuration and connection handling
-//! // will be implemented in Phase 4 (Handshake State Machine)
+//! use songbird_tls::TlsConfig;
+//! let _config = TlsConfig::default();
 //! ```
 //!
 //! ## TLS 1.3 Support
@@ -53,6 +53,7 @@
 //!
 //! - [RFC 8446 - TLS 1.3](https://datatracker.ietf.org/doc/html/rfc8446)
 //! - [The Illustrated TLS 1.3 Connection](https://tls13.xargs.org/)
+#![forbid(unsafe_code)]
 
 // Core modules
 pub mod cert;

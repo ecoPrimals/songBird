@@ -1,28 +1,34 @@
 // BiomeOS Socket Chaos Engineering Tests
 // January 16, 2026
 // Updated: February 5, 2026 (PRIMAL_DEPLOYMENT_STANDARD compliance)
+// Updated: February 10, 2026 (concurrent-safe with per-file Mutex)
 //
 // Chaos tests for BiomeOS socket integration.
 // Tests system behavior under random failures, disruptions, and edge cases.
-//
-// NOTE: These tests modify global environment variables and should be run with:
-//   cargo test --test biomeos_chaos_engineering -- --test-threads=1
 //
 // PRIMAL_DEPLOYMENT_STANDARD changes (Feb 5, 2026):
 // - Socket names are now {primal}.sock (no family suffix)
 // - XDG_RUNTIME_DIR/biomeos/ is the preferred location
 // - Family ID is NOT included in socket path
+//
+// **Concurrency Evolution**: These chaos tests mutate process-wide env vars.
+// A static Mutex ensures they don't race with each other within this binary.
 
 use rand::Rng;
 use songbird_orchestrator::ipc::UnixSocketServer;
 use std::env;
 use std::path::PathBuf;
+use std::sync::Mutex;
+
+/// Serialize all env var chaos tests in this file.
+static ENV_LOCK: Mutex<()> = Mutex::new(());
 
 /// Chaos Test: Random environment variable mutations
 ///
 /// Randomly mutates environment variables and ensures no panics.
 #[test]
 fn chaos_random_env_mutations() {
+    let _guard = ENV_LOCK.lock().unwrap_or_else(|e| e.into_inner());
     let original = save_env_state();
     let mut rng = rand::thread_rng();
 
@@ -70,6 +76,7 @@ fn chaos_random_env_mutations() {
 /// Rapidly changes environment variables to simulate racing conditions.
 #[test]
 fn chaos_rapid_env_changes() {
+    let _guard = ENV_LOCK.lock().unwrap_or_else(|e| e.into_inner());
     let original = save_env_state();
 
     let socket_paths =
@@ -98,6 +105,7 @@ fn chaos_rapid_env_changes() {
 /// Sets random combinations of env vars to test priority resolution.
 #[test]
 fn chaos_random_priority_conflicts() {
+    let _guard = ENV_LOCK.lock().unwrap_or_else(|e| e.into_inner());
     let original = save_env_state();
     let mut rng = rand::thread_rng();
 
@@ -139,11 +147,18 @@ fn chaos_random_priority_conflicts() {
         // Verify priority order is respected
         if let Ok(expected) = env::var("SONGBIRD_ORCHESTRATOR_SOCKET") {
             // Highest priority socket env var should be used directly
-            assert_eq!(path, PathBuf::from(&expected), "SONGBIRD_ORCHESTRATOR_SOCKET should be used when set");
+            assert_eq!(
+                path,
+                PathBuf::from(&expected),
+                "SONGBIRD_ORCHESTRATOR_SOCKET should be used when set"
+            );
         }
 
         if let Ok(expected) = env::var("SONGBIRD_ORCHESTRATOR_FAMILY_ID") {
-            assert_eq!(family, expected, "SONGBIRD_ORCHESTRATOR_FAMILY_ID should have highest priority");
+            assert_eq!(
+                family, expected,
+                "SONGBIRD_ORCHESTRATOR_FAMILY_ID should have highest priority"
+            );
         }
     }
 
@@ -155,6 +170,7 @@ fn chaos_random_priority_conflicts() {
 /// Makes thousands of calls to test performance and memory leaks.
 #[test]
 fn chaos_stress_many_calls() {
+    let _guard = ENV_LOCK.lock().unwrap_or_else(|e| e.into_inner());
     let original = save_env_state();
 
     env::set_var("SONGBIRD_ORCHESTRATOR_SOCKET", "/tmp/stress-test.sock");
@@ -175,6 +191,7 @@ fn chaos_stress_many_calls() {
 /// Tests handling of various special characters in socket paths.
 #[test]
 fn chaos_special_characters() {
+    let _guard = ENV_LOCK.lock().unwrap_or_else(|e| e.into_inner());
     let original = save_env_state();
 
     let special_chars = vec![
@@ -206,6 +223,7 @@ fn chaos_special_characters() {
 /// Tests handling of various family ID formats.
 #[test]
 fn chaos_family_id_formats() {
+    let _guard = ENV_LOCK.lock().unwrap_or_else(|e| e.into_inner());
     let original = save_env_state();
 
     let family_ids = vec![
@@ -246,6 +264,7 @@ fn chaos_family_id_formats() {
 /// Rapidly alternates between clearing and setting env vars.
 #[test]
 fn chaos_alternating_clear_set() {
+    let _guard = ENV_LOCK.lock().unwrap_or_else(|e| e.into_inner());
     let original = save_env_state();
 
     for i in 0..100 {
@@ -280,6 +299,7 @@ fn chaos_alternating_clear_set() {
 /// Tests handling of paths with various lengths.
 #[test]
 fn chaos_random_path_lengths() {
+    let _guard = ENV_LOCK.lock().unwrap_or_else(|e| e.into_inner());
     let original = save_env_state();
     let mut rng = rand::thread_rng();
 
@@ -301,6 +321,7 @@ fn chaos_random_path_lengths() {
 /// Randomly mixes valid and invalid environment states.
 #[test]
 fn chaos_mixed_valid_invalid() {
+    let _guard = ENV_LOCK.lock().unwrap_or_else(|e| e.into_inner());
     let original = save_env_state();
     let mut rng = rand::thread_rng();
 
@@ -336,6 +357,7 @@ fn chaos_mixed_valid_invalid() {
 /// Sets many unrelated env vars to simulate polluted environment.
 #[test]
 fn chaos_environment_pollution() {
+    let _guard = ENV_LOCK.lock().unwrap_or_else(|e| e.into_inner());
     let original = save_env_state();
 
     // Pollute environment with unrelated vars
@@ -369,6 +391,7 @@ fn chaos_environment_pollution() {
 /// Tests handling of Unicode and international characters.
 #[test]
 fn chaos_unicode_international() {
+    let _guard = ENV_LOCK.lock().unwrap_or_else(|e| e.into_inner());
     let original = save_env_state();
 
     let test_cases = vec![

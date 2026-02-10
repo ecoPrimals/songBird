@@ -19,7 +19,17 @@
 #![forbid(unsafe_code)]
 #![warn(clippy::all)]
 #![warn(clippy::pedantic)]
-#![allow(clippy::module_name_repetitions)] // Allow DarkForestBeacon naming
+#![allow(
+    clippy::module_name_repetitions,
+    clippy::items_after_statements,
+    clippy::missing_errors_doc,
+    clippy::missing_panics_doc,
+    clippy::unused_async,
+    clippy::unused_self,
+    clippy::too_many_lines,
+    clippy::manual_let_else,
+    clippy::struct_excessive_bools
+)]
 //!
 //! ## Architecture
 //!
@@ -139,6 +149,7 @@ pub mod discovery;
 pub mod discovery_packet; // NEW: Enhanced discovery with genetic lineage
 pub mod discovery_stats;
 pub mod lineage_discovery; // NEW: Lineage-aware mDNS backend
+pub mod primal_self_knowledge; // Primal self-knowledge architecture (capability-first)
 pub mod traits; // NEW: Discovery statistics and observability (Jan 5, 2026)
 
 /// Anonymous discovery protocol (v3.22.1) - Refactored modules

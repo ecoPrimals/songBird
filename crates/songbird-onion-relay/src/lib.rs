@@ -31,11 +31,12 @@
 //! - `onion`: Sovereign Onion Service (Pure Rust, BearDog crypto)
 //!
 //! See: biomeOS/docs/handoffs/SOVEREIGN_BEACON_MESH_HANDOFF_FEB06_2026.md
+#![forbid(unsafe_code)]
 
-pub mod error;
-pub mod signaling;
 pub mod coordinator;
+pub mod error;
 pub mod mesh;
+pub mod signaling;
 
 // Sovereign Onion Service (optional - enable with `--features onion`)
 #[cfg(feature = "onion")]
@@ -46,10 +47,10 @@ pub mod onion_transport;
 // See: BEARDOG_ONION_CRYPTO_HANDOFF_FEB_06_2026.md for Phase 2 guidance
 // See: SOVEREIGN_ONION_TRUE_PRIMAL_ARCHITECTURE.md for architecture
 
+pub use coordinator::{HolePunchConfig, HolePunchCoordinator, PunchResult};
 pub use error::{OnionRelayError, Result};
-pub use signaling::{SignalingMessage, PeerInfo, NatType};
-pub use coordinator::{HolePunchCoordinator, HolePunchConfig, PunchResult};
-pub use mesh::{BeaconMesh, RelayEndpoint, EndpointType};
+pub use mesh::{BeaconMesh, EndpointType, RelayEndpoint};
+pub use signaling::{NatType, PeerInfo, SignalingMessage};
 
 // ✅ Sovereign Onion Transport (Phase 1 complete - Feb 6, 2026)
 #[cfg(feature = "onion")]

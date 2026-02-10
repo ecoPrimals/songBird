@@ -14,9 +14,7 @@
 
 use anyhow::Result;
 use async_trait::async_trait;
-use songbird_discovery::birdsong_integration::{
-    BirdSongConfig, BirdSongEncryption, BirdSongProcessor,
-};
+use songbird_discovery::birdsong::{BirdSongConfig, BirdSongEncryption, BirdSongProcessor};
 use songbird_discovery::dark_forest_beacon::{BeaconPayload, DarkForestBeacon};
 use std::sync::Arc;
 

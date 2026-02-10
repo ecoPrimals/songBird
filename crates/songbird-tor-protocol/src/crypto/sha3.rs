@@ -1,4 +1,4 @@
-//! Minimal pure Rust SHA3-256 (Keccak-f[1600])
+//! Minimal pure Rust SHA3-256 (Keccak-f\[1600\])
 //!
 //! Zero external dependencies. Used for onion address checksum verification
 //! and descriptor ID computation where BearDog is not required.
@@ -36,29 +36,39 @@ const RATE: usize = 136;
 
 /// Keccak-f[1600] round constants
 const RC: [u64; 24] = [
-    0x0000000000000001, 0x0000000000008082, 0x800000000000808A, 0x8000000080008000,
-    0x000000000000808B, 0x0000000080000001, 0x8000000080008081, 0x8000000000008009,
-    0x000000000000008A, 0x0000000000000088, 0x0000000080008009, 0x000000008000000A,
-    0x000000008000808B, 0x800000000000008B, 0x8000000000008089, 0x8000000000008003,
-    0x8000000000008002, 0x8000000000000080, 0x000000000000800A, 0x800000008000000A,
-    0x8000000080008081, 0x8000000000008080, 0x0000000080000001, 0x8000000080008008,
+    0x0000000000000001,
+    0x0000000000008082,
+    0x800000000000808A,
+    0x8000000080008000,
+    0x000000000000808B,
+    0x0000000080000001,
+    0x8000000080008081,
+    0x8000000000008009,
+    0x000000000000008A,
+    0x0000000000000088,
+    0x0000000080008009,
+    0x000000008000000A,
+    0x000000008000808B,
+    0x800000000000008B,
+    0x8000000000008089,
+    0x8000000000008003,
+    0x8000000000008002,
+    0x8000000000000080,
+    0x000000000000800A,
+    0x800000008000000A,
+    0x8000000080008081,
+    0x8000000000008080,
+    0x0000000080000001,
+    0x8000000080008008,
 ];
 
 /// Rotation offsets for Keccak rho step
-const ROTATIONS: [u32; 25] = [
-    0, 1, 62, 28, 27, 36, 44, 6, 55, 20,
-    3, 10, 43, 25, 39, 41, 45, 15, 21, 8,
-    18, 2, 61, 56, 14,
-];
+const ROTATIONS: [u32; 25] =
+    [0, 1, 62, 28, 27, 36, 44, 6, 55, 20, 3, 10, 43, 25, 39, 41, 45, 15, 21, 8, 18, 2, 61, 56, 14];
 
 /// Pi step permutation indices
-const PI: [usize; 25] = [
-    0, 10, 20, 5, 15,
-    16, 1, 11, 21, 6,
-    7, 17, 2, 12, 22,
-    23, 8, 18, 3, 13,
-    14, 24, 9, 19, 4,
-];
+const PI: [usize; 25] =
+    [0, 10, 20, 5, 15, 16, 1, 11, 21, 6, 7, 17, 2, 12, 22, 23, 8, 18, 3, 13, 14, 24, 9, 19, 4];
 
 impl KeccakState {
     fn new() -> Self {
@@ -101,6 +111,7 @@ impl KeccakState {
     }
 
     /// XOR a rate-sized block into the state
+    #[allow(clippy::unwrap_used)] // slice length is bounds-checked by the `if` guard
     fn xor_block(&mut self, block: &[u8]) {
         for i in 0..(RATE / 8) {
             if i * 8 + 8 <= block.len() {
@@ -110,18 +121,21 @@ impl KeccakState {
         }
     }
 
-    /// Keccak-f[1600] permutation (24 rounds)
+    /// Keccak-f\[1600\] permutation (24 rounds)
     fn keccak_f(&mut self) {
-        for round in 0..24 {
+        for &rc in &RC {
             // θ (theta)
             let mut c = [0u64; 5];
-            for x in 0..5 {
-                c[x] = self.state[x] ^ self.state[x + 5] ^ self.state[x + 10]
-                    ^ self.state[x + 15] ^ self.state[x + 20];
+            for (x, c_val) in c.iter_mut().enumerate() {
+                *c_val = self.state[x]
+                    ^ self.state[x + 5]
+                    ^ self.state[x + 10]
+                    ^ self.state[x + 15]
+                    ^ self.state[x + 20];
             }
             let mut d = [0u64; 5];
-            for x in 0..5 {
-                d[x] = c[(x + 4) % 5] ^ c[(x + 1) % 5].rotate_left(1);
+            for (x, d_val) in d.iter_mut().enumerate() {
+                *d_val = c[(x + 4) % 5] ^ c[(x + 1) % 5].rotate_left(1);
             }
             for i in 0..25 {
                 self.state[i] ^= d[i % 5];
@@ -149,7 +163,7 @@ impl KeccakState {
             }
 
             // ι (iota)
-            self.state[0] ^= RC[round];
+            self.state[0] ^= rc;
         }
     }
 }

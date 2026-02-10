@@ -69,9 +69,9 @@ impl ProductionBearDogProvider {
         })
     }
 
-    /// Create new production `BearDog` provider with explicit family_id
+    /// Create new production `BearDog` provider with explicit `family_id`
     ///
-    /// Use this when the family_id is known at construction time.
+    /// Use this when the `family_id` is known at construction time.
     pub async fn with_family_id(
         socket_path: impl Into<PathBuf>,
         family_id: impl Into<String>,
@@ -92,7 +92,7 @@ impl ProductionBearDogProvider {
         })
     }
 
-    /// Set the family_id for BirdSong operations
+    /// Set the `family_id` for `BirdSong` operations
     pub fn set_family_id(&mut self, family_id: impl Into<String>) {
         self.family_id = Some(family_id.into());
     }
@@ -197,11 +197,13 @@ impl BirdSongCrypto for ProductionBearDogProvider {
         use base64::{engine::general_purpose, Engine as _};
 
         // Get family_id from self, env vars, or default
-        let family_id = self.family_id.clone().or_else(|| {
-            std::env::var("SONGBIRD_FAMILY_ID")
-                .or_else(|_| std::env::var("FAMILY_ID"))
-                .ok()
-        }).unwrap_or_else(|| "nat0".to_string());
+        let family_id = self
+            .family_id
+            .clone()
+            .or_else(|| {
+                std::env::var("SONGBIRD_FAMILY_ID").or_else(|_| std::env::var("FAMILY_ID")).ok()
+            })
+            .unwrap_or_else(|| "nat0".to_string());
 
         let params = serde_json::json!({
             "plaintext": general_purpose::STANDARD.encode(payload),
@@ -215,11 +217,13 @@ impl BirdSongCrypto for ProductionBearDogProvider {
 
     async fn decrypt_birdsong(&self, encrypted: &EncryptedBirdSong) -> Result<Option<Vec<u8>>> {
         // Get family_id from self, env vars, or default
-        let family_id = self.family_id.clone().or_else(|| {
-            std::env::var("SONGBIRD_FAMILY_ID")
-                .or_else(|_| std::env::var("FAMILY_ID"))
-                .ok()
-        }).unwrap_or_else(|| "nat0".to_string());
+        let family_id = self
+            .family_id
+            .clone()
+            .or_else(|| {
+                std::env::var("SONGBIRD_FAMILY_ID").or_else(|_| std::env::var("FAMILY_ID")).ok()
+            })
+            .unwrap_or_else(|| "nat0".to_string());
 
         let params = serde_json::json!({
             "encrypted": encrypted,

@@ -9,7 +9,6 @@
 use crate::error::{Error, Result};
 use std::net::SocketAddr;
 use std::time::Duration;
-use tokio::io::{AsyncRead, AsyncWrite};
 use tokio::net::TcpStream;
 use tokio::time::timeout;
 use tracing::{debug, info};
@@ -34,6 +33,7 @@ pub struct TlsConnector;
 /// Tor's link protocol v4+ can operate over plain TCP with in-protocol
 /// encryption via the ntor handshake. The TLS layer is only required
 /// for backward compatibility with older relays.
+#[allow(dead_code)]
 pub enum RelayStream {
     /// Raw TCP stream (Tor handles encryption at protocol layer)
     Tcp(TcpStream),
@@ -52,16 +52,18 @@ impl TlsConnector {
     /// BearDog-delegated crypto — no TLS PKI needed.
     pub async fn connect(&self, addr: SocketAddr) -> Result<TcpStream> {
         debug!("Starting TCP connection to {}", addr);
-        
+
         // Create TCP connection with timeout
-        let stream = timeout(CONNECT_TIMEOUT, TcpStream::connect(addr)).await
+        let stream = timeout(CONNECT_TIMEOUT, TcpStream::connect(addr))
+            .await
             .map_err(|_| Error::Network(format!("TCP connection to {} timed out", addr)))?
             .map_err(|e| Error::Network(format!("Failed to connect to {}: {}", addr, e)))?;
-        
+
         // Disable Nagle's algorithm for lower latency
-        stream.set_nodelay(true)
+        stream
+            .set_nodelay(true)
             .map_err(|e| Error::Network(format!("Failed to set TCP_NODELAY: {}", e)))?;
-        
+
         info!("Connected to Tor relay at {}", addr);
         Ok(stream)
     }

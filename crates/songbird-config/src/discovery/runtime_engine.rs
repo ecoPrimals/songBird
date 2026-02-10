@@ -211,9 +211,10 @@ impl CapabilityDiscoveryEngine {
             let service = DiscoveredService {
                 address: addr,
                 capabilities: vec![capability.to_string()],
-                metadata: std::collections::HashMap::from([
-                    ("source".to_string(), "environment".to_string()),
-                ]),
+                metadata: std::collections::HashMap::from([(
+                    "source".to_string(),
+                    "environment".to_string(),
+                )]),
                 discovered_at: std::time::SystemTime::now(),
             };
 

@@ -1,6 +1,6 @@
 [package]
 name = "songbird-config"
-version = "0.1.0"
+version.workspace = true
 edition = "2021"
 license = "AGPL-3.0"
 authors = ["ecoPrimals <contact@ecoprimals.dev>"]
@@ -13,10 +13,6 @@ categories = ["config", "network-programming", "game-engines"]
 
 [lints]
 workspace = true
-
-[[example]]
-name = "infant_discovery_demo"
-path = "../../examples/infant_discovery_demo.rs"
 
 [features]
 default = []

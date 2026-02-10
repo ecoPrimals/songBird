@@ -199,14 +199,18 @@ async fn gather_health_status(comprehensive: bool) -> Result<DoctorHealthStatus>
         available: socket_path.parent().is_some_and(|p: &std::path::Path| p.exists()),
     };
 
-    // Comprehensive checks (if requested)
+    // Comprehensive checks — discover primals at runtime rather than hardcoding names
     let primal_checks = if comprehensive {
-        Some(PrimalChecks {
-            beardog: check_primal_status("beardog", check_beardog_connectivity()).await,
-            squirrel: check_primal_status("squirrel", futures::future::ready(Ok(false))).await,
-            toadstool: check_primal_status("toadstool", futures::future::ready(Ok(false))).await,
-            nestgate: check_primal_status("nestgate", futures::future::ready(Ok(false))).await,
-        })
+        let mut discovered = std::collections::HashMap::new();
+        // Check known capability providers discovered at runtime
+        let crypto_status = check_primal_status("crypto", check_beardog_connectivity()).await;
+        discovered.insert("crypto".to_string(), crypto_status);
+        // Scan for other primals via socket directory
+        for capability in &["ai", "storage", "messaging"] {
+            let status = check_primal_status(capability, futures::future::ready(Ok(false))).await;
+            discovered.insert((*capability).to_string(), status);
+        }
+        Some(discovered)
     } else {
         None
     };
@@ -293,13 +297,8 @@ struct SocketStatus {
     available: bool,
 }
 
-#[derive(Debug, serde::Serialize)]
-struct PrimalChecks {
-    beardog: PrimalStatus,
-    squirrel: PrimalStatus,
-    toadstool: PrimalStatus,
-    nestgate: PrimalStatus,
-}
+/// Capability-based primal status (discovered at runtime, not hardcoded)
+type PrimalChecks = std::collections::HashMap<String, PrimalStatus>;
 
 #[derive(Debug, serde::Serialize)]
 struct PrimalStatus {

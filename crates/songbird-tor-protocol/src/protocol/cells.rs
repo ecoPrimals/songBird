@@ -2,7 +2,7 @@
 //!
 //! **Status**: Phase 2B (TODO)
 
-use crate::error::{Result, Error};
+use crate::error::{Error, Result};
 
 /// Fixed cell size (512 bytes)
 pub const CELL_LEN: usize = 512;
@@ -54,19 +54,19 @@ impl Cell {
         let mut buf = [0u8; CELL_LEN];
         buf[0..4].copy_from_slice(&self.circ_id.to_be_bytes());
         buf[4] = self.command as u8;
-        
+
         let payload_len = self.payload.len().min(507);
         buf[5..5 + payload_len].copy_from_slice(&self.payload[..payload_len]);
-        
+
         buf
     }
-    
+
     /// Decode cell from bytes
     pub fn decode(data: &[u8; CELL_LEN]) -> Result<Self> {
         let circ_id = u32::from_be_bytes([data[0], data[1], data[2], data[3]]);
         let command = CellCommand::try_from(data[4])?;
         let payload = data[5..].to_vec();
-        
+
         Ok(Self {
             circ_id,
             command,
@@ -77,7 +77,7 @@ impl Cell {
 
 impl TryFrom<u8> for CellCommand {
     type Error = crate::Error;
-    
+
     fn try_from(value: u8) -> Result<Self> {
         match value {
             0 => Ok(CellCommand::Padding),

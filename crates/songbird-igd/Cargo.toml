@@ -1,10 +1,12 @@
 [package]
 name = "songbird-igd"
-version = "0.1.0"
-edition = "2021"
-license = "AGPL-3.0"
-repository = "https://github.com/ecoPrimals/SongBird"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+repository.workspace = true
+license.workspace = true
 description = "Pure Rust UPnP IGD and NAT-PMP router configuration for Songbird"
+readme = "../README.md"
 keywords = ["upnp", "igd", "nat-pmp", "port-forwarding", "pure-rust"]
 categories = ["network-programming"]
 

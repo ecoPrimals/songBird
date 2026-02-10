@@ -23,10 +23,7 @@ impl TryFrom<u8> for MessageType {
             0x01 => Ok(MessageType::KeyExchange),
             0x02 => Ok(MessageType::Data),
             0x03 => Ok(MessageType::Close),
-            _ => Err(OnionError::InvalidMessage(format!(
-                "Unknown message type: 0x{:02x}",
-                value
-            ))),
+            _ => Err(OnionError::InvalidMessage(format!("Unknown message type: 0x{:02x}", value))),
         }
     }
 }
@@ -142,7 +139,7 @@ pub enum WireMessage {
 impl WireMessage {
     /// Encode to wire format
     ///
-    /// Format: [length: 4 bytes BE] [type: 1 byte] [payload]
+    /// Format: \[length: 4 bytes BE\] \[type: 1 byte\] \[payload\]
     pub fn encode(&self) -> Vec<u8> {
         let (msg_type, payload) = match self {
             WireMessage::KeyExchange(msg) => (MessageType::KeyExchange, msg.encode()),

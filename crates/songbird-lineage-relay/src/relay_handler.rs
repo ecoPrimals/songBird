@@ -42,11 +42,11 @@ use tracing::{error, info};
 pub struct RelayHandler {
     /// Current relay server instance
     server: Arc<RwLock<Option<Arc<RelayServer>>>>,
-    
+
     /// Server task handle
     task: Arc<RwLock<Option<JoinHandle<()>>>>,
-    
-    /// Lineage authority (BearDog integration)
+
+    /// Lineage authority (`BearDog` integration)
     authority: Arc<dyn RelayAuthority>,
 }
 
@@ -59,7 +59,7 @@ impl RelayHandler {
             authority,
         }
     }
-    
+
     /// Handle `relay.serve` method - Start relay server
     ///
     /// # Parameters
@@ -90,24 +90,24 @@ impl RelayHandler {
                 return Err("Relay server already running".to_string());
             }
         }
-        
+
         // Parse parameters
         let bind_addr: SocketAddr = params
             .get("bind_addr")
             .and_then(|v| v.as_str())
             .and_then(|s| s.parse().ok())
             .unwrap_or_else(|| "0.0.0.0:3479".parse().unwrap());
-        
+
         info!("🚀 Starting relay server on {}", bind_addr);
-        
+
         // Create relay server
         let server = RelayServer::new(bind_addr, self.authority.clone())
             .await
-            .map_err(|e| format!("Failed to create relay server: {}", e))?;
-        
+            .map_err(|e| format!("Failed to create relay server: {e}"))?;
+
         let actual_addr = server.bind_addr();
         let server = Arc::new(server);
-        
+
         // Spawn server task
         let server_clone = server.clone();
         let task = tokio::spawn(async move {
@@ -115,24 +115,24 @@ impl RelayHandler {
                 error!("❌ Relay server error: {}", e);
             }
         });
-        
+
         // Store server and task
         {
             let mut server_guard = self.server.write().await;
             *server_guard = Some(server);
-            
+
             let mut task_guard = self.task.write().await;
             *task_guard = Some(task);
         }
-        
+
         info!("✅ Relay server started on {}", actual_addr);
-        
+
         Ok(json!({
             "status": "running",
             "bind_addr": actual_addr.to_string()
         }))
     }
-    
+
     /// Handle `relay.stop` method - Stop relay server
     ///
     /// # Returns
@@ -148,36 +148,35 @@ impl RelayHandler {
     /// Returns error if server is not running.
     pub async fn handle_stop(&self, _params: Value) -> std::result::Result<Value, String> {
         info!("🛑 Stopping relay server");
-        
+
         // Get server and task
         let (server, task) = {
             let mut server_guard = self.server.write().await;
             let mut task_guard = self.task.write().await;
-            
-            let server = server_guard.take()
-                .ok_or_else(|| "Relay server not running".to_string())?;
-            
+
+            let server =
+                server_guard.take().ok_or_else(|| "Relay server not running".to_string())?;
+
             let task = task_guard.take();
-            
+
             (server, task)
         };
-        
+
         // Shutdown server
-        server.shutdown().await
-            .map_err(|e| format!("Failed to shutdown relay server: {}", e))?;
-        
+        server.shutdown().await.map_err(|e| format!("Failed to shutdown relay server: {e}"))?;
+
         // Abort task
         if let Some(task) = task {
             task.abort();
         }
-        
+
         info!("✅ Relay server stopped");
-        
+
         Ok(json!({
             "status": "stopped"
         }))
     }
-    
+
     /// Handle `relay.status` method - Get server statistics
     ///
     /// # Returns
@@ -194,11 +193,11 @@ impl RelayHandler {
     /// ```
     pub async fn handle_status(&self, _params: Value) -> std::result::Result<Value, String> {
         let server_guard = self.server.read().await;
-        
+
         match &*server_guard {
             Some(server) => {
                 let stats = server.stats().await;
-                
+
                 Ok(json!({
                     "running": true,
                     "bind_addr": server.bind_addr().to_string(),
@@ -210,17 +209,15 @@ impl RelayHandler {
                     "uptime_seconds": stats.uptime_seconds()
                 }))
             }
-            None => {
-                Ok(json!({
-                    "running": false
-                }))
-            }
+            None => Ok(json!({
+                "running": false
+            })),
         }
     }
-    
+
     /// Handle `relay.allocate` method - Test relay allocation
     ///
-    /// Useful for testing, but normally clients discover relays via BirdSong.
+    /// Useful for testing, but normally clients discover relays via `BirdSong`.
     ///
     /// # Parameters
     ///
@@ -250,51 +247,44 @@ impl RelayHandler {
         if server_guard.is_none() {
             return Err("Relay server not running".to_string());
         }
-        
+
         // Parse parameters
         let relay_node: NodeId = params
             .get("relay_node")
             .and_then(|v| v.as_str())
-            .map(|s| s.into())
+            .map(std::convert::Into::into)
             .ok_or_else(|| "Missing 'relay_node'".to_string())?;
-        
+
         let requester: NodeId = params
             .get("requester")
             .and_then(|v| v.as_str())
-            .map(|s| s.into())
+            .map(std::convert::Into::into)
             .ok_or_else(|| "Missing 'requester'".to_string())?;
-        
+
         let target_addr: SocketAddr = params
             .get("target_addr")
             .and_then(|v| v.as_str())
             .and_then(|s| s.parse().ok())
             .ok_or_else(|| "Invalid 'target_addr'".to_string())?;
-        
+
         let lineage_proof: Vec<u8> = params
             .get("lineage_proof")
             .and_then(|v| v.as_str())
-            .map(|s| {
+            .and_then(|s| {
                 use base64::Engine;
                 base64::engine::general_purpose::STANDARD.decode(s).ok()
             })
-            .flatten()
             .unwrap_or_default();
-        
+
         let ttl_seconds: u32 = params
             .get("ttl_seconds")
-            .and_then(|v| v.as_u64())
-            .map(|n| n as u32)
-            .unwrap_or(300);
-        
+            .and_then(serde_json::Value::as_u64)
+            .map_or(300, |n| u32::try_from(n).unwrap_or(u32::MAX));
+
         // Create allocation request (this is normally done by the client)
-        let request = AllocationRequest::new(
-            relay_node,
-            requester,
-            target_addr,
-            lineage_proof,
-            ttl_seconds,
-        );
-        
+        let request =
+            AllocationRequest::new(relay_node, requester, target_addr, lineage_proof, ttl_seconds);
+
         // Serialize for testing (in real usage, this comes over UDP)
         let response_json = json!({
             "method": "allocate",
@@ -305,7 +295,7 @@ impl RelayHandler {
                 "ttl_seconds": request.ttl_seconds
             }
         });
-        
+
         Ok(response_json)
     }
 }
@@ -315,18 +305,20 @@ mod tests {
     use super::*;
     use crate::types::MaskingLevel;
     use async_trait::async_trait;
-    
+
     /// Mock relay authority for testing
     struct MockRelayAuthority {
         should_authorize: bool,
     }
-    
+
     impl MockRelayAuthority {
         fn new(should_authorize: bool) -> Self {
-            Self { should_authorize }
+            Self {
+                should_authorize,
+            }
         }
     }
-    
+
     #[async_trait]
     impl RelayAuthority for MockRelayAuthority {
         async fn authorize_relay(
@@ -341,7 +333,7 @@ mod tests {
                 300,
             ))
         }
-        
+
         async fn determine_masking(
             &self,
             _relay_node: &NodeId,
@@ -350,112 +342,112 @@ mod tests {
             Ok(MaskingLevel::None)
         }
     }
-    
+
     #[tokio::test]
     async fn test_relay_handler_serve() {
         let authority = Arc::new(MockRelayAuthority::new(true));
         let handler = RelayHandler::new(authority);
-        
+
         let params = json!({
             "bind_addr": "127.0.0.1:0"
         });
-        
+
         let result = handler.handle_serve(params).await.unwrap();
-        
+
         assert_eq!(result["status"], "running");
         assert!(result["bind_addr"].as_str().unwrap().starts_with("127.0.0.1:"));
-        
+
         // Cleanup
         let _ = handler.handle_stop(json!({})).await;
     }
-    
+
     #[tokio::test]
     async fn test_relay_handler_serve_already_running() {
         let authority = Arc::new(MockRelayAuthority::new(true));
         let handler = RelayHandler::new(authority);
-        
+
         let params = json!({"bind_addr": "127.0.0.1:0"});
-        
+
         // Start first time
         handler.handle_serve(params.clone()).await.unwrap();
-        
+
         // Try to start again (should fail)
         let result = handler.handle_serve(params).await;
         assert!(result.is_err());
         assert!(result.unwrap_err().contains("already running"));
-        
+
         // Cleanup
         let _ = handler.handle_stop(json!({})).await;
     }
-    
+
     #[tokio::test]
     async fn test_relay_handler_status_not_running() {
         let authority = Arc::new(MockRelayAuthority::new(true));
         let handler = RelayHandler::new(authority);
-        
+
         let result = handler.handle_status(json!({})).await.unwrap();
-        
+
         assert_eq!(result["running"], false);
     }
-    
+
     #[tokio::test]
     async fn test_relay_handler_status_running() {
         let authority = Arc::new(MockRelayAuthority::new(true));
         let handler = RelayHandler::new(authority);
-        
+
         // Start server
         let params = json!({"bind_addr": "127.0.0.1:0"});
         handler.handle_serve(params).await.unwrap();
-        
+
         // Check status
         let result = handler.handle_status(json!({})).await.unwrap();
-        
+
         assert_eq!(result["running"], true);
         assert_eq!(result["sessions_active"], 0);
         assert_eq!(result["sessions_total"], 0);
-        
+
         // Cleanup
         let _ = handler.handle_stop(json!({})).await;
     }
-    
+
     #[tokio::test]
     async fn test_relay_handler_stop() {
         let authority = Arc::new(MockRelayAuthority::new(true));
         let handler = RelayHandler::new(authority);
-        
+
         // Start server
         let params = json!({"bind_addr": "127.0.0.1:0"});
         handler.handle_serve(params).await.unwrap();
-        
+
         // Stop server
         let result = handler.handle_stop(json!({})).await.unwrap();
-        
+
         assert_eq!(result["status"], "stopped");
-        
+
         // Verify not running
         let status = handler.handle_status(json!({})).await.unwrap();
         assert_eq!(status["running"], false);
     }
-    
+
     #[tokio::test]
     async fn test_relay_handler_stop_not_running() {
         let authority = Arc::new(MockRelayAuthority::new(true));
         let handler = RelayHandler::new(authority);
-        
+
         let result = handler.handle_stop(json!({})).await;
-        
+
         assert!(result.is_err());
         assert!(result.unwrap_err().contains("not running"));
     }
-    
+
     #[tokio::test]
     async fn test_relay_handler_allocate() {
         let authority = Arc::new(MockRelayAuthority::new(true));
         let handler = RelayHandler::new(authority);
-        
+
         // Start server
         handler.handle_serve(json!({"bind_addr": "127.0.0.1:0"})).await.unwrap();
-        
+
         // Test allocate (this is a mock/test method)
         let params = json!({
             "relay_node": "tower",
@@ -463,13 +455,13 @@ mod tests {
             "target_addr": "192.168.1.100:5000",
             "ttl_seconds": 300
         });
-        
+
         let result = handler.handle_allocate(params).await.unwrap();
-        
+
         assert_eq!(result["method"], "allocate");
         assert_eq!(result["request"]["relay_node"], "tower");
         assert_eq!(result["request"]["requester"], "pixel");
-        
+
         // Cleanup
         let _ = handler.handle_stop(json!({})).await;
     }

@@ -69,4 +69,4 @@ pub use address::{derive_onion_address, parse_onion_address, validate_onion_addr
 #[cfg(feature = "standalone")]
 pub use crypto::{decrypt_data, encrypt_data};
 #[cfg(feature = "standalone")]
-pub use storage::OnionStorage as OnionStorageStandalone;  // Standalone storage methods
+pub use storage::OnionStorage as OnionStorageStandalone; // Standalone storage methods

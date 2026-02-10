@@ -1,6 +1,6 @@
 [package]
 name = "songbird-compute-bridge"
-version = "0.1.0"
+version.workspace = true
 edition = "2021"
 description = "Agnostic compute service bridge for Songbird federation - works with ANY compute provider"
 license = "AGPL-3.0"

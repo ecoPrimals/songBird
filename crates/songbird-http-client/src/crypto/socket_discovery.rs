@@ -85,7 +85,12 @@ pub fn discover_ipc_endpoint(env_var: &str, primal_name: &str, legacy_path: &str
 }
 
 /// Injectable version for concurrent-safe testing
-fn discover_ipc_endpoint_with<F>(env_var: &str, primal_name: &str, legacy_path: &str, env_reader: F) -> IpcEndpoint
+fn discover_ipc_endpoint_with<F>(
+    env_var: &str,
+    primal_name: &str,
+    legacy_path: &str,
+    env_reader: F,
+) -> IpcEndpoint
 where
     F: Fn(&str) -> Result<String, std::env::VarError>,
 {
@@ -361,23 +366,17 @@ mod tests {
 
     /// Create a mock env reader from a HashMap (concurrent-safe, no global state)
     fn mock_env(vars: HashMap<&str, &str>) -> impl Fn(&str) -> Result<String, std::env::VarError> {
-        let owned: HashMap<String, String> = vars.into_iter()
-            .map(|(k, v)| (k.to_string(), v.to_string()))
-            .collect();
-        move |key: &str| {
-            owned.get(key)
-                .cloned()
-                .ok_or(std::env::VarError::NotPresent)
-        }
+        let owned: HashMap<String, String> =
+            vars.into_iter().map(|(k, v)| (k.to_string(), v.to_string())).collect();
+        move |key: &str| owned.get(key).cloned().ok_or(std::env::VarError::NotPresent)
     }
 
     #[test]
     fn test_env_var_priority() {
         // Explicit env var takes highest priority
-        let env = mock_env(HashMap::from([
-            ("TEST_SOCKET", "/custom/path.sock"),
-        ]));
-        let endpoint = discover_ipc_endpoint_with("TEST_SOCKET", "test-primal", "/tmp/fallback.sock", env);
+        let env = mock_env(HashMap::from([("TEST_SOCKET", "/custom/path.sock")]));
+        let endpoint =
+            discover_ipc_endpoint_with("TEST_SOCKET", "test-primal", "/tmp/fallback.sock", env);
         assert_eq!(endpoint, IpcEndpoint::UnixSocket("/custom/path.sock".to_string()));
     }
 
@@ -385,7 +384,8 @@ mod tests {
     fn test_legacy_fallback() {
         // No env vars set -> legacy fallback
         let env = mock_env(HashMap::new());
-        let endpoint = discover_ipc_endpoint_with("TEST_SOCKET", "test-primal", "/tmp/fallback.sock", env);
+        let endpoint =
+            discover_ipc_endpoint_with("TEST_SOCKET", "test-primal", "/tmp/fallback.sock", env);
         assert_eq!(endpoint, IpcEndpoint::UnixSocket("/tmp/fallback.sock".to_string()));
     }
 
@@ -393,11 +393,10 @@ mod tests {
     fn test_xdg_path_construction() {
         // XDG_RUNTIME_DIR with FAMILY_ID - socket won't exist in test,
         // so it falls through to legacy (verifying the logic path)
-        let env = mock_env(HashMap::from([
-            ("XDG_RUNTIME_DIR", "/run/user/1000"),
-            ("FAMILY_ID", "nat0"),
-        ]));
-        let endpoint = discover_ipc_endpoint_with("TEST_SOCKET", "test-primal", "/tmp/fallback.sock", env);
+        let env =
+            mock_env(HashMap::from([("XDG_RUNTIME_DIR", "/run/user/1000"), ("FAMILY_ID", "nat0")]));
+        let endpoint =
+            discover_ipc_endpoint_with("TEST_SOCKET", "test-primal", "/tmp/fallback.sock", env);
         // Socket file doesn't exist, so falls through to legacy
         assert_eq!(endpoint, IpcEndpoint::UnixSocket("/tmp/fallback.sock".to_string()));
     }
@@ -405,10 +404,9 @@ mod tests {
     #[test]
     fn test_empty_env_var_ignored() {
         // Empty env var should be ignored, fall back to legacy
-        let env = mock_env(HashMap::from([
-            ("TEST_SOCKET", ""),
-        ]));
-        let endpoint = discover_ipc_endpoint_with("TEST_SOCKET", "test-primal", "/tmp/fallback.sock", env);
+        let env = mock_env(HashMap::from([("TEST_SOCKET", "")]));
+        let endpoint =
+            discover_ipc_endpoint_with("TEST_SOCKET", "test-primal", "/tmp/fallback.sock", env);
         assert_eq!(endpoint, IpcEndpoint::UnixSocket("/tmp/fallback.sock".to_string()));
     }
 
@@ -439,7 +437,8 @@ mod tests {
     fn test_isomorphic_discovery_priority() {
         // No env vars set -> should fall back to legacy Unix socket
         let env = mock_env(HashMap::new());
-        let endpoint = discover_ipc_endpoint_with("TEST_SOCKET", "test-primal", "/tmp/fallback.sock", env);
+        let endpoint =
+            discover_ipc_endpoint_with("TEST_SOCKET", "test-primal", "/tmp/fallback.sock", env);
 
         match endpoint {
             IpcEndpoint::UnixSocket(path) => assert_eq!(path, "/tmp/fallback.sock"),

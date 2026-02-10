@@ -1,6 +1,6 @@
 [package]
 name = "songbird-http-client"
-version = "0.1.0"
+version.workspace = true
 edition = "2021"
 authors = ["ecoPrimals <contact@ecoprimals.dev>"]
 description = "Pure Rust HTTP/HTTPS client using BearDog crypto delegation (Tower Atomic)"

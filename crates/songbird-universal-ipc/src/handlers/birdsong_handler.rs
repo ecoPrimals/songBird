@@ -45,6 +45,7 @@ use tracing::{debug, error, info, warn};
 ///
 /// Manages family-encrypted discovery beacons using `BearDog`'s genetic lineage crypto.
 /// All operations discover `BearDog` at runtime (no hardcoding).
+#[derive(Default)]
 pub struct BirdSongHandler {
     /// Cached `BearDog` socket path (runtime discovered)
     beardog_socket: Arc<RwLock<Option<PathBuf>>>,
@@ -287,10 +288,8 @@ impl BirdSongHandler {
                     .unwrap_or_default();
 
                 // Feb 6, 2026: Extract onion endpoint for Sovereign NAT traversal
-                let onion_endpoint = discovery_message["onion_endpoint"]
-                    .as_str()
-                    .map(String::from);
-                
+                let onion_endpoint = discovery_message["onion_endpoint"].as_str().map(String::from);
+
                 let endpoint_hints = discovery_message.get("endpoint_hints").cloned();
 
                 if let Some(ref onion) = onion_endpoint {
@@ -401,18 +400,20 @@ impl BirdSongHandler {
         let client = UnixRpcClient::new(&beardog_socket)
             .map_err(|e| format!("Failed to connect to BearDog: {e}"))?;
 
-        // Query primal.info from BearDog
-        let beardog_info: Value = client
+        // Query primal.info from the discovered crypto provider
+        let provider_info: Value = client
             .call("primal.info", &json!({}))
             .await
-            .unwrap_or_else(|_| json!({"name": "beardog", "version": "unknown"}));
+            .unwrap_or_else(|_| json!({"name": "unknown", "version": "unknown"}));
 
-        info!("✅ Retrieved lineage info (family: {})", family_id);
+        let provider_name = provider_info["name"].as_str().unwrap_or("unknown").to_string();
+
+        info!("✅ Retrieved lineage info (family: {}, provider: {})", family_id, provider_name);
 
         Ok(json!({
             "family_id": family_id,
-            "provider": "beardog",
-            "provider_version": beardog_info["version"],
+            "provider": provider_name,
+            "provider_version": provider_info["version"],
             "encryption": "chacha20_poly1305",
             "lineage_type": "genetic",
         }))

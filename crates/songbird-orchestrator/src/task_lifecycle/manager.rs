@@ -435,8 +435,7 @@ mod tests {
 
     async fn create_test_manager() -> Result<TaskLifecycleManager> {
         // Use a unique temp directory for each test to avoid data persistence
-        let temp_dir = std::env::temp_dir()
-            .join(format!("songbird-test-{}", uuid::Uuid::new_v4()));
+        let temp_dir = std::env::temp_dir().join(format!("songbird-test-{}", uuid::Uuid::new_v4()));
         TaskLifecycleManager::new(temp_dir.to_str().unwrap()).await
     }
 

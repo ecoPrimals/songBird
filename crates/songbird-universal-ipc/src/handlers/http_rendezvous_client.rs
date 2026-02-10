@@ -83,6 +83,7 @@ impl HttpRendezvousClient {
     }
 
     /// Create with custom configuration
+    #[must_use]
     pub fn with_config(timeout: Duration, max_retries: u32) -> Self {
         Self {
             timeout,
@@ -97,11 +98,11 @@ impl HttpRendezvousClient {
 
         let (host, port, path) = Self::parse_url(url)?;
 
-        let addr = format!("{}:{}", host, port);
+        let addr = format!("{host}:{port}");
         let stream = tokio::time::timeout(self.timeout, TcpStream::connect(&addr))
             .await
-            .map_err(|_| format!("Connection timeout to {}", addr))?
-            .map_err(|e| format!("Connection failed to {}: {}", addr, e))?;
+            .map_err(|_| format!("Connection timeout to {addr}"))?
+            .map_err(|e| format!("Connection failed to {addr}: {e}"))?;
 
         let request = format!(
             "POST {} HTTP/1.1\r\n\
@@ -118,20 +119,11 @@ impl HttpRendezvousClient {
         );
 
         let (mut reader, mut writer) = stream.into_split();
-        writer
-            .write_all(request.as_bytes())
-            .await
-            .map_err(|e| format!("Write failed: {}", e))?;
-        writer
-            .shutdown()
-            .await
-            .map_err(|e| format!("Shutdown failed: {}", e))?;
+        writer.write_all(request.as_bytes()).await.map_err(|e| format!("Write failed: {e}"))?;
+        writer.shutdown().await.map_err(|e| format!("Shutdown failed: {e}"))?;
 
         let mut response = Vec::new();
-        reader
-            .read_to_end(&mut response)
-            .await
-            .map_err(|e| format!("Read failed: {}", e))?;
+        reader.read_to_end(&mut response).await.map_err(|e| format!("Read failed: {e}"))?;
 
         let response_str = String::from_utf8_lossy(&response);
 
@@ -150,36 +142,26 @@ impl HttpRendezvousClient {
 
         let (host, port, path) = Self::parse_url(url)?;
 
-        let addr = format!("{}:{}", host, port);
+        let addr = format!("{host}:{port}");
         let stream = tokio::time::timeout(self.timeout, TcpStream::connect(&addr))
             .await
-            .map_err(|_| format!("Connection timeout to {}", addr))?
-            .map_err(|e| format!("Connection failed to {}: {}", addr, e))?;
+            .map_err(|_| format!("Connection timeout to {addr}"))?
+            .map_err(|e| format!("Connection failed to {addr}: {e}"))?;
 
         let request = format!(
-            "GET {} HTTP/1.1\r\n\
-             Host: {}\r\n\
+            "GET {path} HTTP/1.1\r\n\
+             Host: {host}\r\n\
              Accept: application/json\r\n\
              Connection: close\r\n\
-             \r\n",
-            path, host
+             \r\n"
         );
 
         let (mut reader, mut writer) = stream.into_split();
-        writer
-            .write_all(request.as_bytes())
-            .await
-            .map_err(|e| format!("Write failed: {}", e))?;
-        writer
-            .shutdown()
-            .await
-            .map_err(|e| format!("Shutdown failed: {}", e))?;
+        writer.write_all(request.as_bytes()).await.map_err(|e| format!("Write failed: {e}"))?;
+        writer.shutdown().await.map_err(|e| format!("Shutdown failed: {e}"))?;
 
         let mut response = Vec::new();
-        reader
-            .read_to_end(&mut response)
-            .await
-            .map_err(|e| format!("Read failed: {}", e))?;
+        reader.read_to_end(&mut response).await.map_err(|e| format!("Read failed: {e}"))?;
 
         let response_str = String::from_utf8_lossy(&response);
 
@@ -195,12 +177,12 @@ impl HttpRendezvousClient {
         let url = url.trim();
 
         // Strip scheme
-        let (scheme_port, rest) = if url.starts_with("https://") {
-            (443u16, &url[8..])
-        } else if url.starts_with("http://") {
-            (80u16, &url[7..])
+        let (scheme_port, rest) = if let Some(rest) = url.strip_prefix("https://") {
+            (443u16, rest)
+        } else if let Some(rest) = url.strip_prefix("http://") {
+            (80u16, rest)
         } else {
-            return Err(format!("Unsupported URL scheme: {}", url));
+            return Err(format!("Unsupported URL scheme: {url}"));
         };
 
         // Split host:port and path
@@ -240,10 +222,7 @@ impl RendezvousClient for HttpRendezvousClient {
             server, node_id, family_id
         );
 
-        let timestamp = SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .unwrap_or_default()
-            .as_secs();
+        let timestamp = SystemTime::now().duration_since(UNIX_EPOCH).unwrap_or_default().as_secs();
 
         let request = RegisterRequest {
             node_id,
@@ -253,8 +232,8 @@ impl RendezvousClient for HttpRendezvousClient {
             timestamp,
         };
 
-        let body = serde_json::to_string(&request)
-            .map_err(|e| format!("Serialization error: {}", e))?;
+        let body =
+            serde_json::to_string(&request).map_err(|e| format!("Serialization error: {e}"))?;
 
         let url = format!("{}/rendezvous/register", server.trim_end_matches('/'));
 
@@ -281,7 +260,7 @@ impl RendezvousClient for HttpRendezvousClient {
                         }
                         Err(e) => {
                             warn!("Invalid rendezvous response: {}", e);
-                            last_error = format!("Invalid response: {}", e);
+                            last_error = format!("Invalid response: {e}");
                         }
                     }
                 }
@@ -302,15 +281,11 @@ impl RendezvousClient for HttpRendezvousClient {
     async fn lookup(&self, server: &str, target: &str) -> Result<Vec<RendezvousPeer>, String> {
         info!("🌐 HTTP Rendezvous: Looking up {} on {}", target, server);
 
-        let url = format!(
-            "{}/rendezvous/lookup?target={}",
-            server.trim_end_matches('/'),
-            target
-        );
+        let url = format!("{}/rendezvous/lookup?target={}", server.trim_end_matches('/'), target);
 
         match self.http_get(&url).await {
             Ok(response_body) => {
-                    match serde_json::from_str::<LookupResponse>(&response_body) {
+                match serde_json::from_str::<LookupResponse>(&response_body) {
                     Ok(response) => {
                         let peers: Vec<RendezvousPeer> = response
                             .peers
@@ -362,12 +337,7 @@ mod tests {
     async fn test_register_unreachable_server() {
         let client = HttpRendezvousClient::new();
         let result = client
-            .register(
-                "http://127.0.0.1:19999",
-                "node-test",
-                "nat0",
-                "203.0.113.1:5000",
-            )
+            .register("http://127.0.0.1:19999", "node-test", "nat0", "203.0.113.1:5000")
             .await;
         // Should fail gracefully (no panic)
         assert!(result.is_err());
@@ -376,9 +346,7 @@ mod tests {
     #[tokio::test]
     async fn test_lookup_unreachable_returns_empty() {
         let client = HttpRendezvousClient::new();
-        let result = client
-            .lookup("http://127.0.0.1:19999", "target-node")
-            .await;
+        let result = client.lookup("http://127.0.0.1:19999", "target-node").await;
         // Should return empty (graceful degradation), not error
         assert!(result.is_ok());
         assert!(result.unwrap().is_empty());
@@ -386,7 +354,8 @@ mod tests {
 
     #[test]
     fn test_parse_url_http() {
-        let (host, port, path) = HttpRendezvousClient::parse_url("http://relay.example.com:8080/api").unwrap();
+        let (host, port, path) =
+            HttpRendezvousClient::parse_url("http://relay.example.com:8080/api").unwrap();
         assert_eq!(host, "relay.example.com");
         assert_eq!(port, 8080);
         assert_eq!(path, "/api");

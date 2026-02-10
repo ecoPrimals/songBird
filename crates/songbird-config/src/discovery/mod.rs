@@ -35,8 +35,9 @@
 //!     // Discover services that provide "storage" capability
 //!     let storage_services = engine.discover_by_capability("storage").await;
 //!
-//!     for service in storage_services {
+//!     for service in &storage_services {
 //!         println!("Found storage at: {}", service.address);
+//!     }
 //!     Ok(())
 //! }
 //! ```

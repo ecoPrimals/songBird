@@ -96,13 +96,21 @@
 //! # Ok(())
 //! # }
 //! ```
-
+#![forbid(unsafe_code)]
 #![deny(unsafe_code)]
 #![warn(clippy::all)]
 #![warn(clippy::pedantic)]
-#![allow(clippy::module_name_repetitions)]
-#![allow(clippy::missing_errors_doc)]
-#![allow(clippy::missing_panics_doc)]
+#![allow(
+    clippy::module_name_repetitions,
+    clippy::missing_errors_doc,
+    clippy::missing_panics_doc,
+    clippy::items_after_statements,
+    clippy::unused_async,
+    clippy::unused_self,
+    clippy::needless_continue,
+    clippy::match_same_arms,
+    clippy::cast_possible_wrap
+)]
 
 // Public modules
 pub mod capability; // ✨ NEW: Capability-based discovery

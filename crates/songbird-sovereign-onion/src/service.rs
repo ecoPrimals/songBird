@@ -26,12 +26,9 @@ impl OnionService {
     /// Create new onion service via BearDog (TRUE PRIMAL - production)
     ///
     /// Loads existing identity or generates new one via BearDog.
-    pub async fn new_via_beardog(
-        port: u16,
-        beardog: BeardogCryptoClient,
-    ) -> Result<Self> {
+    pub async fn new_via_beardog(port: u16, beardog: BeardogCryptoClient) -> Result<Self> {
         let storage = OnionStorage::open("./data/sovereign-onion")?;
-        
+
         // Load or generate identity via BearDog
         let identity = if let Some(stored) = storage.load_identity()? {
             debug!("Loaded existing onion identity");
@@ -124,7 +121,7 @@ impl OnionService {
                         port: self.port,
                         beardog: Arc::clone(&self.beardog),
                     };
-                    
+
                     tokio::spawn(async move {
                         if let Err(e) = service.handle_connection(stream).await {
                             error!("Connection error: {}", e);
@@ -167,8 +164,8 @@ impl OnionService {
         let our_public_key = *our_ephemeral.public_bytes();
 
         // Derive shared secret via BearDog (consumes our_ephemeral)
-        let shared_secret = our_ephemeral
-            .derive_shared_secret_via_beardog(&self.beardog, &key_exchange.pubkey)?;
+        let shared_secret =
+            our_ephemeral.derive_shared_secret_via_beardog(&self.beardog, &key_exchange.pubkey)?;
 
         debug!("Derived shared secret via BearDog - handshake complete");
 
@@ -210,7 +207,8 @@ impl OnionService {
                     stream.read_exact(&mut header).await?;
 
                     let msg_sequence = u64::from_be_bytes(header[0..8].try_into().unwrap());
-                    let payload_len = u32::from_be_bytes(header[8..12].try_into().unwrap()) as usize;
+                    let payload_len =
+                        u32::from_be_bytes(header[8..12].try_into().unwrap()) as usize;
 
                     // Read encrypted payload
                     let mut encrypted = vec![0u8; payload_len];
@@ -219,10 +217,9 @@ impl OnionService {
                     // Decrypt via BearDog (pad sequence to 12 bytes for nonce)
                     let mut nonce = [0u8; 12];
                     nonce[..8].copy_from_slice(&msg_sequence.to_be_bytes());
-                    
-                    let plaintext = self
-                        .beardog
-                        .chacha20_poly1305_decrypt(session_key, &nonce, &encrypted)?;
+
+                    let plaintext =
+                        self.beardog.chacha20_poly1305_decrypt(session_key, &nonce, &encrypted)?;
 
                     debug!(
                         sequence = msg_sequence,
@@ -231,10 +228,9 @@ impl OnionService {
                     );
 
                     // Echo back (for testing - replace with actual logic)
-                    let response_encrypted = self
-                        .beardog
-                        .chacha20_poly1305_encrypt(session_key, &nonce, &plaintext)?;
-                    
+                    let response_encrypted =
+                        self.beardog.chacha20_poly1305_encrypt(session_key, &nonce, &plaintext)?;
+
                     let response_data = DataMessage::new(sequence, response_encrypted);
                     stream.write_all(&[MessageType::Data as u8]).await?;
                     stream.write_all(&response_data.encode()).await?;

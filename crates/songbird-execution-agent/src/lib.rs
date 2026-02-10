@@ -9,6 +9,7 @@
 //! - Job tracking and monitoring
 //! - Output capture (stdout/stderr)
 //! - Security and resource limits
+#![forbid(unsafe_code)]
 
 pub mod executor;
 pub mod job_manager;

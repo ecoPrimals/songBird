@@ -17,6 +17,7 @@
 use serde_json::Value;
 
 /// Generate primal info (self-knowledge only)
+#[must_use]
 pub fn primal_info() -> Value {
     serde_json::json!({
         "name": "songbird",
@@ -44,6 +45,7 @@ pub fn primal_info() -> Value {
 }
 
 /// Generate detailed capability descriptions
+#[must_use]
 pub fn primal_capabilities() -> Value {
     serde_json::json!({
         "capabilities": [
@@ -133,6 +135,7 @@ pub fn primal_capabilities() -> Value {
 }
 
 /// Generate JSON-RPC method listing
+#[must_use]
 pub fn rpc_methods() -> Value {
     serde_json::json!({
         "jsonrpc": "2.0",
@@ -182,6 +185,7 @@ pub fn rpc_methods() -> Value {
 }
 
 /// Generate biomeOS standard rpc.discover response
+#[must_use]
 pub fn rpc_discover_standard() -> Value {
     serde_json::json!({
         "methods": [
@@ -213,12 +217,13 @@ pub fn rpc_discover_standard() -> Value {
     })
 }
 
-/// Generate discover_capabilities response (biomeOS cross-primal scanner protocol)
+/// Generate `discover_capabilities` response (biomeOS cross-primal scanner protocol)
 ///
 /// This is the response format that capability scanners (e.g., Squirrel)
 /// expect when probing sockets. It enables zero-configuration discovery:
 /// instead of setting `HTTP_REQUEST_PROVIDER_SOCKET`, primals simply
 /// scan available sockets and ask each one what capabilities it provides.
+#[must_use]
 pub fn discover_capabilities() -> Value {
     serde_json::json!({
         "primal": "songbird",
@@ -255,6 +260,7 @@ pub fn discover_capabilities() -> Value {
 }
 
 /// Generate health response
+#[must_use]
 pub fn health(uptime_secs: u64, service_count: usize) -> Value {
     serde_json::json!({
         "status": "healthy",
@@ -266,6 +272,7 @@ pub fn health(uptime_secs: u64, service_count: usize) -> Value {
 }
 
 /// Generate identity response
+#[must_use]
 pub fn identity(family_id: &str) -> Value {
     serde_json::json!({
         "primal": "songbird",
@@ -293,4 +300,3 @@ pub fn identity(family_id: &str) -> Value {
         ]
     })
 }
-

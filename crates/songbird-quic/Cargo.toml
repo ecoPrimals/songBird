@@ -1,10 +1,14 @@
 [package]
 name = "songbird-quic"
-version = "0.1.0"
-edition = "2021"
-authors = ["ecoPrimals Team"]
-license = "AGPL-3.0"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+repository.workspace = true
+license.workspace = true
 description = "Pure Rust QUIC protocol for Songbird with BearDog crypto delegation"
+readme = "../README.md"
+keywords = ["quic", "protocol", "songbird", "beardog", "pure-rust"]
+categories = ["network-programming", "asynchronous"]
 
 [dependencies]
 # QUIC implementation - pure Rust

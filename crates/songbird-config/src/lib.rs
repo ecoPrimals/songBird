@@ -8,8 +8,8 @@
 //! This crate is undergoing consolidation to establish `canonical/` as the single source of truth.
 //!
 //! ### **Recommended Usage** (Modern)
-//! ```rust,ignore
-//! // ✅ PREFERRED: Use canonical exports
+//! ```text
+//! // PREFERRED: Use canonical exports
 //! use songbird_config::canonical::{
 //!     NetworkConfig,
 //!     EnvironmentConfig,
@@ -19,9 +19,9 @@
 //! ```
 //!
 //! ### **Legacy Usage** (Deprecated - use canonical instead)
-//! ```rust
-//! // ⚠️ DEPRECATED: Old config module (use canonical:: instead)
-//! use songbird_config::config::NetworkConfig;  // ← Migrate to canonical::NetworkConfig
+//! ```text
+//! // DEPRECATED: Old config module (use canonical:: instead)
+//! use songbird_config::config::NetworkConfig;  // Migrate to canonical::NetworkConfig
 //! ```
 //!
 //! ### **Migration Path**
@@ -39,6 +39,12 @@
 #![forbid(unsafe_code)]
 #![warn(clippy::all)]
 #![warn(clippy::pedantic)]
+#![allow(
+    clippy::missing_errors_doc,
+    clippy::missing_panics_doc,
+    clippy::unused_async,
+    clippy::too_many_lines
+)]
 
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;

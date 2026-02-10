@@ -108,7 +108,8 @@ fn build_router(
     let ipc_registry = Arc::new(tokio::sync::RwLock::new(
         songbird_universal_ipc::registry::ServiceRegistry::new(),
     ));
-    let ipc_handler = Arc::new(songbird_universal_ipc::service::IpcServiceHandler::new(ipc_registry));
+    let ipc_handler =
+        Arc::new(songbird_universal_ipc::service::IpcServiceHandler::new(ipc_registry));
 
     let jsonrpc_state = crate::server::jsonrpc_api::JsonRpcState::with_ipc_handler(
         Arc::clone(&federation_state),
@@ -304,7 +305,7 @@ async fn start_https_server(
                 // HTTP requests start with ASCII method (GET=0x47, POST=0x50, PUT=0x50, HEAD=0x48, etc.)
                 let mut peek_buf = [0u8; 1];
                 let peek_result = tcp_stream.peek(&mut peek_buf).await;
-                
+
                 let is_tls = match peek_result {
                     Ok(1) => peek_buf[0] == 0x16, // TLS Handshake content type
                     Ok(0) => {
@@ -317,12 +318,12 @@ async fn start_https_server(
                         return;
                     }
                 };
-                
+
                 // Import shared dependencies
                 use hyper::body::Incoming;
                 use hyper_util::rt::TokioIo;
                 use tower::Service;
-                
+
                 if is_tls {
                     // TLS connection: Perform Pure Rust TLS handshake
                     let tls_stream = match tls_acceptor.accept(tcp_stream).await {
@@ -352,8 +353,11 @@ async fn start_https_server(
                     }
                 } else {
                     // HTTP connection: Serve plain HTTP (graceful degradation)
-                    tracing::debug!("📡 Plain HTTP connection from {} (protocol detection)", remote_addr);
-                    
+                    tracing::debug!(
+                        "📡 Plain HTTP connection from {} (protocol detection)",
+                        remote_addr
+                    );
+
                     let hyper_service =
                         hyper::service::service_fn(move |request: hyper::Request<Incoming>| {
                             let mut app = app.clone();

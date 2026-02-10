@@ -208,18 +208,18 @@ pub struct BeaconPayload {
 /// External tunnel configuration
 ///
 /// Describes an external VPN/tunnel endpoint for connectivity.
-/// Used when WireGuard, OpenVPN, or other external tunnels are available.
+/// Used when `WireGuard`, `OpenVPN`, or other external tunnels are available.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct ExternalTunnel {
     /// Tunnel type
     pub tunnel_type: TunnelType,
-    
+
     /// Endpoint address (IP:port or hostname:port)
     pub endpoint: String,
-    
-    /// Public key (for WireGuard, base64 encoded)
+
+    /// Public key (for `WireGuard`, base64 encoded)
     pub public_key: Option<String>,
-    
+
     /// Optional metadata (protocol-specific)
     pub metadata: std::collections::HashMap<String, String>,
 }
@@ -227,16 +227,16 @@ pub struct ExternalTunnel {
 /// Supported external tunnel types
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub enum TunnelType {
-    /// WireGuard VPN
+    /// `WireGuard` VPN
     WireGuard,
-    
-    /// OpenVPN
+
+    /// `OpenVPN`
     OpenVPN,
-    
-    /// IPsec
+
+    /// `IPsec`
     IPsec,
-    
-    /// Future: ZeroTier, Tailscale, etc.
+
+    /// Future: `ZeroTier`, Tailscale, etc.
     Other(String),
 }
 
@@ -319,7 +319,7 @@ impl DarkForestBeacon {
 
     /// Get current UNIX timestamp
     fn current_timestamp() -> u64 {
-        SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs()
+        SystemTime::now().duration_since(UNIX_EPOCH).unwrap_or_default().as_secs()
     }
 }
 
@@ -395,21 +395,21 @@ impl BeaconPayload {
             capabilities_hash: Self::hash_capabilities(capabilities),
             cluster_id,
             session_id,
-            external_tunnels: Vec::new(),  // Empty by default
+            external_tunnels: Vec::new(), // Empty by default
             created_at: DarkForestBeacon::current_timestamp(),
         }
     }
-    
+
     /// Add external tunnel endpoint
     #[must_use]
     pub fn with_external_tunnel(mut self, tunnel: ExternalTunnel) -> Self {
         self.external_tunnels.push(tunnel);
         self
     }
-    
-    /// Add WireGuard tunnel endpoint
+
+    /// Add `WireGuard` tunnel endpoint
     ///
-    /// Convenience method for adding WireGuard tunnels
+    /// Convenience method for adding `WireGuard` tunnels
     #[must_use]
     pub fn with_wireguard(mut self, endpoint: String, public_key: String) -> Self {
         self.external_tunnels.push(ExternalTunnel {
@@ -473,7 +473,7 @@ mod tests {
         assert_eq!(payload.external_tunnels.len(), 0);
         assert!(payload.created_at > 0);
     }
-    
+
     #[test]
     fn test_beacon_payload_with_wireguard() {
         let payload = BeaconPayload::new(
@@ -484,11 +484,8 @@ mod tests {
             None,
             "session-123".to_string(),
         )
-        .with_wireguard(
-            "1.2.3.4:51820".to_string(),
-            "base64_pubkey_here".to_string(),
-        );
-        
+        .with_wireguard("1.2.3.4:51820".to_string(), "base64_pubkey_here".to_string());
+
         assert_eq!(payload.external_tunnels.len(), 1);
         assert_eq!(payload.external_tunnels[0].tunnel_type, TunnelType::WireGuard);
         assert_eq!(payload.external_tunnels[0].endpoint, "1.2.3.4:51820");

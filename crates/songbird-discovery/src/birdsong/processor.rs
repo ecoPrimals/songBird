@@ -1,11 +1,11 @@
-//! BirdSong processor implementation
+//! `BirdSong` processor implementation
 //!
 //! Main processor logic for encryption/decryption of discovery packets.
 
-use crate::dark_forest_beacon::{BeaconPayload, DarkForestBeacon};
 use super::config::BirdSongConfig;
 use super::r#trait::BirdSongEncryption;
 use super::types::BirdSongPacket;
+use crate::dark_forest_beacon::{BeaconPayload, DarkForestBeacon};
 use anyhow::{Context, Result};
 use std::sync::Arc;
 use tracing::{debug, info, warn};
@@ -205,7 +205,8 @@ impl BirdSongProcessor {
                         if packet.family_id() != our_family {
                             debug!(
                                 "🔇 Different family ({} != {}), ignoring",
-                                packet.family_id(), our_family
+                                packet.family_id(),
+                                our_family
                             );
                             return Ok(None); // Different family = noise
                         }

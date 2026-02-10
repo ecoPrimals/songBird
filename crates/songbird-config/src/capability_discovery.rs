@@ -355,7 +355,7 @@ impl CapabilityDiscovery {
     /// ```
     async fn discover_via_mdns(&self, capability: &str) -> SongbirdResult<Vec<ServiceEndpoint>> {
         use crate::discovery::MdnsDiscovery;
-        
+
         debug!("🌐 Starting mDNS discovery for capability: {}", capability);
 
         // Create mDNS discovery client

@@ -422,13 +422,12 @@ mod tests {
         // ✅ Concurrent-safe: uses injectable env reader instead of set_var
         use std::collections::HashMap;
 
-        let vars: HashMap<String, String> = HashMap::from([
-            ("MYSERVICE_ENDPOINT".to_string(), "http://my-service:5000".to_string()),
-        ]);
+        let vars: HashMap<String, String> = HashMap::from([(
+            "MYSERVICE_ENDPOINT".to_string(),
+            "http://my-service:5000".to_string(),
+        )]);
         let env = move |key: &str| -> std::result::Result<String, std::env::VarError> {
-            vars.get(key)
-                .cloned()
-                .ok_or(std::env::VarError::NotPresent)
+            vars.get(key).cloned().ok_or(std::env::VarError::NotPresent)
         };
 
         let result = get_endpoint_by_capability_with("myservice", env).await;
@@ -441,20 +440,21 @@ mod tests {
         // Empty env var should be ignored
         use std::collections::HashMap;
 
-        let vars: HashMap<String, String> = HashMap::from([
-            ("MYSERVICE_ENDPOINT".to_string(), String::new()),
-        ]);
+        let vars: HashMap<String, String> =
+            HashMap::from([("MYSERVICE_ENDPOINT".to_string(), String::new())]);
         let env = move |key: &str| -> std::result::Result<String, std::env::VarError> {
-            vars.get(key)
-                .cloned()
-                .ok_or(std::env::VarError::NotPresent)
+            vars.get(key).cloned().ok_or(std::env::VarError::NotPresent)
         };
 
         let result = get_endpoint_by_capability_with("myservice", env).await;
         // Should fail (empty env var ignored, no runtime discovery)
         // Unless runtime discovers something on this machine
         if result.is_err() {
-            if let Err(SongbirdError::Configuration { message, .. }) = result {
+            if let Err(SongbirdError::Configuration {
+                message,
+                ..
+            }) = result
+            {
                 assert!(message.contains("No provider found"));
             }
         }

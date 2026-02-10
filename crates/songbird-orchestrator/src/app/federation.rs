@@ -246,20 +246,13 @@ mod tests {
         // Tests standalone mode (federation disabled) via dependency injection
         use crate::app::federation_setup;
 
-        let options = federation_setup::FederationOptions::for_testing()
-            .enabled(false)
-            .build();
+        let options = federation_setup::FederationOptions::for_testing().enabled(false).build();
 
         let node_identity = NodeIdentity::new_or_load(None).expect("Failed to load identity");
         let federation_state = Arc::new(FederationState::new("test".to_string()));
 
         let result: anyhow::Result<federation_setup::FederationSetup> =
-            federation_setup::setup_federation(
-                &node_identity,
-                federation_state,
-                options,
-            )
-            .await;
+            federation_setup::setup_federation(&node_identity, federation_state, options).await;
         assert!(result.is_ok());
 
         let setup = result.unwrap();

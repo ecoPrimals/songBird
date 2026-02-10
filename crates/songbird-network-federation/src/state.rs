@@ -215,9 +215,8 @@ impl FederationState {
     /// Get all endpoints for a node (for connection fallback)
     pub async fn get_all_endpoints(&self, node_id: &str) -> Vec<String> {
         let nodes = self.nodes.read().await;
-        let node = match nodes.get(node_id) {
-            Some(n) => n,
-            None => return vec![],
+        let Some(node) = nodes.get(node_id) else {
+            return vec![];
         };
 
         let mut endpoints = vec![];
