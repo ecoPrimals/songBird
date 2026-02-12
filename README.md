@@ -17,7 +17,7 @@ Songbird is the universal network orchestrator for the ecoPrimals ecosystem. It 
 | Production Stubs | Zero (`todo!()` only in `#[cfg(test)]`) |
 | Concurrent Tests | Zero `std::env::set_var` in tests (injectable env readers) |
 | Lib Tests | 8,515+ passing |
-| Line Coverage | 60.62% |
+| Line Coverage | 60.84% |
 | Build | Clean (zero errors, zero clippy errors) |
 
 ## Architecture
