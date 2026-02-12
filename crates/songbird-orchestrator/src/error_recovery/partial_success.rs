@@ -47,7 +47,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_batch_result() {
+    fn test_batch_result_partial() {
         let mut result = BatchResult::<i32>::new(10);
 
         result.successes.push(1);
@@ -58,5 +58,75 @@ mod tests {
         assert!(result.is_partial_success());
         assert!(!result.is_complete_success());
         assert!(!result.is_complete_failure());
+    }
+
+    #[test]
+    fn test_batch_result_complete_success() {
+        let mut result = BatchResult::<i32>::new(5);
+
+        result.successes.push(1);
+        result.successes.push(2);
+        result.successes.push(3);
+        result.successes.push(4);
+        result.successes.push(5);
+
+        assert_eq!(result.success_rate(), 1.0);
+        assert!(result.is_complete_success());
+        assert!(!result.is_complete_failure());
+        assert!(!result.is_partial_success());
+    }
+
+    #[test]
+    fn test_batch_result_complete_failure() {
+        let mut result = BatchResult::<i32>::new(3);
+
+        result.failures.push((0, "Error 1".into()));
+        result.failures.push((1, "Error 2".into()));
+        result.failures.push((2, "Error 3".into()));
+
+        assert_eq!(result.success_rate(), 0.0);
+        assert!(result.is_complete_failure());
+        assert!(!result.is_complete_success());
+        assert!(!result.is_partial_success());
+    }
+
+    #[test]
+    fn test_batch_result_empty() {
+        let result = BatchResult::<i32>::new(0);
+
+        assert_eq!(result.success_rate(), 0.0);
+        assert!(result.is_complete_success()); // No failures
+        assert!(result.is_complete_failure()); // No successes
+        assert!(!result.is_partial_success());
+    }
+
+    #[test]
+    fn test_batch_result_clone() {
+        let mut result = BatchResult::<i32>::new(2);
+        result.successes.push(42);
+        result.failures.push((1, "Failed".into()));
+
+        let cloned = result.clone();
+        assert_eq!(cloned.successes.len(), result.successes.len());
+        assert_eq!(cloned.failures.len(), result.failures.len());
+        assert_eq!(cloned.total, result.total);
+    }
+
+    #[test]
+    fn test_batch_result_success_rate_precision() {
+        let mut result = BatchResult::<String>::new(3);
+        result.successes.push("a".to_string());
+
+        let rate = result.success_rate();
+        assert!((rate - 0.333_333_333).abs() < 0.001);
+    }
+
+    #[test]
+    fn test_batch_result_new_initialized() {
+        let result = BatchResult::<u64>::new(100);
+
+        assert!(result.successes.is_empty());
+        assert!(result.failures.is_empty());
+        assert_eq!(result.total, 100);
     }
 }

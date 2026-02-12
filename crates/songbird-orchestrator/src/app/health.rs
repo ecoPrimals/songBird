@@ -177,4 +177,99 @@ mod tests {
         report.gaming_healthy = false;
         assert!(!report.is_fully_healthy());
     }
+
+    #[test]
+    fn test_health_report_federation_unhealthy() {
+        let mut report = HealthCheckReport::all_healthy();
+        report.federation_healthy = false;
+        assert!(!report.is_fully_healthy());
+    }
+
+    #[test]
+    fn test_health_report_observability_unhealthy() {
+        let mut report = HealthCheckReport::all_healthy();
+        report.observability_healthy = false;
+        assert!(!report.is_fully_healthy());
+    }
+
+    #[test]
+    fn test_health_report_security_unhealthy() {
+        let mut report = HealthCheckReport::all_healthy();
+        report.security_healthy = false;
+        assert!(!report.is_fully_healthy());
+    }
+
+    #[test]
+    fn test_health_report_all_unhealthy() {
+        let report = HealthCheckReport {
+            gaming_healthy: false,
+            federation_healthy: false,
+            observability_healthy: false,
+            security_healthy: false,
+            overall_healthy: false,
+            timestamp: std::time::SystemTime::now(),
+        };
+        assert!(!report.is_fully_healthy());
+        assert!(!report.overall_healthy);
+    }
+
+    #[test]
+    fn test_orchestrator_status_default_values() {
+        let status = OrchestratorStatus {
+            gaming_active: false,
+            federation_connected: true,
+            active_sessions: 0,
+            total_players: 0,
+        };
+        assert!(!status.gaming_active);
+        assert!(status.federation_connected);
+        assert_eq!(status.active_sessions, 0);
+        assert_eq!(status.total_players, 0);
+    }
+
+    #[test]
+    fn test_orchestrator_status_with_active_gaming() {
+        let status = OrchestratorStatus {
+            gaming_active: true,
+            federation_connected: true,
+            active_sessions: 5,
+            total_players: 20,
+        };
+        assert!(status.gaming_active);
+        assert_eq!(status.active_sessions, 5);
+        assert_eq!(status.total_players, 20);
+    }
+
+    #[test]
+    fn test_health_report_clone() {
+        let report = HealthCheckReport::all_healthy();
+        let cloned = report.clone();
+        assert_eq!(report.gaming_healthy, cloned.gaming_healthy);
+        assert_eq!(report.federation_healthy, cloned.federation_healthy);
+        assert_eq!(report.overall_healthy, cloned.overall_healthy);
+    }
+
+    #[test]
+    fn test_orchestrator_status_clone() {
+        let status = OrchestratorStatus {
+            gaming_active: true,
+            federation_connected: true,
+            active_sessions: 3,
+            total_players: 12,
+        };
+        let cloned = status.clone();
+        assert_eq!(status.gaming_active, cloned.gaming_active);
+        assert_eq!(status.active_sessions, cloned.active_sessions);
+        assert_eq!(status.total_players, cloned.total_players);
+    }
+
+    #[test]
+    fn test_health_report_timestamp() {
+        let before = std::time::SystemTime::now();
+        let report = HealthCheckReport::all_healthy();
+        let after = std::time::SystemTime::now();
+        
+        assert!(report.timestamp >= before);
+        assert!(report.timestamp <= after);
+    }
 }

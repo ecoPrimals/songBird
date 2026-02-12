@@ -342,9 +342,11 @@ impl DiscoveryMechanism for DnsSrvDiscovery {
                     if let Some(addr) = addrs.next() {
                         return Ok(PrimalInfo {
                             name: capability.to_string(),
-                            endpoint: format!("http://{}:{}", addr.ip(), 8080),
+                            host: addr.ip().to_string(),
+                            port: 8080,
                             capabilities: vec![capability.to_string()],
-                            metadata: Default::default(),
+                            discovered_at: SystemTime::now(),
+                            discovery_method: "dns-srv".to_string(),
                         });
                     }
                 }

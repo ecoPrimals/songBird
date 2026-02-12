@@ -7,7 +7,10 @@ mod tests {
     #![allow(clippy::useless_vec)]
     #![allow(clippy::unreadable_literal)]
 
+    use crate::metadata::AIResponseMetadata;
     use crate::responses::*;
+    use crate::SuggestedAction;
+    use std::time::Instant;
 
     #[test]
     fn test_songbird_response_success() {
@@ -42,5 +45,85 @@ mod tests {
         // processing_time_ms is u64, check it's initialized
         // processing_time_ms is u64, always >= 0
         assert!(perf.memory_usage_bytes.is_none());
+    }
+
+    #[test]
+    fn test_songbird_response_with_suggestion() {
+        let action = SuggestedAction::new("test_action", "A test action");
+        let response: SongbirdResult<i32> = SongbirdResult::success(42).with_suggestion(action);
+        assert_eq!(response.suggested_actions.len(), 1);
+    }
+
+    #[test]
+    fn test_songbird_response_with_ai_metadata() {
+        let metadata = AIResponseMetadata::default();
+        let response: SongbirdResult<i32> = SongbirdResult::success(42).with_ai_metadata(metadata);
+        // Just verify it compiles and runs - metadata is opaque
+        assert_eq!(response.data, 42);
+    }
+
+    #[test]
+    fn test_songbird_response_finish_processing() {
+        let start = Instant::now();
+        std::thread::sleep(std::time::Duration::from_millis(10));
+        let response: SongbirdResult<i32> = SongbirdResult::success(42).finish_processing(start);
+        assert!(response.performance.processing_time_ms >= 10);
+    }
+
+    #[test]
+    fn test_songbird_response_map() {
+        let response: SongbirdResult<i32> = SongbirdResult::success(42);
+        let mapped: SongbirdResult<String> = response.map(|x| format!("value: {x}"));
+        assert_eq!(mapped.data, "value: 42");
+    }
+
+    #[test]
+    fn test_songbird_response_into_data() {
+        let response: SongbirdResult<String> = SongbirdResult::success("test".to_string());
+        let data = response.into_data();
+        assert_eq!(data, "test");
+    }
+
+    #[test]
+    fn test_songbird_response_data_ref() {
+        let response: SongbirdResult<String> = SongbirdResult::success("test".to_string());
+        assert_eq!(response.data(), "test");
+    }
+
+    #[test]
+    fn test_songbird_response_from() {
+        let response: SongbirdResult<i32> = 42.into();
+        assert_eq!(response.data, 42);
+    }
+
+    #[test]
+    fn test_songbird_result_unit() {
+        let response = SongbirdResult::unit();
+        assert_eq!(response.data, ());
+    }
+
+    #[test]
+    fn test_cache_status_variants() {
+        assert_eq!(CacheStatus::Hit, CacheStatus::Hit);
+        assert_eq!(CacheStatus::Miss, CacheStatus::Miss);
+        assert_eq!(CacheStatus::NotApplicable, CacheStatus::NotApplicable);
+        assert_eq!(CacheStatus::Bypassed, CacheStatus::Bypassed);
+        assert_ne!(CacheStatus::Hit, CacheStatus::Miss);
+    }
+
+    #[test]
+    fn test_response_performance_with_values() {
+        let perf = ResponsePerformance {
+            processing_time_ms: 100,
+            memory_usage_bytes: Some(1024),
+            cpu_usage_percent: Some(50.0),
+            network_rtt_ms: Some(20),
+            cache_status: CacheStatus::Hit,
+        };
+        assert_eq!(perf.processing_time_ms, 100);
+        assert_eq!(perf.memory_usage_bytes, Some(1024));
+        assert_eq!(perf.cpu_usage_percent, Some(50.0));
+        assert_eq!(perf.network_rtt_ms, Some(20));
+        assert_eq!(perf.cache_status, CacheStatus::Hit);
     }
 }

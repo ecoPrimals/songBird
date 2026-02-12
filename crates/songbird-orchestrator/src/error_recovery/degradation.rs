@@ -105,4 +105,95 @@ mod tests {
 
         assert_eq!(result, 99);
     }
+
+    #[tokio::test]
+    async fn test_primary_operation_succeeds() {
+        let strategy = DegradationStrategy::with_value(42);
+
+        let result = strategy
+            .execute_with_fallback(|| async { Ok::<_, anyhow::Error>(100) })
+            .await;
+
+        assert_eq!(result, 100); // Primary succeeds, so 100 not fallback 42
+    }
+
+    #[tokio::test]
+    async fn test_try_execute_with_fallback_success() {
+        let strategy = DegradationStrategy::with_value("fallback".to_string());
+
+        let result = strategy
+            .try_execute_with_fallback(|| async { Ok::<_, anyhow::Error>("primary".to_string()) })
+            .await;
+
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap(), "primary");
+    }
+
+    #[tokio::test]
+    async fn test_try_execute_with_fallback_failure() {
+        let strategy = DegradationStrategy::with_value("fallback".to_string());
+
+        let result = strategy
+            .try_execute_with_fallback(|| async { anyhow::bail!("Primary failed") })
+            .await;
+
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap(), "fallback");
+    }
+
+    #[tokio::test]
+    async fn test_fallback_fn_with_string() {
+        let strategy = DegradationStrategy::with_fn(|| "computed".to_string());
+
+        let result = strategy
+            .execute_with_fallback(|| async { anyhow::bail!("Error") })
+            .await;
+
+        assert_eq!(result, "computed");
+    }
+
+    #[tokio::test]
+    async fn test_fallback_fn_called_each_time() {
+        use std::sync::atomic::{AtomicU32, Ordering};
+        let counter = std::sync::Arc::new(AtomicU32::new(0));
+        let counter_clone = counter.clone();
+
+        let strategy = DegradationStrategy::with_fn(move || {
+            counter_clone.fetch_add(1, Ordering::SeqCst);
+            42
+        });
+
+        let _ = strategy.execute_with_fallback(|| async { anyhow::bail!("Error") }).await;
+        let _ = strategy.execute_with_fallback(|| async { anyhow::bail!("Error") }).await;
+
+        assert_eq!(counter.load(Ordering::SeqCst), 2);
+    }
+
+    #[test]
+    fn test_no_fallback_error_display() {
+        let err = NoFallbackError;
+        let display = format!("{}", err);
+        assert!(display.contains("No fallback"));
+    }
+
+    #[test]
+    fn test_no_fallback_error_debug() {
+        let err = NoFallbackError;
+        let debug = format!("{:?}", err);
+        assert!(debug.contains("NoFallbackError"));
+    }
+
+    #[test]
+    fn test_no_fallback_error_equality() {
+        let err1 = NoFallbackError;
+        let err2 = NoFallbackError;
+        assert_eq!(err1, err2);
+    }
+
+    #[test]
+    fn test_no_fallback_error_clone() {
+        let err = NoFallbackError;
+        let cloned = err.clone();
+        assert_eq!(err, cloned);
+    }
 }

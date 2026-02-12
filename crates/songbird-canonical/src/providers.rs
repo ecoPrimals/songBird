@@ -37,3 +37,21 @@ impl Default for CanonicalProviderFactory {
         Self::new()
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_canonical_provider_factory_new() {
+        let factory = CanonicalProviderFactory::new();
+        // Factory is a ZST (zero-sized type), just verify creation
+        let _ = factory;
+    }
+
+    #[test]
+    fn test_canonical_provider_factory_default() {
+        let factory = CanonicalProviderFactory::default();
+        let _ = factory;
+    }
+}
