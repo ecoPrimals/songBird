@@ -202,7 +202,7 @@ impl AnonymousDiscoveryMessage {
     ///
     /// Tags are opaque strings we broadcast. We don't interpret them!
     /// Format: `{provider}:{type}:{value}`
-    /// Example: `beardog:family:nat0`
+    /// Example: `crypto:family:my-family`
     pub fn with_tags(mut self, tags: Vec<String>) -> Self {
         self.tags = if tags.is_empty() {
             None

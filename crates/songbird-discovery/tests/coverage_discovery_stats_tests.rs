@@ -340,4 +340,3 @@ fn test_network_info_clone() {
     assert_eq!(info.udp_port, cloned.udp_port);
     assert_eq!(info.interfaces, cloned.interfaces);
 }
-

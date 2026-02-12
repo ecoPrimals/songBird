@@ -4,7 +4,7 @@
 
 use crate::error::{StunError, StunResult};
 use crate::message::StunMessage;
-use crate::types::{NatType, PublicEndpoint};
+use crate::types::{NatType, PortPattern, PublicEndpoint};
 use std::net::SocketAddr;
 use std::time::Duration;
 use tokio::net::UdpSocket;
@@ -333,6 +333,149 @@ impl StunClient {
                 Err(e)
             }
             Err(e) => Err(StunError::Network(format!("Task join error: {}", e))),
+        }
+    }
+
+    /// Probe STUN server N times to detect NAT port allocation pattern
+    ///
+    /// Sends multiple STUN binding requests from a single socket to observe
+    /// how the NAT allocates external ports. Pattern detection enables
+    /// port prediction for coordinated hole punching.
+    ///
+    /// # Arguments
+    ///
+    /// * `stun_server` - STUN server to probe (e.g., "stun.nextcloud.com:3478")
+    /// * `probes` - Number of probes to send (recommended: 5–8)
+    ///
+    /// # Returns
+    ///
+    /// Detected [`PortPattern`] — `Sequential` if ports are predictable,
+    /// `Random` if not, `Unknown` if probing failed.
+    ///
+    /// # Privacy Note
+    ///
+    /// Each probe reveals timing information to the STUN server.
+    /// Use a self-hosted STUN server for sovereign operation.
+    pub async fn probe_port_pattern(
+        &self,
+        stun_server: &str,
+        probes: usize,
+    ) -> StunResult<PortPattern> {
+        let probes = probes.max(2); // Need at least 2 for deltas
+
+        info!("🔍 Probing port pattern: {} probes to {}", probes, stun_server);
+
+        // Resolve STUN server address once
+        let all_addrs: Vec<SocketAddr> = tokio::net::lookup_host(stun_server)
+            .await
+            .map_err(|e| StunError::Network(format!("Failed to resolve STUN server: {}", e)))?
+            .collect();
+
+        let server_addr = all_addrs
+            .iter()
+            .find(|a| a.is_ipv4())
+            .or_else(|| all_addrs.first())
+            .copied()
+            .ok_or_else(|| {
+                StunError::Network(format!("No usable addresses for: {}", stun_server))
+            })?;
+
+        let mut ports = Vec::with_capacity(probes);
+
+        for i in 0..probes {
+            // Bind a NEW socket each time — this forces the NAT to allocate a new mapping
+            let bind_addr = if server_addr.is_ipv4() {
+                "0.0.0.0:0"
+            } else {
+                "[::]:0"
+            };
+
+            let socket = UdpSocket::bind(bind_addr).await.map_err(|e| {
+                StunError::Network(format!("Failed to bind UDP socket for probe {}: {}", i, e))
+            })?;
+
+            let request = StunMessage::new_binding_request();
+            let request_bytes = request.encode();
+
+            socket.send_to(&request_bytes, server_addr).await.map_err(|e| {
+                StunError::Network(format!("Failed to send STUN probe {}: {}", i, e))
+            })?;
+
+            let mut buf = vec![0u8; 2048];
+            match timeout(self.timeout, socket.recv_from(&mut buf)).await {
+                Ok(Ok((recv_len, _))) => {
+                    if let Ok(response) = StunMessage::decode(&buf[..recv_len]) {
+                        if response.transaction_id == request.transaction_id {
+                            if let Some(addr) = response.get_any_mapped_address() {
+                                debug!("  Probe {}: port {}", i + 1, addr.port());
+                                ports.push(addr.port());
+                            }
+                        }
+                    }
+                }
+                Ok(Err(e)) => {
+                    warn!("  Probe {} recv error: {}", i + 1, e);
+                }
+                Err(_) => {
+                    warn!("  Probe {} timed out", i + 1);
+                }
+            }
+        }
+
+        if ports.len() < 2 {
+            info!("⚠️ Only {} successful probes — insufficient for pattern detection", ports.len());
+            return Ok(PortPattern::Unknown);
+        }
+
+        // Compute deltas between consecutive ports
+        let deltas: Vec<i32> =
+            ports.windows(2).map(|w| i32::from(w[1]) - i32::from(w[0])).collect();
+
+        if deltas.is_empty() {
+            return Ok(PortPattern::Unknown);
+        }
+
+        // Check if all deltas are the same (sequential pattern)
+        let first_delta = deltas[0];
+        let consistent_count = deltas.iter().filter(|d| **d == first_delta).count();
+        let consistency = consistent_count as f64 / deltas.len() as f64;
+
+        // Sequential if: consistent deltas AND step is small (≤100)
+        if consistency >= 0.7 && first_delta.unsigned_abs() <= 100 {
+            let last_port = *ports.last().expect("ports is non-empty");
+            let predicted = i32::from(last_port) + first_delta;
+            let predicted_next = u16::try_from(predicted.clamp(1, 65535)).unwrap_or(last_port);
+
+            let confidence = consistency
+                * if first_delta.unsigned_abs() <= 10 {
+                    0.95
+                } else {
+                    0.75
+                };
+
+            info!(
+                "✅ Sequential pattern detected: step={}, confidence={:.0}%, predicted_next={}",
+                first_delta,
+                confidence * 100.0,
+                predicted_next
+            );
+
+            Ok(PortPattern::Sequential {
+                step: first_delta,
+                last_port,
+                predicted_next,
+                confidence,
+            })
+        } else {
+            info!(
+                "⚠️ Random pattern detected: {} ports observed, consistency={:.0}%",
+                ports.len(),
+                consistency * 100.0
+            );
+
+            Ok(PortPattern::Random {
+                observed: ports,
+            })
         }
     }
 }

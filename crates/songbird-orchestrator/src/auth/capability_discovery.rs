@@ -154,7 +154,9 @@ fn scan_security_sockets() -> Option<PathBuf> {
             for entry in entries.flatten() {
                 if let Ok(file_name) = entry.file_name().into_string() {
                     let lower = file_name.to_ascii_lowercase();
-                    if lower.ends_with(".sock")
+                    if std::path::Path::new(&lower)
+                        .extension()
+                        .is_some_and(|ext| ext.eq_ignore_ascii_case("sock"))
                         && SECURITY_SEARCH_TERMS.iter().any(|term| lower.contains(term))
                     {
                         return Some(entry.path());

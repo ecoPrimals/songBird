@@ -47,11 +47,11 @@ impl IpcEndpoint {
 ///
 /// 1. **Environment Variable** (highest priority)
 ///    - Direct specification by user/biomeOS
-///    - Example: `SONGBIRD_SOCKET=/run/user/1000/biomeos/songbird-nat0.sock`
+///    - Example: `SONGBIRD_SOCKET=/run/user/1000/biomeos/songbird-default.sock`
 ///
 /// 2. **Unix Socket via XDG** (optimal, when available)
 ///    - Standard Unix location: `$XDG_RUNTIME_DIR/biomeos/{primal}-{family}.sock`
-///    - Example: `/run/user/1000/biomeos/songbird-nat0.sock`
+///    - Example: `/run/user/1000/biomeos/songbird-default.sock`
 ///    - Only used if socket exists
 ///
 /// 3. **TCP Endpoint via Discovery File** (isomorphic fallback)
@@ -237,10 +237,10 @@ fn get_tcp_discovery_file_candidates(primal_name: &str) -> Vec<PathBuf> {
 /// ```text
 /// $XDG_RUNTIME_DIR/              (typically /run/user/$UID)
 /// └── biomeos/
-///     ├── beardog-nat0.sock
-///     ├── songbird-nat0.sock
-///     ├── neural-api-nat0.sock
-///     └── squirrel-nat0.sock
+///     ├── crypto-default.sock
+///     ├── songbird-default.sock
+///     ├── neural-api-default.sock
+///     └── storage-default.sock
 /// ```
 fn discover_xdg_socket(primal_name: &str) -> Option<String> {
     // Get XDG_RUNTIME_DIR (standard Unix location)
@@ -257,8 +257,8 @@ fn discover_xdg_socket(primal_name: &str) -> Option<String> {
         Ok(id) if !id.is_empty() => id,
         _ => {
             debug!("   FAMILY_ID not set, trying common defaults");
-            // Try common family IDs
-            for family in &["nat0", "default"] {
+            // Try common family IDs (canonical default is "default")
+            for family in &["default"] {
                 if let Some(socket) = try_xdg_socket(&runtime_dir, primal_name, family) {
                     return Some(socket);
                 }
@@ -331,7 +331,7 @@ pub fn discover_beardog_socket() -> String {
 /// Checks in order:
 /// 1. `$NEURAL_API_SOCKET` or `$NEURALS_SOCKET`
 /// 2. `$XDG_RUNTIME_DIR/biomeos/neural-api-$FAMILY_ID.sock`
-/// 3. `/tmp/neural-api-nat0.sock` (legacy)
+/// 3. `/tmp/neural-api-{family_id}.sock` (legacy fallback with env-derived family)
 pub fn discover_neural_api_socket() -> String {
     // Check both NEURAL_API_SOCKET and NEURALS_SOCKET
     if let Ok(socket) = std::env::var("NEURAL_API_SOCKET") {
@@ -353,10 +353,16 @@ pub fn discover_neural_api_socket() -> String {
         return xdg_socket;
     }
 
-    // Legacy fallback
-    warn!("⚠️  Using legacy /tmp socket: /tmp/neural-api-nat0.sock");
+    // Legacy fallback — use env-derived family ID (canonical chain)
+    let family_id = std::env::var("SONGBIRD_ORCHESTRATOR_FAMILY_ID")
+        .or_else(|_| std::env::var("BIOMEOS_FAMILY_ID"))
+        .or_else(|_| std::env::var("SONGBIRD_FAMILY_ID"))
+        .or_else(|_| std::env::var("FAMILY_ID"))
+        .unwrap_or_else(|_| "default".to_string());
+    let socket = format!("/tmp/neural-api-{}.sock", family_id);
+    warn!("⚠️  Using legacy /tmp socket: {}", socket);
     warn!("   Consider setting $NEURAL_API_SOCKET or XDG_RUNTIME_DIR");
-    "/tmp/neural-api-nat0.sock".to_string()
+    socket
 }
 
 #[cfg(test)]

@@ -14,7 +14,7 @@
 //!
 //! ### Identity (Self-Knowledge)
 //! - `PRIMAL_NAME`: This primal's name (default: "songbird")
-//! - `FAMILY_ID` / `SONGBIRD_FAMILY_ID`: Family/biome ID (default: "nat0")
+//! - `FAMILY_ID` / `SONGBIRD_FAMILY_ID`: Family/biome ID (default: "default")
 //! - `NODE_ID` / `SONGBIRD_NODE_ID`: Node ID (default: "default")
 //!
 //! ### Paths (Self-Knowledge)
@@ -41,14 +41,14 @@ pub fn primal_name() -> String {
 /// 3. `BIOMEOS_FAMILY_ID` (generic orchestrator)
 /// 4. `SONGBIRD_FAMILY_ID` (legacy)
 /// 5. `FAMILY_ID` (generic)
-/// 6. Default: `"nat0"` (NAT-friendly network family 0)
+/// 6. Default: `"default"` (seed-derived family ID should be set via env)
 pub fn family_id() -> String {
     std::env::var("SONGBIRD_ORCHESTRATOR_FAMILY_ID")
         .or_else(|_| std::env::var("SONGBIRD_ORCHESTRATOR_FAMILY"))
         .or_else(|_| std::env::var("BIOMEOS_FAMILY_ID"))
         .or_else(|_| std::env::var("SONGBIRD_FAMILY_ID"))
         .or_else(|_| std::env::var("FAMILY_ID"))
-        .unwrap_or_else(|_| "nat0".to_string())
+        .unwrap_or_else(|_| "default".to_string())
 }
 
 /// Get node ID (self-knowledge)
@@ -288,7 +288,7 @@ mod tests {
 
     #[test]
     fn test_family_id_returns_string() {
-        // family_id() always returns a value (either env or default "nat0")
+        // family_id() always returns a value (either env or default "default")
         let fid = family_id();
         assert!(!fid.is_empty());
     }

@@ -356,19 +356,11 @@ fn calculate_primal_port_offset(primal_name: &str) -> u16 {
     (hash % 1000) as u16
 }
 
-/// Get port offset for specific primal types (legacy, prefer `calculate_primal_port_offset`)
+/// Calculate deterministic port offset for any primal name.
+///
+/// Delegates to `calculate_primal_port_offset` — no hardcoded primal names.
 fn get_primal_port_offset(primal_type: &str) -> u16 {
-    match primal_type.to_lowercase().as_str() {
-        "beardog" => 10,
-        "nestgate" => 20,
-        "toadstool" => 30,
-        "squirrel" => 40,
-        "discovery" => 50,
-        "health" => 60,
-        "metrics" => 70,
-        "dashboard" => 80,
-        _ => calculate_primal_port_offset(primal_type), // Fallback to hash-based
-    }
+    calculate_primal_port_offset(primal_type)
 }
 
 /// Determine if primal should use TLS based on environment and naming

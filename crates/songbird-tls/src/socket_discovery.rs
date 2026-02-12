@@ -69,10 +69,14 @@ impl EnvReader for MockEnv {
     }
 }
 
-/// Discover an XDG-compliant socket path for a given primal.
+/// Discover an XDG-compliant socket path for a given primal (legacy family-ID support).
 ///
 /// Constructs a path like `/run/user/<UID>/biomeos/<primal>-<family_id>.sock`
 /// if `XDG_RUNTIME_DIR` and `FAMILY_ID` are set.
+///
+/// NOTE: Capability-first discovery is now preferred. This function is retained
+/// for backward compatibility with deployments using family-ID in socket names.
+#[allow(dead_code)] // Retained for backward compatibility, may be used in legacy paths
 fn discover_xdg_socket_with_env(
     primal_name: &str,
     family_id: &str,
@@ -95,96 +99,128 @@ fn discover_xdg_socket_with_env(
     None
 }
 
-/// Internal: Discover the BearDog socket path with custom env reader (for testing)
+/// Internal: Discover security/crypto provider socket path (capability-first)
+///
+/// ## Resolution Order (capability-first, primal-agnostic)
+///
+/// 1. `explicit_path` (from CLI)
+/// 2. Capability-based env vars: `CRYPTO_PROVIDER_SOCKET`, `SECURITY_PROVIDER_SOCKET`
+/// 3. Legacy provider-specific: `BEARDOG_SOCKET`, `BEARDOG_CRYPTO_SOCKET`
+/// 4. Legacy Songbird: `SONGBIRD_CRYPTO_SOCKET`, `SONGBIRD_SECURITY_PROVIDER`
+/// 5. XDG: `$XDG_RUNTIME_DIR/biomeos/{socket}.sock` (capability names first)
+/// 6. UID fallback: `/run/user/$UID/biomeos/security.sock`
+/// 7. Legacy: `/tmp/biomeos/security.sock`
 fn discover_beardog_socket_with_env(
     explicit_path: Option<&PathBuf>,
     env: &impl EnvReader,
 ) -> String {
     if let Some(path) = explicit_path {
         let path_str = path.to_string_lossy().into_owned();
-        debug!("Using explicit BearDog socket path: {}", path_str);
+        debug!("Using explicit security provider socket path: {}", path_str);
         return path_str;
     }
 
-    // Check both BEARDOG_SOCKET and BEARDOG_CRYPTO_SOCKET for TLS compatibility
-    if let Ok(env_path) = env.var("BEARDOG_SOCKET") {
-        if !env_path.is_empty() {
-            debug!("Using BEARDOG_SOCKET env var: {}", env_path);
-            return env_path;
+    // 1. Capability-based env vars (preferred - primal agnostic)
+    let capability_env_vars = ["CRYPTO_PROVIDER_SOCKET", "SECURITY_PROVIDER_SOCKET"];
+
+    for env_var in capability_env_vars {
+        if let Ok(env_path) = env.var(env_var) {
+            if !env_path.is_empty() {
+                debug!("Using {} env var (capability-based): {}", env_var, env_path);
+                return env_path;
+            }
         }
     }
 
-    if let Ok(env_path) = env.var("BEARDOG_CRYPTO_SOCKET") {
-        if !env_path.is_empty() {
-            debug!("Using BEARDOG_CRYPTO_SOCKET env var: {}", env_path);
-            return env_path;
+    // 2. Legacy provider-specific env vars (backward compatibility)
+    let legacy_env_vars = [
+        "BEARDOG_SOCKET",
+        "BEARDOG_CRYPTO_SOCKET",
+        "SONGBIRD_CRYPTO_SOCKET",
+        "SONGBIRD_SECURITY_PROVIDER",
+    ];
+
+    for env_var in legacy_env_vars {
+        if let Ok(env_path) = env.var(env_var) {
+            if !env_path.is_empty() {
+                debug!("Using {} env var (legacy): {}", env_var, env_path);
+                return env_path;
+            }
         }
     }
 
-    // Also check SONGBIRD_CRYPTO_SOCKET for backward compatibility
-    if let Ok(env_path) = env.var("SONGBIRD_CRYPTO_SOCKET") {
-        if !env_path.is_empty() {
-            debug!("Using SONGBIRD_CRYPTO_SOCKET env var: {}", env_path);
-            return env_path;
-        }
-    }
-
-    // Check SONGBIRD_SECURITY_PROVIDER env var (biomeOS standard)
-    if let Ok(env_path) = env.var("SONGBIRD_SECURITY_PROVIDER") {
-        if !env_path.is_empty() {
-            debug!("Using SONGBIRD_SECURITY_PROVIDER env var: {}", env_path);
-            return env_path;
-        }
-    }
-
-    // XDG discovery with FAMILY_ID (e.g., beardog-nat0.sock)
-    if let Ok(family_id) = env.var("FAMILY_ID") {
-        if let Some(xdg_path) = discover_xdg_socket_with_env("beardog", &family_id, env) {
-            return xdg_path;
-        }
-    }
-
-    // biomeOS standard: $XDG_RUNTIME_DIR/biomeos/beardog.sock (no family ID)
+    // 3. XDG discovery (capability names first, then provider hints)
     if let Ok(runtime_dir) = env.var("XDG_RUNTIME_DIR") {
-        let xdg_standard = PathBuf::from(&runtime_dir).join("biomeos").join("beardog.sock");
-        if xdg_standard.exists() {
-            let path_str = xdg_standard.to_string_lossy().into_owned();
-            debug!("Found biomeOS standard BearDog socket: {}", path_str);
-            return path_str;
+        let biomeos = PathBuf::from(&runtime_dir).join("biomeos");
+
+        // Capability-named sockets first
+        for socket_name in &["crypto.sock", "security.sock", "beardog.sock"] {
+            let xdg_path = biomeos.join(socket_name);
+            if xdg_path.exists() {
+                let path_str = xdg_path.to_string_lossy().into_owned();
+                debug!("Found biomeOS standard socket: {}", path_str);
+                return path_str;
+            }
         }
     }
 
-    // Fallback: /run/user/$UID/biomeos/beardog.sock (without XDG_RUNTIME_DIR)
+    // 4. UID-based fallback (without XDG_RUNTIME_DIR, capability names first)
     if let Ok(uid) = env.var("UID") {
-        let uid_path = PathBuf::from(format!("/run/user/{}/biomeos/beardog.sock", uid));
-        if uid_path.exists() {
-            let path_str = uid_path.to_string_lossy().into_owned();
-            debug!("Found UID-based BearDog socket: {}", path_str);
-            return path_str;
+        for socket_name in &["security.sock", "crypto.sock", "beardog.sock"] {
+            let uid_path = PathBuf::from(format!("/run/user/{}/biomeos/{}", uid, socket_name));
+            if uid_path.exists() {
+                let path_str = uid_path.to_string_lossy().into_owned();
+                debug!("Found UID-based socket: {}", path_str);
+                return path_str;
+            }
         }
     }
 
-    // Legacy /tmp fallback
-    let fallback = "/tmp/beardog.sock".to_string();
-    warn!("Falling back to legacy BearDog socket path: {}", fallback);
+    // 5. Legacy /tmp fallback (capability name preferred)
+    let fallback_paths = [
+        "/tmp/biomeos/security.sock",
+        "/tmp/biomeos/crypto.sock",
+        "/tmp/biomeos/beardog.sock",
+        "/tmp/beardog.sock",
+    ];
+
+    for path in fallback_paths {
+        if PathBuf::from(path).exists() {
+            debug!("Found legacy fallback socket: {}", path);
+            return path.to_string();
+        }
+    }
+
+    // Final fallback (capability name)
+    let fallback = "/tmp/biomeos/security.sock".to_string();
+    warn!("Falling back to default socket path: {}", fallback);
     fallback
 }
 
-/// Discover the BearDog socket path (production API).
+/// Discover security/crypto provider socket path (capability-first, production API).
 ///
-/// Prioritizes:
+/// ## Resolution Order (capability-first, primal-agnostic)
+///
 /// 1. `explicit_path` (from CLI)
-/// 2. `BEARDOG_SOCKET`, `BEARDOG_CRYPTO_SOCKET`, or `SONGBIRD_CRYPTO_SOCKET` env vars
-/// 3. `SONGBIRD_SECURITY_PROVIDER` env var
-/// 4. `$XDG_RUNTIME_DIR/biomeos/beardog-{family_id}.sock` (if FAMILY_ID set)
-/// 5. `$XDG_RUNTIME_DIR/biomeos/beardog.sock` (biomeOS standard)
-/// 6. `/run/user/$UID/biomeos/beardog.sock` (UID fallback)
-/// 7. `/tmp/beardog.sock` (legacy fallback)
+/// 2. Capability-based: `CRYPTO_PROVIDER_SOCKET`, `SECURITY_PROVIDER_SOCKET`
+/// 3. Legacy: `BEARDOG_SOCKET`, `BEARDOG_CRYPTO_SOCKET`, `SONGBIRD_*` env vars
+/// 4. XDG: `$XDG_RUNTIME_DIR/biomeos/{capability}.sock` (capability names first)
+/// 5. UID: `/run/user/$UID/biomeos/security.sock`
+/// 6. Legacy: `/tmp/biomeos/security.sock` (fallback)
 pub fn discover_beardog_socket(explicit_path: Option<&PathBuf>) -> String {
     discover_beardog_socket_with_env(explicit_path, &SystemEnv)
 }
 
-/// Internal: Discover the Neural API socket path with custom env reader (for testing)
+/// Internal: Discover AI/Neural API socket path (capability-first)
+///
+/// ## Resolution Order (capability-first, primal-agnostic)
+///
+/// 1. `explicit_path` (from CLI)
+/// 2. Capability-based: `AI_PROVIDER_SOCKET`, `NEURAL_API_SOCKET`
+/// 3. Legacy: `NEURALS_SOCKET`
+/// 4. XDG: `$XDG_RUNTIME_DIR/biomeos/{capability}.sock` (ai.sock first)
+/// 5. UID: `/run/user/$UID/biomeos/ai.sock`
+/// 6. Legacy: `/tmp/biomeos/ai.sock` (fallback)
 fn discover_neural_api_socket_with_env(
     explicit_path: Option<&PathBuf>,
     env: &impl EnvReader,
@@ -195,47 +231,56 @@ fn discover_neural_api_socket_with_env(
         return path_str;
     }
 
-    if let Ok(env_path) = env.var("NEURAL_API_SOCKET") {
-        if !env_path.is_empty() {
-            debug!("Using NEURAL_API_SOCKET env var: {}", env_path);
-            return env_path;
+    // 1. Capability-based env vars first (AI capability)
+    let capability_env_vars = ["AI_PROVIDER_SOCKET", "NEURAL_API_SOCKET", "NEURALS_SOCKET"];
+
+    for env_var in capability_env_vars {
+        if let Ok(env_path) = env.var(env_var) {
+            if !env_path.is_empty() {
+                debug!("Using {} env var: {}", env_var, env_path);
+                return env_path;
+            }
         }
     }
 
-    if let Ok(env_path) = env.var("NEURALS_SOCKET") {
-        if !env_path.is_empty() {
-            debug!("Using NEURALS_SOCKET env var: {}", env_path);
-            return env_path;
-        }
-    }
-
-    if let Ok(family_id) = env.var("FAMILY_ID") {
-        if let Some(xdg_path) = discover_xdg_socket_with_env("neural-api", &family_id, env) {
-            return xdg_path;
-        }
-    }
-
-    // biomeOS standard: $XDG_RUNTIME_DIR/biomeos/beardog.sock (neural-api is BearDog)
+    // 2. XDG discovery (capability names first)
     if let Ok(runtime_dir) = env.var("XDG_RUNTIME_DIR") {
-        let xdg_standard = PathBuf::from(&runtime_dir).join("biomeos").join("beardog.sock");
-        if xdg_standard.exists() {
-            let path_str = xdg_standard.to_string_lossy().into_owned();
-            debug!("Found biomeOS standard BearDog socket (neural-api): {}", path_str);
-            return path_str;
+        let biomeos = PathBuf::from(&runtime_dir).join("biomeos");
+
+        // Capability-named sockets first, then provider hints
+        for socket_name in &["ai.sock", "neural-api.sock", "squirrel.sock"] {
+            let xdg_path = biomeos.join(socket_name);
+            if xdg_path.exists() {
+                let path_str = xdg_path.to_string_lossy().into_owned();
+                debug!("Found biomeOS AI socket: {}", path_str);
+                return path_str;
+            }
         }
     }
 
-    // Fallback: /run/user/$UID/biomeos/beardog.sock
+    // 3. UID-based fallback (capability names first)
     if let Ok(uid) = env.var("UID") {
-        let uid_path = PathBuf::from(format!("/run/user/{}/biomeos/beardog.sock", uid));
-        if uid_path.exists() {
-            let path_str = uid_path.to_string_lossy().into_owned();
-            debug!("Found UID-based BearDog socket (neural-api): {}", path_str);
-            return path_str;
+        for socket_name in &["ai.sock", "neural-api.sock", "squirrel.sock"] {
+            let uid_path = PathBuf::from(format!("/run/user/{}/biomeos/{}", uid, socket_name));
+            if uid_path.exists() {
+                let path_str = uid_path.to_string_lossy().into_owned();
+                debug!("Found UID-based AI socket: {}", path_str);
+                return path_str;
+            }
         }
     }
 
-    let fallback = "/tmp/beardog.sock".to_string();
+    // 4. Legacy fallback (capability name preferred)
+    let fallback_paths =
+        ["/tmp/biomeos/ai.sock", "/tmp/biomeos/neural-api.sock", "/tmp/biomeos/squirrel.sock"];
+
+    for path in fallback_paths {
+        if PathBuf::from(path).exists() {
+            return path.to_string();
+        }
+    }
+
+    let fallback = "/tmp/biomeos/ai.sock".to_string();
     warn!("Falling back to legacy Neural API socket path: {}", fallback);
     fallback
 }
@@ -344,27 +389,25 @@ mod tests {
         let test_id = TEST_COUNTER.fetch_add(1, Ordering::SeqCst);
 
         let test_dir = format!("/tmp/test_xdg_runtime_tls_{}", test_id);
-        let family_id = format!("testfam_{}", test_id);
 
-        let env = MockEnv::new().set("XDG_RUNTIME_DIR", &test_dir).set("FAMILY_ID", &family_id);
+        let env = MockEnv::new().set("XDG_RUNTIME_DIR", &test_dir);
 
-        let beardog_xdg_path =
-            PathBuf::from(format!("{}/biomeos/beardog-{}.sock", test_dir, family_id));
-        create_dummy_socket(&beardog_xdg_path);
+        // Capability-first: crypto.sock and ai.sock are preferred over provider names
+        let crypto_path = PathBuf::from(format!("{}/biomeos/crypto.sock", test_dir));
+        create_dummy_socket(&crypto_path);
 
         let discovered = discover_beardog_socket_with_env(None, &env);
-        assert_eq!(discovered, beardog_xdg_path.to_string_lossy().into_owned());
+        assert_eq!(discovered, crypto_path.to_string_lossy().into_owned());
 
-        let neural_xdg_path =
-            PathBuf::from(format!("{}/biomeos/neural-api-{}.sock", test_dir, family_id));
-        create_dummy_socket(&neural_xdg_path);
+        let ai_path = PathBuf::from(format!("{}/biomeos/ai.sock", test_dir));
+        create_dummy_socket(&ai_path);
 
         let discovered = discover_neural_api_socket_with_env(None, &env);
-        assert_eq!(discovered, neural_xdg_path.to_string_lossy().into_owned());
+        assert_eq!(discovered, ai_path.to_string_lossy().into_owned());
 
         // Cleanup
-        fs::remove_file(&beardog_xdg_path).unwrap();
-        fs::remove_file(&neural_xdg_path).unwrap();
+        fs::remove_file(&crypto_path).unwrap();
+        fs::remove_file(&ai_path).unwrap();
         fs::remove_dir_all(format!("{}/biomeos", test_dir)).unwrap();
         fs::remove_dir_all(&test_dir).unwrap();
     }
@@ -374,11 +417,13 @@ mod tests {
         // Thread-safe test using MockEnv with empty environment
         let env = MockEnv::new(); // No env vars set
 
+        // Capability-first: Falls back to security.sock (capability name preferred)
         let discovered = discover_beardog_socket_with_env(None, &env);
-        assert_eq!(discovered, "/tmp/beardog.sock");
+        assert_eq!(discovered, "/tmp/biomeos/security.sock");
 
+        // AI capability: Falls back to ai.sock (capability name preferred)
         let discovered = discover_neural_api_socket_with_env(None, &env);
-        assert_eq!(discovered, "/tmp/beardog.sock");
+        assert_eq!(discovered, "/tmp/biomeos/ai.sock");
     }
 
     #[test]
@@ -421,23 +466,22 @@ mod tests {
         let test_id = TEST_COUNTER.fetch_add(1, Ordering::SeqCst);
 
         let test_dir = format!("/tmp/test_xdg_runtime_empty_tls_{}", test_id);
-        let family_id = format!("testfam_empty_{}", test_id);
 
-        // Empty BEARDOG_SOCKET should be ignored, XDG should be used
+        // Empty env vars should be ignored, XDG capability-named socket should be used
         let env = MockEnv::new()
             .set("BEARDOG_SOCKET", "") // Empty - should be ignored
-            .set("XDG_RUNTIME_DIR", &test_dir)
-            .set("FAMILY_ID", &family_id);
+            .set("CRYPTO_PROVIDER_SOCKET", "") // Empty - should be ignored
+            .set("XDG_RUNTIME_DIR", &test_dir);
 
-        let beardog_xdg_path =
-            PathBuf::from(format!("{}/biomeos/beardog-{}.sock", test_dir, family_id));
-        create_dummy_socket(&beardog_xdg_path);
+        // Capability-first: security.sock is preferred
+        let security_path = PathBuf::from(format!("{}/biomeos/security.sock", test_dir));
+        create_dummy_socket(&security_path);
 
         let discovered = discover_beardog_socket_with_env(None, &env);
-        assert_eq!(discovered, beardog_xdg_path.to_string_lossy().into_owned());
+        assert_eq!(discovered, security_path.to_string_lossy().into_owned());
 
         // Cleanup
-        fs::remove_file(&beardog_xdg_path).unwrap();
+        fs::remove_file(&security_path).unwrap();
         fs::remove_dir_all(format!("{}/biomeos", test_dir)).unwrap();
         fs::remove_dir_all(&test_dir).unwrap();
     }

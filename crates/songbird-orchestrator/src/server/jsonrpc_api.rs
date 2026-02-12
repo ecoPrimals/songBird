@@ -476,8 +476,8 @@ async fn handle_health_standard(state: &JsonRpcState) -> Result<Value, JsonRpcEr
 ///
 /// Required by biomeOS Neural API for primal identification.
 async fn handle_identity() -> Result<Value, JsonRpcError> {
-    // Get family ID from environment or use default
-    let family_id = std::env::var("SONGBIRD_FAMILY_ID").unwrap_or_else(|_| "nat0".to_string());
+    // Get family ID from canonical env_config (proper env chain, default: "default")
+    let family_id = crate::env_config::family_id();
 
     // Songbird's capabilities for biomeOS integration
     let capabilities = vec![

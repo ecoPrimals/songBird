@@ -4,6 +4,9 @@ use crate::beardog_crypto::BeardogCryptoClient;
 use crate::error::Result;
 
 #[cfg(feature = "standalone")]
+use crate::OnionError;
+
+#[cfg(feature = "standalone")]
 use chacha20poly1305::{
     aead::{Aead, KeyInit},
     ChaCha20Poly1305, Nonce,

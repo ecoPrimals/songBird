@@ -14,7 +14,7 @@
 //! ## Tag-Based Identity (v3.14.0)
 //!
 //! Tags are opaque strings we broadcast. Format: `{provider}:{type}:{value}`
-//! Examples: `beardog:family:nat0`, `crypto:family:a3f2`
+//! Examples: `crypto:family:my-family`, `crypto:family:a3f2`
 //!
 //! Songbird doesn't know what these mean - it just passes them!
 

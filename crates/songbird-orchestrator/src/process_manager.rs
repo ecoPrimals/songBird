@@ -95,7 +95,7 @@ impl ProcessManager {
     /// PID file path is scoped by FAMILY_ID and NODE_ID to allow multiple instances:
     ///
     /// Examples:
-    /// - `/var/run/songbird/songbird-nat0-tower1.pid` (multi-spore)
+    /// - `/var/run/songbird/songbird-{family_id}-tower1.pid` (multi-spore)
     /// - `/var/run/songbird/songbird-albatross-main.pid` (Albatross)
     /// - `/var/run/songbird/songbird-sparrow-iot1.pid` (Sparrow fleet)
     /// - `/var/run/songbird/songbird.pid` (legacy fallback)
@@ -368,12 +368,12 @@ impl ProcessManager {
         error!("   Set unique SONGBIRD_NODE_ID for each instance:");
         error!("");
         error!("   # Spore 1");
-        error!("   export SONGBIRD_FAMILY_ID=nat0");
+        error!("   export SONGBIRD_FAMILY_ID=my-family");
         error!("   export SONGBIRD_NODE_ID=tower1");
         error!("   songbird &");
         error!("");
         error!("   # Spore 2 (different NODE_ID!)");
-        error!("   export SONGBIRD_FAMILY_ID=nat0");
+        error!("   export SONGBIRD_FAMILY_ID=my-family");
         error!("   export SONGBIRD_NODE_ID=tower2");
         error!("   songbird &");
         error!("");

@@ -100,7 +100,10 @@ impl HttpGatewayService {
         // ✅ TOWER ATOMIC: Pure Rust HTTP client with BearDog crypto delegation
         let crypto_socket = std::env::var("CRYPTO_PROVIDER_SOCKET")
             .or_else(|_| std::env::var("BEARDOG_SOCKET"))
-            .unwrap_or_else(|_| "/tmp/beardog-nat0.sock".to_string());
+            .unwrap_or_else(|_| {
+                let family = crate::env_config::family_id();
+                format!("/tmp/beardog-{}.sock", family)
+            });
 
         let http_client = SongbirdHttpClient::new(crypto_socket);
 

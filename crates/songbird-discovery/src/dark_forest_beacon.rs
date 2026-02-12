@@ -6,7 +6,7 @@
 //! ```json
 //! {
 //!   "version": "1.0",
-//!   "family_id": "nat0",  ← Attackers see this!
+//!   "family_id": "<family-id>",  ← Attackers see this!
 //!   "encrypted_payload": "..."
 //! }
 //! ```

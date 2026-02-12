@@ -188,28 +188,18 @@ fn calculate_network_based_timeout() -> u64 {
     }
 }
 
-// Old hardcoded get_primal_endpoint function removed -
-// now using universal implementation that works with any primal name
-
-/// Get port offset for specific primal types
+/// Calculate deterministic port offset for any primal name.
+///
+/// Uses consistent hashing to assign port offsets — no hardcoded primal names.
+/// The same name always produces the same offset, ensuring deterministic behavior
+/// while being fully agnostic to which primals exist.
 fn get_primal_port_offset(primal_type: &str) -> u16 {
-    match primal_type.to_lowercase().as_str() {
-        "beardog" => 10,
-        "nestgate" => 20,
-        "toadstool" => 30,
-        "squirrel" => 40,
-        "discovery" => 50,
-        "health" => 60,
-        "metrics" => 70,
-        "dashboard" => 80,
-        _ => {
-            // Calculate deterministic offset from name
-            let hash = primal_type
-                .bytes()
-                .fold(0u32, |acc, b| acc.wrapping_mul(31).wrapping_add(u32::from(b)));
-            100 + (hash % 900) as u16 // Offset from base + 100
-        }
-    }
+    let hash = primal_type
+        .to_lowercase()
+        .bytes()
+        .fold(0u32, |acc, b| acc.wrapping_mul(31).wrapping_add(u32::from(b)));
+    // Map to range 10..999 to avoid port 0 offset
+    10 + (hash % 990) as u16
 }
 
 /// Get log level from environment or default

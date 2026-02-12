@@ -85,29 +85,59 @@ impl BearDogNfcCrypto {
         Self::discover_socket_with(|key| std::env::var(key))
     }
 
-    /// Discover socket with injectable env reader (concurrent-safe, testable)
+    /// Discover socket with injectable env reader (capability-first, concurrent-safe)
+    ///
+    /// ## Resolution Order (capability-first, primal-agnostic)
+    ///
+    /// 1. Capability-based env vars: `SECURITY_PROVIDER_SOCKET`, `CRYPTO_PROVIDER_SOCKET`
+    /// 2. Provider-specific env var: `BEARDOG_SOCKET` (backward compatibility)
+    /// 3. XDG: `$XDG_RUNTIME_DIR/biomeos/security.sock` (capability-named)
+    /// 4. XDG: `$XDG_RUNTIME_DIR/biomeos/beardog.sock` (provider hint)
+    /// 5. Legacy: `/tmp/biomeos/security.sock` (fallback)
     fn discover_socket_with<F>(env_reader: F) -> PathBuf
     where
         F: Fn(&str) -> std::result::Result<String, std::env::VarError>,
     {
-        if let Ok(path) = env_reader("BEARDOG_SOCKET") {
-            if !path.is_empty() {
-                return PathBuf::from(path);
+        // 1. Capability-based env vars first (primal-agnostic)
+        for env_var in &["SECURITY_PROVIDER_SOCKET", "CRYPTO_PROVIDER_SOCKET", "BEARDOG_SOCKET"] {
+            if let Ok(path) = env_reader(env_var) {
+                if !path.is_empty() {
+                    return PathBuf::from(path);
+                }
             }
         }
+
+        // 2. XDG runtime directory (capability names first)
         if let Ok(xdg) = env_reader("XDG_RUNTIME_DIR") {
-            // Try biomeOS standard path first
-            let biomeos_path = PathBuf::from(&xdg).join("biomeos").join("beardog.sock");
-            if biomeos_path.exists() {
-                return biomeos_path;
+            let biomeos = PathBuf::from(&xdg).join("biomeos");
+
+            // Capability-named sockets first, then provider hints
+            for socket_name in &["security.sock", "crypto.sock", "beardog.sock"] {
+                let path = biomeos.join(socket_name);
+                if path.exists() {
+                    return path;
+                }
             }
-            // Legacy beardog directory
+
+            // Legacy beardog directory (backward compatibility)
             let legacy_path = PathBuf::from(&xdg).join("beardog").join("beardog.sock");
             if legacy_path.exists() {
                 return legacy_path;
             }
         }
-        PathBuf::from("/tmp/beardog.sock")
+
+        // 3. Legacy fallback (capability name preferred)
+        let fallback_paths =
+            ["/tmp/biomeos/security.sock", "/tmp/biomeos/beardog.sock", "/tmp/beardog.sock"];
+
+        for path in fallback_paths {
+            let path_buf = PathBuf::from(path);
+            if path_buf.exists() {
+                return path_buf;
+            }
+        }
+
+        PathBuf::from("/tmp/biomeos/security.sock")
     }
 
     /// Call BearDog JSON-RPC method
@@ -664,7 +694,8 @@ mod tests {
             vars.get(key).cloned().ok_or(std::env::VarError::NotPresent)
         };
         let path = BearDogNfcCrypto::discover_socket_with(env);
-        assert_eq!(path, PathBuf::from("/tmp/beardog.sock"));
+        // Capability-first: Falls back to security.sock (capability name)
+        assert_eq!(path, PathBuf::from("/tmp/biomeos/security.sock"));
     }
 
     #[test]
@@ -673,7 +704,8 @@ mod tests {
             Err(std::env::VarError::NotPresent)
         };
         let path = BearDogNfcCrypto::discover_socket_with(env);
-        assert_eq!(path, PathBuf::from("/tmp/beardog.sock"));
+        // Capability-first: Falls back to security.sock (capability name)
+        assert_eq!(path, PathBuf::from("/tmp/biomeos/security.sock"));
     }
 
     #[tokio::test]

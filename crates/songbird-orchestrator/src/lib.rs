@@ -115,6 +115,7 @@ pub mod bin_interface; // ✅ UniBin public API (Jan 19, 2026)
 pub mod btsp_client; // BTSP Unix socket client for BearDog tunnels (Jan 16, 2026)
 pub mod capability_registration; // Neural API capability registration (TRUE PRIMAL) (Jan 25, 2026)
 pub mod cli;
+pub mod commands; // Server, doctor, config command implementations (extracted from main.rs)
 pub mod connections; // Progressive trust connection management (Jan 2026)
 pub mod consent_management;
 pub mod core; // Consolidated core functionality

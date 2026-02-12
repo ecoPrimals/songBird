@@ -219,4 +219,3 @@ fn test_tls_application_secrets_debug() {
     let debug = format!("{:?}", secrets);
     assert!(debug.contains("TlsApplicationSecrets"));
 }
-

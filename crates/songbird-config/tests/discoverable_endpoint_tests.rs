@@ -324,4 +324,3 @@ fn test_discoverable_endpoint_debug() {
     let debug = format!("{:?}", ep);
     assert!(debug.contains("DiscoverableEndpoint"));
 }
-

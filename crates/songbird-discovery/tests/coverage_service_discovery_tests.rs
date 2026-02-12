@@ -555,4 +555,3 @@ fn test_sort_by_variants() {
         assert_eq!(*sort, deserialized);
     }
 }
-

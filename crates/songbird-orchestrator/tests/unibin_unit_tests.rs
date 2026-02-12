@@ -6,6 +6,14 @@
 //! Modern, idiomatic, async Rust with deep debt solutions.
 
 use anyhow::Result;
+use std::sync::Mutex;
+
+static ENV_LOCK: Mutex<()> = Mutex::new(());
+
+/// Acquire the env lock, tolerating poison.
+fn lock_env() -> std::sync::MutexGuard<'static, ()> {
+    ENV_LOCK.lock().unwrap_or_else(|e| e.into_inner())
+}
 
 // ====================
 // HELPER FUNCTION TESTS
@@ -17,6 +25,7 @@ mod helper_tests {
 
     #[test]
     fn test_environment_variable_parsing() {
+        let _g = lock_env();
         // Test that env var parsing works correctly
         std::env::set_var("TEST_PORT", "9000");
         let port = std::env::var("TEST_PORT").unwrap();
@@ -94,6 +103,7 @@ mod helper_tests {
 
     #[test]
     fn test_node_identity_env_vars() {
+        let _g = lock_env();
         // Test node identity environment variable priority
         std::env::set_var("SONGBIRD_NODE_ID", "test-node-1");
         let node_id = std::env::var("SONGBIRD_NODE_ID")
@@ -109,6 +119,7 @@ mod helper_tests {
 
     #[test]
     fn test_family_identity_env_vars() {
+        let _g = lock_env();
         // Test family identity environment variable priority
         std::env::set_var("SONGBIRD_FAMILY_ID", "nat0");
         let family_id =
@@ -122,6 +133,7 @@ mod helper_tests {
 
     #[test]
     fn test_env_var_fallback_chain() {
+        let _g = lock_env();
         // Test complete fallback chain
         std::env::remove_var("SONGBIRD_NODE_ID");
         std::env::remove_var("NODE_ID");

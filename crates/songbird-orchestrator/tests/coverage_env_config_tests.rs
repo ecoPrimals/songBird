@@ -47,7 +47,7 @@ fn test_family_id_default() {
     ] {
         std::env::remove_var(var);
     }
-    assert_eq!(env_config::family_id(), "nat0");
+    assert_eq!(env_config::family_id(), "default");
 }
 
 #[test]
@@ -222,7 +222,7 @@ fn test_socket_name_multi_family_via_multi_family_flag() {
     let _g = lock_env();
     std::env::set_var("SONGBIRD_MULTI_FAMILY", "true");
     std::env::remove_var("SONGBIRD_FAMILY_SOCKET");
-    // Clear family env vars to get default "nat0"
+    // Clear family env vars to get default "default"
     for var in &[
         "SONGBIRD_ORCHESTRATOR_FAMILY_ID",
         "SONGBIRD_ORCHESTRATOR_FAMILY",
@@ -234,7 +234,7 @@ fn test_socket_name_multi_family_via_multi_family_flag() {
     }
     let name = env_config::socket_name();
     std::env::remove_var("SONGBIRD_MULTI_FAMILY");
-    assert_eq!(name, "songbird-nat0.sock");
+    assert_eq!(name, "songbird-default.sock");
 }
 
 #[test]
@@ -253,7 +253,7 @@ fn test_socket_name_multi_family_via_family_socket_flag() {
     }
     let name = env_config::socket_name();
     std::env::remove_var("SONGBIRD_FAMILY_SOCKET");
-    assert_eq!(name, "songbird-nat0.sock");
+    assert_eq!(name, "songbird-default.sock");
 }
 
 #[test]
@@ -519,4 +519,3 @@ fn test_dual_broadcast_enabled() {
     std::env::remove_var("SONGBIRD_DUAL_BROADCAST");
     assert!(dual);
 }
-

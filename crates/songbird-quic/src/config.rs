@@ -33,6 +33,9 @@ pub struct QuicConfig {
 
     /// Maximum MTU
     pub max_mtu: u16,
+
+    /// TLS certificate domain (for self-signed inter-primal certs)
+    pub tls_domain: String,
 }
 
 impl Default for QuicConfig {
@@ -48,6 +51,8 @@ impl Default for QuicConfig {
             enable_0rtt: true,
             enable_migration: true,
             max_mtu: 1200,
+            tls_domain: std::env::var("SONGBIRD_TLS_DOMAIN")
+                .unwrap_or_else(|_| "songbird.local".to_string()),
         }
     }
 }
@@ -87,41 +92,66 @@ impl QuicConfig {
         self
     }
 
-    /// Discover `BearDog` socket at runtime (primal self-knowledge only)
+    /// Discover security/crypto provider socket at runtime (capability-first)
     ///
-    /// Resolution order:
-    /// 1. `BEARDOG_SOCKET` environment variable
-    /// 2. `SONGBIRD_SECURITY_PROVIDER` environment variable
-    /// 3. XDG runtime directory + beardog.sock
-    /// 4. /tmp/biomeos/beardog.sock (fallback)
+    /// ## Resolution Order (capability-first, primal-agnostic)
+    ///
+    /// 1. `CRYPTO_PROVIDER_SOCKET` - Capability-based (preferred for QUIC)
+    /// 2. `SECURITY_PROVIDER_SOCKET` - Capability-based alternative
+    /// 3. `SONGBIRD_SECURITY_PROVIDER` - Legacy capability-based
+    /// 4. `BEARDOG_SOCKET` - Provider-specific (backward compatibility)
+    /// 5. XDG: `$XDG_RUNTIME_DIR/biomeos/crypto.sock` - Capability-named
+    /// 6. XDG: `$XDG_RUNTIME_DIR/biomeos/security.sock` - Capability-named
+    /// 7. XDG: `$XDG_RUNTIME_DIR/biomeos/beardog.sock` - Provider hint
+    /// 8. Legacy: `/tmp/biomeos/crypto.sock` - Fallback
     fn discover_beardog_socket() -> PathBuf {
-        // 1. Explicit BearDog socket
-        if let Ok(socket) = std::env::var("BEARDOG_SOCKET") {
-            return PathBuf::from(socket);
-        }
-
-        // 2. Security provider (generic)
-        if let Ok(socket) = std::env::var("SONGBIRD_SECURITY_PROVIDER") {
-            return PathBuf::from(socket);
-        }
-
-        // 3. XDG runtime directory
-        if let Ok(xdg_runtime) = std::env::var("XDG_RUNTIME_DIR") {
-            let socket = PathBuf::from(xdg_runtime).join("biomeos").join("beardog.sock");
-            if socket.exists() {
-                return socket;
+        // 1. Capability-based env vars (preferred - primal agnostic)
+        for env_var in &[
+            "CRYPTO_PROVIDER_SOCKET",
+            "SECURITY_PROVIDER_SOCKET",
+            "SONGBIRD_SECURITY_PROVIDER",
+            "BEARDOG_SOCKET", // backward compatibility
+        ] {
+            if let Ok(socket) = std::env::var(env_var) {
+                return PathBuf::from(socket);
             }
         }
 
-        // 4. Fallback (platform-specific)
+        // 2. XDG runtime directory (capability names first, then provider hints)
+        if let Ok(xdg_runtime) = std::env::var("XDG_RUNTIME_DIR") {
+            let biomeos = PathBuf::from(&xdg_runtime).join("biomeos");
+
+            // Capability-named sockets first, provider hints last
+            for socket_name in &["crypto.sock", "security.sock", "beardog.sock"] {
+                let socket = biomeos.join(socket_name);
+                if socket.exists() {
+                    return socket;
+                }
+            }
+        }
+
+        // 3. Fallback (platform-specific, capability name preferred)
         #[cfg(unix)]
         {
-            PathBuf::from("/tmp/biomeos/beardog.sock")
+            let fallback_paths = [
+                "/tmp/biomeos/crypto.sock",
+                "/tmp/biomeos/security.sock",
+                "/tmp/biomeos/beardog.sock",
+            ];
+
+            for path in fallback_paths {
+                let path_buf = PathBuf::from(path);
+                if path_buf.exists() {
+                    return path_buf;
+                }
+            }
+
+            PathBuf::from("/tmp/biomeos/crypto.sock")
         }
 
         #[cfg(not(unix))]
         {
-            PathBuf::from("beardog.sock")
+            PathBuf::from("crypto.sock")
         }
     }
 
@@ -130,7 +160,7 @@ impl QuicConfig {
         // Generate self-signed certificate for inter-primal QUIC
         // Self-signed is correct for inter-primal: identity verified via BearDog lineage
         // When BearDog cert generation is available, it can provide lineage-tagged certs
-        let cert = rcgen::generate_simple_self_signed(vec!["songbird.local".to_string()])
+        let cert = rcgen::generate_simple_self_signed(vec![self.tls_domain.clone()])
             .map_err(|e| QuicError::Config(format!("Failed to generate cert: {e}")))?;
 
         let cert_der = cert.cert.der().to_vec();

@@ -15,7 +15,7 @@ use std::time::SystemTime;
 ///   "jsonrpc": "2.0",
 ///   "method": "discover_by_family",
 ///   "params": {
-///     "family_tags": ["nat0", "lan0"],
+///     "family_tags": ["my-family", "lan0"],
 ///     "timeout_ms": 5000
 ///   },
 ///   "id": 1
@@ -23,7 +23,7 @@ use std::time::SystemTime;
 /// ```
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DiscoverByFamilyRequest {
-    /// Family tags to filter by (e.g., ["nat0", "lan0"])
+    /// Family tags to filter by (e.g., ["my-family", "lan0"])
     pub family_tags: Vec<String>,
 
     /// Timeout in milliseconds (optional, default: 5000)
@@ -85,7 +85,7 @@ pub struct DiscoveredNode {
 ///     "peer_node_id": "node-beta",
 ///     "peer_endpoint": "udp://192.168.1.101:4433",
 ///     "genetic_proof": {
-///       "family_id": "nat0",
+///       "family_id": "my-family",
 ///       "parent_seed_hash": "abc123",
 ///       "relationship": "sibling"
 ///     }
@@ -110,7 +110,7 @@ pub struct CreateGeneticTunnelRequest {
 /// Genetic lineage proof from BearDog
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GeneticProof {
-    /// Family identifier (e.g., "nat0")
+    /// Family identifier (e.g., "my-family")
     pub family_id: String,
 
     /// Parent seed hash (from BearDog verification)
@@ -156,7 +156,7 @@ pub struct CreateGeneticTunnelResponse {
 ///   "params": {
 ///     "capabilities": ["storage", "compute"],
 ///     "sub_federations": ["gaming", "family"],
-///     "genetic_families": ["nat0", "lan0"]
+///     "genetic_families": ["my-family", "lan0"]
 ///   },
 ///   "id": 3
 /// }

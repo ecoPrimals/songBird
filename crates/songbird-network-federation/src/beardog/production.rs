@@ -196,14 +196,18 @@ impl BirdSongCrypto for ProductionBearDogProvider {
     ) -> Result<EncryptedBirdSong> {
         use base64::{engine::general_purpose, Engine as _};
 
-        // Get family_id from self, env vars, or default
+        // Get family_id from self, env vars, or default (canonical chain)
         let family_id = self
             .family_id
             .clone()
             .or_else(|| {
-                std::env::var("SONGBIRD_FAMILY_ID").or_else(|_| std::env::var("FAMILY_ID")).ok()
+                std::env::var("SONGBIRD_ORCHESTRATOR_FAMILY_ID")
+                    .or_else(|_| std::env::var("BIOMEOS_FAMILY_ID"))
+                    .or_else(|_| std::env::var("SONGBIRD_FAMILY_ID"))
+                    .or_else(|_| std::env::var("FAMILY_ID"))
+                    .ok()
             })
-            .unwrap_or_else(|| "nat0".to_string());
+            .unwrap_or_else(|| "default".to_string());
 
         let params = serde_json::json!({
             "plaintext": general_purpose::STANDARD.encode(payload),
@@ -216,14 +220,18 @@ impl BirdSongCrypto for ProductionBearDogProvider {
     }
 
     async fn decrypt_birdsong(&self, encrypted: &EncryptedBirdSong) -> Result<Option<Vec<u8>>> {
-        // Get family_id from self, env vars, or default
+        // Get family_id from self, env vars, or default (canonical chain)
         let family_id = self
             .family_id
             .clone()
             .or_else(|| {
-                std::env::var("SONGBIRD_FAMILY_ID").or_else(|_| std::env::var("FAMILY_ID")).ok()
+                std::env::var("SONGBIRD_ORCHESTRATOR_FAMILY_ID")
+                    .or_else(|_| std::env::var("BIOMEOS_FAMILY_ID"))
+                    .or_else(|_| std::env::var("SONGBIRD_FAMILY_ID"))
+                    .or_else(|_| std::env::var("FAMILY_ID"))
+                    .ok()
             })
-            .unwrap_or_else(|| "nat0".to_string());
+            .unwrap_or_else(|| "default".to_string());
 
         let params = serde_json::json!({
             "encrypted": encrypted,

@@ -13,6 +13,79 @@ pub struct PublicEndpoint {
     pub nat_type: NatType,
 }
 
+/// Port allocation pattern detected from multiple STUN probes
+///
+/// Used to predict NAT port assignments for coordinated hole punching.
+/// Sequential patterns (step=1 or small step) enable port prediction
+/// which dramatically improves symmetric NAT punch success rates.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub enum PortPattern {
+    /// NAT allocates ports sequentially (e.g., 41200, 41201, 41202)
+    ///
+    /// This is the best case for prediction — next port is highly predictable.
+    Sequential {
+        /// Step between consecutive allocations (e.g., 1 for sequential, 5 for skip-5)
+        step: i32,
+        /// Last observed port
+        last_port: u16,
+        /// Predicted next port based on pattern
+        predicted_next: u16,
+        /// Confidence level (0.0–1.0) based on pattern consistency
+        confidence: f64,
+    },
+
+    /// NAT allocates ports randomly — no prediction possible
+    ///
+    /// Relay-only mode; coordinated punch won't improve success rate.
+    Random {
+        /// All observed ports from probes
+        observed: Vec<u16>,
+    },
+
+    /// Not enough data to determine pattern
+    Unknown,
+}
+
+impl PortPattern {
+    /// Predict the next port allocation, if possible
+    ///
+    /// Returns `None` for `Random` or `Unknown` patterns.
+    #[must_use]
+    pub fn predict_next(&self) -> Option<u16> {
+        match self {
+            Self::Sequential {
+                predicted_next,
+                ..
+            } => Some(*predicted_next),
+            Self::Random {
+                ..
+            }
+            | Self::Unknown => None,
+        }
+    }
+
+    /// Get confidence level for the prediction
+    #[must_use]
+    pub fn confidence(&self) -> f64 {
+        match self {
+            Self::Sequential {
+                confidence,
+                ..
+            } => *confidence,
+            Self::Random {
+                ..
+            } => 0.0,
+            Self::Unknown => 0.0,
+        }
+    }
+
+    /// Whether this pattern supports coordinated punch
+    #[must_use]
+    pub fn supports_coordinated_punch(&self) -> bool {
+        matches!(self, Self::Sequential { confidence, .. } if *confidence > 0.5)
+    }
+}
+
 /// NAT type classification
 ///
 /// Determines how aggressive NAT traversal needs to be.

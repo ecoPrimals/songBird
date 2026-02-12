@@ -365,6 +365,177 @@ impl StunHandler {
             "stun_server": stun_server
         }))
     }
+
+    /// Handle `stun.probe_port_pattern` method - Detect NAT port allocation pattern
+    ///
+    /// Sends N STUN probes to detect whether the NAT allocates ports
+    /// sequentially (predictable) or randomly. Sequential patterns enable
+    /// coordinated hole punching for symmetric NAT traversal.
+    ///
+    /// # Request Example
+    ///
+    /// ```json
+    /// {
+    ///   "jsonrpc": "2.0",
+    ///   "method": "stun.probe_port_pattern",
+    ///   "params": {
+    ///     "stun_server": "192.168.1.144:3478",
+    ///     "probes": 5
+    ///   },
+    ///   "id": 1
+    /// }
+    /// ```
+    ///
+    /// # Response Example (Sequential)
+    ///
+    /// ```json
+    /// {
+    ///   "jsonrpc": "2.0",
+    ///   "result": {
+    ///     "pattern": "sequential",
+    ///     "step": 1,
+    ///     "last_port": 41204,
+    ///     "predicted_next": 41205,
+    ///     "confidence": 0.85,
+    ///     "supports_coordinated_punch": true
+    ///   },
+    ///   "id": 1
+    /// }
+    /// ```
+    pub async fn handle_probe_port_pattern(&self, params: Value) -> Result<Value, String> {
+        let stun_server =
+            params.get("stun_server").and_then(|v| v.as_str()).unwrap_or("stun.nextcloud.com:3478");
+
+        let probes = params
+            .get("probes")
+            .and_then(serde_json::Value::as_u64)
+            .map_or(5, |n| usize::try_from(n).unwrap_or(5));
+
+        info!("🔍 STUN: Probing port pattern ({} probes to {})", probes, stun_server);
+
+        let client = StunClient::new();
+
+        let pattern = client
+            .probe_port_pattern(stun_server, probes)
+            .await
+            .map_err(|e| format!("Port pattern probing failed: {e}"))?;
+
+        let response = match &pattern {
+            songbird_stun::PortPattern::Sequential {
+                step,
+                last_port,
+                predicted_next,
+                confidence,
+            } => {
+                info!("✅ Sequential pattern: step={}, predicted={}", step, predicted_next);
+                json!({
+                    "pattern": "sequential",
+                    "step": step,
+                    "last_port": last_port,
+                    "predicted_next": predicted_next,
+                    "confidence": confidence,
+                    "supports_coordinated_punch": pattern.supports_coordinated_punch()
+                })
+            }
+            songbird_stun::PortPattern::Random {
+                observed,
+            } => {
+                info!("⚠️ Random pattern: {} ports observed", observed.len());
+                json!({
+                    "pattern": "random",
+                    "observed_ports": observed,
+                    "supports_coordinated_punch": false
+                })
+            }
+            songbird_stun::PortPattern::Unknown => {
+                warn!("⚠️ Could not determine port pattern");
+                json!({
+                    "pattern": "unknown",
+                    "supports_coordinated_punch": false
+                })
+            }
+        };
+
+        Ok(response)
+    }
+
+    /// Handle `stun.detect_nat_type` method - Detect NAT type via multiple probes
+    ///
+    /// Uses two STUN servers to compare port mappings and determine NAT type.
+    ///
+    /// # Request Example
+    ///
+    /// ```json
+    /// {
+    ///   "jsonrpc": "2.0",
+    ///   "method": "stun.detect_nat_type",
+    ///   "params": {
+    ///     "servers": ["stun.nextcloud.com:3478", "stun.cloudflare.com:3478"]
+    ///   },
+    ///   "id": 1
+    /// }
+    /// ```
+    pub async fn handle_detect_nat_type(&self, params: Value) -> Result<Value, String> {
+        let servers: Vec<String> = if let Some(servers_val) = params.get("servers") {
+            serde_json::from_value(servers_val.clone())
+                .map_err(|e| format!("Invalid 'servers' parameter: {e}"))?
+        } else {
+            Self::DEFAULT_STUN_SERVERS
+                .iter()
+                .take(2)
+                .map(std::string::ToString::to_string)
+                .collect()
+        };
+
+        if servers.len() < 2 {
+            return Err("Need at least 2 STUN servers for NAT type detection".to_string());
+        }
+
+        info!("🔍 STUN: Detecting NAT type via {} servers", servers.len());
+
+        let client = StunClient::new();
+
+        // Query two different STUN servers from the same socket
+        let addr1 = client
+            .discover_public_address(&servers[0])
+            .await
+            .map_err(|e| format!("STUN server 1 failed: {e}"))?;
+
+        let addr2 = client
+            .discover_public_address(&servers[1])
+            .await
+            .map_err(|e| format!("STUN server 2 failed: {e}"))?;
+
+        let (nat_type, description) = if addr1.ip() != addr2.ip() {
+            // Different IPs means something very unusual (multi-homed NAT)
+            ("unknown", "Different public IPs detected — unusual topology")
+        } else if addr1.port() == addr2.port() {
+            // Same port for different destinations = cone NAT
+            ("cone", "Same port for different destinations — likely cone NAT (good for punching)")
+        } else {
+            // Different ports = symmetric NAT
+            (
+                "symmetric",
+                "Different ports for different destinations — symmetric NAT (needs relay-assisted punch)",
+            )
+        };
+
+        info!("✅ NAT type detected: {} — {}", nat_type, description);
+
+        Ok(json!({
+            "nat_type": nat_type,
+            "description": description,
+            "probe_results": {
+                "server_1": { "server": &servers[0], "public_addr": addr1.to_string() },
+                "server_2": { "server": &servers[1], "public_addr": addr2.to_string() }
+            },
+            "recommendation": if nat_type == "symmetric" {
+                "Use relay-assisted coordinated punch (punch.coordinate)"
+            } else {
+                "Direct hole punch should work (punch.request)"
+            }
+        }))
+    }
 }
 
 impl Default for StunHandler {

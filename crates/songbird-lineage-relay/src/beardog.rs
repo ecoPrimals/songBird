@@ -8,7 +8,7 @@
 //! - ✅ Modern async Rust (trait-based, async/await)
 //! - ✅ Zero unsafe code
 //! - ✅ Runtime discovery (no hardcoded paths)
-//! - ✅ Mocks isolated to #[cfg(test)]
+//! - ✅ Mocks isolated to `#[cfg(any(test, feature = "test-utils"))]`
 //! - ✅ Pure Rust (Unix sockets, not HTTP)
 
 use crate::birdsong::{BirdSongCrypto, LineageHint};
@@ -16,14 +16,19 @@ use crate::error::Result;
 use crate::relay::RelayAuthority;
 use crate::types::{MaskingLevel, NodeId, RelayAuthorization};
 use async_trait::async_trait;
-use std::collections::HashMap;
 use std::path::PathBuf;
-use std::sync::Arc;
 use std::time::SystemTime;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::UnixStream;
-use tokio::sync::RwLock;
 use tracing::{debug, info};
+
+// Imports only used by mock implementations
+#[cfg(any(test, feature = "test-utils"))]
+use std::collections::HashMap;
+#[cfg(any(test, feature = "test-utils"))]
+use std::sync::Arc;
+#[cfg(any(test, feature = "test-utils"))]
+use tokio::sync::RwLock;
 
 /// Production `BearDog` `BirdSong` Provider
 ///
@@ -267,23 +272,54 @@ impl BearDogRelayAuthority {
         }
     }
 
-    /// Discover `BearDog` socket path at runtime
+    /// Discover security provider socket path at runtime (capability-first)
+    ///
+    /// ## Resolution Order (capability-first, primal-agnostic)
+    ///
+    /// 1. `SECURITY_PROVIDER_SOCKET` - Capability-based (preferred)
+    /// 2. `CRYPTO_PROVIDER_SOCKET` - Capability-based alternative
+    /// 3. `BEARDOG_SOCKET` - Provider-specific (backward compatibility)
+    /// 4. XDG: `$XDG_RUNTIME_DIR/biomeos/security.sock` - Capability-named
+    /// 5. XDG: `$XDG_RUNTIME_DIR/biomeos/beardog.sock` - Provider hint
+    /// 6. Legacy: `/tmp/biomeos/security.sock` - Fallback
     fn discover_socket_path() -> PathBuf {
-        // 1. Environment variable (highest priority)
-        if let Ok(path) = std::env::var("BEARDOG_SOCKET") {
-            return PathBuf::from(path);
-        }
-
-        // 2. XDG runtime directory
-        if let Ok(xdg) = std::env::var("XDG_RUNTIME_DIR") {
-            let path = PathBuf::from(xdg).join("beardog").join("beardog.sock");
-            if path.exists() {
-                return path;
+        // 1. Capability-based env vars (preferred - primal agnostic)
+        for env_var in &[
+            "SECURITY_PROVIDER_SOCKET",
+            "CRYPTO_PROVIDER_SOCKET",
+            "BEARDOG_SOCKET", // backward compatibility
+        ] {
+            if let Ok(path) = std::env::var(env_var) {
+                return PathBuf::from(path);
             }
         }
 
-        // 3. Fallback
-        PathBuf::from("/tmp/beardog.sock")
+        // 2. XDG runtime directory (capability names first, then provider hints)
+        if let Ok(xdg) = std::env::var("XDG_RUNTIME_DIR") {
+            let biomeos = PathBuf::from(&xdg).join("biomeos");
+
+            // Capability-named sockets first
+            for socket_name in &["security.sock", "crypto.sock", "beardog.sock"] {
+                let path = biomeos.join(socket_name);
+                if path.exists() {
+                    return path;
+                }
+            }
+        }
+
+        // 3. Legacy fallback (capability name preferred)
+        let fallback_paths =
+            ["/tmp/biomeos/security.sock", "/tmp/biomeos/beardog.sock", "/tmp/security.sock"];
+
+        for path in fallback_paths {
+            let path_buf = PathBuf::from(path);
+            if path_buf.exists() {
+                return path_buf;
+            }
+        }
+
+        // Final fallback (most common provider)
+        PathBuf::from("/tmp/biomeos/security.sock")
     }
 
     /// Call `BearDog` JSON-RPC method via Unix socket
@@ -439,10 +475,13 @@ impl RelayAuthority for BearDogRelayAuthority {
 }
 
 // ═══════════════════════════════════════════════════════════════════
-// TEST MOCKS - Available for unit tests and integration tests
-// Note: Not gated by #[cfg(test)] to allow integration tests to use them
+// TEST MOCKS - Gated behind cfg(test) or feature = "test-utils"
+//
+// Unit tests get these via #[cfg(test)]; integration tests
+// enable the `test-utils` feature in dev-dependencies.
 // ═══════════════════════════════════════════════════════════════════
 
+#[cfg(any(test, feature = "test-utils"))]
 pub struct MockLineageProvider {
     /// Lineage graph: `node_id` → `parent_id`
     lineages: Arc<RwLock<HashMap<String, String>>>,
@@ -450,6 +489,7 @@ pub struct MockLineageProvider {
     descendants: Arc<RwLock<HashMap<String, Vec<String>>>>,
 }
 
+#[cfg(any(test, feature = "test-utils"))]
 impl MockLineageProvider {
     /// Create new mock lineage provider
     #[must_use]
@@ -491,6 +531,7 @@ impl MockLineageProvider {
     }
 }
 
+#[cfg(any(test, feature = "test-utils"))]
 impl Default for MockLineageProvider {
     fn default() -> Self {
         Self::new()
@@ -498,11 +539,13 @@ impl Default for MockLineageProvider {
 }
 
 /// Mock `BirdSong` crypto (for testing and integration tests)
+#[cfg(any(test, feature = "test-utils"))]
 pub struct MockBirdSongCrypto {
     lineage_provider: Arc<MockLineageProvider>,
     my_id: String,
 }
 
+#[cfg(any(test, feature = "test-utils"))]
 impl MockBirdSongCrypto {
     /// Create new mock crypto
     #[must_use]
@@ -514,6 +557,7 @@ impl MockBirdSongCrypto {
     }
 }
 
+#[cfg(any(test, feature = "test-utils"))]
 #[async_trait]
 impl BirdSongCrypto for MockBirdSongCrypto {
     async fn encrypt_for_lineage(&self, message: &[u8], _hint: LineageHint) -> Result<Vec<u8>> {
@@ -537,10 +581,12 @@ impl BirdSongCrypto for MockBirdSongCrypto {
 }
 
 /// Mock relay authority (for testing and integration tests)
+#[cfg(any(test, feature = "test-utils"))]
 pub struct MockRelayAuthority {
     lineage_provider: Arc<MockLineageProvider>,
 }
 
+#[cfg(any(test, feature = "test-utils"))]
 impl MockRelayAuthority {
     /// Create new mock relay authority
     #[must_use]
@@ -551,6 +597,7 @@ impl MockRelayAuthority {
     }
 }
 
+#[cfg(any(test, feature = "test-utils"))]
 #[async_trait]
 impl RelayAuthority for MockRelayAuthority {
     async fn authorize_relay(

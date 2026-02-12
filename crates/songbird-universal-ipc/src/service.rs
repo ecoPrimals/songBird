@@ -137,41 +137,79 @@ pub struct IpcServiceHandler {
     start_time: Arc<RwLock<std::time::Instant>>, // Track uptime (Feb 5, 2026)
 }
 
-impl IpcServiceHandler {
-    /// Create a new IPC service handler
-    ///
-    /// ✅ DEEP DEBT COMPLIANT (Jan 29, 2026):
-    /// - Real implementations (`HttpRendezvousClient`, `UdpPeerConnector`)
-    /// - Zero mocks in production (all delegates to `BearDog`)
-    /// - Production-ready defaults
-    ///
-    /// ✅ DEEP DEBT UPDATED (Feb 8, 2026):
-    /// - `BearDogRelayAuthority` replaces `MockRelayAuthority`
-    /// - `IgdHandler` added for router auto-configuration
-    ///
-    /// ✅ DEEP DEBT UPDATED (Feb 2, 2026):
-    /// - Added `BirdSong` handler (runtime discovery, no hardcoding)
-    /// - Pure Rust, zero unsafe
-    pub fn new(registry: Arc<RwLock<ServiceRegistry>>) -> Self {
-        let http_handler = Arc::new(HttpHandler::with_default_discovery());
-        let stun_handler = Arc::new(StunHandler::new());
-        let discovery_handler = Arc::new(DiscoveryHandler::new());
+/// All handler instances built by `build_handlers()`.
+type HandlerBundle = (
+    Arc<StunHandler>,
+    Arc<RendezvousHandler>,
+    Arc<PeerHandler>,
+    Arc<BirdSongHandler>,
+    Arc<RelayHandler>,
+    Arc<MeshHandler>,
+    Arc<OnionHandler>,
+    Arc<PunchHandler>,
+    Arc<TorHandler>,
+    Arc<IgdHandler>,
+);
 
-        // ✅ Production implementations (not mocks!)
+impl IpcServiceHandler {
+    /// Build all production-ready handler instances.
+    ///
+    /// Shared by all constructors to eliminate duplication.
+    /// All handlers use real implementations (zero mocks in production).
+    fn build_handlers() -> HandlerBundle {
+        let stun_handler = Arc::new(StunHandler::new());
         let rendezvous_handler =
             Arc::new(RendezvousHandler::new(Arc::new(HttpRendezvousClient::new())));
         let peer_handler = Arc::new(PeerHandler::new(Arc::new(UdpPeerConnector::new())));
-        let birdsong_handler = Arc::new(BirdSongHandler::new()); // Feb 2, 2026
-
-        // ✅ Relay Server (Feb 5, 2026) - Production BearDog relay authority
+        let birdsong_handler = Arc::new(BirdSongHandler::new());
         let relay_handler = Arc::new(RelayHandler::new(Arc::new(BearDogRelayAuthority::new())));
-
-        // ✅ Mesh networking (Feb 4, 2026) - Beacon mesh for distributed relay
         let mesh_handler = Arc::new(MeshHandler::new());
-        let onion_handler = Arc::new(OnionHandler::new()); // Sovereign onion (Feb 4, 2026)
-        let punch_handler = Arc::new(PunchHandler::new());
-        let tor_handler = Arc::new(TorHandler::new()); // Pure Rust Tor (Feb 7, 2026)
-        let igd_handler = Arc::new(IgdHandler::new()); // IGD router config (Feb 8, 2026)
+        let onion_handler = Arc::new(OnionHandler::new());
+
+        // Create a real HolePunchCoordinator so punch.request works
+        let node_id = std::env::var("SONGBIRD_NODE_ID")
+            .or_else(|_| std::env::var("NODE_ID"))
+            .unwrap_or_else(|_| "songbird-default".to_string());
+        let punch_config = songbird_onion_relay::coordinator::HolePunchConfig::default();
+        let (coordinator, _signal_tx, _signal_rx) =
+            songbird_onion_relay::HolePunchCoordinator::new(node_id, punch_config);
+        let punch_handler = Arc::new(PunchHandler::with_coordinator(Arc::new(coordinator)));
+
+        let tor_handler = Arc::new(TorHandler::new());
+        let igd_handler = Arc::new(IgdHandler::new());
+
+        (
+            stun_handler,
+            rendezvous_handler,
+            peer_handler,
+            birdsong_handler,
+            relay_handler,
+            mesh_handler,
+            onion_handler,
+            punch_handler,
+            tor_handler,
+            igd_handler,
+        )
+    }
+
+    /// Assemble a handler from pre-built components.
+    fn assemble(
+        registry: Arc<RwLock<ServiceRegistry>>,
+        http_handler: Arc<HttpHandler>,
+        discovery_handler: Arc<DiscoveryHandler>,
+    ) -> Self {
+        let (
+            stun_handler,
+            rendezvous_handler,
+            peer_handler,
+            birdsong_handler,
+            relay_handler,
+            mesh_handler,
+            onion_handler,
+            punch_handler,
+            tor_handler,
+            igd_handler,
+        ) = Self::build_handlers();
 
         Self {
             registry,
@@ -191,89 +229,35 @@ impl IpcServiceHandler {
         }
     }
 
-    /// Create with discovery peer registry (for connecting to orchestrator's listener)
+    /// Create a new IPC service handler with production defaults.
     ///
-    /// ✅ DEEP DEBT COMPLIANT (Jan 29, 2026):
-    /// - Real implementations (`HttpRendezvousClient`, `UdpPeerConnector`)
-    /// - Runtime peer discovery via `PeerRegistry` trait
-    /// - Zero hardcoding
-    ///
-    /// ✅ DEEP DEBT UPDATED (Feb 2, 2026):
-    /// - Added `BirdSong` handler
+    /// Uses real implementations for all handlers (zero mocks in production).
+    pub fn new(registry: Arc<RwLock<ServiceRegistry>>) -> Self {
+        Self::assemble(
+            registry,
+            Arc::new(HttpHandler::with_default_discovery()),
+            Arc::new(DiscoveryHandler::new()),
+        )
+    }
+
+    /// Create with a peer registry for orchestrator-level discovery.
     pub fn with_discovery_registry(
         registry: Arc<RwLock<ServiceRegistry>>,
         peer_registry: Arc<dyn PeerRegistry>,
     ) -> Self {
-        let http_handler = Arc::new(HttpHandler::with_default_discovery());
-        let stun_handler = Arc::new(StunHandler::new());
-        let discovery_handler = Arc::new(DiscoveryHandler::with_registry(peer_registry));
-
-        // ✅ Production implementations (not mocks!)
-        let rendezvous_handler =
-            Arc::new(RendezvousHandler::new(Arc::new(HttpRendezvousClient::new())));
-        let peer_handler = Arc::new(PeerHandler::new(Arc::new(UdpPeerConnector::new())));
-        let birdsong_handler = Arc::new(BirdSongHandler::new()); // Feb 2, 2026
-        let relay_handler = Arc::new(RelayHandler::new(Arc::new(BearDogRelayAuthority::new()))); // Feb 5, 2026
-        let mesh_handler = Arc::new(MeshHandler::new()); // Feb 4, 2026
-        let onion_handler = Arc::new(OnionHandler::new()); // Feb 4, 2026
-        let punch_handler = Arc::new(PunchHandler::new()); // Feb 4, 2026
-        let tor_handler = Arc::new(TorHandler::new()); // Feb 7, 2026
-        let igd_handler = Arc::new(IgdHandler::new()); // IGD router config (Feb 8, 2026)
-
-        Self {
+        Self::assemble(
             registry,
-            http_handler,
-            stun_handler,
-            discovery_handler,
-            rendezvous_handler,
-            peer_handler,
-            birdsong_handler,
-            relay_handler,
-            mesh_handler,
-            onion_handler,
-            punch_handler,
-            tor_handler,
-            igd_handler,
-            start_time: Arc::new(RwLock::new(std::time::Instant::now())),
-        }
+            Arc::new(HttpHandler::with_default_discovery()),
+            Arc::new(DiscoveryHandler::with_registry(peer_registry)),
+        )
     }
 
-    /// Create with custom HTTP handler (for testing/DI)
+    /// Create with a custom HTTP handler (for dependency injection).
     pub fn with_http_handler(
         registry: Arc<RwLock<ServiceRegistry>>,
         http_handler: Arc<HttpHandler>,
     ) -> Self {
-        let stun_handler = Arc::new(StunHandler::new());
-        let discovery_handler = Arc::new(DiscoveryHandler::new());
-
-        // ✅ Production implementations (not mocks!)
-        let rendezvous_handler =
-            Arc::new(RendezvousHandler::new(Arc::new(HttpRendezvousClient::new())));
-        let peer_handler = Arc::new(PeerHandler::new(Arc::new(UdpPeerConnector::new())));
-        let birdsong_handler = Arc::new(BirdSongHandler::new()); // Feb 2, 2026
-        let relay_handler = Arc::new(RelayHandler::new(Arc::new(BearDogRelayAuthority::new()))); // Feb 8, 2026
-        let mesh_handler = Arc::new(MeshHandler::new()); // Feb 4, 2026
-        let onion_handler = Arc::new(OnionHandler::new()); // Feb 4, 2026
-        let punch_handler = Arc::new(PunchHandler::new()); // Feb 4, 2026
-        let tor_handler = Arc::new(TorHandler::new()); // Feb 7, 2026
-        let igd_handler = Arc::new(IgdHandler::new()); // IGD router config (Feb 8, 2026)
-
-        Self {
-            registry,
-            http_handler,
-            stun_handler,
-            discovery_handler,
-            rendezvous_handler,
-            peer_handler,
-            birdsong_handler,
-            relay_handler,
-            mesh_handler,
-            onion_handler,
-            punch_handler,
-            tor_handler,
-            igd_handler,
-            start_time: Arc::new(RwLock::new(std::time::Instant::now())),
-        }
+        Self::assemble(registry, http_handler, Arc::new(DiscoveryHandler::new()))
     }
 
     /// Handle `ipc.register` method
@@ -461,95 +445,13 @@ impl IpcServiceHandler {
         serde_json::to_value(result).map_err(|e| format!("Serialization error: {e}"))
     }
 
-    /// Handle `stun.serve` method - Start STUN server
-    async fn handle_stun_serve(&self, params: Value) -> Result<Value, String> {
-        self.stun_handler.handle_serve(params).await
-    }
-
-    /// Handle `stun.stop` method - Stop STUN server
-    async fn handle_stun_stop(&self, params: Value) -> Result<Value, String> {
-        self.stun_handler.handle_stop(params).await
-    }
-
-    /// Handle `stun.status` method - Get STUN server status
-    async fn handle_stun_status(&self, params: Value) -> Result<Value, String> {
-        self.stun_handler.handle_status(params).await
-    }
-
-    /// Handle `discovery.peers` method
-    async fn handle_discovery_peers(&self, params: Value) -> Result<Value, String> {
-        let result = self
-            .discovery_handler
-            .handle_list_peers(params)
-            .await
-            .map_err(|e| format!("Discovery peers failed: {e}"))?;
-
-        serde_json::to_value(result).map_err(|e| format!("Serialization error: {e}"))
-    }
-
-    /// Handle `rendezvous.register` method (NEW - Jan 29, 2026)
-    async fn handle_rendezvous_register(&self, params: Value) -> Result<Value, String> {
-        let result = self
-            .rendezvous_handler
-            .handle_register(params)
-            .await
-            .map_err(|e| format!("Rendezvous register failed: {e}"))?;
-
-        serde_json::to_value(result).map_err(|e| format!("Serialization error: {e}"))
-    }
-
-    /// Handle `rendezvous.lookup` method (NEW - Jan 29, 2026)
-    async fn handle_rendezvous_lookup(&self, params: Value) -> Result<Value, String> {
-        let result = self
-            .rendezvous_handler
-            .handle_lookup(params)
-            .await
-            .map_err(|e| format!("Rendezvous lookup failed: {e}"))?;
-
-        serde_json::to_value(result).map_err(|e| format!("Serialization error: {e}"))
-    }
-
-    /// Handle `peer.connect` method (NEW - Jan 29, 2026)
-    async fn handle_peer_connect(&self, params: Value) -> Result<Value, String> {
-        let result = self
-            .peer_handler
-            .handle_connect(params)
-            .await
-            .map_err(|e| format!("Peer connect failed: {e}"))?;
-
-        serde_json::to_value(result).map_err(|e| format!("Serialization error: {e}"))
-    }
-
-    /// Handle `primal.info` - Primal introspection (delegates to introspection module)
-    async fn handle_primal_info(&self, _params: Value) -> Result<Value, String> {
-        Ok(crate::introspection::primal_info())
-    }
-
-    /// Handle `primal.capabilities` - Detailed capability descriptions
-    async fn handle_primal_capabilities(&self, _params: Value) -> Result<Value, String> {
-        Ok(crate::introspection::primal_capabilities())
-    }
-
-    /// Handle `rpc.methods` - List all available JSON-RPC methods
-    async fn handle_rpc_methods(&self, _params: Value) -> Result<Value, String> {
-        Ok(crate::introspection::rpc_methods())
-    }
-
-    /// Handle `health` method (biomeOS standard)
-    async fn handle_health(&self) -> Result<Value, String> {
-        let uptime_secs = self.start_time.read().await.elapsed().as_secs();
-        let registry = self.registry.read().await;
-        let services = registry.list_services().await;
-        Ok(crate::introspection::health(uptime_secs, services.len()))
-    }
-
-    /// Handle `identity` method (biomeOS standard)
-    async fn handle_identity(&self) -> Result<Value, String> {
-        let family_id = std::env::var("FAMILY_ID")
-            .or_else(|_| std::env::var("SONGBIRD_FAMILY_ID"))
-            .or_else(|_| std::env::var("NODE_FAMILY_ID"))
-            .unwrap_or_else(|_| "nat0".to_string());
-        Ok(crate::introspection::identity(&family_id))
+    /// Serialize a handler result into a JSON-RPC response `Value`.
+    fn wrap_result<T: Serialize>(
+        result: std::result::Result<T, impl std::fmt::Display>,
+        context: &str,
+    ) -> Result<Value, String> {
+        let val = result.map_err(|e| format!("{context}: {e}"))?;
+        serde_json::to_value(val).map_err(|e| format!("Serialization error: {e}"))
     }
 
     /// Handle `birdsong.advertise` method
@@ -604,18 +506,23 @@ impl IpcServiceHandler {
         }))
     }
 
-    /// Handle `rpc.discover` method (biomeOS standard)
-    async fn handle_rpc_discover_standard(&self) -> Result<Value, String> {
-        Ok(crate::introspection::rpc_discover_standard())
+    /// Handle `health` method — requires uptime + registry info
+    async fn handle_health(&self) -> Result<Value, String> {
+        let uptime_secs = self.start_time.read().await.elapsed().as_secs();
+        let registry = self.registry.read().await;
+        let services = registry.list_services().await;
+        Ok(crate::introspection::health(uptime_secs, services.len()))
     }
 
-    /// Handle `discover_capabilities` (biomeOS cross-primal scanner protocol)
-    ///
-    /// This is the method that Squirrel (and other primals) send when scanning
-    /// sockets to find capability providers. It returns a flat list of capabilities
-    /// that this primal provides, enabling automatic discovery without env var bypasses.
-    async fn handle_discover_capabilities(&self) -> Result<Value, String> {
-        Ok(crate::introspection::discover_capabilities())
+    /// Handle `identity` method — canonical family-id lookup
+    async fn handle_identity(&self) -> Result<Value, String> {
+        let family_id = std::env::var("SONGBIRD_ORCHESTRATOR_FAMILY_ID")
+            .or_else(|_| std::env::var("BIOMEOS_FAMILY_ID"))
+            .or_else(|_| std::env::var("SONGBIRD_FAMILY_ID"))
+            .or_else(|_| std::env::var("FAMILY_ID"))
+            .or_else(|_| std::env::var("NODE_FAMILY_ID"))
+            .unwrap_or_else(|_| "default".to_string());
+        Ok(crate::introspection::identity(&family_id))
     }
 }
 
@@ -623,31 +530,38 @@ impl IpcServiceHandler {
 impl JsonRpcHandler for IpcServiceHandler {
     async fn handle(&self, method: &str, params: Value) -> Result<Value, String> {
         match method {
-            // Introspection methods (NEW - Feb 2, 2026)
-            "primal.info" => self.handle_primal_info(params).await,
-            "primal.capabilities" => self.handle_primal_capabilities(params).await,
-            "rpc.methods" => self.handle_rpc_methods(params).await,
+            // ── Introspection ────────────────────────────────────────
+            "primal.info" => Ok(crate::introspection::primal_info()),
+            "primal.capabilities" => Ok(crate::introspection::primal_capabilities()),
+            "rpc.methods" => Ok(crate::introspection::rpc_methods()),
+            "rpc.discover" => Ok(crate::introspection::rpc_discover_standard()),
+            "discover_capabilities" => Ok(crate::introspection::discover_capabilities()),
 
-            // IPC registry methods
+            // ── biomeOS standard ─────────────────────────────────────
+            "health" => self.handle_health().await,
+            "identity" => self.handle_identity().await,
+
+            // ── IPC registry ─────────────────────────────────────────
             "ipc.register" => self.handle_register(params).await,
             "ipc.resolve" => self.handle_resolve(params).await,
             "ipc.discover" => self.handle_discover(params).await,
             "ipc.list" => self.handle_list(params).await,
 
-            // HTTP/HTTPS methods
+            // ── HTTP/HTTPS ───────────────────────────────────────────
             "http.request" => self.handle_http_request(params).await,
             "http.get" => self.handle_http_get(params).await,
             "http.post" => self.handle_http_post(params).await,
 
-            // STUN/NAT traversal methods (NEW - Jan 29, 2026)
-            "stun.serve" => self.handle_stun_serve(params).await,
-            "stun.stop" => self.handle_stun_stop(params).await,
-            "stun.status" => self.handle_stun_status(params).await,
+            // ── STUN / NAT traversal ─────────────────────────────────
+            "stun.serve" => self.stun_handler.handle_serve(params).await,
+            "stun.stop" => self.stun_handler.handle_stop(params).await,
+            "stun.status" => self.stun_handler.handle_status(params).await,
             "stun.get_public_address" => self.stun_handler.handle_get_public_address(params).await,
             "stun.bind" => self.stun_handler.handle_bind(params).await,
+            "stun.probe_port_pattern" => self.stun_handler.handle_probe_port_pattern(params).await,
+            "stun.detect_nat_type" => self.stun_handler.handle_detect_nat_type(params).await,
 
-            // IGD Router Configuration methods (NEW - Feb 8, 2026)
-            // Automatic port forwarding via UPnP IGD + NAT-PMP
+            // ── IGD router auto-configuration ────────────────────────
             "igd.discover" => Ok(self.igd_handler.handle_discover(params).await),
             "igd.map_port" => Ok(self.igd_handler.handle_map_port(params).await),
             "igd.unmap_port" => Ok(self.igd_handler.handle_unmap_port(params).await),
@@ -655,35 +569,40 @@ impl JsonRpcHandler for IpcServiceHandler {
             "igd.external_ip" => Ok(self.igd_handler.handle_external_ip(params).await),
             "igd.auto_configure" => Ok(self.igd_handler.handle_auto_configure(params).await),
 
-            // Relay Server methods (NEW - Feb 5, 2026)
-            // Completes sovereign NAT traversal - no external dependencies
+            // ── Relay server ─────────────────────────────────────────
             "relay.serve" => self.relay_handler.handle_serve(params).await,
             "relay.stop" => self.relay_handler.handle_stop(params).await,
             "relay.status" => self.relay_handler.handle_status(params).await,
             "relay.allocate" => self.relay_handler.handle_allocate(params).await,
 
-            // Discovery methods (NEW - Jan 29, 2026)
-            "discovery.peers" => self.handle_discovery_peers(params).await,
+            // ── Discovery / rendezvous / peers ───────────────────────
+            "discovery.peers" => Self::wrap_result(
+                self.discovery_handler.handle_list_peers(params).await,
+                "Discovery peers failed",
+            ),
+            "rendezvous.register" => Self::wrap_result(
+                self.rendezvous_handler.handle_register(params).await,
+                "Rendezvous register failed",
+            ),
+            "rendezvous.lookup" => Self::wrap_result(
+                self.rendezvous_handler.handle_lookup(params).await,
+                "Rendezvous lookup failed",
+            ),
+            "peer.connect" => Self::wrap_result(
+                self.peer_handler.handle_connect(params).await,
+                "Peer connect failed",
+            ),
 
-            // Rendezvous methods (NEW - Jan 29, 2026 Phase 2)
-            "rendezvous.register" => self.handle_rendezvous_register(params).await,
-            "rendezvous.lookup" => self.handle_rendezvous_lookup(params).await,
-
-            // Peer connection methods (NEW - Jan 29, 2026 Phase 2)
-            "peer.connect" => self.handle_peer_connect(params).await,
-
-            // BirdSong encrypted discovery methods (NEW - Feb 2, 2026)
+            // ── BirdSong encrypted discovery ─────────────────────────
             "birdsong.generate_encrypted_beacon" => {
                 self.birdsong_handler.handle_generate_encrypted_beacon(params).await
             }
             "birdsong.decrypt_beacon" => self.birdsong_handler.handle_decrypt_beacon(params).await,
             "birdsong.verify_lineage" => self.birdsong_handler.handle_verify_lineage(params).await,
             "birdsong.get_lineage" => self.birdsong_handler.handle_get_lineage(params).await,
-            // Integrated beacon advertising with onion endpoint (NEW - Feb 6, 2026)
             "birdsong.advertise" => self.handle_birdsong_advertise(params).await,
 
-            // Mesh networking methods (NEW - Feb 4, 2026)
-            // Distributed relay mesh for cross-NAT connectivity
+            // ── Mesh networking ──────────────────────────────────────
             "mesh.init" => self.mesh_handler.handle_init(params).await,
             "mesh.status" => self.mesh_handler.handle_status(params).await,
             "mesh.find_path" => self.mesh_handler.handle_find_path(params).await,
@@ -692,21 +611,19 @@ impl JsonRpcHandler for IpcServiceHandler {
             "mesh.health_check" => self.mesh_handler.handle_health_check(params).await,
             "mesh.auto_discover" => self.mesh_handler.handle_auto_discover(params).await,
 
-            // Hole punch methods (NEW - Feb 4, 2026)
-            // UDP hole punching for direct P2P connections
+            // ── Hole punching ────────────────────────────────────────
             "punch.request" => self.punch_handler.handle_request(params).await,
+            "punch.coordinate" => self.punch_handler.handle_coordinate(params).await,
             "punch.status" => self.punch_handler.handle_status(params).await,
 
-            // Sovereign Onion methods (NEW - Feb 4, 2026)
-            // NAT traversal via cryptographic .onion addresses
+            // ── Sovereign onion ──────────────────────────────────────
             "onion.start" => self.onion_handler.handle_start(params).await,
             "onion.stop" => self.onion_handler.handle_stop(params).await,
             "onion.status" => self.onion_handler.handle_status(params).await,
             "onion.connect" => self.onion_handler.handle_connect(params).await,
             "onion.address" => self.onion_handler.handle_address(params).await,
 
-            // Pure Rust Tor Protocol methods (NEW - Feb 7, 2026)
-            // Full Tor network integration without external dependencies
+            // ── Pure Rust Tor ────────────────────────────────────────
             "tor.status" => self.tor_handler.handle_status(params).await,
             "tor.connect" => self.tor_handler.handle_connect(params).await,
             "tor.service.start" => self.tor_handler.handle_service_start(params).await,
@@ -714,17 +631,6 @@ impl JsonRpcHandler for IpcServiceHandler {
             "tor.consensus.fetch" => self.tor_handler.handle_consensus_fetch(params).await,
             "tor.circuit.build" => self.tor_handler.handle_circuit_build(params).await,
             "tor.circuit.close" => self.tor_handler.handle_circuit_close(params).await,
-
-            // biomeOS Standard Methods (NEW - Feb 5, 2026)
-            "health" => self.handle_health().await,
-            "identity" => self.handle_identity().await,
-            "rpc.discover" => self.handle_rpc_discover_standard().await,
-
-            // biomeOS Cross-Primal Discovery (NEW - Feb 9, 2026)
-            // This is the method other primals (Squirrel, etc.) call when scanning
-            // sockets to discover capability providers. Without this, scanners
-            // time out and fall back to explicit env var bypasses.
-            "discover_capabilities" => self.handle_discover_capabilities().await,
 
             _ => Err(format!("Unknown method: {method}")),
         }

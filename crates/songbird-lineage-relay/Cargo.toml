@@ -27,8 +27,14 @@ songbird-types = { path = "../songbird-types" }
 songbird-primal-coordination = { path = "../songbird-primal-coordination" }
 songbird-stun = { path = "../songbird-stun" }
 
+[features]
+default = []
+## Expose mock types for integration tests (`MockLineageProvider`, etc.)
+test-utils = []
+
 [dev-dependencies]
 tokio-test = "0.4"
+songbird-lineage-relay = { path = ".", features = ["test-utils"] }
 
 [lib]
 path = "src/lib.rs"

@@ -201,12 +201,12 @@ fn parse_mdns_response(
 
 /// Discover services using DNS-SD (DNS Service Discovery)
 ///
-/// COMPLETE IMPLEMENTATION using trust-dns
+/// COMPLETE IMPLEMENTATION using hickory-resolver (formerly trust-dns)
 #[allow(clippy::unused_async)] // async used when dns-sd feature is enabled
 pub async fn discover_dns_sd_services() -> Result<Vec<DiscoveredPrimal>, DiscoveryError> {
     #[cfg(feature = "dns-sd")]
     {
-        use trust_dns_resolver::{
+        use hickory_resolver::{
             config::{ResolverConfig, ResolverOpts},
             TokioAsyncResolver,
         };
@@ -257,8 +257,8 @@ pub async fn discover_dns_sd_services() -> Result<Vec<DiscoveredPrimal>, Discove
 #[cfg(feature = "dns-sd")]
 async fn resolve_srv_to_primal(
     capability: &str,
-    srv: &trust_dns_resolver::proto::rr::rdata::SRV,
-    resolver: &trust_dns_resolver::TokioAsyncResolver,
+    srv: &hickory_resolver::proto::rr::rdata::SRV,
+    resolver: &hickory_resolver::TokioAsyncResolver,
 ) -> Option<DiscoveredPrimal> {
     use crate::capabilities::Capability;
     use crate::types::PrimalType;
@@ -269,7 +269,9 @@ async fn resolve_srv_to_primal(
 
     // Resolve target to IP
     let host = match resolver.lookup_ip(&target).await {
-        Ok(ips) => ips.iter().next().map_or_else(|| target.clone(), |ip| ip.to_string()),
+        Ok(ips) => {
+            ips.iter().next().map_or_else(|| target.clone(), |ip: std::net::IpAddr| ip.to_string())
+        }
         Err(_) => target.clone(),
     };
 

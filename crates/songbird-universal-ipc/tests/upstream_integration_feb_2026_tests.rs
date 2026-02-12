@@ -550,16 +550,18 @@ async fn test_env_family_id_default() {
     // Serialize with other env tests
     let _guard = ENV_TEST_LOCK.lock().unwrap();
 
-    // Clear all family ID env vars
-    std::env::remove_var("FAMILY_ID");
+    // Clear all family ID env vars (canonical chain)
+    std::env::remove_var("SONGBIRD_ORCHESTRATOR_FAMILY_ID");
+    std::env::remove_var("BIOMEOS_FAMILY_ID");
     std::env::remove_var("SONGBIRD_FAMILY_ID");
+    std::env::remove_var("FAMILY_ID");
     std::env::remove_var("NODE_FAMILY_ID");
 
     let registry = Arc::new(RwLock::new(ServiceRegistry::new()));
     let handler = IpcServiceHandler::new(registry);
 
     let result = handler.handle("identity", json!({})).await.unwrap();
-    assert_eq!(result["family_id"], "nat0", "Should default to 'nat0'");
+    assert_eq!(result["family_id"], "default", "Should default to 'default'");
 
     // Clean up (restore any vars that might have been set before test)
     std::env::remove_var("FAMILY_ID");

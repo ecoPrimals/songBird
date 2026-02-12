@@ -1,6 +1,6 @@
 # Songbird - Network Orchestration & Discovery Primal
 
-**Version**: v3.41.0  
+**Version**: v0.2.2  
 **Status**: Production Ready - Deep Debt S+ Tier  
 **License**: AGPL-3.0
 
@@ -13,11 +13,12 @@ Songbird is the universal network orchestrator for the ecoPrimals ecosystem. It 
 | Safe Rust | 100% (`#![forbid(unsafe_code)]` across all crates) |
 | Pure Rust | Zero C dependencies |
 | Crypto Delegation | 100% BearDog via JSON-RPC IPC |
-| Runtime Discovery | All config: env -> XDG -> smart defaults |
+| Runtime Discovery | All config: env → XDG → smart defaults |
 | Production Stubs | Zero (`todo!()` only in `#[cfg(test)]`) |
 | Concurrent Tests | Zero `std::env::set_var` in tests (injectable env readers) |
-| Lib Tests | 3,504+ passing |
-| Build | Clean (zero errors) |
+| Lib Tests | 8,515+ passing |
+| Line Coverage | 60.62% |
+| Build | Clean (zero errors, zero clippy errors) |
 
 ## Architecture
 
@@ -33,8 +34,8 @@ Songbird Orchestrator
     |-- QUIC Transport (0-RTT, connection migration, multiplexing)
     |-- NFC Genesis (Dark Forest mobile pairing, zero metadata leakage)
     |-- TLS 1.3 (RFC 8446, protocol detection)
-    |-- STUN Server (RFC 5389, NAT discovery)
-    |-- Relay Server (lineage-based auth, packet forwarding)
+    |-- STUN Server (RFC 5389, NAT discovery, port pattern probing)
+    |-- Relay Server (lineage-based auth, packet forwarding, coordinated punch)
     |-- Dark Forest Discovery (encrypted beacons, mDNS, DNS-SD)
     |-- Universal IPC (Unix sockets, TCP, platform-agnostic)
     |
@@ -83,43 +84,43 @@ export SONGBIRD_IGD_ENABLED=true  # Auto router port forwarding
 # IPC
 export SONGBIRD_SOCKET=/run/user/$(id -u)/biomeos/songbird.sock
 
-# Multi-family support
-export SONGBIRD_FAMILY_ID=nat0
+# Multi-family support (default: "default")
+export SONGBIRD_FAMILY_ID=myfamily
 ```
 
 ## Crate Structure
 
 ### Core
-- `songbird-orchestrator` - Main orchestration engine (7-stage startup, 605 tests)
+- `songbird-orchestrator` - Main orchestration engine (7-stage startup)
 - `songbird-cli` - Command-line interface (UniBin)
-- `songbird-config` - Configuration management (452 tests)
-- `songbird-types` - Shared type definitions (264 tests)
+- `songbird-config` - Configuration management
+- `songbird-types` - Shared type definitions
 
 ### Networking
-- `songbird-universal-ipc` - Platform-agnostic JSON-RPC IPC (172 tests)
-- `songbird-http-client` - Pure Rust TLS 1.3 HTTP client (130 tests)
-- `songbird-network-federation` - Peer federation + rendezvous (43 tests)
-- `songbird-discovery` - Service discovery (235 tests)
-- `songbird-igd` - UPnP IGD + NAT-PMP router config (28 tests)
+- `songbird-universal-ipc` - Platform-agnostic JSON-RPC IPC
+- `songbird-http-client` - Pure Rust TLS 1.3 HTTP client
+- `songbird-network-federation` - Peer federation + rendezvous
+- `songbird-discovery` - Service discovery
+- `songbird-igd` - UPnP IGD + NAT-PMP router config
 
 ### Protocols
-- `songbird-tor-protocol` - Pure Rust Tor (directory, circuit, stream, onion) (76 tests)
-- `songbird-tls` - TLS 1.3 implementation (179 tests)
-- `songbird-stun` - STUN server RFC 5389 (12 tests)
+- `songbird-tor-protocol` - Pure Rust Tor (directory, circuit, stream, onion)
+- `songbird-tls` - TLS 1.3 implementation
+- `songbird-stun` - STUN server RFC 5389
 - `songbird-quic` - QUIC transport (0-RTT, migration)
-- `songbird-sovereign-onion` - P2P onion service (30 tests with standalone)
+- `songbird-sovereign-onion` - P2P onion service
 
 ### Security & P2P
-- `songbird-lineage-relay` - Lineage relay + BearDog auth (66 tests)
-- `songbird-onion-relay` - Hole punch coordinator (10 tests)
-- `songbird-nfc` - NFC genesis protocol (23 tests)
-- `songbird-bluetooth` - BLE GATT service (17 tests)
+- `songbird-lineage-relay` - Lineage relay + BearDog auth + coordinated punch
+- `songbird-onion-relay` - Hole punch coordinator
+- `songbird-nfc` - NFC genesis protocol
+- `songbird-bluetooth` - BLE GATT service
 
 ### Shared
-- `songbird-universal` - Universal capability adapters (566 tests)
-- `songbird-primal-coordination` - Primal coordination (90 tests)
-- `songbird-registry` - Service registry (26 tests)
-- `songbird-observability` - Metrics and tracing (30 tests)
+- `songbird-universal` - Universal capability adapters
+- `songbird-primal-coordination` - Primal coordination
+- `songbird-registry` - Service registry
+- `songbird-observability` - Metrics and tracing
 
 ## Testing
 
@@ -146,7 +147,6 @@ cargo llvm-cov --workspace --html
 | [`CONTRIBUTING.md`](CONTRIBUTING.md) | Contribution guidelines |
 | [`specs/`](specs/) | Technical specifications |
 | [`docs/`](docs/) | Architecture guides |
-| [`ecoPrimals/`](ecoPrimals/) | Fossil record (session reports, evolution docs) |
 
 ## License
 

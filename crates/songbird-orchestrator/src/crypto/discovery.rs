@@ -121,7 +121,9 @@ fn scan_for_capability_socket(search_terms: &[&str]) -> Option<String> {
             for entry in entries.flatten() {
                 if let Ok(file_name) = entry.file_name().into_string() {
                     let lower = file_name.to_ascii_lowercase();
-                    if lower.ends_with(".sock")
+                    if std::path::Path::new(&lower)
+                        .extension()
+                        .is_some_and(|ext| ext.eq_ignore_ascii_case("sock"))
                         && search_terms.iter().any(|term| lower.contains(term))
                     {
                         return Some(entry.path().to_string_lossy().to_string());
@@ -140,7 +142,7 @@ fn scan_for_capability_socket(search_terms: &[&str]) -> Option<String> {
 ///
 /// # Arguments
 ///
-/// * `family_id` - Family ID to search for (e.g., "nat0")
+/// * `family_id` - Family ID to search for (e.g., "my-family")
 ///
 /// # Errors
 ///

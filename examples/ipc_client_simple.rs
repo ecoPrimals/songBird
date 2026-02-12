@@ -22,6 +22,7 @@
 //!    ```bash
 //!    cargo run --example ipc_client_simple
 //!    ```
+#![allow(dead_code)] // Example code — not all fields/functions are used in every path
 
 use anyhow::{Context, Result};
 use serde::{Deserialize, Serialize};

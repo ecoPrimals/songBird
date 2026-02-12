@@ -203,15 +203,15 @@ mod family_id_unit {
     fn test_family_id_from_environment_priority() {
         let _guard = ENV_LOCK.lock().unwrap();
         // Test environment variable priority for family_id
-        // Priority: SONGBIRD_FAMILY_ID > FAMILY_ID > default "nat0"
+        // Priority: SONGBIRD_FAMILY_ID > FAMILY_ID > default "default"
 
         // Clear all
         std::env::remove_var("SONGBIRD_FAMILY_ID");
         std::env::remove_var("FAMILY_ID");
 
-        // Default should be "nat0"
+        // Default should be "default"
         let family_id = get_family_id_from_env();
-        assert_eq!(family_id, "nat0", "Default should be nat0");
+        assert_eq!(family_id, "default", "Default should be 'default'");
 
         // FAMILY_ID should override default
         std::env::set_var("FAMILY_ID", "family-fallback");
@@ -250,11 +250,11 @@ mod family_id_unit {
         std::env::remove_var("SONGBIRD_FAMILY_ID");
     }
 
-    /// Helper to get family_id using same logic as ProductionBearDogProvider
+    /// Helper to get family_id using same logic as canonical env chain
     fn get_family_id_from_env() -> String {
         std::env::var("SONGBIRD_FAMILY_ID")
             .or_else(|_| std::env::var("FAMILY_ID"))
-            .unwrap_or_else(|_| "nat0".to_string())
+            .unwrap_or_else(|_| "default".to_string())
     }
 }
 
@@ -621,9 +621,9 @@ mod evolution_fault_injection {
 
         let family_id = std::env::var("SONGBIRD_FAMILY_ID")
             .or_else(|_| std::env::var("FAMILY_ID"))
-            .unwrap_or_else(|_| "nat0".to_string());
+            .unwrap_or_else(|_| "default".to_string());
 
-        assert_eq!(family_id, "nat0", "Should default to nat0");
+        assert_eq!(family_id, "default", "Should default to 'default'");
     }
 
     #[test]

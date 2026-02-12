@@ -101,7 +101,7 @@ impl ExamplePrimal {
             params: json!({
                 "primal_id": self.primal_id,
                 "capabilities": self.capabilities,
-                "endpoint": self.socket_path.to_str().unwrap()
+                "endpoint": self.socket_path.to_string_lossy()
             }),
             id: 1,
         };
@@ -129,7 +129,7 @@ impl ExamplePrimal {
     }
 
     /// Start listening for connections
-    async fn start_server(&self) -> Result<()> {
+    fn start_server(&self) -> Result<()> {
         println!("🚀 Starting primal server");
         println!("   Listening on: {}", self.socket_path.display());
 
@@ -274,7 +274,7 @@ async fn main() -> Result<()> {
     let primal = ExamplePrimal::new("example-primal");
 
     // Step 1: Start server (listen for connections)
-    primal.start_server().await?;
+    primal.start_server()?;
 
     // Step 2: Register with Songbird
     primal.register().await?;

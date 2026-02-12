@@ -18,7 +18,7 @@
 //!                       │
 //! ┌─────────────────────▼───────────────────────────────────────┐
 //! │ NEURAL API - Capability Registry                            │
-//! │ secure_http → [songbird-nat0]                              │
+//! │ secure_http → [songbird-{family_id}]                        │
 //! │   - http.get, http.post, http.put, http.delete            │
 //! └─────────────────────┬───────────────────────────────────────┘
 //!                       │
@@ -134,9 +134,9 @@ async fn connect_platform(address: &str) -> std::io::Result<PlatformStream> {
 ///
 /// ## Environment Variables
 ///
-/// - `NEURAL_API_SOCKET` - Neural API socket path (default: `/tmp/neural-api-nat0.sock`)
+/// - `NEURAL_API_SOCKET` - Neural API socket path (default: `/tmp/neural-api-{family_id}.sock`)
 /// - `SONGBIRD_SOCKET_PATH` - Our socket path (required)
-/// - `PRIMAL_ID` - Our primal identifier (default: `songbird-nat0`)
+/// - `PRIMAL_ID` - Our primal identifier (default: `songbird-{family_id}`)
 ///
 /// # Errors
 ///

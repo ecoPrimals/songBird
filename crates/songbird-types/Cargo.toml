@@ -61,10 +61,5 @@ serial_test = "3.0"
 songbird-test-utils = { path = "../songbird-test-utils" }
 songbird-config = { path = "../songbird-config" }
 
-[[bench]]
-name = "comprehensive_unification_benchmarks"
-harness = false
-path = "../../benches/comprehensive_unification_benchmarks.rs"
-required-features = ["serde"]
 
 # Using workspace lints configuration

@@ -20,7 +20,7 @@ use crate::ipc::jsonrpc::JsonRpcError;
 /// {
 ///   "primal": "songbird",
 ///   "version": "0.1.0",
-///   "family_id": "nat0",
+///   "family_id": "default",
 ///   "capabilities": [
 ///     "network.broadcast",
 ///     "network.listen",
@@ -33,8 +33,8 @@ use crate::ipc::jsonrpc::JsonRpcError;
 pub async fn handle_identity() -> Result<Value, JsonRpcError> {
     info!("🔍 Identity request received");
     
-    // Get family ID from environment or use default
-    let family_id = std::env::var("SONGBIRD_FAMILY_ID").unwrap_or_else(|_| "nat0".to_string());
+    // Get family ID from canonical env_config (proper env chain, default: "default")
+    let family_id = crate::env_config::family_id();
     
     // Songbird's capabilities for biomeOS integration
     let capabilities = vec![

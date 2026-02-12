@@ -559,11 +559,9 @@ mod tests {
     }
 }
 
-/// Get family ID from environment (agnostic)
+/// Get family ID from environment (delegates to canonical `env_config::family_id()`)
 pub fn get_family_id() -> String {
-    std::env::var("SONGBIRD_FAMILY_ID")
-        .or_else(|_| std::env::var("FAMILY_ID"))
-        .unwrap_or_else(|_| "nat0".to_string())
+    crate::env_config::family_id()
 }
 
 /// Get primal name from environment (self-knowledge)

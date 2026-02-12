@@ -522,4 +522,3 @@ fn test_device_info_partial() {
     assert_eq!(deserialized.platform.as_deref(), Some("android"));
     assert_eq!(deserialized.app_version.as_deref(), Some("3.0"));
 }
-

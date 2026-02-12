@@ -57,8 +57,8 @@ pub fn primal_capabilities() -> Value {
             },
             {
                 "name": "stun",
-                "operations": ["get_public_address", "bind", "serve", "stop", "status"],
-                "description": "NAT traversal via STUN",
+                "operations": ["get_public_address", "bind", "serve", "stop", "status", "probe_port_pattern", "detect_nat_type"],
+                "description": "NAT traversal via STUN with port pattern probing",
                 "rfc": "RFC 5389"
             },
             {
@@ -112,8 +112,8 @@ pub fn primal_capabilities() -> Value {
             },
             {
                 "name": "punch",
-                "operations": ["request", "status"],
-                "description": "UDP hole punching for direct P2P connections"
+                "operations": ["request", "coordinate", "status"],
+                "description": "UDP hole punching with relay-assisted coordinated punch"
             },
             {
                 "name": "onion",
@@ -160,6 +160,8 @@ pub fn rpc_methods() -> Value {
             {"name": "stun.serve", "description": "Start STUN server", "params": ["bind_addr?"]},
             {"name": "stun.stop", "description": "Stop STUN server", "params": []},
             {"name": "stun.status", "description": "Get STUN server status", "params": []},
+            {"name": "stun.probe_port_pattern", "description": "Probe NAT port allocation pattern for coordinated punch", "params": ["stun_server", "probes?"]},
+            {"name": "stun.detect_nat_type", "description": "Detect NAT type (full-cone, symmetric, etc.)", "params": ["stun_server?"]},
             // IGD
             {"name": "igd.discover", "description": "Discover router IGD capabilities", "params": []},
             {"name": "igd.map_port", "description": "Request port forwarding", "params": ["external_port?", "internal_port?", "protocol?", "ttl?"]},
@@ -180,6 +182,37 @@ pub fn rpc_methods() -> Value {
             {"name": "birdsong.verify_lineage", "description": "Verify peer lineage via challenge-response", "params": ["peer_node_id", "our_node_id"]},
             {"name": "birdsong.get_lineage", "description": "Get own lineage info", "params": []},
             {"name": "birdsong.advertise", "description": "Generate beacon with onion endpoint", "params": ["node_id", "capabilities"]},
+            // Relay
+            {"name": "relay.serve", "description": "Start relay server", "params": ["bind_addr?"]},
+            {"name": "relay.stop", "description": "Stop relay server", "params": []},
+            {"name": "relay.status", "description": "Get relay server status", "params": []},
+            {"name": "relay.allocate", "description": "Allocate relay session", "params": ["target_node_id"]},
+            // Mesh
+            {"name": "mesh.init", "description": "Initialize mesh network", "params": []},
+            {"name": "mesh.status", "description": "Get mesh status", "params": []},
+            {"name": "mesh.find_path", "description": "Find path to peer via mesh", "params": ["target_node_id"]},
+            {"name": "mesh.announce", "description": "Announce presence on mesh", "params": []},
+            {"name": "mesh.peers", "description": "List mesh peers", "params": []},
+            {"name": "mesh.health_check", "description": "Check mesh health", "params": []},
+            {"name": "mesh.auto_discover", "description": "Auto-discover mesh peers", "params": []},
+            // Hole Punch
+            {"name": "punch.request", "description": "Request UDP hole punch to peer", "params": ["peer_address", "peer_port"]},
+            {"name": "punch.coordinate", "description": "Relay-assisted coordinated punch for symmetric NATs", "params": ["target_node_id", "relay_session_id", "our_port_pattern", "peer_port_pattern"]},
+            {"name": "punch.status", "description": "Get hole punch status", "params": []},
+            // Onion
+            {"name": "onion.start", "description": "Start sovereign .onion service", "params": []},
+            {"name": "onion.stop", "description": "Stop .onion service", "params": []},
+            {"name": "onion.status", "description": "Get .onion service status", "params": []},
+            {"name": "onion.connect", "description": "Connect via .onion address", "params": ["onion_address"]},
+            {"name": "onion.address", "description": "Get .onion address", "params": []},
+            // Tor
+            {"name": "tor.status", "description": "Tor protocol status", "params": []},
+            {"name": "tor.connect", "description": "Connect via Tor", "params": ["target"]},
+            {"name": "tor.service.start", "description": "Start hidden service", "params": []},
+            {"name": "tor.service.stop", "description": "Stop hidden service", "params": []},
+            {"name": "tor.consensus.fetch", "description": "Fetch Tor consensus", "params": []},
+            {"name": "tor.circuit.build", "description": "Build Tor circuit", "params": []},
+            {"name": "tor.circuit.close", "description": "Close Tor circuit", "params": []},
         ]
     })
 }
@@ -196,6 +229,7 @@ pub fn rpc_discover_standard() -> Value {
             "http.request", "http.get", "http.post",
             "stun.get_public_address", "stun.bind",
             "stun.serve", "stun.stop", "stun.status",
+            "stun.probe_port_pattern", "stun.detect_nat_type",
             "igd.discover", "igd.map_port", "igd.unmap_port",
             "igd.status", "igd.external_ip", "igd.auto_configure",
             "relay.serve", "relay.stop", "relay.status", "relay.allocate",
@@ -204,7 +238,7 @@ pub fn rpc_discover_standard() -> Value {
             "mesh.init", "mesh.status", "mesh.find_path",
             "mesh.announce", "mesh.peers", "mesh.health_check",
             "mesh.auto_discover",
-            "punch.request", "punch.status",
+            "punch.request", "punch.coordinate", "punch.status",
             "onion.start", "onion.stop", "onion.status",
             "onion.connect", "onion.address",
             "tor.status", "tor.connect",
@@ -240,10 +274,13 @@ pub fn discover_capabilities() -> Value {
             "stun.detect",
             "stun.bind",
             "stun.serve",
+            "stun.probe_port_pattern",
+            "stun.detect_nat_type",
             "mesh.status",
             "mesh.find_path",
             "mesh.peers",
             "punch.request",
+            "punch.coordinate",
             "punch.status",
             "onion.start",
             "onion.connect",
@@ -283,6 +320,7 @@ pub fn identity(family_id: &str) -> Value {
             "http.request", "http.get", "http.post",
             "secure_http",
             "stun.get_public_address", "stun.bind",
+            "stun.probe_port_pattern", "stun.detect_nat_type",
             "igd.discover", "igd.map_port", "igd.auto_configure",
             "birdsong.generate_encrypted_beacon", "birdsong.decrypt_beacon",
             "birdsong.verify_lineage", "birdsong.get_lineage",
@@ -290,7 +328,7 @@ pub fn identity(family_id: &str) -> Value {
             "relay.serve", "relay.status", "relay.allocate",
             "mesh.status", "mesh.find_path", "mesh.peers",
             "mesh.auto_discover",
-            "punch.request", "punch.status",
+            "punch.request", "punch.coordinate", "punch.status",
             "onion.start", "onion.connect", "onion.address",
             "tor.connect", "tor.circuit.build",
             "discovery.peers",

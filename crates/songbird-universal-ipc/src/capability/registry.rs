@@ -231,6 +231,8 @@ impl Default for CapabilityRegistry {
 mod tests {
     use super::*;
 
+    static ENV_LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
+
     #[tokio::test]
     async fn test_registry_creation() {
         let registry = CapabilityRegistry::new();
@@ -246,6 +248,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_discover_not_found() {
+        let _guard = ENV_LOCK.lock().unwrap_or_else(|e| e.into_inner());
         // Ensure no env vars set
         std::env::remove_var("NONEXISTENT_PROVIDER_SOCKET");
 
@@ -257,6 +260,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_cache() {
+        let _guard = ENV_LOCK.lock().unwrap_or_else(|e| e.into_inner());
         std::env::set_var("TEST_PROVIDER_SOCKET", "/tmp/test.sock");
 
         let registry = CapabilityRegistry::new().with_cache_ttl(Duration::from_secs(10));
@@ -277,6 +281,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_discover_all() {
+        let _guard = ENV_LOCK.lock().unwrap_or_else(|e| e.into_inner());
         std::env::set_var("CRYPTO_PROVIDER_SOCKET", "/tmp/crypto1.sock");
 
         let registry = CapabilityRegistry::new();

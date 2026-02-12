@@ -279,4 +279,3 @@ fn test_capability_type_equality() {
     assert_eq!(CapabilityType::Custom("x".to_string()), CapabilityType::Custom("x".to_string()));
     assert_ne!(CapabilityType::Custom("x".to_string()), CapabilityType::Custom("y".to_string()));
 }
-

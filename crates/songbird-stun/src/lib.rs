@@ -50,4 +50,4 @@ pub mod types;
 pub use client::StunClient;
 pub use error::{StunError, StunResult};
 pub use server::{StunServer, StunServerStats};
-pub use types::{NatType, PublicEndpoint};
+pub use types::{NatType, PortPattern, PublicEndpoint};

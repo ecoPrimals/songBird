@@ -56,7 +56,7 @@ pub struct AnonymousDiscoveryBroadcaster {
 
     /// Identity tags (v3.14.0 - tag-based identity)
     /// Opaque strings we broadcast. We don't interpret them!
-    /// Format: `{provider}:{type}:{value}` (e.g., `beardog:family:nat0`)
+    /// Format: `{provider}:{type}:{value}` (e.g., `crypto:family:my-family`)
     tags: Option<Vec<String>>,
 
     /// Identity attestations from security provider (CRITICAL FIX - Jan 3, 2026)
@@ -163,7 +163,7 @@ impl AnonymousDiscoveryBroadcaster {
     ///
     /// Tags are opaque strings we broadcast. We don't interpret them!
     /// Format: `{provider}:{type}:{value}`
-    /// Example: `beardog:family:nat0`
+    /// Example: `crypto:family:my-family`
     ///
     /// Security providers (`BearDog`) interpret tag meaning.
     #[must_use]

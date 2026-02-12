@@ -7,6 +7,99 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [v0.2.2] - 2026-02-11 - Deep Debt: Capability-First Socket Discovery
+
+### Changed - Capability-First Socket Discovery (7 files)
+All socket discovery functions evolved from primal-specific to capability-first:
+- **`songbird-lineage-relay/src/beardog.rs`** — Prioritizes `security.sock` over `beardog.sock`
+- **`songbird-quic/src/config.rs`** — Prioritizes `crypto.sock` over `beardog.sock`
+- **`songbird-nfc/src/config.rs`** — Prioritizes `security.sock` over `beardog.sock`
+- **`songbird-nfc/src/genesis.rs`** — Full capability-first refactor with test updates
+- **`songbird-tls/src/socket_discovery.rs`** — `CRYPTO_PROVIDER_SOCKET`, `SECURITY_PROVIDER_SOCKET` env vars first
+
+### Changed - Dependency Evolution
+- **hickory-resolver** migration from deprecated `trust-dns-resolver` in `songbird-universal/src/discovery/backends/network.rs`
+- **mdns-sd** API compatibility fixes for `IntoTxtProperties` trait and `TxtProperty` iteration
+
+### Fixed - Code Quality
+- Removed `unwrap()` from `examples/ipc_client_primal.rs` → proper error handling with `context()`
+- Added `#[allow(clippy::unwrap_used)]` to test files (acceptable in tests)
+- Removed unused `discover_xdg_socket_with_env` function in `songbird-tls`
+- Fixed `async` function without `await` warning in examples
+
+### Quality
+| Metric | Value |
+|--------|-------|
+| Tests | 8,515+ passing |
+| Line Coverage | 60.62% (↑ from 59.8%) |
+| Build | Zero errors |
+| Clippy | Zero errors |
+| Format | Clean |
+
+---
+
+## [v0.2.1] - 2026-02-11 - Deep Debt: Relay-Assisted Punch + Coverage Expansion
+
+### Added - Relay-Assisted Coordinated Punch
+- **`stun.probe_port_pattern`** — Port pattern probing for NAT type characterization
+  - Probes multiple STUN servers to detect allocation patterns
+  - Returns `PortPattern` (Sequential, Random, PortPreserving, Symmetric)
+- **`punch.coordinate`** — Relay-assisted coordinated hole punching
+  - Coordinates punch timing via relay server
+  - Supports port pattern hints for symmetric NAT
+  - Full JSON-RPC handler wiring
+- **`HolePunchCoordinator`** wired to punch handler at service init
+  - Previously returned "not_initialized" error
+  - Now performs real coordinated punch via `punch_to_peer()`
+
+### Added - Coverage Tests (+83 tests)
+- `canonical_adapter_coverage_tests.rs` (32 tests) — Adapter configs, enums, circuit breaker
+- `tower_atomic_coverage_tests.rs` (23 tests) — JSON-RPC 2.0 types and serialization
+- `config_types_coverage_tests.rs` (28 tests) — Gaming, adapter, communication configs
+
+### Changed - Capability-First Discovery
+- **`PrimalChecks`** — Dynamic `HashMap<String, PrimalCheck>` instead of hardcoded fields
+- **Socket patterns** — Capability terms first ("crypto", "security"), primal names as hints
+- **`discover_crypto_socket()` / `discover_security_socket()`** — Public capability-based APIs
+- **Inference functions** — Capability terms checked before primal names
+
+### Changed - `nat0` → Dynamic Family ID
+- Replaced 10+ hardcoded `"nat0"` defaults with `env_config::family_id()`
+- New default: `"default"` (was `"nat0"`)
+- Env priority: `SONGBIRD_FAMILY_ID` → `FAMILY_ID` → `"default"`
+
+### Changed - Production Mock Isolation
+- `songbird-lineage-relay/src/beardog.rs` — Gated with `#[cfg(any(test, feature = "test-utils"))]`
+- `test-utils` feature flag for integration test access
+- Production code path no longer compiles mock types
+
+### Refactored - Large Files
+- **`main.rs`**: 886 → 141 lines (doctor/server/config extracted to `commands/`)
+- **`service.rs`**: 946 → 825 lines (builder pattern, inlined trivial wrappers)
+- **`beardog_crypto_client.rs`**: 906 → 554 lines (generic `call_beardog_rpc` helper)
+
+### Removed
+- **`ai_orchestration_engine.rs`** (833 lines) — Dead code, never in module tree
+
+### Fixed
+- Env var race conditions in multiple test files (added mutex guards)
+- API mismatches in coverage tests (correct field names and types)
+
+### Quality
+| Metric | Value |
+|--------|-------|
+| Tests | 8,515 passing |
+| Line Coverage | 59.8% |
+| Build | Zero errors |
+| Clippy | Zero errors |
+| Format | Clean |
+| Docs | Clean |
+| Files >1000 lines | 0 |
+| Unsafe blocks | 0 |
+| C dependencies | 0 |
+
+---
+
 ## [v3.42.0] - 2026-02-09 - Deep Debt: Event-Driven Architecture + Concurrent Testing
 
 ### Changed - Polling Anti-Pattern Elimination

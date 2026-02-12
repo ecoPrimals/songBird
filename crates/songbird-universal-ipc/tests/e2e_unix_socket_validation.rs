@@ -256,10 +256,14 @@ async fn test_e2e_family_id_priority_family_id_first() {
     std::env::remove_var("FAMILY_ID");
     std::env::remove_var("SONGBIRD_FAMILY_ID");
     std::env::remove_var("NODE_FAMILY_ID");
+    std::env::remove_var("SONGBIRD_ORCHESTRATOR_FAMILY_ID");
+    std::env::remove_var("BIOMEOS_FAMILY_ID");
 
-    // Set all three vars - FAMILY_ID should win
-    std::env::set_var("FAMILY_ID", "winner");
-    std::env::set_var("SONGBIRD_FAMILY_ID", "second");
+    // Canonical priority: SONGBIRD_ORCHESTRATOR_FAMILY_ID > BIOMEOS_FAMILY_ID
+    // > SONGBIRD_FAMILY_ID > FAMILY_ID > NODE_FAMILY_ID
+    // Set lower-priority vars — SONGBIRD_FAMILY_ID should win over FAMILY_ID
+    std::env::set_var("FAMILY_ID", "lowest");
+    std::env::set_var("SONGBIRD_FAMILY_ID", "winner");
     std::env::set_var("NODE_FAMILY_ID", "third");
 
     let (server_handle, ready_rx) = start_test_server(socket_path).await;
@@ -286,14 +290,16 @@ async fn test_e2e_family_id_priority_family_id_first() {
 }
 
 #[tokio::test]
-async fn test_e2e_family_id_default_nat0() {
+async fn test_e2e_family_id_default() {
     let _guard = ENV_TEST_LOCK.lock().unwrap();
     let socket_path = "/tmp/songbird-test-default.sock";
 
-    // Ensure no env vars set
+    // Ensure no env vars set — canonical default is "default"
     std::env::remove_var("FAMILY_ID");
     std::env::remove_var("SONGBIRD_FAMILY_ID");
     std::env::remove_var("NODE_FAMILY_ID");
+    std::env::remove_var("SONGBIRD_ORCHESTRATOR_FAMILY_ID");
+    std::env::remove_var("BIOMEOS_FAMILY_ID");
 
     let (server_handle, ready_rx) = start_test_server(socket_path).await;
     ready_rx.await.expect("Server failed to signal readiness");
@@ -307,7 +313,7 @@ async fn test_e2e_family_id_default_nat0() {
     timeout(Duration::from_secs(1), reader.read_line(&mut response)).await.unwrap().unwrap();
 
     let response: Value = serde_json::from_str(&response).unwrap();
-    assert_eq!(response["result"]["family_id"], "nat0");
+    assert_eq!(response["result"]["family_id"], "default");
 
     // Cleanup
     drop(stream);

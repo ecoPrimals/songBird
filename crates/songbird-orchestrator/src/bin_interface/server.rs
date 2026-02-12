@@ -115,9 +115,10 @@ pub async fn run_server(args: ServerArgs) -> Result<()> {
             tracing::info!("   Family: {}", fam);
         }
 
-        // Determine BearDog socket/address
+        // Determine BearDog socket/address (capability-first discovery)
         let beardog_socket = args.beardog_socket.clone().unwrap_or_else(|| {
-            let family_id = family_identity.as_deref().unwrap_or("nat0");
+            let default_family = crate::env_config::family_id();
+            let family_id = family_identity.as_deref().unwrap_or(&default_family);
             format!("/tmp/beardog-{}.sock", family_id)
         });
         tracing::info!("   BearDog: {}", beardog_socket);
@@ -140,9 +141,10 @@ pub async fn run_server(args: ServerArgs) -> Result<()> {
             tracing::info!("   Family: {}", fam);
         }
 
-        // Determine BearDog socket
+        // Determine BearDog socket (capability-first discovery)
         let beardog_socket = args.beardog_socket.unwrap_or_else(|| {
-            let family_id = family_identity.as_deref().unwrap_or("nat0");
+            let default_family = crate::env_config::family_id();
+            let family_id = family_identity.as_deref().unwrap_or(&default_family);
             format!("/tmp/beardog-{}.sock", family_id)
         });
         tracing::info!("   BearDog: {}", beardog_socket);

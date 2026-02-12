@@ -6,7 +6,7 @@
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::Arc;
-use std::time::{Duration, SystemTime};
+use std::time::SystemTime;
 use tokio::sync::RwLock;
 
 /// Result type for primal operations
@@ -112,16 +112,12 @@ impl PrimalSelfKnowledge {
         caps.push("orchestration".to_string());
 
         // Check environment hints
-        if std::env::var("ENABLE_SECURITY").is_ok() {
-            if !caps.contains(&"security".to_string()) {
-                caps.push("security".to_string());
-            }
+        if std::env::var("ENABLE_SECURITY").is_ok() && !caps.contains(&"security".to_string()) {
+            caps.push("security".to_string());
         }
 
-        if std::env::var("ENABLE_AI").is_ok() {
-            if !caps.contains(&"ai".to_string()) {
-                caps.push("ai".to_string());
-            }
+        if std::env::var("ENABLE_AI").is_ok() && !caps.contains(&"ai".to_string()) {
+            caps.push("ai".to_string());
         }
 
         // Detect capabilities from process name (self-knowledge)
@@ -209,11 +205,12 @@ impl PrimalSelfKnowledge {
         }
 
         Err(PrimalError::DiscoveryFailed {
-            reason: format!("No primal found for capability '{}'", capability),
+            reason: format!("No primal found for capability '{capability}'"),
         })
     }
 
     /// Get own identity
+    #[must_use]
     pub fn identity(&self) -> PrimalIdentity {
         PrimalIdentity {
             name: self.my_name.clone(),
@@ -258,7 +255,14 @@ pub trait DiscoveryMechanism: Send + Sync {
 /// Environment variable based discovery
 pub struct EnvironmentDiscovery;
 
+impl Default for EnvironmentDiscovery {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl EnvironmentDiscovery {
+    #[must_use]
     pub fn new() -> Self {
         Self
     }
@@ -266,7 +270,7 @@ impl EnvironmentDiscovery {
 
 #[async_trait::async_trait]
 impl DiscoveryMechanism for EnvironmentDiscovery {
-    fn name(&self) -> &str {
+    fn name(&self) -> &'static str {
         "environment"
     }
 
@@ -274,11 +278,11 @@ impl DiscoveryMechanism for EnvironmentDiscovery {
         // Check for CAPABILITY_HOST and CAPABILITY_PORT env vars
         let var_prefix = capability.to_uppercase();
 
-        let host = std::env::var(format!("{}_HOST", var_prefix))
-            .or_else(|_| std::env::var(format!("PRIMAL_{}_HOST", var_prefix)))?;
+        let host = std::env::var(format!("{var_prefix}_HOST"))
+            .or_else(|_| std::env::var(format!("PRIMAL_{var_prefix}_HOST")))?;
 
-        let port = std::env::var(format!("{}_PORT", var_prefix))
-            .or_else(|_| std::env::var(format!("PRIMAL_{}_PORT", var_prefix)))?
+        let port = std::env::var(format!("{var_prefix}_PORT"))
+            .or_else(|_| std::env::var(format!("PRIMAL_{var_prefix}_PORT")))?
             .parse::<u16>()
             .map_err(|e| PrimalError::IntrospectionFailed(e.to_string()))?;
 
@@ -296,7 +300,14 @@ impl DiscoveryMechanism for EnvironmentDiscovery {
 /// DNS SRV record discovery
 pub struct DnsSrvDiscovery;
 
+impl Default for DnsSrvDiscovery {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl DnsSrvDiscovery {
+    #[must_use]
     pub fn new() -> Self {
         Self
     }
@@ -304,13 +315,13 @@ impl DnsSrvDiscovery {
 
 #[async_trait::async_trait]
 impl DiscoveryMechanism for DnsSrvDiscovery {
-    fn name(&self) -> &str {
+    fn name(&self) -> &'static str {
         "dns-srv"
     }
 
     async fn discover(&self, capability: &str) -> Result<PrimalInfo> {
         // Look up _capability._tcp.local (DNS-SD/SRV record)
-        let service_name = format!("_{}._tcp.local", capability);
+        let service_name = format!("_{capability}._tcp.local");
 
         // Try DNS SRV lookup
         // Note: This is a simplified implementation. For production, consider:
@@ -346,8 +357,7 @@ impl DiscoveryMechanism for DnsSrvDiscovery {
         // DNS SRV not available or failed - return error to try next mechanism
         Err(PrimalError::DiscoveryFailed {
             reason: format!(
-                "DNS SRV lookup for {} not available (requires dns-srv feature or network configuration)",
-                service_name
+                "DNS SRV lookup for {service_name} not available (requires dns-srv feature or network configuration)"
             ),
         })
     }

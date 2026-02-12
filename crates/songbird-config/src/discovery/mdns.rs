@@ -35,8 +35,9 @@ use thiserror::Error;
 use tokio::sync::RwLock;
 use tracing::{debug, info, warn};
 
-// Future: mDNS service type for auto-discovery
-// const SERVICE_TYPE: &str = "_songbird._tcp.local.";
+/// mDNS service type for auto-discovery
+#[cfg(feature = "mdns")]
+const SERVICE_TYPE: &str = "_songbird._tcp.local.";
 
 /// mDNS discovery backend implementation
 ///
@@ -199,7 +200,7 @@ impl MdnsDiscovery {
                     &format!("{}.local.", self.service_name),
                     "", // Will be filled by daemon
                     self.listen_port,
-                    &properties,
+                    properties,
                 )
                 .map_err(|e| {
                     MdnsError::RegistrationFailed(format!("Failed to create service info: {}", e))
@@ -309,9 +310,9 @@ impl MdnsDiscovery {
                                     let properties = info.get_properties();
                                     let caps: Vec<String> = properties
                                         .iter()
-                                        .filter_map(|(k, v)| {
-                                            if k == "capability" {
-                                                Some(v.val_str().to_string())
+                                        .filter_map(|prop| {
+                                            if prop.key() == "capability" {
+                                                Some(prop.val_str().to_string())
                                             } else {
                                                 None
                                             }
@@ -326,10 +327,12 @@ impl MdnsDiscovery {
                                                 SocketAddr::new(*addr, info.get_port());
 
                                             let mut metadata = HashMap::new();
-                                            for (k, v) in properties.iter() {
-                                                if k != "capability" {
-                                                    metadata
-                                                        .insert(k.clone(), v.val_str().to_string());
+                                            for prop in properties.iter() {
+                                                if prop.key() != "capability" {
+                                                    metadata.insert(
+                                                        prop.key().to_string(),
+                                                        prop.val_str().to_string(),
+                                                    );
                                                 }
                                             }
 
@@ -429,9 +432,9 @@ impl MdnsDiscovery {
                                 let properties = info.get_properties();
                                 let caps: Vec<String> = properties
                                     .iter()
-                                    .filter_map(|(k, v)| {
-                                        if k == "capability" {
-                                            Some(v.val_str().to_string())
+                                    .filter_map(|prop| {
+                                        if prop.key() == "capability" {
+                                            Some(prop.val_str().to_string())
                                         } else {
                                             None
                                         }
@@ -442,9 +445,12 @@ impl MdnsDiscovery {
                                     let socket_addr = SocketAddr::new(*addr, info.get_port());
 
                                     let mut metadata = HashMap::new();
-                                    for (k, v) in properties.iter() {
-                                        if k != "capability" {
-                                            metadata.insert(k.clone(), v.val_str().to_string());
+                                    for prop in properties.iter() {
+                                        if prop.key() != "capability" {
+                                            metadata.insert(
+                                                prop.key().to_string(),
+                                                prop.val_str().to_string(),
+                                            );
                                         }
                                     }
 
