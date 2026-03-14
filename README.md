@@ -12,7 +12,7 @@ Songbird is the universal network orchestrator for the ecoPrimals ecosystem. It 
 |--------|-------|
 | Safe Rust | 100% (`#![forbid(unsafe_code)]` across all crates) |
 | Pure Rust | Zero C dependencies |
-| Crypto Delegation | 100% BearDog via JSON-RPC IPC |
+| Crypto Delegation | 100% BearDog via JSON-RPC IPC (rustls-rustcrypto default, ring optional via `ring-crypto` feature) |
 | Runtime Discovery | All config: env → XDG → smart defaults |
 | Production Stubs | Zero (`todo!()` only in `#[cfg(test)]`) |
 | Concurrent Tests | Zero `std::env::set_var` in tests (injectable env readers) |
@@ -74,7 +74,7 @@ cargo run --bin songbird -- config show
 ### Environment Variables
 
 ```bash
-# BearDog crypto provider
+# BearDog crypto provider (rustls-rustcrypto default; use --features ring-crypto for ring)
 export BEARDOG_SOCKET=/run/user/$(id -u)/biomeos/beardog.sock
 
 # Network
