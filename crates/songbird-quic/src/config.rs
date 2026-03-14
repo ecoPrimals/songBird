@@ -157,6 +157,12 @@ impl QuicConfig {
 
     /// Build quinn `ServerConfig` from this config
     pub(crate) fn build_server_config(&self) -> Result<quinn::ServerConfig> {
+        // Ensure crypto provider is installed (required by rustls 0.23 before any TLS ops)
+        #[cfg(not(feature = "ring-crypto"))]
+        {
+            let _ = rustls_rustcrypto::provider().install_default();
+        }
+
         // Generate self-signed certificate for inter-primal QUIC
         // Self-signed is correct for inter-primal: identity verified via BearDog lineage
         // When BearDog cert generation is available, it can provide lineage-tagged certs
@@ -211,7 +217,17 @@ impl QuicConfig {
 
     /// Build quinn `ClientConfig` from this config
     pub(crate) fn build_client_config(&self) -> Result<quinn::ClientConfig> {
-        // Lineage-based verification: TLS signatures verified by ring,
+        // Ensure crypto provider is installed (required by rustls 0.23)
+        #[cfg(feature = "ring-crypto")]
+        {
+            let _ = rustls::crypto::ring::default_provider().install_default();
+        }
+        #[cfg(not(feature = "ring-crypto"))]
+        {
+            let _ = rustls_rustcrypto::provider().install_default();
+        }
+
+        // Lineage-based verification: TLS signatures verified by crypto provider,
         // primal identity verified by BearDog at application layer
         let mut crypto = rustls::ClientConfig::builder()
             .dangerous()
@@ -258,7 +274,7 @@ impl QuicConfig {
 /// In biomeOS, primals authenticate via `BearDog` lineage verification,
 /// not via public CA certificates. This verifier:
 ///
-/// 1. **TLS signatures**: Validated via `rustls::crypto` (ring provider)
+/// 1. **TLS signatures**: Validated via `rustls::crypto` (rustls-rustcrypto by default, ring when ring-crypto feature)
 /// 2. **Server identity**: Accepted if TLS handshake completes (self-signed OK)
 /// 3. **Lineage verification**: Happens at the application layer via `BearDog`
 ///    after the QUIC connection is established
@@ -277,9 +293,17 @@ struct LineageCertVerifier {
 
 impl LineageCertVerifier {
     fn new() -> Self {
-        Self {
-            crypto_provider: Arc::new(rustls::crypto::ring::default_provider()),
-        }
+        let crypto_provider = {
+            #[cfg(feature = "ring-crypto")]
+            {
+                rustls::crypto::ring::default_provider()
+            }
+            #[cfg(not(feature = "ring-crypto"))]
+            {
+                Arc::new(rustls_rustcrypto::provider())
+            }
+        };
+        Self { crypto_provider }
     }
 }
 
