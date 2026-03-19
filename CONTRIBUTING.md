@@ -328,7 +328,7 @@ pub async fn discover_capabilities(
 3. **Run checks**:
    ```bash
    cargo fmt
-   cargo clippy --workspace -- -D warnings
+   cargo clippy --workspace --all-features --no-deps -- -D warnings -W clippy::pedantic -W clippy::nursery
    cargo test --workspace --lib
    ```
 4. **Update docs**: Keep documentation in sync
@@ -344,7 +344,7 @@ Before submitting a PR:
 
 - [ ] All tests passing (`cargo test --workspace --lib`)
 - [ ] Code formatted (`cargo fmt`)
-- [ ] Clippy clean (`cargo clippy --workspace -- -D warnings`)
+- [ ] Clippy clean (`cargo clippy --workspace --all-features --no-deps -- -D warnings -W clippy::pedantic -W clippy::nursery`)
 - [ ] No unwraps in production code
 - [ ] Proper error handling with `?` operator
 - [ ] Doc comments on public APIs

@@ -91,7 +91,12 @@ impl Default for ResourceLimits {
 }
 
 /// Initialize agent with configuration
+///
+/// # Errors
+///
+/// Currently infallible but returns Result for future extensibility
 pub async fn init_agent(config: AgentConfig) -> SongbirdResult<ExecutionServer> {
+    tokio::task::yield_now().await;
     tracing::info!("Initializing execution agent on {}:{}", config.bind_address, config.port);
 
     let job_manager = JobManager::new(config.max_concurrent_jobs, config.log_retention_seconds);

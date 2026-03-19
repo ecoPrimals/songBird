@@ -399,9 +399,7 @@ impl RuntimeDiscoveryEngine {
 
     /// Check cache for discovered service
     async fn check_cache(&self, capability: &str) -> Option<DiscoveredService> {
-        let cache = self.cache.read().await;
-
-        if let Some(service) = cache.get(capability) {
+        if let Some(service) = self.cache.read().await.get(capability) {
             // Check if cache entry is still valid
             if let Ok(elapsed) = service.last_seen.elapsed() {
                 if elapsed < self.cache_ttl {

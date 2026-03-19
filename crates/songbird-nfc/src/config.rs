@@ -1,14 +1,14 @@
-//! NFC configuration with BearDog integration
+//! NFC configuration with `BearDog` integration
 
 use std::path::PathBuf;
 use std::time::Duration;
 
 /// NFC protocol configuration
 ///
-/// All crypto operations delegated to BearDog - zero hardcoded secrets
+/// All crypto operations delegated to `BearDog` - zero hardcoded secrets
 #[derive(Debug, Clone)]
 pub struct NfcConfig {
-    /// BearDog socket path for crypto operations
+    /// `BearDog` socket path for crypto operations
     pub beardog_socket: PathBuf,
 
     /// Exchange timeout (including timing protection delays)
@@ -44,11 +44,12 @@ impl Default for NfcConfig {
 
 impl NfcConfig {
     /// Create new configuration
+    #[must_use]
     pub fn new() -> Self {
         Self::default()
     }
 
-    /// Set BearDog socket path
+    /// Set `BearDog` socket path
     #[must_use]
     pub fn with_beardog_socket(mut self, socket: PathBuf) -> Self {
         self.beardog_socket = socket;
@@ -57,14 +58,14 @@ impl NfcConfig {
 
     /// Set exchange timeout
     #[must_use]
-    pub fn with_timeout(mut self, timeout: Duration) -> Self {
+    pub const fn with_timeout(mut self, timeout: Duration) -> Self {
         self.exchange_timeout = timeout;
         self
     }
 
     /// Enable/disable timing protection
     #[must_use]
-    pub fn with_timing_protection(mut self, enabled: bool) -> Self {
+    pub const fn with_timing_protection(mut self, enabled: bool) -> Self {
         self.timing_protection = enabled;
         self
     }

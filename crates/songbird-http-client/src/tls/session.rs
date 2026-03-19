@@ -7,7 +7,7 @@ use tokio::sync::RwLock;
 /// TLS session state
 #[derive(Debug)]
 pub struct TlsSession {
-    /// BearDog client for crypto operations
+    /// `BearDog` client for crypto operations
     beardog: Arc<BearDogClient>,
     /// Session keys
     keys: Arc<RwLock<Option<SessionKeys>>>,
@@ -39,6 +39,7 @@ impl TlsSession {
     }
 
     /// Get server name
+    #[must_use]
     pub fn server_name(&self) -> &str {
         &self.server_name
     }
@@ -55,7 +56,8 @@ impl TlsSession {
         guard.clone()
     }
 
-    /// Get BearDog client
+    /// Get `BearDog` client
+    #[must_use]
     pub fn beardog(&self) -> &BearDogClient {
         &self.beardog
     }

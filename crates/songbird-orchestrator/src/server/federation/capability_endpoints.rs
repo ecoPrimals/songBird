@@ -75,7 +75,7 @@ pub async fn register_capability_provider(
                 Json(CapabilityRegistrationResponse {
                     success: false,
                     data: None,
-                    error: Some(format!("{}", e)),
+                    error: Some(format!("{e}")),
                     timestamp: Utc::now(),
                 }),
             )
@@ -151,7 +151,7 @@ pub async fn capability_provider_heartbeat(
                 Json(crate::core::registry::types::HeartbeatResponse {
                     success: false,
                     data: None,
-                    error: Some(format!("{}", e)),
+                    error: Some(format!("{e}")),
                     timestamp: Utc::now(),
                 }),
             )
@@ -159,7 +159,7 @@ pub async fn capability_provider_heartbeat(
     }
 }
 
-/// DELETE /api/v1/federation/register/:provider_id - Unregister a provider
+/// DELETE /`api/v1/federation/register/:provider_id` - Unregister a provider
 pub async fn unregister_capability_provider(
     State(state): State<Arc<FederationAppState>>,
     Path(provider_id): Path<String>,
@@ -207,7 +207,7 @@ pub async fn unregister_capability_provider(
                 Json(CapabilityRegistrationResponse {
                     success: false,
                     data: None,
-                    error: Some(format!("{}", e)),
+                    error: Some(format!("{e}")),
                     timestamp: Utc::now(),
                 }),
             )

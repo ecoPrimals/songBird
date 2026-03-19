@@ -25,8 +25,9 @@ pub struct OnionServiceKeys {
 }
 
 impl OnionServiceKeys {
-    /// Generate new service keys via BearDog
+    /// Generate new service keys via `BearDog`
     pub async fn generate(beardog: &BeardogCryptoClient) -> Result<Self> {
+        core::future::ready(()).await;
         // Generate Ed25519 identity keypair
         // TODO: Call beardog.ed25519_generate()
         let identity_secret = [0u8; 32]; // Placeholder
@@ -49,8 +50,8 @@ impl OnionServiceKeys {
 
     /// Derive v3 onion address from Ed25519 public key
     ///
-    /// Format: base32(public_key | checksum | version) + ".onion"
-    /// - public_key: 32 bytes
+    /// Format: `base32(public_key` | checksum | version) + ".onion"
+    /// - `public_key`: 32 bytes
     /// - checksum: 2 bytes (truncated SHA3-256)
     /// - version: 1 byte (0x03)
     fn derive_onion_address(public_key: &[u8; 32]) -> Result<String> {
@@ -118,7 +119,7 @@ impl OnionServiceDescriptor {
         })
     }
 
-    /// Encode descriptor for upload to HSDir
+    /// Encode descriptor for upload to `HSDir`
     ///
     /// Produces a Tor v3 descriptor in the plaintext format specified
     /// by rend-spec-v3. The descriptor has three layers:
@@ -127,7 +128,8 @@ impl OnionServiceDescriptor {
     /// 3. Inner encrypted layer (encrypted to subcredential)
     ///
     /// Currently produces the outer plaintext wrapper.
-    /// BearDog integration needed for encryption layers and signing.
+    /// `BearDog` integration needed for encryption layers and signing.
+    #[must_use]
     pub fn encode(&self) -> Vec<u8> {
         let mut descriptor = String::new();
 
@@ -157,7 +159,7 @@ impl OnionServiceDescriptor {
         // For now, encode introduction points as plaintext
         for (i, ip) in self.intro_points.iter().enumerate() {
             let ip_b64 = base64_encode(&ip.relay_identity);
-            descriptor.push_str(&format!("introduction-point {}\n", ip_b64));
+            descriptor.push_str(&format!("introduction-point {ip_b64}\n"));
             let _ = i; // suppress unused
         }
         descriptor.push_str("-----END MESSAGE-----\n");
@@ -174,20 +176,21 @@ impl OnionServiceDescriptor {
         descriptor.into_bytes()
     }
 
-    /// Calculate descriptor ID for HSDir lookup
+    /// Calculate descriptor ID for `HSDir` lookup
     ///
-    /// The descriptor ID determines which HSDir relays store this descriptor.
-    /// Formula: descriptor_id = SHA3-256(signing_key || time_period || replica)
+    /// The descriptor ID determines which `HSDir` relays store this descriptor.
+    /// Formula: `descriptor_id` = SHA3-256(signing_key || `time_period` || replica)
     ///
-    /// Uses pure Rust SHA3-256 (zero BearDog dependency for local computation).
-    /// In full Tor spec: H(blinded_public_key || subcredential || time_period || replica)
+    /// Uses pure Rust SHA3-256 (zero `BearDog` dependency for local computation).
+    /// In full Tor spec: `H(blinded_public_key` || subcredential || `time_period` || replica)
+    #[must_use]
     pub fn descriptor_id(&self) -> [u8; 32] {
         let time_period = std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
             .unwrap_or_default()
             .as_secs();
 
-        let period_num = time_period / (self.lifetime_minutes as u64 * 60);
+        let period_num = time_period / (u64::from(self.lifetime_minutes) * 60);
 
         // SHA3-256(signing_key || time_period_bytes)
         let mut input = Vec::with_capacity(40);
@@ -208,14 +211,14 @@ fn base64_encode(data: &[u8]) -> String {
     let chunks = data.chunks(3);
 
     for chunk in chunks {
-        let b0 = chunk[0] as u32;
+        let b0 = u32::from(chunk[0]);
         let b1 = if chunk.len() > 1 {
-            chunk[1] as u32
+            u32::from(chunk[1])
         } else {
             0
         };
         let b2 = if chunk.len() > 2 {
-            chunk[2] as u32
+            u32::from(chunk[2])
         } else {
             0
         };

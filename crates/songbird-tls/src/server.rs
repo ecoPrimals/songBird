@@ -1,7 +1,7 @@
 //! TLS Server Module
 //!
 //! High-level TLS server integration for HTTP/HTTPS serving.
-//! Uses BearDog for all crypto operations via JSON-RPC.
+//! Uses `BearDog` for all crypto operations via JSON-RPC.
 
 use crate::crypto::BeardogCryptoClient;
 use crate::error::{Result, TlsError};
@@ -13,13 +13,13 @@ use tokio::net::TcpStream;
 
 /// TLS Server Configuration
 pub struct TlsServerConfig {
-    /// BearDog crypto client
+    /// `BearDog` crypto client
     pub crypto_client: BeardogCryptoClient,
 
     /// Server certificate (DER-encoded)
     pub certificate: Vec<u8>,
 
-    /// Certificate private key ID (for BearDog signing)
+    /// Certificate private key ID (for `BearDog` signing)
     pub key_id: String,
 }
 
@@ -32,6 +32,7 @@ pub struct TlsAcceptor {
 
 impl TlsAcceptor {
     /// Create a new TLS acceptor
+    #[must_use]
     pub fn new(config: TlsServerConfig) -> Self {
         Self {
             config: Arc::new(config),
@@ -41,6 +42,10 @@ impl TlsAcceptor {
     /// Accept a TLS connection
     ///
     /// Performs the full TLS 1.3 handshake and returns an encrypted stream.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the handshake fails (protocol error, crypto failure, or I/O).
     pub async fn accept(&self, stream: TcpStream) -> Result<TlsStream> {
         TlsStream::accept(stream, self.config.clone()).await
     }
@@ -85,7 +90,7 @@ impl TlsStream {
         stream
             .read_exact(&mut header)
             .await
-            .map_err(|e| TlsError::IoError(format!("Failed to read record header: {}", e)))?;
+            .map_err(|e| TlsError::IoError(format!("Failed to read record header: {e}")))?;
 
         // Parse record header to get payload length
         let content_type = header[0];
@@ -94,7 +99,7 @@ impl TlsStream {
         if content_type != ContentType::Handshake as u8 {
             return Err(TlsError::UnexpectedMessage {
                 expected: "Handshake".to_string(),
-                got: format!("{}", content_type),
+                got: format!("{content_type}"),
             });
         }
 
@@ -103,7 +108,7 @@ impl TlsStream {
         stream
             .read_exact(&mut payload)
             .await
-            .map_err(|e| TlsError::IoError(format!("Failed to read record payload: {}", e)))?;
+            .map_err(|e| TlsError::IoError(format!("Failed to read record payload: {e}")))?;
 
         // Parse ClientHello from payload (skip handshake header: type(1) + length(3))
         if payload.len() < 4 {
@@ -114,7 +119,7 @@ impl TlsStream {
         if handshake_type != crate::HANDSHAKE_TYPE_CLIENT_HELLO {
             return Err(TlsError::UnexpectedMessage {
                 expected: "ClientHello".to_string(),
-                got: format!("{}", handshake_type),
+                got: format!("{handshake_type}"),
             });
         }
 
@@ -145,7 +150,9 @@ impl TlsStream {
         server_hello.encode(&mut sh_payload)?;
 
         // Write handshake length (24-bit)
-        let sh_len = sh_payload.len() as u32;
+        let sh_len = u32::try_from(sh_payload.len()).map_err(|_| TlsError::RecordTooLarge {
+            size: sh_payload.len(),
+        })?;
         server_hello_bytes.push(((sh_len >> 16) & 0xFF) as u8);
         server_hello_bytes.push(((sh_len >> 8) & 0xFF) as u8);
         server_hello_bytes.push((sh_len & 0xFF) as u8);
@@ -162,7 +169,7 @@ impl TlsStream {
         stream
             .write_all(&server_hello_record)
             .await
-            .map_err(|e| TlsError::IoError(format!("Failed to send ServerHello: {}", e)))?;
+            .map_err(|e| TlsError::IoError(format!("Failed to send ServerHello: {e}")))?;
 
         // ==== PHASE 3: Derive Keys & Complete Handshake ====
         // Get our server's secret key from key schedule
@@ -215,6 +222,10 @@ impl TlsStream {
     }
 
     /// Write application data (encrypted)
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if encryption or I/O fails.
     pub async fn write_all(&mut self, data: &[u8]) -> Result<()> {
         use crate::messages::ContentType;
 
@@ -257,10 +268,14 @@ impl TlsStream {
         self.stream
             .write_all(&encrypted_record)
             .await
-            .map_err(|e| TlsError::IoError(format!("Failed to write encrypted data: {}", e)))
+            .map_err(|e| TlsError::IoError(format!("Failed to write encrypted data: {e}")))
     }
 
     /// Read application data (decrypted)
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if I/O, decryption, or record parsing fails.
     pub async fn read(&mut self, buf: &mut [u8]) -> Result<usize> {
         use crate::messages::ContentType;
 
@@ -269,7 +284,7 @@ impl TlsStream {
         self.stream
             .read_exact(&mut header)
             .await
-            .map_err(|e| TlsError::IoError(format!("Failed to read record header: {}", e)))?;
+            .map_err(|e| TlsError::IoError(format!("Failed to read record header: {e}")))?;
 
         let content_type_byte = header[0];
         let length = u16::from_be_bytes([header[3], header[4]]) as usize;
@@ -279,13 +294,13 @@ impl TlsStream {
         self.stream
             .read_exact(&mut ciphertext)
             .await
-            .map_err(|e| TlsError::IoError(format!("Failed to read ciphertext: {}", e)))?;
+            .map_err(|e| TlsError::IoError(format!("Failed to read ciphertext: {e}")))?;
 
         // Only decrypt if it's ApplicationData
         if content_type_byte != ContentType::ApplicationData as u8 {
             return Err(TlsError::UnexpectedMessage {
                 expected: "ApplicationData".to_string(),
-                got: format!("{}", content_type_byte),
+                got: format!("{content_type_byte}"),
             });
         }
 
@@ -333,15 +348,19 @@ impl TlsStream {
     }
 
     /// Shutdown the TLS connection
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the underlying stream shutdown fails.
     pub async fn shutdown(&mut self) -> Result<()> {
         self.stream
             .shutdown()
             .await
-            .map_err(|e| TlsError::IoError(format!("Failed to shutdown: {}", e)))
+            .map_err(|e| TlsError::IoError(format!("Failed to shutdown: {e}")))
     }
 }
 
-/// Implement tokio::io traits for TlsStream
+/// Implement `tokio::io` traits for `TlsStream`
 impl tokio::io::AsyncRead for TlsStream {
     fn poll_read(
         mut self: std::pin::Pin<&mut Self>,

@@ -172,8 +172,8 @@ impl MdnsDiscovery {
     /// Returns `MdnsError::RegistrationFailed` if advertisement fails
     pub async fn advertise(&self, capabilities: &[&str]) -> Result<(), MdnsError> {
         // Store capabilities
-        let mut caps = self.advertised_capabilities.write().await;
-        *caps = capabilities.iter().map(|s| (*s).to_string()).collect();
+        *self.advertised_capabilities.write().await =
+            capabilities.iter().map(|s| (*s).to_string()).collect();
 
         info!(
             service = %self.service_name,
@@ -189,7 +189,7 @@ impl MdnsDiscovery {
                 // Build TXT records with capabilities
                 let mut properties = HashMap::new();
                 for cap in capabilities {
-                    properties.insert(format!("capability"), cap.to_string());
+                    properties.insert("capability".to_string(), cap.to_string());
                 }
                 properties.insert("version".to_string(), env!("CARGO_PKG_VERSION").to_string());
 
@@ -203,12 +203,12 @@ impl MdnsDiscovery {
                     properties,
                 )
                 .map_err(|e| {
-                    MdnsError::RegistrationFailed(format!("Failed to create service info: {}", e))
+                    MdnsError::RegistrationFailed(format!("Failed to create service info: {e}"))
                 })?;
 
                 // Register service
                 daemon.register(service_info).map_err(|e| {
-                    MdnsError::RegistrationFailed(format!("Failed to register service: {}", e))
+                    MdnsError::RegistrationFailed(format!("Failed to register service: {e}"))
                 })?;
 
                 info!(service = %self.service_name, "Service registered with mDNS");
@@ -283,9 +283,9 @@ impl MdnsDiscovery {
             let daemon_lock = self.mdns_daemon.read().await;
             if let Some(daemon) = daemon_lock.as_ref() {
                 // Browse for services
-                let receiver = daemon.browse(SERVICE_TYPE).map_err(|e| {
-                    MdnsError::NetworkError(format!("Failed to start browse: {}", e))
-                })?;
+                let receiver = daemon
+                    .browse(SERVICE_TYPE)
+                    .map_err(|e| MdnsError::NetworkError(format!("Failed to start browse: {e}")))?;
 
                 let mut discovered = Vec::new();
                 let start = std::time::Instant::now();
@@ -293,7 +293,7 @@ impl MdnsDiscovery {
                 // Collect services until timeout
                 while start.elapsed() < timeout {
                     match tokio::time::timeout(
-                        timeout - start.elapsed(),
+                        timeout.saturating_sub(start.elapsed()),
                         tokio::task::spawn_blocking({
                             let rx = receiver.clone();
                             move || rx.recv_timeout(Duration::from_millis(100))
@@ -304,54 +304,50 @@ impl MdnsDiscovery {
                         Ok(Ok(Ok(event))) => {
                             use mdns_sd::ServiceEvent;
 
-                            match event {
-                                ServiceEvent::ServiceResolved(info) => {
-                                    // Parse TXT records for capabilities
-                                    let properties = info.get_properties();
-                                    let caps: Vec<String> = properties
-                                        .iter()
-                                        .filter_map(|prop| {
-                                            if prop.key() == "capability" {
-                                                Some(prop.val_str().to_string())
-                                            } else {
-                                                None
-                                            }
-                                        })
-                                        .collect();
-
-                                    // Check if this service has the requested capability
-                                    if caps.iter().any(|c| c == capability) {
-                                        // Extract address
-                                        if let Some(addr) = info.get_addresses().iter().next() {
-                                            let socket_addr =
-                                                SocketAddr::new(*addr, info.get_port());
-
-                                            let mut metadata = HashMap::new();
-                                            for prop in properties.iter() {
-                                                if prop.key() != "capability" {
-                                                    metadata.insert(
-                                                        prop.key().to_string(),
-                                                        prop.val_str().to_string(),
-                                                    );
-                                                }
-                                            }
-
-                                            discovered.push(MdnsServiceInfo {
-                                                address: socket_addr,
-                                                capabilities: caps.clone(),
-                                                metadata,
-                                                discovered_at: std::time::SystemTime::now(),
-                                            });
-
-                                            debug!(
-                                                service = %info.get_fullname(),
-                                                address = %socket_addr,
-                                                "Discovered matching service"
-                                            );
+                            if let ServiceEvent::ServiceResolved(info) = event {
+                                // Parse TXT records for capabilities
+                                let properties = info.get_properties();
+                                let caps: Vec<String> = properties
+                                    .iter()
+                                    .filter_map(|prop| {
+                                        if prop.key() == "capability" {
+                                            Some(prop.val_str().to_string())
+                                        } else {
+                                            None
                                         }
+                                    })
+                                    .collect();
+
+                                // Check if this service has the requested capability
+                                if caps.iter().any(|c| c == capability) {
+                                    // Extract address
+                                    if let Some(addr) = info.get_addresses().iter().next() {
+                                        let socket_addr = SocketAddr::new(*addr, info.get_port());
+
+                                        let mut metadata = HashMap::new();
+                                        for prop in properties.iter() {
+                                            if prop.key() != "capability" {
+                                                metadata.insert(
+                                                    prop.key().to_string(),
+                                                    prop.val_str().to_string(),
+                                                );
+                                            }
+                                        }
+
+                                        discovered.push(MdnsServiceInfo {
+                                            address: socket_addr,
+                                            capabilities: caps.clone(),
+                                            metadata,
+                                            discovered_at: std::time::SystemTime::now(),
+                                        });
+
+                                        debug!(
+                                            service = %info.get_fullname(),
+                                            address = %socket_addr,
+                                            "Discovered matching service"
+                                        );
                                     }
                                 }
-                                _ => {} // Ignore other events
                             }
                         }
                         _ => {
@@ -408,16 +404,16 @@ impl MdnsDiscovery {
             // Similar to discover_by_capability but without filtering
             let daemon_lock = self.mdns_daemon.read().await;
             if let Some(daemon) = daemon_lock.as_ref() {
-                let receiver = daemon.browse(SERVICE_TYPE).map_err(|e| {
-                    MdnsError::NetworkError(format!("Failed to start browse: {}", e))
-                })?;
+                let receiver = daemon
+                    .browse(SERVICE_TYPE)
+                    .map_err(|e| MdnsError::NetworkError(format!("Failed to start browse: {e}")))?;
 
                 let mut discovered = Vec::new();
                 let start = std::time::Instant::now();
 
                 while start.elapsed() < timeout {
                     match tokio::time::timeout(
-                        timeout - start.elapsed(),
+                        timeout.saturating_sub(start.elapsed()),
                         tokio::task::spawn_blocking({
                             let rx = receiver.clone();
                             move || rx.recv_timeout(Duration::from_millis(100))
@@ -486,8 +482,7 @@ impl MdnsDiscovery {
         info!(service = %self.service_name, "Stopping mDNS advertisement");
 
         // Clear capabilities
-        let mut caps = self.advertised_capabilities.write().await;
-        caps.clear();
+        self.advertised_capabilities.write().await.clear();
 
         #[cfg(feature = "mdns")]
         {
@@ -495,7 +490,7 @@ impl MdnsDiscovery {
             if let Some(daemon) = daemon_lock.as_ref() {
                 // Shutdown daemon (sends goodbye packets automatically)
                 daemon.shutdown().map_err(|e| {
-                    MdnsError::NetworkError(format!("Failed to shutdown mDNS daemon: {}", e))
+                    MdnsError::NetworkError(format!("Failed to shutdown mDNS daemon: {e}"))
                 })?;
             }
         }
@@ -507,8 +502,7 @@ impl MdnsDiscovery {
     ///
     /// Forces fresh discovery on next query.
     pub async fn clear_cache(&self) {
-        let mut cache = self.cache.write().await;
-        cache.clear();
+        self.cache.write().await.clear();
         debug!("mDNS discovery cache cleared");
     }
 }

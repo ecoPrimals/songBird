@@ -187,6 +187,7 @@ impl MockToadStool {
         metrics.active_containers = 20;
         metrics.queued_jobs = 15;
         metrics.performance_score = 0.45;
+        drop(metrics);
         self.state.set_health(HealthStatus::Degraded);
     }
 
@@ -206,6 +207,7 @@ impl MockToadStool {
         metrics.active_containers = 1;
         metrics.queued_jobs = 0;
         metrics.performance_score = 0.98;
+        drop(metrics);
         self.state.set_health(HealthStatus::Healthy);
     }
 }

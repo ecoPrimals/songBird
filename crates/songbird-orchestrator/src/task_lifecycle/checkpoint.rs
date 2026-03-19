@@ -54,6 +54,7 @@ pub enum CompressionAlgorithm {
 
 impl Checkpoint {
     /// Create a new checkpoint
+    #[must_use]
     pub fn new(task_id: TaskId, progress: f32, state: Vec<u8>) -> Self {
         let size_bytes = state.len() as u64;
         let checksum = Self::calculate_checksum(&state);

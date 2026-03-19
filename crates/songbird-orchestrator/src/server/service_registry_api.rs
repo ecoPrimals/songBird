@@ -36,7 +36,8 @@ pub struct ServiceRegistryApiState {
 }
 
 impl ServiceRegistryApiState {
-    pub fn new(registry: ServiceRegistry) -> Self {
+    #[must_use]
+    pub const fn new(registry: ServiceRegistry) -> Self {
         Self {
             registry,
         }
@@ -140,7 +141,7 @@ async fn get_service(
         .registry
         .get_service(&service_id)
         .await
-        .ok_or_else(|| ApiError::NotFound(format!("Service not found: {}", service_id)))?;
+        .ok_or_else(|| ApiError::NotFound(format!("Service not found: {service_id}")))?;
 
     Ok(Json(serde_json::to_value(service)?))
 }
@@ -177,7 +178,7 @@ async fn get_orchestrator_info() -> Json<serde_json::Value> {
     // ✅ MIGRATED: Use environment-based configuration
     let base_url = std::env::var("SONGBIRD_BASE_URL").unwrap_or_else(|_| {
         let port = std::env::var("SONGBIRD_PORT").unwrap_or_else(|_| "8080".to_string());
-        format!("https://[::]:{}", port)
+        format!("https://[::]:{port}")
     });
 
     Json(json!({
@@ -228,7 +229,7 @@ impl IntoResponse for ApiError {
         let (status, message) = match self {
             Self::Internal(err) => {
                 error!("Internal error: {}", err);
-                (StatusCode::INTERNAL_SERVER_ERROR, format!("Internal server error: {}", err))
+                (StatusCode::INTERNAL_SERVER_ERROR, format!("Internal server error: {err}"))
             }
             Self::NotFound(msg) => (StatusCode::NOT_FOUND, msg),
             Self::BadRequest(msg) => (StatusCode::BAD_REQUEST, msg),

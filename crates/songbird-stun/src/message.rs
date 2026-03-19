@@ -27,7 +27,7 @@ use bytes::{Buf, BufMut, Bytes, BytesMut};
 use std::net::{IpAddr, Ipv4Addr, Ipv6Addr, SocketAddr};
 
 /// STUN magic cookie (RFC 5389)
-pub const MAGIC_COOKIE: u32 = 0x2112A442;
+pub const MAGIC_COOKIE: u32 = 0x2112_A442;
 
 /// STUN message types
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -44,7 +44,8 @@ pub enum MessageType {
 
 impl MessageType {
     /// Convert to wire format (u16)
-    pub fn to_u16(self) -> u16 {
+    #[must_use]
+    pub const fn to_u16(self) -> u16 {
         match self {
             Self::BindingRequest => 0x0001,
             Self::BindingResponse => 0x0101,
@@ -53,12 +54,16 @@ impl MessageType {
     }
 
     /// Parse from wire format
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the value is not a valid message type.
     pub fn from_u16(value: u16) -> StunResult<Self> {
         match value {
             0x0001 => Ok(Self::BindingRequest),
             0x0101 => Ok(Self::BindingResponse),
             0x0111 => Ok(Self::BindingError),
-            _ => Err(StunError::InvalidResponse(format!("Unknown message type: 0x{:04x}", value))),
+            _ => Err(StunError::InvalidResponse(format!("Unknown message type: 0x{value:04x}"))),
         }
     }
 }
@@ -81,7 +86,8 @@ pub enum AttributeType {
 
 impl AttributeType {
     /// Convert to wire format (u16)
-    pub fn to_u16(self) -> u16 {
+    #[must_use]
+    pub const fn to_u16(self) -> u16 {
         match self {
             Self::MappedAddress => 0x0001,
             Self::XorMappedAddress => 0x0020,
@@ -91,7 +97,8 @@ impl AttributeType {
     }
 
     /// Parse from wire format
-    pub fn from_u16(value: u16) -> Self {
+    #[must_use]
+    pub const fn from_u16(value: u16) -> Self {
         match value {
             0x0001 => Self::MappedAddress,
             0x0020 => Self::XorMappedAddress,
@@ -116,6 +123,7 @@ pub struct StunMessage {
 
 impl StunMessage {
     /// Create a new STUN binding request
+    #[must_use]
     pub fn new_binding_request() -> Self {
         // Generate random transaction ID
         let mut transaction_id = [0u8; 12];
@@ -131,6 +139,7 @@ impl StunMessage {
     }
 
     /// Encode message to bytes
+    #[must_use]
     pub fn encode(&self) -> Bytes {
         let mut buf = BytesMut::new();
 
@@ -155,12 +164,16 @@ impl StunMessage {
         // Update message length (total bytes after header)
         let message_length = buf.len() - 20; // 20 bytes = header size
         buf[length_offset..length_offset + 2]
-            .copy_from_slice(&(message_length as u16).to_be_bytes());
+            .copy_from_slice(&u16::try_from(message_length).unwrap_or(u16::MAX).to_be_bytes());
 
         buf.freeze()
     }
 
     /// Decode message from bytes
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the data is too short or malformed.
     pub fn decode(data: &[u8]) -> StunResult<Self> {
         if data.len() < 20 {
             return Err(StunError::InvalidResponse(
@@ -181,8 +194,7 @@ impl StunMessage {
         let magic_cookie = buf.get_u32();
         if magic_cookie != MAGIC_COOKIE {
             return Err(StunError::InvalidResponse(format!(
-                "Invalid magic cookie: 0x{:08x} (expected 0x{:08x})",
-                magic_cookie, MAGIC_COOKIE
+                "Invalid magic cookie: 0x{magic_cookie:08x} (expected 0x{MAGIC_COOKIE:08x})"
             )));
         }
 
@@ -210,6 +222,7 @@ impl StunMessage {
     }
 
     /// Find XOR-MAPPED-ADDRESS attribute (preferred)
+    #[must_use]
     pub fn get_xor_mapped_address(&self) -> Option<SocketAddr> {
         for attr in &self.attributes {
             if let StunAttribute::XorMappedAddress(addr) = attr {
@@ -220,6 +233,7 @@ impl StunMessage {
     }
 
     /// Find MAPPED-ADDRESS attribute (fallback)
+    #[must_use]
     pub fn get_mapped_address(&self) -> Option<SocketAddr> {
         for attr in &self.attributes {
             if let StunAttribute::MappedAddress(addr) = attr {
@@ -230,6 +244,7 @@ impl StunMessage {
     }
 
     /// Get any mapped address (XOR preferred, then MAPPED)
+    #[must_use]
     pub fn get_any_mapped_address(&self) -> Option<SocketAddr> {
         self.get_xor_mapped_address().or_else(|| self.get_mapped_address())
     }
@@ -271,7 +286,7 @@ impl StunAttribute {
             }
             Self::Unknown(attr_type, data) => {
                 buf.put_u16(*attr_type);
-                buf.put_u16(data.len() as u16);
+                buf.put_u16(u16::try_from(data.len()).unwrap_or(u16::MAX));
                 buf.put_slice(data);
                 Self::add_padding(buf);
             }
@@ -298,39 +313,33 @@ impl StunAttribute {
         }
 
         // Port (2 bytes)
-        let port = if let Some(xor) = xor_key {
-            addr.port() ^ (xor >> 16) as u16
-        } else {
-            addr.port()
-        };
+        let port = xor_key.map_or_else(|| addr.port(), |xor| addr.port() ^ (xor >> 16) as u16);
         buf.put_u16(port);
 
         // Address
         match addr.ip() {
             IpAddr::V4(ip) => {
-                let octets = if let Some(xor) = xor_key {
-                    let ip_u32 = u32::from(ip);
-                    let xored = ip_u32 ^ xor;
-                    xored.to_be_bytes()
-                } else {
-                    ip.octets()
-                };
+                let octets = xor_key.map_or_else(
+                    || ip.octets(),
+                    |xor| {
+                        let ip_u32 = u32::from(ip);
+                        let xored = ip_u32 ^ xor;
+                        xored.to_be_bytes()
+                    },
+                );
                 buf.put_slice(&octets);
             }
             IpAddr::V6(ip) => {
-                let octets = if let Some(_xor) = xor_key {
-                    // XOR with magic cookie + transaction ID (not implemented for simplicity)
-                    ip.octets()
-                } else {
-                    ip.octets()
-                };
+                // XOR with magic cookie + transaction ID not implemented for IPv6
+                let octets = ip.octets();
                 buf.put_slice(&octets);
             }
         }
 
         // Update length
         let data_len = buf.len() - data_start - 2;
-        buf[data_start..data_start + 2].copy_from_slice(&(data_len as u16).to_be_bytes());
+        buf[data_start..data_start + 2]
+            .copy_from_slice(&u16::try_from(data_len).unwrap_or(u16::MAX).to_be_bytes());
 
         Self::add_padding(buf);
     }
@@ -372,7 +381,9 @@ impl StunAttribute {
                 let addr = Self::decode_address(attr_data, None)?;
                 Ok(Self::OtherAddress(addr))
             }
-            _ => Ok(Self::Unknown(attr_type, Bytes::copy_from_slice(attr_data))),
+            AttributeType::Unknown(_) => {
+                Ok(Self::Unknown(attr_type, Bytes::copy_from_slice(attr_data)))
+            }
         }
     }
 
@@ -392,11 +403,7 @@ impl StunAttribute {
 
         // Port (2 bytes)
         let port_raw = buf.get_u16();
-        let port = if let Some(xor) = xor_key {
-            port_raw ^ (xor >> 16) as u16
-        } else {
-            port_raw
-        };
+        let port = xor_key.map_or_else(|| port_raw, |xor| port_raw ^ (xor >> 16) as u16);
 
         // Address
         match family {
@@ -407,11 +414,8 @@ impl StunAttribute {
                 }
 
                 let ip_raw = buf.get_u32();
-                let ip = if let Some(xor) = xor_key {
-                    Ipv4Addr::from(ip_raw ^ xor)
-                } else {
-                    Ipv4Addr::from(ip_raw)
-                };
+                let ip = xor_key
+                    .map_or_else(|| Ipv4Addr::from(ip_raw), |xor| Ipv4Addr::from(ip_raw ^ xor));
 
                 Ok(SocketAddr::new(IpAddr::V4(ip), port))
             }
@@ -429,7 +433,7 @@ impl StunAttribute {
 
                 Ok(SocketAddr::new(IpAddr::V6(ip), port))
             }
-            _ => Err(StunError::InvalidResponse(format!("Unknown address family: {}", family))),
+            _ => Err(StunError::InvalidResponse(format!("Unknown address family: {family}"))),
         }
     }
 

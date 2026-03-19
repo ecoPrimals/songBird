@@ -35,6 +35,7 @@ pub struct ProtocolApiState {
 }
 
 impl ProtocolApiState {
+    #[must_use]
     pub fn new() -> Self {
         Self {
             available_protocols: Arc::new(AvailableProtocols::default()),
@@ -61,16 +62,16 @@ impl Default for AvailableProtocols {
     fn default() -> Self {
         // ✅ MIGRATED: Use environment-based configuration
         let port = std::env::var("SONGBIRD_PORT").unwrap_or_else(|_| "8080".to_string());
-        let base_url = format!("http://[::]:{}", port);
+        let base_url = format!("http://[::]:{port}");
 
         Self {
             http: ProtocolInfo {
                 version: "1.1".to_string(),
                 endpoints: HashMap::from([
-                    ("federation".to_string(), format!("{}/api/federation", base_url)),
-                    ("compute".to_string(), format!("{}/api/compute", base_url)),
-                    ("deployment".to_string(), format!("{}/api/deployment", base_url)),
-                    ("protocol".to_string(), format!("{}/api/protocol", base_url)),
+                    ("federation".to_string(), format!("{base_url}/api/federation")),
+                    ("compute".to_string(), format!("{base_url}/api/compute")),
+                    ("deployment".to_string(), format!("{base_url}/api/deployment")),
+                    ("protocol".to_string(), format!("{base_url}/api/protocol")),
                 ]),
                 features: vec!["rest".to_string(), "streaming".to_string(), "chunked".to_string()],
                 performance: None,
@@ -79,8 +80,8 @@ impl Default for AvailableProtocols {
             json_rpc: Some(ProtocolInfo {
                 version: "2.0".to_string(),
                 endpoints: HashMap::from([
-                    ("rpc".to_string(), format!("{}/jsonrpc", base_url)),
-                    ("alternate".to_string(), format!("{}/jsonrpc/rpc", base_url)),
+                    ("rpc".to_string(), format!("{base_url}/jsonrpc")),
+                    ("alternate".to_string(), format!("{base_url}/jsonrpc/rpc")),
                 ]),
                 features: vec![
                     "universal".to_string(),
@@ -233,10 +234,7 @@ async fn negotiate_protocol(
     };
 
     let message = if upgrade_available {
-        Some(format!(
-            "✅ Protocol upgrade available! Switch to {} for better performance.",
-            selected
-        ))
+        Some(format!("✅ Protocol upgrade available! Switch to {selected} for better performance."))
     } else {
         Some("Using HTTP (no upgrade available based on client capabilities).".to_string())
     };
@@ -415,7 +413,7 @@ fn generate_negotiation_id() -> String {
         .unwrap_or_else(|_| std::time::Duration::from_secs(0)) // Fallback if system time goes backward
         .as_micros();
 
-    format!("nego_{}", timestamp)
+    format!("nego_{timestamp}")
 }
 
 #[cfg(test)]

@@ -88,7 +88,7 @@ impl std::str::FromStr for SecurityLevel {
 impl SecurityLevel {
     /// Get the numeric value of the security level (0-13)
     #[must_use]
-    pub fn as_u8(self) -> u8 {
+    pub const fn as_u8(self) -> u8 {
         match self {
             Self::None => 0,
             Self::Minimal => 1,
@@ -109,7 +109,7 @@ impl SecurityLevel {
 
     /// Create from numeric value (0-13)
     #[must_use]
-    pub fn from_u8(value: u8) -> Option<Self> {
+    pub const fn from_u8(value: u8) -> Option<Self> {
         match value {
             0 => Some(Self::None),
             1 => Some(Self::Minimal),
@@ -131,7 +131,7 @@ impl SecurityLevel {
 
     /// Check if this level requires authentication
     #[must_use]
-    pub fn requires_authentication(self) -> bool {
+    pub const fn requires_authentication(self) -> bool {
         !matches!(self, Self::None | Self::Public)
     }
 }

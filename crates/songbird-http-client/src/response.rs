@@ -82,9 +82,7 @@ impl ResponseParser {
                 debug!("📝 Extracted status code string: {:?}", s);
                 s.parse::<u16>().ok()
             })
-            .ok_or_else(|| {
-                Error::InvalidResponse(format!("Invalid status line: {:?}", status_line))
-            })
+            .ok_or_else(|| Error::InvalidResponse(format!("Invalid status line: {status_line:?}")))
     }
 
     /// Parse HTTP headers

@@ -124,6 +124,7 @@ pub enum DiscoveryError {
 
 impl DiscoveredPrimal {
     /// Create a new discovered primal
+    #[must_use]
     pub fn new(
         name: String,
         primal_type: PrimalType,
@@ -150,11 +151,13 @@ impl DiscoveredPrimal {
     }
 
     /// Check if primal is healthy
-    pub fn is_healthy(&self) -> bool {
+    #[must_use]
+    pub const fn is_healthy(&self) -> bool {
         matches!(self.health, PrimalHealth::Healthy)
     }
 
     /// Check if primal has a specific capability
+    #[must_use]
     pub fn has_capability(&self, capability: &Capability) -> bool {
         self.capabilities.contains(capability)
     }

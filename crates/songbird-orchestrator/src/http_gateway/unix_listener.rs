@@ -331,10 +331,7 @@ impl UnixSocketListener {
                 return JsonRpcResponse {
                     jsonrpc: "2.0".to_string(),
                     result: None,
-                    error: Some(JsonRpcError::server_error(
-                        -32000,
-                        format!("Routing failed: {}", e),
-                    )),
+                    error: Some(JsonRpcError::server_error(-32000, format!("Routing failed: {e}"))),
                     id: request.id,
                 };
             }
@@ -386,8 +383,7 @@ impl UnixSocketListener {
                     jsonrpc: "2.0".to_string(),
                     result: None,
                     error: Some(JsonRpcError::internal_error(format!(
-                        "External request failed: {}",
-                        e
+                        "External request failed: {e}"
                     ))),
                     id: request.id,
                 }
@@ -421,7 +417,7 @@ impl UnixSocketListener {
 
         // Add API key header if present
         if let Some(key) = api_key {
-            headers.insert("Authorization".to_string(), format!("Bearer {}", key));
+            headers.insert("Authorization".to_string(), format!("Bearer {key}"));
         }
 
         // Add custom headers
@@ -443,7 +439,7 @@ impl UnixSocketListener {
         let body = response.body;
 
         if !(200..300).contains(&status) {
-            return Err(anyhow!("External API returned error: {} - {:?}", status, body));
+            return Err(anyhow!("External API returned error: {status} - {body:?}"));
         }
 
         Ok(body)

@@ -1,6 +1,6 @@
 //! Token generation and validation
 //!
-//! ✅ Pure Rust JWT implementation using RustCrypto (hmac + sha2)
+//! ✅ Pure Rust JWT implementation using `RustCrypto` (hmac + sha2)
 //! Zero C dependencies - 100% ecoBin compliant!
 
 use super::pure_rust_jwt;
@@ -49,6 +49,7 @@ pub enum TokenType {
 }
 
 impl AccessToken {
+    #[must_use]
     pub fn anonymous() -> Self {
         let now = chrono::Utc::now().timestamp();
         let exp = now + 3600;
@@ -64,6 +65,7 @@ impl AccessToken {
         }
     }
 
+    #[must_use]
     pub fn student(student_id: &str, course_id: &str) -> Self {
         let now = chrono::Utc::now().timestamp();
         let exp = now + 86400;
@@ -82,6 +84,7 @@ impl AccessToken {
         }
     }
 
+    #[must_use]
     pub fn ta(ta_id: &str, course_id: &str) -> Self {
         let now = chrono::Utc::now().timestamp();
         let exp = now + 86400;
@@ -100,6 +103,7 @@ impl AccessToken {
         }
     }
 
+    #[must_use]
     pub fn professor(professor_id: &str, courses: Vec<String>) -> Self {
         let now = chrono::Utc::now().timestamp();
         let exp = now + 86400;
@@ -118,6 +122,7 @@ impl AccessToken {
         }
     }
 
+    #[must_use]
     pub fn admin(admin_id: &str) -> Self {
         let now = chrono::Utc::now().timestamp();
         let exp = now + 3600;
@@ -135,6 +140,7 @@ impl AccessToken {
         }
     }
 
+    #[must_use]
     pub fn is_expired(&self) -> bool {
         chrono::Utc::now().timestamp() > self.exp
     }
@@ -145,7 +151,8 @@ impl AccessToken {
     /// Returns true if:
     /// - Token has 2FA verification claim (JWT)
     /// - Token is security provider token with hardware entropy (future)
-    pub fn has_2fa_verified(&self) -> bool {
+    #[must_use]
+    pub const fn has_2fa_verified(&self) -> bool {
         match self.token_type {
             TokenType::JWT => {
                 // In JWT mode, 2FA verification would be indicated by a claim
@@ -161,7 +168,7 @@ impl AccessToken {
         }
     }
 
-    /// Encode as JWT string (✅ Pure Rust using RustCrypto hmac + sha2!)
+    /// Encode as JWT string (✅ Pure Rust using `RustCrypto` hmac + sha2!)
     pub fn encode(&self, secret: &[u8]) -> Result<String> {
         let claims = Claims {
             sub: self.sub.clone(),
@@ -174,7 +181,7 @@ impl AccessToken {
         pure_rust_jwt::encode(&claims, secret)
     }
 
-    /// Decode from JWT string (✅ Pure Rust using RustCrypto hmac + sha2!)
+    /// Decode from JWT string (✅ Pure Rust using `RustCrypto` hmac + sha2!)
     pub fn decode(token_str: &str, secret: &[u8]) -> Result<Self> {
         let claims: Claims = pure_rust_jwt::decode(token_str, secret)?;
 
@@ -210,6 +217,7 @@ impl TokenValidator {
     /// 2. Default development secret (INSECURE - development only)
     ///
     /// **SECURITY**: In production, ALWAYS set `SONGBIRD_JWT_SECRET` to a strong secret
+    #[must_use]
     pub fn new() -> Self {
         let secret = std::env::var("SONGBIRD_JWT_SECRET").unwrap_or_else(|_| {
             tracing::warn!(

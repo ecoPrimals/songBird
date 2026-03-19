@@ -31,7 +31,7 @@ pub struct DiscoverByFamilyRequest {
     pub timeout_ms: u64,
 }
 
-fn default_timeout() -> u64 {
+const fn default_timeout() -> u64 {
     5000
 }
 
@@ -102,18 +102,18 @@ pub struct CreateGeneticTunnelRequest {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub peer_endpoint: Option<String>,
 
-    /// Genetic proof from BearDog (optional, will verify via BearDog if not provided)
+    /// Genetic proof from `BearDog` (optional, will verify via `BearDog` if not provided)
     #[serde(skip_serializing_if = "Option::is_none")]
     pub genetic_proof: Option<GeneticProof>,
 }
 
-/// Genetic lineage proof from BearDog
+/// Genetic lineage proof from `BearDog`
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GeneticProof {
     /// Family identifier (e.g., "my-family")
     pub family_id: String,
 
-    /// Parent seed hash (from BearDog verification)
+    /// Parent seed hash (from `BearDog` verification)
     pub parent_seed_hash: String,
 
     /// Relationship (e.g., "sibling", "parent", "child")
@@ -137,7 +137,7 @@ pub struct CreateGeneticTunnelResponse {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub peer_endpoint: Option<String>,
 
-    /// Encryption algorithm (from BearDog)
+    /// Encryption algorithm (from `BearDog`)
     #[serde(skip_serializing_if = "Option::is_none")]
     pub encryption: Option<String>,
 
@@ -212,7 +212,7 @@ pub struct AnnounceCapabilitiesResponse {
 /// ```
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct RegisterServiceRequest {
-    /// Primal name (e.g., "BearDog", "ToadStool")
+    /// Primal name (e.g., "`BearDog`", "`ToadStool`")
     pub primal_name: String,
 
     /// Capabilities provided (e.g., ["encryption", "identity"])
@@ -229,7 +229,7 @@ pub struct RegisterServiceRequest {
     pub health_check_interval: u64,
 }
 
-fn default_health_interval() -> u64 {
+const fn default_health_interval() -> u64 {
     30
 }
 
@@ -373,7 +373,8 @@ pub struct HealthCheckResponse {
 // Helper Functions
 // ============================================================================
 
-/// Helper to convert SystemTime to ISO 8601 string
+/// Helper to convert `SystemTime` to ISO 8601 string
+#[must_use]
 pub fn system_time_to_iso8601(time: SystemTime) -> String {
     let duration = time.duration_since(SystemTime::UNIX_EPOCH).unwrap_or_default();
 

@@ -114,7 +114,7 @@ pub async fn federation_nodes_graduated(
     (StatusCode::OK, Json(filtered_nodes))
 }
 
-/// GET /api/federation/nodes/:node_id - Get specific node details (with graduated disclosure)
+/// GET /`api/federation/nodes/:node_id` - Get specific node details (with graduated disclosure)
 pub async fn get_node_details(
     State(state): State<Arc<FederationAppState>>,
     Path(node_id): Path<String>,

@@ -1,6 +1,7 @@
 //! Physical channel implementations for genesis
 
-use crate::{error::*, types::*};
+use crate::error::Result;
+use crate::types::{PhysicalChannelType, ProximityProof, TrustLevel};
 use async_trait::async_trait;
 
 #[cfg(feature = "solokey")]
@@ -39,7 +40,7 @@ pub trait PhysicalChannelProvider: Send + Sync {
 
 /// Physical channel enum for genesis
 pub enum PhysicalChannel {
-    /// Hardware security key (SoloKey, YubiKey, etc.)
+    /// Hardware security key (`SoloKey`, `YubiKey`, etc.)
     #[cfg(feature = "solokey")]
     HardwareKey(solokey::SoloKeyChannel),
 

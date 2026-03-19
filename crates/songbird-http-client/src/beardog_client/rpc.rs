@@ -1,4 +1,4 @@
-//! BearDog RPC communication
+//! `BearDog` RPC communication
 //!
 //! JSON-RPC call implementation with dual-mode support (Direct and Neural API).
 
@@ -21,18 +21,18 @@ impl AsyncStream for tokio::net::UnixStream {}
 impl AsyncStream for tokio::net::TcpStream {}
 
 impl BearDogClient {
-    /// Map semantic capability names to actual BearDog method names
+    /// Map semantic capability names to actual `BearDog` method names
     ///
     /// **DEPRECATED**: This mapping is only used in Direct mode for backward compatibility.
     /// In production (Neural API mode), semantic translation is handled by Neural API's
-    /// capability registry, allowing BearDog to evolve its API independently.
+    /// capability registry, allowing `BearDog` to evolve its API independently.
     ///
     /// (Used only in Direct mode)
     #[deprecated(
         since = "0.2.0",
         note = "Use Neural API's capability.call for semantic routing in production. Direct mode is for testing only."
     )]
-    fn semantic_to_actual(&self, capability: &str) -> Result<&'static str> {
+    fn semantic_to_actual(capability: &str) -> Result<&'static str> {
         Ok(match capability {
             // Crypto operations - map to BearDog's actual method names
             "crypto.generate_keypair" => "crypto.x25519_generate_ephemeral",
@@ -55,8 +55,7 @@ impl BearDogClient {
 
             _ => {
                 return Err(Error::BearDogRpc(format!(
-                    "Unknown capability: {}. Add mapping to semantic_to_actual()",
-                    capability
+                    "Unknown capability: {capability}. Add mapping to semantic_to_actual()"
                 )))
             }
         })
@@ -90,9 +89,9 @@ impl BearDogClient {
         }
     }
 
-    /// Make an RPC call to BearDog
+    /// Make an RPC call to `BearDog`
     ///
-    /// In Direct mode: Calls BearDog directly using actual method names
+    /// In Direct mode: Calls `BearDog` directly using actual method names
     /// In Neural API mode: Routes through Neural API for capability translation
     pub(super) async fn call(&self, capability: &str, args: Value) -> Result<Value> {
         let id = self.request_id.fetch_add(1, Ordering::SeqCst);
@@ -107,7 +106,7 @@ impl BearDogClient {
         }
     }
 
-    /// Direct RPC to BearDog (testing, simple deployments)
+    /// Direct RPC to `BearDog` (testing, simple deployments)
     async fn call_direct(
         &self,
         endpoint: &IpcEndpoint,
@@ -117,7 +116,7 @@ impl BearDogClient {
     ) -> Result<Value> {
         // Note: Direct mode is deprecated for production use
         #[allow(deprecated)]
-        let method = self.semantic_to_actual(capability)?;
+        let method = Self::semantic_to_actual(capability)?;
 
         let request = JsonRpcRequest {
             jsonrpc: "2.0".to_string(),
@@ -130,7 +129,7 @@ impl BearDogClient {
 
         // Connect to BearDog (isomorphic: Unix or TCP)
         let mut stream = Self::connect_endpoint(endpoint).await.map_err(|e| {
-            Error::BearDogRpc(format!("Failed to connect to BearDog at {:?}: {}", endpoint, e))
+            Error::BearDogRpc(format!("Failed to connect to BearDog at {endpoint:?}: {e}"))
         })?;
 
         // Send request
@@ -147,7 +146,7 @@ impl BearDogClient {
         stream.read_to_end(&mut buffer).await?;
 
         let response: JsonRpcResponse = serde_json::from_slice(&buffer)
-            .map_err(|e| Error::BearDogRpc(format!("Invalid JSON response: {}", e)))?;
+            .map_err(|e| Error::BearDogRpc(format!("Invalid JSON response: {e}")))?;
 
         if let Some(error) = response.error {
             return Err(Error::BearDogRpc(format!(
@@ -168,7 +167,7 @@ impl BearDogClient {
         id: u64,
     ) -> Result<Value> {
         // Split semantic name into capability + operation
-        // e.g., "crypto.generate_keypair" → capability:"crypto", operation:"generate_keypair"
+        // e.g. `crypto.generate_keypair` → capability:"crypto", operation:"generate_keypair"
         let parts: Vec<&str> = capability.split('.').collect();
         let (cap, op) = if parts.len() >= 2 {
             (parts[0], parts[1..].join("."))
@@ -191,7 +190,7 @@ impl BearDogClient {
 
         // Connect to Neural API (isomorphic: Unix or TCP)
         let mut stream = Self::connect_endpoint(endpoint).await.map_err(|e| {
-            Error::BearDogRpc(format!("Failed to connect to Neural API at {:?}: {}", endpoint, e))
+            Error::BearDogRpc(format!("Failed to connect to Neural API at {endpoint:?}: {e}"))
         })?;
 
         // Send request
@@ -220,7 +219,7 @@ impl BearDogClient {
                         }
                     }
                 }
-                Ok(Err(e)) => return Err(Error::BearDogRpc(format!("Socket read error: {}", e))),
+                Ok(Err(e)) => return Err(Error::BearDogRpc(format!("Socket read error: {e}"))),
                 Err(_) => {
                     // Timeout - check if we have valid JSON
                     if !buffer.is_empty() {
@@ -253,10 +252,10 @@ impl BearDogClient {
             if let Ok(response_str) = std::str::from_utf8(&buffer) {
                 error!("   Raw response: {}", response_str);
             }
-            Error::BearDogRpc(format!("Failed to parse Neural API response: {}", e))
+            Error::BearDogRpc(format!("Failed to parse Neural API response: {e}"))
         })?;
 
-        let id_str = response.id.map(|id| id.to_string()).unwrap_or_else(|| "null".to_string());
+        let id_str = response.id.map_or_else(|| "null".to_string(), |id| id.to_string());
         trace!("← Neural API result for {} (id={})", capability, id_str);
 
         // Check for errors
@@ -285,15 +284,14 @@ mod tests {
 
     #[test]
     fn test_semantic_mapping() {
-        let client = BearDogClient::new_direct("/tmp/test.sock");
         #[allow(deprecated)]
         {
             assert_eq!(
-                client.semantic_to_actual("crypto.generate_keypair").unwrap(),
+                BearDogClient::semantic_to_actual("crypto.generate_keypair").unwrap(),
                 "crypto.x25519_generate_ephemeral"
             );
             assert_eq!(
-                client.semantic_to_actual("crypto.ecdh_derive").unwrap(),
+                BearDogClient::semantic_to_actual("crypto.ecdh_derive").unwrap(),
                 "crypto.x25519_derive_secret"
             );
         }
@@ -301,9 +299,8 @@ mod tests {
 
     #[test]
     fn test_semantic_mapping_unknown() {
-        let client = BearDogClient::new_direct("/tmp/test.sock");
         #[allow(deprecated)]
-        let result = client.semantic_to_actual("unknown.method");
+        let result = BearDogClient::semantic_to_actual("unknown.method");
         assert!(result.is_err());
     }
 }

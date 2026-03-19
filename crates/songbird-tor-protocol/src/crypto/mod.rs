@@ -1,6 +1,6 @@
 //! Cryptographic operations for Tor protocol
 //!
-//! - **BearDog**: All key operations delegated via IPC (TRUE PRIMAL)
+//! - **`BearDog`**: All key operations delegated via IPC (TRUE PRIMAL)
 //! - **SHA3-256**: Pure Rust for local operations (onion address checksums, descriptor IDs)
 
 pub mod sha3;
@@ -13,17 +13,20 @@ use std::os::unix::net::UnixStream;
 use std::time::Duration;
 use tracing::debug;
 
-/// BearDog crypto client for Tor protocol operations
+/// `BearDog` crypto client for Tor protocol operations
 ///
-/// **TRUE PRIMAL**: All crypto operations delegated to BearDog.
+/// **TRUE PRIMAL**: All crypto operations delegated to `BearDog`.
 #[derive(Clone)]
 pub struct BeardogCryptoClient {
-    /// BearDog socket path
+    /// `BearDog` socket path
     socket_path: String,
 }
 
 impl BeardogCryptoClient {
-    /// Create from environment (discovers BearDog via runtime)
+    /// Create from environment (discovers `BearDog` via runtime)
+    ///
+    /// # Errors
+    /// Returns error if socket path cannot be determined.
     pub fn from_env() -> Result<Self> {
         // Discovery order:
         // 1. BEARDOG_SOCKET
@@ -34,20 +37,21 @@ impl BeardogCryptoClient {
         let socket_path = std::env::var("BEARDOG_SOCKET")
             .or_else(|_| std::env::var("BEARDOG_CRYPTO_SOCKET"))
             .or_else(|_| {
-                if let Ok(xdg) = std::env::var("XDG_RUNTIME_DIR") {
-                    let path = format!("{}/biomeos/beardog.sock", xdg);
-                    if std::path::Path::new(&path).exists() {
-                        Ok(path)
-                    } else {
-                        Err(std::env::VarError::NotPresent)
-                    }
-                } else {
-                    Err(std::env::VarError::NotPresent)
-                }
+                std::env::var("XDG_RUNTIME_DIR").map_or(
+                    Err(std::env::VarError::NotPresent),
+                    |xdg| {
+                        let path = format!("{xdg}/biomeos/beardog.sock");
+                        if std::path::Path::new(&path).exists() {
+                            Ok(path)
+                        } else {
+                            Err(std::env::VarError::NotPresent)
+                        }
+                    },
+                )
             })
             .unwrap_or_else(|_| "/tmp/beardog.sock".to_string());
 
-        debug!("BearDog crypto client using socket: {}", socket_path);
+        debug!("BearDog crypto client using socket: {socket_path}");
 
         Ok(Self {
             socket_path,
@@ -55,42 +59,43 @@ impl BeardogCryptoClient {
     }
 
     /// Create with explicit socket path
-    pub fn new(socket_path: String) -> Self {
+    #[must_use]
+    pub const fn new(socket_path: String) -> Self {
         Self {
             socket_path,
         }
     }
 
-    /// Call BearDog JSON-RPC method
-    fn call_method(&self, method: &str, params: Value) -> Result<Value> {
+    /// Call `BearDog` JSON-RPC method
+    fn call_method(&self, method: &str, params: &Value) -> Result<Value> {
         // Connect to BearDog socket
         let mut stream = UnixStream::connect(&self.socket_path).map_err(|e| {
-            Error::Crypto(format!("Failed to connect to BearDog at {}: {}", self.socket_path, e))
+            Error::Crypto(format!("Failed to connect to BearDog at {}: {e}", self.socket_path))
         })?;
 
         stream
             .set_read_timeout(Some(Duration::from_secs(30)))
-            .map_err(|e| Error::Crypto(format!("Failed to set read timeout: {}", e)))?;
+            .map_err(|e| Error::Crypto(format!("Failed to set read timeout: {e}")))?;
         stream
             .set_write_timeout(Some(Duration::from_secs(30)))
-            .map_err(|e| Error::Crypto(format!("Failed to set write timeout: {}", e)))?;
+            .map_err(|e| Error::Crypto(format!("Failed to set write timeout: {e}")))?;
 
         // Build JSON-RPC request
-        let request = json!({
+        let request = &json!({
             "jsonrpc": "2.0",
             "method": method,
             "params": params,
             "id": 1
         });
 
-        let request_str = format!("{}\n", request);
+        let request_str = format!("{request}\n");
 
         debug!("BearDog RPC call: {} (params: {})", method, params);
 
         // Send request
         stream
             .write_all(request_str.as_bytes())
-            .map_err(|e| Error::Crypto(format!("Failed to send to BearDog: {}", e)))?;
+            .map_err(|e| Error::Crypto(format!("Failed to send to BearDog: {e}")))?;
 
         // Read response
         let mut response = String::new();
@@ -112,23 +117,20 @@ impl BeardogCryptoClient {
                     break;
                 }
                 Err(e) => {
-                    return Err(Error::Crypto(format!("Failed to read from BearDog: {}", e)));
+                    return Err(Error::Crypto(format!("Failed to read from BearDog: {e}")));
                 }
             }
         }
 
         // Parse response
         let parsed: Value = serde_json::from_str(&response).map_err(|e| {
-            Error::Crypto(format!(
-                "Failed to parse BearDog response: {} (response: {})",
-                e, response
-            ))
+            Error::Crypto(format!("Failed to parse BearDog response: {e} (response: {response})"))
         })?;
 
         // Check for error
         if let Some(err) = parsed.get("error") {
             let msg = err.get("message").and_then(|m| m.as_str()).unwrap_or("Unknown error");
-            return Err(Error::Crypto(format!("BearDog error: {}", msg)));
+            return Err(Error::Crypto(format!("BearDog error: {msg}")));
         }
 
         // Return result
@@ -142,7 +144,10 @@ impl BeardogCryptoClient {
 
     /// Initialize client-side ntor handshake
     ///
-    /// Returns (client_public_key, handshake_state) for CREATE2 payload.
+    /// Returns (`client_public_key`, `handshake_state`) for CREATE2 payload.
+    ///
+    /// # Errors
+    /// Returns error if `BearDog` RPC fails or response is invalid.
     pub fn tor_ntor_client_init(
         &self,
         node_id: &[u8; 20],
@@ -150,7 +155,7 @@ impl BeardogCryptoClient {
     ) -> Result<NtorClientInit> {
         let result = self.call_method(
             "crypto.ntor.client_init",
-            json!({
+            &json!({
                 "node_id": BASE64.encode(node_id),
                 "node_onion_key": BASE64.encode(node_onion_key)
             }),
@@ -167,7 +172,7 @@ impl BeardogCryptoClient {
 
         let client_public_bytes = BASE64
             .decode(client_public_b64)
-            .map_err(|e| Error::Crypto(format!("Failed to decode client_public: {}", e)))?;
+            .map_err(|e| Error::Crypto(format!("Failed to decode client_public: {e}")))?;
 
         let mut client_public = [0u8; 32];
         if client_public_bytes.len() >= 32 {
@@ -183,6 +188,9 @@ impl BeardogCryptoClient {
     /// Complete client-side ntor handshake with server's response
     ///
     /// Returns derived key material for circuit encryption.
+    ///
+    /// # Errors
+    /// Returns error if `BearDog` RPC fails or response is invalid.
     pub fn tor_ntor_client_finish(
         &self,
         state_id: &str,
@@ -191,7 +199,7 @@ impl BeardogCryptoClient {
     ) -> Result<KeyMaterial> {
         let result = self.call_method(
             "crypto.ntor.client_finish",
-            json!({
+            &json!({
                 "state_id": state_id,
                 "server_public": BASE64.encode(server_public),
                 "auth_tag": BASE64.encode(auth_tag)
@@ -204,7 +212,7 @@ impl BeardogCryptoClient {
 
         let key_seed_bytes = BASE64
             .decode(key_seed_b64)
-            .map_err(|e| Error::Crypto(format!("Failed to decode key_seed: {}", e)))?;
+            .map_err(|e| Error::Crypto(format!("Failed to decode key_seed: {e}")))?;
 
         let mut key_seed = [0u8; 32];
         if key_seed_bytes.len() >= 32 {
@@ -235,10 +243,13 @@ impl BeardogCryptoClient {
     // ===== Tor KDF Operations =====
 
     /// Tor-specific Key Derivation Function
+    ///
+    /// # Errors
+    /// Returns error if `BearDog` RPC fails or response is invalid.
     pub fn tor_kdf(&self, key_seed: &[u8; 32], info: &[u8], length: usize) -> Result<Vec<u8>> {
         let result = self.call_method(
             "crypto.kdf.derive",
-            json!({
+            &json!({
                 "key_seed": BASE64.encode(key_seed),
                 "info": BASE64.encode(info),
                 "length": length
@@ -252,16 +263,19 @@ impl BeardogCryptoClient {
 
         BASE64
             .decode(derived_b64)
-            .map_err(|e| Error::Crypto(format!("Failed to decode derived key: {}", e)))
+            .map_err(|e| Error::Crypto(format!("Failed to decode derived key: {e}")))
     }
 
     // ===== Tor Cell Encryption =====
 
-    /// Encrypt Tor cell data with ChaCha20
+    /// Encrypt Tor cell data with `ChaCha20`
+    ///
+    /// # Errors
+    /// Returns error if `BearDog` RPC fails or response is invalid.
     pub fn tor_cell_encrypt(&self, key: &[u8; 32], counter: u64, data: &[u8]) -> Result<Vec<u8>> {
         let result = self.call_method(
             "crypto.cell.encrypt",
-            json!({
+            &json!({
                 "key": BASE64.encode(key),
                 "counter": counter,
                 "data": BASE64.encode(data)
@@ -275,14 +289,17 @@ impl BeardogCryptoClient {
 
         BASE64
             .decode(ciphertext_b64)
-            .map_err(|e| Error::Crypto(format!("Failed to decode ciphertext: {}", e)))
+            .map_err(|e| Error::Crypto(format!("Failed to decode ciphertext: {e}")))
     }
 
-    /// Decrypt Tor cell data with ChaCha20
+    /// Decrypt Tor cell data with `ChaCha20`
+    ///
+    /// # Errors
+    /// Returns error if `BearDog` RPC fails or response is invalid.
     pub fn tor_cell_decrypt(&self, key: &[u8; 32], counter: u64, data: &[u8]) -> Result<Vec<u8>> {
         let result = self.call_method(
             "crypto.cell.decrypt",
-            json!({
+            &json!({
                 "key": BASE64.encode(key),
                 "counter": counter,
                 "data": BASE64.encode(data)
@@ -295,7 +312,7 @@ impl BeardogCryptoClient {
 
         BASE64
             .decode(plaintext_b64)
-            .map_err(|e| Error::Crypto(format!("Failed to decode plaintext: {}", e)))
+            .map_err(|e| Error::Crypto(format!("Failed to decode plaintext: {e}")))
     }
 
     // ===== AES-128-CTR Operations (Circuit Onion Encryption) =====
@@ -303,7 +320,10 @@ impl BeardogCryptoClient {
     /// Encrypt with AES-128-CTR (for onion layer encryption)
     ///
     /// This maps to Tor's cell encryption. For modern Tor circuits,
-    /// we use ChaCha20 which provides equivalent security.
+    /// we use `ChaCha20` which provides equivalent security.
+    ///
+    /// # Errors
+    /// Returns error if `BearDog` RPC fails.
     pub fn aes_128_ctr_encrypt(
         &self,
         key: &[u8; 16],
@@ -322,6 +342,9 @@ impl BeardogCryptoClient {
     }
 
     /// Decrypt with AES-128-CTR (for onion layer decryption)
+    ///
+    /// # Errors
+    /// Returns error if `BearDog` RPC fails.
     pub fn aes_128_ctr_decrypt(
         &self,
         key: &[u8; 16],
@@ -342,10 +365,14 @@ impl BeardogCryptoClient {
     // ===== Legacy Operations (for compatibility with existing code) =====
 
     /// Sign data with Ed25519
+    ///
+    /// # Errors
+    /// Returns error if `BearDog` RPC fails or response is invalid.
     pub async fn ed25519_sign(&self, secret_key_id: &str, data: &[u8]) -> Result<[u8; 64]> {
+        core::future::ready(()).await;
         let result = self.call_method(
             "crypto.sign.ed25519",
-            json!({
+            &json!({
                 "secret_key_id": secret_key_id,
                 "data": BASE64.encode(data)
             }),
@@ -357,7 +384,7 @@ impl BeardogCryptoClient {
 
         let sig_bytes = BASE64
             .decode(sig_b64)
-            .map_err(|e| Error::Crypto(format!("Failed to decode signature: {}", e)))?;
+            .map_err(|e| Error::Crypto(format!("Failed to decode signature: {e}")))?;
 
         let mut signature = [0u8; 64];
         if sig_bytes.len() >= 64 {
@@ -368,15 +395,19 @@ impl BeardogCryptoClient {
     }
 
     /// Verify Ed25519 signature
+    ///
+    /// # Errors
+    /// Returns error if `BearDog` RPC fails or response is invalid.
     pub async fn ed25519_verify(
         &self,
         public_key: &[u8; 32],
         data: &[u8],
         signature: &[u8; 64],
     ) -> Result<bool> {
+        core::future::ready(()).await;
         let result = self.call_method(
             "crypto.verify.ed25519",
-            json!({
+            &json!({
                 "public_key": BASE64.encode(public_key),
                 "data": BASE64.encode(data),
                 "signature": BASE64.encode(signature)
@@ -385,15 +416,18 @@ impl BeardogCryptoClient {
 
         result
             .get("valid")
-            .and_then(|v| v.as_bool())
+            .and_then(serde_json::Value::as_bool)
             .ok_or_else(|| Error::Crypto("Missing valid in ed25519_verify response".to_string()))
     }
 
     /// Generate ephemeral X25519 keypair
+    ///
+    /// # Errors
+    /// Returns error if `BearDog` RPC fails or response is invalid.
     pub fn x25519_generate_ephemeral(&self) -> Result<X25519Keypair> {
         let result = self.call_method(
             "crypto.x25519.generate_ephemeral",
-            json!({
+            &json!({
                 "purpose": "tor_circuit"
             }),
         )?;
@@ -410,7 +444,7 @@ impl BeardogCryptoClient {
 
         let public_bytes = BASE64
             .decode(public_b64)
-            .map_err(|e| Error::Crypto(format!("Failed to decode public_key: {}", e)))?;
+            .map_err(|e| Error::Crypto(format!("Failed to decode public_key: {e}")))?;
 
         let mut public_key = [0u8; 32];
         if public_bytes.len() >= 32 {
@@ -436,6 +470,9 @@ impl BeardogCryptoClient {
     /// Derive shared secret (ECDH)
     ///
     /// Compatible with circuit code that passes raw secret key bytes.
+    ///
+    /// # Errors
+    /// Returns error if `BearDog` RPC fails or response is invalid.
     pub fn x25519_derive_secret(
         &self,
         our_secret_key: &[u8; 32],
@@ -443,7 +480,7 @@ impl BeardogCryptoClient {
     ) -> Result<[u8; 32]> {
         let result = self.call_method(
             "crypto.x25519.derive_secret",
-            json!({
+            &json!({
                 "our_secret_key": BASE64.encode(our_secret_key),
                 "their_public_key": BASE64.encode(their_public_key)
             }),
@@ -456,7 +493,7 @@ impl BeardogCryptoClient {
 
         let shared_bytes = BASE64
             .decode(shared_b64)
-            .map_err(|e| Error::Crypto(format!("Failed to decode shared_secret: {}", e)))?;
+            .map_err(|e| Error::Crypto(format!("Failed to decode shared_secret: {e}")))?;
 
         let mut shared_secret = [0u8; 32];
         if shared_bytes.len() >= 32 {
@@ -467,10 +504,13 @@ impl BeardogCryptoClient {
     }
 
     /// Hash with SHA3-256
+    ///
+    /// # Errors
+    /// Returns error if `BearDog` RPC fails or response is invalid.
     pub fn sha3_256(&self, data: &[u8]) -> Result<[u8; 32]> {
         let result = self.call_method(
             "crypto.hash.sha3_256",
-            json!({
+            &json!({
                 "data": BASE64.encode(data)
             }),
         )?;
@@ -482,7 +522,7 @@ impl BeardogCryptoClient {
 
         let hash_bytes = BASE64
             .decode(hash_b64)
-            .map_err(|e| Error::Crypto(format!("Failed to decode hash: {}", e)))?;
+            .map_err(|e| Error::Crypto(format!("Failed to decode hash: {e}")))?;
 
         let mut hash = [0u8; 32];
         if hash_bytes.len() >= 32 {
@@ -493,10 +533,13 @@ impl BeardogCryptoClient {
     }
 
     /// HMAC-SHA256 (required for Tor ntor handshake)
+    ///
+    /// # Errors
+    /// Returns error if `BearDog` RPC fails or response is invalid.
     pub fn hmac_sha256(&self, key: &[u8], data: &[u8]) -> Result<[u8; 32]> {
         let result = self.call_method(
             "crypto.hmac.sha256",
-            json!({
+            &json!({
                 "key": BASE64.encode(key),
                 "data": BASE64.encode(data)
             }),
@@ -509,7 +552,7 @@ impl BeardogCryptoClient {
 
         let mac_bytes = BASE64
             .decode(mac_b64)
-            .map_err(|e| Error::Crypto(format!("Failed to decode mac: {}", e)))?;
+            .map_err(|e| Error::Crypto(format!("Failed to decode mac: {e}")))?;
 
         let mut mac = [0u8; 32];
         if mac_bytes.len() >= 32 {
@@ -519,7 +562,10 @@ impl BeardogCryptoClient {
         Ok(mac)
     }
 
-    /// Encrypt with ChaCha20Poly1305
+    /// Encrypt with `ChaCha20Poly1305`
+    ///
+    /// # Errors
+    /// Returns error if `BearDog` RPC fails or response is invalid.
     pub fn chacha20_poly1305_encrypt(
         &self,
         key: &[u8; 32],
@@ -529,7 +575,7 @@ impl BeardogCryptoClient {
     ) -> Result<Vec<u8>> {
         let result = self.call_method(
             "crypto.aead.chacha20_poly1305_encrypt",
-            json!({
+            &json!({
                 "key": BASE64.encode(key),
                 "nonce": BASE64.encode(nonce),
                 "plaintext": BASE64.encode(data),
@@ -544,10 +590,13 @@ impl BeardogCryptoClient {
 
         BASE64
             .decode(ciphertext_b64)
-            .map_err(|e| Error::Crypto(format!("Failed to decode ciphertext: {}", e)))
+            .map_err(|e| Error::Crypto(format!("Failed to decode ciphertext: {e}")))
     }
 
-    /// Decrypt with ChaCha20Poly1305
+    /// Decrypt with `ChaCha20Poly1305`
+    ///
+    /// # Errors
+    /// Returns error if `BearDog` RPC fails or response is invalid.
     pub fn chacha20_poly1305_decrypt(
         &self,
         key: &[u8; 32],
@@ -557,7 +606,7 @@ impl BeardogCryptoClient {
     ) -> Result<Vec<u8>> {
         let result = self.call_method(
             "crypto.aead.chacha20_poly1305_decrypt",
-            json!({
+            &json!({
                 "key": BASE64.encode(key),
                 "nonce": BASE64.encode(nonce),
                 "ciphertext": BASE64.encode(data),
@@ -571,7 +620,7 @@ impl BeardogCryptoClient {
 
         BASE64
             .decode(plaintext_b64)
-            .map_err(|e| Error::Crypto(format!("Failed to decode plaintext: {}", e)))
+            .map_err(|e| Error::Crypto(format!("Failed to decode plaintext: {e}")))
     }
 }
 

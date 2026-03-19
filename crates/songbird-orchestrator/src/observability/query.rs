@@ -12,7 +12,8 @@ pub struct MetricQuery {
 }
 
 impl MetricQuery {
-    pub fn new() -> Self {
+    #[must_use]
+    pub const fn new() -> Self {
         Self {
             metric_name: None,
             start_time: None,
@@ -20,6 +21,7 @@ impl MetricQuery {
         }
     }
 
+    #[must_use]
     pub fn matches(&self, metric: &MetricValue) -> bool {
         if let Some(ref name) = self.metric_name {
             if metric.name.as_ref() != name {

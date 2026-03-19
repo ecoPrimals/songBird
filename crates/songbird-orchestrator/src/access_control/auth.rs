@@ -99,12 +99,12 @@ pub struct LoginResponse {
 /// Login endpoint with credential validation
 ///
 /// Authentication modes (in priority order):
-/// 1. SSO (via SONGBIRD_SSO_ENDPOINT environment variable)
-/// 2. Password (via SONGBIRD_AUTH_DB environment variable)  
-/// 3. Development mode (SONGBIRD_DEV_MODE=true, accepts all credentials)
+/// 1. SSO (via `SONGBIRD_SSO_ENDPOINT` environment variable)
+/// 2. Password (via `SONGBIRD_AUTH_DB` environment variable)  
+/// 3. Development mode (`SONGBIRD_DEV_MODE=true`, accepts all credentials)
 ///
 /// **SECURITY:**
-/// - Production MUST set SONGBIRD_SSO_ENDPOINT or SONGBIRD_AUTH_DB
+/// - Production MUST set `SONGBIRD_SSO_ENDPOINT` or `SONGBIRD_AUTH_DB`
 /// - Development mode MUST be disabled in production
 /// - Admin/RemoteAdmin roles REQUIRE 2FA token
 pub async fn login(Json(req): Json<LoginRequest>) -> Result<Json<LoginResponse>, AuthError> {
@@ -193,7 +193,7 @@ async fn validate_credentials(req: &LoginRequest) -> Result<(), AuthError> {
     Err(AuthError::InvalidToken)
 }
 
-/// Validate credential via SSO (OAuth2, SAML, OIDC)
+/// Validate credential via SSO (`OAuth2`, SAML, OIDC)
 ///
 /// This function performs real SSO validation by contacting the configured SSO endpoint.
 /// Supports multiple SSO providers through capability-based discovery.
@@ -226,7 +226,7 @@ async fn validate_sso_credential(
     // Send validation request to SSO endpoint
     let response = tokio::time::timeout(
         std::time::Duration::from_secs(10),
-        client.post(&format!("{}/validate", sso_endpoint), validation_request),
+        client.post(&format!("{sso_endpoint}/validate"), validation_request),
     )
     .await
     .map_err(|_| {
@@ -282,7 +282,7 @@ async fn validate_db_credential(
     Err(AuthError::InvalidToken)
 }
 
-/// Validate credential via PostgreSQL database
+/// Validate credential via `PostgreSQL` database
 async fn validate_db_postgres(
     user_id: &str,
     credential: &str,
@@ -307,7 +307,7 @@ async fn validate_db_postgres(
     }
 }
 
-/// Validate credential via SQLite database
+/// Validate credential via `SQLite` database
 async fn validate_db_sqlite(
     user_id: &str,
     credential: &str,
@@ -362,7 +362,7 @@ async fn validate_db_redis(
 ///
 /// Supports multiple 2FA methods through capability-based discovery:
 /// - TOTP (Time-based One-Time Password) - RFC 6238
-/// - Hardware keys (WebAuthn, FIDO2) via security provider
+/// - Hardware keys (`WebAuthn`, FIDO2) via security provider
 /// - SMS/Email codes (via external service)
 async fn validate_two_factor_token(user_id: &str, token: &str) -> Result<(), AuthError> {
     tracing::debug!("Validating 2FA token for user '{}'", user_id);
@@ -378,7 +378,7 @@ async fn validate_two_factor_token(user_id: &str, token: &str) -> Result<(), Aut
     }
 
     // Try TOTP validation (standard authenticator apps)
-    if let Ok(totp_secret) = std::env::var(format!("SONGBIRD_TOTP_SECRET_{}", user_id).as_str()) {
+    if let Ok(totp_secret) = std::env::var(format!("SONGBIRD_TOTP_SECRET_{user_id}")) {
         tracing::debug!("Attempting TOTP validation for user '{}'", user_id);
         return validate_totp_token(user_id, token, &totp_secret);
     }
@@ -423,7 +423,7 @@ async fn validate_security_provider_2fa(
     // Send validation request
     let response = tokio::time::timeout(
         std::time::Duration::from_secs(5),
-        client.post(&format!("{}/auth/validate", security_endpoint), validation_request),
+        client.post(&format!("{security_endpoint}/auth/validate"), validation_request),
     )
     .await
     .map_err(|_| AuthError::InvalidToken)?
@@ -495,7 +495,7 @@ async fn validate_external_2fa(
     // Send validation request
     let response = tokio::time::timeout(
         std::time::Duration::from_secs(10),
-        client.post(&format!("{}/verify", service_endpoint), validation_request),
+        client.post(&format!("{service_endpoint}/verify"), validation_request),
     )
     .await
     .map_err(|_| AuthError::InvalidToken)?

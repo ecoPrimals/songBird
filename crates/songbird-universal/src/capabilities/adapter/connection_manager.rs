@@ -64,7 +64,7 @@ impl ConnectionManager {
             Ok(())
         } else {
             warn!("❌ Failed health check for {}", primal_name);
-            Err(CapabilityError::NetworkError(format!("Health check failed for {}", primal_name)))
+            Err(CapabilityError::NetworkError(format!("Health check failed for {primal_name}")))
         }
     }
 
@@ -78,7 +78,7 @@ impl ConnectionManager {
 
         let client = songbird_http_client::IpcHttpClient::new()
             .await
-            .map_err(|e| CapabilityError::NetworkError(format!("HTTP client error: {}", e)))?;
+            .map_err(|e| CapabilityError::NetworkError(format!("HTTP client error: {e}")))?;
 
         match client.get(&health_endpoint).await {
             Ok(response) if response.is_success() => {
@@ -98,7 +98,7 @@ impl ConnectionManager {
             }
             Err(e) => {
                 warn!("❌ Health check failed for {}: {}", connection.name, e);
-                Err(CapabilityError::NetworkError(format!("Health check error: {}", e)))
+                Err(CapabilityError::NetworkError(format!("Health check error: {e}")))
             }
         }
     }
@@ -155,7 +155,7 @@ impl ConnectionManager {
             Ok(())
         } else {
             warn!("⚠️  Primal {} was not connected", primal_name);
-            Err(CapabilityError::PrimalNotFound(format!("Primal {} not connected", primal_name)))
+            Err(CapabilityError::PrimalNotFound(format!("Primal {primal_name} not connected")))
         }
     }
 

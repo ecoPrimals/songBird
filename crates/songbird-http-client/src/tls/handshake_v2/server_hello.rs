@@ -1,6 +1,6 @@
-//! TLS 1.3 ServerHello Message Parser
+//! TLS 1.3 `ServerHello` Message Parser
 //!
-//! This module handles parsing RFC 8446 compliant ServerHello messages.
+//! This module handles parsing RFC 8446 compliant `ServerHello` messages.
 //!
 //! ## RFC 8446 Compliance
 //!
@@ -18,7 +18,7 @@
 //!
 //! ## Design Philosophy
 //!
-//! - **Agnostic**: Parses any RFC-compliant ServerHello
+//! - **Agnostic**: Parses any RFC-compliant `ServerHello`
 //! - **Defensive**: Validates all fields
 //! - **Informative**: Logs cipher suite selection
 //! - **Reusable**: Pure parsing logic, no state
@@ -31,7 +31,7 @@ use crate::error::{Error, Result};
 use crate::tls::handshake_v2::keys::CipherSuite;
 use tracing::{debug, info, warn};
 
-/// Parsed ServerHello data
+/// Parsed `ServerHello` data
 #[derive(Debug, Clone)]
 pub struct ServerHello {
     /// Server random (32 bytes)
@@ -44,13 +44,13 @@ pub struct ServerHello {
     pub cipher_suite: CipherSuite,
 }
 
-/// Parse a ServerHello handshake message
+/// Parse a `ServerHello` handshake message
 ///
 /// # Arguments
 /// * `data` - Complete handshake message (including type + length header)
 ///
 /// # Returns
-/// * `Ok(ServerHello)` - Parsed ServerHello data
+/// * `Ok(ServerHello)` - Parsed `ServerHello` data
 /// * `Err` - If parsing fails
 ///
 /// # Example
@@ -150,7 +150,7 @@ pub fn parse_server_hello(data: &[u8]) -> Result<ServerHello> {
     })
 }
 
-/// Extract server's public key from key_share extension
+/// Extract server's public key from `key_share` extension
 ///
 /// RFC 8446 Section 4.2.8: Key Share Extension
 fn extract_key_share(extensions_data: &[u8]) -> Result<Vec<u8>> {

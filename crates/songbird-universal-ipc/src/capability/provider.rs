@@ -90,13 +90,13 @@ impl Provider {
     }
 
     /// Update health status
-    pub fn update_health(&mut self, status: HealthStatus) {
+    pub const fn update_health(&mut self, status: HealthStatus) {
         self.metadata.health = status;
     }
 
     /// Check if provider is usable (healthy or degraded)
     #[must_use]
-    pub fn is_usable(&self) -> bool {
+    pub const fn is_usable(&self) -> bool {
         matches!(
             self.metadata.health,
             HealthStatus::Healthy | HealthStatus::Degraded | HealthStatus::Unknown

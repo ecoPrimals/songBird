@@ -99,6 +99,7 @@ impl ReadinessSignal {
                 *s = true;
                 notify.notify_waiters();
                 debug!("Readiness signaled");
+                drop(s);
             }
         });
     }
@@ -139,8 +140,7 @@ impl ReadinessSignal {
 
     /// Reset the signal (for reuse in tests)
     pub async fn reset(&self) {
-        let mut signaled = self.signaled.write().await;
-        *signaled = false;
+        *self.signaled.write().await = false;
         debug!("Readiness signal reset");
     }
 }
@@ -376,7 +376,7 @@ pub struct RetryPolicy {
 impl RetryPolicy {
     /// Create a new retry policy
     #[must_use]
-    pub fn new(
+    pub const fn new(
         max_attempts: usize,
         initial_delay: Duration,
         max_delay: Duration,

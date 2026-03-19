@@ -9,8 +9,8 @@
 //! ## Allowed Operations
 //!
 //! - `discovery` - Capability discovery
-//! - `coordination/*` - BirdSong coordination
-//! - `birdsong/*` - BirdSong protocol
+//! - `coordination/*` - `BirdSong` coordination
+//! - `birdsong/*` - `BirdSong` protocol
 //! - `health` - Health checks
 //! - `capabilities` - Capability queries
 //!
@@ -32,7 +32,7 @@ use tracing::{debug, warn};
 
 /// Limited connection for same-family peers (Level 1)
 ///
-/// Allows BirdSong coordination only, no data access or full federation.
+/// Allows `BirdSong` coordination only, no data access or full federation.
 /// **Pure Rust**: Uses Unix socket RPC for peer communication.
 pub struct LimitedConnection {
     peer_id: String,
@@ -72,10 +72,10 @@ impl LimitedConnection {
         // Convert endpoint to Unix socket path
         let socket_path = std::env::var(format!("{}_SOCKET_PATH", peer_id.to_uppercase()))
             .or_else(|_| std::env::var("PEER_SOCKET_PATH"))
-            .map_or_else(|_| PathBuf::from(format!("/tmp/{}.sock", peer_id)), PathBuf::from);
+            .map_or_else(|_| PathBuf::from(format!("/tmp/{peer_id}.sock")), PathBuf::from);
 
         let rpc_client = UnixRpcClient::new(&socket_path)
-            .context(format!("Failed to create RPC client for peer {}", peer_id))?;
+            .context(format!("Failed to create RPC client for peer {peer_id}"))?;
 
         Ok(Self {
             peer_id,

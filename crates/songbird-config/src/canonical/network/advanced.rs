@@ -259,7 +259,7 @@ pub struct TURNRelay {
 impl TURNRelay {
     /// Create a new TURN relay configuration
     #[must_use]
-    pub fn new(host: String, port: u16, username: String, password: String) -> Self {
+    pub const fn new(host: String, port: u16, username: String, password: String) -> Self {
         Self {
             host,
             port,
@@ -271,7 +271,7 @@ impl TURNRelay {
 
     /// Check if the TURN relay configuration is expired (disabled)
     #[must_use]
-    pub fn is_expired(&self) -> bool {
+    pub const fn is_expired(&self) -> bool {
         !self.enabled
     }
 }
@@ -288,7 +288,7 @@ pub struct UPnPDevice {
 impl UPnPDevice {
     /// Create a new `UPnP` device configuration
     #[must_use]
-    pub fn new(device_id: String, friendly_name: String, device_type: String) -> Self {
+    pub const fn new(device_id: String, friendly_name: String, device_type: String) -> Self {
         Self {
             device_id,
             friendly_name,

@@ -79,7 +79,7 @@ impl std::fmt::Display for LoadBalancingStrategy {
 impl LoadBalancingStrategy {
     /// Check if this strategy requires weights
     #[must_use]
-    pub fn requires_weights(&self) -> bool {
+    pub const fn requires_weights(&self) -> bool {
         matches!(
             self,
             Self::WeightedRoundRobin { .. }
@@ -90,13 +90,13 @@ impl LoadBalancingStrategy {
 
     /// Check if this strategy supports session affinity
     #[must_use]
-    pub fn supports_affinity(&self) -> bool {
+    pub const fn supports_affinity(&self) -> bool {
         matches!(self, Self::ConsistentHashing | Self::IpHash)
     }
 
     /// Check if this strategy adapts to performance metrics
     #[must_use]
-    pub fn is_adaptive(&self) -> bool {
+    pub const fn is_adaptive(&self) -> bool {
         matches!(self, Self::ResponseTime | Self::ResourceBased | Self::Adaptive)
     }
 }

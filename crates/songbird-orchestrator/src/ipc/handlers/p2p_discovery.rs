@@ -28,9 +28,8 @@ pub async fn discover_by_family(
 ) -> Result<DiscoverByFamilyResponse, JsonRpcError> {
     info!("🔍 P2P Discovery API: discover_by_family");
 
-    let request: DiscoverByFamilyRequest = serde_json::from_value(params).map_err(|e| {
-        JsonRpcError::custom(-32602, format!("Failed to parse params: {}", e), None)
-    })?;
+    let request: DiscoverByFamilyRequest = serde_json::from_value(params)
+        .map_err(|e| JsonRpcError::custom(-32602, format!("Failed to parse params: {e}"), None))?;
 
     if let Some(listener) = &handlers.discovery_listener {
         // Get all discovered peers
@@ -103,9 +102,8 @@ pub async fn create_genetic_tunnel(
 ) -> Result<CreateGeneticTunnelResponse, JsonRpcError> {
     info!("🔗 P2P Discovery API: create_genetic_tunnel");
 
-    let request: CreateGeneticTunnelRequest = serde_json::from_value(params).map_err(|e| {
-        JsonRpcError::custom(-32602, format!("Failed to parse params: {}", e), None)
-    })?;
+    let request: CreateGeneticTunnelRequest = serde_json::from_value(params)
+        .map_err(|e| JsonRpcError::custom(-32602, format!("Failed to parse params: {e}"), None))?;
 
     // Get peer endpoint from request or fail
     let peer_endpoint = match &request.peer_endpoint {
@@ -188,9 +186,8 @@ pub async fn announce_capabilities(
 ) -> Result<AnnounceCapabilitiesResponse, JsonRpcError> {
     info!("📢 P2P Discovery API: announce_capabilities");
 
-    let request: AnnounceCapabilitiesRequest = serde_json::from_value(params).map_err(|e| {
-        JsonRpcError::custom(-32602, format!("Failed to parse params: {}", e), None)
-    })?;
+    let request: AnnounceCapabilitiesRequest = serde_json::from_value(params)
+        .map_err(|e| JsonRpcError::custom(-32602, format!("Failed to parse params: {e}"), None))?;
 
     // NOTE: Capability announcement requires broadcaster restart to take effect
     // The broadcaster is created at startup with initial capabilities.
@@ -218,7 +215,7 @@ pub async fn announce_capabilities(
 // Pure JSON Adapters (for pure Rust Unix socket server v3.22.0)
 // ============================================================================
 
-/// P2P Discovery: discover_by_family (pure JSON adapter)
+/// P2P Discovery: `discover_by_family` (pure JSON adapter)
 pub async fn discover_by_family_json(
     handlers: &IpcHandlers,
     params: Option<serde_json::Value>,
@@ -279,7 +276,7 @@ pub async fn discover_by_family_json(
     }
 }
 
-/// P2P Discovery: create_genetic_tunnel (pure JSON adapter)
+/// P2P Discovery: `create_genetic_tunnel` (pure JSON adapter)
 pub async fn create_genetic_tunnel_json(
     handlers: &IpcHandlers,
     params: Option<serde_json::Value>,
@@ -338,7 +335,7 @@ pub async fn create_genetic_tunnel_json(
         },
         Err(e) => CreateGeneticTunnelResponse {
             tunnel_id: String::new(),
-            status: format!("failed: {}", e),
+            status: format!("failed: {e}"),
             local_endpoint: None,
             peer_endpoint: request.peer_endpoint,
             encryption: None,
@@ -349,7 +346,7 @@ pub async fn create_genetic_tunnel_json(
     serde_json::to_value(response).map_err(|e| JsonRpcError::internal_error(e.to_string()))
 }
 
-/// P2P Discovery: announce_capabilities (pure JSON adapter)
+/// P2P Discovery: `announce_capabilities` (pure JSON adapter)
 pub async fn announce_capabilities_json(
     _handlers: &IpcHandlers,
     params: Option<serde_json::Value>,

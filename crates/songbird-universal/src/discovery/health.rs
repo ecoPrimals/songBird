@@ -19,13 +19,18 @@ pub struct HealthChecker {
 
 impl HealthChecker {
     /// Create a new health checker
-    pub fn new(check_timeout: Duration) -> Self {
+    #[must_use]
+    pub const fn new(check_timeout: Duration) -> Self {
         Self {
             timeout: check_timeout,
         }
     }
 
     /// Check health of a discovered primal
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the primal is unreachable or returns invalid responses.
     pub async fn check_health(
         &self,
         primal: &mut DiscoveredPrimal,
@@ -34,11 +39,11 @@ impl HealthChecker {
 
         // Create client on-demand
         let client = songbird_http_client::IpcHttpClient::new().await.map_err(|e| {
-            DiscoveryError::NetworkError(format!("Failed to create HTTP client: {}", e))
+            DiscoveryError::NetworkError(format!("Failed to create HTTP client: {e}"))
         })?;
 
         for health_path in HEALTH_PATHS {
-            let url = format!("{}{}", base_url, health_path);
+            let url = format!("{base_url}{health_path}");
 
             // Pass the future (not awaited) to timeout, then await the whole thing
             match timeout(self.timeout, client.get(&url)).await {

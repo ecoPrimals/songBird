@@ -1,7 +1,7 @@
 //! Full Trust BTSP Connection (Trust Level 3 via Encrypted Tunnel)
 //!
 //! For peers with maximum trust (human entropy + genetic family).
-//! Uses BTSP (BirdSong Transport Protocol) for port-free, encrypted P2P communication.
+//! Uses BTSP (`BirdSong` Transport Protocol) for port-free, encrypted P2P communication.
 //!
 //! ## Philosophy
 //!
@@ -60,7 +60,7 @@ impl FullTrustBtspConnection {
     /// Create a new BTSP full trust connection
     ///
     /// Establishes encrypted tunnel to peer via security provider.
-    /// Uses BirdSong genetic lineage for NAT traversal if needed.
+    /// Uses `BirdSong` genetic lineage for NAT traversal if needed.
     ///
     /// # Arguments
     ///
@@ -90,8 +90,8 @@ impl FullTrustBtspConnection {
         // Create peer endpoint from peer_id and tags
         let peer_endpoint = crate::btsp_client::PeerEndpoint {
             id: peer_id.clone(),
-            endpoint: format!("peer://{}", peer_id), // Will be resolved via BirdSong/lineage
-            public_key: None,                        // Will be exchanged during handshake
+            endpoint: format!("peer://{peer_id}"), // Will be resolved via BirdSong/lineage
+            public_key: None,                      // Will be exchanged during handshake
             capabilities: peer_tags.clone(),
         };
 
@@ -99,7 +99,7 @@ impl FullTrustBtspConnection {
         let tunnel = btsp_client
             .establish_tunnel(peer_endpoint)
             .await
-            .context(format!("Failed to establish BTSP tunnel to peer '{}'", peer_id))?;
+            .context(format!("Failed to establish BTSP tunnel to peer '{peer_id}'"))?;
 
         info!("✅ BTSP tunnel established: {} to peer {}", tunnel.id, tunnel.peer_id);
 
@@ -135,6 +135,7 @@ impl FullTrustBtspConnection {
     }
 
     /// Get connection uptime
+    #[must_use]
     pub fn uptime(&self) -> std::time::Duration {
         SystemTime::now().duration_since(self.established_at).unwrap_or_default()
     }

@@ -2,7 +2,7 @@
 //!
 //! ## Evolution
 //!
-//! **v3.22.0**: Evolved from jsonrpsee to pure Rust (BearDog pattern)
+//! **v3.22.0**: Evolved from jsonrpsee to pure Rust (`BearDog` pattern)
 //! **v4.9.0**: Refactored into domain-driven modules
 //!
 //! ## Module Structure

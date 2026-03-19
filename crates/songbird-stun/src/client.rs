@@ -22,6 +22,7 @@ pub struct StunClient {
 
 impl StunClient {
     /// Create a new STUN client
+    #[must_use]
     pub fn new() -> Self {
         // ✅ DEEP DEBT EVOLUTION (Feb 3, 2026): Use TimeoutConfig
         // Replaces hardcoded Duration::from_secs(5) with configurable timeout
@@ -33,7 +34,8 @@ impl StunClient {
     }
 
     /// Create STUN client with custom timeout
-    pub fn with_timeout(timeout: Duration) -> Self {
+    #[must_use]
+    pub const fn with_timeout(timeout: Duration) -> Self {
         Self {
             timeout,
         }
@@ -49,6 +51,10 @@ impl StunClient {
     ///
     /// Public IP address and port as seen by the STUN server.
     ///
+    /// # Errors
+    ///
+    /// Returns an error if the STUN server is unreachable or returns invalid response.
+    ///
     /// # Privacy Note
     ///
     /// STUN servers can observe your public IP/port and connection timing.
@@ -59,11 +65,11 @@ impl StunClient {
         // Resolve STUN server address - prefer IPv4 for broader NAT compatibility
         let all_addrs: Vec<SocketAddr> = tokio::net::lookup_host(stun_server)
             .await
-            .map_err(|e| StunError::Network(format!("Failed to resolve STUN server: {}", e)))?
+            .map_err(|e| StunError::Network(format!("Failed to resolve STUN server: {e}")))?
             .collect();
 
         if all_addrs.is_empty() {
-            return Err(StunError::Network(format!("No addresses found for: {}", stun_server)));
+            return Err(StunError::Network(format!("No addresses found for: {stun_server}")));
         }
 
         // Prefer IPv4 addresses for better NAT compatibility
@@ -73,7 +79,7 @@ impl StunClient {
             .or_else(|| all_addrs.first())
             .copied()
             .ok_or_else(|| {
-                StunError::Network(format!("No usable addresses found for: {}", stun_server))
+                StunError::Network(format!("No usable addresses found for: {stun_server}"))
             })?;
 
         debug!("  Resolved STUN server: {} (from {} candidates)", server_addr, all_addrs.len());
@@ -87,7 +93,7 @@ impl StunClient {
 
         let local_socket = UdpSocket::bind(bind_addr)
             .await
-            .map_err(|e| StunError::Network(format!("Failed to bind UDP socket: {}", e)))?;
+            .map_err(|e| StunError::Network(format!("Failed to bind UDP socket: {e}")))?;
 
         debug!("  Local socket bound: {}", local_socket.local_addr()?);
 
@@ -101,7 +107,7 @@ impl StunClient {
         local_socket
             .send_to(&request_bytes, server_addr)
             .await
-            .map_err(|e| StunError::Network(format!("Failed to send STUN request: {}", e)))?;
+            .map_err(|e| StunError::Network(format!("Failed to send STUN request: {e}")))?;
 
         // Receive response with timeout
         let mut buf = vec![0u8; 2048];
@@ -109,7 +115,7 @@ impl StunClient {
         let (recv_len, recv_addr) = timeout(self.timeout, local_socket.recv_from(&mut buf))
             .await
             .map_err(|_| StunError::Timeout(self.timeout))?
-            .map_err(|e| StunError::Network(format!("Failed to receive STUN response: {}", e)))?;
+            .map_err(|e| StunError::Network(format!("Failed to receive STUN response: {e}")))?;
 
         debug!("  Received STUN response ({} bytes from {})", recv_len, recv_addr);
 
@@ -172,6 +178,10 @@ impl StunClient {
     /// # Ok(())
     /// # }
     /// ```
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if all STUN servers fail or timeout.
     pub async fn discover_public_address_racing(
         &self,
         stun_servers: &[&str],
@@ -247,16 +257,19 @@ impl StunClient {
         }
 
         // All tasks failed
-        let error_msg = if let Some(e) = last_error {
-            format!("All {} STUN servers failed. Last error: {}", stun_servers.len(), e)
-        } else {
-            format!("All {} STUN servers failed with unknown errors", stun_servers.len())
-        };
+        let error_msg = last_error.map_or_else(
+            || format!("All {} STUN servers failed with unknown errors", stun_servers.len()),
+            |e| format!("All {} STUN servers failed. Last error: {}", stun_servers.len(), e),
+        );
 
         Err(StunError::AllServersFailed(error_msg))
     }
 
     /// Discover public endpoint with NAT type detection
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if STUN discovery fails.
     ///
     /// # Arguments
     ///
@@ -295,6 +308,10 @@ impl StunClient {
     ///
     /// Attempts all servers in parallel for fastest response.
     /// Useful when server availability is uncertain.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if no STUN servers provided or all fail.
     pub async fn discover_public_address_parallel(
         &self,
         stun_servers: &[String],
@@ -312,7 +329,7 @@ impl StunClient {
             let timeout = self.timeout;
 
             let handle = tokio::spawn(async move {
-                let client = StunClient::with_timeout(timeout);
+                let client = Self::with_timeout(timeout);
                 client.discover_public_address(&server).await
             });
 
@@ -320,8 +337,7 @@ impl StunClient {
         }
 
         // Wait for first success
-        use futures::future::select_all;
-        let (result, index, _remaining) = select_all(handles).await;
+        let (result, index, _remaining) = futures::future::select_all(handles).await;
 
         match result {
             Ok(Ok(addr)) => {
@@ -332,7 +348,7 @@ impl StunClient {
                 warn!("All STUN servers failed");
                 Err(e)
             }
-            Err(e) => Err(StunError::Network(format!("Task join error: {}", e))),
+            Err(e) => Err(StunError::Network(format!("Task join error: {e}"))),
         }
     }
 
@@ -356,6 +372,14 @@ impl StunClient {
     ///
     /// Each probe reveals timing information to the STUN server.
     /// Use a self-hosted STUN server for sovereign operation.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the STUN server is unreachable.
+    ///
+    /// # Panics
+    ///
+    /// Panics if `ports` is empty when computing the last port (internal logic error).
     pub async fn probe_port_pattern(
         &self,
         stun_server: &str,
@@ -368,7 +392,7 @@ impl StunClient {
         // Resolve STUN server address once
         let all_addrs: Vec<SocketAddr> = tokio::net::lookup_host(stun_server)
             .await
-            .map_err(|e| StunError::Network(format!("Failed to resolve STUN server: {}", e)))?
+            .map_err(|e| StunError::Network(format!("Failed to resolve STUN server: {e}")))?
             .collect();
 
         let server_addr = all_addrs
@@ -376,9 +400,7 @@ impl StunClient {
             .find(|a| a.is_ipv4())
             .or_else(|| all_addrs.first())
             .copied()
-            .ok_or_else(|| {
-                StunError::Network(format!("No usable addresses for: {}", stun_server))
-            })?;
+            .ok_or_else(|| StunError::Network(format!("No usable addresses for: {stun_server}")))?;
 
         let mut ports = Vec::with_capacity(probes);
 
@@ -391,15 +413,16 @@ impl StunClient {
             };
 
             let socket = UdpSocket::bind(bind_addr).await.map_err(|e| {
-                StunError::Network(format!("Failed to bind UDP socket for probe {}: {}", i, e))
+                StunError::Network(format!("Failed to bind UDP socket for probe {i}: {e}"))
             })?;
 
             let request = StunMessage::new_binding_request();
             let request_bytes = request.encode();
 
-            socket.send_to(&request_bytes, server_addr).await.map_err(|e| {
-                StunError::Network(format!("Failed to send STUN probe {}: {}", i, e))
-            })?;
+            socket
+                .send_to(&request_bytes, server_addr)
+                .await
+                .map_err(|e| StunError::Network(format!("Failed to send STUN probe {i}: {e}")))?;
 
             let mut buf = vec![0u8; 2048];
             match timeout(self.timeout, socket.recv_from(&mut buf)).await {
@@ -438,11 +461,12 @@ impl StunClient {
         // Check if all deltas are the same (sequential pattern)
         let first_delta = deltas[0];
         let consistent_count = deltas.iter().filter(|d| **d == first_delta).count();
-        let consistency = consistent_count as f64 / deltas.len() as f64;
+        let consistency = f64::from(u32::try_from(consistent_count).unwrap_or(0))
+            / f64::from(u32::try_from(deltas.len()).unwrap_or(1));
 
         // Sequential if: consistent deltas AND step is small (≤100)
         if consistency >= 0.7 && first_delta.unsigned_abs() <= 100 {
-            let last_port = *ports.last().expect("ports is non-empty");
+            let last_port = *ports.last().expect("ports is non-empty (len >= 2)");
             let predicted = i32::from(last_port) + first_delta;
             let predicted_next = u16::try_from(predicted.clamp(1, 65535)).unwrap_or(last_port);
 

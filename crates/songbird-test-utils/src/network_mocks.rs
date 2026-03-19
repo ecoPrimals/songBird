@@ -49,8 +49,7 @@ impl NetworkMockManager {
         endpoint: &str,
         response: MockResponse,
     ) -> SongbirdResult<()> {
-        let mut responses = self.responses.write().await;
-        responses.insert(endpoint.to_string(), response);
+        self.responses.write().await.insert(endpoint.to_string(), response);
         Ok(())
     }
 
@@ -96,11 +95,8 @@ impl NetworkMockManager {
     /// # Errors
     /// Returns an error if the reset operation fails.
     pub async fn reset(&self) -> SongbirdResult<()> {
-        let mut responses = self.responses.write().await;
-        let mut counts = self.request_counts.write().await;
-
-        responses.clear();
-        counts.clear();
+        self.responses.write().await.clear();
+        self.request_counts.write().await.clear();
         Ok(())
     }
 
@@ -109,8 +105,7 @@ impl NetworkMockManager {
     /// # Errors
     /// Returns an error if the clear operation fails.
     pub async fn clear_counts(&self) -> SongbirdResult<()> {
-        let mut counts = self.request_counts.write().await;
-        counts.clear();
+        self.request_counts.write().await.clear();
         Ok(())
     }
 }

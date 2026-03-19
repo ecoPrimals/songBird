@@ -31,7 +31,7 @@ pub struct SecurityMetrics {
 impl SecurityMetrics {
     /// Check if security is under attack
     #[must_use]
-    pub fn is_under_attack(&self) -> bool {
+    pub const fn is_under_attack(&self) -> bool {
         self.failed_auth_attempts > 100 || self.blocked_ips > 50
     }
 
@@ -354,7 +354,7 @@ impl SecurityAdapter {
 
     /// Set custom request timeout
     #[must_use]
-    pub fn with_timeout(mut self, timeout: Duration) -> Self {
+    pub const fn with_timeout(mut self, timeout: Duration) -> Self {
         self.timeout = timeout;
         self
     }
@@ -623,7 +623,7 @@ impl SecurityAdapter {
                 tokio::time::timeout(self.timeout, client.call_method(method, Some(params)))
                     .await
                     .map_err(|_| {
-                    SongbirdError::network(format!("Timeout calling method '{}'", method))
+                    SongbirdError::network(format!("Timeout calling method '{method}'"))
                 })?
             }
             SecurityProtocol::JsonRpc(client) => {
@@ -631,7 +631,7 @@ impl SecurityAdapter {
                 tokio::time::timeout(self.timeout, client.call_method(method, Some(params)))
                     .await
                     .map_err(|_| {
-                    SongbirdError::network(format!("Timeout calling method '{}'", method))
+                    SongbirdError::network(format!("Timeout calling method '{method}'"))
                 })?
             }
             SecurityProtocol::Http(client) => {
@@ -641,26 +641,22 @@ impl SecurityAdapter {
                 let response = tokio::time::timeout(self.timeout, client.post(&url, params))
                     .await
                     .map_err(|_| {
-                        SongbirdError::network(format!("Timeout calling method '{}'", method))
+                        SongbirdError::network(format!("Timeout calling method '{method}'"))
                     })?
                     .map_err(|e| {
-                        SongbirdError::network(format!(
-                            "HTTP request failed for '{}': {}",
-                            method, e
-                        ))
+                        SongbirdError::network(format!("HTTP request failed for '{method}': {e}"))
                     })?;
 
                 if !(200..300).contains(&response.status) {
                     return Err(SongbirdError::network(format!(
-                        "Method '{}' failed: {}",
-                        method, response.status
+                        "Method '{method}' failed: {status}",
+                        status = response.status
                     )));
                 }
 
                 serde_json::from_value(response.body).map_err(|e| {
                     SongbirdError::serialization(format!(
-                        "Failed to parse response for '{}': {}",
-                        method, e
+                        "Failed to parse response for '{method}': {e}"
                     ))
                 })
             }

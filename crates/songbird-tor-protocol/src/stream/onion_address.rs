@@ -25,7 +25,7 @@ impl OnionAddress {
     /// * `address` - Address string (with or without .onion suffix)
     ///
     /// # Returns
-    /// * Parsed OnionAddress
+    /// * Parsed `OnionAddress`
     ///
     /// # Format
     /// v3: 56 characters base32 encoded (280 bits)
@@ -75,8 +75,7 @@ impl OnionAddress {
         // Verify version
         if version != 0x03 {
             return Err(Error::Protocol(format!(
-                "Unsupported onion address version: 0x{:02x}",
-                version
+                "Unsupported onion address version: 0x{version:02x}"
             )));
         }
 
@@ -105,11 +104,13 @@ impl OnionAddress {
     }
 
     /// Get full address with .onion suffix
+    #[must_use]
     pub fn to_string_with_suffix(&self) -> String {
         format!("{}.onion", self.address)
     }
 
     /// Get address without suffix
+    #[must_use]
     pub fn as_str(&self) -> &str {
         &self.address
     }

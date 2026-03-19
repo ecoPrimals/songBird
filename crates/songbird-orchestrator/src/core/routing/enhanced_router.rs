@@ -40,6 +40,7 @@ pub struct EnhancedCapabilityRouter {
 
 impl EnhancedCapabilityRouter {
     /// Create a new enhanced router
+    #[must_use]
     pub fn new(
         service_registry: Arc<ServiceRegistry>,
         federation_state: Arc<FederationState>,
@@ -55,6 +56,7 @@ impl EnhancedCapabilityRouter {
     }
 
     /// Create with all registries (for backward compatibility)
+    #[must_use]
     pub fn with_all_registries(
         service_registry: Arc<ServiceRegistry>,
         federation_state: Arc<FederationState>,
@@ -217,7 +219,7 @@ impl EnhancedCapabilityRouter {
             }
             Err(e) => Err(SongbirdError::service(
                 capability_name,
-                format!("No provider found for capability: {}", e),
+                format!("No provider found for capability: {e}"),
             )),
         }
     }
@@ -397,7 +399,7 @@ impl EnhancedCapabilityRouter {
         let crypto_socket =
             crate::primal_discovery::discover_crypto_provider().await.map_err(|e| {
                 SongbirdError::Network {
-                    message: format!("Failed to discover crypto provider: {}", e),
+                    message: format!("Failed to discover crypto provider: {e}"),
                     interface: None,
                     suggestion: Some("Check BearDog availability".to_string()),
                 }
@@ -412,7 +414,7 @@ impl EnhancedCapabilityRouter {
 
         let response = tokio::time::timeout(
             Duration::from_secs(300),
-            client.post(&format!("{}/execute", endpoint), task_json),
+            client.post(&format!("{endpoint}/execute"), task_json),
         )
         .await
         .map_err(|_| SongbirdError::Network {
@@ -421,7 +423,7 @@ impl EnhancedCapabilityRouter {
             suggestion: Some("Check service health and network connectivity".to_string()),
         })?
         .map_err(|e| SongbirdError::Network {
-            message: format!("Failed to send task to service: {}", e),
+            message: format!("Failed to send task to service: {e}"),
             interface: Some(endpoint.to_string()),
             suggestion: Some("Check service health and network connectivity".to_string()),
         })?;
@@ -437,7 +439,7 @@ impl EnhancedCapabilityRouter {
 
         let result = serde_json::from_value(response.body).map_err(|e| SongbirdError::Service {
             service: service_id.to_string(),
-            message: format!("Failed to parse service response: {}", e),
+            message: format!("Failed to parse service response: {e}"),
             suggested_alternatives: vec![],
             recovery_actions: vec![],
         })?;

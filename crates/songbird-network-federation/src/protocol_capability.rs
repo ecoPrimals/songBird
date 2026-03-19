@@ -30,7 +30,7 @@ pub enum Protocol {
 impl Protocol {
     /// Get protocol name
     #[must_use]
-    pub fn name(&self) -> &'static str {
+    pub const fn name(&self) -> &'static str {
         match self {
             Self::Http => "HTTP",
             Self::Https => "HTTPS",
@@ -44,7 +44,7 @@ impl Protocol {
 
     /// Get protocol performance tier (higher is better)
     #[must_use]
-    pub fn performance_tier(&self) -> u8 {
+    pub const fn performance_tier(&self) -> u8 {
         match self {
             Self::Tarpc => 5, // Highest performance
             Self::Btsp => 4,  // High performance + security
@@ -58,7 +58,7 @@ impl Protocol {
 
     /// Check if protocol is encrypted
     #[must_use]
-    pub fn is_encrypted(&self) -> bool {
+    pub const fn is_encrypted(&self) -> bool {
         matches!(
             self,
             Self::Https | Self::Btsp | Self::WebSocketSecure | Self::Tarpc // tarpc can use TLS
@@ -67,7 +67,7 @@ impl Protocol {
 
     /// Check if protocol is recommended for production
     #[must_use]
-    pub fn is_production_ready(&self) -> bool {
+    pub const fn is_production_ready(&self) -> bool {
         !matches!(self, Self::Http | Self::WebSocket)
     }
 }
@@ -224,14 +224,11 @@ impl ProtocolCapabilityManager {
 
     /// Find best mutual protocol with peer
     pub async fn negotiate_protocol(&self, peer_id: &str) -> Option<Protocol> {
-        let local = self.local_capabilities.read().await;
-        let peers = self.peer_capabilities.read().await;
-
-        let peer = peers.get(peer_id)?;
+        let peer = self.peer_capabilities.read().await.get(peer_id).cloned()?;
+        let local_protocols = self.local_capabilities.read().await.protocols.clone();
 
         // Find protocols supported by both
-        let mutual_protocols: Vec<_> = local
-            .protocols
+        let mutual_protocols: Vec<_> = local_protocols
             .iter()
             .filter(|lp| {
                 lp.status == ProtocolStatus::Active

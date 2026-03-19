@@ -33,7 +33,7 @@ pub struct ResponseError {
 impl<T> SongbirdResult<T> {
     /// Create a successful response
     #[must_use]
-    pub fn success(data: T) -> Self {
+    pub const fn success(data: T) -> Self {
         Self {
             success: true,
             data: Some(data),
@@ -139,7 +139,7 @@ impl<T> SongbirdResult<T> {
 impl<T> AIFirstResponse<T> {
     /// Create a new AI-First response
     #[must_use]
-    pub fn new(data: T) -> Self {
+    pub const fn new(data: T) -> Self {
         Self {
             data,
             context: None,
@@ -155,7 +155,7 @@ impl<T> AIFirstResponse<T> {
     }
 
     /// Add confidence score
-    pub fn with_confidence(&mut self, confidence: f64) -> &mut Self {
+    pub const fn with_confidence(&mut self, confidence: f64) -> &mut Self {
         self.confidence = Some(confidence.clamp(0.0, 1.0));
         self
     }
@@ -170,7 +170,7 @@ impl<T> AIFirstResponse<T> {
 impl<T> PaginatedResponse<T> {
     /// Create a new paginated response
     #[must_use]
-    pub fn new(items: Vec<T>, page: usize, per_page: usize, total: usize) -> Self {
+    pub const fn new(items: Vec<T>, page: usize, per_page: usize, total: usize) -> Self {
         let total_pages = total.div_ceil(per_page);
         let has_more = page + 1 < total_pages;
 
@@ -232,7 +232,7 @@ impl SongbirdResult<String> {
 impl SongbirdResult<bool> {
     /// Create a boolean success response
     #[must_use]
-    pub fn boolean(value: bool) -> Self {
+    pub const fn boolean(value: bool) -> Self {
         Self::success(value)
     }
 }

@@ -1,8 +1,11 @@
 //! Codec implementations for TLS messages
 
-use super::{bytes::*, Decode, Encode};
+use super::bytes::{
+    read_u16, read_u8, read_vec16, read_vec8, write_u16, write_u8, write_vec16, write_vec8,
+};
+use super::{Decode, Encode};
 use crate::error::{Result, TlsError};
-use crate::messages::*;
+use crate::messages::{extensions, ClientHello, Extension, ServerHello};
 
 // ============================================================================
 // Extension Encoding/Decoding
@@ -15,21 +18,25 @@ impl Encode for Extension {
 
         // Write extension data (length-prefixed u16)
         let data_buf = match self {
-            Extension::SupportedVersions(versions) => {
+            Self::SupportedVersions(versions) => {
                 let mut data = Vec::new();
-                write_u8(&mut data, (versions.len() * 2) as u8); // Length in bytes
+                let len_bytes = versions.len() * 2;
+                let len_u8 = u8::try_from(len_bytes).map_err(|_| {
+                    TlsError::InvalidParameter("SupportedVersions too long".to_string())
+                })?;
+                write_u8(&mut data, len_u8); // Length in bytes
                 for version in versions {
                     write_u16(&mut data, *version);
                 }
                 data
             }
-            Extension::KeyShare(key_data) => {
+            Self::KeyShare(key_data) => {
                 let mut data = Vec::new();
                 write_u16(&mut data, extensions::GROUP_X25519); // Named group
                 write_vec16(&mut data, key_data)?;
                 data
             }
-            Extension::ServerName(name) => {
+            Self::ServerName(name) => {
                 let mut data = Vec::new();
                 let name_bytes = name.as_bytes();
 
@@ -40,30 +47,42 @@ impl Encode for Extension {
                 // - Host name bytes
 
                 // Server name list length = type (1) + length (2) + name bytes
-                write_u16(&mut data, (name_bytes.len() + 3) as u16);
+                let list_len = name_bytes.len() + 3;
+                let list_len_u16 = u16::try_from(list_len).map_err(|_| {
+                    TlsError::InvalidParameter("Server name list too long".to_string())
+                })?;
+                write_u16(&mut data, list_len_u16);
                 write_u8(&mut data, 0x00); // Type: host_name
-                write_u16(&mut data, name_bytes.len() as u16);
+                let name_len_u16 = u16::try_from(name_bytes.len())
+                    .map_err(|_| TlsError::InvalidParameter("Server name too long".to_string()))?;
+                write_u16(&mut data, name_len_u16);
                 data.extend_from_slice(name_bytes);
 
                 data
             }
-            Extension::SignatureAlgorithms(algs) => {
+            Self::SignatureAlgorithms(algs) => {
                 let mut data = Vec::new();
-                write_u16(&mut data, (algs.len() * 2) as u16);
+                let algs_len = u16::try_from(algs.len() * 2).map_err(|_| {
+                    TlsError::InvalidParameter("SignatureAlgorithms too long".to_string())
+                })?;
+                write_u16(&mut data, algs_len);
                 for alg in algs {
                     write_u16(&mut data, *alg);
                 }
                 data
             }
-            Extension::SupportedGroups(groups) => {
+            Self::SupportedGroups(groups) => {
                 let mut data = Vec::new();
-                write_u16(&mut data, (groups.len() * 2) as u16);
+                let groups_len = u16::try_from(groups.len() * 2).map_err(|_| {
+                    TlsError::InvalidParameter("SupportedGroups too long".to_string())
+                })?;
+                write_u16(&mut data, groups_len);
                 for group in groups {
                     write_u16(&mut data, *group);
                 }
                 data
             }
-            Extension::Unknown {
+            Self::Unknown {
                 data,
                 ..
             } => data.clone(),
@@ -76,15 +95,15 @@ impl Encode for Extension {
     fn encoded_size(&self) -> usize {
         // Type (2) + length (2) + data
         4 + match self {
-            Extension::SupportedVersions(v) => 1 + v.len() * 2,
-            Extension::KeyShare(k) => 2 + 2 + k.len(),
-            Extension::ServerName(name) => {
+            Self::SupportedVersions(v) => 1 + v.len() * 2,
+            Self::KeyShare(k) => 2 + 2 + k.len(),
+            Self::ServerName(name) => {
                 // list_length (2) + type (1) + name_length (2) + name_bytes
                 2 + 1 + 2 + name.len()
             }
-            Extension::SignatureAlgorithms(a) => 2 + a.len() * 2,
-            Extension::SupportedGroups(g) => 2 + g.len() * 2,
-            Extension::Unknown {
+            Self::SignatureAlgorithms(a) => 2 + a.len() * 2,
+            Self::SupportedGroups(g) => 2 + g.len() * 2,
+            Self::Unknown {
                 data,
                 ..
             } => data.len(),
@@ -108,7 +127,9 @@ impl Encode for ClientHello {
         write_vec8(buf, &self.legacy_session_id)?;
 
         // Cipher suites (u16 length + u16 values)
-        write_u16(buf, (self.cipher_suites.len() * 2) as u16);
+        let cipher_len = u16::try_from(self.cipher_suites.len() * 2)
+            .map_err(|_| TlsError::InvalidParameter("Cipher suites list too long".to_string()))?;
+        write_u16(buf, cipher_len);
         for suite in &self.cipher_suites {
             write_u16(buf, *suite);
         }
@@ -132,7 +153,7 @@ impl Encode for ClientHello {
         1 + self.legacy_session_id.len() + // session_id
         2 + (self.cipher_suites.len() * 2) + // cipher_suites
         1 + self.legacy_compression_methods.len() + // compression
-        2 + self.extensions.iter().map(|e| e.encoded_size()).sum::<usize>() // extensions
+        2 + self.extensions.iter().map(Encode::encoded_size).sum::<usize>() // extensions
     }
 }
 
@@ -205,7 +226,7 @@ impl Decode for ClientHello {
         }
 
         Ok((
-            ClientHello {
+            Self {
                 legacy_version,
                 random,
                 legacy_session_id,
@@ -255,7 +276,7 @@ impl Encode for ServerHello {
         1 + self.legacy_session_id_echo.len() + // session_id_echo
         2 + // cipher_suite
         1 + // compression_method
-        2 + self.extensions.iter().map(|e| e.encoded_size()).sum::<usize>() // extensions
+        2 + self.extensions.iter().map(Encode::encoded_size).sum::<usize>() // extensions
     }
 }
 
@@ -314,7 +335,7 @@ impl Decode for ServerHello {
         }
 
         Ok((
-            ServerHello {
+            Self {
                 legacy_version,
                 random,
                 legacy_session_id_echo,

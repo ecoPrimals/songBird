@@ -68,14 +68,15 @@ impl UartTransport {
     /// - Invalid baud rate
     /// - Port configuration fails
     pub async fn new(port_name: impl Into<String>, baud_rate: u32) -> Result<Self> {
+        tokio::task::yield_now().await; // Yield for async context
         let port_name = port_name.into();
 
         info!("Opening UART port: {} at {} baud", port_name, baud_rate);
 
-        let port =
-            serialport::new(&port_name, baud_rate).timeout(UART_TIMEOUT).open().map_err(|e| {
-                TransportError::Uart(format!("Failed to open port {}: {}", port_name, e))
-            })?;
+        let port = serialport::new(&port_name, baud_rate)
+            .timeout(UART_TIMEOUT)
+            .open()
+            .map_err(|e| TransportError::Uart(format!("Failed to open port {port_name}: {e}")))?;
 
         info!("UART transport initialized: {}", port_name);
 
@@ -103,7 +104,7 @@ impl UartTransport {
     /// Returns error if port enumeration fails
     pub fn list_ports() -> Result<Vec<String>> {
         let ports = serialport::available_ports()
-            .map_err(|e| TransportError::Uart(format!("Failed to enumerate ports: {}", e)))?;
+            .map_err(|e| TransportError::Uart(format!("Failed to enumerate ports: {e}")))?;
 
         let port_names: Vec<String> = ports
             .into_iter()
@@ -120,31 +121,32 @@ impl UartTransport {
     }
 
     /// Write HCI packet with type indicator
-    async fn write_packet(&mut self, packet_type: u8, data: &[u8]) -> Result<()> {
+    async fn write_packet(&self, packet_type: u8, data: &[u8]) -> Result<()> {
         let mut port = self.port.lock().await;
 
         // Write packet type indicator
         port.write_all(&[packet_type])
-            .map_err(|e| TransportError::Uart(format!("Failed to write packet type: {}", e)))?;
+            .map_err(|e| TransportError::Uart(format!("Failed to write packet type: {e}")))?;
 
         // Write packet data
         port.write_all(data)
-            .map_err(|e| TransportError::Uart(format!("Failed to write packet data: {}", e)))?;
+            .map_err(|e| TransportError::Uart(format!("Failed to write packet data: {e}")))?;
 
-        port.flush().map_err(|e| TransportError::Uart(format!("Failed to flush: {}", e)))?;
+        port.flush().map_err(|e| TransportError::Uart(format!("Failed to flush: {e}")))?;
+        drop(port);
 
         debug!("Wrote UART packet: type=0x{:02x}, len={}", packet_type, data.len());
         Ok(())
     }
 
     /// Read HCI packet with type indicator
-    async fn read_packet(&mut self, expected_type: u8) -> Result<Vec<u8>> {
+    async fn read_packet(&self, expected_type: u8) -> Result<Vec<u8>> {
         let mut port = self.port.lock().await;
 
         // Read packet type
         let mut packet_type = [0u8; 1];
         port.read_exact(&mut packet_type)
-            .map_err(|e| TransportError::Uart(format!("Failed to read packet type: {}", e)))?;
+            .map_err(|e| TransportError::Uart(format!("Failed to read packet type: {e}")))?;
 
         if packet_type[0] != expected_type {
             return Err(TransportError::Communication(format!(
@@ -157,14 +159,15 @@ impl UartTransport {
         // Read packet length (HCI event: 2 bytes header + length byte)
         let mut header = [0u8; 2];
         port.read_exact(&mut header)
-            .map_err(|e| TransportError::Uart(format!("Failed to read header: {}", e)))?;
+            .map_err(|e| TransportError::Uart(format!("Failed to read header: {e}")))?;
 
         let length = header[1] as usize;
 
         // Read packet data
         let mut data = vec![0u8; length];
         port.read_exact(&mut data)
-            .map_err(|e| TransportError::Uart(format!("Failed to read data: {}", e)))?;
+            .map_err(|e| TransportError::Uart(format!("Failed to read data: {e}")))?;
+        drop(port);
 
         // Reconstruct full packet (header + data)
         let mut packet = Vec::with_capacity(2 + length);

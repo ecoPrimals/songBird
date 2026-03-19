@@ -54,7 +54,8 @@ pub struct RelayInfo {
 
 impl RelayInfo {
     /// Check if relay can be used as guard
-    pub fn is_guard(&self) -> bool {
+    #[must_use]
+    pub const fn is_guard(&self) -> bool {
         self.flags.contains(RelayFlags::GUARD)
             && self.flags.contains(RelayFlags::FAST)
             && self.flags.contains(RelayFlags::STABLE)
@@ -63,7 +64,8 @@ impl RelayInfo {
     }
 
     /// Check if relay can be used as middle
-    pub fn is_middle(&self) -> bool {
+    #[must_use]
+    pub const fn is_middle(&self) -> bool {
         self.flags.contains(RelayFlags::FAST)
             && self.flags.contains(RelayFlags::STABLE)
             && self.flags.contains(RelayFlags::VALID)
@@ -71,7 +73,8 @@ impl RelayInfo {
     }
 
     /// Check if relay is hidden service directory
-    pub fn is_hsdir(&self) -> bool {
+    #[must_use]
+    pub const fn is_hsdir(&self) -> bool {
         self.flags.contains(RelayFlags::HSDIR)
             && self.flags.contains(RelayFlags::VALID)
             && self.flags.contains(RelayFlags::RUNNING)

@@ -27,6 +27,7 @@ impl Capability {
     /// Create a Capability from a string description
     ///
     /// **Evolution**: Capability-based discovery without hardcoding
+    #[must_use]
     pub fn from_string(s: &str) -> Option<Self> {
         let capability_type = match s.to_lowercase().as_str() {
             "security" | "auth" | "authentication" | "encryption" => "security",
@@ -49,6 +50,7 @@ impl Capability {
     }
 
     /// Get the capability category
+    #[must_use]
     pub fn category(&self) -> &str {
         &self.capability_type
     }
@@ -91,15 +93,15 @@ pub struct ResourceMetrics {
 /// **Future**: Consider migrating to canonical nested structure in major version bump.
 #[derive(Debug, Clone)]
 pub struct DiscoveryConfig {
-    /// How often to refresh capabilities (aligns with service_discovery.discovery_interval_secs)
+    /// How often to refresh capabilities (aligns with `service_discovery.discovery_interval_secs`)
     pub refresh_interval: std::time::Duration,
-    /// Timeout for capability discovery requests (aligns with service_discovery.discovery_timeout_secs)
+    /// Timeout for capability discovery requests (aligns with `service_discovery.discovery_timeout_secs`)
     pub discovery_timeout: std::time::Duration,
-    /// Maximum number of concurrent discovery requests (aligns with service_discovery.max_concurrent_discoveries)
+    /// Maximum number of concurrent discovery requests (aligns with `service_discovery.max_concurrent_discoveries`)
     pub max_concurrent_discoveries: usize,
-    /// Whether to enable automatic discovery (aligns with canonical auto_discovery)
+    /// Whether to enable automatic discovery (aligns with canonical `auto_discovery`)
     pub auto_discovery: bool,
-    /// Whether to enable network-based discovery (aligns with network_discovery.enabled)
+    /// Whether to enable network-based discovery (aligns with `network_discovery.enabled`)
     pub enable_network_discovery: bool,
 }
 

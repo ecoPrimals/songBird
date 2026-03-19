@@ -17,19 +17,21 @@ pub enum Protocol {
 
 impl Protocol {
     /// Convert to string for SOAP/NAT-PMP
-    pub fn as_str(&self) -> &'static str {
+    #[must_use]
+    pub const fn as_str(&self) -> &'static str {
         match self {
-            Protocol::Tcp => "TCP",
-            Protocol::Udp => "UDP",
+            Self::Tcp => "TCP",
+            Self::Udp => "UDP",
         }
     }
 
     /// Parse from string
     #[allow(clippy::should_implement_trait)] // returns Option, not Result — intentionally different from FromStr
+    #[must_use]
     pub fn from_str(s: &str) -> Option<Self> {
         match s.to_uppercase().as_str() {
-            "TCP" => Some(Protocol::Tcp),
-            "UDP" => Some(Protocol::Udp),
+            "TCP" => Some(Self::Tcp),
+            "UDP" => Some(Self::Udp),
             _ => None,
         }
     }
@@ -59,6 +61,7 @@ pub struct PortMappingRequest {
 
 impl PortMappingRequest {
     /// Create a new port mapping request
+    #[must_use]
     pub fn new(
         external_port: u16,
         internal_port: u16,
@@ -70,19 +73,21 @@ impl PortMappingRequest {
             internal_port,
             internal_client,
             protocol,
-            description: format!("Songbird {} {}", protocol.as_str(), external_port),
+            description: format!("Songbird {} {external_port}", protocol.as_str()),
             lease_duration: crate::DEFAULT_MAPPING_TTL,
         }
     }
 
     /// Set description
+    #[must_use]
     pub fn with_description(mut self, description: String) -> Self {
         self.description = description;
         self
     }
 
     /// Set lease duration
-    pub fn with_lease_duration(mut self, seconds: u32) -> Self {
+    #[must_use]
+    pub const fn with_lease_duration(mut self, seconds: u32) -> Self {
         self.lease_duration = seconds;
         self
     }
@@ -121,6 +126,7 @@ pub struct PortMapping {
 
 impl PortMapping {
     /// Create from request
+    #[must_use]
     pub fn from_request(req: &PortMappingRequest) -> Self {
         Self {
             external_port: req.external_port,
@@ -136,41 +142,46 @@ impl PortMapping {
     }
 
     /// Set external IP
-    pub fn with_external_ip(mut self, ip: IpAddr) -> Self {
+    #[must_use]
+    pub const fn with_external_ip(mut self, ip: IpAddr) -> Self {
         self.external_ip = Some(ip);
         self
     }
 
     /// Time remaining before renewal needed (at half TTL)
+    #[must_use]
     pub fn time_until_renewal(&self) -> Duration {
-        let half_ttl = Duration::from_secs(self.lease_duration as u64 / 2);
+        let half_ttl = Duration::from_secs(u64::from(self.lease_duration) / 2);
         let elapsed = self.created_at.elapsed();
 
         if elapsed >= half_ttl {
             Duration::from_secs(0)
         } else {
-            half_ttl - elapsed
+            half_ttl.checked_sub(elapsed).unwrap_or_default()
         }
     }
 
     /// Time remaining before expiration
+    #[must_use]
     pub fn time_until_expiration(&self) -> Duration {
-        let ttl = Duration::from_secs(self.lease_duration as u64);
+        let ttl = Duration::from_secs(u64::from(self.lease_duration));
         let elapsed = self.created_at.elapsed();
 
         if elapsed >= ttl {
             Duration::from_secs(0)
         } else {
-            ttl - elapsed
+            ttl.checked_sub(elapsed).unwrap_or_default()
         }
     }
 
     /// Check if renewal is needed
+    #[must_use]
     pub fn needs_renewal(&self) -> bool {
         self.time_until_renewal().as_secs() == 0
     }
 
     /// Check if expired
+    #[must_use]
     pub fn is_expired(&self) -> bool {
         self.time_until_expiration().as_secs() == 0
     }

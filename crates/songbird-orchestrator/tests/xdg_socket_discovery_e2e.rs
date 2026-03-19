@@ -30,6 +30,7 @@ use std::path::PathBuf;
 use std::sync::Mutex;
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
 use tokio::net::UnixListener;
+use tokio::sync::oneshot;
 
 // Mutex to serialize tests that modify environment variables
 static ENV_MUTEX: Mutex<()> = Mutex::new(());
@@ -45,9 +46,15 @@ async fn create_mock_socket(path: &std::path::Path) -> UnixListener {
     UnixListener::bind(path).unwrap()
 }
 
-/// Helper to run mock JSON-RPC server
-async fn run_mock_jsonrpc_server(listener: UnixListener, response: &'static str) {
+/// Helper to run mock JSON-RPC server with readiness signal.
+/// Returns a receiver that resolves when the server is ready to accept connections.
+fn run_mock_jsonrpc_server(
+    listener: UnixListener,
+    response: &'static str,
+) -> oneshot::Receiver<()> {
+    let (ready_tx, ready_rx) = oneshot::channel();
     tokio::spawn(async move {
+        let _ = ready_tx.send(());
         loop {
             if let Ok((mut stream, _)) = listener.accept().await {
                 let mut reader = BufReader::new(&mut stream);
@@ -58,6 +65,7 @@ async fn run_mock_jsonrpc_server(listener: UnixListener, response: &'static str)
             }
         }
     });
+    ready_rx
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -258,11 +266,10 @@ async fn test_e2e_capability_registration_discovers_xdg_neural_api() {
     let neural_socket_path = biomeos_dir.join("neural-api.sock");
     let songbird_socket_path = biomeos_dir.join("songbird.sock");
 
-    // Start mock Neural API server
+    // Start mock Neural API server with readiness signal
     let listener = create_mock_socket(&neural_socket_path).await;
-    run_mock_jsonrpc_server(listener, r#"{"jsonrpc":"2.0","result":"ok","id":1}"#).await;
-
-    tokio::time::sleep(tokio::time::Duration::from_millis(50)).await;
+    let ready_rx = run_mock_jsonrpc_server(listener, r#"{"jsonrpc":"2.0","result":"ok","id":1}"#);
+    ready_rx.await.expect("Mock server failed to signal readiness");
 
     env::set_var("XDG_RUNTIME_DIR", temp_dir.to_str().unwrap());
     env::set_var("SONGBIRD_SOCKET_PATH", songbird_socket_path.to_str().unwrap());

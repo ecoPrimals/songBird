@@ -3,7 +3,7 @@
 //! Prevents timing-based side-channel attacks by:
 //! - Adding random delays
 //! - Padding operations to constant time
-//! - Using constant-time crypto (delegated to BearDog)
+//! - Using constant-time crypto (delegated to `BearDog`)
 
 use crate::error::Result;
 use rand::Rng;
@@ -26,7 +26,8 @@ pub struct TimingProtector {
 
 impl TimingProtector {
     /// Create new timing protector
-    pub fn new(target_duration: Duration, max_random_delay: Duration) -> Self {
+    #[must_use]
+    pub const fn new(target_duration: Duration, max_random_delay: Duration) -> Self {
         Self {
             target_duration,
             max_random_delay,
@@ -52,6 +53,10 @@ impl TimingProtector {
     /// Pad to constant time (after operation)
     ///
     /// Sleeps remaining time to reach target duration
+    ///
+    /// # Errors
+    ///
+    /// Does not return errors; always succeeds.
     pub async fn pad_to_constant_time(&self) -> Result<()> {
         if let Some(start) = self.start_time {
             let elapsed = start.elapsed();
@@ -74,6 +79,10 @@ impl TimingProtector {
     /// Full protected operation wrapper
     ///
     /// Applies random delay before + constant-time padding after
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the inner operation or timing padding fails.
     pub async fn protect<F, T>(&mut self, f: F) -> Result<T>
     where
         F: std::future::Future<Output = Result<T>>,

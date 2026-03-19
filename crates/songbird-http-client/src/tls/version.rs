@@ -41,24 +41,27 @@ pub enum TlsVersion {
 
 impl TlsVersion {
     /// Get the wire format bytes
-    pub fn to_bytes(self) -> [u8; 2] {
+    #[must_use]
+    pub const fn to_bytes(self) -> [u8; 2] {
         (self as u16).to_be_bytes()
     }
 
     /// Parse from wire format
-    pub fn from_bytes(bytes: [u8; 2]) -> Option<Self> {
+    #[must_use]
+    pub const fn from_bytes(bytes: [u8; 2]) -> Option<Self> {
         match u16::from_be_bytes(bytes) {
-            0x0303 => Some(TlsVersion::Tls12),
-            0x0304 => Some(TlsVersion::Tls13),
+            0x0303 => Some(Self::Tls12),
+            0x0304 => Some(Self::Tls13),
             _ => None,
         }
     }
 
     /// Human-readable name
-    pub fn name(self) -> &'static str {
+    #[must_use]
+    pub const fn name(self) -> &'static str {
         match self {
-            TlsVersion::Tls12 => "TLS 1.2",
-            TlsVersion::Tls13 => "TLS 1.3",
+            Self::Tls12 => "TLS 1.2",
+            Self::Tls13 => "TLS 1.3",
         }
     }
 }
@@ -86,21 +89,23 @@ pub enum SecurityPolicy {
 
 impl SecurityPolicy {
     /// Get allowed TLS versions for this policy
+    #[must_use]
     pub fn allowed_versions(self) -> Vec<TlsVersion> {
         match self {
-            SecurityPolicy::Strict => vec![TlsVersion::Tls13],
-            SecurityPolicy::Balanced | SecurityPolicy::Legacy => {
+            Self::Strict => vec![TlsVersion::Tls13],
+            Self::Balanced | Self::Legacy => {
                 vec![TlsVersion::Tls13, TlsVersion::Tls12]
             }
         }
     }
 
     /// Get allowed TLS 1.2 cipher suites for this policy
-    pub fn tls_1_2_ciphers(self) -> &'static [u16] {
+    #[must_use]
+    pub const fn tls_1_2_ciphers(self) -> &'static [u16] {
         match self {
-            SecurityPolicy::Strict => &[],
-            SecurityPolicy::Balanced => TLS_1_2_SECURE_CIPHERS,
-            SecurityPolicy::Legacy => TLS_1_2_EXTENDED_CIPHERS,
+            Self::Strict => &[],
+            Self::Balanced => TLS_1_2_SECURE_CIPHERS,
+            Self::Legacy => TLS_1_2_EXTENDED_CIPHERS,
         }
     }
 }
@@ -134,7 +139,8 @@ impl Default for TlsVersionConfig {
 
 impl TlsVersionConfig {
     /// Create strict TLS 1.3 only configuration
-    pub fn strict() -> Self {
+    #[must_use]
+    pub const fn strict() -> Self {
         Self {
             policy: SecurityPolicy::Strict,
             minimum_version: TlsVersion::Tls13,
@@ -144,12 +150,14 @@ impl TlsVersionConfig {
     }
 
     /// Create balanced configuration (default)
+    #[must_use]
     pub fn balanced() -> Self {
         Self::default()
     }
 
     /// Create legacy-compatible configuration
-    pub fn legacy() -> Self {
+    #[must_use]
+    pub const fn legacy() -> Self {
         Self {
             policy: SecurityPolicy::Legacy,
             minimum_version: TlsVersion::Tls12,
@@ -159,16 +167,19 @@ impl TlsVersionConfig {
     }
 
     /// Get supported versions in preference order
+    #[must_use]
     pub fn supported_versions(&self) -> Vec<TlsVersion> {
         self.policy.allowed_versions().into_iter().filter(|v| *v >= self.minimum_version).collect()
     }
 
     /// Check if a version is acceptable
+    #[must_use]
     pub fn is_acceptable(&self, version: TlsVersion) -> bool {
         version >= self.minimum_version && self.policy.allowed_versions().contains(&version)
     }
 
     /// Get TLS 1.2 cipher suites (empty if 1.3 only)
+    #[must_use]
     pub fn tls_1_2_ciphers(&self) -> &'static [u16] {
         if self.minimum_version > TlsVersion::Tls12 {
             &[]
@@ -178,19 +189,22 @@ impl TlsVersionConfig {
     }
 
     /// Builder: set policy
-    pub fn with_policy(mut self, policy: SecurityPolicy) -> Self {
+    #[must_use]
+    pub const fn with_policy(mut self, policy: SecurityPolicy) -> Self {
         self.policy = policy;
         self
     }
 
     /// Builder: set minimum version
-    pub fn with_minimum_version(mut self, version: TlsVersion) -> Self {
+    #[must_use]
+    pub const fn with_minimum_version(mut self, version: TlsVersion) -> Self {
         self.minimum_version = version;
         self
     }
 
     /// Builder: set downgrade protection
-    pub fn with_downgrade_protection(mut self, enabled: bool) -> Self {
+    #[must_use]
+    pub const fn with_downgrade_protection(mut self, enabled: bool) -> Self {
         self.downgrade_protection = enabled;
         self
     }
@@ -235,7 +249,8 @@ pub const TLS_1_2_EXTENDED_CIPHERS: &[u16] = &[
 ];
 
 /// Get human-readable name for TLS 1.2 cipher suite
-pub fn tls_1_2_cipher_name(suite: u16) -> &'static str {
+#[must_use]
+pub const fn tls_1_2_cipher_name(suite: u16) -> &'static str {
     match suite {
         0xC02F => "TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256",
         0xC030 => "TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384",
@@ -265,10 +280,11 @@ pub struct NegotiatedVersion {
     pub downgrade_detected: bool,
 }
 
-/// Detect TLS version from ServerHello
+/// Detect TLS version from `ServerHello`
 ///
-/// TLS 1.3 uses supported_versions extension for actual version.
-/// TLS 1.2 uses legacy_version field directly.
+/// TLS 1.3 uses `supported_versions` extension for actual version.
+/// TLS 1.2 uses `legacy_version` field directly.
+#[must_use]
 pub fn detect_server_version(server_hello: &[u8]) -> Option<NegotiatedVersion> {
     if server_hello.len() < 38 {
         return None;

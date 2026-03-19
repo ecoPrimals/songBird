@@ -330,7 +330,7 @@ impl CapabilityRequest {
 
     /// Add SLA requirements
     #[must_use]
-    pub fn with_sla(mut self, sla: SlaRequirements) -> Self {
+    pub const fn with_sla(mut self, sla: SlaRequirements) -> Self {
         self.min_sla = Some(sla);
         self
     }

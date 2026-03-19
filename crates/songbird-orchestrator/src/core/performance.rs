@@ -27,7 +27,7 @@ pub struct PerformanceMonitor {
 
 impl PerformanceMonitor {
     #[must_use]
-    pub fn new(config: PerformanceConfig) -> Self {
+    pub const fn new(config: PerformanceConfig) -> Self {
         Self {
             config,
             metrics: PerformanceMetrics {
@@ -80,7 +80,7 @@ impl PerformanceMonitor {
     }
 
     #[must_use]
-    pub fn get_metrics(&self) -> &PerformanceMetrics {
+    pub const fn get_metrics(&self) -> &PerformanceMetrics {
         &self.metrics
     }
 }

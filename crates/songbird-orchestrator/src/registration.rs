@@ -91,17 +91,20 @@ impl NodeRegistration {
     }
 
     /// Set TTL
-    pub fn with_ttl(mut self, ttl: u64) -> Self {
+    #[must_use]
+    pub const fn with_ttl(mut self, ttl: u64) -> Self {
         self.ttl = ttl;
         self
     }
 
     /// Check if registration has lineage
-    pub fn has_lineage(&self) -> bool {
+    #[must_use]
+    pub const fn has_lineage(&self) -> bool {
         self.genetic_lineage.is_some() && self.lineage_proof.is_some()
     }
 
     /// Check if registration is expired
+    #[must_use]
     pub fn is_expired(&self) -> bool {
         let now = Self::current_timestamp();
         now - self.registered_at > self.ttl
@@ -120,7 +123,7 @@ impl NodeRegistration {
     }
 }
 
-/// Helper to create registration from NodeIdentity
+/// Helper to create registration from `NodeIdentity`
 pub async fn create_registration_from_identity(
     identity: &crate::node_identity::NodeIdentity,
     endpoint: String,
@@ -153,7 +156,8 @@ pub struct RegistrationManager {
 
 impl RegistrationManager {
     /// Create a new registration manager
-    pub fn new(refresh_interval: u64) -> Self {
+    #[must_use]
+    pub const fn new(refresh_interval: u64) -> Self {
         Self {
             current: None,
             refresh_interval,
@@ -177,11 +181,13 @@ impl RegistrationManager {
     }
 
     /// Get current registration
-    pub fn current(&self) -> Option<&NodeRegistration> {
+    #[must_use]
+    pub const fn current(&self) -> Option<&NodeRegistration> {
         self.current.as_ref()
     }
 
     /// Check if registration needs refresh
+    #[must_use]
     pub fn needs_refresh(&self) -> bool {
         if let Some(registration) = &self.current {
             let now = NodeRegistration::current_timestamp();

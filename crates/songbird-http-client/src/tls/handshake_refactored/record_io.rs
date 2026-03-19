@@ -56,7 +56,7 @@ impl TlsHandshake {
                 // Read more bytes to show what was received
                 let mut more_data = vec![0u8; 50];
                 let _ = stream.read(&mut more_data).await;
-                let combined: Vec<u8> = header.iter().chain(more_data.iter()).cloned().collect();
+                let combined: Vec<u8> = header.iter().chain(more_data.iter()).copied().collect();
                 let as_str = String::from_utf8_lossy(&combined);
 
                 error!("❌ Received HTTP response instead of TLS!");
@@ -75,8 +75,7 @@ impl TlsHandshake {
 
             error!("❌ Invalid TLS content type: {:#04x}", content_type);
             return Err(Error::TlsHandshake(format!(
-                "Invalid TLS content type: {:#04x}",
-                content_type
+                "Invalid TLS content type: {content_type:#04x}"
             )));
         }
 
@@ -84,7 +83,7 @@ impl TlsHandshake {
         if length > 16384 {
             // TLS max record size
             error!("❌ TLS record too large: {} bytes (max 16384)", length);
-            return Err(Error::TlsHandshake(format!("TLS record too large: {} bytes", length)));
+            return Err(Error::TlsHandshake(format!("TLS record too large: {length} bytes")));
         }
 
         // Read record content
@@ -142,8 +141,7 @@ impl TlsHandshake {
             error!("   This means the server rejected our ClientHello!");
             error!("   Common causes: missing extensions, unsupported cipher suites, protocol mismatch");
             return Err(Error::TlsHandshake(format!(
-                "Server sent {} alert: {} (code {})",
-                level_str, desc_str, alert_description
+                "Server sent {level_str} alert: {desc_str} (code {alert_description})"
             )));
         }
 
@@ -153,7 +151,7 @@ impl TlsHandshake {
     /// Decrypt a TLS handshake record with handshake traffic keys
     ///
     /// RFC 8446 Section 4.4.1: Transcript hash is computed over PLAINTEXT handshake messages!
-    /// After ServerHello, all handshake messages (EncryptedExtensions, Certificate, etc.) are encrypted.
+    /// After `ServerHello`, all handshake messages (`EncryptedExtensions`, Certificate, etc.) are encrypted.
     /// This method decrypts them so they can be added to the transcript in plaintext form.
     ///
     /// # Arguments
@@ -164,7 +162,7 @@ impl TlsHandshake {
     ///
     /// # Returns
     ///
-    /// Decrypted plaintext handshake message (without ContentType byte)
+    /// Decrypted plaintext handshake message (without `ContentType` byte)
     pub(super) async fn decrypt_handshake_record(
         &self,
         encrypted_record: &[u8],
@@ -245,21 +243,21 @@ impl TlsHandshake {
 
         // RFC 8446 Section 5.2: TLS 1.3 encrypted records have ContentType as last byte
         // Strip the ContentType byte from the end
-        if !plaintext.is_empty() {
+        if plaintext.is_empty() {
+            warn!("⚠️  Empty plaintext after decryption!");
+            Ok(plaintext)
+        } else {
             let content_type = plaintext[plaintext.len() - 1];
             debug!("ContentType (last byte of plaintext): 0x{:02x}", content_type);
             let message = plaintext[..plaintext.len() - 1].to_vec();
             info!("📤 Returning handshake message: {} bytes (ContentType stripped)", message.len());
             Ok(message)
-        } else {
-            warn!("⚠️  Empty plaintext after decryption!");
-            Ok(plaintext)
         }
     }
 
-    /// Parse ServerHello message
+    /// Parse `ServerHello` message
     ///
-    /// Returns: (server_random, server_public_key, cipher_suite)
+    /// Returns: (`server_random`, `server_public_key`, `cipher_suite`)
     pub(crate) fn parse_server_hello(&self, data: &[u8]) -> Result<(Vec<u8>, Vec<u8>, u16)> {
         if data.is_empty() || data[0] != 0x02 {
             return Err(Error::TlsHandshake("Invalid ServerHello".to_string()));
@@ -309,7 +307,7 @@ impl TlsHandshake {
         Ok((server_random, server_public, cipher_suite))
     }
 
-    /// Extract public key from key_share extension
+    /// Extract public key from `key_share` extension
     fn extract_key_share(&self, extensions_data: &[u8]) -> Result<Vec<u8>> {
         if extensions_data.len() < 2 {
             return Err(Error::TlsHandshake("Extensions too short".to_string()));
@@ -347,7 +345,7 @@ impl TlsHandshake {
         Err(Error::TlsHandshake("key_share extension not found".to_string()))
     }
 
-    /// Generate 32-byte random (for testing, production should use BearDog)
+    /// Generate 32-byte random (for testing, production should use `BearDog`)
     pub(crate) fn generate_random(&self) -> Vec<u8> {
         use std::time::{SystemTime, UNIX_EPOCH};
 

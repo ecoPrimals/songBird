@@ -241,7 +241,7 @@ impl UnifiedUniversalAdapter {
 
         // Create HTTP client on-demand
         let client = songbird_http_client::IpcHttpClient::new().await.map_err(|e| {
-            UniversalAdapterError::NetworkError(format!("Failed to create HTTP client: {}", e))
+            UniversalAdapterError::NetworkError(format!("Failed to create HTTP client: {e}"))
         })?;
 
         // IpcHttpClient::post() returns RequestBuilder directly
@@ -274,7 +274,7 @@ impl UnifiedUniversalAdapter {
 
         // Create HTTP client on-demand
         let client = songbird_http_client::IpcHttpClient::new().await.map_err(|e| {
-            UniversalAdapterError::NetworkError(format!("Failed to create HTTP client: {}", e))
+            UniversalAdapterError::NetworkError(format!("Failed to create HTTP client: {e}"))
         })?;
 
         let response = client
@@ -361,7 +361,7 @@ impl From<UniversalAdapterError> for songbird_types::SongbirdError {
             }
             MissingCapability => Self::from("Required capability is missing"),
             NoProvidersAvailable(cap) => {
-                Self::from(format!("No providers available for capability: {}", cap))
+                Self::from(format!("No providers available for capability: {cap}"))
             }
         }
     }

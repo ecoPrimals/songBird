@@ -1,7 +1,7 @@
 //! Genetic Lineage Types for Songbird Discovery
 //!
 //! Provides types for cryptographic lineage authentication and auto-accept logic.
-//! Integrates with BearDog Phase 1.5 APIs for sovereign peer discovery.
+//! Integrates with `BearDog` Phase 1.5 APIs for sovereign peer discovery.
 
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -172,12 +172,12 @@ impl LineageProof {
 
     /// Get the number of hops in this lineage chain
     #[must_use]
-    pub fn chain_length(&self) -> usize {
+    pub const fn chain_length(&self) -> usize {
         self.signatures.len()
     }
 }
 
-/// Lineage verification result from BearDog
+/// Lineage verification result from `BearDog`
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct LineageVerification {
     /// Whether the lineage proof is cryptographically valid
@@ -216,7 +216,7 @@ pub enum LineageError {
     #[error("Lineage verification failed: {0}")]
     VerificationFailed(String),
 
-    /// BearDog API error
+    /// `BearDog` API error
     #[error("BearDog API error: {0}")]
     BearDogError(String),
 }
@@ -240,7 +240,7 @@ pub struct CurrentLineage {
 impl CurrentLineage {
     /// Create a new current lineage
     #[must_use]
-    pub fn new(lineage_id: LineageId, proof: LineageProof) -> Self {
+    pub const fn new(lineage_id: LineageId, proof: LineageProof) -> Self {
         Self {
             lineage_id,
             proof,

@@ -48,7 +48,7 @@ pub async fn register_service(
 
     // Parse request parameters
     let request: RegisterServiceRequest = serde_json::from_value(params)
-        .map_err(|e| JsonRpcError::invalid_params(format!("Invalid params: {}", e)))?;
+        .map_err(|e| JsonRpcError::invalid_params(format!("Invalid params: {e}")))?;
 
     info!(
         "📋 Registering service: {} with capabilities: {:?}",
@@ -67,7 +67,7 @@ pub async fn register_service(
         )
         .await
         .map_err(|e| {
-            JsonRpcError::custom(-32603, "Failed to register service", Some(format!("{}", e)))
+            JsonRpcError::custom(-32603, "Failed to register service", Some(format!("{e}")))
         })?;
 
     info!("✅ Service registered: {}", service_id);
@@ -104,7 +104,7 @@ pub async fn discover_by_capability(
 
     // Parse request parameters
     let request: DiscoverByCapabilityRequest = serde_json::from_value(params)
-        .map_err(|e| JsonRpcError::invalid_params(format!("Invalid params: {}", e)))?;
+        .map_err(|e| JsonRpcError::invalid_params(format!("Invalid params: {e}")))?;
 
     info!("🔎 Discovering primals with capability: {}", request.capability);
 
@@ -114,7 +114,7 @@ pub async fn discover_by_capability(
         .discover_by_capability(&request.capability, request.protocol.as_deref())
         .await
         .map_err(|e| {
-            JsonRpcError::custom(-32603, "Failed to discover primals", Some(format!("{}", e)))
+            JsonRpcError::custom(-32603, "Failed to discover primals", Some(format!("{e}")))
         })?;
 
     info!("   Found {} primals", primals.len());
@@ -148,14 +148,14 @@ pub async fn get_service_health(
 
     // Parse request parameters
     let request: GetServiceHealthRequest = serde_json::from_value(params)
-        .map_err(|e| JsonRpcError::invalid_params(format!("Invalid params: {}", e)))?;
+        .map_err(|e| JsonRpcError::invalid_params(format!("Invalid params: {e}")))?;
 
     info!("🏥 Checking health for service: {}", request.service_id);
 
     // Get health from registry
     let (status, message) =
         handlers.service_registry.get_service_health(&request.service_id).await.map_err(|e| {
-            JsonRpcError::custom(-32603, "Failed to get health", Some(format!("{}", e)))
+            JsonRpcError::custom(-32603, "Failed to get health", Some(format!("{e}")))
         })?;
 
     let health = HealthStatus {
@@ -207,7 +207,7 @@ pub async fn health_check(
 // Pure JSON Adapters (v3.22.0)
 // ============================================================================
 
-/// Service Registry: register_service (pure JSON adapter)
+/// Service Registry: `register_service` (pure JSON adapter)
 pub async fn register_service_json(
     handlers: &IpcHandlers,
     params: Option<serde_json::Value>,
@@ -215,8 +215,7 @@ pub async fn register_service_json(
     let request: RegisterServiceRequest = match params {
         Some(p) => serde_json::from_value(p).map_err(|e| {
             crate::ipc::pure_rust_server::JsonRpcError::invalid_params(format!(
-                "Invalid params: {}",
-                e
+                "Invalid params: {e}"
             ))
         })?,
         None => {
@@ -238,8 +237,7 @@ pub async fn register_service_json(
         .await
         .map_err(|e| {
             crate::ipc::pure_rust_server::JsonRpcError::internal_error(format!(
-                "Failed to register service: {}",
-                e
+                "Failed to register service: {e}"
             ))
         })?;
 
@@ -251,13 +249,12 @@ pub async fn register_service_json(
 
     serde_json::to_value(resp).map_err(|e| {
         crate::ipc::pure_rust_server::JsonRpcError::internal_error(format!(
-            "Failed to serialize response: {}",
-            e
+            "Failed to serialize response: {e}"
         ))
     })
 }
 
-/// Service Registry: discover_by_capability (pure JSON adapter)
+/// Service Registry: `discover_by_capability` (pure JSON adapter)
 pub async fn discover_by_capability_json(
     handlers: &IpcHandlers,
     params: Option<serde_json::Value>,
@@ -265,8 +262,7 @@ pub async fn discover_by_capability_json(
     let request: DiscoverByCapabilityRequest = match params {
         Some(p) => serde_json::from_value(p).map_err(|e| {
             crate::ipc::pure_rust_server::JsonRpcError::invalid_params(format!(
-                "Invalid params: {}",
-                e
+                "Invalid params: {e}"
             ))
         })?,
         None => {
@@ -282,8 +278,7 @@ pub async fn discover_by_capability_json(
         .await
         .map_err(|e| {
             crate::ipc::pure_rust_server::JsonRpcError::internal_error(format!(
-                "Failed to discover primals: {}",
-                e
+                "Failed to discover primals: {e}"
             ))
         })?;
 
@@ -293,13 +288,12 @@ pub async fn discover_by_capability_json(
 
     serde_json::to_value(resp).map_err(|e| {
         crate::ipc::pure_rust_server::JsonRpcError::internal_error(format!(
-            "Failed to serialize response: {}",
-            e
+            "Failed to serialize response: {e}"
         ))
     })
 }
 
-/// Service Registry: get_service_health (pure JSON adapter)
+/// Service Registry: `get_service_health` (pure JSON adapter)
 pub async fn get_service_health_json(
     handlers: &IpcHandlers,
     params: Option<serde_json::Value>,
@@ -307,8 +301,7 @@ pub async fn get_service_health_json(
     let request: GetServiceHealthRequest = match params {
         Some(p) => serde_json::from_value(p).map_err(|e| {
             crate::ipc::pure_rust_server::JsonRpcError::invalid_params(format!(
-                "Invalid params: {}",
-                e
+                "Invalid params: {e}"
             ))
         })?,
         None => {
@@ -321,8 +314,7 @@ pub async fn get_service_health_json(
     let (status, message) =
         handlers.service_registry.get_service_health(&request.service_id).await.map_err(|e| {
             crate::ipc::pure_rust_server::JsonRpcError::internal_error(format!(
-                "Failed to get health: {}",
-                e
+                "Failed to get health: {e}"
             ))
         })?;
 
@@ -339,13 +331,12 @@ pub async fn get_service_health_json(
 
     serde_json::to_value(resp).map_err(|e| {
         crate::ipc::pure_rust_server::JsonRpcError::internal_error(format!(
-            "Failed to serialize response: {}",
-            e
+            "Failed to serialize response: {e}"
         ))
     })
 }
 
-/// Service Registry: health_check (pure JSON adapter)
+/// Service Registry: `health_check` (pure JSON adapter)
 pub async fn health_check_json(
     _handlers: &IpcHandlers,
 ) -> Result<serde_json::Value, crate::ipc::pure_rust_server::JsonRpcError> {
@@ -362,8 +353,7 @@ pub async fn health_check_json(
 
     serde_json::to_value(resp).map_err(|e| {
         crate::ipc::pure_rust_server::JsonRpcError::internal_error(format!(
-            "Failed to serialize response: {}",
-            e
+            "Failed to serialize response: {e}"
         ))
     })
 }

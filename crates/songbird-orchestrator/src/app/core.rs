@@ -184,25 +184,25 @@ impl SongbirdOrchestrator {
 
     /// Get federation state reference
     #[must_use]
-    pub fn federation_state(&self) -> &Arc<FederationState> {
+    pub const fn federation_state(&self) -> &Arc<FederationState> {
         &self.federation_state
     }
 
     /// Get federated service registry reference
     #[must_use]
-    pub fn federated_service_registry(&self) -> &Arc<FederatedServiceRegistry> {
+    pub const fn federated_service_registry(&self) -> &Arc<FederatedServiceRegistry> {
         &self.federated_service_registry
     }
 
     /// Get configuration reference
     #[must_use]
-    pub fn config(&self) -> &CanonicalSongbirdConfig {
+    pub const fn config(&self) -> &CanonicalSongbirdConfig {
         &self._config
     }
 
     /// Get service registry reference
     #[must_use]
-    pub fn service_registry(&self) -> &Arc<FederatedServiceRegistry> {
+    pub const fn service_registry(&self) -> &Arc<FederatedServiceRegistry> {
         &self._service_registry
     }
 
@@ -250,13 +250,13 @@ impl SongbirdOrchestrator {
         Ok(())
     }
 
-    /// Provision JWT secret from BearDog via capability-based discovery
+    /// Provision JWT secret from `BearDog` via capability-based discovery
     ///
     /// ## TRUE PRIMAL Architecture
     ///
     /// - **Self-Knowledge**: Songbird only knows itself
-    /// - **Capability Discovery**: Discovers BearDog via "security" capability
-    /// - **Graceful Fallback**: Uses secure random if BearDog unavailable
+    /// - **Capability Discovery**: Discovers `BearDog` via "security" capability
+    /// - **Graceful Fallback**: Uses secure random if `BearDog` unavailable
     /// - **Pure Rust**: JSON-RPC over Unix socket (no C dependencies!)
     ///
     /// # Returns
@@ -279,7 +279,7 @@ impl SongbirdOrchestrator {
     /// Start the orchestrator
     /// Start the Songbird Orchestrator (7-stage startup sequence)
     ///
-    /// **Deep Debt Evolution** (Feb 6, 2026): Extracted 275-line method to startup_orchestration module
+    /// **Deep Debt Evolution** (Feb 6, 2026): Extracted 275-line method to `startup_orchestration` module
     ///
     /// **Startup Stages**:
     /// 1. Provision Security - JWT secrets, identity query
@@ -303,7 +303,7 @@ impl SongbirdOrchestrator {
     /// **Historical Context**: This was originally a stub for Unix-socket-only mode,
     /// but caused discovery beacons to advertise port 0, breaking peer connections.
     ///
-    /// **Fix**: The start() method now calls the real HTTP server module directly.
+    /// **Fix**: The `start()` method now calls the real HTTP server module directly.
     #[deprecated(since = "8.11.0", note = "Use http_server::start_http_server() directly")]
     async fn start_http_server(&self) -> Result<u16> {
         warn!("⚠️  Deprecated stub start_http_server() called - use http_server module instead");
@@ -391,18 +391,18 @@ impl SongbirdOrchestrator {
 
     /// Start Unix Socket IPC server for inter-primal communication (Jan 4, 2026)
     ///
-    /// Starts a Unix socket server that allows other primals (security provider, ToadStool, etc.)
+    /// Starts a Unix socket server that allows other primals (security provider, `ToadStool`, etc.)
     /// to register their capabilities and communicate with Songbird.
     ///
     /// Socket path format: `/tmp/songbird-{family_id}-{node_id}.sock`
-    /// If no family_id is configured, uses: `/tmp/songbird-{node_id}.sock`
-    /// If no node_id is configured, uses: `/tmp/songbird.sock` (legacy fallback)
+    /// If no `family_id` is configured, uses: `/tmp/songbird-{node_id}.sock`
+    /// If no `node_id` is configured, uses: `/tmp/songbird.sock` (legacy fallback)
     ///
     /// v3.19.2: Unix Socket IPC Server (port-free!)
     /// v3.20.0: Service registry mode - primals register themselves
     ///
     /// This creates a Unix domain socket for JSON-RPC 2.0 communication with other primals.
-    /// Socket path is derived from SONGBIRD_FAMILY_ID env var (zero hardcoding!).
+    /// Socket path is derived from `SONGBIRD_FAMILY_ID` env var (zero hardcoding!).
     ///
     /// This ensures multiple Songbird instances (spores) can run on the same machine
     /// without socket path conflicts, following security provider's pattern.
@@ -432,7 +432,7 @@ impl SongbirdOrchestrator {
                 let family_id = std::env::var("SONGBIRD_FAMILY_ID")
                     .or_else(|_| std::env::var("FAMILY_ID"))
                     .unwrap_or_else(|_| "default".to_string());
-                format!("/tmp/beardog-{}.sock", family_id)
+                format!("/tmp/beardog-{family_id}.sock")
             });
 
         info!("🔐 HTTP Handler: Using BearDog crypto at {}", beardog_socket);
@@ -538,9 +538,9 @@ impl SongbirdOrchestrator {
             }
         };
 
-        let target: std::net::SocketAddr = format!("{}:{}", local_ip, port)
+        let target: std::net::SocketAddr = format!("{local_ip}:{port}")
             .parse()
-            .map_err(|e| anyhow::anyhow!("Failed to parse socket address: {}", e))?;
+            .map_err(|e| anyhow::anyhow!("Failed to parse socket address: {e}"))?;
 
         // Run connectivity test
         let tester = ConnectivityTester::new();
@@ -662,7 +662,7 @@ impl SongbirdOrchestrator {
     pub(crate) fn start_service_registry_cleanup(&self) {
         let registry = Arc::clone(&self.service_registry);
 
-        crate::service_registry::spawn_cleanup_task((*registry).clone(), 60); // Clean every minute
+        drop(crate::service_registry::spawn_cleanup_task((*registry).clone(), 60)); // Clean every minute
 
         info!("✅ Service registry cleanup task started");
     }
@@ -741,7 +741,7 @@ impl SongbirdOrchestrator {
 
     /// Handle incoming CLI commands
     ///
-    /// **Deep Debt Evolution** (Feb 6, 2026): Extracted to command_handler module
+    /// **Deep Debt Evolution** (Feb 6, 2026): Extracted to `command_handler` module
     ///
     /// **See**: `command_handler.rs` for implementation details
     pub async fn handle_command(&self, command: String) -> Result<String> {
@@ -763,12 +763,14 @@ impl SongbirdOrchestrator {
     /// Detect GPU model if available
     ///
     /// Public for use in federation setup
-    /// Detect GPU model (re-exported from hardware_detection module)
+    /// Detect GPU model (re-exported from `hardware_detection` module)
+    #[must_use]
     pub fn detect_gpu() -> Option<String> {
         super::hardware_detection::detect_gpu()
     }
 
-    /// Detect storage capacity in GB (re-exported from hardware_detection module)
+    /// Detect storage capacity in GB (re-exported from `hardware_detection` module)
+    #[must_use]
     pub fn detect_storage_capacity() -> Option<usize> {
         super::hardware_detection::detect_storage_capacity()
     }

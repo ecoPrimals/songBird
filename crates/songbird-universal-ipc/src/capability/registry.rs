@@ -60,7 +60,7 @@ impl CapabilityRegistry {
 
     /// Set cache TTL
     #[must_use]
-    pub fn with_cache_ttl(mut self, ttl: Duration) -> Self {
+    pub const fn with_cache_ttl(mut self, ttl: Duration) -> Self {
         self.cache_ttl = ttl;
         self
     }
@@ -166,22 +166,17 @@ impl CapabilityRegistry {
 
     /// Check cache for capability providers
     async fn get_from_cache(&self, capability: &str) -> Option<Provider> {
-        let cache = self.cache.read().await;
-
-        if let Some(cached_providers) = cache.get(capability) {
+        let cache_ttl = self.cache_ttl;
+        self.cache.read().await.get(capability).and_then(|cached_providers| {
             let now = SystemTime::now();
-
-            // Find first non-expired, usable provider
-            for cached in cached_providers {
-                if let Ok(age) = now.duration_since(cached.cached_at) {
-                    if age < self.cache_ttl && cached.provider.is_usable() {
-                        return Some(cached.provider.clone());
-                    }
-                }
-            }
-        }
-
-        None
+            cached_providers
+                .iter()
+                .find(|cached| {
+                    now.duration_since(cached.cached_at)
+                        .is_ok_and(|age| age < cache_ttl && cached.provider.is_usable())
+                })
+                .map(|cached| cached.provider.clone())
+        })
     }
 
     /// Cache providers for a capability
@@ -201,8 +196,7 @@ impl CapabilityRegistry {
 
     /// Clear cache
     pub async fn clear_cache(&self) {
-        let mut cache = self.cache.write().await;
-        cache.clear();
+        self.cache.write().await.clear();
         info!("🗑️  Capability cache cleared");
     }
 

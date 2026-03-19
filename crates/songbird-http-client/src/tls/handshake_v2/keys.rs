@@ -1,16 +1,16 @@
 //! TLS 1.3 Key Derivation Module
 //!
 //! This module provides high-level abstractions for TLS 1.3 key derivation as specified
-//! in RFC 8446 Section 7. The actual cryptographic operations are delegated to BearDog.
+//! in RFC 8446 Section 7. The actual cryptographic operations are delegated to `BearDog`.
 //!
 //! ## RFC 8446 Key Schedule
 //!
 //! TLS 1.3 has two main key derivation stages:
 //!
 //! 1. **Handshake Traffic Keys** (Section 7.1)
-//!    - Derived after ServerHello
-//!    - Used to encrypt/decrypt handshake messages (EncryptedExtensions, Certificate, etc.)
-//!    - Input: ECDH shared secret + transcript(ClientHello || ServerHello)
+//!    - Derived after `ServerHello`
+//!    - Used to encrypt/decrypt handshake messages (`EncryptedExtensions`, Certificate, etc.)
+//!    - Input: ECDH shared secret + transcript(ClientHello || `ServerHello`)
 //!
 //! 2. **Application Traffic Keys** (Section 7.1)
 //!    - Derived after all handshake messages complete
@@ -19,7 +19,7 @@
 //!
 //! ## Design
 //!
-//! This module doesn't implement HKDF directly - that's BearDog's responsibility.
+//! This module doesn't implement HKDF directly - that's `BearDog`'s responsibility.
 //! Instead, it provides:
 //! - Type-safe key containers
 //! - Cipher suite information
@@ -37,13 +37,13 @@ use tracing::{debug, info};
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(u16)]
 pub enum CipherSuite {
-    /// TLS_AES_128_GCM_SHA256 (0x1301)
+    /// `TLS_AES_128_GCM_SHA256` (0x1301)
     Aes128GcmSha256 = 0x1301,
 
-    /// TLS_AES_256_GCM_SHA384 (0x1302)
+    /// `TLS_AES_256_GCM_SHA384` (0x1302)
     Aes256GcmSha384 = 0x1302,
 
-    /// TLS_CHACHA20_POLY1305_SHA256 (0x1303)
+    /// `TLS_CHACHA20_POLY1305_SHA256` (0x1303)
     ChaCha20Poly1305Sha256 = 0x1303,
 }
 
@@ -51,56 +51,62 @@ impl CipherSuite {
     /// Convert from u16 wire format
     pub fn from_u16(value: u16) -> Result<Self> {
         match value {
-            0x1301 => Ok(CipherSuite::Aes128GcmSha256),
-            0x1302 => Ok(CipherSuite::Aes256GcmSha384),
-            0x1303 => Ok(CipherSuite::ChaCha20Poly1305Sha256),
-            _ => Err(Error::TlsHandshake(format!("Unsupported cipher suite: 0x{:04x}", value))),
+            0x1301 => Ok(Self::Aes128GcmSha256),
+            0x1302 => Ok(Self::Aes256GcmSha384),
+            0x1303 => Ok(Self::ChaCha20Poly1305Sha256),
+            _ => Err(Error::TlsHandshake(format!("Unsupported cipher suite: 0x{value:04x}"))),
         }
     }
 
     /// Convert to u16 wire format
-    pub fn to_u16(self) -> u16 {
+    #[must_use]
+    pub const fn to_u16(self) -> u16 {
         self as u16
     }
 
     /// Get encryption key length in bytes
-    pub fn key_len(&self) -> usize {
+    #[must_use]
+    pub const fn key_len(&self) -> usize {
         match self {
-            CipherSuite::Aes128GcmSha256 => 16,
-            CipherSuite::Aes256GcmSha384 => 32,
-            CipherSuite::ChaCha20Poly1305Sha256 => 32,
+            Self::Aes128GcmSha256 => 16,
+            Self::Aes256GcmSha384 => 32,
+            Self::ChaCha20Poly1305Sha256 => 32,
         }
     }
 
     /// Get AEAD IV (nonce) length in bytes
     ///
     /// All TLS 1.3 cipher suites use 12-byte IVs (RFC 8446 Section 5.3)
-    pub fn iv_len(&self) -> usize {
+    #[must_use]
+    pub const fn iv_len(&self) -> usize {
         12
     }
 
     /// Get hash algorithm output length in bytes
-    pub fn hash_len(&self) -> usize {
+    #[must_use]
+    pub const fn hash_len(&self) -> usize {
         match self {
-            CipherSuite::Aes128GcmSha256 => 32,        // SHA-256
-            CipherSuite::Aes256GcmSha384 => 48,        // SHA-384
-            CipherSuite::ChaCha20Poly1305Sha256 => 32, // SHA-256
+            Self::Aes128GcmSha256 => 32,        // SHA-256
+            Self::Aes256GcmSha384 => 48,        // SHA-384
+            Self::ChaCha20Poly1305Sha256 => 32, // SHA-256
         }
     }
 
     /// Get AEAD authentication tag length in bytes
     ///
     /// All TLS 1.3 cipher suites use 16-byte tags
-    pub fn tag_len(&self) -> usize {
+    #[must_use]
+    pub const fn tag_len(&self) -> usize {
         16
     }
 
     /// Get human-readable name
-    pub fn name(&self) -> &'static str {
+    #[must_use]
+    pub const fn name(&self) -> &'static str {
         match self {
-            CipherSuite::Aes128GcmSha256 => "TLS_AES_128_GCM_SHA256",
-            CipherSuite::Aes256GcmSha384 => "TLS_AES_256_GCM_SHA384",
-            CipherSuite::ChaCha20Poly1305Sha256 => "TLS_CHACHA20_POLY1305_SHA256",
+            Self::Aes128GcmSha256 => "TLS_AES_128_GCM_SHA256",
+            Self::Aes256GcmSha384 => "TLS_AES_256_GCM_SHA384",
+            Self::ChaCha20Poly1305Sha256 => "TLS_CHACHA20_POLY1305_SHA256",
         }
     }
 }
@@ -125,7 +131,7 @@ pub struct TrafficKeys {
 }
 
 impl TrafficKeys {
-    /// Create new TrafficKeys with validation
+    /// Create new `TrafficKeys` with validation
     pub fn new(
         client_write_key: Vec<u8>,
         client_write_iv: Vec<u8>,

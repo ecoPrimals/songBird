@@ -3,7 +3,7 @@
 //! v3.19.1: Modern async Rust patterns for primal-to-primal communication
 //! v3.20.0: Service registry for capability-based primal discovery
 //! v3.21.0: Graph intelligence APIs (Collaborative Intelligence)
-//! v3.22.0: Pure Rust Unix socket implementation (BearDog pattern)
+//! v3.22.0: Pure Rust Unix socket implementation (`BearDog` pattern)
 //!
 //! ## Architecture
 //!
@@ -34,7 +34,7 @@
 //!
 //! ## Design Principles
 //!
-//! 1. **Zero External RPC Libraries**: Pure tokio::net::UnixListener
+//! 1. **Zero External RPC Libraries**: Pure `tokio::net::UnixListener`
 //! 2. **Zero Hardcoding**: Socket path derived from env vars
 //! 3. **Modern Async**: Pure tokio + async/await
 //! 4. **Protocol Agnostic**: Standard JSON-RPC 2.0

@@ -76,6 +76,7 @@ pub struct CapabilityRouter {
 
 impl CapabilityRouter {
     /// Create a new capability router
+    #[must_use]
     pub fn new(
         federation_state: Arc<FederationState>,
         service_registry: Arc<FederatedServiceRegistry>,
@@ -89,6 +90,7 @@ impl CapabilityRouter {
     }
 
     /// Create a new capability router with external provider registry
+    #[must_use]
     pub fn with_capability_registry(
         federation_state: Arc<FederationState>,
         service_registry: Arc<FederatedServiceRegistry>,
@@ -184,7 +186,7 @@ impl CapabilityRouter {
         debug!("Task requires capability: {:?}", capability_type);
 
         // Format capability type for logging and error messages
-        let capability_type_str = format!("{:?}", capability_type);
+        let capability_type_str = format!("{capability_type:?}");
 
         // NEW: First try to find an external provider in the capability registry
         if let Some(registry) = &self.capability_registry {
@@ -229,7 +231,7 @@ impl CapabilityRouter {
             .map_err(|e| {
                 SongbirdError::service(
                     capability_type_str.clone(),
-                    format!("No capability provider found: {}", e),
+                    format!("No capability provider found: {e}"),
                 )
             })?;
 
@@ -255,7 +257,7 @@ impl CapabilityRouter {
         let crypto_socket =
             crate::primal_discovery::discover_crypto_provider().await.map_err(|e| {
                 SongbirdError::Network {
-                    message: format!("Failed to discover crypto provider: {}", e),
+                    message: format!("Failed to discover crypto provider: {e}"),
                     interface: None,
                     suggestion: Some("Check BearDog availability".to_string()),
                 }
@@ -279,7 +281,7 @@ impl CapabilityRouter {
                     ),
                 })?
                 .map_err(|e| SongbirdError::Network {
-                    message: format!("Failed to send task to external provider: {}", e),
+                    message: format!("Failed to send task to external provider: {e}"),
                     interface: Some(endpoint.to_string()),
                     suggestion: Some(
                         "Check provider endpoint and network connectivity".to_string(),
@@ -298,7 +300,7 @@ impl CapabilityRouter {
         let result =
             serde_json::from_value(response.body).map_err(|e| SongbirdError::Serialization {
                 format: Some("JSON".to_string()),
-                message: format!("Failed to parse provider response: {}", e),
+                message: format!("Failed to parse provider response: {e}"),
                 debug_info: None,
             })?;
 
@@ -306,7 +308,7 @@ impl CapabilityRouter {
         Ok(result)
     }
 
-    /// Convert CapabilityType enum to capability name string
+    /// Convert `CapabilityType` enum to capability name string
     fn capability_type_to_name(cap_type: &CapabilityType) -> String {
         match cap_type {
             CapabilityType::Compute => "compute_heavy".to_string(),

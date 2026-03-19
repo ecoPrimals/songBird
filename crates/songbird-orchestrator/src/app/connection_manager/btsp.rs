@@ -13,14 +13,14 @@ use tracing::{debug, info};
 /// BTSP Connection Factory - Creates encrypted P2P connections
 ///
 /// **Modern Pattern** (v3.21.0):
-/// - Lazy initialization via OnceCell
+/// - Lazy initialization via `OnceCell`
 /// - Thread-safe, async-aware
 /// - Protocol capability detection
 /// - Graceful fallback to HTTP
 pub struct BtspConnectionFactory {
     /// Lazy-initialized BTSP client (thread-safe, async-aware)
     ///
-    /// **Modern Rust**: OnceCell for lazy initialization
+    /// **Modern Rust**: `OnceCell` for lazy initialization
     /// - Initialize once on first use
     /// - Thread-safe without blocking
     /// - Async-friendly
@@ -29,6 +29,7 @@ pub struct BtspConnectionFactory {
 
 impl BtspConnectionFactory {
     /// Create new BTSP connection factory
+    #[must_use]
     pub fn new() -> Self {
         Self {
             client: Arc::new(OnceCell::new()),
@@ -44,8 +45,8 @@ impl BtspConnectionFactory {
     /// - Initialization happens only when needed
     ///
     /// **v3.20.0**: Migrated to Unix socket (Jan 16, 2026)
-    /// - Discovers BearDog via Unix socket at runtime
-    /// - Gracefully handles absence of BearDog
+    /// - Discovers `BearDog` via Unix socket at runtime
+    /// - Gracefully handles absence of `BearDog`
     pub async fn get_or_init_client(&self) -> Result<Arc<BtspClient>> {
         self.client
             .get_or_try_init(|| async {
@@ -71,6 +72,7 @@ impl BtspConnectionFactory {
     /// Check if peer supports BTSP protocol
     ///
     /// **Capability-based**: Runtime protocol detection via peer tags
+    #[must_use]
     pub fn should_use_btsp(&self, peer_tags: &[String]) -> bool {
         peer_tags.iter().any(|tag| tag == "btsp_enabled" || tag == "btsp")
     }
@@ -78,7 +80,7 @@ impl BtspConnectionFactory {
     /// Create BTSP connection at specified trust level
     ///
     /// **Modern pattern**: Delegates to specific connection types
-    /// **Note**: peer_tags passed as endpoint was a bug in original, using peer_tags now
+    /// **Note**: `peer_tags` passed as endpoint was a bug in original, using `peer_tags` now
     pub async fn create_connection(
         &self,
         peer_id: String,

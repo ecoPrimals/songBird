@@ -5,7 +5,10 @@
 use crate::{
     bridge::{PrimalBridge, PrimalConnection},
     error::{PrimalCoordinationError, Result},
-    types::*,
+    types::{
+        CapabilityType, DeploymentId, Identity, NodeId, PrimalCapabilities, PrimalRequest,
+        PrimalResponse, ServiceQuality, WitnessProof, Workload,
+    },
 };
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -221,7 +224,7 @@ impl PrimalCoordinator {
     /// Coordinate service mesh connection
     ///
     /// Example: Songbird connects a service mesh for primal-to-primal communication
-    /// (e.g., Toadstool provides compute for Squirrel analyzing NestGate data)
+    /// (e.g., Toadstool provides compute for Squirrel analyzing `NestGate` data)
     ///
     /// # Errors
     ///
@@ -247,7 +250,7 @@ impl PrimalCoordinator {
         let mesh_connection = MeshConnection {
             id: uuid::Uuid::new_v4().to_string(),
             requester_endpoint: requester_conn.endpoint.clone(),
-            provider_endpoint: provider_conn.endpoint.clone(),
+            provider_endpoint: provider_conn.endpoint,
             requester_capability,
             provider_capability,
         };
@@ -262,10 +265,9 @@ impl PrimalCoordinator {
     ///
     /// Returns an error if health check fails
     pub async fn health_check_all(&self) -> Result<Vec<PrimalHealthStatus>> {
-        let connections = self.active_connections.read().await;
         let mut statuses = Vec::new();
 
-        for (capability, conn) in connections.iter() {
+        for (capability, conn) in self.active_connections.read().await.iter() {
             let response = conn.send_request(PrimalRequest::Status).await;
             let status = match response {
                 Ok(PrimalResponse::StatusResponse(s)) => PrimalHealthStatus {
@@ -295,6 +297,7 @@ impl PrimalCoordinator {
 
     /// Internal: Coordinate witness network using Songbird's own capabilities
     async fn coordinate_witness_network(&self, _node_id: &NodeId) -> Result<WitnessProof> {
+        tokio::task::yield_now().await;
         // This would involve using the pure Rust BLE stack for physical proximity
         // and other Songbird networking capabilities.
         // For now, placeholder implementation

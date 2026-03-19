@@ -303,7 +303,9 @@ impl LineageCertVerifier {
                 Arc::new(rustls_rustcrypto::provider())
             }
         };
-        Self { crypto_provider }
+        Self {
+            crypto_provider,
+        }
     }
 }
 

@@ -24,14 +24,15 @@ pub struct CertificateValidator {
 
 impl CertificateValidator {
     /// Create a new certificate validator
-    pub fn new() -> Self {
+    #[must_use]
+    pub const fn new() -> Self {
         Self {
             crypto_client: None,
             trusted_roots: Vec::new(),
         }
     }
 
-    /// Set the BearDog crypto client
+    /// Set the `BearDog` crypto client
     pub fn set_crypto_client(&mut self, client: BeardogCryptoClient) {
         self.crypto_client = Some(client);
     }
@@ -42,6 +43,11 @@ impl CertificateValidator {
     }
 
     /// Validate a certificate chain
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the certificate message is invalid, no leaf certificate exists,
+    /// or certificate data is empty.
     ///
     /// For now, implements basic validation:
     /// 1. Certificate list is not empty
@@ -72,13 +78,17 @@ impl CertificateValidator {
     /// Verify certificate signature (Ed25519)
     ///
     /// Verifies that the certificate was signed by the expected key.
-    pub async fn verify_certificate_signature(
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the signature or public key length is invalid.
+    pub fn verify_certificate_signature(
         &self,
         _cert_data: &[u8],
         signature: &[u8],
         public_key: &[u8],
     ) -> Result<()> {
-        // For Ed25519, we need to verify the signature using BearDog
+        // For Ed25519, we need to verify the signature using `BearDog`
         // In production, this would extract the public key from the certificate
         // and verify the signature over the TBS (To Be Signed) portion
 
@@ -106,6 +116,10 @@ impl CertificateValidator {
 
     /// Extract public key from certificate
     ///
+    /// # Errors
+    ///
+    /// Currently never returns an error; returns a placeholder. Full X.509 parsing will be added later.
+    ///
     /// For now, returns a placeholder. Full X.509 parsing will be added later.
     pub fn extract_public_key(&self, _cert_data: &[u8]) -> Result<Vec<u8>> {
         // TODO: Parse X.509 certificate and extract SubjectPublicKeyInfo
@@ -118,7 +132,11 @@ impl CertificateValidator {
     /// Check certificate validity period
     ///
     /// Verifies that the certificate is currently valid (not expired or not yet valid).
-    pub fn check_validity_period(&self, _cert_data: &[u8]) -> Result<()> {
+    ///
+    /// # Errors
+    ///
+    /// Currently never returns an error. Full validation will be added with X.509 parsing.
+    pub const fn check_validity_period(&self, _cert_data: &[u8]) -> Result<()> {
         // TODO: Parse X.509 certificate and check notBefore/notAfter
         // This will be implemented with proper X.509 parsing in Phase 7
 
@@ -129,7 +147,11 @@ impl CertificateValidator {
     /// Validate certificate purpose
     ///
     /// Checks that the certificate is valid for TLS server authentication.
-    pub fn validate_purpose(&self, _cert_data: &[u8]) -> Result<()> {
+    ///
+    /// # Errors
+    ///
+    /// Currently never returns an error. Full validation will be added with X.509 parsing.
+    pub const fn validate_purpose(&self, _cert_data: &[u8]) -> Result<()> {
         // TODO: Check Extended Key Usage (EKU) for TLS server authentication
         // This requires X.509 extension parsing
 
@@ -140,6 +162,10 @@ impl CertificateValidator {
     /// Build and validate certificate chain
     ///
     /// Verifies the entire chain from leaf to root.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the certificate message is invalid or the chain is empty.
     pub fn validate_chain_to_root(&self, certificate: &Certificate) -> Result<()> {
         // Validate the certificate message
         certificate.validate()?;
@@ -216,42 +242,39 @@ mod tests {
         assert!(validator.validate_certificate_chain(&cert).is_err());
     }
 
-    #[tokio::test]
-    async fn test_verify_signature_valid_length() {
+    #[test]
+    fn test_verify_signature_valid_length() {
         let validator = CertificateValidator::new();
 
         let cert_data = vec![1, 2, 3, 4];
         let signature = vec![0u8; 64]; // Valid Ed25519 signature length
         let public_key = vec![0u8; 32]; // Valid Ed25519 public key length
 
-        let result =
-            validator.verify_certificate_signature(&cert_data, &signature, &public_key).await;
+        let result = validator.verify_certificate_signature(&cert_data, &signature, &public_key);
         assert!(result.is_ok());
     }
 
-    #[tokio::test]
-    async fn test_verify_signature_invalid_signature_length() {
+    #[test]
+    fn test_verify_signature_invalid_signature_length() {
         let validator = CertificateValidator::new();
 
         let cert_data = vec![1, 2, 3, 4];
         let signature = vec![0u8; 32]; // Wrong length
         let public_key = vec![0u8; 32];
 
-        let result =
-            validator.verify_certificate_signature(&cert_data, &signature, &public_key).await;
+        let result = validator.verify_certificate_signature(&cert_data, &signature, &public_key);
         assert!(result.is_err());
     }
 
-    #[tokio::test]
-    async fn test_verify_signature_invalid_key_length() {
+    #[test]
+    fn test_verify_signature_invalid_key_length() {
         let validator = CertificateValidator::new();
 
         let cert_data = vec![1, 2, 3, 4];
         let signature = vec![0u8; 64];
         let public_key = vec![0u8; 16]; // Wrong length
 
-        let result =
-            validator.verify_certificate_signature(&cert_data, &signature, &public_key).await;
+        let result = validator.verify_certificate_signature(&cert_data, &signature, &public_key);
         assert!(result.is_err());
     }
 

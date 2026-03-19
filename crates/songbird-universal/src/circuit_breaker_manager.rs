@@ -74,6 +74,7 @@ impl CircuitBreakerManager {
     /// - Timeout: 60 seconds
     /// - Success threshold: 2 successes (in half-open state)
     /// - Operation timeout: 30 seconds
+    #[must_use]
     pub fn new() -> Self {
         Self {
             breakers: Arc::new(RwLock::new(HashMap::new())),
@@ -82,6 +83,7 @@ impl CircuitBreakerManager {
     }
 
     /// Create with custom configuration
+    #[must_use]
     pub fn with_config(config: CircuitBreakerConfig) -> Self {
         Self {
             breakers: Arc::new(RwLock::new(HashMap::new())),
@@ -103,7 +105,8 @@ impl CircuitBreakerManager {
     ///     .build()?;
     /// # Ok::<(), Box<dyn std::error::Error>>(())
     /// ```
-    pub fn builder() -> CircuitBreakerManagerBuilder {
+    #[must_use]
+    pub const fn builder() -> CircuitBreakerManagerBuilder {
         CircuitBreakerManagerBuilder::new()
     }
 
@@ -158,6 +161,10 @@ impl CircuitBreakerManager {
     ///
     /// Helper method that wraps the call with proper circuit breaker logic.
     ///
+    /// # Errors
+    ///
+    /// Returns an error if the circuit breaker is open or the operation fails.
+    ///
     /// # Examples
     ///
     /// ```rust,ignore
@@ -182,7 +189,7 @@ impl CircuitBreakerManager {
 
         // Check if request is allowed
         if !breaker.is_request_allowed().await {
-            return Err(E::from(format!("Circuit breaker is open for endpoint: {}", endpoint)));
+            return Err(E::from(format!("Circuit breaker is open for endpoint: {endpoint}")));
         }
 
         // Execute operation
@@ -255,7 +262,7 @@ impl CircuitBreakerManager {
     /// Extract domain from URL or endpoint string
     ///
     /// Handles various input formats:
-    /// - Full URL: "https://api.github.com/repos" → "api.github.com"
+    /// - Full URL: "<https://api.github.com/repos>" → "api.github.com"
     /// - Domain: "api.github.com" → "api.github.com"
     /// - IP: "192.168.1.1:8080" → "192.168.1.1"
     fn extract_domain(endpoint: &str) -> String {
@@ -283,7 +290,7 @@ impl Default for CircuitBreakerManager {
     }
 }
 
-/// Builder for CircuitBreakerManager
+/// Builder for `CircuitBreakerManager`
 pub struct CircuitBreakerManagerBuilder {
     failure_threshold: Option<u32>,
     timeout: Option<Duration>,
@@ -292,7 +299,7 @@ pub struct CircuitBreakerManagerBuilder {
 }
 
 impl CircuitBreakerManagerBuilder {
-    fn new() -> Self {
+    const fn new() -> Self {
         Self {
             failure_threshold: None,
             timeout: None,
@@ -303,28 +310,28 @@ impl CircuitBreakerManagerBuilder {
 
     /// Set failure threshold (number of failures before opening circuit)
     #[must_use]
-    pub fn failure_threshold(mut self, threshold: u32) -> Self {
+    pub const fn failure_threshold(mut self, threshold: u32) -> Self {
         self.failure_threshold = Some(threshold);
         self
     }
 
     /// Set timeout duration for circuit breaker (how long to keep circuit open)
     #[must_use]
-    pub fn timeout(mut self, duration: Duration) -> Self {
+    pub const fn timeout(mut self, duration: Duration) -> Self {
         self.timeout = Some(duration);
         self
     }
 
     /// Set success threshold for half-open state
     #[must_use]
-    pub fn success_threshold(mut self, threshold: u32) -> Self {
+    pub const fn success_threshold(mut self, threshold: u32) -> Self {
         self.success_threshold = Some(threshold);
         self
     }
 
     /// Set maximum requests allowed in half-open state
     #[must_use]
-    pub fn half_open_max_requests(mut self, max: u32) -> Self {
+    pub const fn half_open_max_requests(mut self, max: u32) -> Self {
         self.half_open_max_requests = Some(max);
         self
     }

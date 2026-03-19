@@ -47,6 +47,7 @@ impl Capability {
     ///
     /// The information hierarchy is:
     /// Infrastructure ⊃ Administrative ⊃ Operational ⊃ Educational ⊃ Public
+    #[must_use]
     pub fn implies(&self, other: &Self) -> bool {
         use Capability::{
             AccessRawLogs, AccessSecurityLogs, AccessStudentLogs, AccessSystemLogs, All,
@@ -106,7 +107,8 @@ impl Capability {
     }
 
     /// Check if this is a sensitive capability requiring additional authentication
-    pub fn is_sensitive(&self) -> bool {
+    #[must_use]
+    pub const fn is_sensitive(&self) -> bool {
         matches!(
             self,
             Self::ViewInfrastructureInfo

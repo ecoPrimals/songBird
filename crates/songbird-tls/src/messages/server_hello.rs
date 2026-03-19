@@ -1,12 +1,12 @@
-//! ServerHello message (RFC 8446 Section 4.1.3)
+//! `ServerHello` message (RFC 8446 Section 4.1.3)
 //!
-//! The ServerHello message is sent by the server in response to ClientHello.
+//! The `ServerHello` message is sent by the server in response to `ClientHello`.
 //! It contains the server's selected cipher suite, key share, and other parameters.
 
 use super::Extension;
 use crate::error::{Result, TlsError};
 
-/// ServerHello message
+/// `ServerHello` message
 ///
 /// ```text
 /// struct {
@@ -35,13 +35,14 @@ pub struct ServerHello {
     /// Legacy compression method (always 0)
     pub legacy_compression_method: u8,
 
-    /// Extensions (must include supported_versions and key_share)
+    /// Extensions (must include `supported_versions` and `key_share`)
     pub extensions: Vec<Extension>,
 }
 
 impl ServerHello {
-    /// Create a new ServerHello message
-    pub fn new(
+    /// Create a new `ServerHello` message
+    #[must_use]
+    pub const fn new(
         random: [u8; 32],
         legacy_session_id_echo: Vec<u8>,
         cipher_suite: u16,
@@ -58,6 +59,7 @@ impl ServerHello {
     }
 
     /// Get the key share extension
+    #[must_use]
     pub fn get_key_share(&self) -> Option<&[u8]> {
         for ext in &self.extensions {
             if let Extension::KeyShare(key_share) = ext {
@@ -68,6 +70,7 @@ impl ServerHello {
     }
 
     /// Get the supported version from extensions
+    #[must_use]
     pub fn get_supported_version(&self) -> Option<u16> {
         for ext in &self.extensions {
             if let Extension::SupportedVersions(versions) = ext {
@@ -77,7 +80,11 @@ impl ServerHello {
         None
     }
 
-    /// Validate ServerHello message
+    /// Validate `ServerHello` message
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if required extensions are missing.
     pub fn validate(&self) -> Result<()> {
         // Must have extensions
         if self.extensions.is_empty() {

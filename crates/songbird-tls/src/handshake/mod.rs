@@ -10,13 +10,13 @@ use crate::messages::{ClientHello, ServerHello};
 /// Handshake state
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum HandshakeState {
-    /// Initial state - waiting for ClientHello
+    /// Initial state - waiting for `ClientHello`
     Start,
 
-    /// Received ClientHello - ready to send ServerHello
+    /// Received `ClientHello` - ready to send `ServerHello`
     ReceivedClientHello,
 
-    /// Sent ServerHello - handshake in progress
+    /// Sent `ServerHello` - handshake in progress
     SentServerHello,
 
     /// Handshake complete - ready for application data
@@ -36,18 +36,19 @@ pub struct HandshakeStateMachine {
     /// Key schedule for key derivation
     key_schedule: KeySchedule,
 
-    /// Crypto client for BearDog delegation
+    /// Crypto client for `BearDog` delegation
     crypto_client: Option<BeardogCryptoClient>,
 
-    /// Cached ClientHello (for transcript)
+    /// Cached `ClientHello` (for transcript)
     client_hello: Option<ClientHello>,
 
-    /// Cached ServerHello (for transcript)
+    /// Cached `ServerHello` (for transcript)
     server_hello: Option<ServerHello>,
 }
 
 impl HandshakeStateMachine {
     /// Create a new handshake state machine
+    #[must_use]
     pub fn new() -> Self {
         Self {
             state: HandshakeState::Start,
@@ -58,23 +59,29 @@ impl HandshakeStateMachine {
         }
     }
 
-    /// Set the BearDog crypto client
+    /// Set the `BearDog` crypto client
     pub fn set_crypto_client(&mut self, client: BeardogCryptoClient) {
         self.key_schedule.set_crypto_client(client.clone());
         self.crypto_client = Some(client);
     }
 
     /// Get current state
-    pub fn state(&self) -> HandshakeState {
+    #[must_use]
+    pub const fn state(&self) -> HandshakeState {
         self.state
     }
 
     /// Is handshake complete?
+    #[must_use]
     pub fn is_connected(&self) -> bool {
         self.state == HandshakeState::Connected
     }
 
-    /// Process received ClientHello
+    /// Process received `ClientHello`
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if not in Start state or `ClientHello` validation fails.
     pub fn process_client_hello(&mut self, client_hello: ClientHello) -> Result<()> {
         if self.state != HandshakeState::Start {
             return Err(TlsError::UnexpectedMessage {
@@ -95,7 +102,16 @@ impl HandshakeStateMachine {
         Ok(())
     }
 
-    /// Generate ServerHello response
+    /// Generate `ServerHello` response
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if not in `ReceivedClientHello` state, crypto operations fail,
+    /// or validation fails.
+    ///
+    /// # Panics
+    ///
+    /// May panic if system time is before `UNIX_EPOCH` (used for server random fallback).
     pub async fn generate_server_hello(&mut self) -> Result<ServerHello> {
         if self.state != HandshakeState::ReceivedClientHello {
             return Err(TlsError::ProtocolError(
@@ -108,13 +124,13 @@ impl HandshakeStateMachine {
             .as_ref()
             .ok_or_else(|| TlsError::InternalError("ClientHello not stored".to_string()))?;
 
-        // Generate server random (32 bytes) from BearDog
+        // Generate server random (32 bytes) from `BearDog`
         let crypto = self
             .crypto_client
             .as_ref()
             .ok_or_else(|| TlsError::InternalError("Crypto client not set".to_string()))?;
 
-        // TODO: Add random generation method to BearDog
+        // TODO: Add random generation method to `BearDog`
         // For now, use HMAC with timestamp as fallback
         let timestamp = std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
@@ -163,6 +179,10 @@ impl HandshakeStateMachine {
     }
 
     /// Complete handshake (after Finished messages exchanged)
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if not in `SentServerHello` state.
     pub fn complete_handshake(&mut self) -> Result<()> {
         if self.state != HandshakeState::SentServerHello {
             return Err(TlsError::ProtocolError(
@@ -177,12 +197,13 @@ impl HandshakeStateMachine {
     }
 
     /// Get key schedule (for key derivation)
-    pub fn key_schedule(&self) -> &KeySchedule {
+    #[must_use]
+    pub const fn key_schedule(&self) -> &KeySchedule {
         &self.key_schedule
     }
 
     /// Get mutable key schedule
-    pub fn key_schedule_mut(&mut self) -> &mut KeySchedule {
+    pub const fn key_schedule_mut(&mut self) -> &mut KeySchedule {
         &mut self.key_schedule
     }
 }

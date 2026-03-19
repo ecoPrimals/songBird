@@ -9,7 +9,7 @@ pub type Result<T> = std::result::Result<T, IgdError>;
 /// Errors that can occur during IGD operations
 #[derive(Debug, Error)]
 pub enum IgdError {
-    /// No gateway found (neither UPnP nor NAT-PMP)
+    /// No gateway found (neither `UPnP` nor NAT-PMP)
     #[error("No IGD-capable gateway found on network")]
     NoGatewayFound,
 
@@ -62,7 +62,7 @@ pub enum IgdError {
     ProtocolNotSupported(String),
 }
 
-/// SOAP-specific error codes from UPnP specification
+/// SOAP-specific error codes from `UPnP` specification
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum SoapErrorCode {
     /// Action failed (general error)
@@ -87,7 +87,8 @@ pub enum SoapErrorCode {
 
 impl SoapErrorCode {
     /// Parse SOAP error code from response
-    pub fn from_code(code: u16) -> Option<Self> {
+    #[must_use]
+    pub const fn from_code(code: u16) -> Option<Self> {
         match code {
             501 => Some(Self::ActionFailed),
             402 => Some(Self::ArgumentValueInvalid),
@@ -103,7 +104,8 @@ impl SoapErrorCode {
     }
 
     /// Get human-readable description
-    pub fn description(&self) -> &'static str {
+    #[must_use]
+    pub const fn description(&self) -> &'static str {
         match self {
             Self::ActionFailed => "Action failed",
             Self::ArgumentValueInvalid => "Argument value invalid",

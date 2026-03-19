@@ -221,25 +221,29 @@ impl ExecutionRequest {
     }
 
     /// Set working directory
+    #[must_use]
     pub fn with_working_dir(mut self, dir: impl Into<PathBuf>) -> Self {
         self.working_dir = Some(dir.into());
         self
     }
 
     /// Add environment variable
+    #[must_use]
     pub fn with_env(mut self, key: impl Into<String>, value: impl Into<String>) -> Self {
         self.env.insert(key.into(), value.into());
         self
     }
 
     /// Set background execution
-    pub fn with_background(mut self, background: bool) -> Self {
+    #[must_use]
+    pub const fn with_background(mut self, background: bool) -> Self {
         self.background = background;
         self
     }
 
     /// Set timeout
-    pub fn with_timeout(mut self, seconds: u64) -> Self {
+    #[must_use]
+    pub const fn with_timeout(mut self, seconds: u64) -> Self {
         self.timeout_seconds = Some(seconds);
         self
     }

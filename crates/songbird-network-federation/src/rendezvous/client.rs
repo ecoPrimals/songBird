@@ -205,13 +205,14 @@ impl RendezvousClient {
         }
 
         // Fallback: Generate deterministic placeholder from node_id
-        if let Some(node_info) = &self.node_info {
-            use sha2::{Digest, Sha256};
-            let hash = Sha256::digest(node_info.node_id.as_bytes());
-            format!("sha256:{}", hex::encode(hash))
-        } else {
-            "sha256:placeholder".to_string()
-        }
+        self.node_info.as_ref().map_or_else(
+            || "sha256:placeholder".to_string(),
+            |node_info| {
+                use sha2::{Digest, Sha256};
+                let hash = Sha256::digest(node_info.node_id.as_bytes());
+                format!("sha256:{}", hex::encode(hash))
+            },
+        )
     }
 
     /// Sign registration message with `BearDog` or return None

@@ -7,7 +7,7 @@ use std::collections::HashMap;
 /// Physical channel type for genesis
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum PhysicalChannelType {
-    /// Hardware security key (SoloKey, YubiKey, etc.)
+    /// Hardware security key (`SoloKey`, `YubiKey`, etc.)
     /// Trust level: ⭐⭐⭐⭐⭐ (Highest)
     HardwareKey,
 
@@ -26,17 +26,18 @@ pub enum PhysicalChannelType {
 
 impl PhysicalChannelType {
     /// Get trust level for this channel (0-5 stars)
-    pub fn trust_level(&self) -> u8 {
+    #[must_use]
+    pub const fn trust_level(&self) -> u8 {
         match self {
             Self::HardwareKey => 5,
-            Self::Nfc => 4,
-            Self::QrCodeWithOob => 4,
+            Self::Nfc | Self::QrCodeWithOob => 4,
             Self::Bluetooth => 3,
         }
     }
 
     /// Check if this channel provides hardware attestation
-    pub fn has_hardware_attestation(&self) -> bool {
+    #[must_use]
+    pub const fn has_hardware_attestation(&self) -> bool {
         matches!(self, Self::HardwareKey | Self::Nfc)
     }
 }

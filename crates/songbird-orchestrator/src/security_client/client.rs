@@ -1,8 +1,8 @@
 //! Security capability client implementation
 //!
-//! **MODERNIZED v3.12.3**: Now uses protocol-agnostic SecurityAdapter!
+//! **MODERNIZED v3.12.3**: Now uses protocol-agnostic `SecurityAdapter`!
 //!
-//! This module provides the main SecurityCapabilityClient struct that handles
+//! This module provides the main `SecurityCapabilityClient` struct that handles
 //! communication with security providers for trust evaluation and identity attestation.
 
 use anyhow::{Context, Result};
@@ -46,7 +46,7 @@ pub struct SecurityCapabilityClient {
     /// - `same_family()` - Check if two lineages share ancestry
     ///
     /// **✅ PURE RUST**: Now uses songbird-http-client (Zero C dependencies!)
-    /// **Migration Plan**: These will move to SecurityAdapter when security provider Phase 1.5 is complete.
+    /// **Migration Plan**: These will move to `SecurityAdapter` when security provider Phase 1.5 is complete.
     http_client: Arc<SongbirdHttpClient>,
 
     /// Optional: Cached identity
@@ -92,7 +92,7 @@ impl SecurityCapabilityClient {
             .unwrap_or_else(|_| {
                 // XDG-compliant default: $XDG_RUNTIME_DIR/biomeos/beardog.sock
                 if let Ok(runtime_dir) = std::env::var("XDG_RUNTIME_DIR") {
-                    format!("{}/biomeos/beardog.sock", runtime_dir)
+                    format!("{runtime_dir}/biomeos/beardog.sock")
                 } else {
                     // Fallback for environments without XDG
                     "/tmp/biomeos/beardog.sock".to_string()
@@ -124,7 +124,7 @@ impl SecurityCapabilityClient {
         // ✅ IDIOMATIC REST: HTTP status code is source of truth
         if !(200..300).contains(&status) {
             error!("Security provider returned error: {} - {}", status, body);
-            anyhow::bail!("Security provider error: {} - {}", status, body);
+            anyhow::bail!("Security provider error: {status} - {body}");
         }
 
         // Try unwrapped format first (modern, idiomatic)
@@ -235,7 +235,7 @@ impl SecurityCapabilityClient {
                     decision: "reject".to_string(),
                     trust_level: "none".to_string(),
                     confidence: 0.0,
-                    reason: format!("Security provider error: {}", e),
+                    reason: format!("Security provider error: {e}"),
                     encryption_tag: None,
                     metadata: HashMap::new(),
                 }
@@ -288,6 +288,7 @@ impl SecurityCapabilityClient {
     }
 
     /// Convert identity response to universal attestations
+    #[must_use]
     pub fn identity_to_attestations(
         identity: &IdentityResponse,
     ) -> Vec<UniversalIdentityAttestation> {
@@ -315,6 +316,7 @@ impl SecurityCapabilityClient {
     }
 
     /// Convert identity response to discovery attestations
+    #[must_use]
     pub fn identity_to_discovery_attestations(
         identity: &IdentityResponse,
     ) -> Vec<songbird_discovery::IdentityAttestation> {
@@ -434,7 +436,7 @@ impl SecurityCapabilityClient {
         })
     }
 
-    /// Backward compatibility: alias for from_endpoint
+    /// Backward compatibility: alias for `from_endpoint`
     #[deprecated(note = "Use from_endpoint instead for clarity")]
     pub async fn new(endpoint: impl Into<String>) -> Result<Self> {
         Self::from_endpoint(endpoint).await

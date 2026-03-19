@@ -84,11 +84,11 @@ impl IgdHandler {
                 json!({
                     "protocol": "none",
                     "gateway_ip": diagnostics.gateway_ip.to_string(),
-                    "upnp_tried": diagnostics.upnp_ssdp_sent,
+                    "upnp_tried": diagnostics.upnp.ssdp_sent,
                     "upnp_devices_found": diagnostics.upnp_devices_found,
-                    "upnp_igd_found": false,
-                    "nat_pmp_tried": diagnostics.nat_pmp_sent,
-                    "nat_pmp_responded": diagnostics.nat_pmp_responded,
+                    "upnp_igd_found": diagnostics.upnp.igd_found,
+                    "nat_pmp_tried": diagnostics.nat_pmp.probe_sent,
+                    "nat_pmp_responded": diagnostics.nat_pmp.responded,
                     "recommendation": format!(
                         "Enable UPnP on your router, or manually forward TCP port 3492 to your local IP"
                     ),
@@ -106,9 +106,10 @@ impl IgdHandler {
     pub async fn handle_map_port(&self, params: Value) -> Value {
         let external_port =
             u16::try_from(params["external_port"].as_u64().unwrap_or(3492)).unwrap_or(3492);
-        let internal_port =
-            u16::try_from(params["internal_port"].as_u64().unwrap_or(u64::from(external_port)))
-                .unwrap_or(external_port);
+        let internal_port = u16::try_from(
+            params["internal_port"].as_u64().unwrap_or_else(|| u64::from(external_port)),
+        )
+        .unwrap_or(external_port);
         let protocol = params["protocol"].as_str().unwrap_or("TCP");
         let _description = params["description"].as_str().unwrap_or("Songbird sovereign beacon");
         let ttl = u32::try_from(params["ttl"].as_u64().unwrap_or(86400)).unwrap_or(86400);
@@ -134,9 +135,15 @@ impl IgdHandler {
                     }
                     // Need to drop and re-acquire to avoid borrow issues
                     drop(gateway);
-                    let gw = self.gateway.read().await;
-                    let gw = gw.as_ref().unwrap();
-                    return self.do_map_port(gw, external_port, internal_port, protocol, ttl).await;
+                    return self
+                        .do_map_port(
+                            self.gateway.read().await.as_ref().unwrap(),
+                            external_port,
+                            internal_port,
+                            protocol,
+                            ttl,
+                        )
+                        .await;
                 }
                 None => {
                     return json!({"error": "Gateway discovery failed"});
@@ -227,26 +234,30 @@ impl IgdHandler {
             })
             .collect();
 
-        match gateway.as_ref() {
-            Some(gw) => json!({
-                "gateway_ip": gw.ip.to_string(),
-                "external_ip": gw.external_ip.map(|ip| ip.to_string()),
-                "protocol": match &gw.protocol {
-                    GatewayProtocol::UpnpIgd { .. } => "upnp_igd",
-                    GatewayProtocol::NatPmp => "nat_pmp",
-                    GatewayProtocol::None => "none",
-                },
-                "mappings": mappings_json,
-                "mapping_count": mappings.len()
-            }),
-            None => json!({
-                "gateway_ip": null,
-                "protocol": "not_discovered",
-                "mappings": [],
-                "mapping_count": 0,
-                "note": "Call igd.discover first"
-            }),
-        }
+        gateway.as_ref().map_or_else(
+            || {
+                json!({
+                    "gateway_ip": null,
+                    "protocol": "not_discovered",
+                    "mappings": [],
+                    "mapping_count": 0,
+                    "note": "Call igd.discover first"
+                })
+            },
+            |gw| {
+                json!({
+                    "gateway_ip": gw.ip.to_string(),
+                    "external_ip": gw.external_ip.map(|ip| ip.to_string()),
+                    "protocol": match &gw.protocol {
+                        GatewayProtocol::UpnpIgd { .. } => "upnp_igd",
+                        GatewayProtocol::NatPmp => "nat_pmp",
+                        GatewayProtocol::None => "none",
+                    },
+                    "mappings": mappings_json,
+                    "mapping_count": mappings.len()
+                })
+            },
+        )
     }
 
     /// Handle `igd.external_ip` - Quick external IP query from router
@@ -278,61 +289,63 @@ impl IgdHandler {
         // Step 1: Discover
         let discover_result = self.handle_discover(Value::Null).await;
 
-        let gateway = self.gateway.read().await;
-        let Some(gw) = gateway.as_ref() else {
-            return json!({
-                "configured": false,
-                "reason": "discovery_failed",
-                "recommendation": "Check network connectivity"
-            });
-        };
+        {
+            let gateway = self.gateway.read().await;
+            let Some(gw) = gateway.as_ref() else {
+                return json!({
+                    "configured": false,
+                    "reason": "discovery_failed",
+                    "recommendation": "Check network connectivity"
+                });
+            };
 
-        if !gw.is_available() {
-            return json!({
-                "configured": false,
-                "reason": "no_igd_support",
-                "gateway": gw.ip.to_string(),
-                "discovery_details": discover_result,
-                "recommendation": "Enable UPnP on router, or manually forward TCP port to your local IP",
-                "fallback_tiers": [
-                    "Sovereign onion: .onion address via onion.start (works everywhere, no port forward needed)",
-                    "STUN hole-punch: punch.request (works for non-symmetric NAT)",
-                    "Family relay: mesh via other connected family device"
-                ]
-            });
-        }
+            if !gw.is_available() {
+                return json!({
+                    "configured": false,
+                    "reason": "no_igd_support",
+                    "gateway": gw.ip.to_string(),
+                    "discovery_details": discover_result,
+                    "recommendation": "Enable UPnP on router, or manually forward TCP port to your local IP",
+                    "fallback_tiers": [
+                        "Sovereign onion: .onion address via onion.start (works everywhere, no port forward needed)",
+                        "STUN hole-punch: punch.request (works for non-symmetric NAT)",
+                        "Family relay: mesh via other connected family device"
+                    ]
+                });
+            }
 
-        // Step 2: Map port
-        let map_result = self.do_map_port(gw, port, port, protocol, 86400).await;
+            // Step 2: Map port
+            let map_result = self.do_map_port(gw, port, port, protocol, 86400).await;
 
-        if map_result["mapped"].as_bool() != Some(true) {
-            return json!({
-                "configured": false,
-                "reason": "mapping_failed",
+            if map_result["mapped"].as_bool() != Some(true) {
+                return json!({
+                    "configured": false,
+                    "reason": "mapping_failed",
+                    "gateway": gw.ip.to_string(),
+                    "protocol_used": match &gw.protocol {
+                        GatewayProtocol::UpnpIgd { .. } => "upnp_igd",
+                        GatewayProtocol::NatPmp => "nat_pmp",
+                        GatewayProtocol::None => "none",
+                    },
+                    "error": map_result["error"],
+                    "recommendation": "Check if another device has the port mapped, or try a different port"
+                });
+            }
+
+            // Step 3: Return success
+            json!({
+                "configured": true,
                 "gateway": gw.ip.to_string(),
                 "protocol_used": match &gw.protocol {
                     GatewayProtocol::UpnpIgd { .. } => "upnp_igd",
                     GatewayProtocol::NatPmp => "nat_pmp",
                     GatewayProtocol::None => "none",
                 },
-                "error": map_result["error"],
-                "recommendation": "Check if another device has the port mapped, or try a different port"
-            });
+                "external_endpoint": map_result["external"],
+                "auto_renew_enabled": true,
+                "mapping": map_result
+            })
         }
-
-        // Step 3: Return success
-        json!({
-            "configured": true,
-            "gateway": gw.ip.to_string(),
-            "protocol_used": match &gw.protocol {
-                GatewayProtocol::UpnpIgd { .. } => "upnp_igd",
-                GatewayProtocol::NatPmp => "nat_pmp",
-                GatewayProtocol::None => "none",
-            },
-            "external_endpoint": map_result["external"],
-            "auto_renew_enabled": true,
-            "mapping": map_result
-        })
     }
 }
 

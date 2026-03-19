@@ -67,8 +67,7 @@ impl fmt::Display for BufferError {
             } => {
                 write!(
                     f,
-                    "Buffer capacity exceeded: requested {}, max capacity {}",
-                    requested, max_capacity
+                    "Buffer capacity exceeded: requested {requested}, max capacity {max_capacity}"
                 )
             }
             Self::BufferEmpty => write!(f, "Buffer is empty"),
@@ -76,7 +75,7 @@ impl fmt::Display for BufferError {
                 index,
                 length,
             } => {
-                write!(f, "Index {} out of bounds for buffer of length {}", index, length)
+                write!(f, "Index {index} out of bounds for buffer of length {length}")
             }
         }
     }
@@ -176,25 +175,25 @@ impl<T> ModernSafeBuffer<T> {
 
     /// Get the number of elements in the buffer
     #[must_use]
-    pub fn len(&self) -> usize {
+    pub const fn len(&self) -> usize {
         self.data.len()
     }
 
     /// Check if buffer is empty
     #[must_use]
-    pub fn is_empty(&self) -> bool {
+    pub const fn is_empty(&self) -> bool {
         self.data.is_empty()
     }
 
     /// Get the maximum capacity
     #[must_use]
-    pub fn capacity(&self) -> usize {
+    pub const fn capacity(&self) -> usize {
         self.capacity
     }
 
     /// Get remaining capacity
     #[must_use]
-    pub fn remaining_capacity(&self) -> usize {
+    pub const fn remaining_capacity(&self) -> usize {
         self.capacity.saturating_sub(self.data.len())
     }
 

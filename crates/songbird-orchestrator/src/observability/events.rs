@@ -100,6 +100,7 @@ pub struct TaskEvent {
 
 impl TaskEvent {
     /// Create a new task event
+    #[must_use]
     pub fn new(task_id: TaskId, user_id: UserId, event_type: TaskEventType) -> Self {
         Self {
             event_id: uuid::Uuid::new_v4().to_string().into(),
@@ -133,6 +134,7 @@ pub struct EventFilter {
 
 impl EventFilter {
     /// Create filter for a specific user
+    #[must_use]
     pub fn for_user(user_id: UserId) -> Self {
         Self {
             user_id: Some(user_id),
@@ -141,6 +143,7 @@ impl EventFilter {
     }
 
     /// Create filter for a specific task
+    #[must_use]
     pub fn for_task(task_id: TaskId) -> Self {
         Self {
             task_id: Some(task_id),
@@ -149,6 +152,7 @@ impl EventFilter {
     }
 
     /// Check if event matches this filter
+    #[must_use]
     pub fn matches(&self, event: &TaskEvent) -> bool {
         // Check user filter
         if let Some(ref user_id) = self.user_id {
@@ -187,11 +191,13 @@ pub struct EventStreamManager {
 
 impl EventStreamManager {
     /// Create a new event stream manager
+    #[must_use]
     pub fn new() -> Self {
         Self::with_capacity(1000, 10000)
     }
 
     /// Create with specific capacities
+    #[must_use]
     pub fn with_capacity(channel_capacity: usize, max_history: usize) -> Self {
         let (tx, _) = broadcast::channel(channel_capacity);
 
@@ -231,11 +237,13 @@ impl EventStreamManager {
     }
 
     /// Subscribe to all events
+    #[must_use]
     pub fn subscribe(&self) -> broadcast::Receiver<TaskEvent> {
         self.broadcaster.subscribe()
     }
 
     /// Subscribe with a filter (returns filtered receiver)
+    #[must_use]
     pub fn subscribe_filtered(&self, filter: EventFilter) -> FilteredEventReceiver {
         FilteredEventReceiver {
             receiver: self.broadcaster.subscribe(),

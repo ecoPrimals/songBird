@@ -81,7 +81,7 @@ enum Commands {
 
     /// Deploy a service via HTTP deployment API (adaptive)
     DeployHttp {
-        /// Target tower HTTP endpoint (e.g. http://192.168.1.144:8080)
+        /// Target tower HTTP endpoint (e.g. <http://192.168.1.144:8080>)
         #[arg(long)]
         tower: String,
 
@@ -121,7 +121,7 @@ enum Commands {
 fn parse_env_var(s: &str) -> Result<(String, String), String> {
     let parts: Vec<&str> = s.splitn(2, '=').collect();
     if parts.len() != 2 {
-        return Err(format!("Invalid env var format: {}. Expected KEY=VALUE", s));
+        return Err(format!("Invalid env var format: {s}. Expected KEY=VALUE"));
     }
     Ok((parts[0].to_string(), parts[1].to_string()))
 }
@@ -222,7 +222,7 @@ async fn deploy_service(config: DeploymentConfig<'_>) -> Result<()> {
 
     // Get tower information from Songbird
     let tower_info = get_tower_info(config.songbird_endpoint, config.tower_id).await?;
-    let tower_address = parse_tower_address(&tower_info.node_address)?;
+    let tower_address = parse_tower_address(&tower_info.node_address);
 
     info!("📡 Target: {} ({})", tower_info.node_name, tower_address);
     info!("📦 Binary: {}", config.binary_path);
@@ -299,7 +299,7 @@ async fn deploy_service(config: DeploymentConfig<'_>) -> Result<()> {
 
 /// Get tower information from Songbird federation
 async fn get_tower_info(songbird_endpoint: &str, tower_id: &str) -> Result<NodeInfo> {
-    let url = format!("{}/api/federation/nodes", songbird_endpoint);
+    let url = format!("{songbird_endpoint}/api/federation/nodes");
     debug!("Fetching tower info from: {}", url);
 
     let client = IpcHttpClient::new().await.context("Failed to create HTTP client")?;
@@ -316,13 +316,13 @@ async fn get_tower_info(songbird_endpoint: &str, tower_id: &str) -> Result<NodeI
         .find(|n| {
             n.node_id == tower_id || n.node_name.to_lowercase().contains(&tower_id.to_lowercase())
         })
-        .ok_or_else(|| anyhow::anyhow!("Tower '{}' not found in federation", tower_id))
+        .ok_or_else(|| anyhow::anyhow!("Tower '{tower_id}' not found in federation"))
 }
 
 /// Parse tower address (IP:PORT) to just IP
-fn parse_tower_address(address: &str) -> Result<String> {
+fn parse_tower_address(address: &str) -> String {
     let parts: Vec<&str> = address.split(':').collect();
-    Ok(parts[0].to_string())
+    parts[0].to_string()
 }
 
 /// Copy file via SCP
@@ -340,7 +340,7 @@ fn scp_copy(
     }
 
     cmd.arg(local_path)
-        .arg(format!("{}@{}:{}", ssh_user, remote_host, remote_path))
+        .arg(format!("{ssh_user}@{remote_host}:{remote_path}"))
         .stdout(Stdio::inherit())
         .stderr(Stdio::inherit());
 
@@ -349,7 +349,7 @@ fn scp_copy(
     let status = cmd.status().context("Failed to execute scp")?;
 
     if !status.success() {
-        anyhow::bail!("SCP failed with status: {}", status);
+        anyhow::bail!("SCP failed with status: {status}");
     }
 
     Ok(())
@@ -363,7 +363,7 @@ fn ssh_exec(remote_host: &str, command: &str, ssh_user: &str, ssh_key: Option<&s
         cmd.arg("-i").arg(key);
     }
 
-    cmd.arg(format!("{}@{}", ssh_user, remote_host))
+    cmd.arg(format!("{ssh_user}@{remote_host}"))
         .arg(command)
         .stdout(Stdio::inherit())
         .stderr(Stdio::inherit());
@@ -373,7 +373,7 @@ fn ssh_exec(remote_host: &str, command: &str, ssh_user: &str, ssh_key: Option<&s
     let status = cmd.status().context("Failed to execute ssh")?;
 
     if !status.success() {
-        anyhow::bail!("SSH command failed with status: {}", status);
+        anyhow::bail!("SSH command failed with status: {status}");
     }
 
     Ok(())
@@ -389,10 +389,10 @@ fn start_remote_service(
 ) -> Result<()> {
     // Build environment variable string
     let env_string =
-        env_vars.iter().map(|(k, v)| format!("{}=\"{}\"", k, v)).collect::<Vec<_>>().join(" ");
+        env_vars.iter().map(|(k, v)| format!("{k}=\"{v}\"")).collect::<Vec<_>>().join(" ");
 
     // Build command to run service in background with nohup
-    let command = format!("nohup {} {} > /tmp/service.log 2>&1 &", env_string, remote_path);
+    let command = format!("nohup {env_string} {remote_path} > /tmp/service.log 2>&1 &");
 
     ssh_exec(remote_host, &command, ssh_user, ssh_key)?;
 
@@ -401,7 +401,7 @@ fn start_remote_service(
 
 /// Verify service health
 async fn verify_service_health(host: &str, port: u16) -> Result<()> {
-    let url = format!("http://{}:{}/health", host, port);
+    let url = format!("http://{host}:{port}/health");
     debug!("Health check: {}", url);
 
     let client = IpcHttpClient::new().await.context("Failed to create HTTP client")?;
@@ -410,13 +410,14 @@ async fn verify_service_health(host: &str, port: u16) -> Result<()> {
     if response.is_success() {
         Ok(())
     } else {
-        anyhow::bail!("Health check failed with status: {}", response.status())
+        let status = response.status();
+        anyhow::bail!("Health check failed with status: {status}")
     }
 }
 
 /// List towers in federation
 async fn list_towers(songbird_endpoint: &str, detailed: bool) -> Result<()> {
-    let url = format!("{}/api/federation/nodes", songbird_endpoint);
+    let url = format!("{songbird_endpoint}/api/federation/nodes");
 
     let client = IpcHttpClient::new().await.context("Failed to create HTTP client")?;
     let nodes: Vec<NodeInfo> = client
@@ -450,21 +451,17 @@ async fn list_towers(songbird_endpoint: &str, detailed: bool) -> Result<()> {
 /// Check status of services on a tower
 async fn check_status(songbird_endpoint: &str, tower_id: &str, port: Option<u16>) -> Result<()> {
     let tower_info = get_tower_info(songbird_endpoint, tower_id).await?;
-    let tower_address = parse_tower_address(&tower_info.node_address)?;
+    let tower_address = parse_tower_address(&tower_info.node_address);
 
     info!("🔍 Checking status on: {} ({})", tower_info.node_name, tower_address);
 
     if let Some(port) = port {
         // Check specific port
         match verify_service_health(&tower_address, port).await {
-            Ok(_) => info!("✅ Service on port {} is healthy", port),
+            Ok(()) => info!("✅ Service on port {} is healthy", port),
             Err(e) => info!("❌ Service on port {} is not responding: {}", port, e),
         }
     } else {
-        // Query federation for services on this tower
-        let url = format!("{}/api/federation/services", songbird_endpoint);
-        let client = IpcHttpClient::new().await.context("Failed to create HTTP client")?;
-
         #[derive(Deserialize)]
         struct ServiceInfo {
             service_name: String,
@@ -473,6 +470,9 @@ async fn check_status(songbird_endpoint: &str, tower_id: &str, port: Option<u16>
             health_status: String,
         }
 
+        // Query federation for services on this tower
+        let url = format!("{songbird_endpoint}/api/federation/services");
+        let client = IpcHttpClient::new().await.context("Failed to create HTTP client")?;
         let services: Vec<ServiceInfo> = client.get(&url).await?.json().await?;
 
         let tower_services: Vec<_> =

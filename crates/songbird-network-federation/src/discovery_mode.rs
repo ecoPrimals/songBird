@@ -32,19 +32,19 @@ pub enum DiscoveryMode {
 impl DiscoveryMode {
     /// Check if this mode requires `BearDog`
     #[must_use]
-    pub fn requires_beardog(&self) -> bool {
+    pub const fn requires_beardog(&self) -> bool {
         matches!(self, Self::BirdSong)
     }
 
     /// Check if this mode is privacy-preserving
     #[must_use]
-    pub fn is_private(&self) -> bool {
+    pub const fn is_private(&self) -> bool {
         matches!(self, Self::BirdSong)
     }
 
     /// Get human-readable description
     #[must_use]
-    pub fn description(&self) -> &'static str {
+    pub const fn description(&self) -> &'static str {
         match self {
             Self::Plaintext => "Plaintext (trusted LAN only)",
             Self::BirdSong => "BirdSong (privacy-preserving, encrypted)",

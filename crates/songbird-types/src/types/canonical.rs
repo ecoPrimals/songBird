@@ -51,7 +51,7 @@ impl CanonicalEndpoint {
 
     /// Check if the endpoint is available (basic connectivity check)
     #[must_use]
-    pub fn is_available(&self) -> bool {
+    pub const fn is_available(&self) -> bool {
         // In a real implementation, this would check connectivity
         // For now, just validate that required fields are present
         !self.host.is_empty() && self.port > 0 && !self.protocol.is_empty()

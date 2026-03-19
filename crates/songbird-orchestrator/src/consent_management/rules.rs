@@ -9,6 +9,7 @@ pub struct AutoApprovalRule {
 }
 
 impl AutoApprovalRule {
+    #[must_use]
     pub fn matches(&self, operation: &str, cost: Option<f64>) -> bool {
         // Check operation
         if !self.operations.is_empty() && !self.operations.contains(&operation.to_string()) {

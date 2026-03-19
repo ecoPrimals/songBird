@@ -1,12 +1,12 @@
 //! XDG-compliant socket discovery for TLS layer
 //!
-//! This module provides functions to discover Unix socket paths for BearDog
+//! This module provides functions to discover Unix socket paths for `BearDog`
 //! and Neural API following the XDG Base Directory Specification.
 //!
 //! ## Discovery Order
 //! 1. Explicitly provided path (e.g., from CLI arguments)
 //! 2. Environment variable (e.g., `BEARDOG_SOCKET`, `NEURAL_API_SOCKET`)
-//! 3. XDG_RUNTIME_DIR (e.g., `/run/user/1000/biomeos/beardog-nat0.sock`)
+//! 3. `XDG_RUNTIME_DIR` (e.g., `/run/user/1000/biomeos/beardog-nat0.sock`)
 //! 4. Fallback to `/tmp` (e.g., `/tmp/beardog-nat0.sock`)
 //!
 //! ## Zero Hardcoding
@@ -19,7 +19,7 @@
 //! - Fully concurrent test execution (no `#[ignore]` needed)
 //!
 //! ## Compatibility
-//! This is a duplicate of the socket_discovery module from songbird-http-client,
+//! This is a duplicate of the `socket_discovery` module from songbird-http-client,
 //! kept separate to avoid circular dependencies between crates.
 
 use std::path::PathBuf;
@@ -28,6 +28,10 @@ use tracing::{debug, trace, warn};
 /// Trait for reading environment variables (dependency injection for testing)
 pub trait EnvReader: Send + Sync {
     /// Read an environment variable
+    ///
+    /// # Errors
+    ///
+    /// Returns `VarError` if the variable is not set or contains invalid Unicode.
     fn var(&self, key: &str) -> Result<String, std::env::VarError>;
 }
 
@@ -85,14 +89,13 @@ fn discover_xdg_socket_with_env(
     if let Ok(runtime_dir) = env.var("XDG_RUNTIME_DIR") {
         let path = PathBuf::from(runtime_dir)
             .join("biomeos")
-            .join(format!("{}-{}.sock", primal_name, family_id));
+            .join(format!("{primal_name}-{family_id}.sock"));
         if path.exists() {
             let path_str = path.to_string_lossy().into_owned();
             debug!("Found XDG socket for {}: {}", primal_name, path_str);
             return Some(path_str);
-        } else {
-            trace!("XDG socket path does not exist: {}", path.display());
         }
+        trace!("XDG socket path does not exist: {}", path.display());
     } else {
         trace!("XDG_RUNTIME_DIR not set for {}", primal_name);
     }
@@ -167,7 +170,7 @@ fn discover_beardog_socket_with_env(
     // 4. UID-based fallback (without XDG_RUNTIME_DIR, capability names first)
     if let Ok(uid) = env.var("UID") {
         for socket_name in &["security.sock", "crypto.sock", "beardog.sock"] {
-            let uid_path = PathBuf::from(format!("/run/user/{}/biomeos/{}", uid, socket_name));
+            let uid_path = PathBuf::from(format!("/run/user/{uid}/biomeos/{socket_name}"));
             if uid_path.exists() {
                 let path_str = uid_path.to_string_lossy().into_owned();
                 debug!("Found UID-based socket: {}", path_str);
@@ -207,6 +210,7 @@ fn discover_beardog_socket_with_env(
 /// 4. XDG: `$XDG_RUNTIME_DIR/biomeos/{capability}.sock` (capability names first)
 /// 5. UID: `/run/user/$UID/biomeos/security.sock`
 /// 6. Legacy: `/tmp/biomeos/security.sock` (fallback)
+#[must_use]
 pub fn discover_beardog_socket(explicit_path: Option<&PathBuf>) -> String {
     discover_beardog_socket_with_env(explicit_path, &SystemEnv)
 }
@@ -261,7 +265,7 @@ fn discover_neural_api_socket_with_env(
     // 3. UID-based fallback (capability names first)
     if let Ok(uid) = env.var("UID") {
         for socket_name in &["ai.sock", "neural-api.sock", "squirrel.sock"] {
-            let uid_path = PathBuf::from(format!("/run/user/{}/biomeos/{}", uid, socket_name));
+            let uid_path = PathBuf::from(format!("/run/user/{uid}/biomeos/{socket_name}"));
             if uid_path.exists() {
                 let path_str = uid_path.to_string_lossy().into_owned();
                 debug!("Found UID-based AI socket: {}", path_str);
@@ -290,10 +294,11 @@ fn discover_neural_api_socket_with_env(
 /// Prioritizes:
 /// 1. `explicit_path` (from CLI)
 /// 2. `NEURAL_API_SOCKET` or `NEURALS_SOCKET` env vars
-/// 3. `$XDG_RUNTIME_DIR/biomeos/neural-api-{family_id}.sock` (if FAMILY_ID set)
+/// 3. `$XDG_RUNTIME_DIR/biomeos/neural-api-{family_id}.sock` (if `FAMILY_ID` set)
 /// 4. `$XDG_RUNTIME_DIR/biomeos/beardog.sock` (biomeOS standard)
 /// 5. `/run/user/$UID/biomeos/beardog.sock` (UID fallback)
 /// 6. `/tmp/beardog.sock` (legacy fallback)
+#[must_use]
 pub fn discover_neural_api_socket(explicit_path: Option<&PathBuf>) -> String {
     discover_neural_api_socket_with_env(explicit_path, &SystemEnv)
 }

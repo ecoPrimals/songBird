@@ -32,7 +32,8 @@ pub struct NfcMessage {
 
 impl NfcMessage {
     /// Create new message
-    pub fn new(
+    #[must_use]
+    pub const fn new(
         msg_type: u8,
         public_key: [u8; PUBLIC_KEY_SIZE],
         nonce: [u8; NONCE_SIZE],
@@ -50,6 +51,10 @@ impl NfcMessage {
     }
 
     /// Serialize to wire format
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the payload exceeds maximum size.
     pub fn to_bytes(&self) -> Result<Vec<u8>> {
         let payload_len = self.encrypted_payload.len();
 
@@ -81,6 +86,10 @@ impl NfcMessage {
     }
 
     /// Deserialize from wire format
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the frame is malformed or too short.
     pub fn from_bytes(data: &[u8]) -> Result<Self> {
         if data.len() < FRAME_OVERHEAD {
             return Err(NfcError::MalformedFrame(format!("Frame too short: {} bytes", data.len())));
@@ -157,13 +166,15 @@ pub struct NfcProtocol {
 
 impl NfcProtocol {
     /// Create new protocol handler
-    pub fn new(config: crate::config::NfcConfig) -> Self {
+    #[must_use]
+    pub const fn new(config: crate::config::NfcConfig) -> Self {
         Self {
             config,
         }
     }
 
-    /// Get BearDog socket path
+    /// Get `BearDog` socket path
+    #[must_use]
     pub fn beardog_socket(&self) -> &std::path::Path {
         &self.config.beardog_socket
     }

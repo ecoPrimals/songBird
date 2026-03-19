@@ -84,11 +84,11 @@ pub async fn run_server(args: ServerArgs) -> Result<()> {
     let mut config = if let Some(path) = args.config {
         tracing::info!("   Config file: {}", path);
         CanonicalSongbirdConfig::from_env()
-            .map_err(|e| anyhow::anyhow!("Failed to load configuration from file: {}", e))?
+            .map_err(|e| anyhow::anyhow!("Failed to load configuration from file: {e}"))?
     } else {
         tracing::info!("   Config source: Environment variables");
         CanonicalSongbirdConfig::from_env()
-            .map_err(|e| anyhow::anyhow!("Failed to load configuration from environment: {}", e))?
+            .map_err(|e| anyhow::anyhow!("Failed to load configuration from environment: {e}"))?
     };
 
     // Override port from CLI (CLI takes precedence over config/env)
@@ -119,7 +119,7 @@ pub async fn run_server(args: ServerArgs) -> Result<()> {
         let beardog_socket = args.beardog_socket.clone().unwrap_or_else(|| {
             let default_family = crate::env_config::family_id();
             let family_id = family_identity.as_deref().unwrap_or(&default_family);
-            format!("/tmp/beardog-{}.sock", family_id)
+            format!("/tmp/beardog-{family_id}.sock")
         });
         tracing::info!("   BearDog: {}", beardog_socket);
         tracing::info!("   Capabilities: http, stun, discovery");
@@ -145,7 +145,7 @@ pub async fn run_server(args: ServerArgs) -> Result<()> {
         let beardog_socket = args.beardog_socket.unwrap_or_else(|| {
             let default_family = crate::env_config::family_id();
             let family_id = family_identity.as_deref().unwrap_or(&default_family);
-            format!("/tmp/beardog-{}.sock", family_id)
+            format!("/tmp/beardog-{family_id}.sock")
         });
         tracing::info!("   BearDog: {}", beardog_socket);
         tracing::info!("   Capabilities: http, discovery, secure_http");
@@ -259,7 +259,7 @@ async fn start_ipc_server(socket_path: &str, beardog_socket: &str) -> Result<()>
 
     // Bind to Unix socket
     let listener = tokio::net::UnixListener::bind(socket_path)
-        .map_err(|e| anyhow::anyhow!("Failed to bind to {}: {}", socket_path, e))?;
+        .map_err(|e| anyhow::anyhow!("Failed to bind to {socket_path}: {e}"))?;
 
     // Accept connections in a loop
     loop {
@@ -311,7 +311,7 @@ async fn start_ipc_server(socket_path: &str, beardog_socket: &str) -> Result<()>
                                     Err(e) => JsonRpcResponse::error(
                                         JsonRpcError {
                                             code: JsonRpcError::PARSE_ERROR,
-                                            message: format!("Failed to parse request: {}", e),
+                                            message: format!("Failed to parse request: {e}"),
                                             data: None,
                                         },
                                         serde_json::Value::Null,
@@ -342,12 +342,12 @@ async fn start_ipc_server(socket_path: &str, beardog_socket: &str) -> Result<()>
 /// Start TCP IPC server for external primal access (Android/Universal mode)
 ///
 /// This enables Songbird to work on platforms where Unix sockets are restricted
-/// (Android SELinux, Windows). Same JSON-RPC 2.0 protocol, just over TCP.
+/// (Android `SELinux`, Windows). Same JSON-RPC 2.0 protocol, just over TCP.
 async fn start_tcp_ipc_server(listen_addr: &str, _beardog_socket: &str) -> Result<()> {
     // Parse listen address
     let addr: std::net::SocketAddr = listen_addr
         .parse()
-        .map_err(|e| anyhow::anyhow!("Invalid listen address '{}': {}", listen_addr, e))?;
+        .map_err(|e| anyhow::anyhow!("Invalid listen address '{listen_addr}': {e}"))?;
 
     // Create IPC service handler with all methods
     // IMPORTANT: Create ONCE and share via Arc - state must persist across connections!
@@ -366,7 +366,7 @@ async fn start_tcp_ipc_server(listen_addr: &str, _beardog_socket: &str) -> Resul
     // Bind to TCP socket
     let listener = tokio::net::TcpListener::bind(addr)
         .await
-        .map_err(|e| anyhow::anyhow!("Failed to bind to {}: {}", addr, e))?;
+        .map_err(|e| anyhow::anyhow!("Failed to bind to {addr}: {e}"))?;
 
     // Accept connections in a loop
     loop {
@@ -421,7 +421,7 @@ async fn start_tcp_ipc_server(listen_addr: &str, _beardog_socket: &str) -> Resul
                                     Err(e) => JsonRpcResponse::error(
                                         JsonRpcError {
                                             code: JsonRpcError::PARSE_ERROR,
-                                            message: format!("Failed to parse request: {}", e),
+                                            message: format!("Failed to parse request: {e}"),
                                             data: None,
                                         },
                                         serde_json::Value::Null,

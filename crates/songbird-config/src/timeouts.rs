@@ -173,7 +173,7 @@ impl TimeoutConfig {
     ///
     /// Example: Local development, LAN deployments
     #[must_use]
-    pub fn fast() -> Self {
+    pub const fn fast() -> Self {
         Self {
             connect: Duration::from_secs(2),
             request: Duration::from_secs(10),
@@ -195,7 +195,7 @@ impl TimeoutConfig {
     ///
     /// This is the default profile.
     #[must_use]
-    pub fn balanced() -> Self {
+    pub const fn balanced() -> Self {
         Self {
             connect: Duration::from_secs(5),
             request: Duration::from_secs(30),
@@ -217,7 +217,7 @@ impl TimeoutConfig {
     ///
     /// Example: Mobile deployments, satellite links, `IoT` devices
     #[must_use]
-    pub fn reliable() -> Self {
+    pub const fn reliable() -> Self {
         Self {
             connect: Duration::from_secs(15),
             request: Duration::from_secs(120),
@@ -247,7 +247,7 @@ impl TimeoutConfig {
     /// );
     /// ```
     #[must_use]
-    pub fn custom(connect: Duration, request: Duration, idle: Duration) -> Self {
+    pub const fn custom(connect: Duration, request: Duration, idle: Duration) -> Self {
         Self {
             connect,
             request,
@@ -313,9 +313,18 @@ impl TimeoutConfig {
 /// Parses environment variable as seconds (integer). Invalid values
 /// log a warning and return the default.
 fn env_duration(var: &str, default: Duration) -> Duration {
-    match std::env::var(var) {
-        Ok(val) => {
-            if let Ok(secs) = val.parse::<u64>() {
+    std::env::var(var).map_or(default, |val| {
+        val.parse::<u64>().map_or_else(
+            |_| {
+                tracing::warn!(
+                    "Invalid timeout {}: '{}' is not a valid number, using default {:?}",
+                    var,
+                    val,
+                    default
+                );
+                default
+            },
+            |secs| {
                 if secs == 0 {
                     tracing::warn!(
                         "Invalid timeout {}: value cannot be 0, using default {:?}",
@@ -334,18 +343,9 @@ fn env_duration(var: &str, default: Duration) -> Duration {
                 } else {
                     Duration::from_secs(secs)
                 }
-            } else {
-                tracing::warn!(
-                    "Invalid timeout {}: '{}' is not a valid number, using default {:?}",
-                    var,
-                    val,
-                    default
-                );
-                default
-            }
-        }
-        Err(_) => default,
-    }
+            },
+        )
+    })
 }
 
 #[cfg(test)]

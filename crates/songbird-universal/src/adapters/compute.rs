@@ -57,7 +57,7 @@ pub struct ComputeMetrics {
 impl ComputeMetrics {
     /// Calculate total memory in bytes
     #[must_use]
-    pub fn total_memory_bytes(&self) -> u64 {
+    pub const fn total_memory_bytes(&self) -> u64 {
         self.memory_usage_bytes + self.memory_available_bytes
     }
 
@@ -252,7 +252,7 @@ impl ComputeAdapter {
 
     /// Set custom request timeout
     #[must_use]
-    pub fn with_timeout(mut self, timeout: Duration) -> Self {
+    pub const fn with_timeout(mut self, timeout: Duration) -> Self {
         self.timeout = timeout;
         self
     }

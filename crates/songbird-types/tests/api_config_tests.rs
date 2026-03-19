@@ -140,9 +140,9 @@ fn test_api_config_serialization() {
 #[test]
 fn test_session_config_deserialization() {
     let json = r#"{"max_concurrent_sessions":500,"session_timeout":{"secs":120,"nanos":0},"keep_alive_interval":{"secs":15,"nanos":0},"buffer_size":4096,"enable_persistence":false,"cleanup_interval":{"secs":30,"nanos":0}}"#;
-    let config: CanonicalSessionConfig = serde_json::from_str(json).expect("Deserialization should succeed");
+    let config: CanonicalSessionConfig =
+        serde_json::from_str(json).expect("Deserialization should succeed");
     assert_eq!(config.max_concurrent_sessions, 500);
     assert_eq!(config.buffer_size, 4096);
     assert!(!config.enable_persistence);
 }
-

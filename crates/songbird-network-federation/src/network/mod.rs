@@ -54,7 +54,7 @@ pub struct NetworkManager {
 impl NetworkManager {
     /// Create a new network manager
     #[must_use]
-    pub fn new(config: NetworkConfig) -> Self {
+    pub const fn new(config: NetworkConfig) -> Self {
         Self {
             config,
             // providers: HashMap::new(),

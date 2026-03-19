@@ -12,11 +12,11 @@
 //!
 //! ## Module Organization
 //!
-//! - `core` - Main TlsServer struct and public API
+//! - `core` - Main `TlsServer` struct and public API
 //! - `handshake` - Handshake orchestration and state machine
-//! - `messages` - TLS message construction (ServerHello, Certificate, etc.)
+//! - `messages` - TLS message construction (`ServerHello`, Certificate, etc.)
 //! - `crypto_ops` - Encryption and decryption operations
-//! - `parsing` - ClientHello parsing and validation
+//! - `parsing` - `ClientHello` parsing and validation
 //! - `transport` - TLS record layer I/O
 
 mod core;

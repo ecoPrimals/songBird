@@ -1,7 +1,7 @@
 //! Minimal pure Rust SHA3-256 (Keccak-f\[1600\])
 //!
 //! Zero external dependencies. Used for onion address checksum verification
-//! and descriptor ID computation where BearDog is not required.
+//! and descriptor ID computation where `BearDog` is not required.
 //!
 //! Implements FIPS 202 (SHA-3) using the Keccak sponge construction.
 //! Only SHA3-256 is provided as that's all Tor v3 requires.
@@ -18,6 +18,7 @@
 /// let hash = sha3_256(b"hello");
 /// assert_eq!(hash.len(), 32);
 /// ```
+#[must_use]
 pub fn sha3_256(data: &[u8]) -> [u8; 32] {
     let mut state = KeccakState::new();
     state.absorb(data);
@@ -36,30 +37,30 @@ const RATE: usize = 136;
 
 /// Keccak-f[1600] round constants
 const RC: [u64; 24] = [
-    0x0000000000000001,
-    0x0000000000008082,
-    0x800000000000808A,
-    0x8000000080008000,
-    0x000000000000808B,
-    0x0000000080000001,
-    0x8000000080008081,
-    0x8000000000008009,
-    0x000000000000008A,
-    0x0000000000000088,
-    0x0000000080008009,
-    0x000000008000000A,
-    0x000000008000808B,
-    0x800000000000008B,
-    0x8000000000008089,
-    0x8000000000008003,
-    0x8000000000008002,
-    0x8000000000000080,
-    0x000000000000800A,
-    0x800000008000000A,
-    0x8000000080008081,
-    0x8000000000008080,
-    0x0000000080000001,
-    0x8000000080008008,
+    0x0000_0000_0000_0001,
+    0x0000_0000_0000_8082,
+    0x8000_0000_0000_808A,
+    0x8000_0000_8000_8000,
+    0x0000_0000_0000_808B,
+    0x0000_0000_8000_0001,
+    0x8000_0000_8000_8081,
+    0x8000_0000_0000_8009,
+    0x0000_0000_0000_008A,
+    0x0000_0000_0000_0088,
+    0x0000_0000_8000_8009,
+    0x0000_0000_8000_000A,
+    0x0000_0000_8000_808B,
+    0x8000_0000_0000_008B,
+    0x8000_0000_0000_8089,
+    0x8000_0000_0000_8003,
+    0x8000_0000_0000_8002,
+    0x8000_0000_0000_0080,
+    0x0000_0000_0000_800A,
+    0x8000_0000_8000_000A,
+    0x8000_0000_8000_8081,
+    0x8000_0000_0000_8080,
+    0x0000_0000_8000_0001,
+    0x8000_0000_8000_8008,
 ];
 
 /// Rotation offsets for Keccak rho step

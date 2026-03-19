@@ -58,7 +58,7 @@ impl PortAllocator {
     }
 
     /// Determine allocation strategy based on environment
-    fn strategy_for_environment(env: Environment) -> PortStrategy {
+    const fn strategy_for_environment(env: Environment) -> PortStrategy {
         match env {
             // Development/Test: Let OS assign to avoid conflicts
             Environment::Development | Environment::Test => PortStrategy::OsAssigned,

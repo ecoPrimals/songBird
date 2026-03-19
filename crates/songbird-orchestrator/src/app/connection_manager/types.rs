@@ -16,9 +16,9 @@ pub struct PeerMetadata {
     pub established_at: SystemTime,
 }
 
-/// SystemTime serialization helper
+/// `SystemTime` serialization helper
 ///
-/// Serializes SystemTime as seconds since UNIX_EPOCH for JSON compatibility
+/// Serializes `SystemTime` as seconds since `UNIX_EPOCH` for JSON compatibility
 pub mod systemtime_as_secs {
     use serde::{Deserialize, Deserializer, Serializer};
     use std::time::{SystemTime, UNIX_EPOCH};

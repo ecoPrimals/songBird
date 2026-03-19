@@ -53,7 +53,7 @@ use crate::error::{Result, TlsError};
 
 /// TLS 1.3 Key Schedule
 ///
-/// Manages key derivation using HKDF with BearDog crypto delegation.
+/// Manages key derivation using HKDF with `BearDog` crypto delegation.
 pub struct KeySchedule {
     /// Current secret (evolves through: early -> handshake -> master)
     current_secret: Vec<u8>,
@@ -61,7 +61,7 @@ pub struct KeySchedule {
     /// Transcript hash accumulator
     transcript_hash: Vec<u8>,
 
-    /// BearDog crypto client for HMAC operations
+    /// `BearDog` crypto client for HMAC operations
     crypto_client: Option<BeardogCryptoClient>,
 
     /// Server's X25519 secret key (for ECDHE)
@@ -72,6 +72,7 @@ impl KeySchedule {
     /// Create a new key schedule
     ///
     /// Starts with PSK = 0 (no PSK in basic TLS 1.3)
+    #[must_use]
     pub fn new() -> Self {
         Self {
             current_secret: vec![0u8; 32], // SHA-256 hash length
@@ -81,7 +82,7 @@ impl KeySchedule {
         }
     }
 
-    /// Set the BearDog crypto client (for async operations)
+    /// Set the `BearDog` crypto client (for async operations)
     pub fn set_crypto_client(&mut self, client: BeardogCryptoClient) {
         self.crypto_client = Some(client);
     }
@@ -92,6 +93,7 @@ impl KeySchedule {
     }
 
     /// Get server's X25519 secret key
+    #[must_use]
     pub fn server_secret_key(&self) -> Option<&[u8]> {
         self.server_secret_key.as_deref()
     }
@@ -105,17 +107,22 @@ impl KeySchedule {
     }
 
     /// Get current transcript hash
+    #[must_use]
     pub fn transcript_hash(&self) -> &[u8] {
         &self.transcript_hash
     }
 
-    /// HKDF-Extract (using HMAC-SHA256 via BearDog)
+    /// HKDF-Extract (using HMAC-SHA256 via `BearDog`)
     ///
     /// This is the core HKDF operation for deriving keys.
     ///
     /// ```text
     /// HKDF-Extract(salt, IKM) = HMAC-Hash(salt, IKM)
     /// ```
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if crypto client is not set or HMAC operation fails.
     pub async fn hkdf_extract(&self, salt: &[u8], ikm: &[u8]) -> Result<Vec<u8>> {
         let client = self
             .crypto_client
@@ -126,7 +133,7 @@ impl KeySchedule {
         client.hmac_sha256(ikm, salt).await
     }
 
-    /// HKDF-Expand (using HMAC-SHA256 via BearDog)
+    /// HKDF-Expand (using HMAC-SHA256 via `BearDog`)
     ///
     /// ```text
     /// HKDF-Expand(PRK, info, L) = T(0) | T(1) | T(2) | ...
@@ -136,6 +143,10 @@ impl KeySchedule {
     ///   T(2) = HMAC-Hash(PRK, T(1) | info | 0x02)
     ///   ...
     /// ```
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if crypto client is not set or HMAC operation fails.
     pub async fn hkdf_expand(&self, prk: &[u8], info: &[u8], length: usize) -> Result<Vec<u8>> {
         let client = self
             .crypto_client
@@ -183,6 +194,10 @@ impl KeySchedule {
     ///     opaque context<0..255> = Context;
     /// } HkdfLabel;
     /// ```
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if crypto client is not set or HKDF operation fails.
     pub async fn derive_secret(
         &self,
         secret: &[u8],
@@ -196,12 +211,18 @@ impl KeySchedule {
         hkdf_label.extend_from_slice(&32u16.to_be_bytes());
 
         // Label length + label (prepend "tls13 ")
-        let full_label = format!("tls13 {}", label);
-        hkdf_label.push(full_label.len() as u8);
+        let full_label = format!("tls13 {label}");
+        hkdf_label.push(
+            u8::try_from(full_label.len())
+                .map_err(|_| TlsError::InternalError("Label too long".to_string()))?,
+        );
         hkdf_label.extend_from_slice(full_label.as_bytes());
 
         // Context length + context
-        hkdf_label.push(context.len() as u8);
+        hkdf_label.push(
+            u8::try_from(context.len())
+                .map_err(|_| TlsError::InternalError("Context too long".to_string()))?,
+        );
         hkdf_label.extend_from_slice(context);
 
         // HKDF-Expand
@@ -214,6 +235,10 @@ impl KeySchedule {
     /// Handshake Secret = HKDF-Extract(Derive-Secret(Early Secret, "derived", ""),
     ///                                 ECDHE shared secret)
     /// ```
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if crypto client is not set or HKDF operation fails.
     pub async fn compute_handshake_secret(&mut self, ecdhe_secret: &[u8]) -> Result<()> {
         // Derive-Secret(current_secret, "derived", "")
         let derived = self.derive_secret(&self.current_secret, "derived", &[]).await?;
@@ -227,7 +252,11 @@ impl KeySchedule {
 
     /// Derive handshake traffic keys
     ///
-    /// Returns: (client_handshake_traffic_secret, server_handshake_traffic_secret)
+    /// Returns: (`client_handshake_traffic_secret`, `server_handshake_traffic_secret`)
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if crypto client is not set or HKDF operation fails.
     pub async fn derive_handshake_traffic_keys(&self) -> Result<(Vec<u8>, Vec<u8>)> {
         let client_secret =
             self.derive_secret(&self.current_secret, "c hs traffic", &self.transcript_hash).await?;
@@ -243,6 +272,10 @@ impl KeySchedule {
     /// ```text
     /// Master Secret = HKDF-Extract(Derive-Secret(Handshake Secret, "derived", ""), 0)
     /// ```
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if crypto client is not set or HKDF operation fails.
     pub async fn compute_master_secret(&mut self) -> Result<()> {
         // Derive-Secret(current_secret, "derived", "")
         let derived = self.derive_secret(&self.current_secret, "derived", &[]).await?;
@@ -257,7 +290,11 @@ impl KeySchedule {
 
     /// Derive application traffic keys
     ///
-    /// Returns: (client_application_traffic_secret, server_application_traffic_secret)
+    /// Returns: (`client_application_traffic_secret`, `server_application_traffic_secret`)
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if crypto client is not set or HKDF operation fails.
     pub async fn derive_application_traffic_keys(&self) -> Result<(Vec<u8>, Vec<u8>)> {
         let client_secret =
             self.derive_secret(&self.current_secret, "c ap traffic", &self.transcript_hash).await?;
@@ -274,6 +311,10 @@ impl KeySchedule {
     /// key = HKDF-Expand-Label(Secret, "key", "", key_length)
     /// iv  = HKDF-Expand-Label(Secret, "iv", "", iv_length)
     /// ```
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if crypto client is not set or HKDF operation fails.
     pub async fn derive_traffic_keys(&self, traffic_secret: &[u8]) -> Result<(Vec<u8>, Vec<u8>)> {
         // Derive key (32 bytes for ChaCha20)
         let key = self.derive_secret(traffic_secret, "key", &[]).await?;
@@ -282,7 +323,10 @@ impl KeySchedule {
         let mut iv_label = Vec::new();
         iv_label.extend_from_slice(&12u16.to_be_bytes()); // 12-byte IV
         let full_label = "tls13 iv";
-        iv_label.push(full_label.len() as u8);
+        iv_label.push(
+            u8::try_from(full_label.len())
+                .map_err(|_| TlsError::InternalError("IV label too long".to_string()))?,
+        );
         iv_label.extend_from_slice(full_label.as_bytes());
         iv_label.push(0); // Empty context
 
@@ -291,12 +335,16 @@ impl KeySchedule {
         Ok((key, iv))
     }
 
-    /// Compute finished verify_data
+    /// Compute finished `verify_data`
     ///
     /// ```text
     /// finished_key = HKDF-Expand-Label(BaseKey, "finished", "", Hash.length)
     /// verify_data = HMAC(finished_key, Transcript-Hash(Handshake Context))
     /// ```
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if crypto client is not set or HMAC operation fails.
     pub async fn compute_finished_verify_data(&self, base_key: &[u8]) -> Result<Vec<u8>> {
         // Derive finished_key
         let finished_key = self.derive_secret(base_key, "finished", &[]).await?;

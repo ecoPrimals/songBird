@@ -81,17 +81,17 @@ impl ClusterStatus {
     }
 
     #[must_use]
-    pub fn total_nodes(&self) -> usize {
+    pub const fn total_nodes(&self) -> usize {
         self.total_nodes
     }
 
     #[must_use]
-    pub fn running_services(&self) -> usize {
+    pub const fn running_services(&self) -> usize {
         self.running_services
     }
 
     #[must_use]
-    pub fn total_services(&self) -> usize {
+    pub const fn total_services(&self) -> usize {
         self.total_services
     }
 }
@@ -262,8 +262,7 @@ impl ObservabilityManager {
             error_message: None,
         };
 
-        let mut health_store = self.health_store.write().await;
-        health_store.insert(service_id.clone(), health);
+        self.health_store.write().await.insert(service_id.clone(), health);
 
         // Send event to subscribers
         self.send_event(ObservabilityEvent::HealthCheckCompleted {

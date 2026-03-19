@@ -67,6 +67,7 @@ pub struct ConsentManager {
 
 impl ConsentManager {
     /// Create a new consent manager without persistent storage
+    #[must_use]
     pub fn new() -> Self {
         Self {
             records: Arc::new(RwLock::new(HashMap::new())),

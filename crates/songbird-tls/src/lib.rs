@@ -1,7 +1,7 @@
 //! # Songbird TLS - Pure Rust TLS 1.3 Implementation
 //!
 //! A 100% Pure Rust implementation of TLS 1.3 designed for the biomeOS ecosystem.
-//! All cryptographic operations are delegated to BearDog via runtime-discovered
+//! All cryptographic operations are delegated to `BearDog` via runtime-discovered
 //! Unix sockets, ensuring TRUE Pure Rust sovereignty with zero C dependencies.
 //!
 //! ## Architecture
@@ -45,7 +45,7 @@
 //!
 //! ## Performance Targets
 //!
-//! - Handshake: < 10ms (includes BearDog round-trips)
+//! - Handshake: < 10ms (includes `BearDog` round-trips)
 //! - Throughput: > 1 GB/s (CPU-bound, parallel streams)
 //! - Memory: < 16 KB per connection
 //!
@@ -89,7 +89,7 @@ pub const TLS_VERSION_1_2: u16 = 0x0303;
 pub const MAX_RECORD_SIZE: usize = 16384;
 
 /// Maximum handshake message size (256 KB)
-pub const MAX_HANDSHAKE_SIZE: usize = 262144;
+pub const MAX_HANDSHAKE_SIZE: usize = 262_144;
 
 // Cipher suite constants
 pub const TLS_CHACHA20_POLY1305_SHA256: u16 = 0x1303;

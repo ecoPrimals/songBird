@@ -72,7 +72,7 @@ pub struct Capability {
     pub active: bool,
 }
 
-fn default_true() -> bool {
+const fn default_true() -> bool {
     true
 }
 
@@ -95,7 +95,7 @@ impl Capability {
 
     /// Set whether this capability is active
     #[must_use]
-    pub fn with_active(mut self, active: bool) -> Self {
+    pub const fn with_active(mut self, active: bool) -> Self {
         self.active = active;
         self
     }

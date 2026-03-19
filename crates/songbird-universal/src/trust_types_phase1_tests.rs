@@ -1,6 +1,6 @@
 //! Phase 1 Trust Parsing Tests
 //!
-//! Tests for flexible trust_level parsing (integer + string)
+//! Tests for flexible `trust_level` parsing (integer + string)
 
 #[cfg(test)]
 mod tests {

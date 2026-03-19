@@ -27,6 +27,7 @@ impl RendezvousPoint {
     /// RENDEZVOUS_COOKIE  [20 bytes] - cookie from INTRODUCE2
     /// HANDSHAKE_INFO     [variable] - ntor handshake response (typically 64 bytes)
     /// ```
+    #[must_use]
     pub fn create_rendezvous1(&self, handshake_data: &[u8]) -> RelayCell {
         let mut data = Vec::with_capacity(20 + handshake_data.len());
         data.extend_from_slice(&self.cookie);
@@ -64,7 +65,7 @@ impl RendezvousPoint {
         })
     }
 
-    /// Create ESTABLISH_RENDEZVOUS cell (client -> rendezvous point)
+    /// Create `ESTABLISH_RENDEZVOUS` cell (client -> rendezvous point)
     ///
     /// Sent by client to designate a relay as its rendezvous point.
     /// The cookie is used to correlate the rendezvous with the introduction.
@@ -73,6 +74,7 @@ impl RendezvousPoint {
     /// ```text
     /// RENDEZVOUS_COOKIE  [20 bytes] - random cookie chosen by client
     /// ```
+    #[must_use]
     pub fn create_establish_rendezvous(cookie: &[u8; 20]) -> RelayCell {
         RelayCell {
             command: crate::protocol::RelayCommand::Rendezvous1,
@@ -101,6 +103,7 @@ impl RendezvousPoint {
     ///   RENDEZVOUS_COOKIE[20 bytes]
     ///   CLIENT_PK        [32 bytes] - X25519 ephemeral
     /// ```
+    #[must_use]
     pub fn create_introduce1(
         rendezvous_point: &[u8; 32],
         cookie: &[u8; 20],

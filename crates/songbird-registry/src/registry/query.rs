@@ -67,7 +67,7 @@ impl Query {
 
     /// Limit the number of results
     #[must_use]
-    pub fn with_limit(mut self, limit: usize) -> Self {
+    pub const fn with_limit(mut self, limit: usize) -> Self {
         self.limit = limit;
         self
     }

@@ -167,7 +167,7 @@ pub struct LoadTester {
 
 impl LoadTester {
     #[must_use]
-    pub fn new(concurrent_users: usize, test_duration: Duration) -> Self {
+    pub const fn new(concurrent_users: usize, test_duration: Duration) -> Self {
         Self {
             concurrent_users,
             test_duration,
@@ -176,7 +176,7 @@ impl LoadTester {
     }
 
     #[must_use]
-    pub fn with_ramp_up(mut self, ramp_up_duration: Duration) -> Self {
+    pub const fn with_ramp_up(mut self, ramp_up_duration: Duration) -> Self {
         self.ramp_up_duration = ramp_up_duration;
         self
     }

@@ -118,7 +118,7 @@ pub async fn discover_crypto_capability_at(socket_path: &str) -> Result<Arc<dyn 
     if provider.is_available().await {
         Ok(Arc::new(provider))
     } else {
-        Err(Error::BearDogRpc(format!("Crypto provider at {} is not available", socket_path)))
+        Err(Error::BearDogRpc(format!("Crypto provider at {socket_path} is not available")))
     }
 }
 

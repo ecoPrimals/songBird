@@ -48,6 +48,7 @@ pub struct MetricsCollector {
 }
 
 impl MetricsCollector {
+    #[must_use]
     pub fn new() -> Self {
         Self {
             metrics: Arc::new(RwLock::new(HashMap::new())),

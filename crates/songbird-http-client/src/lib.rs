@@ -100,6 +100,7 @@ pub use http_config::{
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");
 
 /// Check if this is a Pure Rust build (always true)
+#[must_use]
 pub const fn is_pure_rust() -> bool {
     true // Always true - we have zero C dependencies
 }

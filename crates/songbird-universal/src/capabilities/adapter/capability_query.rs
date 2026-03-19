@@ -23,7 +23,7 @@ pub struct CapabilityQuery {
 
 impl CapabilityQuery {
     /// Create new capability query component
-    pub fn new(registry: Arc<RwLock<CapabilityRegistry>>) -> Self {
+    pub const fn new(registry: Arc<RwLock<CapabilityRegistry>>) -> Self {
         Self {
             registry,
         }
@@ -57,10 +57,10 @@ impl CapabilityQuery {
         false
     }
 
-    /// Get the best primal for a capability based on QoS metrics
+    /// Get the best primal for a capability based on `QoS` metrics
     ///
-    /// Uses QoS-aware selection considering health, latency, load, and availability.
-    /// Falls back to simple selection if QoS metrics are not available.
+    /// Uses `QoS`-aware selection considering health, latency, load, and availability.
+    /// Falls back to simple selection if `QoS` metrics are not available.
     pub async fn get_best_primal_for_capability(&self, capability_type: &str) -> Option<String> {
         debug!("🎯 Finding best primal for capability: {}", capability_type);
 
@@ -119,13 +119,13 @@ impl CapabilityQuery {
         // Create HTTP client
         let client = songbird_http_client::IpcHttpClient::new()
             .await
-            .map_err(|e| CapabilityError::NetworkError(format!("HTTP client error: {}", e)))?;
+            .map_err(|e| CapabilityError::NetworkError(format!("HTTP client error: {e}")))?;
 
         // Try different capability endpoint patterns
         let capability_endpoints = [
-            format!("{}/capabilities", endpoint),
-            format!("{}/api/capabilities", endpoint),
-            format!("{}/api/v1/capabilities", endpoint),
+            format!("{endpoint}/capabilities"),
+            format!("{endpoint}/api/capabilities"),
+            format!("{endpoint}/api/v1/capabilities"),
         ];
 
         for cap_endpoint in &capability_endpoints {

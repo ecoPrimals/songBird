@@ -31,7 +31,7 @@ pub enum ServiceState {
 
 /// Onion service manager
 pub struct OnionServiceManager {
-    /// BearDog crypto client
+    /// `BearDog` crypto client
     beardog: Arc<BeardogCryptoClient>,
     /// Service keys
     keys: Arc<RwLock<Option<OnionServiceKeys>>>,
@@ -47,6 +47,7 @@ pub struct OnionServiceManager {
 
 impl OnionServiceManager {
     /// Create new onion service manager
+    #[must_use]
     pub fn new(beardog: BeardogCryptoClient, port: u16) -> Self {
         Self {
             beardog: Arc::new(beardog),
@@ -97,11 +98,12 @@ impl OnionServiceManager {
     /// In production, this would:
     /// 1. Select random relays from the consensus
     /// 2. Build 3-hop circuits to each
-    /// 3. Send ESTABLISH_INTRO cells via BearDog-signed auth
+    /// 3. Send `ESTABLISH_INTRO` cells via BearDog-signed auth
     ///
     /// Currently creates introduction points with generated keys
-    /// and prepares ESTABLISH_INTRO cells for when circuits are available.
+    /// and prepares `ESTABLISH_INTRO` cells for when circuits are available.
     pub async fn setup_introduction_points(&self, count: usize) -> Result<()> {
+        core::future::ready(()).await;
         let mut intro_points = self
             .intro_points
             .write()
@@ -146,7 +148,7 @@ impl OnionServiceManager {
         Ok(())
     }
 
-    /// Publish descriptor to HSDir
+    /// Publish descriptor to `HSDir`
     pub async fn publish_descriptor(&self) -> Result<()> {
         let keys = self
             .keys
@@ -184,11 +186,11 @@ impl OnionServiceManager {
     /// Currently parses the cell and stores the rendezvous circuit.
     /// Circuit building requires relay connections (Phase 3).
     pub async fn handle_introduction(&self, rendezvous_cookie: &[u8; 20]) -> Result<()> {
+        core::future::ready(()).await;
         let state = self.state()?;
         if state != ServiceState::Running {
             return Err(Error::Protocol(format!(
-                "Cannot handle introduction: service is {:?}",
-                state
+                "Cannot handle introduction: service is {state:?}"
             )));
         }
 
@@ -206,7 +208,7 @@ impl OnionServiceManager {
 
         // Create a placeholder circuit for this rendezvous
         // In production: this would be a real circuit built to the rendezvous point
-        let circuit_id = rendezvous_cookie[0] as u32 | (rendezvous_cookie[1] as u32) << 8;
+        let circuit_id = u32::from(rendezvous_cookie[0]) | u32::from(rendezvous_cookie[1]) << 8;
         let circuit = Circuit::new(circuit_id, crate::circuit::CircuitPurpose::Rendezvous);
         circuits.insert(*rendezvous_cookie, circuit);
 
@@ -239,6 +241,7 @@ impl OnionServiceManager {
     /// 2. Clear all rendezvous circuits
     /// 3. Clear introduction points
     pub async fn stop(&self) -> Result<()> {
+        core::future::ready(()).await;
         self.set_state(ServiceState::Stopped)?;
 
         // Clear all rendezvous circuits
@@ -271,6 +274,7 @@ impl OnionServiceManager {
     }
 
     /// Get introduction point count
+    #[must_use]
     pub fn intro_point_count(&self) -> usize {
         self.intro_points.read().map(|ip| ip.len()).unwrap_or(0)
     }

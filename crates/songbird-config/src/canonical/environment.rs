@@ -52,25 +52,25 @@ impl std::str::FromStr for Environment {
 impl Environment {
     /// Check if this is a production environment
     #[must_use]
-    pub fn is_production(self) -> bool {
+    pub const fn is_production(self) -> bool {
         matches!(self, Self::Production)
     }
 
     /// Check if this is a development environment
     #[must_use]
-    pub fn is_development(self) -> bool {
+    pub const fn is_development(self) -> bool {
         matches!(self, Self::Development | Self::Local)
     }
 
     /// Check if this environment should enable debug features
     #[must_use]
-    pub fn enable_debug(self) -> bool {
+    pub const fn enable_debug(self) -> bool {
         matches!(self, Self::Development | Self::Testing | Self::Local)
     }
 
     /// Get the log level for this environment
     #[must_use]
-    pub fn log_level(self) -> &'static str {
+    pub const fn log_level(self) -> &'static str {
         match self {
             Self::Development | Self::Local => "debug",
             Self::Testing | Self::Staging => "info",
@@ -257,13 +257,13 @@ impl EnvironmentConfig {
 
     /// Check if running in production
     #[must_use]
-    pub fn is_production(&self) -> bool {
+    pub const fn is_production(&self) -> bool {
         self.environment.is_production()
     }
 
     /// Check if running in development
     #[must_use]
-    pub fn is_development(&self) -> bool {
+    pub const fn is_development(&self) -> bool {
         self.environment.is_development()
     }
 }

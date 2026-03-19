@@ -1,6 +1,6 @@
 //! Pure Rust IPC Server Infrastructure (Isomorphic - TRUE ecoBin v2.0)
 //!
-//! v3.22.0: Evolved from jsonrpsee to pure Rust implementation (BearDog pattern)
+//! v3.22.0: Evolved from jsonrpsee to pure Rust implementation (`BearDog` pattern)
 //! v8.23.0: Added automatic TCP fallback (isomorphic adaptation)
 //!
 //! ## Design Principles
@@ -21,7 +21,7 @@
 //!
 //! ## Automatic Adaptation
 //!
-//! Server detects platform constraints (SELinux, permissions) and automatically
+//! Server detects platform constraints (`SELinux`, permissions) and automatically
 //! falls back to TCP without requiring configuration. Same binary works everywhere!
 
 // Platform-conditional compilation removed - supports both Unix and TCP now!
@@ -84,13 +84,13 @@ pub struct UnixSocketServer {
     /// API handlers
     handlers: Arc<IpcHandlers>,
 
-    /// Atomic readiness flag for lock-free concurrent checks (BearDog pattern)
+    /// Atomic readiness flag for lock-free concurrent checks (`BearDog` pattern)
     is_ready: Arc<AtomicBool>,
 
     /// Atomic running flag for graceful shutdown (concurrent-safe)
     is_running: Arc<AtomicBool>,
 
-    /// Notify waiters when server becomes ready (event-driven wait_ready)
+    /// Notify waiters when server becomes ready (event-driven `wait_ready`)
     ready_notify: Arc<tokio::sync::Notify>,
 }
 
@@ -99,7 +99,7 @@ impl UnixSocketServer {
     ///
     /// **Zero Hardcoding**: Socket path derived from env vars
     /// **v3.22.0**: Pure Rust implementation (no jsonrpsee)
-    /// **v5.27.0**: Added BearDog client for HTTP handler (Tower Atomic)
+    /// **v5.27.0**: Added `BearDog` client for HTTP handler (Tower Atomic)
     ///
     /// ## Example
     ///
@@ -135,9 +135,9 @@ impl UnixSocketServer {
         }
     }
 
-    /// Derive socket path from environment variables (BiomeOS Neural API compatible)
+    /// Derive socket path from environment variables (`BiomeOS` Neural API compatible)
     ///
-    /// ## Priority Order (BiomeOS Standard)
+    /// ## Priority Order (`BiomeOS` Standard)
     ///
     /// 1. `SONGBIRD_ORCHESTRATOR_SOCKET` (highest priority - Neural API)
     /// 2. `SONGBIRD_SOCKET` (alternative naming)
@@ -154,15 +154,16 @@ impl UnixSocketServer {
     ///
     /// ## Testing
     ///
-    /// This method is `pub` to enable comprehensive testing of BiomeOS compatibility.
+    /// This method is `pub` to enable comprehensive testing of `BiomeOS` compatibility.
     /// See `tests/biomeos_socket_env_vars.rs` for validation.
+    #[must_use]
     pub fn socket_path_from_env() -> PathBuf {
         Self::socket_path_with_env(|key| std::env::var(key))
     }
 
     /// Resolve socket path with injectable environment reader (concurrent-safe)
     ///
-    /// ## Priority Order (BiomeOS Standard)
+    /// ## Priority Order (`BiomeOS` Standard)
     ///
     /// 1. `SONGBIRD_ORCHESTRATOR_SOCKET` (Neural API standard)
     /// 2. `SONGBIRD_SOCKET` (alternative naming)
@@ -202,9 +203,9 @@ impl UnixSocketServer {
         socket_path
     }
 
-    /// Get family ID from environment variables (BiomeOS Neural API compatible)
+    /// Get family ID from environment variables (`BiomeOS` Neural API compatible)
     ///
-    /// ## Priority Order (BiomeOS Standard)
+    /// ## Priority Order (`BiomeOS` Standard)
     ///
     /// 1. `SONGBIRD_ORCHESTRATOR_FAMILY_ID` (highest priority - Neural API)
     /// 2. `SONGBIRD_ORCHESTRATOR_FAMILY` (alternative)
@@ -214,8 +215,9 @@ impl UnixSocketServer {
     ///
     /// ## Testing
     ///
-    /// This method is `pub` to enable comprehensive testing of BiomeOS compatibility.
+    /// This method is `pub` to enable comprehensive testing of `BiomeOS` compatibility.
     /// See `tests/biomeos_socket_env_vars.rs` for validation.
+    #[must_use]
     pub fn get_family_id() -> String {
         std::env::var("SONGBIRD_ORCHESTRATOR_FAMILY_ID")
             .or_else(|_| std::env::var("SONGBIRD_ORCHESTRATOR_FAMILY"))
@@ -225,19 +227,22 @@ impl UnixSocketServer {
     }
 
     /// Get the socket path
+    #[must_use]
     pub fn socket_path(&self) -> &Path {
         &self.socket_path
     }
 
-    /// Get a clone of the readiness flag (BearDog pattern)
+    /// Get a clone of the readiness flag (`BearDog` pattern)
     ///
     /// This allows checking readiness even after the server has been moved
     /// into a spawn task. This is lock-free and safe for concurrent access!
+    #[must_use]
     pub fn readiness_flag(&self) -> Arc<AtomicBool> {
         Arc::clone(&self.is_ready)
     }
 
     /// Check if the server is running
+    #[must_use]
     pub fn is_running(&self) -> bool {
         self.is_running.load(Ordering::Acquire)
     }
@@ -250,6 +255,7 @@ impl UnixSocketServer {
     }
 
     /// Check if the server is ready to accept connections (atomic, lock-free)
+    #[must_use]
     pub fn is_ready(&self) -> bool {
         self.is_ready.load(Ordering::Acquire)
     }
@@ -287,7 +293,7 @@ impl UnixSocketServer {
     /// ## Isomorphic Pattern: Try → Detect → Adapt → Succeed
     ///
     /// 1. **Try** Unix socket first (optimal for most platforms)
-    /// 2. **Detect** if failure is a platform constraint (SELinux, permissions)
+    /// 2. **Detect** if failure is a platform constraint (`SELinux`, permissions)
     /// 3. **Adapt** automatically to TCP fallback (zero configuration)
     /// 4. **Succeed** transparently (same protocol, same APIs)
     ///
@@ -397,12 +403,12 @@ impl UnixSocketServer {
     ///
     /// ## Platform Constraints Detected
     ///
-    /// - **SELinux blocking** (Android, hardened Linux)
+    /// - **`SELinux` blocking** (Android, hardened Linux)
     /// - **Permission denied** (restricted environments)
     /// - **Address family not supported** (platform lacks Unix sockets)
     /// - **Protocol not supported** (platform lacks feature)
     fn is_platform_constraint(&self, error: &anyhow::Error) -> bool {
-        let error_str = format!("{:#}", error);
+        let error_str = format!("{error:#}");
         let lower = error_str.to_lowercase();
 
         // SELinux blocking (common on Android)
@@ -437,12 +443,12 @@ impl UnixSocketServer {
         false
     }
 
-    /// Check if SELinux is in enforcing mode
+    /// Check if `SELinux` is in enforcing mode
     ///
     /// Reads `/sys/fs/selinux/enforce`:
     /// - `1` = Enforcing (blocks Unix sockets in some contexts)
     /// - `0` = Permissive (allows)
-    /// - Missing file = SELinux not present
+    /// - Missing file = `SELinux` not present
     fn is_selinux_enforcing(&self) -> bool {
         std::fs::read_to_string("/sys/fs/selinux/enforce")
             .ok()
@@ -545,8 +551,7 @@ impl UnixSocketServer {
                             jsonrpc: "2.0".to_string(),
                             result: None,
                             error: Some(JsonRpcError::parse_error(format!(
-                                "Failed to parse JSON-RPC request: {}",
-                                e
+                                "Failed to parse JSON-RPC request: {e}"
                             ))),
                             id: serde_json::Value::Null,
                         },
@@ -606,7 +611,7 @@ impl UnixSocketServer {
         };
 
         // Write port in discoverable format
-        let content = format!("tcp:127.0.0.1:{}", port);
+        let content = format!("tcp:127.0.0.1:{port}");
         std::fs::write(&port_file, content)
             .context(format!("Failed to write TCP discovery file: {}", port_file.display()))?;
 
@@ -644,8 +649,7 @@ impl UnixSocketServer {
                             jsonrpc: "2.0".to_string(),
                             result: None,
                             error: Some(JsonRpcError::parse_error(format!(
-                                "Failed to parse JSON-RPC request: {}",
-                                e
+                                "Failed to parse JSON-RPC request: {e}"
                             ))),
                             id: serde_json::Value::Null,
                         },

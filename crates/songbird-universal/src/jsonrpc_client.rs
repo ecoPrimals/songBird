@@ -108,7 +108,7 @@ impl JsonRpcClient {
     ///
     /// # Arguments
     ///
-    /// * `endpoint` - Unix socket path (e.g., "unix:///tmp/beardog.sock" or "/tmp/beardog.sock")
+    /// * `endpoint` - Unix socket path (e.g., "<unix:///tmp/beardog.sock>" or "/tmp/beardog.sock")
     ///
     /// # Returns
     ///
@@ -124,13 +124,14 @@ impl JsonRpcClient {
     /// # Ok(())
     /// # }
     /// ```
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the socket path is empty or configuration is invalid.
     pub fn new(endpoint: &str) -> SongbirdResult<Self> {
         // Parse endpoint - strip unix:// prefix if present
-        let socket_path = if let Some(path) = endpoint.strip_prefix("unix://") {
-            PathBuf::from(path)
-        } else {
-            PathBuf::from(endpoint)
-        };
+        let socket_path =
+            endpoint.strip_prefix("unix://").map_or_else(|| PathBuf::from(endpoint), PathBuf::from);
 
         // Validate socket path
         if socket_path.to_string_lossy().is_empty() {
@@ -160,7 +161,7 @@ impl JsonRpcClient {
     ///
     /// * `Self` - Updated client (builder pattern)
     #[must_use]
-    pub fn with_timeout(mut self, timeout: Duration) -> Self {
+    pub const fn with_timeout(mut self, timeout: Duration) -> Self {
         self.timeout = timeout;
         self
     }
@@ -185,9 +186,13 @@ impl JsonRpcClient {
 
     /// Call a JSON-RPC method with automatic request ID generation
     ///
+    /// # Errors
+    ///
+    /// Returns an error if the RPC call fails or the response cannot be parsed.
+    ///
     /// # Arguments
     ///
-    /// * `method` - Method name (e.g., "evaluate_trust")
+    /// * `method` - Method name (e.g., "`evaluate_trust`")
     /// * `params` - Method parameters (can be object or array)
     ///
     /// # Returns
@@ -230,6 +235,10 @@ impl JsonRpcClient {
 
     /// Call with pre-built JSON-RPC request (for compatibility with existing code)
     ///
+    /// # Errors
+    ///
+    /// Returns an error if the request is invalid or the RPC call fails.
+    ///
     /// # Arguments
     ///
     /// * `request` - Pre-built JSON request value
@@ -269,7 +278,7 @@ impl JsonRpcClient {
     async fn send_request(&self, request: &JsonRpcRequest) -> SongbirdResult<Value> {
         // Serialize request (uses From<serde_json::Error> for SongbirdError)
         let request_json = serde_json::to_string(request)?;
-        let request_bytes = format!("{}\n", request_json); // JSON-RPC over newline-delimited stream
+        let request_bytes = format!("{request_json}\n"); // JSON-RPC over newline-delimited stream
 
         debug!("🔌 Connecting to Unix socket: {}", self.socket_path.display());
 
@@ -283,7 +292,7 @@ impl JsonRpcClient {
                 ))
             })
             .and_then(|r| {
-                r.map_err(|e| SongbirdError::network(format!("Failed to connect: {}", e)))
+                r.map_err(|e| SongbirdError::network(format!("Failed to connect: {e}")))
             })?;
 
         // Split into reader and writer
@@ -294,7 +303,7 @@ impl JsonRpcClient {
         timeout(self.timeout, writer.write_all(request_bytes.as_bytes()))
             .await
             .map_err(|_| SongbirdError::network("Write timeout"))
-            .and_then(|r| r.map_err(|e| SongbirdError::network(format!("Write failed: {}", e))))?;
+            .and_then(|r| r.map_err(|e| SongbirdError::network(format!("Write failed: {e}"))))?;
 
         debug!("📤 Sent request: {}", request_json);
 
@@ -303,7 +312,7 @@ impl JsonRpcClient {
         timeout(self.timeout, reader.read_line(&mut response_line))
             .await
             .map_err(|_| SongbirdError::network("Read timeout"))
-            .and_then(|r| r.map_err(|e| SongbirdError::network(format!("Read failed: {}", e))))?;
+            .and_then(|r| r.map_err(|e| SongbirdError::network(format!("Read failed: {e}"))))?;
 
         debug!("📥 Received response: {}", response_line.trim());
 
@@ -330,12 +339,14 @@ impl JsonRpcClient {
     }
 
     /// Get the socket path this client is connected to
-    pub fn socket_path(&self) -> &PathBuf {
+    #[must_use]
+    pub const fn socket_path(&self) -> &PathBuf {
         &self.socket_path
     }
 
     /// Get the configured timeout
-    pub fn timeout(&self) -> Duration {
+    #[must_use]
+    pub const fn timeout(&self) -> Duration {
         self.timeout
     }
 }

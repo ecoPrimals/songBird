@@ -12,7 +12,7 @@ use std::env;
 // FEDERATION CONFIGURATION - Zero-Trust Federation
 // ============================================================================
 
-/// Federation acceptance policy - replaces auto_accept_lan/wan bools
+/// Federation acceptance policy - replaces `auto_accept_lan/wan` bools
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Default)]
 pub enum FederationAcceptancePolicy {
     /// Manual approval required for all connections
@@ -51,7 +51,7 @@ pub struct CanonicalFederationConfig {
     /// Require hardware key for admin operations (default: true)
     pub require_hardware_for_admin: bool,
 
-    /// Federation acceptance policy (replaces auto_accept bools)
+    /// Federation acceptance policy (replaces `auto_accept` bools)
     pub acceptance_policy: FederationAcceptancePolicy,
 
     /// Trust timeouts for different trust levels (in seconds)

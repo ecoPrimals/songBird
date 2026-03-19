@@ -33,7 +33,8 @@ pub enum EventType {
 
 impl EventType {
     /// Convert event type to string
-    pub fn as_str(&self) -> &'static str {
+    #[must_use]
+    pub const fn as_str(&self) -> &'static str {
         match self {
             Self::ServiceUpdate => "service_update",
             Self::HealthUpdate => "health_update",
@@ -43,11 +44,12 @@ impl EventType {
         }
     }
 
-    /// Parse event type from string (different from std::str::FromStr trait)
+    /// Parse event type from string (different from `std::str::FromStr` trait)
     ///
     /// Returns Option instead of Result to distinguish from the trait implementation.
     /// This is an intentional design choice for flexibility.
     #[allow(clippy::should_implement_trait)]
+    #[must_use]
     pub fn from_str(s: &str) -> Option<Self> {
         match s {
             "service_update" => Some(Self::ServiceUpdate),
@@ -77,9 +79,10 @@ impl Event {
     /// Create a new event
     ///
     /// # Modern Idiomatic Pattern
-    /// EventType is Copy (enum variants), payload is consumed (moved into Self)
-    /// The clippy warning is about EventType not being consumed, but it IS used
+    /// `EventType` is Copy (enum variants), payload is consumed (moved into Self)
+    /// The clippy warning is about `EventType` not being consumed, but it IS used
     #[allow(clippy::needless_pass_by_value)]
+    #[must_use]
     pub fn new(event_type: EventType, payload: serde_json::Value) -> Self {
         // Safe: u128 millis since 1970 won't overflow u64 for centuries
         // Alternative would be storing full SystemTime but u64 millis is standard
@@ -145,6 +148,7 @@ impl Event {
     }
 
     /// Create a federation status event
+    #[must_use]
     pub fn federation_status(
         total_services: usize,
         total_peers: usize,
@@ -204,6 +208,7 @@ pub struct BroadcasterStats {
 
 impl EventBroadcaster {
     /// Create a new event broadcaster
+    #[must_use]
     pub fn new() -> Self {
         let (global_tx, _) = broadcast::channel(1000);
 

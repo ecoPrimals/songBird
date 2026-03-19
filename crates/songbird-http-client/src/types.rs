@@ -58,6 +58,7 @@ impl HttpRequest {
     }
 
     /// Set request body
+    #[must_use]
     pub fn with_body(mut self, body: serde_json::Value) -> Self {
         self.body = Some(body);
         self

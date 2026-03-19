@@ -139,6 +139,7 @@ impl Default for CircuitBreakerConfig {
 }
 
 impl CircuitBreakerConfig {
+    #[must_use]
     pub fn builder() -> CircuitBreakerConfigBuilder {
         CircuitBreakerConfigBuilder::default()
     }
@@ -167,26 +168,31 @@ pub struct CircuitBreakerConfigBuilder {
 }
 
 impl CircuitBreakerConfigBuilder {
-    pub fn failure_threshold(mut self, threshold: usize) -> Self {
+    #[must_use]
+    pub const fn failure_threshold(mut self, threshold: usize) -> Self {
         self.failure_threshold = Some(threshold);
         self
     }
 
-    pub fn timeout(mut self, duration: Duration) -> Self {
+    #[must_use]
+    pub const fn timeout(mut self, duration: Duration) -> Self {
         self.timeout = Some(duration);
         self
     }
 
-    pub fn success_threshold(mut self, threshold: usize) -> Self {
+    #[must_use]
+    pub const fn success_threshold(mut self, threshold: usize) -> Self {
         self.success_threshold = Some(threshold);
         self
     }
 
-    pub fn operation_timeout(mut self, duration: Duration) -> Self {
+    #[must_use]
+    pub const fn operation_timeout(mut self, duration: Duration) -> Self {
         self.operation_timeout = Some(duration);
         self
     }
 
+    #[must_use]
     pub fn build(self) -> CircuitBreakerConfig {
         let default = CircuitBreakerConfig::default();
         CircuitBreakerConfig {
@@ -220,6 +226,7 @@ impl CircuitBreaker {
     }
 
     /// Create a circuit breaker with builder pattern
+    #[must_use]
     pub fn builder() -> CircuitBreakerBuilder {
         CircuitBreakerBuilder::default()
     }
@@ -415,22 +422,26 @@ pub struct CircuitBreakerBuilder {
 }
 
 impl CircuitBreakerBuilder {
-    pub fn failure_threshold(mut self, threshold: usize) -> Self {
+    #[must_use]
+    pub const fn failure_threshold(mut self, threshold: usize) -> Self {
         self.config = self.config.failure_threshold(threshold);
         self
     }
 
-    pub fn timeout(mut self, duration: Duration) -> Self {
+    #[must_use]
+    pub const fn timeout(mut self, duration: Duration) -> Self {
         self.config = self.config.timeout(duration);
         self
     }
 
-    pub fn success_threshold(mut self, threshold: usize) -> Self {
+    #[must_use]
+    pub const fn success_threshold(mut self, threshold: usize) -> Self {
         self.config = self.config.success_threshold(threshold);
         self
     }
 
-    pub fn operation_timeout(mut self, duration: Duration) -> Self {
+    #[must_use]
+    pub const fn operation_timeout(mut self, duration: Duration) -> Self {
         self.config = self.config.operation_timeout(duration);
         self
     }

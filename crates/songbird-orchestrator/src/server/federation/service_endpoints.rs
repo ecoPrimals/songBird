@@ -41,7 +41,7 @@ pub async fn register_service(
     )
 }
 
-/// GET /api/federation/services/:service_id - Get specific service
+/// GET /`api/federation/services/:service_id` - Get specific service
 pub async fn get_service(
     State(state): State<Arc<FederationAppState>>,
     axum::extract::Path(service_id): axum::extract::Path<String>,
@@ -61,7 +61,7 @@ pub async fn get_service(
     }
 }
 
-/// GET /api/federation/services/type/:service_type - Find services by type
+/// GET /`api/federation/services/type/:service_type` - Find services by type
 pub async fn find_services_by_type(
     State(state): State<Arc<FederationAppState>>,
     axum::extract::Path(service_type): axum::extract::Path<String>,

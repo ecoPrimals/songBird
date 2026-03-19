@@ -105,7 +105,7 @@ impl StunHandler {
         info!("🌐 Starting STUN server on {}", bind_addr);
 
         // Create server
-        let mut server = StunServer::new(bind_addr);
+        let server = StunServer::new(bind_addr);
 
         // Spawn server in background
         let handle = tokio::spawn(async move {

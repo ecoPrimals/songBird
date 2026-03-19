@@ -83,6 +83,7 @@ impl Default for ServerProfiler {
 
 impl ServerProfiler {
     /// Create new profiler
+    #[must_use]
     pub fn new() -> Self {
         Self {
             profiles: Arc::new(RwLock::new(HashMap::new())),
@@ -91,6 +92,7 @@ impl ServerProfiler {
     }
 
     /// Get profile for a server (or create new)
+    #[must_use]
     pub fn get_profile(&self, hostname: &str) -> Option<ServerProfile> {
         let profiles = self
             .profiles
@@ -209,12 +211,13 @@ impl ServerProfiler {
     }
 
     /// Get recommended extension set for a server
+    #[must_use]
     pub fn recommend_extensions(&self, hostname: &str) -> Vec<ExtensionType> {
         // Check if we have a profile for this server
         if let Some(profile) = self.get_profile(hostname) {
             if profile.success_count > 0 {
                 // Use last successful extension set
-                return profile.successful_extensions.clone();
+                return profile.successful_extensions;
             }
         }
 
@@ -232,6 +235,7 @@ impl ServerProfiler {
     }
 
     /// Get recommended cipher suite for a server
+    #[must_use]
     pub fn recommend_cipher(&self, hostname: &str) -> Option<u16> {
         // Check server profile
         if let Some(profile) = self.get_profile(hostname) {
@@ -249,6 +253,7 @@ impl ServerProfiler {
     }
 
     /// Get global statistics
+    #[must_use]
     pub fn get_stats(&self) -> GlobalStats {
         self.stats
             .read()
@@ -257,6 +262,7 @@ impl ServerProfiler {
     }
 
     /// Get all profiles (for debugging/analysis)
+    #[must_use]
     pub fn get_all_profiles(&self) -> HashMap<String, ServerProfile> {
         self.profiles
             .read()
@@ -276,6 +282,7 @@ impl ServerProfiler {
     }
 
     /// Get profile count
+    #[must_use]
     pub fn profile_count(&self) -> usize {
         self.profiles
             .read()
@@ -303,6 +310,7 @@ impl ServerProfile {
     }
 
     /// Get success rate (0.0 - 1.0)
+    #[must_use]
     pub fn success_rate(&self) -> f32 {
         let total = self.success_count + self.failure_count;
         if total == 0 {
@@ -312,11 +320,13 @@ impl ServerProfile {
     }
 
     /// Is this server reliable? (>= 80% success rate)
+    #[must_use]
     pub fn is_reliable(&self) -> bool {
         self.reliability >= 0.8
     }
 
     /// Should we retry with different settings?
+    #[must_use]
     pub fn should_retry_with_fallback(&self) -> bool {
         // If reliability is low and we have enough data
         let total = self.success_count + self.failure_count;
@@ -338,6 +348,7 @@ impl Default for GlobalStats {
 
 impl GlobalStats {
     /// Get overall success rate
+    #[must_use]
     pub fn success_rate(&self) -> f32 {
         let total = self.total_successes + self.total_failures;
         if total == 0 {
@@ -347,6 +358,7 @@ impl GlobalStats {
     }
 
     /// Get most problematic extensions
+    #[must_use]
     pub fn most_problematic_extensions(&self, count: usize) -> Vec<(ExtensionType, u32)> {
         let mut sorted: Vec<_> = self.problematic_extensions.iter().collect();
         sorted.sort_by(|a, b| b.1.cmp(a.1));

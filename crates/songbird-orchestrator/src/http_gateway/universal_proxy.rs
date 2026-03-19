@@ -4,13 +4,13 @@
 //! external API provider without vendor-specific logic.
 //!
 //! # Philosophy
-//! - **Zero Vendor Hardcoding**: No "OpenAI", "HuggingFace", "Anthropic" logic
+//! - **Zero Vendor Hardcoding**: No "`OpenAI`", "`HuggingFace`", "Anthropic" logic
 //! - **Universal Design**: One implementation works for all providers
 //! - **Configuration-Driven**: Provider behavior defined by configuration
 //! - **Transform-Based**: Use transformations instead of custom code
 //!
 //! # Evolution Strategy
-//! Instead of building separate handlers for each vendor (OpenAI, HuggingFace, etc.),
+//! Instead of building separate handlers for each vendor (`OpenAI`, `HuggingFace`, etc.),
 //! we build ONE universal proxy that uses:
 //! 1. **Request Transformations**: Map generic requests to provider-specific formats
 //! 2. **Response Transformations**: Map provider responses back to generic format
@@ -135,7 +135,7 @@ impl UniversalProxy {
 
         // Add API key (provider-agnostic - works with any auth scheme)
         if let Some(key) = api_key {
-            headers.insert("Authorization".to_string(), format!("Bearer {}", key));
+            headers.insert("Authorization".to_string(), format!("Bearer {key}"));
         }
 
         // Add custom headers from configuration
@@ -161,7 +161,7 @@ impl UniversalProxy {
         // Check for errors
         if !(200..300).contains(&status) {
             error!("External API returned error: {} - {:?}", status, json);
-            return Err(anyhow!("External API error: {} - {:?}", status, json));
+            return Err(anyhow!("External API error: {status} - {json:?}"));
         }
 
         trace!("External request successful: status {}", status);

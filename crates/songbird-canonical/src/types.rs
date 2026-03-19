@@ -122,8 +122,14 @@ pub struct ConfidenceScore(f64);
 impl ConfidenceScore {
     /// Create a new confidence score (clamped to 0.0-1.0)
     #[must_use]
-    pub fn new(score: f64) -> Self {
-        Self(score.clamp(0.0, 1.0))
+    pub const fn new(score: f64) -> Self {
+        Self(if score < 0.0 {
+            0.0
+        } else if score > 1.0 {
+            1.0
+        } else {
+            score
+        })
     }
 
     /// Get the score value

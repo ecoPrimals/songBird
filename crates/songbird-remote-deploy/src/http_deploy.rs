@@ -202,18 +202,19 @@ pub async fn query_capabilities(tower_endpoint: &str) -> Result<DeploymentCapabi
     debug!("📊 Querying capabilities from {}", tower_endpoint);
 
     let client =
-        IpcHttpClient::new().await.map_err(|e| anyhow!("Failed to create HTTP client: {}", e))?;
-    let url = format!("{}/api/deployment/capabilities", tower_endpoint);
+        IpcHttpClient::new().await.map_err(|e| anyhow!("Failed to create HTTP client: {e}"))?;
+    let url = format!("{tower_endpoint}/api/deployment/capabilities");
 
     let response =
-        client.get(&url).await.map_err(|e| anyhow!("Failed to query capabilities: {}", e))?;
+        client.get(&url).await.map_err(|e| anyhow!("Failed to query capabilities: {e}"))?;
 
     if !response.is_success() {
-        return Err(anyhow!("Capabilities query failed with status {}", response.status()));
+        let status = response.status();
+        return Err(anyhow!("Capabilities query failed with status {status}"));
     }
 
     let capabilities: DeploymentCapabilities =
-        response.json().await.map_err(|e| anyhow!("Failed to parse capabilities: {}", e))?;
+        response.json().await.map_err(|e| anyhow!("Failed to parse capabilities: {e}"))?;
 
     info!("✅ Capabilities received from {}", capabilities.node_id);
     debug!(
@@ -242,7 +243,7 @@ pub fn select_deployment_method(
     };
 
     // Check if binary fits in single upload
-    if binary_size_mb < (caps.deployment_methods.single.max_size_mb as f64)
+    if binary_size_mb < f64::from(caps.deployment_methods.single.max_size_mb)
         && caps.deployment_methods.single.enabled
     {
         info!(
@@ -255,7 +256,7 @@ pub fn select_deployment_method(
     }
 
     // Check if chunked is available
-    if binary_size_mb < (caps.deployment_methods.chunked.max_total_size_mb as f64)
+    if binary_size_mb < f64::from(caps.deployment_methods.chunked.max_total_size_mb)
         && caps.deployment_methods.chunked.enabled
     {
         info!(
@@ -290,7 +291,10 @@ pub async fn deploy_via_http_adaptive(
     // Get binary size
     let metadata = tokio::fs::metadata(binary_path).await?;
     let binary_size_bytes = metadata.len();
-    let binary_size_mb = binary_size_bytes as f64 / 1024.0 / 1024.0;
+    let binary_size_mb = f64::from(
+        u32::try_from((binary_size_bytes / 1024 / 1024).min(u64::from(u32::MAX)))
+            .unwrap_or(u32::MAX),
+    );
 
     let binary_name =
         Path::new(binary_path).file_name().and_then(|n| n.to_str()).unwrap_or("unknown-binary");
@@ -354,12 +358,14 @@ async fn deploy_via_http_chunked(
 
     // Read binary
     let binary_data = fs::read(binary_path).await?;
-    let binary_size_mb = binary_data.len() as f64 / 1024.0 / 1024.0;
+    let binary_size_mb = f64::from(
+        u32::try_from((binary_data.len() / 1024 / 1024).min(u32::MAX as usize)).unwrap_or(u32::MAX),
+    );
 
     info!("   Binary size: {:.2}MB", binary_size_mb);
 
     let client =
-        IpcHttpClient::new().await.map_err(|e| anyhow!("Failed to create HTTP client: {}", e))?;
+        IpcHttpClient::new().await.map_err(|e| anyhow!("Failed to create HTTP client: {e}"))?;
 
     // Step 1: Negotiate
     info!("🤝 Step 1: Negotiating chunked upload...");
@@ -408,7 +414,7 @@ async fn negotiate_chunked_upload(
     binary_size_mb: f64,
     service_name: &str,
 ) -> Result<NegotiationResponse> {
-    let url = format!("{}/api/deployment/negotiate", tower_endpoint);
+    let url = format!("{tower_endpoint}/api/deployment/negotiate");
 
     let request = NegotiationRequest {
         binary_size_mb,
@@ -422,18 +428,16 @@ async fn negotiate_chunked_upload(
         .json(&request)?
         .send()
         .await
-        .map_err(|e| anyhow!("Negotiation request failed: {}", e))?;
+        .map_err(|e| anyhow!("Negotiation request failed: {e}"))?;
 
     if !response.is_success() {
         let status = response.status();
         let error_text = response.text().await.unwrap_or_else(|_| "Unknown error".to_string());
-        return Err(anyhow!("Negotiation failed with status {}: {}", status, error_text));
+        return Err(anyhow!("Negotiation failed with status {status}: {error_text}"));
     }
 
-    let negotiation: NegotiationResponse = response
-        .json()
-        .await
-        .map_err(|e| anyhow!("Failed to parse negotiation response: {}", e))?;
+    let negotiation: NegotiationResponse =
+        response.json().await.map_err(|e| anyhow!("Failed to parse negotiation response: {e}"))?;
 
     Ok(negotiation)
 }
@@ -446,11 +450,11 @@ async fn upload_chunk(
     chunk_index: usize,
     chunk_data: &[u8],
 ) -> Result<()> {
-    let url = format!("{}/api/deployment/chunk/{}/{}", tower_endpoint, negotiation_id, chunk_index);
+    let url = format!("{tower_endpoint}/api/deployment/chunk/{negotiation_id}/{chunk_index}");
 
     let form = Form::new().part(
         "chunk",
-        Part::bytes(chunk_data.to_vec()).file_name(format!("chunk-{:04}", chunk_index)),
+        Part::bytes(chunk_data.to_vec()).file_name(format!("chunk-{chunk_index:04}")),
     );
 
     let response = client
@@ -459,16 +463,13 @@ async fn upload_chunk(
         .multipart(form)
         .send()
         .await
-        .map_err(|e| anyhow!("Chunk upload failed: {}", e))?;
+        .map_err(|e| anyhow!("Chunk upload failed: {e}"))?;
 
     if !response.is_success() {
         let status = response.status();
         let error_text = response.text().await.unwrap_or_else(|_| "Unknown error".to_string());
         return Err(anyhow!(
-            "Chunk {} upload failed with status {}: {}",
-            chunk_index,
-            status,
-            error_text
+            "Chunk {chunk_index} upload failed with status {status}: {error_text}"
         ));
     }
 
@@ -483,7 +484,7 @@ async fn finalize_chunked_upload(
     service_name: &str,
     env_vars: HashMap<String, String>,
 ) -> Result<DeploymentResponse> {
-    let url = format!("{}/api/deployment/finalize/{}", tower_endpoint, negotiation_id);
+    let url = format!("{tower_endpoint}/api/deployment/finalize/{negotiation_id}");
 
     let request = FinalizeRequest {
         service_name: service_name.to_string(),
@@ -497,16 +498,16 @@ async fn finalize_chunked_upload(
         .json(&request)?
         .send()
         .await
-        .map_err(|e| anyhow!("Finalize request failed: {}", e))?;
+        .map_err(|e| anyhow!("Finalize request failed: {e}"))?;
 
     if !response.is_success() {
         let status = response.status();
         let error_text = response.text().await.unwrap_or_else(|_| "Unknown error".to_string());
-        return Err(anyhow!("Finalize failed with status {}: {}", status, error_text));
+        return Err(anyhow!("Finalize failed with status {status}: {error_text}"));
     }
 
     let deployment: DeploymentResponse =
-        response.json().await.map_err(|e| anyhow!("Failed to parse deployment response: {}", e))?;
+        response.json().await.map_err(|e| anyhow!("Failed to parse deployment response: {e}"))?;
 
     Ok(deployment)
 }
@@ -523,7 +524,7 @@ pub async fn deploy_via_http(
     // Read binary file
     let binary_data = fs::read(binary_path)
         .await
-        .map_err(|e| anyhow!("Failed to read binary '{}': {}", binary_path, e))?;
+        .map_err(|e| anyhow!("Failed to read binary '{binary_path}': {e}"))?;
 
     let binary_filename =
         Path::new(binary_path).file_name().and_then(|n| n.to_str()).unwrap_or("service");
@@ -541,8 +542,8 @@ pub async fn deploy_via_http(
 
     // Send deployment request
     let client =
-        IpcHttpClient::new().await.map_err(|e| anyhow!("Failed to create HTTP client: {}", e))?;
-    let url = format!("{}/api/deployment/binary", tower_endpoint);
+        IpcHttpClient::new().await.map_err(|e| anyhow!("Failed to create HTTP client: {e}"))?;
+    let url = format!("{tower_endpoint}/api/deployment/binary");
 
     info!("📡 Sending deployment request to {}", url);
 
@@ -552,16 +553,16 @@ pub async fn deploy_via_http(
         .multipart(form)
         .send()
         .await
-        .map_err(|e| anyhow!("HTTP request failed: {}", e))?;
+        .map_err(|e| anyhow!("HTTP request failed: {e}"))?;
 
     if !response.is_success() {
         let status = response.status();
         let error_text = response.text().await.unwrap_or_else(|_| "Unknown error".to_string());
-        return Err(anyhow!("Deployment failed with status {}: {}", status, error_text));
+        return Err(anyhow!("Deployment failed with status {status}: {error_text}"));
     }
 
     let deployment_response: DeploymentResponse =
-        response.json().await.map_err(|e| anyhow!("Failed to parse response: {}", e))?;
+        response.json().await.map_err(|e| anyhow!("Failed to parse response: {e}"))?;
 
     info!("✅ Deployment successful: {}", deployment_response.deployment_id);
     if let Some(ref url) = deployment_response.service_url {
@@ -579,17 +580,18 @@ pub async fn get_deployment_status(
     deployment_id: &str,
 ) -> Result<DeploymentInfo> {
     let client =
-        IpcHttpClient::new().await.map_err(|e| anyhow!("Failed to create HTTP client: {}", e))?;
-    let url = format!("{}/api/deployment/status/{}", tower_endpoint, deployment_id);
+        IpcHttpClient::new().await.map_err(|e| anyhow!("Failed to create HTTP client: {e}"))?;
+    let url = format!("{tower_endpoint}/api/deployment/status/{deployment_id}");
 
-    let response = client.get(&url).await.map_err(|e| anyhow!("HTTP request failed: {}", e))?;
+    let response = client.get(&url).await.map_err(|e| anyhow!("HTTP request failed: {e}"))?;
 
     if !response.is_success() {
-        return Err(anyhow!("Failed to get deployment status: {}", response.status()));
+        let status = response.status();
+        return Err(anyhow!("Failed to get deployment status: {status}"));
     }
 
     let deployment_info: DeploymentInfo =
-        response.json().await.map_err(|e| anyhow!("Failed to parse response: {}", e))?;
+        response.json().await.map_err(|e| anyhow!("Failed to parse response: {e}"))?;
 
     Ok(deployment_info)
 }
@@ -600,13 +602,14 @@ pub async fn get_deployment_status(
 #[allow(dead_code)]
 pub async fn stop_deployment(tower_endpoint: &str, deployment_id: &str) -> Result<()> {
     let client =
-        IpcHttpClient::new().await.map_err(|e| anyhow!("Failed to create HTTP client: {}", e))?;
-    let url = format!("{}/api/deployment/{}", tower_endpoint, deployment_id);
+        IpcHttpClient::new().await.map_err(|e| anyhow!("Failed to create HTTP client: {e}"))?;
+    let url = format!("{tower_endpoint}/api/deployment/{deployment_id}");
 
-    let response = client.delete(&url).await.map_err(|e| anyhow!("HTTP request failed: {}", e))?;
+    let response = client.delete(&url).await.map_err(|e| anyhow!("HTTP request failed: {e}"))?;
 
     if !response.is_success() {
-        return Err(anyhow!("Failed to stop deployment: {}", response.status()));
+        let status = response.status();
+        return Err(anyhow!("Failed to stop deployment: {status}"));
     }
 
     info!("✅ Deployment {} stopped", deployment_id);
@@ -620,17 +623,18 @@ pub async fn stop_deployment(tower_endpoint: &str, deployment_id: &str) -> Resul
 #[allow(dead_code)]
 pub async fn list_deployments(tower_endpoint: &str) -> Result<Vec<DeploymentInfo>> {
     let client =
-        IpcHttpClient::new().await.map_err(|e| anyhow!("Failed to create HTTP client: {}", e))?;
-    let url = format!("{}/api/deployment/list", tower_endpoint);
+        IpcHttpClient::new().await.map_err(|e| anyhow!("Failed to create HTTP client: {e}"))?;
+    let url = format!("{tower_endpoint}/api/deployment/list");
 
-    let response = client.get(&url).await.map_err(|e| anyhow!("HTTP request failed: {}", e))?;
+    let response = client.get(&url).await.map_err(|e| anyhow!("HTTP request failed: {e}"))?;
 
     if !response.is_success() {
-        return Err(anyhow!("Failed to list deployments: {}", response.status()));
+        let status = response.status();
+        return Err(anyhow!("Failed to list deployments: {status}"));
     }
 
     let deployments: Vec<DeploymentInfo> =
-        response.json().await.map_err(|e| anyhow!("Failed to parse response: {}", e))?;
+        response.json().await.map_err(|e| anyhow!("Failed to parse response: {e}"))?;
 
     Ok(deployments)
 }

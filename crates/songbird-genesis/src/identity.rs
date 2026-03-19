@@ -1,6 +1,7 @@
 //! New node identity types
 
-use crate::{types::*, witness::GenesisWitness};
+use crate::types::{GenesisLineage, PrimalLineage, TrustLevel};
+use crate::witness::GenesisWitness;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
@@ -32,6 +33,7 @@ pub struct NewNodeIdentity {
 
 impl NewNodeIdentity {
     /// Create new node identity from genesis ceremony
+    #[must_use]
     pub fn new(
         node_id: String,
         public_key: Vec<u8>,
@@ -50,31 +52,36 @@ impl NewNodeIdentity {
     }
 
     /// Get trust level based on genesis witness
+    #[must_use]
     pub fn genesis_trust_level(&self) -> TrustLevel {
         self.genesis_witness.trust_level()
     }
 
     /// Check if this identity has lineage from a specific primal
+    #[must_use]
     pub fn has_primal_lineage(&self, primal_name: &str) -> bool {
         self.genesis_lineage.primal_lineages.contains_key(primal_name)
     }
 
     /// Get lineage from a specific primal
+    #[must_use]
     pub fn get_primal_lineage(&self, primal_name: &str) -> Option<&PrimalLineage> {
         self.genesis_lineage.primal_lineages.get(primal_name)
     }
 
     /// Get number of primals that signed this genesis
+    #[must_use]
     pub fn primal_signature_count(&self) -> usize {
         self.genesis_lineage.primal_lineages.len()
     }
 
     /// Check if genesis is multi-primal (signed by 2+ primals)
+    #[must_use]
     pub fn is_multi_primal_genesis(&self) -> bool {
         self.primal_signature_count() >= 2
     }
 
-    /// Verify all primal signatures using BearDog
+    /// Verify all primal signatures using `BearDog`
     pub async fn verify_all_signatures(&self) -> bool {
         use crate::security_capability_client::SecurityCapabilityClient;
 

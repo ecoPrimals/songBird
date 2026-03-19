@@ -140,7 +140,7 @@ impl FilesystemStrategy {
 
     /// Create with custom search paths
     #[must_use]
-    pub fn with_paths(search_paths: Vec<PathBuf>) -> Self {
+    pub const fn with_paths(search_paths: Vec<PathBuf>) -> Self {
         Self {
             search_paths,
         }

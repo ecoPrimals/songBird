@@ -20,7 +20,7 @@ use songbird_types::SafeEnv;
 /// Attempts multiple detection methods in order:
 /// 1. nvidia-smi for NVIDIA GPUs
 /// 2. lspci for any GPU (Linux only)
-/// 3. GPU_MODEL environment variable override
+/// 3. `GPU_MODEL` environment variable override
 ///
 /// # Returns
 ///
@@ -29,7 +29,8 @@ use songbird_types::SafeEnv;
 /// # Zero Hardcoding
 ///
 /// No hardcoded GPU models - all detection is runtime-based.
-/// Users can override via GPU_MODEL environment variable.
+/// Users can override via `GPU_MODEL` environment variable.
+#[must_use]
 pub fn detect_gpu() -> Option<String> {
     // Priority 1: Check environment variable override (for testing/configuration)
     if let Ok(gpu_model) = std::env::var("GPU_MODEL") {
@@ -79,7 +80,7 @@ pub fn detect_gpu() -> Option<String> {
 ///
 /// Attempts multiple detection methods in order:
 /// 1. df command for root filesystem (Linux only)
-/// 2. STORAGE_GB environment variable override
+/// 2. `STORAGE_GB` environment variable override
 /// 3. None if unavailable
 ///
 /// # Returns
@@ -89,7 +90,8 @@ pub fn detect_gpu() -> Option<String> {
 /// # Zero Hardcoding
 ///
 /// No hardcoded storage values - all detection is runtime-based.
-/// Users can override via STORAGE_GB environment variable.
+/// Users can override via `STORAGE_GB` environment variable.
+#[must_use]
 pub fn detect_storage_capacity() -> Option<usize> {
     // Priority 1: Check environment variable override (for testing/configuration)
     if let Ok(storage_gb) = std::env::var("STORAGE_GB") {

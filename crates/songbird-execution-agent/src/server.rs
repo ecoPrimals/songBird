@@ -4,7 +4,10 @@ use crate::{
     executor::CommandExecutor,
     job_manager::{JobManager, JobStats},
     security::SecurityValidator,
-    types::*,
+    types::{
+        ExecutionRequest, ExecutionResponse, ExecutionStatus, JobInfo, StopJobRequest,
+        StopJobResponse,
+    },
 };
 use axum::{
     extract::{Path, State},
@@ -38,6 +41,7 @@ pub struct ExecutionServer {
 
 impl ExecutionServer {
     /// Create a new execution server
+    #[must_use]
     pub fn new(
         bind_address: String,
         port: u16,
@@ -54,7 +58,11 @@ impl ExecutionServer {
         }
     }
 
-    /// Start the server
+    /// Start the execution server
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if binding to the address fails
     pub async fn serve(self) -> Result<(), Box<dyn std::error::Error>> {
         let state = ServerState {
             job_manager: self.job_manager.clone(),
@@ -162,8 +170,8 @@ async fn stop_job(
 
 /// Get statistics
 async fn get_stats(State(state): State<ServerState>) -> Result<Json<JobStats>, AppError> {
-    let stats = state.job_manager.get_stats().await;
-    Ok(Json(stats))
+    let job_stats = state.job_manager.get_stats().await;
+    Ok(Json(job_stats))
 }
 
 /// Application error wrapper for proper HTTP responses

@@ -62,7 +62,7 @@ impl NetworkEffectsOptimizer {
 
     /// Create a new `NetworkEffectsOptimizer` with custom configuration
     #[must_use]
-    pub fn with_config(config: OptimizationConfig) -> Self {
+    pub const fn with_config(config: OptimizationConfig) -> Self {
         Self {
             optimization_config: config,
         }
@@ -257,7 +257,7 @@ impl NetworkEffectsOptimizer {
         }
     }
 
-    fn count_enabled_strategies(&self) -> usize {
+    const fn count_enabled_strategies(&self) -> usize {
         let mut count = 0;
         if self.optimization_config.enable_latency_optimization {
             count += 1;

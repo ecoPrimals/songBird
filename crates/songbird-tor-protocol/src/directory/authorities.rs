@@ -27,7 +27,7 @@ pub struct DirectoryAuthority {
 
 /// List of Tor directory authorities (as of February 2026)
 ///
-/// Source: https://consensus-health.torproject.org/
+/// Source: <https://consensus-health.torproject.org/>
 /// Note: Order matters - put most reliable/fastest first
 pub const DIRECTORY_AUTHORITIES: &[DirectoryAuthority] = &[
     // gabelmoo (gabelmoo.torproject.org) - FIRST: known to be reliable
@@ -122,11 +122,13 @@ pub const DIRECTORY_AUTHORITIES: &[DirectoryAuthority] = &[
 
 impl DirectoryAuthority {
     /// Get consensus URL for this authority
+    #[must_use]
     pub fn consensus_url(&self) -> String {
         format!("http://{}:{}/tor/status-vote/current/consensus", self.address, self.dir_port)
     }
 
     /// Get descriptor URL for a relay
+    #[must_use]
     pub fn descriptor_url(&self, fingerprint: &str) -> String {
         format!("http://{}:{}/tor/server/fp/{}", self.address, self.dir_port, fingerprint)
     }

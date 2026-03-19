@@ -78,8 +78,8 @@
 //!
 //! ## Standards Compliance
 //!
-//! - ✅ **JSON-RPC 2.0**: Standard protocol (wateringHole/PRIMAL_IPC_PROTOCOL.md)
-//! - ✅ **Semantic Naming**: `http.request` format (wateringHole/SEMANTIC_METHOD_NAMING_STANDARD.md)
+//! - ✅ **JSON-RPC 2.0**: Standard protocol (`wateringHole/PRIMAL_IPC_PROTOCOL.md`)
+//! - ✅ **Semantic Naming**: `http.request` format (`wateringHole/SEMANTIC_METHOD_NAMING_STANDARD.md`)
 //! - ✅ **Tower Atomic**: Crypto delegation pattern
 //! - ✅ **TRUE ecoBin**: Zero C dependencies
 //! - ✅ **Pure Rust**: 100% safe Rust
@@ -119,13 +119,13 @@ impl HttpMethod {
             "DELETE" => Ok(Self::Delete),
             "HEAD" => Ok(Self::Head),
             "PATCH" => Ok(Self::Patch),
-            _ => Err(anyhow::anyhow!("Unsupported HTTP method: {}", s)),
+            _ => Err(anyhow::anyhow!("Unsupported HTTP method: {s}")),
         }
     }
 
     /// Convert to string representation
     #[must_use]
-    pub fn as_str(self) -> &'static str {
+    pub const fn as_str(self) -> &'static str {
         match self {
             Self::Get => "GET",
             Self::Post => "POST",
@@ -139,15 +139,15 @@ impl HttpMethod {
 
 /// HTTP request handler context
 ///
-/// Holds the BearDog client for crypto operations
+/// Holds the `BearDog` client for crypto operations
 pub struct HttpHandler {
     beardog_client: Arc<BearDogClient>,
 }
 
 impl HttpHandler {
-    /// Create new HTTP handler with BearDog crypto provider
+    /// Create new HTTP handler with `BearDog` crypto provider
     #[must_use]
-    pub fn new(beardog_client: Arc<BearDogClient>) -> Self {
+    pub const fn new(beardog_client: Arc<BearDogClient>) -> Self {
         Self {
             beardog_client,
         }
@@ -241,7 +241,7 @@ impl HttpHandler {
                 let family_id = std::env::var("SONGBIRD_FAMILY_ID")
                     .or_else(|_| std::env::var("FAMILY_ID"))
                     .unwrap_or_else(|_| "default".to_string());
-                format!("/tmp/beardog-{}.sock", family_id)
+                format!("/tmp/beardog-{family_id}.sock")
             });
 
         let client = SongbirdHttpClient::new(&beardog_socket_path);
@@ -250,7 +250,7 @@ impl HttpHandler {
         let response = client
             .request(method.as_str(), url, headers, body)
             .await
-            .map_err(|e| JsonRpcError::internal_error(format!("HTTP request failed: {}", e)))?;
+            .map_err(|e| JsonRpcError::internal_error(format!("HTTP request failed: {e}")))?;
 
         // 5. Return response (body as base64)
         // Note: HttpResponse.body is serde_json::Value (already JSON)

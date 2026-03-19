@@ -1,6 +1,6 @@
 //! SSDP (Simple Service Discovery Protocol) implementation
 //!
-//! SSDP is used to discover UPnP devices on the local network via UDP multicast.
+//! SSDP is used to discover `UPnP` devices on the local network via UDP multicast.
 //! This module sends M-SEARCH queries to the SSDP multicast address and parses responses.
 
 use crate::error::Result;
@@ -10,7 +10,7 @@ use std::time::Duration;
 use tokio::net::UdpSocket;
 use tracing::{debug, trace, warn};
 
-/// SSDP client for discovering UPnP IGD devices
+/// SSDP client for discovering `UPnP` IGD devices
 pub struct SsdpClient {
     /// Discovery timeout
     timeout: Duration,
@@ -37,22 +37,28 @@ pub struct SsdpResponse {
 
 impl SsdpClient {
     /// Create new SSDP client with default 3-second timeout
-    pub fn new() -> Self {
+    #[must_use]
+    pub const fn new() -> Self {
         Self {
             timeout: Duration::from_secs(3),
         }
     }
 
     /// Create SSDP client with custom timeout
-    pub fn with_timeout(timeout: Duration) -> Self {
+    #[must_use]
+    pub const fn with_timeout(timeout: Duration) -> Self {
         Self {
             timeout,
         }
     }
 
-    /// Discover UPnP IGD devices on the network
+    /// Discover `UPnP` IGD devices on the network
     ///
     /// Sends M-SEARCH multicast and collects responses for 3 seconds (or custom timeout).
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if socket binding, broadcast enable, or send fails.
     pub async fn discover_gateways(&self) -> Result<Vec<SsdpResponse>> {
         debug!("Starting SSDP discovery for UPnP IGD devices");
 
@@ -119,7 +125,7 @@ impl SsdpClient {
                         }
                     }
                 }
-                _ = tokio::time::sleep_until(deadline) => {
+                () = tokio::time::sleep_until(deadline) => {
                     debug!("SSDP discovery timeout reached");
                     break;
                 }
@@ -158,9 +164,9 @@ impl SsdpClient {
 
         // Extract required fields
         let location = headers.get("LOCATION")?.clone();
-        let server = headers.get("SERVER").unwrap_or(&"Unknown".to_string()).clone();
+        let server = headers.get("SERVER").cloned().unwrap_or_else(|| "Unknown".to_string());
         let service_type = headers.get("ST")?.clone();
-        let usn = headers.get("USN").unwrap_or(&"".to_string()).clone();
+        let usn = headers.get("USN").cloned().unwrap_or_default();
 
         // Only return IGD devices or WANIPConnection services
         if !service_type.contains("InternetGatewayDevice")

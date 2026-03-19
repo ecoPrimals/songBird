@@ -14,7 +14,7 @@
 //!    - Simple, reliable, always functional
 //!
 //! 2. **Network Effect Enhancement** (Optional)
-//!    - Discover BearDog via capability discovery
+//!    - Discover `BearDog` via capability discovery
 //!    - If available: delegate enhanced security checks
 //!    - If unavailable: gracefully continue with sovereign security
 //!
@@ -22,9 +22,9 @@
 //!
 //! **"Each primal knows itself and is sovereign"**
 //!
-//! - Songbird continues normally if BearDog goes down
-//! - Loses unique BearDog security features → falls back to failsafe
-//! - LAN users can interact without BearDog (though BearDog adds security)
+//! - Songbird continues normally if `BearDog` goes down
+//! - Loses unique `BearDog` security features → falls back to failsafe
+//! - LAN users can interact without `BearDog` (though `BearDog` adds security)
 //! - Internet/public: utilize network effect of multiple primals
 
 use serde::{Deserialize, Serialize};
@@ -34,12 +34,12 @@ use std::sync::Arc;
 use tokio::sync::RwLock;
 use tracing::{debug, info, warn};
 
-/// Sovereign security validator with optional BearDog network effect
+/// Sovereign security validator with optional `BearDog` network effect
 pub struct SovereignSecurityValidator {
     /// Songbird's sovereign security (always available)
     sovereign: Arc<RwLock<SovereignSecurity>>,
 
-    /// Optional BearDog integration (discovered via capability)
+    /// Optional `BearDog` integration (discovered via capability)
     beardog: Arc<RwLock<Option<BearDogIntegration>>>,
 
     /// Configuration
@@ -61,7 +61,11 @@ impl SovereignSecurityValidator {
         }
     }
 
-    /// Attempt to discover and integrate with BearDog (network effect)
+    /// Attempt to discover and integrate with `BearDog` (network effect)
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if `BearDog` connection fails when endpoint is configured
     pub async fn discover_beardog(&self) -> SongbirdResult<bool> {
         info!("🔍 Attempting BearDog capability discovery...");
 
@@ -74,8 +78,7 @@ impl SovereignSecurityValidator {
 
         if beardog_available {
             info!("✅ BearDog discovered - enabling enhanced security network effect");
-            let mut beardog = self.beardog.write().await;
-            *beardog = Some(BearDogIntegration::connect().await?);
+            *self.beardog.write().await = Some(BearDogIntegration::connect().await?);
             Ok(true)
         } else {
             info!("ℹ️  BearDog not discovered - continuing with sovereign security");
@@ -85,9 +88,13 @@ impl SovereignSecurityValidator {
 
     /// Validate execution request
     ///
+    /// # Errors
+    ///
+    /// Returns an error if sovereign validation fails
+    ///
     /// **Primal sovereignty pattern**:
-    /// 1. Try enhanced security if BearDog available (network effect)
-    /// 2. Fallback to sovereign security if BearDog unavailable
+    /// 1. Try enhanced security if `BearDog` available (network effect)
+    /// 2. Fallback to sovereign security if `BearDog` unavailable
     /// 3. Always functional - never blocks on other primals
     pub async fn validate_request(
         &self,
@@ -118,9 +125,7 @@ impl SovereignSecurityValidator {
 
         // Sovereign security (always available)
         debug!("🏛️ Using Songbird sovereign security");
-        let sovereign = self.sovereign.read().await;
-        let decision = sovereign.validate(request).await?;
-
+        let decision = self.sovereign.read().await.validate(request).await?;
         info!("✅ Sovereign validation: {:?}", decision.allowed);
         Ok(decision)
     }
@@ -142,6 +147,7 @@ impl SovereignSecurity {
 
     /// Validate using Songbird's sovereign security
     async fn validate(&self, request: &SecurityRequest) -> SongbirdResult<SecurityDecision> {
+        tokio::task::yield_now().await;
         // 1. Check authentication if enabled
         if self.config.enable_auth {
             if let Some(ref token) = request.auth_token {
@@ -167,7 +173,7 @@ impl SovereignSecurity {
         if let Some(violation) = check_dangerous_patterns(&request.command) {
             return Ok(SecurityDecision {
                 allowed: false,
-                reason: Some(format!("Dangerous command pattern detected: {}", violation)),
+                reason: Some(format!("Dangerous command pattern detected: {violation}")),
                 confidence: 1.0,
                 mode: SecurityMode::Sovereign,
             });
@@ -198,14 +204,14 @@ impl SovereignSecurity {
     }
 }
 
-/// Optional BearDog integration (network effect)
+/// Optional `BearDog` integration (network effect)
 ///
-/// Provides enhanced security validation by delegating to BearDog security service
-/// when available. Falls back to local validation if BearDog is unreachable.
+/// Provides enhanced security validation by delegating to `BearDog` security service
+/// when available. Falls back to local validation if `BearDog` is unreachable.
 struct BearDogIntegration {
-    /// BearDog security endpoint URL
+    /// `BearDog` security endpoint URL
     endpoint: String,
-    /// HTTP client for BearDog requests
+    /// HTTP client for `BearDog` requests
     client: IpcHttpClient,
     /// Request timeout for security operations (reserved for timeout enforcement)
     #[allow(dead_code)]
@@ -213,9 +219,9 @@ struct BearDogIntegration {
 }
 
 impl BearDogIntegration {
-    /// Connect to BearDog security service
+    /// Connect to `BearDog` security service
     ///
-    /// Discovers BearDog endpoint via:
+    /// Discovers `BearDog` endpoint via:
     /// 1. `BEARDOG_SECURITY_ENDPOINT` environment variable
     /// 2. `SONGBIRD_SECURITY_ENDPOINT` environment variable  
     /// 3. Fallback to localhost:8443 (development)
@@ -254,10 +260,10 @@ impl BearDogIntegration {
         })
     }
 
-    /// Validate security request using BearDog
+    /// Validate security request using `BearDog`
     ///
-    /// Calls BearDog's security validation API to get enhanced security decisions.
-    /// Falls back to permissive local decision if BearDog is unreachable.
+    /// Calls `BearDog`'s security validation API to get enhanced security decisions.
+    /// Falls back to permissive local decision if `BearDog` is unreachable.
     ///
     /// # Errors
     ///
@@ -329,9 +335,9 @@ impl BearDogIntegration {
         }
     }
 
-    /// Check if BearDog is currently reachable
+    /// Check if `BearDog` is currently reachable
     ///
-    /// Non-blocking health check to determine if BearDog integration is active
+    /// Non-blocking health check to determine if `BearDog` integration is active
     #[allow(dead_code)]
     async fn is_available(&self) -> bool {
         let url = format!("{}/health", self.endpoint);
@@ -339,7 +345,7 @@ impl BearDogIntegration {
         self.client.get(&url).await.map(|r| r.is_success()).unwrap_or(false)
     }
 
-    /// Get BearDog endpoint URL
+    /// Get `BearDog` endpoint URL
     #[must_use]
     #[allow(dead_code)]
     fn endpoint(&self) -> &str {
@@ -375,7 +381,7 @@ pub struct SecurityConfig {
     /// Maximum timeout (seconds)
     pub max_timeout_seconds: u64,
 
-    /// Enable BearDog discovery
+    /// Enable `BearDog` discovery
     pub enable_beardog_discovery: bool,
 }
 

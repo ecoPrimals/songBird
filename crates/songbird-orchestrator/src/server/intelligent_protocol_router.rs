@@ -69,7 +69,8 @@ pub enum PayloadSize {
 }
 
 impl PayloadSize {
-    pub fn from_bytes(bytes: u64) -> Self {
+    #[must_use]
+    pub const fn from_bytes(bytes: u64) -> Self {
         match bytes {
             0..=1_024 => Self::Tiny,
             1_025..=102_400 => Self::Small,
@@ -79,7 +80,8 @@ impl PayloadSize {
         }
     }
 
-    pub fn to_bytes(&self) -> u64 {
+    #[must_use]
+    pub const fn to_bytes(&self) -> u64 {
         match self {
             Self::Tiny => 512,
             Self::Small => 50_000,
@@ -243,6 +245,7 @@ impl Default for IntelligentProtocolRouter {
 }
 
 impl IntelligentProtocolRouter {
+    #[must_use]
     pub fn new() -> Self {
         let mut performance_profiles = HashMap::new();
 

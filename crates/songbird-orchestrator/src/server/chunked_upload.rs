@@ -33,9 +33,9 @@ pub async fn negotiate_chunked_upload(
     let total_chunks = ((request.binary_size_mb / f64::from(chunk_size_mb)).ceil() as usize).max(1);
 
     // Create temp directory
-    let temp_dir = format!("/tmp/songbird-chunks/{}", negotiation_id);
+    let temp_dir = format!("/tmp/songbird-chunks/{negotiation_id}");
     fs::create_dir_all(&temp_dir).await.map_err(|e| {
-        (StatusCode::INTERNAL_SERVER_ERROR, format!("Failed to create temp dir: {}", e))
+        (StatusCode::INTERNAL_SERVER_ERROR, format!("Failed to create temp dir: {e}"))
     })?;
 
     info!("✓ Negotiation: {} chunks of {}MB", total_chunks, chunk_size_mb);
@@ -59,15 +59,15 @@ pub async fn negotiate_chunked_upload(
         accepted_method: "chunked".to_string(),
         chunk_size_mb,
         total_chunks,
-        chunk_upload_path: format!("/api/deployment/chunk/{}/{{index}}", negotiation_id),
-        finalize_path: format!("/api/deployment/finalize/{}", negotiation_id),
+        chunk_upload_path: format!("/api/deployment/chunk/{negotiation_id}/{{index}}"),
+        finalize_path: format!("/api/deployment/finalize/{negotiation_id}"),
         timeout_seconds: 300,
     };
 
     Ok((StatusCode::OK, Json(response)))
 }
 
-/// POST /api/deployment/chunk/:neg_id/:index - Upload a chunk
+/// POST /`api/deployment/chunk/:neg_id/:index` - Upload a chunk
 pub async fn upload_chunk(
     State(state): State<DeploymentState>,
     Path((neg_id, chunk_index)): Path<(String, usize)>,
@@ -80,7 +80,7 @@ pub async fn upload_chunk(
     let negotiation = negotiations
         .get(&neg_id)
         // Modern idiomatic: ok_or_else for lazy evaluation (only format on error path)
-        .ok_or_else(|| (StatusCode::NOT_FOUND, format!("Negotiation '{}' not found", neg_id)))?
+        .ok_or_else(|| (StatusCode::NOT_FOUND, format!("Negotiation '{neg_id}' not found")))?
         .clone();
     drop(negotiations);
 
@@ -98,14 +98,14 @@ pub async fn upload_chunk(
     while let Some(field) = multipart
         .next_field()
         .await
-        .map_err(|e| (StatusCode::BAD_REQUEST, format!("Multipart error: {}", e)))?
+        .map_err(|e| (StatusCode::BAD_REQUEST, format!("Multipart error: {e}")))?
     {
         if field.name() == Some("chunk") {
             chunk_data = Some(
                 field
                     .bytes()
                     .await
-                    .map_err(|e| (StatusCode::BAD_REQUEST, format!("Chunk read error: {}", e)))?
+                    .map_err(|e| (StatusCode::BAD_REQUEST, format!("Chunk read error: {e}")))?
                     .to_vec(),
             );
         }
@@ -117,9 +117,9 @@ pub async fn upload_chunk(
 
     // Write chunk to disk
     let chunk_path = format!("{}/chunk-{:04}", negotiation.temp_dir, chunk_index);
-    fs::write(&chunk_path, &chunk_data).await.map_err(|e| {
-        (StatusCode::INTERNAL_SERVER_ERROR, format!("Failed to write chunk: {}", e))
-    })?;
+    fs::write(&chunk_path, &chunk_data)
+        .await
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("Failed to write chunk: {e}")))?;
 
     info!("✓ Chunk {} received ({} bytes)", chunk_index, chunk_data.len());
 
@@ -148,7 +148,7 @@ pub async fn upload_chunk(
     ))
 }
 
-/// POST /api/deployment/finalize/:neg_id - Finalize and deploy
+/// POST /`api/deployment/finalize/:neg_id` - Finalize and deploy
 pub async fn finalize_chunked_upload(
     State(state): State<DeploymentState>,
     Path(neg_id): Path<String>,
@@ -161,7 +161,7 @@ pub async fn finalize_chunked_upload(
     let negotiation = negotiations
         .remove(&neg_id)
         // Modern idiomatic: ok_or_else for lazy evaluation
-        .ok_or_else(|| (StatusCode::NOT_FOUND, format!("Negotiation '{}' not found", neg_id)))?;
+        .ok_or_else(|| (StatusCode::NOT_FOUND, format!("Negotiation '{neg_id}' not found")))?;
     drop(negotiations);
 
     // Verify all chunks received
@@ -180,15 +180,15 @@ pub async fn finalize_chunked_upload(
 
     // Create deployment directory
     let deployment_id = format!("deploy-{}", fastrand::u64(..));
-    let deploy_dir = format!("/tmp/songbird-deployments/{}", deployment_id);
+    let deploy_dir = format!("/tmp/songbird-deployments/{deployment_id}");
     fs::create_dir_all(&deploy_dir).await.map_err(|e| {
-        (StatusCode::INTERNAL_SERVER_ERROR, format!("Failed to create deploy dir: {}", e))
+        (StatusCode::INTERNAL_SERVER_ERROR, format!("Failed to create deploy dir: {e}"))
     })?;
 
     // Assemble chunks in order
-    let binary_path = format!("{}/service", deploy_dir);
+    let binary_path = format!("{deploy_dir}/service");
     let mut output_file = fs::File::create(&binary_path).await.map_err(|e| {
-        (StatusCode::INTERNAL_SERVER_ERROR, format!("Failed to create output file: {}", e))
+        (StatusCode::INTERNAL_SERVER_ERROR, format!("Failed to create output file: {e}"))
     })?;
 
     for chunk_index in 0..negotiation.total_chunks {
@@ -197,21 +197,22 @@ pub async fn finalize_chunked_upload(
             .get(&chunk_index)
             // Modern idiomatic: ok_or_else for lazy evaluation
             .ok_or_else(|| {
-                (StatusCode::INTERNAL_SERVER_ERROR, format!("Missing chunk {}", chunk_index))
+                (StatusCode::INTERNAL_SERVER_ERROR, format!("Missing chunk {chunk_index}"))
             })?;
 
         let chunk_data = fs::read(&chunk_info.file_path).await.map_err(|e| {
-            (StatusCode::INTERNAL_SERVER_ERROR, format!("Failed to read chunk: {}", e))
+            (StatusCode::INTERNAL_SERVER_ERROR, format!("Failed to read chunk: {e}"))
         })?;
 
         output_file.write_all(&chunk_data).await.map_err(|e| {
-            (StatusCode::INTERNAL_SERVER_ERROR, format!("Failed to write to output: {}", e))
+            (StatusCode::INTERNAL_SERVER_ERROR, format!("Failed to write to output: {e}"))
         })?;
     }
 
-    output_file.flush().await.map_err(|e| {
-        (StatusCode::INTERNAL_SERVER_ERROR, format!("Failed to flush output: {}", e))
-    })?;
+    output_file
+        .flush()
+        .await
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("Failed to flush output: {e}")))?;
 
     info!("✓ Binary assembled at {}", binary_path);
 
@@ -221,14 +222,12 @@ pub async fn finalize_chunked_upload(
         use std::os::unix::fs::PermissionsExt;
         let mut perms = fs::metadata(&binary_path)
             .await
-            .map_err(|e| {
-                (StatusCode::INTERNAL_SERVER_ERROR, format!("Metadata read failed: {}", e))
-            })?
+            .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("Metadata read failed: {e}")))?
             .permissions();
         perms.set_mode(0o755);
         fs::set_permissions(&binary_path, perms)
             .await
-            .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("Chmod failed: {}", e)))?;
+            .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("Chmod failed: {e}")))?;
     }
 
     // Clean up chunks
@@ -268,7 +267,7 @@ pub async fn finalize_chunked_upload(
                 deployment.status = DeploymentStatus::Failed;
                 return Err((
                     StatusCode::INTERNAL_SERVER_ERROR,
-                    format!("Service start failed: {}", e),
+                    format!("Service start failed: {e}"),
                 ));
             }
         }
@@ -286,7 +285,7 @@ pub async fn finalize_chunked_upload(
             .or_else(|| request.env_vars.get("SERVICE_HOST")),
         port,
     ) {
-        Some(format!("http://{}:{}", host, port))
+        Some(format!("http://{host}:{port}"))
     } else {
         None
     };

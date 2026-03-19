@@ -64,7 +64,7 @@ pub struct TrustEvaluationRequest {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub connection_info: Option<ConnectionInfo>,
 
-    /// Discovery context (optional, flattened HashMap for security provider compatibility)
+    /// Discovery context (optional, flattened `HashMap` for security provider compatibility)
     #[serde(skip_serializing_if = "Option::is_none")]
     pub context: Option<HashMap<String, String>>,
 }
@@ -98,7 +98,7 @@ pub struct DiscoveryContext {
 /// Provider's decision on whether to trust the peer.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TrustEvaluationResponse {
-    /// Decision: "auto_accept", "prompt_user", or "reject"
+    /// Decision: "`auto_accept`", "`prompt_user`", or "reject"
     pub decision: String,
 
     /// Trust level: "high", "medium", "low", or "none"

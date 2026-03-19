@@ -48,7 +48,7 @@ pub enum GenesisError {
     #[error("Signing failed: {0}")]
     SigningFailed(String),
 
-    /// Hardware key error (SoloKey, YubiKey, etc.)
+    /// Hardware key error (`SoloKey`, `YubiKey`, etc.)
     #[error("Hardware key error: {0}")]
     HardwareKeyError(String),
 
@@ -75,18 +75,18 @@ pub enum GenesisError {
 
 impl From<anyhow::Error> for GenesisError {
     fn from(err: anyhow::Error) -> Self {
-        GenesisError::Other(err.to_string())
+        Self::Other(err.to_string())
     }
 }
 
 impl From<String> for GenesisError {
     fn from(msg: String) -> Self {
-        GenesisError::Other(msg)
+        Self::Other(msg)
     }
 }
 
 impl From<&str> for GenesisError {
     fn from(msg: &str) -> Self {
-        GenesisError::Other(msg.to_string())
+        Self::Other(msg.to_string())
     }
 }

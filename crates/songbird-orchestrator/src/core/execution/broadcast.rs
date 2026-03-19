@@ -14,11 +14,11 @@ pub struct BroadcastExecutor {
 impl BroadcastExecutor {
     /// Create a new broadcast executor
     ///
-    /// ✅ EVOLVED: Now async due to ExecutionClient async construction
+    /// ✅ EVOLVED: Now async due to `ExecutionClient` async construction
     pub async fn new() -> Result<Self, String> {
         let client = ExecutionClient::new()
             .await
-            .map_err(|e| format!("Failed to create ExecutionClient: {}", e))?;
+            .map_err(|e| format!("Failed to create ExecutionClient: {e}"))?;
 
         Ok(Self {
             client,
@@ -122,7 +122,7 @@ impl BroadcastExecutor {
                 broadcast_id,
                 success: false,
                 results,
-                error: Some(format!("{} towers failed execution", failure_count)),
+                error: Some(format!("{failure_count} towers failed execution")),
             };
         }
 

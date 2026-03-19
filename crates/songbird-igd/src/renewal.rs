@@ -1,6 +1,6 @@
 //! TTL renewal task for port mappings
 //!
-//! Port mappings have TTLs (typically 86400s / 24h for UPnP).
+//! Port mappings have TTLs (typically 86400s / 24h for `UPnP`).
 //! This module spawns a background task that renews them at half-TTL.
 
 use crate::gateway::Gateway;
@@ -21,6 +21,7 @@ pub struct RenewalManager {
 
 impl RenewalManager {
     /// Create a new renewal manager
+    #[must_use]
     pub fn new() -> Self {
         Self {
             mappings: Arc::new(RwLock::new(Vec::new())),
@@ -46,6 +47,7 @@ impl RenewalManager {
     }
 
     /// Start the renewal background task
+    #[must_use]
     pub fn spawn_renewal_task(&self, gateway: Arc<Gateway>) -> tokio::task::JoinHandle<()> {
         let mappings = self.mappings.clone();
         let running = self.running.clone();

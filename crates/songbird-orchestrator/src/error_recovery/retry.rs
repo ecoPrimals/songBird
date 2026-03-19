@@ -49,6 +49,7 @@ impl Default for RetryPolicy {
 
 impl RetryPolicy {
     /// Create a policy that retries all errors
+    #[must_use]
     pub fn retry_all(max_attempts: u32) -> Self {
         Self {
             max_attempts,
@@ -64,6 +65,7 @@ impl RetryPolicy {
     }
 
     /// Create a policy that only retries transient errors
+    #[must_use]
     pub fn transient_only(max_attempts: u32) -> Self {
         Self {
             max_attempts,
@@ -142,6 +144,7 @@ impl RetryPolicy {
     }
 
     /// Check if an error should be retried
+    #[must_use]
     pub fn should_retry(&self, error: &anyhow::Error) -> bool {
         let error_class = classify_error(error);
         self.retry_on.contains(&error_class)

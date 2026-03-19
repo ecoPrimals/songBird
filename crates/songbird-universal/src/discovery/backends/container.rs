@@ -20,6 +20,10 @@ use tracing::{debug, info, warn};
 ///
 /// **SELF-KNOWLEDGE**: Discovers advertised services in container environments
 /// Supports Kubernetes, Docker Swarm, and standalone Docker
+///
+/// # Errors
+///
+/// Returns an error if container discovery backends fail (non-fatal for individual backends).
 pub async fn discover_from_containers() -> Result<Vec<DiscoveredPrimal>, DiscoveryError> {
     debug!("🔍 Discovering primals from container orchestration...");
 
@@ -59,6 +63,10 @@ fn is_kubernetes_environment() -> bool {
 /// Discover services from Kubernetes
 ///
 /// COMPLETE IMPLEMENTATION using kube-rs client
+///
+/// # Errors
+///
+/// Returns an error if Kubernetes client initialization or API calls fail.
 #[allow(clippy::unused_async)] // async used when k8s feature is enabled
 pub async fn discover_kubernetes_services() -> Result<Vec<DiscoveredPrimal>, DiscoveryError> {
     #[cfg(feature = "k8s")]
@@ -68,7 +76,7 @@ pub async fn discover_kubernetes_services() -> Result<Vec<DiscoveredPrimal>, Dis
 
         // Initialize Kubernetes client
         let client = Client::try_default().await.map_err(|e| {
-            DiscoveryError::BackendUnavailable(format!("K8s client init failed: {}", e))
+            DiscoveryError::BackendUnavailable(format!("K8s client init failed: {e}"))
         })?;
 
         // Get namespace from environment or default
@@ -79,7 +87,7 @@ pub async fn discover_kubernetes_services() -> Result<Vec<DiscoveredPrimal>, Dis
 
         // List all services with default parameters
         let services = api.list(&ListParams::default()).await.map_err(|e| {
-            DiscoveryError::BackendUnavailable(format!("K8s list services failed: {}", e))
+            DiscoveryError::BackendUnavailable(format!("K8s list services failed: {e}"))
         })?;
 
         let mut primals = Vec::new();
@@ -99,7 +107,7 @@ pub async fn discover_kubernetes_services() -> Result<Vec<DiscoveredPrimal>, Dis
     }
 }
 
-/// Convert Kubernetes Service to DiscoveredPrimal
+/// Convert Kubernetes Service to `DiscoveredPrimal`
 #[cfg(feature = "k8s")]
 fn convert_k8s_service_to_primal(
     service: k8s_openapi::api::core::v1::Service,
@@ -164,7 +172,7 @@ fn convert_k8s_service_to_primal(
     };
 
     // Construct endpoint
-    let endpoint = format!("http://{}:{}", host, port);
+    let endpoint = format!("http://{host}:{port}");
 
     Some(DiscoveredPrimal {
         name,
@@ -180,6 +188,10 @@ fn convert_k8s_service_to_primal(
 /// Discover containers from Docker
 ///
 /// COMPLETE IMPLEMENTATION using bollard client
+///
+/// # Errors
+///
+/// Returns an error if Docker daemon connection or container listing fails.
 #[allow(clippy::unused_async)] // async used when docker feature is enabled
 pub async fn discover_docker_containers() -> Result<Vec<DiscoveredPrimal>, DiscoveryError> {
     #[cfg(feature = "docker")]
@@ -189,7 +201,7 @@ pub async fn discover_docker_containers() -> Result<Vec<DiscoveredPrimal>, Disco
 
         // Connect to Docker daemon
         let docker = Docker::connect_with_local_defaults().map_err(|e| {
-            DiscoveryError::BackendUnavailable(format!("Docker connect failed: {}", e))
+            DiscoveryError::BackendUnavailable(format!("Docker connect failed: {e}"))
         })?;
 
         // List running containers
@@ -198,9 +210,10 @@ pub async fn discover_docker_containers() -> Result<Vec<DiscoveredPrimal>, Disco
             ..Default::default()
         };
 
-        let containers = docker.list_containers(Some(options)).await.map_err(|e| {
-            DiscoveryError::BackendUnavailable(format!("Docker list failed: {}", e))
-        })?;
+        let containers = docker
+            .list_containers(Some(options))
+            .await
+            .map_err(|e| DiscoveryError::BackendUnavailable(format!("Docker list failed: {e}")))?;
 
         let mut primals = Vec::new();
 
@@ -219,7 +232,7 @@ pub async fn discover_docker_containers() -> Result<Vec<DiscoveredPrimal>, Disco
     }
 }
 
-/// Convert Docker container to DiscoveredPrimal
+/// Convert Docker container to `DiscoveredPrimal`
 #[cfg(feature = "docker")]
 fn convert_docker_container_to_primal(
     container: bollard::models::ContainerSummary,
@@ -268,7 +281,7 @@ fn convert_docker_container_to_primal(
     };
 
     // Construct endpoint
-    let endpoint = format!("http://{}:{}", host, port);
+    let endpoint = format!("http://{host}:{port}");
 
     Some(DiscoveredPrimal {
         name,

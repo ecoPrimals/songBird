@@ -1,11 +1,11 @@
-//! CertificateVerify message (RFC 8446 Section 4.4.3)
+//! `CertificateVerify` message (RFC 8446 Section 4.4.3)
 //!
-//! The CertificateVerify message provides proof that the sender has the private key
+//! The `CertificateVerify` message provides proof that the sender has the private key
 //! corresponding to the certificate in the Certificate message.
 
 use crate::error::{Result, TlsError};
 
-/// CertificateVerify message
+/// `CertificateVerify` message
 ///
 /// ```text
 /// struct {
@@ -23,8 +23,9 @@ pub struct CertificateVerify {
 }
 
 impl CertificateVerify {
-    /// Create a new CertificateVerify message
-    pub fn new(algorithm: u16, signature: Vec<u8>) -> Self {
+    /// Create a new `CertificateVerify` message
+    #[must_use]
+    pub const fn new(algorithm: u16, signature: Vec<u8>) -> Self {
         Self {
             algorithm,
             signature,
@@ -32,13 +33,19 @@ impl CertificateVerify {
     }
 
     /// Check if the signature algorithm is supported
-    pub fn is_algorithm_supported(&self) -> bool {
+    #[must_use]
+    pub const fn is_algorithm_supported(&self) -> bool {
         // For now, we only support Ed25519 (0x0807)
         // Additional algorithms can be added later
         self.algorithm == SIGNATURE_ED25519
     }
 
-    /// Validate CertificateVerify message
+    /// Validate `CertificateVerify` message
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the signature is empty, algorithm is unsupported, or
+    /// Ed25519 signature length is invalid.
     pub fn validate(&self) -> Result<()> {
         // Signature must not be empty
         if self.signature.is_empty() {
@@ -65,7 +72,8 @@ impl CertificateVerify {
     }
 
     /// Get the expected signature length for this algorithm
-    pub fn expected_signature_length(&self) -> usize {
+    #[must_use]
+    pub const fn expected_signature_length(&self) -> usize {
         match self.algorithm {
             SIGNATURE_ED25519 => 64,
             _ => 0, // Unknown algorithm

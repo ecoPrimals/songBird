@@ -50,7 +50,8 @@ pub struct WebSocketApiState {
 
 impl WebSocketApiState {
     /// Create new WebSocket API state
-    pub fn new(
+    #[must_use]
+    pub const fn new(
         federation_state: Arc<FederationState>,
         service_registry: Arc<FederatedServiceRegistry>,
         event_broadcaster: Arc<EventBroadcaster>,
@@ -64,7 +65,8 @@ impl WebSocketApiState {
     }
 
     /// Create with orchestrator support (for MVP Week 4 task events)
-    pub fn with_orchestrator(
+    #[must_use]
+    pub const fn with_orchestrator(
         federation_state: Arc<FederationState>,
         service_registry: Arc<FederatedServiceRegistry>,
         event_broadcaster: Arc<EventBroadcaster>,
@@ -265,7 +267,7 @@ async fn handle_socket(socket: WebSocket, state: WebSocketApiState) {
                     Err(e) => {
                         warn!("Failed to parse WebSocket message: {}", e);
                         let error_msg = WsMessage::Error {
-                            message: format!("Invalid message format: {}", e),
+                            message: format!("Invalid message format: {e}"),
                             code: Some("INVALID_JSON".to_string()),
                         };
                         if let Ok(json) = serde_json::to_string(&error_msg) {

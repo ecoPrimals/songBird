@@ -61,7 +61,7 @@ impl HealthStatus {
 
     /// Set the response time for this check
     #[must_use]
-    pub fn with_response_time(mut self, response_time: Duration) -> Self {
+    pub const fn with_response_time(mut self, response_time: Duration) -> Self {
         self.response_time = response_time;
         self
     }

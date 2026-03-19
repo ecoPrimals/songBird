@@ -41,7 +41,7 @@ mod tests;
 /// - Clear separation of concerns
 /// - Easy to test in isolation
 pub struct ConnectionManager {
-    /// Active connections by peer_id
+    /// Active connections by `peer_id`
     connections: Arc<RwLock<HashMap<String, Connection>>>,
 
     /// Peer registry (metadata, lifecycle)
@@ -61,6 +61,7 @@ impl ConnectionManager {
     /// - Composed from domain modules
     /// - Clear responsibility boundaries
     /// - Zero blocking calls
+    #[must_use]
     pub fn new() -> Self {
         Self {
             connections: Arc::new(RwLock::new(HashMap::new())),
@@ -136,7 +137,7 @@ impl ConnectionManager {
         let connections = self.connections.read().await;
         let connection = connections
             .get(peer_id)
-            .ok_or_else(|| anyhow::anyhow!("Peer not connected: {}", peer_id))?;
+            .ok_or_else(|| anyhow::anyhow!("Peer not connected: {peer_id}"))?;
 
         connection.call(operation, request).await
     }

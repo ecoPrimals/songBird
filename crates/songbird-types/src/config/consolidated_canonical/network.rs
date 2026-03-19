@@ -139,7 +139,7 @@ pub struct CanonicalKeepAliveConfig {
 /// **CANONICAL**: Retry configuration
 ///
 /// This is a foundation definition in songbird-types.
-/// The authoritative canonical is in songbird_config::canonical::resilience::RetryConfig
+/// The authoritative canonical is in `songbird_config::canonical::resilience::RetryConfig`
 /// This definition matches the canonical for compatibility.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CanonicalRetryConfig {
@@ -157,8 +157,8 @@ pub struct CanonicalRetryConfig {
 ///
 /// **UNIFIED** (Nov 10, 2025): Supports both server and client TLS configurations
 ///
-/// For server TLS: Use cert_file, key_file, verify_client_cert
-/// For client TLS: Use ca_file, verify_peer, server_name
+/// For server TLS: Use `cert_file`, `key_file`, `verify_client_cert`
+/// For client TLS: Use `ca_file`, `verify_peer`, `server_name`
 /// For mutual TLS: Use all fields
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CanonicalTlsConfig {

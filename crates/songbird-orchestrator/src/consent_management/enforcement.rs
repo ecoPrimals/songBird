@@ -80,6 +80,7 @@ pub struct ConsentEnforcer {
 }
 
 impl ConsentEnforcer {
+    #[must_use]
     pub fn new(consent_manager: Arc<ConsentManager>) -> Self {
         Self {
             consent_manager,
@@ -87,7 +88,11 @@ impl ConsentEnforcer {
         }
     }
 
-    pub fn with_config(consent_manager: Arc<ConsentManager>, config: EnforcementConfig) -> Self {
+    #[must_use]
+    pub const fn with_config(
+        consent_manager: Arc<ConsentManager>,
+        config: EnforcementConfig,
+    ) -> Self {
         Self {
             consent_manager,
             config,
@@ -237,6 +242,7 @@ pub struct DignityChecker;
 
 impl DignityChecker {
     /// Check if operation respects human dignity principles
+    #[must_use]
     pub fn check_operation(operation: &str, cost: Option<f64>, transparent: bool) -> Vec<Arc<str>> {
         let mut violations = Vec::new();
 
@@ -256,8 +262,7 @@ impl DignityChecker {
             if operation.contains(sensitive) {
                 violations.push(
                     format!(
-                        "Sensitive operation containing '{}' requires explicit consent",
-                        sensitive
+                        "Sensitive operation containing '{sensitive}' requires explicit consent"
                     )
                     .into(),
                 );

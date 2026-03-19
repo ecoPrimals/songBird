@@ -18,7 +18,7 @@ use tracing::{debug, info, warn};
 /// Manages trust relationships between towers and handles progressive trust escalation.
 #[derive(Clone)]
 pub struct TrustEscalationManager {
-    /// Current trust relationships (session_id -> relationship)
+    /// Current trust relationships (`session_id` -> relationship)
     trust_store: Arc<RwLock<HashMap<String, TrustRelationship>>>,
 
     /// Trust timeouts for each level (in seconds)
@@ -117,7 +117,7 @@ impl BearDogClient {
     ///
     /// ## Evolution Path
     ///
-    /// Hardware key verification should be evolved to use the BTSP (BearDog Tunnel Security Protocol)
+    /// Hardware key verification should be evolved to use the BTSP (`BearDog` Tunnel Security Protocol)
     /// client for secure, Unix socket-based communication:
     ///
     /// ```ignore
@@ -143,7 +143,7 @@ impl BearDogClient {
     ///
     /// - **Zero Hardcoding**: Discover security provider via capability
     /// - **Deep Debt Solution**: Evolve to BTSP, not HTTP
-    /// - **Mocks Isolated**: This is a NoOp provider, not a production mock
+    /// - **Mocks Isolated**: This is a `NoOp` provider, not a production mock
     #[deprecated(since = "0.1.0", note = "Use BTSP client for hardware key verification")]
     #[allow(dead_code)]
     pub async fn verify_hardware_key(&self, hardware_key: &str) -> Result<bool> {
@@ -223,9 +223,8 @@ impl TrustEscalationManager {
         proof: CapabilityProof,
     ) -> Result<()> {
         let mut store = self.trust_store.write().await;
-        let relationship = store
-            .get_mut(session_id)
-            .ok_or_else(|| anyhow!("Session not found: {}", session_id))?;
+        let relationship =
+            store.get_mut(session_id).ok_or_else(|| anyhow!("Session not found: {session_id}"))?;
 
         // Verify cryptographic proof of capabilities
         if !proof.verify() {
@@ -263,9 +262,8 @@ impl TrustEscalationManager {
     /// 4. Escalates trust level and grants access
     pub async fn verify_role(&self, session_id: &str, role: String) -> Result<()> {
         let mut store = self.trust_store.write().await;
-        let relationship = store
-            .get_mut(session_id)
-            .ok_or_else(|| anyhow!("Session not found: {}", session_id))?;
+        let relationship =
+            store.get_mut(session_id).ok_or_else(|| anyhow!("Session not found: {session_id}"))?;
 
         // Must be at least capability-verified to escalate to role-verified
         if relationship.trust_level < TrustLevel::CapabilityVerified {
@@ -337,9 +335,8 @@ impl TrustEscalationManager {
         identity_proof: IdentityProof,
     ) -> Result<()> {
         let mut store = self.trust_store.write().await;
-        let relationship = store
-            .get_mut(session_id)
-            .ok_or_else(|| anyhow!("Session not found: {}", session_id))?;
+        let relationship =
+            store.get_mut(session_id).ok_or_else(|| anyhow!("Session not found: {session_id}"))?;
 
         // Must be at least role-verified to escalate to identity-verified
         if relationship.trust_level < TrustLevel::RoleVerified {
@@ -393,9 +390,8 @@ impl TrustEscalationManager {
         }
 
         let mut store = self.trust_store.write().await;
-        let relationship = store
-            .get_mut(session_id)
-            .ok_or_else(|| anyhow!("Session not found: {}", session_id))?;
+        let relationship =
+            store.get_mut(session_id).ok_or_else(|| anyhow!("Session not found: {session_id}"))?;
 
         // Must be at least identity-verified to escalate to hardware-verified
         if relationship.trust_level < TrustLevel::IdentityVerified {
@@ -434,7 +430,7 @@ impl TrustEscalationManager {
     ) -> Result<bool> {
         let store = self.trust_store.read().await;
         let relationship =
-            store.get(session_id).ok_or_else(|| anyhow!("Session not found: {}", session_id))?;
+            store.get(session_id).ok_or_else(|| anyhow!("Session not found: {session_id}"))?;
 
         if relationship.is_expired() {
             warn!(
@@ -451,7 +447,7 @@ impl TrustEscalationManager {
     pub async fn get_trust_level(&self, session_id: &str) -> Result<TrustLevel> {
         let store = self.trust_store.read().await;
         let relationship =
-            store.get(session_id).ok_or_else(|| anyhow!("Session not found: {}", session_id))?;
+            store.get(session_id).ok_or_else(|| anyhow!("Session not found: {session_id}"))?;
 
         if relationship.is_expired() {
             // Return Anonymous if expired
@@ -470,7 +466,7 @@ impl TrustEscalationManager {
     /// Remove a trust relationship (revoke trust)
     pub async fn revoke_trust(&self, session_id: &str) -> Result<()> {
         let mut store = self.trust_store.write().await;
-        store.remove(session_id).ok_or_else(|| anyhow!("Session not found: {}", session_id))?;
+        store.remove(session_id).ok_or_else(|| anyhow!("Session not found: {session_id}"))?;
 
         info!("🗑️  Trust revoked: {}", session_id);
         Ok(())
@@ -491,6 +487,7 @@ impl TrustEscalationManager {
         });
 
         let removed = initial_count - store.len();
+        drop(store);
         if removed > 0 {
             info!("🧹 Cleaned up {} expired trust relationships", removed);
         }
@@ -514,6 +511,7 @@ impl TrustEscalationManager {
                 *counts.entry(relationship.trust_level).or_insert(0) += 1;
             }
         }
+        drop(store);
 
         counts
     }

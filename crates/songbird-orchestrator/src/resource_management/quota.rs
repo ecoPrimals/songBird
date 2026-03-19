@@ -23,6 +23,7 @@ pub struct ResourceQuota {
 
 impl ResourceQuota {
     /// Create a new quota for a user
+    #[must_use]
     pub fn new(user_id: UserId) -> Self {
         Self {
             user_id,
@@ -60,12 +61,12 @@ impl ResourceQuota {
             let limit = self
                 .limits
                 .get(resource_type)
-                .ok_or_else(|| anyhow::anyhow!("No limit set for {:?}", resource_type))?;
+                .ok_or_else(|| anyhow::anyhow!("No limit set for {resource_type:?}"))?;
 
             let used = self
                 .used
                 .get(resource_type)
-                .ok_or_else(|| anyhow::anyhow!("No usage tracking for {:?}", resource_type))?;
+                .ok_or_else(|| anyhow::anyhow!("No usage tracking for {resource_type:?}"))?;
 
             let new_usage = used.add(amount)?;
 
@@ -87,7 +88,7 @@ impl ResourceQuota {
             let used = self
                 .used
                 .get_mut(resource_type)
-                .ok_or_else(|| anyhow::anyhow!("No usage tracking for {:?}", resource_type))?;
+                .ok_or_else(|| anyhow::anyhow!("No usage tracking for {resource_type:?}"))?;
             *used = used.add(amount)?;
         }
 
@@ -106,6 +107,7 @@ impl ResourceQuota {
     }
 
     /// Get available resources
+    #[must_use]
     pub fn available(&self) -> HashMap<ResourceType, ResourceAmount> {
         let mut available = HashMap::new();
 
@@ -127,6 +129,7 @@ pub struct QuotaManager {
 }
 
 impl QuotaManager {
+    #[must_use]
     pub fn new() -> Self {
         Self {
             quotas: Arc::new(RwLock::new(HashMap::new())),

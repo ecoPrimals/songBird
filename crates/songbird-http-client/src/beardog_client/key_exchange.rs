@@ -11,7 +11,11 @@ use tracing::debug;
 impl BearDogClient {
     /// Generate X25519 keypair
     ///
-    /// Returns (public_key, private_key) as raw bytes.
+    /// Returns `(public_key, private_key)` as raw bytes.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the RPC call fails or the response is invalid.
     pub async fn generate_keypair(&self) -> Result<(Vec<u8>, Vec<u8>)> {
         debug!("🔑 Generating x25519 keypair via BearDog");
 
@@ -35,10 +39,10 @@ impl BearDogClient {
 
         let public_key = BASE64_STANDARD
             .decode(public_key)
-            .map_err(|e| Error::BearDogRpc(format!("Invalid public_key base64: {}", e)))?;
+            .map_err(|e| Error::BearDogRpc(format!("Invalid public_key base64: {e}")))?;
         let private_key = BASE64_STANDARD
             .decode(private_key)
-            .map_err(|e| Error::BearDogRpc(format!("Invalid private_key base64: {}", e)))?;
+            .map_err(|e| Error::BearDogRpc(format!("Invalid private_key base64: {e}")))?;
 
         Ok((public_key, private_key))
     }
@@ -46,6 +50,10 @@ impl BearDogClient {
     /// Perform ECDH key exchange
     ///
     /// Derives a shared secret from our private key and their public key.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the RPC call fails or the response is invalid.
     pub async fn ecdh_derive(&self, private_key: &[u8], public_key: &[u8]) -> Result<Vec<u8>> {
         debug!("🔐 Performing ECDH via BearDog");
 
@@ -66,7 +74,7 @@ impl BearDogClient {
 
         BASE64_STANDARD
             .decode(shared_secret)
-            .map_err(|e| Error::BearDogRpc(format!("Invalid shared_secret base64: {}", e)))
+            .map_err(|e| Error::BearDogRpc(format!("Invalid shared_secret base64: {e}")))
     }
 }
 

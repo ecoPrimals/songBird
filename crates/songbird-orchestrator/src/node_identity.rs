@@ -15,7 +15,7 @@ use uuid::Uuid;
 /// Stable node identity with genetic lineage
 ///
 /// This identity remains constant across:
-/// - Network interface changes (WiFi → Ethernet)
+/// - Network interface changes (`WiFi` → Ethernet)
 /// - IP address changes (DHCP)
 /// - Process restarts
 /// - System reboots (persisted to disk)
@@ -116,24 +116,26 @@ impl NodeIdentity {
     }
 
     /// Check if this node has genetic lineage
-    pub fn has_lineage(&self) -> bool {
+    #[must_use]
+    pub const fn has_lineage(&self) -> bool {
         self.genetic_lineage.is_some() && self.lineage_proof.is_some()
     }
 
     /// Get lineage information
+    #[must_use]
     pub fn get_lineage(&self) -> Option<(&LineageId, &LineageProof)> {
         self.genetic_lineage.as_ref().zip(self.lineage_proof.as_ref())
     }
 
     /// Generate a stable node ID
     ///
-    /// CRITICAL FIX (Jan 5, 2026): Include NODE_ID in UUID generation
+    /// CRITICAL FIX (Jan 5, 2026): Include `NODE_ID` in UUID generation
     /// to support multiple instances on same machine
     ///
     /// Strategy (in order of preference):
-    /// 1. Use /etc/machine-id + NODE_ID (Linux standard, multi-instance)
-    /// 2. Use /var/lib/dbus/machine-id + NODE_ID (systemd)
-    /// 3. Generate from MAC address + NODE_ID (fallback)
+    /// 1. Use /etc/machine-id + `NODE_ID` (Linux standard, multi-instance)
+    /// 2. Use /var/lib/dbus/machine-id + `NODE_ID` (systemd)
+    /// 3. Generate from MAC address + `NODE_ID` (fallback)
     /// 4. Generate random UUID and persist (last resort)
     fn generate_stable_id() -> Result<Uuid> {
         // Get NODE_ID if available for multi-instance support
@@ -146,7 +148,7 @@ impl NodeIdentity {
             if !machine_id.is_empty() {
                 // CRITICAL: Include NODE_ID in hash for uniqueness
                 let hash_input = if let Some(ref suffix) = node_id_suffix {
-                    format!("{}:{}", machine_id, suffix)
+                    format!("{machine_id}:{suffix}")
                 } else {
                     machine_id.to_string()
                 };
@@ -160,7 +162,7 @@ impl NodeIdentity {
             let machine_id = machine_id.trim();
             if !machine_id.is_empty() {
                 let hash_input = if let Some(ref suffix) = node_id_suffix {
-                    format!("{}:{}", machine_id, suffix)
+                    format!("{machine_id}:{suffix}")
                 } else {
                     machine_id.to_string()
                 };
@@ -174,7 +176,7 @@ impl NodeIdentity {
             if let Ok(interfaces) = Self::get_mac_addresses() {
                 if let Some(mac) = interfaces.first() {
                     let hash_input = if let Some(ref suffix) = node_id_suffix {
-                        format!("{}:{}", mac, suffix)
+                        format!("{mac}:{suffix}")
                     } else {
                         mac.clone()
                     };
@@ -226,7 +228,7 @@ impl NodeIdentity {
             .ok()
             .map_or_else(
                 || "node_identity.json".to_string(),
-                |node_id| format!("node_identity-{}.json", node_id),
+                |node_id| format!("node_identity-{node_id}.json"),
             );
 
         data_dir.join("songbird").join(filename)
@@ -271,13 +273,13 @@ impl NodeIdentity {
     /// Detect all available network interfaces and populate endpoints
     ///
     /// **EVOLVED (Jan 31, 2026): Platform-agnostic network discovery!**
-    /// - BEFORE: if_addrs (Android-incompatible, uses getifaddrs/freeifaddrs)
+    /// - BEFORE: `if_addrs` (Android-incompatible, uses getifaddrs/freeifaddrs)
     /// - AFTER: netdev (Pure Rust, Android-compatible, cross-platform!)
     ///
     /// This scans the system for all active network interfaces and creates
     /// transport endpoints for each. It assigns preferences based on interface type:
     /// - Ethernet: 100 (highest preference)
-    /// - WiFi: 80
+    /// - `WiFi`: 80
     /// - Other: 50
     /// - Loopback: 10 (lowest preference)
     ///
@@ -363,7 +365,7 @@ impl NodeIdentity {
 
     /// Classify network interface by name
     ///
-    /// Returns (interface_type, preference)
+    /// Returns (`interface_type`, preference)
     fn classify_interface(name: &str) -> (String, u8) {
         let name_lower = name.to_lowercase();
 
@@ -394,11 +396,13 @@ impl NodeIdentity {
     }
 
     /// Get preferred endpoint (highest preference)
+    #[must_use]
     pub fn preferred_endpoint(&self) -> Option<&TransportEndpoint> {
         self.endpoints.first()
     }
 
     /// Get all IP addresses for this node
+    #[must_use]
     pub fn all_addresses(&self) -> Vec<IpAddr> {
         self.endpoints.iter().map(|e| e.address.ip()).collect()
     }

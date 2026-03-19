@@ -15,8 +15,8 @@
 //! - GET /api/deployment/capabilities - Discover node capabilities
 //! - POST /api/deployment/binary - Deploy and start a service (single upload)
 //! - POST /api/deployment/negotiate - Start chunked upload negotiation
-//! - POST /api/deployment/chunk/:neg_id/:index - Upload chunk
-//! - POST /api/deployment/finalize/:neg_id - Finalize chunked upload
+//! - POST /`api/deployment/chunk/:neg_id/:index` - Upload chunk
+//! - POST /`api/deployment/finalize/:neg_id` - Finalize chunked upload
 //! - GET /api/deployment/status/:id - Check deployment status
 //! - DELETE /api/deployment/:id - Stop and remove deployment
 
@@ -53,6 +53,7 @@ impl Default for DeploymentState {
 }
 
 impl DeploymentState {
+    #[must_use]
     pub fn new() -> Self {
         Self {
             deployments: Arc::new(RwLock::new(HashMap::new())),
@@ -400,7 +401,7 @@ async fn deploy_binary(
     while let Some(field) = multipart
         .next_field()
         .await
-        .map_err(|e| (StatusCode::BAD_REQUEST, format!("Invalid multipart: {}", e)))?
+        .map_err(|e| (StatusCode::BAD_REQUEST, format!("Invalid multipart: {e}")))?
     {
         let name = field.name().unwrap_or("").to_string();
 
@@ -409,28 +410,28 @@ async fn deploy_binary(
                 debug!("📥 Receiving binary data...");
                 binary_data =
                     Some(field.bytes().await.map_err(|e| {
-                        (StatusCode::BAD_REQUEST, format!("Binary read error: {}", e))
+                        (StatusCode::BAD_REQUEST, format!("Binary read error: {e}"))
                     })?);
             }
             "service_name" => {
                 service_name = field
                     .text()
                     .await
-                    .map_err(|e| (StatusCode::BAD_REQUEST, format!("Service name error: {}", e)))?;
+                    .map_err(|e| (StatusCode::BAD_REQUEST, format!("Service name error: {e}")))?;
             }
             "env_vars" => {
                 let env_json = field
                     .text()
                     .await
-                    .map_err(|e| (StatusCode::BAD_REQUEST, format!("Env vars error: {}", e)))?;
+                    .map_err(|e| (StatusCode::BAD_REQUEST, format!("Env vars error: {e}")))?;
                 env_vars = serde_json::from_str(&env_json)
-                    .map_err(|e| (StatusCode::BAD_REQUEST, format!("Invalid env JSON: {}", e)))?;
+                    .map_err(|e| (StatusCode::BAD_REQUEST, format!("Invalid env JSON: {e}")))?;
             }
             "auto_start" => {
                 let auto_str = field
                     .text()
                     .await
-                    .map_err(|e| (StatusCode::BAD_REQUEST, format!("Auto start error: {}", e)))?;
+                    .map_err(|e| (StatusCode::BAD_REQUEST, format!("Auto start error: {e}")))?;
                 auto_start = auto_str.parse().unwrap_or(true);
             }
             _ => {
@@ -452,14 +453,14 @@ async fn deploy_binary(
     let base_deploy_dir = crate::env_config::deployment_dir();
     let deploy_dir = base_deploy_dir.join(&deployment_id);
     fs::create_dir_all(&deploy_dir).await.map_err(|e| {
-        (StatusCode::INTERNAL_SERVER_ERROR, format!("Directory creation failed: {}", e))
+        (StatusCode::INTERNAL_SERVER_ERROR, format!("Directory creation failed: {e}"))
     })?;
 
     // Write binary
     let binary_path = deploy_dir.join("service");
     fs::write(&binary_path, &binary_data)
         .await
-        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("Binary write failed: {}", e)))?;
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("Binary write failed: {e}")))?;
 
     // Make executable
     #[cfg(unix)]
@@ -467,14 +468,12 @@ async fn deploy_binary(
         use std::os::unix::fs::PermissionsExt;
         let mut perms = fs::metadata(&binary_path)
             .await
-            .map_err(|e| {
-                (StatusCode::INTERNAL_SERVER_ERROR, format!("Metadata read failed: {}", e))
-            })?
+            .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("Metadata read failed: {e}")))?
             .permissions();
         perms.set_mode(0o755);
         fs::set_permissions(&binary_path, perms)
             .await
-            .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("Chmod failed: {}", e)))?;
+            .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("Chmod failed: {e}")))?;
     }
 
     info!("✅ Binary deployed to: {}", binary_path.display());
@@ -510,7 +509,7 @@ async fn deploy_binary(
                 deployment.status = DeploymentStatus::Failed;
                 return Err((
                     StatusCode::INTERNAL_SERVER_ERROR,
-                    format!("Service start failed: {}", e),
+                    format!("Service start failed: {e}"),
                 ));
             }
         }
@@ -527,7 +526,7 @@ async fn deploy_binary(
             .or_else(|| env_vars.get("SERVICE_HOST")),
         port,
     ) {
-        Some(format!("http://{}:{}", host, port))
+        Some(format!("http://{host}:{port}"))
     } else {
         None
     };
@@ -535,7 +534,7 @@ async fn deploy_binary(
     let response = DeploymentResponse {
         deployment_id,
         status: "deployed".to_string(),
-        message: format!("Service '{}' deployed successfully", service_name),
+        message: format!("Service '{service_name}' deployed successfully"),
         service_url,
     };
 
@@ -547,7 +546,7 @@ async fn deploy_binary(
 /// Start a service with environment variables
 ///
 /// # Modern Idiomatic Pattern
-/// Generic over HashMap hasher for flexibility (accepts any BuildHasher)
+/// Generic over `HashMap` hasher for flexibility (accepts any `BuildHasher`)
 /// Requires Send for async execution across threads
 pub async fn start_service<S>(
     binary_path: &str,
@@ -569,7 +568,7 @@ where
     command.stdout(Stdio::null()).stderr(Stdio::null()).stdin(Stdio::null());
 
     // Spawn the process
-    let child = command.spawn().map_err(|e| format!("Failed to spawn process: {}", e))?;
+    let child = command.spawn().map_err(|e| format!("Failed to spawn process: {e}"))?;
 
     let pid = child.id();
     debug!("✅ Service started with PID: {}", pid);
@@ -588,7 +587,7 @@ async fn get_deployment_status(
         .get(&deployment_id)
         .cloned()
         // Modern idiomatic: ok_or_else for lazy evaluation
-        .ok_or_else(|| (StatusCode::NOT_FOUND, format!("Deployment '{}' not found", deployment_id)))
+        .ok_or_else(|| (StatusCode::NOT_FOUND, format!("Deployment '{deployment_id}' not found")))
         .map(Json)
 }
 
@@ -605,7 +604,7 @@ async fn stop_deployment(
         .get_mut(&deployment_id)
         // Modern idiomatic: ok_or_else for lazy evaluation
         .ok_or_else(|| {
-            (StatusCode::NOT_FOUND, format!("Deployment '{}' not found", deployment_id))
+            (StatusCode::NOT_FOUND, format!("Deployment '{deployment_id}' not found"))
         })?;
 
     // Stop process if running

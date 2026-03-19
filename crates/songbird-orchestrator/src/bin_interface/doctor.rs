@@ -49,7 +49,7 @@ async fn run_doctor_text(comprehensive: bool) -> Result<()> {
         }
         Err(e) => {
             println!("   Status: ❌ Invalid");
-            println!("   Error: {}", e);
+            println!("   Error: {e}");
             println!();
             println!("💡 Fix: Check environment variables or create config file");
             std::process::exit(1);
@@ -62,14 +62,14 @@ async fn run_doctor_text(comprehensive: bool) -> Result<()> {
     let configured_port = songbird_config::defaults::ports::orchestrator_port();
     match check_port_availability(configured_port).await {
         Ok(true) => {
-            println!("   Port {}: ✅ Available (from SONGBIRD_ORCHESTRATOR_PORT)", configured_port);
+            println!("   Port {configured_port}: ✅ Available (from SONGBIRD_ORCHESTRATOR_PORT)");
         }
         Ok(false) => {
-            println!("   Port {}: ⚠️  In use", configured_port);
+            println!("   Port {configured_port}: ⚠️  In use");
             println!("   Note: May be used by running Songbird instance");
         }
         Err(e) => {
-            println!("   Port {}: ❌ Check failed: {}", configured_port, e);
+            println!("   Port {configured_port}: ❌ Check failed: {e}");
         }
     }
     println!();
@@ -98,7 +98,7 @@ async fn run_doctor_text(comprehensive: bool) -> Result<()> {
         match check_beardog_connectivity().await {
             Ok(true) => println!("      Status: ✅ Connected"),
             Ok(false) => println!("      Status: ⚠️  Not reachable"),
-            Err(e) => println!("      Status: ❌ Error: {}", e),
+            Err(e) => println!("      Status: ❌ Error: {e}"),
         }
 
         println!("   🐿️  Squirrel (AI & MCP)");
@@ -131,7 +131,7 @@ async fn run_doctor_text(comprehensive: bool) -> Result<()> {
 async fn run_doctor_json(comprehensive: bool) -> Result<()> {
     let health_status = gather_health_status(comprehensive).await?;
     let json = serde_json::to_string_pretty(&health_status)?;
-    println!("{}", json);
+    println!("{json}");
     Ok(())
 }
 
@@ -139,7 +139,7 @@ async fn run_doctor_json(comprehensive: bool) -> Result<()> {
 async fn run_doctor_yaml(comprehensive: bool) -> Result<()> {
     let health_status = gather_health_status(comprehensive).await?;
     let yaml = serde_yaml::to_string(&health_status)?;
-    println!("{}", yaml);
+    println!("{yaml}");
     Ok(())
 }
 
@@ -315,11 +315,11 @@ async fn check_port_availability(port: u16) -> Result<bool> {
     match TcpListener::bind(("127.0.0.1", port)) {
         Ok(_) => Ok(true),
         Err(e) if e.kind() == std::io::ErrorKind::AddrInUse => Ok(false),
-        Err(e) => Err(anyhow::anyhow!("Failed to check port: {}", e)),
+        Err(e) => Err(anyhow::anyhow!("Failed to check port: {e}")),
     }
 }
 
-/// Check BearDog connectivity
+/// Check `BearDog` connectivity
 async fn check_beardog_connectivity() -> Result<bool> {
     use crate::btsp_client::BtspClient;
 

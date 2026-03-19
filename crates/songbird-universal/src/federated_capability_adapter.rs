@@ -24,7 +24,7 @@ pub struct FederatedCapabilityAdapter {
 impl FederatedCapabilityAdapter {
     /// Create a new federated capability adapter
     #[must_use]
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self {
             federation_client: None,
         }
@@ -77,7 +77,7 @@ impl FederatedCapabilityAdapter {
 
     /// Check if federation is enabled
     #[must_use]
-    pub fn is_federation_enabled(&self) -> bool {
+    pub const fn is_federation_enabled(&self) -> bool {
         self.federation_client.is_some()
     }
 }
@@ -101,7 +101,7 @@ pub struct FederationClient {
 impl FederationClient {
     /// Create a new federation client
     #[must_use]
-    pub fn new(base_url: String) -> Self {
+    pub const fn new(base_url: String) -> Self {
         Self {
             base_url,
         }
@@ -124,7 +124,7 @@ impl FederationClient {
 
         // Create client on-demand
         let client = songbird_http_client::IpcHttpClient::new().await.map_err(|e| {
-            UniversalAdapterError::NetworkError(format!("Failed to create HTTP client: {}", e))
+            UniversalAdapterError::NetworkError(format!("Failed to create HTTP client: {e}"))
         })?;
 
         let response = client

@@ -82,22 +82,26 @@ pub enum Status {
 
 impl Status {
     /// Check if status is healthy
-    pub fn is_healthy(&self) -> bool {
+    #[must_use]
+    pub const fn is_healthy(&self) -> bool {
         matches!(self, Self::Healthy)
     }
 
     /// Check if status is degraded
-    pub fn is_degraded(&self) -> bool {
+    #[must_use]
+    pub const fn is_degraded(&self) -> bool {
         matches!(self, Self::Degraded)
     }
 
     /// Check if status is unhealthy
-    pub fn is_unhealthy(&self) -> bool {
+    #[must_use]
+    pub const fn is_unhealthy(&self) -> bool {
         matches!(self, Self::Unhealthy)
     }
 
     /// Get the worst status between two statuses
-    pub fn worst(&self, other: &Self) -> Self {
+    #[must_use]
+    pub const fn worst(&self, other: &Self) -> Self {
         match (self, other) {
             (Self::Unhealthy, _) | (_, Self::Unhealthy) => Self::Unhealthy,
             (Self::Degraded, _) | (_, Self::Degraded) => Self::Degraded,
@@ -240,6 +244,7 @@ impl HealthStatus {
     /// Update overall status based on individual checks
     ///
     /// Sets status to the worst status among all checks.
+    #[must_use]
     pub fn compute_overall_status(mut self) -> Self {
         let worst_status = self
             .checks
@@ -252,16 +257,19 @@ impl HealthStatus {
     }
 
     /// Check if overall status is healthy
-    pub fn is_healthy(&self) -> bool {
+    #[must_use]
+    pub const fn is_healthy(&self) -> bool {
         self.status.is_healthy()
     }
 
     /// Check if any checks are unhealthy
+    #[must_use]
     pub fn has_unhealthy_checks(&self) -> bool {
         self.checks.values().any(|check| check.status.is_unhealthy())
     }
 
     /// Get count of checks by status
+    #[must_use]
     pub fn check_counts(&self) -> (usize, usize, usize) {
         let mut healthy = 0;
         let mut degraded = 0;
@@ -294,6 +302,7 @@ pub struct AggregatedHealth {
 
 impl AggregatedHealth {
     /// Create new aggregated health
+    #[must_use]
     pub fn new() -> Self {
         Self {
             status: Status::Healthy,
@@ -303,6 +312,7 @@ impl AggregatedHealth {
     }
 
     /// Add a component health status
+    #[must_use]
     pub fn add_component(mut self, status: HealthStatus) -> Self {
         let component_name = status.component.clone();
         self.status = self.status.worst(&status.status);
@@ -311,11 +321,13 @@ impl AggregatedHealth {
     }
 
     /// Check if any component is unhealthy
+    #[must_use]
     pub fn has_unhealthy_components(&self) -> bool {
         self.components.values().any(|s| s.status.is_unhealthy())
     }
 
     /// Get component count by status
+    #[must_use]
     pub fn component_counts(&self) -> (usize, usize, usize) {
         let mut healthy = 0;
         let mut degraded = 0;
@@ -346,7 +358,8 @@ pub struct HealthChecker {
 
 impl HealthChecker {
     /// Create new health checker with timeout
-    pub fn new(timeout: std::time::Duration) -> Self {
+    #[must_use]
+    pub const fn new(timeout: std::time::Duration) -> Self {
         Self {
             timeout,
         }

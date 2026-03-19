@@ -9,10 +9,10 @@ use tokio::time::Duration;
 ///
 /// **CANONICAL ALIGNMENT**: Nested structure mirrors canonical pattern
 /// Maps to canonical discovery configs:
-/// - `enable_environment_scan` → capability_discovery.enabled
-/// - `enable_network_scanning` → network_discovery.scan_local_network
-/// - `enable_container_discovery` → service_discovery.enabled
-/// - `timeout` → scan_timeout_secs (Duration vs u64)
+/// - `enable_environment_scan` → `capability_discovery.enabled`
+/// - `enable_network_scanning` → `network_discovery.scan_local_network`
+/// - `enable_container_discovery` → `service_discovery.enabled`
+/// - `timeout` → `scan_timeout_secs` (Duration vs u64)
 #[derive(Debug, Clone)]
 pub struct DiscoveryConfig {
     /// Discovery mechanisms to enable

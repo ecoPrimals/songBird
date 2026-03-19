@@ -21,8 +21,8 @@ use crate::trust::{TrustEscalationManager, TrustTimeouts};
 ///
 /// - **Disabled**: No discovery, manual configuration only
 /// - **Anonymous**: Broadcast/listen for peers without identity
-/// - **CapabilityAware**: Discover based on capabilities (compute, storage, AI)
-/// - **FullDisclosure**: Full metadata exchange (for trusted networks)
+/// - **`CapabilityAware`**: Discover based on capabilities (compute, storage, AI)
+/// - **`FullDisclosure`**: Full metadata exchange (for trusted networks)
 ///
 /// # Trust Escalation
 ///
@@ -104,7 +104,7 @@ pub fn log_federation_config(config: &CanonicalSongbirdConfig) {
 }
 
 /// Format discovery mode for logging
-fn format_discovery_mode(
+const fn format_discovery_mode(
     mode: &songbird_types::config::consolidated_canonical::discovery::DiscoveryMode,
 ) -> &'static str {
     use songbird_types::config::consolidated_canonical::discovery::DiscoveryMode;
@@ -117,7 +117,7 @@ fn format_discovery_mode(
 }
 
 /// Format trust escalation policy for logging
-fn format_trust_escalation_policy(
+const fn format_trust_escalation_policy(
     policy: &songbird_types::config::consolidated_canonical::federation::TrustEscalationPolicy,
 ) -> &'static str {
     use songbird_types::config::consolidated_canonical::federation::TrustEscalationPolicy;

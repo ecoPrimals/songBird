@@ -114,6 +114,7 @@ pub struct FairScheduler {
 }
 
 impl FairScheduler {
+    #[must_use]
     pub fn new() -> Self {
         Self {
             queue: Arc::new(RwLock::new(BinaryHeap::new())),
@@ -242,7 +243,7 @@ impl FairScheduler {
     }
 
     /// Calculate normalized cost of a task
-    fn calculate_task_cost(&self, task: &TaskLifecycle) -> f64 {
+    const fn calculate_task_cost(&self, task: &TaskLifecycle) -> f64 {
         // Cost is based on resource requirements
         // For priority-aware scheduling: lower cost = earlier finish time = higher priority
         // Inverse the priority values so critical tasks have lowest cost

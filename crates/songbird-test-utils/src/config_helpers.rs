@@ -11,7 +11,7 @@ pub mod performance {
 
     /// Create a performance-optimized test configuration
     #[must_use]
-    pub fn create_performance_test_config() -> PerformanceConfig {
+    pub const fn create_performance_test_config() -> PerformanceConfig {
         PerformanceConfig {
             buffer_pool_size: Some(1024),
             max_memory_mb: Some(256),
@@ -26,7 +26,7 @@ pub mod performance {
 
     /// Create a minimal test configuration for basic functionality
     #[must_use]
-    pub fn create_minimal_test_config() -> PerformanceConfig {
+    pub const fn create_minimal_test_config() -> PerformanceConfig {
         PerformanceConfig {
             buffer_pool_size: Some(64),
             max_memory_mb: Some(64),
@@ -41,7 +41,7 @@ pub mod performance {
 
     /// Create a high-performance test configuration for load testing
     #[must_use]
-    pub fn create_high_performance_config() -> PerformanceConfig {
+    pub const fn create_high_performance_config() -> PerformanceConfig {
         PerformanceConfig {
             buffer_pool_size: Some(4096),
             max_memory_mb: Some(1024),
@@ -79,7 +79,7 @@ pub mod circuit_breaker {
     impl MockCircuitBreaker {
         /// Create a new mock circuit breaker
         #[must_use]
-        pub fn new() -> Self {
+        pub const fn new() -> Self {
             Self {
                 is_open: false,
             }
@@ -87,17 +87,17 @@ pub mod circuit_breaker {
 
         /// Check if the circuit is open
         #[must_use]
-        pub fn is_open(&self) -> bool {
+        pub const fn is_open(&self) -> bool {
             self.is_open
         }
 
         /// Open the circuit
-        pub fn open(&mut self) {
+        pub const fn open(&mut self) {
             self.is_open = true;
         }
 
         /// Close the circuit
-        pub fn close(&mut self) {
+        pub const fn close(&mut self) {
             self.is_open = false;
         }
     }

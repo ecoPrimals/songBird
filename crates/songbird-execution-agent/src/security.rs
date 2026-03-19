@@ -11,7 +11,8 @@ pub struct SecurityValidator {
 
 impl SecurityValidator {
     /// Create a new security validator
-    pub fn new(enable_auth: bool, auth_token: Option<String>) -> Self {
+    #[must_use]
+    pub const fn new(enable_auth: bool, auth_token: Option<String>) -> Self {
         Self {
             enable_auth,
             auth_token,
@@ -19,6 +20,10 @@ impl SecurityValidator {
     }
 
     /// Validate authentication token
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if auth is enabled and token is missing or invalid
     pub fn validate_auth(&self, provided_token: Option<&str>) -> SongbirdResult<()> {
         if !self.enable_auth {
             return Ok(());
@@ -59,6 +64,10 @@ impl SecurityValidator {
     }
 
     /// Validate command for security risks
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if command is empty or contains dangerous patterns
     pub fn validate_command(&self, command: &str) -> SongbirdResult<()> {
         // Check for empty command
         if command.trim().is_empty() {
@@ -81,10 +90,10 @@ impl SecurityValidator {
             if command.contains(pattern) {
                 warn!("Potentially dangerous command detected: {}", command);
                 return Err(SongbirdError::Security(SecurityError {
-                    message: format!("Command contains dangerous pattern: {}", pattern),
+                    message: format!("Command contains dangerous pattern: {pattern}"),
                     operation: Some("command_validation".to_string()),
                     required_permission: None,
-                    context: Some(format!("command: {}", command)),
+                    context: Some(format!("command: {command}")),
                     remediation: Some(
                         "Avoid dangerous commands that could harm the system".to_string(),
                     ),

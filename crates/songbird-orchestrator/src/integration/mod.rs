@@ -15,7 +15,8 @@ pub struct IntegrationManager {
 
 impl IntegrationManager {
     /// Create new integration manager
-    pub fn new(config: CanonicalSongbirdConfig) -> Self {
+    #[must_use]
+    pub const fn new(config: CanonicalSongbirdConfig) -> Self {
         Self {
             config,
             startup_timeout: Duration::from_secs(60),
@@ -25,21 +26,21 @@ impl IntegrationManager {
 
     /// Set startup timeout
     #[must_use]
-    pub fn with_startup_timeout(mut self, timeout: Duration) -> Self {
+    pub const fn with_startup_timeout(mut self, timeout: Duration) -> Self {
         self.startup_timeout = timeout;
         self
     }
 
     /// Set shutdown timeout
     #[must_use]
-    pub fn with_shutdown_timeout(mut self, timeout: Duration) -> Self {
+    pub const fn with_shutdown_timeout(mut self, timeout: Duration) -> Self {
         self.shutdown_timeout = timeout;
         self
     }
 
     /// Start all services with integration
     ///
-    /// v3.18.2: Updated for new start_orchestrator signature
+    /// v3.18.2: Updated for new `start_orchestrator` signature
     pub async fn start_integrated_services(&self) -> Result<()> {
         info!("🚀 Starting integrated services...");
 

@@ -44,7 +44,7 @@ pub struct InitializedComponents {
     pub federation_state: Arc<FederationState>,
     pub federated_service_registry: Arc<FederatedServiceRegistry>,
     pub node_identity: NodeIdentity,
-    /// Discovery listener WITHOUT Arc wrapping (will be configured + Arc'd in start())
+    /// Discovery listener WITHOUT Arc wrapping (will be configured + Arc'd in `start()`)
     pub discovery_listener_pending: Option<AnonymousDiscoveryListener>,
 }
 
@@ -58,7 +58,7 @@ pub struct InitializedComponents {
 /// # Modern Rust Pattern
 ///
 /// The discovery listener is NOT Arc'd here because it needs further
-/// configuration (BirdSong, stats) in `start()`. This follows the
+/// configuration (`BirdSong`, stats) in `start()`. This follows the
 /// "build then Arc" pattern to enable proper builder pattern usage.
 ///
 /// # Returns

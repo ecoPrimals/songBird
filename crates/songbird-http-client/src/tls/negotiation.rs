@@ -40,11 +40,13 @@ pub enum SignatureAlgorithm {
 
 impl SignatureAlgorithm {
     /// Get algorithm as u16 for wire format
+    #[must_use]
     pub const fn as_u16(self) -> u16 {
         self as u16
     }
 
     /// Get human-readable name
+    #[must_use]
     pub const fn name(self) -> &'static str {
         match self {
             Self::EcdsaSecp256r1Sha256 => "ecdsa_secp256r1_sha256",
@@ -65,6 +67,7 @@ impl SignatureAlgorithm {
     }
 
     /// Get algorithm family
+    #[must_use]
     pub const fn family(self) -> AlgorithmFamily {
         match self {
             Self::EcdsaSecp256r1Sha256
@@ -85,7 +88,8 @@ impl SignatureAlgorithm {
         }
     }
 
-    /// Is this algorithm currently supported by BearDog?
+    /// Is this algorithm currently supported by `BearDog`?
+    #[must_use]
     pub const fn is_supported(self) -> bool {
         matches!(
             self,
@@ -107,13 +111,13 @@ pub enum AlgorithmFamily {
 /// Negotiation strategy for algorithm selection
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum NegotiationStrategy {
-    /// Prefer modern, secure algorithms (EdDSA > ECDSA > RSA)
+    /// Prefer modern, secure algorithms (`EdDSA` > ECDSA > RSA)
     PreferModern,
 
     /// Maximize compatibility (advertise all algorithms)
     MaxCompatibility,
 
-    /// Use only algorithms we fully support in BearDog
+    /// Use only algorithms we fully support in `BearDog`
     OnlySupported,
 
     /// Custom priority list
@@ -146,7 +150,8 @@ pub struct ServerProfile {
 }
 
 impl ServerProfile {
-    pub fn new(hostname: String) -> Self {
+    #[must_use]
+    pub const fn new(hostname: String) -> Self {
         Self {
             hostname,
             preferred_algorithm: None,
@@ -192,7 +197,8 @@ pub struct AlgorithmNegotiator {
 }
 
 impl AlgorithmNegotiator {
-    /// Create negotiator with default strategy (MaxCompatibility)
+    /// Create negotiator with default strategy (`MaxCompatibility`)
+    #[must_use]
     pub fn new() -> Self {
         Self {
             strategy: NegotiationStrategy::MaxCompatibility,
@@ -202,6 +208,7 @@ impl AlgorithmNegotiator {
     }
 
     /// Create negotiator with specific strategy
+    #[must_use]
     pub fn with_strategy(strategy: NegotiationStrategy) -> Self {
         Self {
             strategy,
@@ -217,6 +224,7 @@ impl AlgorithmNegotiator {
     }
 
     /// Get algorithms to advertise for a given server
+    #[must_use]
     pub fn get_algorithms_for_server(&self, hostname: &str) -> Vec<SignatureAlgorithm> {
         match self.strategy {
             NegotiationStrategy::PreferModern => self.modern_algorithms(),
@@ -227,7 +235,7 @@ impl AlgorithmNegotiator {
         }
     }
 
-    /// Modern algorithm preference (EdDSA > ECDSA > RSA)
+    /// Modern algorithm preference (`EdDSA` > ECDSA > RSA)
     fn modern_algorithms(&self) -> Vec<SignatureAlgorithm> {
         vec![
             // EdDSA (most modern)
@@ -266,7 +274,7 @@ impl AlgorithmNegotiator {
 
     /// Only algorithms we fully support
     fn supported_algorithms(&self) -> Vec<SignatureAlgorithm> {
-        SignatureAlgorithm::Ed25519.family(); // Example
+        let _ = SignatureAlgorithm::Ed25519.family(); // Example
         vec![
             SignatureAlgorithm::Ed25519,
             // Add more as BearDog implements them
@@ -316,6 +324,7 @@ impl AlgorithmNegotiator {
     }
 
     /// Get profile for a server (for inspection/debugging)
+    #[must_use]
     pub fn get_profile(&self, hostname: &str) -> Option<&ServerProfile> {
         self.server_profiles.get(hostname)
     }
@@ -334,6 +343,7 @@ impl Default for AlgorithmNegotiator {
 }
 
 /// Helper: Convert algorithm list to wire format (u16 pairs)
+#[must_use]
 pub fn algorithms_to_wire(algorithms: &[SignatureAlgorithm]) -> Vec<u8> {
     let mut bytes = Vec::new();
 

@@ -48,6 +48,7 @@ pub struct TarpcServerSimple {
 
 impl TarpcServerSimple {
     /// Create new tarpc server with only service registry (no orchestrator needed!)
+    #[must_use]
     pub fn new(service_registry: Arc<FederatedServiceRegistry>) -> Self {
         Self {
             service_registry,
@@ -56,7 +57,7 @@ impl TarpcServerSimple {
     }
 }
 
-/// Implementation of SongbirdRpc trait for TarpcServerSimple (v3.12.0)
+/// Implementation of `SongbirdRpc` trait for `TarpcServerSimple` (v3.12.0)
 impl SongbirdRpc for TarpcServerSimple {
     async fn discover(self, _context: Context, capability: String) -> Vec<ServiceInfo> {
         debug!("tarpc: discover(capability={})", capability);
@@ -140,14 +141,14 @@ impl SongbirdRpc for TarpcServerSimple {
 
             RegistrationResult {
                 success: true,
-                message: format!("Service {} unregistered successfully", service_id),
+                message: format!("Service {service_id} unregistered successfully"),
             }
         } else {
             debug!("⚠️  Service not found for unregistration: {}", service_id);
 
             RegistrationResult {
                 success: false,
-                message: format!("Service {} not found", service_id),
+                message: format!("Service {service_id} not found"),
             }
         }
     }
@@ -221,6 +222,7 @@ pub struct TarpcServer {
 
 impl TarpcServer {
     /// Create new tarpc server with service registry
+    #[must_use]
     pub fn new(
         orchestrator: Arc<SongbirdOrchestrator>,
         service_registry: Arc<FederatedServiceRegistry>,
@@ -316,14 +318,14 @@ impl SongbirdRpc for TarpcServer {
 
             RegistrationResult {
                 success: true,
-                message: format!("Service {} unregistered successfully", service_id),
+                message: format!("Service {service_id} unregistered successfully"),
             }
         } else {
             debug!("⚠️  Service not found for unregistration: {}", service_id);
 
             RegistrationResult {
                 success: false,
-                message: format!("Service {} not found", service_id),
+                message: format!("Service {service_id} not found"),
             }
         }
     }
@@ -393,10 +395,10 @@ impl SongbirdRpc for TarpcServer {
 
 /// Start tarpc server on specified address (simplified version without orchestrator Arc)
 ///
-/// **v3.12.0**: Zero unsafe blocks - uses TarpcServerSimple without orchestrator dependency
+/// **v3.12.0**: Zero unsafe blocks - uses `TarpcServerSimple` without orchestrator dependency
 ///
 /// This is the production version that avoids `Arc<SongbirdOrchestrator>` complexity.
-/// The TarpcServer only needs service_registry, so this version is simpler and safer.
+/// The `TarpcServer` only needs `service_registry`, so this version is simpler and safer.
 pub async fn start_tarpc_server_simple(
     service_registry: Arc<FederatedServiceRegistry>,
     addr: SocketAddr,

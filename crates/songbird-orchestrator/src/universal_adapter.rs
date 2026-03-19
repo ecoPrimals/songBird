@@ -21,7 +21,7 @@
 //! 1. **mDNS/DNS-SD**: Local network service discovery
 //! 2. **DHT**: Distributed hash table for global discovery
 //! 3. **Registry**: Central registry (if available)
-//! 4. **Environment**: CAPABILITY_PROVIDERS env var (for development)
+//! 4. **Environment**: `CAPABILITY_PROVIDERS` env var (for development)
 //!
 //! ## Usage
 //!
@@ -55,7 +55,7 @@ pub struct UniversalAdapter {
     cache_ttl: Duration,
 
     /// HTTP client for protocol translation
-    /// ✅ EVOLVED (Jan 21, 2026): 100% Pure Rust HTTP via SongbirdHttpClient
+    /// ✅ EVOLVED (Jan 21, 2026): 100% Pure Rust HTTP via `SongbirdHttpClient`
     http_client: songbird_http_client::SongbirdHttpClient,
 }
 
@@ -195,7 +195,7 @@ impl UniversalAdapter {
 
         if providers.is_empty() {
             warn!("No providers found for capability: {}", capability);
-            return Err(anyhow!("No providers found for capability: {}", capability));
+            return Err(anyhow!("No providers found for capability: {capability}"));
         }
 
         info!("✅ Discovered {} providers for '{}'", providers.len(), capability);
@@ -217,7 +217,7 @@ impl UniversalAdapter {
 
     /// Discover providers from environment variable
     ///
-    /// Format: CAPABILITY_PROVIDERS='security=http://192.168.1.10:9000,storage=http://192.168.1.20:8000'
+    /// Format: `CAPABILITY_PROVIDERS`='security=http://192.168.1.10:9000,storage=http://192.168.1.20:8000'
     async fn discover_from_environment(&self, capability: &str) -> Result<Vec<DiscoveredProvider>> {
         let Some(env_var) = std::env::var("CAPABILITY_PROVIDERS").ok() else {
             return Ok(vec![]);
@@ -234,7 +234,7 @@ impl UniversalAdapter {
             let (cap, endpoint) = (parts[0].trim(), parts[1].trim());
             if cap == capability {
                 providers.push(DiscoveredProvider {
-                    provider_id: format!("env-{}", capability),
+                    provider_id: format!("env-{capability}"),
                     capabilities: vec![capability.to_string()],
                     endpoint: endpoint.to_string(),
                     protocol: "http".to_string(), // Assume HTTP for env providers
@@ -289,8 +289,7 @@ impl UniversalAdapter {
             "http" | "https" => self.call_http(provider, method, params).await,
             "tarpc" => self.call_tarpc(provider, method, params).await,
             protocol => Err(anyhow!(
-                "Unsupported protocol: {}. Songbird supports: tarpc, JSON-RPC, HTTP/HTTPS",
-                protocol
+                "Unsupported protocol: {protocol}. Songbird supports: tarpc, JSON-RPC, HTTP/HTTPS"
             )),
         }
     }
@@ -332,18 +331,18 @@ impl UniversalAdapter {
 
         // Parse address for tarpc connection
         let addr: std::net::SocketAddr =
-            address.parse().with_context(|| format!("Invalid tarpc address: {}", address))?;
+            address.parse().with_context(|| format!("Invalid tarpc address: {address}"))?;
 
         // Use tarpc client from universal adapter
         // Note: This uses the existing tarpc infrastructure from songbird-universal
-        let endpoint = format!("tarpc://{}", addr);
+        let endpoint = format!("tarpc://{addr}");
         let client = songbird_universal::TarpcClient::new(&endpoint)?;
 
         // Call the method (tarpc client handles serialization)
         client
             .call_method(method, Some(params))
             .await
-            .with_context(|| format!("tarpc call failed: {}", method))
+            .with_context(|| format!("tarpc call failed: {method}"))
     }
 
     /// Clear cache for a capability

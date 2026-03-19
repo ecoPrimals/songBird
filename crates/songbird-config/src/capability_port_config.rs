@@ -122,10 +122,7 @@ impl CapabilityPortRegistry {
         source: PortSource,
         description: Option<String>,
     ) -> Result<(), String> {
-        let mut ports =
-            self.ports.write().map_err(|e| format!("Failed to acquire write lock: {e}"))?;
-
-        ports.insert(
+        self.ports.write().map_err(|e| format!("Failed to acquire write lock: {e}"))?.insert(
             capability,
             PortConfig {
                 port,
@@ -226,10 +223,7 @@ impl CapabilityPortRegistry {
     ///
     /// Returns an error if the registry lock is poisoned.
     pub fn clear(&self) -> Result<(), String> {
-        let mut ports =
-            self.ports.write().map_err(|e| format!("Failed to acquire write lock: {e}"))?;
-
-        ports.clear();
+        self.ports.write().map_err(|e| format!("Failed to acquire write lock: {e}"))?.clear();
         Ok(())
     }
 }

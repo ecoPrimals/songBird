@@ -55,7 +55,8 @@ pub const MAX_TLS_RECORD_SIZE: usize = 16384; // 16 KB
 pub const POLY1305_TAG_SIZE: usize = 16;
 
 /// Get handshake message type name for logging
-pub fn handshake_type_name(msg_type: u8) -> &'static str {
+#[must_use]
+pub const fn handshake_type_name(msg_type: u8) -> &'static str {
     match msg_type {
         HANDSHAKE_TYPE_CLIENT_HELLO => "ClientHello",
         HANDSHAKE_TYPE_SERVER_HELLO => "ServerHello",
@@ -68,22 +69,25 @@ pub fn handshake_type_name(msg_type: u8) -> &'static str {
 }
 
 /// Check if a message type indicates handshake message
-pub fn is_handshake_message(content_type: u8) -> bool {
+#[must_use]
+pub const fn is_handshake_message(content_type: u8) -> bool {
     content_type == CONTENT_TYPE_HANDSHAKE
 }
 
 /// Check if a message type is application data
-pub fn is_application_data(content_type: u8) -> bool {
+#[must_use]
+pub const fn is_application_data(content_type: u8) -> bool {
     content_type == CONTENT_TYPE_APPLICATION_DATA
 }
 
 /// Construct AAD (Additional Authenticated Data) for AEAD encryption
 ///
 /// TLS 1.3 AAD format:
-/// - ContentType (1 byte)
-/// - ProtocolVersion (2 bytes) - always 0x0303 for TLS 1.3
+/// - `ContentType` (1 byte)
+/// - `ProtocolVersion` (2 bytes) - always 0x0303 for TLS 1.3
 /// - Length (2 bytes)
-pub fn construct_aad(content_type: u8, length: u16) -> [u8; 5] {
+#[must_use]
+pub const fn construct_aad(content_type: u8, length: u16) -> [u8; 5] {
     [
         content_type,
         TLS_1_2_VERSION[0],
@@ -97,6 +101,7 @@ pub fn construct_aad(content_type: u8, length: u16) -> [u8; 5] {
 ///
 /// TLS 1.3 nonce construction:
 /// - XOR IV with padded sequence number (RFC 8446 Section 5.3)
+#[must_use]
 pub fn construct_nonce(iv: &[u8], sequence_number: u64) -> Vec<u8> {
     let mut nonce = iv.to_vec();
     let seq_bytes = sequence_number.to_be_bytes();

@@ -1,4 +1,4 @@
-//! Multipart form-data support for IpcHttpClient
+//! Multipart form-data support for `IpcHttpClient`
 //!
 //! Provides multipart form-data API for building multipart/form-data
 //! requests that can be sent through Songbird's IPC HTTP client.
@@ -85,7 +85,8 @@ impl Form {
     ///     .text("field1", "value1")
     ///     .text("field2", "value2");
     /// ```
-    pub fn new() -> Self {
+    #[must_use]
+    pub const fn new() -> Self {
         Self {
             parts: Vec::new(),
         }
@@ -105,6 +106,7 @@ impl Form {
     ///
     /// let form = Form::new().text("username", "alice");
     /// ```
+    #[must_use]
     pub fn text<N, V>(mut self, name: N, value: V) -> Self
     where
         N: Into<String>,
@@ -134,6 +136,7 @@ impl Form {
     /// let form = Form::new()
     ///     .part("file", Part::bytes(vec![1, 2, 3]).file_name("data.bin"));
     /// ```
+    #[must_use]
     pub fn part<N>(mut self, name: N, part: Part) -> Self
     where
         N: Into<String>,
@@ -196,7 +199,7 @@ impl Form {
 
                     // Write Content-Type if provided
                     if let Some(m) = mime {
-                        body.extend_from_slice(format!("Content-Type: {}\r\n", m).as_bytes());
+                        body.extend_from_slice(format!("Content-Type: {m}\r\n").as_bytes());
                     } else {
                         body.extend_from_slice(b"Content-Type: application/octet-stream\r\n");
                     }
@@ -308,6 +311,7 @@ impl Part {
     ///
     /// let part = Part::bytes(vec![1, 2, 3]).file_name("data.bin");
     /// ```
+    #[must_use]
     pub fn file_name<S>(mut self, name: S) -> Self
     where
         S: Into<String>,
@@ -333,6 +337,7 @@ impl Part {
     ///     .file_name("image.png")
     ///     .mime_str("image/png");
     /// ```
+    #[must_use]
     pub fn mime_str<M>(mut self, mime_value: M) -> Self
     where
         M: Into<String>,
@@ -357,7 +362,7 @@ fn generate_boundary() -> String {
     let nanos =
         SystemTime::now().duration_since(SystemTime::UNIX_EPOCH).map(|d| d.as_nanos()).unwrap_or(0);
 
-    format!("----SongbirdBoundary{:x}", nanos)
+    format!("----SongbirdBoundary{nanos:x}")
 }
 
 #[cfg(test)]

@@ -38,7 +38,8 @@ fn test_connection_limits_serialization() {
 #[test]
 fn test_connection_limits_deserialization() {
     let json = r#"{"max_connections_per_host":20,"max_total_connections":200,"max_retries":5,"pool_idle_timeout_secs":600}"#;
-    let limits: ConnectionLimits = serde_json::from_str(json).expect("Deserialization should succeed");
+    let limits: ConnectionLimits =
+        serde_json::from_str(json).expect("Deserialization should succeed");
     assert_eq!(limits.max_connections_per_host, 20);
     assert_eq!(limits.max_total_connections, 200);
     assert_eq!(limits.max_retries, 5);
@@ -85,7 +86,8 @@ fn test_load_balancing_config_serialization() {
 #[test]
 fn test_load_balancing_config_deserialization() {
     let json = r#"{"enabled":true,"strategy":"random","health_check_interval_secs":15,"backends":["host1","host2"]}"#;
-    let config: LoadBalancingConfig = serde_json::from_str(json).expect("Deserialization should succeed");
+    let config: LoadBalancingConfig =
+        serde_json::from_str(json).expect("Deserialization should succeed");
     assert!(config.enabled);
     assert_eq!(config.strategy, "random");
     assert_eq!(config.backends.len(), 2);
@@ -129,7 +131,8 @@ fn test_rate_limiting_config_serialization() {
 #[test]
 fn test_rate_limiting_config_deserialization() {
     let json = r#"{"enabled":true,"requests_per_second":50,"burst_size":100}"#;
-    let config: RateLimitingConfig = serde_json::from_str(json).expect("Deserialization should succeed");
+    let config: RateLimitingConfig =
+        serde_json::from_str(json).expect("Deserialization should succeed");
     assert!(config.enabled);
     assert_eq!(config.requests_per_second, 50);
     assert_eq!(config.burst_size, 100);
@@ -172,11 +175,11 @@ fn test_connection_pool_config_serialization() {
 #[test]
 fn test_connection_pool_config_deserialization() {
     let json = r#"{"max_size":50,"min_idle":5,"max_lifetime_secs":900,"idle_timeout_secs":300,"connection_timeout_secs":15}"#;
-    let config: ConnectionPoolConfig = serde_json::from_str(json).expect("Deserialization should succeed");
+    let config: ConnectionPoolConfig =
+        serde_json::from_str(json).expect("Deserialization should succeed");
     assert_eq!(config.max_size, 50);
     assert_eq!(config.min_idle, 5);
     assert_eq!(config.max_lifetime_secs, 900);
     assert_eq!(config.idle_timeout_secs, 300);
     assert_eq!(config.connection_timeout_secs, 15);
 }
-

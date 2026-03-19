@@ -9,7 +9,7 @@
 /// - tarpc:    ~50μs latency, 10 GB/s throughput (100-200x faster!)
 ///
 /// Use Cases:
-/// - Primal-to-primal communication (security provider, Squirrel, Toadstool, NestGate)
+/// - Primal-to-primal communication (security provider, Squirrel, Toadstool, `NestGate`)
 /// - High-frequency service discovery
 /// - Real-time federation updates
 /// - Internal microservice communication
@@ -179,6 +179,7 @@ pub struct TarpcServer {
 
 impl TarpcServer {
     /// Create a new tarpc server
+    #[must_use]
     pub fn new(
         federation_state: Arc<FederationState>,
         service_registry: Arc<FederatedServiceRegistry>,
@@ -337,7 +338,7 @@ pub async fn start_tarpc_server(
     let listener =
         tarpc::serde_transport::tcp::listen(&addr, tarpc::tokio_serde::formats::Bincode::default)
             .await
-            .map_err(|e| anyhow::anyhow!("Failed to bind tarpc listener: {}", e))?;
+            .map_err(|e| anyhow::anyhow!("Failed to bind tarpc listener: {e}"))?;
 
     tracing::info!("🚀 tarpc server listening on {}", addr);
     tracing::info!("   Protocol: Binary RPC (tarpc + bincode)");

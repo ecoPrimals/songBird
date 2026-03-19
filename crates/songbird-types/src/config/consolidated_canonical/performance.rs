@@ -21,7 +21,8 @@ pub struct CanonicalPerformanceConfig {
 
 impl CanonicalPerformanceConfig {
     /// Check if performance config has meaningful settings (compatibility helper)
-    pub fn is_some(&self) -> bool {
+    #[must_use]
+    pub const fn is_some(&self) -> bool {
         true // Config always exists with this struct
     }
 }

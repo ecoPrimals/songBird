@@ -39,11 +39,11 @@ use tracing::{debug, error, info, warn};
 
 /// Process manager for multi-instance support
 ///
-/// Each Songbird instance (identified by FAMILY_ID + NODE_ID) gets its own PID file.
+/// Each Songbird instance (identified by `FAMILY_ID` + `NODE_ID`) gets its own PID file.
 /// This enables:
 /// - Multi-spore deployments (multiple Songbirds per machine)
 /// - Albatross multiplexer instances
-/// - Sparrow IoT flocks
+/// - Sparrow `IoT` flocks
 /// - Any other Songbird variant
 pub struct ProcessManager {
     pid_file: PathBuf,
@@ -53,7 +53,7 @@ pub struct ProcessManager {
 impl ProcessManager {
     /// Create a new process manager with NODE_ID-scoped PID file
     ///
-    /// This automatically reads SONGBIRD_FAMILY_ID and SONGBIRD_NODE_ID from the environment
+    /// This automatically reads `SONGBIRD_FAMILY_ID` and `SONGBIRD_NODE_ID` from the environment
     /// to create a unique PID file per instance, enabling multi-instance deployments.
     pub fn new() -> Result<Self> {
         let pid_file = Self::default_pid_file()?;
@@ -66,6 +66,7 @@ impl ProcessManager {
     }
 
     /// Create a process manager with custom PID file location
+    #[must_use]
     pub fn with_pid_file(pid_file: PathBuf) -> Self {
         Self {
             pid_file,
@@ -83,7 +84,7 @@ impl ProcessManager {
             .ok();
 
         match (family, node) {
-            (Some(f), Some(n)) => Some(format!("{}-{}", f, n)),
+            (Some(f), Some(n)) => Some(format!("{f}-{n}")),
             (Some(f), None) => Some(f),
             (None, Some(n)) => Some(n),
             (None, None) => None,
@@ -92,7 +93,7 @@ impl ProcessManager {
 
     /// Get the default PID file location
     ///
-    /// PID file path is scoped by FAMILY_ID and NODE_ID to allow multiple instances:
+    /// PID file path is scoped by `FAMILY_ID` and `NODE_ID` to allow multiple instances:
     ///
     /// Examples:
     /// - `/var/run/songbird/songbird-{family_id}-tower1.pid` (multi-spore)
@@ -115,13 +116,13 @@ impl ProcessManager {
 
         // Build filename suffix based on available IDs
         let filename_suffix = match (family_id.as_ref(), node_id.as_ref()) {
-            (Some(family), Some(node)) => format!("-{}-{}", family, node),
-            (Some(family), None) => format!("-{}", family),
-            (None, Some(node)) => format!("-{}", node),
+            (Some(family), Some(node)) => format!("-{family}-{node}"),
+            (Some(family), None) => format!("-{family}"),
+            (None, Some(node)) => format!("-{node}"),
             (None, None) => String::new(), // Legacy fallback
         };
 
-        let filename = format!("songbird{}.pid", filename_suffix);
+        let filename = format!("songbird{filename_suffix}.pid");
 
         // Priority 1: Explicit override via SONGBIRD_PID_DIR (for Android/restricted environments)
         if let Ok(pid_dir) = std::env::var("SONGBIRD_PID_DIR") {
@@ -153,15 +154,15 @@ impl ProcessManager {
         Ok(user_path)
     }
 
-    /// Acquire instance lock (scoped per NODE_ID)
+    /// Acquire instance lock (scoped per `NODE_ID`)
     ///
-    /// This ensures only one instance **with this specific NODE_ID** can run at a time.
-    /// Multiple instances with different NODE_IDs can run simultaneously.
+    /// This ensures only one instance **with this specific `NODE_ID`** can run at a time.
+    /// Multiple instances with different `NODE_IDs` can run simultaneously.
     ///
     /// # Errors
     ///
     /// Returns an error if:
-    /// - Another instance **with the same NODE_ID** is already running
+    /// - Another instance **with the same `NODE_ID`** is already running
     /// - Cannot write PID file
     pub fn acquire_lock(&self) -> Result<SingletonGuard> {
         debug!("Attempting to acquire instance lock: {}", self.pid_file.display());
@@ -181,13 +182,11 @@ impl ProcessManager {
                 let identity_msg = self
                     .node_identity
                     .as_ref()
-                    .map(|id| format!(" with NODE_ID={}", id))
+                    .map(|id| format!(" with NODE_ID={id}"))
                     .unwrap_or_default();
 
                 bail!(
-                    "Another Songbird instance{} is already running (PID: {})",
-                    identity_msg,
-                    existing_pid
+                    "Another Songbird instance{identity_msg} is already running (PID: {existing_pid})"
                 );
             }
             // Stale PID file - clean it up
@@ -255,7 +254,7 @@ impl ProcessManager {
         #[cfg(unix)]
         {
             // Step 1: Check /proc/{pid}/stat for process state (v3.17.0)
-            let stat_path = format!("/proc/{}/stat", pid);
+            let stat_path = format!("/proc/{pid}/stat");
             if let Ok(contents) = fs::read_to_string(&stat_path) {
                 // Parse state from /proc/{pid}/stat
                 // Format: pid (comm) state ppid pgrp session tty_nr tpgid flags ...
@@ -343,12 +342,12 @@ impl ProcessManager {
         }
     }
 
-    /// Print a helpful error message when a duplicate NODE_ID is detected
+    /// Print a helpful error message when a duplicate `NODE_ID` is detected
     fn print_duplicate_error(&self, existing_pid: u32) -> Result<()> {
         let identity_display = self
             .node_identity
             .as_ref()
-            .map_or_else(|| "NODE_ID: (not set)".to_string(), |id| format!("NODE_ID: {}", id));
+            .map_or_else(|| "NODE_ID: (not set)".to_string(), |id| format!("NODE_ID: {id}"));
 
         error!("╔═══════════════════════════════════════════════════════════════════╗");
         error!("║                                                                   ║");

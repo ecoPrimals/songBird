@@ -26,7 +26,7 @@ pub async fn validate_graph(
     debug!("🔍 Graph Intelligence API: graph.validate");
 
     let graph: crate::graph::Graph = serde_json::from_value(params)
-        .map_err(|e| JsonRpcError::custom(-32602, format!("Failed to parse graph: {}", e), None))?;
+        .map_err(|e| JsonRpcError::custom(-32602, format!("Failed to parse graph: {e}"), None))?;
 
     let result = handlers.graph_validator.validate(&graph);
 
@@ -45,10 +45,10 @@ pub async fn check_availability(
     debug!("🔍 Graph Intelligence API: graph.check_availability");
 
     let graph: crate::graph::Graph = serde_json::from_value(params)
-        .map_err(|e| JsonRpcError::custom(-32602, format!("Failed to parse graph: {}", e), None))?;
+        .map_err(|e| JsonRpcError::custom(-32602, format!("Failed to parse graph: {e}"), None))?;
 
     let report = handlers.availability_checker.check_availability(&graph).await.map_err(|e| {
-        JsonRpcError::custom(-32603, format!("Availability check failed: {}", e), None)
+        JsonRpcError::custom(-32603, format!("Availability check failed: {e}"), None)
     })?;
 
     info!(
@@ -70,12 +70,12 @@ pub async fn suggest_alternatives(
     debug!("🔍 Graph Intelligence API: graph.suggest_alternatives");
 
     let node: crate::graph::GraphNode = serde_json::from_value(params).map_err(|e| {
-        JsonRpcError::custom(-32602, format!("Failed to parse graph node: {}", e), None)
+        JsonRpcError::custom(-32602, format!("Failed to parse graph node: {e}"), None)
     })?;
 
     let suggestions =
         handlers.availability_checker.suggest_alternatives(&node).await.map_err(|e| {
-            JsonRpcError::custom(-32603, format!("Failed to suggest alternatives: {}", e), None)
+            JsonRpcError::custom(-32603, format!("Failed to suggest alternatives: {e}"), None)
         })?;
 
     info!(
@@ -97,10 +97,10 @@ pub async fn validate_coordination_pattern(
     debug!("🔍 Graph Intelligence API: coordination.validate_pattern");
 
     let graph: crate::graph::Graph = serde_json::from_value(params)
-        .map_err(|e| JsonRpcError::custom(-32602, format!("Failed to parse graph: {}", e), None))?;
+        .map_err(|e| JsonRpcError::custom(-32602, format!("Failed to parse graph: {e}"), None))?;
 
     let result = handlers.coordination_validator.validate_pattern(&graph).await.map_err(|e| {
-        JsonRpcError::custom(-32603, format!("Coordination validation failed: {}", e), None)
+        JsonRpcError::custom(-32603, format!("Coordination validation failed: {e}"), None)
     })?;
 
     info!(
@@ -116,7 +116,7 @@ pub async fn validate_coordination_pattern(
 // Pure JSON Adapters (for pure Rust Unix socket server v3.22.0)
 // ============================================================================
 
-/// Graph Intelligence: validate_graph (pure JSON adapter)
+/// Graph Intelligence: `validate_graph` (pure JSON adapter)
 pub async fn validate_graph_json(
     handlers: &IpcHandlers,
     params: Option<serde_json::Value>,
@@ -131,7 +131,7 @@ pub async fn validate_graph_json(
     serde_json::to_value(result).map_err(|e| JsonRpcError::internal_error(e.to_string()))
 }
 
-/// Graph Intelligence: check_availability (pure JSON adapter)
+/// Graph Intelligence: `check_availability` (pure JSON adapter)
 pub async fn check_availability_json(
     handlers: &IpcHandlers,
     params: Option<serde_json::Value>,
@@ -150,7 +150,7 @@ pub async fn check_availability_json(
     serde_json::to_value(report).map_err(|e| JsonRpcError::internal_error(e.to_string()))
 }
 
-/// Graph Intelligence: suggest_alternatives (pure JSON adapter)
+/// Graph Intelligence: `suggest_alternatives` (pure JSON adapter)
 pub async fn suggest_alternatives_json(
     handlers: &IpcHandlers,
     params: Option<serde_json::Value>,
@@ -170,7 +170,7 @@ pub async fn suggest_alternatives_json(
     serde_json::to_value(suggestions).map_err(|e| JsonRpcError::internal_error(e.to_string()))
 }
 
-/// Graph Intelligence: validate_coordination_pattern (pure JSON adapter)
+/// Graph Intelligence: `validate_coordination_pattern` (pure JSON adapter)
 pub async fn validate_coordination_pattern_json(
     handlers: &IpcHandlers,
     params: Option<serde_json::Value>,

@@ -59,7 +59,7 @@ pub fn discover_node_id() -> Result<Uuid> {
 
 /// Discover our own node name
 ///
-/// Uses NODE_ID env var or hostname
+/// Uses `NODE_ID` env var or hostname
 pub fn discover_node_name() -> Result<String> {
     // Prefer NODE_ID env var (for multi-instance deployments)
     if let Ok(node_id) = std::env::var("NODE_ID") {
@@ -78,6 +78,7 @@ pub fn discover_node_name() -> Result<String> {
 /// Discover our own capabilities
 ///
 /// Lists what we can do (discovery, federation, etc.)
+#[must_use]
 pub fn discover_capabilities() -> Vec<String> {
     vec![
         "discovery".to_string(),
@@ -103,6 +104,7 @@ pub fn discover_capabilities() -> Vec<String> {
 /// Security providers (security provider) interpret tags and make decisions.
 ///
 /// This is **self-knowledge** - we only know our own tags, not what they mean!
+#[must_use]
 pub fn discover_identity_tags() -> Vec<String> {
     discover_identity_tags_with(|key| std::env::var(key).ok())
 }
@@ -130,21 +132,21 @@ where
 
     // Family ID → beardog:family:{id}
     if let Some(family_id) = env_reader("SONGBIRD_FAMILY_ID") {
-        let tag = format!("beardog:family:{}", family_id);
+        let tag = format!("beardog:family:{family_id}");
         tags.push(tag.clone());
         debug!("📋 Self-knowledge: Family tag '{}' (security provider will interpret)", tag);
     }
 
     // Org ID → beardog:org:{id}
     if let Some(org_id) = env_reader("SONGBIRD_ORG_ID") {
-        let tag = format!("beardog:org:{}", org_id);
+        let tag = format!("beardog:org:{org_id}");
         tags.push(tag.clone());
         debug!("📋 Self-knowledge: Org tag '{}' (security provider will interpret)", tag);
     }
 
     // Role → security provider:role:{role}
     if let Some(role) = env_reader("SONGBIRD_ROLE") {
-        let tag = format!("security provider:role:{}", role);
+        let tag = format!("security provider:role:{role}");
         tags.push(tag.clone());
         debug!("📋 Self-knowledge: Role tag '{}' (security provider will interpret)", tag);
     }
@@ -191,7 +193,7 @@ pub fn discover_endpoints(https_port: u16) -> Vec<TransportEndpointMessage> {
 
             endpoints.push(TransportEndpointMessage {
                 interface_type: interface_type.to_string(),
-                address: format!("{}:{}", addr, https_port),
+                address: format!("{addr}:{https_port}"),
                 protocols: vec!["https".to_string()],
                 preference: 1,
             });
@@ -202,7 +204,7 @@ pub fn discover_endpoints(https_port: u16) -> Vec<TransportEndpointMessage> {
         warn!("No endpoints discovered - using localhost fallback");
         endpoints.push(TransportEndpointMessage {
             interface_type: "ipv4".to_string(),
-            address: format!("127.0.0.1:{}", https_port),
+            address: format!("127.0.0.1:{https_port}"),
             protocols: vec!["https".to_string()],
             preference: 0,
         });

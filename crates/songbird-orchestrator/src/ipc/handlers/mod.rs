@@ -53,9 +53,9 @@ impl IpcHandlers {
     /// Create new API handlers with individual components
     ///
     /// v3.19.2: Modern Rust - pass only what's needed, not whole orchestrator
-    /// v3.20.0: Added service_registry parameter
-    /// v3.21.0: Added graph_validator
-    /// v5.27.0: Added beardog_client for HTTP handler
+    /// v3.20.0: Added `service_registry` parameter
+    /// v3.21.0: Added `graph_validator`
+    /// v5.27.0: Added `beardog_client` for HTTP handler
     pub fn new(
         service_registry: Arc<ServiceRegistry>,
         discovery_listener: Option<Arc<AnonymousDiscoveryListener>>,
@@ -195,7 +195,7 @@ impl IpcHandlers {
     // Pure JSON Adapters (v3.22.0) - Delegated to domain modules
     // ========================================================================
 
-    /// Service Registry: register_service (pure JSON adapter)
+    /// Service Registry: `register_service` (pure JSON adapter)
     pub async fn register_service_json(
         &self,
         params: Option<serde_json::Value>,
@@ -203,7 +203,7 @@ impl IpcHandlers {
         service_registry::register_service_json(self, params).await
     }
 
-    /// Service Registry: discover_by_capability (pure JSON adapter)
+    /// Service Registry: `discover_by_capability` (pure JSON adapter)
     pub async fn discover_by_capability_json(
         &self,
         params: Option<serde_json::Value>,
@@ -211,7 +211,7 @@ impl IpcHandlers {
         service_registry::discover_by_capability_json(self, params).await
     }
 
-    /// Service Registry: get_service_health (pure JSON adapter)
+    /// Service Registry: `get_service_health` (pure JSON adapter)
     pub async fn get_service_health_json(
         &self,
         params: Option<serde_json::Value>,
@@ -219,14 +219,14 @@ impl IpcHandlers {
         service_registry::get_service_health_json(self, params).await
     }
 
-    /// Service Registry: health_check (pure JSON adapter)
+    /// Service Registry: `health_check` (pure JSON adapter)
     pub async fn health_check_json(
         &self,
     ) -> Result<serde_json::Value, crate::ipc::pure_rust_server::JsonRpcError> {
         service_registry::health_check_json(self).await
     }
 
-    /// P2P Discovery: discover_by_family (pure JSON adapter)
+    /// P2P Discovery: `discover_by_family` (pure JSON adapter)
     pub async fn discover_by_family_json(
         &self,
         params: Option<serde_json::Value>,
@@ -234,7 +234,7 @@ impl IpcHandlers {
         p2p_discovery::discover_by_family_json(self, params).await
     }
 
-    /// P2P Discovery: create_genetic_tunnel (pure JSON adapter)
+    /// P2P Discovery: `create_genetic_tunnel` (pure JSON adapter)
     pub async fn create_genetic_tunnel_json(
         &self,
         params: Option<serde_json::Value>,
@@ -242,7 +242,7 @@ impl IpcHandlers {
         p2p_discovery::create_genetic_tunnel_json(self, params).await
     }
 
-    /// P2P Discovery: announce_capabilities (pure JSON adapter)
+    /// P2P Discovery: `announce_capabilities` (pure JSON adapter)
     pub async fn announce_capabilities_json(
         &self,
         params: Option<serde_json::Value>,
@@ -250,7 +250,7 @@ impl IpcHandlers {
         p2p_discovery::announce_capabilities_json(self, params).await
     }
 
-    /// Graph Intelligence: validate_graph (pure JSON adapter)
+    /// Graph Intelligence: `validate_graph` (pure JSON adapter)
     pub async fn validate_graph_json(
         &self,
         params: Option<serde_json::Value>,
@@ -258,7 +258,7 @@ impl IpcHandlers {
         graph_intelligence::validate_graph_json(self, params).await
     }
 
-    /// Graph Intelligence: check_availability (pure JSON adapter)
+    /// Graph Intelligence: `check_availability` (pure JSON adapter)
     pub async fn check_availability_json(
         &self,
         params: Option<serde_json::Value>,
@@ -266,7 +266,7 @@ impl IpcHandlers {
         graph_intelligence::check_availability_json(self, params).await
     }
 
-    /// Graph Intelligence: suggest_alternatives (pure JSON adapter)
+    /// Graph Intelligence: `suggest_alternatives` (pure JSON adapter)
     pub async fn suggest_alternatives_json(
         &self,
         params: Option<serde_json::Value>,
@@ -274,7 +274,7 @@ impl IpcHandlers {
         graph_intelligence::suggest_alternatives_json(self, params).await
     }
 
-    /// Graph Intelligence: validate_coordination_pattern (pure JSON adapter)
+    /// Graph Intelligence: `validate_coordination_pattern` (pure JSON adapter)
     pub async fn validate_coordination_pattern_json(
         &self,
         params: Option<serde_json::Value>,
@@ -289,7 +289,7 @@ impl IpcHandlers {
     /// Handle `http.request` RPC call (Pure Rust TLS 1.3, v5.27.0)
     ///
     /// Makes HTTP/HTTPS requests using Pure Rust Tower Atomic pattern.
-    /// Zero C dependencies - delegates crypto to BearDog via RPC.
+    /// Zero C dependencies - delegates crypto to `BearDog` via RPC.
     ///
     /// # Method
     ///

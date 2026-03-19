@@ -54,7 +54,7 @@ impl MdnsDiscovery {
 
     /// Set the discovery timeout
     #[must_use]
-    pub fn with_timeout(mut self, timeout: Duration) -> Self {
+    pub const fn with_timeout(mut self, timeout: Duration) -> Self {
         self.timeout = timeout;
         self
     }
@@ -102,15 +102,14 @@ impl MdnsDiscovery {
         debug!("Discovering capability '{}' via mDNS", capability);
 
         // Apply custom timeout if provided
-        let discovery = if let Some(custom_timeout) = timeout {
-            Self {
+        let discovery = timeout.map_or_else(
+            || self.clone(),
+            |custom_timeout| Self {
                 service_type: self.service_type.clone(),
                 timeout: custom_timeout,
                 interface: self.interface.clone(),
-            }
-        } else {
-            self.clone()
-        };
+            },
+        );
 
         // Create request
         let request = CapabilityRequest {

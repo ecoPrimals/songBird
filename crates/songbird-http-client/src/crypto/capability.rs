@@ -1,7 +1,7 @@
 //! Cryptographic Capability Abstraction
 //!
 //! Defines the `CryptoCapability` trait that abstracts cryptographic operations.
-//! This enables Songbird to work with any crypto provider (BearDog, etc.) via
+//! This enables Songbird to work with any crypto provider (`BearDog`, etc.) via
 //! runtime discovery rather than hardcoded dependencies.
 //!
 //! ## Architecture
@@ -85,7 +85,7 @@ pub struct TlsApplicationSecrets {
 /// Cryptographic Capability Trait
 ///
 /// Abstracts all cryptographic operations needed for TLS 1.3.
-/// Implementations can delegate to BearDog, use local crypto, or
+/// Implementations can delegate to `BearDog`, use local crypto, or
 /// route through Neural API for semantic translation.
 ///
 /// ## Design Principles
@@ -114,7 +114,7 @@ pub trait CryptoCapability: Send + Sync + std::fmt::Debug {
 
     /// Generate X25519 key pair
     ///
-    /// Returns (public_key, private_key) as 32-byte arrays.
+    /// Returns (`public_key`, `private_key`) as 32-byte arrays.
     async fn generate_x25519_keypair(&self) -> Result<(Vec<u8>, Vec<u8>)>;
 
     /// Derive shared secret using X25519 ECDH
@@ -202,9 +202,9 @@ pub trait CryptoCapability: Send + Sync + std::fmt::Debug {
     /// Cipher-suite aware hashing (RFC 8446 compliant)
     ///
     /// Returns the appropriate hash for TLS 1.3 transcript computation:
-    /// - 0x1301 (TLS_AES_128_GCM_SHA256): SHA-256 (32 bytes)
-    /// - 0x1302 (TLS_AES_256_GCM_SHA384): SHA-384 (48 bytes)
-    /// - 0x1303 (TLS_CHACHA20_POLY1305_SHA256): SHA-256 (32 bytes)
+    /// - 0x1301 (`TLS_AES_128_GCM_SHA256)`: SHA-256 (32 bytes)
+    /// - 0x1302 (`TLS_AES_256_GCM_SHA384)`: SHA-384 (48 bytes)
+    /// - 0x1303 (`TLS_CHACHA20_POLY1305_SHA256)`: SHA-256 (32 bytes)
     ///
     /// This is critical for correct transcript hash computation in TLS 1.3.
     async fn hash_for_cipher(&self, data: &[u8], cipher_suite: u16) -> Result<Vec<u8>>;
@@ -228,11 +228,11 @@ pub trait CryptoCapability: Send + Sync + std::fmt::Debug {
     /// RFC 8446 Section 7.1: Key Schedule
     ///
     /// # Parameters
-    /// - `shared_secret`: ECDH shared secret (pre_master_secret)
-    /// - `client_random`: 32-byte client random from ClientHello
-    /// - `server_random`: 32-byte server random from ServerHello
-    /// - `transcript_hash`: Hash of ClientHello + ServerHello
-    /// - `cipher_suite`: Negotiated cipher suite (e.g., 0x1301 for TLS_AES_128_GCM_SHA256)
+    /// - `shared_secret`: ECDH shared secret (`pre_master_secret`)
+    /// - `client_random`: 32-byte client random from `ClientHello`
+    /// - `server_random`: 32-byte server random from `ServerHello`
+    /// - `transcript_hash`: Hash of `ClientHello` + `ServerHello`
+    /// - `cipher_suite`: Negotiated cipher suite (e.g., 0x1301 for `TLS_AES_128_GCM_SHA256`)
     async fn tls_derive_handshake_secrets(
         &self,
         shared_secret: &[u8],
@@ -245,7 +245,7 @@ pub trait CryptoCapability: Send + Sync + std::fmt::Debug {
     /// Derive TLS 1.3 application secrets
     ///
     /// RFC 8446 Section 7.1: Key Schedule
-    /// cipher_suite is required to derive correct key lengths (16 bytes for AES-128, 32 for AES-256/ChaCha)
+    /// `cipher_suite` is required to derive correct key lengths (16 bytes for AES-128, 32 for AES-256/ChaCha)
     async fn tls_derive_application_secrets(
         &self,
         handshake_secret: &[u8],
@@ -253,7 +253,7 @@ pub trait CryptoCapability: Send + Sync + std::fmt::Debug {
         cipher_suite: u16,
     ) -> Result<TlsApplicationSecrets>;
 
-    /// Compute TLS 1.3 Finished verify_data
+    /// Compute TLS 1.3 Finished `verify_data`
     ///
     /// RFC 8446 Section 4.4.4
     ///

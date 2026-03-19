@@ -1,6 +1,7 @@
 //! QR code with out-of-band verification
 
-use crate::{error::*, types::*};
+use crate::error::Result;
+use crate::types::{PhysicalChannelType, ProximityProof, TrustLevel};
 use async_trait::async_trait;
 use chrono::Utc;
 
@@ -14,7 +15,8 @@ pub struct QrCodeChannel {
 
 impl QrCodeChannel {
     /// Create new QR code channel
-    pub fn new() -> Self {
+    #[must_use]
+    pub const fn new() -> Self {
         Self {}
     }
 }

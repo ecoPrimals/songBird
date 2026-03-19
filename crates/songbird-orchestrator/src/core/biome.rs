@@ -15,6 +15,7 @@ pub struct ServiceRegistry {
 }
 
 impl ServiceRegistry {
+    #[must_use]
     pub fn new(_config: crate::core::RegistryConfig) -> Self {
         Self {
             services: HashMap::new(),
@@ -43,6 +44,7 @@ impl ServiceRegistry {
         })
     }
 
+    #[must_use]
     pub fn get_services(&self) -> Vec<serde_json::Value> {
         self.services.values().cloned().collect()
     }

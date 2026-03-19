@@ -34,11 +34,8 @@ impl HealthMonitor {
 
     /// Remove a health check for a plugin
     pub async fn remove_check(&self, plugin_id: &PluginId) {
-        let mut checks = self.checks.write().await;
-        checks.remove(plugin_id);
-
-        let mut statuses = self.statuses.write().await;
-        statuses.remove(plugin_id);
+        self.checks.write().await.remove(plugin_id);
+        self.statuses.write().await.remove(plugin_id);
     }
 
     /// Get current health status for a plugin

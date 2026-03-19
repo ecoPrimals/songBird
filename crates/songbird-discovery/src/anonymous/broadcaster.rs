@@ -459,11 +459,10 @@ impl AnonymousDiscoveryBroadcaster {
         };
 
         // Build endpoints list from our configuration
-        let endpoints: Vec<String> = if let Some(ref eps) = self.endpoints {
-            eps.iter().map(|e| format!("{}:{}", e.interface_type, e.address)).collect()
-        } else {
-            vec![format!("tcp:0.0.0.0:{}", self.port)]
-        };
+        let endpoints: Vec<String> = self.endpoints.as_ref().map_or_else(
+            || vec![format!("tcp:0.0.0.0:{}", self.port)],
+            |eps| eps.iter().map(|e| format!("{}:{}", e.interface_type, e.address)).collect(),
+        );
 
         // Create beacon payload
         let payload = BeaconPayload::new(

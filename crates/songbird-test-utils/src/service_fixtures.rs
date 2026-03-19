@@ -5,11 +5,7 @@
 /// Create a test service name
 #[must_use]
 pub fn test_service_name(base: &str, index: Option<usize>) -> String {
-    if let Some(i) = index {
-        format!("{}-{}", base, i)
-    } else {
-        base.to_string()
-    }
+    index.map_or_else(|| base.to_string(), |i| format!("{base}-{i}"))
 }
 
 /// Create test service endpoint URL

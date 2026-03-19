@@ -63,16 +63,16 @@ impl Default for LoadBalancingConfig {
     }
 }
 
-/// **CONSOLIDATED**: Re-export of canonical RetryConfig (Nov 10, 2025)
+/// **CONSOLIDATED**: Re-export of canonical `RetryConfig` (Nov 10, 2025)
 ///
 /// Field mapping: All fields match canonical 1:1
-/// Default implementation provided by canonical::resilience::RetryConfig
+/// Default implementation provided by `canonical::resilience::RetryConfig`
 pub use songbird_config::canonical::resilience::RetryConfig;
 
 /// Circuit breaker configuration for fault tolerance
 ///
 /// **CONSOLIDATED**: Re-export of canonical version (Week 2, Nov 10 2025).
-/// Field mappings: failure_window not in canonical; success_threshold → half_open_max_requests
+/// Field mappings: `failure_window` not in canonical; `success_threshold` → `half_open_max_requests`
 pub use songbird_config::canonical::resilience::CircuitBreakerConfig;
 
 // Default implementation now provided by canonical
@@ -80,7 +80,7 @@ pub use songbird_config::canonical::resilience::CircuitBreakerConfig;
 /// Health check configuration
 ///
 /// **CONSOLIDATED**: Re-export of canonical version (Week 2, Nov 10 2025).
-/// Field mappings: healthy_threshold→recovery_threshold, unhealthy_threshold→failure_threshold
+/// Field mappings: `healthy_threshold→recovery_threshold`, `unhealthy_threshold→failure_threshold`
 pub use songbird_config::canonical::resilience::HealthCheckConfig;
 
 /// Feature flags for runtime configuration

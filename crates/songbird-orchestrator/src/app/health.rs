@@ -46,6 +46,7 @@ pub struct HealthCheckReport {
 
 impl HealthCheckReport {
     /// Create a new health check report with all systems healthy
+    #[must_use]
     pub fn all_healthy() -> Self {
         Self {
             gaming_healthy: true,
@@ -58,7 +59,8 @@ impl HealthCheckReport {
     }
 
     /// Check if all subsystems are healthy
-    pub fn is_fully_healthy(&self) -> bool {
+    #[must_use]
+    pub const fn is_fully_healthy(&self) -> bool {
         self.gaming_healthy
             && self.federation_healthy
             && self.observability_healthy
@@ -268,7 +270,7 @@ mod tests {
         let before = std::time::SystemTime::now();
         let report = HealthCheckReport::all_healthy();
         let after = std::time::SystemTime::now();
-        
+
         assert!(report.timestamp >= before);
         assert!(report.timestamp <= after);
     }

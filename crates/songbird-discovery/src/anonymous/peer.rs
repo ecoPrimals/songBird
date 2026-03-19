@@ -137,11 +137,7 @@ impl DiscoveredPeer {
     /// Prefers `node_name` (v3.0), falls back to `session_id`
     #[must_use]
     pub fn display_name(&self) -> &str {
-        if let Some(ref name) = self.node_name {
-            name
-        } else {
-            &self.session_id
-        }
+        self.node_name.as_deref().unwrap_or(self.session_id.as_str())
     }
 }
 

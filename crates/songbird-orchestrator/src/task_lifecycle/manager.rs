@@ -67,7 +67,7 @@ pub enum TaskEvent {
 /// # Architecture
 ///
 /// The manager coordinates between:
-/// - **Storage layer**: SQLite for persistent task state
+/// - **Storage layer**: `SQLite` for persistent task state
 /// - **Checkpoint system**: gzip compression (flate2) with SHA-256 verification
 /// - **Event system**: Broadcast channels for real-time updates
 /// - **Background tasks**: Automatic cleanup of old tasks
@@ -198,7 +198,7 @@ impl TaskLifecycleManager {
             .await?
             .ok_or_else(|| anyhow::anyhow!("Task not found"))?;
 
-        task.start(tower.clone()).map_err(|e| anyhow::anyhow!("{}", e))?;
+        task.start(tower.clone()).map_err(|e| anyhow::anyhow!("{e}"))?;
 
         self.storage.save_task(&task).await?;
 
@@ -241,7 +241,7 @@ impl TaskLifecycleManager {
             .await?
             .ok_or_else(|| anyhow::anyhow!("Task not found"))?;
 
-        task.pause().map_err(|e| anyhow::anyhow!("{}", e))?;
+        task.pause().map_err(|e| anyhow::anyhow!("{e}"))?;
         self.storage.save_task(&task).await?;
 
         // Emit event
@@ -261,7 +261,7 @@ impl TaskLifecycleManager {
             .await?
             .ok_or_else(|| anyhow::anyhow!("Task not found"))?;
 
-        task.resume(tower.clone()).map_err(|e| anyhow::anyhow!("{}", e))?;
+        task.resume(tower.clone()).map_err(|e| anyhow::anyhow!("{e}"))?;
 
         self.storage.save_task(&task).await?;
 
@@ -283,7 +283,7 @@ impl TaskLifecycleManager {
             .await?
             .ok_or_else(|| anyhow::anyhow!("Task not found"))?;
 
-        task.complete().map_err(|e| anyhow::anyhow!("{}", e))?;
+        task.complete().map_err(|e| anyhow::anyhow!("{e}"))?;
         self.storage.save_task(&task).await?;
 
         // Emit event
@@ -303,7 +303,7 @@ impl TaskLifecycleManager {
             .await?
             .ok_or_else(|| anyhow::anyhow!("Task not found"))?;
 
-        task.fail(error.clone(), 0).map_err(|e| anyhow::anyhow!("{}", e))?;
+        task.fail(error.clone(), 0).map_err(|e| anyhow::anyhow!("{e}"))?;
 
         self.storage.save_task(&task).await?;
 
@@ -325,7 +325,7 @@ impl TaskLifecycleManager {
             .await?
             .ok_or_else(|| anyhow::anyhow!("Task not found"))?;
 
-        task.cancel(reason.clone()).map_err(|e| anyhow::anyhow!("{}", e))?;
+        task.cancel(reason.clone()).map_err(|e| anyhow::anyhow!("{e}"))?;
 
         self.storage.save_task(&task).await?;
 
@@ -393,6 +393,7 @@ impl TaskLifecycleManager {
     }
 
     /// Subscribe to task events
+    #[must_use]
     pub fn subscribe_events(&self) -> broadcast::Receiver<TaskEvent> {
         self.event_tx.subscribe()
     }

@@ -40,6 +40,7 @@ pub struct ComputeApiState {
 
 impl ComputeApiState {
     /// Create new compute API state
+    #[must_use]
     pub fn new(
         federation_state: Arc<FederationState>,
         service_registry: Arc<FederatedServiceRegistry>,
@@ -53,6 +54,7 @@ impl ComputeApiState {
     }
 
     /// Create new compute API state with capability registry
+    #[must_use]
     pub fn with_capability_registry(
         federation_state: Arc<FederationState>,
         service_registry: Arc<FederatedServiceRegistry>,
@@ -72,6 +74,7 @@ impl ComputeApiState {
 
     /// Create new compute API state with Enhanced Router (Universal Port Authority)
     /// This is the modern, preferred constructor that uses the Enhanced Router
+    #[must_use]
     pub fn with_enhanced_router(
         federation_state: Arc<FederationState>,
         federated_service_registry: Arc<FederatedServiceRegistry>,
@@ -202,25 +205,25 @@ async fn submit_compute_task(
         RoutingDecision::RouteToSongbird {
             node_id,
             ..
-        } => format!("songbird:{}", node_id),
+        } => format!("songbird:{node_id}"),
         RoutingDecision::RouteToRegisteredService {
             service_name,
             port,
             ..
         } => {
-            format!("service:{}:{}", service_name, port)
+            format!("service:{service_name}:{port}")
         }
         RoutingDecision::RouteToCapability {
             capability_type,
             provider_endpoint,
         } => {
-            format!("{:?}:{}", capability_type, provider_endpoint)
+            format!("{capability_type:?}:{provider_endpoint}")
         }
         RoutingDecision::RouteToExternalProvider {
             provider_id,
             ..
         } => {
-            format!("external:{}", provider_id)
+            format!("external:{provider_id}")
         }
     };
 
@@ -379,14 +382,14 @@ async fn submit_compute_task(
                         let mut jobs = active_jobs_clone.write().await;
                         if let Some(status) = jobs.get_mut(&job_id) {
                             status.status = JobStatusType::Failed;
-                            status.error = Some(format!("Crypto provider discovery failed: {}", e));
+                            status.error = Some(format!("Crypto provider discovery failed: {e}"));
                         }
                         return;
                     }
                 };
 
                 let client = songbird_http_client::SongbirdHttpClient::new(crypto_socket);
-                let service_url = format!("http://{}:{}/execute", endpoint_clone, port_clone);
+                let service_url = format!("http://{endpoint_clone}:{port_clone}/execute");
 
                 let task_json = match serde_json::to_value(&task_clone) {
                     Ok(json) => json,
@@ -395,7 +398,7 @@ async fn submit_compute_task(
                         let mut jobs = active_jobs_clone.write().await;
                         if let Some(status) = jobs.get_mut(&job_id) {
                             status.status = JobStatusType::Failed;
-                            status.error = Some(format!("Task serialization failed: {}", e));
+                            status.error = Some(format!("Task serialization failed: {e}"));
                         }
                         return;
                     }
@@ -426,8 +429,7 @@ async fn submit_compute_task(
                         Err(e) => {
                             status.status = JobStatusType::Failed;
                             status.error = Some(format!(
-                                "HTTP request to service {} failed: {}",
-                                service_name_clone, e
+                                "HTTP request to service {service_name_clone} failed: {e}"
                             ));
                             warn!(
                                 "Task {} HTTP error to service {}: {}",
@@ -467,14 +469,14 @@ async fn submit_compute_task(
                         let mut jobs = active_jobs_clone.write().await;
                         if let Some(status) = jobs.get_mut(&job_id) {
                             status.status = JobStatusType::Failed;
-                            status.error = Some(format!("Crypto provider discovery failed: {}", e));
+                            status.error = Some(format!("Crypto provider discovery failed: {e}"));
                         }
                         return;
                     }
                 };
 
                 let client = songbird_http_client::SongbirdHttpClient::new(crypto_socket);
-                let forward_url = format!("{}/task", endpoint_clone);
+                let forward_url = format!("{endpoint_clone}/task");
 
                 let task_json = match serde_json::to_value(&task_clone) {
                     Ok(json) => json,
@@ -483,7 +485,7 @@ async fn submit_compute_task(
                         let mut jobs = active_jobs_clone.write().await;
                         if let Some(status) = jobs.get_mut(&job_id) {
                             status.status = JobStatusType::Failed;
-                            status.error = Some(format!("Task serialization failed: {}", e));
+                            status.error = Some(format!("Task serialization failed: {e}"));
                         }
                         return;
                     }
@@ -517,15 +519,14 @@ async fn submit_compute_task(
                         }
                         Ok(Err(e)) => {
                             status.status = JobStatusType::Failed;
-                            status.error = Some(format!("HTTP request to peer failed: {}", e));
+                            status.error = Some(format!("HTTP request to peer failed: {e}"));
                             status.completed_at = Some(chrono::Utc::now());
                             warn!("Task {} HTTP error to peer {}: {}", job_id, node_id_clone, e);
                         }
                         Err(_timeout) => {
                             status.status = JobStatusType::Failed;
                             status.error = Some(format!(
-                                "Forward to peer {} timed out after 300s",
-                                node_id_clone
+                                "Forward to peer {node_id_clone} timed out after 300s"
                             ));
                             status.completed_at = Some(chrono::Utc::now());
                             warn!("Task {} forward to peer {} timed out", job_id, node_id_clone);
@@ -636,7 +637,7 @@ async fn get_task_status(
     let jobs = state.active_jobs.read().await;
     let job_status = jobs
         .get(&job_id)
-        .ok_or_else(|| ApiError::NotFound(format!("Job {} not found", job_id)))?
+        .ok_or_else(|| ApiError::NotFound(format!("Job {job_id} not found")))?
         .clone();
 
     Ok(Json(job_status))
@@ -658,10 +659,10 @@ pub enum ApiError {
 impl std::fmt::Display for ApiError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::Routing(msg) => write!(f, "Routing error: {}", msg),
-            Self::Execution(msg) => write!(f, "Execution error: {}", msg),
-            Self::InvalidRequest(msg) => write!(f, "Invalid request: {}", msg),
-            Self::NotFound(msg) => write!(f, "Not found: {}", msg),
+            Self::Routing(msg) => write!(f, "Routing error: {msg}"),
+            Self::Execution(msg) => write!(f, "Execution error: {msg}"),
+            Self::InvalidRequest(msg) => write!(f, "Invalid request: {msg}"),
+            Self::NotFound(msg) => write!(f, "Not found: {msg}"),
         }
     }
 }

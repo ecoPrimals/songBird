@@ -38,7 +38,7 @@ pub struct CapabilityRegistrationRequest {
 /// Description of a capability offered by a provider
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CapabilityDescriptor {
-    /// Capability name (e.g., "compute_gpu", "ml_training")
+    /// Capability name (e.g., "`compute_gpu`", "`ml_training`")
     pub name: String,
 
     /// Human-readable description

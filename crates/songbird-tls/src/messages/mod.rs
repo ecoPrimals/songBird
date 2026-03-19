@@ -33,18 +33,18 @@ pub enum ContentType {
 impl From<u8> for ContentType {
     fn from(value: u8) -> Self {
         match value {
-            20 => ContentType::ChangeCipherSpec,
-            21 => ContentType::Alert,
-            22 => ContentType::Handshake,
-            23 => ContentType::ApplicationData,
-            _ => ContentType::Invalid,
+            20 => Self::ChangeCipherSpec,
+            21 => Self::Alert,
+            22 => Self::Handshake,
+            23 => Self::ApplicationData,
+            _ => Self::Invalid,
         }
     }
 }
 
 impl From<ContentType> for u8 {
     fn from(ct: ContentType) -> Self {
-        ct as u8
+        ct as Self
     }
 }
 
@@ -65,28 +65,32 @@ pub enum HandshakeType {
     MessageHash = 254,
 }
 
-impl From<u8> for HandshakeType {
-    fn from(value: u8) -> Self {
+impl TryFrom<u8> for HandshakeType {
+    type Error = crate::error::TlsError;
+
+    fn try_from(value: u8) -> Result<Self, Self::Error> {
         match value {
-            1 => HandshakeType::ClientHello,
-            2 => HandshakeType::ServerHello,
-            4 => HandshakeType::NewSessionTicket,
-            5 => HandshakeType::EndOfEarlyData,
-            8 => HandshakeType::EncryptedExtensions,
-            11 => HandshakeType::Certificate,
-            13 => HandshakeType::CertificateRequest,
-            15 => HandshakeType::CertificateVerify,
-            20 => HandshakeType::Finished,
-            24 => HandshakeType::KeyUpdate,
-            254 => HandshakeType::MessageHash,
-            _ => panic!("Invalid handshake type: {}", value), // Will be handled properly in codec
+            1 => Ok(Self::ClientHello),
+            2 => Ok(Self::ServerHello),
+            4 => Ok(Self::NewSessionTicket),
+            5 => Ok(Self::EndOfEarlyData),
+            8 => Ok(Self::EncryptedExtensions),
+            11 => Ok(Self::Certificate),
+            13 => Ok(Self::CertificateRequest),
+            15 => Ok(Self::CertificateVerify),
+            20 => Ok(Self::Finished),
+            24 => Ok(Self::KeyUpdate),
+            254 => Ok(Self::MessageHash),
+            _ => Err(crate::error::TlsError::ProtocolError(format!(
+                "Invalid handshake type: {value}"
+            ))),
         }
     }
 }
 
 impl From<HandshakeType> for u8 {
     fn from(ht: HandshakeType) -> Self {
-        ht as u8
+        ht as Self
     }
 }
 
@@ -107,10 +111,10 @@ mod tests {
 
     #[test]
     fn test_handshake_type_conversion() {
-        assert_eq!(HandshakeType::from(1), HandshakeType::ClientHello);
+        assert_eq!(HandshakeType::try_from(1).unwrap(), HandshakeType::ClientHello);
         assert_eq!(u8::from(HandshakeType::ClientHello), 1);
 
-        assert_eq!(HandshakeType::from(2), HandshakeType::ServerHello);
+        assert_eq!(HandshakeType::try_from(2).unwrap(), HandshakeType::ServerHello);
         assert_eq!(u8::from(HandshakeType::ServerHello), 2);
     }
 }

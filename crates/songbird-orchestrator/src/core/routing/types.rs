@@ -5,11 +5,11 @@ use std::collections::HashMap;
 
 /// A task to be executed, either locally, on a peer, or via a capability
 ///
-/// **ZERO-COPY OPTIMIZATION**: Uses `Arc<str>` for task_type to enable
+/// **ZERO-COPY OPTIMIZATION**: Uses `Arc<str>` for `task_type` to enable
 /// cheap sharing across async boundaries without cloning large strings.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Task {
-    /// Type of task (e.g., "ml_training", "data_processing", "health_check")
+    /// Type of task (e.g., "`ml_training`", "`data_processing`", "`health_check`")
     ///
     /// **OPTIMIZED**: `Arc<str>` enables zero-copy sharing in async contexts
     #[serde(with = "arc_str_serde")]
@@ -112,7 +112,7 @@ impl TaskBuilder {
 
     /// Set resource requirements
     #[must_use = "Builder methods should be chained or assigned"]
-    pub fn with_resources(mut self, requirements: ResourceRequirements) -> Self {
+    pub const fn with_resources(mut self, requirements: ResourceRequirements) -> Self {
         self.task.resource_requirements = Some(requirements);
         self
     }
@@ -146,7 +146,7 @@ impl TaskBuilder {
 
     /// Set estimated duration
     #[must_use = "Builder methods should be chained or assigned"]
-    pub fn with_duration(mut self, duration_secs: u64) -> Self {
+    pub const fn with_duration(mut self, duration_secs: u64) -> Self {
         self.task.estimated_duration_secs = Some(duration_secs);
         self
     }
@@ -159,6 +159,7 @@ impl TaskBuilder {
     }
 
     /// Build the task
+    #[must_use]
     pub fn build(self) -> Task {
         self.task
     }

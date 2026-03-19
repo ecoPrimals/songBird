@@ -1,12 +1,12 @@
-//! BearDog Crypto Client for TLS Delegation
+//! `BearDog` Crypto Client for TLS Delegation
 //!
-//! Provides Pure Rust TLS by delegating ALL crypto operations to BearDog.
-//! This achieves 100% Pure Rust (TRUE ecoBin) by leveraging BearDog's
+//! Provides Pure Rust TLS by delegating ALL crypto operations to `BearDog`.
+//! This achieves 100% Pure Rust (TRUE ecoBin) by leveraging `BearDog`'s
 //! RustCrypto-based primitives via JSON-RPC over Unix sockets.
 //!
 //! **Architecture**:
 //! - Songbird: TLS protocol logic (Pure Rust state machine)
-//! - BearDog: ALL crypto operations (Pure Rust RustCrypto!)
+//! - `BearDog`: ALL crypto operations (Pure Rust `RustCrypto`!)
 //! - Result: 100% Pure Rust HTTPS!
 //!
 //! **Pattern**: Generic `call_beardog_rpc` eliminates per-operation boilerplate.
@@ -41,7 +41,7 @@ async fn connect_platform(address: &str) -> std::io::Result<PlatformStream> {
 // Generic JSON-RPC helper — eliminates all per-operation boilerplate
 // ============================================================================
 
-/// Call a BearDog crypto RPC method
+/// Call a `BearDog` crypto RPC method
 ///
 /// Handles connection, JSON-RPC framing, and error extraction.
 /// Each crypto function only needs to construct params and decode the result.
@@ -94,17 +94,17 @@ fn decode_b64_field(value: &serde_json::Value, field: &str, context: &str) -> Re
 // Ed25519 Signing
 // ============================================================================
 
-/// Sign a message with Ed25519 via BearDog
+/// Sign a message with Ed25519 via `BearDog`
 ///
 /// # Arguments
-/// * `socket_path` - Path to BearDog's crypto Unix socket
+/// * `socket_path` - Path to `BearDog`'s crypto Unix socket
 /// * `message` - Message bytes to sign
-/// * `key_id` - Key identifier (e.g., "tls_signing_key")
-/// * `purpose` - Purpose for audit logging (e.g., "tls_handshake")
+/// * `key_id` - Key identifier (e.g., "`tls_signing_key`")
+/// * `purpose` - Purpose for audit logging (e.g., "`tls_handshake`")
 ///
 /// # Errors
 ///
-/// Returns an error if BearDog is unavailable or signing fails.
+/// Returns an error if `BearDog` is unavailable or signing fails.
 pub async fn sign_ed25519(
     socket_path: &str,
     message: &[u8],
@@ -133,17 +133,17 @@ pub async fn sign_ed25519(
 // Ed25519 Verification
 // ============================================================================
 
-/// Verify an Ed25519 signature via BearDog
+/// Verify an Ed25519 signature via `BearDog`
 ///
 /// # Arguments
-/// * `socket_path` - Path to BearDog's crypto Unix socket
+/// * `socket_path` - Path to `BearDog`'s crypto Unix socket
 /// * `message` - Message bytes that were signed
 /// * `signature` - Signature bytes to verify
 /// * `public_key` - Public key bytes
 ///
 /// # Errors
 ///
-/// Returns an error if BearDog is unavailable or verification fails.
+/// Returns an error if `BearDog` is unavailable or verification fails.
 pub async fn verify_ed25519(
     socket_path: &str,
     message: &[u8],
@@ -176,18 +176,18 @@ pub async fn verify_ed25519(
 // X25519 Key Exchange
 // ============================================================================
 
-/// Generate ephemeral X25519 key pair via BearDog
+/// Generate ephemeral X25519 key pair via `BearDog`
 ///
-/// **BearDog's Stateless Design**: Returns actual key bytes, not IDs!
+/// **`BearDog`'s Stateless Design**: Returns actual key bytes, not IDs!
 /// The caller is responsible for managing the secret key securely.
 ///
 /// # Arguments
-/// * `socket_path` - Path to BearDog's crypto Unix socket
-/// * `purpose` - Purpose for audit logging (e.g., "tls_key_exchange")
+/// * `socket_path` - Path to `BearDog`'s crypto Unix socket
+/// * `purpose` - Purpose for audit logging (e.g., "`tls_key_exchange`")
 ///
 /// # Errors
 ///
-/// Returns an error if BearDog is unavailable or generation fails.
+/// Returns an error if `BearDog` is unavailable or generation fails.
 pub async fn x25519_generate_ephemeral(
     socket_path: &str,
     purpose: &str,
@@ -208,18 +208,18 @@ pub async fn x25519_generate_ephemeral(
     Ok((public_key, secret_key))
 }
 
-/// Derive X25519 shared secret via BearDog
+/// Derive X25519 shared secret via `BearDog`
 ///
-/// **BearDog's Stateless Design**: Pass actual key bytes, not IDs!
+/// **`BearDog`'s Stateless Design**: Pass actual key bytes, not IDs!
 ///
 /// # Arguments
-/// * `socket_path` - Path to BearDog's crypto Unix socket
+/// * `socket_path` - Path to `BearDog`'s crypto Unix socket
 /// * `our_secret_key` - Our secret key bytes (from `x25519_generate_ephemeral`)
 /// * `their_public_key` - Their public key bytes
 ///
 /// # Errors
 ///
-/// Returns an error if BearDog is unavailable or derivation fails.
+/// Returns an error if `BearDog` is unavailable or derivation fails.
 pub async fn x25519_derive_secret(
     socket_path: &str,
     our_secret_key: &[u8],
@@ -246,20 +246,20 @@ pub async fn x25519_derive_secret(
 // ChaCha20-Poly1305 AEAD
 // ============================================================================
 
-/// Encrypt with ChaCha20-Poly1305 AEAD via BearDog
+/// Encrypt with ChaCha20-Poly1305 AEAD via `BearDog`
 ///
-/// **BearDog's Secure Design**: Generates nonce automatically!
+/// **`BearDog`'s Secure Design**: Generates nonce automatically!
 /// This ensures cryptographically secure, non-repeating nonces.
 ///
 /// # Arguments
-/// * `socket_path` - Path to BearDog's crypto Unix socket
+/// * `socket_path` - Path to `BearDog`'s crypto Unix socket
 /// * `plaintext` - Plaintext bytes to encrypt
 /// * `key` - Encryption key (32 bytes)
 /// * `aad` - Additional authenticated data (optional)
 ///
 /// # Errors
 ///
-/// Returns an error if BearDog is unavailable or encryption fails.
+/// Returns an error if `BearDog` is unavailable or encryption fails.
 pub async fn chacha20_poly1305_encrypt(
     socket_path: &str,
     plaintext: &[u8],
@@ -293,10 +293,10 @@ pub async fn chacha20_poly1305_encrypt(
     Ok((ciphertext, nonce, tag))
 }
 
-/// Decrypt with ChaCha20-Poly1305 AEAD via BearDog
+/// Decrypt with ChaCha20-Poly1305 AEAD via `BearDog`
 ///
 /// # Arguments
-/// * `socket_path` - Path to BearDog's crypto Unix socket
+/// * `socket_path` - Path to `BearDog`'s crypto Unix socket
 /// * `ciphertext` - Ciphertext bytes to decrypt
 /// * `key` - Decryption key (32 bytes)
 /// * `nonce` - Nonce (12 bytes, from encryption)
@@ -305,7 +305,7 @@ pub async fn chacha20_poly1305_encrypt(
 ///
 /// # Errors
 ///
-/// Returns an error if BearDog is unavailable, decryption fails, or auth tag is invalid.
+/// Returns an error if `BearDog` is unavailable, decryption fails, or auth tag is invalid.
 pub async fn chacha20_poly1305_decrypt(
     socket_path: &str,
     ciphertext: &[u8],
@@ -338,15 +338,15 @@ pub async fn chacha20_poly1305_decrypt(
 // Blake3 Hashing
 // ============================================================================
 
-/// Hash data with Blake3 via BearDog
+/// Hash data with Blake3 via `BearDog`
 ///
 /// # Arguments
-/// * `socket_path` - Path to BearDog's crypto Unix socket
+/// * `socket_path` - Path to `BearDog`'s crypto Unix socket
 /// * `data` - Data bytes to hash
 ///
 /// # Errors
 ///
-/// Returns an error if BearDog is unavailable or hashing fails.
+/// Returns an error if `BearDog` is unavailable or hashing fails.
 pub async fn blake3_hash(socket_path: &str, data: &[u8]) -> Result<Vec<u8>> {
     debug!("# Hashing with Blake3 via BearDog ({} bytes)", data.len());
 
@@ -363,16 +363,16 @@ pub async fn blake3_hash(socket_path: &str, data: &[u8]) -> Result<Vec<u8>> {
 // HMAC-SHA256
 // ============================================================================
 
-/// Compute HMAC-SHA256 via BearDog
+/// Compute HMAC-SHA256 via `BearDog`
 ///
 /// # Arguments
-/// * `socket_path` - Path to BearDog's crypto Unix socket
+/// * `socket_path` - Path to `BearDog`'s crypto Unix socket
 /// * `key` - HMAC key bytes
 /// * `data` - Data bytes to MAC
 ///
 /// # Errors
 ///
-/// Returns an error if BearDog is unavailable or HMAC computation fails.
+/// Returns an error if `BearDog` is unavailable or HMAC computation fails.
 pub async fn hmac_sha256(socket_path: &str, key: &[u8], data: &[u8]) -> Result<Vec<u8>> {
     debug!("🔏 Computing HMAC-SHA256 via BearDog ({} bytes)", data.len());
 

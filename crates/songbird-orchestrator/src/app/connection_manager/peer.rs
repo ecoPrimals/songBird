@@ -24,6 +24,7 @@ pub struct PeerRegistry {
 
 impl PeerRegistry {
     /// Create new peer registry
+    #[must_use]
     pub fn new() -> Self {
         Self {
             metadata: Arc::new(RwLock::new(HashMap::new())),

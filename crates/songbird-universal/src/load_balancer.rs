@@ -41,7 +41,7 @@ pub struct LoadBalancedEndpoint {
 impl LoadBalancedEndpoint {
     /// Create a new endpoint
     #[must_use]
-    pub fn new(url: String) -> Self {
+    pub const fn new(url: String) -> Self {
         Self {
             url,
             active_connections: 0,
@@ -52,7 +52,7 @@ impl LoadBalancedEndpoint {
     }
 
     /// Mark endpoint as unavailable
-    pub fn mark_unavailable(&mut self) {
+    pub const fn mark_unavailable(&mut self) {
         self.available = false;
         self.health_score = 0.0;
     }
@@ -72,17 +72,17 @@ impl LoadBalancedEndpoint {
     }
 
     /// Increment active connections
-    pub fn increment_connections(&mut self) {
+    pub const fn increment_connections(&mut self) {
         self.active_connections = self.active_connections.saturating_add(1);
     }
 
     /// Decrement active connections
-    pub fn decrement_connections(&mut self) {
+    pub const fn decrement_connections(&mut self) {
         self.active_connections = self.active_connections.saturating_sub(1);
     }
 
     /// Record a completed request
-    pub fn record_request(&mut self) {
+    pub const fn record_request(&mut self) {
         self.total_requests = self.total_requests.saturating_add(1);
     }
 }

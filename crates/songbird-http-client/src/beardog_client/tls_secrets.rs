@@ -12,17 +12,21 @@ use tracing::{debug, error, info, trace, warn};
 impl BearDogClient {
     /// Derive TLS handshake traffic secrets (for encrypting handshake messages)
     ///
+    /// # Errors
+    ///
+    /// Returns an error if the RPC call fails or the response is invalid.
+    ///
     /// RFC 8446 Section 7.1: Handshake traffic secrets are derived using:
     /// - ECDH shared secret
     /// - Client random
     /// - Server random
-    /// - Transcript hash of ClientHello + ServerHello
+    /// - Transcript hash of `ClientHello` + `ServerHello`
     ///
-    /// These keys are used to encrypt/decrypt handshake messages AFTER ServerHello:
-    /// - EncryptedExtensions
-    /// - Certificate
-    /// - CertificateVerify
-    /// - Finished
+    /// These keys are used to encrypt/decrypt handshake messages AFTER `ServerHello`:
+    /// - `EncryptedExtensions`
+    /// - `Certificate`
+    /// - `CertificateVerify`
+    /// - `Finished`
     pub async fn tls_derive_handshake_secrets(
         &self,
         shared_secret: &[u8],
@@ -72,28 +76,28 @@ impl BearDogClient {
             .decode(result["client_write_key"].as_str().ok_or_else(|| {
                 Error::BearDogRpc("Missing client_write_key in response".to_string())
             })?)
-            .map_err(|e| Error::BearDogRpc(format!("Invalid client_write_key base64: {}", e)))?;
+            .map_err(|e| Error::BearDogRpc(format!("Invalid client_write_key base64: {e}")))?;
         debug!("  ✅ client_handshake_key: {} bytes", client_write_key.len());
 
         let server_write_key = BASE64_STANDARD
             .decode(result["server_write_key"].as_str().ok_or_else(|| {
                 Error::BearDogRpc("Missing server_write_key in response".to_string())
             })?)
-            .map_err(|e| Error::BearDogRpc(format!("Invalid server_write_key base64: {}", e)))?;
+            .map_err(|e| Error::BearDogRpc(format!("Invalid server_write_key base64: {e}")))?;
         debug!("  ✅ server_handshake_key: {} bytes", server_write_key.len());
 
         let client_write_iv = BASE64_STANDARD
             .decode(result["client_write_iv"].as_str().ok_or_else(|| {
                 Error::BearDogRpc("Missing client_write_iv in response".to_string())
             })?)
-            .map_err(|e| Error::BearDogRpc(format!("Invalid client_write_iv base64: {}", e)))?;
+            .map_err(|e| Error::BearDogRpc(format!("Invalid client_write_iv base64: {e}")))?;
         debug!("  ✅ client_handshake_iv: {} bytes", client_write_iv.len());
 
         let server_write_iv = BASE64_STANDARD
             .decode(result["server_write_iv"].as_str().ok_or_else(|| {
                 Error::BearDogRpc("Missing server_write_iv in response".to_string())
             })?)
-            .map_err(|e| Error::BearDogRpc(format!("Invalid server_write_iv base64: {}", e)))?;
+            .map_err(|e| Error::BearDogRpc(format!("Invalid server_write_iv base64: {e}")))?;
         debug!("  ✅ server_handshake_iv: {} bytes", server_write_iv.len());
 
         // Parse traffic secrets (needed for Finished message - RFC 8446 Section 4.4.4)
@@ -102,7 +106,7 @@ impl BearDogClient {
                 Error::BearDogRpc("Missing client_handshake_secret in response".to_string())
             })?)
             .map_err(|e| {
-                Error::BearDogRpc(format!("Invalid client_handshake_secret base64: {}", e))
+                Error::BearDogRpc(format!("Invalid client_handshake_secret base64: {e}"))
             })?;
         debug!("  ✅ client_handshake_secret: {} bytes", client_handshake_secret.len());
 
@@ -111,7 +115,7 @@ impl BearDogClient {
                 Error::BearDogRpc("Missing server_handshake_secret in response".to_string())
             })?)
             .map_err(|e| {
-                Error::BearDogRpc(format!("Invalid server_handshake_secret base64: {}", e))
+                Error::BearDogRpc(format!("Invalid server_handshake_secret base64: {e}"))
             })?;
         debug!("  ✅ server_handshake_secret: {} bytes", server_handshake_secret.len());
 
@@ -137,6 +141,10 @@ impl BearDogClient {
     }
 
     /// Derive TLS application traffic secrets (for encrypting HTTP data)
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the RPC call fails or the response is invalid.
     ///
     /// This implements the TLS 1.3 key schedule to derive application traffic keys
     /// from the handshake secret. These keys are used for HTTP data encryption/decryption.
@@ -170,7 +178,7 @@ impl BearDogClient {
                     "client_random": BASE64_STANDARD.encode(client_random),
                     "server_random": BASE64_STANDARD.encode(server_random),
                     "transcript_hash": BASE64_STANDARD.encode(transcript_hash),
-                    "cipher_suite": cipher_suite as u64
+                    "cipher_suite": u64::from(cipher_suite)
                 }),
             )
             .await
@@ -192,28 +200,28 @@ impl BearDogClient {
             .decode(result["client_write_key"].as_str().ok_or_else(|| {
                 Error::BearDogRpc("Missing client_write_key in response".to_string())
             })?)
-            .map_err(|e| Error::BearDogRpc(format!("Invalid client_write_key base64: {}", e)))?;
+            .map_err(|e| Error::BearDogRpc(format!("Invalid client_write_key base64: {e}")))?;
         debug!("  ✅ client_write_key: {} bytes", client_write_key.len());
 
         let server_write_key = BASE64_STANDARD
             .decode(result["server_write_key"].as_str().ok_or_else(|| {
                 Error::BearDogRpc("Missing server_write_key in response".to_string())
             })?)
-            .map_err(|e| Error::BearDogRpc(format!("Invalid server_write_key base64: {}", e)))?;
+            .map_err(|e| Error::BearDogRpc(format!("Invalid server_write_key base64: {e}")))?;
         debug!("  ✅ server_write_key: {} bytes", server_write_key.len());
 
         let client_write_iv = BASE64_STANDARD
             .decode(result["client_write_iv"].as_str().ok_or_else(|| {
                 Error::BearDogRpc("Missing client_write_iv in response".to_string())
             })?)
-            .map_err(|e| Error::BearDogRpc(format!("Invalid client_write_iv base64: {}", e)))?;
+            .map_err(|e| Error::BearDogRpc(format!("Invalid client_write_iv base64: {e}")))?;
         debug!("  ✅ client_write_iv: {} bytes", client_write_iv.len());
 
         let server_write_iv = BASE64_STANDARD
             .decode(result["server_write_iv"].as_str().ok_or_else(|| {
                 Error::BearDogRpc("Missing server_write_iv in response".to_string())
             })?)
-            .map_err(|e| Error::BearDogRpc(format!("Invalid server_write_iv base64: {}", e)))?;
+            .map_err(|e| Error::BearDogRpc(format!("Invalid server_write_iv base64: {e}")))?;
         debug!("  ✅ server_write_iv: {} bytes", server_write_iv.len());
 
         info!("🎉 Application traffic keys successfully derived and parsed");
@@ -229,7 +237,11 @@ impl BearDogClient {
         })
     }
 
-    /// Compute TLS 1.3 Finished message verify_data (RFC 8446 Section 4.4.4)
+    /// Compute TLS 1.3 Finished message `verify_data` (RFC 8446 Section 4.4.4)
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the RPC call fails or the response is invalid.
     ///
     /// The Finished message authenticates the entire handshake using HMAC:
     /// ```text
@@ -271,7 +283,7 @@ impl BearDogClient {
 
         let decoded = BASE64_STANDARD
             .decode(verify_data)
-            .map_err(|e| Error::BearDogRpc(format!("Invalid verify_data base64: {}", e)))?;
+            .map_err(|e| Error::BearDogRpc(format!("Invalid verify_data base64: {e}")))?;
 
         info!("✅ Finished verify_data computed: {} bytes", decoded.len());
         debug!("   Verify data (hex): {}", hex::encode(&decoded));
@@ -279,7 +291,11 @@ impl BearDogClient {
     }
 
     /// Legacy alias for backwards compatibility
-    /// DEPRECATED: Use tls_derive_application_secrets instead
+    /// DEPRECATED: Use `tls_derive_application_secrets` instead
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the RPC call fails or the response is invalid.
     #[deprecated(
         since = "5.6.0",
         note = "Use tls_derive_application_secrets with transcript_hash parameter"

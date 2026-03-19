@@ -14,7 +14,8 @@ pub struct BatchResult<T> {
 }
 
 impl<T> BatchResult<T> {
-    pub fn new(total: usize) -> Self {
+    #[must_use]
+    pub const fn new(total: usize) -> Self {
         Self {
             successes: Vec::new(),
             failures: Vec::new(),
@@ -22,6 +23,7 @@ impl<T> BatchResult<T> {
         }
     }
 
+    #[must_use]
     pub fn success_rate(&self) -> f64 {
         if self.total == 0 {
             return 0.0;
@@ -29,15 +31,18 @@ impl<T> BatchResult<T> {
         self.successes.len() as f64 / self.total as f64
     }
 
-    pub fn is_complete_success(&self) -> bool {
+    #[must_use]
+    pub const fn is_complete_success(&self) -> bool {
         self.failures.is_empty()
     }
 
-    pub fn is_complete_failure(&self) -> bool {
+    #[must_use]
+    pub const fn is_complete_failure(&self) -> bool {
         self.successes.is_empty()
     }
 
-    pub fn is_partial_success(&self) -> bool {
+    #[must_use]
+    pub const fn is_partial_success(&self) -> bool {
         !self.successes.is_empty() && !self.failures.is_empty()
     }
 }

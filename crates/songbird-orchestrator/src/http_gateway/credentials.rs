@@ -27,10 +27,10 @@ use tracing::{debug, warn};
 /// **Philosophy**:
 /// - Zero hardcoding: All from environment
 /// - Secure: No logging of actual credentials
-/// - Modern: Async-safe with RwLock
+/// - Modern: Async-safe with `RwLock`
 #[derive(Clone)]
 pub struct CredentialManager {
-    /// Cached credentials (service_name -> API key)
+    /// Cached credentials (`service_name` -> API key)
     credentials: Arc<RwLock<HashMap<String, String>>>,
 }
 
@@ -71,6 +71,7 @@ impl CredentialManager {
     /// - Zero hardcoding: Credentials from environment
     /// - Secure: No logging of actual keys
     /// - Flexible: Multiple naming conventions supported
+    #[must_use]
     pub fn get_api_key(&self, service: &str) -> Option<String> {
         self.get_api_key_with(service, |name| std::env::var(name).ok())
     }
@@ -92,9 +93,9 @@ impl CredentialManager {
         let service_upper = service.to_uppercase();
 
         let env_vars = [
-            format!("{}_API_KEY", service_upper),
-            format!("{}_KEY", service_upper),
-            format!("{}_TOKEN", service_upper),
+            format!("{service_upper}_API_KEY"),
+            format!("{service_upper}_KEY"),
+            format!("{service_upper}_TOKEN"),
         ];
 
         for env_var in &env_vars {
@@ -125,6 +126,7 @@ impl CredentialManager {
     /// # Returns
     /// * `true` if API key is configured
     /// * `false` otherwise
+    #[must_use]
     pub fn has_api_key(&self, service: &str) -> bool {
         self.get_api_key(service).is_some()
     }

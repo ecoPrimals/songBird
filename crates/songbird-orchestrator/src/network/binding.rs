@@ -42,9 +42,9 @@ impl NetworkBindingStrategy {
     /// 2. Check IPv4 support (non-loopback IPv4 addresses)
     /// 3. Check IPv6 support (non-loopback IPv6 addresses)
     /// 4. Select strategy:
-    ///    - Both available → DualStack (preferred)
-    ///    - IPv4 only → IPv4All
-    ///    - IPv6 only → IPv6All
+    ///    - Both available → `DualStack` (preferred)
+    ///    - IPv4 only → `IPv4All`
+    ///    - IPv6 only → `IPv6All`
     ///    - Neither → Error
     ///
     /// ## Examples
@@ -103,7 +103,7 @@ impl NetworkBindingStrategy {
     /// Convert strategy to socket addresses for binding
     ///
     /// Returns a vector of socket addresses to bind to.
-    /// DualStack returns both IPv4 and IPv6 addresses.
+    /// `DualStack` returns both IPv4 and IPv6 addresses.
     pub fn to_socket_addrs(&self, port: u16) -> Vec<SocketAddr> {
         match self {
             Self::IPv4All => {
@@ -132,9 +132,10 @@ impl NetworkBindingStrategy {
 
     /// Get primary socket address (for single-binding scenarios)
     ///
-    /// For DualStack, returns IPv4 address (broader compatibility).
+    /// For `DualStack`, returns IPv4 address (broader compatibility).
     /// For single-stack, returns the appropriate address.
-    pub fn primary_socket_addr(&self, port: u16) -> SocketAddr {
+    #[must_use]
+    pub const fn primary_socket_addr(&self, port: u16) -> SocketAddr {
         match self {
             Self::IPv4All => SocketAddr::new(IpAddr::V4(Ipv4Addr::UNSPECIFIED), port),
             Self::IPv6All => SocketAddr::new(IpAddr::V6(Ipv6Addr::UNSPECIFIED), port),
@@ -150,11 +151,13 @@ impl NetworkBindingStrategy {
     }
 
     /// Check if this strategy supports IPv4
+    #[must_use]
     pub const fn supports_ipv4(&self) -> bool {
         matches!(self, Self::IPv4All | Self::DualStack | Self::Interface(_))
     }
 
     /// Check if this strategy supports IPv6
+    #[must_use]
     pub const fn supports_ipv6(&self) -> bool {
         matches!(self, Self::IPv6All | Self::DualStack)
     }

@@ -170,7 +170,7 @@ impl TestEnv {
 
     /// Get all variables as a `HashMap`
     #[must_use]
-    pub fn as_map(&self) -> &HashMap<String, String> {
+    pub const fn as_map(&self) -> &HashMap<String, String> {
         &self.vars
     }
 

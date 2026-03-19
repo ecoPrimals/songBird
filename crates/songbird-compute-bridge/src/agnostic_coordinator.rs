@@ -97,8 +97,7 @@ impl AgnosticComputeCoordinator {
         }
 
         // Check cache
-        let providers = self.providers.read().await;
-        if let Some(provider) = providers.get("compute") {
+        if let Some(provider) = self.providers.read().await.get("compute") {
             return Ok(provider.clone());
         }
 
@@ -147,7 +146,7 @@ impl AgnosticComputeCoordinator {
 
         // Implement actual deployment via HTTP to compute provider
         let client = IpcHttpClient::new().await.map_err(|e| {
-            ComputeError::DeploymentFailed(format!("Failed to create HTTP client: {}", e))
+            ComputeError::DeploymentFailed(format!("Failed to create HTTP client: {e}"))
         })?;
 
         let deployment_request = serde_json::json!({
@@ -158,9 +157,10 @@ impl AgnosticComputeCoordinator {
 
         let url = format!("{}/v1/deploy", provider.endpoint);
 
-        let request = client.post(&url).await.json(&deployment_request).map_err(|e| {
-            ComputeError::DeploymentFailed(format!("Failed to build request: {}", e))
-        })?;
+        let request =
+            client.post(&url).await.json(&deployment_request).map_err(|e| {
+                ComputeError::DeploymentFailed(format!("Failed to build request: {e}"))
+            })?;
 
         match request.send().await {
             Ok(response) if response.is_success() => {
@@ -172,8 +172,7 @@ impl AgnosticComputeCoordinator {
 
                 let deploy_resp: DeploymentResponse = response.json().await.map_err(|e| {
                     ComputeError::DeploymentFailed(format!(
-                        "Failed to parse deployment response: {}",
-                        e
+                        "Failed to parse deployment response: {e}",
                     ))
                 })?;
 
@@ -184,8 +183,7 @@ impl AgnosticComputeCoordinator {
                 let status = response.status();
                 let error_text = response.text().await.unwrap_or_default();
                 Err(ComputeError::DeploymentFailed(format!(
-                    "Deployment failed with status {}: {}",
-                    status, error_text
+                    "Deployment failed with status {status}: {error_text}",
                 )))
             }
             Err(e) => {

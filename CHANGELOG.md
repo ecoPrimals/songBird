@@ -7,6 +7,61 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [v0.3.0] - 2026-03-19 - Deep Debt: Pedantic Clippy + Concurrent Testing Evolution
+
+### Changed - Clippy Pedantic + Nursery Cleanup (1,565 → 399 errors)
+- 23/27 crates now pass `clippy::pedantic` + `clippy::nursery` with zero warnings
+- Common patterns evolved across workspace:
+  - Added `#[must_use]` to all pure functions returning values
+  - Converted applicable functions to `const fn`
+  - Inlined format arguments (`format!("{}", x)` → `format!("{x}")`)
+  - Fixed doc markdown (backtick-wrapped types in doc comments)
+  - Added `# Errors` sections to fallible public functions
+  - Replaced `option_if_let_else` with `map_or` / `map_or_else`
+  - Resolved `significant_drop_tightening` warnings
+- 4 crates remaining: http-client (172), sovereign-onion (168), tor-protocol (54), quic (1)
+
+### Changed - Concurrent Testing Evolution
+- Replaced `tokio::time::sleep` synchronization with `tokio::sync::oneshot` readiness signals in:
+  - `songbird-lineage-relay/tests/integration_relay_forwarding.rs`
+  - `songbird-orchestrator/tests/xdg_socket_discovery_e2e.rs`
+  - `songbird-http-client/tests/tls_fault_injection_tests.rs`
+- Replaced `#[serial_test::serial]` + `env::set_var` with injectable `_from_map` variants in:
+  - `songbird-config/tests/timeouts_comprehensive_tests.rs`
+  - `songbird-types/src/config/environment.rs`
+- Introduced `HashMap<String, String>` env injection for concurrent test isolation
+
+### Fixed - Compilation Errors
+- `songbird-tls`: Removed `.await` from sync `CertificateGenerator::new()` and `generate_test_certificate()`
+- `songbird-universal-ipc`: Fixed `await` in non-async closure (`onion_handler.rs`)
+- `songbird-universal-ipc`: Added explicit error type annotations (`mesh_handler.rs`)
+- `songbird-universal-ipc`: Updated field access for nested `DiscoveryDiagnostics` (`igd_handler.rs`)
+- `songbird-primal-coordination`: Added missing `ServiceQuality` and `PrimalCapabilities` imports
+- `songbird-execution-agent`: Updated `parse_command` from instance to associated function call
+- `songbird-http-client`: Updated `semantic_to_actual`, `method_to_capability` to associated function calls
+- `songbird-http-client`: Removed `.unwrap()` from `discover_socket_path_with` (returns `PathBuf` directly)
+- `songbird-http-client`: Fixed `should_follow` to accept `RedirectMode` by value
+
+### Fixed - License Compliance
+- Corrected 8 handler SPDX headers from `MIT` to `AGPL-3.0-only` in `songbird-orchestrator/src/ipc/unix/handlers/`
+
+### Removed - Root Debris
+- Archived `check-tower.sh` and `SONGBIRD_CLI_SPEC_FOR_BIOMEOS.yaml` (stale references to removed scripts)
+- Removed `audit.log`
+- Fixed stale phase status in `songbird-tor-protocol/src/protocol/cells.rs`
+
+### Quality
+| Metric | Value |
+|--------|-------|
+| Tests | 8,968 passing, 0 failed, 286 ignored |
+| Line Coverage | ~61% |
+| Build | Zero errors |
+| Clippy Pedantic | 23/27 crates clean |
+| Format | Clean |
+| Docs | Clean |
+
+---
+
 ## [v0.2.2] - 2026-02-11 - Deep Debt: Capability-First Socket Discovery
 
 ### Changed - Capability-First Socket Discovery (7 files)

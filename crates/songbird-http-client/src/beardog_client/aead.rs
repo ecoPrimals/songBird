@@ -10,6 +10,10 @@ use tracing::{debug, error, info, trace};
 
 impl BearDogClient {
     /// Encrypt data with ChaCha20-Poly1305 (TLS 1.3 cipher suite 0x1303)
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the RPC call fails or the response is invalid.
     pub async fn encrypt(
         &self,
         key: &[u8],
@@ -48,7 +52,7 @@ impl BearDogClient {
 
         let decoded = BASE64_STANDARD
             .decode(ciphertext)
-            .map_err(|e| Error::BearDogRpc(format!("Invalid ciphertext base64: {}", e)))?;
+            .map_err(|e| Error::BearDogRpc(format!("Invalid ciphertext base64: {e}")))?;
 
         trace!(
             "✅ Encrypted: {} bytes plaintext → {} bytes ciphertext",
@@ -58,7 +62,11 @@ impl BearDogClient {
         Ok(decoded)
     }
 
-    /// Encrypt data with AES-128-GCM (for TLS_AES_128_GCM_SHA256 cipher suite)
+    /// Encrypt data with AES-128-GCM (for `TLS_AES_128_GCM_SHA256` cipher suite)
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if key/nonce lengths are invalid, RPC fails, or response is invalid.
     pub async fn encrypt_aes_128_gcm(
         &self,
         key: &[u8],
@@ -100,10 +108,14 @@ impl BearDogClient {
 
         BASE64_STANDARD
             .decode(ciphertext)
-            .map_err(|e| Error::BearDogRpc(format!("Invalid ciphertext base64: {}", e)))
+            .map_err(|e| Error::BearDogRpc(format!("Invalid ciphertext base64: {e}")))
     }
 
-    /// Encrypt data with AES-256-GCM (for TLS_AES_256_GCM_SHA384 cipher suite)
+    /// Encrypt data with AES-256-GCM (for `TLS_AES_256_GCM_SHA384` cipher suite)
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if key/nonce lengths are invalid, RPC fails, or response is invalid.
     pub async fn encrypt_aes_256_gcm(
         &self,
         key: &[u8],
@@ -145,12 +157,16 @@ impl BearDogClient {
 
         BASE64_STANDARD
             .decode(ciphertext)
-            .map_err(|e| Error::BearDogRpc(format!("Invalid ciphertext base64: {}", e)))
+            .map_err(|e| Error::BearDogRpc(format!("Invalid ciphertext base64: {e}")))
     }
 
     /// Decrypt data with ChaCha20-Poly1305 (TLS 1.3 cipher suite 0x1303)
     ///
     /// NOTE: ChaCha20-Poly1305 RPC expects SEPARATE ciphertext and tag parameters!
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if ciphertext is too short, RPC fails, or response is invalid.
     pub async fn decrypt(
         &self,
         key: &[u8],
@@ -201,13 +217,17 @@ impl BearDogClient {
 
         let decoded = BASE64_STANDARD
             .decode(plaintext)
-            .map_err(|e| Error::BearDogRpc(format!("Invalid plaintext base64: {}", e)))?;
+            .map_err(|e| Error::BearDogRpc(format!("Invalid plaintext base64: {e}")))?;
 
         info!("✅ Decrypted: {} bytes → {} bytes", ciphertext.len(), decoded.len());
         Ok(decoded)
     }
 
-    /// Decrypt data with AES-128-GCM (for TLS_AES_128_GCM_SHA256 cipher suite)
+    /// Decrypt data with AES-128-GCM (for `TLS_AES_128_GCM_SHA256` cipher suite)
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if lengths are invalid, RPC fails, or response is invalid.
     pub async fn decrypt_aes_128_gcm(
         &self,
         key: &[u8],
@@ -254,10 +274,14 @@ impl BearDogClient {
 
         BASE64_STANDARD
             .decode(plaintext)
-            .map_err(|e| Error::BearDogRpc(format!("Invalid plaintext base64: {}", e)))
+            .map_err(|e| Error::BearDogRpc(format!("Invalid plaintext base64: {e}")))
     }
 
-    /// Decrypt data with AES-256-GCM (for TLS_AES_256_GCM_SHA384 cipher suite)
+    /// Decrypt data with AES-256-GCM (for `TLS_AES_256_GCM_SHA384` cipher suite)
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if lengths are invalid, RPC fails, or response is invalid.
     pub async fn decrypt_aes_256_gcm(
         &self,
         key: &[u8],
@@ -303,7 +327,7 @@ impl BearDogClient {
 
         BASE64_STANDARD
             .decode(plaintext)
-            .map_err(|e| Error::BearDogRpc(format!("Invalid plaintext base64: {}", e)))
+            .map_err(|e| Error::BearDogRpc(format!("Invalid plaintext base64: {e}")))
     }
 }
 

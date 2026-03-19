@@ -118,7 +118,7 @@ impl LineageServiceDiscovery {
         // Sort by lineage compatibility
         if let Some(our_lineage) = &self.local_lineage {
             peers.sort_by_key(|p| {
-                if let Some(peer_lineage) = &p.genetic_lineage {
+                p.genetic_lineage.as_ref().map_or(3, |peer_lineage| {
                     // Same lineage first
                     if peer_lineage == our_lineage {
                         0
@@ -129,10 +129,7 @@ impl LineageServiceDiscovery {
                         // Different lineage last
                         2
                     }
-                } else {
-                    // No lineage info last
-                    3
-                }
+                })
             });
         }
 
@@ -162,33 +159,33 @@ impl LineageServiceDiscovery {
     /// Get peers that share our genetic lineage
     #[must_use]
     pub fn get_same_lineage_peers(&self) -> Vec<&DiscoveryPacket> {
-        if let Some(our_lineage) = &self.local_lineage {
-            self.peer_cache
-                .values()
-                .filter(|p| p.genetic_lineage.as_ref() == Some(our_lineage))
-                .collect()
-        } else {
-            Vec::new()
-        }
+        self.local_lineage.as_ref().map_or_else(
+            || Vec::new(),
+            |our_lineage| {
+                self.peer_cache
+                    .values()
+                    .filter(|p| p.genetic_lineage.as_ref() == Some(our_lineage))
+                    .collect()
+            },
+        )
     }
 
     /// Get peers with different lineage
     #[must_use]
     pub fn get_different_lineage_peers(&self) -> Vec<&DiscoveryPacket> {
-        if let Some(our_lineage) = &self.local_lineage {
-            self.peer_cache
-                .values()
-                .filter(|p| {
-                    if let Some(peer_lineage) = &p.genetic_lineage {
-                        peer_lineage != our_lineage
-                    } else {
-                        false
-                    }
-                })
-                .collect()
-        } else {
-            Vec::new()
-        }
+        self.local_lineage.as_ref().map_or_else(
+            || Vec::new(),
+            |our_lineage| {
+                self.peer_cache
+                    .values()
+                    .filter(|p| {
+                        p.genetic_lineage
+                            .as_ref()
+                            .map_or(false, |peer_lineage| peer_lineage != our_lineage)
+                    })
+                    .collect()
+            },
+        )
     }
 
     /// Get peers with no lineage information

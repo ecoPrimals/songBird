@@ -33,7 +33,7 @@ impl HttpsConnection {
     ///
     /// # Arguments
     ///
-    /// * `crypto` - Crypto capability provider (BearDog or mock)
+    /// * `crypto` - Crypto capability provider (`BearDog` or mock)
     /// * `tls_config` - TLS configuration (versions, fallback strategy, etc.)
     /// * `profiler` - Optional server profiler for performance tracking
     pub fn new(
@@ -92,7 +92,7 @@ impl HttpsConnection {
 
         // Attempt TLS handshake with progressive fallback
         // CRITICAL FIX: Each retry creates a FRESH TCP connection to avoid reading stale data!
-        let addr = format!("{}:{}", host, port);
+        let addr = format!("{host}:{port}");
         let (mut tcp_stream, session_keys) =
             self.attempt_handshake_with_fallback(&addr, host).await?;
 
@@ -166,6 +166,51 @@ impl HttpsConnection {
         // Parse HTTP response
         debug!("Parsing HTTP response...");
         parse_http_response(&response_data)
+    }
+
+    /// Check if TLS response is complete (chunked terminator or Content-Length met)
+    fn is_tls_response_complete(response_data: &[u8], records_read: usize) -> bool {
+        let Some(headers_end) = response_data.windows(4).position(|w| w == b"\r\n\r\n") else {
+            return false;
+        };
+        let body = &response_data[headers_end + 4..];
+
+        // Check for chunked terminator patterns
+        let has_terminator = body.windows(5).any(|w| w == b"0\r\n\r\n")
+            || body.ends_with(b"0\r\n\r\n")
+            || body.ends_with(b"\r\n0\r\n\r\n");
+
+        if has_terminator {
+            info!("   ✅ Chunked encoding terminator (0\\r\\n\\r\\n) found");
+            return true;
+        }
+
+        // Check Content-Length completion
+        let headers_str = String::from_utf8_lossy(&response_data[..headers_end]);
+        if let Some(content_length) = headers_str
+            .lines()
+            .find(|line| line.to_lowercase().starts_with("content-length:"))
+            .and_then(|line| line.split(':').nth(1))
+            .and_then(|val| val.trim().parse::<usize>().ok())
+        {
+            let body_start = headers_end + 4;
+            let total_expected = body_start + content_length;
+
+            if response_data.len() >= total_expected {
+                debug!(
+                    "   ✅ Complete response received ({} bytes) in {} record(s)",
+                    response_data.len(),
+                    records_read
+                );
+                return true;
+            }
+            debug!(
+                "   📥 Still reading body: {}/{} bytes",
+                response_data.len() - body_start,
+                content_length
+            );
+        }
+        false
     }
 
     /// Read complete HTTP response from TLS record layer
@@ -277,51 +322,9 @@ impl HttpsConnection {
                 }
             }
 
-            // Check for chunked encoding termination: 0\r\n\r\n
-            // This is the final chunk marker indicating end of chunked body
-            if headers_complete {
-                // Look for the chunked encoding terminator anywhere in the body
-                // The terminator is: "0\r\n\r\n" (zero-length chunk followed by empty trailer)
-                // Some servers also send "0\r\n\r\n" variations with trailers
-                if let Some(headers_end) = response_data.windows(4).position(|w| w == b"\r\n\r\n") {
-                    let body = &response_data[headers_end + 4..];
-
-                    // Check for chunked terminator patterns
-                    let has_terminator = body.windows(5).any(|w| w == b"0\r\n\r\n")
-                        || body.ends_with(b"0\r\n\r\n")
-                        || body.ends_with(b"\r\n0\r\n\r\n");
-
-                    if has_terminator {
-                        info!("   ✅ Chunked encoding terminator (0\\r\\n\\r\\n) found");
-                        break;
-                    }
-
-                    // Also check Content-Length completion
-                    let headers_str = String::from_utf8_lossy(&response_data[..headers_end]);
-                    if let Some(content_length) = headers_str
-                        .lines()
-                        .find(|line| line.to_lowercase().starts_with("content-length:"))
-                        .and_then(|line| line.split(':').nth(1))
-                        .and_then(|val| val.trim().parse::<usize>().ok())
-                    {
-                        let body_start = headers_end + 4;
-                        let total_expected = body_start + content_length;
-
-                        if response_data.len() >= total_expected {
-                            debug!(
-                                "   ✅ Complete response received ({} bytes) in {} record(s)",
-                                response_data.len(),
-                                records_read
-                            );
-                            break;
-                        }
-                        debug!(
-                            "   📥 Still reading body: {}/{} bytes",
-                            response_data.len() - body_start,
-                            content_length
-                        );
-                    }
-                }
+            // Check for chunked encoding termination or Content-Length completion
+            if headers_complete && Self::is_tls_response_complete(&response_data, records_read) {
+                break;
             }
 
             // Safety: Prevent infinite loops or memory exhaustion
@@ -343,6 +346,38 @@ impl HttpsConnection {
         Ok(response_data)
     }
 
+    /// Build strategy list based on fallback configuration
+    fn handshake_strategies_for_fallback(config: &TlsConfig) -> Vec<ExtensionStrategy> {
+        match config.fallback_strategy {
+            FallbackStrategy::None => vec![config.extension_strategy.clone()],
+            FallbackStrategy::Progressive => {
+                info!("🔄 Progressive fallback enabled: Modern → Standard → Minimal");
+                vec![
+                    ExtensionStrategy::Modern,
+                    ExtensionStrategy::Standard,
+                    ExtensionStrategy::Minimal,
+                ]
+            }
+            FallbackStrategy::Reverse => {
+                info!("🔄 Reverse fallback enabled: Minimal → Standard → Modern");
+                vec![
+                    ExtensionStrategy::Minimal,
+                    ExtensionStrategy::Standard,
+                    ExtensionStrategy::Modern,
+                ]
+            }
+            FallbackStrategy::Exhaustive => {
+                info!("🔄 Exhaustive fallback enabled: Trying all strategies");
+                vec![
+                    ExtensionStrategy::Modern,
+                    ExtensionStrategy::Standard,
+                    ExtensionStrategy::Minimal,
+                    ExtensionStrategy::MaxCompatibility,
+                ]
+            }
+        }
+    }
+
     /// Attempt TLS handshake with progressive fallback on failure
     ///
     /// CRITICAL FIX (Jan 26, 2026): Each retry attempt creates a FRESH TCP connection!
@@ -355,7 +390,7 @@ impl HttpsConnection {
     ///
     /// # Returns
     ///
-    /// Tuple of (TcpStream, SessionKeys) on success
+    /// Tuple of (`TcpStream`, `SessionKeys`) on success
     ///
     /// # Errors
     ///
@@ -368,41 +403,7 @@ impl HttpsConnection {
         let max_attempts = self.tls_config.max_retries as usize;
         let mut last_error = None;
 
-        // Build list of strategies to try based on fallback strategy
-        let strategies_to_try = match self.tls_config.fallback_strategy {
-            FallbackStrategy::None => {
-                // Single attempt with configured strategy
-                vec![self.tls_config.extension_strategy.clone()]
-            }
-            FallbackStrategy::Progressive => {
-                // Try Modern → Standard → Minimal
-                info!("🔄 Progressive fallback enabled: Modern → Standard → Minimal");
-                vec![
-                    ExtensionStrategy::Modern,
-                    ExtensionStrategy::Standard,
-                    ExtensionStrategy::Minimal,
-                ]
-            }
-            FallbackStrategy::Reverse => {
-                // Try Minimal → Standard → Modern
-                info!("🔄 Reverse fallback enabled: Minimal → Standard → Modern");
-                vec![
-                    ExtensionStrategy::Minimal,
-                    ExtensionStrategy::Standard,
-                    ExtensionStrategy::Modern,
-                ]
-            }
-            FallbackStrategy::Exhaustive => {
-                // Try all strategies
-                info!("🔄 Exhaustive fallback enabled: Trying all strategies");
-                vec![
-                    ExtensionStrategy::Modern,
-                    ExtensionStrategy::Standard,
-                    ExtensionStrategy::Minimal,
-                    ExtensionStrategy::MaxCompatibility,
-                ]
-            }
-        };
+        let strategies_to_try = Self::handshake_strategies_for_fallback(&self.tls_config);
 
         // Try each strategy with FRESH TCP connection
         for (attempt, strategy) in strategies_to_try.iter().enumerate().take(max_attempts) {
@@ -422,14 +423,10 @@ impl HttpsConnection {
             let mut tcp_stream = match TcpStream::connect(addr).await {
                 Ok(stream) => {
                     // Log connection details for debugging
-                    let local = stream
-                        .local_addr()
-                        .map(|a| a.to_string())
-                        .unwrap_or_else(|_| "unknown".into());
-                    let peer = stream
-                        .peer_addr()
-                        .map(|a| a.to_string())
-                        .unwrap_or_else(|_| "unknown".into());
+                    let local =
+                        stream.local_addr().map_or_else(|_| "unknown".into(), |a| a.to_string());
+                    let peer =
+                        stream.peer_addr().map_or_else(|_| "unknown".into(), |a| a.to_string());
                     info!("✅ TCP connection established:");
                     info!("   Local: {}", local);
                     info!("   Remote: {} (expected: {})", peer, addr);
@@ -446,8 +443,8 @@ impl HttpsConnection {
                 Err(e) => {
                     warn!("⚠️  Failed to connect to {}: {}", addr, e);
                     last_error =
-                        Some(Error::Connection(format!("Failed to connect to {}: {}", addr, e)));
-                    continue; // Try next strategy with fresh connection
+                        Some(Error::Connection(format!("Failed to connect to {addr}: {e}")));
+                    continue;
                 }
             };
 
@@ -504,7 +501,6 @@ impl HttpsConnection {
 
                     last_error = Some(e);
                     // tcp_stream dropped here, connection closed cleanly
-                    continue; // Try next strategy with fresh connection
                 }
             }
         }

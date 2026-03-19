@@ -1,6 +1,6 @@
 //! Client for communicating with remote execution agents
 //!
-//! ✅ EVOLVED (Jan 21, 2026): 100% Pure Rust HTTP via SongbirdHttpClient
+//! ✅ EVOLVED (Jan 21, 2026): 100% Pure Rust HTTP via `SongbirdHttpClient`
 
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -20,7 +20,7 @@ impl ExecutionClient {
     pub async fn new() -> Result<Self, ExecutionError> {
         let crypto_socket =
             crate::primal_discovery::discover_crypto_provider().await.map_err(|e| {
-                ExecutionError::Network(format!("Crypto provider discovery failed: {}", e))
+                ExecutionError::Network(format!("Crypto provider discovery failed: {e}"))
             })?;
 
         Ok(Self {
@@ -34,7 +34,7 @@ impl ExecutionClient {
         tower_endpoint: &str,
         request: ExecutionRequest,
     ) -> Result<ExecutionResponse, ExecutionError> {
-        let url = format!("{}/api/v1/execution/command", tower_endpoint);
+        let url = format!("{tower_endpoint}/api/v1/execution/command");
 
         let request_json = serde_json::to_value(&request)
             .map_err(|e| ExecutionError::Deserialization(e.to_string()))?;
@@ -60,7 +60,7 @@ impl ExecutionClient {
         tower_endpoint: &str,
         job_id: &str,
     ) -> Result<JobInfo, ExecutionError> {
-        let url = format!("{}/api/v1/execution/jobs/{}", tower_endpoint, job_id);
+        let url = format!("{tower_endpoint}/api/v1/execution/jobs/{job_id}");
 
         let response =
             self.http_client.get(&url).await.map_err(|e| ExecutionError::Network(e.to_string()))?;
@@ -81,7 +81,7 @@ impl ExecutionClient {
         job_id: &str,
         signal: Option<String>,
     ) -> Result<StopJobResponse, ExecutionError> {
-        let url = format!("{}/api/v1/execution/jobs/{}/stop", tower_endpoint, job_id);
+        let url = format!("{tower_endpoint}/api/v1/execution/jobs/{job_id}/stop");
 
         let request = StopJobRequest {
             signal,
@@ -183,11 +183,11 @@ pub enum ExecutionError {
 impl std::fmt::Display for ExecutionError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::Network(msg) => write!(f, "Network error: {}", msg),
-            Self::Remote(msg) => write!(f, "Remote error: {}", msg),
-            Self::Deserialization(msg) => write!(f, "Deserialization error: {}", msg),
-            Self::TowerNotFound(msg) => write!(f, "Tower not found: {}", msg),
-            Self::MultipleFailures(msg) => write!(f, "Multiple failures: {}", msg),
+            Self::Network(msg) => write!(f, "Network error: {msg}"),
+            Self::Remote(msg) => write!(f, "Remote error: {msg}"),
+            Self::Deserialization(msg) => write!(f, "Deserialization error: {msg}"),
+            Self::TowerNotFound(msg) => write!(f, "Tower not found: {msg}"),
+            Self::MultipleFailures(msg) => write!(f, "Multiple failures: {msg}"),
         }
     }
 }

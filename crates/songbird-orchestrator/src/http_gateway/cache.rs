@@ -11,7 +11,7 @@
 //!
 //! ## Performance
 //!
-//! - O(1) lookup and insertion (HashMap + doubly-linked list)
+//! - O(1) lookup and insertion (`HashMap` + doubly-linked list)
 //! - Minimal memory overhead
 //! - Automatic cleanup of expired entries
 //!
@@ -59,7 +59,7 @@ impl CacheEntry {
 /// Response cache with TTL and size limits
 ///
 /// **Philosophy**:
-/// - Modern idiomatic Rust: async/await, RwLock
+/// - Modern idiomatic Rust: async/await, `RwLock`
 /// - Fast AND safe: O(1) operations, thread-safe
 /// - Smart eviction: LRU + TTL + size-based
 #[derive(Clone)]
@@ -106,7 +106,7 @@ impl ResponseCache {
     /// * `None` if not cached or expired
     ///
     /// # Philosophy
-    /// - Non-blocking: Uses tokio::sync::RwLock
+    /// - Non-blocking: Uses `tokio::sync::RwLock`
     /// - Automatic cleanup: Removes expired entries
     pub async fn get(&self, key: &str) -> Option<Value> {
         let mut entries = self.entries.write().await;

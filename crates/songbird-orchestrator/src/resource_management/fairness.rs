@@ -24,6 +24,7 @@ pub struct FairnessCalculator;
 
 impl FairnessCalculator {
     /// Calculate fair shares for all users
+    #[must_use]
     pub fn calculate_fair_shares(
         total_capacity: &HashMap<ResourceType, ResourceAmount>,
         user_weights: &HashMap<UserId, f64>,
@@ -78,17 +79,20 @@ impl FairnessCalculator {
     }
 
     /// Identify users who are over their fair share
+    #[must_use]
     pub fn identify_over_usage(fair_shares: &[FairShare], threshold: f64) -> Vec<FairShare> {
         fair_shares.iter().filter(|fs| fs.ratio > threshold).cloned().collect()
     }
 
     /// Identify users who are under their fair share
+    #[must_use]
     pub fn identify_under_usage(fair_shares: &[FairShare], threshold: f64) -> Vec<FairShare> {
         fair_shares.iter().filter(|fs| fs.ratio < threshold).cloned().collect()
     }
 
     /// Calculate dominant resource fairness (DRF)
     /// Returns the dominant resource ratio for each user
+    #[must_use]
     pub fn dominant_resource_fairness(
         fair_shares: &[FairShare],
     ) -> HashMap<UserId, (ResourceType, f64)> {

@@ -39,7 +39,8 @@ pub struct Stream {
 
 impl Stream {
     /// Create new stream
-    pub fn new(stream_id: u16, circuit_id: u32) -> Self {
+    #[must_use]
+    pub const fn new(stream_id: u16, circuit_id: u32) -> Self {
         Self {
             stream_id,
             state: StreamState::Connecting,
@@ -50,27 +51,28 @@ impl Stream {
     }
 
     /// Check if stream can send data
+    #[must_use]
     pub fn can_send(&self) -> bool {
         self.state == StreamState::Open && self.send_window > 0
     }
 
     /// Decrease send window
-    pub fn decrease_send_window(&mut self, amount: u16) {
+    pub const fn decrease_send_window(&mut self, amount: u16) {
         self.send_window = self.send_window.saturating_sub(amount);
     }
 
     /// Increase send window (from SENDME)
-    pub fn increase_send_window(&mut self, amount: u16) {
+    pub const fn increase_send_window(&mut self, amount: u16) {
         self.send_window = self.send_window.saturating_add(amount);
     }
 
     /// Mark stream as connected
-    pub fn mark_connected(&mut self) {
+    pub const fn mark_connected(&mut self) {
         self.state = StreamState::Open;
     }
 
     /// Mark stream as closed
-    pub fn mark_closed(&mut self) {
+    pub const fn mark_closed(&mut self) {
         self.state = StreamState::Closed;
     }
 }
@@ -87,6 +89,7 @@ pub struct StreamManager {
 
 impl StreamManager {
     /// Create new stream manager for a circuit
+    #[must_use]
     pub fn new(circuit_id: u32) -> Self {
         Self {
             streams: Arc::new(RwLock::new(HashMap::new())),
@@ -127,7 +130,7 @@ impl StreamManager {
         streams
             .get(&stream_id)
             .cloned()
-            .ok_or_else(|| Error::Stream(format!("Stream {} not found", stream_id)))
+            .ok_or_else(|| Error::Stream(format!("Stream {stream_id} not found")))
     }
 
     /// Update stream state
@@ -142,7 +145,7 @@ impl StreamManager {
 
         let stream = streams
             .get_mut(&stream_id)
-            .ok_or_else(|| Error::Stream(format!("Stream {} not found", stream_id)))?;
+            .ok_or_else(|| Error::Stream(format!("Stream {stream_id} not found")))?;
 
         f(stream);
         Ok(())
@@ -159,6 +162,7 @@ impl StreamManager {
     }
 
     /// Get stream count
+    #[must_use]
     pub fn stream_count(&self) -> usize {
         self.streams.read().map(|s| s.len()).unwrap_or(0)
     }
@@ -168,19 +172,20 @@ impl StreamManager {
 ///
 /// Creates relay cells for Tor stream operations. The `digest` field
 /// is a running SHA-1 hash that provides integrity checking across
-/// circuit hops. When BearDog crypto is available, pass the running
+/// circuit hops. When `BearDog` crypto is available, pass the running
 /// digest state; otherwise zeros are used (suitable for testing).
 pub struct StreamProtocol;
 
 impl StreamProtocol {
-    /// Create RELAY_BEGIN cell
+    /// Create `RELAY_BEGIN` cell
     ///
     /// # Arguments
     /// * `stream_id` - Stream ID for this connection
     /// * `address` - Target address (e.g., "example.com:80")
     ///
     /// # Returns
-    /// * RelayCell with BEGIN command
+    /// * `RelayCell` with BEGIN command
+    #[must_use]
     pub fn create_begin(stream_id: u16, address: &str) -> RelayCell {
         let mut data = address.as_bytes().to_vec();
         data.push(0); // Null terminator
@@ -195,14 +200,15 @@ impl StreamProtocol {
         }
     }
 
-    /// Create RELAY_DATA cell
+    /// Create `RELAY_DATA` cell
     ///
     /// # Arguments
     /// * `stream_id` - Stream ID
     /// * `data` - Data to send (max 498 bytes per cell)
     ///
     /// # Returns
-    /// * RelayCell with DATA command
+    /// * `RelayCell` with DATA command
+    #[must_use]
     pub fn create_data(stream_id: u16, data: &[u8]) -> RelayCell {
         RelayCell {
             command: RelayCommand::Data,
@@ -214,14 +220,15 @@ impl StreamProtocol {
         }
     }
 
-    /// Create RELAY_END cell
+    /// Create `RELAY_END` cell
     ///
     /// # Arguments
     /// * `stream_id` - Stream ID to close
     /// * `reason` - Reason code (0 = normal close)
     ///
     /// # Returns
-    /// * RelayCell with END command
+    /// * `RelayCell` with END command
+    #[must_use]
     pub fn create_end(stream_id: u16, reason: u8) -> RelayCell {
         RelayCell {
             command: RelayCommand::End,
@@ -233,14 +240,15 @@ impl StreamProtocol {
         }
     }
 
-    /// Create RELAY_SENDME cell (flow control)
+    /// Create `RELAY_SENDME` cell (flow control)
     ///
     /// # Arguments
     /// * `stream_id` - Stream ID (0 for circuit-level)
     ///
     /// # Returns
-    /// * RelayCell with SENDME command
-    pub fn create_sendme(stream_id: u16) -> RelayCell {
+    /// * `RelayCell` with SENDME command
+    #[must_use]
+    pub const fn create_sendme(stream_id: u16) -> RelayCell {
         RelayCell {
             command: RelayCommand::SendMe,
             recognized: 0,
@@ -251,10 +259,10 @@ impl StreamProtocol {
         }
     }
 
-    /// Parse RELAY_CONNECTED cell
+    /// Parse `RELAY_CONNECTED` cell
     ///
     /// # Arguments
-    /// * `cell` - RelayCell to parse
+    /// * `cell` - `RelayCell` to parse
     ///
     /// # Returns
     /// * Ok if connected, Error otherwise
@@ -265,10 +273,10 @@ impl StreamProtocol {
         Ok(())
     }
 
-    /// Parse RELAY_END cell
+    /// Parse `RELAY_END` cell
     ///
     /// # Arguments
-    /// * `cell` - RelayCell to parse
+    /// * `cell` - `RelayCell` to parse
     ///
     /// # Returns
     /// * Reason code for closure

@@ -24,7 +24,7 @@ use uuid::Uuid;
 /// **ZERO-COPY**: Provider ID keys use `Arc<str>` for zero-copy lookups (hot path optimization).
 #[derive(Debug, Clone)]
 pub struct CapabilityRegistry {
-    /// Map of provider_id -> RegisteredProvider
+    /// Map of `provider_id` -> `RegisteredProvider`
     /// **ZERO-COPY**: Keys are `Arc<str>` to eliminate clones during lookups
     providers: Arc<RwLock<HashMap<Arc<str>, RegisteredProvider>>>,
 
@@ -57,11 +57,13 @@ impl Default for HeartbeatConfig {
 
 impl CapabilityRegistry {
     /// Create a new capability registry with default configuration
+    #[must_use]
     pub fn new() -> Self {
         Self::with_config(HeartbeatConfig::default())
     }
 
     /// Create a new capability registry with custom configuration
+    #[must_use]
     pub fn with_config(config: HeartbeatConfig) -> Self {
         Self {
             providers: Arc::new(RwLock::new(HashMap::new())),
@@ -165,7 +167,7 @@ impl CapabilityRegistry {
 
     /// Update provider health via heartbeat
     ///
-    /// **ZERO-COPY**: Lookups use `&str` directly with `Arc<str>` keys (HashMap supports this).
+    /// **ZERO-COPY**: Lookups use `&str` directly with `Arc<str>` keys (`HashMap` supports this).
     ///
     /// # Arguments
     /// * `provider_id` - Provider identifier
@@ -174,7 +176,7 @@ impl CapabilityRegistry {
     ///
     /// # Returns
     /// * `Ok(())` - Heartbeat processed successfully
-    /// * `Err(SongbirdError)` - If provider not found or registration_id mismatch
+    /// * `Err(SongbirdError)` - If provider not found or `registration_id` mismatch
     pub async fn update_heartbeat(
         &self,
         provider_id: &str,
@@ -185,7 +187,7 @@ impl CapabilityRegistry {
 
         // `HashMap<Arc<str>, V>` supports `&str` lookups directly (zero-copy)
         let provider = providers.get_mut(provider_id).ok_or_else(|| SongbirdError::Registry {
-            message: format!("Provider '{}' not found", provider_id),
+            message: format!("Provider '{provider_id}' not found"),
             service_name: Some(provider_id.to_string()),
             operation: "heartbeat".to_string(),
         })?;
@@ -193,11 +195,10 @@ impl CapabilityRegistry {
         // Verify registration ID (`Arc<str>` can be compared with `&str`)
         if provider.registration_id.as_ref() != registration_id {
             return Err(SongbirdError::Security(songbird_types::SecurityError {
-                message: format!("Registration ID mismatch for provider '{}'", provider_id),
+                message: format!("Registration ID mismatch for provider '{provider_id}'"),
                 operation: Some("heartbeat".to_string()),
                 required_permission: Some(format!(
-                    "Valid registration_id for provider '{}'",
-                    provider_id
+                    "Valid registration_id for provider '{provider_id}'"
                 )),
                 context: Some("capability_provider_heartbeat".to_string()),
                 remediation: Some(
@@ -243,7 +244,7 @@ impl CapabilityRegistry {
         let mut providers = self.providers.write().await;
 
         providers.remove(provider_id).ok_or_else(|| SongbirdError::Registry {
-            message: format!("Provider '{}' not found", provider_id),
+            message: format!("Provider '{provider_id}' not found"),
             service_name: Some(provider_id.to_string()),
             operation: "unregister".to_string(),
         })?;
@@ -278,6 +279,7 @@ impl CapabilityRegistry {
             })
             .cloned()
             .collect();
+        drop(providers);
 
         debug!(
             capability = %capability,
@@ -291,18 +293,21 @@ impl CapabilityRegistry {
     /// Get a specific provider by ID
     pub async fn get_provider(&self, provider_id: &str) -> SongbirdResult<RegisteredProvider> {
         let providers = self.providers.read().await;
-
-        providers.get(provider_id).cloned().ok_or_else(|| SongbirdError::Registry {
-            message: format!("Provider '{}' not found", provider_id),
+        let result = providers.get(provider_id).cloned().ok_or_else(|| SongbirdError::Registry {
+            message: format!("Provider '{provider_id}' not found"),
             service_name: Some(provider_id.to_string()),
             operation: "get".to_string(),
-        })
+        });
+        drop(providers);
+        result
     }
 
     /// List all registered providers
     pub async fn list_providers(&self) -> Vec<RegisteredProvider> {
         let providers = self.providers.read().await;
-        providers.values().cloned().collect()
+        let result = providers.values().cloned().collect();
+        drop(providers);
+        result
     }
 
     /// Start background health monitoring task
@@ -374,7 +379,8 @@ impl CapabilityRegistry {
     }
 
     /// Get current heartbeat configuration
-    pub fn config(&self) -> &HeartbeatConfig {
+    #[must_use]
+    pub const fn config(&self) -> &HeartbeatConfig {
         &self.config
     }
 }

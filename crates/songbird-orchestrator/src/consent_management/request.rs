@@ -16,7 +16,8 @@ impl ConsentRequestBuilder {
         }
     }
 
-    pub fn with_cost(mut self, cost: f64) -> Self {
+    #[must_use]
+    pub const fn with_cost(mut self, cost: f64) -> Self {
         self.estimated_cost = Some(cost);
         self
     }

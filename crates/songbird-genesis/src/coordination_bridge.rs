@@ -9,13 +9,13 @@ use crate::error::{GenesisError, Result};
 // This allows genesis to work with or without the coordination crate
 #[cfg(feature = "coordination")]
 use songbird_primal_coordination::{
-    types::{Identity, NodeId, PrimalRequest, PrimalResponse},
+    types::{Identity, NodeId},
     CapabilityType, PrimalCoordinator,
 };
 
 /// Genesis coordination using capability-based discovery
 ///
-/// **EVOLUTION**: Replaces hardcoded BearDog connections with capability-based security
+/// **EVOLUTION**: Replaces hardcoded `BearDog` connections with capability-based security
 #[cfg(feature = "coordination")]
 pub struct GenesisCoordinationBridge {
     coordinator: Arc<PrimalCoordinator>,
@@ -44,11 +44,11 @@ impl GenesisCoordinationBridge {
         let node_id = NodeId(node_id_str.clone());
 
         // Use coordinator to execute genesis
-        let identity = self
-            .coordinator
-            .coordinate_genesis(node_id)
-            .await
-            .map_err(|e| GenesisError::CoordinationFailed(e.to_string()))?;
+        let identity: Identity = self.coordinator.coordinate_genesis(node_id).await.map_err(
+            |e: songbird_primal_coordination::PrimalCoordinationError| {
+                GenesisError::CoordinationFailed(e.to_string())
+            },
+        )?;
 
         // Return the coordination Identity directly
         Ok(identity)
@@ -60,9 +60,11 @@ impl GenesisCoordinationBridge {
     ///
     /// Returns an error if no security capability is available
     pub async fn request_security_capability(&self) -> Result<()> {
-        self.coordinator.request_capability(CapabilityType::Security).await.map_err(|e| {
-            GenesisError::CoordinationFailed(format!("Security capability not available: {e}"))
-        })?;
+        self.coordinator.request_capability(CapabilityType::Security).await.map_err(
+            |e: songbird_primal_coordination::PrimalCoordinationError| {
+                GenesisError::CoordinationFailed(format!("Security capability not available: {e}"))
+            },
+        )?;
         Ok(())
     }
 }

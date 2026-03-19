@@ -100,7 +100,7 @@ impl Default for RetryStrategy {
 impl CircuitBreakerConfig {
     /// Create a new circuit breaker configuration with custom settings
     #[must_use]
-    pub fn new(
+    pub const fn new(
         failure_threshold: u32,
         timeout: Duration,
         success_threshold: u32,
@@ -126,7 +126,7 @@ impl CircuitBreakerConfig {
 
     /// Check if the configuration is valid
     #[must_use]
-    pub fn is_valid(&self) -> bool {
+    pub const fn is_valid(&self) -> bool {
         self.failure_threshold > 0
             && self.success_threshold > 0
             && self.half_open_max_requests > 0
@@ -137,7 +137,7 @@ impl CircuitBreakerConfig {
 impl RetryConfig {
     /// Create a new retry configuration with custom settings
     #[must_use]
-    pub fn new(max_attempts: u32, initial_delay: Duration, backoff_multiplier: f64) -> Self {
+    pub const fn new(max_attempts: u32, initial_delay: Duration, backoff_multiplier: f64) -> Self {
         Self {
             max_attempts,
             initial_delay,

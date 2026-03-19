@@ -24,7 +24,8 @@ pub struct Alert {
 
 impl Alert {
     /// Create a new Alert message
-    pub fn new(level: AlertLevel, description: AlertDescription) -> Self {
+    #[must_use]
+    pub const fn new(level: AlertLevel, description: AlertDescription) -> Self {
         Self {
             level,
             description,
@@ -32,7 +33,8 @@ impl Alert {
     }
 
     /// Create a fatal alert
-    pub fn fatal(description: AlertDescription) -> Self {
+    #[must_use]
+    pub const fn fatal(description: AlertDescription) -> Self {
         Self {
             level: AlertLevel::Fatal,
             description,
@@ -40,43 +42,47 @@ impl Alert {
     }
 
     /// Create a warning alert (deprecated in TLS 1.3, but kept for compatibility)
-    pub fn warning(description: AlertDescription) -> Self {
+    #[must_use]
+    pub const fn warning(description: AlertDescription) -> Self {
         Self {
             level: AlertLevel::Warning,
             description,
         }
     }
 
-    /// Create a close_notify alert (graceful shutdown)
-    pub fn close_notify() -> Self {
+    /// Create a `close_notify` alert (graceful shutdown)
+    #[must_use]
+    pub const fn close_notify() -> Self {
         Self {
             level: AlertLevel::Warning,
             description: AlertDescription::CloseNotify,
         }
     }
 
-    /// Convert from TlsError to Alert
-    pub fn from_error(error: &TlsError) -> Self {
+    /// Convert from `TlsError` to Alert
+    #[must_use]
+    pub const fn from_error(error: &TlsError) -> Self {
         let description = match error {
             TlsError::DecryptError => AlertDescription::DecryptError,
             TlsError::CertificateError(_) => AlertDescription::BadCertificate,
             TlsError::HandshakeFailure(_) => AlertDescription::HandshakeFailure,
             TlsError::Unsupported(_) => AlertDescription::ProtocolVersion,
-            TlsError::ProtocolError(_) => AlertDescription::UnexpectedMessage,
+            TlsError::ProtocolError(_)
+            | TlsError::UnexpectedMessage {
+                ..
+            } => AlertDescription::UnexpectedMessage,
             TlsError::InvalidParameter(_) => AlertDescription::IllegalParameter,
             TlsError::RecordTooLarge {
                 ..
             } => AlertDescription::RecordOverflow,
-            TlsError::UnexpectedMessage {
-                ..
-            } => AlertDescription::UnexpectedMessage,
             _ => AlertDescription::InternalError,
         };
 
-        Alert::fatal(description)
+        Self::fatal(description)
     }
 
-    /// Check if this is a close_notify alert
+    /// Check if this is a `close_notify` alert
+    #[must_use]
     pub fn is_close_notify(&self) -> bool {
         self.description == AlertDescription::CloseNotify
     }
@@ -93,16 +99,15 @@ pub enum AlertLevel {
 impl From<u8> for AlertLevel {
     fn from(value: u8) -> Self {
         match value {
-            1 => AlertLevel::Warning,
-            2 => AlertLevel::Fatal,
-            _ => AlertLevel::Fatal, // Default to fatal for unknown levels
+            1 => Self::Warning,
+            _ => Self::Fatal, // Default to fatal for unknown levels
         }
     }
 }
 
 impl From<AlertLevel> for u8 {
     fn from(level: AlertLevel) -> Self {
-        level as u8
+        level as Self
     }
 }
 
@@ -142,41 +147,40 @@ pub enum AlertDescription {
 impl From<u8> for AlertDescription {
     fn from(value: u8) -> Self {
         match value {
-            0 => AlertDescription::CloseNotify,
-            10 => AlertDescription::UnexpectedMessage,
-            20 => AlertDescription::BadRecordMac,
-            22 => AlertDescription::RecordOverflow,
-            40 => AlertDescription::HandshakeFailure,
-            42 => AlertDescription::BadCertificate,
-            43 => AlertDescription::UnsupportedCertificate,
-            44 => AlertDescription::CertificateRevoked,
-            45 => AlertDescription::CertificateExpired,
-            46 => AlertDescription::CertificateUnknown,
-            47 => AlertDescription::IllegalParameter,
-            48 => AlertDescription::UnknownCa,
-            49 => AlertDescription::AccessDenied,
-            50 => AlertDescription::DecodeError,
-            51 => AlertDescription::DecryptError,
-            70 => AlertDescription::ProtocolVersion,
-            71 => AlertDescription::InsufficientSecurity,
-            80 => AlertDescription::InternalError,
-            86 => AlertDescription::InappropriateFallback,
-            90 => AlertDescription::UserCanceled,
-            109 => AlertDescription::MissingExtension,
-            110 => AlertDescription::UnsupportedExtension,
-            112 => AlertDescription::UnrecognizedName,
-            113 => AlertDescription::BadCertificateStatusResponse,
-            115 => AlertDescription::UnknownPskIdentity,
-            116 => AlertDescription::CertificateRequired,
-            120 => AlertDescription::NoApplicationProtocol,
-            _ => AlertDescription::InternalError, // Default for unknown codes
+            0 => Self::CloseNotify,
+            10 => Self::UnexpectedMessage,
+            20 => Self::BadRecordMac,
+            22 => Self::RecordOverflow,
+            40 => Self::HandshakeFailure,
+            42 => Self::BadCertificate,
+            43 => Self::UnsupportedCertificate,
+            44 => Self::CertificateRevoked,
+            45 => Self::CertificateExpired,
+            46 => Self::CertificateUnknown,
+            47 => Self::IllegalParameter,
+            48 => Self::UnknownCa,
+            49 => Self::AccessDenied,
+            50 => Self::DecodeError,
+            51 => Self::DecryptError,
+            70 => Self::ProtocolVersion,
+            71 => Self::InsufficientSecurity,
+            86 => Self::InappropriateFallback,
+            90 => Self::UserCanceled,
+            109 => Self::MissingExtension,
+            110 => Self::UnsupportedExtension,
+            112 => Self::UnrecognizedName,
+            113 => Self::BadCertificateStatusResponse,
+            115 => Self::UnknownPskIdentity,
+            116 => Self::CertificateRequired,
+            120 => Self::NoApplicationProtocol,
+            _ => Self::InternalError,
         }
     }
 }
 
 impl From<AlertDescription> for u8 {
     fn from(desc: AlertDescription) -> Self {
-        desc as u8
+        desc as Self
     }
 }
 

@@ -1,11 +1,11 @@
-//! Public API for UniBin integration
+//! Public API for `UniBin` integration
 //!
 //! This module exposes the main entry points and types needed for
 //! the unified `songbird` binary to route to orchestrator functionality.
 //!
 //! # Architecture
 //!
-//! The bin_interface is organized by CLI command:
+//! The `bin_interface` is organized by CLI command:
 //! - `server`: Server mode with IPC integration
 //! - `doctor`: Health diagnostics and system checks
 //! - `config`: Configuration management
@@ -44,7 +44,7 @@ pub struct ServerArgs {
     /// - External API access
     ///
     /// Required when discovery is enabled (default).
-    /// Environment-aware: Respects SONGBIRD_HTTP_PORT, SONGBIRD_PORT, or PORT.
+    /// Environment-aware: Respects `SONGBIRD_HTTP_PORT`, `SONGBIRD_PORT`, or PORT.
     #[arg(long, short, default_value_t = crate::env_config::http_port())]
     pub port: u16,
 
@@ -81,10 +81,10 @@ pub struct ServerArgs {
     #[arg(long)]
     pub socket: Option<String>,
 
-    /// BearDog socket path for crypto operations (defaults based on family_id)
+    /// `BearDog` socket path for crypto operations (defaults based on `family_id`)
     ///
     /// If not specified, uses XDG-compliant discovery:
-    /// 1. $BEARDOG_SOCKET env var
+    /// 1. $`BEARDOG_SOCKET` env var
     /// 2. $XDG_RUNTIME_DIR/biomeos/beardog-$FAMILY_ID.sock
     /// 3. /tmp/beardog-nat0.sock (fallback)
     #[arg(long)]

@@ -28,10 +28,10 @@ use tracing::{info, warn};
 /// ## Configuration
 ///
 /// The client supports multiple configuration modes:
-/// - `standard()` - Sensible defaults with User-Agent and domain rules
-/// - `browser_like()` - Mimics browser behavior for web scraping
-/// - `api()` - Optimized for REST API calls
-/// - `minimal()` - No default headers
+/// - [`standard()`](HttpClientConfig::standard) - Sensible defaults with User-Agent and domain rules
+/// - [`browser_like()`](HttpClientConfig::browser_like) - Mimics browser behavior for web scraping
+/// - [`api()`](HttpClientConfig::api) - Optimized for REST API calls
+/// - [`minimal()`](HttpClientConfig::minimal) - No default headers
 #[derive(Clone)]
 pub struct SongbirdHttpClient {
     crypto: Arc<dyn CryptoCapability>,
@@ -45,6 +45,7 @@ pub struct SongbirdHttpClient {
 impl std::fmt::Debug for SongbirdHttpClient {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("SongbirdHttpClient")
+            .field("crypto", &"<dyn CryptoCapability>")
             .field("tls_config", &self.tls_config)
             .field(
                 "http_config",
@@ -66,8 +67,8 @@ impl SongbirdHttpClient {
     ///
     /// # Note
     ///
-    /// This client uses the CryptoCapability trait for agnostic crypto operations.
-    /// The underlying provider can be BearDog or any other implementation.
+    /// This client uses the `CryptoCapability` trait for agnostic crypto operations.
+    /// The underlying provider can be `BearDog` or any other implementation.
     pub fn new(socket_path: impl Into<String>) -> Self {
         Self::with_tls_config(socket_path, TlsConfig::default(), None)
     }
@@ -75,10 +76,10 @@ impl SongbirdHttpClient {
     /// Create from environment variable with standard HTTP config
     ///
     /// Automatically detects Neural API mode or Direct mode based on environment:
-    /// - BEARDOG_MODE=neural (default): Routes through Neural API for capability.call
-    /// - BEARDOG_MODE=direct (testing): Direct connection to BearDog
+    /// - `BEARDOG_MODE=neural` (default): Routes through Neural API for `capability.call`
+    /// - `BEARDOG_MODE=direct` (testing): Direct connection to `BearDog`
     ///
-    /// Uses NEURAL_API_SOCKET or BEARDOG_SOCKET accordingly.
+    /// Uses `NEURAL_API_SOCKET` or `BEARDOG_SOCKET` accordingly.
     pub fn from_env() -> Self {
         info!("🌐 Creating Songbird HTTP client from environment");
 
@@ -173,7 +174,7 @@ impl SongbirdHttpClient {
 
     /// Create with explicit crypto capability provider
     ///
-    /// Use this when you want to provide your own CryptoCapability implementation.
+    /// Use this when you want to provide your own `CryptoCapability` implementation.
     pub fn with_crypto(
         crypto: Arc<dyn CryptoCapability>,
         tls_config: TlsConfig,
@@ -205,12 +206,14 @@ impl SongbirdHttpClient {
     }
 
     /// Get the current HTTP configuration
-    pub fn http_config(&self) -> &HttpClientConfig {
+    #[must_use]
+    pub const fn http_config(&self) -> &HttpClientConfig {
         &self.http_config
     }
 
     /// Get mutable reference to HTTP configuration
-    pub fn http_config_mut(&mut self) -> &mut HttpClientConfig {
+    #[must_use]
+    pub const fn http_config_mut(&mut self) -> &mut HttpClientConfig {
         &mut self.http_config
     }
 
@@ -241,7 +244,7 @@ impl SongbirdHttpClient {
         info!("🌐 HTTP {} {}", method, url);
 
         // Parse URL into URI
-        let parsed_uri: Uri = url.parse().map_err(|e| Error::InvalidUrl(format!("{}", e)))?;
+        let parsed_uri: Uri = url.parse().map_err(|e| Error::InvalidUrl(format!("{e}")))?;
 
         let scheme = parsed_uri
             .scheme_str()
@@ -278,10 +281,10 @@ impl SongbirdHttpClient {
         }
 
         // For HTTP, establish plain TCP connection
-        let addr = format!("{}:{}", host, port);
+        let addr = format!("{host}:{port}");
         let tcp_stream = TcpStream::connect(&addr)
             .await
-            .map_err(|e| Error::Connection(format!("Failed to connect to {}: {}", addr, e)))?;
+            .map_err(|e| Error::Connection(format!("Failed to connect to {addr}: {e}")))?;
 
         // Use plain connection for HTTP
         self.http_request(tcp_stream, &parsed_uri, method, headers, body).await
@@ -301,9 +304,9 @@ impl SongbirdHttpClient {
     ///
     /// # Redirect Behavior
     ///
-    /// - `RedirectMode::None`: Returns redirect response as-is
-    /// - `RedirectMode::Follow`: Follows all redirects (max configured)
-    /// - `RedirectMode::SameOrigin`: Only follows redirects to same origin
+    /// - [`RedirectMode::None`]: Returns redirect response as-is
+    /// - [`RedirectMode::Follow`]: Follows all redirects (max configured)
+    /// - [`RedirectMode::SameOrigin`]: Only follows redirects to same origin
     ///
     /// # Errors
     ///
@@ -331,7 +334,7 @@ impl SongbirdHttpClient {
             if !redirect_handler.should_follow(
                 &response,
                 redirects_followed,
-                &self.http_config.redirect_mode,
+                self.http_config.redirect_mode,
             ) {
                 // Check if it's actually a redirect that we chose not to follow
                 if RedirectHandler::is_redirect_status(response.status) {
@@ -344,8 +347,7 @@ impl SongbirdHttpClient {
                         }
                         RedirectMode::SameOrigin => {
                             if let Some(location) = response.headers.get("location") {
-                                let new_url =
-                                    redirect_handler.resolve_url(&current_url, location)?;
+                                let new_url = RedirectHandler::resolve_url(&current_url, location)?;
                                 if !redirect_handler
                                     .is_same_origin(&current_url, &new_url)
                                     .unwrap_or(false)
@@ -375,7 +377,7 @@ impl SongbirdHttpClient {
             })?;
 
             // Resolve relative URLs
-            let new_url = redirect_handler.resolve_url(&current_url, location)?;
+            let new_url = RedirectHandler::resolve_url(&current_url, location)?;
 
             info!(
                 "↪️  Following redirect {}/{}: {} -> {}",
@@ -415,7 +417,7 @@ impl SongbirdHttpClient {
                 headers,
                 body,
                 |uri, method, headers, body| self.build_http_request(uri, method, headers, body),
-                |data| self.parse_http_response(data),
+                Self::parse_http_response,
             )
             .await
     }
@@ -438,7 +440,7 @@ impl SongbirdHttpClient {
 
     /// Build HTTP request bytes with adaptive headers
     ///
-    /// Uses HttpClientConfig to apply:
+    /// Uses `HttpClientConfig` to apply:
     /// - Default User-Agent
     /// - Domain-specific header rules
     /// - Caller-provided headers (override everything)
@@ -453,7 +455,7 @@ impl SongbirdHttpClient {
     }
 
     /// Parse HTTP response bytes
-    fn parse_http_response(&self, data: &[u8]) -> Result<HttpResponse> {
+    fn parse_http_response(data: &[u8]) -> Result<HttpResponse> {
         ResponseParser::parse(data)
     }
 
@@ -534,11 +536,10 @@ mod tests {
 
     #[test]
     fn test_parse_http_response() {
-        let client = SongbirdHttpClient::new("/tmp/beardog.sock");
         let response_data =
             b"HTTP/1.1 200 OK\r\nContent-Type: application/json\r\n\r\n{\"result\":\"ok\"}";
 
-        let response = client.parse_http_response(response_data).unwrap();
+        let response = SongbirdHttpClient::parse_http_response(response_data).unwrap();
         assert_eq!(response.status, 200);
         assert_eq!(response.headers.get("content-type"), Some(&"application/json".to_string()));
     }
@@ -549,7 +550,8 @@ mod tests {
 
         // Absolute URL should be returned as-is
         let resolved =
-            handler.resolve_url("https://example.com/path", "https://other.com/new-path").unwrap();
+            RedirectHandler::resolve_url("https://example.com/path", "https://other.com/new-path")
+                .unwrap();
         assert_eq!(resolved, "https://other.com/new-path");
     }
 
@@ -558,7 +560,8 @@ mod tests {
         let handler = RedirectHandler::new(10);
 
         // Absolute path (starts with /) should use base's scheme and host
-        let resolved = handler.resolve_url("https://example.com/old-path", "/new-path").unwrap();
+        let resolved =
+            RedirectHandler::resolve_url("https://example.com/old-path", "/new-path").unwrap();
         assert_eq!(resolved, "https://example.com/new-path");
     }
 
@@ -568,7 +571,7 @@ mod tests {
 
         // Relative path should be resolved relative to base
         let resolved =
-            handler.resolve_url("https://example.com/path/to/page", "other-page").unwrap();
+            RedirectHandler::resolve_url("https://example.com/path/to/page", "other-page").unwrap();
         assert_eq!(resolved, "https://example.com/path/to/other-page");
     }
 
@@ -577,7 +580,8 @@ mod tests {
         let handler = RedirectHandler::new(10);
 
         // Preserve port in redirect
-        let resolved = handler.resolve_url("https://example.com:8443/path", "/new-path").unwrap();
+        let resolved =
+            RedirectHandler::resolve_url("https://example.com:8443/path", "/new-path").unwrap();
         assert_eq!(resolved, "https://example.com:8443/new-path");
     }
 
@@ -586,11 +590,11 @@ mod tests {
         let handler = RedirectHandler::new(10);
 
         // Absolute URL
-        let host = handler.extract_host("https://other.com/path", "https://example.com");
+        let host = RedirectHandler::extract_host("https://other.com/path", "https://example.com");
         assert_eq!(host, Some("other.com".to_string()));
 
         // Relative URL should use base host
-        let host = handler.extract_host("/new-path", "https://example.com/old-path");
+        let host = RedirectHandler::extract_host("/new-path", "https://example.com/old-path");
         assert_eq!(host, Some("example.com".to_string()));
     }
 }

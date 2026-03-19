@@ -152,7 +152,7 @@ impl GenesisWitnessProof {
 
     /// Get the number of primal witnesses
     #[must_use]
-    pub fn witness_count(&self) -> usize {
+    pub const fn witness_count(&self) -> usize {
         self.primal_witnesses.len()
     }
 

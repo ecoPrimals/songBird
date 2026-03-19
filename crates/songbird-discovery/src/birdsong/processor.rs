@@ -292,7 +292,7 @@ impl BirdSongProcessor {
     ///
     /// Allows external code to check configuration without direct field access.
     #[must_use]
-    pub fn config(&self) -> &BirdSongConfig {
+    pub const fn config(&self) -> &BirdSongConfig {
         &self.config
     }
 
@@ -399,16 +399,16 @@ impl BirdSongProcessor {
         encryption: &dyn BirdSongEncryption,
         beacon: &DarkForestBeacon,
     ) -> Result<Option<BeaconPayload>> {
-        match encryption.try_decrypt_beacon(&beacon.encrypted_payload, &beacon.nonce).await? {
-            Some(plaintext) => match BeaconPayload::from_bytes(&plaintext) {
+        encryption.try_decrypt_beacon(&beacon.encrypted_payload, &beacon.nonce).await?.map_or_else(
+            || Ok(None),
+            |plaintext| match BeaconPayload::from_bytes(&plaintext) {
                 Ok(payload) => Ok(Some(payload)),
                 Err(e) => {
-                    warn!("Failed to parse beacon payload: {}", e);
+                    warn!("Failed to parse beacon payload: {e}");
                     Ok(None)
                 }
             },
-            None => Ok(None),
-        }
+        )
     }
 
     /// Try to decrypt with specific beacon ID

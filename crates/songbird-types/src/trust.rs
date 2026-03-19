@@ -5,7 +5,7 @@
 //! ## Trust Levels
 //!
 //! - **Level 0 (None)**: No trust - reject connection
-//! - **Level 1 (Limited)**: Same genetic family - BirdSong coordination only
+//! - **Level 1 (Limited)**: Same genetic family - `BirdSong` coordination only
 //! - **Level 2 (Elevated)**: Human approved - full federation
 //! - **Level 3 (Highest)**: Human entropy - sensitive operations
 //!
@@ -23,7 +23,7 @@ use std::collections::HashMap;
 ///
 /// Each level grants specific capabilities with clear boundaries.
 ///
-/// **Phase 1 (v3.13.1)**: Accepts both integer and string formats from BearDog!
+/// **Phase 1 (v3.13.1)**: Accepts both integer and string formats from `BearDog`!
 /// - Deserialize: Accepts integer OR string (flexible!)
 /// - Serialize: Always produces integer (compact, efficient)
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -37,7 +37,7 @@ pub enum TrustLevel {
 
     /// Limited trust - same genetic family
     ///
-    /// Allowed: BirdSong coordination, health checks, capability discovery
+    /// Allowed: `BirdSong` coordination, health checks, capability discovery
     /// Denied: Data access, commands, full federation
     /// Philosophy: "Can hear the song, cannot enter the nest"
     Limited = 1,
@@ -53,11 +53,11 @@ pub enum TrustLevel {
     ///
     /// Allowed: Everything including sensitive operations
     /// Denied: Nothing
-    /// Requirement: Human entropy (SoloKey, Phone HSM)
+    /// Requirement: Human entropy (`SoloKey`, Phone HSM)
     Highest = 3,
 }
 
-/// Custom serializer for TrustLevel (always serialize as integer)
+/// Custom serializer for `TrustLevel` (always serialize as integer)
 impl Serialize for TrustLevel {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
@@ -67,9 +67,9 @@ impl Serialize for TrustLevel {
     }
 }
 
-/// Custom deserializer for TrustLevel (Phase 1: Accept both int and string)
+/// Custom deserializer for `TrustLevel` (Phase 1: Accept both int and string)
 ///
-/// **BearDog Compatibility**:
+/// **`BearDog` Compatibility**:
 /// - Accepts integer: 0, 1, 2, 3
 /// - Accepts string: "none", "limited", "elevated", "highest"
 /// - Accepts aliases: "anonymous", "basic", "medium", "explicit"
@@ -110,8 +110,7 @@ impl<'de> Deserialize<'de> for TrustLevel {
                 "highest" | "explicit" | "full" => Ok(Self::Highest),
 
                 _ => Err(serde::de::Error::custom(format!(
-                    "Unknown trust level string: '{}' (expected: none, limited, elevated, highest)",
-                    s
+                    "Unknown trust level string: '{s}' (expected: none, limited, elevated, highest)"
                 ))),
             },
         }
@@ -120,7 +119,8 @@ impl<'de> Deserialize<'de> for TrustLevel {
 
 impl TrustLevel {
     /// Get trust level from numeric value
-    pub fn from_u8(value: u8) -> Option<Self> {
+    #[must_use]
+    pub const fn from_u8(value: u8) -> Option<Self> {
         match value {
             0 => Some(Self::None),
             1 => Some(Self::Limited),
@@ -131,11 +131,13 @@ impl TrustLevel {
     }
 
     /// Get numeric value
+    #[must_use]
     pub const fn as_u8(self) -> u8 {
         self as u8
     }
 
     /// Get human-readable name
+    #[must_use]
     pub const fn name(self) -> &'static str {
         match self {
             Self::None => "none",
@@ -145,7 +147,8 @@ impl TrustLevel {
         }
     }
 
-    /// Get BearDog alias for compatibility
+    /// Get `BearDog` alias for compatibility
+    #[must_use]
     pub const fn beardog_alias(self) -> &'static str {
         match self {
             Self::None => "anonymous",
@@ -156,6 +159,7 @@ impl TrustLevel {
     }
 
     /// Get description
+    #[must_use]
     pub const fn description(self) -> &'static str {
         match self {
             Self::None => "No trust - reject connection",
@@ -166,6 +170,7 @@ impl TrustLevel {
     }
 
     /// Get default allowed capabilities for this level
+    #[must_use]
     pub fn default_allowed_capabilities(self) -> Vec<String> {
         match self {
             Self::None => vec![],
@@ -190,6 +195,7 @@ impl TrustLevel {
     }
 
     /// Get default denied capabilities for this level
+    #[must_use]
     pub fn default_denied_capabilities(self) -> Vec<String> {
         match self {
             Self::None => vec!["*".to_string()],
@@ -261,6 +267,7 @@ impl TrustEvaluation {
     }
 
     /// Check if an operation is allowed
+    #[must_use]
     pub fn is_operation_allowed(&self, operation: &str) -> bool {
         is_operation_allowed(operation, &self.allowed_capabilities, &self.denied_capabilities)
     }
@@ -307,7 +314,7 @@ pub struct ElevationPath {
 /// Evidence for trust elevation
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ElevationEvidence {
-    /// Type of evidence ("human_approval", "human_entropy")
+    /// Type of evidence (`human_approval`, `human_entropy`)
     pub evidence_type: String,
 
     /// Timestamp of evidence collection
@@ -324,6 +331,7 @@ pub struct ElevationEvidence {
 /// Check if operation matches capability pattern
 ///
 /// Supports wildcards: "data/*" matches "data/read", "data/write"
+#[must_use]
 pub fn is_operation_allowed(operation: &str, allowed: &[String], denied: &[String]) -> bool {
     // Check denied first (explicit deny overrides allow)
     if denied.iter().any(|pattern| matches_pattern(operation, pattern)) {
@@ -339,11 +347,9 @@ fn matches_pattern(operation: &str, pattern: &str) -> bool {
         return true; // Wildcard matches everything
     }
 
-    if let Some(prefix) = pattern.strip_suffix("/*") {
-        operation.starts_with(prefix)
-    } else {
-        operation == pattern
-    }
+    pattern
+        .strip_suffix("/*")
+        .map_or_else(|| operation == pattern, |prefix| operation.starts_with(prefix))
 }
 
 #[cfg(test)]

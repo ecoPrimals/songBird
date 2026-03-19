@@ -306,12 +306,12 @@ impl SovereigntyAwareAdapter {
 
     /// Get adapter configuration
     #[must_use]
-    pub fn get_config(&self) -> &SovereigntyAdapterConfig {
+    pub const fn get_config(&self) -> &SovereigntyAdapterConfig {
         &self.config
     }
 
     /// Update adapter configuration
-    pub fn update_config(&mut self, config: SovereigntyAdapterConfig) {
+    pub const fn update_config(&mut self, config: SovereigntyAdapterConfig) {
         self.config = config;
     }
 

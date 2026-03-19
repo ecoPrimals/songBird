@@ -1,7 +1,7 @@
 //! Post-handshake message processing
 //!
 //! RFC 8446 Section 4.6: After the handshake completes, the server may send
-//! NewSessionTicket messages and other post-handshake content. This module
+//! `NewSessionTicket` messages and other post-handshake content. This module
 //! reads and decrypts those messages to keep the stream in sync for HTTP.
 
 use super::core::TlsHandshake;
@@ -12,7 +12,7 @@ use tokio::time::{timeout, Duration};
 use tracing::{error, info, trace, warn};
 
 /// Post-handshake message processing result
-pub(crate) struct PostHandshakeResult {
+pub struct PostHandshakeResult {
     /// Number of post-handshake messages consumed
     pub _message_count: u32,
     /// Final read sequence number (for session key initialization)
@@ -20,13 +20,13 @@ pub(crate) struct PostHandshakeResult {
 }
 
 impl TlsHandshake {
-    /// Consume all post-handshake messages (NewSessionTicket, etc.)
+    /// Consume all post-handshake messages (`NewSessionTicket`, etc.)
     ///
-    /// RFC 8446 Section 4.6: Server MAY send multiple NewSessionTicket messages
+    /// RFC 8446 Section 4.6: Server MAY send multiple `NewSessionTicket` messages
     /// after the handshake. We must read and decrypt them to avoid stream desync
     /// when sending HTTP requests.
     pub(crate) async fn consume_post_handshake_messages(
-        &mut self,
+        &self,
         stream: &mut TcpStream,
         secrets: &TlsApplicationSecrets,
     ) -> PostHandshakeResult {
@@ -137,7 +137,7 @@ impl TlsHandshake {
             }
             _ => self.crypto.decrypt(&secrets.server_write_key, &nonce, encrypted_data, &aad).await,
         }
-        .map_err(|e| Error::TlsHandshake(format!("Post-handshake decryption failed: {}", e)))?;
+        .map_err(|e| Error::TlsHandshake(format!("Post-handshake decryption failed: {e}")))?;
 
         // RFC 8446: TLSInnerPlaintext has ContentType as last non-zero byte
         if let Some(&inner_type) = plaintext.last() {
@@ -181,8 +181,8 @@ impl TlsHandshake {
 
 /// Types of post-handshake messages
 #[derive(Debug, PartialEq, Eq)]
-pub(crate) enum PostHandshakeType {
-    /// Handshake message (e.g., NewSessionTicket)
+pub enum PostHandshakeType {
+    /// Handshake message (e.g., `NewSessionTicket`)
     Handshake,
     /// TLS Alert
     Alert,

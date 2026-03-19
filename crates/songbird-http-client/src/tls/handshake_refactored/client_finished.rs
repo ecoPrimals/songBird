@@ -14,10 +14,10 @@ use tracing::{debug, error, info, trace};
 impl TlsHandshake {
     /// Send client Finished message (RFC 8446 Section 4.4.4)
     ///
-    /// Computes the transcript hash, delegates verify_data computation to BearDog,
+    /// Computes the transcript hash, delegates `verify_data` computation to `BearDog`,
     /// builds and encrypts the Finished handshake message, then sends it.
     pub(crate) async fn send_client_finished(
-        &mut self,
+        &self,
         stream: &mut TcpStream,
         handshake_keys: &TlsSecrets,
     ) -> Result<()> {
@@ -78,7 +78,7 @@ impl TlsHandshake {
         Ok(())
     }
 
-    /// Build a Finished handshake message from verify_data
+    /// Build a Finished handshake message from `verify_data`
     fn build_finished_message(verify_data: &[u8]) -> Vec<u8> {
         let mut msg = Vec::with_capacity(4 + verify_data.len());
         msg.push(0x14); // HandshakeType: Finished

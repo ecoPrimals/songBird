@@ -81,7 +81,8 @@ impl Graph {
     ///     GraphMetadata::default(),
     /// );
     /// ```
-    pub fn new(
+    #[must_use]
+    pub const fn new(
         id: String,
         name: String,
         nodes: Vec<GraphNode>,
@@ -98,11 +99,13 @@ impl Graph {
     }
 
     /// Get a node by ID
+    #[must_use]
     pub fn get_node(&self, node_id: &str) -> Option<&GraphNode> {
         self.nodes.iter().find(|n| n.id == node_id)
     }
 
     /// Get all entry points (nodes with no incoming edges)
+    #[must_use]
     pub fn entry_points(&self) -> Vec<&GraphNode> {
         let has_incoming: HashMap<&str, bool> =
             self.edges.iter().map(|e| (e.to.as_str(), true)).collect();
@@ -111,6 +114,7 @@ impl Graph {
     }
 
     /// Get all exit points (nodes with no outgoing edges)
+    #[must_use]
     pub fn exit_points(&self) -> Vec<&GraphNode> {
         let has_outgoing: HashMap<&str, bool> =
             self.edges.iter().map(|e| (e.from.as_str(), true)).collect();
@@ -203,8 +207,8 @@ pub struct GraphEdge {
     /// }
     /// ```
     ///
-    /// This maps the "encrypted_data" output from the source node to the
-    /// "data_to_store" input of the target node.
+    /// This maps the "`encrypted_data`" output from the source node to the
+    /// "`data_to_store`" input of the target node.
     pub data_mapping: Option<HashMap<String, String>>,
 }
 
@@ -263,7 +267,8 @@ pub struct ValidationResult {
 
 impl ValidationResult {
     /// Create a new validation result indicating success
-    pub fn valid() -> Self {
+    #[must_use]
+    pub const fn valid() -> Self {
         Self {
             valid: true,
             issues: vec![],
@@ -273,7 +278,8 @@ impl ValidationResult {
     }
 
     /// Create a new validation result indicating failure
-    pub fn invalid(issues: Vec<ValidationIssue>) -> Self {
+    #[must_use]
+    pub const fn invalid(issues: Vec<ValidationIssue>) -> Self {
         Self {
             valid: false,
             issues,
@@ -283,18 +289,21 @@ impl ValidationResult {
     }
 
     /// Add a warning to the result
+    #[must_use]
     pub fn with_warning(mut self, warning: String) -> Self {
         self.warnings.push(warning);
         self
     }
 
     /// Add informational data
+    #[must_use]
     pub fn with_info(mut self, info: ValidationInfo) -> Self {
         self.info = Some(info);
         self
     }
 
     /// Add multiple issues
+    #[must_use]
     pub fn with_issues(mut self, issues: Vec<ValidationIssue>) -> Self {
         // Check for errors before consuming the vector
         let has_errors = issues.iter().any(|i| i.severity == IssueSeverity::Error);
@@ -345,6 +354,7 @@ impl ValidationIssue {
     }
 
     /// Add node IDs to the issue
+    #[must_use]
     pub fn with_nodes(mut self, nodes: Vec<String>) -> Self {
         self.nodes = nodes;
         self

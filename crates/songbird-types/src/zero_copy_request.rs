@@ -46,7 +46,7 @@ pub struct ZeroCopyServiceRequest {
     #[serde(with = "arc_str_serde")]
     pub method: Arc<str>,
 
-    /// Request payload (already behind Arc in serde_json::Value)
+    /// Request payload (already behind Arc in `serde_json::Value`)
     pub payload: serde_json::Value,
 
     /// Request headers (values are `Arc<str>` for zero-copy)
@@ -93,6 +93,7 @@ impl ZeroCopyServiceRequest {
     }
 
     /// Get header value (cheap Arc clone if needed)
+    #[must_use]
     pub fn get_header(&self, key: &str) -> Option<Arc<str>> {
         self.headers.iter().find(|(k, _)| k.as_ref() == key).map(|(_, v)| Arc::clone(v))
     }
@@ -119,7 +120,7 @@ mod arc_str_serde {
     }
 }
 
-/// Serde support for HashMap<`Arc<str>`, `Arc<str>`>
+/// Serde support for `HashMap`<`Arc<str>`, `Arc<str>`>
 mod arc_str_hashmap_serde {
     use serde::{Deserialize, Deserializer, Serialize, Serializer};
     use std::collections::HashMap;

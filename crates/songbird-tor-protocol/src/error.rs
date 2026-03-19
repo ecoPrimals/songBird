@@ -24,7 +24,7 @@ pub enum Error {
     #[error("Parse error: {0}")]
     Parse(String),
 
-    /// Crypto error (from BearDog)
+    /// Crypto error (from `BearDog`)
     #[error("Crypto error: {0}")]
     Crypto(String),
 

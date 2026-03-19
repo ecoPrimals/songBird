@@ -25,7 +25,7 @@ rusb = { version = "0.9", optional = true }            # C-based USB (fallback)
 serialport = { version = "4.5", optional = true }      # UART transport
 
 # Async runtime (Tokio for desktop, Embassy for embedded)
-tokio = { version = "1", features = ["sync", "time", "macros"] }
+tokio = { version = "1", features = ["sync", "time", "macros", "rt", "rt-multi-thread"] }
 
 # Error handling (modern, zero-cost)
 thiserror = "1.0"

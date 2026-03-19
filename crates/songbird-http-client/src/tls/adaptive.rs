@@ -57,7 +57,8 @@ pub enum ExtensionType {
 
 impl ExtensionType {
     /// Get the wire format ID for this extension
-    pub fn id(&self) -> u16 {
+    #[must_use]
+    pub const fn id(&self) -> u16 {
         match self {
             Self::Sni => 0x0000,
             Self::Alpn => 0x0010,
@@ -70,7 +71,8 @@ impl ExtensionType {
     }
 
     /// Get human-readable name
-    pub fn name(&self) -> &'static str {
+    #[must_use]
+    pub const fn name(&self) -> &'static str {
         match self {
             Self::Sni => "server_name",
             Self::Alpn => "alpn",
@@ -93,6 +95,7 @@ pub struct AdaptiveExtensions {
 
 impl AdaptiveExtensions {
     /// Create a new adaptive extension manager
+    #[must_use]
     pub fn new(strategy: ExtensionStrategy) -> Self {
         Self {
             profiles: Arc::new(RwLock::new(HashMap::new())),
@@ -101,6 +104,7 @@ impl AdaptiveExtensions {
     }
 
     /// Get extension set for a server
+    #[must_use]
     pub fn get_extensions(&self, hostname: &str) -> Vec<ExtensionType> {
         match self.strategy {
             ExtensionStrategy::Modern => self.modern_extensions(),
@@ -198,6 +202,7 @@ impl AdaptiveExtensions {
     }
 
     /// Get server profile
+    #[must_use]
     pub fn get_profile(&self, hostname: &str) -> Option<ServerProfile> {
         let profiles = self.profiles.read().unwrap();
         profiles.get(hostname).cloned()
@@ -210,6 +215,7 @@ impl AdaptiveExtensions {
     }
 
     /// Get profile count (for testing)
+    #[must_use]
     pub fn profile_count(&self) -> usize {
         let profiles = self.profiles.read().unwrap();
         profiles.len()

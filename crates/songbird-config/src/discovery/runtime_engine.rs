@@ -315,8 +315,7 @@ impl CapabilityDiscoveryEngine {
 
     /// Get from cache if not expired
     async fn get_from_cache(&self, capability: &str) -> Option<Vec<SocketAddr>> {
-        let cache = self.cache.read().await;
-        if let Some(services) = cache.get(capability) {
+        if let Some(services) = self.cache.read().await.get(capability) {
             // Check if cache is still valid
             let _now = std::time::SystemTime::now();
             let all_valid = services.iter().all(|s| {

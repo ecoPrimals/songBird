@@ -146,4 +146,3 @@ fn test_transport_error_debug() {
     let debug_str = format!("{:?}", err);
     assert!(debug_str.contains("NoAdapter"));
 }
-

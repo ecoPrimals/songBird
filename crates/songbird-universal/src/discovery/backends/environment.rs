@@ -16,6 +16,10 @@ use tracing::debug;
 ///
 /// **SELF-KNOWLEDGE PRINCIPLE**: Discovers what's advertised, not what we expect
 ///
+/// # Errors
+///
+/// Does not return errors; invalid env vars are skipped.
+///
 /// # Environment Variables Pattern
 ///
 /// For each capability provider, set:
@@ -49,8 +53,8 @@ pub async fn discover_from_environment() -> Result<Vec<DiscoveredPrimal>, Discov
     ];
 
     for cap_type in &capability_types {
-        let endpoint_key = format!("{}_PROVIDER_ENDPOINT", cap_type);
-        let name_key = format!("{}_PROVIDER_NAME", cap_type);
+        let endpoint_key = format!("{cap_type}_PROVIDER_ENDPOINT");
+        let name_key = format!("{cap_type}_PROVIDER_NAME");
 
         if let Ok(endpoint) = std::env::var(&endpoint_key) {
             let name = std::env::var(&name_key)

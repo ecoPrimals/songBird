@@ -109,25 +109,25 @@ impl NativeEndpoint {
     #[must_use]
     pub fn display(&self) -> String {
         match self {
-            NativeEndpoint::UnixSocket(path) => {
+            Self::UnixSocket(path) => {
                 format!("unix://{}", path.display())
             }
-            NativeEndpoint::AbstractSocket(name) => {
+            Self::AbstractSocket(name) => {
                 format!("abstract://{name}")
             }
-            NativeEndpoint::NamedPipe(name) => {
+            Self::NamedPipe(name) => {
                 format!("pipe://{name}")
             }
-            NativeEndpoint::XPC(service) => {
+            Self::XPC(service) => {
                 format!("xpc://{service}")
             }
-            NativeEndpoint::InProcess(id) => {
+            Self::InProcess(id) => {
                 format!("inprocess://{id}")
             }
-            NativeEndpoint::SharedMemory(region) => {
+            Self::SharedMemory(region) => {
                 format!("shmem://{region}")
             }
-            NativeEndpoint::TcpLocal(port) => {
+            Self::TcpLocal(port) => {
                 format!("tcp://127.0.0.1:{port}")
             }
         }
@@ -135,15 +135,15 @@ impl NativeEndpoint {
 
     /// Get transport type name (for metrics/logging)
     #[must_use]
-    pub fn transport_type(&self) -> &'static str {
+    pub const fn transport_type(&self) -> &'static str {
         match self {
-            NativeEndpoint::UnixSocket(_) => "unix",
-            NativeEndpoint::AbstractSocket(_) => "abstract",
-            NativeEndpoint::NamedPipe(_) => "pipe",
-            NativeEndpoint::XPC(_) => "xpc",
-            NativeEndpoint::InProcess(_) => "inprocess",
-            NativeEndpoint::SharedMemory(_) => "shmem",
-            NativeEndpoint::TcpLocal(_) => "tcp",
+            Self::UnixSocket(_) => "unix",
+            Self::AbstractSocket(_) => "abstract",
+            Self::NamedPipe(_) => "pipe",
+            Self::XPC(_) => "xpc",
+            Self::InProcess(_) => "inprocess",
+            Self::SharedMemory(_) => "shmem",
+            Self::TcpLocal(_) => "tcp",
         }
     }
 
@@ -153,31 +153,31 @@ impl NativeEndpoint {
     #[must_use]
     pub fn exists(&self) -> bool {
         match self {
-            NativeEndpoint::UnixSocket(path) => path.exists(),
-            NativeEndpoint::AbstractSocket(_) => {
+            Self::UnixSocket(path) => path.exists(),
+            Self::AbstractSocket(_) => {
                 // Abstract sockets don't have filesystem presence
                 // Can't check without attempting connection
                 true
             }
-            NativeEndpoint::NamedPipe(_) => {
+            Self::NamedPipe(_) => {
                 // Named pipes don't have simple "exists" check
                 // Would require platform-specific API call
                 true
             }
-            NativeEndpoint::XPC(_) => {
+            Self::XPC(_) => {
                 // XPC services registered with launchd
                 // Would require platform-specific query
                 true
             }
-            NativeEndpoint::InProcess(_) => {
+            Self::InProcess(_) => {
                 // In-process always "exists" in same runtime
                 true
             }
-            NativeEndpoint::SharedMemory(_) => {
+            Self::SharedMemory(_) => {
                 // Shared memory requires platform-specific check
                 true
             }
-            NativeEndpoint::TcpLocal(_) => {
+            Self::TcpLocal(_) => {
                 // TCP localhost always "exists"
                 true
             }
@@ -188,50 +188,50 @@ impl NativeEndpoint {
     ///
     /// Lower is better (faster, lower latency, higher throughput)
     #[must_use]
-    pub fn performance_tier(&self) -> u8 {
+    pub const fn performance_tier(&self) -> u8 {
         match self {
-            NativeEndpoint::SharedMemory(_) => 0,   // ~1μs, 50GB/s
-            NativeEndpoint::InProcess(_) => 1,      // ~0.1μs (same process)
-            NativeEndpoint::UnixSocket(_) => 2,     // ~5μs, 10GB/s
-            NativeEndpoint::AbstractSocket(_) => 2, // ~5μs, 10GB/s (same as Unix)
-            NativeEndpoint::XPC(_) => 3,            // ~10μs
-            NativeEndpoint::NamedPipe(_) => 3,      // ~10μs, 5GB/s
-            NativeEndpoint::TcpLocal(_) => 4,       // ~50μs, 1GB/s
+            Self::SharedMemory(_) => 0,   // ~1μs, 50GB/s
+            Self::InProcess(_) => 1,      // ~0.1μs (same process)
+            Self::UnixSocket(_) => 2,     // ~5μs, 10GB/s
+            Self::AbstractSocket(_) => 2, // ~5μs, 10GB/s (same as Unix)
+            Self::XPC(_) => 3,            // ~10μs
+            Self::NamedPipe(_) => 3,      // ~10μs, 5GB/s
+            Self::TcpLocal(_) => 4,       // ~50μs, 1GB/s
         }
     }
 
     /// Check if transport is native to current platform (optimal)
     #[must_use]
-    pub fn is_native(&self) -> bool {
+    pub const fn is_native(&self) -> bool {
         #[cfg(target_os = "linux")]
         {
-            matches!(self, NativeEndpoint::UnixSocket(_) | NativeEndpoint::AbstractSocket(_))
+            matches!(self, Self::UnixSocket(_) | Self::AbstractSocket(_))
         }
 
         #[cfg(target_os = "android")]
         {
             // Android prefers abstract sockets (SELinux-safe)
-            matches!(self, NativeEndpoint::AbstractSocket(_))
+            matches!(self, Self::AbstractSocket(_))
         }
 
         #[cfg(target_os = "windows")]
         {
-            matches!(self, NativeEndpoint::NamedPipe(_))
+            matches!(self, Self::NamedPipe(_))
         }
 
         #[cfg(target_os = "macos")]
         {
-            matches!(self, NativeEndpoint::UnixSocket(_) | NativeEndpoint::XPC(_))
+            matches!(self, Self::UnixSocket(_) | Self::XPC(_))
         }
 
         #[cfg(target_os = "ios")]
         {
-            matches!(self, NativeEndpoint::XPC(_))
+            matches!(self, Self::XPC(_))
         }
 
         #[cfg(target_family = "wasm")]
         {
-            matches!(self, NativeEndpoint::InProcess(_))
+            matches!(self, Self::InProcess(_))
         }
 
         #[cfg(not(any(
@@ -244,7 +244,7 @@ impl NativeEndpoint {
         )))]
         {
             // Unknown platform, TCP is universal fallback
-            matches!(self, NativeEndpoint::TcpLocal(_))
+            matches!(self, Self::TcpLocal(_))
         }
     }
 }

@@ -26,6 +26,7 @@ pub struct UsageRecord {
 }
 
 impl UsageRecord {
+    #[must_use]
     pub fn new(
         user_id: UserId,
         task_id: TaskId,
@@ -52,6 +53,7 @@ impl UsageRecord {
     }
 
     /// Calculate resource-seconds (amount * duration)
+    #[must_use]
     pub fn resource_seconds(&self) -> f64 {
         if let Some(duration) = self.duration_seconds {
             self.amount.value * duration
@@ -78,6 +80,7 @@ pub struct UsageTracker {
 }
 
 impl UsageTracker {
+    #[must_use]
     pub fn new() -> Self {
         Self {
             active_records: Arc::new(RwLock::new(HashMap::new())),

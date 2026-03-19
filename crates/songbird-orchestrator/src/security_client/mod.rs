@@ -1,6 +1,6 @@
 //! Security capability client for cryptographic trust evaluation
 //!
-//! **MODERNIZED v3.12.3**: Now uses protocol-agnostic SecurityAdapter!
+//! **MODERNIZED v3.12.3**: Now uses protocol-agnostic `SecurityAdapter`!
 //!
 //! This module provides a protocol-agnostic API for discovering and using security capabilities
 //! without hardcoding specific primal names. Works with ANY primal that provides
@@ -49,7 +49,7 @@
 //!
 //! ## Module Structure
 //!
-//! - `client`: SecurityCapabilityClient implementation
+//! - `client`: `SecurityCapabilityClient` implementation
 //! - `types`: All request/response types
 
 pub mod client;

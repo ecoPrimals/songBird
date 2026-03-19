@@ -241,13 +241,13 @@ fn test_default_ports_are_distinct() {
     let dashboard = dashboard_port();
 
     // Check key ports are distinct (when using defaults)
-    if std::env::var("SONGBIRD_DISCOVERY_PORT").is_err() 
-        && std::env::var("SONGBIRD_ORCHESTRATOR_PORT").is_err() 
+    if std::env::var("SONGBIRD_DISCOVERY_PORT").is_err()
+        && std::env::var("SONGBIRD_ORCHESTRATOR_PORT").is_err()
     {
         assert_ne!(discovery, orchestrator);
     }
-    if std::env::var("SONGBIRD_FEDERATION_PORT").is_err() 
-        && std::env::var("SONGBIRD_ORCHESTRATOR_PORT").is_err() 
+    if std::env::var("SONGBIRD_FEDERATION_PORT").is_err()
+        && std::env::var("SONGBIRD_ORCHESTRATOR_PORT").is_err()
     {
         assert_ne!(federation, orchestrator);
     }
@@ -310,4 +310,3 @@ fn test_all_ports_in_valid_range() {
     assert!(starcraft_port() <= 65535);
     assert!(aoe2_port() <= 65535);
 }
-

@@ -10,9 +10,9 @@
 //!
 //! # Approach
 //!
-//! 1. Use SO_REUSEADDR and SO_REUSEPORT for maximum flexibility
+//! 1. Use `SO_REUSEADDR` and `SO_REUSEPORT` for maximum flexibility
 //! 2. Configure optimal buffer sizes
-//! 3. Enable TCP_NODELAY for low latency
+//! 3. Enable `TCP_NODELAY` for low latency
 //! 4. Set keep-alive for long connections
 //! 5. Bind to all interfaces by default
 //!
@@ -119,7 +119,7 @@ impl SovereignSocket {
     ///
     /// Returns an error if binding fails
     pub fn bind(&self, addr: SocketAddr) -> Result<()> {
-        self.socket.bind(&addr.into()).with_context(|| format!("Failed to bind to {}", addr))?;
+        self.socket.bind(&addr.into()).with_context(|| format!("Failed to bind to {addr}"))?;
 
         info!("✅ Sovereign socket bound to {}", addr);
         Ok(())
@@ -137,7 +137,7 @@ impl SovereignSocket {
         Ok(())
     }
 
-    /// Convert to tokio TcpListener
+    /// Convert to tokio `TcpListener`
     ///
     /// # Errors
     ///
@@ -155,7 +155,7 @@ impl SovereignBinder {
     /// Bind with full sovereignty - tries all strategies to ensure success
     ///
     /// This function will:
-    /// 1. Try IPv6 dual-stack (::) with IPV6_V6ONLY=false - serves BOTH IPv4 and IPv6
+    /// 1. Try IPv6 dual-stack (::) with `IPV6_V6ONLY=false` - serves BOTH IPv4 and IPv6
     /// 2. Fall back to IPv4 wildcard (0.0.0.0) - if IPv6 unavailable
     /// 3. Try localhost only - last resort for restricted environments
     ///
@@ -209,8 +209,7 @@ impl SovereignBinder {
         }
 
         Err(anyhow::anyhow!(
-            "Failed to establish sovereign binding on port {} - all strategies exhausted",
-            port
+            "Failed to establish sovereign binding on port {port} - all strategies exhausted"
         ))
     }
 

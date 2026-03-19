@@ -77,7 +77,7 @@
 //!
 //! - ✅ **Pure Rust**: Zero C dependencies (TRUE ecoBin compliant)
 //! - ✅ **Self-Delegation**: Reuses Songbird's own HTTP client
-//! - ✅ **Tower Atomic**: BearDog crypto via IPC (no ring/openssl)
+//! - ✅ **Tower Atomic**: `BearDog` crypto via IPC (no ring/openssl)
 //! - ✅ **Simple Migration**: Drop-in replacement for legacy HTTP clients
 //! - ✅ **Maintained**: Songbird HTTP client is actively developed
 
@@ -158,6 +158,7 @@ impl std::fmt::Debug for IpcHttpClient {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("IpcHttpClient")
             .field("socket_path", &self.socket_path)
+            .field("request_id", &self.request_id)
             .field("has_pool", &self.connection_pool.is_some())
             .field("timeout", &self.timeout)
             .finish()
@@ -194,6 +195,7 @@ impl IpcHttpClient {
     /// # }
     /// ```
     pub async fn new() -> Result<Self> {
+        tokio::task::yield_now().await;
         let socket_path = Self::discover_socket_path()?;
         Ok(Self {
             socket_path,
@@ -221,7 +223,8 @@ impl IpcHttpClient {
     /// # Ok(())
     /// # }
     /// ```
-    pub fn builder() -> IpcHttpClientBuilder {
+    #[must_use]
+    pub const fn builder() -> IpcHttpClientBuilder {
         IpcHttpClientBuilder::new()
     }
 
@@ -229,20 +232,20 @@ impl IpcHttpClient {
     ///
     /// Uses environment-aware discovery with sensible defaults.
     fn discover_socket_path() -> Result<PathBuf> {
-        Self::discover_socket_path_with(|name| std::env::var(name).ok())
+        Ok(Self::discover_socket_path_with(|name| std::env::var(name).ok()))
     }
 
     /// Discover socket path with injectable env reader (concurrent-safe, testable)
-    fn discover_socket_path_with<F>(env_reader: F) -> Result<PathBuf>
+    fn discover_socket_path_with<F>(env_reader: F) -> PathBuf
     where
         F: Fn(&str) -> Option<String>,
     {
         // Priority 1: Explicit socket path
         if let Some(path) = env_reader("SONGBIRD_SOCKET") {
-            return Ok(PathBuf::from(path));
+            return PathBuf::from(path);
         }
         if let Some(path) = env_reader("SONGBIRD_IPC_SOCKET") {
-            return Ok(PathBuf::from(path));
+            return PathBuf::from(path);
         }
 
         // Priority 2: Runtime directory (XDG standard)
@@ -251,23 +254,22 @@ impl IpcHttpClient {
             .unwrap_or_else(|| "default".to_string());
 
         if let Some(runtime_dir) = env_reader("XDG_RUNTIME_DIR") {
-            let path = PathBuf::from(format!("{}/songbird-{}.sock", runtime_dir, family_id));
+            let path = PathBuf::from(format!("{runtime_dir}/songbird-{family_id}.sock"));
             if path.exists() {
-                return Ok(path);
+                return path;
             }
         }
 
         // Priority 3: User runtime dir fallback
         if let Some(uid) = env_reader("UID") {
-            let path = PathBuf::from(format!("/run/user/{}/songbird-{}.sock", uid, family_id));
+            let path = PathBuf::from(format!("/run/user/{uid}/songbird-{family_id}.sock"));
             if path.exists() {
-                return Ok(path);
+                return path;
             }
         }
 
         // Priority 4: /tmp fallback (development/testing)
-        let fallback = PathBuf::from(format!("/tmp/songbird-{}.sock", family_id));
-        Ok(fallback)
+        PathBuf::from(format!("/tmp/songbird-{family_id}.sock"))
     }
 
     /// Platform-agnostic connection helper
@@ -321,6 +323,7 @@ impl IpcHttpClient {
     ///
     /// Returns error if request fails or socket is unavailable.
     pub async fn post(&self, url: impl AsRef<str>) -> RequestBuilder {
+        tokio::task::yield_now().await;
         RequestBuilder::new(self.clone(), "POST", url.as_ref().to_string())
     }
 
@@ -330,6 +333,7 @@ impl IpcHttpClient {
     ///
     /// Returns error if request fails or socket is unavailable.
     pub async fn put(&self, url: impl AsRef<str>) -> RequestBuilder {
+        tokio::task::yield_now().await;
         RequestBuilder::new(self.clone(), "PUT", url.as_ref().to_string())
     }
 
@@ -359,6 +363,11 @@ impl IpcHttpClient {
         headers: Option<HashMap<String, String>>,
         body: Option<Vec<u8>>,
     ) -> Result<Response> {
+        enum Connection {
+            Pooled(crate::connection_pool::PooledConnection<PlatformStream>),
+            Direct(PlatformStream),
+        }
+
         // Acquire connection from pool or create new
         let pooled_stream = if let Some(ref pool) = self.connection_pool {
             // Try to acquire from pool
@@ -370,9 +379,11 @@ impl IpcHttpClient {
                 Err(e) => {
                     // Pool exhausted or unhealthy, create new connection and add to pool
                     tracing::debug!("Pool acquisition failed ({}), creating new connection", e);
-                    let new_conn = Self::connect_platform(&self.socket_path).await.context(
-                        format!("Failed to connect to Songbird IPC: {:?}", self.socket_path),
-                    )?;
+                    let new_conn =
+                        Self::connect_platform(&self.socket_path).await.context(format!(
+                            "Failed to connect to Songbird IPC: {}",
+                            self.socket_path.display()
+                        ))?;
 
                     // Try to add to pool for future reuse (best effort)
                     let _ = pool.add_connection(new_conn).await;
@@ -385,21 +396,15 @@ impl IpcHttpClient {
             None
         };
 
-        // Use enum to handle both pooled and non-pooled connections uniformly
-        enum Connection {
-            Pooled(crate::connection_pool::PooledConnection<PlatformStream>),
-            Direct(PlatformStream),
-        }
-
-        let mut connection =
-            if let Some(pooled) = pooled_stream {
-                Connection::Pooled(pooled)
-            } else {
-                // No pooling or pool failed, create standalone connection
-                Connection::Direct(Self::connect_platform(&self.socket_path).await.context(
-                    format!("Failed to connect to Songbird IPC: {:?}", self.socket_path),
-                )?)
-            };
+        let mut connection = if let Some(pooled) = pooled_stream {
+            Connection::Pooled(pooled)
+        } else {
+            // No pooling or pool failed, create standalone connection
+            Connection::Direct(Self::connect_platform(&self.socket_path).await.context(format!(
+                "Failed to connect to Songbird IPC: {}",
+                self.socket_path.display()
+            ))?)
+        };
 
         // Get mutable reference to the underlying stream
         let stream: &mut PlatformStream = match &mut connection {
@@ -439,7 +444,7 @@ impl IpcHttpClient {
 
         // Extract result or error
         if let Some(error) = response.get("error") {
-            return Err(anyhow::anyhow!("HTTP request failed: {:?}", error));
+            return Err(anyhow::anyhow!("HTTP request failed: {error:?}"));
         }
 
         let result = response
@@ -447,11 +452,13 @@ impl IpcHttpClient {
             .ok_or_else(|| anyhow::anyhow!("Missing result in JSON-RPC response"))?;
 
         // Parse HTTP response
-        let status = result
-            .get("status")
-            .and_then(|s| s.as_u64())
-            .ok_or_else(|| anyhow::anyhow!("Missing status in response"))?
-            as u16;
+        let status = u16::try_from(
+            result
+                .get("status")
+                .and_then(serde_json::Value::as_u64)
+                .ok_or_else(|| anyhow::anyhow!("Missing status in response"))?,
+        )
+        .map_err(|_| anyhow::anyhow!("HTTP status code out of range"))?;
 
         let headers: HashMap<String, String> = result
             .get("headers")
@@ -460,10 +467,10 @@ impl IpcHttpClient {
 
         let body_base64 = result.get("body").and_then(|b| b.as_str()).unwrap_or("");
 
-        let body = if !body_base64.is_empty() {
-            BASE64.decode(body_base64)?
-        } else {
+        let body = if body_base64.is_empty() {
             Vec::new()
+        } else {
+            BASE64.decode(body_base64)?
         };
 
         // Connection automatically returned to pool when `stream` is dropped
@@ -490,7 +497,7 @@ pub struct Response {
 impl Response {
     /// Get HTTP status code
     #[must_use]
-    pub fn status(&self) -> u16 {
+    pub const fn status(&self) -> u16 {
         self.status
     }
 
@@ -502,7 +509,7 @@ impl Response {
 
     /// Get response headers
     #[must_use]
-    pub fn headers(&self) -> &HashMap<String, String> {
+    pub const fn headers(&self) -> &HashMap<String, String> {
         &self.headers
     }
 
@@ -512,6 +519,7 @@ impl Response {
     ///
     /// Returns error if body is not valid UTF-8.
     pub async fn text(self) -> Result<String> {
+        tokio::task::yield_now().await;
         String::from_utf8(self.body).context("Response body is not valid UTF-8")
     }
 
@@ -521,17 +529,19 @@ impl Response {
     ///
     /// Returns error if body is not valid JSON.
     pub async fn json<T: serde::de::DeserializeOwned>(self) -> Result<T> {
+        tokio::task::yield_now().await;
         serde_json::from_slice(&self.body).context("Failed to parse JSON response")
     }
 
     /// Consume response and get raw bytes
     #[must_use]
     pub async fn bytes(self) -> Vec<u8> {
+        tokio::task::yield_now().await;
         self.body
     }
 }
 
-/// Builder for IpcHttpClient with connection pooling support
+/// Builder for `IpcHttpClient` with connection pooling support
 ///
 /// # Examples
 ///
@@ -554,7 +564,7 @@ pub struct IpcHttpClientBuilder {
 }
 
 impl IpcHttpClientBuilder {
-    fn new() -> Self {
+    const fn new() -> Self {
         Self {
             socket_path: None,
             pool_size: None,
@@ -578,21 +588,21 @@ impl IpcHttpClientBuilder {
     /// - 50-100% throughput increase
     /// - Automatic connection health checking
     #[must_use]
-    pub fn with_connection_pool(mut self, max_size: usize) -> Self {
+    pub const fn with_connection_pool(mut self, max_size: usize) -> Self {
         self.pool_size = Some(max_size);
         self
     }
 
     /// Set request timeout
     ///
-    /// If not set, uses environment-based TimeoutConfig.
+    /// If not set, uses environment-based `TimeoutConfig`.
     #[must_use]
-    pub fn with_timeout(mut self, timeout: Duration) -> Self {
+    pub const fn with_timeout(mut self, timeout: Duration) -> Self {
         self.timeout = Some(timeout);
         self
     }
 
-    /// Build the IpcHttpClient
+    /// Build the `IpcHttpClient`
     ///
     /// # Errors
     ///
@@ -613,7 +623,7 @@ impl IpcHttpClientBuilder {
                 .acquire_timeout(Duration::from_secs(5)) // 5 seconds acquisition timeout
                 .build()
                 .await
-                .map_err(|e| anyhow::anyhow!("Failed to create connection pool: {}", e))?;
+                .map_err(|e| anyhow::anyhow!("Failed to create connection pool: {e}"))?;
 
             // Pre-populate pool with initial connections
             for _ in 0..2 {
@@ -735,7 +745,7 @@ impl RequestBuilder {
         // If multipart form is present, encode it
         let (body, headers) = if let Some(form) = self.multipart_form {
             let (encoded_body, boundary) = form.encode();
-            let content_type = format!("multipart/form-data; boundary={}", boundary);
+            let content_type = format!("multipart/form-data; boundary={boundary}");
 
             let mut headers = self.headers.clone();
             headers.insert("Content-Type".to_string(), content_type);
@@ -761,15 +771,13 @@ mod tests {
         // Test with explicit socket path
         let env1: HashMap<String, String> =
             HashMap::from([("SONGBIRD_SOCKET".to_string(), "/tmp/test.sock".to_string())]);
-        let path =
-            IpcHttpClient::discover_socket_path_with(|name| env1.get(name).cloned()).unwrap();
+        let path = IpcHttpClient::discover_socket_path_with(|name| env1.get(name).cloned());
         assert_eq!(path, PathBuf::from("/tmp/test.sock"));
 
         // Test with family ID (no explicit socket — falls back to /tmp)
         let env2: HashMap<String, String> =
             HashMap::from([("SONGBIRD_FAMILY_ID".to_string(), "test".to_string())]);
-        let path =
-            IpcHttpClient::discover_socket_path_with(|name| env2.get(name).cloned()).unwrap();
+        let path = IpcHttpClient::discover_socket_path_with(|name| env2.get(name).cloned());
         assert!(path.to_string_lossy().contains("songbird-test.sock"));
     }
 

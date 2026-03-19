@@ -70,8 +70,8 @@ impl<T: Clone> DegradationStrategy<T> {
     /// Execute with fallback (convenience method - uses unreachable for properly constructed strategies)
     ///
     /// # Safety
-    /// This will only fail if the DegradationStrategy was constructed without a fallback,
-    /// which is not possible through the public API (with_value or with_fn).
+    /// This will only fail if the `DegradationStrategy` was constructed without a fallback,
+    /// which is not possible through the public API (`with_value` or `with_fn`).
     pub async fn execute_with_fallback<F, Fut>(&self, operation: F) -> T
     where
         F: FnOnce() -> Fut,
@@ -110,9 +110,7 @@ mod tests {
     async fn test_primary_operation_succeeds() {
         let strategy = DegradationStrategy::with_value(42);
 
-        let result = strategy
-            .execute_with_fallback(|| async { Ok::<_, anyhow::Error>(100) })
-            .await;
+        let result = strategy.execute_with_fallback(|| async { Ok::<_, anyhow::Error>(100) }).await;
 
         assert_eq!(result, 100); // Primary succeeds, so 100 not fallback 42
     }
@@ -133,9 +131,8 @@ mod tests {
     async fn test_try_execute_with_fallback_failure() {
         let strategy = DegradationStrategy::with_value("fallback".to_string());
 
-        let result = strategy
-            .try_execute_with_fallback(|| async { anyhow::bail!("Primary failed") })
-            .await;
+        let result =
+            strategy.try_execute_with_fallback(|| async { anyhow::bail!("Primary failed") }).await;
 
         assert!(result.is_ok());
         assert_eq!(result.unwrap(), "fallback");
@@ -145,9 +142,7 @@ mod tests {
     async fn test_fallback_fn_with_string() {
         let strategy = DegradationStrategy::with_fn(|| "computed".to_string());
 
-        let result = strategy
-            .execute_with_fallback(|| async { anyhow::bail!("Error") })
-            .await;
+        let result = strategy.execute_with_fallback(|| async { anyhow::bail!("Error") }).await;
 
         assert_eq!(result, "computed");
     }

@@ -21,7 +21,8 @@ pub struct CanonicalEnvironmentConfig {
 
 impl CanonicalEnvironmentConfig {
     /// Check if environment name is empty (compatibility helper)
-    pub fn is_empty(&self) -> bool {
+    #[must_use]
+    pub const fn is_empty(&self) -> bool {
         self.name.is_empty()
     }
 }

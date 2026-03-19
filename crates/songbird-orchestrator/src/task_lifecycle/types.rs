@@ -13,8 +13,8 @@ use std::sync::Arc;
 
 /// Task status
 ///
-/// NOTE: Using default (externally tagged) serde representation for serde_json compatibility.
-/// Changed from bincode to serde_json (v3.21.0, Feb 5 2026) to support `serde_json::Value` in TaskSpec.
+/// NOTE: Using default (externally tagged) serde representation for `serde_json` compatibility.
+/// Changed from bincode to `serde_json` (v3.21.0, Feb 5 2026) to support `serde_json::Value` in `TaskSpec`.
 /// JSON format: `{"Queued": {}}` or `{"Running": {"started_at": ...}}`.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum TaskStatus {
@@ -52,22 +52,26 @@ pub enum TaskStatus {
 
 impl TaskStatus {
     /// Check if task is terminal (won't change)
-    pub fn is_terminal(&self) -> bool {
+    #[must_use]
+    pub const fn is_terminal(&self) -> bool {
         matches!(self, Self::Completed { .. } | Self::Failed { .. } | Self::Cancelled { .. })
     }
 
     /// Check if task is active (running or queued)
-    pub fn is_active(&self) -> bool {
+    #[must_use]
+    pub const fn is_active(&self) -> bool {
         matches!(self, Self::Queued | Self::Running { .. })
     }
 
     /// Check if task can be paused
-    pub fn can_pause(&self) -> bool {
+    #[must_use]
+    pub const fn can_pause(&self) -> bool {
         matches!(self, Self::Running { .. })
     }
 
     /// Check if task can be resumed
-    pub fn can_resume(&self) -> bool {
+    #[must_use]
+    pub const fn can_resume(&self) -> bool {
         matches!(self, Self::Paused { .. })
     }
 }
@@ -168,6 +172,7 @@ pub struct TaskLifecycle {
 
 impl TaskLifecycle {
     /// Create a new task lifecycle
+    #[must_use]
     pub fn new(owner: UserId, spec: TaskSpec) -> Self {
         let now = Utc::now();
         Self {

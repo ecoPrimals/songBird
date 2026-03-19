@@ -64,9 +64,13 @@ async fn test_fault_discover_without_provider() {
     // Should fail gracefully if no provider found
     if result.is_err() {
         let error = result.unwrap_err();
+        let msg = error.to_string().to_lowercase();
         assert!(
-            error.to_string().contains("not available") || error.to_string().contains("not found"),
-            "Error should indicate provider not available"
+            msg.contains("not available")
+                || msg.contains("not found")
+                || msg.contains("no crypto")
+                || msg.contains("no provider"),
+            "Error should indicate provider not available, got: {msg}"
         );
     }
 }

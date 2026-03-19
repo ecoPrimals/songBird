@@ -67,7 +67,7 @@ impl RequestBuilder {
             80
         };
         let host_header = match uri.port_u16() {
-            Some(port) if port != default_port => format!("{}:{}", host, port),
+            Some(port) if port != default_port => format!("{host}:{port}"),
             _ => host.to_string(),
         };
 
@@ -112,15 +112,15 @@ impl RequestBuilder {
     ///
     /// Format: "METHOD /path HTTP/1.1\r\n"
     fn write_request_line(request: &mut Vec<u8>, method: &str, uri: &Uri) {
-        let path = uri.path_and_query().map(|pq| pq.as_str()).unwrap_or("/");
-        request.extend_from_slice(format!("{} {} HTTP/1.1\r\n", method, path).as_bytes());
+        let path = uri.path_and_query().map_or("/", http::uri::PathAndQuery::as_str);
+        request.extend_from_slice(format!("{method} {path} HTTP/1.1\r\n").as_bytes());
     }
 
     /// Write Host header
     ///
     /// Always written first after request line per HTTP/1.1 spec
     fn write_host_header(request: &mut Vec<u8>, host: &str) {
-        request.extend_from_slice(format!("Host: {}\r\n", host).as_bytes());
+        request.extend_from_slice(format!("Host: {host}\r\n").as_bytes());
     }
 
     /// Log header application for debugging
@@ -155,7 +155,7 @@ impl RequestBuilder {
             if key.eq_ignore_ascii_case("host") {
                 continue;
             }
-            request.extend_from_slice(format!("{}: {}\r\n", key, value).as_bytes());
+            request.extend_from_slice(format!("{key}: {value}\r\n").as_bytes());
         }
     }
 

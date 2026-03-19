@@ -1,11 +1,11 @@
 //! TLS 1.3 extension builders
 //!
-//! Implements strategy-based extension building for TLS ClientHello messages.
+//! Implements strategy-based extension building for TLS `ClientHello` messages.
 //! Four strategies are supported:
 //! - **Minimal**: Only required extensions (fastest)
 //! - **Standard**: Balanced set (production default)
 //! - **Modern**: Latest features (OCSP stapling)
-//! - **MaxCompatibility**: Maximum compatibility (session tickets)
+//! - **`MaxCompatibility`**: Maximum compatibility (session tickets)
 
 use super::core::TlsHandshake;
 use crate::error::Result;
@@ -46,10 +46,10 @@ impl TlsHandshake {
     /// Best for testing and minimal attack surface
     ///
     /// RFC 8446 Section 4.2: Minimum required extensions for TLS 1.3:
-    /// - supported_versions (tells server we want TLS 1.3)
-    /// - supported_groups (which curves we support)
-    /// - signature_algorithms (which signatures we accept)
-    /// - key_share (our X25519 public key)
+    /// - `supported_versions` (tells server we want TLS 1.3)
+    /// - `supported_groups` (which curves we support)
+    /// - `signature_algorithms` (which signatures we accept)
+    /// - `key_share` (our X25519 public key)
     fn build_extensions_minimal(&self, server_name: &str, public_key: &[u8]) -> Result<Vec<u8>> {
         let mut ext = Vec::new();
 
@@ -92,8 +92,8 @@ impl TlsHandshake {
     /// Current production-tested set for fresh TLS 1.3 handshakes
     ///
     /// RFC 8446 Section 4.2: Extension ordering and content matters!
-    /// - key_share MUST come BEFORE psk (if present)
-    /// - We do NOT include pre_shared_key since we're not resuming
+    /// - `key_share` MUST come BEFORE psk (if present)
+    /// - We do NOT include `pre_shared_key` since we're not resuming
     fn build_extensions_standard(&self, server_name: &str, public_key: &[u8]) -> Result<Vec<u8>> {
         let mut ext = Vec::new();
 

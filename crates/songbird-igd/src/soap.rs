@@ -1,14 +1,16 @@
-//! SOAP (Simple Object Access Protocol) control for UPnP IGD
+//! SOAP (Simple Object Access Protocol) control for `UPnP` IGD
 //!
-//! Implements SOAP XML envelope construction and parsing for UPnP port mapping operations.
+//! Implements SOAP XML envelope construction and parsing for `UPnP` port mapping operations.
 //! Uses Songbird's HTTP client for the actual HTTP POSTs.
 
 use crate::error::{IgdError, Result, SoapErrorCode};
 use crate::mapping::PortMappingRequest;
 use std::net::IpAddr;
+use tokio::io::{AsyncReadExt, AsyncWriteExt};
+use tokio::net::TcpStream;
 use tracing::{debug, trace};
 
-/// SOAP client for UPnP IGD control
+/// SOAP client for `UPnP` IGD control
 pub struct SoapClient {
     /// Control URL for SOAP actions
     control_url: String,
@@ -19,7 +21,8 @@ pub struct SoapClient {
 
 impl SoapClient {
     /// Create new SOAP client
-    pub fn new(control_url: String, service_type: String) -> Self {
+    #[must_use]
+    pub const fn new(control_url: String, service_type: String) -> Self {
         Self {
             control_url,
             service_type,
@@ -27,6 +30,10 @@ impl SoapClient {
     }
 
     /// Add a port mapping
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the SOAP request fails or the gateway returns an error.
     pub async fn add_port_mapping(&self, req: &PortMappingRequest) -> Result<()> {
         debug!(
             "Adding port mapping: {}:{} -> {}:{} ({})",
@@ -50,6 +57,10 @@ impl SoapClient {
     }
 
     /// Delete a port mapping
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the SOAP request fails or the gateway returns an error.
     pub async fn delete_port_mapping(&self, external_port: u16, protocol: &str) -> Result<()> {
         debug!("Deleting port mapping: {}:{}", external_port, protocol);
 
@@ -59,11 +70,8 @@ impl SoapClient {
         // Check for errors
         if let Some(error_code) = Self::parse_soap_error(&response) {
             return Err(IgdError::SoapError(format!(
-                "Delete failed with code {}: {}",
-                error_code,
-                SoapErrorCode::from_code(error_code)
-                    .map(|e| e.description())
-                    .unwrap_or("Unknown error")
+                "Delete failed with code {error_code}: {}",
+                SoapErrorCode::from_code(error_code).map_or("Unknown error", |e| e.description())
             )));
         }
 
@@ -72,6 +80,10 @@ impl SoapClient {
     }
 
     /// Get external IP address from gateway
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the SOAP request fails or the response cannot be parsed.
     pub async fn get_external_ip(&self) -> Result<IpAddr> {
         debug!("Querying external IP address");
 
@@ -85,7 +97,7 @@ impl SoapClient {
         Ok(ip)
     }
 
-    /// Build AddPortMapping SOAP XML
+    /// Build `AddPortMapping` SOAP XML
     fn build_add_port_mapping_xml(&self, req: &PortMappingRequest) -> String {
         format!(
             r#"<?xml version="1.0"?>
@@ -114,7 +126,7 @@ impl SoapClient {
         )
     }
 
-    /// Build DeletePortMapping SOAP XML
+    /// Build `DeletePortMapping` SOAP XML
     fn build_delete_port_mapping_xml(&self, external_port: u16, protocol: &str) -> String {
         format!(
             r#"<?xml version="1.0"?>
@@ -132,7 +144,7 @@ impl SoapClient {
         )
     }
 
-    /// Build GetExternalIPAddress SOAP XML
+    /// Build `GetExternalIPAddress` SOAP XML
     fn build_get_external_ip_xml(&self) -> String {
         format!(
             r#"<?xml version="1.0"?>
@@ -149,7 +161,7 @@ impl SoapClient {
 
     /// Send SOAP action via HTTP POST to the control URL
     ///
-    /// UPnP SOAP calls are plain HTTP (not HTTPS) to local LAN addresses,
+    /// `UPnP` SOAP calls are plain HTTP (not HTTPS) to local LAN addresses,
     /// so we use raw TCP rather than songbird-http-client (which is for TLS).
     async fn send_soap_action(&self, action: &str, body: &str) -> Result<String> {
         trace!("SOAP Action: {} to {}", action, self.control_url);
@@ -158,52 +170,47 @@ impl SoapClient {
         // Parse the control URL to extract host, port, and path
         let (host, port, path) = Self::parse_url(&self.control_url)?;
 
-        let soap_action = format!("\"{}#{}\"", self.service_type, action);
+        let soap_action = format!("\"{}\"#{action}", self.service_type);
         let content_length = body.len();
 
         // Build HTTP POST request
         let request = format!(
-            "POST {} HTTP/1.1\r\n\
-             Host: {}:{}\r\n\
+            "POST {path} HTTP/1.1\r\n\
+             Host: {host}:{port}\r\n\
              Content-Type: text/xml; charset=\"utf-8\"\r\n\
-             Content-Length: {}\r\n\
-             SOAPAction: {}\r\n\
+             Content-Length: {content_length}\r\n\
+             SOAPAction: {soap_action}\r\n\
              Connection: close\r\n\
              \r\n\
-             {}",
-            path, host, port, content_length, soap_action, body
+             {body}"
         );
 
         // Connect and send
-        use tokio::io::{AsyncReadExt, AsyncWriteExt};
-        use tokio::net::TcpStream;
 
-        let addr = format!("{}:{}", host, port);
+        let addr = format!("{host}:{port}");
         let mut stream =
             tokio::time::timeout(std::time::Duration::from_secs(5), TcpStream::connect(&addr))
                 .await
                 .map_err(|_| IgdError::Timeout)?
-                .map_err(|e| {
-                    IgdError::SoapError(format!("Failed to connect to {}: {}", addr, e))
-                })?;
+                .map_err(|e| IgdError::SoapError(format!("Failed to connect to {addr}: {e}")))?;
 
         stream
             .write_all(request.as_bytes())
             .await
-            .map_err(|e| IgdError::SoapError(format!("Failed to send SOAP request: {}", e)))?;
+            .map_err(|e| IgdError::SoapError(format!("Failed to send SOAP request: {e}")))?;
 
         // Read response
         let mut response = Vec::new();
         stream
             .read_to_end(&mut response)
             .await
-            .map_err(|e| IgdError::SoapError(format!("Failed to read SOAP response: {}", e)))?;
+            .map_err(|e| IgdError::SoapError(format!("Failed to read SOAP response: {e}")))?;
 
         let response_str = String::from_utf8_lossy(&response).to_string();
         trace!("SOAP Response:\n{}", response_str);
 
         // Extract body from HTTP response (skip headers)
-        let body_start = response_str.find("\r\n\r\n").map(|i| i + 4).unwrap_or(0);
+        let body_start = response_str.find("\r\n\r\n").map_or(0, |i| i + 4);
         let response_body = &response_str[body_start..];
 
         // Check HTTP status
@@ -214,7 +221,7 @@ impl SoapClient {
                     debug!("SOAP fault received (HTTP 500), parsing error details");
                     return Ok(response_body.to_string());
                 }
-                return Err(IgdError::SoapError(format!("HTTP error: {}", status_line)));
+                return Err(IgdError::SoapError(format!("HTTP error: {status_line}")));
             }
         }
 
@@ -226,14 +233,10 @@ impl SoapClient {
     /// Handles: `http://192.168.1.254:5431/ctl/IPConn`
     fn parse_url(url: &str) -> Result<(String, u16, String)> {
         let url = url.strip_prefix("http://").or_else(|| url.strip_prefix("HTTP://")).ok_or_else(
-            || IgdError::InvalidParameter(format!("Expected http:// URL, got: {}", url)),
+            || IgdError::InvalidParameter(format!("Expected http:// URL, got: {url}")),
         )?;
 
-        let (host_port, path) = if let Some(idx) = url.find('/') {
-            (&url[..idx], &url[idx..])
-        } else {
-            (url, "/")
-        };
+        let (host_port, path) = url.find('/').map_or((url, "/"), |idx| (&url[..idx], &url[idx..]));
 
         let (host, port) = if let Some(idx) = host_port.rfind(':') {
             let port = host_port[idx + 1..]
@@ -261,7 +264,7 @@ impl SoapClient {
         None
     }
 
-    /// Parse external IP from GetExternalIPAddress response
+    /// Parse external IP from `GetExternalIPAddress` response
     fn parse_external_ip(response: &str) -> Result<IpAddr> {
         // Look for <NewExternalIPAddress>1.2.3.4</NewExternalIPAddress>
         if let Some(start) = response.find("<NewExternalIPAddress>") {
@@ -277,14 +280,14 @@ impl SoapClient {
         Err(IgdError::InvalidResponse("Could not parse external IP from SOAP response".to_string()))
     }
 
-    /// Map SOAP error code to IgdError
+    /// Map SOAP error code to `IgdError`
     fn map_soap_error(code: u16, port: u16) -> IgdError {
         match SoapErrorCode::from_code(code) {
             Some(SoapErrorCode::ConflictInMappingEntry) => {
                 IgdError::MappingConflict(port, "unknown host".to_string())
             }
-            Some(err) => IgdError::SoapError(format!("SOAP error {}: {}", code, err.description())),
-            None => IgdError::SoapError(format!("Unknown SOAP error code: {}", code)),
+            Some(err) => IgdError::SoapError(format!("SOAP error {code}: {}", err.description())),
+            None => IgdError::SoapError(format!("Unknown SOAP error code: {code}")),
         }
     }
 }

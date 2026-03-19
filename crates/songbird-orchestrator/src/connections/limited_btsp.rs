@@ -1,7 +1,7 @@
 //! Limited BTSP Connection (Trust Level 1 via Encrypted Tunnel)
 //!
 //! For peers with same genetic family but no human approval.
-//! Uses BTSP (BirdSong Transport Protocol) for port-free, encrypted P2P communication.
+//! Uses BTSP (`BirdSong` Transport Protocol) for port-free, encrypted P2P communication.
 //!
 //! ## Philosophy
 //!
@@ -10,8 +10,8 @@
 //! ## Allowed Operations
 //!
 //! - `discovery` - Capability discovery
-//! - `coordination/*` - BirdSong coordination
-//! - `birdsong/*` - BirdSong protocol
+//! - `coordination/*` - `BirdSong` coordination
+//! - `birdsong/*` - `BirdSong` protocol
 //! - `health` - Health checks
 //! - `capabilities` - Capability queries
 //!
@@ -43,7 +43,7 @@ use tracing::{debug, info, warn};
 
 /// Limited connection via BTSP tunnel (Level 1)
 ///
-/// Allows BirdSong coordination only, no data access or full federation.
+/// Allows `BirdSong` coordination only, no data access or full federation.
 /// Communicates over encrypted BTSP tunnel (port-free, NAT-traversal built-in).
 ///
 /// **v3.18.0 Evolution**: Replaces HTTP connections with BTSP for same-family peers.
@@ -72,7 +72,7 @@ impl LimitedBtspConnection {
     /// Create a new BTSP limited connection
     ///
     /// Establishes encrypted tunnel to peer via security provider.
-    /// Uses BirdSong genetic lineage for NAT traversal if needed.
+    /// Uses `BirdSong` genetic lineage for NAT traversal if needed.
     ///
     /// # Arguments
     ///
@@ -122,7 +122,7 @@ impl LimitedBtspConnection {
         // v3.20.0: Unix socket BTSP client (Jan 16, 2026)
         let peer_endpoint = crate::btsp_client::PeerEndpoint {
             id: peer_id.clone(),
-            endpoint: format!("peer://{}", peer_id),
+            endpoint: format!("peer://{peer_id}"),
             public_key: None,
             capabilities: peer_tags.clone(),
         };
@@ -131,7 +131,7 @@ impl LimitedBtspConnection {
         let tunnel = btsp_client
             .establish_tunnel(peer_endpoint)
             .await
-            .context(format!("Failed to establish BTSP tunnel to peer '{}'", peer_id))?;
+            .context(format!("Failed to establish BTSP tunnel to peer '{peer_id}'"))?;
 
         info!("✅ BTSP tunnel established: {} to peer {}", tunnel.id, tunnel.peer_id);
 
@@ -205,6 +205,7 @@ impl LimitedBtspConnection {
     }
 
     /// Get connection uptime
+    #[must_use]
     pub fn uptime(&self) -> std::time::Duration {
         SystemTime::now().duration_since(self.established_at).unwrap_or_default()
     }

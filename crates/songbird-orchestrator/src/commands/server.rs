@@ -71,11 +71,11 @@ pub async fn run_server(
     let config = if let Some(path) = config_path {
         tracing::info!("   Config file: {}", path);
         CanonicalSongbirdConfig::from_env()
-            .map_err(|e| anyhow::anyhow!("Failed to load configuration from file: {}", e))?
+            .map_err(|e| anyhow::anyhow!("Failed to load configuration from file: {e}"))?
     } else {
         tracing::info!("   Config source: Environment variables");
         CanonicalSongbirdConfig::from_env()
-            .map_err(|e| anyhow::anyhow!("Failed to load configuration from environment: {}", e))?
+            .map_err(|e| anyhow::anyhow!("Failed to load configuration from environment: {e}"))?
     };
     tracing::info!("   Configuration: ✅ Loaded");
 

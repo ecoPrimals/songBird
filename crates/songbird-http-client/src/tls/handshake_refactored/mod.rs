@@ -1,7 +1,7 @@
 //! TLS 1.3 handshake implementation (REFACTORED - Smart Modular Architecture)
 //!
 //! This module provides a Pure Rust TLS 1.3 handshake implementation
-//! with crypto delegation to BearDog via JSON-RPC.
+//! with crypto delegation to `BearDog` via JSON-RPC.
 //!
 //! ## Module Organization (Smart Refactoring Complete!)
 //!
@@ -20,7 +20,7 @@
 //!
 //! - **Logical separation**: Each module has a clear, single responsibility
 //! - **RFC 8446 compliance**: Full TLS 1.3 specification adherence
-//! - **Crypto delegation**: All cryptographic operations via BearDog JSON-RPC
+//! - **Crypto delegation**: All cryptographic operations via `BearDog` JSON-RPC
 //! - **Zero behavioral changes**: Functionally identical to legacy implementation
 //! - **Production-ready**: Incremental refactor, shipped after each session
 //!

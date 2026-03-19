@@ -28,16 +28,19 @@ pub enum ErrorSeverity {
 
 impl ErrorSeverity {
     /// Check if this severity level is critical
+    #[must_use]
     pub const fn is_critical(&self) -> bool {
         matches!(self, Self::Critical)
     }
 
     /// Check if this severity requires immediate attention (High or Critical)
+    #[must_use]
     pub const fn requires_immediate_attention(&self) -> bool {
         matches!(self, Self::High | Self::Critical)
     }
 
     /// Get numeric priority (higher number = higher severity)
+    #[must_use]
     pub const fn priority(&self) -> u8 {
         match self {
             Self::Info => 1,
@@ -67,6 +70,7 @@ pub enum WarningSeverity {
 
 impl WarningSeverity {
     /// Get numeric priority (higher number = higher severity)
+    #[must_use]
     pub const fn priority(&self) -> u8 {
         match self {
             Self::Low => 1,

@@ -211,7 +211,7 @@ pub enum SovereigntyLevel {
 impl SovereigntyLevel {
     /// Returns a numerical score for this sovereignty level (0.0 to 1.0)
     #[must_use]
-    pub fn score(&self) -> f64 {
+    pub const fn score(&self) -> f64 {
         match self {
             Self::FullySovereign => 1.0,
             Self::HighlySovereign => 0.8,

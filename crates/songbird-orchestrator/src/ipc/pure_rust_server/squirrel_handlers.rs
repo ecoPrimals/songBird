@@ -13,7 +13,7 @@
 //! Squirrel → Songbird (TLS/HTTP) → BearDog (Crypto) → External HTTPS
 //! ```
 //!
-//! Songbird handles protocol logic (TLS/HTTP), BearDog handles cryptographic operations,
+//! Songbird handles protocol logic (TLS/HTTP), `BearDog` handles cryptographic operations,
 //! resulting in a 100% Pure Rust networking stack with no C dependencies.
 
 use anyhow::Result;
@@ -22,7 +22,7 @@ use tracing::info;
 use super::protocol::JsonRpcError;
 use songbird_http_client::SongbirdHttpClient;
 
-/// Handle discover_capabilities - Return Songbird's capabilities
+/// Handle `discover_capabilities` - Return Songbird's capabilities
 ///
 /// Allows Squirrel to discover that Songbird provides HTTP delegation.
 ///
@@ -65,7 +65,7 @@ pub async fn handle_discover_capabilities() -> Result<serde_json::Value, JsonRpc
 
 /// Handle http.request - Delegate HTTP requests to external services
 ///
-/// EVOLVED (Jan 21, 2026): Pure Rust HTTP via Tower Atomic (BearDog crypto delegation)
+/// EVOLVED (Jan 21, 2026): Pure Rust HTTP via Tower Atomic (`BearDog` crypto delegation)
 ///
 /// ## Request Format
 /// ```json
@@ -119,7 +119,7 @@ pub async fn handle_http_request(
         client
             .request(&params.method, &params.url, params.headers, params.body)
             .await
-            .map_err(|e| JsonRpcError::internal_error(format!("HTTP request failed: {}", e)))?;
+            .map_err(|e| JsonRpcError::internal_error(format!("HTTP request failed: {e}")))?;
 
     info!("✅ HTTP delegation complete (Pure Rust): {} (status: {})", params.url, response.status);
 
@@ -132,7 +132,7 @@ pub async fn handle_http_request(
 
 /// Handle health - Simple health check
 ///
-/// Required by Squirrel's is_available() check.
+/// Required by Squirrel's `is_available()` check.
 ///
 /// ## Response Format
 /// ```json

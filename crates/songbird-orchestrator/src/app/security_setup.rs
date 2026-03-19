@@ -29,7 +29,7 @@ use songbird_types::SafeEnv;
 
 /// Security integration placeholder
 ///
-/// Currently a placeholder until UniversalSecurityIntegration is available.
+/// Currently a placeholder until `UniversalSecurityIntegration` is available.
 /// The setup logic demonstrates capability-based discovery pattern.
 pub type SecurityIntegration = Arc<()>;
 
@@ -140,7 +140,7 @@ fn construct_default_security_endpoint() -> String {
         ),
     );
 
-    format!("http://{}:{}", bind_address, security_port)
+    format!("http://{bind_address}:{security_port}")
 }
 
 #[cfg(test)]

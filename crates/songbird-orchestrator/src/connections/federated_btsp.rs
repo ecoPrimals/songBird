@@ -1,7 +1,7 @@
 //! Federated BTSP Connection (Trust Level 2 via Encrypted Tunnel)
 //!
 //! For peers approved by a human for full federation.
-//! Uses BTSP (BirdSong Transport Protocol) for port-free, encrypted P2P communication.
+//! Uses BTSP (`BirdSong` Transport Protocol) for port-free, encrypted P2P communication.
 //!
 //! ## Philosophy
 //!
@@ -9,7 +9,7 @@
 //!
 //! ## Allowed Operations
 //!
-//! - All Level 1 operations (BirdSong, coordination, health)
+//! - All Level 1 operations (`BirdSong`, coordination, health)
 //! - `federation/*` - Full federation
 //! - `data/read` - Read-only data access
 //!
@@ -69,7 +69,7 @@ impl FederatedBtspConnection {
     /// Create a new BTSP federated connection
     ///
     /// Establishes encrypted tunnel to peer via security provider.
-    /// Uses BirdSong genetic lineage for NAT traversal if needed.
+    /// Uses `BirdSong` genetic lineage for NAT traversal if needed.
     ///
     /// # Arguments
     ///
@@ -100,7 +100,7 @@ impl FederatedBtspConnection {
         // v3.20.0: Unix socket BTSP client (Jan 16, 2026)
         let peer_endpoint = crate::btsp_client::PeerEndpoint {
             id: peer_id.clone(),
-            endpoint: format!("peer://{}", peer_id),
+            endpoint: format!("peer://{peer_id}"),
             public_key: None,
             capabilities: peer_tags.clone(),
         };
@@ -109,7 +109,7 @@ impl FederatedBtspConnection {
         let tunnel = btsp_client
             .establish_tunnel(peer_endpoint)
             .await
-            .context(format!("Failed to establish BTSP tunnel to peer '{}'", peer_id))?;
+            .context(format!("Failed to establish BTSP tunnel to peer '{peer_id}'"))?;
 
         info!("✅ BTSP tunnel established: {} to peer {}", tunnel.id, tunnel.peer_id);
 
@@ -162,6 +162,7 @@ impl FederatedBtspConnection {
     }
 
     /// Get connection uptime
+    #[must_use]
     pub fn uptime(&self) -> std::time::Duration {
         SystemTime::now().duration_since(self.established_at).unwrap_or_default()
     }

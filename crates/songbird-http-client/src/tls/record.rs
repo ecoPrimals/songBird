@@ -36,12 +36,14 @@ impl TlsRecordLayer {
     }
 
     /// Get session keys (for diagnostic logging)
-    pub fn keys(&self) -> &SessionKeys {
+    #[must_use]
+    pub const fn keys(&self) -> &SessionKeys {
         &self.keys
     }
 
     /// Get write sequence number (for diagnostic logging)
-    pub fn write_sequence_number(&self) -> u64 {
+    #[must_use]
+    pub const fn write_sequence_number(&self) -> u64 {
         self.write_sequence_number
     }
 
@@ -309,8 +311,7 @@ impl TlsRecordLayer {
                     level_str, desc_str, alert_level, alert_desc
                 );
                 return Err(Error::TlsRecord(format!(
-                    "Server sent {} alert: {} (code {})",
-                    level_str, desc_str, alert_desc
+                    "Server sent {level_str} alert: {desc_str} (code {alert_desc})"
                 )));
             }
         }
@@ -318,8 +319,7 @@ impl TlsRecordLayer {
         if content_type != content_type::APPLICATION_DATA {
             error!("❌ Expected APPLICATION_DATA (0x17), got 0x{:02x}", content_type);
             return Err(Error::TlsRecord(format!(
-                "Expected APPLICATION_DATA (0x17), got {:#04x}",
-                content_type
+                "Expected APPLICATION_DATA (0x17), got {content_type:#04x}"
             )));
         }
 
@@ -328,8 +328,7 @@ impl TlsRecordLayer {
             error!("❌ TLS record too short: {} bytes (need at least 16 for AEAD tag)", length);
             error!("   This likely indicates a protocol error or incomplete read");
             return Err(Error::TlsRecord(format!(
-                "TLS record too short: {} bytes (need at least 16 for AEAD tag)",
-                length
+                "TLS record too short: {length} bytes (need at least 16 for AEAD tag)"
             )));
         }
 
@@ -622,8 +621,7 @@ impl TlsRecordLayer {
                 error!("════════════════════════════════════════════════════════════");
 
                 return Err(Error::TlsAlert(format!(
-                    "Server sent {} alert: {} (0x{:02x})",
-                    level_str, desc_str, alert_desc
+                    "Server sent {level_str} alert: {desc_str} (0x{alert_desc:02x})"
                 )));
             }
             // Alert too short - malformed
@@ -634,7 +632,9 @@ impl TlsRecordLayer {
 
         info!("Final plaintext length: {} bytes (ready for HTTP parser)", plaintext.len());
 
-        if !plaintext.is_empty() {
+        if plaintext.is_empty() {
+            warn!("⚠️  Final plaintext is EMPTY after ContentType stripping!");
+        } else {
             info!(
                 "First 100 bytes (hex): {}",
                 hex::encode(&plaintext[..std::cmp::min(100, plaintext.len())])
@@ -654,8 +654,6 @@ impl TlsRecordLayer {
                     warn!("   Instead starts with: {:?}", start);
                 }
             }
-        } else {
-            warn!("⚠️  Final plaintext is EMPTY after ContentType stripping!");
         }
         info!("════════════════════════════════════════════════════════════");
 
@@ -666,7 +664,7 @@ impl TlsRecordLayer {
     }
 
     /// Build nonce for writing (encryption)
-    /// RFC 8446 Section 5.3: nonce = IV XOR sequence_number (right-aligned)
+    /// RFC 8446 Section 5.3: nonce = IV XOR `sequence_number` (right-aligned)
     fn build_write_nonce(&self) -> Vec<u8> {
         let mut nonce = self.keys.client_write_iv.clone();
         let seq_bytes = self.write_sequence_number.to_be_bytes();
@@ -684,7 +682,7 @@ impl TlsRecordLayer {
     }
 
     /// Build nonce for reading (decryption)
-    /// RFC 8446 Section 5.3: nonce = IV XOR sequence_number (right-aligned)
+    /// RFC 8446 Section 5.3: nonce = IV XOR `sequence_number` (right-aligned)
     fn build_read_nonce(&self) -> Vec<u8> {
         let mut nonce = self.keys.server_write_iv.clone();
         let seq_bytes = self.read_sequence_number.to_be_bytes();

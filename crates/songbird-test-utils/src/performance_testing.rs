@@ -124,8 +124,7 @@ impl PerformanceTestFramework {
             success_rate,
         };
 
-        let mut results = self.results.write().await;
-        results.insert(name.to_string(), result.clone());
+        self.results.write().await.insert(name.to_string(), result.clone());
 
         Ok(result)
     }
@@ -162,8 +161,7 @@ impl PerformanceTestFramework {
         &self,
         benchmark_name: &str,
     ) -> SongbirdResult<()> {
-        let results = self.results.read().await;
-        let result = results.get(benchmark_name).ok_or_else(|| {
+        let result = self.results.read().await.get(benchmark_name).cloned().ok_or_else(|| {
             SongbirdError::service("test-utils", format!("Benchmark '{benchmark_name}' not found"))
         })?;
 

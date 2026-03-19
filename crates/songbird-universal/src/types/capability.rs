@@ -168,7 +168,7 @@ pub struct CapabilityRequirement {
     pub capability_type: String,
     /// Minimum version required
     pub minimum_version: String,
-    /// Required QoS guarantees
+    /// Required `QoS` guarantees
     pub required_qos: Option<QosMetrics>,
     /// Whether this capability is optional
     pub optional: bool,
@@ -185,6 +185,6 @@ pub struct ServiceCapability {
     pub version: String,
     /// Endpoints that provide this capability
     pub endpoints: Vec<String>,
-    /// Observed QoS metrics for this capability
+    /// Observed `QoS` metrics for this capability
     pub qos_metrics: QosMetrics,
 }

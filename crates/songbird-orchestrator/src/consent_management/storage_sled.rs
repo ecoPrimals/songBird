@@ -107,7 +107,7 @@ impl ConsentStorage {
         tokio::task::spawn_blocking(move || {
             debug!("Getting consent record: {}", id);
 
-            let key = format!("consent/{}", id);
+            let key = format!("consent/{id}");
             let value = db.get(key.as_bytes()).context("Failed to query consent record")?;
 
             if let Some(bytes) = value {
@@ -146,7 +146,7 @@ impl ConsentStorage {
                     .context("Invalid consent ID in index")?;
 
                 // Fetch the actual record directly
-                let key = format!("consent/{}", consent_id);
+                let key = format!("consent/{consent_id}");
                 if let Some(bytes) = db.get(key.as_bytes())? {
                     let record: ConsentRecord = bincode::deserialize(&bytes)?;
                     records.push(record);
@@ -172,7 +172,7 @@ impl ConsentStorage {
         tokio::task::spawn_blocking(move || {
             debug!("Listing consent records for task: {}", task_id.to_string());
 
-            let prefix = format!("task_consents/{}/", task_id);
+            let prefix = format!("task_consents/{task_id}/");
             let mut records = Vec::new();
 
             // Scan index
@@ -182,7 +182,7 @@ impl ConsentStorage {
                     .context("Invalid consent ID in index")?;
 
                 // Fetch the actual record directly
-                let key = format!("consent/{}", consent_id);
+                let key = format!("consent/{consent_id}");
                 if let Some(bytes) = db.get(key.as_bytes())? {
                     let record: ConsentRecord = bincode::deserialize(&bytes)?;
                     records.push(record);
@@ -240,7 +240,7 @@ impl ConsentStorage {
             debug!("Deleting consent record: {}", id);
 
             // Get record first to clean up indices
-            let key = format!("consent/{}", id);
+            let key = format!("consent/{id}");
             if let Some(bytes) = db.get(key.as_bytes())? {
                 let record: ConsentRecord = bincode::deserialize(&bytes)?;
 

@@ -28,10 +28,10 @@ use std::time::Duration;
 pub const SONGBIRD_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 /// Default User-Agent header
+#[must_use]
 pub fn default_user_agent() -> String {
     format!(
-        "Songbird/{} (ecoPrimals Tower Atomic; Pure Rust TLS 1.3; +https://github.com/ecoPrimals/songbird)",
-        SONGBIRD_VERSION
+        "Songbird/{SONGBIRD_VERSION} (ecoPrimals Tower Atomic; Pure Rust TLS 1.3; +https://github.com/ecoPrimals/songbird)"
     )
 }
 
@@ -62,16 +62,13 @@ pub enum DomainPattern {
 
 impl DomainPattern {
     /// Check if this pattern matches the given domain
+    #[must_use]
     pub fn matches(&self, domain: &str) -> bool {
         match self {
-            DomainPattern::Exact(pattern) => domain.eq_ignore_ascii_case(pattern),
-            DomainPattern::Suffix(suffix) => {
-                domain.to_lowercase().ends_with(&suffix.to_lowercase())
-            }
-            DomainPattern::Contains(needle) => {
-                domain.to_lowercase().contains(&needle.to_lowercase())
-            }
-            DomainPattern::Any => true,
+            Self::Exact(pattern) => domain.eq_ignore_ascii_case(pattern),
+            Self::Suffix(suffix) => domain.to_lowercase().ends_with(&suffix.to_lowercase()),
+            Self::Contains(needle) => domain.to_lowercase().contains(&needle.to_lowercase()),
+            Self::Any => true,
         }
     }
 }
@@ -101,13 +98,15 @@ impl HeaderRule {
     }
 
     /// Add a header to this rule
+    #[must_use]
     pub fn with_header(mut self, key: impl Into<String>, value: impl Into<String>) -> Self {
         self.headers.insert(key.into(), value.into());
         self
     }
 
     /// Set priority
-    pub fn with_priority(mut self, priority: u8) -> Self {
+    #[must_use]
+    pub const fn with_priority(mut self, priority: u8) -> Self {
         self.priority = priority;
         self
     }
@@ -142,6 +141,7 @@ impl Default for HttpClientConfig {
 
 impl HttpClientConfig {
     /// Create minimal config (no default headers)
+    #[must_use]
     pub fn minimal() -> Self {
         Self {
             user_agent: default_user_agent(),
@@ -156,6 +156,7 @@ impl HttpClientConfig {
     }
 
     /// Create standard config with sensible defaults
+    #[must_use]
     pub fn standard() -> Self {
         let mut default_headers = HashMap::new();
         default_headers.insert("Accept".to_string(), "*/*".to_string());
@@ -175,6 +176,7 @@ impl HttpClientConfig {
     }
 
     /// Create browser-like config (mimics modern browser)
+    #[must_use]
     pub fn browser_like() -> Self {
         let mut config = Self::standard();
         config.user_agent = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36".to_string();
@@ -193,6 +195,7 @@ impl HttpClientConfig {
     }
 
     /// Create API-focused config (for REST APIs)
+    #[must_use]
     pub fn api() -> Self {
         let mut config = Self::standard();
         config.default_headers.insert("Accept".to_string(), "application/json".to_string());
@@ -321,43 +324,50 @@ impl HttpClientConfig {
     }
 
     /// Check if a domain is known to have bot protection
+    #[must_use]
     pub fn is_bot_protected(&self, domain: &str) -> bool {
         let domain_lower = domain.to_lowercase();
         self.bot_protected_domains.iter().any(|d| domain_lower.contains(d))
     }
 
     /// Set custom User-Agent
+    #[must_use]
     pub fn with_user_agent(mut self, user_agent: impl Into<String>) -> Self {
         self.user_agent = user_agent.into();
         self
     }
 
     /// Add a default header
+    #[must_use]
     pub fn with_default_header(mut self, key: impl Into<String>, value: impl Into<String>) -> Self {
         self.default_headers.insert(key.into(), value.into());
         self
     }
 
     /// Set redirect mode
-    pub fn with_redirect_mode(mut self, mode: RedirectMode) -> Self {
+    #[must_use]
+    pub const fn with_redirect_mode(mut self, mode: RedirectMode) -> Self {
         self.redirect_mode = mode;
         self
     }
 
     /// Set max redirects
-    pub fn with_max_redirects(mut self, max: u8) -> Self {
+    #[must_use]
+    pub const fn with_max_redirects(mut self, max: u8) -> Self {
         self.max_redirects = max;
         self
     }
 
     /// Set timeout
-    pub fn with_timeout(mut self, timeout: Duration) -> Self {
+    #[must_use]
+    pub const fn with_timeout(mut self, timeout: Duration) -> Self {
         self.timeout = timeout;
         self
     }
 
     /// Enable/disable adaptive mode
-    pub fn with_adaptive_mode(mut self, enabled: bool) -> Self {
+    #[must_use]
+    pub const fn with_adaptive_mode(mut self, enabled: bool) -> Self {
         self.adaptive_mode = enabled;
         self
     }

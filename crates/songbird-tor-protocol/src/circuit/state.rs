@@ -31,6 +31,7 @@ pub struct Circuit {
 
 impl Circuit {
     /// Create new circuit
+    #[must_use]
     pub fn new(id: u32, purpose: CircuitPurpose) -> Self {
         Self {
             id,
@@ -46,16 +47,19 @@ impl Circuit {
     }
 
     /// Get number of hops
-    pub fn hop_count(&self) -> usize {
+    #[must_use]
+    pub const fn hop_count(&self) -> usize {
         self.hops.len()
     }
 
     /// Check if circuit is complete (3 hops)
-    pub fn is_complete(&self) -> bool {
+    #[must_use]
+    pub const fn is_complete(&self) -> bool {
         self.hops.len() >= 3
     }
 
     /// Get age in seconds
+    #[must_use]
     pub fn age_secs(&self) -> u64 {
         self.created_at.elapsed().as_secs()
     }
@@ -78,7 +82,8 @@ pub struct CircuitHop {
 
 impl CircuitHop {
     /// Create new circuit hop from key material
-    pub fn new(
+    #[must_use]
+    pub const fn new(
         relay: RelayInfo,
         forward_digest: [u8; 32],
         backward_digest: [u8; 32],

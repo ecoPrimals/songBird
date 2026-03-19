@@ -501,7 +501,7 @@ pub async fn get_all_endpoints() -> HashMap<CapabilityType, CapabilityEndpoint> 
 ///
 /// Note: With current implementation, this creates a new resolver instance,
 /// so cache clearing is implicit. Future versions may use a global instance.
-pub fn clear_cache() {
+pub const fn clear_cache() {
     // No-op with current architecture - each call creates new resolver
     // This is intentional to avoid global state complexity
 }

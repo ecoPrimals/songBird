@@ -273,25 +273,25 @@ impl CanonicalNetworkConfig {
 
     /// Get orchestrator endpoint
     #[must_use]
-    pub fn orchestrator_endpoint(&self) -> SocketAddr {
+    pub const fn orchestrator_endpoint(&self) -> SocketAddr {
         SocketAddr::new(self.bind_address, self.orchestrator_port)
     }
 
     /// Get discovery endpoint
     #[must_use]
-    pub fn discovery_endpoint(&self) -> SocketAddr {
+    pub const fn discovery_endpoint(&self) -> SocketAddr {
         SocketAddr::new(self.bind_address, self.discovery_port)
     }
 
     /// Get metrics endpoint
     #[must_use]
-    pub fn metrics_endpoint(&self) -> SocketAddr {
+    pub const fn metrics_endpoint(&self) -> SocketAddr {
         SocketAddr::new(self.metrics_bind_address, self.metrics_port)
     }
 
     /// Get federation endpoint
     #[must_use]
-    pub fn federation_endpoint(&self) -> SocketAddr {
+    pub const fn federation_endpoint(&self) -> SocketAddr {
         SocketAddr::new(self.federation_bind_address, self.federation_port)
     }
 }

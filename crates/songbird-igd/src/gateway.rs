@@ -1,6 +1,6 @@
-//! Unified gateway abstraction over UPnP IGD and NAT-PMP
+//! Unified gateway abstraction over `UPnP` IGD and NAT-PMP
 //!
-//! Tries UPnP IGD first (most common), falls back to NAT-PMP.
+//! Tries `UPnP` IGD first (most common), falls back to NAT-PMP.
 //! Provides a single interface for all port mapping operations.
 
 use crate::error::{IgdError, Result};
@@ -15,11 +15,11 @@ use tracing::{debug, info, warn};
 /// Which protocol the gateway supports
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum GatewayProtocol {
-    /// UPnP IGD via SSDP/SOAP
+    /// `UPnP` IGD via SSDP/SOAP
     UpnpIgd {
         /// SOAP control URL
         control_url: String,
-        /// UPnP service type
+        /// `UPnP` service type
         service_type: String,
         /// Friendly device name
         device_name: Option<String>,
@@ -41,8 +41,26 @@ pub struct Gateway {
     pub external_ip: Option<IpAddr>,
     /// Device name if known
     pub device_name: Option<String>,
-    /// Non-IGD UPnP devices found (printers, Chromecasts, etc.)
+    /// Non-IGD `UPnP` devices found (printers, Chromecasts, etc.)
     pub other_devices: Vec<String>,
+}
+
+/// `UPnP` discovery status (avoids excessive bools)
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct UpnpDiscoveryStatus {
+    /// SSDP M-SEARCH was sent
+    pub ssdp_sent: bool,
+    /// IGD device was found
+    pub igd_found: bool,
+}
+
+/// NAT-PMP discovery status
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct NatPmpDiscoveryStatus {
+    /// NAT-PMP probe was sent
+    pub probe_sent: bool,
+    /// NAT-PMP responded
+    pub responded: bool,
 }
 
 /// Discovery diagnostics for user-facing error messages
@@ -52,16 +70,12 @@ pub struct DiscoveryDiagnostics {
     pub gateway_ip: IpAddr,
     /// Whether gateway is reachable
     pub gateway_reachable: bool,
-    /// UPnP SSDP was sent
-    pub upnp_ssdp_sent: bool,
-    /// UPnP devices found (including non-IGD)
+    /// `UPnP` discovery status
+    pub upnp: UpnpDiscoveryStatus,
+    /// `UPnP` devices found (including non-IGD)
     pub upnp_devices_found: Vec<String>,
-    /// Whether an IGD device was found
-    pub upnp_igd_found: bool,
-    /// NAT-PMP probe was sent
-    pub nat_pmp_sent: bool,
-    /// NAT-PMP responded
-    pub nat_pmp_responded: bool,
+    /// NAT-PMP discovery status
+    pub nat_pmp: NatPmpDiscoveryStatus,
     /// Manual configuration instructions
     pub manual_instructions: Vec<String>,
     /// Alternative connectivity tiers
@@ -70,6 +84,10 @@ pub struct DiscoveryDiagnostics {
 
 impl Gateway {
     /// Discover the best available gateway and protocol
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if default gateway detection fails.
     pub async fn discover() -> Result<Self> {
         info!("Discovering gateway for IGD configuration");
 
@@ -123,16 +141,20 @@ impl Gateway {
         let mut diagnostics = DiscoveryDiagnostics {
             gateway_ip,
             gateway_reachable: true, // assumed if we got here
-            upnp_ssdp_sent: false,
+            upnp: UpnpDiscoveryStatus {
+                ssdp_sent: false,
+                igd_found: false,
+            },
             upnp_devices_found: Vec::new(),
-            upnp_igd_found: false,
-            nat_pmp_sent: false,
-            nat_pmp_responded: false,
+            nat_pmp: NatPmpDiscoveryStatus {
+                probe_sent: false,
+                responded: false,
+            },
             manual_instructions: vec![
-                format!("1. Open http://{} in a browser", gateway_ip),
+                format!("1. Open http://{gateway_ip} in a browser"),
                 "2. Log in to your router admin panel".to_string(),
                 "3. Navigate to Firewall > NAT/Gaming (or Port Forwarding)".to_string(),
-                format!("4. Add rule: TCP port 3492 -> {}:3492", local_ip),
+                format!("4. Add rule: TCP port 3492 -> {local_ip}:3492"),
                 "5. Save and apply".to_string(),
                 "6. Optionally: Enable UPnP in the router settings for auto-config".to_string(),
             ],
@@ -144,12 +166,16 @@ impl Gateway {
         };
 
         // Try SSDP
-        diagnostics.upnp_ssdp_sent = true;
+        diagnostics.upnp.ssdp_sent = true;
         let ssdp = SsdpClient::new();
         let ssdp_results = ssdp.discover_gateways().await.unwrap_or_default();
 
         for r in &ssdp_results {
-            diagnostics.upnp_devices_found.push(format!("{} ({})", r.service_type, r.source_addr));
+            diagnostics.upnp_devices_found.push(format!(
+                "{service_type} ({source_addr})",
+                service_type = r.service_type,
+                source_addr = r.source_addr
+            ));
         }
 
         let igd_responses: Vec<_> = ssdp_results
@@ -161,7 +187,7 @@ impl Gateway {
             .collect();
 
         if !igd_responses.is_empty() {
-            diagnostics.upnp_igd_found = true;
+            diagnostics.upnp.igd_found = true;
 
             let resp = &igd_responses[0];
             let gateway = Self {
@@ -180,10 +206,10 @@ impl Gateway {
         }
 
         // Try NAT-PMP
-        diagnostics.nat_pmp_sent = true;
+        diagnostics.nat_pmp.probe_sent = true;
         let natpmp = NatPmpClient::new(gateway_ip);
         if natpmp.probe().await {
-            diagnostics.nat_pmp_responded = true;
+            diagnostics.nat_pmp.responded = true;
 
             let external_ip = natpmp.get_external_ip().await.ok().map(|r| IpAddr::V4(r.ip));
 
@@ -216,6 +242,10 @@ impl Gateway {
     }
 
     /// Map a port through the gateway
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if protocol is invalid, local IP detection fails, or the gateway request fails.
     pub async fn map_port(
         &self,
         external_port: u16,
@@ -224,7 +254,7 @@ impl Gateway {
         ttl: u32,
     ) -> Result<PortMapping> {
         let proto = Protocol::from_str(protocol)
-            .ok_or_else(|| IgdError::InvalidParameter(format!("Invalid protocol: {}", protocol)))?;
+            .ok_or_else(|| IgdError::InvalidParameter(format!("Invalid protocol: {protocol}")))?;
 
         let local_ip = Self::get_local_ip()?;
 
@@ -271,9 +301,13 @@ impl Gateway {
     }
 
     /// Remove a port mapping
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if protocol is invalid or the gateway request fails.
     pub async fn unmap_port(&self, external_port: u16, protocol: &str) -> Result<()> {
         let proto = Protocol::from_str(protocol)
-            .ok_or_else(|| IgdError::InvalidParameter(format!("Invalid protocol: {}", protocol)))?;
+            .ok_or_else(|| IgdError::InvalidParameter(format!("Invalid protocol: {protocol}")))?;
 
         match &self.protocol {
             GatewayProtocol::UpnpIgd {
@@ -295,6 +329,10 @@ impl Gateway {
     }
 
     /// Get external IP from gateway
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the gateway request fails.
     pub async fn get_external_ip(&self) -> Result<IpAddr> {
         match &self.protocol {
             GatewayProtocol::UpnpIgd {
@@ -317,7 +355,8 @@ impl Gateway {
     }
 
     /// Check if any IGD protocol is available
-    pub fn is_available(&self) -> bool {
+    #[must_use]
+    pub const fn is_available(&self) -> bool {
         !matches!(self.protocol, GatewayProtocol::None)
     }
 
@@ -326,7 +365,7 @@ impl Gateway {
         let contents = std::fs::read_to_string("/proc/net/route").map_err(|e| {
             IgdError::Io(std::io::Error::new(
                 std::io::ErrorKind::NotFound,
-                format!("Cannot read /proc/net/route: {}", e),
+                format!("Cannot read /proc/net/route: {e}"),
             ))
         })?;
 
@@ -365,7 +404,7 @@ impl Gateway {
         Ok(local_addr.ip())
     }
 
-    /// Try UPnP IGD discovery
+    /// Try `UPnP` IGD discovery
     ///
     /// 1. SSDP M-SEARCH to find IGD devices
     /// 2. HTTP GET on LOCATION URL to fetch device description XML
@@ -413,7 +452,7 @@ impl Gateway {
         })
     }
 
-    /// Fetch and parse UPnP device description XML
+    /// Fetch and parse `UPnP` device description XML
     ///
     /// Returns (controlURL, serviceType, friendlyName)
     async fn fetch_device_description(
@@ -427,51 +466,42 @@ impl Gateway {
             .strip_prefix("http://")
             .or_else(|| location_url.strip_prefix("HTTP://"))
             .ok_or_else(|| {
-                IgdError::InvalidResponse(format!("Expected http:// URL: {}", location_url))
+                IgdError::InvalidResponse(format!("Expected http:// URL: {location_url}"))
             })?;
 
-        let (host_port, path) = if let Some(idx) = url.find('/') {
-            (&url[..idx], &url[idx..])
-        } else {
-            (url, "/")
-        };
+        let (host_port, path) = url.find('/').map_or((url, "/"), |idx| (&url[..idx], &url[idx..]));
 
-        let (host, port) = if let Some(idx) = host_port.rfind(':') {
+        let (host, port) = host_port.rfind(':').map_or((host_port, 80u16), |idx| {
             let port = host_port[idx + 1..].parse::<u16>().unwrap_or(80);
             (&host_port[..idx], port)
-        } else {
-            (host_port, 80u16)
-        };
+        });
 
         // HTTP GET request
-        let request = format!(
-            "GET {} HTTP/1.1\r\nHost: {}:{}\r\nConnection: close\r\n\r\n",
-            path, host, port
-        );
+        let request =
+            format!("GET {path} HTTP/1.1\r\nHost: {host}:{port}\r\nConnection: close\r\n\r\n");
 
-        let addr = format!("{}:{}", host, port);
+        let addr = format!("{host}:{port}");
         let mut stream =
             tokio::time::timeout(std::time::Duration::from_secs(5), TcpStream::connect(&addr))
                 .await
                 .map_err(|_| IgdError::Timeout)?
-                .map_err(|e| {
-                    IgdError::SoapError(format!("Failed to connect to {}: {}", addr, e))
-                })?;
+                .map_err(|e| IgdError::SoapError(format!("Failed to connect to {addr}: {e}")))?;
 
         stream
             .write_all(request.as_bytes())
             .await
-            .map_err(|e| IgdError::SoapError(format!("Failed to send HTTP GET: {}", e)))?;
+            .map_err(|e| IgdError::SoapError(format!("Failed to send HTTP GET: {e}")))?;
 
         let mut response = Vec::new();
-        stream.read_to_end(&mut response).await.map_err(|e| {
-            IgdError::SoapError(format!("Failed to read device description: {}", e))
-        })?;
+        stream
+            .read_to_end(&mut response)
+            .await
+            .map_err(|e| IgdError::SoapError(format!("Failed to read device description: {e}")))?;
 
         let body = String::from_utf8_lossy(&response);
 
         // Skip HTTP headers
-        let xml = body.find("\r\n\r\n").map(|i| &body[i + 4..]).unwrap_or(&body);
+        let xml = body.find("\r\n\r\n").map_or_else(|| &body[..], |i| &body[i + 4..]);
 
         debug!("Device description XML length: {} bytes", xml.len());
 
@@ -487,7 +517,7 @@ impl Gateway {
 
     /// Extract controlURL from device description XML
     ///
-    /// Finds the WANIPConnection or WANPPPConnection service block and
+    /// Finds the `WANIPConnection` or `WANPPPConnection` service block and
     /// extracts its controlURL. The controlURL may be relative (needs
     /// base URL prepended) or absolute.
     fn extract_control_url(xml: &str, base_url: &str) -> Result<String> {
@@ -510,16 +540,12 @@ impl Gateway {
                         .or_else(|| base_url.strip_prefix("HTTP://"))
                         .unwrap_or(base_url);
 
-                    let host_port = if let Some(idx) = base.find('/') {
-                        &base[..idx]
-                    } else {
-                        base
-                    };
+                    let host_port = base.find('/').map_or(base, |idx| &base[..idx]);
 
                     let absolute = if ctl.starts_with('/') {
-                        format!("http://{}{}", host_port, ctl)
+                        format!("http://{host_port}{ctl}")
                     } else {
-                        format!("http://{}/{}", host_port, ctl)
+                        format!("http://{host_port}/{ctl}")
                     };
 
                     debug!("Resolved controlURL: {} -> {}", ctl, absolute);
@@ -536,10 +562,10 @@ impl Gateway {
     /// Extract a simple XML element value
     ///
     /// Finds `<tag>value</tag>` and returns value.
-    /// Not a full XML parser — just enough for UPnP device descriptions.
+    /// Not a full XML parser — just enough for `UPnP` device descriptions.
     fn extract_xml_value(xml: &str, tag: &str) -> Option<String> {
-        let open_tag = format!("<{}", tag);
-        let close_tag = format!("</{}>", tag);
+        let open_tag = format!("<{tag}");
+        let close_tag = format!("</{tag}>");
 
         if let Some(start) = xml.find(&open_tag) {
             // Find the closing > of the opening tag

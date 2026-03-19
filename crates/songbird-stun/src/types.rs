@@ -51,7 +51,7 @@ impl PortPattern {
     ///
     /// Returns `None` for `Random` or `Unknown` patterns.
     #[must_use]
-    pub fn predict_next(&self) -> Option<u16> {
+    pub const fn predict_next(&self) -> Option<u16> {
         match self {
             Self::Sequential {
                 predicted_next,
@@ -66,7 +66,7 @@ impl PortPattern {
 
     /// Get confidence level for the prediction
     #[must_use]
-    pub fn confidence(&self) -> f64 {
+    pub const fn confidence(&self) -> f64 {
         match self {
             Self::Sequential {
                 confidence,
@@ -74,8 +74,8 @@ impl PortPattern {
             } => *confidence,
             Self::Random {
                 ..
-            } => 0.0,
-            Self::Unknown => 0.0,
+            }
+            | Self::Unknown => 0.0,
         }
     }
 

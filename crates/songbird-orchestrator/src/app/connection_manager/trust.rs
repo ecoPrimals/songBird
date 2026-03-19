@@ -22,14 +22,15 @@ pub struct TrustEvaluator;
 
 impl TrustEvaluator {
     /// Create new trust evaluator
-    pub fn new() -> Self {
+    #[must_use]
+    pub const fn new() -> Self {
         Self
     }
 
     /// Handle trust decision from peer discovery
     ///
     /// **v3.21.0**: Matches original API for compatibility
-    /// **Modern pattern**: Interprets PeerTrustDecision and delegates
+    /// **Modern pattern**: Interprets `PeerTrustDecision` and delegates
     #[allow(clippy::too_many_arguments)]
     pub async fn handle_decision(
         &self,

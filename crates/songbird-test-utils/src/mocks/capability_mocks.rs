@@ -192,11 +192,13 @@ impl MockCapabilityServer {
             if let Ok(listener) = TcpListener::bind(("127.0.0.1", port)) {
                 drop(listener); // Close immediately, we just wanted to check availability
 
-                let mut state = self.state.write().unwrap_or_else(|poisoned| {
-                    tracing::warn!("RwLock poisoned for write, recovering");
-                    poisoned.into_inner()
-                });
-                state.port = Some(port);
+                self.state
+                    .write()
+                    .unwrap_or_else(|poisoned| {
+                        tracing::warn!("RwLock poisoned for write, recovering");
+                        poisoned.into_inner()
+                    })
+                    .port = Some(port);
 
                 return Ok(port);
             }
@@ -330,7 +332,7 @@ pub struct MockCapabilityEnvironment {
 impl MockCapabilityEnvironment {
     /// Create a new environment builder
     #[must_use]
-    pub fn builder() -> MockCapabilityEnvironmentBuilder {
+    pub const fn builder() -> MockCapabilityEnvironmentBuilder {
         MockCapabilityEnvironmentBuilder {
             capabilities: Vec::new(),
         }

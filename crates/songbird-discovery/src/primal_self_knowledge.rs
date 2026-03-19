@@ -263,7 +263,7 @@ impl Default for EnvironmentDiscovery {
 
 impl EnvironmentDiscovery {
     #[must_use]
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self
     }
 }
@@ -308,7 +308,7 @@ impl Default for DnsSrvDiscovery {
 
 impl DnsSrvDiscovery {
     #[must_use]
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self
     }
 }
@@ -337,21 +337,16 @@ impl DiscoveryMechanism for DnsSrvDiscovery {
 
             // Attempt to resolve via DNS
             // This is a simple implementation - production should use hickory-dns
-            match format!("{}:0", service_name).to_socket_addrs() {
-                Ok(mut addrs) => {
-                    if let Some(addr) = addrs.next() {
-                        return Ok(PrimalInfo {
-                            name: capability.to_string(),
-                            host: addr.ip().to_string(),
-                            port: 8080,
-                            capabilities: vec![capability.to_string()],
-                            discovered_at: SystemTime::now(),
-                            discovery_method: "dns-srv".to_string(),
-                        });
-                    }
-                }
-                Err(_) => {
-                    // Fall through to error
+            if let Ok(mut addrs) = format!("{service_name}:0").to_socket_addrs() {
+                if let Some(addr) = addrs.next() {
+                    return Ok(PrimalInfo {
+                        name: capability.to_string(),
+                        host: addr.ip().to_string(),
+                        port: 8080,
+                        capabilities: vec![capability.to_string()],
+                        discovered_at: SystemTime::now(),
+                        discovery_method: "dns-srv".to_string(),
+                    });
                 }
             }
         }

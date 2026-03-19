@@ -55,8 +55,7 @@ impl MetricsCollector {
         };
 
         // Update stored metrics
-        let mut current = self.current_metrics.write().await;
-        *current = Some(metrics.clone());
+        *self.current_metrics.write().await = Some(metrics.clone());
 
         // Increment collection count
         self.collection_count.fetch_add(1, std::sync::atomic::Ordering::Relaxed);

@@ -66,7 +66,7 @@ pub struct DiscoveredPeer {
 /// Evaluate whether to trust a discovered peer
 ///
 /// Consults security provider (security provider) for trust decision.
-/// security provider checks genetic lineage and returns auto_accept/prompt_user/reject.
+/// security provider checks genetic lineage and returns `auto_accept/prompt_user/reject`.
 ///
 /// # Architecture
 ///
@@ -194,7 +194,7 @@ fn handle_trust_response(
             warn!("   Defaulting to prompt user (safe default)");
 
             Ok(PeerTrustDecision::PromptUser {
-                reason: format!("unknown_decision: {}", unknown),
+                reason: format!("unknown_decision: {unknown}"),
                 peer_id: peer_id.to_string(),
                 recommendation: "reject".to_string(),
             })

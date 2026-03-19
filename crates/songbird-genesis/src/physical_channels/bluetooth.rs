@@ -1,6 +1,7 @@
 //! Bluetooth LE pairing
 
-use crate::{error::*, types::*};
+use crate::error::Result;
+use crate::types::{PhysicalChannelType, ProximityProof, TrustLevel};
 use async_trait::async_trait;
 use chrono::Utc;
 
@@ -14,7 +15,8 @@ pub struct BluetoothChannel {
 
 impl BluetoothChannel {
     /// Create new Bluetooth channel
-    pub fn new() -> Self {
+    #[must_use]
+    pub const fn new() -> Self {
         Self {}
     }
 }

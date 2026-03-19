@@ -74,7 +74,7 @@ pub enum ExtensionStrategy {
     /// Modern: Latest TLS 1.3 features (includes PSK, 0-RTT hints)
     Modern,
 
-    /// MaxCompatibility: All possible extensions for maximum compatibility
+    /// `MaxCompatibility`: All possible extensions for maximum compatibility
     MaxCompatibility,
 
     /// Adaptive: Learn from server responses, start with Standard
@@ -87,16 +87,16 @@ pub enum ExtensionStrategy {
 /// Strategy for cipher suite selection
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum CipherStrategy {
-    /// Prefer modern ciphers (ChaCha20 > AES-256-GCM > AES-128-GCM)
+    /// Prefer modern ciphers (`ChaCha20` > AES-256-GCM > AES-128-GCM)
     PreferModern,
 
-    /// Prefer compatibility (AES-128-GCM > AES-256-GCM > ChaCha20)
+    /// Prefer compatibility (AES-128-GCM > AES-256-GCM > `ChaCha20`)
     PreferCompatibility,
 
     /// Only AES (for hardware-accelerated environments)
     OnlyAes,
 
-    /// Only ChaCha20 (for software-only environments)
+    /// Only `ChaCha20` (for software-only environments)
     OnlyChaCha,
 
     /// Adaptive: Learn which cipher suites work best
@@ -118,12 +118,13 @@ pub enum FallbackStrategy {
     /// Reverse: Try Minimal → Standard → Modern
     Reverse,
 
-    /// MaxCompatibility: Try all possible combinations
+    /// `MaxCompatibility`: Try all possible combinations
     Exhaustive,
 }
 
 impl TlsConfig {
     /// Create minimal config (fewest extensions, fastest handshake)
+    #[must_use]
     pub fn minimal() -> Self {
         Self {
             extension_strategy: ExtensionStrategy::Minimal,
@@ -135,6 +136,7 @@ impl TlsConfig {
     }
 
     /// Create standard config (balanced, good default)
+    #[must_use]
     pub fn standard() -> Self {
         Self {
             extension_strategy: ExtensionStrategy::Standard,
@@ -146,6 +148,7 @@ impl TlsConfig {
     }
 
     /// Create modern config (latest features, optimal performance)
+    #[must_use]
     pub fn modern() -> Self {
         Self {
             extension_strategy: ExtensionStrategy::Modern,
@@ -157,6 +160,7 @@ impl TlsConfig {
     }
 
     /// Create max compatibility config (works everywhere)
+    #[must_use]
     pub fn max_compatibility() -> Self {
         Self {
             extension_strategy: ExtensionStrategy::MaxCompatibility,
@@ -170,6 +174,7 @@ impl TlsConfig {
     }
 
     /// Create adaptive config (learns and evolves)
+    #[must_use]
     pub fn adaptive() -> Self {
         Self {
             extension_strategy: ExtensionStrategy::Adaptive,
@@ -183,6 +188,7 @@ impl TlsConfig {
     }
 
     /// Create TLS 1.3 only config (maximum security, may fail on legacy servers)
+    #[must_use]
     pub fn tls_1_3_only() -> Self {
         Self {
             version_config: TlsVersionConfig::strict(),
@@ -195,6 +201,7 @@ impl TlsConfig {
     }
 
     /// Create legacy-compatible config (TLS 1.3 + secure 1.2 fallback)
+    #[must_use]
     pub fn legacy_compatible() -> Self {
         Self {
             version_config: TlsVersionConfig::legacy(),
@@ -211,19 +218,22 @@ impl TlsConfig {
     // Builder methods
 
     /// Set TLS version configuration
-    pub fn with_version_config(mut self, config: TlsVersionConfig) -> Self {
+    #[must_use]
+    pub const fn with_version_config(mut self, config: TlsVersionConfig) -> Self {
         self.version_config = config;
         self
     }
 
     /// Set security policy (controls TLS version selection)
-    pub fn with_security_policy(mut self, policy: SecurityPolicy) -> Self {
+    #[must_use]
+    pub const fn with_security_policy(mut self, policy: SecurityPolicy) -> Self {
         self.version_config = self.version_config.with_policy(policy);
         self
     }
 
     /// Set minimum TLS version
-    pub fn with_minimum_version(mut self, version: TlsVersion) -> Self {
+    #[must_use]
+    pub const fn with_minimum_version(mut self, version: TlsVersion) -> Self {
         self.version_config = self.version_config.with_minimum_version(version);
         self
     }
@@ -281,6 +291,7 @@ pub enum ExtensionType {
 
 impl ExtensionSet {
     /// Minimal extension set (required only)
+    #[must_use]
     pub fn minimal() -> Self {
         Self {
             extensions: vec![
@@ -293,6 +304,7 @@ impl ExtensionSet {
     }
 
     /// Standard extension set (works with most servers)
+    #[must_use]
     pub fn standard() -> Self {
         Self {
             extensions: vec![
@@ -309,6 +321,7 @@ impl ExtensionSet {
     }
 
     /// Modern extension set (latest features)
+    #[must_use]
     pub fn modern() -> Self {
         Self {
             extensions: vec![
@@ -328,6 +341,7 @@ impl ExtensionSet {
     }
 
     /// Maximum compatibility set (all possible extensions)
+    #[must_use]
     pub fn max_compatibility() -> Self {
         Self {
             extensions: vec![
@@ -360,7 +374,8 @@ pub struct CipherSuiteSet {
 }
 
 impl CipherSuiteSet {
-    /// Modern cipher preference (ChaCha20 first)
+    /// Modern cipher preference (`ChaCha20` first)
+    #[must_use]
     pub fn modern() -> Self {
         Self {
             suites: vec![
@@ -373,6 +388,7 @@ impl CipherSuiteSet {
     }
 
     /// Compatibility cipher preference (AES-128 first)
+    #[must_use]
     pub fn compatibility() -> Self {
         Self {
             suites: vec![
@@ -385,6 +401,7 @@ impl CipherSuiteSet {
     }
 
     /// AES-only (hardware accelerated)
+    #[must_use]
     pub fn aes_only() -> Self {
         Self {
             suites: vec![
@@ -396,6 +413,7 @@ impl CipherSuiteSet {
     }
 
     /// ChaCha20-only (software optimized)
+    #[must_use]
     pub fn chacha_only() -> Self {
         Self {
             suites: vec![

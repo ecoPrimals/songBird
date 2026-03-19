@@ -115,7 +115,7 @@ pub struct BtspProviderFactory {
 impl BtspProviderFactory {
     /// Create a new factory with configuration
     #[must_use]
-    pub fn new(config: BtspConfig) -> Self {
+    pub const fn new(config: BtspConfig) -> Self {
         Self {
             config,
         }

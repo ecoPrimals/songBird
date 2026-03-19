@@ -1,6 +1,6 @@
 //! Tor cell encoding/decoding
 //!
-//! **Status**: Phase 2B (TODO)
+//! **Status**: Phase 2B — cell types implemented, encryption pending BearDog AES-128-CTR
 
 use crate::error::{Error, Result};
 
@@ -50,6 +50,7 @@ pub struct Cell {
 
 impl Cell {
     /// Encode cell to bytes
+    #[must_use]
     pub fn encode(&self) -> [u8; CELL_LEN] {
         let mut buf = [0u8; CELL_LEN];
         buf[0..4].copy_from_slice(&self.circ_id.to_be_bytes());
@@ -80,19 +81,19 @@ impl TryFrom<u8> for CellCommand {
 
     fn try_from(value: u8) -> Result<Self> {
         match value {
-            0 => Ok(CellCommand::Padding),
-            1 => Ok(CellCommand::Create),
-            2 => Ok(CellCommand::Created),
-            3 => Ok(CellCommand::Relay),
-            4 => Ok(CellCommand::Destroy),
-            5 => Ok(CellCommand::CreateFast),
-            6 => Ok(CellCommand::CreatedFast),
-            7 => Ok(CellCommand::Versions),
-            8 => Ok(CellCommand::NetInfo),
-            9 => Ok(CellCommand::RelayEarly),
-            10 => Ok(CellCommand::Create2),
-            11 => Ok(CellCommand::Created2),
-            _ => Err(Error::Protocol(format!("Unknown cell command: {}", value))),
+            0 => Ok(Self::Padding),
+            1 => Ok(Self::Create),
+            2 => Ok(Self::Created),
+            3 => Ok(Self::Relay),
+            4 => Ok(Self::Destroy),
+            5 => Ok(Self::CreateFast),
+            6 => Ok(Self::CreatedFast),
+            7 => Ok(Self::Versions),
+            8 => Ok(Self::NetInfo),
+            9 => Ok(Self::RelayEarly),
+            10 => Ok(Self::Create2),
+            11 => Ok(Self::Created2),
+            _ => Err(Error::Protocol(format!("Unknown cell command: {value}"))),
         }
     }
 }
@@ -144,6 +145,7 @@ pub struct RelayCell {
 
 impl RelayCell {
     /// Encode relay cell
+    #[must_use]
     pub fn encode(&self) -> Vec<u8> {
         let mut buf = Vec::with_capacity(509);
         buf.push(self.command as u8);

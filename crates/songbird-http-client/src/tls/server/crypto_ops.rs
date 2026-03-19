@@ -66,7 +66,7 @@ impl TlsServer {
         }
         .map_err(|e| {
             error!("❌ Encryption failed: {}", e);
-            Error::TlsHandshake(format!("Failed to encrypt: {}", e))
+            Error::TlsHandshake(format!("Failed to encrypt: {e}"))
         })?;
 
         debug!(
@@ -133,7 +133,7 @@ impl TlsServer {
         .map_err(|e| {
             error!("❌ Decryption failed: {}", e);
             error!("   AEAD authentication failure");
-            Error::TlsHandshake(format!("Failed to decrypt: {}", e))
+            Error::TlsHandshake(format!("Failed to decrypt: {e}"))
         })?;
 
         debug!("✅ Decrypted {} bytes → {} bytes", ciphertext.len(), plaintext.len());

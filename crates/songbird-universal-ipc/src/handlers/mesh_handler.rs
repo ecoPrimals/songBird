@@ -141,37 +141,42 @@ impl MeshHandler {
     /// }
     /// ```
     pub async fn handle_status(&self, _params: Value) -> Result<Value, String> {
-        let mesh_guard = self.mesh.read().await;
-        let mesh = mesh_guard.as_ref().ok_or("Mesh not initialized (call mesh.init first)")?;
+        let (reachable, direct_count, relay_count, onion_count, local_count) = {
+            let mesh_guard = self.mesh.read().await;
+            let mesh = mesh_guard.as_ref().ok_or("Mesh not initialized (call mesh.init first)")?;
 
-        let reachable = mesh.get_reachable_nodes().await;
-        let node_id = self.node_id.read().await.clone();
-        let uptime = self.start_time.elapsed().as_secs();
+            let reachable = mesh.get_reachable_nodes().await;
 
-        // Count path types
-        let mut direct_count = 0;
-        let mut relay_count = 0;
-        let mut onion_count = 0;
-        let mut local_count = 0;
+            // Count path types
+            let mut direct_count = 0;
+            let mut relay_count = 0;
+            let mut onion_count = 0;
+            let mut local_count = 0;
 
-        for peer_id in &reachable {
-            if let Some(path) = mesh.get_best_path(peer_id).await {
-                match path.endpoint_type {
-                    EndpointType::Local {
-                        ..
-                    } => local_count += 1,
-                    EndpointType::Direct {
-                        ..
-                    } => direct_count += 1,
-                    EndpointType::FamilyRelay {
-                        ..
-                    } => relay_count += 1,
-                    EndpointType::TorOnion {
-                        ..
-                    } => onion_count += 1,
+            for peer_id in &reachable {
+                if let Some(path) = mesh.get_best_path(peer_id).await {
+                    match path.endpoint_type {
+                        EndpointType::Local {
+                            ..
+                        } => local_count += 1,
+                        EndpointType::Direct {
+                            ..
+                        } => direct_count += 1,
+                        EndpointType::FamilyRelay {
+                            ..
+                        } => relay_count += 1,
+                        EndpointType::TorOnion {
+                            ..
+                        } => onion_count += 1,
+                    }
                 }
             }
-        }
+
+            Ok::<_, String>((reachable, direct_count, relay_count, onion_count, local_count))
+        }?;
+
+        let node_id = self.node_id.read().await.clone();
+        let uptime = self.start_time.elapsed().as_secs();
 
         Ok(json!({
             "node_id": node_id,
@@ -203,9 +208,6 @@ impl MeshHandler {
     /// }
     /// ```
     pub async fn handle_find_path(&self, params: Value) -> Result<Value, String> {
-        let mesh_guard = self.mesh.read().await;
-        let mesh = mesh_guard.as_ref().ok_or("Mesh not initialized (call mesh.init first)")?;
-
         let target_node_id = params
             .get("target_node_id")
             .and_then(|v| v.as_str())
@@ -213,22 +215,25 @@ impl MeshHandler {
 
         debug!("🔍 Finding path to {}", target_node_id);
 
-        // First try to get the best known path
-        if let Some(path) = mesh.get_best_path(target_node_id).await {
-            return Ok(self.path_to_json(&path, true));
-        }
+        let result = {
+            let mesh_guard = self.mesh.read().await;
+            let mesh = mesh_guard.as_ref().ok_or("Mesh not initialized (call mesh.init first)")?;
 
-        // Try to find a relay
-        if let Some(path) = mesh.find_relay_for(target_node_id).await {
-            return Ok(self.path_to_json(&path, true));
-        }
+            if let Some(path) = mesh.get_best_path(target_node_id).await {
+                return Ok(self.path_to_json(&path, true));
+            }
 
-        // Not found
-        Ok(json!({
-            "found": false,
-            "target_node_id": target_node_id,
-            "reason": "peer_not_discovered"
-        }))
+            if let Some(path) = mesh.find_relay_for(target_node_id).await {
+                return Ok(self.path_to_json(&path, true));
+            }
+
+            Ok(json!({
+                "found": false,
+                "target_node_id": target_node_id,
+                "reason": "peer_not_discovered"
+            }))
+        };
+        result
     }
 
     /// Handle `mesh.announce` method - Announce as relay
@@ -247,9 +252,6 @@ impl MeshHandler {
     /// }
     /// ```
     pub async fn handle_announce(&self, params: Value) -> Result<Value, String> {
-        let mesh_guard = self.mesh.read().await;
-        let mesh = mesh_guard.as_ref().ok_or("Mesh not initialized (call mesh.init first)")?;
-
         let as_relay = params.get("as_relay").and_then(serde_json::Value::as_bool).unwrap_or(true);
 
         if !as_relay {
@@ -259,7 +261,13 @@ impl MeshHandler {
             }));
         }
 
-        let _msg = mesh.announce_as_relay().await;
+        {
+            let mesh_guard = self.mesh.read().await;
+            let mesh = mesh_guard.as_ref().ok_or("Mesh not initialized (call mesh.init first)")?;
+            let _msg = mesh.announce_as_relay().await;
+            Ok::<_, String>(())
+        }?;
+
         let node_id = self.node_id.read().await.clone();
 
         info!("📢 Announced {} as relay to mesh", &node_id[..8.min(node_id.len())]);
@@ -286,39 +294,43 @@ impl MeshHandler {
     /// }
     /// ```
     pub async fn handle_peers(&self, params: Value) -> Result<Value, String> {
-        let mesh_guard = self.mesh.read().await;
-        let mesh = mesh_guard.as_ref().ok_or("Mesh not initialized (call mesh.init first)")?;
-
         let _include_offline =
             params.get("include_offline").and_then(serde_json::Value::as_bool).unwrap_or(false);
 
-        let reachable = mesh.get_reachable_nodes().await;
+        let (peers, relay_count) = {
+            let mesh_guard = self.mesh.read().await;
+            let mesh = mesh_guard.as_ref().ok_or("Mesh not initialized (call mesh.init first)")?;
 
-        let mut peers = Vec::new();
-        let mut relay_count = 0;
+            let reachable = mesh.get_reachable_nodes().await;
 
-        for node_id in &reachable {
-            if let Some(path) = mesh.get_best_path(node_id).await {
-                let (path_type, address) = self.endpoint_to_strings(&path.endpoint_type);
-                let is_relay = matches!(path.endpoint_type, EndpointType::FamilyRelay { .. });
-                if is_relay {
-                    relay_count += 1;
+            let mut peers = Vec::new();
+            let mut relay_count = 0;
+
+            for node_id in &reachable {
+                if let Some(path) = mesh.get_best_path(node_id).await {
+                    let (path_type, address) = self.endpoint_to_strings(&path.endpoint_type);
+                    let is_relay = matches!(path.endpoint_type, EndpointType::FamilyRelay { .. });
+                    if is_relay {
+                        relay_count += 1;
+                    }
+
+                    let latency_ms =
+                        path.latency.map(|d| u64::try_from(d.as_millis()).unwrap_or(u64::MAX));
+
+                    peers.push(json!({
+                        "node_id": node_id,
+                        "path_type": path_type,
+                        "address": address,
+                        "last_seen_ms": u64::try_from(path.last_seen.elapsed().as_millis()).unwrap_or(u64::MAX),
+                        "is_relay": is_relay,
+                        "latency_ms": latency_ms,
+                        "reachable": path.reachable
+                    }));
                 }
-
-                let latency_ms =
-                    path.latency.map(|d| u64::try_from(d.as_millis()).unwrap_or(u64::MAX));
-
-                peers.push(json!({
-                    "node_id": node_id,
-                    "path_type": path_type,
-                    "address": address,
-                    "last_seen_ms": u64::try_from(path.last_seen.elapsed().as_millis()).unwrap_or(u64::MAX),
-                    "is_relay": is_relay,
-                    "latency_ms": latency_ms,
-                    "reachable": path.reachable
-                }));
             }
-        }
+
+            Ok::<_, String>((peers, relay_count))
+        }?;
 
         Ok(json!({
             "peers": peers,
@@ -344,46 +356,50 @@ impl MeshHandler {
     /// }
     /// ```
     pub async fn handle_health_check(&self, params: Value) -> Result<Value, String> {
-        let mesh_guard = self.mesh.read().await;
-        let mesh = mesh_guard.as_ref().ok_or("Mesh not initialized (call mesh.init first)")?;
+        let (results, all_healthy) = {
+            let mesh_guard = self.mesh.read().await;
+            let mesh = mesh_guard.as_ref().ok_or("Mesh not initialized (call mesh.init first)")?;
 
-        // Run the mesh health check to update reachability
-        mesh.health_check().await;
+            // Run the mesh health check to update reachability
+            mesh.health_check().await;
 
-        // If no target_node_ids specified, check all reachable nodes
-        let target_ids: Vec<String> =
-            if let Some(arr) = params.get("target_node_ids").and_then(|v| v.as_array()) {
-                arr.iter().filter_map(|v| v.as_str().map(String::from)).collect()
-            } else {
-                mesh.get_reachable_nodes().await
-            };
+            // If no target_node_ids specified, check all reachable nodes
+            let target_ids: Vec<String> =
+                if let Some(arr) = params.get("target_node_ids").and_then(|v| v.as_array()) {
+                    arr.iter().filter_map(|v| v.as_str().map(String::from)).collect()
+                } else {
+                    mesh.get_reachable_nodes().await
+                };
 
-        let mut results = Vec::new();
-        let mut all_healthy = true;
+            let mut results = Vec::new();
+            let mut all_healthy = true;
 
-        for node_id in target_ids {
-            if let Some(path) = mesh.get_best_path(&node_id).await {
-                let (path_type, _) = self.endpoint_to_strings(&path.endpoint_type);
-                let healthy = path.reachable;
-                if !healthy {
+            for node_id in target_ids {
+                if let Some(path) = mesh.get_best_path(&node_id).await {
+                    let (path_type, _) = self.endpoint_to_strings(&path.endpoint_type);
+                    let healthy = path.reachable;
+                    if !healthy {
+                        all_healthy = false;
+                    }
+
+                    results.push(json!({
+                        "node_id": node_id,
+                        "healthy": healthy,
+                        "latency_ms": path.latency.map(|d| u64::try_from(d.as_millis()).unwrap_or(u64::MAX)),
+                        "path_type": path_type
+                    }));
+                } else {
                     all_healthy = false;
+                    results.push(json!({
+                        "node_id": node_id,
+                        "healthy": false,
+                        "reason": "no_path_known"
+                    }));
                 }
-
-                results.push(json!({
-                    "node_id": node_id,
-                    "healthy": healthy,
-                    "latency_ms": path.latency.map(|d| u64::try_from(d.as_millis()).unwrap_or(u64::MAX)),
-                    "path_type": path_type
-                }));
-            } else {
-                all_healthy = false;
-                results.push(json!({
-                    "node_id": node_id,
-                    "healthy": false,
-                    "reason": "no_path_known"
-                }));
             }
-        }
+
+            Ok::<_, String>((results, all_healthy))
+        }?;
 
         Ok(json!({
             "results": results,
@@ -411,9 +427,6 @@ impl MeshHandler {
     /// }
     /// ```
     pub async fn handle_auto_discover(&self, params: Value) -> Result<Value, String> {
-        let mesh_guard = self.mesh.read().await;
-        let mesh = mesh_guard.as_ref().ok_or("Mesh not initialized (call mesh.init first)")?;
-
         let timeout_ms =
             params.get("timeout_ms").and_then(serde_json::Value::as_u64).unwrap_or(3000);
         let broadcast_port = u16::try_from(
@@ -432,26 +445,33 @@ impl MeshHandler {
             .udp_multicast_discover(&node_id, broadcast_port, Duration::from_millis(timeout_ms))
             .await;
 
-        let mut peers_found = Vec::new();
-        for (peer_id, addr) in &discovered {
-            // Add discovered local peers to mesh
-            let endpoint = RelayEndpoint {
-                node_id: peer_id.clone(),
-                endpoint_type: EndpointType::Local {
-                    addr: *addr,
-                },
-                latency: None,
-                last_seen: Instant::now(),
-                reachable: true,
-            };
-            mesh.add_endpoint(peer_id.clone(), endpoint).await;
+        let peers_found = {
+            let mesh_guard = self.mesh.read().await;
+            let mesh = mesh_guard.as_ref().ok_or("Mesh not initialized (call mesh.init first)")?;
 
-            peers_found.push(json!({
-                "node_id": peer_id,
-                "address": addr.to_string(),
-                "path_type": "local"
-            }));
-        }
+            let mut peers_found = Vec::new();
+            for (peer_id, addr) in &discovered {
+                // Add discovered local peers to mesh
+                let endpoint = RelayEndpoint {
+                    node_id: peer_id.clone(),
+                    endpoint_type: EndpointType::Local {
+                        addr: *addr,
+                    },
+                    latency: None,
+                    last_seen: Instant::now(),
+                    reachable: true,
+                };
+                mesh.add_endpoint(peer_id.clone(), endpoint).await;
+
+                peers_found.push(json!({
+                    "node_id": peer_id,
+                    "address": addr.to_string(),
+                    "path_type": "local"
+                }));
+            }
+
+            Ok::<_, String>(peers_found)
+        }?;
 
         info!("🔍 Auto-discovery complete: found {} peers", peers_found.len());
 

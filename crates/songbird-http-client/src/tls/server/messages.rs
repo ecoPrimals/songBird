@@ -1,6 +1,6 @@
 //! TLS Message Construction
 //!
-//! Handles building TLS 1.3 server messages (ServerHello, Certificate, etc.)
+//! Handles building TLS 1.3 server messages (`ServerHello`, Certificate, etc.)
 
 use crate::error::{Error, Result};
 use crate::tls::handshake_v2::keys::CipherSuite;
@@ -36,7 +36,7 @@ impl TlsServer {
         } else {
             // Fallback: use time-seeded fastrand if getrandom fails
             // This is less secure but still better than predictable pattern
-            let seed = time as u64 ^ std::process::id() as u64;
+            let seed = u64::from(time) ^ u64::from(std::process::id());
             let mut rng = fastrand::Rng::with_seed(seed);
             for _ in 0..28 {
                 random.push(rng.u8(..));
@@ -47,7 +47,7 @@ impl TlsServer {
         random
     }
 
-    /// Build ServerHello message
+    /// Build `ServerHello` message
     pub(super) fn build_server_hello(
         &self,
         server_random: &[u8],
@@ -92,7 +92,7 @@ impl TlsServer {
         Ok(msg)
     }
 
-    /// Build ServerHello extensions
+    /// Build `ServerHello` extensions
     fn build_server_hello_extensions(&self, server_public_key: &[u8]) -> Result<Vec<u8>> {
         let mut ext = Vec::new();
 
@@ -112,7 +112,7 @@ impl TlsServer {
         Ok(ext)
     }
 
-    /// Build EncryptedExtensions message
+    /// Build `EncryptedExtensions` message
     pub(super) fn build_encrypted_extensions(&self) -> Result<Vec<u8>> {
         let mut msg = Vec::new();
 
@@ -169,19 +169,19 @@ impl TlsServer {
         Ok(msg)
     }
 
-    /// Build CertificateVerify message
+    /// Build `CertificateVerify` message
     ///
     /// # Current Status (January 2026)
     ///
-    /// **BLOCKED**: Requires BearDog signing API integration
+    /// **BLOCKED**: Requires `BearDog` signing API integration
     ///
-    /// Per RFC 8446 Section 4.4.3, CertificateVerify contains a signature over:
+    /// Per RFC 8446 Section 4.4.3, `CertificateVerify` contains a signature over:
     /// - 64 spaces (0x20)
-    /// - Context string ("TLS 1.3, server CertificateVerify")
+    /// - Context string ("TLS 1.3, server `CertificateVerify`")
     /// - 0x00 separator
     /// - Transcript hash up to this point
     ///
-    /// ## Required BearDog API
+    /// ## Required `BearDog` API
     ///
     /// Need `crypto.sign_ecdsa_p256_sha256` or `crypto.sign_ed25519` method:
     /// ```json
@@ -201,6 +201,7 @@ impl TlsServer {
     /// the handshake flow to complete for protocol testing, but will fail
     /// signature verification by any real TLS client.
     pub(super) async fn build_certificate_verify(&self) -> Result<Vec<u8>> {
+        tokio::task::yield_now().await;
         // Build the data to be signed (RFC 8446 Section 4.4.3)
         let mut to_sign = Vec::new();
 
@@ -270,7 +271,7 @@ impl TlsServer {
                 self.cipher_suite.to_u16(), // Convert to u16
             )
             .await
-            .map_err(|e| Error::TlsHandshake(format!("Failed to compute verify_data: {}", e)))?;
+            .map_err(|e| Error::TlsHandshake(format!("Failed to compute verify_data: {e}")))?;
 
         let mut msg = Vec::new();
 

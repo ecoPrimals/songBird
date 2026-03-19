@@ -1,6 +1,6 @@
 //! Songbird - Network Orchestration & Discovery Primal
 //!
-//! UniBin Architecture (Ecosystem Standard v1.0.0)
+//! `UniBin` Architecture (Ecosystem Standard v1.0.0)
 //! Main entry point with subcommand structure for different operational modes
 
 use anyhow::Result;
@@ -9,7 +9,7 @@ use songbird_orchestrator::commands::{self, ConfigAction};
 
 /// Songbird - Network Orchestration & Discovery Primal
 ///
-/// UniBin Architecture: One binary, multiple modes
+/// `UniBin` Architecture: One binary, multiple modes
 #[derive(Parser)]
 #[command(name = "songbird")]
 #[command(about = "Network Orchestration & Discovery Primal", long_about = None)]
@@ -28,7 +28,7 @@ enum Commands {
     /// with discovery, federation, and network services.
     Server {
         /// HTTP server port (environment-aware)
-        /// Respects SONGBIRD_HTTP_PORT, SONGBIRD_PORT, or PORT
+        /// Respects `SONGBIRD_HTTP_PORT`, `SONGBIRD_PORT`, or PORT
         #[arg(long, short, default_value_t = songbird_orchestrator::env_config::http_port())]
         port: u16,
 

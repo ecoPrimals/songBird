@@ -1,8 +1,8 @@
-//! BTSP (BirdSong Transport Protocol) Types
+//! BTSP (`BirdSong` Transport Protocol) Types
 //!
 //! **VPN-Free P2P via Genetic Lineage**
 //!
-//! BirdSong enables secure P2P communication through genetic lineage trust,
+//! `BirdSong` enables secure P2P communication through genetic lineage trust,
 //! eliminating the need for VPNs or centralized NAT traversal servers.
 //!
 //! ## Architecture
@@ -27,7 +27,7 @@
 //! ## Zero Hardcoding
 //!
 //! - Discovers security provider via capabilities
-//! - No hardcoded vendor names (BearDog, etc.)
+//! - No hardcoded vendor names (`BearDog`, etc.)
 //! - Runtime protocol negotiation
 //! - Primal only knows itself
 
@@ -190,7 +190,7 @@ pub struct BtspTunnelResponse {
     pub metadata: std::collections::HashMap<String, serde_json::Value>,
 }
 
-/// BirdSong contact exchange request
+/// `BirdSong` contact exchange request
 ///
 /// Request lineage assistance to find peer contact info.
 /// Like asking a grandparent for a nephew's phone number.
@@ -210,7 +210,7 @@ pub struct ContactExchangeRequest {
     pub max_hops: u32,
 }
 
-fn default_max_hops() -> u32 {
+const fn default_max_hops() -> u32 {
     3
 }
 
@@ -233,12 +233,14 @@ pub struct ContactExchangeResponse {
 
 impl BtspTunnel {
     /// Check if tunnel is active
-    pub fn is_active(&self) -> bool {
+    #[must_use]
+    pub const fn is_active(&self) -> bool {
         matches!(self.state, TunnelState::Active)
     }
 
     /// Check if tunnel needs reconnection
-    pub fn needs_reconnect(&self) -> bool {
+    #[must_use]
+    pub const fn needs_reconnect(&self) -> bool {
         matches!(self.state, TunnelState::Reconnecting | TunnelState::Closed)
     }
 
@@ -269,14 +271,14 @@ impl BtspTunnelRequest {
 
     /// Set preferred tunnel type
     #[must_use]
-    pub fn with_tunnel_type(mut self, tunnel_type: TunnelType) -> Self {
+    pub const fn with_tunnel_type(mut self, tunnel_type: TunnelType) -> Self {
         self.preferred_type = Some(tunnel_type);
         self
     }
 
     /// Disable lineage-based NAT traversal
     #[must_use]
-    pub fn without_lineage(mut self) -> Self {
+    pub const fn without_lineage(mut self) -> Self {
         self.use_lineage_for_nat = false;
         self
     }
@@ -299,7 +301,7 @@ impl ContactExchangeRequest {
 
     /// Set maximum hops through lineage
     #[must_use]
-    pub fn with_max_hops(mut self, max_hops: u32) -> Self {
+    pub const fn with_max_hops(mut self, max_hops: u32) -> Self {
         self.max_hops = max_hops;
         self
     }

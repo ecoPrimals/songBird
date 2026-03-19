@@ -138,7 +138,7 @@ pub struct BackendConfig {
 /// Transformation configuration for request/response mapping
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TransformConfig {
-    /// JSONPath mappings for field transformations
+    /// `JSONPath` mappings for field transformations
     pub field_mappings: HashMap<String, String>,
 
     /// Template for transforming the entire payload
@@ -250,13 +250,13 @@ impl CapabilityRouter {
 
         let provider_ids = provider_ids.ok_or_else(|| {
             warn!("No providers found for capability '{}'", capability_id);
-            anyhow!("No providers available for capability: {}", capability_id)
+            anyhow!("No providers available for capability: {capability_id}")
         })?;
 
         // Get the first available provider (TODO: implement selection strategy)
         let provider_id = provider_ids
             .first()
-            .ok_or_else(|| anyhow!("Provider list empty for capability: {}", capability_id))?;
+            .ok_or_else(|| anyhow!("Provider list empty for capability: {capability_id}"))?;
 
         // Retrieve provider configuration
         let provider = {
@@ -265,7 +265,7 @@ impl CapabilityRouter {
         };
 
         let provider =
-            provider.ok_or_else(|| anyhow!("Provider '{}' not found in registry", provider_id))?;
+            provider.ok_or_else(|| anyhow!("Provider '{provider_id}' not found in registry"))?;
 
         // Find the matching capability
         let capability = provider

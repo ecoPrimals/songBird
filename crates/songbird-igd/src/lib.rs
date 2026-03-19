@@ -1,6 +1,6 @@
 //! # Songbird IGD - Sovereign Router Configuration
 //!
-//! Pure Rust implementation of UPnP IGD (Internet Gateway Device) and NAT-PMP protocols
+//! Pure Rust implementation of `UPnP` IGD (Internet Gateway Device) and NAT-PMP protocols
 //! for automatic router port forwarding configuration.
 //!
 //! ## Overview
@@ -8,7 +8,7 @@
 //! Turns the router from a manual dependency into a tool Songbird configures automatically.
 //! This crate enables Songbird to:
 //!
-//! - Discover routers via SSDP multicast (UPnP) or NAT-PMP probes
+//! - Discover routers via SSDP multicast (`UPnP`) or NAT-PMP probes
 //! - Request port mappings programmatically
 //! - Query external IP addresses from the router
 //! - Manage mapping TTLs and automatic renewal
@@ -31,7 +31,7 @@
 //!
 //! ## Protocols Supported
 //!
-//! - **UPnP IGD** (RFC 6970): SSDP discovery + SOAP control
+//! - **`UPnP` IGD** (RFC 6970): SSDP discovery + SOAP control
 //! - **NAT-PMP** (RFC 6886): Simple binary UDP protocol
 //! - **Manual fallback**: Clear instructions when auto-config unavailable
 //!
@@ -96,8 +96,8 @@ pub const NAT_PMP_PORT: u16 = 5351;
 /// Default port mapping TTL (24 hours)
 pub const DEFAULT_MAPPING_TTL: u32 = 86400;
 
-/// UPnP IGD device type
+/// `UPnP` IGD device type
 pub const IGD_DEVICE_TYPE: &str = "urn:schemas-upnp-org:device:InternetGatewayDevice:1";
 
-/// UPnP WANIPConnection service type
+/// `UPnP` `WANIPConnection` service type
 pub const WANIP_SERVICE_TYPE: &str = "urn:schemas-upnp-org:service:WANIPConnection:1";

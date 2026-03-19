@@ -231,4 +231,3 @@ fn test_security_config_with_custom_values() {
     assert!(config.security_provider_integration.enabled);
     assert_eq!(config.security_provider_integration.providers.len(), 1);
 }
-

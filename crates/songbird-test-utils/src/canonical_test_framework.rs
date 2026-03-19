@@ -41,7 +41,7 @@ impl TestContext {
 
     /// Set custom timeout for this test
     #[must_use]
-    pub fn with_timeout(mut self, timeout: Duration) -> Self {
+    pub const fn with_timeout(mut self, timeout: Duration) -> Self {
         self.timeout = timeout;
         self
     }
@@ -127,8 +127,7 @@ impl CanonicalAssertions {
     /// # Errors
     ///
     /// This function currently always succeeds but returns `Result` for API consistency.
-    #[allow(clippy::unnecessary_wraps)]
-    pub fn assert_response_success<T>(_response: &SongbirdResult<T>) -> SongbirdResult<()> {
+    pub const fn assert_response_success<T>(_response: &SongbirdResult<T>) -> SongbirdResult<()> {
         // SongbirdResult doesn't have a success field - it's always successful if Ok
         // The presence of data indicates success
         Ok(())
@@ -147,10 +146,9 @@ impl CanonicalAssertions {
         F: FnOnce() -> Fut,
         Fut: Future<Output = SongbirdResult<T>>,
     {
-        match tokio::time::timeout(timeout_duration, operation()).await {
-            Ok(result) => result,
-            Err(_) => Err(SongbirdError::service("test-utils", "Operation timed out")),
-        }
+        tokio::time::timeout(timeout_duration, operation())
+            .await
+            .unwrap_or_else(|_| Err(SongbirdError::service("test-utils", "Operation timed out")))
     }
 
     /// Assert that a value is within a range
@@ -297,7 +295,7 @@ pub struct PerformanceResults {
 
 impl PerformanceResults {
     #[must_use]
-    pub fn new(durations: Vec<Duration>) -> Self {
+    pub const fn new(durations: Vec<Duration>) -> Self {
         Self {
             durations,
         }
@@ -419,13 +417,13 @@ impl MockService {
     /// Get the number of times this service has been called
     #[must_use]
     #[allow(clippy::unused_self)]
-    pub fn call_count(&self) -> usize {
+    pub const fn call_count(&self) -> usize {
         0 // Simplified mock - no call count tracking
     }
 
     /// Reset the call counter
     #[allow(clippy::unused_self)]
-    pub fn reset_call_count(&self) {
+    pub const fn reset_call_count(&self) {
         // No-op for this simplified mock
     }
 }

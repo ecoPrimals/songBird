@@ -15,7 +15,8 @@ pub struct TaskInfo {
 }
 
 impl TaskInfo {
-    pub fn new(task_id: TaskId) -> Self {
+    #[must_use]
+    pub const fn new(task_id: TaskId) -> Self {
         Self {
             task_id,
             public: None,
@@ -132,6 +133,7 @@ pub struct NodeFull {
 }
 
 impl super::InformationLayerBuilder {
+    #[must_use]
     pub fn build_public(&self, task: &TaskLifecycle) -> PublicInfo {
         let completion_time_sec = match &task.status {
             super::super::task_lifecycle::TaskStatus::Completed {
@@ -196,7 +198,7 @@ impl super::InformationLayerBuilder {
         let mut learning_notes = Vec::new();
 
         if let Some(ref strategy) = sharding_strategy {
-            learning_notes.push(format!("Task uses {} sharding for parallel execution", strategy));
+            learning_notes.push(format!("Task uses {strategy} sharding for parallel execution"));
         }
 
         if task.spec.resources.gpu_count.unwrap_or(0) > 0 {
@@ -204,7 +206,7 @@ impl super::InformationLayerBuilder {
         }
 
         if let Some(cpus) = task.spec.resources.cpu_cores {
-            learning_notes.push(format!("Task parallelized across {} CPU cores", cpus));
+            learning_notes.push(format!("Task parallelized across {cpus} CPU cores"));
         }
 
         learning_notes.push("Your task was distributed across available compute nodes".to_string());
@@ -222,6 +224,7 @@ impl super::InformationLayerBuilder {
         }
     }
 
+    #[must_use]
     pub fn build_operational(&self, task: &TaskLifecycle) -> OperationalInfo {
         OperationalInfo {
             node_health: vec![],
@@ -246,9 +249,10 @@ impl super::InformationLayerBuilder {
     /// Extracts administrative details:
     /// - Node identity and hardware (still no IPs at this layer)
     /// - Resource utilization metrics
+    #[must_use]
     pub fn build_administrative(&self, task: &TaskLifecycle) -> AdministrativeInfo {
         // Extract node identity from current tower
-        let node_identities = if let Some(ref tower) = task.current_tower {
+        let node_identities = task.current_tower.as_ref().map_or_else(Vec::new, |tower| {
             // Get GPU info from resources
             let gpu_info = if task.spec.resources.gpu_count.unwrap_or(0) > 0 {
                 format!("GPU x{}", task.spec.resources.gpu_count.unwrap_or(1))
@@ -261,9 +265,7 @@ impl super::InformationLayerBuilder {
                 gpu: gpu_info,
                 utilization: task.progress, // Use task progress as utilization proxy
             }]
-        } else {
-            vec![]
-        };
+        });
 
         // Calculate resource utilization
         let gpu_hours_used = if task.spec.resources.gpu_count.unwrap_or(0) > 0 {
@@ -315,9 +317,10 @@ impl super::InformationLayerBuilder {
     /// - Full node specifications
     /// - Internal IPs and network topology
     /// - Hardware metrics (uptime, temperature)
+    #[must_use]
     pub fn build_infrastructure(&self, task: &TaskLifecycle) -> InfrastructureInfo {
         // Build infrastructure node from current tower
-        let nodes = if let Some(ref tower) = task.current_tower {
+        let nodes = task.current_tower.as_ref().map_or_else(Vec::new, |tower| {
             // Calculate uptime based on task execution
             let uptime_hours = match &task.status {
                 super::super::task_lifecycle::TaskStatus::Running {
@@ -339,9 +342,7 @@ impl super::InformationLayerBuilder {
                     None
                 },
             }]
-        } else {
-            vec![]
-        };
+        });
 
         InfrastructureInfo {
             nodes,

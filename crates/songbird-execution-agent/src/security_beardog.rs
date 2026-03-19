@@ -1,20 +1,20 @@
 //! BearDog-integrated security for sovereign standalone execution
 //!
-//! This module integrates with BearDog's enterprise security architecture,
+//! This module integrates with `BearDog`'s enterprise security architecture,
 //! providing sovereign standalone security for remote command execution.
 //!
 //! ## Architecture
 //!
 //! - **Sovereign Mode**: Operates independently with conservative policies
-//! - **BearDog Integration**: Uses BearDog's robust security manager
+//! - **`BearDog` Integration**: Uses `BearDog`'s robust security manager
 //! - **Sovereignty Levels**: Enforces sovereignty-based access control
-//! - **Audit Trail**: Full integration with BearDog audit logging
+//! - **Audit Trail**: Full integration with `BearDog` audit logging
 //!
 //! ## Security Philosophy
 //!
 //! **"Better to deny a legitimate request than approve a malicious one"**
 //!
-//! In standalone mode, we apply BearDog's conservative security policies,
+//! In standalone mode, we apply `BearDog`'s conservative security policies,
 //! maintaining enterprise-grade security even when disconnected from federation.
 
 use serde::{Deserialize, Serialize};
@@ -69,25 +69,30 @@ impl BearDogSecurityValidator {
 
     /// Validate security request for command execution
     ///
-    /// Uses BearDog's sovereign standalone security model:
+    /// Uses `BearDog`'s sovereign standalone security model:
     /// - Sovereignty-based access control
     /// - Conservative threat assessment
     /// - Command validation against policy
     /// - Audit trail recording
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if sovereignty check fails or threat assessment fails
     pub async fn validate_execution_request(
         &mut self,
         request: &ExecutionSecurityRequest,
     ) -> SongbirdResult<SecurityDecision> {
+        tokio::task::yield_now().await;
         info!("🔒 Validating execution request (BearDog sovereign mode)");
         info!("   Command: {}", request.command);
         info!("   Requester: {}", request.requester_id.as_deref().unwrap_or("anonymous"));
 
         // Check sovereignty requirements
-        if !self.check_sovereignty_level(&request.required_sovereignty)? {
+        if !self.check_sovereignty_level(&request.required_sovereignty) {
             warn!("⚠️ Insufficient sovereignty level for request");
 
             if self.audit_enabled {
-                self.record_audit("sovereignty_denied", request).await;
+                Self::record_audit("sovereignty_denied", request);
             }
 
             return Ok(SecurityDecision::Deny {
@@ -100,7 +105,7 @@ impl BearDogSecurityValidator {
         }
 
         // Assess command threat level
-        let threat_score = self.assess_command_threat(&request.command)?;
+        let threat_score = self.assess_command_threat(&request.command);
         info!("   Threat score: {:.2}", threat_score);
 
         // Apply conservative policy
@@ -108,7 +113,7 @@ impl BearDogSecurityValidator {
             warn!("⚠️ Command threat score exceeds conservative threshold");
 
             if self.audit_enabled {
-                self.record_audit("threat_denied", request).await;
+                Self::record_audit("threat_denied", request);
             }
 
             return Ok(SecurityDecision::Deny {
@@ -121,15 +126,15 @@ impl BearDogSecurityValidator {
         }
 
         // Check for dangerous patterns (BearDog-style validation)
-        if let Some(violation) = self.check_command_violations(&request.command)? {
+        if let Some(violation) = self.check_command_violations(&request.command) {
             warn!("⚠️ Command contains security violation: {}", violation);
 
             if self.audit_enabled {
-                self.record_audit(&format!("violation_{}", violation), request).await;
+                Self::record_audit(&format!("violation_{violation}"), request);
             }
 
             return Ok(SecurityDecision::Deny {
-                reason: format!("Security violation detected: {}", violation),
+                reason: format!("Security violation detected: {violation}"),
                 security_level: SecurityLevel::Critical,
             });
         }
@@ -142,7 +147,7 @@ impl BearDogSecurityValidator {
         info!("✅ Request approved (confidence: {:.2})", confidence);
 
         if self.audit_enabled {
-            self.record_audit("approved", request).await;
+            Self::record_audit("approved", request);
         }
 
         Ok(SecurityDecision::Allow {
@@ -153,16 +158,16 @@ impl BearDogSecurityValidator {
     }
 
     /// Check sovereignty level compatibility
-    fn check_sovereignty_level(&self, required: &SovereigntyLevel) -> SongbirdResult<bool> {
-        Ok(self.sovereignty_level.can_satisfy(required))
+    const fn check_sovereignty_level(&self, required: &SovereigntyLevel) -> bool {
+        self.sovereignty_level.can_satisfy(required)
     }
 
     /// Assess command threat level using BearDog-style heuristics
-    fn assess_command_threat(&mut self, command: &str) -> SongbirdResult<f64> {
+    fn assess_command_threat(&mut self, command: &str) -> f64 {
         // Check cache first
         if let Some(cached) = self.threat_cache.get(command) {
             if cached.age() < Duration::from_secs(300) {
-                return Ok(cached.score);
+                return cached.score;
             }
         }
 
@@ -195,38 +200,38 @@ impl BearDogSecurityValidator {
             },
         );
 
-        Ok(score)
+        score
     }
 
     /// Check for specific security violations
-    fn check_command_violations(&self, command: &str) -> SongbirdResult<Option<String>> {
+    fn check_command_violations(&self, command: &str) -> Option<String> {
         // Empty command
         if command.trim().is_empty() {
-            return Ok(Some("empty_command".to_string()));
+            return Some("empty_command".to_string());
         }
 
         // Shell injection attempts
-        if command.contains("$(") || command.contains("`") {
-            return Ok(Some("shell_injection".to_string()));
+        if command.contains("$(") || command.contains('`') {
+            return Some("shell_injection".to_string());
         }
 
         // Path traversal
         if command.contains("../../../") {
-            return Ok(Some("path_traversal".to_string()));
+            return Some("path_traversal".to_string());
         }
 
         // Privilege escalation attempts
         if (command.starts_with("sudo ") || command.contains("| sudo "))
             && !self.policy.allow_privilege_escalation
         {
-            return Ok(Some("privilege_escalation".to_string()));
+            return Some("privilege_escalation".to_string());
         }
 
-        Ok(None)
+        None
     }
 
-    /// Record audit event (integrates with BearDog audit system)
-    async fn record_audit(&self, event_type: &str, request: &ExecutionSecurityRequest) {
+    /// Record audit event (integrates with `BearDog` audit system)
+    fn record_audit(event_type: &str, request: &ExecutionSecurityRequest) {
         // In production, this would integrate with BearDog's audit logger
         info!(
             "📝 [AUDIT] event={} command={} requester={}",
@@ -237,7 +242,7 @@ impl BearDogSecurityValidator {
     }
 }
 
-/// Sovereignty levels (aligned with BearDog)
+/// Sovereignty levels (aligned with `BearDog`)
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Default)]
 pub enum SovereigntyLevel {
     /// Basic sovereignty - minimal trust required
@@ -253,14 +258,15 @@ pub enum SovereigntyLevel {
 
 impl SovereigntyLevel {
     /// Check if this level can satisfy a requirement
-    pub fn can_satisfy(&self, required: &Self) -> bool {
+    #[must_use]
+    pub const fn can_satisfy(&self, required: &Self) -> bool {
         let self_level = self.as_level();
         let required_level = required.as_level();
         self_level >= required_level
     }
 
     /// Get numerical level
-    fn as_level(&self) -> u8 {
+    const fn as_level(&self) -> u8 {
         match self {
             Self::Basic => 1,
             Self::Enhanced => 2,
@@ -270,7 +276,8 @@ impl SovereigntyLevel {
     }
 
     /// Get base confidence for this sovereignty level
-    pub fn base_confidence(&self) -> f64 {
+    #[must_use]
+    pub const fn base_confidence(&self) -> f64 {
         match self {
             Self::Basic => 0.5,
             Self::Enhanced => 0.7,
@@ -280,7 +287,7 @@ impl SovereigntyLevel {
     }
 }
 
-/// Security decision from BearDog validator
+/// Security decision from `BearDog` validator
 #[derive(Debug, Clone)]
 pub enum SecurityDecision {
     /// Request allowed

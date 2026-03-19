@@ -87,11 +87,11 @@ async fn show_config(show_secrets: bool, format: &str) -> Result<()> {
                 println!("{{\"status\":\"error\",\"message\":\"{}\"}}", e.replace('"', "\\\""));
             } else if format == "yaml" {
                 println!("status: error");
-                println!("message: \"{}\"", e);
+                println!("message: \"{e}\"");
             } else {
                 println!("❌ Configuration invalid");
                 println!();
-                println!("Error: {}", e);
+                println!("Error: {e}");
                 println!();
                 println!("💡 Fix: Set required environment variables or create config file");
             }
@@ -124,7 +124,7 @@ async fn validate_config() -> Result<()> {
         Err(e) => {
             println!("❌ Configuration validation failed");
             println!();
-            println!("Error: {}", e);
+            println!("Error: {e}");
             println!();
             println!("Required environment variables:");
             println!("  • SONGBIRD_PORT (optional, default: 8080)");
@@ -146,7 +146,7 @@ async fn init_config(output: &str, force: bool) -> Result<()> {
     println!();
 
     if std::path::Path::new(output).exists() && !force {
-        eprintln!("❌ File already exists: {}", output);
+        eprintln!("❌ File already exists: {output}");
         eprintln!();
         eprintln!("💡 Use --force to overwrite");
         std::process::exit(1);
@@ -182,11 +182,11 @@ SONGBIRD_LOG_LEVEL=info
 ";
 
     std::fs::write(output, template)?;
-    println!("✅ Configuration template generated: {}", output);
+    println!("✅ Configuration template generated: {output}");
     println!();
     println!("Next steps:");
-    println!("  1. Review and customize: {}", output);
-    println!("  2. Source the file: source {}", output);
+    println!("  1. Review and customize: {output}");
+    println!("  2. Source the file: source {output}");
     println!("  3. Validate: songbird config validate");
     println!("  4. Start server: songbird server");
     println!();
@@ -197,7 +197,7 @@ SONGBIRD_LOG_LEVEL=info
 /// Mask sensitive values in configuration for safe display
 ///
 /// ✅ Modern approach: Creates a copy with secrets masked (simple placeholder for now)
-fn mask_secrets_in_config(
+const fn mask_secrets_in_config(
     config: songbird_types::config::CanonicalSongbirdConfig,
 ) -> songbird_types::config::CanonicalSongbirdConfig {
     // For now, return as-is. Future: mask sensitive fields in TLS config, etc.
@@ -242,10 +242,10 @@ fn display_config_formatted(
     println!("│  Initial Trust Level: {:?}", config.security.initial_trust_level);
     println!("│  TLS Cert Policy: {:?}", config.security.tls.cert_policy);
     if let Some(ref cert) = config.security.tls.cert_path {
-        println!("│  TLS Certificate: {}", cert);
+        println!("│  TLS Certificate: {cert}");
     }
     if let Some(ref key) = config.security.tls.key_path {
-        println!("│  TLS Key: {}", key);
+        println!("│  TLS Key: {key}");
     }
     println!("│  Require Valid Certs: {}", config.security.tls.require_valid_certs);
     println!("│");
@@ -292,7 +292,7 @@ fn display_config_formatted(
     if !config.custom.is_empty() {
         println!("Custom Fields:");
         for (key, value) in &config.custom {
-            println!("  • {}: {:?}", key, value);
+            println!("  • {key}: {value:?}");
         }
         println!();
     }

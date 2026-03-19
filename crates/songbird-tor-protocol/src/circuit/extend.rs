@@ -16,7 +16,8 @@ pub struct CircuitExtender {
 
 impl CircuitExtender {
     /// Create new circuit extender
-    pub fn new(beardog: BeardogCryptoClient) -> Self {
+    #[must_use]
+    pub const fn new(beardog: BeardogCryptoClient) -> Self {
         Self {
             beardog,
         }
@@ -31,6 +32,9 @@ impl CircuitExtender {
     /// # Returns
     /// * EXTEND2 relay cell to send
     /// * Handshake state for processing EXTENDED2 response
+    ///
+    /// # Errors
+    /// Returns error if relay has no `ntor_key` or `BearDog` crypto fails.
     pub fn create_extend2(
         &self,
         _circuit: &Circuit,
@@ -91,7 +95,8 @@ impl CircuitExtender {
             recognized: 0,
             stream_id: 0,
             digest: [0u8; 4], // Populated by OnionCrypto before encryption
-            length: payload.len() as u16,
+            length: u16::try_from(payload.len())
+                .map_err(|_| Error::Protocol("EXTEND2 payload too long".to_string()))?,
             data: payload,
         };
 
@@ -106,20 +111,20 @@ impl CircuitExtender {
     /// * `response` - EXTENDED2 relay cell
     ///
     /// # Returns
-    /// * New CircuitHop to add to circuit
+    /// * New `CircuitHop` to add to circuit
+    ///
+    /// # Errors
+    /// Returns error if response is invalid or handshake fails.
     pub fn process_extended2(
         &self,
         _circuit: &Circuit,
-        state: super::create::HandshakeState,
+        state: &super::create::HandshakeState,
         response: &RelayCell,
         next_relay: RelayInfo,
     ) -> Result<CircuitHop> {
         // Validate response
         if response.command != RelayCommand::Extended {
-            return Err(Error::Protocol(format!(
-                "Expected EXTENDED response, got {:?}",
-                response.command
-            )));
+            return Err(Error::Protocol(format!("Expected EXTENDED response, got {response:?}")));
         }
 
         // Extract handshake response (skip 2-byte length prefix)

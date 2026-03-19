@@ -27,14 +27,14 @@ async fn connect_platform(path: &PathBuf) -> std::io::Result<PlatformStream> {
     PlatformStream::connect(addr.as_ref()).await
 }
 
-/// BTSP Client for communicating with BearDog via Unix socket
+/// BTSP Client for communicating with `BearDog` via Unix socket
 ///
-/// This client connects to BearDog's BTSP (BearDog Tunnel Security Protocol)
+/// This client connects to `BearDog`'s BTSP (`BearDog` Tunnel Security Protocol)
 /// server via Unix sockets for secure inter-primal tunnel communication.
 ///
 /// # Migration Note
 /// Migrated from HTTP to Unix sockets on Jan 16, 2026 to align with
-/// BiomeOS "Concentrated Gap" strategy (HTTP deprecated for inter-primal).
+/// `BiomeOS` "Concentrated Gap" strategy (HTTP deprecated for inter-primal).
 #[derive(Debug, Clone)]
 pub struct BtspClient {
     socket_path: PathBuf,
@@ -44,8 +44,8 @@ impl BtspClient {
     /// Create new BTSP client with environment-based socket discovery
     ///
     /// Socket path priority:
-    /// 1. BEARDOG_SOCKET (explicit path)
-    /// 2. BIOMEOS_SOCKET_PATH (BiomeOS orchestrator)
+    /// 1. `BEARDOG_SOCKET` (explicit path)
+    /// 2. `BIOMEOS_SOCKET_PATH` (`BiomeOS` orchestrator)
     /// 3. XDG_RUNTIME_DIR/beardog-{family_id}.sock
     /// 4. /tmp/beardog-default-default.sock (fallback)
     pub fn new() -> Self {
@@ -58,13 +58,13 @@ impl BtspClient {
 
     /// Create BTSP client with explicit socket path (concurrent-safe, testable)
     #[must_use]
-    pub fn with_socket(socket_path: PathBuf) -> Self {
+    pub const fn with_socket(socket_path: PathBuf) -> Self {
         Self {
             socket_path,
         }
     }
 
-    /// Discover BearDog socket path from environment
+    /// Discover `BearDog` socket path from environment
     fn discover_socket_path() -> PathBuf {
         let path = std::env::var("BEARDOG_SOCKET")
             .or_else(|_| std::env::var("BIOMEOS_SOCKET_PATH"))
@@ -72,7 +72,7 @@ impl BtspClient {
                 // Try XDG runtime directory (capability-based, primal-agnostic)
                 std::env::var("XDG_RUNTIME_DIR").map(|dir| {
                     let family_id = crate::env_config::family_id();
-                    format!("{}/security-{}.sock", dir, family_id)
+                    format!("{dir}/security-{family_id}.sock")
                 })
             })
             .unwrap_or_else(|_| {
@@ -103,7 +103,7 @@ impl BtspClient {
 
         let response = self.send_request(request).await?;
         let tunnel: TunnelHandle = serde_json::from_value(response["result"].clone())
-            .map_err(|e| anyhow!("Failed to parse tunnel handle: {}", e))?;
+            .map_err(|e| anyhow!("Failed to parse tunnel handle: {e}"))?;
 
         info!("BTSP tunnel established: {}", tunnel.id);
         Ok(tunnel)
@@ -145,7 +145,7 @@ impl BtspClient {
 
         base64::engine::general_purpose::STANDARD
             .decode(ciphertext_b64)
-            .map_err(|e| anyhow!("Failed to decode ciphertext: {}", e))
+            .map_err(|e| anyhow!("Failed to decode ciphertext: {e}"))
     }
 
     /// Decrypt data from a BTSP tunnel
@@ -177,7 +177,7 @@ impl BtspClient {
 
         base64::engine::general_purpose::STANDARD
             .decode(plaintext_b64)
-            .map_err(|e| anyhow!("Failed to decode plaintext: {}", e))
+            .map_err(|e| anyhow!("Failed to decode plaintext: {e}"))
     }
 
     /// Get tunnel status
@@ -202,7 +202,7 @@ impl BtspClient {
 
         let response = self.send_request(request).await?;
         serde_json::from_value(response["result"].clone())
-            .map_err(|e| anyhow!("Failed to parse tunnel status: {}", e))
+            .map_err(|e| anyhow!("Failed to parse tunnel status: {e}"))
     }
 
     /// Close a BTSP tunnel
@@ -269,7 +269,7 @@ impl BtspClient {
         Ok(response["result"].clone())
     }
 
-    /// Ping BearDog to check health
+    /// Ping `BearDog` to check health
     ///
     /// # Panics
     /// May panic if JSON-RPC communication fails unexpectedly.
@@ -284,7 +284,7 @@ impl BtspClient {
         self.send_request(request).await
     }
 
-    /// Send JSON-RPC request to BearDog and receive response
+    /// Send JSON-RPC request to `BearDog` and receive response
     ///
     /// # Arguments
     /// * `request` - The JSON-RPC 2.0 request object

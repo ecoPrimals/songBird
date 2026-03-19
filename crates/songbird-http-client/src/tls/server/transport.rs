@@ -11,7 +11,7 @@ use tracing::{debug, info};
 use super::core::TlsServer;
 
 impl TlsServer {
-    /// Receive ClientHello from client
+    /// Receive `ClientHello` from client
     pub(super) async fn receive_client_hello(&mut self, stream: &mut TcpStream) -> Result<Vec<u8>> {
         // Read TLS record (5-byte header + payload)
         let mut header = [0u8; 5];
@@ -28,8 +28,7 @@ impl TlsServer {
 
         if record_type != content_type::HANDSHAKE {
             return Err(Error::TlsHandshake(format!(
-                "Expected Handshake record, got 0x{:02x}",
-                record_type
+                "Expected Handshake record, got 0x{record_type:02x}"
             )));
         }
 
@@ -72,7 +71,7 @@ impl TlsServer {
         Ok(payload)
     }
 
-    /// Send ServerHello (wrap in TLS record and send)
+    /// Send `ServerHello` (wrap in TLS record and send)
     pub(super) async fn send_server_hello(
         &mut self,
         stream: &mut TcpStream,

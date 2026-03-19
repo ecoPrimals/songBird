@@ -99,21 +99,23 @@ pub fn parse_endpoint(endpoint: &str) -> (String, u16) {
 
     let endpoint = endpoint.trim_start_matches("http://").trim_start_matches("https://");
 
-    if let Some(idx) = endpoint.find(':') {
-        let host = endpoint[..idx].to_string();
-        let port_str = &endpoint[idx + 1..];
-        // Handle paths after port: "host:port/path"
-        let port = if let Some(slash) = port_str.find('/') {
-            port_str[..slash].parse().unwrap_or(8080)
-        } else {
-            port_str.parse().unwrap_or(8080)
-        };
-        (host, port)
-    } else {
-        // No port specified, use default
-        let host = endpoint.split('/').next().unwrap_or(endpoint).to_string();
-        (host, 8080)
-    }
+    endpoint.find(':').map_or_else(
+        || {
+            // No port specified, use default
+            let host = endpoint.split('/').next().unwrap_or(endpoint).to_string();
+            (host, 8080)
+        },
+        |idx| {
+            let host = endpoint[..idx].to_string();
+            let port_str = &endpoint[idx + 1..];
+            // Handle paths after port: "host:port/path"
+            let port = port_str.find('/').map_or_else(
+                || port_str.parse().unwrap_or(8080),
+                |slash| port_str[..slash].parse().unwrap_or(8080),
+            );
+            (host, port)
+        },
+    )
 }
 
 /// Extension trait for `DiscoveryServiceInfo` to add utility methods

@@ -83,7 +83,7 @@ pub struct HttpGatewayService {
     /// Credential manager for API keys
     credentials: Arc<CredentialManager>,
 
-    /// HTTP client for external requests (Tower Atomic: Pure Rust + BearDog crypto!)
+    /// HTTP client for external requests (Tower Atomic: Pure Rust + `BearDog` crypto!)
     http_client: SongbirdHttpClient,
 }
 
@@ -102,7 +102,7 @@ impl HttpGatewayService {
             .or_else(|_| std::env::var("BEARDOG_SOCKET"))
             .unwrap_or_else(|_| {
                 let family = crate::env_config::family_id();
-                format!("/tmp/beardog-{}.sock", family)
+                format!("/tmp/beardog-{family}.sock")
             });
 
         let http_client = SongbirdHttpClient::new(crypto_socket);
@@ -133,7 +133,7 @@ impl HttpGatewayService {
     /// Start the HTTP gateway service
     ///
     /// This will start Unix socket listeners for:
-    /// - AI proxies (OpenAI, HuggingFace, Anthropic)
+    /// - AI proxies (`OpenAI`, `HuggingFace`, Anthropic)
     /// - Generic HTTP proxies (capability-based)
     ///
     /// **Status**: Phase 1 - Core infrastructure only
@@ -200,6 +200,7 @@ impl HttpGatewayService {
     /// # Returns
     /// * `Some(String)` if API key is configured
     /// * `None` if API key is not configured
+    #[must_use]
     pub fn get_api_key(&self, service: &str) -> Option<String> {
         self.credentials.get_api_key(service)
     }

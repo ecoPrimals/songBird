@@ -1,6 +1,6 @@
-//! ClientHello Parsing
+//! `ClientHello` Parsing
 //!
-//! Handles parsing and validation of ClientHello messages from clients.
+//! Handles parsing and validation of `ClientHello` messages from clients.
 
 use crate::error::{Error, Result};
 use crate::tls::handshake_v2::keys::CipherSuite;
@@ -9,9 +9,9 @@ use tracing::{debug, info};
 use super::core::TlsServer;
 
 impl TlsServer {
-    /// Parse ClientHello to extract parameters
+    /// Parse `ClientHello` to extract parameters
     ///
-    /// Returns: (client_random, client_public_key, cipher_suites)
+    /// Returns: (`client_random`, `client_public_key`, `cipher_suites`)
     pub(super) fn parse_client_hello(&self, data: &[u8]) -> Result<(Vec<u8>, Vec<u8>, Vec<u16>)> {
         let mut offset = 0;
 
@@ -76,14 +76,14 @@ impl TlsServer {
         info!("   Client random: {} bytes", client_random.len());
         info!(
             "   Cipher suites: {:?}",
-            cipher_suites.iter().map(|s| format!("0x{:04x}", s)).collect::<Vec<_>>()
+            cipher_suites.iter().map(|s| format!("0x{s:04x}")).collect::<Vec<_>>()
         );
         info!("   Client public key: {} bytes", client_public_key.len());
 
         Ok((client_random, client_public_key, cipher_suites))
     }
 
-    /// Extract client's public key from key_share extension
+    /// Extract client's public key from `key_share` extension
     fn extract_key_share(extensions_data: &[u8]) -> Result<Vec<u8>> {
         let mut offset = 0;
 
@@ -155,10 +155,7 @@ impl TlsServer {
             }
         }
 
-        Err(Error::TlsHandshake(format!(
-            "No common cipher suite found. Client: {:?}",
-            client_suites
-        )))
+        Err(Error::TlsHandshake(format!("No common cipher suite found. Client: {client_suites:?}")))
     }
 }
 

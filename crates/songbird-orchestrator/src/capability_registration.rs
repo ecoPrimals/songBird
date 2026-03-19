@@ -64,7 +64,7 @@ impl CapabilityRegistrationConfig {
     pub fn from_env() -> Result<Self> {
         let neural_socket = env::var("NEURAL_API_SOCKET").unwrap_or_else(|_| {
             if let Ok(runtime_dir) = env::var("XDG_RUNTIME_DIR") {
-                format!("{}/biomeos/neural-api.sock", runtime_dir)
+                format!("{runtime_dir}/biomeos/neural-api.sock")
             } else {
                 "/tmp/biomeos/neural-api.sock".to_string()
             }
@@ -124,7 +124,7 @@ async fn connect_platform(address: &str) -> std::io::Result<PlatformStream> {
 ///
 /// ## Registered Capabilities
 ///
-/// - **secure_http**: HTTPS client with Pure Rust TLS 1.3
+/// - **`secure_http`**: HTTPS client with Pure Rust TLS 1.3
 ///   - `http.get` - HTTP GET requests
 ///   - `http.post` - HTTP POST requests
 ///   - `http.put` - HTTP PUT requests
@@ -207,7 +207,7 @@ pub async fn register_capabilities_with(config: &CapabilityRegistrationConfig) -
     };
 
     // Send registration
-    let request = format!("{}\n", registration);
+    let request = format!("{registration}\n");
     if let Err(e) = stream.write_all(request.as_bytes()).await {
         warn!("⚠️  Failed to send registration to Neural API: {}", e);
         return Ok(()); // Don't fail startup
@@ -273,7 +273,7 @@ pub async fn unregister_capabilities() -> Result<()> {
     // Use from_env or a default config for unregistration (primal_id is all we need)
     let neural_socket = env::var("NEURAL_API_SOCKET").unwrap_or_else(|_| {
         if let Ok(runtime_dir) = env::var("XDG_RUNTIME_DIR") {
-            format!("{}/biomeos/neural-api.sock", runtime_dir)
+            format!("{runtime_dir}/biomeos/neural-api.sock")
         } else {
             "/tmp/biomeos/neural-api.sock".to_string()
         }
@@ -302,7 +302,7 @@ pub async fn unregister_capabilities_with(neural_socket: &str, primal_id: &str) 
     // Try to connect and unregister (platform-agnostic)
     match connect_platform(neural_socket).await {
         Ok(mut stream) => {
-            let request = format!("{}\n", unregister);
+            let request = format!("{unregister}\n");
             match stream.write_all(request.as_bytes()).await {
                 Ok(()) => {
                     info!("✅ Capabilities unregistered from Neural API");
@@ -334,7 +334,7 @@ pub async fn unregister_capabilities_with(neural_socket: &str, primal_id: &str) 
 pub async fn check_neural_api_available() -> bool {
     let neural_socket = env::var("NEURAL_API_SOCKET").unwrap_or_else(|_| {
         if let Ok(runtime_dir) = env::var("XDG_RUNTIME_DIR") {
-            format!("{}/biomeos/neural-api.sock", runtime_dir)
+            format!("{runtime_dir}/biomeos/neural-api.sock")
         } else {
             "/tmp/biomeos/neural-api.sock".to_string()
         }

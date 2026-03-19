@@ -138,33 +138,38 @@ impl FederationState {
     /// - Allows for network hiccups and temporary disconnections
     /// - But prevents indefinite accumulation of rotated sessions
     pub async fn cleanup_stale_nodes(&self, ttl_secs: i64) -> usize {
-        let mut nodes = self.nodes.write().await;
-        let now = Utc::now();
-        let initial_count = nodes.len();
+        let (removed_count, initial_count, final_count) = {
+            let mut nodes = self.nodes.write().await;
+            let now = Utc::now();
+            let initial_count = nodes.len();
 
-        // Retain only nodes that have sent heartbeat within TTL
-        nodes.retain(|node_id, node| {
-            let elapsed = (now - node.last_heartbeat).num_seconds();
-            let should_keep = elapsed < ttl_secs;
+            // Retain only nodes that have sent heartbeat within TTL
+            nodes.retain(|node_id, node| {
+                let elapsed = (now - node.last_heartbeat).num_seconds();
+                let should_keep = elapsed < ttl_secs;
 
-            if !should_keep {
-                tracing::debug!(
-                    "🧹 Removing stale node {} (last seen {} seconds ago)",
-                    &node_id[..8.min(node_id.len())],
-                    elapsed
-                );
-            }
+                if !should_keep {
+                    tracing::debug!(
+                        "🧹 Removing stale node {} (last seen {} seconds ago)",
+                        &node_id[..8.min(node_id.len())],
+                        elapsed
+                    );
+                }
 
-            should_keep
-        });
+                should_keep
+            });
 
-        let removed_count = initial_count - nodes.len();
+            let removed_count = initial_count - nodes.len();
+            let final_count = nodes.len();
+            drop(nodes);
+            (removed_count, initial_count, final_count)
+        };
 
         if removed_count > 0 {
             tracing::info!(
                 "🧹 Cleaned up {} stale nodes. Active: {} (was: {})",
                 removed_count,
-                nodes.len(),
+                final_count,
                 initial_count
             );
         }
@@ -200,8 +205,7 @@ impl FederationState {
     /// 2. Sort by preference value (highest first)
     /// 3. Fall back to primary `node_address` if no endpoints
     pub async fn get_best_endpoint(&self, node_id: &str) -> Option<String> {
-        let nodes = self.nodes.read().await;
-        let node = nodes.get(node_id)?;
+        let node = self.nodes.read().await.get(node_id).cloned()?;
 
         // Try to get preferred endpoint
         if let Some(endpoint) = node.preferred_endpoint() {
@@ -209,13 +213,12 @@ impl FederationState {
         }
 
         // Fall back to primary address
-        Some(node.node_address.clone())
+        Some(node.node_address)
     }
 
     /// Get all endpoints for a node (for connection fallback)
     pub async fn get_all_endpoints(&self, node_id: &str) -> Vec<String> {
-        let nodes = self.nodes.read().await;
-        let Some(node) = nodes.get(node_id) else {
+        let Some(node) = self.nodes.read().await.get(node_id).cloned() else {
             return vec![];
         };
 
@@ -228,7 +231,7 @@ impl FederationState {
 
         // Add primary address as fallback
         if !endpoints.contains(&node.node_address) {
-            endpoints.push(node.node_address.clone());
+            endpoints.push(node.node_address);
         }
 
         endpoints

@@ -61,7 +61,7 @@ impl SongbirdOrchestrator {
     ///
     /// This spawns a background task that:
     /// 1. Polls the discovery listener every 10 seconds
-    /// 2. Extracts peer identity (node_id, node_name)
+    /// 2. Extracts peer identity (`node_id`, `node_name`)
     /// 3. Checks same-family status (for LAN optimization)
     /// 4. Verifies connectivity (HTTPS /health, skipped for same-family)
     /// 5. Evaluates trust (via security provider or other security provider)
@@ -96,7 +96,7 @@ impl SongbirdOrchestrator {
     /// - No security provider → Log warning, auto-accept (dev only)
     ///
     /// **Audit Trail**:
-    /// - All rejections recorded in ConnectionManager
+    /// - All rejections recorded in `ConnectionManager`
     /// - All decisions logged with reason & confidence
     ///
     /// # Returns
@@ -177,8 +177,8 @@ impl SongbirdOrchestrator {
                                 std::env::var("SONGBIRD_FAMILY_ID").ok().is_some_and(|my_family| {
                                     peer.tags.as_ref().is_some_and(|tags| {
                                         tags.iter().any(|tag| {
-                                            tag.contains(&format!(":family:{}:", my_family))
-                                                || tag.contains(&format!("family_{}", my_family))
+                                            tag.contains(&format!(":family:{my_family}:"))
+                                                || tag.contains(&format!("family_{my_family}"))
                                         })
                                     })
                                 });
@@ -191,7 +191,7 @@ impl SongbirdOrchestrator {
                                 info!("✅ Same family peer '{}' - skipping connectivity check (trust LAN discovery)", node_name);
                                 true
                             } else {
-                                let health_url = format!("{}/health", endpoint);
+                                let health_url = format!("{endpoint}/health");
                                 debug!(
                                     "🔍 Checking connectivity to {} at {}",
                                     node_name, health_url
@@ -204,7 +204,7 @@ impl SongbirdOrchestrator {
                                     let crypto_socket = crate::primal_discovery::discover_crypto_provider().await
                                         .map_err(|e| {
                                             warn!("Failed to discover crypto provider for connectivity check: {}", e);
-                                            anyhow::anyhow!("Crypto discovery failed: {}", e)
+                                            anyhow::anyhow!("Crypto discovery failed: {e}")
                                         })?;
 
                                     let client = songbird_http_client::SongbirdHttpClient::new(crypto_socket);
@@ -212,7 +212,7 @@ impl SongbirdOrchestrator {
                                     client
                                         .get(&health_url)
                                         .await
-                                        .map_err(|e| anyhow::anyhow!("HTTP GET failed: {}", e))
+                                        .map_err(|e| anyhow::anyhow!("HTTP GET failed: {e}"))
                                 }
                             ).await;
 

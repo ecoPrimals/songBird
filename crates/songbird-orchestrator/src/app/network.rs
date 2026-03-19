@@ -73,13 +73,13 @@ pub fn parse_bind_address(addr: &str, port: u16) -> Result<SocketAddr> {
                 let ip_part = addr.trim_start_matches('[').trim_end_matches(']');
                 let ip: IpAddr = ip_part
                     .parse()
-                    .map_err(|e| anyhow::anyhow!("Invalid IPv6 address '{}': {}", ip_part, e))?;
+                    .map_err(|e| anyhow::anyhow!("Invalid IPv6 address '{ip_part}': {e}"))?;
                 Ok(SocketAddr::new(ip, port))
             } else {
                 // Try as IPv4 address or parse full socket address
                 format!("{addr}:{port}")
                     .parse()
-                    .map_err(|e| anyhow::anyhow!("Invalid bind address '{}': {}", addr, e))
+                    .map_err(|e| anyhow::anyhow!("Invalid bind address '{addr}': {e}"))
             }
         }
     }

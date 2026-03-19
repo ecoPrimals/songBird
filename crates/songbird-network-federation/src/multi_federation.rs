@@ -43,7 +43,7 @@ impl FederationId {
 
     /// Create from existing UUID
     #[must_use]
-    pub fn from_uuid(uuid: Uuid) -> Self {
+    pub const fn from_uuid(uuid: Uuid) -> Self {
         Self(uuid)
     }
 }
@@ -102,10 +102,11 @@ impl MultiFederationState {
 
     /// Get total node count across all federations
     pub async fn total_nodes(&self) -> usize {
-        let federations = self.federations.read().await;
+        let node_locks: Vec<_> =
+            self.federations.read().await.values().map(|f| Arc::clone(&f.nodes)).collect();
         let mut total = 0;
-        for f in federations.values() {
-            total += f.nodes.read().await.len();
+        for nodes_lock in node_locks {
+            total += nodes_lock.read().await.len();
         }
         total
     }
@@ -407,15 +408,15 @@ impl DiscoveryRouter {
 
     /// Route a discovered peer to appropriate federation(s)
     pub async fn route(&self, peer: &DiscoveredPeer) -> Vec<FederationId> {
+        let rules_snapshot: Vec<RoutingRule> = self.routing_rules.read().await.clone();
         let mut matches = Vec::new();
-        let rules = self.routing_rules.read().await;
-
-        for rule in rules.iter() {
+        for rule in rules_snapshot {
             if rule.matcher.matches(peer) {
-                matches.push(rule.target_federation.clone());
+                let fed_id = rule.target_federation.0;
+                matches.push(rule.target_federation);
                 debug!(
                     "Peer {} matched rule (priority {}) → federation {}",
-                    peer.session_id, rule.priority, rule.target_federation.0
+                    peer.session_id, rule.priority, fed_id
                 );
             }
         }

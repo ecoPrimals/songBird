@@ -51,13 +51,13 @@ impl SelfAwareConfig {
 
     /// Get bind socket address
     #[must_use]
-    pub fn bind_address(&self) -> SocketAddr {
+    pub const fn bind_address(&self) -> SocketAddr {
         self.bind.socket_addr()
     }
 
     /// Get advertised socket address for discovery
     #[must_use]
-    pub fn advertise_address(&self) -> SocketAddr {
+    pub const fn advertise_address(&self) -> SocketAddr {
         self.advertise.socket_addr()
     }
 }
@@ -79,7 +79,7 @@ impl BindConfig {
     /// - **Production**: all interfaces (0.0.0.0) - accessible to network
     /// - **Test**: localhost with OS-assigned port
     #[must_use]
-    pub fn for_environment(env: &Environment) -> Self {
+    pub const fn for_environment(env: &Environment) -> Self {
         match env {
             Environment::Development => Self {
                 ip: IpAddr::V4(Ipv4Addr::LOCALHOST),
@@ -119,7 +119,7 @@ impl BindConfig {
 
     /// Convert to socket address
     #[must_use]
-    pub fn socket_addr(&self) -> SocketAddr {
+    pub const fn socket_addr(&self) -> SocketAddr {
         SocketAddr::new(self.ip, self.port)
     }
 }
@@ -281,22 +281,19 @@ impl AdvertiseConfig {
         // Attempt DNS resolution
         let socket_addr_str = format!("{hostname}:0");
 
-        if let Ok(mut addrs) = socket_addr_str.to_socket_addrs() {
-            // Find first non-loopback IPv4 address
+        socket_addr_str.to_socket_addrs().ok().and_then(|mut addrs| {
             addrs
                 .find(|addr| {
                     let ip = addr.ip();
                     ip.is_ipv4() && !ip.is_loopback()
                 })
                 .map(|addr| addr.ip())
-        } else {
-            None
-        }
+        })
     }
 
     /// Convert to socket address
     #[must_use]
-    pub fn socket_addr(&self) -> SocketAddr {
+    pub const fn socket_addr(&self) -> SocketAddr {
         SocketAddr::new(self.ip, self.port)
     }
 }

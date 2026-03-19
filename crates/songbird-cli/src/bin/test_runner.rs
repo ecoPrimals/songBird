@@ -12,7 +12,7 @@ use std::time::{Duration, Instant};
 use tokio::time::timeout;
 
 /// Default orchestrator endpoint for testing
-/// Can be overridden via --url flag or SONGBIRD_URL environment variable
+/// Can be overridden via --url flag or `SONGBIRD_URL` environment variable
 const DEFAULT_ORCHESTRATOR_ENDPOINT: &str = "http://localhost:8080";
 
 /// Test result tracking

@@ -127,7 +127,7 @@ impl ConsolidatedOrchestrator {
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct ConsolidatedOrchestratorConfig {
     /// Load balancing configuration
-    /// **CONSOLIDATED**: Now uses CanonicalLoadBalancerConfig from songbird-config
+    /// **CONSOLIDATED**: Now uses `CanonicalLoadBalancerConfig` from songbird-config
     pub load_balancing: CanonicalLoadBalancerConfig,
 
     /// Performance monitoring configuration
@@ -194,7 +194,7 @@ impl Default for PerformanceConfig {
     }
 }
 
-/// Serde helper for `Arc<str>` HashMap keys
+/// Serde helper for `Arc<str>` `HashMap` keys
 mod arc_str_map_serde {
     use serde::{Deserialize, Deserializer, Serializer};
     use std::collections::HashMap;

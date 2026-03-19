@@ -9,6 +9,10 @@ use serde_json::json;
 
 impl BearDogClient {
     /// Compute SHA-256 hash
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the RPC call fails or the response is invalid.
     pub async fn sha256(&self, data: &[u8]) -> Result<Vec<u8>> {
         let result = self
             .call(
@@ -25,10 +29,14 @@ impl BearDogClient {
 
         BASE64_STANDARD
             .decode(hash_b64)
-            .map_err(|e| Error::BearDogRpc(format!("Invalid hash base64: {}", e)))
+            .map_err(|e| Error::BearDogRpc(format!("Invalid hash base64: {e}")))
     }
 
     /// Compute SHA-384 hash
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the RPC call fails or the response is invalid.
     pub async fn sha384(&self, data: &[u8]) -> Result<Vec<u8>> {
         let result = self
             .call(
@@ -45,12 +53,16 @@ impl BearDogClient {
 
         BASE64_STANDARD
             .decode(hash_b64)
-            .map_err(|e| Error::BearDogRpc(format!("Invalid hash base64: {}", e)))
+            .map_err(|e| Error::BearDogRpc(format!("Invalid hash base64: {e}")))
     }
 
     /// HKDF-Extract: Extract a PRK from salt and input keying material
     ///
     /// RFC 5869: HMAC-based Key Derivation Function
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the RPC call fails or the response is invalid.
     pub async fn hkdf_extract(&self, salt: &[u8], ikm: &[u8]) -> Result<Vec<u8>> {
         let result = self
             .call(
@@ -68,12 +80,16 @@ impl BearDogClient {
 
         BASE64_STANDARD
             .decode(prk_b64)
-            .map_err(|e| Error::BearDogRpc(format!("Invalid prk base64: {}", e)))
+            .map_err(|e| Error::BearDogRpc(format!("Invalid prk base64: {e}")))
     }
 
     /// HKDF-Expand: Expand a PRK to the desired length
     ///
     /// RFC 5869: HMAC-based Key Derivation Function
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the RPC call fails or the response is invalid.
     pub async fn hkdf_expand(&self, prk: &[u8], info: &[u8], length: usize) -> Result<Vec<u8>> {
         let result = self
             .call(
@@ -92,7 +108,7 @@ impl BearDogClient {
 
         BASE64_STANDARD
             .decode(okm_b64)
-            .map_err(|e| Error::BearDogRpc(format!("Invalid okm base64: {}", e)))
+            .map_err(|e| Error::BearDogRpc(format!("Invalid okm base64: {e}")))
     }
 }
 

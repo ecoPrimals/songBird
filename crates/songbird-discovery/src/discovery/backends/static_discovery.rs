@@ -74,8 +74,7 @@ impl ServiceDiscovery for StaticServiceDiscovery {
     async fn register(&self, service: ServiceInfo) -> Result<()> {
         tracing::info!("Registering service: {} ({})", service.name, service.service_id);
 
-        let mut services = self.services.write().await;
-        services.insert(service.service_id.clone(), service);
+        self.services.write().await.insert(service.service_id.clone(), service);
 
         Ok(())
     }
@@ -83,21 +82,18 @@ impl ServiceDiscovery for StaticServiceDiscovery {
     async fn unregister(&self, service_id: &str) -> Result<()> {
         tracing::info!("Deregistering service: {}", service_id);
 
-        let mut services = self.services.write().await;
-        services.remove(service_id);
+        self.services.write().await.remove(service_id);
 
         Ok(())
     }
 
     async fn discover(&self, query: ServiceQuery) -> Result<Vec<ServiceInfo>> {
-        let services = self.services.read().await;
-
-        let filtered_services: Vec<ServiceInfo> = services
+        let filtered_services: Vec<ServiceInfo> = self
+            .services
+            .read()
+            .await
             .values()
-            .filter(|service| match query.name.as_ref() {
-                Some(name) => service.name == *name,
-                None => true,
-            })
+            .filter(|service| query.name.as_ref().map_or(true, |name| service.name == *name))
             // All static services are considered healthy
             .cloned()
             .collect();
@@ -105,10 +101,7 @@ impl ServiceDiscovery for StaticServiceDiscovery {
         tracing::debug!(
             "Discovered {} services{}",
             filtered_services.len(),
-            match query.name.as_ref() {
-                Some(name) => format!(" for {name}"),
-                None => String::new(),
-            }
+            query.name.as_ref().map_or_else(String::new, |name| format!(" for {name}"))
         );
 
         Ok(filtered_services)
@@ -145,8 +138,7 @@ impl ServiceDiscovery for StaticServiceDiscovery {
         service_id: &str,
         metadata: HashMap<String, String>,
     ) -> Result<()> {
-        let mut services = self.services.write().await;
-        if let Some(service) = services.get_mut(service_id) {
+        if let Some(service) = self.services.write().await.get_mut(service_id) {
             service
                 .metadata
                 .extend(metadata.into_iter().map(|(k, v)| (k, serde_json::Value::String(v))));

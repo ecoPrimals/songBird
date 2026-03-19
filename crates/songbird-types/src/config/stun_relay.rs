@@ -418,7 +418,7 @@ pub struct CustomRendezvousConfig {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[allow(clippy::struct_excessive_bools)] // Configuration struct - bools are appropriate for feature flags
 pub struct AdvancedStunConfig {
-    /// Try multiple tiers in parallel (for FastestFirst strategy)
+    /// Try multiple tiers in parallel (for `FastestFirst` strategy)
     #[serde(default)]
     pub parallel_attempts: bool,
 
@@ -493,34 +493,34 @@ impl Default for PrivacyConfig {
 }
 
 // Default value helpers
-fn default_true() -> bool {
+const fn default_true() -> bool {
     true
 }
-fn default_timeout() -> u64 {
+const fn default_timeout() -> u64 {
     5
 }
-fn default_max_hops() -> u8 {
+const fn default_max_hops() -> u8 {
     3
 }
-fn default_bandwidth_limit() -> u32 {
+const fn default_bandwidth_limit() -> u32 {
     100
 }
-fn default_max_relays() -> u32 {
+const fn default_max_relays() -> u32 {
     10
 }
 fn default_https() -> String {
     "https".to_string()
 }
-fn default_priority() -> u32 {
+const fn default_priority() -> u32 {
     100
 }
-fn default_rotation_interval() -> u64 {
+const fn default_rotation_interval() -> u64 {
     3600
 }
-fn default_latency_threshold() -> u32 {
+const fn default_latency_threshold() -> u32 {
     50
 }
-fn default_packet_loss_threshold() -> f32 {
+const fn default_packet_loss_threshold() -> f32 {
     5.0
 }
 

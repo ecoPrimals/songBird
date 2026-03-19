@@ -42,7 +42,7 @@ pub struct FileConfigProvider<T> {
 
 impl<T> FileConfigProvider<T> {
     #[must_use]
-    pub fn new(path: PathBuf, format: ConfigFormat) -> Self {
+    pub const fn new(path: PathBuf, format: ConfigFormat) -> Self {
         Self {
             path,
             format,
@@ -51,12 +51,12 @@ impl<T> FileConfigProvider<T> {
     }
 
     #[must_use]
-    pub fn path(&self) -> &PathBuf {
+    pub const fn path(&self) -> &PathBuf {
         &self.path
     }
 
     #[must_use]
-    pub fn format(&self) -> &ConfigFormat {
+    pub const fn format(&self) -> &ConfigFormat {
         &self.format
     }
 }

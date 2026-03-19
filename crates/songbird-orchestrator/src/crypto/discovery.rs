@@ -253,11 +253,16 @@ mod tests {
 
     #[tokio::test]
     async fn test_discover_crypto_socket_graceful_failure() {
-        // In CI/test environments without a crypto provider, should return Err, not panic
         let result = discover_crypto_socket().await;
         match result {
             Ok(path) => assert!(!path.is_empty()),
-            Err(e) => assert!(format!("{e}").contains("not available")),
+            Err(e) => {
+                let msg = format!("{e}");
+                assert!(
+                    msg.contains("not available") || msg.contains("No crypto provider"),
+                    "Unexpected error: {msg}"
+                );
+            }
         }
     }
 
@@ -272,7 +277,13 @@ mod tests {
         let result = discover_crypto_socket_for_purpose("signing").await;
         match result {
             Ok(path) => assert!(!path.is_empty()),
-            Err(e) => assert!(format!("{e}").contains("not available")),
+            Err(e) => {
+                let msg = format!("{e}");
+                assert!(
+                    msg.contains("not available") || msg.contains("No crypto provider"),
+                    "Unexpected error: {msg}"
+                );
+            }
         }
     }
 

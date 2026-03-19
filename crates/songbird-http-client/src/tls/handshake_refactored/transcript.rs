@@ -13,9 +13,9 @@ impl TlsHandshake {
     /// RFC 8446 Section 4.4.1: Transcript hash includes all handshake messages
     ///
     /// CRITICAL: This method expects handshake messages WITHOUT TLS record framing!
-    /// - ClientHello: Must strip 5-byte TLS record header before calling
-    /// - ServerHello: Already stripped by read_record()
-    /// - Post-handshake messages: Already stripped by read_record()
+    /// - `ClientHello`: Must strip 5-byte TLS record header before calling
+    /// - `ServerHello`: Already stripped by `read_record()`
+    /// - Post-handshake messages: Already stripped by `read_record()`
     #[allow(dead_code)]
     pub(super) fn update_transcript(&mut self, message: &[u8]) {
         let before = self.transcript.len();
@@ -88,7 +88,9 @@ impl TlsHandshake {
                 info!("📏 Length validation:");
                 trace!("   Declared length (bytes 1-3): {} bytes", declared_length);
                 trace!("   Actual body length: {} bytes", actual_length);
-                if declared_length != actual_length {
+                if declared_length == actual_length {
+                    trace!("   ✅ Length match - message is correct size");
+                } else {
                     error!("🚨 LENGTH MISMATCH!");
                     error!("   Declared: {} bytes", declared_length);
                     error!("   Actual: {} bytes", actual_length);
@@ -97,8 +99,6 @@ impl TlsHandshake {
                         (actual_length as i64 - declared_length as i64).abs()
                     );
                     error!("   💡 This might be the source of the 2-byte discrepancy!");
-                } else {
-                    trace!("   ✅ Length match - message is correct size");
                 }
             }
 
@@ -130,7 +130,7 @@ impl TlsHandshake {
     /// Parse multiple handshake messages from a decrypted TLS record
     ///
     /// RFC 8446 Section 4: Handshake messages have the format:
-    /// - HandshakeType msg_type (1 byte)
+    /// - `HandshakeType` `msg_type` (1 byte)
     /// - uint24 length (3 bytes, big-endian)
     /// - opaque body[length]
     ///
@@ -290,14 +290,14 @@ impl TlsHandshake {
         hash
     }
 
-    /// Compute cipher-aware transcript hash via BearDog
+    /// Compute cipher-aware transcript hash via `BearDog`
     ///
     /// RFC 8446 Section 4.4.1: Different cipher suites use different hash algorithms:
-    /// - 0x1301 (TLS_AES_128_GCM_SHA256): SHA-256 (32 bytes)
-    /// - 0x1302 (TLS_AES_256_GCM_SHA384): SHA-384 (48 bytes)
-    /// - 0x1303 (TLS_CHACHA20_POLY1305_SHA256): SHA-256 (32 bytes)
+    /// - 0x1301 (`TLS_AES_128_GCM_SHA256)`: SHA-256 (32 bytes)
+    /// - 0x1302 (`TLS_AES_256_GCM_SHA384)`: SHA-384 (48 bytes)
+    /// - 0x1303 (`TLS_CHACHA20_POLY1305_SHA256)`: SHA-256 (32 bytes)
     ///
-    /// This method delegates to BearDog's `crypto.hash_for_cipher` capability.
+    /// This method delegates to `BearDog`'s `crypto.hash_for_cipher` capability.
     pub(super) async fn compute_transcript_hash_for_cipher(
         &self,
         cipher_suite: u16,

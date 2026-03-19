@@ -40,7 +40,8 @@ fn test_gaming_network_config_serialization() {
 #[test]
 fn test_gaming_network_config_deserialization() {
     let json = r#"{"starcraft_port":7000,"aoe2_port":7001,"ipx_port":7002,"udp_port":7003,"enable_lan_discovery":false,"max_players_per_game":16}"#;
-    let config: GamingNetworkConfig = serde_json::from_str(json).expect("Deserialization should succeed");
+    let config: GamingNetworkConfig =
+        serde_json::from_str(json).expect("Deserialization should succeed");
     assert_eq!(config.starcraft_port, 7000);
     assert_eq!(config.aoe2_port, 7001);
     assert!(!config.enable_lan_discovery);
@@ -136,4 +137,3 @@ fn test_gaming_scale_deserialization() {
     let scale: GamingScale = serde_json::from_str(json).expect("Deserialization should succeed");
     assert_eq!(scale, GamingScale::LanParty);
 }
-

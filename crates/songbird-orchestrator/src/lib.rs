@@ -49,9 +49,9 @@
 //! - External integrations
 //! - Health monitoring
 //!
-//! ## UniBin API
+//! ## `UniBin` API
 //!
-//! For UniBin integration, this crate exposes public entry points:
+//! For `UniBin` integration, this crate exposes public entry points:
 //!
 //! - `run_orchestrator()` - Main server mode entry point
 //! - CLI types and functions (re-exported from main.rs)
@@ -106,6 +106,10 @@
     clippy::double_must_use,
     // Clone clarity - Arc::clone() preferred but not enforced here
     clippy::clone_on_ref_ptr,
+    // Lock guards held across .await - fixing requires clone-before-await refactor
+    clippy::significant_drop_tightening,
+    // option_if_let_else with .await in closure causes breakage (see user guidelines)
+    clippy::option_if_let_else,
 )]
 
 pub mod access_control; // Access control & graduated information disclosure (Q1 2025)

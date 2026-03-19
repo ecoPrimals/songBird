@@ -15,15 +15,15 @@ pub struct ExecutionManager {
 impl ExecutionManager {
     /// Create a new execution manager
     ///
-    /// ✅ EVOLVED: Now async due to ExecutionClient async construction
+    /// ✅ EVOLVED: Now async due to `ExecutionClient` async construction
     pub async fn new() -> Result<Self, String> {
         let client = ExecutionClient::new()
             .await
-            .map_err(|e| format!("Failed to create ExecutionClient: {}", e))?;
+            .map_err(|e| format!("Failed to create ExecutionClient: {e}"))?;
 
         let broadcast = BroadcastExecutor::new()
             .await
-            .map_err(|e| format!("Failed to create BroadcastExecutor: {}", e))?;
+            .map_err(|e| format!("Failed to create BroadcastExecutor: {e}"))?;
 
         Ok(Self {
             client,

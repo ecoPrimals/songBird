@@ -161,7 +161,8 @@ fn test_execution_status_serialization() {
 #[test]
 fn test_execution_status_deserialization() {
     let json = r#""running""#;
-    let status: ExecutionStatus = serde_json::from_str(json).expect("Deserialization should succeed");
+    let status: ExecutionStatus =
+        serde_json::from_str(json).expect("Deserialization should succeed");
     assert_eq!(status, ExecutionStatus::Running);
 }
 
@@ -373,4 +374,3 @@ fn test_job_info_clone() {
     assert_eq!(info.status, cloned.status);
     assert_eq!(info.pid, cloned.pid);
 }
-

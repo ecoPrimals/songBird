@@ -130,22 +130,25 @@ impl BtspProvider for LocalBtspProvider {
     }
 
     async fn tunnel_status(&self, handle: &TunnelHandle) -> SongbirdResult<TunnelStatus> {
-        let tunnels = self.tunnels.read().await;
-        let tunnel = tunnels.get(&handle.id).ok_or_else(|| {
-            SongbirdError::service("btsp", format!("Tunnel not found: {}", handle.id))
-        })?;
-
-        Ok(tunnel.status())
+        let status = self
+            .tunnels
+            .read()
+            .await
+            .get(&handle.id)
+            .ok_or_else(|| {
+                SongbirdError::service("btsp", format!("Tunnel not found: {}", handle.id))
+            })
+            .map(super::tunnel::Tunnel::status)?;
+        Ok(status)
     }
 
     async fn close_tunnel(&self, handle: &TunnelHandle) -> SongbirdResult<()> {
         debug!("🔒 Closing local BTSP tunnel: {}", handle.id);
 
-        let mut tunnels = self.tunnels.write().await;
-        if let Some(tunnel) = tunnels.get_mut(&handle.id) {
+        if let Some(tunnel) = self.tunnels.write().await.get_mut(&handle.id) {
             tunnel.close();
         }
-        tunnels.remove(&handle.id);
+        self.tunnels.write().await.remove(&handle.id);
 
         Ok(())
     }
@@ -169,7 +172,7 @@ impl BtspProvider for LocalBtspProvider {
 struct LocalKeyManager;
 
 impl LocalKeyManager {
-    fn new() -> Self {
+    const fn new() -> Self {
         Self
     }
 

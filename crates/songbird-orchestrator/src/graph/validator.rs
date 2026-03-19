@@ -45,7 +45,8 @@ pub struct GraphValidator {
 
 impl GraphValidator {
     /// Create a new graph validator
-    pub fn new() -> Self {
+    #[must_use]
+    pub const fn new() -> Self {
         Self {}
     }
 

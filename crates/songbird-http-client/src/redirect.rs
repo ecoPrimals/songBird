@@ -21,7 +21,7 @@ impl RedirectHandler {
     /// # Arguments
     ///
     /// * `max_redirects` - Maximum number of redirects to follow
-    pub fn new(max_redirects: usize) -> Self {
+    pub const fn new(max_redirects: usize) -> Self {
         Self {
             max_redirects,
         }
@@ -30,7 +30,7 @@ impl RedirectHandler {
     /// Check if a status code indicates a redirect
     ///
     /// Recognizes: 301, 302, 303, 307, 308
-    pub fn is_redirect_status(status: u16) -> bool {
+    pub const fn is_redirect_status(status: u16) -> bool {
         matches!(status, 301 | 302 | 303 | 307 | 308)
     }
 
@@ -49,7 +49,7 @@ impl RedirectHandler {
         &self,
         response: &HttpResponse,
         redirect_count: usize,
-        redirect_mode: &RedirectMode,
+        redirect_mode: RedirectMode,
     ) -> bool {
         // Check redirect limit
         if redirect_count >= self.max_redirects {
@@ -84,7 +84,7 @@ impl RedirectHandler {
     ///
     /// Hostname if it can be extracted
     #[allow(dead_code)]
-    pub fn extract_host(&self, location: &str, base_url: &str) -> Option<String> {
+    pub fn extract_host(location: &str, base_url: &str) -> Option<String> {
         // Try to parse location as absolute URL
         if let Ok(uri) = Uri::try_from(location) {
             if let Some(host) = uri.host() {
@@ -93,7 +93,7 @@ impl RedirectHandler {
         }
 
         // If relative URL, use base URL's host
-        Uri::try_from(base_url).ok().and_then(|u| u.host().map(|h| h.to_string()))
+        Uri::try_from(base_url).ok().and_then(|u| u.host().map(std::string::ToString::to_string))
     }
 
     /// Resolve a redirect URL (handles relative and absolute URLs)
@@ -112,7 +112,7 @@ impl RedirectHandler {
     /// Returns error if:
     /// - Base URL cannot be parsed
     /// - Base URL is missing required components
-    pub fn resolve_url(&self, base_url: &str, location: &str) -> Result<String> {
+    pub fn resolve_url(base_url: &str, location: &str) -> Result<String> {
         // If location is absolute, use it directly
         if location.starts_with("http://") || location.starts_with("https://") {
             return Ok(location.to_string());
@@ -120,7 +120,7 @@ impl RedirectHandler {
 
         // Parse base URL to get scheme and host
         let base: Uri =
-            base_url.parse().map_err(|e| Error::InvalidUrl(format!("Invalid base URL: {}", e)))?;
+            base_url.parse().map_err(|e| Error::InvalidUrl(format!("Invalid base URL: {e}")))?;
 
         let scheme = base.scheme_str().unwrap_or("https");
         let host =
@@ -130,18 +130,18 @@ impl RedirectHandler {
         // Build new URL
         let new_url = if location.starts_with('/') {
             // Absolute path relative to host
-            match port {
-                Some(p) => format!("{}://{}:{}{}", scheme, host, p, location),
-                None => format!("{}://{}{}", scheme, host, location),
-            }
+            port.map_or_else(
+                || format!("{scheme}://{host}{location}"),
+                |p| format!("{scheme}://{host}:{p}{location}"),
+            )
         } else {
             // Relative path - append to base path
             let base_path = base.path();
-            let parent = base_path.rsplit_once('/').map(|(p, _)| p).unwrap_or("");
-            match port {
-                Some(p) => format!("{}://{}:{}{}/{}", scheme, host, p, parent, location),
-                None => format!("{}://{}{}/{}", scheme, host, parent, location),
-            }
+            let parent = base_path.rsplit_once('/').map_or("", |(p, _)| p);
+            port.map_or_else(
+                || format!("{scheme}://{host}{parent}/{location}"),
+                |p| format!("{scheme}://{host}:{p}{parent}/{location}"),
+            )
         };
 
         Ok(new_url)
@@ -162,10 +162,10 @@ impl RedirectHandler {
     pub fn is_same_origin(&self, original_url: &str, redirect_url: &str) -> Result<bool> {
         let original: Uri = original_url
             .parse()
-            .map_err(|e| Error::InvalidUrl(format!("Invalid original URL: {}", e)))?;
+            .map_err(|e| Error::InvalidUrl(format!("Invalid original URL: {e}")))?;
         let redirect: Uri = redirect_url
             .parse()
-            .map_err(|e| Error::InvalidUrl(format!("Invalid redirect URL: {}", e)))?;
+            .map_err(|e| Error::InvalidUrl(format!("Invalid redirect URL: {e}")))?;
 
         // Compare scheme, host, and port
         Ok(original.scheme_str() == redirect.scheme_str()
@@ -194,21 +194,23 @@ mod tests {
     fn test_resolve_absolute_url() {
         let handler = RedirectHandler::new(10);
         let result =
-            handler.resolve_url("https://example.com/path", "https://other.com/new").unwrap();
+            RedirectHandler::resolve_url("https://example.com/path", "https://other.com/new")
+                .unwrap();
         assert_eq!(result, "https://other.com/new");
     }
 
     #[test]
     fn test_resolve_absolute_path() {
         let handler = RedirectHandler::new(10);
-        let result = handler.resolve_url("https://example.com/old/path", "/new/path").unwrap();
+        let result =
+            RedirectHandler::resolve_url("https://example.com/old/path", "/new/path").unwrap();
         assert_eq!(result, "https://example.com/new/path");
     }
 
     #[test]
     fn test_resolve_relative_path() {
         let handler = RedirectHandler::new(10);
-        let result = handler.resolve_url("https://example.com/dir/page", "other").unwrap();
+        let result = RedirectHandler::resolve_url("https://example.com/dir/page", "other").unwrap();
         assert_eq!(result, "https://example.com/dir/other");
     }
 
@@ -218,12 +220,15 @@ mod tests {
 
         // Absolute URL
         assert_eq!(
-            handler.extract_host("https://example.com/path", "https://base.com"),
+            RedirectHandler::extract_host("https://example.com/path", "https://base.com"),
             Some("example.com".to_string())
         );
 
         // Relative path (uses base)
-        assert_eq!(handler.extract_host("/path", "https://base.com"), Some("base.com".to_string()));
+        assert_eq!(
+            RedirectHandler::extract_host("/path", "https://base.com"),
+            Some("base.com".to_string())
+        );
     }
 
     #[test]
@@ -239,22 +244,16 @@ mod tests {
             body: serde_json::json!(""),
         };
 
-        // Should follow with Follow mode
-        assert!(handler.should_follow(&response, 0, &RedirectMode::Follow));
+        assert!(handler.should_follow(&response, 0, RedirectMode::Follow));
+        assert!(!handler.should_follow(&response, 0, RedirectMode::None));
+        assert!(!handler.should_follow(&response, 5, RedirectMode::Follow));
 
-        // Should not follow with None mode
-        assert!(!handler.should_follow(&response, 0, &RedirectMode::None));
-
-        // Should not follow when max redirects reached
-        assert!(!handler.should_follow(&response, 5, &RedirectMode::Follow));
-
-        // Should not follow non-redirect status
         let non_redirect = HttpResponse {
             status: 200,
             headers,
             body: serde_json::json!(""),
         };
-        assert!(!handler.should_follow(&non_redirect, 0, &RedirectMode::Follow));
+        assert!(!handler.should_follow(&non_redirect, 0, RedirectMode::Follow));
     }
 
     #[test]

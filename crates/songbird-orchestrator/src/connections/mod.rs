@@ -1,9 +1,9 @@
 //! Connection Management with Progressive Trust
 //!
 //! This module implements connection types for different trust levels:
-//! - **Limited**: BirdSong coordination only (Level 1)
+//! - **Limited**: `BirdSong` coordination only (Level 1)
 //! - **Federated**: Full federation (Level 2)
-//! - **FullTrust**: All operations (Level 3)
+//! - **`FullTrust`**: All operations (Level 3)
 //!
 //! Each connection type enforces capability restrictions appropriate to its trust level.
 
@@ -75,6 +75,7 @@ pub enum Connection {
 
 impl Connection {
     /// Get the underlying peer connection trait object
+    #[must_use]
     pub fn as_peer_connection(&self) -> &dyn PeerConnection {
         match self {
             // HTTPS connections
@@ -90,11 +91,13 @@ impl Connection {
     }
 
     /// Get trust level
+    #[must_use]
     pub fn trust_level(&self) -> TrustLevel {
         self.as_peer_connection().trust_level()
     }
 
     /// Check if operation is allowed
+    #[must_use]
     pub fn is_operation_allowed(&self, operation: &str) -> bool {
         self.as_peer_connection().is_operation_allowed(operation)
     }

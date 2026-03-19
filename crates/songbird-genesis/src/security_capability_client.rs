@@ -22,6 +22,10 @@ impl SecurityCapabilityClient {
     /// 1. `SECURITY_ENDPOINT` environment variable
     /// 2. Capability discovery (via songbird-config)
     /// 3. Well-known default (localhost:8200)
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if endpoint discovery fails or HTTP client creation fails.
     pub async fn new() -> Result<Self> {
         let base_url = Self::discover_endpoint().await?;
 
@@ -36,6 +40,10 @@ impl SecurityCapabilityClient {
     }
 
     /// Create client with explicit endpoint
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if HTTP client creation fails.
     pub async fn with_endpoint(endpoint: impl Into<String>) -> Result<Self> {
         let base_url = endpoint.into();
         let http_client = IpcHttpClient::new().await.context("Failed to create HTTP client")?;
@@ -46,9 +54,13 @@ impl SecurityCapabilityClient {
         })
     }
 
-    /// Sign data using BearDog
+    /// Sign data using `BearDog`
     ///
     /// This is used by genesis witnesses to cryptographically sign new node identities.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the sign request fails or response parsing fails.
     pub async fn sign_data(&self, node_id: &str, data: &[u8]) -> Result<Vec<u8>> {
         let request = SignRequest {
             node_id: node_id.to_string(),
@@ -72,7 +84,7 @@ impl SecurityCapabilityClient {
         if !response.is_success() {
             let status = response.status();
             let error_text = response.text().await.unwrap_or_default();
-            anyhow::bail!("BearDog sign request failed ({}): {}", status, error_text);
+            anyhow::bail!("BearDog sign request failed ({status}): {error_text}");
         }
 
         let sign_response: SignResponse =
@@ -81,9 +93,13 @@ impl SecurityCapabilityClient {
         hex::decode(&sign_response.signature).context("Failed to decode signature from BearDog")
     }
 
-    /// Verify signature using BearDog
+    /// Verify signature using `BearDog`
     ///
     /// This is used to verify that a signature is valid for the given data.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the verify request fails or response parsing fails.
     pub async fn verify_signature(
         &self,
         node_id: &str,
@@ -112,7 +128,7 @@ impl SecurityCapabilityClient {
         if !response.is_success() {
             let status = response.status();
             let error_text = response.text().await.unwrap_or_default();
-            anyhow::bail!("BearDog verify request failed ({}): {}", status, error_text);
+            anyhow::bail!("BearDog verify request failed ({status}): {error_text}");
         }
 
         let verify_response: VerifyResponse =
@@ -124,6 +140,10 @@ impl SecurityCapabilityClient {
     /// Get public key fingerprint for a node
     ///
     /// This is used during genesis to establish the node's public key.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the request fails (falls back to deterministic fingerprint on 4xx/5xx).
     pub async fn get_public_key_fingerprint(&self, node_id: &str) -> Result<String> {
         let url = format!("{}/v1/keys/{}/fingerprint", self.base_url, node_id);
 
@@ -152,6 +172,10 @@ impl SecurityCapabilityClient {
     /// Create lineage data for a new node
     ///
     /// This is used by primals to grant lineage to a new node during genesis.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the create lineage request fails or response parsing fails.
     pub async fn create_lineage(
         &self,
         primal_name: &str,
@@ -185,7 +209,7 @@ impl SecurityCapabilityClient {
         if !response.is_success() {
             let status = response.status();
             let error_text = response.text().await.unwrap_or_default();
-            anyhow::bail!("BearDog create lineage request failed ({}): {}", status, error_text);
+            anyhow::bail!("BearDog create lineage request failed ({status}): {error_text}");
         }
 
         let lineage_response: CreateLineageResponse = response
@@ -197,7 +221,7 @@ impl SecurityCapabilityClient {
             .context("Failed to decode lineage data from BearDog")
     }
 
-    /// Discover BearDog endpoint using multiple strategies
+    /// Discover `BearDog` endpoint using multiple strategies
     async fn discover_endpoint() -> Result<String> {
         // Strategy 1: BEARDOG_ENDPOINT environment variable
         if let Ok(endpoint) = std::env::var("BEARDOG_ENDPOINT") {

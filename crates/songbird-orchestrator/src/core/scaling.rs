@@ -26,7 +26,7 @@ pub struct AutoScaler {
 
 impl AutoScaler {
     #[must_use]
-    pub fn new(config: ScalingConfig) -> Self {
+    pub const fn new(config: ScalingConfig) -> Self {
         Self {
             current_instances: config.min_instances,
             config,
@@ -97,7 +97,7 @@ impl AutoScaler {
     }
 
     #[must_use]
-    pub fn current_instances(&self) -> u32 {
+    pub const fn current_instances(&self) -> u32 {
         self.current_instances
     }
 }

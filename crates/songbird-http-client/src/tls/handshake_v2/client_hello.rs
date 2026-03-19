@@ -1,32 +1,33 @@
-//! ClientHello message construction for TLS 1.3
+//! `ClientHello` message construction for TLS 1.3
 //!
-//! This module handles building TLS 1.3 ClientHello messages with configurable
+//! This module handles building TLS 1.3 `ClientHello` messages with configurable
 //! extension strategies for optimal handshake performance.
 
 use crate::error::Result;
 use crate::tls::{config::ExtensionStrategy, CIPHER_SUITES, TLS_1_2, TLS_1_3};
 use tracing::debug;
 
-/// ClientHello builder for TLS 1.3
+/// `ClientHello` builder for TLS 1.3
 ///
-/// Constructs ClientHello messages with different extension strategies:
+/// Constructs `ClientHello` messages with different extension strategies:
 /// - Minimal: Fastest (~50ms handshake)
 /// - Standard: Balanced (~80ms handshake)
 /// - Modern: Latest features (~100ms handshake)
-/// - MaxCompat: Maximum compatibility
+/// - `MaxCompat`: Maximum compatibility
 pub struct ClientHelloBuilder {
     extension_strategy: ExtensionStrategy,
 }
 
 impl ClientHelloBuilder {
-    /// Create a new ClientHello builder with the given extension strategy
-    pub fn new(extension_strategy: ExtensionStrategy) -> Self {
+    /// Create a new `ClientHello` builder with the given extension strategy
+    #[must_use]
+    pub const fn new(extension_strategy: ExtensionStrategy) -> Self {
         Self {
             extension_strategy,
         }
     }
 
-    /// Build a complete ClientHello message including TLS record framing
+    /// Build a complete `ClientHello` message including TLS record framing
     ///
     /// Returns the complete TLS record ready to send on the wire.
     pub fn build(
@@ -254,7 +255,8 @@ fn build_key_share_extension(public_key: &[u8]) -> Vec<u8> {
 /// Generate client random (32 bytes)
 ///
 /// Uses timestamp + pseudo-random for now.
-/// In production, BearDog should provide cryptographically secure random.
+/// In production, `BearDog` should provide cryptographically secure random.
+#[must_use]
 pub fn generate_random() -> Vec<u8> {
     use std::time::{SystemTime, UNIX_EPOCH};
 

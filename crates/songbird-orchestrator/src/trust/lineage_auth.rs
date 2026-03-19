@@ -135,7 +135,7 @@ struct CachedVerification {
 ///
 /// **EVOLVED (v3.22.1)**: Uses capability-based discovery (no hardcoded provider)
 /// - Discovers security provider via `security_setup::discover_security_endpoint()`
-/// - Works with any primal providing "security" capability (BearDog, future alternatives)
+/// - Works with any primal providing "security" capability (`BearDog`, future alternatives)
 /// - Follows "Each Primal Knows Only Itself" principle
 #[derive(Debug, Clone)]
 pub struct SecurityProviderClient {
@@ -162,7 +162,7 @@ impl SecurityProviderClient {
     /// Create client via capability-based discovery
     ///
     /// **Production Path**: Discovers security provider via multi-tier discovery:
-    /// 1. Environment variables (SONGBIRD_SECURITY_PROVIDER)
+    /// 1. Environment variables (`SONGBIRD_SECURITY_PROVIDER`)
     /// 2. Universal Adapter capability discovery
     /// 3. Local UPA service registry
     ///
@@ -359,6 +359,7 @@ pub struct CurrentLineageInfo {
 
 impl LineageAuthenticator {
     /// Create a new lineage authenticator
+    #[must_use]
     pub fn new() -> Self {
         Self {
             security_client: None,
@@ -420,7 +421,7 @@ impl LineageAuthenticator {
         if let Some(cached) = self.get_cached_verification(peer_node_id) {
             if cached.valid && cached.same_genesis {
                 return Ok(PeerAcceptanceDecision::AutoAccept {
-                    reason: format!("Same genetic lineage: {} (cached)", lineage),
+                    reason: format!("Same genetic lineage: {lineage} (cached)"),
                     lineage_id: lineage.clone(),
                     confidence: 0.95, // Slightly lower for cached
                 });
@@ -455,7 +456,7 @@ impl LineageAuthenticator {
             if same_family {
                 info!("✅ Auto-accepting peer {} - same genetic family", peer_node_id);
                 return Ok(PeerAcceptanceDecision::AutoAccept {
-                    reason: format!("Same genetic lineage: {}", lineage),
+                    reason: format!("Same genetic lineage: {lineage}"),
                     lineage_id: lineage.clone(),
                     confidence: 1.0,
                 });

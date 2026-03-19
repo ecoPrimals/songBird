@@ -2,7 +2,7 @@
 //!
 //! Handles the complete startup sequence for anonymous discovery:
 //! 1. Fetching identity attestations from security provider
-//! 2. Initializing BirdSong encryption processor
+//! 2. Initializing `BirdSong` encryption processor
 //! 3. Setting up discovery broadcaster
 //! 4. Configuring and starting discovery listener
 //! 5. Starting discovery→federation bridge
@@ -38,7 +38,7 @@ use crate::self_knowledge;
 ///
 /// This orchestrates the entire discovery startup sequence:
 /// 1. Fetch identity attestations from security provider (if configured)
-/// 2. Initialize BirdSong encryption processor (if genetic identity available)
+/// 2. Initialize `BirdSong` encryption processor (if genetic identity available)
 /// 3. Create and start discovery broadcaster
 /// 4. Configure and start discovery listener with proper Arc wrapping
 ///
@@ -118,7 +118,7 @@ pub async fn start_discovery_system(
 /// **EVOLVED (v3.15.0)**: Uses capability discovery (zero vendor hardcoding!)
 ///
 /// Queries the configured security provider for genetic lineage attestations.
-/// These are used for same-family trust and BirdSong encryption.
+/// These are used for same-family trust and `BirdSong` encryption.
 ///
 /// # Environment Variables (v3.15.0)
 ///
@@ -157,9 +157,9 @@ async fn fetch_identity_attestations(
     }
 }
 
-/// Initialize BirdSong encryption processor
+/// Initialize `BirdSong` encryption processor
 ///
-/// Creates the BirdSong processor for privacy-preserving discovery.
+/// Creates the `BirdSong` processor for privacy-preserving discovery.
 /// Requires genetic identity (from attestations) to enable encryption.
 async fn initialize_birdsong_processor(
     identity_attestations: &[songbird_discovery::IdentityAttestation],
@@ -297,7 +297,7 @@ async fn start_discovery_broadcaster(
 ///
 /// Implements the "Build Then Arc" pattern:
 /// 1. Take pending listener (un-Arc'd)
-/// 2. Configure with BirdSong and stats
+/// 2. Configure with `BirdSong` and stats
 /// 3. Wrap in Arc (configuration complete!)
 /// 4. Spawn listening task
 /// 5. Return Arc for bridge polling

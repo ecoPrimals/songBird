@@ -42,6 +42,7 @@ pub struct AdmissionController {
 }
 
 impl AdmissionController {
+    #[must_use]
     pub fn new(quota_manager: Arc<QuotaManager>) -> Self {
         Self {
             quota_manager,

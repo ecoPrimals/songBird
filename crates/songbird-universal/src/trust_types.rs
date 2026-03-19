@@ -16,7 +16,7 @@ pub struct TrustEvaluationRequest {
     /// Peer family ID (v3.14.1 - tag-based identity)
     ///
     /// Extracted from peer tags (e.g., "beardog:family:nat0" → "nat0")
-    /// Songbird doesn't interpret this - just extracts and passes to BearDog
+    /// Songbird doesn't interpret this - just extracts and passes to `BearDog`
     #[serde(skip_serializing_if = "Option::is_none")]
     pub peer_family: Option<String>,
 
@@ -37,10 +37,10 @@ pub struct TrustEvaluationRequest {
 /// Response from trust evaluation
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TrustEvaluationResponse {
-    /// Decision: "auto_accept", "prompt_user", or "reject"
+    /// Decision: "`auto_accept`", "`prompt_user`", or "reject"
     pub decision: String,
 
-    /// Trust level: TrustLevel enum (accepts both integer and string via Phase 1 custom deserializer)
+    /// Trust level: `TrustLevel` enum (accepts both integer and string via Phase 1 custom deserializer)
     pub trust_level: TrustLevel,
 
     /// Reason for decision

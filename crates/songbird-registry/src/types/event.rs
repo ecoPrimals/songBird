@@ -84,7 +84,7 @@ impl RegistryEvent {
 
     /// Get the plugin ID associated with this event, if any
     #[must_use]
-    pub fn plugin_id(&self) -> Option<&PluginId> {
+    pub const fn plugin_id(&self) -> Option<&PluginId> {
         match &self.event_type {
             EventType::PluginRegistered {
                 plugin_id,

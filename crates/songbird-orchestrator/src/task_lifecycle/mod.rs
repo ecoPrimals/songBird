@@ -29,12 +29,14 @@ pub struct TaskId(Uuid);
 
 impl TaskId {
     /// Create a new time-ordered task ID
+    #[must_use]
     pub fn new() -> Self {
         Self(Uuid::now_v7())
     }
 
     /// Create from existing UUID
-    pub fn from_uuid(uuid: Uuid) -> Self {
+    #[must_use]
+    pub const fn from_uuid(uuid: Uuid) -> Self {
         Self(uuid)
     }
 
@@ -48,7 +50,8 @@ impl TaskId {
     }
 
     /// Get UUID value
-    pub fn as_uuid(&self) -> Uuid {
+    #[must_use]
+    pub const fn as_uuid(&self) -> Uuid {
         self.0
     }
 }
@@ -82,6 +85,7 @@ impl UserId {
         Self(id.into())
     }
 
+    #[must_use]
     pub fn as_str(&self) -> &str {
         &self.0
     }
@@ -114,6 +118,7 @@ impl TowerId {
         Self(id.into())
     }
 
+    #[must_use]
     pub fn as_str(&self) -> &str {
         &self.0
     }

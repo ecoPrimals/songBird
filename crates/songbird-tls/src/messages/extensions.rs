@@ -1,38 +1,38 @@
 //! TLS extensions (RFC 8446 Section 4.2)
 //!
 //! Extensions are used to extend the TLS protocol with additional functionality.
-//! In TLS 1.3, many extensions are mandatory (e.g., supported_versions, key_share).
+//! In TLS 1.3, many extensions are mandatory (e.g., `supported_versions`, `key_share`).
 
 /// TLS extension types
 ///
 /// For now, we implement only the essential extensions needed for TLS 1.3.
 /// Additional extensions can be added as needed.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Extension {
-    /// supported_versions (RFC 8446 Section 4.2.1)
+    /// `supported_versions` (RFC 8446 Section 4.2.1)
     ///
-    /// In ClientHello: list of supported versions (e.g., `[0x0304]` for TLS 1.3)
-    /// In ServerHello: selected version
+    /// In `ClientHello`: list of supported versions (e.g., `[0x0304]` for TLS 1.3)
+    /// In `ServerHello`: selected version
     SupportedVersions(Vec<u16>),
 
-    /// key_share (RFC 8446 Section 4.2.8)
+    /// `key_share` (RFC 8446 Section 4.2.8)
     ///
     /// Contains the client's or server's public key for key exchange.
     /// For X25519, this is 32 bytes.
     KeyShare(Vec<u8>),
 
-    /// server_name (RFC 6066 Section 3)
+    /// `server_name` (RFC 6066 Section 3)
     ///
     /// SNI (Server Name Indication) - hostname the client wants to connect to.
     ServerName(String),
 
-    /// signature_algorithms (RFC 8446 Section 4.2.3)
+    /// `signature_algorithms` (RFC 8446 Section 4.2.3)
     ///
     /// List of signature algorithms supported by the client.
     /// For Ed25519: 0x0807
     SignatureAlgorithms(Vec<u16>),
 
-    /// supported_groups (RFC 8446 Section 4.2.7)
+    /// `supported_groups` (RFC 8446 Section 4.2.7)
     ///
     /// List of named groups (curves) supported by the client.
     /// For X25519: 0x001d
@@ -50,14 +50,15 @@ pub enum Extension {
 
 impl Extension {
     /// Get the extension type code
-    pub fn extension_type(&self) -> u16 {
+    #[must_use]
+    pub const fn extension_type(&self) -> u16 {
         match self {
-            Extension::SupportedVersions(_) => 43,
-            Extension::KeyShare(_) => 51,
-            Extension::ServerName(_) => 0,
-            Extension::SignatureAlgorithms(_) => 13,
-            Extension::SupportedGroups(_) => 10,
-            Extension::Unknown {
+            Self::SupportedVersions(_) => 43,
+            Self::KeyShare(_) => 51,
+            Self::ServerName(_) => 0,
+            Self::SignatureAlgorithms(_) => 13,
+            Self::SupportedGroups(_) => 10,
+            Self::Unknown {
                 extension_type,
                 ..
             } => *extension_type,
@@ -65,8 +66,9 @@ impl Extension {
     }
 
     /// Check if this is a mandatory extension for TLS 1.3
-    pub fn is_mandatory_for_tls13(&self) -> bool {
-        matches!(self, Extension::SupportedVersions(_) | Extension::KeyShare(_))
+    #[must_use]
+    pub const fn is_mandatory_for_tls13(&self) -> bool {
+        matches!(self, Self::SupportedVersions(_) | Self::KeyShare(_))
     }
 }
 

@@ -47,7 +47,7 @@ pub struct ConnectivityTester {
 impl ConnectivityTester {
     /// Create a new connectivity tester
     #[must_use]
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self {
             test_timeout: Duration::from_secs(5),
         }
@@ -55,7 +55,7 @@ impl ConnectivityTester {
 
     /// Create a connectivity tester with custom timeout
     #[must_use]
-    pub fn with_timeout(test_timeout: Duration) -> Self {
+    pub const fn with_timeout(test_timeout: Duration) -> Self {
         Self {
             test_timeout,
         }
@@ -108,7 +108,7 @@ impl ConnectivityTester {
 
     /// Test HTTPS connectivity to a target
     ///
-    /// ✅ EVOLVED (Jan 21, 2026): 100% Pure Rust HTTP via SongbirdHttpClient
+    /// ✅ EVOLVED (Jan 21, 2026): 100% Pure Rust HTTP via `SongbirdHttpClient`
     pub async fn test_https_connectivity(
         &self,
         target: SocketAddr,
@@ -120,10 +120,10 @@ impl ConnectivityTester {
         // Use SongbirdHttpClient for Pure Rust HTTPS testing
         let crypto_socket = crate::primal_discovery::discover_crypto_provider()
             .await
-            .map_err(|e| anyhow!("Failed to discover crypto provider: {}", e))?;
+            .map_err(|e| anyhow!("Failed to discover crypto provider: {e}"))?;
 
         let client = songbird_http_client::SongbirdHttpClient::new(crypto_socket);
-        let url = format!("https://{}/health", target);
+        let url = format!("https://{target}/health");
 
         match tokio::time::timeout(self.test_timeout, client.get(&url)).await {
             Ok(Ok(response)) => {
@@ -149,7 +149,7 @@ impl ConnectivityTester {
                         tcp_reachable: true,
                         https_reachable: false,
                         rtt_ms: Some(rtt_ms),
-                        error: Some(format!("HTTP status: {}", status)),
+                        error: Some(format!("HTTP status: {status}")),
                     })
                 }
             }
@@ -247,7 +247,7 @@ impl ConnectivityTester {
             }
             Err(e) => {
                 error!("Failed to run diagnostics: {}", e);
-                diagnostics.push(format!("❌ Diagnostic error: {}", e));
+                diagnostics.push(format!("❌ Diagnostic error: {e}"));
             }
             _ => {}
         }
@@ -353,11 +353,11 @@ impl ConnectivityRemediator {
                         Ok(output) => {
                             let stderr = String::from_utf8_lossy(&output.stderr);
                             warn!("Failed to add iptables rule: {}", stderr);
-                            actions.push(format!("❌ Failed to add iptables rule: {}", stderr));
+                            actions.push(format!("❌ Failed to add iptables rule: {stderr}"));
                         }
                         Err(e) => {
                             warn!("Failed to run iptables: {}", e);
-                            actions.push(format!("❌ Failed to run iptables: {}", e));
+                            actions.push(format!("❌ Failed to run iptables: {e}"));
                         }
                     }
                 }

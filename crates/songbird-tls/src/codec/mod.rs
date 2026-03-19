@@ -12,6 +12,10 @@ use crate::error::{Result, TlsError};
 /// Trait for encoding types to wire format
 pub trait Encode {
     /// Encode this type to bytes
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if encoding fails (e.g., invalid data, buffer overflow).
     fn encode(&self, buf: &mut Vec<u8>) -> Result<()>;
 
     /// Get the encoded size in bytes
@@ -21,12 +25,16 @@ pub trait Encode {
 /// Trait for decoding types from wire format
 pub trait Decode: Sized {
     /// Decode this type from bytes
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if decoding fails (e.g., buffer underflow, invalid format).
     fn decode(buf: &[u8]) -> Result<(Self, usize)>;
 }
 
 /// Helper functions for encoding/decoding primitives
 pub mod bytes {
-    use super::*;
+    use super::{Result, TlsError};
 
     /// Write a u8 to buffer
     pub fn write_u8(buf: &mut Vec<u8>, value: u8) {
@@ -50,6 +58,10 @@ pub mod bytes {
     }
 
     /// Write a length-prefixed vector (u8 length)
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if data length exceeds 255 bytes.
     pub fn write_vec8(buf: &mut Vec<u8>, data: &[u8]) -> Result<()> {
         if data.len() > 255 {
             return Err(TlsError::InvalidParameter(format!(
@@ -57,12 +69,20 @@ pub mod bytes {
                 data.len()
             )));
         }
-        write_u8(buf, data.len() as u8);
+        write_u8(
+            buf,
+            u8::try_from(data.len())
+                .map_err(|_| TlsError::InvalidParameter("Vec8 length overflow".to_string()))?,
+        );
         buf.extend_from_slice(data);
         Ok(())
     }
 
     /// Write a length-prefixed vector (u16 length)
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if data length exceeds 65535 bytes.
     pub fn write_vec16(buf: &mut Vec<u8>, data: &[u8]) -> Result<()> {
         if data.len() > 65535 {
             return Err(TlsError::InvalidParameter(format!(
@@ -70,25 +90,41 @@ pub mod bytes {
                 data.len()
             )));
         }
-        write_u16(buf, data.len() as u16);
+        write_u16(
+            buf,
+            u16::try_from(data.len())
+                .map_err(|_| TlsError::InvalidParameter("Vec16 length overflow".to_string()))?,
+        );
         buf.extend_from_slice(data);
         Ok(())
     }
 
     /// Write a length-prefixed vector (u24 length)
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if data length exceeds 16777215 bytes.
     pub fn write_vec24(buf: &mut Vec<u8>, data: &[u8]) -> Result<()> {
-        if data.len() > 0xFFFFFF {
+        if data.len() > 0x00FF_FFFF {
             return Err(TlsError::InvalidParameter(format!(
                 "Vec24 too long: {} bytes (max 16777215)",
                 data.len()
             )));
         }
-        write_u24(buf, data.len() as u32);
+        write_u24(
+            buf,
+            u32::try_from(data.len())
+                .map_err(|_| TlsError::InvalidParameter("Vec24 length overflow".to_string()))?,
+        );
         buf.extend_from_slice(data);
         Ok(())
     }
 
     /// Read a u8 from buffer
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the buffer is exhausted.
     pub fn read_u8(buf: &[u8], offset: &mut usize) -> Result<u8> {
         if *offset >= buf.len() {
             return Err(TlsError::ProtocolError("Buffer underflow reading u8".to_string()));
@@ -99,6 +135,10 @@ pub mod bytes {
     }
 
     /// Read a u16 (big-endian) from buffer
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the buffer is exhausted.
     pub fn read_u16(buf: &[u8], offset: &mut usize) -> Result<u16> {
         if *offset + 2 > buf.len() {
             return Err(TlsError::ProtocolError("Buffer underflow reading u16".to_string()));
@@ -109,6 +149,10 @@ pub mod bytes {
     }
 
     /// Read a u24 (big-endian) from buffer
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the buffer is exhausted.
     pub fn read_u24(buf: &[u8], offset: &mut usize) -> Result<u32> {
         if *offset + 3 > buf.len() {
             return Err(TlsError::ProtocolError("Buffer underflow reading u24".to_string()));
@@ -119,6 +163,10 @@ pub mod bytes {
     }
 
     /// Read a u32 (big-endian) from buffer
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the buffer is exhausted.
     pub fn read_u32(buf: &[u8], offset: &mut usize) -> Result<u32> {
         if *offset + 4 > buf.len() {
             return Err(TlsError::ProtocolError("Buffer underflow reading u32".to_string()));
@@ -129,6 +177,10 @@ pub mod bytes {
     }
 
     /// Read a length-prefixed vector (u8 length)
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the buffer is exhausted or truncated.
     pub fn read_vec8(buf: &[u8], offset: &mut usize) -> Result<Vec<u8>> {
         let len = read_u8(buf, offset)? as usize;
         if *offset + len > buf.len() {
@@ -144,6 +196,10 @@ pub mod bytes {
     }
 
     /// Read a length-prefixed vector (u16 length)
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the buffer is exhausted or truncated.
     pub fn read_vec16(buf: &[u8], offset: &mut usize) -> Result<Vec<u8>> {
         let len = read_u16(buf, offset)? as usize;
         if *offset + len > buf.len() {
@@ -159,6 +215,10 @@ pub mod bytes {
     }
 
     /// Read a length-prefixed vector (u24 length)
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the buffer is exhausted or truncated.
     pub fn read_vec24(buf: &[u8], offset: &mut usize) -> Result<Vec<u8>> {
         let len = read_u24(buf, offset)? as usize;
         if *offset + len > buf.len() {

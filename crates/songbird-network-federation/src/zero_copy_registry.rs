@@ -278,15 +278,16 @@ impl ZeroCopyFederatedRegistry {
     /// Clean up stale services (not updated in timeout period)
     pub async fn cleanup_stale_services(&self, timeout_secs: i64) {
         let now = Utc::now();
-        let mut remote = self.remote_services.write().await;
+        let removed = {
+            let mut remote = self.remote_services.write().await;
+            let before_count = remote.len();
+            remote.retain(|_, svc| {
+                let elapsed = (now - svc.last_seen).num_seconds();
+                elapsed < timeout_secs
+            });
+            before_count - remote.len()
+        };
 
-        let before_count = remote.len();
-        remote.retain(|_, svc| {
-            let elapsed = (now - svc.last_seen).num_seconds();
-            elapsed < timeout_secs
-        });
-
-        let removed = before_count - remote.len();
         if removed > 0 {
             info!("🧹 Cleaned up {} stale remote services", removed);
         }

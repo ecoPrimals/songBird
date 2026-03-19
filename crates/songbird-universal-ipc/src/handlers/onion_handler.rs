@@ -202,11 +202,10 @@ impl OnionHandler {
     /// ```
     pub async fn handle_status(&self, _params: Value) -> Result<Value, String> {
         let service = self.service.read().await;
-        let start_time = self.start_time.read().await;
         let beardog_available = self.get_beardog_client().is_ok();
 
         if let Some(svc) = service.as_ref() {
-            let uptime = start_time.map(|t| t.elapsed().as_secs()).unwrap_or(0);
+            let uptime = self.start_time.read().await.map(|t| t.elapsed().as_secs()).unwrap_or(0);
 
             Ok(json!({
                 "running": true,

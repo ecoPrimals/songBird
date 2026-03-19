@@ -81,7 +81,7 @@ impl JsonRpcError {
 
     /// Create a custom error with code, message, and optional data
     ///
-    /// This is a compatibility helper for migrating from jsonrpsee::types::ErrorObject::owned
+    /// This is a compatibility helper for migrating from `jsonrpsee::types::ErrorObject::owned`
     pub fn custom(code: i32, message: impl Into<String>, data: Option<String>) -> Self {
         Self {
             code,

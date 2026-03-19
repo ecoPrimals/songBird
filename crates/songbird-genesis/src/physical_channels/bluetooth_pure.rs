@@ -4,7 +4,8 @@
 //! Works on any platform with USB Bluetooth dongle - zero system dependencies!
 
 use super::PhysicalChannelProvider;
-use crate::{error::*, types::*};
+use crate::error::{GenesisError, Result};
+use crate::types::{PhysicalChannelType, ProximityProof, TrustLevel};
 use async_trait::async_trait;
 use chrono::Utc;
 use std::time::Duration;
@@ -68,10 +69,11 @@ impl PureRustBluetoothChannel {
     ///
     /// Returns error if USB Bluetooth dongle not found or initialization fails
     pub async fn new(transport: UsbTransport) -> Result<Self> {
+        tokio::task::yield_now().await;
         info!("Initializing Pure Rust Bluetooth Genesis channel");
 
         let host = BluetoothHost::new(transport).map_err(|e| {
-            GenesisError::PhysicalChannelError(format!("Failed to create BLE host: {}", e))
+            GenesisError::PhysicalChannelError(format!("Failed to create BLE host: {e}"))
         })?;
 
         Ok(Self {
@@ -88,7 +90,7 @@ impl PureRustBluetoothChannel {
             .host
             .scan_devices(Duration::from_secs(5))
             .await
-            .map_err(|e| GenesisError::PhysicalChannelError(format!("Scan failed: {}", e)))?;
+            .map_err(|e| GenesisError::PhysicalChannelError(format!("Scan failed: {e}")))?;
 
         debug!("Found {} BLE devices", devices.len());
 
@@ -104,7 +106,7 @@ impl PureRustBluetoothChannel {
 
         let _device =
             self.host.connect(address).await.map_err(|e| {
-                GenesisError::PhysicalChannelError(format!("Connection failed: {}", e))
+                GenesisError::PhysicalChannelError(format!("Connection failed: {e}"))
             })?;
 
         self.witness_address = Some(address);
@@ -113,20 +115,21 @@ impl PureRustBluetoothChannel {
     }
 
     /// Read Genesis credentials via GATT
-    async fn read_genesis_credentials(&mut self) -> Result<Vec<u8>> {
+    async fn read_genesis_credentials(&self) -> Result<Vec<u8>> {
         let address = self
             .witness_address
             .ok_or_else(|| GenesisError::PhysicalChannelError("Not connected to witness".into()))?;
 
         info!("Reading Genesis credentials from witness");
 
-        let mut gatt = self.host.gatt_client(address).await.map_err(|e| {
-            GenesisError::PhysicalChannelError(format!("GATT client failed: {}", e))
-        })?;
+        let mut gatt =
+            self.host.gatt_client(address).await.map_err(|e| {
+                GenesisError::PhysicalChannelError(format!("GATT client failed: {e}"))
+            })?;
 
         // Discover services
         let services = gatt.discover_services().await.map_err(|e| {
-            GenesisError::PhysicalChannelError(format!("Service discovery failed: {}", e))
+            GenesisError::PhysicalChannelError(format!("Service discovery failed: {e}"))
         })?;
 
         debug!("Discovered {} services", services.len());
@@ -142,7 +145,7 @@ impl PureRustBluetoothChannel {
         if let Some(address) = self.witness_address {
             debug!("Disconnecting from witness: {}", address);
             self.host.disconnect(address).await.map_err(|e| {
-                GenesisError::PhysicalChannelError(format!("Disconnect failed: {}", e))
+                GenesisError::PhysicalChannelError(format!("Disconnect failed: {e}"))
             })?;
             self.witness_address = None;
         }

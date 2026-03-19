@@ -18,7 +18,7 @@ pub struct RegisteredService {
     /// Unique service ID
     pub service_id: String,
 
-    /// Primal name (e.g., "BearDog")
+    /// Primal name (e.g., "`BearDog`")
     pub primal_name: String,
 
     /// Capabilities provided
@@ -56,12 +56,13 @@ pub struct RegisteredService {
 ///
 /// Uses `Arc<RwLock<HashMap>>` for concurrent access from multiple IPC handlers.
 pub struct ServiceRegistry {
-    /// Registered services (service_id → RegisteredService)
+    /// Registered services (`service_id` → `RegisteredService`)
     services: Arc<RwLock<HashMap<String, RegisteredService>>>,
 }
 
 impl ServiceRegistry {
     /// Create a new service registry
+    #[must_use]
     pub fn new() -> Self {
         Self {
             services: Arc::new(RwLock::new(HashMap::new())),
@@ -176,7 +177,7 @@ impl ServiceRegistry {
         if let Some(service) = services.get(service_id) {
             Ok((service.health_status.clone(), None))
         } else {
-            Ok(("unknown".to_string(), Some(format!("Service '{}' not found", service_id))))
+            Ok(("unknown".to_string(), Some(format!("Service '{service_id}' not found"))))
         }
     }
 

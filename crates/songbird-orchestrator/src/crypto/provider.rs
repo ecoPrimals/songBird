@@ -6,7 +6,7 @@
 //!
 //! - **Self-Knowledge Only**: Songbird only knows it needs "crypto" capability
 //! - **Capability Discovery**: Discovers ANY primal offering crypto at runtime
-//! - **No Hardcoding**: No hardcoded primal names (not "BearDog", not "ToadStool")
+//! - **No Hardcoding**: No hardcoded primal names (not "`BearDog`", not "`ToadStool`")
 //! - **Runtime Discovery**: Orchestrator guides via env vars, or automatic discovery
 //!
 //! # Architecture
@@ -159,13 +159,15 @@ impl UnixSocketCryptoProvider {
     ///
     /// # Arguments
     /// * `socket_path` - Path to Unix socket offering crypto capability
-    pub fn new(socket_path: String) -> Self {
+    #[must_use]
+    pub const fn new(socket_path: String) -> Self {
         Self {
             socket_path,
         }
     }
 
     /// Get the socket path
+    #[must_use]
     pub fn socket_path(&self) -> &str {
         &self.socket_path
     }
@@ -257,7 +259,7 @@ impl CryptoProvider for UnixSocketCryptoProvider {
 ///
 /// # TRUE PRIMAL Principles
 ///
-/// - Does NOT look for "BearDog" specifically
+/// - Does NOT look for "`BearDog`" specifically
 /// - Looks for ANY primal offering "crypto" capability
 /// - Uses orchestrator guidance (env vars) when available
 /// - Falls back to automatic discovery

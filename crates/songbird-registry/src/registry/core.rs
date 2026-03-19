@@ -133,9 +133,10 @@ impl PluginRegistry for Registry {
     }
 
     async fn search(&self, query: &Query) -> Vec<Plugin> {
-        let plugins = self.plugins.read().await;
-
-        let mut results: Vec<Plugin> = plugins
+        let mut results: Vec<Plugin> = self
+            .plugins
+            .read()
+            .await
             .values()
             .filter(|plugin| {
                 // Filter by ID (exact match)

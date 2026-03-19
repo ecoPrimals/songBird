@@ -13,7 +13,7 @@ use crate::error::{Result, TlsError};
 /// } Finished;
 /// ```
 ///
-/// The verify_data is computed as:
+/// The `verify_data` is computed as:
 /// ```text
 /// verify_data = HMAC(finished_key,
 ///                    Transcript-Hash(Handshake Context,
@@ -29,13 +29,18 @@ pub struct Finished {
 
 impl Finished {
     /// Create a new Finished message
-    pub fn new(verify_data: Vec<u8>) -> Self {
+    #[must_use]
+    pub const fn new(verify_data: Vec<u8>) -> Self {
         Self {
             verify_data,
         }
     }
 
     /// Validate Finished message
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if `verify_data` is empty or has incorrect length.
     pub fn validate(&self) -> Result<()> {
         // verify_data must not be empty
         if self.verify_data.is_empty() {
@@ -56,16 +61,20 @@ impl Finished {
         Ok(())
     }
 
-    /// Get the expected verify_data length for a given hash algorithm
-    pub fn expected_length_for_hash(hash_algorithm: HashAlgorithm) -> usize {
+    /// Get the expected `verify_data` length for a given hash algorithm
+    #[must_use]
+    pub const fn expected_length_for_hash(hash_algorithm: HashAlgorithm) -> usize {
         match hash_algorithm {
-            HashAlgorithm::Sha256 => 32,
+            HashAlgorithm::Sha256 | HashAlgorithm::Blake3 => 32,
             HashAlgorithm::Sha384 => 48,
-            HashAlgorithm::Blake3 => 32,
         }
     }
 
     /// Verify this Finished message matches the expected value
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if lengths differ or verification fails.
     pub fn verify(&self, expected_verify_data: &[u8]) -> Result<()> {
         if self.verify_data.len() != expected_verify_data.len() {
             return Err(TlsError::HandshakeFailure(

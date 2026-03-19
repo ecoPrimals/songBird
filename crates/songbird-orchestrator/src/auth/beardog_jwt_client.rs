@@ -1,6 +1,6 @@
-//! BearDog JWT Client for Neural API
+//! `BearDog` JWT Client for Neural API
 //!
-//! Provides orchestrator-managed JWT secret provisioning from BearDog to primals.
+//! Provides orchestrator-managed JWT secret provisioning from `BearDog` to primals.
 //! This is proper separation of concerns - the orchestrator handles integration,
 //! primals just receive configuration.
 
@@ -41,7 +41,7 @@ struct JwtSecretParams {
     strength: String,
 }
 
-/// Response from BearDog JWT secret generation (success case)
+/// Response from `BearDog` JWT secret generation (success case)
 #[derive(Debug, Deserialize)]
 struct JwtSecretResponse {
     #[allow(dead_code)]
@@ -73,15 +73,15 @@ struct JwtSecretResult {
     algorithm: String,
 }
 
-/// Fetch JWT secret from BearDog via JSON-RPC over Unix socket
+/// Fetch JWT secret from `BearDog` via JSON-RPC over Unix socket
 ///
 /// # Arguments
-/// * `socket_path` - Path to BearDog's Unix socket
-/// * `purpose` - Purpose of the JWT secret (e.g., "nestgate_authentication")
+/// * `socket_path` - Path to `BearDog`'s Unix socket
+/// * `purpose` - Purpose of the JWT secret (e.g., "`nestgate_authentication`")
 ///
 /// # Returns
 /// * `Ok(String)` - Base64-encoded JWT secret (512 bits / 88 characters)
-/// * `Err` - If BearDog is unavailable or request fails
+/// * `Err` - If `BearDog` is unavailable or request fails
 pub async fn fetch_jwt_secret_from_beardog(socket_path: &str, purpose: &str) -> Result<String> {
     info!("🔐 Fetching JWT secret from BearDog at: {}", socket_path);
     info!("   Purpose: {}", purpose);
@@ -89,7 +89,7 @@ pub async fn fetch_jwt_secret_from_beardog(socket_path: &str, purpose: &str) -> 
     // Connect to BearDog (platform-agnostic)
     let mut stream = connect_platform(socket_path)
         .await
-        .context(format!("Failed to connect to BearDog at {}", socket_path))?;
+        .context(format!("Failed to connect to BearDog at {socket_path}"))?;
 
     // Create JSON-RPC request
     let request = JwtSecretRequest {
@@ -162,8 +162,8 @@ pub async fn fetch_jwt_secret_from_beardog(socket_path: &str, purpose: &str) -> 
 
 /// Generate secure random JWT secret as fallback
 ///
-/// This is used when BearDog is unavailable. Still cryptographically secure,
-/// but BearDog is preferred for consistency across NUCLEUS.
+/// This is used when `BearDog` is unavailable. Still cryptographically secure,
+/// but `BearDog` is preferred for consistency across NUCLEUS.
 ///
 /// # Arguments
 /// * `bytes` - Number of random bytes to generate (default: 64 for 512 bits)
@@ -191,10 +191,10 @@ pub fn generate_secure_random_jwt(bytes: usize) -> Result<String> {
 
 /// Provision JWT secret for a primal
 ///
-/// Tries BearDog first (preferred), falls back to secure random if unavailable.
+/// Tries `BearDog` first (preferred), falls back to secure random if unavailable.
 ///
 /// # Arguments
-/// * `beardog_socket` - Optional path to BearDog socket
+/// * `beardog_socket` - Optional path to `BearDog` socket
 /// * `purpose` - Purpose of the JWT secret
 ///
 /// # Returns

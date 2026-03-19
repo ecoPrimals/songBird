@@ -1,12 +1,12 @@
-//! ClientHello message (RFC 8446 Section 4.1.2)
+//! `ClientHello` message (RFC 8446 Section 4.1.2)
 //!
-//! The ClientHello message is the first message in the TLS handshake.
+//! The `ClientHello` message is the first message in the TLS handshake.
 //! It contains the client's supported versions, cipher suites, and extensions.
 
 use super::Extension;
 use crate::error::{Result, TlsError};
 
-/// ClientHello message
+/// `ClientHello` message
 ///
 /// ```text
 /// struct {
@@ -35,12 +35,13 @@ pub struct ClientHello {
     /// Legacy compression methods (always `[0]` in TLS 1.3)
     pub legacy_compression_methods: Vec<u8>,
 
-    /// Extensions (required - must include supported_versions and key_share)
+    /// Extensions (required - must include `supported_versions` and `key_share`)
     pub extensions: Vec<Extension>,
 }
 
 impl ClientHello {
-    /// Create a new ClientHello message
+    /// Create a new `ClientHello` message
+    #[must_use]
     pub fn new(random: [u8; 32], cipher_suites: Vec<u16>, extensions: Vec<Extension>) -> Self {
         Self {
             legacy_version: 0x0303, // TLS 1.2 for compatibility
@@ -53,6 +54,7 @@ impl ClientHello {
     }
 
     /// Get the supported TLS version from extensions
+    #[must_use]
     pub fn get_supported_version(&self) -> Option<u16> {
         for ext in &self.extensions {
             if let Extension::SupportedVersions(versions) = ext {
@@ -63,6 +65,7 @@ impl ClientHello {
     }
 
     /// Get the key share extension
+    #[must_use]
     pub fn get_key_share(&self) -> Option<&[u8]> {
         for ext in &self.extensions {
             if let Extension::KeyShare(key_share) = ext {
@@ -72,7 +75,11 @@ impl ClientHello {
         None
     }
 
-    /// Validate ClientHello message
+    /// Validate `ClientHello` message
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if required fields are missing or invalid.
     pub fn validate(&self) -> Result<()> {
         // Must have at least one cipher suite
         if self.cipher_suites.is_empty() {

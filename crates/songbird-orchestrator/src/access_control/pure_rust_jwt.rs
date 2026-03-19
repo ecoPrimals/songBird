@@ -1,6 +1,6 @@
 //! Pure Rust JWT Implementation
 //!
-//! 100% Pure Rust JWT encoding/decoding using RustCrypto (hmac + sha2).
+//! 100% Pure Rust JWT encoding/decoding using `RustCrypto` (hmac + sha2).
 //! Zero C dependencies - full ecoBin compliance!
 //!
 //! Uses:
@@ -47,26 +47,26 @@ pub fn encode<T: Serialize>(claims: &T, secret: &[u8]) -> Result<String> {
     // Create header
     let header = JwtHeader::default();
     let header_json =
-        serde_json::to_string(&header).map_err(|e| anyhow!("Failed to serialize header: {}", e))?;
+        serde_json::to_string(&header).map_err(|e| anyhow!("Failed to serialize header: {e}"))?;
     let header_b64 = URL_SAFE_NO_PAD.encode(header_json.as_bytes());
 
     // Create payload
     let payload_json =
-        serde_json::to_string(claims).map_err(|e| anyhow!("Failed to serialize claims: {}", e))?;
+        serde_json::to_string(claims).map_err(|e| anyhow!("Failed to serialize claims: {e}"))?;
     let payload_b64 = URL_SAFE_NO_PAD.encode(payload_json.as_bytes());
 
     // Create signature input
-    let signing_input = format!("{}.{}", header_b64, payload_b64);
+    let signing_input = format!("{header_b64}.{payload_b64}");
 
     // Create HMAC-SHA256 signature (Pure Rust!)
     let mut mac =
-        HmacSha256::new_from_slice(secret).map_err(|e| anyhow!("Invalid secret key: {}", e))?;
+        HmacSha256::new_from_slice(secret).map_err(|e| anyhow!("Invalid secret key: {e}"))?;
     mac.update(signing_input.as_bytes());
     let signature = mac.finalize().into_bytes();
     let signature_b64 = URL_SAFE_NO_PAD.encode(signature);
 
     // Combine into JWT
-    Ok(format!("{}.{}", signing_input, signature_b64))
+    Ok(format!("{signing_input}.{signature_b64}"))
 }
 
 /// Decode JWT token (Pure Rust implementation)
@@ -91,15 +91,15 @@ pub fn decode<T: for<'de> Deserialize<'de>>(token: &str, secret: &[u8]) -> Resul
     let signature_b64 = parts[2];
 
     // Verify signature (Pure Rust crypto!)
-    let signing_input = format!("{}.{}", header_b64, payload_b64);
+    let signing_input = format!("{header_b64}.{payload_b64}");
     let mut mac =
-        HmacSha256::new_from_slice(secret).map_err(|e| anyhow!("Invalid secret key: {}", e))?;
+        HmacSha256::new_from_slice(secret).map_err(|e| anyhow!("Invalid secret key: {e}"))?;
     mac.update(signing_input.as_bytes());
 
     let expected_signature = mac.finalize().into_bytes();
     let provided_signature = URL_SAFE_NO_PAD
         .decode(signature_b64)
-        .map_err(|e| anyhow!("Invalid signature encoding: {}", e))?;
+        .map_err(|e| anyhow!("Invalid signature encoding: {e}"))?;
 
     // Constant-time comparison (security best practice)
     if expected_signature.len() != provided_signature.len() {
@@ -118,9 +118,9 @@ pub fn decode<T: for<'de> Deserialize<'de>>(token: &str, secret: &[u8]) -> Resul
     // Decode payload
     let payload_json = URL_SAFE_NO_PAD
         .decode(payload_b64)
-        .map_err(|e| anyhow!("Invalid payload encoding: {}", e))?;
+        .map_err(|e| anyhow!("Invalid payload encoding: {e}"))?;
     let claims: T = serde_json::from_slice(&payload_json)
-        .map_err(|e| anyhow!("Failed to deserialize claims: {}", e))?;
+        .map_err(|e| anyhow!("Failed to deserialize claims: {e}"))?;
 
     Ok(claims)
 }

@@ -224,7 +224,7 @@ impl SongbirdOrchestrator {
                 } => {
                     warn!("Task {} blocked: {}", task_id, reason);
                     self.lifecycle.cancel_task(task_id, Some(reason.clone())).await?;
-                    return Err(anyhow::anyhow!("Task blocked: {}", reason));
+                    return Err(anyhow::anyhow!("Task blocked: {reason}"));
                 }
                 EnforcementResult::Pending {
                     consent_id,
@@ -247,7 +247,7 @@ impl SongbirdOrchestrator {
                         } => {
                             warn!("Task {} consent denied: {}", task_id, reason);
                             self.lifecycle.cancel_task(task_id, Some(reason.clone())).await?;
-                            return Err(anyhow::anyhow!("Consent denied: {}", reason));
+                            return Err(anyhow::anyhow!("Consent denied: {reason}"));
                         }
                         _ => {
                             return Err(anyhow::anyhow!("Unexpected consent state"));
@@ -276,7 +276,7 @@ impl SongbirdOrchestrator {
                 } => {
                     warn!("Task {} rejected: {}", task_id, reason);
                     self.lifecycle.cancel_task(task_id, Some(reason.clone())).await?;
-                    return Err(anyhow::anyhow!("Task rejected: {}", reason));
+                    return Err(anyhow::anyhow!("Task rejected: {reason}"));
                 }
                 AdmissionDecision::Delayed {
                     estimated_wait_seconds,
@@ -433,6 +433,7 @@ impl SongbirdOrchestrator {
     }
 
     /// Subscribe to events
+    #[must_use]
     pub fn subscribe_events(&self) -> Option<crate::observability::FilteredEventReceiver> {
         self.event_stream.as_ref().map(|s| {
             use crate::observability::EventFilter;
@@ -441,12 +442,14 @@ impl SongbirdOrchestrator {
     }
 
     /// Get event stream manager (for WebSocket integration)
-    pub fn get_event_stream(&self) -> Option<&Arc<EventStreamManager>> {
+    #[must_use]
+    pub const fn get_event_stream(&self) -> Option<&Arc<EventStreamManager>> {
         self.event_stream.as_ref()
     }
 
     /// Get consent manager (for consent API)
-    pub fn get_consent_manager(&self) -> Option<&Arc<ConsentManager>> {
+    #[must_use]
+    pub const fn get_consent_manager(&self) -> Option<&Arc<ConsentManager>> {
         self.consent_manager.as_ref()
     }
 

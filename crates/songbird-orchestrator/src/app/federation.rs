@@ -176,7 +176,7 @@ fn detect_gpu() -> Option<String> {
                     for line in info.lines() {
                         if line.starts_with("Model:") {
                             let model = line.trim_start_matches("Model:").trim();
-                            return Some(format!("NVIDIA {}", model));
+                            return Some(format!("NVIDIA {model}"));
                         }
                     }
                 }
@@ -193,7 +193,7 @@ fn detect_gpu() -> Option<String> {
                         let vendor = vendor.trim();
                         if let Ok(device) = std::fs::read_to_string(path.join("device/device")) {
                             let device = device.trim();
-                            return Some(format!("GPU {}/{}", vendor, device));
+                            return Some(format!("GPU {vendor}/{device}"));
                         }
                     }
                 }

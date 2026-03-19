@@ -190,14 +190,13 @@ impl PortConfig {
 
     /// Parse a port from environment variable with fallback to default
     fn parse_port(env_var: &str, default: u16) -> SongbirdResult<u16> {
-        match env::var(env_var) {
-            Ok(val) => val.parse::<u16>().map_err(|e| SongbirdError::Configuration {
+        env::var(env_var).map_or(Ok(default), |val| {
+            val.parse::<u16>().map_err(|e| SongbirdError::Configuration {
                 message: format!("Invalid port in {env_var}: {val} (error: {e})"),
                 field: Some(env_var.to_string()),
                 suggestion: Some("Ensure port is a valid number between 1 and 65535".to_string()),
-            }),
-            Err(_) => Ok(default),
-        }
+            })
+        })
     }
 
     /// Validate port configuration
@@ -265,7 +264,7 @@ impl PortConfig {
     ///
     /// The orchestrator service port (u16)
     #[must_use]
-    pub fn orchestrator(&self) -> u16 {
+    pub const fn orchestrator(&self) -> u16 {
         self.orchestrator
     }
 
@@ -279,7 +278,7 @@ impl PortConfig {
     ///
     /// The discovery service port (u16)
     #[must_use]
-    pub fn discovery(&self) -> u16 {
+    pub const fn discovery(&self) -> u16 {
         self.discovery
     }
 
@@ -288,7 +287,7 @@ impl PortConfig {
     /// Returns the configured port for the service registry.
     /// Sourced from `SONGBIRD_REGISTRY_PORT` or defaults to 8600.
     #[must_use]
-    pub fn registry(&self) -> u16 {
+    pub const fn registry(&self) -> u16 {
         self.registry
     }
 
@@ -297,7 +296,7 @@ impl PortConfig {
     /// Returns the configured port for security/authentication services.
     /// Sourced from `SONGBIRD_SECURITY_PORT` or defaults to 8443.
     #[must_use]
-    pub fn security(&self) -> u16 {
+    pub const fn security(&self) -> u16 {
         self.security
     }
 
@@ -306,7 +305,7 @@ impl PortConfig {
     /// Returns the configured port for storage services.
     /// Sourced from `SONGBIRD_STORAGE_PORT` or defaults to 9000.
     #[must_use]
-    pub fn storage(&self) -> u16 {
+    pub const fn storage(&self) -> u16 {
         self.storage
     }
 
@@ -315,7 +314,7 @@ impl PortConfig {
     /// Returns the configured port for compute/execution services.
     /// Sourced from `SONGBIRD_COMPUTE_PORT` or defaults to 9100.
     #[must_use]
-    pub fn compute(&self) -> u16 {
+    pub const fn compute(&self) -> u16 {
         self.compute
     }
 
@@ -324,7 +323,7 @@ impl PortConfig {
     /// Returns the configured port for AI/ML services.
     /// Sourced from `SONGBIRD_AI_PORT` or defaults to 9200.
     #[must_use]
-    pub fn ai(&self) -> u16 {
+    pub const fn ai(&self) -> u16 {
         self.ai
     }
 
@@ -333,7 +332,7 @@ impl PortConfig {
     /// Returns the configured port for gaming services.
     /// Sourced from `SONGBIRD_GAMING_PORT` or defaults to 9300.
     #[must_use]
-    pub fn gaming(&self) -> u16 {
+    pub const fn gaming(&self) -> u16 {
         self.gaming
     }
 
@@ -342,7 +341,7 @@ impl PortConfig {
     /// Returns the configured port for the dashboard/UI service.
     /// Sourced from `SONGBIRD_DASHBOARD_PORT` or defaults to 3000.
     #[must_use]
-    pub fn dashboard(&self) -> u16 {
+    pub const fn dashboard(&self) -> u16 {
         self.dashboard
     }
 
@@ -351,7 +350,7 @@ impl PortConfig {
     /// Returns the configured port for metrics/Prometheus service.
     /// Sourced from `SONGBIRD_METRICS_PORT` or defaults to 9090.
     #[must_use]
-    pub fn metrics(&self) -> u16 {
+    pub const fn metrics(&self) -> u16 {
         self.metrics
     }
 
@@ -360,7 +359,7 @@ impl PortConfig {
     /// Returns the configured port for health check endpoints.
     /// Sourced from `SONGBIRD_HEALTH_PORT` or defaults to 8081.
     #[must_use]
-    pub fn health(&self) -> u16 {
+    pub const fn health(&self) -> u16 {
         self.health
     }
 
@@ -374,7 +373,7 @@ impl PortConfig {
     ///
     /// A tuple of (`start_port`, `end_port`) for the dynamic range
     #[must_use]
-    pub fn dynamic_range(&self) -> (u16, u16) {
+    pub const fn dynamic_range(&self) -> (u16, u16) {
         (self.dynamic_range_start, self.dynamic_range_end)
     }
 

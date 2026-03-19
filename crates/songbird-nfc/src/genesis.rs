@@ -47,27 +47,27 @@ pub struct GenesisExchange {
     /// Timing protector
     timing: TimingProtector,
 
-    /// BearDog crypto client for key operations
+    /// `BearDog` crypto client for key operations
     beardog: BearDogNfcCrypto,
 }
 
-/// BearDog crypto client for NFC genesis operations
+/// `BearDog` crypto client for NFC genesis operations
 ///
-/// Delegates all cryptographic operations to BearDog via Unix socket JSON-RPC.
+/// Delegates all cryptographic operations to `BearDog` via Unix socket JSON-RPC.
 /// Follows the same pattern as `songbird-tls::crypto::BeardogCryptoClient`.
 ///
 /// ## Deep Debt Compliance
 /// - Zero production stubs (real IPC calls)
 /// - Runtime discovery (env -> XDG -> fallback)
 /// - Zero unsafe code
-/// - Graceful degradation (logs warning if BearDog unavailable)
+/// - Graceful degradation (logs warning if `BearDog` unavailable)
 #[derive(Debug)]
 struct BearDogNfcCrypto {
     socket_path: PathBuf,
 }
 
 impl BearDogNfcCrypto {
-    /// Create new BearDog NFC crypto client
+    /// Create new `BearDog` NFC crypto client
     ///
     /// Discovers socket path via 3-tier runtime discovery:
     /// 1. `BEARDOG_SOCKET` environment variable
@@ -140,7 +140,7 @@ impl BearDogNfcCrypto {
         PathBuf::from("/tmp/biomeos/security.sock")
     }
 
-    /// Call BearDog JSON-RPC method
+    /// Call `BearDog` JSON-RPC method
     async fn call(&self, method: &str, params: serde_json::Value) -> Result<serde_json::Value> {
         use tokio::io::{AsyncReadExt, AsyncWriteExt};
 
@@ -152,7 +152,7 @@ impl BearDogNfcCrypto {
         });
 
         let request_bytes = serde_json::to_vec(&request)
-            .map_err(|e| NfcError::Crypto(format!("serialize: {}", e)))?;
+            .map_err(|e| NfcError::Crypto(format!("serialize: {e}")))?;
 
         // Connect to BearDog
         let mut stream = tokio::net::UnixStream::connect(&self.socket_path).await.map_err(|e| {
@@ -166,24 +166,24 @@ impl BearDogNfcCrypto {
         stream
             .write_all(&request_bytes)
             .await
-            .map_err(|e| NfcError::Crypto(format!("write: {}", e)))?;
+            .map_err(|e| NfcError::Crypto(format!("write: {e}")))?;
         stream
             .write_all(b"\n")
             .await
-            .map_err(|e| NfcError::Crypto(format!("write newline: {}", e)))?;
-        stream.shutdown().await.map_err(|e| NfcError::Crypto(format!("shutdown write: {}", e)))?;
+            .map_err(|e| NfcError::Crypto(format!("write newline: {e}")))?;
+        stream.shutdown().await.map_err(|e| NfcError::Crypto(format!("shutdown write: {e}")))?;
 
         let mut response_buf = Vec::new();
         stream
             .read_to_end(&mut response_buf)
             .await
-            .map_err(|e| NfcError::Crypto(format!("read: {}", e)))?;
+            .map_err(|e| NfcError::Crypto(format!("read: {e}")))?;
 
         let response: serde_json::Value = serde_json::from_slice(&response_buf)
-            .map_err(|e| NfcError::Crypto(format!("parse response: {}", e)))?;
+            .map_err(|e| NfcError::Crypto(format!("parse response: {e}")))?;
 
         if let Some(error) = response.get("error") {
-            return Err(NfcError::Crypto(format!("BearDog error: {}", error)));
+            return Err(NfcError::Crypto(format!("BearDog error: {error}")));
         }
 
         response
@@ -192,7 +192,7 @@ impl BearDogNfcCrypto {
             .ok_or_else(|| NfcError::Crypto("BearDog response missing 'result'".to_string()))
     }
 
-    /// Generate ephemeral X25519 keypair via BearDog
+    /// Generate ephemeral X25519 keypair via `BearDog`
     async fn generate_x25519_keypair(&self) -> Result<[u8; PUBLIC_KEY_SIZE]> {
         match self
             .call(
@@ -226,7 +226,7 @@ impl BearDogNfcCrypto {
         }
     }
 
-    /// Compute X25519 Diffie-Hellman shared secret via BearDog
+    /// Compute X25519 Diffie-Hellman shared secret via `BearDog`
     async fn x25519_dh(&self, peer_pubkey: &[u8]) -> Result<Vec<u8>> {
         match self
             .call(
@@ -237,13 +237,10 @@ impl BearDogNfcCrypto {
             )
             .await
         {
-            Ok(result) => {
-                if let Some(ss) = result.get("shared_secret").and_then(|v| v.as_str()) {
-                    decode_hex_or_b64(ss)
-                } else {
-                    Err(NfcError::Crypto("missing shared_secret".to_string()))
-                }
-            }
+            Ok(result) => result.get("shared_secret").and_then(|v| v.as_str()).map_or_else(
+                || Err(NfcError::Crypto("missing shared_secret".to_string())),
+                decode_hex_or_b64,
+            ),
             Err(e) => {
                 warn!("BearDog DH unavailable: {}. Using zero secret (TESTING ONLY).", e);
                 Ok(vec![0u8; 32])
@@ -251,7 +248,7 @@ impl BearDogNfcCrypto {
         }
     }
 
-    /// Generate random nonce via BearDog
+    /// Generate random nonce via `BearDog`
     async fn generate_nonce(&self) -> Result<[u8; NONCE_SIZE]> {
         match self
             .call(
@@ -263,18 +260,17 @@ impl BearDogNfcCrypto {
             )
             .await
         {
-            Ok(result) => {
-                if let Some(n) = result.get("bytes").and_then(|v| v.as_str()) {
+            Ok(result) => result.get("bytes").and_then(|v| v.as_str()).map_or_else(
+                || Err(NfcError::Crypto("missing bytes".to_string())),
+                |n| {
                     let bytes = decode_hex_or_b64(n)?;
                     let mut nonce = [0u8; NONCE_SIZE];
                     if bytes.len() >= NONCE_SIZE {
                         nonce.copy_from_slice(&bytes[..NONCE_SIZE]);
                     }
                     Ok(nonce)
-                } else {
-                    Err(NfcError::Crypto("missing bytes".to_string()))
-                }
-            }
+                },
+            ),
             Err(e) => {
                 warn!("BearDog nonce unavailable: {}. Using local RNG.", e);
                 let mut nonce = [0u8; NONCE_SIZE];
@@ -285,7 +281,7 @@ impl BearDogNfcCrypto {
         }
     }
 
-    /// Encrypt with ChaCha20-Poly1305 via BearDog
+    /// Encrypt with ChaCha20-Poly1305 via `BearDog`
     async fn encrypt(&self, plaintext: &[u8], key: &[u8], nonce: &[u8]) -> Result<Vec<u8>> {
         match self
             .call(
@@ -298,13 +294,10 @@ impl BearDogNfcCrypto {
             )
             .await
         {
-            Ok(result) => {
-                if let Some(ct) = result.get("ciphertext").and_then(|v| v.as_str()) {
-                    decode_hex_or_b64(ct)
-                } else {
-                    Err(NfcError::Crypto("missing ciphertext".to_string()))
-                }
-            }
+            Ok(result) => result.get("ciphertext").and_then(|v| v.as_str()).map_or_else(
+                || Err(NfcError::Crypto("missing ciphertext".to_string())),
+                decode_hex_or_b64,
+            ),
             Err(e) => {
                 warn!("BearDog encrypt unavailable: {}. Passing plaintext (TESTING ONLY).", e);
                 Ok(plaintext.to_vec())
@@ -312,7 +305,7 @@ impl BearDogNfcCrypto {
         }
     }
 
-    /// Decrypt with ChaCha20-Poly1305 via BearDog
+    /// Decrypt with ChaCha20-Poly1305 via `BearDog`
     async fn decrypt(&self, ciphertext: &[u8], key: &[u8], nonce: &[u8]) -> Result<Vec<u8>> {
         match self
             .call(
@@ -325,13 +318,10 @@ impl BearDogNfcCrypto {
             )
             .await
         {
-            Ok(result) => {
-                if let Some(pt) = result.get("plaintext").and_then(|v| v.as_str()) {
-                    decode_hex_or_b64(pt)
-                } else {
-                    Err(NfcError::Crypto("missing plaintext".to_string()))
-                }
-            }
+            Ok(result) => result.get("plaintext").and_then(|v| v.as_str()).map_or_else(
+                || Err(NfcError::Crypto("missing plaintext".to_string())),
+                decode_hex_or_b64,
+            ),
             Err(e) => {
                 warn!("BearDog decrypt unavailable: {}. Treating as plaintext (TESTING ONLY).", e);
                 Ok(ciphertext.to_vec())
@@ -339,7 +329,7 @@ impl BearDogNfcCrypto {
         }
     }
 
-    /// Sign with Ed25519 via BearDog
+    /// Sign with Ed25519 via `BearDog`
     async fn ed25519_sign(&self, data: &[u8]) -> Result<[u8; SIGNATURE_SIZE]> {
         match self
             .call(
@@ -370,7 +360,7 @@ impl BearDogNfcCrypto {
         }
     }
 
-    /// Verify Ed25519 signature via BearDog
+    /// Verify Ed25519 signature via `BearDog`
     async fn ed25519_verify(&self, data: &[u8], signature: &[u8]) -> Result<()> {
         match self
             .call(
@@ -398,7 +388,7 @@ impl BearDogNfcCrypto {
         }
     }
 
-    /// Destroy ephemeral keys via BearDog
+    /// Destroy ephemeral keys via `BearDog`
     async fn destroy_ephemeral_keys(&self) -> Result<()> {
         match self
             .call(
@@ -450,8 +440,7 @@ mod hex {
         (0..s.len())
             .step_by(2)
             .map(|i| {
-                u8::from_str_radix(&s[i..i + 2], 16)
-                    .map_err(|e| format!("invalid hex at {}: {}", i, e))
+                u8::from_str_radix(&s[i..i + 2], 16).map_err(|e| format!("invalid hex at {i}: {e}"))
             })
             .collect()
     }
@@ -459,6 +448,7 @@ mod hex {
 
 impl GenesisExchange {
     /// Create new genesis exchange
+    #[must_use]
     pub fn new(config: NfcConfig) -> Self {
         let timing = TimingProtector::new(config.target_exchange_duration, config.max_random_delay);
 
@@ -474,6 +464,10 @@ impl GenesisExchange {
     }
 
     /// Initiate genesis exchange (as parent/initiator)
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if any step of the exchange fails.
     ///
     /// Steps:
     /// 1. Generate ephemeral X25519 keypair
@@ -548,6 +542,10 @@ impl GenesisExchange {
     }
 
     /// Respond to genesis exchange (as child/responder)
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the exchange fails or credentials cannot be decrypted.
     pub async fn respond(&mut self, device: &mut NfcDevice) -> Result<GenesisCredentials> {
         info!("🔓 Responding to genesis exchange");
 

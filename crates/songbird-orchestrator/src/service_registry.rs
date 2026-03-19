@@ -148,12 +148,13 @@ pub struct ServiceEndpoint {
 }
 
 impl ServiceEndpoint {
+    #[must_use]
     pub fn new(protocol: &str, host: &str, port: u16) -> Self {
         Self {
             protocol: protocol.to_string(),
             host: host.to_string(),
             port,
-            full_url: format!("{}://{}:{}", protocol, host, port),
+            full_url: format!("{protocol}://{host}:{port}"),
         }
     }
 }
@@ -178,7 +179,7 @@ pub enum ServiceStatus {
 
 /// Port allocator
 struct PortAllocator {
-    /// Allocated ports (port -> service_id)
+    /// Allocated ports (port -> `service_id`)
     allocated: HashMap<u16, String>,
 
     /// Next port to try
@@ -303,11 +304,13 @@ pub struct DeregistrationRequest {
 
 impl ServiceRegistry {
     /// Create a new service registry with default configuration
+    #[must_use]
     pub fn new() -> Self {
         Self::with_config(RegistryConfig::default())
     }
 
     /// Create a new service registry with custom configuration
+    #[must_use]
     pub fn with_config(config: RegistryConfig) -> Self {
         let port_allocator = PortAllocator::new(config.port_range_start, config.port_range_end);
 
@@ -578,6 +581,7 @@ pub struct RegistryStats {
 // ============================================================================
 
 /// Spawn a background task to periodically cleanup stale services
+#[must_use]
 pub fn spawn_cleanup_task(
     registry: ServiceRegistry,
     interval_sec: u64,

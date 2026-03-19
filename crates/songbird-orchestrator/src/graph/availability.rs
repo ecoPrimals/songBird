@@ -54,7 +54,8 @@ pub struct AvailabilityChecker {
 
 impl AvailabilityChecker {
     /// Create a new availability checker
-    pub fn new(service_registry: Arc<ServiceRegistry>) -> Self {
+    #[must_use]
+    pub const fn new(service_registry: Arc<ServiceRegistry>) -> Self {
         Self {
             service_registry,
         }

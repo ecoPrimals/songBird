@@ -69,6 +69,7 @@ struct CircuitBreakerState {
 }
 
 impl CircuitBreaker {
+    #[must_use]
     pub fn new(config: CircuitBreakerConfig) -> Self {
         Self {
             config,

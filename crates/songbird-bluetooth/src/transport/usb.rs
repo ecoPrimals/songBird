@@ -98,44 +98,45 @@ impl UsbTransport {
     ///
     /// Returns error if no matching device found
     pub async fn with_filter(vendor_id: Option<u16>, product_id: Option<u16>) -> Result<Self> {
-        let context = Context::new()
-            .map_err(|e| TransportError::Usb(format!("Failed to create USB context: {e}")))?;
+        tokio::task::yield_now().await; // Yield before blocking
+                                        // Run USB operations in block_in_place - rusb types are not Send
+        tokio::task::block_in_place(|| {
+            let context = Context::new()
+                .map_err(|e| TransportError::Usb(format!("Failed to create USB context: {e}")))?;
 
-        // Find Bluetooth USB device
-        let devices = context
-            .devices()
-            .map_err(|e| TransportError::Usb(format!("Failed to enumerate devices: {e}")))?;
+            let devices = context
+                .devices()
+                .map_err(|e| TransportError::Usb(format!("Failed to enumerate devices: {e}")))?;
 
-        for device in devices.iter() {
-            if let Ok(desc) = device.device_descriptor() {
-                // Check vendor/product ID filter
-                if let Some(vid) = vendor_id {
-                    if desc.vendor_id() != vid {
-                        continue;
+            for device in devices.iter() {
+                if let Ok(desc) = device.device_descriptor() {
+                    if let Some(vid) = vendor_id {
+                        if desc.vendor_id() != vid {
+                            continue;
+                        }
                     }
-                }
-                if let Some(pid) = product_id {
-                    if desc.product_id() != pid {
-                        continue;
+                    if let Some(pid) = product_id {
+                        if desc.product_id() != pid {
+                            continue;
+                        }
                     }
-                }
 
-                // Check if it's a Bluetooth device
-                if desc.class_code() == USB_CLASS_WIRELESS_CONTROLLER
-                    || Self::is_bluetooth_interface(&device).unwrap_or(false)
-                {
-                    info!(
-                        "Found Bluetooth USB device: {:04x}:{:04x}",
-                        desc.vendor_id(),
-                        desc.product_id()
-                    );
+                    if desc.class_code() == USB_CLASS_WIRELESS_CONTROLLER
+                        || Self::is_bluetooth_interface(&device).unwrap_or(false)
+                    {
+                        info!(
+                            "Found Bluetooth USB device: {:04x}:{:04x}",
+                            desc.vendor_id(),
+                            desc.product_id()
+                        );
 
-                    return Self::open_device(device).await;
+                        return Self::open_device(&device);
+                    }
                 }
             }
-        }
 
-        Err(TransportError::NoAdapter.into())
+            Err(TransportError::NoAdapter.into())
+        })
     }
 
     /// Check if device has Bluetooth interface
@@ -157,7 +158,7 @@ impl UsbTransport {
     }
 
     /// Open and configure Bluetooth device
-    async fn open_device(device: Device<Context>) -> Result<Self> {
+    fn open_device(device: &Device<Context>) -> Result<Self> {
         let handle = device
             .open()
             .map_err(|e| TransportError::Usb(format!("Failed to open device: {e}")))?;
@@ -235,10 +236,10 @@ impl Transport for UsbTransport {
             return Err(TransportError::Communication("Transport not connected".into()).into());
         }
 
-        let handle = self.handle.lock().await;
-
         // HCI commands sent via control transfer
-        handle
+        self.handle
+            .lock()
+            .await
             .write_control(
                 0x20, // bmRequestType: Class request, host to device
                 0x00, // bRequest: HCI command
@@ -258,10 +259,12 @@ impl Transport for UsbTransport {
             return Err(TransportError::Communication("Transport not connected".into()).into());
         }
 
-        let handle = self.handle.lock().await;
         let mut buf = vec![0u8; 256];
 
-        let len = handle
+        let len = self
+            .handle
+            .lock()
+            .await
             .read_interrupt(self.event_endpoint, &mut buf, USB_TIMEOUT)
             .map_err(|e| TransportError::Usb(format!("Failed to receive event: {e}")))?;
 
@@ -275,9 +278,9 @@ impl Transport for UsbTransport {
             return Err(TransportError::Communication("Transport not connected".into()).into());
         }
 
-        let handle = self.handle.lock().await;
-
-        handle
+        self.handle
+            .lock()
+            .await
             .write_bulk(self.acl_out_endpoint, data, USB_TIMEOUT)
             .map_err(|e| TransportError::Usb(format!("Failed to send ACL data: {e}")))?;
 
@@ -290,10 +293,12 @@ impl Transport for UsbTransport {
             return Err(TransportError::Communication("Transport not connected".into()).into());
         }
 
-        let handle = self.handle.lock().await;
         let mut buf = vec![0u8; 1024];
 
-        let len = handle
+        let len = self
+            .handle
+            .lock()
+            .await
             .read_bulk(self.acl_in_endpoint, &mut buf, USB_TIMEOUT)
             .map_err(|e| TransportError::Usb(format!("Failed to receive ACL data: {e}")))?;
 
@@ -308,8 +313,8 @@ impl Transport for UsbTransport {
 
     async fn close(&mut self) -> Result<()> {
         if self.connected {
-            let handle = self.handle.lock().await;
-            if let Err(e) = handle.release_interface(self.interface) {
+            let result = self.handle.lock().await.release_interface(self.interface);
+            if let Err(e) = result {
                 warn!("Failed to release interface: {}", e);
             }
             self.connected = false;

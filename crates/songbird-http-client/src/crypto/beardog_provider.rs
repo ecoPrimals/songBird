@@ -1,6 +1,6 @@
-//! BearDog Provider for CryptoCapability
+//! `BearDog` Provider for `CryptoCapability`
 //!
-//! Implements `CryptoCapability` trait using BearDog via JSON-RPC 2.0
+//! Implements `CryptoCapability` trait using `BearDog` via JSON-RPC 2.0
 //! over Unix sockets.
 //!
 //! ## Socket Discovery
@@ -59,22 +59,22 @@ struct JsonRpcError {
     data: Option<Value>,
 }
 
-/// Routing mode for BearDog provider
+/// Routing mode for `BearDog` provider
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum RoutingMode {
-    /// Direct RPC to BearDog (testing)
+    /// Direct RPC to `BearDog` (testing)
     Direct,
     /// Route through Neural API with capability.call (production)
     NeuralApi,
 }
 
-/// BearDog implementation of CryptoCapability
+/// `BearDog` implementation of `CryptoCapability`
 ///
-/// Communicates with BearDog via JSON-RPC 2.0 over Unix sockets.
-/// All cryptographic operations are delegated to BearDog.
+/// Communicates with `BearDog` via JSON-RPC 2.0 over Unix sockets.
+/// All cryptographic operations are delegated to `BearDog`.
 ///
 /// Supports dual-mode routing:
-/// - Direct mode: Direct RPC calls to BearDog
+/// - Direct mode: Direct RPC calls to `BearDog`
 /// - Neural API mode: Uses capability.call for semantic routing
 #[derive(Debug)]
 pub struct BearDogProvider {
@@ -84,7 +84,7 @@ pub struct BearDogProvider {
 }
 
 impl BearDogProvider {
-    /// Create new BearDog provider with explicit socket path (Direct mode)
+    /// Create new `BearDog` provider with explicit socket path (Direct mode)
     pub fn new(socket_path: impl Into<String>) -> Self {
         Self {
             socket_path: socket_path.into(),
@@ -112,33 +112,30 @@ impl BearDogProvider {
     ///
     /// Modes (via `$BEARDOG_MODE`):
     /// - "neural" (default): Connects to Neural API for capability.call routing
-    /// - "direct": Connects directly to BearDog (testing only)
+    /// - "direct": Connects directly to `BearDog` (testing only)
     ///
     /// This enables automated Tower Atomic deployment via biomeOS Neural API
     /// while maintaining backward compatibility.
     pub fn from_env() -> Self {
         let mode = std::env::var("BEARDOG_MODE").unwrap_or_else(|_| "neural".to_string());
 
-        match mode.as_str() {
-            "direct" => {
-                // Direct mode: Discover BearDog socket with XDG fallback
-                let socket = socket_discovery::discover_beardog_socket();
-                info!("🔧 BearDog provider: DIRECT mode → {}", socket);
-                Self {
-                    socket_path: socket,
-                    request_id: AtomicU64::new(1),
-                    mode: RoutingMode::Direct,
-                }
+        if mode.as_str() == "direct" {
+            // Direct mode: Discover BearDog socket with XDG fallback
+            let socket = socket_discovery::discover_beardog_socket();
+            info!("🔧 BearDog provider: DIRECT mode → {}", socket);
+            Self {
+                socket_path: socket,
+                request_id: AtomicU64::new(1),
+                mode: RoutingMode::Direct,
             }
-            _ => {
-                // Neural API mode (TRUE PRIMAL pattern): Discover Neural API socket
-                let socket = socket_discovery::discover_neural_api_socket();
-                info!("🌐 BearDog provider: NEURAL API mode (capability.call) → {}", socket);
-                Self {
-                    socket_path: socket,
-                    request_id: AtomicU64::new(1),
-                    mode: RoutingMode::NeuralApi,
-                }
+        } else {
+            // Neural API mode (TRUE PRIMAL pattern): Discover Neural API socket
+            let socket = socket_discovery::discover_neural_api_socket();
+            info!("🌐 BearDog provider: NEURAL API mode (capability.call) → {}", socket);
+            Self {
+                socket_path: socket,
+                request_id: AtomicU64::new(1),
+                mode: RoutingMode::NeuralApi,
             }
         }
     }
@@ -168,14 +165,14 @@ impl BearDogProvider {
         tokio::net::TcpStream::connect(address).await
     }
 
-    /// Make JSON-RPC call to BearDog (or via Neural API)
+    /// Make JSON-RPC call to `BearDog` (or via Neural API)
     async fn call(&self, method: &str, params: Value) -> Result<Value> {
         let id = self.request_id.fetch_add(1, Ordering::SeqCst);
 
         let request = match self.mode {
             RoutingMode::Direct => {
                 // Direct mode: Map semantic names to BearDog's actual method names
-                let actual_method = self.semantic_to_actual(method);
+                let actual_method = Self::semantic_to_actual(method);
                 JsonRpcRequest {
                     jsonrpc: "2.0".to_string(),
                     method: actual_method.to_string(),
@@ -185,7 +182,7 @@ impl BearDogProvider {
             }
             RoutingMode::NeuralApi => {
                 // Neural API mode: Use capability.call for semantic routing
-                let (capability, operation) = self.method_to_capability(method);
+                let (capability, operation) = Self::method_to_capability(method);
 
                 trace!("🌐 Neural API: capability.call({}, {})", capability, operation);
 
@@ -203,7 +200,7 @@ impl BearDogProvider {
         };
 
         let request_json = serde_json::to_string(&request)
-            .map_err(|e| Error::BearDogRpc(format!("Failed to serialize request: {}", e)))?;
+            .map_err(|e| Error::BearDogRpc(format!("Failed to serialize request: {e}")))?;
 
         trace!(
             "BearDog RPC request ({}): {}",
@@ -227,24 +224,24 @@ impl BearDogProvider {
         stream
             .write_all(request_json.as_bytes())
             .await
-            .map_err(|e| Error::BearDogRpc(format!("Failed to send request: {}", e)))?;
+            .map_err(|e| Error::BearDogRpc(format!("Failed to send request: {e}")))?;
         stream
             .shutdown()
             .await
-            .map_err(|e| Error::BearDogRpc(format!("Failed to shutdown write: {}", e)))?;
+            .map_err(|e| Error::BearDogRpc(format!("Failed to shutdown write: {e}")))?;
 
         // Read response
         let mut response_bytes = Vec::new();
         stream
             .read_to_end(&mut response_bytes)
             .await
-            .map_err(|e| Error::BearDogRpc(format!("Failed to read response: {}", e)))?;
+            .map_err(|e| Error::BearDogRpc(format!("Failed to read response: {e}")))?;
 
         let response_str = String::from_utf8_lossy(&response_bytes);
         trace!("BearDog RPC response: {}", response_str);
 
         let response: JsonRpcResponse = serde_json::from_slice(&response_bytes).map_err(|e| {
-            Error::BearDogRpc(format!("Failed to parse response: {} (raw: {})", e, response_str))
+            Error::BearDogRpc(format!("Failed to parse response: {e} (raw: {response_str})"))
         })?;
 
         // Handle errors
@@ -261,9 +258,9 @@ impl BearDogProvider {
     /// Map semantic method names to (capability, operation) pairs for Neural API
     ///
     /// This mapping enables TRUE PRIMAL loose coupling via capability.call.
-    /// Neural API will translate these semantic names to actual BearDog methods
-    /// using the graph in tower_atomic_bootstrap.toml.
-    fn method_to_capability(&self, method: &str) -> (&'static str, &'static str) {
+    /// Neural API will translate these semantic names to actual `BearDog` methods
+    /// using the graph in `tower_atomic_bootstrap.toml`.
+    fn method_to_capability(method: &str) -> (&'static str, &'static str) {
         match method {
             // Key exchange
             "crypto.generate_keypair" => ("crypto", "generate_keypair"),
@@ -301,8 +298,8 @@ impl BearDogProvider {
         }
     }
 
-    /// Map semantic method names to BearDog's actual method names (Direct mode only)
-    fn semantic_to_actual<'a>(&self, method: &'a str) -> &'a str {
+    /// Map semantic method names to `BearDog`'s actual method names (Direct mode only)
+    fn semantic_to_actual(method: &str) -> &str {
         match method {
             // Key exchange - BearDog uses crypto.* prefix
             "crypto.generate_keypair" => "crypto.x25519_generate_ephemeral",
@@ -337,7 +334,7 @@ impl BearDogProvider {
 
 #[async_trait]
 impl CryptoCapability for BearDogProvider {
-    fn name(&self) -> &str {
+    fn name(&self) -> &'static str {
         "BearDog"
     }
 
@@ -384,10 +381,10 @@ impl CryptoCapability for BearDogProvider {
 
         let public = BASE64_STANDARD
             .decode(public_b64)
-            .map_err(|e| Error::BearDogRpc(format!("Invalid base64 public key: {}", e)))?;
+            .map_err(|e| Error::BearDogRpc(format!("Invalid base64 public key: {e}")))?;
         let private = BASE64_STANDARD
             .decode(private_b64)
-            .map_err(|e| Error::BearDogRpc(format!("Invalid base64 private key: {}", e)))?;
+            .map_err(|e| Error::BearDogRpc(format!("Invalid base64 private key: {e}")))?;
 
         debug!(
             "Generated X25519 keypair: {} bytes public, {} bytes private",
@@ -420,7 +417,7 @@ impl CryptoCapability for BearDogProvider {
 
         let shared = BASE64_STANDARD
             .decode(shared_b64)
-            .map_err(|e| Error::BearDogRpc(format!("Invalid base64 shared secret: {}", e)))?;
+            .map_err(|e| Error::BearDogRpc(format!("Invalid base64 shared secret: {e}")))?;
 
         debug!("Derived shared secret: {} bytes", shared.len());
 
@@ -450,7 +447,7 @@ impl CryptoCapability for BearDogProvider {
             )
             .await?;
 
-        self.extract_ciphertext(&result)
+        Self::extract_ciphertext(&result)
     }
 
     async fn aes128_gcm_decrypt(
@@ -472,7 +469,7 @@ impl CryptoCapability for BearDogProvider {
             )
             .await?;
 
-        self.extract_plaintext(&result)
+        Self::extract_plaintext(&result)
     }
 
     async fn aes256_gcm_encrypt(
@@ -494,7 +491,7 @@ impl CryptoCapability for BearDogProvider {
             )
             .await?;
 
-        self.extract_ciphertext(&result)
+        Self::extract_ciphertext(&result)
     }
 
     async fn aes256_gcm_decrypt(
@@ -516,7 +513,7 @@ impl CryptoCapability for BearDogProvider {
             )
             .await?;
 
-        self.extract_plaintext(&result)
+        Self::extract_plaintext(&result)
     }
 
     async fn chacha20_poly1305_encrypt(
@@ -538,7 +535,7 @@ impl CryptoCapability for BearDogProvider {
             )
             .await?;
 
-        self.extract_ciphertext(&result)
+        Self::extract_ciphertext(&result)
     }
 
     async fn chacha20_poly1305_decrypt(
@@ -560,7 +557,7 @@ impl CryptoCapability for BearDogProvider {
             )
             .await?;
 
-        self.extract_plaintext(&result)
+        Self::extract_plaintext(&result)
     }
 
     // ═══════════════════════════════════════════════════════════════════
@@ -584,7 +581,7 @@ impl CryptoCapability for BearDogProvider {
 
         BASE64_STANDARD
             .decode(hash_b64)
-            .map_err(|e| Error::BearDogRpc(format!("Invalid base64 hash: {}", e)))
+            .map_err(|e| Error::BearDogRpc(format!("Invalid base64 hash: {e}")))
     }
 
     async fn sha384(&self, data: &[u8]) -> Result<Vec<u8>> {
@@ -604,7 +601,7 @@ impl CryptoCapability for BearDogProvider {
 
         BASE64_STANDARD
             .decode(hash_b64)
-            .map_err(|e| Error::BearDogRpc(format!("Invalid base64 hash: {}", e)))
+            .map_err(|e| Error::BearDogRpc(format!("Invalid base64 hash: {e}")))
     }
 
     async fn hash_for_cipher(&self, data: &[u8], cipher_suite: u16) -> Result<Vec<u8>> {
@@ -631,7 +628,7 @@ impl CryptoCapability for BearDogProvider {
 
         let hash = BASE64_STANDARD
             .decode(hash_b64)
-            .map_err(|e| Error::BearDogRpc(format!("Invalid base64 hash: {}", e)))?;
+            .map_err(|e| Error::BearDogRpc(format!("Invalid base64 hash: {e}")))?;
 
         // Log the result for debugging
         let algorithm = result.get("algorithm").and_then(|v| v.as_str()).unwrap_or("unknown");
@@ -662,7 +659,7 @@ impl CryptoCapability for BearDogProvider {
 
         BASE64_STANDARD
             .decode(prk_b64)
-            .map_err(|e| Error::BearDogRpc(format!("Invalid base64 prk: {}", e)))
+            .map_err(|e| Error::BearDogRpc(format!("Invalid base64 prk: {e}")))
     }
 
     async fn hkdf_expand(&self, prk: &[u8], info: &[u8], length: usize) -> Result<Vec<u8>> {
@@ -684,7 +681,7 @@ impl CryptoCapability for BearDogProvider {
 
         BASE64_STANDARD
             .decode(okm_b64)
-            .map_err(|e| Error::BearDogRpc(format!("Invalid base64 okm: {}", e)))
+            .map_err(|e| Error::BearDogRpc(format!("Invalid base64 okm: {e}")))
     }
 
     // ═══════════════════════════════════════════════════════════════════
@@ -724,15 +721,15 @@ impl CryptoCapability for BearDogProvider {
         // - client_write_key (not client_key)
         // - etc.
         Ok(TlsHandshakeSecrets {
-            client_handshake_secret: self.extract_b64_field(&result, "client_handshake_secret")?,
-            server_handshake_secret: self.extract_b64_field(&result, "server_handshake_secret")?,
-            client_write_key: self.extract_b64_field(&result, "client_write_key")?,
-            client_write_iv: self.extract_b64_field(&result, "client_write_iv")?,
-            server_write_key: self.extract_b64_field(&result, "server_write_key")?,
-            server_write_iv: self.extract_b64_field(&result, "server_write_iv")?,
+            client_handshake_secret: Self::extract_b64_field(&result, "client_handshake_secret")?,
+            server_handshake_secret: Self::extract_b64_field(&result, "server_handshake_secret")?,
+            client_write_key: Self::extract_b64_field(&result, "client_write_key")?,
+            client_write_iv: Self::extract_b64_field(&result, "client_write_iv")?,
+            server_write_key: Self::extract_b64_field(&result, "server_write_key")?,
+            server_write_iv: Self::extract_b64_field(&result, "server_write_iv")?,
             // BearDog now returns the raw handshake_secret (needed for application secrets derivation)
             // This is the intermediate value in RFC 8446 key schedule, NOT the traffic secrets
-            handshake_secret: self.extract_b64_field(&result, "handshake_secret")?,
+            handshake_secret: Self::extract_b64_field(&result, "handshake_secret")?,
         })
     }
 
@@ -757,12 +754,12 @@ impl CryptoCapability for BearDogProvider {
         // BearDog returns shorter field names per RFC 8446 terminology:
         // - client_application_secret (not client_application_traffic_secret)
         Ok(TlsApplicationSecrets {
-            client_traffic_secret: self.extract_b64_field(&result, "client_application_secret")?,
-            server_traffic_secret: self.extract_b64_field(&result, "server_application_secret")?,
-            client_write_key: self.extract_b64_field(&result, "client_write_key")?,
-            client_write_iv: self.extract_b64_field(&result, "client_write_iv")?,
-            server_write_key: self.extract_b64_field(&result, "server_write_key")?,
-            server_write_iv: self.extract_b64_field(&result, "server_write_iv")?,
+            client_traffic_secret: Self::extract_b64_field(&result, "client_application_secret")?,
+            server_traffic_secret: Self::extract_b64_field(&result, "server_application_secret")?,
+            client_write_key: Self::extract_b64_field(&result, "client_write_key")?,
+            client_write_iv: Self::extract_b64_field(&result, "client_write_iv")?,
+            server_write_key: Self::extract_b64_field(&result, "server_write_key")?,
+            server_write_iv: Self::extract_b64_field(&result, "server_write_iv")?,
         })
     }
 
@@ -789,13 +786,13 @@ impl CryptoCapability for BearDogProvider {
             )
             .await?;
 
-        self.extract_b64_field(&result, "verify_data")
+        Self::extract_b64_field(&result, "verify_data")
     }
 }
 
 impl BearDogProvider {
     /// Extract ciphertext from response
-    fn extract_ciphertext(&self, result: &Value) -> Result<Vec<u8>> {
+    fn extract_ciphertext(result: &Value) -> Result<Vec<u8>> {
         let ct_b64 = result
             .get("ciphertext")
             .and_then(|v| v.as_str())
@@ -803,11 +800,11 @@ impl BearDogProvider {
 
         BASE64_STANDARD
             .decode(ct_b64)
-            .map_err(|e| Error::BearDogRpc(format!("Invalid base64 ciphertext: {}", e)))
+            .map_err(|e| Error::BearDogRpc(format!("Invalid base64 ciphertext: {e}")))
     }
 
     /// Extract plaintext from response
-    fn extract_plaintext(&self, result: &Value) -> Result<Vec<u8>> {
+    fn extract_plaintext(result: &Value) -> Result<Vec<u8>> {
         let pt_b64 = result
             .get("plaintext")
             .and_then(|v| v.as_str())
@@ -815,19 +812,19 @@ impl BearDogProvider {
 
         BASE64_STANDARD
             .decode(pt_b64)
-            .map_err(|e| Error::BearDogRpc(format!("Invalid base64 plaintext: {}", e)))
+            .map_err(|e| Error::BearDogRpc(format!("Invalid base64 plaintext: {e}")))
     }
 
     /// Extract base64-encoded field from response
-    fn extract_b64_field(&self, result: &Value, field: &str) -> Result<Vec<u8>> {
+    fn extract_b64_field(result: &Value, field: &str) -> Result<Vec<u8>> {
         let b64 = result
             .get(field)
             .and_then(|v| v.as_str())
-            .ok_or_else(|| Error::BearDogRpc(format!("Missing {} in response", field)))?;
+            .ok_or_else(|| Error::BearDogRpc(format!("Missing {field} in response")))?;
 
         BASE64_STANDARD
             .decode(b64)
-            .map_err(|e| Error::BearDogRpc(format!("Invalid base64 {}: {}", field, e)))
+            .map_err(|e| Error::BearDogRpc(format!("Invalid base64 {field}: {e}")))
     }
 }
 
@@ -849,11 +846,11 @@ mod tests {
 
         // semantic_to_actual returns BearDog's actual method names (with crypto. prefix)
         assert_eq!(
-            provider.semantic_to_actual("crypto.generate_keypair"),
+            BearDogProvider::semantic_to_actual("crypto.generate_keypair"),
             "crypto.x25519_generate_ephemeral"
         );
         assert_eq!(
-            provider.semantic_to_actual("crypto.ecdh_derive"),
+            BearDogProvider::semantic_to_actual("crypto.ecdh_derive"),
             "crypto.x25519_derive_secret"
         );
     }
@@ -863,17 +860,17 @@ mod tests {
         let provider = BearDogProvider::new("/tmp/beardog.sock");
 
         assert_eq!(
-            provider.method_to_capability("crypto.generate_keypair"),
+            BearDogProvider::method_to_capability("crypto.generate_keypair"),
             ("crypto", "generate_keypair")
         );
         assert_eq!(
-            provider.method_to_capability("crypto.ecdh_derive"),
+            BearDogProvider::method_to_capability("crypto.ecdh_derive"),
             ("crypto", "derive_secret")
         );
-        assert_eq!(provider.method_to_capability("crypto.sha256"), ("crypto", "sha256"));
+        assert_eq!(BearDogProvider::method_to_capability("crypto.sha256"), ("crypto", "sha256"));
         // Fixed: Keep full method names for Neural API semantic translation
         assert_eq!(
-            provider.method_to_capability("tls.derive_handshake_secrets"),
+            BearDogProvider::method_to_capability("tls.derive_handshake_secrets"),
             ("tls_crypto", "derive_handshake_secrets")
         );
     }

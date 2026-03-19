@@ -59,7 +59,7 @@ fn default_method() -> String {
     "GET".to_string()
 }
 
-fn default_timeout_ms() -> u64 {
+const fn default_timeout_ms() -> u64 {
     30_000 // 30 seconds
 }
 

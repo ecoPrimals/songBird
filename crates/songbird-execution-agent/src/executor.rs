@@ -11,6 +11,10 @@ use tokio::time::timeout;
 use tracing::{debug, error, info, warn};
 use uuid::Uuid;
 
+/// Result of running a command (before mapping to `ExecutionResponse`)
+type CommandRunResult =
+    Result<(std::process::ExitStatus, Option<u32>, String, String), SongbirdError>;
+
 /// Executes commands and manages their lifecycle
 pub struct CommandExecutor {
     resource_limits: ResourceLimits,
@@ -18,13 +22,18 @@ pub struct CommandExecutor {
 
 impl CommandExecutor {
     /// Create a new command executor
-    pub fn new(resource_limits: ResourceLimits) -> Self {
+    #[must_use]
+    pub const fn new(resource_limits: ResourceLimits) -> Self {
         Self {
             resource_limits,
         }
     }
 
     /// Execute a command (foreground)
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if command parsing fails, spawn fails, or wait fails
     pub async fn execute(&self, request: ExecutionRequest) -> SongbirdResult<ExecutionResponse> {
         let job_id = request.id.clone().unwrap_or_else(|| Uuid::new_v4().to_string());
         let started_at = SystemTime::now();
@@ -32,7 +41,7 @@ impl CommandExecutor {
         info!("Executing command: {} (job: {})", request.command, job_id);
 
         // Parse command and arguments
-        let (cmd, args) = self.parse_command(&request.command)?;
+        let (cmd, args) = Self::parse_command(&request.command)?;
 
         // Create tokio command
         let mut command = Command::new(cmd);
@@ -62,59 +71,79 @@ impl CommandExecutor {
             request.timeout_seconds.unwrap_or(self.resource_limits.default_timeout_seconds),
         );
 
-        let result = timeout(timeout_duration, async {
-            let mut child = command.spawn().map_err(|e| SongbirdError::Runtime {
-                message: format!("Failed to spawn command: {}", e),
-                component: Some("command_executor".to_string()),
-                debug_info: None,
-            })?;
-
-            let pid = child.id();
-            debug!("Command spawned with PID: {:?}", pid);
-
-            // Capture output if enabled
-            let (stdout, stderr) = if request.capture_output {
-                let stdout = child.stdout.take();
-                let stderr = child.stderr.take();
-
-                let stdout_task = stdout.map(|s| self.read_stream(s));
-                let stderr_task = stderr.map(|s| self.read_stream(s));
-
-                let (stdout_result, stderr_result) = tokio::join!(
-                    async {
-                        match stdout_task {
-                            Some(task) => task.await,
-                            None => String::new(),
-                        }
-                    },
-                    async {
-                        match stderr_task {
-                            Some(task) => task.await,
-                            None => String::new(),
-                        }
-                    }
-                );
-
-                (stdout_result, stderr_result)
-            } else {
-                (String::new(), String::new())
-            };
-
-            // Wait for command to complete
-            let status = child.wait().await.map_err(|e| SongbirdError::Runtime {
-                message: format!("Failed to wait for command: {}", e),
-                component: Some("command_executor".to_string()),
-                debug_info: None,
-            })?;
-
-            Ok::<_, SongbirdError>((status, pid, stdout, stderr))
-        })
-        .await;
+        let result = timeout(timeout_duration, self.run_command_inner(command, &request)).await;
 
         let completed_at = SystemTime::now();
-        let duration_ms =
-            completed_at.duration_since(started_at).ok().map(|d| d.as_millis() as u64);
+        let duration_ms = completed_at
+            .duration_since(started_at)
+            .ok()
+            .and_then(|d| u64::try_from(d.as_millis()).ok());
 
+        Ok(Self::handle_execution_result(
+            result,
+            &job_id,
+            started_at,
+            completed_at,
+            duration_ms,
+            timeout_duration,
+        ))
+    }
+
+    async fn run_command_inner(
+        &self,
+        mut command: Command,
+        request: &ExecutionRequest,
+    ) -> Result<(std::process::ExitStatus, Option<u32>, String, String), SongbirdError> {
+        let mut child = command.spawn().map_err(|e| SongbirdError::Runtime {
+            message: format!("Failed to spawn command: {e}"),
+            component: Some("command_executor".to_string()),
+            debug_info: None,
+        })?;
+
+        let pid = child.id();
+        debug!("Command spawned with PID: {:?}", pid);
+
+        let (stdout, stderr) = if request.capture_output {
+            let stdout = child.stdout.take();
+            let stderr = child.stderr.take();
+            let stdout_task = stdout.map(|s| self.read_stream(s));
+            let stderr_task = stderr.map(|s| self.read_stream(s));
+            let (stdout_result, stderr_result) = tokio::join!(
+                async {
+                    match stdout_task {
+                        Some(task) => task.await,
+                        None => String::new(),
+                    }
+                },
+                async {
+                    match stderr_task {
+                        Some(task) => task.await,
+                        None => String::new(),
+                    }
+                }
+            );
+            (stdout_result, stderr_result)
+        } else {
+            (String::new(), String::new())
+        };
+
+        let status = child.wait().await.map_err(|e| SongbirdError::Runtime {
+            message: format!("Failed to wait for command: {e}"),
+            component: Some("command_executor".to_string()),
+            debug_info: None,
+        })?;
+
+        Ok((status, pid, stdout, stderr))
+    }
+
+    fn handle_execution_result(
+        result: Result<CommandRunResult, tokio::time::error::Elapsed>,
+        job_id: &str,
+        started_at: SystemTime,
+        completed_at: SystemTime,
+        duration_ms: Option<u64>,
+        timeout_duration: Duration,
+    ) -> ExecutionResponse {
         match result {
             Ok(Ok((status, pid, stdout, stderr))) => {
                 let exit_code = status.code();
@@ -123,14 +152,12 @@ impl CommandExecutor {
                 } else {
                     ExecutionStatus::Failed
                 };
-
                 info!(
                     "Command completed with status: {} (exit code: {:?}, job: {})",
                     execution_status, exit_code, job_id
                 );
-
-                Ok(ExecutionResponse {
-                    job_id,
+                ExecutionResponse {
+                    job_id: job_id.to_string(),
                     status: execution_status,
                     pid,
                     exit_code,
@@ -139,26 +166,26 @@ impl CommandExecutor {
                     started_at,
                     completed_at: Some(completed_at),
                     duration_ms,
-                })
+                }
             }
             Ok(Err(e)) => {
                 error!("Command execution error: {} (job: {})", e, job_id);
-                Ok(ExecutionResponse {
-                    job_id,
+                ExecutionResponse {
+                    job_id: job_id.to_string(),
                     status: ExecutionStatus::Failed,
                     pid: None,
                     exit_code: None,
                     stdout: String::new(),
-                    stderr: format!("Execution error: {}", e),
+                    stderr: format!("Execution error: {e}"),
                     started_at,
                     completed_at: Some(completed_at),
                     duration_ms,
-                })
+                }
             }
             Err(_) => {
                 warn!("Command timed out (job: {})", job_id);
-                Ok(ExecutionResponse {
-                    job_id,
+                ExecutionResponse {
+                    job_id: job_id.to_string(),
                     status: ExecutionStatus::Timeout,
                     pid: None,
                     exit_code: None,
@@ -170,20 +197,25 @@ impl CommandExecutor {
                     started_at,
                     completed_at: Some(completed_at),
                     duration_ms,
-                })
+                }
             }
         }
     }
 
     /// Execute a command in the background
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if command parsing fails or spawn fails
     pub async fn execute_background(&self, request: ExecutionRequest) -> SongbirdResult<JobInfo> {
+        tokio::task::yield_now().await;
         let job_id = request.id.clone().unwrap_or_else(|| Uuid::new_v4().to_string());
         let started_at = SystemTime::now();
 
         info!("Starting background command: {} (job: {})", request.command, job_id);
 
         // Parse command and arguments
-        let (cmd, args) = self.parse_command(&request.command)?;
+        let (cmd, args) = Self::parse_command(&request.command)?;
 
         // Create tokio command
         let mut command = Command::new(cmd);
@@ -205,7 +237,7 @@ impl CommandExecutor {
 
         // Spawn the command
         let child = command.spawn().map_err(|e| SongbirdError::Runtime {
-            message: format!("Failed to spawn background command: {}", e),
+            message: format!("Failed to spawn background command: {e}"),
             component: Some("command_executor".to_string()),
             debug_info: None,
         })?;
@@ -227,7 +259,7 @@ impl CommandExecutor {
     }
 
     /// Parse command string into program and arguments
-    fn parse_command(&self, command: &str) -> SongbirdResult<(String, Vec<String>)> {
+    fn parse_command(command: &str) -> SongbirdResult<(String, Vec<String>)> {
         let parts: Vec<&str> = command.split_whitespace().collect();
 
         if parts.is_empty() {
@@ -306,9 +338,7 @@ mod tests {
 
     #[test]
     fn test_parse_command() {
-        let executor = CommandExecutor::new(ResourceLimits::default());
-
-        let (cmd, args) = executor.parse_command("ls -la /tmp").unwrap();
+        let (cmd, args) = CommandExecutor::parse_command("ls -la /tmp").unwrap();
         assert_eq!(cmd, "ls");
         assert_eq!(args, vec!["-la", "/tmp"]);
     }

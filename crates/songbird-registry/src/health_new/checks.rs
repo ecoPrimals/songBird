@@ -132,7 +132,7 @@ pub struct MetricsCheck {
 impl MetricsCheck {
     /// Create a new metrics check
     #[must_use]
-    pub fn new(max_cpu: f64, max_memory: f64) -> Self {
+    pub const fn new(max_cpu: f64, max_memory: f64) -> Self {
         Self {
             max_cpu,
             max_memory,

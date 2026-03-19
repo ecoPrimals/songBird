@@ -198,13 +198,11 @@ impl ServiceRegistryDiscovery {
         service: &RegistryService,
         sla: &super::SlaRequirements,
     ) -> bool {
-        if let Some(health) = &service.health_metrics {
+        service.health_metrics.as_ref().is_some_and(|health| {
             health.average_latency_ms <= sla.max_latency_ms
                 && health.uptime_percent >= sla.min_uptime_percent
                 && health.error_rate_percent <= sla.max_error_rate_percent
-        } else {
-            false // No health metrics = can't verify SLA
-        }
+        })
     }
 
     /// Calculate preference score for service selection
@@ -245,12 +243,10 @@ impl ServiceRegistryDiscovery {
 
         // Default scoring if no preferences
         if score == 0.0 {
-            score = if let Some(health) = &service.health_metrics {
+            score = service.health_metrics.as_ref().map_or(1.0, |health| {
                 health.uptime_percent * health.throughput_rps
                     / (health.average_latency_ms as f64 + 1.0)
-            } else {
-                1.0
-            };
+            });
         }
 
         score
@@ -292,7 +288,7 @@ struct HealthMetrics {
     load_percent: f64,
 }
 
-fn default_protocol() -> Protocol {
+const fn default_protocol() -> Protocol {
     Protocol::Http
 }
 

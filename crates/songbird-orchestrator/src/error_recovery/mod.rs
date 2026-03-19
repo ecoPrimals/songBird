@@ -40,8 +40,9 @@ pub enum ErrorClass {
 }
 
 /// Classify an error for recovery strategy
+#[must_use]
 pub fn classify_error(error: &anyhow::Error) -> ErrorClass {
-    let error_string = format!("{:?}", error);
+    let error_string = format!("{error:?}");
 
     // Simple classification based on error messages
     // In production, would use structured error types

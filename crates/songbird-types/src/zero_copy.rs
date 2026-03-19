@@ -30,7 +30,7 @@ impl<T> Shared<T> {
 
     /// Get the Arc directly
     #[must_use]
-    pub fn as_arc(&self) -> &Arc<T> {
+    pub const fn as_arc(&self) -> &Arc<T> {
         &self.inner
     }
 

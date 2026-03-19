@@ -23,7 +23,7 @@ use std::path::{Path, PathBuf};
 use tracing::{debug, info, warn};
 
 /// IPC Endpoint type (isomorphic support)
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum IpcEndpoint {
     /// Unix domain socket (optimal)
     UnixSocket(String),
@@ -33,10 +33,11 @@ pub enum IpcEndpoint {
 
 impl IpcEndpoint {
     /// Get display string for logging
+    #[must_use]
     pub fn display(&self) -> String {
         match self {
-            IpcEndpoint::UnixSocket(path) => format!("unix://{}", path),
-            IpcEndpoint::TcpLocal(addr) => format!("tcp://{}", addr),
+            Self::UnixSocket(path) => format!("unix://{path}"),
+            Self::TcpLocal(addr) => format!("tcp://{addr}"),
         }
     }
 }
@@ -66,7 +67,7 @@ impl IpcEndpoint {
 ///
 /// # Arguments
 ///
-/// * `env_var` - Environment variable name to check (e.g., "SONGBIRD_SOCKET")
+/// * `env_var` - Environment variable name to check (e.g., "`SONGBIRD_SOCKET`")
 /// * `primal_name` - Primal name for discovery (e.g., "songbird")
 /// * `legacy_path` - Legacy `/tmp` path for backward compatibility
 ///
@@ -80,6 +81,7 @@ impl IpcEndpoint {
 /// - ✅ **Zero Configuration**: No platform-specific flags needed
 /// - ✅ **Platform Agnostic**: Same discovery code for all platforms
 /// - ✅ **Primal Autonomy**: Self-discovers optimal transport
+#[must_use]
 pub fn discover_ipc_endpoint(env_var: &str, primal_name: &str, legacy_path: &str) -> IpcEndpoint {
     discover_ipc_endpoint_with(env_var, primal_name, legacy_path, |key| std::env::var(key))
 }
@@ -112,9 +114,9 @@ where
     if let Ok(xdg_dir) = env_reader("XDG_RUNTIME_DIR") {
         let family_id = env_reader("FAMILY_ID").unwrap_or_else(|_| String::new());
         let socket_name = if family_id.is_empty() {
-            format!("{}.sock", primal_name)
+            format!("{primal_name}.sock")
         } else {
-            format!("{}-{}.sock", primal_name, family_id)
+            format!("{primal_name}-{family_id}.sock")
         };
         let socket_path = PathBuf::from(&xdg_dir).join("biomeos").join(&socket_name);
         if socket_path.exists() {
@@ -186,9 +188,8 @@ fn discover_tcp_endpoint(primal_name: &str) -> Option<std::net::SocketAddr> {
                 if let Ok(addr) = addr_str.trim().parse::<std::net::SocketAddr>() {
                     debug!("      ✅ Found TCP endpoint: {}", addr);
                     return Some(addr);
-                } else {
-                    warn!("      ⚠️  Invalid TCP address in {}: {}", path.display(), addr_str);
                 }
+                warn!("      ⚠️  Invalid TCP address in {}: {}", path.display(), addr_str);
             } else {
                 warn!("      ⚠️  Invalid format in {}: {}", path.display(), content.trim());
             }
@@ -202,7 +203,7 @@ fn discover_tcp_endpoint(primal_name: &str) -> Option<std::net::SocketAddr> {
 /// Get TCP discovery file candidates in XDG priority order
 fn get_tcp_discovery_file_candidates(primal_name: &str) -> Vec<PathBuf> {
     let mut candidates = Vec::new();
-    let filename = format!("{}-ipc-port", primal_name);
+    let filename = format!("{primal_name}-ipc-port");
 
     // Priority 1: XDG_RUNTIME_DIR (preferred, user-specific, volatile)
     if let Ok(runtime_dir) = std::env::var("XDG_RUNTIME_DIR") {
@@ -215,7 +216,7 @@ fn get_tcp_discovery_file_candidates(primal_name: &str) -> Vec<PathBuf> {
     }
 
     // Priority 3: /tmp (last resort, system-wide)
-    candidates.push(PathBuf::from(format!("/tmp/{}", filename)));
+    candidates.push(PathBuf::from(format!("/tmp/{filename}")));
 
     candidates
 }
@@ -272,7 +273,7 @@ fn discover_xdg_socket(primal_name: &str) -> Option<String> {
 
 /// Try specific XDG socket path
 fn try_xdg_socket(runtime_dir: &str, primal_name: &str, family_id: &str) -> Option<String> {
-    let socket_path = format!("{}/biomeos/{}-{}.sock", runtime_dir, primal_name, family_id);
+    let socket_path = format!("{runtime_dir}/biomeos/{primal_name}-{family_id}.sock");
 
     debug!("   Checking XDG: {}", socket_path);
 
@@ -298,7 +299,7 @@ fn try_xdg_socket(runtime_dir: &str, primal_name: &str, family_id: &str) -> Opti
 ///
 /// # Arguments
 ///
-/// * `env_var` - Environment variable name to check (e.g., "BEARDOG_SOCKET")
+/// * `env_var` - Environment variable name to check (e.g., "`BEARDOG_SOCKET`")
 /// * `primal_name` - Primal name for XDG discovery (e.g., "beardog")
 /// * `legacy_path` - Legacy `/tmp` path for backward compatibility
 ///
@@ -322,6 +323,7 @@ pub fn discover_socket(env_var: &str, primal_name: &str, legacy_path: &str) -> S
 /// 1. `$BEARDOG_SOCKET`
 /// 2. `$XDG_RUNTIME_DIR/biomeos/beardog-$FAMILY_ID.sock`
 /// 3. `/tmp/beardog.sock` (legacy)
+#[must_use]
 pub fn discover_beardog_socket() -> String {
     discover_socket("BEARDOG_SOCKET", "beardog", "/tmp/beardog.sock")
 }
@@ -359,7 +361,7 @@ pub fn discover_neural_api_socket() -> String {
         .or_else(|_| std::env::var("SONGBIRD_FAMILY_ID"))
         .or_else(|_| std::env::var("FAMILY_ID"))
         .unwrap_or_else(|_| "default".to_string());
-    let socket = format!("/tmp/neural-api-{}.sock", family_id);
+    let socket = format!("/tmp/neural-api-{family_id}.sock");
     warn!("⚠️  Using legacy /tmp socket: {}", socket);
     warn!("   Consider setting $NEURAL_API_SOCKET or XDG_RUNTIME_DIR");
     socket

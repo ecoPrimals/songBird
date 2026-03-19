@@ -76,8 +76,7 @@ impl ErrorTestingFramework {
     /// # Errors
     /// Returns an error if the scenario cannot be added.
     pub async fn add_scenario(&self, scenario: ErrorScenario) -> SongbirdResult<()> {
-        let mut scenarios = self.scenarios.write().await;
-        scenarios.insert(scenario.name.clone(), scenario);
+        self.scenarios.write().await.insert(scenario.name.clone(), scenario);
         Ok(())
     }
 
@@ -86,8 +85,7 @@ impl ErrorTestingFramework {
     /// # Errors
     /// Returns an error if the test scenario fails.
     pub async fn run_scenario(&self, scenario_name: &str) -> SongbirdResult<ErrorSongbirdResult> {
-        let scenarios = self.scenarios.read().await;
-        let _scenario = scenarios.get(scenario_name).ok_or_else(|| {
+        let _scenario = self.scenarios.read().await.get(scenario_name).ok_or_else(|| {
             SongbirdError::service("test-utils", format!("Scenario '{scenario_name}' not found"))
         })?;
 
@@ -100,8 +98,7 @@ impl ErrorTestingFramework {
             duration: start.elapsed(),
         };
 
-        let mut results = self.results.write().await;
-        results.insert(scenario_name.to_string(), result.clone());
+        self.results.write().await.insert(scenario_name.to_string(), result.clone());
 
         Ok(result)
     }

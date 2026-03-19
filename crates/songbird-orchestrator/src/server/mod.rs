@@ -46,7 +46,7 @@ impl ServerManager {
 
     /// Set health check interval
     #[must_use]
-    pub fn with_health_check_interval(mut self, interval: Duration) -> Self {
+    pub const fn with_health_check_interval(mut self, interval: Duration) -> Self {
         self.health_check_interval = interval;
         self
     }
@@ -201,7 +201,7 @@ pub struct HealthCheckService {
 impl HealthCheckService {
     /// Create new health check service
     #[must_use]
-    pub fn new(check_interval: Duration) -> Self {
+    pub const fn new(check_interval: Duration) -> Self {
         Self {
             check_interval,
         }
@@ -298,7 +298,7 @@ pub struct ServiceMonitor {
 impl ServiceMonitor {
     /// Create new service monitor
     #[must_use]
-    pub fn new(check_interval: Duration) -> Self {
+    pub const fn new(check_interval: Duration) -> Self {
         Self {
             check_interval,
         }

@@ -11,10 +11,10 @@ pub struct TlsHandshake {
     /// Transcript accumulator for RFC 8446 key derivation
     /// Accumulates all handshake messages for transcript hash computation
     pub(super) transcript: Vec<u8>,
-    /// Negotiated TLS 1.3 cipher suite from ServerHello
-    /// 0x1301 = TLS_AES_128_GCM_SHA256
-    /// 0x1302 = TLS_AES_256_GCM_SHA384
-    /// 0x1303 = TLS_CHACHA20_POLY1305_SHA256
+    /// Negotiated TLS 1.3 cipher suite from `ServerHello`
+    /// 0x1301 = `TLS_AES_128_GCM_SHA256`
+    /// 0x1302 = `TLS_AES_256_GCM_SHA384`
+    /// 0x1303 = `TLS_CHACHA20_POLY1305_SHA256`
     pub(super) cipher_suite: u16,
     /// Configuration (strategy-based, not hardcoded)
     pub(super) config: TlsConfig,

@@ -40,15 +40,18 @@ pub enum Role {
 }
 
 impl Role {
-    pub fn is_admin(&self) -> bool {
+    #[must_use]
+    pub const fn is_admin(&self) -> bool {
         matches!(self, Self::Admin { .. } | Self::RemoteAdmin { .. })
     }
 
-    pub fn is_teaching_staff(&self) -> bool {
+    #[must_use]
+    pub const fn is_teaching_staff(&self) -> bool {
         matches!(self, Self::TA { .. } | Self::Professor { .. })
     }
 
-    pub fn requires_hardware_key(&self) -> bool {
+    #[must_use]
+    pub const fn requires_hardware_key(&self) -> bool {
         matches!(self, Self::RemoteAdmin { .. })
     }
 }
@@ -62,7 +65,8 @@ pub struct ResourceQuota {
 }
 
 impl ResourceQuota {
-    pub fn for_role(role: &Role) -> Self {
+    #[must_use]
+    pub const fn for_role(role: &Role) -> Self {
         match role {
             Role::Anonymous => Self {
                 max_concurrent_tasks: 0,

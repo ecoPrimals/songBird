@@ -1,9 +1,9 @@
-//! BearDog crypto integration for TLS
+//! `BearDog` crypto integration for TLS
 //!
 //! **EVOLVED (Jan 31, 2026): Platform-agnostic IPC!**
 //!
-//! This module integrates with BearDog's crypto JSON-RPC API for TLS operations.
-//! All cryptographic operations are delegated to BearDog via platform-agnostic IPC.
+//! This module integrates with `BearDog`'s crypto JSON-RPC API for TLS operations.
+//! All cryptographic operations are delegated to `BearDog` via platform-agnostic IPC.
 //!
 //! **Deep Debt Evolution Status:**
 //! - ✅ Phase 1: Platform-agnostic transport (Unix sockets, named pipes, TCP)
@@ -92,19 +92,23 @@ impl AsyncWrite for CryptoStream {
     }
 }
 
-/// BearDog crypto client for TLS operations
+/// `BearDog` crypto client for TLS operations
 ///
-/// Communicates with BearDog via Unix socket JSON-RPC.
+/// Communicates with `BearDog` via Unix socket JSON-RPC.
 #[derive(Clone)]
 pub struct BeardogCryptoClient {
     socket_path: String,
 }
 
 impl BeardogCryptoClient {
-    /// Create a new BearDog crypto client
+    /// Create a new `BearDog` crypto client
     ///
     /// Uses runtime discovery to find the Neural API socket for capability.call.
-    pub async fn new() -> Result<Self> {
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if socket discovery fails or the socket does not exist (Unix only).
+    pub fn new() -> Result<Self> {
         let socket_path = Self::discover_socket()?;
 
         tracing::info!("🌐 BeardogCryptoClient using socket: {}", socket_path);
@@ -114,7 +118,7 @@ impl BeardogCryptoClient {
         {
             use std::path::Path;
             if !Path::new(&socket_path).exists() {
-                return Err(TlsError::CryptoError(format!("Socket not found at: {}", socket_path)));
+                return Err(TlsError::CryptoError(format!("Socket not found at: {socket_path}")));
             }
         }
 
@@ -124,7 +128,8 @@ impl BeardogCryptoClient {
     }
 
     /// Create a client with explicit socket path (for testing)
-    pub fn with_socket_path(socket_path: String) -> Self {
+    #[must_use]
+    pub const fn with_socket_path(socket_path: String) -> Self {
         Self {
             socket_path,
         }
@@ -188,12 +193,11 @@ impl BeardogCryptoClient {
 
             Err(TlsError::CryptoError(format!(
                 "Could not discover BearDog or Neural API socket. Tried:\n\
-                 - BearDog: {} (not found)\n\
-                 - Neural API: {} (not found)\n\
+                 - BearDog: {beardog_socket} (not found)\n\
+                 - Neural API: {neural_socket} (not found)\n\
                  - Legacy paths: /var/run/neural-api/socket, /var/run/beardog/crypto.sock (not found)\n\
                  \n\
-                 Set one of: BEARDOG_SOCKET=tcp:host:port, NEURAL_API_SOCKET, or XDG_RUNTIME_DIR + FAMILY_ID",
-                beardog_socket, neural_socket
+                 Set one of: BEARDOG_SOCKET=tcp:host:port, NEURAL_API_SOCKET, or XDG_RUNTIME_DIR + FAMILY_ID"
             )))
         }
 
@@ -240,7 +244,7 @@ impl BeardogCryptoClient {
         // Connect using platform-specific transport
         let mut stream = Self::connect_platform(&self.socket_path)
             .await
-            .map_err(|e| TlsError::CryptoError(format!("Failed to connect: {}", e)))?;
+            .map_err(|e| TlsError::CryptoError(format!("Failed to connect: {e}")))?;
 
         // Build capability.call JSON-RPC request
         let request = serde_json::json!({
@@ -256,28 +260,28 @@ impl BeardogCryptoClient {
 
         // Serialize request
         let request_str = serde_json::to_string(&request)
-            .map_err(|e| TlsError::InternalError(format!("Failed to serialize request: {}", e)))?;
+            .map_err(|e| TlsError::InternalError(format!("Failed to serialize request: {e}")))?;
 
         // Send request (with newline delimiter)
         stream
             .write_all(request_str.as_bytes())
             .await
-            .map_err(|e| TlsError::CryptoError(format!("Failed to send request: {}", e)))?;
+            .map_err(|e| TlsError::CryptoError(format!("Failed to send request: {e}")))?;
         stream
             .write_all(b"\n")
             .await
-            .map_err(|e| TlsError::CryptoError(format!("Failed to send newline: {}", e)))?;
+            .map_err(|e| TlsError::CryptoError(format!("Failed to send newline: {e}")))?;
 
         // Read response
         let mut response_buf = Vec::new();
         stream
             .read_to_end(&mut response_buf)
             .await
-            .map_err(|e| TlsError::CryptoError(format!("Failed to read response: {}", e)))?;
+            .map_err(|e| TlsError::CryptoError(format!("Failed to read response: {e}")))?;
 
         // Parse JSON-RPC response
         let response: JsonRpcResponse = serde_json::from_slice(&response_buf)
-            .map_err(|e| TlsError::CryptoError(format!("Failed to parse response: {}", e)))?;
+            .map_err(|e| TlsError::CryptoError(format!("Failed to parse response: {e}")))?;
 
         // Check for errors
         if let Some(error) = response.error {
@@ -349,7 +353,7 @@ impl BeardogCryptoClient {
         // Connect using platform-specific transport
         let mut stream = Self::connect_platform(&self.socket_path)
             .await
-            .map_err(|e| TlsError::CryptoError(format!("Failed to connect to BearDog: {}", e)))?;
+            .map_err(|e| TlsError::CryptoError(format!("Failed to connect to BearDog: {e}")))?;
 
         // Build JSON-RPC request
         let request = serde_json::json!({
@@ -361,28 +365,28 @@ impl BeardogCryptoClient {
 
         // Serialize request
         let request_str = serde_json::to_string(&request)
-            .map_err(|e| TlsError::InternalError(format!("Failed to serialize request: {}", e)))?;
+            .map_err(|e| TlsError::InternalError(format!("Failed to serialize request: {e}")))?;
 
         // Send request (with newline delimiter)
         stream
             .write_all(request_str.as_bytes())
             .await
-            .map_err(|e| TlsError::CryptoError(format!("Failed to send request: {}", e)))?;
+            .map_err(|e| TlsError::CryptoError(format!("Failed to send request: {e}")))?;
         stream
             .write_all(b"\n")
             .await
-            .map_err(|e| TlsError::CryptoError(format!("Failed to send newline: {}", e)))?;
+            .map_err(|e| TlsError::CryptoError(format!("Failed to send newline: {e}")))?;
 
         // Read response
         let mut response_buf = Vec::new();
         stream
             .read_to_end(&mut response_buf)
             .await
-            .map_err(|e| TlsError::CryptoError(format!("Failed to read response: {}", e)))?;
+            .map_err(|e| TlsError::CryptoError(format!("Failed to read response: {e}")))?;
 
         // Parse JSON-RPC response
         let response: JsonRpcResponse = serde_json::from_slice(&response_buf)
-            .map_err(|e| TlsError::CryptoError(format!("Failed to parse response: {}", e)))?;
+            .map_err(|e| TlsError::CryptoError(format!("Failed to parse response: {e}")))?;
 
         // Check for errors
         if let Some(error) = response.error {
@@ -399,7 +403,11 @@ impl BeardogCryptoClient {
 
     /// Generate X25519 ephemeral keypair
     ///
-    /// Returns: (public_key, secret_key) as raw bytes
+    /// Returns: (`public_key`, `secret_key`) as raw bytes
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the capability call fails or the response is invalid.
     pub async fn x25519_generate_ephemeral(&self) -> Result<(Vec<u8>, Vec<u8>)> {
         let params = serde_json::json!({
             "purpose": "tls_handshake"
@@ -417,17 +425,21 @@ impl BeardogCryptoClient {
 
         let public_key = general_purpose::STANDARD
             .decode(public_key_b64)
-            .map_err(|e| TlsError::CryptoError(format!("Failed to decode public_key: {}", e)))?;
+            .map_err(|e| TlsError::CryptoError(format!("Failed to decode public_key: {e}")))?;
         let secret_key = general_purpose::STANDARD
             .decode(secret_key_b64)
-            .map_err(|e| TlsError::CryptoError(format!("Failed to decode secret_key: {}", e)))?;
+            .map_err(|e| TlsError::CryptoError(format!("Failed to decode secret_key: {e}")))?;
 
         Ok((public_key, secret_key))
     }
 
     /// Derive X25519 shared secret
     ///
-    /// Returns: shared_secret as raw bytes
+    /// Returns: `shared_secret` as raw bytes
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the capability call fails or the response is invalid.
     pub async fn x25519_derive_secret(
         &self,
         our_secret: &[u8],
@@ -446,15 +458,19 @@ impl BeardogCryptoClient {
 
         let shared_secret = general_purpose::STANDARD
             .decode(shared_secret_b64)
-            .map_err(|e| TlsError::CryptoError(format!("Failed to decode shared_secret: {}", e)))?;
+            .map_err(|e| TlsError::CryptoError(format!("Failed to decode shared_secret: {e}")))?;
 
         Ok(shared_secret)
     }
 
     /// Encrypt with ChaCha20-Poly1305 (AEAD)
     ///
-    /// BearDog generates the nonce.
+    /// `BearDog` generates the nonce.
     /// Returns: (ciphertext, nonce, tag)
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the capability call fails or the response is invalid.
     pub async fn chacha20_poly1305_encrypt(
         &self,
         plaintext: &[u8],
@@ -484,13 +500,13 @@ impl BeardogCryptoClient {
 
         let ciphertext = general_purpose::STANDARD
             .decode(ciphertext_b64)
-            .map_err(|e| TlsError::CryptoError(format!("Failed to decode ciphertext: {}", e)))?;
+            .map_err(|e| TlsError::CryptoError(format!("Failed to decode ciphertext: {e}")))?;
         let nonce = general_purpose::STANDARD
             .decode(nonce_b64)
-            .map_err(|e| TlsError::CryptoError(format!("Failed to decode nonce: {}", e)))?;
+            .map_err(|e| TlsError::CryptoError(format!("Failed to decode nonce: {e}")))?;
         let tag = general_purpose::STANDARD
             .decode(tag_b64)
-            .map_err(|e| TlsError::CryptoError(format!("Failed to decode tag: {}", e)))?;
+            .map_err(|e| TlsError::CryptoError(format!("Failed to decode tag: {e}")))?;
 
         Ok((ciphertext, nonce, tag))
     }
@@ -498,6 +514,10 @@ impl BeardogCryptoClient {
     /// Decrypt with ChaCha20-Poly1305 (AEAD)
     ///
     /// Returns: plaintext
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the capability call fails or the response is invalid.
     pub async fn chacha20_poly1305_decrypt(
         &self,
         ciphertext: &[u8],
@@ -525,7 +545,7 @@ impl BeardogCryptoClient {
 
         let plaintext = general_purpose::STANDARD
             .decode(plaintext_b64)
-            .map_err(|e| TlsError::CryptoError(format!("Failed to decode plaintext: {}", e)))?;
+            .map_err(|e| TlsError::CryptoError(format!("Failed to decode plaintext: {e}")))?;
 
         Ok(plaintext)
     }
@@ -533,6 +553,10 @@ impl BeardogCryptoClient {
     /// Sign with Ed25519
     ///
     /// Returns: signature (64 bytes)
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the capability call fails or the response is invalid.
     pub async fn ed25519_sign(&self, message: &[u8], key_id: &str) -> Result<Vec<u8>> {
         let params = serde_json::json!({
             "message": general_purpose::STANDARD.encode(message),
@@ -548,7 +572,7 @@ impl BeardogCryptoClient {
 
         let signature = general_purpose::STANDARD
             .decode(signature_b64)
-            .map_err(|e| TlsError::CryptoError(format!("Failed to decode signature: {}", e)))?;
+            .map_err(|e| TlsError::CryptoError(format!("Failed to decode signature: {e}")))?;
 
         Ok(signature)
     }
@@ -556,6 +580,10 @@ impl BeardogCryptoClient {
     /// HMAC-SHA256
     ///
     /// Returns: MAC (32 bytes)
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the capability call fails or the response is invalid.
     pub async fn hmac_sha256(&self, message: &[u8], key: &[u8]) -> Result<Vec<u8>> {
         let params = serde_json::json!({
             "message": general_purpose::STANDARD.encode(message),
@@ -570,7 +598,7 @@ impl BeardogCryptoClient {
 
         let mac = general_purpose::STANDARD
             .decode(mac_b64)
-            .map_err(|e| TlsError::CryptoError(format!("Failed to decode mac: {}", e)))?;
+            .map_err(|e| TlsError::CryptoError(format!("Failed to decode mac: {e}")))?;
 
         Ok(mac)
     }

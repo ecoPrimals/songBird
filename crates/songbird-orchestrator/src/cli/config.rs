@@ -22,7 +22,7 @@ impl Default for CliConfig {
 
 impl CliConfig {
     #[must_use]
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self {
             verbose: false,
             colored_output: true,
@@ -30,21 +30,21 @@ impl CliConfig {
         }
     }
 
-    pub fn set_verbose(&mut self, verbose: bool) {
+    pub const fn set_verbose(&mut self, verbose: bool) {
         self.verbose = verbose;
     }
 
     #[must_use]
-    pub fn is_verbose(&self) -> bool {
+    pub const fn is_verbose(&self) -> bool {
         self.verbose
     }
 
-    pub fn set_colored_output(&mut self, colored: bool) {
+    pub const fn set_colored_output(&mut self, colored: bool) {
         self.colored_output = colored;
     }
 
     #[must_use]
-    pub fn is_colored_output_enabled(&self) -> bool {
+    pub const fn is_colored_output_enabled(&self) -> bool {
         self.colored_output
     }
 

@@ -4,7 +4,7 @@
 
 use crate::circuit::CircuitHop;
 use crate::crypto::BeardogCryptoClient;
-use crate::error::Result;
+use crate::error::{Error, Result};
 
 /// Onion encryption handler
 ///
@@ -21,7 +21,8 @@ pub struct OnionCrypto {
 
 impl OnionCrypto {
     /// Create new onion crypto handler
-    pub fn new(beardog: BeardogCryptoClient) -> Self {
+    #[must_use]
+    pub const fn new(beardog: BeardogCryptoClient) -> Self {
         Self {
             beardog,
             forward_sequence: std::sync::atomic::AtomicU64::new(0),
@@ -42,6 +43,9 @@ impl OnionCrypto {
     ///
     /// # Returns
     /// * Encrypted payload (onion-encrypted)
+    ///
+    /// # Errors
+    /// Returns error if `BearDog` encryption fails or hop index overflows.
     pub fn encrypt_forward(&self, cell: &[u8], hops: &[CircuitHop]) -> Result<Vec<u8>> {
         let mut data = cell.to_vec();
         let seq = self.forward_sequence.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
@@ -50,7 +54,9 @@ impl OnionCrypto {
         // So that guard peels first layer, middle peels second, exit gets plaintext
         for (hop_idx, hop) in hops.iter().rev().enumerate() {
             // Generate IV: unique per hop and per cell
-            let iv = self.generate_iv(seq, hop_idx as u32);
+            let hop_idx_u32 = u32::try_from(hop_idx)
+                .map_err(|_| Error::Protocol("Hop index overflow".to_string()))?;
+            let iv = Self::generate_iv(seq, hop_idx_u32);
 
             // Encrypt with this hop's forward key via BearDog
             data = self.beardog.aes_128_ctr_encrypt(&hop.forward_key, &iv, &data)?;
@@ -66,7 +72,7 @@ impl OnionCrypto {
     /// Decrypt cell removing onion layers (exit -> client)
     ///
     /// Decrypts the cell payload with each hop's backward key in forward order:
-    /// Ciphertext -> AES_decrypt(hop1) -> AES_decrypt(hop2) -> AES_decrypt(hop3) -> Plaintext
+    /// Ciphertext -> `AES_decrypt(hop1)` -> `AES_decrypt(hop2)` -> `AES_decrypt(hop3)` -> Plaintext
     ///
     /// # Arguments
     /// * `cell` - Encrypted cell payload
@@ -74,6 +80,9 @@ impl OnionCrypto {
     ///
     /// # Returns
     /// * Decrypted payload
+    ///
+    /// # Errors
+    /// Returns error if `BearDog` decryption fails or hop index overflows.
     pub fn decrypt_backward(&self, cell: &[u8], hops: &[CircuitHop]) -> Result<Vec<u8>> {
         let mut data = cell.to_vec();
         let seq = self.backward_sequence.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
@@ -81,7 +90,9 @@ impl OnionCrypto {
         // Decrypt in forward order (guard -> middle -> exit)
         for (hop_idx, hop) in hops.iter().enumerate() {
             // Generate IV: unique per hop and per cell
-            let iv = self.generate_iv(seq, hop_idx as u32);
+            let hop_idx_u32 = u32::try_from(hop_idx)
+                .map_err(|_| Error::Protocol("Hop index overflow".to_string()))?;
+            let iv = Self::generate_iv(seq, hop_idx_u32);
 
             // Decrypt with this hop's backward key via BearDog
             data = self.beardog.aes_128_ctr_decrypt(&hop.backward_key, &iv, &data)?;
@@ -105,6 +116,7 @@ impl OnionCrypto {
     ///
     /// # Returns
     /// * 4-byte digest for the relay cell header
+    #[must_use]
     pub fn extract_relay_digest(running_digest: &[u8; 32]) -> [u8; 4] {
         let mut digest = [0u8; 4];
         digest.copy_from_slice(&running_digest[..4]);
@@ -117,7 +129,7 @@ impl OnionCrypto {
     /// - bytes 0..8: cell sequence counter (big-endian u64)
     /// - bytes 8..12: hop index (big-endian u32)
     /// - bytes 12..16: reserved (zeros)
-    fn generate_iv(&self, sequence: u64, hop_index: u32) -> [u8; 16] {
+    fn generate_iv(sequence: u64, hop_index: u32) -> [u8; 16] {
         let mut iv = [0u8; 16];
         iv[0..8].copy_from_slice(&sequence.to_be_bytes());
         iv[8..12].copy_from_slice(&hop_index.to_be_bytes());
@@ -126,11 +138,11 @@ impl OnionCrypto {
 
     /// Update running digest (for integrity)
     ///
-    /// Computes: new_digest = SHA3-256(current_digest || cell_data)
+    /// Computes: `new_digest` = SHA3-256(current_digest || `cell_data`)
     /// This maintains a running hash of all relay cell data through
     /// each circuit hop, used for integrity verification.
     ///
-    /// Requires BearDog SHA3-256 integration.
+    /// Requires `BearDog` SHA3-256 integration.
     #[allow(dead_code)]
     fn update_digest(&self, current_digest: &[u8; 32], data: &[u8]) -> Result<[u8; 32]> {
         let input = [&current_digest[..], data].concat();
@@ -180,7 +192,7 @@ mod tests {
         let beardog = BeardogCryptoClient::from_env().expect("Failed to create BearDog client");
         let crypto = OnionCrypto::new(beardog);
 
-        let iv = crypto.generate_iv(12345, 0);
+        let iv = OnionCrypto::generate_iv(12345, 0);
         assert_eq!(iv.len(), 16);
 
         // Check sequence counter bytes
@@ -193,7 +205,7 @@ mod tests {
         assert_eq!(&iv[12..16], &[0u8; 4]);
 
         // Different hops get different IVs
-        let iv2 = crypto.generate_iv(12345, 1);
+        let iv2 = OnionCrypto::generate_iv(12345, 1);
         assert_ne!(iv, iv2);
     }
 

@@ -28,22 +28,26 @@ pub enum DiscoveryMode {
 
 impl DiscoveryMode {
     /// Check if discovery is enabled
-    pub fn is_enabled(&self) -> bool {
+    #[must_use]
+    pub const fn is_enabled(&self) -> bool {
         !matches!(self, Self::Disabled)
     }
 
     /// Check if anonymous
-    pub fn is_anonymous(&self) -> bool {
+    #[must_use]
+    pub const fn is_anonymous(&self) -> bool {
         matches!(self, Self::Anonymous)
     }
 
     /// Check if sharing capabilities
-    pub fn shares_capabilities(&self) -> bool {
+    #[must_use]
+    pub const fn shares_capabilities(&self) -> bool {
         matches!(self, Self::CapabilityAware | Self::FullDisclosure)
     }
 
     /// Check if sharing identity
-    pub fn shares_identity(&self) -> bool {
+    #[must_use]
+    pub const fn shares_identity(&self) -> bool {
         matches!(self, Self::FullDisclosure)
     }
 }

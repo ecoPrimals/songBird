@@ -42,7 +42,7 @@ pub enum IpcError {
     #[error("Registry error: {0}")]
     RegistryError(String),
 
-    /// NestGate integration error (optional feature)
+    /// `NestGate` integration error (optional feature)
     #[cfg(feature = "nestgate")]
     #[error("NestGate error: {0}")]
     NestGateError(String),

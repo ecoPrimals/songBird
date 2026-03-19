@@ -129,11 +129,15 @@ impl MockSquirrel {
     pub fn infer(&self, request: &InferenceRequest) -> Option<InferenceResponse> {
         self.state.increment_requests();
 
-        let responses = self.responses.read().unwrap_or_else(|poisoned| {
-            tracing::warn!("RwLock poisoned in test mock, recovering");
-            poisoned.into_inner()
-        });
-        let response = responses.get(&request.input).cloned();
+        let response = self
+            .responses
+            .read()
+            .unwrap_or_else(|poisoned| {
+                tracing::warn!("RwLock poisoned in test mock, recovering");
+                poisoned.into_inner()
+            })
+            .get(&request.input)
+            .cloned();
 
         // Update metrics
         let mut metrics = self.ai_metrics.write().unwrap_or_else(|poisoned| {
@@ -187,6 +191,7 @@ impl MockSquirrel {
         metrics.active_models = 15;
         metrics.avg_latency_ms = 1500.0;
         metrics.gpu_utilization_percent = 98.0;
+        drop(metrics);
         self.state.set_health(HealthStatus::Degraded);
     }
 
@@ -203,6 +208,7 @@ impl MockSquirrel {
         metrics.active_models = 3;
         metrics.avg_latency_ms = 250.0;
         metrics.gpu_utilization_percent = 45.0;
+        drop(metrics);
         self.state.set_health(HealthStatus::Healthy);
     }
 }

@@ -158,7 +158,7 @@ pub struct NetworkSecurityConfig {
     /// Allowed IP addresses
     pub allowed_ips: Vec<String>,
     /// Rate limiting configuration
-    /// **CONSOLIDATED**: Now uses CanonicalRateLimitConfig from consolidated_canonical/network
+    /// **CONSOLIDATED**: Now uses `CanonicalRateLimitConfig` from `consolidated_canonical/network`
     pub rate_limiting: CanonicalRateLimitConfig,
 }
 

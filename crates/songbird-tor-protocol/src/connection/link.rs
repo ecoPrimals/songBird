@@ -50,7 +50,8 @@ pub struct TorConnection {
 
 impl TorConnection {
     /// Create new connection (not yet connected)
-    pub fn new(relay: RelayInfo) -> Self {
+    #[must_use]
+    pub const fn new(relay: RelayInfo) -> Self {
         Self {
             state: ConnectionState::Disconnected,
             stream: None,
@@ -60,6 +61,9 @@ impl TorConnection {
     }
 
     /// Connect to the relay and complete the link protocol
+    ///
+    /// # Errors
+    /// Returns error if connection, TLS, or protocol negotiation fails.
     pub async fn connect(&mut self) -> Result<()> {
         let addr: SocketAddr = match self.relay.address {
             std::net::IpAddr::V4(ip) => SocketAddr::new(ip.into(), self.relay.or_port),
@@ -110,7 +114,7 @@ impl TorConnection {
                 Ok(Err(e)) => {
                     // Connection error
                     warn!("Connection error after NETINFO: {}", e);
-                    return Err(Error::Network(format!("Connection error: {}", e)));
+                    return Err(Error::Network(format!("Connection error: {e}")));
                 }
                 Err(_) => {
                     // Timeout is expected - means connection is idle and ready
@@ -135,7 +139,11 @@ impl TorConnection {
 
         // Payload: List of 2-byte version numbers
         let versions_len = SUPPORTED_VERSIONS.len() * 2;
-        buf.extend_from_slice(&(versions_len as u16).to_be_bytes());
+        buf.extend_from_slice(
+            &u16::try_from(versions_len)
+                .map_err(|_| Error::Network("VERSIONS payload too long".to_string()))?
+                .to_be_bytes(),
+        );
 
         for &version in SUPPORTED_VERSIONS {
             buf.extend_from_slice(&version.to_be_bytes());
@@ -144,11 +152,11 @@ impl TorConnection {
         stream
             .write_all(&buf)
             .await
-            .map_err(|e| Error::Network(format!("Failed to send VERSIONS: {}", e)))?;
+            .map_err(|e| Error::Network(format!("Failed to send VERSIONS: {e}")))?;
         stream
             .flush()
             .await
-            .map_err(|e| Error::Network(format!("Failed to flush VERSIONS: {}", e)))?;
+            .map_err(|e| Error::Network(format!("Failed to flush VERSIONS: {e}")))?;
 
         Ok(())
     }
@@ -163,17 +171,17 @@ impl TorConnection {
         stream
             .read_exact(&mut header)
             .await
-            .map_err(|e| Error::Network(format!("Failed to read VERSIONS header: {}", e)))?;
+            .map_err(|e| Error::Network(format!("Failed to read VERSIONS header: {e}")))?;
 
         let circ_id = u16::from_be_bytes([header[0], header[1]]);
         let command = header[2];
         let length = u16::from_be_bytes([header[3], header[4]]) as usize;
 
         if circ_id != 0 {
-            return Err(Error::Protocol(format!("VERSIONS has non-zero CircID: {}", circ_id)));
+            return Err(Error::Protocol(format!("VERSIONS has non-zero CircID: {circ_id}")));
         }
         if command != CellCommand::Versions as u8 {
-            return Err(Error::Protocol(format!("Expected VERSIONS (7), got command {}", command)));
+            return Err(Error::Protocol(format!("Expected VERSIONS (7), got command {command}")));
         }
 
         // Read payload
@@ -181,7 +189,7 @@ impl TorConnection {
         stream
             .read_exact(&mut payload)
             .await
-            .map_err(|e| Error::Network(format!("Failed to read VERSIONS payload: {}", e)))?;
+            .map_err(|e| Error::Network(format!("Failed to read VERSIONS payload: {e}")))?;
 
         // Parse versions
         let server_versions: Vec<u16> = payload
@@ -202,8 +210,7 @@ impl TorConnection {
             *SUPPORTED_VERSIONS.iter().filter(|v| server_versions.contains(v)).max().ok_or_else(
                 || {
                     Error::Protocol(format!(
-                        "No common link protocol version. Server: {:?}, Client: {:?}",
-                        server_versions, SUPPORTED_VERSIONS
+                        "No common link protocol version. Server: {server_versions:?}, Client: {SUPPORTED_VERSIONS:?}"
                     ))
                 },
             )?;
@@ -212,7 +219,7 @@ impl TorConnection {
     }
 
     /// Check if a command is a variable-length cell type
-    fn is_variable_length_cell(command: u8) -> bool {
+    const fn is_variable_length_cell(command: u8) -> bool {
         // Variable-length cell commands (per Tor spec):
         // 7 (VERSIONS), 128 (VPADDING), 129 (CERTS), 130 (AUTH_CHALLENGE), 131 (AUTHENTICATE)
         matches!(command, 7 | 128 | 129 | 130 | 131)
@@ -233,7 +240,7 @@ impl TorConnection {
             stream
                 .read_exact(&mut header)
                 .await
-                .map_err(|e| Error::Network(format!("Failed to read cell header: {}", e)))?;
+                .map_err(|e| Error::Network(format!("Failed to read cell header: {e}")))?;
 
             let circ_id = u32::from_be_bytes([header[0], header[1], header[2], header[3]]);
             let command = header[4];
@@ -241,16 +248,18 @@ impl TorConnection {
             if Self::is_variable_length_cell(command) {
                 // Variable-length cell: read 2-byte length, then payload
                 let mut len_buf = [0u8; 2];
-                stream.read_exact(&mut len_buf).await.map_err(|e| {
-                    Error::Network(format!("Failed to read var cell length: {}", e))
-                })?;
+                stream
+                    .read_exact(&mut len_buf)
+                    .await
+                    .map_err(|e| Error::Network(format!("Failed to read var cell length: {e}")))?;
                 let payload_len = u16::from_be_bytes(len_buf) as usize;
 
                 // Read and discard the payload (we're not processing these for now)
                 let mut payload = vec![0u8; payload_len];
-                stream.read_exact(&mut payload).await.map_err(|e| {
-                    Error::Network(format!("Failed to read var cell payload: {}", e))
-                })?;
+                stream
+                    .read_exact(&mut payload)
+                    .await
+                    .map_err(|e| Error::Network(format!("Failed to read var cell payload: {e}")))?;
 
                 match command {
                     7 => debug!("Received VERSIONS cell ({} bytes)", payload_len),
@@ -264,7 +273,7 @@ impl TorConnection {
                 stream
                     .read_exact(&mut payload)
                     .await
-                    .map_err(|e| Error::Network(format!("Failed to read cell payload: {}", e)))?;
+                    .map_err(|e| Error::Network(format!("Failed to read cell payload: {e}")))?;
 
                 match command {
                     8 => {
@@ -304,7 +313,8 @@ impl TorConnection {
         // Timestamp
         let timestamp = SystemTime::now()
             .duration_since(SystemTime::UNIX_EPOCH)
-            .map(|d| d.as_secs() as u32)
+            .ok()
+            .and_then(|d| u32::try_from(d.as_secs()).ok())
             .unwrap_or(0);
         buf[5..9].copy_from_slice(&timestamp.to_be_bytes());
 
@@ -338,17 +348,20 @@ impl TorConnection {
         stream
             .write_all(&buf)
             .await
-            .map_err(|e| Error::Network(format!("Failed to send NETINFO: {}", e)))?;
+            .map_err(|e| Error::Network(format!("Failed to send NETINFO: {e}")))?;
         stream
             .flush()
             .await
-            .map_err(|e| Error::Network(format!("Failed to flush NETINFO: {}", e)))?;
+            .map_err(|e| Error::Network(format!("Failed to flush NETINFO: {e}")))?;
         debug!("NETINFO cell sent and flushed");
 
         Ok(())
     }
 
     /// Send a cell
+    ///
+    /// # Errors
+    /// Returns error if not connected or I/O fails.
     pub async fn send_cell(&mut self, cell: &Cell) -> Result<()> {
         use tokio::io::AsyncWriteExt;
 
@@ -381,17 +394,17 @@ impl TorConnection {
         stream
             .write_all(&buf)
             .await
-            .map_err(|e| Error::Network(format!("Failed to send cell: {}", e)))?;
-        stream
-            .flush()
-            .await
-            .map_err(|e| Error::Network(format!("Failed to flush stream: {}", e)))?;
+            .map_err(|e| Error::Network(format!("Failed to send cell: {e}")))?;
+        stream.flush().await.map_err(|e| Error::Network(format!("Failed to flush stream: {e}")))?;
         debug!("Cell sent and flushed ({} bytes)", buf.len());
 
         Ok(())
     }
 
     /// Receive a cell with timeout, skipping PADDING cells
+    ///
+    /// # Errors
+    /// Returns error if connection closed, timeout, or parse fails.
     pub async fn recv_cell(&mut self) -> Result<Cell> {
         use std::time::Duration;
         use tokio::io::AsyncReadExt;
@@ -420,8 +433,7 @@ impl TorConnection {
                         Ok(Ok(_)) => {}
                         Ok(Err(e)) => {
                             return Err(Error::Network(format!(
-                                "Failed to read rest of header: {}",
-                                e
+                                "Failed to read rest of header: {e}"
                             )))
                         }
                         Err(_) => return Err(Error::Network("Header read timed out".to_string())),
@@ -431,7 +443,7 @@ impl TorConnection {
                     debug!("Read {} bytes for header: {:02x?}", n, &header[..5]);
                 }
                 Ok(Err(e)) => {
-                    return Err(Error::Network(format!("Failed to read cell header: {}", e)));
+                    return Err(Error::Network(format!("Failed to read cell header: {e}")));
                 }
                 Err(_) => {
                     warn!("Cell read timed out after 30s - no response from relay");
@@ -447,7 +459,7 @@ impl TorConnection {
                 Ok(Ok(_)) => {}
                 Ok(Err(e)) => {
                     warn!("Got header {:02x?} but failed to read payload: {}", &buf[..5], e);
-                    return Err(Error::Network(format!("Failed to read cell payload: {}", e)));
+                    return Err(Error::Network(format!("Failed to read cell payload: {e}")));
                 }
                 Err(_) => {
                     warn!("Got header {:02x?} but payload read timed out", &buf[..5]);
@@ -472,7 +484,8 @@ impl TorConnection {
     }
 
     /// Get connection state
-    pub fn state(&self) -> ConnectionState {
+    #[must_use]
+    pub const fn state(&self) -> ConnectionState {
         self.state
     }
 

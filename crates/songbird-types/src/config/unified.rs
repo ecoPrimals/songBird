@@ -106,7 +106,7 @@ impl UnifiedSongbirdConfig {
                 "/var/lib/songbird".to_string()
             } else {
                 let home = env.get("HOME").map_or("/tmp", String::as_str);
-                format!("{}/.local/share/songbird", home)
+                format!("{home}/.local/share/songbird")
             }
         })
     }
@@ -118,7 +118,10 @@ impl UnifiedSongbirdConfig {
             if self.is_production() {
                 "/var/lib/songbird".to_string()
             } else {
-                format!("{}/.local/share/songbird", SafeEnv::get_or_default("HOME", "/tmp"))
+                format!(
+                    "{home}/.local/share/songbird",
+                    home = SafeEnv::get_or_default("HOME", "/tmp")
+                )
             }
         })
     }
@@ -134,7 +137,7 @@ impl UnifiedSongbirdConfig {
                 "/etc/songbird".to_string()
             } else {
                 let home = env.get("HOME").map_or("/tmp", String::as_str);
-                format!("{}/.config/songbird", home)
+                format!("{home}/.config/songbird")
             }
         })
     }
@@ -146,7 +149,7 @@ impl UnifiedSongbirdConfig {
             if self.is_production() {
                 "/etc/songbird".to_string()
             } else {
-                format!("{}/.config/songbird", SafeEnv::get_or_default("HOME", "/tmp"))
+                format!("{home}/.config/songbird", home = SafeEnv::get_or_default("HOME", "/tmp"))
             }
         })
     }
@@ -162,7 +165,7 @@ impl UnifiedSongbirdConfig {
                 "/var/cache/songbird".to_string()
             } else {
                 let home = env.get("HOME").map_or("/tmp", String::as_str);
-                format!("{}/.cache/songbird", home)
+                format!("{home}/.cache/songbird")
             }
         })
     }
@@ -174,7 +177,7 @@ impl UnifiedSongbirdConfig {
             if self.is_production() {
                 "/var/cache/songbird".to_string()
             } else {
-                format!("{}/.cache/songbird", SafeEnv::get_or_default("HOME", "/tmp"))
+                format!("{home}/.cache/songbird", home = SafeEnv::get_or_default("HOME", "/tmp"))
             }
         })
     }
@@ -187,7 +190,7 @@ impl UnifiedSongbirdConfig {
                 "/var/log/songbird".to_string()
             } else {
                 let home = env.get("HOME").map_or("/tmp", String::as_str);
-                format!("{}/.local/share/songbird/logs", home)
+                format!("{home}/.local/share/songbird/logs")
             }
         })
     }
@@ -199,7 +202,10 @@ impl UnifiedSongbirdConfig {
             if self.is_production() {
                 "/var/log/songbird".to_string()
             } else {
-                format!("{}/.local/share/songbird/logs", SafeEnv::get_or_default("HOME", "/tmp"))
+                format!(
+                    "{home}/.local/share/songbird/logs",
+                    home = SafeEnv::get_or_default("HOME", "/tmp")
+                )
             }
         })
     }

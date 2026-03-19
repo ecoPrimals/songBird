@@ -23,16 +23,19 @@ pub enum HookErrorHandling {
 
 impl HookErrorHandling {
     /// Check if this strategy allows continuing after errors
+    #[must_use]
     pub const fn allows_continue(&self) -> bool {
         matches!(self, Self::Continue | Self::SkipOnError)
     }
 
     /// Check if this strategy stops on errors
+    #[must_use]
     pub const fn stops_on_error(&self) -> bool {
         matches!(self, Self::StopOnError)
     }
 
     /// Check if this strategy retries errors
+    #[must_use]
     pub const fn retries_on_error(&self) -> bool {
         matches!(self, Self::RetryOnError)
     }

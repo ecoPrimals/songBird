@@ -21,6 +21,10 @@ use std::collections::HashMap;
 ///
 /// **SELF-KNOWLEDGE**: Discovers primals advertising themselves on local network
 /// Uses multicast DNS (Bonjour/Avahi) for zero-configuration discovery
+///
+/// # Errors
+///
+/// Does not return errors; individual backend failures are logged.
 pub async fn discover_from_network() -> Result<Vec<DiscoveredPrimal>, DiscoveryError> {
     debug!("🔍 Discovering primals from local network (mDNS)...");
 
@@ -90,7 +94,7 @@ pub async fn discover_mdns_services() -> Result<Vec<DiscoveredPrimal>, Discovery
             }
             Err(e) => {
                 debug!("❌ mDNS discovery failed: {}", e);
-                Err(DiscoveryError::NetworkError(format!("mDNS query failed: {}", e)))
+                Err(DiscoveryError::NetworkError(format!("mDNS query failed: {e}")))
             }
         }
     }
@@ -131,7 +135,7 @@ async fn query_mdns_services(
     Ok(discovered)
 }
 
-/// Parse mDNS response into DiscoveredPrimal
+/// Parse mDNS response into `DiscoveredPrimal`
 ///
 /// **Self-Knowledge Pattern**: Extracts capability advertisement from mDNS TXT records
 /// Each primal advertises its own capabilities - no central registry needed
@@ -142,7 +146,7 @@ async fn query_mdns_services(
 /// - Service name from PTR records
 /// - Host and port from SRV records  
 /// - Capabilities from TXT records (key=value format)
-/// - Infers PrimalType from advertised capabilities
+/// - Infers `PrimalType` from advertised capabilities
 ///
 /// # TXT Record Format
 ///
@@ -170,23 +174,23 @@ fn parse_mdns_response(
         capabilities_str.split(',').filter_map(|s| Capability::from_string(s.trim())).collect();
 
     // Infer primal type from capabilities or explicit field
-    let primal_type = if let Some(explicit_type) = records.get("primal_type") {
-        PrimalType::new(explicit_type)
-    } else {
-        // Infer from capabilities
-        // Use capability type as the primal type (capability-first)
-        if capabilities.iter().any(|c| c.capability_type == "compute") {
-            PrimalType::new("compute")
-        } else if capabilities.iter().any(|c| c.capability_type == "security") {
-            PrimalType::new("security")
-        } else if capabilities.iter().any(|c| c.capability_type == "storage") {
-            PrimalType::new("storage")
-        } else if capabilities.iter().any(|c| c.capability_type == "gateway") {
-            PrimalType::new("gateway")
-        } else {
-            PrimalType::default()
-        }
-    };
+    let primal_type = records.get("primal_type").map_or_else(
+        || {
+            // Infer from capabilities
+            if capabilities.iter().any(|c| c.capability_type == "compute") {
+                PrimalType::new("compute")
+            } else if capabilities.iter().any(|c| c.capability_type == "security") {
+                PrimalType::new("security")
+            } else if capabilities.iter().any(|c| c.capability_type == "storage") {
+                PrimalType::new("storage")
+            } else if capabilities.iter().any(|c| c.capability_type == "gateway") {
+                PrimalType::new("gateway")
+            } else {
+                PrimalType::default()
+            }
+        },
+        |explicit_type| PrimalType::new(explicit_type),
+    );
 
     Some(DiscoveredPrimal {
         name: service_name.to_string(),
@@ -202,6 +206,10 @@ fn parse_mdns_response(
 /// Discover services using DNS-SD (DNS Service Discovery)
 ///
 /// COMPLETE IMPLEMENTATION using hickory-resolver (formerly trust-dns)
+///
+/// # Errors
+///
+/// Returns an error if DNS-SD support is not enabled.
 #[allow(clippy::unused_async)] // async used when dns-sd feature is enabled
 pub async fn discover_dns_sd_services() -> Result<Vec<DiscoveredPrimal>, DiscoveryError> {
     #[cfg(feature = "dns-sd")]
@@ -225,7 +233,7 @@ pub async fn discover_dns_sd_services() -> Result<Vec<DiscoveredPrimal>, Discove
             vec!["orchestration", "discovery", "storage", "compute", "security", "ai"];
 
         for capability in capabilities {
-            let service_name = format!("_{}._tcp.{}", capability, service_domain);
+            let service_name = format!("_{capability}._tcp.{service_domain}");
 
             match resolver.srv_lookup(&service_name).await {
                 Ok(srv_lookup) => {
@@ -268,12 +276,12 @@ async fn resolve_srv_to_primal(
     let port = srv.port();
 
     // Resolve target to IP
-    let host = match resolver.lookup_ip(&target).await {
-        Ok(ips) => {
+    let host = resolver.lookup_ip(&target).await.map_or_else(
+        |_| target.clone(),
+        |ips| {
             ips.iter().next().map_or_else(|| target.clone(), |ip: std::net::IpAddr| ip.to_string())
-        }
-        Err(_) => target.clone(),
-    };
+        },
+    );
 
     // Convert capability string to Capability enum
     let capabilities = Capability::from_string(capability).map(|c| vec![c]).unwrap_or_default();
@@ -283,7 +291,7 @@ async fn resolve_srv_to_primal(
     let primal_type = PrimalType::new(capability);
 
     // Construct endpoint
-    let endpoint = format!("http://{}:{}", host, port);
+    let endpoint = format!("http://{host}:{port}");
 
     Some(DiscoveredPrimal {
         name: target.clone(),

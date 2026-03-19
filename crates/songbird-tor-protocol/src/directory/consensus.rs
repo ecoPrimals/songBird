@@ -27,6 +27,9 @@ impl Consensus {
     /// Fetch consensus from directory authorities
     ///
     /// Tries multiple authorities until successful.
+    ///
+    /// # Errors
+    /// Returns error if all authorities fail or consensus parse fails.
     pub async fn fetch(beardog: &BeardogCryptoClient) -> Result<Self> {
         info!("Fetching Tor network consensus");
 
@@ -49,7 +52,6 @@ impl Consensus {
                         error = %e,
                         "Failed to fetch from authority, trying next"
                     );
-                    continue;
                 }
             }
         }
@@ -106,7 +108,7 @@ impl Consensus {
     /// Parse a timestamp line from the consensus document
     ///
     /// Looks for lines like: `valid-after 2026-02-08 12:00:00`
-    /// Parses the date/time and converts to SystemTime.
+    /// Parses the date/time and converts to `SystemTime`.
     fn parse_timestamp(data: &str, keyword: &str) -> Option<SystemTime> {
         for line in data.lines() {
             if let Some(rest) = line.strip_prefix(keyword) {
@@ -121,6 +123,9 @@ impl Consensus {
     }
 
     /// Select a circuit path (guard -> middle -> exit/hsdir)
+    ///
+    /// # Errors
+    /// Returns error if not enough relays or no suitable path found.
     pub fn select_path(&self) -> Result<CircuitPath> {
         // TODO Phase 2A: Implement intelligent relay selection
 
@@ -165,11 +170,15 @@ impl Consensus {
     }
 
     /// Check if consensus is still fresh
+    #[must_use]
+
     pub fn is_fresh(&self) -> bool {
         SystemTime::now() < self.fresh_until
     }
 
     /// Check if consensus is still valid
+    #[must_use]
+
     pub fn is_valid(&self) -> bool {
         SystemTime::now() < self.valid_until
     }
@@ -177,12 +186,16 @@ impl Consensus {
     /// Fetch ntor key for a relay from its descriptor
     ///
     /// Returns the 32-byte ntor-onion-key if found.
+    ///
+    /// # Errors
+    /// Returns error if descriptor fetch or parse fails.
     pub async fn fetch_relay_ntor_key(relay: &RelayInfo) -> Result<[u8; 32]> {
         // Use STANDARD_NO_PAD since Tor omits base64 padding
         use base64::{engine::general_purpose::STANDARD_NO_PAD as BASE64, Engine};
 
         // Convert fingerprint to hex
-        let fp_hex: String = relay.fingerprint.iter().map(|b| format!("{:02X}", b)).collect();
+        let fp_hex: String =
+            relay.fingerprint.iter().fold(String::new(), |s, b| format!("{s}{b:02X}"));
 
         // Directory authorities that serve descriptors (DirPort)
         // moria1 (MIT) is reliable and responds quickly
@@ -194,8 +207,8 @@ impl Consensus {
 
         let mut last_error = None;
 
-        for (host, port) in dir_servers.iter() {
-            let url = format!("http://{}:{}/tor/server/fp/{}", host, port, fp_hex);
+        for (host, port) in &dir_servers {
+            let url = format!("http://{host}:{port}/tor/server/fp/{fp_hex}");
             debug!("Trying directory server {}:{} for {}", host, port, relay.nickname);
 
             match http_fetch::get(&url, Duration::from_secs(10)).await {
@@ -225,7 +238,7 @@ impl Consensus {
                                     ));
                                 }
                                 Err(e) => {
-                                    last_error = Some(format!("Failed to decode ntor key: {}", e));
+                                    last_error = Some(format!("Failed to decode ntor key: {e}"));
                                 }
                             }
                         }
@@ -239,7 +252,7 @@ impl Consensus {
                 }
                 Err(e) => {
                     debug!("Request to {}:{} failed: {}", host, port, e);
-                    last_error = Some(format!("Request failed: {}", e));
+                    last_error = Some(format!("Request failed: {e}"));
                 }
             }
         }
@@ -254,6 +267,9 @@ impl Consensus {
     /// Fetch ntor keys for path relays
     ///
     /// Updates the path with ntor keys fetched from relay descriptors.
+    ///
+    /// # Errors
+    /// Returns error if guard ntor key cannot be fetched.
     pub async fn fetch_path_ntor_keys(path: &mut CircuitPath) -> Result<()> {
         info!("Fetching ntor keys for circuit path");
 
@@ -294,6 +310,9 @@ impl Consensus {
 ///
 /// Returns None if the format is invalid.
 fn parse_datetime_to_unix(s: &str) -> Option<u64> {
+    // Days before each month (non-leap year)
+    const DAYS_BEFORE_MONTH: [u64; 13] = [0, 0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334];
+
     // Expected: "2026-02-08 12:00:00"
     let parts: Vec<&str> = s.split_whitespace().collect();
     if parts.len() != 2 {
@@ -324,9 +343,6 @@ fn parse_datetime_to_unix(s: &str) -> Option<u64> {
         return None;
     }
 
-    // Days before each month (non-leap year)
-    const DAYS_BEFORE_MONTH: [u64; 13] = [0, 0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334];
-
     // Calculate days from epoch (1970-01-01)
     let mut days: u64 = 0;
 
@@ -340,7 +356,7 @@ fn parse_datetime_to_unix(s: &str) -> Option<u64> {
     }
 
     // Months
-    days += DAYS_BEFORE_MONTH[month as usize];
+    days += DAYS_BEFORE_MONTH[usize::try_from(month).unwrap_or(0)];
     if month > 2 && is_leap_year(year) {
         days += 1;
     }
@@ -352,7 +368,7 @@ fn parse_datetime_to_unix(s: &str) -> Option<u64> {
 }
 
 /// Check if a year is a leap year
-fn is_leap_year(year: u64) -> bool {
+const fn is_leap_year(year: u64) -> bool {
     (year.is_multiple_of(4) && !year.is_multiple_of(100)) || year.is_multiple_of(400)
 }
 

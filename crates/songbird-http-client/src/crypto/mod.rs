@@ -1,13 +1,13 @@
 //! Cryptographic Capability Module
 //!
 //! Provides agnostic cryptographic operations for TLS 1.3.
-//! Abstracts the underlying provider (BearDog, etc.) enabling
+//! Abstracts the underlying provider (`BearDog`, etc.) enabling
 //! runtime discovery and capability-based communication.
 //!
 //! ## Architecture
 //!
 //! - **`CryptoCapability`**: Trait defining all crypto operations
-//! - **`BearDogProvider`**: Implementation using BearDog via JSON-RPC
+//! - **`BearDogProvider`**: Implementation using `BearDog` via JSON-RPC
 //! - **`discover()`**: Runtime provider discovery
 //!
 //! ## Usage
@@ -18,7 +18,7 @@
 //! // Automatic discovery
 //! let crypto = discover_crypto_capability().await?;
 //!
-//! // Or explicit BearDog
+//! // Or explicit `BearDog`
 //! let crypto = BearDogProvider::new("/tmp/beardog.sock");
 //! ```
 

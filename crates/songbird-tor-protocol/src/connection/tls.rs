@@ -1,6 +1,6 @@
 //! TLS connector for Tor relay connections
 //!
-//! Uses songbird-tls (pure Rust, BearDog crypto delegation) instead of
+//! Uses songbird-tls (pure Rust, `BearDog` crypto delegation) instead of
 //! rustls+ring. Tor relays use self-signed certs — trust is established
 //! via the Ed25519 identity in the Tor handshake, not TLS PKI.
 //!
@@ -41,7 +41,10 @@ pub enum RelayStream {
 
 impl TlsConnector {
     /// Create new TLS connector
-    pub fn new() -> Result<Self> {
+    ///
+    /// # Errors
+    /// Returns error if connector cannot be created.
+    pub const fn new() -> Result<Self> {
         Ok(Self)
     }
 
@@ -50,19 +53,22 @@ impl TlsConnector {
     /// Establishes a TCP connection to the relay. The Tor link protocol
     /// handles authentication and encryption via ntor handshake with
     /// BearDog-delegated crypto — no TLS PKI needed.
+    ///
+    /// # Errors
+    /// Returns error if connection times out or fails.
     pub async fn connect(&self, addr: SocketAddr) -> Result<TcpStream> {
         debug!("Starting TCP connection to {}", addr);
 
         // Create TCP connection with timeout
         let stream = timeout(CONNECT_TIMEOUT, TcpStream::connect(addr))
             .await
-            .map_err(|_| Error::Network(format!("TCP connection to {} timed out", addr)))?
-            .map_err(|e| Error::Network(format!("Failed to connect to {}: {}", addr, e)))?;
+            .map_err(|_| Error::Network(format!("TCP connection to {addr} timed out")))?
+            .map_err(|e| Error::Network(format!("Failed to connect to {addr}: {e}")))?;
 
         // Disable Nagle's algorithm for lower latency
         stream
             .set_nodelay(true)
-            .map_err(|e| Error::Network(format!("Failed to set TCP_NODELAY: {}", e)))?;
+            .map_err(|e| Error::Network(format!("Failed to set TCP_NODELAY: {e}")))?;
 
         info!("Connected to Tor relay at {}", addr);
         Ok(stream)

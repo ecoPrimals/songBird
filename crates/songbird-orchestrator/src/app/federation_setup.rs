@@ -15,7 +15,7 @@
 //! ## Modern Rust Patterns
 //!
 //! This module follows modern Rust practices:
-//! - Dependency injection via FederationOptions
+//! - Dependency injection via `FederationOptions`
 //! - Builder pattern for test fixtures
 //! - Zero global state coupling
 //! - Fully concurrent and async-safe
@@ -54,6 +54,7 @@ pub struct FederationOptions {
 
 impl FederationOptions {
     /// Create options from environment variables (production use)
+    #[must_use]
     pub fn from_env() -> Self {
         Self::default() // All None = read from env
     }
@@ -186,7 +187,7 @@ pub async fn setup_federation(
     let self_registration = NodeRegistration {
         node_id: node_identity.node_id.to_string(),
         node_name: node_identity.node_name.clone(),
-        node_address: format!("{}:{}", node_address, port),
+        node_address: format!("{node_address}:{port}"),
         endpoints: None, // Will be populated in start() after we know the actual port
         capabilities: vec!["orchestrator".to_string()],
         cpu_cores: num_cpus::get(),

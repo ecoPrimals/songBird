@@ -35,7 +35,7 @@ impl<'a> OptimizedPrimalId<'a> {
 
     /// Create from static string (zero allocation)
     #[must_use]
-    pub fn from_static(
+    pub const fn from_static(
         primal_type: CanonicalPrimalType,
         instance_id: &'static str,
         health_status: CanonicalHealthStatus,
@@ -183,19 +183,19 @@ impl OptimizedCapabilities {
     }
 
     /// Add security capability
-    pub fn with_security(&mut self) -> &mut Self {
+    pub const fn with_security(&mut self) -> &mut Self {
         self.security = true;
         self
     }
 
     /// Add storage capability
-    pub fn with_storage(&mut self) -> &mut Self {
+    pub const fn with_storage(&mut self) -> &mut Self {
         self.storage = true;
         self
     }
 
     /// Add compute capability
-    pub fn with_compute(&mut self) -> &mut Self {
+    pub const fn with_compute(&mut self) -> &mut Self {
         self.compute = true;
         self
     }

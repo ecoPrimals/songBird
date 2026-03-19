@@ -483,11 +483,11 @@ pub struct FederationConfig {
     pub discovery_mode: Option<DiscoveryMode>,
 }
 
-fn default_heartbeat_interval() -> u64 {
+const fn default_heartbeat_interval() -> u64 {
     30
 }
 
-fn default_node_timeout() -> i64 {
+const fn default_node_timeout() -> i64 {
     60
 }
 

@@ -49,7 +49,7 @@ impl TrustLevel {
 
     /// Get a human-readable description of this trust level
     #[must_use]
-    pub fn description(&self) -> &'static str {
+    pub const fn description(&self) -> &'static str {
         match self {
             Self::Anonymous => "Anonymous (discovery only)",
             Self::CapabilityVerified => "Capability-Verified (task coordination)",

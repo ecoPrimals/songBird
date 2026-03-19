@@ -332,7 +332,7 @@ impl Default for UdpProtocolHandler {
 
 impl UdpProtocolHandler {
     #[must_use]
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self
     }
 }
@@ -369,7 +369,7 @@ impl Default for TcpProtocolHandler {
 
 impl TcpProtocolHandler {
     #[must_use]
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self
     }
 }
@@ -406,7 +406,7 @@ impl Default for IpxProtocolHandler {
 
 impl IpxProtocolHandler {
     #[must_use]
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self
     }
 }
@@ -443,7 +443,7 @@ impl Default for DirectPlayProtocolHandler {
 
 impl DirectPlayProtocolHandler {
     #[must_use]
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self
     }
 }
@@ -480,7 +480,7 @@ impl Default for NetBiosProtocolHandler {
 
 impl NetBiosProtocolHandler {
     #[must_use]
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self
     }
 }

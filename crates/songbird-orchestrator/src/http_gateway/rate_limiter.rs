@@ -6,7 +6,7 @@
 //!
 //! - Token bucket algorithm (industry standard)
 //! - Per-client rate limiting (fair resource allocation)
-//! - Non-blocking async (tokio::sync::RwLock)
+//! - Non-blocking async (`tokio::sync::RwLock`)
 //! - Automatic token refill (time-based)
 //!
 //! ## Performance
@@ -89,7 +89,7 @@ impl TokenBucket {
 /// Rate limiter with per-client token buckets
 ///
 /// **Philosophy**:
-/// - Modern idiomatic Rust: async/await, RwLock
+/// - Modern idiomatic Rust: async/await, `RwLock`
 /// - Fast AND safe: non-blocking, thread-safe
 /// - Zero hardcoding: configurable limits
 #[derive(Clone)]
@@ -138,7 +138,7 @@ impl RateLimiter {
     /// * `Err(...)` if rate limit exceeded
     ///
     /// # Philosophy
-    /// - Non-blocking: Uses tokio::sync::RwLock
+    /// - Non-blocking: Uses `tokio::sync::RwLock`
     /// - Fair: Per-client limits
     /// - Automatic: Token refill
     pub async fn check(&self, client_id: &str) -> Result<()> {
@@ -156,9 +156,7 @@ impl RateLimiter {
         } else {
             let available = bucket.available_tokens();
             Err(anyhow!(
-                "Rate limit exceeded for client '{}': {:.2} tokens available",
-                client_id,
-                available
+                "Rate limit exceeded for client '{client_id}': {available:.2} tokens available"
             ))
         }
     }

@@ -73,6 +73,7 @@ impl Default for RoleCapabilityMap {
 }
 
 impl RoleCapabilityMap {
+    #[must_use]
     pub fn new() -> Self {
         let mut mappings = std::collections::HashMap::new();
 
@@ -142,6 +143,7 @@ impl RoleCapabilityMap {
         }
     }
 
+    #[must_use]
     pub fn get_capabilities(&self, role: &Role) -> Vec<Capability> {
         // Match by role type, ignoring specific IDs
         let role_key = match role {
@@ -191,7 +193,8 @@ impl Default for InformationLayerBuilder {
 }
 
 impl InformationLayerBuilder {
-    pub fn new() -> Self {
+    #[must_use]
+    pub const fn new() -> Self {
         Self
     }
 
@@ -208,7 +211,8 @@ impl Default for AuditLog {
 }
 
 impl AuditLog {
-    pub fn new() -> Self {
+    #[must_use]
+    pub const fn new() -> Self {
         Self
     }
 
@@ -232,6 +236,7 @@ pub struct AuditEntry {
 }
 
 impl AccessControl {
+    #[must_use]
     pub fn new(mode: AuthMode) -> Self {
         Self {
             token_validator: Arc::new(TokenValidator::new()),

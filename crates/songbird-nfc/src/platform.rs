@@ -26,6 +26,10 @@ impl std::fmt::Debug for NfcDevice {
 
 impl NfcDevice {
     /// Create new NFC device
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the platform backend cannot be created.
     pub fn new(timeout: Duration) -> Result<Self> {
         let backend = Self::create_platform_backend()?;
 
@@ -36,36 +40,60 @@ impl NfcDevice {
     }
 
     /// Connect to peer device
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if connection fails or times out.
     pub async fn connect(&mut self) -> Result<()> {
         info!("Connecting to NFC peer");
         self.backend.connect(self.timeout).await
     }
 
     /// Disconnect from peer
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if disconnection fails.
     pub async fn disconnect(&mut self) -> Result<()> {
         info!("Disconnecting from NFC peer");
         self.backend.disconnect().await
     }
 
     /// Send raw bytes
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the send operation fails.
     pub async fn send_raw(&mut self, data: &[u8]) -> Result<()> {
         debug!("Sending {} bytes", data.len());
         self.backend.send(data).await
     }
 
     /// Receive raw bytes
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if receive fails or times out.
     pub async fn receive_raw(&mut self, expected_len: usize) -> Result<Vec<u8>> {
         debug!("Receiving {} bytes", expected_len);
         self.backend.receive(expected_len).await
     }
 
     /// Send NFC message
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if serialization or send fails.
     pub async fn send_message(&mut self, message: &NfcMessage) -> Result<()> {
         let bytes = message.to_bytes()?;
         self.send_raw(&bytes).await
     }
 
     /// Receive NFC message
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if receive or deserialization fails.
     pub async fn receive_message(&mut self) -> Result<NfcMessage> {
         // First receive header to get payload length
         let header = self.receive_raw(crate::HEADER_SIZE).await?;
@@ -193,7 +221,7 @@ struct LinuxNfcBackend;
 #[cfg(target_os = "linux")]
 impl LinuxNfcBackend {
     #[allow(clippy::unnecessary_wraps)] // Result kept for consistency with other platform backends
-    fn new() -> Result<Self> {
+    const fn new() -> Result<Self> {
         // TODO: Initialize libnfc
         Ok(Self)
     }

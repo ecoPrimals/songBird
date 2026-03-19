@@ -38,10 +38,10 @@ use tracing::{debug, error, info};
 /// Build a Finished handshake message
 ///
 /// # Arguments
-/// * `verify_data` - The computed verify_data from HMAC(finished_key, transcript_hash)
+/// * `verify_data` - The computed `verify_data` from `HMAC(finished_key`, `transcript_hash`)
 ///
 /// # Returns
-/// * Complete Finished handshake message (type + length + verify_data)
+/// * Complete Finished handshake message (type + length + `verify_data`)
 ///
 /// # Example
 /// ```rust,ignore
@@ -83,13 +83,13 @@ pub fn build_finished_message(verify_data: &[u8]) -> Result<Vec<u8>> {
     Ok(finished_msg)
 }
 
-/// Parse a Finished handshake message and extract verify_data
+/// Parse a Finished handshake message and extract `verify_data`
 ///
 /// # Arguments
 /// * `data` - Complete handshake message (including type + length header)
 ///
 /// # Returns
-/// * `Ok(Vec<u8>)` - The extracted verify_data
+/// * `Ok(Vec<u8>)` - The extracted `verify_data`
 /// * `Err` - If parsing fails or validation fails
 ///
 /// # Example
@@ -119,8 +119,7 @@ pub fn parse_finished_message(data: &[u8]) -> Result<Vec<u8>> {
     // Validate length
     if length != 32 && length != 48 {
         return Err(Error::TlsHandshake(format!(
-            "Invalid Finished verify_data length: {} bytes (expected 32 or 48)",
-            length
+            "Invalid Finished verify_data length: {length} bytes (expected 32 or 48)"
         )));
     }
 
@@ -141,18 +140,18 @@ pub fn parse_finished_message(data: &[u8]) -> Result<Vec<u8>> {
     Ok(verify_data)
 }
 
-/// Validate verify_data against expected value
+/// Validate `verify_data` against expected value
 ///
 /// This is used by the receiving party to verify that the sender
 /// computed the correct Finished message.
 ///
 /// # Arguments
-/// * `received` - The verify_data from the received Finished message
-/// * `expected` - The verify_data computed locally
+/// * `received` - The `verify_data` from the received Finished message
+/// * `expected` - The `verify_data` computed locally
 ///
 /// # Returns
-/// * `Ok(())` - If verify_data matches
-/// * `Err` - If verify_data doesn't match (handshake failure)
+/// * `Ok(())` - If `verify_data` matches
+/// * `Err` - If `verify_data` doesn't match (handshake failure)
 pub fn validate_verify_data(received: &[u8], expected: &[u8]) -> Result<()> {
     if received.len() != expected.len() {
         error!(
@@ -184,16 +183,16 @@ pub fn validate_verify_data(received: &[u8], expected: &[u8]) -> Result<()> {
     Ok(())
 }
 
-/// Add ContentType byte for TLS 1.3 encryption
+/// Add `ContentType` byte for TLS 1.3 encryption
 ///
-/// In TLS 1.3, the ContentType (0x16 = Handshake) is encrypted as part of the payload.
+/// In TLS 1.3, the `ContentType` (0x16 = Handshake) is encrypted as part of the payload.
 /// This function prepares the Finished message for encryption.
 ///
 /// # Arguments
 /// * `finished_msg` - The Finished handshake message
 ///
 /// # Returns
-/// * Plaintext ready for AEAD encryption (Finished + ContentType byte)
+/// * Plaintext ready for AEAD encryption (Finished + `ContentType` byte)
 pub fn prepare_for_encryption(finished_msg: &[u8]) -> Vec<u8> {
     let mut plaintext = finished_msg.to_vec();
     plaintext.push(0x16); // ContentType: Handshake

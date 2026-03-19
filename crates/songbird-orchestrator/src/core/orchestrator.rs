@@ -32,7 +32,7 @@ impl Default for CoreOrchestrator {
 
 impl CoreOrchestrator {
     #[must_use]
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self
     }
 }

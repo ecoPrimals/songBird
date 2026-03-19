@@ -64,7 +64,7 @@ pub struct Orchestrator {
 impl Orchestrator {
     /// Create a new orchestrator wrapper
     #[must_use]
-    pub fn new(config: CanonicalSongbirdConfig) -> Self {
+    pub const fn new(config: CanonicalSongbirdConfig) -> Self {
         Self {
             _config: config,
         }
@@ -72,7 +72,7 @@ impl Orchestrator {
 
     /// Start the orchestrator (convenience method)
     ///
-    /// v3.18.2: Updated for new start_orchestrator signature
+    /// v3.18.2: Updated for new `start_orchestrator` signature
     pub async fn run(self) -> Result<()> {
         let _orchestrator = start_orchestrator(self._config).await?;
 

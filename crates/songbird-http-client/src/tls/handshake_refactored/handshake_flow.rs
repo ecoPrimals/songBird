@@ -7,9 +7,9 @@
 //!
 //! 1. Generate client keypair (X25519)
 //! 2. Generate client random (32 bytes)
-//! 3. Send ClientHello
-//! 4. Receive ServerHello
-//! 5. Parse ServerHello
+//! 3. Send `ClientHello`
+//! 4. Receive `ServerHello`
+//! 5. Parse `ServerHello`
 //! 6. Perform ECDH key agreement
 //! 7. Compute transcript hash for handshake key derivation
 //! 8. Derive handshake traffic keys
@@ -41,7 +41,7 @@ impl TlsHandshake {
     /// Execute the complete TLS 1.3 handshake
     ///
     /// Orchestrates all 13 steps of the TLS 1.3 handshake, delegating
-    /// cryptographic operations to BearDog via the crypto capability.
+    /// cryptographic operations to `BearDog` via the crypto capability.
     ///
     /// # Errors
     ///
@@ -169,7 +169,7 @@ impl TlsHandshake {
         })
     }
 
-    /// Add ClientHello to transcript (strip 5-byte TLS record header per RFC 8446)
+    /// Add `ClientHello` to transcript (strip 5-byte TLS record header per RFC 8446)
     fn add_client_hello_to_transcript(&mut self, client_hello: &[u8]) {
         if client_hello.len() > 5 {
             let handshake_message = &client_hello[5..];
@@ -180,7 +180,7 @@ impl TlsHandshake {
         }
     }
 
-    /// Add ServerHello to transcript (already stripped of TLS record header by read_record)
+    /// Add `ServerHello` to transcript (already stripped of TLS record header by `read_record`)
     fn add_server_hello_to_transcript(&mut self, server_hello: &[u8]) {
         self.update_transcript_with_logging(server_hello, "ServerHello", false);
         debug!(
@@ -190,8 +190,8 @@ impl TlsHandshake {
         );
     }
 
-    /// Receive and validate ServerHello with timeout
-    async fn receive_server_hello(&mut self, stream: &mut TcpStream) -> Result<Vec<u8>> {
+    /// Receive and validate `ServerHello` with timeout
+    async fn receive_server_hello(&self, stream: &mut TcpStream) -> Result<Vec<u8>> {
         info!("📥 Waiting for ServerHello");
         let (server_hello_type, server_hello) =
             timeout(Duration::from_secs(10), self.read_record(stream))
@@ -216,8 +216,7 @@ impl TlsHandshake {
                 _ => "Unknown record type",
             };
             return Err(Error::TlsHandshake(format!(
-                "Expected Handshake (0x16), got 0x{:02x} ({})",
-                server_hello_type, type_hint
+                "Expected Handshake (0x16), got 0x{server_hello_type:02x} ({type_hint})"
             )));
         }
 
@@ -244,13 +243,13 @@ impl TlsHandshake {
                     alert.description.suggested_action()
                 ))
             }
-            Err(e) => Error::TlsHandshake(format!("Server sent TLS alert, parse failed: {}", e)),
+            Err(e) => Error::TlsHandshake(format!("Server sent TLS alert, parse failed: {e}")),
         }
     }
 
     /// Read and decrypt encrypted handshake messages (Step 9)
     ///
-    /// Reads EncryptedExtensions, Certificate, CertificateVerify, and Finished
+    /// Reads `EncryptedExtensions`, Certificate, `CertificateVerify`, and Finished
     /// from the server, decrypting each and adding plaintext to the transcript.
     async fn read_encrypted_handshake_messages(
         &mut self,
@@ -331,8 +330,7 @@ impl TlsHandshake {
                         break;
                     }
                     return Err(Error::TlsHandshake(format!(
-                        "Timeout reading handshake messages (got {}/3+)",
-                        messages_read
+                        "Timeout reading handshake messages (got {messages_read}/3+)"
                     )));
                 }
             }
@@ -366,7 +364,7 @@ impl TlsHandshake {
     }
 
     /// Get human-readable hash algorithm name from hash length
-    fn hash_algorithm_name(hash: &[u8]) -> &'static str {
+    const fn hash_algorithm_name(hash: &[u8]) -> &'static str {
         if hash.len() == 32 {
             "SHA-256"
         } else {
@@ -374,7 +372,7 @@ impl TlsHandshake {
         }
     }
 
-    /// Build ClientHello message
+    /// Build `ClientHello` message
     pub(crate) fn build_client_hello(
         &self,
         client_random: &[u8],

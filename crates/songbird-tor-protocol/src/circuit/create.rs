@@ -7,14 +7,15 @@ use crate::error::{Error, Result};
 
 /// ntor handshake protocol for circuit creation
 ///
-/// **TRUE PRIMAL**: All crypto operations delegated to BearDog.
+/// **TRUE PRIMAL**: All crypto operations delegated to `BearDog`.
 pub struct NtorHandshake {
     beardog: BeardogCryptoClient,
 }
 
 impl NtorHandshake {
     /// Create new ntor handshake handler
-    pub fn new(beardog: BeardogCryptoClient) -> Self {
+    #[must_use]
+    pub const fn new(beardog: BeardogCryptoClient) -> Self {
         Self {
             beardog,
         }
@@ -28,7 +29,10 @@ impl NtorHandshake {
     ///
     /// # Returns
     /// * CREATE2 payload (84 bytes: 20 + 32 + 32)
-    /// * HandshakeState for processing CREATED2 response
+    /// * `HandshakeState` for processing CREATED2 response
+    ///
+    /// # Errors
+    /// Returns error if `BearDog` crypto operations fail.
     pub fn create_handshake(
         &self,
         node_id: &[u8; 20],
@@ -66,9 +70,12 @@ impl NtorHandshake {
     ///
     /// # Returns
     /// * Key material for circuit encryption
+    ///
+    /// # Errors
+    /// Returns error if response is invalid or auth verification fails.
     pub fn complete_handshake(
         &self,
-        state: HandshakeState,
+        state: &HandshakeState,
         response: &[u8],
     ) -> Result<KeyMaterial> {
         // Validate response length
@@ -145,12 +152,12 @@ impl NtorHandshake {
         self.derive_circuit_keys(&key_seed)
     }
 
-    /// Derive circuit keys from KEY_SEED using Tor's HKDF-like expansion
+    /// Derive circuit keys from `KEY_SEED` using Tor's HKDF-like expansion
     ///
     /// Per Tor spec, uses HMAC-SHA256 based expansion:
-    ///   K = K_1 | K_2 | K_3 | ...
-    ///   K_1 = H(m_expand | INT8(1), KEY_SEED)
-    ///   K_i = H(K_{i-1} | m_expand | INT8(i), KEY_SEED)
+    ///   K = `K_1` | `K_2` | `K_3` | ...
+    ///   `K_1` = H(`m_expand` | INT8(1), `KEY_SEED`)
+    ///   `K_i` = H(`K_{i-1}` | `m_expand` | INT8(i), `KEY_SEED`)
     ///
     /// Output (72 bytes):
     /// - Df (20 bytes): forward digest seed

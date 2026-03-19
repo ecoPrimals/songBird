@@ -1,7 +1,7 @@
 //! Universal Trust Evaluation API
 //!
 //! Generic, provider-agnostic API for trust evaluation across any security provider.
-//! Works with security provider, ToadStool, hardware HSMs, and future cryptographic systems.
+//! Works with security provider, `ToadStool`, hardware HSMs, and future cryptographic systems.
 
 use serde::{Deserialize, Serialize};
 use serde_json::Value as JsonValue;
@@ -40,7 +40,7 @@ pub struct IdentityAttestation {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub provider: Option<String>,
 
-    /// Format of the attestation data (e.g., "tag_list", "x509_certificate", "pgp_key")
+    /// Format of the attestation data (e.g., "`tag_list`", "`x509_certificate`", "`pgp_key`")
     pub format: String,
 
     /// The attestation data itself (format-specific, flexible)
@@ -50,7 +50,7 @@ pub struct IdentityAttestation {
 /// Context about how/when the peer was discovered
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DiscoveryContext {
-    /// How peer was discovered (e.g., "udp_multicast", "mdns", "manual", "registry")
+    /// How peer was discovered (e.g., "`udp_multicast`", "mdns", "manual", "registry")
     pub discovery_method: String,
 
     /// When peer was first seen (ISO8601 timestamp)
@@ -181,6 +181,7 @@ impl IdentityAttestation {
     }
 
     /// Create a tag list attestation (for security provider-style tags)
+    #[must_use]
     pub fn tag_list(tags: Vec<String>) -> Self {
         Self {
             provider: None,
@@ -224,6 +225,7 @@ impl UniversalTrustResponse {
     }
 
     /// Get metadata value
+    #[must_use]
     pub fn get_metadata(&self, key: &str) -> Option<&JsonValue> {
         self.metadata.get(key)
     }

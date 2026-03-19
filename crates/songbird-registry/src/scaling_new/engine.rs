@@ -35,11 +35,8 @@ impl ScalingEngine {
 
     /// Remove a scaling policy for a plugin
     pub async fn remove_policy(&self, plugin_id: &PluginId) {
-        let mut policies = self.policies.write().await;
-        policies.remove(plugin_id);
-
-        let mut instances = self.instances.write().await;
-        instances.remove(plugin_id);
+        self.policies.write().await.remove(plugin_id);
+        self.instances.write().await.remove(plugin_id);
     }
 
     /// Get current instance count for a plugin

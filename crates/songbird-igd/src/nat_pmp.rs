@@ -1,7 +1,7 @@
 //! NAT-PMP (NAT Port Mapping Protocol) implementation — RFC 6886
 //!
-//! Simple binary UDP protocol for routers that support it (Apple AirPort, etc.).
-//! Sends packets to gateway:5351. Much simpler than UPnP.
+//! Simple binary UDP protocol for routers that support it (Apple `AirPort`, etc.).
+//! Sends packets to gateway:5351. Much simpler than `UPnP`.
 
 use crate::error::{IgdError, Result};
 use crate::mapping::Protocol;
@@ -40,7 +40,8 @@ pub struct NatPmpExternalIp {
 
 impl NatPmpClient {
     /// Create NAT-PMP client targeting the given gateway IP
-    pub fn new(gateway_ip: IpAddr) -> Self {
+    #[must_use]
+    pub const fn new(gateway_ip: IpAddr) -> Self {
         Self {
             gateway: SocketAddr::new(gateway_ip, crate::NAT_PMP_PORT),
             timeout: Duration::from_secs(3),
@@ -48,7 +49,8 @@ impl NatPmpClient {
     }
 
     /// Create with custom timeout
-    pub fn with_timeout(gateway_ip: IpAddr, timeout: Duration) -> Self {
+    #[must_use]
+    pub const fn with_timeout(gateway_ip: IpAddr, timeout: Duration) -> Self {
         Self {
             gateway: SocketAddr::new(gateway_ip, crate::NAT_PMP_PORT),
             timeout,
@@ -56,6 +58,10 @@ impl NatPmpClient {
     }
 
     /// Get external IP address from gateway
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if socket binding, send, receive, or timeout fails.
     pub async fn get_external_ip(&self) -> Result<NatPmpExternalIp> {
         debug!("NAT-PMP: Requesting external IP from {}", self.gateway);
 
@@ -72,8 +78,7 @@ impl NatPmpClient {
 
         if len < 12 {
             return Err(IgdError::InvalidResponse(format!(
-                "NAT-PMP response too short: {} bytes (expected 12)",
-                len
+                "NAT-PMP response too short: {len} bytes (expected 12)"
             )));
         }
 
@@ -94,8 +99,7 @@ impl NatPmpClient {
 
         if result_code != 0 {
             return Err(IgdError::NatPmpError(format!(
-                "NAT-PMP error code: {} ({})",
-                result_code,
+                "NAT-PMP error code: {result_code} ({})",
                 nat_pmp_error_description(result_code)
             )));
         }
@@ -112,6 +116,10 @@ impl NatPmpClient {
     }
 
     /// Request a port mapping
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if socket binding, send, receive, or timeout fails.
     pub async fn map_port(
         &self,
         internal_port: u16,
@@ -153,8 +161,7 @@ impl NatPmpClient {
 
         if len < 16 {
             return Err(IgdError::InvalidResponse(format!(
-                "NAT-PMP mapping response too short: {} bytes (expected 16)",
-                len
+                "NAT-PMP mapping response too short: {len} bytes (expected 16)"
             )));
         }
 
@@ -170,8 +177,7 @@ impl NatPmpClient {
 
         if result_code != 0 {
             return Err(IgdError::NatPmpError(format!(
-                "NAT-PMP mapping failed with code {}: {}",
-                result_code,
+                "NAT-PMP mapping failed with code {result_code}: {}",
                 nat_pmp_error_description(result_code)
             )));
         }
@@ -191,6 +197,10 @@ impl NatPmpClient {
     }
 
     /// Delete a port mapping (set lifetime to 0)
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the underlying `map_port` call fails.
     pub async fn delete_mapping(&self, internal_port: u16, protocol: Protocol) -> Result<()> {
         debug!("NAT-PMP: Deleting mapping for {} port {}", protocol.as_str(), internal_port);
 
@@ -217,7 +227,7 @@ impl NatPmpClient {
 }
 
 /// Human-readable NAT-PMP error descriptions
-fn nat_pmp_error_description(code: u16) -> &'static str {
+const fn nat_pmp_error_description(code: u16) -> &'static str {
     match code {
         0 => "Success",
         1 => "Unsupported version",

@@ -1,14 +1,14 @@
-//! BearDog RPC client for crypto operations
+//! `BearDog` RPC client for crypto operations
 //!
-//! Communicates with BearDog via JSON-RPC 2.0 over Unix sockets, supporting
+//! Communicates with `BearDog` via JSON-RPC 2.0 over Unix sockets, supporting
 //! both Direct mode (testing) and Neural API mode (production).
 //!
 //! ## Architecture (Smart Refactored - January 26, 2026)
 //!
 //! This module was refactored from a 2,020-line monolith into 7 logical modules:
 //!
-//! - `types.rs` - JSON-RPC types and TlsSecrets struct (~120 lines)
-//! - `core.rs` - BearDogClient struct, BearDogMode enum, constructors (~180 lines)
+//! - `types.rs` - JSON-RPC types and `TlsSecrets` struct (~120 lines)
+//! - `core.rs` - `BearDogClient` struct, `BearDogMode` enum, constructors (~180 lines)
 //! - `rpc.rs` - Base RPC call method with semantic routing (~270 lines)
 //! - `key_exchange.rs` - X25519 keypair generation, ECDH (~80 lines)
 //! - `tls_secrets.rs` - TLS 1.3 key derivation (RFC 8446) (~300 lines)
@@ -51,13 +51,13 @@ pub use types::TlsSecrets;
 // NOTE: Semantic capability.call Integration
 // ═══════════════════════════════════════════════════════════════════════════
 //
-// BearDogClient supports semantic routing via Neural API through its mode enum:
+// `BearDogClient` supports semantic routing via Neural API through its mode enum:
 //
-// - Direct mode: Talk directly to BearDog (testing)
+// - Direct mode: Talk directly to `BearDog` (testing)
 //   Set: BEARDOG_MODE=direct, BEARDOG_SOCKET=/tmp/beardog.sock
 //
 // - Neural API mode: Route through Neural API (production)
 //   Set: BEARDOG_MODE=neural, NEURAL_API_SOCKET=/tmp/neural-api.sock
 //
 // The client automatically uses semantic method names when in Neural API mode.
-// See BearDogClient::from_env() for automatic mode detection.
+// See `BearDogClient::from_env()` for automatic mode detection.

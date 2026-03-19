@@ -238,15 +238,10 @@ impl DiscoveryPacket {
         let genetic_lineage = txt.get("lineage").and_then(|s| LineageId::from_str(s).ok());
 
         // NEW: Parse lineage proof
-        let lineage_proof = if let Some(proof_txt) = txt.get("lineage_proof") {
-            LineageProof::from_discovery_txt(proof_txt).ok()
-        } else if txt.contains_key("lineage_proof_hash") {
-            // Proof is too large for TXT record, will need HTTP fetch
-            // For now, we skip it and let the verification phase handle it
-            None
-        } else {
-            None
-        };
+        // When lineage_proof_hash exists but lineage_proof doesn't, proof is too large for TXT record
+        let lineage_proof = txt
+            .get("lineage_proof")
+            .and_then(|proof_txt| LineageProof::from_discovery_txt(proof_txt).ok());
 
         Ok(Self {
             node_id,
@@ -264,13 +259,13 @@ impl DiscoveryPacket {
 
     /// Check if this packet has genetic lineage information
     #[must_use]
-    pub fn has_lineage(&self) -> bool {
+    pub const fn has_lineage(&self) -> bool {
         self.genetic_lineage.is_some()
     }
 
     /// Check if this packet has a complete lineage proof
     #[must_use]
-    pub fn has_proof(&self) -> bool {
+    pub const fn has_proof(&self) -> bool {
         self.lineage_proof.is_some()
     }
 

@@ -584,7 +584,7 @@ impl CanonicalEnvironmentConfig {
 mod tests {
     use super::*;
     use crate::SongbirdError;
-    use std::env;
+    use std::collections::HashMap;
 
     #[test]
     fn test_canonical_environment_config_default() {
@@ -619,15 +619,8 @@ mod tests {
 
     #[test]
     fn test_resource_limits_default() {
-        // Clear any environment variables from previous tests
-        env::remove_var("SONGBIRD_MAX_CONNECTIONS");
-        env::remove_var("SONGBIRD_MAX_MEMORY_MB");
-        env::remove_var("SONGBIRD_MAX_CPU_CORES");
-        env::remove_var("SONGBIRD_MAX_FDS");
-        env::remove_var("SONGBIRD_MAX_THREADS");
-        env::remove_var("SONGBIRD_MAX_DISK_GB");
-
-        let limits = ResourceLimits::default();
+        let env = HashMap::new();
+        let limits = ResourceLimits::from_env_map(&env);
         assert_eq!(limits.max_connections, 1000);
         assert_eq!(limits.max_memory_mb, 2048);
         assert_eq!(limits.max_cpu_cores, 4);
@@ -637,21 +630,13 @@ mod tests {
     }
 
     #[test]
-    #[serial_test::serial]
     fn test_resource_limits_from_env() {
-        // Clean environment first to avoid pollution
-        env::remove_var("SONGBIRD_MAX_CONNECTIONS");
-        env::remove_var("SONGBIRD_MAX_MEMORY_MB");
-
-        env::set_var("SONGBIRD_MAX_CONNECTIONS", "5000");
-        env::set_var("SONGBIRD_MAX_MEMORY_MB", "4096");
-        let limits = ResourceLimits::default();
+        let mut env = HashMap::new();
+        env.insert("SONGBIRD_MAX_CONNECTIONS".to_string(), "5000".to_string());
+        env.insert("SONGBIRD_MAX_MEMORY_MB".to_string(), "4096".to_string());
+        let limits = ResourceLimits::from_env_map(&env);
         assert_eq!(limits.max_connections, 5000);
         assert_eq!(limits.max_memory_mb, 4096);
-
-        // Cleanup
-        env::remove_var("SONGBIRD_MAX_CONNECTIONS");
-        env::remove_var("SONGBIRD_MAX_MEMORY_MB");
     }
 
     #[test]
@@ -706,16 +691,9 @@ mod tests {
     }
 
     #[test]
-    #[serial_test::serial]
     fn test_capability_endpoints_default() {
-        // Clear any environment variables that might interfere with default test
-        env::remove_var("SONGBIRD_STORAGE_ENDPOINT");
-        env::remove_var("SONGBIRD_COMPUTE_ENDPOINT");
-        env::remove_var("SONGBIRD_AI_ENDPOINT");
-        env::remove_var("SONGBIRD_SECURITY_ENDPOINT");
-        env::remove_var("SONGBIRD_ORCHESTRATION_ENDPOINT");
-
-        let endpoints = CapabilityEndpoints::default();
+        let env = HashMap::new();
+        let endpoints = CapabilityEndpoints::from_env_map(&env);
         assert!(endpoints.storage.is_none());
         assert!(endpoints.compute.is_none());
         assert!(endpoints.ai.is_none());
@@ -725,15 +703,13 @@ mod tests {
     }
 
     #[test]
-    #[serial_test::serial]
     fn test_capability_endpoints_from_env() {
-        env::set_var("SONGBIRD_STORAGE_ENDPOINT", "http://storage:8001");
-        env::set_var("SONGBIRD_AI_ENDPOINT", "http://ai:8002");
-        let endpoints = CapabilityEndpoints::default();
+        let mut env = HashMap::new();
+        env.insert("SONGBIRD_STORAGE_ENDPOINT".to_string(), "http://storage:8001".to_string());
+        env.insert("SONGBIRD_AI_ENDPOINT".to_string(), "http://ai:8002".to_string());
+        let endpoints = CapabilityEndpoints::from_env_map(&env);
         assert_eq!(endpoints.storage, Some("http://storage:8001".to_string()));
         assert_eq!(endpoints.ai, Some("http://ai:8002".to_string()));
-        env::remove_var("SONGBIRD_STORAGE_ENDPOINT");
-        env::remove_var("SONGBIRD_AI_ENDPOINT");
     }
 
     #[test]
@@ -779,23 +755,17 @@ mod tests {
     }
 
     #[test]
-    #[serial_test::serial]
     fn test_get_capability_endpoint_none() {
-        env::remove_var("SONGBIRD_STORAGE_ENDPOINT");
-        let config = CanonicalEnvironmentConfig::default();
+        let mut config = CanonicalEnvironmentConfig::default();
+        config.capability_endpoints = CapabilityEndpoints::from_env_map(&HashMap::new());
         let endpoint = config.get_capability_endpoint("storage");
         assert_eq!(endpoint, None);
     }
 
     #[test]
-    #[serial_test::serial]
     fn test_get_all_endpoints_empty() {
-        env::remove_var("SONGBIRD_STORAGE_ENDPOINT");
-        env::remove_var("SONGBIRD_COMPUTE_ENDPOINT");
-        env::remove_var("SONGBIRD_AI_ENDPOINT");
-        env::remove_var("SONGBIRD_SECURITY_ENDPOINT");
-        env::remove_var("SONGBIRD_ORCHESTRATION_ENDPOINT");
-        let config = CanonicalEnvironmentConfig::default();
+        let mut config = CanonicalEnvironmentConfig::default();
+        config.capability_endpoints = CapabilityEndpoints::from_env_map(&HashMap::new());
         let endpoints = config.get_all_endpoints();
         assert_eq!(endpoints.len(), 0);
     }

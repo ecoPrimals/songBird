@@ -5,6 +5,7 @@
 
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::{TcpListener, TcpStream};
+use tokio::sync::oneshot;
 use tokio::time::{sleep, Duration};
 
 #[cfg(test)]
@@ -16,7 +17,9 @@ mod protocol_faults {
         let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
         let addr = listener.local_addr().unwrap();
 
+        let (ready_tx, ready_rx) = oneshot::channel();
         tokio::spawn(async move {
+            let _ = ready_tx.send(());
             let (mut socket, _) = listener.accept().await.unwrap();
 
             // Send invalid record type (0xFF)
@@ -29,8 +32,7 @@ mod protocol_faults {
 
             let _ = socket.write_all(&invalid_record).await;
         });
-
-        sleep(Duration::from_millis(50)).await;
+        ready_rx.await.unwrap();
 
         let mut stream = TcpStream::connect(addr).await.unwrap();
         let mut buf = vec![0u8; 1024];
@@ -45,7 +47,9 @@ mod protocol_faults {
         let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
         let addr = listener.local_addr().unwrap();
 
+        let (ready_tx, ready_rx) = oneshot::channel();
         tokio::spawn(async move {
+            let _ = ready_tx.send(());
             let (mut socket, _) = listener.accept().await.unwrap();
 
             // Send record with invalid protocol version (TLS 2.0?)
@@ -58,8 +62,7 @@ mod protocol_faults {
 
             let _ = socket.write_all(&invalid_version).await;
         });
-
-        sleep(Duration::from_millis(50)).await;
+        ready_rx.await.unwrap();
 
         let mut stream = TcpStream::connect(addr).await.unwrap();
         let mut buf = vec![0u8; 1024];
@@ -73,7 +76,9 @@ mod protocol_faults {
         let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
         let addr = listener.local_addr().unwrap();
 
+        let (ready_tx, ready_rx) = oneshot::channel();
         tokio::spawn(async move {
+            let _ = ready_tx.send(());
             let (mut socket, _) = listener.accept().await.unwrap();
 
             // Send record claiming to be 65535 bytes but only send header
@@ -86,8 +91,7 @@ mod protocol_faults {
             let _ = socket.write_all(&overflow_record).await;
             // Don't send the actual data - client should timeout
         });
-
-        sleep(Duration::from_millis(50)).await;
+        ready_rx.await.unwrap();
 
         let mut stream = TcpStream::connect(addr).await.unwrap();
         let mut buf = vec![0u8; 1024];
@@ -104,7 +108,9 @@ mod protocol_faults {
         let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
         let addr = listener.local_addr().unwrap();
 
+        let (ready_tx, ready_rx) = oneshot::channel();
         tokio::spawn(async move {
+            let _ = ready_tx.send(());
             let (mut socket, _) = listener.accept().await.unwrap();
 
             // Send only 3 bytes of 5-byte header
@@ -113,8 +119,7 @@ mod protocol_faults {
             let _ = socket.write_all(&truncated).await;
             // Close connection
         });
-
-        sleep(Duration::from_millis(50)).await;
+        ready_rx.await.unwrap();
 
         let mut stream = TcpStream::connect(addr).await.unwrap();
         let mut buf = vec![0u8; 1024];
@@ -129,7 +134,9 @@ mod protocol_faults {
         let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
         let addr = listener.local_addr().unwrap();
 
+        let (ready_tx, ready_rx) = oneshot::channel();
         tokio::spawn(async move {
+            let _ = ready_tx.send(());
             let (mut socket, _) = listener.accept().await.unwrap();
 
             // Valid record header, but malformed handshake
@@ -143,8 +150,7 @@ mod protocol_faults {
 
             let _ = socket.write_all(&malformed).await;
         });
-
-        sleep(Duration::from_millis(50)).await;
+        ready_rx.await.unwrap();
 
         let mut stream = TcpStream::connect(addr).await.unwrap();
         let mut buf = vec![0u8; 1024];
@@ -163,7 +169,9 @@ mod alert_faults {
         let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
         let addr = listener.local_addr().unwrap();
 
+        let (ready_tx, ready_rx) = oneshot::channel();
         tokio::spawn(async move {
+            let _ = ready_tx.send(());
             let (mut socket, _) = listener.accept().await.unwrap();
 
             // Send fatal alert: handshake_failure
@@ -177,8 +185,7 @@ mod alert_faults {
 
             let _ = socket.write_all(&alert).await;
         });
-
-        sleep(Duration::from_millis(50)).await;
+        ready_rx.await.unwrap();
 
         let mut stream = TcpStream::connect(addr).await.unwrap();
         let mut buf = vec![0u8; 1024];
@@ -200,7 +207,9 @@ mod alert_faults {
         let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
         let addr = listener.local_addr().unwrap();
 
+        let (ready_tx, ready_rx) = oneshot::channel();
         tokio::spawn(async move {
+            let _ = ready_tx.send(());
             let (mut socket, _) = listener.accept().await.unwrap();
 
             // Send fatal alert: bad_certificate
@@ -214,8 +223,7 @@ mod alert_faults {
 
             let _ = socket.write_all(&alert).await;
         });
-
-        sleep(Duration::from_millis(50)).await;
+        ready_rx.await.unwrap();
 
         let mut stream = TcpStream::connect(addr).await.unwrap();
         let mut buf = vec![0u8; 1024];
@@ -229,7 +237,9 @@ mod alert_faults {
         let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
         let addr = listener.local_addr().unwrap();
 
+        let (ready_tx, ready_rx) = oneshot::channel();
         tokio::spawn(async move {
+            let _ = ready_tx.send(());
             let (mut socket, _) = listener.accept().await.unwrap();
 
             // Send warning alert: close_notify
@@ -243,8 +253,7 @@ mod alert_faults {
 
             let _ = socket.write_all(&alert).await;
         });
-
-        sleep(Duration::from_millis(50)).await;
+        ready_rx.await.unwrap();
 
         let mut stream = TcpStream::connect(addr).await.unwrap();
         let mut buf = vec![0u8; 1024];
@@ -258,7 +267,9 @@ mod alert_faults {
         let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
         let addr = listener.local_addr().unwrap();
 
+        let (ready_tx, ready_rx) = oneshot::channel();
         tokio::spawn(async move {
+            let _ = ready_tx.send(());
             let (mut socket, _) = listener.accept().await.unwrap();
 
             // Send alert with invalid level (3)
@@ -272,8 +283,7 @@ mod alert_faults {
 
             let _ = socket.write_all(&alert).await;
         });
-
-        sleep(Duration::from_millis(50)).await;
+        ready_rx.await.unwrap();
 
         let mut stream = TcpStream::connect(addr).await.unwrap();
         let mut buf = vec![0u8; 1024];
@@ -292,13 +302,14 @@ mod connection_faults {
         let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
         let addr = listener.local_addr().unwrap();
 
+        let (ready_tx, ready_rx) = oneshot::channel();
         tokio::spawn(async move {
+            let _ = ready_tx.send(());
             let (socket, _) = listener.accept().await.unwrap();
             // Immediately drop connection
             drop(socket);
         });
-
-        sleep(Duration::from_millis(50)).await;
+        ready_rx.await.unwrap();
 
         let mut stream = TcpStream::connect(addr).await.unwrap();
         let mut buf = vec![0u8; 1024];
@@ -313,7 +324,9 @@ mod connection_faults {
         let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
         let addr = listener.local_addr().unwrap();
 
+        let (ready_tx, ready_rx) = oneshot::channel();
         tokio::spawn(async move {
+            let _ = ready_tx.send(());
             let (mut socket, _) = listener.accept().await.unwrap();
 
             // Send partial ServerHello
@@ -329,8 +342,7 @@ mod connection_faults {
             // Disconnect without sending rest
             drop(socket);
         });
-
-        sleep(Duration::from_millis(50)).await;
+        ready_rx.await.unwrap();
 
         let mut stream = TcpStream::connect(addr).await.unwrap();
         let mut buf = vec![0u8; 1024];
@@ -344,19 +356,20 @@ mod connection_faults {
         let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
         let addr = listener.local_addr().unwrap();
 
+        let (ready_tx, ready_rx) = oneshot::channel();
         tokio::spawn(async move {
+            let _ = ready_tx.send(());
             let (mut socket, _) = listener.accept().await.unwrap();
 
             let message = vec![0x16, 0x03, 0x03, 0x00, 0x05, 0x01, 0x02, 0x03, 0x04, 0x05];
 
-            // Send one byte every 100ms
+            // Send one byte every 100ms (chaos test - keep sleep)
             for byte in message {
                 let _ = socket.write_all(&[byte]).await;
                 sleep(Duration::from_millis(100)).await;
             }
         });
-
-        sleep(Duration::from_millis(50)).await;
+        ready_rx.await.unwrap();
 
         let mut stream = TcpStream::connect(addr).await.unwrap();
         let mut buf = vec![0u8; 1024];
@@ -380,12 +393,13 @@ mod connection_faults {
             let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
             let addr = listener.local_addr().unwrap();
 
+            let (ready_tx, ready_rx) = oneshot::channel();
             tokio::spawn(async move {
+                let _ = ready_tx.send(());
                 let (socket, _) = listener.accept().await.unwrap();
                 drop(socket);
             });
-
-            sleep(Duration::from_millis(10)).await;
+            ready_rx.await.unwrap();
 
             let stream = TcpStream::connect(addr).await;
             assert!(stream.is_ok());
@@ -402,7 +416,9 @@ mod crypto_faults {
         let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
         let addr = listener.local_addr().unwrap();
 
+        let (ready_tx, ready_rx) = oneshot::channel();
         tokio::spawn(async move {
+            let _ = ready_tx.send(());
             let (mut socket, _) = listener.accept().await.unwrap();
 
             // Send ServerHello with all-zero random (suspicious)
@@ -429,8 +445,7 @@ mod crypto_faults {
 
             let _ = socket.write_all(&server_hello).await;
         });
-
-        sleep(Duration::from_millis(50)).await;
+        ready_rx.await.unwrap();
 
         let mut stream = TcpStream::connect(addr).await.unwrap();
         let mut buf = vec![0u8; 1024];
@@ -444,7 +459,9 @@ mod crypto_faults {
         let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
         let addr = listener.local_addr().unwrap();
 
+        let (ready_tx, ready_rx) = oneshot::channel();
         tokio::spawn(async move {
+            let _ = ready_tx.send(());
             let (mut socket, _) = listener.accept().await.unwrap();
 
             // Send ServerHello with unsupported cipher suite (0x0000)
@@ -471,8 +488,7 @@ mod crypto_faults {
 
             let _ = socket.write_all(&server_hello).await;
         });
-
-        sleep(Duration::from_millis(50)).await;
+        ready_rx.await.unwrap();
 
         let mut stream = TcpStream::connect(addr).await.unwrap();
         let mut buf = vec![0u8; 1024];
@@ -486,7 +502,9 @@ mod crypto_faults {
         let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
         let addr = listener.local_addr().unwrap();
 
+        let (ready_tx, ready_rx) = oneshot::channel();
         tokio::spawn(async move {
+            let _ = ready_tx.send(());
             let (mut socket, _) = listener.accept().await.unwrap();
 
             // Send ServerHello with invalid key_share extension
@@ -524,8 +542,7 @@ mod crypto_faults {
 
             let _ = socket.write_all(&server_hello).await;
         });
-
-        sleep(Duration::from_millis(50)).await;
+        ready_rx.await.unwrap();
 
         let mut stream = TcpStream::connect(addr).await.unwrap();
         let mut buf = vec![0u8; 1024];
@@ -544,17 +561,18 @@ mod timing_faults {
         let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
         let addr = listener.local_addr().unwrap();
 
+        let (ready_tx, ready_rx) = oneshot::channel();
         tokio::spawn(async move {
+            let _ = ready_tx.send(());
             let (mut socket, _) = listener.accept().await.unwrap();
 
-            // Wait 3 seconds before responding
+            // Wait 3 seconds before responding (chaos test - keep sleep)
             sleep(Duration::from_secs(3)).await;
 
             let response = vec![0x16, 0x03, 0x03, 0x00, 0x05, 0x01, 0x02, 0x03, 0x04, 0x05];
             let _ = socket.write_all(&response).await;
         });
-
-        sleep(Duration::from_millis(50)).await;
+        ready_rx.await.unwrap();
 
         let mut stream = TcpStream::connect(addr).await.unwrap();
         let mut buf = vec![0u8; 1024];
@@ -569,7 +587,9 @@ mod timing_faults {
         let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
         let addr = listener.local_addr().unwrap();
 
+        let (ready_tx, ready_rx) = oneshot::channel();
         tokio::spawn(async move {
+            let _ = ready_tx.send(());
             let (mut socket, _) = listener.accept().await.unwrap();
 
             let chunks = vec![
@@ -585,8 +605,7 @@ mod timing_faults {
                 sleep(Duration::from_millis(200)).await;
             }
         });
-
-        sleep(Duration::from_millis(50)).await;
+        ready_rx.await.unwrap();
 
         let mut stream = TcpStream::connect(addr).await.unwrap();
         let mut buf = vec![0u8; 1024];

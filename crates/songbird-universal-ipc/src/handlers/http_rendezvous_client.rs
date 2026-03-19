@@ -84,7 +84,7 @@ impl HttpRendezvousClient {
 
     /// Create with custom configuration
     #[must_use]
-    pub fn with_config(timeout: Duration, max_retries: u32) -> Self {
+    pub const fn with_config(timeout: Duration, max_retries: u32) -> Self {
         Self {
             timeout,
             max_retries,
@@ -128,11 +128,10 @@ impl HttpRendezvousClient {
         let response_str = String::from_utf8_lossy(&response);
 
         // Extract body after \r\n\r\n
-        if let Some(body_start) = response_str.find("\r\n\r\n") {
-            Ok(response_str[body_start + 4..].to_string())
-        } else {
-            Err("Invalid HTTP response: no body separator".to_string())
-        }
+        response_str.find("\r\n\r\n").map_or_else(
+            || Err("Invalid HTTP response: no body separator".to_string()),
+            |body_start| Ok(response_str[body_start + 4..].to_string()),
+        )
     }
 
     /// Make an HTTP GET request (pure Rust)
@@ -165,11 +164,10 @@ impl HttpRendezvousClient {
 
         let response_str = String::from_utf8_lossy(&response);
 
-        if let Some(body_start) = response_str.find("\r\n\r\n") {
-            Ok(response_str[body_start + 4..].to_string())
-        } else {
-            Err("Invalid HTTP response: no body separator".to_string())
-        }
+        response_str.find("\r\n\r\n").map_or_else(
+            || Err("Invalid HTTP response: no body separator".to_string()),
+            |body_start| Ok(response_str[body_start + 4..].to_string()),
+        )
     }
 
     /// Parse URL into (host, port, path)
@@ -186,23 +184,21 @@ impl HttpRendezvousClient {
         };
 
         // Split host:port and path
-        let (host_port, path) = if let Some(slash_pos) = rest.find('/') {
-            (&rest[..slash_pos], &rest[slash_pos..])
-        } else {
-            (rest, "/")
-        };
+        let (host_port, path) = rest
+            .find('/')
+            .map_or((rest, "/"), |slash_pos| (&rest[..slash_pos], &rest[slash_pos..]));
 
         // Parse host and optional port
-        let (host, port) = if let Some(colon_pos) = host_port.rfind(':') {
-            let port_str = &host_port[colon_pos + 1..];
-            if let Ok(port) = port_str.parse::<u16>() {
-                (host_port[..colon_pos].to_string(), port)
-            } else {
-                (host_port.to_string(), scheme_port)
-            }
-        } else {
-            (host_port.to_string(), scheme_port)
-        };
+        let (host, port) = host_port.rfind(':').map_or_else(
+            || (host_port.to_string(), scheme_port),
+            |colon_pos| {
+                let port_str = &host_port[colon_pos + 1..];
+                port_str.parse::<u16>().map_or_else(
+                    |_| (host_port.to_string(), scheme_port),
+                    |port| (host_port[..colon_pos].to_string(), port),
+                )
+            },
+        );
 
         Ok((host, port, path.to_string()))
     }

@@ -3,7 +3,7 @@
 //! Philosophy (Dec 20, 2025):
 //!   "Work WITH users on permissions, not around them"
 //!
-//! Instead of trying to silently circumvent permission issues (like SO_REUSEPORT),
+//! Instead of trying to silently circumvent permission issues (like `SO_REUSEPORT`),
 //! we collaborate with users:
 //!   - Detect what's needed
 //!   - Explain clearly
@@ -35,6 +35,7 @@ pub struct PrivilegeManager {
 
 impl PrivilegeManager {
     /// Create a new privilege manager and detect current capabilities
+    #[must_use]
     pub fn new() -> Self {
         Self::with_interactive(true)
     }
@@ -56,7 +57,7 @@ impl PrivilegeManager {
         }
     }
 
-    /// Check if we have CAP_NET_ADMIN capability
+    /// Check if we have `CAP_NET_ADMIN` capability
     fn check_net_admin_capability() -> bool {
         // Check via getcap on our own binary
         // Note: This requires the binary to have capabilities set
@@ -139,7 +140,7 @@ impl PrivilegeManager {
                 .status()?;
 
             if !status.success() {
-                return Err(anyhow!("Failed to add iptables rule for TCP port {}", port));
+                return Err(anyhow!("Failed to add iptables rule for TCP port {port}"));
             }
 
             // UDP
@@ -148,7 +149,7 @@ impl PrivilegeManager {
                 .status()?;
 
             if !status.success() {
-                return Err(anyhow!("Failed to add iptables rule for UDP port {}", port));
+                return Err(anyhow!("Failed to add iptables rule for UDP port {port}"));
             }
 
             info!("✅ Firewall configured for port {}", port);

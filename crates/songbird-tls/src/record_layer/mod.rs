@@ -13,7 +13,7 @@
 //! } TLSPlaintext;
 //! ```
 
-use crate::codec::bytes::*;
+use crate::codec::bytes::{read_u16, read_u8, write_u16, write_u8};
 use crate::error::{Result, TlsError};
 use crate::messages::ContentType;
 use crate::{MAX_RECORD_SIZE, TLS_VERSION_1_2};
@@ -33,8 +33,9 @@ pub struct RecordLayer {
 }
 
 impl RecordLayer {
-    /// Create a new RecordLayer in plaintext mode
-    pub fn new() -> Self {
+    /// Create a new `RecordLayer` in plaintext mode
+    #[must_use]
+    pub const fn new() -> Self {
         Self {
             write_sequence: 0,
             read_sequence: 0,
@@ -43,29 +44,31 @@ impl RecordLayer {
     }
 
     /// Enable encryption (called after handshake completion)
-    pub fn enable_encryption(&mut self) {
+    pub const fn enable_encryption(&mut self) {
         self.encrypted = true;
         // Note: Sequence numbers are NOT reset when enabling encryption
         // They continue from handshake phase
     }
 
     /// Get the current write sequence number
-    pub fn write_sequence(&self) -> u64 {
+    #[must_use]
+    pub const fn write_sequence(&self) -> u64 {
         self.write_sequence
     }
 
     /// Get the current read sequence number
-    pub fn read_sequence(&self) -> u64 {
+    #[must_use]
+    pub const fn read_sequence(&self) -> u64 {
         self.read_sequence
     }
 
     /// Increment write sequence number
-    fn increment_write_sequence(&mut self) {
+    const fn increment_write_sequence(&mut self) {
         self.write_sequence = self.write_sequence.wrapping_add(1);
     }
 
     /// Increment read sequence number
-    fn increment_read_sequence(&mut self) {
+    const fn increment_read_sequence(&mut self) {
         self.read_sequence = self.read_sequence.wrapping_add(1);
     }
 
@@ -73,6 +76,10 @@ impl RecordLayer {
     ///
     /// This creates the 5-byte header + payload.
     /// Does NOT encrypt (encryption is handled separately).
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if payload exceeds `MAX_RECORD_SIZE` or length truncation occurs.
     pub fn frame_plaintext(
         &mut self,
         content_type: ContentType,
@@ -94,7 +101,12 @@ impl RecordLayer {
         write_u16(&mut record, TLS_VERSION_1_2);
 
         // Length (2 bytes)
-        write_u16(&mut record, payload.len() as u16);
+        write_u16(
+            &mut record,
+            u16::try_from(payload.len()).map_err(|_| TlsError::RecordTooLarge {
+                size: payload.len(),
+            })?,
+        );
 
         // Payload
         record.extend_from_slice(payload);
@@ -104,7 +116,11 @@ impl RecordLayer {
 
     /// Parse a TLS record from bytes
     ///
-    /// Returns: (content_type, payload, bytes_consumed)
+    /// Returns: (`content_type`, payload, `bytes_consumed`)
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the buffer is too short, record is too large, or incomplete.
     pub fn parse_record(&mut self, buf: &[u8]) -> Result<(ContentType, Vec<u8>, usize)> {
         if buf.len() < 5 {
             return Err(TlsError::ProtocolError(
@@ -149,7 +165,7 @@ impl RecordLayer {
     /// Encrypt a TLS record (Application Data)
     ///
     /// In TLS 1.3, the actual content type is hidden inside the encrypted payload.
-    /// The record content type is always ApplicationData (23).
+    /// The record content type is always `ApplicationData` (23).
     ///
     /// Format of encrypted payload:
     /// ```text
@@ -159,6 +175,10 @@ impl RecordLayer {
     ///     uint8 zeros[length_of_padding];
     /// } TLSInnerPlaintext;
     /// ```
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if encryption or framing fails.
     pub fn encrypt_record(
         &mut self,
         content_type: ContentType,
@@ -184,6 +204,10 @@ impl RecordLayer {
     /// Decrypt a TLS record (Application Data)
     ///
     /// Extracts the hidden content type from the end of the decrypted payload.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if decryption fails or payload is invalid.
     pub fn decrypt_record(
         &mut self,
         ciphertext: &[u8],
@@ -205,7 +229,8 @@ impl RecordLayer {
         }
 
         // Last byte is the actual content type
-        let content_type = ContentType::from(inner.pop().unwrap());
+        let content_type_byte = inner.pop().ok_or(TlsError::DecryptError)?;
+        let content_type = ContentType::from(content_type_byte);
 
         Ok((content_type, inner))
     }

@@ -83,11 +83,13 @@ impl MockNestGate {
         let key = key.into();
         let size = data.len() as u64;
 
-        let mut objects = self.stored_objects.write().unwrap_or_else(|poisoned| {
-            tracing::warn!("RwLock poisoned in test mock, recovering");
-            poisoned.into_inner()
-        });
-        objects.insert(key, data);
+        self.stored_objects
+            .write()
+            .unwrap_or_else(|poisoned| {
+                tracing::warn!("RwLock poisoned in test mock, recovering");
+                poisoned.into_inner()
+            })
+            .insert(key, data);
 
         let mut metrics = self.storage_metrics.write().unwrap_or_else(|poisoned| {
             tracing::warn!("RwLock poisoned in test mock, recovering");
@@ -96,6 +98,7 @@ impl MockNestGate {
         metrics.used_bytes += size;
         metrics.available_bytes = metrics.available_bytes.saturating_sub(size);
         metrics.object_count += 1;
+        drop(metrics);
 
         self.state.increment_requests();
     }
@@ -164,6 +167,7 @@ impl MockNestGate {
         metrics.used_bytes = 950_000_000_000; // 950GB
         metrics.available_bytes = 50_000_000_000; // 50GB
         metrics.avg_write_latency_ms = 150.0;
+        drop(metrics);
         self.state.set_health(HealthStatus::Degraded);
     }
 
@@ -181,6 +185,7 @@ impl MockNestGate {
         metrics.available_bytes = 750_000_000_000; // 750GB
         metrics.avg_read_latency_ms = 15.0;
         metrics.avg_write_latency_ms = 25.0;
+        drop(metrics);
         self.state.set_health(HealthStatus::Healthy);
     }
 }

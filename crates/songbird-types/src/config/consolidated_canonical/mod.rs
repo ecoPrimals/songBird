@@ -110,6 +110,10 @@ impl CanonicalSongbirdConfig {
     ///
     /// println!("Running in: {} environment", config.environment.name);
     /// ```
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the configuration cannot be loaded from the environment.
     pub fn from_env() -> Result<Self, String> {
         Ok(Self {
             system: CanonicalSystemConfig::default(),
@@ -138,6 +142,7 @@ impl CanonicalSongbirdConfig {
     ///     .build()
     ///     .expect("Failed to build configuration");
     /// ```
+    #[must_use]
     pub fn builder() -> CanonicalConfigBuilder {
         CanonicalConfigBuilder::default()
     }
@@ -262,7 +267,7 @@ impl CanonicalSongbirdConfig {
 
     /// Get base port for services
     #[must_use]
-    pub fn get_base_port(&self) -> u16 {
+    pub const fn get_base_port(&self) -> u16 {
         self.network.base_port
     }
 
@@ -347,7 +352,7 @@ impl CanonicalConfigBuilder {
 
     /// Set performance configuration
     #[must_use]
-    pub fn performance(mut self, config: CanonicalPerformanceConfig) -> Self {
+    pub const fn performance(mut self, config: CanonicalPerformanceConfig) -> Self {
         self.performance = Some(config);
         self
     }
@@ -404,6 +409,10 @@ impl CanonicalConfigBuilder {
     /// Build the configuration
     ///
     /// Uses defaults for any fields not explicitly set.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the configuration fails validation.
     pub fn build(self) -> Result<CanonicalSongbirdConfig, String> {
         let config = CanonicalSongbirdConfig {
             system: self.system.unwrap_or_default(),

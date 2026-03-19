@@ -171,9 +171,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let tower_id =
         args.tower_id.clone().or_else(|| std::env::var("SERVICE_ID").ok()).unwrap_or_else(|| {
-            hostname::get()
-                .map(|h| format!("tower-{}", h.to_string_lossy()))
-                .unwrap_or_else(|_| format!("tower-unknown-{}", Uuid::new_v4()))
+            hostname::get().map_or_else(
+                |_| format!("tower-unknown-{}", Uuid::new_v4()),
+                |h| format!("tower-{}", h.to_string_lossy()),
+            )
         });
 
     let capabilities = args
@@ -210,7 +211,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         error!("❌ Failed to create IPC HTTP client: {}", e);
         error!("   This is required for compute-bridge operation.");
         error!("   Ensure Songbird IPC socket is available.");
-        anyhow::anyhow!("IPC HTTP client is required for compute-bridge operation: {}", e)
+        anyhow::anyhow!("IPC HTTP client is required for compute-bridge operation: {e}")
     })?;
 
     let state = BridgeState {
@@ -222,7 +223,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Register with Songbird (if configured)
     if let Some(ref songbird_endpoint) = config.songbird_endpoint {
         match register_with_songbird(&state, songbird_endpoint).await {
-            Ok(_) => info!("✅ Registered with Songbird federation"),
+            Ok(()) => info!("✅ Registered with Songbird federation"),
             Err(e) => warn!("⚠️  Failed to register with Songbird: {}", e),
         }
 
@@ -258,6 +259,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 /// Auto-detect system resources
 async fn detect_resources() -> ServiceInfo {
     use std::process::Command;
+
+    tokio::task::yield_now().await;
 
     // Detect CPU cores
     let cpu_cores = num_cpus::get();
@@ -358,7 +361,7 @@ async fn register_with_songbird(
         last_seen: Utc::now().to_rfc3339(),
     };
 
-    let url = format!("{}/api/federation/services", songbird_endpoint);
+    let url = format!("{songbird_endpoint}/api/federation/services");
     debug!("📡 Registering with Songbird: POST {}", url);
 
     let response = state.http_client.post(&url).await.json(&registration)?.send().await?;
@@ -369,7 +372,7 @@ async fn register_with_songbird(
     } else {
         let status = response.status();
         let body = response.text().await.unwrap_or_default();
-        Err(format!("Registration failed ({}): {}", status, body).into())
+        Err(format!("Registration failed ({status}): {body}").into())
     }
 }
 
@@ -381,7 +384,7 @@ async fn heartbeat_loop(state: BridgeState, songbird_endpoint: String) {
         interval.tick().await;
 
         match register_with_songbird(&state, &songbird_endpoint).await {
-            Ok(_) => debug!("💓 Heartbeat sent to Songbird"),
+            Ok(()) => debug!("💓 Heartbeat sent to Songbird"),
             Err(e) => warn!("⚠️  Heartbeat failed: {}", e),
         }
     }
@@ -429,38 +432,39 @@ async fn submit_workload_handler(
 ) -> (StatusCode, Json<serde_json::Value>) {
     // If backend_url is configured, proxy to it
     if let Some(ref backend_url) = state.config.backend_url {
-        let request_result = state
-            .http_client
-            .post(&format!("{}/api/v1/workloads", backend_url))
-            .await
-            .json(&request);
+        let request_result =
+            state.http_client.post(&format!("{backend_url}/api/v1/workloads")).await.json(&request);
 
         match request_result {
             Ok(request) => match request.send().await {
                 Ok(response) => {
                     let status_code = StatusCode::from_u16(response.status())
                         .unwrap_or(StatusCode::INTERNAL_SERVER_ERROR);
-                    match response.json::<serde_json::Value>().await {
-                        Ok(body) => (status_code, Json(body)),
-                        Err(_) => (
-                            StatusCode::INTERNAL_SERVER_ERROR,
-                            Json(serde_json::json!({"error": "Backend response parsing failed"})),
-                        ),
-                    }
+                    response.json::<serde_json::Value>().await.map_or_else(
+                        |_| {
+                            (
+                                StatusCode::INTERNAL_SERVER_ERROR,
+                                Json(
+                                    serde_json::json!({"error": "Backend response parsing failed"}),
+                                ),
+                            )
+                        },
+                        |body| (status_code, Json(body)),
+                    )
                 }
                 Err(e) => {
-                    error!("Backend request failed: {}", e);
+                    error!("Backend request failed: {e}");
                     (
                         StatusCode::BAD_GATEWAY,
-                        Json(serde_json::json!({"error": format!("Backend unavailable: {}", e)})),
+                        Json(serde_json::json!({"error": format!("Backend unavailable: {e}")})),
                     )
                 }
             },
             Err(e) => {
-                error!("Failed to build request: {}", e);
+                error!("Failed to build request: {e}");
                 (
                     StatusCode::INTERNAL_SERVER_ERROR,
-                    Json(serde_json::json!({"error": format!("Request build failed: {}", e)})),
+                    Json(serde_json::json!({"error": format!("Request build failed: {e}")})),
                 )
             }
         }

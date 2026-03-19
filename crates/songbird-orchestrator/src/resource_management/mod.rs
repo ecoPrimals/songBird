@@ -50,14 +50,16 @@ pub enum ResourceUnit {
 }
 
 impl ResourceAmount {
-    pub fn new(value: f64, unit: ResourceUnit) -> Self {
+    #[must_use]
+    pub const fn new(value: f64, unit: ResourceUnit) -> Self {
         Self {
             value,
             unit,
         }
     }
 
-    pub fn zero(unit: ResourceUnit) -> Self {
+    #[must_use]
+    pub const fn zero(unit: ResourceUnit) -> Self {
         Self {
             value: 0.0,
             unit,
@@ -87,6 +89,7 @@ impl ResourceAmount {
     }
 
     /// Check if this amount is less than or equal to another
+    #[must_use]
     pub fn le(&self, other: &Self) -> bool {
         self.unit == other.unit && self.value <= other.value
     }

@@ -20,7 +20,7 @@ pub struct IntroductionPoint {
     pub circuit_id: u32,
 }
 
-/// Auth key type in ESTABLISH_INTRO cells
+/// Auth key type in `ESTABLISH_INTRO` cells
 #[repr(u8)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum AuthKeyType {
@@ -29,7 +29,7 @@ pub enum AuthKeyType {
 }
 
 impl IntroductionPoint {
-    /// Create ESTABLISH_INTRO cell
+    /// Create `ESTABLISH_INTRO` cell
     ///
     /// Sent by service to introduction point to establish it as an intro point.
     ///
@@ -44,6 +44,7 @@ impl IntroductionPoint {
     /// SIG_LEN          [2 bytes]
     /// SIG              [64 bytes] - Ed25519 signature (placeholder until BearDog)
     /// ```
+    #[must_use]
     pub fn create_establish_intro(&self) -> RelayCell {
         let mut data = Vec::with_capacity(136);
 

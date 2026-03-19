@@ -1,14 +1,14 @@
-//! TLS 1.3 implementation with BearDog crypto delegation
+//! TLS 1.3 implementation with `BearDog` crypto delegation
 //!
 //! This module implements a Pure Rust TLS 1.3 client AND server by delegating all
-//! cryptographic operations to BearDog via JSON-RPC.
+//! cryptographic operations to `BearDog` via JSON-RPC.
 //!
 //! ## Architecture (Smart Refactored - January 26, 2026)
 //!
 //! The TLS handshake implementation has been refactored from a 3,128-line monolith
 //! into a clean modular architecture:
 //!
-//! - `handshake_refactored/core.rs` - TlsHandshake struct and constructors (84 lines)
+//! - `handshake_refactored/core.rs` - `TlsHandshake` struct and constructors (84 lines)
 //! - `handshake_refactored/transcript.rs` - Transcript management (459 lines)
 //! - `handshake_refactored/extensions.rs` - Extension builders (438 lines)
 //! - `handshake_refactored/record_io.rs` - TLS record I/O (423 lines)

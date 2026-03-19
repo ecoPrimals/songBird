@@ -14,7 +14,7 @@ use std::sync::Arc;
 use tokio::sync::RwLock;
 use tracing::{debug, info};
 
-/// QoS metrics for a provider
+/// `QoS` metrics for a provider
 #[derive(Debug, Clone)]
 pub struct ProviderQoSMetrics {
     /// Provider identifier
@@ -61,7 +61,7 @@ pub enum ProviderHealth {
 impl ProviderHealth {
     /// Convert to score (0.0 to 1.0)
     #[must_use]
-    pub fn to_score(self) -> f64 {
+    pub const fn to_score(self) -> f64 {
         match self {
             Self::Healthy => 1.0,
             Self::Degraded => 0.5,
@@ -138,9 +138,9 @@ impl QoSProviderSelector {
         cache.insert(metrics.provider_id.clone(), metrics);
     }
 
-    /// Select best provider from a list based on QoS metrics
+    /// Select best provider from a list based on `QoS` metrics
     ///
-    /// Returns the provider ID with the highest QoS score, or None if no suitable provider.
+    /// Returns the provider ID with the highest `QoS` score, or `None` if no suitable provider.
     pub async fn select_best_provider(&self, providers: &[String]) -> Option<String> {
         if providers.is_empty() {
             debug!("No providers available for selection");
@@ -158,13 +158,14 @@ impl QoSProviderSelector {
         let mut scored_providers: Vec<(String, f64)> = Vec::new();
 
         for provider in providers {
-            let score = if let Some(metrics) = metrics_cache.get(provider) {
-                self.calculate_qos_score(metrics)
-            } else {
-                // No metrics yet, use default score
-                debug!("No metrics for provider {}, using default score", provider);
-                0.5 // Neutral score for unknown providers
-            };
+            let score = metrics_cache.get(provider).map_or_else(
+                || {
+                    // No metrics yet, use default score
+                    debug!("No metrics for provider {}, using default score", provider);
+                    0.5 // Neutral score for unknown providers
+                },
+                |metrics| self.calculate_qos_score(metrics),
+            );
 
             scored_providers.push((provider.clone(), score));
             debug!("Provider {} scored: {:.3}", provider, score);
@@ -181,7 +182,7 @@ impl QoSProviderSelector {
         best
     }
 
-    /// Calculate QoS score for a provider (0.0 to 1.0)
+    /// Calculate `QoS` score for a provider (0.0 to 1.0)
     fn calculate_qos_score(&self, metrics: &ProviderQoSMetrics) -> f64 {
         // Health score
         let health_score = metrics.health_status.to_score();

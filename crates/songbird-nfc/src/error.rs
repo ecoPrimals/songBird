@@ -24,7 +24,7 @@ pub enum NfcError {
     #[error("Malformed frame: {0}")]
     MalformedFrame(String),
 
-    /// Crypto error (BearDog delegation)
+    /// Crypto error (`BearDog` delegation)
     #[error("Crypto error: {0}")]
     Crypto(String),
 

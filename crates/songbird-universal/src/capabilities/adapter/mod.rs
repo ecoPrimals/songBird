@@ -8,7 +8,7 @@
 //! - `connection_manager`: Connection lifecycle management
 //! - `federation`: Federation coordination (TODO)
 //! - `cache`: Response caching (TODO)
-//! - `metrics`: QoS metrics collection (TODO)
+//! - `metrics`: `QoS` metrics collection (TODO)
 //!
 //! Each module has clear boundaries and responsibilities.
 //! This orchestration layer provides a unified API by delegating to specialized components.
@@ -92,7 +92,7 @@ impl UniversalCapabilityAdapter {
         self.discovery.find_capability_providers(capability_type).await
     }
 
-    /// Get the best primal for a capability based on QoS metrics
+    /// Get the best primal for a capability based on `QoS` metrics
     pub async fn get_best_primal_for_capability(&self, capability_type: &str) -> Option<String> {
         self.query.get_best_primal_for_capability(capability_type).await
     }
@@ -136,6 +136,10 @@ impl UniversalCapabilityAdapter {
     }
 
     /// Update connection health for all primals
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if any primal health check fails
     pub async fn update_connection_health(&self) -> Result<(), CapabilityError> {
         self.connections.update_connection_health().await
     }
@@ -557,4 +561,4 @@ mod tests {
 #[allow(clippy::cast_sign_loss)]
 #[allow(clippy::cast_possible_truncation)]
 #[allow(dead_code)] // TODO: Implement metrics calculation
-fn calculate_metrics() {}
+const fn calculate_metrics() {}

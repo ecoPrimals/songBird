@@ -1,27 +1,27 @@
-//! Pure Rust Certificate Generation (Hybrid Standalone + BearDog)
+//! Pure Rust Certificate Generation (Hybrid Standalone + `BearDog`)
 //!
 //! This module provides certificate generation with two modes:
 //! 1. **Standalone**: Built-in ed25519-dalek (100% Pure Rust, zero dependencies)
-//! 2. **BearDog Enhanced**: Delegation to BearDog for HSM-backed, lineage-tracked certs
-//! 3. **Auto**: Try BearDog first, graceful fallback to standalone
+//! 2. **`BearDog` Enhanced**: Delegation to `BearDog` for HSM-backed, lineage-tracked certs
+//! 3. **Auto**: Try `BearDog` first, graceful fallback to standalone
 //!
-//! Philosophy: Songbird is secure by default and alone, enhanced when BearDog is available.
+//! Philosophy: Songbird is secure by default and alone, enhanced when `BearDog` is available.
 
 use crate::crypto::BeardogCryptoClient;
 use crate::error::Result;
 use crate::messages::certificate::{Certificate, CertificateEntry};
 use chrono::{DateTime, Duration, Utc};
 use ed25519_dalek::{SigningKey, VerifyingKey};
-use rand::rngs::OsRng;
+use rand::{rngs::OsRng, RngCore};
 
 /// Certificate generation mode
-#[derive(Debug, Clone, PartialEq, Default)]
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub enum CertGenerationMode {
     /// Standalone: Use built-in ed25519-dalek (100% Pure Rust)
     Standalone,
-    /// BearDog: Delegate to BearDog for enhanced capabilities
+    /// `BearDog`: Delegate to `BearDog` for enhanced capabilities
     BearDog,
-    /// Auto: Try BearDog, fallback to standalone (default)
+    /// Auto: Try `BearDog`, fallback to standalone (default)
     #[default]
     Auto,
 }
@@ -29,7 +29,7 @@ pub enum CertGenerationMode {
 /// Hybrid certificate generator
 ///
 /// Provides both standalone Pure Rust certificate generation and optional
-/// BearDog integration for enhanced capabilities.
+/// `BearDog` integration for enhanced capabilities.
 pub struct CertificateGenerator {
     mode: CertGenerationMode,
     beardog_client: Option<BeardogCryptoClient>,
@@ -37,16 +37,24 @@ pub struct CertificateGenerator {
 
 impl CertificateGenerator {
     /// Create a new generator with auto-discovery (default)
-    pub async fn new() -> Result<Self> {
-        Self::with_mode(CertGenerationMode::Auto).await
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if `BearDog` mode is requested but `BearDog` is not available.
+    pub fn new() -> Result<Self> {
+        Self::with_mode(CertGenerationMode::Auto)
     }
 
     /// Create with explicit mode
-    pub async fn with_mode(mode: CertGenerationMode) -> Result<Self> {
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if `BearDog` mode is requested but `BearDog` is not available.
+    pub fn with_mode(mode: CertGenerationMode) -> Result<Self> {
         let beardog_client = match &mode {
             CertGenerationMode::BearDog | CertGenerationMode::Auto => {
                 // Try to discover BearDog
-                match BeardogCryptoClient::new().await {
+                match BeardogCryptoClient::new() {
                     Ok(client) => {
                         tracing::info!("✅ BearDog discovered for enhanced certificate generation");
                         Some(client)
@@ -74,46 +82,35 @@ impl CertificateGenerator {
 
     /// Generate a self-signed certificate
     ///
-    /// Will use BearDog if available (Auto/BearDog mode), otherwise standalone.
-    pub async fn generate_self_signed(
+    /// Will use `BearDog` if available (Auto/BearDog mode), otherwise standalone.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if certificate generation fails (e.g., `BearDog` mode requested
+    /// but `BearDog` unavailable, or key/cert generation fails).
+    pub fn generate_self_signed(
         &self,
         domain: &str,
         validity_days: u32,
     ) -> Result<(Certificate, SigningKey)> {
-        // Try BearDog first if available
+        // Try BearDog first if available (Auto or BearDog mode)
         if let Some(ref client) = self.beardog_client {
-            match self.generate_via_beardog(client, domain, validity_days).await {
-                Ok(result) => {
-                    tracing::info!("✅ Generated certificate via BearDog: {}", domain);
-                    return Ok(result);
-                }
-                Err(e) => {
-                    if matches!(self.mode, CertGenerationMode::BearDog) {
-                        return Err(e);
-                    }
-                    tracing::warn!(
-                        "⚠️ BearDog cert generation failed: {}, falling back to standalone",
-                        e
-                    );
-                }
-            }
+            tracing::trace!("Using {:?} mode for certificate generation", self.mode);
+            let result = Self::generate_via_beardog(client, domain, validity_days);
+            tracing::info!("✅ Generated certificate via BearDog: {}", domain);
+            return Ok(result);
         }
 
         // Fallback to standalone
-        self.generate_standalone(domain, validity_days)
+        Ok(Self::generate_standalone(domain, validity_days))
     }
 
     /// Standalone generation using ed25519-dalek (100% Pure Rust)
-    fn generate_standalone(
-        &self,
-        domain: &str,
-        validity_days: u32,
-    ) -> Result<(Certificate, SigningKey)> {
+    fn generate_standalone(domain: &str, validity_days: u32) -> (Certificate, SigningKey) {
         tracing::info!("🔐 Generating standalone certificate: {}", domain);
 
         // Generate Ed25519 keypair (Pure Rust!)
         // ed25519-dalek 2.x uses from_bytes with random data
-        use rand::RngCore;
         let mut secret_bytes = [0u8; 32];
         OsRng.fill_bytes(&mut secret_bytes);
         let signing_key = SigningKey::from_bytes(&secret_bytes);
@@ -121,11 +118,11 @@ impl CertificateGenerator {
 
         // Calculate validity period
         let not_before = Utc::now();
-        let not_after = not_before + Duration::days(validity_days as i64);
+        let not_after = not_before + Duration::days(i64::from(validity_days));
 
         // Create certificate with Ed25519 public key
         let cert_entry = CertificateEntry {
-            cert_data: create_simple_cert_der(domain, &verifying_key, &not_before, &not_after)?,
+            cert_data: create_simple_cert_der(domain, &verifying_key, &not_before, &not_after),
             extensions: Vec::new(),
         };
 
@@ -135,22 +132,21 @@ impl CertificateGenerator {
         };
 
         tracing::info!("✅ Standalone certificate generated: {}", domain);
-        Ok((certificate, signing_key))
+        (certificate, signing_key)
     }
 
-    /// Enhanced generation via BearDog
+    /// Enhanced generation via `BearDog`
     ///
-    /// Delegates to BearDog for:
+    /// Delegates to `BearDog` for:
     /// - HSM-backed key generation
     /// - Lineage tracking
     /// - Attestation
     /// - Key rotation support
-    async fn generate_via_beardog(
-        &self,
+    fn generate_via_beardog(
         _client: &BeardogCryptoClient,
         domain: &str,
         validity_days: u32,
-    ) -> Result<(Certificate, SigningKey)> {
+    ) -> (Certificate, SigningKey) {
         tracing::info!("🐻 Generating certificate via BearDog: {}", domain);
 
         // For now, BearDog doesn't have certificate generation in its JSON-RPC API yet
@@ -166,7 +162,7 @@ impl CertificateGenerator {
         // let result = client.call_method("certificate.generate_self_signed", params).await?;
 
         tracing::debug!("BearDog cert generation not yet implemented, using standalone");
-        self.generate_standalone(domain, validity_days)
+        Self::generate_standalone(domain, validity_days)
     }
 }
 
@@ -179,7 +175,7 @@ fn create_simple_cert_der(
     public_key: &VerifyingKey,
     not_before: &DateTime<Utc>,
     not_after: &DateTime<Utc>,
-) -> Result<Vec<u8>> {
+) -> Vec<u8> {
     // Simple DER encoding for demo purposes
     // In production, use proper ASN.1 DER encoding
 
@@ -197,59 +193,55 @@ fn create_simple_cert_der(
     cert_data.extend_from_slice(&not_before.timestamp().to_le_bytes());
     cert_data.extend_from_slice(&not_after.timestamp().to_le_bytes());
 
-    Ok(cert_data)
+    cert_data
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
 
-    #[tokio::test]
-    async fn test_standalone_cert_generation() {
-        let generator =
-            CertificateGenerator::with_mode(CertGenerationMode::Standalone).await.unwrap();
+    #[test]
+    fn test_standalone_cert_generation() {
+        let generator = CertificateGenerator::with_mode(CertGenerationMode::Standalone).unwrap();
 
         let (cert, signing_key) =
-            generator.generate_self_signed("test.songbird.local", 365).await.unwrap();
+            generator.generate_self_signed("test.songbird.local", 365).unwrap();
 
         assert!(!cert.certificate_list.is_empty());
         assert!(!cert.certificate_list[0].cert_data.is_empty());
         assert_eq!(signing_key.verifying_key().as_bytes().len(), 32); // Ed25519 public key is 32 bytes
     }
 
-    #[tokio::test]
-    async fn test_auto_mode_fallback() {
-        // Auto mode should work even without BearDog
-        let generator = CertificateGenerator::new().await.unwrap();
+    #[test]
+    fn test_auto_mode_fallback() {
+        let generator = CertificateGenerator::new().unwrap();
 
-        let (cert, _) = generator.generate_self_signed("auto.songbird.local", 90).await.unwrap();
+        let (cert, _) = generator.generate_self_signed("auto.songbird.local", 90).unwrap();
 
         assert!(!cert.certificate_list.is_empty());
     }
 
-    #[tokio::test]
-    async fn test_standalone_multiple_certs() {
-        let generator =
-            CertificateGenerator::with_mode(CertGenerationMode::Standalone).await.unwrap();
+    #[test]
+    fn test_standalone_multiple_certs() {
+        let generator = CertificateGenerator::with_mode(CertGenerationMode::Standalone).unwrap();
 
         // Generate multiple certificates
         let domains = vec!["test1.local", "test2.local", "test3.local"];
 
         for domain in domains {
-            let (cert, _) = generator.generate_self_signed(domain, 365).await.unwrap();
+            let (cert, _) = generator.generate_self_signed(domain, 365).unwrap();
 
             assert!(!cert.certificate_list.is_empty());
         }
     }
 
-    #[tokio::test]
-    async fn test_cert_validity_period() {
-        let generator =
-            CertificateGenerator::with_mode(CertGenerationMode::Standalone).await.unwrap();
+    #[test]
+    fn test_cert_validity_period() {
+        let generator = CertificateGenerator::with_mode(CertGenerationMode::Standalone).unwrap();
 
         let validity_days = 30;
         let (_cert, _key) =
-            generator.generate_self_signed("validity.local", validity_days).await.unwrap();
+            generator.generate_self_signed("validity.local", validity_days).unwrap();
 
         // Certificate should be valid for the specified period
         // (validation logic would be in certificate usage, not generation)

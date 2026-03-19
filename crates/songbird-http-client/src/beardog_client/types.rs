@@ -1,4 +1,4 @@
-//! BearDog RPC types
+//! `BearDog` RPC types
 //!
 //! JSON-RPC 2.0 message structures and TLS secrets container.
 
@@ -40,7 +40,7 @@ pub(super) struct JsonRpcError {
 /// TLS traffic secrets container
 ///
 /// Contains derived keys and IVs for TLS 1.3 traffic:
-/// - Handshake traffic (for encrypting handshake messages)
+/// - `client_write_key` / `server_write_key` - Handshake traffic (for encrypting handshake messages)
 /// - Application traffic (for encrypting HTTP data)
 ///
 /// Songbird derives application traffic keys for HTTP data encryption.

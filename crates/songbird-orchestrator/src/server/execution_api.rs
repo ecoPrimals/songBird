@@ -23,11 +23,11 @@ pub struct ExecutionApiState {
 impl ExecutionApiState {
     /// Create new execution API state
     ///
-    /// ✅ EVOLVED: Now async due to ExecutionManager async construction
+    /// ✅ EVOLVED: Now async due to `ExecutionManager` async construction
     pub async fn new() -> Result<Self, String> {
         let manager = ExecutionManager::new()
             .await
-            .map_err(|e| format!("Failed to create ExecutionManager: {}", e))?;
+            .map_err(|e| format!("Failed to create ExecutionManager: {e}"))?;
 
         Ok(Self {
             manager: Arc::new(RwLock::new(manager)),
@@ -36,9 +36,10 @@ impl ExecutionApiState {
 
     /// Get the execution manager
     ///
-    /// # Note on Arc::clone
-    /// Arc::clone is cheap (just pointer + atomic increment), but clippy suggests
-    /// explicit Arc::clone() for clarity. However, `.clone()` on Arc is idiomatic.
+    /// # Note on `Arc::clone`
+    /// `Arc::clone` is cheap (just pointer + atomic increment), but clippy suggests
+    /// explicit `Arc::clone()` for clarity. However, `.clone()` on Arc is idiomatic.
+    #[must_use]
     pub fn manager(&self) -> Arc<RwLock<ExecutionManager>> {
         Arc::clone(&self.manager)
     }
@@ -111,8 +112,8 @@ pub enum ApiError {
 impl std::fmt::Display for ApiError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::Execution(msg) => write!(f, "Execution error: {}", msg),
-            Self::InvalidRequest(msg) => write!(f, "Invalid request: {}", msg),
+            Self::Execution(msg) => write!(f, "Execution error: {msg}"),
+            Self::InvalidRequest(msg) => write!(f, "Invalid request: {msg}"),
         }
     }
 }

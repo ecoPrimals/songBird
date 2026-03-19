@@ -70,8 +70,7 @@ impl IntegrationTestContext {
             healthy: true, // Default to healthy
         };
 
-        let mut services = self.services.write().await;
-        services.insert(name.to_string(), service);
+        self.services.write().await.insert(name.to_string(), service);
 
         tracing::info!("Started test service '{}' on port {}", name, port);
         Ok(())
@@ -82,8 +81,7 @@ impl IntegrationTestContext {
     /// # Errors
     /// Returns an error if the service cannot be stopped.
     pub async fn stop_service(&self, name: &str) -> SongbirdResult<()> {
-        let mut services = self.services.write().await;
-        if let Some(service) = services.get_mut(name) {
+        if let Some(service) = self.services.write().await.get_mut(name) {
             service.healthy = false; // Mark as unhealthy when stopped
             tracing::info!("Stopped test service '{}'", name);
         }
@@ -95,17 +93,17 @@ impl IntegrationTestContext {
     /// # Errors
     /// Returns an error if the service is not found.
     pub async fn get_service_status(&self, name: &str) -> SongbirdResult<ServiceStatus> {
-        let services = self.services.read().await;
-        if let Some(service) = services.get(name) {
-            let status = if service.healthy {
-                ServiceStatus::Running
-            } else {
-                ServiceStatus::Stopped
-            };
-            Ok(status)
-        } else {
-            Err(SongbirdError::service("test-utils", format!("Service '{name}' not found")))
-        }
+        self.services.read().await.get(name).map_or_else(
+            || Err(SongbirdError::service("test-utils", format!("Service '{name}' not found"))),
+            |service| {
+                let status = if service.healthy {
+                    ServiceStatus::Running
+                } else {
+                    ServiceStatus::Stopped
+                };
+                Ok(status)
+            },
+        )
     }
 
     /// Create a mock service for testing

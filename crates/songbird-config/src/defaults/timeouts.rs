@@ -9,6 +9,7 @@
 //! - `SONGBIRD_HEARTBEAT_INTERVAL_MS` - Heartbeat interval (default: 60000ms)
 //! - `SONGBIRD_DISCOVERY_TIMEOUT_MS` - Service discovery timeout (default: 5000ms)
 
+use std::collections::HashMap;
 use std::env;
 use std::time::Duration;
 
@@ -30,6 +31,13 @@ pub fn standard_timeout() -> Duration {
     Duration::from_millis(ms)
 }
 
+/// Get standard timeout from environment map (for testing - concurrent safe)
+#[must_use]
+pub fn standard_timeout_from_map(env: &HashMap<String, String>) -> Duration {
+    let ms = env.get("SONGBIRD_TIMEOUT_MS").and_then(|t| t.parse().ok()).unwrap_or(5000);
+    Duration::from_millis(ms)
+}
+
 /// Get long operation timeout from environment or default
 ///
 /// # Environment Variable
@@ -38,6 +46,13 @@ pub fn standard_timeout() -> Duration {
 pub fn long_timeout() -> Duration {
     let ms =
         env::var("SONGBIRD_LONG_TIMEOUT_MS").ok().and_then(|t| t.parse().ok()).unwrap_or(30000);
+    Duration::from_millis(ms)
+}
+
+/// Get long operation timeout from environment map (for testing - concurrent safe)
+#[must_use]
+pub fn long_timeout_from_map(env: &HashMap<String, String>) -> Duration {
+    let ms = env.get("SONGBIRD_LONG_TIMEOUT_MS").and_then(|t| t.parse().ok()).unwrap_or(30000);
     Duration::from_millis(ms)
 }
 
@@ -52,6 +67,13 @@ pub fn request_timeout() -> Duration {
     Duration::from_millis(ms)
 }
 
+/// Get HTTP request timeout from environment map (for testing - concurrent safe)
+#[must_use]
+pub fn request_timeout_from_map(env: &HashMap<String, String>) -> Duration {
+    let ms = env.get("SONGBIRD_REQUEST_TIMEOUT_MS").and_then(|t| t.parse().ok()).unwrap_or(30000);
+    Duration::from_millis(ms)
+}
+
 /// Get cache expiration time from environment or default
 ///
 /// # Environment Variable
@@ -60,6 +82,13 @@ pub fn request_timeout() -> Duration {
 pub fn cache_expiry() -> Duration {
     let ms =
         env::var("SONGBIRD_CACHE_EXPIRY_MS").ok().and_then(|t| t.parse().ok()).unwrap_or(300_000);
+    Duration::from_millis(ms)
+}
+
+/// Get cache expiration time from environment map (for testing - concurrent safe)
+#[must_use]
+pub fn cache_expiry_from_map(env: &HashMap<String, String>) -> Duration {
+    let ms = env.get("SONGBIRD_CACHE_EXPIRY_MS").and_then(|t| t.parse().ok()).unwrap_or(300_000);
     Duration::from_millis(ms)
 }
 
@@ -76,6 +105,14 @@ pub fn heartbeat_interval() -> Duration {
     Duration::from_millis(ms)
 }
 
+/// Get heartbeat interval from environment map (for testing - concurrent safe)
+#[must_use]
+pub fn heartbeat_interval_from_map(env: &HashMap<String, String>) -> Duration {
+    let ms =
+        env.get("SONGBIRD_HEARTBEAT_INTERVAL_MS").and_then(|t| t.parse().ok()).unwrap_or(60000);
+    Duration::from_millis(ms)
+}
+
 /// Get service discovery timeout from environment or default
 ///
 /// # Environment Variable
@@ -84,6 +121,13 @@ pub fn heartbeat_interval() -> Duration {
 pub fn discovery_timeout() -> Duration {
     let ms =
         env::var("SONGBIRD_DISCOVERY_TIMEOUT_MS").ok().and_then(|t| t.parse().ok()).unwrap_or(5000);
+    Duration::from_millis(ms)
+}
+
+/// Get service discovery timeout from environment map (for testing - concurrent safe)
+#[must_use]
+pub fn discovery_timeout_from_map(env: &HashMap<String, String>) -> Duration {
+    let ms = env.get("SONGBIRD_DISCOVERY_TIMEOUT_MS").and_then(|t| t.parse().ok()).unwrap_or(5000);
     Duration::from_millis(ms)
 }
 
@@ -100,6 +144,14 @@ pub fn connection_timeout() -> Duration {
     Duration::from_millis(ms)
 }
 
+/// Get connection timeout from environment map (for testing - concurrent safe)
+#[must_use]
+pub fn connection_timeout_from_map(env: &HashMap<String, String>) -> Duration {
+    let ms =
+        env.get("SONGBIRD_CONNECTION_TIMEOUT_MS").and_then(|t| t.parse().ok()).unwrap_or(10000);
+    Duration::from_millis(ms)
+}
+
 /// Get retry backoff delay from environment or default
 ///
 /// # Environment Variable
@@ -108,6 +160,13 @@ pub fn connection_timeout() -> Duration {
 pub fn retry_backoff() -> Duration {
     let ms =
         env::var("SONGBIRD_RETRY_BACKOFF_MS").ok().and_then(|t| t.parse().ok()).unwrap_or(1000);
+    Duration::from_millis(ms)
+}
+
+/// Get retry backoff delay from environment map (for testing - concurrent safe)
+#[must_use]
+pub fn retry_backoff_from_map(env: &HashMap<String, String>) -> Duration {
+    let ms = env.get("SONGBIRD_RETRY_BACKOFF_MS").and_then(|t| t.parse().ok()).unwrap_or(1000);
     Duration::from_millis(ms)
 }
 
@@ -128,6 +187,21 @@ pub fn operation_timeout(operation_name: &str, default: Duration) -> Duration {
     let env_var = format!("SONGBIRD_{}_TIMEOUT_MS", operation_name.to_uppercase());
     let ms = env::var(env_var)
         .ok()
+        .and_then(|t| t.parse().ok())
+        .unwrap_or_else(|| u64::try_from(default.as_millis()).unwrap_or(u64::MAX));
+    Duration::from_millis(ms)
+}
+
+/// Get timeout by operation name from environment map (for testing - concurrent safe)
+#[must_use]
+pub fn operation_timeout_from_map(
+    env: &HashMap<String, String>,
+    operation_name: &str,
+    default: Duration,
+) -> Duration {
+    let env_var = format!("SONGBIRD_{}_TIMEOUT_MS", operation_name.to_uppercase());
+    let ms = env
+        .get(&env_var)
         .and_then(|t| t.parse().ok())
         .unwrap_or_else(|| u64::try_from(default.as_millis()).unwrap_or(u64::MAX));
     Duration::from_millis(ms)

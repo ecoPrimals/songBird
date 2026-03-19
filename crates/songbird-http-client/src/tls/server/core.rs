@@ -1,6 +1,6 @@
 //! TLS Server Core - Main struct and constructor
 //!
-//! Contains the TlsServer struct definition and basic initialization.
+//! Contains the `TlsServer` struct definition and basic initialization.
 
 use crate::crypto::CryptoCapability;
 use crate::tls::handshake_v2::keys::{CipherSuite, TrafficKeys};
@@ -13,7 +13,7 @@ use tracing::info;
 /// Implements RFC 8446 TLS 1.3 server by reusing client components.
 /// **Critical**: Uses SAME transcript logic as client for self-testing!
 pub struct TlsServer {
-    /// Shared crypto provider (BearDog or any CryptoCapability impl)
+    /// Shared crypto provider (`BearDog` or any `CryptoCapability` impl)
     pub(super) crypto: Arc<dyn CryptoCapability>,
 
     /// Transcript tracking (SAME as client!)
@@ -76,7 +76,7 @@ impl TlsServer {
     }
 
     /// Get mutable reference to transcript
-    pub(super) fn transcript_mut(&mut self) -> &mut Transcript {
+    pub(super) const fn transcript_mut(&mut self) -> &mut Transcript {
         &mut self.transcript
     }
 }

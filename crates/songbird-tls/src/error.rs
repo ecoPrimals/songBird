@@ -32,7 +32,7 @@ pub enum TlsError {
     /// IO error (connection closed, timeout, etc)
     IoError(String),
 
-    /// Crypto provider error (BearDog unavailable or operation failed)
+    /// Crypto provider error (`BearDog` unavailable or operation failed)
     CryptoError(String),
 
     /// Internal error (should never happen in production)
@@ -62,35 +62,34 @@ pub enum TlsError {
 impl fmt::Display for TlsError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            TlsError::ProtocolError(msg) => write!(f, "Protocol error: {}", msg),
-            TlsError::DecryptError => write!(f, "Decryption failed"),
-            TlsError::CertificateError(msg) => write!(f, "Certificate error: {}", msg),
-            TlsError::HandshakeFailure(msg) => write!(f, "Handshake failure: {}", msg),
-            TlsError::Unsupported(msg) => write!(f, "Unsupported: {}", msg),
-            TlsError::IoError(msg) => write!(f, "IO error: {}", msg),
-            TlsError::CryptoError(msg) => write!(f, "Crypto error: {}", msg),
-            TlsError::InternalError(msg) => write!(f, "Internal error: {}", msg),
-            TlsError::BufferTooSmall {
+            Self::ProtocolError(msg) => write!(f, "Protocol error: {msg}"),
+            Self::DecryptError => write!(f, "Decryption failed"),
+            Self::CertificateError(msg) => write!(f, "Certificate error: {msg}"),
+            Self::HandshakeFailure(msg) => write!(f, "Handshake failure: {msg}"),
+            Self::Unsupported(msg) => write!(f, "Unsupported: {msg}"),
+            Self::IoError(msg) => write!(f, "IO error: {msg}"),
+            Self::CryptoError(msg) => write!(f, "Crypto error: {msg}"),
+            Self::InternalError(msg) => write!(f, "Internal error: {msg}"),
+            Self::BufferTooSmall {
                 required,
                 available,
             } => {
                 write!(
                     f,
-                    "Buffer too small: required {} bytes, available {} bytes",
-                    required, available
+                    "Buffer too small: required {required} bytes, available {available} bytes"
                 )
             }
-            TlsError::InvalidParameter(msg) => write!(f, "Invalid parameter: {}", msg),
-            TlsError::RecordTooLarge {
+            Self::InvalidParameter(msg) => write!(f, "Invalid parameter: {msg}"),
+            Self::RecordTooLarge {
                 size,
             } => {
-                write!(f, "Record too large: {} bytes (max 16384)", size)
+                write!(f, "Record too large: {size} bytes (max 16384)")
             }
-            TlsError::UnexpectedMessage {
+            Self::UnexpectedMessage {
                 expected,
                 got,
             } => {
-                write!(f, "Unexpected message: expected {}, got {}", expected, got)
+                write!(f, "Unexpected message: expected {expected}, got {got}")
             }
         }
     }
@@ -101,38 +100,39 @@ impl std::error::Error for TlsError {}
 // Conversions from common error types
 impl From<std::io::Error> for TlsError {
     fn from(err: std::io::Error) -> Self {
-        TlsError::IoError(err.to_string())
+        Self::IoError(err.to_string())
     }
 }
 
 impl From<anyhow::Error> for TlsError {
     fn from(err: anyhow::Error) -> Self {
-        TlsError::InternalError(err.to_string())
+        Self::InternalError(err.to_string())
     }
 }
 
 /// Map TLS errors to alert codes (RFC 8446 Section 6)
 impl TlsError {
-    pub fn to_alert_code(&self) -> u8 {
+    #[must_use]
+    pub const fn to_alert_code(&self) -> u8 {
         match self {
-            TlsError::DecryptError => 51,        // decrypt_error
-            TlsError::CertificateError(_) => 42, // bad_certificate
-            TlsError::HandshakeFailure(_) => 40, // handshake_failure
-            TlsError::Unsupported(_) => 70,      // protocol_version
-            TlsError::ProtocolError(_) => 10,    // unexpected_message
-            TlsError::InvalidParameter(_) => 47, // illegal_parameter
-            TlsError::RecordTooLarge {
-                ..
-            } => 22, // record_overflow
-            TlsError::UnexpectedMessage {
+            Self::DecryptError => 51,        // decrypt_error
+            Self::CertificateError(_) => 42, // bad_certificate
+            Self::HandshakeFailure(_) => 40, // handshake_failure
+            Self::Unsupported(_) => 70,      // protocol_version
+            Self::ProtocolError(_)
+            | Self::UnexpectedMessage {
                 ..
             } => 10, // unexpected_message
-            TlsError::InternalError(_) => 80,    // internal_error
-            _ => 80,                             // internal_error (default)
+            Self::InvalidParameter(_) => 47, // illegal_parameter
+            Self::RecordTooLarge {
+                ..
+            } => 22, // record_overflow
+            _ => 80, // internal_error (IoError, CryptoError, BufferTooSmall, etc.)
         }
     }
 
-    pub fn is_fatal(&self) -> bool {
+    #[must_use]
+    pub const fn is_fatal(&self) -> bool {
         // All errors are fatal in TLS 1.3 (no warnings)
         true
     }

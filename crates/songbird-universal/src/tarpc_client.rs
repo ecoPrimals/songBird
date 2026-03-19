@@ -75,7 +75,7 @@ pub struct TarpcClient {
 
     /// Client connection (lazy-initialized)
     ///
-    /// Wrapped in RwLock for safe concurrent access.
+    /// Wrapped in `RwLock` for safe concurrent access.
     /// Uses Option to allow for lazy initialization and reconnection.
     connection: Arc<RwLock<Option<SongbirdRpcClient>>>,
 
@@ -87,7 +87,7 @@ impl TarpcClient {
     /// Create new tarpc client from endpoint
     ///
     /// # Arguments
-    /// * `endpoint` - tarpc URL (e.g., "tarpc://localhost:9001")
+    /// * `endpoint` - tarpc URL (e.g., "<tarpc://localhost:9001>")
     ///
     /// # Errors
     /// Returns error if endpoint is invalid or cannot be parsed
@@ -127,7 +127,7 @@ impl TarpcClient {
     ///     .with_timeout(Duration::from_secs(10));
     /// ```
     #[must_use]
-    pub fn with_timeout(mut self, timeout: Duration) -> Self {
+    pub const fn with_timeout(mut self, timeout: Duration) -> Self {
         self.timeout = timeout;
         self
     }
@@ -150,7 +150,7 @@ impl TarpcClient {
         client
             .discover(ctx, capability.to_string())
             .await
-            .map_err(|e| SongbirdError::rpc(format!("tarpc call failed: {}", e)))
+            .map_err(|e| SongbirdError::rpc(format!("tarpc call failed: {e}")))
     }
 
     /// Discover all available services
@@ -168,7 +168,7 @@ impl TarpcClient {
         client
             .discover_all(ctx)
             .await
-            .map_err(|e| SongbirdError::rpc(format!("tarpc call failed: {}", e)))
+            .map_err(|e| SongbirdError::rpc(format!("tarpc call failed: {e}")))
     }
 
     /// Register a service
@@ -192,7 +192,7 @@ impl TarpcClient {
         client
             .register(ctx, registration)
             .await
-            .map_err(|e| SongbirdError::rpc(format!("tarpc call failed: {}", e)))
+            .map_err(|e| SongbirdError::rpc(format!("tarpc call failed: {e}")))
     }
 
     /// Unregister a service
@@ -213,7 +213,7 @@ impl TarpcClient {
         client
             .unregister(ctx, service_id.to_string())
             .await
-            .map_err(|e| SongbirdError::rpc(format!("tarpc call failed: {}", e)))
+            .map_err(|e| SongbirdError::rpc(format!("tarpc call failed: {e}")))
     }
 
     /// Get health status
@@ -228,10 +228,7 @@ impl TarpcClient {
         let client = self.get_connection().await?;
         let ctx = tarpc::context::current();
 
-        client
-            .health(ctx)
-            .await
-            .map_err(|e| SongbirdError::rpc(format!("tarpc call failed: {}", e)))
+        client.health(ctx).await.map_err(|e| SongbirdError::rpc(format!("tarpc call failed: {e}")))
     }
 
     /// Get version information
@@ -246,10 +243,7 @@ impl TarpcClient {
         let client = self.get_connection().await?;
         let ctx = tarpc::context::current();
 
-        client
-            .version(ctx)
-            .await
-            .map_err(|e| SongbirdError::rpc(format!("tarpc call failed: {}", e)))
+        client.version(ctx).await.map_err(|e| SongbirdError::rpc(format!("tarpc call failed: {e}")))
     }
 
     /// Get available protocols
@@ -267,7 +261,7 @@ impl TarpcClient {
         client
             .protocols(ctx)
             .await
-            .map_err(|e| SongbirdError::rpc(format!("tarpc call failed: {}", e)))
+            .map_err(|e| SongbirdError::rpc(format!("tarpc call failed: {e}")))
     }
 
     /// Call method with dynamic params (for adapter integration)
@@ -297,28 +291,23 @@ impl TarpcClient {
                     .to_string();
 
                 let result = self.discover(&capability).await?;
-                serde_json::to_value(result).map_err(|e| {
-                    SongbirdError::serialization(format!("Failed to serialize: {}", e))
-                })
+                serde_json::to_value(result)
+                    .map_err(|e| SongbirdError::serialization(format!("Failed to serialize: {e}")))
             }
             "discover_all" => {
                 let result = self.discover_all().await?;
-                serde_json::to_value(result).map_err(|e| {
-                    SongbirdError::serialization(format!("Failed to serialize: {}", e))
-                })
+                serde_json::to_value(result)
+                    .map_err(|e| SongbirdError::serialization(format!("Failed to serialize: {e}")))
             }
             "register" => {
                 let registration: ServiceRegistration = serde_json::from_value(
                     params.ok_or_else(|| SongbirdError::rpc("Missing registration parameter"))?,
                 )
-                .map_err(|e| {
-                    SongbirdError::serialization(format!("Invalid registration: {}", e))
-                })?;
+                .map_err(|e| SongbirdError::serialization(format!("Invalid registration: {e}")))?;
 
                 let result = self.register(registration).await?;
-                serde_json::to_value(result).map_err(|e| {
-                    SongbirdError::serialization(format!("Failed to serialize: {}", e))
-                })
+                serde_json::to_value(result)
+                    .map_err(|e| SongbirdError::serialization(format!("Failed to serialize: {e}")))
             }
             "unregister" => {
                 let service_id = params
@@ -329,29 +318,25 @@ impl TarpcClient {
                     .to_string();
 
                 let result = self.unregister(&service_id).await?;
-                serde_json::to_value(result).map_err(|e| {
-                    SongbirdError::serialization(format!("Failed to serialize: {}", e))
-                })
+                serde_json::to_value(result)
+                    .map_err(|e| SongbirdError::serialization(format!("Failed to serialize: {e}")))
             }
             "health" => {
                 let result = self.health().await?;
-                serde_json::to_value(result).map_err(|e| {
-                    SongbirdError::serialization(format!("Failed to serialize: {}", e))
-                })
+                serde_json::to_value(result)
+                    .map_err(|e| SongbirdError::serialization(format!("Failed to serialize: {e}")))
             }
             "version" => {
                 let result = self.version().await?;
-                serde_json::to_value(result).map_err(|e| {
-                    SongbirdError::serialization(format!("Failed to serialize: {}", e))
-                })
+                serde_json::to_value(result)
+                    .map_err(|e| SongbirdError::serialization(format!("Failed to serialize: {e}")))
             }
             "protocols" => {
                 let result = self.protocols().await?;
-                serde_json::to_value(result).map_err(|e| {
-                    SongbirdError::serialization(format!("Failed to serialize: {}", e))
-                })
+                serde_json::to_value(result)
+                    .map_err(|e| SongbirdError::serialization(format!("Failed to serialize: {e}")))
             }
-            _ => Err(SongbirdError::rpc(format!("Unknown method: {}", method))),
+            _ => Err(SongbirdError::rpc(format!("Unknown method: {method}"))),
         }
     }
 
@@ -397,7 +382,7 @@ impl TarpcClient {
     /// with bincode serialization.
     ///
     /// # Modern Rust Pattern: Explicit timeout handling
-    /// Uses tokio::time::timeout for all I/O operations to prevent
+    /// Uses `tokio::time::timeout` for all I/O operations to prevent
     /// indefinite blocking.
     async fn connect(&self) -> SongbirdResult<SongbirdRpcClient> {
         debug!("Connecting to tarpc server at {}", self.addr);
@@ -428,15 +413,15 @@ impl TarpcClient {
         Ok(client)
     }
 
-    /// Parse endpoint string to SocketAddr with DNS resolution (v3.16.1)
+    /// Parse endpoint string to `SocketAddr` with DNS resolution (v3.16.1)
     ///
     /// **Modern Idiomatic Rust**: Supports both hostnames and IP addresses
     ///
     /// # Arguments
-    /// * `endpoint` - tarpc URL (e.g., "tarpc://localhost:9001" or "tarpc://127.0.0.1:9001")
+    /// * `endpoint` - tarpc URL (e.g., "<tarpc://localhost:9001>" or "<tarpc://127.0.0.1:9001>")
     ///
     /// # Returns
-    /// Parsed SocketAddr (hostnames are resolved to 127.0.0.1 for known localhost aliases)
+    /// Parsed `SocketAddr` (hostnames are resolved to 127.0.0.1 for known localhost aliases)
     ///
     /// # Errors
     /// Returns error if endpoint format is invalid
@@ -453,8 +438,7 @@ impl TarpcClient {
         // Remove tarpc:// prefix
         let addr_str = endpoint.strip_prefix("tarpc://").ok_or_else(|| {
             SongbirdError::configuration(format!(
-                "Invalid tarpc endpoint (expected tarpc://host:port): {}",
-                endpoint
+                "Invalid tarpc endpoint (expected tarpc://host:port): {endpoint}"
             ))
         })?;
 
@@ -468,15 +452,14 @@ impl TarpcClient {
         // Split host:port
         let (host, port) = addr_str.rsplit_once(':').ok_or_else(|| {
             SongbirdError::configuration(format!(
-                "Invalid tarpc endpoint (missing port): {}",
-                addr_str
+                "Invalid tarpc endpoint (missing port): {addr_str}"
             ))
         })?;
 
         // Parse port
         let port: u16 = port
             .parse()
-            .map_err(|e| SongbirdError::configuration(format!("Invalid port '{}': {}", port, e)))?;
+            .map_err(|e| SongbirdError::configuration(format!("Invalid port '{port}': {e}")))?;
 
         // Resolve common hostnames (localhost aliases)
         let ip = match host {
@@ -488,8 +471,7 @@ impl TarpcClient {
                 // Try parsing as IP address
                 host.parse().map_err(|e| {
                     SongbirdError::configuration(format!(
-                        "Invalid hostname or IP '{}': {}. tarpc requires IP addresses or 'localhost'.",
-                        host, e
+                        "Invalid hostname or IP '{host}': {e}. tarpc requires IP addresses or 'localhost'."
                     ))
                 })?
             }

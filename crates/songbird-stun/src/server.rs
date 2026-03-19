@@ -65,11 +65,13 @@ pub struct StunServerStats {
 
 impl StunServerStats {
     /// Get server uptime in seconds
+    #[must_use]
     pub fn uptime_seconds(&self) -> u64 {
-        self.start_time.map(|start| start.elapsed().as_secs()).unwrap_or(0)
+        self.start_time.map_or(0, |start| start.elapsed().as_secs())
     }
 
     /// Get seconds since last request
+    #[must_use]
     pub fn seconds_since_last_request(&self) -> Option<u64> {
         self.last_request.map(|last| last.elapsed().as_secs())
     }
@@ -129,6 +131,7 @@ impl StunServer {
     ///
     /// let server = StunServer::new("0.0.0.0:3478".parse().unwrap());
     /// ```
+    #[must_use]
     pub fn new(bind_addr: SocketAddr) -> Self {
         Self {
             bind_addr,
@@ -157,6 +160,7 @@ impl StunServer {
     ///     "0.0.0.0:3479".parse().unwrap(),
     /// );
     /// ```
+    #[must_use]
     pub fn with_alternate(bind_addr: SocketAddr, alternate_addr: SocketAddr) -> Self {
         Self {
             bind_addr,
@@ -189,7 +193,11 @@ impl StunServer {
     ///     Ok(())
     /// }
     /// ```
-    pub async fn run(&mut self) -> StunResult<()> {
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if socket bind or runtime fails.
+    pub async fn run(&self) -> StunResult<()> {
         self.run_inner(None).await
     }
 
@@ -198,8 +206,12 @@ impl StunServer {
     /// Same as [`run`](Self::run) but sends the actual bound [`SocketAddr`]
     /// on `ready_tx` once the socket is bound, allowing callers to
     /// synchronize without sleeping.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if socket bind or runtime fails.
     pub async fn run_with_ready(
-        &mut self,
+        &self,
         ready_tx: tokio::sync::oneshot::Sender<SocketAddr>,
     ) -> StunResult<()> {
         self.run_inner(Some(ready_tx)).await
@@ -207,17 +219,17 @@ impl StunServer {
 
     /// Internal run loop shared by [`run`] and [`run_with_ready`].
     async fn run_inner(
-        &mut self,
+        &self,
         ready_tx: Option<tokio::sync::oneshot::Sender<SocketAddr>>,
     ) -> StunResult<()> {
         // Bind UDP socket
         let socket = UdpSocket::bind(self.bind_addr)
             .await
-            .map_err(|e| StunError::Network(format!("Failed to bind UDP socket: {}", e)))?;
+            .map_err(|e| StunError::Network(format!("Failed to bind UDP socket: {e}")))?;
 
         let actual_addr = socket
             .local_addr()
-            .map_err(|e| StunError::Network(format!("Failed to get local address: {}", e)))?;
+            .map_err(|e| StunError::Network(format!("Failed to get local address: {e}")))?;
 
         info!("🌐 STUN server listening on {}", actual_addr);
 
@@ -292,7 +304,7 @@ impl StunServer {
         debug!("✅ Valid Binding Request from {}", src_addr);
 
         // Create response
-        let response = self.create_binding_response(&request, src_addr)?;
+        let response = self.create_binding_response(&request, src_addr);
 
         // Encode response
         let response_bytes = response.encode();
@@ -301,7 +313,7 @@ impl StunServer {
         socket
             .send_to(&response_bytes, src_addr)
             .await
-            .map_err(|e| StunError::Network(format!("Failed to send response: {}", e)))?;
+            .map_err(|e| StunError::Network(format!("Failed to send response: {e}")))?;
 
         debug!("📤 Sent {} byte response to {}", response_bytes.len(), src_addr);
 
@@ -332,7 +344,7 @@ impl StunServer {
         &self,
         request: &StunMessage,
         client_addr: SocketAddr,
-    ) -> StunResult<StunMessage> {
+    ) -> StunMessage {
         // Create response with same transaction ID (RFC 5389 requirement)
         let mut response = StunMessage {
             message_type: MessageType::BindingResponse,
@@ -356,7 +368,7 @@ impl StunServer {
             response.attributes.push(StunAttribute::OtherAddress(alternate));
         }
 
-        Ok(response)
+        response
     }
 
     /// Get current server statistics
@@ -382,14 +394,16 @@ impl StunServer {
     /// Get bind address
     ///
     /// Returns the address the server is configured to bind to.
-    pub fn bind_addr(&self) -> SocketAddr {
+    #[must_use]
+    pub const fn bind_addr(&self) -> SocketAddr {
         self.bind_addr
     }
 
     /// Get alternate address
     ///
     /// Returns the alternate address if configured (for NAT type detection).
-    pub fn alternate_addr(&self) -> Option<SocketAddr> {
+    #[must_use]
+    pub const fn alternate_addr(&self) -> Option<SocketAddr> {
         self.alternate_addr
     }
 }
@@ -424,7 +438,7 @@ mod tests {
         let request = StunMessage::new_binding_request();
         let client_addr: SocketAddr = "192.168.1.100:54321".parse().unwrap();
 
-        let response = server.create_binding_response(&request, client_addr).unwrap();
+        let response = server.create_binding_response(&request, client_addr);
 
         // Should be Binding Response
         assert_eq!(response.message_type, MessageType::BindingResponse);
@@ -451,7 +465,7 @@ mod tests {
             let request = StunMessage::new_binding_request();
             let client_addr: SocketAddr = "192.168.1.100:54321".parse().unwrap();
 
-            let response = server.create_binding_response(&request, client_addr).unwrap();
+            let response = server.create_binding_response(&request, client_addr);
 
             // Each response must match its request's transaction ID
             assert_eq!(response.transaction_id, request.transaction_id);
@@ -478,7 +492,7 @@ mod tests {
         let request = StunMessage::new_binding_request();
         let client_addr: SocketAddr = "192.168.1.100:54321".parse().unwrap();
 
-        let response = server.create_binding_response(&request, client_addr).unwrap();
+        let response = server.create_binding_response(&request, client_addr);
 
         // Should include OTHER-ADDRESS attribute when alternate is configured
         let has_other_address =

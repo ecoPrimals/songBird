@@ -29,7 +29,8 @@ pub struct CommandHandler<'a> {
 
 impl<'a> CommandHandler<'a> {
     /// Create new command handler
-    pub fn new(orchestrator: &'a SongbirdOrchestrator) -> Self {
+    #[must_use]
+    pub const fn new(orchestrator: &'a SongbirdOrchestrator) -> Self {
         Self {
             orchestrator,
         }

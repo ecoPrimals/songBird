@@ -83,7 +83,7 @@ pub struct GrpcConfig {
     /// Tls Enabled field
     pub tls_enabled: bool,
     /// TLS configuration
-    /// **CONSOLIDATED**: Now uses CanonicalTlsConfig from consolidated_canonical/network
+    /// **CONSOLIDATED**: Now uses `CanonicalTlsConfig` from `consolidated_canonical/network`
     pub tls_config: Option<CanonicalTlsConfig>,
     /// Compression algorithm
     /// Compression field
@@ -328,7 +328,7 @@ pub enum HttpVersion {
 ///
 /// **LOCAL COPY**: songbird-types is a foundational crate and does not depend on songbird-config.
 /// Fields are aligned with canonical version in songbird-config/src/canonical/resilience.rs
-/// Canonical fields: enabled, failure_threshold (u32), timeout, half_open_max_requests (u32)
+/// Canonical fields: enabled, `failure_threshold` (u32), timeout, `half_open_max_requests` (u32)
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CircuitBreakerConfig {
     /// Enable circuit breaker
@@ -359,7 +359,7 @@ pub struct PerformanceConfig {
     /// Enabled field
     pub enabled: bool,
     /// Connection pooling settings
-    /// **CONSOLIDATED**: Now uses CanonicalConnectionPoolConfig from consolidated_canonical/network
+    /// **CONSOLIDATED**: Now uses `CanonicalConnectionPoolConfig` from `consolidated_canonical/network`
     pub connection_pooling: CanonicalConnectionPoolConfig,
     /// Request batching settings
     /// Request Batching field

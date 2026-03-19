@@ -48,6 +48,7 @@ pub struct JsonRpcState {
 }
 
 impl JsonRpcState {
+    #[must_use]
     pub fn new(
         federation_state: Arc<FederationState>,
         service_registry: Arc<FederatedServiceRegistry>,
@@ -65,6 +66,7 @@ impl JsonRpcState {
     /// This enables inter-gate communication over TCP :3492 by forwarding
     /// unknown methods to the universal-ipc handler (same as Unix socket).
     /// Dark Forest gating still applies on all TCP requests.
+    #[must_use]
     pub fn with_ipc_handler(
         federation_state: Arc<FederationState>,
         service_registry: Arc<FederatedServiceRegistry>,
@@ -140,6 +142,7 @@ impl JsonRpcError {
     pub const INVALID_PARAMS: i32 = -32602;
     pub const INTERNAL_ERROR: i32 = -32603;
 
+    #[must_use]
     pub fn parse_error() -> Self {
         Self {
             code: Self::PARSE_ERROR,
@@ -450,7 +453,7 @@ async fn handle_version() -> Result<Value, JsonRpcError> {
 
 /// health - biomeOS-standard health check
 ///
-/// Returns health status with uptime and BearDog connectivity.
+/// Returns health status with uptime and `BearDog` connectivity.
 /// This is the bare `health` method as required by biomeOS Neural API.
 async fn handle_health_standard(state: &JsonRpcState) -> Result<Value, JsonRpcError> {
     let start_time = state.start_time.read().await;
@@ -502,7 +505,7 @@ async fn handle_identity() -> Result<Value, JsonRpcError> {
     }))
 }
 
-/// network.beacon_exchange - Exchange encrypted beacons with peers
+/// `network.beacon_exchange` - Exchange encrypted beacons with peers
 ///
 /// Enables secure discovery between family members across networks.
 async fn handle_beacon_exchange(params: Option<Value>) -> Result<Value, JsonRpcError> {

@@ -109,6 +109,10 @@ impl UnixRpcClient {
     /// ```rust,ignore
     /// let client = UnixRpcClient::new("/tmp/beardog.sock")?;
     /// ```
+    ///
+    /// # Errors
+    ///
+    /// Does not return errors; socket validation is deferred to connect time.
     pub fn new(socket_path: impl AsRef<Path>) -> Result<Self> {
         let socket_path = socket_path.as_ref().to_path_buf();
 
@@ -128,7 +132,7 @@ impl UnixRpcClient {
     /// ## Type Parameters
     ///
     /// * `P` - Request parameters type (must be Serialize)
-    /// * `R` - Response result type (must be DeserializeOwned)
+    /// * `R` - Response result type (must be `DeserializeOwned`)
     ///
     /// ## Arguments
     ///
@@ -144,7 +148,7 @@ impl UnixRpcClient {
     /// ```rust,ignore
     /// let result: MyResponse = client.call("my_method", MyParams { ... }).await?;
     /// ```
-    /// Platform-agnostic connection helper
+    ///
     #[cfg(unix)]
     async fn connect_platform(path: &PathBuf) -> std::io::Result<PlatformStream> {
         PlatformStream::connect(path).await
@@ -163,6 +167,10 @@ impl UnixRpcClient {
     }
 
     /// Call a JSON-RPC method with the given parameters and return the result.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if connection, serialization, or RPC call fails.
     pub async fn call<P, R>(&self, method: &str, params: P) -> Result<R>
     where
         P: Serialize,
@@ -234,6 +242,10 @@ impl UnixRpcClient {
     /// ```rust,ignore
     /// let result: HealthStatus = client.call_no_params("health_check").await?;
     /// ```
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the RPC call fails.
     pub async fn call_no_params<R>(&self, method: &str) -> Result<R>
     where
         R: DeserializeOwned,
@@ -242,6 +254,7 @@ impl UnixRpcClient {
     }
 
     /// Get the socket path
+    #[must_use]
     pub fn socket_path(&self) -> &Path {
         &self.socket_path
     }

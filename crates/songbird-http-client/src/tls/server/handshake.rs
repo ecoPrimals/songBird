@@ -53,7 +53,7 @@ impl TlsServer {
             self.crypto
                 .generate_x25519_keypair()
                 .await
-                .map_err(|e| Error::TlsHandshake(format!("Failed to generate keypair: {}", e)))?;
+                .map_err(|e| Error::TlsHandshake(format!("Failed to generate keypair: {e}")))?;
 
         self.server_private_key = Some(server_private_key.clone());
         self.server_public_key = Some(server_public_key.clone());
@@ -85,7 +85,7 @@ impl TlsServer {
             .crypto
             .derive_x25519_shared_secret(&server_private_key, &client_public_key)
             .await
-            .map_err(|e| Error::TlsHandshake(format!("ECDH failed: {}", e)))?;
+            .map_err(|e| Error::TlsHandshake(format!("ECDH failed: {e}")))?;
 
         // Store shared_secret for later application key derivation
         self.shared_secret = Some(shared_secret.clone());
@@ -103,7 +103,7 @@ impl TlsServer {
                 self.cipher_suite.to_u16(),
             )
             .await
-            .map_err(|e| Error::TlsHandshake(format!("Handshake key derivation failed: {}", e)))?;
+            .map_err(|e| Error::TlsHandshake(format!("Handshake key derivation failed: {e}")))?;
 
         self.handshake_keys = Some(TrafficKeys::new(
             handshake_secrets.client_write_key.clone(),
@@ -170,9 +170,7 @@ impl TlsServer {
                 self.cipher_suite.to_u16(),
             )
             .await
-            .map_err(|e| {
-                Error::TlsHandshake(format!("Application key derivation failed: {}", e))
-            })?;
+            .map_err(|e| Error::TlsHandshake(format!("Application key derivation failed: {e}")))?;
 
         self.application_keys = Some(TrafficKeys::new(
             app_secrets.client_write_key.clone(),

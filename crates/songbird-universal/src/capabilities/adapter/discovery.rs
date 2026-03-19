@@ -28,7 +28,7 @@ pub struct CapabilityDiscovery {
 
 impl CapabilityDiscovery {
     /// Create new capability discovery component
-    pub fn new(registry: Arc<RwLock<CapabilityRegistry>>, config: DiscoveryConfig) -> Self {
+    pub const fn new(registry: Arc<RwLock<CapabilityRegistry>>, config: DiscoveryConfig) -> Self {
         Self {
             registry,
             config,
@@ -245,7 +245,7 @@ impl CapabilityDiscovery {
     ///
     /// Placeholder - will eventually use primal registry or capability matrix.
     #[allow(clippy::unused_self)]
-    fn primal_provides_capability(&self, _primal_cap: &str, _target_cap: &str) -> bool {
+    const fn primal_provides_capability(&self, _primal_cap: &str, _target_cap: &str) -> bool {
         // Simplified: Exact match for now
         // Original has more complex logic
         false

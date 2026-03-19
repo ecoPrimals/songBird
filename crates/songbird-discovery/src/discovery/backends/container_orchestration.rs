@@ -163,123 +163,130 @@ impl UniversalContainerOrchestration {
 
     /// Get API endpoint information
     #[must_use]
-    pub fn get_api_endpoint(&self) -> Option<&ApiEndpoint> {
+    pub const fn get_api_endpoint(&self) -> Option<&ApiEndpoint> {
         self.runtime_info.api_endpoint.as_ref()
     }
 
     /// Get authentication method
     #[must_use]
-    pub fn get_auth_method(&self) -> Option<&AuthenticationMethod> {
+    pub const fn get_auth_method(&self) -> Option<&AuthenticationMethod> {
         self.runtime_info.auth_method.as_ref()
     }
 
     /// Get namespace configuration
     #[must_use]
-    pub fn get_namespace_config(&self) -> Option<&NamespaceConfig> {
+    pub const fn get_namespace_config(&self) -> Option<&NamespaceConfig> {
         self.runtime_info.namespace.as_ref()
     }
 
     /// Check if API endpoint is configured and accessible
     pub async fn check_api_connectivity(&self) -> SongbirdResult<bool> {
-        if let Some(endpoint) = &self.runtime_info.api_endpoint {
-            debug!("Checking API connectivity to: {}", endpoint.url);
+        self.runtime_info.api_endpoint.as_ref().map_or_else(
+            || {
+                debug!("No API endpoint configured");
+                Ok(false)
+            },
+            |endpoint| {
+                debug!("Checking API connectivity to: {}", endpoint.url);
 
-            // In a real implementation, this would:
-            // 1. Make an HTTP request to the API endpoint
-            // 2. Use the configured authentication method
-            // 3. Verify TLS certificates if required
-            // 4. Return actual connectivity status
+                // In a real implementation, this would:
+                // 1. Make an HTTP request to the API endpoint
+                // 2. Use the configured authentication method
+                // 3. Verify TLS certificates if required
+                // 4. Return actual connectivity status
 
-            // For now, simulate connectivity check
-            let is_accessible = !endpoint.url.is_empty();
+                // For now, simulate connectivity check
+                let is_accessible = !endpoint.url.is_empty();
 
-            if is_accessible {
-                info!("API endpoint accessible: {}", endpoint.url);
-            } else {
-                warn!("API endpoint not accessible: {}", endpoint.url);
-            }
+                if is_accessible {
+                    info!("API endpoint accessible: {}", endpoint.url);
+                } else {
+                    warn!("API endpoint not accessible: {}", endpoint.url);
+                }
 
-            Ok(is_accessible)
-        } else {
-            debug!("No API endpoint configured");
-            Ok(false)
-        }
+                Ok(is_accessible)
+            },
+        )
     }
 
     /// Get available namespaces
     pub async fn get_available_namespaces(&self) -> SongbirdResult<Vec<String>> {
-        if let Some(namespace_config) = &self.runtime_info.namespace {
-            debug!("📋 Getting available namespaces");
+        self.runtime_info.namespace.as_ref().map_or_else(
+            || Ok(vec!["default".to_string()]),
+            |namespace_config| {
+                debug!("📋 Getting available namespaces");
 
-            if namespace_config.auto_discover {
-                // In a real implementation, this would query the API for namespaces
-                let mut discovered_namespaces = namespace_config.accessible_namespaces.clone();
+                if namespace_config.auto_discover {
+                    // In a real implementation, this would query the API for namespaces
+                    let mut discovered_namespaces = namespace_config.accessible_namespaces.clone();
 
-                // Simulate discovering additional namespaces
-                discovered_namespaces
-                    .extend(vec!["kube-system".to_string(), "monitoring".to_string()]);
+                    // Simulate discovering additional namespaces
+                    discovered_namespaces
+                        .extend(vec!["kube-system".to_string(), "monitoring".to_string()]);
 
-                Ok(discovered_namespaces)
-            } else {
-                Ok(namespace_config.accessible_namespaces.clone())
-            }
-        } else {
-            Ok(vec!["default".to_string()])
-        }
+                    Ok(discovered_namespaces)
+                } else {
+                    Ok(namespace_config.accessible_namespaces.clone())
+                }
+            },
+        )
     }
 
     /// Authenticate with the container orchestration API
     pub async fn authenticate(&self) -> SongbirdResult<String> {
-        if let Some(auth_method) = &self.runtime_info.auth_method {
-            debug!("Authenticating with container orchestration API");
+        self.runtime_info.auth_method.as_ref().map_or_else(
+            || {
+                debug!("No authentication method configured");
+                Ok("no_auth_configured".to_string())
+            },
+            |auth_method| {
+                debug!("Authenticating with container orchestration API");
 
-            match auth_method {
-                AuthenticationMethod::ServiceAccount {
-                    token_path,
-                } => {
-                    debug!("Using service account authentication: {}", token_path);
-                    // In a real implementation, would read the token file
-                    Ok("service_account_token".to_string())
+                match auth_method {
+                    AuthenticationMethod::ServiceAccount {
+                        token_path,
+                    } => {
+                        debug!("Using service account authentication: {}", token_path);
+                        // In a real implementation, would read the token file
+                        Ok("service_account_token".to_string())
+                    }
+                    AuthenticationMethod::BearerToken {
+                        token,
+                    } => {
+                        debug!("Using bearer token authentication");
+                        Ok(token.clone())
+                    }
+                    AuthenticationMethod::Certificate {
+                        cert_path,
+                        key_path,
+                    } => {
+                        debug!(
+                            "Using certificate authentication: cert={}, key={}",
+                            cert_path, key_path
+                        );
+                        // In a real implementation, would load certificates
+                        Ok("certificate_auth_token".to_string())
+                    }
+                    AuthenticationMethod::BasicAuth {
+                        username,
+                        ..
+                    } => {
+                        debug!("Using basic authentication for user: {}", username);
+                        // In a real implementation, would create basic auth header
+                        Ok("basic_auth_token".to_string())
+                    }
+                    AuthenticationMethod::None => {
+                        debug!("No authentication required");
+                        Ok("no_auth".to_string())
+                    }
                 }
-                AuthenticationMethod::BearerToken {
-                    token,
-                } => {
-                    debug!("Using bearer token authentication");
-                    Ok(token.clone())
-                }
-                AuthenticationMethod::Certificate {
-                    cert_path,
-                    key_path,
-                } => {
-                    debug!(
-                        "Using certificate authentication: cert={}, key={}",
-                        cert_path, key_path
-                    );
-                    // In a real implementation, would load certificates
-                    Ok("certificate_auth_token".to_string())
-                }
-                AuthenticationMethod::BasicAuth {
-                    username,
-                    ..
-                } => {
-                    debug!("Using basic authentication for user: {}", username);
-                    // In a real implementation, would create basic auth header
-                    Ok("basic_auth_token".to_string())
-                }
-                AuthenticationMethod::None => {
-                    debug!("No authentication required");
-                    Ok("no_auth".to_string())
-                }
-            }
-        } else {
-            debug!("No authentication method configured");
-            Ok("no_auth_configured".to_string())
-        }
+            },
+        )
     }
 
     /// Get discovered containers
     #[must_use]
-    pub fn get_discovered_containers(&self) -> &HashMap<String, ContainerInfo> {
+    pub const fn get_discovered_containers(&self) -> &HashMap<String, ContainerInfo> {
         &self.discovered_containers
     }
 

@@ -74,7 +74,7 @@ impl HttpConnection {
                     80
                 };
                 let host_header = match uri.port_u16() {
-                    Some(port) if port != default_port => format!("{}:{}", host, port),
+                    Some(port) if port != default_port => format!("{host}:{port}"),
                     _ => host.to_string(),
                 };
                 req_builder = req_builder.header("Host", host_header);
@@ -103,7 +103,7 @@ impl HttpConnection {
         Self::parse_response(response).await
     }
 
-    /// Parse Hyper response into our HttpResponse type
+    /// Parse Hyper response into our `HttpResponse` type
     async fn parse_response(
         response: hyper::Response<hyper::body::Incoming>,
     ) -> Result<HttpResponse> {

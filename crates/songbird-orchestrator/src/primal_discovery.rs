@@ -53,7 +53,7 @@ pub enum Capability {
 
 impl Capability {
     /// Get environment variable name for this capability
-    fn env_var_name(&self) -> &'static str {
+    const fn env_var_name(&self) -> &'static str {
         match self {
             Self::Crypto => "CRYPTO_PROVIDER_SOCKET",
             Self::Security => "SECURITY_PROVIDER_SOCKET",
@@ -186,7 +186,7 @@ where
 
     // Not found
     warn!("❌ No {:?} provider found - checked all discovery strategies", capability);
-    anyhow::bail!("No {:?} provider available", capability)
+    anyhow::bail!("No {capability:?} provider available")
 }
 
 /// Scan socket directories for sockets matching capability.
@@ -211,7 +211,7 @@ fn scan_sockets(capability: Capability) -> Option<String> {
 
     // Priority 1: XDG_RUNTIME_DIR/biomeos/
     if let Ok(xdg_runtime) = std::env::var("XDG_RUNTIME_DIR") {
-        dirs_to_scan.push(format!("{}/biomeos", xdg_runtime));
+        dirs_to_scan.push(format!("{xdg_runtime}/biomeos"));
     }
 
     // Priority 2: /tmp/biomeos/
@@ -295,7 +295,7 @@ fn discover_tcp_from_capability(capability: Capability) -> Option<String> {
 ///
 /// TCP socket address (e.g., "127.0.0.1:12345") if found, None otherwise.
 fn check_tcp_discovery_file(primal_name: &str) -> Option<String> {
-    let filename = format!("{}-ipc-port", primal_name);
+    let filename = format!("{primal_name}-ipc-port");
     let mut candidates = Vec::new();
 
     // Priority 1: XDG_RUNTIME_DIR (preferred)
@@ -309,7 +309,7 @@ fn check_tcp_discovery_file(primal_name: &str) -> Option<String> {
     }
 
     // Priority 3: /tmp (last resort)
-    candidates.push(std::path::PathBuf::from(format!("/tmp/{}", filename)));
+    candidates.push(std::path::PathBuf::from(format!("/tmp/{filename}")));
 
     check_tcp_discovery_from_candidates(&candidates)
 }
@@ -560,11 +560,13 @@ mod tests {
 }
 
 /// Get family ID from environment (delegates to canonical `env_config::family_id()`)
+#[must_use]
 pub fn get_family_id() -> String {
     crate::env_config::family_id()
 }
 
 /// Get primal name from environment (self-knowledge)
+#[must_use]
 pub fn get_primal_name() -> String {
     std::env::var("PRIMAL_NAME").unwrap_or_else(|_| "songbird".to_string())
 }

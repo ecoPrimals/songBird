@@ -32,13 +32,14 @@ pub struct CertificateEntry {
     /// Certificate data (X.509 certificate in DER format)
     pub cert_data: Vec<u8>,
 
-    /// Extensions (e.g., status_request for OCSP stapling)
+    /// Extensions (e.g., `status_request` for OCSP stapling)
     pub extensions: Vec<u8>, // Simplified for now - will parse later
 }
 
 impl Certificate {
     /// Create a new Certificate message
-    pub fn new(certificate_list: Vec<CertificateEntry>) -> Self {
+    #[must_use]
+    pub const fn new(certificate_list: Vec<CertificateEntry>) -> Self {
         Self {
             certificate_request_context: Vec::new(), // Empty for server certs
             certificate_list,
@@ -46,7 +47,8 @@ impl Certificate {
     }
 
     /// Create a Certificate message with context (for client certificates)
-    pub fn new_with_context(
+    #[must_use]
+    pub const fn new_with_context(
         certificate_request_context: Vec<u8>,
         certificate_list: Vec<CertificateEntry>,
     ) -> Self {
@@ -57,11 +59,16 @@ impl Certificate {
     }
 
     /// Get the leaf certificate (first in chain)
+    #[must_use]
     pub fn leaf_certificate(&self) -> Option<&CertificateEntry> {
         self.certificate_list.first()
     }
 
     /// Validate Certificate message
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the certificate list is empty or any certificate has empty data.
     pub fn validate(&self) -> Result<()> {
         // Must have at least one certificate
         if self.certificate_list.is_empty() {
@@ -71,10 +78,7 @@ impl Certificate {
         // Each certificate must have data
         for (i, entry) in self.certificate_list.iter().enumerate() {
             if entry.cert_data.is_empty() {
-                return Err(TlsError::CertificateError(format!(
-                    "Certificate {} has empty data",
-                    i
-                )));
+                return Err(TlsError::CertificateError(format!("Certificate {i} has empty data")));
             }
         }
 
@@ -84,7 +88,8 @@ impl Certificate {
 
 impl CertificateEntry {
     /// Create a new certificate entry
-    pub fn new(cert_data: Vec<u8>) -> Self {
+    #[must_use]
+    pub const fn new(cert_data: Vec<u8>) -> Self {
         Self {
             cert_data,
             extensions: Vec::new(),
@@ -92,7 +97,8 @@ impl CertificateEntry {
     }
 
     /// Create a certificate entry with extensions
-    pub fn new_with_extensions(cert_data: Vec<u8>, extensions: Vec<u8>) -> Self {
+    #[must_use]
+    pub const fn new_with_extensions(cert_data: Vec<u8>, extensions: Vec<u8>) -> Self {
         Self {
             cert_data,
             extensions,

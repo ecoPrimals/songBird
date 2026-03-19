@@ -117,7 +117,7 @@ fn extract_family_id(peer: &DiscoveredPeer) -> Option<String> {
 fn calculate_quality(peer: &DiscoveredPeer) -> f64 {
     let now = std::time::SystemTime::now();
 
-    if let Ok(elapsed) = now.duration_since(peer.last_seen) {
+    now.duration_since(peer.last_seen).map_or(0.99, |elapsed| {
         let seconds = elapsed.as_secs();
 
         // Quality degrades with time
@@ -132,9 +132,7 @@ fn calculate_quality(peer: &DiscoveredPeer) -> f64 {
         } else {
             0.50 // Stale
         }
-    } else {
-        0.99 // Future timestamp? Treat as fresh
-    }
+    })
 }
 
 #[cfg(test)]

@@ -32,11 +32,13 @@ const SECURITY_SEARCH_TERMS: &[&str] = &["security", "auth", "beardog"];
 /// 5. Known-provider sockets: `beardog.sock` (XDG → UID → `/tmp`)
 /// 6. Filesystem scan for any socket matching security search terms
 /// 7. `None` if not found (triggers secure fallback)
+#[must_use]
 pub fn discover_security_socket() -> Option<PathBuf> {
     discover_security_socket_with(|key| std::env::var(key))
 }
 
 /// Backward-compatible alias for [`discover_security_socket`].
+#[must_use]
 pub fn discover_beardog_socket() -> Option<PathBuf> {
     discover_security_socket()
 }
@@ -169,11 +171,13 @@ fn scan_security_sockets() -> Option<PathBuf> {
 }
 
 /// Discover security provider socket for a specific family.
+#[must_use]
 pub fn discover_security_socket_for_family(family_id: &str) -> Option<PathBuf> {
     discover_security_socket_for_family_with(family_id, |key| std::env::var(key))
 }
 
 /// Backward-compatible alias for [`discover_security_socket_for_family`].
+#[must_use]
 pub fn discover_beardog_socket_for_family(family_id: &str) -> Option<PathBuf> {
     discover_security_socket_for_family(family_id)
 }
@@ -216,11 +220,13 @@ where
 ///
 /// This is the main entry point for JWT provisioning.
 /// Returns the socket path to use for security provider communication.
+#[must_use]
 pub fn get_security_socket_for_jwt() -> Option<String> {
     discover_security_socket().map(|path| path.to_string_lossy().to_string())
 }
 
 /// Backward-compatible alias for [`get_security_socket_for_jwt`].
+#[must_use]
 pub fn get_beardog_socket_for_jwt() -> Option<String> {
     get_security_socket_for_jwt()
 }

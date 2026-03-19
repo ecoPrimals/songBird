@@ -11,27 +11,47 @@ use std::time::Duration;
 
 /// Extension trait for Result types to eliminate unwrap patterns
 pub trait UnwrapElimination<T, E> {
-    /// Convert to SongbirdError with configuration context
+    /// Convert to `SongbirdError` with configuration context
+    ///
+    /// # Errors
+    ///
+    /// Returns `SongbirdError::Configuration` when the inner `Result` is `Err`.
     fn or_config_error(self, field: &str) -> SongbirdResult<T>
     where
         E: std::fmt::Display;
 
-    /// Convert to SongbirdError with network context
+    /// Convert to `SongbirdError` with network context
+    ///
+    /// # Errors
+    ///
+    /// Returns `SongbirdError::Network` when the inner `Result` is `Err`.
     fn or_network_error(self, context: &str) -> SongbirdResult<T>
     where
         E: std::fmt::Display;
 
-    /// Convert to SongbirdError with service context
+    /// Convert to `SongbirdError` with service context
+    ///
+    /// # Errors
+    ///
+    /// Returns `SongbirdError::Service` when the inner `Result` is `Err`.
     fn or_service_error(self, service: &str) -> SongbirdResult<T>
     where
         E: std::fmt::Display;
 
-    /// Convert to SongbirdError with discovery context
+    /// Convert to `SongbirdError` with discovery context
+    ///
+    /// # Errors
+    ///
+    /// Returns `SongbirdError::Discovery` when the inner `Result` is `Err`.
     fn or_discovery_error(self, backend: &str) -> SongbirdResult<T>
     where
         E: std::fmt::Display;
 
-    /// Convert to SongbirdError with registry context
+    /// Convert to `SongbirdError` with registry context
+    ///
+    /// # Errors
+    ///
+    /// Returns `SongbirdError::Registry` when the inner `Result` is `Err`.
     fn or_registry_error(self, operation: &str) -> SongbirdResult<T>
     where
         E: std::fmt::Display;
@@ -43,7 +63,7 @@ impl<T, E> UnwrapElimination<T, E> for Result<T, E> {
         E: std::fmt::Display,
     {
         self.map_err(|e| SongbirdError::Configuration {
-            message: format!("{}: {}", field, e),
+            message: format!("{field}: {e}"),
             field: Some(field.to_string()),
             suggestion: Some("Check configuration file and environment variables".to_string()),
         })
@@ -54,7 +74,7 @@ impl<T, E> UnwrapElimination<T, E> for Result<T, E> {
         E: std::fmt::Display,
     {
         self.map_err(|e| SongbirdError::Network {
-            message: format!("{}: {}", context, e),
+            message: format!("{context}: {e}"),
             interface: None,
             suggestion: Some("Check network connectivity and firewall settings".to_string()),
         })
@@ -98,24 +118,33 @@ impl<T, E> UnwrapElimination<T, E> for Result<T, E> {
 /// Extension trait for Option types to eliminate unwrap on None
 pub trait OptionElimination<T> {
     /// Convert None to configuration error
+    ///
+    /// # Errors
+    ///
+    /// Returns `SongbirdError::Configuration` when the `Option` is `None`.
     fn or_config_missing(self, field: &str) -> SongbirdResult<T>;
 
     /// Convert None to service not found error
+    ///
+    /// # Errors
+    ///
+    /// Returns `SongbirdError::Service` when the `Option` is `None`.
     fn or_service_not_found(self, service: &str) -> SongbirdResult<T>;
 
     /// Convert None to resource unavailable error
+    ///
+    /// # Errors
+    ///
+    /// Returns `SongbirdError::Network` when the `Option` is `None`.
     fn or_resource_unavailable(self, resource: &str) -> SongbirdResult<T>;
 }
 
 impl<T> OptionElimination<T> for Option<T> {
     fn or_config_missing(self, field: &str) -> SongbirdResult<T> {
         self.ok_or_else(|| SongbirdError::Configuration {
-            message: format!("Required configuration field '{}' is missing", field),
+            message: format!("Required configuration field '{field}' is missing"),
             field: Some(field.to_string()),
-            suggestion: Some(format!(
-                "Set {} in configuration file or environment variable",
-                field
-            )),
+            suggestion: Some(format!("Set {field} in configuration file or environment variable")),
         })
     }
 
@@ -133,36 +162,48 @@ impl<T> OptionElimination<T> for Option<T> {
 
     fn or_resource_unavailable(self, resource: &str) -> SongbirdResult<T> {
         self.ok_or_else(|| SongbirdError::Network {
-            message: format!("Resource '{}' is unavailable", resource),
+            message: format!("Resource '{resource}' is unavailable"),
             interface: None,
             suggestion: Some("Check resource availability and permissions".to_string()),
         })
     }
 }
 
-/// Safe parsing utilities to replace parse().unwrap()
+/// Safe parsing utilities to replace `parse().unwrap()`
 pub struct SafeParse;
 
 impl SafeParse {
     /// Parse a socket address safely
+    ///
+    /// # Errors
+    ///
+    /// Returns `SongbirdError::Network` when the input cannot be parsed as a socket address.
     pub fn socket_addr(input: &str, context: &str) -> SongbirdResult<SocketAddr> {
         input
             .parse::<SocketAddr>()
-            .or_network_error(&format!("Invalid socket address in {}", context))
+            .or_network_error(&format!("Invalid socket address in {context}"))
     }
 
     /// Parse a port number safely
+    ///
+    /// # Errors
+    ///
+    /// Returns `SongbirdError::Configuration` when the input cannot be parsed as a port.
     pub fn port(input: &str, context: &str) -> SongbirdResult<u16> {
-        input.parse::<u16>().or_config_error(&format!("Invalid port number in {}", context))
+        input.parse::<u16>().or_config_error(&format!("Invalid port number in {context}"))
     }
 
     /// Parse a duration from milliseconds safely
+    ///
+    /// # Errors
+    ///
+    /// Returns `SongbirdError::Configuration` when the value is out of range.
     pub fn duration_from_millis(ms: u64, context: &str) -> SongbirdResult<Duration> {
         if ms > 0 && ms < u64::MAX / 1_000_000 {
             Ok(Duration::from_millis(ms))
         } else {
             Err(SongbirdError::Configuration {
-                message: format!("Invalid duration: {} ms in {}", ms, context),
+                message: format!("Invalid duration: {ms} ms in {context}"),
                 field: Some(context.to_string()),
                 suggestion: Some(
                     "Use a reasonable timeout value (e.g., 30000 for 30 seconds)".to_string(),
@@ -172,25 +213,33 @@ impl SafeParse {
     }
 
     /// Parse a duration from seconds safely
+    ///
+    /// # Errors
+    ///
+    /// Returns `SongbirdError::Configuration` when the value is out of range.
     pub fn duration_from_secs(secs: u64) -> SongbirdResult<Duration> {
         if secs > 0 && secs < u64::MAX {
             Ok(Duration::from_secs(secs))
         } else {
             Err(SongbirdError::Configuration {
-                message: format!("Invalid duration: {} seconds", secs),
+                message: format!("Invalid duration: {secs} seconds"),
                 field: None,
                 suggestion: Some("Use a positive duration value".to_string()),
             })
         }
     }
 
-    /// Parse any FromStr type safely
+    /// Parse any `FromStr` type safely
+    ///
+    /// # Errors
+    ///
+    /// Returns `SongbirdError::Configuration` when the input cannot be parsed.
     pub fn parse<T>(input: &str, context: &str) -> SongbirdResult<T>
     where
         T: FromStr,
         T::Err: std::fmt::Display,
     {
-        input.parse::<T>().or_config_error(&format!("Failed to parse {} from '{}'", context, input))
+        input.parse::<T>().or_config_error(&format!("Failed to parse {context} from '{input}'"))
     }
 }
 
@@ -199,6 +248,10 @@ pub struct SafeEnv;
 
 impl SafeEnv {
     /// Get environment variable (returns Result for explicit handling)
+    ///
+    /// # Errors
+    ///
+    /// Returns `env::VarError` when the variable is not set or invalid.
     pub fn get(key: &str) -> Result<String, env::VarError> {
         env::var(key)
     }
@@ -209,19 +262,22 @@ impl SafeEnv {
     }
 
     /// Get required environment variable
+    ///
+    /// # Errors
+    ///
+    /// Returns `SongbirdError::Configuration` when the variable is not set.
     pub fn get_required(key: &str) -> SongbirdResult<String> {
-        env::var(key).or_config_error(&format!("Missing required environment variable: {}", key))
+        env::var(key).or_config_error(&format!("Missing required environment variable: {key}"))
     }
 
     /// Get port from environment with default (safe - falls back to default on parse failure)
+    #[must_use]
     pub fn get_port(key: &str, default: u16) -> u16 {
-        match env::var(key) {
-            Ok(value) => value.parse::<u16>().unwrap_or(default),
-            Err(_) => default,
-        }
+        env::var(key).map_or(default, |value| value.parse::<u16>().unwrap_or(default))
     }
 
     /// Get boolean from environment with default
+    #[must_use]
     pub fn get_bool(key: &str, default: bool) -> bool {
         env::var(key)
             .ok()
@@ -234,11 +290,9 @@ impl SafeEnv {
     }
 
     /// Get integer from environment with default (safe - falls back to default on parse failure)
+    #[must_use]
     pub fn get_usize(key: &str, default: usize) -> usize {
-        match env::var(key) {
-            Ok(value) => value.parse::<usize>().unwrap_or(default),
-            Err(_) => default,
-        }
+        env::var(key).map_or(default, |value| value.parse::<usize>().unwrap_or(default))
     }
 
     /// Generic parse with default value (safe - falls back to default on parse failure)

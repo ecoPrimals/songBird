@@ -8,8 +8,8 @@
 //! - ✅ Crash-safe
 //! - ✅ Simpler than SQL
 //!
-//! **Evolution**: Switched TaskLifecycle storage from bincode to JSON (Feb 5, 2026)
-//! - Bincode doesn't support `serde_json::Value` (requires deserialize_any)
+//! **Evolution**: Switched `TaskLifecycle` storage from bincode to JSON (Feb 5, 2026)
+//! - Bincode doesn't support `serde_json::Value` (requires `deserialize_any`)
 //! - JSON serialization naturally handles dynamic Value types
 //! - Checkpoints still use bincode (no Value fields)
 //!
@@ -108,7 +108,7 @@ impl TaskStorage {
         let db = Arc::clone(&self.db);
 
         tokio::task::spawn_blocking(move || {
-            let key = format!("task/{}", id);
+            let key = format!("task/{id}");
             let value = db.get(key.as_bytes()).context("Failed to fetch task")?;
 
             if let Some(bytes) = value {
@@ -148,7 +148,7 @@ impl TaskStorage {
                     let task_id = TaskId::from_string(&task_id_str)?;
 
                     // Sync read within blocking context
-                    let key = format!("task/{}", task_id);
+                    let key = format!("task/{task_id}");
                     if let Some(bytes) = db.get(key.as_bytes())? {
                         let task: TaskLifecycle = serde_json::from_slice(&bytes)?;
                         if Self::matches_filter_static(&task, &filter) {
@@ -158,8 +158,8 @@ impl TaskStorage {
                 }
             } else if let Some(status) = &filter.status {
                 // Query by status index
-                let status_str = format!("{:?}", status);
-                let prefix = format!("status_tasks/{}/", status_str);
+                let status_str = format!("{status:?}");
+                let prefix = format!("status_tasks/{status_str}/");
                 for item in db.scan_prefix(prefix.as_bytes()) {
                     let (_key, task_id_bytes) = item.context("Failed to scan status tasks")?;
                     let task_id_str = String::from_utf8(task_id_bytes.to_vec())
@@ -167,7 +167,7 @@ impl TaskStorage {
                     let task_id = TaskId::from_string(&task_id_str)?;
 
                     // Sync read within blocking context
-                    let key = format!("task/{}", task_id);
+                    let key = format!("task/{task_id}");
                     if let Some(bytes) = db.get(key.as_bytes())? {
                         let task: TaskLifecycle = serde_json::from_slice(&bytes)?;
                         if Self::matches_filter_static(&task, &filter) {
@@ -200,7 +200,7 @@ impl TaskStorage {
         .context("Task panicked while listing")?
     }
 
-    /// Check if task matches filter (static version for spawn_blocking)
+    /// Check if task matches filter (static version for `spawn_blocking`)
     fn matches_filter_static(task: &TaskLifecycle, filter: &TaskFilter) -> bool {
         if let Some(owner) = &filter.owner {
             if task.owner != *owner {
@@ -235,7 +235,7 @@ impl TaskStorage {
 
         tokio::task::spawn_blocking(move || {
             // Get task first to clean up indices
-            let key = format!("task/{}", id);
+            let key = format!("task/{id}");
             if let Some(bytes) = db.get(key.as_bytes())? {
                 let task: TaskLifecycle = serde_json::from_slice(&bytes)?;
 
@@ -248,7 +248,7 @@ impl TaskStorage {
 
                 // Delete status index
                 let status_str = format!("{:?}", task.status);
-                let status_key = format!("status_tasks/{}/{}", status_str, id);
+                let status_key = format!("status_tasks/{status_str}/{id}");
                 db.remove(status_key.as_bytes())?;
 
                 // Delete tower index if exists
@@ -305,7 +305,7 @@ impl TaskStorage {
         let db = Arc::clone(&self.db);
 
         tokio::task::spawn_blocking(move || {
-            let key = format!("checkpoint/{}", id);
+            let key = format!("checkpoint/{id}");
             let value = db.get(key.as_bytes()).context("Failed to fetch checkpoint")?;
 
             if let Some(bytes) = value {
@@ -331,7 +331,7 @@ impl TaskStorage {
         tokio::task::spawn_blocking(move || {
             debug!("Listing checkpoints for task: {}", task_id.to_string());
 
-            let prefix = format!("task_checkpoints/{}/", task_id);
+            let prefix = format!("task_checkpoints/{task_id}/");
             let mut checkpoints = Vec::new();
 
             for item in db.scan_prefix(prefix.as_bytes()) {
@@ -340,7 +340,7 @@ impl TaskStorage {
                     .context("Invalid checkpoint ID in index")?;
 
                 // Read checkpoint directly
-                let key = format!("checkpoint/{}", checkpoint_id);
+                let key = format!("checkpoint/{checkpoint_id}");
                 if let Some(bytes) = db.get(key.as_bytes())? {
                     let checkpoint: Checkpoint = bincode::deserialize(&bytes)?;
                     checkpoints.push(checkpoint);
@@ -369,7 +369,7 @@ impl TaskStorage {
         tokio::task::spawn_blocking(move || {
             debug!("Deleting checkpoint: {}", id);
 
-            let key = format!("checkpoint/{}", id);
+            let key = format!("checkpoint/{id}");
             if let Some(bytes) = db.get(key.as_bytes())? {
                 let checkpoint: Checkpoint = bincode::deserialize(&bytes)?;
 
@@ -414,7 +414,7 @@ impl TaskStorage {
         let db = Arc::clone(&self.db);
 
         tokio::task::spawn_blocking(move || {
-            let prefix = format!("task_checkpoints/{}/", task_id);
+            let prefix = format!("task_checkpoints/{task_id}/");
             let mut checkpoints = Vec::new();
 
             // Collect all checkpoints for this task
@@ -424,7 +424,7 @@ impl TaskStorage {
                     .context("Invalid checkpoint ID in index")?;
 
                 // Read checkpoint
-                let key = format!("checkpoint/{}", checkpoint_id);
+                let key = format!("checkpoint/{checkpoint_id}");
                 if let Some(bytes) = db.get(key.as_bytes())? {
                     let checkpoint: Checkpoint = bincode::deserialize(&bytes)?;
                     checkpoints.push(checkpoint);
@@ -463,7 +463,7 @@ impl TaskStorage {
         .context("Task panicked while deleting old checkpoints")?
     }
 
-    /// Clean up checkpoints older than max_age seconds across all tasks
+    /// Clean up checkpoints older than `max_age` seconds across all tasks
     ///
     /// # Errors
     ///

@@ -19,11 +19,11 @@ use tracing::debug;
 ///
 /// Only supports plain HTTP (not HTTPS) — which is correct for Tor
 /// directory authority fetches. These authorities serve consensus and
-/// relay descriptors over plain HTTP on their DirPort.
+/// relay descriptors over plain HTTP on their `DirPort`.
 ///
 /// # Arguments
 ///
-/// * `url` - Full HTTP URL (e.g., "http://131.188.40.189:80/tor/status-vote/current/consensus")
+/// * `url` - Full HTTP URL (e.g., "<http://131.188.40.189:80/tor/status-vote/current/consensus>")
 /// * `request_timeout` - Maximum time to wait for the response
 ///
 /// # Errors
@@ -33,7 +33,7 @@ pub async fn get(url: &str, request_timeout: Duration) -> Result<String> {
     debug!("HTTP GET: {}", url);
 
     let uri: hyper::Uri =
-        url.parse().map_err(|e| Error::Network(format!("Invalid URL '{}': {}", url, e)))?;
+        url.parse().map_err(|e| Error::Network(format!("Invalid URL '{url}': {e}")))?;
 
     let client = Client::builder(TokioExecutor::new()).build_http::<Empty<Bytes>>();
 
@@ -42,27 +42,27 @@ pub async fn get(url: &str, request_timeout: Duration) -> Result<String> {
         .uri(&uri)
         .header("User-Agent", "Songbird/3.33.0")
         .body(Empty::<Bytes>::new())
-        .map_err(|e| Error::Network(format!("Failed to build request: {}", e)))?;
+        .map_err(|e| Error::Network(format!("Failed to build request: {e}")))?;
 
     let response = timeout(request_timeout, client.request(request))
         .await
         .map_err(|_| Error::Timeout)?
-        .map_err(|e| Error::Network(format!("HTTP request failed: {}", e)))?;
+        .map_err(|e| Error::Network(format!("HTTP request failed: {e}")))?;
 
     let status = response.status();
     if !status.is_success() {
-        return Err(Error::Network(format!("HTTP {} from {}", status, url)));
+        return Err(Error::Network(format!("HTTP {status} from {url}")));
     }
 
     let body_bytes = response
         .into_body()
         .collect()
         .await
-        .map_err(|e| Error::Network(format!("Failed to read response body: {}", e)))?
+        .map_err(|e| Error::Network(format!("Failed to read response body: {e}")))?
         .to_bytes();
 
     let body = String::from_utf8(body_bytes.to_vec())
-        .map_err(|e| Error::Network(format!("Response body is not valid UTF-8: {}", e)))?;
+        .map_err(|e| Error::Network(format!("Response body is not valid UTF-8: {e}")))?;
 
     debug!("HTTP GET {} complete: {} bytes", url, body.len());
     Ok(body)

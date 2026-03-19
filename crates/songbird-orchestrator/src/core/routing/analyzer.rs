@@ -127,11 +127,13 @@ impl TaskComplexityAnalyzer {
     }
 
     /// Check if a task is heavy (requires specialized capability)
+    #[must_use]
     pub fn is_heavy(task: &Task) -> bool {
         matches!(Self::analyze(task), TaskComplexity::Heavy)
     }
 
     /// Check if a task is lightweight (can be handled locally)
+    #[must_use]
     pub fn is_lightweight(task: &Task) -> bool {
         matches!(Self::analyze(task), TaskComplexity::Lightweight)
     }

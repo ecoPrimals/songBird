@@ -25,17 +25,20 @@ pub enum SecurityLevel {
 
 impl SecurityLevel {
     /// Check if 2FA should be enforced
-    pub fn requires_2fa(&self) -> bool {
+    #[must_use]
+    pub const fn requires_2fa(&self) -> bool {
         matches!(self, Self::Paranoid)
     }
 
     /// Check if hardware key required for admin
-    pub fn requires_hardware_for_admin(&self) -> bool {
+    #[must_use]
+    pub const fn requires_hardware_for_admin(&self) -> bool {
         !matches!(self, Self::Minimal)
     }
 
     /// Check if trust escalation is allowed
-    pub fn allows_trust_escalation(&self) -> bool {
+    #[must_use]
+    pub const fn allows_trust_escalation(&self) -> bool {
         !matches!(self, Self::Minimal)
     }
 }
@@ -98,7 +101,7 @@ pub enum TrustLevel {
     RoleVerified,
     /// Identity-verified (can see infrastructure)
     IdentityVerified,
-    /// Hardware-verified (full admin access, BearDog)
+    /// Hardware-verified (full admin access, `BearDog`)
     HardwareVerified,
 }
 

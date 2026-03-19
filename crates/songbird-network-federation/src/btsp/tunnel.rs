@@ -22,7 +22,7 @@ impl TunnelHandle {
 
     /// Create tunnel handle with specific ID
     #[must_use]
-    pub fn with_id(id: String) -> Self {
+    pub const fn with_id(id: String) -> Self {
         Self {
             id,
         }
@@ -158,22 +158,22 @@ impl Tunnel {
     }
 
     /// Mark tunnel as closed
-    pub fn close(&mut self) {
+    pub const fn close(&mut self) {
         self.state = TunnelState::Closed;
     }
 
     /// Record bytes sent
-    pub fn record_sent(&mut self, bytes: usize) {
+    pub const fn record_sent(&mut self, bytes: usize) {
         self.bytes_sent += bytes as u64;
     }
 
     /// Record bytes received
-    pub fn record_received(&mut self, bytes: usize) {
+    pub const fn record_received(&mut self, bytes: usize) {
         self.bytes_received += bytes as u64;
     }
 
     /// Record error
-    pub fn record_error(&mut self) {
+    pub const fn record_error(&mut self) {
         self.error_count += 1;
         if self.error_count > 10 {
             self.state = TunnelState::Degraded;

@@ -20,8 +20,8 @@
 //! ## Reusability
 //!
 //! This module is designed to be reusable by BOTH TLS client and server:
-//! - Client: Parses server handshake messages (EncryptedExtensions, Certificate, etc.)
-//! - Server: Parses client handshake messages (ClientHello, etc.)
+//! - Client: Parses server handshake messages (`EncryptedExtensions`, Certificate, etc.)
+//! - Server: Parses client handshake messages (`ClientHello`, etc.)
 //!
 //! ## Usage
 //!
@@ -59,7 +59,8 @@ pub struct HandshakeMessage {
 
 impl HandshakeMessage {
     /// Get message type name
-    pub fn type_name(&self) -> &'static str {
+    #[must_use]
+    pub const fn type_name(&self) -> &'static str {
         match self.msg_type {
             0x01 => "ClientHello",
             0x02 => "ServerHello",
@@ -74,6 +75,7 @@ impl HandshakeMessage {
     }
 
     /// Get message body (without type and length header)
+    #[must_use]
     pub fn body(&self) -> &[u8] {
         &self.data[4..] // Skip type (1) + length (3)
     }
@@ -82,8 +84,8 @@ impl HandshakeMessage {
 /// Parse multiple handshake messages from a decrypted TLS record
 ///
 /// In TLS 1.3, the server typically sends multiple handshake messages
-/// coalesced into a single TLS record (e.g., EncryptedExtensions, Certificate,
-/// CertificateVerify, and Finished all in one record).
+/// coalesced into a single TLS record (e.g., `EncryptedExtensions`, Certificate,
+/// `CertificateVerify`, and Finished all in one record).
 ///
 /// This function parses the record according to RFC 8446 Section 4 framing:
 /// - Type: 1 byte
@@ -252,8 +254,7 @@ pub fn parse_single_handshake_message(data: &[u8]) -> Result<HandshakeMessage> {
             Ok(messages.into_iter().next().expect("BUG: messages.len() == 1 but no first element"))
         }
         n => Err(crate::error::Error::TlsHandshake(format!(
-            "Expected 1 handshake message, found {}",
-            n
+            "Expected 1 handshake message, found {n}"
         ))),
     }
 }

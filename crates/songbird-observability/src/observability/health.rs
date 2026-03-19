@@ -43,8 +43,7 @@ impl HealthMonitor {
             error_message: None,
         };
 
-        let mut services = self.services.write().await;
-        services.insert(service_id, health);
+        self.services.write().await.insert(service_id, health);
         Ok(())
     }
 
@@ -58,8 +57,7 @@ impl HealthMonitor {
         service_id: &str,
         status: HealthStatus,
     ) -> Result<()> {
-        let mut services = self.services.write().await;
-        if let Some(health) = services.get_mut(service_id) {
+        if let Some(health) = self.services.write().await.get_mut(service_id) {
             health.status = status;
             health.last_check = Utc::now();
         }

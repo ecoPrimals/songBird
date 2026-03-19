@@ -17,6 +17,7 @@ pub struct JobManager {
 
 impl JobManager {
     /// Create a new job manager
+    #[must_use]
     pub fn new(max_concurrent_jobs: usize, log_retention_seconds: u64) -> Self {
         Self {
             jobs: Arc::new(RwLock::new(HashMap::new())),
@@ -26,10 +27,12 @@ impl JobManager {
     }
 
     /// Add a new job
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if maximum concurrent jobs limit is reached
     pub async fn add_job(&self, job: JobInfo) -> SongbirdResult<()> {
         let mut jobs = self.jobs.write().await;
-
-        // Check concurrent job limit
         let running_count = jobs
             .values()
             .filter(|j| matches!(j.status, ExecutionStatus::Running | ExecutionStatus::Queued))
@@ -50,39 +53,51 @@ impl JobManager {
 
         info!("Adding job: {} (status: {})", job.id, job.status);
         jobs.insert(job.id.clone(), job);
+        drop(jobs);
         Ok(())
     }
 
     /// Get a job by ID
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the job is not found
     pub async fn get_job(&self, job_id: &str) -> SongbirdResult<JobInfo> {
         let jobs = self.jobs.read().await;
         jobs.get(job_id).cloned().ok_or_else(|| SongbirdError::Registry {
-            message: format!("Job not found: {}", job_id),
+            message: format!("Job not found: {job_id}"),
             service_name: Some(job_id.to_string()),
             operation: "get".to_string(),
         })
     }
 
     /// Update job status
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the job is not found
     pub async fn update_job(
         &self,
         job_id: &str,
         update_fn: impl FnOnce(&mut JobInfo),
     ) -> SongbirdResult<()> {
         let mut jobs = self.jobs.write().await;
-
         let job = jobs.get_mut(job_id).ok_or_else(|| SongbirdError::Registry {
-            message: format!("Job not found: {}", job_id),
+            message: format!("Job not found: {job_id}"),
             service_name: Some(job_id.to_string()),
             operation: "update".to_string(),
         })?;
-
         update_fn(job);
         debug!("Updated job: {} (status: {})", job_id, job.status);
+        drop(jobs);
         Ok(())
     }
 
     /// Mark job as completed
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the job is not found
     pub async fn complete_job(
         &self,
         job_id: &str,
@@ -108,6 +123,10 @@ impl JobManager {
     }
 
     /// Mark job as failed
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the job is not found
     pub async fn fail_job(&self, job_id: &str, error: String) -> SongbirdResult<()> {
         self.update_job(job_id, |job| {
             job.status = ExecutionStatus::Failed;
@@ -121,6 +140,10 @@ impl JobManager {
     }
 
     /// Stop a running job
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the job is not found or has no PID
     pub async fn stop_job(&self, job_id: &str) -> SongbirdResult<u32> {
         let job = self.get_job(job_id).await?;
 
@@ -136,9 +159,14 @@ impl JobManager {
             use nix::sys::signal::{kill, Signal};
             use nix::unistd::Pid;
 
-            let pid_nix = Pid::from_raw(pid as i32);
+            let pid_nix =
+                Pid::from_raw(i32::try_from(pid).map_err(|_| SongbirdError::Runtime {
+                    message: format!("PID {pid} too large for conversion"),
+                    component: Some("job_manager".to_string()),
+                    debug_info: None,
+                })?);
             kill(pid_nix, Signal::SIGTERM).map_err(|e| SongbirdError::Runtime {
-                message: format!("Failed to send SIGTERM to process {}: {}", pid, e),
+                message: format!("Failed to send SIGTERM to process {pid}: {e}"),
                 component: Some("job_manager".to_string()),
                 debug_info: None,
             })?;
@@ -176,6 +204,7 @@ impl JobManager {
     }
 
     /// Clean up old completed jobs
+    #[must_use]
     pub async fn cleanup_old_jobs(&self) -> usize {
         let mut jobs = self.jobs.write().await;
         let now = SystemTime::now();
@@ -203,14 +232,14 @@ impl JobManager {
         if removed > 0 {
             info!("Cleaned up {} old jobs", removed);
         }
-
+        drop(jobs);
         removed
     }
 
     /// Get job statistics
+    #[must_use]
     pub async fn get_stats(&self) -> JobStats {
         let jobs = self.jobs.read().await;
-
         let mut stats = JobStats {
             total: jobs.len(),
             ..Default::default()
@@ -226,7 +255,7 @@ impl JobManager {
                 ExecutionStatus::Stopped => stats.stopped += 1,
             }
         }
-
+        drop(jobs);
         stats
     }
 }

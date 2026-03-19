@@ -8,7 +8,7 @@ pub type Result<T> = std::result::Result<T, Error>;
 /// Errors that can occur in Songbird HTTP Client
 #[derive(Error, Debug)]
 pub enum Error {
-    /// BearDog RPC communication error
+    /// `BearDog` RPC communication error
     #[error("BearDog RPC error: {0}")]
     BearDogRpc(String),
 
@@ -67,12 +67,12 @@ pub enum Error {
 
 impl From<hyper::Error> for Error {
     fn from(err: hyper::Error) -> Self {
-        Error::Hyper(err.to_string())
+        Self::Hyper(err.to_string())
     }
 }
 
 impl From<anyhow::Error> for Error {
     fn from(err: anyhow::Error) -> Self {
-        Error::Other(err.to_string())
+        Self::Other(err.to_string())
     }
 }

@@ -95,32 +95,47 @@ impl BirdSongHandler {
         }
 
         // Discover at runtime (no hardcoding)
-        let socket_path = if let Ok(path) = std::env::var("BEARDOG_SOCKET") {
-            debug!("🔍 Discovering BearDog via BEARDOG_SOCKET env: {}", path);
-            PathBuf::from(path)
-        } else if let Ok(xdg) = std::env::var("XDG_RUNTIME_DIR") {
-            debug!("🔍 Discovering BearDog via XDG_RUNTIME_DIR");
-            PathBuf::from(format!("{xdg}/biomeos/beardog.sock"))
-        } else {
-            // Well-known fallback (safe Rust - read from /proc)
-            // Deep debt: Evolved from unsafe libc::getuid() to safe Rust
-            let uid = std::fs::read_to_string("/proc/self/loginuid")
-                .ok()
-                .and_then(|s| s.trim().parse::<u32>().ok())
-                .or_else(|| {
-                    // Fallback: Parse from /proc/self/status
-                    std::fs::read_to_string("/proc/self/status").ok().and_then(|content| {
-                        content
-                            .lines()
-                            .find(|line| line.starts_with("Uid:"))
-                            .and_then(|line| line.split_whitespace().nth(1)?.parse::<u32>().ok())
-                    })
-                })
-                .unwrap_or(1000); // Default UID if all else fails
+        let socket_path = std::env::var("BEARDOG_SOCKET").map_or_else(
+            |_| {
+                std::env::var("XDG_RUNTIME_DIR").map_or_else(
+                    |_| {
+                        // Well-known fallback (safe Rust - read from /proc)
+                        // Deep debt: Evolved from unsafe libc::getuid() to safe Rust
+                        let uid = std::fs::read_to_string("/proc/self/loginuid")
+                            .ok()
+                            .and_then(|s| s.trim().parse::<u32>().ok())
+                            .or_else(|| {
+                                // Fallback: Parse from /proc/self/status
+                                std::fs::read_to_string("/proc/self/status").ok().and_then(
+                                    |content| {
+                                        content
+                                            .lines()
+                                            .find(|line| line.starts_with("Uid:"))
+                                            .and_then(|line| {
+                                                line.split_whitespace().nth(1)?.parse::<u32>().ok()
+                                            })
+                                    },
+                                )
+                            })
+                            .unwrap_or(1000); // Default UID if all else fails
 
-            debug!("🔍 Discovering BearDog via well-known path (UID: {}, safe Rust)", uid);
-            PathBuf::from(format!("/run/user/{uid}/biomeos/beardog.sock"))
-        };
+                        debug!(
+                            "🔍 Discovering BearDog via well-known path (UID: {}, safe Rust)",
+                            uid
+                        );
+                        PathBuf::from(format!("/run/user/{uid}/biomeos/beardog.sock"))
+                    },
+                    |xdg| {
+                        debug!("🔍 Discovering BearDog via XDG_RUNTIME_DIR");
+                        PathBuf::from(format!("{xdg}/biomeos/beardog.sock"))
+                    },
+                )
+            },
+            |path| {
+                debug!("🔍 Discovering BearDog via BEARDOG_SOCKET env: {}", path);
+                PathBuf::from(path)
+            },
+        );
 
         // Check if this is a TCP socket (tcp:host:port format)
         let path_str = socket_path.to_string_lossy();

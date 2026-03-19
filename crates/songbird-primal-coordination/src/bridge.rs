@@ -2,7 +2,10 @@
 //!
 //! **ZERO HARDCODING**: No primal names, only capability discovery
 
-use crate::{error::Result, types::*};
+use crate::error::Result;
+use crate::types::{
+    CapabilityType, PrimalCapabilities, PrimalRequest, PrimalResponse, ServiceQuality,
+};
 use async_trait::async_trait;
 use songbird_http_client::IpcHttpClient;
 use std::sync::Arc;
@@ -60,8 +63,7 @@ impl PrimalConnection {
         // Build HTTP client
         let client = IpcHttpClient::new().await.map_err(|e| {
             crate::error::PrimalCoordinationError::Internal(format!(
-                "Failed to create HTTP client: {}",
-                e
+                "Failed to create HTTP client: {e}"
             ))
         })?;
 
@@ -83,10 +85,7 @@ impl PrimalConnection {
 
         // Send POST request with JSON body
         let response = client.post(&url).await.json(&request)?.send().await.map_err(|e| {
-            crate::error::PrimalCoordinationError::Internal(format!(
-                "Network request failed: {}",
-                e
-            ))
+            crate::error::PrimalCoordinationError::Internal(format!("Network request failed: {e}"))
         })?;
 
         // Check for HTTP errors
@@ -100,8 +99,7 @@ impl PrimalConnection {
         // Parse JSON response
         let primal_response: PrimalResponse = response.json().await.map_err(|e| {
             crate::error::PrimalCoordinationError::Internal(format!(
-                "Failed to parse response: {}",
-                e
+                "Failed to parse response: {e}"
             ))
         })?;
 

@@ -71,4 +71,3 @@ fn test_factory_deserialization() {
     let _factory: CanonicalConfigFactory =
         serde_json::from_str(json).expect("Deserialization should succeed");
 }
-

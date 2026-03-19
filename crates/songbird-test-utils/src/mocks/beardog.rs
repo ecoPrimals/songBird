@@ -165,6 +165,7 @@ impl MockBearDog {
         metrics.failed_auth_attempts = 150;
         metrics.blocked_ips = 25;
         metrics.security_score = 0.45;
+        drop(metrics);
         self.state.set_health(HealthStatus::Degraded);
     }
 
@@ -181,6 +182,7 @@ impl MockBearDog {
         metrics.failed_auth_attempts = 2;
         metrics.blocked_ips = 0;
         metrics.security_score = 0.95;
+        drop(metrics);
         self.state.set_health(HealthStatus::Healthy);
     }
 }

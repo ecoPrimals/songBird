@@ -19,7 +19,7 @@ use std::net::{IpAddr, Ipv4Addr};
 pub fn parse_consensus(input: &str) -> Result<Vec<RelayInfo>> {
     match consensus_document(input) {
         Ok((_, relays)) => Ok(relays),
-        Err(e) => Err(Error::Parse(format!("Consensus parse error: {:?}", e))),
+        Err(e) => Err(Error::Parse(format!("Consensus parse error: {e:?}"))),
     }
 }
 
@@ -90,7 +90,7 @@ fn relay_entry(input: &str) -> IResult<&str, RelayInfo> {
     ))
 }
 
-/// Parse r line: r nickname identity digest published IP ORPort DirPort
+/// Parse r line: r nickname identity digest published IP `ORPort` `DirPort`
 ///
 /// Format: r <nickname> <identity-b64> <digest-b64> <published-date> <published-time> <IP> <ORPort> <DirPort>
 fn r_line(input: &str) -> IResult<&str, (String, [u8; 20], IpAddr, u16)> {
@@ -219,9 +219,8 @@ fn base64_to_fingerprint(
 
     // Add padding if necessary (Tor base64 often lacks padding)
     let padded = match b64.len() % 4 {
-        0 => b64.to_string(),
-        2 => format!("{}==", b64),
-        3 => format!("{}=", b64),
+        2 => format!("{b64}=="),
+        3 => format!("{b64}="),
         _ => b64.to_string(),
     };
 
@@ -263,7 +262,7 @@ pub fn debug_parse_relay_entry(input: &str) -> std::result::Result<(RelayInfo, &
     // Step 2: optional a line
     let input = match opt(a_line)(input) {
         Ok((i, _)) => i,
-        Err(e) => return Err(format!("a_line failed: {:?}", e)),
+        Err(e) => return Err(format!("a_line failed: {e:?}")),
     };
 
     // Step 3: s line
@@ -281,13 +280,13 @@ pub fn debug_parse_relay_entry(input: &str) -> std::result::Result<(RelayInfo, &
     // Step 4: optional v line
     let input = match opt(v_line)(input) {
         Ok((i, _)) => i,
-        Err(e) => return Err(format!("v_line failed: {:?}", e)),
+        Err(e) => return Err(format!("v_line failed: {e:?}")),
     };
 
     // Step 5: optional pr line
     let input = match opt(pr_line)(input) {
         Ok((i, _)) => i,
-        Err(e) => return Err(format!("pr_line failed: {:?}", e)),
+        Err(e) => return Err(format!("pr_line failed: {e:?}")),
     };
 
     // Step 6: w line
@@ -305,7 +304,7 @@ pub fn debug_parse_relay_entry(input: &str) -> std::result::Result<(RelayInfo, &
     // Step 7: optional p line
     let input = match opt(p_line)(input) {
         Ok((i, _)) => i,
-        Err(e) => return Err(format!("p_line failed: {:?}", e)),
+        Err(e) => return Err(format!("p_line failed: {e:?}")),
     };
 
     Ok((

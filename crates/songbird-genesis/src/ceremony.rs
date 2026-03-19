@@ -1,6 +1,10 @@
 //! Genesis ceremony coordinator
 
-use crate::{error::*, identity::*, physical_channels::*, types::*, witness::*};
+use crate::error::{GenesisError, Result};
+use crate::identity::NewNodeIdentity;
+use crate::physical_channels::{PhysicalChannel, PhysicalChannelProvider};
+use crate::types::{GenesisLineage, PrimalLineage, ProximityProof};
+use crate::witness::GenesisWitness;
 use chrono::Utc;
 use songbird_http_client::IpcHttpClient;
 use std::time::Duration;
@@ -24,7 +28,8 @@ pub struct GenesisCeremony {
 
 impl GenesisCeremony {
     /// Create new genesis ceremony
-    pub fn new(physical_channel: PhysicalChannel, witness: GenesisWitness) -> Self {
+    #[must_use]
+    pub const fn new(physical_channel: PhysicalChannel, witness: GenesisWitness) -> Self {
         Self {
             physical_channel,
             witness,
@@ -39,11 +44,16 @@ impl GenesisCeremony {
     }
 
     /// Set ceremony timeout
-    pub fn set_timeout(&mut self, timeout: Duration) {
+    pub const fn set_timeout(&mut self, timeout: Duration) {
         self.timeout = timeout;
     }
 
     /// Conduct complete genesis ceremony
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if physical proximity verification, credential exchange,
+    /// witness signing, or primal coordination fails.
     pub async fn conduct(&self, new_node_id: String) -> Result<NewNodeIdentity> {
         info!("🔐 Starting genesis ceremony for node: {}", new_node_id);
 
@@ -91,7 +101,7 @@ impl GenesisCeremony {
         self.physical_channel.verify_proximity().await
     }
 
-    /// Witness signs genesis using BearDog
+    /// Witness signs genesis using `BearDog`
     async fn witness_sign_genesis(&self, creds: &[u8]) -> Result<Vec<u8>> {
         use crate::security_capability_client::SecurityCapabilityClient;
 
@@ -170,7 +180,8 @@ pub struct PrimalCoordinator {
 
 impl PrimalCoordinator {
     /// Create new primal coordinator
-    pub fn new(primal_name: String, endpoint: String) -> Self {
+    #[must_use]
+    pub const fn new(primal_name: String, endpoint: String) -> Self {
         Self {
             primal_name,
             endpoint,
@@ -178,19 +189,20 @@ impl PrimalCoordinator {
         }
     }
 
-    /// Request lineage from this primal using BearDog
+    /// Request lineage from this primal using `BearDog`
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if HTTP client creation, network request, or response parsing fails.
     pub async fn request_lineage(
         &self,
         node_id: &str,
         witness: &GenesisWitness,
     ) -> Result<PrimalLineage> {
-        use crate::security_capability_client::SecurityCapabilityClient;
-
         debug!("Requesting lineage from {} at {}", self.primal_name, self.endpoint);
 
-        // Try HTTP request to primal's genesis endpoint
         let client = IpcHttpClient::new().await.map_err(|e| {
-            GenesisError::CoordinationFailed(format!("Failed to create HTTP client: {}", e))
+            GenesisError::CoordinationFailed(format!("Failed to create HTTP client: {e}"))
         })?;
 
         let request_body = serde_json::json!({
@@ -204,37 +216,7 @@ impl PrimalCoordinator {
 
         match client.post(&url).await.json(&request_body)?.send().await {
             Ok(response) if response.is_success() => {
-                // Parse lineage response
-                #[derive(serde::Deserialize)]
-                struct LineageResponse {
-                    lineage_data: String, // hex-encoded
-                    signature: String,    // hex-encoded
-                }
-
-                let lineage_resp: LineageResponse = response.json().await.map_err(|e| {
-                    GenesisError::CoordinationFailed(format!(
-                        "Failed to parse lineage response: {}",
-                        e
-                    ))
-                })?;
-
-                let lineage_data = hex::decode(&lineage_resp.lineage_data).map_err(|e| {
-                    GenesisError::CoordinationFailed(format!(
-                        "Failed to decode lineage data: {}",
-                        e
-                    ))
-                })?;
-
-                let signature = hex::decode(&lineage_resp.signature).map_err(|e| {
-                    GenesisError::CoordinationFailed(format!("Failed to decode signature: {}", e))
-                })?;
-
-                Ok(PrimalLineage {
-                    primal_name: self.primal_name.clone(),
-                    lineage_data,
-                    signature,
-                    timestamp: Utc::now(),
-                })
+                Self::parse_lineage_response(response, &self.primal_name).await
             }
             Ok(response) => {
                 let status = response.status();
@@ -245,59 +227,99 @@ impl PrimalCoordinator {
                 )))
             }
             Err(e) => {
-                // Fallback: Use BearDog to create lineage locally
                 tracing::warn!(
                     "Failed to contact primal {}: {}. Trying local BearDog fallback.",
                     self.primal_name,
                     e
                 );
-
-                // Try BearDog for lineage creation
-                if let Ok(security_client) = SecurityCapabilityClient::new().await {
-                    match security_client
-                        .create_lineage(&self.primal_name, &witness.device_id, node_id)
-                        .await
-                    {
-                        Ok(lineage_data) => {
-                            match security_client.sign_data(node_id, &lineage_data).await {
-                                Ok(signature) => {
-                                    tracing::debug!("✅ Created lineage with BearDog");
-                                    return Ok(PrimalLineage {
-                                        primal_name: self.primal_name.clone(),
-                                        lineage_data,
-                                        signature,
-                                        timestamp: Utc::now(),
-                                    });
-                                }
-                                Err(sign_err) => {
-                                    tracing::warn!(
-                                        "BearDog signing failed: {}. Using mock.",
-                                        sign_err
-                                    );
-                                }
-                            }
-                        }
-                        Err(lineage_err) => {
-                            tracing::warn!(
-                                "BearDog lineage creation failed: {}. Using mock.",
-                                lineage_err
-                            );
-                        }
-                    }
+                if let Some(lineage) = Self::try_beardog_lineage(self, node_id, witness).await {
+                    return Ok(lineage);
                 }
-
-                // Double fallback: Create mock lineage (test/development only)
                 tracing::warn!(
                     "Using mock lineage for {} (development/test mode)",
                     self.primal_name
                 );
-                Ok(PrimalLineage {
-                    primal_name: self.primal_name.clone(),
-                    lineage_data: format!("lineage_for_{}", node_id).into_bytes(),
-                    signature: format!("sig_from_{}", self.primal_name).into_bytes(),
-                    timestamp: Utc::now(),
-                })
+                Ok(Self::mock_lineage(self, node_id))
             }
+        }
+    }
+
+    async fn parse_lineage_response(
+        response: songbird_http_client::Response,
+        primal_name: &str,
+    ) -> Result<PrimalLineage> {
+        #[derive(serde::Deserialize)]
+        struct LineageResponse {
+            lineage_data: String,
+            signature: String,
+        }
+
+        let lineage_resp: LineageResponse = response.json().await.map_err(|e| {
+            GenesisError::CoordinationFailed(format!("Failed to parse lineage response: {e}"))
+        })?;
+
+        let lineage_data = hex::decode(&lineage_resp.lineage_data).map_err(|e| {
+            GenesisError::CoordinationFailed(format!("Failed to decode lineage data: {e}"))
+        })?;
+
+        let signature = hex::decode(&lineage_resp.signature).map_err(|e| {
+            GenesisError::CoordinationFailed(format!("Failed to decode signature: {e}"))
+        })?;
+
+        Ok(PrimalLineage {
+            primal_name: primal_name.to_string(),
+            lineage_data,
+            signature,
+            timestamp: Utc::now(),
+        })
+    }
+
+    async fn try_beardog_lineage(
+        coordinator: &Self,
+        node_id: &str,
+        witness: &GenesisWitness,
+    ) -> Option<PrimalLineage> {
+        use crate::security_capability_client::SecurityCapabilityClient;
+
+        let security_client = match SecurityCapabilityClient::new().await {
+            Ok(c) => c,
+            Err(e) => {
+                tracing::warn!("BearDog not available: {e}. Using fallback signature.");
+                return None;
+            }
+        };
+        let lineage_data = match security_client
+            .create_lineage(&coordinator.primal_name, &witness.device_id, node_id)
+            .await
+        {
+            Ok(d) => d,
+            Err(e) => {
+                tracing::warn!("BearDog lineage creation failed: {e}. Using mock.");
+                return None;
+            }
+        };
+        let signature = match security_client.sign_data(node_id, &lineage_data).await {
+            Ok(s) => s,
+            Err(e) => {
+                tracing::warn!("BearDog signing failed: {e}. Using mock.");
+                return None;
+            }
+        };
+        tracing::debug!("✅ Created lineage with BearDog");
+        Some(PrimalLineage {
+            primal_name: coordinator.primal_name.clone(),
+            lineage_data,
+            signature,
+            timestamp: Utc::now(),
+        })
+    }
+
+    fn mock_lineage(coordinator: &Self, node_id: &str) -> PrimalLineage {
+        PrimalLineage {
+            primal_name: coordinator.primal_name.clone(),
+            lineage_data: format!("lineage_for_{node_id}").into_bytes(),
+            signature: format!("sig_from_{}", coordinator.primal_name).into_bytes(),
+            timestamp: Utc::now(),
         }
     }
 }

@@ -1,18 +1,19 @@
-//! SoloKey hardware key support (FIDO2/WebAuthn)
+//! `SoloKey` hardware key support (FIDO2/WebAuthn)
 
-use crate::{error::*, types::*};
+use crate::error::Result;
+use crate::types::{PhysicalChannelType, ProximityProof, TrustLevel};
 use async_trait::async_trait;
 use chrono::Utc;
 
 use super::PhysicalChannelProvider;
 
-/// SoloKey hardware key channel
+/// `SoloKey` hardware key channel
 ///
 /// **Status:** Placeholder implementation for future Pure Rust FIDO2/WebAuthn support
 ///
 /// **Future Implementation:**
 /// - Use Pure Rust FIDO2/WebAuthn library (when available)
-/// - Or delegate to BearDog for hardware key operations via IPC
+/// - Or delegate to `BearDog` for hardware key operations via IPC
 /// - Zero C dependencies (no OpenSSL)
 #[derive(Debug)]
 pub struct SoloKeyChannel {
@@ -20,8 +21,9 @@ pub struct SoloKeyChannel {
 }
 
 impl SoloKeyChannel {
-    /// Create new SoloKey channel
-    pub fn new() -> Self {
+    /// Create new `SoloKey` channel
+    #[must_use]
+    pub const fn new() -> Self {
         Self {}
     }
 }

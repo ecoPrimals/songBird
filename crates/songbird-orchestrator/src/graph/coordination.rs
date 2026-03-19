@@ -54,7 +54,8 @@ pub struct CoordinationValidator {
 
 impl CoordinationValidator {
     /// Create a new coordination validator
-    pub fn new(service_registry: Arc<ServiceRegistry>) -> Self {
+    #[must_use]
+    pub const fn new(service_registry: Arc<ServiceRegistry>) -> Self {
         Self {
             service_registry,
         }
@@ -134,7 +135,7 @@ impl CoordinationValidator {
 
         // Check data flow
         if let Err(e) = self.validate_data_flow_sequential(graph) {
-            result.add_issue(CoordinationIssue::error(format!("Data flow error: {}", e)));
+            result.add_issue(CoordinationIssue::error(format!("Data flow error: {e}")));
         }
 
         // Check resource requirements
@@ -176,8 +177,7 @@ impl CoordinationValidator {
         // Check for deadlocks
         if let Some(deadlock) = self.detect_deadlocks(graph)? {
             result.add_issue(CoordinationIssue::error(format!(
-                "Potential deadlock detected: {}",
-                deadlock
+                "Potential deadlock detected: {deadlock}"
             )));
         }
 
@@ -220,8 +220,7 @@ impl CoordinationValidator {
         // Check for bottlenecks
         if let Some(bottleneck) = self.detect_pipeline_bottleneck(graph, &stages)? {
             result.add_issue(CoordinationIssue::warning(format!(
-                "Potential bottleneck at stage: {}",
-                bottleneck
+                "Potential bottleneck at stage: {bottleneck}"
             )));
         }
 
@@ -230,7 +229,7 @@ impl CoordinationValidator {
 
     /// Validate mapreduce pattern
     ///
-    /// MapReduce: Input → (Map1, Map2, ..., MapN) → (Reduce) → Output
+    /// `MapReduce`: Input → (Map1, Map2, ..., `MapN`) → (Reduce) → Output
     /// Requirements: Map phase parallelizes, reduce phase aggregates
     async fn validate_mapreduce(&self, graph: &Graph) -> Result<CoordinationValidationResult> {
         let mut result = CoordinationValidationResult::new(
@@ -257,12 +256,12 @@ impl CoordinationValidator {
 
         // Check data partitioning
         if let Err(e) = self.validate_map_partitioning(graph, &map_nodes) {
-            result.add_issue(CoordinationIssue::error(format!("Map partitioning error: {}", e)));
+            result.add_issue(CoordinationIssue::error(format!("Map partitioning error: {e}")));
         }
 
         // Check reduce aggregation
         if let Err(e) = self.validate_reduce_aggregation(graph, &reduce_nodes) {
-            result.add_issue(CoordinationIssue::error(format!("Reduce aggregation error: {}", e)));
+            result.add_issue(CoordinationIssue::error(format!("Reduce aggregation error: {e}")));
         }
 
         // Check resource requirements for parallel map
@@ -300,8 +299,7 @@ impl CoordinationValidator {
                 CoordinationPattern::MapReduce => self.validate_mapreduce(subgraph).await?,
                 CoordinationPattern::Hybrid => {
                     result.add_issue(CoordinationIssue::warning(format!(
-                        "Nested hybrid pattern in subgraph {}",
-                        i
+                        "Nested hybrid pattern in subgraph {i}"
                     )));
                     continue;
                 }
@@ -486,28 +484,32 @@ impl CoordinationValidator {
     // Validation Helpers
     // ========================================================================
 
-    fn validate_data_flow_sequential(&self, _graph: &Graph) -> Result<()> {
+    const fn validate_data_flow_sequential(&self, _graph: &Graph) -> Result<()> {
         // Sequential data flow is always valid if graph is valid
         Ok(())
     }
 
-    fn validate_stage_data_flow(&self, _stage1: &[String], _stage2: &[String]) -> Result<()> {
+    const fn validate_stage_data_flow(&self, _stage1: &[String], _stage2: &[String]) -> Result<()> {
         // Check that outputs of stage1 match inputs of stage2
         // For now, assume valid (graph validator already checked this)
         Ok(())
     }
 
-    fn validate_map_partitioning(&self, _graph: &Graph, _map_nodes: &[String]) -> Result<()> {
+    const fn validate_map_partitioning(&self, _graph: &Graph, _map_nodes: &[String]) -> Result<()> {
         // Check that input data can be partitioned for map nodes
         Ok(())
     }
 
-    fn validate_reduce_aggregation(&self, _graph: &Graph, _reduce_nodes: &[String]) -> Result<()> {
+    const fn validate_reduce_aggregation(
+        &self,
+        _graph: &Graph,
+        _reduce_nodes: &[String],
+    ) -> Result<()> {
         // Check that reduce nodes can aggregate map outputs
         Ok(())
     }
 
-    fn detect_deadlocks(&self, _graph: &Graph) -> Result<Option<String>> {
+    const fn detect_deadlocks(&self, _graph: &Graph) -> Result<Option<String>> {
         // Check for circular dependencies that could cause deadlocks
         // Graph validator already checks for cycles
         Ok(None)
@@ -521,7 +523,7 @@ impl CoordinationValidator {
         // Detect stages with single node that could bottleneck
         for (i, stage) in _stages.iter().enumerate() {
             if stage.len() == 1 && i > 0 && i < _stages.len() - 1 {
-                return Ok(Some(format!("Stage {} (single node)", i)));
+                return Ok(Some(format!("Stage {i} (single node)")));
             }
         }
         Ok(None)
@@ -616,7 +618,7 @@ pub enum CoordinationPattern {
     Parallel,
     /// Pipeline execution (streaming data through stages)
     Pipeline,
-    /// MapReduce pattern (map phase + reduce phase)
+    /// `MapReduce` pattern (map phase + reduce phase)
     MapReduce,
     /// Hybrid (complex graph with multiple patterns)
     Hybrid,
@@ -639,7 +641,7 @@ pub struct CoordinationValidationResult {
 }
 
 impl CoordinationValidationResult {
-    fn new(pattern: CoordinationPattern, description: String) -> Self {
+    const fn new(pattern: CoordinationPattern, description: String) -> Self {
         Self {
             valid: true,
             pattern,
@@ -664,14 +666,14 @@ pub struct CoordinationIssue {
 }
 
 impl CoordinationIssue {
-    fn error(message: String) -> Self {
+    const fn error(message: String) -> Self {
         Self {
             severity: IssueSeverity::Error,
             message,
         }
     }
 
-    fn warning(message: String) -> Self {
+    const fn warning(message: String) -> Self {
         Self {
             severity: IssueSeverity::Warning,
             message,

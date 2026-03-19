@@ -325,4 +325,3 @@ fn test_primal_registry_serialization() {
     assert!(json.contains("test"));
     assert!(json.contains("Test Provider"));
 }
-

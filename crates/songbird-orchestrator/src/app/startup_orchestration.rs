@@ -40,7 +40,7 @@ pub struct StartupOrchestrator<'a> {
 
 impl<'a> StartupOrchestrator<'a> {
     /// Create new startup orchestrator
-    pub fn new(orchestrator: &'a mut SongbirdOrchestrator) -> Self {
+    pub const fn new(orchestrator: &'a mut SongbirdOrchestrator) -> Self {
         Self {
             orchestrator,
         }
@@ -97,10 +97,10 @@ impl<'a> StartupOrchestrator<'a> {
 
     /// Stage 1: Provision security credentials (JWT secret + identity query)
     ///
-    /// **Purpose**: Acquire security credentials from BearDog before starting servers
+    /// **Purpose**: Acquire security credentials from `BearDog` before starting servers
     ///
     /// **Actions**:
-    /// - Provision JWT secret from BearDog (via capability discovery)
+    /// - Provision JWT secret from `BearDog` (via capability discovery)
     /// - Query security identity (USB seed integration)
     /// - Start observability manager
     ///
@@ -147,7 +147,7 @@ impl<'a> StartupOrchestrator<'a> {
             self.orchestrator._config.network.base_port
         )
         .parse()
-        .map_err(|e| anyhow::anyhow!("Invalid bind address: {}", e))?;
+        .map_err(|e| anyhow::anyhow!("Invalid bind address: {e}"))?;
 
         let actual_https_port = crate::app::http_server::start_http_server(
             Arc::clone(&self.orchestrator.federation_state),
@@ -208,7 +208,7 @@ impl<'a> StartupOrchestrator<'a> {
     ///
     /// **Actions**:
     /// - Check if `SONGBIRD_IGD_ENABLED` is set (opt-in)
-    /// - Discover router via UPnP IGD or NAT-PMP
+    /// - Discover router via `UPnP` IGD or NAT-PMP
     /// - Request port forwarding for the Songbird port
     /// - Log result (success or manual instructions)
     ///

@@ -18,19 +18,22 @@ pub struct Transcript {
 
 impl Transcript {
     /// Create a new empty transcript
-    pub fn new() -> Self {
+    #[must_use]
+    pub const fn new() -> Self {
         Self {
             messages: Vec::new(),
         }
     }
 
     /// Get current transcript size in bytes
-    pub fn len(&self) -> usize {
+    #[must_use]
+    pub const fn len(&self) -> usize {
         self.messages.len()
     }
 
     /// Check if transcript is empty
-    pub fn is_empty(&self) -> bool {
+    #[must_use]
+    pub const fn is_empty(&self) -> bool {
         self.messages.is_empty()
     }
 
@@ -39,9 +42,9 @@ impl Transcript {
     /// RFC 8446 Section 4.4.1: Transcript hash includes all handshake messages
     ///
     /// CRITICAL: This method expects handshake messages WITHOUT TLS record framing!
-    /// - ClientHello: Must strip 5-byte TLS record header before calling
-    /// - ServerHello: Already stripped by read_record()
-    /// - Post-handshake messages: Already stripped by read_record()
+    /// - `ClientHello`: Must strip 5-byte TLS record header before calling
+    /// - `ServerHello`: Already stripped by `read_record()`
+    /// - Post-handshake messages: Already stripped by `read_record()`
     pub fn update(&mut self, message: &[u8]) {
         let before = self.messages.len();
         let after = before + message.len();
@@ -135,6 +138,7 @@ impl Transcript {
     /// ```text
     /// Transcript-Hash(M1, M2, ... Mn) = Hash(M1 || M2 || ... || Mn)
     /// ```
+    #[must_use]
     pub fn compute_hash(&self) -> Vec<u8> {
         let mut hasher = Sha256::new();
         hasher.update(&self.messages);

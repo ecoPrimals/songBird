@@ -20,6 +20,7 @@ use songbird_lineage_relay::{
 use std::sync::Arc;
 use std::time::Duration;
 use tokio::net::UdpSocket;
+use tokio::sync::oneshot;
 
 /// Mock relay authority for testing
 struct TestRelayAuthority;
@@ -56,14 +57,13 @@ async fn test_relay_allocation_flow() {
 
     let relay_addr = server.bind_addr();
 
-    // Spawn server task
+    // Spawn server task with readiness signal
+    let (ready_tx, ready_rx) = oneshot::channel();
     let server_handle = tokio::spawn(async move {
-        // Run for 2 seconds then shutdown
+        let _ = ready_tx.send(());
         tokio::time::timeout(Duration::from_secs(2), server.run()).await.ok();
     });
-
-    // Give server time to start
-    tokio::time::sleep(Duration::from_millis(50)).await;
+    ready_rx.await.expect("Server failed to signal readiness");
 
     // Create allocation request
     let request = AllocationRequest::new(
@@ -109,14 +109,14 @@ async fn test_relay_packet_forwarding() {
     let relay_addr = server.bind_addr();
     let server_clone = Arc::new(server);
 
-    // Spawn server task
+    // Spawn server task with readiness signal
+    let (ready_tx, ready_rx) = oneshot::channel();
     let server_for_task = server_clone.clone();
     let server_handle = tokio::spawn(async move {
+        let _ = ready_tx.send(());
         tokio::time::timeout(Duration::from_secs(3), server_for_task.run()).await.ok();
     });
-
-    // Give server time to start
-    tokio::time::sleep(Duration::from_millis(100)).await;
+    ready_rx.await.expect("Server failed to signal readiness");
 
     // Create requester and target sockets
     let requester_socket = UdpSocket::bind("127.0.0.1:0").await.unwrap();
@@ -183,12 +183,13 @@ async fn test_relay_session_refresh() {
 
     let relay_addr = server.bind_addr();
 
-    // Spawn server task
+    // Spawn server task with readiness signal
+    let (ready_tx, ready_rx) = oneshot::channel();
     let server_handle = tokio::spawn(async move {
+        let _ = ready_tx.send(());
         tokio::time::timeout(Duration::from_secs(2), server.run()).await.ok();
     });
-
-    tokio::time::sleep(Duration::from_millis(50)).await;
+    ready_rx.await.expect("Server failed to signal readiness");
 
     // Create and allocate session
     let client_socket = UdpSocket::bind("127.0.0.1:0").await.unwrap();
@@ -220,9 +221,6 @@ async fn test_relay_session_refresh() {
     };
     client_socket.send_to(&refresh_msg.encode(), relay_addr).await.unwrap();
 
-    // Give server time to process refresh
-    tokio::time::sleep(Duration::from_millis(50)).await;
-
     // Session should still be active (refresh succeeded silently)
     // No response expected from refresh
 
@@ -239,13 +237,14 @@ async fn test_relay_session_deallocation() {
     let relay_addr = server.bind_addr();
     let server_clone = Arc::new(server);
 
-    // Spawn server task
+    // Spawn server task with readiness signal
+    let (ready_tx, ready_rx) = oneshot::channel();
     let server_for_task = server_clone.clone();
     let server_handle = tokio::spawn(async move {
+        let _ = ready_tx.send(());
         tokio::time::timeout(Duration::from_secs(2), server_for_task.run()).await.ok();
     });
-
-    tokio::time::sleep(Duration::from_millis(50)).await;
+    ready_rx.await.expect("Server failed to signal readiness");
 
     // Allocate session
     let client_socket = UdpSocket::bind("127.0.0.1:0").await.unwrap();
@@ -273,8 +272,18 @@ async fn test_relay_session_deallocation() {
         _ => panic!("Expected AllocationResponse"),
     };
 
-    // Verify session is active
-    tokio::time::sleep(Duration::from_millis(50)).await;
+    // Verify session is active (poll until allocation is reflected in stats)
+    let start = tokio::time::Instant::now();
+    loop {
+        let stats = server_clone.stats().await;
+        if stats.sessions_active >= 1 {
+            break;
+        }
+        if start.elapsed() > Duration::from_secs(2) {
+            panic!("Timeout waiting for session to be active");
+        }
+        tokio::task::yield_now().await;
+    }
     let stats = server_clone.stats().await;
     assert_eq!(stats.sessions_active, 1);
 
@@ -284,8 +293,15 @@ async fn test_relay_session_deallocation() {
     };
     client_socket.send_to(&deallocate_msg.encode(), relay_addr).await.unwrap();
 
-    // Give server time to process deallocation
-    tokio::time::sleep(Duration::from_millis(200)).await;
+    // Wait for session to be removed (poll until cleanup or timeout)
+    let start = tokio::time::Instant::now();
+    while start.elapsed() < Duration::from_secs(2) {
+        let stats = server_clone.stats().await;
+        if stats.sessions_active == 0 {
+            break;
+        }
+        tokio::task::yield_now().await;
+    }
 
     // Session should be removed
     let stats = server_clone.stats().await;
@@ -305,12 +321,13 @@ async fn test_relay_client_session_full_lifecycle() {
 
     let relay_addr = server.bind_addr();
 
-    // Spawn server task
+    // Spawn server task with readiness signal
+    let (ready_tx, ready_rx) = oneshot::channel();
     let server_handle = tokio::spawn(async move {
+        let _ = ready_tx.send(());
         tokio::time::timeout(Duration::from_secs(3), server.run()).await.ok();
     });
-
-    tokio::time::sleep(Duration::from_millis(100)).await;
+    ready_rx.await.expect("Server failed to signal readiness");
 
     // Create relay session (client-side)
     let session = Arc::new(
@@ -373,13 +390,14 @@ async fn test_unauthorized_relay_request() {
     let relay_addr = server.bind_addr();
     let server_clone = Arc::new(server);
 
-    // Spawn server task
+    // Spawn server task with readiness signal
+    let (ready_tx, ready_rx) = oneshot::channel();
     let server_for_task = server_clone.clone();
     let server_handle = tokio::spawn(async move {
+        let _ = ready_tx.send(());
         tokio::time::timeout(Duration::from_secs(2), server_for_task.run()).await.ok();
     });
-
-    tokio::time::sleep(Duration::from_millis(50)).await;
+    ready_rx.await.expect("Server failed to signal readiness");
 
     // Try to allocate (should be denied)
     let client_socket = UdpSocket::bind("127.0.0.1:0").await.unwrap();

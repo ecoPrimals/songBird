@@ -172,7 +172,7 @@ pub struct CanonicalCircuitBreakerConfig {
 /// **CANONICAL**: Retry configuration
 ///
 /// This is a foundation definition in songbird-types.
-/// The authoritative canonical is in songbird_config::canonical::resilience::RetryConfig
+/// The authoritative canonical is in `songbird_config::canonical::resilience::RetryConfig`
 /// This definition matches the canonical for compatibility.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CanonicalRetryConfig {
@@ -189,7 +189,7 @@ pub struct CanonicalRetryConfig {
 /// **CANONICAL**: Timeout configuration
 ///
 /// This is a foundation definition in songbird-types.
-/// Matches the network timeout configuration from songbird_config::canonical::network::NetworkTimeouts
+/// Matches the network timeout configuration from `songbird_config::canonical::network::NetworkTimeouts`
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[allow(clippy::struct_field_names)] // "timeout" suffix is intentionally descriptive
 pub struct CanonicalTimeoutConfig {

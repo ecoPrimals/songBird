@@ -29,7 +29,8 @@ pub struct ConsentApiState {
 
 impl ConsentApiState {
     /// Create new consent API state
-    pub fn new(manager: Arc<ConsentManager>) -> Self {
+    #[must_use]
+    pub const fn new(manager: Arc<ConsentManager>) -> Self {
         Self {
             manager,
         }

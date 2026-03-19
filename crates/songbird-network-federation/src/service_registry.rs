@@ -121,35 +121,37 @@ impl FederatedServiceRegistry {
 
     /// Get service statistics
     pub async fn get_stats(&self) -> ServiceRegistryStats {
-        let local = self.local_services.read().await;
-        let remote = self.remote_services.read().await;
+        let (total_services, local_services, remote_services, service_types) = {
+            let local = self.local_services.read().await;
+            let remote = self.remote_services.read().await;
+            let mut types = std::collections::HashSet::new();
+            for svc in local.values().chain(remote.values()) {
+                types.insert(svc.service_type.clone());
+            }
+            (local.len() + remote.len(), local.len(), remote.len(), types.into_iter().collect())
+        };
 
         ServiceRegistryStats {
-            total_services: local.len() + remote.len(),
-            local_services: local.len(),
-            remote_services: remote.len(),
-            service_types: {
-                let mut types = std::collections::HashSet::new();
-                for svc in local.values().chain(remote.values()) {
-                    types.insert(svc.service_type.clone());
-                }
-                types.into_iter().collect()
-            },
+            total_services,
+            local_services,
+            remote_services,
+            service_types,
         }
     }
 
     /// Clean up stale services (not updated in timeout period)
     pub async fn cleanup_stale_services(&self, timeout_secs: i64) {
         let now = Utc::now();
-        let mut remote = self.remote_services.write().await;
+        let (removed, ()) = {
+            let mut remote = self.remote_services.write().await;
+            let before_count = remote.len();
+            remote.retain(|_, svc| {
+                let elapsed = (now - svc.last_seen).num_seconds();
+                elapsed < timeout_secs
+            });
+            (before_count - remote.len(), ())
+        };
 
-        let before_count = remote.len();
-        remote.retain(|_, svc| {
-            let elapsed = (now - svc.last_seen).num_seconds();
-            elapsed < timeout_secs
-        });
-
-        let removed = before_count - remote.len();
         if removed > 0 {
             info!("🧹 Cleaned up {} stale remote services", removed);
         }

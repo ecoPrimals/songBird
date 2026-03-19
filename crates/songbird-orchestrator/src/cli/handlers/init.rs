@@ -49,10 +49,9 @@ data_dir = "./.songbird/data"
 log_level = "info"
 
 [network]
-bind_port = {}
-discovery_port = {}
-"#,
-        bind_port, discovery_port
+bind_port = {bind_port}
+discovery_port = {discovery_port}
+"#
     );
 
     let config_path = format!("{config_dir}/songbird.toml");

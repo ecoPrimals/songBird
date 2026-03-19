@@ -116,11 +116,16 @@ impl Default for PoolConfig {
 
 impl PoolConfig {
     /// Create a builder for pool configuration
+    #[must_use]
     pub fn builder() -> PoolConfigBuilder {
         PoolConfigBuilder::default()
     }
 
     /// Validate configuration
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if `max_size` is 0, `min_idle` > `max_size`, or `max_idle_time` is zero.
     pub fn validate(&self) -> Result<(), String> {
         if self.max_size == 0 {
             return Err("max_size must be greater than 0".to_string());
@@ -147,26 +152,31 @@ pub struct PoolConfigBuilder {
 }
 
 impl PoolConfigBuilder {
-    pub fn max_size(mut self, size: usize) -> Self {
+    #[must_use]
+    pub const fn max_size(mut self, size: usize) -> Self {
         self.max_size = Some(size);
         self
     }
 
-    pub fn min_idle(mut self, count: usize) -> Self {
+    #[must_use]
+    pub const fn min_idle(mut self, count: usize) -> Self {
         self.min_idle = Some(count);
         self
     }
 
-    pub fn max_idle_time(mut self, duration: Duration) -> Self {
+    #[must_use]
+    pub const fn max_idle_time(mut self, duration: Duration) -> Self {
         self.max_idle_time = Some(duration);
         self
     }
 
-    pub fn acquire_timeout(mut self, duration: Duration) -> Self {
+    #[must_use]
+    pub const fn acquire_timeout(mut self, duration: Duration) -> Self {
         self.acquire_timeout = Some(duration);
         self
     }
 
+    #[must_use]
     pub fn build(self) -> PoolConfig {
         let default = PoolConfig::default();
         PoolConfig {
@@ -204,12 +214,14 @@ impl<T: Send + Sync + 'static> PooledConnection<T> {
     }
 
     /// Get a reference to the inner connection
-    pub fn inner(&self) -> Option<&T> {
+    #[must_use]
+    pub const fn inner(&self) -> Option<&T> {
         self.inner.as_ref()
     }
 
     /// Get a mutable reference to the inner connection
-    pub fn inner_mut(&mut self) -> Option<&mut T> {
+    #[must_use]
+    pub const fn inner_mut(&mut self) -> Option<&mut T> {
         self.inner.as_mut()
     }
 }
@@ -244,22 +256,21 @@ impl<T: Send + Sync + 'static> Drop for PooledConnection<T> {
 }
 
 /// Inner connection pool state
-struct ConnectionPoolInner<T> {
+struct ConnectionPoolInner<T: Send + Sync> {
     connections: RwLock<VecDeque<(T, Instant)>>,
     semaphore: Semaphore,
     config: PoolConfig,
     is_shutting_down: RwLock<bool>,
 }
 
-impl<T> ConnectionPoolInner<T> {
+impl<T: Send + Sync> ConnectionPoolInner<T> {
     async fn return_connection(&self, conn: T, last_used: Instant) {
         if *self.is_shutting_down.read().await {
             // Pool is shutting down, don't return connection
             return;
         }
 
-        let mut connections = self.connections.write().await;
-        connections.push_back((conn, last_used));
+        self.connections.write().await.push_back((conn, last_used));
         self.semaphore.add_permits(1);
     }
 
@@ -267,6 +278,7 @@ impl<T> ConnectionPoolInner<T> {
         let mut connections = self.connections.write().await;
         let now = Instant::now();
         let max_idle = self.config.max_idle_time;
+        let len_before = connections.len();
 
         // Remove stale connections
         connections.retain(|(_, last_used)| {
@@ -274,26 +286,32 @@ impl<T> ConnectionPoolInner<T> {
             age < max_idle
         });
 
-        let removed = connections.len();
+        let removed = len_before.saturating_sub(connections.len());
+        drop(connections);
         if removed > 0 {
-            debug!("Cleaned up {} stale connections", removed);
+            debug!("Cleaned up {removed} stale connections");
         }
     }
 }
 
 /// Connection pool for managing reusable connections
-pub struct ConnectionPool<T> {
+pub struct ConnectionPool<T: Send + Sync> {
     inner: Arc<ConnectionPoolInner<T>>,
     _cleanup_task: tokio::task::JoinHandle<()>,
 }
 
 impl<T: Send + Sync + 'static> ConnectionPool<T> {
     /// Create a new connection pool with builder pattern
+    #[must_use]
     pub fn builder() -> ConnectionPoolBuilder<T> {
         ConnectionPoolBuilder::default()
     }
 
     /// Create a new connection pool with default configuration
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if configuration validation fails.
     pub async fn new(max_size: usize) -> PoolResult<Self> {
         Self::builder().max_size(max_size).build().await
     }
@@ -302,6 +320,12 @@ impl<T: Send + Sync + 'static> ConnectionPool<T> {
     ///
     /// If no connections are available, waits up to `acquire_timeout` for one to become available.
     /// Returns `PoolError::AcquisitionTimeout` if the timeout expires.
+    ///
+    /// # Errors
+    ///
+    /// Returns `PoolError::ShuttingDown` if the pool is shutting down, or
+    /// `PoolError::AcquisitionTimeout` if the timeout expires, or
+    /// `PoolError::UnhealthyConnection` if no healthy connections are available.
     pub async fn acquire(&self) -> PoolResult<PooledConnection<T>> {
         if *self.inner.is_shutting_down.read().await {
             return Err(PoolError::ShuttingDown);
@@ -365,6 +389,11 @@ impl<T: Send + Sync + 'static> ConnectionPool<T> {
     /// Manually add a connection to the pool
     ///
     /// Used for pre-populating the pool or adding externally created connections.
+    ///
+    /// # Errors
+    ///
+    /// Returns `PoolError::ShuttingDown` if the pool is shutting down, or
+    /// `PoolError::PoolFull` if the pool is at maximum capacity.
     pub async fn add_connection(&self, conn: T) -> PoolResult<()> {
         if *self.inner.is_shutting_down.read().await {
             return Err(PoolError::ShuttingDown);
@@ -376,6 +405,7 @@ impl<T: Send + Sync + 'static> ConnectionPool<T> {
         }
 
         connections.push_back((conn, Instant::now()));
+        drop(connections);
         self.inner.semaphore.add_permits(1);
         Ok(())
     }
@@ -391,12 +421,12 @@ pub struct PoolStats {
 }
 
 /// Builder for connection pool
-pub struct ConnectionPoolBuilder<T> {
+pub struct ConnectionPoolBuilder<T: Send + Sync> {
     config: PoolConfig,
     _phantom: std::marker::PhantomData<T>,
 }
 
-impl<T> Default for ConnectionPoolBuilder<T> {
+impl<T: Send + Sync> Default for ConnectionPoolBuilder<T> {
     fn default() -> Self {
         Self {
             config: PoolConfig::default(),
@@ -406,27 +436,37 @@ impl<T> Default for ConnectionPoolBuilder<T> {
 }
 
 impl<T: Send + Sync + 'static> ConnectionPoolBuilder<T> {
-    pub fn max_size(mut self, size: usize) -> Self {
+    #[must_use]
+    pub const fn max_size(mut self, size: usize) -> Self {
         self.config.max_size = size;
         self
     }
 
-    pub fn min_idle(mut self, count: usize) -> Self {
+    #[must_use]
+    pub const fn min_idle(mut self, count: usize) -> Self {
         self.config.min_idle = count;
         self
     }
 
-    pub fn max_idle_time(mut self, duration: Duration) -> Self {
+    #[must_use]
+    pub const fn max_idle_time(mut self, duration: Duration) -> Self {
         self.config.max_idle_time = duration;
         self
     }
 
-    pub fn acquire_timeout(mut self, duration: Duration) -> Self {
+    #[must_use]
+    pub const fn acquire_timeout(mut self, duration: Duration) -> Self {
         self.config.acquire_timeout = duration;
         self
     }
 
+    /// Build the connection pool.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if configuration validation fails.
     pub async fn build(self) -> PoolResult<ConnectionPool<T>> {
+        tokio::task::yield_now().await;
         // Validate configuration
         self.config.validate().map_err(PoolError::ConnectionCreation)?;
 

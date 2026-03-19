@@ -1,6 +1,7 @@
 //! Genesis witness types and verification
 
-use crate::{error::*, types::*};
+use crate::error::{GenesisError, Result};
+use crate::types::{PhysicalChannelType, TrustLevel};
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
@@ -28,6 +29,7 @@ pub struct GenesisWitness {
 
 impl GenesisWitness {
     /// Create a new genesis witness
+    #[must_use]
     pub fn new(
         device_id: String,
         public_key: Vec<u8>,
@@ -44,16 +46,22 @@ impl GenesisWitness {
     }
 
     /// Get trust level based on physical channel
+    #[must_use]
     pub fn trust_level(&self) -> TrustLevel {
         self.physical_channel.trust_level().into()
     }
 
     /// Check if witness has hardware attestation
-    pub fn has_hardware_attestation(&self) -> bool {
+    #[must_use]
+    pub const fn has_hardware_attestation(&self) -> bool {
         self.physical_channel.has_hardware_attestation()
     }
 
-    /// Verify witness signature using BearDog
+    /// Verify witness signature using `BearDog`
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if `BearDog` verification fails and signature is non-empty.
     pub async fn verify_signature(&self, data: &[u8]) -> Result<bool> {
         use crate::security_capability_client::SecurityCapabilityClient;
 
@@ -67,8 +75,7 @@ impl GenesisWitness {
                 // Use BearDog for cryptographic verification
                 client.verify_signature(&self.device_id, data, &self.signature).await.map_err(|e| {
                     GenesisError::SignatureVerificationFailed(format!(
-                        "BearDog verification failed: {}",
-                        e
+                        "BearDog verification failed: {e}"
                     ))
                 })
             }
@@ -83,7 +90,11 @@ impl GenesisWitness {
         }
     }
 
-    /// Sign data as witness using BearDog
+    /// Sign data as witness using `BearDog`
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if `BearDog` signing fails.
     pub async fn sign(&mut self, data: &[u8]) -> Result<Vec<u8>> {
         use crate::security_capability_client::SecurityCapabilityClient;
 
@@ -92,10 +103,10 @@ impl GenesisWitness {
             Ok(client) => {
                 // Use BearDog for cryptographic signing
                 let signature = client.sign_data(&self.device_id, data).await.map_err(|e| {
-                    GenesisError::SigningFailed(format!("BearDog signing failed: {}", e))
+                    GenesisError::SigningFailed(format!("BearDog signing failed: {e}"))
                 })?;
 
-                self.signature = signature.clone();
+                self.signature.clone_from(&signature);
                 Ok(signature)
             }
             Err(e) => {
@@ -105,7 +116,7 @@ impl GenesisWitness {
                     e
                 );
                 let sig = format!("witness_sig_{}_{}", self.device_id, data.len()).into_bytes();
-                self.signature = sig.clone();
+                self.signature.clone_from(&sig);
                 Ok(sig)
             }
         }
@@ -121,6 +132,7 @@ pub struct WitnessVerifier {
 
 impl WitnessVerifier {
     /// Create new witness verifier
+    #[must_use]
     pub fn new() -> Self {
         Self {
             trusted_witnesses: std::sync::Arc::new(tokio::sync::RwLock::new(
@@ -141,6 +153,10 @@ impl WitnessVerifier {
     }
 
     /// Verify witness authority
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if witness is not trusted or trust level is insufficient.
     pub async fn verify_authority(&self, witness: &GenesisWitness) -> Result<()> {
         if !self.is_trusted(witness).await {
             return Err(GenesisError::UnauthorizedWitness(format!(

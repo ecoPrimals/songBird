@@ -193,7 +193,7 @@ async fn get_local_ip() -> Result<String> {
     Err(anyhow::anyhow!("Could not determine local IP"))
 }
 
-/// Start HTTPS server with Pure Rust TLS (songbird-tls + BearDog)
+/// Start HTTPS server with Pure Rust TLS (songbird-tls + `BearDog`)
 async fn start_https_server(
     app: Router,
     listener: tokio::net::TcpListener,
@@ -238,8 +238,7 @@ async fn start_https_server(
     // PURE RUST TLS: songbird-tls + BearDog crypto
     // Generate test certificate (in production, use proper cert management)
     let test_cert = generate_test_certificate(&node_id)
-        .await
-        .map_err(|e| anyhow::anyhow!("Failed to generate test certificate: {}", e))?;
+        .map_err(|e| anyhow::anyhow!("Failed to generate test certificate: {e}"))?;
 
     // Extract certificate data (first entry in chain)
     let certificate_der = test_cert
@@ -252,14 +251,13 @@ async fn start_https_server(
     // Create BearDog crypto client for TLS operations
     // This will discover BearDog via Unix socket at runtime
     let crypto_client = BeardogCryptoClient::new()
-        .await
-        .map_err(|e| anyhow::anyhow!("Failed to create BearDog crypto client: {}", e))?;
+        .map_err(|e| anyhow::anyhow!("Failed to create BearDog crypto client: {e}"))?;
 
     // Create Pure Rust TLS server config
     let tls_config = TlsServerConfig {
         crypto_client,
         certificate: certificate_der,
-        key_id: format!("{}_tls_key", node_id), // Key ID for BearDog signing
+        key_id: format!("{node_id}_tls_key"), // Key ID for BearDog signing
     };
 
     // Create Pure Rust TLS acceptor (wrap in Arc for sharing across tasks)
@@ -383,7 +381,7 @@ async fn start_https_server(
 
 /// Smart port binding with automatic fallback using Sovereign Socket
 ///
-/// Uses the SovereignBinder for truly sovereign network configuration.
+/// Uses the `SovereignBinder` for truly sovereign network configuration.
 /// No external tools, no sudo, no manual setup required.
 ///
 /// The sovereign binder will:
@@ -426,11 +424,7 @@ async fn bind_with_fallback(addr: &SocketAddr) -> Result<(tokio::net::TcpListene
             }
             Err(e) => {
                 return Err(anyhow::anyhow!(
-                    "Failed to bind after {} attempts. Last error: {}. Tried ports {}-{}",
-                    max_attempts,
-                    e,
-                    port,
-                    try_port
+                    "Failed to bind after {max_attempts} attempts. Last error: {e}. Tried ports {port}-{try_port}"
                 ));
             }
         }

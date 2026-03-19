@@ -165,7 +165,7 @@ impl BirdSongConfig {
     ///
     /// Returns `true` only if both `enabled` and `dark_forest_enabled` are true.
     #[must_use]
-    pub fn is_dark_forest_active(&self) -> bool {
+    pub const fn is_dark_forest_active(&self) -> bool {
         self.enabled && self.dark_forest_enabled
     }
 
@@ -173,7 +173,7 @@ impl BirdSongConfig {
     ///
     /// Returns `true` if either legacy format accepted OR dual broadcast enabled.
     #[must_use]
-    pub fn accepts_legacy(&self) -> bool {
+    pub const fn accepts_legacy(&self) -> bool {
         self.accept_legacy_format || !self.dark_forest_enabled
     }
 }
