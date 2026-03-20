@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! TLS extensions (RFC 8446 Section 4.2)
 //!
 //! Extensions are used to extend the TLS protocol with additional functionality.

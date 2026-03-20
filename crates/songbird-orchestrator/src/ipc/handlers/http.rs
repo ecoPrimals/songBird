@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! HTTP/HTTPS Request Handler - Pure Rust Tower Atomic
 //!
 //! Exposes Songbird's Pure Rust TLS 1.3 HTTP client via Unix socket JSON-RPC.
@@ -85,8 +88,8 @@
 //! - ✅ **Pure Rust**: 100% safe Rust
 
 use anyhow::{Context, Result};
-use base64::{engine::general_purpose::STANDARD as BASE64, Engine};
-use serde_json::{json, Value};
+use base64::{Engine, engine::general_purpose::STANDARD as BASE64};
+use serde_json::{Value, json};
 use std::collections::HashMap;
 use std::sync::Arc;
 

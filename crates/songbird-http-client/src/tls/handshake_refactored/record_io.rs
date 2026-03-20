@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! TLS 1.3 record layer I/O operations
 //!
 //! Handles reading and decrypting TLS records from TCP streams.
@@ -15,6 +18,7 @@ impl TlsHandshake {
     ///
     /// Returns the content type byte (e.g., 0x14=ChangeCipherSpec, 0x17=ApplicationData)
     /// and the record content
+    #[allow(clippy::too_many_lines)] // Record parsing has many validation branches
     pub(super) async fn read_record(&self, stream: &mut TcpStream) -> Result<(u8, Vec<u8>)> {
         // Read record header
         trace!("Reading TLS record header (5 bytes)");
@@ -139,7 +143,9 @@ impl TlsHandshake {
                 level_str, alert_level, desc_str, alert_description
             );
             error!("   This means the server rejected our ClientHello!");
-            error!("   Common causes: missing extensions, unsupported cipher suites, protocol mismatch");
+            error!(
+                "   Common causes: missing extensions, unsupported cipher suites, protocol mismatch"
+            );
             return Err(Error::TlsHandshake(format!(
                 "Server sent {level_str} alert: {desc_str} (code {alert_description})"
             )));
@@ -346,18 +352,22 @@ impl TlsHandshake {
     }
 
     /// Generate 32-byte random (for testing, production should use `BearDog`)
+    #[allow(clippy::unused_self)] // API consistency
     pub(crate) fn generate_random(&self) -> Vec<u8> {
         use std::time::{SystemTime, UNIX_EPOCH};
 
         let mut random = Vec::with_capacity(32);
 
         // Use timestamp for first 4 bytes (not cryptographically secure, but good enough for testing)
-        let timestamp = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs() as u32;
+        let timestamp =
+            u32::try_from(SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs())
+                .unwrap_or(0);
         random.extend_from_slice(&timestamp.to_be_bytes());
 
         // Fill rest with pseudo-random (in production, BearDog should provide this)
-        for i in 4..32 {
-            random.push((i * 7 + timestamp as usize) as u8);
+        #[allow(clippy::cast_possible_truncation)]
+        for i in 4u8..32 {
+            random.push(i.wrapping_mul(7).wrapping_add(timestamp as u8));
         }
 
         random

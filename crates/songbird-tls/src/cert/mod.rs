@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Certificate validation and X.509 parsing
 //!
 //! Handles certificate chain validation for TLS 1.3.
@@ -10,6 +13,8 @@ pub mod test_utils; // Pure Rust certificate generation (hybrid standalone + Bea
 use crate::crypto::BeardogCryptoClient;
 use crate::error::{Result, TlsError};
 use crate::messages::Certificate;
+use x509_parser::certificate::X509Certificate;
+use x509_parser::prelude::FromDer;
 
 /// Certificate validator
 ///
@@ -114,18 +119,19 @@ impl CertificateValidator {
         Ok(())
     }
 
-    /// Extract public key from certificate
+    /// Extract public key material from certificate data
+    ///
+    /// For X.509 DER, returns the subject public key bit string; otherwise a 32-byte placeholder.
     ///
     /// # Errors
     ///
-    /// Currently never returns an error; returns a placeholder. Full X.509 parsing will be added later.
-    ///
-    /// For now, returns a placeholder. Full X.509 parsing will be added later.
-    pub fn extract_public_key(&self, _cert_data: &[u8]) -> Result<Vec<u8>> {
-        // TODO: Parse X.509 certificate and extract SubjectPublicKeyInfo
-        // This will use a pure Rust X.509 parser in Phase 7
+    /// Never returns an error.
+    pub fn extract_public_key(&self, cert_data: &[u8]) -> Result<Vec<u8>> {
+        if let Ok((_, cert)) = X509Certificate::from_der(cert_data) {
+            return Ok(cert.public_key().subject_public_key.data.as_ref().to_vec());
+        }
 
-        // For now, return a placeholder 32-byte Ed25519 public key
+        // Non-X.509 blobs (e.g. internal test format): placeholder Ed25519-sized key
         Ok(vec![0u8; 32])
     }
 
@@ -135,12 +141,19 @@ impl CertificateValidator {
     ///
     /// # Errors
     ///
-    /// Currently never returns an error. Full validation will be added with X.509 parsing.
-    pub const fn check_validity_period(&self, _cert_data: &[u8]) -> Result<()> {
-        // TODO: Parse X.509 certificate and check notBefore/notAfter
-        // This will be implemented with proper X.509 parsing in Phase 7
+    /// Returns an error when `cert_data` is valid X.509 DER and the current time is outside the
+    /// validity window. Non-DER blobs are accepted.
+    pub fn check_validity_period(&self, cert_data: &[u8]) -> Result<()> {
+        let Ok((_, cert)) = X509Certificate::from_der(cert_data) else {
+            return Ok(());
+        };
 
-        // For now, accept all certificates (no time validation)
+        if !cert.validity().is_valid() {
+            return Err(TlsError::CertificateError(
+                "Certificate is expired or not yet valid".to_string(),
+            ));
+        }
+
         Ok(())
     }
 
@@ -150,13 +163,30 @@ impl CertificateValidator {
     ///
     /// # Errors
     ///
-    /// Currently never returns an error. Full validation will be added with X.509 parsing.
-    pub const fn validate_purpose(&self, _cert_data: &[u8]) -> Result<()> {
-        // TODO: Check Extended Key Usage (EKU) for TLS server authentication
-        // This requires X.509 extension parsing
+    /// Returns an error when `cert_data` is valid X.509 DER, an EKU extension is present, and it
+    /// does not allow TLS server authentication.
+    pub fn validate_purpose(&self, cert_data: &[u8]) -> Result<()> {
+        let Ok((_, cert)) = X509Certificate::from_der(cert_data) else {
+            return Ok(());
+        };
 
-        // For now, accept all certificates
-        Ok(())
+        let eku_ext = match cert.extended_key_usage() {
+            Ok(e) => e,
+            Err(_) => return Ok(()),
+        };
+
+        let Some(ext) = eku_ext else {
+            return Ok(());
+        };
+
+        let eku = ext.value;
+        if eku.any || eku.server_auth {
+            return Ok(());
+        }
+
+        Err(TlsError::CertificateError(
+            "Certificate Extended Key Usage does not allow TLS server authentication".to_string(),
+        ))
     }
 
     /// Build and validate certificate chain
@@ -196,6 +226,7 @@ impl Default for CertificateValidator {
 mod tests {
     use super::*;
     use crate::messages::certificate::CertificateEntry;
+    use rcgen::{CertificateParams, ExtendedKeyUsagePurpose, KeyPair, date_time_ymd};
 
     #[test]
     fn test_new_validator() {
@@ -292,7 +323,7 @@ mod tests {
         let validator = CertificateValidator::new();
         let cert_data = vec![1, 2, 3, 4];
 
-        // For now, all certificates are considered valid
+        // Opaque blobs are not X.509 DER — skipped until full parsing applies.
         assert!(validator.check_validity_period(&cert_data).is_ok());
     }
 
@@ -301,8 +332,63 @@ mod tests {
         let validator = CertificateValidator::new();
         let cert_data = vec![1, 2, 3, 4];
 
-        // For now, all certificates are considered valid for TLS
         assert!(validator.validate_purpose(&cert_data).is_ok());
+    }
+
+    fn rcgen_server_cert_der() -> Vec<u8> {
+        let mut params =
+            CertificateParams::new(vec!["tls.test.local".to_string()]).expect("params");
+        params.extended_key_usages = vec![ExtendedKeyUsagePurpose::ServerAuth];
+        let key = KeyPair::generate().unwrap();
+        let cert = params.self_signed(&key).unwrap();
+        cert.der().as_ref().to_vec()
+    }
+
+    #[test]
+    fn test_validate_certificate_chain_with_x509_der_leaf() {
+        let validator = CertificateValidator::new();
+        let der = rcgen_server_cert_der();
+        let entry = CertificateEntry::new(der);
+        let cert = Certificate::new(vec![entry]);
+
+        assert!(validator.validate_certificate_chain(&cert).is_ok());
+        assert!(validator.validate_chain_to_root(&cert).is_ok());
+    }
+
+    #[test]
+    fn test_check_validity_period_rejects_expired_x509() {
+        let mut params =
+            CertificateParams::new(vec!["expired.test.local".to_string()]).expect("params");
+        params.not_before = date_time_ymd(2001, 1, 1);
+        params.not_after = date_time_ymd(2002, 1, 1);
+        params.extended_key_usages = vec![ExtendedKeyUsagePurpose::ServerAuth];
+        let key = KeyPair::generate().unwrap();
+        let cert = params.self_signed(&key).unwrap();
+        let der = cert.der().as_ref();
+
+        let validator = CertificateValidator::new();
+        assert!(validator.check_validity_period(der).is_err());
+    }
+
+    #[test]
+    fn test_validate_purpose_rejects_client_auth_only_eku() {
+        let mut params =
+            CertificateParams::new(vec!["client.only.test".to_string()]).expect("params");
+        params.extended_key_usages = vec![ExtendedKeyUsagePurpose::ClientAuth];
+        let key = KeyPair::generate().unwrap();
+        let cert = params.self_signed(&key).unwrap();
+        let der = cert.der().as_ref();
+
+        let validator = CertificateValidator::new();
+        assert!(validator.validate_purpose(der).is_err());
+    }
+
+    #[test]
+    fn test_extract_public_key_from_x509_der() {
+        let der = rcgen_server_cert_der();
+        let validator = CertificateValidator::new();
+        let pk = validator.extract_public_key(&der).unwrap();
+        assert!(pk.len() > 32, "RSA SPKI payload is larger than Ed25519 placeholder");
     }
 
     #[test]

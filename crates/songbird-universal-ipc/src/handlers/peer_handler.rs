@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Peer Connection Handler for JSON-RPC
 //!
 //! Handles `peer.connect` method for direct peer-to-peer connections using UDP hole punching.
@@ -140,7 +143,15 @@ pub struct MockPeerConnector {
 }
 
 #[cfg(test)]
+impl Default for MockPeerConnector {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+#[cfg(test)]
 impl MockPeerConnector {
+    #[must_use]
     pub fn new() -> Self {
         Self {
             should_succeed: std::sync::RwLock::new(true),
@@ -167,8 +178,8 @@ impl PeerConnector for MockPeerConnector {
 
         if should_succeed {
             // Simulate successful connection
-            let local_address =
-                our_binding.map(|b| b.to_string()).unwrap_or_else(|| "0.0.0.0:0".to_string());
+            let local_address = our_binding
+                .map_or_else(|| "0.0.0.0:0".to_string(), std::string::ToString::to_string);
 
             Ok(PeerConnectResult {
                 connection_id,

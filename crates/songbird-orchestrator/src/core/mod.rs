@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! # 🎯 Consolidated Core Orchestration
 //!
 //! **ORCHESTRATION CORE CONSOLIDATION** ✅
@@ -627,8 +630,8 @@ mod tests {
     }
 
     #[test]
-    fn test_consolidated_orchestrator_config_serialization(
-    ) -> Result<(), Box<dyn std::error::Error>> {
+    fn test_consolidated_orchestrator_config_serialization()
+    -> Result<(), Box<dyn std::error::Error>> {
         let config = ConsolidatedOrchestratorConfig::default();
         let json = serde_json::to_string(&config).map_err(|e| SongbirdError::Serialization {
             format: Some("JSON".to_string()),

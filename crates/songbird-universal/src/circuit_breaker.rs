@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Circuit Breaker Pattern for Adapter Resilience
 //!
 //! Prevents cascading failures by temporarily disabling failed endpoints.
@@ -69,13 +72,13 @@ impl CircuitBreaker {
             CircuitState::Open => {
                 // Check if timeout has elapsed
                 let last_failure = self.last_failure_time.read().await;
-                if let Some(last) = *last_failure {
-                    if last.elapsed() >= self.config.timeout {
-                        // Transition to half-open
-                        drop(last_failure);
-                        self.transition_to_half_open().await;
-                        return true;
-                    }
+                if let Some(last) = *last_failure
+                    && last.elapsed() >= self.config.timeout
+                {
+                    // Transition to half-open
+                    drop(last_failure);
+                    self.transition_to_half_open().await;
+                    return true;
                 }
                 false
             }

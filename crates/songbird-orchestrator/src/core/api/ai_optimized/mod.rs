@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! AI-Optimized API Layer Layer
 //!
 //! Enhanced API endpoints and optimizations specifically designed for AI workloads)

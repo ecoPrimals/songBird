@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Provider abstraction layer for discovery services
 //!
 //! **MODERNIZED**: Now uses canonical Provider traits from songbird-types

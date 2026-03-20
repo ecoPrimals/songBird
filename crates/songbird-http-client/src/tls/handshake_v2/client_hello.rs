@@ -1,10 +1,13 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! `ClientHello` message construction for TLS 1.3
 //!
 //! This module handles building TLS 1.3 `ClientHello` messages with configurable
 //! extension strategies for optimal handshake performance.
 
 use crate::error::Result;
-use crate::tls::{config::ExtensionStrategy, CIPHER_SUITES, TLS_1_2, TLS_1_3};
+use crate::tls::{CIPHER_SUITES, TLS_1_2, TLS_1_3, config::ExtensionStrategy};
 use tracing::debug;
 
 /// `ClientHello` builder for TLS 1.3

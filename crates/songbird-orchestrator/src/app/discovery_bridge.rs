@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Discovery → Federation Bridge
 //!
 //! Manages the automatic bridging of UDP multicast peer discoveries to federation
@@ -126,9 +129,13 @@ impl SongbirdOrchestrator {
                 let mut interval = interval(tokio::time::Duration::from_secs(10));
 
                 if security_client_endpoint.is_some() {
-                    info!("🌉 Discovery → Federation bridge started (10s interval) [Trust Evaluation: ACTIVE]");
+                    info!(
+                        "🌉 Discovery → Federation bridge started (10s interval) [Trust Evaluation: ACTIVE]"
+                    );
                 } else {
-                    info!("🌉 Discovery → Federation bridge started (10s interval) [Trust Evaluation: DISABLED - no security provider]");
+                    info!(
+                        "🌉 Discovery → Federation bridge started (10s interval) [Trust Evaluation: DISABLED - no security provider]"
+                    );
                 }
 
                 loop {
@@ -154,7 +161,9 @@ impl SongbirdOrchestrator {
                                 if let (Some(id), Some(name)) = (&peer.node_id, &peer.node_name) {
                                     (id.clone(), name.clone())
                                 } else {
-                                    warn!("⚠️  Peer claims v3.0 but missing node_id/node_name, falling back to session_id");
+                                    warn!(
+                                        "⚠️  Peer claims v3.0 but missing node_id/node_name, falling back to session_id"
+                                    );
                                     (
                                         peer.session_id.clone(),
                                         format!("peer-{}", &peer.session_id[..8]),
@@ -188,7 +197,10 @@ impl SongbirdOrchestrator {
                             let skip_connectivity_check = same_family;
 
                             let connectivity_ok = if skip_connectivity_check {
-                                info!("✅ Same family peer '{}' - skipping connectivity check (trust LAN discovery)", node_name);
+                                info!(
+                                    "✅ Same family peer '{}' - skipping connectivity check (trust LAN discovery)",
+                                    node_name
+                                );
                                 true
                             } else {
                                 let health_url = format!("{endpoint}/health");
@@ -227,7 +239,10 @@ impl SongbirdOrchestrator {
                                         true
                                     }
                                     Ok(Ok(response)) => {
-                                        warn!("⚠️  Peer '{}' returned HTTP {} - connectivity check failed", node_name, response.status);
+                                        warn!(
+                                            "⚠️  Peer '{}' returned HTTP {} - connectivity check failed",
+                                            node_name, response.status
+                                        );
                                         false
                                     }
                                     Ok(Err(e)) => {
@@ -264,7 +279,7 @@ impl SongbirdOrchestrator {
                                     // Security provider available - evaluate trust properly
                                     use crate::security_capability_client::SecurityCapabilityClient;
                                     use crate::trust::peer_trust::{
-                                        evaluate_peer_trust, DiscoveredPeer,
+                                        DiscoveredPeer, evaluate_peer_trust,
                                     };
 
                                     let security_client =
@@ -306,7 +321,10 @@ impl SongbirdOrchestrator {
                                     // ✅ v3.14.2: Log peer tags for debugging
                                     let peer_tags = peer.tags.clone().unwrap_or_default();
                                     if peer_tags.is_empty() {
-                                        warn!("⚠️  Peer {} has NO tags - family extraction will fail!", node_id);
+                                        warn!(
+                                            "⚠️  Peer {} has NO tags - family extraction will fail!",
+                                            node_id
+                                        );
                                         warn!(
                                             "   This means the peer didn't broadcast identity tags"
                                         );
@@ -344,8 +362,12 @@ impl SongbirdOrchestrator {
                                     }
                                 } else {
                                     // No security provider - fall back to anonymous trust (INSECURE - development only)
-                                    warn!("⚠️  No security provider configured - using anonymous trust (INSECURE)");
-                                    warn!("   Set SONGBIRD_SECURITY_PROVIDER for secure genetic lineage verification");
+                                    warn!(
+                                        "⚠️  No security provider configured - using anonymous trust (INSECURE)"
+                                    );
+                                    warn!(
+                                        "   Set SONGBIRD_SECURITY_PROVIDER for secure genetic lineage verification"
+                                    );
 
                                     // Use fully qualified path to avoid duplicate import
                                     Some(crate::trust::peer_trust::PeerTrustDecision::AutoAccept {
@@ -463,8 +485,12 @@ impl SongbirdOrchestrator {
                                         );
                                         warn!("   Peer ID: {}", peer_id);
                                         warn!("   Recommendation: {}", recommendation);
-                                        warn!("   FUTURE (Phase 2): User consent UI for manual peer approval");
-                                        warn!("   Current: Automatic trust decisions via genetic lineage (safer)");
+                                        warn!(
+                                            "   FUTURE (Phase 2): User consent UI for manual peer approval"
+                                        );
+                                        warn!(
+                                            "   Current: Automatic trust decisions via genetic lineage (safer)"
+                                        );
                                         // Skip this peer - do not add to federation without user consent
                                     }
 

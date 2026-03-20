@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! CLI configuration management
 //!
 //! This module handles CLI-specific configuration options and management.

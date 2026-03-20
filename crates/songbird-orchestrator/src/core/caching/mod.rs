@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Caching subsystem for Songbird Universal Orchestrator Orchestrator
 //!
 //! This module provides comprehensive caching capabilities including: //! - Advanced caching with LRU, LFU, FIFO, and TTL-based eviction

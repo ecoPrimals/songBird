@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! # Gaming Configuration Module
 //!
 //! **CANONICAL GAMING CONFIGURATION** ✅
@@ -7,7 +10,7 @@
 use serde::{Deserialize, Serialize};
 
 // ============================================================================
-// GAMING CONFIGURATION - Placeholder
+// GAMING CONFIGURATION
 // ============================================================================
 
 /// **CANONICAL**: Gaming configuration

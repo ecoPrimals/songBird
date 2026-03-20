@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Discovery strategies for finding capability providers
 
 use crate::capability::provider::Provider;
@@ -63,41 +66,41 @@ impl DiscoveryStrategy for EnvironmentStrategy {
 
         // Strategy 2: {CAPABILITY}_PROVIDER (alternative)
         let env_var = format!("{}_PROVIDER", capability.to_uppercase());
-        if let Ok(socket_path) = std::env::var(&env_var) {
-            if providers.is_empty() {
-                // Only add if not already found
-                info!("   ✅ Found {}: {}", env_var, socket_path);
+        if let Ok(socket_path) = std::env::var(&env_var)
+            && providers.is_empty()
+        {
+            // Only add if not already found
+            info!("   ✅ Found {}: {}", env_var, socket_path);
 
-                let provider_id = extract_provider_id(&socket_path);
+            let provider_id = extract_provider_id(&socket_path);
 
-                let mut provider = Provider::new(
-                    provider_id.clone(),
-                    vec![capability.to_string()],
-                    format!("/primal/{provider_id}"),
-                );
-                provider.metadata.discovery_method = format!("env:{env_var}");
+            let mut provider = Provider::new(
+                provider_id.clone(),
+                vec![capability.to_string()],
+                format!("/primal/{provider_id}"),
+            );
+            provider.metadata.discovery_method = format!("env:{env_var}");
 
-                providers.push(provider);
-            }
+            providers.push(provider);
         }
 
         // Strategy 3: Generic capability environment variable
         let generic_env = format!("{}_SOCKET", capability.to_uppercase());
-        if let Ok(socket_path) = std::env::var(&generic_env) {
-            if providers.is_empty() {
-                info!("   ✅ Found {}: {}", generic_env, socket_path);
+        if let Ok(socket_path) = std::env::var(&generic_env)
+            && providers.is_empty()
+        {
+            info!("   ✅ Found {}: {}", generic_env, socket_path);
 
-                let provider_id = extract_provider_id(&socket_path);
+            let provider_id = extract_provider_id(&socket_path);
 
-                let mut provider = Provider::new(
-                    provider_id.clone(),
-                    vec![capability.to_string()],
-                    format!("/primal/{provider_id}"),
-                );
-                provider.metadata.discovery_method = format!("env:{generic_env}");
+            let mut provider = Provider::new(
+                provider_id.clone(),
+                vec![capability.to_string()],
+                format!("/primal/{provider_id}"),
+            );
+            provider.metadata.discovery_method = format!("env:{generic_env}");
 
-                providers.push(provider);
-            }
+            providers.push(provider);
         }
 
         if providers.is_empty() {
@@ -231,7 +234,7 @@ mod tests {
         let strategy = EnvironmentStrategy;
 
         // Set test environment variable
-        std::env::set_var("CRYPTO_PROVIDER_SOCKET", "/tmp/test-crypto.sock");
+        songbird_process_env::set_var("CRYPTO_PROVIDER_SOCKET", "/tmp/test-crypto.sock");
 
         let providers = strategy.discover("crypto").await.unwrap();
 
@@ -239,7 +242,7 @@ mod tests {
         assert_eq!(providers[0].capabilities, vec!["crypto"]);
 
         // Cleanup
-        std::env::remove_var("CRYPTO_PROVIDER_SOCKET");
+        songbird_process_env::remove_var("CRYPTO_PROVIDER_SOCKET");
     }
 
     #[tokio::test]

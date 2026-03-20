@@ -265,9 +265,12 @@ mod tests {
 ### Unsafe Code
 
 **No unsafe code**. Songbird enforces `#![forbid(unsafe_code)]` across all crates.
+The sole exception is `songbird-process-env`, a thin facade that wraps
+`std::env::set_var`/`remove_var` (unsafe in Rust 2024) for test infrastructure.
 
-All cryptographic operations are delegated to BearDog via JSON-RPC IPC. This eliminates
-the need for unsafe blocks while maintaining performance through async delegation.
+All cryptographic operations are delegated to BearDog via JSON-RPC IPC at runtime
+through capability discovery. This eliminates the need for unsafe blocks while
+maintaining performance through async delegation.
 
 ### Human Dignity & Sovereignty
 

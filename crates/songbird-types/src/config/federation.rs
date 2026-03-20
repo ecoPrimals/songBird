@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Canonical Federation /// Configuration capability Configuration
 //!
 //! This module provides the unified federation configuration structures,

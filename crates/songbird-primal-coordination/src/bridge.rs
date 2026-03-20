@@ -1,11 +1,12 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Primal Bridge - abstraction for connecting to any primal
 //!
 //! **ZERO HARDCODING**: No primal names, only capability discovery
 
 use crate::error::Result;
-use crate::types::{
-    CapabilityType, PrimalCapabilities, PrimalRequest, PrimalResponse, ServiceQuality,
-};
+use crate::types::{CapabilityType, PrimalCapabilities, PrimalRequest, PrimalResponse};
 use async_trait::async_trait;
 use songbird_http_client::IpcHttpClient;
 use std::sync::Arc;
@@ -20,8 +21,8 @@ pub struct PrimalConnection {
     /// Connection identifier
     pub connection_id: String,
 
-    /// Endpoint (discovered, not hardcoded)
-    pub endpoint: String,
+    /// Endpoint (discovered, not hardcoded) — shared `Arc` avoids copying URLs across clones.
+    pub endpoint: Arc<str>,
 
     /// Capabilities advertised by this primal
     pub capabilities: Arc<RwLock<PrimalCapabilities>>,
@@ -33,10 +34,14 @@ pub struct PrimalConnection {
 impl PrimalConnection {
     /// Create a new primal connection
     #[must_use]
-    pub fn new(connection_id: String, endpoint: String, capabilities: PrimalCapabilities) -> Self {
+    pub fn new(
+        connection_id: String,
+        endpoint: impl Into<Arc<str>>,
+        capabilities: PrimalCapabilities,
+    ) -> Self {
         Self {
             connection_id,
-            endpoint,
+            endpoint: endpoint.into(),
             capabilities: Arc::new(RwLock::new(capabilities)),
             metadata: Arc::new(RwLock::new(std::collections::HashMap::new())),
         }
@@ -228,7 +233,7 @@ pub trait PrimalDiscovery: Send + Sync {
     ///
     /// Returns an error if no primal with the capability is found
     async fn discover_by_capability(&self, capability: &CapabilityType)
-        -> Result<DiscoveredPrimal>;
+    -> Result<DiscoveredPrimal>;
 }
 
 /// Discovered primal information
@@ -241,6 +246,7 @@ pub struct DiscoveredPrimal {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::{PrimalCapabilities, ServiceQuality};
 
     #[tokio::test]
     async fn test_primal_connection_creation() {
@@ -258,7 +264,7 @@ mod tests {
         );
 
         assert_eq!(conn.connection_id, "test-conn-1");
-        assert_eq!(conn.endpoint, "http://localhost:8080");
+        assert_eq!(&*conn.endpoint, "http://localhost:8080");
         assert!(conn.supports_capability(&CapabilityType::Security).await);
         assert!(!conn.supports_capability(&CapabilityType::Compute).await);
     }

@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Consensus parsing with nom
 //!
 //! Parses Tor network consensus documents using nom combinator parsers.
@@ -6,12 +9,12 @@
 use crate::directory::{RelayFlags, RelayInfo};
 use crate::error::{Error, Result};
 use nom::{
+    IResult,
     bytes::complete::{tag, take_until, take_while1},
     character::complete::{digit1, line_ending, multispace0, space1},
     combinator::{map_res, opt},
     multi::{many0, separated_list1},
     sequence::preceded,
-    IResult,
 };
 use std::net::{IpAddr, Ipv4Addr};
 
@@ -215,7 +218,7 @@ fn p_line(input: &str) -> IResult<&str, ()> {
 fn base64_to_fingerprint(
     b64: &str,
 ) -> std::result::Result<[u8; 20], nom::Err<nom::error::Error<&str>>> {
-    use base64::{engine::general_purpose::STANDARD, Engine as _};
+    use base64::{Engine as _, engine::general_purpose::STANDARD};
 
     // Add padding if necessary (Tor base64 often lacks padding)
     let padded = match b64.len() % 4 {
@@ -255,7 +258,7 @@ pub fn debug_parse_relay_entry(input: &str) -> std::result::Result<(RelayInfo, &
                 "r_line failed: {:?}\nInput was: '{}'",
                 e,
                 &input[..std::cmp::min(100, input.len())]
-            ))
+            ));
         }
     };
 
@@ -273,7 +276,7 @@ pub fn debug_parse_relay_entry(input: &str) -> std::result::Result<(RelayInfo, &
                 "s_line failed: {:?}\nInput was: '{}'",
                 e,
                 &input[..std::cmp::min(100, input.len())]
-            ))
+            ));
         }
     };
 
@@ -297,7 +300,7 @@ pub fn debug_parse_relay_entry(input: &str) -> std::result::Result<(RelayInfo, &
                 "w_line failed: {:?}\nInput was: '{}'",
                 e,
                 &input[..std::cmp::min(100, input.len())]
-            ))
+            ));
         }
     };
 
@@ -336,12 +339,12 @@ mod tests {
         let result = r_line(input);
 
         if let Err(e) = &result {
-            println!("Parse error: {:?}", e);
+            println!("Parse error: {e:?}");
         }
 
         assert!(result.is_ok());
 
-        let (_, (nickname, fingerprint, _address, or_port)) = result.unwrap();
+        let (_, (nickname, fingerprint, _address, or_port)) = result.expect("parse should succeed");
         assert_eq!(nickname, "Test");
         assert_eq!(or_port, 443);
         assert_eq!(fingerprint.len(), 20);
@@ -354,12 +357,12 @@ mod tests {
         let result = r_line(input);
 
         if let Err(e) = &result {
-            println!("Parse error: {:?}", e);
+            println!("Parse error: {e:?}");
         }
 
         assert!(result.is_ok());
 
-        let (_, (nickname, fingerprint, address, or_port)) = result.unwrap();
+        let (_, (nickname, fingerprint, address, or_port)) = result.expect("parse should succeed");
         assert_eq!(nickname, "lisdex");
         assert_eq!(or_port, 8443);
         assert_eq!(fingerprint.len(), 20);
@@ -372,7 +375,7 @@ mod tests {
         let result = s_line(input);
         assert!(result.is_ok());
 
-        let (_, flags) = result.unwrap();
+        let (_, flags) = result.expect("parse should succeed");
         assert!(flags.contains(RelayFlags::FAST));
         assert!(flags.contains(RelayFlags::GUARD));
         assert!(flags.contains(RelayFlags::RUNNING));
@@ -386,36 +389,32 @@ mod tests {
         let result = w_line(input);
         assert!(result.is_ok());
 
-        let (_, bandwidth) = result.unwrap();
+        let (_, bandwidth) = result.expect("parse should succeed");
         assert_eq!(bandwidth, 5000);
     }
 
     #[test]
     fn test_parse_full_relay_entry() {
         // Complete relay entry from real Tor consensus
-        let input = r#"r lisdex AAAErLudKby6FyVrs1ko3b/Iq6k IE+F8M9BVgN0RmHuI0QtwsVqYhk 2026-02-07 02:28:49 152.53.144.50 8443 0
+        let input = r"r lisdex AAAErLudKby6FyVrs1ko3b/Iq6k IE+F8M9BVgN0RmHuI0QtwsVqYhk 2026-02-07 02:28:49 152.53.144.50 8443 0
 a [2a0a:4cc0:c1:2aac::1]:8443
 s Fast Guard Running Stable V2Dir Valid
 v Tor 0.4.8.22
 pr Conflux=1 Cons=1-2 Desc=1-2 DirCache=2 FlowCtrl=1-2 HSDir=2 HSIntro=4-5 HSRend=1-2 Link=1-5 LinkAuth=1,3 Microdesc=1-2 Padding=2 Relay=1-4
 w Bandwidth=83000
 p reject 1-65535
-"#;
+";
 
         let result = debug_parse_relay_entry(input);
         match result {
-            Ok((relay, remaining)) => {
+            Ok((relay, _remaining)) => {
                 println!("✅ Parsed relay: {} at {}", relay.nickname, relay.address);
-                println!(
-                    "   Remaining input starts with: '{}'",
-                    &remaining[..std::cmp::min(50, remaining.len())]
-                );
                 assert_eq!(relay.nickname, "lisdex");
                 assert_eq!(relay.or_port, 8443);
                 assert_eq!(relay.bandwidth, 83000);
             }
             Err(e) => {
-                panic!("❌ Parse failed: {}", e);
+                panic!("❌ Parse failed: {e}");
             }
         }
     }
@@ -423,13 +422,13 @@ p reject 1-65535
     #[test]
     fn test_parse_relay_without_a_line() {
         // Relay entry without IPv6 'a' line
-        let input = r#"r SharingIsCaring AAB3U5aCNzT5U9IsI48P6F2285A v8XNRBhhYXk+o+4+vHtyNSriAGU 2026-02-06 23:19:15 188.195.48.170 9001 0
+        let input = r"r SharingIsCaring AAB3U5aCNzT5U9IsI48P6F2285A v8XNRBhhYXk+o+4+vHtyNSriAGU 2026-02-06 23:19:15 188.195.48.170 9001 0
 s Fast HSDir Running Stable V2Dir Valid
 v Tor 0.4.8.21
 pr Conflux=1 Cons=1-2 Desc=1-2 DirCache=2 FlowCtrl=1-2 HSDir=2 HSIntro=4-5 HSRend=1-2 Link=1-5 LinkAuth=1,3 Microdesc=1-2 Padding=2 Relay=1-4
 w Bandwidth=480
 p reject 1-65535
-"#;
+";
 
         let result = debug_parse_relay_entry(input);
         match result {
@@ -439,7 +438,7 @@ p reject 1-65535
                 assert_eq!(relay.or_port, 9001);
             }
             Err(e) => {
-                panic!("❌ Parse failed: {}", e);
+                panic!("❌ Parse failed: {e}");
             }
         }
     }
@@ -450,20 +449,21 @@ p reject 1-65535
         // Use valid base64 (27 chars without explicit padding, padding added by our code)
         // The last character must end in 00 bits when padded with =
         // A=0 (000000) works, Q=16 (010000) works
-        let input = r#"r First AAAAAAAAAAAAAAAAAAAAAAAAAAA AAAAAAAAAAAAAAAAAAAAAAAAAAA 2026-02-07 00:00:00 1.2.3.4 443 0
+        let input = r"r First AAAAAAAAAAAAAAAAAAAAAAAAAAA AAAAAAAAAAAAAAAAAAAAAAAAAAA 2026-02-07 00:00:00 1.2.3.4 443 0
 s Fast Running Valid
 w Bandwidth=1000
 r Second QQQQQQQQQQQQQQQQQQQQQQQQQQQ QQQQQQQQQQQQQQQQQQQQQQQQQQQ 2026-02-07 00:00:00 5.6.7.8 9001 0
 s Guard Running Stable Valid
 w Bandwidth=2000
-"#;
+";
 
         // Skip to first r line
-        let (input, _) = take_until::<&str, &str, nom::error::Error<&str>>("r ")(input).unwrap();
+        let (input, _) = take_until::<&str, &str, nom::error::Error<&str>>("r ")(input)
+            .expect("input contains 'r '");
         let result = many0(relay_entry)(input);
 
         match result {
-            Ok((remaining, relays)) => {
+            Ok((_remaining, relays)) => {
                 println!("✅ Parsed {} relays", relays.len());
                 for relay in &relays {
                     println!("   - {} at {}", relay.nickname, relay.address);
@@ -471,7 +471,7 @@ w Bandwidth=2000
                 assert_eq!(relays.len(), 2, "Expected 2 relays");
             }
             Err(e) => {
-                panic!("❌ Parse failed: {:?}", e);
+                panic!("❌ Parse failed: {e:?}");
             }
         }
     }
@@ -479,7 +479,7 @@ w Bandwidth=2000
     #[test]
     fn test_parse_full_consensus_document() {
         // Realistic consensus document with header and multiple relays
-        let input = r#"network-status-version 3
+        let input = r"network-status-version 3
 vote-status consensus
 consensus-method 32
 valid-after 2026-02-07 10:00:00
@@ -515,7 +515,7 @@ pr Conflux=1 Cons=1-2 Desc=1-2 DirCache=2 FlowCtrl=1-2 HSDir=2 HSIntro=4-5 HSRen
 w Bandwidth=25000
 p accept 1-65535
 directory-footer
-"#;
+";
 
         let result = parse_consensus(input);
 
@@ -547,7 +547,7 @@ directory-footer
                 assert!(relays[2].flags.contains(RelayFlags::EXIT));
             }
             Err(e) => {
-                panic!("❌ Full consensus parse failed: {}", e);
+                panic!("❌ Full consensus parse failed: {e}");
             }
         }
     }

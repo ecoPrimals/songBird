@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Error types and state definitions for robustness patterns
 
 use serde::{Deserialize, Serialize};

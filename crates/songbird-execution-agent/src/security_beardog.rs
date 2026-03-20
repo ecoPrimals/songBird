@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! BearDog-integrated security for sovereign standalone execution
 //!
 //! This module integrates with `BearDog`'s enterprise security architecture,
@@ -165,10 +168,10 @@ impl BearDogSecurityValidator {
     /// Assess command threat level using BearDog-style heuristics
     fn assess_command_threat(&mut self, command: &str) -> f64 {
         // Check cache first
-        if let Some(cached) = self.threat_cache.get(command) {
-            if cached.age() < Duration::from_secs(300) {
-                return cached.score;
-            }
+        if let Some(cached) = self.threat_cache.get(command)
+            && cached.age() < Duration::from_secs(300)
+        {
+            return cached.score;
         }
 
         let mut score: f64 = 0.0;

@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Unified capability registry
 
 use crate::capability::provider::{HealthStatus, Provider};
@@ -242,9 +245,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_discover_not_found() {
-        let _guard = ENV_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+        let _guard = ENV_LOCK.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
         // Ensure no env vars set
-        std::env::remove_var("NONEXISTENT_PROVIDER_SOCKET");
+        songbird_process_env::remove_var("NONEXISTENT_PROVIDER_SOCKET");
 
         let registry = CapabilityRegistry::new();
         let result = registry.discover("nonexistent").await;
@@ -254,8 +257,8 @@ mod tests {
 
     #[tokio::test]
     async fn test_cache() {
-        let _guard = ENV_LOCK.lock().unwrap_or_else(|e| e.into_inner());
-        std::env::set_var("TEST_PROVIDER_SOCKET", "/tmp/test.sock");
+        let _guard = ENV_LOCK.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
+        songbird_process_env::set_var("TEST_PROVIDER_SOCKET", "/tmp/test.sock");
 
         let registry = CapabilityRegistry::new().with_cache_ttl(Duration::from_secs(10));
 
@@ -270,19 +273,19 @@ mod tests {
         // Clear cache
         registry.clear_cache().await;
 
-        std::env::remove_var("TEST_PROVIDER_SOCKET");
+        songbird_process_env::remove_var("TEST_PROVIDER_SOCKET");
     }
 
     #[tokio::test]
     async fn test_discover_all() {
-        let _guard = ENV_LOCK.lock().unwrap_or_else(|e| e.into_inner());
-        std::env::set_var("CRYPTO_PROVIDER_SOCKET", "/tmp/crypto1.sock");
+        let _guard = ENV_LOCK.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
+        songbird_process_env::set_var("CRYPTO_PROVIDER_SOCKET", "/tmp/crypto1.sock");
 
         let registry = CapabilityRegistry::new();
         let providers = registry.discover_all("crypto").await.unwrap();
 
         assert!(!providers.is_empty());
 
-        std::env::remove_var("CRYPTO_PROVIDER_SOCKET");
+        songbird_process_env::remove_var("CRYPTO_PROVIDER_SOCKET");
     }
 }

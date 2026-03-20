@@ -1,23 +1,30 @@
-//! QR code with out-of-band verification
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
 
-use crate::error::Result;
+//! QR code with out-of-band verification
+//!
+//! When the **`qr`** feature is enabled, optional dependencies (`qrcode`, `image`, `rqrr`) are
+//! linked for future generation and scanning. Until that pipeline is wired, operations return
+//! [`GenesisError::QrCodeError`].
+//!
+//! Without **`qr`**, [`PhysicalChannelProvider`] methods return
+//! [`GenesisError::FeatureUnavailable`].
+
+use crate::error::{GenesisError, Result};
 use crate::types::{PhysicalChannelType, ProximityProof, TrustLevel};
 use async_trait::async_trait;
-use chrono::Utc;
 
 use super::PhysicalChannelProvider;
 
 /// QR code channel with out-of-band verification
 #[derive(Debug)]
-pub struct QrCodeChannel {
-    // TODO: Add qrcode generation support
-}
+pub struct QrCodeChannel;
 
 impl QrCodeChannel {
     /// Create new QR code channel
     #[must_use]
     pub const fn new() -> Self {
-        Self {}
+        Self
     }
 }
 
@@ -30,18 +37,33 @@ impl Default for QrCodeChannel {
 #[async_trait]
 impl PhysicalChannelProvider for QrCodeChannel {
     async fn verify_proximity(&self) -> Result<ProximityProof> {
-        // TODO: Implement QR code scanning + OOB verification
-        Ok(ProximityProof {
-            channel_type: PhysicalChannelType::QrCodeWithOob,
-            timestamp: Utc::now(),
-            proof_data: b"qr_proof".to_vec(),
-            attestation: None,
-        })
+        #[cfg(not(feature = "qr"))]
+        {
+            return Err(GenesisError::FeatureUnavailable(
+                "QR code support requires the 'qr' feature".to_string(),
+            ));
+        }
+        #[cfg(feature = "qr")]
+        {
+            Err(GenesisError::QrCodeError(
+                "QR proximity verification is not yet implemented; enable `qr` and wire generation (qrcode), capture (image), and decode (rqrr)".to_string(),
+            ))
+        }
     }
 
     async fn secure_exchange(&self) -> Result<Vec<u8>> {
-        // TODO: Implement secure exchange after QR scan
-        Ok(b"qr_genesis_creds".to_vec())
+        #[cfg(not(feature = "qr"))]
+        {
+            return Err(GenesisError::FeatureUnavailable(
+                "QR code support requires the 'qr' feature".to_string(),
+            ));
+        }
+        #[cfg(feature = "qr")]
+        {
+            Err(GenesisError::QrCodeError(
+                "QR secure exchange is not yet implemented; complete OOB scan validation then derive credentials".to_string(),
+            ))
+        }
     }
 
     fn trust_level(&self) -> TrustLevel {

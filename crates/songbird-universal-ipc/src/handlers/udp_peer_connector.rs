@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! UDP Peer Connector
 //!
 //! Production implementation of `PeerConnector` using UDP hole punching.
@@ -276,8 +279,7 @@ mod tests {
             Ok(r) => assert_eq!(r.state, "punching"),
             Err(e) => assert!(
                 e.contains("timed out") || e.contains("Hole punch"),
-                "Unexpected error: {}",
-                e
+                "Unexpected error: {e}"
             ),
         }
     }
@@ -292,8 +294,7 @@ mod tests {
             Ok(r) => assert!(r.state == "punching" || r.state == "connected"),
             Err(e) => assert!(
                 e.contains("timed out") || e.contains("Hole punch"),
-                "Unexpected error: {}",
-                e
+                "Unexpected error: {e}"
             ),
         }
     }

@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! `BearDog` `BirdSong` Encryption Provider
 //!
 //! Implements the `BirdSongEncryption` trait using `BearDog`'s family-based encryption.
@@ -6,7 +9,7 @@
 
 use anyhow::Result;
 use async_trait::async_trait;
-use serde::{de::DeserializeOwned, Deserialize, Serialize};
+use serde::{Deserialize, Serialize, de::DeserializeOwned};
 use serde_json::json;
 use songbird_universal::UnixRpcClient;
 use std::path::PathBuf;
@@ -30,7 +33,7 @@ struct BearDogEncryptRequest {
 
 /// Base64 serialization helper (matching `BearDog`'s format)
 mod base64_serde {
-    use base64::{engine::general_purpose::STANDARD, Engine};
+    use base64::{Engine, engine::general_purpose::STANDARD};
     use serde::{Deserialize, Deserializer, Serializer};
 
     pub fn serialize<S>(data: &Vec<u8>, serializer: S) -> Result<S::Ok, S::Error>
@@ -479,7 +482,7 @@ mod tests {
         }
     }
 
-    /// Test parsing BearDog JSON-RPC encrypt response (modern format)
+    /// Test parsing `BearDog` JSON-RPC encrypt response (modern format)
     #[test]
     fn test_beardog_encrypt_response_parsing() {
         let response_json = r#"{"ciphertext":"yo8Tz+qVxUp7A01pf7PYAhTvfe0Cl727z9r6nh/Qey21gL09gL+wTzS4ghiTKO6gnyqYvukBVw==","family_id":"iidn"}"#;
@@ -492,7 +495,7 @@ mod tests {
         println!("✅ Encrypt response: Ciphertext decoded to {} bytes", parsed.ciphertext.len());
     }
 
-    /// Test parsing BearDog JSON-RPC decrypt response
+    /// Test parsing `BearDog` JSON-RPC decrypt response
     #[test]
     fn test_beardog_decrypt_response_parsing() {
         let response_json =
@@ -507,7 +510,7 @@ mod tests {
         println!("✅ Decrypt response: Plaintext decoded to {} bytes", parsed.plaintext.len());
     }
 
-    /// Test base64_serde serialization
+    /// Test `base64_serde` serialization
     #[test]
     fn test_base64_serde_serialization() {
         let request = BearDogEncryptRequest {
@@ -516,14 +519,14 @@ mod tests {
         };
 
         let json = serde_json::to_string(&request).unwrap();
-        println!("✅ Serialized request: {}", json);
+        println!("✅ Serialized request: {json}");
 
         // Should contain base64-encoded plaintext
         assert!(json.contains("dGVzdF9tZXNzYWdl")); // "test_message" in base64
         assert!(json.contains("test-family"));
     }
 
-    /// Test base64_serde deserialization roundtrip
+    /// Test `base64_serde` deserialization roundtrip
     #[test]
     fn test_base64_serde_roundtrip() {
         // Simulate BearDog's response format
@@ -566,20 +569,13 @@ mod tests {
         // This test requires a running BearDog instance
         let socket_path = "/tmp/beardog.sock";
 
-        let provider = match BearDogBirdSongProvider::new(
-            socket_path,
-            Some("test-family".to_string()),
-        )
-        .await
+        let provider = if let Ok(p) =
+            BearDogBirdSongProvider::new(socket_path, Some("test-family".to_string())).await
         {
-            Ok(p) => p,
-            Err(_) => {
-                println!(
-                    "⏭️  Skipping roundtrip test - BearDog not available at {:?}",
-                    socket_path
-                );
-                return;
-            }
+            p
+        } else {
+            println!("⏭️  Skipping roundtrip test - BearDog not available at {socket_path:?}");
+            return;
         };
 
         // Check if BearDog is healthy
@@ -594,7 +590,7 @@ mod tests {
         let ciphertext = match provider.encrypt_discovery(plaintext).await {
             Ok(c) => c,
             Err(e) => {
-                println!("⏭️  Skipping roundtrip test - Encryption failed: {}", e);
+                println!("⏭️  Skipping roundtrip test - Encryption failed: {e}");
                 return;
             }
         };
@@ -606,7 +602,7 @@ mod tests {
         let decrypted = match provider.decrypt_discovery(&ciphertext).await {
             Ok(d) => d,
             Err(e) => {
-                println!("⏭️  Skipping roundtrip test - Decryption failed: {}", e);
+                println!("⏭️  Skipping roundtrip test - Decryption failed: {e}");
                 return;
             }
         };
@@ -626,23 +622,23 @@ mod tests {
         // This test requires a running BearDog instance
         let socket_path = "/tmp/beardog.sock";
 
-        let provider1 =
-            match BearDogBirdSongProvider::new(socket_path, Some("family-1".to_string())).await {
-                Ok(p) => p,
-                Err(_) => {
-                    println!("⏭️  Skipping cross-family test - BearDog not available");
-                    return;
-                }
-            };
+        let provider1 = if let Ok(p) =
+            BearDogBirdSongProvider::new(socket_path, Some("family-1".to_string())).await
+        {
+            p
+        } else {
+            println!("⏭️  Skipping cross-family test - BearDog not available");
+            return;
+        };
 
-        let provider2 =
-            match BearDogBirdSongProvider::new(socket_path, Some("family-2".to_string())).await {
-                Ok(p) => p,
-                Err(_) => {
-                    println!("⏭️  Skipping cross-family test - BearDog not available");
-                    return;
-                }
-            };
+        let provider2 = if let Ok(p) =
+            BearDogBirdSongProvider::new(socket_path, Some("family-2".to_string())).await
+        {
+            p
+        } else {
+            println!("⏭️  Skipping cross-family test - BearDog not available");
+            return;
+        };
 
         // Check if BearDog is healthy
         if !provider1.check_health().await {
@@ -653,12 +649,11 @@ mod tests {
         let plaintext = b"Secret message";
 
         // Family 1 encrypts
-        let ciphertext = match provider1.encrypt_discovery(plaintext).await {
-            Ok(c) => c,
-            Err(_) => {
-                println!("⏭️  Skipping cross-family test - Encryption failed");
-                return;
-            }
+        let ciphertext = if let Ok(c) = provider1.encrypt_discovery(plaintext).await {
+            c
+        } else {
+            println!("⏭️  Skipping cross-family test - Encryption failed");
+            return;
         };
 
         // Family 2 tries to decrypt (should fail or return None)
@@ -696,17 +691,13 @@ mod tests {
         // Test thread safety with concurrent encryption requests (Pure Rust!)
         let socket_path = "/tmp/beardog.sock";
 
-        let provider = match BearDogBirdSongProvider::new(
-            socket_path,
-            Some("test-family".to_string()),
-        )
-        .await
+        let provider = if let Ok(p) =
+            BearDogBirdSongProvider::new(socket_path, Some("test-family".to_string())).await
         {
-            Ok(p) => Arc::new(p),
-            Err(_) => {
-                println!("⏭️  Skipping concurrent test - BearDog not available");
-                return;
-            }
+            Arc::new(p)
+        } else {
+            println!("⏭️  Skipping concurrent test - BearDog not available");
+            return;
         };
 
         if !provider.check_health().await {
@@ -719,7 +710,7 @@ mod tests {
         for i in 0..5 {
             let provider_clone = Arc::clone(&provider);
             let handle = tokio::spawn(async move {
-                let plaintext = format!("Message {}", i);
+                let plaintext = format!("Message {i}");
                 provider_clone.encrypt_discovery(plaintext.as_bytes()).await
             });
             handles.push(handle);

@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 // Allow unwrap/expect in tests - idiomatic for test code
 #![allow(clippy::unwrap_used, clippy::expect_used)]
 
@@ -306,7 +309,7 @@ fn test_task_debug_format() {
 
 #[test]
 fn test_multiple_tasks_different_types() {
-    let tasks = vec![Task::new("type1"), Task::new("type2"), Task::new("type3")];
+    let tasks = [Task::new("type1"), Task::new("type2"), Task::new("type3")];
 
     assert_eq!(tasks.len(), 3);
     assert!(tasks.iter().all(|t| !t.task_type.is_empty()));

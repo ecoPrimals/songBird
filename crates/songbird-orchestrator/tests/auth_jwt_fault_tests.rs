@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Fault Injection Tests for BearDog JWT Delegation
 //!
 //! Tests JWT provisioning under fault conditions.

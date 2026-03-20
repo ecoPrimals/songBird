@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Canonical observability configuration
 //!
 //! Unified observability configuration for logging, tracing, metrics, and dashboards.

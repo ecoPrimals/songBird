@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Unit Tests for BearDog JWT Delegation
 //!
 //! Tests the JWT provisioning and capability discovery in isolation.
@@ -19,18 +22,18 @@ fn test_capability_discovery_with_security_provider() {
     let _guard = ENV_LOCK.lock().unwrap();
 
     // Clean environment
-    std::env::remove_var("SECURITY_PROVIDER");
-    std::env::remove_var("BEARDOG_SOCKET");
+    songbird_process_env::remove_var("SECURITY_PROVIDER");
+    songbird_process_env::remove_var("BEARDOG_SOCKET");
 
     // Set SECURITY_PROVIDER
-    std::env::set_var("SECURITY_PROVIDER", "/tmp/test-beardog-unit.sock");
+    songbird_process_env::set_var("SECURITY_PROVIDER", "/tmp/test-beardog-unit.sock");
 
     let socket = discover_beardog_socket();
     assert!(socket.is_some());
     assert_eq!(socket.unwrap().to_str().unwrap(), "/tmp/test-beardog-unit.sock");
 
     // Cleanup
-    std::env::remove_var("SECURITY_PROVIDER");
+    songbird_process_env::remove_var("SECURITY_PROVIDER");
 }
 
 #[test]
@@ -38,18 +41,18 @@ fn test_capability_discovery_with_beardog_socket() {
     let _guard = ENV_LOCK.lock().unwrap();
 
     // Clean environment
-    std::env::remove_var("SECURITY_PROVIDER");
-    std::env::remove_var("BEARDOG_SOCKET");
+    songbird_process_env::remove_var("SECURITY_PROVIDER");
+    songbird_process_env::remove_var("BEARDOG_SOCKET");
 
     // Set BEARDOG_SOCKET (explicit override)
-    std::env::set_var("BEARDOG_SOCKET", "/tmp/test-beardog-override.sock");
+    songbird_process_env::set_var("BEARDOG_SOCKET", "/tmp/test-beardog-override.sock");
 
     let socket = discover_beardog_socket();
     assert!(socket.is_some());
     assert_eq!(socket.unwrap().to_str().unwrap(), "/tmp/test-beardog-override.sock");
 
     // Cleanup
-    std::env::remove_var("BEARDOG_SOCKET");
+    songbird_process_env::remove_var("BEARDOG_SOCKET");
 }
 
 #[test]
@@ -57,20 +60,20 @@ fn test_capability_discovery_priority() {
     let _guard = ENV_LOCK.lock().unwrap();
 
     // Clean environment
-    std::env::remove_var("SECURITY_PROVIDER");
-    std::env::remove_var("BEARDOG_SOCKET");
+    songbird_process_env::remove_var("SECURITY_PROVIDER");
+    songbird_process_env::remove_var("BEARDOG_SOCKET");
 
     // Set both (SECURITY_PROVIDER should win)
-    std::env::set_var("SECURITY_PROVIDER", "/tmp/security-provider.sock");
-    std::env::set_var("BEARDOG_SOCKET", "/tmp/beardog-socket.sock");
+    songbird_process_env::set_var("SECURITY_PROVIDER", "/tmp/security-provider.sock");
+    songbird_process_env::set_var("BEARDOG_SOCKET", "/tmp/beardog-socket.sock");
 
     let socket = discover_beardog_socket();
     assert!(socket.is_some());
     assert_eq!(socket.unwrap().to_str().unwrap(), "/tmp/security-provider.sock");
 
     // Cleanup
-    std::env::remove_var("SECURITY_PROVIDER");
-    std::env::remove_var("BEARDOG_SOCKET");
+    songbird_process_env::remove_var("SECURITY_PROVIDER");
+    songbird_process_env::remove_var("BEARDOG_SOCKET");
 }
 
 #[test]
@@ -78,8 +81,8 @@ fn test_family_specific_discovery() {
     let _guard = ENV_LOCK.lock().unwrap();
 
     // Clean environment
-    std::env::remove_var("SECURITY_PROVIDER");
-    std::env::remove_var("BEARDOG_SOCKET");
+    songbird_process_env::remove_var("SECURITY_PROVIDER");
+    songbird_process_env::remove_var("BEARDOG_SOCKET");
 
     // Family-specific discovery should fall back to generic
     let socket = discover_beardog_socket_for_family("nat0");
@@ -96,16 +99,16 @@ fn test_get_beardog_socket_for_jwt() {
     let _guard = ENV_LOCK.lock().unwrap();
 
     // Clean environment
-    std::env::remove_var("SECURITY_PROVIDER");
-    std::env::remove_var("BEARDOG_SOCKET");
+    songbird_process_env::remove_var("SECURITY_PROVIDER");
+    songbird_process_env::remove_var("BEARDOG_SOCKET");
 
-    std::env::set_var("SECURITY_PROVIDER", "/tmp/jwt-test-unit.sock");
+    songbird_process_env::set_var("SECURITY_PROVIDER", "/tmp/jwt-test-unit.sock");
 
     let socket = get_beardog_socket_for_jwt();
     assert!(socket.is_some());
     assert_eq!(socket.unwrap(), "/tmp/jwt-test-unit.sock");
 
-    std::env::remove_var("SECURITY_PROVIDER");
+    songbird_process_env::remove_var("SECURITY_PROVIDER");
 }
 
 #[tokio::test]
@@ -154,8 +157,8 @@ fn test_capability_discovery_no_env_vars() {
     let _guard = ENV_LOCK.lock().unwrap();
 
     // Clean environment
-    std::env::remove_var("SECURITY_PROVIDER");
-    std::env::remove_var("BEARDOG_SOCKET");
+    songbird_process_env::remove_var("SECURITY_PROVIDER");
+    songbird_process_env::remove_var("BEARDOG_SOCKET");
 
     let socket = discover_beardog_socket();
 

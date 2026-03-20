@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Federation API Module
 //!
 //! Domain-driven architecture for federation coordination and capability registration.
@@ -16,8 +19,8 @@
 //! **Result**: Clear separation of concerns, easier testing, better maintainability
 
 use axum::{
-    routing::{delete, get, post},
     Router,
+    routing::{delete, get, post},
 };
 use songbird_network_federation::service_registry::FederatedServiceRegistry;
 use songbird_network_federation::state::FederationState;

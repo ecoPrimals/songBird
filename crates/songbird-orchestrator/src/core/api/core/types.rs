@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 // PEDANTIC: Consider adding ErrorSeverity and ErrorClassification for AI automation
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};

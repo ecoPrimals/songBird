@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Distributed Beacon Mesh
 //!
 //! Every connected node becomes a potential relay for others.
@@ -211,10 +214,10 @@ impl BeaconMesh {
                         best_relay = Some((node_id.clone(), ep));
                     } else if ep.endpoint_type.priority() == best_ep.endpoint_type.priority() {
                         // Same priority - prefer lower latency
-                        if let (Some(new_lat), Some(best_lat)) = (ep.latency, best_ep.latency) {
-                            if new_lat < best_lat {
-                                best_relay = Some((node_id.clone(), ep));
-                            }
+                        if let (Some(new_lat), Some(best_lat)) = (ep.latency, best_ep.latency)
+                            && new_lat < best_lat
+                        {
+                            best_relay = Some((node_id.clone(), ep));
                         }
                     }
                 } else {

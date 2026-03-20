@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 /// CLI testing helpers and utilities
 ///
 /// Provides utilities for testing CLI components and formatting

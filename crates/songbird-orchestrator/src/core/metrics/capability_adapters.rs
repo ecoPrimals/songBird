@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Universal Capability Adapters for Metrics Collection Collection
 //!
 //! This module provides capability-based adapters that work with any primal

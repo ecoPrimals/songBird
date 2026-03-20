@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Comprehensive error path tests for Compute API
 //!
 //! Tests error handling, edge cases, and failure scenarios in the compute API.

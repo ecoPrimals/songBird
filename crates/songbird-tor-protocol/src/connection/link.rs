@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Tor link protocol handler
 //!
 //! Manages the connection lifecycle:
@@ -9,7 +12,7 @@
 use super::TlsConnector;
 use crate::directory::RelayInfo;
 use crate::error::{Error, Result};
-use crate::protocol::{Cell, CellCommand, CELL_LEN};
+use crate::protocol::{CELL_LEN, Cell, CellCommand};
 use std::net::SocketAddr;
 use std::time::SystemTime;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
@@ -434,7 +437,7 @@ impl TorConnection {
                         Ok(Err(e)) => {
                             return Err(Error::Network(format!(
                                 "Failed to read rest of header: {e}"
-                            )))
+                            )));
                         }
                         Err(_) => return Err(Error::Network("Header read timed out".to_string())),
                     }
@@ -509,7 +512,7 @@ mod tests {
             or_port: 9001,
             dir_port: None,
             flags: RelayFlags::empty(),
-            bandwidth: 1000000,
+            bandwidth: 1_000_000,
             ntor_key: None,
             version: None,
         }

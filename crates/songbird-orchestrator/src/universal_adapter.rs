@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Universal Primal Adapter (UPA)
 //!
 //! Discovers and communicates with ANY primal without hardcoding names or endpoints.
@@ -41,7 +44,7 @@
 //! # }
 //! ```
 
-use anyhow::{anyhow, Context, Result};
+use anyhow::{Context, Result, anyhow};
 use std::collections::HashMap;
 use std::time::{Duration, Instant};
 use tracing::{debug, info, warn};

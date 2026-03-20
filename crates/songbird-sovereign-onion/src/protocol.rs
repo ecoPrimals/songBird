@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Minimal onion protocol messages
 
 use crate::error::{OnionError, Result};
@@ -20,10 +23,10 @@ impl TryFrom<u8> for MessageType {
 
     fn try_from(value: u8) -> Result<Self> {
         match value {
-            0x01 => Ok(MessageType::KeyExchange),
-            0x02 => Ok(MessageType::Data),
-            0x03 => Ok(MessageType::Close),
-            _ => Err(OnionError::InvalidMessage(format!("Unknown message type: 0x{:02x}", value))),
+            0x01 => Ok(Self::KeyExchange),
+            0x02 => Ok(Self::Data),
+            0x03 => Ok(Self::Close),
+            _ => Err(OnionError::InvalidMessage(format!("Unknown message type: 0x{value:02x}"))),
         }
     }
 }
@@ -41,7 +44,8 @@ pub struct KeyExchangeMessage {
 
 impl KeyExchangeMessage {
     /// Create new key exchange message
-    pub fn new(pubkey: [u8; 32], nonce: [u8; 24]) -> Self {
+    #[must_use]
+    pub const fn new(pubkey: [u8; 32], nonce: [u8; 24]) -> Self {
         Self {
             version: 0x01,
             pubkey,
@@ -50,6 +54,7 @@ impl KeyExchangeMessage {
     }
 
     /// Encode to bytes
+    #[must_use]
     pub fn encode(&self) -> Vec<u8> {
         let mut buf = Vec::with_capacity(1 + 32 + 24);
         buf.push(self.version);
@@ -59,6 +64,14 @@ impl KeyExchangeMessage {
     }
 
     /// Decode from bytes
+    ///
+    /// # Errors
+    ///
+    /// Returns error if bytes are too short or version is unsupported.
+    ///
+    /// # Panics
+    ///
+    /// Panics if byte slice lengths are incorrect (caller must ensure valid input).
     pub fn decode(bytes: &[u8]) -> Result<Self> {
         if bytes.len() < 57 {
             return Err(OnionError::InvalidMessage("KeyExchange too short".into()));
@@ -67,13 +80,12 @@ impl KeyExchangeMessage {
         let version = bytes[0];
         if version != 0x01 {
             return Err(OnionError::InvalidMessage(format!(
-                "Unsupported protocol version: {}",
-                version
+                "Unsupported protocol version: {version}"
             )));
         }
 
-        let pubkey: [u8; 32] = bytes[1..33].try_into().unwrap();
-        let nonce: [u8; 24] = bytes[33..57].try_into().unwrap();
+        let pubkey: [u8; 32] = bytes[1..33].try_into().expect("slice length is 32");
+        let nonce: [u8; 24] = bytes[33..57].try_into().expect("slice length is 24");
 
         Ok(Self {
             version,
@@ -94,7 +106,8 @@ pub struct DataMessage {
 
 impl DataMessage {
     /// Create new data message
-    pub fn new(sequence: u64, encrypted_payload: Vec<u8>) -> Self {
+    #[must_use]
+    pub const fn new(sequence: u64, encrypted_payload: Vec<u8>) -> Self {
         Self {
             sequence,
             encrypted_payload,
@@ -102,6 +115,7 @@ impl DataMessage {
     }
 
     /// Encode to bytes
+    #[must_use]
     pub fn encode(&self) -> Vec<u8> {
         let mut buf = Vec::with_capacity(8 + self.encrypted_payload.len());
         buf.extend_from_slice(&self.sequence.to_be_bytes());
@@ -110,12 +124,20 @@ impl DataMessage {
     }
 
     /// Decode from bytes
+    ///
+    /// # Errors
+    ///
+    /// Returns error if bytes are too short.
+    ///
+    /// # Panics
+    ///
+    /// Panics if byte slice is too short for sequence (caller must ensure valid input).
     pub fn decode(bytes: &[u8]) -> Result<Self> {
         if bytes.len() < 8 {
             return Err(OnionError::InvalidMessage("Data message too short".into()));
         }
 
-        let sequence = u64::from_be_bytes(bytes[..8].try_into().unwrap());
+        let sequence = u64::from_be_bytes(bytes[..8].try_into().expect("slice length is 8"));
         let encrypted_payload = bytes[8..].to_vec();
 
         Ok(Self {
@@ -142,12 +164,12 @@ impl WireMessage {
     /// Format: \[length: 4 bytes BE\] \[type: 1 byte\] \[payload\]
     pub fn encode(&self) -> Vec<u8> {
         let (msg_type, payload) = match self {
-            WireMessage::KeyExchange(msg) => (MessageType::KeyExchange, msg.encode()),
-            WireMessage::Data(msg) => (MessageType::Data, msg.encode()),
-            WireMessage::Close => (MessageType::Close, vec![]),
+            Self::KeyExchange(msg) => (MessageType::KeyExchange, msg.encode()),
+            Self::Data(msg) => (MessageType::Data, msg.encode()),
+            Self::Close => (MessageType::Close, vec![]),
         };
 
-        let length = (1 + payload.len()) as u32; // type byte + payload
+        let length = u32::try_from(1 + payload.len()).expect("payload length fits in u32"); // type byte + payload
         let mut buf = Vec::with_capacity(4 + 1 + payload.len());
         buf.extend_from_slice(&length.to_be_bytes());
         buf.push(msg_type as u8);
@@ -157,19 +179,26 @@ impl WireMessage {
     }
 
     /// Decode from wire format
+    ///
+    /// # Errors
+    ///
+    /// Returns error if bytes are too short, length mismatch, or payload decode fails.
+    ///
+    /// # Panics
+    ///
+    /// Panics if length header slice is wrong size (caller must ensure valid input).
     pub fn decode(bytes: &[u8]) -> Result<Self> {
         if bytes.len() < 5 {
             return Err(OnionError::InvalidMessage("Wire message too short".into()));
         }
 
-        let length = u32::from_be_bytes(bytes[..4].try_into().unwrap()) as usize;
+        let length = u32::from_be_bytes(bytes[..4].try_into().expect("slice length is 4")) as usize;
         let msg_type = MessageType::try_from(bytes[4])?;
         let payload = &bytes[5..];
 
         if payload.len() + 1 != length {
             return Err(OnionError::InvalidMessage(format!(
-                "Length mismatch: expected {}, got {}",
-                length,
+                "Length mismatch: expected {length}, got {}",
                 payload.len() + 1
             )));
         }
@@ -177,20 +206,44 @@ impl WireMessage {
         match msg_type {
             MessageType::KeyExchange => {
                 let msg = KeyExchangeMessage::decode(payload)?;
-                Ok(WireMessage::KeyExchange(msg))
+                Ok(Self::KeyExchange(msg))
             }
             MessageType::Data => {
                 let msg = DataMessage::decode(payload)?;
-                Ok(WireMessage::Data(msg))
+                Ok(Self::Data(msg))
             }
-            MessageType::Close => Ok(WireMessage::Close),
+            MessageType::Close => Ok(Self::Close),
         }
     }
 }
 
-#[cfg(all(test, feature = "standalone"))]
+#[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn message_type_try_from_unknown() {
+        let r = MessageType::try_from(0xff);
+        assert!(matches!(r, Err(OnionError::InvalidMessage(_))));
+    }
+
+    #[test]
+    fn key_exchange_decode_too_short() {
+        let r = KeyExchangeMessage::decode(&[0u8; 10]);
+        assert!(matches!(r, Err(OnionError::InvalidMessage(_))));
+    }
+
+    #[test]
+    fn data_message_decode_too_short() {
+        let r = DataMessage::decode(&[1, 2, 3]);
+        assert!(matches!(r, Err(OnionError::InvalidMessage(_))));
+    }
+
+    #[test]
+    fn wire_decode_too_short() {
+        let r = WireMessage::decode(&[0u8; 3]);
+        assert!(matches!(r, Err(OnionError::InvalidMessage(_))));
+    }
 
     #[test]
     fn test_key_exchange_encode_decode() {

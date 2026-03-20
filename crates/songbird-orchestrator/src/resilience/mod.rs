@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Resilience patterns for fault-tolerant systems
 //!
 //! This module provides modern resilience patterns for building robust,

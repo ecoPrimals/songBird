@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Capability-Based Routing for HTTP Gateway
 //!
 //! This module implements universal, agnostic routing based on capabilities
@@ -24,7 +27,7 @@
 //! // No hardcoded "OpenAI" or "HuggingFace" logic!
 //! ```
 
-use anyhow::{anyhow, Result};
+use anyhow::{Result, anyhow};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::Arc;

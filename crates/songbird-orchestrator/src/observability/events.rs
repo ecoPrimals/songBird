@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Event Streaming System
 //!
 //! Provides real-time event streaming for:
@@ -13,7 +16,7 @@ use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::Arc;
-use tokio::sync::{broadcast, RwLock};
+use tokio::sync::{RwLock, broadcast};
 use tracing::debug;
 
 /// Task event type
@@ -155,17 +158,17 @@ impl EventFilter {
     #[must_use]
     pub fn matches(&self, event: &TaskEvent) -> bool {
         // Check user filter
-        if let Some(ref user_id) = self.user_id {
-            if &event.user_id != user_id {
-                return false;
-            }
+        if let Some(ref user_id) = self.user_id
+            && &event.user_id != user_id
+        {
+            return false;
         }
 
         // Check task filter
-        if let Some(task_id) = self.task_id {
-            if event.task_id != task_id {
-                return false;
-            }
+        if let Some(task_id) = self.task_id
+            && event.task_id != task_id
+        {
+            return false;
         }
 
         // Check event type filter
@@ -370,8 +373,8 @@ mod tests {
             .with_context("tower", "tower-a")
             .with_context("protocol", "http");
 
-        assert_eq!(event.context.get("tower").map(|s| s.as_ref()), Some("tower-a"));
-        assert_eq!(event.context.get("protocol").map(|s| s.as_ref()), Some("http"));
+        assert_eq!(event.context.get("tower").map(std::convert::AsRef::as_ref), Some("tower-a"));
+        assert_eq!(event.context.get("protocol").map(std::convert::AsRef::as_ref), Some("http"));
     }
 
     #[tokio::test]
@@ -380,7 +383,7 @@ mod tests {
         let user_id = UserId::from("alice");
 
         let filter = EventFilter::for_user(user_id.clone());
-        let event = test_event(task_id, user_id.clone());
+        let event = test_event(task_id, user_id);
 
         assert!(filter.matches(&event));
 

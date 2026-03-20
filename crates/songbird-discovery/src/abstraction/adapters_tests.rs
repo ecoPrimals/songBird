@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Tests for discovery adapters
 //!
 //! Comprehensive test coverage for static, kubernetes, and consul adapters.

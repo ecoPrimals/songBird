@@ -1,8 +1,11 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Benchmark for optimization validation
 //!
 //! Tests the performance of optimized constants and configurations.
 
-use criterion::{black_box, criterion_group, criterion_main, Criterion};
+use criterion::{Criterion, black_box, criterion_group, criterion_main};
 
 // Test constants - use functions for environment-aware values
 const OPTIMIZATION_PORT: u16 = 8080;

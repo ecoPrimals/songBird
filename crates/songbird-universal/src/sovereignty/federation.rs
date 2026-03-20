@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! # 🏛️ Sovereignty-Aware Federation
 //!
 //! **CANONICAL FEDERATION ENGINE** ✅
@@ -137,7 +140,10 @@ mod tests {
             source: "test-source".to_string(),
             target: "test-target".to_string(),
             action: "process".to_string(),
-            parameters: [("test".to_string(), serde_json::json!("data"))].iter().cloned().collect(),
+            parameters: std::collections::HashMap::from([(
+                "test".to_string(),
+                serde_json::json!("data"),
+            )]),
             security_context: None,
         };
 

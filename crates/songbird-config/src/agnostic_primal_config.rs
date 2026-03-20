@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! # 🔄 Agnostic Primal Configuration
 //!
 //! **ZERO PRIMAL NAME HARDCODING** - Evolution from specific to agnostic
@@ -25,6 +28,7 @@
 //! ```
 
 use serde::{Deserialize, Serialize};
+use songbird_process_env;
 use songbird_types::{SongbirdError, SongbirdResult};
 use std::collections::HashMap;
 
@@ -313,16 +317,17 @@ impl PrimalConfigMigration {
         ];
 
         for (legacy_var, capability_var) in &migrations {
-            if let Ok(value) = std::env::var(legacy_var) {
-                if std::env::var(capability_var).is_err() {
-                    tracing::warn!(
-                        "🔄 Migrating {} to {} (value: {})",
-                        legacy_var,
-                        capability_var,
-                        value
-                    );
-                    std::env::set_var(capability_var, value);
-                }
+            if let Ok(value) = std::env::var(legacy_var)
+                && std::env::var(capability_var).is_err()
+            {
+                tracing::warn!(
+                    "🔄 Migrating {} to {} (value: {})",
+                    legacy_var,
+                    capability_var,
+                    value
+                );
+                // Legacy env migration: runs during early startup before concurrent env reads.
+                songbird_process_env::set_var(capability_var, value);
             }
         }
     }
@@ -366,13 +371,11 @@ mod tests {
         env.set("ENABLE_DNS_SRV_DISCOVERY", "1");
 
         // Test the logic with our isolated env
-        let enabled = env
-            .get("CAPABILITY_DISCOVERY_ENABLED")
-            .map(|v| v == "true" || v == "1")
-            .unwrap_or(false);
+        let enabled =
+            env.get("CAPABILITY_DISCOVERY_ENABLED").is_some_and(|v| v == "true" || v == "1");
 
         let dns_srv_enabled =
-            env.get("ENABLE_DNS_SRV_DISCOVERY").map(|v| v == "true" || v == "1").unwrap_or(false);
+            env.get("ENABLE_DNS_SRV_DISCOVERY").is_some_and(|v| v == "true" || v == "1");
 
         assert!(enabled);
         assert!(dns_srv_enabled);
@@ -406,10 +409,10 @@ mod tests {
         ];
 
         for (legacy_var, capability_var) in &migrations {
-            if let Some(value) = env.get(legacy_var) {
-                if !env.contains_key(capability_var) {
-                    env.set(*capability_var, value); // Dereference to get &str
-                }
+            if let Some(value) = env.get(legacy_var)
+                && !env.contains_key(capability_var)
+            {
+                env.set(*capability_var, value); // Dereference to get &str
             }
         }
 

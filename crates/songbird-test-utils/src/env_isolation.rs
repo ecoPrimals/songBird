@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Environment Variable Isolation for Tests
 //!
 //! Provides RAII-based environment variable management that automatically
@@ -34,6 +37,16 @@ static ENV_LOCK: OnceLock<Mutex<()>> = OnceLock::new();
 
 fn get_env_lock() -> &'static Mutex<()> {
     ENV_LOCK.get_or_init(|| Mutex::new(()))
+}
+
+// Mutating the process environment is only sound when no other thread reads it concurrently.
+// All call sites here hold `ENV_LOCK` (or, in unit tests below, acquire it around direct cleanup).
+fn env_set_var(key: impl AsRef<str>, value: impl AsRef<str>) {
+    songbird_process_env::set_var(key, value);
+}
+
+fn env_remove_var(key: impl AsRef<str>) {
+    songbird_process_env::remove_var(key);
 }
 
 /// Scoped environment variable that automatically cleans up on drop
@@ -77,7 +90,7 @@ impl ScopedEnv {
         let old_value = env::var(&key).ok();
 
         // Set new value
-        env::set_var(&key, value.as_ref());
+        env_set_var(&key, value.as_ref());
 
         Self {
             key,
@@ -115,7 +128,7 @@ impl ScopedEnv {
         for (key, value) in vars {
             let key_string = key.into();
             let old_value = env::var(&key_string).ok();
-            env::set_var(&key_string, value.as_ref());
+            env_set_var(&key_string, value.as_ref());
             restorations.push((key_string, old_value));
         }
 
@@ -135,7 +148,7 @@ impl ScopedEnv {
     /// use songbird_test_utils::ScopedEnv;
     ///
     /// # async fn example() {
-    /// std::env::set_var("TEMP_VAR", "value");
+    /// songbird_process_env::set_var("TEMP_VAR", "value");
     /// let _env = ScopedEnv::remove("TEMP_VAR").await;
     /// assert!(std::env::var("TEMP_VAR").is_err());
     /// // Variable is restored when _env drops
@@ -149,7 +162,7 @@ impl ScopedEnv {
         let old_value = env::var(&key).ok();
 
         // Remove variable
-        env::remove_var(&key);
+        env_remove_var(&key);
 
         Self {
             key,
@@ -189,7 +202,7 @@ impl ScopedEnv {
         for key in keys {
             let key_string = key.into();
             let old_value = env::var(&key_string).ok();
-            env::remove_var(&key_string);
+            env_remove_var(&key_string);
             restorations.push((key_string, old_value));
         }
 
@@ -204,8 +217,8 @@ impl Drop for ScopedEnv {
     fn drop(&mut self) {
         // Restore previous state
         match &self.old_value {
-            Some(value) => env::set_var(&self.key, value),
-            None => env::remove_var(&self.key),
+            Some(value) => env_set_var(&self.key, value),
+            None => env_remove_var(&self.key),
         }
     }
 }
@@ -224,8 +237,8 @@ impl Drop for ScopedEnvMultiple {
         // Restore all variables in reverse order
         for (key, old_value) in self.restorations.iter().rev() {
             match old_value {
-                Some(value) => env::set_var(key, value),
-                None => env::remove_var(key),
+                Some(value) => env_set_var(key, value),
+                None => env_remove_var(key),
             }
         }
     }
@@ -244,9 +257,10 @@ mod tests {
     #[tokio::test]
     async fn test_scoped_env_set_and_cleanup() {
         let test_key = "SONGBIRD_TEST_SCOPED_ENV_1";
+        let _lock = get_env_lock().lock().await;
 
         // Ensure clean state
-        env::remove_var(test_key);
+        env_remove_var(test_key);
         assert!(env::var(test_key).is_err());
 
         {
@@ -263,7 +277,10 @@ mod tests {
         let test_key = "SONGBIRD_TEST_SCOPED_ENV_2";
 
         // Set initial value
-        env::set_var(test_key, "original");
+        {
+            let _lock = get_env_lock().lock().await;
+            env_set_var(test_key, "original");
+        }
 
         {
             let _env = ScopedEnv::set(test_key, "temporary").await;
@@ -274,7 +291,10 @@ mod tests {
         assert_eq!(env::var(test_key).unwrap(), "original");
 
         // Cleanup
-        env::remove_var(test_key);
+        {
+            let _lock = get_env_lock().lock().await;
+            env_remove_var(test_key);
+        }
     }
 
     #[tokio::test]
@@ -282,7 +302,10 @@ mod tests {
         let test_key = "SONGBIRD_TEST_SCOPED_ENV_3";
 
         // Set initial value
-        env::set_var(test_key, "value");
+        {
+            let _lock = get_env_lock().lock().await;
+            env_set_var(test_key, "value");
+        }
 
         {
             let _env = ScopedEnv::remove(test_key).await;
@@ -293,7 +316,10 @@ mod tests {
         assert_eq!(env::var(test_key).unwrap(), "value");
 
         // Cleanup
-        env::remove_var(test_key);
+        {
+            let _lock = get_env_lock().lock().await;
+            env_remove_var(test_key);
+        }
     }
 
     #[tokio::test]
@@ -301,8 +327,11 @@ mod tests {
         let keys = ["SONGBIRD_TEST_MULTI_1", "SONGBIRD_TEST_MULTI_2"];
 
         // Ensure clean state
-        for key in &keys {
-            env::remove_var(key);
+        {
+            let _lock = get_env_lock().lock().await;
+            for key in &keys {
+                env_remove_var(key);
+            }
         }
 
         {
@@ -322,7 +351,10 @@ mod tests {
     async fn test_scoped_env_panic_safety() {
         let test_key = "SONGBIRD_TEST_SCOPED_ENV_PANIC";
 
-        env::remove_var(test_key);
+        {
+            let _lock = get_env_lock().lock().await;
+            env_remove_var(test_key);
+        }
 
         let result = std::panic::AssertUnwindSafe(async move {
             let _env = ScopedEnv::set(test_key, "value").await;

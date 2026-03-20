@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Consent Enforcement
 //!
 //! Enforces consent requirements before task execution.
@@ -109,14 +112,14 @@ impl ConsentEnforcer {
         }
 
         // Check if cost exceeds threshold
-        if let Some(cost) = estimated_cost {
-            if cost > self.config.consent_required_above_cost {
-                debug!(
-                    "Cost ${} exceeds threshold ${}, consent required",
-                    cost, self.config.consent_required_above_cost
-                );
-                return true;
-            }
+        if let Some(cost) = estimated_cost
+            && cost > self.config.consent_required_above_cost
+        {
+            debug!(
+                "Cost ${} exceeds threshold ${}, consent required",
+                cost, self.config.consent_required_above_cost
+            );
+            return true;
         }
 
         false
@@ -150,13 +153,13 @@ impl ConsentEnforcer {
             .await;
 
         // Check if auto-approved
-        if let Some(status) = self.consent_manager.get_status(&consent_id).await {
-            if status == ConsentStatus::Approved {
-                info!("Task {} auto-approved via user preferences", task.id);
-                return Ok(EnforcementResult::Allowed {
-                    reason: "Auto-approved based on user preferences".into(),
-                });
-            }
+        if let Some(status) = self.consent_manager.get_status(&consent_id).await
+            && status == ConsentStatus::Approved
+        {
+            info!("Task {} auto-approved via user preferences", task.id);
+            return Ok(EnforcementResult::Allowed {
+                reason: "Auto-approved based on user preferences".into(),
+            });
         }
 
         // Return pending status
@@ -247,12 +250,12 @@ impl DignityChecker {
         let mut violations = Vec::new();
 
         // Check for expensive operations without transparency
-        if let Some(c) = cost {
-            if c > 100.0 && !transparent {
-                violations.push(
-                    "Expensive operation ($100+) requires transparent cost disclosure".into(),
-                );
-            }
+        if let Some(c) = cost
+            && c > 100.0
+            && !transparent
+        {
+            violations
+                .push("Expensive operation ($100+) requires transparent cost disclosure".into());
         }
 
         // Check for operations that should always be explicit

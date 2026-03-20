@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Network utilities for orchestrator
 //!
 //! Provides network detection and configuration utilities with modern,
@@ -18,10 +21,10 @@ pub async fn get_local_ip_for_connectivity_test() -> Result<String> {
 
     if let Ok(local_addr) = socket.local_addr() {
         let ip = local_addr.ip();
-        if let std::net::IpAddr::V4(ipv4) = ip {
-            if ipv4 != Ipv4Addr::LOCALHOST {
-                return Ok(ip.to_string());
-            }
+        if let std::net::IpAddr::V4(ipv4) = ip
+            && ipv4 != Ipv4Addr::LOCALHOST
+        {
+            return Ok(ip.to_string());
         }
     }
 
@@ -95,16 +98,15 @@ pub fn parse_bind_address(addr: &str, port: u16) -> Result<SocketAddr> {
 pub fn detect_primary_ip() -> Option<String> {
     // Try to detect by creating a UDP socket to a public DNS server
     // This doesn't actually send data, just determines which interface would be used
-    if let Ok(socket) = UdpSocket::bind("0.0.0.0:0") {
-        if matches!(socket.connect("8.8.8.8:80"), Ok(())) {
-            if let Ok(addr) = socket.local_addr() {
-                let ip = addr.ip();
-                // Only return if it's a real IP (not 0.0.0.0 or loopback)
-                if !ip.is_loopback() && !ip.is_unspecified() {
-                    info!("🌐 Detected primary network IP: {}", ip);
-                    return Some(ip.to_string());
-                }
-            }
+    if let Ok(socket) = UdpSocket::bind("0.0.0.0:0")
+        && matches!(socket.connect("8.8.8.8:80"), Ok(()))
+        && let Ok(addr) = socket.local_addr()
+    {
+        let ip = addr.ip();
+        // Only return if it's a real IP (not 0.0.0.0 or loopback)
+        if !ip.is_loopback() && !ip.is_unspecified() {
+            info!("🌐 Detected primary network IP: {}", ip);
+            return Some(ip.to_string());
         }
     }
 
@@ -114,36 +116,37 @@ pub fn detect_primary_ip() -> Option<String> {
         use std::process::Command;
 
         // Try ip command first
-        if let Ok(output) = Command::new("ip").args(["route", "get", "1.1.1.1"]).output() {
-            if let Ok(stdout) = String::from_utf8(output.stdout) {
-                // Parse output like: "1.1.1.1 via X.X.X.X dev eth0 src Y.Y.Y.Y"
-                for line in stdout.lines() {
-                    if let Some(src_pos) = line.find(" src ") {
-                        let after_src = &line[src_pos + 5..];
-                        if let Some(ip_str) = after_src.split_whitespace().next() {
-                            if let Ok(ip) = ip_str.parse::<IpAddr>() {
-                                if !ip.is_loopback() && !ip.is_unspecified() {
-                                    info!("🌐 Detected primary network IP: {}", ip);
-                                    return Some(ip.to_string());
-                                }
-                            }
-                        }
+        if let Ok(output) = Command::new("ip").args(["route", "get", "1.1.1.1"]).output()
+            && let Ok(stdout) = String::from_utf8(output.stdout)
+        {
+            // Parse output like: "1.1.1.1 via X.X.X.X dev eth0 src Y.Y.Y.Y"
+            for line in stdout.lines() {
+                if let Some(src_pos) = line.find(" src ") {
+                    let after_src = &line[src_pos + 5..];
+                    if let Some(ip_str) = after_src.split_whitespace().next()
+                        && let Ok(ip) = ip_str.parse::<IpAddr>()
+                        && !ip.is_loopback()
+                        && !ip.is_unspecified()
+                    {
+                        info!("🌐 Detected primary network IP: {}", ip);
+                        return Some(ip.to_string());
                     }
                 }
             }
         }
 
         // Fallback to hostname -I
-        if let Ok(output) = Command::new("hostname").arg("-I").output() {
-            if let Ok(stdout) = String::from_utf8(output.stdout) {
-                // Get first non-loopback IP
-                for ip_str in stdout.split_whitespace() {
-                    if let Ok(ip) = ip_str.parse::<IpAddr>() {
-                        if !ip.is_loopback() && !ip.is_unspecified() {
-                            info!("🌐 Detected primary network IP: {}", ip);
-                            return Some(ip.to_string());
-                        }
-                    }
+        if let Ok(output) = Command::new("hostname").arg("-I").output()
+            && let Ok(stdout) = String::from_utf8(output.stdout)
+        {
+            // Get first non-loopback IP
+            for ip_str in stdout.split_whitespace() {
+                if let Ok(ip) = ip_str.parse::<IpAddr>()
+                    && !ip.is_loopback()
+                    && !ip.is_unspecified()
+                {
+                    info!("🌐 Detected primary network IP: {}", ip);
+                    return Some(ip.to_string());
                 }
             }
         }

@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Environment Provider Trait - Dependency Injection for Environment Access
 //!
 //! This trait enables proper dependency injection for environment variable access,

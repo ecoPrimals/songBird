@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! `BirdSong` Integration - Encrypted Discovery (REFACTORED v3.22.0)
 //!
 //! Integrates encrypted discovery into Songbird's anonymous discovery system.

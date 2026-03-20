@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Service mesh event handling and monitoring structures
 
 use chrono::{DateTime, Utc};

@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Unix Socket JSON-RPC Client for Inter-Primal Communication
 //!
 //! v3.34.0: Pure Rust implementation for inter-primal RPC via Unix sockets
@@ -35,7 +38,7 @@
 //! ```
 
 use anyhow::{Context, Result};
-use serde::{de::DeserializeOwned, Deserialize, Serialize};
+use serde::{Deserialize, Serialize, de::DeserializeOwned};
 use serde_json::json;
 use std::path::{Path, PathBuf};
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
@@ -284,47 +287,41 @@ mod tests {
         // Signal that the server is ready to accept connections
         let _ = ready_tx.send(());
 
-        loop {
-            match listener.accept().await {
-                Ok((stream, _)) => {
-                    tokio::spawn(async move {
-                        let mut reader = BufReader::new(stream);
-                        let mut request_line = String::new();
+        while let Ok((stream, _)) = listener.accept().await {
+            tokio::spawn(async move {
+                let mut reader = BufReader::new(stream);
+                let mut request_line = String::new();
 
-                        if reader.read_line(&mut request_line).await.is_ok() {
-                            let request: serde_json::Value =
-                                serde_json::from_str(&request_line).unwrap();
+                if reader.read_line(&mut request_line).await.is_ok() {
+                    let request: serde_json::Value = serde_json::from_str(&request_line).unwrap();
 
-                            let method = request["method"].as_str().unwrap();
-                            let id = request["id"].as_u64().unwrap();
+                    let method = request["method"].as_str().unwrap();
+                    let id = request["id"].as_u64().unwrap();
 
-                            let response = if method == "echo" {
-                                let params: EchoRequest =
-                                    serde_json::from_value(request["params"].clone()).unwrap();
-                                json!({
-                                    "jsonrpc": "2.0",
-                                    "result": EchoResponse { echo: params.message },
-                                    "id": id
-                                })
-                            } else {
-                                json!({
-                                    "jsonrpc": "2.0",
-                                    "error": {
-                                        "code": -32601,
-                                        "message": "Method not found"
-                                    },
-                                    "id": id
-                                })
-                            };
+                    let response = if method == "echo" {
+                        let params: EchoRequest =
+                            serde_json::from_value(request["params"].clone()).unwrap();
+                        json!({
+                            "jsonrpc": "2.0",
+                            "result": EchoResponse { echo: params.message },
+                            "id": id
+                        })
+                    } else {
+                        json!({
+                            "jsonrpc": "2.0",
+                            "error": {
+                                "code": -32601,
+                                "message": "Method not found"
+                            },
+                            "id": id
+                        })
+                    };
 
-                            let mut stream = reader.into_inner();
-                            let response_bytes = serde_json::to_vec(&response).unwrap();
-                            stream.write_all(&response_bytes).await.ok();
-                        }
-                    });
+                    let mut stream = reader.into_inner();
+                    let response_bytes = serde_json::to_vec(&response).unwrap();
+                    stream.write_all(&response_bytes).await.ok();
                 }
-                Err(_) => break,
-            }
+            });
         }
     }
 

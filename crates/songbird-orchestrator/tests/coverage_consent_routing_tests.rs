@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Comprehensive tests for consent management, routing types, and core orchestrator
 //!
 //! Covers:
@@ -188,7 +191,7 @@ fn test_auto_approval_rule_clone() {
         max_cost: Some(100.0),
         operations: vec!["deploy".to_string()],
     };
-    let cloned = rule.clone();
+    let cloned = rule;
     assert_eq!(cloned.name, "original");
     assert_eq!(cloned.max_cost, Some(100.0));
     assert_eq!(cloned.operations, vec!["deploy"]);
@@ -266,7 +269,7 @@ fn test_core_orchestrator_new() {
 
 #[test]
 fn test_core_orchestrator_default() {
-    let orch = CoreOrchestrator::default();
+    let orch = CoreOrchestrator;
     let debug = format!("{:?}", orch);
     assert!(debug.contains("CoreOrchestrator"));
 }

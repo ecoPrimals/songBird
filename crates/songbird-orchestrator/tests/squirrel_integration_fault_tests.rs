@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Fault Tests: Squirrel Integration - Error Handling & Edge Cases
 //!
 //! Tests error conditions and fault injection:
@@ -33,38 +36,38 @@ async fn start_fault_server(
                 let mut reader = BufReader::new(&mut stream);
                 let mut line = String::new();
 
-                if reader.read_line(&mut line).await.is_ok() {
-                    if let Ok(request) = serde_json::from_str::<serde_json::Value>(&line) {
-                        let response = match mode.as_str() {
-                            "invalid_response" => {
-                                // Send invalid JSON
-                                let _ = stream.write_all(b"invalid json\n").await;
-                                return;
-                            }
-                            "error" => json!({
-                                "jsonrpc": "2.0",
-                                "error": {
-                                    "code": -32603,
-                                    "message": "Internal error"
-                                },
-                                "id": request["id"]
-                            }),
-                            "disconnect" => {
-                                // Close connection immediately
-                                return;
-                            }
-                            _ => json!({
-                                "jsonrpc": "2.0",
-                                "result": {"status": "ok"},
-                                "id": request["id"]
-                            }),
-                        };
+                if reader.read_line(&mut line).await.is_ok()
+                    && let Ok(request) = serde_json::from_str::<serde_json::Value>(&line)
+                {
+                    let response = match mode.as_str() {
+                        "invalid_response" => {
+                            // Send invalid JSON
+                            let _ = stream.write_all(b"invalid json\n").await;
+                            return;
+                        }
+                        "error" => json!({
+                            "jsonrpc": "2.0",
+                            "error": {
+                                "code": -32603,
+                                "message": "Internal error"
+                            },
+                            "id": request["id"]
+                        }),
+                        "disconnect" => {
+                            // Close connection immediately
+                            return;
+                        }
+                        _ => json!({
+                            "jsonrpc": "2.0",
+                            "result": {"status": "ok"},
+                            "id": request["id"]
+                        }),
+                    };
 
-                        let _ = stream
-                            .write_all(serde_json::to_string(&response).unwrap().as_bytes())
-                            .await;
-                        let _ = stream.write_all(b"\n").await;
-                    }
+                    let _ = stream
+                        .write_all(serde_json::to_string(&response).unwrap().as_bytes())
+                        .await;
+                    let _ = stream.write_all(b"\n").await;
                 }
             });
         }
@@ -134,7 +137,7 @@ async fn test_fault_malformed_url() {
         vec!["not-a-url", "ftp://unsupported-protocol.com", "://missing-scheme.com", "http://", ""];
 
     for url in invalid_urls {
-        let params = json!({
+        let _params = json!({
             "method": "GET",
             "url": url,
             "headers": {}
@@ -460,7 +463,7 @@ async fn test_fault_http_status_codes() {
 
     for code in status_codes {
         // All should be valid u16
-        assert!(code >= 100 && code < 600);
+        assert!((100..600).contains(&code));
     }
 }
 
@@ -468,13 +471,16 @@ async fn test_fault_http_status_codes() {
 async fn test_fault_family_id_edge_cases() {
     // Test edge cases for family_id environment variable
 
-    std::env::set_var("SONGBIRD_FAMILY_ID", "");
+    songbird_process_env::set_var("SONGBIRD_FAMILY_ID", "");
     let family_id = std::env::var("SONGBIRD_FAMILY_ID").unwrap_or_else(|_| "nat0".to_string());
     assert_eq!(family_id, "");
 
-    std::env::set_var("SONGBIRD_FAMILY_ID", "very-long-family-id-".to_string() + &"x".repeat(100));
+    songbird_process_env::set_var(
+        "SONGBIRD_FAMILY_ID",
+        "very-long-family-id-".to_string() + &"x".repeat(100),
+    );
     let family_id = std::env::var("SONGBIRD_FAMILY_ID").unwrap();
     assert!(family_id.len() > 100);
 
-    std::env::remove_var("SONGBIRD_FAMILY_ID");
+    songbird_process_env::remove_var("SONGBIRD_FAMILY_ID");
 }

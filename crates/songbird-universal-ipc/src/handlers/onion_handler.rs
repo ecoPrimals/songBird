@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Sovereign Onion Service JSON-RPC Handler
 //!
 //! Provides JSON-RPC methods for the sovereign onion service, enabling
@@ -15,7 +18,7 @@
 //! All crypto operations are delegated to `BearDog` via `BeardogCryptoClient`.
 //! Zero embedded crypto in Songbird.
 
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use songbird_sovereign_onion::{BeardogCryptoClient, OnionConnector, OnionService};
 use std::sync::Arc;
 use tokio::sync::RwLock;
@@ -381,8 +384,7 @@ mod tests {
                     || e_lower.contains("method not found")
                     || e_lower.contains("connection refused")
                     || e_lower.contains("failed to create"),
-                "Error should be crypto/connection related: {}",
-                e
+                "Error should be crypto/connection related: {e}"
             );
         }
     }
@@ -408,8 +410,7 @@ mod tests {
                     || e_lower.contains("method not found")
                     || e_lower.contains("connection refused")
                     || e_lower.contains("failed to create"),
-                "Error should be crypto/connection related: {}",
-                e
+                "Error should be crypto/connection related: {e}"
             );
         }
     }

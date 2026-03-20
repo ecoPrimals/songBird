@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Background job management and tracking
 
 use crate::types::{ExecutionStatus, JobInfo};
@@ -156,7 +159,7 @@ impl JobManager {
         // Send SIGTERM signal
         #[cfg(unix)]
         {
-            use nix::sys::signal::{kill, Signal};
+            use nix::sys::signal::{Signal, kill};
             use nix::unistd::Pid;
 
             let pid_nix =
@@ -219,10 +222,10 @@ impl JobManager {
             }
 
             // Keep recent jobs
-            if let Some(completed_at) = job.completed_at {
-                if let Ok(elapsed) = now.duration_since(completed_at) {
-                    return elapsed < retention;
-                }
+            if let Some(completed_at) = job.completed_at
+                && let Ok(elapsed) = now.duration_since(completed_at)
+            {
+                return elapsed < retention;
             }
 
             false

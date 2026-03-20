@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Unit Tests: Squirrel Integration - HTTP Delegation
 //!
 //! Tests the two critical RPC methods for Squirrel AI integration:
@@ -78,7 +81,7 @@ async fn test_discover_capabilities_structure() {
 async fn test_discover_capabilities_contains_http_request() {
     // Test that http.request capability is advertised
 
-    let capabilities = vec![
+    let capabilities = [
         "http.post",
         "http.get",
         "http.request",
@@ -239,11 +242,11 @@ async fn test_jsonrpc_response_structure() {
 async fn test_family_id_environment_variable() {
     // Test that family_id can be customized via environment
 
-    std::env::set_var("SONGBIRD_FAMILY_ID", "test-family");
+    songbird_process_env::set_var("SONGBIRD_FAMILY_ID", "test-family");
     let family_id = std::env::var("SONGBIRD_FAMILY_ID").unwrap_or_else(|_| "nat0".to_string());
     assert_eq!(family_id, "test-family");
 
-    std::env::remove_var("SONGBIRD_FAMILY_ID");
+    songbird_process_env::remove_var("SONGBIRD_FAMILY_ID");
     let family_id = std::env::var("SONGBIRD_FAMILY_ID").unwrap_or_else(|_| "nat0".to_string());
     assert_eq!(family_id, "nat0");
 }

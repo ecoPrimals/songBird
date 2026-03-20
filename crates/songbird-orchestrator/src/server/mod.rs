@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 #![allow(dead_code)]
 
 use std::time::Duration;
@@ -133,19 +136,39 @@ impl ServerManager {
     }
 
     /// Check gaming manager health
-    async fn check_gaming_manager_health(&self, _orchestrator: &SongbirdOrchestrator) -> bool {
-        // Gaming manager health validation
-        // In a real implementation, this would check if gaming services are responsive
-        tracing::debug!("Gaming manager health check completed");
-        true
+    async fn check_gaming_manager_health(&self, orchestrator: &SongbirdOrchestrator) -> bool {
+        // Same signal as HTTP health: peers advertising gaming-related capabilities.
+        match orchestrator.get_status().await {
+            Ok(s) => {
+                tracing::debug!(
+                    gaming_active = s.gaming_active,
+                    "Gaming manager health check (orchestrator status)"
+                );
+                true
+            }
+            Err(e) => {
+                tracing::warn!("Gaming health check: get_status failed: {e}");
+                false
+            }
+        }
     }
 
     /// Check federation manager health
-    async fn check_federation_manager_health(&self, _orchestrator: &SongbirdOrchestrator) -> bool {
-        // Federation manager health validation
-        // In a real implementation, this would check federation connectivity
-        tracing::debug!("Federation manager health check completed");
-        true
+    async fn check_federation_manager_health(&self, orchestrator: &SongbirdOrchestrator) -> bool {
+        // Aligns with `app::health::get_status`: mesh coordinator + `FederationState` active nodes.
+        match orchestrator.get_status().await {
+            Ok(s) => {
+                tracing::debug!(
+                    federation_connected = s.federation_connected,
+                    "Federation manager health check (orchestrator status)"
+                );
+                s.federation_connected
+            }
+            Err(e) => {
+                tracing::warn!("Federation health check: get_status failed: {e}");
+                false
+            }
+        }
     }
 
     /// Check observability manager health

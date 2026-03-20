@@ -1,6 +1,9 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Onion service (listen mode) - Phase 3 Implementation
 //!
-//! ✅ **TRUE PRIMAL**: Production uses BearDog delegation for all crypto.
+//! ✅ **TRUE PRIMAL**: Production uses `BearDog` delegation for all crypto.
 
 use crate::beardog_crypto::BeardogCryptoClient;
 use crate::error::{OnionError, Result};
@@ -14,7 +17,7 @@ use tracing::{debug, error, info};
 
 /// Onion service (creates reachable .onion address)
 ///
-/// **Status**: Phase 3 - Complete implementation with BearDog delegation
+/// **Status**: Phase 3 - Complete implementation with `BearDog` delegation
 pub struct OnionService {
     identity: OnionIdentity,
     storage: OnionStorage,
@@ -93,6 +96,10 @@ impl OnionService {
     /// Start listening for incoming connections
     ///
     /// Binds to 0.0.0.0:port and accepts connections indefinitely.
+    ///
+    /// # Errors
+    ///
+    /// Returns error if bind fails.
     pub async fn run(&self) -> Result<()> {
         let bind_addr = format!("0.0.0.0:{}", self.port);
         info!("Starting onion service on {}", bind_addr);
@@ -100,7 +107,7 @@ impl OnionService {
         let listener = TcpListener::bind(&bind_addr).await.map_err(|e| {
             OnionError::Io(std::io::Error::new(
                 std::io::ErrorKind::AddrInUse,
-                format!("Failed to bind to {}: {}", bind_addr, e),
+                format!("Failed to bind to {bind_addr}: {e}"),
             ))
         })?;
 
@@ -150,8 +157,7 @@ impl OnionService {
         let msg_type = MessageType::try_from(buf[0])?;
         if msg_type != MessageType::KeyExchange {
             return Err(OnionError::InvalidMessage(format!(
-                "Expected KeyExchange, got {:?}",
-                msg_type
+                "Expected KeyExchange, got {msg_type:?}"
             )));
         }
 
@@ -241,8 +247,8 @@ impl OnionService {
                     debug!("Received close message");
                     break;
                 }
-                _ => {
-                    error!("Unexpected message type: {:?}", msg_type);
+                MessageType::KeyExchange => {
+                    error!("Unexpected message type: {msg_type:?}");
                     break;
                 }
             }

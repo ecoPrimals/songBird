@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Configuration validation with comprehensive checks
 //!
 //! This module provides validation for the universal primal configuration system.

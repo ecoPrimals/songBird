@@ -1,11 +1,14 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Codec implementations for TLS messages
 
 use super::bytes::{
-    read_u16, read_u8, read_vec16, read_vec8, write_u16, write_u8, write_vec16, write_vec8,
+    read_u8, read_u16, read_vec8, read_vec16, write_u8, write_u16, write_vec8, write_vec16,
 };
 use super::{Decode, Encode};
 use crate::error::{Result, TlsError};
-use crate::messages::{extensions, ClientHello, Extension, ServerHello};
+use crate::messages::{ClientHello, Extension, ServerHello, extensions};
 
 // ============================================================================
 // Extension Encoding/Decoding

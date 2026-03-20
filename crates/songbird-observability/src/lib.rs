@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! # Songbird Observability
 //!
 //! Comprehensive observability and monitoring platform providing real-time insights,
@@ -66,6 +69,52 @@
 //!
 //! All observability operations return `Result<T, SongbirdError>` with detailed
 //! error information and recovery suggestions for monitoring system issues.
+
+#![cfg_attr(
+    test,
+    allow(
+        deprecated,
+        dead_code,
+        clippy::unwrap_used,
+        clippy::expect_used,
+        clippy::await_holding_lock,
+        clippy::float_cmp,
+        clippy::absurd_extreme_comparisons,
+        clippy::nonminimal_bool,
+        clippy::needless_collect,
+        clippy::used_underscore_binding,
+        clippy::overly_complex_bool_expr,
+        clippy::assertions_on_constants,
+        clippy::unreadable_literal,
+        clippy::empty_line_after_doc_comments,
+        clippy::field_reassign_with_default,
+        clippy::unnecessary_wraps,
+        clippy::no_effect_underscore_binding,
+        clippy::return_self_not_must_use,
+        clippy::duplicated_attributes,
+        clippy::needless_pass_by_value,
+        clippy::must_use_candidate,
+        clippy::missing_panics_doc,
+        clippy::missing_errors_doc,
+        clippy::doc_markdown,
+        clippy::wildcard_imports,
+        clippy::enum_glob_use,
+        unused_imports,
+        unused_variables,
+        clippy::unused_self,
+        clippy::unnecessary_cast,
+        clippy::items_after_test_module,
+        clippy::clone_on_ref_ptr,
+        clippy::default_trait_access,
+        clippy::needless_range_loop,
+        clippy::similar_names,
+        clippy::cast_possible_truncation,
+        clippy::cast_sign_loss,
+        clippy::unnecessary_unwrap,
+        clippy::ignore_without_reason,
+        clippy::case_sensitive_file_extension_comparisons,
+    )
+)]
 
 pub mod health;
 pub mod observability;

@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Concurrency Evolution Chaos Tests
 //!
 //! Chaos engineering tests for concurrency improvements:
@@ -9,10 +12,10 @@
 //! ✅ SERIAL ANNOTATIONS ALLOWED FOR CHAOS TESTS (intentional timing conflicts)
 
 use assert_cmd::Command;
-use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicUsize, Ordering};
 use tokio::task::JoinSet;
-use tokio::time::{sleep, Duration};
+use tokio::time::{Duration, sleep};
 
 // ====================
 // TEST HELPERS
@@ -20,7 +23,7 @@ use tokio::time::{sleep, Duration};
 
 /// Create a clean command with isolated environment
 fn clean_cmd() -> Command {
-    let mut cmd = Command::cargo_bin("songbird").unwrap();
+    let mut cmd = Command::new(assert_cmd::cargo_bin!("songbird"));
     cmd.env_clear();
     cmd.env("PATH", std::env::var("PATH").unwrap_or_default());
     cmd
@@ -249,10 +252,8 @@ async fn chaos_test_panic_isolation() {
     for i in 0..50 {
         let success_count = success_count.clone();
         join_set.spawn(async move {
-            if i == 25 {
-                // One task panics
-                panic!("Intentional chaos panic");
-            }
+            // One task panics
+            assert!(i != 25, "Intentional chaos panic");
 
             clean_cmd().arg("--version").assert().success();
             success_count.fetch_add(1, Ordering::SeqCst);

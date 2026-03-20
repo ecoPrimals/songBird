@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Capability Provider Registry
 //!
 //! Manages external compute providers that register their capabilities with Songbird,
@@ -48,7 +51,7 @@ pub struct HeartbeatConfig {
 impl Default for HeartbeatConfig {
     fn default() -> Self {
         Self {
-            interval_ms: 5000,            // 5 seconds between heartbeats
+            interval_ms: songbird_types::defaults::ports::DEFAULT_HEARTBEAT_INTERVAL_MS, // 5 seconds between heartbeats
             unhealthy_threshold_secs: 15, // 15 seconds = 3 missed heartbeats
             removal_threshold_secs: 60,   // 60 seconds = 12 missed heartbeats
         }

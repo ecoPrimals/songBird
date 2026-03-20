@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! OS Substrate Implementation with Universal Capability Integration Integration
 //!
 //! This module provides operating system substrate functionality using

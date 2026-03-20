@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! USB HCI Transport - C-based implementation using `rusb`
 //!
 //! This module provides USB transport for Bluetooth HCI using `rusb` (C bindings to libusb).
@@ -99,7 +102,7 @@ impl UsbTransport {
     /// Returns error if no matching device found
     pub async fn with_filter(vendor_id: Option<u16>, product_id: Option<u16>) -> Result<Self> {
         tokio::task::yield_now().await; // Yield before blocking
-                                        // Run USB operations in block_in_place - rusb types are not Send
+        // Run USB operations in block_in_place - rusb types are not Send
         tokio::task::block_in_place(|| {
             let context = Context::new()
                 .map_err(|e| TransportError::Usb(format!("Failed to create USB context: {e}")))?;

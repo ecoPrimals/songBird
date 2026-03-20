@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! **CANONICAL**: Environment Configuration - Single Source of Truth Truth
 //!
 //! Enhanced with comprehensive features from various environment configuration fragments.

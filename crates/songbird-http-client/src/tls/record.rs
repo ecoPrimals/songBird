@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! TLS 1.3 record layer
 
 use crate::crypto::CryptoCapability;
@@ -352,7 +355,10 @@ impl TlsRecordLayer {
             let expected_encrypted_size = last_write_size + 1 + 16;
 
             if encrypted.len() == expected_encrypted_size {
-                warn!("⚠️  SUSPICIOUS: Encrypted data length ({} bytes) matches expected size for our last request!", encrypted.len());
+                warn!(
+                    "⚠️  SUSPICIOUS: Encrypted data length ({} bytes) matches expected size for our last request!",
+                    encrypted.len()
+                );
                 warn!("   Last written plaintext: {} bytes", last_write_size);
                 warn!(
                     "   Expected encrypted size: {} bytes (plaintext + 1 + 16)",
@@ -540,7 +546,9 @@ impl TlsRecordLayer {
         // Check for handshake messages (like NewSessionTicket) - we need to skip them
         // and read the NEXT record to get actual HTTP data
         if content_type_byte == 0x16 {
-            info!("📝 Received HANDSHAKE message in APPLICATION_DATA (likely NewSessionTicket) - reading next record...");
+            info!(
+                "📝 Received HANDSHAKE message in APPLICATION_DATA (likely NewSessionTicket) - reading next record..."
+            );
             if !plaintext.is_empty() {
                 let hs_type = plaintext[0];
                 info!(

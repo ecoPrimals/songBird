@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! QUIC error types
 
 use thiserror::Error;
@@ -59,4 +62,36 @@ pub enum QuicError {
     /// Not connected
     #[error("Not connected")]
     NotConnected,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn stream_config_display() {
+        let e = QuicError::Stream("bad stream".into());
+        assert!(e.to_string().contains("bad stream"));
+        let c = QuicError::Config("bad cfg".into());
+        assert!(c.to_string().contains("bad cfg"));
+    }
+
+    #[test]
+    fn addr_parse_maps_to_invalid_address() {
+        let err: QuicError = "not-a-socket!!!".parse::<std::net::SocketAddr>().unwrap_err().into();
+        assert!(matches!(err, QuicError::InvalidAddress(_)));
+    }
+
+    #[test]
+    fn io_error_roundtrip() {
+        let io = std::io::Error::new(std::io::ErrorKind::NotFound, "missing");
+        let e: QuicError = io.into();
+        assert!(matches!(e, QuicError::Io(_)));
+    }
+
+    #[test]
+    fn timeout_and_not_connected_display() {
+        assert_eq!(QuicError::Timeout.to_string(), "Operation timed out");
+        assert_eq!(QuicError::NotConnected.to_string(), "Not connected");
+    }
 }

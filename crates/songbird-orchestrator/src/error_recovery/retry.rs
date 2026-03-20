@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Retry Policies
 //!
 //! Implements retry strategies with:
@@ -6,7 +9,7 @@
 //! - Max attempts
 //! - Conditional retry based on error type
 
-use super::{classify_error, ErrorClass};
+use super::{ErrorClass, classify_error};
 use anyhow::Result;
 use std::future::Future;
 use std::time::Duration;

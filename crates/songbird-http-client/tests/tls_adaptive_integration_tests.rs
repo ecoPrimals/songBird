@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Adaptive TLS Integration Tests
 //!
 //! These tests verify that the adaptive TLS system is properly wired

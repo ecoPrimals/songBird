@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Rendezvous Handler for JSON-RPC
 //!
 //! Handles `rendezvous.*` methods for NAT traversal via relay servers.
@@ -165,7 +168,15 @@ pub struct MockRendezvousClient {
 }
 
 #[cfg(test)]
+impl Default for MockRendezvousClient {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+#[cfg(test)]
 impl MockRendezvousClient {
+    #[must_use]
     pub fn new() -> Self {
         Self {
             registered: std::sync::RwLock::new(Vec::new()),

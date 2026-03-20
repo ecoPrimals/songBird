@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Unit and Integration Tests for Self-Filtering (v3.10.2)
 //!
 //! Tests the self-filtering functionality that prevents towers from discovering
@@ -7,10 +10,11 @@
 mod unit_tests {
     use crate::anonymous::AnonymousDiscoveryListener;
 
-    /// Test that with_node_id() builder sets the node_id field correctly
+    /// Test that `with_node_id()` builder sets the `node_id` field correctly
     #[test]
     fn test_with_node_id_builder() {
-        let listener = AnonymousDiscoveryListener::new(2300, 60).with_node_id("tower1".to_string());
+        let _listener =
+            AnonymousDiscoveryListener::new(2300, 60).with_node_id("tower1".to_string());
 
         // Can't directly access private field, but we can test the behavior
         // by checking that the builder pattern works
@@ -20,34 +24,35 @@ mod unit_tests {
     /// Test that builder pattern is chainable
     #[test]
     fn test_builder_pattern_chainable() {
-        let listener = AnonymousDiscoveryListener::new(2300, 60).with_node_id("tower1".to_string());
+        let _listener =
+            AnonymousDiscoveryListener::new(2300, 60).with_node_id("tower1".to_string());
 
         // If this compiles, the builder pattern is correct
         assert!(true);
     }
 
-    /// Test that listener can be created without node_id (backward compatible)
+    /// Test that listener can be created without `node_id` (backward compatible)
     #[test]
     fn test_backward_compatible_without_node_id() {
-        let listener = AnonymousDiscoveryListener::new(2300, 60);
+        let _listener = AnonymousDiscoveryListener::new(2300, 60);
 
         // Should work fine without node_id (self-filtering disabled)
         assert!(true);
     }
 
-    /// Test that broadcast-only listener can also use with_node_id
+    /// Test that broadcast-only listener can also use `with_node_id`
     #[test]
     fn test_broadcast_only_with_node_id() {
-        let listener = AnonymousDiscoveryListener::new_broadcast_only(2300, 60)
+        let _listener = AnonymousDiscoveryListener::new_broadcast_only(2300, 60)
             .with_node_id("tower1".to_string());
 
         assert!(true);
     }
 
-    /// Test that node_id is properly set via builder
+    /// Test that `node_id` is properly set via builder
     #[test]
     fn test_node_id_set() {
-        let listener =
+        let _listener =
             AnonymousDiscoveryListener::new(2300, 60).with_node_id("test-node-id".to_string());
 
         // If this compiles and runs, the builder worked
@@ -59,7 +64,7 @@ mod unit_tests {
 mod integration_tests {
     use crate::anonymous::AnonymousDiscoveryListener;
 
-    /// Test that get_peers() debug logging works correctly
+    /// Test that `get_peers()` debug logging works correctly
     #[tokio::test]
     async fn test_get_peers_debug_logging() {
         let listener = AnonymousDiscoveryListener::new(2300, 60).with_node_id("tower1".to_string());
@@ -71,7 +76,7 @@ mod integration_tests {
         assert_eq!(peers.len(), 0);
     }
 
-    /// Test that listener with node_id can be created
+    /// Test that listener with `node_id` can be created
     #[test]
     fn test_listener_with_self_filtering() {
         let _listener = AnonymousDiscoveryListener::new(2300, 60)
@@ -81,7 +86,7 @@ mod integration_tests {
         assert!(true);
     }
 
-    /// Test that listener without node_id can be created (backward compatible)
+    /// Test that listener without `node_id` can be created (backward compatible)
     #[test]
     fn test_listener_without_self_filtering() {
         let _listener = AnonymousDiscoveryListener::new(2300, 60);
@@ -187,10 +192,10 @@ mod e2e_tests {
 mod regression_tests {
     use crate::anonymous::AnonymousDiscoveryListener;
 
-    /// Regression: Ensure listener works without node_id (backward compatible)
+    /// Regression: Ensure listener works without `node_id` (backward compatible)
     #[test]
     fn test_regression_backward_compatibility() {
-        let listener = AnonymousDiscoveryListener::new(2300, 60);
+        let _listener = AnonymousDiscoveryListener::new(2300, 60);
         // Should compile and work fine without with_node_id()
         assert!(true);
     }
@@ -198,12 +203,12 @@ mod regression_tests {
     /// Regression: Ensure builder pattern doesn't break existing code
     #[test]
     fn test_regression_builder_pattern() {
-        let listener = AnonymousDiscoveryListener::new(2300, 60).with_node_id("test".to_string());
+        let _listener = AnonymousDiscoveryListener::new(2300, 60).with_node_id("test".to_string());
         // Builder should return Self for chaining
         assert!(true);
     }
 
-    /// Regression: Ensure v2.x messages (no node_id) still work
+    /// Regression: Ensure v2.x messages (no `node_id`) still work
     #[test]
     fn test_regression_v2_messages() {
         // v2.x messages don't have node_id field

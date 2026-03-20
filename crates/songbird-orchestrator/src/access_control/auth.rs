@@ -1,12 +1,14 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Authentication endpoints and middleware
 
 use super::AccessToken;
 use axum::{
-    async_trait,
+    Json, async_trait,
     extract::FromRequestParts,
-    http::{header::AUTHORIZATION, request::Parts, StatusCode},
+    http::{StatusCode, header::AUTHORIZATION, request::Parts},
     response::{IntoResponse, Response},
-    Json,
 };
 use serde::{Deserialize, Serialize};
 
@@ -290,7 +292,10 @@ async fn validate_db_postgres(
 ) -> Result<(), AuthError> {
     // NOTE: Full PostgreSQL implementation would use sqlx or tokio-postgres
     // For now, this is a framework for the implementation
-    tracing::info!("PostgreSQL authentication for user '{}' (implementation pending: requires sqlx dependency)", user_id);
+    tracing::info!(
+        "PostgreSQL authentication for user '{}' (implementation pending: requires sqlx dependency)",
+        user_id
+    );
 
     // Expected implementation:
     // 1. Connect to PostgreSQL using sqlx
@@ -302,7 +307,9 @@ async fn validate_db_postgres(
     if credential.is_empty() {
         Err(AuthError::InvalidToken)
     } else {
-        tracing::warn!("PostgreSQL authentication not fully implemented - accepting credential (add sqlx dependency)");
+        tracing::warn!(
+            "PostgreSQL authentication not fully implemented - accepting credential (add sqlx dependency)"
+        );
         Ok(())
     }
 }
@@ -314,7 +321,10 @@ async fn validate_db_sqlite(
     _db_path: &str,
 ) -> Result<(), AuthError> {
     // NOTE: Full SQLite implementation would use rusqlite or sqlx
-    tracing::info!("SQLite authentication for user '{}' (implementation pending: requires rusqlite dependency)", user_id);
+    tracing::info!(
+        "SQLite authentication for user '{}' (implementation pending: requires rusqlite dependency)",
+        user_id
+    );
 
     // Expected implementation:
     // 1. Open SQLite database
@@ -326,7 +336,9 @@ async fn validate_db_sqlite(
     if credential.is_empty() {
         Err(AuthError::InvalidToken)
     } else {
-        tracing::warn!("SQLite authentication not fully implemented - accepting credential (add rusqlite dependency)");
+        tracing::warn!(
+            "SQLite authentication not fully implemented - accepting credential (add rusqlite dependency)"
+        );
         Ok(())
     }
 }
@@ -353,7 +365,9 @@ async fn validate_db_redis(
     if credential.is_empty() {
         Err(AuthError::InvalidToken)
     } else {
-        tracing::warn!("Redis authentication not fully implemented - accepting credential (add redis dependency)");
+        tracing::warn!(
+            "Redis authentication not fully implemented - accepting credential (add redis dependency)"
+        );
         Ok(())
     }
 }
@@ -463,7 +477,9 @@ fn validate_totp_token(user_id: &str, token: &str, totp_secret: &str) -> Result<
 
     // For now, accept 6-digit codes that match expected format
     if token.len() == 6 && token.chars().all(|c| c.is_ascii_digit()) && !totp_secret.is_empty() {
-        tracing::warn!("TOTP validation not fully implemented - accepting well-formed code (add totp-rs dependency)");
+        tracing::warn!(
+            "TOTP validation not fully implemented - accepting well-formed code (add totp-rs dependency)"
+        );
         Ok(())
     } else {
         tracing::warn!("TOTP token validation failed for user '{}': invalid format", user_id);

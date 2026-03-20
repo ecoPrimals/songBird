@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Universal HTTP Proxy - Works with ANY provider without hardcoding
 //!
 //! This module implements a universal proxy that can handle requests to any
@@ -30,7 +33,7 @@ use super::cache::ResponseCache;
 use super::capability_router::Route;
 use super::credentials::CredentialManager;
 use super::rate_limiter::RateLimiter;
-use anyhow::{anyhow, Result};
+use anyhow::{Result, anyhow};
 use serde_json::Value;
 use songbird_http_client::SongbirdHttpClient;
 use std::sync::Arc;

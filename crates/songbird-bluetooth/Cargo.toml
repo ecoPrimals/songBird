@@ -1,7 +1,7 @@
 [package]
 name = "songbird-bluetooth"
 version.workspace = true
-edition = "2021"
+edition.workspace = true
 license = "AGPL-3.0"
 authors = ["ecoPrimals Team"]
 description = "EXPERIMENTAL: Pure Rust Bluetooth LE stack for Songbird - Genesis Phase 2"

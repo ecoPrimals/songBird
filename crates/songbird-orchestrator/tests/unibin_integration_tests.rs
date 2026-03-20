@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! UniBin Integration Tests
 //!
 //! Tests for Songbird UniBin architecture compliance and functionality
@@ -9,14 +12,14 @@ use predicates::prelude::*;
 #[test]
 fn test_binary_exists() {
     // Verify binary is named 'songbird' (UniBin compliant!)
-    let mut cmd = Command::cargo_bin("songbird").unwrap();
+    let mut cmd = Command::new(assert_cmd::cargo_bin!("songbird"));
     cmd.arg("--version");
     cmd.assert().success();
 }
 
 #[test]
 fn test_version_output() {
-    let mut cmd = Command::cargo_bin("songbird").unwrap();
+    let mut cmd = Command::new(assert_cmd::cargo_bin!("songbird"));
     cmd.arg("--version");
     cmd.assert()
         .success()
@@ -26,7 +29,7 @@ fn test_version_output() {
 
 #[test]
 fn test_help_output() {
-    let mut cmd = Command::cargo_bin("songbird").unwrap();
+    let mut cmd = Command::new(assert_cmd::cargo_bin!("songbird"));
     cmd.arg("--help");
     cmd.assert()
         .success()
@@ -39,7 +42,7 @@ fn test_help_output() {
 
 #[test]
 fn test_server_help() {
-    let mut cmd = Command::cargo_bin("songbird").unwrap();
+    let mut cmd = Command::new(assert_cmd::cargo_bin!("songbird"));
     cmd.args(["server", "--help"]);
     cmd.assert()
         .success()
@@ -52,7 +55,7 @@ fn test_server_help() {
 
 #[test]
 fn test_doctor_help() {
-    let mut cmd = Command::cargo_bin("songbird").unwrap();
+    let mut cmd = Command::new(assert_cmd::cargo_bin!("songbird"));
     cmd.args(["doctor", "--help"]);
     cmd.assert()
         .success()
@@ -63,7 +66,7 @@ fn test_doctor_help() {
 
 #[test]
 fn test_config_help() {
-    let mut cmd = Command::cargo_bin("songbird").unwrap();
+    let mut cmd = Command::new(assert_cmd::cargo_bin!("songbird"));
     cmd.args(["config", "--help"]);
     cmd.assert()
         .success()
@@ -75,7 +78,7 @@ fn test_config_help() {
 
 #[test]
 fn test_doctor_basic() {
-    let mut cmd = Command::cargo_bin("songbird").unwrap();
+    let mut cmd = Command::new(assert_cmd::cargo_bin!("songbird"));
     cmd.arg("doctor");
     cmd.assert()
         .success()
@@ -88,7 +91,7 @@ fn test_doctor_basic() {
 
 #[test]
 fn test_config_validate() {
-    let mut cmd = Command::cargo_bin("songbird").unwrap();
+    let mut cmd = Command::new(assert_cmd::cargo_bin!("songbird"));
     cmd.args(["config", "validate"]);
     cmd.assert()
         .success()
@@ -104,7 +107,7 @@ fn test_config_init() {
     let tmp_dir = TempDir::new().unwrap();
     let config_path = tmp_dir.path().join("test-config.toml");
 
-    let mut cmd = Command::cargo_bin("songbird").unwrap();
+    let mut cmd = Command::new(assert_cmd::cargo_bin!("songbird"));
     cmd.args(["config", "init", "--output", config_path.to_str().unwrap()]);
     cmd.assert().success().stdout(predicate::str::contains("Configuration template generated"));
 
@@ -130,12 +133,12 @@ fn test_config_init_force() {
     fs::write(&config_path, "old content").unwrap();
 
     // Try to init without --force (should fail)
-    let mut cmd = Command::cargo_bin("songbird").unwrap();
+    let mut cmd = Command::new(assert_cmd::cargo_bin!("songbird"));
     cmd.args(["config", "init", "--output", config_path.to_str().unwrap()]);
     cmd.assert().failure();
 
     // Try with --force (should succeed)
-    let mut cmd = Command::cargo_bin("songbird").unwrap();
+    let mut cmd = Command::new(assert_cmd::cargo_bin!("songbird"));
     cmd.args(["config", "init", "--output", config_path.to_str().unwrap(), "--force"]);
     cmd.assert().success();
 
@@ -147,7 +150,7 @@ fn test_config_init_force() {
 
 #[test]
 fn test_unknown_command() {
-    let mut cmd = Command::cargo_bin("songbird").unwrap();
+    let mut cmd = Command::new(assert_cmd::cargo_bin!("songbird"));
     cmd.arg("unknown");
     cmd.assert().failure().stderr(predicate::str::contains("unrecognized subcommand"));
 }
@@ -155,28 +158,28 @@ fn test_unknown_command() {
 #[test]
 fn test_server_port_arg() {
     // Test that port argument is accepted
-    let mut cmd = Command::cargo_bin("songbird").unwrap();
+    let mut cmd = Command::new(assert_cmd::cargo_bin!("songbird"));
     cmd.args(["server", "--port", "9000", "--help"]);
     cmd.assert().success();
 }
 
 #[test]
 fn test_doctor_comprehensive() {
-    let mut cmd = Command::cargo_bin("songbird").unwrap();
+    let mut cmd = Command::new(assert_cmd::cargo_bin!("songbird"));
     cmd.args(["doctor", "--comprehensive"]);
     cmd.assert().success().stdout(predicate::str::contains("Comprehensive Checks"));
 }
 
 #[test]
 fn test_doctor_json_format() {
-    let mut cmd = Command::cargo_bin("songbird").unwrap();
+    let mut cmd = Command::new(assert_cmd::cargo_bin!("songbird"));
     cmd.args(["doctor", "--format", "json"]);
     cmd.assert().success().stdout(predicate::str::contains("status"));
 }
 
 #[test]
 fn test_config_show() {
-    let mut cmd = Command::cargo_bin("songbird").unwrap();
+    let mut cmd = Command::new(assert_cmd::cargo_bin!("songbird"));
     cmd.args(["config", "show"]);
     cmd.assert().success().stdout(predicate::str::contains("Configuration"));
 }

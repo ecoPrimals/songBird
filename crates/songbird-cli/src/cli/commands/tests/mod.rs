@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 // Allow common test patterns - idiomatic for test code
 #![allow(clippy::unwrap_used, clippy::expect_used)]
 #![allow(clippy::unnecessary_wraps)]

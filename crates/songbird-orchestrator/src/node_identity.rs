@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Node Identity Management
 //!
 //! Provides stable node identity across network changes, restarts, and interface changes.
@@ -173,15 +176,15 @@ impl NodeIdentity {
         // Try MAC address (less stable, but better than random)
         #[cfg(target_os = "linux")]
         {
-            if let Ok(interfaces) = Self::get_mac_addresses() {
-                if let Some(mac) = interfaces.first() {
-                    let hash_input = if let Some(ref suffix) = node_id_suffix {
-                        format!("{mac}:{suffix}")
-                    } else {
-                        mac.clone()
-                    };
-                    return Ok(Uuid::new_v5(&Uuid::NAMESPACE_DNS, hash_input.as_bytes()));
-                }
+            if let Ok(interfaces) = Self::get_mac_addresses()
+                && let Some(mac) = interfaces.first()
+            {
+                let hash_input = if let Some(ref suffix) = node_id_suffix {
+                    format!("{mac}:{suffix}")
+                } else {
+                    mac.clone()
+                };
+                return Ok(Uuid::new_v5(&Uuid::NAMESPACE_DNS, hash_input.as_bytes()));
             }
         }
 

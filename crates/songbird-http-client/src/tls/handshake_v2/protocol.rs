@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Protocol constants and helpers for TLS 1.3
 //!
 //! RFC 8446 constants and utility functions used throughout the handshake.

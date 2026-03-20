@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Relay server JSON-RPC handler for biomeOS integration
 //!
 //! **Pure Rust | Zero Unsafe | Modern Async**
@@ -31,7 +34,7 @@ use crate::relay::RelayAuthority;
 use crate::relay_protocol::AllocationRequest;
 use crate::relay_server::RelayServer;
 use crate::types::NodeId;
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use std::net::SocketAddr;
 use std::sync::Arc;
 use tokio::sync::RwLock;

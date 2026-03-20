@@ -1,6 +1,9 @@
-//! Mock BearDog Provider
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
+//! Mock `BearDog` Provider
 //!
-//! For testing Songbird without BearDog deployed.
+//! For testing Songbird without `BearDog` deployed.
 //!
 //! **SECURITY WARNING**: This is for testing only!
 //! - No real encryption
@@ -8,17 +11,17 @@
 //! - Simulates the interface only
 //!
 //! **Note**: This mock is only available in test builds.
-//! For production code, use the actual BearDog provider.
+//! For production code, use the actual `BearDog` provider.
 
 use super::*;
-use anyhow::{anyhow, Result};
+use anyhow::{Result, anyhow};
 use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::RwLock;
 
-/// Mock BearDog provider for testing
+/// Mock `BearDog` provider for testing
 ///
-/// Implements all BearDog traits but with fake crypto.
+/// Implements all `BearDog` traits but with fake crypto.
 pub struct MockBearDogProvider {
     /// Fake lineage graph
     lineages: Arc<RwLock<HashMap<String, Vec<String>>>>,
@@ -32,6 +35,7 @@ pub struct MockBearDogProvider {
 
 impl MockBearDogProvider {
     /// Create new mock provider
+    #[must_use]
     pub fn new() -> Self {
         Self {
             lineages: Arc::new(RwLock::new(HashMap::new())),
@@ -87,10 +91,10 @@ impl LineageProvider for MockBearDogProvider {
     ) -> Result<Option<usize>> {
         let lineages = self.lineages.read().await;
 
-        if let Some(descendants) = lineages.get(ancestor_id) {
-            if descendants.contains(&descendant_id.to_string()) {
-                return Ok(Some(1)); // Fake depth
-            }
+        if let Some(descendants) = lineages.get(ancestor_id)
+            && descendants.contains(&descendant_id.to_string())
+        {
+            return Ok(Some(1)); // Fake depth
         }
 
         Ok(None)
@@ -139,7 +143,7 @@ impl BirdSongCrypto for MockBearDogProvider {
     ) -> Result<BroadcastKey> {
         tracing::warn!("🐻 MOCK: Generating fake key");
 
-        let key_id = format!("mock_key_{:?}", lineage_hint);
+        let key_id = format!("mock_key_{lineage_hint:?}");
         let key = BroadcastKey {
             key_id: key_id.clone(),
             key_data: vec![0x12, 0x34, 0x56, 0x78], // Fake key
@@ -214,7 +218,7 @@ impl BearDogProvider for MockBearDogProvider {
         true
     }
 
-    fn version(&self) -> &str {
+    fn version(&self) -> &'static str {
         "0.0.0-mock"
     }
 

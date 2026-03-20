@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Auto-approval rules
 
 /// Rule for auto-approving consent
@@ -17,12 +20,11 @@ impl AutoApprovalRule {
         }
 
         // Check cost
-        if let Some(max) = self.max_cost {
-            if let Some(actual_cost) = cost {
-                if actual_cost > max {
-                    return false;
-                }
-            }
+        if let Some(max) = self.max_cost
+            && let Some(actual_cost) = cost
+            && actual_cost > max
+        {
+            return false;
         }
 
         true

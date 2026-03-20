@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 #![allow(dead_code)]
 
 // Module declarations
@@ -29,7 +32,7 @@ mod tests_discovery_bridge; // Discovery→Federation bridge unit & E2E tests (v
 pub use core::SongbirdOrchestrator;
 pub use health::{HealthCheckReport, OrchestratorStatus};
 pub use network::{detect_primary_ip, get_local_ip_for_connectivity_test, parse_bind_address};
-pub use startup::{start_orchestrator, Orchestrator};
+pub use startup::{Orchestrator, start_orchestrator};
 
 // use songbird_federation::{//     FederationConfig,
 //     canonical_federation::CanonicalFederation)

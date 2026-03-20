@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! HTTPS request example (requires BearDog running)
 
 use songbird_http_client::SongbirdHttpClient;

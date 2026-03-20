@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Query types for searching plugins
 //!
 //! Provides a flexible query system for finding plugins.

@@ -1,7 +1,7 @@
 [package]
 name = "songbird-tor-protocol"
 version.workspace = true
-edition = "2021"
+edition.workspace = true
 authors = ["ecoPrimals <songbird@ecoprimal.io>"]
 license = "AGPL-3.0"
 description = "Pure Rust Tor protocol implementation for Songbird - TRUE PRIMAL (100% BearDog delegation)"

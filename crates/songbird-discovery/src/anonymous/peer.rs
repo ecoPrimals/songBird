@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Discovered Peer Management
 //!
 //! This module contains the peer discovery data structure and management logic.
@@ -76,10 +79,10 @@ impl DiscoveredPeer {
     /// Returns the highest-preference endpoint, or falls back to HTTPS endpoint.
     #[must_use]
     pub fn primary_endpoint(&self) -> String {
-        if let Some(ref endpoints) = self.endpoints {
-            if let Some(primary) = endpoints.iter().max_by_key(|e| e.preference) {
-                return primary.address.clone();
-            }
+        if let Some(ref endpoints) = self.endpoints
+            && let Some(primary) = endpoints.iter().max_by_key(|e| e.preference)
+        {
+            return primary.address.clone();
         }
         self.https_endpoint()
     }
@@ -90,7 +93,7 @@ impl DiscoveredPeer {
     /// For v2.x: Compares `session_id` (less reliable)
     #[must_use]
     pub fn is_same_peer(&self, other: &Self) -> bool {
-        if let (Some(ref my_id), Some(ref other_id)) = (&self.node_id, &other.node_id) {
+        if let (Some(my_id), Some(other_id)) = (&self.node_id, &other.node_id) {
             // v3.0: Use stable node_id
             my_id == other_id
         } else {

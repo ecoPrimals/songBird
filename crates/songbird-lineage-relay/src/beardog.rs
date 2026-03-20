@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! `BearDog` `BirdSong` Provider - Production & Test Implementations
 //!
 //! Production implementation connects to `BearDog` via Unix socket JSON-RPC.
@@ -151,7 +154,7 @@ impl BirdSongCrypto for BearDogBirdSongProvider {
         debug!("🔒 Encrypting for lineage via BearDog (hint: {:?})", hint);
 
         // Encode message as base64 for JSON-RPC
-        use base64::{engine::general_purpose, Engine as _};
+        use base64::{Engine as _, engine::general_purpose};
         let plaintext_b64 = general_purpose::STANDARD.encode(message);
 
         // Build request params
@@ -189,7 +192,7 @@ impl BirdSongCrypto for BearDogBirdSongProvider {
         debug!("🔓 Decrypting BirdSong from {:?}", sender);
 
         // Encode ciphertext as base64 for JSON-RPC
-        use base64::{engine::general_purpose, Engine as _};
+        use base64::{Engine as _, engine::general_purpose};
         let ciphertext_b64 = general_purpose::STANDARD.encode(encrypted);
 
         // Build request params

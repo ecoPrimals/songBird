@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! # 🔧 Universal Discovery Factory
 //!
 //! **MODERNIZED UNIVERSAL FACTORY** ✅
@@ -24,8 +27,8 @@ use songbird_types::{SongbirdError, SongbirdResult};
 use tracing::{debug, info, warn};
 
 // Import universal adapters
-use songbird_universal::capabilities::UniversalCapabilityAdapter;
 use songbird_universal::UnifiedUniversalAdapter;
+use songbird_universal::capabilities::UniversalCapabilityAdapter;
 
 type Result<T> = SongbirdResult<T>;
 

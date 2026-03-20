@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Bluetooth device representation
 //!
 //! Modern, safe types for representing BLE devices and addresses.
@@ -30,7 +33,7 @@ impl Address {
     pub fn random() -> Self {
         use rand::Rng;
         let mut rng = rand::thread_rng();
-        Self([rng.gen(), rng.gen(), rng.gen(), rng.gen(), rng.gen(), rng.gen()])
+        Self(std::array::from_fn(|_| Rng::r#gen(&mut rng)))
     }
 }
 

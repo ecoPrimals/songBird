@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! TLS Fault Injection Tests
 //!
 //! These tests inject specific faults into the TLS handshake to verify
@@ -6,7 +9,7 @@
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::{TcpListener, TcpStream};
 use tokio::sync::oneshot;
-use tokio::time::{sleep, Duration};
+use tokio::time::{Duration, sleep};
 
 #[cfg(test)]
 mod protocol_faults {

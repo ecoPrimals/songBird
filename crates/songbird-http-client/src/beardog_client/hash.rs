@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Hashing and HKDF operations
 //!
 //! SHA-256, SHA-384 hashing and HKDF key derivation.

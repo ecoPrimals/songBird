@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Wire format codec for TLS messages
 //!
 //! This module handles serialization and deserialization of TLS messages

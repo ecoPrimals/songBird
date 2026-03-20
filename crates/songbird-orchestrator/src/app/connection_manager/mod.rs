@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Connection Manager - Domain-driven modular architecture
 //!
 //! Manages peer connections with trust-based capability enforcement.
@@ -19,7 +22,7 @@ use tokio::sync::RwLock;
 pub use btsp::BtspConnectionFactory;
 pub use peer::PeerRegistry;
 pub use trust::TrustEvaluator;
-pub use types::{systemtime_as_secs, PeerMetadata};
+pub use types::{PeerMetadata, systemtime_as_secs};
 
 use crate::btsp_client::BtspClient;
 use crate::connections::Connection;

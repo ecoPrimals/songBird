@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Integration tests for STUN server and client
 //!
 //! Tests the complete server ↔ client interaction.
@@ -13,7 +16,7 @@ async fn start_stun_server() -> (tokio::task::JoinHandle<()>, std::net::SocketAd
     let (ready_tx, ready_rx) = oneshot::channel();
 
     let handle = tokio::spawn(async move {
-        let mut server = StunServer::new("127.0.0.1:0".parse().unwrap());
+        let server = StunServer::new("127.0.0.1:0".parse().unwrap());
         let _ = server.run_with_ready(ready_tx).await;
     });
 

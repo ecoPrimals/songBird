@@ -1,6 +1,9 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 // Async test helpers for songbird testing
 
-use songbird_types::{errors::SongbirdResult, SongbirdError};
+use songbird_types::{SongbirdError, errors::SongbirdResult};
 use std::future::Future;
 use std::time::Duration;
 use tokio::time::{sleep, timeout};

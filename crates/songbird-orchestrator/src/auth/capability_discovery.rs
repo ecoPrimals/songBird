@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Capability-Based Security Provider Discovery
 //!
 //! Discovers ANY primal offering "security" capability via runtime discovery.
@@ -51,27 +54,27 @@ where
     info!("🔍 Discovering security provider via capability-based discovery...");
 
     // Strategy 1: SECURITY_PROVIDER (orchestrator-managed, preferred)
-    if let Ok(socket_path) = env_reader("SECURITY_PROVIDER") {
-        if !socket_path.is_empty() {
-            info!("   ✅ Found SECURITY_PROVIDER: {}", socket_path);
-            return Some(PathBuf::from(socket_path));
-        }
+    if let Ok(socket_path) = env_reader("SECURITY_PROVIDER")
+        && !socket_path.is_empty()
+    {
+        info!("   ✅ Found SECURITY_PROVIDER: {}", socket_path);
+        return Some(PathBuf::from(socket_path));
     }
 
     // Strategy 2: SECURITY_PROVIDER_SOCKET (capability-standard)
-    if let Ok(socket_path) = env_reader("SECURITY_PROVIDER_SOCKET") {
-        if !socket_path.is_empty() {
-            info!("   ✅ Found SECURITY_PROVIDER_SOCKET: {}", socket_path);
-            return Some(PathBuf::from(socket_path));
-        }
+    if let Ok(socket_path) = env_reader("SECURITY_PROVIDER_SOCKET")
+        && !socket_path.is_empty()
+    {
+        info!("   ✅ Found SECURITY_PROVIDER_SOCKET: {}", socket_path);
+        return Some(PathBuf::from(socket_path));
     }
 
     // Strategy 3: BEARDOG_SOCKET (legacy compatibility)
-    if let Ok(socket_path) = env_reader("BEARDOG_SOCKET") {
-        if !socket_path.is_empty() {
-            info!("   ✅ Found BEARDOG_SOCKET (security capability): {}", socket_path);
-            return Some(PathBuf::from(socket_path));
-        }
+    if let Ok(socket_path) = env_reader("BEARDOG_SOCKET")
+        && !socket_path.is_empty()
+    {
+        info!("   ✅ Found BEARDOG_SOCKET (security capability): {}", socket_path);
+        return Some(PathBuf::from(socket_path));
     }
 
     // Strategy 4+5: Capability-named sockets first, then known providers

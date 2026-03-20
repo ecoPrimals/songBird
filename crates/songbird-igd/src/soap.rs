@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! SOAP (Simple Object Access Protocol) control for `UPnP` IGD
 //!
 //! Implements SOAP XML envelope construction and parsing for `UPnP` port mapping operations.
@@ -214,15 +217,16 @@ impl SoapClient {
         let response_body = &response_str[body_start..];
 
         // Check HTTP status
-        if let Some(status_line) = response_str.lines().next() {
-            if !status_line.contains("200") && !status_line.contains("OK") {
-                // UPnP sends 500 for SOAP faults — the body contains the error details
-                if status_line.contains("500") {
-                    debug!("SOAP fault received (HTTP 500), parsing error details");
-                    return Ok(response_body.to_string());
-                }
-                return Err(IgdError::SoapError(format!("HTTP error: {status_line}")));
+        if let Some(status_line) = response_str.lines().next()
+            && !status_line.contains("200")
+            && !status_line.contains("OK")
+        {
+            // UPnP sends 500 for SOAP faults — the body contains the error details
+            if status_line.contains("500") {
+                debug!("SOAP fault received (HTTP 500), parsing error details");
+                return Ok(response_body.to_string());
             }
+            return Err(IgdError::SoapError(format!("HTTP error: {status_line}")));
         }
 
         Ok(response_body.to_string())
@@ -255,10 +259,10 @@ impl SoapClient {
         // Look for <errorCode>718</errorCode> or similar
         if let Some(start) = response.find("<errorCode>") {
             let start = start + 11;
-            if let Some(end) = response[start..].find("</errorCode>") {
-                if let Ok(code) = response[start..start + end].parse::<u16>() {
-                    return Some(code);
-                }
+            if let Some(end) = response[start..].find("</errorCode>")
+                && let Ok(code) = response[start..start + end].parse::<u16>()
+            {
+                return Some(code);
             }
         }
         None

@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! `BearDog` client core
 //!
 //! Client struct, mode enum, and constructors.
@@ -225,7 +228,7 @@ mod tests {
         use std::net::SocketAddr;
         let tcp_addr: SocketAddr = "127.0.0.1:12345".parse().unwrap();
         let endpoint = IpcEndpoint::TcpLocal(tcp_addr);
-        let client = BearDogClient::new_direct_with_endpoint(endpoint.clone());
+        let client = BearDogClient::new_direct_with_endpoint(endpoint);
         assert!(matches!(client.endpoint(), IpcEndpoint::TcpLocal(_)));
     }
 }

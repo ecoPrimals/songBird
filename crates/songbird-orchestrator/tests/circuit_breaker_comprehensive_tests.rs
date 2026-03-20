@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Comprehensive tests for circuit breaker and robustness patterns
 #![allow(clippy::uninlined_format_args)]
 #![allow(clippy::float_cmp)]

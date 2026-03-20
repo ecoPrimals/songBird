@@ -1,11 +1,24 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Onion service descriptor generation
 //!
 //! **Phase 2D**: Onion Service
 
 use crate::crypto::BeardogCryptoClient;
-use crate::error::Result;
+use crate::error::{Error, Result};
 use crate::onion_service::IntroductionPoint;
 use base32;
+
+/// Attempt to get key material from `BearDog` via capability discovery.
+///
+/// When wired, this will perform JSON-RPC to `BearDog` over the Unix socket.
+/// Until then, returns a clear error instead of silent zeroed key material.
+fn request_beardog_key(method: &str) -> Result<Vec<u8>> {
+    Err(Error::CryptoUnavailable(format!(
+        "BearDog crypto delegation required for {method} - not yet connected"
+    )))
+}
 
 /// Onion service keys (Ed25519 + X25519)
 #[derive(Debug, Clone)]
@@ -26,18 +39,30 @@ pub struct OnionServiceKeys {
 
 impl OnionServiceKeys {
     /// Generate new service keys via `BearDog`
+    ///
+    /// # Errors
+    ///
+    /// Returns error if key generation or address derivation fails.
     pub async fn generate(beardog: &BeardogCryptoClient) -> Result<Self> {
         core::future::ready(()).await;
-        // Generate Ed25519 identity keypair
-        // TODO: Call beardog.ed25519_generate()
-        let identity_secret = [0u8; 32]; // Placeholder
-        let identity_public = [0u8; 32]; // Placeholder
+        // Ed25519 identity keypair: single BearDog RPC when wired (`secret || public`, 64 bytes)
+        let identity_pair = request_beardog_key("crypto.ed25519.generate_onion_service_identity")?;
+        if identity_pair.len() != 64 {
+            return Err(Error::Crypto(format!(
+                "BearDog onion identity keypair: expected 64 bytes, got {}",
+                identity_pair.len()
+            )));
+        }
+        let mut identity_secret = [0u8; 32];
+        let mut identity_public = [0u8; 32];
+        identity_secret.copy_from_slice(&identity_pair[..32]);
+        identity_public.copy_from_slice(&identity_pair[32..]);
 
         // Generate X25519 encryption keypair
         let encryption_keypair = beardog.x25519_generate_ephemeral()?;
 
         // Derive onion address from public key
-        let onion_address = Self::derive_onion_address(&identity_public)?;
+        let onion_address = Self::derive_onion_address(&identity_public);
 
         Ok(Self {
             identity_secret,
@@ -54,7 +79,7 @@ impl OnionServiceKeys {
     /// - `public_key`: 32 bytes
     /// - checksum: 2 bytes (truncated SHA3-256)
     /// - version: 1 byte (0x03)
-    fn derive_onion_address(public_key: &[u8; 32]) -> Result<String> {
+    fn derive_onion_address(public_key: &[u8; 32]) -> String {
         let version: u8 = 0x03;
 
         // Calculate checksum via pure Rust SHA3-256
@@ -73,14 +98,12 @@ impl OnionServiceKeys {
         addr_bytes.push(version);
 
         // Encode to base32 (56 chars)
-        let encoded = base32::encode(
+        base32::encode(
             base32::Alphabet::RFC4648 {
                 padding: false,
             },
             &addr_bytes,
-        );
-
-        Ok(encoded)
+        )
     }
 }
 
@@ -101,6 +124,10 @@ pub struct OnionServiceDescriptor {
 
 impl OnionServiceDescriptor {
     /// Create new descriptor
+    ///
+    /// # Errors
+    ///
+    /// Returns error if descriptor creation fails.
     pub fn new(keys: &OnionServiceKeys, intro_points: &[IntroductionPoint]) -> Result<Self> {
         // TODO: Generate descriptor signing key (blinded from identity)
         let signing_key = keys.identity_public;
@@ -108,8 +135,14 @@ impl OnionServiceDescriptor {
         // Default lifetime: 3 hours
         let lifetime_minutes = 180;
 
-        // TODO: Sign descriptor with signing key
-        let signature = Vec::new(); // Placeholder
+        // Descriptor Ed25519 signature: BearDog JSON-RPC when wired (64 bytes)
+        let signature = request_beardog_key("crypto.sign.ed25519_onion_descriptor")?;
+        if signature.len() != 64 {
+            return Err(Error::Crypto(format!(
+                "BearDog onion descriptor signature: expected 64 bytes, got {}",
+                signature.len()
+            )));
+        }
 
         Ok(Self {
             signing_key,
@@ -129,15 +162,26 @@ impl OnionServiceDescriptor {
     ///
     /// Currently produces the outer plaintext wrapper.
     /// `BearDog` integration needed for encryption layers and signing.
-    #[must_use]
-    pub fn encode(&self) -> Vec<u8> {
+    ///
+    /// # Errors
+    ///
+    /// Returns [`Error::CryptoUnavailable`] if the descriptor has no BearDog-produced signature.
+    pub fn encode(&self) -> Result<Vec<u8>> {
+        if self.signature.is_empty() {
+            return Err(Error::CryptoUnavailable(
+                "BearDog crypto delegation required: descriptor signature missing (refuse to encode with placeholder)"
+                    .into(),
+            ));
+        }
+
         let mut descriptor = String::new();
 
         // hs-descriptor 3
         descriptor.push_str("hs-descriptor 3\n");
 
         // descriptor-lifetime (in minutes)
-        descriptor.push_str(&format!("descriptor-lifetime {}\n", self.lifetime_minutes));
+        use std::fmt::Write;
+        let _ = writeln!(descriptor, "descriptor-lifetime {}", self.lifetime_minutes);
 
         // descriptor-signing-key-cert (placeholder)
         descriptor.push_str("descriptor-signing-key-cert\n");
@@ -157,23 +201,18 @@ impl OnionServiceDescriptor {
         descriptor.push_str("-----BEGIN MESSAGE-----\n");
         // In production: encrypted introduction point data
         // For now, encode introduction points as plaintext
-        for (i, ip) in self.intro_points.iter().enumerate() {
+        for ip in &self.intro_points {
             let ip_b64 = base64_encode(&ip.relay_identity);
-            descriptor.push_str(&format!("introduction-point {ip_b64}\n"));
-            let _ = i; // suppress unused
+            let _ = writeln!(descriptor, "introduction-point {ip_b64}");
         }
         descriptor.push_str("-----END MESSAGE-----\n");
 
-        // signature (placeholder — needs BearDog Ed25519)
+        // signature — must be BearDog Ed25519 (validated in `new` when using that path)
         descriptor.push_str("signature ");
-        if self.signature.is_empty() {
-            descriptor.push_str(&base64_encode(&[0u8; 64]));
-        } else {
-            descriptor.push_str(&base64_encode(&self.signature));
-        }
+        descriptor.push_str(&base64_encode(&self.signature));
         descriptor.push('\n');
 
-        descriptor.into_bytes()
+        Ok(descriptor.into_bytes())
     }
 
     /// Calculate descriptor ID for `HSDir` lookup
@@ -247,22 +286,21 @@ fn base64_encode(data: &[u8]) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::error::Error;
 
     #[test]
     fn test_onion_address_length() {
         // v3 addresses should be 56 characters (base32 of 35 bytes)
         let public_key = [0u8; 32];
-        let address =
-            OnionServiceKeys::derive_onion_address(&public_key).expect("Failed to derive address");
+        let address = OnionServiceKeys::derive_onion_address(&public_key);
 
         assert_eq!(address.len(), 56);
     }
 
     #[test]
-    fn test_descriptor_creation() {
-        let beardog = BeardogCryptoClient::from_env().expect("Failed to create BearDog client");
+    fn test_descriptor_new_requires_beardog_signing() {
+        let _beardog = BeardogCryptoClient::from_env().expect("Failed to create BearDog client");
 
-        // Create placeholder keys
         let keys = OnionServiceKeys {
             identity_secret: [0u8; 32],
             identity_public: [1u8; 32],
@@ -271,14 +309,10 @@ mod tests {
             onion_address: "test".to_string(),
         };
 
-        let intro_points = vec![];
-        let descriptor =
-            OnionServiceDescriptor::new(&keys, &intro_points).expect("Failed to create descriptor");
-
-        assert_eq!(descriptor.lifetime_minutes, 180);
-        assert_eq!(descriptor.intro_points.len(), 0);
-
-        let _ = beardog; // Suppress unused warning
+        assert!(matches!(
+            OnionServiceDescriptor::new(&keys, &[]),
+            Err(Error::CryptoUnavailable(_))
+        ));
     }
 
     #[test]
@@ -291,10 +325,15 @@ mod tests {
             onion_address: "test".to_string(),
         };
 
-        let descriptor =
-            OnionServiceDescriptor::new(&keys, &[]).expect("Failed to create descriptor");
+        // Wire-format test: non-empty signature bytes (no crypto validity asserted)
+        let descriptor = OnionServiceDescriptor {
+            signing_key: keys.identity_public,
+            lifetime_minutes: 180,
+            intro_points: vec![],
+            signature: vec![0xAB; 64],
+        };
 
-        let encoded = descriptor.encode();
+        let encoded = descriptor.encode().expect("encode with test signature");
         let encoded_str = String::from_utf8_lossy(&encoded);
 
         // Verify descriptor format
@@ -329,10 +368,14 @@ mod tests {
             circuit_id: 1,
         }];
 
-        let descriptor =
-            OnionServiceDescriptor::new(&keys, &intro_points).expect("Failed to create descriptor");
+        let descriptor = OnionServiceDescriptor {
+            signing_key: keys.identity_public,
+            lifetime_minutes: 180,
+            intro_points,
+            signature: vec![0xCD; 64],
+        };
 
-        let encoded = descriptor.encode();
+        let encoded = descriptor.encode().expect("encode");
         let encoded_str = String::from_utf8_lossy(&encoded);
 
         assert!(encoded_str.contains("introduction-point "));
@@ -348,8 +391,18 @@ mod tests {
             onion_address: "test".to_string(),
         };
 
-        let d1 = OnionServiceDescriptor::new(&keys, &[]).unwrap();
-        let d2 = OnionServiceDescriptor::new(&keys, &[]).unwrap();
+        let d1 = OnionServiceDescriptor {
+            signing_key: keys.identity_public,
+            lifetime_minutes: 180,
+            intro_points: vec![],
+            signature: vec![0x01; 64],
+        };
+        let d2 = OnionServiceDescriptor {
+            signing_key: keys.identity_public,
+            lifetime_minutes: 180,
+            intro_points: vec![],
+            signature: vec![0x01; 64],
+        };
 
         // Same time period should produce same descriptor ID
         let id1 = d1.descriptor_id();

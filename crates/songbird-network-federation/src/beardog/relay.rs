@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Lineage-Gated Relay Trait
 //!
 //! `BearDog` provides relay services based on lineage.

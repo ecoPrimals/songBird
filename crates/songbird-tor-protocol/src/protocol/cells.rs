@@ -1,6 +1,9 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Tor cell encoding/decoding
 //!
-//! **Status**: Phase 2B — cell types implemented, encryption pending BearDog AES-128-CTR
+//! **Status**: Phase 2B — cell types implemented, encryption pending `BearDog` AES-128-CTR
 
 use crate::error::{Error, Result};
 
@@ -63,6 +66,10 @@ impl Cell {
     }
 
     /// Decode cell from bytes
+    ///
+    /// # Errors
+    ///
+    /// Returns error if command byte is invalid.
     pub fn decode(data: &[u8; CELL_LEN]) -> Result<Self> {
         let circ_id = u32::from_be_bytes([data[0], data[1], data[2], data[3]]);
         let command = CellCommand::try_from(data[4])?;

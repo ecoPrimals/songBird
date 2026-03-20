@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Limited BTSP Connection (Trust Level 1 via Encrypted Tunnel)
 //!
 //! For peers with same genetic family but no human approval.
@@ -30,9 +33,9 @@
 //! - **RAII**: Automatic tunnel cleanup on drop
 //! - **Capability-Based**: Runtime security enforcement
 
-use super::{check_operation_allowed, PeerConnection};
+use super::{PeerConnection, check_operation_allowed};
 use crate::btsp_client::BtspClient; // v3.20.0: Unix socket BTSP client (Jan 16, 2026)
-use anyhow::{anyhow, Context, Result};
+use anyhow::{Context, Result, anyhow};
 use async_trait::async_trait;
 use serde_json::Value;
 use songbird_types::TrustLevel;

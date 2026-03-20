@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Mock `NestGate` Storage Primal
 //!
 //! Provides HTTP endpoints that simulate `NestGate`'s storage and data management capabilities.

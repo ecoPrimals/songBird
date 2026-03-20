@@ -1,0 +1,25 @@
+[package]
+name = "songbird-process-env"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+repository.workspace = true
+homepage.workspace = true
+description = "Safe façade for std::env mutation (Rust 2024 unsafe process-environment APIs)"
+keywords = ["environment", "process", "unsafe-facade"]
+categories = ["os"]
+
+# Cannot use lints.workspace = true because workspace forbids unsafe_code.
+# Mirror workspace lint settings but allow unsafe_code for this façade crate.
+[lints.rust]
+unsafe_code = "allow"
+unused_must_use = "warn"
+
+[lints.clippy]
+all = { level = "warn", priority = -1 }
+pedantic = { level = "warn", priority = -1 }
+nursery = { level = "warn", priority = -1 }
+cargo = { level = "warn", priority = -1 }
+multiple_crate_versions = "allow"
+cargo_common_metadata = "allow"

@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Dark Forest Beacon - TRUE encrypted discovery with zero metadata leakage
 //!
 //! ## The Dark Forest Problem
@@ -560,7 +563,7 @@ mod tests {
             version: 2,
         };
         let age = old_beacon.age_seconds();
-        assert!(age >= 100 && age <= 102); // Allow 2 seconds of test time
+        assert!((100..=102).contains(&age)); // Allow 2 seconds of test time
     }
 
     #[test]

@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 // BiomeOS Socket Chaos Engineering Tests
 // January 16, 2026
 //
@@ -41,9 +44,9 @@ fn chaos_random_env_mutations() {
         for env_var in &env_vars {
             if rng.gen_bool(0.5) {
                 let value = random_values[rng.gen_range(0..random_values.len())];
-                env::set_var(env_var, value);
+                songbird_process_env::set_var(env_var, value);
             } else {
-                env::remove_var(env_var);
+                songbird_process_env::remove_var(env_var);
             }
         }
         
@@ -73,8 +76,8 @@ fn chaos_rapid_env_changes() {
     
     // Rapidly change env vars and derive paths
     for i in 0..100 {
-        env::set_var("SONGBIRD_ORCHESTRATOR_SOCKET", socket_paths[i % socket_paths.len()]);
-        env::set_var("BIOMEOS_FAMILY_ID", family_ids[i % family_ids.len()]);
+        songbird_process_env::set_var("SONGBIRD_ORCHESTRATOR_SOCKET", socket_paths[i % socket_paths.len()]);
+        songbird_process_env::set_var("BIOMEOS_FAMILY_ID", family_ids[i % family_ids.len()]);
         
         let path = UnixSocketServer::socket_path_from_env();
         let family = UnixSocketServer::get_family_id();
@@ -115,14 +118,14 @@ fn chaos_random_priority_conflicts() {
         // Randomly set socket vars
         for var in &socket_vars {
             if rng.gen_bool(0.6) {
-                env::set_var(var, format!("/tmp/test-{}.sock", var));
+                songbird_process_env::set_var(var, format!("/tmp/test-{}.sock", var));
             }
         }
         
         // Randomly set family vars
         for var in &family_vars {
             if rng.gen_bool(0.6) {
-                env::set_var(var, format!("family-{}", var));
+                songbird_process_env::set_var(var, format!("family-{}", var));
             }
         }
         
@@ -153,8 +156,8 @@ fn chaos_random_priority_conflicts() {
 fn chaos_stress_many_calls() {
     let original = save_env_state();
     
-    env::set_var("SONGBIRD_ORCHESTRATOR_SOCKET", "/tmp/stress-test.sock");
-    env::set_var("BIOMEOS_FAMILY_ID", "stress");
+    songbird_process_env::set_var("SONGBIRD_ORCHESTRATOR_SOCKET", "/tmp/stress-test.sock");
+    songbird_process_env::set_var("BIOMEOS_FAMILY_ID", "stress");
     
     // Make 10,000 calls
     for _ in 0..10_000 {
@@ -187,7 +190,7 @@ fn chaos_special_characters() {
     ];
     
     for path in special_chars {
-        env::set_var("SONGBIRD_ORCHESTRATOR_SOCKET", path);
+        songbird_process_env::set_var("SONGBIRD_ORCHESTRATOR_SOCKET", path);
         let derived = UnixSocketServer::socket_path_from_env();
         
         // Should accept various special characters
@@ -222,7 +225,7 @@ fn chaos_family_id_formats() {
     
     for family_id in family_ids {
         clear_all_env_vars();
-        env::set_var("BIOMEOS_FAMILY_ID", family_id);
+        songbird_process_env::set_var("BIOMEOS_FAMILY_ID", family_id);
         
         let derived_family = UnixSocketServer::get_family_id();
         let derived_path = UnixSocketServer::socket_path_from_env();
@@ -245,8 +248,8 @@ fn chaos_alternating_clear_set() {
     for i in 0..100 {
         if i % 2 == 0 {
             // Set env vars
-            env::set_var("SONGBIRD_ORCHESTRATOR_SOCKET", "/tmp/test.sock");
-            env::set_var("BIOMEOS_FAMILY_ID", "test");
+            songbird_process_env::set_var("SONGBIRD_ORCHESTRATOR_SOCKET", "/tmp/test.sock");
+            songbird_process_env::set_var("BIOMEOS_FAMILY_ID", "test");
             
             let path = UnixSocketServer::socket_path_from_env();
             let family = UnixSocketServer::get_family_id();
@@ -280,7 +283,7 @@ fn chaos_random_path_lengths() {
         let length = rng.gen_range(1..300);
         let path = format!("/tmp/{}.sock", "x".repeat(length));
         
-        env::set_var("SONGBIRD_ORCHESTRATOR_SOCKET", &path);
+        songbird_process_env::set_var("SONGBIRD_ORCHESTRATOR_SOCKET", &path);
         let derived = UnixSocketServer::socket_path_from_env();
         
         assert_eq!(derived, PathBuf::from(path));
@@ -318,7 +321,7 @@ fn chaos_mixed_valid_invalid() {
         let path = paths[rng.gen_range(0..paths.len())];
         
         if !path.is_empty() {
-            env::set_var("SONGBIRD_ORCHESTRATOR_SOCKET", path);
+            songbird_process_env::set_var("SONGBIRD_ORCHESTRATOR_SOCKET", path);
         }
         
         // Should not panic
@@ -338,13 +341,13 @@ fn chaos_environment_pollution() {
     
     // Pollute environment with unrelated vars
     for i in 0..50 {
-        env::set_var(format!("RANDOM_VAR_{}", i), format!("value_{}", i));
-        env::set_var(format!("SONGBIRD_UNRELATED_{}", i), format!("value_{}", i));
+        songbird_process_env::set_var(format!("RANDOM_VAR_{}", i), format!("value_{}", i));
+        songbird_process_env::set_var(format!("SONGBIRD_UNRELATED_{}", i), format!("value_{}", i));
     }
     
     // Set correct vars
-    env::set_var("SONGBIRD_ORCHESTRATOR_SOCKET", "/tmp/correct.sock");
-    env::set_var("BIOMEOS_FAMILY_ID", "correct");
+    songbird_process_env::set_var("SONGBIRD_ORCHESTRATOR_SOCKET", "/tmp/correct.sock");
+    songbird_process_env::set_var("BIOMEOS_FAMILY_ID", "correct");
     
     // Should find correct vars despite pollution
     let path = UnixSocketServer::socket_path_from_env();
@@ -355,8 +358,8 @@ fn chaos_environment_pollution() {
     
     // Cleanup pollution
     for i in 0..50 {
-        env::remove_var(format!("RANDOM_VAR_{}", i));
-        env::remove_var(format!("SONGBIRD_UNRELATED_{}", i));
+        songbird_process_env::remove_var(format!("RANDOM_VAR_{}", i));
+        songbird_process_env::remove_var(format!("SONGBIRD_UNRELATED_{}", i));
     }
     
     restore_env_state(original);
@@ -384,7 +387,7 @@ fn chaos_unicode_international() {
     
     for (family_id, _description) in test_cases {
         clear_all_env_vars();
-        env::set_var("BIOMEOS_FAMILY_ID", family_id);
+        songbird_process_env::set_var("BIOMEOS_FAMILY_ID", family_id);
         
         // Should handle Unicode without panic
         let derived_family = UnixSocketServer::get_family_id();
@@ -420,19 +423,19 @@ fn save_env_state() -> Vec<(String, Option<String>)> {
 fn restore_env_state(state: Vec<(String, Option<String>)>) {
     for (key, value) in state {
         match value {
-            Some(v) => env::set_var(&key, v),
-            None => env::remove_var(&key),
+            Some(v) => songbird_process_env::set_var(&key, v),
+            None => songbird_process_env::remove_var(&key),
         }
     }
 }
 
 fn clear_all_env_vars() {
-    env::remove_var("SONGBIRD_ORCHESTRATOR_SOCKET");
-    env::remove_var("SONGBIRD_SOCKET");
-    env::remove_var("BIOMEOS_SOCKET_PATH");
-    env::remove_var("SONGBIRD_ORCHESTRATOR_FAMILY_ID");
-    env::remove_var("SONGBIRD_ORCHESTRATOR_FAMILY");
-    env::remove_var("BIOMEOS_FAMILY_ID");
-    env::remove_var("SONGBIRD_FAMILY_ID");
+    songbird_process_env::remove_var("SONGBIRD_ORCHESTRATOR_SOCKET");
+    songbird_process_env::remove_var("SONGBIRD_SOCKET");
+    songbird_process_env::remove_var("BIOMEOS_SOCKET_PATH");
+    songbird_process_env::remove_var("SONGBIRD_ORCHESTRATOR_FAMILY_ID");
+    songbird_process_env::remove_var("SONGBIRD_ORCHESTRATOR_FAMILY");
+    songbird_process_env::remove_var("BIOMEOS_FAMILY_ID");
+    songbird_process_env::remove_var("SONGBIRD_FAMILY_ID");
 }
 

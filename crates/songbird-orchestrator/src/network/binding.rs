@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Network Binding Strategy
 //!
 //! Intelligent, zero-configuration network interface binding for Songbird.
@@ -210,28 +213,27 @@ impl NetworkCapabilities {
         let mut has_ipv6 = false;
 
         // Test IPv4: Try to determine route to public IPv4 address
-        if let Ok(socket) = UdpSocket::bind("0.0.0.0:0") {
-            if socket.connect("8.8.8.8:80").is_ok() {
-                if let Ok(local_addr) = socket.local_addr() {
-                    let ip = local_addr.ip();
-                    if !ip.is_loopback() && !ip.is_unspecified() {
-                        has_ipv4 = true;
-                        debug!("IPv4 detected via routing check: {}", ip);
-                    }
-                }
+        if let Ok(socket) = UdpSocket::bind("0.0.0.0:0")
+            && socket.connect("8.8.8.8:80").is_ok()
+            && let Ok(local_addr) = socket.local_addr()
+        {
+            let ip = local_addr.ip();
+            if !ip.is_loopback() && !ip.is_unspecified() {
+                has_ipv4 = true;
+                debug!("IPv4 detected via routing check: {}", ip);
             }
         }
 
         // Test IPv6: Try to determine route to public IPv6 address
         if let Ok(socket) = UdpSocket::bind("[::]:0") {
             // Use Google's public DNS IPv6 address
-            if socket.connect("[2001:4860:4860::8888]:80").is_ok() {
-                if let Ok(local_addr) = socket.local_addr() {
-                    let ip = local_addr.ip();
-                    if !ip.is_loopback() && !ip.is_unspecified() {
-                        has_ipv6 = true;
-                        debug!("IPv6 detected via routing check: {}", ip);
-                    }
+            if socket.connect("[2001:4860:4860::8888]:80").is_ok()
+                && let Ok(local_addr) = socket.local_addr()
+            {
+                let ip = local_addr.ip();
+                if !ip.is_loopback() && !ip.is_unspecified() {
+                    has_ipv6 = true;
+                    debug!("IPv6 detected via routing check: {}", ip);
                 }
             }
         }
@@ -283,12 +285,13 @@ impl NetworkCapabilities {
             }
 
             // Try to detect primary interface name
-            if primary_interface.is_none() && line.contains(": ") {
-                if let Some(name) = line.split(':').nth(1) {
-                    let name = name.trim();
-                    if !name.starts_with("lo") {
-                        primary_interface = Some(name.to_string());
-                    }
+            if primary_interface.is_none()
+                && line.contains(": ")
+                && let Some(name) = line.split(':').nth(1)
+            {
+                let name = name.trim();
+                if !name.starts_with("lo") {
+                    primary_interface = Some(name.to_string());
                 }
             }
         }

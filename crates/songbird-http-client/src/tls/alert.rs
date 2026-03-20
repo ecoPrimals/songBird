@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! TLS Alert Protocol (RFC 8446 Section 6)
 //!
 //! Implements parsing and handling of TLS alert messages.
@@ -238,6 +241,10 @@ impl TlsAlert {
     /// Alert format (RFC 8446 Section 6):
     /// - Level: 1 byte (1=warning, 2=fatal)
     /// - Description: 1 byte (alert code)
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the data is too short or contains unknown level/description codes.
     pub fn parse(data: &[u8]) -> Result<Self, String> {
         if data.len() < 2 {
             return Err(format!("Alert too short: {} bytes (need 2)", data.len()));

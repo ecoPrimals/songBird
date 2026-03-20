@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Real-Time AI Streaming Interfaces Interfaces
 //!
 //! Provides WebSocket-based real-time communication channels for seamless

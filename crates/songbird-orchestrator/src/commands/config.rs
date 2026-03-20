@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Config command — configuration management
 //!
 //! Provides `run_config()` for showing, validating, and initializing

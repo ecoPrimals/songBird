@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! # 🎯 Hardcoded Value Elimination Infrastructure
 //!
 //! This module provides configuration infrastructure to eliminate hardcoded ports,
@@ -848,8 +851,8 @@ mod tests {
     #[test]
     fn test_endpoint_config_from_env() {
         // Set test environment variables
-        env::set_var("SONGBIRD_ORCHESTRATOR_PORT", "9999");
-        env::set_var("SONGBIRD_ORCHESTRATOR_HOST", "test.local");
+        songbird_process_env::set_var("SONGBIRD_ORCHESTRATOR_PORT", "9999");
+        songbird_process_env::set_var("SONGBIRD_ORCHESTRATOR_HOST", "test.local");
 
         let config = EndpointConfig::from_env().expect("Failed to load config");
 
@@ -858,8 +861,8 @@ mod tests {
         assert_eq!(config.orchestrator_endpoint(), "http://test.local:9999");
 
         // Cleanup
-        env::remove_var("SONGBIRD_ORCHESTRATOR_PORT");
-        env::remove_var("SONGBIRD_ORCHESTRATOR_HOST");
+        songbird_process_env::remove_var("SONGBIRD_ORCHESTRATOR_PORT");
+        songbird_process_env::remove_var("SONGBIRD_ORCHESTRATOR_HOST");
     }
 
     #[test]

@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! # Songbird IGD - Sovereign Router Configuration
 //!
 //! Pure Rust implementation of `UPnP` IGD (Internet Gateway Device) and NAT-PMP protocols

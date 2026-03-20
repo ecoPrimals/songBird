@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Minimal pure Rust HTTP GET client for Tor directory fetching
 //!
 //! Replaces `reqwest` to eliminate the `ring` dependency chain.

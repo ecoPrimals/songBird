@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! AI Workload Classification - Delegated via Capability-Based Discovery Discovery
 //!
 //! This module provides a delegation layer that forwards AI workload classification

@@ -1,13 +1,16 @@
 [package]
 name = "songbird-registry"
 version.workspace = true
-edition = "2021"
+edition.workspace = true
 description = "High-performance universal service registry with zero-cost abstractions and capability-based discovery"
 license = "AGPL-3.0"
 repository = "https://github.com/ecoPrimals/songbird"
 keywords = ["orchestration", "service-discovery", "registry", "microservices", "distributed"]
 categories = ["network-programming", "web-programming", "development-tools"]
 
+[features]
+# Used by `cfg(feature = "tests-incomplete")` in opt-in incomplete integration tests.
+tests-incomplete = []
 
 [lints]
 workspace = true
@@ -41,4 +44,4 @@ songbird-discovery = { path = "../songbird-discovery" }
 songbird-config = { path = "../songbird-config" }
 
 [dev-dependencies]
-tokio-test = "0.4" 
+tokio-test = "0.4"

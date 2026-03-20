@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! UniBin E2E (End-to-End) Tests
 //!
 //! Full workflow testing for UniBin implementation including:
@@ -13,15 +16,14 @@ use predicates::prelude::*;
 
 use std::fs;
 use std::path::PathBuf;
-use tempfile::{tempdir, TempDir};
-use tokio::time::{sleep, Duration};
+use tempfile::{TempDir, tempdir};
 
 // ====================
 // TEST HELPERS
 // ====================
 
 fn clean_cmd() -> Command {
-    let mut cmd = Command::cargo_bin("songbird").unwrap();
+    let mut cmd = Command::new(assert_cmd::cargo_bin!("songbird"));
     cmd.env_clear();
     cmd.env("PATH", std::env::var("PATH").unwrap_or_default());
     cmd
@@ -141,9 +143,9 @@ async fn test_e2e_server_with_custom_port() -> Result<(), Box<dyn std::error::Er
 // ✅ NO #[serial]! Uses isolated environment!
 async fn test_e2e_environment_variable_integration() -> Result<(), Box<dyn std::error::Error>> {
     // Set environment variables
-    std::env::set_var("SONGBIRD_PORT", "9000");
-    std::env::set_var("SONGBIRD_NODE_ID", "e2e-test-node");
-    std::env::set_var("SONGBIRD_FAMILY_ID", "nat0");
+    songbird_process_env::set_var("SONGBIRD_PORT", "9000");
+    songbird_process_env::set_var("SONGBIRD_NODE_ID", "e2e-test-node");
+    songbird_process_env::set_var("SONGBIRD_FAMILY_ID", "nat0");
 
     // Run doctor to verify env vars are read
     let mut cmd = clean_cmd();
@@ -309,7 +311,7 @@ async fn test_e2e_concurrent_doctor_checks() -> Result<(), Box<dyn std::error::E
 
     for _ in 0..3 {
         let handle = tokio::spawn(async {
-            let mut cmd = Command::cargo_bin("songbird").unwrap();
+            let mut cmd = Command::new(assert_cmd::cargo_bin!("songbird"));
             cmd.arg("doctor").assert().success();
         });
         handles.push(handle);
@@ -331,11 +333,11 @@ async fn test_e2e_full_lifecycle_simulation() -> Result<(), Box<dyn std::error::
     // Full lifecycle: check version -> init config -> validate -> doctor -> show config
 
     // 1. Check version
-    Command::cargo_bin("songbird")?.arg("--version").assert().success();
+    Command::new(assert_cmd::cargo_bin!("songbird")).arg("--version").assert().success();
 
     // 2. Initialize config
     let config_path = temp_dir.path().join("lifecycle-config.toml");
-    Command::cargo_bin("songbird")?
+    Command::new(assert_cmd::cargo_bin!("songbird"))
         .arg("config")
         .arg("init")
         .arg("--output")
@@ -345,13 +347,17 @@ async fn test_e2e_full_lifecycle_simulation() -> Result<(), Box<dyn std::error::
         .success();
 
     // 3. Validate config (reads from env or default)
-    Command::cargo_bin("songbird")?.arg("config").arg("validate").assert().success();
+    Command::new(assert_cmd::cargo_bin!("songbird"))
+        .arg("config")
+        .arg("validate")
+        .assert()
+        .success();
 
     // 4. Run doctor
-    Command::cargo_bin("songbird")?.arg("doctor").assert().success();
+    Command::new(assert_cmd::cargo_bin!("songbird")).arg("doctor").assert().success();
 
     // 5. Show config (reads from env or default)
-    Command::cargo_bin("songbird")?.arg("config").arg("show").assert().success();
+    Command::new(assert_cmd::cargo_bin!("songbird")).arg("config").arg("show").assert().success();
 
     Ok(())
 }
@@ -378,7 +384,7 @@ async fn test_e2e_stress_version_calls() -> Result<(), Box<dyn std::error::Error
 // ✅ NO #[serial]! Uses isolated environment!
 async fn test_e2e_environment_precedence() -> Result<(), Box<dyn std::error::Error>> {
     // Test environment variable precedence
-    std::env::set_var("SONGBIRD_PORT", "9000");
+    songbird_process_env::set_var("SONGBIRD_PORT", "9000");
 
     // Command line should override env var
     let mut cmd = clean_cmd();

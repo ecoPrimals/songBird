@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Concurrency Evolution E2E Tests
 //!
 //! End-to-end tests validating the concurrency improvements:
@@ -19,7 +22,7 @@ use tokio::task::JoinSet;
 
 /// Create a clean command with isolated environment
 fn clean_cmd() -> Command {
-    let mut cmd = Command::cargo_bin("songbird").unwrap();
+    let mut cmd = Command::new(assert_cmd::cargo_bin!("songbird"));
     cmd.env_clear();
     cmd.env("PATH", std::env::var("PATH").unwrap_or_default());
     cmd

@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Health check and status reporting for the orchestrator
 //!
 //! Provides comprehensive health monitoring for all orchestrator components.
@@ -71,13 +74,44 @@ impl HealthCheckReport {
 impl SongbirdOrchestrator {
     /// Get current orchestrator status
     ///
-    /// Returns a snapshot of the operational state.
+    /// Returns a snapshot of the operational state from actual orchestrator state.
     pub async fn get_status(&self) -> Result<OrchestratorStatus> {
+        // Federation mesh: coordinator present and `FederationState` shows ≥2 active nodes
+        // (typical: local + remote). Discovery path: `FederationCoordinator::coordinate` →
+        // `register_node` / heartbeats → `FederationState::active_nodes`.
+        let federation_connected = if self.federation_coordinator.is_some() {
+            let stats = self.federation_state.get_stats().await;
+            stats.active_nodes >= 2
+        } else {
+            false
+        };
+
+        // Sessions: connected peers in `ConnectionManager` / `PeerRegistry`.
+        let peers = self.connection_manager.get_all_peers().await;
+        let active_sessions = peers.len() as u32;
+
+        // Player roster: no per-peer player counts on `PeerMetadata` yet; equals session count
+        // until gaming/session manager exposes headcount. Discovery path: gaming bridge → session
+        // store → aggregate players per session.
+        let total_players = active_sessions;
+
+        // Gaming: any peer advertises gaming-related capability strings from discovery/BTSP.
+        // Discovery path: re-enable `gaming_manager` → same signal augmented with lobby state.
+        let gaming_active = peers.iter().any(|p| {
+            p.capabilities.iter().any(|c| {
+                let c = c.to_lowercase();
+                c.contains("gaming")
+                    || c.contains("game_session")
+                    || c == "game"
+                    || c.ends_with("_gaming")
+            })
+        });
+
         Ok(OrchestratorStatus {
-            gaming_active: false,       // Placeholder
-            federation_connected: true, // Placeholder - federation is started
-            active_sessions: 0,         // Placeholder
-            total_players: 0,           // Placeholder
+            gaming_active,
+            federation_connected,
+            active_sessions,
+            total_players,
         })
     }
 

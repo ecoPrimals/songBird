@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Common types for primal coordination
 //!
 //! **ZERO HARDCODING**: No primal names, only capabilities
@@ -261,4 +264,64 @@ pub struct ServiceStatus {
     pub version: String,
     pub capabilities: Vec<String>,
     pub metrics: HashMap<String, serde_json::Value>,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn capability_type_as_str_and_from_str() {
+        assert_eq!(CapabilityType::Security.as_str(), "security");
+        assert_eq!(CapabilityType::from_str("COMPUTE"), CapabilityType::Compute);
+        assert_eq!(
+            CapabilityType::from_str("custom_cap"),
+            CapabilityType::Custom("custom_cap".into())
+        );
+    }
+
+    #[test]
+    fn primal_capabilities_supports_capability() {
+        let caps = PrimalCapabilities {
+            services: vec!["security".into(), "compute".into()],
+            resources: HashMap::new(),
+            metadata: HashMap::new(),
+            quality: ServiceQuality::default(),
+        };
+        assert!(caps.supports_capability(&CapabilityType::Security));
+        assert!(!caps.supports_capability(&CapabilityType::Ai));
+    }
+
+    #[test]
+    fn primal_request_response_roundtrip_json() {
+        let req = PrimalRequest::DiscoverCapabilities;
+        let v = serde_json::to_value(&req).unwrap();
+        let back: PrimalRequest = serde_json::from_value(v).unwrap();
+        assert!(matches!(back, PrimalRequest::DiscoverCapabilities));
+
+        let resp = PrimalResponse::Error("oops".into());
+        let v2 = serde_json::to_value(&resp).unwrap();
+        let back2: PrimalResponse = serde_json::from_value(v2).unwrap();
+        assert!(matches!(back2, PrimalResponse::Error(s) if s == "oops"));
+    }
+
+    #[test]
+    fn node_id_and_deployment_id_random_are_non_empty() {
+        assert!(!NodeId::random().0.is_empty());
+        assert!(!DeploymentId::random().0.is_empty());
+    }
+
+    #[test]
+    fn workload_roundtrip() {
+        let w = Workload {
+            id: "w1".into(),
+            service_type: "svc".into(),
+            requirements: HashMap::from([("cpu".into(), "1".into())]),
+            payload: serde_json::json!({"k": 1}),
+        };
+        let json = serde_json::to_string(&w).unwrap();
+        let w2: Workload = serde_json::from_str(&json).unwrap();
+        assert_eq!(w2.id, w.id);
+        assert_eq!(w2.service_type, w.service_type);
+    }
 }

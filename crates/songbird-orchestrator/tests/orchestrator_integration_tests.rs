@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Integration tests for Songbird Orchestrator
 //!
 //! These tests validate the complete orchestrator functionality including:
@@ -9,9 +12,7 @@
 use anyhow::Result;
 use songbird_orchestrator::{
     access_control::{AccessControl, AccessToken, AuthMode, Capability},
-    task_lifecycle::{
-        Priority, ResourceRequirements, TaskId, TaskLifecycle, TaskSpec, TaskStatus, UserId,
-    },
+    task_lifecycle::{Priority, ResourceRequirements, TaskLifecycle, TaskSpec, TaskStatus, UserId},
 };
 use std::sync::Arc;
 

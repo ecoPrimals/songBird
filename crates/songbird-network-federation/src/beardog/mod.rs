@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! `BearDog` Integration Traits
 //!
 //! Modern, idiomatic Rust traits for integrating `BearDog` security with Songbird.
@@ -84,6 +87,7 @@ impl BearDogProviderFactory {
 
     /// Create mock provider for testing
     #[cfg(test)]
+    #[must_use]
     pub fn create_mock() -> Box<dyn BearDogProvider> {
         use crate::beardog::mock::MockBearDogProvider;
         Box::new(MockBearDogProvider::new())

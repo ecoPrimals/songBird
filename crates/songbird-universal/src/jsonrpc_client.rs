@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! JSON-RPC 2.0 Client for Unix Socket IPC
 //!
 //! This module provides a protocol-agnostic JSON-RPC 2.0 client implementation
@@ -44,7 +47,7 @@
 //! ```
 
 use serde::{Deserialize, Serialize};
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use songbird_types::{SongbirdError, SongbirdResult};
 use std::path::PathBuf;
 use std::time::Duration;

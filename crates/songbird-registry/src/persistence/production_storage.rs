@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Production Service Registry Persistence
 //!
 //! Real persistent storage for service registry replacing mock implementations

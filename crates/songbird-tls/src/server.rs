@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! TLS Server Module
 //!
 //! High-level TLS server integration for HTTP/HTTPS serving.
@@ -61,11 +64,11 @@ pub struct TlsStream {
     /// Record layer for encryption/decryption
     record_layer: RecordLayer,
 
-    /// Traffic keys (derived during handshake)
-    write_key: Vec<u8>,
-    write_iv: Vec<u8>,
-    read_key: Vec<u8>,
-    read_iv: Vec<u8>,
+    /// Traffic keys (derived during handshake) — `Arc` slices avoid cloning key material per I/O call.
+    write_key: Arc<[u8]>,
+    write_iv: Arc<[u8]>,
+    read_key: Arc<[u8]>,
+    read_iv: Arc<[u8]>,
 
     /// Crypto client for encryption/decryption
     crypto_client: BeardogCryptoClient,
@@ -213,10 +216,10 @@ impl TlsStream {
         Ok(Self {
             stream,
             record_layer,
-            write_key,
-            write_iv,
-            read_key,
-            read_iv,
+            write_key: Arc::from(write_key.into_boxed_slice()),
+            write_iv: Arc::from(write_iv.into_boxed_slice()),
+            read_key: Arc::from(read_key.into_boxed_slice()),
+            read_iv: Arc::from(read_iv.into_boxed_slice()),
             crypto_client: config.crypto_client.clone(),
         })
     }
@@ -231,13 +234,13 @@ impl TlsStream {
 
         // Encrypt function for record layer
         let crypto_client = self.crypto_client.clone();
-        let write_key = self.write_key.clone();
-        let write_iv = self.write_iv.clone();
+        let write_key = Arc::clone(&self.write_key);
+        let write_iv = Arc::clone(&self.write_iv);
 
         let encrypt_fn = move |plaintext: &[u8], sequence: u64| {
             // Construct nonce: sequence number XOR IV
             let mut nonce = [0u8; 12];
-            nonce.copy_from_slice(&write_iv);
+            nonce.copy_from_slice(write_iv.as_ref());
             let seq_bytes = sequence.to_be_bytes();
             for i in 0..8 {
                 nonce[4 + i] ^= seq_bytes[i];
@@ -249,7 +252,7 @@ impl TlsStream {
             tokio::task::block_in_place(|| {
                 tokio::runtime::Handle::current().block_on(async {
                     let (ciphertext, _nonce, tag) = crypto_client
-                        .chacha20_poly1305_encrypt(plaintext, &write_key, None)
+                        .chacha20_poly1305_encrypt(plaintext, write_key.as_ref(), None)
                         .await?;
 
                     // Append tag to ciphertext (standard AEAD format)
@@ -306,8 +309,8 @@ impl TlsStream {
 
         // Decrypt function for record layer
         let crypto_client = self.crypto_client.clone();
-        let read_key = self.read_key.clone();
-        let read_iv = self.read_iv.clone();
+        let read_key = Arc::clone(&self.read_key);
+        let read_iv = Arc::clone(&self.read_iv);
 
         let decrypt_fn = move |ciphertext_with_tag: &[u8], sequence: u64| {
             // Split ciphertext and tag (last 16 bytes)
@@ -320,7 +323,7 @@ impl TlsStream {
 
             // Construct nonce: sequence number XOR IV
             let mut nonce = [0u8; 12];
-            nonce.copy_from_slice(&read_iv);
+            nonce.copy_from_slice(read_iv.as_ref());
             let seq_bytes = sequence.to_be_bytes();
             for i in 0..8 {
                 nonce[4 + i] ^= seq_bytes[i];
@@ -330,7 +333,7 @@ impl TlsStream {
             tokio::task::block_in_place(|| {
                 tokio::runtime::Handle::current().block_on(async {
                     crypto_client
-                        .chacha20_poly1305_decrypt(ciphertext, &read_key, &nonce, tag, None)
+                        .chacha20_poly1305_decrypt(ciphertext, read_key.as_ref(), &nonce, tag, None)
                         .await
                 })
             })

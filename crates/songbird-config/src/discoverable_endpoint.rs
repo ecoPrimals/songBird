@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! # Discoverable Endpoint System
 //!
 //! Eliminates hardcoded ports, IPs, and URLs by providing environment-based
@@ -209,10 +212,10 @@ impl DiscoverableEndpoint {
         }
 
         // Use dev fallback if available and we're in development mode
-        if is_development_mode() {
-            if let Some(fallback) = &self.dev_fallback {
-                return Ok(fallback.clone());
-            }
+        if is_development_mode()
+            && let Some(fallback) = &self.dev_fallback
+        {
+            return Ok(fallback.clone());
         }
 
         Err(SongbirdError::Configuration {

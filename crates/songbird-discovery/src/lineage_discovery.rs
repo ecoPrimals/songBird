@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Lineage-Enhanced Service Discovery Backend
 //!
 //! Extends mDNS/DNS-SD service discovery to include genetic lineage information
@@ -159,33 +162,27 @@ impl LineageServiceDiscovery {
     /// Get peers that share our genetic lineage
     #[must_use]
     pub fn get_same_lineage_peers(&self) -> Vec<&DiscoveryPacket> {
-        self.local_lineage.as_ref().map_or_else(
-            || Vec::new(),
-            |our_lineage| {
-                self.peer_cache
-                    .values()
-                    .filter(|p| p.genetic_lineage.as_ref() == Some(our_lineage))
-                    .collect()
-            },
-        )
+        self.local_lineage.as_ref().map_or_else(Vec::new, |our_lineage| {
+            self.peer_cache
+                .values()
+                .filter(|p| p.genetic_lineage.as_ref() == Some(our_lineage))
+                .collect()
+        })
     }
 
     /// Get peers with different lineage
     #[must_use]
     pub fn get_different_lineage_peers(&self) -> Vec<&DiscoveryPacket> {
-        self.local_lineage.as_ref().map_or_else(
-            || Vec::new(),
-            |our_lineage| {
-                self.peer_cache
-                    .values()
-                    .filter(|p| {
-                        p.genetic_lineage
-                            .as_ref()
-                            .map_or(false, |peer_lineage| peer_lineage != our_lineage)
-                    })
-                    .collect()
-            },
-        )
+        self.local_lineage.as_ref().map_or_else(Vec::new, |our_lineage| {
+            self.peer_cache
+                .values()
+                .filter(|p| {
+                    p.genetic_lineage
+                        .as_ref()
+                        .is_some_and(|peer_lineage| peer_lineage != our_lineage)
+                })
+                .collect()
+        })
     }
 
     /// Get peers with no lineage information
@@ -285,10 +282,7 @@ mod tests {
             vec!["storage".to_string()],
             "http://192.168.1.101:8080",
         )
-        .with_lineage(
-            our_lineage.clone(),
-            LineageProof::new(our_lineage.clone(), vec![], 1234567890),
-        );
+        .with_lineage(our_lineage.clone(), LineageProof::new(our_lineage, vec![], 1234567890));
         discovery.peer_cache.insert("peer-same".to_string(), same_packet);
 
         // Add peer with different lineage

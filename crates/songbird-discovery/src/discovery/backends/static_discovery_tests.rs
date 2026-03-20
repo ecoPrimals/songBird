@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Comprehensive tests for static service discovery
 //!
 //! Tests cover all functionality with edge cases and concurrent access patterns.
@@ -24,8 +27,8 @@ fn create_test_service(id: &str, name: &str) -> ServiceInfo {
         status: ServiceStatus::Running,
         created_at: Utc::now(),
         updated_at: Utc::now(),
-        instance_id: format!("{}-instance", id),
-        host: format!("{}.local", name),
+        instance_id: format!("{id}-instance"),
+        host: format!("{name}.local"),
         port: 8080,
     }
 }

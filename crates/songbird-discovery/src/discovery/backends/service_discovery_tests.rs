@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Focused tests for universal service discovery
 //!
 //! Tests cover configuration, caching, and discovery method management.
@@ -24,13 +27,13 @@ fn create_test_service(id: &str, name: &str) -> ServiceInfo {
         status: ServiceStatus::Running,
         created_at: Utc::now(),
         updated_at: Utc::now(),
-        instance_id: format!("{}-instance", id),
-        host: format!("{}.local", name),
+        instance_id: format!("{id}-instance"),
+        host: format!("{name}.local"),
         port: 8080,
     }
 }
 
-/// Test CacheConfig with default values
+/// Test `CacheConfig` with default values
 #[test]
 fn test_cache_config_default() {
     let config = CacheConfig {
@@ -44,7 +47,7 @@ fn test_cache_config_default() {
     assert!(config.enabled);
 }
 
-/// Test CacheConfig with custom values
+/// Test `CacheConfig` with custom values
 #[test]
 fn test_cache_config_custom() {
     let config = CacheConfig {
@@ -58,7 +61,7 @@ fn test_cache_config_custom() {
     assert!(config.enabled);
 }
 
-/// Test CacheConfig with cache disabled
+/// Test `CacheConfig` with cache disabled
 #[test]
 fn test_cache_config_disabled() {
     let config = CacheConfig {
@@ -71,7 +74,7 @@ fn test_cache_config_disabled() {
     assert_eq!(config.max_cache_size, 0);
 }
 
-/// Test CacheConfig with very short TTL
+/// Test `CacheConfig` with very short TTL
 #[test]
 fn test_cache_config_short_ttl() {
     let config = CacheConfig {
@@ -83,7 +86,7 @@ fn test_cache_config_short_ttl() {
     assert_eq!(config.default_ttl.as_millis(), 100);
 }
 
-/// Test CacheConfig with very long TTL
+/// Test `CacheConfig` with very long TTL
 #[test]
 fn test_cache_config_long_ttl() {
     let config = CacheConfig {
@@ -95,12 +98,12 @@ fn test_cache_config_long_ttl() {
     assert_eq!(config.default_ttl.as_secs(), 3600);
 }
 
-/// Test CachedServiceInfo creation
+/// Test `CachedServiceInfo` creation
 #[test]
 fn test_cached_service_info_creation() {
     let service = create_test_service("svc1", "test-service");
     let cached = CachedServiceInfo {
-        service_info: service.clone(),
+        service_info: service,
         cached_at: std::time::Instant::now(),
         ttl: std::time::Duration::from_secs(60),
     };
@@ -109,7 +112,7 @@ fn test_cached_service_info_creation() {
     assert_eq!(cached.ttl.as_secs(), 60);
 }
 
-/// Test CachedServiceInfo with short TTL
+/// Test `CachedServiceInfo` with short TTL
 #[test]
 fn test_cached_service_info_short_ttl() {
     let service = create_test_service("svc1", "ephemeral");
@@ -122,7 +125,7 @@ fn test_cached_service_info_short_ttl() {
     assert_eq!(cached.ttl.as_secs(), 5);
 }
 
-/// Test CachedServiceInfo expiration check
+/// Test `CachedServiceInfo` expiration check
 #[test]
 fn test_cached_service_info_not_expired() {
     let service = create_test_service("svc1", "fresh");
@@ -136,7 +139,7 @@ fn test_cached_service_info_not_expired() {
     assert!(elapsed < cached.ttl, "Cache should not be expired immediately");
 }
 
-/// Test CachedServiceInfo clone
+/// Test `CachedServiceInfo` clone
 #[test]
 fn test_cached_service_info_clone() {
     let service = create_test_service("svc1", "clonable");
@@ -151,7 +154,7 @@ fn test_cached_service_info_clone() {
     assert_eq!(cached_clone.ttl, cached.ttl);
 }
 
-/// Test DiscoveryMethod::HttpRegistry
+/// Test `DiscoveryMethod::HttpRegistry`
 #[test]
 fn test_discovery_method_http_registry() {
     let method = DiscoveryMethod::HttpRegistry {
@@ -168,7 +171,7 @@ fn test_discovery_method_http_registry() {
     }
 }
 
-/// Test DiscoveryMethod::HttpRegistry with HTTPS
+/// Test `DiscoveryMethod::HttpRegistry` with HTTPS
 #[test]
 fn test_discovery_method_http_registry_secure() {
     let method = DiscoveryMethod::HttpRegistry {
@@ -185,7 +188,7 @@ fn test_discovery_method_http_registry_secure() {
     }
 }
 
-/// Test DiscoveryMethod::Environment
+/// Test `DiscoveryMethod::Environment`
 #[test]
 fn test_discovery_method_environment() {
     let method = DiscoveryMethod::Environment;
@@ -198,7 +201,7 @@ fn test_discovery_method_environment() {
     }
 }
 
-/// Test DiscoveryMethod::FileBased
+/// Test `DiscoveryMethod::FileBased`
 #[test]
 fn test_discovery_method_file_based() {
     let method = DiscoveryMethod::FileBased {
@@ -215,7 +218,7 @@ fn test_discovery_method_file_based() {
     }
 }
 
-/// Test DiscoveryMethod::FileBased with YAML
+/// Test `DiscoveryMethod::FileBased` with YAML
 #[test]
 fn test_discovery_method_file_based_yaml() {
     let method = DiscoveryMethod::FileBased {
@@ -232,7 +235,7 @@ fn test_discovery_method_file_based_yaml() {
     }
 }
 
-/// Test DiscoveryMethod::NetworkScan
+/// Test `DiscoveryMethod::NetworkScan`
 #[test]
 fn test_discovery_method_network_scan() {
     let method = DiscoveryMethod::NetworkScan {
@@ -243,14 +246,14 @@ fn test_discovery_method_network_scan() {
         DiscoveryMethod::NetworkScan {
             subnet,
         } => {
-            assert!(subnet.contains("/"));
+            assert!(subnet.contains('/'));
             assert!(subnet.contains("192.168"));
         }
         _ => panic!("Expected NetworkScan"),
     }
 }
 
-/// Test DiscoveryMethod::NetworkScan with different subnet
+/// Test `DiscoveryMethod::NetworkScan` with different subnet
 #[test]
 fn test_discovery_method_network_scan_different_subnet() {
     let method = DiscoveryMethod::NetworkScan {
@@ -267,7 +270,7 @@ fn test_discovery_method_network_scan_different_subnet() {
     }
 }
 
-/// Test DiscoveryMethod clone
+/// Test `DiscoveryMethod` clone
 #[test]
 fn test_discovery_method_clone() {
     let method = DiscoveryMethod::HttpRegistry {
@@ -291,7 +294,7 @@ fn test_discovery_method_clone() {
     }
 }
 
-/// Test CacheStats creation
+/// Test `CacheStats` creation
 #[test]
 fn test_cache_stats_creation() {
     let stats = CacheStats {
@@ -309,7 +312,7 @@ fn test_cache_stats_creation() {
     assert_eq!(stats.hit_ratio, 0.0);
 }
 
-/// Test CacheStats with full cache
+/// Test `CacheStats` with full cache
 #[test]
 fn test_cache_stats_full() {
     let stats = CacheStats {
@@ -324,7 +327,7 @@ fn test_cache_stats_full() {
     assert!(stats.valid_entries > stats.expired_entries);
 }
 
-/// Test CacheStats with empty cache
+/// Test `CacheStats` with empty cache
 #[test]
 fn test_cache_stats_empty() {
     let stats = CacheStats {
@@ -339,7 +342,7 @@ fn test_cache_stats_empty() {
     assert_eq!(stats.valid_entries, 0);
 }
 
-/// Test CacheStats calculations
+/// Test `CacheStats` calculations
 #[test]
 fn test_cache_stats_calculations() {
     let total = 100;
@@ -357,7 +360,7 @@ fn test_cache_stats_calculations() {
     assert_eq!(stats.valid_entries + stats.expired_entries, stats.total_entries);
 }
 
-/// Test CacheConfig can be cloned
+/// Test `CacheConfig` can be cloned
 #[test]
 fn test_cache_config_clone() {
     let config = CacheConfig {
@@ -373,10 +376,10 @@ fn test_cache_config_clone() {
     assert_eq!(config_clone.enabled, config.enabled);
 }
 
-/// Test multiple DiscoveryMethod variants can coexist
+/// Test multiple `DiscoveryMethod` variants can coexist
 #[test]
 fn test_multiple_discovery_methods() {
-    let methods = vec![
+    let methods = [
         DiscoveryMethod::HttpRegistry {
             endpoint: "http://consul:8500".to_string(),
         },
@@ -392,7 +395,7 @@ fn test_multiple_discovery_methods() {
     assert_eq!(methods.len(), 4);
 }
 
-/// Test CacheConfig with extreme values
+/// Test `CacheConfig` with extreme values
 #[test]
 fn test_cache_config_extreme_values() {
     let config = CacheConfig {

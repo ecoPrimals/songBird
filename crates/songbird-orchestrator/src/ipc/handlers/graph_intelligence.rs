@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Graph Intelligence API Handlers (v3.21.0, refactored v3.22.1)
 //!
 //! Handlers for Collaborative Intelligence graph validation and optimization.

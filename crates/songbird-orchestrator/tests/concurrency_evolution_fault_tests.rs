@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Concurrency Evolution Fault Tests
 //!
 //! Fault injection tests for concurrency improvements:
@@ -10,8 +13,8 @@
 
 use assert_cmd::Command;
 use predicates::prelude::*;
-use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicUsize, Ordering};
 use tokio::task::JoinSet;
 
 // ====================
@@ -20,7 +23,7 @@ use tokio::task::JoinSet;
 
 /// Create a clean command with isolated environment
 fn clean_cmd() -> Command {
-    let mut cmd = Command::cargo_bin("songbird").unwrap();
+    let mut cmd = Command::new(assert_cmd::cargo_bin!("songbird"));
     cmd.env_clear();
     cmd.env("PATH", std::env::var("PATH").unwrap_or_default());
     cmd
@@ -101,7 +104,7 @@ async fn fault_test_missing_path_env() {
 
     for _ in 0..20 {
         join_set.spawn(async {
-            let mut cmd = Command::cargo_bin("songbird").unwrap();
+            let mut cmd = Command::new(assert_cmd::cargo_bin!("songbird"));
             cmd.env_clear();
             // Deliberately NO PATH set (unlike clean_cmd)
 
@@ -125,11 +128,11 @@ async fn fault_test_corrupted_environment_values() {
             // Various corrupted values
             cmd.env("SONGBIRD_PORT", "not_a_number");
             cmd.env("SONGBIRD_CONFIG", "\0\0\0"); // Null bytes
-            cmd.env("SONGBIRD_NODE_ID", &"x".repeat(10000)); // Huge value
+            cmd.env("SONGBIRD_NODE_ID", "x".repeat(10000)); // Huge value
             cmd.env("CORRUPTED", format!("{}_{}", i, "\n\r\t"));
 
             // Should handle gracefully
-            cmd.arg("--version").assert();
+            let _ = cmd.arg("--version").assert();
         });
     }
 
@@ -249,7 +252,7 @@ async fn fault_test_zero_environment_variables() {
 
     for _ in 0..20 {
         join_set.spawn(async {
-            let mut cmd = Command::cargo_bin("songbird").unwrap();
+            let mut cmd = Command::new(assert_cmd::cargo_bin!("songbird"));
             cmd.env_clear();
             // Absolutely nothing in environment
 
@@ -269,7 +272,7 @@ async fn fault_test_maximum_argument_length() {
     for i in 0..20 {
         join_set.spawn(async move {
             clean_cmd()
-                .arg(&"x".repeat(1000 + i * 100)) // Very long argument
+                .arg("x".repeat(1000 + i * 100)) // Very long argument
                 .assert()
                 .failure(); // Should fail, but gracefully
         });

@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Path configuration for Songbird - Zero hardcoded paths
 //!
 //! This module provides path configuration with environment-based defaults.
@@ -323,20 +326,16 @@ impl PathConfig {
         ];
 
         for directory in directories {
-            if !directory.exists() {
-                if let Err(e) = std::fs::create_dir_all(directory) {
-                    return Err(SongbirdError::Configuration {
-                        message: format!(
-                            "Failed to create directory {}: {}",
-                            directory.display(),
-                            e
-                        ),
-                        field: Some("directory_path".to_string()),
-                        suggestion: Some(
-                            "Check if you have write permissions for this directory".to_string(),
-                        ),
-                    });
-                }
+            if !directory.exists()
+                && let Err(e) = std::fs::create_dir_all(directory)
+            {
+                return Err(SongbirdError::Configuration {
+                    message: format!("Failed to create directory {}: {}", directory.display(), e),
+                    field: Some("directory_path".to_string()),
+                    suggestion: Some(
+                        "Check if you have write permissions for this directory".to_string(),
+                    ),
+                });
             }
         }
 
@@ -363,7 +362,7 @@ impl PathConfig {
                     message: format!("Unknown path type: {path_type}"),
                     field: Some("path_type".to_string()),
                     suggestion: Some("Check if the path type is valid".to_string()),
-                })
+                });
             }
         };
 

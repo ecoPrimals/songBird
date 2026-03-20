@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! # 🚀 tarpc Types and Traits for Songbird
 //!
 //! **HIGH-PERFORMANCE PRIMAL-TO-PRIMAL RPC** (v3.12.0)

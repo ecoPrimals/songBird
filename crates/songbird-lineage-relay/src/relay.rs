@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Relay discovery and session management
 //!
 //! Evolution beyond TURN: Ancestors relay for descendants
@@ -316,10 +319,10 @@ impl RelayDiscovery {
             self.broadcaster.wait_for_message_by_type(BirdSongType::RelayOffer, duration).await?;
 
         for msg in messages {
-            if let Ok(offer) = serde_json::from_slice::<RelayOffer>(&msg.payload) {
-                if offer.authorization.authorized {
-                    return Ok(offer);
-                }
+            if let Ok(offer) = serde_json::from_slice::<RelayOffer>(&msg.payload)
+                && offer.authorization.authorized
+            {
+                return Ok(offer);
             }
         }
 

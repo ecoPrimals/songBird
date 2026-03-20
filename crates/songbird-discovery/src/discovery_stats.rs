@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Discovery Statistics and Status Tracking
 //!
 //! Provides observability into the discovery system without relying on logs.
@@ -12,8 +15,8 @@
 //! ## Date: January 5, 2026
 
 use serde::{Deserialize, Serialize};
-use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use tokio::sync::RwLock;
 
 /// Discovery statistics for observability

@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Integration tests for observability features
 //!
 //! Tests the full observability workflow including:
@@ -11,7 +14,7 @@ mod tests {
     use crate::observability::{EventFilter, EventStreamManager, TaskEventType};
     use crate::task_lifecycle::{TaskId, UserId};
     use std::sync::Arc;
-    use tokio::time::{timeout, Duration};
+    use tokio::time::{Duration, timeout};
 
     #[tokio::test]
     async fn test_event_stream_integration() {

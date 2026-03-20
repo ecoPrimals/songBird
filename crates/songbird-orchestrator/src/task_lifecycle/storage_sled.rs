@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Task Lifecycle Storage - Pure Rust sled implementation
 //!
 //! **Evolution**: Migrated from sqlx to sled (Jan 27, 2026)
@@ -202,22 +205,22 @@ impl TaskStorage {
 
     /// Check if task matches filter (static version for `spawn_blocking`)
     fn matches_filter_static(task: &TaskLifecycle, filter: &TaskFilter) -> bool {
-        if let Some(owner) = &filter.owner {
-            if task.owner != *owner {
-                return false;
-            }
+        if let Some(owner) = &filter.owner
+            && task.owner != *owner
+        {
+            return false;
         }
 
-        if let Some(status) = &filter.status {
-            if task.status != *status {
-                return false;
-            }
+        if let Some(status) = &filter.status
+            && task.status != *status
+        {
+            return false;
         }
 
-        if let Some(tower) = &filter.tower {
-            if task.current_tower.as_ref() != Some(tower) {
-                return false;
-            }
+        if let Some(tower) = &filter.tower
+            && task.current_tower.as_ref() != Some(tower)
+        {
+            return false;
         }
 
         true
@@ -482,19 +485,19 @@ impl TaskStorage {
                 let (key, value) = item.context("Failed to scan checkpoints")?;
 
                 // Deserialize to check age
-                if let Ok(checkpoint) = bincode::deserialize::<Checkpoint>(&value) {
-                    if checkpoint.created_at.timestamp() < cutoff_time {
-                        // Delete checkpoint
-                        db.remove(&key)?;
+                if let Ok(checkpoint) = bincode::deserialize::<Checkpoint>(&value)
+                    && checkpoint.created_at.timestamp() < cutoff_time
+                {
+                    // Delete checkpoint
+                    db.remove(&key)?;
 
-                        // Delete task index
-                        let task_key =
-                            format!("task_checkpoints/{}/{}", checkpoint.task_id, checkpoint.id);
-                        db.remove(task_key.as_bytes())?;
+                    // Delete task index
+                    let task_key =
+                        format!("task_checkpoints/{}/{}", checkpoint.task_id, checkpoint.id);
+                    db.remove(task_key.as_bytes())?;
 
-                        deleted_count += 1;
-                        debug!("Deleted old checkpoint: {}", checkpoint.id.to_string());
-                    }
+                    deleted_count += 1;
+                    debug!("Deleted old checkpoint: {}", checkpoint.id.to_string());
                 }
             }
 
@@ -624,7 +627,7 @@ mod tests {
         storage.save_checkpoint(&checkpoint).await.unwrap();
 
         // Retrieve checkpoint
-        let retrieved = storage.get_checkpoint(&checkpoint_id.to_string()).await.unwrap();
+        let retrieved = storage.get_checkpoint(checkpoint_id.as_ref()).await.unwrap();
         assert!(retrieved.is_some());
 
         // List checkpoints for task
@@ -632,7 +635,7 @@ mod tests {
         assert_eq!(checkpoints.len(), 1);
 
         // Delete checkpoint
-        storage.delete_checkpoint(&checkpoint_id.to_string()).await.unwrap();
-        assert!(storage.get_checkpoint(&checkpoint_id.to_string()).await.unwrap().is_none());
+        storage.delete_checkpoint(checkpoint_id.as_ref()).await.unwrap();
+        assert!(storage.get_checkpoint(checkpoint_id.as_ref()).await.unwrap().is_none());
     }
 }

@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Comprehensive Tests for Discovery Types
 //!
 //! **Target**: Boost coverage from 0% to 90%+
@@ -373,7 +376,7 @@ fn test_complete_primal_lifecycle() {
 
 #[test]
 fn test_multiple_primals_different_methods() {
-    let primals = vec![
+    let primals = [
         DiscoveredPrimal::new(
             "env-primal".to_string(),
             PrimalType::new("storage"),

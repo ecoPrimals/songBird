@@ -1,29 +1,32 @@
 # Songbird - Network Orchestration & Discovery Primal
 
-**Version**: v0.3.0  
+**Version**: v0.3.1  
 **Status**: Production Ready - Deep Debt S+ Tier  
-**License**: AGPL-3.0  
-**Edition**: Rust 2021 (migrating to 2024)
+**License**: AGPL-3.0-only (scyBorg provenance trio)  
+**Edition**: Rust 2024
 
-Songbird is the universal network orchestrator for the ecoPrimals ecosystem. It manages service discovery, connection management, and inter-primal communication across multiple protocols. All cryptographic operations are delegated to BearDog via JSON-RPC IPC.
+Songbird is the universal network orchestrator for the ecoPrimals ecosystem. It manages service discovery, connection management, and inter-primal communication across multiple protocols. All cryptographic operations are delegated to BearDog via JSON-RPC IPC at runtime through capability discovery.
 
 ## Quality
 
 | Metric | Value |
 |--------|-------|
 | Safe Rust | 100% (`#![forbid(unsafe_code)]` across all crates) |
-| Pure Rust | Zero C dependencies |
-| Crypto Delegation | 100% BearDog via JSON-RPC IPC |
+| Pure Rust | Structural `ring` via quinn+rcgen; all Songbird code is pure Rust |
+| Crypto Delegation | BearDog via JSON-RPC IPC (explicit `CryptoUnavailable` when unavailable) |
 | Runtime Discovery | All config: env → XDG → smart defaults |
 | Production Stubs | Zero (`todo!()` only in `#[cfg(test)]`) |
 | Concurrent Tests | Zero `std::env::set_var` in tests (injectable env readers) |
-| Tests | 9,254 registered, 4,874+ passing |
-| Clippy Pedantic | 23/27 crates clean |
-| Line Coverage | ~61% (target: 90%) |
+| Tests | 9,358 total, 0 failed, ~165 ignored |
+| Clippy Pedantic | All 29 crates clean |
+| Line Coverage | ~70% (target: 90%) |
 | Build | Clean (zero errors, zero warnings) |
 | Formatting | Clean (`cargo fmt --all`) |
-| Docs | Clean (`cargo doc --workspace --no-deps`) |
+| Docs | Clean (`RUSTDOCFLAGS="-D warnings" cargo doc --workspace --no-deps`) |
 | Files >1000 lines | 0 |
+| SPDX Headers | All 1,300+ `.rs` files |
+| UniBin | Single binary with subcommands |
+| Edition | Rust 2024 |
 
 ## Architecture
 
@@ -47,7 +50,7 @@ Songbird Orchestrator
     |
     | BearDog delegation (Ed25519, X25519, ChaCha20, SHA3-256, AES-128-CTR)
     v
-BearDog Crypto Primal
+BearDog Crypto Primal (runtime capability discovery)
 ```
 
 ### Core Principles
@@ -56,7 +59,7 @@ BearDog Crypto Primal
 2. **Runtime Discovery** - All external services discovered at runtime by capability
 3. **Capability-Based** - Request by capability, not by name
 4. **Zero Hardcoding** - Environment-first configuration
-5. **Pure Rust** - Zero C dependencies (ecoBin compliant)
+5. **Pure Rust** - Zero C dependencies in Songbird code (ecoBin compliant)
 6. **Safe Rust** - `#![forbid(unsafe_code)]` everywhere
 7. **Event-Driven** - Zero polling anti-patterns (`tokio::sync::Notify`)
 8. **Concurrent Testing** - Injectable env readers, no global state pollution
@@ -69,6 +72,8 @@ cargo build --workspace --release
 cargo run --bin songbird -- server
 cargo run --bin songbird -- doctor
 cargo run --bin songbird -- config show
+cargo run --bin songbird -- compute-bridge
+cargo run --bin songbird -- deploy
 ```
 
 ### Environment Variables
@@ -81,7 +86,7 @@ export SONGBIRD_SOCKET=/run/user/$(id -u)/biomeos/songbird.sock
 export SONGBIRD_FAMILY_ID=myfamily
 ```
 
-## Crate Structure (27 crates)
+## Crate Structure (29 crates)
 
 ### Core
 - `songbird-orchestrator` - Main orchestration engine (7-stage startup)
@@ -117,9 +122,10 @@ export SONGBIRD_FAMILY_ID=myfamily
 - `songbird-registry` - Service registry
 - `songbird-observability` - Metrics and tracing
 - `songbird-execution-agent` - Task execution
-- `songbird-compute-bridge` - Compute bridge
-- `songbird-remote-deploy` - Remote deployment
+- `songbird-compute-bridge` - Compute bridge (UniBin subcommand)
+- `songbird-remote-deploy` - Remote deployment (UniBin subcommand)
 - `songbird-test-utils` - Test utilities
+- `songbird-process-env` - Safe env var facade for Rust 2024 (`unsafe` isolation)
 
 ## Testing
 
@@ -137,9 +143,11 @@ cargo llvm-cov --workspace --html
 | [`REMAINING_WORK.md`](REMAINING_WORK.md) | Current status and pending work |
 | [`CHANGELOG.md`](CHANGELOG.md) | Version history |
 | [`CONTRIBUTING.md`](CONTRIBUTING.md) | Contribution guidelines |
-| [`specs/`](specs/) | Technical specifications (113 files) |
+| [`specs/`](specs/) | Technical specifications |
 | [`docs/`](docs/) | Architecture guides |
 
 ## License
 
-AGPL-3.0 (scyBorg provenance trio: AGPL + ORC + CC-BY-SA)
+AGPL-3.0-only (scyBorg provenance trio: AGPL-3.0 + ORC + CC-BY-SA 4.0)
+
+See `LICENSE`, `LICENSE-ORC`, and `LICENSE-CC-BY-SA` at repository root.

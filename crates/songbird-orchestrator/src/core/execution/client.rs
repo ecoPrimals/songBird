@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Client for communicating with remote execution agents
 //!
 //! ✅ EVOLVED (Jan 21, 2026): 100% Pure Rust HTTP via `SongbirdHttpClient`

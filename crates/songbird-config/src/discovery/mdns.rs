@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! mDNS Discovery Backend - COMPLETE IMPLEMENTATION
 //!
 //! Production-ready mDNS (Multicast DNS) discovery implementation for local network
@@ -126,7 +129,10 @@ impl MdnsDiscovery {
             match mdns_sd::ServiceDaemon::new() {
                 Ok(daemon) => Arc::new(RwLock::new(Some(daemon))),
                 Err(e) => {
-                    warn!("Failed to initialize mDNS daemon: {}. Discovery will work but advertising is disabled.", e);
+                    warn!(
+                        "Failed to initialize mDNS daemon: {}. Discovery will work but advertising is disabled.",
+                        e
+                    );
                     Arc::new(RwLock::new(None))
                 }
             }

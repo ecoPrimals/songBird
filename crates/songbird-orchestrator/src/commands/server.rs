@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Server command — starts the Songbird orchestrator in server mode
 //!
 //! Provides `run_server()` with proper signal handling (SIGINT, SIGTERM),

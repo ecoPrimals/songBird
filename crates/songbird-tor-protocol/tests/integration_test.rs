@@ -1,6 +1,8 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Integration tests for Tor protocol
 
-use songbird_tor_protocol::directory::RelayInfo;
 use songbird_tor_protocol::{BeardogCryptoClient, Consensus, TorConnection};
 
 #[tokio::test]
@@ -84,7 +86,6 @@ fn test_consensus_freshness() {
 #[ignore = "Requires network access"]
 async fn test_connect_to_relay() {
     use songbird_tor_protocol::directory::RelayFlags;
-    use std::net::IpAddr;
 
     let beardog = BeardogCryptoClient::from_env().expect("BearDog client");
 
@@ -101,8 +102,7 @@ async fn test_connect_to_relay() {
     let guard = consensus
         .relays
         .iter()
-        .filter(|r| r.is_guard() && r.flags.contains(RelayFlags::RUNNING))
-        .next()
+        .find(|r| r.is_guard() && r.flags.contains(RelayFlags::RUNNING))
         .expect("Should have at least one guard relay");
 
     println!("🔌 Connecting to guard: {} at {}:{}", guard.nickname, guard.address, guard.or_port);

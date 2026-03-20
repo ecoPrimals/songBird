@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Service Types and Metadata
 //!
 //! **CANONICAL**: Service definitions and metadata for the Songbird ecosystem
@@ -230,14 +233,6 @@ pub enum AllowedValues {
     Pattern(String),
 }
 
-#[allow(
-    clippy::unwrap_used,
-    clippy::expect_used,
-    clippy::unnecessary_wraps,
-    clippy::field_reassign_with_default
-)]
-#[cfg(test)]
-use crate::SongbirdError;
 #[allow(clippy::uninlined_format_args)]
 #[allow(clippy::float_cmp)]
 #[allow(clippy::useless_vec)]
@@ -251,6 +246,7 @@ mod tests {
     #![allow(unused)]
 
     use super::*;
+    use crate::SongbirdError;
 
     #[test]
     fn test_canonical_service_status_default() {

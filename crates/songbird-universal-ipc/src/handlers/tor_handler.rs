@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Pure Rust Tor Protocol JSON-RPC Handler
 //!
 //! Provides JSON-RPC methods for the pure Rust Tor protocol, enabling
@@ -18,9 +21,9 @@
 //! All crypto operations are delegated to `BearDog` via `BeardogCryptoClient`.
 //! Zero embedded crypto in Songbird.
 
-use serde_json::{json, Value};
-use songbird_tor_protocol::circuit::manager::CircuitManager;
+use serde_json::{Value, json};
 use songbird_tor_protocol::circuit::CircuitPurpose;
+use songbird_tor_protocol::circuit::manager::CircuitManager;
 use songbird_tor_protocol::crypto::BeardogCryptoClient;
 use songbird_tor_protocol::directory::Consensus;
 use std::sync::Arc;
@@ -416,10 +419,10 @@ impl TorHandler {
 
         // Close via circuit manager if available
         let manager = self.circuit_manager.read().await;
-        if let Some(ref mgr) = *manager {
-            if let Err(e) = mgr.close_circuit(circuit_id).await {
-                warn!(error = %e, "Circuit close error (may already be closed)");
-            }
+        if let Some(ref mgr) = *manager
+            && let Err(e) = mgr.close_circuit(circuit_id).await
+        {
+            warn!(error = %e, "Circuit close error (may already be closed)");
         }
 
         // Update state

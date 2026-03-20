@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Pure Rust Bluetooth LE physical channel for Genesis
 //!
 //! This module provides Bluetooth genesis using the pure Rust `songbird-bluetooth` stack.

@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 // BiomeOS Neural API E2E Deployment Tests
 // January 16, 2026
 // Updated: February 10, 2026 (concurrent-safe with per-file Mutex)
@@ -10,7 +13,6 @@
 
 use songbird_orchestrator::ipc::UnixSocketServer;
 use std::env;
-use std::path::PathBuf;
 use tempfile::TempDir;
 
 /// Serialize all env var tests in this file (async-safe).
@@ -36,9 +38,9 @@ async fn test_complete_biomeos_deployment_flow() {
     let original_vars = save_env_state();
 
     // Step 1: BiomeOS Neural API sets environment variables
-    env::set_var("SONGBIRD_ORCHESTRATOR_SOCKET", socket_path.to_str().unwrap());
-    env::set_var("SONGBIRD_ORCHESTRATOR_FAMILY_ID", "nat0");
-    env::set_var("BIOMEOS_FAMILY_ID", "nat0");
+    songbird_process_env::set_var("SONGBIRD_ORCHESTRATOR_SOCKET", socket_path.to_str().unwrap());
+    songbird_process_env::set_var("SONGBIRD_ORCHESTRATOR_FAMILY_ID", "nat0");
+    songbird_process_env::set_var("BIOMEOS_FAMILY_ID", "nat0");
 
     // Step 2: Songbird reads environment and determines socket path
     let derived_path = UnixSocketServer::socket_path_from_env();
@@ -76,11 +78,11 @@ async fn test_multi_family_deployment() {
     let original_vars = save_env_state();
 
     // Family 1: nat0
-    env::set_var(
+    songbird_process_env::set_var(
         "SONGBIRD_ORCHESTRATOR_SOCKET",
         temp_dir.path().join("songbird-nat0.sock").to_str().unwrap(),
     );
-    env::set_var("SONGBIRD_ORCHESTRATOR_FAMILY_ID", "nat0");
+    songbird_process_env::set_var("SONGBIRD_ORCHESTRATOR_FAMILY_ID", "nat0");
 
     let path_nat0 = UnixSocketServer::socket_path_from_env();
     let family_nat0 = UnixSocketServer::get_family_id();
@@ -89,11 +91,11 @@ async fn test_multi_family_deployment() {
     assert_eq!(family_nat0, "nat0");
 
     // Family 2: nat1
-    env::set_var(
+    songbird_process_env::set_var(
         "SONGBIRD_ORCHESTRATOR_SOCKET",
         temp_dir.path().join("songbird-nat1.sock").to_str().unwrap(),
     );
-    env::set_var("SONGBIRD_ORCHESTRATOR_FAMILY_ID", "nat1");
+    songbird_process_env::set_var("SONGBIRD_ORCHESTRATOR_FAMILY_ID", "nat1");
 
     let path_nat1 = UnixSocketServer::socket_path_from_env();
     let family_nat1 = UnixSocketServer::get_family_id();
@@ -119,16 +121,16 @@ async fn test_generic_biomeos_orchestrator() {
     let original_vars = save_env_state();
 
     // Clear all Songbird-specific env vars
-    env::remove_var("SONGBIRD_ORCHESTRATOR_SOCKET");
-    env::remove_var("SONGBIRD_SOCKET");
-    env::remove_var("SONGBIRD_ORCHESTRATOR_FAMILY_ID");
-    env::remove_var("SONGBIRD_ORCHESTRATOR_FAMILY");
-    env::remove_var("SONGBIRD_FAMILY_ID");
+    songbird_process_env::remove_var("SONGBIRD_ORCHESTRATOR_SOCKET");
+    songbird_process_env::remove_var("SONGBIRD_SOCKET");
+    songbird_process_env::remove_var("SONGBIRD_ORCHESTRATOR_FAMILY_ID");
+    songbird_process_env::remove_var("SONGBIRD_ORCHESTRATOR_FAMILY");
+    songbird_process_env::remove_var("SONGBIRD_FAMILY_ID");
 
     // Set only generic BiomeOS env vars
     let socket_path = temp_dir.path().join("songbird-production.sock");
-    env::set_var("BIOMEOS_SOCKET_PATH", socket_path.to_str().unwrap());
-    env::set_var("BIOMEOS_FAMILY_ID", "production");
+    songbird_process_env::set_var("BIOMEOS_SOCKET_PATH", socket_path.to_str().unwrap());
+    songbird_process_env::set_var("BIOMEOS_FAMILY_ID", "production");
 
     let derived_path = UnixSocketServer::socket_path_from_env();
     let family_id = UnixSocketServer::get_family_id();
@@ -182,9 +184,12 @@ async fn test_environment_priority_enforcement() {
     let medium_priority = temp_dir.path().join("medium.sock");
     let low_priority = temp_dir.path().join("low.sock");
 
-    env::set_var("SONGBIRD_ORCHESTRATOR_SOCKET", highest_priority.to_str().unwrap());
-    env::set_var("SONGBIRD_SOCKET", medium_priority.to_str().unwrap());
-    env::set_var("BIOMEOS_SOCKET_PATH", low_priority.to_str().unwrap());
+    songbird_process_env::set_var(
+        "SONGBIRD_ORCHESTRATOR_SOCKET",
+        highest_priority.to_str().unwrap(),
+    );
+    songbird_process_env::set_var("SONGBIRD_SOCKET", medium_priority.to_str().unwrap());
+    songbird_process_env::set_var("BIOMEOS_SOCKET_PATH", low_priority.to_str().unwrap());
 
     let derived_path = UnixSocketServer::socket_path_from_env();
 
@@ -192,12 +197,12 @@ async fn test_environment_priority_enforcement() {
     assert_eq!(derived_path, highest_priority);
 
     // Remove highest priority, should fall back to medium
-    env::remove_var("SONGBIRD_ORCHESTRATOR_SOCKET");
+    songbird_process_env::remove_var("SONGBIRD_ORCHESTRATOR_SOCKET");
     let derived_path = UnixSocketServer::socket_path_from_env();
     assert_eq!(derived_path, medium_priority);
 
     // Remove medium priority, should fall back to low
-    env::remove_var("SONGBIRD_SOCKET");
+    songbird_process_env::remove_var("SONGBIRD_SOCKET");
     let derived_path = UnixSocketServer::socket_path_from_env();
     assert_eq!(derived_path, low_priority);
 
@@ -214,31 +219,31 @@ async fn test_family_id_priority_enforcement() {
     let original_vars = save_env_state();
 
     // Set all possible family ID env vars
-    env::set_var("SONGBIRD_ORCHESTRATOR_FAMILY_ID", "highest");
-    env::set_var("SONGBIRD_ORCHESTRATOR_FAMILY", "medium-high");
-    env::set_var("BIOMEOS_FAMILY_ID", "medium");
-    env::set_var("SONGBIRD_FAMILY_ID", "lowest");
+    songbird_process_env::set_var("SONGBIRD_ORCHESTRATOR_FAMILY_ID", "highest");
+    songbird_process_env::set_var("SONGBIRD_ORCHESTRATOR_FAMILY", "medium-high");
+    songbird_process_env::set_var("BIOMEOS_FAMILY_ID", "medium");
+    songbird_process_env::set_var("SONGBIRD_FAMILY_ID", "lowest");
 
     let family_id = UnixSocketServer::get_family_id();
     assert_eq!(family_id, "highest");
 
     // Remove highest, should fall back
-    env::remove_var("SONGBIRD_ORCHESTRATOR_FAMILY_ID");
+    songbird_process_env::remove_var("SONGBIRD_ORCHESTRATOR_FAMILY_ID");
     let family_id = UnixSocketServer::get_family_id();
     assert_eq!(family_id, "medium-high");
 
     // Remove medium-high, should fall back
-    env::remove_var("SONGBIRD_ORCHESTRATOR_FAMILY");
+    songbird_process_env::remove_var("SONGBIRD_ORCHESTRATOR_FAMILY");
     let family_id = UnixSocketServer::get_family_id();
     assert_eq!(family_id, "medium");
 
     // Remove medium, should fall back to lowest
-    env::remove_var("BIOMEOS_FAMILY_ID");
+    songbird_process_env::remove_var("BIOMEOS_FAMILY_ID");
     let family_id = UnixSocketServer::get_family_id();
     assert_eq!(family_id, "lowest");
 
     // Remove all, should default
-    env::remove_var("SONGBIRD_FAMILY_ID");
+    songbird_process_env::remove_var("SONGBIRD_FAMILY_ID");
     let family_id = UnixSocketServer::get_family_id();
     assert_eq!(family_id, "default");
 
@@ -255,13 +260,13 @@ async fn test_path_construction_from_family_id() {
     let original_vars = save_env_state();
 
     // Clear explicit socket paths
-    env::remove_var("SONGBIRD_ORCHESTRATOR_SOCKET");
-    env::remove_var("SONGBIRD_SOCKET");
-    env::remove_var("BIOMEOS_SOCKET_PATH");
-    env::remove_var("BIOMEOS_SOCKET_DIR");
+    songbird_process_env::remove_var("SONGBIRD_ORCHESTRATOR_SOCKET");
+    songbird_process_env::remove_var("SONGBIRD_SOCKET");
+    songbird_process_env::remove_var("BIOMEOS_SOCKET_PATH");
+    songbird_process_env::remove_var("BIOMEOS_SOCKET_DIR");
 
     // Set only family ID
-    env::set_var("BIOMEOS_FAMILY_ID", "test-family");
+    songbird_process_env::set_var("BIOMEOS_FAMILY_ID", "test-family");
 
     let derived_path = UnixSocketServer::socket_path_from_env();
     let family_id = UnixSocketServer::get_family_id();
@@ -285,7 +290,7 @@ async fn test_path_construction_from_family_id() {
 
 /// Save current environment variable state
 fn save_env_state() -> Vec<(String, Option<String>)> {
-    let keys = vec![
+    let keys = [
         "SONGBIRD_ORCHESTRATOR_SOCKET",
         "SONGBIRD_SOCKET",
         "BIOMEOS_SOCKET_PATH",
@@ -302,19 +307,19 @@ fn save_env_state() -> Vec<(String, Option<String>)> {
 fn restore_env_state(state: Vec<(String, Option<String>)>) {
     for (key, value) in state {
         match value {
-            Some(v) => env::set_var(&key, v),
-            None => env::remove_var(&key),
+            Some(v) => songbird_process_env::set_var(&key, v),
+            None => songbird_process_env::remove_var(&key),
         }
     }
 }
 
 /// Clear all socket-related environment variables
 fn clear_all_socket_env_vars() {
-    env::remove_var("SONGBIRD_ORCHESTRATOR_SOCKET");
-    env::remove_var("SONGBIRD_SOCKET");
-    env::remove_var("BIOMEOS_SOCKET_PATH");
-    env::remove_var("SONGBIRD_ORCHESTRATOR_FAMILY_ID");
-    env::remove_var("SONGBIRD_ORCHESTRATOR_FAMILY");
-    env::remove_var("BIOMEOS_FAMILY_ID");
-    env::remove_var("SONGBIRD_FAMILY_ID");
+    songbird_process_env::remove_var("SONGBIRD_ORCHESTRATOR_SOCKET");
+    songbird_process_env::remove_var("SONGBIRD_SOCKET");
+    songbird_process_env::remove_var("BIOMEOS_SOCKET_PATH");
+    songbird_process_env::remove_var("SONGBIRD_ORCHESTRATOR_FAMILY_ID");
+    songbird_process_env::remove_var("SONGBIRD_ORCHESTRATOR_FAMILY");
+    songbird_process_env::remove_var("BIOMEOS_FAMILY_ID");
+    songbird_process_env::remove_var("SONGBIRD_FAMILY_ID");
 }

@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Consent Storage - Pure Rust sled persistence
 //!
 //! **Evolution**: Migrated from sqlx to sled (Jan 27, 2026)

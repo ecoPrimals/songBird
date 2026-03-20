@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Tests for Performance Monitoring
 //!
 //! Comprehensive test coverage for performance monitoring initialization.

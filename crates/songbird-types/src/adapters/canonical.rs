@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! # 🔧 Canonical Universal Adapter System
 //!
 //! **SINGLE CONSOLIDATED ADAPTER** ✅
@@ -487,7 +490,7 @@ impl CanonicalUniversalAdapter {
                 message: "No services found with this capability".to_string(),
                 suggested_alternatives: vec![],
                 recovery_actions: vec![
-                    "Check if services with this capability are registered".to_string()
+                    "Check if services with this capability are registered".to_string(),
                 ],
             });
         }

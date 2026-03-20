@@ -1,6 +1,9 @@
-//! BearDog Crypto Client - TRUE PRIMAL Crypto Delegation
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
+//! `BearDog` Crypto Client - TRUE PRIMAL Crypto Delegation
 //!
-//! All cryptographic operations are delegated to BearDog via JSON-RPC.
+//! All cryptographic operations are delegated to `BearDog` via JSON-RPC.
 //! This follows the TRUE PRIMAL pattern where primals only have self-knowledge
 //! and discover/use other primal capabilities at runtime.
 //!
@@ -46,7 +49,10 @@ use std::time::Duration;
 
 /// JSON-RPC request structure
 #[derive(Debug, Serialize)]
-struct JsonRpcRequest<'a, T: Serialize> {
+struct JsonRpcRequest<'a, T>
+where
+    T: Serialize,
+{
     jsonrpc: &'static str,
     method: &'a str,
     params: T,
@@ -80,9 +86,9 @@ pub enum BeardogTransport {
     Tcp(String, u16),
 }
 
-/// BearDog crypto client for TRUE PRIMAL delegation
+/// `BearDog` crypto client for TRUE PRIMAL delegation
 ///
-/// Delegates all crypto operations to BearDog via JSON-RPC.
+/// Delegates all crypto operations to `BearDog` via JSON-RPC.
 /// Supports both Unix sockets (desktop) and TCP (Android/universal).
 pub struct BeardogCryptoClient {
     transport: BeardogTransport,
@@ -101,8 +107,7 @@ impl BeardogCryptoClient {
             let parts: Vec<&str> = conn_str.strip_prefix("tcp:").unwrap().split(':').collect();
             if parts.len() != 2 {
                 return Err(OnionError::ConfigError(format!(
-                    "Invalid TCP format: {}. Use tcp:host:port",
-                    conn_str
+                    "Invalid TCP format: {conn_str}. Use tcp:host:port"
                 )));
             }
             let host = parts[0].to_string();
@@ -128,40 +133,48 @@ impl BeardogCryptoClient {
     /// Create client from environment variables
     ///
     /// Resolution order:
-    /// 1. `BEARDOG_SOCKET` - Direct BearDog socket (or tcp:host:port)
+    /// 1. `BEARDOG_SOCKET` - Direct `BearDog` socket (or tcp:host:port)
     /// 2. `CRYPTO_PROVIDER_SOCKET` - biomeOS-wired provider
     /// 3. XDG fallback paths (Unix only)
     ///
     /// TCP format: `tcp:127.0.0.1:9900`
+    ///
+    /// # Errors
+    ///
+    /// Returns error if no BearDog socket found in environment.
     pub fn from_env() -> Result<Self> {
         Self::from_env_with(|key| std::env::var(key))
     }
 
     /// Create client with injectable env reader (concurrent-safe, testable)
+    ///
+    /// # Errors
+    ///
+    /// Returns error if no BearDog socket found or invalid configuration.
     pub fn from_env_with<F>(env_reader: F) -> Result<Self>
     where
         F: Fn(&str) -> std::result::Result<String, std::env::VarError>,
     {
         // Try direct BearDog socket (may be tcp:host:port or /path/to/socket)
-        if let Ok(socket) = env_reader("BEARDOG_SOCKET") {
-            if !socket.is_empty() {
-                let transport = Self::parse_transport(&socket)?;
-                return Ok(Self {
-                    transport,
-                    timeout: Duration::from_secs(10),
-                });
-            }
+        if let Ok(socket) = env_reader("BEARDOG_SOCKET")
+            && !socket.is_empty()
+        {
+            let transport = Self::parse_transport(&socket)?;
+            return Ok(Self {
+                transport,
+                timeout: Duration::from_secs(10),
+            });
         }
 
         // Try biomeOS-wired crypto provider
-        if let Ok(socket) = env_reader("CRYPTO_PROVIDER_SOCKET") {
-            if !socket.is_empty() {
-                let transport = Self::parse_transport(&socket)?;
-                return Ok(Self {
-                    transport,
-                    timeout: Duration::from_secs(10),
-                });
-            }
+        if let Ok(socket) = env_reader("CRYPTO_PROVIDER_SOCKET")
+            && !socket.is_empty()
+        {
+            let transport = Self::parse_transport(&socket)?;
+            return Ok(Self {
+                transport,
+                timeout: Duration::from_secs(10),
+            });
         }
 
         // biomeOS standard: $XDG_RUNTIME_DIR/biomeos/beardog.sock (no family ID)
@@ -171,7 +184,7 @@ impl BeardogCryptoClient {
             if let Ok(family_id) =
                 env_reader("FAMILY_ID").or_else(|_| env_reader("BIOMEOS_FAMILY_ID"))
             {
-                let socket_path = format!("{}/biomeos/beardog-{}.sock", xdg_runtime, family_id);
+                let socket_path = format!("{xdg_runtime}/biomeos/beardog-{family_id}.sock");
                 if std::path::Path::new(&socket_path).exists() {
                     return Ok(Self {
                         transport: BeardogTransport::Unix(PathBuf::from(socket_path)),
@@ -180,7 +193,7 @@ impl BeardogCryptoClient {
                 }
             }
             // Try standard biomeOS path (no family ID)
-            let standard_path = format!("{}/biomeos/beardog.sock", xdg_runtime);
+            let standard_path = format!("{xdg_runtime}/biomeos/beardog.sock");
             if std::path::Path::new(&standard_path).exists() {
                 return Ok(Self {
                     transport: BeardogTransport::Unix(PathBuf::from(standard_path)),
@@ -212,7 +225,8 @@ impl BeardogCryptoClient {
     }
 
     /// Set timeout for RPC calls
-    pub fn with_timeout(mut self, timeout: Duration) -> Self {
+    #[must_use]
+    pub const fn with_timeout(mut self, timeout: Duration) -> Self {
         self.timeout = timeout;
         self
     }
@@ -238,16 +252,16 @@ impl BeardogCryptoClient {
             BeardogTransport::Unix(socket_path) => {
                 let mut stream = UnixStream::connect(socket_path).map_err(|e| {
                     OnionError::ConnectionError(format!(
-                        "Failed to connect to BearDog Unix socket at {:?}: {}",
-                        socket_path, e
+                        "Failed to connect to BearDog Unix socket at {}: {e}",
+                        socket_path.display()
                     ))
                 })?;
 
                 stream.set_read_timeout(Some(self.timeout)).map_err(|e| {
-                    OnionError::ConnectionError(format!("Failed to set timeout: {}", e))
+                    OnionError::ConnectionError(format!("Failed to set timeout: {e}"))
                 })?;
                 stream.set_write_timeout(Some(self.timeout)).map_err(|e| {
-                    OnionError::ConnectionError(format!("Failed to set timeout: {}", e))
+                    OnionError::ConnectionError(format!("Failed to set timeout: {e}"))
                 })?;
 
                 // Send request
@@ -262,19 +276,18 @@ impl BeardogCryptoClient {
                 line
             }
             BeardogTransport::Tcp(host, port) => {
-                let addr = format!("{}:{}", host, port);
+                let addr = format!("{host}:{port}");
                 let mut stream = TcpStream::connect(&addr).map_err(|e| {
                     OnionError::ConnectionError(format!(
-                        "Failed to connect to BearDog TCP at {}: {}",
-                        addr, e
+                        "Failed to connect to BearDog TCP at {addr}: {e}"
                     ))
                 })?;
 
                 stream.set_read_timeout(Some(self.timeout)).map_err(|e| {
-                    OnionError::ConnectionError(format!("Failed to set timeout: {}", e))
+                    OnionError::ConnectionError(format!("Failed to set timeout: {e}"))
                 })?;
                 stream.set_write_timeout(Some(self.timeout)).map_err(|e| {
-                    OnionError::ConnectionError(format!("Failed to set timeout: {}", e))
+                    OnionError::ConnectionError(format!("Failed to set timeout: {e}"))
                 })?;
 
                 // Send request
@@ -305,7 +318,11 @@ impl BeardogCryptoClient {
 
     /// Generate Ed25519 keypair for .onion identity
     ///
-    /// Returns (public_key, secret_key) both as 32-byte arrays
+    /// Returns (`public_key`, `secret_key`) both as 32-byte arrays
+    ///
+    /// # Errors
+    ///
+    /// Returns error if BearDog RPC fails or key format is invalid.
     pub fn ed25519_generate_keypair(&self) -> Result<Ed25519Keypair> {
         #[derive(Serialize)]
         struct Params {}
@@ -357,6 +374,10 @@ impl BeardogCryptoClient {
     }
 
     /// Verify Ed25519 signature
+    ///
+    /// # Errors
+    ///
+    /// Returns error if BearDog RPC fails.
     pub fn ed25519_verify(
         &self,
         public_key: &[u8; 32],
@@ -387,11 +408,48 @@ impl BeardogCryptoClient {
         Ok(response.valid)
     }
 
+    /// Derive Ed25519 public key from secret key bytes via `BearDog` JSON-RPC.
+    ///
+    /// Method: `crypto.ed25519_public_from_secret` (delegation — fails clearly if `BearDog` is down).
+    ///
+    /// # Errors
+    ///
+    /// Returns error if the RPC fails or the response is not 32 bytes.
+    pub fn ed25519_public_from_secret(&self, secret_key: &[u8; 32]) -> Result<[u8; 32]> {
+        #[derive(Serialize)]
+        struct Params {
+            secret_key: String,
+        }
+
+        #[derive(Deserialize)]
+        struct Response {
+            public_key: String,
+        }
+
+        let response: Response = self.call(
+            "crypto.ed25519_public_from_secret",
+            Params {
+                secret_key: base64_encode(secret_key),
+            },
+        )?;
+
+        let public_key = base64_decode(&response.public_key)?;
+        public_key.try_into().map_err(|_| {
+            OnionError::CryptoError(
+                "BearDog ed25519_public_from_secret: invalid public key length".into(),
+            )
+        })
+    }
+
     // =========================================================================
     // X25519 Operations (Session Keys)
     // =========================================================================
 
     /// Generate X25519 ephemeral keypair for session key exchange
+    ///
+    /// # Errors
+    ///
+    /// Returns error if BearDog RPC fails or key format is invalid.
     pub fn x25519_generate_ephemeral(&self) -> Result<X25519Keypair> {
         #[derive(Serialize)]
         struct Params {}
@@ -418,6 +476,10 @@ impl BeardogCryptoClient {
     }
 
     /// Derive shared secret via X25519 ECDH
+    ///
+    /// # Errors
+    ///
+    /// Returns error if BearDog RPC fails or shared secret format is invalid.
     pub fn x25519_derive_secret(
         &self,
         our_secret: &[u8; 32],
@@ -453,6 +515,10 @@ impl BeardogCryptoClient {
     // =========================================================================
 
     /// Encrypt data with ChaCha20-Poly1305
+    ///
+    /// # Errors
+    ///
+    /// Returns error if BearDog RPC fails or encryption fails.
     pub fn chacha20_poly1305_encrypt(
         &self,
         key: &[u8; 32],
@@ -484,6 +550,10 @@ impl BeardogCryptoClient {
     }
 
     /// Decrypt data with ChaCha20-Poly1305
+    ///
+    /// # Errors
+    ///
+    /// Returns error if BearDog RPC fails or decryption/MAC verification fails.
     pub fn chacha20_poly1305_decrypt(
         &self,
         key: &[u8; 32],
@@ -520,8 +590,12 @@ impl BeardogCryptoClient {
 
     /// Compute SHA3-256 hash (needed for .onion address checksum)
     ///
-    /// NOTE: Requires BearDog to implement `crypto.sha3_256` method.
-    /// See: BEARDOG_ONION_CRYPTO_HANDOFF_FEB06_2026.md
+    /// NOTE: Requires `BearDog` to implement `crypto.sha3_256` method.
+    /// See: `BEARDOG_ONION_CRYPTO_HANDOFF_FEB06_2026.md`
+    ///
+    /// # Errors
+    ///
+    /// Returns error if BearDog RPC fails or hash format is invalid.
     pub fn sha3_256(&self, data: &[u8]) -> Result<[u8; 32]> {
         #[derive(Serialize)]
         struct Params {
@@ -549,6 +623,10 @@ impl BeardogCryptoClient {
     // =========================================================================
 
     /// Compute HMAC-SHA256 (for HKDF key derivation)
+    ///
+    /// # Errors
+    ///
+    /// Returns error if BearDog RPC fails or MAC format is invalid.
     pub fn hmac_sha256(&self, key: &[u8], data: &[u8]) -> Result<[u8; 32]> {
         #[derive(Serialize)]
         struct Params {
@@ -601,13 +679,13 @@ pub struct X25519Keypair {
 // =============================================================================
 
 fn base64_encode(data: &[u8]) -> String {
-    use base64::{engine::general_purpose::STANDARD, Engine};
+    use base64::{Engine, engine::general_purpose::STANDARD};
     STANDARD.encode(data)
 }
 
 fn base64_decode(s: &str) -> Result<Vec<u8>> {
-    use base64::{engine::general_purpose::STANDARD, Engine};
-    STANDARD.decode(s).map_err(|e| OnionError::CryptoError(format!("Base64 decode error: {}", e)))
+    use base64::{Engine, engine::general_purpose::STANDARD};
+    STANDARD.decode(s).map_err(|e| OnionError::CryptoError(format!("Base64 decode error: {e}")))
 }
 
 #[cfg(test)]
@@ -664,7 +742,7 @@ mod tests {
             BeardogTransport::Unix(path) => {
                 assert_eq!(path.to_str().unwrap(), "/tmp/test-beardog.sock");
             }
-            _ => panic!("Expected Unix transport"),
+            BeardogTransport::Tcp(..) => panic!("Expected Unix transport"),
         }
     }
 
@@ -702,7 +780,7 @@ mod tests {
             BeardogTransport::Unix(path) => {
                 assert_eq!(path.to_str().unwrap(), "/tmp/beardog.sock");
             }
-            _ => panic!("Expected Unix transport"),
+            BeardogTransport::Tcp(..) => panic!("Expected Unix transport"),
         }
     }
 

@@ -1,9 +1,12 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 // Canonical Test Framework for Songbird Universal Orchestrator
 //
 // This module provides standardized testing patterns, utilities, and assertions
 // that ensure consistent testing across all Songbird crates.
 
-use songbird_types::{errors::SongbirdResult, SongbirdError};
+use songbird_types::{SongbirdError, errors::SongbirdResult};
 use std::collections::HashMap;
 use std::future::Future;
 use std::time::Duration;

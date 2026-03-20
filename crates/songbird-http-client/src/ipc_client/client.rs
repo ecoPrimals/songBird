@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! IPC HTTP Client - Self-Delegation Pattern
 //!
 //! Pure Rust HTTP client that delegates to Songbird's own HTTP service via IPC.
@@ -82,8 +85,8 @@
 //! - ✅ **Maintained**: Songbird HTTP client is actively developed
 
 use anyhow::{Context, Result};
-use base64::{engine::general_purpose::STANDARD as BASE64, Engine};
-use serde_json::{json, Value};
+use base64::{Engine, engine::general_purpose::STANDARD as BASE64};
+use serde_json::{Value, json};
 use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -196,7 +199,7 @@ impl IpcHttpClient {
     /// ```
     pub async fn new() -> Result<Self> {
         tokio::task::yield_now().await;
-        let socket_path = Self::discover_socket_path()?;
+        let socket_path = Self::discover_socket_path();
         Ok(Self {
             socket_path,
             request_id: std::sync::Arc::new(std::sync::atomic::AtomicU64::new(1)),
@@ -231,8 +234,8 @@ impl IpcHttpClient {
     /// Discover Songbird IPC socket path
     ///
     /// Uses environment-aware discovery with sensible defaults.
-    fn discover_socket_path() -> Result<PathBuf> {
-        Ok(Self::discover_socket_path_with(|name| std::env::var(name).ok()))
+    fn discover_socket_path() -> PathBuf {
+        Self::discover_socket_path_with(|name| std::env::var(name).ok())
     }
 
     /// Discover socket path with injectable env reader (concurrent-safe, testable)
@@ -611,7 +614,7 @@ impl IpcHttpClientBuilder {
         let socket_path = if let Some(path) = self.socket_path {
             path
         } else {
-            IpcHttpClient::discover_socket_path()?
+            IpcHttpClient::discover_socket_path()
         };
 
         // Create connection pool if requested
@@ -782,7 +785,7 @@ mod tests {
     }
 
     #[tokio::test]
-    #[ignore] // Requires running Songbird instance
+    #[ignore = "requires running Songbird instance"]
     async fn test_http_get() {
         let client = IpcHttpClient::new().await.unwrap();
         let response = client.get("https://httpbin.org/get").await.unwrap();
@@ -790,7 +793,7 @@ mod tests {
     }
 
     #[tokio::test]
-    #[ignore] // Requires running Songbird instance
+    #[ignore = "requires running Songbird instance"]
     async fn test_http_post_json() {
         let client = IpcHttpClient::new().await.unwrap();
         let body = json!({"test": "data"});

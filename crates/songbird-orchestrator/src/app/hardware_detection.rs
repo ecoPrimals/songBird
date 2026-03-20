@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Hardware Detection Module
 //!
 //! Provides runtime hardware detection for:
@@ -33,10 +36,10 @@ use songbird_types::SafeEnv;
 #[must_use]
 pub fn detect_gpu() -> Option<String> {
     // Priority 1: Check environment variable override (for testing/configuration)
-    if let Ok(gpu_model) = std::env::var("GPU_MODEL") {
-        if !gpu_model.is_empty() {
-            return Some(gpu_model);
-        }
+    if let Ok(gpu_model) = std::env::var("GPU_MODEL")
+        && !gpu_model.is_empty()
+    {
+        return Some(gpu_model);
     }
 
     // Method 2: Try nvidia-smi for NVIDIA GPUs
@@ -44,29 +47,26 @@ pub fn detect_gpu() -> Option<String> {
         .arg("--query-gpu=name")
         .arg("--format=csv,noheader")
         .output()
+        && output.status.success()
+        && let Ok(gpu_name) = String::from_utf8(output.stdout)
     {
-        if output.status.success() {
-            if let Ok(gpu_name) = String::from_utf8(output.stdout) {
-                let gpu_name = gpu_name.trim().to_string();
-                if !gpu_name.is_empty() {
-                    return Some(gpu_name);
-                }
-            }
+        let gpu_name = gpu_name.trim().to_string();
+        if !gpu_name.is_empty() {
+            return Some(gpu_name);
         }
     }
 
     // Method 2: Try lspci for any GPU
     #[cfg(target_os = "linux")]
-    if let Ok(output) = std::process::Command::new("lspci").output() {
-        if output.status.success() {
-            if let Ok(lspci_output) = String::from_utf8(output.stdout) {
-                for line in lspci_output.lines() {
-                    if line.to_lowercase().contains("vga") || line.to_lowercase().contains("3d") {
-                        // Extract GPU name from lspci output
-                        if let Some(gpu_part) = line.split(':').nth(2) {
-                            return Some(gpu_part.trim().to_string());
-                        }
-                    }
+    if let Ok(output) = std::process::Command::new("lspci").output()
+        && output.status.success()
+        && let Ok(lspci_output) = String::from_utf8(output.stdout)
+    {
+        for line in lspci_output.lines() {
+            if line.to_lowercase().contains("vga") || line.to_lowercase().contains("3d") {
+                // Extract GPU name from lspci output
+                if let Some(gpu_part) = line.split(':').nth(2) {
+                    return Some(gpu_part.trim().to_string());
                 }
             }
         }
@@ -94,30 +94,29 @@ pub fn detect_gpu() -> Option<String> {
 #[must_use]
 pub fn detect_storage_capacity() -> Option<usize> {
     // Priority 1: Check environment variable override (for testing/configuration)
-    if let Ok(storage_gb) = std::env::var("STORAGE_GB") {
-        if let Ok(storage) = storage_gb.parse::<usize>() {
-            return Some(storage);
-        }
+    if let Ok(storage_gb) = std::env::var("STORAGE_GB")
+        && let Ok(storage) = storage_gb.parse::<usize>()
+    {
+        return Some(storage);
     }
 
     // Method 2: Try to read from df (Linux)
     #[cfg(target_os = "linux")]
     {
-        if let Ok(output) = std::process::Command::new("df").arg("-BG").arg("/").output() {
-            if output.status.success() {
-                if let Ok(df_output) = String::from_utf8(output.stdout) {
-                    // Parse df output: find the root filesystem line
-                    for line in df_output.lines().skip(1) {
-                        let parts: Vec<&str> = line.split_whitespace().collect();
-                        if parts.len() >= 2 {
-                            // Second column is total size
-                            if let Some(size_str) = parts.get(1) {
-                                // Remove 'G' suffix and parse
-                                let size_gb = size_str.trim_end_matches('G');
-                                if let Ok(size) = size_gb.parse::<usize>() {
-                                    return Some(size);
-                                }
-                            }
+        if let Ok(output) = std::process::Command::new("df").arg("-BG").arg("/").output()
+            && output.status.success()
+            && let Ok(df_output) = String::from_utf8(output.stdout)
+        {
+            // Parse df output: find the root filesystem line
+            for line in df_output.lines().skip(1) {
+                let parts: Vec<&str> = line.split_whitespace().collect();
+                if parts.len() >= 2 {
+                    // Second column is total size
+                    if let Some(size_str) = parts.get(1) {
+                        // Remove 'G' suffix and parse
+                        let size_gb = size_str.trim_end_matches('G');
+                        if let Ok(size) = size_gb.parse::<usize>() {
+                            return Some(size);
                         }
                     }
                 }

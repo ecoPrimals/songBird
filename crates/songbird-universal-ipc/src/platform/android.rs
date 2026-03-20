@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Android abstract socket implementation
 //!
 //! **Platform**: Android (all architectures)
@@ -243,7 +246,7 @@ mod tests {
         ];
 
         for (primal_name, expected_socket) in test_cases {
-            let socket_name = format!("@biomeos_{}", primal_name);
+            let socket_name = format!("@biomeos_{primal_name}");
             assert_eq!(socket_name, expected_socket);
             assert!(socket_name.starts_with("@biomeos_"));
         }

@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Integration tests for BirdSong listener/broadcaster wiring (v3.3)
 //!
 //! These tests verify that the orchestrator correctly:
@@ -10,12 +13,12 @@
 #[cfg(test)]
 mod tests {
     use serde_json::json;
+    use songbird_discovery::IdentityAttestation;
     use songbird_discovery::anonymous::{
         AnonymousDiscoveryBroadcaster, AnonymousDiscoveryListener, AnonymousDiscoveryMessage,
         TransportEndpointMessage,
     };
     use songbird_discovery::birdsong::{BirdSongConfig, BirdSongEncryption, BirdSongProcessor};
-    use songbird_discovery::IdentityAttestation;
     use std::sync::Arc;
 
     /// Mock BirdSong provider for testing
@@ -101,7 +104,7 @@ mod tests {
             vec!["224.0.0.251:2300".parse().unwrap()],
             30,
         )
-        .with_identity_attestations(attestations.clone())
+        .with_identity_attestations(attestations)
         .with_birdsong(processor);
 
         // Verify broadcaster has identity attestations and BirdSong
@@ -122,7 +125,7 @@ mod tests {
         let processor = Arc::new(BirdSongProcessor::new(Some(provider), config));
 
         // Create listener with BirdSong (v3.3 fix!)
-        let listener = AnonymousDiscoveryListener::new(2300, 60).with_birdsong(processor.clone());
+        let listener = AnonymousDiscoveryListener::new(2300, 60).with_birdsong(processor);
 
         // Verify listener has BirdSong
         // (This is the critical v3.3 fix - listener can now decrypt)

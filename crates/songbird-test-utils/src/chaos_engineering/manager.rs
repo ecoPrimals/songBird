@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 // Chaos Engineering Manager
 //
 // Core chaos engineering management following canonical patterns.
@@ -8,7 +11,7 @@ use crate::chaos_engineering::config::{
     NetworkFaultConfig, PerformanceDegradationConfig, ResourceConstraintConfig,
     ServiceFailureConfig,
 };
-use songbird_types::{errors::SongbirdResult, SongbirdError};
+use songbird_types::{SongbirdError, errors::SongbirdResult};
 use std::collections::HashMap;
 use std::sync::{Arc, RwLock};
 use std::time::{Duration, Instant, SystemTime};

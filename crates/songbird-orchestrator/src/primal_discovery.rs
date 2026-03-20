@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Agnostic Primal Discovery - TRUE PRIMAL Architecture
 //!
 //! Discovers primals by capability at runtime, with ZERO hardcoding.
@@ -353,6 +356,18 @@ pub async fn discover_ai_provider() -> Result<String> {
     discover(Capability::Ai).await
 }
 
+/// Get family ID from environment (delegates to canonical `env_config::family_id()`)
+#[must_use]
+pub fn get_family_id() -> String {
+    crate::env_config::family_id()
+}
+
+/// Get primal name from environment (self-knowledge)
+#[must_use]
+pub fn get_primal_name() -> String {
+    std::env::var("PRIMAL_NAME").unwrap_or_else(|_| "songbird".to_string())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -557,16 +572,4 @@ mod tests {
         assert!(result.is_ok());
         assert_eq!(result.unwrap(), custom_path);
     }
-}
-
-/// Get family ID from environment (delegates to canonical `env_config::family_id()`)
-#[must_use]
-pub fn get_family_id() -> String {
-    crate::env_config::family_id()
-}
-
-/// Get primal name from environment (self-knowledge)
-#[must_use]
-pub fn get_primal_name() -> String {
-    std::env::var("PRIMAL_NAME").unwrap_or_else(|_| "songbird".to_string())
 }

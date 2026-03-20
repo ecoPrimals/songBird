@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Universal IPC Broker Service
 //!
 //! This module integrates Songbird's Universal IPC service into the orchestrator.

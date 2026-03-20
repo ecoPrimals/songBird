@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Graph structure validation
 //!
 //! This module provides validation logic for execution graphs, including:
@@ -210,12 +213,11 @@ impl GraphValidator {
 
         // Try DFS from each node
         for node in &graph.nodes {
-            if !visited.contains(node.id.as_str()) {
-                if let Some(cycle) =
+            if !visited.contains(node.id.as_str())
+                && let Some(cycle) =
                     self.dfs_cycle(node.id.as_str(), &adj, &mut visited, &mut rec_stack, &mut path)
-                {
-                    return Some(cycle);
-                }
+            {
+                return Some(cycle);
             }
         }
 

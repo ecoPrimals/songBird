@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! `ServerHello` message (RFC 8446 Section 4.1.3)
 //!
 //! The `ServerHello` message is sent by the server in response to `ClientHello`.

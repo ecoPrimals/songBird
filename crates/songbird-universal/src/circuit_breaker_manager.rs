@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Circuit Breaker Manager for External Service Calls
 //!
 //! Provides centralized circuit breaker management for all external HTTP calls,
@@ -267,10 +270,10 @@ impl CircuitBreakerManager {
     /// - IP: "192.168.1.1:8080" → "192.168.1.1"
     fn extract_domain(endpoint: &str) -> String {
         // Try to parse as URL first
-        if let Ok(url) = Url::parse(endpoint) {
-            if let Some(host) = url.host_str() {
-                return host.to_string();
-            }
+        if let Ok(url) = Url::parse(endpoint)
+            && let Some(host) = url.host_str()
+        {
+            return host.to_string();
         }
 
         // Fallback: extract domain-like pattern from string

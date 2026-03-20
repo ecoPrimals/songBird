@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Security capability client for cryptographic trust evaluation
 //!
 //! **MODERNIZED v3.12.3**: Now uses protocol-agnostic `SecurityAdapter`!

@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Canonical API /// Configuration capability Configuration
 //!
 //! This module provides the single, canonical API configuration that consolidates

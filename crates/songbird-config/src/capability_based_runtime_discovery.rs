@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! # 🎯 Capability-Based Runtime Discovery
 //!
 //! **PHILOSOPHY**: Zero hardcoding through pure capability-based discovery
@@ -136,11 +139,11 @@ impl CapabilityResolver {
         let capability = &request.capability;
 
         // Check cache first
-        if let Some(cached) = self.provider_cache.get(capability) {
-            if !cached.is_expired() {
-                debug!("Using cached provider for capability: {}", capability);
-                return Ok(cached.provider.clone());
-            }
+        if let Some(cached) = self.provider_cache.get(capability)
+            && !cached.is_expired()
+        {
+            debug!("Using cached provider for capability: {}", capability);
+            return Ok(cached.provider.clone());
         }
 
         // Try each discovery mechanism in order
@@ -522,7 +525,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_environment_discovery() {
-        std::env::set_var("SONGBIRD_AI_PROVIDER_URL", "http://test.local:9200");
+        songbird_process_env::set_var("SONGBIRD_AI_PROVIDER_URL", "http://test.local:9200");
 
         let mut resolver = CapabilityResolver::new();
         let request = CapabilityRequest::new("ai");
@@ -533,7 +536,7 @@ mod tests {
         let provider = result.expect("Provider discovery should succeed in test");
         assert_eq!(provider.endpoint, "http://test.local:9200");
 
-        std::env::remove_var("SONGBIRD_AI_PROVIDER_URL");
+        songbird_process_env::remove_var("SONGBIRD_AI_PROVIDER_URL");
     }
 
     #[test]

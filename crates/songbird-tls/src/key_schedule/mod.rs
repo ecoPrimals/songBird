@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! TLS 1.3 Key Schedule (RFC 8446 Section 7.1)
 //!
 //! Implements HKDF-based key derivation for TLS 1.3.

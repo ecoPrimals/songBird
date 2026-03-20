@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Error Helper Traits for Unwrap Elimination
 //!
 //! This module provides extension traits to eliminate `.unwrap()` and `.expect()` calls

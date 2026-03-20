@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! `BearDog` RPC communication
 //!
 //! JSON-RPC call implementation with dual-mode support (Direct and Neural API).
@@ -6,10 +9,10 @@ use super::core::{BearDogClient, BearDogMode};
 use super::types::{JsonRpcRequest, JsonRpcResponse};
 use crate::crypto::socket_discovery::IpcEndpoint;
 use crate::error::{Error, Result};
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use std::sync::atomic::Ordering;
 use tokio::io::{AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt};
-use tokio::time::{timeout, Duration};
+use tokio::time::{Duration, timeout};
 use tracing::{debug, error, trace};
 
 /// Unified async stream trait for Unix sockets and TCP
@@ -56,7 +59,7 @@ impl BearDogClient {
             _ => {
                 return Err(Error::BearDogRpc(format!(
                     "Unknown capability: {capability}. Add mapping to semantic_to_actual()"
-                )))
+                )));
             }
         })
     }
@@ -213,21 +216,20 @@ impl BearDogClient {
                 Ok(Ok(n)) => {
                     buffer.extend_from_slice(&temp_buf[..n]);
                     // Check for complete JSON
-                    if let Ok(s) = std::str::from_utf8(&buffer) {
-                        if serde_json::from_str::<Value>(s).is_ok() {
-                            break; // Complete JSON received!
-                        }
+                    if let Ok(s) = std::str::from_utf8(&buffer)
+                        && serde_json::from_str::<Value>(s).is_ok()
+                    {
+                        break; // Complete JSON received!
                     }
                 }
                 Ok(Err(e)) => return Err(Error::BearDogRpc(format!("Socket read error: {e}"))),
                 Err(_) => {
                     // Timeout - check if we have valid JSON
-                    if !buffer.is_empty() {
-                        if let Ok(s) = std::str::from_utf8(&buffer) {
-                            if serde_json::from_str::<Value>(s).is_ok() {
-                                break;
-                            }
-                        }
+                    if !buffer.is_empty()
+                        && let Ok(s) = std::str::from_utf8(&buffer)
+                        && serde_json::from_str::<Value>(s).is_ok()
+                    {
+                        break;
                     }
                     return Err(Error::BearDogRpc("Timeout reading from Neural API".to_string()));
                 }

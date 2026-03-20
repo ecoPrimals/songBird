@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Stream protocol - RELAY cells and stream management
 //!
 //! **Phase 2C**: Onion Client
@@ -99,6 +102,10 @@ impl StreamManager {
     }
 
     /// Allocate new stream ID
+    ///
+    /// # Errors
+    ///
+    /// Returns error if lock acquisition fails.
     pub fn allocate_stream(&self) -> Result<u16> {
         let mut next_id = self
             .next_stream_id
@@ -107,6 +114,7 @@ impl StreamManager {
 
         let stream_id = *next_id;
         *next_id = next_id.wrapping_add(1);
+        drop(next_id);
 
         // Create stream
         let stream = Stream::new(stream_id, self.circuit_id);
@@ -122,6 +130,10 @@ impl StreamManager {
     }
 
     /// Get stream
+    ///
+    /// # Errors
+    ///
+    /// Returns error if lock acquisition fails or stream not found.
     pub fn get_stream(&self, stream_id: u16) -> Result<Stream> {
         let streams = self
             .streams
@@ -134,6 +146,10 @@ impl StreamManager {
     }
 
     /// Update stream state
+    ///
+    /// # Errors
+    ///
+    /// Returns error if lock acquisition fails or stream not found.
     pub fn update_stream<F>(&self, stream_id: u16, f: F) -> Result<()>
     where
         F: FnOnce(&mut Stream),
@@ -152,6 +168,10 @@ impl StreamManager {
     }
 
     /// Remove stream
+    ///
+    /// # Errors
+    ///
+    /// Returns error if lock acquisition fails.
     pub fn remove_stream(&self, stream_id: u16) -> Result<()> {
         let mut streams = self
             .streams
@@ -195,7 +215,7 @@ impl StreamProtocol {
             recognized: 0,
             stream_id,
             digest: [0u8; 4], // Populated by onion layer before encryption
-            length: data.len() as u16,
+            length: u16::try_from(data.len()).expect("address length fits in u16"),
             data,
         }
     }
@@ -215,7 +235,7 @@ impl StreamProtocol {
             recognized: 0,
             stream_id,
             digest: [0u8; 4], // Populated by onion layer before encryption
-            length: data.len() as u16,
+            length: u16::try_from(data.len()).expect("address length fits in u16"),
             data: data.to_vec(),
         }
     }
@@ -266,6 +286,10 @@ impl StreamProtocol {
     ///
     /// # Returns
     /// * Ok if connected, Error otherwise
+    ///
+    /// # Errors
+    ///
+    /// Returns error if cell command is not CONNECTED.
     pub fn parse_connected(cell: &RelayCell) -> Result<()> {
         if cell.command != RelayCommand::Connected {
             return Err(Error::Protocol(format!("Expected CONNECTED, got {:?}", cell.command)));
@@ -280,6 +304,10 @@ impl StreamProtocol {
     ///
     /// # Returns
     /// * Reason code for closure
+    ///
+    /// # Errors
+    ///
+    /// Returns error if cell command is not END.
     pub fn parse_end(cell: &RelayCell) -> Result<u8> {
         if cell.command != RelayCommand::End {
             return Err(Error::Protocol(format!("Expected END, got {:?}", cell.command)));

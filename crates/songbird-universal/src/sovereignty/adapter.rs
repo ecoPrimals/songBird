@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Sovereignty-Aware Universal Adapter
 //!
 //! This module provides the main sovereignty-aware adapter that orchestrates
@@ -18,8 +21,7 @@ use tracing::{debug, info};
 /// while maintaining each primal's self-knowledge and independence
 #[derive(Debug)]
 pub struct SovereigntyAwareAdapter {
-    /// Base universal adapter (already exists)
-    #[allow(dead_code)] // Reserved for future delegation to base adapter
+    /// Base universal adapter for service discovery and routing
     base_adapter: UnifiedUniversalAdapter,
 
     /// Sovereignty-aware routing engine
@@ -81,8 +83,8 @@ impl SovereigntyAwareAdapter {
     ) -> SongbirdResult<SovereigntyAwareRoutingDecision> {
         debug!("Processing sovereignty-aware request: {:?}", request);
 
-        // Get available services from base adapter
-        let available_services = vec![]; // Placeholder for service discovery
+        // Discover available services via base adapter (registry, discovery endpoints)
+        let available_services = self.base_adapter.discover_services().await.unwrap_or_default();
 
         // Find sovereignty-aware paths
         let mut candidate_paths = if self.config.enable_sovereignty_routing {
@@ -137,8 +139,8 @@ impl SovereigntyAwareAdapter {
     ) -> SongbirdResult<SovereigntyAwareRoutingDecision> {
         debug!("Processing sovereignty-aware request: {:?}", request);
 
-        // Get available services from base adapter
-        let available_services = vec![]; // Placeholder for service discovery
+        // Discover available services via base adapter (registry, discovery endpoints)
+        let available_services = self.base_adapter.discover_services().await.unwrap_or_default();
 
         // Find sovereignty-aware paths
         let mut candidate_paths = if self.config.enable_sovereignty_routing {
@@ -482,8 +484,8 @@ mod tests {
     }
 
     #[test]
-    fn test_determine_compliance_level_partially_compliant(
-    ) -> Result<(), Box<dyn std::error::Error>> {
+    fn test_determine_compliance_level_partially_compliant()
+    -> Result<(), Box<dyn std::error::Error>> {
         let adapter = futures::executor::block_on(SovereigntyAwareAdapter::new())
             .map_err(|e| SongbirdError::configuration(format!("Test: adapter creation: {e}")))?;
 

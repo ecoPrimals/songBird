@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! E2E Tests: Squirrel Integration - Real-World Scenarios
 //!
 //! Tests end-to-end integration scenarios for Squirrel AI delegation:
@@ -31,46 +34,46 @@ async fn start_mock_server(
                 let mut reader = BufReader::new(&mut stream);
                 let mut line = String::new();
 
-                if reader.read_line(&mut line).await.is_ok() {
-                    if let Ok(request) = serde_json::from_str::<serde_json::Value>(&line) {
-                        let method = request["method"].as_str().unwrap_or("");
+                if reader.read_line(&mut line).await.is_ok()
+                    && let Ok(request) = serde_json::from_str::<serde_json::Value>(&line)
+                {
+                    let method = request["method"].as_str().unwrap_or("");
 
-                        let response = match method {
-                            "discover_capabilities" => json!({
-                                "jsonrpc": "2.0",
-                                "result": {
-                                    "capabilities": ["http.request", "http.post", "http.get"],
-                                    "metadata": {
-                                        "primal_name": "songbird",
-                                        "version": "4.3.0",
-                                        "family_id": "nat0"
-                                    }
-                                },
-                                "id": request["id"]
-                            }),
-                            "http.request" => json!({
-                                "jsonrpc": "2.0",
-                                "result": {
-                                    "status": 200,
-                                    "headers": {"content-type": "application/json"},
-                                    "body": {"success": true, "message": "Mock response"}
-                                },
-                                "id": request["id"]
-                            }),
-                            _ => json!({
-                                "jsonrpc": "2.0",
-                                "error": {
-                                    "code": -32601,
-                                    "message": "Method not found"
-                                },
-                                "id": request["id"]
-                            }),
-                        };
+                    let response = match method {
+                        "discover_capabilities" => json!({
+                            "jsonrpc": "2.0",
+                            "result": {
+                                "capabilities": ["http.request", "http.post", "http.get"],
+                                "metadata": {
+                                    "primal_name": "songbird",
+                                    "version": "4.3.0",
+                                    "family_id": "nat0"
+                                }
+                            },
+                            "id": request["id"]
+                        }),
+                        "http.request" => json!({
+                            "jsonrpc": "2.0",
+                            "result": {
+                                "status": 200,
+                                "headers": {"content-type": "application/json"},
+                                "body": {"success": true, "message": "Mock response"}
+                            },
+                            "id": request["id"]
+                        }),
+                        _ => json!({
+                            "jsonrpc": "2.0",
+                            "error": {
+                                "code": -32601,
+                                "message": "Method not found"
+                            },
+                            "id": request["id"]
+                        }),
+                    };
 
-                        let response_str = serde_json::to_string(&response).unwrap();
-                        let _ = stream.write_all(response_str.as_bytes()).await;
-                        let _ = stream.write_all(b"\n").await;
-                    }
+                    let response_str = serde_json::to_string(&response).unwrap();
+                    let _ = stream.write_all(response_str.as_bytes()).await;
+                    let _ = stream.write_all(b"\n").await;
                 }
             });
         }

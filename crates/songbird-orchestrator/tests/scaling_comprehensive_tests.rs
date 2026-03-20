@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 // Allow unwrap/expect in tests - idiomatic for test code
 #![allow(clippy::unwrap_used, clippy::expect_used)]
 
@@ -199,7 +202,7 @@ async fn test_auto_scaler_health_message() -> SongbirdResult<()> {
     let health = scaler
         .health_check()
         .await
-        .map_err(|e| SongbirdError::configuration("Failed to start orchestrator".to_string()))?;
+        .map_err(|_e| SongbirdError::configuration("Failed to start orchestrator".to_string()))?;
     let message = health
         .message
         .ok_or_else(|| SongbirdError::configuration("Failed health check".to_string()))?;
@@ -239,10 +242,10 @@ async fn test_auto_scaler_operations_are_async() -> SongbirdResult<()> {
     let mut scaler = AutoScaler::new(config);
 
     let start_time = std::time::Instant::now();
-    scaler.initialize().await.map_err(|e| {
+    scaler.initialize().await.map_err(|_e| {
         SongbirdError::configuration("Failed to initialize orchestrator".to_string())
     })?;
-    scaler.start().await.map_err(|e| {
+    scaler.start().await.map_err(|_e| {
         SongbirdError::configuration("Failed to initialize orchestrator".to_string())
     })?;
     let elapsed = start_time.elapsed();

@@ -1,10 +1,13 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Certificate utilities for testing and development
 //!
 //! These utilities help generate self-signed Ed25519 certificates for testing
 //! and development. In production, use proper certificate management.
 
 use crate::error::{Result, TlsError};
-use crate::messages::{certificate::CertificateEntry, Certificate};
+use crate::messages::{Certificate, certificate::CertificateEntry};
 
 /// Generate a self-signed Ed25519 certificate for testing
 ///

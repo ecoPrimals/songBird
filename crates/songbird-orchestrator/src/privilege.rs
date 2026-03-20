@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Secure Privilege Management - User Collaboration
 //!
 //! Philosophy (Dec 20, 2025):
@@ -13,7 +16,7 @@
 //!
 //! This builds trust and sovereignty rather than creating confusion.
 
-use anyhow::{anyhow, Result};
+use anyhow::{Result, anyhow};
 use std::io::{self, Write};
 use std::process::Command;
 use tracing::{debug, error, info};

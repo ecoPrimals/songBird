@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! TLS 1.3 Record Layer
 //!
 //! Handles record framing, encryption, and decryption per RFC 8446 Section 5.
@@ -13,7 +16,7 @@
 //! } TLSPlaintext;
 //! ```
 
-use crate::codec::bytes::{read_u16, read_u8, write_u16, write_u8};
+use crate::codec::bytes::{read_u8, read_u16, write_u8, write_u16};
 use crate::error::{Result, TlsError};
 use crate::messages::ContentType;
 use crate::{MAX_RECORD_SIZE, TLS_VERSION_1_2};
@@ -189,7 +192,7 @@ impl RecordLayer {
         let mut inner = Vec::with_capacity(plaintext.len() + 1);
         inner.extend_from_slice(plaintext);
         inner.push(content_type.into()); // Actual content type
-                                         // No padding for now (can be added later for traffic analysis resistance)
+        // No padding for now (can be added later for traffic analysis resistance)
 
         // Encrypt the inner plaintext
         let ciphertext = encrypt_fn(&inner, self.write_sequence)?;

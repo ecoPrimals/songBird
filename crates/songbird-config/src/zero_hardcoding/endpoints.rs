@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Zero Hardcoding: Environment-Driven Endpoints
 //!
 //! This module provides environment-driven endpoint configuration with intelligent defaults.

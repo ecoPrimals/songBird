@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Canonical severity level definitions
 //!
 //! **CANONICAL**: Single source of truth for error and warning severity levels

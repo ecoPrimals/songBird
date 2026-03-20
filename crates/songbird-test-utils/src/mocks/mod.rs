@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Mock Servers for Testing
 //!
 //! Provides HTTP server mocks for testing Songbird's orchestration capabilities

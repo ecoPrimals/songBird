@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! End-to-end tests for graph availability checking
 //!
 //! These tests verify the full workflow from graph creation to availability
@@ -27,7 +30,7 @@ fn create_test_node(id: &str, capability: &str, protocol: Option<&str>) -> Graph
         inputs: vec![],
         outputs: vec![],
         config: serde_json::json!({}),
-        preferred_protocol: protocol.map(|s| s.to_string()),
+        preferred_protocol: protocol.map(std::string::ToString::to_string),
         timeout_secs: None,
     }
 }

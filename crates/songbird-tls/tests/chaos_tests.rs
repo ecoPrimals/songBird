@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Chaos and fault injection tests for songbird-tls
 //!
 //! These tests intentionally introduce failures to validate error handling.
@@ -6,7 +9,7 @@
 use songbird_tls::codec::{Decode, Encode};
 use songbird_tls::error::TlsError;
 use songbird_tls::messages::{ClientHello, ContentType, Extension};
-use tokio::time::{timeout, Duration};
+use tokio::time::{Duration, timeout};
 
 /// Test that ClientHello encoding/decoding is resilient
 #[tokio::test]

@@ -8,6 +8,7 @@ exclude = [
 
 members = [
     # Foundation
+    "crates/songbird-process-env",
     "crates/songbird-types",
     "crates/songbird-config",
     "crates/songbird-canonical",
@@ -54,11 +55,11 @@ members = [
 
 [workspace.package]
 version = "0.2.1"
-edition = "2021"
-license = "AGPL-3.0"
+edition = "2024"
+license = "AGPL-3.0-only"
 authors = ["ecoPrimals <contact@ecoprimals.dev>"]
 repository = "https://github.com/ecoPrimals/SongBird"
-homepage = "https://songbird-gaming.ecoprimals.dev"
+homepage = "https://songbird.ecoprimals.dev"
 
 [package]
 name = "songbird"
@@ -79,6 +80,8 @@ doc = false
 
 [dependencies]
 songbird-orchestrator = { path = "crates/songbird-orchestrator" }
+songbird-compute-bridge = { path = "crates/songbird-compute-bridge" }
+songbird-remote-deploy = { path = "crates/songbird-remote-deploy" }
 songbird-discovery = { path = "crates/songbird-discovery" }
 songbird-config = { path = "crates/songbird-config" }
 songbird-types = { path = "crates/songbird-types" }
@@ -98,6 +101,8 @@ tempfile = "3.8"
 workspace = true
 
 [workspace.dependencies]
+songbird-process-env = { path = "crates/songbird-process-env" }
+
 # Async
 tokio = { version = "1.48", features = [
     "rt-multi-thread", "net", "io-util", "macros",

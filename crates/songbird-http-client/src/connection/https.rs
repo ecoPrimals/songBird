@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! HTTPS connection handling with TLS 1.3
 //!
 //! Handles HTTPS requests over TLS 1.3 connections with progressive fallback.
@@ -151,7 +154,9 @@ impl HttpsConnection {
 
         // Validate we received data
         if response_data.is_empty() {
-            error!("❌ No HTTP response data received (server closed connection without sending response)");
+            error!(
+                "❌ No HTTP response data received (server closed connection without sending response)"
+            );
             return Err(Error::HttpProtocol("No response data received from server".to_string()));
         }
 
@@ -264,61 +269,61 @@ impl HttpsConnection {
             response_data.extend_from_slice(&chunk);
 
             // Check if we have complete HTTP headers (\r\n\r\n)
-            if !headers_complete {
-                if let Some(headers_end) = response_data.windows(4).position(|w| w == b"\r\n\r\n") {
-                    headers_complete = true;
-                    debug!("   📋 HTTP headers complete ({} bytes)", headers_end);
+            if !headers_complete
+                && let Some(headers_end) = response_data.windows(4).position(|w| w == b"\r\n\r\n")
+            {
+                headers_complete = true;
+                debug!("   📋 HTTP headers complete ({} bytes)", headers_end);
 
-                    // Parse headers to determine response type
-                    let headers_str = String::from_utf8_lossy(&response_data[..headers_end]);
-                    let headers_lower = headers_str.to_lowercase();
+                // Parse headers to determine response type
+                let headers_str = String::from_utf8_lossy(&response_data[..headers_end]);
+                let headers_lower = headers_str.to_lowercase();
 
-                    // Check for Transfer-Encoding: chunked
-                    let is_chunked = headers_lower.contains("transfer-encoding: chunked")
-                        || headers_lower.contains("transfer-encoding:chunked");
+                // Check for Transfer-Encoding: chunked
+                let is_chunked = headers_lower.contains("transfer-encoding: chunked")
+                    || headers_lower.contains("transfer-encoding:chunked");
 
-                    // Check for Connection: close
-                    let connection_close = headers_lower.contains("connection: close")
-                        || headers_lower.contains("connection:close");
+                // Check for Connection: close
+                let connection_close = headers_lower.contains("connection: close")
+                    || headers_lower.contains("connection:close");
 
-                    if is_chunked {
-                        info!("   📦 Transfer-Encoding: chunked detected");
-                        // For chunked responses, look for terminator: 0\r\n\r\n
-                        // This indicates end of chunked body
-                    } else if let Some(content_length_line) = headers_str
-                        .lines()
-                        .find(|line| line.to_lowercase().starts_with("content-length:"))
+                if is_chunked {
+                    info!("   📦 Transfer-Encoding: chunked detected");
+                    // For chunked responses, look for terminator: 0\r\n\r\n
+                    // This indicates end of chunked body
+                } else if let Some(content_length_line) = headers_str
+                    .lines()
+                    .find(|line| line.to_lowercase().starts_with("content-length:"))
+                {
+                    if let Some(content_length) = content_length_line
+                        .split(':')
+                        .nth(1)
+                        .and_then(|val| val.trim().parse::<usize>().ok())
                     {
-                        if let Some(content_length) = content_length_line
-                            .split(':')
-                            .nth(1)
-                            .and_then(|val| val.trim().parse::<usize>().ok())
-                        {
-                            let body_start = headers_end + 4;
-                            let total_expected = body_start + content_length;
+                        let body_start = headers_end + 4;
+                        let total_expected = body_start + content_length;
+                        debug!(
+                            "   📊 Content-Length: {} bytes, expecting {} total",
+                            content_length, total_expected
+                        );
+
+                        // If we already have the complete response, we're done
+                        if response_data.len() >= total_expected {
                             debug!(
-                                "   📊 Content-Length: {} bytes, expecting {} total",
-                                content_length, total_expected
+                                "   ✅ Complete response received in {} record(s)",
+                                records_read
                             );
-
-                            // If we already have the complete response, we're done
-                            if response_data.len() >= total_expected {
-                                debug!(
-                                    "   ✅ Complete response received in {} record(s)",
-                                    records_read
-                                );
-                                break;
-                            }
-
-                            // Continue reading until we have the full body
-                            continue;
+                            break;
                         }
-                    } else if connection_close {
-                        debug!("   🔌 Connection: close - will read until server closes");
-                    } else {
-                        // No Content-Length, no chunked, no connection close
-                        debug!("   ⚠️  No Content-Length or chunked encoding, reading until close");
+
+                        // Continue reading until we have the full body
+                        continue;
                     }
+                } else if connection_close {
+                    debug!("   🔌 Connection: close - will read until server closes");
+                } else {
+                    // No Content-Length, no chunked, no connection close
+                    debug!("   ⚠️  No Content-Length or chunked encoding, reading until close");
                 }
             }
 
@@ -432,10 +437,11 @@ impl HttpsConnection {
                     info!("   Remote: {} (expected: {})", peer, addr);
 
                     // Verify we connected to the right port
-                    if let Ok(peer_addr) = stream.peer_addr() {
-                        if peer_addr.port() != 443 && addr.contains(":443") {
-                            warn!("⚠️  Connected to port {} but expected 443!", peer_addr.port());
-                        }
+                    if let Ok(peer_addr) = stream.peer_addr()
+                        && peer_addr.port() != 443
+                        && addr.contains(":443")
+                    {
+                        warn!("⚠️  Connected to port {} but expected 443!", peer_addr.port());
                     }
 
                     stream

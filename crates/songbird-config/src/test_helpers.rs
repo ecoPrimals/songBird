@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Test helpers for concurrent, safe environment variable testing
 //!
 //! **DEPRECATED**: This module is deprecated. Use `songbird_test_utils::ScopedEnv` instead.
@@ -22,6 +25,7 @@
     note = "Use `songbird_test_utils::ScopedEnv` instead for async-safe environment variable testing"
 )]
 
+use songbird_process_env;
 use std::sync::{Mutex, MutexGuard};
 
 /// Global lock for environment variable tests
@@ -41,9 +45,9 @@ static ENV_LOCK: Mutex<()> = Mutex::new(());
 ///
 /// fn test_with_env_var() {
 ///     let _guard = EnvironmentLock::new();
-///     std::env::set_var("MY_VAR", "value");
+///     songbird_process_env::set_var("MY_VAR", "value");
 ///     // Test code here...
-///     std::env::remove_var("MY_VAR");
+///     songbird_process_env::remove_var("MY_VAR");
 ///     // Lock automatically released when _guard drops
 /// }
 /// ```
@@ -93,7 +97,7 @@ impl ScopedEnv {
     pub fn new(key: impl Into<String>, value: impl AsRef<str>) -> Self {
         let key = key.into();
         let original = std::env::var(&key).ok();
-        std::env::set_var(&key, value.as_ref());
+        songbird_process_env::set_var(&key, value.as_ref());
         Self {
             key,
             original,
@@ -104,8 +108,8 @@ impl ScopedEnv {
 impl Drop for ScopedEnv {
     fn drop(&mut self) {
         match &self.original {
-            Some(value) => std::env::set_var(&self.key, value),
-            None => std::env::remove_var(&self.key),
+            Some(value) => songbird_process_env::set_var(&self.key, value),
+            None => songbird_process_env::remove_var(&self.key),
         }
     }
 }
@@ -119,7 +123,7 @@ mod tests {
     #[test]
     fn test_scoped_env_sets_and_removes() {
         let key = "SONGBIRD_TEST_SCOPED_ENV";
-        std::env::remove_var(key);
+        songbird_process_env::remove_var(key);
 
         {
             let _env = ScopedEnv::new(key, "test_value");
@@ -132,7 +136,7 @@ mod tests {
     #[test]
     fn test_scoped_env_restores_original() {
         let key = "SONGBIRD_TEST_SCOPED_RESTORE";
-        std::env::set_var(key, "original");
+        songbird_process_env::set_var(key, "original");
 
         {
             let _env = ScopedEnv::new(key, "temporary");
@@ -140,7 +144,7 @@ mod tests {
         }
 
         assert_eq!(std::env::var(key).unwrap(), "original");
-        std::env::remove_var(key);
+        songbird_process_env::remove_var(key);
     }
 
     #[test]

@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Security capability client implementation
 //!
 //! **MODERNIZED v3.12.3**: Now uses protocol-agnostic `SecurityAdapter`!
@@ -389,12 +392,12 @@ impl SecurityCapabilityClient {
         // Extract tags from attestations
         let mut tags = Vec::new();
         for attestation in &universal_request.evaluator.attestations {
-            if attestation.format == "tag_list" {
-                if let Some(tag_array) = attestation.data.get("tags").and_then(|t| t.as_array()) {
-                    for tag in tag_array {
-                        if let Some(tag_str) = tag.as_str() {
-                            tags.push(tag_str.to_string());
-                        }
+            if attestation.format == "tag_list"
+                && let Some(tag_array) = attestation.data.get("tags").and_then(|t| t.as_array())
+            {
+                for tag in tag_array {
+                    if let Some(tag_str) = tag.as_str() {
+                        tags.push(tag_str.to_string());
                     }
                 }
             }

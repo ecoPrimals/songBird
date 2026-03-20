@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Static service discovery for development and testing
 //!
 //! ## Native Async Traits
@@ -93,7 +96,7 @@ impl ServiceDiscovery for StaticServiceDiscovery {
             .read()
             .await
             .values()
-            .filter(|service| query.name.as_ref().map_or(true, |name| service.name == *name))
+            .filter(|service| query.name.as_ref().is_none_or(|name| service.name == *name))
             // All static services are considered healthy
             .cloned()
             .collect();

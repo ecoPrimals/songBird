@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Comprehensive tests for trust escalation and types
 //!
 //! Covers edge cases not hit by existing tests:
@@ -334,7 +337,7 @@ fn test_identity_proof_valid_with_org_and_pubkey() {
         public_key: Some("ed25519:abcdef123456".to_string()),
     };
     let proof = IdentityProof {
-        identity: identity.clone(),
+        identity,
         proof: "0123456789abcdef0123456789abcdef".to_string(),
         proof_type: "certificate".to_string(),
         timestamp: SystemTime::now(),
@@ -417,43 +420,43 @@ fn test_trust_timeouts_clone() {
 static ENV_LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
 
 fn lock_env() -> std::sync::MutexGuard<'static, ()> {
-    ENV_LOCK.lock().unwrap_or_else(|e| e.into_inner())
+    ENV_LOCK.lock().unwrap_or_else(std::sync::PoisonError::into_inner)
 }
 
 #[test]
 fn test_beardog_client_default_no_endpoint() {
     let _g = lock_env();
-    std::env::remove_var("SONGBIRD_SECURITY_PROVIDER");
-    std::env::remove_var("SECURITY_ENDPOINT");
-    std::env::remove_var("BEARDOG_URL");
+    songbird_process_env::remove_var("SONGBIRD_SECURITY_PROVIDER");
+    songbird_process_env::remove_var("SECURITY_ENDPOINT");
+    songbird_process_env::remove_var("BEARDOG_URL");
     let _client = BearDogClient::default();
 }
 
 #[test]
 fn test_beardog_client_new_with_security_provider() {
     let _g = lock_env();
-    std::env::set_var("SONGBIRD_SECURITY_PROVIDER", "http://localhost:9090");
+    songbird_process_env::set_var("SONGBIRD_SECURITY_PROVIDER", "http://localhost:9090");
     let _client = BearDogClient::new();
-    std::env::remove_var("SONGBIRD_SECURITY_PROVIDER");
+    songbird_process_env::remove_var("SONGBIRD_SECURITY_PROVIDER");
 }
 
 #[test]
 fn test_beardog_client_new_with_security_endpoint() {
     let _g = lock_env();
-    std::env::remove_var("SONGBIRD_SECURITY_PROVIDER");
-    std::env::set_var("SECURITY_ENDPOINT", "http://localhost:9091");
+    songbird_process_env::remove_var("SONGBIRD_SECURITY_PROVIDER");
+    songbird_process_env::set_var("SECURITY_ENDPOINT", "http://localhost:9091");
     let _client = BearDogClient::new();
-    std::env::remove_var("SECURITY_ENDPOINT");
+    songbird_process_env::remove_var("SECURITY_ENDPOINT");
 }
 
 #[test]
 fn test_beardog_client_new_with_deprecated_url() {
     let _g = lock_env();
-    std::env::remove_var("SONGBIRD_SECURITY_PROVIDER");
-    std::env::remove_var("SECURITY_ENDPOINT");
-    std::env::set_var("BEARDOG_URL", "http://localhost:9092");
+    songbird_process_env::remove_var("SONGBIRD_SECURITY_PROVIDER");
+    songbird_process_env::remove_var("SECURITY_ENDPOINT");
+    songbird_process_env::set_var("BEARDOG_URL", "http://localhost:9092");
     let _client = BearDogClient::new();
-    std::env::remove_var("BEARDOG_URL");
+    songbird_process_env::remove_var("BEARDOG_URL");
 }
 
 // ═══════════════════════════════════════════════════════════════════════════

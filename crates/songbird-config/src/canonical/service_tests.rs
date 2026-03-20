@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Comprehensive tests for canonical service configuration
 //!
 //! Phase 3 Test Coverage Expansion - Week 1
@@ -54,7 +57,7 @@ fn test_service_config_clone() {
 #[test]
 fn test_service_config_debug() {
     let config = ServiceConfig::default();
-    let debug_str = format!("{:?}", config);
+    let debug_str = format!("{config:?}");
 
     assert!(debug_str.contains("ServiceConfig"));
     assert!(debug_str.contains("default-service"));

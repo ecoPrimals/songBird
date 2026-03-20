@@ -1,8 +1,11 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 // BTSP Client - Unix Socket Integration with BearDog
 // Migrated from HTTP to Unix sockets (Jan 16, 2026)
 // Aligned with BiomeOS "Concentrated Gap" strategy
 
-use anyhow::{anyhow, Result};
+use anyhow::{Result, anyhow};
 use base64::Engine as _;
 use serde::{Deserialize, Serialize};
 use serde_json::json;

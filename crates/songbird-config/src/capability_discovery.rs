@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Capability-Based Service Discovery
 //!
 //! Modern replacement for hardcoded primal endpoints. Each primal discovers others
@@ -139,10 +142,10 @@ impl CapabilityDiscovery {
         // Check cache first
         {
             let services = self.services.read().await;
-            if let Some(cached) = services.get(capability) {
-                if !cached.is_empty() {
-                    return Ok(cached.clone());
-                }
+            if let Some(cached) = services.get(capability)
+                && !cached.is_empty()
+            {
+                return Ok(cached.clone());
             }
         }
 
@@ -174,7 +177,9 @@ impl CapabilityDiscovery {
                     capability.to_uppercase()
                 ),
                 backend: Some("all_methods".to_string()),
-                retry_strategy: Some("Set environment variable or enable discovery methods".to_string()),
+                retry_strategy: Some(
+                    "Set environment variable or enable discovery methods".to_string(),
+                ),
             });
         }
 
@@ -246,8 +251,8 @@ impl CapabilityDiscovery {
     /// _compute._tcp.local.  IN SRV 0 5 8001 toadstool.local.
     /// ```
     async fn discover_via_dnssd(&self, capability: &str) -> SongbirdResult<Vec<ServiceEndpoint>> {
-        use hickory_resolver::config::{ResolverConfig, ResolverOpts};
         use hickory_resolver::TokioAsyncResolver;
+        use hickory_resolver::config::{ResolverConfig, ResolverOpts};
 
         // DNS-SD service type: _{capability}._tcp.local
         let service_name = format!("_{capability}._tcp.local");
@@ -548,22 +553,22 @@ impl CapabilityDiscovery {
                 if let Some(caps) = service_config.get("capabilities").and_then(|c| c.as_array()) {
                     let has_capability = caps.iter().any(|c| c.as_str() == Some(capability));
 
-                    if has_capability {
-                        if let Some(url) = service_config.get("url").and_then(|u| u.as_str()) {
-                            endpoints.push(ServiceEndpoint {
-                                id: service_id.clone(),
-                                url: url.to_string(),
-                                capabilities: caps
-                                    .iter()
-                                    .filter_map(|c| c.as_str().map(String::from))
-                                    .collect(),
-                                health_score: service_config
-                                    .get("health_score")
-                                    .and_then(toml::Value::as_float)
-                                    .unwrap_or(1.0),
-                                last_seen: std::time::SystemTime::now(),
-                            });
-                        }
+                    if has_capability
+                        && let Some(url) = service_config.get("url").and_then(|u| u.as_str())
+                    {
+                        endpoints.push(ServiceEndpoint {
+                            id: service_id.clone(),
+                            url: url.to_string(),
+                            capabilities: caps
+                                .iter()
+                                .filter_map(|c| c.as_str().map(String::from))
+                                .collect(),
+                            health_score: service_config
+                                .get("health_score")
+                                .and_then(toml::Value::as_float)
+                                .unwrap_or(1.0),
+                            last_seen: std::time::SystemTime::now(),
+                        });
                     }
                 }
             }
@@ -584,22 +589,22 @@ impl CapabilityDiscovery {
                 if let Some(caps) = service_config.get("capabilities").and_then(|c| c.as_array()) {
                     let has_capability = caps.iter().any(|c| c.as_str() == Some(capability));
 
-                    if has_capability {
-                        if let Some(url) = service_config.get("url").and_then(|u| u.as_str()) {
-                            endpoints.push(ServiceEndpoint {
-                                id: service_id.clone(),
-                                url: url.to_string(),
-                                capabilities: caps
-                                    .iter()
-                                    .filter_map(|c| c.as_str().map(String::from))
-                                    .collect(),
-                                health_score: service_config
-                                    .get("health_score")
-                                    .and_then(serde_json::Value::as_f64)
-                                    .unwrap_or(1.0),
-                                last_seen: std::time::SystemTime::now(),
-                            });
-                        }
+                    if has_capability
+                        && let Some(url) = service_config.get("url").and_then(|u| u.as_str())
+                    {
+                        endpoints.push(ServiceEndpoint {
+                            id: service_id.clone(),
+                            url: url.to_string(),
+                            capabilities: caps
+                                .iter()
+                                .filter_map(|c| c.as_str().map(String::from))
+                                .collect(),
+                            health_score: service_config
+                                .get("health_score")
+                                .and_then(serde_json::Value::as_f64)
+                                .unwrap_or(1.0),
+                            last_seen: std::time::SystemTime::now(),
+                        });
                     }
                 }
             }
@@ -621,25 +626,24 @@ impl CapabilityDiscovery {
                 {
                     let has_capability = caps.iter().any(|c| c.as_str() == Some(capability));
 
-                    if has_capability {
-                        if let Some(url) = service_config.get("url").and_then(|u| u.as_str()) {
-                            let service_id_str =
-                                service_id.as_str().unwrap_or("unknown").to_string();
+                    if has_capability
+                        && let Some(url) = service_config.get("url").and_then(|u| u.as_str())
+                    {
+                        let service_id_str = service_id.as_str().unwrap_or("unknown").to_string();
 
-                            endpoints.push(ServiceEndpoint {
-                                id: service_id_str,
-                                url: url.to_string(),
-                                capabilities: caps
-                                    .iter()
-                                    .filter_map(|c| c.as_str().map(String::from))
-                                    .collect(),
-                                health_score: service_config
-                                    .get("health_score")
-                                    .and_then(serde_yaml::Value::as_f64)
-                                    .unwrap_or(1.0),
-                                last_seen: std::time::SystemTime::now(),
-                            });
-                        }
+                        endpoints.push(ServiceEndpoint {
+                            id: service_id_str,
+                            url: url.to_string(),
+                            capabilities: caps
+                                .iter()
+                                .filter_map(|c| c.as_str().map(String::from))
+                                .collect(),
+                            health_score: service_config
+                                .get("health_score")
+                                .and_then(serde_yaml::Value::as_f64)
+                                .unwrap_or(1.0),
+                            last_seen: std::time::SystemTime::now(),
+                        });
                     }
                 }
             }
@@ -712,7 +716,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_environment_discovery() {
-        std::env::set_var("COMPUTE_ENDPOINT", "http://10.0.0.100:8001");
+        songbird_process_env::set_var("COMPUTE_ENDPOINT", "http://10.0.0.100:8001");
 
         let discovery = CapabilityDiscovery::with_methods(vec![DiscoveryMethod::Environment]);
 
@@ -721,12 +725,12 @@ mod tests {
         assert_eq!(providers[0].url, "http://10.0.0.100:8001");
         assert!(providers[0].capabilities.contains(&"compute".to_string()));
 
-        std::env::remove_var("COMPUTE_ENDPOINT");
+        songbird_process_env::remove_var("COMPUTE_ENDPOINT");
     }
 
     #[tokio::test]
     async fn test_no_providers_found() {
-        std::env::remove_var("NONEXISTENT_ENDPOINT");
+        songbird_process_env::remove_var("NONEXISTENT_ENDPOINT");
 
         let discovery = CapabilityDiscovery::with_methods(vec![DiscoveryMethod::Environment]);
 
@@ -747,7 +751,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_cache_behavior() {
-        std::env::set_var("TEST_CAPABILITY_ENDPOINT", "http://test:1234");
+        songbird_process_env::set_var("TEST_CAPABILITY_ENDPOINT", "http://test:1234");
 
         let discovery = CapabilityDiscovery::with_methods(vec![DiscoveryMethod::Environment]);
 
@@ -762,6 +766,6 @@ mod tests {
         // Clear cache
         discovery.clear_cache("test_capability").await;
 
-        std::env::remove_var("TEST_CAPABILITY_ENDPOINT");
+        songbird_process_env::remove_var("TEST_CAPABILITY_ENDPOINT");
     }
 }

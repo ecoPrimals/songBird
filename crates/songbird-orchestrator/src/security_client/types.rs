@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Security capability types for trust evaluation
 //!
 //! This module contains all request/response types used by the security capability client.

@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! AEAD encryption and decryption operations
 //!
 //! ChaCha20-Poly1305 and AES-GCM encryption/decryption for TLS 1.3.

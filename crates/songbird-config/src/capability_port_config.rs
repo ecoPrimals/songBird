@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Capability-Based Port Configuration
 //!
 //! This module provides a dynamic, capability-based approach to port configuration
@@ -364,14 +367,16 @@ mod tests {
             .build()
             .expect("build should succeed");
 
-        assert!(registry
-            .has_capability(&CapabilityId::new("service.a"))
-            .expect("check should succeed"));
+        assert!(
+            registry.has_capability(&CapabilityId::new("service.a")).expect("check should succeed")
+        );
 
         registry.clear().expect("clear should succeed");
 
-        assert!(!registry
-            .has_capability(&CapabilityId::new("service.a"))
-            .expect("check should succeed"));
+        assert!(
+            !registry
+                .has_capability(&CapabilityId::new("service.a"))
+                .expect("check should succeed")
+        );
     }
 }

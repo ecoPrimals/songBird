@@ -1,3 +1,31 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
+#![allow(
+    clippy::unwrap_used,
+    clippy::expect_used,
+    clippy::unnecessary_wraps,
+    clippy::await_holding_lock,
+    clippy::float_cmp,
+    clippy::absurd_extreme_comparisons,
+    clippy::needless_collect,
+    clippy::nonminimal_bool,
+    clippy::used_underscore_binding,
+    clippy::field_reassign_with_default,
+    clippy::return_self_not_must_use,
+    clippy::overly_complex_bool_expr,
+    clippy::assertions_on_constants,
+    clippy::no_effect_underscore_binding,
+    clippy::items_after_statements,
+    clippy::empty_line_after_doc_comments,
+    clippy::const_is_empty,
+    clippy::duplicated_attributes,
+    deprecated,
+    dead_code,
+    clippy::unnecessary_literal_unwrap,
+    clippy::needless_pass_by_value,
+    clippy::must_use_candidate
+)]
 // Allow unwrap/expect in tests - idiomatic for test code
 #![allow(clippy::unwrap_used, clippy::expect_used)]
 
@@ -116,13 +144,15 @@ fn test_service_info_metadata_complex_values() -> SongbirdResult<()> {
         .with_metadata("url".to_string(), "https://example.com/path?query=value".to_string());
 
     assert_eq!(service.metadata.len(), 3);
-    assert!(service
-        .metadata
-        .get("json_config")
-        .ok_or_else(|| SongbirdError::configuration(
-            "Missing performance configuration".to_string()
-        ))?
-        .contains("key"));
+    assert!(
+        service
+            .metadata
+            .get("json_config")
+            .ok_or_else(|| SongbirdError::configuration(
+                "Missing performance configuration".to_string()
+            ))?
+            .contains("key")
+    );
     Ok(())
 }
 
@@ -394,7 +424,7 @@ fn test_service_info_update_scenario() {
 
 #[test]
 fn test_service_info_collection() {
-    let services = vec![
+    let services = [
         ServiceInfo::new("service1".to_string(), "host1".to_string(), 8001),
         ServiceInfo::new("service2".to_string(), "host2".to_string(), 8002),
         ServiceInfo::new("service3".to_string(), "host3".to_string(), 8003),
@@ -423,7 +453,7 @@ fn test_service_info_hashmap_storage() {
 
 #[test]
 fn test_service_info_filtering() {
-    let services = vec![
+    let services = [
         ServiceInfo::new("prod-service".to_string(), "prod.host".to_string(), 443),
         ServiceInfo::new("dev-service".to_string(), "dev.host".to_string(), 8080),
         ServiceInfo::new("test-service".to_string(), "test.host".to_string(), 8080),
@@ -438,7 +468,7 @@ fn test_service_info_filtering() {
 
 #[test]
 fn test_service_info_sorting() -> SongbirdResult<()> {
-    let mut services = vec![
+    let mut services = [
         ServiceInfo::new("zebra".to_string(), "host".to_string(), 8080),
         ServiceInfo::new("alpha".to_string(), "host".to_string(), 8080),
         ServiceInfo::new("beta".to_string(), "host".to_string(), 8080),
@@ -485,7 +515,7 @@ fn test_service_info_microservices_pattern() {
             .with_metadata("role".to_string(), "storage".to_string())
             .with_metadata("capability".to_string(), "storage".to_string());
 
-    let services = vec![api_gateway, auth_service, data_service];
+    let services = [api_gateway, auth_service, data_service];
 
     // Verify services are properly structured
     assert_eq!(services.len(), 3);

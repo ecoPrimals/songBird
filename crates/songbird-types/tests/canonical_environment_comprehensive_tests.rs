@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 // Allow unwrap/expect in tests - idiomatic for test code
 #![allow(clippy::unwrap_used, clippy::expect_used)]
 
@@ -131,35 +134,35 @@ fn test_log_level() {
 #[test]
 #[ignore = "Uses global env vars - needs refactor to use TestEnv for isolation"]
 fn test_detect_with_songbird_env() {
-    std::env::set_var("SONGBIRD_ENV", "production");
+    songbird_process_env::set_var("SONGBIRD_ENV", "production");
     let env = Environment::detect();
-    std::env::remove_var("SONGBIRD_ENV");
+    songbird_process_env::remove_var("SONGBIRD_ENV");
     assert_eq!(env, Environment::Production);
 }
 
 #[test]
 #[ignore = "Uses global env vars - needs refactor to use TestEnv for isolation"]
 fn test_detect_with_environment_fallback() {
-    std::env::remove_var("SONGBIRD_ENV");
-    std::env::set_var("ENVIRONMENT", "staging");
+    songbird_process_env::remove_var("SONGBIRD_ENV");
+    songbird_process_env::set_var("ENVIRONMENT", "staging");
     let env = Environment::detect();
-    std::env::remove_var("ENVIRONMENT");
+    songbird_process_env::remove_var("ENVIRONMENT");
     assert_eq!(env, Environment::Staging);
 }
 
 #[test]
 fn test_detect_defaults_to_development() {
-    std::env::remove_var("SONGBIRD_ENV");
-    std::env::remove_var("ENVIRONMENT");
+    songbird_process_env::remove_var("SONGBIRD_ENV");
+    songbird_process_env::remove_var("ENVIRONMENT");
     let env = Environment::detect();
     assert_eq!(env, Environment::Development);
 }
 
 #[test]
 fn test_detect_invalid_value_defaults() {
-    std::env::set_var("SONGBIRD_ENV", "invalid_env");
+    songbird_process_env::set_var("SONGBIRD_ENV", "invalid_env");
     let env = Environment::detect();
-    std::env::remove_var("SONGBIRD_ENV");
+    songbird_process_env::remove_var("SONGBIRD_ENV");
     assert_eq!(env, Environment::Development);
 }
 
@@ -259,9 +262,9 @@ fn test_from_str_error_messages() {
 fn test_from_str_empty_error() {
     let result = Environment::from_str("");
     assert!(result.is_err());
-    assert!(result
-        .expect_err("should be error for empty string")
-        .contains("Unknown environment: "));
+    assert!(
+        result.expect_err("should be error for empty string").contains("Unknown environment: ")
+    );
 }
 
 // ============================================================================

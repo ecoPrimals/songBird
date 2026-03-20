@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Universal Primal Discovery System - REFACTORED
 //!
 //! **EVOLVED** (Dec 7, 2025): Smart modular refactoring

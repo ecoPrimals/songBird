@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 // Allow unwrap/expect in tests - idiomatic for test code
 #![allow(clippy::unwrap_used, clippy::expect_used)]
 
@@ -142,6 +145,7 @@ fn test_retry_policy_clone_independence() {
 
     // Modify original
     policy.max_retries = 10;
+    assert_eq!(policy.max_retries, 10);
 
     // Clone should be unchanged
     assert_eq!(cloned.max_retries, 5);

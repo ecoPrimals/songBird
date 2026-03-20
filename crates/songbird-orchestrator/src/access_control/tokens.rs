@@ -1,11 +1,14 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Token generation and validation
 //!
 //! ✅ Pure Rust JWT implementation using `RustCrypto` (hmac + sha2)
 //! Zero C dependencies - 100% ecoBin compliant!
 
-use super::pure_rust_jwt;
 use super::Role;
-use anyhow::{anyhow, Result};
+use super::pure_rust_jwt;
+use anyhow::{Result, anyhow};
 use serde::{Deserialize, Serialize};
 
 /// Custom claims for our JWT

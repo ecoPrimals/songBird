@@ -1,3 +1,38 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
+#![allow(
+    clippy::unwrap_used,
+    clippy::expect_used,
+    clippy::unnecessary_wraps,
+    clippy::await_holding_lock,
+    clippy::float_cmp,
+    clippy::absurd_extreme_comparisons,
+    clippy::needless_collect,
+    clippy::nonminimal_bool,
+    clippy::used_underscore_binding,
+    clippy::field_reassign_with_default,
+    clippy::return_self_not_must_use,
+    clippy::overly_complex_bool_expr,
+    clippy::assertions_on_constants,
+    clippy::no_effect_underscore_binding,
+    clippy::items_after_statements,
+    clippy::empty_line_after_doc_comments,
+    clippy::const_is_empty,
+    clippy::duplicated_attributes,
+    deprecated,
+    dead_code,
+    clippy::unnecessary_literal_unwrap,
+    clippy::needless_pass_by_value,
+    clippy::must_use_candidate,
+    clippy::clone_on_ref_ptr,
+    clippy::similar_names,
+    clippy::unreadable_literal,
+    clippy::cast_possible_truncation,
+    clippy::cast_sign_loss,
+    clippy::cast_precision_loss,
+    clippy::cast_possible_wrap
+)]
 #![cfg(feature = "tests-incomplete")]
 #![allow(unexpected_cfgs)]
 // Allow unwrap/expect in tests - idiomatic for test code
@@ -33,9 +68,9 @@ async fn test_discover_by_single_capability() -> SongbirdResult<()> {
     let providers = discovery.discover_by_capability("compute").await;
 
     assert!(providers.is_ok());
-    assert!(!providers
-        .ok_or_else(|| SongbirdError::configuration(format!("Error: {}", e)))?
-        .is_empty());
+    assert!(
+        !providers.ok_or_else(|| SongbirdError::configuration(format!("Error: {}", e)))?.is_empty()
+    );
     Ok(())
 }
 
@@ -88,9 +123,9 @@ async fn test_capability_not_found() -> SongbirdResult<()> {
 
     // Should return empty list, not error
     assert!(providers.is_ok());
-    assert!(providers
-        .ok_or_else(|| SongbirdError::configuration(format!("Error: {}", e)))?
-        .is_empty());
+    assert!(
+        providers.ok_or_else(|| SongbirdError::configuration(format!("Error: {}", e)))?.is_empty()
+    );
     Ok(())
 }
 

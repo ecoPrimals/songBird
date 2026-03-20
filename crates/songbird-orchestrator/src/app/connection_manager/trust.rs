@@ -1,10 +1,13 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Trust evaluation and connection establishment
 
 use super::btsp::BtspConnectionFactory;
 use super::peer::PeerRegistry;
 use crate::connections::{Connection, FederatedConnection, FullTrustConnection, LimitedConnection};
 use crate::trust::peer_trust::PeerTrustDecision;
-use anyhow::{anyhow, Result};
+use anyhow::{Result, anyhow};
 use songbird_types::TrustLevel;
 use std::collections::HashMap;
 use std::sync::Arc;

@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Cryptographic Capability Module
 //!
 //! Provides agnostic cryptographic operations for TLS 1.3.
@@ -34,6 +37,6 @@ pub use capability::{
 pub use beardog_provider::BearDogProvider;
 pub use discovery::discover_crypto_capability;
 pub use socket_discovery::{
-    discover_beardog_socket, discover_ipc_endpoint, discover_neural_api_socket, discover_socket,
-    IpcEndpoint,
+    IpcEndpoint, discover_beardog_socket, discover_ipc_endpoint, discover_neural_api_socket,
+    discover_socket,
 };

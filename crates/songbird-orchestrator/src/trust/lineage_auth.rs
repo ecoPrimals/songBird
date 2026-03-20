@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Genetic Lineage Authentication
 //!
 //! Implements automatic peer trust based on cryptographic lineage verification.
@@ -418,14 +421,15 @@ impl LineageAuthenticator {
         };
 
         // Check cache first
-        if let Some(cached) = self.get_cached_verification(peer_node_id) {
-            if cached.valid && cached.same_genesis {
-                return Ok(PeerAcceptanceDecision::AutoAccept {
-                    reason: format!("Same genetic lineage: {lineage} (cached)"),
-                    lineage_id: lineage.clone(),
-                    confidence: 0.95, // Slightly lower for cached
-                });
-            }
+        if let Some(cached) = self.get_cached_verification(peer_node_id)
+            && cached.valid
+            && cached.same_genesis
+        {
+            return Ok(PeerAcceptanceDecision::AutoAccept {
+                reason: format!("Same genetic lineage: {lineage} (cached)"),
+                lineage_id: lineage.clone(),
+                confidence: 0.95, // Slightly lower for cached
+            });
         }
 
         // Verify lineage proof with security provider

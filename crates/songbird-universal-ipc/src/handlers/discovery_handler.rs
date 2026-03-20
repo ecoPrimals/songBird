@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Discovery JSON-RPC Handler
 //!
 //! Exposes peer discovery functionality via JSON-RPC for Dark Forest rendezvous protocol.

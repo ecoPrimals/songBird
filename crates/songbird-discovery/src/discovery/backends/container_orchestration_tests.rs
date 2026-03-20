@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Focused tests for container orchestration discovery
 //!
 //! Tests cover core functionality, configuration, and state management.
@@ -36,7 +39,7 @@ fn test_api_endpoint_insecure_config() {
     assert_eq!(endpoint.timeout.as_secs(), 5);
 }
 
-/// Test ServiceAccount authentication method
+/// Test `ServiceAccount` authentication method
 #[test]
 fn test_authentication_service_account() {
     let auth = AuthenticationMethod::ServiceAccount {
@@ -53,7 +56,7 @@ fn test_authentication_service_account() {
     }
 }
 
-/// Test BearerToken authentication method
+/// Test `BearerToken` authentication method
 #[test]
 fn test_authentication_bearer_token() {
     let auth = AuthenticationMethod::BearerToken {
@@ -90,7 +93,7 @@ fn test_authentication_certificate() {
     }
 }
 
-/// Test BasicAuth authentication method
+/// Test `BasicAuth` authentication method
 #[test]
 fn test_authentication_basic_auth() {
     let auth = AuthenticationMethod::BasicAuth {
@@ -123,7 +126,7 @@ fn test_authentication_none() {
     }
 }
 
-/// Test NamespaceConfig creation with defaults
+/// Test `NamespaceConfig` creation with defaults
 #[test]
 fn test_namespace_config_creation() {
     let config = NamespaceConfig {
@@ -137,7 +140,7 @@ fn test_namespace_config_creation() {
     assert!(config.auto_discover);
 }
 
-/// Test NamespaceConfig with single namespace
+/// Test `NamespaceConfig` with single namespace
 #[test]
 fn test_namespace_config_single_namespace() {
     let config = NamespaceConfig {
@@ -151,7 +154,7 @@ fn test_namespace_config_single_namespace() {
     assert!(!config.auto_discover);
 }
 
-/// Test NamespaceConfig with multiple namespaces
+/// Test `NamespaceConfig` with multiple namespaces
 #[test]
 fn test_namespace_config_multiple_namespaces() {
     let namespaces = vec![
@@ -163,7 +166,7 @@ fn test_namespace_config_multiple_namespaces() {
 
     let config = NamespaceConfig {
         default_namespace: "default".to_string(),
-        accessible_namespaces: namespaces.clone(),
+        accessible_namespaces: namespaces,
         auto_discover: true,
     };
 
@@ -172,7 +175,7 @@ fn test_namespace_config_multiple_namespaces() {
     assert!(config.accessible_namespaces.contains(&"staging".to_string()));
 }
 
-/// Test ContainerInfo structure
+/// Test `ContainerInfo` structure
 #[test]
 fn test_container_info_creation() {
     let container = ContainerInfo {
@@ -192,7 +195,7 @@ fn test_container_info_creation() {
     assert!(container.ports.contains(&"443/tcp".to_string()));
 }
 
-/// Test ContainerInfo with single port
+/// Test `ContainerInfo` with single port
 #[test]
 fn test_container_info_single_port() {
     let container = ContainerInfo {
@@ -207,7 +210,7 @@ fn test_container_info_single_port() {
     assert_eq!(container.ports[0], "5432/tcp");
 }
 
-/// Test ContainerInfo with multiple ports
+/// Test `ContainerInfo` with multiple ports
 #[test]
 fn test_container_info_multiple_ports() {
     let container = ContainerInfo {
@@ -224,7 +227,7 @@ fn test_container_info_multiple_ports() {
     assert!(container.ports.contains(&"9090/tcp".to_string()));
 }
 
-/// Test ContainerInfo with no ports
+/// Test `ContainerInfo` with no ports
 #[test]
 fn test_container_info_no_ports() {
     let container = ContainerInfo {
@@ -238,7 +241,7 @@ fn test_container_info_no_ports() {
     assert!(container.ports.is_empty());
 }
 
-/// Test ContainerInfo with stopped status
+/// Test `ContainerInfo` with stopped status
 #[test]
 fn test_container_info_stopped() {
     let container = ContainerInfo {
@@ -276,7 +279,7 @@ fn test_authentication_method_clone() {
     }
 }
 
-/// Test that NamespaceConfig can be cloned
+/// Test that `NamespaceConfig` can be cloned
 #[test]
 fn test_namespace_config_clone() {
     let config = NamespaceConfig {
@@ -285,14 +288,14 @@ fn test_namespace_config_clone() {
         auto_discover: true,
     };
 
-    let config_clone = config.clone();
+    let config_clone = config;
 
     assert_eq!(config_clone.default_namespace, "test");
     assert_eq!(config_clone.accessible_namespaces.len(), 1);
-    assert_eq!(config_clone.auto_discover, true);
+    assert!(config_clone.auto_discover);
 }
 
-/// Test ApiEndpoint timeout configuration
+/// Test `ApiEndpoint` timeout configuration
 #[test]
 fn test_api_endpoint_short_timeout() {
     let endpoint = ApiEndpoint {
@@ -305,7 +308,7 @@ fn test_api_endpoint_short_timeout() {
     assert_eq!(endpoint.timeout.as_millis(), 500);
 }
 
-/// Test ApiEndpoint long timeout configuration
+/// Test `ApiEndpoint` long timeout configuration
 #[test]
 fn test_api_endpoint_long_timeout() {
     let endpoint = ApiEndpoint {

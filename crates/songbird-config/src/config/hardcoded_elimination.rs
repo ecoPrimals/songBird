@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Hardcoding Elimination Infrastructure
 //!
 //! Systematic replacement of hardcoded values with configurable alternatives.
@@ -346,7 +349,7 @@ pub fn get_config() -> &'static HardcodingEliminationConfig {
 
 /// Convenience functions for replacing hardcoded values
 pub mod replace {
-    use super::{get_config, Duration, IpAddr};
+    use super::{Duration, IpAddr, get_config};
     use std::sync::Arc;
     // use songbird_config; // FIXED: Circular import removed
 

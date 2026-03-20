@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Common types and utilities for mock primal servers
 
 use serde::{Deserialize, Serialize};

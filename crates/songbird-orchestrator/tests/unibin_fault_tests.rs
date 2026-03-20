@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! UniBin Fault Injection Tests
 //!
 //! Failure scenario testing including:
@@ -21,7 +24,7 @@ use tempfile::tempdir;
 
 /// Create a clean command with isolated environment (no global state mutation!)
 fn clean_cmd() -> Command {
-    let mut cmd = Command::cargo_bin("songbird").unwrap();
+    let mut cmd = Command::new(assert_cmd::cargo_bin!("songbird"));
     // ✅ Clear environment for this command only (not global!)
     cmd.env_clear();
     // ✅ Set minimal required env vars for test isolation
@@ -179,7 +182,7 @@ async fn test_fault_special_characters_in_args() -> Result<(), Box<dyn std::erro
 // ✅ NO #[serial]! Uses isolated environment!
 async fn test_fault_unicode_in_args() -> Result<(), Box<dyn std::error::Error>> {
     // Test unicode handling
-    std::env::set_var("SONGBIRD_NODE_ID", "node-测试-🦀");
+    songbird_process_env::set_var("SONGBIRD_NODE_ID", "node-测试-🦀");
 
     let mut cmd = clean_cmd();
     cmd.arg("--version").assert().success();
@@ -191,7 +194,7 @@ async fn test_fault_unicode_in_args() -> Result<(), Box<dyn std::error::Error>> 
 // ✅ NO #[serial]! Uses isolated environment!
 async fn test_fault_whitespace_only_args() -> Result<(), Box<dyn std::error::Error>> {
     // Whitespace-only env var
-    std::env::set_var("SONGBIRD_NODE_ID", "   ");
+    songbird_process_env::set_var("SONGBIRD_NODE_ID", "   ");
 
     let mut cmd = clean_cmd();
     cmd.arg("--version").assert().success();
@@ -204,7 +207,7 @@ async fn test_fault_whitespace_only_args() -> Result<(), Box<dyn std::error::Err
 async fn test_fault_extremely_long_env_var() -> Result<(), Box<dyn std::error::Error>> {
     // Extremely long env var
     let long_value = "a".repeat(10000);
-    std::env::set_var("SONGBIRD_NODE_ID", &long_value);
+    songbird_process_env::set_var("SONGBIRD_NODE_ID", &long_value);
 
     let mut cmd = clean_cmd();
     cmd.arg("--version").assert().success();
@@ -216,7 +219,7 @@ async fn test_fault_extremely_long_env_var() -> Result<(), Box<dyn std::error::E
 // ✅ NO #[serial]! Uses isolated environment!
 async fn test_fault_empty_env_var() -> Result<(), Box<dyn std::error::Error>> {
     // Empty env var
-    std::env::set_var("SONGBIRD_NODE_ID", "");
+    songbird_process_env::set_var("SONGBIRD_NODE_ID", "");
 
     let mut cmd = clean_cmd();
     cmd.arg("--version").assert().success();
@@ -251,7 +254,7 @@ async fn test_fault_multiple_flags() -> Result<(), Box<dyn std::error::Error>> {
 // ✅ NO #[serial]! Uses isolated environment!
 async fn test_fault_conflicting_env_and_args() -> Result<(), Box<dyn std::error::Error>> {
     // Set env var, then override with arg (arg should win)
-    std::env::set_var("SONGBIRD_PORT", "9000");
+    songbird_process_env::set_var("SONGBIRD_PORT", "9000");
 
     let mut cmd = clean_cmd();
     cmd.arg("server").arg("--port").arg("8888").arg("--help").assert().success();
@@ -284,7 +287,7 @@ async fn test_fault_boundary_port_65535() -> Result<(), Box<dyn std::error::Erro
 async fn test_fault_double_dash_args() -> Result<(), Box<dyn std::error::Error>> {
     // Test -- separator
     let mut cmd = clean_cmd();
-    cmd.arg("--").arg("--version").assert();
+    let _ = cmd.arg("--").arg("--version").assert();
 
     // Behavior depends on clap configuration
 

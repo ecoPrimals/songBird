@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Core System /// Configuration capability Configuration
 //!
 //! This module contains the fundamental system-level configuration

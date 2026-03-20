@@ -1,9 +1,12 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Fault Injection Tests for CryptoProvider
 //!
 //! Tests error handling, edge cases, and resilience to failures.
 
 use songbird_orchestrator::crypto::{
-    discover_crypto_provider, CryptoProvider, UnixSocketCryptoProvider,
+    CryptoProvider, UnixSocketCryptoProvider, discover_crypto_provider,
 };
 
 #[tokio::test]
@@ -23,7 +26,7 @@ async fn test_fault_nonexistent_socket() {
 
 #[tokio::test]
 async fn test_fault_invalid_socket_path() {
-    let provider = UnixSocketCryptoProvider::new("".to_string());
+    let provider = UnixSocketCryptoProvider::new(String::new());
 
     let result = provider.blake3_hash(b"test").await;
     assert!(result.is_err(), "Should fail with empty socket path");
@@ -54,10 +57,10 @@ async fn test_fault_very_large_data() {
 #[tokio::test]
 async fn test_fault_discover_without_provider() {
     // Clear all environment variables
-    std::env::remove_var("CRYPTO_PROVIDER_SOCKET");
-    std::env::remove_var("CRYPTO_PROVIDER");
-    std::env::remove_var("BEARDOG_CRYPTO_SOCKET");
-    std::env::remove_var("BEARDOG_SOCKET");
+    songbird_process_env::remove_var("CRYPTO_PROVIDER_SOCKET");
+    songbird_process_env::remove_var("CRYPTO_PROVIDER");
+    songbird_process_env::remove_var("BEARDOG_CRYPTO_SOCKET");
+    songbird_process_env::remove_var("BEARDOG_SOCKET");
 
     let result = discover_crypto_provider().await;
 
@@ -275,11 +278,14 @@ async fn test_fault_provider_after_tokio_drop() {
 async fn test_fault_discovery_with_invalid_env() {
     // Set invalid environment variable (paths that are clearly invalid)
     // Note: NUL bytes are not allowed in environment variable values on any platform
-    std::env::set_var("CRYPTO_PROVIDER_SOCKET", "///invalid///path///with///too///many///slashes");
+    songbird_process_env::set_var(
+        "CRYPTO_PROVIDER_SOCKET",
+        "///invalid///path///with///too///many///slashes",
+    );
 
     let result = discover_crypto_provider().await;
 
-    std::env::remove_var("CRYPTO_PROVIDER_SOCKET");
+    songbird_process_env::remove_var("CRYPTO_PROVIDER_SOCKET");
 
     // Should handle invalid paths gracefully (will fail to connect, but won't panic)
     assert!(result.is_ok() || result.is_err());

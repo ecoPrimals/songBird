@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! `CertificateVerify` message (RFC 8446 Section 4.4.3)
 //!
 //! The `CertificateVerify` message provides proof that the sender has the private key

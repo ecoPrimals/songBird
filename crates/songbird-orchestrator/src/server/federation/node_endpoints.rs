@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Federation Node Management Endpoints
 //!
 //! Handles node registration, status, heartbeat, and listing operations
@@ -8,7 +11,7 @@ use axum::{
     response::IntoResponse,
 };
 use chrono::Utc;
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use songbird_network_federation::state::{FederationStatus, NodeRegistration, NodeStatus};
 use std::sync::Arc;
 use tracing::{debug, info, warn};

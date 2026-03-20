@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Comprehensive tests for canonical security configuration types
 //!
 //! **PHASE 3 COVERAGE EXPANSION**: Targeting 0% → 80%+ coverage
@@ -741,7 +744,7 @@ fn test_security_config_with_disabled_features() {
 #[test]
 fn test_security_config_debug_output() {
     let config = UniversalSecurityConfig::default();
-    let debug_output = format!("{:?}", config);
+    let debug_output = format!("{config:?}");
 
     assert!(!debug_output.is_empty());
     assert!(debug_output.contains("UniversalSecurityConfig"));

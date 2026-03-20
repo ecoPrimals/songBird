@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Canonical hook error handling definitions
 //!
 //! **CANONICAL**: Single source of truth for hook error handling strategies

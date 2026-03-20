@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! RFC 8446 Protocol Compliance Tests
 //!
 //! These tests verify TLS 1.3 protocol compliance WITHOUT requiring crypto operations.

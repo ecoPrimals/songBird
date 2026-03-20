@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! ClientHello Extension Tests
 //!
 //! These tests verify that our ClientHello contains all required TLS 1.3 extensions

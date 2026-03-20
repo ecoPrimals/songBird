@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Onion encryption - Multi-layer encryption for circuits
 //!
 //! **Phase 2B**: Circuit building
@@ -168,13 +171,13 @@ mod tests {
 
     fn create_test_hop(id: u8) -> CircuitHop {
         let relay = RelayInfo {
-            nickname: format!("relay{}", id),
+            nickname: format!("relay{id}"),
             fingerprint: [id; 20],
             address: IpAddr::from([127, 0, 0, 1]),
             or_port: 9001,
             dir_port: None,
             flags: crate::directory::RelayFlags::empty(),
-            bandwidth: 1000000,
+            bandwidth: 1_000_000,
             ntor_key: None,
             version: None,
         };
@@ -190,16 +193,16 @@ mod tests {
     #[test]
     fn test_iv_generation() {
         let beardog = BeardogCryptoClient::from_env().expect("Failed to create BearDog client");
-        let crypto = OnionCrypto::new(beardog);
+        let _crypto = OnionCrypto::new(beardog);
 
         let iv = OnionCrypto::generate_iv(12345, 0);
         assert_eq!(iv.len(), 16);
 
         // Check sequence counter bytes
-        assert_eq!(u64::from_be_bytes(iv[0..8].try_into().unwrap()), 12345);
+        assert_eq!(u64::from_be_bytes(iv[0..8].try_into().expect("slice length 8")), 12345);
 
         // Check hop index bytes
-        assert_eq!(u32::from_be_bytes(iv[8..12].try_into().unwrap()), 0);
+        assert_eq!(u32::from_be_bytes(iv[8..12].try_into().expect("slice length 4")), 0);
 
         // Check reserved bytes are zero
         assert_eq!(&iv[12..16], &[0u8; 4]);

@@ -1,13 +1,35 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
+#![allow(
+    clippy::unwrap_used,
+    clippy::expect_used,
+    clippy::unnecessary_wraps,
+    clippy::await_holding_lock,
+    clippy::float_cmp,
+    clippy::absurd_extreme_comparisons,
+    clippy::needless_collect,
+    clippy::nonminimal_bool,
+    clippy::used_underscore_binding,
+    clippy::field_reassign_with_default,
+    clippy::return_self_not_must_use,
+    clippy::overly_complex_bool_expr,
+    clippy::assertions_on_constants,
+    clippy::no_effect_underscore_binding,
+    clippy::items_after_statements,
+    clippy::empty_line_after_doc_comments,
+    clippy::const_is_empty,
+    clippy::duplicated_attributes,
+    deprecated,
+    clippy::unnecessary_literal_unwrap
+)]
+
 //! Environment Configuration Tests
 //!
 //! Tests for environment variable handling, defaults, and validation.
 //!
 //! Note: unwrap() is acceptable in test code for clarity
 //! Tests now use ScopedEnv for automatic cleanup - no more #[serial]!
-
-#![allow(clippy::unwrap_used)]
-#![allow(clippy::expect_used)]
-#![allow(clippy::unnecessary_literal_unwrap)]
 
 mod test_utils;
 use std::env;
@@ -267,8 +289,8 @@ fn test_env_var_overwrite() {
     assert_eq!(env::var("OVERWRITE_VAR").expect("test precondition"), "first");
 
     // Test overwrite within the same scope
-    // Note: This tests that env::set_var still works, but ScopedEnv will restore original on drop
-    env::set_var("OVERWRITE_VAR", "second");
+    // Note: This tests that songbird_process_env::set_var still works, but ScopedEnv will restore original on drop
+    songbird_process_env::set_var("OVERWRITE_VAR", "second");
     assert_eq!(env::var("OVERWRITE_VAR").expect("test precondition"), "second");
     // When _env drops, it will restore to "first" (or None if didn't exist before)
 }

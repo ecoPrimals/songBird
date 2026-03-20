@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! HTTP server for execution agent
 
 use crate::{
@@ -10,11 +13,11 @@ use crate::{
     },
 };
 use axum::{
+    Json, Router,
     extract::{Path, State},
     http::StatusCode,
     response::{IntoResponse, Response},
     routing::{get, post},
-    Json, Router,
 };
 use songbird_types::SongbirdError;
 use std::sync::Arc;

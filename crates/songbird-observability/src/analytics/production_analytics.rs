@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Production Analytics and Predictive Monitoring
 //!
 //! Real data processing and machine learning analytics replacing mock implementations

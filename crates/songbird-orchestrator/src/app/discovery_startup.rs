@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Discovery Startup Module
 //!
 //! Handles the complete startup sequence for anonymous discovery:
@@ -26,10 +29,10 @@ use anyhow::Result;
 use std::sync::Arc;
 use tracing::{error, info, warn};
 
+use songbird_discovery::DiscoveryStatusManager;
 use songbird_discovery::anonymous::{
     AnonymousDiscoveryBroadcaster, AnonymousDiscoveryListener, TransportEndpointMessage,
 };
-use songbird_discovery::DiscoveryStatusManager;
 
 use crate::node_identity::NodeIdentity;
 use crate::self_knowledge;
@@ -62,6 +65,7 @@ use crate::self_knowledge;
 /// The listener is taken as `AnonymousDiscoveryListener` (not Arc'd),
 /// fully configured with builder methods, and THEN wrapped in Arc.
 /// This prevents the "two instances" bug and enables fractal patterns.
+#[allow(clippy::too_many_arguments)] // Startup passes pre-built listener, ports, and identity together.
 pub async fn start_discovery_system(
     discovery_port: u16,
     https_port: u16,
@@ -124,8 +128,8 @@ pub async fn start_discovery_system(
 ///
 /// - `SONGBIRD_SECURITY_PROVIDER` (generic capability)
 /// - `SECURITY_ENDPOINT` (generic)
-async fn fetch_identity_attestations(
-) -> Result<Vec<songbird_discovery::IdentityAttestation>, anyhow::Error> {
+async fn fetch_identity_attestations()
+-> Result<Vec<songbird_discovery::IdentityAttestation>, anyhow::Error> {
     if let Ok(url) = crate::app::security_setup::discover_security_endpoint(None).await {
         info!("🔐 Fetching identity attestations from security provider: {}", url);
         let security_client =
@@ -177,10 +181,10 @@ async fn initialize_birdsong_processor(
     let family_id = identity_attestations.iter().find_map(|a| {
         if a.provider_capability == "security/identity" {
             // Parse the data JSON to find family_id
-            if let Some(data_obj) = a.data.as_object() {
-                if let Some(family) = data_obj.get("family_id") {
-                    return family.as_str().map(String::from);
-                }
+            if let Some(data_obj) = a.data.as_object()
+                && let Some(family) = data_obj.get("family_id")
+            {
+                return family.as_str().map(String::from);
             }
         }
         None
@@ -351,7 +355,7 @@ mod tests {
     #[tokio::test]
     async fn test_fetch_identity_attestations_no_provider() {
         // No security provider configured
-        std::env::remove_var("SECURITY_ENDPOINT");
+        songbird_process_env::remove_var("SECURITY_ENDPOINT");
 
         let attestations = fetch_identity_attestations().await.unwrap_or_default();
         assert!(

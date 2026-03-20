@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Tor network consensus
 //!
 //! Fetches and parses the Tor network consensus document from directory authorities.
@@ -171,14 +174,12 @@ impl Consensus {
 
     /// Check if consensus is still fresh
     #[must_use]
-
     pub fn is_fresh(&self) -> bool {
         SystemTime::now() < self.fresh_until
     }
 
     /// Check if consensus is still valid
     #[must_use]
-
     pub fn is_valid(&self) -> bool {
         SystemTime::now() < self.valid_until
     }
@@ -191,7 +192,7 @@ impl Consensus {
     /// Returns error if descriptor fetch or parse fails.
     pub async fn fetch_relay_ntor_key(relay: &RelayInfo) -> Result<[u8; 32]> {
         // Use STANDARD_NO_PAD since Tor omits base64 padding
-        use base64::{engine::general_purpose::STANDARD_NO_PAD as BASE64, Engine};
+        use base64::{Engine, engine::general_purpose::STANDARD_NO_PAD as BASE64};
 
         // Convert fingerprint to hex
         let fp_hex: String =
@@ -403,7 +404,7 @@ mod tests {
         // 2026-02-08 00:00:00 UTC
         let ts = parse_datetime_to_unix("2026-02-08 00:00:00");
         assert!(ts.is_some());
-        let unix = ts.unwrap();
+        let unix = ts.expect("valid datetime");
         // Verify it's in a reasonable range (around Feb 2026)
         assert!(unix > 1_700_000_000); // After ~Nov 2023
         assert!(unix < 1_900_000_000); // Before ~Feb 2030
@@ -441,9 +442,9 @@ mod tests {
         assert!(vu.is_some());
 
         // fresh-until should be after valid-after
-        assert!(fu.unwrap() > va.unwrap());
+        assert!(fu.expect("fresh-until") > va.expect("valid-after"));
         // valid-until should be after fresh-until
-        assert!(vu.unwrap() > fu.unwrap());
+        assert!(vu.expect("valid-until") > fu.expect("fresh-until"));
     }
 
     #[test]

@@ -1,6 +1,22 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Platform-specific NFC device abstraction
 //!
-//! Provides unified interface across Android, iOS, Linux, etc.
+//! Provides a unified interface across targets. **Capability discovery** is explicit:
+//! [`NfcDevice::new`] returns [`NfcError::PlatformUnsupported`]
+//! until a native backend is wired for that OS.
+//!
+//! ## Discovery / integration paths (by target)
+//!
+//! - **Android** — JNI bridge to `android.nfc.NfcAdapter`, `NfcManager`, and tag technologies
+//!   (`IsoDep`, `NfcA`, etc.). Discover adapters from Java/Kotlin (`NfcAdapter.getDefault()`),
+//!   then surface session lifecycle + I/O into Rust via `jni-rs` (or equivalent).
+//! - **iOS** — [CoreNFC](https://developer.apple.com/documentation/corenfc): `NFCNDEFReaderSession` /
+//!   `NFCTagReaderSession` in Swift/Objective-C, bridged to Rust; capability is
+//!   `NFCReaderUsageDescription` + device hardware, queried at runtime from the app bundle.
+//! - **Linux** — [libnfc](https://github.com/nfc-tools/libnfc) or kernel NFC sockets (`AF_NFC`),
+//!   typically after listing readers via `nfc-list` / udev; PC/SC may apply for some hardware.
 
 use crate::error::{NfcError, Result};
 use crate::protocol::NfcMessage;
@@ -9,7 +25,7 @@ use tracing::{debug, info};
 
 /// NFC device abstraction
 ///
-/// Platform-agnostic interface for NFC operations
+/// Platform-agnostic interface for NFC operations.
 pub struct NfcDevice {
     /// Platform-specific backend
     backend: Box<dyn NfcBackend>,
@@ -29,7 +45,8 @@ impl NfcDevice {
     ///
     /// # Errors
     ///
-    /// Returns an error if the platform backend cannot be created.
+    /// Returns [`NfcError::PlatformUnsupported`] when
+    /// no backend is linked for this target yet, or the host stack cannot be opened.
     pub fn new(timeout: Duration) -> Result<Self> {
         let backend = Self::create_platform_backend()?;
 
@@ -113,22 +130,36 @@ impl NfcDevice {
     fn create_platform_backend() -> Result<Box<dyn NfcBackend>> {
         #[cfg(target_os = "android")]
         {
-            Ok(Box::new(AndroidNfcBackend::new()?))
+            // Capability path: JNI → `NfcAdapter` / tag tech; see module rustdoc.
+            Err(NfcError::PlatformUnsupported(
+                "Android NFC requires a JNI bridge to android.nfc (NfcAdapter, Tag, IsoDep, etc.)"
+                    .to_string(),
+            ))
         }
 
         #[cfg(target_os = "ios")]
         {
-            Ok(Box::new(IosNfcBackend::new()?))
+            // Capability path: CoreNFC in Swift + FFI; see module rustdoc.
+            Err(NfcError::PlatformUnsupported(
+                "iOS NFC requires CoreNFC (NFCNDEFReaderSession / tag sessions) via a Swift bridge"
+                    .to_string(),
+            ))
         }
 
         #[cfg(target_os = "linux")]
         {
-            Ok(Box::new(LinuxNfcBackend::new()?))
+            // Capability path: libnfc or AF_NFC; see module rustdoc.
+            Err(NfcError::PlatformUnsupported(
+                "Linux NFC requires libnfc or kernel NFC (AF_NFC) with a discovered USB/PCMCIA reader"
+                    .to_string(),
+            ))
         }
 
         #[cfg(not(any(target_os = "android", target_os = "ios", target_os = "linux")))]
         {
-            Err(NfcError::Platform("Unsupported platform".to_string()))
+            Err(NfcError::PlatformUnsupported(
+                "NFC backend not available for this target OS".to_string(),
+            ))
         }
     }
 }
@@ -147,103 +178,4 @@ pub trait NfcBackend: Send + Sync {
 
     /// Receive data
     async fn receive(&mut self, expected_len: usize) -> Result<Vec<u8>>;
-}
-
-// ========== Platform Implementations (Stubs - TODO: Real platform integration) ==========
-
-#[cfg(target_os = "android")]
-struct AndroidNfcBackend;
-
-#[cfg(target_os = "android")]
-impl AndroidNfcBackend {
-    fn new() -> Result<Self> {
-        // TODO: Initialize Android NFC via JNI
-        Ok(Self)
-    }
-}
-
-#[cfg(target_os = "android")]
-#[async_trait::async_trait]
-impl NfcBackend for AndroidNfcBackend {
-    async fn connect(&mut self, _timeout: Duration) -> Result<()> {
-        // TODO: Android NFC connection via JNI
-        Err(NfcError::Platform("Android NFC not yet implemented".to_string()))
-    }
-
-    async fn disconnect(&mut self) -> Result<()> {
-        Ok(())
-    }
-
-    async fn send(&mut self, _data: &[u8]) -> Result<()> {
-        Err(NfcError::Platform("Android NFC not yet implemented".to_string()))
-    }
-
-    async fn receive(&mut self, _expected_len: usize) -> Result<Vec<u8>> {
-        Err(NfcError::Platform("Android NFC not yet implemented".to_string()))
-    }
-}
-
-#[cfg(target_os = "ios")]
-struct IosNfcBackend;
-
-#[cfg(target_os = "ios")]
-impl IosNfcBackend {
-    fn new() -> Result<Self> {
-        // TODO: Initialize iOS CoreNFC
-        Ok(Self)
-    }
-}
-
-#[cfg(target_os = "ios")]
-#[async_trait::async_trait]
-impl NfcBackend for IosNfcBackend {
-    async fn connect(&mut self, _timeout: Duration) -> Result<()> {
-        // TODO: iOS CoreNFC connection
-        Err(NfcError::Platform("iOS NFC not yet implemented".to_string()))
-    }
-
-    async fn disconnect(&mut self) -> Result<()> {
-        Ok(())
-    }
-
-    async fn send(&mut self, _data: &[u8]) -> Result<()> {
-        Err(NfcError::Platform("iOS NFC not yet implemented".to_string()))
-    }
-
-    async fn receive(&mut self, _expected_len: usize) -> Result<Vec<u8>> {
-        Err(NfcError::Platform("iOS NFC not yet implemented".to_string()))
-    }
-}
-
-#[cfg(target_os = "linux")]
-struct LinuxNfcBackend;
-
-#[cfg(target_os = "linux")]
-impl LinuxNfcBackend {
-    #[allow(clippy::unnecessary_wraps)] // Result kept for consistency with other platform backends
-    const fn new() -> Result<Self> {
-        // TODO: Initialize libnfc
-        Ok(Self)
-    }
-}
-
-#[cfg(target_os = "linux")]
-#[async_trait::async_trait]
-impl NfcBackend for LinuxNfcBackend {
-    async fn connect(&mut self, _timeout: Duration) -> Result<()> {
-        // TODO: libnfc connection
-        Err(NfcError::Platform("Linux NFC not yet implemented".to_string()))
-    }
-
-    async fn disconnect(&mut self) -> Result<()> {
-        Ok(())
-    }
-
-    async fn send(&mut self, _data: &[u8]) -> Result<()> {
-        Err(NfcError::Platform("Linux NFC not yet implemented".to_string()))
-    }
-
-    async fn receive(&mut self, _expected_len: usize) -> Result<Vec<u8>> {
-        Err(NfcError::Platform("Linux NFC not yet implemented".to_string()))
-    }
 }

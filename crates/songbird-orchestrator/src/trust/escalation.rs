@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Trust Escalation Manager
 //!
 //! Manages progressive trust escalation from anonymous to hardware-verified.
@@ -6,7 +9,7 @@ use super::types::{
     CapabilityProof, HardwareAttestation, IdentityProof, TrustLevel, TrustRelationship,
 };
 use crate::security_client::client::SecurityCapabilityClient;
-use anyhow::{anyhow, Result};
+use anyhow::{Result, anyhow};
 use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::SystemTime;
@@ -618,16 +621,14 @@ mod tests {
 
         // Should be able to perform anonymous and capability operations
         assert!(manager.check_permission(&session_id, TrustLevel::Anonymous).await.unwrap());
-        assert!(manager
-            .check_permission(&session_id, TrustLevel::CapabilityVerified)
-            .await
-            .unwrap());
+        assert!(
+            manager.check_permission(&session_id, TrustLevel::CapabilityVerified).await.unwrap()
+        );
 
         // Should NOT be able to perform identity operations
-        assert!(!manager
-            .check_permission(&session_id, TrustLevel::IdentityVerified)
-            .await
-            .unwrap());
+        assert!(
+            !manager.check_permission(&session_id, TrustLevel::IdentityVerified).await.unwrap()
+        );
     }
 
     #[tokio::test]

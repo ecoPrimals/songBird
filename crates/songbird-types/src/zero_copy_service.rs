@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Zero-Copy Service Registration Types
 //!
 //! This module provides `Arc<str>`-based types for service registration to eliminate

@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Load Balancing for Universal Adapters
 //!
 //! Provides round-robin and health-based load balancing across multiple

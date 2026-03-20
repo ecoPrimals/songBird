@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! QoS-Aware Provider Selection
 //!
 //! Intelligent provider selection based on Quality of Service metrics including
@@ -174,12 +177,10 @@ impl QoSProviderSelector {
         // Select provider with highest score
         scored_providers.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
 
-        let best = scored_providers.first().map(|(id, score)| {
+        scored_providers.first().map(|(id, score)| {
             info!("✅ Selected provider {} with QoS score: {:.3}", id, score);
             id.clone()
-        });
-
-        best
+        })
     }
 
     /// Calculate `QoS` score for a provider (0.0 to 1.0)

@@ -1,3 +1,29 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
+#![allow(
+    clippy::unwrap_used,
+    clippy::expect_used,
+    clippy::unnecessary_wraps,
+    clippy::await_holding_lock,
+    clippy::float_cmp,
+    clippy::absurd_extreme_comparisons,
+    clippy::needless_collect,
+    clippy::nonminimal_bool,
+    clippy::used_underscore_binding,
+    clippy::field_reassign_with_default,
+    clippy::return_self_not_must_use,
+    clippy::overly_complex_bool_expr,
+    clippy::assertions_on_constants,
+    clippy::no_effect_underscore_binding,
+    clippy::items_after_statements,
+    clippy::empty_line_after_doc_comments,
+    clippy::const_is_empty,
+    clippy::duplicated_attributes,
+    deprecated,
+    clippy::unnecessary_literal_unwrap
+)]
+
 //! Comprehensive tests for default port configuration
 
 use songbird_config::defaults::ports::*;
@@ -293,20 +319,24 @@ fn test_primal_service_ports_distinct() {
 
 #[test]
 fn test_all_ports_in_valid_range() {
-    // Ports should be in valid TCP/UDP range (1-65535)
-    assert!(orchestrator_port() <= 65535);
-    assert!(discovery_port() <= 65535);
-    assert!(dashboard_port() <= 65535);
-    assert!(metrics_port() <= 65535);
-    assert!(federation_port() <= 65535);
-    assert!(websocket_port() <= 65535);
-    assert!(gaming_port() <= 65535);
-    assert!(health_port() <= 65535);
-    assert!(beardog_port() <= 65535);
-    assert!(toadstool_port() <= 65535);
-    assert!(squirrel_port() <= 65535);
-    assert!(nestgate_port() <= 65535);
-    assert!(tarpc_port() <= 65535);
-    assert!(starcraft_port() <= 65535);
-    assert!(aoe2_port() <= 65535);
+    // Defaults must be non-zero and fit in u16 (type already enforces max).
+    for port in [
+        orchestrator_port(),
+        discovery_port(),
+        dashboard_port(),
+        metrics_port(),
+        federation_port(),
+        websocket_port(),
+        gaming_port(),
+        health_port(),
+        beardog_port(),
+        toadstool_port(),
+        squirrel_port(),
+        nestgate_port(),
+        tarpc_port(),
+        starcraft_port(),
+        aoe2_port(),
+    ] {
+        assert!(port > 0, "default port must be non-zero");
+    }
 }

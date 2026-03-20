@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Tower Atomic Client Example
 //!
 //! This example demonstrates a JSON-RPC client using Tower Atomic
@@ -18,8 +21,7 @@ use songbird_universal_ipc::capability::discovery;
 use songbird_universal_ipc::error::IpcResult;
 use songbird_universal_ipc::ipc;
 use songbird_universal_ipc::tower_atomic::TowerAtomicClient;
-use tracing::{info, Level};
-use tracing_subscriber;
+use tracing::{Level, info};
 
 #[tokio::main]
 async fn main() -> IpcResult<()> {

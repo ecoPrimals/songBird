@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Canonical Universal Adapter Tests
 //!
 //! Comprehensive tests for the canonical adapter configuration and supporting types.
@@ -6,7 +9,7 @@
 #![allow(clippy::similar_names)]
 #![allow(clippy::uninlined_format_args)]
 // Allow unwrap/expect in tests - idiomatic for test code
-#![allow(clippy::unwrap_used, clippy::expect_used)]
+#![allow(clippy::unwrap_used, clippy::expect_used, clippy::unnecessary_wraps)]
 
 use songbird_types::adapters::canonical::*;
 use songbird_types::{SongbirdError, SongbirdResult};

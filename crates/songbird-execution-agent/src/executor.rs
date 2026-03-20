@@ -1,7 +1,10 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Command execution logic
 
-use crate::types::{ExecutionRequest, ExecutionResponse, ExecutionStatus, JobInfo};
 use crate::ResourceLimits;
+use crate::types::{ExecutionRequest, ExecutionResponse, ExecutionStatus, JobInfo};
 use songbird_types::{SongbirdError, SongbirdResult};
 use std::process::Stdio;
 use std::time::{Duration, SystemTime};

@@ -7,9 +7,77 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [v0.3.1] - 2026-03-19 - Deep Debt: Full Compliance, Edition 2024, UniBin
+
+### Changed - Clippy Pedantic Completion (29/29 crates clean)
+- All remaining clippy pedantic warnings resolved: songbird-http-client (172), songbird-sovereign-onion (168), songbird-tor-protocol (54), songbird-quic (1)
+- Workspace-wide: 1,565 errors -> 0 (100% clean across all 29 crates)
+
+### Changed - Rust 2024 Edition Migration
+- Migrated entire workspace from Rust 2021 to 2024
+- Created `songbird-process-env` facade: isolates `unsafe` for `std::env::set_var`/`remove_var` (unsafe in Rust 2024)
+- All other crates retain `#![forbid(unsafe_code)]`
+- Updated `rustfmt.toml` to edition 2024
+
+### Changed - UniBin Consolidation
+- `songbird-compute-bridge` and `songbird-remote-deploy` consolidated as `songbird compute-bridge` and `songbird deploy` subcommands
+- Single binary for all Songbird functionality
+
+### Changed - BearDog Crypto Stubs Evolution
+- All `[0u8; 32]` silent crypto placeholders evolved to explicit `CryptoUnavailable` errors
+- BearDog delegation paths documented at each error site
+- `getrandom` integrated for non-delegated random byte generation
+
+### Changed - Platform Stubs Evolution
+- NFC: `#[cfg(target_os)]` guards with proper `PlatformUnsupported` errors
+- Genesis Bluetooth: deprecated in favor of `bluetooth_pure`
+- QR code, SoloKey: proper `FeatureUnavailable` errors with delegation paths
+- WASM: proper error types instead of panics
+
+### Changed - Zero-Copy Optimizations
+- `Arc<str>` for shared connection endpoints (PrimalConnection, ServerProfile)
+- `Arc<[u8]>` for shared TLS key material
+- Move semantics in TLS handshake hot paths
+
+### Changed - Smart File Refactoring
+- `gatt.rs` (893 lines) -> `gatt/` module (5 submodules: att, services, characteristics, descriptors)
+- `coordination.rs` (864 lines) -> `coordination/` module (4 submodules: state, events, scheduler)
+- `server/dispatch.rs` renamed to `server/handlers.rs` with updated module declarations
+
+### Changed - License Compliance
+- Full scyBorg provenance trio: AGPL-3.0-only + ORC + CC-BY-SA 4.0
+- Created `LICENSE-ORC` and `LICENSE-CC-BY-SA` at repo root
+- All 1,300+ `.rs` files have SPDX-License-Identifier headers
+- Updated copyright to 2024-2026
+
+### Added - Tests
+- 9,358 total tests (up from 8,968)
+- Inline `#[cfg(test)]` modules added to songbird-quic, songbird-remote-deploy, songbird-primal-coordination, songbird-sovereign-onion, songbird-registry
+- E2E tests for discovery bridge trust flows
+- Coverage tests for cert parsing, STUN messages, IGD gateway
+
+### Fixed - Test Flakiness
+- `test_collect_metrics_network_error`: resilient error message assertions
+- `test_is_not_test`: isolated with `TestEnv::new()` for concurrent safety
+- `test_port_allocation_is_cached`: atomic check-or-insert with unique capability names
+
+### Quality
+| Metric | Value |
+|--------|-------|
+| Tests | 9,358 total, 0 failed, ~165 ignored |
+| Line Coverage | ~70% |
+| Build | Zero errors |
+| Clippy Pedantic | 29/29 crates clean |
+| Format | Clean |
+| Docs | Clean |
+| Edition | Rust 2024 |
+| Unsafe | 0 (process-env facade only) |
+
+---
+
 ## [v0.3.0] - 2026-03-19 - Deep Debt: Pedantic Clippy + Concurrent Testing Evolution
 
-### Changed - Clippy Pedantic + Nursery Cleanup (1,565 → 399 errors)
+### Changed - Clippy Pedantic + Nursery Cleanup (1,565 -> 399 errors)
 - 23/27 crates now pass `clippy::pedantic` + `clippy::nursery` with zero warnings
 - Common patterns evolved across workspace:
   - Added `#[must_use]` to all pure functions returning values

@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Anonymous Discovery Listener
 //!
 //! This module contains the listening logic for anonymous discovery via UDP multicast.
@@ -167,61 +170,58 @@ impl AnonymousDiscoveryListener {
                     let data = &buf[..len];
 
                     // 🌲 NEW (Feb 3, 2026): Try Dark Forest beacon first (zero metadata leakage)
-                    if let Some(ref birdsong) = self.birdsong {
-                        if birdsong.config().is_dark_forest_active() {
-                            // Try to parse as Dark Forest beacon
-                            if let Ok(beacon) =
-                                crate::dark_forest_beacon::DarkForestBeacon::from_bytes(data)
-                            {
-                                if beacon.version == 2 {
-                                    debug!(
-                                        "🌲 Received Dark Forest beacon from {} (size: {} bytes)",
-                                        addr,
-                                        data.len()
+                    if let Some(ref birdsong) = self.birdsong
+                        && birdsong.config().is_dark_forest_active()
+                    {
+                        // Try to parse as Dark Forest beacon
+                        if let Ok(beacon) =
+                            crate::dark_forest_beacon::DarkForestBeacon::from_bytes(data)
+                            && beacon.version == 2
+                        {
+                            debug!(
+                                "🌲 Received Dark Forest beacon from {} (size: {} bytes)",
+                                addr,
+                                data.len()
+                            );
+
+                            // Try to decrypt with all known beacon seeds
+                            match birdsong.decrypt_dark_forest_beacon(&beacon).await {
+                                Ok(Some((payload, beacon_id))) => {
+                                    info!(
+                                        "🌲✅ Decrypted Dark Forest beacon from {} (beacon_id: {})",
+                                        payload.node_id,
+                                        hex::encode(&beacon_id[..8.min(beacon_id.len())])
                                     );
 
-                                    // Try to decrypt with all known beacon seeds
-                                    match birdsong.decrypt_dark_forest_beacon(&beacon).await {
-                                        Ok(Some((payload, beacon_id))) => {
-                                            info!(
-                                                "🌲✅ Decrypted Dark Forest beacon from {} (beacon_id: {})",
-                                                payload.node_id,
-                                                hex::encode(&beacon_id[..8.min(beacon_id.len())])
-                                            );
+                                    // Process Dark Forest beacon payload
+                                    self.process_dark_forest_payload(payload, addr).await;
 
-                                            // Process Dark Forest beacon payload
-                                            self.process_dark_forest_payload(payload, addr).await;
-
-                                            if let Some(ref stats) = self.stats {
-                                                stats.record_received();
-                                                stats.record_peer_discovered();
-                                            }
-
-                                            continue;
-                                        }
-                                        Ok(None) => {
-                                            // Different beacon family - just noise (EXPECTED)
-                                            debug!(
-                                                "🌲🔇 Dark Forest beacon from different beacon family (privacy working)"
-                                            );
-                                            continue;
-                                        }
-                                        Err(e) => {
-                                            warn!("⚠️  Dark Forest beacon decryption error: {}", e);
-                                            // Fall through to try legacy format
-                                        }
+                                    if let Some(ref stats) = self.stats {
+                                        stats.record_received();
+                                        stats.record_peer_discovered();
                                     }
+
+                                    continue;
+                                }
+                                Ok(None) => {
+                                    // Different beacon family - just noise (EXPECTED)
+                                    debug!(
+                                        "🌲🔇 Dark Forest beacon from different beacon family (privacy working)"
+                                    );
+                                    continue;
+                                }
+                                Err(e) => {
+                                    warn!("⚠️  Dark Forest beacon decryption error: {}", e);
+                                    // Fall through to try legacy format
                                 }
                             }
+                        }
 
-                            // Not Dark Forest or decryption failed
-                            // Try legacy BirdSongPacket if allowed
-                            if !birdsong.config().accept_legacy_format {
-                                debug!(
-                                    "Rejecting non-Dark-Forest packet (accept_legacy_format=false)"
-                                );
-                                continue;
-                            }
+                        // Not Dark Forest or decryption failed
+                        // Try legacy BirdSongPacket if allowed
+                        if !birdsong.config().accept_legacy_format {
+                            debug!("Rejecting non-Dark-Forest packet (accept_legacy_format=false)");
+                            continue;
                         }
                     }
 
@@ -274,13 +274,15 @@ impl AnonymousDiscoveryListener {
                             // CRITICAL FIX (v3.10.2 - Jan 5, 2026): Filter out self-discovery
                             // Prevents towers from discovering their own broadcasts
                             // Critical for multi-instance deployments (tower1, tower2, etc.)
-                            if let Some(ref my_node_id) = self.node_id {
-                                if let Some(ref peer_node_id) = message.node_id {
-                                    if my_node_id == peer_node_id {
-                                        debug!("📭 Skipping own broadcast (self-discovery filtered: {})", my_node_id);
-                                        continue;
-                                    }
-                                }
+                            if let Some(ref my_node_id) = self.node_id
+                                && let Some(ref peer_node_id) = message.node_id
+                                && my_node_id == peer_node_id
+                            {
+                                debug!(
+                                    "📭 Skipping own broadcast (self-discovery filtered: {})",
+                                    my_node_id
+                                );
+                                continue;
                             }
 
                             debug!(
@@ -309,8 +311,14 @@ impl AnonymousDiscoveryListener {
                             let peer_identifier =
                                 message.node_name.as_ref().unwrap_or(&message.session_id);
 
-                            info!("🔍 Discovered peer: {} (v{}, capabilities: {:?}, HTTPS: https://{}:{})", 
-                                peer_identifier, message.version, message.capabilities, addr.ip(), message.port);
+                            info!(
+                                "🔍 Discovered peer: {} (v{}, capabilities: {:?}, HTTPS: https://{}:{})",
+                                peer_identifier,
+                                message.version,
+                                message.capabilities,
+                                addr.ip(),
+                                message.port
+                            );
 
                             if let Some(ref stats) = self.stats {
                                 stats.record_peer_discovered();

@@ -1,5 +1,28 @@
-// Allow unwrap/expect in tests - idiomatic for test code
-#![allow(clippy::unwrap_used, clippy::expect_used)]
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
+#![allow(
+    clippy::unwrap_used,
+    clippy::expect_used,
+    clippy::unnecessary_wraps,
+    clippy::await_holding_lock,
+    clippy::float_cmp,
+    clippy::absurd_extreme_comparisons,
+    clippy::needless_collect,
+    clippy::nonminimal_bool,
+    clippy::used_underscore_binding,
+    clippy::field_reassign_with_default,
+    clippy::return_self_not_must_use,
+    clippy::overly_complex_bool_expr,
+    clippy::assertions_on_constants,
+    clippy::no_effect_underscore_binding,
+    clippy::items_after_statements,
+    clippy::empty_line_after_doc_comments,
+    clippy::const_is_empty,
+    clippy::duplicated_attributes,
+    deprecated,
+    clippy::unnecessary_literal_unwrap
+)]
 
 //! Tests for the Discoverable Endpoint System
 //!
@@ -150,7 +173,7 @@ fn test_endpoint_spec_serialization_roundtrip() {
 #[tokio::test]
 async fn test_discover_from_env_var() {
     let _guard = ENV_LOCK.lock().unwrap();
-    std::env::set_var("TEST_DISCOVER_ENDPOINT", "http://discovered-host:9999/path");
+    songbird_process_env::set_var("TEST_DISCOVER_ENDPOINT", "http://discovered-host:9999/path");
 
     let ep = DiscoverableEndpoint::from_env("TEST_DISCOVER_ENDPOINT");
     let result = ep.discover().await;
@@ -159,7 +182,7 @@ async fn test_discover_from_env_var() {
     assert_eq!(spec.host, "discovered-host");
     assert_eq!(spec.port, 9999);
 
-    std::env::remove_var("TEST_DISCOVER_ENDPOINT");
+    songbird_process_env::remove_var("TEST_DISCOVER_ENDPOINT");
 }
 
 #[tokio::test]
@@ -197,9 +220,9 @@ async fn test_discover_consul_returns_not_implemented() {
 async fn test_discover_falls_back_to_dev_fallback() {
     let _guard = ENV_LOCK.lock().unwrap();
     // Set dev mode
-    std::env::set_var("SONGBIRD_ENV", "development");
-    std::env::remove_var("NONEXISTENT_SERVICE_ENDPOINT");
-    std::env::remove_var("NONEXISTENT_SERVICE_ENDPOINT_HOST");
+    songbird_process_env::set_var("SONGBIRD_ENV", "development");
+    songbird_process_env::remove_var("NONEXISTENT_SERVICE_ENDPOINT");
+    songbird_process_env::remove_var("NONEXISTENT_SERVICE_ENDPOINT_HOST");
 
     let ep = DiscoverableEndpoint {
         discovery_method: DiscoveryMethod::Environment {
@@ -222,15 +245,15 @@ async fn test_discover_falls_back_to_dev_fallback() {
     assert_eq!(spec.host, "dev-host");
     assert_eq!(spec.port, 5555);
 
-    std::env::remove_var("SONGBIRD_ENV");
+    songbird_process_env::remove_var("SONGBIRD_ENV");
 }
 
 #[tokio::test]
 async fn test_discover_all_methods_fail_no_dev_fallback() {
     let _guard = ENV_LOCK.lock().unwrap();
-    std::env::remove_var("SONGBIRD_ENV");
-    std::env::remove_var("RUST_ENV");
-    std::env::remove_var("TOTALLY_NONEXISTENT_VAR");
+    songbird_process_env::remove_var("SONGBIRD_ENV");
+    songbird_process_env::remove_var("RUST_ENV");
+    songbird_process_env::remove_var("TOTALLY_NONEXISTENT_VAR");
 
     let ep = DiscoverableEndpoint {
         discovery_method: DiscoveryMethod::Environment {

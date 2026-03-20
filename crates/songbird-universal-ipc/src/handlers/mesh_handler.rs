@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Mesh Network JSON-RPC Handler
 //!
 //! Exposes the `BeaconMesh` functionality via JSON-RPC for distributed
@@ -16,7 +19,7 @@
 //! This handler delegates to `songbird-onion-relay::BeaconMesh` for
 //! mesh state management while exposing capability via JSON-RPC.
 
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use songbird_onion_relay::mesh::{BeaconMesh, EndpointType, RelayEndpoint};
 use std::net::SocketAddr;
 use std::sync::Arc;
@@ -215,7 +218,7 @@ impl MeshHandler {
 
         debug!("🔍 Finding path to {}", target_node_id);
 
-        let result = {
+        {
             let mesh_guard = self.mesh.read().await;
             let mesh = mesh_guard.as_ref().ok_or("Mesh not initialized (call mesh.init first)")?;
 
@@ -232,8 +235,7 @@ impl MeshHandler {
                 "target_node_id": target_node_id,
                 "reason": "peer_not_discovered"
             }))
-        };
-        result
+        }
     }
 
     /// Handle `mesh.announce` method - Announce as relay
@@ -557,33 +559,29 @@ impl MeshHandler {
 
             match tokio::time::timeout(remaining, socket.recv_from(&mut buf)).await {
                 Ok(Ok((len, addr))) => {
-                    if let Ok(response) = serde_json::from_slice::<Value>(&buf[..len]) {
-                        if response.get("type").and_then(|t| t.as_str())
+                    if let Ok(response) = serde_json::from_slice::<Value>(&buf[..len])
+                        && (response.get("type").and_then(|t| t.as_str())
                             == Some("songbird_discovery_response")
                             || response.get("type").and_then(|t| t.as_str())
-                                == Some("songbird_discovery")
-                        {
-                            if let Some(peer_id) = response.get("node_id").and_then(|n| n.as_str())
-                            {
-                                if peer_id != our_node_id {
-                                    // Use jsonrpc_port from beacon (default 8080) instead
-                                    // of the ephemeral UDP source port for the endpoint address
-                                    let jsonrpc_port = u16::try_from(
-                                        response
-                                            .get("jsonrpc_port")
-                                            .and_then(serde_json::Value::as_u64)
-                                            .unwrap_or(8080),
-                                    )
-                                    .unwrap_or(8080);
-                                    let peer_addr = SocketAddr::new(addr.ip(), jsonrpc_port);
-                                    info!(
-                                        "🔍 Discovered peer {} at {} (jsonrpc_port: {})",
-                                        peer_id, peer_addr, jsonrpc_port
-                                    );
-                                    discovered.push((peer_id.to_string(), peer_addr));
-                                }
-                            }
-                        }
+                                == Some("songbird_discovery"))
+                        && let Some(peer_id) = response.get("node_id").and_then(|n| n.as_str())
+                        && peer_id != our_node_id
+                    {
+                        // Use jsonrpc_port from beacon (default 8080) instead
+                        // of the ephemeral UDP source port for the endpoint address
+                        let jsonrpc_port = u16::try_from(
+                            response
+                                .get("jsonrpc_port")
+                                .and_then(serde_json::Value::as_u64)
+                                .unwrap_or(8080),
+                        )
+                        .unwrap_or(8080);
+                        let peer_addr = SocketAddr::new(addr.ip(), jsonrpc_port);
+                        info!(
+                            "🔍 Discovered peer {} at {} (jsonrpc_port: {})",
+                            peer_id, peer_addr, jsonrpc_port
+                        );
+                        discovered.push((peer_id.to_string(), peer_addr));
                     }
                 }
                 Ok(Err(e)) => {
@@ -643,7 +641,6 @@ impl Default for MeshHandler {
 mod tests {
     use super::*;
     use serde_json::json;
-    use std::time::Duration;
 
     #[tokio::test]
     async fn test_mesh_handler_uninitialized() {

@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Cryptographic operations (ChaCha20-Poly1305 AEAD)
 
 use crate::beardog_crypto::BeardogCryptoClient;
@@ -8,15 +11,15 @@ use crate::OnionError;
 
 #[cfg(feature = "standalone")]
 use chacha20poly1305::{
-    aead::{Aead, KeyInit},
     ChaCha20Poly1305, Nonce,
+    aead::{Aead, KeyInit},
 };
 
-/// Encrypt data via BearDog (TRUE PRIMAL)
+/// Encrypt data via `BearDog` (TRUE PRIMAL)
 ///
 /// # Arguments
 ///
-/// * `client` - BearDog crypto client
+/// * `client` - `BearDog` crypto client
 /// * `key` - 32-byte encryption key
 /// * `sequence` - Monotonic sequence number (for nonce)
 /// * `plaintext` - Data to encrypt
@@ -24,6 +27,10 @@ use chacha20poly1305::{
 /// # Returns
 ///
 /// Ciphertext with 16-byte Poly1305 MAC tag appended
+///
+/// # Errors
+///
+/// Returns error if BearDog encryption fails.
 pub fn encrypt_data_via_beardog(
     client: &BeardogCryptoClient,
     key: &[u8; 32],
@@ -37,11 +44,11 @@ pub fn encrypt_data_via_beardog(
     client.chacha20_poly1305_encrypt(key, &nonce, plaintext)
 }
 
-/// Decrypt data via BearDog (TRUE PRIMAL)
+/// Decrypt data via `BearDog` (TRUE PRIMAL)
 ///
 /// # Arguments
 ///
-/// * `client` - BearDog crypto client
+/// * `client` - `BearDog` crypto client
 /// * `key` - 32-byte decryption key
 /// * `sequence` - Monotonic sequence number (for nonce)
 /// * `ciphertext` - Encrypted data with MAC tag
@@ -49,6 +56,10 @@ pub fn encrypt_data_via_beardog(
 /// # Returns
 ///
 /// Decrypted plaintext (MAC verified)
+///
+/// # Errors
+///
+/// Returns error if BearDog decryption or MAC verification fails.
 pub fn decrypt_data_via_beardog(
     client: &BeardogCryptoClient,
     key: &[u8; 32],
@@ -167,5 +178,27 @@ mod tests {
 
         let result = decrypt_data(&key, 1, &ciphertext);
         assert!(result.is_err());
+    }
+}
+
+#[cfg(test)]
+mod beardog_crypto_tests {
+    use super::*;
+    use crate::beardog_crypto::BeardogCryptoClient;
+
+    #[test]
+    fn encrypt_via_beardog_errors_when_rpc_unreachable() {
+        let client = BeardogCryptoClient::with_tcp("127.0.0.1", 1);
+        let key = [9u8; 32];
+        let r = encrypt_data_via_beardog(&client, &key, 0, b"data");
+        assert!(r.is_err());
+    }
+
+    #[test]
+    fn decrypt_via_beardog_errors_when_rpc_unreachable() {
+        let client = BeardogCryptoClient::with_tcp("127.0.0.1", 1);
+        let key = [9u8; 32];
+        let r = decrypt_data_via_beardog(&client, &key, 0, &[0u8; 16]);
+        assert!(r.is_err());
     }
 }

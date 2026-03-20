@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Timeout configuration for Songbird
 //!
 //! Replaces hardcoded `Duration::from_secs(X)` values throughout the codebase

@@ -1,9 +1,12 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! BearDog API Compatibility E2E Tests
 //!
 //! End-to-end tests verifying the complete flow with BearDog API format
 
 use songbird_orchestrator::security_capability_client::{
-    ConnectionInfo, DiscoveryContext, TrustEvaluationRequest, TrustEvaluationResponse,
+    ConnectionInfo, TrustEvaluationRequest, TrustEvaluationResponse,
 };
 use songbird_orchestrator::trust::peer_trust::{DiscoveredPeer, PeerTrustDecision};
 use std::collections::HashMap;
@@ -364,7 +367,7 @@ fn test_full_e2e_flow() {
         },
         "prompt_user" => PeerTrustDecision::PromptUser {
             reason: response.reason.clone(),
-            peer_id: discovered_peer.node_id.clone(),
+            peer_id: discovered_peer.node_id,
             recommendation: "verify_identity".to_string(),
         },
         "reject" => PeerTrustDecision::Reject {

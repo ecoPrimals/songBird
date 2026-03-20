@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! QUIC configuration with `BearDog` integration
 
 use crate::error::{QuicError, Result};
@@ -73,21 +76,21 @@ impl QuicConfig {
 
     /// Set idle timeout
     #[must_use]
-    pub fn with_idle_timeout(mut self, timeout: Duration) -> Self {
+    pub const fn with_idle_timeout(mut self, timeout: Duration) -> Self {
         self.idle_timeout = timeout;
         self
     }
 
     /// Enable 0-RTT connections
     #[must_use]
-    pub fn with_0rtt(mut self, enabled: bool) -> Self {
+    pub const fn with_0rtt(mut self, enabled: bool) -> Self {
         self.enable_0rtt = enabled;
         self
     }
 
     /// Enable connection migration
     #[must_use]
-    pub fn with_migration(mut self, enabled: bool) -> Self {
+    pub const fn with_migration(mut self, enabled: bool) -> Self {
         self.enable_migration = enabled;
         self
     }
@@ -158,6 +161,10 @@ impl QuicConfig {
     /// Build quinn `ServerConfig` from this config
     pub(crate) fn build_server_config(&self) -> Result<quinn::ServerConfig> {
         // Ensure crypto provider is installed (required by rustls 0.23 before any TLS ops)
+        #[cfg(feature = "ring-crypto")]
+        {
+            let _ = rustls::crypto::ring::default_provider().install_default();
+        }
         #[cfg(not(feature = "ring-crypto"))]
         {
             let _ = rustls_rustcrypto::provider().install_default();
@@ -296,7 +303,7 @@ impl LineageCertVerifier {
         let crypto_provider = {
             #[cfg(feature = "ring-crypto")]
             {
-                rustls::crypto::ring::default_provider()
+                Arc::new(rustls::crypto::ring::default_provider())
             }
             #[cfg(not(feature = "ring-crypto"))]
             {
@@ -353,5 +360,45 @@ impl rustls::client::danger::ServerCertVerifier for LineageCertVerifier {
 
     fn supported_verify_schemes(&self) -> Vec<rustls::SignatureScheme> {
         self.crypto_provider.signature_verification_algorithms.supported_schemes()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::path::PathBuf;
+    use std::time::Duration;
+
+    #[test]
+    fn new_matches_default_idle_and_streams() {
+        let a = QuicConfig::new();
+        let b = QuicConfig::default();
+        assert_eq!(a.idle_timeout, b.idle_timeout);
+        assert_eq!(a.max_concurrent_bidi_streams, b.max_concurrent_bidi_streams);
+        assert_eq!(a.max_concurrent_uni_streams, b.max_concurrent_uni_streams);
+    }
+
+    #[test]
+    fn builder_overrides_chain() {
+        let socket = PathBuf::from("/tmp/test-crypto.sock");
+        let c = QuicConfig::new()
+            .with_beardog_socket(socket.clone())
+            .with_idle_timeout(Duration::from_secs(60))
+            .with_0rtt(false)
+            .with_migration(false);
+        assert_eq!(c.beardog_socket, socket);
+        assert_eq!(c.idle_timeout, Duration::from_secs(60));
+        assert!(!c.enable_0rtt);
+        assert!(!c.enable_migration);
+    }
+
+    #[test]
+    fn build_server_config_ok() {
+        assert!(QuicConfig::new().build_server_config().is_ok());
+    }
+
+    #[test]
+    fn build_client_config_ok() {
+        assert!(QuicConfig::new().build_client_config().is_ok());
     }
 }

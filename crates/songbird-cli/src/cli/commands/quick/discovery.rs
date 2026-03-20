@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Network Discovery API
 //!
 //! Headless API for discovering Songbird networks that biomeOS can consume
@@ -127,12 +130,11 @@ async fn discover_via_multicast(timeout_ms: u64) -> SongbirdResult<Vec<Discovere
 
     // Only try a few times to avoid blocking
     for _ in 0..3 {
-        if let Ok((len, addr)) = socket.recv_from(&mut buf) {
-            if let Ok(response) = std::str::from_utf8(&buf[..len]) {
-                if let Some(network) = parse_discovery_response(response, addr.ip()) {
-                    networks.push(network);
-                }
-            }
+        if let Ok((len, addr)) = socket.recv_from(&mut buf)
+            && let Ok(response) = std::str::from_utf8(&buf[..len])
+            && let Some(network) = parse_discovery_response(response, addr.ip())
+        {
+            networks.push(network);
         }
     }
 

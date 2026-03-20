@@ -1,3 +1,38 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
+#![allow(
+    clippy::unwrap_used,
+    clippy::expect_used,
+    clippy::unnecessary_wraps,
+    clippy::await_holding_lock,
+    clippy::float_cmp,
+    clippy::absurd_extreme_comparisons,
+    clippy::needless_collect,
+    clippy::nonminimal_bool,
+    clippy::used_underscore_binding,
+    clippy::field_reassign_with_default,
+    clippy::return_self_not_must_use,
+    clippy::overly_complex_bool_expr,
+    clippy::assertions_on_constants,
+    clippy::no_effect_underscore_binding,
+    clippy::items_after_statements,
+    clippy::empty_line_after_doc_comments,
+    clippy::const_is_empty,
+    clippy::duplicated_attributes,
+    deprecated,
+    dead_code,
+    clippy::unnecessary_literal_unwrap,
+    clippy::needless_pass_by_value,
+    clippy::must_use_candidate,
+    clippy::clone_on_ref_ptr,
+    clippy::similar_names,
+    clippy::unreadable_literal,
+    clippy::cast_possible_truncation,
+    clippy::cast_sign_loss,
+    clippy::cast_precision_loss,
+    clippy::cast_possible_wrap
+)]
 // Allow unwrap/expect in tests - idiomatic for test code
 #![allow(clippy::unwrap_used, clippy::expect_used)]
 
@@ -30,14 +65,14 @@ async fn test_from_discovery_with_env_var() {
     let mock_server = MockServer::start().await;
 
     // Set environment variable
-    std::env::set_var("SONGBIRD_SECURITY_ENDPOINT", &mock_server.uri());
+    songbird_process_env::set_var("SONGBIRD_SECURITY_ENDPOINT", mock_server.uri());
 
     // Test discovery
     let result = SecurityAdapter::from_discovery().await;
     assert!(result.is_ok(), "Should discover from environment variable");
 
     // Cleanup
-    std::env::remove_var("SONGBIRD_SECURITY_ENDPOINT");
+    songbird_process_env::remove_var("SONGBIRD_SECURITY_ENDPOINT");
 }
 
 #[tokio::test]
@@ -47,15 +82,15 @@ async fn test_from_discovery_fallback_to_security_provider_endpoint() {
     let mock_server = MockServer::start().await;
 
     // Remove primary env var and set fallback
-    std::env::remove_var("SONGBIRD_SECURITY_ENDPOINT");
-    std::env::set_var("SECURITY_PROVIDER_ENDPOINT", &mock_server.uri());
+    songbird_process_env::remove_var("SONGBIRD_SECURITY_ENDPOINT");
+    songbird_process_env::set_var("SECURITY_PROVIDER_ENDPOINT", mock_server.uri());
 
     // Test discovery
     let result = SecurityAdapter::from_discovery().await;
     assert!(result.is_ok(), "Should fallback to SECURITY_PROVIDER_ENDPOINT");
 
     // Cleanup
-    std::env::remove_var("SECURITY_PROVIDER_ENDPOINT");
+    songbird_process_env::remove_var("SECURITY_PROVIDER_ENDPOINT");
 }
 
 #[tokio::test]
@@ -65,29 +100,29 @@ async fn test_from_discovery_fallback_to_beardog_endpoint() {
     let mock_server = MockServer::start().await;
 
     // Remove all primary env vars and set BearDog fallback
-    std::env::remove_var("SONGBIRD_SECURITY_ENDPOINT");
-    std::env::remove_var("SECURITY_PROVIDER_ENDPOINT");
-    std::env::set_var("BEARDOG_ENDPOINT", &mock_server.uri());
+    songbird_process_env::remove_var("SONGBIRD_SECURITY_ENDPOINT");
+    songbird_process_env::remove_var("SECURITY_PROVIDER_ENDPOINT");
+    songbird_process_env::set_var("BEARDOG_ENDPOINT", mock_server.uri());
 
     // Test discovery
     let result = SecurityAdapter::from_discovery().await;
     assert!(result.is_ok(), "Should fallback to BEARDOG_ENDPOINT");
 
     // Cleanup
-    std::env::remove_var("BEARDOG_ENDPOINT");
+    songbird_process_env::remove_var("BEARDOG_ENDPOINT");
 }
 
 #[tokio::test]
 async fn test_from_discovery_uses_host_and_port_fallback() {
     let _guard = ENV_LOCK.lock().await;
     // Remove all security endpoint env vars
-    std::env::remove_var("SONGBIRD_SECURITY_ENDPOINT");
-    std::env::remove_var("SECURITY_PROVIDER_ENDPOINT");
-    std::env::remove_var("BEARDOG_ENDPOINT");
+    songbird_process_env::remove_var("SONGBIRD_SECURITY_ENDPOINT");
+    songbird_process_env::remove_var("SECURITY_PROVIDER_ENDPOINT");
+    songbird_process_env::remove_var("BEARDOG_ENDPOINT");
 
     // Set host and port
-    std::env::set_var("SONGBIRD_HOST", "http://testhost");
-    std::env::set_var("SONGBIRD_SECURITY_PORT", "9999");
+    songbird_process_env::set_var("SONGBIRD_HOST", "http://testhost");
+    songbird_process_env::set_var("SONGBIRD_SECURITY_PORT", "9999");
 
     // Test discovery - should fall back to constructed endpoint
     let result = SecurityAdapter::from_discovery().await;
@@ -98,8 +133,8 @@ async fn test_from_discovery_uses_host_and_port_fallback() {
     assert!(adapter.endpoint().contains("9999"), "Should use configured port");
 
     // Cleanup
-    std::env::remove_var("SONGBIRD_HOST");
-    std::env::remove_var("SONGBIRD_SECURITY_PORT");
+    songbird_process_env::remove_var("SONGBIRD_HOST");
+    songbird_process_env::remove_var("SONGBIRD_SECURITY_PORT");
 }
 
 // ============================================================================

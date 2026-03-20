@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Windows named pipe implementation
 //!
 //! **Platform**: Windows (all architectures: `x86_64`, ARM64)
@@ -203,7 +206,6 @@ impl PlatformListener for NamedPipeListenerWrapper {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
 
     #[tokio::test]
     #[cfg(windows)]
@@ -287,7 +289,7 @@ mod tests {
         ];
 
         for (primal_name, expected_pipe) in test_cases {
-            let pipe_name = format!(r"\\.\pipe\biomeos_{}", primal_name);
+            let pipe_name = format!(r"\\.\pipe\biomeos_{primal_name}");
             assert_eq!(pipe_name, expected_pipe);
             assert!(pipe_name.starts_with(r"\\.\pipe\biomeos_"));
         }
@@ -296,13 +298,13 @@ mod tests {
     #[test]
     fn test_windows_env_override() {
         // Test environment variable override
-        std::env::set_var("TESTPRIMAL_PIPE", r"\\.\pipe\custom_test");
+        songbird_process_env::set_var("TESTPRIMAL_PIPE", r"\\.\pipe\custom_test");
 
         // This would use the custom pipe path
         let custom_name = std::env::var("TESTPRIMAL_PIPE").unwrap();
         assert_eq!(custom_name, r"\\.\pipe\custom_test");
 
-        std::env::remove_var("TESTPRIMAL_PIPE");
+        songbird_process_env::remove_var("TESTPRIMAL_PIPE");
     }
 
     #[test]

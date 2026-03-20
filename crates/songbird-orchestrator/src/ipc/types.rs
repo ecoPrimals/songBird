@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Type definitions for Unix socket JSON-RPC APIs
 //!
 //! v3.19.1: Modern idiomatic Rust types for biomeOS integration

@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Universal Service Discovery Adapter
 //!
 //! Provides vendor-agnostic service discovery that can work with:
@@ -396,10 +399,10 @@ impl UniversalServiceDiscovery {
 
         for path in api_paths {
             let url = format!("{}{}", endpoint.trim_end_matches('/'), path);
-            if let Ok(response) = client.get(&url).await {
-                if let Ok(data) = response.json::<serde_json::Value>().await {
-                    return self.parse_universal_service_response(&data);
-                }
+            if let Ok(response) = client.get(&url).await
+                && let Ok(data) = response.json::<serde_json::Value>().await
+            {
+                return self.parse_universal_service_response(&data);
             }
         }
 
@@ -455,10 +458,10 @@ impl UniversalServiceDiscovery {
                     key.replace("_SERVICE_URL", "").replace("_ENDPOINT", "").to_lowercase();
 
                 // Apply query filters
-                if let Some(name_filter) = &query.name {
-                    if !service_name.contains(name_filter) {
-                        continue;
-                    }
+                if let Some(name_filter) = &query.name
+                    && !service_name.contains(name_filter)
+                {
+                    continue;
                 }
 
                 services.push(self.create_service_info(&service_name, "environment"));

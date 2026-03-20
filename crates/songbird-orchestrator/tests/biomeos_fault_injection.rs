@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 // BiomeOS Socket Fault Injection Tests
 // January 16, 2026
 // Updated: February 5, 2026 (PRIMAL_DEPLOYMENT_STANDARD compliance)
@@ -31,7 +34,7 @@ static ENV_LOCK: Mutex<()> = Mutex::new(());
 /// and falls back to sensible defaults.
 #[test]
 fn fault_missing_all_env_vars() {
-    let _guard = ENV_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+    let _guard = ENV_LOCK.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
     // Save original state
     let original = save_env_state();
 
@@ -55,11 +58,14 @@ fn fault_missing_all_env_vars() {
 /// Tests behavior when socket path points to non-existent directory.
 #[test]
 fn fault_nonexistent_directory() {
-    let _guard = ENV_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+    let _guard = ENV_LOCK.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
     let original = save_env_state();
 
     // Set socket path to non-existent directory
-    env::set_var("SONGBIRD_ORCHESTRATOR_SOCKET", "/non/existent/path/songbird.sock");
+    songbird_process_env::set_var(
+        "SONGBIRD_ORCHESTRATOR_SOCKET",
+        "/non/existent/path/songbird.sock",
+    );
 
     // Should return the path (validation happens at bind time)
     let path = UnixSocketServer::socket_path_from_env();
@@ -76,7 +82,7 @@ fn fault_nonexistent_directory() {
 /// Tests handling of family IDs with special characters, spaces, etc.
 #[test]
 fn fault_invalid_family_id_special_chars() {
-    let _guard = ENV_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+    let _guard = ENV_LOCK.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
     let original = save_env_state();
 
     // Test various problematic family IDs
@@ -91,7 +97,7 @@ fn fault_invalid_family_id_special_chars() {
 
     for (family_id, _expected_path) in test_cases {
         clear_all_env_vars();
-        env::set_var("BIOMEOS_FAMILY_ID", family_id);
+        songbird_process_env::set_var("BIOMEOS_FAMILY_ID", family_id);
 
         let path = UnixSocketServer::socket_path_from_env();
         let derived_family = UnixSocketServer::get_family_id();
@@ -113,12 +119,12 @@ fn fault_invalid_family_id_special_chars() {
 /// socket path is never valid.
 #[test]
 fn fault_empty_string_env_vars() {
-    let _guard = ENV_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+    let _guard = ENV_LOCK.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
     let original = save_env_state();
     clear_all_env_vars();
 
     // Test 1: Empty socket path env var — treated as "not set", falls to default
-    env::set_var("SONGBIRD_ORCHESTRATOR_SOCKET", "");
+    songbird_process_env::set_var("SONGBIRD_ORCHESTRATOR_SOCKET", "");
 
     let path = UnixSocketServer::socket_path_from_env();
     // Implementation correctly skips empty strings and falls back to XDG default
@@ -130,7 +136,7 @@ fn fault_empty_string_env_vars() {
 
     // Test 2: Empty family ID (should work, PRIMAL_DEPLOYMENT_STANDARD uses {primal}.sock)
     clear_all_env_vars();
-    env::set_var("BIOMEOS_FAMILY_ID", "");
+    songbird_process_env::set_var("BIOMEOS_FAMILY_ID", "");
 
     let family_id = UnixSocketServer::get_family_id();
     let path = UnixSocketServer::socket_path_from_env();
@@ -148,12 +154,12 @@ fn fault_empty_string_env_vars() {
 /// Tests handling of extremely long socket paths (approaching OS limits).
 #[test]
 fn fault_very_long_socket_path() {
-    let _guard = ENV_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+    let _guard = ENV_LOCK.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
     let original = save_env_state();
 
     // Create a very long path (but still valid)
     let long_path = format!("/tmp/{}.sock", "a".repeat(200));
-    env::set_var("SONGBIRD_ORCHESTRATOR_SOCKET", &long_path);
+    songbird_process_env::set_var("SONGBIRD_ORCHESTRATOR_SOCKET", &long_path);
 
     let path = UnixSocketServer::socket_path_from_env();
 
@@ -168,11 +174,11 @@ fn fault_very_long_socket_path() {
 /// Tests that socket paths can be absolute or relative.
 #[test]
 fn fault_relative_socket_path() {
-    let _guard = ENV_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+    let _guard = ENV_LOCK.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
     let original = save_env_state();
 
     // Test relative path
-    env::set_var("SONGBIRD_ORCHESTRATOR_SOCKET", "relative/path/songbird.sock");
+    songbird_process_env::set_var("SONGBIRD_ORCHESTRATOR_SOCKET", "relative/path/songbird.sock");
 
     let path = UnixSocketServer::socket_path_from_env();
 
@@ -187,11 +193,14 @@ fn fault_relative_socket_path() {
 /// Tests handling of socket paths containing symlinks.
 #[test]
 fn fault_path_with_symlinks() {
-    let _guard = ENV_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+    let _guard = ENV_LOCK.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
     let original = save_env_state();
 
     // Simulate path with symlink
-    env::set_var("SONGBIRD_ORCHESTRATOR_SOCKET", "/tmp/link/to/socket/songbird.sock");
+    songbird_process_env::set_var(
+        "SONGBIRD_ORCHESTRATOR_SOCKET",
+        "/tmp/link/to/socket/songbird.sock",
+    );
 
     let path = UnixSocketServer::socket_path_from_env();
 
@@ -206,12 +215,12 @@ fn fault_path_with_symlinks() {
 /// Tests handling of leading/trailing whitespace in env vars.
 #[test]
 fn fault_whitespace_in_env_vars() {
-    let _guard = ENV_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+    let _guard = ENV_LOCK.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
     let original = save_env_state();
 
     // Set env vars with whitespace
-    env::set_var("SONGBIRD_ORCHESTRATOR_SOCKET", "  /tmp/songbird.sock  ");
-    env::set_var("BIOMEOS_FAMILY_ID", "  nat0  ");
+    songbird_process_env::set_var("SONGBIRD_ORCHESTRATOR_SOCKET", "  /tmp/songbird.sock  ");
+    songbird_process_env::set_var("BIOMEOS_FAMILY_ID", "  nat0  ");
 
     let path = UnixSocketServer::socket_path_from_env();
     let family_id = UnixSocketServer::get_family_id();
@@ -229,13 +238,13 @@ fn fault_whitespace_in_env_vars() {
 /// Tests that env var names are case-sensitive (as expected in Unix).
 #[test]
 fn fault_case_sensitivity_env_vars() {
-    let _guard = ENV_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+    let _guard = ENV_LOCK.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
     let original = save_env_state();
     clear_all_env_vars();
 
     // Set lowercase version (should NOT be recognized)
-    env::set_var("songbird_orchestrator_socket", "/tmp/wrong.sock");
-    env::set_var("SONGBIRD_ORCHESTRATOR_SOCKET", "/tmp/correct.sock");
+    songbird_process_env::set_var("songbird_orchestrator_socket", "/tmp/wrong.sock");
+    songbird_process_env::set_var("SONGBIRD_ORCHESTRATOR_SOCKET", "/tmp/correct.sock");
 
     let path = UnixSocketServer::socket_path_from_env();
 
@@ -250,12 +259,12 @@ fn fault_case_sensitivity_env_vars() {
 /// Tests that paths with null bytes are handled (they shouldn't cause crashes).
 #[test]
 fn fault_null_bytes_in_path() {
-    let _guard = ENV_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+    let _guard = ENV_LOCK.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
     let original = save_env_state();
 
     // Rust strings can't contain null bytes, but if they somehow got in via FFI...
     // This is more of a defensive test
-    env::set_var("SONGBIRD_ORCHESTRATOR_SOCKET", "/tmp/songbird.sock");
+    songbird_process_env::set_var("SONGBIRD_ORCHESTRATOR_SOCKET", "/tmp/songbird.sock");
 
     let path = UnixSocketServer::socket_path_from_env();
 
@@ -270,15 +279,15 @@ fn fault_null_bytes_in_path() {
 /// Tests behavior when env vars change between calls.
 #[test]
 fn fault_concurrent_env_changes() {
-    let _guard = ENV_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+    let _guard = ENV_LOCK.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
     let original = save_env_state();
 
     // Set initial env var
-    env::set_var("SONGBIRD_ORCHESTRATOR_SOCKET", "/tmp/socket1.sock");
+    songbird_process_env::set_var("SONGBIRD_ORCHESTRATOR_SOCKET", "/tmp/socket1.sock");
     let path1 = UnixSocketServer::socket_path_from_env();
 
     // Change env var
-    env::set_var("SONGBIRD_ORCHESTRATOR_SOCKET", "/tmp/socket2.sock");
+    songbird_process_env::set_var("SONGBIRD_ORCHESTRATOR_SOCKET", "/tmp/socket2.sock");
     let path2 = UnixSocketServer::socket_path_from_env();
 
     // Should reflect the change
@@ -295,14 +304,14 @@ fn fault_concurrent_env_changes() {
 /// PRIMAL_DEPLOYMENT_STANDARD: Family ID is NOT included in socket path.
 #[test]
 fn fault_family_id_path_construction() {
-    let _guard = ENV_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+    let _guard = ENV_LOCK.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
     let original = save_env_state();
 
     let test_cases = vec!["nat0", "production", "dev-test", "123", "_underscore_"];
 
     for family_id in test_cases {
         clear_all_env_vars();
-        env::set_var("BIOMEOS_FAMILY_ID", family_id);
+        songbird_process_env::set_var("BIOMEOS_FAMILY_ID", family_id);
 
         let path = UnixSocketServer::socket_path_from_env();
         let derived_family = UnixSocketServer::get_family_id();
@@ -320,19 +329,19 @@ fn fault_family_id_path_construction() {
 /// Tests that priority order is strictly enforced when all vars are set.
 #[test]
 fn fault_all_priorities_set() {
-    let _guard = ENV_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+    let _guard = ENV_LOCK.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
     let original = save_env_state();
 
     // Set ALL socket path env vars
-    env::set_var("SONGBIRD_ORCHESTRATOR_SOCKET", "/tmp/highest.sock");
-    env::set_var("SONGBIRD_SOCKET", "/tmp/medium.sock");
-    env::set_var("BIOMEOS_SOCKET_PATH", "/tmp/lowest.sock");
+    songbird_process_env::set_var("SONGBIRD_ORCHESTRATOR_SOCKET", "/tmp/highest.sock");
+    songbird_process_env::set_var("SONGBIRD_SOCKET", "/tmp/medium.sock");
+    songbird_process_env::set_var("BIOMEOS_SOCKET_PATH", "/tmp/lowest.sock");
 
     // Set ALL family ID env vars
-    env::set_var("SONGBIRD_ORCHESTRATOR_FAMILY_ID", "highest-family");
-    env::set_var("SONGBIRD_ORCHESTRATOR_FAMILY", "medium-high-family");
-    env::set_var("BIOMEOS_FAMILY_ID", "medium-family");
-    env::set_var("SONGBIRD_FAMILY_ID", "lowest-family");
+    songbird_process_env::set_var("SONGBIRD_ORCHESTRATOR_FAMILY_ID", "highest-family");
+    songbird_process_env::set_var("SONGBIRD_ORCHESTRATOR_FAMILY", "medium-high-family");
+    songbird_process_env::set_var("BIOMEOS_FAMILY_ID", "medium-family");
+    songbird_process_env::set_var("SONGBIRD_FAMILY_ID", "lowest-family");
 
     let path = UnixSocketServer::socket_path_from_env();
     let family_id = UnixSocketServer::get_family_id();
@@ -349,11 +358,11 @@ fn fault_all_priorities_set() {
 /// Tests that repeated calls with same env vars are consistent.
 #[test]
 fn fault_repeated_calls_consistency() {
-    let _guard = ENV_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+    let _guard = ENV_LOCK.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
     let original = save_env_state();
 
-    env::set_var("SONGBIRD_ORCHESTRATOR_SOCKET", "/tmp/test.sock");
-    env::set_var("BIOMEOS_FAMILY_ID", "test");
+    songbird_process_env::set_var("SONGBIRD_ORCHESTRATOR_SOCKET", "/tmp/test.sock");
+    songbird_process_env::set_var("BIOMEOS_FAMILY_ID", "test");
 
     // Call multiple times
     let results: Vec<_> = (0..100)
@@ -374,7 +383,7 @@ fn fault_repeated_calls_consistency() {
 // ============================================================================
 
 fn save_env_state() -> Vec<(String, Option<String>)> {
-    let keys = vec![
+    let keys = [
         "SONGBIRD_ORCHESTRATOR_SOCKET",
         "SONGBIRD_SOCKET",
         "BIOMEOS_SOCKET_PATH",
@@ -390,18 +399,18 @@ fn save_env_state() -> Vec<(String, Option<String>)> {
 fn restore_env_state(state: Vec<(String, Option<String>)>) {
     for (key, value) in state {
         match value {
-            Some(v) => env::set_var(&key, v),
-            None => env::remove_var(&key),
+            Some(v) => songbird_process_env::set_var(&key, v),
+            None => songbird_process_env::remove_var(&key),
         }
     }
 }
 
 fn clear_all_env_vars() {
-    env::remove_var("SONGBIRD_ORCHESTRATOR_SOCKET");
-    env::remove_var("SONGBIRD_SOCKET");
-    env::remove_var("BIOMEOS_SOCKET_PATH");
-    env::remove_var("SONGBIRD_ORCHESTRATOR_FAMILY_ID");
-    env::remove_var("SONGBIRD_ORCHESTRATOR_FAMILY");
-    env::remove_var("BIOMEOS_FAMILY_ID");
-    env::remove_var("SONGBIRD_FAMILY_ID");
+    songbird_process_env::remove_var("SONGBIRD_ORCHESTRATOR_SOCKET");
+    songbird_process_env::remove_var("SONGBIRD_SOCKET");
+    songbird_process_env::remove_var("BIOMEOS_SOCKET_PATH");
+    songbird_process_env::remove_var("SONGBIRD_ORCHESTRATOR_FAMILY_ID");
+    songbird_process_env::remove_var("SONGBIRD_ORCHESTRATOR_FAMILY");
+    songbird_process_env::remove_var("BIOMEOS_FAMILY_ID");
+    songbird_process_env::remove_var("SONGBIRD_FAMILY_ID");
 }

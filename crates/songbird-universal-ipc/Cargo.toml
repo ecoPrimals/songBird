@@ -1,7 +1,7 @@
 [package]
 name = "songbird-universal-ipc"
 version.workspace = true
-edition = "2021"
+edition.workspace = true
 authors = ["ecoPrimals <contact@ecoprimals.dev>"]
 description = "Universal IPC abstraction for ecoPrimals - works on ALL platforms"
 license = "AGPL-3.0"
@@ -66,6 +66,7 @@ songbird-universal = { path = "../songbird-universal" }
 tokio = { workspace = true, features = ["net"] }
 
 [dev-dependencies]
+songbird-process-env.workspace = true
 tokio-test = "0.4"
 tempfile = "3.0"
 tracing-subscriber = { workspace = true }

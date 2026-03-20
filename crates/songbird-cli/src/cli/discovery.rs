@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! CLI Discovery Utilities
 //!
 //! Network discovery utilities for the CLI
@@ -239,10 +242,11 @@ impl NetworkScanner {
 
         // Try to find version in plain text
         for line in response.lines() {
-            if line.to_lowercase().contains("version") && line.contains(':') {
-                if let Some(version_part) = line.split(':').nth(1) {
-                    return Some(version_part.trim().to_string());
-                }
+            if line.to_lowercase().contains("version")
+                && line.contains(':')
+                && let Some(version_part) = line.split(':').nth(1)
+            {
+                return Some(version_part.trim().to_string());
             }
         }
 

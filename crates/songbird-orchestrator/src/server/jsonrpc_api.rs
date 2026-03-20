@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 // JSON-RPC 2.0 Universal Gateway
 // Progressive Protocol Enhancement - Phase 2
 //
@@ -9,7 +12,7 @@
 // Part of: Progressive Protocol Enhancement - Week 2
 // Created: November 11, 2025
 
-use axum::{extract::State, http::StatusCode, routing::post, Json, Router};
+use axum::{Json, Router, extract::State, http::StatusCode, routing::post};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::sync::Arc;

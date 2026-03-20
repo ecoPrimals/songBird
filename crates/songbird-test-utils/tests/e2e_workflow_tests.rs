@@ -1,3 +1,32 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
+#![allow(
+    clippy::unwrap_used,
+    clippy::expect_used,
+    clippy::unnecessary_wraps,
+    clippy::await_holding_lock,
+    clippy::float_cmp,
+    clippy::absurd_extreme_comparisons,
+    clippy::needless_collect,
+    clippy::nonminimal_bool,
+    clippy::used_underscore_binding,
+    clippy::field_reassign_with_default,
+    clippy::return_self_not_must_use,
+    clippy::overly_complex_bool_expr,
+    clippy::assertions_on_constants,
+    clippy::no_effect_underscore_binding,
+    clippy::items_after_statements,
+    clippy::empty_line_after_doc_comments,
+    clippy::const_is_empty,
+    clippy::duplicated_attributes,
+    deprecated,
+    dead_code,
+    clippy::unnecessary_literal_unwrap,
+    clippy::needless_pass_by_value,
+    clippy::must_use_candidate
+)]
+
 //! End-to-End Workflow Tests
 #![allow(clippy::uninlined_format_args)]
 #![allow(clippy::float_cmp)]
@@ -28,8 +57,8 @@
 
 #[cfg(test)]
 mod e2e_workflow_tests {
-    use songbird_types::config::CanonicalSongbirdConfig;
     use songbird_types::SongbirdResult;
+    use songbird_types::config::CanonicalSongbirdConfig;
     use std::time::Duration;
 
     #[tokio::test]
@@ -75,7 +104,7 @@ mod e2e_workflow_tests {
         let environments = vec!["development", "staging", "production"];
 
         for env in environments {
-            std::env::set_var("SONGBIRD_ENV", env);
+            songbird_process_env::set_var("SONGBIRD_ENV", env);
 
             // Test environment detection - simplified for now
             match env {
@@ -86,7 +115,7 @@ mod e2e_workflow_tests {
         }
 
         // Clean up environment
-        std::env::remove_var("SONGBIRD_ENV");
+        songbird_process_env::remove_var("SONGBIRD_ENV");
 
         Ok(())
     }

@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! `BearDog` RPC client for crypto operations
 //!
 //! Communicates with `BearDog` via JSON-RPC 2.0 over Unix sockets, supporting

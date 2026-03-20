@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! TLS 1.3 application data encryption and decryption
 //!
 //! Handles encryption and decryption of HTTP application data after the
@@ -33,7 +36,8 @@ impl TlsHandshake {
         // Construct TLS record header (this becomes the AAD)
         let record_type = 0x17; // ContentType: APPLICATION_DATA
         let version = [0x03, 0x03]; // TLS 1.2 (compatibility mode for TLS 1.3)
-        let length = ciphertext_length as u16;
+        let length = u16::try_from(ciphertext_length)
+            .map_err(|_| crate::error::Error::TlsHandshake("Record too large".into()))?;
 
         let aad = [record_type, version[0], version[1], (length >> 8) as u8, (length & 0xFF) as u8];
 

@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! # Configuration Factory Module
 //!
 //! **CANONICAL CONFIGURATION FACTORY** ✅
@@ -8,7 +11,7 @@ use super::CanonicalSongbirdConfig;
 use serde::{Deserialize, Serialize};
 
 // ============================================================================
-// CONFIGURATION FACTORY - Placeholder
+// CONFIGURATION FACTORY
 // ============================================================================
 
 /// **CANONICAL**: Configuration factory for creating canonical configurations

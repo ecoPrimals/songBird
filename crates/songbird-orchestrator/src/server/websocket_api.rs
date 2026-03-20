@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 /// WebSocket API for Songbird - Real-time bidirectional communication
 ///
 /// This module provides WebSocket support for real-time events, streaming,
@@ -14,13 +17,13 @@
 /// Version: 0.2.1
 /// Last Updated: November 11, 2025 - Phase 4
 use axum::{
+    Router,
     extract::{
-        ws::{Message, WebSocket, WebSocketUpgrade},
         State,
+        ws::{Message, WebSocket, WebSocketUpgrade},
     },
     response::Response,
     routing::get,
-    Router,
 };
 use futures_util::{SinkExt, StreamExt};
 use serde::{Deserialize, Serialize};
@@ -241,11 +244,11 @@ async fn handle_socket(socket: WebSocket, state: WebSocketApiState) {
         message: Some("Connected to Songbird WebSocket API".to_string()),
     };
 
-    if let Ok(json) = serde_json::to_string(&welcome) {
-        if let Err(e) = sender.send(Message::Text(json)).await {
-            error!("Failed to send welcome message: {}", e);
-            return;
-        }
+    if let Ok(json) = serde_json::to_string(&welcome)
+        && let Err(e) = sender.send(Message::Text(json)).await
+    {
+        error!("Failed to send welcome message: {}", e);
+        return;
     }
 
     // Handle incoming messages
@@ -255,13 +258,12 @@ async fn handle_socket(socket: WebSocket, state: WebSocketApiState) {
                 // Parse and handle JSON message
                 match serde_json::from_str::<WsMessage>(&text) {
                     Ok(ws_msg) => {
-                        if let Some(response) = handle_ws_message(ws_msg, &state).await {
-                            if let Ok(json) = serde_json::to_string(&response) {
-                                if let Err(e) = sender.send(Message::Text(json)).await {
-                                    error!("Failed to send response: {}", e);
-                                    break;
-                                }
-                            }
+                        if let Some(response) = handle_ws_message(ws_msg, &state).await
+                            && let Ok(json) = serde_json::to_string(&response)
+                            && let Err(e) = sender.send(Message::Text(json)).await
+                        {
+                            error!("Failed to send response: {}", e);
+                            break;
                         }
                     }
                     Err(e) => {
@@ -465,11 +467,11 @@ async fn handle_task_events(socket: WebSocket, state: WebSocketApiState) {
     let welcome = WsMessage::TaskEventReady {
         message: "Connected to task event stream".to_string(),
     };
-    if let Ok(json) = serde_json::to_string(&welcome) {
-        if let Err(e) = sender.send(Message::Text(json)).await {
-            error!("Failed to send welcome message: {}", e);
-            return;
-        }
+    if let Ok(json) = serde_json::to_string(&welcome)
+        && let Err(e) = sender.send(Message::Text(json)).await
+    {
+        error!("Failed to send welcome message: {}", e);
+        return;
     }
 
     // Handle concurrent event streaming and client messages
@@ -487,12 +489,11 @@ async fn handle_task_events(socket: WebSocket, state: WebSocketApiState) {
                             timestamp: event.timestamp.to_rfc3339(),
                         };
 
-                        if let Ok(json) = serde_json::to_string(&ws_msg) {
-                            if let Err(e) = sender.send(Message::Text(json)).await {
+                        if let Ok(json) = serde_json::to_string(&ws_msg)
+                            && let Err(e) = sender.send(Message::Text(json)).await {
                                 error!("Failed to send task event: {}", e);
                                 break;
                             }
-                        }
                     }
                     Err(e) => {
                         warn!("Event stream error: {}", e);

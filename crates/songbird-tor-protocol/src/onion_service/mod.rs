@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Onion service protocol - Host .onion addresses
 //!
 //! **Phase 2D**: Onion Service
@@ -42,10 +45,16 @@ pub struct OnionServiceManager {
     /// Service state
     state: Arc<RwLock<ServiceState>>,
     /// Port to expose (used when full relay mode is implemented)
-    _port: u16,
+    port: u16,
 }
 
 impl OnionServiceManager {
+    /// Get the service port
+    #[must_use]
+    pub const fn port(&self) -> u16 {
+        self.port
+    }
+
     /// Create new onion service manager
     #[must_use]
     pub fn new(beardog: BeardogCryptoClient, port: u16) -> Self {
@@ -55,11 +64,15 @@ impl OnionServiceManager {
             intro_points: Arc::new(RwLock::new(Vec::new())),
             rendezvous_circuits: Arc::new(RwLock::new(HashMap::new())),
             state: Arc::new(RwLock::new(ServiceState::Initializing)),
-            _port: port,
+            port,
         }
     }
 
     /// Initialize service (generate keys, select intro points)
+    ///
+    /// # Errors
+    ///
+    /// Returns error if key generation fails.
     pub async fn initialize(&self) -> Result<OnionServiceKeys> {
         // Generate service keys via BearDog
         let keys = OnionServiceKeys::generate(&self.beardog).await?;
@@ -80,19 +93,27 @@ impl OnionServiceManager {
     }
 
     /// Get onion address
+    ///
+    /// # Errors
+    ///
+    /// Returns error if lock acquisition fails or service not initialized.
     pub fn onion_address(&self) -> Result<String> {
         let keys = self
             .keys
             .read()
             .map_err(|_| Error::Protocol("Failed to acquire keys lock".to_string()))?;
-
-        let keys =
-            keys.as_ref().ok_or_else(|| Error::Protocol("Service not initialized".to_string()))?;
-
-        Ok(keys.onion_address.clone())
+        Ok(keys
+            .as_ref()
+            .ok_or_else(|| Error::Protocol("Service not initialized".to_string()))?
+            .onion_address
+            .clone())
     }
 
     /// Set up introduction points
+    ///
+    /// # Errors
+    ///
+    /// Returns error if lock acquisition fails.
     ///
     /// Selects relays and establishes introduction circuits.
     /// In production, this would:
@@ -117,26 +138,28 @@ impl OnionServiceManager {
         for i in 0..count {
             // Generate introduction point keys
             // In production: BearDog generates unique keys per intro point
+            let i_u8 = u8::try_from(i).expect("count fits u8");
             let mut relay_identity = [0u8; 32];
-            relay_identity[0] = i as u8;
+            relay_identity[0] = i_u8;
             // Mix with service identity for uniqueness
             if let Some(ref k) = *keys {
                 for (j, byte) in relay_identity.iter_mut().enumerate().skip(1) {
-                    *byte = k.identity_public[j] ^ (i as u8).wrapping_add(j as u8);
+                    let j_u8 = u8::try_from(j).expect("index fits u8");
+                    *byte = k.identity_public[j] ^ i_u8.wrapping_add(j_u8);
                 }
             }
 
             let mut onion_key = [0u8; 32];
-            onion_key[0] = (i as u8).wrapping_add(0x10);
+            onion_key[0] = i_u8.wrapping_add(0x10);
 
             let mut service_key = [0u8; 32];
-            service_key[0] = (i as u8).wrapping_add(0x20);
+            service_key[0] = i_u8.wrapping_add(0x20);
 
             let intro = IntroductionPoint {
                 relay_identity,
                 onion_key,
                 service_key,
-                circuit_id: (i + 1) as u32,
+                circuit_id: u32::try_from(i + 1).expect("circuit id fits u32"),
             };
 
             // Prepare the ESTABLISH_INTRO cell (ready to send when circuit is built)
@@ -289,7 +312,7 @@ mod tests {
         let beardog = BeardogCryptoClient::from_env().expect("Failed to create BearDog client");
         let manager = OnionServiceManager::new(beardog, 8080);
 
-        assert_eq!(manager._port, 8080);
+        assert_eq!(manager.port(), 8080);
         assert_eq!(manager.intro_point_count(), 0);
     }
 

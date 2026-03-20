@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 use serde::Serialize;
 use std::collections::HashMap;
 use std::sync::Arc;

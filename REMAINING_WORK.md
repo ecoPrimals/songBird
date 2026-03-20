@@ -1,7 +1,7 @@
 # Songbird Remaining Work
 
 **Date**: March 19, 2026  
-**Version**: v0.3.0  
+**Version**: v0.3.1  
 **Last Deep Debt Audit**: March 19, 2026
 
 ---
@@ -10,18 +10,24 @@
 
 | Metric | Value |
 |--------|-------|
-| **Tests** | 8,968 passing, 0 failed, 286 ignored |
-| **Line Coverage** | ~61% (goal: 90%) |
-| **Build** | Zero errors |
-| **Clippy Pedantic** | 23/27 crates clean (4 remaining: http-client, quic, sovereign-onion, tor-protocol) |
-| **Format** | Clean |
-| **Docs** | Clean |
-| **Files >1000 lines** | 0 |
-| **Unsafe blocks** | 0 |
+| **Tests** | 9,358 total, 0 failed, ~165 ignored |
+| **Line Coverage** | ~70% (goal: 90%) |
+| **Edition** | Rust 2024 |
+| **Build** | Zero errors, all 29 crates compile clean |
+| **Clippy Pedantic** | 29/29 crates clean (2 cosmetic metadata warnings on process-env facade) |
+| **Format** | Clean (`cargo fmt --check` passes) |
+| **Docs** | Clean (`RUSTDOCFLAGS="-D warnings" cargo doc` passes) |
+| **Files >1000 lines** | 0 (gatt->5 modules, coordination->4 modules, server->3 modules) |
+| **Unsafe blocks** | 0 (`#![forbid(unsafe_code)]` all crates; `songbird-process-env` is the sole `allow(unsafe)` facade for Rust 2024 env APIs) |
 | **Production `todo!()`** | 0 |
-| **C dependencies** | 0 |
-| **License** | AGPL-3.0 (SPDX headers on all handler files) |
-| **Concurrent tests** | Zero `std::env::set_var`, zero `#[serial]` (except chaos) |
+| **BearDog crypto** | All placeholders evolved to explicit `CryptoUnavailable` errors with delegation paths |
+| **C dependencies** | ring via quinn+rcgen (structural; requires quinn feature reconfiguration for ring-free) |
+| **License** | AGPL-3.0-only + ORC + CC-BY-SA 4.0 (full scyBorg trio) |
+| **SPDX Headers** | All 1,300+ .rs files have `SPDX-License-Identifier: AGPL-3.0-only` |
+| **UniBin** | `songbird compute-bridge` and `songbird deploy` subcommands (one binary) |
+| **Platform stubs** | Evolved to `#[cfg(target_os)]` with proper error types (no panics) |
+| **Zero-copy** | `Arc<str>` endpoints, `Arc<[u8]>` TLS keys, move semantics in handshake |
+| **Concurrent tests** | Zero `std::env::set_var` (via `songbird-process-env` facade) |
 | **Event-driven** | Zero `sleep`-based polling in production |
 
 ---
@@ -32,9 +38,9 @@
 |-----------|--------|----------|
 | Zero `unsafe` | S+ | `#![forbid(unsafe_code)]` across all crates |
 | Pure Rust | S+ | SHA3-256, SSDP, SOAP, NAT-PMP, base64, hex all from scratch |
-| Zero production stubs | S+ | NFC → BearDog IPC, HTTP rendezvous, UDP punch all complete |
+| Zero production stubs | S+ | NFC -> BearDog IPC, HTTP rendezvous, UDP punch all complete |
 | Zero `todo!()` in production | S+ | Only in `#[cfg(test)]` functions |
-| Runtime discovery | S+ | All socket paths: env → XDG → fallback |
+| Runtime discovery | S+ | All socket paths: env -> XDG -> fallback |
 | Event-driven architecture | S+ | Zero polling anti-patterns in production code |
 | Concurrent-safe testing | S+ | Injectable env readers, no `env::set_var` in tests |
 | Self-knowledge only | S+ | Introspection describes only Songbird |
@@ -42,89 +48,74 @@
 
 ---
 
-## Session Evolution (Mar 19, 2026)
+## Completed (This Session)
 
-### Clippy Pedantic + Nursery Cleanup
-- Workspace clippy errors reduced from 1,565 → 399 (74% reduction)
-- 23/27 crates now fully clippy-pedantic clean
-- Common patterns fixed: `#[must_use]`, `const fn`, inlined format args, doc markdown
-- 4 crates remaining: `songbird-http-client` (172), `songbird-tor-protocol` (54), `songbird-sovereign-onion` (168), `songbird-quic` (1)
-
-### Test Concurrency Evolution
-- Replaced `sleep`-based server startup with `tokio::sync::oneshot` readiness signals
-- Replaced `#[serial_test::serial]` with injectable env maps (`_from_map` variants)
-- Replaced `std::env::set_var` with `HashMap<String, String>` test injection
-- All relay, TLS, XDG discovery, and config tests now fully concurrent
-
-### License Compliance
-- Corrected 8 handler files from MIT → AGPL-3.0-only SPDX headers
-
-### Root Cleanup
-- Archived `check-tower.sh`, `SONGBIRD_CLI_SPEC_FOR_BIOMEOS.yaml` as stale debris
-- Removed `audit.log`
-- Updated all root docs to current state
-
----
-
-## Pending: Clippy Pedantic (4 crates)
-
-| Crate | Errors | Priority |
-|-------|--------|----------|
-| `songbird-http-client` | 172 | High |
-| `songbird-sovereign-onion` | 168 | High |
-| `songbird-tor-protocol` | 54 | Medium |
-| `songbird-quic` | 1 | Low (quick fix) |
+- [x] Clippy pedantic: All 29 crates clean (was 23/27)
+- [x] Edition 2024 migration (from 2021) with `songbird-process-env` facade
+- [x] SPDX headers on all 1,300+ source files
+- [x] UniBin consolidation: compute-bridge and remote-deploy as subcommands
+- [x] Smart refactor: gatt (5 modules), coordination (4 modules), server (3 modules)
+- [x] Zero-copy: `Arc<str>` endpoints, `Arc<[u8]>` TLS keys, move semantics
+- [x] BearDog crypto stubs evolved to explicit `CryptoUnavailable` errors
+- [x] Platform stubs evolved to `#[cfg(target_os)]` with proper error types
+- [x] Concurrent test isolation: zero `std::env::set_var`, injectable env readers
+- [x] License compliance: scyBorg trio (AGPL-3.0 + ORC + CC-BY-SA)
+- [x] Test count: 9,358 (up from 8,968)
+- [x] Coverage: ~70% (up from ~61%)
 
 ---
 
 ## Pending: BearDog Crypto Integration
 
-### Tor Protocol (blocked on BearDog session)
+BearDog provides pure Rust crypto via runtime capability discovery.
+All stubs currently return `CryptoUnavailable`; wiring requires BearDog running.
+
+### Tor Protocol
 - [ ] AES-128-CTR encryption roundtrip via BearDog
 - [ ] Running digest (SHA-1/SHA3-256) via BearDog for relay cell integrity
 - [ ] HMAC-SHA256 for ESTABLISH_INTRO handshake auth
 - [ ] ntor handshake (CREATE2/EXTEND2) via BearDog
 
-### Other
-- [ ] Sovereign Onion: `ed25519_public_from_secret` via BearDog
-- [ ] TLS: BearDog-generated lineage-tagged certificates (X.509 chain validation)
+### TLS / Sovereign Onion
+- [ ] `ed25519_public_from_secret` via BearDog
+- [ ] BearDog-generated lineage-tagged certificates (X.509 chain validation)
+- [ ] CertificateVerify BearDog signing
+
+### Ring-Free Workspace
+- [ ] Quinn feature reconfiguration for ring-free (quinn -> `ring` dependency)
+- [ ] `rcgen` replacement or BearDog-generated certs
+
+---
+
+## Pending: Coverage (70% -> 90%)
+
+### High-Impact Targets (by missed lines)
+| Module | Missed | Coverage |
+|--------|--------|----------|
+| songbird-orchestrator | 7,200+ | ~55% |
+| songbird-config | 2,800+ | ~66% |
+| songbird-universal | 2,400+ | ~70% |
+| songbird-http-client | 1,800+ | ~63% |
+
+~455 files still lack inline `#[cfg(test)]` modules (many exercised by integration tests).
+Focus on pure logic modules for unit test ROI.
 
 ---
 
 ## Pending: Platform & Infrastructure
 
-- [ ] Android IPC: configurable fallback bind address
 - [ ] Platform NFC backends (Android JNI, iOS CoreNFC, Linux libnfc)
 - [ ] Real hardware IGD test (Tower + Pixel 8a)
 - [ ] Genesis physical channels: Bluetooth (btleplug), QR code, SoloKey (FIDO2)
 - [ ] iOS XPC transport
-- [ ] WASM primal registry
-
----
-
-## Pending: Coverage
-
-Current: **~61%** | Goal: **90%**
-
-### High-Impact Targets (by missed lines)
-| Module | Missed | Coverage |
-|--------|--------|----------|
-| songbird-orchestrator | 7,200+ | 55% |
-| songbird-config | 2,800+ | 66% |
-| songbird-universal | 2,400+ | 70% |
-| songbird-http-client | 1,800+ | 63% |
-
-Focus on pure logic modules for unit test ROI.
+- [ ] WASM primal registry + tokio/mio WASM support
+- [ ] Android IPC: configurable fallback bind address
 
 ---
 
 ## Pending: Architectural Evolution
 
-- [ ] Edition 2021 → 2024 migration
-- [ ] SPDX headers on all source files (not just handlers)
-- [ ] Smart refactor remaining large modules
-- [ ] Reduce `.clone()` / `.to_string()` in hot paths (zero-copy)
-- [ ] REST endpoints → JSON-RPC wrapping
+- [ ] REST endpoints -> JSON-RPC wrapping
 - [ ] Federation join logic (currently placeholder)
 - [ ] Capability router selection strategy (currently first-provider)
 
@@ -132,7 +123,7 @@ Focus on pure logic modules for unit test ROI.
 
 ## Future: Protocol Enhancements
 
-- [ ] PCP (RFC 6887) — Port Control Protocol
+- [ ] PCP (RFC 6887) -- Port Control Protocol
 - [ ] QUIC multi-path into sovereign socket
 - [ ] Full Tor relay mode
 - [ ] LoRaWAN integration
@@ -143,9 +134,8 @@ Focus on pure logic modules for unit test ROI.
 
 ## Priority Order
 
-1. **Clippy pedantic** — 4 remaining crates (quick wins)
-2. **BearDog Tor crypto** — Unblocks circuit build + onion encryption
-3. **Coverage expansion** — Target pure-logic modules first
-4. **Edition 2024** — Modern Rust features
-5. **Real hardware tests** (Tower + Pixel) — Validates cross-network
-6. **Platform backends** — Mobile pairing, iOS, WASM
+1. **BearDog crypto wiring** -- Unblocks circuit build + onion encryption (pure Rust via capability discovery)
+2. **Coverage expansion** -- Target pure-logic modules first (70% -> 90%)
+3. **Ring-free workspace** -- Quinn feature reconfiguration + rcgen replacement
+4. **Real hardware tests** (Tower + Pixel) -- Validates cross-network
+5. **Platform backends** -- Mobile pairing, iOS, WASM

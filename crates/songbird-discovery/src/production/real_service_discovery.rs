@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Production Service Discovery
 //!
 //! This module provides real service discovery implementations that replace

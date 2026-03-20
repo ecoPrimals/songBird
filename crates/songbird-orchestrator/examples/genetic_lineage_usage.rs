@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Example: Using Genetic Lineage for Automatic Peer Trust
 //!
 //! This example demonstrates how to use genetic lineage to automatically
@@ -9,7 +12,7 @@ use anyhow::Result;
 use songbird_discovery::DiscoveryPacket;
 use songbird_orchestrator::{
     node_identity::NodeIdentity,
-    registration::{create_registration_from_identity, RegistrationManager},
+    registration::{RegistrationManager, create_registration_from_identity},
     trust::{LineageAuthenticator, LineageStatus, PeerAcceptanceDecision, UserRecommendation},
 };
 use songbird_types::lineage::LineageSignature;
@@ -36,11 +39,11 @@ async fn main() -> Result<()> {
     // In production, this would call BearDog API
     let (lineage_id, lineage_proof) = create_example_lineage("example-node").await?;
 
-    if !identity.has_lineage() {
+    if identity.has_lineage() {
+        println!("   ℹ️  Node already has genetic lineage");
+    } else {
         identity.set_lineage(lineage_id.clone(), lineage_proof.clone())?;
         println!("   ✅ Genetic lineage set: {}", lineage_id);
-    } else {
-        println!("   ℹ️  Node already has genetic lineage");
     }
 
     // ========================================
@@ -83,7 +86,10 @@ async fn main() -> Result<()> {
     let txt_records = discovery.to_txt_records();
     println!("   📡 mDNS TXT records created:");
     println!("      Keys: {:?}", txt_records.keys().collect::<Vec<_>>());
-    println!("      Total size: ~{} bytes", txt_records.values().map(|v| v.len()).sum::<usize>());
+    println!(
+        "      Total size: ~{} bytes",
+        txt_records.values().map(std::string::String::len).sum::<usize>()
+    );
 
     // ========================================
     // STEP 4: Lineage Authenticator
@@ -250,13 +256,13 @@ async fn evaluate_and_handle_peer(
 
             match recommendation {
                 UserRecommendation::Accept => {
-                    println!("         Recommendation: ✓ Accept (low risk)")
+                    println!("         Recommendation: ✓ Accept (low risk)");
                 }
                 UserRecommendation::Neutral => {
-                    println!("         Recommendation: ○ Neutral (user decides)")
+                    println!("         Recommendation: ○ Neutral (user decides)");
                 }
                 UserRecommendation::Reject => {
-                    println!("         Recommendation: ✗ Reject (higher risk)")
+                    println!("         Recommendation: ✗ Reject (higher risk)");
                 }
             }
 

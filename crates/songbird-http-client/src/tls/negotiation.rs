@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! TLS Algorithm Negotiation System
 //!
 //! Flexible, adaptive negotiation for TLS handshakes that can handle:
@@ -283,19 +286,19 @@ impl AlgorithmNegotiator {
 
     /// Adaptive selection based on learned server preferences
     fn adaptive_algorithms(&self, hostname: &str) -> Vec<SignatureAlgorithm> {
-        if let Some(profile) = self.server_profiles.get(hostname) {
-            if let Some(preferred) = profile.preferred_algorithm {
-                debug!("🧠 Using learned preference for {}: {}", hostname, preferred.name());
+        if let Some(profile) = self.server_profiles.get(hostname)
+            && let Some(preferred) = profile.preferred_algorithm
+        {
+            debug!("🧠 Using learned preference for {}: {}", hostname, preferred.name());
 
-                // Put known-working algorithm first, then others
-                let mut algs = vec![preferred];
-                algs.extend(
-                    self.all_algorithms()
-                        .into_iter()
-                        .filter(|a| *a != preferred && !profile.failed_algorithms.contains(a)),
-                );
-                return algs;
-            }
+            // Put known-working algorithm first, then others
+            let mut algs = vec![preferred];
+            algs.extend(
+                self.all_algorithms()
+                    .into_iter()
+                    .filter(|a| *a != preferred && !profile.failed_algorithms.contains(a)),
+            );
+            return algs;
         }
 
         // No profile yet, use MaxCompatibility

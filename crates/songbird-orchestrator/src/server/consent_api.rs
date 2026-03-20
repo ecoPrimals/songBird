@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Consent Management REST API
 //!
 //! Provides HTTP endpoints for consent management (MVP Week 5)
@@ -11,11 +14,11 @@
 use crate::consent_management::{ConsentManager, ConsentRecord, ConsentStatus};
 use crate::task_lifecycle::{TaskId, UserId};
 use axum::{
+    Json, Router,
     extract::{Path, Query, State},
     http::StatusCode,
     response::{IntoResponse, Response},
     routing::{get, post, put},
-    Json, Router,
 };
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;

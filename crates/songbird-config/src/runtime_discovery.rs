@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Runtime Capability-Based Discovery
 //!
 //! **Core Principle**: Each primal knows ONLY itself. Discovery happens at runtime.
@@ -204,8 +207,8 @@ impl RuntimeDiscoveryEngine {
     /// Connects to a Consul/etcd-compatible service registry and queries
     /// for services providing the requested capability.
     async fn discover_registry(&self, capability: &str) -> SongbirdResult<DiscoveredService> {
-        use crate::capability_based_runtime_discovery::service_registry::ServiceRegistryDiscovery;
         use crate::capability_based_runtime_discovery::CapabilityRequest;
+        use crate::capability_based_runtime_discovery::service_registry::ServiceRegistryDiscovery;
         use tracing::{debug, info};
 
         // Check if registry endpoint is configured
@@ -318,40 +321,37 @@ impl RuntimeDiscoveryEngine {
                         {
                             Ok(Ok((len, addr))) => {
                                 // Parse announcement (simple JSON format)
-                                if let Ok(announcement) = std::str::from_utf8(&buf[..len]) {
-                                    if let Ok(json) =
+                                if let Ok(announcement) = std::str::from_utf8(&buf[..len])
+                                    && let Ok(json) =
                                         serde_json::from_str::<serde_json::Value>(announcement)
+                                {
+                                    // Check if announcement matches capability
+                                    if let Some(caps) =
+                                        json.get("capabilities").and_then(|c| c.as_array())
                                     {
-                                        // Check if announcement matches capability
-                                        if let Some(caps) =
-                                            json.get("capabilities").and_then(|c| c.as_array())
+                                        let has_capability = caps
+                                            .iter()
+                                            .any(|c| c.as_str() == Some(&capability_clone));
+
+                                        if has_capability
+                                            && let Some(endpoint) =
+                                                json.get("endpoint").and_then(|e| e.as_str())
                                         {
-                                            let has_capability = caps
-                                                .iter()
-                                                .any(|c| c.as_str() == Some(&capability_clone));
+                                            debug!(
+                                                "Received matching announcement from {} for '{}'",
+                                                addr, capability_clone
+                                            );
 
-                                            if has_capability {
-                                                if let Some(endpoint) =
-                                                    json.get("endpoint").and_then(|e| e.as_str())
-                                                {
-                                                    debug!(
-                                                        "Received matching announcement from {} for '{}'",
-                                                        addr, capability_clone
-                                                    );
+                                            let service = DiscoveredService {
+                                                capability: capability_clone.clone(),
+                                                endpoint: endpoint.to_string(),
+                                                discovered_via: DiscoveryMethod::Announcement,
+                                                health_score: 1.0,
+                                                last_seen: std::time::SystemTime::now(),
+                                            };
 
-                                                    let service = DiscoveredService {
-                                                        capability: capability_clone.clone(),
-                                                        endpoint: endpoint.to_string(),
-                                                        discovered_via:
-                                                            DiscoveryMethod::Announcement,
-                                                        health_score: 1.0,
-                                                        last_seen: std::time::SystemTime::now(),
-                                                    };
-
-                                                    let _ = tx.send(service).await;
-                                                    return; // Found a match, exit early
-                                                }
-                                            }
+                                            let _ = tx.send(service).await;
+                                            return; // Found a match, exit early
                                         }
                                     }
                                 }
@@ -401,10 +401,10 @@ impl RuntimeDiscoveryEngine {
     async fn check_cache(&self, capability: &str) -> Option<DiscoveredService> {
         if let Some(service) = self.cache.read().await.get(capability) {
             // Check if cache entry is still valid
-            if let Ok(elapsed) = service.last_seen.elapsed() {
-                if elapsed < self.cache_ttl {
-                    return Some(service.clone());
-                }
+            if let Ok(elapsed) = service.last_seen.elapsed()
+                && elapsed < self.cache_ttl
+            {
+                return Some(service.clone());
             }
         }
 
@@ -553,7 +553,7 @@ mod tests {
     #[tokio::test]
     async fn test_environment_discovery() {
         // Set test environment variable
-        std::env::set_var("TEST_ENDPOINT", "http://test.example.com:8080");
+        songbird_process_env::set_var("TEST_ENDPOINT", "http://test.example.com:8080");
 
         let result = RuntimeDiscoveryEngine::from_environment("test");
         assert!(result.is_ok());
@@ -564,7 +564,7 @@ mod tests {
         assert_eq!(service.discovered_via, DiscoveryMethod::Environment);
 
         // Cleanup
-        std::env::remove_var("TEST_ENDPOINT");
+        songbird_process_env::remove_var("TEST_ENDPOINT");
     }
 
     #[tokio::test]

@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Error types for genesis operations
 
 use thiserror::Error;
@@ -71,6 +74,10 @@ pub enum GenesisError {
     /// Generic error
     #[error("{0}")]
     Other(String),
+
+    /// Optional feature or dependency not enabled
+    #[error("Feature unavailable: {0}")]
+    FeatureUnavailable(String),
 }
 
 impl From<anyhow::Error> for GenesisError {

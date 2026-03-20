@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Primal Discovery Functions
 //!
 //! Modern replacement for deprecated hardcoded primal endpoints.
@@ -53,12 +56,13 @@ impl DiscoveryOptions {
 
     /// Create options for testing with explicit values
     #[cfg(test)]
+    #[must_use]
     pub fn for_testing() -> DiscoveryOptionsBuilder {
         DiscoveryOptionsBuilder::default()
     }
 }
 
-/// Builder for DiscoveryOptions (test fixture pattern)
+/// Builder for `DiscoveryOptions` (test fixture pattern)
 #[cfg(test)]
 #[derive(Default)]
 pub struct DiscoveryOptionsBuilder {
@@ -67,16 +71,19 @@ pub struct DiscoveryOptionsBuilder {
 
 #[cfg(test)]
 impl DiscoveryOptionsBuilder {
+    #[must_use]
     pub fn compute_endpoint(mut self, endpoint: impl Into<String>) -> Self {
         self.options.compute_endpoint = Some(endpoint.into());
         self
     }
 
+    #[must_use]
     pub fn toadstool_endpoint(mut self, endpoint: impl Into<String>) -> Self {
         self.options.toadstool_endpoint = Some(endpoint.into());
         self
     }
 
+    #[must_use]
     pub fn build(self) -> DiscoveryOptions {
         self.options
     }
@@ -329,11 +336,11 @@ where
 {
     // 1. Try environment variable {CAPABILITY}_ENDPOINT
     let env_var = format!("{}_ENDPOINT", capability.to_uppercase());
-    if let Ok(endpoint) = env_reader(&env_var) {
-        if !endpoint.is_empty() {
-            debug!("Using {} from environment: {}", env_var, endpoint);
-            return Ok(endpoint);
-        }
+    if let Ok(endpoint) = env_reader(&env_var)
+        && !endpoint.is_empty()
+    {
+        debug!("Using {} from environment: {}", env_var, endpoint);
+        return Ok(endpoint);
     }
 
     // 2. Try capability-based discovery (RuntimeDiscoveryEngine)
@@ -354,7 +361,8 @@ where
         field: Some(format!("{capability}_endpoint")),
         suggestion: Some(format!(
             "Set {}_ENDPOINT environment variable (e.g., export {}_ENDPOINT=http://your-provider:PORT)",
-            capability.to_uppercase(), capability.to_uppercase()
+            capability.to_uppercase(),
+            capability.to_uppercase()
         )),
     })
 }
@@ -449,14 +457,13 @@ mod tests {
         let result = get_endpoint_by_capability_with("myservice", env).await;
         // Should fail (empty env var ignored, no runtime discovery)
         // Unless runtime discovers something on this machine
-        if result.is_err() {
-            if let Err(SongbirdError::Configuration {
+        if result.is_err()
+            && let Err(SongbirdError::Configuration {
                 message,
                 ..
             }) = result
-            {
-                assert!(message.contains("No provider found"));
-            }
+        {
+            assert!(message.contains("No provider found"));
         }
     }
 }

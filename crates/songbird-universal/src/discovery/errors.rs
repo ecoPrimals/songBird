@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Discovery Errors
 //!
 //! EVOLVED: Comprehensive error types for discovery operations
@@ -116,15 +119,13 @@ mod tests {
     #[test]
     fn test_discovery_result_ok() {
         let result: DiscoveryResult<String> = Ok("found".to_string());
-        assert!(result.is_ok());
-        assert_eq!(result.unwrap(), "found");
+        assert!(matches!(result, Ok(ref s) if s == "found"));
     }
 
     #[test]
     fn test_discovery_result_err() {
         let result: DiscoveryResult<String> = Err(DiscoveryError::Timeout);
-        assert!(result.is_err());
-        assert!(matches!(result.unwrap_err(), DiscoveryError::Timeout));
+        assert!(matches!(result, Err(DiscoveryError::Timeout)));
     }
 
     #[test]

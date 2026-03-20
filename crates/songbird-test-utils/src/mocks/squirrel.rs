@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Mock Squirrel AI Primal
 //!
 //! Provides HTTP endpoints that simulate Squirrel's AI integration and MCP protocol capabilities.

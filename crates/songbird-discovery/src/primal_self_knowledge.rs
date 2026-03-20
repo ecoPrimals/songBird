@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Primal Self-Knowledge Architecture
 //!
 //! Each primal discovers its own identity, capabilities, and discovers other primals
@@ -121,33 +124,33 @@ impl PrimalSelfKnowledge {
         }
 
         // Detect capabilities from process name (self-knowledge)
-        if let Ok(exe) = std::env::current_exe() {
-            if let Some(name) = exe.file_name().and_then(|n| n.to_str()) {
-                let name_lower = name.to_lowercase();
-                // Capability terms first, known binary names as hints
-                if name_lower.contains("security")
-                    || name_lower.contains("crypto")
-                    || name_lower.contains("beardog")
-                {
-                    caps.push("security".to_string());
-                } else if name_lower.contains("ai")
-                    || name_lower.contains("inference")
-                    || name_lower.contains("squirrel")
-                {
-                    caps.push("ai".to_string());
-                } else if name_lower.contains("discovery")
-                    || name_lower.contains("gateway")
-                    || name_lower.contains("nestgate")
-                {
-                    caps.push("discovery".to_string());
-                } else if name_lower.contains("storage")
-                    || name_lower.contains("compute")
-                    || name_lower.contains("toadstool")
-                {
-                    caps.push("storage".to_string());
-                } else if name_lower.contains("orchestrat") || name_lower.contains("songbird") {
-                    caps.push("orchestration".to_string());
-                }
+        if let Ok(exe) = std::env::current_exe()
+            && let Some(name) = exe.file_name().and_then(|n| n.to_str())
+        {
+            let name_lower = name.to_lowercase();
+            // Capability terms first, known binary names as hints
+            if name_lower.contains("security")
+                || name_lower.contains("crypto")
+                || name_lower.contains("beardog")
+            {
+                caps.push("security".to_string());
+            } else if name_lower.contains("ai")
+                || name_lower.contains("inference")
+                || name_lower.contains("squirrel")
+            {
+                caps.push("ai".to_string());
+            } else if name_lower.contains("discovery")
+                || name_lower.contains("gateway")
+                || name_lower.contains("nestgate")
+            {
+                caps.push("discovery".to_string());
+            } else if name_lower.contains("storage")
+                || name_lower.contains("compute")
+                || name_lower.contains("toadstool")
+            {
+                caps.push("storage".to_string());
+            } else if name_lower.contains("orchestrat") || name_lower.contains("songbird") {
+                caps.push("orchestration".to_string());
             }
         }
 
@@ -388,14 +391,14 @@ mod tests {
     #[tokio::test]
     async fn test_environment_discovery() {
         // Set up environment
-        std::env::set_var("SECURITY_HOST", "localhost");
-        std::env::set_var("SECURITY_PORT", "9000");
+        songbird_process_env::set_var("SECURITY_HOST", "localhost");
+        songbird_process_env::set_var("SECURITY_PORT", "9000");
 
         let discovery = EnvironmentDiscovery::new();
         let result = discovery.discover("security").await;
 
-        std::env::remove_var("SECURITY_HOST");
-        std::env::remove_var("SECURITY_PORT");
+        songbird_process_env::remove_var("SECURITY_HOST");
+        songbird_process_env::remove_var("SECURITY_PORT");
 
         assert!(result.is_ok());
         let info = result.unwrap();

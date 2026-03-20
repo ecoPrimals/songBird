@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Onion identity key management
 
 use crate::beardog_crypto::BeardogCryptoClient;
@@ -39,7 +42,7 @@ struct StoredIdentity {
 }
 
 impl OnionIdentity {
-    /// Generate new random onion identity via BearDog (TRUE PRIMAL)
+    /// Generate new random onion identity via `BearDog` (TRUE PRIMAL)
     ///
     /// # Example
     ///
@@ -51,6 +54,14 @@ impl OnionIdentity {
     /// println!("Onion address: {}", identity.onion_address());
     /// # });
     /// ```
+    ///
+    /// # Errors
+    ///
+    /// Returns error if BearDog key generation or address derivation fails.
+    ///
+    /// # Panics
+    ///
+    /// Panics if system time is before Unix epoch (should never happen).
     pub async fn generate_via_beardog(client: &BeardogCryptoClient) -> Result<Self> {
         let keypair = client.ed25519_generate_keypair()?;
 
@@ -58,7 +69,10 @@ impl OnionIdentity {
         let onion_address =
             crate::address::derive_onion_address_via_beardog(client, &keypair.public_key).await?;
 
-        let created_at = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs();
+        let created_at = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .expect("system time before Unix epoch")
+            .as_secs();
 
         Ok(Self {
             secret_key: keypair.secret_key,
@@ -68,54 +82,44 @@ impl OnionIdentity {
         })
     }
 
-    /// Load identity from stored bytes via BearDog (TRUE PRIMAL)
+    /// Load identity from stored bytes via `BearDog` (TRUE PRIMAL)
     ///
     /// # Errors
     ///
     /// Returns error if key bytes are invalid
-    pub async fn from_stored_via_beardog(
-        client: &BeardogCryptoClient,
-        bytes: &[u8],
-    ) -> Result<Self> {
+    pub fn from_stored_via_beardog(client: &BeardogCryptoClient, bytes: &[u8]) -> Result<Self> {
         // Extract secret key and timestamp from stored bytes
         let stored: StoredIdentity = serde_json::from_slice(bytes)?;
         let secret_key = &stored.secret_key_bytes;
-        let _created_at = stored.created_at;
 
-        // Derive public key from secret (BearDog should verify this is valid)
-        // For Ed25519, we can derive public key from secret locally
-        // But to fully delegate, we use a test sign operation to verify the key
-        let test_msg = b"test";
-        let _signature = client.ed25519_sign(secret_key, test_msg)?;
-
-        // For now, derive public key locally (Ed25519 property)
-        // TODO: Add crypto.ed25519_public_from_secret to BearDog
         #[cfg(feature = "standalone")]
         {
+            let _ = client;
             let signing_key = SigningKey::from_bytes(secret_key);
-            let public_key = signing_key.verifying_key().to_bytes();
-            let onion_address =
-                crate::address::derive_onion_address_via_beardog(client, &public_key).await?;
+            let verifying_key = signing_key.verifying_key();
+            let public_key = verifying_key.to_bytes();
+            let onion_address = derive_onion_address(&verifying_key);
 
             Ok(Self {
                 secret_key: *secret_key,
                 public_key,
                 onion_address,
-                created_at: _created_at,
+                created_at: stored.created_at,
             })
         }
 
         #[cfg(not(feature = "standalone"))]
         {
-            // ⚠️ TRUE PRIMAL: In production, public key must be provided!
-            // Ed25519 public key cannot be derived without the crypto library.
-            // Production code should either:
-            // 1. Store both secret + public bytes in OnionIdentity
-            // 2. Use BearDog to derive public from secret (requires BearDog API extension)
-            // For now, require public_key parameter in production builds
-            Err(crate::OnionError::CryptoError(
-                "Public key required in production mode (use from_stored_bytes_with_public or BearDog delegation)".to_string()
-            ))
+            let public_key = client.ed25519_public_from_secret(secret_key)?;
+            let onion_address =
+                crate::address::derive_onion_address_with_beardog_sync(client, &public_key)?;
+
+            Ok(Self {
+                secret_key: *secret_key,
+                public_key,
+                onion_address,
+                created_at: stored.created_at,
+            })
         }
     }
 
@@ -158,22 +162,26 @@ impl OnionIdentity {
     }
 
     /// Get .onion address
+    #[must_use]
     pub fn onion_address(&self) -> &str {
         &self.onion_address
     }
 
     /// Get Ed25519 public key bytes
-    pub fn public_key_bytes(&self) -> &[u8; 32] {
+    #[must_use]
+    pub const fn public_key_bytes(&self) -> &[u8; 32] {
         &self.public_key
     }
 
     /// Get Ed25519 secret key bytes
-    pub fn secret_key_bytes(&self) -> &[u8; 32] {
+    #[must_use]
+    pub const fn secret_key_bytes(&self) -> &[u8; 32] {
         &self.secret_key
     }
 
     /// Get creation timestamp (Unix seconds)
-    pub fn created_at(&self) -> u64 {
+    #[must_use]
+    pub const fn created_at(&self) -> u64 {
         self.created_at
     }
 
@@ -181,6 +189,11 @@ impl OnionIdentity {
     ///
     /// Stores all identity components (secret, public, onion address) so
     /// no crypto derivation is needed on load.
+    ///
+    /// # Panics
+    ///
+    /// Panics if JSON serialization fails (should not happen with valid identity).
+    #[must_use]
     pub fn to_stored_bytes(&self) -> Vec<u8> {
         let stored = StoredIdentity {
             secret_key_bytes: self.secret_key,
@@ -188,10 +201,14 @@ impl OnionIdentity {
             onion_address: Some(self.onion_address.clone()),
             created_at: self.created_at,
         };
-        serde_json::to_vec(&stored).unwrap()
+        serde_json::to_vec(&stored).expect("identity serialization should not fail")
     }
 
     /// Deserialize from storage (production safe - no crypto needed)
+    ///
+    /// # Errors
+    ///
+    /// Returns error if bytes are invalid or legacy v1 format in production.
     ///
     /// Loads identity from raw stored bytes. v2 format includes all components
     /// so no crypto derivation is needed. Falls back to v1 behavior for old storage.
@@ -229,14 +246,18 @@ impl OnionIdentity {
 
 /// X25519 ephemeral keypair for session key exchange
 ///
-/// TRUE PRIMAL: Stores raw bytes, delegates crypto to BearDog
+/// TRUE PRIMAL: Stores raw bytes, delegates crypto to `BearDog`
 pub struct EphemeralKeypair {
     secret_key: [u8; 32],
     public_key: [u8; 32],
 }
 
 impl EphemeralKeypair {
-    /// Generate via BearDog (TRUE PRIMAL)
+    /// Generate via `BearDog` (TRUE PRIMAL)
+    ///
+    /// # Errors
+    ///
+    /// Returns error if BearDog RPC fails.
     pub fn generate_via_beardog(client: &BeardogCryptoClient) -> Result<Self> {
         let keypair = client.x25519_generate_ephemeral()?;
         Ok(Self {
@@ -245,7 +266,11 @@ impl EphemeralKeypair {
         })
     }
 
-    /// Derive shared secret via BearDog (TRUE PRIMAL)
+    /// Derive shared secret via `BearDog` (TRUE PRIMAL)
+    ///
+    /// # Errors
+    ///
+    /// Returns error if BearDog RPC fails.
     pub fn derive_shared_secret_via_beardog(
         self,
         client: &BeardogCryptoClient,
@@ -286,7 +311,8 @@ impl EphemeralKeypair {
     }
 
     /// Get public key bytes
-    pub fn public_bytes(&self) -> &[u8; 32] {
+    #[must_use]
+    pub const fn public_bytes(&self) -> &[u8; 32] {
         &self.public_key
     }
 }
@@ -301,9 +327,13 @@ pub struct SessionKeys {
 }
 
 impl SessionKeys {
-    /// Derive session keys via BearDog (TRUE PRIMAL)
+    /// Derive session keys via `BearDog` (TRUE PRIMAL)
     ///
-    /// Uses BearDog's HMAC-SHA256 to implement HKDF for session key derivation.
+    /// Uses `BearDog`'s HMAC-SHA256 to implement HKDF for session key derivation.
+    ///
+    /// # Errors
+    ///
+    /// Returns error if BearDog HMAC RPC fails.
     pub fn derive_via_beardog(
         client: &BeardogCryptoClient,
         shared_secret: &[u8; 32],

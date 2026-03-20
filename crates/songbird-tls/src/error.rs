@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Error types for Songbird TLS
 //!
 //! All errors in Songbird TLS use `Result<T, TlsError>` for consistent error handling.

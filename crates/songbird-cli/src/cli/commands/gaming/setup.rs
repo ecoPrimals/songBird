@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Gaming setup functionality - one-touch, zero-touch, family-safe setup
 
 use crate::errors::SongbirdResult;

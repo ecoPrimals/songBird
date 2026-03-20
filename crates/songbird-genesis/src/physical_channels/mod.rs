@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Physical channel implementations for genesis
 
 use crate::error::Result;
@@ -7,10 +10,9 @@ use async_trait::async_trait;
 #[cfg(feature = "solokey")]
 pub mod solokey;
 
-#[cfg(feature = "qr")]
 pub mod qr_code;
 
-#[cfg(feature = "bluetooth")]
+#[cfg(feature = "legacy-bluetooth")]
 pub mod bluetooth;
 
 #[cfg(feature = "pure-bluetooth")]
@@ -45,11 +47,12 @@ pub enum PhysicalChannel {
     HardwareKey(solokey::SoloKeyChannel),
 
     /// QR code with out-of-band verification
-    #[cfg(feature = "qr")]
     QrCode(qr_code::QrCodeChannel),
 
     /// Bluetooth LE pairing (legacy btleplug)
-    #[cfg(feature = "bluetooth")]
+    #[cfg(feature = "legacy-bluetooth")]
+    #[allow(deprecated)]
+    // `bluetooth` module is deprecated; variant kept for callers using `legacy-bluetooth`
     Bluetooth(bluetooth::BluetoothChannel),
 
     /// Pure Rust Bluetooth LE pairing
@@ -68,10 +71,9 @@ impl PhysicalChannelProvider for PhysicalChannel {
             #[cfg(feature = "solokey")]
             Self::HardwareKey(ch) => ch.verify_proximity().await,
 
-            #[cfg(feature = "qr")]
             Self::QrCode(ch) => ch.verify_proximity().await,
 
-            #[cfg(feature = "bluetooth")]
+            #[cfg(feature = "legacy-bluetooth")]
             Self::Bluetooth(ch) => ch.verify_proximity().await,
 
             #[cfg(feature = "pure-bluetooth")]
@@ -87,10 +89,9 @@ impl PhysicalChannelProvider for PhysicalChannel {
             #[cfg(feature = "solokey")]
             Self::HardwareKey(ch) => ch.secure_exchange().await,
 
-            #[cfg(feature = "qr")]
             Self::QrCode(ch) => ch.secure_exchange().await,
 
-            #[cfg(feature = "bluetooth")]
+            #[cfg(feature = "legacy-bluetooth")]
             Self::Bluetooth(ch) => ch.secure_exchange().await,
 
             #[cfg(feature = "pure-bluetooth")]
@@ -106,10 +107,9 @@ impl PhysicalChannelProvider for PhysicalChannel {
             #[cfg(feature = "solokey")]
             Self::HardwareKey(ch) => ch.trust_level(),
 
-            #[cfg(feature = "qr")]
             Self::QrCode(ch) => ch.trust_level(),
 
-            #[cfg(feature = "bluetooth")]
+            #[cfg(feature = "legacy-bluetooth")]
             Self::Bluetooth(ch) => ch.trust_level(),
 
             #[cfg(feature = "pure-bluetooth")]
@@ -125,10 +125,9 @@ impl PhysicalChannelProvider for PhysicalChannel {
             #[cfg(feature = "solokey")]
             Self::HardwareKey(ch) => ch.channel_type(),
 
-            #[cfg(feature = "qr")]
             Self::QrCode(ch) => ch.channel_type(),
 
-            #[cfg(feature = "bluetooth")]
+            #[cfg(feature = "legacy-bluetooth")]
             Self::Bluetooth(ch) => ch.channel_type(),
 
             #[cfg(feature = "pure-bluetooth")]

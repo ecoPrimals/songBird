@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Unix domain socket implementation
 //!
 //! **Platform**: Linux, macOS, BSD, Unix-like systems
@@ -213,7 +216,7 @@ mod tests {
     use std::collections::HashMap;
     use tokio::io::{AsyncReadExt, AsyncWriteExt};
 
-    /// Create a mock env reader from a HashMap (concurrent-safe, no global state)
+    /// Create a mock env reader from a `HashMap` (concurrent-safe, no global state)
     fn mock_env(vars: HashMap<&str, &str>) -> impl Fn(&str) -> Result<String, std::env::VarError> {
         let owned: HashMap<String, String> =
             vars.into_iter().map(|(k, v)| (k.to_string(), v.to_string())).collect();

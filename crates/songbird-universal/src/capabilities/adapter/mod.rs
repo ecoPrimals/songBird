@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Adapter Module - Orchestration Layer
 //!
 //! This is the main orchestration layer for the Universal Capability Adapter.
@@ -166,14 +169,14 @@ impl UniversalCapabilityAdapter {
         let mut last_error_time = None;
 
         for conn in &connections {
-            if let Some(health) = &conn.last_health_check {
-                if !health.is_healthy {
-                    total_errors += 1;
-                    *errors_by_type.entry(health.status.clone()).or_insert(0) += 1;
+            if let Some(health) = &conn.last_health_check
+                && !health.is_healthy
+            {
+                total_errors += 1;
+                *errors_by_type.entry(health.status.clone()).or_insert(0) += 1;
 
-                    if last_error_time.is_none_or(|last| health.timestamp > last) {
-                        last_error_time = Some(health.timestamp);
-                    }
+                if last_error_time.is_none_or(|last| health.timestamp > last) {
+                    last_error_time = Some(health.timestamp);
                 }
             }
         }

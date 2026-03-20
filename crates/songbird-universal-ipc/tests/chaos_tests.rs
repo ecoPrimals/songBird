@@ -1,3 +1,32 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
+#![allow(
+    clippy::unwrap_used,
+    clippy::expect_used,
+    clippy::unnecessary_wraps,
+    clippy::await_holding_lock,
+    clippy::float_cmp,
+    clippy::absurd_extreme_comparisons,
+    clippy::needless_collect,
+    clippy::nonminimal_bool,
+    clippy::used_underscore_binding,
+    clippy::field_reassign_with_default,
+    clippy::return_self_not_must_use,
+    clippy::overly_complex_bool_expr,
+    clippy::assertions_on_constants,
+    clippy::no_effect_underscore_binding,
+    clippy::items_after_statements,
+    clippy::empty_line_after_doc_comments,
+    clippy::const_is_empty,
+    clippy::duplicated_attributes,
+    deprecated,
+    dead_code,
+    clippy::unnecessary_literal_unwrap,
+    clippy::needless_pass_by_value,
+    clippy::must_use_candidate
+)]
+
 //! Chaos Engineering Tests for Universal IPC
 //!
 //! **Concurrency Evolution**: Each test uses unique primal/capability names
@@ -12,8 +41,8 @@
 //! - Concurrent access patterns
 
 use songbird_universal_ipc::ipc;
-use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicUsize, Ordering};
 use std::time::Duration;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::time::timeout;
@@ -86,13 +115,11 @@ async fn test_chaos_connection_storm() {
     for i in 0..100 {
         let path = endpoint.path.clone();
         let handle = tokio::spawn(async move {
-            if let Ok(mut stream) = timeout(Duration::from_secs(2), ipc::connect(&path)).await {
-                if let Ok(mut stream) = stream {
-                    let msg = format!("c{}", i);
-                    let _ = stream.write_all(msg.as_bytes()).await;
-                    let mut buf = vec![0u8; 64];
-                    let _ = stream.read(&mut buf).await;
-                }
+            if let Ok(Ok(mut stream)) = timeout(Duration::from_secs(2), ipc::connect(&path)).await {
+                let msg = format!("c{}", i);
+                let _ = stream.write_all(msg.as_bytes()).await;
+                let mut buf = vec![0u8; 64];
+                let _ = stream.read(&mut buf).await;
             }
         });
         handles.push(handle);
@@ -308,14 +335,9 @@ async fn test_chaos_rapid_connect_disconnect() {
 
     // Server: Accept connections rapidly
     let server_handle = tokio::spawn(async move {
-        loop {
-            match timeout(Duration::from_secs(5), listener.accept()).await {
-                Ok(Ok(stream)) => {
-                    // Immediately drop connection
-                    drop(stream);
-                }
-                _ => break,
-            }
+        while let Ok(Ok(stream)) = timeout(Duration::from_secs(5), listener.accept()).await {
+            // Immediately drop connection
+            drop(stream);
         }
     });
 
@@ -324,12 +346,11 @@ async fn test_chaos_rapid_connect_disconnect() {
 
     // Client: Rapid connect/disconnect
     for _ in 0..50 {
-        if let Ok(stream) = timeout(Duration::from_millis(200), ipc::connect(&endpoint.path)).await
+        if let Ok(Ok(stream)) =
+            timeout(Duration::from_millis(200), ipc::connect(&endpoint.path)).await
         {
-            if let Ok(stream) = stream {
-                // Immediately drop
-                drop(stream);
-            }
+            // Immediately drop
+            drop(stream);
         }
     }
 

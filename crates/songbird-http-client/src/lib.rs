@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! # Songbird HTTP Client - Pure Rust Tower Atomic
 //!
 //! A Pure Rust HTTP/HTTPS client with capability-based crypto delegation.
@@ -83,9 +86,9 @@ pub use ipc_client::multipart;
 
 // Re-export crypto capability types for agnostic usage
 pub use crypto::{
+    BearDogProvider, CryptoCapability, IpcEndpoint, TlsApplicationSecrets, TlsHandshakeSecrets,
     discover_beardog_socket, discover_crypto_capability, discover_ipc_endpoint,
-    discover_neural_api_socket, BearDogProvider, CryptoCapability, IpcEndpoint,
-    TlsApplicationSecrets, TlsHandshakeSecrets,
+    discover_neural_api_socket,
 };
 
 // Re-export BearDogClient and types
@@ -93,7 +96,7 @@ pub use beardog_client::{BearDogClient, BearDogMode, TlsSecrets};
 
 // Re-export HTTP configuration types for adaptive behavior
 pub use http_config::{
-    default_user_agent, DomainPattern, HeaderRule, HttpClientConfig, RedirectMode, SONGBIRD_VERSION,
+    DomainPattern, HeaderRule, HttpClientConfig, RedirectMode, SONGBIRD_VERSION, default_user_agent,
 };
 
 /// Library version

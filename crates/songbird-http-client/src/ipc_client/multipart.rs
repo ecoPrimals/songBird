@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Multipart form-data support for `IpcHttpClient`
 //!
 //! Provides multipart form-data API for building multipart/form-data
@@ -27,7 +30,7 @@
 //! }
 //! ```
 
-use base64::{engine::general_purpose::STANDARD as BASE64, Engine};
+use base64::{Engine, engine::general_purpose::STANDARD as BASE64};
 use serde::{Deserialize, Serialize};
 
 /// Multipart form builder
@@ -403,7 +406,9 @@ mod tests {
             } => {
                 assert_eq!(file_name, Some("test.bin".to_string()));
             }
-            _ => panic!("Expected Bytes content"),
+            PartContent::Text {
+                ..
+            } => panic!("Expected Bytes content"),
         }
     }
 
@@ -418,7 +423,9 @@ mod tests {
             } => {
                 assert_eq!(mime, Some("application/octet-stream".to_string()));
             }
-            _ => panic!("Expected Bytes content"),
+            PartContent::Text {
+                ..
+            } => panic!("Expected Bytes content"),
         }
     }
 
@@ -458,8 +465,10 @@ mod tests {
 
         assert!(body_str.contains(&boundary));
         assert!(body_str.contains("Content-Disposition: form-data; name=\"name\""));
-        assert!(body_str
-            .contains("Content-Disposition: form-data; name=\"file\"; filename=\"test.bin\""));
+        assert!(
+            body_str
+                .contains("Content-Disposition: form-data; name=\"file\"; filename=\"test.bin\"")
+        );
         assert!(body_str.contains("Content-Type: application/octet-stream"));
     }
 

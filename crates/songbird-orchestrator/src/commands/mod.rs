@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Command handlers for Songbird orchestrator
 //!
 //! This module contains the command implementations for CLI commands.
@@ -18,6 +21,6 @@ pub mod doctor;
 pub mod server;
 
 // Re-export command handlers for convenience
-pub use config::{run_config, ConfigAction};
+pub use config::{ConfigAction, run_config};
 pub use doctor::run_doctor;
 pub use server::run_server;

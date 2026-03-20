@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! End-to-end tests for discovery + trust evaluation flow
 //!
 //! These tests verify the complete flow:

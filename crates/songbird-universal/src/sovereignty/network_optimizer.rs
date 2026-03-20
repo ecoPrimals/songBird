@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! # 🌐 Network Effects Optimizer
 //!
 //! **CANONICAL NETWORK OPTIMIZATION** ✅
@@ -514,9 +517,9 @@ mod tests {
         let optimized = optimizer.enhance_security(&segment).await.map_err(|e| {
             SongbirdError::configuration(format!("Failed to enhance security for segment: {}", e))
         })?;
-        assert!(optimized
-            .security_capabilities
-            .contains(&SecurityCapability::SovereigntyCompliant));
+        assert!(
+            optimized.security_capabilities.contains(&SecurityCapability::SovereigntyCompliant)
+        );
         assert_eq!(optimized.metadata.get("security_enhanced"), Some(&"true".to_string()));
         Ok(())
     }

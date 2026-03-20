@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Songbird Configuration System
 //!
 //! This crate provides comprehensive configuration management for Songbird,
@@ -43,7 +46,31 @@
     clippy::missing_errors_doc,
     clippy::missing_panics_doc,
     clippy::unused_async,
-    clippy::too_many_lines
+    clippy::too_many_lines,
+    clippy::implicit_hasher
+)]
+#![cfg_attr(
+    test,
+    allow(
+        deprecated,
+        dead_code,
+        clippy::unwrap_used,
+        clippy::expect_used,
+        clippy::await_holding_lock,
+        clippy::float_cmp,
+        clippy::absurd_extreme_comparisons,
+        clippy::nonminimal_bool,
+        clippy::needless_collect,
+        clippy::used_underscore_binding,
+        clippy::overly_complex_bool_expr,
+        clippy::assertions_on_constants,
+        clippy::unreadable_literal,
+        clippy::empty_line_after_doc_comments,
+        clippy::field_reassign_with_default,
+        clippy::unnecessary_wraps,
+        clippy::no_effect_underscore_binding,
+        clippy::return_self_not_must_use,
+    )
 )]
 
 use serde::{Deserialize, Serialize};

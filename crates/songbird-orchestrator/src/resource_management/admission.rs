@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Admission Control
 //!
 //! Decides whether new tasks can be admitted based on:
@@ -184,8 +187,8 @@ impl AdmissionController {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::task_lifecycle::types::{Priority, ResourceRequirements, TaskSpec};
     use crate::task_lifecycle::UserId;
+    use crate::task_lifecycle::types::{Priority, ResourceRequirements, TaskSpec};
 
     fn create_test_task(owner: &str, cpu: Option<u32>, memory: Option<u64>) -> TaskLifecycle {
         let spec = TaskSpec {

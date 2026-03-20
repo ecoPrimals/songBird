@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Sled-based persistent storage for onion identity and peer info
 
 use crate::error::Result;
@@ -26,6 +29,10 @@ pub struct PeerInfo {
 impl OnionStorage {
     /// Open or create storage at specified path
     ///
+    /// # Errors
+    ///
+    /// Returns error if sled fails to open database.
+    ///
     /// # Example
     ///
     /// ```no_run
@@ -41,6 +48,10 @@ impl OnionStorage {
     }
 
     /// Create in-memory storage (for testing)
+    ///
+    /// # Errors
+    ///
+    /// Returns error if sled fails to create temporary database.
     #[cfg(test)]
     pub fn memory() -> Result<Self> {
         let config = sled::Config::new().temporary(true);
@@ -50,10 +61,14 @@ impl OnionStorage {
         })
     }
 
-    /// Load or generate onion identity via BearDog (TRUE PRIMAL)
+    /// Load or generate onion identity via `BearDog` (TRUE PRIMAL)
     ///
-    /// If identity exists in storage, loads it via BearDog. Otherwise generates
-    /// new identity via BearDog and stores it.
+    /// If identity exists in storage, loads it via `BearDog`. Otherwise generates
+    /// new identity via `BearDog` and stores it.
+    ///
+    /// # Errors
+    ///
+    /// Returns error if storage, load, or generation fails.
     pub async fn load_or_generate_identity_via_beardog(
         &self,
         client: &crate::beardog_crypto::BeardogCryptoClient,
@@ -62,7 +77,7 @@ impl OnionStorage {
 
         if let Some(bytes) = self.db.get(IDENTITY_KEY)? {
             // Load existing identity via BearDog
-            OnionIdentity::from_stored_via_beardog(client, &bytes).await
+            OnionIdentity::from_stored_via_beardog(client, &bytes)
         } else {
             // Generate new identity
             let identity = OnionIdentity::generate_via_beardog(client).await?;
@@ -82,6 +97,10 @@ impl OnionStorage {
     /// Load existing identity from storage (production safe)
     ///
     /// Returns None if no identity exists yet.
+    ///
+    /// # Errors
+    ///
+    /// Returns error if database read or deserialization fails.
     pub fn load_identity(&self) -> Result<Option<OnionIdentity>> {
         const IDENTITY_KEY: &[u8] = b"identity/key";
 
@@ -94,6 +113,10 @@ impl OnionStorage {
     }
 
     /// Store identity to persistent storage (production safe)
+    ///
+    /// # Errors
+    ///
+    /// Returns error if serialization or database write fails.
     pub fn store_identity(&self, identity: &OnionIdentity) -> Result<()> {
         const IDENTITY_KEY: &[u8] = b"identity/key";
         let bytes = identity.to_stored_bytes();
@@ -130,6 +153,10 @@ impl OnionStorage {
     }
 
     /// Store peer info
+    ///
+    /// # Errors
+    ///
+    /// Returns error if serialization or database write fails.
     pub fn store_peer(&self, peer: &PeerInfo) -> Result<()> {
         let key = format!("peers/{}", peer.onion_address);
         let bytes = serde_json::to_vec(peer)?;
@@ -138,8 +165,12 @@ impl OnionStorage {
     }
 
     /// Get peer info by onion address
+    ///
+    /// # Errors
+    ///
+    /// Returns error if database read or deserialization fails.
     pub fn get_peer(&self, onion_address: &str) -> Result<Option<PeerInfo>> {
-        let key = format!("peers/{}", onion_address);
+        let key = format!("peers/{onion_address}");
         if let Some(bytes) = self.db.get(key.as_bytes())? {
             let peer: PeerInfo = serde_json::from_slice(&bytes)?;
             Ok(Some(peer))
@@ -149,6 +180,10 @@ impl OnionStorage {
     }
 
     /// List all known peers
+    ///
+    /// # Errors
+    ///
+    /// Returns error if database iteration or deserialization fails.
     pub fn list_peers(&self) -> Result<Vec<PeerInfo>> {
         let prefix = b"peers/";
         let mut peers = Vec::new();
@@ -163,6 +198,10 @@ impl OnionStorage {
     }
 
     /// Update peer's last seen timestamp
+    ///
+    /// # Errors
+    ///
+    /// Returns error if get_peer or store_peer fails.
     pub fn update_peer_last_seen(&self, onion_address: &str, timestamp: u64) -> Result<()> {
         if let Some(mut peer) = self.get_peer(onion_address)? {
             peer.last_seen = timestamp;
@@ -172,13 +211,21 @@ impl OnionStorage {
     }
 
     /// Remove peer
+    ///
+    /// # Errors
+    ///
+    /// Returns error if database remove fails.
     pub fn remove_peer(&self, onion_address: &str) -> Result<()> {
-        let key = format!("peers/{}", onion_address);
+        let key = format!("peers/{onion_address}");
         self.db.remove(key.as_bytes())?;
         Ok(())
     }
 
     /// Clear all data (dangerous!)
+    ///
+    /// # Errors
+    ///
+    /// Returns error if database clear fails.
     #[cfg(test)]
     pub fn clear_all(&self) -> Result<()> {
         self.db.clear()?;
@@ -186,6 +233,10 @@ impl OnionStorage {
     }
 
     /// Flush to disk
+    ///
+    /// # Errors
+    ///
+    /// Returns error if database flush fails.
     pub fn flush(&self) -> Result<()> {
         self.db.flush()?;
         Ok(())
@@ -221,7 +272,7 @@ mod tests {
 
         let peer = PeerInfo {
             onion_address: "test.onion".to_string(),
-            last_seen: 1234567890,
+            last_seen: 1_234_567_890,
             actual_addr: Some("192.168.1.100:9735".to_string()),
         };
 
@@ -235,9 +286,9 @@ mod tests {
         assert_eq!(retrieved.actual_addr, peer.actual_addr);
 
         // Update last seen
-        storage.update_peer_last_seen("test.onion", 9999999999).unwrap();
+        storage.update_peer_last_seen("test.onion", 9_999_999_999).unwrap();
         let updated = storage.get_peer("test.onion").unwrap().unwrap();
-        assert_eq!(updated.last_seen, 9999999999);
+        assert_eq!(updated.last_seen, 9_999_999_999);
 
         // List peers
         let peers = storage.list_peers().unwrap();
@@ -256,8 +307,8 @@ mod tests {
         // Add multiple peers
         for i in 0..5 {
             let peer = PeerInfo {
-                onion_address: format!("peer{}.onion", i),
-                last_seen: 1234567890 + i,
+                onion_address: format!("peer{i}.onion"),
+                last_seen: 1_234_567_890 + i,
                 actual_addr: None,
             };
             storage.store_peer(&peer).unwrap();
@@ -269,7 +320,7 @@ mod tests {
 
         // Check they're all unique
         let addresses: Vec<String> = peers.iter().map(|p| p.onion_address.clone()).collect();
-        let mut sorted = addresses.clone();
+        let mut sorted = addresses;
         sorted.sort();
         sorted.dedup();
         assert_eq!(sorted.len(), 5); // No duplicates

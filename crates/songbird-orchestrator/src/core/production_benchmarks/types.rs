@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Production Benchmark Types and /// Configuration capability Configuration
 //!
 //! Type definitions, configuration structures, and benchmark result types

@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Error types for Songbird HTTP Client
 
 use thiserror::Error;
@@ -11,6 +14,10 @@ pub enum Error {
     /// `BearDog` RPC communication error
     #[error("BearDog RPC error: {0}")]
     BearDogRpc(String),
+
+    /// `BearDog` crypto delegation required but not available for this operation
+    #[error("BearDog crypto unavailable: {0}")]
+    CryptoUnavailable(String),
 
     /// TLS handshake error
     #[error("TLS handshake failed: {0}")]
@@ -74,5 +81,36 @@ impl From<hyper::Error> for Error {
 impl From<anyhow::Error> for Error {
     fn from(err: anyhow::Error) -> Self {
         Self::Other(err.to_string())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::Error;
+    use std::io;
+
+    #[test]
+    fn error_display_includes_variant_context() {
+        let e = Error::InvalidUrl("not-a-url".into());
+        assert!(e.to_string().contains("Invalid URL"));
+        assert!(e.to_string().contains("not-a-url"));
+    }
+
+    #[test]
+    fn io_error_converts_via_from() {
+        let io_err = io::Error::new(io::ErrorKind::ConnectionRefused, "refused");
+        let e: Error = io_err.into();
+        assert!(matches!(e, Error::Io(_)));
+    }
+
+    #[test]
+    fn timeout_variant_display() {
+        assert_eq!(Error::Timeout.to_string(), "Request timeout");
+    }
+
+    #[test]
+    fn anyhow_converts_to_other() {
+        let e: Error = anyhow::anyhow!("wrapped").into();
+        assert!(matches!(e, Error::Other(s) if s.contains("wrapped")));
     }
 }

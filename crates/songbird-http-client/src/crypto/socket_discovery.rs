@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! XDG-Compliant Socket Discovery (Isomorphic - TRUE ecoBin v2.0)
 //!
 //! **Pure Rust | Zero Hardcoding | Runtime Discovery | Isomorphic Adaptation**
@@ -19,6 +22,10 @@
 //! This enables automated Tower Atomic deployment via biomeOS Neural API
 //! while maintaining backward compatibility with manual deployments.
 
+use songbird_types::defaults::paths::{
+    BEARDOG_SOCKET_LEGACY, BIOMEOS_RUNTIME_SUBDIR, IPC_DISCOVERY_TMP_DIR,
+    NEURAL_API_SOCKET_LEGACY_PATTERN,
+};
 use std::path::{Path, PathBuf};
 use tracing::{debug, info, warn};
 
@@ -103,11 +110,11 @@ where
     debug!("            4) Legacy {}", legacy_path);
 
     // Priority 1: Environment variable (explicit configuration)
-    if let Ok(socket) = env_reader(env_var) {
-        if !socket.is_empty() {
-            info!("✅ IPC endpoint via ${}: {}", env_var, socket);
-            return IpcEndpoint::UnixSocket(socket);
-        }
+    if let Ok(socket) = env_reader(env_var)
+        && !socket.is_empty()
+    {
+        info!("✅ IPC endpoint via ${}: {}", env_var, socket);
+        return IpcEndpoint::UnixSocket(socket);
     }
 
     // Priority 2: Unix socket via XDG (optimal when available)
@@ -118,7 +125,7 @@ where
         } else {
             format!("{primal_name}-{family_id}.sock")
         };
-        let socket_path = PathBuf::from(&xdg_dir).join("biomeos").join(&socket_name);
+        let socket_path = PathBuf::from(&xdg_dir).join(BIOMEOS_RUNTIME_SUBDIR).join(&socket_name);
         if socket_path.exists() {
             let path_str = socket_path.to_string_lossy().to_string();
             info!("✅ Unix socket via XDG: {}", path_str);
@@ -216,7 +223,7 @@ fn get_tcp_discovery_file_candidates(primal_name: &str) -> Vec<PathBuf> {
     }
 
     // Priority 3: /tmp (last resort, system-wide)
-    candidates.push(PathBuf::from(format!("/tmp/{filename}")));
+    candidates.push(PathBuf::from(IPC_DISCOVERY_TMP_DIR).join(&filename));
 
     candidates
 }
@@ -273,7 +280,11 @@ fn discover_xdg_socket(primal_name: &str) -> Option<String> {
 
 /// Try specific XDG socket path
 fn try_xdg_socket(runtime_dir: &str, primal_name: &str, family_id: &str) -> Option<String> {
-    let socket_path = format!("{runtime_dir}/biomeos/{primal_name}-{family_id}.sock");
+    let socket_path = PathBuf::from(runtime_dir)
+        .join(BIOMEOS_RUNTIME_SUBDIR)
+        .join(format!("{primal_name}-{family_id}.sock"))
+        .to_string_lossy()
+        .into_owned();
 
     debug!("   Checking XDG: {}", socket_path);
 
@@ -325,7 +336,7 @@ pub fn discover_socket(env_var: &str, primal_name: &str, legacy_path: &str) -> S
 /// 3. `/tmp/beardog.sock` (legacy)
 #[must_use]
 pub fn discover_beardog_socket() -> String {
-    discover_socket("BEARDOG_SOCKET", "beardog", "/tmp/beardog.sock")
+    discover_socket("BEARDOG_SOCKET", "beardog", BEARDOG_SOCKET_LEGACY)
 }
 
 /// Discover Neural API socket with full fallback chain
@@ -336,18 +347,18 @@ pub fn discover_beardog_socket() -> String {
 /// 3. `/tmp/neural-api-{family_id}.sock` (legacy fallback with env-derived family)
 pub fn discover_neural_api_socket() -> String {
     // Check both NEURAL_API_SOCKET and NEURALS_SOCKET
-    if let Ok(socket) = std::env::var("NEURAL_API_SOCKET") {
-        if !socket.is_empty() {
-            info!("✅ Socket discovered via $NEURAL_API_SOCKET: {}", socket);
-            return socket;
-        }
+    if let Ok(socket) = std::env::var("NEURAL_API_SOCKET")
+        && !socket.is_empty()
+    {
+        info!("✅ Socket discovered via $NEURAL_API_SOCKET: {}", socket);
+        return socket;
     }
 
-    if let Ok(socket) = std::env::var("NEURALS_SOCKET") {
-        if !socket.is_empty() {
-            info!("✅ Socket discovered via $NEURALS_SOCKET: {}", socket);
-            return socket;
-        }
+    if let Ok(socket) = std::env::var("NEURALS_SOCKET")
+        && !socket.is_empty()
+    {
+        info!("✅ Socket discovered via $NEURALS_SOCKET: {}", socket);
+        return socket;
     }
 
     // Try XDG discovery
@@ -361,7 +372,7 @@ pub fn discover_neural_api_socket() -> String {
         .or_else(|_| std::env::var("SONGBIRD_FAMILY_ID"))
         .or_else(|_| std::env::var("FAMILY_ID"))
         .unwrap_or_else(|_| "default".to_string());
-    let socket = format!("/tmp/neural-api-{family_id}.sock");
+    let socket = format!("{}{family_id}.sock", NEURAL_API_SOCKET_LEGACY_PATTERN);
     warn!("⚠️  Using legacy /tmp socket: {}", socket);
     warn!("   Consider setting $NEURAL_API_SOCKET or XDG_RUNTIME_DIR");
     socket

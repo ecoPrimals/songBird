@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Primal introspection and self-description
 //!
 //! Extracted from `service.rs` for smart refactoring. These methods provide

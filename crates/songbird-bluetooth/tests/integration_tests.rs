@@ -1,12 +1,15 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Integration tests for Bluetooth stack
 //!
 //! These tests verify the full flow of operations using mock transports.
 
 use songbird_bluetooth::{
+    BluetoothHost,
     device::{Address, DeviceInfo},
     error::{BluetoothError, Result},
     transport::{Transport, TransportType},
-    BluetoothHost,
 };
 use std::sync::{Arc, Mutex};
 
@@ -38,6 +41,7 @@ impl MockTransport {
         self.commands_sent.lock().unwrap().clone()
     }
 
+    #[allow(dead_code)]
     fn add_response(&self, response: Vec<u8>) {
         self.event_responses.lock().unwrap().push(response);
     }

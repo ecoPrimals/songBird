@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Task checkpointing
 //!
 //! Enable long-running tasks to save state and resume after failures.
@@ -121,8 +124,8 @@ impl Checkpoint {
 
     /// Compress state using gzip (pure Rust via flate2)
     fn compress_state(data: &[u8]) -> Result<Vec<u8>> {
-        use flate2::write::GzEncoder;
         use flate2::Compression;
+        use flate2::write::GzEncoder;
         use std::io::Write;
 
         let mut encoder = GzEncoder::new(Vec::new(), Compression::fast());
@@ -212,7 +215,7 @@ mod tests {
         assert!(checkpoint.verify().is_ok());
 
         // Corrupt the checkpoint
-        let mut corrupted = checkpoint.clone();
+        let mut corrupted = checkpoint;
         corrupted.state[0] = 99;
 
         // Should fail verification

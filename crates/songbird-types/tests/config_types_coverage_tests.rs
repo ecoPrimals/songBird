@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Coverage tests for songbird-types config modules
 //!
 //! Tests gaming, adapters, communication, and other config types.

@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! No-Op `BearDog` Provider
 //!
 //! Production-ready placeholder when `BearDog` is not available.
@@ -9,7 +12,7 @@ use super::{
     AccessLevel, BearDogProvider, BirdSongCrypto, BroadcastKey, EncryptedBirdSong, LineageChain,
     LineageHint, LineageProof, LineageProvider, LineageRelay, RelaySession,
 };
-use anyhow::{anyhow, Result};
+use anyhow::{Result, anyhow};
 
 /// No-Op `BearDog` provider for when `BearDog` is not configured
 ///

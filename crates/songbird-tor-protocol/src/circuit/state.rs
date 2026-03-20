@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Circuit state management
 //!
 //! **Phase 2B**: Circuit building
@@ -121,19 +124,19 @@ mod tests {
         // Add 3 hops
         for i in 0..3 {
             let relay = RelayInfo {
-                nickname: format!("relay{}", i),
-                fingerprint: [i as u8; 20],
+                nickname: format!("relay{i}"),
+                fingerprint: [u8::try_from(i).expect("i in 0..3 fits u8"); 20],
                 address: IpAddr::from([127, 0, 0, 1]),
                 or_port: 9001,
                 dir_port: None,
                 flags: crate::directory::RelayFlags::empty(),
-                bandwidth: 1000000,
+                bandwidth: 1_000_000,
                 ntor_key: None,
                 version: None,
             };
 
-            let hop =
-                CircuitHop::new(relay, [i as u8; 32], [i as u8; 32], [i as u8; 16], [i as u8; 16]);
+            let i_u8 = u8::try_from(i).expect("i in 0..3 fits u8");
+            let hop = CircuitHop::new(relay, [i_u8; 32], [i_u8; 32], [i_u8; 16], [i_u8; 16]);
 
             circuit.add_hop(hop);
         }

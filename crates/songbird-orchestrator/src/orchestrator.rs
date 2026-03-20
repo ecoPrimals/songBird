@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Songbird Orchestrator - Integrated MVP
 //!
 //! Brings together all systems:
@@ -485,8 +488,8 @@ pub struct HealthStatus {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::task_lifecycle::types::{Priority, ResourceRequirements};
     use crate::task_lifecycle::TaskStatus;
+    use crate::task_lifecycle::types::{Priority, ResourceRequirements};
     use std::time::Duration;
 
     async fn create_test_orchestrator() -> Result<SongbirdOrchestrator> {

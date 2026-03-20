@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Minimal pure Rust SHA3-256 (Keccak-f\[1600\])
 //!
 //! Zero external dependencies. Used for onion address checksum verification

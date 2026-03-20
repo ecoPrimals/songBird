@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Chaos and fault injection tests for service registry
 //!
 //! v3.20.0: Resilience testing for the service registry

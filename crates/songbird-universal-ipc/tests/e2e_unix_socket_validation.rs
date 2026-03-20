@@ -1,17 +1,46 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
+#![allow(
+    clippy::unwrap_used,
+    clippy::expect_used,
+    clippy::unnecessary_wraps,
+    clippy::await_holding_lock,
+    clippy::float_cmp,
+    clippy::absurd_extreme_comparisons,
+    clippy::needless_collect,
+    clippy::nonminimal_bool,
+    clippy::used_underscore_binding,
+    clippy::field_reassign_with_default,
+    clippy::return_self_not_must_use,
+    clippy::overly_complex_bool_expr,
+    clippy::assertions_on_constants,
+    clippy::no_effect_underscore_binding,
+    clippy::items_after_statements,
+    clippy::empty_line_after_doc_comments,
+    clippy::const_is_empty,
+    clippy::duplicated_attributes,
+    deprecated,
+    dead_code,
+    clippy::unnecessary_literal_unwrap,
+    clippy::needless_pass_by_value,
+    clippy::must_use_candidate
+)]
+
 //! E2E Unix Socket Validation Tests
 //!
 //! End-to-end tests that validate actual Unix socket behavior for upstream issues.
 //! These tests spin up a real Unix socket server and test with actual connections.
 
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use songbird_universal_ipc::registry::ServiceRegistry;
 use songbird_universal_ipc::service::IpcServiceHandler;
 use songbird_universal_ipc::tower_atomic::JsonRpcHandler;
 use std::sync::{Arc, Mutex};
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
 use tokio::net::{UnixListener, UnixStream};
-use tokio::sync::{oneshot, RwLock};
-use tokio::time::{timeout, Duration};
+use tokio::sync::{RwLock, oneshot};
+use tokio::time::{Duration, timeout};
 
 // Global mutex to serialize environment variable tests
 static ENV_TEST_LOCK: Mutex<()> = Mutex::new(());
@@ -156,12 +185,12 @@ async fn test_e2e_identity_via_unix_socket() {
     let socket_path = "/tmp/songbird-test-identity.sock";
 
     // Clean slate
-    std::env::remove_var("FAMILY_ID");
-    std::env::remove_var("SONGBIRD_FAMILY_ID");
-    std::env::remove_var("NODE_FAMILY_ID");
+    songbird_process_env::remove_var("FAMILY_ID");
+    songbird_process_env::remove_var("SONGBIRD_FAMILY_ID");
+    songbird_process_env::remove_var("NODE_FAMILY_ID");
 
     // Set test environment variable
-    std::env::set_var("FAMILY_ID", "test_e2e_family");
+    songbird_process_env::set_var("FAMILY_ID", "test_e2e_family");
 
     // Start server and wait for readiness signal
     let (server_handle, ready_rx) = start_test_server(socket_path).await;
@@ -194,7 +223,7 @@ async fn test_e2e_identity_via_unix_socket() {
     // Cleanup
     drop(stream);
     server_handle.abort();
-    std::env::remove_var("FAMILY_ID");
+    songbird_process_env::remove_var("FAMILY_ID");
     let _ = std::fs::remove_file(socket_path);
 }
 
@@ -253,18 +282,18 @@ async fn test_e2e_family_id_priority_family_id_first() {
     let socket_path = "/tmp/songbird-test-fam1.sock";
 
     // Clean slate
-    std::env::remove_var("FAMILY_ID");
-    std::env::remove_var("SONGBIRD_FAMILY_ID");
-    std::env::remove_var("NODE_FAMILY_ID");
-    std::env::remove_var("SONGBIRD_ORCHESTRATOR_FAMILY_ID");
-    std::env::remove_var("BIOMEOS_FAMILY_ID");
+    songbird_process_env::remove_var("FAMILY_ID");
+    songbird_process_env::remove_var("SONGBIRD_FAMILY_ID");
+    songbird_process_env::remove_var("NODE_FAMILY_ID");
+    songbird_process_env::remove_var("SONGBIRD_ORCHESTRATOR_FAMILY_ID");
+    songbird_process_env::remove_var("BIOMEOS_FAMILY_ID");
 
     // Canonical priority: SONGBIRD_ORCHESTRATOR_FAMILY_ID > BIOMEOS_FAMILY_ID
     // > SONGBIRD_FAMILY_ID > FAMILY_ID > NODE_FAMILY_ID
     // Set lower-priority vars — SONGBIRD_FAMILY_ID should win over FAMILY_ID
-    std::env::set_var("FAMILY_ID", "lowest");
-    std::env::set_var("SONGBIRD_FAMILY_ID", "winner");
-    std::env::set_var("NODE_FAMILY_ID", "third");
+    songbird_process_env::set_var("FAMILY_ID", "lowest");
+    songbird_process_env::set_var("SONGBIRD_FAMILY_ID", "winner");
+    songbird_process_env::set_var("NODE_FAMILY_ID", "third");
 
     let (server_handle, ready_rx) = start_test_server(socket_path).await;
     ready_rx.await.expect("Server failed to signal readiness");
@@ -283,9 +312,9 @@ async fn test_e2e_family_id_priority_family_id_first() {
     // Cleanup
     drop(stream);
     server_handle.abort();
-    std::env::remove_var("FAMILY_ID");
-    std::env::remove_var("SONGBIRD_FAMILY_ID");
-    std::env::remove_var("NODE_FAMILY_ID");
+    songbird_process_env::remove_var("FAMILY_ID");
+    songbird_process_env::remove_var("SONGBIRD_FAMILY_ID");
+    songbird_process_env::remove_var("NODE_FAMILY_ID");
     let _ = std::fs::remove_file(socket_path);
 }
 
@@ -295,11 +324,11 @@ async fn test_e2e_family_id_default() {
     let socket_path = "/tmp/songbird-test-default.sock";
 
     // Ensure no env vars set — canonical default is "default"
-    std::env::remove_var("FAMILY_ID");
-    std::env::remove_var("SONGBIRD_FAMILY_ID");
-    std::env::remove_var("NODE_FAMILY_ID");
-    std::env::remove_var("SONGBIRD_ORCHESTRATOR_FAMILY_ID");
-    std::env::remove_var("BIOMEOS_FAMILY_ID");
+    songbird_process_env::remove_var("FAMILY_ID");
+    songbird_process_env::remove_var("SONGBIRD_FAMILY_ID");
+    songbird_process_env::remove_var("NODE_FAMILY_ID");
+    songbird_process_env::remove_var("SONGBIRD_ORCHESTRATOR_FAMILY_ID");
+    songbird_process_env::remove_var("BIOMEOS_FAMILY_ID");
 
     let (server_handle, ready_rx) = start_test_server(socket_path).await;
     ready_rx.await.expect("Server failed to signal readiness");

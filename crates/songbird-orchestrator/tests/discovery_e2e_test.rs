@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! End-to-End tests for Discovery integration
 //!
 //! **EVOLVED (v3.13.0)**: Event-driven synchronization, no arbitrary sleeps
@@ -22,13 +25,13 @@ async fn test_discovery_broadcaster_starts_on_startup() -> Result<()> {
     let _ = tracing_subscriber::fmt::try_init();
 
     // Create config with discovery enabled
-    std::env::set_var("SONGBIRD_TLS_ENABLED", "true");
-    std::env::set_var("SONGBIRD_FEDERATION_ENABLED", "true");
-    std::env::set_var("SONGBIRD_ANONYMOUS_DISCOVERY", "true");
-    std::env::set_var("SONGBIRD_NODE_NAME", "test-e2e");
-    std::env::set_var("SONGBIRD_BIND_ADDRESS", "127.0.0.1");
-    std::env::set_var("SONGBIRD_PORT", "18080"); // Use test port
-    std::env::set_var("SONGBIRD_DISCOVERY_PORT", "12300"); // Use test port
+    songbird_process_env::set_var("SONGBIRD_TLS_ENABLED", "true");
+    songbird_process_env::set_var("SONGBIRD_FEDERATION_ENABLED", "true");
+    songbird_process_env::set_var("SONGBIRD_ANONYMOUS_DISCOVERY", "true");
+    songbird_process_env::set_var("SONGBIRD_NODE_NAME", "test-e2e");
+    songbird_process_env::set_var("SONGBIRD_BIND_ADDRESS", "127.0.0.1");
+    songbird_process_env::set_var("SONGBIRD_PORT", "18080"); // Use test port
+    songbird_process_env::set_var("SONGBIRD_DISCOVERY_PORT", "12300"); // Use test port
 
     let config = CanonicalSongbirdConfig::from_env()
         .map_err(|e| anyhow::anyhow!("Failed to load config: {}", e))?;
@@ -115,9 +118,10 @@ async fn test_discovery_listener_receives_broadcasts() -> Result<()> {
         if !p.is_empty() {
             break p;
         }
-        if start.elapsed() > Duration::from_secs(5) {
-            panic!("Timeout: No peers discovered within 5 seconds");
-        }
+        assert!(
+            start.elapsed() <= Duration::from_secs(5),
+            "Timeout: No peers discovered within 5 seconds"
+        );
         tokio::task::yield_now().await; // Cooperative yielding
     };
 
@@ -172,13 +176,13 @@ async fn test_full_orchestrator_startup_with_discovery() -> Result<()> {
     let _ = tracing_subscriber::fmt::try_init();
 
     // Set environment for test
-    std::env::set_var("SONGBIRD_TLS_ENABLED", "false"); // Disable TLS for test
-    std::env::set_var("SONGBIRD_FEDERATION_ENABLED", "true");
-    std::env::set_var("SONGBIRD_ANONYMOUS_DISCOVERY", "true");
-    std::env::set_var("SONGBIRD_NODE_NAME", "integration-test");
-    std::env::set_var("SONGBIRD_BIND_ADDRESS", "127.0.0.1");
-    std::env::set_var("SONGBIRD_PORT", "18081");
-    std::env::set_var("SONGBIRD_DISCOVERY_PORT", "12303");
+    songbird_process_env::set_var("SONGBIRD_TLS_ENABLED", "false"); // Disable TLS for test
+    songbird_process_env::set_var("SONGBIRD_FEDERATION_ENABLED", "true");
+    songbird_process_env::set_var("SONGBIRD_ANONYMOUS_DISCOVERY", "true");
+    songbird_process_env::set_var("SONGBIRD_NODE_NAME", "integration-test");
+    songbird_process_env::set_var("SONGBIRD_BIND_ADDRESS", "127.0.0.1");
+    songbird_process_env::set_var("SONGBIRD_PORT", "18081");
+    songbird_process_env::set_var("SONGBIRD_DISCOVERY_PORT", "12303");
 
     let config = CanonicalSongbirdConfig::from_env()
         .map_err(|e| anyhow::anyhow!("Failed to load config: {}", e))?;

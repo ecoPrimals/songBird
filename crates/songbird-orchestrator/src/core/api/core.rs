@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Core API functionality for Songbird
 //!
 //! This module provides the fundamental API components that power the Songbird

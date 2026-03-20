@@ -1,4 +1,8 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Tests for canonical configuration factory
+#![allow(clippy::expect_used)]
 
 use songbird_types::config::consolidated_canonical::factory::CanonicalConfigFactory;
 
@@ -11,7 +15,7 @@ fn test_factory_new() {
 
 #[test]
 fn test_factory_default() {
-    let factory = CanonicalConfigFactory::default();
+    let factory = CanonicalConfigFactory;
     let _ = factory;
 }
 

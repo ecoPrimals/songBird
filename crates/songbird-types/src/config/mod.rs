@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Configuration module for Songbird canonical types
 //!
 //! This module provides all configuration structures for the Songbird ecosystem,

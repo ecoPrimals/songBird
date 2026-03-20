@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! TLS 1.3 Finished Message Handler
 //!
 //! This module handles the Finished handshake message as defined in RFC 8446 Section 4.4.4.

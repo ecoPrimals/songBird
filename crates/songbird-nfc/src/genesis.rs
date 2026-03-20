@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Genesis ceremony exchange via NFC
 //!
 //! Implements secure genesis credential exchange with Dark Forest compliance
@@ -100,10 +103,10 @@ impl BearDogNfcCrypto {
     {
         // 1. Capability-based env vars first (primal-agnostic)
         for env_var in &["SECURITY_PROVIDER_SOCKET", "CRYPTO_PROVIDER_SOCKET", "BEARDOG_SOCKET"] {
-            if let Ok(path) = env_reader(env_var) {
-                if !path.is_empty() {
-                    return PathBuf::from(path);
-                }
+            if let Ok(path) = env_reader(env_var)
+                && !path.is_empty()
+            {
+                return PathBuf::from(path);
             }
         }
 

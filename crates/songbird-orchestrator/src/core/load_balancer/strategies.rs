@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 use crate::traits::load_balancer::{LoadBalancer, LoadBalancerStats, ServiceStats};
 /// Load Balancer Strategies /// Module
 // Module

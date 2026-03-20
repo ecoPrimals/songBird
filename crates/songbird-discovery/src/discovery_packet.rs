@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Enhanced Discovery Protocol with Genetic Lineage
 //!
 //! Extends Songbird's discovery protocol to include cryptographic lineage information,
@@ -183,20 +186,20 @@ impl DiscoveryPacket {
         }
 
         // NEW: Lineage proof (base64 encoded)
-        if let Some(proof) = &self.lineage_proof {
-            if let Ok(encoded) = proof.to_discovery_txt() {
-                // TXT records have size limits (~400 bytes), so we truncate if needed
-                if encoded.len() <= 400 {
-                    txt.insert("lineage_proof".to_string(), encoded);
-                } else {
-                    // Store a hash instead and require HTTP fetch for full proof
-                    let proof_hash = Self::hash_proof(&encoded);
-                    txt.insert("lineage_proof_hash".to_string(), proof_hash);
-                    txt.insert(
-                        "lineage_proof_url".to_string(),
-                        format!("{}/api/v1/lineage/proof", self.endpoint),
-                    );
-                }
+        if let Some(proof) = &self.lineage_proof
+            && let Ok(encoded) = proof.to_discovery_txt()
+        {
+            // TXT records have size limits (~400 bytes), so we truncate if needed
+            if encoded.len() <= 400 {
+                txt.insert("lineage_proof".to_string(), encoded);
+            } else {
+                // Store a hash instead and require HTTP fetch for full proof
+                let proof_hash = Self::hash_proof(&encoded);
+                txt.insert("lineage_proof_hash".to_string(), proof_hash);
+                txt.insert(
+                    "lineage_proof_url".to_string(),
+                    format!("{}/api/v1/lineage/proof", self.endpoint),
+                );
             }
         }
 

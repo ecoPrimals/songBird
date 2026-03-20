@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 #![allow(clippy::unused_async)]
 
 use bytes::Bytes;
@@ -6,8 +9,8 @@ use hyper::body::Incoming;
 use hyper::{Method, Request, Response};
 use serde_json::json;
 use songbird_types::{SongbirdError, SongbirdResult};
-use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, Ordering};
 use tracing::{info, warn};
 type Result<T> = SongbirdResult<T>;
 

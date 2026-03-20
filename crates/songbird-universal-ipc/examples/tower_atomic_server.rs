@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Tower Atomic Server Example
 //!
 //! This example demonstrates a simple JSON-RPC server using Tower Atomic
@@ -14,11 +17,10 @@
 //! ```
 
 use async_trait::async_trait;
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use songbird_universal_ipc::tower_atomic::{JsonRpcHandler, TowerAtomicServer};
 use songbird_universal_ipc::{error::IpcResult, ipc};
-use tracing::{info, Level};
-use tracing_subscriber;
+use tracing::{Level, info};
 
 /// Math service that provides basic arithmetic operations
 struct MathService;

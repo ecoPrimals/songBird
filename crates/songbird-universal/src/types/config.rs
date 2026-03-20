@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Configuration and reliability pattern types
 //!
 //! This module provides configuration types for security, load balancing,

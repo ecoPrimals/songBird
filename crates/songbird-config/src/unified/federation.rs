@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Federation configuration structures
 
 use serde::{Deserialize, Serialize};
@@ -78,10 +81,12 @@ impl Default for NodeConfig {
                 .unwrap_or_else(|_| format!("node_{}", std::process::id())),
             name: env::var("SONGBIRD_NODE_NAME").unwrap_or_else(|_| "songbird-node".to_string()),
             node_type: NodeType::Standard,
-            listen_addresses: vec![format!("0.0.0.0:{default_port}")
-                .parse()
-                .or_else(|_| "0.0.0.0:7000".parse())
-                .unwrap_or_else(|_| std::net::SocketAddr::from(([0, 0, 0, 0], 7000)))],
+            listen_addresses: vec![
+                format!("0.0.0.0:{default_port}")
+                    .parse()
+                    .or_else(|_| "0.0.0.0:7000".parse())
+                    .unwrap_or_else(|_| std::net::SocketAddr::from(([0, 0, 0, 0], 7000))),
+            ],
             public_addresses: Vec::new(),
             location: env::var("SONGBIRD_NODE_LOCATION").ok(),
         }
@@ -275,7 +280,7 @@ mod tests {
             vec![NodeType::Standard, NodeType::Coordinator, NodeType::Replica, NodeType::Gateway];
 
         for node_type in types {
-            let debug_str = format!("{:?}", node_type);
+            let debug_str = format!("{node_type:?}");
             assert!(!debug_str.is_empty());
 
             let cloned = node_type.clone();

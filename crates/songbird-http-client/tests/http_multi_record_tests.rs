@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! HTTP Multi-Record Response Handling Tests
 //!
 //! These tests verify HTTP response assembly across multiple TLS APPLICATION_DATA records.
@@ -66,18 +69,18 @@ fn test_one_to_many_large_response() {
     response_data.extend_from_slice(record1);
     response_data.extend_from_slice(&record1_body);
 
-    if !headers_complete {
-        if let Some(headers_end) = response_data.windows(4).position(|w| w == b"\r\n\r\n") {
-            headers_complete = true;
-            let headers_str = String::from_utf8_lossy(&response_data[..headers_end]);
-            if let Some(content_length) = headers_str
-                .lines()
-                .find(|line| line.to_lowercase().starts_with("content-length:"))
-                .and_then(|line| line.split(':').nth(1))
-                .and_then(|val| val.trim().parse::<usize>().ok())
-            {
-                expected_total = headers_end + 4 + content_length;
-            }
+    if !headers_complete
+        && let Some(headers_end) = response_data.windows(4).position(|w| w == b"\r\n\r\n")
+    {
+        headers_complete = true;
+        let headers_str = String::from_utf8_lossy(&response_data[..headers_end]);
+        if let Some(content_length) = headers_str
+            .lines()
+            .find(|line| line.to_lowercase().starts_with("content-length:"))
+            .and_then(|line| line.split(':').nth(1))
+            .and_then(|val| val.trim().parse::<usize>().ok())
+        {
+            expected_total = headers_end + 4 + content_length;
         }
     }
 

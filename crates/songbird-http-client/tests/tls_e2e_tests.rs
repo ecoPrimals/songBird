@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! End-to-End TLS Handshake Tests
 //!
 //! These tests verify the complete TLS 1.3 handshake flow with real servers.

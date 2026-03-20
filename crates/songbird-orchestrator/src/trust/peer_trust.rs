@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Peer Trust Evaluation
 //!
 //! Evaluates whether to trust discovered peers by consulting the security provider (security provider).
@@ -218,10 +221,10 @@ fn extract_family_from_tags(tags: &[String]) -> Option<String> {
     const FAMILY_TAG_PREFIX: &str = "beardog:family:";
 
     for tag in tags {
-        if let Some(family_id) = tag.strip_prefix(FAMILY_TAG_PREFIX) {
-            if !family_id.is_empty() {
-                return Some(family_id.to_string());
-            }
+        if let Some(family_id) = tag.strip_prefix(FAMILY_TAG_PREFIX)
+            && !family_id.is_empty()
+        {
+            return Some(family_id.to_string());
         }
     }
 

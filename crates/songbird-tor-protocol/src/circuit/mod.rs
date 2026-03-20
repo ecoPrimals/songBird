@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Circuit protocol - Build and manage Tor circuits
 //!
 //! **Status**: Phase 2B (In Progress)

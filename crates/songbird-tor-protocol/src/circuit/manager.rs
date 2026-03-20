@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Circuit manager - Build and manage Tor circuits
 //!
 //! **Phase 2B**: Circuit building
@@ -135,8 +138,12 @@ impl CircuitManager {
             create2_payload.len(),
             create2_payload.len()
         );
-        debug!("CREATE2 ntor data: node_id[0..4]={:02x?}, ntor_key[0..4]={:02x?}, client_pk[0..4]={:02x?}",
-               &node_id[0..4], &relay_ntor_key[0..4], &create2_payload[52..56]);
+        debug!(
+            "CREATE2 ntor data: node_id[0..4]={:02x?}, ntor_key[0..4]={:02x?}, client_pk[0..4]={:02x?}",
+            &node_id[0..4],
+            &relay_ntor_key[0..4],
+            &create2_payload[52..56]
+        );
 
         let cell = Cell {
             circ_id: circuit_id,
@@ -435,7 +442,6 @@ impl CircuitManager {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::directory::RelayInfo;
 
     #[test]
     fn test_circuit_manager_creation() {
@@ -473,10 +479,10 @@ mod tests {
         let id2 = manager.allocate_circuit_id().expect("Failed to allocate");
 
         // Client-initiated circuits have MSB set (Tor link protocol v4+)
-        assert_eq!(id1, 0x80000001);
-        assert_eq!(id2, 0x80000002);
+        assert_eq!(id1, 0x8000_0001);
+        assert_eq!(id2, 0x8000_0002);
         // Verify MSB is set (client-initiated)
-        assert!(id1 & 0x80000000 != 0);
-        assert!(id2 & 0x80000000 != 0);
+        assert!(id1 & 0x8000_0000 != 0);
+        assert!(id2 & 0x8000_0000 != 0);
     }
 }

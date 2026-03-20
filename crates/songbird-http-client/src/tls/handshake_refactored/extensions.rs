@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! TLS 1.3 extension builders
 //!
 //! Implements strategy-based extension building for TLS `ClientHello` messages.
@@ -17,7 +20,7 @@ impl TlsHandshake {
     pub(super) fn build_extensions(&self, server_name: &str, public_key: &[u8]) -> Result<Vec<u8>> {
         debug!("Building extensions with {:?} strategy", self.config.extension_strategy);
 
-        match self.config.extension_strategy {
+        Ok(match self.config.extension_strategy {
             crate::tls::config::ExtensionStrategy::Minimal => {
                 self.build_extensions_minimal(server_name, public_key)
             }
@@ -39,7 +42,7 @@ impl TlsHandshake {
                 // TODO: Implement custom extension building
                 self.build_extensions_standard(server_name, public_key)
             }
-        }
+        })
     }
 
     /// Build minimal extensions (only required, ~60ms handshake)
@@ -50,13 +53,15 @@ impl TlsHandshake {
     /// - `supported_groups` (which curves we support)
     /// - `signature_algorithms` (which signatures we accept)
     /// - `key_share` (our X25519 public key)
-    fn build_extensions_minimal(&self, server_name: &str, public_key: &[u8]) -> Result<Vec<u8>> {
+    fn build_extensions_minimal(&self, server_name: &str, public_key: &[u8]) -> Vec<u8> {
         let mut ext = Vec::new();
 
         // 1. SNI extension (0x0000) - REQUIRED for virtual hosting
         ext.extend_from_slice(&[0x00, 0x00]);
         let sni_data = self.build_sni_extension(server_name);
-        ext.extend_from_slice(&(sni_data.len() as u16).to_be_bytes());
+        ext.extend_from_slice(
+            &u16::try_from(sni_data.len()).expect("SNI fits in u16").to_be_bytes(),
+        );
         ext.extend_from_slice(&sni_data);
 
         // 2. Supported Groups (0x000a) - MUST come before key_share per RFC 8446
@@ -82,10 +87,12 @@ impl TlsHandshake {
         // 5. Key share (0x0033) - REQUIRED for TLS 1.3 fresh handshake
         ext.extend_from_slice(&[0x00, 0x33]);
         let key_share_data = self.build_key_share_extension(public_key);
-        ext.extend_from_slice(&(key_share_data.len() as u16).to_be_bytes());
+        ext.extend_from_slice(
+            &u16::try_from(key_share_data.len()).expect("key share fits in u16").to_be_bytes(),
+        );
         ext.extend_from_slice(&key_share_data);
 
-        Ok(ext)
+        ext
     }
 
     /// Build standard extensions (balanced, ~80ms handshake)
@@ -94,13 +101,15 @@ impl TlsHandshake {
     /// RFC 8446 Section 4.2: Extension ordering and content matters!
     /// - `key_share` MUST come BEFORE psk (if present)
     /// - We do NOT include `pre_shared_key` since we're not resuming
-    fn build_extensions_standard(&self, server_name: &str, public_key: &[u8]) -> Result<Vec<u8>> {
+    fn build_extensions_standard(&self, server_name: &str, public_key: &[u8]) -> Vec<u8> {
         let mut ext = Vec::new();
 
         // 1. SNI extension (0x0000) - REQUIRED for virtual hosting
         ext.extend_from_slice(&[0x00, 0x00]);
         let sni_data = self.build_sni_extension(server_name);
-        ext.extend_from_slice(&(sni_data.len() as u16).to_be_bytes());
+        ext.extend_from_slice(
+            &u16::try_from(sni_data.len()).expect("SNI fits in u16").to_be_bytes(),
+        );
         ext.extend_from_slice(&sni_data);
 
         // 2. Supported Groups (0x000a) - MUST come before key_share per RFC 8446
@@ -133,7 +142,9 @@ impl TlsHandshake {
         // 5. Key share (0x0033) - REQUIRED for TLS 1.3 fresh handshake
         ext.extend_from_slice(&[0x00, 0x33]);
         let key_share_data = self.build_key_share_extension(public_key);
-        ext.extend_from_slice(&(key_share_data.len() as u16).to_be_bytes());
+        ext.extend_from_slice(
+            &u16::try_from(key_share_data.len()).expect("key share fits in u16").to_be_bytes(),
+        );
         ext.extend_from_slice(&key_share_data);
 
         // 6. ALPN extension (0x0010) - CRITICAL for HTTPS
@@ -152,13 +163,13 @@ impl TlsHandshake {
         // servers into thinking we want to resume (causing Application Data 0x17
         // response instead of ServerHello 0x16).
 
-        Ok(ext)
+        ext
     }
 
     /// Build modern extensions (latest features, ~100ms handshake)
-    fn build_extensions_modern(&self, server_name: &str, public_key: &[u8]) -> Result<Vec<u8>> {
+    fn build_extensions_modern(&self, server_name: &str, public_key: &[u8]) -> Vec<u8> {
         // Start with standard extensions
-        let mut ext = self.build_extensions_standard(server_name, public_key)?;
+        let mut ext = self.build_extensions_standard(server_name, public_key);
 
         // Add modern extensions
 
@@ -175,13 +186,13 @@ impl TlsHandshake {
         // These were causing real-world servers (cloudflare, google) to send Application Data
         // instead of ServerHello, as they thought we were trying session resumption.
 
-        Ok(ext)
+        ext
     }
 
     /// Build max compatibility extensions (exhaustive set)
-    fn build_extensions_maxcompat(&self, server_name: &str, public_key: &[u8]) -> Result<Vec<u8>> {
+    fn build_extensions_maxcompat(&self, server_name: &str, public_key: &[u8]) -> Vec<u8> {
         // Start with modern extensions
-        let mut ext = self.build_extensions_modern(server_name, public_key)?;
+        let mut ext = self.build_extensions_modern(server_name, public_key);
 
         // Add compatibility extensions
 
@@ -199,29 +210,39 @@ impl TlsHandshake {
         ext.extend_from_slice(&[0x05, 0x01]); // rsa_pkcs1_sha384
         ext.extend_from_slice(&[0x08, 0x04]); // rsa_pss_rsae_sha256
 
-        Ok(ext)
+        ext
     }
 
     /// Build SNI extension
+    #[allow(clippy::unused_self)] // API consistency with other TlsHandshake methods
     pub(crate) fn build_sni_extension(&self, server_name: &str) -> Vec<u8> {
         let mut sni = Vec::new();
         let name_bytes = server_name.as_bytes();
 
-        sni.extend_from_slice(&((name_bytes.len() + 3) as u16).to_be_bytes()); // List length
+        sni.extend_from_slice(
+            &u16::try_from(name_bytes.len() + 3).expect("SNI list fits in u16").to_be_bytes(),
+        ); // List length
         sni.push(0x00); // Type: host_name
-        sni.extend_from_slice(&(name_bytes.len() as u16).to_be_bytes());
+        sni.extend_from_slice(
+            &u16::try_from(name_bytes.len()).expect("hostname fits in u16").to_be_bytes(),
+        );
         sni.extend_from_slice(name_bytes);
 
         sni
     }
 
     /// Build key share extension
+    #[allow(clippy::unused_self)] // API consistency with other TlsHandshake methods
     pub(crate) fn build_key_share_extension(&self, public_key: &[u8]) -> Vec<u8> {
         let mut ks = Vec::new();
 
-        ks.extend_from_slice(&((public_key.len() + 4) as u16).to_be_bytes()); // Client shares length
+        ks.extend_from_slice(
+            &u16::try_from(public_key.len() + 4).expect("key share fits in u16").to_be_bytes(),
+        ); // Client shares length
         ks.extend_from_slice(&[0x00, 0x1d]); // Group: x25519
-        ks.extend_from_slice(&(public_key.len() as u16).to_be_bytes());
+        ks.extend_from_slice(
+            &u16::try_from(public_key.len()).expect("public key fits in u16").to_be_bytes(),
+        );
         ks.extend_from_slice(public_key);
 
         ks
@@ -269,7 +290,7 @@ mod tests {
         // First 2 bytes: client shares length
         let shares_length = u16::from_be_bytes([ks[0], ks[1]]) as usize;
         assert_eq!(shares_length, 32 + 4); // 32-byte key + 4 bytes overhead
-                                           // Next 2 bytes: group (0x001d = x25519)
+        // Next 2 bytes: group (0x001d = x25519)
         assert_eq!(ks[2], 0x00);
         assert_eq!(ks[3], 0x1d);
         // Next 2 bytes: key exchange length
@@ -365,7 +386,7 @@ mod tests {
 
         // Standard extensions include ALPN with "http/1.1"
         // Search for ALPN extension: 0x0010 followed by "http/1.1"
-        let ext_str = format!("{:02x?}", ext);
+        let ext_str = format!("{ext:02x?}");
         // ALPN extension type is 0x0010
         assert!(ext_str.contains("00, 10"), "Should contain ALPN extension type 0x0010");
     }

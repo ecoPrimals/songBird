@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! TLS Server Core - Main struct and constructor
 //!
 //! Contains the `TlsServer` struct definition and basic initialization.

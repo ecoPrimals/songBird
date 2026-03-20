@@ -1,7 +1,7 @@
 [package]
 name = "songbird-sovereign-onion"
 version.workspace = true
-edition = "2021"
+edition.workspace = true
 license = "AGPL-3.0"
 repository = "https://github.com/ecoPrimals/SongBird"
 readme = "README.md"

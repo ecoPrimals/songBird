@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! UDP Hole Punching Implementation
 //!
 //! **Pure Rust | Zero Unsafe Code | Modern Async**

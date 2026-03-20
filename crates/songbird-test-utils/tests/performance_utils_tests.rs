@@ -1,3 +1,31 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
+#![allow(
+    clippy::unwrap_used,
+    clippy::expect_used,
+    clippy::unnecessary_wraps,
+    clippy::await_holding_lock,
+    clippy::float_cmp,
+    clippy::absurd_extreme_comparisons,
+    clippy::needless_collect,
+    clippy::nonminimal_bool,
+    clippy::used_underscore_binding,
+    clippy::field_reassign_with_default,
+    clippy::return_self_not_must_use,
+    clippy::overly_complex_bool_expr,
+    clippy::assertions_on_constants,
+    clippy::no_effect_underscore_binding,
+    clippy::items_after_statements,
+    clippy::empty_line_after_doc_comments,
+    clippy::const_is_empty,
+    clippy::duplicated_attributes,
+    deprecated,
+    dead_code,
+    clippy::unnecessary_literal_unwrap,
+    clippy::needless_pass_by_value,
+    clippy::must_use_candidate
+)]
 // Allow unwrap/expect in tests - idiomatic for test code
 #![allow(clippy::unwrap_used, clippy::expect_used)]
 
@@ -127,14 +155,14 @@ fn test_print_summary_with_data() {
 
 #[tokio::test]
 async fn test_benchmark_async_success() {
-    use std::sync::atomic::{AtomicUsize, Ordering};
     use std::sync::Arc;
+    use std::sync::atomic::{AtomicUsize, Ordering};
 
     let counter = Arc::new(AtomicUsize::new(0));
-    let counter_clone = counter.clone();
+    let counter_clone = Arc::clone(&counter);
 
     let result = benchmark_async("test_op", 5, || {
-        let c = counter_clone.clone();
+        let c = Arc::clone(&counter_clone);
         async move {
             c.fetch_add(1, Ordering::SeqCst);
             tokio::time::sleep(Duration::from_millis(10)).await;
@@ -169,11 +197,11 @@ async fn test_benchmark_async_with_actual_work() {
 
 #[test]
 fn test_benchmark_sync_success() {
-    use std::sync::atomic::{AtomicUsize, Ordering};
     use std::sync::Arc;
+    use std::sync::atomic::{AtomicUsize, Ordering};
 
     let counter = Arc::new(AtomicUsize::new(0));
-    let counter_clone = counter.clone();
+    let counter_clone = Arc::clone(&counter);
 
     let result = benchmark_sync("test_op", 5, || {
         counter_clone.fetch_add(1, Ordering::SeqCst);

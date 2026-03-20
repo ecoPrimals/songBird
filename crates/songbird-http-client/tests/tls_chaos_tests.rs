@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! TLS Chaos Tests
 //!
 //! These tests verify TLS handshake behavior under chaotic conditions:
@@ -8,7 +11,7 @@
 
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::{TcpListener, TcpStream};
-use tokio::time::{sleep, Duration};
+use tokio::time::{Duration, sleep};
 
 /// Test: Server that accepts connection but never responds
 #[tokio::test]

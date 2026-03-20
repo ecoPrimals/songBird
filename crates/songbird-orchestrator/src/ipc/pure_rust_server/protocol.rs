@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! JSON-RPC 2.0 Protocol Types
 //!
 //! Pure Rust implementation of JSON-RPC 2.0 protocol types for inter-primal communication.

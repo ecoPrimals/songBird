@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Unified gateway abstraction over `UPnP` IGD and NAT-PMP
 //!
 //! Tries `UPnP` IGD first (most common), falls back to NAT-PMP.
@@ -607,6 +610,8 @@ impl Gateway {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::error::IgdError;
+    use crate::mapping::Protocol;
 
     #[test]
     fn test_gateway_protocol_variants() {
@@ -717,5 +722,74 @@ mod tests {
         // XML tags might have attributes
         let xml = r#"<controlURL xmlns="urn:schemas-upnp-org:device-1-0">/ctl/IPConn</controlURL>"#;
         assert_eq!(Gateway::extract_xml_value(xml, "controlURL"), Some("/ctl/IPConn".to_string()));
+    }
+
+    fn sample_upnp_gateway() -> Gateway {
+        Gateway {
+            ip: IpAddr::V4(Ipv4Addr::new(192, 168, 1, 254)),
+            protocol: GatewayProtocol::UpnpIgd {
+                control_url: "http://192.168.1.254:5431/ctl/IPConn".to_string(),
+                service_type: crate::WANIP_SERVICE_TYPE.to_string(),
+                device_name: Some("TestRouter".to_string()),
+            },
+            external_ip: None,
+            device_name: Some("TestRouter".to_string()),
+            other_devices: Vec::new(),
+        }
+    }
+
+    #[test]
+    fn test_port_mapping_request_builder_fields() {
+        let local = IpAddr::V4(Ipv4Addr::new(192, 168, 1, 10));
+        let req = crate::mapping::PortMappingRequest::new(3492, 8080, local, Protocol::Udp)
+            .with_description("Songbird test mapping".to_string())
+            .with_lease_duration(120);
+
+        assert_eq!(req.external_port, 3492);
+        assert_eq!(req.internal_port, 8080);
+        assert_eq!(req.internal_client, local);
+        assert_eq!(req.protocol, Protocol::Udp);
+        assert_eq!(req.lease_duration, 120);
+        assert!(req.description.contains("Songbird test mapping"));
+    }
+
+    #[tokio::test]
+    async fn map_port_rejects_invalid_protocol_string() {
+        let gw = sample_upnp_gateway();
+        let err = gw.map_port(80, 80, "ICMP", 3600).await.unwrap_err();
+        assert!(matches!(err, IgdError::InvalidParameter(_)));
+    }
+
+    #[tokio::test]
+    async fn map_port_unsupported_when_no_igd_protocol() {
+        let gw = Gateway {
+            ip: IpAddr::V4(Ipv4Addr::new(192, 168, 1, 1)),
+            protocol: GatewayProtocol::None,
+            external_ip: None,
+            device_name: None,
+            other_devices: Vec::new(),
+        };
+        let err = gw.map_port(3492, 3492, "TCP", 3600).await.unwrap_err();
+        assert!(matches!(err, IgdError::ProtocolNotSupported(_)));
+    }
+
+    #[tokio::test]
+    async fn get_external_ip_errors_when_protocol_none() {
+        let gw = Gateway {
+            ip: IpAddr::V4(Ipv4Addr::new(10, 0, 0, 1)),
+            protocol: GatewayProtocol::None,
+            external_ip: None,
+            device_name: None,
+            other_devices: Vec::new(),
+        };
+        let err = gw.get_external_ip().await.unwrap_err();
+        assert!(matches!(err, IgdError::ProtocolNotSupported(_)));
+    }
+
+    #[tokio::test]
+    async fn unmap_port_rejects_bad_protocol() {
+        let gw = sample_upnp_gateway();
+        let err = gw.unmap_port(443, "QUIC").await.unwrap_err();
+        assert!(matches!(err, IgdError::InvalidParameter(_)));
     }
 }

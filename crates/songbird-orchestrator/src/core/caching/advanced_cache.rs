@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Advanced Caching System for Songbird Universal Orchestrator Orchestrator
 //!
 //! This module provides a high-performance, feature-rich caching layer with: //! - LRU (Least Recently Used) eviction policy

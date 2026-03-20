@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Test Fixtures Module
 //!
 //! Centralized test utilities, fixtures, and constants for consistent testing.

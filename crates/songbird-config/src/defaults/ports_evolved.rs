@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Capability-based port allocation with zero hardcoding
 //!
 //! # Philosophy
@@ -171,10 +174,10 @@ impl PortAllocator {
         capability: &str,
     ) -> Result<TcpListener, std::io::Error> {
         // Try environment variable first
-        if let Ok(port_str) = std::env::var(env_var) {
-            if let Ok(port) = port_str.parse::<u16>() {
-                return TcpListener::bind(("0.0.0.0", port));
-            }
+        if let Ok(port_str) = std::env::var(env_var)
+            && let Ok(port) = port_str.parse::<u16>()
+        {
+            return TcpListener::bind(("0.0.0.0", port));
         }
 
         // Fall back to capability-based allocation

@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Comprehensive tests for genetic lineage integration
 //!
 //! Tests the full lineage flow:
@@ -11,7 +14,7 @@ use anyhow::Result;
 use songbird_discovery::DiscoveryPacket;
 use songbird_orchestrator::{
     node_identity::NodeIdentity,
-    registration::{create_registration_from_identity, NodeRegistration, RegistrationManager},
+    registration::{NodeRegistration, RegistrationManager, create_registration_from_identity},
     trust::{LineageAuthenticator, LineageStatus, PeerAcceptanceDecision},
 };
 use songbird_types::{LineageId, LineageProof};
@@ -86,8 +89,8 @@ async fn test_discovery_packet_with_lineage() {
         capabilities: vec!["compute".to_string(), "storage".to_string()],
         endpoint: "http://192.168.1.100:8080".to_string(),
         metadata: HashMap::from([("region".to_string(), "us-east".to_string())]),
-        genetic_lineage: Some(lineage_id.clone()),
-        lineage_proof: Some(proof.clone()),
+        genetic_lineage: Some(lineage_id),
+        lineage_proof: Some(proof),
         timestamp: SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs(),
         tags: vec![],
         identity_attestations: vec![],
@@ -141,7 +144,7 @@ async fn test_node_identity_with_lineage() -> Result<()> {
     // Use unique node ID via environment variable to ensure a fresh identity file
     // NodeIdentity::identity_path() uses SONGBIRD_NODE_ID to generate unique filenames
     let unique_node_id = format!("test-identity-{}", uuid::Uuid::new_v4());
-    std::env::set_var("SONGBIRD_NODE_ID", &unique_node_id);
+    songbird_process_env::set_var("SONGBIRD_NODE_ID", &unique_node_id);
 
     let mut identity = NodeIdentity::new_or_load(Some(unique_node_id.clone()))?;
 
@@ -160,7 +163,7 @@ async fn test_node_identity_with_lineage() -> Result<()> {
     assert_eq!(p.lineage_id, proof.lineage_id);
 
     // Clean up env var
-    std::env::remove_var("SONGBIRD_NODE_ID");
+    songbird_process_env::remove_var("SONGBIRD_NODE_ID");
 
     Ok(())
 }
@@ -175,7 +178,7 @@ async fn test_node_registration_with_lineage() {
         vec!["compute".to_string(), "network".to_string()],
         "http://192.168.1.50:9000",
         lineage_id.clone(),
-        proof.clone(),
+        proof,
     );
 
     assert!(registration.has_lineage());
@@ -212,8 +215,8 @@ async fn test_registration_manager() {
         "Manager Test Node",
         vec!["storage".to_string()],
         "http://192.168.1.75:8080",
-        lineage_id.clone(),
-        proof.clone(),
+        lineage_id,
+        proof,
     );
 
     manager.register(registration);
@@ -274,7 +277,7 @@ async fn test_lineage_authenticator_same_lineage() -> Result<()> {
 #[tokio::test]
 #[ignore]
 async fn test_lineage_authenticator_different_lineage() -> Result<()> {
-    let (lineage_id_a, proof_a) = create_test_lineage("auth-node-a").await;
+    let (_lineage_id_a, _proof_a) = create_test_lineage("auth-node-a").await;
     let (lineage_id_b, proof_b) = create_test_lineage("auth-node-b").await;
 
     let mut auth = LineageAuthenticator::new();

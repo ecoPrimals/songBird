@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Self-aware service configuration with runtime discovery
 //!
 //! # Philosophy
@@ -166,10 +169,10 @@ impl AdvertiseConfig {
     /// 3. Fall back to unspecified (let discovery resolve)
     fn detect_public_ip() -> IpAddr {
         // Check environment variable first
-        if let Ok(ip_str) = std::env::var("SONGBIRD_PUBLIC_IP") {
-            if let Ok(ip) = IpAddr::from_str(&ip_str) {
-                return ip;
-            }
+        if let Ok(ip_str) = std::env::var("SONGBIRD_PUBLIC_IP")
+            && let Ok(ip) = IpAddr::from_str(&ip_str)
+        {
+            return ip;
         }
 
         // Network interface detection for production environments
@@ -219,24 +222,24 @@ impl AdvertiseConfig {
     /// without making network calls (fast, zero-cost in non-cloud environments).
     fn check_cloud_metadata() -> Option<IpAddr> {
         // AWS EC2/ECS metadata
-        if let Ok(ip_str) = std::env::var("AWS_INSTANCE_IP") {
-            if let Ok(ip) = IpAddr::from_str(&ip_str) {
-                return Some(ip);
-            }
+        if let Ok(ip_str) = std::env::var("AWS_INSTANCE_IP")
+            && let Ok(ip) = IpAddr::from_str(&ip_str)
+        {
+            return Some(ip);
         }
 
         // Google Cloud metadata
-        if let Ok(ip_str) = std::env::var("GCE_INSTANCE_IP") {
-            if let Ok(ip) = IpAddr::from_str(&ip_str) {
-                return Some(ip);
-            }
+        if let Ok(ip_str) = std::env::var("GCE_INSTANCE_IP")
+            && let Ok(ip) = IpAddr::from_str(&ip_str)
+        {
+            return Some(ip);
         }
 
         // Azure metadata
-        if let Ok(ip_str) = std::env::var("AZURE_VM_IP") {
-            if let Ok(ip) = IpAddr::from_str(&ip_str) {
-                return Some(ip);
-            }
+        if let Ok(ip_str) = std::env::var("AZURE_VM_IP")
+            && let Ok(ip) = IpAddr::from_str(&ip_str)
+        {
+            return Some(ip);
         }
 
         None
@@ -424,10 +427,10 @@ impl ServiceLocator {
         // Try multiple discovery methods in order of preference
 
         // 1. Check environment variables first (fastest, most reliable in dev)
-        if let Ok(endpoints) = Self::discover_from_environment(capability) {
-            if !endpoints.is_empty() {
-                return endpoints;
-            }
+        if let Ok(endpoints) = Self::discover_from_environment(capability)
+            && !endpoints.is_empty()
+        {
+            return endpoints;
         }
 
         // 2. Try DNS-SD discovery (RFC 6763 - standard service discovery)
@@ -437,10 +440,10 @@ impl ServiceLocator {
         }
 
         // 3. Try HTTP registry (Consul, Eureka, custom registry)
-        if let Ok(endpoints) = Self::discover_from_registry(capability) {
-            if !endpoints.is_empty() {
-                return endpoints;
-            }
+        if let Ok(endpoints) = Self::discover_from_registry(capability)
+            && !endpoints.is_empty()
+        {
+            return endpoints;
         }
 
         // No services found - return empty vec (not an error, services may not exist yet)
@@ -682,11 +685,11 @@ mod tests {
 
     #[test]
     fn test_self_aware_config_development() {
-        std::env::set_var("SONGBIRD_ENVIRONMENT", "development");
+        songbird_process_env::set_var("SONGBIRD_ENVIRONMENT", "development");
         let config = SelfAwareConfig::from_environment();
         assert_eq!(config.environment, Environment::Development);
         assert!(config.bind_address().ip().is_loopback());
-        std::env::remove_var("SONGBIRD_ENVIRONMENT");
+        songbird_process_env::remove_var("SONGBIRD_ENVIRONMENT");
     }
 
     #[test]

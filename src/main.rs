@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Songbird - Network Orchestration & Discovery Primal
 //!
 //! UniBin Architecture (Ecosystem Standard v1.0.0)
@@ -14,11 +17,11 @@
 //! # Interactive CLI
 //! songbird cli <SUBCOMMAND>
 //!
-//! # Compute bridge service
-//! songbird compute-bridge [OPTIONS]
+//! # Compute bridge service (delegates in-process; same flags as `songbird-compute-bridge`)
+//! songbird compute-bridge -- [OPTIONS]
 //!
-//! # Remote deployment
-//! songbird deploy <deploy|deploy-http|list|status>
+//! # Remote deployment (delegates in-process; same subcommands as `songbird-deploy`)
+//! songbird deploy -- <deploy|deploy-http|list|status> ...
 //!
 //! # Rendezvous server
 //! songbird rendezvous [OPTIONS]
@@ -30,6 +33,14 @@
 
 use anyhow::Result;
 use clap::{Parser, Subcommand};
+
+/// Parse argv for a delegated clap parser (`--help` / `--version` exit via clap, success code 0).
+fn parse_delegated<A: Parser>(invocation: &str, args: Vec<String>) -> A {
+    match A::try_parse_from(std::iter::once(invocation.to_string()).chain(args)) {
+        Ok(parsed) => parsed,
+        Err(err) => err.exit(),
+    }
+}
 
 /// Songbird - Network Orchestration & Discovery Primal
 ///
@@ -157,16 +168,16 @@ async fn main() -> Result<()> {
         Commands::ComputeBridge {
             args,
         } => {
-            // Re-exec songbird-compute-bridge binary if it exists,
-            // otherwise provide helpful error
-            run_compute_bridge(args)?;
+            let bridge_args =
+                parse_delegated::<songbird_compute_bridge::Args>("songbird-compute-bridge", args);
+            songbird_compute_bridge::run(bridge_args).await?;
         }
         Commands::Deploy {
             args,
         } => {
-            // Re-exec songbird-deploy binary if it exists,
-            // otherwise provide helpful error
-            run_deploy(args)?;
+            let deploy_args =
+                parse_delegated::<songbird_remote_deploy::Args>("songbird-deploy", args);
+            songbird_remote_deploy::run(deploy_args).await?;
         }
         Commands::Rendezvous {
             args,
@@ -178,63 +189,6 @@ async fn main() -> Result<()> {
     }
 
     Ok(())
-}
-
-/// Run compute bridge by re-executing the binary
-///
-/// Deep debt solution: Keep existing binaries working during migration phase.
-/// Future: Integrate directly into this binary via library calls.
-fn run_compute_bridge(args: Vec<String>) -> Result<()> {
-    // Try to find songbird-compute-bridge binary
-    let binary_path = std::env::current_exe()
-        .ok()
-        .and_then(|p| p.parent().map(|p| p.join("songbird-compute-bridge")))
-        .filter(|p| p.exists());
-
-    if let Some(path) = binary_path {
-        let status = std::process::Command::new(path)
-            .args(args)
-            .status()
-            .map_err(|e| anyhow::anyhow!("Failed to execute songbird-compute-bridge: {}", e))?;
-
-        if !status.success() {
-            std::process::exit(status.code().unwrap_or(1));
-        }
-        Ok(())
-    } else {
-        eprintln!("❌ Compute bridge binary not found");
-        eprintln!("💡 Build it with: cargo build --bin songbird-compute-bridge");
-        eprintln!("💡 Or use the full path to the binary");
-        std::process::exit(1);
-    }
-}
-
-/// Run deployment tool by re-executing the binary
-///
-/// Deep debt solution: Keep existing binaries working during migration phase.
-/// Future: Integrate directly into this binary via library calls.
-fn run_deploy(args: Vec<String>) -> Result<()> {
-    let binary_path = std::env::current_exe()
-        .ok()
-        .and_then(|p| p.parent().map(|p| p.join("songbird-deploy")))
-        .filter(|p| p.exists());
-
-    if let Some(path) = binary_path {
-        let status = std::process::Command::new(path)
-            .args(args)
-            .status()
-            .map_err(|e| anyhow::anyhow!("Failed to execute songbird-deploy: {}", e))?;
-
-        if !status.success() {
-            std::process::exit(status.code().unwrap_or(1));
-        }
-        Ok(())
-    } else {
-        eprintln!("❌ Deployment tool binary not found");
-        eprintln!("💡 Build it with: cargo build --bin songbird-deploy");
-        eprintln!("💡 Or use the full path to the binary");
-        std::process::exit(1);
-    }
 }
 
 /// Run rendezvous server by re-executing the binary

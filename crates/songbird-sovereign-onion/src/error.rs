@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Error types for sovereign onion protocol
 
 use thiserror::Error;
@@ -83,11 +86,11 @@ pub enum OnionError {
     // =========================================================================
     // BearDog Crypto Client Errors (TRUE PRIMAL pattern)
     // =========================================================================
-    /// JSON-RPC error from BearDog
+    /// JSON-RPC error from `BearDog`
     #[error("RPC error: {0}")]
     RpcError(String),
 
-    /// Connection error to BearDog socket
+    /// Connection error to `BearDog` socket
     #[error("Connection error: {0}")]
     ConnectionError(String),
 
@@ -110,3 +113,33 @@ impl From<ed25519_dalek::SignatureError> for OnionError {
 
 // Note: base32 v0.5 doesn't have DecodeError type, it returns Option<Vec<u8>>
 // Error handling is done at call site with ok_or(OnionError::InvalidEncoding)
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn display_invalid_format_and_checksum() {
+        assert!(OnionError::InvalidFormat.to_string().contains("format"));
+        assert!(OnionError::ChecksumMismatch.to_string().contains("Checksum"));
+    }
+
+    #[test]
+    fn display_invalid_length_and_version() {
+        assert!(OnionError::InvalidLength(3).to_string().contains('3'));
+        assert!(OnionError::UnsupportedVersion(2).to_string().contains('2'));
+    }
+
+    #[test]
+    fn display_crypto_and_config_errors() {
+        assert!(OnionError::RpcError("e".into()).to_string().contains("RPC"));
+        assert!(OnionError::ConfigError("missing".into()).to_string().contains("Configuration"));
+    }
+
+    #[test]
+    fn io_error_maps() {
+        let io = std::io::Error::new(std::io::ErrorKind::NotFound, "x");
+        let e: OnionError = io.into();
+        assert!(matches!(e, OnionError::Io(_)));
+    }
+}

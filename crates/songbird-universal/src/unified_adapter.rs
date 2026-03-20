@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! # 🔧 Unified Universal Adapter
 //!
 //! **SINGLE SOURCE OF TRUTH FOR UNIVERSAL ADAPTATION** ✅
@@ -148,6 +151,17 @@ impl UnifiedUniversalAdapter {
                 }
                 Err(e) => {
                     warn!("Failed to discover from endpoint {}: {}", endpoint, e);
+                }
+            }
+        }
+
+        // Merge services already in the local registry (prior discovery, tests, or manual seed).
+        // Keeps sovereignty / routing useful when HTTP endpoints are down or empty.
+        {
+            let registry = self.capability_registry.read().await;
+            for (name, info) in &registry.service_info {
+                if !discovered_services.iter().any(|s| s.name == *name) {
+                    discovered_services.push(info.clone());
                 }
             }
         }

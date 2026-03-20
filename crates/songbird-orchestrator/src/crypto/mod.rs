@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Crypto Module — Capability-Based Crypto Provider Discovery & Delegation
 //!
 //! This module implements 100% Pure Rust TLS by delegating ALL crypto operations
@@ -19,7 +22,7 @@ pub mod discovery;
 pub mod provider;
 
 // Re-export capability-based abstractions (preferred API — TRUE PRIMAL!)
-pub use provider::{discover_crypto_provider, CryptoProvider, UnixSocketCryptoProvider};
+pub use provider::{CryptoProvider, UnixSocketCryptoProvider, discover_crypto_provider};
 
 // Re-export low-level functions for backward compatibility
 pub use beardog_crypto_client::{

@@ -1,3 +1,32 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
+#![allow(
+    clippy::unwrap_used,
+    clippy::expect_used,
+    clippy::unnecessary_wraps,
+    clippy::await_holding_lock,
+    clippy::float_cmp,
+    clippy::absurd_extreme_comparisons,
+    clippy::needless_collect,
+    clippy::nonminimal_bool,
+    clippy::used_underscore_binding,
+    clippy::field_reassign_with_default,
+    clippy::return_self_not_must_use,
+    clippy::overly_complex_bool_expr,
+    clippy::assertions_on_constants,
+    clippy::no_effect_underscore_binding,
+    clippy::items_after_statements,
+    clippy::empty_line_after_doc_comments,
+    clippy::const_is_empty,
+    clippy::duplicated_attributes,
+    deprecated,
+    dead_code,
+    clippy::unnecessary_literal_unwrap,
+    clippy::needless_pass_by_value,
+    clippy::must_use_candidate
+)]
+
 //! Upstream Integration Tests - February 2026
 //!
 //! Comprehensive test coverage for biomeOS integration fixes:
@@ -104,12 +133,12 @@ async fn test_unit_family_id_from_environment() {
     let _guard = ENV_TEST_LOCK.lock().unwrap();
 
     // Clean slate - remove all family ID vars first
-    std::env::remove_var("FAMILY_ID");
-    std::env::remove_var("SONGBIRD_FAMILY_ID");
-    std::env::remove_var("NODE_FAMILY_ID");
+    songbird_process_env::remove_var("FAMILY_ID");
+    songbird_process_env::remove_var("SONGBIRD_FAMILY_ID");
+    songbird_process_env::remove_var("NODE_FAMILY_ID");
 
     // Test FAMILY_ID (highest priority)
-    std::env::set_var("FAMILY_ID", "test_family_1");
+    songbird_process_env::set_var("FAMILY_ID", "test_family_1");
 
     let registry = Arc::new(RwLock::new(ServiceRegistry::new()));
     let handler = IpcServiceHandler::new(registry);
@@ -122,9 +151,9 @@ async fn test_unit_family_id_from_environment() {
     assert_eq!(family_id, "test_family_1", "Should use FAMILY_ID");
 
     // Clean up
-    std::env::remove_var("FAMILY_ID");
-    std::env::remove_var("SONGBIRD_FAMILY_ID");
-    std::env::remove_var("NODE_FAMILY_ID");
+    songbird_process_env::remove_var("FAMILY_ID");
+    songbird_process_env::remove_var("SONGBIRD_FAMILY_ID");
+    songbird_process_env::remove_var("NODE_FAMILY_ID");
 }
 
 #[tokio::test]
@@ -515,12 +544,12 @@ async fn test_env_family_id_priority() {
     let _guard = ENV_TEST_LOCK.lock().unwrap();
 
     // Clean slate first
-    std::env::remove_var("FAMILY_ID");
-    std::env::remove_var("SONGBIRD_FAMILY_ID");
-    std::env::remove_var("NODE_FAMILY_ID");
+    songbird_process_env::remove_var("FAMILY_ID");
+    songbird_process_env::remove_var("SONGBIRD_FAMILY_ID");
+    songbird_process_env::remove_var("NODE_FAMILY_ID");
 
     // Test 1: Only FAMILY_ID set (highest priority)
-    std::env::set_var("FAMILY_ID", "test_priority_1");
+    songbird_process_env::set_var("FAMILY_ID", "test_priority_1");
 
     let registry = Arc::new(RwLock::new(ServiceRegistry::new()));
     let handler = IpcServiceHandler::new(registry);
@@ -528,10 +557,10 @@ async fn test_env_family_id_priority() {
     let result = handler.handle("identity", json!({})).await.unwrap();
     assert_eq!(result["family_id"], "test_priority_1");
 
-    std::env::remove_var("FAMILY_ID");
+    songbird_process_env::remove_var("FAMILY_ID");
 
     // Test 2: Only SONGBIRD_FAMILY_ID set (middle priority)
-    std::env::set_var("SONGBIRD_FAMILY_ID", "test_priority_2");
+    songbird_process_env::set_var("SONGBIRD_FAMILY_ID", "test_priority_2");
 
     let registry2 = Arc::new(RwLock::new(ServiceRegistry::new()));
     let handler2 = IpcServiceHandler::new(registry2);
@@ -540,9 +569,9 @@ async fn test_env_family_id_priority() {
     assert_eq!(result2["family_id"], "test_priority_2");
 
     // Clean up completely
-    std::env::remove_var("FAMILY_ID");
-    std::env::remove_var("SONGBIRD_FAMILY_ID");
-    std::env::remove_var("NODE_FAMILY_ID");
+    songbird_process_env::remove_var("FAMILY_ID");
+    songbird_process_env::remove_var("SONGBIRD_FAMILY_ID");
+    songbird_process_env::remove_var("NODE_FAMILY_ID");
 }
 
 #[tokio::test]
@@ -551,11 +580,11 @@ async fn test_env_family_id_default() {
     let _guard = ENV_TEST_LOCK.lock().unwrap();
 
     // Clear all family ID env vars (canonical chain)
-    std::env::remove_var("SONGBIRD_ORCHESTRATOR_FAMILY_ID");
-    std::env::remove_var("BIOMEOS_FAMILY_ID");
-    std::env::remove_var("SONGBIRD_FAMILY_ID");
-    std::env::remove_var("FAMILY_ID");
-    std::env::remove_var("NODE_FAMILY_ID");
+    songbird_process_env::remove_var("SONGBIRD_ORCHESTRATOR_FAMILY_ID");
+    songbird_process_env::remove_var("BIOMEOS_FAMILY_ID");
+    songbird_process_env::remove_var("SONGBIRD_FAMILY_ID");
+    songbird_process_env::remove_var("FAMILY_ID");
+    songbird_process_env::remove_var("NODE_FAMILY_ID");
 
     let registry = Arc::new(RwLock::new(ServiceRegistry::new()));
     let handler = IpcServiceHandler::new(registry);
@@ -564,7 +593,7 @@ async fn test_env_family_id_default() {
     assert_eq!(result["family_id"], "default", "Should default to 'default'");
 
     // Clean up (restore any vars that might have been set before test)
-    std::env::remove_var("FAMILY_ID");
-    std::env::remove_var("SONGBIRD_FAMILY_ID");
-    std::env::remove_var("NODE_FAMILY_ID");
+    songbird_process_env::remove_var("FAMILY_ID");
+    songbird_process_env::remove_var("SONGBIRD_FAMILY_ID");
+    songbird_process_env::remove_var("NODE_FAMILY_ID");
 }

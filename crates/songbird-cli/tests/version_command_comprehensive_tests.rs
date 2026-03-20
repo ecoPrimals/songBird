@@ -1,6 +1,35 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
+#![allow(
+    clippy::unwrap_used,
+    clippy::expect_used,
+    clippy::unnecessary_wraps,
+    clippy::await_holding_lock,
+    clippy::float_cmp,
+    clippy::absurd_extreme_comparisons,
+    clippy::needless_collect,
+    clippy::nonminimal_bool,
+    clippy::used_underscore_binding,
+    clippy::field_reassign_with_default,
+    clippy::return_self_not_must_use,
+    clippy::overly_complex_bool_expr,
+    clippy::assertions_on_constants,
+    clippy::no_effect_underscore_binding,
+    clippy::items_after_statements,
+    clippy::empty_line_after_doc_comments,
+    clippy::const_is_empty,
+    clippy::duplicated_attributes,
+    deprecated,
+    dead_code,
+    clippy::unnecessary_literal_unwrap,
+    clippy::needless_pass_by_value,
+    clippy::must_use_candidate
+)]
+
 //! Comprehensive tests for version command
 //!
-//! Phase 3 Test Coverage Expansion - CLI Commands  
+//! Phase 3 Test Coverage Expansion - CLI Commands\
 //! Target: Expand version command test coverage
 
 // =============================================================================
@@ -150,21 +179,21 @@ fn test_target_triple() {
 #[test]
 fn test_target_arch() {
     let arch = std::env::consts::ARCH;
-    let valid_archs = vec!["x86_64", "aarch64", "arm", "x86"];
+    let valid_archs = ["x86_64", "aarch64", "arm", "x86"];
     assert!(valid_archs.contains(&arch));
 }
 
 #[test]
 fn test_target_os() {
     let os = std::env::consts::OS;
-    let valid_os = vec!["linux", "macos", "windows", "freebsd"];
+    let valid_os = ["linux", "macos", "windows", "freebsd"];
     assert!(valid_os.contains(&os));
 }
 
 #[test]
 fn test_target_family() {
     let family = std::env::consts::FAMILY;
-    let valid_families = vec!["unix", "windows"];
+    let valid_families = ["unix", "windows"];
     assert!(valid_families.contains(&family));
 }
 
@@ -284,7 +313,7 @@ fn test_version_formatting_in_sentence() {
 #[test]
 fn test_version_never_panics() {
     let version = env!("CARGO_PKG_VERSION");
-    let _formatted = format!("{}", version);
+    let _formatted = version.to_string();
     assert!(true);
 }
 
@@ -294,7 +323,7 @@ fn test_version_parts_never_panic() {
     let parts: Vec<&str> = version.split('.').collect();
 
     for part in parts {
-        let _ = format!("{}", part);
+        let _ = part.to_string();
     }
 
     assert!(true);

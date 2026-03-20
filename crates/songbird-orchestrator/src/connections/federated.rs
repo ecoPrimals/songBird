@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Federated Connection (Trust Level 2)
 //!
 //! For peers approved by a human for full federation.
@@ -18,8 +21,8 @@
 //! - `commands/sensitive` - No sensitive commands
 //! - `keys/*` - No key access
 
-use super::{check_operation_allowed, PeerConnection};
-use anyhow::{anyhow, Context, Result};
+use super::{PeerConnection, check_operation_allowed};
+use anyhow::{Context, Result, anyhow};
 use async_trait::async_trait;
 use serde_json::Value;
 use songbird_types::TrustLevel;

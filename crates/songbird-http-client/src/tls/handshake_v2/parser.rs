@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! TLS Handshake Message Parser Module
 //!
 //! This module handles parsing of RFC 8446 handshake messages from decrypted TLS records.

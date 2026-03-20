@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 use crate::discovery::config::MonitoringConfig;
 use crate::discovery::types::{CpuUsage, GpuUsage, MemoryUsage, NetworkUsage, ResourceUpdate, StorageUsage,
 };

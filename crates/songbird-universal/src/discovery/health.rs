@@ -1,10 +1,13 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Health Checking for Discovered Primals
 //!
 //! Performs health checks on discovered primals.
 //! Part of the smart refactoring of discovery.rs
 
 use super::types::{DiscoveredPrimal, DiscoveryError, PrimalHealth};
-use tokio::time::{timeout, Duration};
+use tokio::time::{Duration, timeout};
 use tracing::{debug, warn};
 
 /// Health check paths to try

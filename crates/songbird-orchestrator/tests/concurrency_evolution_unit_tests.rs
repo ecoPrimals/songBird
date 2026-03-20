@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Concurrency Evolution Unit Tests
 //!
 //! Validates the concurrency improvements made during Phase 1:
@@ -8,8 +11,8 @@
 //! Modern, idiomatic, async Rust with zero global state mutation.
 
 use assert_cmd::Command;
-use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicUsize, Ordering};
 use tokio::task::JoinSet;
 
 // ====================
@@ -18,7 +21,7 @@ use tokio::task::JoinSet;
 
 /// Create a clean command with isolated environment (no global state mutation!)
 fn clean_cmd() -> Command {
-    let mut cmd = Command::cargo_bin("songbird").unwrap();
+    let mut cmd = Command::new(assert_cmd::cargo_bin!("songbird"));
     // ✅ Clear environment for this command only (not global!)
     cmd.env_clear();
     // ✅ Set minimal required env vars for test isolation
@@ -48,7 +51,7 @@ fn test_clean_cmd_creates_isolated_environment() {
 #[test]
 fn test_clean_cmd_clears_environment() {
     // Set a global env var
-    std::env::set_var("SONGBIRD_TEST_GLOBAL", "should_not_appear");
+    songbird_process_env::set_var("SONGBIRD_TEST_GLOBAL", "should_not_appear");
 
     let mut cmd = clean_cmd();
 
@@ -60,7 +63,7 @@ fn test_clean_cmd_clears_environment() {
     assert!(true, "Environment is properly isolated");
 
     // Cleanup
-    std::env::remove_var("SONGBIRD_TEST_GLOBAL");
+    songbird_process_env::remove_var("SONGBIRD_TEST_GLOBAL");
 }
 
 #[tokio::test]
@@ -230,7 +233,7 @@ async fn test_concurrent_test_pattern() {
     // #[serial]
     // async fn test() {
     //     clear_env();
-    //     let cmd = Command::cargo_bin("songbird")?;
+    //     let cmd = Command::new(assert_cmd::cargo_bin!("songbird"));
     // }
 
     // ✅ NEW (concurrent):
@@ -272,8 +275,8 @@ fn test_clean_cmd_pattern_documentation() {
 #[test]
 fn test_anti_pattern_documentation() {
     // ❌ ANTI-PATTERN (don't do this):
-    // std::env::set_var("MY_VAR", "value");  // Mutates global state!
-    // let cmd = Command::cargo_bin("songbird")?;
+    // songbird_process_env::set_var("MY_VAR", "value");  // Mutates global state!
+    // let cmd = Command::new(assert_cmd::cargo_bin!("songbird"));
 
     // ✅ CORRECT PATTERN (do this):
     let mut cmd = clean_cmd();

@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 // Allow unwrap/expect in tests - idiomatic for test code
 #![allow(clippy::unwrap_used, clippy::expect_used)]
 
@@ -8,12 +11,11 @@
 //! **Concurrency**: All tests are concurrent-safe using `TestEnv` for isolation.
 //! No `#[serial]` annotations needed!
 
-use songbird_test_utils::test_bind_address;
+use songbird_test_utils::TestEnv;
 use songbird_test_utils::test_discovery_port;
 use songbird_test_utils::test_federation_port;
 use songbird_test_utils::test_health_port;
 use songbird_test_utils::test_orchestrator_port;
-use songbird_test_utils::TestEnv;
 use songbird_types::config::environment::{
     CanonicalEnvironmentConfig, CapabilityEndpoints, DeploymentMode, DeprecationWarningsConfig,
     EnvironmentHealthCheckConfig, LegacyCompatibilityConfig, MemoryPoolConfig,

@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Songbird Types Library
 //!
 //! **CANONICAL**: Core types and configurations for the Songbird ecosystem
@@ -38,7 +41,7 @@ pub use lineage::{
 
 // Re-export progressive trust types
 pub use trust::{
-    is_operation_allowed, ElevationEvidence, ElevationPath, TrustEvaluation, TrustLevel,
+    ElevationEvidence, ElevationPath, TrustEvaluation, TrustLevel, is_operation_allowed,
 };
 
 // Re-export response types
@@ -60,7 +63,7 @@ pub use memory_optimized::{
 };
 
 // Re-export zero-copy utilities
-pub use zero_copy::{arc, share, smart_cow, Shareable, Shared};
+pub use zero_copy::{Shareable, Shared, arc, share, smart_cow};
 
 // Re-export traits
 pub use traits::{
@@ -76,6 +79,7 @@ pub use constants::*;
 pub mod adapters;
 pub mod config;
 pub mod constants;
+pub mod defaults;
 pub mod error_helpers;
 pub mod errors;
 pub mod health;

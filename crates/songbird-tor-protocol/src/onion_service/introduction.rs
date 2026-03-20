@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Introduction point protocol
 //!
 //! **Phase 2D**: Onion Service
@@ -76,7 +79,7 @@ impl IntroductionPoint {
             recognized: 0,
             stream_id: 0,
             digest: [0u8; 4],
-            length: data.len() as u16,
+            length: u16::try_from(data.len()).expect("cell data length fits in u16"),
             data,
         }
     }
@@ -96,6 +99,10 @@ impl IntroductionPoint {
     /// [extensions]
     /// ENCRYPTED        [variable] - ntor-encrypted handshake + rendezvous info
     /// ```
+    ///
+    /// # Errors
+    ///
+    /// Returns error if cell is too short or malformed.
     pub fn parse_introduce2(cell: &RelayCell) -> crate::error::Result<IntroductionRequest> {
         let data = &cell.data;
 
@@ -103,21 +110,18 @@ impl IntroductionPoint {
         if data.len() < 56 {
             return Err(crate::error::Error::Protocol(format!(
                 "INTRODUCE2 cell too short: {} bytes (min 56)",
-                data.len()
+                cell.data.len()
             )));
         }
 
-        // Skip LEGACY_KEY_ID (20 bytes, all zeros for v3)
-        let _legacy_key_id = &data[0..20];
-
-        // AUTH_KEY_TYPE
-        let _auth_key_type = data[20];
+        // Skip LEGACY_KEY_ID (20 bytes, all zeros for v3) and AUTH_KEY_TYPE (1 byte)
+        let data = &data[21..];
 
         // AUTH_KEY_LEN
-        let auth_key_len = u16::from_be_bytes([data[21], data[22]]) as usize;
+        let auth_key_len = u16::from_be_bytes([data[0], data[1]]) as usize;
 
         // AUTH_KEY
-        let auth_key_end = 23 + auth_key_len;
+        let auth_key_end = 2 + auth_key_len;
         if data.len() < auth_key_end + 1 {
             return Err(crate::error::Error::Protocol(
                 "INTRODUCE2 cell truncated at auth key".to_string(),
@@ -283,11 +287,12 @@ mod tests {
             recognized: 0,
             stream_id: 0,
             digest: [0u8; 4],
-            length: data.len() as u16,
+            length: u16::try_from(data.len()).expect("cell data length fits in u16"),
             data,
         };
 
-        let request = IntroductionPoint::parse_introduce2(&cell).unwrap();
+        let request =
+            IntroductionPoint::parse_introduce2(&cell).expect("valid introduce2 cell should parse");
         assert_eq!(request.rendezvous_point, [1u8; 32]);
         assert_eq!(request.rendezvous_cookie, [2u8; 20]);
         assert_eq!(request.client_public_key, [3u8; 32]);

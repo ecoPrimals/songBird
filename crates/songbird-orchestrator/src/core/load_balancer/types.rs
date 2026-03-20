@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 /// Load Balancer Types Module
 //
 /// Contains all data structures, enums, and basic implementations for load balancing

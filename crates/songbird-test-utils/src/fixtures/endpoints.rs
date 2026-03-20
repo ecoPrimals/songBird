@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! # 🎯 Test Endpoint Fixtures
 //!
 //! **Zero-hardcoding test infrastructure**
@@ -100,36 +103,27 @@ pub fn test_endpoint(capability: &str) -> String {
 pub fn test_port(capability: &str) -> u16 {
     // Try environment variables first
     let env_key = format!("{}_PORT", capability.to_uppercase());
-    if let Ok(port_str) = std::env::var(&env_key) {
-        if let Ok(port) = port_str.parse() {
-            return port;
-        }
+    if let Ok(port_str) = std::env::var(&env_key)
+        && let Ok(port) = port_str.parse()
+    {
+        return port;
     }
 
     let test_env_key = format!("TEST_{}_PORT", capability.to_uppercase());
-    if let Ok(port_str) = std::env::var(&test_env_key) {
-        if let Ok(port) = port_str.parse() {
-            return port;
-        }
-    }
-
-    // Check if we've already allocated a port for this capability
+    if let Ok(port_str) = std::env::var(&test_env_key)
+        && let Ok(port) = port_str.parse()
     {
-        let registry = PORT_REGISTRY.lock().unwrap();
-        if let Some(&port) = registry.get(capability) {
-            return port;
-        }
+        return port;
     }
 
-    // Allocate a new port
+    // Atomically check-or-insert to avoid TOCTOU race between concurrent tests
+    let mut registry = PORT_REGISTRY.lock().expect("PORT_REGISTRY lock poisoned");
+    if let Some(&port) = registry.get(capability) {
+        return port;
+    }
+
     let port = allocate_available_port();
-
-    // Cache it
-    {
-        let mut registry = PORT_REGISTRY.lock().unwrap();
-        registry.insert(capability.to_string(), port);
-    }
-
+    registry.insert(capability.to_string(), port);
     port
 }
 
@@ -248,9 +242,10 @@ mod tests {
 
     #[test]
     fn test_port_allocation_is_cached() {
-        clear_port_registry();
-        let port1 = test_port("test_capability");
-        let port2 = test_port("test_capability");
+        // Use a unique capability name to avoid interference from concurrent
+        // tests that call clear_port_registry()
+        let port1 = test_port("cache_validation_unique_ab39c");
+        let port2 = test_port("cache_validation_unique_ab39c");
         assert_eq!(port1, port2, "Same capability should return same port");
     }
 
@@ -290,7 +285,7 @@ mod tests {
 
     #[test]
     fn test_clear_registry() {
-        let port1 = test_port("clear_test");
+        let _port1 = test_port("clear_test");
         clear_port_registry();
         let port2 = test_port("clear_test");
         // Ports might be different after clear (new allocation)

@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! # Environment Configuration Module
 //!
 //! **CANONICAL ENVIRONMENT CONFIGURATION** ✅
@@ -7,7 +10,7 @@
 use serde::{Deserialize, Serialize};
 
 // ============================================================================
-// ENVIRONMENT CONFIGURATION - Placeholder
+// ENVIRONMENT CONFIGURATION
 // ============================================================================
 
 /// **CANONICAL**: Environment configuration

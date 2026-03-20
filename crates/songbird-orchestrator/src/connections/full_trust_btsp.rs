@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Full Trust BTSP Connection (Trust Level 3 via Encrypted Tunnel)
 //!
 //! For peers with maximum trust (human entropy + genetic family).
@@ -26,7 +29,7 @@
 
 use super::PeerConnection;
 use crate::btsp_client::BtspClient; // v3.20.0: Unix socket BTSP client (Jan 16, 2026)
-use anyhow::{anyhow, Context, Result};
+use anyhow::{Context, Result, anyhow};
 use async_trait::async_trait;
 use serde_json::Value;
 use songbird_types::TrustLevel;

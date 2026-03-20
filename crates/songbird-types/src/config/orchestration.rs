@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Orchestration /// Configuration capability Configuration
 //!
 //! Configuration for service discovery, networking, and orchestration.

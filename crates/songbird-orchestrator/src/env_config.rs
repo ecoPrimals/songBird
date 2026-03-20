@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Environment Configuration - TRUE PRIMAL Self-Knowledge
 //!
 //! Centralizes ALL environment-based configuration for Songbird.
@@ -27,6 +30,8 @@
 //! - See `primal_discovery` module for discovering other primals
 
 use std::path::PathBuf;
+
+use songbird_types::defaults::{hosts::DEFAULT_BIND_ALL, ports::DEFAULT_HTTP_PORT};
 
 /// Get this primal's name (self-knowledge)
 #[must_use]
@@ -108,10 +113,10 @@ pub fn socket_path() -> PathBuf {
     );
 
     // Ensure directory exists (Pure Rust!)
-    if let Some(parent) = xdg_socket.parent() {
-        if std::fs::create_dir_all(parent).is_ok() {
-            return xdg_socket;
-        }
+    if let Some(parent) = xdg_socket.parent()
+        && std::fs::create_dir_all(parent).is_ok()
+    {
+        return xdg_socket;
     }
 
     // Priority 4: Legacy /tmp fallback (if XDG unavailable or directory creation failed)
@@ -178,10 +183,11 @@ pub fn cache_dir() -> PathBuf {
 ///
 /// Resolution order:
 /// 1. `SONGBIRD_HTTP_ADDR` (explicit override)
-/// 2. `0.0.0.0:8080` (default - bind all interfaces)
+/// 2. `DEFAULT_BIND_ALL`:`DEFAULT_HTTP_PORT` from `songbird_types::defaults` (bind all interfaces)
 #[must_use]
 pub fn http_bind_address() -> String {
-    std::env::var("SONGBIRD_HTTP_ADDR").unwrap_or_else(|_| "0.0.0.0:8080".to_string())
+    std::env::var("SONGBIRD_HTTP_ADDR")
+        .unwrap_or_else(|_| format!("{}:{}", DEFAULT_BIND_ALL, DEFAULT_HTTP_PORT))
 }
 
 /// Get HTTP server port (self-knowledge)
@@ -189,23 +195,22 @@ pub fn http_bind_address() -> String {
 /// Resolution order:
 /// 1. `SONGBIRD_HTTP_PORT` (explicit override)
 /// 2. Extract from `SONGBIRD_HTTP_ADDR` if set
-/// 3. `8080` (default)
+/// 3. `DEFAULT_HTTP_PORT` from `songbird_types::defaults` (default)
 #[must_use]
 pub fn http_port() -> u16 {
     if let Ok(port_str) = std::env::var("SONGBIRD_HTTP_PORT") {
-        return port_str.parse().unwrap_or(8080);
+        return port_str.parse().unwrap_or(DEFAULT_HTTP_PORT);
     }
 
     // Try to extract from bind address
-    if let Ok(addr) = std::env::var("SONGBIRD_HTTP_ADDR") {
-        if let Some(port_part) = addr.split(':').nth(1) {
-            if let Ok(port) = port_part.parse() {
-                return port;
-            }
-        }
+    if let Ok(addr) = std::env::var("SONGBIRD_HTTP_ADDR")
+        && let Some(port_part) = addr.split(':').nth(1)
+        && let Ok(port) = port_part.parse()
+    {
+        return port;
     }
 
-    8080
+    DEFAULT_HTTP_PORT
 }
 
 /// Check if running in production mode

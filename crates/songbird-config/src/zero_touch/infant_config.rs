@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! # 🍼 Zero-Touch Configuration System
 //!
 //! **MISSION**: Provide configuration with ZERO hardcoded knowledge
@@ -664,8 +667,8 @@ mod tests {
     #[test]
     fn test_zero_touch_config_requires_service_port() {
         // Clear environment
-        env::remove_var("SERVICE_PORT");
-        env::remove_var("PORT");
+        songbird_process_env::remove_var("SERVICE_PORT");
+        songbird_process_env::remove_var("PORT");
 
         let result = ZeroTouchConfig::from_environment();
         assert!(result.is_err(), "Should require SERVICE_PORT");
@@ -673,15 +676,15 @@ mod tests {
 
     #[test]
     fn test_self_identity_discovery() {
-        env::set_var("SERVICE_ID", "test-service-123");
-        env::set_var("SERVICE_CAPABILITIES", "compute,storage");
+        songbird_process_env::set_var("SERVICE_ID", "test-service-123");
+        songbird_process_env::set_var("SERVICE_CAPABILITIES", "compute,storage");
 
         let identity = ZeroTouchConfig::discover_self_identity();
         assert_eq!(identity.service_id, "test-service-123");
         assert_eq!(identity.provides_capabilities.len(), 2);
 
-        env::remove_var("SERVICE_ID");
-        env::remove_var("SERVICE_CAPABILITIES");
+        songbird_process_env::remove_var("SERVICE_ID");
+        songbird_process_env::remove_var("SERVICE_CAPABILITIES");
     }
 
     #[test]
@@ -728,7 +731,7 @@ mod tests {
         // NOTE: File reference updated - zero_touch_config.rs doesn't exist
         // Use scripts/eliminate_all_hardcoding.py for accurate hardcoding detection
         let _source = include_str!("infant_config.rs"); // Self-reference instead
-                                                        // Comments and docs are OK, but not in actual code logic
-                                                        // The word kubernetes/consul/docker can appear in comments explaining the system works with them
+        // Comments and docs are OK, but not in actual code logic
+        // The word kubernetes/consul/docker can appear in comments explaining the system works with them
     }
 }

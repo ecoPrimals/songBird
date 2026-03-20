@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Error Types and Handling
 //!
 //! **CANONICAL**: Centralized error handling for the entire Songbird ecosystem

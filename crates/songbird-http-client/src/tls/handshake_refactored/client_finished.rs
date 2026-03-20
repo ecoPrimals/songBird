@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Client Finished message construction and sending
 //!
 //! RFC 8446 Section 4.4.4: The client Finished message provides key confirmation,
@@ -84,9 +87,9 @@ impl TlsHandshake {
         msg.push(0x14); // HandshakeType: Finished
 
         let length = verify_data.len();
-        msg.push(((length >> 16) & 0xFF) as u8);
-        msg.push(((length >> 8) & 0xFF) as u8);
-        msg.push((length & 0xFF) as u8);
+        msg.push(u8::try_from((length >> 16) & 0xFF).expect("length byte fits in u8"));
+        msg.push(u8::try_from((length >> 8) & 0xFF).expect("length byte fits in u8"));
+        msg.push(u8::try_from(length & 0xFF).expect("length byte fits in u8"));
 
         msg.extend_from_slice(verify_data);
         msg
@@ -159,6 +162,7 @@ impl TlsHandshake {
     /// RFC 8446 Section 5.1: Multiple handshake messages MAY be coalesced into
     /// a single TLS record. This method parses the framing to locate Finished
     /// at any offset.
+    #[allow(clippy::unused_self)] // API consistency with other TlsHandshake methods
     pub(crate) fn contains_finished_message(&self, plaintext: &[u8]) -> bool {
         let mut offset = 0;
         // Skip ContentType byte at end (added during encryption)

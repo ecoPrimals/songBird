@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Cryptographic operations for Tor protocol
 //!
 //! - **`BearDog`**: All key operations delegated via IPC (TRUE PRIMAL)
@@ -6,8 +9,8 @@
 pub mod sha3;
 
 use crate::error::{Error, Result};
-use base64::{engine::general_purpose::STANDARD as BASE64, Engine as _};
-use serde_json::{json, Value};
+use base64::{Engine as _, engine::general_purpose::STANDARD as BASE64};
+use serde_json::{Value, json};
 use std::io::{Read, Write};
 use std::os::unix::net::UnixStream;
 use std::time::Duration;
@@ -452,12 +455,11 @@ impl BeardogCryptoClient {
         }
 
         let mut secret_key = [0u8; 32];
-        if let Some(secret_b64) = secret_b64 {
-            if let Ok(secret_bytes) = BASE64.decode(secret_b64) {
-                if secret_bytes.len() >= 32 {
-                    secret_key.copy_from_slice(&secret_bytes[..32]);
-                }
-            }
+        if let Some(secret_b64) = secret_b64
+            && let Ok(secret_bytes) = BASE64.decode(secret_b64)
+            && secret_bytes.len() >= 32
+        {
+            secret_key.copy_from_slice(&secret_bytes[..32]);
         }
 
         Ok(X25519Keypair {

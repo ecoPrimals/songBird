@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! NAT-PMP (NAT Port Mapping Protocol) implementation — RFC 6886
 //!
 //! Simple binary UDP protocol for routers that support it (Apple `AirPort`, etc.).

@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Consent Storage - SQLite persistence for consent records
 //!
 //! This module provides durable storage for consent records using SQLite.

@@ -1,7 +1,7 @@
 [package]
 name = "songbird-discovery"
 version.workspace = true
-edition = "2021"
+edition.workspace = true
 license = "AGPL-3.0"
 authors = ["ecoPrimals <contact@ecoprimals.dev>"]
 description = "Network discovery and service registry for Songbird"
@@ -42,9 +42,11 @@ hex = "0.4"  # For discovery packet hashing
 socket2 = "0.5"  # For multicast socket configuration
 blake3 = "1.5"  # ✅ NEW (Feb 3, 2026): For Dark Forest beacon capabilities hashing
 hostname = "0.3"  # For primal self-knowledge name introspection
+getrandom = { workspace = true }  # Cryptographically secure random nonce for beacon encryption
 
 [features]
 default = []
+tests-incomplete = []
 security = []
 storage = []
 compute = []
@@ -54,5 +56,6 @@ orchestration = []
 dns-srv = []
 
 [dev-dependencies]
+songbird-process-env.workspace = true
 tracing-subscriber = "0.3"
 

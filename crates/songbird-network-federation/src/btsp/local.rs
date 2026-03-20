@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Local BTSP Implementation
 //!
 //! ⚠️ **TRUE PRIMAL NOTE**: This module is for TESTING ONLY!
@@ -29,8 +32,8 @@ use tokio::sync::RwLock;
 use tracing::{debug, warn};
 
 use aes_gcm::{
-    aead::{Aead, KeyInit, OsRng},
     Aes256Gcm, Nonce,
+    aead::{Aead, KeyInit, OsRng},
 };
 use rand::RngCore;
 

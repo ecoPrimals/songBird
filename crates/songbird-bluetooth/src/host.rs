@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! BLE Host - Main entry point for Bluetooth operations
 //!
 //! Pure Rust BLE host built on trouble-host (Embassy project).

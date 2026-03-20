@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Memory-Optimized Types
 //!
 //! **CANONICAL**: Zero-copy and memory-efficient types for high-performance scenarios

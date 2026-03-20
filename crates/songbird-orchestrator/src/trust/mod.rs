@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Trust Escalation System
 //!
 //! Implements progressive trust escalation from anonymous to hardware-verified.
@@ -50,7 +53,7 @@ pub use lineage_auth::{
     LineageAuthenticator, LineageStatus, PeerAcceptanceDecision, PeerInfo, RejectionSeverity,
     UserRecommendation,
 };
-pub use peer_trust::{evaluate_peer_trust, DiscoveredPeer, PeerTrustDecision}; // NEW: USB seed integration
+pub use peer_trust::{DiscoveredPeer, PeerTrustDecision, evaluate_peer_trust}; // NEW: USB seed integration
 pub use types::{
     CapabilityProof, HardwareAttestation, IdentityProof, TowerIdentity, TrustLevel,
     TrustRelationship,

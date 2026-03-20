@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Canonical configuration patterns and types
 
 pub mod constants;
@@ -18,6 +21,16 @@ pub mod service;
 
 // Re-export canonical constants for easy access (Phase 4: Enhanced Nov 8, 2025)
 pub use constants::{
+    // Structured exports (note: submodules accessible via constants::network::, etc.)
+    CanonicalNetworkDefaults,
+    // DEFAULT_BIND_ADDRESS, // Removed: Use get_bind_address() function instead
+    DEFAULT_CACHE_TTL,
+    // Constants
+    DEFAULT_CONFIG_PATH,
+    DEFAULT_EVALUATION_TIMEOUT,
+    // DEFAULT_LOCALHOST, // Removed: Use get_bind_address() function instead
+    DEFAULT_METRICS_INTERVAL,
+    // LOCALHOST_IPV4, // Removed: Use get_bind_address() function instead
     default_bind_address,
     default_discovery_port,
     default_subnet,
@@ -65,16 +78,6 @@ pub use constants::{
     node_id,
     // Protocol configuration
     protocol_port_mappings,
-    // Structured exports (note: submodules accessible via constants::network::, etc.)
-    CanonicalNetworkDefaults,
-    // DEFAULT_BIND_ADDRESS, // Removed: Use get_bind_address() function instead
-    DEFAULT_CACHE_TTL,
-    // Constants
-    DEFAULT_CONFIG_PATH,
-    DEFAULT_EVALUATION_TIMEOUT,
-    // DEFAULT_LOCALHOST, // Removed: Use get_bind_address() function instead
-    DEFAULT_METRICS_INTERVAL,
-    // LOCALHOST_IPV4, // Removed: Use get_bind_address() function instead
 };
 
 // Re-export all canonical types

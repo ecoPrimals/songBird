@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! # 🔧 Canonical Adapters System
 //!
 //! **SINGLE SOURCE OF TRUTH FOR ALL ADAPTERS** ✅
@@ -9,9 +12,6 @@ pub mod canonical; // NEW: Consolidated canonical adapter
 
 // Re-export the canonical adapter system (PREFERRED,
 pub use canonical::{
-    create_adapter_request,
-    // Convenience functions
-    create_canonical_adapter,
     // Configuration types
     CanonicalAdapterConfig,
     CanonicalAdapterMetrics,
@@ -37,6 +37,9 @@ pub use canonical::{
     CanonicalTimeoutConfig,
     // Main adapter
     CanonicalUniversalAdapter,
+    create_adapter_request,
+    // Convenience functions
+    create_canonical_adapter,
 };
 
 // ============================================================================
@@ -59,8 +62,8 @@ pub use canonical::{
 /// Prelude module for easy importing of canonical adapter types
 pub mod prelude {
     pub use super::canonical::{
-        create_adapter_request, create_canonical_adapter, CanonicalAdapterConfig,
-        CanonicalAdapterRequest, CanonicalAdapterResponse, CanonicalLoadBalancingStrategy,
-        CanonicalRequestPriority, CanonicalUniversalAdapter,
+        CanonicalAdapterConfig, CanonicalAdapterRequest, CanonicalAdapterResponse,
+        CanonicalLoadBalancingStrategy, CanonicalRequestPriority, CanonicalUniversalAdapter,
+        create_adapter_request, create_canonical_adapter,
     };
 }

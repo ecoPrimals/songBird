@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Core configuration management for Songbird
 //!
 //! # ⚠️ **DEPRECATION NOTICE** - Phase 1 Complete (Nov 2025)
@@ -232,10 +235,10 @@ impl SongbirdConfig {
     /// Disable a primal
     pub fn disable_primal(&mut self, primal_name: &str) {
         #[allow(deprecated)]
-        if let Some(registry) = &mut self.primal_registry {
-            if let Some(primal) = registry.primals.get_mut(primal_name) {
-                primal.enabled = false;
-            }
+        if let Some(registry) = &mut self.primal_registry
+            && let Some(primal) = registry.primals.get_mut(primal_name)
+        {
+            primal.enabled = false;
         }
     }
 

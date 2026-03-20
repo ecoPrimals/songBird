@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Startup Orchestration Module
 //!
 //! **Purpose**: Cleanly orchestrate the 7-stage startup sequence of Songbird
@@ -451,7 +454,7 @@ impl<'a> StartupOrchestrator<'a> {
         info!("✅ Trust escalation cleanup task started");
 
         // Start federation coordinator (if enabled)
-        if let (Some(ref coordinator), Some(ref config)) =
+        if let (Some(coordinator), Some(config)) =
             (&self.orchestrator.federation_coordinator, &self.orchestrator.federation_config)
         {
             info!("🌐 Starting federation coordinator...");

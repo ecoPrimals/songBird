@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! `BearDog` Crypto Client for TLS Delegation
 //!
 //! Provides Pure Rust TLS by delegating ALL crypto operations to `BearDog`.

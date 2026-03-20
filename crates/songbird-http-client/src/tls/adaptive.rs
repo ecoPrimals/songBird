@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Adaptive TLS extension negotiation
 //!
 //! This module provides adaptive behavior for TLS handshakes, allowing Songbird
@@ -107,7 +110,7 @@ impl AdaptiveExtensions {
     #[must_use]
     pub fn get_extensions(&self, hostname: &str) -> Vec<ExtensionType> {
         match self.strategy {
-            ExtensionStrategy::Modern => self.modern_extensions(),
+            ExtensionStrategy::Modern => Self::modern_extensions(),
             ExtensionStrategy::MaxCompatibility => self.max_compatibility_extensions(),
             ExtensionStrategy::Minimal => self.minimal_extensions(),
             ExtensionStrategy::Adaptive => self.adaptive_extensions(hostname),
@@ -115,7 +118,7 @@ impl AdaptiveExtensions {
     }
 
     /// Modern extension set (TLS 1.3 preferred)
-    fn modern_extensions(&self) -> Vec<ExtensionType> {
+    fn modern_extensions() -> Vec<ExtensionType> {
         vec![
             ExtensionType::Sni,
             ExtensionType::Alpn,
@@ -162,10 +165,15 @@ impl AdaptiveExtensions {
 
         // Default to modern if no profile exists
         drop(profiles);
-        self.modern_extensions()
+        Self::modern_extensions()
     }
 
     /// Record successful handshake
+    ///
+    /// # Panics
+    ///
+    /// Panics if the internal lock is poisoned.
+    #[allow(clippy::significant_drop_tightening)] // Guard must be held while modifying profile
     pub fn record_success(&self, hostname: &str, extensions: Vec<ExtensionType>) {
         let mut profiles = self.profiles.write().unwrap();
 
@@ -184,6 +192,11 @@ impl AdaptiveExtensions {
     }
 
     /// Record failed handshake
+    ///
+    /// # Panics
+    ///
+    /// Panics if the internal lock is poisoned.
+    #[allow(clippy::significant_drop_tightening)] // Guard must be held while modifying profile
     pub fn record_failure(&self, hostname: &str, extensions: Vec<ExtensionType>) {
         let mut profiles = self.profiles.write().unwrap();
 
@@ -202,6 +215,10 @@ impl AdaptiveExtensions {
     }
 
     /// Get server profile
+    ///
+    /// # Panics
+    ///
+    /// Panics if the internal lock is poisoned.
     #[must_use]
     pub fn get_profile(&self, hostname: &str) -> Option<ServerProfile> {
         let profiles = self.profiles.read().unwrap();
@@ -209,12 +226,20 @@ impl AdaptiveExtensions {
     }
 
     /// Clear all profiles (for testing)
+    ///
+    /// # Panics
+    ///
+    /// Panics if the internal lock is poisoned.
     pub fn clear_profiles(&self) {
         let mut profiles = self.profiles.write().unwrap();
         profiles.clear();
     }
 
     /// Get profile count (for testing)
+    ///
+    /// # Panics
+    ///
+    /// Panics if the internal lock is poisoned.
     #[must_use]
     pub fn profile_count(&self) -> usize {
         let profiles = self.profiles.read().unwrap();

@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Robustness Configuration Module
 //!
 //! Consolidates all robustness-related configuration structs including circuit breakers)
@@ -316,7 +319,7 @@ mod tests {
 
         for algo in algorithms {
             // Test Debug implementation
-            let debug_str = format!("{:?}", algo);
+            let debug_str = format!("{algo:?}");
             assert!(!debug_str.is_empty());
 
             // Test Clone
@@ -331,7 +334,7 @@ mod tests {
         let algorithms = vec![TokenBucket, LeakyBucket, FixedWindow, SlidingWindow];
 
         for algo in algorithms {
-            let debug_str = format!("{:?}", algo);
+            let debug_str = format!("{algo:?}");
             assert!(!debug_str.is_empty());
         }
     }
@@ -342,7 +345,7 @@ mod tests {
         let strategies = vec![ThreadPool, Semaphore, Queue];
 
         for strategy in strategies {
-            let debug_str = format!("{:?}", strategy);
+            let debug_str = format!("{strategy:?}");
             assert!(!debug_str.is_empty());
         }
     }
@@ -353,7 +356,7 @@ mod tests {
         let strategies = vec![Fixed, Linear, Exponential, ExponentialWithJitter];
 
         for strategy in strategies {
-            let debug_str = format!("{:?}", strategy);
+            let debug_str = format!("{strategy:?}");
             assert!(!debug_str.is_empty());
         }
     }

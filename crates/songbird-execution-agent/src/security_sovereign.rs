@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Sovereign Security with Optional Network Effects
 //!
 //! ## Primal Sovereignty Architecture
@@ -180,18 +183,18 @@ impl SovereignSecurity {
         }
 
         // 3. Check basic resource limits
-        if let Some(timeout) = request.timeout_seconds {
-            if timeout > self.config.max_timeout_seconds {
-                return Ok(SecurityDecision {
-                    allowed: false,
-                    reason: Some(format!(
-                        "Timeout {} exceeds limit {}",
-                        timeout, self.config.max_timeout_seconds
-                    )),
-                    confidence: 1.0,
-                    mode: SecurityMode::Sovereign,
-                });
-            }
+        if let Some(timeout) = request.timeout_seconds
+            && timeout > self.config.max_timeout_seconds
+        {
+            return Ok(SecurityDecision {
+                allowed: false,
+                reason: Some(format!(
+                    "Timeout {} exceeds limit {}",
+                    timeout, self.config.max_timeout_seconds
+                )),
+                confidence: 1.0,
+                mode: SecurityMode::Sovereign,
+            });
         }
 
         // Allow with sovereign security

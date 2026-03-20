@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! TTL renewal task for port mappings
 //!
 //! Port mappings have TTLs (typically 86400s / 24h for `UPnP`).

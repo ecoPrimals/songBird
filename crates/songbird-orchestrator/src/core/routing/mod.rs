@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Intelligent Capability Routing
 //!
 //! This module implements intelligent task routing for Songbird orchestrator:

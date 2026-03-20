@@ -1,12 +1,15 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! End-to-end tests for songbird-tls
 //!
 //! These tests validate the complete TLS handshake flow from ClientHello to application data.
 
 use songbird_tls::{
+    HandshakeState, HandshakeStateMachine, TLS_CHACHA20_POLY1305_SHA256, TLS_VERSION_1_3,
     codec::{Decode, Encode},
     error::TlsError,
     messages::{ClientHello, Extension},
-    HandshakeState, HandshakeStateMachine, TLS_CHACHA20_POLY1305_SHA256, TLS_VERSION_1_3,
 };
 use std::time::Duration;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};

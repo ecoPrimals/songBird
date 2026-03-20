@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Circuit Breaker pattern for fault tolerance
 //!
 //! Implements the circuit breaker pattern to prevent cascading failures
@@ -470,11 +473,7 @@ mod tests {
 
         // Fail 3 times
         for _ in 0..3 {
-            let _ = breaker
-                .call(|| async {
-                    Err::<(), _>(std::io::Error::new(std::io::ErrorKind::Other, "test"))
-                })
-                .await;
+            let _ = breaker.call(|| async { Err::<(), _>(std::io::Error::other("test")) }).await;
         }
 
         // Should now be Open
@@ -490,9 +489,7 @@ mod tests {
             .unwrap();
 
         // Fail once to open circuit
-        let _ = breaker
-            .call(|| async { Err::<(), _>(std::io::Error::new(std::io::ErrorKind::Other, "test")) })
-            .await;
+        let _ = breaker.call(|| async { Err::<(), _>(std::io::Error::other("test")) }).await;
 
         // Next call should fail immediately without executing
         let call_count = Arc::new(AtomicUsize::new(0));
@@ -524,9 +521,7 @@ mod tests {
             .unwrap();
 
         // Fail to open circuit
-        let _ = breaker
-            .call(|| async { Err::<(), _>(std::io::Error::new(std::io::ErrorKind::Other, "test")) })
-            .await;
+        let _ = breaker.call(|| async { Err::<(), _>(std::io::Error::other("test")) }).await;
 
         // Wait for timeout
         tokio::time::sleep(Duration::from_millis(150)).await;
@@ -545,9 +540,7 @@ mod tests {
         let breaker = CircuitBreaker::builder().failure_threshold(1).build().unwrap();
 
         // Fail to open circuit
-        let _ = breaker
-            .call(|| async { Err::<(), _>(std::io::Error::new(std::io::ErrorKind::Other, "test")) })
-            .await;
+        let _ = breaker.call(|| async { Err::<(), _>(std::io::Error::other("test")) }).await;
 
         assert!(matches!(breaker.state().await, CircuitState::Open { .. }));
 

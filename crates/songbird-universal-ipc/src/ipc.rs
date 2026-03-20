@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Public API for universal IPC
 //!
 //! This module provides the main user-facing API for universal IPC.
@@ -5,7 +8,7 @@
 
 use crate::endpoint::VirtualEndpoint;
 use crate::error::IpcResult;
-use crate::platform::{get_platform_ipc, AsyncStream, PlatformIPC, PlatformListener};
+use crate::platform::{AsyncStream, PlatformIPC, PlatformListener, get_platform_ipc};
 use crate::registry::ServiceRegistry;
 use std::sync::OnceLock;
 use tokio::io::{AsyncRead, AsyncWrite};

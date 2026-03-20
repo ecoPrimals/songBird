@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Health check implementations
 //!
 //! Different types of health checks that can be performed.
@@ -180,5 +183,38 @@ impl MetricsCheck {
             };
             Ok(HealthStatus::degraded(score, issue))
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn metrics_check_with_zero_thresholds_reports_unhealthy_or_degraded() {
+        let check = MetricsCheck::new(0.0, 0.0);
+        let status = check.check().await.unwrap();
+        assert!(!status.healthy || status.score < 1.0);
+    }
+
+    #[tokio::test]
+    async fn metrics_check_with_generous_thresholds_runs() {
+        let check = MetricsCheck::new(100.0, 100.0);
+        let status = check.check().await.unwrap();
+        assert!(status.healthy);
+    }
+
+    #[tokio::test]
+    async fn http_check_closed_port_returns_status_without_panic() {
+        let check = HttpCheck::new("http://127.0.0.1:1/health", 200);
+        let status = check.check().await.unwrap();
+        assert!(!status.healthy || status.score < 1.0);
+    }
+
+    #[tokio::test]
+    async fn process_check_runs_for_unlikely_name() {
+        let check = ProcessCheck::new("songbird_nonexistent_process_9f3a2c");
+        let status = check.check().await.unwrap();
+        assert!(!status.healthy);
     }
 }

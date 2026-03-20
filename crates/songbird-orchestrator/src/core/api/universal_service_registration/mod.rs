@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Universal Service Registration API API
 //!
 //! Provides AI-first service registration endpoints that support any primal type

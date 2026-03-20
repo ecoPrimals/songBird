@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Fair Scheduler
 //!
 //! Implements fair scheduling with:
@@ -404,11 +407,11 @@ mod tests {
         // Low priority task should eventually be scheduled (within first 5)
         let mut low_found = false;
         for _ in 0..5 {
-            if let Some(task) = scheduler.dequeue().await {
-                if task.id == low_id {
-                    low_found = true;
-                    break;
-                }
+            if let Some(task) = scheduler.dequeue().await
+                && task.id == low_id
+            {
+                low_found = true;
+                break;
             }
         }
 

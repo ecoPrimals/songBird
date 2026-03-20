@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 // Core unified configuration types
 //
 // This module provides the foundational types and structures for the unified
@@ -144,7 +147,7 @@ mod tests {
         assert!(!config.environment.is_empty());
         assert!(!config.log_level.is_empty());
         // Debug format should work
-        assert!(format!("{:?}", config).contains("environment"));
+        assert!(format!("{config:?}").contains("environment"));
     }
 
     #[test]

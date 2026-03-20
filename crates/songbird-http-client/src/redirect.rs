@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! HTTP redirect handling
 //!
 //! Handles detection and resolution of HTTP redirects (301, 302, 303, 307, 308).
@@ -86,10 +89,10 @@ impl RedirectHandler {
     #[allow(dead_code)]
     pub fn extract_host(location: &str, base_url: &str) -> Option<String> {
         // Try to parse location as absolute URL
-        if let Ok(uri) = Uri::try_from(location) {
-            if let Some(host) = uri.host() {
-                return Some(host.to_string());
-            }
+        if let Ok(uri) = Uri::try_from(location)
+            && let Some(host) = uri.host()
+        {
+            return Some(host.to_string());
         }
 
         // If relative URL, use base URL's host
@@ -159,7 +162,7 @@ impl RedirectHandler {
     /// # Returns
     ///
     /// `true` if both URLs have the same origin (scheme + host + port)
-    pub fn is_same_origin(&self, original_url: &str, redirect_url: &str) -> Result<bool> {
+    pub fn is_same_origin(original_url: &str, redirect_url: &str) -> Result<bool> {
         let original: Uri = original_url
             .parse()
             .map_err(|e| Error::InvalidUrl(format!("Invalid original URL: {e}")))?;
@@ -192,7 +195,7 @@ mod tests {
 
     #[test]
     fn test_resolve_absolute_url() {
-        let handler = RedirectHandler::new(10);
+        let _handler = RedirectHandler::new(10);
         let result =
             RedirectHandler::resolve_url("https://example.com/path", "https://other.com/new")
                 .unwrap();
@@ -201,7 +204,7 @@ mod tests {
 
     #[test]
     fn test_resolve_absolute_path() {
-        let handler = RedirectHandler::new(10);
+        let _handler = RedirectHandler::new(10);
         let result =
             RedirectHandler::resolve_url("https://example.com/old/path", "/new/path").unwrap();
         assert_eq!(result, "https://example.com/new/path");
@@ -209,14 +212,14 @@ mod tests {
 
     #[test]
     fn test_resolve_relative_path() {
-        let handler = RedirectHandler::new(10);
+        let _handler = RedirectHandler::new(10);
         let result = RedirectHandler::resolve_url("https://example.com/dir/page", "other").unwrap();
         assert_eq!(result, "https://example.com/dir/other");
     }
 
     #[test]
     fn test_extract_host() {
-        let handler = RedirectHandler::new(10);
+        let _handler = RedirectHandler::new(10);
 
         // Absolute URL
         assert_eq!(
@@ -258,26 +261,34 @@ mod tests {
 
     #[test]
     fn test_is_same_origin() {
-        let handler = RedirectHandler::new(10);
-
         // Same origin
-        assert!(handler
-            .is_same_origin("https://example.com/path1", "https://example.com/path2")
-            .unwrap());
+        assert!(
+            RedirectHandler::is_same_origin(
+                "https://example.com/path1",
+                "https://example.com/path2"
+            )
+            .unwrap()
+        );
 
         // Different host
-        assert!(!handler
-            .is_same_origin("https://example.com/path", "https://other.com/path")
-            .unwrap());
+        assert!(
+            !RedirectHandler::is_same_origin("https://example.com/path", "https://other.com/path")
+                .unwrap()
+        );
 
         // Different scheme
-        assert!(!handler
-            .is_same_origin("http://example.com/path", "https://example.com/path")
-            .unwrap());
+        assert!(
+            !RedirectHandler::is_same_origin("http://example.com/path", "https://example.com/path")
+                .unwrap()
+        );
 
         // Different port
-        assert!(!handler
-            .is_same_origin("https://example.com:8080/path", "https://example.com/path")
-            .unwrap());
+        assert!(
+            !RedirectHandler::is_same_origin(
+                "https://example.com:8080/path",
+                "https://example.com/path"
+            )
+            .unwrap()
+        );
     }
 }

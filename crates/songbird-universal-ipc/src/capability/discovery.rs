@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! High-level discovery functions
 //!
 //! Convenience functions for common discovery patterns.
@@ -70,11 +73,11 @@ mod tests {
     async fn test_global_registry() {
         init_capability_registry();
 
-        std::env::set_var("TEST_PROVIDER_SOCKET", "/tmp/test.sock");
+        songbird_process_env::set_var("TEST_PROVIDER_SOCKET", "/tmp/test.sock");
 
         let provider = discover("test").await;
         assert!(provider.is_ok());
 
-        std::env::remove_var("TEST_PROVIDER_SOCKET");
+        songbird_process_env::remove_var("TEST_PROVIDER_SOCKET");
     }
 }

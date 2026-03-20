@@ -1,7 +1,7 @@
 [package]
 name = "songbird-cli"
 version.workspace = true
-edition = "2021"
+edition.workspace = true
 license = "AGPL-3.0"
 authors = ["ecoPrimals <contact@ecoprimals.dev>"]
 description = "Command-line interface for Songbird orchestrator"
@@ -30,6 +30,7 @@ doc = false
 
 [dependencies]
 # Core songbird dependencies - NOW INCLUDES ORCHESTRATOR FOR STANDALONE BINARY
+songbird-process-env.workspace = true
 songbird-types = { path = "../songbird-types" }  # Added for unified types
 songbird-config = { path = "../songbird-config" }
 songbird-discovery = { path = "../songbird-discovery" }

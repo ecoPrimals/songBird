@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Hole Punch JSON-RPC Handler
 //!
 //! Provides JSON-RPC methods for initiating and monitoring UDP hole punch
@@ -13,7 +16,7 @@
 //! This handler coordinates with the `HolePunchCoordinator` from
 //! `songbird-onion-relay` and `BeaconMesh` for fallback routing.
 
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use songbird_onion_relay::HolePunchCoordinator;
 use std::collections::HashMap;
 use std::net::SocketAddr;

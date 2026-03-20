@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! # Songbird Pure Rust Bluetooth LE Stack
 //!
 //! **Universal Comms - Zero System Dependencies**
@@ -88,7 +91,7 @@ pub mod transport;
 pub use device::{Address, Device, DeviceInfo};
 pub use error::{BluetoothError, Result};
 pub use host::BluetoothHost;
-pub use l2cap::{L2capChannel, L2capManager, ATT_CHANNEL_ID};
+pub use l2cap::{ATT_CHANNEL_ID, L2capChannel, L2capManager};
 pub use transport::{Transport, TransportType};
 
 // Re-export UsbTransport (either nusb or rusb implementation)

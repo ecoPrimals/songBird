@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Runtime Endpoint Resolution
 //!
 //! Modern, capability-based endpoint resolution that replaces hardcoded values
@@ -154,10 +157,10 @@ impl RuntimeEndpointResolver {
         ];
 
         for key in env_keys {
-            if let Ok(value) = std::env::var(&key) {
-                if !value.is_empty() {
-                    return Some(value);
-                }
+            if let Ok(value) = std::env::var(&key)
+                && !value.is_empty()
+            {
+                return Some(value);
             }
         }
 
@@ -279,14 +282,14 @@ mod tests {
 
     #[tokio::test]
     async fn test_env_resolution() {
-        std::env::set_var("COMPUTE_ENDPOINT", "http://env-compute:8080");
+        songbird_process_env::set_var("COMPUTE_ENDPOINT", "http://env-compute:8080");
 
         let resolver = RuntimeEndpointResolver::new();
         let endpoint = resolver.resolve_capability("compute").await.unwrap();
 
         assert_eq!(endpoint, "http://env-compute:8080");
 
-        std::env::remove_var("COMPUTE_ENDPOINT");
+        songbird_process_env::remove_var("COMPUTE_ENDPOINT");
     }
 
     #[test]

@@ -1,9 +1,20 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! `BirdSong` encryption provider trait
 //!
 //! Defines the interface for security providers to implement encrypted discovery.
 
 use anyhow::Result;
 use async_trait::async_trait;
+
+/// 96-bit AEAD nonce for ChaCha20-Poly1305, filled from the OS CSPRNG (`getrandom` workspace dep).
+fn random_chacha_nonce() -> Result<[u8; 12]> {
+    let mut nonce = [0u8; 12];
+    getrandom::fill(&mut nonce)
+        .map_err(|e| anyhow::anyhow!("Failed to generate random nonce: {e}"))?;
+    Ok(nonce)
+}
 
 /// `BirdSong` encryption provider trait
 ///
@@ -112,10 +123,9 @@ pub trait BirdSongEncryption: Send + Sync {
     /// let beacon = DarkForestBeacon::new(encrypted, nonce);
     /// ```
     async fn encrypt_beacon(&self, payload: &[u8]) -> Result<(Vec<u8>, [u8; 12])> {
-        // Default implementation for backward compatibility
-        // Uses legacy encryption + random nonce
+        // Default: legacy encrypt + random 96-bit nonce (never reuse with the same key).
         let encrypted = self.encrypt_discovery(payload).await?;
-        let nonce = [0u8; 12]; // Placeholder - should be random in real implementation
+        let nonce = random_chacha_nonce()?;
         Ok((encrypted, nonce))
     }
 

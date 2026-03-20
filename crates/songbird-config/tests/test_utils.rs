@@ -1,3 +1,29 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
+#![allow(
+    clippy::unwrap_used,
+    clippy::expect_used,
+    clippy::unnecessary_wraps,
+    clippy::await_holding_lock,
+    clippy::float_cmp,
+    clippy::absurd_extreme_comparisons,
+    clippy::needless_collect,
+    clippy::nonminimal_bool,
+    clippy::used_underscore_binding,
+    clippy::field_reassign_with_default,
+    clippy::return_self_not_must_use,
+    clippy::overly_complex_bool_expr,
+    clippy::assertions_on_constants,
+    clippy::no_effect_underscore_binding,
+    clippy::items_after_statements,
+    clippy::empty_line_after_doc_comments,
+    clippy::const_is_empty,
+    clippy::duplicated_attributes,
+    deprecated,
+    clippy::unnecessary_literal_unwrap
+)]
+
 //! Test utilities for config tests
 //!
 //! Provides ScopedEnv for serialized test execution of env var tests.
@@ -28,7 +54,7 @@ impl ScopedEnv {
     pub fn new() -> Self {
         Self {
             restore: HashMap::new(),
-            _guard: ENV_LOCK.lock().unwrap_or_else(|e| e.into_inner()),
+            _guard: ENV_LOCK.lock().unwrap_or_else(std::sync::PoisonError::into_inner),
         }
     }
 
@@ -42,7 +68,7 @@ impl ScopedEnv {
         }
 
         // Set new value
-        env::set_var(key, value);
+        songbird_process_env::set_var(key, value);
 
         self
     }
@@ -57,12 +83,13 @@ impl ScopedEnv {
         }
 
         // Remove variable
-        env::remove_var(key);
+        songbird_process_env::remove_var(key);
 
         self
     }
 
     /// Set multiple environment variables at once
+    #[allow(dead_code)] // helper for future tests
     pub fn set_multiple(mut self, vars: &[(&str, &str)]) -> Self {
         for (key, value) in vars {
             self = self.set(key, value);
@@ -82,8 +109,8 @@ impl Drop for ScopedEnv {
         // Restore all previous values
         for (key, value) in &self.restore {
             match value {
-                Some(v) => env::set_var(key, v),
-                None => env::remove_var(key),
+                Some(v) => songbird_process_env::set_var(key, v),
+                None => songbird_process_env::remove_var(key),
             }
         }
     }

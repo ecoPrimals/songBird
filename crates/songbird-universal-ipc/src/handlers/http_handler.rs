@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! HTTP/HTTPS IPC Handler - Deep Solution Implementation
 //!
 //! This module provides JSON-RPC 2.0 handlers for HTTP/HTTPS requests via IPC,
@@ -665,7 +668,7 @@ mod tests {
         let handler = HttpHandler::new(factory);
 
         let mut headers = HashMap::new();
-        headers.insert("X-Empty".to_string(), "".to_string());
+        headers.insert("X-Empty".to_string(), String::new());
         headers.insert("X-Normal".to_string(), "value".to_string());
 
         let result = handler.handle_post("https://api.example.com", "{}", None, headers).await;
@@ -715,7 +718,7 @@ mod tests {
         // Create 50 headers
         let mut headers = HashMap::new();
         for i in 0..50 {
-            headers.insert(format!("X-Header-{}", i), format!("value-{}", i));
+            headers.insert(format!("X-Header-{i}"), format!("value-{i}"));
         }
 
         let result = handler.handle_post("https://api.example.com", "{}", None, headers).await;
@@ -776,13 +779,13 @@ mod tests {
             let handler_clone = handler.clone();
             let task = tokio::spawn(async move {
                 let mut headers = HashMap::new();
-                headers.insert(format!("X-Request-ID-{}", i), format!("req-{}", i));
-                headers.insert("X-Test".to_string(), format!("value-{}", i));
+                headers.insert(format!("X-Request-ID-{i}"), format!("req-{i}"));
+                headers.insert("X-Test".to_string(), format!("value-{i}"));
 
                 handler_clone
                     .handle_post(
                         "https://api.example.com",
-                        &format!(r#"{{"id":{}}}"#, i),
+                        &format!(r#"{{"id":{i}}}"#),
                         Some("application/json"),
                         headers,
                     )
@@ -796,9 +799,9 @@ mod tests {
 
         // Assert all succeeded
         for (i, result) in results.iter().enumerate() {
-            assert!(result.is_ok(), "Task {} should not panic", i);
+            assert!(result.is_ok(), "Task {i} should not panic");
             let inner_result = result.as_ref().unwrap();
-            assert!(inner_result.is_ok(), "Request {} should succeed", i);
+            assert!(inner_result.is_ok(), "Request {i} should succeed");
         }
     }
 

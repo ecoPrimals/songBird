@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! UniBin Unit Tests - Deep Testing Coverage
 //!
 //! Comprehensive unit tests for individual functions and components
@@ -12,7 +15,7 @@ static ENV_LOCK: Mutex<()> = Mutex::new(());
 
 /// Acquire the env lock, tolerating poison.
 fn lock_env() -> std::sync::MutexGuard<'static, ()> {
-    ENV_LOCK.lock().unwrap_or_else(|e| e.into_inner())
+    ENV_LOCK.lock().unwrap_or_else(std::sync::PoisonError::into_inner)
 }
 
 // ====================
@@ -27,10 +30,10 @@ mod helper_tests {
     fn test_environment_variable_parsing() {
         let _g = lock_env();
         // Test that env var parsing works correctly
-        std::env::set_var("TEST_PORT", "9000");
+        songbird_process_env::set_var("TEST_PORT", "9000");
         let port = std::env::var("TEST_PORT").unwrap();
         assert_eq!(port, "9000");
-        std::env::remove_var("TEST_PORT");
+        songbird_process_env::remove_var("TEST_PORT");
     }
 
     #[test]
@@ -105,7 +108,7 @@ mod helper_tests {
     fn test_node_identity_env_vars() {
         let _g = lock_env();
         // Test node identity environment variable priority
-        std::env::set_var("SONGBIRD_NODE_ID", "test-node-1");
+        songbird_process_env::set_var("SONGBIRD_NODE_ID", "test-node-1");
         let node_id = std::env::var("SONGBIRD_NODE_ID")
             .or_else(|_| std::env::var("NODE_ID"))
             .or_else(|_| std::env::var("SPORE_ID"))
@@ -114,30 +117,30 @@ mod helper_tests {
         assert!(node_id.is_some());
         assert_eq!(node_id.unwrap(), "test-node-1");
 
-        std::env::remove_var("SONGBIRD_NODE_ID");
+        songbird_process_env::remove_var("SONGBIRD_NODE_ID");
     }
 
     #[test]
     fn test_family_identity_env_vars() {
         let _g = lock_env();
         // Test family identity environment variable priority
-        std::env::set_var("SONGBIRD_FAMILY_ID", "nat0");
+        songbird_process_env::set_var("SONGBIRD_FAMILY_ID", "nat0");
         let family_id =
             std::env::var("SONGBIRD_FAMILY_ID").or_else(|_| std::env::var("FAMILY_ID")).ok();
 
         assert!(family_id.is_some());
         assert_eq!(family_id.unwrap(), "nat0");
 
-        std::env::remove_var("SONGBIRD_FAMILY_ID");
+        songbird_process_env::remove_var("SONGBIRD_FAMILY_ID");
     }
 
     #[test]
     fn test_env_var_fallback_chain() {
         let _g = lock_env();
         // Test complete fallback chain
-        std::env::remove_var("SONGBIRD_NODE_ID");
-        std::env::remove_var("NODE_ID");
-        std::env::set_var("SPORE_ID", "fallback-spore");
+        songbird_process_env::remove_var("SONGBIRD_NODE_ID");
+        songbird_process_env::remove_var("NODE_ID");
+        songbird_process_env::set_var("SPORE_ID", "fallback-spore");
 
         let node_id = std::env::var("SONGBIRD_NODE_ID")
             .or_else(|_| std::env::var("NODE_ID"))
@@ -147,7 +150,7 @@ mod helper_tests {
         assert!(node_id.is_some());
         assert_eq!(node_id.unwrap(), "fallback-spore");
 
-        std::env::remove_var("SPORE_ID");
+        songbird_process_env::remove_var("SPORE_ID");
     }
 }
 
@@ -157,7 +160,6 @@ mod helper_tests {
 
 #[cfg(test)]
 mod config_tests {
-    use super::*;
 
     #[test]
     fn test_default_port() {
@@ -206,7 +208,6 @@ mod config_tests {
 
 #[cfg(test)]
 mod version_tests {
-    use super::*;
 
     #[test]
     fn test_version_format() {
@@ -283,7 +284,6 @@ mod error_handling_tests {
 
 #[cfg(test)]
 mod logging_tests {
-    use super::*;
 
     #[test]
     fn test_log_message_formatting() {
@@ -331,7 +331,7 @@ mod logging_tests {
 
 #[cfg(test)]
 mod path_tests {
-    use super::*;
+
     use std::path::Path;
 
     #[test]
@@ -345,14 +345,14 @@ mod path_tests {
     fn test_relative_path() {
         // Test relative path handling
         let path = "./config/songbird.toml";
-        assert!(path.starts_with("."));
+        assert!(path.starts_with('.'));
     }
 
     #[test]
     fn test_absolute_path() {
         // Test absolute path handling
         let path = "/etc/songbird/config.toml";
-        assert!(path.starts_with("/"));
+        assert!(path.starts_with('/'));
     }
 
     #[test]
@@ -379,7 +379,6 @@ mod path_tests {
 
 #[cfg(test)]
 mod signal_tests {
-    use super::*;
 
     #[test]
     fn test_signal_detection() {
@@ -407,7 +406,6 @@ mod signal_tests {
 
 #[cfg(test)]
 mod validation_tests {
-    use super::*;
 
     #[test]
     fn test_port_range() {
@@ -466,7 +464,7 @@ async fn test_async_operation() {
 #[tokio::test]
 async fn test_async_delay() {
     // Test async delay
-    use tokio::time::{sleep, Duration};
+    use tokio::time::{Duration, sleep};
 
     let start = std::time::Instant::now();
     sleep(Duration::from_millis(10)).await;
@@ -542,7 +540,6 @@ mod memory_tests {
 
 #[cfg(test)]
 mod edge_case_tests {
-    use super::*;
 
     #[test]
     fn test_empty_string() {
@@ -565,7 +562,7 @@ mod edge_case_tests {
         // Test None option handling
         let opt: Option<String> = None;
         assert!(opt.is_none());
-        assert!(!opt.is_some());
+        assert!(opt.is_none());
     }
 
     #[test]

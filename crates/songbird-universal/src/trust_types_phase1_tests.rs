@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Phase 1 Trust Parsing Tests
 //!
 //! Tests for flexible `trust_level` parsing (integer + string)

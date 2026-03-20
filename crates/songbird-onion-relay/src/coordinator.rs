@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Hole Punch Coordinator
 //!
 //! Coordinates NAT traversal using signaling channel (Tor, WebSocket, etc.)
@@ -18,7 +21,7 @@ use std::net::SocketAddr;
 use std::sync::Arc;
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 use tokio::net::UdpSocket;
-use tokio::sync::{mpsc, RwLock};
+use tokio::sync::{RwLock, mpsc};
 use tokio::time::{sleep, timeout};
 use tracing::{debug, info, warn};
 

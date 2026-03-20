@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Anonymous Discovery Message Types
 //!
 //! This module contains the data structures and serialization logic for

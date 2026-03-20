@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Consent Management
 //!
 //! Implements:
@@ -101,35 +104,33 @@ impl ConsentManager {
 
         // Check auto-approval rules
         let prefs = self.preferences.read().await;
-        if let Some(user_prefs) = prefs.get(&user_id) {
-            if let Some(auto_approve_threshold) = user_prefs.auto_approve_under_cost {
-                if let Some(cost) = estimated_cost {
-                    if cost <= auto_approve_threshold {
-                        // Auto-approve
-                        let record = ConsentRecord {
-                            id: id.clone(),
-                            user_id,
-                            task_id,
-                            operation,
-                            estimated_cost,
-                            status: ConsentStatus::Approved,
-                            requested_at: Utc::now(),
-                            responded_at: Some(Utc::now()),
-                            reason: Some("Auto-approved based on user preferences".into()),
-                        };
-                        drop(prefs);
+        if let Some(user_prefs) = prefs.get(&user_id)
+            && let Some(auto_approve_threshold) = user_prefs.auto_approve_under_cost
+            && let Some(cost) = estimated_cost
+            && cost <= auto_approve_threshold
+        {
+            // Auto-approve
+            let record = ConsentRecord {
+                id: id.clone(),
+                user_id,
+                task_id,
+                operation,
+                estimated_cost,
+                status: ConsentStatus::Approved,
+                requested_at: Utc::now(),
+                responded_at: Some(Utc::now()),
+                reason: Some("Auto-approved based on user preferences".into()),
+            };
+            drop(prefs);
 
-                        // Persist to storage if available
-                        if let Some(ref storage) = self.storage {
-                            let _ = storage.save(&record).await; // Best effort
-                        }
-
-                        let mut records = self.records.write().await;
-                        records.insert(id.clone(), record);
-                        return id;
-                    }
-                }
+            // Persist to storage if available
+            if let Some(ref storage) = self.storage {
+                let _ = storage.save(&record).await; // Best effort
             }
+
+            let mut records = self.records.write().await;
+            records.insert(id.clone(), record);
+            return id;
         }
         drop(prefs);
 
@@ -231,20 +232,20 @@ impl ConsentManager {
         timeout: std::time::Duration,
     ) -> Option<ConsentStatus> {
         // Check immediately
-        if let Some(status) = self.get_status(consent_id).await {
-            if status != ConsentStatus::Pending {
-                return Some(status);
-            }
+        if let Some(status) = self.get_status(consent_id).await
+            && status != ConsentStatus::Pending
+        {
+            return Some(status);
         }
 
         // Event-driven wait with timeout
         tokio::time::timeout(timeout, async {
             loop {
                 self.decision_notify.notified().await;
-                if let Some(status) = self.get_status(consent_id).await {
-                    if status != ConsentStatus::Pending {
-                        return status;
-                    }
+                if let Some(status) = self.get_status(consent_id).await
+                    && status != ConsentStatus::Pending
+                {
+                    return status;
                 }
             }
         })
@@ -373,7 +374,7 @@ mod tests {
                     user_id.clone(),
                     TaskId::new(),
                     format!("operation-{}", i),
-                    Some(50.0 * (i + 1) as f64),
+                    Some(50.0 * f64::from(i + 1)),
                 )
                 .await;
         }

@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! # Primals Configuration Module
 //!
 //! **CANONICAL PRIMALS CONFIGURATION** ✅
@@ -7,7 +10,7 @@
 use serde::{Deserialize, Serialize};
 
 // ============================================================================
-// PRIMALS CONFIGURATION - Placeholder
+// PRIMALS CONFIGURATION
 // ============================================================================
 
 /// **CANONICAL**: Primal configuration

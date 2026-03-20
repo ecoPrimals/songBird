@@ -1,3 +1,39 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
+#![allow(
+    clippy::unwrap_used,
+    clippy::expect_used,
+    clippy::unnecessary_wraps,
+    clippy::await_holding_lock,
+    clippy::float_cmp,
+    clippy::absurd_extreme_comparisons,
+    clippy::needless_collect,
+    clippy::nonminimal_bool,
+    clippy::used_underscore_binding,
+    clippy::field_reassign_with_default,
+    clippy::return_self_not_must_use,
+    clippy::overly_complex_bool_expr,
+    clippy::assertions_on_constants,
+    clippy::no_effect_underscore_binding,
+    clippy::items_after_statements,
+    clippy::empty_line_after_doc_comments,
+    clippy::const_is_empty,
+    clippy::duplicated_attributes,
+    deprecated,
+    dead_code,
+    clippy::unnecessary_literal_unwrap,
+    clippy::needless_pass_by_value,
+    clippy::must_use_candidate,
+    clippy::clone_on_ref_ptr,
+    clippy::similar_names,
+    clippy::unreadable_literal,
+    clippy::cast_possible_truncation,
+    clippy::cast_sign_loss,
+    clippy::cast_precision_loss,
+    clippy::cast_possible_wrap
+)]
+
 //! Fault Injection Tests for Songbird Discovery and BirdSong
 //!
 //! These tests verify graceful degradation under failure conditions:
@@ -13,11 +49,11 @@
 #[cfg(test)]
 mod fault_injection_tests {
     use serde_json::json;
+    use songbird_discovery::IdentityAttestation;
     use songbird_discovery::anonymous::{AnonymousDiscoveryMessage, TransportEndpointMessage};
     use songbird_discovery::birdsong::{BirdSongConfig, BirdSongEncryption, BirdSongProcessor};
-    use songbird_discovery::IdentityAttestation;
-    use std::sync::atomic::{AtomicUsize, Ordering};
     use std::sync::Arc;
+    use std::sync::atomic::{AtomicUsize, Ordering};
 
     /// Mock provider that fails after N operations
     struct FailingBirdSongProvider {
@@ -175,7 +211,7 @@ mod fault_injection_tests {
         let valid_bytes = message.to_bytes().unwrap();
 
         // Corrupt the bytes
-        let mut corrupted = valid_bytes.clone();
+        let mut corrupted = valid_bytes;
         corrupted[10] = 0xFF;
         corrupted[20] = 0xFF;
         corrupted[30] = 0xFF;

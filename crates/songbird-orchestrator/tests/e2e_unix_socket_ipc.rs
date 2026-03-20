@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! E2E Tests for Unix Socket JSON-RPC IPC
 //!
 //! v3.19.3: Integration tests with real Unix socket connections
@@ -15,7 +18,7 @@ mod common;
 use common::event_helpers::wait_for;
 
 use anyhow::Result;
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use std::io::{BufRead, BufReader, Write};
 use std::os::unix::net::UnixStream;
 use std::path::Path;

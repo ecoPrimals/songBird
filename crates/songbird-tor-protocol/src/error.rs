@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Error types for Tor protocol implementation
 
 use thiserror::Error;
@@ -27,6 +30,10 @@ pub enum Error {
     /// Crypto error (from `BearDog`)
     #[error("Crypto error: {0}")]
     Crypto(String),
+
+    /// `BearDog` crypto delegation required but unavailable or not yet wired
+    #[error("BearDog crypto unavailable: {0}")]
+    CryptoUnavailable(String),
 
     /// Protocol error
     #[error("Protocol error: {0}")]

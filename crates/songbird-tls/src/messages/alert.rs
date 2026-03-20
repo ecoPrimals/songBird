@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Alert Protocol (RFC 8446 Section 6)
 //!
 //! The Alert Protocol is used to signal errors and warnings during the TLS handshake

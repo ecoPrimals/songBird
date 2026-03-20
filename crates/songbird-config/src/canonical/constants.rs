@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! # 🎯 Canonical Constants - Environment-Aware Defaults
 //!
 //! **ZERO HARDCODING SYSTEM**
@@ -398,14 +401,14 @@ pub fn get_configured_primal_names() -> Vec<String> {
         }
 
         // Also check PRIMAL_*_ENDPOINT pattern
-        if key.starts_with("PRIMAL_") && key.ends_with("_ENDPOINT") {
-            if let Some(primal_part) =
+        if key.starts_with("PRIMAL_")
+            && key.ends_with("_ENDPOINT")
+            && let Some(primal_part) =
                 key.strip_prefix("PRIMAL_").and_then(|s| s.strip_suffix("_ENDPOINT"))
-            {
-                let primal_name = primal_part.to_lowercase();
-                if !primal_names.contains(&primal_name) {
-                    primal_names.push(primal_name);
-                }
+        {
+            let primal_name = primal_part.to_lowercase();
+            if !primal_names.contains(&primal_name) {
+                primal_names.push(primal_name);
             }
         }
     }
@@ -430,11 +433,11 @@ pub fn get_common_primal_ports() -> Vec<u16> {
 
         // Dynamically discover enabled primals from env vars
         for (key, value) in std::env::vars() {
-            if let Some(primal_name) = key.strip_prefix("SONGBIRD_ENABLE_") {
-                if value.eq_ignore_ascii_case("true") || value == "1" {
-                    let name = primal_name.to_lowercase();
-                    ports.push(base_port + get_primal_port_offset(&name));
-                }
+            if let Some(primal_name) = key.strip_prefix("SONGBIRD_ENABLE_")
+                && (value.eq_ignore_ascii_case("true") || value == "1")
+            {
+                let name = primal_name.to_lowercase();
+                ports.push(base_port + get_primal_port_offset(&name));
             }
         }
 
@@ -690,7 +693,7 @@ pub fn node_id() -> String {
 ///
 /// SOVEREIGNTY EVOLUTION: Hardcoded values removed. Use functions instead.
 pub mod network {
-    use super::{get_bind_address, SafeEnv};
+    use super::{SafeEnv, get_bind_address};
     use std::time::Duration;
 
     /// Get default host for current environment

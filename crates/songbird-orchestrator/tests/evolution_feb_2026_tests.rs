@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Evolution Tests - February 2026
 //!
 //! Comprehensive test coverage for the deep debt evolution work:
@@ -206,26 +209,26 @@ mod family_id_unit {
         // Priority: SONGBIRD_FAMILY_ID > FAMILY_ID > default "default"
 
         // Clear all
-        std::env::remove_var("SONGBIRD_FAMILY_ID");
-        std::env::remove_var("FAMILY_ID");
+        songbird_process_env::remove_var("SONGBIRD_FAMILY_ID");
+        songbird_process_env::remove_var("FAMILY_ID");
 
         // Default should be "default"
         let family_id = get_family_id_from_env();
         assert_eq!(family_id, "default", "Default should be 'default'");
 
         // FAMILY_ID should override default
-        std::env::set_var("FAMILY_ID", "family-fallback");
+        songbird_process_env::set_var("FAMILY_ID", "family-fallback");
         let family_id = get_family_id_from_env();
         assert_eq!(family_id, "family-fallback", "FAMILY_ID should be used");
 
         // SONGBIRD_FAMILY_ID should have highest priority
-        std::env::set_var("SONGBIRD_FAMILY_ID", "songbird-primary");
+        songbird_process_env::set_var("SONGBIRD_FAMILY_ID", "songbird-primary");
         let family_id = get_family_id_from_env();
         assert_eq!(family_id, "songbird-primary", "SONGBIRD_FAMILY_ID should have priority");
 
         // Cleanup
-        std::env::remove_var("SONGBIRD_FAMILY_ID");
-        std::env::remove_var("FAMILY_ID");
+        songbird_process_env::remove_var("SONGBIRD_FAMILY_ID");
+        songbird_process_env::remove_var("FAMILY_ID");
     }
 
     #[test]
@@ -242,12 +245,12 @@ mod family_id_unit {
         ];
 
         for id in special_ids {
-            std::env::set_var("SONGBIRD_FAMILY_ID", id);
+            songbird_process_env::set_var("SONGBIRD_FAMILY_ID", id);
             let family_id = get_family_id_from_env();
             assert_eq!(family_id, id);
         }
 
-        std::env::remove_var("SONGBIRD_FAMILY_ID");
+        songbird_process_env::remove_var("SONGBIRD_FAMILY_ID");
     }
 
     /// Helper to get family_id using same logic as canonical env chain
@@ -379,14 +382,14 @@ mod evolution_e2e {
         let _guard = ENV_LOCK.lock().unwrap();
         // Test that family_id is properly propagated through the system
         let test_family = format!("test-family-{}", uuid::Uuid::new_v4());
-        std::env::set_var("SONGBIRD_FAMILY_ID", &test_family);
+        songbird_process_env::set_var("SONGBIRD_FAMILY_ID", &test_family);
 
         // Verify it's readable
         let family_id = std::env::var("SONGBIRD_FAMILY_ID")?;
         assert_eq!(family_id, test_family);
 
         // Clean up
-        std::env::remove_var("SONGBIRD_FAMILY_ID");
+        songbird_process_env::remove_var("SONGBIRD_FAMILY_ID");
         Ok(())
     }
 
@@ -521,9 +524,9 @@ mod evolution_chaos {
                 let var_name = format!("CHAOS_VAR_{}", i);
                 thread::spawn(move || {
                     for j in 0..100 {
-                        std::env::set_var(&var_name, format!("value-{}", j));
+                        songbird_process_env::set_var(&var_name, format!("value-{}", j));
                         let _ = std::env::var(&var_name);
-                        std::env::remove_var(&var_name);
+                        songbird_process_env::remove_var(&var_name);
                     }
                 })
             })
@@ -616,8 +619,8 @@ mod evolution_fault_injection {
     fn test_fault_missing_family_id_graceful_default() {
         let _guard = ENV_LOCK.lock().unwrap();
         // Ensure missing family_id defaults gracefully
-        std::env::remove_var("SONGBIRD_FAMILY_ID");
-        std::env::remove_var("FAMILY_ID");
+        songbird_process_env::remove_var("SONGBIRD_FAMILY_ID");
+        songbird_process_env::remove_var("FAMILY_ID");
 
         let family_id = std::env::var("SONGBIRD_FAMILY_ID")
             .or_else(|_| std::env::var("FAMILY_ID"))

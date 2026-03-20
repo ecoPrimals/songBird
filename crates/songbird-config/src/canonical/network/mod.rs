@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Canonical Network Configuration - Modular Implementation
 //!
 //! **REFACTORED**: November 10, 2025 - Split from monolithic 1,261-line file

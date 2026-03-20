@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Primal availability checking and alternative suggestions
 //!
 //! This module integrates with the service registry (v3.20.0) to check if required
@@ -510,7 +513,7 @@ mod tests {
             inputs: vec![],
             outputs: vec![],
             config: serde_json::json!({}),
-            preferred_protocol: protocol.map(|s| s.to_string()),
+            preferred_protocol: protocol.map(std::string::ToString::to_string),
             timeout_secs: None,
         }
     }

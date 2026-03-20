@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 //  Process Manager - Multi-Instance Support with NODE_ID Scoping
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -31,7 +34,7 @@
 //
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-use anyhow::{bail, Context, Result};
+use anyhow::{Context, Result, bail};
 use std::fs;
 use std::path::PathBuf;
 use std::process;
@@ -127,20 +130,20 @@ impl ProcessManager {
         // Priority 1: Explicit override via SONGBIRD_PID_DIR (for Android/restricted environments)
         if let Ok(pid_dir) = std::env::var("SONGBIRD_PID_DIR") {
             let custom_path = PathBuf::from(&pid_dir).join(&filename);
-            if let Some(parent) = custom_path.parent() {
-                if fs::create_dir_all(parent).is_ok() {
-                    debug!("Using SONGBIRD_PID_DIR: {}", custom_path.display());
-                    return Ok(custom_path);
-                }
+            if let Some(parent) = custom_path.parent()
+                && fs::create_dir_all(parent).is_ok()
+            {
+                debug!("Using SONGBIRD_PID_DIR: {}", custom_path.display());
+                return Ok(custom_path);
             }
         }
 
         // Priority 2: Try system-wide location first
         let system_path = PathBuf::from("/var/run/songbird").join(&filename);
-        if let Some(parent) = system_path.parent() {
-            if parent.exists() || fs::create_dir_all(parent).is_ok() {
-                return Ok(system_path);
-            }
+        if let Some(parent) = system_path.parent()
+            && (parent.exists() || fs::create_dir_all(parent).is_ok())
+        {
+            return Ok(system_path);
         }
 
         // Priority 3: Fall back to user-specific location
@@ -443,7 +446,7 @@ mod tests {
         // Clean up any stale file
         let _ = fs::remove_file(&pid_file);
 
-        let manager = ProcessManager::with_pid_file(pid_file.clone());
+        let manager = ProcessManager::with_pid_file(pid_file);
 
         // First lock should succeed
         let _guard1 = manager.acquire_lock().expect("First lock should succeed");
@@ -467,7 +470,7 @@ mod tests {
         // Create a stale PID file with a definitely-not-running PID
         fs::write(&pid_file, "999999").unwrap();
 
-        let manager = ProcessManager::with_pid_file(pid_file.clone());
+        let manager = ProcessManager::with_pid_file(pid_file);
 
         // Should succeed by cleaning up stale file
         let _guard = manager.acquire_lock().expect("Should clean up stale PID");
@@ -571,7 +574,7 @@ mod tests {
         // In production, is_process_running() would detect a real zombie via /proc
         fs::write(&pid_file, "999999").unwrap();
 
-        let manager = ProcessManager::with_pid_file(pid_file.clone());
+        let manager = ProcessManager::with_pid_file(pid_file);
 
         // Should succeed because is_process_running(999999) returns false
         let result = manager.acquire_lock();
@@ -590,7 +593,7 @@ mod tests {
         // Clean up
         let _ = fs::remove_file(&pid_file);
 
-        let manager = ProcessManager::with_pid_file(pid_file.clone());
+        let manager = ProcessManager::with_pid_file(pid_file);
 
         // First lock succeeds
         let _guard1 = manager.acquire_lock().expect("First lock should succeed");

@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Chaos Tests for BearDog JWT Delegation
 //!
 //! Tests JWT provisioning under chaotic conditions.
@@ -74,10 +77,10 @@ async fn test_chaos_jwt_provisioning_with_varying_paths() {
                     String::new()
                 };
 
-                let socket = if !socket_path.is_empty() {
-                    Some(socket_path.as_str())
-                } else {
+                let socket = if socket_path.is_empty() {
                     None
+                } else {
+                    Some(socket_path.as_str())
                 };
 
                 provision_jwt_secret(socket, &format!("chaos_path_{}", i))

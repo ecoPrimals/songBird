@@ -1,10 +1,13 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Basic types tests for songbird-types
 //!
 //! NOTE: Updated to use modern capability-based PrimalType (Nov 2025)
 //! Old hardcoded primal names (BearDog, Squirrel, etc.) have been replaced
 //! with capability-based types (Security, Storage, Compute, AI)
 
-#![allow(clippy::unwrap_used)]
+#![allow(clippy::unwrap_used, clippy::expect_used, clippy::useless_vec)]
 use songbird_types::traits::canonical::PrimalType;
 
 #[test]

@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! CLI-specific error handling - Modernized to use canonical error system
 
 use songbird_types::SongbirdError;

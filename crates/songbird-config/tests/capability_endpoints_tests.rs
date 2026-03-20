@@ -1,5 +1,28 @@
-// Allow unwrap/expect in tests - idiomatic for test code
-#![allow(clippy::unwrap_used, clippy::expect_used)]
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
+#![allow(
+    clippy::unwrap_used,
+    clippy::expect_used,
+    clippy::unnecessary_wraps,
+    clippy::await_holding_lock,
+    clippy::float_cmp,
+    clippy::absurd_extreme_comparisons,
+    clippy::needless_collect,
+    clippy::nonminimal_bool,
+    clippy::used_underscore_binding,
+    clippy::field_reassign_with_default,
+    clippy::return_self_not_must_use,
+    clippy::overly_complex_bool_expr,
+    clippy::assertions_on_constants,
+    clippy::no_effect_underscore_binding,
+    clippy::items_after_statements,
+    clippy::empty_line_after_doc_comments,
+    clippy::const_is_empty,
+    clippy::duplicated_attributes,
+    deprecated,
+    clippy::unnecessary_literal_unwrap
+)]
 
 //! Tests for the Capability Endpoints system
 //!
@@ -213,20 +236,20 @@ async fn test_resolver_creation() {
 #[tokio::test]
 async fn test_resolver_discovers_from_env() {
     let _guard = ENV_LOCK.lock().unwrap();
-    std::env::set_var("CAPABILITY_COMPUTE_ENDPOINT", "http://compute:8080");
+    songbird_process_env::set_var("CAPABILITY_COMPUTE_ENDPOINT", "http://compute:8080");
 
     let resolver = CapabilityEndpointResolver::new();
     let result = resolver.get_endpoint(CapabilityType::Compute).await;
     assert!(result.is_ok(), "Should discover endpoint from env");
     assert_eq!(result.unwrap(), "http://compute:8080");
 
-    std::env::remove_var("CAPABILITY_COMPUTE_ENDPOINT");
+    songbird_process_env::remove_var("CAPABILITY_COMPUTE_ENDPOINT");
 }
 
 #[tokio::test]
 async fn test_resolver_caches_result() {
     let _guard = ENV_LOCK.lock().unwrap();
-    std::env::set_var("CAPABILITY_AI_ENDPOINT", "http://ai:9090");
+    songbird_process_env::set_var("CAPABILITY_AI_ENDPOINT", "http://ai:9090");
 
     let resolver = CapabilityEndpointResolver::new();
 
@@ -235,24 +258,24 @@ async fn test_resolver_caches_result() {
     assert_eq!(result1, "http://ai:9090");
 
     // Second call should use cache (remove env var to prove it)
-    std::env::remove_var("CAPABILITY_AI_ENDPOINT");
+    songbird_process_env::remove_var("CAPABILITY_AI_ENDPOINT");
     let result2 = resolver.get_endpoint(CapabilityType::Ai).await.unwrap();
     assert_eq!(result2, "http://ai:9090"); // Still cached
 
-    std::env::remove_var("CAPABILITY_AI_ENDPOINT");
+    songbird_process_env::remove_var("CAPABILITY_AI_ENDPOINT");
 }
 
 #[tokio::test]
 async fn test_resolver_custom_capability_from_env() {
     let _guard = ENV_LOCK.lock().unwrap();
-    std::env::set_var("CAPABILITY_BLOCKCHAIN_ENDPOINT", "http://chain:3000");
+    songbird_process_env::set_var("CAPABILITY_BLOCKCHAIN_ENDPOINT", "http://chain:3000");
 
     let resolver = CapabilityEndpointResolver::new();
     let result = resolver.get_endpoint(CapabilityType::Custom("blockchain".to_string())).await;
     assert!(result.is_ok());
     assert_eq!(result.unwrap(), "http://chain:3000");
 
-    std::env::remove_var("CAPABILITY_BLOCKCHAIN_ENDPOINT");
+    songbird_process_env::remove_var("CAPABILITY_BLOCKCHAIN_ENDPOINT");
 }
 
 // ============================================================

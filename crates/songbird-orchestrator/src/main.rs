@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Songbird - Network Orchestration & Discovery Primal
 //!
 //! `UniBin` Architecture (Ecosystem Standard v1.0.0)

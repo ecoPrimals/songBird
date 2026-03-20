@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! P2P Discovery API Handlers (v3.19.1, refactored v3.22.1)
 //!
 //! Handlers for peer discovery and BTSP tunnel establishment.
@@ -14,6 +17,15 @@ use crate::ipc::types::{
 use songbird_types::trust::TrustLevel;
 use std::time::SystemTime;
 use tracing::{info, warn};
+
+/// Returns whether a discovered peer matches any of the requested family tag substrings.
+/// Used by `discover_by_family` and `discover_by_family_json` (keep logic identical).
+fn peer_matches_family_tags(peer_tags: Option<&Vec<String>>, family_tags: &[String]) -> bool {
+    let Some(tags) = peer_tags else {
+        return false;
+    };
+    family_tags.iter().any(|family_tag| tags.iter().any(|peer_tag| peer_tag.contains(family_tag)))
+}
 
 // ============================================================================
 // jsonrpsee Handlers (for jsonrpsee server)
@@ -45,19 +57,7 @@ pub async fn discover_by_family(
             // Filter peers by family tags
             discovered_peers
                 .into_iter()
-                .filter(|peer| {
-                    // Check if peer has any matching family tags
-                    if let Some(ref tags) = peer.tags {
-                        request.family_tags.iter().any(|family_tag| {
-                            tags.iter().any(|peer_tag| {
-                                // Match tags like "beardog:family:nat0"
-                                peer_tag.contains(family_tag)
-                            })
-                        })
-                    } else {
-                        false
-                    }
-                })
+                .filter(|peer| peer_matches_family_tags(peer.tags.as_ref(), &request.family_tags))
                 .collect()
         };
 
@@ -237,15 +237,7 @@ pub async fn discover_by_family_json(
         } else {
             discovered_peers
                 .into_iter()
-                .filter(|peer| {
-                    if let Some(ref tags) = peer.tags {
-                        family_tags.iter().any(|family_tag| {
-                            tags.iter().any(|peer_tag| peer_tag.contains(family_tag))
-                        })
-                    } else {
-                        false
-                    }
-                })
+                .filter(|peer| peer_matches_family_tags(peer.tags.as_ref(), family_tags))
                 .collect()
         };
 
@@ -374,4 +366,36 @@ pub async fn announce_capabilities_json(
     };
 
     serde_json::to_value(response).map_err(|e| JsonRpcError::internal_error(e.to_string()))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::peer_matches_family_tags;
+
+    #[test]
+    fn peer_matches_when_tag_contains_family_token() {
+        let tags = vec!["beardog:family:nat0:tower1".to_string()];
+        let families = vec!["nat0".to_string()];
+        assert!(peer_matches_family_tags(Some(&tags), &families));
+    }
+
+    #[test]
+    fn peer_no_match_when_tags_missing() {
+        let families = vec!["nat0".to_string()];
+        assert!(!peer_matches_family_tags(None, &families));
+    }
+
+    #[test]
+    fn peer_no_match_when_family_list_nonmatching() {
+        let tags = vec!["beardog:family:other:node".to_string()];
+        let families = vec!["nat0".to_string()];
+        assert!(!peer_matches_family_tags(Some(&tags), &families));
+    }
+
+    #[test]
+    fn empty_family_filter_matches_nothing_in_helper() {
+        let tags = vec!["x".to_string()];
+        let families: Vec<String> = vec![];
+        assert!(!peer_matches_family_tags(Some(&tags), &families));
+    }
 }

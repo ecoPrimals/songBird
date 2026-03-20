@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Comprehensive load balancer tests
 //!
 //! Tests load balancing algorithms, failover, health-based routing, and edge cases

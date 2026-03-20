@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Universal Adapter /// Configuration capability Configuration
 //!
 //! Configuration structures for universal adapters that integrate with ecosystem primals

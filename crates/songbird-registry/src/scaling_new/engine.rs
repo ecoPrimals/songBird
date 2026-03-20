@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Scaling engine implementation
 //!
 //! Manages automatic scaling of plugins based on policies.
@@ -49,5 +52,37 @@ impl ScalingEngine {
 impl Default for ScalingEngine {
     fn default() -> Self {
         Self::new()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::super::policy::ScalingPolicy;
+    use super::*;
+    use crate::types::PluginId;
+
+    #[tokio::test]
+    async fn add_remove_policy_and_instance_default() {
+        let engine = ScalingEngine::new();
+        let id = PluginId::new("scale-test");
+        engine.add_policy(id.clone(), ScalingPolicy::default()).await;
+        assert_eq!(engine.get_instance_count(&id).await, 1);
+        engine.remove_policy(&id).await;
+        assert_eq!(engine.get_instance_count(&id).await, 1);
+    }
+
+    #[tokio::test]
+    async fn default_matches_new() {
+        let a = ScalingEngine::new();
+        let b = ScalingEngine::default();
+        let id = PluginId::new("x");
+        assert_eq!(a.get_instance_count(&id).await, b.get_instance_count(&id).await);
+    }
+
+    #[tokio::test]
+    async fn get_instance_count_unknown_returns_one() {
+        let engine = ScalingEngine::new();
+        let id = PluginId::new("unknown-plugin");
+        assert_eq!(engine.get_instance_count(&id).await, 1);
     }
 }

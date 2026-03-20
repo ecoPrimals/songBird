@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Port Fallback Discovery Tests
 //!
 //! Tests for the port fallback bug fix (Dec 20, 2025)
@@ -11,9 +14,7 @@
 //! 5. Node identity uses actual port for endpoints
 
 use anyhow::Result;
-use std::net::{SocketAddr, TcpListener};
-use std::time::Duration;
-use tokio::time::sleep;
+use std::net::TcpListener;
 
 /// Test helper: Occupy a port to force fallback
 struct PortOccupier {

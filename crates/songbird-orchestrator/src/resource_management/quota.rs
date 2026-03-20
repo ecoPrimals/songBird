@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Resource Quota System
 //!
 //! Manages per-user resource quotas with:
@@ -112,10 +115,10 @@ impl ResourceQuota {
         let mut available = HashMap::new();
 
         for (resource_type, limit) in &self.limits {
-            if let Some(used) = self.used.get(resource_type) {
-                if let Ok(avail) = limit.sub(used) {
-                    available.insert(*resource_type, avail);
-                }
+            if let Some(used) = self.used.get(resource_type)
+                && let Ok(avail) = limit.sub(used)
+            {
+                available.insert(*resource_type, avail);
             }
         }
 

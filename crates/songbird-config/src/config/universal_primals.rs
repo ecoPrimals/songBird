@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Universal Primal Configuration System (DEPRECATED)
 //!
 //! ⚠️ **DEPRECATED - CONSOLIDATED INTO CANONICAL** (November 8, 2025)

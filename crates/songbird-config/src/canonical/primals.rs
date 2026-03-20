@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Primal ecosystem type definitions
 //!
 //! **CANONICAL MODULE**: Single source of truth for primal configuration types

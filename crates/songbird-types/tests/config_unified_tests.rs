@@ -1,5 +1,13 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 // Allow unwrap/expect in tests - idiomatic for test code
-#![allow(clippy::unwrap_used, clippy::expect_used)]
+#![allow(
+    clippy::unwrap_used,
+    clippy::expect_used,
+    clippy::unnecessary_wraps,
+    clippy::field_reassign_with_default
+)]
 
 //! Tests for Unified Songbird Configuration
 //!
@@ -8,7 +16,7 @@
 //! **Concurrency**: Tests are being modernized to use `TestEnv` for isolation.
 //! Serial tests are being systematically eliminated!
 
-use songbird_test_utils::{test_bind_address, TestEnv};
+use songbird_test_utils::TestEnv;
 use songbird_types::config::unified::UnifiedSongbirdConfig;
 use songbird_types::{SongbirdError, SongbirdResult};
 
@@ -282,7 +290,10 @@ fn test_is_test_from_ci() {
 
 #[test]
 fn test_is_not_test() {
-    assert!(!UnifiedSongbirdConfig::is_test());
+    // Use explicit empty env map rather than reading real env vars,
+    // which may include CI=true from the test runner or host environment
+    let env = TestEnv::new();
+    assert!(!UnifiedSongbirdConfig::is_test_from_env(env.as_map()));
 }
 
 #[test]

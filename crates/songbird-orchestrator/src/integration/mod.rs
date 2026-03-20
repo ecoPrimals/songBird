@@ -1,6 +1,9 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 #![allow(dead_code)]
 
-use crate::app::{start_orchestrator, SongbirdOrchestrator};
+use crate::app::{SongbirdOrchestrator, start_orchestrator};
 use anyhow::Result;
 use songbird_types::config::CanonicalSongbirdConfig;
 use tokio::time::Duration;

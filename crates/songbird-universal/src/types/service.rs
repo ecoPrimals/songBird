@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Service lifecycle and identification types
 //!
 //! This module provides types for service registration, discovery,

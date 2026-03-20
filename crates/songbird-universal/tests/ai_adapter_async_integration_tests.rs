@@ -1,3 +1,38 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
+#![allow(
+    clippy::unwrap_used,
+    clippy::expect_used,
+    clippy::unnecessary_wraps,
+    clippy::await_holding_lock,
+    clippy::float_cmp,
+    clippy::absurd_extreme_comparisons,
+    clippy::needless_collect,
+    clippy::nonminimal_bool,
+    clippy::used_underscore_binding,
+    clippy::field_reassign_with_default,
+    clippy::return_self_not_must_use,
+    clippy::overly_complex_bool_expr,
+    clippy::assertions_on_constants,
+    clippy::no_effect_underscore_binding,
+    clippy::items_after_statements,
+    clippy::empty_line_after_doc_comments,
+    clippy::const_is_empty,
+    clippy::duplicated_attributes,
+    deprecated,
+    dead_code,
+    clippy::unnecessary_literal_unwrap,
+    clippy::needless_pass_by_value,
+    clippy::must_use_candidate,
+    clippy::clone_on_ref_ptr,
+    clippy::similar_names,
+    clippy::unreadable_literal,
+    clippy::cast_possible_truncation,
+    clippy::cast_sign_loss,
+    clippy::cast_precision_loss,
+    clippy::cast_possible_wrap
+)]
 // Allow unwrap/expect in tests - idiomatic for test code
 #![allow(clippy::unwrap_used, clippy::expect_used)]
 
@@ -26,7 +61,7 @@ async fn test_from_discovery_with_env_variable() {
     let endpoint = server.url();
 
     // Set environment variable
-    std::env::set_var("SONGBIRD_AI_ENDPOINT", &endpoint);
+    songbird_process_env::set_var("SONGBIRD_AI_ENDPOINT", &endpoint);
 
     // Should discover from env var
     let adapter = AIAdapter::from_discovery().await;
@@ -36,7 +71,7 @@ async fn test_from_discovery_with_env_variable() {
     assert_eq!(adapter.endpoint(), &endpoint);
 
     // Cleanup
-    std::env::remove_var("SONGBIRD_AI_ENDPOINT");
+    songbird_process_env::remove_var("SONGBIRD_AI_ENDPOINT");
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
@@ -45,21 +80,21 @@ async fn test_from_discovery_with_legacy_env() {
     let endpoint = server.url();
 
     // Set legacy AI_PROVIDER_ENDPOINT
-    std::env::set_var("AI_PROVIDER_ENDPOINT", &endpoint);
+    songbird_process_env::set_var("AI_PROVIDER_ENDPOINT", &endpoint);
 
     // Should discover from legacy env var
     let adapter = AIAdapter::from_discovery().await;
     assert!(adapter.is_ok(), "Should create adapter from legacy env var");
 
     // Cleanup
-    std::env::remove_var("AI_PROVIDER_ENDPOINT");
+    songbird_process_env::remove_var("AI_PROVIDER_ENDPOINT");
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_from_discovery_fallback_to_default() {
     // Clear all env vars that might interfere
-    std::env::remove_var("SONGBIRD_AI_ENDPOINT");
-    std::env::remove_var("AI_PROVIDER_ENDPOINT");
+    songbird_process_env::remove_var("SONGBIRD_AI_ENDPOINT");
+    songbird_process_env::remove_var("AI_PROVIDER_ENDPOINT");
 
     // Should fall back to default host:port
     let adapter = AIAdapter::from_discovery().await;

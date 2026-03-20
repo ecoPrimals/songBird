@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Pure Rust Certificate Generation (Hybrid Standalone + `BearDog`)
 //!
 //! This module provides certificate generation with two modes:
@@ -12,7 +15,7 @@ use crate::error::Result;
 use crate::messages::certificate::{Certificate, CertificateEntry};
 use chrono::{DateTime, Duration, Utc};
 use ed25519_dalek::{SigningKey, VerifyingKey};
-use rand::{rngs::OsRng, RngCore};
+use rand::{RngCore, rngs::OsRng};
 
 /// Certificate generation mode
 #[derive(Debug, Clone, PartialEq, Eq, Default)]

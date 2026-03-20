@@ -1,9 +1,12 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! HTTP-based deployment client with capability negotiation
 //!
 //! Deploy services via Songbird's HTTP deployment API with intelligent
 //! method selection based on node capabilities.
 
-use anyhow::{anyhow, Result};
+use anyhow::{Result, anyhow};
 use serde::{Deserialize, Serialize};
 use songbird_http_client::{Form, IpcHttpClient, Part};
 use std::collections::HashMap;
@@ -637,4 +640,100 @@ pub async fn list_deployments(tower_endpoint: &str) -> Result<Vec<DeploymentInfo
         response.json().await.map_err(|e| anyhow!("Failed to parse response: {e}"))?;
 
     Ok(deployments)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn sample_capabilities_json() -> &'static str {
+        r#"{
+            "node_id": "node-1",
+            "network": {
+                "type": "lan",
+                "bandwidth_estimate": {
+                    "download_mbps": 100,
+                    "upload_mbps": 100,
+                    "latency_ms": 5,
+                    "confidence": "high"
+                }
+            },
+            "deployment_methods": {
+                "single": {
+                    "enabled": true,
+                    "max_size_mb": 50,
+                    "compression_supported": [],
+                    "recommended_for": "small"
+                },
+                "chunked": {
+                    "enabled": true,
+                    "max_total_size_mb": 500,
+                    "chunk_size_mb": 10,
+                    "max_chunks": 100,
+                    "compression_supported": [],
+                    "recommended_for": "large"
+                },
+                "streaming": {
+                    "enabled": false,
+                    "unlimited": false,
+                    "compression_supported": [],
+                    "recommended_for": "huge"
+                }
+            },
+            "resources": {
+                "available_storage_gb": 100,
+                "available_memory_gb": 16,
+                "cpu_cores": 8,
+                "cpu_load_percent": 0.1,
+                "max_concurrent_deployments": 4,
+                "current_deployments": 0
+            }
+        }"#
+    }
+
+    #[test]
+    fn deployment_response_json_roundtrip() {
+        let original = DeploymentResponse {
+            deployment_id: "dep-1".into(),
+            status: "ok".into(),
+            message: "deployed".into(),
+            service_url: Some("http://localhost:8080".into()),
+        };
+        let json = serde_json::to_string(&original).unwrap();
+        let parsed: DeploymentResponse = serde_json::from_str(&json).unwrap();
+        assert_eq!(parsed.deployment_id, original.deployment_id);
+        assert_eq!(parsed.status, original.status);
+        assert_eq!(parsed.message, original.message);
+        assert_eq!(parsed.service_url, original.service_url);
+    }
+
+    #[test]
+    fn select_deployment_method_fallback_when_no_capabilities() {
+        assert!(matches!(select_deployment_method(None, 1.0), SelectedMethod::Fallback));
+    }
+
+    #[test]
+    fn select_deployment_method_single_when_under_limit() {
+        let caps: DeploymentCapabilities =
+            serde_json::from_str(sample_capabilities_json()).unwrap();
+        let m = select_deployment_method(Some(&caps), 10.0);
+        assert!(matches!(m, SelectedMethod::Single { .. }));
+    }
+
+    #[test]
+    fn select_deployment_method_chunked_when_over_single_limit() {
+        let caps: DeploymentCapabilities =
+            serde_json::from_str(sample_capabilities_json()).unwrap();
+        let m = select_deployment_method(Some(&caps), 100.0);
+        assert!(matches!(m, SelectedMethod::Chunked { .. }));
+    }
+
+    #[test]
+    fn deployment_capabilities_deserialize() {
+        let caps: DeploymentCapabilities =
+            serde_json::from_str(sample_capabilities_json()).unwrap();
+        assert_eq!(caps.node_id, "node-1");
+        assert_eq!(caps.network.network_type, "lan");
+        assert!(caps.deployment_methods.single.enabled);
+    }
 }

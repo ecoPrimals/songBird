@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Orchestrator metrics collection and reporting
 //!
 //! This module provides comprehensive metrics for the orchestrator's performance

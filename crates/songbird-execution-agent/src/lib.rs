@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! # Songbird Execution Agent
 //!
 //! Remote command execution agent that runs on each tower in the federation.

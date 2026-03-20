@@ -1,4 +1,8 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Tests for canonical API configuration types
+#![allow(clippy::expect_used)]
 
 use songbird_types::config::api::*;
 use std::time::Duration;

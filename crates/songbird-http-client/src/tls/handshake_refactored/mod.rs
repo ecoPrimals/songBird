@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! TLS 1.3 handshake implementation (REFACTORED - Smart Modular Architecture)
 //!
 //! This module provides a Pure Rust TLS 1.3 handshake implementation

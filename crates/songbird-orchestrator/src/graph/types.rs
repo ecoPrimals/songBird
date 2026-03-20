@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Core data types for graph validation
 //!
 //! This module defines the data structures used for representing and validating
@@ -443,7 +446,7 @@ mod tests {
         let graph = Graph::new(
             "test".to_string(),
             "Test".to_string(),
-            vec![node1.clone(), node2],
+            vec![node1, node2],
             vec![edge],
             GraphMetadata::default(),
         );
@@ -486,7 +489,7 @@ mod tests {
         let graph = Graph::new(
             "test".to_string(),
             "Test".to_string(),
-            vec![node1, node2.clone()],
+            vec![node1, node2],
             vec![edge],
             GraphMetadata::default(),
         );

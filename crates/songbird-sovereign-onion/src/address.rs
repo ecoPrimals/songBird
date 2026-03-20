@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Onion address derivation and validation (Tor v3 format)
 
 use crate::beardog_crypto::BeardogCryptoClient;
@@ -9,22 +12,10 @@ use ed25519_dalek::VerifyingKey;
 #[cfg(feature = "standalone")]
 use sha3::{Digest, Sha3_256};
 
-/// Derive .onion address via BearDog (TRUE PRIMAL)
+/// Derive .onion address from an Ed25519 public key using `BearDog` for SHA3-256 (sync).
 ///
-/// Uses BearDog's crypto.sha3_256 for the checksum calculation.
-///
-/// # Example
-///
-/// ```no_run
-/// # use songbird_sovereign_onion::{derive_onion_address_via_beardog, BeardogCryptoClient};
-/// # tokio_test::block_on(async {
-/// let client = BeardogCryptoClient::from_env().unwrap();
-/// let pubkey_bytes = [0u8; 32]; // Your Ed25519 public key
-/// let onion = derive_onion_address_via_beardog(&client, &pubkey_bytes).await.unwrap();
-/// assert!(onion.ends_with(".onion"));
-/// # });
-/// ```
-pub async fn derive_onion_address_via_beardog(
+/// Shared by [`derive_onion_address_via_beardog`] and synchronous load paths.
+pub(crate) fn derive_onion_address_with_beardog_sync(
     client: &BeardogCryptoClient,
     pubkey_bytes: &[u8; 32],
 ) -> Result<String> {
@@ -56,10 +47,41 @@ pub async fn derive_onion_address_via_beardog(
         &data,
     );
 
-    Ok(format!("{}.onion", encoded))
+    Ok(format!("{encoded}.onion"))
 }
 
-/// Validate .onion address via BearDog (TRUE PRIMAL)
+/// Derive .onion address via `BearDog` (TRUE PRIMAL)
+///
+/// Uses `BearDog`'s `crypto.sha3_256` for the checksum calculation.
+///
+/// # Example
+///
+/// ```no_run
+/// # use songbird_sovereign_onion::{derive_onion_address_via_beardog, BeardogCryptoClient};
+/// # tokio_test::block_on(async {
+/// let client = BeardogCryptoClient::from_env().unwrap();
+/// let pubkey_bytes = [0u8; 32]; // Your Ed25519 public key
+/// let onion = derive_onion_address_via_beardog(&client, &pubkey_bytes).await.unwrap();
+/// assert!(onion.ends_with(".onion"));
+/// # });
+/// ```
+///
+/// # Errors
+///
+/// Returns error if BearDog RPC fails or checksum computation fails.
+pub async fn derive_onion_address_via_beardog(
+    client: &BeardogCryptoClient,
+    pubkey_bytes: &[u8; 32],
+) -> Result<String> {
+    core::future::ready(()).await;
+    derive_onion_address_with_beardog_sync(client, pubkey_bytes)
+}
+
+/// Validate .onion address via `BearDog` (TRUE PRIMAL)
+///
+/// # Errors
+///
+/// Returns error if address format is invalid, checksum fails, or BearDog RPC fails.
 pub async fn validate_onion_address_via_beardog(
     client: &BeardogCryptoClient,
     onion: &str,
@@ -165,7 +187,7 @@ pub fn derive_onion_address(pubkey: &VerifyingKey) -> String {
         &data,
     );
 
-    format!("{}.onion", encoded)
+    format!("{encoded}.onion")
 }
 
 /// Standalone: Parse .onion address to extract Ed25519 public key
@@ -334,7 +356,7 @@ mod tests {
             },
             &data,
         );
-        let corrupted = format!("{}.onion", corrupted_encoded);
+        let corrupted = format!("{corrupted_encoded}.onion");
 
         let result = validate_onion_address(&corrupted);
         assert!(matches!(result, Err(OnionError::ChecksumMismatch)));
@@ -350,5 +372,48 @@ mod tests {
 
         let parsed_pubkey = parse_onion_address(&onion).unwrap();
         assert_eq!(original_pubkey.as_bytes(), parsed_pubkey.as_bytes());
+    }
+}
+
+#[cfg(test)]
+mod beardog_path_tests {
+    use super::*;
+    use crate::beardog_crypto::BeardogCryptoClient;
+
+    #[tokio::test]
+    async fn validate_via_beardog_rejects_non_onion_suffix() {
+        let client = BeardogCryptoClient::with_tcp("127.0.0.1", 1);
+        let r = validate_onion_address_via_beardog(&client, "not-onion").await;
+        assert!(matches!(r, Err(OnionError::InvalidFormat)));
+    }
+
+    #[tokio::test]
+    async fn validate_via_beardog_rejects_bad_base32() {
+        let client = BeardogCryptoClient::with_tcp("127.0.0.1", 1);
+        let r = validate_onion_address_via_beardog(&client, "!!!!.onion").await;
+        assert!(matches!(r, Err(OnionError::InvalidEncoding)));
+    }
+
+    #[tokio::test]
+    async fn validate_via_beardog_rejects_wrong_decoded_length() {
+        let client = BeardogCryptoClient::with_tcp("127.0.0.1", 1);
+        let r = validate_onion_address_via_beardog(&client, "aa.onion").await;
+        assert!(matches!(r, Err(OnionError::InvalidLength(_))));
+    }
+
+    #[test]
+    fn derive_with_beardog_sync_fails_without_service() {
+        let client = BeardogCryptoClient::with_tcp("127.0.0.1", 1);
+        let pk = [7u8; 32];
+        let r = derive_onion_address_with_beardog_sync(&client, &pk);
+        assert!(r.is_err());
+    }
+
+    #[tokio::test]
+    async fn derive_via_beardog_async_delegates_to_sync() {
+        let client = BeardogCryptoClient::with_tcp("127.0.0.1", 1);
+        let pk = [7u8; 32];
+        let r = derive_onion_address_via_beardog(&client, &pk).await;
+        assert!(r.is_err());
     }
 }

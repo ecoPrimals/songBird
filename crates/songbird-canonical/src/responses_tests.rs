@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Unit tests for canonical response types
 
 #[cfg(test)]
@@ -7,9 +10,9 @@ mod tests {
     #![allow(clippy::useless_vec)]
     #![allow(clippy::unreadable_literal)]
 
+    use crate::SuggestedAction;
     use crate::metadata::AIResponseMetadata;
     use crate::responses::*;
-    use crate::SuggestedAction;
     use std::time::Instant;
 
     #[test]

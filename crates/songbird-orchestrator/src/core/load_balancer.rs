@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! # ⚖️ Load Balancer
 //!
 //! **MODERN LOAD BALANCING** ✅
@@ -248,10 +251,14 @@ mod tests {
         let health = lb.health_check().await?;
 
         assert!(health.message.is_some());
-        assert!(health
-            .message
-            .ok_or_else(|| SongbirdError::configuration("Failed to select service".to_string()))?
-            .contains("operational"));
+        assert!(
+            health
+                .message
+                .ok_or_else(|| SongbirdError::configuration(
+                    "Failed to select service".to_string()
+                ))?
+                .contains("operational")
+        );
         Ok(())
     }
 

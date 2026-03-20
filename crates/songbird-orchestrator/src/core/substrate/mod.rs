@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! OS Substrate Integration with Performance Optimizations Optimizations
 //!
 //! This module provides platform-agnostic OS operations by delegating to the

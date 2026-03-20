@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Anonymous Discovery Broadcaster
 //!
 //! This module contains the broadcasting logic for anonymous discovery via UDP multicast.

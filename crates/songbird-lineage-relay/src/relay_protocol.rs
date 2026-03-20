@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Relay Protocol - Wire format for lineage-based packet relay
 //!
 //! **Pure Rust | Zero Unsafe | Modern Async**

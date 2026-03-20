@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Canonical Types for Songbird Universal Orchestrator Orchestrator
 //!
 //! This module provides the unified, canonical type definitions that replace

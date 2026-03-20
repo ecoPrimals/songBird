@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! AutoScaler Implementation Implementation
 //!
 //! Auto-scaler for managing service instances based on metrics

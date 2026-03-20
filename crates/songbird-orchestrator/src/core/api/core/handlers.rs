@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Core API handlers for Songbird orchestrator
 //!
 //! This module provides REST API endpoints for managing the orchestrator)

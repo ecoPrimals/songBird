@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! # Songbird TLS - Pure Rust TLS 1.3 Implementation
 //!
 //! A 100% Pure Rust implementation of TLS 1.3 designed for the biomeOS ecosystem.

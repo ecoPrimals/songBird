@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Service Registry Handlers
 //!
 //! Handles registration, discovery, and health checking of primal services.
@@ -11,9 +14,9 @@ use tracing::{debug, info};
 use crate::ipc::handlers::IpcHandlers;
 use crate::ipc::pure_rust_server::JsonRpcError;
 use crate::ipc::types::{
-    system_time_to_iso8601, DiscoverByCapabilityRequest, DiscoverByCapabilityResponse,
-    GetServiceHealthRequest, GetServiceHealthResponse, HealthCheckResponse, HealthStatus,
-    RegisterServiceRequest, RegisterServiceResponse,
+    DiscoverByCapabilityRequest, DiscoverByCapabilityResponse, GetServiceHealthRequest,
+    GetServiceHealthResponse, HealthCheckResponse, HealthStatus, RegisterServiceRequest,
+    RegisterServiceResponse, system_time_to_iso8601,
 };
 
 // ============================================================================
@@ -221,7 +224,7 @@ pub async fn register_service_json(
         None => {
             return Err(crate::ipc::pure_rust_server::JsonRpcError::invalid_params(
                 "params required",
-            ))
+            ));
         }
     };
 
@@ -268,7 +271,7 @@ pub async fn discover_by_capability_json(
         None => {
             return Err(crate::ipc::pure_rust_server::JsonRpcError::invalid_params(
                 "params required",
-            ))
+            ));
         }
     };
 
@@ -307,7 +310,7 @@ pub async fn get_service_health_json(
         None => {
             return Err(crate::ipc::pure_rust_server::JsonRpcError::invalid_params(
                 "params required",
-            ))
+            ));
         }
     };
 

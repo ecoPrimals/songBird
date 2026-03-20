@@ -1,11 +1,14 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! DNS-SD (DNS Service Discovery) Backend
 //!
 //! Complete production implementation for discovering capabilities via DNS-SD.
 //! Enables service discovery using standard DNS SRV and TXT records.
 
 use super::{CapabilityProvider, CapabilityRequest, Protocol};
-use hickory_resolver::config::{ResolverConfig, ResolverOpts};
 use hickory_resolver::TokioAsyncResolver;
+use hickory_resolver::config::{ResolverConfig, ResolverOpts};
 use songbird_types::{SongbirdError, SongbirdResult};
 use std::collections::HashMap;
 use std::time::Duration;

@@ -1,9 +1,12 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Unit Tests for CryptoProvider Abstraction
 //!
 //! Tests the capability-based crypto provider abstraction in isolation.
 
 use songbird_orchestrator::crypto::{
-    discover_crypto_provider, CryptoProvider, UnixSocketCryptoProvider,
+    CryptoProvider, UnixSocketCryptoProvider, discover_crypto_provider,
 };
 
 #[tokio::test]
@@ -14,12 +17,12 @@ async fn test_unix_socket_provider_creation() {
 
 #[tokio::test]
 async fn test_discover_crypto_provider_with_env() {
-    std::env::set_var("CRYPTO_PROVIDER_SOCKET", "/tmp/custom-crypto.sock");
+    songbird_process_env::set_var("CRYPTO_PROVIDER_SOCKET", "/tmp/custom-crypto.sock");
 
     // Discovery should succeed if socket exists (will fail gracefully in test)
     let result = discover_crypto_provider().await;
 
-    std::env::remove_var("CRYPTO_PROVIDER_SOCKET");
+    songbird_process_env::remove_var("CRYPTO_PROVIDER_SOCKET");
 
     // We don't require it to succeed (socket may not exist in test env)
     // Just verify the function is callable and returns a Result
@@ -105,16 +108,16 @@ async fn test_provider_different_data_sizes() {
 #[tokio::test]
 async fn test_discover_priority_order() {
     // Test that CRYPTO_PROVIDER_SOCKET has priority
-    std::env::set_var("CRYPTO_PROVIDER_SOCKET", "/tmp/priority1.sock");
-    std::env::set_var("CRYPTO_PROVIDER", "/tmp/priority2.sock");
-    std::env::set_var("BEARDOG_CRYPTO_SOCKET", "/tmp/priority3.sock");
+    songbird_process_env::set_var("CRYPTO_PROVIDER_SOCKET", "/tmp/priority1.sock");
+    songbird_process_env::set_var("CRYPTO_PROVIDER", "/tmp/priority2.sock");
+    songbird_process_env::set_var("BEARDOG_CRYPTO_SOCKET", "/tmp/priority3.sock");
 
     // Discovery logic should check CRYPTO_PROVIDER_SOCKET first
     let result = discover_crypto_provider().await;
 
-    std::env::remove_var("CRYPTO_PROVIDER_SOCKET");
-    std::env::remove_var("CRYPTO_PROVIDER");
-    std::env::remove_var("BEARDOG_CRYPTO_SOCKET");
+    songbird_process_env::remove_var("CRYPTO_PROVIDER_SOCKET");
+    songbird_process_env::remove_var("CRYPTO_PROVIDER");
+    songbird_process_env::remove_var("BEARDOG_CRYPTO_SOCKET");
 
     // Verify function executes (may fail if socket doesn't exist)
     assert!(result.is_ok() || result.is_err());

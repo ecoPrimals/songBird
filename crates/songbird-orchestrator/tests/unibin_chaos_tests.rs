@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! UniBin Chaos Tests
 //!
 //! Unpredictable scenario testing including:
@@ -11,18 +14,17 @@
 //! Modern, idiomatic, async Rust with zero global state.
 
 use assert_cmd::Command;
-use predicates::prelude::*;
 use rand::Rng;
-use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
-use tokio::time::{sleep, Duration};
+use std::sync::atomic::{AtomicUsize, Ordering};
+use tokio::time::{Duration, sleep};
 
 // ====================
 // TEST HELPERS
 // ====================
 
 // ✅ NO clear_chaos_env() needed!
-// Command::cargo_bin() creates isolated child processes.
+// `cargo_bin!` resolves the test binary path for isolated child processes.
 // Each process has its own environment - no global state pollution!
 
 // ====================
@@ -34,7 +36,7 @@ use tokio::time::{sleep, Duration};
 async fn test_chaos_rapid_fire_commands() -> Result<(), Box<dyn std::error::Error>> {
     // Fire 100 commands as fast as possible
     for _ in 0..100 {
-        let mut cmd = Command::cargo_bin("songbird")?;
+        let mut cmd = Command::new(assert_cmd::cargo_bin!("songbird"));
         cmd.arg("--version").assert().success();
     }
 
@@ -44,14 +46,14 @@ async fn test_chaos_rapid_fire_commands() -> Result<(), Box<dyn std::error::Erro
 #[tokio::test]
 // ✅ NO #[serial]! Commands are process-isolated!
 async fn test_chaos_random_subcommands() -> Result<(), Box<dyn std::error::Error>> {
-    let subcommands = vec!["--version", "--help"];
+    let subcommands = ["--version", "--help"];
     let mut rng = rand::thread_rng();
 
     // Execute random subcommands
     for _ in 0..50 {
         let cmd_choice = subcommands[rng.gen_range(0..subcommands.len())];
 
-        let mut cmd = Command::cargo_bin("songbird")?;
+        let mut cmd = Command::new(assert_cmd::cargo_bin!("songbird"));
         cmd.arg(cmd_choice).assert().success();
     }
 
@@ -66,7 +68,7 @@ async fn test_chaos_concurrent_version_checks() -> Result<(), Box<dyn std::error
 
     for _ in 0..20 {
         let handle = tokio::spawn(async {
-            let mut cmd = Command::cargo_bin("songbird").unwrap();
+            let mut cmd = Command::new(assert_cmd::cargo_bin!("songbird"));
             cmd.arg("--version").assert().success();
         });
         handles.push(handle);
@@ -88,7 +90,7 @@ async fn test_chaos_concurrent_help_requests() -> Result<(), Box<dyn std::error:
 
     for _ in 0..15 {
         let handle = tokio::spawn(async {
-            let mut cmd = Command::cargo_bin("songbird").unwrap();
+            let mut cmd = Command::new(assert_cmd::cargo_bin!("songbird"));
             cmd.arg("--help").assert().success();
         });
         handles.push(handle);
@@ -114,15 +116,15 @@ async fn test_chaos_mixed_concurrent_commands() -> Result<(), Box<dyn std::error
         let handle = tokio::spawn(async move {
             match cmd_type {
                 0 => {
-                    let mut cmd = Command::cargo_bin("songbird").unwrap();
+                    let mut cmd = Command::new(assert_cmd::cargo_bin!("songbird"));
                     cmd.arg("--version").assert().success();
                 }
                 1 => {
-                    let mut cmd = Command::cargo_bin("songbird").unwrap();
+                    let mut cmd = Command::new(assert_cmd::cargo_bin!("songbird"));
                     cmd.arg("--help").assert().success();
                 }
                 _ => {
-                    let mut cmd = Command::cargo_bin("songbird").unwrap();
+                    let mut cmd = Command::new(assert_cmd::cargo_bin!("songbird"));
                     cmd.arg("doctor").assert().success();
                 }
             }
@@ -142,7 +144,7 @@ async fn test_chaos_mixed_concurrent_commands() -> Result<(), Box<dyn std::error
 async fn test_chaos_rapid_doctor_checks() -> Result<(), Box<dyn std::error::Error>> {
     // Rapid fire doctor checks
     for _ in 0..30 {
-        let mut cmd = Command::cargo_bin("songbird")?;
+        let mut cmd = Command::new(assert_cmd::cargo_bin!("songbird"));
         cmd.arg("doctor").assert().success();
     }
 
@@ -156,13 +158,16 @@ async fn test_chaos_interleaved_commands() -> Result<(), Box<dyn std::error::Err
     for i in 0..20 {
         match i % 3 {
             0 => {
-                Command::cargo_bin("songbird")?.arg("--version").assert().success();
+                Command::new(assert_cmd::cargo_bin!("songbird"))
+                    .arg("--version")
+                    .assert()
+                    .success();
             }
             1 => {
-                Command::cargo_bin("songbird")?.arg("doctor").assert().success();
+                Command::new(assert_cmd::cargo_bin!("songbird")).arg("doctor").assert().success();
             }
             _ => {
-                Command::cargo_bin("songbird")?.arg("--help").assert().success();
+                Command::new(assert_cmd::cargo_bin!("songbird")).arg("--help").assert().success();
             }
         }
     }
@@ -180,7 +185,7 @@ async fn test_chaos_random_delays() -> Result<(), Box<dyn std::error::Error>> {
         let delay_ms = rng.gen_range(1..50);
         sleep(Duration::from_millis(delay_ms)).await;
 
-        Command::cargo_bin("songbird")?.arg("--version").assert().success();
+        Command::new(assert_cmd::cargo_bin!("songbird")).arg("--version").assert().success();
     }
 
     Ok(())
@@ -193,7 +198,7 @@ async fn test_chaos_burst_pattern() -> Result<(), Box<dyn std::error::Error>> {
     for _ in 0..5 {
         // Burst
         for _ in 0..10 {
-            Command::cargo_bin("songbird")?.arg("--version").assert().success();
+            Command::new(assert_cmd::cargo_bin!("songbird")).arg("--version").assert().success();
         }
 
         // Pause
@@ -213,7 +218,7 @@ async fn test_chaos_concurrent_doctor_formats() -> Result<(), Box<dyn std::error
     for format in formats {
         let format_owned = format.to_string();
         let handle = tokio::spawn(async move {
-            let mut cmd = Command::cargo_bin("songbird").unwrap();
+            let mut cmd = Command::new(assert_cmd::cargo_bin!("songbird"));
             cmd.arg("doctor").arg("--format").arg(&format_owned).assert().success();
         });
         handles.push(handle);
@@ -227,18 +232,18 @@ async fn test_chaos_concurrent_doctor_formats() -> Result<(), Box<dyn std::error
 }
 
 #[tokio::test]
-// ✅ NO #[serial]! env::set_var only affects child processes via Command!
+// ✅ NO #[serial]! songbird_process_env::set_var only affects child processes via Command!
 async fn test_chaos_random_env_vars() -> Result<(), Box<dyn std::error::Error>> {
     let mut rng = rand::thread_rng();
 
     // Set random environment variables and run commands
     for _ in 0..10 {
         let random_port = rng.gen_range(8000..9000);
-        std::env::set_var("SONGBIRD_PORT", random_port.to_string());
+        songbird_process_env::set_var("SONGBIRD_PORT", random_port.to_string());
 
-        Command::cargo_bin("songbird")?.arg("--version").assert().success();
+        Command::new(assert_cmd::cargo_bin!("songbird")).arg("--version").assert().success();
 
-        std::env::remove_var("SONGBIRD_PORT");
+        songbird_process_env::remove_var("SONGBIRD_PORT");
     }
 
     Ok(())
@@ -252,7 +257,11 @@ async fn test_chaos_stress_help_system() -> Result<(), Box<dyn std::error::Error
     // Stress the help system by requesting help for all subcommands rapidly
     for _ in 0..20 {
         for subcmd in &subcommands {
-            Command::cargo_bin("songbird")?.arg(subcmd).arg("--help").assert().success();
+            Command::new(assert_cmd::cargo_bin!("songbird"))
+                .arg(subcmd)
+                .arg("--help")
+                .assert()
+                .success();
         }
     }
 
@@ -269,7 +278,7 @@ async fn test_chaos_concurrent_with_counter() -> Result<(), Box<dyn std::error::
     for _ in 0..25 {
         let counter_clone = Arc::clone(&counter);
         let handle = tokio::spawn(async move {
-            let mut cmd = Command::cargo_bin("songbird").unwrap();
+            let mut cmd = Command::new(assert_cmd::cargo_bin!("songbird"));
             cmd.arg("--version").assert().success();
             counter_clone.fetch_add(1, Ordering::SeqCst);
         });
@@ -292,9 +301,9 @@ async fn test_chaos_alternating_success_patterns() -> Result<(), Box<dyn std::er
     // Alternate between different successful commands
     for i in 0..40 {
         if i % 2 == 0 {
-            Command::cargo_bin("songbird")?.arg("--version").assert().success();
+            Command::new(assert_cmd::cargo_bin!("songbird")).arg("--version").assert().success();
         } else {
-            Command::cargo_bin("songbird")?.arg("doctor").assert().success();
+            Command::new(assert_cmd::cargo_bin!("songbird")).arg("doctor").assert().success();
         }
     }
 
@@ -312,7 +321,7 @@ async fn test_chaos_wave_pattern() -> Result<(), Box<dyn std::error::Error>> {
 
         for _ in 0..count {
             let handle = tokio::spawn(async {
-                let mut cmd = Command::cargo_bin("songbird").unwrap();
+                let mut cmd = Command::new(assert_cmd::cargo_bin!("songbird"));
                 cmd.arg("--version").assert().success();
             });
             handles.push(handle);

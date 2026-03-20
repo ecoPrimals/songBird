@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Network Connectivity Testing and Auto-Remediation
 //!
 //! This module provides comprehensive network connectivity testing to ensure
@@ -16,7 +19,7 @@
 //! - Auto-configure where possible
 //! - Clear diagnostics for manual intervention
 
-use anyhow::{anyhow, Result};
+use anyhow::{Result, anyhow};
 use std::net::SocketAddr;
 use std::time::Duration;
 use tokio::net::TcpStream;

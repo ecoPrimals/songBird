@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Tower Command - Single-command orchestrator startup
 //!
 //! Makes it trivial to start a Songbird tower with automatic resource detection
@@ -121,30 +124,30 @@ async fn start_tower(args: &TowerStartArgs) -> SongbirdResult<()> {
     println!();
 
     // Set environment variables for the orchestrator
-    std::env::set_var("SONGBIRD_ENV", "development");
-    std::env::set_var("SONGBIRD_NODE_ID", format!("{}-{}", caps.hostname, args.port));
-    std::env::set_var("NODE_NAME", &caps.hostname);
-    std::env::set_var("NODE_ROLE", determine_role(&caps, &args.role));
-    std::env::set_var("BIND_ADDRESS", &args.bind);
-    std::env::set_var("SERVICE_PORT", args.port.to_string());
-    std::env::set_var("ORCHESTRATOR_PORT", args.port.to_string());
-    std::env::set_var("CPU_CORES", caps.cpu_cores.to_string());
-    std::env::set_var("MEMORY_GB", caps.memory_gb.to_string());
+    songbird_process_env::set_var("SONGBIRD_ENV", "development");
+    songbird_process_env::set_var("SONGBIRD_NODE_ID", format!("{}-{}", caps.hostname, args.port));
+    songbird_process_env::set_var("NODE_NAME", &caps.hostname);
+    songbird_process_env::set_var("NODE_ROLE", determine_role(&caps, &args.role));
+    songbird_process_env::set_var("BIND_ADDRESS", &args.bind);
+    songbird_process_env::set_var("SERVICE_PORT", args.port.to_string());
+    songbird_process_env::set_var("ORCHESTRATOR_PORT", args.port.to_string());
+    songbird_process_env::set_var("CPU_CORES", caps.cpu_cores.to_string());
+    songbird_process_env::set_var("MEMORY_GB", caps.memory_gb.to_string());
 
     if let Some(gpu) = &caps.gpu_model {
-        std::env::set_var("GPU_MODEL", gpu);
+        songbird_process_env::set_var("GPU_MODEL", gpu);
     }
 
     if let Some(storage) = caps.storage_gb {
-        std::env::set_var("STORAGE_GB", storage.to_string());
+        songbird_process_env::set_var("STORAGE_GB", storage.to_string());
     }
 
     if args.federation {
-        std::env::set_var("FEDERATION_ENABLED", "true");
+        songbird_process_env::set_var("FEDERATION_ENABLED", "true");
     }
 
     if let Some(bootstrap) = &args.bootstrap {
-        std::env::set_var("BOOTSTRAP_NODE", bootstrap);
+        songbird_process_env::set_var("BOOTSTRAP_NODE", bootstrap);
     }
 
     let log_level = if args.verbose {
@@ -152,7 +155,7 @@ async fn start_tower(args: &TowerStartArgs) -> SongbirdResult<()> {
     } else {
         "info,songbird=debug"
     };
-    std::env::set_var("RUST_LOG", log_level);
+    songbird_process_env::set_var("RUST_LOG", log_level);
 
     println!("🚀 Launching orchestrator...\n");
 
@@ -362,25 +365,24 @@ fn detect_gpu() -> Option<String> {
     // Try nvidia-smi first
     if let Ok(output) =
         Command::new("nvidia-smi").args(["--query-gpu=name", "--format=csv,noheader"]).output()
+        && let Ok(gpu_name) = String::from_utf8(output.stdout)
     {
-        if let Ok(gpu_name) = String::from_utf8(output.stdout) {
-            let gpu = gpu_name.trim().to_string();
-            if !gpu.is_empty() {
-                return Some(gpu);
-            }
+        let gpu = gpu_name.trim().to_string();
+        if !gpu.is_empty() {
+            return Some(gpu);
         }
     }
 
     // Try lspci for other GPUs
     #[cfg(target_os = "linux")]
-    if let Ok(output) = Command::new("lspci").output() {
-        if let Ok(lspci_output) = String::from_utf8(output.stdout) {
-            for line in lspci_output.lines() {
-                if line.contains("VGA") || line.contains("3D") {
-                    if let Some(device) = line.split(':').nth(2) {
-                        return Some(device.trim().to_string());
-                    }
-                }
+    if let Ok(output) = Command::new("lspci").output()
+        && let Ok(lspci_output) = String::from_utf8(output.stdout)
+    {
+        for line in lspci_output.lines() {
+            if (line.contains("VGA") || line.contains("3D"))
+                && let Some(device) = line.split(':').nth(2)
+            {
+                return Some(device.trim().to_string());
             }
         }
     }
@@ -392,16 +394,15 @@ fn detect_gpu() -> Option<String> {
 fn detect_storage_gb() -> Option<usize> {
     #[cfg(target_os = "linux")]
     {
-        if let Ok(output) = Command::new("df").args(["-B", "1G", "/"]).output() {
-            if let Ok(df_output) = String::from_utf8(output.stdout) {
-                // Parse df output (second line, fourth column)
-                if let Some(line) = df_output.lines().nth(1) {
-                    if let Some(avail) = line.split_whitespace().nth(3) {
-                        if let Ok(gb) = avail.trim_end_matches('G').parse::<usize>() {
-                            return Some(gb);
-                        }
-                    }
-                }
+        if let Ok(output) = Command::new("df").args(["-B", "1G", "/"]).output()
+            && let Ok(df_output) = String::from_utf8(output.stdout)
+        {
+            // Parse df output (second line, fourth column)
+            if let Some(line) = df_output.lines().nth(1)
+                && let Some(avail) = line.split_whitespace().nth(3)
+                && let Ok(gb) = avail.trim_end_matches('G').parse::<usize>()
+            {
+                return Some(gb);
             }
         }
     }
@@ -417,10 +418,10 @@ fn detect_network_interfaces() -> Vec<String> {
     {
         if let Ok(entries) = std::fs::read_dir("/sys/class/net") {
             for entry in entries.flatten() {
-                if let Some(name) = entry.file_name().to_str() {
-                    if !name.starts_with("lo") {
-                        interfaces.push(name.to_string());
-                    }
+                if let Some(name) = entry.file_name().to_str()
+                    && !name.starts_with("lo")
+                {
+                    interfaces.push(name.to_string());
                 }
             }
         }

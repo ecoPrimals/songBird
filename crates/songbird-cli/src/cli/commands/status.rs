@@ -1,9 +1,12 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Enhanced status command with improved UI and error handling
 
 use crate::cli::types::OutputFormat;
 use crate::cli::ui::{
-    banner, clear_screen, error_with_suggestions, format_bytes, format_duration,
-    format_health_status, format_percentage, print_info, separator, subheader, system_info, Table,
+    Table, banner, clear_screen, error_with_suggestions, format_bytes, format_duration,
+    format_health_status, format_percentage, print_info, separator, subheader, system_info,
 };
 use crate::errors::{CliError, SongbirdResult};
 use colored::Colorize;

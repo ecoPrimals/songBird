@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Container Orchestration Discovery Backend
 //!
 //! Kubernetes and Docker discovery implementations.
@@ -196,8 +199,8 @@ fn convert_k8s_service_to_primal(
 pub async fn discover_docker_containers() -> Result<Vec<DiscoveredPrimal>, DiscoveryError> {
     #[cfg(feature = "docker")]
     {
-        use bollard::container::ListContainersOptions;
         use bollard::Docker;
+        use bollard::container::ListContainersOptions;
 
         // Connect to Docker daemon
         let docker = Docker::connect_with_local_defaults().map_err(|e| {
@@ -348,8 +351,10 @@ mod tests {
 
         assert_eq!(infer_capabilities_from_name("squirrel-ai-service"), vec!["ai"]);
 
-        assert!(infer_capabilities_from_name("songbird-orchestrator")
-            .contains(&"orchestration".to_string()));
+        assert!(
+            infer_capabilities_from_name("songbird-orchestrator")
+                .contains(&"orchestration".to_string())
+        );
     }
 
     #[tokio::test]

@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Multi-Federation Support
 //!
 //! Enables a single node to participate in multiple federations simultaneously,
@@ -302,21 +305,21 @@ impl AutoJoinPolicy {
         }
 
         // Check capacity
-        if let Some(max) = self.max_nodes {
-            if current_nodes >= max {
-                debug!("Federation at capacity: {}/{}", current_nodes, max);
-                return false;
-            }
+        if let Some(max) = self.max_nodes
+            && current_nodes >= max
+        {
+            debug!("Federation at capacity: {}/{}", current_nodes, max);
+            return false;
         }
 
         // Check IP allowlist/denylist
         let peer_ip = peer.address.ip();
 
-        if let Some(ref allowlist) = self.ip_allowlist {
-            if !allowlist.iter().any(|net| net.contains(peer_ip)) {
-                debug!("Peer {} not in allowlist", peer_ip);
-                return false;
-            }
+        if let Some(ref allowlist) = self.ip_allowlist
+            && !allowlist.iter().any(|net| net.contains(peer_ip))
+        {
+            debug!("Peer {} not in allowlist", peer_ip);
+            return false;
         }
 
         if self.ip_denylist.iter().any(|net| net.contains(peer_ip)) {
@@ -422,11 +425,11 @@ impl DiscoveryRouter {
         }
 
         // If no matches, use default
-        if matches.is_empty() {
-            if let Some(ref default) = self.default_federation {
-                debug!("Peer {} using default federation {}", peer.session_id, default.0);
-                matches.push(default.clone());
-            }
+        if matches.is_empty()
+            && let Some(ref default) = self.default_federation
+        {
+            debug!("Peer {} using default federation {}", peer.session_id, default.0);
+            matches.push(default.clone());
         }
 
         matches

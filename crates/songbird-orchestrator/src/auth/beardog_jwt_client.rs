@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! `BearDog` JWT Client for Neural API
 //!
 //! Provides orchestrator-managed JWT secret provisioning from `BearDog` to primals.

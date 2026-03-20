@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 // Test for HTTPS server listener reuse fix (Dec 20, 2025)
 //
 // This test verifies that the HTTPS server correctly uses the pre-bound
@@ -5,7 +8,7 @@
 
 #[cfg(test)]
 mod https_listener_tests {
-    use super::*;
+
     use tokio::net::TcpListener;
 
     #[tokio::test]

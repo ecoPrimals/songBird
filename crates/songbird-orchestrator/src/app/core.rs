@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Core orchestrator types and state management
 //!
 //! This module contains the main `SongbirdOrchestrator` struct and its
@@ -9,8 +12,8 @@ use songbird_network_federation::service_registry::FederatedServiceRegistry;
 use songbird_network_federation::state::FederationState;
 use songbird_network_federation::{FederationConfig, FederationCoordinator};
 use songbird_observability::ObservabilityManager;
-use songbird_types::config::CanonicalSongbirdConfig;
 use songbird_types::SafeEnv;
+use songbird_types::config::CanonicalSongbirdConfig;
 use std::sync::Arc;
 use tracing::{debug, error, info, warn};
 
@@ -243,7 +246,9 @@ impl SongbirdOrchestrator {
                 }
             }
         } else {
-            debug!("No security provider configured (capability-based discovery did not find security provider)");
+            debug!(
+                "No security provider configured (capability-based discovery did not find security provider)"
+            );
             debug!("Continuing without encryption tags");
         }
 
@@ -339,16 +344,16 @@ impl SongbirdOrchestrator {
         use std::net::SocketAddr;
 
         // Priority 1: Environment variable (runtime override)
-        if let Ok(env_addrs) = std::env::var("SONGBIRD_BROADCAST_ADDRESSES") {
-            if !env_addrs.is_empty() {
-                info!("🌐 Using broadcast addresses from SONGBIRD_BROADCAST_ADDRESSES");
-                let addrs: Vec<SocketAddr> =
-                    env_addrs.split(',').filter_map(|s| s.trim().parse().ok()).collect();
+        if let Ok(env_addrs) = std::env::var("SONGBIRD_BROADCAST_ADDRESSES")
+            && !env_addrs.is_empty()
+        {
+            info!("🌐 Using broadcast addresses from SONGBIRD_BROADCAST_ADDRESSES");
+            let addrs: Vec<SocketAddr> =
+                env_addrs.split(',').filter_map(|s| s.trim().parse().ok()).collect();
 
-                if !addrs.is_empty() {
-                    info!("   Addresses: {:?}", addrs);
-                    return addrs;
-                }
+            if !addrs.is_empty() {
+                info!("   Addresses: {:?}", addrs);
+                return addrs;
             }
         }
 
@@ -461,11 +466,15 @@ impl SongbirdOrchestrator {
 
         info!("✅ Unix Socket IPC server started successfully");
         info!("   APIs: 11 total");
-        info!("   - Service Registry: register_service, discover_by_capability, get_service_health, health_check");
+        info!(
+            "   - Service Registry: register_service, discover_by_capability, get_service_health, health_check"
+        );
         info!(
             "   - P2P Discovery: discover_by_family, create_genetic_tunnel, announce_capabilities"
         );
-        info!("   - Graph Intelligence: graph.validate, graph.check_availability, graph.suggest_alternatives, coordination.validate_pattern");
+        info!(
+            "   - Graph Intelligence: graph.validate, graph.check_availability, graph.suggest_alternatives, coordination.validate_pattern"
+        );
         info!("   🌱 Primals can now register and discover each other!");
 
         // Store task handle for cleanup (would need to be added to orchestrator struct)

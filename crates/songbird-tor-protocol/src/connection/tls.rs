@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! TLS connector for Tor relay connections
 //!
 //! Uses songbird-tls (pure Rust, `BearDog` crypto delegation) instead of

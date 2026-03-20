@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Optimized types for request routing with zero-copy patterns
 //!
 //! This module provides `Arc<str>` based types to eliminate cloning in hot paths.

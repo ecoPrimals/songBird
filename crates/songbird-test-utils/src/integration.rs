@@ -1,5 +1,8 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 use crate::canonical_test_framework::{MockService, TestEnvironment};
-use songbird_types::{errors::SongbirdResult, SongbirdError};
+use songbird_types::{SongbirdError, errors::SongbirdResult};
 /// Integration testing utilities
 ///
 /// Provides utilities for end-to-end testing, integration testing)

@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! # 🚀 Deployment API
 //!
 //! HTTP-based service deployment for Songbird federation.
@@ -21,11 +24,11 @@
 //! - DELETE /api/deployment/:id - Stop and remove deployment
 
 use axum::{
+    Json, Router,
     body::Bytes,
     extract::{Multipart, Path, State},
     http::StatusCode,
     routing::{delete, get, post},
-    Json, Router,
 };
 
 // Re-export chunked upload handlers

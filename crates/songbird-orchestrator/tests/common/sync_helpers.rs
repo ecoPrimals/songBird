@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Event-driven test synchronization helpers
 //!
 //! **Philosophy**: "Sleeps in tests are technical debt. Events are the solution."
@@ -112,19 +115,23 @@ where
     F: FnMut() -> Result<T, E>,
 {
     let start = tokio::time::Instant::now();
-    let mut last_error = None;
+
+    let mut last_error = match check() {
+        Ok(result) => return Ok(result),
+        Err(e) => Some(e),
+    };
 
     loop {
-        match check() {
-            Ok(result) => return Ok(result),
-            Err(e) => last_error = Some(e),
-        }
-
         if start.elapsed() > timeout {
             return Err(PollError::Timeout(last_error));
         }
 
         tokio::task::yield_now().await;
+
+        match check() {
+            Ok(result) => return Ok(result),
+            Err(e) => last_error = Some(e),
+        }
     }
 }
 
@@ -187,8 +194,8 @@ pub enum PollError<E> {
 impl<E: std::fmt::Display> std::fmt::Display for PollError<E> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            PollError::Timeout(Some(e)) => write!(f, "Poll timeout (last error: {})", e),
-            PollError::Timeout(None) => write!(f, "Poll timeout"),
+            Self::Timeout(Some(e)) => write!(f, "Poll timeout (last error: {})", e),
+            Self::Timeout(None) => write!(f, "Poll timeout"),
         }
     }
 }
@@ -198,8 +205,8 @@ impl<E: std::error::Error + 'static> std::error::Error for PollError<E> {}
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::sync::atomic::{AtomicUsize, Ordering};
     use std::sync::Arc;
+    use std::sync::atomic::{AtomicUsize, Ordering};
 
     #[tokio::test]
     async fn test_poll_until_immediate() {

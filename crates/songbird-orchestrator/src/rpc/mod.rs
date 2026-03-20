@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Multi-protocol RPC module for Songbird
 //!
 //! ## Protocols
@@ -8,11 +11,11 @@
 pub mod tarpc_server;
 
 pub use self::tarpc_server::{
-    start_tarpc_server,
-    start_tarpc_server_simple, // v3.12.0 - simplified version without Arc<Orchestrator>
     TarpcConfig,
     TarpcServer,
     TarpcServerSimple, // v3.12.0 - modern Rust, zero unsafe
+    start_tarpc_server,
+    start_tarpc_server_simple, // v3.12.0 - simplified version without Arc<Orchestrator>
 };
 
 // Re-export SongbirdRpc from songbird-universal (v3.12.0)

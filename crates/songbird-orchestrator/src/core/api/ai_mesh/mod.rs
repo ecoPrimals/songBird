@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! AI-Enhanced Service Mesh Endpoints Endpoints
 //!
 //! Provides AI-first service mesh operations with human-AI collaboration)

@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! # Service Registry for Songbird Orchestrator
 //!
 //! **Universal Port Authority Implementation**
@@ -32,8 +35,9 @@
 //! # }
 //! ```
 
-use anyhow::{anyhow, Result};
+use anyhow::{Result, anyhow};
 use serde::{Deserialize, Serialize};
+use songbird_types::defaults::ports::{DEFAULT_PORT_RANGE_END, DEFAULT_PORT_RANGE_START};
 use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::{Duration, SystemTime};
@@ -80,8 +84,8 @@ pub struct RegistryConfig {
 impl Default for RegistryConfig {
     fn default() -> Self {
         Self {
-            port_range_start: 8091,
-            port_range_end: 8200,
+            port_range_start: DEFAULT_PORT_RANGE_START,
+            port_range_end: DEFAULT_PORT_RANGE_END,
             default_heartbeat_interval: 30,
             service_ttl_sec: 300, // 5 minutes
             max_missed_heartbeats: 5,
@@ -603,6 +607,7 @@ pub fn spawn_cleanup_task(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use songbird_types::defaults::ports::DEFAULT_PORT_RANGE_START;
 
     #[tokio::test]
     async fn test_service_registration() {
@@ -622,7 +627,7 @@ mod tests {
 
         assert_eq!(response.status, "registered");
         assert!(!response.service_id.is_empty());
-        assert!(response.assigned_endpoint.port >= 8091);
+        assert!(response.assigned_endpoint.port >= DEFAULT_PORT_RANGE_START);
     }
 
     #[tokio::test]

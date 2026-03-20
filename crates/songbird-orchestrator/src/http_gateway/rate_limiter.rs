@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Token bucket rate limiter for HTTP gateway
 //!
 //! **Philosophy**: Fast AND safe Rust with modern async patterns
@@ -17,7 +20,7 @@
 //!
 //! **Created**: January 16, 2026
 
-use anyhow::{anyhow, Result};
+use anyhow::{Result, anyhow};
 use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::{Duration, Instant};

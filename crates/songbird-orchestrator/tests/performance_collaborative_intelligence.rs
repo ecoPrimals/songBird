@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Performance benchmarks for Collaborative Intelligence APIs
 //!
 //! Verifies that validation operations meet latency targets:

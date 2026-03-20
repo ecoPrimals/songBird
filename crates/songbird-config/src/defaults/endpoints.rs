@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Default endpoint configuration with environment variable support
 //!
 //! Combines host and port information to create full endpoint URLs.

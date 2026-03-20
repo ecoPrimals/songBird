@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Inter-Primal Communication (IPC) via Unix Socket JSON-RPC
 //!
 //! v3.19.1: Modern async Rust patterns for primal-to-primal communication

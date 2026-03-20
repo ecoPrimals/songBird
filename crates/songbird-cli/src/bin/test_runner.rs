@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Test Runner Binary
 //!
 //! Comprehensive test execution for the Songbird CLI
@@ -5,15 +8,18 @@
 use clap::{Arg, Command};
 use colored::Colorize;
 use songbird_http_client::IpcHttpClient; // Pure Rust HTTP client via Songbird IPC
+use songbird_types::defaults::{hosts::DEFAULT_LOOPBACK, ports::DEFAULT_HTTP_PORT};
 use songbird_types::{SongbirdError, SongbirdResult};
-use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicUsize, Ordering};
 use std::time::{Duration, Instant};
 use tokio::time::timeout;
 
 /// Default orchestrator endpoint for testing
 /// Can be overridden via --url flag or `SONGBIRD_URL` environment variable
-const DEFAULT_ORCHESTRATOR_ENDPOINT: &str = "http://localhost:8080";
+fn default_orchestrator_endpoint() -> String {
+    format!("http://{}:{}", DEFAULT_LOOPBACK, DEFAULT_HTTP_PORT)
+}
 
 /// Test result tracking
 #[derive(Debug, Clone)]
@@ -37,7 +43,7 @@ impl Default for TestConfig {
     fn default() -> Self {
         Self {
             songbird_url: std::env::var("SONGBIRD_URL")
-                .unwrap_or_else(|_| DEFAULT_ORCHESTRATOR_ENDPOINT.to_string()),
+                .unwrap_or_else(|_| default_orchestrator_endpoint()),
             timeout_seconds: 15,
             verbose: false,
             quiet: false,

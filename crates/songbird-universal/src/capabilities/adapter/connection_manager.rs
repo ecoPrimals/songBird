@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Connection Manager Module
 //!
 //! Handles lifecycle of connections to primals:
@@ -13,10 +16,10 @@ use std::sync::Arc;
 use tokio::sync::RwLock;
 use tracing::{debug, info, warn};
 
+use super::super::HEALTH_PATH;
 use super::super::connection::{ConnectionHealth, PrimalConnection};
 use super::super::error::CapabilityError;
 use super::super::types::PrimalType;
-use super::super::HEALTH_PATH;
 
 /// Connection manager component
 #[derive(Debug, Clone)]

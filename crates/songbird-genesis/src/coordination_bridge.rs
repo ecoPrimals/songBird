@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Genesis Coordination Bridge
 //!
 //! Integrates genesis ceremony with the agnostic primal coordination system.
@@ -8,9 +11,12 @@ use crate::error::{GenesisError, Result};
 // NOTE: Conditional compilation for the coordination feature
 // This allows genesis to work with or without the coordination crate
 #[cfg(feature = "coordination")]
+use std::sync::Arc;
+
+#[cfg(feature = "coordination")]
 use songbird_primal_coordination::{
-    types::{Identity, NodeId},
     CapabilityType, PrimalCoordinator,
+    types::{Identity, NodeId},
 };
 
 /// Genesis coordination using capability-based discovery

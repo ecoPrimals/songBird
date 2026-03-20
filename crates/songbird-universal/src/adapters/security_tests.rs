@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Tests for Security Capability Adapter
 //!
 //! Separated from security.rs for file size compliance (1000-line policy)

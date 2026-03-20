@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! IGD (Internet Gateway Device) JSON-RPC handler
 //!
 //! Provides JSON-RPC methods for automatic router port forwarding
@@ -11,7 +14,7 @@
 //! - `igd.external_ip` - Get external IP from router
 //! - `igd.auto_configure` - All-in-one setup + verify
 
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use songbird_igd::renewal::RenewalManager;
 use songbird_igd::{Gateway, GatewayProtocol};
 use std::sync::Arc;

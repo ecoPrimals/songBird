@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Integration tests for trust enforcement
 //!
 //! Tests the complete flow from discovery → trust evaluation → peer acceptance/rejection
@@ -198,14 +201,12 @@ fn test_confidence_levels() {
             encryption_tag: None,
         };
 
-        match decision {
-            PeerTrustDecision::AutoAccept {
-                confidence: c,
-                ..
-            } => {
-                assert!((0.0..=1.0).contains(&c), "Confidence should be between 0.0 and 1.0");
-            }
-            _ => {}
+        if let PeerTrustDecision::AutoAccept {
+            confidence: c,
+            ..
+        } = decision
+        {
+            assert!((0.0..=1.0).contains(&c), "Confidence should be between 0.0 and 1.0");
         }
     }
 }

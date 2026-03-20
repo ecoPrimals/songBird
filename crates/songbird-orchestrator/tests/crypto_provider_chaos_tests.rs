@@ -1,8 +1,11 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Chaos Tests for CryptoProvider
 //!
 //! Extreme load testing, stress testing, and resilience testing.
 
-use songbird_orchestrator::crypto::{discover_crypto_provider, CryptoProvider};
+use songbird_orchestrator::crypto::discover_crypto_provider;
 use std::sync::Arc;
 use tokio::task::JoinSet;
 

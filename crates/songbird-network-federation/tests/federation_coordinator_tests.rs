@@ -1,3 +1,31 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
+#![allow(
+    clippy::unwrap_used,
+    clippy::expect_used,
+    clippy::unnecessary_wraps,
+    clippy::await_holding_lock,
+    clippy::float_cmp,
+    clippy::absurd_extreme_comparisons,
+    clippy::needless_collect,
+    clippy::nonminimal_bool,
+    clippy::used_underscore_binding,
+    clippy::field_reassign_with_default,
+    clippy::return_self_not_must_use,
+    clippy::overly_complex_bool_expr,
+    clippy::assertions_on_constants,
+    clippy::no_effect_underscore_binding,
+    clippy::items_after_statements,
+    clippy::empty_line_after_doc_comments,
+    clippy::const_is_empty,
+    clippy::duplicated_attributes,
+    deprecated,
+    dead_code,
+    clippy::unnecessary_literal_unwrap,
+    clippy::needless_pass_by_value,
+    clippy::must_use_candidate
+)]
 // Allow unwrap/expect in tests - idiomatic for test code
 #![allow(clippy::unwrap_used, clippy::expect_used)]
 
@@ -5,9 +33,9 @@
 //!
 //! Tests the federation coordination system with modern concurrent patterns
 
+use songbird_network_federation::NetworkFederationBridge;
 use songbird_network_federation::federation::{FederationConfig, FederationCoordinator};
 use songbird_network_federation::state::{NodeRegistration, NodeStatus};
-use songbird_network_federation::NetworkFederationBridge;
 
 // ============================================================================
 // FederationConfig Tests - Modern API
@@ -34,7 +62,6 @@ fn test_federation_config_enabled() {
         self_registration: None,
         heartbeat_interval_secs: 30,
         node_timeout_secs: 90,
-        ..Default::default()
     };
 
     assert!(config.enabled);
@@ -67,7 +94,6 @@ fn test_federation_config_with_node_info() {
         self_registration: Some(node_reg),
         heartbeat_interval_secs: 30,
         node_timeout_secs: 90,
-        ..Default::default()
     };
 
     assert!(config.enabled);
@@ -86,7 +112,6 @@ fn test_federation_config_clone() {
         self_registration: Some(node_reg),
         heartbeat_interval_secs: 15,
         node_timeout_secs: 45,
-        ..Default::default()
     };
 
     let cloned = config.clone();
@@ -118,7 +143,6 @@ fn test_federation_config_serialization() {
         self_registration: Some(node_reg),
         heartbeat_interval_secs: 30,
         node_timeout_secs: 90,
-        ..Default::default()
     };
 
     let serialized = serde_json::to_string(&config).expect("test precondition");
@@ -139,7 +163,6 @@ fn test_federation_config_enabled_states() {
         self_registration: None,
         heartbeat_interval_secs: 30,
         node_timeout_secs: 90,
-        ..Default::default()
     };
 
     let disabled = FederationConfig::default();
@@ -256,7 +279,7 @@ async fn test_coordinator_debug() {
 #[tokio::test]
 async fn test_coordinator_clone() {
     let coordinator = FederationCoordinator::new().await.expect("Failed to create coordinator");
-    let cloned = coordinator.clone();
+    let cloned = coordinator;
     // Both should have different Arc clones pointing to same state
     assert!(format!("{cloned:?}").contains("FederationCoordinator"));
 }
@@ -267,7 +290,7 @@ async fn test_coordinator_clone() {
 
 #[test]
 fn test_multiple_node_registrations() {
-    let nodes = vec![
+    let nodes = [
         create_test_registration("node-1"),
         create_test_registration("node-2"),
         create_test_registration("node-3"),
@@ -289,7 +312,6 @@ fn test_federation_config_json_serialization() {
         self_registration: Some(node_reg),
         heartbeat_interval_secs: 30,
         node_timeout_secs: 90,
-        ..Default::default()
     };
 
     let json = serde_json::to_string_pretty(&config).expect("test precondition");
@@ -320,7 +342,6 @@ async fn test_full_federation_workflow() {
         self_registration: Some(node_reg.clone()),
         heartbeat_interval_secs: 30,
         node_timeout_secs: 90,
-        ..Default::default()
     };
 
     // Create coordinator

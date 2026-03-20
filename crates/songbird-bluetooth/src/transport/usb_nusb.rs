@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! USB HCI Transport - Pure Rust implementation using `nusb`
 //!
 //! Modern, idiomatic async Rust implementation with zero C dependencies.
@@ -77,15 +80,15 @@ impl UsbTransport {
         // Find Bluetooth USB device
         for device_info in devices {
             // Check vendor/product ID filter
-            if let Some(vid) = vendor_id {
-                if device_info.vendor_id() != vid {
-                    continue;
-                }
+            if let Some(vid) = vendor_id
+                && device_info.vendor_id() != vid
+            {
+                continue;
             }
-            if let Some(pid) = product_id {
-                if device_info.product_id() != pid {
-                    continue;
-                }
+            if let Some(pid) = product_id
+                && device_info.product_id() != pid
+            {
+                continue;
             }
 
             // Check if it's a Bluetooth device

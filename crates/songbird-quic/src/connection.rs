@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! QUIC connection handling
 
 use crate::config::QuicConfig;
@@ -21,7 +24,7 @@ pub struct QuicConnection {
 
 impl QuicConnection {
     /// Create new connection wrapper
-    pub(crate) fn new(connection: Connection, config: Arc<QuicConfig>) -> Self {
+    pub(crate) const fn new(connection: Connection, config: Arc<QuicConfig>) -> Self {
         Self {
             connection,
             _config: config,
@@ -142,5 +145,59 @@ impl Drop for QuicConnection {
             debug!("Connection dropped, closing gracefully");
             self.close(0, b"connection dropped");
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+
+    use crate::client::QuicClient;
+    use crate::config::QuicConfig;
+    use crate::server::QuicServer;
+
+    #[tokio::test]
+    async fn remote_address_matches_server_and_close_updates_state() {
+        let config = QuicConfig::new();
+        let server = QuicServer::new("127.0.0.1:0", config.clone()).await.unwrap();
+        let addr = server.local_addr();
+        let mut incoming = server.accept();
+
+        let client_task = tokio::spawn(async move {
+            let client = QuicClient::new(config).await.unwrap();
+            client.connect(&addr.to_string()).await.unwrap()
+        });
+
+        let _server_conn = incoming.recv().await.expect("server accept");
+        let client_conn = client_task.await.expect("client join");
+
+        assert_eq!(client_conn.remote_address().port(), addr.port());
+        assert!(!client_conn.is_closed());
+        let _stats = client_conn.stats();
+
+        client_conn.close(99, b"test shutdown");
+        assert!(client_conn.is_closed());
+
+        server.close().await;
+    }
+
+    #[tokio::test]
+    async fn closed_returns_after_graceful_close() {
+        let config = QuicConfig::new();
+        let server = QuicServer::new("127.0.0.1:0", config.clone()).await.unwrap();
+        let addr = server.local_addr();
+        let mut incoming = server.accept();
+
+        let client_task = tokio::spawn(async move {
+            let client = QuicClient::new(config).await.unwrap();
+            client.connect(&addr.to_string()).await.unwrap()
+        });
+
+        let _server_conn = incoming.recv().await.expect("server accept");
+        let client_conn = client_task.await.expect("client join");
+
+        client_conn.close(0, b"bye");
+        client_conn.closed().await.unwrap();
+
+        server.close().await;
     }
 }

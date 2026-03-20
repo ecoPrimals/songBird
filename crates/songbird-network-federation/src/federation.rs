@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! # 🤝 Federation Coordination
 //!
 //! **MODERN FEDERATION SYSTEM** ✅
@@ -91,7 +94,9 @@ impl FederationCoordinator {
         if let Some(mode) = config.discovery_mode {
             // Validate that we can support it
             if mode.requires_beardog() && !self.has_beardog().await {
-                warn!("⚠️  BirdSong mode requested but BearDog unavailable, falling back to plaintext");
+                warn!(
+                    "⚠️  BirdSong mode requested but BearDog unavailable, falling back to plaintext"
+                );
                 return DiscoveryMode::Plaintext;
             }
             return mode;

@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Core type definitions for the Songbird Registry
 //!
 //! This module contains all the fundamental types used throughout the registry system.

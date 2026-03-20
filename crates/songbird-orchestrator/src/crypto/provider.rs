@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Capability-Based Crypto Provider Abstraction
 //!
 //! This module defines the `CryptoProvider` trait for capability-based crypto operations.

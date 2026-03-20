@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! UART HCI Transport - Pure Rust implementation for embedded
 //!
 //! This module provides UART transport for Bluetooth HCI using `serialport`.

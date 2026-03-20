@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Credential manager for HTTP gateway
 //!
 //! **Philosophy**: Secure credential management from environment
@@ -82,11 +85,11 @@ impl CredentialManager {
         F: Fn(&str) -> Option<String>,
     {
         // Try to get from cache (blocking, but fast)
-        if let Ok(credentials) = self.credentials.try_read() {
-            if let Some(key) = credentials.get(service) {
-                debug!("🔐 Credential cache hit for service: {}", service);
-                return Some(key.clone());
-            }
+        if let Ok(credentials) = self.credentials.try_read()
+            && let Some(key) = credentials.get(service)
+        {
+            debug!("🔐 Credential cache hit for service: {}", service);
+            return Some(key.clone());
         }
 
         // Not cached, load from environment
@@ -99,17 +102,17 @@ impl CredentialManager {
         ];
 
         for env_var in &env_vars {
-            if let Some(api_key) = env_reader(env_var) {
-                if !api_key.is_empty() {
-                    debug!("🔐 Loaded credential for service: {} from {}", service, env_var);
+            if let Some(api_key) = env_reader(env_var)
+                && !api_key.is_empty()
+            {
+                debug!("🔐 Loaded credential for service: {} from {}", service, env_var);
 
-                    // Cache the credential
-                    if let Ok(mut credentials) = self.credentials.try_write() {
-                        credentials.insert(service.to_string(), api_key.clone());
-                    }
-
-                    return Some(api_key);
+                // Cache the credential
+                if let Ok(mut credentials) = self.credentials.try_write() {
+                    credentials.insert(service.to_string(), api_key.clone());
                 }
+
+                return Some(api_key);
             }
         }
 

@@ -1,11 +1,12 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! E2E tests for service registry
 //!
 //! v3.20.0: Full workflow tests for primal registration and discovery
 
 use songbird_orchestrator::ipc::ServiceRegistry;
 use std::sync::Arc;
-use std::time::Duration;
-use tokio::time::sleep;
 
 #[tokio::test]
 async fn test_e2e_full_registration_discovery_workflow() {

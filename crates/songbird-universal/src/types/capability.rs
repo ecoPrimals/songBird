@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Core capability and primal abstractions
 //!
 //! This module defines the fundamental types for representing primals,

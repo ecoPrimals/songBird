@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Discovery Bridge - Connects orchestrator's `AnonymousDiscoveryListener` to IPC
 //!
 //! This module provides a bridge between the orchestrator's discovery listener
@@ -12,8 +15,8 @@ use std::sync::Arc;
 use tracing::{debug, info};
 
 // Re-export from songbird-discovery for external use
-pub use songbird_discovery::anonymous::peer::DiscoveredPeer;
 pub use songbird_discovery::anonymous::AnonymousDiscoveryListener;
+pub use songbird_discovery::anonymous::peer::DiscoveredPeer;
 
 /// Bridge between orchestrator's `AnonymousDiscoveryListener` and `PeerRegistry` trait
 ///
@@ -60,10 +63,10 @@ impl PeerRegistry for DiscoveryListenerBridge {
         // Try to find by node_id (v3.0+)
         let peers = self.listener.get_peers().await;
         for peer in peers {
-            if let Some(ref node_id) = peer.node_id {
-                if node_id == peer_id {
-                    return Ok(Some(convert_discovered_peer(peer)));
-                }
+            if let Some(ref node_id) = peer.node_id
+                && node_id == peer_id
+            {
+                return Ok(Some(convert_discovered_peer(peer)));
             }
         }
 
@@ -207,7 +210,7 @@ mod tests {
             identity_attestations: None,
             protocols: vec![],
             port: 8080,
-            address: SocketAddr::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), 2300),
+            address: SocketAddr::new(IpAddr::V4(Ipv4Addr::LOCALHOST), 2300),
             last_seen: SystemTime::now(),
             version: "3.0".to_string(),
         };
@@ -229,7 +232,7 @@ mod tests {
             identity_attestations: None,
             protocols: vec![],
             port: 8080,
-            address: SocketAddr::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), 2300),
+            address: SocketAddr::new(IpAddr::V4(Ipv4Addr::LOCALHOST), 2300),
             last_seen: SystemTime::now(),
             version: "3.0".to_string(),
         };
@@ -251,7 +254,7 @@ mod tests {
             identity_attestations: None,
             protocols: vec![],
             port: 8080,
-            address: SocketAddr::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), 2300),
+            address: SocketAddr::new(IpAddr::V4(Ipv4Addr::LOCALHOST), 2300),
             last_seen: SystemTime::now(), // Fresh!
             version: "3.0".to_string(),
         };
@@ -275,7 +278,7 @@ mod tests {
             identity_attestations: None,
             protocols: vec![],
             port: 8080,
-            address: SocketAddr::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), 2300),
+            address: SocketAddr::new(IpAddr::V4(Ipv4Addr::LOCALHOST), 2300),
             last_seen: SystemTime::now() - Duration::from_secs(600), // 10 minutes ago
             version: "3.0".to_string(),
         };

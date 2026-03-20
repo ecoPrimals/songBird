@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Key exchange operations
 //!
 //! X25519 key generation and ECDH key derivation.

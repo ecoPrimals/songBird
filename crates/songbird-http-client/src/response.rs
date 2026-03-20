@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! HTTP response parsing
 //!
 //! Handles parsing of raw HTTP response bytes into structured `HttpResponse` objects.
@@ -52,7 +55,7 @@ impl ResponseParser {
         let status = Self::parse_status_line(status_line)?;
 
         // Headers
-        let (headers, body_start) = Self::parse_headers(&mut lines)?;
+        let (headers, body_start) = Self::parse_headers(&mut lines);
 
         // Body
         let body_lines: Vec<&str> = response.lines().skip(body_start).collect();
@@ -88,9 +91,7 @@ impl ResponseParser {
     /// Parse HTTP headers
     ///
     /// Returns headers map and the line index where body starts
-    fn parse_headers(
-        lines: &mut dyn Iterator<Item = &str>,
-    ) -> Result<(HashMap<String, String>, usize)> {
+    fn parse_headers(lines: &mut dyn Iterator<Item = &str>) -> (HashMap<String, String>, usize) {
         let mut headers = HashMap::new();
         let mut body_start = 1; // Start after status line
 
@@ -105,7 +106,7 @@ impl ResponseParser {
             }
         }
 
-        Ok((headers, body_start))
+        (headers, body_start)
     }
 }
 

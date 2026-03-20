@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Universal Commands - "Free for All, Secure for All""
 //!
 //! One-click commands that work for everyone:

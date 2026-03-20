@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Command definitions for the Songbird CLI
 //!
 //! This module contains all the command and subcommand enums used by the CLI.

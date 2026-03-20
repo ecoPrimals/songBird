@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Property-based tests for trust enforcement
 //!
 //! Uses quickcheck-style property testing to verify invariants
@@ -42,7 +45,7 @@ fn prop_confidence_in_range() {
                 confidence: c,
                 ..
             } => {
-                assert!(c >= 0.0 && c <= 1.0, "Confidence must be in [0.0, 1.0]");
+                assert!((0.0..=1.0).contains(&c), "Confidence must be in [0.0, 1.0]");
             }
             _ => panic!("Expected AutoAccept"),
         }
@@ -57,7 +60,7 @@ fn prop_tags_order_independent() {
 
     let peer1 = DiscoveredPeer {
         node_id: "tower1".to_string(),
-        tags: tags1.clone(),
+        tags: tags1,
         endpoint: "https://localhost:8080".to_string(),
         discovery_method: "udp_multicast".to_string(),
         first_seen_at: 1704196800,
@@ -67,7 +70,7 @@ fn prop_tags_order_independent() {
 
     let peer2 = DiscoveredPeer {
         node_id: "tower1".to_string(),
-        tags: tags2.clone(),
+        tags: tags2,
         endpoint: "https://localhost:8080".to_string(),
         discovery_method: "udp_multicast".to_string(),
         first_seen_at: 1704196800,
@@ -77,8 +80,8 @@ fn prop_tags_order_independent() {
 
     // Both peers have the same tags, just in different order
     assert_eq!(peer1.node_id, peer2.node_id);
-    let mut sorted1 = peer1.tags.clone();
-    let mut sorted2 = peer2.tags.clone();
+    let mut sorted1 = peer1.tags;
+    let mut sorted2 = peer2.tags;
     sorted1.sort();
     sorted2.sort();
     assert_eq!(sorted1, sorted2);
@@ -216,7 +219,7 @@ fn prop_tags_utf8() {
 
     let peer = DiscoveredPeer {
         node_id: "tower1".to_string(),
-        tags: tags.clone(),
+        tags,
         endpoint: "https://localhost:8080".to_string(),
         discovery_method: "udp_multicast".to_string(),
         first_seen_at: 1704196800,
@@ -282,19 +285,16 @@ fn prop_zero_confidence_uncertain() {
         encryption_tag: None,
     };
 
-    match decision {
-        PeerTrustDecision::AutoAccept {
-            confidence,
-            reason,
-            ..
-        } => {
-            if confidence == 0.0 {
-                // Zero confidence should have a reason explaining why
-                assert!(!reason.is_empty());
-                assert!(reason.contains("no_security_provider") || reason.contains("unknown"));
-            }
-        }
-        _ => {}
+    if let PeerTrustDecision::AutoAccept {
+        confidence,
+        reason,
+        ..
+    } = decision
+        && confidence == 0.0
+    {
+        // Zero confidence should have a reason explaining why
+        assert!(!reason.is_empty());
+        assert!(reason.contains("no_security_provider") || reason.contains("unknown"));
     }
 }
 

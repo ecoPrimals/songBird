@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! `BirdSong` processor implementation
 //!
 //! Main processor logic for encryption/decryption of discovery packets.
@@ -120,7 +123,7 @@ impl BirdSongProcessor {
 
                 // Create BirdSongPacket with plaintext family_id header
                 // This allows receivers to see the family_id and decide if they should decrypt
-                use base64::{engine::general_purpose, Engine as _};
+                use base64::{Engine as _, engine::general_purpose};
                 let packet = BirdSongPacket::new(
                     "1.0".to_string(),
                     family_id.clone(),
@@ -201,19 +204,19 @@ impl BirdSongProcessor {
             match &self.encryption {
                 Some(enc) if enc.is_available() => {
                     // Check if it's our family
-                    if let Some(our_family) = enc.family_id() {
-                        if packet.family_id() != our_family {
-                            debug!(
-                                "🔇 Different family ({} != {}), ignoring",
-                                packet.family_id(),
-                                our_family
-                            );
-                            return Ok(None); // Different family = noise
-                        }
+                    if let Some(our_family) = enc.family_id()
+                        && packet.family_id() != our_family
+                    {
+                        debug!(
+                            "🔇 Different family ({} != {}), ignoring",
+                            packet.family_id(),
+                            our_family
+                        );
+                        return Ok(None); // Different family = noise
                     }
 
                     // Same family! Try to decrypt
-                    use base64::{engine::general_purpose, Engine as _};
+                    use base64::{Engine as _, engine::general_purpose};
                     let encrypted_payload = general_purpose::STANDARD
                         .decode(packet.encrypted_payload())
                         .context("Failed to decode base64 encrypted_payload")?;

@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Task Lifecycle Management
 //!
 //! Modern, idiomatic implementation of task lifecycle with:
@@ -164,7 +167,7 @@ mod tests {
     #[test]
     fn test_user_id_zero_copy() {
         let s = "alice".to_string();
-        let id1 = UserId::new(s.clone());
+        let id1 = UserId::new(s);
         let id2 = id1.clone();
         // Arc means clone is cheap (just increment ref count)
         assert_eq!(id1, id2);

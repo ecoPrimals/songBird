@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! IPC HTTP Client module
 //!
 //! Provides an HTTP client that delegates to Songbird's HTTP service via IPC.

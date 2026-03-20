@@ -1,3 +1,29 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
+#![allow(
+    clippy::unwrap_used,
+    clippy::expect_used,
+    clippy::unnecessary_wraps,
+    clippy::await_holding_lock,
+    clippy::float_cmp,
+    clippy::absurd_extreme_comparisons,
+    clippy::needless_collect,
+    clippy::nonminimal_bool,
+    clippy::used_underscore_binding,
+    clippy::field_reassign_with_default,
+    clippy::return_self_not_must_use,
+    clippy::overly_complex_bool_expr,
+    clippy::assertions_on_constants,
+    clippy::no_effect_underscore_binding,
+    clippy::items_after_statements,
+    clippy::empty_line_after_doc_comments,
+    clippy::const_is_empty,
+    clippy::duplicated_attributes,
+    deprecated,
+    clippy::unnecessary_literal_unwrap
+)]
+
 //! Coverage tests for `songbird_config::canonical::constants`
 //!
 //! Tests the environment-aware configuration functions that provide
@@ -8,7 +34,7 @@ use std::sync::Mutex;
 static ENV_LOCK: Mutex<()> = Mutex::new(());
 
 fn lock_env() -> std::sync::MutexGuard<'static, ()> {
-    ENV_LOCK.lock().unwrap_or_else(|e| e.into_inner())
+    ENV_LOCK.lock().unwrap_or_else(std::sync::PoisonError::into_inner)
 }
 
 /// Helper to safely set/unset env vars for a test
@@ -26,14 +52,14 @@ impl ScopedEnv {
     fn set(&mut self, key: &str, value: &str) -> &mut Self {
         let old = std::env::var(key).ok();
         self.vars.push((key.to_string(), old));
-        std::env::set_var(key, value);
+        songbird_process_env::set_var(key, value);
         self
     }
 
     fn remove(&mut self, key: &str) -> &mut Self {
         let old = std::env::var(key).ok();
         self.vars.push((key.to_string(), old));
-        std::env::remove_var(key);
+        songbird_process_env::remove_var(key);
         self
     }
 }
@@ -42,8 +68,8 @@ impl Drop for ScopedEnv {
     fn drop(&mut self) {
         for (key, old) in self.vars.drain(..).rev() {
             match old {
-                Some(val) => std::env::set_var(&key, &val),
-                None => std::env::remove_var(&key),
+                Some(val) => songbird_process_env::set_var(&key, &val),
+                None => songbird_process_env::remove_var(&key),
             }
         }
     }

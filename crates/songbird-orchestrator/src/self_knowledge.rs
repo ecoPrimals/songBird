@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Self-Knowledge Module
 //!
 //! Songbird only knows itself. This module discovers our own identity, capabilities,
@@ -280,7 +283,7 @@ mod tests {
     fn mock_env(
         vars: std::collections::HashMap<String, String>,
     ) -> impl Fn(&str) -> Option<String> {
-        move |key| vars.get(key).map(|v| v.clone())
+        move |key| vars.get(key).cloned()
     }
 
     #[test]

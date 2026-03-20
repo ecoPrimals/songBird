@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Mock `ToadStool` Compute Primal
 //!
 //! Provides HTTP endpoints that simulate `ToadStool`'s compute metrics and workload management.

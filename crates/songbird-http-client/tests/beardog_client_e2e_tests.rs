@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! End-to-End Integration Tests for BearDog Client
 //!
 //! These tests validate the complete RPC flow with Neural API integration.

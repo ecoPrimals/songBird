@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! BTSP Provider Trait and Configuration
 //!
 //! Defines the interface that all BTSP implementations must provide.
@@ -221,20 +224,19 @@ impl BtspProviderFactory {
                                 })
                             });
 
-                            if has_btsp {
-                                if let Some(port) =
+                            if has_btsp
+                                && let Some(port) =
                                     service.get("port").and_then(serde_json::Value::as_u64)
-                                {
-                                    let primal_name = service
-                                        .get("primal_name")
-                                        .and_then(|n| n.as_str())
-                                        .unwrap_or("unknown");
-                                    tracing::info!(
-                                        "🔍 Discovered security provider '{}' with BTSP support",
-                                        primal_name
-                                    );
-                                    return Ok(Some(format!("https://localhost:{port}")));
-                                }
+                            {
+                                let primal_name = service
+                                    .get("primal_name")
+                                    .and_then(|n| n.as_str())
+                                    .unwrap_or("unknown");
+                                tracing::info!(
+                                    "🔍 Discovered security provider '{}' with BTSP support",
+                                    primal_name
+                                );
+                                return Ok(Some(format!("https://localhost:{port}")));
                             }
                         }
                     }

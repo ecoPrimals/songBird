@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Persistent Service Registry Registry
 //!
 //! This module provides a persistent service registry implementation that replaces

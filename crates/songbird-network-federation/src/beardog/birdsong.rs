@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! `BirdSong` Encryption Trait
 //!
 //! `BearDog` provides encryption/decryption for birdSong broadcasts.

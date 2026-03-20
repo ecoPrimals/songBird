@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Consolidated Test Port Fixtures
 //!
 //! **Philosophy**: Tests can use hardcoded values, but they should be
@@ -63,7 +66,7 @@ pub mod integration {
 
 /// Test endpoint builders (DRY principle)
 pub mod endpoints {
-    use super::{primals, DISCOVERY, FEDERATION, ORCHESTRATOR};
+    use super::{DISCOVERY, FEDERATION, ORCHESTRATOR, primals};
 
     /// Build orchestrator test endpoint
     #[must_use]

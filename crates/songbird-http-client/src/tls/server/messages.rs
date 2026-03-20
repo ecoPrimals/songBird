@@ -1,12 +1,15 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! TLS Message Construction
 //!
 //! Handles building TLS 1.3 server messages (`ServerHello`, Certificate, etc.)
 
 use crate::error::{Error, Result};
 use crate::tls::handshake_v2::keys::CipherSuite;
-use crate::tls::{handshake_type, TLS_1_2, TLS_1_3};
+use crate::tls::{TLS_1_2, TLS_1_3, handshake_type};
 use std::time::{SystemTime, UNIX_EPOCH};
-use tracing::{debug, warn};
+use tracing::warn;
 
 use super::core::TlsServer;
 
@@ -195,66 +198,13 @@ impl TlsServer {
     /// }
     /// ```
     ///
-    /// ## Workaround for Testing
-    ///
-    /// Currently returns zero-filled placeholder signature. This allows
-    /// the handshake flow to complete for protocol testing, but will fail
-    /// signature verification by any real TLS client.
+    /// Until `BearDog` exposes signing for this transcript, returns
+    /// [`Error::CryptoUnavailable`] (no placeholder signature).
     pub(super) async fn build_certificate_verify(&self) -> Result<Vec<u8>> {
         tokio::task::yield_now().await;
-        // Build the data to be signed (RFC 8446 Section 4.4.3)
-        let mut to_sign = Vec::new();
-
-        // 64 spaces (0x20)
-        to_sign.extend_from_slice(&[0x20; 64]);
-
-        // Context string
-        to_sign.extend_from_slice(b"TLS 1.3, server CertificateVerify");
-
-        // Single 0x00 separator
-        to_sign.push(0x00);
-
-        // Transcript hash
-        let transcript_hash = self.transcript.compute_hash();
-        to_sign.extend_from_slice(&transcript_hash);
-
-        // TODO(P0): Add BearDog signing integration
-        // Once BearDog exposes `crypto.sign` API, implement:
-        // ```
-        // let signature = self.crypto.sign(
-        //     SignatureAlgorithm::EcdsaSecp256r1Sha256,
-        //     &self.private_key,
-        //     &to_sign,
-        // ).await?;
-        // ```
-        //
-        // For now, use placeholder that will fail real verification
-        debug!("⚠️ CertificateVerify using placeholder signature (BearDog signing API pending)");
-        let signature = vec![0u8; 64]; // Placeholder - will fail verification
-
-        let mut msg = Vec::new();
-
-        // Handshake type: CertificateVerify
-        msg.push(handshake_type::CERTIFICATE_VERIFY);
-
-        // Placeholder for length (3 bytes)
-        let length_pos = msg.len();
-        msg.extend_from_slice(&[0, 0, 0]);
-
-        // Signature algorithm: ecdsa_secp256r1_sha256 (0x0403)
-        msg.extend_from_slice(&[0x04, 0x03]);
-
-        // Signature
-        msg.extend_from_slice(&(signature.len() as u16).to_be_bytes());
-        msg.extend_from_slice(&signature);
-
-        // Fill in length
-        let body_len = msg.len() - length_pos - 3;
-        msg[length_pos] = ((body_len >> 16) & 0xFF) as u8;
-        msg[length_pos + 1] = ((body_len >> 8) & 0xFF) as u8;
-        msg[length_pos + 2] = (body_len & 0xFF) as u8;
-
-        Ok(msg)
+        Err(Error::CryptoUnavailable(
+            "BearDog signing integration required for CertificateVerify".into(),
+        ))
     }
 
     /// Build Finished message

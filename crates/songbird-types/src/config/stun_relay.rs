@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! STUN/Relay Multi-Tier Configuration
 //!
 //! **Pure Rust, Runtime-Configurable NAT Traversal**
@@ -526,6 +529,8 @@ const fn default_packet_loss_threshold() -> f32 {
 
 #[cfg(test)]
 mod tests {
+    #![allow(clippy::unwrap_used)]
+
     use super::*;
 
     #[test]

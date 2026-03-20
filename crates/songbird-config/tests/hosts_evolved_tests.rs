@@ -1,9 +1,33 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
+#![allow(
+    clippy::unwrap_used,
+    clippy::expect_used,
+    clippy::unnecessary_wraps,
+    clippy::await_holding_lock,
+    clippy::float_cmp,
+    clippy::absurd_extreme_comparisons,
+    clippy::needless_collect,
+    clippy::nonminimal_bool,
+    clippy::used_underscore_binding,
+    clippy::field_reassign_with_default,
+    clippy::return_self_not_must_use,
+    clippy::overly_complex_bool_expr,
+    clippy::assertions_on_constants,
+    clippy::no_effect_underscore_binding,
+    clippy::items_after_statements,
+    clippy::empty_line_after_doc_comments,
+    clippy::const_is_empty,
+    clippy::duplicated_attributes,
+    deprecated,
+    clippy::unnecessary_literal_unwrap
+)]
+
 //! Tests for hosts_evolved.rs - Self-aware service configuration
 //!
 //! Tests the self-aware configuration, bind config, advertise config,
 //! and environment detection.
-
-#![allow(clippy::unwrap_used)]
 
 use songbird_config::defaults::hosts_evolved::*;
 use std::net::{IpAddr, Ipv4Addr, SocketAddr};
@@ -12,7 +36,7 @@ use std::sync::Mutex;
 static ENV_LOCK: Mutex<()> = Mutex::new(());
 
 fn lock_env() -> std::sync::MutexGuard<'static, ()> {
-    ENV_LOCK.lock().unwrap_or_else(|e| e.into_inner())
+    ENV_LOCK.lock().unwrap_or_else(std::sync::PoisonError::into_inner)
 }
 
 struct ScopedEnv {
@@ -29,14 +53,14 @@ impl ScopedEnv {
     fn set(&mut self, key: &str, value: &str) -> &mut Self {
         let old = std::env::var(key).ok();
         self.vars.push((key.to_string(), old));
-        std::env::set_var(key, value);
+        songbird_process_env::set_var(key, value);
         self
     }
 
     fn remove(&mut self, key: &str) -> &mut Self {
         let old = std::env::var(key).ok();
         self.vars.push((key.to_string(), old));
-        std::env::remove_var(key);
+        songbird_process_env::remove_var(key);
         self
     }
 }
@@ -45,8 +69,8 @@ impl Drop for ScopedEnv {
     fn drop(&mut self) {
         for (key, old) in self.vars.drain(..).rev() {
             match old {
-                Some(val) => std::env::set_var(&key, &val),
-                None => std::env::remove_var(&key),
+                Some(val) => songbird_process_env::set_var(&key, &val),
+                None => songbird_process_env::remove_var(&key),
             }
         }
     }
@@ -79,7 +103,7 @@ fn test_environment_equality() {
 #[test]
 fn test_environment_clone() {
     let env = Environment::Production;
-    let cloned = env.clone();
+    let cloned = env;
     assert_eq!(env, cloned);
 }
 
@@ -359,15 +383,15 @@ fn test_all_environments_produce_valid_config() {
         let config = SelfAwareConfig {
             bind: BindConfig::for_environment(&env),
             advertise: AdvertiseConfig::for_environment(&env),
-            environment: env.clone(),
+            environment: env,
         };
 
         // All should produce valid socket addresses
         let bind = config.bind_address();
         let advertise = config.advertise_address();
 
-        // Addresses should be valid
-        assert!(bind.port() >= 0); // Port 0 is valid for OS-assigned
-        assert!(advertise.port() >= 0);
+        // Exercise address parsing (port is u16; always >= 0).
+        let _ = bind.port();
+        let _ = advertise.port();
     }
 }

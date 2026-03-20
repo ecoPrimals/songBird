@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Universal Primal Discovery System
 //!
 //! **SMART REFACTORING**: This file was 1023 lines, now modularized into:
@@ -176,14 +179,14 @@ mod tests {
 
     #[tokio::test]
     async fn test_discovery_with_environment() {
-        std::env::set_var("SECURITY_ENDPOINT", "http://localhost:8443");
+        songbird_process_env::set_var("SECURITY_ENDPOINT", "http://localhost:8443");
         
         let mut engine = UniversalPrimalDiscovery::with_defaults();
         let result = engine.discover_all().await;
         
         assert!(result.is_ok());
         
-        std::env::remove_var("SECURITY_ENDPOINT");
+        songbird_process_env::remove_var("SECURITY_ENDPOINT");
     }
 
     #[test]

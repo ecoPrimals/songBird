@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! HTTP Client Configuration - Adaptive & Routing-Based
 //!
 //! Provides granular control over HTTP behavior including:

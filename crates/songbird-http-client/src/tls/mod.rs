@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! TLS 1.3 implementation with `BearDog` crypto delegation
 //!
 //! This module implements a Pure Rust TLS 1.3 client AND server by delegating all
@@ -51,8 +54,8 @@ pub use record::TlsRecordLayer;
 pub use server::TlsServer; // ✅ Refactored modular implementation
 pub use session::TlsSession;
 pub use version::{
-    detect_server_version, tls_1_2_cipher_name, NegotiatedVersion, SecurityPolicy, TlsVersion,
-    TlsVersionConfig, TLS_1_2_EXTENDED_CIPHERS, TLS_1_2_SECURE_CIPHERS,
+    NegotiatedVersion, SecurityPolicy, TLS_1_2_EXTENDED_CIPHERS, TLS_1_2_SECURE_CIPHERS,
+    TlsVersion, TlsVersionConfig, detect_server_version, tls_1_2_cipher_name,
 };
 
 /// TLS 1.3 version

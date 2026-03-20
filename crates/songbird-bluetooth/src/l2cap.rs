@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! L2CAP (Logical Link Control and Adaptation Protocol) layer
 //!
 //! Provides L2CAP channel management for ATT protocol communication.
@@ -98,9 +101,7 @@ impl L2capChannel {
 
         trace!(
             "Built ACL packet: handle=0x{:04X}, channel=0x{:04X}, payload_len={}",
-            self.connection_handle,
-            self.channel_id,
-            l2cap_length
+            self.connection_handle, self.channel_id, l2cap_length
         );
 
         packet

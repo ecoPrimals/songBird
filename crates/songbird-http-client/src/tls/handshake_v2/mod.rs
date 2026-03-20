@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! TLS 1.3 handshake implementation (modularized)
 //!
 //! This module provides a production-grade TLS 1.3 handshake implementation
@@ -34,7 +37,7 @@ pub mod server_hello;
 pub mod transcript;
 
 // Re-export main types
-pub use client_hello::{generate_random, ClientHelloBuilder};
+pub use client_hello::{ClientHelloBuilder, generate_random};
 pub use transcript::Transcript;
 
 // TODO: Integrate remaining modules into main handshake flow

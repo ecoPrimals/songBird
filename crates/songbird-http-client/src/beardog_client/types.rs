@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! `BearDog` RPC types
 //!
 //! JSON-RPC 2.0 message structures and TLS secrets container.

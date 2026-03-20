@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Rendezvous Client
 //!
 //! Client for connecting to Songbird Rendezvous servers for internet-wide discovery

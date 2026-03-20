@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Runtime Capability-Based Discovery Engine
 //!
 //! This module implements zero-hardcoding, runtime discovery of services
@@ -413,7 +416,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_environment_discovery() {
-        std::env::set_var("SECURITY_ENDPOINT", "127.0.0.1:8443");
+        songbird_process_env::set_var("SECURITY_ENDPOINT", "127.0.0.1:8443");
 
         let engine = CapabilityDiscoveryEngine::new(
             vec![DiscoveryBackend::Environment],
@@ -423,7 +426,7 @@ mod tests {
         let services = engine.discover_by_capability("security").await;
         assert!(!services.is_empty(), "Should discover security service from environment");
 
-        std::env::remove_var("SECURITY_ENDPOINT");
+        songbird_process_env::remove_var("SECURITY_ENDPOINT");
     }
 
     #[tokio::test]
@@ -435,7 +438,7 @@ mod tests {
         );
 
         // First call should query backend
-        std::env::set_var("STORAGE_ENDPOINT", "127.0.0.1:9000");
+        songbird_process_env::set_var("STORAGE_ENDPOINT", "127.0.0.1:9000");
         let services1 = engine.discover_by_capability("storage").await;
 
         // Second call should use cache
@@ -457,7 +460,7 @@ mod tests {
         let services3 = engine.discover_by_capability("storage").await;
         assert_eq!(services1, services3, "Should still find service after cache expiry");
 
-        std::env::remove_var("STORAGE_ENDPOINT");
+        songbird_process_env::remove_var("STORAGE_ENDPOINT");
     }
 
     #[test]

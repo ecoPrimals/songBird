@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Discovery Traits Module
 //!
 //! **MODERNIZED**: Now uses canonical Provider traits from songbird-types

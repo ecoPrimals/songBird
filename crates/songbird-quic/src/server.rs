@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! QUIC server implementation
 
 use crate::config::QuicConfig;
@@ -58,7 +61,7 @@ impl QuicServer {
 
     /// Get local address
     #[must_use]
-    pub fn local_addr(&self) -> SocketAddr {
+    pub const fn local_addr(&self) -> SocketAddr {
         self.local_addr
     }
 
@@ -120,5 +123,31 @@ impl QuicServer {
 impl Drop for QuicServer {
     fn drop(&mut self) {
         debug!("QUIC server dropped");
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn new_rejects_invalid_bind_addr() {
+        let r = QuicServer::new("!!!not-an-address!!!", QuicConfig::new()).await;
+        assert!(r.is_err());
+    }
+
+    #[tokio::test]
+    async fn new_binds_local_udp() {
+        let server = QuicServer::new("127.0.0.1:0", QuicConfig::new()).await.unwrap();
+        assert_ne!(server.local_addr().port(), 0);
+        server.close().await;
+    }
+
+    #[tokio::test]
+    async fn accept_returns_receiver() {
+        let server = QuicServer::new("127.0.0.1:0", QuicConfig::new()).await.unwrap();
+        let mut rx = server.accept();
+        assert!(rx.try_recv().is_err());
+        server.close().await;
     }
 }

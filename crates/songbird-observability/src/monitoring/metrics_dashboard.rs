@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Metrics Dashboard for real-time monitoring
 //!
 //! Provides comprehensive metrics collection, aggregation, and real-time updates

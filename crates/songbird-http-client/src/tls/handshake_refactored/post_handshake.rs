@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Post-handshake message processing
 //!
 //! RFC 8446 Section 4.6: After the handshake completes, the server may send
@@ -7,8 +10,9 @@
 use super::core::TlsHandshake;
 use crate::crypto::TlsApplicationSecrets;
 use crate::error::{Error, Result};
+use crate::tls::alert::TlsAlert;
 use tokio::net::TcpStream;
-use tokio::time::{timeout, Duration};
+use tokio::time::{Duration, timeout};
 use tracing::{error, info, trace, warn};
 
 /// Post-handshake message processing result
@@ -68,7 +72,6 @@ impl TlsHandshake {
                         0x15 => {
                             // Unencrypted alert (unusual for TLS 1.3 after handshake)
                             warn!("Unencrypted TLS alert post-handshake!");
-                            use crate::tls::alert::TlsAlert;
                             if let Ok(alert) = TlsAlert::parse(&encrypted_data) {
                                 error!("🚨 Alert: {}", alert.to_detailed_string());
                             }
@@ -119,8 +122,8 @@ impl TlsHandshake {
             0x17,
             0x03,
             0x03,
-            (encrypted_data.len() >> 8) as u8,
-            (encrypted_data.len() & 0xFF) as u8,
+            u8::try_from(encrypted_data.len() >> 8).expect("length byte fits in u8"),
+            u8::try_from(encrypted_data.len() & 0xFF).expect("length byte fits in u8"),
         ];
 
         // Decrypt based on cipher suite
@@ -154,17 +157,14 @@ impl TlsHandshake {
                 0x15 => {
                     // Alert inside encrypted envelope
                     use crate::tls::alert::TlsAlert;
-                    if content.len() >= 2 {
-                        if let Ok(alert) = TlsAlert::parse(content) {
-                            error!(
-                                "🚨 Encrypted post-handshake alert: {}",
-                                alert.to_detailed_string()
-                            );
-                            return Err(Error::TlsHandshake(format!(
-                                "Server sent encrypted alert: {}",
-                                alert.to_detailed_string()
-                            )));
-                        }
+                    if content.len() >= 2
+                        && let Ok(alert) = TlsAlert::parse(content)
+                    {
+                        error!("🚨 Encrypted post-handshake alert: {}", alert.to_detailed_string());
+                        return Err(Error::TlsHandshake(format!(
+                            "Server sent encrypted alert: {}",
+                            alert.to_detailed_string()
+                        )));
                     }
                     Ok(PostHandshakeType::Alert)
                 }

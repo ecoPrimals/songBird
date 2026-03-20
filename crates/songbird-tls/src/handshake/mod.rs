@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! TLS 1.3 Handshake State Machine
 //!
 //! Manages the TLS handshake protocol state transitions.
@@ -124,22 +127,15 @@ impl HandshakeStateMachine {
             .as_ref()
             .ok_or_else(|| TlsError::InternalError("ClientHello not stored".to_string()))?;
 
-        // Generate server random (32 bytes) from `BearDog`
+        // Server random (32 bytes): OS CSPRNG — no BearDog delegation (RFC 8446)
+        let mut server_random = [0u8; 32];
+        getrandom::fill(&mut server_random)
+            .map_err(|e| TlsError::CryptoError(format!("RNG failed: {e}")))?;
+
         let crypto = self
             .crypto_client
             .as_ref()
             .ok_or_else(|| TlsError::InternalError("Crypto client not set".to_string()))?;
-
-        // TODO: Add random generation method to `BearDog`
-        // For now, use HMAC with timestamp as fallback
-        let timestamp = std::time::SystemTime::now()
-            .duration_since(std::time::UNIX_EPOCH)
-            .unwrap()
-            .as_nanos()
-            .to_le_bytes();
-        let random_bytes = crypto.hmac_sha256(&timestamp, b"server_random_seed").await?;
-        let mut server_random = [0u8; 32];
-        server_random.copy_from_slice(&random_bytes[..32]);
 
         // Select cipher suite (for now, just take first supported)
         let cipher_suite = client_hello

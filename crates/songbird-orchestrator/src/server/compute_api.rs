@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Compute API - Unified endpoint for intelligent task routing
 //!
 //! This API provides a single entry point for submitting compute tasks.
@@ -12,11 +15,11 @@ use crate::core::routing::enhanced_router::EnhancedCapabilityRouter;
 use crate::core::routing::{CapabilityRouter, RoutingDecision, Task};
 use crate::service_registry::ServiceRegistry;
 use axum::{
+    Router,
     extract::{Json, Path, State},
     http::StatusCode,
     response::{IntoResponse, Response},
     routing::{get, post},
-    Router,
 };
 use serde::{Deserialize, Serialize};
 use songbird_network_federation::service_registry::FederatedServiceRegistry;
@@ -720,7 +723,7 @@ mod tests {
     #[tokio::test]
     async fn test_submit_heavy_task() {
         // Set compute capability endpoint for test
-        std::env::set_var("CAPABILITY_COMPUTE_ENDPOINT", "http://localhost:9000");
+        songbird_process_env::set_var("CAPABILITY_COMPUTE_ENDPOINT", "http://localhost:9000");
 
         let state = create_test_state();
 
@@ -742,7 +745,7 @@ mod tests {
         assert!(response.routed_to.starts_with("Compute:"));
 
         // Cleanup
-        std::env::remove_var("CAPABILITY_COMPUTE_ENDPOINT");
+        songbird_process_env::remove_var("CAPABILITY_COMPUTE_ENDPOINT");
     }
 
     #[tokio::test]

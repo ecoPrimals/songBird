@@ -1,14 +1,17 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Task Lifecycle REST API
 //!
 //! Provides HTTP endpoints for task management
 
 use crate::task_lifecycle::{TaskFilter, TaskId, TaskLifecycleManager, TaskSpec, TowerId, UserId};
 use axum::{
+    Json, Router,
     extract::{Path, Query, State},
     http::StatusCode,
     response::{IntoResponse, Response},
     routing::{get, post},
-    Json, Router,
 };
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
@@ -272,7 +275,7 @@ impl IntoResponse for AppError {
 
 // Need base64 for checkpoint data
 mod base64 {
-    use base64::{engine::general_purpose, Engine as _};
+    use base64::{Engine as _, engine::general_purpose};
 
     pub fn decode(input: &str) -> Result<Vec<u8>, base64::DecodeError> {
         general_purpose::STANDARD.decode(input)

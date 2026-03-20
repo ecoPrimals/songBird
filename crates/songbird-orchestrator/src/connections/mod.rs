@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Connection Management with Progressive Trust
 //!
 //! This module implements connection types for different trust levels:

@@ -1,3 +1,38 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
+#![allow(
+    clippy::unwrap_used,
+    clippy::expect_used,
+    clippy::unnecessary_wraps,
+    clippy::await_holding_lock,
+    clippy::float_cmp,
+    clippy::absurd_extreme_comparisons,
+    clippy::needless_collect,
+    clippy::nonminimal_bool,
+    clippy::used_underscore_binding,
+    clippy::field_reassign_with_default,
+    clippy::return_self_not_must_use,
+    clippy::overly_complex_bool_expr,
+    clippy::assertions_on_constants,
+    clippy::no_effect_underscore_binding,
+    clippy::items_after_statements,
+    clippy::empty_line_after_doc_comments,
+    clippy::const_is_empty,
+    clippy::duplicated_attributes,
+    deprecated,
+    dead_code,
+    clippy::unnecessary_literal_unwrap,
+    clippy::needless_pass_by_value,
+    clippy::must_use_candidate,
+    clippy::clone_on_ref_ptr,
+    clippy::similar_names,
+    clippy::unreadable_literal,
+    clippy::cast_possible_truncation,
+    clippy::cast_sign_loss,
+    clippy::cast_precision_loss,
+    clippy::cast_possible_wrap
+)]
 #![allow(clippy::all)]
 #![allow(unused)]
 
@@ -164,7 +199,7 @@ fn test_least_connections_tie() -> Result<(), Box<dyn std::error::Error>> {
         .min()
         .ok_or_else(|| SongbirdError::configuration("no minimum found".to_string()))?;
     let tied_backends: Vec<usize> =
-        connections.iter().enumerate().filter(|(_, &c)| c == min_conn).map(|(i, _)| i).collect();
+        connections.iter().enumerate().filter(|&(_, c)| *c == min_conn).map(|(i, _)| i).collect();
 
     assert_eq!(tied_backends.len(), 2); // Indices 1 and 2 are tied
     Ok(())
@@ -237,7 +272,7 @@ fn test_ip_hash_distribution() {
 fn test_exclude_unhealthy_backends() {
     let healths = [true, false, true, false];
     let healthy_backends: Vec<usize> =
-        healths.iter().enumerate().filter(|(_, &h)| h).map(|(i, _)| i).collect();
+        healths.iter().enumerate().filter(|&(_, h)| *h).map(|(i, _)| i).collect();
 
     assert_eq!(healthy_backends.len(), 2);
     assert_eq!(healthy_backends, vec![0, 2]);

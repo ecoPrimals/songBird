@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Tests for AI-First Metadata
 //!
 //! Comprehensive test coverage for AI response metadata and decision context.

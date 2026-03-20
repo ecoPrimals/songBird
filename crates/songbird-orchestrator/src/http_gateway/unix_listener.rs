@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Unix Socket Listener for HTTP Gateway
 //!
 //! This module implements Unix socket listeners that receive JSON-RPC requests
@@ -21,7 +24,7 @@ use super::cache::ResponseCache;
 use super::capability_router::{CapabilityRouter, Route};
 use super::credentials::CredentialManager;
 use super::rate_limiter::RateLimiter;
-use anyhow::{anyhow, Result};
+use anyhow::{Result, anyhow};
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 use std::sync::Arc;

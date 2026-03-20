@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Genetic Lineage Types for Songbird Discovery
 //!
 //! Provides types for cryptographic lineage authentication and auto-accept logic.
@@ -266,7 +269,7 @@ impl CurrentLineage {
 
 // Base64 encoding/decoding (using standard base64 crate or implement manually)
 mod base64 {
-    use base64::{engine::general_purpose, Engine as _};
+    use base64::{Engine as _, engine::general_purpose};
 
     pub fn encode(bytes: &[u8]) -> String {
         general_purpose::STANDARD.encode(bytes)
@@ -279,6 +282,8 @@ mod base64 {
 
 #[cfg(test)]
 mod tests {
+    #![allow(clippy::unreadable_literal, clippy::unwrap_used)]
+
     use super::*;
 
     #[test]

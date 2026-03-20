@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 use crate::discovery::types::NodeType;
 use serde::{Deserialize, Serialize};
 // ✅ Migrated from deprecated path

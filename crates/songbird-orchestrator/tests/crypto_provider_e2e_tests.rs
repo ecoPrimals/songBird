@@ -1,9 +1,12 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! End-to-End Tests for CryptoProvider
 //!
 //! Tests the complete flow from discovery to crypto operations.
 //! These tests require a running BearDog instance.
 
-use songbird_orchestrator::crypto::{discover_crypto_provider, CryptoProvider};
+use songbird_orchestrator::crypto::discover_crypto_provider;
 
 #[tokio::test]
 #[ignore] // Requires BearDog running

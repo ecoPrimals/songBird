@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Port Discovery - Dynamic Port Allocation
 //!
 //! Eliminates hardcoded ports by discovering available ports at runtime.
@@ -238,7 +241,7 @@ mod tests {
         let (start, end) = get_recommended_port_range();
         assert!(start < end);
         assert!(start >= 80); // At least this low
-                              // Note: end is u16, so always <= 65535 (type guarantees this)
+        // Note: end is u16, so always <= 65535 (type guarantees this)
     }
 
     #[test]

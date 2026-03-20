@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Certificate message (RFC 8446 Section 4.4.2)
 //!
 //! The Certificate message conveys the server's certificate chain to the client.

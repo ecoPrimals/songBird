@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! # 🔧 Consolidated Canonical Configuration System
 //!
 //! **SINGLE SOURCE OF TRUTH FOR ALL CONFIGURATIONS** ✅
@@ -450,12 +453,13 @@ mod tests {
         config.discovery.mode = DiscoveryMode::Anonymous;
 
         // Should fail validation
-        let result = config.validate();
-        assert!(result.is_err());
-
-        let err_msg = result.unwrap_err();
-        assert!(err_msg.contains("Discovery requires external TCP port"));
-        assert!(err_msg.contains("dual-mode"));
+        match config.validate() {
+            Err(err_msg) => {
+                assert!(err_msg.contains("Discovery requires external TCP port"));
+                assert!(err_msg.contains("dual-mode"));
+            }
+            Ok(()) => panic!("expected validation to fail"),
+        }
     }
 
     #[test]
@@ -466,12 +470,13 @@ mod tests {
         config.discovery.mode = DiscoveryMode::Disabled;
 
         // Should fail validation with generic message
-        let result = config.validate();
-        assert!(result.is_err());
-
-        let err_msg = result.unwrap_err();
-        assert!(err_msg.contains("Network base port must be greater than 0"));
-        assert!(!err_msg.contains("dual-mode")); // Discovery-specific message shouldn't appear
+        match config.validate() {
+            Err(err_msg) => {
+                assert!(err_msg.contains("Network base port must be greater than 0"));
+                assert!(!err_msg.contains("dual-mode"));
+            }
+            Ok(()) => panic!("expected validation to fail"),
+        }
     }
 
     #[test]

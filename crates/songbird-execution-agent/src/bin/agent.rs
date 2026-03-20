@@ -1,6 +1,9 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Execution agent binary
 
-use songbird_execution_agent::{init_agent, AgentConfig};
+use songbird_execution_agent::{AgentConfig, init_agent};
 use tracing::info;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 

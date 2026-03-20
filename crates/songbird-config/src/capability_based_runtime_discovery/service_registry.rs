@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Service Registry Discovery Backend
 //!
 //! Complete production implementation for discovering capabilities via service registry.

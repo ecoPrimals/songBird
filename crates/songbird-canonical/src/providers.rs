@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! # 🔧 Canonical Providers
 //!
 //! **CANONICAL PROVIDER SYSTEM** ✅
@@ -51,7 +54,7 @@ mod tests {
 
     #[test]
     fn test_canonical_provider_factory_default() {
-        let factory = CanonicalProviderFactory::default();
+        let factory = CanonicalProviderFactory;
         let _ = factory;
     }
 }

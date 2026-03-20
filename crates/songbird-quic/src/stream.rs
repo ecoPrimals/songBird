@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! QUIC stream handling
 
 use crate::error::{QuicError, Result};
@@ -17,7 +20,7 @@ pub struct QuicStream {
 
 impl QuicStream {
     /// Create bidirectional stream
-    pub(crate) fn new_bi(send: SendStream, recv: RecvStream) -> Self {
+    pub(crate) const fn new_bi(send: SendStream, recv: RecvStream) -> Self {
         Self {
             send: Some(send),
             recv: Some(recv),
@@ -25,7 +28,7 @@ impl QuicStream {
     }
 
     /// Create send-only stream
-    pub(crate) fn new_uni_send(send: SendStream) -> Self {
+    pub(crate) const fn new_uni_send(send: SendStream) -> Self {
         Self {
             send: Some(send),
             recv: None,
@@ -33,7 +36,7 @@ impl QuicStream {
     }
 
     /// Create receive-only stream
-    pub(crate) fn new_uni_recv(recv: RecvStream) -> Self {
+    pub(crate) const fn new_uni_recv(recv: RecvStream) -> Self {
         Self {
             send: None,
             recv: Some(recv),
@@ -158,13 +161,102 @@ impl QuicStream {
 
     /// Check if stream is writable
     #[must_use]
-    pub fn is_writable(&self) -> bool {
+    pub const fn is_writable(&self) -> bool {
         self.send.is_some()
     }
 
     /// Check if stream is readable
     #[must_use]
-    pub fn is_readable(&self) -> bool {
+    pub const fn is_readable(&self) -> bool {
         self.recv.is_some()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+
+    use crate::client::QuicClient;
+    use crate::config::QuicConfig;
+    use crate::server::QuicServer;
+
+    #[tokio::test]
+    async fn bi_stream_write_read_roundtrip() {
+        let config = QuicConfig::new();
+        let server = QuicServer::new("127.0.0.1:0", config.clone()).await.unwrap();
+        let addr = server.local_addr();
+        let mut incoming = server.accept();
+
+        let client_task = tokio::spawn(async move {
+            let client = QuicClient::new(config).await.unwrap();
+            let conn = client.connect(&addr.to_string()).await.unwrap();
+            let mut stream = conn.open_bi().await.unwrap();
+            stream.write_all_and_finish(b"hello-quic").await.unwrap();
+            conn
+        });
+
+        let server_conn = incoming.recv().await.expect("server accept");
+        let mut server_stream = server_conn.accept_bi().await.unwrap();
+
+        let mut buf = [0u8; 16];
+        let n = server_stream.read(&mut buf).await.unwrap();
+        assert_eq!(&buf[..n], b"hello-quic");
+
+        let client_conn = client_task.await.expect("client join");
+        client_conn.close(0, b"done");
+        server.close().await;
+    }
+
+    #[tokio::test]
+    async fn recv_only_stream_not_writable() {
+        let config = QuicConfig::new();
+        let server = QuicServer::new("127.0.0.1:0", config.clone()).await.unwrap();
+        let addr = server.local_addr();
+        let mut incoming = server.accept();
+
+        let client_task = tokio::spawn(async move {
+            let client = QuicClient::new(config).await.unwrap();
+            let conn = client.connect(&addr.to_string()).await.unwrap();
+            let _send = conn.open_uni().await.unwrap();
+            conn
+        });
+
+        let server_conn = incoming.recv().await.expect("server accept");
+        let recv_only = server_conn.accept_uni().await.unwrap();
+
+        assert!(recv_only.is_readable());
+        assert!(!recv_only.is_writable());
+        let mut err_stream = recv_only;
+        assert!(err_stream.write(b"x").await.is_err());
+
+        let client_conn = client_task.await.expect("client join");
+        client_conn.close(0, b"done");
+        server.close().await;
+    }
+
+    #[tokio::test]
+    async fn read_to_end_respects_max_size() {
+        let config = QuicConfig::new();
+        let server = QuicServer::new("127.0.0.1:0", config.clone()).await.unwrap();
+        let addr = server.local_addr();
+        let mut incoming = server.accept();
+
+        let client_task = tokio::spawn(async move {
+            let client = QuicClient::new(config).await.unwrap();
+            let conn = client.connect(&addr.to_string()).await.unwrap();
+            let mut stream = conn.open_bi().await.unwrap();
+            stream.write(&[0u8; 128]).await.unwrap();
+            stream.finish().unwrap();
+            conn
+        });
+
+        let server_conn = incoming.recv().await.expect("server accept");
+        let mut stream = server_conn.accept_bi().await.unwrap();
+
+        let err = stream.read_to_end(16).await;
+        assert!(err.is_err());
+
+        let client_conn = client_task.await.expect("client join");
+        client_conn.close(0, b"done");
+        server.close().await;
     }
 }

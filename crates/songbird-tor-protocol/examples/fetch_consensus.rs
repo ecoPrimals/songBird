@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Fetch and parse Tor consensus
 //!
 //! Example: cargo run --example fetch_consensus

@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Convenient Discovery Helpers
 //!
 //! High-level utilities for capability-based primal discovery with fallbacks.
@@ -42,11 +45,11 @@ pub async fn discover_primal(
 
     // 1. Try capability registry (preferred method)
     let discovery = CapabilityDiscovery::new();
-    if let Ok(endpoints) = discovery.find_providers_by_capability(&capability).await {
-        if let Some(endpoint) = endpoints.first() {
-            info!("Found {} via capability registry at {}", primal_type, endpoint.url);
-            return Ok(endpoint.clone());
-        }
+    if let Ok(endpoints) = discovery.find_providers_by_capability(&capability).await
+        && let Some(endpoint) = endpoints.first()
+    {
+        info!("Found {} via capability registry at {}", primal_type, endpoint.url);
+        return Ok(endpoint.clone());
     }
 
     // 2. Try environment variable

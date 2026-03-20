@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Core registry implementation
 //!
 //! The main Registry struct and its implementation.
@@ -140,24 +143,24 @@ impl PluginRegistry for Registry {
             .values()
             .filter(|plugin| {
                 // Filter by ID (exact match)
-                if let Some(ref id) = query.id {
-                    if plugin.id.as_str() != id {
-                        return false;
-                    }
+                if let Some(ref id) = query.id
+                    && plugin.id.as_str() != id
+                {
+                    return false;
                 }
 
                 // Filter by name (substring match)
-                if let Some(ref name) = query.name {
-                    if !plugin.name.to_lowercase().contains(&name.to_lowercase()) {
-                        return false;
-                    }
+                if let Some(ref name) = query.name
+                    && !plugin.name.to_lowercase().contains(&name.to_lowercase())
+                {
+                    return false;
                 }
 
                 // Filter by author
-                if let Some(ref author) = query.author {
-                    if plugin.metadata.author != *author {
-                        return false;
-                    }
+                if let Some(ref author) = query.author
+                    && plugin.metadata.author != *author
+                {
+                    return false;
                 }
 
                 // Filter by tags (must have ALL specified tags)

@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Error types for primal coordination
 
 use thiserror::Error;
@@ -51,4 +54,45 @@ pub enum PrimalCoordinationError {
     /// Generic error
     #[error("Error: {0}")]
     Other(#[from] anyhow::Error),
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn display_not_found_and_connection() {
+        assert!(PrimalCoordinationError::NotFound("x".into()).to_string().contains("Not found"));
+        assert!(
+            PrimalCoordinationError::ConnectionFailed("e".into())
+                .to_string()
+                .contains("Connection failed")
+        );
+    }
+
+    #[test]
+    fn display_no_capable_primal_and_internal() {
+        assert!(
+            PrimalCoordinationError::NoCapablePrimal("cap".into())
+                .to_string()
+                .contains("No capable primal")
+        );
+        assert!(
+            PrimalCoordinationError::Internal("bug".into()).to_string().contains("Internal error")
+        );
+    }
+
+    #[test]
+    fn serde_json_error_maps_to_serialization() {
+        let j = serde_json::from_str::<serde_json::Value>("not json").unwrap_err();
+        let e: PrimalCoordinationError = j.into();
+        assert!(matches!(e, PrimalCoordinationError::Serialization(_)));
+    }
+
+    #[test]
+    fn io_error_maps() {
+        let io = std::io::Error::other("io");
+        let e: PrimalCoordinationError = io.into();
+        assert!(matches!(e, PrimalCoordinationError::Io(_)));
+    }
 }

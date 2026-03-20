@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Platform-specific IPC implementations
 
 use crate::endpoint::NativeEndpoint;
@@ -317,8 +320,7 @@ mod tests {
         assert!(!name.is_empty());
 
         // Should be one of the known platforms
-        let known_platforms =
-            vec!["android", "linux", "macos", "ios", "windows", "wasm", "unknown"];
+        let known_platforms = ["android", "linux", "macos", "ios", "windows", "wasm", "unknown"];
         assert!(known_platforms.contains(&name));
     }
 

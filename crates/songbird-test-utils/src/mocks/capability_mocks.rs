@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! # 🍼 Capability-Based Mock Servers
 //!
 //! **MISSION**: Provide test mocks WITHOUT hardcoded primal names
@@ -143,7 +146,7 @@ struct CapabilityServerState {
 ///     let port = security.start().await?;
 ///     
 ///     // Set environment for discovery
-///     std::env::set_var("CAPABILITY_SECURITY_ENDPOINT", format!("http://localhost:{}", port));
+///     songbird_process_env::set_var("CAPABILITY_SECURITY_ENDPOINT", format!("http://localhost:{}", port));
 ///     
 ///     // Test your code that discovers capabilities
 ///     // ...
@@ -421,7 +424,7 @@ impl MockCapabilityEnvironmentBuilder {
                 }
             };
 
-            std::env::set_var(env_var, format!("http://localhost:{}", port));
+            songbird_process_env::set_var(env_var, format!("http://localhost:{}", port));
             servers.insert(capability, server);
         }
 
@@ -474,11 +477,13 @@ mod tests {
         // Check endpoint
         let endpoint = server.endpoint();
         assert!(endpoint.is_some());
-        assert!(endpoint
-            .ok_or_else(|| SongbirdError::configuration(
-                "Endpoint should be available after server start".to_string()
-            ))?
-            .contains(&port.to_string()));
+        assert!(
+            endpoint
+                .ok_or_else(|| SongbirdError::configuration(
+                    "Endpoint should be available after server start".to_string()
+                ))?
+                .contains(&port.to_string())
+        );
 
         // Stop server
         server.stop().await;

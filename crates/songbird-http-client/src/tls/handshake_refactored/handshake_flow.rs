@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! TLS 1.3 handshake flow orchestration
 //!
 //! This module contains the main handshake state machine that orchestrates
@@ -34,7 +37,7 @@ use crate::tls::session::SessionKeys;
 use crate::tls::{CIPHER_SUITES, TLS_1_2};
 use tokio::io::AsyncWriteExt;
 use tokio::net::TcpStream;
-use tokio::time::{timeout, Duration};
+use tokio::time::{Duration, timeout};
 use tracing::{debug, error, info, warn};
 
 impl TlsHandshake {
@@ -224,6 +227,7 @@ impl TlsHandshake {
     }
 
     /// Handle a TLS alert received instead of expected handshake message
+    #[allow(clippy::unused_self)] // API consistency
     fn handle_tls_alert(&self, data: &[u8]) -> Error {
         use crate::tls::alert::TlsAlert;
 
@@ -289,7 +293,7 @@ impl TlsHandshake {
                             sequence_number += 1;
 
                             // Parse individual handshake messages and add to transcript
-                            let parsed_messages = self.parse_handshake_messages(&plaintext)?;
+                            let parsed_messages = self.parse_handshake_messages(&plaintext);
                             for (msg_type, msg_data) in &parsed_messages {
                                 let name = match msg_type {
                                     0x08 => "EncryptedExtensions",
@@ -400,7 +404,11 @@ impl TlsHandshake {
         msg.push(0); // Legacy session ID length
 
         // Cipher suites
-        msg.extend_from_slice(&((CIPHER_SUITES.len() * 2) as u16).to_be_bytes());
+        msg.extend_from_slice(
+            &u16::try_from(CIPHER_SUITES.len() * 2)
+                .expect("cipher suites fit in u16")
+                .to_be_bytes(),
+        );
         for suite in CIPHER_SUITES {
             msg.extend_from_slice(&suite.to_be_bytes());
         }
@@ -411,7 +419,9 @@ impl TlsHandshake {
 
         // Extensions
         let extensions = self.build_extensions(server_name, client_public_key)?;
-        msg.extend_from_slice(&(extensions.len() as u16).to_be_bytes());
+        msg.extend_from_slice(
+            &u16::try_from(extensions.len()).expect("extensions fit in u16").to_be_bytes(),
+        );
         msg.extend_from_slice(&extensions);
 
         // Fill in lengths

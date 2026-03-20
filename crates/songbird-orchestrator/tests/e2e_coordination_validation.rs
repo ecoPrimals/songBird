@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! End-to-end tests for coordination pattern validation
 //!
 //! These tests verify the full workflow from graph creation to coordination

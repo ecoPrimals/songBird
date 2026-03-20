@@ -1,3 +1,34 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
+#![allow(
+    clippy::unwrap_used,
+    clippy::expect_used,
+    clippy::unnecessary_wraps,
+    clippy::await_holding_lock,
+    clippy::float_cmp,
+    clippy::absurd_extreme_comparisons,
+    clippy::needless_collect,
+    clippy::nonminimal_bool,
+    clippy::used_underscore_binding,
+    clippy::field_reassign_with_default,
+    clippy::return_self_not_must_use,
+    clippy::overly_complex_bool_expr,
+    clippy::assertions_on_constants,
+    clippy::no_effect_underscore_binding,
+    clippy::items_after_statements,
+    clippy::empty_line_after_doc_comments,
+    clippy::const_is_empty,
+    clippy::duplicated_attributes,
+    deprecated,
+    dead_code,
+    clippy::unnecessary_literal_unwrap,
+    clippy::needless_pass_by_value,
+    clippy::must_use_candidate,
+    clippy::cast_precision_loss,
+    clippy::struct_field_names
+)]
+
 //! Comprehensive tests for status command
 //!
 //! Phase 3 Test Coverage Expansion - CLI Commands
@@ -72,18 +103,18 @@ fn test_memory_calculations() {
     for (used, total) in memory_values {
         assert!(used <= total);
         let percentage = (used as f64 / total as f64) * 100.0;
-        assert!(percentage >= 0.0 && percentage <= 100.0);
+        assert!((0.0..=100.0).contains(&percentage));
     }
 }
 
 #[test]
 fn test_memory_percentage_edge_cases() {
     // Zero usage
-    let percentage = (0_u64 as f64 / 1_000_000_000_u64 as f64) * 100.0;
+    let percentage = (0_u64 as f64 / 1_000_000_000_f64) * 100.0;
     assert_eq!(percentage, 0.0);
 
     // Full usage
-    let percentage = (1_000_000_000_u64 as f64 / 1_000_000_000_u64 as f64) * 100.0;
+    let percentage = (1_000_000_000_f64 / 1_000_000_000_f64) * 100.0;
     assert_eq!(percentage, 100.0);
 }
 
@@ -299,7 +330,7 @@ fn test_status_data_consistency() {
     let active_services = 12_u32;
 
     // Verify consistency
-    assert!(cpu_usage >= 0.0 && cpu_usage <= 100.0);
+    assert!((0.0..=100.0).contains(&cpu_usage));
     assert!(memory_usage <= memory_total);
     assert!(connected_nodes <= active_services); // Can't have more nodes than services
     assert!(uptime.as_secs() > 0); // System has been running

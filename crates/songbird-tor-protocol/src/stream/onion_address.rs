@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Onion address parsing and validation
 //!
 //! **Phase 2C**: Onion Client
@@ -32,6 +35,10 @@ impl OnionAddress {
     /// - 32 bytes: Ed25519 public key
     /// - 2 bytes: Checksum
     /// - 1 byte: Version (0x03)
+    ///
+    /// # Errors
+    ///
+    /// Returns error if address format is invalid, base32 decode fails, or checksum mismatches.
     pub fn parse(address: &str) -> Result<Self> {
         // Strip .onion suffix if present
         let addr = address.strip_suffix(".onion").unwrap_or(address);
@@ -142,7 +149,7 @@ mod tests {
     fn test_onion_address_with_suffix() {
         // Valid v3 address (56 chars + .onion)
         let addr = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
-        let full_addr = format!("{}.onion", addr);
+        let full_addr = format!("{addr}.onion");
 
         let result = OnionAddress::parse(&full_addr);
         // Will fail base32 decode (all 'a's), but tests suffix stripping
@@ -154,8 +161,12 @@ mod tests {
         // Create a test address (will fail validation but tests display)
         let addr = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
         if let Ok(parsed) = OnionAddress::parse(addr) {
-            let display = format!("{}", parsed);
-            assert!(display.ends_with(".onion"));
+            let display = format!("{parsed}");
+            assert!(
+                std::path::Path::new(&display)
+                    .extension()
+                    .is_some_and(|ext| ext.eq_ignore_ascii_case("onion"))
+            );
         }
     }
 
@@ -198,7 +209,7 @@ mod tests {
         );
 
         // Parse should succeed
-        let parsed = OnionAddress::parse(&encoded).unwrap();
+        let parsed = OnionAddress::parse(&encoded).expect("valid address should parse");
         assert_eq!(parsed.public_key, pubkey);
         assert_eq!(parsed.checksum, checksum);
         assert_eq!(parsed.version, 0x03);
@@ -225,8 +236,8 @@ mod tests {
 
         let result = OnionAddress::parse(&encoded);
         assert!(result.is_err());
-        let err = result.unwrap_err();
-        assert!(format!("{}", err).contains("checksum mismatch"));
+        let err = result.expect_err("bad checksum should fail");
+        assert!(format!("{err}").contains("checksum mismatch"));
     }
 
     #[test]
@@ -251,10 +262,14 @@ mod tests {
             },
             &addr_bytes,
         );
-        let full = format!("{}.onion", encoded);
+        let full = format!("{encoded}.onion");
 
-        let parsed = OnionAddress::parse(&full).unwrap();
+        let parsed = OnionAddress::parse(&full).expect("valid address should parse");
         assert_eq!(parsed.public_key, pubkey);
-        assert!(parsed.to_string_with_suffix().ends_with(".onion"));
+        assert!(
+            std::path::Path::new(&parsed.to_string_with_suffix())
+                .extension()
+                .is_some_and(|ext| ext.eq_ignore_ascii_case("onion"))
+        );
     }
 }

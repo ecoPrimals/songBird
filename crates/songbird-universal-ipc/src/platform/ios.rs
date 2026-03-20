@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! iOS/macOS IPC implementation
 //!
 //! **Platform**: iOS, macOS (Apple platforms)
@@ -245,7 +248,6 @@ impl PlatformListener for MacOSListenerWrapper {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
 
     #[tokio::test]
     #[cfg(target_os = "macos")]

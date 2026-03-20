@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Circuit extension - EXTEND2/EXTENDED2 protocol
 //!
 //! **Phase 2B**: Circuit building
@@ -155,7 +158,6 @@ impl CircuitExtender {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::directory::RelayFlags;
 
     #[test]
     fn test_circuit_extender_creation() {

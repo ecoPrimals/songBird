@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Songbird TLS Client Test Binary
 //!
 //! Purpose: Used by self-test harness to validate client+server transcript matching
@@ -5,7 +8,6 @@
 
 use songbird_http_client::SongbirdHttpClient;
 use tracing::{error, info};
-use tracing_subscriber;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
@@ -57,13 +59,19 @@ async fn main() -> anyhow::Result<()> {
             }
             "--help" | "-h" => {
                 println!("Songbird TLS Client - Self-Test Mode");
-                println!("");
+                println!();
                 println!("Usage: client_test [OPTIONS]");
-                println!("");
+                println!();
                 println!("Options:");
-                println!("  --url <URL>                URL to connect to (default: https://localhost:8443)");
-                println!("  --skip-verify              Skip certificate verification (for self-signed certs)");
-                println!("  --beardog-socket <PATH>    BearDog socket path (default: /tmp/beardog-test.sock)");
+                println!(
+                    "  --url <URL>                URL to connect to (default: https://localhost:8443)"
+                );
+                println!(
+                    "  --skip-verify              Skip certificate verification (for self-signed certs)"
+                );
+                println!(
+                    "  --beardog-socket <PATH>    BearDog socket path (default: /tmp/beardog-test.sock)"
+                );
                 println!("  --help, -h                 Show this help message");
                 std::process::exit(0);
             }

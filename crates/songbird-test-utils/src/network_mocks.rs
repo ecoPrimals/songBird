@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 use serde_json::Value;
 use songbird_types::errors::SongbirdResult;
 /// Network mocking utilities

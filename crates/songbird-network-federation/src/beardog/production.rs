@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Production `BearDog` Provider - Unix Socket Implementation
 //!
 //! Implements all `BearDog` integration traits via Unix socket JSON-RPC.
@@ -15,7 +18,7 @@ use super::{
     AccessLevel, BearDogProvider, BirdSongCrypto, BroadcastKey, EncryptedBirdSong, LineageChain,
     LineageHint, LineageProof, LineageProvider, LineageRelay, RelaySession,
 };
-use anyhow::{anyhow, Context, Result};
+use anyhow::{Context, Result, anyhow};
 use serde_json::Value;
 use std::path::PathBuf;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
@@ -194,7 +197,7 @@ impl BirdSongCrypto for ProductionBearDogProvider {
         payload: &[u8],
         lineage_hint: LineageHint,
     ) -> Result<EncryptedBirdSong> {
-        use base64::{engine::general_purpose, Engine as _};
+        use base64::{Engine as _, engine::general_purpose};
 
         // Get family_id from self, env vars, or default (canonical chain)
         let family_id = self
@@ -245,7 +248,7 @@ impl BirdSongCrypto for ProductionBearDogProvider {
             return Ok(None); // Different family (noise)
         }
 
-        use base64::{engine::general_purpose, Engine as _};
+        use base64::{Engine as _, engine::general_purpose};
         let plaintext_b64 = result
             .get("plaintext")
             .and_then(|v| v.as_str())
@@ -305,7 +308,7 @@ impl LineageRelay for ProductionBearDogProvider {
     }
 
     async fn relay_packet(&self, session: &RelaySession, packet: &[u8]) -> Result<()> {
-        use base64::{engine::general_purpose, Engine as _};
+        use base64::{Engine as _, engine::general_purpose};
 
         let params = serde_json::json!({
             "session_id": session.session_id,

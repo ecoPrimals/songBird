@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! # 🍼 Capability-Based Endpoints (Zero Hardcoding)
 //!
 //! **PHILOSOPHY**: Request capabilities (security, storage, compute, ai), not specific providers.
@@ -178,11 +181,11 @@ impl CapabilityEndpointResolver {
             let cache = self.cache.read().await;
             if let Some(cached) = cache.get(&capability) {
                 // Check if cache is still valid
-                if let Ok(elapsed) = cached.discovered_at.elapsed() {
-                    if elapsed < self.cache_ttl {
-                        debug!("Using cached endpoint for {:?}", capability);
-                        return Ok(cached.endpoint.clone());
-                    }
+                if let Ok(elapsed) = cached.discovered_at.elapsed()
+                    && elapsed < self.cache_ttl
+                {
+                    debug!("Using cached endpoint for {:?}", capability);
+                    return Ok(cached.endpoint.clone());
                 }
             }
         }
@@ -275,42 +278,43 @@ impl CapabilityEndpointResolver {
         match client.get(&consul_url).await {
             Ok(response) if response.is_success() => {
                 // Parse Consul service catalog response
-                if let Ok(services) = response.json::<Vec<serde_json::Value>>().await {
-                    if let Some(service) = services.first() {
-                        // Extract service endpoint
-                        if let (Some(address), Some(port)) = (
-                            service
-                                .get("ServiceAddress")
+                if let Ok(services) = response.json::<Vec<serde_json::Value>>().await
+                    && let Some(service) = services.first()
+                {
+                    // Extract service endpoint
+                    if let (Some(address), Some(port)) = (
+                        service
+                            .get("ServiceAddress")
+                            .and_then(|v| v.as_str())
+                            .or_else(|| service.get("Address").and_then(|v| v.as_str())),
+                        service
+                            .get("ServicePort")
+                            .and_then(serde_json::Value::as_u64)
+                            .or_else(|| service.get("Port").and_then(serde_json::Value::as_u64)),
+                    ) {
+                        let endpoint = if address.contains("://") {
+                            format!("{address}:{port}")
+                        } else {
+                            format!("http://{address}:{port}")
+                        };
+
+                        debug!(
+                            "Found {} capability at {} via registry",
+                            capability.as_str(),
+                            endpoint
+                        );
+
+                        return Ok(Some(CapabilityEndpoint {
+                            capability: capability.clone(),
+                            endpoint,
+                            provider_id: service
+                                .get("ServiceName")
                                 .and_then(|v| v.as_str())
-                                .or_else(|| service.get("Address").and_then(|v| v.as_str())),
-                            service.get("ServicePort").and_then(serde_json::Value::as_u64).or_else(
-                                || service.get("Port").and_then(serde_json::Value::as_u64),
-                            ),
-                        ) {
-                            let endpoint = if address.contains("://") {
-                                format!("{address}:{port}")
-                            } else {
-                                format!("http://{address}:{port}")
-                            };
-
-                            debug!(
-                                "Found {} capability at {} via registry",
-                                capability.as_str(),
-                                endpoint
-                            );
-
-                            return Ok(Some(CapabilityEndpoint {
-                                capability: capability.clone(),
-                                endpoint,
-                                provider_id: service
-                                    .get("ServiceName")
-                                    .and_then(|v| v.as_str())
-                                    .map(String::from),
-                                discovery_method: DiscoveryMethod::ServiceRegistry,
-                                confidence: 0.9, // High confidence from registry
-                                discovered_at: std::time::SystemTime::now(),
-                            }));
-                        }
+                                .map(String::from),
+                            discovery_method: DiscoveryMethod::ServiceRegistry,
+                            confidence: 0.9, // High confidence from registry
+                            discovered_at: std::time::SystemTime::now(),
+                        }));
                     }
                 }
             }
@@ -356,29 +360,27 @@ impl CapabilityEndpointResolver {
                             .and_then(|s| s.get("clusterIP"))
                             .and_then(|v| v.as_str()),
                         service.get("spec").and_then(|s| s.get("ports")).and_then(|v| v.as_array()),
-                    ) {
-                        if let Some(first_port) = ports
-                            .first()
-                            .and_then(|p| p.get("port"))
-                            .and_then(serde_json::Value::as_u64)
-                        {
-                            let endpoint = format!("http://{cluster_ip}:{first_port}");
+                    ) && let Some(first_port) = ports
+                        .first()
+                        .and_then(|p| p.get("port"))
+                        .and_then(serde_json::Value::as_u64)
+                    {
+                        let endpoint = format!("http://{cluster_ip}:{first_port}");
 
-                            debug!(
-                                "Found {} capability at {} via container metadata",
-                                capability.as_str(),
-                                endpoint
-                            );
+                        debug!(
+                            "Found {} capability at {} via container metadata",
+                            capability.as_str(),
+                            endpoint
+                        );
 
-                            return Ok(Some(CapabilityEndpoint {
-                                capability: capability.clone(),
-                                endpoint,
-                                provider_id: Some(service_name),
-                                discovery_method: DiscoveryMethod::ContainerMetadata,
-                                confidence: 0.95, // Very high confidence from K8s
-                                discovered_at: std::time::SystemTime::now(),
-                            }));
-                        }
+                        return Ok(Some(CapabilityEndpoint {
+                            capability: capability.clone(),
+                            endpoint,
+                            provider_id: Some(service_name),
+                            discovery_method: DiscoveryMethod::ContainerMetadata,
+                            confidence: 0.95, // Very high confidence from K8s
+                            discovered_at: std::time::SystemTime::now(),
+                        }));
                     }
                 }
             }

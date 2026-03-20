@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Pure Rust Unix Socket JSON-RPC Server (v3.22.0+)
 //!
 //! ## Evolution
@@ -8,7 +11,7 @@
 //! ## Module Structure
 //!
 //! - `protocol`: JSON-RPC 2.0 types and error codes
-//! - `server`: Core server infrastructure and lifecycle
+//! - `server`: Core server (`UnixSocketServer`), connection accept loops, request handlers
 //! - `squirrel_handlers`: Squirrel integration endpoints
 //!
 //! ## Public API

@@ -1,8 +1,11 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! CLI UI utilities for beautiful terminal output
 
 use crate::errors::{CliError, SongbirdResult};
 use colored::{ColoredString, Colorize};
-use dialoguer::{theme::ColorfulTheme, Confirm, Input, Select};
+use dialoguer::{Confirm, Input, Select, theme::ColorfulTheme};
 use indicatif::{ProgressBar, ProgressStyle};
 use std::fmt::Display;
 use std::time::Duration;

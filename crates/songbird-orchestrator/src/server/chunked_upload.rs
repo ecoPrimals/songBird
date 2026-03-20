@@ -1,13 +1,16 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Chunked upload implementation for Phase 3
 
 use super::deployment_api::{
-    start_service, ChunkInfo, DeploymentInfo, DeploymentResponse, DeploymentState,
-    DeploymentStatus, FinalizeRequest, NegotiationRequest, NegotiationResponse, NegotiationState,
+    ChunkInfo, DeploymentInfo, DeploymentResponse, DeploymentState, DeploymentStatus,
+    FinalizeRequest, NegotiationRequest, NegotiationResponse, NegotiationState, start_service,
 };
 use axum::{
+    Json,
     extract::{Multipart, Path, State},
     http::StatusCode,
-    Json,
 };
 use tokio::fs;
 use tokio::io::AsyncWriteExt;
@@ -28,7 +31,7 @@ pub async fn negotiate_chunked_upload(
 
     // Calculate chunks
     let chunk_size_mb = 10u32; // 10MB chunks
-                               // Safe cast: For any reasonable binary size (<18 exabytes), this won't overflow usize
+    // Safe cast: For any reasonable binary size (<18 exabytes), this won't overflow usize
     #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
     let total_chunks = ((request.binary_size_mb / f64::from(chunk_size_mb)).ceil() as usize).max(1);
 

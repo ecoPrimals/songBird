@@ -1,9 +1,12 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
+use songbird_types::SongbirdError;
 /// Performance testing utilities
 ///
 /// Provides benchmarking, performance measurement, and load testing
 /// utilities for performance-critical components.
 use songbird_types::errors::SongbirdResult;
-use songbird_types::SongbirdError;
 use std::time::{Duration, Instant};
 
 /// Performance measurement context

@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! End-to-End Tests for Port Fallback Discovery
 //!
 //! These tests simulate real deployment scenarios including:
@@ -66,7 +69,7 @@ impl SimulatedTower {
         Ok(())
     }
 
-    fn can_connect(&self, other: &SimulatedTower) -> bool {
+    fn can_connect(&self, other: &Self) -> bool {
         // Simulate connection attempt
         // Should use other's broadcast port, not configured port
         match (self.actual_port, other.discovery_broadcast_port) {

@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! `BearDog` crypto integration for TLS
 //!
 //! **EVOLVED (Jan 31, 2026): Platform-agnostic IPC!**
@@ -19,7 +22,7 @@
 //! - Full integration with songbird-universal-ipc's capability system
 
 use crate::error::{Result, TlsError};
-use base64::{engine::general_purpose, Engine as _};
+use base64::{Engine as _, engine::general_purpose};
 use pin_project::pin_project;
 use serde::Deserialize;
 use std::pin::Pin;

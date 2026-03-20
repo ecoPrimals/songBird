@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! # Performance Configuration Module
 //!
 //! **CANONICAL PERFORMANCE CONFIGURATION** ✅
@@ -7,7 +10,7 @@
 use serde::{Deserialize, Serialize};
 
 // ============================================================================
-// PERFORMANCE CONFIGURATION - Placeholder
+// PERFORMANCE CONFIGURATION
 // ============================================================================
 
 /// **CANONICAL**: Performance and optimization configuration

@@ -1,3 +1,38 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
+#![allow(
+    clippy::unwrap_used,
+    clippy::expect_used,
+    clippy::unnecessary_wraps,
+    clippy::await_holding_lock,
+    clippy::float_cmp,
+    clippy::absurd_extreme_comparisons,
+    clippy::needless_collect,
+    clippy::nonminimal_bool,
+    clippy::used_underscore_binding,
+    clippy::field_reassign_with_default,
+    clippy::return_self_not_must_use,
+    clippy::overly_complex_bool_expr,
+    clippy::assertions_on_constants,
+    clippy::no_effect_underscore_binding,
+    clippy::items_after_statements,
+    clippy::empty_line_after_doc_comments,
+    clippy::const_is_empty,
+    clippy::duplicated_attributes,
+    deprecated,
+    dead_code,
+    clippy::unnecessary_literal_unwrap,
+    clippy::needless_pass_by_value,
+    clippy::must_use_candidate,
+    clippy::clone_on_ref_ptr,
+    clippy::similar_names,
+    clippy::unreadable_literal,
+    clippy::cast_possible_truncation,
+    clippy::cast_sign_loss,
+    clippy::cast_precision_loss,
+    clippy::cast_possible_wrap
+)]
 // Allow unwrap/expect in tests - idiomatic for test code
 #![allow(clippy::unwrap_used, clippy::expect_used)]
 
@@ -10,7 +45,6 @@ use songbird_test_utils::test_federation_port;
 use songbird_test_utils::test_health_port;
 use songbird_types::SongbirdResult;
 use songbird_universal::capabilities::{DiscoveryConfig, PrimalType, UniversalCapabilityAdapter};
-use std::env;
 
 #[test]
 fn test_adapter_new() -> SongbirdResult<()> {
@@ -61,7 +95,7 @@ async fn test_find_capability_providers_empty() {
         "NESTGATE_ENDPOINT",
         "SQUIRREL_ENDPOINT",
     ] {
-        env::remove_var(var);
+        songbird_process_env::remove_var(var);
     }
 
     let config = DiscoveryConfig {
@@ -82,7 +116,10 @@ async fn test_find_capability_providers_empty() {
 #[tokio::test]
 async fn test_find_capability_providers_security() {
     // Set up environment for security capability
-    env::set_var("BEARDOG_ENDPOINT", format!("http://localhost:{}", test_discovery_port()));
+    songbird_process_env::set_var(
+        "BEARDOG_ENDPOINT",
+        format!("http://localhost:{}", test_discovery_port()),
+    );
 
     let config = DiscoveryConfig::default();
     let adapter = UniversalCapabilityAdapter::new(config);
@@ -94,13 +131,16 @@ async fn test_find_capability_providers_security() {
     assert!(providers.iter().any(|p| p.contains("security")) || providers.is_empty());
 
     // Clean up
-    env::remove_var("BEARDOG_ENDPOINT");
+    songbird_process_env::remove_var("BEARDOG_ENDPOINT");
 }
 
 #[tokio::test]
 async fn test_find_capability_providers_compute() {
     // Set up environment for compute capability
-    env::set_var("TOADSTOOL_ENDPOINT", format!("http://localhost:{}", test_health_port()));
+    songbird_process_env::set_var(
+        "TOADSTOOL_ENDPOINT",
+        format!("http://localhost:{}", test_health_port()),
+    );
 
     let config = DiscoveryConfig::default();
     let adapter = UniversalCapabilityAdapter::new(config);
@@ -112,13 +152,16 @@ async fn test_find_capability_providers_compute() {
     assert!(providers.iter().any(|p| p.contains("compute")) || providers.is_empty());
 
     // Clean up
-    env::remove_var("TOADSTOOL_ENDPOINT");
+    songbird_process_env::remove_var("TOADSTOOL_ENDPOINT");
 }
 
 #[tokio::test]
 async fn test_find_capability_providers_storage() {
     // Set up environment for storage capability
-    env::set_var("NESTGATE_ENDPOINT", format!("http://localhost:{}", test_federation_port()));
+    songbird_process_env::set_var(
+        "NESTGATE_ENDPOINT",
+        format!("http://localhost:{}", test_federation_port()),
+    );
 
     let config = DiscoveryConfig::default();
     let adapter = UniversalCapabilityAdapter::new(config);
@@ -130,13 +173,13 @@ async fn test_find_capability_providers_storage() {
     assert!(providers.iter().any(|p| p.contains("storage")) || providers.is_empty());
 
     // Clean up
-    env::remove_var("NESTGATE_ENDPOINT");
+    songbird_process_env::remove_var("NESTGATE_ENDPOINT");
 }
 
 #[tokio::test]
 async fn test_find_capability_providers_ai() {
     // Set up environment for AI capability
-    env::set_var("SQUIRREL_ENDPOINT", "http://localhost:8084");
+    songbird_process_env::set_var("SQUIRREL_ENDPOINT", "http://localhost:8084");
 
     let config = DiscoveryConfig::default();
     let adapter = UniversalCapabilityAdapter::new(config);
@@ -148,13 +191,16 @@ async fn test_find_capability_providers_ai() {
     assert!(providers.iter().any(|p| p.contains("ai")) || providers.is_empty());
 
     // Clean up
-    env::remove_var("SQUIRREL_ENDPOINT");
+    songbird_process_env::remove_var("SQUIRREL_ENDPOINT");
 }
 
 #[tokio::test]
 async fn test_find_capability_providers_deduplication() {
     // Set up duplicate providers
-    env::set_var("BEARDOG_ENDPOINT", format!("http://localhost:{}", test_discovery_port()));
+    songbird_process_env::set_var(
+        "BEARDOG_ENDPOINT",
+        format!("http://localhost:{}", test_discovery_port()),
+    );
 
     let config = DiscoveryConfig::default();
     let adapter = UniversalCapabilityAdapter::new(config);
@@ -166,7 +212,7 @@ async fn test_find_capability_providers_deduplication() {
     assert_eq!(unique.len(), providers.len(), "Providers should be deduplicated");
 
     // Clean up
-    env::remove_var("BEARDOG_ENDPOINT");
+    songbird_process_env::remove_var("BEARDOG_ENDPOINT");
 }
 
 #[tokio::test]
@@ -174,7 +220,7 @@ async fn test_get_best_primal_for_capability_empty() {
     // Clear environment
     for var in &["BEARDOG_ENDPOINT", "TOADSTOOL_ENDPOINT", "NESTGATE_ENDPOINT", "SQUIRREL_ENDPOINT"]
     {
-        env::remove_var(var);
+        songbird_process_env::remove_var(var);
     }
 
     let config = DiscoveryConfig {
@@ -195,7 +241,10 @@ async fn test_get_best_primal_for_capability_empty() {
 #[tokio::test]
 async fn test_get_best_primal_for_capability_security() {
     // Set up environment
-    env::set_var("BEARDOG_ENDPOINT", format!("http://localhost:{}", test_discovery_port()));
+    songbird_process_env::set_var(
+        "BEARDOG_ENDPOINT",
+        format!("http://localhost:{}", test_discovery_port()),
+    );
 
     let config = DiscoveryConfig::default();
     let adapter = UniversalCapabilityAdapter::new(config);
@@ -209,7 +258,7 @@ async fn test_get_best_primal_for_capability_security() {
     }
 
     // Clean up
-    env::remove_var("BEARDOG_ENDPOINT");
+    songbird_process_env::remove_var("BEARDOG_ENDPOINT");
 }
 
 #[test]
@@ -290,8 +339,14 @@ fn test_discovery_config_debug() -> SongbirdResult<()> {
 #[tokio::test]
 async fn test_adapter_multiple_capability_types() {
     // Set up multiple primals
-    env::set_var("BEARDOG_ENDPOINT", format!("http://localhost:{}", test_discovery_port()));
-    env::set_var("TOADSTOOL_ENDPOINT", format!("http://localhost:{}", test_health_port()));
+    songbird_process_env::set_var(
+        "BEARDOG_ENDPOINT",
+        format!("http://localhost:{}", test_discovery_port()),
+    );
+    songbird_process_env::set_var(
+        "TOADSTOOL_ENDPOINT",
+        format!("http://localhost:{}", test_health_port()),
+    );
 
     let config = DiscoveryConfig::default();
     let adapter = UniversalCapabilityAdapter::new(config);
@@ -303,14 +358,17 @@ async fn test_adapter_multiple_capability_types() {
     assert!(security_providers != compute_providers || security_providers.is_empty());
 
     // Clean up
-    env::remove_var("BEARDOG_ENDPOINT");
-    env::remove_var("TOADSTOOL_ENDPOINT");
+    songbird_process_env::remove_var("BEARDOG_ENDPOINT");
+    songbird_process_env::remove_var("TOADSTOOL_ENDPOINT");
 }
 
 #[tokio::test]
 async fn test_adapter_capability_aliases() {
     // Set up environment
-    env::set_var("BEARDOG_ENDPOINT", format!("http://localhost:{}", test_discovery_port()));
+    songbird_process_env::set_var(
+        "BEARDOG_ENDPOINT",
+        format!("http://localhost:{}", test_discovery_port()),
+    );
 
     let config = DiscoveryConfig::default();
     let adapter = UniversalCapabilityAdapter::new(config);
@@ -333,7 +391,7 @@ async fn test_adapter_capability_aliases() {
     );
 
     // Clean up
-    env::remove_var("BEARDOG_ENDPOINT");
+    songbird_process_env::remove_var("BEARDOG_ENDPOINT");
 }
 
 #[test]
@@ -359,12 +417,15 @@ async fn test_adapter_with_disabled_network_discovery() {
 
     // 🍼 MIGRATED: Check for any security provider with disabled network discovery
     // Should still work with env-based discovery
-    env::set_var("BEARDOG_ENDPOINT", format!("http://localhost:{}", test_discovery_port()));
+    songbird_process_env::set_var(
+        "BEARDOG_ENDPOINT",
+        format!("http://localhost:{}", test_discovery_port()),
+    );
     let providers = adapter.find_capability_providers("security").await;
     assert!(providers.iter().any(|p| p.contains("security")) || providers.is_empty());
 
     // Clean up
-    env::remove_var("BEARDOG_ENDPOINT");
+    songbird_process_env::remove_var("BEARDOG_ENDPOINT");
 }
 
 #[tokio::test]

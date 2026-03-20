@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! # Legacy Backend Adapters
 //!
 //! This module provides adapters that wrap the existing hardcoded Consul and Kubernetes

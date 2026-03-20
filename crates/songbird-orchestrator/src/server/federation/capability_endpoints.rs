@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Federation Capability Registration Endpoints
 //!
 //! Handles capability provider registration, heartbeat, and discovery operations

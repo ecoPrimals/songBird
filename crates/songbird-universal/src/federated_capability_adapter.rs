@@ -1,11 +1,14 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Federated Capability Adapter
 //!
 //! Extends capability routing to support federated service discovery.
 //! This adapter queries both local and remote (federated) services when routing requests.
 
 use crate::{
-    types::{DiscoveredCapability, HealthStatus, PrimalType, QosMetrics, ServiceInfo},
     UniversalAdapterError,
+    types::{DiscoveredCapability, HealthStatus, PrimalType, QosMetrics, ServiceInfo},
 };
 use std::sync::Arc;
 use tracing::{debug, info};
@@ -286,8 +289,8 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_find_capability_providers_multiple_local(
-    ) -> Result<(), Box<dyn std::error::Error>> {
+    async fn test_find_capability_providers_multiple_local()
+    -> Result<(), Box<dyn std::error::Error>> {
         let adapter = FederatedCapabilityAdapter::new();
 
         let local_services = vec![
@@ -345,8 +348,8 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_find_capability_providers_preserves_local_on_federation_failure(
-    ) -> Result<(), Box<dyn std::error::Error>> {
+    async fn test_find_capability_providers_preserves_local_on_federation_failure()
+    -> Result<(), Box<dyn std::error::Error>> {
         // Create client with invalid URL to force failure
         let client = Arc::new(FederationClient::new(
             "http://invalid-domain-that-does-not-exist-12345.com".to_string(),

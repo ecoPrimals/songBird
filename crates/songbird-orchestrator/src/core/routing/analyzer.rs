@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Task Complexity Analysis
 //!
 //! Analyzes tasks to determine their complexity level, which informs routing decisions.
@@ -72,19 +75,19 @@ impl TaskComplexityAnalyzer {
             }
 
             // Check CPU threshold → Heavy if > 4 cores
-            if let Some(cpu_cores) = reqs.cpu_cores {
-                if cpu_cores > 4.0 {
-                    debug!("Task requires {} CPU cores → Heavy", cpu_cores);
-                    return TaskComplexity::Heavy;
-                }
+            if let Some(cpu_cores) = reqs.cpu_cores
+                && cpu_cores > 4.0
+            {
+                debug!("Task requires {} CPU cores → Heavy", cpu_cores);
+                return TaskComplexity::Heavy;
             }
 
             // Check memory threshold → Heavy if > 4GB
-            if let Some(memory_mb) = reqs.memory_mb {
-                if memory_mb > 4096 {
-                    debug!("Task requires {}MB memory → Heavy", memory_mb);
-                    return TaskComplexity::Heavy;
-                }
+            if let Some(memory_mb) = reqs.memory_mb
+                && memory_mb > 4096
+            {
+                debug!("Task requires {}MB memory → Heavy", memory_mb);
+                return TaskComplexity::Heavy;
             }
         }
 
@@ -105,19 +108,19 @@ impl TaskComplexityAnalyzer {
         // Check resource requirements for Moderate threshold
         if let Some(reqs) = &task.resource_requirements {
             // Moderate if 1-4 CPU cores
-            if let Some(cpu_cores) = reqs.cpu_cores {
-                if (1.0..=4.0).contains(&cpu_cores) {
-                    debug!("Task requires {} CPU cores → Moderate", cpu_cores);
-                    return TaskComplexity::Moderate;
-                }
+            if let Some(cpu_cores) = reqs.cpu_cores
+                && (1.0..=4.0).contains(&cpu_cores)
+            {
+                debug!("Task requires {} CPU cores → Moderate", cpu_cores);
+                return TaskComplexity::Moderate;
             }
 
             // Moderate if 512MB - 4GB memory
-            if let Some(memory_mb) = reqs.memory_mb {
-                if (512..=4096).contains(&memory_mb) {
-                    debug!("Task requires {}MB memory → Moderate", memory_mb);
-                    return TaskComplexity::Moderate;
-                }
+            if let Some(memory_mb) = reqs.memory_mb
+                && (512..=4096).contains(&memory_mb)
+            {
+                debug!("Task requires {}MB memory → Moderate", memory_mb);
+                return TaskComplexity::Moderate;
             }
         }
 

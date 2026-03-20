@@ -1,7 +1,7 @@
 [package]
 name = "songbird-orchestrator"
 version.workspace = true
-edition = "2021"
+edition.workspace = true
 license = "AGPL-3.0"
 authors = ["ecoPrimals <contact@ecoprimals.dev>"]
 description = "Main Songbird gaming bridge orchestrator application"
@@ -11,8 +11,83 @@ keywords = ["orchestrator", "gaming", "bridge", "distributed", "application"]
 categories = ["command-line-utilities", "game-engines", "network-programming"]
 
 
-[lints]
-workspace = true
+# Full lint table (no `workspace = true`): Cargo does not allow overriding inherited
+# workspace.lints per-crate. Duplicates root workspace policy with orchestrator-specific
+# allows so integration tests and bins match library targets.
+[lints.rust]
+unsafe_code = "forbid"
+unused_must_use = "warn"
+dead_code = "allow"
+unused_variables = "allow"
+
+[lints.clippy]
+all = { level = "warn", priority = -1 }
+pedantic = { level = "warn", priority = -1 }
+nursery = { level = "warn", priority = -1 }
+cargo = { level = "warn", priority = -1 }
+
+too_many_arguments = "warn"
+missing_panics_doc = "allow"
+missing_safety_doc = "warn"
+unwrap_used = "allow"
+expect_used = "allow"
+clone_on_ref_ptr = "allow"
+unnecessary_wraps = "allow"
+
+module_name_repetitions = "allow"
+missing_const_for_fn = "allow"
+multiple_crate_versions = "allow"
+uninlined_format_args = "allow"
+cognitive_complexity = "allow"
+significant_drop_tightening = "allow"
+must_use_candidate = "allow"
+option_if_let_else = "allow"
+redundant_closure = "allow"
+missing_errors_doc = "allow"
+doc_markdown = "allow"
+
+doc_link_with_quotes = "allow"
+used_underscore_binding = "allow"
+no_effect_underscore_binding = "allow"
+items_after_statements = "allow"
+struct_excessive_bools = "allow"
+too_many_lines = "allow"
+similar_names = "allow"
+unreadable_literal = "allow"
+needless_pass_by_value = "allow"
+trivially_copy_pass_by_ref = "allow"
+manual_let_else = "allow"
+match_same_arms = "allow"
+match_wildcard_for_single_variants = "allow"
+needless_continue = "allow"
+should_implement_trait = "allow"
+missing_fields_in_debug = "allow"
+unused_async = "allow"
+unused_self = "allow"
+future_not_send = "allow"
+cast_sign_loss = "allow"
+cast_possible_truncation = "allow"
+cast_precision_loss = "allow"
+cast_possible_wrap = "allow"
+return_self_not_must_use = "allow"
+double_must_use = "allow"
+float_cmp = "allow"
+ignore_without_reason = "allow"
+default_trait_access = "allow"
+assertions_on_constants = "allow"
+await_holding_lock = "allow"
+case_sensitive_file_extension_comparisons = "allow"
+unnecessary_unwrap = "allow"
+field_reassign_with_default = "allow"
+needless_collect = "allow"
+redundant_pattern_matching = "allow"
+duplicated_attributes = "allow"
+vec_init_then_push = "allow"
+struct_field_names = "allow"
+single_match = "allow"
+new_without_default = "allow"
+module_inception = "allow"
+unnecessary_literal_unwrap = "allow"
 
 [[bin]]
 name = "songbird"  # ✅ UniBin Architecture Compliant (Jan 16, 2026)
@@ -110,6 +185,7 @@ tokio-serde = { version = "0.8.0", features = ["bincode"] }
 netdev = "0.40.0"
 
 [dev-dependencies]
+songbird-process-env.workspace = true
 songbird-test-utils = { path = "../songbird-test-utils" }
 # serial_test = "3.0"  # ✅ REMOVED Jan 21, 2026: All #[serial] eliminated (20 total across 2 files)
 tokio-tungstenite = "0.24"

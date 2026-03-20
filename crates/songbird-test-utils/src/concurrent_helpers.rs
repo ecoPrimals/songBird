@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Modern Concurrent Test Helpers
 //!
 //! Production-grade concurrent testing utilities evolved from `BearDog`'s patterns.
@@ -315,8 +318,8 @@ impl AsyncBarrier {
                 *arrived = 0;
             }
             {
-                let mut gen = self.generation.write().await;
-                *gen += 1;
+                let mut generation = self.generation.write().await;
+                *generation += 1;
             }
             self.notify.notify_waiters();
             #[cfg(feature = "tracing")]
@@ -326,8 +329,8 @@ impl AsyncBarrier {
             // Wait for last task
             timeout(duration, async {
                 loop {
-                    let gen = *self.generation.read().await;
-                    if gen > current_gen {
+                    let generation = *self.generation.read().await;
+                    if generation > current_gen {
                         break;
                     }
                     self.notify.notified().await;
@@ -581,8 +584,8 @@ mod tests {
 
     #[tokio::test]
     async fn test_retry_policy() {
-        use std::sync::atomic::{AtomicUsize, Ordering};
         use std::sync::Arc;
+        use std::sync::atomic::{AtomicUsize, Ordering};
 
         let policy = RetryPolicy::default();
         let attempts = Arc::new(AtomicUsize::new(0));

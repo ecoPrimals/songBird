@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Pure Rust Relay Server - Lineage-based packet forwarding
 //!
 //! **Zero C Dependencies | Zero Unsafe Code | ecoBin Compliant**
@@ -592,7 +595,7 @@ impl RelayServer {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::types::RelayAuthorization;
+
     use async_trait::async_trait;
 
     /// Mock relay authority for testing

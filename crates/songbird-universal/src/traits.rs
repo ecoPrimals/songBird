@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! # 🔧 Universal Adapter Traits
 //!
 //! **CANONICAL TRAIT SYSTEM** ✅
@@ -32,5 +35,5 @@ pub trait UniversalAdapter: Provider {
 
     /// Register service provider
     async fn register_provider(&mut self, provider: Box<dyn ServiceProvider>)
-        -> SongbirdResult<()>;
+    -> SongbirdResult<()>;
 }

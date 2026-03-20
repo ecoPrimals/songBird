@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! HTTP request building
 //!
 //! Handles construction of HTTP request bytes with adaptive headers based on domain rules.

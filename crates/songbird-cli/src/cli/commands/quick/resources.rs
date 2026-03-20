@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! System Resource Detection API
 //!
 //! Headless API for detecting system resources that biomeOS can consume

@@ -1,5 +1,28 @@
-// Allow unwrap/expect in tests - idiomatic for test code
-#![allow(clippy::unwrap_used, clippy::expect_used)]
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
+#![allow(
+    clippy::unwrap_used,
+    clippy::expect_used,
+    clippy::unnecessary_wraps,
+    clippy::await_holding_lock,
+    clippy::float_cmp,
+    clippy::absurd_extreme_comparisons,
+    clippy::needless_collect,
+    clippy::nonminimal_bool,
+    clippy::used_underscore_binding,
+    clippy::field_reassign_with_default,
+    clippy::return_self_not_must_use,
+    clippy::overly_complex_bool_expr,
+    clippy::assertions_on_constants,
+    clippy::no_effect_underscore_binding,
+    clippy::items_after_statements,
+    clippy::empty_line_after_doc_comments,
+    clippy::const_is_empty,
+    clippy::duplicated_attributes,
+    deprecated,
+    clippy::unnecessary_literal_unwrap
+)]
 
 //! Comprehensive tests for evolved capability-based configuration
 //!
@@ -41,19 +64,19 @@ fn test_environment_detection_default() {
 #[test]
 fn test_environment_detection_explicit() {
     let _guard = ENV_LOCK.lock().unwrap();
-    std::env::set_var("SONGBIRD_ENVIRONMENT", "production");
+    songbird_process_env::set_var("SONGBIRD_ENVIRONMENT", "production");
     let env = Environment::detect();
     assert_eq!(env, Environment::Production);
-    std::env::remove_var("SONGBIRD_ENVIRONMENT");
+    songbird_process_env::remove_var("SONGBIRD_ENVIRONMENT");
 
-    std::env::set_var("SONGBIRD_ENVIRONMENT", "staging");
+    songbird_process_env::set_var("SONGBIRD_ENVIRONMENT", "staging");
     let env = Environment::detect();
     assert_eq!(env, Environment::Staging);
 
-    std::env::set_var("SONGBIRD_ENVIRONMENT", "development");
+    songbird_process_env::set_var("SONGBIRD_ENVIRONMENT", "development");
     let env = Environment::detect();
     assert_eq!(env, Environment::Development);
-    std::env::remove_var("SONGBIRD_ENVIRONMENT");
+    songbird_process_env::remove_var("SONGBIRD_ENVIRONMENT");
 }
 
 #[test]
@@ -348,10 +371,10 @@ fn test_port_allocation_different_capabilities() {
 fn test_environment_detection_kubernetes() {
     let _guard = ENV_LOCK.lock().unwrap();
     // Simulate Kubernetes environment
-    std::env::set_var("KUBERNETES_SERVICE_HOST", "10.0.0.1");
+    songbird_process_env::set_var("KUBERNETES_SERVICE_HOST", "10.0.0.1");
     let env = Environment::detect();
     assert_eq!(env, Environment::Production, "K8s should be detected as production");
-    std::env::remove_var("KUBERNETES_SERVICE_HOST");
+    songbird_process_env::remove_var("KUBERNETES_SERVICE_HOST");
 }
 
 #[test]
@@ -361,25 +384,25 @@ fn test_environment_detection_ecs() {
     let _k8s = std::env::var("KUBERNETES_SERVICE_HOST");
     let _docker = std::env::var("DOCKER_HOST");
     let _prod = std::env::var("PRODUCTION");
-    std::env::remove_var("KUBERNETES_SERVICE_HOST");
-    std::env::remove_var("DOCKER_HOST");
-    std::env::remove_var("PRODUCTION");
+    songbird_process_env::remove_var("KUBERNETES_SERVICE_HOST");
+    songbird_process_env::remove_var("DOCKER_HOST");
+    songbird_process_env::remove_var("PRODUCTION");
 
     // Simulate ECS environment
-    std::env::set_var("ECS_CONTAINER_METADATA_URI", "http://169.254.170.2");
+    songbird_process_env::set_var("ECS_CONTAINER_METADATA_URI", "http://169.254.170.2");
     let env = Environment::detect();
     assert_eq!(env, Environment::Production, "ECS should be detected as production");
 
     // Cleanup
-    std::env::remove_var("ECS_CONTAINER_METADATA_URI");
+    songbird_process_env::remove_var("ECS_CONTAINER_METADATA_URI");
     if let Ok(v) = _k8s {
-        std::env::set_var("KUBERNETES_SERVICE_HOST", v);
+        songbird_process_env::set_var("KUBERNETES_SERVICE_HOST", v);
     }
     if let Ok(v) = _docker {
-        std::env::set_var("DOCKER_HOST", v);
+        songbird_process_env::set_var("DOCKER_HOST", v);
     }
     if let Ok(v) = _prod {
-        std::env::set_var("PRODUCTION", v);
+        songbird_process_env::set_var("PRODUCTION", v);
     }
 }
 

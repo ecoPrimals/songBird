@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! HTTP/HTTPS Server Management
 //!
 //! Handles HTTP and HTTPS server lifecycle including:
@@ -344,10 +347,9 @@ async fn start_https_server(
                     if let Err(e) = hyper::server::conn::http1::Builder::new()
                         .serve_connection(TokioIo::new(tls_stream), hyper_service)
                         .await
+                        && !e.to_string().contains("connection closed")
                     {
-                        if !e.to_string().contains("connection closed") {
-                            error!("Error serving HTTPS connection from {}: {}", remote_addr, e);
-                        }
+                        error!("Error serving HTTPS connection from {}: {}", remote_addr, e);
                     }
                 } else {
                     // HTTP connection: Serve plain HTTP (graceful degradation)
@@ -366,10 +368,9 @@ async fn start_https_server(
                     if let Err(e) = hyper::server::conn::http1::Builder::new()
                         .serve_connection(TokioIo::new(tcp_stream), hyper_service)
                         .await
+                        && !e.to_string().contains("connection closed")
                     {
-                        if !e.to_string().contains("connection closed") {
-                            error!("Error serving HTTP connection from {}: {}", remote_addr, e);
-                        }
+                        error!("Error serving HTTP connection from {}: {}", remote_addr, e);
                     }
                 }
             });

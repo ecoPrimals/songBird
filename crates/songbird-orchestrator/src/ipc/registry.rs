@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Service Registry for tracking registered primals
 //!
 //! v3.20.0: Central registry for all local primals
@@ -10,7 +13,7 @@ use tokio::sync::RwLock;
 use tracing::{debug, info, warn};
 use uuid::Uuid;
 
-use super::types::{system_time_to_iso8601, PrimalEndpoint};
+use super::types::{PrimalEndpoint, system_time_to_iso8601};
 
 /// Registered service information (internal)
 #[derive(Debug, Clone)]

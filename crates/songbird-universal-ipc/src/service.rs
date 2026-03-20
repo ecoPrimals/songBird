@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! IPC Service - Songbird's JSON-RPC IPC Broker
 //!
 //! This module provides Songbird's IPC brokering service. Instead of other
@@ -337,15 +340,15 @@ impl IpcServiceHandler {
         let mut provider_infos = Vec::new();
         for virtual_path in virtual_paths {
             // Extract service name from virtual path
-            if let Some(name) = virtual_path.strip_prefix("/primal/") {
-                if let Some(entry) = registry.get_service(name).await {
-                    provider_infos.push(ProviderInfo {
-                        primal_id: name.to_string(),
-                        virtual_endpoint: entry.virtual_endpoint.path,
-                        native_endpoint: entry.native_endpoint.display(),
-                        capabilities: entry.capabilities,
-                    });
-                }
+            if let Some(name) = virtual_path.strip_prefix("/primal/")
+                && let Some(entry) = registry.get_service(name).await
+            {
+                provider_infos.push(ProviderInfo {
+                    primal_id: name.to_string(),
+                    virtual_endpoint: entry.virtual_endpoint.path,
+                    native_endpoint: entry.native_endpoint.display(),
+                    capabilities: entry.capabilities,
+                });
             }
         }
 

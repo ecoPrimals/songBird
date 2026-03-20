@@ -1,7 +1,11 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! TLS 1.3 Handshake Orchestration
 //!
 //! Implements the complete TLS 1.3 server handshake state machine.
 
+use crate::crypto::{TlsApplicationSecrets, TlsHandshakeSecrets};
 use crate::error::{Error, Result};
 use crate::tls::handshake_v2::keys::TrafficKeys;
 use tokio::net::TcpStream;
@@ -42,9 +46,6 @@ impl TlsServer {
         let (client_random, client_public_key, client_cipher_suites) =
             self.parse_client_hello(&client_hello)?;
 
-        // Store client_random for later key derivation
-        self.client_random = Some(client_random.clone());
-
         // Step 2: Generate server keypair
         info!("");
         info!("🔑 Step 2: Generating server ECDH keypair...");
@@ -70,9 +71,6 @@ impl TlsServer {
         info!("📤 Step 4: Building and sending ServerHello...");
         let server_random = self.generate_random();
 
-        // Store server_random for later key derivation
-        self.server_random = Some(server_random.clone());
-
         let server_hello =
             self.build_server_hello(&server_random, &server_public_key, self.cipher_suite)?;
 
@@ -86,9 +84,6 @@ impl TlsServer {
             .derive_x25519_shared_secret(&server_private_key, &client_public_key)
             .await
             .map_err(|e| Error::TlsHandshake(format!("ECDH failed: {e}")))?;
-
-        // Store shared_secret for later application key derivation
-        self.shared_secret = Some(shared_secret.clone());
 
         // Compute transcript hash (only ClientHello + ServerHello at this point)
         let transcript_hash_for_handshake = self.transcript.compute_hash();
@@ -105,17 +100,37 @@ impl TlsServer {
             .await
             .map_err(|e| Error::TlsHandshake(format!("Handshake key derivation failed: {e}")))?;
 
+        let TlsHandshakeSecrets {
+            client_handshake_secret: _,
+            server_handshake_secret,
+            client_write_key,
+            client_write_iv,
+            server_write_key,
+            server_write_iv,
+            handshake_secret,
+        } = handshake_secrets;
+
         self.handshake_keys = Some(TrafficKeys::new(
-            handshake_secrets.client_write_key.clone(),
-            handshake_secrets.client_write_iv.clone(),
-            handshake_secrets.server_write_key.clone(),
-            handshake_secrets.server_write_iv.clone(),
+            client_write_key,
+            client_write_iv,
+            server_write_key,
+            server_write_iv,
             self.cipher_suite,
         )?);
 
+        self.client_random = Some(client_random);
+        self.server_random = Some(server_random);
+        self.shared_secret = Some(shared_secret);
+
         info!("✅ Handshake keys derived:");
-        info!("   Server write key: {} bytes", handshake_secrets.server_write_key.len());
-        info!("   Server write IV: {} bytes", handshake_secrets.server_write_iv.len());
+        info!(
+            "   Server write key: {} bytes",
+            self.handshake_keys.as_ref().map_or(0, |k| k.server_write_key.len())
+        );
+        info!(
+            "   Server write IV: {} bytes",
+            self.handshake_keys.as_ref().map_or(0, |k| k.server_write_iv.len())
+        );
 
         // Step 6: Build and send encrypted handshake messages
         info!("");
@@ -148,8 +163,7 @@ impl TlsServer {
         info!("✅ CertificateVerify sent");
 
         // 6d. Server Finished
-        let server_finished =
-            self.build_finished(&handshake_secrets.server_handshake_secret).await?;
+        let server_finished = self.build_finished(&server_handshake_secret).await?;
         self.transcript_mut().update_with_logging(&server_finished, "Finished (server)", false);
         self.send_encrypted_handshake_message(stream, &server_finished, 3).await?;
         info!("✅ Server Finished sent");
@@ -165,24 +179,39 @@ impl TlsServer {
         let app_secrets = self
             .crypto
             .tls_derive_application_secrets(
-                &handshake_secrets.handshake_secret,
+                &handshake_secret,
                 &transcript_hash,
                 self.cipher_suite.to_u16(),
             )
             .await
             .map_err(|e| Error::TlsHandshake(format!("Application key derivation failed: {e}")))?;
 
+        let TlsApplicationSecrets {
+            client_traffic_secret: _,
+            server_traffic_secret: _,
+            client_write_key,
+            client_write_iv,
+            server_write_key,
+            server_write_iv,
+        } = app_secrets;
+
         self.application_keys = Some(TrafficKeys::new(
-            app_secrets.client_write_key.clone(),
-            app_secrets.client_write_iv.clone(),
-            app_secrets.server_write_key.clone(),
-            app_secrets.server_write_iv.clone(),
+            client_write_key,
+            client_write_iv,
+            server_write_key,
+            server_write_iv,
             self.cipher_suite,
         )?);
 
         info!("✅ Application keys derived:");
-        info!("   Client write key: {} bytes", app_secrets.client_write_key.len());
-        info!("   Server write key: {} bytes", app_secrets.server_write_key.len());
+        info!(
+            "   Client write key: {} bytes",
+            self.application_keys.as_ref().map_or(0, |k| k.client_write_key.len())
+        );
+        info!(
+            "   Server write key: {} bytes",
+            self.application_keys.as_ref().map_or(0, |k| k.server_write_key.len())
+        );
 
         // Step 8: Receive and verify client Finished
         info!("");

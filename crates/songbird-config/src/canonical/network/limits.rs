@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Connection Limits Configuration
 //!
 //! Configuration for connection limits, pooling, rate limiting,

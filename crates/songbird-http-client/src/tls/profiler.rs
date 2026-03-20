@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Server Profiling System
 //!
 //! Learns from successful and failed TLS connections to optimize future handshakes.
@@ -22,8 +25,8 @@ pub struct ServerProfiler {
 /// Profile for a specific server
 #[derive(Debug, Clone)]
 pub struct ServerProfile {
-    /// Server hostname
-    pub hostname: String,
+    /// Server hostname (shared via `Arc` across clones and snapshots)
+    pub hostname: Arc<str>,
 
     /// Last successful extension set
     pub successful_extensions: Vec<ExtensionType>,
@@ -109,6 +112,20 @@ impl ServerProfiler {
         cipher: u16,
         handshake_duration: Duration,
     ) {
+        let ext_len = extensions.len();
+        let promote_extensions = {
+            let stats = self.stats.read().expect(
+                "BUG: TLS profiler stats lock poisoned - indicates panic during stats update",
+            );
+            ext_len >= stats.best_extension_set.len()
+        };
+
+        let promoted_snapshot = if promote_extensions {
+            Some(extensions.clone())
+        } else {
+            None
+        };
+
         // Update server profile
         {
             let mut profiles = self
@@ -120,7 +137,7 @@ impl ServerProfiler {
                 .or_insert_with(|| ServerProfile::new(hostname));
 
             profile.success_count += 1;
-            profile.successful_extensions = extensions.clone();
+            profile.successful_extensions = extensions;
             profile.successful_cipher = Some(cipher);
             profile.last_success = Some(SystemTime::now());
 
@@ -143,9 +160,8 @@ impl ServerProfiler {
             );
             stats.total_successes += 1;
 
-            // Update best extension set if this is more successful
-            if extensions.len() >= stats.best_extension_set.len() {
-                stats.best_extension_set = extensions;
+            if let Some(ext) = promoted_snapshot {
+                stats.best_extension_set = ext;
             }
 
             stats.best_cipher = Some(cipher);
@@ -183,10 +199,10 @@ impl ServerProfiler {
             }
 
             // Track cipher failure
-            if let Some(cipher_suite) = cipher {
-                if !profile.failed_ciphers.contains(&cipher_suite) {
-                    profile.failed_ciphers.push(cipher_suite);
-                }
+            if let Some(cipher_suite) = cipher
+                && !profile.failed_ciphers.contains(&cipher_suite)
+            {
+                profile.failed_ciphers.push(cipher_suite);
             }
 
             // Update reliability
@@ -214,11 +230,11 @@ impl ServerProfiler {
     #[must_use]
     pub fn recommend_extensions(&self, hostname: &str) -> Vec<ExtensionType> {
         // Check if we have a profile for this server
-        if let Some(profile) = self.get_profile(hostname) {
-            if profile.success_count > 0 {
-                // Use last successful extension set
-                return profile.successful_extensions;
-            }
+        if let Some(profile) = self.get_profile(hostname)
+            && profile.success_count > 0
+        {
+            // Use last successful extension set
+            return profile.successful_extensions;
         }
 
         // Fall back to global best extension set
@@ -238,10 +254,10 @@ impl ServerProfiler {
     #[must_use]
     pub fn recommend_cipher(&self, hostname: &str) -> Option<u16> {
         // Check server profile
-        if let Some(profile) = self.get_profile(hostname) {
-            if let Some(cipher) = profile.successful_cipher {
-                return Some(cipher);
-            }
+        if let Some(profile) = self.get_profile(hostname)
+            && let Some(cipher) = profile.successful_cipher
+        {
+            return Some(cipher);
         }
 
         // Fall back to global best cipher
@@ -295,7 +311,7 @@ impl ServerProfile {
     /// Create new server profile
     fn new(hostname: &str) -> Self {
         Self {
-            hostname: hostname.to_string(),
+            hostname: Arc::from(hostname),
             successful_extensions: ExtensionSet::standard().extensions,
             successful_cipher: None,
             failed_extensions: Vec::new(),

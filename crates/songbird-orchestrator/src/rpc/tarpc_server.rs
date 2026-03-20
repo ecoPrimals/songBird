@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! High-Performance tarpc Server for Songbird
 //!
 //! Provides binary RPC with 10x performance improvement over HTTP/REST.

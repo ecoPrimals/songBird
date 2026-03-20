@@ -1,10 +1,12 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Transcript management for TLS 1.3 handshake
 //!
 //! RFC 8446 Section 4.4.1: The transcript hash is computed by hashing the
 //! concatenation of all handshake messages (in plaintext) up to that point.
 
 use super::core::TlsHandshake;
-use crate::error::Result;
 use sha2::{Digest, Sha256};
 use tracing::{debug, error, info, trace, warn};
 
@@ -94,10 +96,9 @@ impl TlsHandshake {
                     error!("🚨 LENGTH MISMATCH!");
                     error!("   Declared: {} bytes", declared_length);
                     error!("   Actual: {} bytes", actual_length);
-                    error!(
-                        "   Difference: {} bytes",
-                        (actual_length as i64 - declared_length as i64).abs()
-                    );
+                    #[allow(clippy::cast_possible_wrap)] // Handshake message lengths are < 16MB
+                    let diff = (actual_length as i64 - declared_length as i64).abs();
+                    error!("   Difference: {} bytes", diff);
                     error!("   💡 This might be the source of the 2-byte discrepancy!");
                 }
             }
@@ -106,7 +107,9 @@ impl TlsHandshake {
             if first_byte == 0x16 {
                 error!("⚠️  CRITICAL: TLS record header (0x16) detected!");
                 error!("   This message should have the 5-byte TLS record header stripped!");
-                error!("   Expected first byte: handshake message type (0x01, 0x02, 0x08, 0x0B, 0x0F, 0x14)");
+                error!(
+                    "   Expected first byte: handshake message type (0x01, 0x02, 0x08, 0x0B, 0x0F, 0x14)"
+                );
             } else if first_byte == 0x17 {
                 error!("⚠️  CRITICAL: ContentType byte (0x17) detected!");
                 error!("   This should be stripped after AEAD decryption!");
@@ -136,7 +139,9 @@ impl TlsHandshake {
     ///
     /// A single TLS record may contain MULTIPLE handshake messages concatenated together!
     /// This function parses them individually so they can be added to the transcript separately.
-    pub(super) fn parse_handshake_messages(&self, data: &[u8]) -> Result<Vec<(u8, Vec<u8>)>> {
+    #[allow(clippy::unused_self)] // API consistency
+    #[allow(clippy::too_many_lines)] // Handshake parsing has many validation branches
+    pub(super) fn parse_handshake_messages(&self, data: &[u8]) -> Vec<(u8, Vec<u8>)> {
         let mut messages = Vec::new();
         let mut offset = 0;
 
@@ -268,7 +273,7 @@ impl TlsHandshake {
             warn!("⚠️  No handshake messages parsed from {} bytes of data!", data.len());
         }
 
-        Ok(messages)
+        messages
     }
 
     /// Compute transcript hash (SHA-256) - legacy/sync version

@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Rendezvous protocol
 //!
 //! **Phase 2D**: Onion Service
@@ -38,7 +41,7 @@ impl RendezvousPoint {
             recognized: 0,
             stream_id: 0,
             digest: [0u8; 4],
-            length: data.len() as u16,
+            length: u16::try_from(data.len()).expect("data length fits in u16"),
             data,
         }
     }
@@ -52,6 +55,10 @@ impl RendezvousPoint {
     /// ```text
     /// HANDSHAKE_INFO  [variable] - ntor handshake response from service
     /// ```
+    ///
+    /// # Errors
+    ///
+    /// Returns error if cell command is not RENDEZVOUS2.
     pub fn parse_rendezvous2(cell: &RelayCell) -> crate::error::Result<RendezvousResponse> {
         if cell.command != crate::protocol::RelayCommand::Rendezvous2 {
             return Err(crate::error::Error::Protocol(format!(
@@ -137,7 +144,7 @@ impl RendezvousPoint {
             recognized: 0,
             stream_id: 0,
             digest: [0u8; 4],
-            length: data.len() as u16,
+            length: u16::try_from(data.len()).expect("data length fits in u16"),
             data,
         }
     }

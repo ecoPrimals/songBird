@@ -1,3 +1,32 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
+#![allow(
+    clippy::unwrap_used,
+    clippy::expect_used,
+    clippy::unnecessary_wraps,
+    clippy::await_holding_lock,
+    clippy::float_cmp,
+    clippy::absurd_extreme_comparisons,
+    clippy::needless_collect,
+    clippy::nonminimal_bool,
+    clippy::used_underscore_binding,
+    clippy::field_reassign_with_default,
+    clippy::return_self_not_must_use,
+    clippy::overly_complex_bool_expr,
+    clippy::assertions_on_constants,
+    clippy::no_effect_underscore_binding,
+    clippy::items_after_statements,
+    clippy::empty_line_after_doc_comments,
+    clippy::const_is_empty,
+    clippy::duplicated_attributes,
+    deprecated,
+    dead_code,
+    clippy::unnecessary_literal_unwrap,
+    clippy::needless_pass_by_value,
+    clippy::must_use_candidate
+)]
+
 //! Comprehensive tests for discovery command
 //!
 //! Phase 3 Test Coverage Expansion - CLI Commands
@@ -21,7 +50,7 @@ fn test_service_name_length() {
     let service_names = vec!["compute", "storage", "networking", "ai"];
 
     for name in service_names {
-        assert!(name.len() > 0);
+        assert!(!name.is_empty());
         assert!(name.len() < 100); // Reasonable limit
     }
 }
@@ -46,7 +75,7 @@ fn test_capability_format() {
 
     for capability in capabilities {
         assert!(!capability.is_empty());
-        assert!(capability.contains('_') || capability.chars().all(|c| c.is_alphanumeric()));
+        assert!(capability.contains('_') || capability.chars().all(char::is_alphanumeric));
     }
 }
 
@@ -62,8 +91,7 @@ fn test_capability_naming_convention() {
 
 #[test]
 fn test_capability_uniqueness() {
-    let capabilities =
-        vec!["compute_gpu", "storage_fast", "network_high_bandwidth", "ai_inference"];
+    let capabilities = ["compute_gpu", "storage_fast", "network_high_bandwidth", "ai_inference"];
 
     // Check for duplicates
     for (i, cap1) in capabilities.iter().enumerate() {
@@ -153,7 +181,7 @@ fn test_provider_id_format() {
 
 #[test]
 fn test_provider_id_uniqueness() {
-    let provider_ids = vec!["provider-1", "provider-2", "provider-3"];
+    let provider_ids = ["provider-1", "provider-2", "provider-3"];
 
     for (i, id1) in provider_ids.iter().enumerate() {
         for (j, id2) in provider_ids.iter().enumerate() {
@@ -341,7 +369,7 @@ fn test_retry_count_limits() {
 fn test_backoff_durations() {
     use std::time::Duration;
 
-    let backoffs = vec![
+    let backoffs = [
         Duration::from_millis(100),
         Duration::from_millis(200),
         Duration::from_millis(400),

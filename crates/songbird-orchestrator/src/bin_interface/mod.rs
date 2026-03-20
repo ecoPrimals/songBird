@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Public API for `UniBin` integration
 //!
 //! This module exposes the main entry points and types needed for

@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Comprehensive Service Module Tests
 #![allow(clippy::uninlined_format_args)]
 #![allow(clippy::float_cmp)]
@@ -11,17 +14,8 @@
 #![allow(clippy::similar_names)]
 #![allow(clippy::too_many_lines)]
 #![allow(clippy::module_name_repetitions)]
-#![allow(clippy::uninlined_format_args)]
-#![allow(clippy::float_cmp)]
-#![allow(clippy::useless_vec)]
-#![allow(clippy::unreadable_literal)]
-#![allow(clippy::items_after_statements)]
-#![allow(clippy::cast_precision_loss)]
-#![allow(clippy::cast_possible_truncation)]
-#![allow(clippy::cast_sign_loss)]
-#![allow(clippy::needless_pass_by_value)]
 // Allow unwrap/expect in tests - idiomatic for test code
-#![allow(clippy::unwrap_used, clippy::expect_used)]
+#![allow(clippy::unwrap_used, clippy::expect_used, clippy::unnecessary_wraps)]
 
 //!
 //! Tests for `songbird_types::service` module to achieve full coverage.

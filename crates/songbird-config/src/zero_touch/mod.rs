@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! # 🍼 Zero Touch Module
 //!
 //! **MISSION**: Zero-knowledge bootstrap and infant discovery
@@ -110,7 +113,7 @@ mod tests {
         let config = ZeroTouchConfig::default();
         let deployment = ZeroTouchDeployment::new(config);
         // Just ensure it constructs
-        assert!(format!("{:?}", deployment).contains("ZeroTouchDeployment"));
+        assert!(format!("{deployment:?}").contains("ZeroTouchDeployment"));
     }
 
     #[test]
@@ -124,18 +127,14 @@ mod tests {
     fn test_zero_touch_orchestrator_new() {
         let orchestrator = ZeroTouchOrchestrator::new();
         // Ensure Debug works
-        assert!(
-            format!("{:?}", orchestrator).is_empty() || !format!("{:?}", orchestrator).is_empty()
-        );
+        assert!(format!("{orchestrator:?}").is_empty() || !format!("{orchestrator:?}").is_empty());
     }
 
     #[test]
     fn test_zero_touch_orchestrator_default() {
         let orchestrator = ZeroTouchOrchestrator::default();
         // Same as new()
-        assert!(
-            format!("{:?}", orchestrator).is_empty() || !format!("{:?}", orchestrator).is_empty()
-        );
+        assert!(format!("{orchestrator:?}").is_empty() || !format!("{orchestrator:?}").is_empty());
     }
 
     #[test]

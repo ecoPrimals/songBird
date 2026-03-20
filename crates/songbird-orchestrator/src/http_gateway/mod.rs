@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! HTTP Gateway Service - Universal HTTP proxy for pure Rust ecosystem
 //!
 //! **Vision**: Songbird as the SINGLE HTTP gateway for the entire ecoPrimals ecosystem

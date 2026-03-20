@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! # songbird-tor-protocol
 //!
 //! Pure Rust Tor protocol implementation for Songbird.
@@ -61,6 +64,10 @@ pub struct TorService {
 
 impl TorService {
     /// Create new Tor service
+    ///
+    /// # Errors
+    ///
+    /// Returns error if service creation fails.
     pub async fn new(beardog: BeardogCryptoClient, port: u16) -> Result<Self> {
         core::future::ready(()).await;
         Ok(Self {

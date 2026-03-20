@@ -1,3 +1,32 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
+#![allow(
+    clippy::unwrap_used,
+    clippy::expect_used,
+    clippy::unnecessary_wraps,
+    clippy::await_holding_lock,
+    clippy::float_cmp,
+    clippy::absurd_extreme_comparisons,
+    clippy::needless_collect,
+    clippy::nonminimal_bool,
+    clippy::used_underscore_binding,
+    clippy::field_reassign_with_default,
+    clippy::return_self_not_must_use,
+    clippy::overly_complex_bool_expr,
+    clippy::assertions_on_constants,
+    clippy::no_effect_underscore_binding,
+    clippy::items_after_statements,
+    clippy::empty_line_after_doc_comments,
+    clippy::const_is_empty,
+    clippy::duplicated_attributes,
+    deprecated,
+    dead_code,
+    clippy::unnecessary_literal_unwrap,
+    clippy::needless_pass_by_value,
+    clippy::must_use_candidate
+)]
+
 //! Comprehensive tests for federation state management
 //!
 //! Covers edge cases and low-coverage paths in state.rs:
@@ -204,12 +233,12 @@ async fn test_federation_state_get_stats() {
     inactive.memory_gb = 8;
     state.register_node(inactive).await;
 
-    let stats = state.get_stats().await;
-    assert_eq!(stats.total_nodes, 3);
-    assert_eq!(stats.active_nodes, 2);
-    assert_eq!(stats.total_cpu_cores, 24); // 8 + 16 (inactive excluded)
-    assert_eq!(stats.total_memory_gb, 96); // 32 + 64
-    assert_eq!(stats.total_storage_gb, 1500); // 500 + 1000
+    let fed_stats = state.get_stats().await;
+    assert_eq!(fed_stats.total_nodes, 3);
+    assert_eq!(fed_stats.active_nodes, 2);
+    assert_eq!(fed_stats.total_cpu_cores, 24); // 8 + 16 (inactive excluded)
+    assert_eq!(fed_stats.total_memory_gb, 96); // 32 + 64
+    assert_eq!(fed_stats.total_storage_gb, 1500); // 500 + 1000
 }
 
 #[tokio::test]

@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Capability-based discovery + Universal IPC example
 //!
 //! This demonstrates the complete integration:
@@ -19,7 +22,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     ipc::init()?;
 
     // Set up example: simulate a crypto provider
-    std::env::set_var("CRYPTO_PROVIDER_SOCKET", "/tmp/example-crypto.sock");
+    songbird_process_env::set_var("CRYPTO_PROVIDER_SOCKET", "/tmp/example-crypto.sock");
 
     println!("📝 Step 1: Discover crypto provider by capability");
     println!("   (No hardcoded primal names - pure capability-based!)");
@@ -67,7 +70,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     // Clean up
-    std::env::remove_var("CRYPTO_PROVIDER_SOCKET");
+    songbird_process_env::remove_var("CRYPTO_PROVIDER_SOCKET");
 
     println!();
     println!("🌍 Demo complete!");

@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Universal capability-based discovery adapters
 //!
 //! This module provides vendor-agnostic discovery adapters that work with any

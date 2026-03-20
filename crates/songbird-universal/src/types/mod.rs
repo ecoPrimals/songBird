@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Universal Types for Capability-Based Primal Integration
 //!
 //! This module provides comprehensive type definitions for the universal

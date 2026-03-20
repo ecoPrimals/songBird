@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Chaos and Fault Testing for Generic Trust Integration
 //!
 //! Tests resilience under adverse conditions:
@@ -93,7 +96,7 @@ fn chaos_invalid_json_structure() {
     let request = UniversalTrustRequest::new("tower1", vec![attestation]);
 
     // Should still create request
-    assert!(request.evaluator.attestations.len() > 0);
+    assert!(!request.evaluator.attestations.is_empty());
 }
 
 /// Test: Duplicate attestations
@@ -202,7 +205,6 @@ fn fault_negative_confidence() {
 /// Test: Concurrent request creation
 #[test]
 fn chaos_concurrent_requests() {
-    use std::sync::Arc;
     use std::thread;
 
     let handles: Vec<_> = (0..100)

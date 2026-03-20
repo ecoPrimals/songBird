@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Lineage relay coordinator - main entry point
 //!
 //! Evolution beyond NAT/STUN/TURN
@@ -8,7 +11,7 @@ use crate::multi_tier_coordinator::MultiTierCoordinator;
 use crate::relay::{RelayAuthority, RelayDiscovery};
 use crate::session::{ConnectionSession, DirectConnection, RelayedConnection};
 use crate::types::NodeId;
-use crate::udp_hole_punch::{create_hole_punch_socket, udp_hole_punch, HolePunchConfig};
+use crate::udp_hole_punch::{HolePunchConfig, create_hole_punch_socket, udp_hole_punch};
 use songbird_types::config::stun_relay::StunRelayConfig;
 use std::net::SocketAddr;
 use std::sync::Arc;

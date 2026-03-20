@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 pub mod cli;
 pub mod constants;
 // NOTE: errors module removed - use crate::errors::CliError instead

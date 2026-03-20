@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! `BirdSong` Encrypted Discovery Handler
 //!
 //! Provides JSON-RPC methods for Dark Forest federation via genetic lineage encryption.
@@ -32,7 +35,7 @@
 
 use anyhow::Result;
 use serde::Deserialize;
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use songbird_discovery::beardog_birdsong_provider::BearDogBirdSongProvider;
 use songbird_discovery::birdsong::BirdSongEncryption;
 use songbird_universal::UnixRpcClient;
@@ -244,7 +247,7 @@ impl BirdSongHandler {
             .map_err(|e| format!("Encryption failed: {e}"))?;
 
         // Encode to base64 for JSON transport
-        use base64::{engine::general_purpose::STANDARD, Engine};
+        use base64::{Engine, engine::general_purpose::STANDARD};
         let encrypted_b64 = STANDARD.encode(&encrypted);
 
         // Get family ID for plaintext header
@@ -282,7 +285,7 @@ impl BirdSongHandler {
         let provider = self.get_provider().await?;
 
         // Decode base64
-        use base64::{engine::general_purpose::STANDARD, Engine};
+        use base64::{Engine, engine::general_purpose::STANDARD};
         let encrypted = STANDARD
             .decode(&request.encrypted_beacon)
             .map_err(|e| format!("Invalid base64: {e}"))?;
@@ -479,7 +482,7 @@ mod tests {
 
     #[test]
     fn test_handler_creation() {
-        let handler = BirdSongHandler::new();
+        let _handler = BirdSongHandler::new();
         // Verify handler can be created (no panics)
         // Deep debt: Zero allocation on creation (lazy init)
         assert!(true);
@@ -516,8 +519,7 @@ mod tests {
         if let Err(e) = result {
             assert!(
                 e.contains("BearDog") || e.contains("socket"),
-                "Error should mention BearDog or socket, got: {}",
-                e
+                "Error should mention BearDog or socket, got: {e}"
             );
         }
     }
@@ -537,8 +539,7 @@ mod tests {
         if let Err(e) = result {
             assert!(
                 e.contains("BearDog") || e.contains("socket"),
-                "Error should mention BearDog or socket, got: {}",
-                e
+                "Error should mention BearDog or socket, got: {e}"
             );
         }
     }
@@ -560,8 +561,7 @@ mod tests {
             let e_lower = e.to_lowercase();
             assert!(
                 e_lower.contains("beardog") || e_lower.contains("sock") || e.contains("IPC"),
-                "Error should mention BearDog, socket, or IPC, got: {}",
-                e
+                "Error should mention BearDog, socket, or IPC, got: {e}"
             );
         }
     }
@@ -580,8 +580,7 @@ mod tests {
             let e_lower = e.to_lowercase();
             assert!(
                 e_lower.contains("beardog") || e_lower.contains("sock") || e.contains("IPC"),
-                "Error should mention BearDog, socket, or IPC, got: {}",
-                e
+                "Error should mention BearDog, socket, or IPC, got: {e}"
             );
         }
     }

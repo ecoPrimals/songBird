@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Shared test helpers and fixtures
 //!
 //! This module provides common test utilities to reduce duplication

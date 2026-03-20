@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Configuration Constants and Defaults (DEPRECATED)
 //!
 //! ⚠️ **CONSOLIDATION COMPLETE - MIGRATION REQUIRED** (November 8, 2025)
@@ -325,11 +328,11 @@ pub fn get_common_primal_ports() -> Vec<u16> {
 
         // Dynamically discover enabled primals from env vars
         for (key, value) in std::env::vars() {
-            if let Some(primal_name) = key.strip_prefix("SONGBIRD_ENABLE_") {
-                if value.eq_ignore_ascii_case("true") || value == "1" {
-                    let name = primal_name.to_lowercase();
-                    ports.push(base_port + get_primal_port_offset(&name));
-                }
+            if let Some(primal_name) = key.strip_prefix("SONGBIRD_ENABLE_")
+                && (value.eq_ignore_ascii_case("true") || value == "1")
+            {
+                let name = primal_name.to_lowercase();
+                ports.push(base_port + get_primal_port_offset(&name));
             }
         }
 

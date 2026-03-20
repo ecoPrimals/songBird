@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! NFC error types
 
 use thiserror::Error;
@@ -31,6 +34,10 @@ pub enum NfcError {
     /// Platform error (NFC hardware/driver)
     #[error("Platform error: {0}")]
     Platform(String),
+
+    /// NFC stack not integrated for this target (JNI, CoreNFC, libnfc, etc.)
+    #[error("Platform unsupported: {0}")]
+    PlatformUnsupported(String),
 
     /// Timeout
     #[error("Operation timed out")]

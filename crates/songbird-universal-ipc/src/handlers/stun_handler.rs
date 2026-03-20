@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! STUN server & client JSON-RPC handler
 //!
 //! Provides JSON-RPC methods for NAT traversal via STUN (RFC 5389).
@@ -11,7 +14,7 @@
 //! - `stun.get_public_address` - Discover public IP/port via external STUN servers
 //! - `stun.bind` - Bind local port and discover NAT mapping
 
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use songbird_stun::{StunClient, StunServer};
 use std::net::SocketAddr;
 use std::sync::Arc;

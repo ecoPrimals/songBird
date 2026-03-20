@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Pure Rust JWT Implementation
 //!
 //! 100% Pure Rust JWT encoding/decoding using `RustCrypto` (hmac + sha2).
@@ -9,8 +12,8 @@
 //! - `base64` for encoding (Pure Rust)
 //! - `serde_json` for JSON (Pure Rust)
 
-use anyhow::{anyhow, Result};
-use base64::{engine::general_purpose::URL_SAFE_NO_PAD, Engine};
+use anyhow::{Result, anyhow};
+use base64::{Engine, engine::general_purpose::URL_SAFE_NO_PAD};
 use hmac::{Hmac, Mac};
 use serde::{Deserialize, Serialize};
 use sha2::Sha256;

@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! BYOB HTTP API for biomeOS integration
 //!
 //! This module provides HTTP endpoints that biomeOS can call to coordinate

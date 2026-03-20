@@ -1,6 +1,9 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Onion connector (connect to .onion addresses) - Phase 4 Implementation
 //!
-//! ✅ **TRUE PRIMAL**: Production uses BearDog delegation for all crypto.
+//! ✅ **TRUE PRIMAL**: Production uses `BearDog` delegation for all crypto.
 
 use crate::beardog_crypto::BeardogCryptoClient;
 use crate::error::{OnionError, Result};
@@ -20,7 +23,8 @@ pub struct OnionConnector {
 }
 
 impl OnionConnector {
-    /// Create new onion connector with BearDog delegation (TRUE PRIMAL)
+    /// Create new onion connector with `BearDog` delegation (TRUE PRIMAL)
+    #[must_use]
     pub fn new_via_beardog(beardog: BeardogCryptoClient) -> Self {
         Self {
             beardog: Some(Arc::new(beardog)),
@@ -35,7 +39,11 @@ impl OnionConnector {
         }
     }
 
-    /// Connect to an onion address (via BearDog)
+    /// Connect to an onion address (via `BearDog`)
+    ///
+    /// # Errors
+    ///
+    /// Returns error if connection fails, handshake fails, or BearDog crypto fails.
     ///
     /// # Arguments
     /// - `onion_address`: The target .onion address
@@ -53,7 +61,7 @@ impl OnionConnector {
 
         // For Phase 1: Direct TCP connection (assumes IP known via rendezvous)
         // For Phase 2: Will use BeaconMesh for address resolution
-        let stream = TcpStream::connect(format!("{}:{}", onion_address, port))
+        let stream = TcpStream::connect(format!("{onion_address}:{port}"))
             .await
             .map_err(|_| OnionError::ConnectionTimeout)?;
 
@@ -79,8 +87,7 @@ impl OnionConnector {
         let response_type = MessageType::try_from(recv_buf[0])?;
         if response_type != MessageType::KeyExchange {
             return Err(OnionError::HandshakeFailed(format!(
-                "Expected KeyExchange response, got {:?}",
-                response_type
+                "Expected KeyExchange response, got {response_type:?}"
             )));
         }
 
@@ -111,7 +118,11 @@ pub struct OnionConnection {
 }
 
 impl OnionConnection {
-    /// Send encrypted data via BearDog
+    /// Send encrypted data via `BearDog`
+    ///
+    /// # Errors
+    ///
+    /// Returns error if encryption or I/O fails.
     pub async fn send(&mut self, data: &[u8]) -> Result<()> {
         // Encrypt via BearDog (pad sequence to 12 bytes for nonce)
         let mut nonce = [0u8; 12];
@@ -134,7 +145,11 @@ impl OnionConnection {
         Ok(())
     }
 
-    /// Receive encrypted data, decrypt via BearDog
+    /// Receive encrypted data, decrypt via `BearDog`
+    ///
+    /// # Errors
+    ///
+    /// Returns error if decryption or I/O fails.
     pub async fn recv(&mut self) -> Result<Vec<u8>> {
         // Read message type
         let mut type_buf = [0u8; 1];
@@ -142,7 +157,7 @@ impl OnionConnection {
 
         let msg_type = MessageType::try_from(type_buf[0])?;
         if msg_type != MessageType::Data {
-            return Err(OnionError::InvalidMessage(format!("Expected Data, got {:?}", msg_type)));
+            return Err(OnionError::InvalidMessage(format!("Expected Data, got {msg_type:?}")));
         }
 
         // Read sequence (8 bytes)
@@ -171,8 +186,39 @@ impl OnionConnection {
     }
 
     /// Close connection gracefully
+    ///
+    /// # Errors
+    ///
+    /// Returns error if I/O fails.
     pub async fn close(mut self) -> Result<()> {
         self.stream.write_all(&[MessageType::Close as u8]).await?;
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::beardog_crypto::BeardogCryptoClient;
+
+    #[tokio::test]
+    async fn default_connector_missing_beardog_errors_before_tcp() {
+        let connector = OnionConnector::default();
+        let r = connector.connect("127.0.0.1", 9).await;
+        assert!(matches!(r, Err(OnionError::ConfigError(_))));
+    }
+
+    #[tokio::test]
+    async fn beardog_connector_tcp_fails_fast_when_port_closed() {
+        let client = BeardogCryptoClient::with_tcp("127.0.0.1", 1);
+        let connector = OnionConnector::new_via_beardog(client);
+        let r = connector.connect("127.0.0.1", 1).await;
+        assert!(matches!(r, Err(OnionError::ConnectionTimeout)));
+    }
+
+    #[test]
+    fn new_via_beardog_stores_client_for_connect() {
+        let client = BeardogCryptoClient::with_tcp("127.0.0.1", 9999);
+        let _connector = OnionConnector::new_via_beardog(client);
     }
 }

@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Query API for metrics
 
 use super::MetricValue;
@@ -23,22 +26,22 @@ impl MetricQuery {
 
     #[must_use]
     pub fn matches(&self, metric: &MetricValue) -> bool {
-        if let Some(ref name) = self.metric_name {
-            if metric.name.as_ref() != name {
-                return false;
-            }
+        if let Some(ref name) = self.metric_name
+            && metric.name.as_ref() != name
+        {
+            return false;
         }
 
-        if let Some(start) = self.start_time {
-            if metric.timestamp < start {
-                return false;
-            }
+        if let Some(start) = self.start_time
+            && metric.timestamp < start
+        {
+            return false;
         }
 
-        if let Some(end) = self.end_time {
-            if metric.timestamp > end {
-                return false;
-            }
+        if let Some(end) = self.end_time
+            && metric.timestamp > end
+        {
+            return false;
         }
 
         true

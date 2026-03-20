@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! QUIC client implementation
 
 use crate::config::QuicConfig;
@@ -119,5 +122,33 @@ impl QuicClient {
 impl Drop for QuicClient {
     fn drop(&mut self) {
         debug!("QUIC client dropped");
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn new_succeeds_and_closes_cleanly() {
+        let client = QuicClient::new(QuicConfig::new()).await.unwrap();
+        client.close().await;
+    }
+
+    #[tokio::test]
+    async fn connect_rejects_malformed_address() {
+        let client = QuicClient::new(QuicConfig::new()).await.unwrap();
+        let err = client.connect("not-a-valid-socket-addr").await;
+        assert!(err.is_err());
+        client.close().await;
+    }
+
+    #[tokio::test]
+    async fn connect_0rtt_disabled_falls_through_to_connect() {
+        let cfg = QuicConfig::new().with_0rtt(false);
+        let client = QuicClient::new(cfg).await.unwrap();
+        let err = client.connect_0rtt("not-a-valid-socket-addr").await;
+        assert!(err.is_err());
+        client.close().await;
     }
 }

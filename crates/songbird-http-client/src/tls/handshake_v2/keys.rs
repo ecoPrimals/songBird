@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! TLS 1.3 Key Derivation Module
 //!
 //! This module provides high-level abstractions for TLS 1.3 key derivation as specified

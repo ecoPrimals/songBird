@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Multi-Tier NAT Traversal Coordinator
 //!
 //! **Sovereignty-First Strategy** with fallback tiers
@@ -258,15 +261,15 @@ impl MultiTierCoordinator {
         }
 
         // Check public STUN latency (if enabled, use first server)
-        if self.config.public_stun.enabled {
-            if let Some(public_server) = self.config.public_stun.servers.first() {
-                let start = std::time::Instant::now();
+        if self.config.public_stun.enabled
+            && let Some(public_server) = self.config.public_stun.servers.first()
+        {
+            let start = std::time::Instant::now();
 
-                if self.stun_client.discover_public_address(&public_server.address).await.is_ok() {
-                    let latency = start.elapsed();
-                    report.public_stun_latency = Some(latency);
-                    info!("   Public STUN latency: {:?}", latency);
-                }
+            if self.stun_client.discover_public_address(&public_server.address).await.is_ok() {
+                let latency = start.elapsed();
+                report.public_stun_latency = Some(latency);
+                info!("   Public STUN latency: {:?}", latency);
             }
         }
 
@@ -344,7 +347,7 @@ mod tests {
 
         // Should succeed with real network
         if let Ok(addr) = result {
-            println!("Discovered public address: {}", addr);
+            println!("Discovered public address: {addr}");
             assert!(addr.port() > 0);
         }
     }

@@ -1,14 +1,17 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Execution API endpoints for orchestrator
 
 use crate::core::execution::broadcast::{BroadcastOptions, BroadcastResult};
 use crate::core::execution::client::{ExecutionRequest, ExecutionResponse};
 use crate::core::execution::manager::ExecutionManager;
 use axum::{
+    Router,
     extract::{Json, State},
     http::StatusCode,
     response::{IntoResponse, Response},
     routing::post,
-    Router,
 };
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;

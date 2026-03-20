@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! JSON-RPC 2.0 Protocol Implementation
 //!
 //! This module provides complete JSON-RPC 2.0 protocol support for Unix socket IPC.

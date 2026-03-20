@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Comprehensive E2E Tests for Generic Trust Integration
 //!
 //! Full end-to-end scenarios including:
@@ -25,7 +28,7 @@ fn e2e_same_family_complete_flow() {
     let tower_a_attestation = IdentityAttestation {
         provider_capability: "security/identity".to_string(),
         format: "tag_list".to_string(),
-        data: tower_a_identity.clone(),
+        data: tower_a_identity,
     };
 
     // Step 2: Tower A broadcasts discovery with attestation
@@ -34,12 +37,12 @@ fn e2e_same_family_complete_flow() {
         vec!["orchestration".to_string()],
         "https://192.168.1.100:8080",
     )
-    .with_identity_attestation(tower_a_attestation.clone());
+    .with_identity_attestation(tower_a_attestation);
 
     assert_eq!(discovery_packet.identity_attestations.len(), 1);
 
     // Step 3: Tower B receives discovery packet
-    let received_attestations = discovery_packet.identity_attestations.clone();
+    let received_attestations = discovery_packet.identity_attestations;
     assert_eq!(received_attestations.len(), 1);
     assert_eq!(received_attestations[0].format, "tag_list");
 
@@ -65,7 +68,7 @@ fn e2e_same_family_complete_flow() {
     )
     .with_endpoint(discovered_peer.endpoint.clone())
     .with_discovery_method(discovered_peer.discovery_method.clone())
-    .with_capabilities(discovered_peer.capabilities.clone());
+    .with_capabilities(discovered_peer.capabilities);
 
     assert_eq!(trust_request.evaluator.peer_id, "tower_a");
     assert_eq!(trust_request.evaluator.attestations.len(), 1);
@@ -107,7 +110,7 @@ fn e2e_different_family_prompt_flow() {
         }),
     };
 
-    let discovery_packet = DiscoveryPacket::new(
+    let _discovery_packet = DiscoveryPacket::new(
         "tower_a",
         vec!["orchestration".to_string()],
         "https://192.168.1.100:8080",
@@ -132,11 +135,11 @@ fn e2e_different_family_prompt_flow() {
         first_seen_at: 1704196800,
     };
 
-    let trust_request = UniversalTrustRequest::new(
+    let _trust_request = UniversalTrustRequest::new(
         discovered_peer.node_id.clone(),
         discovered_peer.identity_attestations.clone(),
     )
-    .with_endpoint(discovered_peer.endpoint.clone());
+    .with_endpoint(discovered_peer.endpoint);
 
     // BearDog response: different family
     let trust_response = UniversalTrustResponse {
@@ -182,9 +185,9 @@ fn e2e_no_attestations_reject_flow() {
         first_seen_at: 1704196800,
     };
 
-    let trust_request = UniversalTrustRequest::new(
+    let _trust_request = UniversalTrustRequest::new(
         discovered_peer.node_id.clone(),
-        discovered_peer.identity_attestations.clone(),
+        discovered_peer.identity_attestations,
     );
 
     // BearDog response: reject (no attestations)
@@ -378,12 +381,10 @@ fn e2e_concurrent_peer_handling() {
                 };
 
                 // Build request
-                let request = UniversalTrustRequest::new(
-                    peer.node_id.clone(),
-                    peer.identity_attestations.clone(),
-                );
+                let request =
+                    UniversalTrustRequest::new(peer.node_id.clone(), peer.identity_attestations);
 
-                results.lock().unwrap().push(request.evaluator.peer_id.clone());
+                results.lock().unwrap().push(request.evaluator.peer_id);
             })
         })
         .collect();

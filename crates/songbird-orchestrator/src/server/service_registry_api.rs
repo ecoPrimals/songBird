@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! # Service Registry API Endpoints
 //!
 //! **HTTP API for Primal Service Registration**
@@ -16,11 +19,11 @@
 //! - `GET /api/v1/info` - Get orchestrator info
 
 use axum::{
+    Json, Router,
     extract::{Path, State},
     http::StatusCode,
     response::{IntoResponse, Response},
     routing::{delete, get, post},
-    Json, Router,
 };
 use serde_json::json;
 use tracing::{error, info};

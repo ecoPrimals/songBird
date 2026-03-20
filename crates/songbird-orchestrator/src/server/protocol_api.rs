@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 // Protocol Discovery & Negotiation API
 // Progressive Protocol Enhancement - Phase 1
 //
@@ -9,10 +12,10 @@
 // Created: November 11, 2025
 
 use axum::{
+    Json, Router,
     extract::State,
     http::StatusCode,
     routing::{get, post},
-    Json, Router,
 };
 use chrono;
 use serde::{Deserialize, Serialize};

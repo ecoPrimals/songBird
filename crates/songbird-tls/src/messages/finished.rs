@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Finished message (RFC 8446 Section 4.4.4)
 //!
 //! The Finished message is the final message in the authentication block.

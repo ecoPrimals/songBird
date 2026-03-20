@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! HTTP/HTTPS client implementation
 //!
 //! ## Features
@@ -11,7 +14,7 @@
 use crate::connection::{HttpConnection, HttpsConnection};
 use crate::crypto::{BearDogProvider, CryptoCapability};
 use crate::error::{Error, Result};
-use crate::http_config::HttpClientConfig;
+use crate::http_config::{HttpClientConfig, RedirectMode};
 use crate::redirect::RedirectHandler;
 use crate::request::RequestBuilder;
 use crate::response::ResponseParser;
@@ -319,8 +322,6 @@ impl SongbirdHttpClient {
         headers: HashMap<String, String>,
         body: Option<serde_json::Value>,
     ) -> Result<HttpResponse> {
-        use crate::http_config::RedirectMode;
-
         let redirect_handler = RedirectHandler::new(self.http_config.max_redirects as usize);
         let mut current_url = url.to_string();
         let mut redirects_followed = 0;
@@ -348,8 +349,7 @@ impl SongbirdHttpClient {
                         RedirectMode::SameOrigin => {
                             if let Some(location) = response.headers.get("location") {
                                 let new_url = RedirectHandler::resolve_url(&current_url, location)?;
-                                if !redirect_handler
-                                    .is_same_origin(&current_url, &new_url)
+                                if !RedirectHandler::is_same_origin(&current_url, &new_url)
                                     .unwrap_or(false)
                                 {
                                     info!(
@@ -546,7 +546,7 @@ mod tests {
 
     #[test]
     fn test_resolve_redirect_url_absolute() {
-        let handler = RedirectHandler::new(10);
+        let _handler = RedirectHandler::new(10);
 
         // Absolute URL should be returned as-is
         let resolved =
@@ -557,7 +557,7 @@ mod tests {
 
     #[test]
     fn test_resolve_redirect_url_absolute_path() {
-        let handler = RedirectHandler::new(10);
+        let _handler = RedirectHandler::new(10);
 
         // Absolute path (starts with /) should use base's scheme and host
         let resolved =
@@ -567,7 +567,7 @@ mod tests {
 
     #[test]
     fn test_resolve_redirect_url_relative_path() {
-        let handler = RedirectHandler::new(10);
+        let _handler = RedirectHandler::new(10);
 
         // Relative path should be resolved relative to base
         let resolved =
@@ -577,7 +577,7 @@ mod tests {
 
     #[test]
     fn test_resolve_redirect_url_with_port() {
-        let handler = RedirectHandler::new(10);
+        let _handler = RedirectHandler::new(10);
 
         // Preserve port in redirect
         let resolved =
@@ -587,7 +587,7 @@ mod tests {
 
     #[test]
     fn test_extract_host_from_location() {
-        let handler = RedirectHandler::new(10);
+        let _handler = RedirectHandler::new(10);
 
         // Absolute URL
         let host = RedirectHandler::extract_host("https://other.com/path", "https://example.com");

@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! JSON-RPC API handlers for Unix socket IPC (v3.22.1)
 //!
 //! Refactored into domain-focused modules for maintainability.

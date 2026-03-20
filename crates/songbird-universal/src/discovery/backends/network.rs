@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
 //! Network Discovery Backend — mDNS and DNS-SD
 //!
 //! mDNS service discovery for local network primals.
@@ -215,8 +218,8 @@ pub async fn discover_dns_sd_services() -> Result<Vec<DiscoveredPrimal>, Discove
     #[cfg(feature = "dns-sd")]
     {
         use hickory_resolver::{
-            config::{ResolverConfig, ResolverOpts},
             TokioAsyncResolver,
+            config::{ResolverConfig, ResolverOpts},
         };
 
         // Create DNS resolver
