@@ -334,7 +334,10 @@ impl<T: Transport + 'static> BluetoothHost<T> {
         let address = Address::from_bytes(addr_bytes);
 
         // Parse RSSI (last byte)
-        #[allow(clippy::cast_possible_wrap)]
+        #[expect(
+            clippy::cast_possible_wrap,
+            reason = "intentional pattern; clippy false positive for this API"
+        )]
         let rssi = event.last().copied().map(|b| b as i8);
 
         // Parse device name from advertisement data (if present)

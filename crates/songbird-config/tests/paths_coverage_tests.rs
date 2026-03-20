@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (c) 2024-2026 ecoPrimals
 
-#![allow(
+#![expect(
     clippy::unwrap_used,
     clippy::expect_used,
     clippy::unnecessary_wraps,
@@ -21,7 +21,8 @@
     clippy::const_is_empty,
     clippy::duplicated_attributes,
     deprecated,
-    clippy::unnecessary_literal_unwrap
+    clippy::unnecessary_literal_unwrap,
+    reason = "test assertions and harness ergonomics"
 )]
 
 //! Coverage tests for `songbird_config::config::paths`
@@ -55,7 +56,7 @@ impl ScopedEnv {
         self
     }
 
-    #[allow(dead_code)]
+    #[expect(dead_code, reason = "test assertions and harness ergonomics")]
     fn remove(&mut self, key: &str) -> &mut Self {
         let old = std::env::var(key).ok();
         self.vars.push((key.to_string(), old));

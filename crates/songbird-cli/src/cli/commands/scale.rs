@@ -132,7 +132,7 @@ fn print_gaming_scale_info(scale: &GamingScale) {
 }
 
 /// Convert scale enum to string representation
-#[allow(dead_code)]
+#[expect(dead_code, reason = "dead code retained intentionally (reserved or API surface)")]
 fn scale_to_string(scale: &GamingScale) -> &'static str {
     match scale {
         GamingScale::HomeGaming => "home-gaming","

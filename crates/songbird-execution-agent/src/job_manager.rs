@@ -263,15 +263,22 @@ impl JobManager {
     }
 }
 
-/// Job statistics
+/// Counts of jobs by [`ExecutionStatus`] for operator dashboards.
 #[derive(Debug, Default, Clone, serde::Serialize, serde::Deserialize)]
 pub struct JobStats {
+    /// Jobs known to the manager (all states).
     pub total: usize,
+    /// Jobs waiting for a worker slot.
     pub queued: usize,
+    /// Jobs currently executing.
     pub running: usize,
+    /// Jobs that exited successfully.
     pub completed: usize,
+    /// Jobs that failed (non-zero exit or error).
     pub failed: usize,
+    /// Jobs stopped by wall-clock timeout.
     pub timeout: usize,
+    /// Jobs cancelled or stopped by operator.
     pub stopped: usize,
 }
 

@@ -29,6 +29,8 @@
 //! **Historical Context**: This was an experiment in universal primal registries.
 //! The simpler canonical types + universal adapters approach proved more practical.
 
+#![allow(missing_docs, reason = "deprecated primal registry experiment; use `canonical::primals`")]
+
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::time::Duration;
@@ -231,7 +233,7 @@ pub enum DiscoveryMethod {
 
 /// Configuration template for unknown primals
 #[derive(Debug, Clone, Serialize, Deserialize)]
-#[allow(clippy::struct_field_names)] // default_ prefix is intentional for template values
+#[allow(clippy::struct_field_names, reason = "default_ prefix is intentional for template values")]
 pub struct PrimalConfigurationTemplate {
     /// Default connection timeout
     pub default_connection_timeout: Duration,
@@ -344,7 +346,10 @@ pub struct ConnectionPoolConfig {
 
 /// Token refresh configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
-#[allow(clippy::struct_field_names)] // refresh_ prefix is intentional for refresh-related fields
+#[allow(
+    clippy::struct_field_names,
+    reason = "refresh_ prefix is intentional for refresh-related fields"
+)]
 pub struct TokenRefreshConfig {
     /// Refresh threshold (refresh when token expires in this time)
     pub refresh_threshold: Duration,

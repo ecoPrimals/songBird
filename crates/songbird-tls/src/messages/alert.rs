@@ -95,7 +95,9 @@ impl Alert {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(u8)]
 pub enum AlertLevel {
+    /// Non-fatal alert (TLS 1.3 discourages warnings).
     Warning = 1,
+    /// Fatal alert; peer must close the connection.
     Fatal = 2,
 }
 
@@ -118,32 +120,59 @@ impl From<AlertLevel> for u8 {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(u8)]
 pub enum AlertDescription {
+    /// Graceful shutdown requested.
     CloseNotify = 0,
+    /// Peer received an unexpected handshake message.
     UnexpectedMessage = 10,
+    /// MAC verification failed on a record.
     BadRecordMac = 20,
+    /// Record length exceeded the allowed maximum.
     RecordOverflow = 22,
+    /// Handshake could not be negotiated.
     HandshakeFailure = 40,
+    /// Certificate was malformed or failed validation.
     BadCertificate = 42,
+    /// Certificate type is not supported.
     UnsupportedCertificate = 43,
+    /// Certificate was revoked.
     CertificateRevoked = 44,
+    /// Certificate is expired.
     CertificateExpired = 45,
+    /// Certificate chain could not be built.
     CertificateUnknown = 46,
+    /// Handshake parameter was illegal.
     IllegalParameter = 47,
+    /// Issuing CA is not trusted.
     UnknownCa = 48,
+    /// Authenticated user is not permitted.
     AccessDenied = 49,
+    /// Message could not be decoded.
     DecodeError = 50,
+    /// Decryption or verification failed.
     DecryptError = 51,
+    /// Protocol version is not acceptable.
     ProtocolVersion = 70,
+    /// Negotiated parameters are too weak.
     InsufficientSecurity = 71,
+    /// Implementation-specific failure.
     InternalError = 80,
+    /// TLS 1.3 required but client attempted legacy downgrade.
     InappropriateFallback = 86,
+    /// Handshake canceled by user action.
     UserCanceled = 90,
+    /// Mandatory extension was absent.
     MissingExtension = 109,
+    /// Unsupported extension was received.
     UnsupportedExtension = 110,
+    /// Server name was not recognized.
     UnrecognizedName = 112,
+    /// OCSP stapling response was invalid.
     BadCertificateStatusResponse = 113,
+    /// PSK identity is unknown.
     UnknownPskIdentity = 115,
+    /// Client certificate was required but not provided.
     CertificateRequired = 116,
+    /// ALPN negotiation failed to select a protocol.
     NoApplicationProtocol = 120,
 }
 

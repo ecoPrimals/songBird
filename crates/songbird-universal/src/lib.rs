@@ -11,11 +11,26 @@
 #![deny(unsafe_code)]
 #![warn(missing_docs)]
 #![warn(clippy::all)]
-#![allow(clippy::significant_drop_tightening)] // Will optimize in Phase 2
-#![allow(clippy::cognitive_complexity)] // Will refactor in Phase 2
-#![allow(clippy::if_same_then_else)] // Will refactor in Phase 2
-#![allow(clippy::needless_borrow)] // Will optimize in Phase 2
-#![allow(clippy::missing_fields_in_debug)] // Will complete Debug impls in Phase 2
+#![allow(
+    clippy::significant_drop_tightening,
+    reason = "Phase 2: tighten drops after adapter graph stabilizes"
+)]
+#![allow(
+    clippy::cognitive_complexity,
+    reason = "Phase 2: split orchestration paths when feature set settles"
+)]
+#![allow(
+    clippy::if_same_then_else,
+    reason = "Phase 2: branch symmetry kept for readability during refactors"
+)]
+#![allow(
+    clippy::needless_borrow,
+    reason = "Phase 2: borrow style unified with surrounding adapter code"
+)]
+#![allow(
+    clippy::missing_fields_in_debug,
+    reason = "Phase 2: complete Debug for all public adapter types"
+)]
 #![cfg_attr(
     test,
     allow(

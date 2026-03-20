@@ -1,79 +1,38 @@
-# Songbird Universal Orchestrator Examples
+# Songbird Examples
 
-This directory contains examples demonstrating the capabilities of the Songbird Universal Orchestrator.
+Examples demonstrating the Songbird Universal Orchestrator.
 
-## 📁 Directory Structure
+## Current Examples (Pure Rust)
 
-- **Current Examples** - Modern, production-ready code (100% Pure Rust)
-- **`legacy/`** - Archived pre-ecoBin v2.0 examples (uses reqwest, not recommended)
+### IPC Clients
 
-**For new projects, use the current examples!** Legacy examples are kept for historical reference only.
-
-## Demo: Universal Orchestration (`demo_orchestration.rs`)
-
-This comprehensive demo showcases the key features implemented in the Songbird Universal Orchestrator:
-
-### Features Demonstrated
-
-1. **🔧 Service Registry & Dynamic Plugin Composition**
-   - Creates service registry for managing orchestrated services
-   - Registers dynamic plugins (BearDog encryption, Toadstool compute, NestGate storage)
-   - Auto-composes a complete system from individual plugin capabilities
-   - Eliminates the need for 256+ TOML configuration files through runtime composition
-
-2. **🏗️ BYOB (Bring Your Own Biome) Deployment**
-   - Registers team workspaces with resource quotas
-   - Creates biome manifests with service dependencies
-   - Deploys complete biomes with dependency resolution
-   - Demonstrates service orchestration with health checks
-
-3. **🔍 Auto-Discovery System**
-   - Discovers services on the network automatically
-   - Finds Primal endpoints (Toadstool, NestGate, BearDog, Squirrel)
-   - Continuous background scanning for new services
-   - Network topology mapping
-
-### Key Innovations
-
-- **Zero-Configuration Deployment**: No need for complex TOML configurations
-- **Dynamic Plugin Composition**: Services composed at runtime like "lego blocks"
-- **Universal Primal Coordination**: Seamless integration with all Primal services
-- **Dependency Resolution**: Automatic service startup ordering with cycle detection
-- **Health Monitoring**: Continuous health checks and service readiness validation
-
-### Running the Demo
+| Example | Description |
+|---------|-------------|
+| `ipc_client_simple.rs` | Basic JSON-RPC IPC client connecting to Songbird |
+| `ipc_client_discovery.rs` | Service discovery via IPC |
+| `ipc_client_primal.rs` | Primal-to-primal communication patterns |
 
 ```bash
-# Run the demonstration
-cargo run --example demo_orchestration
-
-# With detailed logging
-RUST_LOG=info cargo run --example demo_orchestration
+cargo run --example ipc_client_simple
+cargo run --example ipc_client_discovery
+cargo run --example ipc_client_primal
 ```
 
-### Expected Output
+### Client Libraries
 
-The demo will show:
-- Plugin registration and auto-composition
-- Team workspace setup and biome deployment
-- Service discovery and Primal endpoint detection
-- Real-time orchestration status updates
+- `clients/rust/` — Rust tarpc client (standalone crate)
+- `clients/python/` — Python JSON-RPC + WebSocket clients
+- `clients/javascript/` — JavaScript JSON-RPC + WebSocket clients
 
-### Architecture Highlights
+### Shell
 
-The demo illustrates the core innovation of replacing traditional configuration-heavy orchestration with:
+- `jsonrpc_client.sh` — curl-based JSON-RPC 2.0 examples
 
-1. **Dynamic Service Discovery**: Services automatically found and registered
-2. **Runtime Plugin Composition**: Capabilities combined on-demand
-3. **Dependency-Aware Orchestration**: Services started in correct order
-4. **Health-Driven Management**: Continuous monitoring and self-healing
-5. **Primal Ecosystem Integration**: Seamless coordination with external services
+### Configuration
 
-This demonstrates how Songbird achieves the goal mentioned in the handoff notes: eliminating the complexity of managing 256+ configuration files through intelligent automation and dynamic composition.
+- `config/` — Example TOML configurations for capability discovery, ecosystem integration, and BearDog delegation
 
-### Related Documentation
+## Archived
 
-- [Architecture Specifications](../specs/architecture.md)
-- [BYOB System Design](../specs/byob-system.md)
-- [Service Registry Design](../specs/service-registry.md)
-- [Universal Orchestration](../specs/universal-orchestration.md) 
+- `legacy/` — Pre-ecoBin v2.0 examples (uses reqwest; historical reference only)
+- `future/` — Experimental/proposed API patterns (may not compile against current workspace)

@@ -25,9 +25,13 @@ pub const EXTENDED_TEST_TIMEOUT: Duration = Duration::from_secs(120);
 /// Test execution context with timing and resource tracking
 #[derive(Debug)]
 pub struct TestContext {
+    /// Human-readable test or scenario label for logs.
     pub name: String,
+    /// When the context was created (used with [`timeout`](Self::timeout)).
     pub start_time: std::time::Instant,
+    /// Hard cap for [`is_timeout`](Self::is_timeout).
     pub timeout: Duration,
+    /// Arbitrary key/value tags (e.g. crate name, feature flags).
     pub metadata: HashMap<String, String>,
 }
 
@@ -297,6 +301,7 @@ pub struct PerformanceResults {
 }
 
 impl PerformanceResults {
+    /// Wraps raw iteration timings for min/max/median helpers.
     #[must_use]
     pub const fn new(durations: Vec<Duration>) -> Self {
         Self {
@@ -311,9 +316,15 @@ impl PerformanceResults {
             return Duration::ZERO;
         }
 
-        #[allow(clippy::cast_possible_truncation)]
+        #[expect(
+            clippy::cast_possible_truncation,
+            reason = "intentional pattern; clippy false positive for this API"
+        )]
         let total_nanos: u64 = self.durations.iter().map(|d| d.as_nanos() as u64).sum();
-        #[allow(clippy::cast_possible_truncation)]
+        #[expect(
+            clippy::cast_possible_truncation,
+            reason = "intentional pattern; clippy false positive for this API"
+        )]
         let len = self.durations.len() as u64;
         Duration::from_nanos(total_nanos / len)
     }
@@ -343,7 +354,10 @@ impl PerformanceResults {
         let mid = sorted.len() / 2;
         if sorted.len().is_multiple_of(2) {
             let sum_nanos = sorted[mid - 1].as_nanos() + sorted[mid].as_nanos();
-            #[allow(clippy::cast_possible_truncation)]
+            #[expect(
+                clippy::cast_possible_truncation,
+                reason = "intentional pattern; clippy false positive for this API"
+            )]
             let result_nanos = (sum_nanos / 2) as u64;
             Duration::from_nanos(result_nanos)
         } else {
@@ -359,22 +373,35 @@ impl PerformanceResults {
         }
 
         let avg = self.average();
-        #[allow(clippy::cast_precision_loss)]
+        #[expect(
+            clippy::cast_precision_loss,
+            reason = "intentional pattern; clippy false positive for this API"
+        )]
         let avg_nanos = avg.as_nanos() as f64;
 
-        #[allow(clippy::cast_precision_loss)]
+        #[expect(
+            clippy::cast_precision_loss,
+            reason = "intentional pattern; clippy false positive for this API"
+        )]
         let variance: f64 = self
             .durations
             .iter()
             .map(|d| {
-                #[allow(clippy::cast_precision_loss)]
+                #[expect(
+                    clippy::cast_precision_loss,
+                    reason = "intentional pattern; clippy false positive for this API"
+                )]
                 let diff = d.as_nanos() as f64 - avg_nanos;
                 diff * diff
             })
             .sum::<f64>()
             / (self.durations.len() - 1) as f64;
 
-        #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+        #[expect(
+            clippy::cast_possible_truncation,
+            clippy::cast_sign_loss,
+            reason = "intentional pattern; clippy false positive for this API"
+        )]
         Duration::from_nanos(variance.sqrt() as u64)
     }
 }
@@ -419,13 +446,13 @@ impl MockService {
 
     /// Get the number of times this service has been called
     #[must_use]
-    #[allow(clippy::unused_self)]
+    #[expect(clippy::unused_self, reason = "unused bindings/imports in this compilation unit")]
     pub const fn call_count(&self) -> usize {
         0 // Simplified mock - no call count tracking
     }
 
     /// Reset the call counter
-    #[allow(clippy::unused_self)]
+    #[expect(clippy::unused_self, reason = "unused bindings/imports in this compilation unit")]
     pub const fn reset_call_count(&self) {
         // No-op for this simplified mock
     }
@@ -457,7 +484,10 @@ impl TestEnvironment {
     ///
     /// # Errors
     /// Returns an error if setup fails.
-    #[allow(clippy::unnecessary_wraps)]
+    #[expect(
+        clippy::unnecessary_wraps,
+        reason = "intentional pattern; clippy false positive for this API"
+    )]
     pub fn setup() -> SongbirdResult<()> {
         // Initialize logging for tests if not already done
         let _ = tracing_subscriber::fmt().with_test_writer().try_init();

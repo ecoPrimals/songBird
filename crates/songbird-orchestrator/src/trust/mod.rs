@@ -63,3 +63,39 @@ pub use universal_trust_api::{
     IdentityAttestation as UniversalIdentityAttestation, TrustDecision as UniversalTrustDecision,
     UniversalTrustRequest, UniversalTrustResponse,
 };
+
+#[cfg(test)]
+mod tests {
+    #![expect(clippy::unwrap_used, reason = "test assertions")]
+    #![expect(clippy::expect_used, reason = "test assertions")]
+
+    use crate::trust::TrustLevel;
+
+    #[test]
+    fn trust_level_ordering_and_can_perform() {
+        assert!(TrustLevel::HardwareVerified > TrustLevel::Anonymous);
+        assert!(TrustLevel::HardwareVerified.can_perform(TrustLevel::RoleVerified));
+        assert!(!TrustLevel::CapabilityVerified.can_perform(TrustLevel::IdentityVerified));
+    }
+
+    #[test]
+    fn trust_level_descriptions_non_empty() {
+        for level in [
+            TrustLevel::Anonymous,
+            TrustLevel::CapabilityVerified,
+            TrustLevel::RoleVerified,
+            TrustLevel::IdentityVerified,
+            TrustLevel::HardwareVerified,
+        ] {
+            assert!(!level.description().is_empty());
+            let s = level.to_string();
+            assert!(!s.is_empty());
+        }
+    }
+
+    #[test]
+    fn reexports_resolve_universal_types() {
+        let _ = std::mem::size_of::<crate::trust::UniversalTrustRequest>();
+        let _ = std::mem::size_of::<crate::trust::UniversalTrustResponse>();
+    }
+}

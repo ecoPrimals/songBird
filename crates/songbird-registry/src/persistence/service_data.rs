@@ -9,13 +9,13 @@ pub use songbird_discovery::traits::service::ServiceInfo;
 /// Health classification persisted with a service entry.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub enum RegistryHealthStatus {
-    /// Health not yet determined
+    /// Health not yet determined.
     Unknown,
-    /// Service is healthy
+    /// Service is healthy.
     Healthy,
-    /// Service is degraded but usable
+    /// Service is degraded but usable.
     Degraded,
-    /// Service is unhealthy
+    /// Service is unhealthy.
     Unhealthy,
 }
 
@@ -57,9 +57,14 @@ impl Default for RegistryServiceMetrics {
 pub struct RegistryServiceEntry {
     /// Core discovery-facing metadata
     pub service_info: ServiceInfo,
+    /// Active instances last observed for this logical service.
     pub instance_count: u32,
+    /// Upper bound instances may scale to under load.
     pub max_instances: u32,
+    /// Lower bound instances should not scale below.
     pub min_instances: u32,
+    /// Persisted health snapshot for orchestration decisions.
     pub health_status: RegistryHealthStatus,
+    /// Persisted utilization metrics for scaling heuristics.
     pub metrics: RegistryServiceMetrics,
 }

@@ -5,7 +5,7 @@
 
 /// ATT opcodes
 /// Note: Constants awaiting hardware validation - will be used in Phase 3
-#[allow(dead_code)]
+#[expect(dead_code, reason = "dead code retained intentionally (reserved or API surface)")]
 pub mod att_opcode {
     pub const ERROR_RSP: u8 = 0x01;
     pub const READ_BY_GROUP_TYPE_REQ: u8 = 0x10;
@@ -22,7 +22,7 @@ pub mod att_opcode {
 
 /// ATT UUIDs
 /// Note: Constants awaiting hardware validation - will be used in Phase 3
-#[allow(dead_code)]
+#[expect(dead_code, reason = "dead code retained intentionally (reserved or API surface)")]
 pub mod att_uuid {
     /// Primary Service UUID (0x2800)
     pub const PRIMARY_SERVICE: u16 = 0x2800;

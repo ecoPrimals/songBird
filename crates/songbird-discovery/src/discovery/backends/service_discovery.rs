@@ -12,7 +12,13 @@
 //! ## Native Async Traits
 //! This module uses native async trait methods (Rust 1.75+) for zero-cost abstractions.
 
-#![allow(async_fn_in_trait, clippy::unused_async, clippy::missing_errors_doc, clippy::unused_self)]
+#![allow(
+    async_fn_in_trait,
+    clippy::unused_async,
+    clippy::missing_errors_doc,
+    clippy::unused_self,
+    reason = "async service discovery adapter: trait-object API surface"
+)]
 use futures_util::Stream;
 use songbird_http_client::IpcHttpClient;
 use std::collections::HashMap;

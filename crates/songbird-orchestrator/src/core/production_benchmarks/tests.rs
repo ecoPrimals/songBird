@@ -6,10 +6,10 @@
 //! Comprehensive test suite for production benchmarking functionality;
 #[cfg(test)]
 mod tests { use crate::production_benchmarks::{runner::*, types::*;};
-    #![allow(clippy::uninlined_format_args)]
-    #![allow(clippy::float_cmp)]
-    #![allow(clippy::useless_vec)]
-    #![allow(clippy::unreadable_literal)]
+    #![expect(clippy::uninlined_format_args, reason = "test assertions and harness ergonomics")]
+    #![expect(clippy::float_cmp, reason = "test assertions and harness ergonomics")]
+    #![expect(clippy::useless_vec, reason = "test assertions and harness ergonomics")]
+    #![expect(clippy::unreadable_literal, reason = "test assertions and harness ergonomics")]
 
     use std::time::Duration;
 

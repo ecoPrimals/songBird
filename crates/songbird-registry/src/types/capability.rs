@@ -61,7 +61,7 @@ pub enum CapabilityType {
 
 /// A capability that a plugin provides
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-#[allow(clippy::struct_field_names)]
+#[allow(clippy::struct_field_names, reason = "capability_type matches serde flatten schema")]
 pub struct Capability {
     /// The type and details of this capability
     #[serde(flatten)]

@@ -6,6 +6,8 @@
 //! Timeout configurations for network operations including connections,
 //! requests, health checks, and service operations.
 
+#![allow(missing_docs, reason = "timeout buckets align with `NetworkConfig` documentation")]
+
 use serde::{Deserialize, Serialize};
 use std::time::Duration;
 
@@ -75,5 +77,46 @@ impl Default for TimeoutConfig {
             registration_timeout_secs: 15,
             discovery_timeout_secs: 30,
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    #![expect(clippy::unwrap_used, reason = "test assertions")]
+    #![expect(clippy::expect_used, reason = "test assertions")]
+
+    use super::{NetworkTimeouts, TimeoutConfig};
+    use songbird_test_utils::canonical_test_framework::TestContext;
+
+    #[test]
+    fn timeout_config_default_roundtrip() {
+        let ctx = TestContext::new("timeouts");
+        let t = TimeoutConfig::default();
+        let json = serde_json::to_string(&t).unwrap();
+        let back: TimeoutConfig = serde_json::from_str(&json).unwrap();
+        assert_eq!(t.default_timeout_secs, back.default_timeout_secs);
+        assert_eq!(t.discovery_timeout_secs, back.discovery_timeout_secs);
+        assert!(!ctx.is_timeout());
+    }
+
+    #[test]
+    fn network_timeouts_default_nonzero() {
+        let n = NetworkTimeouts::default();
+        assert!(n.connection.as_secs() > 0);
+        assert!(n.request >= n.health_check);
+    }
+
+    #[test]
+    fn timeout_config_custom_values() {
+        let t = TimeoutConfig {
+            default_timeout_secs: 1,
+            connection_timeout_secs: 2,
+            health_check_timeout_secs: 3,
+            registration_timeout_secs: 4,
+            discovery_timeout_secs: 5,
+        };
+        let json = serde_json::to_string(&t).unwrap();
+        let back: TimeoutConfig = serde_json::from_str(&json).unwrap();
+        assert_eq!(back.registration_timeout_secs, 4);
     }
 }

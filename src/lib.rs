@@ -8,6 +8,7 @@
 
 use anyhow::Result;
 use clap::{Parser, Subcommand};
+use std::io::{self, BufRead, Write};
 
 /// Parse argv for a delegated clap parser (`--help` / `--version` exit via clap, success code 0).
 ///
@@ -78,13 +79,11 @@ pub enum Commands {
         config_cmd: songbird_orchestrator::ConfigCommands,
     },
 
-    /// Interactive CLI (placeholder - future implementation)
+    /// Interactive CLI (minimal REPL — type `help` or `exit`)
     ///
-    /// Interactive command-line interface for managing Songbird.
-    /// Currently under development.
-    #[command(hide = true)] // Hide until fully implemented
+    /// Lightweight shell for quick exploration; use `server`, `doctor`, or `config` for operations.
     Cli {
-        /// CLI command
+        /// Extra tokens (not used; reserved for future subcommands)
         #[arg(trailing_var_arg = true)]
         args: Vec<String>,
     },
@@ -152,6 +151,46 @@ pub fn try_run_rendezvous(args: Vec<String>) -> Result<(), RendezvousRunError> {
         return Err(RendezvousRunError::NonZeroExit(status.code().unwrap_or(1)));
     }
 
+    Ok(())
+}
+
+/// Minimal interactive CLI: prints guidance and reads lines until `exit` / `quit`.
+///
+/// # Errors
+///
+/// Returns I/O errors from stdin/stdout.
+pub fn run_interactive_cli() -> Result<()> {
+    println!("Songbird interactive CLI — commands: help, exit, quit");
+    println!("Operational modes: server, doctor, config, compute-bridge, deploy, rendezvous");
+    println!("Try: songbird server --help | songbird doctor --help | songbird config --help\n");
+
+    let stdin = io::stdin();
+    let mut stdout = io::stdout();
+    for line in stdin.lock().lines() {
+        let line = line?;
+        match line.trim() {
+            "" => {}
+            "exit" | "quit" => break,
+            "help" | "?" => {
+                writeln!(
+                    stdout,
+                    "This REPL only lists modes. Examples:\n\
+                     \tsongbird server --help\n\
+                     \tsongbird doctor\n\
+                     \tsongbird config show\n\
+                     \tsongbird compute-bridge -- --help"
+                )?;
+            }
+            other => {
+                writeln!(stdout, "Unknown input: {other}")?;
+                writeln!(
+                    stdout,
+                    "Type `help` for available top-level commands, or `exit` to leave."
+                )?;
+            }
+        }
+        stdout.flush()?;
+    }
     Ok(())
 }
 

@@ -5,6 +5,8 @@
 //!
 //! Makes it trivial to start a Songbird tower with automatic resource detection
 
+#![allow(missing_docs, reason = "tower command clap types include inline help strings")]
+
 use clap::{Args, Subcommand};
 use serde::{Deserialize, Serialize};
 use std::process::Command; // Still needed for GPU/storage detection

@@ -11,7 +11,7 @@
 //! any discovered storage provider for network effects.
 
 // Allow async_fn_in_trait warning - our traits guarantee Send + Sync
-#![allow(async_fn_in_trait)]
+#![expect(async_fn_in_trait, reason = "async fn in trait (edition / trait-object compatibility)")]
 
 use crate::JsonRpcClient;
 use serde::{Deserialize, Serialize};
@@ -46,7 +46,10 @@ impl StorageMetrics {
         if self.total_capacity_bytes == 0 {
             return 0.0;
         }
-        #[allow(clippy::cast_precision_loss)]
+        #[expect(
+            clippy::cast_precision_loss,
+            reason = "intentional pattern; clippy false positive for this API"
+        )]
         {
             (self.used_bytes as f64 / self.total_capacity_bytes as f64) * 100.0
         }
@@ -202,7 +205,7 @@ impl StorageAdapter {
     /// # Errors
     ///
     /// Returns an error if the protocol client cannot be created.
-    #[allow(clippy::unused_async)] // async retained for API stability
+    #[expect(clippy::unused_async, reason = "unused bindings/imports in this compilation unit")] // async retained for API stability
     pub async fn new(endpoint: String) -> SongbirdResult<Self> {
         // Protocol detection (v3.12.0 - tarpc PRIMARY)
         let protocol = if endpoint.starts_with("tarpc://") {

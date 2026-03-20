@@ -19,7 +19,13 @@ use axum::{
 };
 use chrono;
 use serde::{Deserialize, Serialize};
-use std::{collections::HashMap, sync::Arc};
+use std::{
+    collections::HashMap,
+    sync::{
+        Arc,
+        atomic::{AtomicU64, Ordering},
+    },
+};
 use tracing::info;
 
 /// Protocol capability discovery and negotiation routes
@@ -183,21 +189,12 @@ pub struct CapabilitiesResponse {
     pub fallback_protocol: String,
 }
 
-/// POST /api/protocol/negotiate
-///
-/// Negotiates protocol upgrade based on client capabilities.
-/// Returns upgrade instructions if a better protocol is available.
-///
-/// ✅ Phase 2 Complete: Full protocol negotiation with JSON-RPC, tarpc, BTSP
-async fn negotiate_protocol(
-    State(state): State<ProtocolApiState>,
-    Json(request): Json<NegotiateRequest>,
-) -> Result<Json<NegotiateResponse>, StatusCode> {
-    info!(
-        "🤝 Protocol negotiation requested by client '{}' (preferred: {})",
-        request.client_id, request.preferred
-    );
-
+/// Shared negotiation logic (REST `POST /api/protocol/negotiate` and JSON-RPC `protocol.negotiate`).
+#[must_use]
+pub(crate) fn protocol_negotiate_result(
+    state: &ProtocolApiState,
+    request: &NegotiateRequest,
+) -> NegotiateResponse {
     // Build list of available protocols
     let mut available = vec!["http".to_string()];
 
@@ -242,7 +239,7 @@ async fn negotiate_protocol(
         Some("Using HTTP (no upgrade available based on client capabilities).".to_string())
     };
 
-    let response = NegotiateResponse {
+    NegotiateResponse {
         negotiation_id: generate_negotiation_id(),
         selected_protocol: selected,
         upgrade_available,
@@ -266,9 +263,25 @@ async fn negotiate_protocol(
             None
         },
         message,
-    };
+    }
+}
 
-    Ok(Json(response))
+/// POST /api/protocol/negotiate
+///
+/// Negotiates protocol upgrade based on client capabilities.
+/// Returns upgrade instructions if a better protocol is available.
+///
+/// ✅ Phase 2 Complete: Full protocol negotiation with JSON-RPC, tarpc, BTSP
+async fn negotiate_protocol(
+    State(state): State<ProtocolApiState>,
+    Json(request): Json<NegotiateRequest>,
+) -> Result<Json<NegotiateResponse>, StatusCode> {
+    info!(
+        "🤝 Protocol negotiation requested by client '{}' (preferred: {})",
+        request.client_id, request.preferred
+    );
+
+    Ok(Json(protocol_negotiate_result(&state, &request)))
 }
 
 /// Select the best protocol based on client and server capabilities
@@ -411,12 +424,15 @@ pub struct UpgradeResponse {
 fn generate_negotiation_id() -> String {
     use std::time::{SystemTime, UNIX_EPOCH};
 
+    static SEQ: AtomicU64 = AtomicU64::new(0);
+    let seq = SEQ.fetch_add(1, Ordering::Relaxed);
+
     let timestamp = SystemTime::now()
         .duration_since(UNIX_EPOCH)
         .unwrap_or_else(|_| std::time::Duration::from_secs(0)) // Fallback if system time goes backward
         .as_micros();
 
-    format!("nego_{timestamp}")
+    format!("nego_{timestamp}_{seq}")
 }
 
 #[cfg(test)]

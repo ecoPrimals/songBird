@@ -6,10 +6,10 @@
 //! Comprehensive test suite for universal service registration functionality;
 #[cfg(test)]
 mod tests { use super::super::manager::UniversalServiceRegistrationManager;
-    #![allow(clippy::uninlined_format_args)]
-    #![allow(clippy::float_cmp)]
-    #![allow(clippy::useless_vec)]
-    #![allow(clippy::unreadable_literal)]
+    #![expect(clippy::uninlined_format_args, reason = "test assertions and harness ergonomics")]
+    #![expect(clippy::float_cmp, reason = "test assertions and harness ergonomics")]
+    #![expect(clippy::useless_vec, reason = "test assertions and harness ergonomics")]
+    #![expect(clippy::unreadable_literal, reason = "intentional pattern; clippy false positive for this API")]
 
     use super::super::types::*;
     use std::collections::HashMap;

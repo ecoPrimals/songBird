@@ -209,14 +209,14 @@ impl GamingLoadMetrics { /// Calculate utilization percentage for current gaming
         // Return the highest utilization
         session_util.max(player_util).max(connection_util).min(1.0);}}
 #[cfg(test)]
-#[allow(clippy::uninlined_format_args)]
-#[allow(clippy::float_cmp)]
-#[allow(clippy::useless_vec)]
-#[allow(clippy::unreadable_literal)]
-#[allow(clippy::items_after_statements)]
-#[allow(clippy::cast_precision_loss)]
-#[allow(clippy::cast_possible_truncation)]
-#[allow(clippy::cast_sign_loss)]
+#[expect(clippy::uninlined_format_args, reason = "test assertions and harness ergonomics")]
+#[expect(clippy::float_cmp, reason = "test assertions and harness ergonomics")]
+#[expect(clippy::useless_vec, reason = "test assertions and harness ergonomics")]
+#[expect(clippy::unreadable_literal, reason = "test assertions and harness ergonomics")]
+#[expect(clippy::items_after_statements, reason = "test assertions and harness ergonomics")]
+#[expect(clippy::cast_precision_loss, reason = "test assertions and harness ergonomics")]
+#[expect(clippy::cast_possible_truncation, reason = "intentional pattern; clippy false positive for this API")]
+#[expect(clippy::cast_sign_loss, reason = "intentional pattern; clippy false positive for this API")]
 mod tests  {use super::*;
 
     #[test]

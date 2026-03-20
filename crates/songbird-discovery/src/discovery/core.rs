@@ -293,7 +293,7 @@ pub struct ResourceUpdate {
 
 /// Resource usage information
 #[derive(Debug, Clone, Serialize, Deserialize)]
-#[allow(clippy::struct_field_names)]
+#[allow(clippy::struct_field_names, reason = "percent field names match metrics schema")]
 pub struct ResourceUsage {
     /// Cpu Percent field
     pub cpu_percent: f32,
@@ -305,7 +305,7 @@ pub struct ResourceUsage {
 
 /// Storage information
 #[derive(Debug, Clone, Serialize, Deserialize)]
-#[allow(clippy::struct_field_names)]
+#[allow(clippy::struct_field_names, reason = "byte field names match storage telemetry schema")]
 pub struct StorageInfo {
     /// Total Bytes field
     pub total_bytes: u64,

@@ -6,7 +6,10 @@
 //! This module provides the unified federation configuration structures,
 //! migrated from `songbird-federation/src/types.rs` to the canonical location.
 
-#![allow(clippy::upper_case_acronyms)]
+#![allow(
+    clippy::upper_case_acronyms,
+    reason = "Federation API acronym casing preserved for wire compatibility"
+)]
 
 use serde::{Deserialize, Serialize};
 use std::net::SocketAddr;

@@ -46,7 +46,9 @@ pub enum Extension {
     /// Store extension type and data for extensions we don't recognize.
     /// This allows forward compatibility with future TLS versions.
     Unknown {
+        /// On-wire extension type id.
         extension_type: u16,
+        /// Raw extension body.
         data: Vec<u8>,
     },
 }
@@ -76,18 +78,27 @@ impl Extension {
 }
 
 // Extension type constants
+/// `server_name` extension type.
 pub const EXT_SERVER_NAME: u16 = 0;
+/// `supported_groups` extension type.
 pub const EXT_SUPPORTED_GROUPS: u16 = 10;
+/// `signature_algorithms` extension type.
 pub const EXT_SIGNATURE_ALGORITHMS: u16 = 13;
+/// `supported_versions` extension type.
 pub const EXT_SUPPORTED_VERSIONS: u16 = 43;
+/// `key_share` extension type.
 pub const EXT_KEY_SHARE: u16 = 51;
 
 // Signature algorithm constants
+/// Ed25519 codepoint for signature algorithms extension.
 pub const SIG_ED25519: u16 = 0x0807;
+/// ECDSA P-256 with SHA-256 codepoint.
 pub const SIG_ECDSA_SECP256R1_SHA256: u16 = 0x0403;
 
 // Named group constants
+/// X25519 named group id.
 pub const GROUP_X25519: u16 = 0x001d;
+/// secp256r1 named group id.
 pub const GROUP_SECP256R1: u16 = 0x0017;
 
 #[cfg(test)]

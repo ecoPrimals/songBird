@@ -11,7 +11,7 @@
 //! ## Native Async Traits
 //! This module uses native async trait methods (Rust 1.75+) for zero-cost abstractions.
 
-#![allow(async_fn_in_trait)]
+#![expect(async_fn_in_trait, reason = "async fn in trait (edition / trait-object compatibility)")]
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::net::{IpAddr, SocketAddr};
@@ -81,7 +81,7 @@ impl NetworkManager {
     ///
     /// # Future Enhancement
     /// If multi-provider support is needed, use `Arc<dyn NetworkProvider>` instead of enum
-    #[allow(dead_code)]
+    #[allow(dead_code, reason = "reserved multi-provider hook; single-provider path in use today")]
     pub async fn register_provider<P: NetworkProvider + 'static>(
         &mut self,
         _provider: P,

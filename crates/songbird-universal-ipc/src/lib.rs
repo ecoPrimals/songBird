@@ -1,4 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
+
+#![warn(missing_docs)]
+
 //! # 🌍 Songbird Universal IPC
 //!
 //! **Platform-agnostic IPC for ecoPrimals** - Works on ALL platforms!
@@ -111,7 +114,8 @@
     clippy::unused_self,
     clippy::needless_continue,
     clippy::match_same_arms,
-    clippy::cast_possible_wrap
+    clippy::cast_possible_wrap,
+    reason = "universal IPC: broad surface; doc and style exceptions during consolidation"
 )]
 #![cfg_attr(
     test,
@@ -162,22 +166,37 @@
 )]
 
 // Public modules
+#[allow(missing_docs, reason = "IPC submodule; primary docs on crate root and re-exports")]
 pub mod capability; // ✨ NEW: Capability-based discovery
+#[allow(missing_docs, reason = "IPC submodule; primary docs on crate root and re-exports")]
 pub mod endpoint;
+#[allow(missing_docs, reason = "IPC submodule; primary docs on crate root and re-exports")]
 pub mod error;
+#[allow(missing_docs, reason = "IPC submodule; primary docs on crate root and re-exports")]
 pub mod handlers; // ✨ NEW: IPC method handlers (HTTP, etc.)
+#[allow(missing_docs, reason = "IPC submodule; primary docs on crate root and re-exports")]
 pub mod introspection; // Smart refactor: primal self-description (Feb 8, 2026)
+#[allow(missing_docs, reason = "IPC submodule; primary docs on crate root and re-exports")]
 pub mod platform;
+#[allow(missing_docs, reason = "IPC submodule; primary docs on crate root and re-exports")]
 pub mod registry;
+#[allow(missing_docs, reason = "IPC submodule; primary docs on crate root and re-exports")]
 pub mod service; // ✨ NEW: IPC Service (JSON-RPC broker)
+#[allow(missing_docs, reason = "IPC submodule; primary docs on crate root and re-exports")]
 pub mod tower_atomic; // ✨ NEW: JSON-RPC over Universal IPC
 
 // Public API
+#[allow(missing_docs, reason = "IPC submodule; primary docs on crate root and re-exports")]
 pub mod ipc;
 
 // Re-exports
+/// Capability registry and provider trait for IPC-facing discovery.
 pub use capability::{CapabilityRegistry, Provider};
+/// Resolved native socket paths and virtual primal paths (`/primal/...`).
 pub use endpoint::{NativeEndpoint, VirtualEndpoint};
+/// Universal IPC error type and result alias.
 pub use error::{IpcError, IpcResult};
+/// Async stream abstraction and platform IPC trait for listeners and connectors.
 pub use platform::{AsyncStream, PlatformIPC};
+/// In-memory service registry and metadata for registered primals.
 pub use registry::{ServiceMetadata, ServiceRegistry};

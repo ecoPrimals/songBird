@@ -7,10 +7,10 @@
 
 #[cfg(test)]
 mod tests {
-    #![allow(clippy::uninlined_format_args)]
-    #![allow(clippy::float_cmp)]
-    #![allow(clippy::useless_vec)]
-    #![allow(clippy::unreadable_literal)]
+    #![expect(clippy::uninlined_format_args, reason = "test assertions and harness ergonomics")]
+    #![expect(clippy::float_cmp, reason = "test assertions and harness ergonomics")]
+    #![expect(clippy::useless_vec, reason = "test assertions and harness ergonomics")]
+    #![expect(clippy::unreadable_literal, reason = "test assertions and harness ergonomics")]
 
     use super::super::PerformanceConfig;
     use std::collections::HashMap;

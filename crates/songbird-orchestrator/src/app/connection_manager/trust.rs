@@ -34,7 +34,10 @@ impl TrustEvaluator {
     ///
     /// **v3.21.0**: Matches original API for compatibility
     /// **Modern pattern**: Interprets `PeerTrustDecision` and delegates
-    #[allow(clippy::too_many_arguments)]
+    #[expect(
+        clippy::too_many_arguments,
+        reason = "intentional pattern; clippy false positive for this API"
+    )]
     pub async fn handle_decision(
         &self,
         peer_id: String,
@@ -120,7 +123,10 @@ impl TrustEvaluator {
     /// - BTSP-first strategy (encrypted P2P)
     /// - Graceful fallback to HTTP
     /// - Capability-based protocol selection
-    #[allow(clippy::too_many_arguments)]
+    #[expect(
+        clippy::too_many_arguments,
+        reason = "intentional pattern; clippy false positive for this API"
+    )]
     pub async fn establish_connection(
         &self,
         peer_id: String,

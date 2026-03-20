@@ -66,6 +66,7 @@ pub async fn clear_cache() {
 }
 
 #[cfg(test)]
+#[expect(clippy::unwrap_used, reason = "test assertions")]
 mod tests {
     use super::*;
 
@@ -79,5 +80,18 @@ mod tests {
         assert!(provider.is_ok());
 
         songbird_process_env::remove_var("TEST_PROVIDER_SOCKET");
+    }
+
+    #[test]
+    fn init_capability_registry_is_idempotent() {
+        init_capability_registry();
+        init_capability_registry();
+        let _ = global_registry();
+    }
+
+    #[tokio::test]
+    async fn clear_cache_runs_after_init() {
+        init_capability_registry();
+        clear_cache().await;
     }
 }

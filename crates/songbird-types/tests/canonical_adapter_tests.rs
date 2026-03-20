@@ -6,10 +6,15 @@
 //! Comprehensive tests for the canonical adapter configuration and supporting types.
 //! These tests focus on ensuring all config structs, enums, and metrics work correctly.
 
-#![allow(clippy::similar_names)]
-#![allow(clippy::uninlined_format_args)]
+#![expect(clippy::similar_names, reason = "test assertions and harness ergonomics")]
+#![expect(clippy::uninlined_format_args, reason = "test assertions and harness ergonomics")]
 // Allow unwrap/expect in tests - idiomatic for test code
-#![allow(clippy::unwrap_used, clippy::expect_used, clippy::unnecessary_wraps)]
+#![expect(
+    clippy::unwrap_used,
+    clippy::expect_used,
+    clippy::unnecessary_wraps,
+    reason = "test assertions and harness ergonomics"
+)]
 
 use songbird_types::adapters::canonical::*;
 use songbird_types::{SongbirdError, SongbirdResult};

@@ -44,7 +44,7 @@ impl AppState {
             // In production, this would use actual websocket broadcasting;});}}
 
 /// API events for broadcasting
-#[allow(clippy: :enum_variant_names)] // Service prefix is intentional for API events
+#[expect(clippy: :enum_variant_names, reason = "documented lint suppression (wateringHole)")] // Service prefix is intentional for API events
 #[derive(Debug, Clone, Serialize)]
 pub enum ApiEvent  {ServiceStarted { service_id: String,
         timestamp: DateTime<Utc> }})

@@ -162,7 +162,7 @@ impl TlsHandshake {
     /// RFC 8446 Section 5.1: Multiple handshake messages MAY be coalesced into
     /// a single TLS record. This method parses the framing to locate Finished
     /// at any offset.
-    #[allow(clippy::unused_self)] // API consistency with other TlsHandshake methods
+    #[expect(clippy::unused_self, reason = "unused bindings/imports in this compilation unit")] // API consistency with other TlsHandshake methods
     pub(crate) fn contains_finished_message(&self, plaintext: &[u8]) -> bool {
         let mut offset = 0;
         // Skip ContentType byte at end (added during encryption)
@@ -206,5 +206,61 @@ impl TlsHandshake {
         }
 
         false
+    }
+}
+
+#[cfg(test)]
+#[expect(clippy::unwrap_used, reason = "test assertions")]
+mod tests {
+    use super::TlsHandshake;
+    use crate::crypto::{BearDogProvider, CryptoCapability};
+    use std::sync::Arc;
+
+    fn handshake() -> TlsHandshake {
+        let crypto: Arc<dyn CryptoCapability> = Arc::new(BearDogProvider::new("/tmp/beardog.sock"));
+        TlsHandshake::new(crypto)
+    }
+
+    #[test]
+    fn contains_finished_message_true_when_finished_first() {
+        let h = handshake();
+        // Inner plaintext ends with handshake ContentType byte (0x16); scanner skips last byte
+        let plaintext = vec![0x14, 0, 0, 0, 0x16];
+        assert!(h.contains_finished_message(&plaintext));
+    }
+
+    #[test]
+    fn contains_finished_message_false_when_no_finished() {
+        let h = handshake();
+        // Single EncryptedExtensions-style message, length 0, no 0x14
+        let plaintext = vec![0x08, 0, 0, 0, 0x16];
+        assert!(!h.contains_finished_message(&plaintext));
+    }
+
+    #[test]
+    fn contains_finished_message_finds_finished_after_first_message() {
+        let h = handshake();
+        // First HS: type 0x08, length 1, payload [0x00], then Finished at offset 5
+        let plaintext = vec![0x08, 0, 0, 1, 0x00, 0x14, 0, 0, 0, 0x16];
+        assert!(h.contains_finished_message(&plaintext));
+    }
+
+    #[test]
+    fn build_finished_message_framing() {
+        let verify = [0xAB, 0xCD];
+        let msg = TlsHandshake::build_finished_message(&verify);
+        assert_eq!(msg[0], 0x14);
+        assert_eq!(msg.len(), 4 + verify.len());
+        assert_eq!(&msg[4..], verify);
+    }
+
+    #[test]
+    fn build_tls_record_includes_length() {
+        let ct = [1u8, 2, 3];
+        let rec = TlsHandshake::build_tls_record(&ct);
+        assert_eq!(rec.len(), 5 + ct.len());
+        assert_eq!(rec[0], 0x17);
+        assert_eq!(u16::from_be_bytes([rec[3], rec[4]]), ct.len() as u16);
+        assert_eq!(&rec[5..], &ct[..]);
     }
 }

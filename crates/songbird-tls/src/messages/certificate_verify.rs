@@ -85,8 +85,11 @@ impl CertificateVerify {
 }
 
 // Signature algorithm constants
+/// Ed25519 signature scheme identifier (`0x0807`).
 pub const SIGNATURE_ED25519: u16 = 0x0807;
+/// ECDSA with P-256 and SHA-256 (`0x0403`).
 pub const SIGNATURE_ECDSA_SECP256R1_SHA256: u16 = 0x0403;
+/// RSA-PSS with RSAE and SHA-256 (`0x0804`).
 pub const SIGNATURE_RSA_PSS_RSAE_SHA256: u16 = 0x0804;
 
 #[cfg(test)]

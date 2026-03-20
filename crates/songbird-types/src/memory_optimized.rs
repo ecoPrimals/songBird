@@ -88,8 +88,11 @@ impl OptimizedHost {
     ///
     /// # Errors
     /// This function never returns an error - it always succeeds
-    #[allow(clippy::unnecessary_wraps)]
-    #[allow(clippy::should_implement_trait)]
+    #[allow(
+        clippy::unnecessary_wraps,
+        reason = "infallible parse returns Result for API consistency"
+    )]
+    #[allow(clippy::should_implement_trait, reason = "custom from_str name; not std::str::FromStr")]
     pub fn from_str(host: &str) -> Result<Self, String> {
         match host {
             "localhost" | "127.0.0.1" | "::1" => Ok(Self::Localhost),
@@ -166,6 +169,8 @@ impl OptimizedEndpoint {
 
     // Memory-optimized capabilities with bitflags
 }
+
+/// Compact capability flags for advertising what a primal or service supports.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct OptimizedCapabilities {
     /// Security capability
@@ -237,7 +242,7 @@ impl OptimizedCapabilities {
 }
 
 #[cfg(test)]
-#[allow(
+#[expect(
     clippy::unwrap_used,
     clippy::unnecessary_wraps,
     clippy::field_reassign_with_default,
@@ -248,12 +253,13 @@ impl OptimizedCapabilities {
     clippy::items_after_statements,
     clippy::cast_precision_loss,
     clippy::cast_possible_truncation,
-    clippy::cast_sign_loss
+    clippy::cast_sign_loss,
+    reason = "test assertions and harness ergonomics"
 )]
 mod tests {
     #![expect(clippy::expect_used, reason = "test assertions")]
-    #![allow(clippy::all)]
-    #![allow(unused)]
+    #![expect(clippy::all, reason = "test assertions and harness ergonomics")]
+    #![expect(unused, reason = "unused bindings/imports in this compilation unit")]
 
     use super::*;
 

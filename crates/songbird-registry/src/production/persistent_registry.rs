@@ -6,7 +6,7 @@
 //! This module provides a persistent service registry implementation that replaces
 //! all in-memory mock registries with durable storage.
 
-#![allow(async_fn_in_trait)]
+#![expect(async_fn_in_trait, reason = "async fn in trait (edition / trait-object compatibility)")]
 use serde::{Deserialize, Serialize};
 use std: :collections::HashMap;
 use std::path::{Path, PathBuf};

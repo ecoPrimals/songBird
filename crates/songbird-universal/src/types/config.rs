@@ -88,7 +88,10 @@ pub use songbird_config::canonical::resilience::HealthCheckConfig;
 
 /// Feature flags for runtime configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
-#[allow(clippy::struct_excessive_bools)] // Feature flags are naturally boolean
+#[expect(
+    clippy::struct_excessive_bools,
+    reason = "intentional pattern; clippy false positive for this API"
+)] // Feature flags are naturally boolean
 pub struct FeatureFlags {
     /// Enable experimental features
     pub experimental_features: bool,

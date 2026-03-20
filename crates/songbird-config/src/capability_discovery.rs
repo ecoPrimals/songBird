@@ -13,6 +13,8 @@
 //! 3. **No Hardcoding**: Zero compile-time dependencies on other primals
 //! 4. **Capability-Based**: Route by what you need, not who provides it
 
+#![allow(missing_docs, reason = "discovery client structs mirror `songbird-discovery` traits")]
+
 use serde::{Deserialize, Serialize};
 use songbird_http_client::IpcHttpClient;
 use songbird_types::{SongbirdError, SongbirdResult};

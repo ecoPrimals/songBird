@@ -16,7 +16,8 @@
     clippy::unused_async,
     clippy::unused_self,
     clippy::missing_errors_doc,
-    clippy::default_constructed_unit_structs
+    clippy::default_constructed_unit_structs,
+    reason = "discovery factory: async factory traits and adapter stubs"
 )]
 
 // Removed: use crate::discovery::backends::StaticServiceDiscovery; (now using UniversalServiceDiscoveryAdapter everywhere for zero-cost)
@@ -38,7 +39,7 @@ type Result<T> = SongbirdResult<T>;
 /// and `StaticServiceDiscovery` with universal capability-based detection.
 pub struct UniversalDiscoveryFactory;
 
-#[allow(dead_code)] // Infrastructure code - factory methods used as system evolves
+#[expect(dead_code, reason = "dead code retained intentionally (reserved or API surface)")] // Infrastructure code - factory methods used as system evolves
 impl UniversalDiscoveryFactory {
     /// Create service discovery with auto-detection
     ///
@@ -399,3 +400,96 @@ impl UniversalServiceDiscoveryAdapter {
 
 // Legacy discovery backends have been replaced with universal capability detection
 // All discovery now uses UniversalDiscoveryFactory with automatic capability detection
+
+#[cfg(test)]
+#[expect(clippy::unwrap_used, reason = "test assertions")]
+mod tests {
+    use crate::traits::discovery::{DiscoveryBackend, DiscoveryConfig};
+
+    #[test]
+    fn discovery_config_default_is_static() {
+        let c = DiscoveryConfig::default();
+        assert!(matches!(c.backend, DiscoveryBackend::Static));
+    }
+
+    #[test]
+    fn discovery_config_serde_roundtrip_static() {
+        let c = DiscoveryConfig::default();
+        let json = serde_json::to_string(&c).expect("serialize");
+        let back: DiscoveryConfig = serde_json::from_str(&json).expect("deserialize");
+        assert!(matches!(back.backend, DiscoveryBackend::Static));
+    }
+
+    #[test]
+    fn discovery_config_serde_roundtrip_kubernetes() {
+        let c = DiscoveryConfig {
+            backend: DiscoveryBackend::Kubernetes {
+                namespace: Some("ns".into()),
+                in_cluster: true,
+                kubeconfig_path: None,
+            },
+            ..DiscoveryConfig::default()
+        };
+        let json = serde_json::to_string(&c).expect("serialize");
+        let back: DiscoveryConfig = serde_json::from_str(&json).expect("deserialize");
+        assert!(matches!(
+            back.backend,
+            DiscoveryBackend::Kubernetes {
+                namespace: Some(ref n),
+                in_cluster: true,
+                kubeconfig_path: None
+            } if n == "ns"
+        ));
+    }
+
+    #[test]
+    fn discovery_config_serde_roundtrip_etcd() {
+        let c = DiscoveryConfig {
+            backend: DiscoveryBackend::Etcd {
+                endpoints: vec!["http://127.0.0.1:2379".into()],
+                username: Some("u".into()),
+                password: None,
+            },
+            ..DiscoveryConfig::default()
+        };
+        let json = serde_json::to_string(&c).expect("serialize");
+        let back: DiscoveryConfig = serde_json::from_str(&json).expect("deserialize");
+        match back.backend {
+            DiscoveryBackend::Etcd {
+                endpoints,
+                username,
+                ..
+            } => {
+                assert_eq!(endpoints.len(), 1);
+                assert_eq!(username.as_deref(), Some("u"));
+            }
+            _ => panic!("expected Etcd"),
+        }
+    }
+
+    #[test]
+    fn discovery_config_serde_roundtrip_songbird() {
+        let c = DiscoveryConfig {
+            backend: DiscoveryBackend::Songbird {
+                federation_enabled: true,
+                trust_verification: false,
+                attribution_tracking: true,
+            },
+            ..DiscoveryConfig::default()
+        };
+        let json = serde_json::to_string(&c).expect("serialize");
+        let back: DiscoveryConfig = serde_json::from_str(&json).expect("deserialize");
+        match back.backend {
+            DiscoveryBackend::Songbird {
+                federation_enabled,
+                trust_verification,
+                attribution_tracking,
+            } => {
+                assert!(federation_enabled);
+                assert!(!trust_verification);
+                assert!(attribution_tracking);
+            }
+            _ => panic!("expected Songbird"),
+        }
+    }
+}

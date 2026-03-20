@@ -5,6 +5,7 @@
 //!
 //! **CANONICAL**: Core types and configurations for the Songbird ecosystem
 #![forbid(unsafe_code)]
+#![warn(missing_docs)]
 
 // Re-export all configuration modules
 pub use config::*;

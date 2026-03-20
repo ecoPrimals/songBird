@@ -33,7 +33,7 @@
 
 use anyhow::Result;
 use clap::Parser;
-use songbird::{Cli, Commands, parse_delegated, run_rendezvous};
+use songbird::{Cli, Commands, parse_delegated, run_interactive_cli, run_rendezvous};
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -56,13 +56,15 @@ async fn main() -> Result<()> {
             songbird_orchestrator::run_config(config_cmd).await?;
         }
         Commands::Cli {
-            args: _args,
+            args,
         } => {
-            eprintln!("❌ Interactive CLI is under development");
-            eprintln!("💡 Use 'songbird server' for the main service");
-            eprintln!("💡 Use 'songbird doctor' for health checks");
-            eprintln!("💡 Use 'songbird config' for configuration management");
-            std::process::exit(1);
+            if !args.is_empty() {
+                eprintln!("songbird cli does not accept arguments yet: {:?}", args);
+                eprintln!("Run `songbird cli` with no extra tokens for the interactive shell.");
+                eprintln!("See also: songbird server --help | doctor --help | config --help");
+                std::process::exit(1);
+            }
+            run_interactive_cli()?;
         }
         Commands::ComputeBridge {
             args,

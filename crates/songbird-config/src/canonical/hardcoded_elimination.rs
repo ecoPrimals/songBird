@@ -851,6 +851,7 @@ mod tests {
     }
 
     #[test]
+    #[serial_test::serial]
     fn test_endpoint_config_from_env() {
         // Set test environment variables
         songbird_process_env::set_var("SONGBIRD_ORCHESTRATOR_PORT", "9999");
@@ -877,6 +878,7 @@ mod tests {
     }
 
     #[test]
+    #[serial_test::serial]
     fn test_port_config_from_env_rejects_invalid_port() {
         // Use a unique env var to avoid race conditions with parallel tests
         songbird_process_env::set_var("SONGBIRD_ORCHESTRATOR_PORT", "not_a_u16");

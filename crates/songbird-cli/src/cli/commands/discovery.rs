@@ -5,6 +5,8 @@
 //!
 //! **MODERN GAMING SERVICE DISCOVERY** ✅
 
+#![allow(missing_docs, reason = "thin command wrapper; behavior described in module docs")]
+
 use crate::errors::SongbirdResult;
 
 pub async fn execute_discovery(

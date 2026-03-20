@@ -3,6 +3,8 @@
 
 //! Circuit breakers, retry policies, and fault tolerance types
 
+#![allow(missing_docs, reason = "fault-tolerance structs mirror operational runbooks")]
+
 use serde::{Deserialize, Serialize};
 use std::time::Duration;
 
@@ -167,14 +169,27 @@ impl RetryConfig {
             return Duration::from_millis(0);
         }
 
-        #[allow(clippy::cast_precision_loss)]
+        #[expect(
+            clippy::cast_precision_loss,
+            reason = "intentional pattern; clippy false positive for this API"
+        )]
         let base_delay = self.initial_delay.as_millis() as f64;
-        #[allow(clippy::cast_possible_wrap)]
+        #[expect(
+            clippy::cast_possible_wrap,
+            reason = "intentional pattern; clippy false positive for this API"
+        )]
         let multiplied_delay = base_delay * self.backoff_multiplier.powi(attempt as i32 - 1);
-        #[allow(clippy::cast_precision_loss)]
+        #[expect(
+            clippy::cast_precision_loss,
+            reason = "intentional pattern; clippy false positive for this API"
+        )]
         let capped_delay = multiplied_delay.min(self.max_delay.as_millis() as f64);
 
-        #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+        #[expect(
+            clippy::cast_possible_truncation,
+            clippy::cast_sign_loss,
+            reason = "intentional pattern; clippy false positive for this API"
+        )]
         Duration::from_millis(capped_delay as u64)
     }
 

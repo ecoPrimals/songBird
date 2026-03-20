@@ -8,7 +8,7 @@
 //! ## Native Async Traits
 //! This module uses native async trait methods (Rust 1.75+) for zero-cost abstractions.
 
-#![allow(async_fn_in_trait)]
+#![expect(async_fn_in_trait, reason = "async fn in trait (edition / trait-object compatibility)")]
 
 use crate::traits::service::ServiceInfo;
 use futures_util::Stream;

@@ -64,7 +64,10 @@ impl BroadcastExecutor {
 
                 // Safe cast: u128 millis won't exceed u64 for any reasonable command duration
                 // Commands running >584 million years would truncate, which is acceptable
-                #[allow(clippy::cast_possible_truncation)]
+                #[expect(
+                    clippy::cast_possible_truncation,
+                    reason = "intentional pattern; clippy false positive for this API"
+                )]
                 let duration_ms = start.elapsed().as_millis() as u64;
 
                 match client.execute_command(&endpoint, request_clone).await {

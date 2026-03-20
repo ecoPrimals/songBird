@@ -6,7 +6,12 @@
 //! This module provides sovereignty-aware routing capabilities
 //! ensuring routing decisions respect sovereignty requirements.
 
-#![allow(clippy::unused_self, clippy::cast_precision_loss, clippy::unused_async)]
+#![expect(
+    clippy::unused_self,
+    clippy::cast_precision_loss,
+    clippy::unused_async,
+    reason = "unused bindings/imports in this compilation unit"
+)]
 
 use super::types::{
     PathSegment, PathSovereigntyAssessment, RiskSeverity, RoutingPath, SecurityAssessment,
@@ -24,7 +29,7 @@ pub struct SovereigntyRouter {
     sovereignty_preferences: SovereigntyPreferences,
 
     /// Path assessment cache (reserved for future caching implementation)
-    #[allow(dead_code)]
+    #[expect(dead_code, reason = "dead code retained intentionally (reserved or API surface)")]
     path_assessments: HashMap<String, PathSovereigntyAssessment>,
 }
 

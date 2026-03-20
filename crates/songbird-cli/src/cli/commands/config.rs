@@ -5,6 +5,8 @@
 //!
 //! **MODERN GAMING CONFIG MANAGEMENT** ✅
 
+#![allow(missing_docs, reason = "config clap enums document flags inline")]
+
 use crate::errors::SongbirdResult;
 use clap::Subcommand;
 

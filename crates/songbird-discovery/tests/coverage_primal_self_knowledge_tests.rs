@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-#![allow(
+#![expect(
     clippy::unwrap_used,
     clippy::expect_used,
     clippy::unnecessary_wraps,
@@ -29,7 +29,8 @@
     clippy::cast_possible_truncation,
     clippy::cast_sign_loss,
     clippy::cast_precision_loss,
-    clippy::cast_possible_wrap
+    clippy::cast_possible_wrap,
+    reason = "test assertions and harness ergonomics"
 )]
 // SPDX-License-Identifier: AGPL-3.0-only
 //! Coverage tests for songbird_discovery::primal_self_knowledge

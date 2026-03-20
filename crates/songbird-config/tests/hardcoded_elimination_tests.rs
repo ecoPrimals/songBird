@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (c) 2024-2026 ecoPrimals
 
-#![allow(
+#![expect(
     clippy::unwrap_used,
     clippy::expect_used,
     clippy::unnecessary_wraps,
@@ -21,7 +21,8 @@
     clippy::const_is_empty,
     clippy::duplicated_attributes,
     deprecated,
-    clippy::unnecessary_literal_unwrap
+    clippy::unnecessary_literal_unwrap,
+    reason = "test assertions and harness ergonomics"
 )]
 
 //! Tests for Hardcoding Elimination Infrastructure
@@ -39,7 +40,7 @@ fn lock_env() -> std::sync::MutexGuard<'static, ()> {
     ENV_LOCK.lock().unwrap_or_else(std::sync::PoisonError::into_inner)
 }
 
-#[allow(deprecated)]
+#[expect(deprecated, reason = "test assertions and harness ergonomics")]
 mod hardcoded_elimination_tests {
     use super::lock_env;
     use songbird_config::config::hardcoded_elimination::*;

@@ -18,7 +18,9 @@ use std::sync::Arc;
 pub enum ConnectivityRequest {
     /// Establish connection to peer
     EstablishConnection {
+        /// Target [`NodeId`] string as used in coordination RPCs.
         peer_id: String,
+        /// Parsed later as [`SocketAddr`] for the first connectivity attempt.
         peer_address: String,
     },
     /// Get relay statistics
@@ -28,16 +30,19 @@ pub enum ConnectivityRequest {
 /// Connectivity response
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum ConnectivityResponse {
-    /// Connection established
+    /// Direct or relayed path is ready for application traffic.
     ConnectionEstablished {
+        /// `"direct"` or `"relayed"` for operator dashboards.
         connection_type: String, // "direct" or "relayed"
     },
     /// Relay statistics
     RelayStats {
+        /// Number of live relay sessions tracked by the coordinator.
         active_relays: usize,
+        /// Sum of bytes forwarded across all relay sessions.
         total_bytes_relayed: u64,
     },
-    /// Error
+    /// Operation failed; carries a human-readable reason for the coordinator UI.
     Error(String),
 }
 

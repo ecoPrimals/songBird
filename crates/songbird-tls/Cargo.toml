@@ -16,7 +16,6 @@ getrandom = { workspace = true }
 tokio = { version = "1", features = ["full", "net"] }
 tracing = "0.1"
 anyhow = "1.0"
-thiserror = "1.0"
 
 # Serialization (Pure Rust)
 serde = { version = "1.0", features = ["derive"] }

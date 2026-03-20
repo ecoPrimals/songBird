@@ -116,7 +116,7 @@ impl Drop for ScopedEnv {
 
 #[cfg(test)]
 mod tests {
-    #![allow(clippy::unwrap_used)] // Test code - unwraps are acceptable for clarity
+    #![expect(clippy::unwrap_used, reason = "test assertions and harness ergonomics")] // Test code - unwraps are acceptable for clarity
 
     use super::*;
 

@@ -6,6 +6,8 @@
 //! Configuration for connection limits, pooling, rate limiting,
 //! and load balancing.
 
+#![allow(missing_docs, reason = "numeric limit fields are self-explanatory")]
+
 use serde::{Deserialize, Serialize};
 
 /// Connection limits configuration
@@ -97,5 +99,51 @@ impl Default for ConnectionPoolConfig {
             idle_timeout_secs: 600,  // 10 minutes
             connection_timeout_secs: 30,
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    #![expect(clippy::unwrap_used, reason = "test assertions")]
+    #![expect(clippy::expect_used, reason = "test assertions")]
+
+    use super::{ConnectionLimits, ConnectionPoolConfig, LoadBalancingConfig, RateLimitingConfig};
+
+    #[test]
+    fn connection_limits_defaults() {
+        let c = ConnectionLimits::default();
+        assert_eq!(c.max_retries, 3);
+        assert!(c.max_total_connections >= c.max_connections_per_host);
+    }
+
+    #[test]
+    fn load_balancing_defaults() {
+        let l = LoadBalancingConfig::default();
+        assert!(!l.enabled);
+        assert_eq!(l.strategy, "round_robin");
+    }
+
+    #[test]
+    fn rate_limiting_defaults() {
+        let r = RateLimitingConfig::default();
+        assert!(!r.enabled);
+        assert!(r.requests_per_second <= r.burst_size);
+    }
+
+    #[test]
+    fn pool_config_defaults_ordering() {
+        let p = ConnectionPoolConfig::default();
+        assert!(p.max_size >= p.min_idle);
+    }
+
+    #[test]
+    fn all_limits_json_roundtrip() {
+        let cl = ConnectionLimits::default();
+        let lb = LoadBalancingConfig::default();
+        let rl = RateLimitingConfig::default();
+        let cp = ConnectionPoolConfig::default();
+        let j = serde_json::json!({ "cl": cl, "lb": lb, "rl": rl, "cp": cp });
+        let s = j.to_string();
+        assert!(s.contains("max_connections_per_host"));
     }
 }

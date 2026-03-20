@@ -1,6 +1,11 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (c) 2024-2026 ecoPrimals
 
+//! Shared test harness for Songbird: fixtures, mock servers, env isolation, and load/chaos helpers.
+//!
+//! Import this crate in integration tests to get consistent ports, fake services, and benchmarking
+//! utilities without duplicating boilerplate across the workspace.
+
 #![cfg_attr(
     test,
     allow(
@@ -45,34 +50,55 @@
 //
 // Canonical testing infrastructure following modernization patterns.
 // Provides comprehensive testing capabilities for the Songbird ecosystem.
+#![warn(missing_docs)]
 #![forbid(unsafe_code)]
+// `#[expect]` below targets lints that fire only under some toolchain/feature sets.
+#![allow(unfulfilled_lint_expectations)]
 #![warn(clippy::all)]
 #![warn(clippy::pedantic)]
-#![allow(
+#![expect(
     clippy::uninlined_format_args,
     clippy::missing_errors_doc,
     clippy::missing_panics_doc,
     clippy::clone_on_ref_ptr,
     clippy::unwrap_used,
-    clippy::expect_used
+    clippy::expect_used,
+    reason = "intentional pattern; clippy false positive for this API"
 )]
 
+/// Async test utilities (timeouts, polling).
 pub mod async_helpers;
+/// Canonical [`TestEnvironment`] and assertion helpers.
 pub mod canonical_test_framework;
+/// Fault-injection configs and [`ChaosEngineeringManager`](chaos_engineering::ChaosEngineeringManager).
 pub mod chaos_engineering;
+/// CLI parsing and argv builders for command-line integration tests.
 pub mod cli_helpers;
+/// Concurrent task helpers for stress-style async tests.
 pub mod concurrent_helpers; // Modern async testing patterns (Week 1 LiveSpore evolution)
+/// Sample configs and loaders for tests that need canonical JSON/TOML snippets.
 pub mod config_helpers;
+/// Temporarily override environment variables with RAII guards.
 pub mod env_isolation;
+/// Helpers that assert on [`SongbirdError`] shapes and error chains.
 pub mod error_testing;
+/// Deterministic ports, bind addresses, and socket addresses for localhost tests.
 pub mod fixtures;
+/// Cross-crate integration test context wiring.
 pub mod integration;
+/// Lightweight HTTP/mock primal servers for black-box tests.
 pub mod mocks;
+/// Pre-built discovery and endpoint fixtures for networking tests.
 pub mod network_fixtures;
+/// Stub transports and latency simulation for protocol tests.
 pub mod network_mocks;
+/// Micro-benchmark and load-test harness ([`performance::LoadTester`]).
 pub mod performance;
+/// Higher-level performance scenario runners built on [`performance`].
 pub mod performance_testing;
+/// Service lifecycle helpers (start/stop fake daemons).
 pub mod service_fixtures;
+/// Temp dirs and process-wide test environment setup.
 pub mod test_env;
 
 // Re-export core testing types (canonical pattern)

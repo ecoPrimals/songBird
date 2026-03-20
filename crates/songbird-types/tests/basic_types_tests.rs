@@ -7,7 +7,12 @@
 //! Old hardcoded primal names (BearDog, Squirrel, etc.) have been replaced
 //! with capability-based types (Security, Storage, Compute, AI)
 
-#![allow(clippy::unwrap_used, clippy::expect_used, clippy::useless_vec)]
+#![expect(
+    clippy::unwrap_used,
+    clippy::expect_used,
+    clippy::useless_vec,
+    reason = "test assertions and harness ergonomics"
+)]
 use songbird_types::traits::canonical::PrimalType;
 
 #[test]

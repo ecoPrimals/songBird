@@ -98,3 +98,113 @@ pub struct ProtocolCharacteristics {
     /// Whether streaming is supported
     pub streaming_supported: bool,
 }
+
+#[cfg(test)]
+mod tests {
+    #![expect(clippy::unwrap_used, reason = "test assertions")]
+    #![expect(clippy::expect_used, reason = "test assertions")]
+
+    use super::{
+        ProtocolCharacteristics, ResponseStatus, SecurityContext, UniversalEvent, UniversalRequest,
+        UniversalResponse,
+    };
+    use crate::types::capability::SecurityLevel;
+    use songbird_test_utils::canonical_test_framework::TestContext;
+    use std::collections::HashMap;
+
+    #[test]
+    fn security_context_roundtrip() {
+        let ctx = TestContext::new("comm_sec");
+        let s = SecurityContext {
+            user_id: Some("u".to_string()),
+            session_id: "sess".to_string(),
+            permissions: vec!["read".to_string()],
+            security_level: SecurityLevel::High,
+        };
+        let j = serde_json::to_string(&s).unwrap();
+        let back: SecurityContext = serde_json::from_str(&j).unwrap();
+        assert_eq!(s, back);
+        assert!(!ctx.is_timeout());
+    }
+
+    #[test]
+    fn universal_request_roundtrip() {
+        let mut params = HashMap::new();
+        params.insert("k".to_string(), serde_json::json!(1));
+        let r = UniversalRequest {
+            request_id: "r1".to_string(),
+            source: "a".to_string(),
+            target: "b".to_string(),
+            action: "act".to_string(),
+            parameters: params,
+            security_context: None,
+        };
+        let j = serde_json::to_string(&r).unwrap();
+        let back: UniversalRequest = serde_json::from_str(&j).unwrap();
+        assert_eq!(r.request_id, back.request_id);
+        assert_eq!(r.action, back.action);
+    }
+
+    #[test]
+    fn response_status_default_is_success() {
+        assert_eq!(ResponseStatus::default(), ResponseStatus::Success);
+    }
+
+    #[test]
+    fn response_status_serde_roundtrip() {
+        for st in [
+            ResponseStatus::Success,
+            ResponseStatus::Error,
+            ResponseStatus::Pending,
+            ResponseStatus::PartialSuccess,
+        ] {
+            let j = serde_json::to_string(&st).unwrap();
+            let back: ResponseStatus = serde_json::from_str(&j).unwrap();
+            assert_eq!(st, back);
+        }
+    }
+
+    #[test]
+    fn universal_response_roundtrip() {
+        let r = UniversalResponse {
+            request_id: "id".to_string(),
+            status: ResponseStatus::Pending,
+            data: Some(serde_json::json!({"x": 1})),
+            error: None,
+            metadata: HashMap::from([("m".to_string(), "v".to_string())]),
+        };
+        let j = serde_json::to_string(&r).unwrap();
+        let back: UniversalResponse = serde_json::from_str(&j).unwrap();
+        assert_eq!(r.request_id, back.request_id);
+        assert_eq!(r.status, back.status);
+    }
+
+    #[test]
+    fn universal_event_roundtrip() {
+        let e = UniversalEvent {
+            event_id: "e1".to_string(),
+            event_type: "t".to_string(),
+            source: "s".to_string(),
+            timestamp: chrono::Utc::now(),
+            payload: serde_json::json!({}),
+        };
+        let j = serde_json::to_string(&e).unwrap();
+        let back: UniversalEvent = serde_json::from_str(&j).unwrap();
+        assert_eq!(e.event_id, back.event_id);
+    }
+
+    #[test]
+    fn protocol_characteristics_roundtrip() {
+        let p = ProtocolCharacteristics {
+            name: "http".to_string(),
+            version: "1.1".to_string(),
+            serialization_formats: vec!["json".to_string()],
+            max_message_size: Some(1024),
+            streaming_supported: false,
+        };
+        let j = serde_json::to_string(&p).unwrap();
+        let back: ProtocolCharacteristics = serde_json::from_str(&j).unwrap();
+        assert_eq!(p.name, back.name);
+        assert_eq!(p.streaming_supported, back.streaming_supported);
+    }
+}

@@ -33,10 +33,15 @@ impl From<&str> for NodeId {
 /// Cryptographic lineage proof (from Genesis)
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct LineageProof {
+    /// Identity this proof describes.
     pub node_id: NodeId,
+    /// Immediate parent in the lineage tree, if known.
     pub parent: Option<NodeId>,
+    /// Ordered ancestor chain toward genesis (oldest last or per convention).
     pub ancestors: Vec<NodeId>,
+    /// BearDog-signed attestation binding this node to its birth event.
     pub birth_signature: Vec<u8>, // Signed by BearDog
+    /// When the birth certificate was issued.
     pub birth_timestamp: SystemTime,
 }
 
@@ -82,12 +87,19 @@ pub enum MaskingLevel {
 /// Relay authorization token (legacy format)
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct RelayAuthorization {
+    /// Relay that issued the token.
     pub relay_node: NodeId,
+    /// Party allowed to send through the relay.
     pub requester: NodeId,
+    /// Whether the policy granted relay use.
     pub authorized: bool,
+    /// Privacy tier enforced for this allocation.
     pub masking_level: MaskingLevel,
+    /// Validity window in seconds from [`issued_at`](Self::issued_at).
     pub ttl_seconds: u64,
+    /// Token issuance time.
     pub issued_at: SystemTime,
+    /// Correlates logs across relay, requester, and audits.
     pub audit_token: String,
 }
 
@@ -129,8 +141,11 @@ impl RelayAuthorization {
 /// Simple relay authorization result (for server use)
 #[derive(Debug, Clone)]
 pub struct SimpleRelayAuth {
+    /// Whether relay forwarding is permitted.
     pub authorized: bool,
+    /// Masking tier to apply on the wire.
     pub masking_level: MaskingLevel,
+    /// Remaining lifetime of the grant.
     pub ttl: std::time::Duration,
 }
 
@@ -147,8 +162,11 @@ impl From<RelayAuthorization> for SimpleRelayAuth {
 /// Connection endpoint
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ConnectionEndpoint {
+    /// Remote [`NodeId`] this endpoint refers to.
     pub node_id: NodeId,
+    /// Candidate addresses from discovery or ICE-like gathering.
     pub addresses: Vec<SocketAddr>,
+    /// When these addresses were last observed.
     pub discovered_at: SystemTime,
 }
 
@@ -166,10 +184,91 @@ pub enum ConnectionType {
 /// Connection statistics
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct ConnectionStats {
+    /// Application bytes written on this path.
     pub bytes_sent: u64,
+    /// Application bytes read on this path.
     pub bytes_received: u64,
+    /// Datagram or frame count sent (transport-dependent).
     pub packets_sent: u64,
+    /// Datagram or frame count received.
     pub packets_received: u64,
+    /// When the session entered the established state, if known.
     pub established_at: Option<SystemTime>,
+    /// Whether traffic is direct, relayed, or upgrading.
     pub connection_type: Option<ConnectionType>,
+}
+
+#[cfg(test)]
+#[expect(clippy::unwrap_used, reason = "test assertions")]
+mod tests {
+    use super::{
+        ConnectionStats, ConnectionType, LineageProof, LineageRelationship, MaskingLevel, NodeId,
+        RelayAuthorization, SimpleRelayAuth,
+    };
+    use std::time::{Duration, SystemTime};
+
+    #[test]
+    fn node_id_display_and_from_str() {
+        let n: NodeId = "abc".into();
+        assert_eq!(n.to_string(), "abc");
+        let n2 = NodeId::from("x".to_string());
+        assert_eq!(n2.0, "x");
+    }
+
+    #[test]
+    fn lineage_relationship_serde_roundtrip() {
+        let rel = LineageRelationship::Ancestor(3);
+        let json = serde_json::to_string(&rel).expect("ser");
+        let back: LineageRelationship = serde_json::from_str(&json).expect("de");
+        assert_eq!(back, LineageRelationship::Ancestor(3));
+    }
+
+    #[test]
+    fn masking_level_default_and_serde() {
+        let m: MaskingLevel = MaskingLevel::default();
+        let json = serde_json::to_string(&m).expect("ser");
+        let _: MaskingLevel = serde_json::from_str(&json).expect("de");
+    }
+
+    #[test]
+    fn relay_authorization_authorized_and_unauthorized() {
+        let a = RelayAuthorization::authorized("r".into(), "q".into(), MaskingLevel::None, 60);
+        assert!(a.authorized);
+        let simple: SimpleRelayAuth = a.clone().into();
+        assert!(simple.authorized);
+        assert_eq!(simple.ttl, Duration::from_secs(60));
+
+        let u = RelayAuthorization::unauthorized("r".into(), "q".into());
+        assert!(!u.authorized);
+    }
+
+    #[test]
+    fn lineage_proof_serde_roundtrip() {
+        let proof = LineageProof {
+            node_id: "n".into(),
+            parent: Some("p".into()),
+            ancestors: vec!["a".into()],
+            birth_signature: vec![1, 2],
+            birth_timestamp: SystemTime::UNIX_EPOCH,
+        };
+        let json = serde_json::to_string(&proof).expect("ser");
+        let back: LineageProof = serde_json::from_str(&json).expect("de");
+        assert_eq!(back.node_id.0, "n");
+        assert_eq!(back.ancestors.len(), 1);
+    }
+
+    #[test]
+    fn connection_stats_default() {
+        let s = ConnectionStats::default();
+        assert_eq!(s.bytes_sent, 0);
+        assert!(s.connection_type.is_none());
+    }
+
+    #[test]
+    fn connection_type_serde_roundtrip() {
+        let t = ConnectionType::Relayed;
+        let json = serde_json::to_string(&t).expect("ser");
+        let back: ConnectionType = serde_json::from_str(&json).expect("de");
+        assert_eq!(back, ConnectionType::Relayed);
+    }
 }

@@ -6,6 +6,11 @@
 //! This module provides path configuration with environment-based defaults.
 //! All paths are configurable via environment variables.
 
+#![allow(
+    missing_docs,
+    reason = "path helper structs mirror `canonical::constants`; fields self-describing"
+)]
+
 use crate::canonical::constants::{get_cache_dir, get_config_dir, get_data_dir, get_log_dir};
 use serde::{Deserialize, Serialize};
 use songbird_types::{SafeEnv, SongbirdError, SongbirdResult};

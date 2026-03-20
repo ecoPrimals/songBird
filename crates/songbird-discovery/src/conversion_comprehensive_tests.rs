@@ -7,8 +7,8 @@
 
 #[cfg(test)]
 mod tests {
-    #![allow(clippy::all)]
-    #![allow(unused)]
+    #![expect(clippy::all, reason = "test assertions and harness ergonomics")]
+    #![expect(unused, reason = "test assertions and harness ergonomics")]
 
     use crate::conversion::parse_endpoint;
     use crate::traits::service::ServiceInfo as DiscoveryServiceInfo;

@@ -5,6 +5,8 @@
 //!
 //! Network discovery utilities for the CLI
 
+#![allow(missing_docs, reason = "discovery probe structs are internal to the CLI")]
+
 use crate::errors::{CliError, SongbirdResult};
 use songbird_types::SafeEnv;
 use std::net::{IpAddr, SocketAddr};

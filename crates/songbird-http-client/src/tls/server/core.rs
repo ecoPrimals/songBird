@@ -27,7 +27,7 @@ pub struct TlsServer {
 
     /// Server private key (DER encoded)
     /// Used for certificate verification and signing (future implementation)
-    #[allow(dead_code)]
+    #[expect(dead_code, reason = "dead code retained intentionally (reserved or API surface)")]
     pub(super) private_key: Vec<u8>,
 
     /// Negotiated cipher suite

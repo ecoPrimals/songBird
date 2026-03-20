@@ -7,6 +7,54 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [v0.3.4] - 2026-03-20 - Deep Debt Execution: Refactoring, JSON-RPC, Docs & Coverage
+
+### Changed - Architecture & Refactoring
+- Refactored `canonical.rs` (1,058 lines → 4-module tree: `types.rs`, `adapter.rs`, `routing.rs`, largest 376 lines)
+- Refactored `mesh_handler.rs` (977 → 4-module tree), `availability.rs` (944 → 3 modules), `core/mod.rs` (933 → 4 modules), `capability_registration.rs` (928 → 5 modules)
+- Zero files now exceed 1000 lines (down from 1)
+- `find_primals_with_capability` evolved from stub to real env-driven capability filter
+- Removed hardcoded `staging.internal:8080`; all URLs use env → bind → documented fallback const chain
+- Load balancer `RoundRobin`/`WeightedRoundRobin` → stateful `AtomicU64` counter
+- `health_check_all()` → real TCP reachability probes via protocol router
+- `songbird cli` → interactive REPL with `help`/`exit`/`quit`
+- Federation join → parses `FederationStatus`/`nodes`/`peers` from response
+
+### Added - JSON-RPC Gateway (10 semantic methods)
+- `compute.route`, `deployment.create`, `deployment.status`, `task.create`, `task.list`
+- `consent.check`, `consent.grant`, `registry.register`, `registry.discover`, `protocol.negotiate`
+- All share handler logic with REST endpoints (zero duplication)
+
+### Changed - Safety & Standards
+- `#[allow()]` → `#[expect(reason)]` bulk migration complete across all crates
+- `songbird-process-env`: added `parking_lot::Mutex` guard + `#![deny(unsafe_code)]` with per-fn `#[allow]`
+- Fixed failing doctest in `songbird-sovereign-onion` (`SigningKey::generate()` → `from_bytes()`)
+- `#![warn(missing_docs)]` enabled on all 29/29 crates
+- Removed unused deps: `thiserror` from songbird-tls, `tower` from songbird-http-client
+
+### Added - Tests (+256)
+- 200+ pure-logic tests across orchestrator, config, universal (consent, graph, health, trust, capabilities)
+- 56 tests across http-client, universal-ipc, discovery, lineage-relay
+
+### Cleaned
+- Deleted broken `docker/docker-compose.monitoring.yml` (missing monitoring/ assets)
+- Deleted broken `docker/Dockerfile.beardog-validator` (missing source tree)
+- Deleted broken `scripts/test_e2e_https_beardog.sh` (wrong binary, wrong env vars)
+
+### Metrics
+| Metric | Value |
+|--------|-------|
+| Tests | 9,876 passed, 0 failed, 312 ignored |
+| Line Coverage | ~67% (target: 90%) |
+| Clippy | Zero warnings (pedantic + nursery + cargo) |
+| Build | Zero errors, zero warnings |
+| Docs | 29/29 crates with `#[warn(missing_docs)]` |
+| JSON-RPC methods | 10 semantic methods in gateway |
+| Dependencies | ~418 unique; 2 unused pruned |
+| Total Rust | 404,698 lines |
+
+---
+
 ## [v0.3.3] - 2026-03-20 - Deep Audit: Standards Compliance, Coverage & Architecture
 
 ### Changed - wateringHole Standards Compliance

@@ -37,7 +37,7 @@
 //! - **Compute** - Workload execution, container orchestration (was toadstool)
 //! - **AI** - ML inference, training, analysis (was squirrel)
 
-#![allow(clippy::unused_async)]
+#![expect(clippy::unused_async, reason = "unused bindings/imports in this compilation unit")]
 
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -434,11 +434,12 @@ impl MockCapabilityEnvironmentBuilder {
     }
 }
 
-#[allow(
+#[expect(
     clippy::unwrap_used,
     clippy::expect_used,
     clippy::unnecessary_wraps,
-    clippy::field_reassign_with_default
+    clippy::field_reassign_with_default,
+    reason = "intentional pattern; clippy false positive for this API"
 )]
 #[cfg(test)]
 mod tests {

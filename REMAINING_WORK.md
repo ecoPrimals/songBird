@@ -1,7 +1,7 @@
 # Songbird Remaining Work
 
 **Date**: March 20, 2026  
-**Version**: v0.3.3  
+**Version**: v0.3.4  
 **Last Deep Debt Audit**: March 20, 2026
 
 ---
@@ -10,34 +10,42 @@
 
 | Metric | Value |
 |--------|-------|
-| **Tests** | ~6,300+ passed, 0 failed, ~150 ignored (workspace-wide `--all-features`) |
-| **Line Coverage** | 63.50% (152,744 instrumented lines, 96,993 covered) |
+| **Tests** | 9,876 passed, 0 failed, 312 ignored (workspace-wide `--all-features`) |
+| **Line Coverage** | ~67% (estimated; +256 new pure-logic tests added across two sessions) |
 | **Edition** | Rust 2024 |
 | **Build** | Zero errors, zero warnings, all 29 crates compile clean |
 | **Clippy Pedantic** | 29/29 crates clean (`clippy::pedantic + nursery + cargo`, zero warnings) |
 | **Format** | Clean (`cargo fmt --check` passes) |
-| **Docs** | Clean (`RUSTDOCFLAGS="-D warnings" cargo doc` passes) |
-| **Files >1000 lines** | 0 (largest: 948 lines, down from 956) |
-| **Unsafe blocks** | 2 (both in `songbird-process-env` facade, justified + SAFETY documented) |
+| **Docs** | Clean (`cargo doc --all-features --no-deps` passes, zero warnings) |
+| **Files >1000 lines** | 0 (5 former near-limit files refactored into submodules) |
+| **Unsafe blocks** | 2 (in `songbird-process-env` with `parking_lot::Mutex` guard + `#![deny(unsafe_code)]` + per-fn `#[allow]`) |
 | **Production `todo!()`** | 0 |
 | **Production `.unwrap()`** | 0 (all remaining are in `#[cfg(test)]` modules) |
-| **Production `panic!()`** | 0 (all removed in this session) |
+| **Production `panic!()`** | 0 |
 | **TODO/FIXME/HACK comments** | 0 in Rust source (wateringHole compliant) |
-| **`#[allow()]` vs `#[expect()]`** | 122 migrated to `#[expect(reason)]`, 23 as `#[allow(reason)]` where lint doesn't fire, 13 stale removed |
-| **Capability discovery** | Pure capability-based (zero primal names in discovery paths) |
+| **`#[allow()]` vs `#[expect()]`** | Bulk migration complete; `#[expect(reason)]` where lint fires, `#[allow(reason)]` where unfulfilled |
+| **Capability discovery** | `find_primals_with_capability` evolved to real capability filter (env-driven, identity-agnostic) |
+| **Hardcoded elimination** | `staging.internal:8080` removed; all URLs use env → bind → fallback const chain |
 | **JSON-RPC handlers** | All wired to live `FederatedServiceRegistry` and `FederationState` |
 | **BearDog crypto** | All placeholders evolved to explicit `CryptoUnavailable` errors with delegation paths |
 | **C dependencies** | `ring` via `quinn` + `rcgen` (structural; requires upstream quinn changes) |
 | **License** | AGPL-3.0-only + ORC + CC-BY-SA 4.0 (full scyBorg trio) |
-| **SPDX Headers** | All .rs files have `SPDX-License-Identifier: AGPL-3.0-only` |
+| **SPDX Headers** | 1,324/1,324 .rs files have `SPDX-License-Identifier: AGPL-3.0-only` (100%) |
 | **cargo-deny** | Config updated for cargo-deny 0.19+ |
-| **UniBin** | `songbird compute-bridge`, `songbird deploy`, `songbird rendezvous` subcommands |
+| **UniBin** | `songbird server`, `songbird cli` (interactive REPL), `songbird compute-bridge`, `songbird deploy`, `songbird rendezvous` |
 | **Mock isolation** | `MockBearDogProvider` behind `#[cfg(any(test, feature = "test-mocks"))]` |
 | **Zero-copy** | `Arc<str>` endpoints, `Arc<[u8]>` TLS keys, move semantics, clone hotspots audited |
-| **Concurrent tests** | Zero `std::env::set_var` (via `songbird-process-env` facade) |
+| **Concurrent tests** | Zero `std::env::set_var` (via `songbird-process-env` Mutex-guarded facade) |
 | **Event-driven** | Zero `sleep`-based polling in production |
+| **Health checks** | `health_check_all()` evolved from stub to real TCP reachability probes |
+| **Load balancing** | `RoundRobin` and `WeightedRoundRobin` use stateful `AtomicU64` counter |
+| **Federation join** | Parses `FederationStatus` / `nodes` / `peers` from response (no longer empty) |
 | **Binary size** | 20MB release |
-| **Build time** | ~40s check, ~69s clippy, ~69s test |
+| **`#[warn(missing_docs)]`** | 29/29 crates (all library crates have the lint enabled) |
+| **JSON-RPC methods** | 10 semantic methods wrapping all major REST endpoints |
+| **Dependencies** | ~418 unique; `kube`/`k8s-openapi`/`bollard` feature-gated; 2 unused deps removed |
+| **Build time** | ~46s clippy (warm), ~565s test suite |
+| **Total Rust lines** | 404,698 (crates + src + tests) |
 
 ---
 
@@ -45,26 +53,96 @@
 
 | Principle | Status | Evidence |
 |-----------|--------|----------|
-| Zero `unsafe` | S+ | `#![forbid(unsafe_code)]` across 28/29 crates; 2 justified blocks in `process-env` with SAFETY docs |
+| Zero `unsafe` | S+ | `#![forbid(unsafe_code)]` across 28/29 crates; 2 justified blocks in `process-env` with Mutex guard, `#![deny(unsafe_code)]` + per-fn `#[allow]` |
 | Pure Rust | S | SHA3-256, SSDP, SOAP, NAT-PMP, base64, hex from scratch; `ring` remains via quinn/rcgen |
-| Zero production stubs | S+ | NFC -> BearDog IPC, HTTP rendezvous, UDP punch, registry persistence, discovery all complete |
+| Zero production stubs | S+ | `health_check_all` → TCP reachability; `cli` → interactive REPL; federation join → real parsing; LB → stateful |
 | Zero production `panic!()` | S+ | All removed — replaced with `Result`-based error returns |
 | Zero `todo!()` in production | S+ | Only in `#[cfg(test)]` functions |
 | Zero `.unwrap()` in production | S+ | All remaining are in test modules |
 | Zero TODO/FIXME in code | S+ | Tracked in this file instead |
-| `#[expect()]` with reasons | S | 122 lint suppressions use `#[expect(reason)]`; 23 use `#[allow(reason)]` where lint doesn't fire |
-| Runtime discovery | S+ | All socket paths: env -> XDG -> fallback |
+| `#[expect()]` with reasons | S+ | Bulk migration complete; all bare `#[allow()]` eliminated |
+| Runtime discovery | S+ | All socket paths: env → XDG → fallback; `find_primals_with_capability` capability-based |
 | Event-driven architecture | S+ | Zero polling anti-patterns in production code |
-| Concurrent-safe testing | S+ | Injectable env readers, no `env::set_var` in tests |
+| Concurrent-safe testing | S+ | Injectable env readers, `parking_lot::Mutex`-guarded env facade |
 | Self-knowledge only | S+ | Introspection describes only Songbird |
-| AGPL-3.0 license | S+ | All SPDX headers `AGPL-3.0-only`, cargo-deny configured |
-| Capability-based discovery | S+ | No hardcoded primal names in discovery or inference paths |
+| AGPL-3.0 license | S+ | 1,324/1,324 SPDX headers `AGPL-3.0-only`, cargo-deny configured |
+| Capability-based discovery | S+ | No hardcoded primal names; env-driven capability filter |
 | Mock isolation | S+ | All mocks behind `#[cfg(test)]` or `feature = "test-mocks"` |
-| File size discipline | S+ | All files under 1000 lines; largest refactored (956→243 lines) |
+| File size discipline | S+ | 0 files over 1000 lines; 5 near-limit files refactored into domain submodules |
 
 ---
 
-## Completed (Mar 20, 2026 — Deep Audit Session)
+## Completed (Mar 20, 2026 — Deep Debt Audit Session 2)
+
+### Wave 7: Broken Tests & Doctests
+- [x] Fixed failing doctest in `songbird-sovereign-onion/src/address.rs:147` — `SigningKey::generate()` → `SigningKey::from_bytes()` (ed25519-dalek 2.2.0 API)
+
+### Wave 8: Smart File Refactoring (6 files → domain submodules)
+- [x] Refactored `canonical.rs` (1,058 lines → `canonical/mod.rs` + `types.rs` + `adapter.rs` + `routing.rs`, largest 376 lines)
+- [x] Refactored `mesh_handler.rs` (977 lines → `mesh_handler/mod.rs` + `json.rs` + `udp_discovery.rs` + `tests.rs`, largest ~406 lines)
+- [x] Refactored `availability.rs` (944 lines → `availability/types.rs` + `checker.rs` + `tests.rs`)
+- [x] Refactored `core/mod.rs` (933 lines → `consolidated_config.rs` + `orchestrator_health.rs` + `consolidated_engine.rs` + `consolidated_tests.rs`)
+- [x] Refactored `capability_registration.rs` (928 lines → `config.rs` + `transport.rs` + `payload.rs` + `lifecycle.rs` + `tests.rs`)
+- [x] Zero files now exceed 1000 lines
+
+### Wave 9: `#[allow()]` → `#[expect(reason)]` Bulk Migration
+- [x] Migrated all remaining bare `#[allow()]` to `#[expect(reason)]` where lint fires
+- [x] Reverted to `#[allow(reason)]` where `expect` would be unfulfilled
+- [x] Fixed syntax errors in `basic_iot/mod.rs` (`#[allow()dead_code)]` → valid attribute)
+- [x] Normalized crate-level lint attributes across all crates
+
+### Wave 10: Unsafe Code Evolution
+- [x] Added `parking_lot::Mutex` serialization guard to `songbird-process-env` for caller-level safety
+- [x] Changed crate to `#![deny(unsafe_code)]` with per-fn `#[allow(unsafe_code)]` (tightest scope)
+- [x] Added unit test `set_remove_roundtrip` for env facade
+
+### Wave 11: Hardcoded Constants → Capability-Based Discovery
+- [x] Evolved `find_primals_with_capability` from stub to real capability filter (`SONGBIRD_CAPABILITY_<CAP>_PROVIDERS` + per-primal `*_CAPABILITIES`)
+- [x] Removed hardcoded `staging.internal:8080` — all URLs use env → bind → documented fallback const chain
+- [x] All ports configurable via `SONGBIRD_*_PORT` env vars with `FALLBACK_*` constants
+- [x] Added `canonical_constants_evolved_tests.rs` integration tests
+
+### Wave 12: Production Stub Evolution
+- [x] `health_check_all()` → real TCP reachability probes via protocol router (pre-registered `TcpReachabilityHandler`)
+- [x] `songbird cli` → minimal interactive REPL with `help`/`exit`/`quit` and subcommand guidance
+- [x] Federation join → parses `FederationStatus`/`nodes`/`peers` from response
+- [x] Load balancer `RoundRobin`/`WeightedRoundRobin` → stateful `AtomicU64` counter
+- [x] Trust `verify_hardware` → proper error with BearDog capability discovery path
+- [x] Protocol negotiation ID → monotonic sequence suffix for collision prevention
+
+### Wave 13: Coverage Expansion (+200 new tests)
+- [x] `songbird-orchestrator`: consent rules, preferences, request builder, graph validation, health, config, zero-touch, biome, trust ordering + batch integration (63 tests)
+- [x] `songbird-config`: network cors, limits, timeouts, ports, gaming + batch integration (16 tests)
+- [x] `songbird-universal`: discovery types, capability errors, traits, communication, adapter errors + batch integration (15 tests)
+- [x] Plus ~100+ inline module tests across orchestrator/config/universal
+
+### Wave 14: Documentation (29/29 crates `#[warn(missing_docs)]`)
+- [x] Enabled `#![warn(missing_docs)]` on all 17 remaining crates
+- [x] Documented public API entry points across all crates
+- [x] Added module-level docs for all `pub mod` declarations
+- [x] Used scoped `#[allow(missing_docs, reason)]` for deep internal modules in progress
+
+### Wave 15: JSON-RPC Gateway Completion (10 semantic methods)
+- [x] `compute.route`, `deployment.create`, `deployment.status`, `task.create`, `task.list`
+- [x] `consent.check`, `consent.grant`, `registry.register`, `registry.discover`, `protocol.negotiate`
+- [x] All methods share handler logic with REST endpoints (no duplication)
+- [x] `JsonRpcState` wired to `ComputeApiState`, `DeploymentState`, `ProtocolApiState`, `TaskLifecycleManager`, `ConsentManager`
+
+### Wave 16: Dependency Pruning
+- [x] Removed unused `thiserror` from `songbird-tls`
+- [x] Removed unused `tower` from `songbird-http-client`
+- [x] Verified `kube`/`k8s-openapi`/`bollard` are feature-gated (not in default builds)
+- [x] Documented duplicate version alignment opportunities for future pruning
+
+### Wave 17: Coverage Expansion Wave 2 (+56 tests)
+- [x] 21 tests in `songbird-http-client` (beardog RPC, TLS finished, HTTPS connection, connection pool)
+- [x] 14 tests in `songbird-universal-ipc` (error display, introspection, capability discovery)
+- [x] 8 tests in `songbird-discovery` (factory config, serde, config metadata)
+- [x] 13 tests in `songbird-lineage-relay` (error display, types serde, connection stats)
+
+---
+
+## Completed (Mar 20, 2026 — Deep Audit Session 1)
 
 ### Wave 1: Standards Compliance
 - [x] Migrated 122 `#[allow()]` → `#[expect(reason)]` across all 29 crates (wateringHole standard)
@@ -155,7 +233,7 @@ All stubs currently return `CryptoUnavailable`; wiring requires BearDog running.
 
 ---
 
-## Pending: Coverage Expansion (63.50% → 90% target)
+## Pending: Coverage Expansion (~67% → 90% target)
 
 ### High-Impact Targets (by missed lines)
 | Module | Missed | Coverage |
@@ -174,13 +252,12 @@ All stubs currently return `CryptoUnavailable`; wiring requires BearDog running.
 
 ---
 
-## Pending: Standards Compliance
+## Completed: Standards Compliance
 
 ### `#[warn(missing_docs)]` on library crates
-- Currently: 13/29 crates have `#[warn(missing_docs)]` and compile clean
-- Target: All 29 library crates
-- Remaining crates need documentation before enabling the lint
-- Approach: Add per-crate as docs are written, not workspace-wide
+- **29/29 crates** have `#[warn(missing_docs)]` enabled and compile clean
+- Large internal modules use scoped `#[allow(missing_docs, reason = "...")]` where bulk documentation is in progress
+- All public entry points and re-exports are documented
 
 ---
 
@@ -199,9 +276,9 @@ All stubs currently return `CryptoUnavailable`; wiring requires BearDog running.
 
 ## Pending: Architectural Evolution
 
-- [ ] REST endpoints → JSON-RPC wrapping
-- [ ] Federation join logic (currently returns empty peer list)
-- [ ] Capability router selection strategy (currently first-provider)
+- [x] REST endpoints → JSON-RPC wrapping (10 semantic methods in gateway)
+- [x] Federation join logic (parses FederationStatus/nodes/peers from response)
+- [x] Capability router selection strategy (stateful round-robin + weighted + least-response-time)
 - [ ] Cluster support for anonymous beacon broadcasting
 - [ ] TLS handshake v2 module integration into main handshake flow
 - [ ] IPC native endpoint lifecycle management
@@ -211,9 +288,10 @@ All stubs currently return `CryptoUnavailable`; wiring requires BearDog running.
 ## Pending: Dependency Evolution
 
 - [ ] `ring` elimination: see Ring-Free Workspace section above
-- [ ] Evaluate `kube` + `k8s-openapi` weight (large deps for k8s discovery feature)
-- [ ] Evaluate `bollard` weight (Docker discovery feature)
-- [ ] ~412 unique dependencies: audit and prune where possible
+- [x] Evaluate `kube` + `k8s-openapi` weight — **feature-gated** behind `k8s` feature, not in default builds
+- [x] Evaluate `bollard` weight — **feature-gated** behind `docker` feature, not in default builds
+- [x] Removed 2 unused deps (`thiserror` from songbird-tls, `tower` from songbird-http-client)
+- [ ] ~418 unique dependencies: align duplicate versions (base64, base32, socket2, thiserror, tower, rand)
 
 ---
 
@@ -234,7 +312,7 @@ All stubs currently return `CryptoUnavailable`; wiring requires BearDog running.
 1. **BearDog crypto wiring** — Unblocks circuit build + onion encryption (pure Rust via capability discovery)
 2. **Coverage expansion** — Target pure-logic modules first (goal: 90%)
 3. **Ring-free workspace** — `rcgen` replacement + quinn feature reconfiguration
-4. **Missing docs** — Add `#[warn(missing_docs)]` per-crate as documentation is written
+4. **Deep documentation** — Fill `#[allow(missing_docs)]` internal modules with full doc coverage
 5. **Real hardware tests** (Tower + Pixel) — Validates cross-network
 6. **Platform backends** — Mobile pairing, iOS, WASM
 7. **Dependency pruning** — Reduce ~412 unique deps where possible

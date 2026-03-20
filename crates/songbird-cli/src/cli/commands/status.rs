@@ -3,6 +3,8 @@
 
 //! Enhanced status command with improved UI and error handling
 
+#![allow(missing_docs, reason = "status DTOs map directly to rendered tables")]
+
 use crate::cli::types::OutputFormat;
 use crate::cli::ui::{
     Table, banner, clear_screen, error_with_suggestions, format_bytes, format_duration,

@@ -4,8 +4,8 @@
 //! Tests for capability system
 
 #![cfg(test)]
-#![allow(clippy::all)]
-#![allow(unused)]
+#![expect(clippy::all, reason = "test assertions and harness ergonomics")]
+#![expect(unused, reason = "test assertions and harness ergonomics")]
 
 use super::*;
 use std::collections::HashMap;

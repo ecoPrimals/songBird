@@ -8,7 +8,7 @@
 //! This module provides federation capabilities for sovereignty-aware routing)
 //! enabling multi-primal coordination while maintaining sovereignty requirements.
 
-#![allow(clippy::unused_async)]
+#![expect(clippy::unused_async, reason = "unused bindings/imports in this compilation unit")]
 
 use super::types::{ExpectedNetworkEffect, FederationCapability};
 use crate::types::{UniversalRequest, UniversalResponse};

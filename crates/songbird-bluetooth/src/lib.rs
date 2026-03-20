@@ -77,7 +77,10 @@
 #![forbid(unsafe_code)]
 #![warn(missing_docs)]
 #![warn(clippy::all, clippy::pedantic, clippy::nursery)]
-#![allow(clippy::module_name_repetitions)]
+#![expect(
+    clippy::module_name_repetitions,
+    reason = "intentional pattern; clippy false positive for this API"
+)]
 
 mod controller;
 pub mod device;

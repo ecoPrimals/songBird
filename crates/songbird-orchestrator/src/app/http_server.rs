@@ -32,7 +32,8 @@ pub async fn start_http_server(
         Arc::clone(&federation_state),
         Arc::clone(&federated_service_registry),
         Arc::clone(&service_registry),
-    );
+    )
+    .await?;
 
     // Smart port management: Try configured port, auto-increment if busy
     let (listener, actual_addr) = bind_with_fallback(&bind_addr).await?;
@@ -82,11 +83,11 @@ pub async fn start_http_server(
 }
 
 /// Build the Axum router with all API endpoints
-fn build_router(
+async fn build_router(
     federation_state: Arc<FederationState>,
     federated_service_registry: Arc<FederatedServiceRegistry>,
     service_registry: Arc<crate::service_registry::ServiceRegistry>,
-) -> Router {
+) -> Result<Router> {
     // Build the app with federation and deployment routes
     let deployment_state = crate::server::deployment_api::DeploymentState::new();
 
@@ -97,13 +98,26 @@ fn build_router(
     );
 
     // Create compute API router with state
-    let compute_router = crate::server::compute_api::compute_routes().with_state(compute_state);
+    let compute_router =
+        crate::server::compute_api::compute_routes().with_state(compute_state.clone());
 
     // Create protocol API state for progressive enhancement
     let protocol_state = crate::server::protocol_api::ProtocolApiState::new();
 
     // Create protocol API router with state
-    let protocol_router = crate::server::protocol_api::protocol_routes().with_state(protocol_state);
+    let protocol_router =
+        crate::server::protocol_api::protocol_routes().with_state(protocol_state.clone());
+
+    // Task lifecycle + consent (shared with JSON-RPC semantic methods)
+    let _ = std::fs::create_dir_all(crate::env_config::data_dir());
+    let task_db_url =
+        format!("sqlite:{}", crate::env_config::data_dir().join("task_lifecycle.db").display());
+    let task_manager = Arc::new(
+        crate::task_lifecycle::TaskLifecycleManager::new(&task_db_url)
+            .await
+            .map_err(|e| anyhow::anyhow!("task lifecycle database: {e}"))?,
+    );
+    let consent_manager = Arc::new(crate::consent_management::ConsentManager::new());
 
     // Create JSON-RPC API state for universal gateway
     // ✅ EVOLUTION (Feb 9, 2026): Wire IpcServiceHandler for full method forwarding on TCP
@@ -118,6 +132,12 @@ fn build_router(
         Arc::clone(&federation_state),
         Arc::clone(&federated_service_registry),
         ipc_handler,
+        compute_state,
+        deployment_state.clone(),
+        protocol_state,
+        Arc::clone(&service_registry),
+        Arc::clone(&task_manager),
+        Arc::clone(&consent_manager),
     );
 
     // Create JSON-RPC router with state (now includes full universal-ipc method table)
@@ -144,7 +164,7 @@ fn build_router(
     // Create info router (for orchestrator discovery)
     let info_router = crate::server::service_registry_api::info_routes();
 
-    Router::new()
+    Ok(Router::new()
         .nest(
             "/api/federation",
             crate::server::federation::federation_routes(
@@ -157,10 +177,17 @@ fn build_router(
         .nest("/jsonrpc", jsonrpc_router)
         .nest("/api/ws", websocket_router)
         .nest("/api/deployment", crate::server::deployment_api::deployment_routes(deployment_state))
+        .nest(
+            "/api",
+            crate::server::consent_api::consent_routes().with_state(
+                crate::server::consent_api::ConsentApiState::new(Arc::clone(&consent_manager)),
+            ),
+        )
+        .nest("/api/v1", crate::server::task_api::task_lifecycle_router(Arc::clone(&task_manager)))
         .nest("/api/v1/services", service_registry_router) // NEW: Universal Port Authority
         .merge(info_router) // NEW: Orchestrator info for discovery
         .route("/health", axum::routing::get(|| async { "OK" }))
-        .layer(axum::extract::DefaultBodyLimit::max(100 * 1024 * 1024)) // 100 MB limit
+        .layer(axum::extract::DefaultBodyLimit::max(100 * 1024 * 1024))) // 100 MB limit
 }
 
 /// Start plain HTTP server (no TLS)

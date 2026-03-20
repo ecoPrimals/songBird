@@ -132,7 +132,10 @@ impl CapabilityRegistry {
         // Extract available capacity from metadata, defaulting to 10 if not specified or invalid
         // Modern idiomatic: map_or is cleaner than map().unwrap_or()
         // Safe cast: u64 fits in usize on 64-bit, truncates on 32-bit (acceptable for capacity)
-        #[allow(clippy::cast_possible_truncation)]
+        #[expect(
+            clippy::cast_possible_truncation,
+            reason = "intentional pattern; clippy false positive for this API"
+        )]
         let available_capacity = request
             .metadata
             .get("max_concurrent_tasks")

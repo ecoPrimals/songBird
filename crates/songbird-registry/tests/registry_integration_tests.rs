@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (c) 2024-2026 ecoPrimals
 
-#![allow(
+#![expect(
     clippy::unwrap_used,
     clippy::expect_used,
     clippy::unnecessary_wraps,
@@ -24,33 +24,38 @@
     dead_code,
     clippy::unnecessary_literal_unwrap,
     clippy::needless_pass_by_value,
-    clippy::must_use_candidate
+    clippy::must_use_candidate,
+    reason = "test assertions and harness ergonomics"
 )]
 
 //! Integration tests for registry operations
-#![allow(clippy::uninlined_format_args)]
-#![allow(clippy::float_cmp)]
-#![allow(clippy::useless_vec)]
-#![allow(clippy::unreadable_literal)]
-#![allow(clippy::items_after_statements)]
-#![allow(clippy::cast_precision_loss)]
-#![allow(clippy::cast_possible_truncation)]
-#![allow(clippy::cast_sign_loss)]
-#![allow(clippy::needless_pass_by_value)]
-#![allow(clippy::similar_names)]
-#![allow(clippy::too_many_lines)]
-#![allow(clippy::module_name_repetitions)]
-#![allow(clippy::uninlined_format_args)]
-#![allow(clippy::float_cmp)]
-#![allow(clippy::useless_vec)]
-#![allow(clippy::unreadable_literal)]
-#![allow(clippy::items_after_statements)]
-#![allow(clippy::cast_precision_loss)]
-#![allow(clippy::cast_possible_truncation)]
-#![allow(clippy::cast_sign_loss)]
-#![allow(clippy::needless_pass_by_value)]
+#![expect(clippy::uninlined_format_args, reason = "test assertions and harness ergonomics")]
+#![expect(clippy::float_cmp, reason = "test assertions and harness ergonomics")]
+#![expect(clippy::useless_vec, reason = "test assertions and harness ergonomics")]
+#![expect(clippy::unreadable_literal, reason = "test assertions and harness ergonomics")]
+#![expect(clippy::items_after_statements, reason = "test assertions and harness ergonomics")]
+#![expect(clippy::cast_precision_loss, reason = "test assertions and harness ergonomics")]
+#![expect(clippy::cast_possible_truncation, reason = "test assertions and harness ergonomics")]
+#![expect(clippy::cast_sign_loss, reason = "test assertions and harness ergonomics")]
+#![expect(clippy::needless_pass_by_value, reason = "test assertions and harness ergonomics")]
+#![expect(clippy::similar_names, reason = "test assertions and harness ergonomics")]
+#![expect(clippy::too_many_lines, reason = "test assertions and harness ergonomics")]
+#![expect(clippy::module_name_repetitions, reason = "test assertions and harness ergonomics")]
+#![expect(clippy::uninlined_format_args, reason = "test assertions and harness ergonomics")]
+#![expect(clippy::float_cmp, reason = "test assertions and harness ergonomics")]
+#![expect(clippy::useless_vec, reason = "test assertions and harness ergonomics")]
+#![expect(clippy::unreadable_literal, reason = "test assertions and harness ergonomics")]
+#![expect(clippy::items_after_statements, reason = "test assertions and harness ergonomics")]
+#![expect(clippy::cast_precision_loss, reason = "test assertions and harness ergonomics")]
+#![expect(clippy::cast_possible_truncation, reason = "test assertions and harness ergonomics")]
+#![expect(clippy::cast_sign_loss, reason = "test assertions and harness ergonomics")]
+#![expect(clippy::needless_pass_by_value, reason = "test assertions and harness ergonomics")]
 // Allow unwrap/expect in tests - idiomatic for test code
-#![allow(clippy::unwrap_used, clippy::expect_used)]
+#![expect(
+    clippy::unwrap_used,
+    clippy::expect_used,
+    reason = "test assertions and harness ergonomics"
+)]
 
 //!
 //! These tests verify registry functionality in realistic scenarios.
@@ -214,7 +219,7 @@ fn test_health_status_clone() {
 
     assert_eq!(status1.healthy, status2.healthy);
     // Allow float comparison in test context
-    #[allow(clippy::float_cmp)]
+    #[expect(clippy::float_cmp, reason = "test assertions and harness ergonomics")]
     {
         assert_eq!(status1.score, status2.score);
     }
@@ -233,7 +238,7 @@ fn test_health_status_degraded_sequence() {
 
     for (i, status) in statuses.iter().enumerate() {
         if i < 3 {
-            #[allow(clippy::float_cmp)]
+            #[expect(clippy::float_cmp, reason = "test assertions and harness ergonomics")]
             {
                 assert!(status.healthy || status.score == 0.5);
             }

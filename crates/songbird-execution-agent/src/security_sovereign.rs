@@ -399,32 +399,41 @@ impl Default for SecurityConfig {
     }
 }
 
-/// Security request
+/// Local validation input for [`SovereignSecurityValidator`] before a job is accepted.
 #[derive(Debug, Clone)]
 pub struct SecurityRequest {
+    /// Command line or script body under review.
     pub command: String,
+    /// Bearer or shared secret when auth is enabled in [`SecurityConfig`].
     pub auth_token: Option<String>,
+    /// Optional per-request wall-clock cap overriding defaults.
     pub timeout_seconds: Option<u64>,
+    /// Optional caller identity for logs and policy hooks.
     pub requester: Option<String>,
 }
 
-/// Security decision
+/// Outcome of sovereign validation suitable for RPC responses and audit logs.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SecurityDecision {
+    /// Whether the executor may start the job.
     pub allowed: bool,
+    /// Denial or advisory text when not allowed or partially restricted.
     pub reason: Option<String>,
+    /// Local policy confidence in `0.0..=1.0`.
     pub confidence: f64,
+    /// Which policy path produced the decision.
     pub mode: SecurityMode,
 }
 
-/// Security mode used
+/// Identifies which policy backend supplied the [`SecurityDecision`].
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum SecurityMode {
-    /// Songbird's sovereign security (always available)
+    /// On-tower [`SovereignSecurityValidator`] rules only.
     Sovereign,
 
-    /// Enhanced via network effect with another primal
+    /// Augmented decision that incorporated another primal's attestation or reputation.
     NetworkEffect {
+        /// Peer primal identifier (e.g. discovery name).
         primal: String,
     },
 }

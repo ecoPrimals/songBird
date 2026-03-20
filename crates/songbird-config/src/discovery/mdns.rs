@@ -30,6 +30,8 @@
 //! }
 //! ```
 
+#![allow(missing_docs, reason = "mDNS helpers align with RFC 6762 terminology")]
+
 use std::collections::HashMap;
 use std::net::SocketAddr;
 use std::sync::Arc;

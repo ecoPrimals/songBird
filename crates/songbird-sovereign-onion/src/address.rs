@@ -150,7 +150,7 @@ pub async fn validate_onion_address_via_beardog(
 /// use ed25519_dalek::SigningKey;
 /// use songbird_sovereign_onion::derive_onion_address;
 ///
-/// let signing_key = SigningKey::generate(&mut rand::thread_rng());
+/// let signing_key = SigningKey::from_bytes(&[42u8; 32]);
 /// let public_key = signing_key.verifying_key();
 /// let onion = derive_onion_address(&public_key);
 ///

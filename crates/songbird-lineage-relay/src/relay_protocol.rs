@@ -42,17 +42,21 @@ pub enum RelayProtocol {
 
     /// Data packet to forward
     DataPacket {
+        /// Active allocation id from the allocate handshake.
         session_id: Uuid,
+        /// Opaque payload to tunnel toward the peer.
         data: Vec<u8>,
     },
 
     /// Refresh session (extend TTL)
     Refresh {
+        /// Session to keep alive.
         session_id: Uuid,
     },
 
     /// Deallocate (close session)
     Deallocate {
+        /// Session to tear down on the relay.
         session_id: Uuid,
     },
 }

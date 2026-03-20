@@ -47,7 +47,11 @@
 
 #![forbid(unsafe_code)]
 #![warn(missing_docs, missing_debug_implementations, rust_2018_idioms, unreachable_pub)]
-#![allow(clippy::items_after_statements, clippy::missing_panics_doc)]
+#![expect(
+    clippy::items_after_statements,
+    clippy::missing_panics_doc,
+    reason = "intentional pattern; clippy false positive for this API"
+)]
 #![cfg_attr(
     test,
     allow(

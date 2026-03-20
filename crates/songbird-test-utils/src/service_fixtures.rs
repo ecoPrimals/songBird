@@ -33,11 +33,12 @@ pub fn test_health_endpoint(service_name: &str) -> String {
     )
 }
 
-#[allow(
+#[expect(
     clippy::unwrap_used,
     clippy::expect_used,
     clippy::unnecessary_wraps,
-    clippy::field_reassign_with_default
+    clippy::field_reassign_with_default,
+    reason = "intentional pattern; clippy false positive for this API"
 )]
 #[cfg(test)]
 mod tests {

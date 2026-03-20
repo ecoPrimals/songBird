@@ -68,7 +68,7 @@ impl BearDogProvider {
         }
     }
 
-    #[allow(dead_code)]
+    #[allow(dead_code, reason = "public accessor retained for IPC diagnostics and future callers")]
     pub fn socket_path(&self) -> &str {
         &self.socket_path
     }

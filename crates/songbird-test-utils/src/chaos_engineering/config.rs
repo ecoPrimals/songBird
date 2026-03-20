@@ -16,7 +16,11 @@ mod systemtime_option {
     use serde::{Deserialize, Deserializer, Serialize, Serializer};
     use std::time::SystemTime;
 
-    #[allow(clippy::ref_option, clippy::trivially_copy_pass_by_ref)]
+    #[expect(
+        clippy::ref_option,
+        clippy::trivially_copy_pass_by_ref,
+        reason = "intentional pattern; clippy false positive for this API"
+    )]
     pub fn serialize<S>(time: &Option<SystemTime>, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer,
@@ -52,48 +56,75 @@ mod systemtime_option {
 // };
 
 // Temporary local definitions until unified module is fixed
+/// Composes optional fault profiles for a single [`ChaosExperiment`].
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct ExperimentConfig {
+    /// Optional network chaos knobs.
     pub network_fault: Option<NetworkFaultConfig>,
+    /// Optional crash/restart timing model.
     pub service_failure: Option<ServiceFailureConfig>,
+    /// Optional CPU/memory/disk caps.
     pub resource_constraint: Option<ResourceConstraintConfig>,
+    /// Optional adversarial payload/delay behavior.
     pub byzantine_failure: Option<ByzantineFailureConfig>,
+    /// Optional uniform slowdown plus optional resource coupling.
     pub performance_degradation: Option<PerformanceDegradationConfig>,
 }
 
+/// Tunable WAN impairment parameters for simulated links.
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct NetworkFaultConfig {
+    /// One-way latency to add in milliseconds.
     pub latency_ms: Option<u64>,
+    /// Random drop probability `0.0..=1.0`.
     pub packet_loss_percent: Option<f64>,
+    /// Upper bound on bits per second for the virtual link.
     pub bandwidth_limit_bps: Option<u64>,
+    /// When true, split the cluster into isolated partitions.
     pub partition_enabled: bool,
 }
 
+/// Renewal-process style failure injection for a service process.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ServiceFailureConfig {
+    /// Probability per tick that a failure triggers.
     pub failure_rate: f64,
+    /// Mean uptime before injecting failure.
     pub mean_time_to_failure: Duration,
+    /// Mean downtime before declaring recovery.
     pub mean_time_to_recovery: Duration,
 }
 
+/// Caps host resources for soak tests without touching the real cgroup.
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct ResourceConstraintConfig {
+    /// CPU cap as percent of one core (0–100).
     pub cpu_limit_percent: Option<f64>,
+    /// Resident set cap in megabytes.
     pub memory_limit_mb: Option<u64>,
+    /// Disk throughput cap in MB/s.
     pub disk_io_limit_mbps: Option<u64>,
+    /// Network throughput cap in Mb/s.
     pub network_bandwidth_limit_mbps: Option<u64>,
 }
 
+/// Byzantine-style faults for protocol testing.
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct ByzantineFailureConfig {
+    /// Fraction of responses that corrupt payloads.
     pub corrupt_data_rate: f64,
+    /// Fraction of responses artificially delayed.
     pub delayed_response_rate: f64,
+    /// Named attack scripts to enable (implementation-defined).
     pub malicious_behavior_types: Vec<String>,
 }
 
+/// Multiplier applied to baseline latency plus optional resource coupling.
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct PerformanceDegradationConfig {
+    /// Factor `>1.0` slows every operation proportionally.
     pub slowdown_factor: f64,
+    /// Optional simultaneous resource starvation.
     pub resource_constraint: Option<ResourceConstraintConfig>,
 }
 
@@ -192,7 +223,10 @@ pub struct PerformanceImpact {
 
 /// Resource utilization changes
 #[derive(Debug, Clone, Serialize, Deserialize)]
-#[allow(clippy::struct_field_names)]
+#[expect(
+    clippy::struct_field_names,
+    reason = "intentional pattern; clippy false positive for this API"
+)]
 pub struct ResourceUtilizationChange {
     /// CPU utilization change (percentage)
     pub cpu_change_percent: f64,

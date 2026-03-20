@@ -328,7 +328,7 @@ mod chaos_helpers {
     use std::sync::atomic::{AtomicUsize, Ordering};
 
     /// Helper: Create a server that behaves chaotically (deterministic pattern)
-    #[allow(dead_code)]
+    #[expect(dead_code, reason = "test assertions and harness ergonomics")]
     pub async fn spawn_chaos_server(port: u16) -> tokio::task::JoinHandle<()> {
         let counter = std::sync::Arc::new(AtomicUsize::new(0));
 

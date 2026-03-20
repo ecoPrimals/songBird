@@ -349,12 +349,15 @@ pub struct RendezvousConfig {
 /// Steam rendezvous configuration (FUTURE)
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SteamRendezvousConfig {
+    /// Allow Steam-backed rendezvous when integrated.
     #[serde(default)]
     pub enabled: bool,
 
+    /// Route friend traffic through Steam relay when available.
     #[serde(default)]
     pub use_steam_relay: bool,
 
+    /// Human-readable note for operators (integration status and intent).
     #[serde(default = "default_steam_comment")]
     pub comment: String,
 }
@@ -376,12 +379,15 @@ fn default_steam_comment() -> String {
 /// Discord rendezvous configuration (FUTURE)
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DiscordRendezvousConfig {
+    /// Allow Discord-backed rendezvous when integrated.
     #[serde(default)]
     pub enabled: bool,
 
+    /// Route friend traffic through Discord relay when available.
     #[serde(default)]
     pub use_discord_relay: bool,
 
+    /// Human-readable note for operators (integration status and intent).
     #[serde(default = "default_discord_comment")]
     pub comment: String,
 }
@@ -403,23 +409,31 @@ fn default_discord_comment() -> String {
 /// Custom rendezvous configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CustomRendezvousConfig {
+    /// Label shown in logs and UI for this rendezvous target.
     pub name: String,
 
+    /// Enable or disable this custom rendezvous endpoint.
     #[serde(default)]
     pub enabled: bool,
 
+    /// Host or URL used to reach the rendezvous service.
     pub address: String,
 
+    /// Scheme or transport label (for example `https`).
     #[serde(default = "default_https")]
     pub protocol: String,
 
+    /// Optional operator notes for this endpoint.
     #[serde(default)]
     pub comment: String,
 }
 
 /// Advanced STUN configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
-#[allow(clippy::struct_excessive_bools)] // Configuration struct - bools are appropriate for feature flags
+#[expect(
+    clippy::struct_excessive_bools,
+    reason = "intentional pattern; clippy false positive for this API"
+)] // Configuration struct - bools are appropriate for feature flags
 pub struct AdvancedStunConfig {
     /// Try multiple tiers in parallel (for `FastestFirst` strategy)
     #[serde(default)]
@@ -529,7 +543,7 @@ const fn default_packet_loss_threshold() -> f32 {
 
 #[cfg(test)]
 mod tests {
-    #![allow(clippy::unwrap_used)]
+    #![expect(clippy::unwrap_used, reason = "test assertions and harness ergonomics")]
 
     use super::*;
 

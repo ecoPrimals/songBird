@@ -8,6 +8,8 @@
 //! Streamlined command structure focused on gaming functionality with
 //! integration to the consolidated Songbird architecture.
 
+#![allow(missing_docs, reason = "clap derives supply user-visible help text")]
+
 use clap::Subcommand;
 
 // Core gaming command modules

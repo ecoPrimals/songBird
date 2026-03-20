@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (c) 2024-2026 ecoPrimals
 
-#![allow(clippy::unused_async)]
+#![expect(clippy::unused_async, reason = "unused bindings/imports in this compilation unit")]
 
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
@@ -18,7 +18,7 @@ type Result<T> = SongbirdResult<T>;
 #[derive(Debug)]
 pub struct HealthMonitor {
     services: Arc<RwLock<HashMap<String, ServiceHealth>>>,
-    #[allow(dead_code)]
+    #[expect(dead_code, reason = "dead code retained intentionally (reserved or API surface)")]
     nodes: Arc<RwLock<HashMap<String, NodeHealth>>>,
 }
 
@@ -120,19 +120,29 @@ impl Default for HealthMonitor {
 
 /// Health statistics
 #[derive(Debug, Clone, Serialize, Deserialize)]
-#[allow(clippy::struct_field_names)]
+#[allow(
+    clippy::struct_field_names,
+    reason = "stats struct mirrors monitoring dashboard field names"
+)]
 pub struct HealthStats {
+    /// Registered services in the monitor.
     pub total_services: usize,
+    /// Count currently marked [`HealthStatus::Healthy`].
     pub healthy_services: usize,
+    /// Count not healthy (degraded, unhealthy, or unknown).
     pub unhealthy_services: usize,
 }
 
-/// Overall health status
+/// Rollup suitable for top-of-dashboard “cluster green?” widgets.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct OverallHealthStatus {
+    /// Worst status among monitored services.
     pub status: HealthStatus,
+    /// Healthy subset size.
     pub healthy_services: usize,
+    /// Total monitored services.
     pub total_services: usize,
+    /// When this rollup was computed (UTC).
     pub last_updated: DateTime<Utc>,
 }
 

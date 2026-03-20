@@ -70,6 +70,11 @@
 //! # }
 //! ```
 
+#![allow(
+    missing_docs,
+    reason = "runtime resolver structs pair with the module-level architecture doc"
+)]
+
 use serde::{Deserialize, Serialize};
 use songbird_types::{SongbirdError, SongbirdResult};
 use std::collections::HashMap;

@@ -36,6 +36,7 @@
 //! **Urgency**: NONE - All internal uses successfully migrated
 
 #![deprecated(since = "0.2.0", note = "Use songbird_config::canonical::constants instead")]
+#![allow(missing_docs, reason = "deprecated shim; canonical module holds the documented API")]
 
 use songbird_types::error_helpers::SafeEnv;
 use std::time::Duration;
@@ -572,10 +573,8 @@ pub fn default_subnet() -> String {
 
 /// Universal capability query - works with any capability name
 #[must_use]
-pub fn find_primals_with_capability(_capability: &str) -> Vec<String> {
-    // This would integrate with the capability discovery system
-    // For now, return configured primals (will be enhanced with actual capability detection)
-    get_configured_primal_names()
+pub fn find_primals_with_capability(capability: &str) -> Vec<String> {
+    crate::canonical::constants::find_primals_with_capability(capability)
 }
 
 /// Health check related constants

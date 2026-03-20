@@ -12,7 +12,7 @@
 //! This module uses native async trait methods (Rust 1.75+) for zero-cost abstractions.
 //! No boxing overhead, better optimization, maximum gaming performance!
 
-#![allow(async_fn_in_trait)]
+#![expect(async_fn_in_trait, reason = "async fn in trait (edition / trait-object compatibility)")]
 
 use super::{GamingConfig, GamingHealth, NetworkStatus};
 use serde::{Deserialize, Serialize};

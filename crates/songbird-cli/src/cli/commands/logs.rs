@@ -55,7 +55,7 @@ async fn show_recent_logs(service: Option<&str>, lines: usize, _level: LogLevel)
 }
 
 /// Read recent logs from files
-#[allow(dead_code)]
+#[expect(dead_code, reason = "dead code retained intentionally (reserved or API surface)")]
 async fn read_recent_logs(
     service_name: &str,
     lines: usize,
@@ -72,7 +72,7 @@ async fn read_recent_logs(
     })
 }
 /// Read last N lines from a log file
-#[allow(dead_code)]
+#[expect(dead_code, reason = "dead code retained intentionally (reserved or API surface)")]
 async fn read_last_lines(
     log_path: &std::path::Path,
     lines: usize,
@@ -168,7 +168,7 @@ async fn follow_logs(service: Option<&str>, _level: LogLevel) -> SongbirdResult<
 }
 
 /// Follow real logs from the system
-#[allow(dead_code)]
+#[expect(dead_code, reason = "dead code retained intentionally (reserved or API surface)")]
 async fn follow_real_logs(service_name: &str, level: &LogLevel) -> SongbirdResult<()> {
     // Try to read from common log locations
     let log_paths = get_log_paths(service_name);
@@ -184,7 +184,7 @@ async fn follow_real_logs(service_name: &str, level: &LogLevel) -> SongbirdResul
     })
 }
 /// Get potential log file paths for the service
-#[allow(dead_code)]
+#[expect(dead_code, reason = "dead code retained intentionally (reserved or API surface)")]
 fn get_log_paths(service_name: &str) -> Vec<std::path::PathBuf> {
     let mut paths = Vec::new();
     // User-specific log directory
@@ -204,7 +204,7 @@ fn get_log_paths(service_name: &str) -> Vec<std::path::PathBuf> {
     paths
 }
 /// Tail a log file and filter by level
-#[allow(dead_code)]
+#[expect(dead_code, reason = "dead code retained intentionally (reserved or API surface)")]
 async fn tail_log_file(log_path: &std::path::Path, level: LogLevel) -> SongbirdResult<()> {
     use tokio::io::{AsyncBufReadExt, BufReader};
     let file = tokio::fs::File::open(log_path).await.map_err(crate::errors::CliError::Io,?;
@@ -220,7 +220,7 @@ async fn tail_log_file(log_path: &std::path::Path, level: LogLevel) -> SongbirdR
 }
 
 /// Check if log entry should be shown based on level filter
-#[allow(dead_code)]
+#[expect(dead_code, reason = "dead code retained intentionally (reserved or API surface)")]
 fn should_show_log(log_entry: &str, filter_level: &LogLevel) -> bool {
     let entry_level = if log_entry.contains("[ERROR]") {"
         LogLevel::Error
@@ -246,7 +246,7 @@ fn should_show_log(log_entry: &str, filter_level: &LogLevel) -> bool {
 }
 
 /// Format log level for display
-#[allow(dead_code)]
+#[expect(dead_code, reason = "dead code retained intentionally (reserved or API surface)")]
 fn format_log_level(level: &LogLevel) -> &str {
     match level {
         LogLevel::Error => "ERROR","

@@ -16,6 +16,8 @@
 //! 4. **Capability-Based**: Request what you need (security, storage, compute, ai)
 //! 5. **Dynamic Discovery**: Learn everything at runtime like an infant
 
+#![allow(missing_docs, reason = "infant discovery structs are descriptive configuration bags")]
+
 use serde::{Deserialize, Serialize};
 use songbird_types::{SongbirdError, SongbirdResult};
 use std::collections::HashMap;

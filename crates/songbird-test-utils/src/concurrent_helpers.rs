@@ -33,7 +33,7 @@ use tokio::time::{sleep, timeout};
 // Re-export commonly used types for convenience
 type Result<T, E = Box<dyn std::error::Error + Send + Sync>> = std::result::Result<T, E>;
 
-#[allow(unused_imports)]
+#[expect(unused_imports, reason = "unused bindings/imports in this compilation unit")]
 use tracing::{debug, warn};
 
 /// Readiness signal for event-driven service startup

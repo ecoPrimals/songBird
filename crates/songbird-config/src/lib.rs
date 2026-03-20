@@ -40,6 +40,7 @@
 //! - **Performance Tuning**: Configurable performance parameters
 
 #![forbid(unsafe_code)]
+#![warn(missing_docs)]
 #![warn(clippy::all)]
 #![warn(clippy::pedantic)]
 #![allow(
@@ -47,7 +48,8 @@
     clippy::missing_panics_doc,
     clippy::unused_async,
     clippy::too_many_lines,
-    clippy::implicit_hasher
+    clippy::implicit_hasher,
+    reason = "config crate: broad surface; doc and style exceptions during consolidation"
 )]
 #![cfg_attr(
     test,
@@ -96,8 +98,11 @@ pub mod env_provider;
 
 /// **MODERN**: Capability-based service discovery (replaces hardcoded endpoints)
 pub mod capability_discovery;
+/// Shared helpers used by discovery adapters and tests.
 pub mod discovery_helpers;
+/// Runtime wiring that binds configuration to live discovery clients.
 pub mod runtime_discovery;
+/// Resolves endpoints after environment overrides are applied.
 pub mod runtime_endpoint_resolver;
 
 /// **PRODUCTION-READY**: mDNS and advanced discovery implementations
@@ -163,7 +168,7 @@ pub mod config;
 /// All new code should use this configuration system.
 pub use songbird_types::config::CanonicalSongbirdConfig;
 
-/// Convenience alias for the canonical configuration
+/// Use this alias when you want a short name for [`CanonicalSongbirdConfig`].
 pub type Config = CanonicalSongbirdConfig;
 
 // ============================================================================
@@ -194,16 +199,19 @@ pub use canonical::service::ServiceConfig as CanonicalServiceConfig;
 /// use songbird_types::config::CanonicalSongbirdConfig;
 /// // or use songbird_config::Config;
 /// ```
-#[allow(deprecated)]
+#[allow(
+    deprecated,
+    reason = "backward-compat type alias; callers migrate to CanonicalSongbirdConfig"
+)]
 #[deprecated(since = "0.2.0", note = "Use songbird_types::config::CanonicalSongbirdConfig instead")]
 pub type SongbirdConfig = songbird_types::config::CanonicalSongbirdConfig;
 
 // Legacy re-exports (DEPRECATED - maintained for backward compatibility)
-#[allow(deprecated)]
+#[allow(deprecated, reason = "backward-compat glob re-export of legacy config module")]
 pub use config::*;
 
 // ✅ REMOVED: Use canonical::environment::EnvironmentConfig instead (Nov 9, 2025)
-// #[allow(deprecated)]
+// #[expect(deprecated, reason = "calling deprecated API until migration completes")]
 // pub use config::environment::EnvironmentConfig;
 
 // Re-export environment configuration helper

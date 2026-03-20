@@ -6,7 +6,7 @@
 //! ## Native Async Traits
 //! This module uses native async trait methods (Rust 1.75+) for zero-cost abstractions.
 
-#![allow(async_fn_in_trait)]
+#![allow(async_fn_in_trait, reason = "async fn in trait for StaticServiceDiscovery trait objects")]
 use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::RwLock;

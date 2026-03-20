@@ -319,7 +319,7 @@ pub struct CpuUsage {
 
 /// Detailed memory usage information
 #[derive(Debug, Clone, Serialize, Deserialize)]
-#[allow(clippy::struct_field_names)]
+#[allow(clippy::struct_field_names, reason = "memory/swap field names match host metrics schema")]
 pub struct MemoryUsage {
     pub total_gb: u64,
     pub used_gb: u64,
@@ -342,7 +342,7 @@ pub struct GpuUsage {
 
 /// Network interface usage
 #[derive(Debug, Clone, Serialize, Deserialize)]
-#[allow(clippy::struct_field_names)]
+#[allow(clippy::struct_field_names, reason = "per-sec counters match network interface stats")]
 pub struct NetworkUsage {
     pub bytes_sent_per_sec: u64,
     pub bytes_received_per_sec: u64,

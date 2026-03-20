@@ -8,7 +8,11 @@
 //! This module provides infrastructure for services to start with ZERO hardcoded
 //! knowledge and discover everything dynamically at runtime.
 
-#[allow(deprecated)]
+#![allow(
+    missing_docs,
+    reason = "zero-touch bootstrap structs evolve quickly; see module-level guide"
+)]
+
 // NOTE: SongbirdConfig imported where needed below
 use serde::{Deserialize, Serialize};
 
@@ -33,7 +37,7 @@ impl Default for ZeroTouchConfig {
 
 #[derive(Debug)]
 pub struct ZeroTouchDeployment {
-    #[allow(dead_code)]
+    #[allow(dead_code, reason = "config retained for future deployment wiring")]
     config: ZeroTouchConfig,
 }
 
@@ -58,7 +62,10 @@ pub struct ZeroTouchOrchestrator {
 
 pub struct DeploymentResult {
     /// Configuration result
-    #[allow(deprecated)]
+    #[allow(
+        deprecated,
+        reason = "optional legacy SongbirdConfig until canonical migration completes"
+    )]
     pub config: Option<crate::config::SongbirdConfig>,
 }
 
@@ -78,7 +85,10 @@ impl ZeroTouchOrchestrator {
     #[must_use]
     pub fn deploy() -> DeploymentResult {
         // Basic deployment logic
-        #[allow(deprecated)]
+        #[allow(
+            deprecated,
+            reason = "constructing deprecated type for backward-compat deploy path"
+        )]
         let config = crate::config::SongbirdConfig::default();
 
         DeploymentResult {
@@ -138,7 +148,7 @@ mod tests {
     }
 
     #[test]
-    #[allow(deprecated)]
+    #[allow(deprecated, reason = "test exercises deprecated deploy API until migration")]
     fn test_zero_touch_orchestrator_deploy() {
         let result = ZeroTouchOrchestrator::deploy();
         assert!(result.config.is_some());

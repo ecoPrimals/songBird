@@ -32,7 +32,7 @@ struct JsonRpcRequest {
 }
 
 #[derive(Debug, Deserialize)]
-#[allow(dead_code)]
+#[expect(dead_code, reason = "dead code retained intentionally (reserved or API surface)")]
 struct JsonRpcResponse {
     jsonrpc: String,
     result: Option<Value>,
@@ -44,7 +44,7 @@ struct JsonRpcResponse {
 struct JsonRpcError {
     code: i32,
     message: String,
-    #[allow(dead_code)]
+    #[expect(dead_code, reason = "dead code retained intentionally (reserved or API surface)")]
     data: Option<Value>,
 }
 
@@ -193,5 +193,76 @@ impl BearDogProvider {
             "tls.compute_finished_verify_data" => "tls.compute_finished_verify_data",
             _ => method,
         }
+    }
+}
+
+#[cfg(test)]
+#[expect(clippy::unwrap_used, reason = "test assertions")]
+mod tests {
+    use super::BearDogProvider;
+
+    #[test]
+    fn semantic_to_actual_maps_crypto_aliases() {
+        assert_eq!(
+            BearDogProvider::semantic_to_actual("crypto.generate_keypair"),
+            "crypto.x25519_generate_ephemeral"
+        );
+        assert_eq!(
+            BearDogProvider::semantic_to_actual("crypto.ecdh_derive"),
+            "crypto.x25519_derive_secret"
+        );
+        assert_eq!(
+            BearDogProvider::semantic_to_actual("crypto.encrypt_aes_128_gcm"),
+            "crypto.aes128_gcm_encrypt"
+        );
+        assert_eq!(
+            BearDogProvider::semantic_to_actual("tls.compute_finished_verify_data"),
+            "tls.compute_finished_verify_data"
+        );
+    }
+
+    #[test]
+    fn semantic_to_actual_passes_through_unknown_methods() {
+        assert_eq!(
+            BearDogProvider::semantic_to_actual("custom.namespace.op"),
+            "custom.namespace.op"
+        );
+    }
+
+    #[test]
+    fn method_to_capability_known_tls_methods() {
+        assert_eq!(
+            BearDogProvider::method_to_capability("tls.derive_handshake_secrets"),
+            ("tls_crypto", "derive_handshake_secrets")
+        );
+        assert_eq!(
+            BearDogProvider::method_to_capability("tls.derive_application_secrets"),
+            ("tls_crypto", "derive_application_secrets")
+        );
+        assert_eq!(
+            BearDogProvider::method_to_capability("tls.compute_finished_verify_data"),
+            ("tls_crypto", "compute_finished_verify_data")
+        );
+    }
+
+    #[test]
+    fn method_to_capability_known_crypto_methods() {
+        assert_eq!(BearDogProvider::method_to_capability("crypto.sha256"), ("crypto", "sha256"));
+        assert_eq!(
+            BearDogProvider::method_to_capability("crypto.encrypt_chacha20_poly1305"),
+            ("crypto", "encrypt_chacha20_poly1305")
+        );
+        assert_eq!(
+            BearDogProvider::method_to_capability("crypto.decrypt_aes_256_gcm"),
+            ("crypto", "decrypt_aes_256_gcm")
+        );
+    }
+
+    #[test]
+    fn method_to_capability_unknown_falls_back_to_generic() {
+        assert_eq!(
+            BearDogProvider::method_to_capability("totally.unknown.method"),
+            ("crypto", "unknown")
+        );
     }
 }

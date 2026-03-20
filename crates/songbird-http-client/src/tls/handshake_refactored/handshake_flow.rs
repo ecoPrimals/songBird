@@ -227,7 +227,7 @@ impl TlsHandshake {
     }
 
     /// Handle a TLS alert received instead of expected handshake message
-    #[allow(clippy::unused_self)] // API consistency
+    #[expect(clippy::unused_self, reason = "unused bindings/imports in this compilation unit")] // API consistency
     fn handle_tls_alert(&self, data: &[u8]) -> Error {
         use crate::tls::alert::TlsAlert;
 

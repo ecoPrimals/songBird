@@ -7,7 +7,7 @@
 //! all Songbird components. All implementations MUST use these traits.
 
 // Allow async_fn_in_trait warning - our traits guarantee Send + Sync
-#![allow(async_fn_in_trait)]
+#![expect(async_fn_in_trait, reason = "async fn in trait (edition / trait-object compatibility)")]
 
 pub mod canonical;
 
@@ -187,12 +187,13 @@ impl fmt::Display for ServiceInstanceStatus {
     }
 }
 
-#[allow(
+#[expect(
     clippy::unwrap_used,
     clippy::expect_used,
     clippy::unnecessary_wraps,
     clippy::field_reassign_with_default,
-    clippy::float_cmp
+    clippy::float_cmp,
+    reason = "intentional pattern; clippy false positive for this API"
 )]
 #[cfg(test)]
 mod tests {

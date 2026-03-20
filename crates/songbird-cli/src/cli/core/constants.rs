@@ -5,6 +5,8 @@
 //!
 //! This module provides constants specific to the CLI interface
 
+#![allow(missing_docs, reason = "filesystem constants are self-describing path fragments")]
+
 /// CLI-specific file system constants
 pub mod filesystem {
     /// Default configuration directory

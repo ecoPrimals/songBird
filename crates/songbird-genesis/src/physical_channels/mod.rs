@@ -51,7 +51,7 @@ pub enum PhysicalChannel {
 
     /// Bluetooth LE pairing (legacy btleplug)
     #[cfg(feature = "legacy-bluetooth")]
-    #[allow(deprecated)]
+    #[expect(deprecated, reason = "calling deprecated API until migration completes")]
     // `bluetooth` module is deprecated; variant kept for callers using `legacy-bluetooth`
     Bluetooth(bluetooth::BluetoothChannel),
 

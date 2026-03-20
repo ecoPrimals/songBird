@@ -63,9 +63,13 @@ pub trait MockPrimalServer {
 /// Shared state for mock servers
 #[derive(Debug)]
 pub struct MockServerState {
+    /// TCP port the mock HTTP server binds.
     pub port: u16,
+    /// Latest [`HealthStatus`] for readiness probes.
     pub health: Arc<RwLock<HealthStatus>>,
+    /// Total requests observed (for assertions).
     pub request_count: Arc<RwLock<usize>>,
+    /// Arbitrary key/value tags (e.g. feature toggles under test).
     pub metadata: Arc<RwLock<HashMap<String, String>>>,
 }
 

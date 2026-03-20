@@ -438,7 +438,10 @@ impl RelayServer {
     /// Apply privacy masking based on lineage relationship
     ///
     /// Closer family = less masking, distant family = more masking
-    #[allow(clippy::unnecessary_wraps)] // Result kept for future masking errors
+    #[expect(
+        clippy::unnecessary_wraps,
+        reason = "intentional pattern; clippy false positive for this API"
+    )] // Result kept for future masking errors
     fn apply_masking(data: &[u8], level: MaskingLevel) -> Result<Vec<u8>> {
         match level {
             MaskingLevel::None => {

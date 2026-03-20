@@ -8,7 +8,7 @@
 //! Discovery is capability-based through environment hints or zero-knowledge bootstrap.
 
 // Allow async_fn_in_trait warning - our traits guarantee Send + Sync
-#![allow(async_fn_in_trait)]
+#![expect(async_fn_in_trait, reason = "async fn in trait (edition / trait-object compatibility)")]
 
 use serde::{Deserialize, Serialize};
 use songbird_http_client::SongbirdHttpClient;
@@ -323,7 +323,7 @@ impl SecurityAdapter {
     /// # Errors
     ///
     /// Returns an error if the client cannot be created.
-    #[allow(clippy::unused_async)] // async retained for API stability
+    #[expect(clippy::unused_async, reason = "unused bindings/imports in this compilation unit")] // async retained for API stability
     pub async fn new(endpoint: String) -> SongbirdResult<Self> {
         // Detect protocol based on endpoint scheme (v3.12.0 - tarpc PRIMARY)
         let protocol = if endpoint.starts_with("tarpc://") {

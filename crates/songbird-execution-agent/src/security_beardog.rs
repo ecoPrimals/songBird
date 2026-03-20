@@ -290,28 +290,37 @@ impl SovereigntyLevel {
     }
 }
 
-/// Security decision from `BearDog` validator
+/// Result of delegating an execution request to the BearDog-side policy engine.
 #[derive(Debug, Clone)]
 pub enum SecurityDecision {
-    /// Request allowed
+    /// Run the command subject to listed restrictions.
     Allow {
+        /// Policy confidence score in `0.0..=1.0`.
         confidence: f64,
+        /// Minimum sovereignty tier satisfied by the decision.
         sovereignty_level: SovereigntyLevel,
+        /// Machine-readable constraint tags applied to the session.
         restrictions: Vec<String>,
     },
-    /// Request denied
+    /// Refuse execution and surface a reason to the client.
     Deny {
+        /// Human-readable denial cause.
         reason: String,
+        /// Severity bucket used for logging and escalation.
         security_level: SecurityLevel,
     },
 }
 
-/// Security level classification
+/// Coarse threat tier used when BearDog classifies a denial or elevated risk.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum SecurityLevel {
+    /// Informational or best-effort checks only.
     Low,
+    /// Standard production hardening.
     Moderate,
+    /// Sensitive workloads; stricter command filtering.
     High,
+    /// Highest tier; blocks ambiguous or high-risk operations.
     Critical,
 }
 
@@ -358,11 +367,14 @@ impl ConservativePolicy {
     }
 }
 
-/// Execution security request
+/// Payload sent to BearDog when validating a remote execution before spawn.
 #[derive(Debug, Clone)]
 pub struct ExecutionSecurityRequest {
+    /// Shell or argv string to assess (never executed locally before approval).
     pub command: String,
+    /// Optional lineage or caller id for audit correlation.
     pub requester_id: Option<String>,
+    /// Minimum sovereignty tier the policy must satisfy.
     pub required_sovereignty: SovereigntyLevel,
 }
 

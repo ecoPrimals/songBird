@@ -8,7 +8,7 @@
 //! # Native Async Traits (Rust 1.75+)
 //! Traits are defined with native async fn for optimal performance
 
-#![allow(async_fn_in_trait)]
+#![expect(async_fn_in_trait, reason = "async fn in trait (edition / trait-object compatibility)")]
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 

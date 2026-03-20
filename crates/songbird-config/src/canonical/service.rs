@@ -5,6 +5,8 @@
 //!
 //! Canonical service configuration types and utilities
 
+#![allow(missing_docs, reason = "service discovery structs align with `songbird-types` docs")]
+
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 // use songbird_config; // FIXED: Circular import removed

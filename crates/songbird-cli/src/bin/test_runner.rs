@@ -97,7 +97,7 @@ impl TestRunner {
     }
 
     /// Print error message
-    #[allow(clippy::unused_self)] // self kept for consistency with other print methods
+    #[expect(clippy::unused_self, reason = "unused bindings/imports in this compilation unit")] // self kept for consistency with other print methods
     fn print_error(&self, message: &str) {
         println!("{}", format!("❌ {message}").red());
     }

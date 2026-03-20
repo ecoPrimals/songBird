@@ -1,24 +1,27 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (c) 2024-2026 ecoPrimals
 
+//! Performance testing utilities: micro-benchmarks, load tests, and printable summaries.
 use songbird_types::SongbirdError;
-/// Performance testing utilities
-///
-/// Provides benchmarking, performance measurement, and load testing
-/// utilities for performance-critical components.
 use songbird_types::errors::SongbirdResult;
 use std::time::{Duration, Instant};
 
-/// Performance measurement context
+/// Accumulates repeated timing samples for a named operation.
 pub struct PerformanceMeasurement {
+    /// Label printed in [`print_summary`](Self::print_summary).
     pub operation_name: String,
+    /// Wall-clock start of the measurement session.
     pub start_time: Instant,
+    /// Per-iteration durations (successful or not).
     pub measurements: Vec<Duration>,
+    /// Smallest observed sample so far.
     pub min_duration: Option<Duration>,
+    /// Largest observed sample so far.
     pub max_duration: Option<Duration>,
 }
 
 impl PerformanceMeasurement {
+    /// Starts an empty collector with the given label.
     #[must_use]
     pub fn new(operation_name: &str) -> Self {
         Self {
@@ -46,10 +49,16 @@ impl PerformanceMeasurement {
             return None;
         }
 
-        #[allow(clippy::cast_possible_truncation)]
+        #[expect(
+            clippy::cast_possible_truncation,
+            reason = "intentional pattern; clippy false positive for this API"
+        )]
         let total_nanos: u64 = self.measurements.iter().map(|d| d.as_nanos() as u64).sum();
 
-        #[allow(clippy::cast_possible_truncation)]
+        #[expect(
+            clippy::cast_possible_truncation,
+            reason = "intentional pattern; clippy false positive for this API"
+        )]
         let len = self.measurements.len() as u64;
         Some(Duration::from_nanos(total_nanos / len))
     }
@@ -64,10 +73,11 @@ impl PerformanceMeasurement {
         let mut sorted = self.measurements.clone();
         sorted.sort();
 
-        #[allow(
+        #[expect(
             clippy::cast_precision_loss,
             clippy::cast_possible_truncation,
-            clippy::cast_sign_loss
+            clippy::cast_sign_loss,
+            reason = "intentional pattern; clippy false positive for this API"
         )]
         let index = ((percentile / 100.0) * sorted.len() as f32) as usize;
         let index = index.min(sorted.len() - 1);
@@ -75,7 +85,7 @@ impl PerformanceMeasurement {
         Some(sorted[index])
     }
 
-    /// Print performance summary
+    /// Prints min/max/avg/p95/p99 to stdout for quick test diagnostics.
     pub fn print_summary(&self) {
         println!("Performance Summary for {}:", self.operation_name);
         println!("  Measurements: {}", self.measurements.len());
@@ -161,14 +171,18 @@ where
     Ok(measurement)
 }
 
-/// Load testing utilities
+/// Configures concurrent virtual users, duration, and ramp for [`run_load_test`](LoadTester::run_load_test).
 pub struct LoadTester {
+    /// Number of concurrent async workers to spawn.
     pub concurrent_users: usize,
+    /// How long each worker keeps issuing the operation.
     pub test_duration: Duration,
+    /// Delay schedule between spawning workers (see [`with_ramp_up`](Self::with_ramp_up)).
     pub ramp_up_duration: Duration,
 }
 
 impl LoadTester {
+    /// Uses a default 10s ramp between user spawns.
     #[must_use]
     pub const fn new(concurrent_users: usize, test_duration: Duration) -> Self {
         Self {
@@ -178,6 +192,7 @@ impl LoadTester {
         }
     }
 
+    /// Overrides the default ramp window used between spawning [`concurrent_users`](LoadTester::concurrent_users).
     #[must_use]
     pub const fn with_ramp_up(mut self, ramp_up_duration: Duration) -> Self {
         self.ramp_up_duration = ramp_up_duration;
@@ -204,7 +219,10 @@ impl LoadTester {
 
         // Calculate ramp-up delay between users
         let ramp_up_delay = if self.concurrent_users > 1 {
-            #[allow(clippy::cast_possible_truncation)]
+            #[expect(
+                clippy::cast_possible_truncation,
+                reason = "intentional pattern; clippy false positive for this API"
+            )]
             let users_minus_one = (self.concurrent_users as u32).saturating_sub(1);
             self.ramp_up_duration / users_minus_one
         } else {
@@ -273,25 +291,36 @@ impl LoadTester {
     }
 }
 
-/// Load test results
+/// Aggregated metrics after [`LoadTester::run_load_test`].
 #[derive(Debug)]
 pub struct LoadTestResults {
+    /// Pass-through name for logging.
     pub test_name: String,
+    /// One row per operation attempt across all users.
     pub samples: Vec<LoadTestSample>,
+    /// Wall-clock span from first spawn to last join.
     pub total_duration: Duration,
+    /// Fraction of samples with [`LoadTestSample::success`] true.
     pub success_rate: f32,
+    /// Mean latency over successful samples.
     pub average_response_time: Duration,
+    /// Successful operations per second over [`total_duration`](Self::total_duration).
     pub throughput_per_second: f32,
 }
 
+/// Single timed attempt inside a load test.
 #[derive(Debug)]
 pub struct LoadTestSample {
+    /// Latency of this attempt.
     pub duration: Duration,
+    /// Whether the underlying operation returned `Ok`.
     pub success: bool,
+    /// Error text when `success` is false.
     pub error: Option<String>,
 }
 
 impl LoadTestResults {
+    /// Builds an empty result container; [`run_load_test`](LoadTester::run_load_test) populates fields.
     #[must_use]
     pub fn new(test_name: &str) -> Self {
         Self {
@@ -311,28 +340,41 @@ impl LoadTestResults {
 
         let successful_samples: Vec<_> = self.samples.iter().filter(|s| s.success).collect();
 
-        #[allow(clippy::cast_precision_loss)]
+        #[expect(
+            clippy::cast_precision_loss,
+            reason = "intentional pattern; clippy false positive for this API"
+        )]
         {
             self.success_rate = successful_samples.len() as f32 / self.samples.len() as f32;
         }
 
         if !successful_samples.is_empty() {
-            #[allow(clippy::cast_possible_truncation)]
+            #[expect(
+                clippy::cast_possible_truncation,
+                reason = "intentional pattern; clippy false positive for this API"
+            )]
             let total_nanos: u64 =
                 successful_samples.iter().map(|s| s.duration.as_nanos() as u64).sum();
 
-            #[allow(clippy::cast_possible_truncation)]
+            #[expect(
+                clippy::cast_possible_truncation,
+                reason = "intentional pattern; clippy false positive for this API"
+            )]
             let len = successful_samples.len() as u64;
             self.average_response_time = Duration::from_nanos(total_nanos / len);
         }
 
         if self.total_duration.as_secs_f32() > 0.0 {
-            #[allow(clippy::cast_precision_loss)]
+            #[expect(
+                clippy::cast_precision_loss,
+                reason = "intentional pattern; clippy false positive for this API"
+            )]
             let throughput = successful_samples.len() as f32 / self.total_duration.as_secs_f32();
             self.throughput_per_second = throughput;
         }
     }
 
+    /// Prints aggregate load-test stats to stdout for debugging failed runs.
     pub fn print_summary(&self) {
         println!("Load Test Results for {}:", self.test_name);
         println!("  Total samples: {}", self.samples.len());

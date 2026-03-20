@@ -2,11 +2,12 @@
 // Copyright (c) 2024-2026 ecoPrimals
 
 // Allow unwrap/expect in tests - idiomatic for test code
-#![allow(
+#![expect(
     clippy::unwrap_used,
     clippy::expect_used,
     clippy::unnecessary_wraps,
-    clippy::field_reassign_with_default
+    clippy::field_reassign_with_default,
+    reason = "test assertions and harness ergonomics"
 )]
 
 //! Tests for Unified Songbird Configuration

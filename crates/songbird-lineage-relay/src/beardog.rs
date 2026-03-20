@@ -485,6 +485,7 @@ impl RelayAuthority for BearDogRelayAuthority {
 // ═══════════════════════════════════════════════════════════════════
 
 #[cfg(any(test, feature = "test-utils"))]
+/// In-memory lineage graph for tests and the `test-utils` feature (replaces BearDog in CI).
 pub struct MockLineageProvider {
     /// Lineage graph: `node_id` → `parent_id`
     lineages: Arc<RwLock<HashMap<String, String>>>,

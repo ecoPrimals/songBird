@@ -18,7 +18,8 @@
     clippy::struct_field_names,
     clippy::missing_errors_doc,
     clippy::used_underscore_binding,
-    clippy::unused_self
+    clippy::unused_self,
+    reason = "async discovery traits: native async traits and adapter ergonomics"
 )]
 
 use crate::traits::discovery::ServiceHealthStatus;
@@ -579,7 +580,10 @@ impl UniversalContainerOrchestration {
     }
 
     /// Discover services from Kubernetes API
-    #[allow(clippy::ref_option)]
+    #[expect(
+        clippy::ref_option,
+        reason = "intentional pattern; clippy false positive for this API"
+    )]
     async fn discover_from_kubernetes_api(
         &self,
         endpoint: &str,

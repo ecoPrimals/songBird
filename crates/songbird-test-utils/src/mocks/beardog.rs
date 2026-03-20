@@ -5,7 +5,7 @@
 //!
 //! Provides HTTP endpoints that simulate `BearDog`'s security, authentication, and deployment features.
 
-#![allow(clippy::unused_async)]
+#![expect(clippy::unused_async, reason = "unused bindings/imports in this compilation unit")]
 
 use super::common::{HealthStatus, MockPrimalServer, MockServerState};
 use serde::{Deserialize, Serialize};
@@ -210,24 +210,31 @@ impl MockPrimalServer for MockBearDog {
     }
 }
 
-#[allow(
+#[expect(
     clippy::unwrap_used,
     clippy::expect_used,
     clippy::unnecessary_wraps,
-    clippy::field_reassign_with_default
+    clippy::field_reassign_with_default,
+    reason = "intentional pattern; clippy false positive for this API"
 )]
 #[cfg(test)]
-#[allow(clippy::uninlined_format_args)]
-#[allow(clippy::float_cmp)]
-#[allow(clippy::useless_vec)]
-#[allow(clippy::unreadable_literal)]
-#[allow(clippy::items_after_statements)]
-#[allow(clippy::cast_precision_loss)]
-#[allow(clippy::cast_possible_truncation)]
-#[allow(clippy::cast_sign_loss)]
+#[expect(clippy::uninlined_format_args, reason = "test assertions and harness ergonomics")]
+#[expect(clippy::float_cmp, reason = "test assertions and harness ergonomics")]
+#[expect(clippy::useless_vec, reason = "test assertions and harness ergonomics")]
+#[expect(clippy::unreadable_literal, reason = "test assertions and harness ergonomics")]
+#[expect(clippy::items_after_statements, reason = "test assertions and harness ergonomics")]
+#[expect(clippy::cast_precision_loss, reason = "test assertions and harness ergonomics")]
+#[expect(
+    clippy::cast_possible_truncation,
+    reason = "intentional pattern; clippy false positive for this API"
+)]
+#[expect(
+    clippy::cast_sign_loss,
+    reason = "intentional pattern; clippy false positive for this API"
+)]
 mod tests {
-    #![allow(clippy::all)]
-    #![allow(unused)]
+    #![expect(clippy::all, reason = "test assertions and harness ergonomics")]
+    #![expect(unused, reason = "test assertions and harness ergonomics")]
 
     use super::*;
     use songbird_types::SongbirdError;

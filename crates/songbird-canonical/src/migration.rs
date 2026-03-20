@@ -9,7 +9,10 @@ use std::path::Path;
 // Note: SongbirdResult moved to songbird-errors to break circular dependency
 // Import it directly when needed: use songbird_types::responses::SongbirdResult;
 /// Migration tool for converting existing code to canonical patterns
-#[allow(clippy::struct_field_names)]
+#[expect(
+    clippy::struct_field_names,
+    reason = "intentional pattern; clippy false positive for this API"
+)]
 #[derive(Debug)]
 pub struct CanonicalMigrator {
     /// Pattern replacements for return types

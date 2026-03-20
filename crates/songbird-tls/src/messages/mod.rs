@@ -26,10 +26,15 @@ pub use server_hello::ServerHello;
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(u8)]
 pub enum ContentType {
+    /// Placeholder for unknown or invalid content types.
     Invalid = 0,
+    /// Legacy change cipher spec framing.
     ChangeCipherSpec = 20,
+    /// Alert protocol payload.
     Alert = 21,
+    /// Handshake subprotocol payload.
     Handshake = 22,
+    /// Application data payload.
     ApplicationData = 23,
 }
 
@@ -55,16 +60,27 @@ impl From<ContentType> for u8 {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(u8)]
 pub enum HandshakeType {
+    /// Client hello flight.
     ClientHello = 1,
+    /// Server hello flight.
     ServerHello = 2,
+    /// New session ticket post-handshake message.
     NewSessionTicket = 4,
+    /// End of 0-RTT early data marker.
     EndOfEarlyData = 5,
+    /// Encrypted extensions in TLS 1.3.
     EncryptedExtensions = 8,
+    /// Certificate payload.
     Certificate = 11,
+    /// Certificate request (optional client auth).
     CertificateRequest = 13,
+    /// Certificate verify (signature over transcript).
     CertificateVerify = 15,
+    /// Finished verify_data message.
     Finished = 20,
+    /// Key update post-handshake message.
     KeyUpdate = 24,
+    /// Synthetic transcript hash message.
     MessageHash = 254,
 }
 

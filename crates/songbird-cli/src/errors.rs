@@ -3,6 +3,8 @@
 
 //! CLI-specific error handling - Modernized to use canonical error system
 
+#![allow(missing_docs, reason = "CLI error variants mirror user-facing messages")]
+
 use songbird_types::SongbirdError;
 
 /// CLI-specific error types - Modernized to integrate with `SongbirdError`

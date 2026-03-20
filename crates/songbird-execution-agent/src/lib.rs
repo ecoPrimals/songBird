@@ -13,6 +13,7 @@
 //! - Output capture (stdout/stderr)
 //! - Security and resource limits
 #![forbid(unsafe_code)]
+#![warn(missing_docs)]
 
 pub mod executor;
 pub mod job_manager;
@@ -57,6 +58,7 @@ pub struct AgentConfig {
     pub resource_limits: ResourceLimits,
 }
 
+/// Caps memory, CPU time, and default wall-clock timeout applied by [`CommandExecutor`] to each job.
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct ResourceLimits {
     /// Maximum memory per job (MB)

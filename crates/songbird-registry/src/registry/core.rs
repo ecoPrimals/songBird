@@ -8,7 +8,7 @@
 //! # Native Async Traits (Rust 1.75+)
 //! Uses native async fn in traits for zero-cost registry operations
 
-#![allow(async_fn_in_trait)]
+#![allow(async_fn_in_trait, reason = "async fn in trait for PluginRegistry trait objects")]
 
 use songbird_types::errors::{SongbirdError, SongbirdResult};
 use std::collections::HashMap;

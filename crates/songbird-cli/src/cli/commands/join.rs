@@ -95,7 +95,7 @@ struct DiscoveredNetwork  {name: String,
     endpoints: Vec<String>,
 }
 /// Display discovered networks for user selection
-#[allow(dead_code)]
+#[expect(dead_code, reason = "dead code retained intentionally (reserved or API surface)")]
 fn display_discovered_networks(networks: &[DiscoveredNetwork]) {
     println!("📋 Discovered networks:");
 
@@ -119,7 +119,7 @@ fn display_discovered_networks(networks: &[DiscoveredNetwork]) {
     }
 }
 /// Auto-select best network based on criteria
-#[allow(dead_code)]
+#[expect(dead_code, reason = "dead code retained intentionally (reserved or API surface)")]
 fn auto_select_best_network(networks: &[DiscoveredNetwork]) -> &DiscoveredNetwork {
     networks
         .iter()

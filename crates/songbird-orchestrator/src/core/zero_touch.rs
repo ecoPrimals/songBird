@@ -8,3 +8,18 @@
 /// Zero-touch deployment manager
 #[derive(Debug)]
 pub struct ZeroTouchDeployer;
+
+#[cfg(test)]
+mod tests {
+    #![expect(clippy::unwrap_used, reason = "test assertions")]
+    #![expect(clippy::expect_used, reason = "test assertions")]
+
+    use super::ZeroTouchDeployer;
+
+    #[test]
+    fn zero_touch_deployer_debug() {
+        let z = ZeroTouchDeployer;
+        let s = format!("{z:?}");
+        assert!(s.contains("ZeroTouchDeployer"));
+    }
+}

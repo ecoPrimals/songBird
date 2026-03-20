@@ -10,10 +10,13 @@ description = "Safe façade for std::env mutation (Rust 2024 unsafe process-envi
 keywords = ["environment", "process", "unsafe-facade"]
 categories = ["os"]
 
+[dependencies]
+parking_lot = { workspace = true }
+
 # Cannot use lints.workspace = true because workspace forbids unsafe_code.
-# Mirror workspace lint settings but allow unsafe_code for this façade crate.
+# Mirror workspace lint settings; deny unsafe by default, allow only on the two façade fns in lib.rs.
 [lints.rust]
-unsafe_code = "allow"
+unsafe_code = "deny"
 unused_must_use = "warn"
 
 [lints.clippy]

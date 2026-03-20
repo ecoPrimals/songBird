@@ -6,6 +6,8 @@
 //! Core network structures including the main `CanonicalNetworkConfig`,
 //! `PeerType`, and fundamental network settings.
 
+#![allow(missing_docs, reason = "core network structs align with `NetworkConfig` documentation")]
+
 use serde::{Deserialize, Serialize};
 use songbird_types::{SafeEnv, SongbirdError, SongbirdResult};
 use std::net::{IpAddr, SocketAddr};

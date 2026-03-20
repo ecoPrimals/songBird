@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (c) 2024-2026 ecoPrimals
 
-#![allow(
+#![expect(
     clippy::unwrap_used,
     clippy::expect_used,
     clippy::unnecessary_wraps,
@@ -31,7 +31,8 @@
     clippy::cast_possible_truncation,
     clippy::cast_sign_loss,
     clippy::cast_precision_loss,
-    clippy::cast_possible_wrap
+    clippy::cast_possible_wrap,
+    reason = "test assertions and harness ergonomics"
 )]
 
 //! Comprehensive Discovery Mechanisms Tests
@@ -45,12 +46,12 @@
 //! - DNS-based discovery
 //! - Peer-to-peer discovery
 
-#![allow(clippy::assertions_on_constants)]
-#![allow(clippy::useless_vec)]
-#![allow(clippy::needless_collect)]
-#![allow(clippy::unwrap_used)]
-#![allow(clippy::items_after_statements)]
-#![allow(clippy::cast_precision_loss)]
+#![expect(clippy::assertions_on_constants, reason = "test assertions and harness ergonomics")]
+#![expect(clippy::useless_vec, reason = "test assertions and harness ergonomics")]
+#![expect(clippy::needless_collect, reason = "test assertions and harness ergonomics")]
+#![expect(clippy::unwrap_used, reason = "test assertions and harness ergonomics")]
+#![expect(clippy::items_after_statements, reason = "test assertions and harness ergonomics")]
+#![expect(clippy::cast_precision_loss, reason = "test assertions and harness ergonomics")]
 
 use chrono::Utc;
 use songbird_discovery::traits::ServiceQuery;

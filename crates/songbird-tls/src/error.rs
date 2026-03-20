@@ -8,7 +8,7 @@
 
 use std::fmt;
 
-/// Result type for TLS operations
+/// Standard result type for TLS operations in this crate.
 pub type Result<T> = std::result::Result<T, TlsError>;
 
 /// TLS error types
@@ -43,7 +43,9 @@ pub enum TlsError {
 
     /// Buffer too small
     BufferTooSmall {
+        /// Minimum bytes required for the operation.
         required: usize,
+        /// Bytes actually available in the buffer.
         available: usize,
     },
 
@@ -52,12 +54,15 @@ pub enum TlsError {
 
     /// Record too large (> 16KB)
     RecordTooLarge {
+        /// Observed record size in bytes.
         size: usize,
     },
 
     /// Unexpected message type
     UnexpectedMessage {
+        /// Message type the state machine expected.
         expected: String,
+        /// Message type actually received.
         got: String,
     },
 }
@@ -113,8 +118,9 @@ impl From<anyhow::Error> for TlsError {
     }
 }
 
-/// Map TLS errors to alert codes (RFC 8446 Section 6)
+/// Map TLS errors to alert codes (RFC 8446 Section 6).
 impl TlsError {
+    /// Map this error to a TLS alert description byte for wire encoding.
     #[must_use]
     pub const fn to_alert_code(&self) -> u8 {
         match self {
@@ -134,6 +140,7 @@ impl TlsError {
         }
     }
 
+    /// Report whether this error should terminate the connection (TLS 1.3 treats all as fatal).
     #[must_use]
     pub const fn is_fatal(&self) -> bool {
         // All errors are fatal in TLS 1.3 (no warnings)

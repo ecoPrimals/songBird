@@ -2,8 +2,12 @@
 // Copyright (c) 2024-2026 ecoPrimals
 
 #![cfg(feature = "tests-incomplete")]
-#![allow(unexpected_cfgs)]
-#![allow(clippy::unwrap_used, clippy::expect_used)]
+#![expect(unexpected_cfgs, reason = "test assertions and harness ergonomics")]
+#![expect(
+    clippy::unwrap_used,
+    clippy::expect_used,
+    reason = "test assertions and harness ergonomics"
+)]
 
 //! Capability Discovery Comprehensive Tests (Stubbed)
 //!

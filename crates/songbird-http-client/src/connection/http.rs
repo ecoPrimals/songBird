@@ -145,7 +145,10 @@ mod tests {
     use super::*;
 
     #[test]
-    #[allow(clippy::no_effect_underscore_binding)] // Compilation test only
+    #[expect(
+        clippy::no_effect_underscore_binding,
+        reason = "test assertions and harness ergonomics"
+    )] // Compilation test only
     fn test_http_connection_exists() {
         // Module compilation test - ensure HttpConnection type exists
         let _conn = HttpConnection;

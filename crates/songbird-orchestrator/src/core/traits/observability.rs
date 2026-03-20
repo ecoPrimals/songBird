@@ -186,9 +186,9 @@ pub struct HistogramSummary {
 }
 
 /// Default observability implementation
-pub struct DefaultObservability  {#[allow(dead_code)]
+pub struct DefaultObservability  {#[expect(dead_code, reason = "dead code retained intentionally (reserved or API surface)")]
     service_name: String,
-    #[allow(dead_code)]
+    #[expect(dead_code, reason = "dead code retained intentionally (reserved or API surface)")]
     spans: Vec<Span>,
     metrics: MetricsSummary},
  )

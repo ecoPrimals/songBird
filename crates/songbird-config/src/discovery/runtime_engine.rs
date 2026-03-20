@@ -7,6 +7,8 @@
 //! based purely on capabilities. No service knows the names of others;
 //! everything is discovered through capability matching.
 
+#![allow(missing_docs, reason = "discovery backend enum covers multiple transports")]
+
 use std::collections::HashMap;
 use std::net::SocketAddr;
 use std::sync::Arc;

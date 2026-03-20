@@ -57,6 +57,7 @@
 //! - [RFC 8446 - TLS 1.3](https://datatracker.ietf.org/doc/html/rfc8446)
 //! - [The Illustrated TLS 1.3 Connection](https://tls13.xargs.org/)
 #![forbid(unsafe_code)]
+#![warn(missing_docs)]
 
 // Core modules
 pub mod cert;
@@ -94,27 +95,41 @@ pub const MAX_RECORD_SIZE: usize = 16384;
 /// Maximum handshake message size (256 KB)
 pub const MAX_HANDSHAKE_SIZE: usize = 262_144;
 
-// Cipher suite constants
+/// ChaCha20-Poly1305 with SHA-256 (`TLS_CHACHA20_POLY1305_SHA256`, RFC 8446).
 pub const TLS_CHACHA20_POLY1305_SHA256: u16 = 0x1303;
 
-// Content types
+/// Reserved TLS record content type (invalid on the wire).
 pub const CONTENT_TYPE_INVALID: u8 = 0;
+/// ChangeCipherSpec content type (compatibility; TLS 1.3 uses other types for handshakes).
 pub const CONTENT_TYPE_CHANGE_CIPHER_SPEC: u8 = 20;
+/// Alert protocol records.
 pub const CONTENT_TYPE_ALERT: u8 = 21;
+/// Handshake message records.
 pub const CONTENT_TYPE_HANDSHAKE: u8 = 22;
+/// Application data records (post-handshake payload).
 pub const CONTENT_TYPE_APPLICATION_DATA: u8 = 23;
 
-// Handshake message types
+/// `client_hello` handshake payload type.
 pub const HANDSHAKE_TYPE_CLIENT_HELLO: u8 = 1;
+/// `server_hello` handshake payload type.
 pub const HANDSHAKE_TYPE_SERVER_HELLO: u8 = 2;
+/// `new_session_ticket` handshake payload type.
 pub const HANDSHAKE_TYPE_NEW_SESSION_TICKET: u8 = 4;
+/// `end_of_early_data` handshake payload type.
 pub const HANDSHAKE_TYPE_END_OF_EARLY_DATA: u8 = 5;
+/// `encrypted_extensions` handshake payload type.
 pub const HANDSHAKE_TYPE_ENCRYPTED_EXTENSIONS: u8 = 8;
+/// `certificate` handshake payload type.
 pub const HANDSHAKE_TYPE_CERTIFICATE: u8 = 11;
+/// `certificate_request` handshake payload type.
 pub const HANDSHAKE_TYPE_CERTIFICATE_REQUEST: u8 = 13;
+/// `certificate_verify` handshake payload type.
 pub const HANDSHAKE_TYPE_CERTIFICATE_VERIFY: u8 = 15;
+/// `finished` handshake payload type.
 pub const HANDSHAKE_TYPE_FINISHED: u8 = 20;
+/// `key_update` handshake payload type.
 pub const HANDSHAKE_TYPE_KEY_UPDATE: u8 = 24;
+/// Synthetic `message_hash` handshake payload type (used in some transcript constructions).
 pub const HANDSHAKE_TYPE_MESSAGE_HASH: u8 = 254;
 
 #[cfg(test)]

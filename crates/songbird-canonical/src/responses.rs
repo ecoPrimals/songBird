@@ -84,7 +84,10 @@ impl<T> SongbirdResult<T> {
 
     /// Mark the end of processing (for performance tracking)
     #[must_use]
-    #[allow(clippy::cast_possible_truncation)]
+    #[expect(
+        clippy::cast_possible_truncation,
+        reason = "intentional pattern; clippy false positive for this API"
+    )]
     pub fn finish_processing(mut self, start_time: Instant) -> Self {
         self.performance.processing_time_ms =
             start_time.elapsed().as_millis().min(u128::from(u64::MAX)) as u64;

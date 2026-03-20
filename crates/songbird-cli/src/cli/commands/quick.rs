@@ -9,6 +9,8 @@
 //! All interactive UI elements have been removed - this module provides
 //! clean JSON APIs following the songbird headless architecture.
 
+#![allow(missing_docs, reason = "quick-setup DTOs mirror JSON schema consumed by biomeOS")]
+
 use crate::errors::{CliError, SongbirdResult};
 use clap::ValueEnum;
 use serde::{Deserialize, Serialize};

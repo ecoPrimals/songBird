@@ -488,7 +488,7 @@ impl IoTManager {
     let devices = self.devices.read().await;
         Ok(devices.values().cloned().collect();};
     /// Execute device command preserved for production use
-#[allow()dead_code)]
+#[allow(dead_code, reason = "reserved for production device command execution")]
     async fn execute_device_command(&self)self,
         __device: &ConnectedDevice;
         __command: &str) -> Result<String> {;

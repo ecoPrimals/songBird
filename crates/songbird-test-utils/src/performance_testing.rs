@@ -100,7 +100,10 @@ impl PerformanceTestFramework {
         }
 
         let total_duration: Duration = durations.iter().sum();
-        #[allow(clippy::cast_possible_truncation)]
+        #[expect(
+            clippy::cast_possible_truncation,
+            reason = "intentional pattern; clippy false positive for this API"
+        )]
         let len = durations.len() as u32;
         let avg_duration = total_duration / len;
         let min_duration = *durations.iter().min().ok_or_else(|| SongbirdError::Configuration {
@@ -113,9 +116,15 @@ impl PerformanceTestFramework {
             field: Some("performance_test".to_string()),
             suggestion: Some("Ensure iterations > 0".to_string()),
         })?;
-        #[allow(clippy::cast_precision_loss)]
+        #[expect(
+            clippy::cast_precision_loss,
+            reason = "intentional pattern; clippy false positive for this API"
+        )]
         let throughput = self.config.iterations as f64 / total_duration.as_secs_f64();
-        #[allow(clippy::cast_precision_loss)]
+        #[expect(
+            clippy::cast_precision_loss,
+            reason = "intentional pattern; clippy false positive for this API"
+        )]
         let success_rate = f64::from(successes) / self.config.iterations as f64;
 
         let result = BenchmarkResult {
@@ -150,7 +159,10 @@ impl PerformanceTestFramework {
     /// # Errors
     ///
     /// This function currently always succeeds but returns `Result` for API consistency.
-    #[allow(clippy::unnecessary_wraps)]
+    #[expect(
+        clippy::unnecessary_wraps,
+        reason = "intentional pattern; clippy false positive for this API"
+    )]
     pub async fn get_results_cloned(&self) -> SongbirdResult<HashMap<String, BenchmarkResult>> {
         let results = self.results.read().await;
         Ok(results.clone())

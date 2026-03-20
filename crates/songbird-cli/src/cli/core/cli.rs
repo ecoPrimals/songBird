@@ -5,6 +5,8 @@
 //!
 //! Main CLI application structure and execution logic.
 
+#![allow(missing_docs, reason = "`run_cli` is internal wiring for the clap entrypoint")]
+
 use crate::cli::commands::{self, Commands};
 use songbird_types::{SongbirdError, SongbirdResult};
 

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (c) 2024-2026 ecoPrimals
 
-#![allow(
+#![expect(
     clippy::unwrap_used,
     clippy::expect_used,
     clippy::unnecessary_wraps,
@@ -21,7 +21,8 @@
     clippy::const_is_empty,
     clippy::duplicated_attributes,
     deprecated,
-    clippy::unnecessary_literal_unwrap
+    clippy::unnecessary_literal_unwrap,
+    reason = "test assertions and harness ergonomics"
 )]
 
 //! Tests for PathConfig and ConfigProvider systems
@@ -165,7 +166,7 @@ mod config_providers_tests {
     }
 }
 
-#[allow(deprecated)]
+#[expect(deprecated, reason = "test assertions and harness ergonomics")]
 mod universal_primals_tests {
     use super::ENV_LOCK;
     use songbird_config::config::universal_primals::{AutoDiscoveryConfig, PrimalRegistry};

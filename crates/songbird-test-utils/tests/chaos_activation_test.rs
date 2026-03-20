@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (c) 2024-2026 ecoPrimals
 
-#![allow(
+#![expect(
     clippy::unwrap_used,
     clippy::expect_used,
     clippy::unnecessary_wraps,
@@ -24,14 +24,19 @@
     dead_code,
     clippy::unnecessary_literal_unwrap,
     clippy::needless_pass_by_value,
-    clippy::must_use_candidate
+    clippy::must_use_candidate,
+    reason = "test assertions and harness ergonomics"
 )]
 // Allow unwrap/expect in tests - idiomatic for test code
-#![allow(clippy::unwrap_used, clippy::expect_used)]
+#![expect(
+    clippy::unwrap_used,
+    clippy::expect_used,
+    reason = "test assertions and harness ergonomics"
+)]
 
 #[cfg(test)]
-#[allow(clippy::all)]
-#[allow(unused)]
+#[expect(clippy::all, reason = "test assertions and harness ergonomics")]
+#[expect(unused, reason = "test assertions and harness ergonomics")]
 mod chaos_activation_tests {
     use songbird_test_utils::chaos_engineering::{
         ChaosEngineeringManager, ExperimentConfig, ExperimentStatus, ExperimentType,

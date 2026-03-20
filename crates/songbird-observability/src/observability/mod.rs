@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (c) 2024-2026 ecoPrimals
 
-#![allow(clippy::unused_async)]
+#![expect(clippy::unused_async, reason = "unused bindings/imports in this compilation unit")]
 
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
@@ -13,55 +13,81 @@ use tracing::{debug, info};
 use songbird_types::SongbirdResult;
 type Result<T> = SongbirdResult<T>;
 
+/// Dashboard-oriented views and helpers (UI-facing aggregates).
 pub mod dashboard;
+/// Service- and node-level [`crate::observability::health::HealthMonitor`] used by [`ObservabilityManager`].
 pub mod health;
+/// [`crate::observability::metrics::MetricsCollector`] and [`crate::observability::metrics::MetricsSnapshot`] for system and app gauges.
 pub mod metrics;
 
-/// System observability metrics
+/// Point-in-time resource snapshot for a single host or process.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SystemMetrics {
+    /// CPU utilization fraction (0.0–1.0) over the last collection window.
     pub cpu_usage: f64,
+    /// Resident memory utilization fraction (0.0–1.0).
     pub memory_usage: f64,
+    /// Primary volume utilization fraction (0.0–1.0).
     pub disk_usage: f64,
+    /// Byte and packet counters since the last reset or boot.
     pub network_io: NetworkIO,
+    /// When the sample was taken (UTC).
     pub timestamp: DateTime<Utc>,
 }
 
-/// Network I/O metrics
+/// Cumulative network counters paired with [`SystemMetrics`].
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct NetworkIO {
+    /// Inbound bytes observed in the window.
     pub bytes_in: u64,
+    /// Outbound bytes observed in the window.
     pub bytes_out: u64,
+    /// Inbound packets observed in the window.
     pub packets_in: u64,
+    /// Outbound packets observed in the window.
     pub packets_out: u64,
 }
 
-/// Service health status
+/// Serialized health status for a single service (four-way, includes unknown).
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum HealthStatus {
+    /// All checks green for this service.
     Healthy,
+    /// Some checks yellow; service may still be partially usable.
     Degraded,
+    /// Hard failure for this service.
     Unhealthy,
+    /// No data yet or probe has not run.
     Unknown,
 }
 
-/// Service health information
+/// Last-known probe result for a logical service id.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ServiceHealth {
+    /// Stable identifier (often matches discovery or orchestration id).
     pub service_id: String,
+    /// Latest [`HealthStatus`] from the last check.
     pub status: HealthStatus,
+    /// When the last probe completed (UTC).
     pub last_check: DateTime<Utc>,
+    /// Probe latency in milliseconds.
     pub response_time_ms: u64,
+    /// Optional error string when status is not [`HealthStatus::Healthy`].
     pub error_message: Option<String>,
 }
 
-/// Cluster status information
+/// Cluster-wide rollup for node and service counts.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ClusterStatus {
+    /// Total cluster members seen by the manager.
     pub total_nodes: usize,
+    /// Members reporting healthy last heartbeat.
     pub healthy_nodes: usize,
+    /// Registered logical services across the cluster.
     pub total_services: usize,
+    /// Services currently running (not drained/stopped).
     pub running_services: usize,
+    /// When this rollup was last refreshed (UTC).
     pub last_updated: DateTime<Utc>,
 }
 
@@ -72,6 +98,7 @@ impl Default for ClusterStatus {
 }
 
 impl ClusterStatus {
+    /// Returns zeroed counts with [`Utc::now`] as [`last_updated`](ClusterStatus::last_updated).
     #[must_use]
     pub fn new() -> Self {
         Self {
@@ -83,75 +110,108 @@ impl ClusterStatus {
         }
     }
 
+    /// Returns [`ClusterStatus::total_nodes`].
     #[must_use]
     pub const fn total_nodes(&self) -> usize {
         self.total_nodes
     }
 
+    /// Returns [`ClusterStatus::running_services`].
     #[must_use]
     pub const fn running_services(&self) -> usize {
         self.running_services
     }
 
+    /// Returns [`ClusterStatus::total_services`].
     #[must_use]
     pub const fn total_services(&self) -> usize {
         self.total_services
     }
 }
 
-/// Cluster health status
+/// High-level cluster posture derived from node and service rollups.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum ClusterHealthStatus {
+    /// Majority of nodes and services within SLO.
     Healthy,
+    /// Some nodes or services failing; partial outage.
     Degraded,
+    /// Large-scale failure or quorum loss.
     Critical,
 }
 
-/// Node health information
+/// Per-node resource and heartbeat for topology views.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct NodeHealth {
+    /// Stable node id (matches federation or orchestrator id).
     pub node_id: String,
+    /// Last reported [`HealthStatus`] for workloads on this node.
     pub status: HealthStatus,
+    /// CPU utilization fraction (0.0–1.0).
     pub cpu_usage: f64,
+    /// Memory utilization fraction (0.0–1.0).
     pub memory_usage: f64,
+    /// Disk utilization fraction (0.0–1.0).
     pub disk_usage: f64,
+    /// Last successful heartbeat from the node (UTC).
     pub last_heartbeat: DateTime<Utc>,
 }
 
-/// Observability event types
+/// Fan-out event for [`ObservabilityManager::subscribe_to_events`] subscribers.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum ObservabilityEvent {
+    /// A metrics scrape finished and produced [`SystemMetrics`].
     MetricsCollected {
+        /// Collected host metrics.
         metrics: SystemMetrics,
+        /// When collection started or completed (UTC).
         timestamp: DateTime<Utc>,
+        /// Wall-clock duration of the scrape in milliseconds.
         duration_ms: u64,
     },
+    /// A single service health check completed.
     HealthCheckCompleted {
+        /// Target service id.
         service_id: String,
+        /// Resulting [`HealthStatus`].
         status: HealthStatus,
+        /// Probe latency in milliseconds.
         response_time_ms: u64,
+        /// Event time (UTC).
         timestamp: DateTime<Utc>,
     },
+    /// Operator-facing alert (e.g. threshold breach).
     SystemAlert {
+        /// Human-readable alert text.
         message: String,
+        /// Severity label (e.g. `"warning"` / `"critical"`).
         severity: String,
+        /// When the alert was raised (UTC).
         timestamp: DateTime<Utc>,
     },
+    /// Emitted when a service transitions between [`HealthStatus`] values.
     ServiceStatusChanged {
+        /// Target service id.
         service_id: String,
+        /// Previous status.
         old_status: HealthStatus,
+        /// New status after the transition.
         new_status: HealthStatus,
+        /// When the transition was observed (UTC).
         timestamp: DateTime<Utc>,
     },
 }
 
-/// Observability manager
+/// Coordinates in-memory health, cluster rollups, and event subscribers for the observability stack.
 #[derive(Debug)]
 pub struct ObservabilityManager {
-    #[allow(dead_code)]
+    #[expect(dead_code, reason = "dead code retained intentionally (reserved or API surface)")]
     metrics_store: Arc<RwLock<HashMap<String, SystemMetrics>>>,
+    /// Latest [`ServiceHealth`] per service id.
     health_store: Arc<RwLock<HashMap<String, ServiceHealth>>>,
+    /// Latest [`ClusterStatus`] snapshot.
     cluster_status: Arc<RwLock<ClusterStatus>>,
+    /// Channels that receive [`ObservabilityEvent`] copies.
     event_subscribers: Arc<RwLock<Vec<tokio::sync::mpsc::UnboundedSender<ObservabilityEvent>>>>,
 }
 

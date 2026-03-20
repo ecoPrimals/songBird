@@ -73,7 +73,7 @@ impl Default for TrustTimeouts {
 /// ## Integration Status
 /// - security provider v0.9.5 is available at ../security provider
 /// - Using capability-based discovery for endpoint resolution
-/// - Falls back to mock verification in development mode
+/// - Without an endpoint, callers should treat verification as unavailable (use capability discovery)
 pub struct BearDogClient {
     /// Optional security provider endpoint (discovered at runtime)
     endpoint: Option<String>,
@@ -105,7 +105,7 @@ impl BearDogClient {
             tracing::info!("Security provider configured: {}", url);
         } else {
             tracing::debug!(
-                "Security client created without endpoint (will use mock verification)"
+                "Security client created without endpoint (development-only local checks if used)"
             );
         }
 
@@ -375,54 +375,32 @@ impl TrustEscalationManager {
         session_id: &str,
         hardware_proof: HardwareAttestation,
     ) -> Result<()> {
-        let security_client = self
-            .security_client
-            .as_ref()
-            .ok_or_else(|| anyhow!("security provider integration not configured"))?;
+        self.security_client.as_ref().ok_or_else(|| {
+            anyhow!(
+                "hardware attestation requires a configured security provider: set SONGBIRD_SECURITY_PROVIDER or SECURITY_ENDPOINT, or discover the `security` capability (see songbird-config `find_primals_with_capability`)"
+            )
+        })?;
 
-        // Verify hardware key via security provider
-        // Verify hardware attestation (if security provider available)
-        if let Some(ref security) = self.security_client {
-            // FUTURE (Phase 2): Hardware attestation verification via security provider
-            // Current: Trust escalation works without hardware verification (software-based trust)
-            // Future: TPM/hardware key verification for admin-level trust escalation
-            // Requires: security provider hardware.verify_attestation() RPC method
-            tracing::info!(
-                "Hardware verification via security provider (future: implement actual HTTP call)"
-            );
+        {
+            let store = self.trust_store.read().await;
+            let relationship =
+                store.get(session_id).ok_or_else(|| anyhow!("Session not found: {session_id}"))?;
+            if relationship.trust_level < TrustLevel::IdentityVerified {
+                return Err(anyhow!(
+                    "Cannot escalate to hardware-verified from {:?}",
+                    relationship.trust_level
+                ));
+            }
         }
 
-        let mut store = self.trust_store.write().await;
-        let relationship =
-            store.get_mut(session_id).ok_or_else(|| anyhow!("Session not found: {session_id}"))?;
+        tracing::debug!(
+            hardware_key_len = hardware_proof.hardware_key.len(),
+            "hardware attestation received (verification not yet wired to SecurityCapabilityClient)"
+        );
 
-        // Must be at least identity-verified to escalate to hardware-verified
-        if relationship.trust_level < TrustLevel::IdentityVerified {
-            return Err(anyhow!(
-                "Cannot escalate to hardware-verified from {:?}",
-                relationship.trust_level
-            ));
-        }
-
-        // Escalate trust level
-        relationship.trust_level = TrustLevel::HardwareVerified;
-        relationship.hardware_proof = Some(hardware_proof.clone());
-        relationship.last_verified_at = SystemTime::now();
-
-        // Hardware-verified sessions never expire (unless explicitly revoked)
-        if self.trust_timeouts.hardware > 0 {
-            relationship.expires_at =
-                SystemTime::now() + std::time::Duration::from_secs(self.trust_timeouts.hardware);
-        } else {
-            // Never expire (set to far future)
-            relationship.expires_at =
-                SystemTime::now() + std::time::Duration::from_secs(u64::MAX / 2);
-        }
-
-        info!("🔒 Trust escalated to Hardware-Verified (Level 4 - ADMIN): {}", session_id);
-        info!("   Hardware Key: {}", hardware_proof.hardware_key);
-
-        Ok(())
+        Err(anyhow!(
+            "hardware attestation verification is not implemented yet (expected: BTSP / security provider verify_attestation via SecurityCapabilityClient); configure SONGBIRD_SECURITY_PROVIDER when the provider exposes this RPC"
+        ))
     }
 
     /// Check if a session can perform an operation requiring a minimum trust level

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (c) 2024-2026 ecoPrimals
 
-#![allow(
+#![expect(
     clippy::unwrap_used,
     clippy::expect_used,
     clippy::unnecessary_wraps,
@@ -31,7 +31,8 @@
     clippy::cast_possible_truncation,
     clippy::cast_sign_loss,
     clippy::cast_precision_loss,
-    clippy::cast_possible_wrap
+    clippy::cast_possible_wrap,
+    reason = "test assertions and harness ergonomics"
 )]
 
 //! Comprehensive Sovereignty Validation Tests
@@ -39,10 +40,14 @@
 //! This test suite provides extensive coverage for sovereignty validation logic,
 //! compliance checking, risk assessment, and path validation to reach 60% coverage.
 
-#![allow(clippy::float_cmp)]
-#![allow(clippy::uninlined_format_args)]
+#![expect(clippy::float_cmp, reason = "test assertions and harness ergonomics")]
+#![expect(clippy::uninlined_format_args, reason = "test assertions and harness ergonomics")]
 // Allow unwrap/expect in tests - idiomatic for test code
-#![allow(clippy::unwrap_used, clippy::expect_used)]
+#![expect(
+    clippy::unwrap_used,
+    clippy::expect_used,
+    reason = "test assertions and harness ergonomics"
+)]
 
 use songbird_types::SongbirdResult;
 use songbird_universal::sovereignty::types::*;

@@ -6,6 +6,8 @@
 //! Command-line interface for the Songbird Orchestrator
 //! Makes distributed computing as simple as `songbird init`
 
+#![allow(missing_docs, reason = "submodules self-document via clap attributes and help text")]
+
 pub mod commands;
 pub mod config;
 pub mod core;

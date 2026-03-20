@@ -207,7 +207,7 @@ pub async fn run_server(args: ServerArgs) -> Result<()> {
         () = async {
             #[cfg(unix)]
             {
-                #[allow(clippy::expect_used)] // signal handler setup is infallible in practice
+                #[expect(clippy::expect_used, reason = "intentional pattern; clippy false positive for this API")] // signal handler setup is infallible in practice
                 let mut sigterm = tokio::signal::unix::signal(tokio::signal::unix::SignalKind::terminate())
                     .expect("Failed to setup SIGTERM handler");
                 sigterm.recv().await;

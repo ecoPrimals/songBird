@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (c) 2024-2026 ecoPrimals
 
-#![allow(
+#![expect(
     clippy::unwrap_used,
     clippy::expect_used,
     clippy::unnecessary_wraps,
@@ -25,7 +25,8 @@
     clippy::unnecessary_literal_unwrap,
     clippy::needless_pass_by_value,
     clippy::must_use_candidate,
-    clippy::cast_possible_truncation
+    clippy::cast_possible_truncation,
+    reason = "test assertions and harness ergonomics"
 )]
 
 //! Comprehensive tests for service command

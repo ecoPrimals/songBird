@@ -16,7 +16,7 @@ use tracing::{debug, info, warn};
 use crate::beardog::{BearDogProvider, BearDogProviderFactory};
 use crate::discovery_mode::DiscoveryMode;
 use crate::rendezvous::RendezvousClient;
-use crate::state::{FederationState, NodeRegistration};
+use crate::state::{FederationState, FederationStatus, NodeRegistration};
 
 /// Federation coordinator
 #[derive(Clone)]
@@ -227,20 +227,60 @@ impl FederationCoordinator {
         info!("✅ Joined federation successfully");
         debug!("Federation status: {:?}", federation_status);
 
-        // Extract and register peer nodes
+        self.ingest_peers_from_join_response(&federation_status, registration).await;
+
+        Ok(())
+    }
+
+    /// Register peers returned by the bootstrap join response (`FederationStatus`, `nodes`, or `peers`).
+    async fn ingest_peers_from_join_response(
+        &self,
+        federation_status: &serde_json::Value,
+        registration: &NodeRegistration,
+    ) {
+        if let Ok(status) = serde_json::from_value::<FederationStatus>(federation_status.clone()) {
+            for node in status.nodes {
+                if node.node_id != registration.node_id {
+                    debug!("📍 Discovered peer node: {}", node.node_name);
+                    self.state.register_node(node).await;
+                }
+            }
+            return;
+        }
+
         if let Some(nodes) = federation_status.get("nodes").and_then(|n| n.as_array()) {
             for node_value in nodes {
-                if let Ok(node) = serde_json::from_value::<NodeRegistration>(node_value.clone()) {
-                    // Don't register ourselves again
-                    if node.node_id != registration.node_id {
+                match serde_json::from_value::<NodeRegistration>(node_value.clone()) {
+                    Ok(node) if node.node_id != registration.node_id => {
                         debug!("📍 Discovered peer node: {}", node.node_name);
                         self.state.register_node(node).await;
+                    }
+                    Ok(_) => {}
+                    Err(e) => {
+                        warn!(
+                            "Join response `nodes` entry could not be parsed as NodeRegistration: {e}"
+                        );
                     }
                 }
             }
         }
 
-        Ok(())
+        if let Some(peers) = federation_status.get("peers").and_then(|p| p.as_array()) {
+            for peer_value in peers {
+                match serde_json::from_value::<NodeRegistration>(peer_value.clone()) {
+                    Ok(node) if node.node_id != registration.node_id => {
+                        debug!("📍 Discovered peer (peers[]): {}", node.node_name);
+                        self.state.register_node(node).await;
+                    }
+                    Ok(_) => {}
+                    Err(e) => {
+                        warn!(
+                            "Join response `peers` entry could not be parsed as NodeRegistration: {e}"
+                        );
+                    }
+                }
+            }
+        }
     }
 
     /// Start heartbeat loop

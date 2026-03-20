@@ -3,6 +3,8 @@
 
 //! Load balancing strategies and configuration types
 
+#![allow(missing_docs, reason = "strategy enum variants map to well-known balancer modes")]
+
 use serde::{Deserialize, Serialize};
 
 /// **CANONICAL**: Load balancing strategy

@@ -148,10 +148,6 @@ impl RuntimeDiscoveryEngine {
     ///
     /// Uses the mdns-sd crate for zero-configuration discovery on local networks.
     /// Queries for services advertising the requested capability via TXT records.
-    #[expect(
-        clippy::unused_async,
-        reason = "async required for trait consistency with other discovery paths"
-    )]
     async fn discover_mdns(&self, capability: &str) -> SongbirdResult<DiscoveredService> {
         use tracing::debug;
 

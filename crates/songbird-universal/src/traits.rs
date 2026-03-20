@@ -37,3 +37,23 @@ pub trait UniversalAdapter: Provider {
     async fn register_provider(&mut self, provider: Box<dyn ServiceProvider>)
     -> SongbirdResult<()>;
 }
+
+#[cfg(test)]
+mod tests {
+    #![expect(clippy::unwrap_used, reason = "test assertions")]
+    #![expect(clippy::expect_used, reason = "test assertions")]
+
+    use crate::traits::{SongbirdError, SongbirdResult};
+
+    #[test]
+    fn songbird_result_ok_unit() {
+        let r: SongbirdResult<()> = Ok(());
+        assert!(r.is_ok());
+    }
+
+    #[test]
+    fn songbird_error_configuration_display() {
+        let e = SongbirdError::configuration("unit test");
+        assert!(!e.to_string().is_empty());
+    }
+}

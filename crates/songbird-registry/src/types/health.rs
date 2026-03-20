@@ -160,7 +160,7 @@ impl Default for HealthCheckConfig {
 
 #[cfg(test)]
 mod tests {
-    #![allow(clippy::float_cmp)]
+    #![expect(clippy::float_cmp, reason = "test assertions and harness ergonomics")]
 
     use super::*;
 

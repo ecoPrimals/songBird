@@ -7,8 +7,8 @@
 
 #[cfg(test)]
 mod tests {
-    #![allow(clippy::all)]
-    #![allow(unused)]
+    #![expect(clippy::all, reason = "test assertions and harness ergonomics")]
+    #![expect(unused, reason = "test assertions and harness ergonomics")]
 
     use super::super::adapters::static_adapter::StaticDiscoveryAdapter;
     use super::super::registry::UniversalServiceRegistry;

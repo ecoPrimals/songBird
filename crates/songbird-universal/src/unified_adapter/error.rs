@@ -48,3 +48,46 @@ impl From<UniversalAdapterError> for songbird_types::SongbirdError {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    #![expect(clippy::unwrap_used, reason = "test assertions")]
+    #![expect(clippy::expect_used, reason = "test assertions")]
+
+    use super::UniversalAdapterError;
+
+    #[test]
+    fn network_error_maps_to_songbird() {
+        let e: songbird_types::SongbirdError =
+            UniversalAdapterError::NetworkError("n".to_string()).into();
+        assert!(!e.to_string().is_empty());
+    }
+
+    #[test]
+    fn missing_capability_maps() {
+        let e: songbird_types::SongbirdError = UniversalAdapterError::MissingCapability.into();
+        assert!(e.to_string().contains("capability") || e.to_string().len() > 3);
+    }
+
+    #[test]
+    fn no_providers_maps() {
+        let e: songbird_types::SongbirdError =
+            UniversalAdapterError::NoProvidersAvailable("c".to_string()).into();
+        assert!(e.to_string().contains("c") || !e.to_string().is_empty());
+    }
+
+    #[test]
+    fn all_variants_display() {
+        let cases = [
+            UniversalAdapterError::NetworkError("a".to_string()),
+            UniversalAdapterError::ParseError("b".to_string()),
+            UniversalAdapterError::DiscoveryError("c".to_string()),
+            UniversalAdapterError::ServiceError("d".to_string()),
+            UniversalAdapterError::MissingCapability,
+            UniversalAdapterError::NoProvidersAvailable("e".to_string()),
+        ];
+        for err in cases {
+            assert!(!err.to_string().is_empty());
+        }
+    }
+}

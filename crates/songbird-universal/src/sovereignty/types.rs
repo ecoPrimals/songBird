@@ -244,7 +244,10 @@ pub enum SecurityCapability {
 
 /// Sovereignty compliance level
 #[derive(Debug, Clone, Serialize, Deserialize)]
-#[allow(clippy::enum_variant_names)]
+#[allow(
+    clippy::enum_variant_names,
+    reason = "variant names match policy vocabulary (Fully/Mostly/Partially)"
+)]
 pub enum SovereigntyComplianceLevel {
     /// Fully compliant with all sovereignty requirements
     FullyCompliant,
@@ -333,7 +336,10 @@ pub enum NetworkEffectType {
 
 /// Decision factor
 #[derive(Debug, Clone, Serialize, Deserialize)]
-#[allow(clippy::struct_field_names)]
+#[allow(
+    clippy::struct_field_names,
+    reason = "factor_name/weight/value mirror decision engine schema"
+)]
 pub struct DecisionFactor {
     /// Name of the decision factor
     pub factor_name: String,
@@ -371,8 +377,8 @@ pub enum RiskSeverity {
 
 #[cfg(test)]
 mod tests {
-    #![allow(clippy::float_cmp)]
-    #![allow(clippy::uninlined_format_args)]
+    #![expect(clippy::float_cmp, reason = "test assertions and harness ergonomics")]
+    #![expect(clippy::uninlined_format_args, reason = "test assertions and harness ergonomics")]
 
     use super::*;
 

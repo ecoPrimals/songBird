@@ -37,7 +37,7 @@ impl QuicServer {
     /// # Errors
     ///
     /// Returns error if binding fails or configuration invalid
-    #[allow(clippy::unused_async)] // async retained for API consistency with accept()
+    #[expect(clippy::unused_async, reason = "unused bindings/imports in this compilation unit")] // async retained for API consistency with accept()
     pub async fn new(bind_addr: &str, config: QuicConfig) -> Result<Self> {
         let addr: SocketAddr = bind_addr.parse()?;
 

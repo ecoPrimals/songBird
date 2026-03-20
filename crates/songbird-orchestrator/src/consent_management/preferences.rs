@@ -27,3 +27,50 @@ impl Default for UserPreferences {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    #![expect(clippy::unwrap_used, reason = "test assertions")]
+    #![expect(clippy::expect_used, reason = "test assertions")]
+
+    use super::UserPreferences;
+    use songbird_test_utils::canonical_test_framework::TestContext;
+
+    #[test]
+    fn default_auto_approve_threshold() {
+        let p = UserPreferences::default();
+        assert_eq!(p.auto_approve_under_cost, Some(10.0));
+        assert!(p.always_require_consent.is_empty());
+        assert!(p.blocked_operations.is_empty());
+    }
+
+    #[test]
+    fn serde_roundtrip_json() {
+        let ctx = TestContext::new("preferences_serde");
+        let p = UserPreferences {
+            auto_approve_under_cost: Some(42.5),
+            always_require_consent: vec!["delete".to_string()],
+            blocked_operations: vec!["rm -rf".to_string()],
+        };
+        let json = serde_json::to_string(&p).unwrap();
+        let back: UserPreferences = serde_json::from_str(&json).unwrap();
+        assert_eq!(p.auto_approve_under_cost, back.auto_approve_under_cost);
+        assert_eq!(p.always_require_consent, back.always_require_consent);
+        assert_eq!(p.blocked_operations, back.blocked_operations);
+        assert!(!ctx.is_timeout());
+    }
+
+    #[test]
+    fn serde_empty_lists() {
+        let p = UserPreferences {
+            auto_approve_under_cost: None,
+            always_require_consent: vec![],
+            blocked_operations: vec![],
+        };
+        let json = serde_json::to_string(&p).unwrap();
+        let back: UserPreferences = serde_json::from_str(&json).unwrap();
+        assert_eq!(p.auto_approve_under_cost, back.auto_approve_under_cost);
+        assert_eq!(p.always_require_consent, back.always_require_consent);
+        assert_eq!(p.blocked_operations, back.blocked_operations);
+    }
+}

@@ -41,7 +41,10 @@ pub struct SongbirdHttpClient {
     tls_config: TlsConfig,
     http_config: HttpClientConfig,
     /// Profiler for adaptive server learning (future feature)
-    #[allow(dead_code)]
+    #[allow(
+        dead_code,
+        reason = "reserved for adaptive profiling; field retained on struct for future wiring"
+    )]
     profiler: Option<Arc<ServerProfiler>>,
 }
 

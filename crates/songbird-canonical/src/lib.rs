@@ -25,15 +25,19 @@
 //! - **Universal Adapters**: Primal-agnostic interface patterns
 #![forbid(unsafe_code)]
 #![deny(unsafe_code)]
+#![warn(missing_docs)]
 #![warn(clippy::all)]
 #![warn(clippy::pedantic)]
 #![warn(clippy::cargo)]
-#![allow(clippy::module_name_repetitions)]
-#![allow(clippy::similar_names)]
-#![allow(clippy::too_many_arguments)]
-#![allow(clippy::multiple_crate_versions)] // Transitive dependencies we don't control
-#![allow(clippy::too_many_lines)]
-#![allow(clippy::pub_use)] // Wildcard imports are acceptable for canonical re-exports
+#![expect(
+    clippy::module_name_repetitions,
+    reason = "intentional pattern; clippy false positive for this API"
+)]
+#![expect(
+    clippy::multiple_crate_versions,
+    reason = "intentional pattern; clippy false positive for this API"
+)] // Transitive dependencies we don't control
+#![expect(clippy::pub_use, reason = "intentional pattern; clippy false positive for this API")] // Wildcard imports are acceptable for canonical re-exports
 #![cfg_attr(
     test,
     allow(

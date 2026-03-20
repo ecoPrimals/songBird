@@ -286,7 +286,7 @@ mod base64 {
 #[cfg(test)]
 mod tests {
     #![expect(clippy::expect_used, reason = "test assertions")]
-    #![allow(clippy::unreadable_literal)]
+    #![expect(clippy::unreadable_literal, reason = "test assertions and harness ergonomics")]
 
     use super::*;
 

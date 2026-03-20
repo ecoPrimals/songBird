@@ -79,3 +79,43 @@ impl From<&str> for LineageRelayError {
         Self::Other(msg.to_string())
     }
 }
+
+#[cfg(test)]
+#[expect(clippy::unwrap_used, reason = "test assertions")]
+mod tests {
+    use super::LineageRelayError;
+
+    #[test]
+    fn display_lineage_verification() {
+        let e = LineageRelayError::LineageVerificationFailed("bad".into());
+        assert!(e.to_string().contains("bad"));
+    }
+
+    #[test]
+    fn display_relay_denied() {
+        let e = LineageRelayError::RelayDenied("no".into());
+        assert!(e.to_string().contains("no"));
+    }
+
+    #[test]
+    fn from_string_and_str() {
+        let e: LineageRelayError = "hello".into();
+        assert!(matches!(e, LineageRelayError::Other(ref s) if s == "hello"));
+        let e2: LineageRelayError = "x".to_string().into();
+        assert!(matches!(e2, LineageRelayError::Other(_)));
+    }
+
+    #[test]
+    fn session_and_network_errors() {
+        assert!(LineageRelayError::SessionNotFound("s".into()).to_string().contains('s'));
+        assert!(LineageRelayError::NetworkError("n".into()).to_string().contains('n'));
+        assert!(LineageRelayError::Timeout("t".into()).to_string().contains('t'));
+    }
+
+    #[test]
+    fn protocol_and_config_errors() {
+        assert!(LineageRelayError::InvalidProtocol("p".into()).to_string().contains('p'));
+        assert!(LineageRelayError::ConfigError("c".into()).to_string().contains('c'));
+        assert!(LineageRelayError::SessionError("e".into()).to_string().contains('e'));
+    }
+}

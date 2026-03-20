@@ -38,7 +38,7 @@
 //! **Status**: This module is maintained for backward compatibility only.  
 //! **Timeline**: Will be removed in v0.3.0 (Q2 2026)
 
-#![allow(deprecated)]
+#![expect(deprecated, reason = "calling deprecated API until migration completes")]
 #[deprecated(since = "0.2.0", note = "Use canonical::environment instead")]
 
 use crate::canonical::constants::{
@@ -54,7 +54,7 @@ use std::time::Duration;
 pub use crate::canonical::environment::LogConfig;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-#[allow(clippy::struct_field_names)] // Endpoint suffix is intentional and clear
+#[expect(clippy::struct_field_names, reason = "intentional pattern; clippy false positive for this API")] // Endpoint suffix is intentional and clear
 pub struct ServiceEndpoints {
     pub beardog_endpoint: String,
     pub nestgate_endpoint: String,
@@ -66,7 +66,7 @@ pub struct ServiceEndpoints {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-#[allow(clippy::struct_field_names)] // Max prefix is intentional for limits
+#[expect(clippy::struct_field_names, reason = "intentional pattern; clippy false positive for this API")] // Max prefix is intentional for limits
 pub struct ResourceLimits {
     pub max_connections: usize,
     pub max_memory_mb: Option<u64>,
@@ -396,7 +396,7 @@ fn get_cpu_limit() -> Option<f64> {
                 (quota.trim().parse::<i64>(), period.trim().parse::<i64>())
             {
                 if quota_val > 0 && period_val > 0 {
-                    #[allow(clippy::cast_precision_loss)] // CPU cores as f64 is acceptable
+                    #[expect(clippy::cast_precision_loss, reason = "intentional pattern; clippy false positive for this API")] // CPU cores as f64 is acceptable
                     return Some(quota_val as f64 / period_val as f64);
                 }
             }
@@ -404,7 +404,7 @@ fn get_cpu_limit() -> Option<f64> {
     }
 
     // Use available parallelism as fallback
-    #[allow(clippy::cast_precision_loss)] // CPU cores as f64 is acceptable
+    #[expect(clippy::cast_precision_loss, reason = "intentional pattern; clippy false positive for this API")] // CPU cores as f64 is acceptable
     std::thread::available_parallelism().map(|n| n.get() as f64).ok()
 }
 
@@ -446,11 +446,10 @@ impl EnvironmentConfig {
                 self.performance_config.buffer_pool_size =
                     (self.performance_config.buffer_pool_size * 3) / 2; // 1.5x buffering
                                                                         // Scale connections by 1.5x for staging
-                #[allow(
+                #[expect(
                     clippy::cast_precision_loss,
                     clippy::cast_possible_truncation,
-                    clippy::cast_sign_loss
-                )]
+                    clippy::cast_sign_loss, reason = "intentional pattern; clippy false positive for this API")]
                 {
                     self.max_connections = (self.max_connections as f32 * 1.5) as usize;
                     self.resource_limits.max_connections =

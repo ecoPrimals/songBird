@@ -419,7 +419,7 @@ impl FederationMigrationHelper  {/// Migrate legacy federation configuration to 
     }
 
     /// Extract port numbers from legacy discovery endpoints
-    #[allow(dead_code)]
+    #[expect(dead_code, reason = "dead code retained intentionally (reserved or API surface)")]
     fn extract_ports_from_endpoints(&self, endpoints: &[String]) -> Vec<u16> {
         let mut ports = Vec::new();
 
@@ -441,7 +441,7 @@ impl FederationMigrationHelper  {/// Migrate legacy federation configuration to 
     }
 
     /// Extract network ranges from legacy discovery endpoints
-    #[allow(dead_code)]
+    #[expect(dead_code, reason = "dead code retained intentionally (reserved or API surface)")]
     fn extract_networks_from_endpoints(&self, endpoints: &[String]) -> Vec<String> {
         let mut networks = Vec::new();
 

@@ -30,3 +30,41 @@ impl ConsentRequestBuilder {
         self
     }
 }
+
+#[cfg(test)]
+mod tests {
+    #![expect(clippy::unwrap_used, reason = "test assertions")]
+    #![expect(clippy::expect_used, reason = "test assertions")]
+
+    use super::ConsentRequestBuilder;
+
+    #[test]
+    fn builder_new_accepts_str() {
+        let _ = ConsentRequestBuilder::new("deploy");
+    }
+
+    #[test]
+    fn builder_new_accepts_string() {
+        let _ = ConsentRequestBuilder::new(String::from("op"));
+    }
+
+    #[test]
+    fn builder_chains_cost() {
+        let _ = ConsentRequestBuilder::new("x").with_cost(0.0);
+    }
+
+    #[test]
+    fn builder_chains_justification() {
+        let _ = ConsentRequestBuilder::new("y").with_justification("because");
+    }
+
+    #[test]
+    fn builder_full_chain() {
+        let _ = ConsentRequestBuilder::new("scale").with_cost(12.5).with_justification("peak load");
+    }
+
+    #[test]
+    fn builder_const_with_cost() {
+        let _ = ConsentRequestBuilder::new("z").with_cost(1.0).with_cost(2.0);
+    }
+}

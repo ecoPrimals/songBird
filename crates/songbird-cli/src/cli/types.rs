@@ -3,6 +3,8 @@
 
 //! CLI Types and Enums
 
+#![allow(missing_docs, reason = "shared CLI enums mirror clap/help output")]
+
 use clap::ValueEnum;
 use serde::{Deserialize, Serialize};
 

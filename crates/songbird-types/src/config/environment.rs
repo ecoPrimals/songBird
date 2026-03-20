@@ -578,7 +578,12 @@ impl CanonicalEnvironmentConfig {
 }
 
 #[cfg(test)]
-#[allow(clippy::unwrap_used, clippy::unnecessary_wraps, clippy::field_reassign_with_default)]
+#[expect(
+    clippy::unwrap_used,
+    clippy::unnecessary_wraps,
+    clippy::field_reassign_with_default,
+    reason = "test assertions and harness ergonomics"
+)]
 mod tests {
     #![expect(clippy::expect_used, reason = "test assertions")]
 

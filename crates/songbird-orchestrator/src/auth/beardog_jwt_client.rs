@@ -47,11 +47,11 @@ struct JwtSecretParams {
 /// Response from `BearDog` JWT secret generation (success case)
 #[derive(Debug, Deserialize)]
 struct JwtSecretResponse {
-    #[allow(dead_code)]
+    #[expect(dead_code, reason = "dead code retained intentionally (reserved or API surface)")]
     jsonrpc: String,
     result: Option<JwtSecretResult>,
     error: Option<JsonRpcError>,
-    #[allow(dead_code)]
+    #[expect(dead_code, reason = "dead code retained intentionally (reserved or API surface)")]
     id: u64,
 }
 
@@ -65,12 +65,12 @@ struct JsonRpcError {
 #[derive(Debug, Deserialize)]
 struct JwtSecretResult {
     secret: String,
-    #[allow(dead_code)]
+    #[expect(dead_code, reason = "dead code retained intentionally (reserved or API surface)")]
     purpose: String,
     strength: String,
     byte_length: usize,
     #[serde(default)]
-    #[allow(dead_code)]
+    #[expect(dead_code, reason = "dead code retained intentionally (reserved or API surface)")]
     encoded_length: usize,
     #[serde(default)]
     algorithm: String,

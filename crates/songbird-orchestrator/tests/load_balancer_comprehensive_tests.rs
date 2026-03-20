@@ -7,7 +7,11 @@
 
 #![cfg(test)]
 // Allow unwrap/expect in tests - idiomatic for test code
-#![allow(clippy::unwrap_used, clippy::expect_used)]
+#![expect(
+    clippy::unwrap_used,
+    clippy::expect_used,
+    reason = "test assertions and harness ergonomics"
+)]
 
 use songbird_universal::load_balancer::{LoadBalancer, LoadBalancingStrategy};
 

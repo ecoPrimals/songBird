@@ -1,0 +1,37 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (c) 2024-2026 ecoPrimals
+
+//! JSON serialization helpers for mesh paths and endpoints.
+
+use serde_json::{Value, json};
+use songbird_onion_relay::mesh::{EndpointType, RelayEndpoint};
+
+pub(super) fn path_to_json(path: &RelayEndpoint, found: bool) -> Value {
+    let (path_type, address) = endpoint_to_strings(&path.endpoint_type);
+
+    json!({
+        "found": found,
+        "target_node_id": path.node_id,
+        "path_type": path_type,
+        "address": address,
+        "estimated_latency_ms": path.latency.map(|d| u64::try_from(d.as_millis()).unwrap_or(u64::MAX)),
+        "reachable": path.reachable
+    })
+}
+
+pub(super) fn endpoint_to_strings(endpoint: &EndpointType) -> (String, Option<String>) {
+    match endpoint {
+        EndpointType::Local {
+            addr,
+        } => ("local".to_string(), Some(addr.to_string())),
+        EndpointType::Direct {
+            addr,
+        } => ("direct".to_string(), Some(addr.to_string())),
+        EndpointType::FamilyRelay {
+            relay_node_id,
+        } => ("family_relay".to_string(), Some(relay_node_id.clone())),
+        EndpointType::TorOnion {
+            onion_addr,
+        } => ("onion".to_string(), Some(onion_addr.clone())),
+    }
+}

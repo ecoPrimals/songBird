@@ -37,21 +37,29 @@ pub trait RelayAuthority: Send + Sync {
     ) -> Result<MaskingLevel>;
 }
 
-/// Relay request message
+/// Broadcast or unicast ask for an ancestor to relay toward [`target`](Self::target).
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct RelayRequest {
+    /// Node initiating the relay (usually the descendant).
     pub requester: NodeId,
+    /// Intended peer on the far side of the relay path.
     pub target: NodeId,
+    /// Last known direct address for `target`, if any.
     pub target_address: Option<SocketAddr>,
+    /// Wall-clock time the request was formed (replay protection).
     pub timestamp: SystemTime,
 }
 
-/// Relay offer message
+/// Positive reply assigning a relay hop and [`RelayAuthorization`] for the session.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct RelayOffer {
+    /// Ancestor or designated relay node id.
     pub relay_node: NodeId,
+    /// UDP endpoint where the relay accepts tunneled packets.
     pub relay_address: SocketAddr,
+    /// Signed capability to use this relay with a given masking tier.
     pub authorization: RelayAuthorization,
+    /// When this offer was issued.
     pub timestamp: SystemTime,
 }
 
@@ -62,13 +70,21 @@ pub struct RelayOffer {
 /// Evolution from stub to production-ready relay client.
 #[derive(Debug)]
 pub struct RelaySession {
+    /// Wire identifier echoed in [`crate::relay_protocol::RelayProtocol`] frames.
     pub session_id: uuid::Uuid,
+    /// Relay hop identity (matches [`RelayOffer::relay_node`](RelayOffer::relay_node)).
     pub relay_node: NodeId,
+    /// Connected relay UDP endpoint.
     pub relay_address: SocketAddr,
+    /// Local party in the relayed path.
     pub requester: NodeId,
+    /// Remote party id being reached through the relay.
     pub target: NodeId,
+    /// Privacy tier negotiated with [`RelayAuthority::determine_masking`].
     pub masking_level: MaskingLevel,
+    /// When the session became active.
     pub established_at: SystemTime,
+    /// Monotonic counter of payload bytes forwarded through this socket.
     pub bytes_relayed: Arc<Mutex<u64>>,
     /// UDP socket for relay communication (created at bind time)
     socket: Arc<UdpSocket>,

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (c) 2024-2026 ecoPrimals
 
-#![allow(
+#![expect(
     clippy::unwrap_used,
     clippy::expect_used,
     clippy::unnecessary_wraps,
@@ -31,7 +31,8 @@
     clippy::cast_possible_truncation,
     clippy::cast_sign_loss,
     clippy::cast_precision_loss,
-    clippy::cast_possible_wrap
+    clippy::cast_possible_wrap,
+    reason = "test assertions and harness ergonomics"
 )]
 #![cfg(feature = "tests-incomplete")]
 //! NOTE: Disabled - requires unimplemented methods
@@ -40,9 +41,13 @@
 //!
 //! Tests all routing, scoring, and sovereignty assessment functionality
 
-#![allow(clippy::cast_precision_loss)]
+#![expect(clippy::cast_precision_loss, reason = "test assertions and harness ergonomics")]
 // Allow unwrap/expect in tests - idiomatic for test code
-#![allow(clippy::unwrap_used, clippy::expect_used)]
+#![expect(
+    clippy::unwrap_used,
+    clippy::expect_used,
+    reason = "test assertions and harness ergonomics"
+)]
 
 use songbird_test_utils::test_discovery_port;
 use songbird_test_utils::test_health_port;

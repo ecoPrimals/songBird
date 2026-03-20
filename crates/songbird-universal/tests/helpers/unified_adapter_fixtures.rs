@@ -5,7 +5,7 @@
 //!
 //! Reduces duplication and provides consistent test setup patterns
 
-#![allow(clippy::unwrap_used)]
+#![expect(clippy::unwrap_used, reason = "test assertions and harness ergonomics")]
 use songbird_test_utils::network_fixtures::*;
 use songbird_universal::{UnifiedAdapterConfig, UnifiedUniversalAdapter};
 use std::time::Duration;

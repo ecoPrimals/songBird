@@ -8,7 +8,7 @@
 //! # Native Async Traits (Rust 1.75+)
 //! Uses native async fn in traits for optimal performance
 
-#![allow(async_fn_in_trait)]
+#![expect(async_fn_in_trait, reason = "async fn in trait (edition / trait-object compatibility)")]
 use std::any::Any;
 use std::collections::HashMap;
 

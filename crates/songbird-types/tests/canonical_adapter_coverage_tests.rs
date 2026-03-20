@@ -5,7 +5,11 @@
 //!
 //! Tests the CanonicalUniversalAdapter, configs, enums, and supporting types.
 
-#![allow(clippy::unwrap_used, clippy::expect_used)]
+#![expect(
+    clippy::unwrap_used,
+    clippy::expect_used,
+    reason = "test assertions and harness ergonomics"
+)]
 
 use songbird_types::adapters::canonical::*;
 use songbird_types::traits::canonical::{
@@ -235,7 +239,7 @@ fn test_protocol_router_new() {
     let router = CanonicalProtocolRouter::new();
     let debug = format!("{router:?}");
     assert!(debug.contains("CanonicalProtocolRouter"));
-    assert!(debug.contains("0 handlers"));
+    assert!(debug.contains("async registry"));
 }
 
 #[test]
@@ -359,6 +363,16 @@ async fn test_adapter_health_check_all_with_service() {
     let config = CanonicalAdapterConfig::default();
     let adapter = CanonicalUniversalAdapter::new(config);
 
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.expect("bind");
+    let port = listener.local_addr().expect("addr").port();
+    tokio::spawn(async move {
+        loop {
+            if listener.accept().await.is_err() {
+                break;
+            }
+        }
+    });
+
     let service = CanonicalServiceInfo {
         id: "svc-health".to_string(),
         name: "Health Test".to_string(),
@@ -366,8 +380,8 @@ async fn test_adapter_health_check_all_with_service() {
         version: "1.0.0".to_string(),
         endpoints: vec![Endpoint {
             protocol: "http".to_string(),
-            host: "localhost".to_string(),
-            port: 9999,
+            host: "127.0.0.1".to_string(),
+            port,
             path: None,
             metadata: HashMap::new(),
         }],

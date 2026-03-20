@@ -126,7 +126,11 @@ impl MetricsCollector {
 
     /// Get last collection time
     #[must_use]
-    #[allow(clippy::unused_self, clippy::unnecessary_wraps)]
+    #[allow(
+        clippy::unused_self,
+        clippy::unnecessary_wraps,
+        reason = "instance method for future stateful timing; Option for API stability"
+    )]
     pub fn last_collection_time(&self) -> Option<DateTime<Utc>> {
         // In a real implementation, this would track the actual last collection time
         Some(Utc::now())
@@ -139,21 +143,29 @@ impl Default for MetricsCollector {
     }
 }
 
-/// Complete metrics snapshot
+/// Single scrape combining host [`SystemMetrics`] and [`ApplicationMetrics`].
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MetricsSnapshot {
+    /// Host-level gauges from the collector.
     pub system: SystemMetrics,
+    /// Application-level counters and latency estimates.
     pub songbird: ApplicationMetrics,
+    /// How long the scrape took in milliseconds.
     pub collection_duration_ms: u64,
+    /// Wall-clock end time of the snapshot (UTC).
     pub timestamp: DateTime<Utc>,
 }
 
-/// Application-specific metrics
+/// Songbird-specific traffic and error signals (complements [`SystemMetrics`]).
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ApplicationMetrics {
+    /// Active logical services reporting in.
     pub active_services: u32,
+    /// Requests per second observed in the window.
     pub request_rate: f64,
+    /// Error responses per request (0.0–1.0) in the window.
     pub error_rate: f64,
+    /// Mean response time in milliseconds.
     pub avg_response_time_ms: f64,
 }
 

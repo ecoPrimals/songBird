@@ -107,7 +107,7 @@ pub struct BroadcastKey {
 
     /// The actual key material (kept private)
     /// **Phase 3**: Used by `encrypt_broadcast()` and `decrypt_broadcast()` methods
-    #[allow(dead_code)] // Phase 3: BirdSong encryption implementation pending
+    #[allow(dead_code, reason = "Phase 3: key material wired when BirdSong crypto is finalized")]
     #[serde(skip)]
     pub(crate) key_data: Vec<u8>,
 
@@ -123,7 +123,10 @@ impl BroadcastKey {
     ///
     /// **Status**: Phase 3 - Mock implementation for testing
     /// Once `BearDog` integration is complete, this will use real genetic cryptography.
-    #[allow(dead_code)] // Phase 3: Called by BirdSong protocol
+    #[allow(
+        dead_code,
+        reason = "Phase 3: placeholder encrypt path until BearDog integration ships"
+    )]
     #[must_use]
     pub fn encrypt_broadcast(&self, data: &[u8]) -> Vec<u8> {
         // Mock XOR encryption for testing

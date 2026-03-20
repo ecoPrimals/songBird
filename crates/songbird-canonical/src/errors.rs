@@ -80,7 +80,6 @@ impl std::fmt::Display for ErrorContext {
 /// # Errors
 ///
 /// This function never returns an error - it always creates a successful result.
-#[allow(clippy::result_unit_err)] // This is a helper function for compatibility
 pub const fn success_result<T>(data: T) -> T {
     data
 }
@@ -89,7 +88,6 @@ pub const fn success_result<T>(data: T) -> T {
 ///
 /// # Errors
 /// This function never returns an error - it always succeeds with `Ok(()`
-#[allow(clippy::unnecessary_wraps)]
 pub fn unit_success() -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }

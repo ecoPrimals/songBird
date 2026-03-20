@@ -17,34 +17,40 @@ use tracing::{debug, error, info, warn};
 
 use crate::persistence::service_data::{RegistryServiceEntry, ServiceInfo};
 
-/// Storage backend types
+/// Select how registry snapshots are stored and loaded.
 #[derive(Debug, Clone)]
 pub enum StorageBackend {
+    /// Persist JSON snapshots under a directory tree.
     FileSystem {
+        /// Root directory for `registry.json` and rolling backups.
         data_dir: PathBuf,
     },
+    /// Keep state only in process memory (optional durability hint).
     InMemory {
+        /// When true, retain cache across logical reloads within the process.
         persistent: bool,
     },
+    /// Future database backend (currently falls back to filesystem).
     Database {
+        /// Connection URI for the backing database.
         connection_string: String,
     },
 }
 
-/// Service registry persistence configuration
+/// Tune autosave cadence, retention, and backend selection for registry persistence.
 #[derive(Debug, Clone)]
 pub struct PersistenceConfig {
     /// Storage backend
     pub backend: StorageBackend,
-    /// Auto-save interval
+    /// Interval between automatic `save_to_storage` runs (zero disables the task).
     pub auto_save_interval: std::time::Duration,
-    /// Backup retention count
+    /// Number of rotated JSON backups to keep on disk.
     pub backup_retention: u32,
-    /// Compression enabled
+    /// When true, compress snapshots before writing (reserved for future use).
     pub compression_enabled: bool,
 }
 
-/// Persistent service data
+/// Serializable registry snapshot written to `registry.json`.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PersistentServiceData {
     /// Service entries
@@ -59,7 +65,7 @@ pub struct PersistentServiceData {
     pub schema_version: u32,
 }
 
-/// Production service registry persistence
+/// Owns the registry cache, optional autosave loop, and storage I/O.
 pub struct ProductionServicePersistence {
     /// Persistence configuration
     config: PersistenceConfig,
@@ -71,17 +77,26 @@ pub struct ProductionServicePersistence {
     stats: Arc<RwLock<PersistenceStatistics>>,
 }
 
-/// Persistence statistics
+/// Counters surfaced to operators for persistence health.
 #[derive(Debug, Default, Clone)]
 pub struct PersistenceStatistics {
+    /// Total save attempts initiated.
     pub total_saves: u64,
+    /// Saves that completed without error.
     pub successful_saves: u64,
+    /// Saves that failed after persistence errors.
     pub failed_saves: u64,
+    /// Total load attempts initiated.
     pub total_loads: u64,
+    /// Loads that completed without error.
     pub successful_loads: u64,
+    /// Loads that failed after I/O or parse errors.
     pub failed_loads: u64,
+    /// Approximate serialized size of the in-memory cache.
     pub cache_size_bytes: u64,
+    /// Duration of the most recent successful save in milliseconds.
     pub last_save_duration_ms: u64,
+    /// Duration of the most recent successful load in milliseconds.
     pub last_load_duration_ms: u64,
 }
 

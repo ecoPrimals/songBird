@@ -287,7 +287,7 @@ mod tests {
 
     #[test]
     fn test_semantic_mapping() {
-        #[allow(deprecated)]
+        #[expect(deprecated, reason = "test assertions and harness ergonomics")]
         {
             assert_eq!(
                 BearDogClient::semantic_to_actual("crypto.generate_keypair").unwrap(),
@@ -302,14 +302,14 @@ mod tests {
 
     #[test]
     fn test_semantic_mapping_unknown() {
-        #[allow(deprecated)]
+        #[expect(deprecated, reason = "calling deprecated API until migration completes")]
         let result = BearDogClient::semantic_to_actual("unknown.method");
         assert!(result.is_err());
     }
 
     #[test]
     fn test_semantic_mapping_all_crypto_and_tls_aliases() {
-        #[allow(deprecated)]
+        #[expect(deprecated, reason = "calling deprecated API until migration completes")]
         {
             let pairs = [
                 ("crypto.encrypt", "crypto.chacha20_poly1305_encrypt"),
@@ -334,7 +334,7 @@ mod tests {
 
     #[test]
     fn test_semantic_mapping_unknown_returns_bear_dog_rpc_error() {
-        #[allow(deprecated)]
+        #[expect(deprecated, reason = "calling deprecated API until migration completes")]
         let err = BearDogClient::semantic_to_actual("not.mapped.here").unwrap_err();
         let msg = err.to_string();
         assert!(msg.contains("Unknown capability"));

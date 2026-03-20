@@ -60,3 +60,39 @@ impl ServiceRegistry {
         Ok(())
     }
 }
+
+#[cfg(test)]
+mod tests {
+    #![expect(clippy::unwrap_used, reason = "test assertions")]
+    #![expect(clippy::expect_used, reason = "test assertions")]
+
+    use super::{BiomeCoordinator, ServiceRegistry};
+    use crate::core::RegistryConfig;
+
+    #[test]
+    fn biome_coordinator_debug() {
+        let _ = format!("{:?}", BiomeCoordinator);
+    }
+
+    #[test]
+    fn service_registry_get_services_empty() {
+        let r = ServiceRegistry::new(RegistryConfig::default());
+        assert!(r.get_services().is_empty());
+    }
+
+    #[tokio::test]
+    async fn service_registry_lifecycle_and_health() {
+        let mut r = ServiceRegistry::new(RegistryConfig::default());
+        r.initialize().await.expect("init");
+        r.start().await.expect("start");
+        let h = r.health_check().await.expect("health");
+        assert_eq!(h.status, crate::core::HealthStatus::Healthy);
+        r.stop().await.expect("stop");
+    }
+
+    #[tokio::test]
+    async fn service_registry_register_noop() {
+        let mut r = ServiceRegistry::new(RegistryConfig::default());
+        r.register_service("id".to_string(), serde_json::json!({})).await.expect("register");
+    }
+}

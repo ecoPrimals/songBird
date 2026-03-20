@@ -524,5 +524,96 @@ impl HttpsConnection {
     }
 }
 
+#[cfg(test)]
+#[expect(clippy::unwrap_used, reason = "test assertions")]
+mod tests {
+    use super::HttpsConnection;
+    use crate::crypto::{BearDogProvider, CryptoCapability};
+    use crate::tls::config::{ExtensionStrategy, FallbackStrategy, TlsConfig};
+    use std::sync::Arc;
+
+    #[test]
+    fn https_connection_new_stores_config() {
+        let crypto: Arc<dyn CryptoCapability> = Arc::new(BearDogProvider::new("/tmp/beardog.sock"));
+        let mut cfg = TlsConfig::default();
+        cfg.max_retries = 4;
+        let conn = HttpsConnection::new(crypto, cfg.clone(), None);
+        assert_eq!(conn.tls_config.max_retries, 4);
+    }
+
+    #[test]
+    fn handshake_strategies_none_uses_configured_extension_strategy() {
+        let mut cfg = TlsConfig::default();
+        cfg.fallback_strategy = FallbackStrategy::None;
+        cfg.extension_strategy = ExtensionStrategy::Minimal;
+        let strategies = HttpsConnection::handshake_strategies_for_fallback(&cfg);
+        assert_eq!(strategies, vec![ExtensionStrategy::Minimal]);
+    }
+
+    #[test]
+    fn handshake_strategies_progressive_order() {
+        let mut cfg = TlsConfig::default();
+        cfg.fallback_strategy = FallbackStrategy::Progressive;
+        let strategies = HttpsConnection::handshake_strategies_for_fallback(&cfg);
+        assert_eq!(
+            strategies,
+            vec![
+                ExtensionStrategy::Modern,
+                ExtensionStrategy::Standard,
+                ExtensionStrategy::Minimal,
+            ]
+        );
+    }
+
+    #[test]
+    fn handshake_strategies_reverse_order() {
+        let mut cfg = TlsConfig::default();
+        cfg.fallback_strategy = FallbackStrategy::Reverse;
+        let strategies = HttpsConnection::handshake_strategies_for_fallback(&cfg);
+        assert_eq!(
+            strategies,
+            vec![
+                ExtensionStrategy::Minimal,
+                ExtensionStrategy::Standard,
+                ExtensionStrategy::Modern,
+            ]
+        );
+    }
+
+    #[test]
+    fn handshake_strategies_exhaustive_includes_max_compat() {
+        let mut cfg = TlsConfig::default();
+        cfg.fallback_strategy = FallbackStrategy::Exhaustive;
+        let strategies = HttpsConnection::handshake_strategies_for_fallback(&cfg);
+        assert!(strategies.contains(&ExtensionStrategy::MaxCompatibility));
+    }
+
+    #[test]
+    fn is_tls_response_complete_chunked_terminator() {
+        let response = b"HTTP/1.1 200 OK\r\nTransfer-Encoding: chunked\r\n\r\n0\r\n\r\n";
+        assert!(HttpsConnection::is_tls_response_complete(response, 1));
+    }
+
+    #[test]
+    fn is_tls_response_complete_content_length() {
+        let body = b"hello";
+        let mut response = b"HTTP/1.1 200 OK\r\nContent-Length: 5\r\n\r\n".to_vec();
+        response.extend_from_slice(body);
+        assert!(HttpsConnection::is_tls_response_complete(&response, 1));
+    }
+
+    #[test]
+    fn is_tls_response_complete_incomplete_body() {
+        let response = b"HTTP/1.1 200 OK\r\nContent-Length: 100\r\n\r\nshort";
+        assert!(!HttpsConnection::is_tls_response_complete(response, 1));
+    }
+
+    #[test]
+    fn is_tls_response_complete_headers_not_finished() {
+        let response = b"HTTP/1.1 200 OK\r\n";
+        assert!(!HttpsConnection::is_tls_response_complete(response, 1));
+    }
+}
+
 // Note: Full integration tests for HttpsConnection are in the main client tests
 // since they require actual TLS handshakes and HTTPS servers

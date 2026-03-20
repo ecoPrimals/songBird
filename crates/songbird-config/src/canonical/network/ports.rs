@@ -5,6 +5,8 @@
 //!
 //! Port range and port-related configuration structures.
 
+#![allow(missing_docs, reason = "simple inclusive port range tuple")]
+
 use serde::{Deserialize, Serialize};
 
 /// Port range configuration
@@ -20,5 +22,31 @@ impl Default for PortRange {
             start: 7000,
             end: 7100,
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    #![expect(clippy::unwrap_used, reason = "test assertions")]
+    #![expect(clippy::expect_used, reason = "test assertions")]
+
+    use super::PortRange;
+
+    #[test]
+    fn default_range_is_valid_span() {
+        let p = PortRange::default();
+        assert!(p.end >= p.start);
+    }
+
+    #[test]
+    fn port_range_json_roundtrip() {
+        let p = PortRange {
+            start: 1000,
+            end: 2000,
+        };
+        let json = serde_json::to_string(&p).unwrap();
+        let back: PortRange = serde_json::from_str(&json).unwrap();
+        assert_eq!(p.start, back.start);
+        assert_eq!(p.end, back.end);
     }
 }

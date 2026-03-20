@@ -226,24 +226,26 @@ pub enum AllowedValues {
     Specific(Vec<String>),
     /// Range of numeric values
     Range {
+        /// Inclusive lower bound for accepted numeric parameters.
         min: f64,
+        /// Inclusive upper bound for accepted numeric parameters.
         max: f64,
     },
     /// Pattern-based validation
     Pattern(String),
 }
 
-#[allow(clippy::uninlined_format_args)]
-#[allow(clippy::float_cmp)]
-#[allow(clippy::useless_vec)]
-#[allow(clippy::unreadable_literal)]
-#[allow(clippy::items_after_statements)]
-#[allow(clippy::cast_precision_loss)]
-#[allow(clippy::cast_possible_truncation)]
-#[allow(clippy::cast_sign_loss)]
+#[allow(clippy::uninlined_format_args, reason = "test module: clippy noise in unit tests")]
+#[allow(clippy::float_cmp, reason = "test module: clippy noise in unit tests")]
+#[allow(clippy::useless_vec, reason = "test module: clippy noise in unit tests")]
+#[allow(clippy::unreadable_literal, reason = "test module: clippy noise in unit tests")]
+#[allow(clippy::items_after_statements, reason = "test module: clippy noise in unit tests")]
+#[allow(clippy::cast_precision_loss, reason = "test module: clippy noise in unit tests")]
+#[allow(clippy::cast_possible_truncation, reason = "test module: clippy noise in unit tests")]
+#[allow(clippy::cast_sign_loss, reason = "test module: clippy noise in unit tests")]
 mod tests {
-    #![allow(clippy::all)]
-    #![allow(unused)]
+    #![allow(clippy::all, reason = "test module: broad clippy suppression for assertions")]
+    #![allow(unused, reason = "test module: unused imports/bindings in tests")]
 
     use super::*;
     use crate::SongbirdError;

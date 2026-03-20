@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (c) 2024-2026 ecoPrimals
 
+#![warn(missing_docs)]
+
 //! # Songbird Discovery
 //!
 //! Universal service discovery and network scanning capabilities providing automatic
@@ -31,7 +33,8 @@
     clippy::unused_self,
     clippy::too_many_lines,
     clippy::manual_let_else,
-    clippy::struct_excessive_bools
+    clippy::struct_excessive_bools,
+    reason = "discovery crate: large surface; doc and style exceptions during consolidation"
 )]
 #![cfg_attr(
     test,
@@ -189,15 +192,25 @@
 //! error information including network errors, timeout handling, and recovery
 //! suggestions for common discovery failures.
 
+#[allow(missing_docs, reason = "discovery submodule; primary docs on crate root and re-exports")]
 pub mod beardog_birdsong_provider; // NEW: BearDog BirdSong encryption provider (Jan 3, 2026)
+#[allow(missing_docs, reason = "discovery submodule; primary docs on crate root and re-exports")]
 pub mod birdsong; // NEW: BirdSong encrypted discovery (REFACTORED v3.22.0 - Feb 5, 2026)
+#[allow(missing_docs, reason = "discovery submodule; primary docs on crate root and re-exports")]
 pub mod conversion;
+#[allow(missing_docs, reason = "discovery submodule; primary docs on crate root and re-exports")]
 pub mod dark_forest_beacon; // ✅ NEW (Feb 3, 2026): Dark Forest Beacon Genetics (TRUE encrypted discovery, zero metadata leakage)
+#[allow(missing_docs, reason = "discovery submodule; primary docs on crate root and re-exports")]
 pub mod discovery;
+#[allow(missing_docs, reason = "discovery submodule; primary docs on crate root and re-exports")]
 pub mod discovery_packet; // NEW: Enhanced discovery with genetic lineage
+#[allow(missing_docs, reason = "discovery submodule; primary docs on crate root and re-exports")]
 pub mod discovery_stats;
+#[allow(missing_docs, reason = "discovery submodule; primary docs on crate root and re-exports")]
 pub mod lineage_discovery; // NEW: Lineage-aware mDNS backend
+#[allow(missing_docs, reason = "discovery submodule; primary docs on crate root and re-exports")]
 pub mod primal_self_knowledge; // Primal self-knowledge architecture (capability-first)
+#[allow(missing_docs, reason = "discovery submodule; primary docs on crate root and re-exports")]
 pub mod traits; // NEW: Discovery statistics and observability (Jan 5, 2026)
 
 /// Anonymous discovery protocol (v3.22.1) - Refactored modules
@@ -215,6 +228,7 @@ pub mod traits; // NEW: Discovery statistics and observability (Jan 5, 2026)
 /// - Old `anonymous_discovery.rs` removed (Jan 12, 2026)
 /// - All imports updated to use `anonymous::` module
 /// - File size compliance achieved (<1000 lines per file)
+#[allow(missing_docs, reason = "anonymous discovery submodule; module docs above")]
 pub mod anonymous;
 
 /// Unit and integration tests for self-filtering (v3.10.2 - Jan 5, 2026)
@@ -227,18 +241,26 @@ mod tests_self_filtering;
 // pub mod migration;
 
 // Re-export universal discovery functionality
+/// BearDog-backed `BirdSong` provider for encrypted discovery.
 pub use beardog_birdsong_provider::BearDogBirdSongProvider; // NEW (Jan 3, 2026)
+/// `BirdSong` encryption types and processor for discovery traffic.
 pub use birdsong::{BirdSongConfig, BirdSongEncryption, BirdSongProcessor}; // REFACTORED v3.22.0
+/// Factory for creating discovery backends from configuration or auto-detection.
 pub use discovery::UniversalDiscoveryFactory;
+/// Discovery packet wire format, errors, and identity attestations.
 pub use discovery_packet::{DiscoveryError, DiscoveryPacket, IdentityAttestation}; // NEW
+/// Runtime discovery statistics, status, and network snapshot types.
 pub use discovery_stats::{
     DiscoveryStats, DiscoveryStatsSnapshot, DiscoveryStatus, DiscoveryStatusManager, NetworkInfo,
 };
+/// mDNS discovery backend that respects genetic lineage.
 pub use lineage_discovery::LineageServiceDiscovery; // NEW
+/// Core discovery traits, service metadata, and configuration.
 pub use traits::{DiscoveryConfig, ServiceDiscovery, ServiceInfo, ServiceStatus}; // NEW (Jan 5, 2026)
 
 // Note: federation_aware_discovery and migration modules deferred to Phase 2
 // These are optional P2 features for advanced federation capabilities
 
 // Export consolidated traits
+/// Provider hook for feature-flag driven discovery behavior.
 pub use traits::feature_flags::FeatureFlagProvider;

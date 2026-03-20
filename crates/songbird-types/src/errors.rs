@@ -477,7 +477,7 @@ impl From<std::io::Error> for SongbirdError {
 // are implemented in their respective modules where those dependencies are available
 
 #[cfg(test)]
-#[allow(
+#[expect(
     clippy::unwrap_used,
     clippy::unnecessary_wraps,
     clippy::field_reassign_with_default,
@@ -488,12 +488,13 @@ impl From<std::io::Error> for SongbirdError {
     clippy::items_after_statements,
     clippy::cast_precision_loss,
     clippy::cast_possible_truncation,
-    clippy::cast_sign_loss
+    clippy::cast_sign_loss,
+    reason = "test assertions and harness ergonomics"
 )]
 mod tests {
     #![expect(clippy::expect_used, reason = "test assertions")]
-    #![allow(clippy::all)]
-    #![allow(unused)]
+    #![expect(clippy::all, reason = "test assertions and harness ergonomics")]
+    #![expect(unused, reason = "unused bindings/imports in this compilation unit")]
 
     use super::*;
 

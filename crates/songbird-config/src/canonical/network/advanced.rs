@@ -6,6 +6,8 @@
 //! Advanced networking features including service discovery, SSL/TLS,
 //! proxy configuration, TURN relays, `UPnP`, and network measurements.
 
+#![allow(missing_docs, reason = "network matrix types; pair with `NetworkConfig` module docs")]
+
 use serde::{Deserialize, Serialize};
 
 // ============================================================================

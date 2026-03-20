@@ -341,3 +341,59 @@ pub fn identity(family_id: &str) -> Value {
         ]
     })
 }
+
+#[cfg(test)]
+#[expect(clippy::unwrap_used, reason = "test assertions")]
+mod tests {
+    use super::{
+        discover_capabilities, health, identity, primal_capabilities, primal_info, rpc_methods,
+    };
+
+    #[test]
+    fn primal_info_has_expected_keys() {
+        let v = primal_info();
+        assert_eq!(v["name"], "songbird");
+        assert_eq!(v["role"], "network_orchestrator");
+        assert!(v.get("capabilities").is_some());
+        assert!(v.get("version").is_some());
+    }
+
+    #[test]
+    fn primal_capabilities_is_array_of_objects() {
+        let v = primal_capabilities();
+        let caps = v["capabilities"].as_array().unwrap();
+        assert!(!caps.is_empty());
+        assert!(caps[0].get("name").is_some());
+    }
+
+    #[test]
+    fn health_includes_uptime_and_services() {
+        let v = health(42, 7);
+        assert_eq!(v["uptime_seconds"], 42);
+        assert_eq!(v["services"], 7);
+        assert_eq!(v["status"], "healthy");
+    }
+
+    #[test]
+    fn identity_includes_family_id() {
+        let v = identity("fam-test");
+        assert_eq!(v["family_id"], "fam-test");
+        let caps = v["capabilities"].as_array().unwrap();
+        assert!(caps.iter().any(|c| c == "ipc.register"));
+    }
+
+    #[test]
+    fn rpc_methods_non_empty() {
+        let v = rpc_methods();
+        let methods = v["methods"].as_array().unwrap();
+        assert!(!methods.is_empty());
+    }
+
+    #[test]
+    fn discover_capabilities_lists_http_and_ipc() {
+        let v = discover_capabilities();
+        assert_eq!(v["primal"], "songbird");
+        let caps = v["capabilities"].as_array().unwrap();
+        assert!(caps.iter().any(|c| c == "http.request"));
+    }
+}

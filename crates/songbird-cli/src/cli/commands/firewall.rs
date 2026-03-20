@@ -54,7 +54,7 @@ pub struct LoggingConfig  {pub enabled: bool,
 }
 
 #[derive(Debug)]
-pub struct FirewallWizard  {#[allow(dead_code)] // Configuration for future firewall features
+pub struct FirewallWizard  {#[expect(dead_code, reason = "dead code retained intentionally (reserved or API surface)")] // Configuration for future firewall features
     config: FirewallConfig,
 }
 
@@ -437,7 +437,7 @@ async fn load_firewall_config(path: &PathBuf) -> SongbirdResult<FirewallConfig> 
     })
 }
 /// Save firewall configuration to file
-#[allow(dead_code)]
+#[expect(dead_code, reason = "dead code retained intentionally (reserved or API surface)")]
 async fn save_firewall_config(config: &FirewallConfig, path: &PathBuf) -> SongbirdResult<()> {
     if let Some(parent) = path.parent() {
         tokio::fs::create_dir_all(parent).await.map_err(|e| CliError::Config {

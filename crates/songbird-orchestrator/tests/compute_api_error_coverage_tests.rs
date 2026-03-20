@@ -6,7 +6,7 @@
 //! Tests error handling, edge cases, and failure scenarios in the compute API.
 //! Targets code paths identified as needing coverage in the audit.
 
-#![allow(clippy::unwrap_used)] // Test code
+#![expect(clippy::unwrap_used, reason = "test assertions and harness ergonomics")] // Test code
 use songbird_orchestrator::server::compute_api::ApiError;
 use std::error::Error;
 #[test]

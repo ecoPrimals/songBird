@@ -73,6 +73,7 @@
 //! - Uses `songbird-security-errors` for unified error handling
 //! - Uses `songbird-orchestrator` for session coordination
 #![forbid(unsafe_code)]
+#![warn(missing_docs)]
 #![cfg_attr(
     test,
     allow(
@@ -122,15 +123,23 @@
 #![warn(clippy::all)]
 #![warn(rust_2018_idioms)]
 // CLI tool: Allow pedantic lints for user-facing code (lower test coverage ~5%, style flexibility)
-#![allow(clippy::pedantic)]
-#![allow(clippy::nursery)] // Allow nursery lints in CLI
+#![expect(clippy::pedantic, reason = "intentional pattern; clippy false positive for this API")]
+#![expect(clippy::nursery, reason = "intentional pattern; clippy false positive for this API")] // Allow nursery lints in CLI
 // CLI tool: Allow specific patterns common in user-facing tools
-#![allow(clippy::cast_precision_loss)]
-#![allow(clippy::unused_async)] // Many CLI commands prepared for future async operations
-#![allow(clippy::struct_excessive_bools)]
+#![expect(
+    clippy::cast_precision_loss,
+    reason = "intentional pattern; clippy false positive for this API"
+)]
+#![expect(clippy::unused_async, reason = "unused bindings/imports in this compilation unit")] // Many CLI commands prepared for future async operations
+#![expect(
+    clippy::struct_excessive_bools,
+    reason = "intentional pattern; clippy false positive for this API"
+)]
 
 // Core CLI modules
+/// Command tree, parsers, and shared CLI infrastructure.
 pub mod cli;
+/// Error wrappers surfaced to operators from CLI commands.
 pub mod errors;
 
 // Re-export main CLI types

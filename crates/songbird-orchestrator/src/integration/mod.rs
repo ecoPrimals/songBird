@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (c) 2024-2026 ecoPrimals
 
-#![allow(dead_code)]
+#![allow(dead_code, reason = "integration helpers reserved for extended startup/shutdown paths")]
 
 use crate::app::{SongbirdOrchestrator, start_orchestrator};
 use anyhow::Result;
@@ -215,17 +215,20 @@ impl IntegrationManager {
 }
 
 #[cfg(test)]
-#[allow(clippy::uninlined_format_args)]
-#[allow(clippy::float_cmp)]
-#[allow(clippy::useless_vec)]
-#[allow(clippy::unreadable_literal)]
-#[allow(clippy::items_after_statements)]
-#[allow(clippy::cast_precision_loss)]
-#[allow(clippy::cast_possible_truncation)]
-#[allow(clippy::cast_sign_loss)]
+#[allow(clippy::uninlined_format_args, reason = "test module: clippy noise in integration tests")]
+#[allow(clippy::float_cmp, reason = "test module: clippy noise in integration tests")]
+#[allow(clippy::useless_vec, reason = "test module: clippy noise in integration tests")]
+#[allow(clippy::unreadable_literal, reason = "test module: clippy noise in integration tests")]
+#[allow(clippy::items_after_statements, reason = "test module: clippy noise in integration tests")]
+#[allow(clippy::cast_precision_loss, reason = "test module: clippy noise in integration tests")]
+#[allow(
+    clippy::cast_possible_truncation,
+    reason = "test module: clippy noise in integration tests"
+)]
+#[allow(clippy::cast_sign_loss, reason = "test module: clippy noise in integration tests")]
 mod tests {
-    #![allow(clippy::all)]
-    #![allow(unused)]
+    #![allow(clippy::all, reason = "test module: broad clippy suppression for assertions")]
+    #![allow(unused, reason = "test module: unused imports/bindings in tests")]
 
     use super::*;
 

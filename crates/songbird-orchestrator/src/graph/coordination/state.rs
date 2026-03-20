@@ -94,3 +94,91 @@ pub struct ResourceCheck {
     pub feasible: bool,
     pub reason: String,
 }
+
+#[cfg(test)]
+mod tests {
+    #![expect(clippy::unwrap_used, reason = "test assertions")]
+    #![expect(clippy::expect_used, reason = "test assertions")]
+
+    use super::{
+        CoordinationIssue, CoordinationPattern, CoordinationValidationResult, IssueSeverity,
+        ResourceCheck,
+    };
+
+    #[test]
+    fn coordination_pattern_serde_roundtrip() {
+        for p in [
+            CoordinationPattern::Sequential,
+            CoordinationPattern::Parallel,
+            CoordinationPattern::Pipeline,
+            CoordinationPattern::MapReduce,
+            CoordinationPattern::Hybrid,
+        ] {
+            let j = serde_json::to_string(&p).unwrap();
+            let back: CoordinationPattern = serde_json::from_str(&j).unwrap();
+            assert_eq!(p, back);
+        }
+    }
+
+    #[test]
+    fn issue_severity_serde_roundtrip() {
+        for s in [IssueSeverity::Error, IssueSeverity::Warning, IssueSeverity::Info] {
+            let j = serde_json::to_string(&s).unwrap();
+            let back: IssueSeverity = serde_json::from_str(&j).unwrap();
+            assert_eq!(s, back);
+        }
+    }
+
+    #[test]
+    fn coordination_validation_result_serde_roundtrip() {
+        let v = CoordinationValidationResult {
+            valid: false,
+            pattern: CoordinationPattern::Hybrid,
+            description: "desc".to_string(),
+            issues: vec![
+                CoordinationIssue {
+                    severity: IssueSeverity::Error,
+                    message: "e".to_string(),
+                },
+                CoordinationIssue {
+                    severity: IssueSeverity::Warning,
+                    message: "w".to_string(),
+                },
+            ],
+        };
+        let j = serde_json::to_string(&v).unwrap();
+        let back: CoordinationValidationResult = serde_json::from_str(&j).unwrap();
+        assert_eq!(v.valid, back.valid);
+        assert_eq!(v.pattern, back.pattern);
+        assert_eq!(v.description, back.description);
+        assert_eq!(v.issues.len(), back.issues.len());
+    }
+
+    #[test]
+    fn coordination_issue_constructors_match_fields() {
+        let e = CoordinationIssue {
+            severity: IssueSeverity::Error,
+            message: "m".to_string(),
+        };
+        assert_eq!(e.severity, IssueSeverity::Error);
+        let w = CoordinationIssue {
+            severity: IssueSeverity::Warning,
+            message: "m2".to_string(),
+        };
+        assert_eq!(w.severity, IssueSeverity::Warning);
+    }
+
+    #[test]
+    fn resource_check_fields() {
+        let ok = ResourceCheck {
+            feasible: true,
+            reason: "ok".to_string(),
+        };
+        assert!(ok.feasible);
+        let bad = ResourceCheck {
+            feasible: false,
+            reason: "no".to_string(),
+        };
+        assert!(!bad.feasible);
+    }
+}

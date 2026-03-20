@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (c) 2024-2026 ecoPrimals
 
-#![allow(
+#![expect(
     clippy::unwrap_used,
     clippy::expect_used,
     clippy::unnecessary_wraps,
@@ -21,7 +21,8 @@
     clippy::const_is_empty,
     clippy::duplicated_attributes,
     deprecated,
-    clippy::unnecessary_literal_unwrap
+    clippy::unnecessary_literal_unwrap,
+    reason = "test assertions and harness ergonomics"
 )]
 
 //! Test utilities for config tests
@@ -89,7 +90,7 @@ impl ScopedEnv {
     }
 
     /// Set multiple environment variables at once
-    #[allow(dead_code)] // helper for future tests
+    #[expect(dead_code, reason = "test assertions and harness ergonomics")] // helper for future tests
     pub fn set_multiple(mut self, vars: &[(&str, &str)]) -> Self {
         for (key, value) in vars {
             self = self.set(key, value);

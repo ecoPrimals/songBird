@@ -29,7 +29,10 @@ impl Protocol {
     }
 
     /// Parse from string
-    #[allow(clippy::should_implement_trait)] // returns Option, not Result — intentionally different from FromStr
+    #[expect(
+        clippy::should_implement_trait,
+        reason = "intentional pattern; clippy false positive for this API"
+    )] // returns Option, not Result — intentionally different from FromStr
     #[must_use]
     pub fn from_str(s: &str) -> Option<Self> {
         match s.to_uppercase().as_str() {

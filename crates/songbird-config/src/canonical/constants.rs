@@ -11,12 +11,32 @@
 //! **Status**: Phase 4 consolidation complete - merged from config/constants.rs
 //! **Philosophy**: All values configurable via environment, calculated defaults for production
 
+#![allow(
+    missing_docs,
+    reason = "constants are self-describing; top-level module doc explains policy"
+)]
+
 use songbird_types::error_helpers::SafeEnv;
 use std::net::IpAddr;
 use std::time::Duration;
 
 /// Default configuration file path
 pub const DEFAULT_CONFIG_PATH: &str = "songbird.toml";
+
+/// Documented fallbacks for URL/protocol construction.
+///
+/// Override via `SONGBIRD_BASE_URL`, `SONGBIRD_PRODUCTION_HTTPS_PORT`, `SONGBIRD_STAGING_HTTP_PORT`,
+/// `SONGBIRD_CANONICAL_*_PORT`, or `SONGBIRD_PROTOCOL_*_PORT`.
+pub const FALLBACK_PRODUCTION_HTTPS_PORT: u16 = 8443;
+pub const FALLBACK_STAGING_HTTP_PORT: u16 = 8080;
+pub const FALLBACK_CANONICAL_DISCOVERY_PORT: u16 = 8081;
+pub const FALLBACK_CANONICAL_SECURITY_PORT: u16 = 8443;
+pub const FALLBACK_CANONICAL_ORCHESTRATOR_PORT: u16 = 8080;
+pub const FALLBACK_CANONICAL_GAMING_PORT: u16 = 6112;
+pub const FALLBACK_PROTOCOL_UDP_PORT: u16 = 6112;
+pub const FALLBACK_PROTOCOL_TCP_PORT: u16 = 6113;
+pub const FALLBACK_PROTOCOL_WEBSOCKET_PORT: u16 = 8080;
+pub const FALLBACK_PROTOCOL_SECURE_WEBSOCKET_PORT: u16 = 8443;
 
 // NOTE: Removed hardcoded network constants per sovereignty principles
 // Tests should set their own environment variables instead of relying on these constants
@@ -451,12 +471,72 @@ pub fn get_common_primal_ports() -> Vec<u16> {
     .collect()
 }
 
-/// Universal capability query - works with any capability name
+fn normalize_capability_env_key(capability: &str) -> String {
+    capability.trim().to_lowercase().replace(['-', ' '], "_").to_uppercase()
+}
+
+fn normalize_capability_match_key(s: &str) -> String {
+    s.trim().to_lowercase().replace(['-', ' '], "_")
+}
+
+fn trim_nonempty(s: &str) -> Option<&str> {
+    let t = s.trim();
+    if t.is_empty() {
+        None
+    } else {
+        Some(t)
+    }
+}
+
+fn capability_env_for_primal(primal_lower: &str) -> Option<String> {
+    let u = primal_lower.to_uppercase();
+    SafeEnv::get(&format!("{u}_CAPABILITIES"))
+        .or_else(|_| SafeEnv::get(&format!("PRIMAL_{u}_CAPABILITIES")))
+        .or_else(|_| SafeEnv::get(&format!("SONGBIRD_PRIMAL_{u}_CAPABILITIES")))
+        .ok()
+}
+
+fn primal_declares_capability(primal_lower: &str, capability_query: &str) -> bool {
+    let Some(list) = capability_env_for_primal(primal_lower) else {
+        return false;
+    };
+    let want = normalize_capability_match_key(capability_query);
+    list.split(',').filter_map(trim_nonempty).map(normalize_capability_match_key).any(|c| c == want)
+}
+
+/// Filters by capability: `SONGBIRD_CAPABILITY_<CAP>_PROVIDERS` first, else primals from `*_ENDPOINT`
+/// with matching `{ID}_CAPABILITIES` / `PRIMAL_{ID}_CAPABILITIES` / `SONGBIRD_PRIMAL_{ID}_CAPABILITIES`.
 #[must_use]
-pub fn find_primals_with_capability(_capability: &str) -> Vec<String> {
-    // This would integrate with the capability discovery system
-    // For now, return configured primals (will be enhanced with actual capability detection)
-    get_configured_primal_names()
+pub fn find_primals_with_capability(capability: &str) -> Vec<String> {
+    let key = normalize_capability_env_key(capability);
+    let providers_key = format!("SONGBIRD_CAPABILITY_{key}_PROVIDERS");
+    if let Ok(raw) = SafeEnv::get(&providers_key) {
+        let providers: Vec<String> =
+            raw.split(',').filter_map(trim_nonempty).map(str::to_lowercase).collect();
+        if !providers.is_empty() {
+            return providers;
+        }
+    }
+
+    let mut out = Vec::new();
+    for primal in get_configured_primal_names() {
+        if primal_declares_capability(&primal, capability) && !out.contains(&primal) {
+            out.push(primal);
+        }
+    }
+    out
+}
+
+fn default_production_base_url() -> String {
+    let host = get_canonical_bind_address();
+    let port = SafeEnv::get_port("SONGBIRD_PRODUCTION_HTTPS_PORT", FALLBACK_PRODUCTION_HTTPS_PORT);
+    format!("https://{host}:{port}")
+}
+
+fn default_staging_base_url() -> String {
+    let host = get_canonical_bind_address();
+    let port = SafeEnv::get_port("SONGBIRD_STAGING_HTTP_PORT", FALLBACK_STAGING_HTTP_PORT);
+    format!("http://{host}:{port}")
 }
 
 // ==================== ENDPOINT CONFIGURATION ====================
@@ -465,13 +545,16 @@ pub fn find_primals_with_capability(_capability: &str) -> Vec<String> {
 #[must_use]
 pub fn get_canonical_endpoint(service_name: &str, default_port: u16) -> String {
     let base_url = match SafeEnv::get_or_default("SONGBIRD_ENVIRONMENT", "development").as_str() {
-        "production" | "prod" => SafeEnv::get_or_default(
+        "production" | "prod" => {
+            SafeEnv::get_or_default("SONGBIRD_BASE_URL", default_production_base_url())
+        }
+        "staging" => SafeEnv::get_or_default(
             "SONGBIRD_BASE_URL",
-            format!("https://{}:8443", get_canonical_bind_address()),
+            SafeEnv::get_or_default("SONGBIRD_STAGING_BASE_URL", default_staging_base_url()),
         ),
-        "staging" => SafeEnv::get_or_default("SONGBIRD_BASE_URL", "http://staging.internal:8080"),
         _ => {
-            SafeEnv::get_or_default("SONGBIRD_BASE_URL", format!("http://127.0.0.1:{default_port}"))
+            let host = get_canonical_bind_address();
+            SafeEnv::get_or_default("SONGBIRD_BASE_URL", format!("http://{host}:{default_port}"))
         }
     };
 
@@ -482,25 +565,35 @@ pub fn get_canonical_endpoint(service_name: &str, default_port: u16) -> String {
 /// Get canonical discovery endpoint
 #[must_use]
 pub fn get_canonical_discovery_endpoint() -> String {
-    get_canonical_endpoint("discovery", 8081)
+    let default_port =
+        SafeEnv::get_port("SONGBIRD_CANONICAL_DISCOVERY_PORT", FALLBACK_CANONICAL_DISCOVERY_PORT);
+    get_canonical_endpoint("discovery", default_port)
 }
 
 /// Get canonical security endpoint
 #[must_use]
 pub fn get_canonical_security_endpoint() -> String {
-    get_canonical_endpoint("security", 8443)
+    let default_port =
+        SafeEnv::get_port("SONGBIRD_CANONICAL_SECURITY_PORT", FALLBACK_CANONICAL_SECURITY_PORT);
+    get_canonical_endpoint("security", default_port)
 }
 
 /// Get canonical orchestrator endpoint
 #[must_use]
 pub fn get_canonical_orchestrator_endpoint() -> String {
-    get_canonical_endpoint("orchestrator", 8080)
+    let default_port = SafeEnv::get_port(
+        "SONGBIRD_CANONICAL_ORCHESTRATOR_PORT",
+        FALLBACK_CANONICAL_ORCHESTRATOR_PORT,
+    );
+    get_canonical_endpoint("orchestrator", default_port)
 }
 
 /// Get canonical gaming endpoint
 #[must_use]
 pub fn get_canonical_gaming_endpoint() -> String {
-    get_canonical_endpoint("gaming", 6112)
+    let default_port =
+        SafeEnv::get_port("SONGBIRD_CANONICAL_GAMING_PORT", FALLBACK_CANONICAL_GAMING_PORT);
+    get_canonical_endpoint("gaming", default_port)
 }
 
 // ==================== DIRECTORY CONFIGURATION ====================
@@ -654,10 +747,25 @@ pub fn get_canonical_cors_origins() -> Vec<String> {
 #[must_use]
 pub fn protocol_port_mappings() -> std::collections::HashMap<String, u16> {
     let mut mappings = std::collections::HashMap::new();
-    mappings.insert("udp".to_string(), 6112);
-    mappings.insert("tcp".to_string(), 6113);
-    mappings.insert("websocket".to_string(), 8080);
-    mappings.insert("secure_websocket".to_string(), 8443);
+    mappings.insert(
+        "udp".to_string(),
+        SafeEnv::get_port("SONGBIRD_PROTOCOL_UDP_PORT", FALLBACK_PROTOCOL_UDP_PORT),
+    );
+    mappings.insert(
+        "tcp".to_string(),
+        SafeEnv::get_port("SONGBIRD_PROTOCOL_TCP_PORT", FALLBACK_PROTOCOL_TCP_PORT),
+    );
+    mappings.insert(
+        "websocket".to_string(),
+        SafeEnv::get_port("SONGBIRD_PROTOCOL_WEBSOCKET_PORT", FALLBACK_PROTOCOL_WEBSOCKET_PORT),
+    );
+    mappings.insert(
+        "secure_websocket".to_string(),
+        SafeEnv::get_port(
+            "SONGBIRD_PROTOCOL_SECURE_WEBSOCKET_PORT",
+            FALLBACK_PROTOCOL_SECURE_WEBSOCKET_PORT,
+        ),
+    );
     mappings
 }
 
@@ -833,93 +941,6 @@ impl CanonicalNetworkDefaults {
     }
 }
 
-// ==================== TESTS ====================
-
 #[cfg(test)]
 #[expect(clippy::expect_used, reason = "test assertions")]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_get_bind_address() {
-        let addr = get_bind_address();
-        assert!(!addr.is_empty());
-        // Should parse as valid IP
-        assert!(addr.parse::<IpAddr>().is_ok());
-    }
-
-    #[test]
-    fn test_get_bind_address_uses_valid_env_override() {
-        songbird_process_env::set_var("SONGBIRD_BIND_ADDRESS", "10.0.0.5");
-        let addr = get_bind_address();
-        songbird_process_env::remove_var("SONGBIRD_BIND_ADDRESS");
-
-        // Concurrent tests may overwrite the env var; verify the result is a valid IP
-        assert!(
-            addr == "10.0.0.5" || addr.parse::<IpAddr>().is_ok(),
-            "expected 10.0.0.5 or a valid IP, got: {addr}"
-        );
-    }
-
-    #[test]
-    fn test_get_bind_address_ignores_invalid_env_override() {
-        songbird_process_env::set_var("SONGBIRD_BIND_ADDRESS", "not-an-ip");
-        let addr = get_bind_address();
-        assert!(addr.parse::<IpAddr>().is_ok());
-        songbird_process_env::remove_var("SONGBIRD_BIND_ADDRESS");
-    }
-
-    #[test]
-    fn test_calculate_primal_port_offset_stable() {
-        let a = calculate_primal_port_offset("alpha");
-        let b = calculate_primal_port_offset("alpha");
-        let c = calculate_primal_port_offset("beta");
-        assert_eq!(a, b);
-        assert_ne!(a, c);
-    }
-
-    #[test]
-    fn test_get_primal_endpoint_prefers_explicit_env() {
-        songbird_process_env::set_var("CUSTOMPRIMAL_ENDPOINT", "http://explicit:1111");
-        let ep = get_primal_endpoint("customprimal");
-        assert_eq!(ep, "http://explicit:1111");
-        songbird_process_env::remove_var("CUSTOMPRIMAL_ENDPOINT");
-    }
-
-    #[test]
-    fn test_port_range() {
-        let start = get_port_range_start();
-        let end = get_port_range_end();
-        assert!(start > 0);
-        assert!(end > start);
-        // Port end is u16, so it's always <= 65535 by type constraint
-        // Verify it's a reasonable value
-        assert!(end >= 1024, "Port range end should be >= 1024");
-    }
-
-    #[test]
-    fn test_environment_detection() {
-        // Test functions don't panic
-        let _ = is_development_environment();
-        let _ = is_production_environment();
-    }
-
-    #[test]
-    fn test_primal_endpoint_generation() {
-        let endpoint = get_primal_endpoint("test_primal");
-        assert!(endpoint.starts_with("http://") || endpoint.starts_with("https://"));
-    }
-
-    #[test]
-    fn test_directory_configuration() {
-        let log_dir = get_log_dir();
-        let cache_dir = get_cache_dir();
-        let data_dir = get_data_dir();
-        let config_dir = get_config_dir();
-
-        assert!(!log_dir.is_empty());
-        assert!(!cache_dir.is_empty());
-        assert!(!data_dir.is_empty());
-        assert!(!config_dir.is_empty());
-    }
-}
+mod tests;

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (c) 2024-2026 ecoPrimals
 
-#![allow(clippy::unused_async)]
+#![expect(clippy::unused_async, reason = "unused bindings/imports in this compilation unit")]
 
 use bytes::Bytes;
 use http_body_util::Full;
@@ -15,7 +15,10 @@ use tracing::{info, warn};
 type Result<T> = SongbirdResult<T>;
 
 // Helper function to convert hyper::http::Error to SongbirdError
-#[allow(clippy::needless_pass_by_value)]
+#[expect(
+    clippy::needless_pass_by_value,
+    reason = "intentional pattern; clippy false positive for this API"
+)]
 fn http_error_to_songbird(error: hyper::http::Error) -> SongbirdError {
     SongbirdError::Network {
         message: format!("HTTP error: {error}"),

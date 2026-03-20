@@ -80,7 +80,10 @@ impl<T: Clone> DegradationStrategy<T> {
         F: FnOnce() -> Fut,
         Fut: Future<Output = Result<T>>,
     {
-        #[allow(clippy::expect_used)] // invariant: strategy always has a fallback
+        #[expect(
+            clippy::expect_used,
+            reason = "intentional pattern; clippy false positive for this API"
+        )] // invariant: strategy always has a fallback
         self.try_execute_with_fallback(operation)
             .await
             .expect("DegradationStrategy must be constructed with with_value or with_fn")

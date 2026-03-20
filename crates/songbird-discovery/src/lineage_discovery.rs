@@ -16,7 +16,7 @@ use tracing::{debug, info, warn};
 #[derive(Debug)]
 pub struct LineageServiceDiscovery {
     /// Service name for mDNS
-    #[allow(dead_code)]
+    #[expect(dead_code, reason = "dead code retained intentionally (reserved or API surface)")]
     service_name: String,
 
     /// Local node information

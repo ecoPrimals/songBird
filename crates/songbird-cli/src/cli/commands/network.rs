@@ -5,6 +5,8 @@
 //!
 //! **MODERN GAMING NETWORK OPTIMIZATION** ✅
 
+#![allow(missing_docs, reason = "network clap enums document flags inline")]
+
 use crate::errors::SongbirdResult;
 use clap::Subcommand;
 

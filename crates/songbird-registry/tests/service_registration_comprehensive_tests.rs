@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (c) 2024-2026 ecoPrimals
 
-#![allow(
+#![expect(
     clippy::unwrap_used,
     clippy::expect_used,
     clippy::unnecessary_wraps,
@@ -24,12 +24,17 @@
     dead_code,
     clippy::unnecessary_literal_unwrap,
     clippy::needless_pass_by_value,
-    clippy::must_use_candidate
+    clippy::must_use_candidate,
+    reason = "test assertions and harness ergonomics"
 )]
 #![cfg(feature = "tests-incomplete")]
-#![allow(unexpected_cfgs)]
+#![expect(unexpected_cfgs, reason = "test assertions and harness ergonomics")]
 // Allow unwrap/expect in tests - idiomatic for test code
-#![allow(clippy::unwrap_used, clippy::expect_used)]
+#![expect(
+    clippy::unwrap_used,
+    clippy::expect_used,
+    reason = "test assertions and harness ergonomics"
+)]
 
 //! Comprehensive service-registration tests (stubs).
 //!

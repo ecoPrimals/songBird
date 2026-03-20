@@ -381,7 +381,10 @@ impl SongbirdOrchestrator {
         if addrs.is_empty() {
             warn!("⚠️  No broadcast addresses configured, using defaults");
             // These are constant valid addresses — parse is infallible
-            #[allow(clippy::expect_used)]
+            #[expect(
+                clippy::expect_used,
+                reason = "intentional pattern; clippy false positive for this API"
+            )]
             {
                 addrs = vec![
                     "224.0.0.251:2300".parse().expect("valid multicast address constant"),

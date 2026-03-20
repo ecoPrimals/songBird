@@ -5,6 +5,8 @@
 //!
 //! Headless API for detecting system resources that biomeOS can consume
 
+#![allow(missing_docs, reason = "resource detection JSON DTOs mirror biomeOS schema")]
+
 use super::{NetworkSpeed, SystemResources};
 use crate::errors::SongbirdResult;
 use serde::{Deserialize, Serialize};
@@ -22,7 +24,7 @@ pub async fn detect_system_resources_api() -> SongbirdResult<SystemResources> {
 }
 
 /// Detect system resources with selective detection for performance (used for light resource checks,
-#[allow(dead_code)]
+#[expect(dead_code, reason = "dead code retained intentionally (reserved or API surface)")]
 pub async fn detect_system_resources_fast() -> SongbirdResult<SystemResources> {
     // Fast detection - skip expensive tests
     let request = ResourceDetectionRequest {

@@ -146,7 +146,10 @@ impl QualityMetrics {
         if !valid_metrics.is_empty() {
             let sum: f64 = valid_metrics.iter().sum();
             // Allow cast precision loss for quality calculation - acceptable trade-off
-            #[allow(clippy::cast_precision_loss)]
+            #[expect(
+                clippy::cast_precision_loss,
+                reason = "intentional pattern; clippy false positive for this API"
+            )]
             {
                 self.overall_quality = Some(sum / valid_metrics.len() as f64);
             }

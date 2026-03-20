@@ -6,6 +6,8 @@
 //! Gaming-specific network configuration including ports, scales,
 //! and LAN discovery settings.
 
+#![allow(missing_docs, reason = "gaming port fields map to classic RTS titles")]
+
 use serde::{Deserialize, Serialize};
 
 /// Gaming-specific network configuration
@@ -100,5 +102,54 @@ impl std::fmt::Display for GamingScale {
             Self::Tournament => write!(f, "tournament"),
             Self::Professional => write!(f, "professional"),
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    #![expect(clippy::unwrap_used, reason = "test assertions")]
+    #![expect(clippy::expect_used, reason = "test assertions")]
+
+    use super::{GamingNetworkConfig, GamingScale};
+
+    #[test]
+    fn gaming_network_default_ports() {
+        let g = GamingNetworkConfig::default();
+        assert_eq!(g.starcraft_port, 6112);
+        assert!(g.enable_lan_discovery);
+    }
+
+    #[test]
+    fn gaming_scale_monotonicity() {
+        assert!(GamingScale::Professional.max_players() > GamingScale::Tournament.max_players());
+        assert!(
+            GamingScale::Professional.recommended_bandwidth_mbps()
+                > GamingScale::Home.recommended_bandwidth_mbps()
+        );
+    }
+
+    #[test]
+    fn gaming_scale_display_and_serde() {
+        for scale in [
+            GamingScale::Home,
+            GamingScale::LanParty,
+            GamingScale::Tournament,
+            GamingScale::Professional,
+        ] {
+            let s = scale.to_string();
+            assert!(!s.is_empty());
+            let j = serde_json::to_string(&scale).unwrap();
+            let back: GamingScale = serde_json::from_str(&j).unwrap();
+            assert_eq!(scale, back);
+        }
+    }
+
+    #[test]
+    fn gaming_network_config_json_roundtrip() {
+        let g = GamingNetworkConfig::default();
+        let j = serde_json::to_string(&g).unwrap();
+        let back: GamingNetworkConfig = serde_json::from_str(&j).unwrap();
+        assert_eq!(g.starcraft_port, back.starcraft_port);
+        assert_eq!(g.max_players_per_game, back.max_players_per_game);
     }
 }

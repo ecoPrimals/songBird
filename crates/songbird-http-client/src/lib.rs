@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (c) 2024-2026 ecoPrimals
 
+#![warn(missing_docs)]
+
 //! # Songbird HTTP Client - Pure Rust Tower Atomic
 //!
 //! A Pure Rust HTTP/HTTPS client with capability-based crypto delegation.
@@ -58,33 +60,48 @@
 //! - ✅ Agnostic crypto provider support
 #![forbid(unsafe_code)]
 
+#[allow(missing_docs, reason = "HTTP client submodule; primary docs on crate and re-exports")]
 pub mod beardog_client; // ✅ ACTIVE: Smart refactored module (7 sub-modules)
+#[allow(missing_docs, reason = "HTTP client submodule; primary docs on crate and re-exports")]
 pub mod client;
 mod connection; // ✅ NEW: Connection management (HTTP/HTTPS) (extracted from client.rs)
+#[allow(missing_docs, reason = "HTTP client submodule; primary docs on crate and re-exports")]
 pub mod connection_pool; // ✅ NEW: Connection pooling for resource optimization (Feb 3, 2026)
+#[allow(missing_docs, reason = "HTTP client submodule; primary docs on crate and re-exports")]
 pub mod crypto;
+#[allow(missing_docs, reason = "HTTP client submodule; primary docs on crate and re-exports")]
 pub mod error;
+#[allow(missing_docs, reason = "HTTP client submodule; primary docs on crate and re-exports")]
 pub mod http_config; // ✅ NEW: Adaptive HTTP configuration (User-Agent, routing, etc.)
+#[allow(missing_docs, reason = "HTTP client submodule; primary docs on crate and re-exports")]
 pub mod ipc_client;
 mod redirect; // ✅ NEW: HTTP redirect handling (extracted from client.rs)
 mod request; // ✅ NEW: HTTP request building (extracted from client.rs)
 mod response; // ✅ NEW: HTTP response parsing (extracted from client.rs)
+#[allow(missing_docs, reason = "HTTP client submodule; primary docs on crate and re-exports")]
 pub mod tls;
+#[allow(missing_docs, reason = "HTTP client submodule; primary docs on crate and re-exports")]
 pub mod types;
 
 // Legacy implementation moved to archive/legacy_implementations/beardog_client_jan_26_2026/
 // Refactored into beardog_client/ module (7 sub-modules) on January 26, 2026
 // Use beardog_client module for all new code
 
+/// High-level HTTP/HTTPS client built on the internal stack and TLS integration.
 pub use client::SongbirdHttpClient;
+/// Error type and `Result` alias for this crate.
 pub use error::{Error, Result};
+/// IPC-backed HTTP client, request builder, and multipart types for BearDog channels.
 pub use ipc_client::{Form, IpcHttpClient, Part, RequestBuilder, Response};
+/// Request and response value types used by [`SongbirdHttpClient`].
 pub use types::{HttpRequest, HttpResponse};
 
 // Re-export multipart module for convenience
+/// Multipart form helpers used with [`IpcHttpClient`] and IPC transports.
 pub use ipc_client::multipart;
 
 // Re-export crypto capability types for agnostic usage
+/// Crypto capability traits, TLS secret bags, and runtime discovery helpers for BearDog sockets.
 pub use crypto::{
     BearDogProvider, CryptoCapability, IpcEndpoint, TlsApplicationSecrets, TlsHandshakeSecrets,
     discover_beardog_socket, discover_crypto_capability, discover_ipc_endpoint,
@@ -92,9 +109,11 @@ pub use crypto::{
 };
 
 // Re-export BearDogClient and types
+/// Lower-level BearDog IPC client and TLS secret handles for advanced use.
 pub use beardog_client::{BearDogClient, BearDogMode, TlsSecrets};
 
 // Re-export HTTP configuration types for adaptive behavior
+/// Adaptive HTTP client configuration (headers, redirects, and version string constant).
 pub use http_config::{
     DomainPattern, HeaderRule, HttpClientConfig, RedirectMode, SONGBIRD_VERSION, default_user_agent,
 };

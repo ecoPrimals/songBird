@@ -77,7 +77,7 @@ pub async fn find_services_by_type(
 }
 
 /// GET /api/federation/services/stats - Get service registry statistics
-#[allow(clippy::similar_names)] // `state` and `stats` are semantically different despite similar names
+#[expect(clippy::similar_names, reason = "intentional pattern; clippy false positive for this API")] // `state` and `stats` are semantically different despite similar names
 pub async fn service_stats(State(state): State<Arc<FederationAppState>>) -> impl IntoResponse {
     debug!("📊 Service stats requested");
 

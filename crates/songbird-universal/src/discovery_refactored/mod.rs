@@ -13,12 +13,11 @@
 //! without hardcoding specific primal names. The system uses capability-based
 //! discovery and environment-based configuration.
 
-#![allow(
+#![expect(
     clippy::unused_self,
     clippy::match_same_arms,
     clippy::zero_sized_map_values,
-    clippy::unused_async
-)]
+    clippy::unused_async, reason = "unused bindings/imports in this compilation unit")]
 
 mod types;
 mod environment;

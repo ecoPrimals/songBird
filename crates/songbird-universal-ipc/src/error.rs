@@ -69,3 +69,52 @@ pub enum IpcError {
 
 /// Result type for universal IPC operations
 pub type IpcResult<T> = Result<T, IpcError>;
+
+#[cfg(test)]
+#[expect(clippy::unwrap_used, reason = "test assertions")]
+mod tests {
+    use super::IpcError;
+    use std::io;
+
+    #[test]
+    fn service_not_found_display() {
+        let e = IpcError::ServiceNotFound("beardog".to_string());
+        assert!(e.to_string().contains("beardog"));
+    }
+
+    #[test]
+    fn service_already_registered_display() {
+        let e = IpcError::ServiceAlreadyRegistered("/x".to_string());
+        assert!(e.to_string().contains("/x"));
+    }
+
+    #[test]
+    fn invalid_virtual_path_display() {
+        let e = IpcError::InvalidVirtualPath("bad".to_string());
+        assert!(e.to_string().contains("bad"));
+    }
+
+    #[test]
+    fn io_error_from_std_io() {
+        let inner = io::Error::new(io::ErrorKind::NotFound, "nope");
+        let e: IpcError = inner.into();
+        assert!(matches!(e, IpcError::IoError(_)));
+    }
+
+    #[test]
+    fn registry_and_rpc_errors_roundtrip_string() {
+        assert!(IpcError::RegistryError("r".to_string()).to_string().contains('r'));
+        assert!(IpcError::RpcError("rpc".to_string()).to_string().contains("rpc"));
+        assert!(IpcError::InvalidParams("p".to_string()).to_string().contains('p'));
+        assert!(IpcError::Internal("i".to_string()).to_string().contains('i'));
+        assert!(IpcError::Other("o".to_string()).to_string().contains('o'));
+    }
+
+    #[test]
+    fn connection_and_listener_errors() {
+        assert!(IpcError::ConnectionFailed("c".to_string()).to_string().contains('c'));
+        assert!(IpcError::ListenerFailed("l".to_string()).to_string().contains('l'));
+        assert!(IpcError::CleanupFailed("u".to_string()).to_string().contains('u'));
+        assert!(IpcError::PlatformError("pl".to_string()).to_string().contains("pl"));
+    }
+}

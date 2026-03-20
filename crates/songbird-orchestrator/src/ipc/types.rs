@@ -393,6 +393,9 @@ pub fn system_time_to_iso8601(time: SystemTime) -> String {
 
 #[cfg(test)]
 mod tests {
+    #![expect(clippy::unwrap_used, reason = "test assertions")]
+    #![expect(clippy::expect_used, reason = "test assertions")]
+
     use super::*;
 
     // P2P Discovery Tests (v3.19.3)
@@ -516,5 +519,69 @@ mod tests {
         assert!(json.contains("healthy"));
         // Message should not be in JSON when None
         assert!(!json.contains("message"));
+    }
+
+    #[test]
+    fn system_time_epoch_iso8601() {
+        let s = system_time_to_iso8601(SystemTime::UNIX_EPOCH);
+        assert!(s.starts_with("1970-"));
+    }
+
+    #[test]
+    fn health_check_request_response_roundtrip() {
+        let req = HealthCheckRequest {};
+        let j = serde_json::to_string(&req).unwrap();
+        let _: HealthCheckRequest = serde_json::from_str(&j).unwrap();
+        let resp = HealthCheckResponse {
+            health: HealthStatus {
+                service_id: "s".to_string(),
+                status: "ok".to_string(),
+                message: None,
+                timestamp: "t".to_string(),
+            },
+        };
+        let j2 = serde_json::to_string(&resp).unwrap();
+        let back: HealthCheckResponse = serde_json::from_str(&j2).unwrap();
+        assert_eq!(back.health.service_id, "s");
+    }
+
+    #[test]
+    fn discover_by_family_request_serde_roundtrip() {
+        let r = DiscoverByFamilyRequest {
+            family_tags: vec!["a".to_string()],
+            timeout_ms: 1234,
+        };
+        let j = serde_json::to_string(&r).unwrap();
+        let back: DiscoverByFamilyRequest = serde_json::from_str(&j).unwrap();
+        assert_eq!(r.family_tags, back.family_tags);
+        assert_eq!(r.timeout_ms, back.timeout_ms);
+    }
+
+    #[test]
+    fn genetic_proof_roundtrip() {
+        let p = GeneticProof {
+            family_id: "f".to_string(),
+            parent_seed_hash: "h".to_string(),
+            relationship: "r".to_string(),
+        };
+        let j = serde_json::to_string(&p).unwrap();
+        let back: GeneticProof = serde_json::from_str(&j).unwrap();
+        assert_eq!(p.family_id, back.family_id);
+        assert_eq!(p.relationship, back.relationship);
+    }
+
+    #[test]
+    fn health_status_with_message_json() {
+        let h = HealthStatus {
+            service_id: "x".to_string(),
+            status: "degraded".to_string(),
+            message: Some("m".to_string()),
+            timestamp: "t".to_string(),
+        };
+        let j = serde_json::to_string(&h).unwrap();
+        assert!(j.contains("message"));
+        let back: HealthStatus = serde_json::from_str(&j).unwrap();
+        assert_eq!(h.message, back.message);
+        assert_eq!(h.service_id, back.service_id);
     }
 }

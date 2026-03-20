@@ -397,9 +397,8 @@ async fn deploy_binary(
 ) -> Result<(StatusCode, Json<DeploymentResponse>), (StatusCode, String)> {
     info!("📦 Received deployment request");
 
-    let deployment_id = format!("deploy-{}", fastrand::u64(..));
     let mut binary_data: Option<Bytes> = None;
-    let mut service_name = format!("service-{}", &deployment_id[..8]);
+    let mut service_name: Option<String> = None;
     let mut env_vars: HashMap<String, String> = HashMap::new();
     let mut auto_start = true;
 
@@ -420,10 +419,10 @@ async fn deploy_binary(
                     })?);
             }
             "service_name" => {
-                service_name = field
-                    .text()
-                    .await
-                    .map_err(|e| (StatusCode::BAD_REQUEST, format!("Service name error: {e}")))?;
+                service_name =
+                    Some(field.text().await.map_err(|e| {
+                        (StatusCode::BAD_REQUEST, format!("Service name error: {e}"))
+                    })?);
             }
             "env_vars" => {
                 let env_json = field
@@ -449,6 +448,27 @@ async fn deploy_binary(
     let binary_data = binary_data
         // Modern idiomatic: ok_or_else for lazy evaluation
         .ok_or_else(|| (StatusCode::BAD_REQUEST, "No binary provided".to_string()))?;
+
+    let (status, response) =
+        deploy_binary_bytes(&state, binary_data, service_name, env_vars, auto_start).await?;
+
+    Ok((status, Json(response)))
+}
+
+/// Deploy raw binary bytes — shared by REST multipart and JSON-RPC `deployment.create`.
+pub(crate) async fn deploy_binary_bytes(
+    state: &DeploymentState,
+    binary_data: Bytes,
+    service_name: Option<String>,
+    env_vars: HashMap<String, String>,
+    auto_start: bool,
+) -> Result<(StatusCode, DeploymentResponse), (StatusCode, String)> {
+    let deployment_id = format!("deploy-{}", fastrand::u64(..));
+    let service_name = service_name.unwrap_or_else(|| {
+        let suffix =
+            deployment_id.get(7..15).filter(|s| !s.is_empty()).unwrap_or(deployment_id.as_str());
+        format!("service-{suffix}")
+    });
 
     info!("📦 Deploying service: {}", service_name);
     debug!("   Deployment ID: {}", deployment_id);
@@ -546,7 +566,7 @@ async fn deploy_binary(
 
     info!("🎉 Deployment complete: {}", service_name);
 
-    Ok((StatusCode::CREATED, Json(response)))
+    Ok((StatusCode::CREATED, response))
 }
 
 /// Start a service with environment variables
@@ -583,7 +603,7 @@ where
 }
 
 /// GET /api/deployment/status/:id - Get deployment status
-async fn get_deployment_status(
+pub(crate) async fn get_deployment_status(
     State(state): State<DeploymentState>,
     Path(deployment_id): Path<String>,
 ) -> Result<Json<DeploymentInfo>, (StatusCode, String)> {

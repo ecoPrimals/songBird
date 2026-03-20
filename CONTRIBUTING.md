@@ -39,8 +39,9 @@ attribute entirely — that's the point of `#[expect]`.
 ### Unsafe Code
 
 `#![forbid(unsafe_code)]` across all crates. The sole exception is
-`songbird-process-env` (Rust 2024 `set_var`/`remove_var`), which has `// SAFETY:`
-documentation on every `unsafe` block.
+`songbird-process-env` (Rust 2024 `set_var`/`remove_var`), which uses
+`#![deny(unsafe_code)]` with per-fn `#[allow]`, a `parking_lot::Mutex` serialization
+guard, and `// SAFETY:` documentation on every `unsafe` block.
 
 ### SPDX Headers
 
@@ -88,7 +89,7 @@ process_name(&service.name);
 
 ### Coverage Target
 
-**Goal**: 90% line coverage. Current: ~63%.
+**Goal**: 90% line coverage. Current: ~67%.
 
 ```bash
 cargo llvm-cov --workspace --lib --html

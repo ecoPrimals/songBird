@@ -254,7 +254,10 @@ pub enum CanonicalPortAllocationStrategy {
 
 /// **CANONICAL**: Adapter security configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
-#[allow(clippy::struct_excessive_bools)]
+#[expect(
+    clippy::struct_excessive_bools,
+    reason = "intentional pattern; clippy false positive for this API"
+)]
 pub struct CanonicalAdapterSecurityConfig {
     /// Whether to enable /// TLS
     /// Tls Enabled field
@@ -426,7 +429,7 @@ impl Default for CanonicalScalingConfig {
 
 /// **CANONICAL**: Global timeout configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
-#[allow(clippy::struct_field_names)]
+#[allow(clippy::struct_field_names, reason = "field names mirror canonical timeout schema naming")]
 pub struct CanonicalTimeoutConfig {
     /// Default request timeout
     pub default_request_timeout: Duration,

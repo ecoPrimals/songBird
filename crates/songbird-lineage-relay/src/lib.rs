@@ -79,14 +79,16 @@
 //! - No external infrastructure
 
 #![forbid(unsafe_code)]
+#![warn(missing_docs)]
 #![warn(clippy::all)]
 #![warn(clippy::pedantic)]
-#![allow(
+#![expect(
     clippy::module_name_repetitions,
     clippy::items_after_statements,
     clippy::missing_errors_doc,
     clippy::missing_panics_doc,
-    clippy::unused_async
+    clippy::unused_async,
+    reason = "unused bindings/imports in this compilation unit"
 )]
 #![cfg_attr(
     test,

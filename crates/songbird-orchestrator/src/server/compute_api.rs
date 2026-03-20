@@ -205,7 +205,7 @@ pub enum JobStatusType {
 
 /// Submit a compute task for intelligent routing
 #[tracing::instrument(skip(state, req), fields(task_type = %req.task.task_type))]
-async fn submit_compute_task(
+pub(crate) async fn submit_compute_task(
     State(state): State<ComputeApiState>,
     Json(req): Json<ComputeTaskRequest>,
 ) -> Result<Json<ComputeTaskResponse>, ApiError> {
@@ -631,7 +631,7 @@ async fn submit_compute_task(
 
 /// Get the status of a compute task
 #[tracing::instrument(skip(state))]
-async fn get_task_status(
+pub(crate) async fn get_task_status(
     State(state): State<ComputeApiState>,
     Path(job_id): Path<Uuid>,
 ) -> Result<Json<JobStatus>, ApiError> {

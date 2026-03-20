@@ -5,7 +5,8 @@
 //!
 //! This module provides configuration provider functionality.
 
-#![allow(async_fn_in_trait)]
+#![expect(async_fn_in_trait, reason = "async fn in trait (edition / trait-object compatibility)")]
+#![allow(missing_docs, reason = "generic provider trait; document at call sites")]
 
 use serde::de::DeserializeOwned;
 use songbird_types::{SongbirdError, SongbirdResult};

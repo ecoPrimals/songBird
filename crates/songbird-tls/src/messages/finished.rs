@@ -104,8 +104,11 @@ impl Finished {
 /// Hash algorithm used in the cipher suite
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum HashAlgorithm {
+    /// SHA-256 transcript and PRF basis.
     Sha256,
+    /// SHA-384 transcript and PRF basis.
     Sha384,
+    /// Blake3 when used as the handshake hash.
     Blake3,
 }
 

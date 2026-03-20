@@ -18,6 +18,7 @@
 //! - **Log Aggregation**: Centralized log collection and analysis
 
 #![forbid(unsafe_code)]
+#![warn(missing_docs)]
 #![warn(clippy::all)]
 #![warn(clippy::pedantic)]
 //!
@@ -116,6 +117,8 @@
     )
 )]
 
+/// Aggregated health-check types and the [`health::HealthMonitor`] trait for custom probes.
 pub mod health;
+/// Core metrics, dashboards, and the [`observability::ObservabilityManager`] facade.
 pub mod observability;
 pub use observability::*;

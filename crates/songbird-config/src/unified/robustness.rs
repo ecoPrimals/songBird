@@ -6,6 +6,11 @@
 //! Consolidates all robustness-related configuration structs including circuit breakers)
 //! rate limiting, bulkheads, and retry policies
 
+#![allow(
+    missing_docs,
+    reason = "deprecated unified robustness; mirrored in `canonical::resilience`"
+)]
+
 use serde::{Deserialize, Serialize};
 use std::time::Duration;
 

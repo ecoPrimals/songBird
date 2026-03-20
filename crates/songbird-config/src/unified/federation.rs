@@ -3,6 +3,11 @@
 
 //! Federation configuration structures
 
+#![allow(
+    missing_docs,
+    reason = "deprecated unified federation; migrate to `canonical::federation`"
+)]
+
 use serde::{Deserialize, Serialize};
 use std::env;
 use std::net::SocketAddr;

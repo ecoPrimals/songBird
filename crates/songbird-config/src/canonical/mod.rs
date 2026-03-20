@@ -3,20 +3,32 @@
 
 //! Canonical configuration patterns and types
 
+/// Shared constants and accessor helpers for defaults and ports.
 pub mod constants;
+/// Discovery-related configuration fragments.
 pub mod discovery;
+/// Environment profile and deployment metadata.
 pub mod environment;
+/// Helpers that replace one-off literals with named accessors.
 pub mod hardcoded_elimination;
+/// Load balancer and traffic steering settings.
 pub mod load_balancing;
 // Network configuration - refactored into modular structure (Nov 10, 2025)
 // Previously: single 1,261-line file
 // Now: organized into domain modules with full backward compatibility
+/// Network topology, ports, timeouts, and protocol tuning.
 pub mod network;
+/// Metrics, tracing, and logging hooks.
 pub mod observability;
+/// Throughput and latency tuning knobs.
 pub mod performance;
+/// Primal registry and capability wiring.
 pub mod primals;
+/// Retry, circuit breaking, and backoff policies.
 pub mod resilience;
+/// TLS, auth, and hardening options.
 pub mod security;
+/// First-class service endpoint metadata.
 pub mod service;
 
 // Re-export canonical constants for easy access (Phase 4: Enhanced Nov 8, 2025)
@@ -30,6 +42,16 @@ pub use constants::{
     DEFAULT_EVALUATION_TIMEOUT,
     // DEFAULT_LOCALHOST, // Removed: Use get_bind_address() function instead
     DEFAULT_METRICS_INTERVAL,
+    FALLBACK_CANONICAL_DISCOVERY_PORT,
+    FALLBACK_CANONICAL_GAMING_PORT,
+    FALLBACK_CANONICAL_ORCHESTRATOR_PORT,
+    FALLBACK_CANONICAL_SECURITY_PORT,
+    FALLBACK_PRODUCTION_HTTPS_PORT,
+    FALLBACK_PROTOCOL_SECURE_WEBSOCKET_PORT,
+    FALLBACK_PROTOCOL_TCP_PORT,
+    FALLBACK_PROTOCOL_UDP_PORT,
+    FALLBACK_PROTOCOL_WEBSOCKET_PORT,
+    FALLBACK_STAGING_HTTP_PORT,
     // LOCALHOST_IPV4, // Removed: Use get_bind_address() function instead
     default_bind_address,
     default_discovery_port,
@@ -101,13 +123,20 @@ pub use security::*;
 pub use service::ServiceConfig;
 
 // Type aliases for backward compatibility with proper definitions
+/// Coarse health rollup used by orchestration and dashboards.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ServiceHealth {
+    /// Instance is meeting its SLO.
     Healthy,
+    /// Instance is impaired but still serving limited traffic.
     Degraded,
+    /// Instance should stop receiving new sessions.
     Unhealthy,
+    /// Health probe has not succeeded yet or data is stale.
     Unknown,
 }
 
+/// Alias kept for older call sites that referred to `HealthStatus`.
 pub type HealthStatus = ServiceHealth;
+/// Alias for federation code that prefixed health types with `Universal`.
 pub type UniversalHealthStatus = ServiceHealth;

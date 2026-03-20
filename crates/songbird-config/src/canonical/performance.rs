@@ -29,7 +29,10 @@ use std::env;
 /// assert!(config.cache.enabled);
 /// ```
 #[derive(Debug, Clone, Serialize, Deserialize)]
-#[allow(clippy::struct_excessive_bools)]
+#[expect(
+    clippy::struct_excessive_bools,
+    reason = "intentional pattern; clippy false positive for this API"
+)]
 pub struct PerformanceConfig {
     /// Thread pool size for async runtime
     pub thread_pool_size: usize,

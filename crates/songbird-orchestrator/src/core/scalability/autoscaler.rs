@@ -111,7 +111,7 @@ impl AutoScaler  {#[must_use]
 
         cpu_factor.max(memory_factor).max(load_factor)
     /// Determine scaling direction based on current state
-#[allow(dead_code)]
+#[expect(dead_code, reason = "dead code retained intentionally (reserved or API surface)")]
     fn determine_scale_direction() -> ScaleDirection  {
      if resource_usage.cpu_percent > 80.0
             || resource_usage.memory_percent > 80.0

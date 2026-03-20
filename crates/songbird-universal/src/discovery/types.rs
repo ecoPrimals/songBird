@@ -165,3 +165,99 @@ impl DiscoveredPrimal {
         self.capabilities.contains(capability)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    #![expect(clippy::unwrap_used, reason = "test assertions")]
+    #![expect(clippy::expect_used, reason = "test assertions")]
+
+    use super::{DiscoveredPrimal, DiscoveryConfig, DiscoveryError, DiscoveryMethod, PrimalHealth};
+    use crate::capabilities::Capability;
+    use crate::types::PrimalType;
+    use songbird_test_utils::canonical_test_framework::TestContext;
+    use tokio::time::Duration;
+
+    fn sample_capability() -> Capability {
+        Capability::from_string("encryption").expect("encryption maps")
+    }
+
+    #[test]
+    fn discovery_config_default() {
+        let c = DiscoveryConfig::default();
+        assert_eq!(c.timeout, Duration::from_secs(30));
+        assert!(c.mechanisms.enable_environment_scan);
+    }
+
+    #[test]
+    fn discovered_primal_new_and_metadata() {
+        let ctx = TestContext::new("discovered_primal");
+        let cap = sample_capability();
+        let p = DiscoveredPrimal::new(
+            "n".to_string(),
+            PrimalType::new("security"),
+            "https://x".to_string(),
+            vec![cap.clone()],
+            DiscoveryMethod::Manual,
+        )
+        .with_metadata("k".to_string(), "v".to_string());
+        assert!(!p.is_healthy());
+        assert!(p.has_capability(&cap));
+        assert_eq!(p.metadata.get("k"), Some(&"v".to_string()));
+        assert!(!ctx.is_timeout());
+    }
+
+    #[test]
+    fn discovery_method_serde_roundtrip() {
+        for m in [
+            DiscoveryMethod::Environment,
+            DiscoveryMethod::NetworkScan,
+            DiscoveryMethod::ContainerOrchestration,
+            DiscoveryMethod::ServiceRegistry,
+            DiscoveryMethod::MDNS,
+            DiscoveryMethod::Manual,
+        ] {
+            let j = serde_json::to_string(&m).unwrap();
+            let back: DiscoveryMethod = serde_json::from_str(&j).unwrap();
+            assert_eq!(m, back);
+        }
+    }
+
+    #[test]
+    fn primal_health_serde_roundtrip() {
+        for h in [
+            PrimalHealth::Healthy,
+            PrimalHealth::Degraded,
+            PrimalHealth::Unhealthy,
+            PrimalHealth::Unknown,
+        ] {
+            let j = serde_json::to_string(&h).unwrap();
+            let back: PrimalHealth = serde_json::from_str(&j).unwrap();
+            assert_eq!(h, back);
+        }
+    }
+
+    #[test]
+    fn discovery_error_display() {
+        let e = DiscoveryError::ConfigError("bad".to_string());
+        let s = e.to_string();
+        assert!(s.contains("bad"));
+        let t = DiscoveryError::Timeout(Duration::from_secs(1));
+        assert!(t.to_string().contains("timeout") || t.to_string().contains("1"));
+    }
+
+    #[test]
+    fn discovered_primal_serde_roundtrip() {
+        let cap = sample_capability();
+        let p = DiscoveredPrimal::new(
+            "p1".to_string(),
+            PrimalType::new("compute"),
+            "http://localhost:1".to_string(),
+            vec![cap],
+            DiscoveryMethod::Environment,
+        );
+        let j = serde_json::to_string(&p).unwrap();
+        let back: DiscoveredPrimal = serde_json::from_str(&j).unwrap();
+        assert_eq!(p.name, back.name);
+        assert_eq!(p.endpoint, back.endpoint);
+    }
+}

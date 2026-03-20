@@ -13,7 +13,8 @@
     clippy::struct_excessive_bools,
     clippy::similar_names,
     clippy::cast_precision_loss,
-    clippy::unused_async
+    clippy::unused_async,
+    reason = "sovereignty routing: API shape and async stubs until federation hardening"
 )]
 
 use super::types::{PathSegment, RoutingPath, SecurityCapability, SecurityLevel};

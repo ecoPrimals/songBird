@@ -5,6 +5,8 @@
 //!
 //! **MODERN GAMING FEDERATION & MATCHMAKING** ✅
 
+#![allow(missing_docs, reason = "federation clap enums document flags inline")]
+
 use crate::errors::SongbirdResult;
 use clap::Subcommand;
 

@@ -135,7 +135,10 @@ pub struct NetworkConfig {
 
 /// Environment security configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
-#[allow(clippy::struct_excessive_bools)]
+#[expect(
+    clippy::struct_excessive_bools,
+    reason = "intentional pattern; clippy false positive for this API"
+)]
 pub struct EnvironmentSecurityConfig {
     /// Enable authentication
     /// Enable Auth field

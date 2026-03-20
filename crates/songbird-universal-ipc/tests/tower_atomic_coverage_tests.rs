@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (c) 2024-2026 ecoPrimals
 
-#![allow(
+#![expect(
     clippy::unwrap_used,
     clippy::expect_used,
     clippy::unnecessary_wraps,
@@ -24,14 +24,19 @@
     dead_code,
     clippy::unnecessary_literal_unwrap,
     clippy::needless_pass_by_value,
-    clippy::must_use_candidate
+    clippy::must_use_candidate,
+    reason = "test assertions and harness ergonomics"
 )]
 
 //! Coverage tests for songbird-universal-ipc::tower_atomic
 //!
 //! Tests the JSON-RPC 2.0 types and protocol structures.
 
-#![allow(clippy::unwrap_used, clippy::expect_used)]
+#![expect(
+    clippy::unwrap_used,
+    clippy::expect_used,
+    reason = "test assertions and harness ergonomics"
+)]
 
 use songbird_universal_ipc::tower_atomic::{JsonRpcError, JsonRpcRequest, JsonRpcResponse};
 

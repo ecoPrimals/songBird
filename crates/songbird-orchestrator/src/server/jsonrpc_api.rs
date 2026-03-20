@@ -12,7 +12,13 @@
 // Part of: Progressive Protocol Enhancement - Week 2
 // Created: November 11, 2025
 
-use axum::{Json, Router, extract::State, http::StatusCode, routing::post};
+use axum::{
+    Json, Router,
+    extract::{Path, State},
+    http::StatusCode,
+    routing::post,
+};
+use base64::Engine;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::sync::Arc;
@@ -40,8 +46,20 @@ use tokio::sync::RwLock;
 pub struct JsonRpcState {
     /// Federation state for service routing
     pub federation_state: Arc<FederationState>,
-    /// Service registry for discovery
+    /// Federated service registry (inter-node)
     pub service_registry: Arc<FederatedServiceRegistry>,
+    /// Compute API state (same as `/api/compute`)
+    pub compute_state: crate::server::compute_api::ComputeApiState,
+    /// Deployment API state (same as `/api/deployment`)
+    pub deployment_state: crate::server::deployment_api::DeploymentState,
+    /// Protocol API state (same as `/api/protocol`)
+    pub protocol_state: crate::server::protocol_api::ProtocolApiState,
+    /// Universal Port Authority registry (same as `/api/v1/services`)
+    pub upa_registry: Arc<crate::service_registry::ServiceRegistry>,
+    /// Task lifecycle manager (same as `/api/v1/tasks`)
+    pub task_manager: Arc<crate::task_lifecycle::TaskLifecycleManager>,
+    /// Consent manager (same as `/api/consent`)
+    pub consent_manager: Arc<crate::consent_management::ConsentManager>,
     /// Server start time for uptime calculation
     pub start_time: Arc<RwLock<Instant>>,
     /// Universal IPC handler — full method table for inter-gate communication
@@ -51,33 +69,36 @@ pub struct JsonRpcState {
 }
 
 impl JsonRpcState {
-    #[must_use]
-    pub fn new(
-        federation_state: Arc<FederationState>,
-        service_registry: Arc<FederatedServiceRegistry>,
-    ) -> Self {
-        Self {
-            federation_state,
-            service_registry,
-            start_time: Arc::new(RwLock::new(Instant::now())),
-            ipc_handler: None,
-        }
-    }
-
     /// Create with IPC handler for full method forwarding on TCP
     ///
     /// This enables inter-gate communication over TCP :3492 by forwarding
     /// unknown methods to the universal-ipc handler (same as Unix socket).
     /// Dark Forest gating still applies on all TCP requests.
     #[must_use]
+    #[expect(
+        clippy::too_many_arguments,
+        reason = "Single constructor wires every REST-backed JSON-RPC dependency"
+    )]
     pub fn with_ipc_handler(
         federation_state: Arc<FederationState>,
         service_registry: Arc<FederatedServiceRegistry>,
         ipc_handler: Arc<IpcServiceHandler>,
+        compute_state: crate::server::compute_api::ComputeApiState,
+        deployment_state: crate::server::deployment_api::DeploymentState,
+        protocol_state: crate::server::protocol_api::ProtocolApiState,
+        upa_registry: Arc<crate::service_registry::ServiceRegistry>,
+        task_manager: Arc<crate::task_lifecycle::TaskLifecycleManager>,
+        consent_manager: Arc<crate::consent_management::ConsentManager>,
     ) -> Self {
         Self {
             federation_state,
             service_registry,
+            compute_state,
+            deployment_state,
+            protocol_state,
+            upa_registry,
+            task_manager,
+            consent_manager,
             start_time: Arc::new(RwLock::new(Instant::now())),
             ipc_handler: Some(ipc_handler),
         }
@@ -209,14 +230,30 @@ async fn handle_jsonrpc_request(
 
     // Route to appropriate handler based on method
     let result = match request.method.as_str() {
+        // Semantic names (wateringHole / PRIMAL_IPC) — mirror REST handlers
+        "compute.route" => handle_compute_route(&state, request.params.clone()).await,
+        "deployment.create" => handle_deployment_create(&state, request.params.clone()).await,
+        "deployment.status" => handle_deployment_status(&state, request.params.clone()).await,
+        "task.create" => handle_task_create(&state, request.params.clone()).await,
+        "task.list" => handle_task_list(&state, request.params.clone()).await,
+        "consent.check" => handle_consent_check(&state, request.params.clone()).await,
+        "consent.grant" => handle_consent_grant(&state, request.params.clone()).await,
+        "registry.register" => handle_registry_register(&state, request.params.clone()).await,
+        "registry.discover" => handle_registry_discover(&state, request.params.clone()).await,
+        "protocol.negotiate" => {
+            handle_protocol_negotiate_semantic(&state, request.params.clone()).await
+        }
+
         // Service discovery methods
         "songbird.services.list" => handle_services_list(&state).await,
         "songbird.services.get" => handle_service_get(&state, request.params).await,
         "songbird.services.register" => handle_service_register(&state, request.params).await,
 
         // Compute methods
-        "songbird.compute.schedule" => handle_compute_schedule(&state, request.params).await,
-        "songbird.compute.status" => handle_compute_status(&state, request.params).await,
+        "songbird.compute.schedule" => handle_compute_route(&state, request.params.clone()).await,
+        "songbird.compute.status" => {
+            handle_compute_job_status(&state, request.params.clone()).await
+        }
 
         // Federation methods
         "songbird.federation.peers" => handle_federation_peers(&state).await,
@@ -396,46 +433,275 @@ async fn handle_service_register(
     }))
 }
 
-/// songbird.compute.schedule
-/// Schedule a compute task
-async fn handle_compute_schedule(
-    _state: &JsonRpcState,
+/// `compute.route` / `songbird.compute.schedule` — same handler as `POST /api/compute/task`
+async fn handle_compute_route(
+    state: &JsonRpcState,
     params: Option<Value>,
 ) -> Result<Value, JsonRpcError> {
-    let _task_params =
-        params.ok_or_else(|| JsonRpcError::invalid_params("Missing task parameters"))?;
+    let params = params.ok_or_else(|| JsonRpcError::invalid_params("Missing parameters"))?;
+    let req: crate::server::compute_api::ComputeTaskRequest =
+        serde_json::from_value(params).map_err(|e| JsonRpcError::invalid_params(e.to_string()))?;
+    let json = crate::server::compute_api::submit_compute_task(
+        State(state.compute_state.clone()),
+        Json(req),
+    )
+    .await
+    .map_err(jsonrpc_from_compute_error)?;
+    serde_json::to_value(json.0).map_err(|e| JsonRpcError::internal_error(e.to_string()))
+}
 
-    // ✅ EVOLVED: Generate real task IDs using UUID
-    // Integration with compute providers via capability-based discovery
-    let task_id = uuid::Uuid::new_v4().to_string();
+/// `songbird.compute.status` — same as `GET /api/compute/task/:job_id`
+async fn handle_compute_job_status(
+    state: &JsonRpcState,
+    params: Option<Value>,
+) -> Result<Value, JsonRpcError> {
+    let task_id_str = extract_str_param(params.as_ref(), "task_id")?;
+    let job_id = uuid::Uuid::parse_str(&task_id_str)
+        .map_err(|_| JsonRpcError::invalid_params("task_id must be a UUID"))?;
+    let res = crate::server::compute_api::get_task_status(
+        State(state.compute_state.clone()),
+        Path(job_id),
+    )
+    .await
+    .map_err(jsonrpc_from_compute_error)?;
+    serde_json::to_value(res.0).map_err(|e| JsonRpcError::internal_error(e.to_string()))
+}
 
+fn jsonrpc_from_compute_error(e: crate::server::compute_api::ApiError) -> JsonRpcError {
+    use crate::server::compute_api::ApiError;
+    match e {
+        ApiError::Routing(msg) | ApiError::Execution(msg) => JsonRpcError::internal_error(msg),
+        ApiError::InvalidRequest(msg) => JsonRpcError::invalid_params(msg),
+        ApiError::NotFound(msg) => JsonRpcError {
+            code: -32001,
+            message: msg,
+            data: None,
+        },
+    }
+}
+
+/// `deployment.create` — same deployment path as `POST /api/deployment/binary` (body as base64 in JSON)
+async fn handle_deployment_create(
+    state: &JsonRpcState,
+    params: Option<Value>,
+) -> Result<Value, JsonRpcError> {
+    let obj = params
+        .as_ref()
+        .and_then(|p| p.as_object())
+        .ok_or_else(|| JsonRpcError::invalid_params("Parameters must be an object"))?;
+    let b64 = obj
+        .get("binary_base64")
+        .and_then(|v| v.as_str())
+        .ok_or_else(|| JsonRpcError::invalid_params("Missing binary_base64"))?;
+    let raw = base64::engine::general_purpose::STANDARD
+        .decode(b64)
+        .map_err(|e| JsonRpcError::invalid_params(format!("Invalid base64: {e}")))?;
+    let service_name = obj.get("service_name").and_then(|v| v.as_str()).map(String::from);
+    let env_vars: std::collections::HashMap<String, String> = obj
+        .get("env_vars")
+        .and_then(|v| serde_json::from_value(v.clone()).ok())
+        .unwrap_or_default();
+    let auto_start = obj.get("auto_start").and_then(Value::as_bool).unwrap_or(true);
+    let (status, body) = crate::server::deployment_api::deploy_binary_bytes(
+        &state.deployment_state,
+        axum::body::Bytes::from(raw),
+        service_name,
+        env_vars,
+        auto_start,
+    )
+    .await
+    .map_err(|(code, msg)| JsonRpcError {
+        code: jsonrpc_code_from_http_status(code),
+        message: msg,
+        data: None,
+    })?;
+    let mut val =
+        serde_json::to_value(&body).map_err(|e| JsonRpcError::internal_error(e.to_string()))?;
+    if let Some(o) = val.as_object_mut() {
+        o.insert("http_status".to_string(), (status.as_u16()).into());
+    }
+    Ok(val)
+}
+
+/// `deployment.status` — same as `GET /api/deployment/status/:id`
+async fn handle_deployment_status(
+    state: &JsonRpcState,
+    params: Option<Value>,
+) -> Result<Value, JsonRpcError> {
+    let id = extract_str_param(params.as_ref(), "deployment_id")?;
+    match crate::server::deployment_api::get_deployment_status(
+        State(state.deployment_state.clone()),
+        Path(id),
+    )
+    .await
+    {
+        Ok(Json(info)) => {
+            serde_json::to_value(info).map_err(|e| JsonRpcError::internal_error(e.to_string()))
+        }
+        Err((code, msg)) => Err(JsonRpcError {
+            code: jsonrpc_code_from_http_status(code),
+            message: msg,
+            data: None,
+        }),
+    }
+}
+
+/// `task.create` — same as `POST /api/v1/tasks`
+async fn handle_task_create(
+    state: &JsonRpcState,
+    params: Option<Value>,
+) -> Result<Value, JsonRpcError> {
+    let req: crate::server::task_api::CreateTaskRequest = serde_json::from_value(
+        params.ok_or_else(|| JsonRpcError::invalid_params("Missing parameters"))?,
+    )
+    .map_err(|e| JsonRpcError::invalid_params(e.to_string()))?;
+    let owner = crate::task_lifecycle::UserId::from(req.owner);
+    let task_id = state
+        .task_manager
+        .create_task(owner, req.spec)
+        .await
+        .map_err(|e| JsonRpcError::internal_error(e.to_string()))?;
+    Ok(serde_json::json!({ "task_id": task_id.to_string() }))
+}
+
+/// `task.list` — same as `GET /api/v1/tasks`
+async fn handle_task_list(
+    state: &JsonRpcState,
+    params: Option<Value>,
+) -> Result<Value, JsonRpcError> {
+    let owner = params
+        .as_ref()
+        .and_then(|p| p.get("owner"))
+        .and_then(|v| v.as_str())
+        .map(crate::task_lifecycle::UserId::from);
+    let tower = params
+        .as_ref()
+        .and_then(|p| p.get("tower"))
+        .and_then(|v| v.as_str())
+        .map(crate::task_lifecycle::TowerId::from);
+    let filter = crate::task_lifecycle::TaskFilter {
+        owner,
+        tower,
+        ..Default::default()
+    };
+    let tasks = state
+        .task_manager
+        .list_tasks(&filter)
+        .await
+        .map_err(|e| JsonRpcError::internal_error(e.to_string()))?;
+    let tasks_json: Vec<Value> = tasks
+        .into_iter()
+        .map(serde_json::to_value)
+        .collect::<Result<_, _>>()
+        .map_err(|e| JsonRpcError::internal_error(e.to_string()))?;
+    Ok(serde_json::json!({ "tasks": tasks_json }))
+}
+
+/// `consent.check` — load consent record (`GET /api/consent/:id`)
+async fn handle_consent_check(
+    state: &JsonRpcState,
+    params: Option<Value>,
+) -> Result<Value, JsonRpcError> {
+    let id = extract_str_param(params.as_ref(), "consent_id")?;
+    let rec = state.consent_manager.get_consent(&id).await.ok_or_else(|| JsonRpcError {
+        code: -32001,
+        message: "Consent not found".to_string(),
+        data: None,
+    })?;
+    serde_json::to_value(rec).map_err(|e| JsonRpcError::internal_error(e.to_string()))
+}
+
+/// `consent.grant` — approve consent (`PUT /api/consent/:id` with approve)
+async fn handle_consent_grant(
+    state: &JsonRpcState,
+    params: Option<Value>,
+) -> Result<Value, JsonRpcError> {
+    let obj = params
+        .as_ref()
+        .and_then(|p| p.as_object())
+        .ok_or_else(|| JsonRpcError::invalid_params("Parameters must be an object"))?;
+    let id = obj
+        .get("consent_id")
+        .and_then(|v| v.as_str())
+        .ok_or_else(|| JsonRpcError::invalid_params("Missing consent_id"))?;
+    let reason = obj.get("reason").and_then(|v| v.as_str()).map(std::sync::Arc::from);
+    if !state.consent_manager.approve(id, reason).await {
+        return Err(JsonRpcError {
+            code: -32001,
+            message: "Consent not found".to_string(),
+            data: None,
+        });
+    }
     Ok(serde_json::json!({
-        "task_id": task_id,
-        "status": "queued",
-        "message": "Task queued. Integrate with compute providers via capability discovery (COMPUTE_ENDPOINT)."
+        "status": "approved",
+        "consent_id": id,
     }))
 }
 
-/// songbird.compute.status
-/// Get status of a compute task
-async fn handle_compute_status(
-    _state: &JsonRpcState,
+/// `registry.register` — `POST /api/v1/services/register`
+async fn handle_registry_register(
+    state: &JsonRpcState,
     params: Option<Value>,
 ) -> Result<Value, JsonRpcError> {
-    let _task_id = match &params {
-        Some(Value::Object(map)) => map
-            .get("task_id")
-            .and_then(|v| v.as_str())
-            .ok_or_else(|| JsonRpcError::invalid_params("Missing 'task_id' parameter"))?
-            .to_string(),
-        _ => return Err(JsonRpcError::invalid_params("Missing task_id parameter")),
-    };
+    let req: crate::service_registry::RegistrationRequest = serde_json::from_value(
+        params.ok_or_else(|| JsonRpcError::invalid_params("Missing parameters"))?,
+    )
+    .map_err(|e| JsonRpcError::invalid_params(e.to_string()))?;
+    let response = state
+        .upa_registry
+        .register(req)
+        .await
+        .map_err(|e| JsonRpcError::internal_error(e.to_string()))?;
+    serde_json::to_value(response).map_err(|e| JsonRpcError::internal_error(e.to_string()))
+}
 
-    Ok(serde_json::json!({
-        "task_id": _task_id,
-        "status": "unknown",
-        "message": "Task tracking requires a connected compute provider (set COMPUTE_ENDPOINT).",
-    }))
+/// `registry.discover` — list services or query by capability (UPA)
+async fn handle_registry_discover(
+    state: &JsonRpcState,
+    params: Option<Value>,
+) -> Result<Value, JsonRpcError> {
+    if let Some(cap) = params.as_ref().and_then(|p| p.get("capability")).and_then(|v| v.as_str()) {
+        let services = state.upa_registry.query_by_capability(cap).await;
+        Ok(serde_json::json!({
+            "capability": cap,
+            "services": services,
+            "count": services.len(),
+        }))
+    } else {
+        let services = state.upa_registry.list_services().await;
+        let stats = state.upa_registry.get_stats().await;
+        Ok(serde_json::json!({ "services": services, "stats": stats }))
+    }
+}
+
+/// `protocol.negotiate` — same as `POST /api/protocol/negotiate`
+async fn handle_protocol_negotiate_semantic(
+    state: &JsonRpcState,
+    params: Option<Value>,
+) -> Result<Value, JsonRpcError> {
+    let req: crate::server::protocol_api::NegotiateRequest = serde_json::from_value(
+        params.ok_or_else(|| JsonRpcError::invalid_params("Missing parameters"))?,
+    )
+    .map_err(|e| JsonRpcError::invalid_params(e.to_string()))?;
+    let res = crate::server::protocol_api::protocol_negotiate_result(&state.protocol_state, &req);
+    serde_json::to_value(res).map_err(|e| JsonRpcError::internal_error(e.to_string()))
+}
+
+fn extract_str_param(params: Option<&Value>, key: &str) -> Result<String, JsonRpcError> {
+    params
+        .and_then(|p| p.as_object())
+        .and_then(|m| m.get(key))
+        .and_then(|v| v.as_str())
+        .map(String::from)
+        .ok_or_else(|| JsonRpcError::invalid_params(format!("Missing '{key}'")))
+}
+
+fn jsonrpc_code_from_http_status(status: StatusCode) -> i32 {
+    match status.as_u16() {
+        404 => -32001,
+        400..=499 => JsonRpcError::INVALID_PARAMS,
+        _ => JsonRpcError::INTERNAL_ERROR,
+    }
 }
 
 /// songbird.federation.peers

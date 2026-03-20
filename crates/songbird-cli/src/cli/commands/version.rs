@@ -5,7 +5,7 @@
 //!
 //! Shows current version and build information
 
-#![allow(unexpected_cfgs)]
+#![expect(unexpected_cfgs, reason = "documented lint suppression (wateringHole)")]
 
 // Module imports
 // Version Command

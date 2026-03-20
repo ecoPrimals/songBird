@@ -5,6 +5,8 @@
 //!
 //! Systematic replacement of hardcoded values with configurable alternatives.
 
+#![allow(missing_docs, reason = "legacy mirror of canonical defaults; fields self-descriptive")]
+
 use std::collections::HashMap;
 use std::net::IpAddr;
 use std::sync::Arc;

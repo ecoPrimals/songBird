@@ -199,7 +199,8 @@ impl PoolConfigBuilder {
 pub struct PooledConnection<T: Send + Sync + 'static> {
     inner: Option<T>,
     pool: Arc<ConnectionPoolInner<T>>,
-    #[allow(dead_code)] // Reserved for future connection age tracking
+    #[expect(dead_code, reason = "dead code retained intentionally (reserved or API surface)")]
+    // Reserved for future connection age tracking
     created_at: Instant,
     last_used: Instant,
 }
@@ -507,6 +508,7 @@ impl<T: Send + Sync + 'static> ConnectionPoolBuilder<T> {
 }
 
 #[cfg(test)]
+#[expect(clippy::unwrap_used, reason = "test assertions")]
 mod tests {
     use super::*;
 
@@ -610,6 +612,15 @@ mod tests {
         };
         assert!(config.validate().is_err());
 
+        // Invalid: max_idle_time zero
+        let config = PoolConfig {
+            max_size: 10,
+            min_idle: 2,
+            max_idle_time: Duration::ZERO,
+            ..Default::default()
+        };
+        assert!(config.validate().is_err());
+
         // Valid
         let config = PoolConfig {
             max_size: 10,
@@ -617,5 +628,40 @@ mod tests {
             ..Default::default()
         };
         assert!(config.validate().is_ok());
+    }
+
+    #[test]
+    fn pool_config_builder_defaults_and_overrides() {
+        let built = PoolConfig::builder()
+            .max_size(42)
+            .min_idle(3)
+            .max_idle_time(Duration::from_secs(120))
+            .acquire_timeout(Duration::from_secs(9))
+            .build();
+        assert_eq!(built.max_size, 42);
+        assert_eq!(built.min_idle, 3);
+        assert_eq!(built.max_idle_time, Duration::from_secs(120));
+        assert_eq!(built.acquire_timeout, Duration::from_secs(9));
+        assert_eq!(built.cleanup_interval, PoolConfig::default().cleanup_interval);
+    }
+
+    #[test]
+    fn pool_error_display() {
+        let e = PoolError::PoolFull(3);
+        assert!(e.to_string().contains('3'));
+        assert!(matches!(e, PoolError::PoolFull(3)));
+    }
+
+    #[tokio::test]
+    async fn shutting_down_rejects_new_connections() {
+        let pool = ConnectionPool::<MockConnection>::builder().max_size(2).build().await.unwrap();
+        pool.shutdown().await;
+        let err = pool
+            .add_connection(MockConnection {
+                id: 99,
+            })
+            .await
+            .unwrap_err();
+        assert!(matches!(err, PoolError::ShuttingDown));
     }
 }

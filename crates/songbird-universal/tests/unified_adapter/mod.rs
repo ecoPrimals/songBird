@@ -2,11 +2,11 @@
 // Copyright (c) 2024-2026 ecoPrimals
 
 // Allow common test patterns - idiomatic for test code
-#![allow(clippy::unwrap_used, clippy::expect_used)]
-#![allow(clippy::unnecessary_wraps)]
-#![allow(clippy::field_reassign_with_default)]
-#![allow(clippy::uninlined_format_args)]
-#![allow(clippy::float_cmp)]
+#![expect(clippy::unwrap_used, clippy::expect_used, reason = "test assertions and harness ergonomics")]
+#![expect(clippy::unnecessary_wraps, reason = "test assertions and harness ergonomics")]
+#![expect(clippy::field_reassign_with_default, reason = "test assertions and harness ergonomics")]
+#![expect(clippy::uninlined_format_args, reason = "test assertions and harness ergonomics")]
+#![expect(clippy::float_cmp, reason = "test assertions and harness ergonomics")]
 
 //! Unified Universal Adapter Test Module
 //!

@@ -30,6 +30,7 @@
 //! ```
 
 #![forbid(unsafe_code)]
+#![warn(missing_docs)]
 #![warn(clippy::all)]
 #![warn(clippy::pedantic)]
 #![allow(
@@ -38,7 +39,8 @@
     clippy::if_same_then_else,
     clippy::trivially_copy_pass_by_ref,
     clippy::cast_precision_loss,
-    clippy::unused_async
+    clippy::unused_async,
+    reason = "registry crate: plugin API surface; doc and style exceptions"
 )]
 #![cfg_attr(
     test,
@@ -88,13 +90,19 @@
 )]
 
 // Core modules
+/// Federation-aware registry integration hooks.
 pub mod federation;
+/// Disk-backed and in-memory persistence for registry state.
 pub mod persistence;
+/// Core registry implementation and query API.
 pub mod registry;
+/// Shared registry value types (plugins, events, health).
 pub mod types;
 
 // Health and scaling modules (new clean implementations)
+/// Health probe adapters for registered workloads.
 pub mod health_new;
+/// Autoscaling signals tied to registry entries.
 pub mod scaling_new;
 
 // Re-export commonly used types

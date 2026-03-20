@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (c) 2024-2026 ecoPrimals
 
-#![allow(
+#![expect(
     clippy::unwrap_used,
     clippy::expect_used,
     clippy::unnecessary_wraps,
@@ -31,10 +31,11 @@
     clippy::cast_possible_truncation,
     clippy::cast_sign_loss,
     clippy::cast_precision_loss,
-    clippy::cast_possible_wrap
+    clippy::cast_possible_wrap,
+    reason = "test assertions and harness ergonomics"
 )]
-#![allow(clippy::all)]
-#![allow(unused)]
+#![expect(clippy::all, reason = "test assertions and harness ergonomics")]
+#![expect(unused, reason = "test assertions and harness ergonomics")]
 
 //! Adapter Creation & Basic Configuration Tests
 //!
@@ -42,19 +43,23 @@
 //! **Focus**: Does the adapter create and configure correctly?
 //! **Scope**: Basic functionality, construction patterns, default values
 
-#![allow(clippy::uninlined_format_args)]
-#![allow(clippy::float_cmp)]
-#![allow(clippy::useless_vec)]
-#![allow(clippy::unreadable_literal)]
-#![allow(clippy::items_after_statements)]
-#![allow(clippy::cast_precision_loss)]
-#![allow(clippy::cast_possible_truncation)]
-#![allow(clippy::cast_sign_loss)]
-#![allow(clippy::needless_pass_by_value)]
-#![allow(clippy::similar_names)]
-#![allow(clippy::module_name_repetitions)]
+#![expect(clippy::uninlined_format_args, reason = "test assertions and harness ergonomics")]
+#![expect(clippy::float_cmp, reason = "test assertions and harness ergonomics")]
+#![expect(clippy::useless_vec, reason = "test assertions and harness ergonomics")]
+#![expect(clippy::unreadable_literal, reason = "test assertions and harness ergonomics")]
+#![expect(clippy::items_after_statements, reason = "test assertions and harness ergonomics")]
+#![expect(clippy::cast_precision_loss, reason = "test assertions and harness ergonomics")]
+#![expect(clippy::cast_possible_truncation, reason = "test assertions and harness ergonomics")]
+#![expect(clippy::cast_sign_loss, reason = "test assertions and harness ergonomics")]
+#![expect(clippy::needless_pass_by_value, reason = "test assertions and harness ergonomics")]
+#![expect(clippy::similar_names, reason = "test assertions and harness ergonomics")]
+#![expect(clippy::module_name_repetitions, reason = "test assertions and harness ergonomics")]
 // Allow unwrap/expect in tests - idiomatic for test code
-#![allow(clippy::unwrap_used, clippy::expect_used)]
+#![expect(
+    clippy::unwrap_used,
+    clippy::expect_used,
+    reason = "test assertions and harness ergonomics"
+)]
 
 use songbird_test_utils::network_fixtures::*;
 use songbird_types::{SongbirdError, SongbirdResult};

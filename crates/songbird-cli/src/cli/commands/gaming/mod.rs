@@ -6,6 +6,8 @@
 //! Comprehensive gaming functionality including network scanning, hosting,
 //! joining sessions, and various family-safe setup modes.
 
+#![allow(missing_docs, reason = "gaming clap trees document commands inline")]
+
 use crate::cli::ui::success;
 use crate::errors::SongbirdResult;
 use clap::{Parser, Subcommand};

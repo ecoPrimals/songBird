@@ -181,15 +181,18 @@ pub mod legacy {
     pub use super::*;
 
     // Additional legacy aliases if needed
+    /// Legacy alias for the development bind address (`127.0.0.1`).
     pub const DEFAULT_BIND_ADDRESS: &str = super::DEVELOPMENT_BIND_ADDRESS;
+    /// Legacy alias for loopback (`127.0.0.1`).
     pub const DEFAULT_LOCALHOST: &str = super::LOCALHOST;
 }
 
-#[allow(
+#[expect(
     clippy::unwrap_used,
     clippy::expect_used,
     clippy::unnecessary_wraps,
-    clippy::field_reassign_with_default
+    clippy::field_reassign_with_default,
+    reason = "intentional pattern; clippy false positive for this API"
 )]
 #[cfg(test)]
 mod tests {

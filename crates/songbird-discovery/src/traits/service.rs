@@ -5,7 +5,7 @@
 //!
 //! Core service abstractions for the Songbird Orchestrator
 
-#![allow(async_fn_in_trait)]
+#![expect(async_fn_in_trait, reason = "async fn in trait (edition / trait-object compatibility)")]
 
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};

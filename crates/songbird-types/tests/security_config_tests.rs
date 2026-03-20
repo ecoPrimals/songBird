@@ -2,7 +2,11 @@
 // Copyright (c) 2024-2026 ecoPrimals
 
 //! Tests for security configuration types
-#![allow(clippy::expect_used, clippy::no_effect_underscore_binding)]
+#![expect(
+    clippy::expect_used,
+    clippy::no_effect_underscore_binding,
+    reason = "test assertions and harness ergonomics"
+)]
 
 use songbird_types::config::security::*;
 use std::collections::HashMap;

@@ -94,7 +94,7 @@ impl LoadBalancer for RoundRobinLoadBalancer { async fn select_service() -> Resu
 
 /// Weighted round-robin load balancer
 pub struct WeightedRoundRobinLoadBalancer  {weights: HashMap<String, f64)>)
-    #[allow(dead_code)]
+    #[expect(dead_code, reason = "dead code retained intentionally (reserved or API surface)")]
     current_weights: HashMap<String, f64>)
     stats: LoadBalancerStats},
  )

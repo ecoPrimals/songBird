@@ -26,7 +26,10 @@ impl<T> Shared<T> {
 
     /// Get a reference to the inner data
     #[must_use]
-    #[allow(clippy::should_implement_trait)]
+    #[expect(
+        clippy::should_implement_trait,
+        reason = "intentional pattern; clippy false positive for this API"
+    )]
     pub fn as_ref(&self) -> &T {
         &self.inner
     }
@@ -83,7 +86,7 @@ pub fn smart_cow<T: Clone>(item: &T, need_owned: bool) -> Cow<'_, T> {
 }
 
 #[cfg(test)]
-#[allow(
+#[expect(
     clippy::unwrap_used,
     clippy::unnecessary_wraps,
     clippy::field_reassign_with_default,
@@ -94,12 +97,13 @@ pub fn smart_cow<T: Clone>(item: &T, need_owned: bool) -> Cow<'_, T> {
     clippy::items_after_statements,
     clippy::cast_precision_loss,
     clippy::cast_possible_truncation,
-    clippy::cast_sign_loss
+    clippy::cast_sign_loss,
+    reason = "test assertions and harness ergonomics"
 )]
 mod tests {
     #![expect(clippy::expect_used, reason = "test assertions")]
-    #![allow(clippy::all)]
-    #![allow(unused)]
+    #![expect(clippy::all, reason = "test assertions and harness ergonomics")]
+    #![expect(unused, reason = "unused bindings/imports in this compilation unit")]
 
     use super::*;
 
